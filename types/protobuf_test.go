@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
@@ -37,18 +37,18 @@ func TestABCIValidators(t *testing.T) {
 	tmVal := NewValidator(pkEd, 10)
 
 	abciVal := TM2PB.ValidatorUpdate(tmVal)
-	tmVals, err := PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{abciVal})
+	tmVals, err := PB2TM.ValidatorUpdates([]abcix.ValidatorUpdate{abciVal})
 	assert.Nil(t, err)
 	assert.Equal(t, tmValExpected, tmVals[0])
 
 	abciVals := TM2PB.ValidatorUpdates(NewValidatorSet(tmVals))
-	assert.Equal(t, []abci.ValidatorUpdate{abciVal}, abciVals)
+	assert.Equal(t, []abcix.ValidatorUpdate{abciVal}, abciVals)
 
 	// val with address
 	tmVal.Address = pkEd.Address()
 
 	abciVal = TM2PB.ValidatorUpdate(tmVal)
-	tmVals, err = PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{abciVal})
+	tmVals, err = PB2TM.ValidatorUpdates([]abcix.ValidatorUpdate{abciVal})
 	assert.Nil(t, err)
 	assert.Equal(t, tmValExpected, tmVals[0])
 }
@@ -106,7 +106,7 @@ func TestABCIValidatorWithoutPubKey(t *testing.T) {
 	abciVal := TM2PB.Validator(NewValidator(pkEd, 10))
 
 	// pubkey must be nil
-	tmValExpected := abci.Validator{
+	tmValExpected := abcix.Validator{
 		Address: pkEd.Address(),
 		Power:   10,
 	}

@@ -15,6 +15,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/abcix/adapter"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/evidence"
@@ -221,7 +222,7 @@ func testFreeAddr(t *testing.T) string {
 func TestCreateProposalBlock(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	cc := proxy.NewLocalClientCreator(adapter.AdaptToABCIx(kvstore.NewApplication()))
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)

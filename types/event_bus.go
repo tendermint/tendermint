@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tendermint/tendermint/abci/types"
+	xtypes "github.com/tendermint/tendermint/abcix/types"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
@@ -107,7 +107,7 @@ func (b *EventBus) Publish(eventType string, eventData TMEventData) error {
 // map of stringified events where each key is composed of the event
 // type and each of the event's attributes keys in the form of
 // "{event.Type}.{attribute.Key}" and the value is each attribute's value.
-func (b *EventBus) validateAndStringifyEvents(events []types.Event, logger log.Logger) map[string][]string {
+func (b *EventBus) validateAndStringifyEvents(events []xtypes.Event, logger log.Logger) map[string][]string {
 	result := make(map[string][]string)
 	for _, event := range events {
 		if len(event.Type) == 0 {
@@ -133,7 +133,7 @@ func (b *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
 
-	resultEvents := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
+	resultEvents := data.ResultDeliverBlock.Events
 	events := b.validateAndStringifyEvents(resultEvents, b.Logger.With("block", data.Block.StringShort()))
 
 	// add predefined new block event
@@ -146,7 +146,7 @@ func (b *EventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) erro
 	// no explicit deadline for publishing events
 	ctx := context.Background()
 
-	resultTags := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
+	resultTags := data.ResultDeliverBlock.Events
 	// TODO: Create StringShort method for Header and use it in logger.
 	events := b.validateAndStringifyEvents(resultTags, b.Logger.With("header", data.Header))
 

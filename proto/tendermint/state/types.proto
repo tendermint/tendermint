@@ -4,7 +4,6 @@ package tendermint.state;
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/state";
 
 import "gogoproto/gogo.proto";
-import "tendermint/abci/types.proto";
 import "tendermint/abcix/types.proto";
 import "tendermint/types/types.proto";
 import "tendermint/types/validator.proto";
@@ -16,10 +15,7 @@ import "google/protobuf/timestamp.proto";
 // of the various ABCI calls during block processing.
 // It is persisted to disk for each height before calling Commit.
 message ABCIResponses {
-  repeated tendermint.abci.ResponseDeliverTx deliver_txs   = 1;
-  tendermint.abci.ResponseEndBlock           end_block     = 2;
-  tendermint.abci.ResponseBeginBlock         begin_block   = 3;
-  tendermint.abcix.ResponseDeliverBlock      deliver_block = 4;
+  tendermint.abcix.ResponseDeliverBlock      deliver_block = 1;
 }
 
 // ValidatorsInfo represents the latest validator set, or the last height it changed

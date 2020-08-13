@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/abcix/adapter"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -567,7 +569,7 @@ func TestStateLockPOLRelockThenChangeLock(t *testing.T) {
 	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	// before we timeout to the new round set the new proposal
-	cs2 := newState(cs1.state, vs2, counter.NewApplication(true))
+	cs2 := newState(cs1.state, vs2, adapter.AdaptToABCIx(counter.NewApplication(true)))
 	prop, propBlock := decideProposal(cs2, vs2, vs2.Height, vs2.Round+1)
 	if prop == nil || propBlock == nil {
 		t.Fatal("Failed to create proposal block with vs2")
@@ -763,7 +765,7 @@ func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
 	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	// before we timeout to the new round set the new proposal
-	cs2 := newState(cs1.state, vs2, counter.NewApplication(true))
+	cs2 := newState(cs1.state, vs2, adapter.AdaptToABCIx(counter.NewApplication(true)))
 	prop, propBlock := decideProposal(cs2, vs2, vs2.Height, vs2.Round+1)
 	if prop == nil || propBlock == nil {
 		t.Fatal("Failed to create proposal block with vs2")
@@ -807,7 +809,7 @@ func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
 	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	// before we timeout to the new round set the new proposal
-	cs3 := newState(cs1.state, vs3, counter.NewApplication(true))
+	cs3 := newState(cs1.state, vs3, adapter.AdaptToABCIx(counter.NewApplication(true)))
 	prop, propBlock = decideProposal(cs3, vs3, vs3.Height, vs3.Round+1)
 	if prop == nil || propBlock == nil {
 		t.Fatal("Failed to create proposal block with vs2")

@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	abcix "github.com/tendermint/tendermint/abcix/types"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -335,9 +337,9 @@ func TestBroadcastTxCommit(t *testing.T) {
 func TestUnconfirmedTxs(t *testing.T) {
 	_, _, tx := MakeTxKV()
 
-	ch := make(chan *abci.Response, 1)
+	ch := make(chan *abcix.Response, 1)
 	mempool := node.Mempool()
-	err := mempool.CheckTx(tx, func(resp *abci.Response) { ch <- resp }, mempl.TxInfo{})
+	err := mempool.CheckTx(tx, func(resp *abcix.Response) { ch <- resp }, mempl.TxInfo{})
 	require.NoError(t, err)
 
 	// wait for tx to arrive in mempoool.
@@ -365,9 +367,9 @@ func TestUnconfirmedTxs(t *testing.T) {
 func TestNumUnconfirmedTxs(t *testing.T) {
 	_, _, tx := MakeTxKV()
 
-	ch := make(chan *abci.Response, 1)
+	ch := make(chan *abcix.Response, 1)
 	mempool := node.Mempool()
-	err := mempool.CheckTx(tx, func(resp *abci.Response) { ch <- resp }, mempl.TxInfo{})
+	err := mempool.CheckTx(tx, func(resp *abcix.Response) { ch <- resp }, mempl.TxInfo{})
 	require.NoError(t, err)
 
 	// wait for tx to arrive in mempoool.

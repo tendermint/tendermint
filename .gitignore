@@ -18,6 +18,7 @@ docs/dist
 docs/.vuepress/dist
 *.log
 /abci-cli
+/tendermint
 docs/node_modules/
 index.html.md
 

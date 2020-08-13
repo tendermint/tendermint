@@ -93,6 +93,14 @@ install_abci:
 	@go install -mod=readonly ./abci/cmd/...
 .PHONY: install_abci
 
+build_abcix:
+	@go build -mod=readonly -i ./abcix/cmd/...
+.PHONY: build_abcix
+
+install_abcix:
+	@go install -mod=readonly ./abcix/cmd/...
+.PHONY: install_abcix
+
 ###############################################################################
 ###                              Distribution                               ###
 ###############################################################################

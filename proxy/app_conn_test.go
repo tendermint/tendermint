@@ -5,10 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abcixcli "github.com/tendermint/tendermint/abcix/client"
+	xtypes "github.com/tendermint/tendermint/abcix/types"
+
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/server"
-	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
@@ -16,20 +17,20 @@ import (
 //----------------------------------------
 
 type AppConnTest interface {
-	EchoAsync(string) *abcicli.ReqRes
+	EchoAsync(string) *abcixcli.ReqRes
 	FlushSync() error
-	InfoSync(types.RequestInfo) (*types.ResponseInfo, error)
+	InfoSync(xtypes.RequestInfo) (*xtypes.ResponseInfo, error)
 }
 
 type appConnTest struct {
-	appConn abcicli.Client
+	appConn abcixcli.Client
 }
 
-func NewAppConnTest(appConn abcicli.Client) AppConnTest {
+func NewAppConnTest(appConn abcixcli.Client) AppConnTest {
 	return &appConnTest{appConn}
 }
 
-func (app *appConnTest) EchoAsync(msg string) *abcicli.ReqRes {
+func (app *appConnTest) EchoAsync(msg string) *abcixcli.ReqRes {
 	return app.appConn.EchoAsync(msg)
 }
 
@@ -37,7 +38,7 @@ func (app *appConnTest) FlushSync() error {
 	return app.appConn.FlushSync()
 }
 
-func (app *appConnTest) InfoSync(req types.RequestInfo) (*types.ResponseInfo, error) {
+func (app *appConnTest) InfoSync(req xtypes.RequestInfo) (*xtypes.ResponseInfo, error) {
 	return app.appConn.InfoSync(req)
 }
 

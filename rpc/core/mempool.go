@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
 	mempl "github.com/tendermint/tendermint/mempool"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -32,8 +32,8 @@ func BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadca
 // DeliverTx result.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_sync
 func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	resCh := make(chan *abci.Response, 1)
-	err := env.Mempool.CheckTx(tx, func(res *abci.Response) {
+	resCh := make(chan *abcix.Response, 1)
+	err := env.Mempool.CheckTx(tx, func(res *abcix.Response) {
 		resCh <- res
 	}, mempl.TxInfo{})
 	if err != nil {
@@ -74,8 +74,8 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 	defer env.EventBus.Unsubscribe(context.Background(), subscriber, q)
 
 	// Broadcast tx and wait for CheckTx result
-	checkTxResCh := make(chan *abci.Response, 1)
-	err = env.Mempool.CheckTx(tx, func(res *abci.Response) {
+	checkTxResCh := make(chan *abcix.Response, 1)
+	err = env.Mempool.CheckTx(tx, func(res *abcix.Response) {
 		checkTxResCh <- res
 	}, mempl.TxInfo{})
 	if err != nil {
@@ -84,10 +84,11 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 	}
 	checkTxResMsg := <-checkTxResCh
 	checkTxRes := checkTxResMsg.GetCheckTx()
-	if checkTxRes.Code != abci.CodeTypeOK {
+
+	if checkTxRes.Code != abcix.CodeTypeOK {
 		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxRes,
-			DeliverTx: abci.ResponseDeliverTx{},
+			CheckTx:   *checkTxRes, // TODO: should broadcast new checkTxResp
+			DeliverTx: abcix.ResponseDeliverTx{},
 			Hash:      tx.Hash(),
 		}, nil
 	}
@@ -113,7 +114,7 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 		env.Logger.Error("Error on broadcastTxCommit", "err", err)
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   *checkTxRes,
-			DeliverTx: abci.ResponseDeliverTx{},
+			DeliverTx: abcix.ResponseDeliverTx{},
 			Hash:      tx.Hash(),
 		}, err
 	case <-time.After(env.Config.TimeoutBroadcastTxCommit):
@@ -121,7 +122,7 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 		env.Logger.Error("Error on broadcastTxCommit", "err", err)
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   *checkTxRes,
-			DeliverTx: abci.ResponseDeliverTx{},
+			DeliverTx: abcix.ResponseDeliverTx{},
 			Hash:      tx.Hash(),
 		}, err
 	}
@@ -155,7 +156,7 @@ func NumUnconfirmedTxs(ctx *rpctypes.Context) (*ctypes.ResultUnconfirmedTxs, err
 // be added to the mempool either.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/check_tx
 func CheckTx(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultCheckTx, error) {
-	res, err := env.ProxyAppMempool.CheckTxSync(abci.RequestCheckTx{Tx: tx})
+	res, err := env.ProxyAppMempool.CheckTxSync(abcix.RequestCheckTx{Tx: tx})
 	if err != nil {
 		return nil, err
 	}

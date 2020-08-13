@@ -187,7 +187,7 @@ func makeAndConnectReactors(config *cfg.Config, n int) []*Reactor {
 	logger := mempoolLogger()
 	for i := 0; i < n; i++ {
 		app := kvstore.NewApplication()
-		cc := proxy.NewLocalClientCreator(app)
+		cc := proxy.NewLegacyLocalClientCreator(app)
 		mempool, cleanup := newMempoolWithApp(cc)
 		defer cleanup()
 

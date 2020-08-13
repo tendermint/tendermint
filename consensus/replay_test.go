@@ -13,6 +13,11 @@ import (
 	"testing"
 	"time"
 
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+
+	"github.com/tendermint/tendermint/abcix/adapter"
+	abcix "github.com/tendermint/tendermint/abcix/types"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +32,6 @@ import (
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/privval"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -73,7 +77,7 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Confi
 		consensusReplayConfig,
 		state,
 		privValidator,
-		kvstore.NewApplication(),
+		adapter.AdaptToABCIx(kvstore.NewApplication()),
 		blockDB,
 	)
 	cs.SetLogger(logger)
@@ -159,7 +163,7 @@ LOOP:
 			consensusReplayConfig,
 			state,
 			privValidator,
-			kvstore.NewApplication(),
+			adapter.AdaptToABCIx(kvstore.NewApplication()),
 			blockDB,
 		)
 		cs.SetLogger(logger)
@@ -587,14 +591,15 @@ func TestHandshakeReplayNone(t *testing.T) {
 // Test mockProxyApp should not panic when app return ABCIResponses with some empty ResponseDeliverTx
 func TestMockProxyApp(t *testing.T) {
 	sim.CleanupFunc() //clean the test env created in TestSimulateValidatorsChange
-	logger := log.TestingLogger()
 	var validTxs, invalidTxs = 0, 0
-	txIndex := 0
 
 	assert.NotPanics(t, func() {
 		abciResWithEmptyDeliverTx := new(tmstate.ABCIResponses)
-		abciResWithEmptyDeliverTx.DeliverTxs = make([]*abci.ResponseDeliverTx, 0)
-		abciResWithEmptyDeliverTx.DeliverTxs = append(abciResWithEmptyDeliverTx.DeliverTxs, &abci.ResponseDeliverTx{})
+		dtxs := make([]*abcix.ResponseDeliverTx, 0)
+		dtxs = append(dtxs, &abcix.ResponseDeliverTx{})
+		abciResWithEmptyDeliverTx.DeliverBlock = &abcix.ResponseDeliverBlock{
+			DeliverTxs: dtxs,
+		}
 
 		// called when saveABCIResponses:
 		bytes, err := proto.Marshal(abciResWithEmptyDeliverTx)
@@ -607,29 +612,16 @@ func TestMockProxyApp(t *testing.T) {
 
 		mock := newMockProxyApp([]byte("mock_hash"), loadedAbciRes)
 
-		abciRes := new(tmstate.ABCIResponses)
-		abciRes.DeliverTxs = make([]*abci.ResponseDeliverTx, len(loadedAbciRes.DeliverTxs))
-		// Execute transactions and get hash.
-		proxyCb := func(req *abci.Request, res *abci.Response) {
-			if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
-				// TODO: make use of res.Log
-				// TODO: make use of this info
-				// Blocks may include invalid txs.
-				txRes := r.DeliverTx
-				if txRes.Code == abci.CodeTypeOK {
-					validTxs++
-				} else {
-					logger.Debug("Invalid tx", "code", txRes.Code, "log", txRes.Log)
-					invalidTxs++
-				}
-				abciRes.DeliverTxs[txIndex] = txRes
-				txIndex++
+		someTx := [][]byte{[]byte("tx")}
+		txRes, err := mock.DeliverBlockSync(abcix.RequestDeliverBlock{Txs: someTx})
+		require.NoError(t, err)
+		for _, tsRes := range txRes.DeliverTxs {
+			if tsRes.Code == abcix.CodeTypeOK {
+				validTxs++
+			} else {
+				invalidTxs++
 			}
 		}
-		mock.SetResponseCallback(proxyCb)
-
-		someTx := []byte("tx")
-		mock.DeliverTxAsync(abci.RequestDeliverTx{Tx: someTx})
 	})
 	assert.True(t, validTxs == 1)
 	assert.True(t, invalidTxs == 0)
@@ -702,7 +694,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	kvstoreApp := kvstore.NewPersistentKVStoreApplication(
 		filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_a", nBlocks, mode)))
 
-	clientCreator2 := proxy.NewLocalClientCreator(kvstoreApp)
+	clientCreator2 := proxy.NewLocalClientCreator(adapter.AdaptToABCIx(kvstoreApp))
 	if nBlocks > 0 {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
@@ -738,7 +730,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	}
 
 	// get the latest app hash from the app
-	res, err := proxyApp.Query().InfoSync(abci.RequestInfo{Version: ""})
+	res, err := proxyApp.Query().InfoSync(abcix.RequestInfo{Version: ""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -785,7 +777,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
-	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
+	if _, err := proxyApp.Consensus().InitChainSync(abcix.RequestInitChain{
 		Validators: validators,
 	}); err != nil {
 		panic(err)
@@ -823,9 +815,10 @@ func buildTMStateFromChain(
 	nBlocks int,
 	mode uint) sm.State {
 	// run the whole chain against this client to build up the tendermint state
-	clientCreator := proxy.NewLocalClientCreator(
-		kvstore.NewPersistentKVStoreApplication(
-			filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode))))
+	kvApp := kvstore.NewPersistentKVStoreApplication(
+		filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode)))
+	adaptedKvApp := adapter.AdaptToABCIx(kvApp)
+	clientCreator := proxy.NewLocalClientCreator(adaptedKvApp)
 	proxyApp := proxy.NewAppConns(clientCreator)
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
@@ -834,7 +827,7 @@ func buildTMStateFromChain(
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion //simulate handshake, receive app version
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
-	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
+	if _, err := proxyApp.Consensus().InitChainSync(abcix.RequestInitChain{
 		Validators: validators,
 	}); err != nil {
 		panic(err)
@@ -889,7 +882,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	//		- 0x03
 	{
 		app := &badApp{numBlocks: 3, allHashesAreWrong: true}
-		clientCreator := proxy.NewLocalClientCreator(app)
+		clientCreator := proxy.NewLocalClientCreator(adapter.AdaptToABCIx(app))
 		proxyApp := proxy.NewAppConns(clientCreator)
 		err := proxyApp.Start()
 		require.NoError(t, err)
@@ -907,7 +900,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	//		- RANDOM HASH
 	{
 		app := &badApp{numBlocks: 3, onlyLastHashIsWrong: true}
-		clientCreator := proxy.NewLocalClientCreator(app)
+		clientCreator := proxy.NewLocalClientCreator(adapter.AdaptToABCIx(app))
 		proxyApp := proxy.NewAppConns(clientCreator)
 		err := proxyApp.Start()
 		require.NoError(t, err)
@@ -1220,12 +1213,12 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 
 // returns the vals on InitChain
 type initChainApp struct {
-	abci.BaseApplication
-	vals []abci.ValidatorUpdate
+	abcix.BaseApplication
+	vals []abcix.ValidatorUpdate
 }
 
-func (ica *initChainApp) InitChain(req abci.RequestInitChain) abci.ResponseInitChain {
-	return abci.ResponseInitChain{
+func (ica *initChainApp) InitChain(req abcix.RequestInitChain) abcix.ResponseInitChain {
+	return abcix.ResponseInitChain{
 		Validators: ica.vals,
 	}
 }

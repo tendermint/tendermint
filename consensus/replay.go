@@ -8,7 +8,8 @@ import (
 	"reflect"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
+
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -302,7 +303,7 @@ func (h *Handshaker) ReplayBlocks(
 		validatorSet := types.NewValidatorSet(validators)
 		nextVals := types.TM2PB.ValidatorUpdates(validatorSet)
 		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
-		req := abci.RequestInitChain{
+		req := abcix.RequestInitChain{
 			Time:            h.genDoc.GenesisTime,
 			ChainId:         h.genDoc.ChainID,
 			ConsensusParams: csParams,

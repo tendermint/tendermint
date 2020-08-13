@@ -13,6 +13,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/abcix/adapter"
 	"github.com/tendermint/tendermint/behaviour"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
@@ -148,7 +149,7 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 		appl = &mockBlockApplier{}
 	} else {
 		app := &testApp{}
-		cc := proxy.NewLocalClientCreator(app)
+		cc := proxy.NewLocalClientCreator(adapter.AdaptToABCIx(app))
 		proxyApp := proxy.NewAppConns(cc)
 		err := proxyApp.Start()
 		if err != nil {
@@ -486,7 +487,7 @@ func newReactorStore(
 		panic("only support one validator")
 	}
 	app := &testApp{}
-	cc := proxy.NewLocalClientCreator(app)
+	cc := proxy.NewLocalClientCreator(adapter.AdaptToABCIx(app))
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	if err != nil {

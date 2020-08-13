@@ -37,7 +37,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"genesis_hash",
 		[]byte{},
 		"Optional SHA-256 hash of the genesis file")
-	cmd.Flags().Bool("deliver_block", config.DeliverBlock, "Use DeliverBlock")
 
 	// abci flags
 	cmd.Flags().String(

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
 	cfg "github.com/tendermint/tendermint/config"
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	"github.com/tendermint/tendermint/libs/clist"
@@ -238,7 +238,7 @@ func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 // CONTRACT: Either cb will get called, or err returned.
 //
 // Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) error {
+func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abcix.Response), txInfo TxInfo) error {
 	mem.updateMtx.RLock()
 	// use defer to unlock mutex because application (*local client*) might panic
 	defer mem.updateMtx.RUnlock()
@@ -300,7 +300,7 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 		return err
 	}
 
-	reqRes := mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
+	reqRes := mem.proxyAppConn.CheckTxAsync(abcix.RequestCheckTx{Tx: tx})
 	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderP2PID, cb))
 
 	return nil
@@ -315,7 +315,7 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 //
 // When rechecking, we don't need the peerID, so the recheck callback happens
 // here.
-func (mem *CListMempool) globalCb(req *abci.Request, res *abci.Response) {
+func (mem *CListMempool) globalCb(req *abcix.Request, res *abcix.Response) {
 	if mem.recheckCursor == nil {
 		return
 	}
@@ -340,9 +340,9 @@ func (mem *CListMempool) reqResCb(
 	tx []byte,
 	peerID uint16,
 	peerP2PID p2p.ID,
-	externalCb func(*abci.Response),
-) func(res *abci.Response) {
-	return func(res *abci.Response) {
+	externalCb func(*abcix.Response),
+) func(res *abcix.Response) {
+	return func(res *abcix.Response) {
 		if mem.recheckCursor != nil {
 			// this should never happen
 			panic("recheck cursor is not nil in reqResCb")
@@ -417,15 +417,15 @@ func (mem *CListMempool) resCbFirstTime(
 	tx []byte,
 	peerID uint16,
 	peerP2PID p2p.ID,
-	res *abci.Response,
+	res *abcix.Response,
 ) {
 	switch r := res.Value.(type) {
-	case *abci.Response_CheckTx:
+	case *abcix.Response_CheckTx:
 		var postCheckErr error
 		if mem.postCheck != nil {
 			postCheckErr = mem.postCheck(tx, r.CheckTx)
 		}
-		if (r.CheckTx.Code == abci.CodeTypeOK) && postCheckErr == nil {
+		if (r.CheckTx.Code == abcix.CodeTypeOK) && postCheckErr == nil {
 			// Check mempool isn't full again to reduce the chance of exceeding the
 			// limits.
 			if err := mem.isFull(len(tx)); err != nil {
@@ -466,9 +466,9 @@ func (mem *CListMempool) resCbFirstTime(
 //
 // The case where the app checks the tx for the first time is handled by the
 // resCbFirstTime callback.
-func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
+func (mem *CListMempool) resCbRecheck(req *abcix.Request, res *abcix.Response) {
 	switch r := res.Value.(type) {
-	case *abci.Response_CheckTx:
+	case *abcix.Response_CheckTx:
 		tx := req.GetCheckTx().Tx
 		memTx := mem.recheckCursor.Value.(*mempoolTx)
 		if !bytes.Equal(tx, memTx.tx) {
@@ -481,7 +481,7 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 		if mem.postCheck != nil {
 			postCheckErr = mem.postCheck(tx, r.CheckTx)
 		}
-		if (r.CheckTx.Code == abci.CodeTypeOK) && postCheckErr == nil {
+		if (r.CheckTx.Code == abcix.CodeTypeOK) && postCheckErr == nil {
 			// Good, nothing to do.
 		} else {
 			// Tx became invalidated due to newly committed block.
@@ -582,7 +582,7 @@ func (mem *CListMempool) ReapMaxTxs(max int) types.Txs {
 func (mem *CListMempool) Update(
 	height int64,
 	txs types.Txs,
-	deliverTxResponses []*abci.ResponseDeliverTx,
+	deliverTxResponses []*abcix.ResponseDeliverTx,
 	preCheck PreCheckFunc,
 	postCheck PostCheckFunc,
 ) error {
@@ -598,7 +598,7 @@ func (mem *CListMempool) Update(
 	}
 
 	for i, tx := range txs {
-		if deliverTxResponses[i].Code == abci.CodeTypeOK {
+		if deliverTxResponses[i].Code == abcix.CodeTypeOK {
 			// Add valid committed tx to the cache (if missing).
 			_ = mem.cache.Push(tx)
 		} else {
@@ -653,9 +653,9 @@ func (mem *CListMempool) recheckTxs() {
 	// NOTE: globalCb may be called concurrently.
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
-		mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{
+		mem.proxyAppConn.CheckTxAsync(abcix.RequestCheckTx{
 			Tx:   memTx.tx,
-			Type: abci.CheckTxType_Recheck,
+			Type: abcix.CheckTxType_Recheck,
 		})
 	}
 

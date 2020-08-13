@@ -5,7 +5,7 @@ import (
 	"sort"
 	"sync"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
 	"github.com/tendermint/tendermint/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	"github.com/tendermint/tendermint/proxy"
@@ -158,7 +158,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		case *ssproto.ChunkRequest:
 			r.Logger.Debug("Received chunk request", "height", msg.Height, "format", msg.Format,
 				"chunk", msg.Index, "peer", src.ID())
-			resp, err := r.conn.LoadSnapshotChunkSync(abci.RequestLoadSnapshotChunk{
+			resp, err := r.conn.LoadSnapshotChunkSync(abcix.RequestLoadSnapshotChunk{
 				Height: msg.Height,
 				Format: msg.Format,
 				Chunk:  msg.Index,
@@ -211,7 +211,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 // recentSnapshots fetches the n most recent snapshots from the app
 func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
-	resp, err := r.conn.ListSnapshotsSync(abci.RequestListSnapshots{})
+	resp, err := r.conn.ListSnapshotsSync(abcix.RequestListSnapshots{})
 	if err != nil {
 		return nil, err
 	}

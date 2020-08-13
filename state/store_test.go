@@ -5,13 +5,14 @@ import (
 	"os"
 	"testing"
 
+	abcix "github.com/tendermint/tendermint/abcix/types"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tm-db"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -138,10 +139,12 @@ func TestPruneStates(t *testing.T) {
 				sm.SaveState(db, state)
 
 				sm.SaveABCIResponses(db, h, &tmstate.ABCIResponses{
-					DeliverTxs: []*abci.ResponseDeliverTx{
-						{Data: []byte{1}},
-						{Data: []byte{2}},
-						{Data: []byte{3}},
+					DeliverBlock: &abcix.ResponseDeliverBlock{
+						DeliverTxs: []*abcix.ResponseDeliverTx{
+							{Data: []byte{1}},
+							{Data: []byte{2}},
+							{Data: []byte{3}},
+						},
 					},
 				})
 			}
@@ -192,20 +195,19 @@ func TestPruneStates(t *testing.T) {
 
 func TestABCIResponsesResultsHash(t *testing.T) {
 	responses := &tmstate.ABCIResponses{
-		BeginBlock: &abci.ResponseBeginBlock{},
-		DeliverTxs: []*abci.ResponseDeliverTx{
-			{Code: 32, Data: []byte("Hello"), Log: "Huh?"},
+		DeliverBlock: &abcix.ResponseDeliverBlock{
+			DeliverTxs: []*abcix.ResponseDeliverTx{
+				{Code: 32, Data: []byte("Hello"), Log: "Huh?"},
+			},
 		},
-		EndBlock: &abci.ResponseEndBlock{},
 	}
 
 	root := sm.ABCIResponsesResultsHash(responses)
 
-	bbeBytes, _ := proto.Marshal(responses.BeginBlock)
-	results := types.NewResults(responses.DeliverTxs)
-	ebeBytes, _ := proto.Marshal(responses.EndBlock)
+	dbeBytes, _ := proto.Marshal(&abcix.ResponseDeliverBlock{})
+	results := types.NewResults(responses.DeliverBlock.DeliverTxs)
 
-	root2, proofs := merkle.ProofsFromByteSlices([][]byte{bbeBytes, results.Hash(), ebeBytes})
+	root2, proofs := merkle.ProofsFromByteSlices([][]byte{dbeBytes, results.Hash()})
 
 	assert.Equal(t, root2, root)
 	assert.NoError(t, proofs[1].Verify(root, results.Hash()))

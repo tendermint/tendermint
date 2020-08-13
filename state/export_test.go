@@ -3,7 +3,7 @@ package state
 import (
 	dbm "github.com/tendermint/tm-db"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -36,7 +36,7 @@ func UpdateState(
 
 // ValidateValidatorUpdates is an alias for validateValidatorUpdates exported
 // from execution.go, exclusively and explicitly for testing.
-func ValidateValidatorUpdates(abciUpdates []abci.ValidatorUpdate, params tmproto.ValidatorParams) error {
+func ValidateValidatorUpdates(abciUpdates []abcix.ValidatorUpdate, params tmproto.ValidatorParams) error {
 	return validateValidatorUpdates(abciUpdates, params)
 }
 

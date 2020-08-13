@@ -14,6 +14,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/abcix/adapter"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mempool/mock"
@@ -93,7 +94,7 @@ func newBlockchainReactor(
 	}
 
 	app := &testApp{}
-	cc := proxy.NewLocalClientCreator(app)
+	cc := proxy.NewLocalClientCreator(adapter.AdaptToABCIx(app))
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	if err != nil {

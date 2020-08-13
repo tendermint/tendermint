@@ -148,6 +148,9 @@ jobs:
           path: ~/go/bin
           key: ${{ runner.os }}-${{ github.sha }}-tm-binary
         if: "env.GIT_DIFF != ''"
+      - name: install ABCIx
+        run: make install install_abcix
+        if: "env.GIT_DIFF != ''"
       - name: test_apps
         run: test/app/test.sh
         shell: bash

@@ -149,7 +149,6 @@ func addCommands() {
 	RootCmd.AddCommand(echoCmd)
 	RootCmd.AddCommand(infoCmd)
 	RootCmd.AddCommand(setOptionCmd)
-	RootCmd.AddCommand(deliverTxCmd)
 	RootCmd.AddCommand(checkTxCmd)
 	RootCmd.AddCommand(commitCmd)
 	RootCmd.AddCommand(versionCmd)
@@ -178,10 +177,7 @@ where example.file looks something like:
     set_option serial on
     check_tx 0x00
     check_tx 0xff
-    deliver_tx 0x00
     check_tx 0x00
-    deliver_tx 0x01
-    deliver_tx 0x04
     info
 `,
 	Args: cobra.ExactArgs(0),
@@ -197,7 +193,7 @@ This command opens an interactive console for running any of the other commands
 without opening a new connection each time
 `,
 	Args:      cobra.ExactArgs(0),
-	ValidArgs: []string{"echo", "info", "set_option", "deliver_tx", "check_tx", "commit", "query"},
+	ValidArgs: []string{"echo", "info", "set_option", "check_tx", "commit", "query"},
 	RunE:      cmdConsole,
 }
 
@@ -221,14 +217,6 @@ var setOptionCmd = &cobra.Command{
 	Long:  "set an option on the application",
 	Args:  cobra.ExactArgs(2),
 	RunE:  cmdSetOption,
-}
-
-var deliverTxCmd = &cobra.Command{
-	Use:   "deliver_tx",
-	Short: "deliver a new transaction to the application",
-	Long:  "deliver a new transaction to the application",
-	Args:  cobra.ExactArgs(1),
-	RunE:  cmdDeliverTx,
 }
 
 var checkTxCmd = &cobra.Command{
@@ -387,8 +375,6 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 		return cmdCheckTx(cmd, actualArgs)
 	case "commit":
 		return cmdCommit(cmd, actualArgs)
-	case "deliver_tx":
-		return cmdDeliverTx(cmd, actualArgs)
 	case "echo":
 		return cmdEcho(cmd, actualArgs)
 	case "info":
@@ -417,7 +403,6 @@ func cmdUnimplemented(cmd *cobra.Command, args []string) error {
 	fmt.Printf("%s: %s\n", echoCmd.Use, echoCmd.Short)
 	fmt.Printf("%s: %s\n", infoCmd.Use, infoCmd.Short)
 	fmt.Printf("%s: %s\n", checkTxCmd.Use, checkTxCmd.Short)
-	fmt.Printf("%s: %s\n", deliverTxCmd.Use, deliverTxCmd.Short)
 	fmt.Printf("%s: %s\n", queryCmd.Use, queryCmd.Short)
 	fmt.Printf("%s: %s\n", commitCmd.Use, commitCmd.Short)
 	fmt.Printf("%s: %s\n", setOptionCmd.Use, setOptionCmd.Short)
@@ -476,32 +461,6 @@ func cmdSetOption(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	printResponse(cmd, args, response{Log: "OK (SetOption doesn't return anything.)"}) // NOTE: Nothing to show...
-	return nil
-}
-
-// Append a new tx to application
-func cmdDeliverTx(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		printResponse(cmd, args, response{
-			Code: codeBad,
-			Log:  "want the tx",
-		})
-		return nil
-	}
-	txBytes, err := stringOrHexToBytes(args[0])
-	if err != nil {
-		return err
-	}
-	res, err := client.DeliverTxSync(types.RequestDeliverTx{Tx: txBytes})
-	if err != nil {
-		return err
-	}
-	printResponse(cmd, args, response{
-		Code: res.Code,
-		Data: res.Data,
-		Info: res.Info,
-		Log:  res.Log,
-	})
 	return nil
 }
 
@@ -583,9 +542,10 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 
 func cmdCounter(cmd *cobra.Command, args []string) error {
 	app := counter.NewApplication(flagSerial)
+	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 	// Start the listener
-	srv, err := server.NewServer(flagAddress, flagAbci, adapter.Adapt(app))
+	srv, err := server.NewServer(flagAddress, flagAbci, adapter.AdaptToABCIx(app))
 	if err != nil {
 		return err
 	}
@@ -611,11 +571,11 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 	var app types.Application
 	if flagPersist == "" {
 		abciApp := kvstore.NewApplication()
-		app = adapter.Adapt(abciApp)
+		app = adapter.AdaptToABCIx(abciApp)
 	} else {
 		abciApp := kvstore.NewPersistentKVStoreApplication(flagPersist)
 		abciApp.SetLogger(logger.With("module", "kvstore"))
-		app = adapter.Adapt(abciApp)
+		app = adapter.AdaptToABCIx(abciApp)
 	}
 
 	// Start the listener

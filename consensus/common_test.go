@@ -6,25 +6,24 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/abcix/adapter"
 
 	"github.com/go-kit/kit/log/term"
 	"github.com/stretchr/testify/require"
 
-	"path"
-
 	dbm "github.com/tendermint/tm-db"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
-	abci "github.com/tendermint/tendermint/abci/types"
+	abcixcli "github.com/tendermint/tendermint/abcix/client"
+	abcix "github.com/tendermint/tendermint/abcix/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/evidence"
@@ -36,6 +35,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -351,7 +351,7 @@ func subscribeToVoter(cs *State, addr []byte) <-chan tmpubsub.Message {
 //-------------------------------------------------------------------------------
 // consensus states
 
-func newState(state sm.State, pv types.PrivValidator, app abci.Application) *State {
+func newState(state sm.State, pv types.PrivValidator, app abcix.Application) *State {
 	config := cfg.ResetTestRoot("consensus_state_test")
 	return newStateWithConfig(config, state, pv, app)
 }
@@ -360,7 +360,7 @@ func newStateWithConfig(
 	thisConfig *cfg.Config,
 	state sm.State,
 	pv types.PrivValidator,
-	app abci.Application,
+	app abcix.Application,
 ) *State {
 	blockDB := dbm.NewMemDB()
 	return newStateWithConfigAndBlockStore(thisConfig, state, pv, app, blockDB)
@@ -370,7 +370,7 @@ func newStateWithConfigAndBlockStore(
 	thisConfig *cfg.Config,
 	state sm.State,
 	pv types.PrivValidator,
-	app abci.Application,
+	app abcix.Application,
 	blockDB dbm.DB,
 ) *State {
 	// Get BlockStore
@@ -378,11 +378,12 @@ func newStateWithConfigAndBlockStore(
 
 	// one for mempool, one for consensus
 	mtx := new(sync.Mutex)
-	proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
-	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+	proxyAppConnMem := abcixcli.NewLocalClient(mtx, app)
+	proxyAppConnCon := abcixcli.NewLocalClient(mtx, app)
+	appConnMem := proxy.NewAppConnMempool(proxyAppConnMem)
 
 	// Make Mempool
-	mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
+	mempool := mempl.NewCListMempool(thisConfig.Mempool, appConnMem, 0)
 	mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
 	if thisConfig.Consensus.WaitForTxs() {
 		mempool.EnableTxsAvailable()
@@ -393,8 +394,7 @@ func newStateWithConfigAndBlockStore(
 	// Make State
 	stateDB := blockDB
 	sm.SaveState(stateDB, state) //for save height 1's validators info
-	appConnCon := proxy.NewAppConnConsensus(proxyAppConnCon)
-	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), appConnCon, mempool, evpool)
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
 	cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 	cs.SetPrivValidator(pv)
@@ -421,7 +421,9 @@ func randState(nValidators int) (*State, []*validatorStub) {
 
 	vss := make([]*validatorStub, nValidators)
 
-	cs := newState(state, privVals[0], counter.NewApplication(true))
+	counterApp := counter.NewApplication(true)
+	adaptedABCIxApp := adapter.AdaptToABCIx(counterApp)
+	cs := newState(state, privVals[0], adaptedABCIxApp)
 
 	for i := 0; i < nValidators; i++ {
 		vss[i] = newValidatorStub(privVals[i], int32(i))
@@ -438,24 +440,25 @@ func randStateWithEvpool(nValidators int) (*State, []*validatorStub, *evidence.P
 	vss := make([]*validatorStub, nValidators)
 
 	app := counter.NewApplication(true)
+	adaptedABCIxApp := adapter.AdaptToABCIx(app)
 	config := cfg.ResetTestRoot("consensus_state_test")
 
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	evidenceDB := dbm.NewMemDB()
 
 	mtx := new(sync.Mutex)
-	proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
-	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+	proxyAppConnMem := abcixcli.NewLocalClient(mtx, adaptedABCIxApp)
+	proxyAppConnCon := abcixcli.NewLocalClient(mtx, adaptedABCIxApp)
+	appConnMem := proxy.NewAppConnMempool(proxyAppConnMem)
 
-	mempool := mempl.NewCListMempool(config.Mempool, proxyAppConnMem, 0)
+	mempool := mempl.NewCListMempool(config.Mempool, appConnMem, 0)
 	mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
 	if config.Consensus.WaitForTxs() {
 		mempool.EnableTxsAvailable()
 	}
 	stateDB := dbm.NewMemDB()
 	evpool, _ := evidence.NewPool(stateDB, evidenceDB, blockStore)
-	appConnCon := proxy.NewAppConnConsensus(proxyAppConnCon)
-	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), appConnCon, mempool, evpool)
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
 	cs := NewState(config.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 	cs.SetPrivValidator(privVals[0])
@@ -711,7 +714,7 @@ func consensusLogger() log.Logger {
 }
 
 func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker,
-	appFunc func() abci.Application, configOpts ...func(*cfg.Config)) ([]*State, cleanupFunc) {
+	appFunc func() abcix.Application, configOpts ...func(*cfg.Config)) ([]*State, cleanupFunc) {
 	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
@@ -727,7 +730,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		app.InitChain(abcix.RequestInitChain{Validators: vals})
 
 		css[i] = newStateWithConfigAndBlockStore(thisConfig, state, privVals[i], app, stateDB)
 		css[i].SetTimeoutTicker(tickerFunc())
@@ -746,7 +749,7 @@ func randConsensusNetWithPeers(
 	nPeers int,
 	testName string,
 	tickerFunc func() TimeoutTicker,
-	appFunc func(string) abci.Application,
+	appFunc func(string) abcix.Application,
 ) ([]*State, *types.GenesisDoc, *cfg.Config, cleanupFunc) {
 	genDoc, privVals := randGenesisDoc(nValidators, false, testMinPower)
 	css := make([]*State, nPeers)
@@ -780,11 +783,11 @@ func randConsensusNetWithPeers(
 
 		app := appFunc(path.Join(config.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		if _, ok := app.(*kvstore.PersistentKVStoreApplication); ok {
+		if _, ok := app.(adapter.AdaptedApp).OriginalApp().(*kvstore.PersistentKVStoreApplication); ok {
 			// simulate handshake, receive app version. If don't do this, replay test will fail
 			state.Version.Consensus.App = kvstore.ProtocolVersion
 		}
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		app.InitChain(abcix.RequestInitChain{Validators: vals})
 		//sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
 
 		css[i] = newStateWithConfig(thisConfig, state, privVal, app)
@@ -886,18 +889,18 @@ func (*mockTicker) SetLogger(log.Logger) {}
 
 //------------------------------------
 
-func newCounter() abci.Application {
-	return counter.NewApplication(true)
+func newCounter() abcix.Application {
+	return adapter.AdaptToABCIx(counter.NewApplication(true))
 }
 
-func newPersistentKVStore() abci.Application {
+func newPersistentKVStore() abcix.Application {
 	dir, err := ioutil.TempDir("", "persistent-kvstore")
 	if err != nil {
 		panic(err)
 	}
-	return kvstore.NewPersistentKVStoreApplication(dir)
+	return adapter.AdaptToABCIx(kvstore.NewPersistentKVStoreApplication(dir))
 }
 
-func newPersistentKVStoreWithPath(dbDir string) abci.Application {
-	return kvstore.NewPersistentKVStoreApplication(dbDir)
+func newPersistentKVStoreWithPath(dbDir string) abcix.Application {
+	return adapter.AdaptToABCIx(kvstore.NewPersistentKVStoreApplication(dbDir))
 }

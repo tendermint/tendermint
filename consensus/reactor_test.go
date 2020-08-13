@@ -11,6 +11,10 @@ import (
 	"testing"
 	"time"
 
+	abcixcli "github.com/tendermint/tendermint/abcix/client"
+
+	abcix "github.com/tendermint/tendermint/abcix/types"
+
 	"github.com/tendermint/tendermint/proxy"
 
 	"github.com/stretchr/testify/assert"
@@ -18,9 +22,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
-	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
@@ -132,7 +134,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		app.InitChain(abcix.RequestInitChain{Validators: vals})
 
 		pv := privVals[i]
 		// duplicate code from:
@@ -143,11 +145,12 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		// one for mempool, one for consensus
 		mtx := new(sync.Mutex)
-		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
-		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+		proxyAppConnMem := abcixcli.NewLocalClient(mtx, app)
+		proxyAppConnCon := abcixcli.NewLocalClient(mtx, app)
+		appConnMem := proxy.NewAppConnMempool(proxyAppConnMem)
 
 		// Make Mempool
-		mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
+		mempool := mempl.NewCListMempool(thisConfig.Mempool, appConnMem, 0)
 		mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
 		if thisConfig.Consensus.WaitForTxs() {
 			mempool.EnableTxsAvailable()
@@ -159,8 +162,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		evpool := newMockEvidencePool(privVals[vIdx])
 
 		// Make State
-		appConnCon := proxy.NewAppConnConsensus(proxyAppConnCon)
-		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), appConnCon, mempool, evpool)
+		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
 		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 		cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 		cs.SetPrivValidator(pv)

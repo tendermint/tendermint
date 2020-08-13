@@ -143,10 +143,6 @@ prof_laddr = "{{ .BaseConfig.ProfListenAddress }}"
 # so the app can decide if we should keep the connection or not
 filter_peers = {{ .BaseConfig.FilterPeers }}
 
-# If true, call DeliverBlock function of Tendermintx
-# which includes BeginBlock, Commit and EndBlock
-deliver_block = {{ .BaseConfig.DeliverBlock }}
-
 #######################################################################
 ###                 Advanced Configuration Options                  ###
 #######################################################################

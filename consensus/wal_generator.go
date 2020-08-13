@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/abcix/adapter"
+
 	db "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -31,6 +33,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	config := getConfig(t)
 
 	app := kvstore.NewPersistentKVStoreApplication(filepath.Join(config.DBDir(), "wal_generator"))
+	adaptedApp := adapter.AdaptToABCIx(app)
 
 	logger := log.TestingLogger().With("wal_generator", "wal_generator")
 	logger.Info("generating WAL (last height msg excluded)", "numBlocks", numBlocks)
@@ -56,7 +59,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	sm.SaveState(stateDB, state)
 	blockStore := store.NewBlockStore(blockStoreDB)
 
-	proxyApp := proxy.NewAppConns(proxy.NewLocalClientCreator(app))
+	proxyApp := proxy.NewAppConns(proxy.NewLocalClientCreator(adaptedApp))
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
 		return fmt.Errorf("failed to start proxy app connections: %w", err)

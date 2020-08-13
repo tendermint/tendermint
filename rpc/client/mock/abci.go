@@ -1,7 +1,7 @@
 package mock
 
 import (
-	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/rpc/client"
@@ -13,7 +13,7 @@ import (
 // so you can test app behavior from a client without needing
 // an entire tendermint node
 type ABCIApp struct {
-	App abci.Application
+	App abcix.Application
 }
 
 var (
@@ -34,7 +34,7 @@ func (a ABCIApp) ABCIQueryWithOptions(
 	path string,
 	data bytes.HexBytes,
 	opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
-	q := a.App.Query(abci.RequestQuery{
+	q := a.App.Query(abcix.RequestQuery{
 		Data:   data,
 		Path:   path,
 		Height: opts.Height,
@@ -48,20 +48,20 @@ func (a ABCIApp) ABCIQueryWithOptions(
 // TODO: Make it wait for a commit and set res.Height appropriately.
 func (a ABCIApp) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	res := ctypes.ResultBroadcastTxCommit{}
-	res.CheckTx = a.App.CheckTx(abci.RequestCheckTx{Tx: tx})
+	res.CheckTx = a.App.CheckTx(abcix.RequestCheckTx{Tx: tx})
 	if res.CheckTx.IsErr() {
 		return &res, nil
 	}
-	res.DeliverTx = a.App.DeliverTx(abci.RequestDeliverTx{Tx: tx})
+	res.DeliverTx = *a.App.DeliverBlock(abcix.RequestDeliverBlock{Txs: [][]byte{tx}}).DeliverTxs[0]
 	res.Height = -1 // TODO
 	return &res, nil
 }
 
 func (a ABCIApp) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	c := a.App.CheckTx(abci.RequestCheckTx{Tx: tx})
+	c := a.App.CheckTx(abcix.RequestCheckTx{Tx: tx})
 	// and this gets written in a background thread...
 	if !c.IsErr() {
-		go func() { a.App.DeliverTx(abci.RequestDeliverTx{Tx: tx}) }()
+		go func() { a.App.DeliverBlock(abcix.RequestDeliverBlock{Txs: [][]byte{tx}}) }()
 	}
 	return &ctypes.ResultBroadcastTx{
 		Code:      c.Code,
@@ -73,10 +73,10 @@ func (a ABCIApp) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error
 }
 
 func (a ABCIApp) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	c := a.App.CheckTx(abci.RequestCheckTx{Tx: tx})
+	c := a.App.CheckTx(abcix.RequestCheckTx{Tx: tx})
 	// and this gets written in a background thread...
 	if !c.IsErr() {
-		go func() { a.App.DeliverTx(abci.RequestDeliverTx{Tx: tx}) }()
+		go func() { a.App.DeliverBlock(abcix.RequestDeliverBlock{Txs: [][]byte{tx}}) }()
 	}
 	return &ctypes.ResultBroadcastTx{
 		Code:      c.Code,
@@ -102,7 +102,7 @@ func (m ABCIMock) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ctypes.ResultABCIInfo{Response: res.(abci.ResponseInfo)}, nil
+	return &ctypes.ResultABCIInfo{Response: res.(abcix.ResponseInfo)}, nil
 }
 
 func (m ABCIMock) ABCIQuery(path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
@@ -117,7 +117,7 @@ func (m ABCIMock) ABCIQueryWithOptions(
 	if err != nil {
 		return nil, err
 	}
-	resQuery := res.(abci.ResponseQuery)
+	resQuery := res.(abcix.ResponseQuery)
 	return &ctypes.ResultABCIQuery{Response: resQuery}, nil
 }
 

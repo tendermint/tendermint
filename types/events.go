@@ -3,7 +3,8 @@ package types
 import (
 	"fmt"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
+
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
@@ -64,21 +65,19 @@ func init() {
 type EventDataNewBlock struct {
 	Block *Block `json:"block"`
 
-	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
-	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
+	ResultDeliverBlock abcix.ResponseDeliverBlock `json:"result_deliver_block"`
 }
 
 type EventDataNewBlockHeader struct {
 	Header Header `json:"header"`
 
-	NumTxs           int64                   `json:"num_txs"` // Number of txs in a block
-	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
-	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
+	NumTxs             int64                      `json:"num_txs"` // Number of txs in a block
+	ResultDeliverBlock abcix.ResponseDeliverBlock `json:"result_deliver_block"`
 }
 
 // All txs fire EventDataTx
 type EventDataTx struct {
-	abci.TxResult
+	abcix.TxResult
 }
 
 // NOTE: This goes into the replay WAL

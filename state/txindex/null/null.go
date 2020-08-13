@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/state/txindex"
 )
@@ -15,7 +15,7 @@ var _ txindex.TxIndexer = (*TxIndex)(nil)
 type TxIndex struct{}
 
 // Get on a TxIndex is disabled and panics when invoked.
-func (txi *TxIndex) Get(hash []byte) (*abci.TxResult, error) {
+func (txi *TxIndex) Get(hash []byte) (*abcix.TxResult, error) {
 	return nil, errors.New(`indexing is disabled (set 'tx_index = "kv"' in config)`)
 }
 
@@ -25,10 +25,10 @@ func (txi *TxIndex) AddBatch(batch *txindex.Batch) error {
 }
 
 // Index is a noop and always returns nil.
-func (txi *TxIndex) Index(result *abci.TxResult) error {
+func (txi *TxIndex) Index(result *abcix.TxResult) error {
 	return nil
 }
 
-func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResult, error) {
-	return []*abci.TxResult{}, nil
+func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abcix.TxResult, error) {
+	return []*abcix.TxResult{}, nil
 }

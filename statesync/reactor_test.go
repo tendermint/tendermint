@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
 	"github.com/tendermint/tendermint/p2p"
 	p2pmocks "github.com/tendermint/tendermint/p2p/mocks"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
@@ -41,11 +41,11 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			// Mock ABCI connection to return local snapshots
 			conn := &proxymocks.AppConnSnapshot{}
-			conn.On("LoadSnapshotChunkSync", abci.RequestLoadSnapshotChunk{
+			conn.On("LoadSnapshotChunkSync", abcix.RequestLoadSnapshotChunk{
 				Height: tc.request.Height,
 				Format: tc.request.Format,
 				Chunk:  tc.request.Index,
-			}).Return(&abci.ResponseLoadSnapshotChunk{Chunk: tc.chunk}, nil)
+			}).Return(&abcix.ResponseLoadSnapshotChunk{Chunk: tc.chunk}, nil)
 
 			// Mock peer to store response, if found
 			peer := &p2pmocks.Peer{}
@@ -77,12 +77,12 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 
 func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 	testcases := map[string]struct {
-		snapshots       []*abci.Snapshot
+		snapshots       []*abcix.Snapshot
 		expectResponses []*ssproto.SnapshotsResponse
 	}{
 		"no snapshots": {nil, []*ssproto.SnapshotsResponse{}},
 		">10 unordered snapshots": {
-			[]*abci.Snapshot{
+			[]*abcix.Snapshot{
 				{Height: 1, Format: 2, Chunks: 7, Hash: []byte{1, 2}, Metadata: []byte{1}},
 				{Height: 2, Format: 2, Chunks: 7, Hash: []byte{2, 2}, Metadata: []byte{2}},
 				{Height: 3, Format: 2, Chunks: 7, Hash: []byte{3, 2}, Metadata: []byte{3}},
@@ -116,7 +116,7 @@ func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			// Mock ABCI connection to return local snapshots
 			conn := &proxymocks.AppConnSnapshot{}
-			conn.On("ListSnapshotsSync", abci.RequestListSnapshots{}).Return(&abci.ResponseListSnapshots{
+			conn.On("ListSnapshotsSync", abcix.RequestListSnapshots{}).Return(&abcix.ResponseListSnapshots{
 				Snapshots: tc.snapshots,
 			}, nil)
 

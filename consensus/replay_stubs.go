@@ -1,7 +1,7 @@
 package consensus
 
 import (
-	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
 	"github.com/tendermint/tendermint/libs/clist"
 	mempl "github.com/tendermint/tendermint/mempool"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -19,7 +19,7 @@ var _ mempl.Mempool = emptyMempool{}
 func (emptyMempool) Lock()     {}
 func (emptyMempool) Unlock()   {}
 func (emptyMempool) Size() int { return 0 }
-func (emptyMempool) CheckTx(_ types.Tx, _ func(*abci.Response), _ mempl.TxInfo) error {
+func (emptyMempool) CheckTx(_ types.Tx, _ func(*abcix.Response), _ mempl.TxInfo) error {
 	return nil
 }
 func (emptyMempool) ReapMaxBytesMaxGas(_, _ int64) types.Txs { return types.Txs{} }
@@ -27,7 +27,7 @@ func (emptyMempool) ReapMaxTxs(n int) types.Txs              { return types.Txs{
 func (emptyMempool) Update(
 	_ int64,
 	_ types.Txs,
-	_ []*abci.ResponseDeliverTx,
+	_ []*abcix.ResponseDeliverTx,
 	_ mempl.PreCheckFunc,
 	_ mempl.PostCheckFunc,
 ) error {
@@ -79,27 +79,25 @@ func newMockProxyApp(appHash []byte, abciResponses *tmstate.ABCIResponses) proxy
 }
 
 type mockProxyApp struct {
-	abci.BaseApplication
+	abcix.BaseApplication
 
 	appHash       []byte
-	txCount       int
 	abciResponses *tmstate.ABCIResponses
 }
 
-func (mock *mockProxyApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	r := mock.abciResponses.DeliverTxs[mock.txCount]
-	mock.txCount++
-	if r == nil {
-		return abci.ResponseDeliverTx{}
+func (mock *mockProxyApp) DeliverBlock(req abcix.RequestDeliverBlock) abcix.ResponseDeliverBlock {
+	ret := abcix.ResponseDeliverBlock{}
+	// DeliverTx
+	for i := range req.Txs {
+		r := mock.abciResponses.DeliverBlock.DeliverTxs[i]
+		if r == nil {
+			r = &abcix.ResponseDeliverTx{}
+		}
+		ret.DeliverTxs = append(ret.DeliverTxs, r)
 	}
-	return *r
+	return ret
 }
 
-func (mock *mockProxyApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
-	mock.txCount = 0
-	return *mock.abciResponses.EndBlock
-}
-
-func (mock *mockProxyApp) Commit() abci.ResponseCommit {
-	return abci.ResponseCommit{Data: mock.appHash}
+func (mock *mockProxyApp) Commit() abcix.ResponseCommit {
+	return abcix.ResponseCommit{Data: mock.appHash}
 }

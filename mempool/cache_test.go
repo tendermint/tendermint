@@ -37,7 +37,7 @@ func TestCacheRemove(t *testing.T) {
 
 func TestCacheAfterUpdate(t *testing.T) {
 	app := kvstore.NewApplication()
-	cc := proxy.NewLocalClientCreator(app)
+	cc := proxy.NewLegacyLocalClientCreator(app)
 	mempool, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 

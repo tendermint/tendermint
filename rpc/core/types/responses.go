@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/p2p"
@@ -37,12 +37,11 @@ type ResultCommit struct {
 
 // ABCI results from a block
 type ResultBlockResults struct {
-	Height                int64                     `json:"height"`
-	TxsResults            []*abci.ResponseDeliverTx `json:"txs_results"`
-	BeginBlockEvents      []abci.Event              `json:"begin_block_events"`
-	EndBlockEvents        []abci.Event              `json:"end_block_events"`
-	ValidatorUpdates      []abci.ValidatorUpdate    `json:"validator_updates"`
-	ConsensusParamUpdates *abci.ConsensusParams     `json:"consensus_param_updates"`
+	Height                int64                      `json:"height"`
+	TxsResults            []*abcix.ResponseDeliverTx `json:"txs_results"`
+	DeliverBlockEvents    []abcix.Event              `json:"deliver_block_events"`
+	ValidatorUpdates      []abcix.ValidatorUpdate    `json:"validator_updates"`
+	ConsensusParamUpdates *abcix.ConsensusParams     `json:"consensus_param_updates"`
 }
 
 // NewResultCommit is a helper to initialize the ResultCommit with
@@ -168,25 +167,25 @@ type ResultBroadcastTx struct {
 
 // CheckTx and DeliverTx results
 type ResultBroadcastTxCommit struct {
-	CheckTx   abci.ResponseCheckTx   `json:"check_tx"`
-	DeliverTx abci.ResponseDeliverTx `json:"deliver_tx"`
-	Hash      bytes.HexBytes         `json:"hash"`
-	Height    int64                  `json:"height"`
+	CheckTx   abcix.ResponseCheckTx   `json:"check_tx"`
+	DeliverTx abcix.ResponseDeliverTx `json:"deliver_tx"`
+	Hash      bytes.HexBytes          `json:"hash"`
+	Height    int64                   `json:"height"`
 }
 
-// ResultCheckTx wraps abci.ResponseCheckTx.
+// ResultCheckTx wraps abcix.ResponseCheckTx.
 type ResultCheckTx struct {
-	abci.ResponseCheckTx
+	abcix.ResponseCheckTx
 }
 
 // Result of querying for a tx
 type ResultTx struct {
-	Hash     bytes.HexBytes         `json:"hash"`
-	Height   int64                  `json:"height"`
-	Index    uint32                 `json:"index"`
-	TxResult abci.ResponseDeliverTx `json:"tx_result"`
-	Tx       types.Tx               `json:"tx"`
-	Proof    types.TxProof          `json:"proof,omitempty"`
+	Hash     bytes.HexBytes          `json:"hash"`
+	Height   int64                   `json:"height"`
+	Index    uint32                  `json:"index"`
+	TxResult abcix.ResponseDeliverTx `json:"tx_result"`
+	Tx       types.Tx                `json:"tx"`
+	Proof    types.TxProof           `json:"proof,omitempty"`
 }
 
 // Result of searching for txs
@@ -205,12 +204,12 @@ type ResultUnconfirmedTxs struct {
 
 // Info abci msg
 type ResultABCIInfo struct {
-	Response abci.ResponseInfo `json:"response"`
+	Response abcix.ResponseInfo `json:"response"`
 }
 
 // Query abci msg
 type ResultABCIQuery struct {
-	Response abci.ResponseQuery `json:"response"`
+	Response abcix.ResponseQuery `json:"response"`
 }
 
 // Result of broadcasting evidence

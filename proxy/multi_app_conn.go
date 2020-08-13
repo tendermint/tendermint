@@ -3,7 +3,8 @@ package proxy
 import (
 	"fmt"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abcixcli "github.com/tendermint/tendermint/abcix/client"
+
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
@@ -49,10 +50,10 @@ type multiAppConn struct {
 	queryConn     AppConnQuery
 	snapshotConn  AppConnSnapshot
 
-	consensusConnClient abcicli.Client
-	mempoolConnClient   abcicli.Client
-	queryConnClient     abcicli.Client
-	snapshotConnClient  abcicli.Client
+	consensusConnClient abcixcli.Client
+	mempoolConnClient   abcixcli.Client
+	queryConnClient     abcixcli.Client
+	snapshotConnClient  abcixcli.Client
 
 	clientCreator ClientCreator
 }
@@ -170,7 +171,7 @@ func (app *multiAppConn) stopAllClients() {
 	}
 }
 
-func (app *multiAppConn) abciClientFor(conn string) (abcicli.Client, error) {
+func (app *multiAppConn) abciClientFor(conn string) (abcixcli.Client, error) {
 	c, err := app.clientCreator.NewABCIClient()
 	if err != nil {
 		return nil, fmt.Errorf("error creating ABCI client (%s connection): %w", conn, err)

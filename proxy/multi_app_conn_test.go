@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	abcimocks "github.com/tendermint/tendermint/abci/client/mocks"
+	abcimocks "github.com/tendermint/tendermint/abcix/client/mocks"
 	"github.com/tendermint/tendermint/proxy/mocks"
 )
 

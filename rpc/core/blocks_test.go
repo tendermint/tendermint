@@ -9,7 +9,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -71,13 +71,13 @@ func TestBlockchainInfo(t *testing.T) {
 
 func TestBlockResults(t *testing.T) {
 	results := &tmstate.ABCIResponses{
-		DeliverTxs: []*abci.ResponseDeliverTx{
-			{Code: 0, Data: []byte{0x01}, Log: "ok"},
-			{Code: 0, Data: []byte{0x02}, Log: "ok"},
-			{Code: 1, Log: "not ok"},
+		DeliverBlock: &abcix.ResponseDeliverBlock{
+			DeliverTxs: []*abcix.ResponseDeliverTx{
+				{Data: []byte{0x01}, Log: "ok"},
+				{Data: []byte{0x02}, Log: "ok"},
+				{Code: 1},
+			},
 		},
-		EndBlock:   &abci.ResponseEndBlock{},
-		BeginBlock: &abci.ResponseBeginBlock{},
 	}
 
 	env = &Environment{}
@@ -95,11 +95,10 @@ func TestBlockResults(t *testing.T) {
 		{101, true, nil},
 		{100, false, &ctypes.ResultBlockResults{
 			Height:                100,
-			TxsResults:            results.DeliverTxs,
-			BeginBlockEvents:      results.BeginBlock.Events,
-			EndBlockEvents:        results.EndBlock.Events,
-			ValidatorUpdates:      results.EndBlock.ValidatorUpdates,
-			ConsensusParamUpdates: results.EndBlock.ConsensusParamUpdates,
+			TxsResults:            results.DeliverBlock.DeliverTxs,
+			DeliverBlockEvents:    results.DeliverBlock.Events,
+			ValidatorUpdates:      results.DeliverBlock.ValidatorUpdates,
+			ConsensusParamUpdates: results.DeliverBlock.ConsensusParamUpdates,
 		}},
 	}
 

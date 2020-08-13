@@ -3,10 +3,11 @@ package state
 import (
 	"fmt"
 
+	abcix "github.com/tendermint/tendermint/abcix/types"
+
 	"github.com/gogo/protobuf/proto"
 	dbm "github.com/tendermint/tm-db"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -269,34 +270,25 @@ func PruneStates(db dbm.DB, from int64, to int64) error {
 
 //------------------------------------------------------------------------
 
-// ABCIResponsesResultsHash returns the root hash of a Merkle tree with 3 leafs:
-//   1) proto encoded ResponseBeginBlock.Events
+// ABCIResponsesResultsHash returns the root hash of a Merkle tree with 2 leafs:
+//   1) proto encoded ResponseDeliverBlock.Events
 //   2) root hash of a Merkle tree of ResponseDeliverTx responses (see ABCIResults.Hash)
-//   3) proto encoded ResponseEndBlock.Events
 //
 // See merkle.SimpleHashFromByteSlices
 func ABCIResponsesResultsHash(ar *tmstate.ABCIResponses) []byte {
 	// proto-encode BeginBlock events.
-	bbeBytes, err := proto.Marshal(&abci.ResponseBeginBlock{
-		Events: ar.BeginBlock.Events,
+	dbeBytes, err := proto.Marshal(&abcix.ResponseDeliverBlock{
+		Events: ar.DeliverBlock.Events,
 	})
 	if err != nil {
 		panic(err)
 	}
 
 	// Build a Merkle tree of proto-encoded DeliverTx results and get a hash.
-	results := types.NewResults(ar.DeliverTxs)
-
-	// proto-encode EndBlock events.
-	ebeBytes, err := proto.Marshal(&abci.ResponseEndBlock{
-		Events: ar.EndBlock.Events,
-	})
-	if err != nil {
-		panic(err)
-	}
+	results := types.NewResults(ar.DeliverBlock.DeliverTxs)
 
 	// Build a Merkle tree out of the above 3 binary slices.
-	return merkle.HashFromByteSlices([][]byte{bbeBytes, results.Hash(), ebeBytes})
+	return merkle.HashFromByteSlices([][]byte{dbeBytes, results.Hash()})
 }
 
 // LoadABCIResponses loads the ABCIResponses for the given height from the
@@ -334,14 +326,14 @@ func LoadABCIResponses(db dbm.DB, height int64) (*tmstate.ABCIResponses, error) 
 //
 // Exposed for testing.
 func SaveABCIResponses(db dbm.DB, height int64, abciResponses *tmstate.ABCIResponses) {
-	var dtxs []*abci.ResponseDeliverTx
-	//strip nil values,
-	for _, tx := range abciResponses.DeliverTxs {
+	var dtxs []*abcix.ResponseDeliverTx
+	// Strip nil values
+	for _, tx := range abciResponses.DeliverBlock.DeliverTxs {
 		if tx != nil {
 			dtxs = append(dtxs, tx)
 		}
 	}
-	abciResponses.DeliverTxs = dtxs
+	abciResponses.DeliverBlock.DeliverTxs = dtxs
 
 	bz, err := abciResponses.Marshal()
 	if err != nil {

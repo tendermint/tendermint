@@ -7,7 +7,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -152,14 +152,13 @@ func makeHeaderPartsResponsesValPubKeyChange(
 
 	block := makeBlock(state, state.LastBlockHeight+1)
 	abciResponses := &tmstate.ABCIResponses{
-		BeginBlock: &abci.ResponseBeginBlock{},
-		EndBlock:   &abci.ResponseEndBlock{ValidatorUpdates: nil},
+		DeliverBlock: &abcix.ResponseDeliverBlock{ValidatorUpdates: nil},
 	}
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
-		abciResponses.EndBlock = &abci.ResponseEndBlock{
-			ValidatorUpdates: []abci.ValidatorUpdate{
+		abciResponses.DeliverBlock = &abcix.ResponseDeliverBlock{
+			ValidatorUpdates: []abcix.ValidatorUpdate{
 				types.TM2PB.NewValidatorUpdate(val.PubKey, 0),
 				types.TM2PB.NewValidatorUpdate(pubkey, 10),
 			},
@@ -176,15 +175,14 @@ func makeHeaderPartsResponsesValPowerChange(
 
 	block := makeBlock(state, state.LastBlockHeight+1)
 	abciResponses := &tmstate.ABCIResponses{
-		BeginBlock: &abci.ResponseBeginBlock{},
-		EndBlock:   &abci.ResponseEndBlock{ValidatorUpdates: nil},
+		DeliverBlock: &abcix.ResponseDeliverBlock{ValidatorUpdates: nil},
 	}
 
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if val.VotingPower != power {
-		abciResponses.EndBlock = &abci.ResponseEndBlock{
-			ValidatorUpdates: []abci.ValidatorUpdate{
+		abciResponses.DeliverBlock = &abcix.ResponseDeliverBlock{
+			ValidatorUpdates: []abcix.ValidatorUpdate{
 				types.TM2PB.NewValidatorUpdate(val.PubKey, power),
 			},
 		}
@@ -200,8 +198,7 @@ func makeHeaderPartsResponsesParams(
 
 	block := makeBlock(state, state.LastBlockHeight+1)
 	abciResponses := &tmstate.ABCIResponses{
-		BeginBlock: &abci.ResponseBeginBlock{},
-		EndBlock:   &abci.ResponseEndBlock{ConsensusParamUpdates: types.TM2PB.ConsensusParams(&params)},
+		DeliverBlock: &abcix.ResponseDeliverBlock{ConsensusParamUpdates: types.TM2PB.ConsensusParams(&params)},
 	}
 	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
 }
@@ -226,45 +223,50 @@ func randomGenesisDoc() *types.GenesisDoc {
 //----------------------------------------------------------------------------
 
 type testApp struct {
-	abci.BaseApplication
+	abcix.BaseApplication
 
-	CommitVotes         []abci.VoteInfo
-	ByzantineValidators []abci.Evidence
-	ValidatorUpdates    []abci.ValidatorUpdate
+	CommitVotes         []abcix.VoteInfo
+	ByzantineValidators []abcix.Evidence
+	ValidatorUpdates    []abcix.ValidatorUpdate
 }
 
-var _ abci.Application = (*testApp)(nil)
+var _ abcix.Application = (*testApp)(nil)
 
-func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
-	return abci.ResponseInfo{}
+func (app *testApp) Info(req abcix.RequestInfo) (resInfo abcix.ResponseInfo) {
+	return abcix.ResponseInfo{}
 }
 
-func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
+func (app *testApp) CreateBlock(req abcix.RequestCreateBlock, mempool abcix.MempoolIter) abcix.ResponseCreateBlock {
+	return abcix.ResponseCreateBlock{}
+}
+
+func (app *testApp) DeliverBlock(req abcix.RequestDeliverBlock) abcix.ResponseDeliverBlock {
 	app.CommitVotes = req.LastCommitInfo.Votes
 	app.ByzantineValidators = req.ByzantineValidators
-	return abci.ResponseBeginBlock{}
-}
+	deliverTxResp := make([]*abcix.ResponseDeliverTx, 0, len(req.Txs))
+	for range req.Txs {
+		deliverTxResp = append(deliverTxResp, &abcix.ResponseDeliverTx{})
+	}
 
-func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
-	return abci.ResponseEndBlock{
+	return abcix.ResponseDeliverBlock{
 		ValidatorUpdates: app.ValidatorUpdates,
-		ConsensusParamUpdates: &abci.ConsensusParams{
+		ConsensusParamUpdates: &abcix.ConsensusParams{
 			Version: &tmproto.VersionParams{
-				AppVersion: 1}}}
+				AppVersion: 1,
+			},
+		},
+		DeliverTxs: deliverTxResp,
+	}
 }
 
-func (app *testApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	return abci.ResponseDeliverTx{Events: []abci.Event{}}
+func (app *testApp) CheckTx(req abcix.RequestCheckTx) abcix.ResponseCheckTx {
+	return abcix.ResponseCheckTx{}
 }
 
-func (app *testApp) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
-	return abci.ResponseCheckTx{}
+func (app *testApp) Commit() abcix.ResponseCommit {
+	return abcix.ResponseCommit{RetainHeight: 1}
 }
 
-func (app *testApp) Commit() abci.ResponseCommit {
-	return abci.ResponseCommit{RetainHeight: 1}
-}
-
-func (app *testApp) Query(reqQuery abci.RequestQuery) (resQuery abci.ResponseQuery) {
+func (app *testApp) Query(reqQuery abcix.RequestQuery) (resQuery abcix.ResponseQuery) {
 	return
 }

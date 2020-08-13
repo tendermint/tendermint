@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	abcix "github.com/tendermint/tendermint/abcix/types"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -23,10 +23,10 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	defer eventBus.Stop()
 
 	tx := Tx("foo")
-	result := abci.ResponseDeliverTx{
+	result := abcix.ResponseDeliverTx{
 		Data: []byte("bar"),
-		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: []byte("baz"), Value: []byte("1")}}},
+		Events: []abcix.Event{
+			{Type: "testType", Attributes: []abcix.EventAttribute{{Key: []byte("baz"), Value: []byte("1")}}},
 		},
 	}
 
@@ -46,7 +46,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 		close(done)
 	}()
 
-	err = eventBus.PublishEventTx(EventDataTx{abci.TxResult{
+	err = eventBus.PublishEventTx(EventDataTx{abcix.TxResult{
 		Height: 1,
 		Index:  0,
 		Tx:     tx,
@@ -68,14 +68,10 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	defer eventBus.Stop()
 
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
-	resultBeginBlock := abci.ResponseBeginBlock{
-		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: []byte("baz"), Value: []byte("1")}}},
-		},
-	}
-	resultEndBlock := abci.ResponseEndBlock{
-		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: []byte("foz"), Value: []byte("2")}}},
+	resultDeliverBlock := abcix.ResponseDeliverBlock{
+		Events: []abcix.Event{
+			{Type: "testType", Attributes: []abcix.EventAttribute{{Key: []byte("baz"), Value: []byte("1")}}},
+			{Type: "testType", Attributes: []abcix.EventAttribute{{Key: []byte("foz"), Value: []byte("2")}}},
 		},
 	}
 
@@ -89,15 +85,13 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 		msg := <-blocksSub.Out()
 		edt := msg.Data().(EventDataNewBlock)
 		assert.Equal(t, block, edt.Block)
-		assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
-		assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
+		assert.Equal(t, resultDeliverBlock, edt.ResultDeliverBlock)
 		close(done)
 	}()
 
 	err = eventBus.PublishEventNewBlock(EventDataNewBlock{
-		Block:            block,
-		ResultBeginBlock: resultBeginBlock,
-		ResultEndBlock:   resultEndBlock,
+		Block:              block,
+		ResultDeliverBlock: resultDeliverBlock,
 	})
 	assert.NoError(t, err)
 
@@ -115,12 +109,12 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 	defer eventBus.Stop()
 
 	tx := Tx("foo")
-	result := abci.ResponseDeliverTx{
+	result := abcix.ResponseDeliverTx{
 		Data: []byte("bar"),
-		Events: []abci.Event{
+		Events: []abcix.Event{
 			{
 				Type: "transfer",
-				Attributes: []abci.EventAttribute{
+				Attributes: []abcix.EventAttribute{
 					{Key: []byte("sender"), Value: []byte("foo")},
 					{Key: []byte("recipient"), Value: []byte("bar")},
 					{Key: []byte("amount"), Value: []byte("5")},
@@ -128,7 +122,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 			},
 			{
 				Type: "transfer",
-				Attributes: []abci.EventAttribute{
+				Attributes: []abcix.EventAttribute{
 					{Key: []byte("sender"), Value: []byte("baz")},
 					{Key: []byte("recipient"), Value: []byte("cat")},
 					{Key: []byte("amount"), Value: []byte("13")},
@@ -136,7 +130,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 			},
 			{
 				Type: "withdraw.rewards",
-				Attributes: []abci.EventAttribute{
+				Attributes: []abcix.EventAttribute{
 					{Key: []byte("address"), Value: []byte("bar")},
 					{Key: []byte("source"), Value: []byte("iceman")},
 					{Key: []byte("amount"), Value: []byte("33")},
@@ -191,7 +185,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 			}
 		}()
 
-		err = eventBus.PublishEventTx(EventDataTx{abci.TxResult{
+		err = eventBus.PublishEventTx(EventDataTx{abcix.TxResult{
 			Height: 1,
 			Index:  0,
 			Tx:     tx,
@@ -219,14 +213,10 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	defer eventBus.Stop()
 
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
-	resultBeginBlock := abci.ResponseBeginBlock{
-		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: []byte("baz"), Value: []byte("1")}}},
-		},
-	}
-	resultEndBlock := abci.ResponseEndBlock{
-		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: []byte("foz"), Value: []byte("2")}}},
+	resultDeliverBlock := abcix.ResponseDeliverBlock{
+		Events: []abcix.Event{
+			{Type: "testType", Attributes: []abcix.EventAttribute{{Key: []byte("baz"), Value: []byte("1")}}},
+			{Type: "testType", Attributes: []abcix.EventAttribute{{Key: []byte("foz"), Value: []byte("2")}}},
 		},
 	}
 
@@ -240,15 +230,13 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 		msg := <-headersSub.Out()
 		edt := msg.Data().(EventDataNewBlockHeader)
 		assert.Equal(t, block.Header, edt.Header)
-		assert.Equal(t, resultBeginBlock, edt.ResultBeginBlock)
-		assert.Equal(t, resultEndBlock, edt.ResultEndBlock)
+		assert.Equal(t, resultDeliverBlock, edt.ResultDeliverBlock)
 		close(done)
 	}()
 
 	err = eventBus.PublishEventNewBlockHeader(EventDataNewBlockHeader{
-		Header:           block.Header,
-		ResultBeginBlock: resultBeginBlock,
-		ResultEndBlock:   resultEndBlock,
+		Header:             block.Header,
+		ResultDeliverBlock: resultDeliverBlock,
 	})
 	assert.NoError(t, err)
 

@@ -27,10 +27,7 @@ message Request {
     RequestSetOption          set_option           = 5;
     RequestInitChain          init_chain           = 6;
     RequestQuery              query                = 7;
-    RequestBeginBlock         begin_block          = 8;
     RequestCheckTx            check_tx             = 9;
-    RequestDeliverTx          deliver_tx           = 19;
-    RequestEndBlock           end_block            = 11;
     RequestDeliverBlock       deliver_block        = 20;
     RequestCommit             commit               = 12;
     RequestListSnapshots      list_snapshots       = 13;
@@ -81,13 +78,6 @@ message RequestCreateBlock {
   repeated Evidence byzantine_validators  = 3 [(gogoproto.nullable) = false];
 }
 
-message RequestBeginBlock {
-  bytes                   hash                 = 1;
-  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
-  LastCommitInfo          last_commit_info     = 3 [(gogoproto.nullable) = false];
-  repeated Evidence       byzantine_validators = 4 [(gogoproto.nullable) = false];
-}
-
 enum CheckTxType {
   NEW     = 0 [(gogoproto.enumvalue_customname) = "New"];
   RECHECK = 1 [(gogoproto.enumvalue_customname) = "Recheck"];
@@ -96,14 +86,6 @@ enum CheckTxType {
 message RequestCheckTx {
   bytes       tx   = 1;
   CheckTxType type = 2;
-}
-
-message RequestDeliverTx {
-  bytes tx = 1;
-}
-
-message RequestEndBlock {
-  int64 height = 1;
 }
 
 message RequestCommit {}
@@ -153,10 +135,7 @@ message Response {
     ResponseSetOption          set_option           = 5;
     ResponseInitChain          init_chain           = 6;
     ResponseQuery              query                = 7;
-    ResponseBeginBlock         begin_block          = 8;
     ResponseCheckTx            check_tx             = 9;
-    ResponseDeliverTx          deliver_tx           = 10;
-    ResponseEndBlock           end_block            = 11;
     ResponseCommit             commit               = 12;
     ResponseDeliverBlock       deliver_block        = 20;
     ResponseListSnapshots      list_snapshots       = 13;
@@ -222,11 +201,6 @@ message ResponseCreateBlock {
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
-message ResponseBeginBlock {
-  repeated Event events = 1
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
-}
-
 message ResponseCheckTx {
   uint32         code       = 1;
   bytes          data       = 2;
@@ -252,14 +226,6 @@ message ResponseDeliverTx {
   string codespace = 8;
 }
 
-message ResponseEndBlock {
-  repeated ValidatorUpdate validator_updates = 1
-      [(gogoproto.nullable) = false];
-  ConsensusParams consensus_param_updates = 2;
-  repeated Event  events                  = 3
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
-}
-
 message ResponseCommit {
   // reserve 1
   bytes data          = 2;
@@ -273,12 +239,9 @@ message ResponseDeliverBlock {
   repeated        ValidatorUpdate   validator_updates       = 3
   [(gogoproto.nullable) = false];
   ConsensusParams                   consensus_param_updates = 4;
-  // commit
-  bytes                             data                    = 5;
-  int64                             retain_height           = 6;
-  repeated        Event             events                  = 7
+  repeated        Event             events                  = 5
   [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
-  string                            codespace               = 8;
+  string                            codespace               = 6;
 }
 
 message ResponseListSnapshots {
@@ -422,14 +385,11 @@ service ABCIApplication {
   rpc Flush(RequestFlush) returns (ResponseFlush);
   rpc Info(RequestInfo) returns (ResponseInfo);
   rpc SetOption(RequestSetOption) returns (ResponseSetOption);
-  rpc DeliverTx(RequestDeliverTx) returns (ResponseDeliverTx);
   rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
   rpc Query(RequestQuery) returns (ResponseQuery);
   rpc Commit(RequestCommit) returns (ResponseCommit);
   rpc CreateBlock(RequestCreateBlock) returns (ResponseCreateBlock);
   rpc InitChain(RequestInitChain) returns (ResponseInitChain);
-  rpc BeginBlock(RequestBeginBlock) returns (ResponseBeginBlock);
-  rpc EndBlock(RequestEndBlock) returns (ResponseEndBlock);
   rpc DeliverBlock(RequestDeliverBlock) returns (ResponseDeliverBlock);
   rpc ListSnapshots(RequestListSnapshots) returns (ResponseListSnapshots);
   rpc OfferSnapshot(RequestOfferSnapshot) returns (ResponseOfferSnapshot);
