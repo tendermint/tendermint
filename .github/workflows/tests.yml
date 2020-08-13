@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v1
+      - uses: technote-space/get-diff-action@v3
         with:
           SUFFIX_FILTER: |
             .go
@@ -58,7 +58,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v1
+      - uses: technote-space/get-diff-action@v3
         with:
           SUFFIX_FILTER: |
             .go
@@ -92,7 +92,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v1
+      - uses: technote-space/get-diff-action@v3
         with:
           SUFFIX_FILTER: |
             .go
@@ -125,7 +125,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v1
+      - uses: technote-space/get-diff-action@v3
         with:
           SUFFIX_FILTER: |
             .go
