@@ -109,7 +109,7 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 		return nil, newTestHarnessError(ErrFailedToCreateListener, err, "")
 	}
 
-	signerClient, err := privval.NewSignerClient(spv)
+	signerClient, err := privval.NewSignerClient(spv, st.ChainID)
 	if err != nil {
 		return nil, newTestHarnessError(ErrFailedToCreateListener, err, "")
 	}
