@@ -24,7 +24,8 @@ type stateStore struct {
 
 var _ StateStore = &stateStore{}
 
-// This is a temporary measure until stateDB becomes a store and we don't need this
+// This is a temporary measure until stateDB becomes a store
+// TODO: deprecate once state has a store
 func NewEvidenceStateStore(db dbm.DB) StateStore {
 	return &stateStore{db}
 }
