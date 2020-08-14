@@ -24,8 +24,10 @@ to extract verifiable evidence should be on the light client side or the full no
 As light client, indicated in it's name, is supposed to stay light, the natural 
 inclination is to avoid any load and pass it directly to the full node who also has
 the advantage of having a full state. It remains possible in future discussions to have the
-light client form the evidence types itself. The only other minor downside apart from the
-load will be that around half the evidence produced by the light client will be invalid.
+light client form the evidence types itself. The other minor downsides apart from the
+load will be that around half the evidence produced by the light client will be invalid and
+that, in the event of modified logic, it's easier and expected that the full node be up 
+to date than the light clients.
 
 ## Decision
 
@@ -181,6 +183,7 @@ Proposed.
 
 ### Positive
 
+* Light client has increased secuirty against Lunatic attacks.
 * Tendermint will be able to detect & punish new types of misbehavior
 * light clients connected to multiple full nodes can help full nodes notice a
   fork faster
@@ -196,6 +199,7 @@ RPC is not open by default).
 ## References
 
 * [Fork accountability spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)
+* [ADR 056: Proving amnesia attakcs](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-056-proving-amnesia-attacks.md)
 
 ## Appendix A
 
