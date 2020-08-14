@@ -181,7 +181,7 @@ func newScheduler(initHeight int64, startTime time.Time) *scheduler {
 		initHeight:     initHeight,
 		lastAdvance:    startTime,
 		syncTimeout:    60 * time.Second,
-		height:         initHeight + 1,
+		height:         initHeight,
 		blockStates:    make(map[int64]blockState),
 		peers:          make(map[p2p.ID]*scPeer),
 		pendingBlocks:  make(map[int64]p2p.ID),
@@ -636,8 +636,12 @@ func (sc *scheduler) handleTryPrunePeer(event rTryPrunePeer) (Event, error) {
 }
 
 func (sc *scheduler) handleResetState(event bcResetState) (Event, error) {
-	sc.initHeight = event.state.LastBlockHeight + 1
-	sc.height = event.state.LastBlockHeight + 1
+	initHeight := event.state.LastBlockHeight + 1
+	if initHeight == 1 {
+		initHeight = event.state.InitialHeight
+	}
+	sc.initHeight = initHeight
+	sc.height = initHeight
 	sc.lastAdvance = time.Now()
 	sc.addNewBlocks()
 	return noOp, nil
