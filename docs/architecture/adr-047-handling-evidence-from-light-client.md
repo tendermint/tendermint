@@ -5,99 +5,102 @@
 * 24-02-2020: Second version
 * 13-04-2020: Add PotentialAmnesiaEvidence and a few remarks
 * 31-07-2020: Remove PhantomValidatorEvidence
+* 14-08-2020: Introduce light traces
 
 ## Context
 
-If the light client is under attack, either directly -> lunatic
-attack (light fork) or indirectly -> full fork, it's supposed to halt and
-send evidence of misbehavior to a correct full node. Upon receiving an
-evidence, the full node should punish malicious validators (if possible).
+The bisection method of header verification used by the light client exposes
+itself to a potential attack if any block within the light clients trusted period has
+a malicious group of validators with power that exceeds the light clients trust level 
+(default is 1/3). To improve light client (and overall network) security, the light
+client has a detector component that compares the verified header provided by the
+primary against witness headers. This ADR outlines the decision that ensues when
+the light client detector receives two conflicting headers
+
+## Alternative Approaches
+
+One of the key arguments surrounding the decision is whether the processing required
+to extract verifiable evidence should be on the light client side or the full node side.
+As light client, indicated in it's name, is supposed to stay light, the natural 
+inclination is to avoid any load and pass it directly to the full node who also has
+the advantage of having a full state. It remains possible in future discussions to have the
+light client form the evidence types itself. The only other minor downside apart from the
+load will be that around half the evidence produced by the light client will be invalid.
 
 ## Decision
 
-When a light client sees two conflicting headers (`H1.Hash() != H2.Hash()`,
-`H1.Height == H2.Height`), both having 1/3+ of the voting power of the
-currently trusted validator set, it will submit a `ConflictingHeadersEvidence`
-to all full nodes it's connected to. Evidence needs to be submitted to all full
-nodes since there's no way to determine which full node is correct (honest).
+When two headers have different hashes, the light client must first verify via 
+bisection that the signed header provided by the witness is also valid.
+
+It then collects all the headers that were fetched as part of bisection into two traces. 
+One containing the primary's headers and the other containing the witness's headers. 
+The light client sends the trace to the opposite provider (i.e. the primary's trace
+to the witness and the witness's trace to the primary) as the light client is 
+incapable of deciding which one is malicious. 
+
+Assuming one of the two providers is honest, that full node will then take the trace
+and extract out the relevant evidence and propogate it until it ends up on chain.
+
+*NOTE: We do not send evidence to other connected peers*
+
+*NOTE: The light client halts then and does not verify with any other witness*
+
+## Detailed Design
+
+The traces will have the following data structure: 
 
 ```go
-type ConflictingHeadersEvidence struct {
-  H1 types.SignedHeader
-  H2 types.SignedHeader
+type ConflictingHeadersTrace struct {
+  Headers []*types.SignedHeader
 }
 ```
 
-_Remark_: Theoretically, only the header, which differs from what a full node
-has, needs to be sent. But sending two headers a) makes evidence easily
-verifiable b) simplifies the light client, which does not have query each
-witness as to which header it possesses.
-
-When a full node receives the `ConflictingHeadersEvidence` evidence, it should
+When a full node receives a `ConflictingHeadersTrace`, it should
 a) validate it b) figure out if malicious behaviour is obvious (immediately
-slashable) or the fork accountability protocol needs to be started.
+slashable) or run the amnesia protocol needs to be started.
 
 ### Validating headers
 
-Check both headers are valid (`ValidateBasic`), have the same height, and
-signed by 1/3+ of the validator set that the full node had at height
-`H1.Height`.
+Check headers are valid (`ValidateBasic`), are in order of ascending height, and do not exceed the `MaxTraceSize`.
+ 
+*NOTE: Do we need to limit the size of the header array if rpc already has a built in limiter on the size of the message you can send?* 
 
-- Q: What if light client validator set is not equal to full node's validator
-  set (i.e. from full node's point of view both headers are not properly signed;
-  this includes the case where none of the two headers were committed on the
-  main chain)
+### Finding Block Bifurcation
 
-  Reject the evidence. It means light client is following a fork, but, hey, at
-  least it will halt.
+The node pulls the block ID's for the respective heights of the trace headers and follows the lowest cost till rejection path.
 
-- Q: Don't we want to punish validators who signed something else even if they
-  have less or equal than 1/3?
+*Q: Is there a formal term for lowest-cost-till-rejection-path?*
 
-  No consensus so far. Ethan said no, Zarko said yes.
-  https://github.com/tendermint/spec/pull/71#discussion_r374210533
+First it checks to see that the first header hash matches its first `BlockID` else it can discard it. 
 
-### Figuring out if malicious behaviour is immediately slashable
+If the last header hash matches the nodes blockID then it can also discard it on the assumption that a fork can not remerge and hence this is just a trace of valid headers. 
 
-Let's say H1 was committed from this full node's perspective (see Appendix A).
-_If neither of the headers (H1 and H2) were committed from the full node's
-perspective, the evidence must be rejected._
+The node then continues to loop in descending order checking that the headers hash doesn't match it's own blockID for that height. Once it reaches the height that the block ID matches the hash it then sends the common header, the trusted header and the diverged header (common header is needed for lunatic evidence) to determine if the divergence is a real offense to the tendermint protocol or if it is just fabricated.
 
-Intersect validator sets of H1 and H2.
+### Figuring out if malicious behaviour
 
-* if there are signers(H2) that are not part of validators(H1), they misbehaved as
-they are signing protocol messages in heights they are not validators =>
-immediately slashable (#F4).
+The node first examines the case of a lunatic attack:
 
-* if `H1.Round == H2.Round`, and some signers signed different precommit
-messages in both commits, then it is an equivocation misbehavior => immediately
-slashable (#F1).
+* The validator set of the common header must have at least 1/3 validator power that signed in the divergedHeaders commit
 
-* if `H1.Round != H2.Round` we need to run full detection procedure => not
-immediately slashable.
+* One of the deterministically derived hashes (`ValidatorsHash`, `NextValidatorsHash`, `ConsensusHash`,
+`AppHash`, or `LastResultsHash`) of the header must not match:
 
-* if `ValidatorsHash`, `NextValidatorsHash`, `ConsensusHash`,
-`AppHash`, and `LastResultsHash` in H2 are different (incorrect application
-state transition), then it is a lunatic misbehavior => immediately slashable (#F5).
+* We then take every validator that voted for the invalid header and was a validator in the common headers validator set and create `LunaticValidatorEvidence`
 
-If evidence is not immediately slashable, fork accountability needs to invoked
-(ADR does not yet exist).
+If this fails then we examine the case of Equivocation (either duplicate vote or amnesia):
 
-It's unclear if we should further break up `ConflictingHeadersEvidence` or
-gossip and commit it directly. See
-https://github.com/tendermint/tendermint/issues/4182#issuecomment-590339233
+*This only requires the trustedHeader and the divergedHeader*
 
-If we'd go without breaking evidence, all we'll need to do is to strip the
-committed header from `ConflictingHeadersEvidence` (H1) and leave only the
-uncommitted header (H2):
 
-```go
-type ConflictingHeaderEvidence struct {
-  H types.SignedHeader
-}
-```
+* if `trustedHeader.Round == divergedHeader.Round`, and a validator signed for the block in both headers then DuplicateVoteEvidence can be immediately formed
 
-If we'd go with breaking evidence, here are the types we'll need:
+* if `trustedHeader.Round != divergedHeader.Round` then we form PotentialAmnesiaEvidence as some validators in this set have behaved maliciously and protocol in ADR 56 needs to be run. 
+
+*The node does not check that there is a 1/3 overlap between headers as this may not be point of the fork and validator sets may have since changed*
+
+If no evidence can be formed from a light trace, it is not a legitimate trace and thus the 
+connection with the peer should be stopped
 
 ### F1. Equivocation
 
@@ -172,7 +175,7 @@ punish those who conducted an amnesia attack.
 
 See ADR-056 for the architecture of the handling amnesia attacks.
 
-NOTE: Conflicting headers evidence used to also create PhantomValidatorEvidence
+NOTE: Conflicting headers trace used to also create PhantomValidatorEvidence
 but this has since been removed. Refer to Appendix B.  
 
 ## Status
@@ -189,8 +192,8 @@ Proposed.
 
 ### Negative
 
-* Accepting `ConflictingHeadersEvidence` from light clients opens up a DDOS
-attack vector (same is fair for any RPC endpoint open to public; remember that
+* Accepting `ConflictingHeadersEvidence` from light clients opens up a large DDOS
+attack vector(same is fair for any RPC endpoint open to public; remember that
 RPC is not open by default).
 
 ### Neutral
