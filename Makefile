@@ -189,6 +189,7 @@ sync-docs:
 ###############################################################################
 
 build-docker:
+	make build-linux
 	cp $(OUTPUT) DOCKER/tendermint
 	docker build --label=tendermint --tag="tendermint/tendermint" DOCKER
 	rm -rf DOCKER/tendermint
@@ -204,6 +205,7 @@ build-linux: tools
 .PHONY: build-linux
 
 build-docker-localnode:
+	@build-linux
 	@cd networks/local && make
 .PHONY: build-docker-localnode
 
