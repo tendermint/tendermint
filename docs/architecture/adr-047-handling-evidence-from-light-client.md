@@ -57,23 +57,19 @@ type ConflictingHeadersTrace struct {
 
 When a full node receives a `ConflictingHeadersTrace`, it should
 a) validate it b) figure out if malicious behaviour is obvious (immediately
-slashable) or run the amnesia protocol needs to be started.
+slashable) or run the amnesia protocol.
 
 ### Validating headers
 
 Check headers are valid (`ValidateBasic`), are in order of ascending height, and do not exceed the `MaxTraceSize`.
- 
-*NOTE: Do we need to limit the size of the header array if rpc already has a built in limiter on the size of the message you can send?* 
 
 ### Finding Block Bifurcation
 
-The node pulls the block ID's for the respective heights of the trace headers and follows the lowest cost till rejection path.
-
-*Q: Is there a formal term for lowest-cost-till-rejection-path?*
+The node pulls the block ID's for the respective heights of the trace headers from its own block store.
 
 First it checks to see that the first header hash matches its first `BlockID` else it can discard it. 
 
-If the last header hash matches the nodes blockID then it can also discard it on the assumption that a fork can not remerge and hence this is just a trace of valid headers. 
+If the last header hash matches the nodes last `BlockID` then it can also discard it on the assumption that a fork can not remerge and hence this is just a trace of valid headers. 
 
 The node then continues to loop in descending order checking that the headers hash doesn't match it's own blockID for that height. Once it reaches the height that the block ID matches the hash it then sends the common header, the trusted header and the diverged header (common header is needed for lunatic evidence) to determine if the divergence is a real offense to the tendermint protocol or if it is just fabricated.
 
@@ -91,7 +87,6 @@ The node first examines the case of a lunatic attack:
 If this fails then we examine the case of Equivocation (either duplicate vote or amnesia):
 
 *This only requires the trustedHeader and the divergedHeader*
-
 
 * if `trustedHeader.Round == divergedHeader.Round`, and a validator signed for the block in both headers then DuplicateVoteEvidence can be immediately formed
 
