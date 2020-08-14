@@ -1,0 +1,28 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: daily
+      time: "11:00"
+    open-pull-requests-limit: 10
+  - package-ecosystem: npm
+    directory: "/docs"
+    schedule:
+      interval: daily
+      time: "11:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - fadeev
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: daily
+      time: "11:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - melekes
+      - tessr
+      - erikgrinaker
+    labels:
+      - T:dependencies
