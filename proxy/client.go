@@ -7,6 +7,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abcix/adapter"
+	kvstorex "github.com/tendermint/tendermint/abcix/example/kvstore"
 
 	abcixcli "github.com/tendermint/tendermint/abcix/client"
 	abcix "github.com/tendermint/tendermint/abcix/types"
@@ -78,7 +79,7 @@ func DefaultClientCreator(addr, transport, dbDir string) ClientCreator {
 	case "counter_serial":
 		return NewLocalClientCreator(adapter.AdaptToABCIx(counter.NewApplication(true)))
 	case "kvstore":
-		return NewLocalClientCreator(adapter.AdaptToABCIx(kvstore.NewApplication()))
+		return NewLocalClientCreator(kvstorex.NewApplication())
 	case "persistent_kvstore":
 		return NewLocalClientCreator(adapter.AdaptToABCIx(kvstore.NewPersistentKVStoreApplication(dbDir)))
 	case "noop":
