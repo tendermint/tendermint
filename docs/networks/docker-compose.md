@@ -20,11 +20,8 @@ docker image.
 Note the binary will be mounted into the container so it can be updated without
 rebuilding the image.
 
-```
+```sh
 cd $GOPATH/src/github.com/tendermint/tendermint
-
-# Build the linux binary in ./build
-make build-linux
 
 # (optionally) Build tendermint/localnode image
 make build-docker-localnode
@@ -34,7 +31,7 @@ make build-docker-localnode
 
 To start a 4 node testnet run:
 
-```
+```sh
 make localnet-start
 ```
 
@@ -48,7 +45,7 @@ on ports 26656-26657, 26659-26660, 26661-26662, and 26663-26664 respectively.
 
 To update the binary, just rebuild it and restart the nodes:
 
-```
+```sh
 make build-linux
 make localnet-stop
 make localnet-start
@@ -64,7 +61,7 @@ the binary and config files to the container.
 
 To change the number of validators / non-validators change the `localnet-start` Makefile target:
 
-```
+```sh
 localnet-start: localnet-stop
 	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --v 5 --n 3 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2 ; fi
 	docker-compose up
@@ -75,7 +72,7 @@ non-validators network.
 
 Before running it, don't forget to cleanup the old files:
 
-```
+```sh
 cd $GOPATH/src/github.com/tendermint/tendermint
 
 # Clear the build folder
@@ -86,7 +83,7 @@ rm -rf ./build/node*
 
 To use your own abci applications with 4-node setup edit the [docker-compose.yaml](https://github.com/tendermint/tendermint/blob/master/docker-compose.yml) file and add image to your abci application.
 
-```
+```sh
  abci0:
     container_name: abci0
     image: "abci-image"
@@ -135,7 +132,7 @@ To use your own abci applications with 4-node setup edit the [docker-compose.yam
 
 Override the [command](https://github.com/tendermint/tendermint/blob/master/networks/local/localnode/Dockerfile#L12) in each node to connect to it's abci.
 
-```
+```sh
   node0:
     container_name: node0
     image: "tendermint/localnode"
