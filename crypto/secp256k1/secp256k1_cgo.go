@@ -18,6 +18,6 @@ func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 	return rs, nil
 }
 
-func (pubKey PubKey) VerifyBytes(msg []byte, sig []byte) bool {
+func (pubKey PubKey) VerifySignature(msg []byte, sig []byte) bool {
 	return secp256k1.VerifySignature(pubKey[:], crypto.Sha256(msg), sig)
 }

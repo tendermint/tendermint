@@ -247,7 +247,7 @@ func (th *TestHarness) TestSignProposal() error {
 		return err
 	}
 	// now validate the signature on the proposal
-	if sck.VerifyBytes(propBytes, prop.Signature) {
+	if sck.VerifySignature(propBytes, prop.Signature) {
 		th.logger.Info("Successfully validated proposal signature")
 	} else {
 		th.logger.Error("FAILED: Proposal signature validation failed")
@@ -298,7 +298,7 @@ func (th *TestHarness) TestSignVote() error {
 		}
 
 		// now validate the signature on the proposal
-		if sck.VerifyBytes(voteBytes, vote.Signature) {
+		if sck.VerifySignature(voteBytes, vote.Signature) {
 			th.logger.Info("Successfully validated vote signature", "type", voteType)
 		} else {
 			th.logger.Error("FAILED: Vote signature validation failed", "type", voteType)

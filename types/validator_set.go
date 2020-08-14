@@ -688,7 +688,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 
 		// Validate signature.
 		voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
-		if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
+		if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
 			return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
 		// Good!
@@ -746,7 +746,7 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID,
 
 		// Validate signature.
 		voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
-		if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
+		if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
 			return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
 
@@ -807,7 +807,7 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 
 			// Validate signature.
 			voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
-			if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
+			if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
 				return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 			}
 

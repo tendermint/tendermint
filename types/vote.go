@@ -149,7 +149,7 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 		return ErrVoteInvalidValidatorAddress
 	}
 	v := vote.ToProto()
-	if !pubKey.VerifyBytes(VoteSignBytes(chainID, v), vote.Signature) {
+	if !pubKey.VerifySignature(VoteSignBytes(chainID, v), vote.Signature) {
 		return ErrVoteInvalidSignature
 	}
 	return nil

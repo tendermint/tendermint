@@ -145,7 +145,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		pk, err := cryptoenc.PubKeyFromProto(v.PubKey)
 		require.NoError(t, err)
 
-		require.EqualValues(t, rawpub, pk.Bytes(), "Stored PubKey not equal with expected, value %v", string(qres.Value))
+		require.EqualValues(t, rawpub, pk, "Stored PubKey not equal with expected, value %v", string(qres.Value))
 		require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
 
 		for _, fake := range fakes {

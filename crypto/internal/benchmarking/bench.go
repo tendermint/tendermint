@@ -57,7 +57,7 @@ func BenchmarkVerification(b *testing.B, priv crypto.PrivKey) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		pub.VerifyBytes(message, signature)
+		pub.VerifySignature(message, signature)
 	}
 }
 
