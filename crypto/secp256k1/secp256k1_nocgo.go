@@ -30,7 +30,7 @@ func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 
 // VerifyBytes verifies a signature of the form R || S.
 // It rejects signatures which are not in lower-S form.
-func (pubKey PubKey) VerifyBytes(msg []byte, sigStr []byte) bool {
+func (pubKey PubKey) VerifySignature(msg []byte, sigStr []byte) bool {
 	if len(sigStr) != 64 {
 		return false
 	}

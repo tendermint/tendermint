@@ -161,7 +161,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify the same vote
-	valid := pubkey.VerifyBytes(VoteSignBytes("test_chain_id", v), v.Signature)
+	valid := pubkey.VerifySignature(VoteSignBytes("test_chain_id", v), v.Signature)
 	require.True(t, valid)
 
 	// serialize, deserialize and verify again....
@@ -174,7 +174,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	// verify the transmitted vote
 	newSignBytes := VoteSignBytes("test_chain_id", precommit)
 	require.Equal(t, string(signBytes), string(newSignBytes))
-	valid = pubkey.VerifyBytes(newSignBytes, precommit.Signature)
+	valid = pubkey.VerifySignature(newSignBytes, precommit.Signature)
 	require.True(t, valid)
 }
 
