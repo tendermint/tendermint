@@ -13,14 +13,14 @@ for third-party applications (for analysis) or for inspecting state.
 To connect to a node via websocket from the CLI, you can use a tool such as
 [wscat](https://github.com/websockets/wscat) and run:
 
-```
+```sh
 wscat ws://127.0.0.1:26657/websocket
 ```
 
 You can subscribe to any of the events above by calling the `subscribe` RPC
 method via Websocket along with a valid query.
 
-```
+```json
 {
     "jsonrpc": "2.0",
     "method": "subscribe",
@@ -38,7 +38,7 @@ You can also use tags, given you had included them into DeliverTx
 response, to query transaction results. See [Indexing
 transactions](./indexing-transactions.md) for details.
 
-### ValidatorSetUpdates
+## ValidatorSetUpdates
 
 When validator set changes, ValidatorSetUpdates event is published. The
 event carries a list of pubkey/power pairs. The list is the same
@@ -48,7 +48,7 @@ the ABCI spec).
 
 Response:
 
-```
+```json
 {
     "jsonrpc": "2.0",
     "id": 0,

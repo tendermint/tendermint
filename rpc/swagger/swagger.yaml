@@ -204,7 +204,7 @@ paths:
       summary: Checks the transaction without executing it.
       tags:
         - Tx
-      operationId: broadcast_tx_commit
+      operationId: check_tx
       description: |
         The transaction won't be added to the mempool.
 
