@@ -1,31 +1,35 @@
 
 
 # events
+
 `import "github.com/tendermint/tendermint/libs/events"`
 
 * [Overview](#pkg-overview)
 * [Index](#pkg-index)
 
 ## <a name="pkg-overview">Overview</a>
+
 Pub-Sub in go with event caching
 
 
 
 
 ## <a name="pkg-index">Index</a>
+
 * [type EventCache](#EventCache)
-  * [func NewEventCache(evsw Fireable) *EventCache](#NewEventCache)
-  * [func (evc *EventCache) FireEvent(event string, data EventData)](#EventCache.FireEvent)
-  * [func (evc *EventCache) Flush()](#EventCache.Flush)
+    * [func NewEventCache(evsw Fireable) *EventCache](#NewEventCache)
+    * [func (evc *EventCache) FireEvent(event string, data EventData)](#EventCache.FireEvent)
+    * [func (evc *EventCache) Flush()](#EventCache.Flush)
 * [type EventCallback](#EventCallback)
 * [type EventData](#EventData)
 * [type EventSwitch](#EventSwitch)
-  * [func NewEventSwitch() EventSwitch](#NewEventSwitch)
+    * [func NewEventSwitch() EventSwitch](#NewEventSwitch)
 * [type Eventable](#Eventable)
 * [type Fireable](#Fireable)
 
 
 #### <a name="pkg-files">Package files</a>
+
 [event_cache.go](/src/github.com/tendermint/tendermint/libs/events/event_cache.go) [events.go](/src/github.com/tendermint/tendermint/libs/events/events.go) 
 
 
@@ -34,11 +38,13 @@ Pub-Sub in go with event caching
 
 
 ## <a name="EventCache">type</a> [EventCache](/src/target/event_cache.go?s=116:179#L5)
+
 ``` go
 type EventCache struct {
     // contains filtered or unexported fields
 }
 ```
+
 An EventCache buffers events for a Fireable
 All events are cached. Filtering happens on Flush
 
@@ -49,9 +55,11 @@ All events are cached. Filtering happens on Flush
 
 
 ### <a name="NewEventCache">func</a> [NewEventCache](/src/target/event_cache.go?s=239:284#L11)
+
 ``` go
 func NewEventCache(evsw Fireable) *EventCache
 ```
+
 Create a new EventCache with an EventSwitch as backend
 
 
@@ -59,18 +67,22 @@ Create a new EventCache with an EventSwitch as backend
 
 
 ### <a name="EventCache.FireEvent">func</a> (\*EventCache) [FireEvent](/src/target/event_cache.go?s=449:511#L24)
+
 ``` go
 func (evc *EventCache) FireEvent(event string, data EventData)
 ```
+
 Cache an event to be fired upon finality.
 
 
 
 
 ### <a name="EventCache.Flush">func</a> (\*EventCache) [Flush](/src/target/event_cache.go?s=735:765#L31)
+
 ``` go
 func (evc *EventCache) Flush()
 ```
+
 Fire events by running evsw.FireEvent on all cached events. Blocks.
 Clears cached events
 
@@ -78,6 +90,7 @@ Clears cached events
 
 
 ## <a name="EventCallback">type</a> [EventCallback](/src/target/events.go?s=4201:4240#L185)
+
 ``` go
 type EventCallback func(data EventData)
 ```
@@ -91,10 +104,12 @@ type EventCallback func(data EventData)
 
 
 ## <a name="EventData">type</a> [EventData](/src/target/events.go?s=243:294#L14)
+
 ``` go
 type EventData interface {
 }
 ```
+
 Generic event data can be typed and registered with tendermint/go-amino
 via concrete implementation of this interface
 
@@ -108,6 +123,7 @@ via concrete implementation of this interface
 
 
 ## <a name="EventSwitch">type</a> [EventSwitch](/src/target/events.go?s=560:771#L29)
+
 ``` go
 type EventSwitch interface {
     service.Service
@@ -125,6 +141,7 @@ type EventSwitch interface {
 
 
 ### <a name="NewEventSwitch">func</a> [NewEventSwitch](/src/target/events.go?s=917:950#L46)
+
 ``` go
 func NewEventSwitch() EventSwitch
 ```
@@ -133,11 +150,13 @@ func NewEventSwitch() EventSwitch
 
 
 ## <a name="Eventable">type</a> [Eventable](/src/target/events.go?s=378:440#L20)
+
 ``` go
 type Eventable interface {
     SetEventSwitch(evsw EventSwitch)
 }
 ```
+
 reactors and other modules should export
 this interface to become eventable
 
@@ -151,11 +170,13 @@ this interface to become eventable
 
 
 ## <a name="Fireable">type</a> [Fireable](/src/target/events.go?s=490:558#L25)
+
 ``` go
 type Fireable interface {
     FireEvent(event string, data EventData)
 }
 ```
+
 an event switch or cache implements fireable
 
 

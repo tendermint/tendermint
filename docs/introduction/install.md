@@ -21,7 +21,7 @@ echo export GO111MODULE=on >> ~/.bash_profile
 
 ### Get Source Code
 
-```
+```sh
 mkdir -p $GOPATH/src/github.com/tendermint
 cd $GOPATH/src/github.com/tendermint
 git clone https://github.com/tendermint/tendermint.git
@@ -30,19 +30,19 @@ cd tendermint
 
 ### Get Tools & Dependencies
 
-```
+```sh
 make tools
 ```
 
 ### Compile
 
-```
+```sh
 make install
 ```
 
 to put the binary in `$GOPATH/bin` or use:
 
-```
+```sh
 make build
 ```
 
@@ -56,7 +56,7 @@ file.
 The latest tendermint is now installed. You can verify the installation by
 running:
 
-```
+```sh
 tendermint version
 ```
 
@@ -64,7 +64,7 @@ tendermint version
 
 To start a one-node blockchain with a simple in-process application:
 
-```
+```sh
 tendermint init
 tendermint node --proxy_app=kvstore
 ```
@@ -73,14 +73,14 @@ tendermint node --proxy_app=kvstore
 
 If you already have Tendermint installed, and you make updates, simply
 
-```
+```sh
 cd $GOPATH/src/github.com/tendermint/tendermint
 make install
 ```
 
 To upgrade, run
 
-```
+```sh
 cd $GOPATH/src/github.com/tendermint/tendermint
 git pull origin master
 make install
@@ -92,7 +92,7 @@ Install [LevelDB](https://github.com/google/leveldb) (minimum version is 1.7).
 
 Install LevelDB with snappy (optionally). Below are commands for Ubuntu:
 
-```
+```sh
 sudo apt-get update
 sudo apt install build-essential
 
@@ -111,20 +111,20 @@ wget https://github.com/google/leveldb/archive/v1.20.tar.gz && \
 
 Set a database backend to `cleveldb`:
 
-```
+```toml
 # config/config.toml
 db_backend = "cleveldb"
 ```
 
 To install Tendermint, run:
 
-```
+```sh
 CGO_LDFLAGS="-lsnappy" make install TENDERMINT_BUILD_OPTIONS=cleveldb
 ```
 
 or run:
 
-```
+```sh
 CGO_LDFLAGS="-lsnappy" make build TENDERMINT_BUILD_OPTIONS=cleveldb
 ```
 

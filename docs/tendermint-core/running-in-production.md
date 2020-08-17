@@ -165,7 +165,7 @@ Tendermint also can report and serve Prometheus metrics. See
 information into an archive. See [Debugging](../tools/debugging.md) for more
 information.
 
-## What happens when my app dies?
+## What happens when my app dies
 
 You are supposed to run Tendermint under a [process
 supervisor](https://en.wikipedia.org/wiki/Process_supervision) (like
@@ -206,7 +206,7 @@ Other causes can be:
 - Operating system bugs
 - Admin error (e.g., directly modifying Tendermint data-directory contents)
 
-(Source: https://wiki.postgresql.org/wiki/Corruption)
+(Source: <https://wiki.postgresql.org/wiki/Corruption>)
 
 ### WAL Corruption
 
@@ -380,7 +380,7 @@ The process file limits must also be increased, e.g. via `ulimit -n 8192`.
 
 ...for N connections, such as 50k:
 
-```
+```md
 kern.maxfiles=10000+2*N         # BSD
 kern.maxfilesperproc=100+2*N    # BSD
 kern.ipc.maxsockets=10000+2*N   # BSD

@@ -11,7 +11,7 @@ Or [Blockchain](<https://en.wikipedia.org/wiki/Blockchain_(database)>), for shor
 [![Go version](https://img.shields.io/badge/go-1.14-blue.svg)](https://github.com/moovweb/gvm)
 [![Discord chat](https://img.shields.io/discord/669268347736686612.svg)](https://discord.gg/AzefAFd)
 [![license](https://img.shields.io/github/license/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/blob/master/LICENSE)
-[![](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
+[![tendermint/tendermint](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
 [![Sourcegraph](https://sourcegraph.com/github.com/tendermint/tendermint/-/badge.svg)](https://sourcegraph.com/github.com/tendermint/tendermint?badge)
 
 | Branch | Tests                                                                                                                                                                                                                                                  | Coverage                                                                                                                             | Linting                                                                    |
@@ -101,11 +101,11 @@ CHANGELOG even if they don't lead to MINOR version bumps:
 - config
 - node
 - libs
-  - bech32
-  - common
-  - db
-  - errors
-  - log
+    - bech32
+    - common
+    - db
+    - errors
+    - log
 
 Exported objects in these packages that are not covered by the versioning scheme
 are explicitly marked by `// UNSTABLE` in their go doc comment and may change at any
@@ -139,7 +139,7 @@ For details about the blockchain data structures and the p2p protocols, see the
 [Tendermint specification](https://docs.tendermint.com/master/spec/).
 
 For details on using the software, see the [documentation](/docs/) which is also
-hosted at: https://docs.tendermint.com/master/
+hosted at: <https://docs.tendermint.com/master/>
 
 ### Tools
 
