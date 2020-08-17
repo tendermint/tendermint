@@ -59,7 +59,11 @@ type blockApplier interface {
 // XXX: unify naming in this package around tmState
 func newReactor(state state.State, store blockStore, reporter behaviour.Reporter,
 	blockApplier blockApplier, fastSync bool) *BlockchainReactor {
-	scheduler := newScheduler(state.LastBlockHeight, time.Now())
+	initHeight := state.LastBlockHeight + 1
+	if initHeight == 1 {
+		initHeight = state.InitialHeight
+	}
+	scheduler := newScheduler(initHeight, time.Now())
 	pContext := newProcessorContext(store, blockApplier, state)
 	// TODO: Fix naming to just newProcesssor
 	// newPcState requires a processorContext
