@@ -1,0 +1,23 @@
+name: Lint
+# Lint runs markdownlint-cli over the markdown files in the repository
+# This workflow is run on every pull request and push to master
+on:
+  pull_request:
+    paths:
+      - "**.md"
+  push:
+    branches:
+      - master
+    paths:
+      - "**.md"
+jobs:
+  golangci:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v2
+      - name: Lint changelog file
+        uses: avto-dev/markdown-lint@v1.3.1
+        with:
+          config: "changelog.yml"
