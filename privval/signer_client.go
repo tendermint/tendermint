@@ -15,20 +15,21 @@ import (
 // Handles remote validator connections that provide signing services
 type SignerClient struct {
 	endpoint *SignerListenerEndpoint
+	chainID  string
 }
 
 var _ types.PrivValidator = (*SignerClient)(nil)
 
 // NewSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func NewSignerClient(endpoint *SignerListenerEndpoint) (*SignerClient, error) {
+func NewSignerClient(endpoint *SignerListenerEndpoint, chainID string) (*SignerClient, error) {
 	if !endpoint.IsRunning() {
 		if err := endpoint.Start(); err != nil {
 			return nil, fmt.Errorf("failed to start listener endpoint: %w", err)
 		}
 	}
 
-	return &SignerClient{endpoint: endpoint}, nil
+	return &SignerClient{endpoint: endpoint, chainID: chainID}, nil
 }
 
 // Close closes the underlying connection
@@ -68,7 +69,7 @@ func (sc *SignerClient) Ping() error {
 // GetPubKey retrieves a public key from a remote signer
 // returns an error if client is not able to provide the key
 func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
-	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.PubKeyRequest{}))
+	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.PubKeyRequest{ChainId: sc.chainID}))
 	if err != nil {
 		return nil, fmt.Errorf("send: %w", err)
 	}
@@ -91,7 +92,7 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 
 // SignVote requests a remote signer to sign a vote
 func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
-	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.SignVoteRequest{Vote: vote}))
+	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.SignVoteRequest{Vote: vote, ChainId: chainID}))
 	if err != nil {
 		return err
 	}
@@ -111,7 +112,9 @@ func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
 
 // SignProposal requests a remote signer to sign a proposal
 func (sc *SignerClient) SignProposal(chainID string, proposal *tmproto.Proposal) error {
-	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.SignProposalRequest{Proposal: proposal}))
+	response, err := sc.endpoint.SendRequest(mustWrapMsg(
+		&privvalproto.SignProposalRequest{Proposal: proposal, ChainId: chainID},
+	))
 	if err != nil {
 		return err
 	}

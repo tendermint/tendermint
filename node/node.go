@@ -655,7 +655,7 @@ func NewNode(config *cfg.Config,
 	// external signing process.
 	if config.PrivValidatorListenAddr != "" {
 		// FIXME: we should start services inside OnStart
-		privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, logger)
+		privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, genDoc.ChainID, logger)
 		if err != nil {
 			return nil, fmt.Errorf("error with private validator socket client: %w", err)
 		}
@@ -1312,7 +1312,8 @@ func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) error {
 }
 
 func createAndStartPrivValidatorSocketClient(
-	listenAddr string,
+	listenAddr,
+	chainID string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
 	pve, err := privval.NewSignerListener(listenAddr, logger)
@@ -1320,7 +1321,7 @@ func createAndStartPrivValidatorSocketClient(
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
 
-	pvsc, err := privval.NewSignerClient(pve)
+	pvsc, err := privval.NewSignerClient(pve, chainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}

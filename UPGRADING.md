@@ -3,14 +3,6 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
-## v0.34.1 
-
-### ABCI application changes
-
-A new form of evidence: amnesia evidence, has been added. Potential amnesia and
-mock evidence have been removed. Applications should be able to handle these
-evidence types.
-
 ## v0.34.0
 
 **This release is not compatible with previous blockchains** due to switching
@@ -31,6 +23,10 @@ field allows ABCI applications to dictate which events should be indexed.
 
 The blockchain can now start from an arbitrary initial height, provided to the
 application via `RequestInitChain.InitialHeight`.
+
+A new form of evidence: amnesia evidence, has been added. Potential amnesia and
+mock evidence have been removed. Applications should be able to handle these
+evidence types.
 
 ### P2P Protocol
 
@@ -140,8 +136,14 @@ RPC client can be found in `/rpc` directory. HTTP(S) proxy is located in
 ### State
 
 A field `State.InitialHeight` has been added to record the initial chain height, which must be `1`
-(not `0`) if starting from height `1`. This can be configured via the genesis field 
+(not `0`) if starting from height `1`. This can be configured via the genesis field
 `initial_height`.
+
+### Privval
+
+All requests are now accompanied by the chainID from the network.
+This is a optional field and can be ignored by key management systems. It
+is recommended to check the chainID if using the same key management system for multiple chains.
 
 ## v0.33.4
 

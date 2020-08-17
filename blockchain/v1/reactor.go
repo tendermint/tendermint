@@ -84,6 +84,9 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 	errorsForFSMCh := make(chan bcReactorMessage, capacity)
 
 	startHeight := store.Height() + 1
+	if startHeight == 1 {
+		startHeight = state.InitialHeight
+	}
 	bcR := &BlockchainReactor{
 		initialState:     state,
 		state:            state,

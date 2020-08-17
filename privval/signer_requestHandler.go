@@ -21,6 +21,13 @@ func DefaultValidationRequestHandler(
 
 	switch r := req.Sum.(type) {
 	case *privvalproto.Message_PubKeyRequest:
+		if r.PubKeyRequest.GetChainId() != chainID {
+			res = mustWrapMsg(&privvalproto.SignedVoteResponse{
+				Vote: nil, Error: &privvalproto.RemoteSignerError{
+					Code: 0, Description: "unable to provide pubkey"}})
+			return res, fmt.Errorf("want chainID: %s, got chainID: %s", r.PubKeyRequest.GetChainId(), chainID)
+		}
+
 		var pubKey crypto.PubKey
 		pubKey, err = privVal.GetPubKey()
 		pk, err := cryptoenc.PubKeyToProto(pubKey)
@@ -36,6 +43,13 @@ func DefaultValidationRequestHandler(
 		}
 
 	case *privvalproto.Message_SignVoteRequest:
+		if r.SignVoteRequest.ChainId != chainID {
+			res = mustWrapMsg(&privvalproto.SignedVoteResponse{
+				Vote: nil, Error: &privvalproto.RemoteSignerError{
+					Code: 0, Description: "unable to sign vote"}})
+			return res, fmt.Errorf("want chainID: %s, got chainID: %s", r.SignVoteRequest.GetChainId(), chainID)
+		}
+
 		vote := r.SignVoteRequest.Vote
 
 		err = privVal.SignVote(chainID, vote)
@@ -47,6 +61,14 @@ func DefaultValidationRequestHandler(
 		}
 
 	case *privvalproto.Message_SignProposalRequest:
+		if r.SignProposalRequest.GetChainId() != chainID {
+			res = mustWrapMsg(&privvalproto.SignedVoteResponse{
+				Vote: nil, Error: &privvalproto.RemoteSignerError{
+					Code:        0,
+					Description: "unable to sign proposal"}})
+			return res, fmt.Errorf("want chainID: %s, got chainID: %s", r.SignProposalRequest.GetChainId(), chainID)
+		}
+
 		proposal := r.SignProposalRequest.Proposal
 
 		err = privVal.SignProposal(chainID, proposal)

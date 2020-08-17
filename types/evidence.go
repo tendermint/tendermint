@@ -290,10 +290,10 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 	va := dve.VoteA.ToProto()
 	vb := dve.VoteB.ToProto()
 	// Signatures must be valid
-	if !pubKey.VerifyBytes(VoteSignBytes(chainID, va), dve.VoteA.Signature) {
+	if !pubKey.VerifySignature(VoteSignBytes(chainID, va), dve.VoteA.Signature) {
 		return fmt.Errorf("verifying VoteA: %w", ErrVoteInvalidSignature)
 	}
-	if !pubKey.VerifyBytes(VoteSignBytes(chainID, vb), dve.VoteB.Signature) {
+	if !pubKey.VerifySignature(VoteSignBytes(chainID, vb), dve.VoteB.Signature) {
 		return fmt.Errorf("verifying VoteB: %w", ErrVoteInvalidSignature)
 	}
 
@@ -724,7 +724,7 @@ func (e *LunaticValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) 
 	}
 
 	v := e.Vote.ToProto()
-	if !pubKey.VerifyBytes(VoteSignBytes(chainID, v), e.Vote.Signature) {
+	if !pubKey.VerifySignature(VoteSignBytes(chainID, v), e.Vote.Signature) {
 		return errors.New("invalid signature")
 	}
 
@@ -948,10 +948,10 @@ func (e *PotentialAmnesiaEvidence) Verify(chainID string, pubKey crypto.PubKey) 
 	vb := e.VoteB.ToProto()
 
 	// Signatures must be valid
-	if !pubKey.VerifyBytes(VoteSignBytes(chainID, va), e.VoteA.Signature) {
+	if !pubKey.VerifySignature(VoteSignBytes(chainID, va), e.VoteA.Signature) {
 		return fmt.Errorf("verifying VoteA: %w", ErrVoteInvalidSignature)
 	}
-	if !pubKey.VerifyBytes(VoteSignBytes(chainID, vb), e.VoteB.Signature) {
+	if !pubKey.VerifySignature(VoteSignBytes(chainID, vb), e.VoteB.Signature) {
 		return fmt.Errorf("verifying VoteB: %w", ErrVoteInvalidSignature)
 	}
 
@@ -1145,7 +1145,7 @@ func (e *ProofOfLockChange) ValidateVotes(valSet *ValidatorSet, chainID string) 
 			if bytes.Equal(validator.Address, vote.ValidatorAddress) {
 				exists = true
 				v := vote.ToProto()
-				if !validator.PubKey.VerifyBytes(VoteSignBytes(chainID, v), vote.Signature) {
+				if !validator.PubKey.VerifySignature(VoteSignBytes(chainID, v), vote.Signature) {
 					return fmt.Errorf("cannot verify vote (from validator: %d) against signature: %v",
 						vote.ValidatorIndex, vote.Signature)
 				}
