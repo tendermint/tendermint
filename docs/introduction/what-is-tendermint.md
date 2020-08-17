@@ -2,7 +2,7 @@
 order: 4
 ---
 
-# What is Tendermint?
+# What is Tendermint
 
 Tendermint is software for securely and consistently replicating an
 application on many machines. By securely, we mean that Tendermint works
@@ -74,7 +74,7 @@ Tendermint is in essence similar software, but with two key differences:
   the application logic that's right for them, from key-value store to
   cryptocurrency to e-voting platform and beyond.
 
-### Bitcoin, Ethereum, etc.
+### Bitcoin, Ethereum, etc
 
 Tendermint emerged in the tradition of cryptocurrencies like Bitcoin,
 Ethereum, etc. with the goal of providing a more efficient and secure
@@ -299,8 +299,8 @@ introduces a few **locking** rules which modulate which paths can be
 followed in the flow diagram. Once a validator precommits a block, it is
 locked on that block. Then,
 
-1.  it must prevote for the block it is locked on
-2.  it can only unlock, and precommit for a new block, if there is a
+1. it must prevote for the block it is locked on
+2. it can only unlock, and precommit for a new block, if there is a
     polka for that block in a later round
 
 ## Stake
