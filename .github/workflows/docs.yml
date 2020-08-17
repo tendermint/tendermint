@@ -20,7 +20,7 @@ jobs:
       - name: Lint Code Base
         uses: docker://github/super-linter:v3
         env:
-          LINTER_RULES_PATH: .
+          LINTER_RULES_PATH: ../..
           VALIDATE_ALL_CODEBASE: false
           DEFAULT_BRANCH: master
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
