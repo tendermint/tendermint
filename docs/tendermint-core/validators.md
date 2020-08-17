@@ -97,7 +97,7 @@ Currently Tendermint uses [Ed25519](https://ed25519.cr.yp.to/) keys which are wi
 
 ## Committing a Block
 
-_+2/3 is short for "more than 2/3"_
+> **+2/3 is short for "more than 2/3"**
 
 A block is committed when +2/3 of the validator set sign [precommit
 votes](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/blockchain.md#vote) for that block at the same `round`.

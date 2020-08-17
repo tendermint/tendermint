@@ -64,7 +64,8 @@ The `mconnection` has two methods: `send`, which takes a raw handle to the socke
 
 The `mconnection` is owned by a peer, which is owned (potentially with many other peers) by a (global) transport, which is owned by the (global) switch: 
 
-```md
+<!-- markdownlint-disable -->
+```
 switch
   transport
     peer
@@ -74,6 +75,7 @@ switch
     peer
       mconnection	
 ```
+<!-- markdownlint-restore -->
 
 ## node.go 
 

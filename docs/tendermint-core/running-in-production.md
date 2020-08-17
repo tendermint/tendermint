@@ -220,15 +220,15 @@ Recovering from data corruption can be hard and time-consuming. Here are two app
 
 1) Create a backup of the corrupted WAL file:
 
-  ```sh
-  cp "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal_backup
-  ```
+    ```sh
+    cp "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal_backup
+    ```
 
-2) Use `./scripts/wal2json` to create a human-readable version
+2) Use `./scripts/wal2json` to create a human-readable version:
 
-```sh
-./scripts/wal2json/wal2json "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal
-```
+    ```sh
+    ./scripts/wal2json/wal2json "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal
+    ```
 
 3)  Search for a "CORRUPTED MESSAGE" line.
 4)  By looking at the previous message and the message after the corrupted one
@@ -238,15 +238,15 @@ Recovering from data corruption can be hard and time-consuming. Here are two app
    then remove all the lines starting from the corrupted one and restart
    Tendermint.
 
-```sh
-$EDITOR /tmp/corrupted_wal
-```
+    ```sh
+    $EDITOR /tmp/corrupted_wal
+    ```
 
 5)  After editing, convert this file back into binary form by running:
 
-```sh
-./scripts/json2wal/json2wal /tmp/corrupted_wal  $TMHOME/data/cs.wal/wal
-```
+    ```sh
+    ./scripts/json2wal/json2wal /tmp/corrupted_wal  $TMHOME/data/cs.wal/wal
+    ```
 
 ## Hardware
 
