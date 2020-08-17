@@ -5,6 +5,8 @@ on:
       - master
     paths:
       - "**.md"
+      - "**.yml"
+      - "**.yaml"
   pull_request:
     branches: [master]
     paths:
