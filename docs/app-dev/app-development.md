@@ -26,25 +26,25 @@ committed in hash-linked blocks.
 The ABCI design has a few distinct components:
 
 - message protocol
-  - pairs of request and response messages
-  - consensus makes requests, application responds
-  - defined using protobuf
+    - pairs of request and response messages
+    - consensus makes requests, application responds
+    - defined using protobuf
 - server/client
-  - consensus engine runs the client
-  - application runs the server
-  - two implementations:
-    - async raw bytes
-    - grpc
+    - consensus engine runs the client
+    - application runs the server
+    - two implementations:
+        - async raw bytes
+        - grpc
 - blockchain protocol
-  - abci is connection oriented
-  - Tendermint Core maintains three connections:
-    - [mempool connection](#mempool-connection): for checking if
+    - abci is connection oriented
+    - Tendermint Core maintains three connections:
+        - [mempool connection](#mempool-connection): for checking if
       transactions should be relayed before they are committed;
       only uses `CheckTx`
-    - [consensus connection](#consensus-connection): for executing
+        - [consensus connection](#consensus-connection): for executing
       transactions that have been committed. Message sequence is
       -for every block -`BeginBlock, [DeliverTx, ...], EndBlock, Commit`
-    - [query connection](#query-connection): for querying the
+        - [query connection](#query-connection): for querying the
       application state; only uses Query and Info
 
 The mempool and consensus logic act as clients, and each maintains an
@@ -104,7 +104,7 @@ mempool state (this behaviour can be turned off with
 
 In go:
 
-```
+```go
 func (app *KVStoreApplication) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
 	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
@@ -112,7 +112,7 @@ func (app *KVStoreApplication) CheckTx(req types.RequestCheckTx) types.ResponseC
 
 In Java:
 
-```
+```java
 ResponseCheckTx requestCheckTx(RequestCheckTx req) {
     byte[] transaction = req.getTx().toByteArray();
 
@@ -170,7 +170,7 @@ merkle root of the data returned by the DeliverTx requests, or both.
 
 In go:
 
-```
+```go
 // tx is either "key=value" or just arbitrary bytes
 func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	var key, value []byte
@@ -200,7 +200,7 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Respo
 
 In Java:
 
-```
+```java
 /**
  * Using Protobuf types from the protoc compiler, we always start with a byte[]
  */
@@ -241,7 +241,7 @@ job of the [Handshake](#handshake).
 
 In go:
 
-```
+```go
 func (app *KVStoreApplication) Commit() types.ResponseCommit {
 	// Using a memdb - just return the big endian size of the db
 	appHash := make([]byte, 8)
@@ -255,7 +255,7 @@ func (app *KVStoreApplication) Commit() types.ResponseCommit {
 
 In Java:
 
-```
+```java
 ResponseCommit requestCommit(RequestCommit requestCommit) {
 
     // update the internal app-state
@@ -278,7 +278,7 @@ pick up from when it restarts. See information on the Handshake, below.
 
 In go:
 
-```
+```go
 // Track the block hash and header information
 func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	// reset valset changes
@@ -289,7 +289,7 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 
 In Java:
 
-```
+```java
 /*
  * all types come from protobuf definition
  */
@@ -321,7 +321,7 @@ for details on how it tracks validators.
 
 In go:
 
-```
+```go
 // Update the validator set
 func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
 	return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
@@ -330,7 +330,7 @@ func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) typ
 
 In Java:
 
-```
+```java
 /*
  * Assume that one validator changes. The new validator has a power of 10
  */
@@ -367,7 +367,7 @@ Note: these query formats are subject to change!
 
 In go:
 
-```
+```go
 func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
 	if reqQuery.Prove {
 		value := app.state.db.Get(prefixKey(reqQuery.Data))
@@ -396,7 +396,7 @@ func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery type
 
 In Java:
 
-```
+```java
     ResponseQuery requestQuery(RequestQuery req) {
         final boolean isProveQuery = req.getProve();
         final ResponseQuery.Builder responseBuilder = ResponseQuery.newBuilder();
@@ -444,7 +444,7 @@ all blocks.
 
 In go:
 
-```
+```go
 func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
 	return types.ResponseInfo{
 		Data:       fmt.Sprintf("{\"size\":%v}", app.state.Size),
@@ -456,7 +456,7 @@ func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.Respon
 
 In Java:
 
-```
+```java
 ResponseInfo requestInfo(RequestInfo req) {
     final byte[] lastAppHash = getLastAppHash();
     final long lastHeight = getLastHeight();
@@ -472,7 +472,7 @@ consensus params.
 
 In go:
 
-```
+```go
 // Save the validators in the merkle tree
 func (app *PersistentKVStoreApplication) InitChain(req types.RequestInitChain) types.ResponseInitChain {
 	for _, v := range req.Validators {
@@ -487,7 +487,7 @@ func (app *PersistentKVStoreApplication) InitChain(req types.RequestInitChain) t
 
 In Java:
 
-```
+```java
 /*
  * all types come from protobuf definition
  */

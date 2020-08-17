@@ -16,7 +16,7 @@ tendermint debug kill <pid> </path/to/out.zip> --home=</path/to/app.d>
 will write debug info into a compressed archive. The archive will contain the
 following:
 
-```
+```sh
 ├── config.toml
 ├── consensus_state.json
 ├── net_info.json
@@ -29,7 +29,7 @@ Under the hood, `debug kill` fetches info from `/status`, `/net_info`, and
 `/dump_consensus_state` HTTP endpoints, and kills the process with `-6`, which
 catches the go-routine dump.
 
-## tendermint debug dump
+## Tendermint debug dump
 
 Also, the `debug dump` sub-command allows you to dump debugging data into
 compressed archives at a regular interval. These archives contain the goroutine
@@ -44,7 +44,7 @@ will perform similarly to `kill` except it only polls the node and
 dumps debugging data every frequency seconds to a compressed archive under a
 given destination directory. Each archive will contain:
 
-```
+```sh
 ├── consensus_state.json
 ├── goroutine.out
 ├── heap.out

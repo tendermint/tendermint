@@ -15,6 +15,7 @@ We expect all contributors to be familiar with [Effective Go](https://golang.org
 Perhaps more key for code readability than good commenting is having the right structure. As a rule of thumb, try to write
 in a logical order of importance, taking a little time to think how to order and divide the code such that someone could
 scroll down and understand the functionality of it just as well as you do. A loose example of such order would be:
+
 * Constants, global and package-level variables
 * Main Struct
 * Options (only if they are seen as critical to the struct else they should be placed in another file)
@@ -26,113 +27,115 @@ scroll down and understand the functionality of it just as well as you do. A loo
 
 ## General
 
- * Use `gofmt` (or `goimport`) to format all code upon saving it.  (If you use VIM, check out vim-go).
- * Use a linter (see below) and generally try to keep the linter happy (where it makes sense).
- * Think about documentation, and try to leave godoc comments, when it will help new developers.
- * Every package should have a high level doc.go file to describe the purpose of that package, its main functions, and any other relevant information.
- * `TODO` should not be used. If important enough should be recorded as an issue.
- * `BUG` / `FIXME` should be used sparingly to guide future developers on some of the vulnerabilities of the code.
- * `XXX` can be used in work-in-progress (prefixed with "WIP:" on github) branches but they must be removed before approving a PR.
- * Applications (e.g. clis/servers) *should* panic on unexpected unrecoverable errors and print a stack trace.
+* Use `gofmt` (or `goimport`) to format all code upon saving it.  (If you use VIM, check out vim-go).
+* Use a linter (see below) and generally try to keep the linter happy (where it makes sense).
+* Think about documentation, and try to leave godoc comments, when it will help new developers.
+* Every package should have a high level doc.go file to describe the purpose of that package, its main functions, and any other relevant information.
+* `TODO` should not be used. If important enough should be recorded as an issue.
+* `BUG` / `FIXME` should be used sparingly to guide future developers on some of the vulnerabilities of the code.
+* `XXX` can be used in work-in-progress (prefixed with "WIP:" on github) branches but they must be removed before approving a PR.
+* Applications (e.g. clis/servers) *should* panic on unexpected unrecoverable errors and print a stack trace.
 
 ## Comments
 
- * Use a space after comment deliminter (ex. `// your comment`).
- * Many comments are not sentences. These should begin with a lower case letter and end without a period.
- * Conversely, sentences in comments should be sentenced-cased and end with a period.
+* Use a space after comment deliminter (ex. `// your comment`).
+* Many comments are not sentences. These should begin with a lower case letter and end without a period.
+* Conversely, sentences in comments should be sentenced-cased and end with a period.
 
 ## Linters
 
 These must be applied to all (Go) repos.
 
- * [shellcheck](https://github.com/koalaman/shellcheck)
- * [golangci-lint](https://github.com/golangci/golangci-lint) (covers all important linters)
-   - See the `.golangci.yml` file in each repo for linter configuration.
+* [shellcheck](https://github.com/koalaman/shellcheck)
+* [golangci-lint](https://github.com/golangci/golangci-lint) (covers all important linters)
+    * See the `.golangci.yml` file in each repo for linter configuration.
 
 ## Various
 
- * Reserve "Save" and "Load" for long-running persistence operations. When parsing bytes, use "Encode" or "Decode".
- * Maintain consistency across the codebase.
- * Functions that return functions should have the suffix `Fn`
- * Names should not [stutter](https://blog.golang.org/package-names). For example, a struct generally shouldn’t have
+* Reserve "Save" and "Load" for long-running persistence operations. When parsing bytes, use "Encode" or "Decode".
+* Maintain consistency across the codebase.
+* Functions that return functions should have the suffix `Fn`
+* Names should not [stutter](https://blog.golang.org/package-names). For example, a struct generally shouldn’t have
   a field named after itself; e.g., this shouldn't occur:
+
 ``` golang
 type middleware struct {
 	middleware Middleware
 }
 ```
- * In comments, use "iff" to mean, "if and only if".
- * Product names are capitalized, like "Tendermint", "Basecoin", "Protobuf", etc except in command lines: `tendermint --help`
- * Acronyms are all capitalized, like "RPC", "gRPC", "API".  "MyID", rather than "MyId".
- * Prefer errors.New() instead of fmt.Errorf() unless you're actually using the format feature with arguments.
+
+* In comments, use "iff" to mean, "if and only if".
+* Product names are capitalized, like "Tendermint", "Basecoin", "Protobuf", etc except in command lines: `tendermint --help`
+* Acronyms are all capitalized, like "RPC", "gRPC", "API".  "MyID", rather than "MyId".
+* Prefer errors.New() instead of fmt.Errorf() unless you're actually using the format feature with arguments.
 
 ## Importing Libraries
 
 Sometimes it's necessary to rename libraries to avoid naming collisions or ambiguity.
 
- * Use [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports)
- * Separate imports into blocks - one for the standard lib, one for external libs and one for application libs.
- * Here are some common library labels for consistency:
-   - dbm "github.com/tendermint/tm-db"
-   - tmcmd "github.com/tendermint/tendermint/cmd/tendermint/commands"
-   - tmcfg "github.com/tendermint/tendermint/config/tendermint"
-   - tmtypes "github.com/tendermint/tendermint/types"
- * Never use anonymous imports (the `.`), for example, `tmlibs/common` or anything else.
- * When importing a pkg from the `tendermint/libs` directory, prefix the pkg alias with tm.
-     - tmbits "github.com/tendermint/tendermint/libs/bits"
- * tip: Use the `_` library import to import a library for initialization effects (side effects)
+* Use [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports)
+* Separate imports into blocks - one for the standard lib, one for external libs and one for application libs.
+* Here are some common library labels for consistency:
+    * dbm "github.com/tendermint/tm-db"
+    * tmcmd "github.com/tendermint/tendermint/cmd/tendermint/commands"
+    * tmcfg "github.com/tendermint/tendermint/config/tendermint"
+    * tmtypes "github.com/tendermint/tendermint/types"
+* Never use anonymous imports (the `.`), for example, `tmlibs/common` or anything else.
+* When importing a pkg from the `tendermint/libs` directory, prefix the pkg alias with tm.
+    * tmbits "github.com/tendermint/tendermint/libs/bits"
+* tip: Use the `_` library import to import a library for initialization effects (side effects)
 
 ## Dependencies
 
- * Dependencies should be pinned by a release tag, or specific commit, to avoid breaking `go get` when external dependencies are updated.
- * Refer to the [contributing](CONTRIBUTING.md) document for more details
+* Dependencies should be pinned by a release tag, or specific commit, to avoid breaking `go get` when external dependencies are updated.
+* Refer to the [contributing](CONTRIBUTING.md) document for more details
 
 ## Testing
 
- * The first rule of testing is: we add tests to our code
- * The second rule of testing is: we add tests to our code
- * For Golang testing:
-   * Make use of table driven testing where possible and not-cumbersome
-     - [Inspiration](https://dave.cheney.net/2013/06/09/writing-table-driven-tests-in-go)
-   * Make use of [assert](https://godoc.org/github.com/stretchr/testify/assert) and [require](https://godoc.org/github.com/stretchr/testify/require)
- * When using mocks, it is recommended to use Testify [mock] (https://pkg.go.dev/github.com/stretchr/testify/mock
+* The first rule of testing is: we add tests to our code
+* The second rule of testing is: we add tests to our code
+* For Golang testing:
+    * Make use of table driven testing where possible and not-cumbersome
+        * [Inspiration](https://dave.cheney.net/2013/06/09/writing-table-driven-tests-in-go)
+    * Make use of [assert](https://godoc.org/github.com/stretchr/testify/assert) and [require](https://godoc.org/github.com/stretchr/testify/require)
+* When using mocks, it is recommended to use Testify [mock] (<https://pkg.go.dev/github.com/stretchr/testify/mock>
  ) along with [Mockery](https://github.com/vektra/mockery) for autogeneration
 
 ## Errors
 
- * Ensure that errors are concise, clear and traceable.
- * Use stdlib errors package.
- * For wrapping errors, use `fmt.Errorf()` with `%w`.
- * Panic is appropriate when an internal invariant of a system is broken, while all other cases (in particular,
+* Ensure that errors are concise, clear and traceable.
+* Use stdlib errors package.
+* For wrapping errors, use `fmt.Errorf()` with `%w`.
+* Panic is appropriate when an internal invariant of a system is broken, while all other cases (in particular,
   incorrect or invalid usage) should return errors.
 
 ## Config
 
- * Currently the TOML filetype is being used for config files
- * A good practice is to store per-user config files under `~/.[yourAppName]/config.toml`
+* Currently the TOML filetype is being used for config files
+* A good practice is to store per-user config files under `~/.[yourAppName]/config.toml`
 
 ## CLI
 
- * When implementing a CLI use [Cobra](https://github.com/spf13/cobra) and [Viper](https://github.com/spf13/viper).
- * Helper messages for commands and flags must be all lowercase.
- * Instead of using pointer flags (eg. `FlagSet().StringVar`) use Viper to retrieve flag values (eg. `viper.GetString`)
-   - The flag key used when setting and getting the flag should always be stored in a
+* When implementing a CLI use [Cobra](https://github.com/spf13/cobra) and [Viper](https://github.com/spf13/viper).
+* Helper messages for commands and flags must be all lowercase.
+* Instead of using pointer flags (eg. `FlagSet().StringVar`) use Viper to retrieve flag values (eg. `viper.GetString`)
+    * The flag key used when setting and getting the flag should always be stored in a
    variable taking the form `FlagXxx` or `flagXxx`.
-   - Flag short variable descriptions should always start with a lower case character as to remain consistent with
+    * Flag short variable descriptions should always start with a lower case character as to remain consistent with
    the description provided in the default `--help` flag.
 
 ## Version
 
- * Every repo should have a version/version.go file that mimics the Tendermint Core repo
- * We read the value of the constant version in our build scripts and hence it has to be a string
+* Every repo should have a version/version.go file that mimics the Tendermint Core repo
+* We read the value of the constant version in our build scripts and hence it has to be a string
 
 ## Non-Go Code
 
- * All non-Go code (`*.proto`, `Makefile`, `*.sh`), where there is no common
+* All non-Go code (`*.proto`, `Makefile`, `*.sh`), where there is no common
    agreement on style, should be formatted according to
    [EditorConfig](http://editorconfig.org/) config:
 
-   ```
+   ```toml
    # top-most EditorConfig file
    root = true
 

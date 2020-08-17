@@ -115,14 +115,14 @@ There are two ways to generate your proto stubs.
 
 ### Installation Instructions
 
-To install `protoc`, download an appropriate release (https://github.com/protocolbuffers/protobuf) and then move the provided binaries into your PATH (follow instructions in README included with the download).
+To install `protoc`, download an appropriate release (<https://github.com/protocolbuffers/protobuf>) and then move the provided binaries into your PATH (follow instructions in README included with the download).
 
 To install `gogoproto`, do the following:
 
-```
-$ go get github.com/gogo/protobuf/gogoproto
-$ cd $GOPATH/pkg/mod/github.com/gogo/protobuf@v1.3.1 # or wherever go get installs things
-$ make install
+```sh
+go get github.com/gogo/protobuf/gogoproto
+cd $GOPATH/pkg/mod/github.com/gogo/protobuf@v1.3.1 # or wherever go get installs things
+make install
 ```
 
 You should now be able to run `make proto-gen` from inside the root Tendermint directory to generate new files from proto files.
@@ -135,7 +135,7 @@ hacking Tendermint with the commands below.
 NOTE: In case you installed Vagrant in 2017, you might need to run
 `vagrant box update` to upgrade to the latest `ubuntu/xenial64`.
 
-```
+```sh
 vagrant up
 vagrant ssh
 make test
@@ -218,7 +218,7 @@ If your change should be included in a minor release, please also open a PR agai
 
 You can do this by cherry-picking your commit off master:
 
-```
+```sh
 $ git checkout rc1/v0.33.5
 $ git checkout -b {new branch name}
 $ git cherry-pick {commit SHA from master}
@@ -232,7 +232,7 @@ After this, you can open a PR. Please note in the PR body if there were merge co
 
 We follow the [Go style guide on commit messages](https://tip.golang.org/doc/contribute.html#commit_messages). Write concise commits that start with the package name and have a description that finishes the sentence "This change modifies Tendermint to...". For example,
 
-```
+```sh
 cmd/debug: execute p.Signal only when p is not nil
 
 [potentially longer description in the body]

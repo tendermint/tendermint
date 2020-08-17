@@ -1,4 +1,5 @@
 # The Tendermint Code of Conduct
+
 This code of conduct applies to all projects run by the Tendermint/COSMOS team and hence to tendermint.
 
 
@@ -6,6 +7,7 @@ This code of conduct applies to all projects run by the Tendermint/COSMOS team a
 
 
 # Conduct
+
 ## Contact: conduct@tendermint.com
 
 * We are committed to providing a friendly, safe and welcoming environment for all, regardless of level of experience, gender, gender identity and expression, sexual orientation, disability, personal appearance, body size, race, ethnicity, age, religion, nationality, or other similar characteristic.
@@ -29,6 +31,7 @@ This code of conduct applies to all projects run by the Tendermint/COSMOS team a
 
 
 # Moderation
+
 These are the policies for upholding our community’s standards of conduct. If you feel that a thread needs moderation, please contact the above mentioned person.
 
 1. Remarks that violate the Tendermint/COSMOS standards of conduct, including hateful, hurtful, oppressive, or exclusionary remarks, are not allowed. (Cursing is allowed, but never targeting another user, and never in a hateful manner.)

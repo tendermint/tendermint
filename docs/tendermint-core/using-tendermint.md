@@ -48,43 +48,43 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
   every blockchain.** If your testnet blockchains do not have unique
   chain IDs, you will have a bad time. The ChainID must be less than 50 symbols.
 - `consensus_params` [spec](https://github.com/tendermint/spec/blob/master/spec/core/state.md#consensusparams)
-  - `block`
-    - `max_bytes`: Max block size, in bytes.
-    - `max_gas`: Max gas per block.
-    - `time_iota_ms`: Minimum time increment between consecutive blocks (in
+    - `block`
+        - `max_bytes`: Max block size, in bytes.
+        - `max_gas`: Max gas per block.
+        - `time_iota_ms`: Minimum time increment between consecutive blocks (in
       milliseconds). If the block header timestamp is ahead of the system clock,
       decrease this value.
-  - `evidence`
-    - `max_age_num_blocks`: Max age of evidence, in blocks. The basic formula
+    - `evidence`
+        - `max_age_num_blocks`: Max age of evidence, in blocks. The basic formula
       for calculating this is: MaxAgeDuration / {average block time}.
-    - `max_age_duration`: Max age of evidence, in time. It should correspond
+        - `max_age_duration`: Max age of evidence, in time. It should correspond
       with an app's "unbonding period" or other similar mechanism for handling
       [Nothing-At-Stake
       attacks](https://github.com/ethereum/wiki/wiki/Proof-of-Stake-FAQ#what-is-the-nothing-at-stake-problem-and-how-can-it-be-fixed).
-    - `max_num`: This sets the maximum number of evidence that can be committed
+        - `max_num`: This sets the maximum number of evidence that can be committed
       in a single block. and should fall comfortably under the max block
       bytes when we consider the size of each evidence.
-    - `proof_trial_period`: Proof trial period dictates the time given for
+        - `proof_trial_period`: Proof trial period dictates the time given for
       nodes accused of amnesia evidence, incorrectly voting twice in two
       different rounds to respond with their respective proofs.
-  - `validator`
-    - `pub_key_types`: Public key types validators can use.
-  - `version`
-    - `app_version`: ABCI application version.
+    - `validator`
+        - `pub_key_types`: Public key types validators can use.
+    - `version`
+        - `app_version`: ABCI application version.
 - `validators`: List of initial validators. Note this may be overridden entirely by the
   application, and may be left empty to make explicit that the
   application will initialize the validator set with ResponseInitChain.
-  - `pub_key`: The first element specifies the `pub_key` type. 1
+    - `pub_key`: The first element specifies the `pub_key` type. 1
     == Ed25519. The second element are the pubkey bytes.
-  - `power`: The validator's voting power.
-  - `name`: Name of the validator (optional).
+    - `power`: The validator's voting power.
+    - `name`: Name of the validator (optional).
 - `app_hash`: The expected application hash (as returned by the
   `ResponseInfo` ABCI message) upon genesis. If the app's hash does
   not match, Tendermint will panic.
 - `app_state`: The application state (e.g. initial distribution
   of tokens).
 
-**WARNING: ChainID must be unique to every blockchain. Reusing old chainID can cause issues**
+> :warning: **ChainID must be unique to every blockchain. Reusing old chainID can cause issues**
 
 #### Sample genesis.json
 
@@ -179,7 +179,7 @@ curl http://localhost:26657/status | json_pp | grep latest_app_hash
 
 <!-- markdown-link-check-disable -->
 
-Visit http://localhost:26657 in your browser to see the list of other
+Visit <http://localhost:26657> in your browser to see the list of other
 endpoints. Some take no arguments (like `/status`), while others specify
 the argument name and use `_` as a placeholder.
 
