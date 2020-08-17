@@ -30,7 +30,7 @@ To get started developing applications, see the [application developers guide](h
 
 A quick example of a built-in app and Tendermint core in one container.
 
-```
+```sh
 docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint init
 docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint node --proxy_app=kvstore
 ```
@@ -39,9 +39,7 @@ docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint node --proxy_app
 
 To run a 4-node network, see the `Makefile` in the root of [the repo](https://github.com/tendermint/tendermint/blob/master/Makefile) and run:
 
-```
-make build-linux
-make build-docker-localnode
+```sh
 make localnet-start
 ```
 

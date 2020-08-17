@@ -188,7 +188,7 @@ sync-docs:
 ###                            Docker image                                 ###
 ###############################################################################
 
-build-docker:
+build-docker: build-linux
 	cp $(OUTPUT) DOCKER/tendermint
 	docker build --label=tendermint --tag="tendermint/tendermint" DOCKER
 	rm -rf DOCKER/tendermint
@@ -216,8 +216,8 @@ build_c-amazonlinux:
 .PHONY: build_c-amazonlinux
 
 # Run a 4-node testnet locally
-localnet-start: localnet-stop build-docker-localnode
-	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --config /etc/tendermint/config-template.toml --v 4 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2; fi
+localnet-start: localnet-stop build-linux
+	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --config /etc/tendermint/config-template.toml --o . --starting-ip-address 192.167.10.2; fi
 	docker-compose up
 .PHONY: localnet-start
 
