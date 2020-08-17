@@ -21,7 +21,8 @@ Note the binary will be mounted into the container so it can be updated without
 rebuilding the image.
 
 ```sh
-cd $GOPATH/src/github.com/tendermint/tendermint
+# Build the linux binary in ./build
+make build-linux
 
 # (optionally) Build tendermint/localnode image
 make build-docker-localnode
@@ -47,7 +48,6 @@ To update the binary, just rebuild it and restart the nodes:
 
 ```sh
 make build-linux
-make localnet-stop
 make localnet-start
 ```
 
@@ -63,27 +63,42 @@ To change the number of validators / non-validators change the `localnet-start` 
 
 ```sh
 localnet-start: localnet-stop
-	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --v 5 --n 3 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2 ; fi
-	docker-compose up
+  @if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --v 5 --n 3 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2 ; fi
+  docker-compose up
 ```
 
 The command now will generate config files for 5 validators and 3
-non-validators network.
+non-validators network. Along with generating new config files the docker-compose file needs to be edited.
+More nodes need to be added to the docker-compose, adding 4 more nodes is required in order to fully utilize the config files that were generated.
+
+```yml
+  node3: # bump by 1 for every node
+    container_name: node3 # bump by 1 for every node
+    image: "tendermint/localnode"
+    environment:
+      - ID=3
+      - LOG=${LOG:-tendermint.log}
+    ports:
+      - "26663-26664:26656-26657" # Bump 26663-26664 by one for every node
+    volumes:
+      - ./build:/tendermint:Z
+    networks:
+      localnet:
+        ipv4_address: 192.167.10.5 # bump the final digit by 1 for every node
+```
 
 Before running it, don't forget to cleanup the old files:
 
 ```sh
-cd $GOPATH/src/github.com/tendermint/tendermint
-
 # Clear the build folder
 rm -rf ./build/node*
 ```
 
-## Configuring abci containers
+## Configuring ABCI containers
 
-To use your own abci applications with 4-node setup edit the [docker-compose.yaml](https://github.com/tendermint/tendermint/blob/master/docker-compose.yml) file and add image to your abci application.
+To use your own ABCI applications with 4-node setup edit the [docker-compose.yaml](https://github.com/tendermint/tendermint/blob/master/docker-compose.yml) file and add image to your ABCI application.
 
-```sh
+```yml
  abci0:
     container_name: abci0
     image: "abci-image"
@@ -130,9 +145,9 @@ To use your own abci applications with 4-node setup edit the [docker-compose.yam
 
 ```
 
-Override the [command](https://github.com/tendermint/tendermint/blob/master/networks/local/localnode/Dockerfile#L12) in each node to connect to it's abci.
+Override the [command](https://github.com/tendermint/tendermint/blob/master/networks/local/localnode/Dockerfile#L12) in each node to connect to it's ABCI.
 
-```sh
+```yml
   node0:
     container_name: node0
     image: "tendermint/localnode"
