@@ -1,7 +1,7 @@
 default: true,
 MD007: { "indent": 4 }
 MD013: false
+MD024: { siblings_only: true }
+MD025: false
 no-hard-tabs: false
 whitespace: false
-MD024: { siblings_only: true }
-MD025: { siblings_only: true }

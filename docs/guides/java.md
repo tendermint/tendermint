@@ -64,9 +64,9 @@ For Gradle installation, please refer to [their official guide](https://gradle.o
 We'll start by creating a new Gradle project.
 
 ```bash
-$ export KVSTORE_HOME=~/kvstore
-$ mkdir $KVSTORE_HOME
-$ cd $KVSTORE_HOME
+export KVSTORE_HOME=~/kvstore
+mkdir $KVSTORE_HOME
+cd $KVSTORE_HOME
 ```
 
 Inside the example directory run:
