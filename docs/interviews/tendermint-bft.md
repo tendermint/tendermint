@@ -226,7 +226,7 @@ is inspired by Raft, is that it's simpler so normal engineers could understand.
 
 **CC**: Can you expand on the termination requirement?
 
-_Important point about Liveness in Tendermint_
+> **Important point about Liveness in Tendermint**
 
 **ZM**: In Tendermint, we are saying, for termination, we are making assumption
 that the system is partially synchronous. And in a partially synchronous system

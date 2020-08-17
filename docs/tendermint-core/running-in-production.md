@@ -165,7 +165,7 @@ Tendermint also can report and serve Prometheus metrics. See
 information into an archive. See [Debugging](../tools/debugging.md) for more
 information.
 
-## What happens when my app dies?
+## What happens when my app dies
 
 You are supposed to run Tendermint under a [process
 supervisor](https://en.wikipedia.org/wiki/Process_supervision) (like
@@ -180,7 +180,7 @@ order of restart does not matter for it.
 ## Signal handling
 
 We catch SIGINT and SIGTERM and try to clean up nicely. For other
-signals we use the default behaviour in Go: [Default behavior of signals
+signals we use the default behavior in Go: [Default behavior of signals
 in Go
 programs](https://golang.org/pkg/os/signal/#hdr-Default_behavior_of_signals_in_Go_programs).
 
@@ -206,11 +206,11 @@ Other causes can be:
 - Operating system bugs
 - Admin error (e.g., directly modifying Tendermint data-directory contents)
 
-(Source: https://wiki.postgresql.org/wiki/Corruption)
+(Source: <https://wiki.postgresql.org/wiki/Corruption>)
 
 ### WAL Corruption
 
-If consensus WAL is corrupted at the lastest height and you are trying to start
+If consensus WAL is corrupted at the latest height and you are trying to start
 Tendermint, replay will fail with panic.
 
 Recovering from data corruption can be hard and time-consuming. Here are two approaches you can take:
@@ -220,33 +220,33 @@ Recovering from data corruption can be hard and time-consuming. Here are two app
 
 1) Create a backup of the corrupted WAL file:
 
-```
-cp "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal_backup
-```
+    ```sh
+    cp "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal_backup
+    ```
 
-2. Use `./scripts/wal2json` to create a human-readable version
+2) Use `./scripts/wal2json` to create a human-readable version:
 
-```
-./scripts/wal2json/wal2json "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal
-```
+    ```sh
+    ./scripts/wal2json/wal2json "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal
+    ```
 
-3. Search for a "CORRUPTED MESSAGE" line.
-4. By looking at the previous message and the message after the corrupted one
+3)  Search for a "CORRUPTED MESSAGE" line.
+4)  By looking at the previous message and the message after the corrupted one
    and looking at the logs, try to rebuild the message. If the consequent
    messages are marked as corrupted too (this may happen if length header
    got corrupted or some writes did not make it to the WAL ~ truncation),
    then remove all the lines starting from the corrupted one and restart
    Tendermint.
 
-```
-$EDITOR /tmp/corrupted_wal
-```
+    ```sh
+    $EDITOR /tmp/corrupted_wal
+    ```
 
-5. After editing, convert this file back into binary form by running:
+5)  After editing, convert this file back into binary form by running:
 
-```
-./scripts/json2wal/json2wal /tmp/corrupted_wal  $TMHOME/data/cs.wal/wal
-```
+    ```sh
+    ./scripts/json2wal/json2wal /tmp/corrupted_wal  $TMHOME/data/cs.wal/wal
+    ```
 
 ## Hardware
 
@@ -313,7 +313,7 @@ If you are going to use Tendermint in a private domain and you have a
 private high-speed network among your peers, it makes sense to lower
 flush throttle timeout and increase other params.
 
-```
+```toml
 [p2p]
 
 send_rate=20000000 # 2MB/s
@@ -380,7 +380,7 @@ The process file limits must also be increased, e.g. via `ulimit -n 8192`.
 
 ...for N connections, such as 50k:
 
-```
+```md
 kern.maxfiles=10000+2*N         # BSD
 kern.maxfilesperproc=100+2*N    # BSD
 kern.ipc.maxsockets=10000+2*N   # BSD

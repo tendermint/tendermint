@@ -16,7 +16,7 @@ the parameters set with their default values. It will look something
 like the file below, however, double check by inspecting the
 `config.toml` created with your version of `tendermint` installed:
 
-```
+```toml
 # This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
@@ -351,13 +351,13 @@ namespace = "tendermint"
 
 ## Empty blocks VS no empty blocks
 
-**create_empty_blocks = true**
+### create_empty_blocks = true
 
 If `create_empty_blocks` is set to `true` in your config, blocks will be
 created ~ every second (with default consensus parameters). You can regulate
 the delay between blocks by changing the `timeout_commit`. E.g. `timeout_commit = "10s"` should result in ~ 10 second blocks.
 
-**create_empty_blocks = false**
+### create_empty_blocks = false
 
 In this setting, blocks are created when transactions received.
 
@@ -386,7 +386,7 @@ production](./running-in-production.md)
 You can also find more detailed technical explanation in the spec: [The latest
 gossip on BFT consensus](https://arxiv.org/abs/1807.04938).
 
-```
+```toml
 [consensus]
 ...
 

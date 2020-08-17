@@ -54,6 +54,6 @@ The following metrics are available:
 
 Percentage of missing + byzantine validators:
 
-```
+```md
 ((consensus\_byzantine\_validators\_power + consensus\_missing\_validators\_power) / consensus\_validators\_power) * 100
 ```

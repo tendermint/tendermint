@@ -49,7 +49,7 @@ go version go1.14.x darwin/amd64
 Make sure you have `$GOPATH` environment variable set:
 
 ```bash
-$ echo $GOPATH
+echo $GOPATH
 /Users/melekes/go
 ```
 
@@ -58,8 +58,8 @@ $ echo $GOPATH
 We'll start by creating a new Go project.
 
 ```bash
-$ mkdir kvstore
-$ cd kvstore
+mkdir kvstore
+cd kvstore
 ```
 
 Inside the example directory create a `main.go` file with the following content:
@@ -79,7 +79,7 @@ func main() {
 When run, this should print "Hello, Tendermint Core" to the standard output.
 
 ```bash
-$ go run main.go
+go run main.go
 Hello, Tendermint Core
 ```
 
@@ -233,7 +233,7 @@ application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
 `EndBlock` in the end. DeliverTx are being transferred asynchronously, but the
 responses are expected to come in order.
 
-```
+```go
 func (app *KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
 	app.currentBatch = app.db.NewTransaction(true)
 	return abcitypes.ResponseBeginBlock{}
@@ -426,9 +426,9 @@ We are going to use [Go modules](https://github.com/golang/go/wiki/Modules) for
 dependency management.
 
 ```bash
-$ export GO111MODULE=on
-$ go mod init github.com/me/example
-$ go build
+export GO111MODULE=on
+go mod init github.com/me/example
+go build
 ```
 
 This should build the binary.
@@ -440,8 +440,8 @@ guide](https://docs.tendermint.com/master/introduction/install.html). If you're
 installing from source, don't forget to checkout the latest release (`git checkout vX.Y.Z`).
 
 ```bash
-$ rm -rf /tmp/example
-$ TMHOME="/tmp/example" tendermint init
+rm -rf /tmp/example
+TMHOME="/tmp/example" tendermint init
 
 I[2019-07-16|18:20:36.480] Generated private validator                  module=main keyFile=/tmp/example/config/priv_validator_key.json stateFile=/tmp/example2/data/priv_validator_state.json
 I[2019-07-16|18:20:36.481] Generated node key                           module=main path=/tmp/example/config/node_key.json
@@ -455,8 +455,8 @@ Feel free to explore the generated files, which can be found at
 We are ready to start our application:
 
 ```bash
-$ rm example.sock
-$ ./example
+rm example.sock
+./example
 
 badger 2019/07/16 18:25:11 INFO: All 0 tables opened in 0s
 badger 2019/07/16 18:25:11 INFO: Replaying file id: 0 at offset: 0
@@ -468,7 +468,7 @@ Then we need to start Tendermint Core and point it to our application. Staying
 within the application directory execute:
 
 ```bash
-$ TMHOME="/tmp/example" tendermint node --proxy_app=unix://example.sock
+TMHOME="/tmp/example" tendermint node --proxy_app=unix://example.sock
 
 I[2019-07-16|18:26:20.362] Version info                                 module=main software=0.32.1 block=10 p2p=7
 I[2019-07-16|18:26:20.383] Starting Node                                module=main impl=Node
@@ -480,7 +480,7 @@ I[2019-07-16|18:26:21.446] Committed state                              module=s
 
 This should start the full node and connect to our ABCI application.
 
-```
+```sh
 I[2019-07-16|18:25:11.525] Waiting for new connection...
 I[2019-07-16|18:26:20.329] Accepted a new connection
 I[2019-07-16|18:26:20.329] Waiting for new connection...
@@ -491,8 +491,8 @@ I[2019-07-16|18:26:20.330] Accepted a new connection
 
 Now open another tab in your terminal and try sending a transaction:
 
-```bash
-$ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
+```json
+curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 {
   "jsonrpc": "2.0",
   "id": "",
@@ -510,8 +510,8 @@ Response should contain the height where this transaction was committed.
 
 Now let's check if the given key now exists and its value:
 
-```
-$ curl -s 'localhost:26657/abci_query?data="tendermint"'
+```json
+curl -s 'localhost:26657/abci_query?data="tendermint"'
 {
   "jsonrpc": "2.0",
   "id": "",

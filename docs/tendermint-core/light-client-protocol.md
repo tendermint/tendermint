@@ -31,9 +31,9 @@ proofs](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a9909
   name-registry without worrying about fork censorship attacks, without posting
   a commit and waiting for confirmations. It's fast, secure, and free!
 
-## Where to obtain trusted height & hash?
+## Where to obtain trusted height & hash
 
-https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc#TrustOptions
+<https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc#TrustOptions>
 
 One way to obtain semi-trusted hash & height is to query multiple full nodes
 and compare their hashes:

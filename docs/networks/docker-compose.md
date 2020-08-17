@@ -61,7 +61,7 @@ the binary and config files to the container.
 
 To change the number of validators / non-validators change the `localnet-start` Makefile target [here](../../makefile):
 
-```sh
+```makefile
 localnet-start: localnet-stop
   @if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --v 5 --n 3 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2 ; fi
   docker-compose up
