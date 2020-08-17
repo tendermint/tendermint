@@ -1,6 +1,7 @@
 # Tendermint Architectural Overview
 
-_November 2019_
+
+> **November 2019**
 
 Over the next few weeks, @brapse, @marbar3778 and I (@tessr) are having a series of meetings to go over the architecture of Tendermint Core. These are my notes from these meetings, which will either serve as an artifact for onboarding future engineers; or will provide the basis for such a document.
 
@@ -10,7 +11,8 @@ There are three forms of communication (e.g., requests, responses, connections) 
 
 - Internode communication: Happens between a node and other peers. This kind of communication happens over TCP or HTTP. More on this below.
 - Intranode communication: Happens within the node itself (i.e., between reactors or other components). These are typically function or method calls, or occasionally happen through an event bus.
-- Client communiation: Happens between a client (like a wallet or a browser) and a node on the network.
+
+- Client communication: Happens between a client (like a wallet or a browser) and a node on the network.
 
 ### Internode Communication
 
@@ -22,7 +24,7 @@ Internode communication can happen in two ways:
 2. RPC over HTTP
     - Reserved for short-lived, one-off requests
     - Example: reactor-specific state, like height
-    - Also possible: websocks connected to channels for notifications (like new transactions)
+    - Also possible: web-sockets connected to channels for notifications (like new transactions)
 
 ### P2P Business (the Switch, the PEX, and the Address Book)
 
@@ -51,10 +53,12 @@ The second responsibility is handled by a combination of the PEX and the Address
 Here are some relevant facts about TCP:
 
 1. All TCP connections have a "frame window size" which represents the packet size to the "confidence;" i.e., if you are sending packets along a new connection, you must start out with small packets. As the packets are received successfully, you can start to send larger and larger packets. (This curve is illustrated below.) This means that TCP connections are slow to spin up.
-2. The syn/ack process also means that there's a high overhead for small, frequent messages
+2. The syn/ack process also means that there's a high overhead for small, frequent messages 
+
+
 3. Sockets are represented by file descriptors.
 
-![](../imgs/tcp-window.png)
+![tcp](../imgs/tcp-window.png)
 
 In order to have performant TCP connections under the conditions  created in Tendermint, we've created the `mconnection`, or the multiplexing connection. It is our own protocol built on top of TCP. It lets us reuse TCP connections to minimize overhead, and it keeps the window size high by sending auxiliary messages when necessary.
 
@@ -64,6 +68,7 @@ The `mconnection` has two methods: `send`, which takes a raw handle to the socke
 
 The `mconnection` is owned by a peer, which is owned (potentially with many other peers) by a (global) transport, which is owned by the (global) switch:
 
+<!-- markdownlint-disable -->
 ```
 switch
  transport
@@ -74,12 +79,14 @@ switch
   peer
    mconnection
 ```
+<!-- markdownlint-restore -->
 
 ## node.go
 
 node.go is the entrypoint for running a node. It sets up reactors, sets up the switch, and registers all the RPC endpoints for a node.
 
 ## Types of Nodes
+
 
 1. Validator Node:
 2. Full Node:
@@ -117,6 +124,7 @@ The following is an exhaustive (?) list of reactors:
 - PEX Reactor
 
 Each of these will be discussed in more detail later.
+
 
 ### Blockchain Reactor
 

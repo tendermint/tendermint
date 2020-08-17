@@ -9,7 +9,7 @@ Tendermint blockchain application.
 
 The following diagram provides a superb example:
 
-![](../imgs/cosmos-tendermint-stack-4k.jpg)
+![cosmos-tendermint-stack](../imgs/cosmos-tendermint-stack-4k.jpg)
 
 We distinguish here between two forms of "application". The first is the
 end-user application, like a desktop-based wallet app that a user downloads,

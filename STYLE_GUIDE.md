@@ -135,7 +135,7 @@ Sometimes it's necessary to rename libraries to avoid naming collisions or ambig
    agreement on style, should be formatted according to
    [EditorConfig](http://editorconfig.org/) config:
 
-   ```.
+   ```toml
    # top-most EditorConfig file
    root = true
 

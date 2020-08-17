@@ -55,8 +55,8 @@ $ echo $GOPATH
 We'll start by creating a new Go project.
 
 ```bash
-$ mkdir kvstore
-$ cd kvstore
+mkdir kvstore
+cd kvstore
 ```
 
 Inside the example directory create a `main.go` file with the following content:
@@ -230,7 +230,7 @@ application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
 `EndBlock` in the end. DeliverTx are being transfered asynchronously, but the
 responses are expected to come in order.
 
-```
+```go
 func (app *KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
 	app.currentBatch = app.db.NewTransaction(true)
 	return abcitypes.ResponseBeginBlock{}
@@ -569,8 +569,8 @@ We are going to use [Go modules](https://github.com/golang/go/wiki/Modules) for
 dependency management.
 
 ```bash
-$ go mod init github.com/me/example
-$ go build
+go mod init github.com/me/example
+go build
 ```
 
 This should build the binary.
@@ -625,7 +625,7 @@ Response should contain the height where this transaction was committed.
 
 Now let's check if the given key now exists and its value:
 
-```
+```json
 $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 {
   "jsonrpc": "2.0",

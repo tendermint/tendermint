@@ -262,7 +262,7 @@ to [install node](https://nodejs.org/en/download/).
 You'll also need to fetch the relevant repository, from
 [here](https://github.com/tendermint/js-abci), then install it:
 
-```
+```sh
 git clone https://github.com/tendermint/js-abci.git
 cd js-abci
 npm install abci
@@ -270,13 +270,13 @@ npm install abci
 
 Kill the previous `counter` and `tendermint` processes. Now run the app:
 
-```
+```sh
 node example/counter.js
 ```
 
 In another window, reset and start `tendermint`:
 
-```
+```sh
 tendermint unsafe_reset_all
 tendermint node
 ```
@@ -285,7 +285,7 @@ Once again, you should see blocks streaming by - but now, our
 application is written in Javascript! Try sending some transactions, and
 like before - the results should be the same:
 
-```
+```sh
 # ok
 curl localhost:26657/broadcast_tx_commit?tx=0x00
 # invalid nonce

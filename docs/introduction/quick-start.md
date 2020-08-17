@@ -6,7 +6,7 @@ order: 2
 
 ## Overview
 
-This is a quick start guide. If you have a vague idea about how <df value="tendermint">Tendermint</df>
+This is a quick start guide. If you have a vague idea about how Tendermint
 works and want to get started right away, continue.
 
 ## Install
@@ -79,7 +79,7 @@ curl -s localhost:26657/status
 
 ### Sending Transactions
 
-With the kvstore app running, we can send transactions:
+With the KVstore app running, we can send transactions:
 
 ```sh
 curl -s 'localhost:26657/broadcast_tx_commit?tx="abcd"'

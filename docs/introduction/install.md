@@ -110,7 +110,7 @@ wget https://github.com/google/leveldb/archive/v1.20.tar.gz && \
 
 Set a database backend to `cleveldb`:
 
-```sh
+```toml
 # config/config.toml
 db_backend = "cleveldb"
 ```
