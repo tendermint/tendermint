@@ -12,12 +12,12 @@ on:
       - "**.md"
 jobs:
   golangci:
-    name: golangci-lint
+    name: markdown-linter
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
       - uses: actions/checkout@v2
-      - name: Lint changelog file
+      - name: Lint markdown files
         uses: avto-dev/markdown-lint@v1.3.1
         with:
           config: "changelog.yml"
