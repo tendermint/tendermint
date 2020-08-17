@@ -313,7 +313,7 @@ If you are going to use Tendermint in a private domain and you have a
 private high-speed network among your peers, it makes sense to lower
 flush throttle timeout and increase other params.
 
-```
+```toml
 [p2p]
 
 send_rate=20000000 # 2MB/s

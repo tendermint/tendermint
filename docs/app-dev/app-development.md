@@ -456,7 +456,7 @@ func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.Respon
 
 In Java:
 
-```
+```java
 ResponseInfo requestInfo(RequestInfo req) {
     final byte[] lastAppHash = getLastAppHash();
     final long lastHeight = getLastHeight();
@@ -472,7 +472,7 @@ consensus params.
 
 In go:
 
-```java
+```go
 // Save the validators in the merkle tree
 func (app *PersistentKVStoreApplication) InitChain(req types.RequestInitChain) types.ResponseInitChain {
 	for _, v := range req.Validators {

@@ -41,7 +41,7 @@ Please refer to [the Oracle's guide for installing JDK](https://www.oracle.com/t
 Verify that you have installed Java successfully:
 
 ```bash
-$ java -version
+java -version
 java version "1.8.0_162"
 Java(TM) SE Runtime Environment (build 1.8.0_162-b12)
 Java HotSpot(TM) 64-Bit Server VM (build 25.162-b12, mixed mode)
@@ -53,7 +53,7 @@ In my case it is Java SE Development Kit 8.
 Make sure you have `$JAVA_HOME` environment variable set:
 
 ```bash
-$ echo $JAVA_HOME
+echo $JAVA_HOME
 /Library/Java/JavaVirtualMachines/jdk1.8.0_162.jdk/Contents/Home
 ```
 
@@ -64,9 +64,9 @@ For Gradle installation, please refer to [their official guide](https://gradle.o
 We'll start by creating a new Gradle project.
 
 ```bash
-$ export KVSTORE_HOME=~/kvstore
-$ mkdir $KVSTORE_HOME
-$ cd $KVSTORE_HOME
+export KVSTORE_HOME=~/kvstore
+mkdir $KVSTORE_HOME
+cd $KVSTORE_HOME
 ```
 
 Inside the example directory run:
@@ -78,7 +78,7 @@ gradle init --dsl groovy --package io.example --project-name example --type kotl
 This will create a new project for you. The tree of files should look like:
 
 ```bash
-$ tree
+tree
 .
 |-- build.gradle
 |-- gradle
@@ -106,7 +106,7 @@ $ tree
 When run, this should print "Hello world." to the standard output.
 
 ```bash
-$ ./gradlew run
+./gradlew run
 > Task :run
 Hello world.
 ```
@@ -214,7 +214,7 @@ To generate all protobuf-type classes run:
 To verify that everything went smoothly, you can inspect the `build/generated/` directory:
 
 ```bash
-$ tree build/generated/
+tree build/generated/
 build/generated/
 `-- source
     `-- proto
@@ -521,10 +521,10 @@ execute `tendermint init`. But before we do that, we will need to install
 Tendermint Core.
 
 ```bash
-$ rm -rf /tmp/example
-$ cd $GOPATH/src/github.com/tendermint/tendermint
-$ make install
-$ TMHOME="/tmp/example" tendermint init
+rm -rf /tmp/example
+cd $GOPATH/src/github.com/tendermint/tendermint
+make install
+TMHOME="/tmp/example" tendermint init
 
 I[2019-07-16|18:20:36.480] Generated private validator                  module=main keyFile=/tmp/example/config/priv_validator_key.json stateFile=/tmp/example2/data/priv_validator_state.json
 I[2019-07-16|18:20:36.481] Generated node key                           module=main path=/tmp/example/config/node_key.json
@@ -547,7 +547,7 @@ Then we need to start Tendermint Core and point it to our application. Staying
 within the application directory execute:
 
 ```bash
-$ TMHOME="/tmp/example" tendermint node --abci grpc --proxy_app tcp://127.0.0.1:26658
+TMHOME="/tmp/example" tendermint node --abci grpc --proxy_app tcp://127.0.0.1:26658
 
 I[2019-07-28|15:44:53.632] Version info                                 module=main software=0.32.1 block=10 p2p=7
 I[2019-07-28|15:44:53.677] Starting Node                                module=main impl=Node
@@ -559,7 +559,7 @@ I[2019-07-28|15:44:54.814] Committed state                              module=s
 Now open another tab in your terminal and try sending a transaction:
 
 ```bash
-$ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
+curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 {
   "jsonrpc": "2.0",
   "id": "",
@@ -578,7 +578,7 @@ Response should contain the height where this transaction was committed.
 Now let's check if the given key now exists and its value:
 
 ```bash
-$ curl -s 'localhost:26657/abci_query?data="tendermint"'
+curl -s 'localhost:26657/abci_query?data="tendermint"'
 {
   "jsonrpc": "2.0",
   "id": "",

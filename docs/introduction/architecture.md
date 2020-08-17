@@ -1,6 +1,6 @@
 # Tendermint Architectural Overview
 
-*November 2019*
+> **November 2019**
 
 Over the next few weeks, @brapse, @marbar3778 and I (@tessr) are having a series of meetings to go over the architecture of Tendermint Core. These are my notes from these meetings, which will either serve as an artifact for onboarding future engineers; or will provide the basis for such a document.
 
@@ -64,15 +64,15 @@ The `mconnection` has two methods: `send`, which takes a raw handle to the socke
 
 The `mconnection` is owned by a peer, which is owned (potentially with many other peers) by a (global) transport, which is owned by the (global) switch: 
 
-```
+```md
 switch
-	transport
-		peer
-			mconnection
-		peer
-			mconnection
-		peer
-			mconnection	
+  transport
+    peer
+      mconnection
+    peer
+      mconnection
+    peer
+      mconnection	
 ```
 
 ## node.go 

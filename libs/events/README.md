@@ -7,14 +7,11 @@
 * [Overview](#pkg-overview)
 * [Index](#pkg-index)
 
-## <a name="pkg-overview">Overview</a>
+## Overview
 
 Pub-Sub in go with event caching
 
-
-
-
-## <a name="pkg-index">Index</a>
+## Index
 
 * [type EventCache](#EventCache)
     * [func NewEventCache(evsw Fireable) *EventCache](#NewEventCache)
@@ -28,7 +25,7 @@ Pub-Sub in go with event caching
 * [type Fireable](#Fireable)
 
 
-#### <a name="pkg-files">Package files</a>
+### Package files
 
 [event_cache.go](/src/github.com/tendermint/tendermint/libs/events/event_cache.go) [events.go](/src/github.com/tendermint/tendermint/libs/events/events.go) 
 
@@ -37,7 +34,7 @@ Pub-Sub in go with event caching
 
 
 
-## <a name="EventCache">type</a> [EventCache](/src/target/event_cache.go?s=116:179#L5)
+## Type [EventCache](/src/target/event_cache.go?s=116:179#L5)
 
 ``` go
 type EventCache struct {
@@ -54,7 +51,7 @@ All events are cached. Filtering happens on Flush
 
 
 
-### <a name="NewEventCache">func</a> [NewEventCache](/src/target/event_cache.go?s=239:284#L11)
+### func [NewEventCache](/src/target/event_cache.go?s=239:284#L11)
 
 ``` go
 func NewEventCache(evsw Fireable) *EventCache
@@ -66,7 +63,7 @@ Create a new EventCache with an EventSwitch as backend
 
 
 
-### <a name="EventCache.FireEvent">func</a> (\*EventCache) [FireEvent](/src/target/event_cache.go?s=449:511#L24)
+### func (\*EventCache) [FireEvent](/src/target/event_cache.go?s=449:511#L24)
 
 ``` go
 func (evc *EventCache) FireEvent(event string, data EventData)
@@ -77,7 +74,7 @@ Cache an event to be fired upon finality.
 
 
 
-### <a name="EventCache.Flush">func</a> (\*EventCache) [Flush](/src/target/event_cache.go?s=735:765#L31)
+### func (\*EventCache) [Flush](/src/target/event_cache.go?s=735:765#L31)
 
 ``` go
 func (evc *EventCache) Flush()
@@ -89,7 +86,7 @@ Clears cached events
 
 
 
-## <a name="EventCallback">type</a> [EventCallback](/src/target/events.go?s=4201:4240#L185)
+## Type [EventCallback](/src/target/events.go?s=4201:4240#L185)
 
 ``` go
 type EventCallback func(data EventData)
@@ -103,7 +100,7 @@ type EventCallback func(data EventData)
 
 
 
-## <a name="EventData">type</a> [EventData](/src/target/events.go?s=243:294#L14)
+## Type [EventData](/src/target/events.go?s=243:294#L14)
 
 ``` go
 type EventData interface {
@@ -122,7 +119,7 @@ via concrete implementation of this interface
 
 
 
-## <a name="EventSwitch">type</a> [EventSwitch](/src/target/events.go?s=560:771#L29)
+## Type [EventSwitch](/src/target/events.go?s=560:771#L29)
 
 ``` go
 type EventSwitch interface {
@@ -140,7 +137,7 @@ type EventSwitch interface {
 
 
 
-### <a name="NewEventSwitch">func</a> [NewEventSwitch](/src/target/events.go?s=917:950#L46)
+### func [NewEventSwitch](/src/target/events.go?s=917:950#L46)
 
 ``` go
 func NewEventSwitch() EventSwitch
@@ -149,7 +146,7 @@ func NewEventSwitch() EventSwitch
 
 
 
-## <a name="Eventable">type</a> [Eventable](/src/target/events.go?s=378:440#L20)
+## Type [Eventable](/src/target/events.go?s=378:440#L20)
 
 ``` go
 type Eventable interface {
@@ -169,7 +166,7 @@ this interface to become eventable
 
 
 
-## <a name="Fireable">type</a> [Fireable](/src/target/events.go?s=490:558#L25)
+## Type [Fireable](/src/target/events.go?s=490:558#L25)
 
 ``` go
 type Fireable interface {
