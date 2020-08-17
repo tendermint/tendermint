@@ -68,7 +68,7 @@ localnet-start: localnet-stop
 ```
 
 The command now will generate config files for 5 validators and 3
-non-validators network. Along with generating new config files the docker-compose file needs to be edited.
+non-validators. Along with generating new config files the docker-compose file needs to be edited.
 More nodes need to be added to the docker-compose, adding 4 more nodes is required in order to fully utilize the config files that were generated.
 
 ```yml
