@@ -8,6 +8,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES:
 
+- [privval] \#5239 Add `chainID` to requests from client.
+
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
