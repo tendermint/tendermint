@@ -136,8 +136,14 @@ RPC client can be found in `/rpc` directory. HTTP(S) proxy is located in
 ### State
 
 A field `State.InitialHeight` has been added to record the initial chain height, which must be `1`
-(not `0`) if starting from height `1`. This can be configured via the genesis field 
+(not `0`) if starting from height `1`. This can be configured via the genesis field
 `initial_height`.
+
+### Privval
+
+All requests are now accompanied by the chainID from the network.
+This is a optional field and can be ignored by key management systems. It
+is recommended to check the chainID if using the same key management system for multiple chains.
 
 ## v0.33.4
 
