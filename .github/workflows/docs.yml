@@ -1,23 +1,68 @@
 name: Lint
-# Lint runs markdownlint-cli over the markdown files in the repository
-# This workflow is run on every pull request and push to master
 on:
-  pull_request:
-    paths:
-      - "**.md"
   push:
     branches:
       - master
     paths:
       - "**.md"
+  pull_request:
+    branches: [master]
+    paths:
+      - "**.md"
+
 jobs:
-  golangci:
-    name: markdown-linter
+  build:
+    name: markdown
     runs-on: ubuntu-latest
-    timeout-minutes: 4
     steps:
-      - uses: actions/checkout@v2
-      - name: Lint markdown files
-        uses: avto-dev/markdown-lint@v1.3.1
-        with:
-          config: "changelog.yml"
+      - name: Checkout Code
+        uses: actions/checkout@v2
+      - name: Lint Code Base
+        uses: docker://github/super-linter:v3
+        env:
+          LINTER_RULES_PATH: .
+          VALIDATE_ALL_CODEBASE: false
+          DEFAULT_BRANCH: master
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_ANSIBLE: false
+          VALIDATE_ARM: false
+          VALIDATE_BASH: false
+          VALIDATE_CLOJURE: false
+          VALIDATE_CLOUDFORMATION: false
+          VALIDATE_COFFEE: false
+          VALIDATE_CSS: false
+          VALIDATE_DART: false
+          VALIDATE_DOCKER_HADOLINT: false
+          VALIDATE_EDITORCONFIG: false
+          VALIDATE_ENV: false
+          VALIDATE_GO: false
+          VALIDATE_GROOVY: false
+          VALIDATE_HTML: false
+          VALIDATE_JAVA: false
+          VALIDATE_JAVASCRIPT_ES: false
+          VALIDATE_JAVASCRIPT_STANDARD: false
+          VALIDATE_JSON: false
+          VALIDATE_JSX: false
+          VALIDATE_KOTLIN: false
+          VALIDATE_LUA: false
+          VALIDATE_PERL: false
+          VALIDATE_PHP: false
+          VALIDATE_PHP_BUILTIN: false
+          VALIDATE_PHP_PHPCS: false
+          VALIDATE_PHP_PHPSTAN: false
+          VALIDATE_PHP_PSALM: false
+          VALIDATE_PROTOBUF: false
+          VALIDATE_PYTHON: false
+          VALIDATE_PYTHON_PYLINT: false
+          VALIDATE_PYTHON_FLAKE8: false
+          VALIDATE_POWERSHELL: false
+          VALIDATE_RAKU: false
+          VALIDATE_RUBY: false
+          VALIDATE_STATES: false
+          VALIDATE_SQL: false
+          VALIDATE_TERRAFORM: false
+          VALIDATE_TERRAFORM_TERRASCAN: false
+          VALIDATE_TSX: false
+          VALIDATE_TYPESCRIPT_ES: false
+          VALIDATE_TYPESCRIPT_STANDARD: false
+          VALIDATE_XML: false
