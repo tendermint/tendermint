@@ -1,12 +1,12 @@
 ---
-order: 4
+order: 7
 ---
 
 # Block Structure
 
-The tendermint consensus engine records all agreements by a
+The Tendermint consensus engine records all agreements by a
 supermajority of nodes into a blockchain, which is replicated among all
-nodes. This blockchain is accessible via various rpc endpoints, mainly
+nodes. This blockchain is accessible via various RPC endpoints, mainly
 `/block?height=` to get the full block, as well as
 `/blockchain?minHeight=_&maxHeight=_` to get a list of headers. But what
 exactly is stored in these blocks?

@@ -1,5 +1,5 @@
 ---
-order: 8
+order: 11
 ---
 
 # Light Client
