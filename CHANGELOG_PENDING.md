@@ -13,3 +13,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS:
 
 ### BUG FIXES:
+
+- [blockchain] \#5249 Fix fast sync halt with initial height > 1 (@erikgrinaker)
