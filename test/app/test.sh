@@ -96,7 +96,22 @@ function counter_over_grpc_grpc() {
     kill -9 $pid_counter $pid_tendermint
 }
 
-case "$1" in 
+function kvstore_over_local(){
+	rm -rf $TMHOME
+	tendermint init
+	echo "Stating kvstore_over_local"
+	tendermint node --proxy_app kvstore > tendermint.log &
+	pid_tendermint=$!
+	sleep 5
+
+	echo "running test"
+	bash test/app/abcix_kvstore_test.sh "KVStore over local"
+
+	kill -9 $pid_tendermint
+
+}
+
+case "$1" in
     "kvstore_over_socket")
     kvstore_over_socket
     ;;
@@ -114,14 +129,15 @@ case "$1" in
     ;;
 *)
     echo "Running all"
-    kvstore_over_socket
-    echo ""
-    kvstore_over_socket_reorder
-    echo ""
-    counter_over_socket
-    echo ""
-    counter_over_grpc
-    echo ""
-    counter_over_grpc_grpc
+#    kvstore_over_socket
+#    echo ""
+#    kvstore_over_socket_reorder
+#    echo ""
+#    counter_over_socket
+#    echo ""
+#    counter_over_grpc
+#    echo ""
+#    counter_over_grpc_grpc
+		kvstore_over_local
 esac
 
