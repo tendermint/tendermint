@@ -12,7 +12,7 @@ on:
 
 jobs:
   build:
-    name: markdown
+    name: Super linter
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
