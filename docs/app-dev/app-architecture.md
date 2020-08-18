@@ -18,10 +18,9 @@ ABCI application, which is the logic that actually runs on the blockchain.
 Transactions sent by an end-user application are ultimately processed by the ABCI
 application after being committed by the Tendermint consensus.
 
-The end-user application in this diagram is the Cosmos Voyager, at the bottom
-left. Voyager communicates with a REST API exposed by a local Light-Client
-Daemon. The Light-Client Daemon is an application specific program that
-communicates with Tendermint nodes and verifies Tendermint light-client proofs
+The end-user application in this diagram is the [Lunie](https://lunie.io/) app, located at the bottom
+left. Lunie communicates with a REST API exposed by the application.
+The application with Tendermint nodes and verifies Tendermint light-client proofs
 through the Tendermint Core RPC. The Tendermint Core process communicates with
 a local ABCI application, where the user query or transaction is actually
 processed.

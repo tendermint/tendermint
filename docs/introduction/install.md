@@ -13,10 +13,9 @@ To download pre-built binaries, see the [releases page](https://github.com/tende
 You'll need `go` [installed](https://golang.org/doc/install) and the required
 environment variables set, which can be done with the following commands:
 
-```bash
+```sh
 echo export GOPATH=\"\$HOME/go\" >> ~/.bash_profile
 echo export PATH=\"\$PATH:\$GOPATH/bin\" >> ~/.bash_profile
-echo export GO111MODULE=on >> ~/.bash_profile
 ```
 
 ### Get Source Code

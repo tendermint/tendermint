@@ -27,7 +27,6 @@ need to [install Go](https://golang.org/doc/install), put
 ```bash
 echo export GOPATH=\"\$HOME/go\" >> ~/.bash_profile
 echo export PATH=\"\$PATH:\$GOPATH/bin\" >> ~/.bash_profile
-echo export GO111MODULE=on >> ~/.bash_profile
 ```
 
 Then run

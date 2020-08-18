@@ -1,5 +1,5 @@
 ---
-order: 5
+order: 4
 ---
 
 # Running in production
@@ -23,7 +23,7 @@ Tendermint keeps multiple distinct databases in the `$TMROOT/data`:
   used to temporarily store intermediate results during block processing.
 - `tx_index.db`: Indexes txs (and their results) by tx hash and by DeliverTx result events.
 
-By default, Tendermint will only index txs by their hash, not by their DeliverTx
+By default, Tendermint will only index txs by their hash and height, not by their DeliverTx
 result events. See [indexing transactions](../app-dev/indexing-transactions.md) for
 details.
 
@@ -85,7 +85,7 @@ For the above reasons, the `mempool.wal` is disabled by default. To enable, set
 ## DOS Exposure and Mitigation
 
 Validators are supposed to setup [Sentry Node
-Architecture](https://blog.cosmos.network/tendermint-explained-bringing-bft-based-pos-to-the-public-blockchain-domain-f22e274a0fdb)
+Architecture](./validators.md)
 to prevent Denial-of-service attacks. You can read more about it
 [here](../interviews/tendermint-bft.md).
 
