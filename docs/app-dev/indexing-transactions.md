@@ -46,8 +46,7 @@ indexer = "kv"
 ```
 
 By default, Tendermint will index all transactions by their respective
-hashes and height using an embedded simple indexer. If you would like to
-disable indexing set `indexer` to `null`.
+hashes and height using an embedded simple indexer.
 
 You can turn off indexing completely by setting `tx_index` to `null`.
 
