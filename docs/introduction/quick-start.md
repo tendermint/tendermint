@@ -16,7 +16,7 @@ works and want to get started right away, continue.
 To quickly get Tendermint installed on a fresh
 Ubuntu 16.04 machine, use [this script](https://git.io/fFfOR).
 
-WARNING: do not run this on your local machine.
+> :warning: Do not copy scripts to run on your machine without knowing what they do.
 
 ```sh
 curl -L https://git.io/fFfOR | bash
@@ -61,6 +61,8 @@ Start tendermint with a simple in-process application:
 ```sh
 tendermint node --proxy_app=kvstore
 ```
+
+> Note: `kvstore` is a non persistent app, if you would like to run an application with persistence run `--proxy_app=persistent_kvstore`
 
 and blocks will start to stream in:
 

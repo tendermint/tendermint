@@ -1,5 +1,5 @@
 ---
-order: 9
+order: 11
 ---
 
 # Light Client
@@ -33,7 +33,7 @@ proofs](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a9909
 
 ## Where to obtain trusted height & hash
 
-<https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc#TrustOptions>
+[Trust Options](https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc#TrustOptions)
 
 One way to obtain semi-trusted hash & height is to query multiple full nodes
 and compare their hashes:
@@ -54,12 +54,12 @@ can be tracked back to a block header by a proof will be verified before
 passing them back to the caller. Other than that, it will present the same
 interface as a full Tendermint node.
 
-You can start the light client proxy server by running `tendermint light <chainID>`, 
+You can start the light client proxy server by running `tendermint light <chainID>`,
 with a variety of flags to specify the primary node,  the witness nodes (which cross-check
-the information provided by the primary), the hash and height of the trusted header, 
+the information provided by the primary), the hash and height of the trusted header,
 and more.
 
-For example: 
+For example:
 
 ```bash
 $ tendermint light supernova -p tcp://233.123.0.140:26657 \
