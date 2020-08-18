@@ -98,7 +98,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "456"
+          example: "456"
           description: The transaction
       responses:
         200:
@@ -266,28 +266,28 @@ paths:
           Events: []abci.Event{
               {
                   Type: "rewards.withdraw",
-                  Attributes: kv.Pairs{
-                      kv.Pair{Key: []byte("address"), Value: []byte("AddrA")},
-                      kv.Pair{Key: []byte("source"), Value: []byte("SrcX")},
-                      kv.Pair{Key: []byte("amount"), Value: []byte("...")},
-                      kv.Pair{Key: []byte("balance"), Value: []byte("...")},
+                  Attributes: abci.EventAttribute{
+                      {Key: []byte("address"), Value: []byte("AddrA"), Index: true},
+                      {Key: []byte("source"), Value: []byte("SrcX"), Index: true},
+                      {Key: []byte("amount"), Value: []byte("..."), Index: true},
+                      {Key: []byte("balance"), Value: []byte("..."), Index: true},
                   },
               },
               {
                   Type: "rewards.withdraw",
-                  Attributes: kv.Pairs{
-                      kv.Pair{Key: []byte("address"), Value: []byte("AddrB")},
-                      kv.Pair{Key: []byte("source"), Value: []byte("SrcY")},
-                      kv.Pair{Key: []byte("amount"), Value: []byte("...")},
-                      kv.Pair{Key: []byte("balance"), Value: []byte("...")},
+                  Attributes: abci.EventAttribute{
+                      {Key: []byte("address"), Value: []byte("AddrB"), Index: true},
+                      {Key: []byte("source"), Value: []byte("SrcY"), Index: true},
+                      {Key: []byte("amount"), Value: []byte("..."), Index: true},
+                      {Key: []byte("balance"), Value: []byte("..."), Index: true},
                   },
               },
               {
                   Type: "transfer",
-                  Attributes: kv.Pairs{
-                      kv.Pair{Key: []byte("sender"), Value: []byte("AddrC")},
-                      kv.Pair{Key: []byte("recipient"), Value: []byte("AddrD")},
-                      kv.Pair{Key: []byte("amount"), Value: []byte("...")},
+                  Attributes: abci.EventAttribute{
+                      {Key: []byte("sender"), Value: []byte("AddrC"), Index: true},
+                      {Key: []byte("recipient"), Value: []byte("AddrD"), Index: true},
+                      {Key: []byte("amount"), Value: []byte("..."), Index: true},
                   },
               },
           },
@@ -579,13 +579,13 @@ paths:
           name: minHeight
           description: Minimum block height to return
           schema:
-            type: number
+            type: integer
             example: 1
         - in: query
           name: maxHeight
           description: Maximum block height to return
           schema:
-            type: number
+            type: integer
             example: 2
       tags:
         - Info
@@ -612,7 +612,7 @@ paths:
         - in: query
           name: height
           schema:
-            type: number
+            type: integer
             default: 0
             example: 1
           description: height to return. If no height is provided, it will fetch the latest block.
@@ -671,7 +671,7 @@ paths:
           name: height
           description: height to return. If no height is provided, it will fetch informations regarding the latest block.
           schema:
-            type: number
+            type: integer
             default: 0
             example: 1
       tags:
@@ -700,7 +700,7 @@ paths:
           name: height
           description: height to return. If no height is provided, it will fetch commit informations regarding the latest block.
           schema:
-            type: number
+            type: integer
             default: 0
             example: 1
       tags:
@@ -732,7 +732,7 @@ paths:
           name: height
           description: height to return. If no height is provided, it will fetch validator set which corresponds to the latest block.
           schema:
-            type: number
+            type: integer
             default: 0
             example: 1
         - in: query
@@ -740,7 +740,7 @@ paths:
           description: "Page number (1-based)"
           required: false
           schema:
-            type: number
+            type: integer
             default: 1
             example: 1
         - in: query
@@ -748,7 +748,7 @@ paths:
           description: "Number of entries per page (max: 100)"
           required: false
           schema:
-            type: number
+            type: integer
             example: 30
             default: 30
       tags:
@@ -847,7 +847,7 @@ paths:
           name: height
           description: height to return. If no height is provided, it will fetch commit informations regarding the latest block.
           schema:
-            type: number
+            type: integer
             default: 0
             example: 1
       tags:
@@ -877,7 +877,7 @@ paths:
           description: Maximum number of unconfirmed transactions to return (max 100)
           required: false
           schema:
-            type: number
+            type: integer
             default: 30
             example: 1
       tags:
@@ -947,7 +947,7 @@ paths:
           description: "Page number (1-based)"
           required: false
           schema:
-            type: number
+            type: integer
             default: 1
             example: 1
         - in: query
@@ -955,7 +955,7 @@ paths:
           description: "Number of entries per page (max: 100)"
           required: false
           schema:
-            type: number
+            type: integer
             default: 30
             example: 30
         - in: query
@@ -1063,7 +1063,7 @@ paths:
           description: Height (0 means latest)
           required: false
           schema:
-            type: number
+            type: integer
             example: 1
             default: 0
         - in: query
@@ -1127,7 +1127,7 @@ components:
       type: object
       properties:
         id:
-          type: number
+          type: integer
           example: 0
         jsonrpc:
           type: string
@@ -1303,13 +1303,13 @@ components:
           type: string
           example: "0"
         Progress:
-          type: number
+          type: integer
           example: 0
     Channel:
       type: object
       properties:
         ID:
-          type: number
+          type: integer
           example: 48
         SendQueueCapacity:
           type: string
@@ -1362,7 +1362,7 @@ components:
             type: string
             example: "Listener(@)"
         n_peers:
-          type: number
+          type: string
           example: "1"
         peers:
           type: array
@@ -1390,7 +1390,7 @@ components:
             - "hash"
           properties:
             total:
-              type: number
+              type: integer
               example: 1
             hash:
               type: string
@@ -1471,7 +1471,7 @@ components:
         block_id:
           $ref: "#/components/schemas/BlockID"
         block_size:
-          type: number
+          type: integer
           example: 1000000
         header:
           $ref: "#/components/schemas/BlockHeader"
@@ -1511,13 +1511,13 @@ components:
         - "signature"
       properties:
         type:
-          type: number
+          type: integer
           example: 2
         height:
           type: string
           example: "1262085"
         round:
-          type: number
+          type: integer
           example: 0
         block_id:
           $ref: "#/components/schemas/BlockID"
@@ -1528,7 +1528,7 @@ components:
           type: string
           example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
         validator_index:
-          type: number
+          type: integer
           example: 0
         signature:
           type: string
@@ -1551,9 +1551,9 @@ components:
           type: object
           properties:
             height:
-              type: number
+              type: integer
             round:
-              type: number
+              type: integer
             block_id:
               $ref: "#/components/schemas/BlockID"
             signatures:
@@ -1566,7 +1566,7 @@ components:
         pub_key:
           $ref: "#/components/schemas/PubKey"
         voting_power:
-          type: number
+          type: integer
         address:
           type: string
     Evidence:
@@ -1575,11 +1575,11 @@ components:
         type:
           type: string
         height:
-          type: number
+          type: integer
         time:
-          type: number
+          type: integer
         total_voting_power:
-          type: number
+          type: integer
         validator:
           $ref: "#/components/schemas/Validator"
     BlockComplete:
@@ -1606,6 +1606,7 @@ components:
         value:
           type: string
           example: "c2VuZA=="
+
     ################## FROM NOW ON NEEDS REFACTOR ##################
     BlockResultsResponse:
       type: "object"
@@ -1615,10 +1616,10 @@ components:
         - "result"
       properties:
         jsonrpc:
-          type: "string"
+          type: string
           example: "2.0"
         id:
-          type: "number"
+          type: integer
           example: 0
         result:
           type: "object"
@@ -1626,101 +1627,110 @@ components:
             - "height"
           properties:
             height:
-              type: "string"
+              type: string
               example: "12"
             txs_results:
               type: "array"
-              x-nullable: true
+              nullable: true
               items:
                 type: "object"
                 properties:
                   code:
-                    type: "string"
+                    type: string
                     example: "0"
                   data:
-                    type: "string"
+                    type: string
                     example: ""
                   log:
-                    type: "string"
+                    type: string
                     example: "not enough gas"
                   info:
-                    type: "string"
+                    type: string
                     example: ""
                   gas_wanted:
-                    type: "string"
+                    type: string
                     example: "100"
                   gas_used:
-                    type: "string"
+                    type: string
                     example: "100"
                   events:
                     type: "array"
-                    x-nullable: true
+                    nullable: true
                     items:
                       type: "object"
                       properties:
                         type:
-                          type: "string"
+                          type: string
                           example: "app"
                         attributes:
                           type: "array"
-                          x-nullable: false
+                          nullable: false
                           items:
                             type: "object"
                             properties:
                               key:
-                                type: "string"
+                                type: string
                                 example: "Y3JlYXRvcg=="
                               value:
-                                type: "string"
+                                type: string
                                 example: "Q29zbW9zaGkgTmV0b3dva28="
+                              index:
+                                type: boolean
+                                example: true
                   codespace:
-                    type: "string"
+                    type: string
                     example: "ibc"
             begin_block_events:
               type: "array"
-              x-nullable: true
+              nullable: true
               items:
                 type: "object"
                 properties:
                   type:
-                    type: "string"
+                    type: string
                     example: "app"
                   attributes:
                     type: "array"
-                    x-nullable: false
+                    nullable: false
                     items:
                       type: "object"
                       properties:
                         key:
-                          type: "string"
+                          type: string
                           example: "Y3JlYXRvcg=="
                         value:
-                          type: "string"
+                          type: string
                           example: "Q29zbW9zaGkgTmV0b3dva28="
+                        index:
+                          type: boolean
+                          example: true
             end_block:
               type: "array"
-              x-nullable: true
+              nullable: true
               items:
                 type: "object"
                 properties:
                   type:
-                    type: "string"
+                    type: string
                     example: "app"
                   attributes:
                     type: "array"
-                    x-nullable: false
+                    nullable: false
                     items:
                       type: "object"
                       properties:
                         key:
-                          type: "string"
+                          type: string
                           example: "Y3JlYXRvcg=="
                         value:
-                          type: "string"
+                          type: string
                           example: "Q29zbW9zaGkgTmV0b3dva28="
+                        index:
+                          type: boolean
+                          example: true
             validator_updates:
               type: "array"
-              x-nullable: true
+              nullable: true
               items:
                 type: "object"
                 properties:
@@ -1731,17 +1741,17 @@ components:
                       - "value"
                     properties:
                       type:
-                        type: "string"
+                        type: string
                         example: "tendermint/PubKeyEd25519"
                       value:
-                        type: "string"
+                        type: string
                         example: "9tK9IT+FPdf2qm+5c2qaxi10sWP+3erWTKgftn2PaQM="
                   power:
-                    type: "string"
+                    type: string
                     example: "300"
             consensus_param_updates:
               type: "object"
-              x-nullable: true
+              nullable: true
               required:
                 - "block"
                 - "evidence"
@@ -1755,13 +1765,13 @@ components:
                     - "time_iota_ms"
                   properties:
                     max_bytes:
-                      type: "string"
+                      type: string
                       example: "22020096"
                     max_gas:
-                      type: "string"
+                      type: string
                       example: "1000"
                     time_iota_ms:
-                      type: "string"
+                      type: string
                       example: "1000"
                 evidence:
                   type: "object"
@@ -1769,7 +1779,7 @@ components:
                     - "max_age"
                   properties:
                     max_age:
-                      type: "string"
+                      type: string
                       example: "100000"
                 validator:
                   type: "object"
@@ -1779,7 +1789,7 @@ components:
                     pub_key_types:
                       type: "array"
                       items:
-                        type: "string"
+                        type: string
                       example:
                         - "ed25519"
 
@@ -1791,10 +1801,10 @@ components:
         - "result"
       properties:
         jsonrpc:
-          type: "string"
+          type: string
           example: "2.0"
         id:
-          type: "number"
+          type: integer
           example: 0
         result:
           required:
@@ -1829,20 +1839,20 @@ components:
                         - "app"
                       properties:
                         block:
-                          type: "string"
+                          type: string
                           example: "10"
                         app:
-                          type: "string"
+                          type: string
                           example: "0"
                       type: "object"
                     chain_id:
-                      type: "string"
+                      type: string
                       example: "cosmoshub-2"
                     height:
-                      type: "string"
+                      type: string
                       example: "12"
                     time:
-                      type: "string"
+                      type: string
                       example: "2019-04-22T17:01:51.701356223Z"
                     last_block_id:
                       required:
@@ -1850,7 +1860,7 @@ components:
                         - "parts"
                       properties:
                         hash:
-                          type: "string"
+                          type: string
                           example: "D82C2734BB0E76C772A10994B210EF9D11505D1B98CB189D9CF7F9A5488672A5"
                         parts:
                           required:
@@ -1858,39 +1868,39 @@ components:
                             - "hash"
                           properties:
                             total:
-                              type: number
+                              type: integer
                               example: 1
                             hash:
-                              type: "string"
+                              type: string
                               example: "CB02DCAA7FB46BF874052EC2273FD0B1F2CF2E1593298D9781E60FE9C3DB8638"
                           type: "object"
                       type: "object"
                     last_commit_hash:
-                      type: "string"
+                      type: string
                       example: "21B9BC845AD2CB2C4193CDD17BFC506F1EBE5A7402E84AD96E64171287A34812"
                     data_hash:
-                      type: "string"
+                      type: string
                       example: "970886F99E77ED0D60DA8FCE0447C2676E59F2F77302B0C4AA10E1D02F18EF73"
                     validators_hash:
-                      type: "string"
+                      type: string
                       example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
                     next_validators_hash:
-                      type: "string"
+                      type: string
                       example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
                     consensus_hash:
-                      type: "string"
+                      type: string
                       example: "0F2908883A105C793B74495EB7D6DF2EEA479ED7FC9349206A65CB0F9987A0B8"
                     app_hash:
-                      type: "string"
+                      type: string
                       example: "223BF64D4A01074DC523A80E76B9BBC786C791FB0A1893AC5B14866356FCFD6C"
                     last_results_hash:
-                      type: "string"
+                      type: string
                       example: ""
                     evidence_hash:
-                      type: "string"
+                      type: string
                       example: ""
                     proposer_address:
-                      type: "string"
+                      type: string
                       example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
                   type: "object"
                 commit:
@@ -1901,10 +1911,10 @@ components:
                     - "signatures"
                   properties:
                     height:
-                      type: "string"
+                      type: string
                       example: "1311801"
                     round:
-                      type: number
+                      type: integer
                       example: 0
                     block_id:
                       required:
@@ -1912,7 +1922,7 @@ components:
                         - "parts"
                       properties:
                         hash:
-                          type: "string"
+                          type: string
                           example: "112BC173FD838FB68EB43476816CD7B4C6661B6884A9E357B417EE957E1CF8F7"
                         parts:
                           required:
@@ -1920,10 +1930,10 @@ components:
                             - "hash"
                           properties:
                             total:
-                              type: number
+                              type: integer
                               example: 1
                             hash:
-                              type: "string"
+                              type: string
                               example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
                           type: "object"
                       type: "object"
@@ -1933,21 +1943,21 @@ components:
                         type: "object"
                         properties:
                           block_id_flag:
-                            type: "number"
+                            type: integer
                             example: 2
                           validator_address:
-                            type: "string"
+                            type: string
                             example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
                           timestamp:
-                            type: "string"
+                            type: string
                             example: "2019-04-22T17:01:58.376629719Z"
                           signature:
-                            type: "string"
+                            type: string
                             example: "14jaTQXYRt8kbLKEhdHq7AXycrFImiLuZx50uOjs2+Zv+2i7RTG/jnObD07Jo2ubZ8xd7bNBJMqkgtkd0oQHAw=="
                   type: "object"
               type: "object"
             canonical:
-              type: "boolean"
+              type: boolean
               example: true
           type: "object"
     ValidatorsResponse:
@@ -1958,10 +1968,10 @@ components:
         - "result"
       properties:
         jsonrpc:
-          type: "string"
+          type: string
           example: "2.0"
         id:
-          type: "number"
+          type: integer
           example: 0
         result:
           required:
@@ -1969,7 +1979,7 @@ components:
             - "validators"
           properties:
             block_height:
-              type: "string"
+              type: string
               example: "55"
             validators:
               type: "array"
@@ -1977,7 +1987,7 @@ components:
                 type: "object"
                 properties:
                   address:
-                    type: "string"
+                    type: string
                     example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
                   pub_key:
                     required:
@@ -1985,24 +1995,24 @@ components:
                       - "value"
                     properties:
                       type:
-                        type: "string"
+                        type: string
                         example: "tendermint/PubKeyEd25519"
                       value:
-                        type: "string"
+                        type: string
                         example: "9tK9IT+FPdf2qm+5c2qaxi10sWP+3erWTKgftn2PaQM="
                     type: "object"
                   voting_power:
-                    type: "string"
+                    type: string
                     example: "250353"
                   proposer_priority:
-                    type: "string"
+                    type: string
                     example: "13769415"
             count:
-              type: "number"
-              example: 1
+              type: string
+              example: "1"
             total:
-              type: "number"
-              example: 25
+              type: string
+              example: "25"
           type: "object"
     GenesisResponse:
       type: object
@@ -2012,10 +2022,10 @@ components:
         - "result"
       properties:
         jsonrpc:
-          type: "string"
+          type: string
           example: "2.0"
         id:
-          type: "number"
+          type: integer
           example: 0
         result:
           type: "object"
@@ -2027,16 +2037,20 @@ components:
               required:
                 - "genesis_time"
                 - "chain_id"
+                - "initial_height"
                 - "consensus_params"
                 - "validators"
                 - "app_hash"
               properties:
                 genesis_time:
-                  type: "string"
+                  type: string
                   example: "2019-04-22T17:00:00Z"
                 chain_id:
-                  type: "string"
+                  type: string
                   example: "cosmoshub-2"
+                initial_height:
+                  type: string
+                  example: "2"
                 consensus_params:
                   type: "object"
                   required:
@@ -2052,21 +2066,33 @@ components:
                         - "time_iota_ms"
                       properties:
                         max_bytes:
-                          type: "string"
+                          type: string
                           example: "22020096"
                         max_gas:
-                          type: "string"
+                          type: string
                           example: "1000"
                         time_iota_ms:
-                          type: "string"
+                          type: string
                           example: "1000"
                     evidence:
                       type: "object"
                       required:
-                        - "max_age"
+                        - "max_age_num_blocks"
+                        - "max_age_duration"
+                        - "max_num"
+                        - "proof_trial_period"
                       properties:
                         max_age:
-                          type: "string"
+                          type: string
+                          example: "100000"
+                        max_age_duration:
+                          type: string
+                          example: "100000"
+                        max_num:
+                          type: integer
+                          example: 50
+                        proof_trial_period:
+                          type: string
                           example: "100000"
                     validator:
                       type: "object"
@@ -2076,7 +2102,7 @@ components:
                         pub_key_types:
                           type: "array"
                           items:
-                            type: "string"
+                            type: string
                           example:
                             - "ed25519"
                 validators:
@@ -2085,7 +2111,7 @@ components:
                     type: "object"
                     properties:
                       address:
-                        type: "string"
+                        type: string
                         example: "B00A6323737F321EB0B8D59C6FD497A14B60938A"
                       pub_key:
                         required:
@@ -2093,20 +2119,20 @@ components:
                           - "value"
                         properties:
                           type:
-                            type: "string"
+                            type: string
                             example: "tendermint/PubKeyEd25519"
                           value:
-                            type: "string"
+                            type: string
                             example: "cOQZvh/h9ZioSeUMZB/1Vy1Xo5x2sjrVjlE/qHnYifM="
                         type: "object"
                       power:
-                        type: "string"
+                        type: string
                         example: "9328525"
                       name:
-                        type: "string"
+                        type: string
                         example: "Certus One"
                 app_hash:
-                  type: "string"
+                  type: string
                   example: ""
                 app_state:
                   properties: {}
@@ -2120,10 +2146,10 @@ components:
         - "result"
       properties:
         jsonrpc:
-          type: "string"
+          type: string
           example: "2.0"
         id:
-          type: "number"
+          type: integer
           example: 0
         result:
           required:
@@ -2154,19 +2180,19 @@ components:
                 - "triggered_timeout_precommit"
               properties:
                 height:
-                  type: "string"
+                  type: string
                   example: "1311801"
                 round:
-                  type: number
+                  type: integer
                   example: 0
                 step:
-                  type: "number"
+                  type: integer
                   example: 3
                 start_time:
-                  type: "string"
+                  type: string
                   example: "2019-08-05T11:28:49.064658805Z"
                 commit_time:
-                  type: "string"
+                  type: string
                   example: "2019-08-05T11:28:44.064658805Z"
                 validators:
                   required:
@@ -2179,7 +2205,7 @@ components:
                         type: "object"
                         properties:
                           address:
-                            type: "string"
+                            type: string
                             example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
                           pub_key:
                             required:
@@ -2187,17 +2213,17 @@ components:
                               - "value"
                             properties:
                               type:
-                                type: "string"
+                                type: string
                                 example: "tendermint/PubKeyEd25519"
                               value:
-                                type: "string"
+                                type: string
                                 example: "9tK9IT+FPdf2qm+5c2qaxi10sWP+3erWTKgftn2PaQM="
                             type: "object"
                           voting_power:
-                            type: "string"
+                            type: string
                             example: "239727"
                           proposer_priority:
-                            type: "string"
+                            type: string
                             example: "-11896414"
                     proposer:
                       required:
@@ -2207,7 +2233,7 @@ components:
                         - "proposer_priority"
                       properties:
                         address:
-                          type: "string"
+                          type: string
                           example: "708FDDCE121CDADA502F2B0252FEF13FDAA31E50"
                         pub_key:
                           required:
@@ -2215,25 +2241,25 @@ components:
                             - "value"
                           properties:
                             type:
-                              type: "string"
+                              type: string
                               example: "tendermint/PubKeyEd25519"
                             value:
-                              type: "string"
+                              type: string
                               example: "VNMNfw7mrQBSpEvCtA9ykOe6BoR00RM9b/a9v3vXZhY="
                           type: "object"
                         voting_power:
-                          type: "string"
+                          type: string
                           example: "295360"
                         proposer_priority:
-                          type: "string"
+                          type: string
                           example: "-88886833"
                       type: "object"
                   type: "object"
                 locked_round:
-                  type: number
+                  type: integer
                   example: -1
                 valid_round:
-                  type: "string"
+                  type: string
                   example: "-1"
                 votes:
                   type: "array"
@@ -2241,34 +2267,34 @@ components:
                     type: "object"
                     properties:
                       round:
-                        type: "string"
+                        type: string
                         example: "0"
                       prevotes:
                         type: "array"
-                        x-nullable: true
+                        nullable: true
                         items:
-                          type: "string"
+                          type: string
                         example:
                           - "nil-Vote"
                           - "Vote{19:46A3F8B8393B 1311801/00/1(Prevote) 000000000000 64CE682305CB @ 2019-08-05T11:28:47.374703444Z}"
                       prevotes_bit_array:
-                        type: "string"
+                        type: string
                         example: "BA{100:___________________x________________________________________________________________________________} 209706/170220253 = 0.00"
                       precommits:
                         type: "array"
-                        x-nullable: true
+                        nullable: true
                         items:
-                          type: "string"
+                          type: string
                         example:
                           - "nil-Vote"
                       precommits_bit_array:
-                        type: "string"
+                        type: string
                         example: "BA{100:____________________________________________________________________________________________________} 0/170220253 = 0.00"
                 commit_round:
-                  type: number
+                  type: integer
                   example: -1
                 last_commit:
-                  x-nullable: true
+                  nullable: true
                   required:
                     - "votes"
                     - "votes_bit_array"
@@ -2277,11 +2303,11 @@ components:
                     votes:
                       type: "array"
                       items:
-                        type: "string"
+                        type: string
                       example:
                         - "Vote{0:000001E443FD 1311800/00/2(Precommit) 3071ADB27D1A 77EE1B6B6847 @ 2019-08-05T11:28:43.810128139Z}"
                     votes_bit_array:
-                      type: "string"
+                      type: string
                       example: "BA{100:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx} 170220253/170220253 = 1.00"
                     peer_maj_23s:
                       properties: {}
@@ -2298,7 +2324,7 @@ components:
                         type: "object"
                         properties:
                           address:
-                            type: "string"
+                            type: string
                             example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
                           pub_key:
                             required:
@@ -2306,17 +2332,17 @@ components:
                               - "value"
                             properties:
                               type:
-                                type: "string"
+                                type: string
                                 example: "tendermint/PubKeyEd25519"
                               value:
-                                type: "string"
+                                type: string
                                 example: "9tK9IT+FPdf2qm+5c2qaxi10sWP+3erWTKgftn2PaQM="
                             type: "object"
                           voting_power:
-                            type: "string"
+                            type: string
                             example: "239727"
                           proposer_priority:
-                            type: "string"
+                            type: string
                             example: "-12136141"
                     proposer:
                       required:
@@ -2326,7 +2352,7 @@ components:
                         - "proposer_priority"
                       properties:
                         address:
-                          type: "string"
+                          type: string
                           example: "B00A6323737F321EB0B8D59C6FD497A14B60938A"
                         pub_key:
                           required:
@@ -2334,22 +2360,22 @@ components:
                             - "value"
                           properties:
                             type:
-                              type: "string"
+                              type: string
                               example: "tendermint/PubKeyEd25519"
                             value:
-                              type: "string"
+                              type: string
                               example: "cOQZvh/h9ZioSeUMZB/1Vy1Xo5x2sjrVjlE/qHnYifM="
                           type: "object"
                         voting_power:
-                          type: "string"
+                          type: string
                           example: "8590153"
                         proposer_priority:
-                          type: "string"
+                          type: string
                           example: "-79515145"
                       type: "object"
                   type: "object"
                 triggered_timeout_precommit:
-                  type: "boolean"
+                  type: boolean
                   example: false
               type: "object"
             peers:
@@ -2358,7 +2384,7 @@ components:
                 type: "object"
                 properties:
                   node_address:
-                    type: "string"
+                    type: string
                     example: "357f6a6c1d27414579a8185060aa8adf9815c43c@68.183.41.207:26656"
                   peer_state:
                     required:
@@ -2384,19 +2410,19 @@ components:
                           - "catchup_commit"
                         properties:
                           height:
-                            type: "string"
+                            type: string
                             example: "1311801"
                           round:
-                            type: "string"
+                            type: string
                             example: "0"
                           step:
-                            type: "number"
+                            type: integer
                             example: 3
                           start_time:
-                            type: "string"
+                            type: string
                             example: "2019-08-05T11:28:49.21730864Z"
                           proposal:
-                            type: "boolean"
+                            type: boolean
                             example: false
                           proposal_block_parts_header:
                             required:
@@ -2404,43 +2430,43 @@ components:
                               - "hash"
                             properties:
                               total:
-                                type: number
+                                type: integer
                                 example: 0
                               hash:
-                                type: "string"
+                                type: string
                                 example: ""
                             type: "object"
                           proposal_pol_round:
-                            x-nullable: true
-                            type: number
+                            nullable: true
+                            type: integer
                             example: -1
                           proposal_pol:
-                            x-nullable: true
-                            type: "string"
+                            nullable: true
+                            type: string
                             example: "____________________________________________________________________________________________________"
                           prevotes:
-                            x-nullable: true
-                            type: "string"
+                            nullable: true
+                            type: string
                             example: "___________________x________________________________________________________________________________"
                           precommits:
-                            x-nullable: true
-                            type: "string"
+                            nullable: true
+                            type: string
                             example: "____________________________________________________________________________________________________"
                           last_commit_round:
-                            x-nullable: true
-                            type: number
+                            nullable: true
+                            type: integer
                             example: 0
                           last_commit:
-                            x-nullable: true
-                            type: "string"
+                            nullable: true
+                            type: string
                             example: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                           catchup_commit_round:
-                            type: number
-                            x-nullable: true
+                            type: integer
+                            nullable: true
                             example: -1
                           catchup_commit:
-                            x-nullable: true
-                            type: "string"
+                            nullable: true
+                            type: string
                             example: "____________________________________________________________________________________________________"
                         type: "object"
                       stats:
@@ -2449,10 +2475,10 @@ components:
                           - "block_parts"
                         properties:
                           votes:
-                            type: "string"
+                            type: string
                             example: "1159558"
                           block_parts:
-                            type: "string"
+                            type: string
                             example: "4786"
                         type: "object"
                     type: "object"
@@ -2465,10 +2491,10 @@ components:
         - "result"
       properties:
         jsonrpc:
-          type: "string"
+          type: string
           example: "2.0"
         id:
-          type: "number"
+          type: integer
           example: 0
         result:
           required:
@@ -2485,19 +2511,19 @@ components:
                 - "proposer"
               properties:
                 height/round/step:
-                  type: "string"
+                  type: string
                   example: "1262197/0/8"
                 start_time:
-                  type: "string"
+                  type: string
                   example: "2019-08-01T11:52:38.962730289Z"
                 proposal_block_hash:
-                  type: "string"
+                  type: string
                   example: "634ADAF1F402663BEC2ABC340ECE8B4B45AA906FA603272ACC5F5EED3097E009"
                 locked_block_hash:
-                  type: "string"
+                  type: string
                   example: "634ADAF1F402663BEC2ABC340ECE8B4B45AA906FA603272ACC5F5EED3097E009"
                 valid_block_hash:
-                  type: "string"
+                  type: string
                   example: "634ADAF1F402663BEC2ABC340ECE8B4B45AA906FA603272ACC5F5EED3097E009"
                 height_vote_set:
                   type: "array"
@@ -2505,37 +2531,37 @@ components:
                     type: "object"
                     properties:
                       round:
-                        type: "string"
-                        example: "0"
+                        type: integer
+                        example: 0
                       prevotes:
                         type: "array"
                         items:
-                          type: "string"
+                          type: string
                         example:
                           - "Vote{0:000001E443FD 1262197/00/1(Prevote) 634ADAF1F402 7BB974E1BA40 @ 2019-08-01T11:52:35.513572509Z}"
                           - "nil-Vote"
                       prevotes_bit_array:
-                        type: "string"
+                        type: string
                         example: "BA{100:xxxxxxxxxxxxxxxxx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx} 169753436/170151262 = 1.00"
                       precommits:
                         type: "array"
                         items:
-                          type: "string"
+                          type: string
                         example:
                           - "Vote{5:18C78D135C9D 1262197/00/2(Precommit) 634ADAF1F402 8B5EFFFEABCD @ 2019-08-01T11:52:36.25600005Z}"
                           - "nil-Vote"
                       precommits_bit_array:
-                        type: "string"
+                        type: string
                         example: "BA{100:xxxxxx_xxxxx_xxxx_x_xxx_xx_xx_xx__x_x_x__xxxxxxxxxxxxxx_xxxx_xx_xxxxxx_xxxxxxxx_xxxx_xxx_x_xxxx__xxx} 118726247/170151262 = 0.70"
                 proposer:
                   type: "object"
                   properties:
                     address:
-                      type: "string"
+                      type: string
                       example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
                     index:
-                      type: "string"
-                      example: "0"
+                      type: integer
+                      example: 0
               type: "object"
           type: "object"
     ConsensusParamsResponse:
@@ -2546,10 +2572,10 @@ components:
         - "result"
       properties:
         jsonrpc:
-          type: "string"
+          type: string
           example: "2.0"
         id:
-          type: "number"
+          type: integer
           example: 0
         result:
           type: "object"
@@ -2558,7 +2584,7 @@ components:
             - "consensus_params"
           properties:
             block_height:
-              type: "string"
+              type: string
               example: "1313448"
             consensus_params:
               type: "object"
@@ -2575,21 +2601,33 @@ components:
                     - "time_iota_ms"
                   properties:
                     max_bytes:
-                      type: "string"
+                      type: string
                       example: "22020096"
                     max_gas:
-                      type: "string"
+                      type: string
                       example: "1000"
                     time_iota_ms:
-                      type: "string"
+                      type: string
                       example: "1000"
                 evidence:
                   type: "object"
                   required:
-                    - "max_age"
+                    - "max_age_num_blocks"
+                    - "max_age_duration"
+                    - "max_num"
+                    - "proof_trial_period"
                   properties:
                     max_age:
-                      type: "string"
+                      type: string
+                      example: "100000"
+                    max_age_duration:
+                      type: string
+                      example: "100000"
+                    max_num:
+                      type: integer
+                      example: 50
+                    proof_trial_period:
+                      type: string
                       example: "100000"
                 validator:
                   type: "object"
@@ -2599,7 +2637,7 @@ components:
                     pub_key_types:
                       type: "array"
                       items:
-                        type: "string"
+                        type: string
                       example:
                         - "ed25519"
 
@@ -2611,10 +2649,10 @@ components:
         - "result"
       properties:
         jsonrpc:
-          type: "string"
+          type: string
           example: "2.0"
         id:
-          type: "number"
+          type: integer
           example: 0
         result:
           required:
@@ -2623,20 +2661,20 @@ components:
             - "total_bytes"
           properties:
             n_txs:
-              type: "string"
+              type: string
               example: "31"
             total:
-              type: "string"
+              type: string
               example: "82"
             total_bytes:
-              type: "string"
+              type: string
               example: "19974"
           #          txs:
           #            type: "array"
-          #            x-nullable: true
+          #            nullable: true
           #            items:
-          #              type: "string"
-          #              x-nullable: true
+          #              type: string
+          #              nullable: true
           #            example:
           #              - "gAPwYl3uCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUA75/FmYq9WymsOBJ0XSJ8yV8zmQKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhQbrvwbvlNiT+Yjr86G+YQNx7kRVgowjE1xDQoUjJyJG+WaWBwSiGannBRFdrbma+8SFK2m+1oxgILuQLO55n8mWfnbIzyPCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUQNGfkmhTNMis4j+dyMDIWXdIPiYKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhS8sL0D0wwgGCItQwVowak5YB38KRIUCg4KBXVhdG9tEgUxMDA1NBDoxRgaagom61rphyECn8x7emhhKdRCB2io7aS/6Cpuq5NbVqbODmqOT3jWw6kSQKUresk+d+Gw0BhjiggTsu8+1voW+VlDCQ1GRYnMaFOHXhyFv7BCLhFWxLxHSAYT8a5XqoMayosZf9mANKdXArA="
           type: "object"
@@ -2648,10 +2686,10 @@ components:
         - "result"
       properties:
         jsonrpc:
-          type: "string"
+          type: string
           example: "2.0"
         id:
-          type: "number"
+          type: integer
           example: 0
         result:
           required:
@@ -2661,20 +2699,20 @@ components:
             - "txs"
           properties:
             n_txs:
-              type: "string"
+              type: string
               example: "82"
             total:
-              type: "string"
+              type: string
               example: "82"
             total_bytes:
-              type: "string"
+              type: string
               example: "19974"
             txs:
               type: array
-              x-nullable: true
+              nullable: true
               items:
                 type: string
-                x-nullable: true
+                nullable: true
               example:
                 - "gAPwYl3uCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUA75/FmYq9WymsOBJ0XSJ8yV8zmQKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhQbrvwbvlNiT+Yjr86G+YQNx7kRVgowjE1xDQoUjJyJG+WaWBwSiGannBRFdrbma+8SFK2m+1oxgILuQLO55n8mWfnbIzyPCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUQNGfkmhTNMis4j+dyMDIWXdIPiYKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhS8sL0D0wwgGCItQwVowak5YB38KRIUCg4KBXVhdG9tEgUxMDA1NBDoxRgaagom61rphyECn8x7emhhKdRCB2io7aS/6Cpuq5NbVqbODmqOT3jWw6kSQKUresk+d+Gw0BhjiggTsu8+1voW+VlDCQ1GRYnMaFOHXhyFv7BCLhFWxLxHSAYT8a5XqoMayosZf9mANKdXArA="
           type: "object"
@@ -2686,10 +2724,10 @@ components:
         - "result"
       properties:
         jsonrpc:
-          type: "string"
+          type: string
           example: "2.0"
         id:
-          type: "number"
+          type: integer
           example: 0
         result:
           required:
@@ -2702,13 +2740,13 @@ components:
                 type: "object"
                 properties:
                   hash:
-                    type: "string"
+                    type: string
                     example: "D70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
                   height:
-                    type: "string"
+                    type: string
                     example: "1000"
                   index:
-                    type: "number"
+                    type: integer
                     example: 0
                   tx_result:
                     required:
@@ -2718,13 +2756,13 @@ components:
                       - "tags"
                     properties:
                       log:
-                        type: "string"
+                        type: string
                         example: '[{"msg_index":"0","success":true,"log":""}]'
                       gas_wanted:
-                        type: "string"
+                        type: string
                         example: "200000"
                       gas_used:
-                        type: "string"
+                        type: string
                         example: "28596"
                       tags:
                         type: "array"
@@ -2732,14 +2770,14 @@ components:
                           type: "object"
                           properties:
                             key:
-                              type: "string"
+                              type: string
                               example: "YWN0aW9u"
                             value:
-                              type: "string"
+                              type: string
                               example: "c2VuZA=="
                     type: "object"
                   tx:
-                    type: "string"
+                    type: string
                     example: "5wHwYl3uCkaoo2GaChQmSIu8hxpJxLcCuIi8fiHN4TMwrRIU/Af1cEG7Rcs/6LjTl7YjRSymJfYaFAoFdWF0b20SCzE0OTk5OTk1MDAwEhMKDQoFdWF0b20SBDUwMDAQwJoMGmoKJuta6YchAwswBShaB1wkZBctLIhYqBC3JrAI28XGzxP+rVEticGEEkAc+khTkKL9CDE47aDvjEHvUNt+izJfT4KVF2v2JkC+bmlH9K08q3PqHeMI9Z5up+XMusnTqlP985KF+SI5J3ZOIhhNYWRlIGJ5IENpcmNsZSB3aXRoIGxvdmU="
                   proof:
                     required:
@@ -2748,10 +2786,10 @@ components:
                       - "Proof"
                     properties:
                       RootHash:
-                        type: "string"
+                        type: string
                         example: "72FE6BF6D4109105357AECE0A82E99D0F6288854D16D8767C5E72C57F876A14D"
                       Data:
-                        type: "string"
+                        type: string
                         example: "5wHwYl3uCkaoo2GaChQmSIu8hxpJxLcCuIi8fiHN4TMwrRIU/Af1cEG7Rcs/6LjTl7YjRSymJfYaFAoFdWF0b20SCzE0OTk5OTk1MDAwEhMKDQoFdWF0b20SBDUwMDAQwJoMGmoKJuta6YchAwswBShaB1wkZBctLIhYqBC3JrAI28XGzxP+rVEticGEEkAc+khTkKL9CDE47aDvjEHvUNt+izJfT4KVF2v2JkC+bmlH9K08q3PqHeMI9Z5up+XMusnTqlP985KF+SI5J3ZOIhhNYWRlIGJ5IENpcmNsZSB3aXRoIGxvdmU="
                       Proof:
                         required:
@@ -2761,24 +2799,24 @@ components:
                           - "aunts"
                         properties:
                           total:
-                            type: "string"
+                            type: string
                             example: "2"
                           index:
-                            type: "string"
+                            type: string
                             example: "0"
                           leaf_hash:
-                            type: "string"
+                            type: string
                             example: "eoJxKCzF3m72Xiwb/Q43vJ37/2Sx8sfNS9JKJohlsYI="
                           aunts:
                             type: "array"
                             items:
-                              type: "string"
+                              type: string
                             example:
                               - "eWb+HG/eMmukrQj4vNGyFYb3nKQncAWacq4HF5eFzDY="
                         type: "object"
                     type: "object"
             total_count:
-              type: "string"
+              type: string
               example: "2"
           type: "object"
     TxResponse:
@@ -2789,10 +2827,10 @@ components:
         - "result"
       properties:
         jsonrpc:
-          type: "string"
+          type: string
           example: "2.0"
         id:
-          type: "number"
+          type: integer
           example: 0
         result:
           required:
@@ -2803,13 +2841,13 @@ components:
             - "tx"
           properties:
             hash:
-              type: "string"
+              type: string
               example: "D70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
             height:
-              type: "string"
+              type: string
               example: "1000"
             index:
-              type: "number"
+              type: integer
               example: 0
             tx_result:
               required:
@@ -2819,13 +2857,13 @@ components:
                 - "tags"
               properties:
                 log:
-                  type: "string"
+                  type: string
                   example: '[{"msg_index":"0","success":true,"log":""}]'
                 gas_wanted:
-                  type: "string"
+                  type: string
                   example: "200000"
                 gas_used:
-                  type: "string"
+                  type: string
                   example: "28596"
                 tags:
                   type: "array"
@@ -2833,14 +2871,14 @@ components:
                     type: "object"
                     properties:
                       key:
-                        type: "string"
+                        type: string
                         example: "YWN0aW9u"
                       value:
-                        type: "string"
+                        type: string
                         example: "c2VuZA=="
               type: "object"
             tx:
-              type: "string"
+              type: string
               example: "5wHwYl3uCkaoo2GaChQmSIu8hxpJxLcCuIi8fiHN4TMwrRIU/Af1cEG7Rcs/6LjTl7YjRSymJfYaFAoFdWF0b20SCzE0OTk5OTk1MDAwEhMKDQoFdWF0b20SBDUwMDAQwJoMGmoKJuta6YchAwswBShaB1wkZBctLIhYqBC3JrAI28XGzxP+rVEticGEEkAc+khTkKL9CDE47aDvjEHvUNt+izJfT4KVF2v2JkC+bmlH9K08q3PqHeMI9Z5up+XMusnTqlP985KF+SI5J3ZOIhhNYWRlIGJ5IENpcmNsZSB3aXRoIGxvdmU="
           type: "object"
     ABCIInfoResponse:
@@ -2850,10 +2888,10 @@ components:
         - "id"
       properties:
         jsonrpc:
-          type: "string"
+          type: string
           example: "2.0"
         id:
-          type: "number"
+          type: integer
           example: 0
         result:
           required:
@@ -2866,13 +2904,13 @@ components:
                 - "version"
               properties:
                 data:
-                  type: "string"
+                  type: string
                   example: '{"size":0}'
                 version:
                   type: string
                   example: "0.16.1"
                 app_version:
-                  type: "string"
+                  type: string
                   example: "1314126"
               type: "object"
           type: "object"
@@ -2885,7 +2923,7 @@ components:
         - "jsonrpc"
       properties:
         error:
-          type: "string"
+          type: string
           example: ""
         result:
           required:
@@ -2902,33 +2940,33 @@ components:
                 - "code"
               properties:
                 log:
-                  type: "string"
+                  type: string
                   example: "exists"
                 height:
-                  type: "string"
+                  type: string
                   example: "0"
                 proof:
-                  type: "string"
+                  type: string
                   example: "010114FED0DAD959F36091AD761C922ABA3CBF1D8349990101020103011406AA2262E2F448242DF2C2607C3CDC705313EE3B0001149D16177BC71E445476174622EA559715C293740C"
                 value:
-                  type: "string"
+                  type: string
                   example: "61626364"
                 key:
-                  type: "string"
+                  type: string
                   example: "61626364"
                 index:
-                  type: "string"
+                  type: string
                   example: "-1"
                 code:
-                  type: "string"
+                  type: string
                   example: "0"
               type: "object"
           type: "object"
         id:
-          type: "number"
+          type: integer
           example: 0
         jsonrpc:
-          type: "string"
+          type: string
           example: "2.0"
     BroadcastEvidenceResponse:
       type: object
@@ -2937,16 +2975,16 @@ components:
         - "jsonrpc"
       properties:
         error:
-          type: "string"
+          type: string
           example: ""
         result:
-          type: "string"
+          type: string
           example: ""
         id:
-          type: "number"
+          type: integer
           example: 0
         jsonrpc:
-          type: "string"
+          type: string
           example: "2.0"
     BroadcastTxCommitResponse:
       type: object
@@ -2957,7 +2995,7 @@ components:
         - "jsonrpc"
       properties:
         error:
-          type: "string"
+          type: string
           example: ""
         result:
           required:
@@ -2967,10 +3005,10 @@ components:
             - "check_tx"
           properties:
             height:
-              type: "string"
+              type: string
               example: "26682"
             hash:
-              type: "string"
+              type: string
               example: "75CA0F856A4DA078FC4911580360E70CEFB2EBEE"
             deliver_tx:
               required:
@@ -2979,13 +3017,13 @@ components:
                 - "code"
               properties:
                 log:
-                  type: "string"
+                  type: string
                   example: ""
                 data:
-                  type: "string"
+                  type: string
                   example: ""
                 code:
-                  type: "string"
+                  type: string
                   example: "0"
               type: "object"
             check_tx:
@@ -2995,21 +3033,21 @@ components:
                 - "code"
               properties:
                 log:
-                  type: "string"
+                  type: string
                   example: ""
                 data:
-                  type: "string"
+                  type: string
                   example: ""
                 code:
-                  type: "string"
+                  type: string
                   example: "0"
               type: "object"
           type: "object"
         id:
-          type: "number"
+          type: integer
           example: 0
         jsonrpc:
-          type: "string"
+          type: string
           example: "2.0"
     CheckTxResponse:
       type: object
@@ -3020,7 +3058,7 @@ components:
         - "jsonrpc"
       properties:
         error:
-          type: "string"
+          type: string
           example: ""
         result:
           required:
@@ -3029,53 +3067,53 @@ components:
             - "code"
           properties:
             code:
-              type: "string"
+              type: string
               example: "0"
             data:
-              type: "string"
+              type: string
               example: ""
             log:
-              type: "string"
+              type: string
               example: ""
             info:
-              type: "string"
+              type: string
               example: ""
             gas_wanted:
-              type: "string"
+              type: string
               example: "1"
             gas_used:
-              type: "string"
+              type: string
               example: "0"
             events:
               type: "array"
-              x-nullable: true
+              nullable: true
               items:
                 type: "object"
                 properties:
                   type:
-                    type: "string"
+                    type: string
                     example: "app"
                   attributes:
                     type: "array"
-                    x-nullable: false
+                    nullable: false
                     items:
                       type: "object"
                       properties:
                         key:
-                          type: "string"
+                          type: string
                           example: "Y3JlYXRvcg=="
                         value:
-                          type: "string"
+                          type: string
                           example: "Q29zbW9zaGkgTmV0b3dva28="
             codespace:
-              type: "string"
+              type: string
               example: "bank"
           type: "object"
         id:
-          type: "number"
+          type: integer
           example: 0
         jsonrpc:
-          type: "string"
+          type: string
           example: "2.0"
     BroadcastTxResponse:
       type: object
@@ -3086,10 +3124,10 @@ components:
         - "error"
       properties:
         jsonrpc:
-          type: "string"
+          type: string
           example: "2.0"
         id:
-          type: "number"
+          type: integer
           example: 0
         result:
           required:
@@ -3099,23 +3137,23 @@ components:
             - "hash"
           properties:
             code:
-              type: "string"
+              type: string
               example: "0"
             data:
-              type: "string"
+              type: string
               example: ""
             log:
-              type: "string"
+              type: string
               example: ""
             codespace:
-              type: "string"
+              type: string
               example: "ibc"
             hash:
-              type: "string"
+              type: string
               example: "0D33F2F03A5234F38706E43004489E061AC40A2E"
           type: "object"
         error:
-          type: "string"
+          type: string
           example: ""
     dialPeersPost:
       type: object
@@ -3126,7 +3164,7 @@ components:
         Peers:
           type: array
           items:
-            type: "string"
+            type: string
           example:
             ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
     dialSeedsPost:
@@ -3135,7 +3173,7 @@ components:
         Peers:
           type: array
           items:
-            type: "string"
+            type: string
           example:
             ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
     dialResp:
