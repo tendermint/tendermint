@@ -1362,7 +1362,7 @@ components:
             type: string
             example: "Listener(@)"
         n_peers:
-          type: integer
+          type: string
           example: "1"
         peers:
           type: array
