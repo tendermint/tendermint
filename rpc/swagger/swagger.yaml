@@ -266,28 +266,28 @@ paths:
           Events: []abci.Event{
               {
                   Type: "rewards.withdraw",
-                  Attributes: kv.Pairs{
-                      kv.Pair{Key: []byte("address"), Value: []byte("AddrA")},
-                      kv.Pair{Key: []byte("source"), Value: []byte("SrcX")},
-                      kv.Pair{Key: []byte("amount"), Value: []byte("...")},
-                      kv.Pair{Key: []byte("balance"), Value: []byte("...")},
+                  Attributes: abci.EventAttribute{
+                      {Key: []byte("address"), Value: []byte("AddrA"), Index: true},
+                      {Key: []byte("source"), Value: []byte("SrcX"), Index: true},
+                      {Key: []byte("amount"), Value: []byte("..."), Index: true},
+                      {Key: []byte("balance"), Value: []byte("..."), Index: true},
                   },
               },
               {
                   Type: "rewards.withdraw",
-                  Attributes: kv.Pairs{
-                      kv.Pair{Key: []byte("address"), Value: []byte("AddrB")},
-                      kv.Pair{Key: []byte("source"), Value: []byte("SrcY")},
-                      kv.Pair{Key: []byte("amount"), Value: []byte("...")},
-                      kv.Pair{Key: []byte("balance"), Value: []byte("...")},
+                  Attributes: abci.EventAttribute{
+                      {Key: []byte("address"), Value: []byte("AddrB"), Index: true},
+                      {Key: []byte("source"), Value: []byte("SrcY"), Index: true},
+                      {Key: []byte("amount"), Value: []byte("..."), Index: true},
+                      {Key: []byte("balance"), Value: []byte("..."), Index: true},
                   },
               },
               {
                   Type: "transfer",
-                  Attributes: kv.Pairs{
-                      kv.Pair{Key: []byte("sender"), Value: []byte("AddrC")},
-                      kv.Pair{Key: []byte("recipient"), Value: []byte("AddrD")},
-                      kv.Pair{Key: []byte("amount"), Value: []byte("...")},
+                  Attributes: abci.EventAttribute{
+                      {Key: []byte("sender"), Value: []byte("AddrC"), Index: true},
+                      {Key: []byte("recipient"), Value: []byte("AddrD"), Index: true},
+                      {Key: []byte("amount"), Value: []byte("..."), Index: true},
                   },
               },
           },
