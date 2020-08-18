@@ -138,7 +138,7 @@ little overview what they do.
   [README](https://github.com/tendermint/tendermint/blob/master/p2p/README.md).
 - `rpc` [Tendermint's RPC](./rpc.md).
 - `rpc-server` RPC server. For implementation details, please read the
-  [doc.go](https://github.com/tendermint/tendermint/blob/master/rpc/lib/doc.go).
+  [doc.go](https://github.com/tendermint/tendermint/blob/master/rpc/jsonrpc/doc.go).
 - `state` Represents the latest state and execution submodule, which
   executes blocks against the application.
 - `types` A collection of the publicly exposed types and methods to

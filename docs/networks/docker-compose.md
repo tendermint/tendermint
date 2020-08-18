@@ -59,7 +59,7 @@ calling the `tendermint testnet` command.
 The `./build` directory is mounted to the `/tendermint` mount point to attach
 the binary and config files to the container.
 
-To change the number of validators / non-validators change the `localnet-start` Makefile target [here](../../makefile):
+To change the number of validators / non-validators change the `localnet-start` Makefile target [here](../../Makefile):
 
 ```makefile
 localnet-start: localnet-stop
