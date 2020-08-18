@@ -179,7 +179,7 @@ curl http://localhost:26657/status | json_pp | grep latest_app_hash
 
 <!-- markdown-link-check-disable -->
 
-Visit <http://localhost:26657> in your browser to see the list of other
+Visit `http://localhost:26657` in your browser to see the list of other
 endpoints. Some take no arguments (like `/status`), while others specify
 the argument name and use `_` as a placeholder.
 
@@ -196,7 +196,7 @@ taken into account:
 
 With `GET`:
 
-To send a UTF8 string byte array, quote the value of the tx pramater:
+To send a UTF8 string byte array, quote the value of the tx parameter:
 
 ```sh
 curl 'http://localhost:26657/broadcast_tx_commit?tx="hello"'
@@ -204,7 +204,7 @@ curl 'http://localhost:26657/broadcast_tx_commit?tx="hello"'
 
 which sends a 5 byte transaction: "h e l l o" \[68 65 6c 6c 6f\].
 
-Note the URL must be wrapped with single quoes, else bash will ignore
+Note the URL must be wrapped with single quotes, else bash will ignore
 the double quotes. To avoid the single quotes, escape the double quotes:
 
 ```sh
@@ -267,7 +267,7 @@ Some fields from the config file can be overwritten with flags.
 
 ## No Empty Blocks
 
-While the default behaviour of `tendermint` is still to create blocks
+While the default behavior of `tendermint` is still to create blocks
 approximately once per second, it is possible to disable empty blocks or
 set a block creation interval. In the former case, blocks will be
 created when there are new transactions or when the AppHash changes.
@@ -437,7 +437,7 @@ another address from the address book. On restarts you will always try to
 connect to these peers regardless of the size of your address book.
 
 All peers relay peers they know of by default. This is called the peer exchange
-protocol (PeX). With PeX, peers will be gossipping about known peers and forming
+protocol (PeX). With PeX, peers will be gossiping about known peers and forming
 a network, storing peer addresses in the addrbook. Because of this, you don't
 have to use a seed node if you have a live persistent peer.
 

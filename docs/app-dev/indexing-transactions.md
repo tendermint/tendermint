@@ -46,8 +46,7 @@ indexer = "kv"
 ```
 
 By default, Tendermint will index all transactions by their respective
-hashes using an embedded simple indexer. Note, we are planning to add
-more options in the future (e.g., PostgreSQL indexer).
+hashes and height using an embedded simple indexer.
 
 You can turn off indexing completely by setting `tx_index` to `null`.
 
@@ -81,7 +80,7 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Resul
 
 The transaction will be indexed (if the indexer is not `null`) with a certain
 attribute if the attribute's `Index` field is set to `true`. In the above
-example, all attributes will be used.
+example, all attributes will be indexed.
 
 ## Querying Transactions
 

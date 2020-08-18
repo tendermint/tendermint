@@ -15,8 +15,6 @@ Make sure you [have Go installed](https://golang.org/doc/install).
 Next, install the `abci-cli` tool and example applications:
 
 ```sh
-mkdir -p $GOPATH/src/github.com/tendermint
-cd $GOPATH/src/github.com/tendermint
 git clone https://github.com/tendermint/tendermint.git
 cd tendermint
 make tools
@@ -226,7 +224,7 @@ Like the kvstore app, its code can be found
 [here](https://github.com/tendermint/tendermint/blob/master/abci/cmd/abci-cli/abci-cli.go)
 and looks like:
 
-```sh
+```go
 func cmdCounter(cmd *cobra.Command, args []string) error {
 
     app := counter.NewCounterApplication(flagSerial)
@@ -340,7 +338,7 @@ npm install abci
 
 Now you can start the app:
 
-```bash
+```sh
 node example/counter.js
 ```
 

@@ -299,8 +299,8 @@ introduces a few **locking** rules which modulate which paths can be
 followed in the flow diagram. Once a validator precommits a block, it is
 locked on that block. Then,
 
-1.  it must prevote for the block it is locked on
-2.  it can only unlock, and precommit for a new block, if there is a
+1. it must prevote for the block it is locked on
+2. it can only unlock, and precommit for a new block, if there is a
     polka for that block in a later round
 
 ## Stake
