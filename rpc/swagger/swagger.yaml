@@ -579,13 +579,13 @@ paths:
           name: minHeight
           description: Minimum block height to return
           schema:
-            type: number
+            type: integer
             example: 1
         - in: query
           name: maxHeight
           description: Maximum block height to return
           schema:
-            type: number
+            type: integer
             example: 2
       tags:
         - Info
@@ -612,7 +612,7 @@ paths:
         - in: query
           name: height
           schema:
-            type: number
+            type: integer
             default: 0
             example: 1
           description: height to return. If no height is provided, it will fetch the latest block.
@@ -671,7 +671,7 @@ paths:
           name: height
           description: height to return. If no height is provided, it will fetch informations regarding the latest block.
           schema:
-            type: number
+            type: integer
             default: 0
             example: 1
       tags:
@@ -700,7 +700,7 @@ paths:
           name: height
           description: height to return. If no height is provided, it will fetch commit informations regarding the latest block.
           schema:
-            type: number
+            type: integer
             default: 0
             example: 1
       tags:
@@ -732,7 +732,7 @@ paths:
           name: height
           description: height to return. If no height is provided, it will fetch validator set which corresponds to the latest block.
           schema:
-            type: number
+            type: integer
             default: 0
             example: 1
         - in: query
@@ -740,7 +740,7 @@ paths:
           description: "Page number (1-based)"
           required: false
           schema:
-            type: number
+            type: integer
             default: 1
             example: 1
         - in: query
@@ -748,7 +748,7 @@ paths:
           description: "Number of entries per page (max: 100)"
           required: false
           schema:
-            type: number
+            type: integer
             example: 30
             default: 30
       tags:
@@ -847,7 +847,7 @@ paths:
           name: height
           description: height to return. If no height is provided, it will fetch commit informations regarding the latest block.
           schema:
-            type: number
+            type: integer
             default: 0
             example: 1
       tags:
@@ -877,7 +877,7 @@ paths:
           description: Maximum number of unconfirmed transactions to return (max 100)
           required: false
           schema:
-            type: number
+            type: integer
             default: 30
             example: 1
       tags:
@@ -947,7 +947,7 @@ paths:
           description: "Page number (1-based)"
           required: false
           schema:
-            type: number
+            type: integer
             default: 1
             example: 1
         - in: query
@@ -955,7 +955,7 @@ paths:
           description: "Number of entries per page (max: 100)"
           required: false
           schema:
-            type: number
+            type: integer
             default: 30
             example: 30
         - in: query
@@ -1063,7 +1063,7 @@ paths:
           description: Height (0 means latest)
           required: false
           schema:
-            type: number
+            type: integer
             example: 1
             default: 0
         - in: query
@@ -1127,7 +1127,7 @@ components:
       type: object
       properties:
         id:
-          type: number
+          type: integer
           example: 0
         jsonrpc:
           type: string
@@ -1303,13 +1303,13 @@ components:
           type: string
           example: "0"
         Progress:
-          type: number
+          type: integer
           example: 0
     Channel:
       type: object
       properties:
         ID:
-          type: number
+          type: integer
           example: 48
         SendQueueCapacity:
           type: string
@@ -1362,7 +1362,7 @@ components:
             type: string
             example: "Listener(@)"
         n_peers:
-          type: number
+          type: integer
           example: "1"
         peers:
           type: array
@@ -1390,7 +1390,7 @@ components:
             - "hash"
           properties:
             total:
-              type: number
+              type: integer
               example: 1
             hash:
               type: string
@@ -1471,7 +1471,7 @@ components:
         block_id:
           $ref: "#/components/schemas/BlockID"
         block_size:
-          type: number
+          type: integer
           example: 1000000
         header:
           $ref: "#/components/schemas/BlockHeader"
@@ -1511,13 +1511,13 @@ components:
         - "signature"
       properties:
         type:
-          type: number
+          type: integer
           example: 2
         height:
           type: string
           example: "1262085"
         round:
-          type: number
+          type: integer
           example: 0
         block_id:
           $ref: "#/components/schemas/BlockID"
@@ -1528,7 +1528,7 @@ components:
           type: string
           example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
         validator_index:
-          type: number
+          type: integer
           example: 0
         signature:
           type: string
@@ -1551,9 +1551,9 @@ components:
           type: object
           properties:
             height:
-              type: number
+              type: integer
             round:
-              type: number
+              type: integer
             block_id:
               $ref: "#/components/schemas/BlockID"
             signatures:
@@ -1566,7 +1566,7 @@ components:
         pub_key:
           $ref: "#/components/schemas/PubKey"
         voting_power:
-          type: number
+          type: integer
         address:
           type: string
     Evidence:
@@ -1575,11 +1575,11 @@ components:
         type:
           type: string
         height:
-          type: number
+          type: integer
         time:
-          type: number
+          type: integer
         total_voting_power:
-          type: number
+          type: integer
         validator:
           $ref: "#/components/schemas/Validator"
     BlockComplete:
@@ -1619,7 +1619,7 @@ components:
           type: string
           example: "2.0"
         id:
-          type: number
+          type: integer
           example: 0
         result:
           type: "object"
@@ -1804,7 +1804,7 @@ components:
           type: string
           example: "2.0"
         id:
-          type: number
+          type: integer
           example: 0
         result:
           required:
@@ -1868,7 +1868,7 @@ components:
                             - "hash"
                           properties:
                             total:
-                              type: number
+                              type: integer
                               example: 1
                             hash:
                               type: string
@@ -1914,7 +1914,7 @@ components:
                       type: string
                       example: "1311801"
                     round:
-                      type: number
+                      type: integer
                       example: 0
                     block_id:
                       required:
@@ -1930,7 +1930,7 @@ components:
                             - "hash"
                           properties:
                             total:
-                              type: number
+                              type: integer
                               example: 1
                             hash:
                               type: string
@@ -1943,7 +1943,7 @@ components:
                         type: "object"
                         properties:
                           block_id_flag:
-                            type: number
+                            type: integer
                             example: 2
                           validator_address:
                             type: string
@@ -1971,7 +1971,7 @@ components:
           type: string
           example: "2.0"
         id:
-          type: number
+          type: integer
           example: 0
         result:
           required:
@@ -2025,7 +2025,7 @@ components:
           type: string
           example: "2.0"
         id:
-          type: number
+          type: integer
           example: 0
         result:
           type: "object"
@@ -2089,7 +2089,7 @@ components:
                           type: string
                           example: "100000"
                         max_num:
-                          type: number
+                          type: integer
                           example: 50
                         proof_trial_period:
                           type: string
@@ -2149,7 +2149,7 @@ components:
           type: string
           example: "2.0"
         id:
-          type: number
+          type: integer
           example: 0
         result:
           required:
@@ -2183,10 +2183,10 @@ components:
                   type: string
                   example: "1311801"
                 round:
-                  type: number
+                  type: integer
                   example: 0
                 step:
-                  type: number
+                  type: integer
                   example: 3
                 start_time:
                   type: string
@@ -2256,7 +2256,7 @@ components:
                       type: "object"
                   type: "object"
                 locked_round:
-                  type: number
+                  type: integer
                   example: -1
                 valid_round:
                   type: string
@@ -2291,7 +2291,7 @@ components:
                         type: string
                         example: "BA{100:____________________________________________________________________________________________________} 0/170220253 = 0.00"
                 commit_round:
-                  type: number
+                  type: integer
                   example: -1
                 last_commit:
                   nullable: true
@@ -2416,7 +2416,7 @@ components:
                             type: string
                             example: "0"
                           step:
-                            type: number
+                            type: integer
                             example: 3
                           start_time:
                             type: string
@@ -2430,7 +2430,7 @@ components:
                               - "hash"
                             properties:
                               total:
-                                type: number
+                                type: integer
                                 example: 0
                               hash:
                                 type: string
@@ -2438,7 +2438,7 @@ components:
                             type: "object"
                           proposal_pol_round:
                             nullable: true
-                            type: number
+                            type: integer
                             example: -1
                           proposal_pol:
                             nullable: true
@@ -2454,14 +2454,14 @@ components:
                             example: "____________________________________________________________________________________________________"
                           last_commit_round:
                             nullable: true
-                            type: number
+                            type: integer
                             example: 0
                           last_commit:
                             nullable: true
                             type: string
                             example: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                           catchup_commit_round:
-                            type: number
+                            type: integer
                             nullable: true
                             example: -1
                           catchup_commit:
@@ -2494,7 +2494,7 @@ components:
           type: string
           example: "2.0"
         id:
-          type: number
+          type: integer
           example: 0
         result:
           required:
@@ -2531,7 +2531,7 @@ components:
                     type: "object"
                     properties:
                       round:
-                        type: number
+                        type: integer
                         example: 0
                       prevotes:
                         type: "array"
@@ -2560,7 +2560,7 @@ components:
                       type: string
                       example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
                     index:
-                      type: number
+                      type: integer
                       example: 0
               type: "object"
           type: "object"
@@ -2575,7 +2575,7 @@ components:
           type: string
           example: "2.0"
         id:
-          type: number
+          type: integer
           example: 0
         result:
           type: "object"
@@ -2624,7 +2624,7 @@ components:
                       type: string
                       example: "100000"
                     max_num:
-                      type: number
+                      type: integer
                       example: 50
                     proof_trial_period:
                       type: string
@@ -2652,7 +2652,7 @@ components:
           type: string
           example: "2.0"
         id:
-          type: number
+          type: integer
           example: 0
         result:
           required:
@@ -2689,7 +2689,7 @@ components:
           type: string
           example: "2.0"
         id:
-          type: number
+          type: integer
           example: 0
         result:
           required:
@@ -2727,7 +2727,7 @@ components:
           type: string
           example: "2.0"
         id:
-          type: number
+          type: integer
           example: 0
         result:
           required:
@@ -2746,7 +2746,7 @@ components:
                     type: string
                     example: "1000"
                   index:
-                    type: number
+                    type: integer
                     example: 0
                   tx_result:
                     required:
@@ -2830,7 +2830,7 @@ components:
           type: string
           example: "2.0"
         id:
-          type: number
+          type: integer
           example: 0
         result:
           required:
@@ -2847,7 +2847,7 @@ components:
               type: string
               example: "1000"
             index:
-              type: number
+              type: integer
               example: 0
             tx_result:
               required:
@@ -2891,7 +2891,7 @@ components:
           type: string
           example: "2.0"
         id:
-          type: number
+          type: integer
           example: 0
         result:
           required:
@@ -2963,7 +2963,7 @@ components:
               type: "object"
           type: "object"
         id:
-          type: number
+          type: integer
           example: 0
         jsonrpc:
           type: string
@@ -2981,7 +2981,7 @@ components:
           type: string
           example: ""
         id:
-          type: number
+          type: integer
           example: 0
         jsonrpc:
           type: string
@@ -3044,7 +3044,7 @@ components:
               type: "object"
           type: "object"
         id:
-          type: number
+          type: integer
           example: 0
         jsonrpc:
           type: string
@@ -3110,7 +3110,7 @@ components:
               example: "bank"
           type: "object"
         id:
-          type: number
+          type: integer
           example: 0
         jsonrpc:
           type: string
@@ -3127,7 +3127,7 @@ components:
           type: string
           example: "2.0"
         id:
-          type: number
+          type: integer
           example: 0
         result:
           required:
