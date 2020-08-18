@@ -32,7 +32,6 @@ jobs:
             .sum
           SET_ENV_NAME_INSERTIONS: 1
           SET_ENV_NAME_LINES: 1
-      - run: go version
       - name: Set GOBIN
         run: |
           echo "::add-path::$(go env GOPATH)/bin"
