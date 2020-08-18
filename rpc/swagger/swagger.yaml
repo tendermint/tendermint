@@ -98,7 +98,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "456"
+          example: "456"
           description: The transaction
       responses:
         200:
@@ -204,7 +204,7 @@ paths:
       summary: Checks the transaction without executing it.
       tags:
         - Tx
-      operationId: broadcast_tx_commit
+      operationId: check_tx
       description: |
         The transaction won't be added to the mempool.
 
@@ -1630,7 +1630,7 @@ components:
               example: "12"
             txs_results:
               type: "array"
-              x-nullable: true
+              nullable: true
               items:
                 type: "object"
                 properties:
@@ -1654,7 +1654,7 @@ components:
                     example: "100"
                   events:
                     type: "array"
-                    x-nullable: true
+                    nullable: true
                     items:
                       type: "object"
                       properties:
@@ -1663,7 +1663,7 @@ components:
                           example: "app"
                         attributes:
                           type: "array"
-                          x-nullable: false
+                          nullable: false
                           items:
                             type: "object"
                             properties:
@@ -1673,12 +1673,15 @@ components:
                               value:
                                 type: "string"
                                 example: "Q29zbW9zaGkgTmV0b3dva28="
+                              index:
+                                type: "boolean"
+                                example: true
                   codespace:
                     type: "string"
                     example: "ibc"
             begin_block_events:
               type: "array"
-              x-nullable: true
+              nullable: true
               items:
                 type: "object"
                 properties:
@@ -1687,7 +1690,7 @@ components:
                     example: "app"
                   attributes:
                     type: "array"
-                    x-nullable: false
+                    nullable: false
                     items:
                       type: "object"
                       properties:
@@ -1697,9 +1700,12 @@ components:
                         value:
                           type: "string"
                           example: "Q29zbW9zaGkgTmV0b3dva28="
+                        index:
+                          type: "boolean"
+                          example: true
             end_block:
               type: "array"
-              x-nullable: true
+              nullable: true
               items:
                 type: "object"
                 properties:
@@ -1708,7 +1714,7 @@ components:
                     example: "app"
                   attributes:
                     type: "array"
-                    x-nullable: false
+                    nullable: false
                     items:
                       type: "object"
                       properties:
@@ -1718,9 +1724,12 @@ components:
                         value:
                           type: "string"
                           example: "Q29zbW9zaGkgTmV0b3dva28="
+                        index:
+                          type: "boolean"
+                          example: true
             validator_updates:
               type: "array"
-              x-nullable: true
+              nullable: true
               items:
                 type: "object"
                 properties:
@@ -1741,7 +1750,7 @@ components:
                     example: "300"
             consensus_param_updates:
               type: "object"
-              x-nullable: true
+              nullable: true
               required:
                 - "block"
                 - "evidence"
@@ -1998,11 +2007,11 @@ components:
                     type: "string"
                     example: "13769415"
             count:
-              type: "number"
-              example: 1
+              type: "string"
+              example: "1"
             total:
-              type: "number"
-              example: 25
+              type: "string"
+              example: "25"
           type: "object"
     GenesisResponse:
       type: object
@@ -2027,6 +2036,7 @@ components:
               required:
                 - "genesis_time"
                 - "chain_id"
+                - "initial_height"
                 - "consensus_params"
                 - "validators"
                 - "app_hash"
@@ -2037,6 +2047,9 @@ components:
                 chain_id:
                   type: "string"
                   example: "cosmoshub-2"
+                initial_height:
+                  type: "string"
+                  example: "2"
                 consensus_params:
                   type: "object"
                   required:
@@ -2063,9 +2076,21 @@ components:
                     evidence:
                       type: "object"
                       required:
-                        - "max_age"
+                        - "max_age_num_blocks"
+                        - "max_age_duration"
+                        - "max_num"
+                        - "proof_trial_period"
                       properties:
                         max_age:
+                          type: "string"
+                          example: "100000"
+                        max_age_duration:
+                          type: "string"
+                          example: "100000"
+                        max_num:
+                          type: "number"
+                          example: 50
+                        proof_trial_period:
                           type: "string"
                           example: "100000"
                     validator:
@@ -2245,7 +2270,7 @@ components:
                         example: "0"
                       prevotes:
                         type: "array"
-                        x-nullable: true
+                        nullable: true
                         items:
                           type: "string"
                         example:
@@ -2256,7 +2281,7 @@ components:
                         example: "BA{100:___________________x________________________________________________________________________________} 209706/170220253 = 0.00"
                       precommits:
                         type: "array"
-                        x-nullable: true
+                        nullable: true
                         items:
                           type: "string"
                         example:
@@ -2268,7 +2293,7 @@ components:
                   type: number
                   example: -1
                 last_commit:
-                  x-nullable: true
+                  nullable: true
                   required:
                     - "votes"
                     - "votes_bit_array"
@@ -2411,35 +2436,35 @@ components:
                                 example: ""
                             type: "object"
                           proposal_pol_round:
-                            x-nullable: true
+                            nullable: true
                             type: number
                             example: -1
                           proposal_pol:
-                            x-nullable: true
+                            nullable: true
                             type: "string"
                             example: "____________________________________________________________________________________________________"
                           prevotes:
-                            x-nullable: true
+                            nullable: true
                             type: "string"
                             example: "___________________x________________________________________________________________________________"
                           precommits:
-                            x-nullable: true
+                            nullable: true
                             type: "string"
                             example: "____________________________________________________________________________________________________"
                           last_commit_round:
-                            x-nullable: true
+                            nullable: true
                             type: number
                             example: 0
                           last_commit:
-                            x-nullable: true
+                            nullable: true
                             type: "string"
                             example: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                           catchup_commit_round:
                             type: number
-                            x-nullable: true
+                            nullable: true
                             example: -1
                           catchup_commit:
-                            x-nullable: true
+                            nullable: true
                             type: "string"
                             example: "____________________________________________________________________________________________________"
                         type: "object"
@@ -2505,8 +2530,8 @@ components:
                     type: "object"
                     properties:
                       round:
-                        type: "string"
-                        example: "0"
+                        type: "number"
+                        example: 0
                       prevotes:
                         type: "array"
                         items:
@@ -2534,8 +2559,8 @@ components:
                       type: "string"
                       example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
                     index:
-                      type: "string"
-                      example: "0"
+                      type: "number"
+                      example: 0
               type: "object"
           type: "object"
     ConsensusParamsResponse:
@@ -2586,9 +2611,21 @@ components:
                 evidence:
                   type: "object"
                   required:
-                    - "max_age"
+                    - "max_age_num_blocks"
+                    - "max_age_duration"
+                    - "max_num"
+                    - "proof_trial_period"
                   properties:
                     max_age:
+                      type: "string"
+                      example: "100000"
+                    max_age_duration:
+                      type: "string"
+                      example: "100000"
+                    max_num:
+                      type: "number"
+                      example: 50
+                    proof_trial_period:
                       type: "string"
                       example: "100000"
                 validator:
@@ -2633,10 +2670,10 @@ components:
               example: "19974"
           #          txs:
           #            type: "array"
-          #            x-nullable: true
+          #            nullable: true
           #            items:
           #              type: "string"
-          #              x-nullable: true
+          #              nullable: true
           #            example:
           #              - "gAPwYl3uCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUA75/FmYq9WymsOBJ0XSJ8yV8zmQKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhQbrvwbvlNiT+Yjr86G+YQNx7kRVgowjE1xDQoUjJyJG+WaWBwSiGannBRFdrbma+8SFK2m+1oxgILuQLO55n8mWfnbIzyPCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUQNGfkmhTNMis4j+dyMDIWXdIPiYKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhS8sL0D0wwgGCItQwVowak5YB38KRIUCg4KBXVhdG9tEgUxMDA1NBDoxRgaagom61rphyECn8x7emhhKdRCB2io7aS/6Cpuq5NbVqbODmqOT3jWw6kSQKUresk+d+Gw0BhjiggTsu8+1voW+VlDCQ1GRYnMaFOHXhyFv7BCLhFWxLxHSAYT8a5XqoMayosZf9mANKdXArA="
           type: "object"
@@ -2671,10 +2708,10 @@ components:
               example: "19974"
             txs:
               type: array
-              x-nullable: true
+              nullable: true
               items:
                 type: string
-                x-nullable: true
+                nullable: true
               example:
                 - "gAPwYl3uCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUA75/FmYq9WymsOBJ0XSJ8yV8zmQKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhQbrvwbvlNiT+Yjr86G+YQNx7kRVgowjE1xDQoUjJyJG+WaWBwSiGannBRFdrbma+8SFK2m+1oxgILuQLO55n8mWfnbIzyPCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUQNGfkmhTNMis4j+dyMDIWXdIPiYKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhS8sL0D0wwgGCItQwVowak5YB38KRIUCg4KBXVhdG9tEgUxMDA1NBDoxRgaagom61rphyECn8x7emhhKdRCB2io7aS/6Cpuq5NbVqbODmqOT3jWw6kSQKUresk+d+Gw0BhjiggTsu8+1voW+VlDCQ1GRYnMaFOHXhyFv7BCLhFWxLxHSAYT8a5XqoMayosZf9mANKdXArA="
           type: "object"
@@ -3048,7 +3085,7 @@ components:
               example: "0"
             events:
               type: "array"
-              x-nullable: true
+              nullable: true
               items:
                 type: "object"
                 properties:
@@ -3057,7 +3094,7 @@ components:
                     example: "app"
                   attributes:
                     type: "array"
-                    x-nullable: false
+                    nullable: false
                     items:
                       type: "object"
                       properties:
