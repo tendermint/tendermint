@@ -84,7 +84,7 @@ Hello, Tendermint Core
 
 Tendermint Core communicates with the application through the Application
 BlockChain Interface (ABCI). All message types are defined in the [protobuf
-file](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto).
+file](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto).
 This allows Tendermint Core to run applications written in any programming
 language.
 

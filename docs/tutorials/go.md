@@ -87,7 +87,7 @@ Hello, Tendermint Core
 
 Tendermint Core communicates with the application through the Application
 BlockChain Interface (ABCI). All message types are defined in the [protobuf
-file](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto).
+file](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto).
 This allows Tendermint Core to run applications written in any programming
 language.
 
@@ -291,7 +291,7 @@ the application's `Query` method.
 
 Applications are free to provide their own APIs. But by using Tendermint Core
 as a proxy, clients (including [light client
-package](https://godoc.org/github.com/tendermint/tendermint/lite2)) can leverage
+package](https://godoc.org/github.com/tendermint/tendermint/light)) can leverage
 the unified API across different applications. Plus they won't have to call the
 otherwise separate Tendermint Core API for additional proofs.
 
