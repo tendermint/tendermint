@@ -1623,7 +1623,7 @@ components:
                   power:
                     type: string
                     example: "300"
-            consensus_params:
+            consensus_params_updates:
               $ref: "#/components/schemas/ConsensusParams"
 
     CommitResponse:
