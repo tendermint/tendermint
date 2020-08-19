@@ -1380,95 +1380,7 @@ components:
           properties:
             result:
               $ref: "#/components/schemas/NetInfo"
-    BlockID:
-      required:
-        - "hash"
-        - "parts"
-      properties:
-        hash:
-          type: string
-          example: "D82C2734BB0E76C772A10994B210EF9D11505D1B98CB189D9CF7F9A5488672A5"
-        parts:
-          required:
-            - "total"
-            - "hash"
-          properties:
-            total:
-              type: integer
-              example: 1
-            hash:
-              type: string
-              example: "CB02DCAA7FB46BF874052EC2273FD0B1F2CF2E1593298D9781E60FE9C3DB8638"
-          type: object
-      type: object
-    BlockHeader:
-      required:
-        - "version"
-        - "chain_id"
-        - "height"
-        - "time"
-        - "last_block_id"
-        - "last_commit_hash"
-        - "data_hash"
-        - "validators_hash"
-        - "next_validators_hash"
-        - "consensus_hash"
-        - "app_hash"
-        - "last_results_hash"
-        - "evidence_hash"
-        - "proposer_address"
-      properties:
-        version:
-          required:
-            - "block"
-            - "app"
-          properties:
-            block:
-              type: string
-              example: "10"
-            app:
-              type: string
-              example: "0"
-          type: object
-        chain_id:
-          type: string
-          example: "cosmoshub-2"
-        height:
-          type: string
-          example: "12"
-        time:
-          type: string
-          example: "2019-04-22T17:01:51.701356223Z"
-        last_block_id:
-          $ref: "#/components/schemas/BlockID"
-        last_commit_hash:
-          type: string
-          example: "21B9BC845AD2CB2C4193CDD17BFC506F1EBE5A7402E84AD96E64171287A34812"
-        data_hash:
-          type: string
-          example: "970886F99E77ED0D60DA8FCE0447C2676E59F2F77302B0C4AA10E1D02F18EF73"
-        validators_hash:
-          type: string
-          example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
-        next_validators_hash:
-          type: string
-          example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
-        consensus_hash:
-          type: string
-          example: "0F2908883A105C793B74495EB7D6DF2EEA479ED7FC9349206A65CB0F9987A0B8"
-        app_hash:
-          type: string
-          example: "223BF64D4A01074DC523A80E76B9BBC786C791FB0A1893AC5B14866356FCFD6C"
-        last_results_hash:
-          type: string
-          example: ""
-        evidence_hash:
-          type: string
-          example: ""
-        proposer_address:
-          type: string
-          example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
-      type: object
+
     BlockMeta:
       type: object
       properties:
@@ -1482,6 +1394,7 @@ components:
         num_txs:
           type: string
           example: "54"
+
     Blockchain:
       type: object
       required:
@@ -1495,6 +1408,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/BlockMeta"
+
     BlockchainResponse:
       description: Blockchain info
       allOf:
@@ -1596,18 +1510,6 @@ components:
           properties:
             result:
               $ref: "#/components/schemas/BlockComplete"
-    Event:
-      type: object
-      properties:
-        key:
-          type: string
-          example: "YWN0aW9u"
-        value:
-          type: string
-          example: "c2VuZA=="
-        index:
-          type: boolean
-          example: false
 
     ################## FROM NOW ON NEEDS REFACTOR ##################
     BlockResultsResponse:
@@ -1763,26 +1665,7 @@ components:
                       type: integer
                       example: 0
                     block_id:
-                      required:
-                        - "hash"
-                        - "parts"
-                      properties:
-                        hash:
-                          type: string
-                          example: "112BC173FD838FB68EB43476816CD7B4C6661B6884A9E357B417EE957E1CF8F7"
-                        parts:
-                          required:
-                            - "total"
-                            - "hash"
-                          properties:
-                            total:
-                              type: integer
-                              example: 1
-                            hash:
-                              type: string
-                              example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
-                          type: object
-                      type: object
+                      $ref: "#/components/schemas/BlockID"
                     signatures:
                       type: array
                       items:
@@ -2157,6 +2040,7 @@ components:
                         type: object
                     type: object
           type: object
+
     ConsensusStateResponse:
       type: object
       required:
@@ -2238,6 +2122,7 @@ components:
                       example: 0
               type: object
           type: object
+
     ConsensusParamsResponse:
       type: object
       required:
@@ -2300,6 +2185,7 @@ components:
           #            example:
           #              - "gAPwYl3uCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUA75/FmYq9WymsOBJ0XSJ8yV8zmQKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhQbrvwbvlNiT+Yjr86G+YQNx7kRVgowjE1xDQoUjJyJG+WaWBwSiGannBRFdrbma+8SFK2m+1oxgILuQLO55n8mWfnbIzyPCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUQNGfkmhTNMis4j+dyMDIWXdIPiYKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhS8sL0D0wwgGCItQwVowak5YB38KRIUCg4KBXVhdG9tEgUxMDA1NBDoxRgaagom61rphyECn8x7emhhKdRCB2io7aS/6Cpuq5NbVqbODmqOT3jWw6kSQKUresk+d+Gw0BhjiggTsu8+1voW+VlDCQ1GRYnMaFOHXhyFv7BCLhFWxLxHSAYT8a5XqoMayosZf9mANKdXArA="
           type: object
+
     UnconfirmedTransactionsResponse:
       type: object
       required:
@@ -2338,6 +2224,7 @@ components:
               example:
                 - "gAPwYl3uCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUA75/FmYq9WymsOBJ0XSJ8yV8zmQKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhQbrvwbvlNiT+Yjr86G+YQNx7kRVgowjE1xDQoUjJyJG+WaWBwSiGannBRFdrbma+8SFK2m+1oxgILuQLO55n8mWfnbIzyPCjCMTXENChSMnIkb5ZpYHBKIZqecFEV2tuZr7xIUQNGfkmhTNMis4j+dyMDIWXdIPiYKMIxNcQ0KFIyciRvlmlgcEohmp5wURXa25mvvEhS8sL0D0wwgGCItQwVowak5YB38KRIUCg4KBXVhdG9tEgUxMDA1NBDoxRgaagom61rphyECn8x7emhhKdRCB2io7aS/6Cpuq5NbVqbODmqOT3jWw6kSQKUresk+d+Gw0BhjiggTsu8+1voW+VlDCQ1GRYnMaFOHXhyFv7BCLhFWxLxHSAYT8a5XqoMayosZf9mANKdXArA="
           type: object
+
     TxSearchResponse:
       type: object
       required:
@@ -2387,16 +2274,7 @@ components:
                         type: string
                         example: "28596"
                       tags:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            key:
-                              type: string
-                              example: "YWN0aW9u"
-                            value:
-                              type: string
-                              example: "c2VuZA=="
+                        $ref: "#/components/schemas/Event"
                     type: object
                   tx:
                     type: string
@@ -2878,3 +2756,108 @@ components:
                 type: string
               example:
                 - "ed25519"
+
+    # Events in tendermint
+    Event:
+      type: object
+      properties:
+        key:
+          type: string
+          example: "YWN0aW9u"
+        value:
+          type: string
+          example: "c2VuZA=="
+        index:
+          type: boolean
+          example: false
+
+    # Block Header
+    BlockHeader:
+      required:
+        - "version"
+        - "chain_id"
+        - "height"
+        - "time"
+        - "last_block_id"
+        - "last_commit_hash"
+        - "data_hash"
+        - "validators_hash"
+        - "next_validators_hash"
+        - "consensus_hash"
+        - "app_hash"
+        - "last_results_hash"
+        - "evidence_hash"
+        - "proposer_address"
+      properties:
+        version:
+          required:
+            - "block"
+            - "app"
+          properties:
+            block:
+              type: string
+              example: "10"
+            app:
+              type: string
+              example: "0"
+          type: object
+        chain_id:
+          type: string
+          example: "cosmoshub-2"
+        height:
+          type: string
+          example: "12"
+        time:
+          type: string
+          example: "2019-04-22T17:01:51.701356223Z"
+        last_block_id:
+          $ref: "#/components/schemas/BlockID"
+        last_commit_hash:
+          type: string
+          example: "21B9BC845AD2CB2C4193CDD17BFC506F1EBE5A7402E84AD96E64171287A34812"
+        data_hash:
+          type: string
+          example: "970886F99E77ED0D60DA8FCE0447C2676E59F2F77302B0C4AA10E1D02F18EF73"
+        validators_hash:
+          type: string
+          example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
+        next_validators_hash:
+          type: string
+          example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
+        consensus_hash:
+          type: string
+          example: "0F2908883A105C793B74495EB7D6DF2EEA479ED7FC9349206A65CB0F9987A0B8"
+        app_hash:
+          type: string
+          example: "223BF64D4A01074DC523A80E76B9BBC786C791FB0A1893AC5B14866356FCFD6C"
+        last_results_hash:
+          type: string
+          example: ""
+        evidence_hash:
+          type: string
+          example: ""
+        proposer_address:
+          type: string
+          example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
+      type: object
+
+    BlockID:
+      required:
+        - "hash"
+        - "parts"
+      properties:
+        hash:
+          type: string
+          example: "112BC173FD838FB68EB43476816CD7B4C6661B6884A9E357B417EE957E1CF8F7"
+        parts:
+          required:
+            - "total"
+            - "hash"
+          properties:
+            total:
+              type: integer
+              example: 1
+            hash:
+              type: string
+              example: "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
+          type: object
