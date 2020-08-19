@@ -1726,49 +1726,52 @@ components:
                   power:
                     type: string
                     example: "300"
-            consensus_param_updates:
-              type: object
-              nullable: true
-              required:
-                - "block"
-                - "evidence"
-                - "validator"
-              properties:
-                block:
-                  type: object
-                  required:
-                    - "max_bytes"
-                    - "max_gas"
-                    - "time_iota_ms"
-                  properties:
-                    max_bytes:
-                      type: string
-                      example: "22020096"
-                    max_gas:
-                      type: string
-                      example: "1000"
-                    time_iota_ms:
-                      type: string
-                      example: "1000"
-                evidence:
-                  type: object
-                  required:
-                    - "max_age"
-                  properties:
-                    max_age:
-                      type: string
-                      example: "100000"
-                validator:
-                  type: object
-                  required:
-                    - "pub_key_types"
-                  properties:
-                    pub_key_types:
-                      type: array
-                      items:
-                        type: string
-                      example:
-                        - "ed25519"
+              consensus_params:
+              $ref: "#/components/schemas/ConsensusParams"
+
+    ConsensusParams:
+      type: object
+      nullable: true
+      required:
+        - "block"
+        - "evidence"
+        - "validator"
+      properties:
+        block:
+          type: object
+          required:
+            - "max_bytes"
+            - "max_gas"
+            - "time_iota_ms"
+          properties:
+            max_bytes:
+              type: string
+              example: "22020096"
+            max_gas:
+              type: string
+              example: "1000"
+            time_iota_ms:
+              type: string
+              example: "1000"
+        evidence:
+          type: object
+          required:
+            - "max_age"
+          properties:
+            max_age:
+              type: string
+              example: "100000"
+        validator:
+          type: object
+          required:
+            - "pub_key_types"
+          properties:
+            pub_key_types:
+              type: array
+              items:
+                type: string
+              example:
+                - "ed25519"
 
     CommitResponse:
       type: object
@@ -1794,91 +1797,7 @@ components:
                 - "commit"
               properties:
                 header:
-                  required:
-                    - "version"
-                    - "chain_id"
-                    - "height"
-                    - "time"
-                    - "last_block_id"
-                    - "last_commit_hash"
-                    - "data_hash"
-                    - "validators_hash"
-                    - "next_validators_hash"
-                    - "consensus_hash"
-                    - "app_hash"
-                    - "last_results_hash"
-                    - "evidence_hash"
-                    - "proposer_address"
-                  properties:
-                    version:
-                      required:
-                        - "block"
-                        - "app"
-                      properties:
-                        block:
-                          type: string
-                          example: "10"
-                        app:
-                          type: string
-                          example: "0"
-                      type: object
-                    chain_id:
-                      type: string
-                      example: "cosmoshub-2"
-                    height:
-                      type: string
-                      example: "12"
-                    time:
-                      type: string
-                      example: "2019-04-22T17:01:51.701356223Z"
-                    last_block_id:
-                      required:
-                        - "hash"
-                        - "parts"
-                      properties:
-                        hash:
-                          type: string
-                          example: "D82C2734BB0E76C772A10994B210EF9D11505D1B98CB189D9CF7F9A5488672A5"
-                        parts:
-                          required:
-                            - "total"
-                            - "hash"
-                          properties:
-                            total:
-                              type: integer
-                              example: 1
-                            hash:
-                              type: string
-                              example: "CB02DCAA7FB46BF874052EC2273FD0B1F2CF2E1593298D9781E60FE9C3DB8638"
-                          type: object
-                      type: object
-                    last_commit_hash:
-                      type: string
-                      example: "21B9BC845AD2CB2C4193CDD17BFC506F1EBE5A7402E84AD96E64171287A34812"
-                    data_hash:
-                      type: string
-                      example: "970886F99E77ED0D60DA8FCE0447C2676E59F2F77302B0C4AA10E1D02F18EF73"
-                    validators_hash:
-                      type: string
-                      example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
-                    next_validators_hash:
-                      type: string
-                      example: "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0"
-                    consensus_hash:
-                      type: string
-                      example: "0F2908883A105C793B74495EB7D6DF2EEA479ED7FC9349206A65CB0F9987A0B8"
-                    app_hash:
-                      type: string
-                      example: "223BF64D4A01074DC523A80E76B9BBC786C791FB0A1893AC5B14866356FCFD6C"
-                    last_results_hash:
-                      type: string
-                      example: ""
-                    evidence_hash:
-                      type: string
-                      example: ""
-                    proposer_address:
-                      type: string
-                      example: "D540AB022088612AC74B287D076DBFBC4A377A2E"
+                  $ref: "#/components/schemas/BlockHeader"
                   type: object
                 commit:
                   required:
@@ -2029,59 +1948,7 @@ components:
                   type: string
                   example: "2"
                 consensus_params:
-                  type: object
-                  required:
-                    - "block"
-                    - "evidence"
-                    - "validator"
-                  properties:
-                    block:
-                      type: object
-                      required:
-                        - "max_bytes"
-                        - "max_gas"
-                        - "time_iota_ms"
-                      properties:
-                        max_bytes:
-                          type: string
-                          example: "22020096"
-                        max_gas:
-                          type: string
-                          example: "1000"
-                        time_iota_ms:
-                          type: string
-                          example: "1000"
-                    evidence:
-                      type: object
-                      required:
-                        - "max_age_num_blocks"
-                        - "max_age_duration"
-                        - "max_num"
-                        - "proof_trial_period"
-                      properties:
-                        max_age:
-                          type: string
-                          example: "100000"
-                        max_age_duration:
-                          type: string
-                          example: "100000"
-                        max_num:
-                          type: integer
-                          example: 50
-                        proof_trial_period:
-                          type: string
-                          example: "100000"
-                    validator:
-                      type: object
-                      required:
-                        - "pub_key_types"
-                      properties:
-                        pub_key_types:
-                          type: array
-                          items:
-                            type: string
-                          example:
-                            - "ed25519"
+                  $ref: "#/components/schemas/ConsensusParams"
                 validators:
                   type: array
                   items:
@@ -2562,61 +2429,9 @@ components:
           properties:
             block_height:
               type: string
-              example: "1313448"
+              example: "1"
             consensus_params:
-              type: object
-              required:
-                - "block"
-                - "evidence"
-                - "validator"
-              properties:
-                block:
-                  type: object
-                  required:
-                    - "max_bytes"
-                    - "max_gas"
-                    - "time_iota_ms"
-                  properties:
-                    max_bytes:
-                      type: string
-                      example: "22020096"
-                    max_gas:
-                      type: string
-                      example: "1000"
-                    time_iota_ms:
-                      type: string
-                      example: "1000"
-                evidence:
-                  type: object
-                  required:
-                    - "max_age_num_blocks"
-                    - "max_age_duration"
-                    - "max_num"
-                    - "proof_trial_period"
-                  properties:
-                    max_age:
-                      type: string
-                      example: "100000"
-                    max_age_duration:
-                      type: string
-                      example: "100000"
-                    max_num:
-                      type: integer
-                      example: 50
-                    proof_trial_period:
-                      type: string
-                      example: "100000"
-                validator:
-                  type: object
-                  required:
-                    - "pub_key_types"
-                  properties:
-                    pub_key_types:
-                      type: array
-                      items:
-                        type: string
-                      example:
-                        - "ed25519"
+              $ref: "#/components/schemas/ConsensusParams"
 
     NumUnconfirmedTransactionsResponse:
       type: object
@@ -2845,14 +2660,7 @@ components:
                 tags:
                   type: array
                   items:
-                    type: object
-                    properties:
-                      key:
-                        type: string
-                        example: "YWN0aW9u"
-                      value:
-                        type: string
-                        example: "c2VuZA=="
+                    $ref: "#/components/schemas/Event"
               type: object
             tx:
               type: string
@@ -3074,14 +2882,7 @@ components:
                     type: array
                     nullable: false
                     items:
-                      type: object
-                      properties:
-                        key:
-                          type: string
-                          example: "Y3JlYXRvcg=="
-                        value:
-                          type: string
-                          example: "Q29zbW9zaGkgTmV0b3dva28="
+                      $ref: "#/components/schemas/Event"
             codespace:
               type: string
               example: "bank"
@@ -3092,6 +2893,7 @@ components:
         jsonrpc:
           type: string
           example: "2.0"
+
     BroadcastTxResponse:
       type: object
       required:
@@ -3132,6 +2934,7 @@ components:
         error:
           type: string
           example: ""
+
     dialPeersPost:
       type: object
       properties:
@@ -3144,6 +2947,7 @@ components:
             type: string
           example:
             ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
+
     dialSeedsPost:
       type: object
       properties:
@@ -3153,6 +2957,7 @@ components:
             type: string
           example:
             ["6f172048b821e3b1ab98ffb0973ba737966eecf8@192.168.1.2:26656"]
+
     dialResp:
       type: object
       properties:
