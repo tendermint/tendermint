@@ -1503,6 +1503,7 @@ components:
           properties:
             result:
               $ref: "#/components/schemas/Blockchain"
+
     Commit:
       required:
         - "type"
@@ -1537,6 +1538,7 @@ components:
         signature:
           type: string
           example: "DBchvucTzAUEJnGYpNvMdqLhBAHG4Px8BsOBB3J3mAFCLGeuG7uJqy+nVngKzZdPhPi8RhmE/xcw/M9DOJjEDg=="
+
     Block:
       type: object
       properties:
@@ -1564,15 +1566,7 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/Commit"
-    Validator:
-      type: object
-      properties:
-        pub_key:
-          $ref: "#/components/schemas/PubKey"
-        voting_power:
-          type: integer
-        address:
-          type: string
+
     Evidence:
       type: object
       properties:
@@ -1586,6 +1580,7 @@ components:
           type: integer
         validator:
           $ref: "#/components/schemas/Validator"
+
     BlockComplete:
       type: object
       properties:
@@ -1726,52 +1721,8 @@ components:
                   power:
                     type: string
                     example: "300"
-              consensus_params:
+            consensus_params:
               $ref: "#/components/schemas/ConsensusParams"
-
-    ConsensusParams:
-      type: object
-      nullable: true
-      required:
-        - "block"
-        - "evidence"
-        - "validator"
-      properties:
-        block:
-          type: object
-          required:
-            - "max_bytes"
-            - "max_gas"
-            - "time_iota_ms"
-          properties:
-            max_bytes:
-              type: string
-              example: "22020096"
-            max_gas:
-              type: string
-              example: "1000"
-            time_iota_ms:
-              type: string
-              example: "1000"
-        evidence:
-          type: object
-          required:
-            - "max_age"
-          properties:
-            max_age:
-              type: string
-              example: "100000"
-        validator:
-          type: object
-          required:
-            - "pub_key_types"
-          properties:
-            pub_key_types:
-              type: array
-              items:
-                type: string
-              example:
-                - "ed25519"
 
     CommitResponse:
       type: object
@@ -1798,7 +1749,6 @@ components:
               properties:
                 header:
                   $ref: "#/components/schemas/BlockHeader"
-                  type: object
                 commit:
                   required:
                     - "height"
@@ -1880,29 +1830,7 @@ components:
             validators:
               type: array
               items:
-                type: object
-                properties:
-                  address:
-                    type: string
-                    example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
-                  pub_key:
-                    required:
-                      - "type"
-                      - "value"
-                    properties:
-                      type:
-                        type: string
-                        example: "tendermint/PubKeyEd25519"
-                      value:
-                        type: string
-                        example: "9tK9IT+FPdf2qm+5c2qaxi10sWP+3erWTKgftn2PaQM="
-                    type: object
-                  voting_power:
-                    type: string
-                    example: "250353"
-                  proposer_priority:
-                    type: string
-                    example: "13769415"
+                $ref: "#/components/schemas/ValidatorPriority"
             count:
               type: string
               example: "1"
@@ -2046,58 +1974,9 @@ components:
                     validators:
                       type: array
                       items:
-                        type: object
-                        properties:
-                          address:
-                            type: string
-                            example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
-                          pub_key:
-                            required:
-                              - "type"
-                              - "value"
-                            properties:
-                              type:
-                                type: string
-                                example: "tendermint/PubKeyEd25519"
-                              value:
-                                type: string
-                                example: "9tK9IT+FPdf2qm+5c2qaxi10sWP+3erWTKgftn2PaQM="
-                            type: object
-                          voting_power:
-                            type: string
-                            example: "239727"
-                          proposer_priority:
-                            type: string
-                            example: "-11896414"
+                        $ref: "#/components/schemas/ValidatorPriority"
                     proposer:
-                      required:
-                        - "address"
-                        - "pub_key"
-                        - "voting_power"
-                        - "proposer_priority"
-                      properties:
-                        address:
-                          type: string
-                          example: "708FDDCE121CDADA502F2B0252FEF13FDAA31E50"
-                        pub_key:
-                          required:
-                            - "type"
-                            - "value"
-                          properties:
-                            type:
-                              type: string
-                              example: "tendermint/PubKeyEd25519"
-                            value:
-                              type: string
-                              example: "VNMNfw7mrQBSpEvCtA9ykOe6BoR00RM9b/a9v3vXZhY="
-                          type: object
-                        voting_power:
-                          type: string
-                          example: "295360"
-                        proposer_priority:
-                          type: string
-                          example: "-88886833"
-                      type: object
+                      $ref: "#/components/schemas/ValidatorPriority"
                   type: object
                 locked_round:
                   type: integer
@@ -2165,58 +2044,9 @@ components:
                     validators:
                       type: array
                       items:
-                        type: object
-                        properties:
-                          address:
-                            type: string
-                            example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
-                          pub_key:
-                            required:
-                              - "type"
-                              - "value"
-                            properties:
-                              type:
-                                type: string
-                                example: "tendermint/PubKeyEd25519"
-                              value:
-                                type: string
-                                example: "9tK9IT+FPdf2qm+5c2qaxi10sWP+3erWTKgftn2PaQM="
-                            type: object
-                          voting_power:
-                            type: string
-                            example: "239727"
-                          proposer_priority:
-                            type: string
-                            example: "-12136141"
+                        $ref: "#/components/schemas/ValidatorPriority"
                     proposer:
-                      required:
-                        - "address"
-                        - "pub_key"
-                        - "voting_power"
-                        - "proposer_priority"
-                      properties:
-                        address:
-                          type: string
-                          example: "B00A6323737F321EB0B8D59C6FD497A14B60938A"
-                        pub_key:
-                          required:
-                            - "type"
-                            - "value"
-                          properties:
-                            type:
-                              type: string
-                              example: "tendermint/PubKeyEd25519"
-                            value:
-                              type: string
-                              example: "cOQZvh/h9ZioSeUMZB/1Vy1Xo5x2sjrVjlE/qHnYifM="
-                          type: object
-                        voting_power:
-                          type: string
-                          example: "8590153"
-                        proposer_priority:
-                          type: string
-                          example: "-79515145"
-                      type: object
+                      $ref: "#/components/schemas/ValidatorPriority"
                   type: object
                 triggered_timeout_precommit:
                   type: boolean
@@ -2964,3 +2794,87 @@ components:
         Log:
           type: string
           example: "Dialing seeds in progress. See /net_info for details"
+
+    ###### Reuseable types ######
+
+    # Validator type with proposer prioirty
+    ValidatorPriority:
+      type: object
+      properties:
+        address:
+          type: string
+          example: "000001E443FD237E4B616E2FA69DF4EE3D49A94F"
+        pub_key:
+          required:
+            - "type"
+            - "value"
+          properties:
+            type:
+              type: string
+              example: "tendermint/PubKeyEd25519"
+            value:
+              type: string
+              example: "9tK9IT+FPdf2qm+5c2qaxi10sWP+3erWTKgftn2PaQM="
+          type: object
+        voting_power:
+          type: string
+          example: "239727"
+        proposer_priority:
+          type: string
+          example: "-11896414"
+
+    # Stripped down validator
+    Validator:
+      type: object
+      properties:
+        pub_key:
+          $ref: "#/components/schemas/PubKey"
+        voting_power:
+          type: integer
+        address:
+          type: string
+
+    # Consensus Params
+    ConsensusParams:
+      type: object
+      nullable: true
+      required:
+        - "block"
+        - "evidence"
+        - "validator"
+      properties:
+        block:
+          type: object
+          required:
+            - "max_bytes"
+            - "max_gas"
+            - "time_iota_ms"
+          properties:
+            max_bytes:
+              type: string
+              example: "22020096"
+            max_gas:
+              type: string
+              example: "1000"
+            time_iota_ms:
+              type: string
+              example: "1000"
+        evidence:
+          type: object
+          required:
+            - "max_age"
+          properties:
+            max_age:
+              type: string
+              example: "100000"
+        validator:
+          type: object
+          required:
+            - "pub_key_types"
+          properties:
+            pub_key_types:
+              type: array
+              items:
+                type: string
+              example:
+                - "ed25519"
