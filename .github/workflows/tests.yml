@@ -24,7 +24,6 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
-      - run: go version
       - uses: technote-space/get-diff-action@v3
         with:
           SUFFIX_FILTER: |
