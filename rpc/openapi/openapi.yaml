@@ -2319,6 +2319,7 @@ components:
               type: string
               example: "2"
           type: object
+
     TxResponse:
       type: object
       required:
@@ -2374,6 +2375,7 @@ components:
               type: string
               example: "5wHwYl3uCkaoo2GaChQmSIu8hxpJxLcCuIi8fiHN4TMwrRIU/Af1cEG7Rcs/6LjTl7YjRSymJfYaFAoFdWF0b20SCzE0OTk5OTk1MDAwEhMKDQoFdWF0b20SBDUwMDAQwJoMGmoKJuta6YchAwswBShaB1wkZBctLIhYqBC3JrAI28XGzxP+rVEticGEEkAc+khTkKL9CDE47aDvjEHvUNt+izJfT4KVF2v2JkC+bmlH9K08q3PqHeMI9Z5up+XMusnTqlP985KF+SI5J3ZOIhhNYWRlIGJ5IENpcmNsZSB3aXRoIGxvdmU="
           type: object
+
     ABCIInfoResponse:
       type: object
       required:
@@ -2407,6 +2409,7 @@ components:
                   example: "1314126"
               type: object
           type: object
+
     ABCIQueryResponse:
       type: object
       required:
@@ -2461,6 +2464,7 @@ components:
         jsonrpc:
           type: string
           example: "2.0"
+
     BroadcastEvidenceResponse:
       type: object
       required:
@@ -2479,6 +2483,7 @@ components:
         jsonrpc:
           type: string
           example: "2.0"
+
     BroadcastTxCommitResponse:
       type: object
       required:
@@ -2542,6 +2547,7 @@ components:
         jsonrpc:
           type: string
           example: "2.0"
+
     CheckTxResponse:
       type: object
       required:
