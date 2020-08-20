@@ -8,13 +8,13 @@ For consistency, we assume all commands are run from the Tendermint repository r
 
 First, build the docker image:
 
-```
+```sh
 docker build -t tendermint_tester -f ./test/docker/Dockerfile .
 ```
 
 Now create the docker network:
 
-```
+```sh
 docker network create --driver bridge --subnet 172.57.0.0/16 my_testnet
 ```
 
@@ -23,14 +23,14 @@ Peers on the network can have any IP address in this range.
 For our four node network, let's pick `172.57.0.101 - 172.57.0.104`.
 Since we use Tendermint's default listening port of 26656, our list of seed nodes will look like:
 
-```
+```sh
 172.57.0.101:26656,172.57.0.102:26656,172.57.0.103:26656,172.57.0.104:26656
 ```
 
 Now we can start up the peers. We already have config files setup in `test/p2p/data/`.
 Let's use a for-loop to start our peers:
 
-```
+```sh
 for i in $(seq 1 4); do
 	docker run -d \
 	  --net=my_testnet\
@@ -46,7 +46,7 @@ If you now run `docker ps`, you'll see your containers!
 
 We can confirm they are making blocks by checking the `/status` message using `curl` and `jq` to pretty print the output json:
 
-```
+```sh
 curl 172.57.0.101:26657/status | jq .
 ```
 

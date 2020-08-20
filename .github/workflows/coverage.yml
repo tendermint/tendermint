@@ -38,7 +38,7 @@ jobs:
     needs: split-test-files
     steps:
       - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v1
+      - uses: technote-space/get-diff-action@v3
         with:
           SUFFIX_FILTER: |
             .go
@@ -54,7 +54,7 @@ jobs:
         run: |
           cat xaa.txt | xargs go test -mod=readonly -timeout 8m -race -coverprofile=coverage.txt -covermode=atomic
         if: "env.GIT_DIFF != ''"
-      - uses: codecov/codecov-action@v1.0.7
+      - uses: codecov/codecov-action@v1.0.13
         with:
           file: ./coverage.txt
         if: "env.GIT_DIFF != ''"
@@ -64,7 +64,7 @@ jobs:
     needs: split-test-files
     steps:
       - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v1
+      - uses: technote-space/get-diff-action@v3
         with:
           SUFFIX_FILTER: |
             .go
@@ -80,7 +80,7 @@ jobs:
         run: |
           cat xab.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic
         if: "env.GIT_DIFF != ''"
-      - uses: codecov/codecov-action@v1.0.7
+      - uses: codecov/codecov-action@v1.0.13
         with:
           file: ./coverage.txt
         if: "env.GIT_DIFF != ''"
@@ -90,7 +90,7 @@ jobs:
     needs: split-test-files
     steps:
       - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v1
+      - uses: technote-space/get-diff-action@v3
         with:
           SUFFIX_FILTER: |
             .go
@@ -106,7 +106,7 @@ jobs:
         run: |
           cat xac.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic
         if: "env.GIT_DIFF != ''"
-      - uses: codecov/codecov-action@v1.0.7
+      - uses: codecov/codecov-action@v1.0.13
         with:
           file: ./coverage.txt
         if: "env.GIT_DIFF != ''"
@@ -116,7 +116,7 @@ jobs:
     needs: split-test-files
     steps:
       - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v1
+      - uses: technote-space/get-diff-action@v3
         with:
           SUFFIX_FILTER: |
             .go
@@ -132,7 +132,7 @@ jobs:
         run: |
           cat xad.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic
         if: "env.GIT_DIFF != ''"
-      - uses: codecov/codecov-action@v1.0.7
+      - uses: codecov/codecov-action@v1.0.13
         with:
           file: ./coverage.txt
         if: "env.GIT_DIFF != ''"

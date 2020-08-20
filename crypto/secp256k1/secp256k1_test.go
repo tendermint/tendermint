@@ -55,12 +55,12 @@ func TestSignAndValidateSecp256k1(t *testing.T) {
 	sig, err := privKey.Sign(msg)
 	require.Nil(t, err)
 
-	assert.True(t, pubKey.VerifyBytes(msg, sig))
+	assert.True(t, pubKey.VerifySignature(msg, sig))
 
 	// Mutate the signature, just one bit.
 	sig[3] ^= byte(0x01)
 
-	assert.False(t, pubKey.VerifyBytes(msg, sig))
+	assert.False(t, pubKey.VerifySignature(msg, sig))
 }
 
 // This test is intended to justify the removal of calls to the underlying library

@@ -64,9 +64,9 @@ For Gradle installation, please refer to [their official guide](https://gradle.o
 We'll start by creating a new Gradle project.
 
 ```bash
-$ export KVSTORE_HOME=~/kvstore
-$ mkdir $KVSTORE_HOME
-$ cd $KVSTORE_HOME
+export KVSTORE_HOME=~/kvstore
+mkdir $KVSTORE_HOME
+cd $KVSTORE_HOME
 ```
 
 Inside the example directory run:
@@ -115,7 +115,7 @@ Hello world.
 
 Tendermint Core communicates with the application through the Application
 BlockChain Interface (ABCI). All message types are defined in the [protobuf
-file](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto).
+file](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto).
 This allows Tendermint Core to run applications written in any programming
 language.
 

@@ -1,10 +1,10 @@
 <!---
-order: 1
+order: 2
 --->
 
-# Creating an application in Go
+# Creating a built-in application in Go
 
-## Guide Assumptions
+## Guide assumptions
 
 This guide is designed for beginners who want to get started with a Tendermint
 Core application from scratch. It does not assume that you have any prior
@@ -25,14 +25,11 @@ called kvstore, a (very) simple distributed BFT key-value store.
 
 ## Built-in app vs external app
 
-To get maximum performance it is better to run your application alongside
-Tendermint Core. [Cosmos SDK](https://github.com/cosmos/cosmos-sdk) is written
-this way. Please refer to [Writing a built-in Tendermint Core application in
-Go](./go-built-in.md) guide for details.
+Running your application inside the same process as Tendermint Core will give
+you the best possible performance.
 
-Having a separate application might give you better security guarantees as two
-processes would be communicating via established binary protocol. Tendermint
-Core will not have access to application's state.
+For other languages, your application have to communicate with Tendermint Core
+through a TCP, Unix domain socket or gRPC.
 
 ## 1.1 Installing Go
 
@@ -43,7 +40,7 @@ Verify that you have the latest version of Go installed:
 
 ```bash
 $ go version
-go version go1.14.x darwin/amd64
+go version go1.13.1 darwin/amd64
 ```
 
 Make sure you have `$GOPATH` environment variable set:
@@ -58,8 +55,8 @@ $ echo $GOPATH
 We'll start by creating a new Go project.
 
 ```bash
-$ mkdir kvstore
-$ cd kvstore
+mkdir kvstore
+cd kvstore
 ```
 
 Inside the example directory create a `main.go` file with the following content:
@@ -87,7 +84,7 @@ Hello, Tendermint Core
 
 Tendermint Core communicates with the application through the Application
 BlockChain Interface (ABCI). All message types are defined in the [protobuf
-file](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto).
+file](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto).
 This allows Tendermint Core to run applications written in any programming
 language.
 
@@ -228,12 +225,12 @@ func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
 
 ### 1.3.2 BeginBlock -> DeliverTx -> EndBlock -> Commit
 
-When Tendermint Core has decided on the block, it's transferred to the
+When Tendermint Core has decided on the block, it's transfered to the
 application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
-`EndBlock` in the end. DeliverTx are being transferred asynchronously, but the
+`EndBlock` in the end. DeliverTx are being transfered asynchronously, but the
 responses are expected to come in order.
 
-```
+```go
 func (app *KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
 	app.currentBatch = app.db.NewTransaction(true)
 	return abcitypes.ResponseBeginBlock{}
@@ -291,7 +288,7 @@ the application's `Query` method.
 
 Applications are free to provide their own APIs. But by using Tendermint Core
 as a proxy, clients (including [light client
-package](https://godoc.org/github.com/tendermint/tendermint/lite2)) can leverage
+package](https://godoc.org/github.com/tendermint/tendermint/light)) can leverage
 the unified API across different applications. Plus they won't have to call the
 otherwise separate Tendermint Core API for additional proofs.
 
@@ -326,7 +323,7 @@ func (app *KVStoreApplication) Query(reqQuery abcitypes.RequestQuery) (resQuery 
 The complete specification can be found
 [here](https://docs.tendermint.com/master/spec/abci/).
 
-## 1.4 Starting an application and a Tendermint Core instances
+## 1.4 Starting an application and a Tendermint Core instance in the same process
 
 Put the following code into the "main.go" file:
 
@@ -334,22 +331,31 @@ Put the following code into the "main.go" file:
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/dgraph-io/badger"
+	"github.com/spf13/viper"
 
-	abciserver "github.com/tendermint/tendermint/abci/server"
+	abci "github.com/tendermint/tendermint/abci/types"
+	cfg "github.com/tendermint/tendermint/config"
+	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
 	"github.com/tendermint/tendermint/libs/log"
+	nm "github.com/tendermint/tendermint/node"
+	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/privval"
+	"github.com/tendermint/tendermint/proxy"
 )
 
-var socketAddr string
+var configFile string
 
 func init() {
-	flag.StringVar(&socketAddr, "socket-addr", "unix://example.sock", "Unix domain socket address")
+	flag.StringVar(&configFile, "config", "$HOME/.tendermint/config/config.toml", "Path to config.toml")
 }
 
 func main() {
@@ -363,20 +369,74 @@ func main() {
 
 	flag.Parse()
 
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-
-	server := abciserver.NewSocketServer(socketAddr, app)
-	server.SetLogger(logger)
-	if err := server.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "error starting socket server: %v", err)
-		os.Exit(1)
+	node, err := newTendermint(app, configFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v", err)
+		os.Exit(2)
 	}
-	defer server.Stop()
+
+	node.Start()
+	defer func() {
+		node.Stop()
+		node.Wait()
+	}()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
 	os.Exit(0)
+}
+
+func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
+	// read config
+	config := cfg.DefaultConfig()
+	config.RootDir = filepath.Dir(filepath.Dir(configFile))
+	viper.SetConfigFile(configFile)
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, fmt.Errorf("viper failed to read config file: %w", err)
+	}
+	if err := viper.Unmarshal(config); err != nil {
+		return nil, fmt.Errorf("viper failed to unmarshal config: %w", err)
+	}
+	if err := config.ValidateBasic(); err != nil {
+		return nil, fmt.Errorf("config is invalid: %w", err)
+	}
+
+	// create logger
+	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	var err error
+	logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse log level: %w", err)
+	}
+
+	// read private validator
+	pv := privval.LoadFilePV(
+		config.PrivValidatorKeyFile(),
+		config.PrivValidatorStateFile(),
+	)
+
+	// read node key
+	nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
+	if err != nil {
+		return nil, fmt.Errorf("failed to load node's key: %w", err)
+	}
+
+	// create node
+	node, err := nm.NewNode(
+		config,
+		pv,
+		nodeKey,
+		proxy.NewLocalClientCreator(app),
+		nm.DefaultGenesisDocProviderFunc(config),
+		nm.DefaultDBProvider,
+		nm.DefaultMetricsProvider(config.Instrumentation),
+		logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new Tendermint node: %w", err)
+	}
+
+	return node, nil
 }
 ```
 
@@ -401,18 +461,101 @@ This can be avoided by setting the truncate option to true, like this:
 db, err := badger.Open(badger.DefaultOptions("/tmp/badger").WithTruncate(true))
 ```
 
-Then we start the ABCI server and add some signal handling to gracefully stop
-it upon receiving SIGTERM or Ctrl-C. Tendermint Core will act as a client,
-which connects to our server and send us transactions and other messages.
+Then we use it to create a Tendermint Core `Node` instance:
 
 ```go
-server := abciserver.NewSocketServer(socketAddr, app)
-server.SetLogger(logger)
-if err := server.Start(); err != nil {
-	fmt.Fprintf(os.Stderr, "error starting socket server: %v", err)
-	os.Exit(1)
+flag.Parse()
+
+node, err := newTendermint(app, configFile)
+if err != nil {
+	fmt.Fprintf(os.Stderr, "%v", err)
+	os.Exit(2)
 }
-defer server.Stop()
+
+...
+
+// create node
+node, err := nm.NewNode(
+	config,
+	pv,
+	nodeKey,
+	proxy.NewLocalClientCreator(app),
+	nm.DefaultGenesisDocProviderFunc(config),
+	nm.DefaultDBProvider,
+	nm.DefaultMetricsProvider(config.Instrumentation),
+	logger)
+if err != nil {
+	return nil, fmt.Errorf("failed to create new Tendermint node: %w", err)
+}
+```
+
+`NewNode` requires a few things including a configuration file, a private
+validator, a node key and a few others in order to construct the full node.
+
+Note we use `proxy.NewLocalClientCreator` here to create a local client instead
+of one communicating through a socket or gRPC.
+
+[viper](https://github.com/spf13/viper) is being used for reading the config,
+which we will generate later using the `tendermint init` command.
+
+```go
+config := cfg.DefaultConfig()
+config.RootDir = filepath.Dir(filepath.Dir(configFile))
+viper.SetConfigFile(configFile)
+if err := viper.ReadInConfig(); err != nil {
+	return nil, fmt.Errorf("viper failed to read config file: %w", err)
+}
+if err := viper.Unmarshal(config); err != nil {
+	return nil, fmt.Errorf("viper failed to unmarshal config: %w", err)
+}
+if err := config.ValidateBasic(); err != nil {
+	return nil, fmt.Errorf("config is invalid: %w", err)
+}
+```
+
+We use `FilePV`, which is a private validator (i.e. thing which signs consensus
+messages). Normally, you would use `SignerRemote` to connect to an external
+[HSM](https://kb.certus.one/hsm.html).
+
+```go
+pv := privval.LoadFilePV(
+	config.PrivValidatorKeyFile(),
+	config.PrivValidatorStateFile(),
+)
+
+```
+
+`nodeKey` is needed to identify the node in a p2p network.
+
+```go
+nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
+if err != nil {
+	return nil, fmt.Errorf("failed to load node's key: %w", err)
+}
+```
+
+As for the logger, we use the build-in library, which provides a nice
+abstraction over [go-kit's
+logger](https://github.com/go-kit/kit/tree/master/log).
+
+```go
+logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+var err error
+logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
+if err != nil {
+	return nil, fmt.Errorf("failed to parse log level: %w", err)
+}
+```
+
+Finally, we start the node and add some signal handling to gracefully stop it
+upon receiving SIGTERM or Ctrl-C.
+
+```go
+node.Start()
+defer func() {
+	node.Stop()
+	node.Wait()
+}()
 
 c := make(chan os.Signal, 1)
 signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -426,9 +569,8 @@ We are going to use [Go modules](https://github.com/golang/go/wiki/Modules) for
 dependency management.
 
 ```bash
-$ export GO111MODULE=on
-$ go mod init github.com/me/example
-$ go build
+go mod init github.com/me/example
+go build
 ```
 
 This should build the binary.
@@ -443,50 +585,22 @@ installing from source, don't forget to checkout the latest release (`git checko
 $ rm -rf /tmp/example
 $ TMHOME="/tmp/example" tendermint init
 
-I[2019-07-16|18:20:36.480] Generated private validator                  module=main keyFile=/tmp/example/config/priv_validator_key.json stateFile=/tmp/example2/data/priv_validator_state.json
-I[2019-07-16|18:20:36.481] Generated node key                           module=main path=/tmp/example/config/node_key.json
-I[2019-07-16|18:20:36.482] Generated genesis file                       module=main path=/tmp/example/config/genesis.json
+I[2019-07-16|18:40:36.480] Generated private validator                  module=main keyFile=/tmp/example/config/priv_validator_key.json stateFile=/tmp/example2/data/priv_validator_state.json
+I[2019-07-16|18:40:36.481] Generated node key                           module=main path=/tmp/example/config/node_key.json
+I[2019-07-16|18:40:36.482] Generated genesis file                       module=main path=/tmp/example/config/genesis.json
 ```
-
-Feel free to explore the generated files, which can be found at
-`/tmp/example/config` directory. Documentation on the config can be found
-[here](https://docs.tendermint.com/master/tendermint-core/configuration.html).
 
 We are ready to start our application:
 
 ```bash
-$ rm example.sock
-$ ./example
+$ ./example -config "/tmp/example/config/config.toml"
 
-badger 2019/07/16 18:25:11 INFO: All 0 tables opened in 0s
-badger 2019/07/16 18:25:11 INFO: Replaying file id: 0 at offset: 0
-badger 2019/07/16 18:25:11 INFO: Replay took: 300.4s
-I[2019-07-16|18:25:11.523] Starting ABCIServer                          impl=ABCIServ
-```
-
-Then we need to start Tendermint Core and point it to our application. Staying
-within the application directory execute:
-
-```bash
-$ TMHOME="/tmp/example" tendermint node --proxy_app=unix://example.sock
-
-I[2019-07-16|18:26:20.362] Version info                                 module=main software=0.32.1 block=10 p2p=7
-I[2019-07-16|18:26:20.383] Starting Node                                module=main impl=Node
-E[2019-07-16|18:26:20.392] Couldn't connect to any seeds                module=p2p
-I[2019-07-16|18:26:20.394] Started node                                 module=main nodeInfo="{ProtocolVersion:{P2P:7 Block:10 App:0} ID_:8dab80770ae8e295d4ce905d86af78c4ff634b79 ListenAddr:tcp://0.0.0.0:26656 Network:test-chain-nIO96P Version:0.32.1 Channels:4020212223303800 Moniker:app48.fun-box.ru Other:{TxIndex:on RPCAddress:tcp://127.0.0.1:26657}}"
-I[2019-07-16|18:26:21.440] Executed block                               module=state height=1 validTxs=0 invalidTxs=0
-I[2019-07-16|18:26:21.446] Committed state                              module=state height=1 txs=0 appHash=
-```
-
-This should start the full node and connect to our ABCI application.
-
-```
-I[2019-07-16|18:25:11.525] Waiting for new connection...
-I[2019-07-16|18:26:20.329] Accepted a new connection
-I[2019-07-16|18:26:20.329] Waiting for new connection...
-I[2019-07-16|18:26:20.330] Accepted a new connection
-I[2019-07-16|18:26:20.330] Waiting for new connection...
-I[2019-07-16|18:26:20.330] Accepted a new connection
+badger 2019/07/16 18:42:25 INFO: All 0 tables opened in 0s
+badger 2019/07/16 18:42:25 INFO: Replaying file id: 0 at offset: 0
+badger 2019/07/16 18:42:25 INFO: Replay took: 695.227s
+E[2019-07-16|18:42:25.818] Couldn't connect to any seeds                module=p2p
+I[2019-07-16|18:42:26.853] Executed block                               module=state height=1 validTxs=0 invalidTxs=0
+I[2019-07-16|18:42:26.865] Committed state                              module=state height=1 txs=0 appHash=
 ```
 
 Now open another tab in your terminal and try sending a transaction:
@@ -501,8 +615,9 @@ $ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
       "gasWanted": "1"
     },
     "deliver_tx": {},
-    "hash": "CDD3C6DFA0A08CAEDF546F9938A2EEC232209C24AA0E4201194E0AFB78A2C2BB",
-    "height": "33"
+    "hash": "1B3C5A1093DB952C331B1749A21DCCBB0F6C7F4E0055CD04D16346472FC60EC6",
+    "height": "128"
+  }
 }
 ```
 
@@ -510,7 +625,7 @@ Response should contain the height where this transaction was committed.
 
 Now let's check if the given key now exists and its value:
 
-```
+```json
 $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 {
   "jsonrpc": "2.0",
@@ -519,7 +634,7 @@ $ curl -s 'localhost:26657/abci_query?data="tendermint"'
     "response": {
       "log": "exists",
       "key": "dGVuZGVybWludA==",
-      "value": "cm9ja3My"
+      "value": "cm9ja3M="
     }
   }
 }
