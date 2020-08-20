@@ -3,10 +3,10 @@ name: Net
 # This workflow is run on every pull request, if a *{.go, .mod, .sum} file has been modified, and push to master and release/** branches
 on:
   pull_request:
-    paths:
-      - "**.go"
-      - "**.mod"
-      - "**.sum"
+  # paths:
+  #   - "**.go"
+  #   - "**.mod"
+  #   - "**.sum"
   push:
     branches:
       - master
@@ -21,7 +21,7 @@ jobs:
       - name: 10 Blocks
         run: |
           set -x
-          docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux
           make localnet-start &
           ./scripts/localnet-blocks-test.sh 40 5 10 localhost
+
 # Decide if we want to run longer lived testnets
