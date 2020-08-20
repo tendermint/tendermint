@@ -17,6 +17,25 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
+// Evidence represents any provable malicious activity by a validator.
+type Evidence interface {
+	Height() int64                                     // height of the equivocation
+	Time() time.Time                                   // time of the equivocation
+	Address() []byte                                   // address of the equivocating validator
+	Bytes() []byte                                     // bytes which comprise the evidence
+	Hash() []byte                                      // hash of the evidence
+	Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
+	Equal(Evidence) bool                               // check equality of evidence
+
+	ValidateBasic() error
+	String() string
+}
+
+type CompositeEvidence interface {
+	VerifyComposite(committedHeader *Header, valSet *ValidatorSet) error
+	Split(committedHeader *Header, valSet *ValidatorSet) []Evidence
+}
+
 const (
 	// MaxEvidenceBytes is a maximum size of any evidence (including amino overhead).
 	MaxEvidenceBytes int64 = 444
@@ -63,25 +82,6 @@ func (err *ErrEvidenceOverflow) Error() string {
 }
 
 //-------------------------------------------
-
-// Evidence represents any provable malicious activity by a validator.
-type Evidence interface {
-	Height() int64                                     // height of the equivocation
-	Time() time.Time                                   // time of the equivocation
-	Address() []byte                                   // address of the equivocating validator
-	Bytes() []byte                                     // bytes which comprise the evidence
-	Hash() []byte                                      // hash of the evidence
-	Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
-	Equal(Evidence) bool                               // check equality of evidence
-
-	ValidateBasic() error
-	String() string
-}
-
-type CompositeEvidence interface {
-	VerifyComposite(committedHeader *Header, valSet *ValidatorSet) error
-	Split(committedHeader *Header, valSet *ValidatorSet) []Evidence
-}
 
 func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 	if evidence == nil {

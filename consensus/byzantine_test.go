@@ -70,7 +70,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 		// Make a full instance of the evidence pool
 		evidenceDB := dbm.NewMemDB()
-		evpool, err := evidence.NewPool(stateDB, evidenceDB, blockStore)
+		evpool, err := evidence.NewPool(evidenceDB, evidence.NewEvidenceStateStore(stateDB), blockStore)
 		require.NoError(t, err)
 		evpool.SetLogger(logger.With("module", "evidence"))
 
