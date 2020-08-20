@@ -2,7 +2,7 @@ package store
 
 import "github.com/tendermint/tendermint/types"
 
-// Store is anything that can persistenly store headers.
+// Store is anything that can persistently store headers.
 type Store interface {
 	// SaveSignedHeaderAndValidatorSet saves a SignedHeader (h: sh.Height) and a
 	// ValidatorSet (h: sh.Height).
