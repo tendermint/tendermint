@@ -94,7 +94,7 @@ Lunatic evidence has the following data structure:
 ```go
 type LunaticAttackEvidence struct {
 	Header                *Header
-	Vote                  *[]CommitSig
+	Signatures            *[]CommitSig
 	InvalidHeaderField    string // for convenience 
 	ValidatorSourceHeight int64  // for convenience
 	Timestamp             time.Time
@@ -127,7 +127,7 @@ LunaticAttackEvidence { // To be delivered to the primary
 ```go
 LunaticAttackEvidence { // To be delivered to the witness
 	Header                from the divergent header of the primary
-	Vote                  derived from the divergent commit of the primary
+	Signatures            derived from the divergent commit of the primary
 	InvalidHeaderField    the first header field that was different
 	ValidatorSourceHeight the height of the common header
 	Timestamp             the time of the common header
