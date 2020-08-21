@@ -1,3 +1,6 @@
+---
+order: false
+---
 # Tendermint Architectural Overview
 
 

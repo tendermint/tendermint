@@ -452,7 +452,7 @@ func randStateWithEvpool(t *testing.T, nValidators int) (*State, []*validatorStu
 	}
 	stateDB := dbm.NewMemDB()
 	sm.SaveState(stateDB, state)
-	evpool, err := evidence.NewPool(stateDB, evidenceDB, blockStore)
+	evpool, err := evidence.NewPool(evidenceDB, evidence.NewEvidenceStateStore(stateDB), blockStore)
 	require.NoError(t, err)
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
 	cs := NewState(config.Consensus, state, blockExec, blockStore, mempool, evpool)
