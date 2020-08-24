@@ -140,6 +140,22 @@ func (KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.
 func (KVStoreApplication) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndBlock {
 	return abcitypes.ResponseEndBlock{}
 }
+
+func (KVStoreApplication) ListSnapshots(abcitypes.RequestListSnapshots) abcitypes.ResponseListSnapshots {
+	return abcitypes.ResponseListSnapshots{}
+}
+
+func (KVStoreApplication) OfferSnapshot(abcitypes.RequestOfferSnapshot) abcitypes.ResponseOfferSnapshot {
+	return abcitypes.ResponseOfferSnapshot{}
+}
+
+func (KVStoreApplication) LoadSnapshotChunk(abcitypes.RequestLoadSnapshotChunk) abcitypes.ResponseLoadSnapshotChunk {
+	return abcitypes.ResponseLoadSnapshotChunk{}
+}
+
+func (KVStoreApplication) ApplySnapshotChunk(abcitypes.RequestApplySnapshotChunk) abcitypes.ResponseApplySnapshotChunk {
+	return abcitypes.ResponseApplySnapshotChunk{}
+}
 ```
 
 Now I will go through each method explaining when it's called and adding
