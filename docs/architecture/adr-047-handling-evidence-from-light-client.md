@@ -58,40 +58,49 @@ The verification process of the light client will start from a trusted header an
 algorithm to verify up to a header at a given height. This becomes the verified header (does not 
 mean that it is trusted yet). All headers in between are cached and known as intermediary headers.
 
-The light client's detector takes the verified header and concurrently queries all its witnesses for
-the header of the same height in order to compare hashes. In the event that these two hashes are 
-different the detector proceeds to do the following:
+The light client's detector then takes the headers and runs the detect function.
 
-1. Check that the trusted header is the same. Currently, they should not theoretically be different
+```
+Detect(trace []*SignedHeader, witnesses []Provider) ([]Evidence, error)
+```
+
+This queries the header of the last height for each of the witnesses in order to compare hashes. In the event that these two hashes are 
+different we have verified conflicting headers and therefore the detector proceeds to run 
+
+`FindLightSplit(trace []*SignedHeader, witness Provider) (commonHeader, h1, h2 *SignedHeader, error)`
+
+to verify the witness's header and then locate the Light Bifurcation Point
+
+![](../imgs/light-client-detector.png)
+
+This is done by:
+
+1. Checking that the trusted header is the same. Currently, they should not theoretically be different
 because witnesses cannot be added and removed after the client is initialized. But we do this any way
 as a sanity check. If this fails we have to drop the witness.
 
-2. We begin to query and verify the witness's headers using bisection at the same heights of all the
-intermediary headers of the primary. If bisection fails or the witness stops responding then 
+2. Querying and verifying the witness's headers using bisection at the same heights of all the
+intermediary headers of the primary (In the above example this is A, B, C, D, F, H). If bisection fails or the witness stops responding then 
 we can call the witness faulty and drop it. 
 
-3. We eventually reach a verified header by the witness which is not the same as the intermediary header.
+3. We eventually reach a verified header by the witness which is not the same as the intermediary header (In the above example this is E).
 This is the point of bifurcation (This could also be the last header).
 
-*NOTE: If this is not the last header, we could continue to verify up to the witness's final header,
-but this is unnecessary. We have all the data we need to investigate if an attack has occurred.*
+Finding this point of bifurcation could have come about in two ways:
 
-4. Finding the point of bifurcation could have come about in two ways:
+1. The light client could directly verify between the common header and the diverged header
 
-	i. The light client could directly jump via bisection of the witness's headers from one intermediary 
-	header height to another
+2. The light client needs to verify further headers in between the two intermediary heights (Header D and E in the example below).
+
+![](../imgs/bifurcation-point.png)
 	
-	ii. The light client needs to verify further headers in between the two intermediary heights. 
-	
-	For the first case, this implies, if it is a lunatic attack, that some validators are still in the canonical 
-	validator set. 
-	
-	For the second case this implies either that the validators that were part of the lunatic attack are no longer 
-	in the canonical validator set or that the witness has performed a lunatic attack.
-	
-	In both cases, the light client checks for lunatic attack against the primary and also for equivocation. 
-	For the second case, the light client runs the same detector but now against the witness using the trace it provided as the input and the primary as the cross-checking provider.
-	
+For the first case, this implies, if it is a lunatic attack, that some validators are still in the canonical 
+validator set. For the second case this implies either that the validators that were part of the lunatic attack are no longer 
+in the canonical validator set or that the witness itself has performed a lunatic attack.
+
+In both cases, the light client checks for lunatic attack against the primary and also for equivocation. 
+For the second case, the light client runs the same detector but now against the witness using the trace it provided (A, D, E, C) as the input and the primary as the cross-checking provider. In this case it would ask the primary what headers it received at height D and E and work out when the bifurcation point is and then check for lunatic attack against the witness.
+
 *NOTE: There is also a even slimmer chance that both providers are performing lunatic validator attacks from
 different cabal groups. In this situation, the light client will halt without producing valid evidence.*
 
@@ -121,29 +130,15 @@ the header that the light client trusted not the header where the attack actuall
 done because after the header that the light client trusted we can't be sure that the validators
 are still in the set and hence are still bonded. 
 
+`CheckForLunaticAttack(commonHeader, trustedHeader, divergedHeader *SignedHeader, commonValSet *ValidatorSet) (*Evidence, error)`
+
 A lunatic attack is leveraged from the common trusted header. This is the intermediary header that 
 came directly before the divergent headers and must contain a 1/3 overlap of validators.
 
 The two divergent headers must have at least one of the deterministically derived header fields different
 from one another. This could be one of `ValidatorsHash`, `NextValidatorsHash`, `ConsensusHash`,
 `AppHash`, and `LastResultsHash`. If all these fields are the same then the divergence is not a product
-of a lunatic attack. If so then we can generate two `LunaticAttackEvidence`:
-
-```go
-LunaticAttackEvidence { // To be delivered to the primary
-	SignedHeader          from the divergent header of the witness
-	ValidatorSourceHeight the height of the common header
-	Timestamp             the time of the common header
-}
-```
-
-```go
-LunaticAttackEvidence { // To be delivered to the witness
-	SignedHeader          from the divergent header of the primary
-	ValidatorSourceHeight the height of the common header
-	Timestamp             the time of the common header
-}
-```
+of a lunatic attack. If so then we can generate either one or two `LunaticAttackEvidence` depending on the bifurcation point:
 
 **IMPORTANT:** The light client cannot verify which validator set is the correct one 
 (it could if it used sequential verification) hence it generates two pieces of evidence 
@@ -154,6 +149,8 @@ full nodes state and the other that will be valid and can be committed onto the 
 
 The light client then checks if there has been a full fork that has caused the 
 divergence.
+
+`CheckForEquivocation(h1, h2 *SignedHeader) ([]Evidence, error)`
 
 It first differentiates between a duplicate vote attack and an amnesia attack by
 checking the round that the commit of the divergent headers happened. If they
@@ -194,7 +191,11 @@ bisections. In this case, if the light client doesn't detect a lunatic attack
 and observes that the validator sets of the two heights are not the same, then 
 the light client can iteratively work backwards from the diverged header,
 querying and validating both providers until it reaches the point of bifurcation
-on the full fork. This is the point that the headers have the same `LastBlockID` 
+on the full fork.
+
+`FindFullFork(commonHeader *SignedHeader, knownDivergenceHeight int64, p1, p2 Provider)(h1, h2, *SignedHeader, error)`
+
+This is the point that the headers have the same `LastBlockID` 
 but different hashes. Now the validator sets will be the same and we
 can extract out either the amnesia or duplicate votes using the same method. 
 
