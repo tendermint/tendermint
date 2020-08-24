@@ -2,6 +2,8 @@ coverage:
   precision: 2
   round: down
   range: "70...100"
+  notify:
+    after_n_builds: 4
 
   status:
     project:
