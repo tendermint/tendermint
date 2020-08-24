@@ -203,7 +203,7 @@ blockchain.
 Updates to the Tendermint validator set can be made by returning
 `ValidatorUpdate` objects in the `ResponseEndBlock`:
 
-```
+```proto
 message ValidatorUpdate {
   PubKey pub_key
   int64 power
@@ -226,9 +226,9 @@ following rules:
 - if power is 0, the validator must already exist, and will be removed from the
   validator set
 - if power is non-0:
-  - if the validator does not already exist, it will be added to the validator
+    - if the validator does not already exist, it will be added to the validator
     set with the given power
-  - if the validator does already exist, its power will be adjusted to the given power
+    - if the validator does already exist, its power will be adjusted to the given power
 - the total power of the new validator set must not exceed MaxTotalVotingPower
 
 Note the updates returned in block `H` will only take effect at block `H+2`.
@@ -293,14 +293,14 @@ Must have `MaxAgeNumBlocks > 0`.
 
 This is the maximum number of evidence that can be committed to a single block.
 
-The product of this and the `MaxEvidenceBytes` must not exceed the size of 
+The product of this and the `MaxEvidenceBytes` must not exceed the size of
 a block minus it's overhead ( ~ `MaxBytes`).
 
 The amount must be a positive number.
 
 ### EvidenceParams.ProofTrialPeriod
 
-This is the duration in terms of blocks that an indicted validator has to prove a 
+This is the duration in terms of blocks that an indicted validator has to prove a
 correct lock change in the event of amnesia evidence when a validator voted more
 than once across different rounds.
 
@@ -381,7 +381,7 @@ Some applications (eg. Ethereum, Cosmos-SDK) have multiple "levels" of Merkle tr
 where the leaves of one tree are the root hashes of others. To support this, and
 the general variability in Merkle proofs, the `ResponseQuery.Proof` has some minimal structure:
 
-```
+```proto
 message Proof {
   repeated ProofOp ops
 }
@@ -437,7 +437,7 @@ failed during the Commit of block H, then `last_block_height = H-1` and
 We now distinguish three heights, and describe how Tendermint syncs itself with
 the app.
 
-```
+```md
 storeBlockHeight = height of the last block Tendermint saw a commit for
 stateBlockHeight = height of the last block for which Tendermint completed all
     block processing and saved all ABCI results to disk
@@ -497,8 +497,8 @@ State sync is an alternative mechanism for bootstrapping a new node, where it fe
 of the state machine at a given height and restores it. Depending on the application, this can
 be several orders of magnitude faster than replaying blocks.
 
-Note that state sync does not currently backfill historical blocks, so the node will have a 
-truncated block history - users are advised to consider the broader network implications of this in 
+Note that state sync does not currently backfill historical blocks, so the node will have a
+truncated block history - users are advised to consider the broader network implications of this in
 terms of block availability and auditability. This functionality may be added in the future.
 
 For details on the specific ABCI calls and types, see the [methods and types section](abci.md).
@@ -509,20 +509,20 @@ Applications that want to support state syncing must take state snapshots at reg
 this is accomplished is entirely up to the application. A snapshot consists of some metadata and
 a set of binary chunks in an arbitrary format:
 
-* `Height (uint64)`: The height at which the snapshot is taken. It must be taken after the given 
+- `Height (uint64)`: The height at which the snapshot is taken. It must be taken after the given
   height has been committed, and must not contain data from any later heights.
 
-* `Format (uint32)`: An arbitrary snapshot format identifier. This can be used to version snapshot 
-  formats, e.g. to switch from Protobuf to MessagePack for serialization. The application can use 
+- `Format (uint32)`: An arbitrary snapshot format identifier. This can be used to version snapshot
+  formats, e.g. to switch from Protobuf to MessagePack for serialization. The application can use
   this when restoring to choose whether to accept or reject a snapshot.
 
-* `Chunks (uint32)`: The number of chunks in the snapshot. Each chunk contains arbitrary binary
+- `Chunks (uint32)`: The number of chunks in the snapshot. Each chunk contains arbitrary binary
   data, and should be less than 16 MB; 10 MB is a good starting point.
 
-* `Hash ([]byte)`: An arbitrary hash of the snapshot. This is used to check whether a snapshot is
+- `Hash ([]byte)`: An arbitrary hash of the snapshot. This is used to check whether a snapshot is
   the same across nodes when downloading chunks.
 
-* `Metadata ([]byte)`: Arbitrary snapshot metadata, e.g. chunk hashes for verification or any other
+- `Metadata ([]byte)`: Arbitrary snapshot metadata, e.g. chunk hashes for verification or any other
   necessary info.
 
 For a snapshot to be considered the same across nodes, all of these fields must be identical. When
@@ -533,15 +533,15 @@ application via the ABCI `ListSnapshots` method to discover available snapshots,
 snapshot chunks via `LoadSnapshotChunk`. The application is free to choose how to implement this
 and which formats to use, but should provide the following guarantees:
 
-* **Consistent:** A snapshot should be taken at a single isolated height, unaffected by
-  concurrent writes. This can e.g. be accomplished by using a data store that supports ACID 
+- **Consistent:** A snapshot should be taken at a single isolated height, unaffected by
+  concurrent writes. This can e.g. be accomplished by using a data store that supports ACID
   transactions with snapshot isolation.
 
-* **Asynchronous:** Taking a snapshot can be time-consuming, so it should not halt chain progress,
+- **Asynchronous:** Taking a snapshot can be time-consuming, so it should not halt chain progress,
   for example by running in a separate thread.
 
-* **Deterministic:** A snapshot taken at the same height in the same format should be identical
-  (at the byte level) across nodes, including all metadata. This ensures good availability of 
+- **Deterministic:** A snapshot taken at the same height in the same format should be identical
+  (at the byte level) across nodes, including all metadata. This ensures good availability of
   chunks, and that they fit together across nodes.
   
 A very basic approach might be to use a datastore with MVCC transactions (such as RocksDB),
@@ -583,7 +583,7 @@ the application aborts.
 #### Snapshot Restoration
 
 Once a snapshot has been accepted via `OfferSnapshot`, Tendermint begins downloading chunks from
-any peers that have the same snapshot (i.e. that have identical metadata fields). Chunks are 
+any peers that have the same snapshot (i.e. that have identical metadata fields). Chunks are
 spooled in a temporary directory, and then given to the application in sequential order via
 `ApplySnapshotChunk` until all chunks have been accepted.
 
@@ -603,7 +603,7 @@ restarting restoration, or simply abort with an error.
 #### Snapshot Verification
 
 Once all chunks have been accepted, Tendermint issues an `Info` ABCI call to retrieve the
-`LastBlockAppHash`. This is compared with the trusted app hash from the chain, retrieved and 
+`LastBlockAppHash`. This is compared with the trusted app hash from the chain, retrieved and
 verified using the light client. Tendermint also checks that `LastBlockHeight` corresponds to the
 height of the snapshot.
 
@@ -623,8 +623,8 @@ P2P configuration options to whitelist a set of trusted peers that can provide v
 #### Transition to Consensus
 
 Once the snapshot has been restored, Tendermint gathers additional information necessary for
-bootstrapping the node (e.g. chain ID, consensus parameters, validator sets, and block headers) 
-from the genesis file and light client RPC servers. It also fetches and records the `AppVersion` 
+bootstrapping the node (e.g. chain ID, consensus parameters, validator sets, and block headers)
+from the genesis file and light client RPC servers. It also fetches and records the `AppVersion`
 from the ABCI application.
 
 Once the node is bootstrapped with this information and the restored state machine, it transitions

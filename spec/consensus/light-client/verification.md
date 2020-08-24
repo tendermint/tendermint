@@ -68,7 +68,6 @@ get trust for `hp`, and `hp` can be used to get trust for `snh`. If this is the 
 if not, we continue recursively until either we found set of headers that can build (transitively) trust relation
 between `h` and `h1`, or we failed as two consecutive headers don't verify against each other.
 
-
 ## Definitions
 
 ### Data structures
@@ -110,6 +109,7 @@ In the following, only the details of the data structures needed for this specif
 
 For the purpose of this light client specification, we assume that the Tendermint Full Node
 exposes the following functions over Tendermint RPC:
+
 ```go
     // returns signed header: Header with Commit, for the given height
     func Commit(height int64) (SignedHeader, error)
@@ -119,6 +119,7 @@ exposes the following functions over Tendermint RPC:
 ```
 
 Furthermore, we assume the following auxiliary functions:
+
 ```go
     // returns true if the commit is for the header, ie. if it contains
     // the correct hash of the header; otherwise false
@@ -136,8 +137,6 @@ Furthermore, we assume the following auxiliary functions:
     // returns hash of the given validator set
     func hash(v2 ValidatorSet) []byte
 ```
-
-### Functions
 
 In the functions below we will be using `trustThreshold` as a parameter. For simplicity
 we assume that `trustThreshold` is a float between `1/3` and `2/3` and we will not be checking it
@@ -399,15 +398,13 @@ func fatalError(err) bool {
 }
 ```
 
-
-
 ### The case `untrustedHeader.Height < trustedHeader.Height`
 
-In the use case where someone tells the light client that application data that is relevant for it 
-can be read in the block of height `k` and the light client trusts a more recent header, we can use the 
+In the use case where someone tells the light client that application data that is relevant for it
+can be read in the block of height `k` and the light client trusts a more recent header, we can use the
 hashes to verify headers "down the chain." That is, we iterate down the heights and check the hashes in each step.
 
-*Remark.* For the case were the light client trusts two headers `i` and `j` with `i < k < j`, we should 
+*Remark.* For the case were the light client trusts two headers `i` and `j` with `i < k < j`, we should
 discuss/experiment whether the forward or the backward method is more effective.
 
 ```go
@@ -449,31 +446,30 @@ func VerifyHeaderBackwards(trustedHeader Header,
  }
 ```
 
-
 *Assumption*: In the following, we assume that *untrusted_h.Header.height > trusted_h.Header.height*. We will quickly discuss the other case in the next section.
 
 We consider the following set-up:
+
 - the light client communicates with one full node
 - the light client locally stores all the headers that has passed basic verification and that are within light client trust period. In the pseudo code below we
 write *Store.Add(header)* for this. If a header failed to verify, then
 the full node we are talking to is faulty and we should disconnect from it and reinitialise with new peer.
 - If `CanTrust` returns *error*, then the light client has seen a forged header or the trusted header has expired (it is outside its trusted period).
-  * In case of forged header, the full node is faulty so light client should disconnect and reinitialise with new peer. If the trusted header has expired,
+    - In case of forged header, the full node is faulty so light client should disconnect and reinitialise with new peer. If the trusted header has expired,
   we need to reinitialise light client with new trusted header (that is within its trusted period), but we don't necessarily need to disconnect from the full node
   we are talking to (as we haven't observed full node misbehavior in this case).
-
 
 ## Correctness of the Light Client Protocols
 
 ### Definitions
 
-* `TRUSTED_PERIOD`: trusted period
-* for realtime `t`, the predicate `correct(v,t)` is true if the validator `v`
+- `TRUSTED_PERIOD`: trusted period
+- for realtime `t`, the predicate `correct(v,t)` is true if the validator `v`
   follows the protocol until time `t` (we will see about recovery later).
-* Validator fields. We will write a validator as a tuple `(v,p)` such that
-    + `v` is the identifier (i.e., validator address; we assume identifiers are unique in each validator set)
-    + `p` is its voting power
-* For each header `h`, we write `trust(h) = true` if the light client trusts `h`.
+- Validator fields. We will write a validator as a tuple `(v,p)` such that
+    - `v` is the identifier (i.e., validator address; we assume identifiers are unique in each validator set)
+    - `p` is its voting power
+- For each header `h`, we write `trust(h) = true` if the light client trusts `h`.
 
 ### Failure Model
 
@@ -486,7 +482,6 @@ Formally,
 \sum_{(v,p) \in validators(h.NextValidatorsHash) \wedge correct(v,h.Time + TRUSTED_PERIOD)} p >
 2/3 \sum_{(v,p) \in validators(h.NextValidatorsHash)} p
 \]
-
 
 The light client communicates with a full node and learns new headers. The goal is to locally decide whether to trust a header. Our implementation needs to ensure the following two properties:
 
@@ -532,14 +527,15 @@ is correct, but we only trust the fact that less than `1/3` of them are faulty (
 *`VerifySingle` correctness arguments*
 
 Light Client Accuracy:
+
 - Assume by contradiction that `untrustedHeader` was not generated correctly and the light client sets trust to true because `verifySingle` returns without error.
 - `trustedState` is trusted and sufficiently new
 - by the Failure Model, less than `1/3` of the voting power held by faulty validators => at least one correct validator `v` has signed `untrustedHeader`.
 - as `v` is correct up to now, it followed the Tendermint consensus protocol at least up to signing `untrustedHeader` => `untrustedHeader` was correctly generated.
 We arrive at the required contradiction.
 
-
 Light Client Completeness:
+
 - The check is successful if sufficiently many validators of `trustedState` are still validators in the height `untrustedHeader.Height` and signed `untrustedHeader`.
 - If `untrustedHeader.Height = trustedHeader.Height + 1`, and both headers were generated correctly, the test passes.
 
@@ -550,10 +546,10 @@ Light Client Completeness:
 However, in case of (frequent) changes in the validator set, the higher the `trustThreshold` is chosen, the more unlikely it becomes that
 `verifySingle` returns with an error for non-adjacent headers.
 
-
-* `VerifyBisection` correctness arguments (sketch)*
+- `VerifyBisection` correctness arguments (sketch)*
 
 Light Client Accuracy:
+
 - Assume by contradiction that the header at `untrustedHeight` obtained from the full node was not generated correctly and
 the light client sets trust to true because `VerifyBisection` returns without an error.
 - `VerifyBisection` returns without error only if all calls to `verifySingle` in the recursion return without error (return `nil`).
@@ -568,12 +564,8 @@ This is only ensured if upon `Commit(pivot)` the light client is always provided
 
 With `VerifyBisection`, a faulty full node could stall a light client by creating a long sequence of headers that are queried one-by-one by the light client and look OK,
 before the light client eventually detects a problem. There are several ways to address this:
-* Each call to `Commit` could be issued to a different full node
-* Instead of querying header by header, the light client tells a full node which header it trusts, and the height of the header it needs. The full node responds with
+
+- Each call to `Commit` could be issued to a different full node
+- Instead of querying header by header, the light client tells a full node which header it trusts, and the height of the header it needs. The full node responds with
 the header along with a proof consisting of intermediate headers that the light client can use to verify. Roughly, `VerifyBisection` would then be executed at the full node.
-* We may set a timeout how long `VerifyBisection` may take.
-
-
-
-
-
+- We may set a timeout how long `VerifyBisection` may take.

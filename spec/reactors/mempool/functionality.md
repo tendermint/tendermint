@@ -35,7 +35,7 @@ What guarantees does it need from the ABCI app?
 
 The implementation within this library also implements a tx cache.
 This is so that signatures don't have to be reverified if the tx has
-already been seen before. 
+already been seen before.
 However, we only store valid txs in the cache, not invalid ones.
 This is because invalid txs could become good later.
 Txs that are included in a block aren't removed from the cache,

@@ -32,7 +32,7 @@ determine the next block. Each round is composed of three _steps_
 
 In the optimal scenario, the order of steps is:
 
-```
+```md
 NewHeight -> (Propose -> Prevote -> Precommit)+ -> Commit -> NewHeight ->...
 ```
 
@@ -59,7 +59,7 @@ parameters over each successive round.
 
 ## State Machine Diagram
 
-```
+```md
                          +-------------------------------------+
                          v                                     |(Wait til `CommmitTime+timeoutCommit`)
                    +-----------+                         +-----+-----+

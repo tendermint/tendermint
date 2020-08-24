@@ -4,7 +4,7 @@ cards: true
 
 # Consensus
 
-Specification of the Tendermint consensus protocol. 
+Specification of the Tendermint consensus protocol.
 
 ## Contents
 

@@ -1,7 +1,7 @@
 # Tendermint Light Client Protocol
 
 NOTE: This specification is under heavy development and is not yet complete nor
-accurate. 
+accurate.
 
 ## Contents
 
@@ -51,16 +51,15 @@ full nodes.
 
 ### Synchrony
 
-Light clients are fundamentally synchronous protocols, 
+Light clients are fundamentally synchronous protocols,
 where security is restricted by the interval during which a validator can be punished
 for Byzantine behaviour. We assume here that such intervals have fixed and known minimal duration
 referred to commonly as a blockchain's Unbonding Period.
 
-A secure light client must guarantee that all three components - 
-core verification, fork detection, and fork accountability - 
+A secure light client must guarantee that all three components -
+core verification, fork detection, and fork accountability -
 each with their own synchrony assumptions and fault model, can execute
 sequentially and to completion within the given Unbonding Period.
 
 TODO: define all the synchrony parameters used in the protocol and their
 relation to the Unbonding Period.
-

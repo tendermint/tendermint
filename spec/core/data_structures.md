@@ -36,29 +36,29 @@ the data in the current block, the previous block, and the results returned by t
 
 ```go
 type Header struct {
-	// basic block info
-	Version  Version
-	ChainID  string
-	Height   int64
-	Time     Time
+ // basic block info
+ Version  Version
+ ChainID  string
+ Height   int64
+ Time     Time
 
-	// prev block info
-	LastBlockID BlockID
+ // prev block info
+ LastBlockID BlockID
 
-	// hashes of block data
-	LastCommitHash []byte // commit from validators from the last block
-	DataHash       []byte // MerkleRoot of transaction hashes
+ // hashes of block data
+ LastCommitHash []byte // commit from validators from the last block
+ DataHash       []byte // MerkleRoot of transaction hashes
 
-	// hashes from the app output from the prev block
-	ValidatorsHash     []byte // validators for the current block
-	NextValidatorsHash []byte // validators for the next block
-	ConsensusHash      []byte // consensus params for current block
-	AppHash            []byte // state after txs from the previous block
-	LastResultsHash    []byte // root hash of all results from the txs from the previous block
+ // hashes from the app output from the prev block
+ ValidatorsHash     []byte // validators for the current block
+ NextValidatorsHash []byte // validators for the next block
+ ConsensusHash      []byte // consensus params for current block
+ AppHash            []byte // state after txs from the previous block
+ LastResultsHash    []byte // root hash of all results from the txs from the previous block
 
-	// consensus info
-	EvidenceHash    []byte // evidence included in the block
-	ProposerAddress []byte // original proposer of the block
+ // consensus info
+ EvidenceHash    []byte // evidence included in the block
+ ProposerAddress []byte // original proposer of the block
 ```
 
 Further details on each of these fields is described below.
@@ -67,8 +67,8 @@ Further details on each of these fields is described below.
 
 ```go
 type Version struct {
-	Block uint64
-	App   uint64
+ Block uint64
+ App   uint64
 }
 ```
 
@@ -111,7 +111,7 @@ format, which uses two integers, one for Seconds and for Nanoseconds.
 Data is just a wrapper for a list of transactions, where transactions are
 arbitrary byte arrays:
 
-```
+```go
 type Data struct {
     Txs [][]byte
 }
@@ -124,10 +124,10 @@ validator. It also contains the relevant BlockID, height and round:
 
 ```go
 type Commit struct {
-	Height     int64
-	Round      int
-	BlockID    BlockID
-	Signatures []CommitSig
+ Height     int64
+ Round      int
+ BlockID    BlockID
+ Signatures []CommitSig
 }
 ```
 
@@ -141,19 +141,19 @@ to reconstruct the vote set given the validator set.
 type BlockIDFlag byte
 
 const (
-	// BlockIDFlagAbsent - no vote was received from a validator.
-	BlockIDFlagAbsent BlockIDFlag = 0x01
-	// BlockIDFlagCommit - voted for the Commit.BlockID.
-	BlockIDFlagCommit = 0x02
-	// BlockIDFlagNil - voted for nil.
-	BlockIDFlagNil = 0x03
+ // BlockIDFlagAbsent - no vote was received from a validator.
+ BlockIDFlagAbsent BlockIDFlag = 0x01
+ // BlockIDFlagCommit - voted for the Commit.BlockID.
+ BlockIDFlagCommit = 0x02
+ // BlockIDFlagNil - voted for nil.
+ BlockIDFlagNil = 0x03
 )
 
 type CommitSig struct {
-	BlockIDFlag      BlockIDFlag
-	ValidatorAddress Address
-	Timestamp        time.Time
-	Signature        []byte
+ BlockIDFlag      BlockIDFlag
+ ValidatorAddress Address
+ Timestamp        time.Time
+ Signature        []byte
 }
 ```
 
@@ -168,14 +168,14 @@ The vote includes information about the validator signing it.
 
 ```go
 type Vote struct {
-	Type             byte
-	Height           int64
-	Round            int
-	BlockID          BlockID
-	Timestamp        Time
-	ValidatorAddress []byte
-	ValidatorIndex   int
-	Signature        []byte
+ Type             byte
+ Height           int64
+ Round            int
+ BlockID          BlockID
+ Timestamp        Time
+ ValidatorAddress []byte
+ ValidatorIndex   int
+ Signature        []byte
 }
 ```
 
@@ -193,7 +193,7 @@ See the [signature spec](./encoding.md#key-types) for more.
 
 EvidenceData is a simple wrapper for a list of evidence:
 
-```
+```go
 type EvidenceData struct {
     Evidence []Evidence
 }
@@ -201,40 +201,40 @@ type EvidenceData struct {
 
 ## Evidence
 
-Evidence in Tendermint is used to indicate breaches in the consensus by a validator. 
+Evidence in Tendermint is used to indicate breaches in the consensus by a validator.
 It is implemented as the following interface.
 
 ```go
 type Evidence interface {
-	Height() int64                                     // height of the equivocation
-	Time() time.Time                                   // time of the equivocation
-	Address() []byte                                   // address of the equivocating validator
-	Bytes() []byte                                     // bytes which comprise the evidence
-	Hash() []byte                                      // hash of the evidence
-	Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
-	Equal(Evidence) bool                               // check equality of evidence
+ Height() int64                                     // height of the equivocation
+ Time() time.Time                                   // time of the equivocation
+ Address() []byte                                   // address of the equivocating validator
+ Bytes() []byte                                     // bytes which comprise the evidence
+ Hash() []byte                                      // hash of the evidence
+ Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
+ Equal(Evidence) bool                               // check equality of evidence
 
-	ValidateBasic() error
-	String() string
+ ValidateBasic() error
+ String() string
 }
 ```
 
-All evidence can be encoded and decoded to and from Protobuf with the `EvidenceToProto()` 
-and `EvidenceFromProto()` functions. The [Fork Accountability](../consensus/light-client/accountability.md) 
+All evidence can be encoded and decoded to and from Protobuf with the `EvidenceToProto()`
+and `EvidenceFromProto()` functions. The [Fork Accountability](../consensus/light-client/accountability.md)
 document provides a good overview for the types of evidence and how they occur. For evidence to be committed onchain, it must adhere to the validation rules of each evidence and must not be expired. The expiration age, measured in both block height and time is set in `EvidenceParams`. Each evidence uses
-the timestamp of the block that the evidence occured at to indicate the age of the evidence. 
+the timestamp of the block that the evidence occured at to indicate the age of the evidence.
 
-### DuplicateVoteEvidence 
+### DuplicateVoteEvidence
 
-`DuplicateVoteEvidence` represents a validator that has voted for two different blocks 
+`DuplicateVoteEvidence` represents a validator that has voted for two different blocks
 in the same round of the same height. Votes are lexicographically sorted on `BlockID`.
 
 ```go
 type DuplicateVoteEvidence struct {
-	VoteA  *Vote
-	VoteB  *Vote
-	
-	Timestamp time.Time
+ VoteA  *Vote
+ VoteB  *Vote
+
+ Timestamp time.Time
 }
 ```
 
@@ -252,15 +252,15 @@ Valid Duplicate Vote Evidence must adhere to the following rules:
 
 ### AmensiaEvidence
 
-`AmnesiaEvidence` represents a validator that has incorrectly voted for another block in a 
+`AmnesiaEvidence` represents a validator that has incorrectly voted for another block in a
 different round to the the block that the validator was previously locked on. This form
-of evidence is generated differently from the rest. See this 
+of evidence is generated differently from the rest. See this
 [ADR](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-056-proving-amnesia-attacks.md) for more information.
 
 ```go
 type AmnesiaEvidence struct {
-	*PotentialAmnesiaEvidence
-	Polc *ProofOfLockChange
+ *PotentialAmnesiaEvidence
+ Polc *ProofOfLockChange
 }
 ```
 
@@ -280,16 +280,16 @@ Valid Amnesia Evidence must adhere to the following rules:
 
 ### LunaticValidatorEvidence
 
-`LunaticValidatorEvidence` represents a validator that has signed for an arbitrary application state. 
+`LunaticValidatorEvidence` represents a validator that has signed for an arbitrary application state.
 This attack only applies to Light clients.
 
 ```go
 type LunaticValidatorEvidence struct {
-	Header             *Header 
-	Vote               *Vote  
-	InvalidHeaderField string
-	
-	Timestamp time.Time
+ Header             *Header
+ Vote               *Vote  
+ InvalidHeaderField string
+
+ Timestamp time.Time
 }
 ```
 
@@ -330,7 +330,7 @@ A Header is valid if its corresponding fields are valid.
 
 ### Version
 
-```
+```go
 block.Version.Block == state.Version.Consensus.Block
 block.Version.App == state.Version.Consensus.App
 ```
@@ -339,7 +339,7 @@ The block version must match consensus version from the state.
 
 ### ChainID
 
-```
+```go
 len(block.ChainID) < 50
 ```
 
@@ -357,7 +357,7 @@ The height is an incrementing integer. The first block has `block.Header.Height 
 
 ### Time
 
-```
+```go
 block.Header.Timestamp >= prevBlock.Header.Timestamp + state.consensusParams.Block.TimeIotaMs
 block.Header.Timestamp == MedianTime(block.LastCommit, state.LastValidators)
 ```
@@ -371,7 +371,7 @@ block being voted on.
 The timestamp of the first block must be equal to the genesis time (since
 there's no votes to compute the median).
 
-```
+```go
 if block.Header.Height == state.InitialHeight {
     block.Header.Timestamp == genesisTime
 }
@@ -543,21 +543,21 @@ using the given ChainID:
 
 ```go
 func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
-	if !bytes.Equal(pubKey.Address(), vote.ValidatorAddress) {
-		return ErrVoteInvalidValidatorAddress
-	}
+ if !bytes.Equal(pubKey.Address(), vote.ValidatorAddress) {
+  return ErrVoteInvalidValidatorAddress
+ }
 
-	if !pubKey.VerifyBytes(vote.SignBytes(chainID), vote.Signature) {
-		return ErrVoteInvalidSignature
-	}
-	return nil
+ if !pubKey.VerifyBytes(vote.SignBytes(chainID), vote.Signature) {
+  return ErrVoteInvalidSignature
+ }
+ return nil
 }
 ```
 
 where `pubKey.Verify` performs the appropriate digital signature verification of the `pubKey`
 against the given signature and message bytes.
 
-# Execution
+## Execution
 
 Once a block is validated, it can be executed against the state.
 
@@ -574,26 +574,26 @@ set (TODO). Execute is defined as:
 
 ```go
 func Execute(s State, app ABCIApp, block Block) State {
-	// Fuction ApplyBlock executes block of transactions against the app and returns the new root hash of the app state,
-	// modifications to the validator set and the changes of the consensus parameters.
-	AppHash, ValidatorChanges, ConsensusParamChanges := app.ApplyBlock(block)
+ // Fuction ApplyBlock executes block of transactions against the app and returns the new root hash of the app state,
+ // modifications to the validator set and the changes of the consensus parameters.
+ AppHash, ValidatorChanges, ConsensusParamChanges := app.ApplyBlock(block)
 
-	nextConsensusParams := UpdateConsensusParams(state.ConsensusParams, ConsensusParamChanges)
-	return State{
-		ChainID:         state.ChainID,
-		InitialHeight:   state.InitialHeight,
-		LastResults:     abciResponses.DeliverTxResults,
-		AppHash:         AppHash,
-		InitialHeight:   state.InitialHeight,
-		LastValidators:  state.Validators,
-		Validators:      state.NextValidators,
-		NextValidators:  UpdateValidators(state.NextValidators, ValidatorChanges),
-		ConsensusParams: nextConsensusParams,
-		Version: {
-			Consensus: {
-				AppVersion: nextConsensusParams.Version.AppVersion,
-			},
-		},
-	}
+ nextConsensusParams := UpdateConsensusParams(state.ConsensusParams, ConsensusParamChanges)
+ return State{
+  ChainID:         state.ChainID,
+  InitialHeight:   state.InitialHeight,
+  LastResults:     abciResponses.DeliverTxResults,
+  AppHash:         AppHash,
+  InitialHeight:   state.InitialHeight,
+  LastValidators:  state.Validators,
+  Validators:      state.NextValidators,
+  NextValidators:  UpdateValidators(state.NextValidators, ValidatorChanges),
+  ConsensusParams: nextConsensusParams,
+  Version: {
+   Consensus: {
+    AppVersion: nextConsensusParams.Version.AppVersion,
+   },
+  },
+ }
 }
 ```

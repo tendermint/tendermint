@@ -42,19 +42,19 @@ received votes and last commit and last validators set.
 
 ```go
 type RoundState struct {
-	Height             int64
-	Round              int
-	Step               RoundStepType
-	Validators         ValidatorSet
-	Proposal           Proposal
-	ProposalBlock      Block
-	ProposalBlockParts PartSet
-	LockedRound        int
-	LockedBlock        Block
-	LockedBlockParts   PartSet
-	Votes              HeightVoteSet
-	LastCommit         VoteSet
-	LastValidators     ValidatorSet
+ Height             int64
+ Round              int
+ Step               RoundStepType
+ Validators         ValidatorSet
+ Proposal           Proposal
+ ProposalBlock      Block
+ ProposalBlockParts PartSet
+ LockedRound        int
+ LockedBlock        Block
+ LockedBlockParts   PartSet
+ Votes              HeightVoteSet
+ LastCommit         VoteSet
+ LastValidators     ValidatorSet
 }
 ```
 
@@ -77,20 +77,20 @@ Consensus Reactor and by the gossip routines upon sending a message to the peer.
 
 ```golang
 type PeerRoundState struct {
-	Height                   int64               // Height peer is at
-	Round                    int                 // Round peer is at, -1 if unknown.
-	Step                     RoundStepType       // Step peer is at
-	Proposal                 bool                // True if peer has proposal for this round
-	ProposalBlockPartsHeader PartSetHeader
-	ProposalBlockParts       BitArray
-	ProposalPOLRound         int                 // Proposal's POL round. -1 if none.
-	ProposalPOL              BitArray            // nil until ProposalPOLMessage received.
-	Prevotes                 BitArray            // All votes peer has for this round
-	Precommits               BitArray            // All precommits peer has for this round
-	LastCommitRound          int                 // Round of commit for last height. -1 if none.
-	LastCommit               BitArray            // All commit precommits of commit for last height.
-	CatchupCommitRound       int                 // Round that we have commit for. Not necessarily unique. -1 if none.
-	CatchupCommit            BitArray            // All commit precommits peer has for this height & CatchupCommitRound
+ Height                   int64               // Height peer is at
+ Round                    int                 // Round peer is at, -1 if unknown.
+ Step                     RoundStepType       // Step peer is at
+ Proposal                 bool                // True if peer has proposal for this round
+ ProposalBlockPartsHeader PartSetHeader
+ ProposalBlockParts       BitArray
+ ProposalPOLRound         int                 // Proposal's POL round. -1 if none.
+ ProposalPOL              BitArray            // nil until ProposalPOLMessage received.
+ Prevotes                 BitArray            // All votes peer has for this round
+ Precommits               BitArray            // All precommits peer has for this round
+ LastCommitRound          int                 // Round of commit for last height. -1 if none.
+ LastCommit               BitArray            // All commit precommits of commit for last height.
+ CatchupCommitRound       int                 // Round that we have commit for. Not necessarily unique. -1 if none.
+ CatchupCommit            BitArray            // All commit precommits peer has for this height & CatchupCommitRound
 }
 ```
 
@@ -106,7 +106,7 @@ respectively.
 
 ### NewRoundStepMessage handler
 
-```
+```go
 handleMessage(msg):
     if msg is from smaller height/round/step then return
     // Just remember these values.
@@ -123,17 +123,17 @@ handleMessage(msg):
     if prs.Height has been updated then
         if prsHeight+1 == msg.Height && prsRound == msg.LastCommitRound then
             prs.LastCommitRound = msg.LastCommitRound
-        	prs.LastCommit = prs.Precommits
+         prs.LastCommit = prs.Precommits
         } else {
             prs.LastCommitRound = msg.LastCommitRound
-        	prs.LastCommit = nil
+         prs.LastCommit = nil
         }
         Reset prs.CatchupCommitRound and prs.CatchupCommit
 ```
 
 ### NewValidBlockMessage handler
 
-```
+```go
 handleMessage(msg):
     if prs.Height != msg.Height then return
 
@@ -148,7 +148,7 @@ protect the node against DOS attacks.
 
 ### HasVoteMessage handler
 
-```
+```go
 handleMessage(msg):
     if prs.Height == msg.Height then
         prs.setHasVote(msg.Height, msg.Round, msg.Type, msg.Index)
@@ -156,7 +156,7 @@ handleMessage(msg):
 
 ### VoteSetMaj23Message handler
 
-```
+```go
 handleMessage(msg):
     if prs.Height == msg.Height then
         Record in rs that a peer claim to have ⅔ majority for msg.BlockID
@@ -165,7 +165,7 @@ handleMessage(msg):
 
 ### ProposalMessage handler
 
-```
+```go
 handleMessage(msg):
     if prs.Height != msg.Height || prs.Round != msg.Round || prs.Proposal then return
     prs.Proposal = true
@@ -178,7 +178,7 @@ handleMessage(msg):
 
 ### ProposalPOLMessage handler
 
-```
+```go
 handleMessage(msg):
     if prs.Height != msg.Height or prs.ProposalPOLRound != msg.ProposalPOLRound then return
     prs.ProposalPOL = msg.ProposalPOL
@@ -189,7 +189,7 @@ node against DOS attacks.
 
 ### BlockPartMessage handler
 
-```
+```go
 handleMessage(msg):
     if prs.Height != msg.Height || prs.Round != msg.Round then return
     Record in prs that peer has block part msg.Part.Index
@@ -198,7 +198,7 @@ handleMessage(msg):
 
 ### VoteMessage handler
 
-```
+```go
 handleMessage(msg):
     Record in prs that a peer knows vote with index msg.vote.ValidatorIndex for particular height and round
     Send msg trough internal peerMsgQueue to ConsensusState service
@@ -206,7 +206,7 @@ handleMessage(msg):
 
 ### VoteSetBitsMessage handler
 
-```
+```go
 handleMessage(msg):
     Update prs for the bit-array of votes peer claims to have for the msg.BlockID
 ```
@@ -220,12 +220,12 @@ It is used to send the following messages to the peer: `BlockPartMessage`, `Prop
 `ProposalPOLMessage` on the DataChannel. The gossip data routine is based on the local RoundState (`rs`)
 and the known PeerRoundState (`prs`). The routine repeats forever the logic shown below:
 
-```
+```go
 1a) if rs.ProposalBlockPartsHeader == prs.ProposalBlockPartsHeader and the peer does not have all the proposal parts then
         Part = pick a random proposal block part the peer does not have
         Send BlockPartMessage(rs.Height, rs.Round, Part) to the peer on the DataChannel
         if send returns true, record that the peer knows the corresponding block Part
-	    Continue
+     Continue
 
 1b) if (0 < prs.Height) and (prs.Height < rs.Height) then
         help peer catch up using gossipDataForCatchup function
@@ -239,8 +239,8 @@ and the known PeerRoundState (`prs`). The routine repeats forever the logic show
 1d) if (rs.Proposal != nil and !prs.Proposal) then
         Send ProposalMessage(rs.Proposal) to the peer
         if send returns true, record that the peer knows Proposal
-	    if 0 <= rs.Proposal.POLRound then
-	    polRound = rs.Proposal.POLRound
+     if 0 <= rs.Proposal.POLRound then
+     polRound = rs.Proposal.POLRound
         prevotesBitArray = rs.Votes.Prevotes(polRound).BitArray()
         Send ProposalPOLMessage(rs.Height, polRound, prevotesBitArray)
         Continue
@@ -253,16 +253,18 @@ and the known PeerRoundState (`prs`). The routine repeats forever the logic show
 This function is responsible for helping peer catch up if it is at the smaller height (prs.Height < rs.Height).
 The function executes the following logic:
 
+```go
     if peer does not have all block parts for prs.ProposalBlockPart then
         blockMeta =  Load Block Metadata for height prs.Height from blockStore
         if (!blockMeta.BlockID.PartsHeader == prs.ProposalBlockPartsHeader) then
             Sleep PeerGossipSleepDuration
-    	return
+     return
         Part = pick a random proposal block part the peer does not have
         Send BlockPartMessage(prs.Height, prs.Round, Part) to the peer on the DataChannel
         if send returns true, record that the peer knows the corresponding block Part
         return
     else Sleep PeerGossipSleepDuration
+```
 
 ## Gossip Votes Routine
 
@@ -270,7 +272,7 @@ It is used to send the following message: `VoteMessage` on the VoteChannel.
 The gossip votes routine is based on the local RoundState (`rs`)
 and the known PeerRoundState (`prs`). The routine repeats forever the logic shown below:
 
-```
+```go
 1a) if rs.Height == prs.Height then
         if prs.Step == RoundStepNewHeight then
             vote = random vote from rs.LastCommit the peer does not have
@@ -284,7 +286,7 @@ and the known PeerRoundState (`prs`). The routine repeats forever the logic show
             if send returns true, continue
 
         if prs.Step <= RoundStepPrecommit and prs.Round != -1 and prs.Round <= rs.Round then
-     	    Precommits = rs.Votes.Precommits(prs.Round)
+          Precommits = rs.Votes.Precommits(prs.Round)
             vote = random vote from Precommits the peer does not have
             Send VoteMessage(vote) to the peer
             if send returns true, continue
@@ -315,7 +317,7 @@ It is used to send the following message: `VoteSetMaj23Message`. `VoteSetMaj23Me
 BlockID has seen +2/3 votes. This routine is based on the local RoundState (`rs`) and the known PeerRoundState
 (`prs`). The routine repeats forever the logic shown below.
 
-```
+```go
 1a) if rs.Height == prs.Height then
         Prevotes = rs.Votes.Prevotes(prs.Round)
         if there is a ⅔ majority for some blockId in Prevotes then

@@ -86,7 +86,7 @@ TODO: pubkey
 
 The address is the first 20-bytes of the SHA256 hash of the raw 32-byte public key:
 
-```
+```go
 address = SHA256(pubkey)[:20]
 ```
 
@@ -98,7 +98,7 @@ TODO: pubkey
 
 The address is the first 20-bytes of the SHA256 hash of the raw 32-byte public key:
 
-```
+```go
 address = SHA256(pubkey)[:20]
 ```
 
@@ -110,7 +110,7 @@ TODO: pubkey
 
 The address is the RIPEMD160 hash of the SHA256 hash of the OpenSSL compressed public key:
 
-```
+```go
 address = RIPEMD160(SHA256(pubkey))
 ```
 
@@ -194,7 +194,7 @@ The differences between RFC 6962 and the simplest form a merkle tree are that:
    (The largest power of two less than the number of items) This allows new leaves to be added with less
    recomputation. For example:
 
-```
+```md
    Simple Tree with 6 items           Simple Tree with 7 items
 
               *                                  *
@@ -223,29 +223,29 @@ func emptyHash() []byte {
 
 // SHA256(0x00 || leaf)
 func leafHash(leaf []byte) []byte {
-	return tmhash.Sum(append(0x00, leaf...))
+ return tmhash.Sum(append(0x00, leaf...))
 }
 
 // SHA256(0x01 || left || right)
 func innerHash(left []byte, right []byte) []byte {
-	return tmhash.Sum(append(0x01, append(left, right...)...))
+ return tmhash.Sum(append(0x01, append(left, right...)...))
 }
 
 // largest power of 2 less than k
 func getSplitPoint(k int) { ... }
 
 func MerkleRoot(items [][]byte) []byte{
-	switch len(items) {
-	case 0:
-		return empthHash()
-	case 1:
-		return leafHash(items[0])
-	default:
-		k := getSplitPoint(len(items))
-		left := MerkleRoot(items[:k])
-		right := MerkleRoot(items[k:])
-		return innerHash(left, right)
-	}
+ switch len(items) {
+ case 0:
+  return empthHash()
+ case 1:
+  return leafHash(items[0])
+ default:
+  k := getSplitPoint(len(items))
+  left := MerkleRoot(items[:k])
+  right := MerkleRoot(items[k:])
+  return innerHash(left, right)
+ }
 }
 ```
 
@@ -253,7 +253,7 @@ Note: `MerkleRoot` operates on items which are arbitrary byte arrays, not
 necessarily hashes. For items which need to be hashed first, we introduce the
 `Hashes` function:
 
-```
+```go
 func Hashes(items [][]byte) [][]byte {
     return SHA256 of each item
 }
@@ -281,31 +281,31 @@ Which is verified as follows:
 
 ```golang
 func (proof SimpleProof) Verify(rootHash []byte, leaf []byte) bool {
-	assert(proof.LeafHash, leafHash(leaf)
+ assert(proof.LeafHash, leafHash(leaf)
 
-	computedHash := computeHashFromAunts(proof.Index, proof.Total, proof.LeafHash, proof.Aunts)
+ computedHash := computeHashFromAunts(proof.Index, proof.Total, proof.LeafHash, proof.Aunts)
     return computedHash == rootHash
 }
 
 func computeHashFromAunts(index, total int, leafHash []byte, innerHashes [][]byte) []byte{
-	assert(index < total && index >= 0 && total > 0)
+ assert(index < total && index >= 0 && total > 0)
 
-	if total == 1{
-		assert(len(proof.Aunts) == 0)
-		return leafHash
-	}
+ if total == 1{
+  assert(len(proof.Aunts) == 0)
+  return leafHash
+ }
 
-	assert(len(innerHashes) > 0)
+ assert(len(innerHashes) > 0)
 
-	numLeft := getSplitPoint(total) // largest power of 2 less than total
-	if index < numLeft {
-		leftHash := computeHashFromAunts(index, numLeft, leafHash, innerHashes[:len(innerHashes)-1])
-		assert(leftHash != nil)
-		return innerHash(leftHash, innerHashes[len(innerHashes)-1])
-	}
-	rightHash := computeHashFromAunts(index-numLeft, total-numLeft, leafHash, innerHashes[:len(innerHashes)-1])
-	assert(rightHash != nil)
-	return innerHash(innerHashes[len(innerHashes)-1], rightHash)
+ numLeft := getSplitPoint(total) // largest power of 2 less than total
+ if index < numLeft {
+  leftHash := computeHashFromAunts(index, numLeft, leafHash, innerHashes[:len(innerHashes)-1])
+  assert(leftHash != nil)
+  return innerHash(leftHash, innerHashes[len(innerHashes)-1])
+ }
+ rightHash := computeHashFromAunts(index-numLeft, total-numLeft, leafHash, innerHashes[:len(innerHashes)-1])
+ assert(rightHash != nil)
+ return innerHash(innerHashes[len(innerHashes)-1], rightHash)
 }
 ```
 
@@ -323,7 +323,7 @@ Because Tendermint only uses a Simple Merkle Tree, application developers are ex
 
 Amino also supports JSON encoding - registered types are simply encoded as:
 
-```
+```json
 {
   "type": "<amino type name>",
   "value": <JSON>
@@ -332,7 +332,7 @@ Amino also supports JSON encoding - registered types are simply encoded as:
 
 For instance, an ED25519 PubKey would look like:
 
-```
+```json
 {
   "type": "tendermint/PubKeyEd25519",
   "value": "uZ4h63OFWuQ36ZZ4Bd6NF+/w9fWUwrOncrQsackrsTk="
@@ -353,12 +353,12 @@ We call this encoding the SignBytes. For instance, SignBytes for a vote is the A
 
 ```go
 type CanonicalVote struct {
-	Type      byte
-	Height    int64            `binary:"fixed64"`
-	Round     int64            `binary:"fixed64"`
-	BlockID   CanonicalBlockID
-	Timestamp time.Time
-	ChainID   string
+ Type      byte
+ Height    int64            `binary:"fixed64"`
+ Round     int64            `binary:"fixed64"`
+ BlockID   CanonicalBlockID
+ Timestamp time.Time
+ ChainID   string
 }
 ```
 

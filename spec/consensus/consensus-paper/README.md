@@ -7,12 +7,12 @@ consensus protocol.
 
 MacTex is Latex distribution for Mac OS. You can download it [here](http://www.tug.org/mactex/mactex-download.html).
 
-Popular IDE for Latex-based projects is TexStudio. It can be downloaded 
+Popular IDE for Latex-based projects is TexStudio. It can be downloaded
 [here](https://www.texstudio.org/).
 
-## How to build project 
+## How to build project
 
-In order to compile the latex files (and write bibliography), execute 
+In order to compile the latex files (and write bibliography), execute
 
 `$ pdflatex paper` <br/>
 `$ bibtex paper` <br/>
@@ -22,4 +22,3 @@ In order to compile the latex files (and write bibliography), execute
 The generated file is paper.pdf. You can open it with
 
 `$ open paper.pdf`
-

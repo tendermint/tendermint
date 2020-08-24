@@ -26,7 +26,7 @@ wallets, that assume a monotonically increasing height for a given blockchain. U
 it confusing that a given height can now refer to distinct states depending on the chain
 version.
 
-An ideal solution would be to always retain block backwards compatibility in such a way that chain 
+An ideal solution would be to always retain block backwards compatibility in such a way that chain
 history is never lost on upgrades. However, this may require a significant amount of engineering
 work that is not viable for the planned Stargate release (Tendermint 0.34), and may prove too
 restrictive for future development.
@@ -36,20 +36,20 @@ file would at least provide monotonically increasing heights. There was a propos
 last block header of the previous chain as well, but since the genesis file is not verified and
 hashed (only specific fields are) this would not be trustworthy.
 
-External tooling will be required to map historical heights onto e.g. archive nodes that contain 
+External tooling will be required to map historical heights onto e.g. archive nodes that contain
 blocks from previous chain version. Tendermint will not include any such functionality.
 
 ## Proposal
 
 Tendermint will allow chains to start from an arbitrary initial height:
 
-* A new field `initial_height` is added to the genesis file, defaulting to `1`. It can be set to any
+- A new field `initial_height` is added to the genesis file, defaulting to `1`. It can be set to any
 non-negative integer, and `0` is considered equivalent to `1`.
 
-* A new field `InitialHeight` is added to the ABCI `RequestInitChain` message, with the same value 
+- A new field `InitialHeight` is added to the ABCI `RequestInitChain` message, with the same value
 and semantics as the genesis field.
 
-* A new field `InitialHeight` is added to the `state.State` struct, where `0` is considered invalid.
+- A new field `InitialHeight` is added to the `state.State` struct, where `0` is considered invalid.
   Including the field here simplifies implementation, since the genesis value does not have to be
   propagated throughout the code base separately, but it is not strictly necessary.
 
@@ -64,17 +64,17 @@ Accepted
 
 ### Positive
 
-* Heights can be unique throughout the history of a "logical" chain, across hard fork upgrades.
+- Heights can be unique throughout the history of a "logical" chain, across hard fork upgrades.
 
 ### Negative
 
-* Upgrades still cause loss of block history.
+- Upgrades still cause loss of block history.
 
-* Integrators will have to map height ranges to specific archive nodes/networks to query history.
+- Integrators will have to map height ranges to specific archive nodes/networks to query history.
 
 ### Neutral
 
-* There is no explicit link to the last block of the previous chain.
+- There is no explicit link to the last block of the previous chain.
 
 ## References
 

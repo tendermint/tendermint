@@ -30,11 +30,11 @@ If a pong or message is not received in sufficient time after a ping, the peer i
 
 Messages in channels are chopped into smaller `msgPacket`s for multiplexing.
 
-```
+```go
 type msgPacket struct {
-	ChannelID byte
-	EOF       byte // 1 means message ends here.
-	Bytes     []byte
+ ChannelID byte
+ EOF       byte // 1 means message ends here.
+ Bytes     []byte
 }
 ```
 

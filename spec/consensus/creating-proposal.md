@@ -16,11 +16,11 @@ we account for amino overhead for each transaction.
 
 ```go
 func MaxDataBytes(maxBytes int64, valsCount, evidenceCount int) int64 {
-	return maxBytes -
-		MaxAminoOverheadForBlock -
-		MaxHeaderBytes -
-		int64(valsCount)*MaxVoteBytes -
-		int64(evidenceCount)*MaxEvidenceBytes
+ return maxBytes -
+  MaxAminoOverheadForBlock -
+  MaxHeaderBytes -
+  int64(valsCount)*MaxVoteBytes -
+  int64(evidenceCount)*MaxEvidenceBytes
 }
 ```
 
@@ -33,10 +33,10 @@ maximum evidence size (1/10th of the maximum block size).
 
 ```go
 func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
-	return maxBytes -
-		MaxAminoOverheadForBlock -
-		MaxHeaderBytes -
-		int64(valsCount)*MaxVoteBytes -
-		MaxEvidenceBytesPerBlock(maxBytes)
+ return maxBytes -
+  MaxAminoOverheadForBlock -
+  MaxHeaderBytes -
+  int64(valsCount)*MaxVoteBytes -
+  MaxEvidenceBytesPerBlock(maxBytes)
 }
 ```

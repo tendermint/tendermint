@@ -186,7 +186,7 @@ fetchBlock(height, pool):
             mtx.Lock()
             pool.numPending++
             redo = true
-            mtx.UnLock()	
+            mtx.UnLock()
           }
       }
     }
@@ -251,23 +251,23 @@ main(pool):
 
   while true do
     select {
-	  upon receiving BlockRequest(Height, Peer) on pool.requestsChannel:
-	    try to send bcBlockRequestMessage(Height) to Peer
+   upon receiving BlockRequest(Height, Peer) on pool.requestsChannel:
+     try to send bcBlockRequestMessage(Height) to Peer
 
-	  upon receiving error(peer) on errorsChannel:
-	    stop peer for error
+   upon receiving error(peer) on errorsChannel:
+     stop peer for error
 
-	  upon receiving message on statusUpdateTickerChannel:
-	    broadcast bcStatusRequestMessage(bcR.store.Height) // message sent in a separate routine
+   upon receiving message on statusUpdateTickerChannel:
+     broadcast bcStatusRequestMessage(bcR.store.Height) // message sent in a separate routine
 
-	  upon receiving message on switchToConsensusTickerChannel:
-	    pool.mtx.Lock()
-	    receivedBlockOrTimedOut = pool.height > 0 || (time.Now() - pool.startTime) > 5 Seconds
-	    ourChainIsLongestAmongPeers = pool.maxPeerHeight == 0 || pool.height >= pool.maxPeerHeight
-	    haveSomePeers = size of pool.peers > 0
-	    pool.mtx.Unlock()
-	    if haveSomePeers && receivedBlockOrTimedOut && ourChainIsLongestAmongPeers then
-	      switch to consensus mode
+   upon receiving message on switchToConsensusTickerChannel:
+     pool.mtx.Lock()
+     receivedBlockOrTimedOut = pool.height > 0 || (time.Now() - pool.startTime) > 5 Seconds
+     ourChainIsLongestAmongPeers = pool.maxPeerHeight == 0 || pool.height >= pool.maxPeerHeight
+     haveSomePeers = size of pool.peers > 0
+     pool.mtx.Unlock()
+     if haveSomePeers && receivedBlockOrTimedOut && ourChainIsLongestAmongPeers then
+       switch to consensus mode
 
           upon receiving message on trySyncTickerChannel:
             for i = 0; i < 10; i++ do
@@ -294,7 +294,7 @@ main(pool):
 redoRequestsForPeer(pool, peerId):
   for each requester in pool.requesters do
     if requester.getPeerID() == peerID
-  	  enqueue msg on redoChannel for requester
+     enqueue msg on redoChannel for requester
 ```
 
 ## Channels

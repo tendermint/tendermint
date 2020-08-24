@@ -12,7 +12,7 @@ Environment: `TM_MEMPOOL_RECHECK=false`
 
 Config:
 
-```
+```toml
 [mempool]
 recheck = false
 ```

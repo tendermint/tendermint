@@ -70,13 +70,13 @@ when calculating a bucket.
 
 When placing a peer into a new bucket:
 
-```
+```md
 hash(key + sourcegroup + int64(hash(key + group + sourcegroup)) % bucket_per_group) % num_new_buckets
 ```
 
 When placing a peer into an old bucket:
 
-```
+```md
 hash(key + group + int64(hash(key + addr)) % buckets_per_group) % num_old_buckets
 ```
 

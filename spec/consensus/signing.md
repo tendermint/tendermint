@@ -14,12 +14,12 @@ being signed. It is defined in Go as follows:
 type SignedMsgType byte
 
 const (
-	// Votes
-	PrevoteType   SignedMsgType = 0x01
-	PrecommitType SignedMsgType = 0x02
+ // Votes
+ PrevoteType   SignedMsgType = 0x01
+ PrecommitType SignedMsgType = 0x02
 
-	// Proposals
-	ProposalType SignedMsgType = 0x20
+ // Proposals
+ ProposalType SignedMsgType = 0x20
 )
 ```
 
@@ -48,13 +48,13 @@ BlockID is the structure used to represent the block:
 
 ```go
 type BlockID struct {
-	Hash        []byte
-	PartsHeader PartSetHeader
+ Hash        []byte
+ PartsHeader PartSetHeader
 }
 
 type PartSetHeader struct {
-	Hash  []byte
-	Total int
+ Hash  []byte
+ Total int
 }
 ```
 
@@ -64,7 +64,7 @@ We introduce two methods, `BlockID.IsZero()` and `BlockID.IsComplete()` for thes
 `BlockID.IsZero()` returns true for BlockID `b` if each of the following
 are true:
 
-```
+```go
 b.Hash == nil
 b.PartsHeader.Total == 0
 b.PartsHeader.Hash == nil
@@ -73,7 +73,7 @@ b.PartsHeader.Hash == nil
 `BlockID.IsComplete()` returns true for BlockID `b` if each of the following
 are true:
 
-```
+```go
 len(b.Hash) == 32
 b.PartsHeader.Total > 0
 len(b.PartsHeader.Hash) == 32
@@ -85,13 +85,13 @@ The structure of a proposal for signing looks like:
 
 ```go
 type CanonicalProposal struct {
-	Type      SignedMsgType // type alias for byte
-	Height    int64         `binary:"fixed64"`
-	Round     int64         `binary:"fixed64"`
-	POLRound  int64         `binary:"fixed64"`
-	BlockID   BlockID
-	Timestamp time.Time
-	ChainID   string
+ Type      SignedMsgType // type alias for byte
+ Height    int64         `binary:"fixed64"`
+ Round     int64         `binary:"fixed64"`
+ POLRound  int64         `binary:"fixed64"`
+ BlockID   BlockID
+ Timestamp time.Time
+ ChainID   string
 }
 ```
 
@@ -115,18 +115,18 @@ The structure of a vote for signing looks like:
 
 ```go
 type CanonicalVote struct {
-	Type      SignedMsgType // type alias for byte
-	Height    int64         `binary:"fixed64"`
-	Round     int64         `binary:"fixed64"`
-	BlockID   BlockID
-	Timestamp time.Time
-	ChainID   string
+ Type      SignedMsgType // type alias for byte
+ Height    int64         `binary:"fixed64"`
+ Round     int64         `binary:"fixed64"`
+ BlockID   BlockID
+ Timestamp time.Time
+ ChainID   string
 }
 ```
 
 A vote is valid if each of the following lines evaluates to true for vote `v`:
 
-```
+```go
 v.Type == 0x1 || v.Type == 0x2
 v.Height > 0
 v.Round >= 0
@@ -157,9 +157,9 @@ Assume the signer keeps the following state, `s`:
 
 ```go
 type LastSigned struct {
-	Height	int64
-	Round	int64
-	Type	SignedMsgType // byte
+ Height int64
+ Round int64
+ Type SignedMsgType // byte
 }
 ```
 
@@ -175,7 +175,7 @@ s.Type = m.Type
 
 A signer should only sign a proposal `p` if any of the following lines are true:
 
-```
+```go
 p.Height > s.Height
 p.Height == s.Height && p.Round > s.Round
 ```
@@ -187,7 +187,7 @@ Once a proposal or vote has been signed for a given height and round, a proposal
 
 A signer should only sign a vote `v` if any of the following lines are true:
 
-```
+```go
 v.Height > s.Height
 v.Height == s.Height && v.Round > s.Round
 v.Height == s.Height && v.Round == s.Round && v.Step == 0x1 && s.Step == 0x20
