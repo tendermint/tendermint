@@ -6,7 +6,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ## BREAKING CHANGES
 
-- [crypto/secp256k1] `secp256k1` has been removed from the Tendermint repo.
+- [crypto/secp256k1] \#5280 `secp256k1` has been removed from the Tendermint repo. (@marbar3778)
 
 ## FEATURES
 
