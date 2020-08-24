@@ -8,11 +8,11 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ## FEATURES
 
-- [privval] \#5239 Add `chainID` to requests from client.
+- [privval] \#5239 Add `chainID` to requests from client. (@marbar3778)
 
 ## IMPROVEMENTS
 
-- [blockchain] Verify only +2/3 of the signatures in a block when fast syncing.
+- [blockchain] \#5278 Verify only +2/3 of the signatures in a block when fast syncing. (@marbar3778)
 
 ## BUG FIXES
 
