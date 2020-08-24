@@ -1,5 +1,4 @@
 docs/node_modules
 CHANGELOG.md
 docs/architecture/*
-crypto/secp256k1/internal/secp256k1/*
 scripts/*
