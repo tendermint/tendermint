@@ -444,7 +444,7 @@ func benchmarkNClients(n int, b *testing.B) {
 		err = s.PublishWithEvents(
 			ctx,
 			"Gamora",
-			map[string][]string{"abci.Account.Owner": {"Ivan"}, "abci.Invoices.Number": {string(i)}},
+			map[string][]string{"abci.Account.Owner": {"Ivan"}, "abci.Invoices.Number": {string(rune(i))}},
 		)
 		require.NoError(b, err)
 	}
