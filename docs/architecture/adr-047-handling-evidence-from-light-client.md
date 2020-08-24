@@ -60,14 +60,16 @@ mean that it is trusted yet). All headers in between are cached and known as int
 
 The light client's detector then takes the headers and runs the detect function.
 
-```
+```golang
 Detect(trace []*SignedHeader, witnesses []Provider) ([]Evidence, error)
 ```
 
 This queries the header of the last height for each of the witnesses in order to compare hashes. In the event that these two hashes are 
 different we have verified conflicting headers and therefore the detector proceeds to run 
 
-`FindLightSplit(trace []*SignedHeader, witness Provider) (commonHeader, h1, h2 *SignedHeader, error)`
+```golang
+FindLightFork(trace []*SignedHeader, witness Provider) (commonHeader, h1, h2 *SignedHeader, error)
+```
 
 to verify the witness's header and then locate the Light Bifurcation Point
 
@@ -150,7 +152,9 @@ full nodes state and the other that will be valid and can be committed onto the 
 The light client then checks if there has been a full fork that has caused the 
 divergence.
 
-`CheckForEquivocation(h1, h2 *SignedHeader) ([]Evidence, error)`
+```golang
+CheckForEquivocation(h1, h2 *SignedHeader) ([]Evidence, error)
+```
 
 It first differentiates between a duplicate vote attack and an amnesia attack by
 checking the round that the commit of the divergent headers happened. If they
@@ -193,7 +197,9 @@ the light client can iteratively work backwards from the diverged header,
 querying and validating both providers until it reaches the point of bifurcation
 on the full fork.
 
-`FindFullFork(commonHeader *SignedHeader, knownDivergenceHeight int64, p1, p2 Provider)(h1, h2, *SignedHeader, error)`
+```golang
+FindFullFork(commonHeader *SignedHeader, knownDivergenceHeight int64, p1, p2 Provider)(h1, h2, *SignedHeader, error)
+```
 
 This is the point that the headers have the same `LastBlockID` 
 but different hashes. Now the validator sets will be the same and we
