@@ -12,6 +12,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ## IMPROVEMENTS
 
+- [blockchain] Verify only +2/3 of the signatures in a block when fast syncing.
+
 ## BUG FIXES
 
 - [blockchain] \#5249 Fix fast sync halt with initial height > 1 (@erikgrinaker)
