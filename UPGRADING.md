@@ -96,7 +96,8 @@ Various parameters have been added to the consensus parameters.
 
 All keys have removed there type prefix. Ed25519 Pubkey went from `PubKeyEd25519` to `PubKey`. This way when calling the key you are not duplicating information (`ed25519.PubKey`). All keys are now slice of bytes(`[]byte`), previously they were a array of bytes (`[<size>]byte`).
 
-The multisig that was previously located in Tendermint has now migrated to a new home within the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go).
+- The multisig that was previously located in Tendermint has now migrated to a new home within the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go).
+- Secp256k1 has been removed from the Tendermint repo. If you would like to continue using the implementation you can find it in the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/tree/443e0c1f89bd3730a731aea30453bd732f7efa35/crypto/keys/secp256k1)
 
 #### Merkle
 
