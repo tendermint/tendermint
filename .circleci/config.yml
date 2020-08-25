@@ -102,7 +102,7 @@ jobs:
       - checkout
       - run:
           name: "Pull versions"
-          command: make build-docs
+          command: git fetch origin v0.32 v0.33
       - run:
           name: "Build docs"
           command: make build-docs

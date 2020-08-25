@@ -25,7 +25,9 @@ like the file below, however, double check by inspecting the
 # "$HOME/.tendermint" by default, but could be changed via $TMHOME env variable
 # or --home cmd flag.
 
-##### main base config options #####
+#######################################################################
+###                   Main Base Config Options                      ###
+#######################################################################
 
 # TCP or UNIX socket address of the ABCI application,
 # or the name of an ABCI application compiled in with the Tendermint binary
@@ -64,7 +66,7 @@ db_backend = "goleveldb"
 db_dir = "data"
 
 # Output level for logging, including package level options
-log_level = "main:info,state:info,*:error"
+log_level = "main:info,state:info,statesync:info,*:error"
 
 # Output format: 'plain' (colored text) or 'json'
 log_format = "plain"
@@ -75,7 +77,10 @@ log_format = "plain"
 genesis_file = "config/genesis.json"
 
 # Path to the JSON file containing the private key to use as a validator in the consensus protocol
-priv_validator_file = "config/priv_validator.json"
+priv_validator_key_file = "config/priv_validator_key.json"
+
+# Path to the JSON file containing the last sign state of a validator
+priv_validator_state_file = "data/priv_validator_state.json"
 
 # TCP or UNIX socket address for Tendermint to listen on for
 # connections from an external PrivValidator process
@@ -94,13 +99,18 @@ prof_laddr = ""
 # so the app can decide if we should keep the connection or not
 filter_peers = false
 
-##### advanced configuration options #####
 
-##### rpc server configuration options #####
+#######################################################################
+###                 Advanced Configuration Options                  ###
+#######################################################################
+
+#######################################################
+###       RPC Server Configuration Options          ###
+#######################################################
 [rpc]
 
 # TCP or UNIX socket address for the RPC server to listen on
-laddr = "tcp://0.0.0.0:26657"
+laddr = "tcp://127.0.0.1:26657"
 
 # A list of origins a cross-domain request can be executed from
 # Default value '[]' disables cors support
@@ -108,10 +118,10 @@ laddr = "tcp://0.0.0.0:26657"
 cors_allowed_origins = []
 
 # A list of methods the client is allowed to use with cross-domain requests
-cors_allowed_methods = ["HEAD", "GET", "POST"]
+cors_allowed_methods = ["HEAD", "GET", "POST", ]
 
 # A list of non simple headers the client is allowed to use with cross-domain requests
-cors_allowed_headers = ["Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"]
+cors_allowed_headers = ["Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time", ]
 
 # TCP or UNIX socket address for the gRPC server to listen on
 # NOTE: This server only supports /broadcast_tx_commit
@@ -155,25 +165,29 @@ max_subscriptions_per_client = 5
 timeout_broadcast_tx_commit = "10s"
 
 # Maximum size of request body, in bytes
-max_body_bytes = {{ .RPC.MaxBodyBytes }}
+max_body_bytes = 1000000
 
 # Maximum size of request header, in bytes
-max_header_bytes = {{ .RPC.MaxHeaderBytes }}
+max_header_bytes = 1048576
 
 # The path to a file containing certificate that is used to create the HTTPS server.
 # Migth be either absolute path or path related to tendermint's config directory.
 # If the certificate is signed by a certificate authority,
 # the certFile should be the concatenation of the server's certificate, any intermediates,
 # and the CA's certificate.
-# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+# Otherwise, HTTP server is run.
 tls_cert_file = ""
 
 # The path to a file containing matching private key that is used to create the HTTPS server.
 # Migth be either absolute path or path related to tendermint's config directory.
-# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server. Otherwise, HTTP server is run.
+# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+# Otherwise, HTTP server is run.
 tls_key_file = ""
 
-##### peer to peer configuration options #####
+#######################################################
+###           P2P Configuration Options             ###
+#######################################################
 [p2p]
 
 # Address to listen for incoming connections
@@ -207,6 +221,12 @@ max_num_inbound_peers = 40
 # Maximum number of outbound peers to connect to, excluding persistent peers
 max_num_outbound_peers = 10
 
+# List of node IDs, to which a connection will be (re)established ignoring any existing limits
+unconditional_peer_ids = ""
+
+# Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
+persistent_peers_max_dial_period = "0s"
+
 # Time to wait before flushing messages out on the connection
 flush_throttle_timeout = "100ms"
 
@@ -238,7 +258,9 @@ allow_duplicate_ip = false
 handshake_timeout = "20s"
 dial_timeout = "3s"
 
-##### mempool configuration options #####
+#######################################################
+###          Mempool Configurattion Option          ###
+#######################################################
 [mempool]
 
 recheck = true
@@ -257,19 +279,49 @@ max_txs_bytes = 1073741824
 cache_size = 10000
 
 # Maximum size of a single transaction.
-# NOTE: the max size of a tx transmitted over the network is {max_tx_bytes} + {amino overhead}.
+# NOTE: the max size of a tx transmitted over the network is {max_tx_bytes}.
 max_tx_bytes = 1048576
 
-##### fast sync configuration options #####
+#######################################################
+###         State Sync Configuration Options        ###
+#######################################################
+[statesync]
+# State sync rapidly bootstraps a new node by discovering, fetching, and restoring a state machine
+# snapshot from peers instead of fetching and replaying historical blocks. Requires some peers in
+# the network to take and serve state machine snapshots. State sync is not attempted if the node
+# has any local state (LastBlockHeight > 0). The node will have a truncated block history,
+# starting from the height of the snapshot.
+enable = false
+
+# RPC servers (comma-separated) for light client verification of the synced state machine and
+# retrieval of state data for node bootstrapping. Also needs a trusted height and corresponding
+# header hash obtained from a trusted source, and a period during which validators can be trusted.
+#
+# For Cosmos SDK-based chains, trust_period should usually be about 2/3 of the unbonding time (~2
+# weeks) during which they can be financially punished (slashed) for misbehavior.
+rpc_servers = ""
+trust_height = 0
+trust_hash = ""
+trust_period = "0s"
+
+# Temporary directory for state sync snapshot chunks, defaults to the OS tempdir (typically /tmp).
+# Will create a new, randomly named directory within, and remove it when done.
+temp_dir = ""
+
+#######################################################
+###       Fast Sync Configuration Connections       ###
+#######################################################
 [fastsync]
 
 # Fast Sync version to use:
 #   1) "v0" (default) - the legacy fast sync implementation
 #   2) "v1" - refactor of v0 version for better testability
-#   2) "v2" - complete redesign of v0, optimized for testability & readability
+#   2) "v2" - complete redesign of v0, optimized for testability & readability 
 version = "v0"
 
-##### consensus configuration options #####
+#######################################################
+###         Consensus Configuration Options         ###
+#######################################################
 [consensus]
 
 wal_file = "data/cs.wal/wal"
@@ -293,42 +345,25 @@ create_empty_blocks_interval = "0s"
 peer_gossip_sleep_duration = "100ms"
 peer_query_maj23_sleep_duration = "2s"
 
-# Block time parameters. Corresponds to the minimum time increment between consecutive blocks.
-blocktime_iota = "1s"
-
-##### transactions indexer configuration options #####
+#######################################################
+###   Transaction Indexer Configuration Options     ###
+#######################################################
 [tx_index]
 
 # What indexer to use for transactions
+# 
+# The application will set which txs to index. In some cases a node operator will be able
+# to decide which txs to index based on configuration set in the application.
 #
 # Options:
 #   1) "null"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+# 		- When "kv" is chosen "tx.height" and "tx.hash" will always be indexed.
 indexer = "kv"
 
-# Comma-separated list of compositeKeys to index (by default the only key is "tx.hash")
-# Remember that Event has the following structure: type.key
-# type: [
-#  key: value,
-#  ...
-# ]
-#
-# You can also index transactions by height by adding "tx.height" event here.
-#
-# It's recommended to index only a subset of keys due to possible memory
-# bloat. This is, of course, depends on the indexer's DB and the volume of
-# transactions.
-index_keys = ""
-
-# When set to true, tells indexer to index all compositeKeys (predefined keys:
-# "tx.hash", "tx.height" and all keys from DeliverTx responses).
-#
-# Note this may be not desirable (see the comment above). IndexEvents has a
-# precedence over IndexAllEvents (i.e. when given both, IndexEvents will be
-# indexed).
-index_all_keys = false
-
-##### instrumentation configuration options #####
+#######################################################
+###       Instrumentation Configuration Options     ###
+#######################################################
 [instrumentation]
 
 # When true, Prometheus metrics are served under /metrics on
@@ -347,6 +382,7 @@ max_open_connections = 3
 
 # Instrumentation namespace
 namespace = "tendermint"
+
 ```
 
 ## Empty blocks VS no empty blocks

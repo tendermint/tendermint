@@ -56,7 +56,7 @@ Configuring a cluster is covered further below.
 
 ## Local Node
 
-Start tendermint with a simple in-process application:
+Start Tendermint with a simple in-process application:
 
 ```sh
 tendermint node --proxy_app=kvstore
