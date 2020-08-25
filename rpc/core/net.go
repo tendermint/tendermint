@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -51,19 +52,42 @@ func UnsafeDialSeeds(ctx *rpctypes.Context, seeds []string) (*ctypes.ResultDialS
 
 // UnsafeDialPeers dials the given peers (comma-separated id@IP:PORT),
 // optionally making them persistent.
-func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent, uncoditional, private bool) (*ctypes.ResultDialPeers, error) {
+func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent, uncoditional, private bool) (
+	*ctypes.ResultDialPeers, error) {
 	if len(peers) == 0 {
 		return &ctypes.ResultDialPeers{}, errors.New("no peers provided")
 	}
-	env.Logger.Info("DialPeers", "peers", peers, "persistent", persistent)
+
+	Ids, err := getIDs(peers)
+	if err != nil {
+		return &ctypes.ResultDialPeers{}, err
+	}
+
+	env.Logger.Info("DialPeers", "peers", peers, "persistent",
+		persistent, "uncoditional", uncoditional, "private", private)
+
 	if persistent {
 		if err := env.P2PPeers.AddPersistentPeers(peers); err != nil {
 			return &ctypes.ResultDialPeers{}, err
 		}
 	}
+
+	if private {
+		if err := env.P2PPeers.AddPrivatePeerIDs(Ids); err != nil {
+			return &ctypes.ResultDialPeers{}, err
+		}
+	}
+
+	if uncoditional {
+		if err := env.P2PPeers.AddUnconditionalPeerIDs(Ids); err != nil {
+			return &ctypes.ResultDialPeers{}, err
+		}
+	}
+
 	if err := env.P2PPeers.DialPeersAsync(peers); err != nil {
 		return &ctypes.ResultDialPeers{}, err
 	}
+
 	return &ctypes.ResultDialPeers{Log: "Dialing peers in progress. See /net_info for details"}, nil
 }
 
@@ -71,4 +95,19 @@ func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent, uncoditi
 // More: https://docs.tendermint.com/master/rpc/#/Info/genesis
 func Genesis(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error) {
 	return &ctypes.ResultGenesis{Genesis: env.GenDoc}, nil
+}
+
+func getIDs(peers []string) ([]string, error) {
+	Ids := make([]string, 0, len(peers))
+
+	for _, peer := range peers {
+
+		spl := strings.Split(peer, "@")
+		if len(spl) != 2 {
+			return nil, p2p.ErrNetAddressNoID{Addr: peer}
+		}
+		Ids = append(Ids, spl[0])
+
+	}
+	return Ids, nil
 }

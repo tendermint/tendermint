@@ -2655,6 +2655,12 @@ components:
         Persistent:
           type: boolean
           example: false
+        Unconditional:
+          type: boolean
+          example: false
+        Private:
+          type: boolean
+          example: false
         Peers:
           type: array
           items:

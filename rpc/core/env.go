@@ -59,7 +59,7 @@ type transport interface {
 type peers interface {
 	AddPersistentPeers([]string) error
 	AddUnconditionalPeerIDs([]string) error
-	// AddPrivatePeers([]string) error
+	AddPrivatePeerIDs([]string) error
 	DialPeersAsync([]string) error
 	Peers() p2p.IPeerSet
 }

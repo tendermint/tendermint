@@ -852,4 +852,5 @@ func (book *addrBookMock) HasAddress(addr *NetAddress) bool {
 func (book *addrBookMock) RemoveAddress(addr *NetAddress) {
 	delete(book.addrs, addr.String())
 }
-func (book *addrBookMock) Save() {}
+func (book *addrBookMock) Save()                  {}
+func (book *addrBookMock) AddPrivateIDs([]string) {}
