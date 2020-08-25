@@ -548,20 +548,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
   /dial_peers:
-    post:
+    get:
       summary: Add Peers/Persistent Peers (unsafe)
       operationId: dial_peers
       tags:
         - Unsafe
       description: |
         Set a persistent peer, this route in under unsafe, and has to manually enabled to use
-      requestBody:
-        description: string of possible peers, bool argument if they should be added as persistent
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/dialPeersPost"
+      parameters:
+        - in: query
+          name: persistent
+          description: Have the peers you are dialing be persistent
+          schema:
+            type: boolean
+            example: true
+        - in: query
+          name: peers
+          description: array of peers to dial
+          schema:
+            type: array
+            items:
+              type: string
+              example: "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656"
       responses:
         "200":
           description: Dialing seeds in progress. See /net_info for details
