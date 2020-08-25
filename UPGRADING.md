@@ -156,10 +156,10 @@ is recommended to check the chainID if using the same key management system for 
 When upgrading to version 0.33.4 you will have to fetch the `third_party`
 directory along with the updated proto files.
 
-### Block Pruning
+### Block Retention
 
 ResponseCommit added a field for block retention. The application can provide information to Tendermint on how to prune blocks.
-If an application would like to not prune any blocks a `0` is recommended to be passed.
+If an application would like to not prune any blocks pass a `0` in this field.
 
 ```proto
 message ResponseCommit {
