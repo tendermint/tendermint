@@ -56,7 +56,7 @@ primary's header against any other header.
 
 The verification process of the light client will start from a trusted header and use a bisectional
 algorithm to verify up to a header at a given height. This becomes the verified header (does not 
-mean that it is trusted yet). All headers in between are cached and known as intermediary headers.
+mean that it is trusted yet). All headers that were verified in between are cached and known as intermediary headers.
 
 The light client's detector then takes the headers and runs the detect function.
 
@@ -118,11 +118,11 @@ is predominantly designed as a second layer to detect such an attack.
 
 Lunatic evidence has the following data structure:
 
-```go
+```golang
 type LunaticAttackEvidence struct {
 	SignedHeader          *SignedHeader
-	ValidatorSourceHeight int64
-	Timestamp             time.Time
+	CommonHeight          int64
+	Timestamp             time.Time //derived from the header of the common height
 }
 ```
 
@@ -132,7 +132,9 @@ the header that the light client trusted not the header where the attack actuall
 done because after the header that the light client trusted we can't be sure that the validators
 are still in the set and hence are still bonded. 
 
-`CheckForLunaticAttack(commonHeader, trustedHeader, divergedHeader *SignedHeader, commonValSet *ValidatorSet) (*Evidence, error)`
+```golang
+CheckForLunaticAttack(commonHeader, trustedHeader, divergedHeader *SignedHeader, commonValSet *ValidatorSet) (*Evidence, error)
+```
 
 A lunatic attack is leveraged from the common trusted header. This is the intermediary header that 
 came directly before the divergent headers and must contain a 1/3 overlap of validators.
