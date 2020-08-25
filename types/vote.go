@@ -85,9 +85,11 @@ func (vote *Vote) CommitSig() CommitSig {
 }
 
 // VoteSignBytes returns the proto-encoding of the canonicalized Vote, for
-// signing.
+// signing. Panics is the marshaling fails.
 //
-// Panics if the marshaling fails.
+// The encoded Protobuf message is varint length-prefixed (using MarshalDelimited)
+// for backwards-compatibility with the Amino encoding, due to e.g. hardware
+// devices that rely on this encoding.
 //
 // See CanonicalizeVote
 func VoteSignBytes(chainID string, vote *tmproto.Vote) []byte {
