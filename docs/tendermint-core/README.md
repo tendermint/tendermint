@@ -19,4 +19,3 @@ This section dives into the internals of Tendermint the implementation.
 - [Fast Sync](./fast-sync.md)
 - [Mempool](./mempool.md)
 - [Light Client](./light-client.md)
-- [Secure P2P](./secure-p2p.md)
