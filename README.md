@@ -28,8 +28,7 @@ see our recent paper, "[The latest gossip on BFT consensus](https://arxiv.org/ab
 
 ## Releases
 
-NOTE: The master branch is now an active development branch (starting with `v0.32`). Please, do not depend on it and
-use [releases](https://github.com/tendermint/tendermint/releases) instead.
+Note: Please, do not depend on master as your production branch, use [releases](https://github.com/tendermint/tendermint/releases) instead.
 
 Tendermint is being used in production in both private and public environments,
 most notably the blockchains of the [Cosmos Network](https://cosmos.network/).
@@ -37,7 +36,7 @@ However, we are still making breaking changes to the protocol and the APIs and h
 See below for more details about [versioning](#versioning).
 
 In any case, if you intend to run Tendermint in production,
-please [contact us](mailto:partners@tendermint.com) and [join the chat](https://discord.gg/AzefAFd).
+please [contact us](mailto:hello@interchain.berlin) and [join the chat](https://discord.gg/AzefAFd).
 
 ## Security
 
@@ -96,16 +95,24 @@ That said, breaking changes in the following packages will be documented in the
 CHANGELOG even if they don't lead to MINOR version bumps:
 
 - crypto
-- types
-- rpc/client
 - config
-- node
 - libs
     - bech32
-    - common
-    - db
-    - errors
+    - bits
+    - bytes
+    - json
     - log
+    - math
+    - net
+    - os
+    - protoio
+    - rand
+    - sync
+    - strings
+    - service
+- node
+- rpc/client
+- types
 
 Exported objects in these packages that are not covered by the versioning scheme
 are explicitly marked by `// UNSTABLE` in their go doc comment and may change at any
@@ -115,7 +122,7 @@ time without notice. Functions, types, and values in any other package may also 
 
 In an effort to avoid accumulating technical debt prior to 1.0.0,
 we do not guarantee that breaking changes (ie. bumps in the MINOR version)
-will work with existing tendermint blockchains. In these cases you will
+will work with existing Tendermint blockchains. In these cases you will
 have to start a new blockchain, or write something custom to get the old
 data into the new chain.
 
@@ -149,8 +156,6 @@ Additional documentation is found [here](/docs/tools).
 
 ### Sub-projects
 
-- [Amino](http://github.com/tendermint/go-amino), reflection-based proto3, with
-  interfaces
 - [IAVL](http://github.com/tendermint/iavl), Merkleized IAVL+ Tree implementation
 - [Tm-db](http://github.com/tendermint/tm-db), Data Base abstractions to be used in applications.
 

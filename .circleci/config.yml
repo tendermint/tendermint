@@ -101,6 +101,9 @@ jobs:
     steps:
       - checkout
       - run:
+          name: "Pull versions"
+          command: make build-docs
+      - run:
           name: "Build docs"
           command: make build-docs
       - run:
