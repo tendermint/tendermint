@@ -55,7 +55,7 @@ Note the context/background should be written in the present tense.
 - [ADR-024-Sign-Bytes](./adr-024-sign-bytes.md)
 - [ADR-025-Commit](./adr-025-commit.md)
 - [ADR-026-General-Merkle-Proof](./adr-026-general-merkle-proof.md)
-- [ADR-028-libp2p](./adr-026-libp2p.md)
+- [ADR-028-libp2p](./adr-028-libp2p.md)
 - [ADR-029-Check-Tx-Consensus](./adr-029-check-tx-consensus.md)
 - [ADR-030-Consensus-Refactor](./adr-030-consensus-refactor.md)
 - [ADR-030-Changelog-structure](./adr-031-changelog.md)

@@ -128,7 +128,7 @@ message ResponseProposeTx {
 ```
 
 `ProposeTx` would be called by before `mempool.Reap` at this
-[line](https://github.com/tendermint/tendermint/blob/master/consensus/state.go#L906).
+[line](https://github.com/tendermint/tendermint/blob/9cd9f3338bc80a12590631632c23c8dbe3ff5c34/consensus/state.go#L935).
 Depending on whether `exclusive` is `true` or `false`, the proposed
 transactions are then pushed on top of the transactions received from
 `mempool.Reap`.

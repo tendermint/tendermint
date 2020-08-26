@@ -20,6 +20,12 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// For some reason the empty node used in tests has a time of
+// 2018-10-10 08:20:13.695936996 +0000 UTC
+// this is because the test genesis time is set here
+// so in order to validate evidence we need evidence to be the same time
+var defaultTestTime = time.Date(2018, 10, 10, 8, 20, 13, 695936996, time.UTC)
+
 func newEvidence(t *testing.T, val *privval.FilePV,
 	vote *types.Vote, vote2 *types.Vote,
 	chainID string) *types.DuplicateVoteEvidence {
@@ -35,7 +41,7 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	vote2.Signature, err = val.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v2))
 	require.NoError(t, err)
 
-	return types.NewDuplicateVoteEvidence(vote, vote2)
+	return types.NewDuplicateVoteEvidence(vote, vote2, defaultTestTime)
 }
 
 func makeEvidences(
@@ -49,7 +55,7 @@ func makeEvidences(
 		Height:           1,
 		Round:            0,
 		Type:             tmproto.PrevoteType,
-		Timestamp:        time.Now().UTC(),
+		Timestamp:        defaultTestTime,
 		BlockID: types.BlockID{
 			Hash: tmhash.Sum([]byte("blockhash")),
 			PartSetHeader: types.PartSetHeader{
@@ -69,13 +75,6 @@ func makeEvidences(
 	{
 		v := vote2
 		v.ValidatorAddress = []byte("some_address")
-		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID))
-	}
-
-	// different index
-	{
-		v := vote2
-		v.ValidatorIndex = vote.ValidatorIndex + 1
 		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID))
 	}
 
@@ -121,6 +120,8 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
 
+		t.Log(correct.Time())
+
 		result, err := c.BroadcastEvidence(correct)
 		require.NoError(t, err, "BroadcastEvidence(%s) failed", correct)
 		assert.Equal(t, correct.Hash(), result.Hash, "expected result hash to match evidence hash")
@@ -144,7 +145,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		pk, err := cryptoenc.PubKeyFromProto(v.PubKey)
 		require.NoError(t, err)
 
-		require.EqualValues(t, rawpub, pk.Bytes(), "Stored PubKey not equal with expected, value %v", string(qres.Value))
+		require.EqualValues(t, rawpub, pk, "Stored PubKey not equal with expected, value %v", string(qres.Value))
 		require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
 
 		for _, fake := range fakes {

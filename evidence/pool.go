@@ -1,6 +1,7 @@
 package evidence
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -13,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -32,9 +32,9 @@ type Pool struct {
 	evidenceList  *clist.CList // concurrent linked-list of evidence
 
 	// needed to load validators to verify evidence
-	stateDB dbm.DB
+	stateDB StateStore
 	// needed to load headers to verify evidence
-	blockStore *store.BlockStore
+	blockStore BlockStore
 
 	mtx sync.Mutex
 	// latest state
@@ -46,11 +46,11 @@ type Pool struct {
 	nextEvidenceTrialEndedHeight int64
 }
 
-// Creates a new pool. If using an existing evidence store, it will add all pending evidence
-// to the concurrent list.
-func NewPool(stateDB, evidenceDB dbm.DB, blockStore *store.BlockStore) (*Pool, error) {
+// NewPool creates an evidence pool. If using an existing evidence store,
+// it will add all pending evidence to the concurrent list.
+func NewPool(evidenceDB dbm.DB, stateDB StateStore, blockStore BlockStore) (*Pool, error) {
 	var (
-		state = sm.LoadState(stateDB)
+		state = stateDB.LoadState()
 	)
 
 	pool := &Pool{
@@ -113,7 +113,7 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 
 	// prune pending, committed and potential evidence and polc's periodically
 	if block.Height%state.ConsensusParams.Evidence.MaxAgeNumBlocks == 0 {
-		evpool.logger.Debug("Pruning no longer necessary evidence")
+		evpool.logger.Debug("Pruning expired evidence")
 		evpool.pruneExpiredPOLC()
 		// NOTE: As this is periodic, this implies that there may be some pending evidence in the
 		// db that have already expired. However, expired evidence will also be removed whenever
@@ -146,14 +146,11 @@ func (evpool *Pool) AddPOLC(polc *types.ProofOfLockChange) error {
 // evidence is composite (ConflictingHeadersEvidence), it will be broken up
 // into smaller pieces.
 func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
-	var (
-		state  = evpool.State()
-		evList = []types.Evidence{evidence}
-	)
+	var evList = []types.Evidence{evidence}
 
 	evpool.logger.Debug("Attempting to add evidence", "ev", evidence)
 
-	valSet, err := sm.LoadValidators(evpool.stateDB, evidence.Height())
+	valSet, err := evpool.stateDB.LoadValidators(evidence.Height())
 	if err != nil {
 		return fmt.Errorf("can't load validators at height #%d: %w", evidence.Height(), err)
 	}
@@ -178,24 +175,15 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 
 		if evpool.Has(ev) {
 			// if it is an amnesia evidence we have but POLC is not absent then
-			// we should still process it
+			// we should still process it else we loop to the next piece of evidence
 			if ae, ok := ev.(*types.AmnesiaEvidence); !ok || ae.Polc.IsAbsent() {
 				continue
 			}
 		}
 
-		// For lunatic validator evidence, a header needs to be fetched.
-		var header *types.Header
-		if _, ok := ev.(*types.LunaticValidatorEvidence); ok {
-			header = evpool.Header(ev.Height())
-			if header == nil {
-				return fmt.Errorf("don't have block meta at height #%d", ev.Height())
-			}
-		}
-
 		// 1) Verify against state.
-		if err := sm.VerifyEvidence(evpool.stateDB, state, ev, header); err != nil {
-			return fmt.Errorf("failed to verify %v: %w", ev, err)
+		if err := evpool.verify(ev); err != nil {
+			return types.NewErrEvidenceInvalid(ev, err)
 		}
 
 		// For potential amnesia evidence, if this node is indicted it shall retrieve a polc
@@ -238,10 +226,41 @@ func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 		// 3) Add evidence to clist.
 		evpool.evidenceList.PushBack(ev)
 
-		evpool.logger.Info("Verified new evidence of byzantine behaviour", "evidence", ev)
+		evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
 	}
 
 	return nil
+}
+
+// Verify verifies the evidence against the node's (or evidence pool's) state. More specifically, to validate
+// evidence against state is to validate it against the nodes own header and validator set for that height. This ensures
+// as well as meeting the evidence's own validation rules, that the evidence hasn't expired, that the validator is still
+// bonded and that the evidence can be committed to the chain.
+func (evpool *Pool) Verify(evidence types.Evidence) error {
+	if evpool.IsCommitted(evidence) {
+		return errors.New("evidence was already committed")
+	}
+	// We have already verified this piece of evidence - no need to do it again
+	if evpool.IsPending(evidence) {
+		return nil
+	}
+
+	// if we don't already have amnesia evidence we need to add it to start our own trial period unless
+	// a) a valid polc has already been attached
+	// b) the accused node voted back on an earlier round
+	if ae, ok := evidence.(*types.AmnesiaEvidence); ok && ae.Polc.IsAbsent() && ae.PotentialAmnesiaEvidence.VoteA.Round <
+		ae.PotentialAmnesiaEvidence.VoteB.Round {
+		if err := evpool.AddEvidence(ae.PotentialAmnesiaEvidence); err != nil {
+			return fmt.Errorf("unknown amnesia evidence, trying to add to evidence pool, err: %w", err)
+		}
+		return errors.New("amnesia evidence is new and hasn't undergone trial period yet")
+	}
+
+	return evpool.verify(evidence)
+}
+
+func (evpool *Pool) verify(evidence types.Evidence) error {
+	return VerifyEvidence(evidence, evpool.State(), evpool.stateDB, evpool.blockStore)
 }
 
 // MarkEvidenceAsCommitted marks all the evidence as committed and removes it
@@ -531,7 +550,7 @@ func (evpool *Pool) pruneExpiredPOLC() {
 			evpool.logger.Error("Unable to transition POLC from protobuf", "err", err)
 			continue
 		}
-		if !evpool.IsExpired(proof.Height()-1, proof.Time()) {
+		if !evpool.IsExpired(proof.Height(), proof.Time()) {
 			return
 		}
 		err = evpool.evidenceStore.Delete(iter.Key())
@@ -708,13 +727,4 @@ func keyPOLCFromHeightAndRound(height int64, round int32) []byte {
 
 func keySuffix(evidence types.Evidence) []byte {
 	return []byte(fmt.Sprintf("%s/%X", bE(evidence.Height()), evidence.Hash()))
-}
-
-// ErrInvalidEvidence returns when evidence failed to validate
-type ErrInvalidEvidence struct {
-	Reason error
-}
-
-func (e ErrInvalidEvidence) Error() string {
-	return fmt.Sprintf("evidence is not valid: %v ", e.Reason)
 }

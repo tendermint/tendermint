@@ -2,7 +2,6 @@ package types
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -75,20 +74,22 @@ func TestABCIEvidence(t *testing.T) {
 	abciEv := TM2PB.Evidence(
 		ev,
 		NewValidatorSet([]*Validator{NewValidator(pubKey, 10)}),
-		time.Now(),
 	)
 
-	assert.Equal(t, "duplicate/vote", abciEv.Type)
+	assert.Equal(t, ABCIEvidenceTypeDuplicateVote, abciEv.Type)
+	assert.Equal(t, ev.Time(), abciEv.GetTime())
+	assert.Equal(t, ev.Address(), abciEv.Validator.GetAddress())
+	assert.Equal(t, ev.Height(), abciEv.GetHeight())
 }
 
 type pubKeyEddie struct{}
 
-func (pubKeyEddie) Address() Address                        { return []byte{} }
-func (pubKeyEddie) Bytes() []byte                           { return []byte{} }
-func (pubKeyEddie) VerifyBytes(msg []byte, sig []byte) bool { return false }
-func (pubKeyEddie) Equals(crypto.PubKey) bool               { return false }
-func (pubKeyEddie) String() string                          { return "" }
-func (pubKeyEddie) Type() string                            { return "pubKeyEddie" }
+func (pubKeyEddie) Address() Address                            { return []byte{} }
+func (pubKeyEddie) Bytes() []byte                               { return []byte{} }
+func (pubKeyEddie) VerifySignature(msg []byte, sig []byte) bool { return false }
+func (pubKeyEddie) Equals(crypto.PubKey) bool                   { return false }
+func (pubKeyEddie) String() string                              { return "" }
+func (pubKeyEddie) Type() string                                { return "pubKeyEddie" }
 
 func TestABCIValidatorFromPubKeyAndPower(t *testing.T) {
 	pubkey := ed25519.GenPrivKey().PubKey()

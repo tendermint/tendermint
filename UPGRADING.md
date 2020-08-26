@@ -3,14 +3,6 @@
 This guide provides steps to be followed when you upgrade your applications to
 a newer version of Tendermint Core.
 
-## v0.34.1 
-
-### ABCI application changes
-
-A new form of evidence: amnesia evidence, has been added. Potential amnesia and
-mock evidence have been removed. Applications should be able to handle these
-evidence types.
-
 ## v0.34.0
 
 **This release is not compatible with previous blockchains** due to switching
@@ -29,13 +21,18 @@ if you want to learn more & support it (with cosmos-sdk you get it
 `KV.Pair` has been replaced with `abci.EventAttribute`. `EventAttribute.Index`
 field allows ABCI applications to dictate which events should be indexed.
 
+The blockchain can now start from an arbitrary initial height, provided to the
+application via `RequestInitChain.InitialHeight`.
+
+A new form of evidence: amnesia evidence, has been added. Potential amnesia and
+mock evidence have been removed. Applications should be able to handle these
+evidence types.
+
 ### P2P Protocol
 
-The default codec is now proto3, not amino. Check out the [TODO]() for
-motivation behind this change. The schema files can be found in the `/proto`
+The default codec is now proto3, not amino. The schema files can be found in the `/proto`
 directory. In the future we're considering using gRPC for the remote private
-validator and ABCI
-([\#4698](https://github.com/tendermint/tendermint/issues/4698)).
+validator and ABCI ( [#4698](https://github.com/tendermint/tendermint/issues/4698) ).
 
 ### Blockchain Protocol
 
@@ -47,6 +44,11 @@ Merkle tree built from:
 - root hash of a Merkle tree built from `ResponseDeliverTx(Code, Data,
     GasWanted, GasUsed, Events)` responses;
 - `BeginBlock#Events`.
+
+Merkle hashes of empty trees previously returned nothing, but now return the hash of an empty input,
+to conform with RFC-6962. This mainly affects `Header#DataHash`, `Header#LastResultsHash`, and 
+`Header#EvidenceHash`, which are often empty. Non-empty hashes can also be affected, e.g. if their
+inputs depend on other (empty) Merkle hashes, giving different results.
 
 ### Tx Indexing
 
@@ -73,7 +75,7 @@ With this release we are happy to announce the full protobuf migration of the Te
 - All proto files have been moved under one directory, `/proto`. This is in line with the recommended file layout by [buf](https://buf.build), you can read more about it [here](https://buf.build/docs/lint-checkers#file_layout)
 - We use the generated protobuf types for only on disk and over the wire serialization. This means that these changes should not effect you as user of Tendermint.
 - A few notable changes in the abci:
-  - In `ValidatorUpdates` the public key type has been migrated to a protobuf `oneof` type. Since Tendermint only supports ed25519 validator keys this is the only available key in the oneof.
+    - In `ValidatorUpdates` the public key type has been migrated to a protobuf `oneof` type. Since Tendermint only supports ed25519 validator keys this is the only available key in the oneof.
 
 ### Consensus Params
 
@@ -94,11 +96,15 @@ Various parameters have been added to the consensus parameters.
 
 All keys have removed there type prefix. Ed25519 Pubkey went from `PubKeyEd25519` to `PubKey`. This way when calling the key you are not duplicating information (`ed25519.PubKey`). All keys are now slice of bytes(`[]byte`), previously they were a array of bytes (`[<size>]byte`).
 
-The multisig that was previously located in Tendermint has now migrated to a new home within the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go).
+- The multisig that was previously located in Tendermint has now migrated to a new home within the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go).
+- Secp256k1 has been removed from the Tendermint repo. If you would like to continue using the implementation you can find it in the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/tree/443e0c1f89bd3730a731aea30453bd732f7efa35/crypto/keys/secp256k1)
 
 #### Merkle
 
 From the merkle package `SimpleHashFromMap()` and `SimpleProofsFromMap()` were removed along with all the prefixes of `Simple`. If you are looking for `SimpleProof` it has been renamed to `Proof` within the merkle pkg. Previously there were protobuf messages located in the merkle pkg, these have since been moved to the `/proto` directory. The protobuf message `Proof` that contained multiple ProofOp's has been renamed to `ProofOps`. This change effects the ABCI type `ResponseQuery`, the field that was named Proof is now named `ProofOps`.
+
+`HashFromByteSlices` and `ProofsFromByteSlices` now return a hash for empty inputs, to conform with
+RFC-6962.
 
 ### Libs
 
@@ -118,13 +124,25 @@ article](https://medium.com/tendermint/everything-you-need-to-know-about-the-ten
 if you want to learn why the rewrite was needed and what comprise the new light
   client.
 
-Doc: https://pkg.go.dev/github.com/tendermint/tendermint/lite2?tab=doc
+Doc: <https://pkg.go.dev/github.com/tendermint/tendermint/lite2?tab=doc>
 
 `Verifier` was broken up in two pieces: core verification logic (pure `VerifyX`
 functions) and `Client` object, which represents the complete light client.
 
 RPC client can be found in `/rpc` directory. HTTP(S) proxy is located in
 `/proxy` directory.
+
+### State
+
+A field `State.InitialHeight` has been added to record the initial chain height, which must be `1`
+(not `0`) if starting from height `1`. This can be configured via the genesis field
+`initial_height`.
+
+### Privval
+
+All requests are now accompanied by the chainID from the network.
+This is a optional field and can be ignored by key management systems. It
+is recommended to check the chainID if using the same key management system for multiple chains.
 
 ## v0.33.4
 
@@ -137,6 +155,19 @@ RPC client can be found in `/rpc` directory. HTTP(S) proxy is located in
 
 When upgrading to version 0.33.4 you will have to fetch the `third_party`
 directory along with the updated proto files.
+
+### Block Retention
+
+ResponseCommit added a field for block retention. The application can provide information to Tendermint on how to prune blocks.
+If an application would like to not prune any blocks pass a `0` in this field.
+
+```proto
+message ResponseCommit {
+  // reserve 1
+  bytes  data          = 2; // the Merkle root hash
+  ++ uint64 retain_height = 3; // the oldest block height to retain ++
+}
+```
 
 ## v0.33.0
 
@@ -197,18 +228,18 @@ keys are called
 
 Evidence Params has been changed to include duration.
 
-  - `consensus_params.evidence.max_age_duration`.
-  - Renamed `consensus_params.evidence.max_age` to `max_age_num_blocks`.
+- `consensus_params.evidence.max_age_duration`.
+- Renamed `consensus_params.evidence.max_age` to `max_age_num_blocks`.
 
 ### Go API
 
 - `libs/common` has been removed in favor of specific pkgs.
-  - `async`
-  - `service`
-  - `rand`
-  - `net`
-  - `strings`
-  - `cmap`
+    - `async`
+    - `service`
+    - `rand`
+    - `net`
+    - `strings`
+    - `cmap`
 - removal of `errors` pkg
 
 ### RPC Changes
@@ -333,7 +364,7 @@ the compilation tag:
 
 Use `cleveldb` tag instead of `gcc` to compile Tendermint with CLevelDB or
 use `make build_c` / `make install_c` (full instructions can be found at
-https://tendermint.com/docs/introduction/install.html#compile-with-cleveldb-support)
+<https://tendermint.com/docs/introduction/install.html#compile-with-cleveldb-support>)
 
 ## v0.31.0
 
@@ -451,7 +482,7 @@ To upgrade manually, use the provided `privValUpgrade.go` script, with exact pat
 to use the default paths, of `config/priv_validator_key.json` and
 `data/priv_validator_state.json`, respectively:
 
-```
+```sh
 go run scripts/privValUpgrade.go <old-path> <new-key-path> <new-state-path>
 ```
 
@@ -521,8 +552,8 @@ old data to be compatible with the new version.
 
 To reset the state do:
 
-```
-$ tendermint unsafe_reset_all
+```sh
+tendermint unsafe_reset_all
 ```
 
 Here we summarize some other notable changes to be mindful of.
@@ -559,7 +590,7 @@ the root of another. If you don't need this functionality, and you used to
 return `<proof bytes>` here, you should instead return a single `ProofOp` with
 just the `Data` field set:
 
-```
+```go
 []ProofOp{
     ProofOp{
         Data: <proof bytes>,
@@ -607,8 +638,8 @@ old data to be compatible with the new version.
 
 To reset the state do:
 
-```
-$ tendermint unsafe_reset_all
+```sh
+tendermint unsafe_reset_all
 ```
 
 Here we summarize some other notable changes to be mindful of.
@@ -618,7 +649,7 @@ Here we summarize some other notable changes to be mindful of.
 `p2p.max_num_peers` was removed in favor of `p2p.max_num_inbound_peers` and
 `p2p.max_num_outbound_peers`.
 
-```
+```toml
 # Maximum number of inbound peers
 max_num_inbound_peers = 40
 

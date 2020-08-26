@@ -29,16 +29,18 @@ var (
 )
 
 type ErrVoteConflictingVotes struct {
-	*DuplicateVoteEvidence
+	VoteA *Vote
+	VoteB *Vote
 }
 
 func (err *ErrVoteConflictingVotes) Error() string {
 	return fmt.Sprintf("conflicting votes from validator %X", err.VoteA.ValidatorAddress)
 }
 
-func NewConflictingVoteError(val *Validator, vote1, vote2 *Vote) *ErrVoteConflictingVotes {
+func NewConflictingVoteError(vote1, vote2 *Vote) *ErrVoteConflictingVotes {
 	return &ErrVoteConflictingVotes{
-		NewDuplicateVoteEvidence(vote1, vote2),
+		VoteA: vote1,
+		VoteB: vote2,
 	}
 }
 
@@ -83,9 +85,11 @@ func (vote *Vote) CommitSig() CommitSig {
 }
 
 // VoteSignBytes returns the proto-encoding of the canonicalized Vote, for
-// signing.
+// signing. Panics is the marshaling fails.
 //
-// Panics if the marshaling fails.
+// The encoded Protobuf message is varint length-prefixed (using MarshalDelimited)
+// for backwards-compatibility with the Amino encoding, due to e.g. hardware
+// devices that rely on this encoding.
 //
 // See CanonicalizeVote
 func VoteSignBytes(chainID string, vote *tmproto.Vote) []byte {
@@ -147,7 +151,7 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 		return ErrVoteInvalidValidatorAddress
 	}
 	v := vote.ToProto()
-	if !pubKey.VerifyBytes(VoteSignBytes(chainID, v), vote.Signature) {
+	if !pubKey.VerifySignature(VoteSignBytes(chainID, v), vote.Signature) {
 		return ErrVoteInvalidSignature
 	}
 	return nil

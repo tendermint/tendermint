@@ -1,5 +1,45 @@
 # Changelog
 
+## v0.34.0-rc3
+
+*August 13, 2020*
+
+Special thanks to external contributors on this release: @SadPencil
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+- Blockchain Protocol
+    - [\#5193](https://github.com/tendermint/tendermint/pull/5193) Header hashes are no longer empty for empty inputs, notably `DataHash`, `EvidenceHash`, and `LastResultsHash` (@erikgrinaker)
+
+- Go API
+    - [evidence] [\#5181](https://github.com/tendermint/tendermint/pull/5181) Phantom validator evidence was removed (@cmwaters)
+    - [merkle] [\#5193](https://github.com/tendermint/tendermint/pull/5193) `HashFromByteSlices` and `ProofsFromByteSlices` now return a hash for empty inputs, following RFC6962 (@erikgrinaker)
+    - [crypto] [\#5214](https://github.com/tendermint/tendermint/issues/5214) Change `GenPrivKeySecp256k1` to `GenPrivKeyFromSecret` to be consistent with other keys (@marbar3778)
+    - [state] [\#5191](https://github.com/tendermint/tendermint/pull/5191) Add `State.InitialHeight` field to record initial block height, must be `1` (not `0`) to start from 1 (@erikgrinaker)
+    - [state] [\#5231](https://github.com/tendermint/tendermint/issues/5231) `LoadStateFromDBOrGenesisFile()` and `LoadStateFromDBOrGenesisDoc()` no longer saves the state in the database if not found, the genesis state is simply returned (@erikgrinaker)
+    - [crypto] [\#5236](https://github.com/tendermint/tendermint/issues/5236) `VerifyBytes` is now `VerifySignature` on the `crypto.PubKey` interface (@marbar3778)
+
+### FEATURES:
+
+- [abci] [\#5174](https://github.com/tendermint/tendermint/pull/5174) Add amnesia evidence and remove mock and potential amnesia evidence from abci (@cmwaters)
+- [abci] [\#5191](https://github.com/tendermint/tendermint/pull/5191) Add `InitChain.InitialHeight` field giving the initial block height (@erikgrinaker)
+- [abci] [\#5227](https://github.com/tendermint/tendermint/pull/5227) Add `ResponseInitChain.app_hash` which is recorded in genesis block (@erikgrinaker)
+- [genesis] [\#5191](https://github.com/tendermint/tendermint/pull/5191) Add `initial_height` field to specify the initial chain height (defaults to `1`) (@erikgrinaker)
+- [db] [\#5233](https://github.com/tendermint/tendermint/issues/5233) Add support for `badgerdb` database backend (@erikgrinaker)
+
+### IMPROVEMENTS:
+
+- [evidence] [\#5219](https://github.com/tendermint/tendermint/pull/5219) Change the source of evidence time to block time (@cmwaters)
+
+### BUG FIXES:
+
+- [evidence] [\#5170](https://github.com/tendermint/tendermint/pull/5170) change abci evidence time to the time the infraction happened not the time the evidence was committed on the block (@cmwaters)
+- [node] [\#5211](https://github.com/tendermint/tendermint/issues/5211) Don't attempt fast sync when the ABCI application specifies ourself as the only validator via `InitChain` (@erikgrinaker)
+- [libs/rand] [\#5215](https://github.com/tendermint/tendermint/pull/5215) Fix out-of-memory error on unexpected argument of Str() (@SadPencil)
+
+
 ## v0.34.0-rc2
 
 *July 30, 2020*
@@ -140,6 +180,25 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ## v0.34.0-rc1
 
 This release was removed, as a premature GitHub tag was recorded on sum.golang.org causing checksum errors.
+
+## v0.33.8
+
+*August 11, 2020*
+
+## Go security update
+
+Go reported a security vulnerability that affected the `encoding/binary` package. The most recent binary for tendermint is using 1.14.6, for this
+reason the Tendermint engineering team has opted to conduct a release to aid users in using the correct version of Go. Read more about the security issue [here](https://github.com/golang/go/issues/40618).
+
+
+## v0.33.7
+
+ *August 4, 2020*
+
+ ### BUG FIXES:
+
+ - [go] Build release binary using Go 1.14.4, to avoid halt caused by Go 1.14.1 (https://github.com/golang/go/issues/38223)
+ - [privval] [\#5140](https://github.com/tendermint/tendermint/pull/5140) `RemoteSignerError` from remote signers are no longer retried (@melekes)
 
 
 ## v0.33.6
@@ -601,6 +660,14 @@ subjectivity interface. Refer to the [spec](https://github.com/tendermint/spec/b
 - [consensus/types] [\#4243](https://github.com/tendermint/tendermint/issues/4243) fix BenchmarkRoundStateDeepCopy panics (@cuonglm)
 - [rpc] [\#4256](https://github.com/tendermint/tendermint/issues/4256) Pass `outCapacity` to `eventBus#Subscribe` when subscribing using a local client
 
+## v0.32.13
+
+*August 5, 2020*
+
+ ### BUG FIXES
+
+ - [privval] [\#5112](https://github.com/tendermint/tendermint/issues/5112) If remote signer errors, don't retry (@melekes)
+
 ## v0.32.12
 
 *May 19, 2020*
@@ -610,6 +677,8 @@ subjectivity interface. Refer to the [spec](https://github.com/tendermint/spec/b
 - [p2p] [\#4847](https://github.com/tendermint/tendermint/pull/4847) Return masked IP (not the actual IP) in addrbook#groupKey (@melekes)
 
 ## v0.32.11
+
+*April 29, 2020*
 
 ### BUG FIXES:
 

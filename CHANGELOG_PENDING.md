@@ -1,15 +1,21 @@
-## v0.34.1
+# v0.34.0-rc4
 
 Special thanks to external contributors on this release:
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
-### BREAKING CHANGES
+## BREAKING CHANGES
 
-- Go API
+- [crypto/secp256k1] \#5280 `secp256k1` has been removed from the Tendermint repo. (@marbar3778)
 
-    - [evidence] [\#5181](https://github.com/tendermint/tendermint/pull/5181) Phantom validator evidence was removed (also from abci) (@cmwaters)  
+## FEATURES
 
-### FEATURES:
+- [privval] \#5239 Add `chainID` to requests from client. (@marbar3778)
 
-- [abci] [\#5174](https://github.com/tendermint/tendermint/pull/5174) Add amnesia evidence and remove mock and potential amnesia evidence from abci (@cmwaters)
+## IMPROVEMENTS
+
+- [blockchain] \#5278 Verify only +2/3 of the signatures in a block when fast syncing. (@marbar3778)
+
+## BUG FIXES
+
+- [blockchain] \#5249 Fix fast sync halt with initial height > 1 (@erikgrinaker)

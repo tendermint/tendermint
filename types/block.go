@@ -65,10 +65,8 @@ func (b *Block) ValidateBasic() error {
 	if b.LastCommit == nil {
 		return errors.New("nil LastCommit")
 	}
-	if b.Header.Height > 1 {
-		if err := b.LastCommit.ValidateBasic(); err != nil {
-			return fmt.Errorf("wrong LastCommit: %v", err)
-		}
+	if err := b.LastCommit.ValidateBasic(); err != nil {
+		return fmt.Errorf("wrong LastCommit: %v", err)
 	}
 
 	if !bytes.Equal(b.LastCommitHash, b.LastCommit.Hash()) {

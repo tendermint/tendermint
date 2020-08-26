@@ -17,6 +17,25 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
+// Evidence represents any provable malicious activity by a validator.
+type Evidence interface {
+	Height() int64                                     // height of the equivocation
+	Time() time.Time                                   // time of the equivocation
+	Address() []byte                                   // address of the equivocating validator
+	Bytes() []byte                                     // bytes which comprise the evidence
+	Hash() []byte                                      // hash of the evidence
+	Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
+	Equal(Evidence) bool                               // check equality of evidence
+
+	ValidateBasic() error
+	String() string
+}
+
+type CompositeEvidence interface {
+	VerifyComposite(committedHeader *Header, valSet *ValidatorSet) error
+	Split(committedHeader *Header, valSet *ValidatorSet) []Evidence
+}
+
 const (
 	// MaxEvidenceBytes is a maximum size of any evidence (including amino overhead).
 	MaxEvidenceBytes int64 = 444
@@ -63,25 +82,6 @@ func (err *ErrEvidenceOverflow) Error() string {
 }
 
 //-------------------------------------------
-
-// Evidence represents any provable malicious activity by a validator.
-type Evidence interface {
-	Height() int64                                     // height of the equivocation
-	Time() time.Time                                   // time of the equivocation
-	Address() []byte                                   // address of the equivocating validator
-	Bytes() []byte                                     // bytes which comprise the evidence
-	Hash() []byte                                      // hash of the evidence
-	Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
-	Equal(Evidence) bool                               // check equality of evidence
-
-	ValidateBasic() error
-	String() string
-}
-
-type CompositeEvidence interface {
-	VerifyComposite(committedHeader *Header, valSet *ValidatorSet) error
-	Split(committedHeader *Header, valSet *ValidatorSet) []Evidence
-}
 
 func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 	if evidence == nil {
@@ -181,13 +181,15 @@ func init() {
 type DuplicateVoteEvidence struct {
 	VoteA *Vote `json:"vote_a"`
 	VoteB *Vote `json:"vote_b"`
+
+	Timestamp time.Time `json:"timestamp"`
 }
 
 var _ Evidence = &DuplicateVoteEvidence{}
 
 // NewDuplicateVoteEvidence creates DuplicateVoteEvidence with right ordering given
 // two conflicting votes. If one of the votes is nil, evidence returned is nil as well
-func NewDuplicateVoteEvidence(vote1 *Vote, vote2 *Vote) *DuplicateVoteEvidence {
+func NewDuplicateVoteEvidence(vote1, vote2 *Vote, time time.Time) *DuplicateVoteEvidence {
 	var voteA, voteB *Vote
 	if vote1 == nil || vote2 == nil {
 		return nil
@@ -202,13 +204,14 @@ func NewDuplicateVoteEvidence(vote1 *Vote, vote2 *Vote) *DuplicateVoteEvidence {
 	return &DuplicateVoteEvidence{
 		VoteA: voteA,
 		VoteB: voteB,
+
+		Timestamp: time,
 	}
 }
 
 // String returns a string representation of the evidence.
 func (dve *DuplicateVoteEvidence) String() string {
-	return fmt.Sprintf("DuplicateVoteEvidence{VoteA: %v, VoteB: %v}", dve.VoteA, dve.VoteB)
-
+	return fmt.Sprintf("DuplicateVoteEvidence{VoteA: %v, VoteB: %v, Time: %v}", dve.VoteA, dve.VoteB, dve.Timestamp)
 }
 
 // Height returns the height this evidence refers to.
@@ -218,7 +221,7 @@ func (dve *DuplicateVoteEvidence) Height() int64 {
 
 // Time returns time of the latest vote.
 func (dve *DuplicateVoteEvidence) Time() time.Time {
-	return maxTime(dve.VoteA.Timestamp, dve.VoteB.Timestamp)
+	return dve.Timestamp
 }
 
 // Address returns the address of the validator.
@@ -270,15 +273,6 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 		)
 	}
 
-	// Index must be the same
-	if dve.VoteA.ValidatorIndex != dve.VoteB.ValidatorIndex {
-		return fmt.Errorf(
-			"validator indices do not match: %d and %d",
-			dve.VoteA.ValidatorIndex,
-			dve.VoteB.ValidatorIndex,
-		)
-	}
-
 	// BlockIDs must be different
 	if dve.VoteA.BlockID.Equals(dve.VoteB.BlockID) {
 		return fmt.Errorf(
@@ -296,10 +290,10 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 	va := dve.VoteA.ToProto()
 	vb := dve.VoteB.ToProto()
 	// Signatures must be valid
-	if !pubKey.VerifyBytes(VoteSignBytes(chainID, va), dve.VoteA.Signature) {
+	if !pubKey.VerifySignature(VoteSignBytes(chainID, va), dve.VoteA.Signature) {
 		return fmt.Errorf("verifying VoteA: %w", ErrVoteInvalidSignature)
 	}
-	if !pubKey.VerifyBytes(VoteSignBytes(chainID, vb), dve.VoteB.Signature) {
+	if !pubKey.VerifySignature(VoteSignBytes(chainID, vb), dve.VoteB.Signature) {
 		return fmt.Errorf("verifying VoteB: %w", ErrVoteInvalidSignature)
 	}
 
@@ -358,8 +352,9 @@ func (dve *DuplicateVoteEvidence) ToProto() *tmproto.DuplicateVoteEvidence {
 	voteB := dve.VoteB.ToProto()
 	voteA := dve.VoteA.ToProto()
 	tp := tmproto.DuplicateVoteEvidence{
-		VoteA: voteA,
-		VoteB: voteB,
+		VoteA:     voteA,
+		VoteB:     voteB,
+		Timestamp: dve.Timestamp,
 	}
 	return &tp
 }
@@ -379,10 +374,7 @@ func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*Duplica
 		return nil, err
 	}
 
-	dve := new(DuplicateVoteEvidence)
-
-	dve.VoteA = vA
-	dve.VoteB = vB
+	dve := NewDuplicateVoteEvidence(vA, vB, pb.Timestamp)
 
 	return dve, dve.ValidateBasic()
 }
@@ -441,11 +433,12 @@ func (ev *ConflictingHeadersEvidence) Split(committedHeader *Header, valSet *Val
 			if sig.Absent() {
 				continue
 			}
-			evList = append(evList, &LunaticValidatorEvidence{
-				Header:             alternativeHeader.Header,
-				Vote:               alternativeHeader.Commit.GetVote(int32(i)),
-				InvalidHeaderField: invalidField,
-			})
+			evList = append(evList, NewLunaticValidatorEvidence(
+				alternativeHeader.Header,
+				alternativeHeader.Commit.GetVote(int32(i)),
+				invalidField,
+				committedHeader.Time, //take the time of our own trusted header
+			))
 		}
 		return evList
 	}
@@ -483,16 +476,17 @@ OUTER_LOOP:
 				// messages in both commits, then it is an equivocation misbehavior =>
 				// immediately slashable (#F1).
 				if ev.H1.Commit.Round == ev.H2.Commit.Round {
-					evList = append(evList, &DuplicateVoteEvidence{
-						VoteA: ev.H1.Commit.GetVote(int32(i)),
-						VoteB: ev.H2.Commit.GetVote(int32(j)),
-					})
+					evList = append(evList, NewDuplicateVoteEvidence(
+						ev.H1.Commit.GetVote(int32(i)),
+						ev.H2.Commit.GetVote(int32(j)),
+						ev.H1.Time,
+					))
 				} else {
 					// if H1.Round != H2.Round we need to run full detection procedure => not
 					// immediately slashable.
 					firstVote := ev.H1.Commit.GetVote(int32(i))
 					secondVote := ev.H2.Commit.GetVote(int32(j))
-					newEv := NewPotentialAmnesiaEvidence(firstVote, secondVote)
+					newEv := NewPotentialAmnesiaEvidence(firstVote, secondVote, committedHeader.Time)
 
 					// has the validator incorrectly voted for a previous round
 					if newEv.VoteA.Round > newEv.VoteB.Round {
@@ -671,16 +665,21 @@ type LunaticValidatorEvidence struct {
 	Header             *Header `json:"header"`
 	Vote               *Vote   `json:"vote"`
 	InvalidHeaderField string  `json:"invalid_header_field"`
+
+	Timestamp time.Time `json:"timestamp"`
 }
 
 var _ Evidence = &LunaticValidatorEvidence{}
 
 // NewLunaticValidatorEvidence creates a new instance of the respective evidence
-func NewLunaticValidatorEvidence(header *Header, vote *Vote, invalidHeaderField string) *LunaticValidatorEvidence {
+func NewLunaticValidatorEvidence(header *Header,
+	vote *Vote, invalidHeaderField string, time time.Time) *LunaticValidatorEvidence {
 	return &LunaticValidatorEvidence{
 		Header:             header,
 		Vote:               vote,
 		InvalidHeaderField: invalidHeaderField,
+
+		Timestamp: time,
 	}
 }
 
@@ -690,7 +689,7 @@ func (e *LunaticValidatorEvidence) Height() int64 {
 
 // Time returns the maximum between the header's time and vote's time.
 func (e *LunaticValidatorEvidence) Time() time.Time {
-	return maxTime(e.Header.Time, e.Vote.Timestamp)
+	return e.Timestamp
 }
 
 func (e *LunaticValidatorEvidence) Address() []byte {
@@ -725,7 +724,7 @@ func (e *LunaticValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) 
 	}
 
 	v := e.Vote.ToProto()
-	if !pubKey.VerifyBytes(VoteSignBytes(chainID, v), e.Vote.Signature) {
+	if !pubKey.VerifySignature(VoteSignBytes(chainID, v), e.Vote.Signature) {
 		return errors.New("invalid signature")
 	}
 
@@ -839,6 +838,7 @@ func (e *LunaticValidatorEvidence) ToProto() *tmproto.LunaticValidatorEvidence {
 		Header:             h,
 		Vote:               v,
 		InvalidHeaderField: e.InvalidHeaderField,
+		Timestamp:          e.Timestamp,
 	}
 
 	return tp
@@ -863,6 +863,7 @@ func LunaticValidatorEvidenceFromProto(pb *tmproto.LunaticValidatorEvidence) (*L
 		Header:             &h,
 		Vote:               v,
 		InvalidHeaderField: pb.InvalidHeaderField,
+		Timestamp:          pb.Timestamp,
 	}
 
 	return &tp, tp.ValidateBasic()
@@ -880,20 +881,21 @@ type PotentialAmnesiaEvidence struct {
 	VoteB *Vote `json:"vote_b"`
 
 	HeightStamp int64
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 var _ Evidence = &PotentialAmnesiaEvidence{}
 
 // NewPotentialAmnesiaEvidence creates a new instance of the evidence and orders the votes correctly
-func NewPotentialAmnesiaEvidence(voteA *Vote, voteB *Vote) *PotentialAmnesiaEvidence {
+func NewPotentialAmnesiaEvidence(voteA, voteB *Vote, time time.Time) *PotentialAmnesiaEvidence {
 	if voteA == nil || voteB == nil {
 		return nil
 	}
 
 	if voteA.Timestamp.Before(voteB.Timestamp) {
-		return &PotentialAmnesiaEvidence{VoteA: voteA, VoteB: voteB}
+		return &PotentialAmnesiaEvidence{VoteA: voteA, VoteB: voteB, Timestamp: time}
 	}
-	return &PotentialAmnesiaEvidence{VoteA: voteB, VoteB: voteA}
+	return &PotentialAmnesiaEvidence{VoteA: voteB, VoteB: voteA, Timestamp: time}
 }
 
 func (e *PotentialAmnesiaEvidence) Height() int64 {
@@ -901,7 +903,7 @@ func (e *PotentialAmnesiaEvidence) Height() int64 {
 }
 
 func (e *PotentialAmnesiaEvidence) Time() time.Time {
-	return e.VoteB.Timestamp
+	return e.Timestamp
 }
 
 func (e *PotentialAmnesiaEvidence) Address() []byte {
@@ -946,10 +948,10 @@ func (e *PotentialAmnesiaEvidence) Verify(chainID string, pubKey crypto.PubKey) 
 	vb := e.VoteB.ToProto()
 
 	// Signatures must be valid
-	if !pubKey.VerifyBytes(VoteSignBytes(chainID, va), e.VoteA.Signature) {
+	if !pubKey.VerifySignature(VoteSignBytes(chainID, va), e.VoteA.Signature) {
 		return fmt.Errorf("verifying VoteA: %w", ErrVoteInvalidSignature)
 	}
-	if !pubKey.VerifyBytes(VoteSignBytes(chainID, vb), e.VoteB.Signature) {
+	if !pubKey.VerifySignature(VoteSignBytes(chainID, vb), e.VoteB.Signature) {
 		return fmt.Errorf("verifying VoteB: %w", ErrVoteInvalidSignature)
 	}
 
@@ -1005,16 +1007,6 @@ func (e *PotentialAmnesiaEvidence) ValidateBasic() error {
 		)
 	}
 
-	// Index must be the same
-	// https://github.com/tendermint/tendermint/issues/4619
-	if e.VoteA.ValidatorIndex != e.VoteB.ValidatorIndex {
-		return fmt.Errorf(
-			"duplicateVoteEvidence Error: Validator indices do not match. Got %d and %d",
-			e.VoteA.ValidatorIndex,
-			e.VoteB.ValidatorIndex,
-		)
-	}
-
 	if e.VoteA.BlockID.IsZero() {
 		return errors.New("first vote is for a nil block - voter hasn't locked on a block")
 	}
@@ -1057,6 +1049,7 @@ func (e *PotentialAmnesiaEvidence) ToProto() *tmproto.PotentialAmnesiaEvidence {
 		VoteA:       voteA,
 		VoteB:       voteB,
 		HeightStamp: e.HeightStamp,
+		Timestamp:   e.Timestamp,
 	}
 
 	return tp
@@ -1152,7 +1145,7 @@ func (e *ProofOfLockChange) ValidateVotes(valSet *ValidatorSet, chainID string) 
 			if bytes.Equal(validator.Address, vote.ValidatorAddress) {
 				exists = true
 				v := vote.ToProto()
-				if !validator.PubKey.VerifyBytes(VoteSignBytes(chainID, v), vote.Signature) {
+				if !validator.PubKey.VerifySignature(VoteSignBytes(chainID, v), vote.Signature) {
 					return fmt.Errorf("cannot verify vote (from validator: %d) against signature: %v",
 						vote.ValidatorIndex, vote.Signature)
 				}
@@ -1451,6 +1444,7 @@ func PotentialAmnesiaEvidenceFromProto(pb *tmproto.PotentialAmnesiaEvidence) (*P
 		VoteA:       voteA,
 		VoteB:       voteB,
 		HeightStamp: pb.GetHeightStamp(),
+		Timestamp:   pb.Timestamp,
 	}
 
 	return &tp, tp.ValidateBasic()
@@ -1534,8 +1528,7 @@ func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
 	vB := voteB.ToProto()
 	_ = pv.SignVote(chainID, vB)
 	voteB.Signature = vB.Signature
-	return NewDuplicateVoteEvidence(voteA, voteB)
-
+	return NewDuplicateVoteEvidence(voteA, voteB, time)
 }
 
 func makeMockVote(height int64, round, index int32, addr Address,

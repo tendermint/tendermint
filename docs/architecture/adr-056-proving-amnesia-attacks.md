@@ -5,6 +5,7 @@
 - 02.04.20: Initial Draft
 - 06.04.20: Second Draft
 - 10.06.20: Post Implementation Revision
+- 19.08.20: Short Term Amnesia Alteration
 
 ## Context
 
@@ -23,9 +24,97 @@ The currently only known form of global evidence stems from [flip flopping](http
 5. F breaks the lock and goes back and sends PRECOMMIT messages in round 1 for block A.
 
 
-This creates a fork on the main chain.  Back to the past, another form of flip flopping, creates a light fork (capable of fooling those not involved in consensus), in a similar way, with F taking the precommits from C1 and forging a commit from them.
+This creates a fork on the main chain.  Back to the past, another form of flip flopping, creates a light fork (capable of fooling those not involved in consensus). This is done in a similar fashion to the schematic above, however the validators C1 eventually progress and commit the block in Round 2 and then when a light client comes to validate the block at that height, the nodes take the precommits for Round 1 and forge their own precommits to produce what looks like a valid block for the light client.
+
+
+## Pretext
+
+An amnesia protocol was outlined in a previous revision of this ADR and for completeness has been appeneded at the bottom (Appendix A). However, under the circumstances of the impending IBC release it was adjudged that the protocol hadn't received enough rigour and could be potentially liable for opening other forms of misbehaviour especially considering that the nature of the protocol deemed all the nodes that committed for a certain block guilty until they proved their innocence. 
 
 ## Decision
+
+The decision surrounding amnesia attacks has both a short term and long term component. In the long term, a more sturdy protocol will need to be fleshed out and implemented. There is already draft documents outlining what such a protocol would look like and the resources it would require. In the short term, it was discussed whether the protocol should be completely removed or if there should remain some logic in handling the aforementioned scenarios.
+
+The latter of the two options was decided chiefly because it is important for the tendermint incentivisation mechanism that such behavior towards a light client is not only detectable but punishable. The logic that will need to be in place will involve the bare minimum to enable manual intervention. This therefore requires the on-chain submission of the faulty header that the light client witnessed plus the storing of vote sets by validators.
+
+## Detailed Design
+
+The first part of this short term solution is the `PotentialAmnesiaEvidence` data structure. This has the following properties that differ from its prior implementation.
+
+- It bundles all the malicious validators together instead of splitting them into individual evidence
+- It can be submitted on the chain
+- It does, by itself, not indicate which validators in the set misbehaved and should be slashed. It is merely a prompt for manual investigation.
+
+Before going any further, it is also important to mention that `PotentialAmnesiaEvidence` should only be formed from a valid attack on the light client and measures should be put in place to ensure that no node can easily forge the evidence as a means of spamming the network. 
+
+The data structure for `PotentialAmensiaEvidence` is as follows:
+
+```golang
+type PotentialAmnesiaEvidence struct {
+	*SignedHeader
+}
+```
+
+It conforms to the `Evidence` interface where `Time()` is the time of the heaer (note that this can be forged but must be within trusting period) and `Address()` returns the bytes of all validators in the commit
+
+`ValidateBasic()` inherit from the validate basic of the signed header
+
+### Verification of PotentialAmensiaEvidence
+
+`PotentialAmensiaEvidence` will be saved in the evidence pool and committed on chain if the following conditions are met.
+
+- The `SignedHeader` is valid -> `ValidateBasic()`
+
+- The `ValidatorsHash` of the header must be the same as the header that the node has committed. (else this is a lunatic attack)
+
+- The signatures of the commit must all be valid (for that header) `VerifyCommit()` using the validator set the node has for that height.
+
+- The header hash must be different to the hash of the header that the node has.
+
+- The `Commit` of the `SignedHeader` must be for a different round than the `Commit` of the header that the node has committed
+
+- The evidence must not have expired.
+
+
+The second part of the short term solution is saving `VoteSet`'s to the evidence pool. In order to avoid overflowing the validators memory, only the relevant information will be taken from the voteSets and formed into
+this specific struct
+
+```golang
+type VotesRecord struct {
+	votes []*Vote
+}
+```
+
+These votes should all be precommit votes of the same height and round and will come from the consensus reactor. `VotesRecord` will only be created in heights where there are more than 1 round and will be sent from consensus. 
+`VotesRecord` will also follow the same pruning algorithm as the rest of the evidence, being removed after expiring. 
+
+Implementing this is in the short term should be sufficient to detecting amnesia attacks using manual intervention which through off-chain conesnsus can lead to punishment and thus in itself act to disincentivise misbehaviour.
+
+## Status
+
+Proposed
+
+## Consequences
+
+### Positive
+
+Increasing fork detection and accountability makes the system more secure
+
+### Negative
+
+Non-responsive but honest nodes that are part of the suspect group that don't produce a proof will be punished
+
+A delay between the detection of a fork and the punishment of one
+
+### Neutral
+
+
+## References
+
+- [Fork accountability algorithm](https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit)
+- [Fork accountability spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)
+
+## Appendix A: Prior AmnesiaEvidence Implementation
 
 As the distinction between these two attacks (amnesia and back to the past) can only be distinguished by confirming with all validators (to see if it is a full fork or a light fork), for the purpose of simplicity, these attacks will be treated as the same.
 
@@ -92,28 +181,3 @@ Other validators will vote <nil> if:
 - Is of an AmnesiaEvidence that has already been committed to the chain.
 
 Finally it is important to stress that the protocol of having a trial period addresses attacks where a validator voted again for a different block at a later round and time. In the event, however, that the validator voted for an earlier round after voting for a later round i.e. `VoteA.Timestamp < VoteB.Timestamp && VoteA.Round > VoteB.Round` then this action is inexcusable and can be punished immediately without the need of a trial period. In this case, PotentialAmnesiaEvidence will be instantly upgraded to AmnesiaEvidence. 
-
-
-## Status
-
-Proposed
-
-## Consequences
-
-### Positive
-
-Increasing fork detection and accountability makes the system more secure
-
-### Negative
-
-Non-responsive but honest nodes that are part of the suspect group that don't produce a proof will be punished
-
-A delay between the detection of a fork and the punishment of one
-
-### Neutral
-
-
-## References
-
-- [Fork accountability algorithm](https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit)
-- [Fork accountability spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)

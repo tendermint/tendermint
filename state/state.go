@@ -49,7 +49,8 @@ type State struct {
 	Version tmstate.Version
 
 	// immutable
-	ChainID string
+	ChainID       string
+	InitialHeight int64 // should be 1, not 0, when starting from height 1
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
 	LastBlockHeight int64
@@ -83,8 +84,9 @@ type State struct {
 func (state State) Copy() State {
 
 	return State{
-		Version: state.Version,
-		ChainID: state.ChainID,
+		Version:       state.Version,
+		ChainID:       state.ChainID,
+		InitialHeight: state.InitialHeight,
 
 		LastBlockHeight: state.LastBlockHeight,
 		LastBlockID:     state.LastBlockID,
@@ -139,6 +141,7 @@ func (state *State) ToProto() (*tmstate.State, error) {
 
 	sm.Version = state.Version
 	sm.ChainID = state.ChainID
+	sm.InitialHeight = state.InitialHeight
 	sm.LastBlockHeight = state.LastBlockHeight
 
 	sm.LastBlockID = state.LastBlockID.ToProto()
@@ -182,6 +185,7 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 
 	state.Version = pb.Version
 	state.ChainID = pb.ChainID
+	state.InitialHeight = pb.InitialHeight
 
 	bi, err := types.BlockIDFromProto(&pb.LastBlockID)
 	if err != nil {
@@ -241,7 +245,7 @@ func (state State) MakeBlock(
 
 	// Set time.
 	var timestamp time.Time
-	if height == 1 {
+	if height == state.InitialHeight {
 		timestamp = state.LastBlockTime // genesis time
 	} else {
 		timestamp = MedianTime(commit, state.LastValidators)
@@ -331,8 +335,9 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	}
 
 	return State{
-		Version: InitStateVersion,
-		ChainID: genDoc.ChainID,
+		Version:       InitStateVersion,
+		ChainID:       genDoc.ChainID,
+		InitialHeight: genDoc.InitialHeight,
 
 		LastBlockHeight: 0,
 		LastBlockID:     types.BlockID{},
@@ -341,10 +346,10 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		NextValidators:              nextValidatorSet,
 		Validators:                  validatorSet,
 		LastValidators:              types.NewValidatorSet(nil),
-		LastHeightValidatorsChanged: 1,
+		LastHeightValidatorsChanged: genDoc.InitialHeight,
 
 		ConsensusParams:                  *genDoc.ConsensusParams,
-		LastHeightConsensusParamsChanged: 1,
+		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
 
 		AppHash: genDoc.AppHash,
 	}, nil

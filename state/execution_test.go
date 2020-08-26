@@ -94,7 +94,7 @@ func TestBeginBlockValidators(t *testing.T) {
 		// block for height 2
 		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
 
-		_, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateDB)
+		_, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateDB, 1)
 		require.Nil(t, err, tc.desc)
 
 		// -> app receives a list of validators with a bool indicating if they signed
@@ -140,10 +140,10 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 		expectedByzantineValidators []abci.Evidence
 	}{
 		{"none byzantine", []types.Evidence{}, []abci.Evidence{}},
-		{"one byzantine", []types.Evidence{ev1}, []abci.Evidence{types.TM2PB.Evidence(ev1, valSet, now)}},
+		{"one byzantine", []types.Evidence{ev1}, []abci.Evidence{types.TM2PB.Evidence(ev1, valSet)}},
 		{"multiple byzantine", []types.Evidence{ev1, ev2}, []abci.Evidence{
-			types.TM2PB.Evidence(ev1, valSet, now),
-			types.TM2PB.Evidence(ev2, valSet, now)}},
+			types.TM2PB.Evidence(ev1, valSet),
+			types.TM2PB.Evidence(ev2, valSet)}},
 	}
 
 	var (
@@ -163,7 +163,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
 		block.Time = now
 		block.Evidence.Evidence = tc.evidence
-		_, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateDB)
+		_, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateDB, 1)
 		require.Nil(t, err, tc.desc)
 
 		// -> app must receive an index of the byzantine validator

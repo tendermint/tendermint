@@ -202,14 +202,19 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) BlockID {
 
 var nilBytes []byte
 
+// This follows RFC-6962, i.e. `echo -n '' | sha256sum`
+var emptyBytes = []byte{0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14, 0x9a, 0xfb, 0xf4, 0xc8,
+	0x99, 0x6f, 0xb9, 0x24, 0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c, 0xa4, 0x95, 0x99, 0x1b,
+	0x78, 0x52, 0xb8, 0x55}
+
 func TestNilHeaderHashDoesntCrash(t *testing.T) {
-	assert.Equal(t, []byte((*Header)(nil).Hash()), nilBytes)
-	assert.Equal(t, []byte((new(Header)).Hash()), nilBytes)
+	assert.Equal(t, nilBytes, []byte((*Header)(nil).Hash()))
+	assert.Equal(t, nilBytes, []byte((new(Header)).Hash()))
 }
 
 func TestNilDataHashDoesntCrash(t *testing.T) {
-	assert.Equal(t, []byte((*Data)(nil).Hash()), nilBytes)
-	assert.Equal(t, []byte(new(Data).Hash()), nilBytes)
+	assert.Equal(t, emptyBytes, []byte((*Data)(nil).Hash()))
+	assert.Equal(t, emptyBytes, []byte(new(Data).Hash()))
 }
 
 func TestCommit(t *testing.T) {
@@ -639,7 +644,8 @@ func TestBlockProtoBuf(t *testing.T) {
 
 	b2 := MakeBlock(h, []Tx{Tx([]byte{1})}, c1, []Evidence{})
 	b2.ProposerAddress = tmrand.Bytes(crypto.AddressSize)
-	evi := NewMockDuplicateVoteEvidence(h, time.Now(), "block-test-chain")
+	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+	evi := NewMockDuplicateVoteEvidence(h, evidenceTime, "block-test-chain")
 	b2.Evidence = EvidenceData{Evidence: EvidenceList{evi}}
 	b2.EvidenceHash = b2.Evidence.Hash()
 
@@ -709,7 +715,7 @@ func TestEvidenceDataProtoBuf(t *testing.T) {
 	const chainID = "mychain"
 	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, blockID, time.Now())
 	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, time.Now())
-	ev := NewDuplicateVoteEvidence(v2, v)
+	ev := NewDuplicateVoteEvidence(v2, v, v2.Timestamp)
 	data := &EvidenceData{Evidence: EvidenceList{ev}}
 	_ = data.Hash()
 	testCases := []struct {

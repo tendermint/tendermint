@@ -345,9 +345,6 @@ func (vals *ValidatorSet) findProposer() *Validator {
 // Hash returns the Merkle root hash build using validators (as leaves) in the
 // set.
 func (vals *ValidatorSet) Hash() []byte {
-	if len(vals.Validators) == 0 {
-		return nil
-	}
 	bzs := make([][]byte, len(vals.Validators))
 	for i, val := range vals.Validators {
 		bzs[i] = val.Bytes()
@@ -691,7 +688,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 
 		// Validate signature.
 		voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
-		if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
+		if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
 			return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
 		// Good!
@@ -749,7 +746,7 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID,
 
 		// Validate signature.
 		voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
-		if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
+		if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
 			return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
 
@@ -810,7 +807,7 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 
 			// Validate signature.
 			voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
-			if !val.PubKey.VerifyBytes(voteSignBytes, commitSig.Signature) {
+			if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
 				return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 			}
 
