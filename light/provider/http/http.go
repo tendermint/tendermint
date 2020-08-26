@@ -13,7 +13,10 @@ import (
 )
 
 // This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
-var regexpMissingHeight = regexp.MustCompile(`height \d+ (must be less than or equal to|is not available)`)
+var (
+	regexpMissingHeight = regexp.MustCompile(`height \d+ (must be less than or equal to|is not available)`)
+	maxRetryAttempts = 10
+)
 
 // http provider uses an RPC client to obtain the necessary information.
 type http struct {
@@ -63,25 +66,28 @@ func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
 		return nil, err
 	}
 
-	commit, err := p.client.Commit(h)
-	if err != nil {
-		// TODO: standartise errors on the RPC side
-		if regexpMissingHeight.MatchString(err.Error()) {
-			return nil, provider.ErrSignedHeaderNotFound
+	for attempt = 0; attempt < maxRetryAttempts; i++ {
+		commit, err := p.client.Commit(h)
+		if err != nil {
+			// TODO: standartise errors on the RPC side
+			if regexpMissingHeight.MatchString(err.Error()) {
+				return nil, provider.ErrSignedHeaderNotFound
+			}
+			time.Sleep(backoffTimeout(attempt))
+			continue
 		}
-		return nil, err
+		if commit.Header == nil {
+			return nil, provider.ErrBadSignedHeader{Reason: errors.New("header is nil")}
+		}
+		
+		if err = commit.SignedHeader.ValidateBasic(p.ChainID); err != nil {
+			return nil, provider.ErrBadSignedHeader{Reason: err}
+		}
+		
+		return &commit.SignedHeader, nil
 	}
 
-	if commit.Header == nil {
-		return nil, errors.New("header is nil")
-	}
-
-	// Verify we're still on the same chain.
-	if p.chainID != commit.Header.ChainID {
-		return nil, fmt.Errorf("expected chainID %s, got %s", p.chainID, commit.Header.ChainID)
-	}
-
-	return &commit.SignedHeader, nil
+	return nil, provider.ErrNoResponse{}
 }
 
 // ValidatorSet fetches a ValidatorSet at the given height. Multiple HTTP
@@ -138,4 +144,11 @@ func validateHeight(height int64) (*int64, error) {
 		h = nil
 	}
 	return h, nil
+}
+
+// exponential backoff (with jitter)
+// 0.5s -> 2s -> 4.5s -> 8s -> 12.5 with 1s variation
+func backoffTimeout(attempt uint16) time.Duration {
+	// nolint:gosec // G404: Use of weak random number generator
+	return time.Duration(500*attempt*attempt)*time.Millisecond + time.Duration(rand.Intn(1000))*time.Millisecond
 }
