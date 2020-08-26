@@ -101,6 +101,9 @@ jobs:
     steps:
       - checkout
       - run:
+          name: "Pull versions"
+          command: git fetch origin v0.32 v0.33
+      - run:
           name: "Build docs"
           command: make build-docs
       - run:
