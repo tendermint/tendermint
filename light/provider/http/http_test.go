@@ -65,7 +65,7 @@ func TestProvider(t *testing.T) {
 	require.NoError(t, err)
 
 	// let's get the highest block
-	sh, err := p.SignedHeader(0)
+	sh, err := p.LightBlock(0)
 
 	require.NoError(t, err)
 	assert.True(t, sh.Height < 1000)
@@ -75,24 +75,16 @@ func TestProvider(t *testing.T) {
 
 	// historical queries now work :)
 	lower := sh.Height - 3
-	sh, err = p.SignedHeader(lower)
+	sh, err = p.LightBlock(lower)
 	require.NoError(t, err)
 	assert.Equal(t, lower, sh.Height)
 
 	// fetching missing heights (both future and pruned) should return appropriate errors
-	_, err = p.SignedHeader(1000)
+	_, err = p.LightBlock(1000)
 	require.Error(t, err)
-	assert.Equal(t, provider.ErrSignedHeaderNotFound, err)
+	assert.Equal(t, provider.ErrLightBlockNotFound, err)
 
-	_, err = p.ValidatorSet(1000)
+	_, err = p.LightBlock(1)
 	require.Error(t, err)
-	assert.Equal(t, provider.ErrValidatorSetNotFound, err)
-
-	_, err = p.SignedHeader(1)
-	require.Error(t, err)
-	assert.Equal(t, provider.ErrSignedHeaderNotFound, err)
-
-	_, err = p.ValidatorSet(1)
-	require.Error(t, err)
-	assert.Equal(t, provider.ErrValidatorSetNotFound, err)
+	assert.Equal(t, provider.ErrLightBlockNotFound, err)
 }
