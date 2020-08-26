@@ -47,6 +47,7 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 - `chain_id`: ID of the blockchain. **This must be unique for
   every blockchain.** If your testnet blockchains do not have unique
   chain IDs, you will have a bad time. The ChainID must be less than 50 symbols.
+- `initial_height`: Height at which Tendermint should begin at.
 - `consensus_params` [spec](https://github.com/tendermint/spec/blob/master/spec/core/state.md#consensusparams)
     - `block`
         - `max_bytes`: Max block size, in bytes.
@@ -92,6 +93,7 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 {
   "genesis_time": "2020-04-21T11:17:42.341227868Z",
   "chain_id": "test-chain-ROp9KF",
+  "initial_height": "0",
   "consensus_params": {
     "block": {
       "max_bytes": "22020096",
@@ -100,7 +102,9 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
     },
     "evidence": {
       "max_age_num_blocks": "100000",
-      "max_age_duration": "172800000000000"
+      "max_age_duration": "172800000000000",
+      "max_num": 50,
+      "proof_trial_period": "5000000"
     },
     "validator": {
       "pub_key_types": [
@@ -177,17 +181,12 @@ and the `latest_app_hash` in particular:
 curl http://localhost:26657/status | json_pp | grep latest_app_hash
 ```
 
-<!-- markdown-link-check-disable -->
-
 Visit `http://localhost:26657` in your browser to see the list of other
 endpoints. Some take no arguments (like `/status`), while others specify
 the argument name and use `_` as a placeholder.
 
-<!-- markdown-link-check-enable -->
 
-::: tip
-Find the RPC Documentation [here](https://docs.tendermint.com/master/rpc/)
-:::
+> TIP: Find the RPC Documentation [here](https://docs.tendermint.com/master/rpc/)
 
 ### Formatting
 
@@ -239,10 +238,9 @@ Note that raw hex cannot be used in `POST` transactions.
 
 ## Reset
 
-::: warning
-**UNSAFE** Only do this in development and only if you can
+> :warning: **UNSAFE** Only do this in development and only if you can
 afford to lose all blockchain data!
-:::
+
 
 To reset a blockchain, stop the node and run:
 
