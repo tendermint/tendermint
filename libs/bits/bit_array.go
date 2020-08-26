@@ -355,14 +355,12 @@ func (bA *BitArray) Update(o *BitArray) {
 	if bA == nil || o == nil {
 		return
 	}
+
 	bA.mtx.Lock()
 	o.mtx.Lock()
-	defer func() {
-		bA.mtx.Unlock()
-		o.mtx.Unlock()
-	}()
-
 	copy(bA.Elems, o.Elems)
+	o.mtx.Unlock()
+	bA.mtx.Unlock()
 }
 
 // MarshalJSON implements json.Marshaler interface by marshaling bit array
