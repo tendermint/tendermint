@@ -12,7 +12,7 @@ import (
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
-//go:generate mockery -case underscore -name Peer
+//go:generate mockery --case underscore --name Peer
 
 const metricsTickerDuration = 10 * time.Second
 
