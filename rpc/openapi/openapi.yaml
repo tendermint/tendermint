@@ -527,6 +527,8 @@ paths:
         - Unsafe
       description: |
         Dial a peer, this route in under unsafe, and has to manually enabled to use
+
+          **Example:** curl 'localhost:26657/dial_seeds?seeds=\["f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656","0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"\]'
       parameters:
         - in: query
           name: peers
@@ -557,7 +559,9 @@ paths:
       tags:
         - Unsafe
       description: |
-        Set a persistent peer, this route in under unsafe, and has to manually enabled to use
+        Set a persistent peer, this route in under unsafe, and has to manually enabled to use.
+
+        **Example:** curl 'localhost:26657/dial_peers?peers=\["f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656","0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"\]&persistent=false'
       parameters:
         - in: query
           name: persistent
