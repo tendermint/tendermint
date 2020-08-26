@@ -30,15 +30,8 @@ details.
 Applications can expose block pruning strategies to the node operator. Please read the documentation of your application
 to find out more details.
 
-
-//TODO:
-We're working on [state
-syncing](https://github.com/tendermint/tendermint/issues/828),
-which will enable history to be thrown away
-and recent application state to be directly synced. We'll need to develop solutions
-for archival nodes that allow queries on historical transactions and states.
-The Cosmos project has had much success just dumping the latest state of a
-blockchain to disk and starting a new chain from that state.
+Applications can use State Sync <!--- TODO: add link to state sync doc when created---> to help nodes bootstrap quickly.
+<!-- TODO: When we have a doc on state sync add link -->
 
 ## Logging
 
@@ -48,7 +41,7 @@ post](https://blog.cosmos.network/one-of-the-exciting-new-features-in-0-10-0-rel
 for details on how to configure `log_level` config variable. Some of the
 modules can be found [here](./how-to-read-logs.md#list-of-modules). If
 you're trying to debug Tendermint or asked to provide logs with debug
-logging level, you can do so by running tendermint with
+logging level, you can do so by running Tendermint with
 `--log_level="*:debug"`.
 
 ## Write Ahead Logs (WAL)
