@@ -46,13 +46,13 @@ func MConnConfig(cfg *config.P2PConfig) conn.MConnConfig {
 // to store peer addresses.
 type AddrBook interface {
 	AddAddress(addr *NetAddress, src *NetAddress) error
+	AddPrivateIDs([]string)
 	AddOurAddress(*NetAddress)
 	OurAddress(*NetAddress) bool
 	MarkGood(ID)
 	RemoveAddress(*NetAddress)
 	HasAddress(*NetAddress) bool
 	Save()
-	AddPrivateIDs([]string)
 }
 
 // PeerFilterFunc to be implemented by filter hooks after a new Peer has been

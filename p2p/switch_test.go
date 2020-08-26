@@ -827,30 +827,3 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 
 	b.Logf("success: %v, failure: %v", numSuccess, numFailure)
 }
-
-type addrBookMock struct {
-	addrs    map[string]struct{}
-	ourAddrs map[string]struct{}
-}
-
-var _ AddrBook = (*addrBookMock)(nil)
-
-func (book *addrBookMock) AddAddress(addr *NetAddress, src *NetAddress) error {
-	book.addrs[addr.String()] = struct{}{}
-	return nil
-}
-func (book *addrBookMock) AddOurAddress(addr *NetAddress) { book.ourAddrs[addr.String()] = struct{}{} }
-func (book *addrBookMock) OurAddress(addr *NetAddress) bool {
-	_, ok := book.ourAddrs[addr.String()]
-	return ok
-}
-func (book *addrBookMock) MarkGood(ID) {}
-func (book *addrBookMock) HasAddress(addr *NetAddress) bool {
-	_, ok := book.addrs[addr.String()]
-	return ok
-}
-func (book *addrBookMock) RemoveAddress(addr *NetAddress) {
-	delete(book.addrs, addr.String())
-}
-func (book *addrBookMock) Save()                  {}
-func (book *addrBookMock) AddPrivateIDs([]string) {}
