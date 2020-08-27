@@ -34,9 +34,10 @@ import (
 // Errors
 
 var (
-	ErrInvalidProposalSignature = errors.New("error invalid proposal signature")
-	ErrInvalidProposalPOLRound  = errors.New("error invalid proposal POL round")
-	ErrAddingVote               = errors.New("error adding vote")
+	ErrInvalidProposalSignature   = errors.New("error invalid proposal signature")
+	ErrInvalidProposalPOLRound    = errors.New("error invalid proposal POL round")
+	ErrAddingVote                 = errors.New("error adding vote")
+	ErrSignatureFoundInPastBlocks = errors.New("found signature from the same key")
 
 	errPubKeyIsNotSet = errors.New("pubkey is not set. Look for \"Can't get private validator pubkey\" errors")
 )
@@ -363,6 +364,11 @@ func (cs *State) OnStart() error {
 	// firing on the tockChan until the receiveRoutine is started
 	// to deal with them (by that point, at most one will be valid)
 	if err := cs.timeoutTicker.Start(); err != nil {
+		return err
+	}
+
+	// Double Signing Risk Reduction
+	if err := cs.checkDoubleSigningRisk(cs.Height); err != nil {
 		return err
 	}
 
@@ -2111,6 +2117,29 @@ func (cs *State) updatePrivValidatorPubKey() error {
 		return err
 	}
 	cs.privValidatorPubKey = pubKey
+	return nil
+}
+
+// look back to check existence of the node's consensus votes before joining consensus
+func (cs *State) checkDoubleSigningRisk(height int64) error {
+	if cs.privValidator != nil && cs.privValidatorPubKey != nil && cs.config.DoubleSignCheckHeight > 0 && height > 0 {
+		valAddr := cs.privValidatorPubKey.Address()
+		doubleSignCheckHeight := cs.config.DoubleSignCheckHeight
+		if doubleSignCheckHeight > height {
+			doubleSignCheckHeight = height
+		}
+		for i := int64(1); i < doubleSignCheckHeight; i++ {
+			lastCommit := cs.blockStore.LoadSeenCommit(height - i)
+			if lastCommit != nil {
+				for sigIdx, s := range lastCommit.Signatures {
+					if s.BlockIDFlag == types.BlockIDFlagCommit && bytes.Equal(s.ValidatorAddress, valAddr) {
+						cs.Logger.Info("Found signature from the same key", "sig", s, "idx", sigIdx, "height", height-i)
+						return ErrSignatureFoundInPastBlocks
+					}
+				}
+			}
+		}
+	}
 	return nil
 }
 

@@ -11,6 +11,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ## FEATURES
 
 - [privval] \#5239 Add `chainID` to requests from client. (@marbar3778)
+- [config] Add `--consensus.double_sign_check_height` flag and `DoubleSignCheckHeight` config variable. See [ADR-51](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-051-double-signing-risk-reduction.md)
 
 ## IMPROVEMENTS
 
