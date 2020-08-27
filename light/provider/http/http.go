@@ -112,7 +112,7 @@ func (p *http) LightBlock(height int64) (*types.LightBlock, error) {
 
 	return &types.LightBlock{
 		SignedHeader: &commit.SignedHeader,
-		ValidatorSet: valset, 
+		ValidatorSet: valset,
 	}, nil
 }
 

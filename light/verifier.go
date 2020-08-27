@@ -228,7 +228,7 @@ func VerifyBackwards(untrustedHeader, trustedHeader *types.Header) error {
 	if err := untrustedHeader.ValidateBasic(); err != nil {
 		return ErrInvalidHeader{err}
 	}
-	
+
 	if untrustedHeader.ChainID != trustedHeader.ChainID {
 		return ErrInvalidHeader{errors.New("header belongs to another chain")}
 	}

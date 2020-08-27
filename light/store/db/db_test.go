@@ -53,7 +53,6 @@ func Test_SaveLightBlock(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, h)
 
-
 	// Empty store
 	err = dbStore.DeleteLightBlock(1)
 	require.NoError(t, err)
@@ -135,7 +134,7 @@ func Test_Concurrency(t *testing.T) {
 			if err != nil {
 				t.Log(err)
 			}
-			
+
 			_, err = dbStore.LastLightBlockHeight()
 			if err != nil {
 				t.Log(err)

@@ -22,7 +22,7 @@ import (
 // Remember that none of these benchmarks account for network latency.
 var (
 	benchmarkFullNode = mockp.New(GenMockNode(chainID, 1000, 100, 1, bTime))
-	genesisBlock, _  = benchmarkFullNode.LightBlock(1)
+	genesisBlock, _   = benchmarkFullNode.LightBlock(1)
 )
 
 func BenchmarkSequence(b *testing.B) {

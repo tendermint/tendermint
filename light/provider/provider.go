@@ -22,7 +22,6 @@ type Provider interface {
 	// error is returned.
 	LightBlock(height int64) (*types.LightBlock, error)
 
-
 	// ReportEvidence reports an evidence of misbehavior.
 	ReportEvidence(ev types.Evidence) error
 }

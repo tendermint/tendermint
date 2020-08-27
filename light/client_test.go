@@ -53,9 +53,9 @@ var (
 		// last header (3/3 signed)
 		3: h3,
 	}
-	l1 = &types.LightBlock{SignedHeader: h1, ValidatorSet: vals}
-	l2 = &types.LightBlock{SignedHeader: h2, ValidatorSet: vals}
-	l3 = &types.LightBlock{SignedHeader: h3, ValidatorSet: vals}
+	l1       = &types.LightBlock{SignedHeader: h1, ValidatorSet: vals}
+	l2       = &types.LightBlock{SignedHeader: h2, ValidatorSet: vals}
+	l3       = &types.LightBlock{SignedHeader: h3, ValidatorSet: vals}
 	fullNode = mockp.New(
 		chainID,
 		headerSet,
@@ -618,7 +618,7 @@ func TestClientRestoresTrustedHeaderAfterStartup3(t *testing.T) {
 		header2 := keys.GenSignedHeader(chainID, 2, bTime.Add(2*time.Hour), nil, vals, vals,
 			hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
 		err = trustedStore.SaveLightBlock(&types.LightBlock{
-			SignedHeader: header2, 
+			SignedHeader: header2,
 			ValidatorSet: vals,
 		})
 		require.NoError(t, err)

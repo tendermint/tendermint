@@ -49,7 +49,7 @@ func (p *Mock) String() string {
 
 func (p *Mock) LightBlock(height int64) (*types.LightBlock, error) {
 	if height == 0 && len(p.headers) > 0 {
-		sh :=  p.headers[int64(len(p.headers))]
+		sh := p.headers[int64(len(p.headers))]
 		vals := p.vals[int64(len(p.vals))]
 		return &types.LightBlock{
 			SignedHeader: sh,

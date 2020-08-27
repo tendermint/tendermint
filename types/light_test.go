@@ -4,9 +4,9 @@ import (
 	"math"
 	"testing"
 	"time"
-	
+
 	"github.com/stretchr/testify/assert"
-	
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/proto/tendermint/version"
 )
@@ -22,17 +22,16 @@ func TestLightBlockValidateBasic(t *testing.T) {
 	vals3 := vals.Copy()
 	vals3.Proposer = &Validator{}
 	commit.BlockID.Hash = header.Hash()
-	
-	
+
 	sh := &SignedHeader{
 		Header: &header,
 		Commit: commit,
 	}
-	
+
 	testCases := []struct {
-		name    string
-		sh      *SignedHeader
-		vals    *ValidatorSet
+		name      string
+		sh        *SignedHeader
+		vals      *ValidatorSet
 		expectErr bool
 	}{
 		{"valid light block", sh, vals, false},
@@ -40,7 +39,7 @@ func TestLightBlockValidateBasic(t *testing.T) {
 		{"invalid validator set", sh, vals3, true},
 		{"invalid signed header", &SignedHeader{Header: &header, Commit: randCommit(time.Now())}, vals, true},
 	}
-	
+
 	for _, tc := range testCases {
 		lightBlock := LightBlock{
 			SignedHeader: tc.sh,
@@ -53,7 +52,7 @@ func TestLightBlockValidateBasic(t *testing.T) {
 			assert.NoError(t, err, tc.name)
 		}
 	}
-	
+
 }
 
 func TestSignedHeaderValidateBasic(t *testing.T) {

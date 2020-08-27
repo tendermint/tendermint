@@ -11,11 +11,13 @@ import (
 // LightBlock is a SignedHeader and a ValidatorSet.
 // It is the basis of the light client
 type LightBlock struct {
-	*SignedHeader   `json:"signed_header"`
-	ValidatorSet *ValidatorSet `json:"validator_set"`
+	*SignedHeader `json:"signed_header"`
+	ValidatorSet  *ValidatorSet `json:"validator_set"`
 }
 
 // ValidateBasic checks that the data is correct and consistent
+//
+// This does no verification of the signatures
 func (lb LightBlock) ValidateBasic(chainID string) error {
 	if lb.SignedHeader == nil {
 		return errors.New("missing signed header")
@@ -23,14 +25,14 @@ func (lb LightBlock) ValidateBasic(chainID string) error {
 	if lb.ValidatorSet == nil {
 		return errors.New("missing validator set")
 	}
-	
+
 	if err := lb.SignedHeader.ValidateBasic(chainID); err != nil {
 		return fmt.Errorf("invalid signed header: %w", err)
 	}
 	if err := lb.ValidatorSet.ValidateBasic(); err != nil {
 		return fmt.Errorf("invalid validator set: %w", err)
 	}
-	
+
 	// make sure the validator set is consistent with the header
 	if !bytes.Equal(lb.SignedHeader.ValidatorsHash, lb.ValidatorSet.Hash()) {
 		return fmt.Errorf("expected validator hash of header to match validator set hash (%X != %X)",
@@ -38,7 +40,7 @@ func (lb LightBlock) ValidateBasic(chainID string) error {
 			lb.ValidatorSet.Hash(),
 		)
 	}
-	
+
 	return nil
 }
 
@@ -66,7 +68,7 @@ func (lb *LightBlock) ToProto() (*tmproto.LightBlock, error) {
 	if lb == nil {
 		return nil, nil
 	}
-	
+
 	lbp := new(tmproto.LightBlock)
 	var err error
 	if lb.SignedHeader != nil {
@@ -78,7 +80,7 @@ func (lb *LightBlock) ToProto() (*tmproto.LightBlock, error) {
 			return nil, err
 		}
 	}
-	
+
 	return lbp, nil
 }
 
@@ -88,17 +90,17 @@ func LightBlockFromProto(pb *tmproto.LightBlock) (*LightBlock, error) {
 	if pb == nil {
 		return nil, errors.New("nil light block")
 	}
-	
+
 	lb := new(LightBlock)
-	
+
 	if pb.SignedHeader != nil {
 		sh, err := SignedHeaderFromProto(pb.SignedHeader)
 		if err != nil {
-			return nil,err
+			return nil, err
 		}
 		lb.SignedHeader = sh
 	}
-	
+
 	if pb.ValidatorSet != nil {
 		vals, err := ValidatorSetFromProto(pb.ValidatorSet)
 		if err != nil {
@@ -106,10 +108,9 @@ func LightBlockFromProto(pb *tmproto.LightBlock) (*LightBlock, error) {
 		}
 		lb.ValidatorSet = vals
 	}
-	
+
 	return lb, nil
 }
-
 
 //-----------------------------------------------------------------------------
 

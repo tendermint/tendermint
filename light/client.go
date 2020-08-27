@@ -64,9 +64,9 @@ func SkippingVerification(trustLevel tmmath.Fraction) Option {
 	}
 }
 
-// PruningSize option sets the maximum amount of light blocks that the light 
-// client stores. When Prune() is run, all light blocks that are earlier than 
-// the h amount of light blocks will be removed from the store. 
+// PruningSize option sets the maximum amount of light blocks that the light
+// client stores. When Prune() is run, all light blocks that are earlier than
+// the h amount of light blocks will be removed from the store.
 // Default: 1000. A pruning size of 0 will not prune the light client at all.
 func PruningSize(h uint16) Option {
 	return func(c *Client) {
@@ -169,14 +169,14 @@ func NewClient(
 	}
 
 	if c.latestTrustedBlock != nil {
-		c.logger.Info("Checking trusted header using options")
-		if err := c.checkTrustedHeaderUsingOptions(trustOptions); err != nil {
+		c.logger.Info("Checking trusted light block using options")
+		if err := c.checkTrustedLightBlockUsingOptions(trustOptions); err != nil {
 			return nil, err
 		}
 	}
 
 	if c.latestTrustedBlock == nil || c.latestTrustedBlock.Height < trustOptions.Height {
-		c.logger.Info("Downloading trusted header using options")
+		c.logger.Info("Downloading trusted light block using options")
 		if err := c.initializeWithTrustOptions(trustOptions); err != nil {
 			return nil, err
 		}
@@ -262,23 +262,23 @@ func (c *Client) restoreTrustedLightBlock() error {
 
 // if options.Height:
 //
-//     1) ahead of trustedHeader.Height => fetch header (same height as
-//     trustedHeader) from primary provider and check it's hash matches the
-//     trustedHeader's hash (if not, remove trustedHeader and all the headers
+//     1) ahead of trustedLightBlock.Height => fetch light blocks (same height as
+//     trustedLightBlock) from primary provider and check it's hash matches the
+//     trustedLightBlock's hash (if not, remove trustedLightBlock and all the light blocks
 //     before)
 //
-//     2) equals trustedHeader.Height => check options.Hash matches the
-//     trustedHeader's hash (if not, remove trustedHeader and all the headers
+//     2) equals trustedLightBlock.Height => check options.Hash matches the
+//     trustedLightBlock's hash (if not, remove trustedLightBlock and all the light blocks
 //     before)
 //
-//     3) behind trustedHeader.Height => remove all the headers between
-//     options.Height and trustedHeader.Height, update trustedHeader, then
-//     check options.Hash matches the trustedHeader's hash (if not, remove
-//     trustedHeader and all the headers before)
+//     3) behind trustedLightBlock.Height => remove all the light blocks between
+//     options.Height and trustedLightBlock.Height, update trustedLightBlock, then
+//     check options.Hash matches the trustedLightBlock's hash (if not, remove
+//     trustedLightBlock and all the light blocks before)
 //
 // The intuition here is the user is always right. I.e. if she decides to reset
 // the light client with an older header, there must be a reason for it.
-func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
+func (c *Client) checkTrustedLightBlockUsingOptions(options TrustOptions) error {
 	var primaryHash []byte
 	switch {
 	case options.Height > c.latestTrustedBlock.Height:
@@ -296,7 +296,7 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 			"trustedHash", hash2str(c.latestTrustedBlock.Hash()))
 
 		action := fmt.Sprintf(
-			"Rollback to %d (%X)? Note this will remove newer headers up to %d (%X)",
+			"Rollback to %d (%X)? Note this will remove newer light blocks up to %d (%X)",
 			options.Height, options.Hash,
 			c.latestTrustedBlock.Height, c.latestTrustedBlock.Hash())
 		if c.confirmationFn(action) {
@@ -320,7 +320,7 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 			"h1", hash2str(c.latestTrustedBlock.Hash()), "h2", hash2str(primaryHash))
 
 		action := fmt.Sprintf(
-			"Prev. trusted header's hash %X doesn't match hash %X from primary provider. Remove all the stored headers?",
+			"Prev. trusted header's hash %X doesn't match hash %X from primary provider. Remove all the stored light blocks?",
 			c.latestTrustedBlock.Hash(), primaryHash)
 		if c.confirmationFn(action) {
 			err := c.Cleanup()
@@ -328,7 +328,7 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 				return fmt.Errorf("failed to cleanup: %w", err)
 			}
 		} else {
-			return errors.New("refused to remove the stored headers despite hashes mismatch")
+			return errors.New("refused to remove the stored light blocks despite hashes mismatch")
 		}
 	}
 
@@ -338,7 +338,7 @@ func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 // initializeWithTrustOptions fetches the weakly-trusted header and vals from
 // primary provider.
 func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
-	// 1) Fetch and verify the header.
+	// 1) Fetch and verify the light block.
 	l, err := c.lightBlockFromPrimary(options.Height)
 	if err != nil {
 		return err
@@ -482,13 +482,13 @@ func (c *Client) VerifyHeader(newHeader *types.Header, now time.Time) error {
 			"height", newHeader.Height, "hash", hash2str(newHeader.Hash()))
 		return nil
 	}
-	
+
 	// Request the header and the vals.
 	l, err = c.lightBlockFromPrimary(newHeader.Height)
 	if err != nil {
 		return fmt.Errorf("failed to retreive light block from primary to verify against: %w", err)
 	}
-	
+
 	if !bytes.Equal(l.Hash(), newHeader.Hash()) {
 		return fmt.Errorf("light bloch header %X does not match newHeader %X", l.Hash(), newHeader.Hash())
 	}
@@ -500,7 +500,7 @@ func (c *Client) verifyLightBlock(newLightBlock *types.LightBlock, now time.Time
 	c.logger.Info("VerifyHeader", "height", newLightBlock.Height, "hash", hash2str(newLightBlock.Hash()))
 
 	var verifyFunc func(*types.LightBlock, *types.LightBlock, time.Time) error
-	
+
 	switch c.verificationMode {
 	case sequential:
 		verifyFunc = c.verifySequential
@@ -509,17 +509,17 @@ func (c *Client) verifyLightBlock(newLightBlock *types.LightBlock, now time.Time
 	default:
 		panic(fmt.Sprintf("Unknown verification mode: %b", c.verificationMode))
 	}
-	
+
 	firstBlockHeight, err := c.FirstTrustedHeight()
 	if err != nil {
 		return fmt.Errorf("can't get first light block height: %w", err)
 	}
-	
+
 	switch {
 	// Verifying forwards
 	case newLightBlock.Height >= c.latestTrustedBlock.Height:
 		err = verifyFunc(c.latestTrustedBlock, newLightBlock, now)
-		
+
 	// Verifying backwards
 	case newLightBlock.Height < firstBlockHeight:
 		firstBlock, err := c.trustedStore.LightBlock(firstBlockHeight)
@@ -527,7 +527,7 @@ func (c *Client) verifyLightBlock(newLightBlock *types.LightBlock, now time.Time
 			return fmt.Errorf("can't get first light block: %w", err)
 		}
 		err = c.backwards(firstBlock.Header, newLightBlock.Header)
-	
+
 	// Verifying between first and last trusted light block
 	default:
 		closestBlock, err := c.trustedStore.LightBlockBefore(newLightBlock.Height)
@@ -535,7 +535,7 @@ func (c *Client) verifyLightBlock(newLightBlock *types.LightBlock, now time.Time
 			return fmt.Errorf("can't get signed header before height %d: %w", newLightBlock.Height, err)
 		}
 		err = verifyFunc(closestBlock, newLightBlock, now)
-	
+
 	}
 	if err != nil {
 		c.logger.Error("Can't verify", "err", err)
@@ -554,8 +554,8 @@ func (c *Client) verifySequential(
 
 	var (
 		verifiedBlock = trustedBlock
-		interimBlock *types.LightBlock
-		err error
+		interimBlock  *types.LightBlock
+		err           error
 	)
 
 	for height := trustedBlock.Height + 1; height <= newLightBlock.Height; height++ {
@@ -645,7 +645,7 @@ func (c *Client) verifySkipping(
 
 	var (
 		blockCache = []*types.LightBlock{trustedBlock}
-		depth       = 0
+		depth      = 0
 
 		verifiedBlock = trustedBlock
 	)
@@ -657,7 +657,7 @@ func (c *Client) verifySkipping(
 			"newHeight", blockCache[depth].Height,
 			"newHash", hash2str(blockCache[depth].Hash()))
 
-		err := Verify(c.chainID, verifiedBlock.SignedHeader, verifiedBlock.ValidatorSet, blockCache[depth].SignedHeader, 
+		err := Verify(c.chainID, verifiedBlock.SignedHeader, verifiedBlock.ValidatorSet, blockCache[depth].SignedHeader,
 			blockCache[depth].ValidatorSet, c.trustingPeriod, now, c.maxClockDrift, c.trustLevel)
 		switch err.(type) {
 		case nil:
@@ -864,7 +864,7 @@ func (c *Client) lightBlockFromWitness(height int64,
 	if err != nil {
 		return nil, &errBadWitness{err, invalidHeader, -1}
 	}
-	
+
 	return l, nil
 }
 
@@ -890,7 +890,7 @@ func (c *Client) backwards(
 
 	var (
 		verifiedHeader = trustedHeader
-		interimHeader *types.Header
+		interimHeader  *types.Header
 	)
 
 	for verifiedHeader.Height > newHeader.Height {
@@ -1018,8 +1018,8 @@ func (c *Client) removeWitness(idx int) {
 	}
 }
 
-// Update attempts to advance the state by downloading the latest light 
-// block and verifying it. It returns a new header on a successful
+// Update attempts to advance the state by downloading the latest light
+// block and verifying it. It returns a new light block on a successful
 // update. Otherwise, it returns nil (plus an error, if any).
 func (c *Client) Update(now time.Time) (*types.LightBlock, error) {
 	lastTrustedHeight, err := c.LastTrustedHeight()
@@ -1028,7 +1028,7 @@ func (c *Client) Update(now time.Time) (*types.LightBlock, error) {
 	}
 
 	if lastTrustedHeight == -1 {
-		// no headers yet => wait
+		// no light blocks yet => wait
 		return nil, nil
 	}
 
