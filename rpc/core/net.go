@@ -52,7 +52,7 @@ func UnsafeDialSeeds(ctx *rpctypes.Context, seeds []string) (*ctypes.ResultDialS
 
 // UnsafeDialPeers dials the given peers (comma-separated id@IP:PORT),
 // optionally making them persistent.
-func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent, uncoditional, private bool) (
+func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent, unconditional, private bool) (
 	*ctypes.ResultDialPeers, error) {
 	if len(peers) == 0 {
 		return &ctypes.ResultDialPeers{}, errors.New("no peers provided")
@@ -64,7 +64,7 @@ func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent, uncoditi
 	}
 
 	env.Logger.Info("DialPeers", "peers", peers, "persistent",
-		persistent, "uncoditional", uncoditional, "private", private)
+		persistent, "unconditional", unconditional, "private", private)
 
 	if persistent {
 		if err := env.P2PPeers.AddPersistentPeers(peers); err != nil {
@@ -78,7 +78,7 @@ func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent, uncoditi
 		}
 	}
 
-	if uncoditional {
+	if unconditional {
 		if err := env.P2PPeers.AddUnconditionalPeerIDs(Ids); err != nil {
 			return &ctypes.ResultDialPeers{}, err
 		}
@@ -98,7 +98,7 @@ func Genesis(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error) {
 }
 
 func getIDs(peers []string) ([]string, error) {
-	Ids := make([]string, 0, len(peers))
+	ids := make([]string, 0, len(peers))
 
 	for _, peer := range peers {
 
@@ -106,8 +106,8 @@ func getIDs(peers []string) ([]string, error) {
 		if len(spl) != 2 {
 			return nil, p2p.ErrNetAddressNoID{Addr: peer}
 		}
-		Ids = append(Ids, spl[0])
+		ids = append(ids, spl[0])
 
 	}
-	return Ids, nil
+	return ids, nil
 }
