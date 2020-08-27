@@ -381,6 +381,12 @@ timeout_precommit = "{{ .Consensus.TimeoutPrecommit }}"
 timeout_precommit_delta = "{{ .Consensus.TimeoutPrecommitDelta }}"
 timeout_commit = "{{ .Consensus.TimeoutCommit }}"
 
+# How many blocks to look back to check existence of the node's consensus votes before joining consensus
+# When non-zero, the node will panic upon restart
+# if the same consensus key was used to sign {double_sign_check_height} last blocks.
+# So, validators should stop the state machine, wait for some blocks, and then restart the state machine to avoid panic.
+double_sign_check_height = {{ .Consensus.DoubleSignCheckHeight }}
+
 # Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 skip_timeout_commit = {{ .Consensus.SkipTimeoutCommit }}
 
