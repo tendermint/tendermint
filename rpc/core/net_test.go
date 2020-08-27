@@ -62,7 +62,7 @@ func TestUnsafeDialPeers(t *testing.T) {
 
 	testCases := []struct {
 		peers                                 []string
-		persistence, uncondidtiional, private bool
+		persistence, unconditional, private bool
 		isErr                                 bool
 	}{
 		{[]string{}, false, false, false, true},
@@ -71,7 +71,7 @@ func TestUnsafeDialPeers(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		res, err := UnsafeDialPeers(&rpctypes.Context{}, tc.peers, tc.persistence, tc.uncondidtiional, tc.private)
+		res, err := UnsafeDialPeers(&rpctypes.Context{}, tc.peers, tc.persistence, tc.unconditional, tc.private)
 		if tc.isErr {
 			assert.Error(t, err)
 		} else {
