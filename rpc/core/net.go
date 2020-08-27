@@ -58,7 +58,7 @@ func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent, uncondit
 		return &ctypes.ResultDialPeers{}, errors.New("no peers provided")
 	}
 
-	Ids, err := getIDs(peers)
+	ids, err := getIDs(peers)
 	if err != nil {
 		return &ctypes.ResultDialPeers{}, err
 	}
@@ -73,13 +73,13 @@ func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent, uncondit
 	}
 
 	if private {
-		if err := env.P2PPeers.AddPrivatePeerIDs(Ids); err != nil {
+		if err := env.P2PPeers.AddPrivatePeerIDs(ids); err != nil {
 			return &ctypes.ResultDialPeers{}, err
 		}
 	}
 
 	if unconditional {
-		if err := env.P2PPeers.AddUnconditionalPeerIDs(Ids); err != nil {
+		if err := env.P2PPeers.AddUnconditionalPeerIDs(ids); err != nil {
 			return &ctypes.ResultDialPeers{}, err
 		}
 	}
