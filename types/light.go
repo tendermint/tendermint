@@ -54,7 +54,7 @@ func (lb LightBlock) String() string {
 // SignedHeader
 // ValidatorSet
 func (lb LightBlock) StringIndented(indent string) string {
-	return fmt.Sprintf(`SignedHeader{
+	return fmt.Sprintf(`LightBlock{
 %s  %v
 %s  %v
 %s}`,

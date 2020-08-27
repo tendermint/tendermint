@@ -124,12 +124,12 @@ func (s *dbs) LightBlock(height int64) (*types.LightBlock, error) {
 	var lbpb tmproto.LightBlock
 	err = proto.Unmarshal(bz, &lbpb)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal error: %w", err)
 	}
 
 	lightBlock, err := types.LightBlockFromProto(&lbpb)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("proto conversion error: %w", err)
 	}
 
 	return lightBlock, err
@@ -150,7 +150,7 @@ func (s *dbs) LastLightBlockHeight() (int64, error) {
 
 	for itr.Valid() {
 		key := itr.Key()
-		_, height, ok := parseShKey(key)
+		_, height, ok := parseLbKey(key)
 		if ok {
 			return height, nil
 		}
@@ -175,7 +175,7 @@ func (s *dbs) FirstLightBlockHeight() (int64, error) {
 
 	for itr.Valid() {
 		key := itr.Key()
-		_, height, ok := parseShKey(key)
+		_, height, ok := parseLbKey(key)
 		if ok {
 			return height, nil
 		}
@@ -205,7 +205,7 @@ func (s *dbs) LightBlockBefore(height int64) (*types.LightBlock, error) {
 
 	for itr.Valid() {
 		key := itr.Key()
-		_, existingHeight, ok := parseShKey(key)
+		_, existingHeight, ok := parseLbKey(key)
 		if ok {
 			return s.LightBlock(existingHeight)
 		}
@@ -249,7 +249,7 @@ func (s *dbs) Prune(size uint16) error {
 	pruned := 0
 	for itr.Valid() && numToPrune > 0 {
 		key := itr.Key()
-		_, height, ok := parseShKey(key)
+		_, height, ok := parseLbKey(key)
 		if ok {
 			if err = b.Delete(s.lbKey(height)); err != nil {
 				return err
@@ -291,7 +291,7 @@ func (s *dbs) Size() uint16 {
 }
 
 func (s *dbs) lbKey(height int64) []byte {
-	return []byte(fmt.Sprintf("%s/%020d", s.prefix, height))
+	return []byte(fmt.Sprintf("lb/%s/%020d", s.prefix, height))
 }
 
 var keyPattern = regexp.MustCompile(`^(lb)/([^/]*)/([0-9]+)$`)
@@ -311,10 +311,10 @@ func parseKey(key []byte) (part string, prefix string, height int64, ok bool) {
 	return
 }
 
-func parseShKey(key []byte) (prefix string, height int64, ok bool) {
+func parseLbKey(key []byte) (prefix string, height int64, ok bool) {
 	var part string
 	part, prefix, height, ok = parseKey(key)
-	if part != "sh" {
+	if part != "lb" {
 		return "", 0, false
 	}
 	return

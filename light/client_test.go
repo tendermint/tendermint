@@ -111,6 +111,11 @@ func TestValidateTrustOptions(t *testing.T) {
 
 }
 
+func TestMock(t *testing.T) {
+	l, _ := fullNode.LightBlock(3)
+	assert.Equal(t, int64(3), l.Height)
+}
+
 func TestClient_SequentialVerification(t *testing.T) {
 	newKeys := genPrivKeys(4)
 	newVals := newKeys.ToValidators(10, 1)
@@ -777,20 +782,16 @@ func TestClient_BackwardsVerification(t *testing.T) {
 		require.NoError(t, err)
 
 		// 4b) Verify backwards using bisection => expect no error
-		_, err = c.VerifyLightBlockAtHeight(7, bTime.Add(10*time.Minute))
+		_, err = c.VerifyLightBlockAtHeight(7, bTime.Add(9*time.Minute))
 		assert.NoError(t, err)
 		// shouldn't have verified this header in the process
 		_, err = c.TrustedLightBlock(8)
 		assert.Error(t, err)
 
-		// 5) trusted header has expired => expect error
-		_, err = c.VerifyLightBlockAtHeight(1, bTime.Add(20*time.Minute))
-		assert.Error(t, err)
-
-		// 6) Try bisection method, but closest header (at 7) has expired
-		// so change to backwards => expect no error
+		// 5) Try bisection method, but closest header (at 7) has expired
+		// so expect error
 		_, err = c.VerifyLightBlockAtHeight(8, bTime.Add(12*time.Minute))
-		assert.NoError(t, err)
+		assert.Error(t, err)
 
 	}
 	{
@@ -803,7 +804,7 @@ func TestClient_BackwardsVerification(t *testing.T) {
 					chainID,
 					map[int64]*types.SignedHeader{
 						1: h1,
-						2: keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
+						2: keys.GenSignedHeader(chainID, 1, bTime.Add(30*time.Minute), nil, vals, vals,
 							hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys)),
 						3: h3,
 					},
@@ -817,7 +818,7 @@ func TestClient_BackwardsVerification(t *testing.T) {
 					map[int64]*types.SignedHeader{
 						1: h1,
 						2: keys.GenSignedHeader(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
-							hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys)),
+							hash("app_hash2"), hash("cons_hash23"), hash("results_hash30"), 0, len(keys)),
 						3: h3,
 					},
 					valSet,
@@ -825,7 +826,7 @@ func TestClient_BackwardsVerification(t *testing.T) {
 			},
 		}
 
-		for _, tc := range testCases {
+		for idx, tc := range testCases {
 			c, err := light.NewClient(
 				chainID,
 				light.TrustOptions{
@@ -838,10 +839,10 @@ func TestClient_BackwardsVerification(t *testing.T) {
 				dbs.New(dbm.NewMemDB(), chainID),
 				light.Logger(log.TestingLogger()),
 			)
-			require.NoError(t, err)
+			require.NoError(t, err, idx)
 
 			_, err = c.VerifyLightBlockAtHeight(2, bTime.Add(1*time.Hour).Add(1*time.Second))
-			assert.Error(t, err)
+			assert.Error(t, err, idx)
 		}
 	}
 }
@@ -961,7 +962,7 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 		chainID,
 		trustOptions,
 		noValSetNode,
-		[]provider.Provider{fullNode, badValSetNode, fullNode},
+		[]provider.Provider{badValSetNode, fullNode, fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
 		light.Logger(log.TestingLogger()),
 	)

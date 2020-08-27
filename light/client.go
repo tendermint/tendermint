@@ -499,7 +499,10 @@ func (c *Client) VerifyHeader(newHeader *types.Header, now time.Time) error {
 func (c *Client) verifyLightBlock(newLightBlock *types.LightBlock, now time.Time) error {
 	c.logger.Info("VerifyHeader", "height", newLightBlock.Height, "hash", hash2str(newLightBlock.Hash()))
 
-	var verifyFunc func(*types.LightBlock, *types.LightBlock, time.Time) error
+	var (
+		verifyFunc func(*types.LightBlock, *types.LightBlock, time.Time) error
+		err        error
+	)
 
 	switch c.verificationMode {
 	case sequential:
@@ -522,7 +525,8 @@ func (c *Client) verifyLightBlock(newLightBlock *types.LightBlock, now time.Time
 
 	// Verifying backwards
 	case newLightBlock.Height < firstBlockHeight:
-		firstBlock, err := c.trustedStore.LightBlock(firstBlockHeight)
+		var firstBlock *types.LightBlock
+		firstBlock, err = c.trustedStore.LightBlock(firstBlockHeight)
 		if err != nil {
 			return fmt.Errorf("can't get first light block: %w", err)
 		}
@@ -530,12 +534,12 @@ func (c *Client) verifyLightBlock(newLightBlock *types.LightBlock, now time.Time
 
 	// Verifying between first and last trusted light block
 	default:
-		closestBlock, err := c.trustedStore.LightBlockBefore(newLightBlock.Height)
+		var closestBlock *types.LightBlock
+		closestBlock, err = c.trustedStore.LightBlockBefore(newLightBlock.Height)
 		if err != nil {
 			return fmt.Errorf("can't get signed header before height %d: %w", newLightBlock.Height, err)
 		}
 		err = verifyFunc(closestBlock, newLightBlock, now)
-
 	}
 	if err != nil {
 		c.logger.Error("Can't verify", "err", err)
@@ -644,7 +648,7 @@ func (c *Client) verifySkipping(
 	now time.Time) error {
 
 	var (
-		blockCache = []*types.LightBlock{trustedBlock}
+		blockCache = []*types.LightBlock{newLightBlock}
 		depth      = 0
 
 		verifiedBlock = trustedBlock
@@ -1055,13 +1059,12 @@ func (c *Client) replacePrimaryProvider() error {
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 
-	c.logger.Info("Primary is unavailable. Replacing with the first witness")
 	if len(c.witnesses) <= 1 {
 		return errNoWitnesses{}
 	}
 	c.primary = c.witnesses[0]
 	c.witnesses = c.witnesses[1:]
-	c.logger.Info("New primary", "p", c.primary)
+	c.logger.Info("Replacing primary with the first witness", "new primary", c.primary)
 
 	return nil
 }
@@ -1110,8 +1113,9 @@ func (c *Client) validateLightBlock(l *types.LightBlock, expectedHeight int64) e
 	if err != nil {
 		return err
 	}
+
 	if expectedHeight > 0 && l.Height != expectedHeight {
-		return errors.New("height mismatch")
+		return fmt.Errorf("height mismatch, got: %d, expected: %d", l.Height, expectedHeight)
 	}
 	return nil
 }

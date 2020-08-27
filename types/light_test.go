@@ -55,6 +55,58 @@ func TestLightBlockValidateBasic(t *testing.T) {
 
 }
 
+func TestLightBlockProtobuf(t *testing.T) {
+	header := makeRandHeader()
+	commit := randCommit(time.Now())
+	vals, _ := RandValidatorSet(5, 1)
+	header.Height = commit.Height
+	header.LastBlockID = commit.BlockID
+	header.ValidatorsHash = vals.Hash()
+	vals3 := vals.Copy()
+	vals3.Proposer = &Validator{}
+	commit.BlockID.Hash = header.Hash()
+
+	sh := &SignedHeader{
+		Header: &header,
+		Commit: commit,
+	}
+
+	testCases := []struct {
+		name       string
+		sh         *SignedHeader
+		vals       *ValidatorSet
+		toProtoErr bool
+		toBlockErr bool
+	}{
+		{"valid light block", sh, vals, false, false},
+		{"empty signed header", &SignedHeader{}, vals, false, false},
+		{"empty validator set", sh, &ValidatorSet{}, false, true},
+		{"empty light block", &SignedHeader{}, &ValidatorSet{}, false, true},
+	}
+
+	for _, tc := range testCases {
+		lightBlock := &LightBlock{
+			SignedHeader: tc.sh,
+			ValidatorSet: tc.vals,
+		}
+		lbp, err := lightBlock.ToProto()
+		if tc.toProtoErr {
+			assert.Error(t, err, tc.name)
+		} else {
+			assert.NoError(t, err, tc.name)
+		}
+
+		lb, err := LightBlockFromProto(lbp)
+		if tc.toBlockErr {
+			assert.Error(t, err, tc.name)
+		} else {
+			assert.NoError(t, err, tc.name)
+			assert.Equal(t, lightBlock, lb)
+		}
+	}
+
+}
+
 func TestSignedHeaderValidateBasic(t *testing.T) {
 	commit := randCommit(time.Now())
 	chainID := "𠜎"

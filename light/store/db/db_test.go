@@ -3,12 +3,16 @@ package db
 import (
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -48,6 +52,10 @@ func Test_SaveLightBlock(t *testing.T) {
 	// 1 key
 	err = dbStore.SaveLightBlock(randLightBlock(1))
 	require.NoError(t, err)
+
+	size := dbStore.Size()
+	assert.Equal(t, uint16(1), size)
+	t.Log(size)
 
 	h, err = dbStore.LightBlock(1)
 	require.NoError(t, err)
@@ -164,7 +172,21 @@ func randLightBlock(height int64) *types.LightBlock {
 	vals, _ := types.RandValidatorSet(2, 1)
 	return &types.LightBlock{
 		SignedHeader: &types.SignedHeader{
-			Header: &types.Header{Height: height},
+			Header: &types.Header{
+				ChainID:            tmrand.Str(12),
+				Height:             height,
+				Time:               time.Now(),
+				LastBlockID:        types.BlockID{},
+				LastCommitHash:     crypto.CRandBytes(tmhash.Size),
+				DataHash:           crypto.CRandBytes(tmhash.Size),
+				ValidatorsHash:     crypto.CRandBytes(tmhash.Size),
+				NextValidatorsHash: crypto.CRandBytes(tmhash.Size),
+				ConsensusHash:      crypto.CRandBytes(tmhash.Size),
+				AppHash:            crypto.CRandBytes(tmhash.Size),
+				LastResultsHash:    crypto.CRandBytes(tmhash.Size),
+				EvidenceHash:       crypto.CRandBytes(tmhash.Size),
+				ProposerAddress:    crypto.CRandBytes(crypto.AddressSize),
+			},
 			Commit: &types.Commit{},
 		},
 		ValidatorSet: vals,
