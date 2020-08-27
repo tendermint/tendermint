@@ -61,9 +61,9 @@ func TestUnsafeDialPeers(t *testing.T) {
 	env.P2PPeers = sw
 
 	testCases := []struct {
-		peers                                 []string
+		peers                               []string
 		persistence, unconditional, private bool
-		isErr                                 bool
+		isErr                               bool
 	}{
 		{[]string{}, false, false, false, true},
 		{[]string{"d51fb70907db1c6c2d5237e78379b25cf1a37ab4@127.0.0.1:41198"}, true, true, true, false},
