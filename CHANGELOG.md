@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.6.2
+
+**2020-08-27**
+
+Bump grpc, badger and goleveldb (see versions in go.mod file)
+
 ## 0.6.1
 
 **2020-08-12**
