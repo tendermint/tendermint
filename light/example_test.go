@@ -39,7 +39,7 @@ func ExampleClient_Update() {
 		stdlog.Fatal(err)
 	}
 
-	header, err := primary.SignedHeader(2)
+	block, err := primary.LightBlock(2)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func ExampleClient_Update() {
 		light.TrustOptions{
 			Period: 504 * time.Hour, // 21 days
 			Height: 2,
-			Hash:   header.Hash(),
+			Hash:   block.Hash(),
 		},
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
@@ -108,7 +108,7 @@ func ExampleClient_VerifyHeaderAtHeight() {
 		stdlog.Fatal(err)
 	}
 
-	header, err := primary.SignedHeader(2)
+	block, err := primary.LightBlock(2)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func ExampleClient_VerifyHeaderAtHeight() {
 		light.TrustOptions{
 			Period: 504 * time.Hour, // 21 days
 			Height: 2,
-			Hash:   header.Hash(),
+			Hash:   block.Hash(),
 		},
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
@@ -137,12 +137,12 @@ func ExampleClient_VerifyHeaderAtHeight() {
 		c.Cleanup()
 	}()
 
-	_, err = c.VerifyHeaderAtHeight(3, time.Now())
+	_, err = c.VerifyLightBlockAtHeight(3, time.Now())
 	if err != nil {
 		stdlog.Fatal(err)
 	}
 
-	h, err := c.TrustedHeader(3)
+	h, err := c.TrustedLightBlock(3)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
