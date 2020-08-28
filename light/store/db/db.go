@@ -77,7 +77,7 @@ func (s *dbs) SaveLightBlock(lb *types.LightBlock) error {
 	return nil
 }
 
-// DeleteLightBlockAndValidatorSet deletes LightBlock and ValidatorSet from
+// DeleteLightBlockAndValidatorSet deletes the LightBlock from
 // the db.
 //
 // Safe for concurrent use by multiple goroutines.
@@ -105,7 +105,7 @@ func (s *dbs) DeleteLightBlock(height int64) error {
 	return nil
 }
 
-// LightBlock loads LightBlock at the given height.
+// LightBlock retrieves the LightBlock at the given height.
 //
 // Safe for concurrent use by multiple goroutines.
 func (s *dbs) LightBlock(height int64) (*types.LightBlock, error) {
@@ -185,8 +185,8 @@ func (s *dbs) FirstLightBlockHeight() (int64, error) {
 	return -1, itr.Error()
 }
 
-// LightBlockBefore iterates over headers until it finds a header before
-// the given height. It returns ErrLightBlockNotFound if no such header exists.
+// LightBlockBefore iterates over light blocks until it finds a block before
+// the given height. It returns ErrLightBlockNotFound if no such block exists.
 //
 // Safe for concurrent use by multiple goroutines.
 func (s *dbs) LightBlockBefore(height int64) (*types.LightBlock, error) {

@@ -40,7 +40,7 @@ const (
 type Option func(*Client)
 
 // SequentialVerification option configures the light client to sequentially
-// check the blocks (every block, in ascending height order). Note this isx
+// check the blocks (every block, in ascending height order). Note this is
 // much slower than SkippingVerification, albeit more secure.
 func SequentialVerification() Option {
 	return func(c *Client) {
@@ -126,9 +126,9 @@ type Client struct {
 	// See Witnesses option
 	witnesses []provider.Provider
 
-	// Where trusted headers are stored.
+	// Where trusted light blocks are stored.
 	trustedStore store.Store
-	// Highest trusted header from the store (height=H).
+	// Highest trusted light block from the store (height=H).
 	latestTrustedBlock *types.LightBlock
 
 	// See RemoveNoLongerTrustedHeadersPeriod option
@@ -170,7 +170,7 @@ func NewClient(
 
 	if c.latestTrustedBlock != nil {
 		c.logger.Info("Checking trusted light block using options")
-		if err := c.checkTrustedLightBlockUsingOptions(trustOptions); err != nil {
+		if err := c.checkTrustedHeaderUsingOptions(trustOptions); err != nil {
 			return nil, err
 		}
 	}
@@ -245,16 +245,16 @@ func NewClientFromTrustedStore(
 func (c *Client) restoreTrustedLightBlock() error {
 	lastHeight, err := c.trustedStore.LastLightBlockHeight()
 	if err != nil {
-		return fmt.Errorf("can't get last trusted header height: %w", err)
+		return fmt.Errorf("can't get last trusted light block height: %w", err)
 	}
 
 	if lastHeight > 0 {
 		trustedBlock, err := c.trustedStore.LightBlock(lastHeight)
 		if err != nil {
-			return fmt.Errorf("can't get last trusted header: %w", err)
+			return fmt.Errorf("can't get last trusted light block: %w", err)
 		}
 		c.latestTrustedBlock = trustedBlock
-		c.logger.Info("Restored trusted header and vals", "height", lastHeight)
+		c.logger.Info("Restored trusted light block", "height", lastHeight)
 	}
 
 	return nil
@@ -278,7 +278,7 @@ func (c *Client) restoreTrustedLightBlock() error {
 //
 // The intuition here is the user is always right. I.e. if she decides to reset
 // the light client with an older header, there must be a reason for it.
-func (c *Client) checkTrustedLightBlockUsingOptions(options TrustOptions) error {
+func (c *Client) checkTrustedHeaderUsingOptions(options TrustOptions) error {
 	var primaryHash []byte
 	switch {
 	case options.Height > c.latestTrustedBlock.Height:
@@ -335,7 +335,7 @@ func (c *Client) checkTrustedLightBlockUsingOptions(options TrustOptions) error 
 	return nil
 }
 
-// initializeWithTrustOptions fetches the weakly-trusted header and vals from
+// initializeWithTrustOptions fetches the weakly-trusted light block from
 // primary provider.
 func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 	// 1) Fetch and verify the light block.
@@ -490,7 +490,7 @@ func (c *Client) VerifyHeader(newHeader *types.Header, now time.Time) error {
 	}
 
 	if !bytes.Equal(l.Hash(), newHeader.Hash()) {
-		return fmt.Errorf("light bloch header %X does not match newHeader %X", l.Hash(), newHeader.Hash())
+		return fmt.Errorf("light block header %X does not match newHeader %X", l.Hash(), newHeader.Hash())
 	}
 
 	return c.verifyLightBlock(l, now)
@@ -546,7 +546,7 @@ func (c *Client) verifyLightBlock(newLightBlock *types.LightBlock, now time.Time
 		return err
 	}
 
-	// 4) Once verified, save and return
+	// Once verified, save and return
 	return c.updateTrustedLightBlock(newLightBlock)
 }
 
@@ -605,13 +605,13 @@ func (c *Client) verifySequential(
 
 				replacementBlock, fErr := c.lightBlockFromPrimary(newLightBlock.Height)
 				if fErr != nil {
-					c.logger.Error("Can't fetch header/vals from primary", "err", fErr)
+					c.logger.Error("Can't fetch light block from primary", "err", fErr)
 					// return original error
 					return err
 				}
 
 				if !bytes.Equal(replacementBlock.Hash(), newLightBlock.Hash()) {
-					c.logger.Error("Replacement provider has a different header/vals",
+					c.logger.Error("Replacement provider has a different light block",
 						"newHash", newLightBlock.Hash(),
 						"replHash", replacementBlock.Hash())
 					// return original error
@@ -726,13 +726,13 @@ func (c *Client) verifySkippingAgainstPrimary(
 
 		replacementBlock, fErr := c.lightBlockFromPrimary(newLightBlock.Height)
 		if fErr != nil {
-			c.logger.Error("Can't fetch header/vals from primary", "err", fErr)
+			c.logger.Error("Can't fetch light block from primary", "err", fErr)
 			// return original error
 			return err
 		}
 
 		if !bytes.Equal(replacementBlock.Hash(), newLightBlock.Hash()) {
-			c.logger.Error("Replacement provider has a different header/vals",
+			c.logger.Error("Replacement provider has a different light block",
 				"newHash", newLightBlock.Hash(),
 				"replHash", replacementBlock.Hash())
 			// return original error
