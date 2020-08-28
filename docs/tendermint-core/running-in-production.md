@@ -27,7 +27,7 @@ details.
 Applications can expose block pruning strategies to the node operator. Please read the documentation of your application
 to find out more details.
 
-Applications can use State Sync <!--- TODO: add link to state sync doc when created ---> to help nodes bootstrap quickly.
+Applications can use [state sync](state-sync.md) to help nodes bootstrap quickly.
 
 ## Logging
 
