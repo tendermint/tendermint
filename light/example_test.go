@@ -11,6 +11,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/light/provider"
 	httpp "github.com/tendermint/tendermint/light/provider/http"
@@ -59,7 +60,7 @@ func ExampleClient_Update() {
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
-		// Logger(log.TestingLogger()),
+		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		stdlog.Fatal(err)
@@ -87,8 +88,8 @@ func ExampleClient_Update() {
 	// Output: successful update
 }
 
-// Manually getting headers and verifying them.
-func ExampleClient_VerifyHeaderAtHeight() {
+// Manually getting light blocks and verifying them.
+func ExampleClient_VerifyLightBlockAtHeight() {
 	// give Tendermint time to generate some blocks
 	time.Sleep(5 * time.Second)
 
@@ -128,7 +129,7 @@ func ExampleClient_VerifyHeaderAtHeight() {
 		primary,
 		[]provider.Provider{primary}, // NOTE: primary should not be used here
 		dbs.New(db, chainID),
-		// Logger(log.TestingLogger()),
+		light.Logger(log.TestingLogger()),
 	)
 	if err != nil {
 		stdlog.Fatal(err)

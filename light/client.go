@@ -98,7 +98,7 @@ func MaxRetryAttempts(max uint16) Option {
 	}
 }
 
-// MaxClockDrift defines how much new (untrusted) header's Time can drift into
+// MaxClockDrift defines how much new header's time can drift into
 // the future. Default: 10s.
 func MaxClockDrift(d time.Duration) Option {
 	return func(c *Client) {
@@ -486,7 +486,7 @@ func (c *Client) VerifyHeader(newHeader *types.Header, now time.Time) error {
 	// Request the header and the vals.
 	l, err = c.lightBlockFromPrimary(newHeader.Height)
 	if err != nil {
-		return fmt.Errorf("failed to retreive light block from primary to verify against: %w", err)
+		return fmt.Errorf("failed to retrieve light block from primary to verify against: %w", err)
 	}
 
 	if !bytes.Equal(l.Hash(), newHeader.Hash()) {

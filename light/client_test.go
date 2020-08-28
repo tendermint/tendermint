@@ -55,7 +55,6 @@ var (
 	}
 	l1       = &types.LightBlock{SignedHeader: h1, ValidatorSet: vals}
 	l2       = &types.LightBlock{SignedHeader: h2, ValidatorSet: vals}
-	l3       = &types.LightBlock{SignedHeader: h3, ValidatorSet: vals}
 	fullNode = mockp.New(
 		chainID,
 		headerSet,
