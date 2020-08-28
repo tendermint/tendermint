@@ -1434,7 +1434,7 @@ func TestNewValidatorSetFromExistingValidators(t *testing.T) {
 	}
 	valSet := NewValidatorSet(vals)
 	valSet.IncrementProposerPriority(5)
-	
+
 	newValSet := NewValidatorSet(valSet.Validators)
 	existingValSet, err := ValidatorSetFromExistingValidators(valSet.Validators)
 	require.NoError(t, err)

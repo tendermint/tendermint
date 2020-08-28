@@ -822,7 +822,7 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 	return ErrNotEnoughVotingPowerSigned{Got: talliedVotingPower, Needed: votingPowerNeeded}
 }
 
-// findPreviousProposer reverses the compare proposer priority function to find the validator 
+// findPreviousProposer reverses the compare proposer priority function to find the validator
 // with the lowest proposer priority which would have been the previous proposer.
 //
 // Is used when recreating a validator set from an existing array of validators.
