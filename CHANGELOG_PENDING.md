@@ -20,3 +20,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ## BUG FIXES
 
 - [blockchain] \#5249 Fix fast sync halt with initial height > 1 (@erikgrinaker)
+
+- [statesync] \#5302 Fix genesis state propagation to state sync routine (@erikgrinaker)
