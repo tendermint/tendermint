@@ -12,13 +12,13 @@ This leads to drastically shorter times for joining a network.
 
 > NOTE: Before trying to use state sync, see if the application you are operating a node for supports it. 
 
-Under the state sync section you will find multiple settings that need to be configured in order for your node to use state sync.
+Under the state sync section in `config.toml` you will find multiple settings that need to be configured in order for your node to use state sync.
 
 Lets breakdown the settings:
 
 - `enable`: Enable is to inform the node that you will be using state sync to bootstrap your node.
-- `rpc_servers`: RPC servers are needed because the state sync server utilizes the light client for verification. 
-    - It is recommended to have greater than 2 servers. 
+- `rpc_servers`: RPC servers are needed because state sync utilizes the light client for verification. 
+    - It is recommended to have more than 2 servers. 
 - `temp_dir`: Temporary directory is store the chunks in the machines local storage, If nothing is set it will create a directory in `/tmp`
 
 The next information you will need to acquire it through publicly exposed RPC's or a block explorer which you trust. 
@@ -46,4 +46,4 @@ The response will be:
 ```
 
 
-When your node is synced and participating in consensus the state sync reactor will still be running in the back ground. This is needed to help nodes joining the network get caught up quickly.
+When your node is synced and participating in consensus the state sync reactor will still run in the back ground. This is needed to help nodes joining the network get caught up quickly.
