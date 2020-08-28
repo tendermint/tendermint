@@ -46,3 +46,8 @@ type Store interface {
 	// Size returns a number of currently existing header & validator set pairs.
 	Size() uint16
 }
+
+
+type LightBlock interface {
+	chainID: string
+}
