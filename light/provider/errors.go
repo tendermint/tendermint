@@ -21,5 +21,5 @@ type ErrBadLightBlock struct {
 }
 
 func (e ErrBadLightBlock) Error() string {
-	return fmt.Sprintf("client provided bad signed header: %w", e.Reason)
+	return fmt.Sprintf("client provided bad signed header: %s", e.Reason.Error())
 }
