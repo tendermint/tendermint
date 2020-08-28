@@ -119,7 +119,7 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 		page++
 	}
 
-	return types.NewValidatorSet(vals), nil
+	return types.ValidatorSetFromExistingValidators(vals)
 }
 
 // ReportEvidence calls `/broadcast_evidence` endpoint.
