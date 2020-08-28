@@ -22,13 +22,10 @@ func (p *deadMock) ChainID() string { return p.chainID }
 
 func (p *deadMock) String() string { return "deadMock" }
 
-func (p *deadMock) SignedHeader(height int64) (*types.SignedHeader, error) {
+func (p *deadMock) LightBlock(height int64) (*types.LightBlock, error) {
 	return nil, errNoResp
 }
 
-func (p *deadMock) ValidatorSet(height int64) (*types.ValidatorSet, error) {
-	return nil, errNoResp
-}
 func (p *deadMock) ReportEvidence(ev types.Evidence) error {
 	return errNoResp
 }

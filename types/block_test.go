@@ -543,59 +543,6 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 	}
 }
 
-func TestSignedHeaderValidateBasic(t *testing.T) {
-	commit := randCommit(time.Now())
-	chainID := "𠜎"
-	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
-	h := Header{
-		Version:            version.Consensus{Block: math.MaxInt64, App: math.MaxInt64},
-		ChainID:            chainID,
-		Height:             commit.Height,
-		Time:               timestamp,
-		LastBlockID:        commit.BlockID,
-		LastCommitHash:     commit.Hash(),
-		DataHash:           commit.Hash(),
-		ValidatorsHash:     commit.Hash(),
-		NextValidatorsHash: commit.Hash(),
-		ConsensusHash:      commit.Hash(),
-		AppHash:            commit.Hash(),
-		LastResultsHash:    commit.Hash(),
-		EvidenceHash:       commit.Hash(),
-		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
-	}
-
-	validSignedHeader := SignedHeader{Header: &h, Commit: commit}
-	validSignedHeader.Commit.BlockID.Hash = validSignedHeader.Hash()
-	invalidSignedHeader := SignedHeader{}
-
-	testCases := []struct {
-		testName  string
-		shHeader  *Header
-		shCommit  *Commit
-		expectErr bool
-	}{
-		{"Valid Signed Header", validSignedHeader.Header, validSignedHeader.Commit, false},
-		{"Invalid Signed Header", invalidSignedHeader.Header, validSignedHeader.Commit, true},
-		{"Invalid Signed Header", validSignedHeader.Header, invalidSignedHeader.Commit, true},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			sh := SignedHeader{
-				Header: tc.shHeader,
-				Commit: tc.shCommit,
-			}
-			assert.Equal(
-				t,
-				tc.expectErr,
-				sh.ValidateBasic(validSignedHeader.Header.ChainID) != nil,
-				"Validate Basic had an unexpected result",
-			)
-		})
-	}
-}
-
 func TestBlockIDValidateBasic(t *testing.T) {
 	validBlockID := BlockID{
 		Hash: bytes.HexBytes{},
