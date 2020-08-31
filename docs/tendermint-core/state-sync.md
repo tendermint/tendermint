@@ -25,11 +25,9 @@ Lets breakdown the settings:
 
 The next information you will need to acquire it through publicly exposed RPC's or a block explorer which you trust. 
 
-- `trust_height`: Trust height is needed to inform the light client of your trusted height. 
-    - Trusted height defines at which height your node should trust the chain.
-- `trust_hash` Trust hash is needed to inform the light client of your trusted hash. 
-    - Trusted hash is the hash of the `BlockID` corresponding to the trusted height.
-- `trust_period` Trust period is the period in which headers can be verified. 
+- `trust_height`: Trusted height defines at which height your node should trust the chain.
+- `trust_hash`: Trusted hash is the hash in the `BlockID` corresponding to the trusted height.
+- `trust_period`: Trust period is the period in which headers can be verified. 
   > :warning: This value should be significantly smaller than the unbonding period.
 
 If you are relying on publicly exposed RPC's to get the need information, you can use `curl`.
