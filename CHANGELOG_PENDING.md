@@ -23,4 +23,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [statesync] \#5302 Fix genesis state propagation to state sync routine (@erikgrinaker)
 
-- [statesync] Fix validator set off-by-one causing consensus failures (@erikgrinaker)
+- [statesync] \#5311 Fix validator set off-by-one causing consensus failures (@erikgrinaker)
