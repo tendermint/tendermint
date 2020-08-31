@@ -212,6 +212,7 @@ message ResponseCheckTx {
   repeated Event events     = 7
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   string codespace = 8;
+  uint64 priority  = 9;
 }
 
 message ResponseDeliverTx {
@@ -355,7 +356,7 @@ message Evidence {
   string                    type      = 1;
   // The offending validator
   Validator                 validator = 2 [(gogoproto.nullable) = false];
-  // The height when the offense occurred 
+  // The height when the offense occurred
   int64                     height    = 3;
   // The corresponding time where the offense occurred
   google.protobuf.Timestamp time      = 4 [
