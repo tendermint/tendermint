@@ -22,6 +22,16 @@ Since Tendermint maintains four concurrent ABCI connections, it is typical
 for an application to maintain a distinct state for each, and for the states to
 be synchronized during `Commit`.
 
+### BeginBlock
+
+The BeginBlock request can be used to run some code at the beginning of
+every block. It also allows Tendermint to send the current block hash
+and header to the application, before it sends any of the transactions.
+
+The app should remember the latest height and header (ie. from which it
+has run a successful Commit) so that it can tell Tendermint where to
+pick up from when it restarts. See information on the Handshake, below.
+
 ### Commit
 
 Application state should only be persisted to disk during `Commit`.
@@ -50,9 +60,14 @@ disk as the "latest committed state" during `Commit`.
 Updates made to the DeliverTxState by each method call must be readable by each subsequent method -
 ie. the updates are linearizable.
 
+- [BeginBlock](#beginblock)
+- [EndBlock](#endblock)
+- [Deliver Tx](#delivertx)
+- [Commit](#commit)
+
 ### Mempool Connection
 
-The Mempool Connection should maintain a `CheckTxState`
+The mempool Connection should maintain a `CheckTxState`
 to sequentially process pending transactions in the mempool that have
 not yet been committed. It should be initialized to the latest committed state
 at the end of every `Commit`.
@@ -81,7 +96,23 @@ a sort of weak filter to keep invalid transactions out of the blockchain. It's
 weak, because a Byzantine node doesn't care about CheckTx; it can propose a
 block full of invalid transactions if it wants.
 
-### Info Connection
+#### Replay Protection
+
+To prevent old transactions from being replayed, CheckTx must implement
+replay protection.
+
+Tendermint provides the first defense layer by keeping a lightweight
+in-memory cache of 100k (`[mempool] cache_size`) last transactions in
+the mempool. If Tendermint is just started or the clients sent more than
+100k transactions, old transactions may be sent to the application. So
+it is important CheckTx implements some logic to handle them.
+
+If there are cases in your application where a transaction may become invalid in some
+future state, you probably want to disable Tendermint's
+cache. You can do that by setting `[mempool] cache_size = 0` in the
+config.
+
+### Query Connection
 
 The Info Connection should maintain a `QueryState` for answering queries from the user,
 and for initialization when Tendermint first starts up (both described further
@@ -92,6 +123,17 @@ latest committed block.
 QueryState should be set to the latest `DeliverTxState` at the end of every `Commit`,
 ie. after the full block has been processed and the state committed to disk.
 Otherwise it should never be modified.
+
+Tendermint Core currently uses the Query connection to filter peers upon
+connecting, according to IP address or node ID. For instance,
+returning non-OK ABCI response to either of the following queries will
+cause Tendermint to not connect to the corresponding peer:
+
+- `p2p/filter/addr/<ip addr>`, where `<ip addr>` is an IP address.
+- `p2p/filter/id/<id>`, where `<is>` is the hex-encoded node ID (the hash of
+  the node's p2p pubkey).
+
+Note: these query formats are subject to change!
 
 ### Snapshot Connection
 
@@ -159,8 +201,16 @@ been committed yet, they are effectively ignored by Tendermint.
 
 ### DeliverTx
 
+DeliverTx is the workhorse of the blockchain. Tendermint sends the
+DeliverTx requests asynchronously but in order, and relies on the
+underlying socket protocol (ie. TCP) to ensure they are received by the
+app in order. They have already been ordered in the global consensus by
+the Tendermint protocol.
+
 If DeliverTx returns `Code != 0`, the transaction will be considered invalid,
 though it is still included in the block.
+
+DeliverTx returns a `abci.Result`, which includes a Code, Data, and Log.
 
 `Data` contains the result of the CheckTx transaction execution, if any. It is
 semantically meaningless to Tendermint.
@@ -168,12 +218,9 @@ semantically meaningless to Tendermint.
 Both the `Code` and `Data` are included in a structure that is hashed into the
 `LastResultsHash` of the next block header.
 
-`Tags` include any tags for the execution, which Tendermint will use to index
+`Events` include any events for the execution, which Tendermint will use to index
 the transaction by. This allows transactions to be queried according to what
 events took place during their execution.
-
-See issue [#1007](https://github.com/tendermint/tendermint/issues/1007) for how
-the tags will be hashed into the next block header.
 
 ## Validator Updates
 
