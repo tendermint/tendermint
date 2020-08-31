@@ -42,16 +42,15 @@ func (e ErrInvalidHeader) Error() string {
 
 // ErrConflictingHeaders is thrown when two conflicting headers are discovered.
 type errConflictingHeaders struct {
-	Block  *types.LightBlock
+	Block   *types.LightBlock
 	Witness provider.Provider
 	Index   int
 }
 
 func (e errConflictingHeaders) Error() string {
 	return fmt.Sprintf(
-		"header hash %X from primary %v does not match one %X from witness %v",
-		e.H1.Hash(), e.Primary,
-		e.H2.Hash(), e.Witness)
+		"header hash (%X) from witness (%v) does not match primary",
+		e.Block.Hash(), e.Witness)
 }
 
 // ErrVerificationFailed means either sequential or skipping verification has
@@ -84,8 +83,8 @@ func (e errNoWitnesses) Error() string {
 // errBadWitness is returned when the witness either does not respond or
 // responds with an invalid header.
 type errBadWitness struct {
-	Reason       error
-	Index int
+	Reason error
+	Index  int
 }
 
 func (e errBadWitness) Error() string {

@@ -402,6 +402,37 @@ func (c *Client) compareWithLatestHeight(height int64) (int64, error) {
 	return height, nil
 }
 
+// Update attempts to advance the state by downloading the latest light
+// block and verifying it. It returns a new light block on a successful
+// update. Otherwise, it returns nil (plus an error, if any).
+func (c *Client) Update(now time.Time) (*types.LightBlock, error) {
+	lastTrustedHeight, err := c.LastTrustedHeight()
+	if err != nil {
+		return nil, fmt.Errorf("can't get last trusted height: %w", err)
+	}
+
+	if lastTrustedHeight == -1 {
+		// no light blocks yet => wait
+		return nil, nil
+	}
+
+	latestBlock, err := c.lightBlockFromPrimary(0)
+	if err != nil {
+		return nil, err
+	}
+
+	if latestBlock.Height > lastTrustedHeight {
+		err = c.verifyLightBlock(latestBlock, now)
+		if err != nil {
+			return nil, err
+		}
+		c.logger.Info("Advanced to new state", "height", latestBlock.Height, "hash", hash2str(latestBlock.Hash()))
+		return latestBlock, nil
+	}
+
+	return nil, nil
+}
+
 // VerifyLightBlockAtHeight fetches the light block at the given height
 // and calls verifyLightBlock. It returns the block immediately if it exists in
 // the trustedStore (no verification is needed).
@@ -644,14 +675,14 @@ func (c *Client) verifySkipping(
 	source provider.Provider,
 	trustedBlock *types.LightBlock,
 	newLightBlock *types.LightBlock,
-	now time.Time) (*lightTrace, error) {
+	now time.Time) ([]*types.LightBlock, error) {
 
 	var (
 		blockCache = []*types.LightBlock{newLightBlock}
 		depth      = 0
 
 		verifiedBlock = trustedBlock
-		trace []*types.LightBlock{trustedBlock}
+		trace         = []*types.LightBlock{trustedBlock}
 	)
 
 	for {
@@ -909,37 +940,6 @@ func (c *Client) removeWitness(idx int) {
 	}
 }
 
-// Update attempts to advance the state by downloading the latest light
-// block and verifying it. It returns a new light block on a successful
-// update. Otherwise, it returns nil (plus an error, if any).
-func (c *Client) Update(now time.Time) (*types.LightBlock, error) {
-	lastTrustedHeight, err := c.LastTrustedHeight()
-	if err != nil {
-		return nil, fmt.Errorf("can't get last trusted height: %w", err)
-	}
-
-	if lastTrustedHeight == -1 {
-		// no light blocks yet => wait
-		return nil, nil
-	}
-
-	latestBlock, err := c.lightBlockFromPrimary(0)
-	if err != nil {
-		return nil, err
-	}
-
-	if latestBlock.Height > lastTrustedHeight {
-		err = c.verifyLightBlock(latestBlock, now)
-		if err != nil {
-			return nil, err
-		}
-		c.logger.Info("Advanced to new state", "height", latestBlock.Height, "hash", hash2str(latestBlock.Hash()))
-		return latestBlock, nil
-	}
-
-	return nil, nil
-}
-
 // replaceProvider takes the first alternative provider and promotes it as the
 // primary provider.
 func (c *Client) replacePrimaryProvider() error {
@@ -973,25 +973,6 @@ func (c *Client) lightBlockFromPrimary(height int64) (*types.LightBlock, error) 
 		return c.lightBlockFromPrimary(height)
 	}
 	return l, err
-}
-
-// sendConflictingHeadersEvidence sends evidence to all witnesses and primary
-// on best effort basis.
-//
-// Evidence needs to be submitted to all full nodes since there's no way to
-// determine which full node is correct (honest).
-func (c *Client) sendConflictingHeadersEvidence(ev *types.ConflictingHeadersEvidence) {
-	err := c.primary.ReportEvidence(ev)
-	if err != nil {
-		c.logger.Error("Failed to report evidence to primary", "ev", ev, "primary", c.primary)
-	}
-
-	for _, w := range c.witnesses {
-		err := w.ReportEvidence(ev)
-		if err != nil {
-			c.logger.Error("Failed to report evidence to witness", "ev", ev, "witness", w)
-		}
-	}
 }
 
 func hash2str(hash []byte) string {

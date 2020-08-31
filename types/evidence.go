@@ -1472,9 +1472,67 @@ func AmnesiaEvidenceFromProto(pb *tmproto.AmnesiaEvidence) (*AmnesiaEvidence, er
 	return tp, tp.ValidateBasic()
 }
 
-//------------------------------------ LIGHT ATTACKS --------------------------------------
+//------------------------------------ LIGHT EVIDENCE --------------------------------------
 
-//--------------------------------------------------
+// LightClientAttackEvidence is a generalized evidence that captures all forms of known attacks on
+// a light client such that a full node can verify, propose and commit the evidence on-chain for
+// punishment of the malicious validators. There are three forms of attacks: Lunatic, Equivocation
+// and Amnesia. You can find a more detailed overview of this at
+// tendermint/docs/architecture/adr-047-handling-evidence-from-light-client.md
+type LightClientAttackEvidence struct {
+	ConflictingBlock *LightBlock
+	CommonHeight     int64
+	Timestamp        time.Time
+	Type             AttackType
+}
+
+var _ Evidence = &LightClientAttackEvidence{}
+
+type AttackType int
+
+const (
+	Lunatic AttackType = iota
+	Equivocation
+	Amnesia
+)
+
+func (l *LightClientAttackEvidence) Height() int64 {
+	return l.CommonHeight
+}
+
+func (l *LightClientAttackEvidence) Time() time.Time {
+	return l.Timestamp
+}
+
+func (l *LightClientAttackEvidence) Address() []byte {
+	return []byte("a")
+}
+
+func (l *LightClientAttackEvidence) Bytes() []byte {
+	return []byte("a")
+}
+
+func (l *LightClientAttackEvidence) Hash() []byte {
+	return []byte("a")
+}
+
+func (l *LightClientAttackEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+	return nil
+}
+
+func (l *LightClientAttackEvidence) Equal(ev Evidence) bool {
+	return false
+}
+
+func (l *LightClientAttackEvidence) ValidateBasic() error {
+	return nil
+}
+
+func (l *LightClientAttackEvidence) String() string {
+	return "light client attack evidence"
+}
+
+//------------------------------------------------------------------------------------------
 
 // EvidenceList is a list of Evidence. Evidences is not a word.
 type EvidenceList []Evidence
