@@ -16,6 +16,11 @@ module.exports = {
     docsDir: 'docs',
     editLinks: true,
     label: 'core',
+    algolia: {
+      id: "BH4D9OD16A",
+      key: "59f0e2deb984aa9cdf2b3a5fd24ac501",
+      index: "tendermint"
+    },
     topbar: {
       banner: false,
     },

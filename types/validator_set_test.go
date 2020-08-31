@@ -1425,6 +1425,24 @@ func verifyValSetUpdatePriorityOrder(t *testing.T, valSet *ValidatorSet, cfg tes
 	}
 }
 
+func TestNewValidatorSetFromExistingValidators(t *testing.T) {
+	size := 5
+	vals := make([]*Validator, size)
+	for i := 0; i < size; i++ {
+		pv := NewMockPV()
+		vals[i] = pv.ExtractIntoValidator(int64(i + 1))
+	}
+	valSet := NewValidatorSet(vals)
+	valSet.IncrementProposerPriority(5)
+
+	newValSet := NewValidatorSet(valSet.Validators)
+	existingValSet, err := ValidatorSetFromExistingValidators(valSet.Validators)
+	require.NoError(t, err)
+	assert.NotEqual(t, valSet, newValSet)
+	assert.Equal(t, valSet, existingValSet)
+	assert.Equal(t, valSet.CopyIncrementProposerPriority(3), existingValSet.CopyIncrementProposerPriority(3))
+}
+
 func TestValSetUpdateOverflowRelated(t *testing.T) {
 	testCases := []testVSetCfg{
 		{
