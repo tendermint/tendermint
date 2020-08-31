@@ -22,3 +22,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [blockchain] \#5249 Fix fast sync halt with initial height > 1 (@erikgrinaker)
 
 - [statesync] \#5302 Fix genesis state propagation to state sync routine (@erikgrinaker)
+
+- [light] [\#5307](https://github.com/tendermint/tendermint/pull/5307) persist correct proposer priority in light client validator sets (@cmwaters)
