@@ -644,13 +644,14 @@ func (c *Client) verifySkipping(
 	source provider.Provider,
 	trustedBlock *types.LightBlock,
 	newLightBlock *types.LightBlock,
-	now time.Time) error {
+	now time.Time) (*lightTrace, error) {
 
 	var (
 		blockCache = []*types.LightBlock{newLightBlock}
 		depth      = 0
 
 		verifiedBlock = trustedBlock
+		trace []*types.LightBlock{trustedBlock}
 	)
 
 	for {
@@ -666,7 +667,7 @@ func (c *Client) verifySkipping(
 		case nil:
 			// Have we verified the last header
 			if depth == 0 {
-				return nil
+				return trace, nil
 			}
 			// If not, update the lower bound to the previous upper bound
 			verifiedBlock = blockCache[depth]
@@ -674,6 +675,8 @@ func (c *Client) verifySkipping(
 			blockCache = blockCache[:depth]
 			// Reset the cache depth so that we start from the upper bound again
 			depth = 0
+			// add verifiedBlock to the trace
+			trace = append(trace, verifiedBlock)
 
 		case ErrNewValSetCantBeTrusted:
 			// do add another header to the end of the cache
@@ -682,27 +685,26 @@ func (c *Client) verifySkipping(
 					Height)*verifySkippingNumerator/verifySkippingDenominator
 				interimBlock, err := source.LightBlock(pivotHeight)
 				if err != nil {
-					return ErrVerificationFailed{From: verifiedBlock.Height, To: pivotHeight, Reason: err}
+					return nil, ErrVerificationFailed{From: verifiedBlock.Height, To: pivotHeight, Reason: err}
 				}
 				blockCache = append(blockCache, interimBlock)
 			}
 			depth++
 
 		default:
-			return ErrVerificationFailed{From: verifiedBlock.Height, To: blockCache[depth].Height, Reason: err}
+			return nil, ErrVerificationFailed{From: verifiedBlock.Height, To: blockCache[depth].Height, Reason: err}
 		}
 	}
 }
 
 // verifySkippingAgainstPrimary does verifySkipping plus it compares new header with
-// witnesses and replaces primary if it does not respond after
-// MaxRetryAttempts.
+// witnesses and replaces primary if it sends the light client an invalid header
 func (c *Client) verifySkippingAgainstPrimary(
 	trustedBlock *types.LightBlock,
 	newLightBlock *types.LightBlock,
 	now time.Time) error {
 
-	err := c.verifySkipping(c.primary, trustedBlock, newLightBlock, now)
+	trace, err := c.verifySkipping(c.primary, trustedBlock, newLightBlock, now)
 
 	switch errors.Unwrap(err).(type) {
 	case ErrInvalidHeader:
@@ -746,7 +748,7 @@ func (c *Client) verifySkippingAgainstPrimary(
 		//
 		// CORRECTNESS ASSUMPTION: there's at least 1 correct full node
 		// (primary or one of the witnesses).
-		if cmpErr := c.compareNewHeaderWithWitnesses(newLightBlock, now); cmpErr != nil {
+		if cmpErr := c.detectDivergence(trace, now); cmpErr != nil {
 			return cmpErr
 		}
 	default:
@@ -892,93 +894,6 @@ func (c *Client) backwards(
 	}
 
 	return nil
-}
-
-// compare header with all witnesses provided.
-func (c *Client) compareNewHeaderWithWitnesses(l *types.LightBlock, now time.Time) error {
-	c.providerMutex.Lock()
-	defer c.providerMutex.Unlock()
-
-	// 1. Make sure AT LEAST ONE witness returns the same header.
-	var (
-		headerMatched      bool
-		lastErrConfHeaders error
-	)
-
-	if len(c.witnesses) == 0 {
-		return errNoWitnesses{}
-	}
-
-	// launch one goroutine per witness
-	errc := make(chan error, len(c.witnesses))
-	for i, witness := range c.witnesses {
-		go c.compareNewHeaderWithWitness(errc, l, witness, i, now)
-	}
-
-	witnessesToRemove := make([]int, 0)
-
-	// handle errors as they come
-	for i := 0; i < cap(errc); i++ {
-		err := <-errc
-
-		switch e := err.(type) {
-		case nil: // at least one header matched
-			headerMatched = true
-		case ErrConflictingHeaders: // fork detected
-			c.logger.Info("FORK DETECTED", "witness", e.Witness, "err", err)
-			c.sendConflictingHeadersEvidence(&types.ConflictingHeadersEvidence{H1: e.H1, H2: e.H2})
-			lastErrConfHeaders = e
-		case errBadWitness:
-			c.logger.Info("Requested light block from bad witness", "witness", c.witnesses[e.WitnessIndex], "err", err)
-			// if witness sent us invalid header / vals, remove it
-			if e.Code == invalidHeader || e.Code == invalidValidatorSet {
-				c.logger.Info("Witness sent us invalid header / vals -> removing it", "witness", c.witnesses[e.WitnessIndex])
-				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
-			}
-		default:
-			c.logger.Info("Requested light block from witness but got error", "error", err)
-		}
-	}
-
-	for _, idx := range witnessesToRemove {
-		c.removeWitness(idx)
-	}
-
-	if lastErrConfHeaders != nil {
-		// NOTE: all of the potential forks will be reported, but we only return
-		// the last ErrConflictingHeaders error here.
-		return lastErrConfHeaders
-	} else if headerMatched {
-		return nil
-	}
-
-	return errors.New("awaiting response from all witnesses exceeded dropout time")
-}
-
-func (c *Client) compareNewHeaderWithWitness(errc chan error, l *types.LightBlock,
-	witness provider.Provider, witnessIndex int, now time.Time) {
-
-	altBlock, err := witness.LightBlock(l.Height)
-	if err != nil {
-		if _, ok := err.(provider.ErrBadLightBlock); ok {
-			errc <- errBadWitness{Reason: err, WitnessIndex: witnessIndex}
-		} else {
-			errc <- err
-		}
-		// if not a bad light block, then the witness has either not responded or
-		// doesn't have the block -> we ignore
-		return
-	}
-
-	if !bytes.Equal(l.Hash(), altBlock.Hash()) {
-		if bsErr := c.verifySkipping(witness, c.latestTrustedBlock, altBlock, now); bsErr != nil {
-			errc <- errBadWitness{bsErr, invalidHeader, witnessIndex}
-			return
-		}
-		errc <- ErrConflictingHeaders{H1: l.SignedHeader, Primary: c.primary, H2: altBlock.SignedHeader, Witness: witness}
-	}
-
-	errc <- nil
 }
 
 // NOTE: requires a providerMutex locked.

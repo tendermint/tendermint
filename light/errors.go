@@ -41,15 +41,13 @@ func (e ErrInvalidHeader) Error() string {
 }
 
 // ErrConflictingHeaders is thrown when two conflicting headers are discovered.
-type ErrConflictingHeaders struct {
-	H1      *types.SignedHeader
-	Primary provider.Provider
-
-	H2      *types.SignedHeader
+type errConflictingHeaders struct {
+	Block  *types.LightBlock
 	Witness provider.Provider
+	Index   int
 }
 
-func (e ErrConflictingHeaders) Error() string {
+func (e errConflictingHeaders) Error() string {
 	return fmt.Sprintf(
 		"header hash %X from primary %v does not match one %X from witness %v",
 		e.H1.Hash(), e.Primary,
@@ -83,31 +81,13 @@ func (e errNoWitnesses) Error() string {
 	return "no witnesses connected. please reset light client"
 }
 
-type badWitnessCode int
-
-const (
-	noResponse badWitnessCode = iota + 1
-	invalidHeader
-	invalidValidatorSet
-)
-
 // errBadWitness is returned when the witness either does not respond or
 // responds with an invalid header.
 type errBadWitness struct {
 	Reason       error
-	Code         badWitnessCode
-	WitnessIndex int
+	Index int
 }
 
 func (e errBadWitness) Error() string {
-	switch e.Code {
-	case noResponse:
-		return fmt.Sprintf("failed to get a header/vals from witness: %v", e.Reason)
-	case invalidHeader:
-		return fmt.Sprintf("witness sent us invalid header: %v", e.Reason)
-	case invalidValidatorSet:
-		return fmt.Sprintf("witness sent us invalid validator set: %v", e.Reason)
-	default:
-		return fmt.Sprintf("unknown code: %d", e.Code)
-	}
+	return fmt.Sprint("Witness %d returned error: %s", e.Reason.Error())
 }

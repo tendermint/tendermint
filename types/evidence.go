@@ -1472,6 +1472,8 @@ func AmnesiaEvidenceFromProto(pb *tmproto.AmnesiaEvidence) (*AmnesiaEvidence, er
 	return tp, tp.ValidateBasic()
 }
 
+//------------------------------------ LIGHT ATTACKS --------------------------------------
+
 //--------------------------------------------------
 
 // EvidenceList is a list of Evidence. Evidences is not a word.
