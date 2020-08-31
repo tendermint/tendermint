@@ -151,6 +151,30 @@ func ToRequestDeliverSideTx(req RequestDeliverSideTx) *Request {
 	}
 }
 
+func ToRequestListSnapshots(req RequestListSnapshots) *Request {
+	return &Request{
+		Value: &Request_ListSnapshots{&req},
+	}
+}
+
+func ToRequestOfferSnapshot(req RequestOfferSnapshot) *Request {
+	return &Request{
+		Value: &Request_OfferSnapshot{&req},
+	}
+}
+
+func ToRequestLoadSnapshotChunk(req RequestLoadSnapshotChunk) *Request {
+	return &Request{
+		Value: &Request_LoadSnapshotChunk{&req},
+	}
+}
+
+func ToRequestApplySnapshotChunk(req RequestApplySnapshotChunk) *Request {
+	return &Request{
+		Value: &Request_ApplySnapshotChunk{&req},
+	}
+}
+
 //----------------------------------------
 
 func ToResponseException(errStr string) *Response {
@@ -238,5 +262,29 @@ func ToResponseBeginSideBlock(req ResponseBeginSideBlock) *Response {
 func ToResponseDeliverSideTx(req ResponseDeliverSideTx) *Response {
 	return &Response{
 		Value: &Response_DeliverSideTx{&req},
+	}
+}
+
+func ToResponseListSnapshots(res ResponseListSnapshots) *Response {
+	return &Response{
+		Value: &Response_ListSnapshots{&res},
+	}
+}
+
+func ToResponseOfferSnapshot(res ResponseOfferSnapshot) *Response {
+	return &Response{
+		Value: &Response_OfferSnapshot{&res},
+	}
+}
+
+func ToResponseLoadSnapshotChunk(res ResponseLoadSnapshotChunk) *Response {
+	return &Response{
+		Value: &Response_LoadSnapshotChunk{&res},
+	}
+}
+
+func ToResponseApplySnapshotChunk(res ResponseApplySnapshotChunk) *Response {
+	return &Response{
+		Value: &Response_ApplySnapshotChunk{&res},
 	}
 }

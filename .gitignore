@@ -15,6 +15,7 @@ test/logs
 coverage.txt
 docs/_build
 docs/dist
+docs/.vuepress/dist
 *.log
 abci-cli
 docs/node_modules/
@@ -41,7 +42,5 @@ addrbook.json
 terraform.tfstate
 terraform.tfstate.backup
 terraform.tfstate.d
-
-.vscode
 
 profile\.out

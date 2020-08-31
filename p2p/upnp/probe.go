@@ -8,7 +8,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-type UPNPCapabilities struct {
+type Capabilities struct {
 	PortMapping bool
 	Hairpin     bool
 }
@@ -16,26 +16,26 @@ type UPNPCapabilities struct {
 func makeUPNPListener(intPort int, extPort int, logger log.Logger) (NAT, net.Listener, net.IP, error) {
 	nat, err := Discover()
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("NAT upnp could not be discovered: %v", err)
+		return nil, nil, nil, fmt.Errorf("nat upnp could not be discovered: %v", err)
 	}
 	logger.Info(fmt.Sprintf("ourIP: %v", nat.(*upnpNAT).ourIP))
 
 	ext, err := nat.GetExternalAddress()
 	if err != nil {
-		return nat, nil, nil, fmt.Errorf("External address error: %v", err)
+		return nat, nil, nil, fmt.Errorf("external address error: %v", err)
 	}
 	logger.Info(fmt.Sprintf("External address: %v", ext))
 
 	port, err := nat.AddPortMapping("tcp", extPort, intPort, "Tendermint UPnP Probe", 0)
 	if err != nil {
-		return nat, nil, ext, fmt.Errorf("Port mapping error: %v", err)
+		return nat, nil, ext, fmt.Errorf("port mapping error: %v", err)
 	}
 	logger.Info(fmt.Sprintf("Port mapping mapped: %v", port))
 
 	// also run the listener, open for all remote addresses.
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%v", intPort))
 	if err != nil {
-		return nat, nil, ext, fmt.Errorf("Error establishing listener: %v", err)
+		return nat, nil, ext, fmt.Errorf("error establishing listener: %v", err)
 	}
 	return nat, listener, ext, nil
 }
@@ -81,7 +81,7 @@ func testHairpin(listener net.Listener, extAddr string, logger log.Logger) (supp
 	return supportsHairpin
 }
 
-func Probe(logger log.Logger) (caps UPNPCapabilities, err error) {
+func Probe(logger log.Logger) (caps Capabilities, err error) {
 	logger.Info("Probing for UPnP!")
 
 	intPort, extPort := 8001, 8001

@@ -22,7 +22,7 @@ function kvstore_over_socket(){
     sleep 5
 
     echo "running test"
-    bash kvstore_test.sh "KVStore over Socket"
+    bash test/app/kvstore_test.sh "KVStore over Socket"
 
     kill -9 $pid_kvstore $pid_tendermint
 }
@@ -40,7 +40,7 @@ function kvstore_over_socket_reorder(){
     sleep 5
 
     echo "running test"
-    bash kvstore_test.sh "KVStore over Socket"
+    bash test/app/kvstore_test.sh "KVStore over Socket"
 
     kill -9 $pid_kvstore $pid_tendermint
 }
@@ -57,7 +57,7 @@ function counter_over_socket() {
     sleep 5
 
     echo "running test"
-    bash counter_test.sh "Counter over Socket"
+    bash test/app/counter_test.sh "Counter over Socket"
 
     kill -9 $pid_counter $pid_tendermint
 }
@@ -73,7 +73,7 @@ function counter_over_grpc() {
     sleep 5
 
     echo "running test"
-    bash counter_test.sh "Counter over GRPC"
+    bash test/app/counter_test.sh "Counter over GRPC"
 
     kill -9 $pid_counter $pid_tendermint
 }
@@ -91,12 +91,10 @@ function counter_over_grpc_grpc() {
     sleep 5
 
     echo "running test"
-    GRPC_BROADCAST_TX=true bash counter_test.sh "Counter over GRPC via GRPC BroadcastTx"
+    GRPC_BROADCAST_TX=true bash test/app/counter_test.sh "Counter over GRPC via GRPC BroadcastTx"
 
     kill -9 $pid_counter $pid_tendermint
 }
-
-cd $GOPATH/src/github.com/tendermint/tendermint/test/app
 
 case "$1" in 
     "kvstore_over_socket")

@@ -5,11 +5,15 @@ import (
 	"math/rand"
 	"net"
 	"reflect"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/p2p/conn"
+	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
 var defaultNodeName = "host_peer"
@@ -77,10 +81,10 @@ func TestTransportMultiplexConnFilter(t *testing.T) {
 	_, err = mt.Accept(peerConfig{})
 	if err, ok := err.(ErrRejected); ok {
 		if !err.IsFiltered() {
-			t.Errorf("expected peer to be filtered")
+			t.Errorf("expected peer to be filtered, got %v", err)
 		}
 	} else {
-		t.Errorf("expected ErrRejected")
+		t.Errorf("expected ErrRejected, got %v", err)
 	}
 }
 
@@ -96,7 +100,7 @@ func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
 	MultiplexTransportFilterTimeout(5 * time.Millisecond)(mt)
 	MultiplexTransportConnFilters(
 		func(_ ConnSet, _ net.Conn, _ []net.IP) error {
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(1 * time.Second)
 			return nil
 		},
 	)(mt)
@@ -111,7 +115,6 @@ func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
 	}
 
 	errc := make(chan error)
-
 	go func() {
 		addr := NewNetAddress(id, mt.listener.Addr())
 
@@ -130,7 +133,56 @@ func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
 
 	_, err = mt.Accept(peerConfig{})
 	if _, ok := err.(ErrFilterTimeout); !ok {
-		t.Errorf("expected ErrFilterTimeout")
+		t.Errorf("expected ErrFilterTimeout, got %v", err)
+	}
+}
+
+func TestTransportMultiplexMaxIncomingConnections(t *testing.T) {
+	pv := ed25519.GenPrivKey()
+	id := PubKeyToID(pv.PubKey())
+	mt := newMultiplexTransport(
+		testNodeInfo(
+			id, "transport",
+		),
+		NodeKey{
+			PrivKey: pv,
+		},
+	)
+
+	MultiplexTransportMaxIncomingConnections(0)(mt)
+
+	addr, err := NewNetAddressString(IDAddressString(id, "127.0.0.1:0"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const maxIncomingConns = 2
+	MultiplexTransportMaxIncomingConnections(maxIncomingConns)(mt)
+	if err := mt.Listen(*addr); err != nil {
+		t.Fatal(err)
+	}
+
+	laddr := NewNetAddress(mt.nodeKey.ID(), mt.listener.Addr())
+
+	// Connect more peers than max
+	for i := 0; i <= maxIncomingConns; i++ {
+		errc := make(chan error)
+		go testDialer(*laddr, errc)
+
+		err = <-errc
+		if i < maxIncomingConns {
+			if err != nil {
+				t.Errorf("dialer connection failed: %v", err)
+			}
+			_, err = mt.Accept(peerConfig{})
+			if err != nil {
+				t.Errorf("connection failed: %v", err)
+			}
+		} else if err == nil || !strings.Contains(err.Error(), "i/o timeout") {
+			// mt actually blocks forever on trying to accept a new peer into a full channel so
+			// expect the dialer to encounter a timeout error. Calling mt.Accept will block until
+			// mt is closed.
+			t.Errorf("expected i/o timeout error, got %v", err)
+		}
 	}
 }
 
@@ -218,6 +270,7 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 		errc         = make(chan error)
 		fastc        = make(chan struct{})
 		slowc        = make(chan struct{})
+		slowdonec    = make(chan struct{})
 	)
 
 	// Simulate slow Peer.
@@ -231,29 +284,34 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 		}
 
 		close(slowc)
+		defer func() {
+			close(slowdonec)
+		}()
+
+		// Make sure we switch to fast peer goroutine.
+		runtime.Gosched()
 
 		select {
 		case <-fastc:
 			// Fast peer connected.
-		case <-time.After(50 * time.Millisecond):
+		case <-time.After(200 * time.Millisecond):
 			// We error if the fast peer didn't succeed.
-			errc <- fmt.Errorf("Fast peer timed out")
+			errc <- fmt.Errorf("fast peer timed out")
 		}
 
-		sc, err := upgradeSecretConn(c, 20*time.Millisecond, ed25519.GenPrivKey())
+		sc, err := upgradeSecretConn(c, 200*time.Millisecond, ed25519.GenPrivKey())
 		if err != nil {
 			errc <- err
 			return
 		}
 
-		_, err = handshake(sc, 20*time.Millisecond,
+		_, err = handshake(sc, 200*time.Millisecond,
 			testNodeInfo(
 				PubKeyToID(ed25519.GenPrivKey().PubKey()),
 				"slow_peer",
 			))
 		if err != nil {
 			errc <- err
-			return
 		}
 	}()
 
@@ -277,12 +335,13 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 			return
 		}
 
-		close(errc)
 		close(fastc)
+		<-slowdonec
+		close(errc)
 	}()
 
 	if err := <-errc; err != nil {
-		t.Errorf("connection failed: %v", err)
+		t.Logf("connection failed: %v", err)
 	}
 
 	p, err := mt.Accept(peerConfig{})
@@ -329,10 +388,10 @@ func TestTransportMultiplexValidateNodeInfo(t *testing.T) {
 	_, err := mt.Accept(peerConfig{})
 	if err, ok := err.(ErrRejected); ok {
 		if !err.IsNodeInfoInvalid() {
-			t.Errorf("expected NodeInfo to be invalid")
+			t.Errorf("expected NodeInfo to be invalid, got %v", err)
 		}
 	} else {
-		t.Errorf("expected ErrRejected")
+		t.Errorf("expected ErrRejected, got %v", err)
 	}
 }
 
@@ -368,10 +427,10 @@ func TestTransportMultiplexRejectMissmatchID(t *testing.T) {
 	_, err := mt.Accept(peerConfig{})
 	if err, ok := err.(ErrRejected); ok {
 		if !err.IsAuthFailure() {
-			t.Errorf("expected auth failure")
+			t.Errorf("expected auth failure, got %v", err)
 		}
 	} else {
-		t.Errorf("expected ErrRejected")
+		t.Errorf("expected ErrRejected, got %v", err)
 	}
 }
 
@@ -396,10 +455,10 @@ func TestTransportMultiplexDialRejectWrongID(t *testing.T) {
 		t.Logf("connection failed: %v", err)
 		if err, ok := err.(ErrRejected); ok {
 			if !err.IsAuthFailure() {
-				t.Errorf("expected auth failure")
+				t.Errorf("expected auth failure, got %v", err)
 			}
 		} else {
-			t.Errorf("expected ErrRejected")
+			t.Errorf("expected ErrRejected, got %v", err)
 		}
 	}
 }
@@ -433,10 +492,10 @@ func TestTransportMultiplexRejectIncompatible(t *testing.T) {
 	_, err := mt.Accept(peerConfig{})
 	if err, ok := err.(ErrRejected); ok {
 		if !err.IsIncompatible() {
-			t.Errorf("expected to reject incompatible")
+			t.Errorf("expected to reject incompatible, got %v", err)
 		}
 	} else {
-		t.Errorf("expected ErrRejected")
+		t.Errorf("expected ErrRejected, got %v", err)
 	}
 }
 
@@ -463,7 +522,7 @@ func TestTransportMultiplexRejectSelf(t *testing.T) {
 				t.Errorf("expected to reject self, got: %v", err)
 			}
 		} else {
-			t.Errorf("expected ErrRejected")
+			t.Errorf("expected ErrRejected, got %v", err)
 		}
 	} else {
 		t.Errorf("expected connection failure")
@@ -475,7 +534,7 @@ func TestTransportMultiplexRejectSelf(t *testing.T) {
 			t.Errorf("expected to reject self, got: %v", err)
 		}
 	} else {
-		t.Errorf("expected ErrRejected")
+		t.Errorf("expected ErrRejected, got %v", nil)
 	}
 }
 
@@ -523,19 +582,24 @@ func TestTransportHandshake(t *testing.T) {
 		}
 
 		go func(c net.Conn) {
-			_, err := cdc.MarshalBinaryLengthPrefixedWriter(c, peerNodeInfo.(DefaultNodeInfo))
+			_, err := protoio.NewDelimitedWriter(c).WriteMsg(peerNodeInfo.(DefaultNodeInfo).ToProto())
 			if err != nil {
 				t.Error(err)
 			}
 		}(c)
 		go func(c net.Conn) {
-			var ni DefaultNodeInfo
-
-			_, err := cdc.UnmarshalBinaryLengthPrefixedReader(
-				c,
-				&ni,
-				int64(MaxNodeInfoSize()),
+			var (
+				// ni   DefaultNodeInfo
+				pbni tmp2p.DefaultNodeInfo
 			)
+
+			protoReader := protoio.NewDelimitedReader(c, MaxNodeInfoSize())
+			err := protoReader.ReadMsg(&pbni)
+			if err != nil {
+				t.Error(err)
+			}
+
+			_, err = DefaultNodeInfoFromToProto(&pbni)
 			if err != nil {
 				t.Error(err)
 			}
@@ -581,6 +645,9 @@ func testSetupMultiplexTransport(t *testing.T) *MultiplexTransport {
 		t.Fatal(err)
 	}
 
+	// give the listener some time to get ready
+	time.Sleep(20 * time.Millisecond)
+
 	return mt
 }
 
@@ -592,7 +659,7 @@ func (a *testTransportAddr) String() string  { return "test.local:1234" }
 type testTransportConn struct{}
 
 func (c *testTransportConn) Close() error {
-	return fmt.Errorf("Close() not implemented")
+	return fmt.Errorf("close() not implemented")
 }
 
 func (c *testTransportConn) LocalAddr() net.Addr {
@@ -604,21 +671,21 @@ func (c *testTransportConn) RemoteAddr() net.Addr {
 }
 
 func (c *testTransportConn) Read(_ []byte) (int, error) {
-	return -1, fmt.Errorf("Read() not implemented")
+	return -1, fmt.Errorf("read() not implemented")
 }
 
 func (c *testTransportConn) SetDeadline(_ time.Time) error {
-	return fmt.Errorf("SetDeadline() not implemented")
+	return fmt.Errorf("setDeadline() not implemented")
 }
 
 func (c *testTransportConn) SetReadDeadline(_ time.Time) error {
-	return fmt.Errorf("SetReadDeadline() not implemented")
+	return fmt.Errorf("setReadDeadline() not implemented")
 }
 
 func (c *testTransportConn) SetWriteDeadline(_ time.Time) error {
-	return fmt.Errorf("SetWriteDeadline() not implemented")
+	return fmt.Errorf("setWriteDeadline() not implemented")
 }
 
 func (c *testTransportConn) Write(_ []byte) (int, error) {
-	return -1, fmt.Errorf("Write() not implemented")
+	return -1, fmt.Errorf("write() not implemented")
 }

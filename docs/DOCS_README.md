@@ -2,8 +2,7 @@
 
 The documentation for Tendermint Core is hosted at:
 
-- https://tendermint.com/docs/ and
-- https://tendermint-staging.interblock.io/docs/
+- <https://docs.tendermint.com/master/>
 
 built from the files in this (`/docs`) directory for
 [master](https://github.com/tendermint/tendermint/tree/master/docs) respectively.
@@ -60,37 +59,31 @@ to send users to the GitHub.
 
 ## Building Locally
 
-To build and serve the documentation locally, run:
+Make sure you are in the `docs` directory and run the following commands:
 
-```
-# from this directory
-npm install -g vuepress
-```
-
-NOTE: the command may require `sudo`.
-
-then change the following line in the `.vuepress/config.js`:
-
-```
-base: "/docs/",
+```bash
+rm -rf node_modules
 ```
 
-to:
+This command will remove old version of the visual theme and required packages. This step is optional.
 
-```
-base: "/",
-```
-
-Finally, go up one directory to the root of the repo and run:
-
-```
-# from root of repo
-vuepress build docs
-cd dist/docs
-python -m SimpleHTTPServer 8080
+```bash
+npm install
 ```
 
-then navigate to localhost:8080 in your browser.
+Install the theme and all dependencies.
+
+```bash
+npm run serve
+```
+
+<!-- markdown-link-check-disable -->
+
+Run `pre` and `post` hooks and start a hot-reloading web-server. See output of this command for the URL (it is often <https://localhost:8080>).
+
+<!-- markdown-link-check-enable -->
+
+To build documentation as a static website run `npm run build`. You will find the website in `.vuepress/dist` directory.
 
 ## Search
 

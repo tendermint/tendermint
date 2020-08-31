@@ -10,11 +10,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/tendermint/abci/example/counter"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	p2pmock "github.com/tendermint/tendermint/p2p/mock"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -52,7 +55,7 @@ x * TestHalt1 - if we see +2/3 precommits after timing out into new round, we sh
 // ProposeSuite
 
 func TestStateProposerSelection0(t *testing.T) {
-	cs1, vss := randConsensusState(4)
+	cs1, vss := randState(4)
 	height, round := cs1.Height, cs1.Round
 
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
@@ -65,7 +68,9 @@ func TestStateProposerSelection0(t *testing.T) {
 
 	// Commit a block and ensure proposer for the next height is correct.
 	prop := cs1.GetRoundState().Validators.GetProposer()
-	address := cs1.privValidator.GetPubKey().Address()
+	pv, err := cs1.privValidator.GetPubKey()
+	require.NoError(t, err)
+	address := pv.Address()
 	if !bytes.Equal(prop.Address, address) {
 		t.Fatalf("expected proposer to be validator %d. Got %X", 0, prop.Address)
 	}
@@ -74,13 +79,15 @@ func TestStateProposerSelection0(t *testing.T) {
 	ensureNewProposal(proposalCh, height, round)
 
 	rs := cs1.GetRoundState()
-	signAddVotes(cs1, types.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:]...)
+	signAddVotes(cs1, tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:]...)
 
 	// Wait for new round so next validator is set.
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	prop = cs1.GetRoundState().Validators.GetProposer()
-	addr := vss[1].GetPubKey().Address()
+	pv1, err := vss[1].GetPubKey()
+	require.NoError(t, err)
+	addr := pv1.Address()
 	if !bytes.Equal(prop.Address, addr) {
 		panic(fmt.Sprintf("expected proposer to be validator %d. Got %X", 1, prop.Address))
 	}
@@ -88,7 +95,7 @@ func TestStateProposerSelection0(t *testing.T) {
 
 // Now let's do it all again, but starting from round 2 instead of 0
 func TestStateProposerSelection2(t *testing.T) {
-	cs1, vss := randConsensusState(4) // test needs more work for more than 3 validators
+	cs1, vss := randState(4) // test needs more work for more than 3 validators
 	height := cs1.Height
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 
@@ -96,22 +103,27 @@ func TestStateProposerSelection2(t *testing.T) {
 	incrementRound(vss[1:]...)
 	incrementRound(vss[1:]...)
 
-	round := 2
+	var round int32 = 2
 	startTestRound(cs1, height, round)
 
 	ensureNewRound(newRoundCh, height, round) // wait for the new round
 
 	// everyone just votes nil. we get a new proposer each round
-	for i := 0; i < len(vss); i++ {
+	for i := int32(0); int(i) < len(vss); i++ {
 		prop := cs1.GetRoundState().Validators.GetProposer()
-		addr := vss[(i+round)%len(vss)].GetPubKey().Address()
+		pvk, err := vss[int(i+round)%len(vss)].GetPubKey()
+		require.NoError(t, err)
+		addr := pvk.Address()
 		correctProposer := addr
 		if !bytes.Equal(prop.Address, correctProposer) {
-			panic(fmt.Sprintf("expected RoundState.Validators.GetProposer() to be validator %d. Got %X", (i+2)%len(vss), prop.Address))
+			panic(fmt.Sprintf(
+				"expected RoundState.Validators.GetProposer() to be validator %d. Got %X",
+				int(i+2)%len(vss),
+				prop.Address))
 		}
 
 		rs := cs1.GetRoundState()
-		signAddVotes(cs1, types.PrecommitType, nil, rs.ProposalBlockParts.Header(), vss[1:]...)
+		signAddVotes(cs1, tmproto.PrecommitType, nil, rs.ProposalBlockParts.Header(), vss[1:]...)
 		ensureNewRound(newRoundCh, height, i+round+1) // wait for the new round event each round
 		incrementRound(vss[1:]...)
 	}
@@ -120,7 +132,7 @@ func TestStateProposerSelection2(t *testing.T) {
 
 // a non-validator should timeout into the prevote round
 func TestStateEnterProposeNoPrivValidator(t *testing.T) {
-	cs, _ := randConsensusState(1)
+	cs, _ := randState(1)
 	cs.SetPrivValidator(nil)
 	height, round := cs.Height, cs.Round
 
@@ -139,7 +151,7 @@ func TestStateEnterProposeNoPrivValidator(t *testing.T) {
 
 // a validator should not timeout of the prevote round (TODO: unless the block is really big!)
 func TestStateEnterProposeYesPrivValidator(t *testing.T) {
-	cs, _ := randConsensusState(1)
+	cs, _ := randState(1)
 	height, round := cs.Height, cs.Round
 
 	// Listen for propose timeout event
@@ -169,7 +181,7 @@ func TestStateEnterProposeYesPrivValidator(t *testing.T) {
 }
 
 func TestStateBadProposal(t *testing.T) {
-	cs1, vss := randConsensusState(2)
+	cs1, vss := randState(2)
 	height, round := cs1.Height, cs1.Round
 	vs2 := vss[1]
 
@@ -192,11 +204,14 @@ func TestStateBadProposal(t *testing.T) {
 	stateHash[0] = (stateHash[0] + 1) % 255
 	propBlock.AppHash = stateHash
 	propBlockParts := propBlock.MakePartSet(partSize)
-	blockID := types.BlockID{Hash: propBlock.Hash(), PartsHeader: propBlockParts.Header()}
+	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 	proposal := types.NewProposal(vs2.Height, round, -1, blockID)
-	if err := vs2.SignProposal(config.ChainID(), proposal); err != nil {
+	p := proposal.ToProto()
+	if err := vs2.SignProposal(config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
+
+	proposal.Signature = p.Signature
 
 	// set the proposal block
 	if err := cs1.SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
@@ -214,13 +229,13 @@ func TestStateBadProposal(t *testing.T) {
 	validatePrevote(t, cs1, round, vss[0], nil)
 
 	// add bad prevote from vs2 and wait for it
-	signAddVotes(cs1, types.PrevoteType, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
+	signAddVotes(cs1, tmproto.PrevoteType, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
 	ensurePrevote(voteCh, height, round)
 
 	// wait for precommit
 	ensurePrecommit(voteCh, height, round)
 	validatePrecommit(t, cs1, round, -1, vss[0], nil, nil)
-	signAddVotes(cs1, types.PrecommitType, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
+	signAddVotes(cs1, tmproto.PrecommitType, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -228,7 +243,7 @@ func TestStateBadProposal(t *testing.T) {
 
 // propose, prevote, and precommit a block
 func TestStateFullRound1(t *testing.T) {
-	cs, vss := randConsensusState(1)
+	cs, vss := randState(1)
 	height, round := cs.Height, cs.Round
 
 	// NOTE: buffer capacity of 0 ensures we can validate prevote and last commit
@@ -264,7 +279,7 @@ func TestStateFullRound1(t *testing.T) {
 
 // nil is proposed, so prevote and precommit nil
 func TestStateFullRoundNil(t *testing.T) {
-	cs, vss := randConsensusState(1)
+	cs, vss := randState(1)
 	height, round := cs.Height, cs.Round
 
 	voteCh := subscribeUnBuffered(cs.eventBus, types.EventQueryVote)
@@ -282,7 +297,7 @@ func TestStateFullRoundNil(t *testing.T) {
 // run through propose, prevote, precommit commit with two validators
 // where the first validator has to wait for votes from the second
 func TestStateFullRound2(t *testing.T) {
-	cs1, vss := randConsensusState(2)
+	cs1, vss := randState(2)
 	vs2 := vss[1]
 	height, round := cs1.Height, cs1.Round
 
@@ -296,10 +311,10 @@ func TestStateFullRound2(t *testing.T) {
 
 	// we should be stuck in limbo waiting for more prevotes
 	rs := cs1.GetRoundState()
-	propBlockHash, propPartsHeader := rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header()
+	propBlockHash, propPartSetHeader := rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header()
 
 	// prevote arrives from vs2:
-	signAddVotes(cs1, types.PrevoteType, propBlockHash, propPartsHeader, vs2)
+	signAddVotes(cs1, tmproto.PrevoteType, propBlockHash, propPartSetHeader, vs2)
 	ensurePrevote(voteCh, height, round) // prevote
 
 	ensurePrecommit(voteCh, height, round) //precommit
@@ -309,7 +324,7 @@ func TestStateFullRound2(t *testing.T) {
 	// we should be stuck in limbo waiting for more precommits
 
 	// precommit arrives from vs2:
-	signAddVotes(cs1, types.PrecommitType, propBlockHash, propPartsHeader, vs2)
+	signAddVotes(cs1, tmproto.PrecommitType, propBlockHash, propPartSetHeader, vs2)
 	ensurePrecommit(voteCh, height, round)
 
 	// wait to finish commit, propose in next height
@@ -322,7 +337,7 @@ func TestStateFullRound2(t *testing.T) {
 // two validators, 4 rounds.
 // two vals take turns proposing. val1 locks on first one, precommits nil on everything else
 func TestStateLockNoPOL(t *testing.T) {
-	cs1, vss := randConsensusState(2)
+	cs1, vss := randState(2)
 	vs2 := vss[1]
 	height, round := cs1.Height, cs1.Round
 
@@ -353,7 +368,7 @@ func TestStateLockNoPOL(t *testing.T) {
 
 	// we should now be stuck in limbo forever, waiting for more prevotes
 	// prevote arrives from vs2:
-	signAddVotes(cs1, types.PrevoteType, theBlockHash, thePartSetHeader, vs2)
+	signAddVotes(cs1, tmproto.PrevoteType, theBlockHash, thePartSetHeader, vs2)
 	ensurePrevote(voteCh, height, round) // prevote
 
 	ensurePrecommit(voteCh, height, round) // precommit
@@ -365,7 +380,7 @@ func TestStateLockNoPOL(t *testing.T) {
 	hash := make([]byte, len(theBlockHash))
 	copy(hash, theBlockHash)
 	hash[0] = (hash[0] + 1) % 255
-	signAddVotes(cs1, types.PrecommitType, hash, thePartSetHeader, vs2)
+	signAddVotes(cs1, tmproto.PrecommitType, hash, thePartSetHeader, vs2)
 	ensurePrecommit(voteCh, height, round) // precommit
 
 	// (note we're entering precommit for a second time this round)
@@ -398,7 +413,7 @@ func TestStateLockNoPOL(t *testing.T) {
 	validatePrevote(t, cs1, round, vss[0], rs.LockedBlock.Hash())
 
 	// add a conflicting prevote from the other validator
-	signAddVotes(cs1, types.PrevoteType, hash, rs.LockedBlock.MakePartSet(partSize).Header(), vs2)
+	signAddVotes(cs1, tmproto.PrevoteType, hash, rs.LockedBlock.MakePartSet(partSize).Header(), vs2)
 	ensurePrevote(voteCh, height, round)
 
 	// now we're going to enter prevote again, but with invalid args
@@ -411,7 +426,7 @@ func TestStateLockNoPOL(t *testing.T) {
 	validatePrecommit(t, cs1, round, 0, vss[0], nil, theBlockHash)
 
 	// add conflicting precommit from vs2
-	signAddVotes(cs1, types.PrecommitType, hash, rs.LockedBlock.MakePartSet(partSize).Header(), vs2)
+	signAddVotes(cs1, tmproto.PrecommitType, hash, rs.LockedBlock.MakePartSet(partSize).Header(), vs2)
 	ensurePrecommit(voteCh, height, round)
 
 	// (note we're entering precommit for a second time this round, but with invalid args
@@ -432,13 +447,16 @@ func TestStateLockNoPOL(t *testing.T) {
 
 	// now we're on a new round and are the proposer
 	if !bytes.Equal(rs.ProposalBlock.Hash(), rs.LockedBlock.Hash()) {
-		panic(fmt.Sprintf("Expected proposal block to be locked block. Got %v, Expected %v", rs.ProposalBlock, rs.LockedBlock))
+		panic(fmt.Sprintf(
+			"Expected proposal block to be locked block. Got %v, Expected %v",
+			rs.ProposalBlock,
+			rs.LockedBlock))
 	}
 
 	ensurePrevote(voteCh, height, round) // prevote
 	validatePrevote(t, cs1, round, vss[0], rs.LockedBlock.Hash())
 
-	signAddVotes(cs1, types.PrevoteType, hash, rs.ProposalBlock.MakePartSet(partSize).Header(), vs2)
+	signAddVotes(cs1, tmproto.PrevoteType, hash, rs.ProposalBlock.MakePartSet(partSize).Header(), vs2)
 	ensurePrevote(voteCh, height, round)
 
 	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Prevote(round).Nanoseconds())
@@ -446,12 +464,17 @@ func TestStateLockNoPOL(t *testing.T) {
 
 	validatePrecommit(t, cs1, round, 0, vss[0], nil, theBlockHash) // precommit nil but be locked on proposal
 
-	signAddVotes(cs1, types.PrecommitType, hash, rs.ProposalBlock.MakePartSet(partSize).Header(), vs2) // NOTE: conflicting precommits at same height
+	signAddVotes(
+		cs1,
+		tmproto.PrecommitType,
+		hash,
+		rs.ProposalBlock.MakePartSet(partSize).Header(),
+		vs2) // NOTE: conflicting precommits at same height
 	ensurePrecommit(voteCh, height, round)
 
 	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
 
-	cs2, _ := randConsensusState(2) // needed so generated block is different than locked block
+	cs2, _ := randState(2) // needed so generated block is different than locked block
 	// before we time out into new round, set next proposal block
 	prop, propBlock := decideProposal(cs2, vs2, vs2.Height, vs2.Round+1)
 	if prop == nil || propBlock == nil {
@@ -479,20 +502,28 @@ func TestStateLockNoPOL(t *testing.T) {
 	validatePrevote(t, cs1, 3, vss[0], cs1.LockedBlock.Hash())
 
 	// prevote for proposed block
-	signAddVotes(cs1, types.PrevoteType, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
+	signAddVotes(cs1, tmproto.PrevoteType, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
 	ensurePrevote(voteCh, height, round)
 
 	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Prevote(round).Nanoseconds())
 	ensurePrecommit(voteCh, height, round)
 	validatePrecommit(t, cs1, round, 0, vss[0], nil, theBlockHash) // precommit nil but locked on proposal
 
-	signAddVotes(cs1, types.PrecommitType, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2) // NOTE: conflicting precommits at same height
+	signAddVotes(
+		cs1,
+		tmproto.PrecommitType,
+		propBlock.Hash(),
+		propBlock.MakePartSet(partSize).Header(),
+		vs2) // NOTE: conflicting precommits at same height
 	ensurePrecommit(voteCh, height, round)
 }
 
-// 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
-func TestStateLockPOLRelock(t *testing.T) {
-	cs1, vss := randConsensusState(4)
+// 4 vals in two rounds,
+// in round one: v1 precommits, other 3 only prevote so the block isn't committed
+// in round two: v1 prevotes the same block that the node is locked on
+// the others prevote a new block hence v1 changes lock and precommits the new block with the others
+func TestStateLockPOLRelockThenChangeLock(t *testing.T) {
+	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -500,7 +531,9 @@ func TestStateLockPOLRelock(t *testing.T) {
 
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
-	addr := cs1.privValidator.GetPubKey().Address()
+	pv1, err := cs1.privValidator.GetPubKey()
+	require.NoError(t, err)
+	addr := pv1.Address()
 	voteCh := subscribeToVoter(cs1, addr)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	newBlockCh := subscribe(cs1.eventBus, types.EventQueryNewBlockHeader)
@@ -524,20 +557,24 @@ func TestStateLockPOLRelock(t *testing.T) {
 
 	ensurePrevote(voteCh, height, round) // prevote
 
-	signAddVotes(cs1, types.PrevoteType, theBlockHash, theBlockParts, vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrevoteType, theBlockHash, theBlockParts, vs2, vs3, vs4)
 
 	ensurePrecommit(voteCh, height, round) // our precommit
 	// the proposed block should now be locked and our precommit added
 	validatePrecommit(t, cs1, round, round, vss[0], theBlockHash, theBlockHash)
 
 	// add precommits from the rest
-	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2, vs4)
-	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs3)
+	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	// before we timeout to the new round set the new proposal
-	prop, propBlock := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
+	cs2 := newState(cs1.state, vs2, counter.NewApplication(true))
+	prop, propBlock := decideProposal(cs2, vs2, vs2.Height, vs2.Round+1)
+	if prop == nil || propBlock == nil {
+		t.Fatal("Failed to create proposal block with vs2")
+	}
 	propBlockParts := propBlock.MakePartSet(partSize)
 	propBlockHash := propBlock.Hash()
+	require.NotEqual(t, propBlockHash, theBlockHash)
 
 	incrementRound(vs2, vs3, vs4)
 
@@ -563,18 +600,19 @@ func TestStateLockPOLRelock(t *testing.T) {
 	// but we should receive the proposal
 	ensureNewProposal(proposalCh, height, round)
 
-	// go to prevote, prevote for locked block (not proposal), move on
+	// go to prevote, node should prevote for locked block (not the new proposal) - this is relocking
 	ensurePrevote(voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], theBlockHash)
 
 	// now lets add prevotes from everyone else for the new block
-	signAddVotes(cs1, types.PrevoteType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrevoteType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
 
 	ensurePrecommit(voteCh, height, round)
-	// we should have unlocked and locked on the new block
+	// we should have unlocked and locked on the new block, sending a precommit for this new block
 	validatePrecommit(t, cs1, round, round, vss[0], propBlockHash, propBlockHash)
 
-	signAddVotes(cs1, types.PrecommitType, propBlockHash, propBlockParts.Header(), vs2, vs3)
+	// more prevote creating a majority on the new block and this is then committed
+	signAddVotes(cs1, tmproto.PrecommitType, propBlockHash, propBlockParts.Header(), vs2, vs3)
 	ensureNewBlockHeader(newBlockCh, height, propBlockHash)
 
 	ensureNewRound(newRoundCh, height+1, 0)
@@ -582,7 +620,7 @@ func TestStateLockPOLRelock(t *testing.T) {
 
 // 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
 func TestStateLockPOLUnlock(t *testing.T) {
-	cs1, vss := randConsensusState(4)
+	cs1, vss, evpool := randStateWithEvpool(t, 4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -592,7 +630,9 @@ func TestStateLockPOLUnlock(t *testing.T) {
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	unlockCh := subscribe(cs1.eventBus, types.EventQueryUnlock)
-	addr := cs1.privValidator.GetPubKey().Address()
+	pv1, err := cs1.privValidator.GetPubKey()
+	require.NoError(t, err)
+	addr := pv1.Address()
 	voteCh := subscribeToVoter(cs1, addr)
 
 	// everything done from perspective of cs1
@@ -615,15 +655,15 @@ func TestStateLockPOLUnlock(t *testing.T) {
 	ensurePrevote(voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], theBlockHash)
 
-	signAddVotes(cs1, types.PrevoteType, theBlockHash, theBlockParts, vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrevoteType, theBlockHash, theBlockParts, vs2, vs3, vs4)
 
 	ensurePrecommit(voteCh, height, round)
 	// the proposed block should now be locked and our precommit added
 	validatePrecommit(t, cs1, round, round, vss[0], theBlockHash, theBlockHash)
 
 	// add precommits from the rest
-	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2, vs4)
-	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs3)
+	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs4)
+	signAddVotes(cs1, tmproto.PrecommitType, theBlockHash, theBlockParts, vs3)
 
 	// before we time out into new round, set next proposal block
 	prop, propBlock := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
@@ -655,7 +695,7 @@ func TestStateLockPOLUnlock(t *testing.T) {
 	ensurePrevote(voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], lockedBlockHash)
 	// now lets add prevotes from everyone else for nil (a polka!)
-	signAddVotes(cs1, types.PrevoteType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrevoteType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	// the polka makes us unlock and precommit nil
 	ensureNewUnlock(unlockCh, height, round)
@@ -665,8 +705,149 @@ func TestStateLockPOLUnlock(t *testing.T) {
 	// NOTE: since we don't relock on nil, the lock round is -1
 	validatePrecommit(t, cs1, round, -1, vss[0], nil, nil)
 
-	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3)
+	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3)
 	ensureNewRound(newRoundCh, height, round+1)
+	// polc should be in the evpool for round 1
+	polc, err := evpool.RetrievePOLC(height, round)
+	assert.NoError(t, err)
+	assert.NotNil(t, polc)
+	assert.False(t, polc.IsAbsent())
+	// but not for round 0
+	polc, err = evpool.RetrievePOLC(height, round-1)
+	assert.NoError(t, err)
+	assert.Nil(t, polc)
+}
+
+// 4 vals, v1 locks on proposed block in the first round but the other validators only prevote
+// In the second round, v1 misses the proposal but sees a majority prevote an unknown block so
+// v1 should unlock and precommit nil. In the third round another block is proposed, all vals
+// prevote and now v1 can lock onto the third block and precommit that
+func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
+	cs1, vss, evpool := randStateWithEvpool(t, 4)
+	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
+	height, round := cs1.Height, cs1.Round
+
+	partSize := types.BlockPartSizeBytes
+
+	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
+	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
+	pv1, err := cs1.privValidator.GetPubKey()
+	require.NoError(t, err)
+	addr := pv1.Address()
+	voteCh := subscribeToVoter(cs1, addr)
+	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
+	// everything done from perspective of cs1
+
+	/*
+		Round0 (cs1, A) // A A A A// A nil nil nil
+	*/
+
+	// start round and wait for propose and prevote
+	startTestRound(cs1, height, round)
+
+	ensureNewRound(newRoundCh, height, round)
+	ensureNewProposal(proposalCh, height, round)
+	rs := cs1.GetRoundState()
+	firstBlockHash := rs.ProposalBlock.Hash()
+	firstBlockParts := rs.ProposalBlockParts.Header()
+
+	ensurePrevote(voteCh, height, round) // prevote
+
+	signAddVotes(cs1, tmproto.PrevoteType, firstBlockHash, firstBlockParts, vs2, vs3, vs4)
+
+	ensurePrecommit(voteCh, height, round) // our precommit
+	// the proposed block should now be locked and our precommit added
+	validatePrecommit(t, cs1, round, round, vss[0], firstBlockHash, firstBlockHash)
+
+	// add precommits from the rest
+	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+
+	// before we timeout to the new round set the new proposal
+	cs2 := newState(cs1.state, vs2, counter.NewApplication(true))
+	prop, propBlock := decideProposal(cs2, vs2, vs2.Height, vs2.Round+1)
+	if prop == nil || propBlock == nil {
+		t.Fatal("Failed to create proposal block with vs2")
+	}
+	secondBlockParts := propBlock.MakePartSet(partSize)
+	secondBlockHash := propBlock.Hash()
+	require.NotEqual(t, secondBlockHash, firstBlockHash)
+
+	incrementRound(vs2, vs3, vs4)
+
+	// timeout to new round
+	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
+
+	round++ // moving to the next round
+
+	ensureNewRound(newRoundCh, height, round)
+	t.Log("### ONTO ROUND 1")
+
+	/*
+		Round1 (vs2, B) // A B B B // nil nil nil nil)
+	*/
+
+	// now we're on a new round but v1 misses the proposal
+
+	// go to prevote, node should prevote for locked block (not the new proposal) - this is relocking
+	ensurePrevote(voteCh, height, round)
+	validatePrevote(t, cs1, round, vss[0], firstBlockHash)
+
+	// now lets add prevotes from everyone else for the new block
+	signAddVotes(cs1, tmproto.PrevoteType, secondBlockHash, secondBlockParts.Header(), vs2, vs3, vs4)
+
+	ensurePrecommit(voteCh, height, round)
+	// we should have unlocked and locked on the new block, sending a precommit for this new block
+	validatePrecommit(t, cs1, round, -1, vss[0], nil, nil)
+
+	if err := cs1.SetProposalAndBlock(prop, propBlock, secondBlockParts, "some peer"); err != nil {
+		t.Fatal(err)
+	}
+
+	// more prevote creating a majority on the new block and this is then committed
+	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+
+	// before we timeout to the new round set the new proposal
+	cs3 := newState(cs1.state, vs3, counter.NewApplication(true))
+	prop, propBlock = decideProposal(cs3, vs3, vs3.Height, vs3.Round+1)
+	if prop == nil || propBlock == nil {
+		t.Fatal("Failed to create proposal block with vs2")
+	}
+	thirdPropBlockParts := propBlock.MakePartSet(partSize)
+	thirdPropBlockHash := propBlock.Hash()
+	require.NotEqual(t, secondBlockHash, thirdPropBlockHash)
+
+	// polc should be in the evpool for round 1
+	polc, err := evpool.RetrievePOLC(height, round)
+	assert.NoError(t, err)
+	assert.NotNil(t, polc)
+	assert.False(t, polc.IsAbsent())
+
+	incrementRound(vs2, vs3, vs4)
+
+	// timeout to new round
+	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
+
+	round++ // moving to the next round
+	ensureNewRound(newRoundCh, height, round)
+	t.Log("### ONTO ROUND 2")
+
+	/*
+		Round2 (vs3, C) // C C C C // C nil nil nil)
+	*/
+
+	if err := cs1.SetProposalAndBlock(prop, propBlock, thirdPropBlockParts, "some peer"); err != nil {
+		t.Fatal(err)
+	}
+
+	ensurePrevote(voteCh, height, round)
+	// we are no longer locked to the first block so we should be able to prevote
+	validatePrevote(t, cs1, round, vss[0], thirdPropBlockHash)
+
+	signAddVotes(cs1, tmproto.PrevoteType, thirdPropBlockHash, thirdPropBlockParts.Header(), vs2, vs3, vs4)
+
+	ensurePrecommit(voteCh, height, round)
+	// we have a majority, now vs1 can change lock to the third block
+	validatePrecommit(t, cs1, round, round, vss[0], thirdPropBlockHash, thirdPropBlockHash)
 }
 
 // 4 vals
@@ -674,7 +855,7 @@ func TestStateLockPOLUnlock(t *testing.T) {
 // then a polka at round 2 that we lock on
 // then we see the polka from round 1 but shouldn't unlock
 func TestStateLockPOLSafety1(t *testing.T) {
-	cs1, vss := randConsensusState(4)
+	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -684,7 +865,9 @@ func TestStateLockPOLSafety1(t *testing.T) {
 	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
-	addr := cs1.privValidator.GetPubKey().Address()
+	pv1, err := cs1.privValidator.GetPubKey()
+	require.NoError(t, err)
+	addr := pv1.Address()
 	voteCh := subscribeToVoter(cs1, addr)
 
 	// start round and wait for propose and prevote
@@ -699,12 +882,12 @@ func TestStateLockPOLSafety1(t *testing.T) {
 	validatePrevote(t, cs1, round, vss[0], propBlock.Hash())
 
 	// the others sign a polka but we don't see it
-	prevotes := signVotes(types.PrevoteType, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2, vs3, vs4)
+	prevotes := signVotes(tmproto.PrevoteType, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2, vs3, vs4)
 
 	t.Logf("old prop hash %v", fmt.Sprintf("%X", propBlock.Hash()))
 
 	// we do see them precommit nil
-	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	// cs1 precommit nil
 	ensurePrecommit(voteCh, height, round)
@@ -744,13 +927,13 @@ func TestStateLockPOLSafety1(t *testing.T) {
 	validatePrevote(t, cs1, round, vss[0], propBlockHash)
 
 	// now we see the others prevote for it, so we should lock on it
-	signAddVotes(cs1, types.PrevoteType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrevoteType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
 
 	ensurePrecommit(voteCh, height, round)
 	// we should have precommitted
 	validatePrecommit(t, cs1, round, round, vss[0], propBlockHash, propBlockHash)
 
-	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
 
@@ -791,7 +974,7 @@ func TestStateLockPOLSafety1(t *testing.T) {
 // What we want:
 // dont see P0, lock on P1 at R1, dont unlock using P0 at R2
 func TestStateLockPOLSafety2(t *testing.T) {
-	cs1, vss := randConsensusState(4)
+	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -801,7 +984,9 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	unlockCh := subscribe(cs1.eventBus, types.EventQueryUnlock)
-	addr := cs1.privValidator.GetPubKey().Address()
+	pv1, err := cs1.privValidator.GetPubKey()
+	require.NoError(t, err)
+	addr := pv1.Address()
 	voteCh := subscribeToVoter(cs1, addr)
 
 	// the block for R0: gets polkad but we miss it
@@ -809,10 +994,10 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	_, propBlock0 := decideProposal(cs1, vss[0], height, round)
 	propBlockHash0 := propBlock0.Hash()
 	propBlockParts0 := propBlock0.MakePartSet(partSize)
-	propBlockID0 := types.BlockID{Hash: propBlockHash0, PartsHeader: propBlockParts0.Header()}
+	propBlockID0 := types.BlockID{Hash: propBlockHash0, PartSetHeader: propBlockParts0.Header()}
 
 	// the others sign a polka but we don't see it
-	prevotes := signVotes(types.PrevoteType, propBlockHash0, propBlockParts0.Header(), vs2, vs3, vs4)
+	prevotes := signVotes(tmproto.PrevoteType, propBlockHash0, propBlockParts0.Header(), vs2, vs3, vs4)
 
 	// the block for round 1
 	prop1, propBlock1 := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
@@ -835,15 +1020,15 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	ensurePrevote(voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], propBlockHash1)
 
-	signAddVotes(cs1, types.PrevoteType, propBlockHash1, propBlockParts1.Header(), vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrevoteType, propBlockHash1, propBlockParts1.Header(), vs2, vs3, vs4)
 
 	ensurePrecommit(voteCh, height, round)
 	// the proposed block should now be locked and our precommit added
 	validatePrecommit(t, cs1, round, round, vss[0], propBlockHash1, propBlockHash1)
 
 	// add precommits from the rest
-	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2, vs4)
-	signAddVotes(cs1, types.PrecommitType, propBlockHash1, propBlockParts1.Header(), vs3)
+	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs4)
+	signAddVotes(cs1, tmproto.PrecommitType, propBlockHash1, propBlockParts1.Header(), vs3)
 
 	incrementRound(vs2, vs3, vs4)
 
@@ -853,9 +1038,13 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	round++ // moving to the next round
 	// in round 2 we see the polkad block from round 0
 	newProp := types.NewProposal(height, round, 0, propBlockID0)
-	if err := vs3.SignProposal(config.ChainID(), newProp); err != nil {
+	p := newProp.ToProto()
+	if err := vs3.SignProposal(config.ChainID(), p); err != nil {
 		t.Fatal(err)
 	}
+
+	newProp.Signature = p.Signature
+
 	if err := cs1.SetProposalAndBlock(newProp, propBlock0, propBlockParts0, "some peer"); err != nil {
 		t.Fatal(err)
 	}
@@ -882,7 +1071,7 @@ func TestStateLockPOLSafety2(t *testing.T) {
 // What we want:
 // P0 proposes B0 at R3.
 func TestProposeValidBlock(t *testing.T) {
-	cs1, vss := randConsensusState(4)
+	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -893,7 +1082,9 @@ func TestProposeValidBlock(t *testing.T) {
 	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	unlockCh := subscribe(cs1.eventBus, types.EventQueryUnlock)
-	addr := cs1.privValidator.GetPubKey().Address()
+	pv1, err := cs1.privValidator.GetPubKey()
+	require.NoError(t, err)
+	addr := pv1.Address()
 	voteCh := subscribeToVoter(cs1, addr)
 
 	// start round and wait for propose and prevote
@@ -909,13 +1100,13 @@ func TestProposeValidBlock(t *testing.T) {
 	validatePrevote(t, cs1, round, vss[0], propBlockHash)
 
 	// the others sign a polka
-	signAddVotes(cs1, types.PrevoteType, propBlockHash, propBlock.MakePartSet(partSize).Header(), vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrevoteType, propBlockHash, propBlock.MakePartSet(partSize).Header(), vs2, vs3, vs4)
 
 	ensurePrecommit(voteCh, height, round)
 	// we should have precommitted
 	validatePrecommit(t, cs1, round, round, vss[0], propBlockHash, propBlockHash)
 
-	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
 
@@ -932,7 +1123,7 @@ func TestProposeValidBlock(t *testing.T) {
 	ensurePrevote(voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], propBlockHash)
 
-	signAddVotes(cs1, types.PrevoteType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrevoteType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	ensureNewUnlock(unlockCh, height, round)
 
@@ -943,7 +1134,7 @@ func TestProposeValidBlock(t *testing.T) {
 	incrementRound(vs2, vs3, vs4)
 	incrementRound(vs2, vs3, vs4)
 
-	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	round += 2 // moving to the next round
 
@@ -970,7 +1161,7 @@ func TestProposeValidBlock(t *testing.T) {
 // What we want:
 // P0 miss to lock B but set valid block to B after receiving delayed prevote.
 func TestSetValidBlockOnDelayedPrevote(t *testing.T) {
-	cs1, vss := randConsensusState(4)
+	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -980,7 +1171,9 @@ func TestSetValidBlockOnDelayedPrevote(t *testing.T) {
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	validBlockCh := subscribe(cs1.eventBus, types.EventQueryValidBlock)
-	addr := cs1.privValidator.GetPubKey().Address()
+	pv1, err := cs1.privValidator.GetPubKey()
+	require.NoError(t, err)
+	addr := pv1.Address()
 	voteCh := subscribeToVoter(cs1, addr)
 
 	// start round and wait for propose and prevote
@@ -997,10 +1190,10 @@ func TestSetValidBlockOnDelayedPrevote(t *testing.T) {
 	validatePrevote(t, cs1, round, vss[0], propBlockHash)
 
 	// vs2 send prevote for propBlock
-	signAddVotes(cs1, types.PrevoteType, propBlockHash, propBlockParts.Header(), vs2)
+	signAddVotes(cs1, tmproto.PrevoteType, propBlockHash, propBlockParts.Header(), vs2)
 
 	// vs3 send prevote nil
-	signAddVotes(cs1, types.PrevoteType, nil, types.PartSetHeader{}, vs3)
+	signAddVotes(cs1, tmproto.PrevoteType, nil, types.PartSetHeader{}, vs3)
 
 	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Prevote(round).Nanoseconds())
 
@@ -1015,7 +1208,7 @@ func TestSetValidBlockOnDelayedPrevote(t *testing.T) {
 	assert.True(t, rs.ValidRound == -1)
 
 	// vs2 send (delayed) prevote for propBlock
-	signAddVotes(cs1, types.PrevoteType, propBlockHash, propBlockParts.Header(), vs4)
+	signAddVotes(cs1, tmproto.PrevoteType, propBlockHash, propBlockParts.Header(), vs4)
 
 	ensureNewValidBlock(validBlockCh, height, round)
 
@@ -1030,7 +1223,7 @@ func TestSetValidBlockOnDelayedPrevote(t *testing.T) {
 // P0 miss to lock B as Proposal Block is missing, but set valid block to B after
 // receiving delayed Block Proposal.
 func TestSetValidBlockOnDelayedProposal(t *testing.T) {
-	cs1, vss := randConsensusState(4)
+	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -1040,7 +1233,9 @@ func TestSetValidBlockOnDelayedProposal(t *testing.T) {
 	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	validBlockCh := subscribe(cs1.eventBus, types.EventQueryValidBlock)
-	addr := cs1.privValidator.GetPubKey().Address()
+	pv1, err := cs1.privValidator.GetPubKey()
+	require.NoError(t, err)
+	addr := pv1.Address()
 	voteCh := subscribeToVoter(cs1, addr)
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
 
@@ -1060,7 +1255,7 @@ func TestSetValidBlockOnDelayedProposal(t *testing.T) {
 	propBlockParts := propBlock.MakePartSet(partSize)
 
 	// vs2, vs3 and vs4 send prevote for propBlock
-	signAddVotes(cs1, types.PrevoteType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrevoteType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
 	ensureNewValidBlock(validBlockCh, height, round)
 
 	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Prevote(round).Nanoseconds())
@@ -1084,7 +1279,7 @@ func TestSetValidBlockOnDelayedProposal(t *testing.T) {
 // What we want:
 // P0 waits for timeoutPrecommit before starting next round
 func TestWaitingTimeoutOnNilPolka(t *testing.T) {
-	cs1, vss := randConsensusState(4)
+	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -1095,7 +1290,7 @@ func TestWaitingTimeoutOnNilPolka(t *testing.T) {
 	startTestRound(cs1, height, round)
 	ensureNewRound(newRoundCh, height, round)
 
-	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	ensureNewTimeout(timeoutWaitCh, height, round, cs1.config.Precommit(round).Nanoseconds())
 	ensureNewRound(newRoundCh, height, round+1)
@@ -1105,13 +1300,15 @@ func TestWaitingTimeoutOnNilPolka(t *testing.T) {
 // What we want:
 // P0 waits for timeoutPropose in the next round before entering prevote
 func TestWaitingTimeoutProposeOnNewRound(t *testing.T) {
-	cs1, vss := randConsensusState(4)
+	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
-	addr := cs1.privValidator.GetPubKey().Address()
+	pv1, err := cs1.privValidator.GetPubKey()
+	require.NoError(t, err)
+	addr := pv1.Address()
 	voteCh := subscribeToVoter(cs1, addr)
 
 	// start round
@@ -1121,7 +1318,7 @@ func TestWaitingTimeoutProposeOnNewRound(t *testing.T) {
 	ensurePrevote(voteCh, height, round)
 
 	incrementRound(vss[1:]...)
-	signAddVotes(cs1, types.PrevoteType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrevoteType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	round++ // moving to the next round
 	ensureNewRound(newRoundCh, height, round)
@@ -1139,13 +1336,15 @@ func TestWaitingTimeoutProposeOnNewRound(t *testing.T) {
 // What we want:
 // P0 jump to higher round, precommit and start precommit wait
 func TestRoundSkipOnNilPolkaFromHigherRound(t *testing.T) {
-	cs1, vss := randConsensusState(4)
+	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
-	addr := cs1.privValidator.GetPubKey().Address()
+	pv1, err := cs1.privValidator.GetPubKey()
+	require.NoError(t, err)
+	addr := pv1.Address()
 	voteCh := subscribeToVoter(cs1, addr)
 
 	// start round
@@ -1155,7 +1354,7 @@ func TestRoundSkipOnNilPolkaFromHigherRound(t *testing.T) {
 	ensurePrevote(voteCh, height, round)
 
 	incrementRound(vss[1:]...)
-	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	round++ // moving to the next round
 	ensureNewRound(newRoundCh, height, round)
@@ -1173,13 +1372,15 @@ func TestRoundSkipOnNilPolkaFromHigherRound(t *testing.T) {
 // What we want:
 // P0 wait for timeoutPropose to expire before sending prevote.
 func TestWaitTimeoutProposeOnNilPolkaForTheCurrentRound(t *testing.T) {
-	cs1, vss := randConsensusState(4)
+	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
-	height, round := cs1.Height, 1
+	height, round := cs1.Height, int32(1)
 
 	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
-	addr := cs1.privValidator.GetPubKey().Address()
+	pv1, err := cs1.privValidator.GetPubKey()
+	require.NoError(t, err)
+	addr := pv1.Address()
 	voteCh := subscribeToVoter(cs1, addr)
 
 	// start round in which PO is not proposer
@@ -1187,7 +1388,7 @@ func TestWaitTimeoutProposeOnNilPolkaForTheCurrentRound(t *testing.T) {
 	ensureNewRound(newRoundCh, height, round)
 
 	incrementRound(vss[1:]...)
-	signAddVotes(cs1, types.PrevoteType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrevoteType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	ensureNewTimeout(timeoutProposeCh, height, round, cs1.config.Propose(round).Nanoseconds())
 
@@ -1198,9 +1399,9 @@ func TestWaitTimeoutProposeOnNilPolkaForTheCurrentRound(t *testing.T) {
 // What we want:
 // P0 emit NewValidBlock event upon receiving 2/3+ Precommit for B but hasn't received block B yet
 func TestEmitNewValidBlockEventOnCommitWithoutBlock(t *testing.T) {
-	cs1, vss := randConsensusState(4)
+	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
-	height, round := cs1.Height, 1
+	height, round := cs1.Height, int32(1)
 
 	incrementRound(vs2, vs3, vs4)
 
@@ -1218,7 +1419,7 @@ func TestEmitNewValidBlockEventOnCommitWithoutBlock(t *testing.T) {
 	ensureNewRound(newRoundCh, height, round)
 
 	// vs2, vs3 and vs4 send precommit for propBlock
-	signAddVotes(cs1, types.PrecommitType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrecommitType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
 	ensureNewValidBlock(validBlockCh, height, round)
 
 	rs := cs1.GetRoundState()
@@ -1232,9 +1433,9 @@ func TestEmitNewValidBlockEventOnCommitWithoutBlock(t *testing.T) {
 // P0 receives 2/3+ Precommit for B for round 0, while being in round 1. It emits NewValidBlock event.
 // After receiving block, it executes block and moves to the next height.
 func TestCommitFromPreviousRound(t *testing.T) {
-	cs1, vss := randConsensusState(4)
+	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
-	height, round := cs1.Height, 1
+	height, round := cs1.Height, int32(1)
 
 	partSize := types.BlockPartSizeBytes
 
@@ -1251,7 +1452,7 @@ func TestCommitFromPreviousRound(t *testing.T) {
 	ensureNewRound(newRoundCh, height, round)
 
 	// vs2, vs3 and vs4 send precommit for propBlock for the previous round
-	signAddVotes(cs1, types.PrecommitType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrecommitType, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
 
 	ensureNewValidBlock(validBlockCh, height, round)
 
@@ -1281,9 +1482,12 @@ func (n *fakeTxNotifier) Notify() {
 	n.ch <- struct{}{}
 }
 
-func TestStartNextHeightCorrectly(t *testing.T) {
+// 2 vals precommit votes for a block but node times out waiting for the third. Move to next round
+// and third precommit arrives which leads to the commit of that header and the correct
+// start of the next round
+func TestStartNextHeightCorrectlyAfterTimeout(t *testing.T) {
 	config.Consensus.SkipTimeoutCommit = false
-	cs1, vss := randConsensusState(4)
+	cs1, vss := randState(4)
 	cs1.txNotifier = &fakeTxNotifier{ch: make(chan struct{})}
 
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
@@ -1291,10 +1495,13 @@ func TestStartNextHeightCorrectly(t *testing.T) {
 
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
 	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
+	precommitTimeoutCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	newBlockHeader := subscribe(cs1.eventBus, types.EventQueryNewBlockHeader)
-	addr := cs1.privValidator.GetPubKey().Address()
+	pv1, err := cs1.privValidator.GetPubKey()
+	require.NoError(t, err)
+	addr := pv1.Address()
 	voteCh := subscribeToVoter(cs1, addr)
 
 	// start round and wait for propose and prevote
@@ -1309,20 +1516,23 @@ func TestStartNextHeightCorrectly(t *testing.T) {
 	ensurePrevote(voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], theBlockHash)
 
-	signAddVotes(cs1, types.PrevoteType, theBlockHash, theBlockParts, vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrevoteType, theBlockHash, theBlockParts, vs2, vs3, vs4)
 
 	ensurePrecommit(voteCh, height, round)
 	// the proposed block should now be locked and our precommit added
 	validatePrecommit(t, cs1, round, round, vss[0], theBlockHash, theBlockHash)
 
 	// add precommits
-	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2)
-	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs3)
-	time.Sleep(5 * time.Millisecond)
-	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs4)
+	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2)
+	signAddVotes(cs1, tmproto.PrecommitType, theBlockHash, theBlockParts, vs3)
 
-	rs = cs1.GetRoundState()
-	assert.True(t, rs.TriggeredTimeoutPrecommit)
+	// wait till timeout occurs
+	ensurePrecommitTimeout(precommitTimeoutCh)
+
+	ensureNewRound(newRoundCh, height, round+1)
+
+	// majority is now reached
+	signAddVotes(cs1, tmproto.PrecommitType, theBlockHash, theBlockParts, vs4)
 
 	ensureNewBlockHeader(newBlockHeader, height, theBlockHash)
 
@@ -1330,12 +1540,15 @@ func TestStartNextHeightCorrectly(t *testing.T) {
 
 	ensureNewTimeout(timeoutProposeCh, height+1, round, cs1.config.Propose(round).Nanoseconds())
 	rs = cs1.GetRoundState()
-	assert.False(t, rs.TriggeredTimeoutPrecommit, "triggeredTimeoutPrecommit should be false at the beginning of each round")
+	assert.False(
+		t,
+		rs.TriggeredTimeoutPrecommit,
+		"triggeredTimeoutPrecommit should be false at the beginning of each round")
 }
 
 func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
 	config.Consensus.SkipTimeoutCommit = false
-	cs1, vss := randConsensusState(4)
+	cs1, vss := randState(4)
 
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
@@ -1346,7 +1559,9 @@ func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
 
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	newBlockHeader := subscribe(cs1.eventBus, types.EventQueryNewBlockHeader)
-	addr := cs1.privValidator.GetPubKey().Address()
+	pv1, err := cs1.privValidator.GetPubKey()
+	require.NoError(t, err)
+	addr := pv1.Address()
 	voteCh := subscribeToVoter(cs1, addr)
 
 	// start round and wait for propose and prevote
@@ -1361,15 +1576,15 @@ func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
 	ensurePrevote(voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], theBlockHash)
 
-	signAddVotes(cs1, types.PrevoteType, theBlockHash, theBlockParts, vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrevoteType, theBlockHash, theBlockParts, vs2, vs3, vs4)
 
 	ensurePrecommit(voteCh, height, round)
 	validatePrecommit(t, cs1, round, round, vss[0], theBlockHash, theBlockHash)
 
 	// add precommits
-	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2)
-	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs3)
-	signAddVotes(cs1, types.PrecommitType, theBlockHash, theBlockParts, vs4)
+	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2)
+	signAddVotes(cs1, tmproto.PrecommitType, theBlockHash, theBlockParts, vs3)
+	signAddVotes(cs1, tmproto.PrecommitType, theBlockHash, theBlockParts, vs4)
 
 	ensureNewBlockHeader(newBlockHeader, height, theBlockHash)
 
@@ -1382,7 +1597,10 @@ func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
 	ensureNewProposal(proposalCh, height+1, 0)
 
 	rs = cs1.GetRoundState()
-	assert.False(t, rs.TriggeredTimeoutPrecommit, "triggeredTimeoutPrecommit should be false at the beginning of each height")
+	assert.False(
+		t,
+		rs.TriggeredTimeoutPrecommit,
+		"triggeredTimeoutPrecommit should be false at the beginning of each height")
 }
 
 //------------------------------------------------------------------------------------------
@@ -1391,7 +1609,7 @@ func TestResetTimeoutPrecommitUponNewHeight(t *testing.T) {
 
 /*
 func TestStateSlashingPrevotes(t *testing.T) {
-	cs1, vss := randConsensusState(2)
+	cs1, vss := randState(2)
 	vs2 := vss[1]
 
 
@@ -1412,7 +1630,7 @@ func TestStateSlashingPrevotes(t *testing.T) {
 	// add one for a different block should cause us to go into prevote wait
 	hash := rs.ProposalBlock.Hash()
 	hash[0] = byte(hash[0]+1) % 255
-	signAddVotes(cs1, types.PrevoteType, hash, rs.ProposalBlockParts.Header(), vs2)
+	signAddVotes(cs1, tmproto.PrevoteType, hash, rs.ProposalBlockParts.Header(), vs2)
 
 	<-timeoutWaitCh
 
@@ -1420,13 +1638,13 @@ func TestStateSlashingPrevotes(t *testing.T) {
 	// away and ignore more prevotes (and thus fail to slash!)
 
 	// add the conflicting vote
-	signAddVotes(cs1, types.PrevoteType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vs2)
+	signAddVotes(cs1, tmproto.PrevoteType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vs2)
 
 	// XXX: Check for existence of Dupeout info
 }
 
 func TestStateSlashingPrecommits(t *testing.T) {
-	cs1, vss := randConsensusState(2)
+	cs1, vss := randState(2)
 	vs2 := vss[1]
 
 
@@ -1442,7 +1660,7 @@ func TestStateSlashingPrecommits(t *testing.T) {
 	<-voteCh // prevote
 
 	// add prevote from vs2
-	signAddVotes(cs1, types.PrevoteType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vs2)
+	signAddVotes(cs1, tmproto.PrevoteType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vs2)
 
 	<-voteCh // precommit
 
@@ -1450,13 +1668,13 @@ func TestStateSlashingPrecommits(t *testing.T) {
 	// add one for a different block should cause us to go into prevote wait
 	hash := rs.ProposalBlock.Hash()
 	hash[0] = byte(hash[0]+1) % 255
-	signAddVotes(cs1, types.PrecommitType, hash, rs.ProposalBlockParts.Header(), vs2)
+	signAddVotes(cs1, tmproto.PrecommitType, hash, rs.ProposalBlockParts.Header(), vs2)
 
 	// NOTE: we have to send the vote for different block first so we don't just go into precommit round right
 	// away and ignore more prevotes (and thus fail to slash!)
 
 	// add precommit from vs2
-	signAddVotes(cs1, types.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vs2)
+	signAddVotes(cs1, tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vs2)
 
 	// XXX: Check for existence of Dupeout info
 }
@@ -1471,7 +1689,7 @@ func TestStateSlashingPrecommits(t *testing.T) {
 // 4 vals.
 // we receive a final precommit after going into next round, but others might have gone to commit already!
 func TestStateHalt1(t *testing.T) {
-	cs1, vss := randConsensusState(4)
+	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 	partSize := types.BlockPartSizeBytes
@@ -1480,7 +1698,9 @@ func TestStateHalt1(t *testing.T) {
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	newBlockCh := subscribe(cs1.eventBus, types.EventQueryNewBlock)
-	addr := cs1.privValidator.GetPubKey().Address()
+	pv1, err := cs1.privValidator.GetPubKey()
+	require.NoError(t, err)
+	addr := pv1.Address()
 	voteCh := subscribeToVoter(cs1, addr)
 
 	// start round and wait for propose and prevote
@@ -1494,17 +1714,17 @@ func TestStateHalt1(t *testing.T) {
 
 	ensurePrevote(voteCh, height, round)
 
-	signAddVotes(cs1, types.PrevoteType, propBlock.Hash(), propBlockParts.Header(), vs2, vs3, vs4)
+	signAddVotes(cs1, tmproto.PrevoteType, propBlock.Hash(), propBlockParts.Header(), vs2, vs3, vs4)
 
 	ensurePrecommit(voteCh, height, round)
 	// the proposed block should now be locked and our precommit added
 	validatePrecommit(t, cs1, round, round, vss[0], propBlock.Hash(), propBlock.Hash())
 
 	// add precommits from the rest
-	signAddVotes(cs1, types.PrecommitType, nil, types.PartSetHeader{}, vs2) // didnt receive proposal
-	signAddVotes(cs1, types.PrecommitType, propBlock.Hash(), propBlockParts.Header(), vs3)
+	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2) // didnt receive proposal
+	signAddVotes(cs1, tmproto.PrecommitType, propBlock.Hash(), propBlockParts.Header(), vs3)
 	// we receive this later, but vs3 might receive it earlier and with ours will go to commit!
-	precommit4 := signVote(vs4, types.PrecommitType, propBlock.Hash(), propBlockParts.Header())
+	precommit4 := signVote(vs4, tmproto.PrecommitType, propBlock.Hash(), propBlockParts.Header())
 
 	incrementRound(vs2, vs3, vs4)
 
@@ -1537,11 +1757,11 @@ func TestStateHalt1(t *testing.T) {
 
 func TestStateOutputsBlockPartsStats(t *testing.T) {
 	// create dummy peer
-	cs, _ := randConsensusState(1)
+	cs, _ := randState(1)
 	peer := p2pmock.NewPeer(nil)
 
 	// 1) new block part
-	parts := types.NewPartSetFromData(cmn.RandBytes(100), 10)
+	parts := types.NewPartSetFromData(tmrand.Bytes(100), 10)
 	msg := &BlockPartMessage{
 		Height: 1,
 		Round:  0,
@@ -1572,18 +1792,20 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 
 	select {
 	case <-cs.statsMsgQueue:
-		t.Errorf("Should not output stats message after receiving the known block part!")
+		t.Errorf("should not output stats message after receiving the known block part!")
 	case <-time.After(50 * time.Millisecond):
 	}
 
 }
 
 func TestStateOutputVoteStats(t *testing.T) {
-	cs, vss := randConsensusState(2)
+	cs, vss := randState(2)
 	// create dummy peer
 	peer := p2pmock.NewPeer(nil)
 
-	vote := signVote(vss[1], types.PrecommitType, []byte("test"), types.PartSetHeader{})
+	randBytes := tmrand.Bytes(tmhash.Size)
+
+	vote := signVote(vss[1], tmproto.PrecommitType, randBytes, types.PartSetHeader{})
 
 	voteMessage := &VoteMessage{vote}
 	cs.handleMsg(msgInfo{voteMessage, peer.ID()})
@@ -1597,13 +1819,13 @@ func TestStateOutputVoteStats(t *testing.T) {
 
 	// sending the vote for the bigger height
 	incrementHeight(vss[1])
-	vote = signVote(vss[1], types.PrecommitType, []byte("test"), types.PartSetHeader{})
+	vote = signVote(vss[1], tmproto.PrecommitType, randBytes, types.PartSetHeader{})
 
 	cs.handleMsg(msgInfo{&VoteMessage{vote}, peer.ID()})
 
 	select {
 	case <-cs.statsMsgQueue:
-		t.Errorf("Should not output stats message after receiving the known vote or vote from bigger height")
+		t.Errorf("should not output stats message after receiving the known vote or vote from bigger height")
 	case <-time.After(50 * time.Millisecond):
 	}
 

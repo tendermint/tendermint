@@ -2,59 +2,22 @@ package core
 
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
-// Query the application for some information.
-//
-// ```shell
-// curl 'localhost:26657/abci_query?path=""&data="abcd"&prove=false'
-// ```
-//
-// ```go
-// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
-// err := client.Start()
-// if err != nil {
-//   // handle error
-// }
-// defer client.Stop()
-// result, err := client.ABCIQuery("", "abcd", true)
-// ```
-//
-// > The above command returns JSON structured like this:
-//
-// ```json
-// {
-// 	"error": "",
-// 	"result": {
-// 		"response": {
-// 			"log": "exists",
-// 			"height": "0",
-// 			"proof": "010114FED0DAD959F36091AD761C922ABA3CBF1D8349990101020103011406AA2262E2F448242DF2C2607C3CDC705313EE3B0001149D16177BC71E445476174622EA559715C293740C",
-// 			"value": "61626364",
-// 			"key": "61626364",
-// 			"index": "-1",
-// 			"code": "0"
-// 		}
-// 	},
-// 	"id": "",
-// 	"jsonrpc": "2.0"
-// }
-// ```
-//
-// ### Query Parameters
-//
-// | Parameter | Type   | Default | Required | Description                                    |
-// |-----------+--------+---------+----------+------------------------------------------------|
-// | path      | string | false   | false    | Path to the data ("/a/b/c")                    |
-// | data      | []byte | false   | true     | Data                                           |
-// | height    | int64  | 0       | false    | Height (0 means latest)                        |
-// | prove     | bool   | false   | false    | Includes proof if true                         |
-func ABCIQuery(ctx *rpctypes.Context, path string, data cmn.HexBytes, height int64, prove bool) (*ctypes.ResultABCIQuery, error) {
-	resQuery, err := proxyAppQuery.QuerySync(abci.RequestQuery{
+// ABCIQuery queries the application for some information.
+// More: https://docs.tendermint.com/master/rpc/#/ABCI/abci_query
+func ABCIQuery(
+	ctx *rpctypes.Context,
+	path string,
+	data bytes.HexBytes,
+	height int64,
+	prove bool,
+) (*ctypes.ResultABCIQuery, error) {
+	resQuery, err := env.ProxyAppQuery.QuerySync(abci.RequestQuery{
 		Path:   path,
 		Data:   data,
 		Height: height,
@@ -63,42 +26,14 @@ func ABCIQuery(ctx *rpctypes.Context, path string, data cmn.HexBytes, height int
 	if err != nil {
 		return nil, err
 	}
-	logger.Info("ABCIQuery", "path", path, "data", data, "result", resQuery)
+	env.Logger.Info("ABCIQuery", "path", path, "data", data, "result", resQuery)
 	return &ctypes.ResultABCIQuery{Response: *resQuery}, nil
 }
 
-// Get some info about the application.
-//
-// ```shell
-// curl 'localhost:26657/abci_info'
-// ```
-//
-// ```go
-// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
-// err := client.Start()
-// if err != nil {
-//   // handle error
-// }
-// defer client.Stop()
-// info, err := client.ABCIInfo()
-// ```
-//
-// > The above command returns JSON structured like this:
-//
-// ```json
-// {
-// 	"error": "",
-// 	"result": {
-// 		"response": {
-// 			"data": "{\"size\":3}"
-// 		}
-// 	},
-// 	"id": "",
-// 	"jsonrpc": "2.0"
-// }
-// ```
+// ABCIInfo gets some info about the application.
+// More: https://docs.tendermint.com/master/rpc/#/ABCI/abci_info
 func ABCIInfo(ctx *rpctypes.Context) (*ctypes.ResultABCIInfo, error) {
-	resInfo, err := proxyAppQuery.InfoSync(proxy.RequestInfo)
+	resInfo, err := env.ProxyAppQuery.InfoSync(proxy.RequestInfo)
 	if err != nil {
 		return nil, err
 	}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDefaultConfig(t *testing.T) {
@@ -122,6 +123,11 @@ func TestMempoolConfigValidateBasic(t *testing.T) {
 	}
 }
 
+func TestStateSyncConfigValidateBasic(t *testing.T) {
+	cfg := TestStateSyncConfig()
+	require.NoError(t, cfg.ValidateBasic())
+}
+
 func TestFastSyncConfigValidateBasic(t *testing.T) {
 	cfg := TestFastSyncConfig()
 	assert.NoError(t, cfg.ValidateBasic())
@@ -134,27 +140,45 @@ func TestFastSyncConfigValidateBasic(t *testing.T) {
 	assert.Error(t, cfg.ValidateBasic())
 }
 
-func TestConsensusConfigValidateBasic(t *testing.T) {
-	cfg := TestConsensusConfig()
-	assert.NoError(t, cfg.ValidateBasic())
-
-	fieldsToTest := []string{
-		"TimeoutPropose",
-		"TimeoutProposeDelta",
-		"TimeoutPrevote",
-		"TimeoutPrevoteDelta",
-		"TimeoutPrecommit",
-		"TimeoutPrecommitDelta",
-		"TimeoutCommit",
-		"CreateEmptyBlocksInterval",
-		"PeerGossipSleepDuration",
-		"PeerQueryMaj23SleepDuration",
+func TestConsensusConfig_ValidateBasic(t *testing.T) {
+	// nolint: lll
+	testcases := map[string]struct {
+		modify    func(*ConsensusConfig)
+		expectErr bool
+	}{
+		"TimeoutPropose":                       {func(c *ConsensusConfig) { c.TimeoutPropose = time.Second }, false},
+		"TimeoutPropose negative":              {func(c *ConsensusConfig) { c.TimeoutPropose = -1 }, true},
+		"TimeoutProposeDelta":                  {func(c *ConsensusConfig) { c.TimeoutProposeDelta = time.Second }, false},
+		"TimeoutProposeDelta negative":         {func(c *ConsensusConfig) { c.TimeoutProposeDelta = -1 }, true},
+		"TimeoutPrevote":                       {func(c *ConsensusConfig) { c.TimeoutPrevote = time.Second }, false},
+		"TimeoutPrevote negative":              {func(c *ConsensusConfig) { c.TimeoutPrevote = -1 }, true},
+		"TimeoutPrevoteDelta":                  {func(c *ConsensusConfig) { c.TimeoutPrevoteDelta = time.Second }, false},
+		"TimeoutPrevoteDelta negative":         {func(c *ConsensusConfig) { c.TimeoutPrevoteDelta = -1 }, true},
+		"TimeoutPrecommit":                     {func(c *ConsensusConfig) { c.TimeoutPrecommit = time.Second }, false},
+		"TimeoutPrecommit negative":            {func(c *ConsensusConfig) { c.TimeoutPrecommit = -1 }, true},
+		"TimeoutPrecommitDelta":                {func(c *ConsensusConfig) { c.TimeoutPrecommitDelta = time.Second }, false},
+		"TimeoutPrecommitDelta negative":       {func(c *ConsensusConfig) { c.TimeoutPrecommitDelta = -1 }, true},
+		"TimeoutCommit":                        {func(c *ConsensusConfig) { c.TimeoutCommit = time.Second }, false},
+		"TimeoutCommit negative":               {func(c *ConsensusConfig) { c.TimeoutCommit = -1 }, true},
+		"PeerGossipSleepDuration":              {func(c *ConsensusConfig) { c.PeerGossipSleepDuration = time.Second }, false},
+		"PeerGossipSleepDuration negative":     {func(c *ConsensusConfig) { c.PeerGossipSleepDuration = -1 }, true},
+		"PeerQueryMaj23SleepDuration":          {func(c *ConsensusConfig) { c.PeerQueryMaj23SleepDuration = time.Second }, false},
+		"PeerQueryMaj23SleepDuration negative": {func(c *ConsensusConfig) { c.PeerQueryMaj23SleepDuration = -1 }, true},
+		"DoubleSignCheckHeight negative":       {func(c *ConsensusConfig) { c.DoubleSignCheckHeight = -1 }, true},
 	}
+	for desc, tc := range testcases {
+		tc := tc // appease linter
+		t.Run(desc, func(t *testing.T) {
+			cfg := DefaultConsensusConfig()
+			tc.modify(cfg)
 
-	for _, fieldName := range fieldsToTest {
-		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(-1)
-		assert.Error(t, cfg.ValidateBasic())
-		reflect.ValueOf(cfg).Elem().FieldByName(fieldName).SetInt(0)
+			err := cfg.ValidateBasic()
+			if tc.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }
 

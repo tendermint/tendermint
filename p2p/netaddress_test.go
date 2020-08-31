@@ -2,11 +2,34 @@ package p2p
 
 import (
 	"net"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestNetAddress_String(t *testing.T) {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
+	require.Nil(t, err)
+
+	netAddr := NewNetAddress("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef", tcpAddr)
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = netAddr.String()
+		}()
+	}
+
+	wg.Wait()
+
+	s := netAddr.String()
+	require.Equal(t, "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", s)
+}
 
 func TestNewNetAddress(t *testing.T) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
@@ -35,9 +58,24 @@ func TestNewNetAddressString(t *testing.T) {
 		{"no node id w/ tcp input", "tcp://127.0.0.1:8080", "", false},
 		{"no node id w/ udp input", "udp://127.0.0.1:8080", "", false},
 
-		{"no protocol", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", true},
-		{"tcp input", "tcp://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", true},
-		{"udp input", "udp://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", true},
+		{
+			"no protocol",
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			true,
+		},
+		{
+			"tcp input",
+			"tcp://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			true,
+		},
+		{
+			"udp input",
+			"udp://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			true,
+		},
 		{"malformed tcp input", "tcp//deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "", false},
 		{"malformed udp input", "udp//deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "", false},
 
@@ -55,7 +93,12 @@ func TestNewNetAddressString(t *testing.T) {
 		{"too short nodeId w/tcp", "tcp://deadbeef@127.0.0.1:8080", "", false},
 		{"too short notHex nodeId w/tcp", "tcp://this-isnot-hex@127.0.0.1:8080", "", false},
 		{"notHex nodeId w/tcp", "tcp://xxxxbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "", false},
-		{"correct nodeId w/tcp", "tcp://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", true},
+		{
+			"correct nodeId w/tcp",
+			"tcp://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			true,
+		},
 
 		{"no node id", "tcp://@127.0.0.1:8080", "", false},
 		{"no node id or IP", "tcp://@", "", false},
@@ -129,7 +172,11 @@ func TestNetAddressReachabilityTo(t *testing.T) {
 		other        string
 		reachability int
 	}{
-		{"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8081", 0},
+		{
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8081",
+			0,
+		},
 		{"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@ya.ru:80", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", 1},
 	}
 

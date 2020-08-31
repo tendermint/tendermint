@@ -4,10 +4,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/tendermint/tendermint/libs/cli"
-
 	cmd "github.com/tendermint/tendermint/cmd/tendermint/commands"
+	"github.com/tendermint/tendermint/cmd/tendermint/commands/debug"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/cli"
 	nm "github.com/tendermint/tendermint/node"
 )
 
@@ -17,7 +17,7 @@ func main() {
 		cmd.GenValidatorCmd,
 		cmd.InitFilesCmd,
 		cmd.ProbeUpnpCmd,
-		cmd.LiteCmd,
+		cmd.LightCmd,
 		cmd.ReplayCmd,
 		cmd.ReplayConsoleCmd,
 		cmd.ResetAllCmd,
@@ -26,7 +26,10 @@ func main() {
 		cmd.TestnetFilesCmd,
 		cmd.ShowNodeIDCmd,
 		cmd.GenNodeKeyCmd,
-		cmd.VersionCmd)
+		cmd.VersionCmd,
+		debug.DebugCmd,
+		cli.NewCompletionCmd(rootCmd, true),
+	)
 
 	// NOTE:
 	// Users wishing to:

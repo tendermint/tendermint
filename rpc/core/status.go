@@ -1,115 +1,74 @@
 package core
 
 import (
-	"bytes"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
-// Get Tendermint status including node info, pubkey, latest block
+// Status returns Tendermint status including node info, pubkey, latest block
 // hash, app hash, block height and time.
-//
-// ```shell
-// curl 'localhost:26657/status'
-// ```
-//
-// ```go
-// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
-// err := client.Start()
-// if err != nil {
-//   // handle error
-// }
-// defer client.Stop()
-// result, err := client.Status()
-// ```
-//
-// > The above command returns JSON structured like this:
-//
-// ```json
-// {
-// "jsonrpc": "2.0",
-// "id": "",
-// "result": {
-//   "node_info": {
-//   		"protocol_version": {
-//   			"p2p": "4",
-//   			"block": "7",
-//   			"app": "0"
-//   		},
-//   		"id": "53729852020041b956e86685e24394e0bee4373f",
-//   		"listen_addr": "10.0.2.15:26656",
-//   		"network": "test-chain-Y1OHx6",
-//   		"version": "0.24.0-2ce1abc2",
-//   		"channels": "4020212223303800",
-//   		"moniker": "ubuntu-xenial",
-//   		"other": {
-//   			"tx_index": "on",
-//   			"rpc_addr": "tcp://0.0.0.0:26657"
-//   		}
-//   	},
-//   	"sync_info": {
-//   		"latest_block_hash": "F51538DA498299F4C57AC8162AAFA0254CE08286",
-//   		"latest_app_hash": "0000000000000000",
-//   		"latest_block_height": "18",
-//   		"latest_block_time": "2018-09-17T11:42:19.149920551Z",
-//   		"catching_up": false
-//   	},
-//   	"validator_info": {
-//   		"address": "D9F56456D7C5793815D0E9AF07C3A355D0FC64FD",
-//   		"pub_key": {
-//   			"type": "tendermint/PubKeyEd25519",
-//   			"value": "wVxKNtEsJmR4vvh651LrVoRguPs+6yJJ9Bz174gw9DM="
-//   		},
-//   		"voting_power": "10"
-//   	}
-//   }
-// }
-// ```
+// More: https://docs.tendermint.com/master/rpc/#/Info/status
 func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
-	var latestHeight int64
-	if consensusReactor.FastSync() {
-		latestHeight = blockStore.Height()
-	} else {
-		latestHeight = consensusState.GetLastHeight()
-	}
 	var (
-		latestBlockMeta     *types.BlockMeta
-		latestBlockHash     cmn.HexBytes
-		latestAppHash       cmn.HexBytes
-		latestBlockTimeNano int64
+		earliestBlockHash     tmbytes.HexBytes
+		earliestAppHash       tmbytes.HexBytes
+		earliestBlockTimeNano int64
+
+		earliestBlockHeight = env.BlockStore.Base()
 	)
-	if latestHeight != 0 {
-		latestBlockMeta = blockStore.LoadBlockMeta(latestHeight)
-		latestBlockHash = latestBlockMeta.BlockID.Hash
-		latestAppHash = latestBlockMeta.Header.AppHash
-		latestBlockTimeNano = latestBlockMeta.Header.Time.UnixNano()
+
+	if earliestBlockMeta := env.BlockStore.LoadBlockMeta(earliestBlockHeight); earliestBlockMeta != nil {
+		earliestAppHash = earliestBlockMeta.Header.AppHash
+		earliestBlockHash = earliestBlockMeta.BlockID.Hash
+		earliestBlockTimeNano = earliestBlockMeta.Header.Time.UnixNano()
 	}
 
-	latestBlockTime := time.Unix(0, latestBlockTimeNano)
+	var (
+		latestBlockHash     tmbytes.HexBytes
+		latestAppHash       tmbytes.HexBytes
+		latestBlockTimeNano int64
 
+		latestHeight = env.BlockStore.Height()
+	)
+
+	if latestHeight != 0 {
+		latestBlockMeta := env.BlockStore.LoadBlockMeta(latestHeight)
+		if latestBlockMeta != nil {
+			latestBlockHash = latestBlockMeta.BlockID.Hash
+			latestAppHash = latestBlockMeta.Header.AppHash
+			latestBlockTimeNano = latestBlockMeta.Header.Time.UnixNano()
+		}
+	}
+
+	// Return the very last voting power, not the voting power of this validator
+	// during the last block.
 	var votingPower int64
-	if val := validatorAtHeight(latestHeight); val != nil {
+	if val := validatorAtHeight(latestUncommittedHeight()); val != nil {
 		votingPower = val.VotingPower
 	}
 
 	result := &ctypes.ResultStatus{
-		NodeInfo: p2pTransport.NodeInfo().(p2p.DefaultNodeInfo),
+		NodeInfo: env.P2PTransport.NodeInfo().(p2p.DefaultNodeInfo),
 		SyncInfo: ctypes.SyncInfo{
-			LatestBlockHash:   latestBlockHash,
-			LatestAppHash:     latestAppHash,
-			LatestBlockHeight: latestHeight,
-			LatestBlockTime:   latestBlockTime,
-			CatchingUp:        consensusReactor.FastSync(),
+			LatestBlockHash:     latestBlockHash,
+			LatestAppHash:       latestAppHash,
+			LatestBlockHeight:   latestHeight,
+			LatestBlockTime:     time.Unix(0, latestBlockTimeNano),
+			EarliestBlockHash:   earliestBlockHash,
+			EarliestAppHash:     earliestAppHash,
+			EarliestBlockHeight: earliestBlockHeight,
+			EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
+			CatchingUp:          env.ConsensusReactor.WaitSync(),
 		},
 		ValidatorInfo: ctypes.ValidatorInfo{
-			Address:     pubKey.Address(),
-			PubKey:      pubKey,
+			Address:     env.PubKey.Address(),
+			PubKey:      env.PubKey,
 			VotingPower: votingPower,
 		},
 	}
@@ -118,27 +77,11 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 }
 
 func validatorAtHeight(h int64) *types.Validator {
-	privValAddress := pubKey.Address()
-
-	// If we're still at height h, search in the current validator set.
-	lastBlockHeight, vals := consensusState.GetValidators()
-	if lastBlockHeight == h {
-		for _, val := range vals {
-			if bytes.Equal(val.Address, privValAddress) {
-				return val
-			}
-		}
+	vals, err := sm.LoadValidators(env.StateDB, h)
+	if err != nil {
+		return nil
 	}
-
-	// If we've moved to the next height, retrieve the validator set from DB.
-	if lastBlockHeight > h {
-		vals, err := sm.LoadValidators(stateDB, h)
-		if err != nil {
-			return nil // should not happen
-		}
-		_, val := vals.GetByAddress(privValAddress)
-		return val
-	}
-
-	return nil
+	privValAddress := env.PubKey.Address()
+	_, val := vals.GetByAddress(privValAddress)
+	return val
 }

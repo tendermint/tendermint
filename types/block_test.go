@@ -4,24 +4,29 @@ import (
 	// it is ok to use math/rand here: we do not need a cryptographically secure random
 	// number generator here and we can run the tests a bit faster
 	"crypto/rand"
+	"encoding/hex"
 	"math"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bits"
+	"github.com/tendermint/tendermint/libs/bytes"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"github.com/tendermint/tendermint/proto/tendermint/version"
 	tmtime "github.com/tendermint/tendermint/types/time"
-	"github.com/tendermint/tendermint/version"
 )
 
 func TestMain(m *testing.M) {
-	RegisterMockEvidences(cdc)
-
 	code := m.Run()
 	os.Exit(code)
 }
@@ -31,11 +36,11 @@ func TestBlockAddEvidence(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	ev := NewMockGoodEvidence(h, 0, valSet.Validators[0].Address)
+	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
 	evList := []Evidence{ev}
 
 	block := MakeBlock(h, txs, commit, evList)
@@ -51,11 +56,11 @@ func TestBlockValidateBasic(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	ev := NewMockGoodEvidence(h, 0, valSet.Validators[0].Address)
+	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
 	evList := []Evidence{ev}
 
 	testCases := []struct {
@@ -66,9 +71,8 @@ func TestBlockValidateBasic(t *testing.T) {
 		{"Make Block", func(blk *Block) {}, false},
 		{"Make Block w/ proposer Addr", func(blk *Block) { blk.ProposerAddress = valSet.GetProposer().Address }, false},
 		{"Negative Height", func(blk *Block) { blk.Height = -1 }, true},
-		{"Increase NumTxs", func(blk *Block) { blk.NumTxs++ }, true},
 		{"Remove 1/2 the commits", func(blk *Block) {
-			blk.LastCommit.Precommits = commit.Precommits[:commit.Size()/2]
+			blk.LastCommit.Signatures = commit.Signatures[:commit.Size()/2]
 			blk.LastCommit.hash = nil // clear hash or change wont be noticed
 		}, true},
 		{"Remove LastCommitHash", func(blk *Block) { blk.LastCommitHash = []byte("something else") }, true},
@@ -77,10 +81,16 @@ func TestBlockValidateBasic(t *testing.T) {
 			blk.Data.hash = nil // clear hash or change wont be noticed
 		}, true},
 		{"Tampered DataHash", func(blk *Block) {
-			blk.DataHash = cmn.RandBytes(len(blk.DataHash))
+			blk.DataHash = tmrand.Bytes(len(blk.DataHash))
 		}, true},
 		{"Tampered EvidenceHash", func(blk *Block) {
 			blk.EvidenceHash = []byte("something else")
+		}, true},
+		{"ConflictingHeadersEvidence", func(blk *Block) {
+			blk.Evidence = EvidenceData{Evidence: []Evidence{&ConflictingHeadersEvidence{}}}
+		}, true},
+		{"PotentialAmnesiaEvidence", func(blk *Block) {
+			blk.Evidence = EvidenceData{Evidence: []Evidence{&PotentialAmnesiaEvidence{}}}
 		}, true},
 	}
 	for i, tc := range testCases {
@@ -106,7 +116,7 @@ func TestBlockMakePartSet(t *testing.T) {
 
 	partSet := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).MakePartSet(1024)
 	assert.NotNil(t, partSet)
-	assert.Equal(t, 1, partSet.Total())
+	assert.EqualValues(t, 1, partSet.Total())
 }
 
 func TestBlockMakePartSetWithEvidence(t *testing.T) {
@@ -115,16 +125,16 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	ev := NewMockGoodEvidence(h, 0, valSet.Validators[0].Address)
+	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
 	evList := []Evidence{ev}
 
-	partSet := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(1024)
+	partSet := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(512)
 	assert.NotNil(t, partSet)
-	assert.Equal(t, 3, partSet.Total())
+	assert.EqualValues(t, 4, partSet.Total())
 }
 
 func TestBlockHashesTo(t *testing.T) {
@@ -132,11 +142,11 @@ func TestBlockHashesTo(t *testing.T) {
 
 	lastID := makeBlockIDRandom()
 	h := int64(3)
-	voteSet, valSet, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	ev := NewMockGoodEvidence(h, 0, valSet.Validators[0].Address)
+	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
 	evList := []Evidence{ev}
 
 	block := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList)
@@ -165,53 +175,64 @@ func TestBlockString(t *testing.T) {
 }
 
 func makeBlockIDRandom() BlockID {
-	blockHash := make([]byte, tmhash.Size)
-	partSetHash := make([]byte, tmhash.Size)
-	rand.Read(blockHash)   //nolint: gosec
-	rand.Read(partSetHash) //nolint: gosec
-	blockPartsHeader := PartSetHeader{123, partSetHash}
-	return BlockID{blockHash, blockPartsHeader}
+	var (
+		blockHash   = make([]byte, tmhash.Size)
+		partSetHash = make([]byte, tmhash.Size)
+	)
+	rand.Read(blockHash)
+	rand.Read(partSetHash)
+	return BlockID{blockHash, PartSetHeader{123, partSetHash}}
 }
 
-func makeBlockID(hash []byte, partSetSize int, partSetHash []byte) BlockID {
+func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) BlockID {
+	var (
+		h   = make([]byte, tmhash.Size)
+		psH = make([]byte, tmhash.Size)
+	)
+	copy(h, hash)
+	copy(psH, partSetHash)
 	return BlockID{
-		Hash: hash,
-		PartsHeader: PartSetHeader{
+		Hash: h,
+		PartSetHeader: PartSetHeader{
 			Total: partSetSize,
-			Hash:  partSetHash,
+			Hash:  psH,
 		},
 	}
-
 }
 
 var nilBytes []byte
 
+// This follows RFC-6962, i.e. `echo -n '' | sha256sum`
+var emptyBytes = []byte{0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14, 0x9a, 0xfb, 0xf4, 0xc8,
+	0x99, 0x6f, 0xb9, 0x24, 0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c, 0xa4, 0x95, 0x99, 0x1b,
+	0x78, 0x52, 0xb8, 0x55}
+
 func TestNilHeaderHashDoesntCrash(t *testing.T) {
-	assert.Equal(t, []byte((*Header)(nil).Hash()), nilBytes)
-	assert.Equal(t, []byte((new(Header)).Hash()), nilBytes)
+	assert.Equal(t, nilBytes, []byte((*Header)(nil).Hash()))
+	assert.Equal(t, nilBytes, []byte((new(Header)).Hash()))
 }
 
 func TestNilDataHashDoesntCrash(t *testing.T) {
-	assert.Equal(t, []byte((*Data)(nil).Hash()), nilBytes)
-	assert.Equal(t, []byte(new(Data).Hash()), nilBytes)
+	assert.Equal(t, emptyBytes, []byte((*Data)(nil).Hash()))
+	assert.Equal(t, emptyBytes, []byte(new(Data).Hash()))
 }
 
 func TestCommit(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
-	voteSet, _, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	assert.Equal(t, h-1, commit.Height())
-	assert.Equal(t, 1, commit.Round())
-	assert.Equal(t, PrecommitType, SignedMsgType(commit.Type()))
+	assert.Equal(t, h-1, commit.Height)
+	assert.EqualValues(t, 1, commit.Round)
+	assert.Equal(t, tmproto.PrecommitType, tmproto.SignedMsgType(commit.Type()))
 	if commit.Size() <= 0 {
 		t.Fatalf("commit %v has a zero or negative size: %d", commit, commit.Size())
 	}
 
 	require.NotNil(t, commit.BitArray())
-	assert.Equal(t, cmn.NewBitArray(10).Size(), commit.BitArray().Size())
+	assert.Equal(t, bits.NewBitArray(10).Size(), commit.BitArray().Size())
 
 	assert.Equal(t, voteSet.GetByIndex(0), commit.GetByIndex(0))
 	assert.True(t, commit.IsCommit())
@@ -224,18 +245,100 @@ func TestCommitValidateBasic(t *testing.T) {
 		expectErr      bool
 	}{
 		{"Random Commit", func(com *Commit) {}, false},
-		{"Nil precommit", func(com *Commit) { com.Precommits[0] = nil }, false},
-		{"Incorrect signature", func(com *Commit) { com.Precommits[0].Signature = []byte{0} }, false},
-		{"Incorrect type", func(com *Commit) { com.Precommits[0].Type = PrevoteType }, true},
-		{"Incorrect height", func(com *Commit) { com.Precommits[0].Height = int64(100) }, true},
-		{"Incorrect round", func(com *Commit) { com.Precommits[0].Round = 100 }, true},
+		{"Incorrect signature", func(com *Commit) { com.Signatures[0].Signature = []byte{0} }, false},
+		{"Incorrect height", func(com *Commit) { com.Height = int64(-100) }, true},
+		{"Incorrect round", func(com *Commit) { com.Round = -100 }, true},
 	}
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			com := randCommit()
+			com := randCommit(time.Now())
 			tc.malleateCommit(com)
 			assert.Equal(t, tc.expectErr, com.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestHeaderHash(t *testing.T) {
+	testCases := []struct {
+		desc       string
+		header     *Header
+		expectHash bytes.HexBytes
+	}{
+		{"Generates expected hash", &Header{
+			Version:            version.Consensus{Block: 1, App: 2},
+			ChainID:            "chainId",
+			Height:             3,
+			Time:               time.Date(2019, 10, 13, 16, 14, 44, 0, time.UTC),
+			LastBlockID:        makeBlockID(make([]byte, tmhash.Size), 6, make([]byte, tmhash.Size)),
+			LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
+			DataHash:           tmhash.Sum([]byte("data_hash")),
+			ValidatorsHash:     tmhash.Sum([]byte("validators_hash")),
+			NextValidatorsHash: tmhash.Sum([]byte("next_validators_hash")),
+			ConsensusHash:      tmhash.Sum([]byte("consensus_hash")),
+			AppHash:            tmhash.Sum([]byte("app_hash")),
+			LastResultsHash:    tmhash.Sum([]byte("last_results_hash")),
+			EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
+			ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
+		}, hexBytesFromString("F740121F553B5418C3EFBD343C2DBFE9E007BB67B0D020A0741374BAB65242A4")},
+		{"nil header yields nil", nil, nil},
+		{"nil ValidatorsHash yields nil", &Header{
+			Version:            version.Consensus{Block: 1, App: 2},
+			ChainID:            "chainId",
+			Height:             3,
+			Time:               time.Date(2019, 10, 13, 16, 14, 44, 0, time.UTC),
+			LastBlockID:        makeBlockID(make([]byte, tmhash.Size), 6, make([]byte, tmhash.Size)),
+			LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
+			DataHash:           tmhash.Sum([]byte("data_hash")),
+			ValidatorsHash:     nil,
+			NextValidatorsHash: tmhash.Sum([]byte("next_validators_hash")),
+			ConsensusHash:      tmhash.Sum([]byte("consensus_hash")),
+			AppHash:            tmhash.Sum([]byte("app_hash")),
+			LastResultsHash:    tmhash.Sum([]byte("last_results_hash")),
+			EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
+			ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
+		}, nil},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.desc, func(t *testing.T) {
+			assert.Equal(t, tc.expectHash, tc.header.Hash())
+
+			// We also make sure that all fields are hashed in struct order, and that all
+			// fields in the test struct are non-zero.
+			if tc.header != nil && tc.expectHash != nil {
+				byteSlices := [][]byte{}
+
+				s := reflect.ValueOf(*tc.header)
+				for i := 0; i < s.NumField(); i++ {
+					f := s.Field(i)
+
+					assert.False(t, f.IsZero(), "Found zero-valued field %v",
+						s.Type().Field(i).Name)
+
+					switch f := f.Interface().(type) {
+					case int64, bytes.HexBytes, string:
+						byteSlices = append(byteSlices, cdcEncode(f))
+					case time.Time:
+						bz, err := gogotypes.StdTimeMarshal(f)
+						require.NoError(t, err)
+						byteSlices = append(byteSlices, bz)
+					case version.Consensus:
+						bz, err := f.Marshal()
+						require.NoError(t, err)
+						byteSlices = append(byteSlices, bz)
+					case BlockID:
+						pbbi := f.ToProto()
+						bz, err := pbbi.Marshal()
+						require.NoError(t, err)
+						byteSlices = append(byteSlices, bz)
+					default:
+						t.Errorf("unknown type %T", f)
+					}
+				}
+				assert.Equal(t,
+					bytes.HexBytes(merkle.HashFromByteSlices(byteSlices)), tc.header.Hash())
+			}
 		})
 	}
 }
@@ -259,9 +362,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 		ChainID:            maxChainID,
 		Height:             math.MaxInt64,
 		Time:               timestamp,
-		NumTxs:             math.MaxInt64,
-		TotalTxs:           math.MaxInt64,
-		LastBlockID:        makeBlockID(make([]byte, tmhash.Size), math.MaxInt64, make([]byte, tmhash.Size)),
+		LastBlockID:        makeBlockID(make([]byte, tmhash.Size), math.MaxInt32, make([]byte, tmhash.Size)),
 		LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
 		DataHash:           tmhash.Sum([]byte("data_hash")),
 		ValidatorsHash:     tmhash.Sum([]byte("validators_hash")),
@@ -273,21 +374,29 @@ func TestMaxHeaderBytes(t *testing.T) {
 		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
 	}
 
-	bz, err := cdc.MarshalBinaryLengthPrefixed(h)
+	bz, err := h.ToProto().Marshal()
 	require.NoError(t, err)
 
-	assert.EqualValues(t, MaxHeaderBytes, len(bz))
+	assert.EqualValues(t, MaxHeaderBytes, int64(len(bz)))
 }
 
-func randCommit() *Commit {
+func randCommit(now time.Time) *Commit {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
-	voteSet, _, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, now)
 	if err != nil {
 		panic(err)
 	}
 	return commit
+}
+
+func hexBytesFromString(s string) bytes.HexBytes {
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		panic(err)
+	}
+	return bytes.HexBytes(b)
 }
 
 func TestBlockMaxDataBytes(t *testing.T) {
@@ -300,9 +409,9 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	}{
 		0: {-10, 1, 0, true, 0},
 		1: {10, 1, 0, true, 0},
-		2: {886, 1, 0, true, 0},
-		3: {887, 1, 0, false, 0},
-		4: {888, 1, 0, false, 1},
+		2: {844, 1, 0, true, 0},
+		3: {846, 1, 0, false, 0},
+		4: {847, 1, 0, false, 1},
 	}
 
 	for i, tc := range testCases {
@@ -322,28 +431,30 @@ func TestBlockMaxDataBytes(t *testing.T) {
 
 func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
 	testCases := []struct {
-		maxBytes  int64
-		valsCount int
-		panics    bool
-		result    int64
+		maxBytes    int64
+		maxEvidence uint32
+		valsCount   int
+		panics      bool
+		result      int64
 	}{
-		0: {-10, 1, true, 0},
-		1: {10, 1, true, 0},
-		2: {984, 1, true, 0},
-		3: {985, 1, false, 0},
-		4: {986, 1, false, 1},
+		0: {-10, 0, 1, true, 0},
+		1: {10, 0, 1, true, 0},
+		2: {845, 0, 1, true, 0},
+		3: {846, 0, 1, false, 0},
+		4: {1290, 1, 1, false, 0},
+		5: {1291, 1, 1, false, 1},
 	}
 
 	for i, tc := range testCases {
 		tc := tc
 		if tc.panics {
 			assert.Panics(t, func() {
-				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount)
+				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount, tc.maxEvidence)
 			}, "#%v", i)
 		} else {
 			assert.Equal(t,
 				tc.result,
-				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount),
+				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount, tc.maxEvidence),
 				"#%v", i)
 		}
 	}
@@ -353,33 +464,36 @@ func TestCommitToVoteSet(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, valSet, vals := randVoteSet(h-1, 1, PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	assert.NoError(t, err)
 
 	chainID := voteSet.ChainID()
 	voteSet2 := CommitToVoteSet(chainID, commit, valSet)
 
-	for i := 0; i < len(vals); i++ {
+	for i := int32(0); int(i) < len(vals); i++ {
 		vote1 := voteSet.GetByIndex(i)
 		vote2 := voteSet2.GetByIndex(i)
 		vote3 := commit.GetVote(i)
 
-		vote1bz := cdc.MustMarshalBinaryBare(vote1)
-		vote2bz := cdc.MustMarshalBinaryBare(vote2)
-		vote3bz := cdc.MustMarshalBinaryBare(vote3)
+		vote1bz, err := vote1.ToProto().Marshal()
+		require.NoError(t, err)
+		vote2bz, err := vote2.ToProto().Marshal()
+		require.NoError(t, err)
+		vote3bz, err := vote3.ToProto().Marshal()
+		require.NoError(t, err)
 		assert.Equal(t, vote1bz, vote2bz)
 		assert.Equal(t, vote1bz, vote3bz)
 	}
 }
 
-func TestCommitToVoteSetWithVotesForAnotherBlockOrNilBlock(t *testing.T) {
+func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
-	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
-	blockID3 := makeBlockID([]byte("blockhash3"), 10000, []byte("partshash"))
 
-	height := int64(3)
-	round := 1
+	const (
+		height = int64(3)
+		round  = 0
+	)
 
 	type commitVoteTest struct {
 		blockIDs      []BlockID
@@ -389,36 +503,35 @@ func TestCommitToVoteSetWithVotesForAnotherBlockOrNilBlock(t *testing.T) {
 	}
 
 	testCases := []commitVoteTest{
-		{[]BlockID{blockID, blockID2, blockID3}, []int{8, 1, 1}, 10, true},
-		{[]BlockID{blockID, blockID2, blockID3}, []int{67, 20, 13}, 100, true},
-		{[]BlockID{blockID, blockID2, blockID3}, []int{1, 1, 1}, 3, false},
-		{[]BlockID{blockID, blockID2, blockID3}, []int{3, 1, 1}, 5, false},
 		{[]BlockID{blockID, {}}, []int{67, 33}, 100, true},
-		{[]BlockID{blockID, blockID2, {}}, []int{10, 5, 5}, 20, false},
 	}
 
 	for _, tc := range testCases {
-		voteSet, valSet, vals := randVoteSet(height-1, 1, PrecommitType, tc.numValidators, 1)
+		voteSet, valSet, vals := randVoteSet(height-1, round, tmproto.PrecommitType, tc.numValidators, 1)
 
-		vi := 0
+		vi := int32(0)
 		for n := range tc.blockIDs {
 			for i := 0; i < tc.numVotes[n]; i++ {
-				addr := vals[vi].GetPubKey().Address()
+				pubKey, err := vals[vi].GetPubKey()
+				require.NoError(t, err)
 				vote := &Vote{
-					ValidatorAddress: addr,
+					ValidatorAddress: pubKey.Address(),
 					ValidatorIndex:   vi,
 					Height:           height - 1,
 					Round:            round,
-					Type:             PrecommitType,
+					Type:             tmproto.PrecommitType,
 					BlockID:          tc.blockIDs[n],
 					Timestamp:        tmtime.Now(),
 				}
 
-				_, err := signAddVote(vals[vi], vote, voteSet)
+				added, err := signAddVote(vals[vi], vote, voteSet)
 				assert.NoError(t, err)
+				assert.True(t, added)
+
 				vi++
 			}
 		}
+
 		if tc.valid {
 			commit := voteSet.MakeCommit() // panics without > 2/3 valid votes
 			assert.NotNil(t, commit)
@@ -431,16 +544,14 @@ func TestCommitToVoteSetWithVotesForAnotherBlockOrNilBlock(t *testing.T) {
 }
 
 func TestSignedHeaderValidateBasic(t *testing.T) {
-	commit := randCommit()
+	commit := randCommit(time.Now())
 	chainID := "𠜎"
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 	h := Header{
 		Version:            version.Consensus{Block: math.MaxInt64, App: math.MaxInt64},
 		ChainID:            chainID,
-		Height:             commit.Height(),
+		Height:             commit.Height,
 		Time:               timestamp,
-		NumTxs:             math.MaxInt64,
-		TotalTxs:           math.MaxInt64,
 		LastBlockID:        commit.BlockID,
 		LastCommitHash:     commit.Hash(),
 		DataHash:           commit.Hash(),
@@ -475,47 +586,287 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 				Header: tc.shHeader,
 				Commit: tc.shCommit,
 			}
-			assert.Equal(t, tc.expectErr, sh.ValidateBasic(validSignedHeader.Header.ChainID) != nil, "Validate Basic had an unexpected result")
+			assert.Equal(
+				t,
+				tc.expectErr,
+				sh.ValidateBasic(validSignedHeader.Header.ChainID) != nil,
+				"Validate Basic had an unexpected result",
+			)
 		})
 	}
 }
 
 func TestBlockIDValidateBasic(t *testing.T) {
 	validBlockID := BlockID{
-		Hash: cmn.HexBytes{},
-		PartsHeader: PartSetHeader{
+		Hash: bytes.HexBytes{},
+		PartSetHeader: PartSetHeader{
 			Total: 1,
-			Hash:  cmn.HexBytes{},
+			Hash:  bytes.HexBytes{},
 		},
 	}
 
 	invalidBlockID := BlockID{
 		Hash: []byte{0},
-		PartsHeader: PartSetHeader{
-			Total: -1,
-			Hash:  cmn.HexBytes{},
+		PartSetHeader: PartSetHeader{
+			Total: 1,
+			Hash:  []byte{0},
 		},
 	}
 
 	testCases := []struct {
-		testName           string
-		blockIDHash        cmn.HexBytes
-		blockIDPartsHeader PartSetHeader
-		expectErr          bool
+		testName             string
+		blockIDHash          bytes.HexBytes
+		blockIDPartSetHeader PartSetHeader
+		expectErr            bool
 	}{
-		{"Valid BlockID", validBlockID.Hash, validBlockID.PartsHeader, false},
-		{"Invalid BlockID", invalidBlockID.Hash, validBlockID.PartsHeader, true},
-		{"Invalid BlockID", validBlockID.Hash, invalidBlockID.PartsHeader, true},
+		{"Valid BlockID", validBlockID.Hash, validBlockID.PartSetHeader, false},
+		{"Invalid BlockID", invalidBlockID.Hash, validBlockID.PartSetHeader, true},
+		{"Invalid BlockID", validBlockID.Hash, invalidBlockID.PartSetHeader, true},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			blockID := BlockID{
-				Hash:        tc.blockIDHash,
-				PartsHeader: tc.blockIDPartsHeader,
+				Hash:          tc.blockIDHash,
+				PartSetHeader: tc.blockIDPartSetHeader,
 			}
 			assert.Equal(t, tc.expectErr, blockID.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
 	}
+}
+
+func TestBlockProtoBuf(t *testing.T) {
+	h := tmrand.Int63()
+	c1 := randCommit(time.Now())
+	b1 := MakeBlock(h, []Tx{Tx([]byte{1})}, &Commit{Signatures: []CommitSig{}}, []Evidence{})
+	b1.ProposerAddress = tmrand.Bytes(crypto.AddressSize)
+
+	b2 := MakeBlock(h, []Tx{Tx([]byte{1})}, c1, []Evidence{})
+	b2.ProposerAddress = tmrand.Bytes(crypto.AddressSize)
+	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+	evi := NewMockDuplicateVoteEvidence(h, evidenceTime, "block-test-chain")
+	b2.Evidence = EvidenceData{Evidence: EvidenceList{evi}}
+	b2.EvidenceHash = b2.Evidence.Hash()
+
+	b3 := MakeBlock(h, []Tx{}, c1, []Evidence{})
+	b3.ProposerAddress = tmrand.Bytes(crypto.AddressSize)
+	testCases := []struct {
+		msg      string
+		b1       *Block
+		expPass  bool
+		expPass2 bool
+	}{
+		{"nil block", nil, false, false},
+		{"b1", b1, true, true},
+		{"b2", b2, true, true},
+		{"b3", b3, true, true},
+	}
+	for _, tc := range testCases {
+		pb, err := tc.b1.ToProto()
+		if tc.expPass {
+			require.NoError(t, err, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+
+		block, err := BlockFromProto(pb)
+		if tc.expPass2 {
+			require.NoError(t, err, tc.msg)
+			require.EqualValues(t, tc.b1.Header, block.Header, tc.msg)
+			require.EqualValues(t, tc.b1.Data, block.Data, tc.msg)
+			require.EqualValues(t, tc.b1.Evidence, block.Evidence, tc.msg)
+			require.EqualValues(t, *tc.b1.LastCommit, *block.LastCommit, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
+
+func TestDataProtoBuf(t *testing.T) {
+	data := &Data{Txs: Txs{Tx([]byte{1}), Tx([]byte{2}), Tx([]byte{3})}}
+	_ = data.Hash()
+	data2 := &Data{Txs: Txs{}}
+	_ = data2.Hash()
+	testCases := []struct {
+		msg     string
+		data1   *Data
+		expPass bool
+	}{
+		{"success", data, true},
+		{"success data2", data2, true},
+	}
+	for _, tc := range testCases {
+		protoData := tc.data1.ToProto()
+		d, err := DataFromProto(&protoData)
+		if tc.expPass {
+			require.NoError(t, err, tc.msg)
+			require.EqualValues(t, tc.data1, &d, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
+
+func TestEvidenceDataProtoBuf(t *testing.T) {
+	val := NewMockPV()
+	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+	const chainID = "mychain"
+	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, blockID, time.Now())
+	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, time.Now())
+	ev := NewDuplicateVoteEvidence(v2, v, v2.Timestamp)
+	data := &EvidenceData{Evidence: EvidenceList{ev}}
+	_ = data.Hash()
+	testCases := []struct {
+		msg      string
+		data1    *EvidenceData
+		expPass1 bool
+		expPass2 bool
+	}{
+		{"success", data, true, true},
+		{"empty evidenceData", &EvidenceData{Evidence: EvidenceList{}}, true, true},
+		{"fail nil Data", nil, false, false},
+	}
+
+	for _, tc := range testCases {
+		protoData, err := tc.data1.ToProto()
+		if tc.expPass1 {
+			require.NoError(t, err, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+
+		eviD := new(EvidenceData)
+		err = eviD.FromProto(protoData)
+		if tc.expPass2 {
+			require.NoError(t, err, tc.msg)
+			require.Equal(t, tc.data1, eviD, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
+
+func makeRandHeader() Header {
+	chainID := "test"
+	t := time.Now()
+	height := tmrand.Int63()
+	randBytes := tmrand.Bytes(tmhash.Size)
+	randAddress := tmrand.Bytes(crypto.AddressSize)
+	h := Header{
+		Version:            version.Consensus{Block: 1, App: 1},
+		ChainID:            chainID,
+		Height:             height,
+		Time:               t,
+		LastBlockID:        BlockID{},
+		LastCommitHash:     randBytes,
+		DataHash:           randBytes,
+		ValidatorsHash:     randBytes,
+		NextValidatorsHash: randBytes,
+		ConsensusHash:      randBytes,
+		AppHash:            randBytes,
+
+		LastResultsHash: randBytes,
+
+		EvidenceHash:    randBytes,
+		ProposerAddress: randAddress,
+	}
+
+	return h
+}
+
+func TestHeaderProto(t *testing.T) {
+	h1 := makeRandHeader()
+	tc := []struct {
+		msg     string
+		h1      *Header
+		expPass bool
+	}{
+		{"success", &h1, true},
+		{"failure empty Header", &Header{}, false},
+	}
+
+	for _, tt := range tc {
+		tt := tt
+		t.Run(tt.msg, func(t *testing.T) {
+			pb := tt.h1.ToProto()
+			h, err := HeaderFromProto(pb)
+			if tt.expPass {
+				require.NoError(t, err, tt.msg)
+				require.Equal(t, tt.h1, &h, tt.msg)
+			} else {
+				require.Error(t, err, tt.msg)
+			}
+
+		})
+	}
+}
+
+func TestBlockIDProtoBuf(t *testing.T) {
+	blockID := makeBlockID([]byte("hash"), 2, []byte("part_set_hash"))
+	testCases := []struct {
+		msg     string
+		bid1    *BlockID
+		expPass bool
+	}{
+		{"success", &blockID, true},
+		{"success empty", &BlockID{}, true},
+		{"failure BlockID nil", nil, false},
+	}
+	for _, tc := range testCases {
+		protoBlockID := tc.bid1.ToProto()
+
+		bi, err := BlockIDFromProto(&protoBlockID)
+		if tc.expPass {
+			require.NoError(t, err)
+			require.Equal(t, tc.bid1, bi, tc.msg)
+		} else {
+			require.NotEqual(t, tc.bid1, bi, tc.msg)
+		}
+	}
+}
+
+func TestSignedHeaderProtoBuf(t *testing.T) {
+	commit := randCommit(time.Now())
+	h := makeRandHeader()
+
+	sh := SignedHeader{Header: &h, Commit: commit}
+
+	testCases := []struct {
+		msg     string
+		sh1     *SignedHeader
+		expPass bool
+	}{
+		{"empty SignedHeader 2", &SignedHeader{}, true},
+		{"success", &sh, true},
+		{"failure nil", nil, false},
+	}
+	for _, tc := range testCases {
+		protoSignedHeader := tc.sh1.ToProto()
+
+		sh, err := SignedHeaderFromProto(protoSignedHeader)
+
+		if tc.expPass {
+			require.NoError(t, err, tc.msg)
+			require.Equal(t, tc.sh1, sh, tc.msg)
+		} else {
+			require.Error(t, err, tc.msg)
+		}
+	}
+}
+
+func TestBlockIDEquals(t *testing.T) {
+	var (
+		blockID          = makeBlockID([]byte("hash"), 2, []byte("part_set_hash"))
+		blockIDDuplicate = makeBlockID([]byte("hash"), 2, []byte("part_set_hash"))
+		blockIDDifferent = makeBlockID([]byte("different_hash"), 2, []byte("part_set_hash"))
+		blockIDEmpty     = BlockID{}
+	)
+
+	assert.True(t, blockID.Equals(blockIDDuplicate))
+	assert.False(t, blockID.Equals(blockIDDifferent))
+	assert.False(t, blockID.Equals(blockIDEmpty))
+	assert.True(t, blockIDEmpty.Equals(blockIDEmpty))
+	assert.False(t, blockIDEmpty.Equals(blockIDDifferent))
 }

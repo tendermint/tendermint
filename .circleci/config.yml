@@ -11,7 +11,7 @@ executors:
     machine: true
   docs:
     docker:
-      - image: tendermintdev/jq_curl
+      - image: tendermintdev/docker-website-deployment
     environment:
       AWS_REGION: us-east-1
 
@@ -36,7 +36,6 @@ commands:
           name: "Running test"
           command: |
             bash << parameters.script_path >>
-
 jobs:
   setup_dependencies:
     executor: golang
@@ -73,81 +72,11 @@ jobs:
           paths:
             - "."
 
-  test_abci_apps:
-    executor: golang
-    steps:
-      - run_test:
-          script_path: abci/tests/test_app/test.sh
-
-  # if this test fails, fix it and update the docs at:
-  # https://github.com/tendermint/tendermint/blob/develop/docs/abci-cli.md
-  test_abci_cli:
-    executor: golang
-    steps:
-      - run_test:
-          script_path: abci/tests/test_cli/test.sh
-
-  test_apps:
-    executor: golang
-    steps:
-      - run_test:
-          script_path: test/app/test.sh
-
   test_persistence:
     executor: golang
     steps:
       - run_test:
           script_path: test/persist/test_failure_indices.sh
-
-  test_cover:
-    executor: golang
-    parallelism: 4
-    steps:
-      - restore_cache:
-          name: "Restore source code cache"
-          keys:
-            - go-src-v1-{{ .Revision }}
-      - checkout
-      - restore_cache:
-          name: "Restore go module cache"
-          keys:
-            - go-mod-v2-{{ checksum "go.sum" }}
-      - run:
-          name: "Run tests"
-          command: |
-            export VERSION="$(git describe --tags --long | sed 's/v\(.*\)/\1/')"
-            export GO111MODULE=on
-            mkdir -p /tmp/logs /tmp/workspace/profiles
-            for pkg in $(go list github.com/tendermint/tendermint/... | circleci tests split --split-by=timings); do
-              id=$(basename "$pkg")
-              go test -v -timeout 5m -mod=readonly -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
-            done
-      - persist_to_workspace:
-          root: /tmp/workspace
-          paths:
-            - "profiles/*"
-      - store_artifacts:
-          path: /tmp/logs
-
-  localnet:
-    working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
-    machine:
-      image: circleci/classic:latest
-    environment:
-      GOBIN: /home/circleci/.go_workspace/bin
-      GOPATH: /home/circleci/.go_workspace/
-      GOOS: linux
-      GOARCH: amd64
-    parallelism: 1
-    steps:
-      - checkout
-      - run:
-          name: run localnet and exit on failure
-          command: |
-            set -x
-            docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux
-            make localnet-start &
-            ./scripts/localnet-blocks-test.sh 40 5 10 localhost
 
   test_p2p:
     environment:
@@ -155,66 +84,31 @@ jobs:
       GOPATH: /home/circleci/.go_workspace
     machine:
       image: circleci/classic:latest
+    parameters:
+      ipv:
+        type: integer
+        default: 4
     steps:
       - checkout
       - run: mkdir -p $GOPATH/src/github.com/tendermint
       - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
-      - run: bash test/p2p/circleci.sh
+      - run: bash test/p2p/circleci.sh << parameters.ipv >>
       - store_artifacts:
           path: /home/circleci/project/test/p2p/logs
-
-  upload_coverage:
-    executor: golang
-    steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - restore_cache:
-          name: "Restore source code cache"
-          keys:
-            - go-src-v1-{{ .Revision }}
-      - checkout
-      - restore_cache:
-          name: "Restore go module cache"
-          keys:
-            - go-mod-v2-{{ checksum "go.sum" }}
-      - run:
-          name: gather
-          command: |
-            echo "mode: atomic" > coverage.txt
-            for prof in $(ls /tmp/workspace/profiles/); do
-              tail -n +2 /tmp/workspace/profiles/"$prof" >> coverage.txt
-            done
-      - run:
-          name: upload
-          command: bash .circleci/codecov.sh -f coverage.txt
 
   deploy_docs:
     executor: docs
     steps:
-      - restore_cache:
-          name: "Restore source code cache"
-          keys:
-            - go-src-v1-{{ .Revision }}
       - checkout
       - run:
-          name: Trigger website build
-          command: |
-            curl --silent \
-                --show-error \
-                -X POST \
-                --header "Content-Type: application/json" \
-                -d "{\"branch\": \"$CIRCLE_BRANCH\"}" \
-                "https://circleci.com/api/v1.1/project/github/$CIRCLE_PROJECT_USERNAME/$WEBSITE_REPO_NAME/build?circle-token=$TENDERBOT_API_TOKEN" > response.json
-
-            RESULT=`jq -r '.status' response.json`
-            MESSAGE=`jq -r '.message' response.json`
-
-            if [[ ${RESULT} == "null" ]] || [[ ${RESULT} -ne "200" ]]; then
-                echo "CircleCI API call failed: $MESSAGE"
-                exit 1
-            else
-                echo "Website build started"
-            fi
+          name: "Pull versions"
+          command: git fetch origin v0.32 v0.33
+      - run:
+          name: "Build docs"
+          command: make build-docs
+      - run:
+          name: "Sync to S3"
+          command: make sync-docs
 
   prepare_build:
     executor: golang
@@ -250,7 +144,7 @@ jobs:
 
   build_artifacts:
     executor: golang
-    parallelism: 4
+    parallelism: 5
     steps:
       - restore_cache:
           name: "Restore source code cache"
@@ -272,6 +166,7 @@ jobs:
             if test ${CIRCLE_NODE_INDEX:-0} == 1 ;then export GOOS=darwin GOARCH=amd64  && export OUTPUT=build/tendermint_${GOOS}_${GOARCH} && make build && python -u scripts/release_management/zip-file.py ;fi
             if test ${CIRCLE_NODE_INDEX:-0} == 2 ;then export GOOS=windows GOARCH=amd64 && export OUTPUT=build/tendermint_${GOOS}_${GOARCH} && make build && python -u scripts/release_management/zip-file.py ;fi
             if test ${CIRCLE_NODE_INDEX:-0} == 3 ;then export GOOS=linux GOARCH=arm     && export OUTPUT=build/tendermint_${GOOS}_${GOARCH} && make build && python -u scripts/release_management/zip-file.py ;fi
+            if test ${CIRCLE_NODE_INDEX:-0} == 4 ;then export GOOS=linux GOARCH=arm64   && export OUTPUT=build/tendermint_${GOOS}_${GOARCH} && make build && python -u scripts/release_management/zip-file.py ;fi
       - persist_to_workspace:
           root: build
           paths:
@@ -307,17 +202,13 @@ jobs:
             export GOOS=darwin GOARCH=amd64  && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
             export GOOS=windows GOARCH=amd64 && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
             export GOOS=linux GOARCH=arm     && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
+            export GOOS=linux GOARCH=arm64   && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
             python -u scripts/release_management/github-upload.py --file "/tmp/workspace/SHA256SUMS" --id "${RELEASE_ID}"
             python -u scripts/release_management/github-publish.py --id "${RELEASE_ID}"
-
   release_docker:
     machine:
       image: ubuntu-1604:201903-01
     steps:
-      - restore_cache:
-          name: "Restore source code cache"
-          keys:
-            - go-src-v1-{{ .Revision }}
       - checkout
       - attach_workspace:
           at: /tmp/workspace
@@ -331,16 +222,11 @@ jobs:
             docker login -u "${DOCKERHUB_USER}" --password-stdin \<<< "${DOCKERHUB_PASS}"
             docker push "tendermint/tendermint"
             docker logout
-
   reproducible_builds:
     executor: golang
     steps:
       - attach_workspace:
           at: /tmp/workspace
-      - restore_cache:
-          name: "Restore source code cache"
-          keys:
-            - go-src-v1-{{ .Revision }}
       - checkout
       - setup_remote_docker:
           docker_layer_caching: true
@@ -348,6 +234,7 @@ jobs:
           name: Build tendermint
           no_output_timeout: 20m
           command: |
+            sudo apt-get update
             sudo apt-get install -y ruby
             bash -x ./scripts/gitian-build.sh all
             for os in darwin linux windows; do
@@ -364,76 +251,68 @@ jobs:
       - store_artifacts:
           path: /go/src/github.com/tendermint/tendermint/tendermint-*.tar.gz
 
-  # Test RPC implementation against the swagger documented specs
-  contract_tests:
-    working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
-    machine:
-      image: circleci/classic:latest
-    environment:
-      GOBIN: /home/circleci/.go_workspace/bin
-      GOPATH: /home/circleci/.go_workspace/
-      GOOS: linux
-      GOARCH: amd64
-    parallelism: 1
-    steps:
-      - checkout
-      - run:
-          name: Test RPC endpoints against swagger documentation
-          command: |
-            set -x
-            export PATH=~/.local/bin:$PATH
-
-            # install node and dredd
-            ./scripts/get_nodejs.sh
-
-            # build the binaries with a proper version of Go
-            docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux build-contract-tests-hooks
-
-            # This docker image works with go 1.7, we can install here the hook handler that contract-tests is going to use
-            go get github.com/snikch/goodman/cmd/goodman
-            make contract-tests
+  # # Test RPC implementation against the swagger documented specs
+  # contract_tests:
+  #   working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
+  #   machine:
+  #     image: circleci/classic:latest
+  #   environment:
+  #     GOBIN: /home/circleci/.go_workspace/bin
+  #     GOPATH: /home/circleci/.go_workspace/
+  #     GOOS: linux
+  #     GOARCH: amd64
+  #   parallelism: 1
+  #   steps:
+  #     - checkout
+  #     - run:
+  #         name: Test RPC endpoints against swagger documentation
+  #         command: |
+  #           set -x
+  #           export PATH=~/.local/bin:$PATH
+  #           # install node and dredd
+  #           ./scripts/get_nodejs.sh
+  #           # build the binaries with a proper version of Go
+  #           docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux build-contract-tests-hooks
+  #           # This docker image works with go 1.7, we can install here the hook handler that contract-tests is going to use
+  #           go get github.com/snikch/goodman/cmd/goodman
+  #           make contract-tests
 
 workflows:
   version: 2
   test-suite:
     jobs:
       - deploy_docs:
+          context: tendermint-docs
           filters:
             branches:
               only:
                 - master
+            tags:
+              only:
+                - /^v.*/
+      - deploy_docs:
+          context: tendermint-docs-staging
+          filters:
+            branches:
+              only:
+                - docs-staging
       - setup_dependencies
-      - test_abci_apps:
-          requires:
-            - setup_dependencies
-      - test_abci_cli:
-          requires:
-            - setup_dependencies
-      - test_apps:
-          requires:
-            - setup_dependencies
-      - test_cover:
-          requires:
-            - setup_dependencies
       - test_persistence:
           requires:
             - setup_dependencies
-      - localnet:
-          requires:
-            - setup_dependencies
       - test_p2p
-      - upload_coverage:
-          requires:
-            - test_cover
+      - test_p2p:
+          name: test_p2p_ipv6
+          ipv: 6
       - reproducible_builds:
           filters:
             branches:
               only:
                 - master
                 - /v[0-9]+\.[0-9]+/
-      - contract_tests:
-          requires:
-            - setup_dependencies
+      # - contract_tests:
+      #     requires:
+      #       - setup_dependencies
 
   release:
     jobs:
@@ -457,3 +336,4 @@ workflows:
             branches:
               only:
                 - /v[0-9]+\.[0-9]+/
+                - master

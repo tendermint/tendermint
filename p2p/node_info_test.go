@@ -1,10 +1,10 @@
 package p2p
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
@@ -22,40 +22,44 @@ func TestNodeInfoValidate(t *testing.T) {
 	copy(dupChannels, channels[:5])
 	dupChannels = append(dupChannels, testCh)
 
-	nonAscii := "¢§µ"
-	emptyTab := fmt.Sprintf("\t")
-	emptySpace := fmt.Sprintf("  ")
+	nonASCII := "¢§µ"
+	emptyTab := "\t"
+	emptySpace := "  "
 
 	testCases := []struct {
 		testName         string
 		malleateNodeInfo func(*DefaultNodeInfo)
 		expectErr        bool
 	}{
-		{"Too Many Channels", func(ni *DefaultNodeInfo) { ni.Channels = append(channels, byte(maxNumChannels)) }, true}, // nolint: gocritic
+		{
+			"Too Many Channels",
+			func(ni *DefaultNodeInfo) { ni.Channels = append(channels, byte(maxNumChannels)) }, // nolint: gocritic
+			true,
+		},
 		{"Duplicate Channel", func(ni *DefaultNodeInfo) { ni.Channels = dupChannels }, true},
 		{"Good Channels", func(ni *DefaultNodeInfo) { ni.Channels = ni.Channels[:5] }, false},
 
 		{"Invalid NetAddress", func(ni *DefaultNodeInfo) { ni.ListenAddr = "not-an-address" }, true},
 		{"Good NetAddress", func(ni *DefaultNodeInfo) { ni.ListenAddr = "0.0.0.0:26656" }, false},
 
-		{"Non-ASCII Version", func(ni *DefaultNodeInfo) { ni.Version = nonAscii }, true},
+		{"Non-ASCII Version", func(ni *DefaultNodeInfo) { ni.Version = nonASCII }, true},
 		{"Empty tab Version", func(ni *DefaultNodeInfo) { ni.Version = emptyTab }, true},
 		{"Empty space Version", func(ni *DefaultNodeInfo) { ni.Version = emptySpace }, true},
 		{"Empty Version", func(ni *DefaultNodeInfo) { ni.Version = "" }, false},
 
-		{"Non-ASCII Moniker", func(ni *DefaultNodeInfo) { ni.Moniker = nonAscii }, true},
+		{"Non-ASCII Moniker", func(ni *DefaultNodeInfo) { ni.Moniker = nonASCII }, true},
 		{"Empty tab Moniker", func(ni *DefaultNodeInfo) { ni.Moniker = emptyTab }, true},
 		{"Empty space Moniker", func(ni *DefaultNodeInfo) { ni.Moniker = emptySpace }, true},
 		{"Empty Moniker", func(ni *DefaultNodeInfo) { ni.Moniker = "" }, true},
 		{"Good Moniker", func(ni *DefaultNodeInfo) { ni.Moniker = "hey its me" }, false},
 
-		{"Non-ASCII TxIndex", func(ni *DefaultNodeInfo) { ni.Other.TxIndex = nonAscii }, true},
+		{"Non-ASCII TxIndex", func(ni *DefaultNodeInfo) { ni.Other.TxIndex = nonASCII }, true},
 		{"Empty tab TxIndex", func(ni *DefaultNodeInfo) { ni.Other.TxIndex = emptyTab }, true},
 		{"Empty space TxIndex", func(ni *DefaultNodeInfo) { ni.Other.TxIndex = emptySpace }, true},
 		{"Empty TxIndex", func(ni *DefaultNodeInfo) { ni.Other.TxIndex = "" }, false},
 		{"Off TxIndex", func(ni *DefaultNodeInfo) { ni.Other.TxIndex = "off" }, false},
 
-		{"Non-ASCII RPCAddress", func(ni *DefaultNodeInfo) { ni.Other.RPCAddress = nonAscii }, true},
+		{"Non-ASCII RPCAddress", func(ni *DefaultNodeInfo) { ni.Other.RPCAddress = nonASCII }, true},
 		{"Empty tab RPCAddress", func(ni *DefaultNodeInfo) { ni.Other.RPCAddress = emptyTab }, true},
 		{"Empty space RPCAddress", func(ni *DefaultNodeInfo) { ni.Other.RPCAddress = emptySpace }, true},
 		{"Empty RPCAddress", func(ni *DefaultNodeInfo) { ni.Other.RPCAddress = "" }, false},
@@ -110,7 +114,7 @@ func TestNodeInfoCompatible(t *testing.T) {
 		testName         string
 		malleateNodeInfo func(*DefaultNodeInfo)
 	}{
-		{"Wrong block version", func(ni *DefaultNodeInfo) { ni.ProtocolVersion.Block += 1 }},
+		{"Wrong block version", func(ni *DefaultNodeInfo) { ni.ProtocolVersion.Block++ }},
 		{"Wrong network", func(ni *DefaultNodeInfo) { ni.Network += "-wrong" }},
 		{"No common channels", func(ni *DefaultNodeInfo) { ni.Channels = []byte{newTestChannel} }},
 	}

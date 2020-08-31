@@ -1,3 +1,7 @@
+---
+order: 1
+---
+
 # Getting Started
 
 ## First Tendermint App
@@ -17,14 +21,17 @@ using Tendermint.
 ### Install
 
 The first apps we will work with are written in Go. To install them, you
-need to [install Go](https://golang.org/doc/install) and put
-`$GOPATH/bin` in your `$PATH`; see
-[here](https://github.com/tendermint/tendermint/wiki/Setting-GOPATH) for
-more info.
+need to [install Go](https://golang.org/doc/install), put
+`$GOPATH/bin` in your `$PATH` and enable go modules with these instructions:
+
+```bash
+echo export GOPATH=\"\$HOME/go\" >> ~/.bash_profile
+echo export PATH=\"\$PATH:\$GOPATH/bin\" >> ~/.bash_profile
+```
 
 Then run
 
-```
+```sh
 go get github.com/tendermint/tendermint
 cd $GOPATH/src/github.com/tendermint/tendermint
 make tools
@@ -47,14 +54,16 @@ full transaction bytes are stored as the key and the value.
 
 Let's start a kvstore application.
 
-```
+```sh
 abci-cli kvstore
 ```
 
-In another terminal, we can start Tendermint. If you have never run
-Tendermint before, use:
+In another terminal, we can start Tendermint. You should already have the
+Tendermint binary installed. If not, follow the steps from
+[here](../introduction/install.md). If you have never run Tendermint
+before, use:
 
-```
+```sh
 tendermint init
 tendermint node
 ```
@@ -67,7 +76,7 @@ details, see [the guide on using Tendermint](../tendermint-core/using-tendermint
 You should see Tendermint making blocks! We can get the status of our
 Tendermint node as follows:
 
-```
+```sh
 curl -s localhost:26657/status
 ```
 
@@ -76,7 +85,7 @@ tool like [jq](https://stedolan.github.io/jq/) or `json_pp`.
 
 Now let's send some transactions to the kvstore.
 
-```
+```sh
 curl -s 'localhost:26657/broadcast_tx_commit?tx="abcd"'
 ```
 
@@ -86,7 +95,7 @@ transaction with bytes `abcd`, so `abcd` will be stored as both the key
 and the value in the Merkle tree. The response should look something
 like:
 
-```
+```json
 {
   "jsonrpc": "2.0",
   "id": "",
@@ -113,13 +122,13 @@ like:
 We can confirm that our transaction worked and the value got stored by
 querying the app:
 
-```
+```sh
 curl -s 'localhost:26657/abci_query?data="abcd"'
 ```
 
 The result should look like:
 
-```
+```json
 {
   "jsonrpc": "2.0",
   "id": "",
@@ -143,14 +152,14 @@ human-readable](https://github.com/tendermint/tendermint/issues/1794).
 
 Now let's try setting a different key and value:
 
-```
+```sh
 curl -s 'localhost:26657/broadcast_tx_commit?tx="name=satoshi"'
 ```
 
 Now if we query for `name`, we should get `satoshi`, or `c2F0b3NoaQ==`
 in base64:
 
-```
+```sh
 curl -s 'localhost:26657/abci_query?data="name"'
 ```
 
@@ -186,13 +195,13 @@ Let's kill the previous instance of `tendermint` and the `kvstore`
 application, and start the counter app. We can enable `serial=on` with a
 flag:
 
-```
+```sh
 abci-cli counter --serial
 ```
 
 In another window, reset then start Tendermint:
 
-```
+```sh
 tendermint unsafe_reset_all
 tendermint node
 ```
@@ -201,14 +210,14 @@ Once again, you can see the blocks streaming by. Let's send some
 transactions. Since we have set `serial=on`, the first transaction must
 be the number `0`:
 
-```
+```sh
 curl localhost:26657/broadcast_tx_commit?tx=0x00
 ```
 
 Note the empty (hence successful) response. The next transaction must be
 the number `1`. If instead, we try to send a `5`, we get an error:
 
-```
+```json
 > curl localhost:26657/broadcast_tx_commit?tx=0x05
 {
   "jsonrpc": "2.0",
@@ -227,7 +236,7 @@ the number `1`. If instead, we try to send a `5`, we get an error:
 
 But if we send a `1`, it works again:
 
-```
+```json
 > curl localhost:26657/broadcast_tx_commit?tx=0x01
 {
   "jsonrpc": "2.0",
@@ -253,7 +262,7 @@ to [install node](https://nodejs.org/en/download/).
 You'll also need to fetch the relevant repository, from
 [here](https://github.com/tendermint/js-abci), then install it:
 
-```
+```sh
 git clone https://github.com/tendermint/js-abci.git
 cd js-abci
 npm install abci
@@ -261,13 +270,13 @@ npm install abci
 
 Kill the previous `counter` and `tendermint` processes. Now run the app:
 
-```
+```sh
 node example/counter.js
 ```
 
 In another window, reset and start `tendermint`:
 
-```
+```sh
 tendermint unsafe_reset_all
 tendermint node
 ```
@@ -276,7 +285,7 @@ Once again, you should see blocks streaming by - but now, our
 application is written in Javascript! Try sending some transactions, and
 like before - the results should be the same:
 
-```
+```sh
 # ok
 curl localhost:26657/broadcast_tx_commit?tx=0x00
 # invalid nonce

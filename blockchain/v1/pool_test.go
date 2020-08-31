@@ -13,6 +13,7 @@ import (
 
 type testPeer struct {
 	id     p2p.ID
+	base   int64
 	height int64
 }
 
@@ -70,7 +71,7 @@ func makeBlockPool(bcr *testBcR, height int64, peers []BpPeer, blocks map[int64]
 		if p.Height > maxH {
 			maxH = p.Height
 		}
-		bPool.peers[p.ID] = NewBpPeer(p.ID, p.Height, bcr.sendPeerError, nil)
+		bPool.peers[p.ID] = NewBpPeer(p.ID, p.Base, p.Height, bcr.sendPeerError, nil)
 		bPool.peers[p.ID].SetLogger(bcr.logger)
 
 	}
@@ -93,6 +94,7 @@ func assertPeerSetsEquivalent(t *testing.T, set1 map[p2p.ID]*BpPeer, set2 map[p2
 		assert.NotNil(t, peer2)
 		assert.Equal(t, peer1.NumPendingBlockRequests, peer2.NumPendingBlockRequests)
 		assert.Equal(t, peer1.Height, peer2.Height)
+		assert.Equal(t, peer1.Base, peer2.Base)
 		assert.Equal(t, len(peer1.blocks), len(peer2.blocks))
 		for h, block1 := range peer1.blocks {
 			block2 := peer2.blocks[h]
@@ -123,26 +125,32 @@ func TestBlockPoolUpdatePeer(t *testing.T) {
 		{
 			name:       "add a first short peer",
 			pool:       makeBlockPool(testBcR, 100, []BpPeer{}, map[int64]tPBlocks{}),
-			args:       testPeer{"P1", 50},
+			args:       testPeer{"P1", 0, 50},
 			errWanted:  errPeerTooShort,
 			poolWanted: makeBlockPool(testBcR, 100, []BpPeer{}, map[int64]tPBlocks{}),
 		},
 		{
 			name:       "add a first good peer",
 			pool:       makeBlockPool(testBcR, 100, []BpPeer{}, map[int64]tPBlocks{}),
-			args:       testPeer{"P1", 101},
+			args:       testPeer{"P1", 0, 101},
 			poolWanted: makeBlockPool(testBcR, 100, []BpPeer{{ID: "P1", Height: 101}}, map[int64]tPBlocks{}),
+		},
+		{
+			name:       "add a first good peer with base",
+			pool:       makeBlockPool(testBcR, 100, []BpPeer{}, map[int64]tPBlocks{}),
+			args:       testPeer{"P1", 10, 101},
+			poolWanted: makeBlockPool(testBcR, 100, []BpPeer{{ID: "P1", Base: 10, Height: 101}}, map[int64]tPBlocks{}),
 		},
 		{
 			name:       "increase the height of P1 from 120 to 123",
 			pool:       makeBlockPool(testBcR, 100, []BpPeer{{ID: "P1", Height: 120}}, map[int64]tPBlocks{}),
-			args:       testPeer{"P1", 123},
+			args:       testPeer{"P1", 0, 123},
 			poolWanted: makeBlockPool(testBcR, 100, []BpPeer{{ID: "P1", Height: 123}}, map[int64]tPBlocks{}),
 		},
 		{
 			name:       "decrease the height of P1 from 120 to 110",
 			pool:       makeBlockPool(testBcR, 100, []BpPeer{{ID: "P1", Height: 120}}, map[int64]tPBlocks{}),
-			args:       testPeer{"P1", 110},
+			args:       testPeer{"P1", 0, 110},
 			errWanted:  errPeerLowersItsHeight,
 			poolWanted: makeBlockPool(testBcR, 100, []BpPeer{}, map[int64]tPBlocks{}),
 		},
@@ -151,7 +159,7 @@ func TestBlockPoolUpdatePeer(t *testing.T) {
 			pool: makeBlockPool(testBcR, 100, []BpPeer{{ID: "P1", Height: 105}},
 				map[int64]tPBlocks{
 					100: {"P1", true}, 101: {"P1", true}, 102: {"P1", true}}),
-			args:      testPeer{"P1", 102},
+			args:      testPeer{"P1", 0, 102},
 			errWanted: errPeerLowersItsHeight,
 			poolWanted: makeBlockPool(testBcR, 100, []BpPeer{},
 				map[int64]tPBlocks{}),
@@ -162,7 +170,7 @@ func TestBlockPoolUpdatePeer(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			pool := tt.pool
-			err := pool.UpdatePeer(tt.args.id, tt.args.height)
+			err := pool.UpdatePeer(tt.args.id, tt.args.base, tt.args.height)
 			assert.Equal(t, tt.errWanted, err)
 			assert.Equal(t, tt.poolWanted.blocks, tt.pool.blocks)
 			assertPeerSetsEquivalent(t, tt.poolWanted.peers, tt.pool.peers)
@@ -198,14 +206,22 @@ func TestBlockPoolRemovePeer(t *testing.T) {
 			poolWanted: makeBlockPool(testBcR, 100, []BpPeer{}, map[int64]tPBlocks{}),
 		},
 		{
-			name:       "delete the shortest of two peers without blocks",
-			pool:       makeBlockPool(testBcR, 100, []BpPeer{{ID: "P1", Height: 100}, {ID: "P2", Height: 120}}, map[int64]tPBlocks{}),
+			name: "delete the shortest of two peers without blocks",
+			pool: makeBlockPool(
+				testBcR,
+				100,
+				[]BpPeer{{ID: "P1", Height: 100}, {ID: "P2", Height: 120}},
+				map[int64]tPBlocks{}),
 			args:       args{"P1", nil},
 			poolWanted: makeBlockPool(testBcR, 100, []BpPeer{{ID: "P2", Height: 120}}, map[int64]tPBlocks{}),
 		},
 		{
-			name:       "delete the tallest of two peers without blocks",
-			pool:       makeBlockPool(testBcR, 100, []BpPeer{{ID: "P1", Height: 100}, {ID: "P2", Height: 120}}, map[int64]tPBlocks{}),
+			name: "delete the tallest of two peers without blocks",
+			pool: makeBlockPool(
+				testBcR,
+				100,
+				[]BpPeer{{ID: "P1", Height: 100}, {ID: "P2", Height: 120}},
+				map[int64]tPBlocks{}),
 			args:       args{"P2", nil},
 			poolWanted: makeBlockPool(testBcR, 100, []BpPeer{{ID: "P1", Height: 100}}, map[int64]tPBlocks{}),
 		},
@@ -292,30 +308,48 @@ func TestBlockPoolSendRequestBatch(t *testing.T) {
 	testBcR := newTestBcR()
 
 	tests := []struct {
-		name                       string
-		pool                       *BlockPool
-		maxRequestsPerPeer         int
-		expRequests                map[int64]bool
-		expPeerResults             []testPeerResult
-		expnumPendingBlockRequests int
+		name               string
+		pool               *BlockPool
+		maxRequestsPerPeer int
+		expRequests        map[int64]bool
+		expRequestsSent    int
+		expPeerResults     []testPeerResult
 	}{
 		{
-			name:                       "one peer - send up to maxRequestsPerPeer block requests",
-			pool:                       makeBlockPool(testBcR, 10, []BpPeer{{ID: "P1", Height: 100}}, map[int64]tPBlocks{}),
-			maxRequestsPerPeer:         2,
-			expRequests:                map[int64]bool{10: true, 11: true},
-			expPeerResults:             []testPeerResult{{id: "P1", numPendingBlockRequests: 2}},
-			expnumPendingBlockRequests: 2,
-		},
-		{
-			name:               "n peers - send n*maxRequestsPerPeer block requests",
-			pool:               makeBlockPool(testBcR, 10, []BpPeer{{ID: "P1", Height: 100}, {ID: "P2", Height: 100}}, map[int64]tPBlocks{}),
+			name:               "one peer - send up to maxRequestsPerPeer block requests",
+			pool:               makeBlockPool(testBcR, 10, []BpPeer{{ID: "P1", Height: 100}}, map[int64]tPBlocks{}),
 			maxRequestsPerPeer: 2,
 			expRequests:        map[int64]bool{10: true, 11: true},
+			expRequestsSent:    2,
+			expPeerResults:     []testPeerResult{{id: "P1", numPendingBlockRequests: 2}},
+		},
+		{
+			name: "multiple peers - stops at gap between height and base",
+			pool: makeBlockPool(testBcR, 10, []BpPeer{
+				{ID: "P1", Base: 1, Height: 12},
+				{ID: "P2", Base: 15, Height: 100},
+			}, map[int64]tPBlocks{}),
+			maxRequestsPerPeer: 10,
+			expRequests:        map[int64]bool{10: true, 11: true, 12: true},
+			expRequestsSent:    3,
+			expPeerResults: []testPeerResult{
+				{id: "P1", numPendingBlockRequests: 3},
+				{id: "P2", numPendingBlockRequests: 0},
+			},
+		},
+		{
+			name: "n peers - send n*maxRequestsPerPeer block requests",
+			pool: makeBlockPool(
+				testBcR,
+				10,
+				[]BpPeer{{ID: "P1", Height: 100}, {ID: "P2", Height: 100}},
+				map[int64]tPBlocks{}),
+			maxRequestsPerPeer: 2,
+			expRequests:        map[int64]bool{10: true, 11: true},
+			expRequestsSent:    4,
 			expPeerResults: []testPeerResult{
 				{id: "P1", numPendingBlockRequests: 2},
 				{id: "P2", numPendingBlockRequests: 2}},
-			expnumPendingBlockRequests: 4,
 		},
 	}
 
@@ -327,15 +361,13 @@ func TestBlockPoolSendRequestBatch(t *testing.T) {
 			var pool = tt.pool
 			maxRequestsPerPeer = tt.maxRequestsPerPeer
 			pool.MakeNextRequests(10)
-			assert.Equal(t, testResults.numRequestsSent, maxRequestsPerPeer*len(pool.peers))
 
+			assert.Equal(t, tt.expRequestsSent, testResults.numRequestsSent)
 			for _, tPeer := range tt.expPeerResults {
 				var peer = pool.peers[tPeer.id]
 				assert.NotNil(t, peer)
 				assert.Equal(t, tPeer.numPendingBlockRequests, peer.NumPendingBlockRequests)
 			}
-			assert.Equal(t, testResults.numRequestsSent, maxRequestsPerPeer*len(pool.peers))
-
 		})
 	}
 }

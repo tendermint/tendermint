@@ -1,48 +1,63 @@
-run:
-  deadline: 1m
-
 linters:
-  enable-all: true
-  disable:
-    - gocyclo
+  enable:
+    - bodyclose
+    - deadcode
+    - depguard
+    - dogsled
+    - dupl
+    # - errcheck
+    # - funlen
+    # - gochecknoglobals
+    # - gochecknoinits
+    - goconst
+    - gocritic
+    # - gocyclo
+    # - godox
+    - gofmt
+    - goimports
     - golint
-    - maligned
-    - errcheck
-    - interfacer
-    - unparam
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    # - interfacer
     - lll
-    - gochecknoglobals
-    - gochecknoinits
+    - misspell
+    # - maligned
+    - nakedret
+    - prealloc
+    - scopelint
+    - staticcheck
+    - structcheck
     - stylecheck
-# linters-settings:
-#   govet:
-#     check-shadowing: true
-#   golint:
-#     min-confidence: 0
-#   gocyclo:
-#     min-complexity: 10
-#   maligned:
-#     suggest-new: true
-#   dupl:
-#     threshold: 100
-#   depguard:
-#     list-type: blacklist
-#     packages:
-#       # logging is allowed only by logutils.Log, logrus
-#       # is allowed to use only in logutils package
-#       - github.com/sirupsen/logrus
-#   misspell:
-#     locale: US
-#   lll:
-#     line-length: 140
-#   goimports:
-#     local-prefixes: github.com/golangci/golangci-lint
-#   gocritic:
-#     enabled-tags:
-#       - performance
-#       - style
-#       - experimental
-#     disabled-checks:
-#       - wrapperFunc
-#       - commentFormatting # https://github.com/go-critic/go-critic/issues/755
+    - typecheck
+    - unconvert
+    # - unparam
+    - unused
+    - varcheck
+    # - whitespace
+    # - wsl
+    # - gocognit
+    - nolintlint
+  disable:
+    - errcheck
 
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec
+    - linters:
+        - lll
+      source: "https://"
+  max-same-issues: 50
+
+linters-settings:
+  dogsled:
+    max-blank-identifiers: 3
+  maligned:
+    suggest-new: true
+  # govet:
+  #   check-shadowing: true
+  golint:
+    min-confidence: 0

@@ -2,245 +2,85 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
-
 	abci "github.com/tendermint/tendermint/abci/types"
+	mempl "github.com/tendermint/tendermint/mempool"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
 
 //-----------------------------------------------------------------------------
 // NOTE: tx should be signed, but this is only checked at the app level (not by Tendermint!)
 
-// Returns right away, with no response. Does not wait for CheckTx nor
-// DeliverTx results.
-//
-// If you want to be sure that the transaction is included in a block, you can
-// subscribe for the result using JSONRPC via a websocket. See
-// https://tendermint.com/docs/app-dev/subscribing-to-events-via-websocket.html
-// If you haven't received anything after a couple of blocks, resend it. If the
-// same happens again, send it to some other node. A few reasons why it could
-// happen:
-//
-// 1. malicious node can drop or pretend it had committed your tx
-// 2. malicious proposer (not necessary the one you're communicating with) can
-// drop transactions, which might become valid in the future
-// (https://github.com/tendermint/tendermint/issues/3322)
-// 3. node can be offline
-//
-// Please refer to
-// https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
-// for formatting/encoding rules.
-//
-//
-// ```shell
-// curl 'localhost:26657/broadcast_tx_async?tx="123"'
-// ```
-//
-// ```go
-// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
-// err := client.Start()
-// if err != nil {
-//   // handle error
-// }
-// defer client.Stop()
-// result, err := client.BroadcastTxAsync("123")
-// ```
-//
-// > The above command returns JSON structured like this:
-//
-// ```json
-// {
-// 	"error": "",
-// 	"result": {
-// 		"hash": "E39AAB7A537ABAA237831742DCE1117F187C3C52",
-// 		"log": "",
-// 		"data": "",
-// 		"code": "0"
-// 	},
-// 	"id": "",
-// 	"jsonrpc": "2.0"
-// }
-// ```
-//
-// ### Query Parameters
-//
-// | Parameter | Type | Default | Required | Description     |
-// |-----------+------+---------+----------+-----------------|
-// | tx        | Tx   | nil     | true     | The transaction |
+// BroadcastTxAsync returns right away, with no response. Does not wait for
+// CheckTx nor DeliverTx results.
+// More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_async
 func BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	err := mempool.CheckTx(tx, nil)
+	err := env.Mempool.CheckTx(tx, nil, mempl.TxInfo{})
+
 	if err != nil {
 		return nil, err
 	}
 	return &ctypes.ResultBroadcastTx{Hash: tx.Hash()}, nil
 }
 
-// Returns with the response from CheckTx. Does not wait for DeliverTx result.
-//
-// If you want to be sure that the transaction is included in a block, you can
-// subscribe for the result using JSONRPC via a websocket. See
-// https://tendermint.com/docs/app-dev/subscribing-to-events-via-websocket.html
-// If you haven't received anything after a couple of blocks, resend it. If the
-// same happens again, send it to some other node. A few reasons why it could
-// happen:
-//
-// 1. malicious node can drop or pretend it had committed your tx
-// 2. malicious proposer (not necessary the one you're communicating with) can
-// drop transactions, which might become valid in the future
-// (https://github.com/tendermint/tendermint/issues/3322)
-//
-// Please refer to
-// https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
-// for formatting/encoding rules.
-//
-// ```shell
-// curl 'localhost:26657/broadcast_tx_sync?tx="456"'
-// ```
-//
-// ```go
-// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
-// err := client.Start()
-// if err != nil {
-//   // handle error
-// }
-// defer client.Stop()
-// result, err := client.BroadcastTxSync("456")
-// ```
-//
-// > The above command returns JSON structured like this:
-//
-// ```json
-// {
-// 	"jsonrpc": "2.0",
-// 	"id": "",
-// 	"result": {
-// 		"code": "0",
-// 		"data": "",
-// 		"log": "",
-// 		"hash": "0D33F2F03A5234F38706E43004489E061AC40A2E"
-// 	},
-// 	"error": ""
-// }
-// ```
-//
-// ### Query Parameters
-//
-// | Parameter | Type | Default | Required | Description     |
-// |-----------+------+---------+----------+-----------------|
-// | tx        | Tx   | nil     | true     | The transaction |
+// BroadcastTxSync returns with the response from CheckTx. Does not wait for
+// DeliverTx result.
+// More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_sync
 func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	resCh := make(chan *abci.Response, 1)
-	err := mempool.CheckTx(tx, func(res *abci.Response) {
+	err := env.Mempool.CheckTx(tx, func(res *abci.Response) {
 		resCh <- res
-	})
+	}, mempl.TxInfo{})
 	if err != nil {
 		return nil, err
 	}
 	res := <-resCh
 	r := res.GetCheckTx()
 	return &ctypes.ResultBroadcastTx{
-		Code: r.Code,
-		Data: r.Data,
-		Log:  r.Log,
-		Hash: tx.Hash(),
+		Code:      r.Code,
+		Data:      r.Data,
+		Log:       r.Log,
+		Codespace: r.Codespace,
+		Hash:      tx.Hash(),
 	}, nil
 }
 
-// Returns with the responses from CheckTx and DeliverTx.
-//
-// IMPORTANT: use only for testing and development. In production, use
-// BroadcastTxSync or BroadcastTxAsync. You can subscribe for the transaction
-// result using JSONRPC via a websocket. See
-// https://tendermint.com/docs/app-dev/subscribing-to-events-via-websocket.html
-//
-// CONTRACT: only returns error if mempool.CheckTx() errs or if we timeout
-// waiting for tx to commit.
-//
-// If CheckTx or DeliverTx fail, no error will be returned, but the returned result
-// will contain a non-OK ABCI code.
-//
-// Please refer to
-// https://tendermint.com/docs/tendermint-core/using-tendermint.html#formatting
-// for formatting/encoding rules.
-//
-//
-// ```shell
-// curl 'localhost:26657/broadcast_tx_commit?tx="789"'
-// ```
-//
-// ```go
-// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
-// err := client.Start()
-// if err != nil {
-//   // handle error
-// }
-// defer client.Stop()
-// result, err := client.BroadcastTxCommit("789")
-// ```
-//
-// > The above command returns JSON structured like this:
-//
-// ```json
-// {
-// 	"error": "",
-// 	"result": {
-// 		"height": "26682",
-// 		"hash": "75CA0F856A4DA078FC4911580360E70CEFB2EBEE",
-// 		"deliver_tx": {
-// 			"log": "",
-// 			"data": "",
-// 			"code": "0"
-// 		},
-// 		"check_tx": {
-// 			"log": "",
-// 			"data": "",
-// 			"code": "0"
-// 		}
-// 	},
-// 	"id": "",
-// 	"jsonrpc": "2.0"
-// }
-// ```
-//
-// ### Query Parameters
-//
-// | Parameter | Type | Default | Required | Description     |
-// |-----------+------+---------+----------+-----------------|
-// | tx        | Tx   | nil     | true     | The transaction |
+// BroadcastTxCommit returns with the responses from CheckTx and DeliverTx.
+// More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_commit
 func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	subscriber := ctx.RemoteAddr()
 
-	if eventBus.NumClients() >= config.MaxSubscriptionClients {
-		return nil, fmt.Errorf("max_subscription_clients %d reached", config.MaxSubscriptionClients)
-	} else if eventBus.NumClientSubscriptions(subscriber) >= config.MaxSubscriptionsPerClient {
-		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", config.MaxSubscriptionsPerClient)
+	if env.EventBus.NumClients() >= env.Config.MaxSubscriptionClients {
+		return nil, fmt.Errorf("max_subscription_clients %d reached", env.Config.MaxSubscriptionClients)
+	} else if env.EventBus.NumClientSubscriptions(subscriber) >= env.Config.MaxSubscriptionsPerClient {
+		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", env.Config.MaxSubscriptionsPerClient)
 	}
 
 	// Subscribe to tx being committed in block.
 	subCtx, cancel := context.WithTimeout(ctx.Context(), SubscribeTimeout)
 	defer cancel()
 	q := types.EventQueryTxFor(tx)
-	deliverTxSub, err := eventBus.Subscribe(subCtx, subscriber, q)
+	deliverTxSub, err := env.EventBus.Subscribe(subCtx, subscriber, q)
 	if err != nil {
-		err = errors.Wrap(err, "failed to subscribe to tx")
-		logger.Error("Error on broadcast_tx_commit", "err", err)
+		err = fmt.Errorf("failed to subscribe to tx: %w", err)
+		env.Logger.Error("Error on broadcast_tx_commit", "err", err)
 		return nil, err
 	}
-	defer eventBus.Unsubscribe(context.Background(), subscriber, q)
+	defer env.EventBus.Unsubscribe(context.Background(), subscriber, q)
 
 	// Broadcast tx and wait for CheckTx result
 	checkTxResCh := make(chan *abci.Response, 1)
-	err = mempool.CheckTx(tx, func(res *abci.Response) {
+	err = env.Mempool.CheckTx(tx, func(res *abci.Response) {
 		checkTxResCh <- res
-	})
+	}, mempl.TxInfo{})
 	if err != nil {
-		logger.Error("Error on broadcastTxCommit", "err", err)
-		return nil, fmt.Errorf("Error on broadcastTxCommit: %v", err)
+		env.Logger.Error("Error on broadcastTxCommit", "err", err)
+		return nil, fmt.Errorf("error on broadcastTxCommit: %v", err)
 	}
 	checkTxResMsg := <-checkTxResCh
 	checkTxRes := checkTxResMsg.GetCheckTx()
@@ -270,15 +110,15 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 			reason = deliverTxSub.Err().Error()
 		}
 		err = fmt.Errorf("deliverTxSub was cancelled (reason: %s)", reason)
-		logger.Error("Error on broadcastTxCommit", "err", err)
+		env.Logger.Error("Error on broadcastTxCommit", "err", err)
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   *checkTxRes,
 			DeliverTx: abci.ResponseDeliverTx{},
 			Hash:      tx.Hash(),
 		}, err
-	case <-time.After(config.TimeoutBroadcastTxCommit):
-		err = errors.New("Timed out waiting for tx to be included in a block")
-		logger.Error("Error on broadcastTxCommit", "err", err)
+	case <-time.After(env.Config.TimeoutBroadcastTxCommit):
+		err = errors.New("timed out waiting for tx to be included in a block")
+		env.Logger.Error("Error on broadcastTxCommit", "err", err)
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   *checkTxRes,
 			DeliverTx: abci.ResponseDeliverTx{},
@@ -287,88 +127,37 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 	}
 }
 
-// Get unconfirmed transactions (maximum ?limit entries) including their number.
-//
-// ```shell
-// curl 'localhost:26657/unconfirmed_txs'
-// ```
-//
-// ```go
-// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
-// err := client.Start()
-// if err != nil {
-//   // handle error
-// }
-// defer client.Stop()
-// result, err := client.UnconfirmedTxs()
-// ```
-//
-// > The above command returns JSON structured like this:
-//
-// ```json
-// {
-//   "result" : {
-//       "txs" : [],
-//       "total_bytes" : "0",
-//       "n_txs" : "0",
-//       "total" : "0"
-//     },
-//     "jsonrpc" : "2.0",
-//     "id" : ""
-//   }
-// ```
-//
-// ### Query Parameters
-//
-// | Parameter | Type | Default | Required | Description                          |
-// |-----------+------+---------+----------+--------------------------------------|
-// | limit     | int  | 30      | false    | Maximum number of entries (max: 100) |
-// ```
-func UnconfirmedTxs(ctx *rpctypes.Context, limit int) (*ctypes.ResultUnconfirmedTxs, error) {
+// UnconfirmedTxs gets unconfirmed transactions (maximum ?limit entries)
+// including their number.
+// More: https://docs.tendermint.com/master/rpc/#/Info/unconfirmed_txs
+func UnconfirmedTxs(ctx *rpctypes.Context, limitPtr *int) (*ctypes.ResultUnconfirmedTxs, error) {
 	// reuse per_page validator
-	limit = validatePerPage(limit)
+	limit := validatePerPage(limitPtr)
 
-	txs := mempool.ReapMaxTxs(limit)
+	txs := env.Mempool.ReapMaxTxs(limit)
 	return &ctypes.ResultUnconfirmedTxs{
 		Count:      len(txs),
-		Total:      mempool.Size(),
-		TotalBytes: mempool.TxsBytes(),
+		Total:      env.Mempool.Size(),
+		TotalBytes: env.Mempool.TxsBytes(),
 		Txs:        txs}, nil
 }
 
-// Get number of unconfirmed transactions.
-//
-// ```shell
-// curl 'localhost:26657/num_unconfirmed_txs'
-// ```
-//
-// ```go
-// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
-// err := client.Start()
-// if err != nil {
-// // handle error
-// }
-// defer client.Stop()
-// result, err := client.UnconfirmedTxs()
-// ```
-//
-// > The above command returns JSON structured like this:
-//
-// ```json
-// {
-//   "jsonrpc" : "2.0",
-//   "id" : "",
-//   "result" : {
-//     "n_txs" : "0",
-//     "total_bytes" : "0",
-//     "total" : "0"
-//     "txs" : null,
-//   }
-// }
-// ```
+// NumUnconfirmedTxs gets number of unconfirmed transactions.
+// More: https://docs.tendermint.com/master/rpc/#/Info/num_unconfirmed_txs
 func NumUnconfirmedTxs(ctx *rpctypes.Context) (*ctypes.ResultUnconfirmedTxs, error) {
 	return &ctypes.ResultUnconfirmedTxs{
-		Count:      mempool.Size(),
-		Total:      mempool.Size(),
-		TotalBytes: mempool.TxsBytes()}, nil
+		Count:      env.Mempool.Size(),
+		Total:      env.Mempool.Size(),
+		TotalBytes: env.Mempool.TxsBytes()}, nil
+}
+
+// CheckTx checks the transaction without executing it. The transaction won't
+// be added to the mempool either.
+// More: https://docs.tendermint.com/master/rpc/#/Tx/check_tx
+func CheckTx(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultCheckTx, error) {
+	res, err := env.ProxyAppMempool.CheckTxSync(abci.RequestCheckTx{Tx: tx})
+	if err != nil {
+		return nil, err
+	}
+	return &ctypes.ResultCheckTx{ResponseCheckTx: *res}, nil
 }

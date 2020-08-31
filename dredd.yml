@@ -29,5 +29,5 @@ hooks-worker-handler-host: 127.0.0.1
 hooks-worker-handler-port: 61321
 config: ./dredd.yml
 # This path accepts no variables
-blueprint: ./docs/spec/rpc/swagger.yaml
-endpoint: 'http://127.0.0.1:26657/'
+blueprint: ./rpc/openapi/openapi.yaml
+endpoint: "http://127.0.0.1:26657/"

@@ -13,7 +13,7 @@ import (
 func TestClientServerNoAddrPrefix(t *testing.T) {
 	addr := "localhost:26658"
 	transport := "socket"
-	app := kvstore.NewKVStoreApplication()
+	app := kvstore.NewApplication()
 
 	server, err := abciserver.NewServer(addr, transport, app)
 	assert.NoError(t, err, "expected no error on NewServer")

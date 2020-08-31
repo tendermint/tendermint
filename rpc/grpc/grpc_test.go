@@ -1,4 +1,4 @@
-package core_grpc_test
+package coregrpc_test
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 
 func TestMain(m *testing.M) {
 	// start a tendermint node in the background to test against
-	app := kvstore.NewKVStoreApplication()
+	app := kvstore.NewApplication()
 	node := rpctest.StartTendermint(app)
 
 	code := m.Run()
@@ -25,7 +25,10 @@ func TestMain(m *testing.M) {
 }
 
 func TestBroadcastTx(t *testing.T) {
-	res, err := rpctest.GetGRPCClient().BroadcastTx(context.Background(), &core_grpc.RequestBroadcastTx{Tx: []byte("this is a tx")})
+	res, err := rpctest.GetGRPCClient().BroadcastTx(
+		context.Background(),
+		&core_grpc.RequestBroadcastTx{Tx: []byte("this is a tx")},
+	)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.CheckTx.Code)
 	require.EqualValues(t, 0, res.DeliverTx.Code)

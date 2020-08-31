@@ -5,16 +5,17 @@ import (
 	"crypto/cipher"
 	crand "crypto/rand"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"io"
 	"math"
 	"net"
-	"sync"
 	"time"
 
+	gogotypes "github.com/gogo/protobuf/types"
+	"github.com/gtank/merlin"
 	pool "github.com/libp2p/go-buffer-pool"
-	"github.com/pkg/errors"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/hkdf"
@@ -22,20 +23,32 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/libs/async"
+	"github.com/tendermint/tendermint/libs/protoio"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
+	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
 // 4 + 1024 == 1028 total frame size
-const dataLenSize = 4
-const dataMaxSize = 1024
-const totalFrameSize = dataMaxSize + dataLenSize
-const aeadSizeOverhead = 16 // overhead of poly 1305 authentication tag
-const aeadKeySize = chacha20poly1305.KeySize
-const aeadNonceSize = chacha20poly1305.NonceSize
+const (
+	dataLenSize      = 4
+	dataMaxSize      = 1024
+	totalFrameSize   = dataMaxSize + dataLenSize
+	aeadSizeOverhead = 16 // overhead of poly 1305 authentication tag
+	aeadKeySize      = chacha20poly1305.KeySize
+	aeadNonceSize    = chacha20poly1305.NonceSize
+)
 
 var (
 	ErrSmallOrderRemotePubKey = errors.New("detected low order point from remote peer")
-	ErrSharedSecretIsZero     = errors.New("shared secret is all zeroes")
+
+	labelEphemeralLowerPublicKey = []byte("EPHEMERAL_LOWER_PUBLIC_KEY")
+	labelEphemeralUpperPublicKey = []byte("EPHEMERAL_UPPER_PUBLIC_KEY")
+	labelDHSecret                = []byte("DH_SECRET")
+	labelSecretConnectionMac     = []byte("SECRET_CONNECTION_MAC")
+
+	secretConnKeyAndChallengeGen = []byte("TENDERMINT_SECRET_CONNECTION_KEY_AND_CHALLENGE_GEN")
 )
 
 // SecretConnection implements net.Conn.
@@ -63,11 +76,11 @@ type SecretConnection struct {
 	// are independent, so we can use two mtxs.
 	// All .Read are covered by recvMtx,
 	// all .Write are covered by sendMtx.
-	recvMtx    sync.Mutex
+	recvMtx    tmsync.Mutex
 	recvBuffer []byte
 	recvNonce  *[aeadNonceSize]byte
 
-	sendMtx   sync.Mutex
+	sendMtx   tmsync.Mutex
 	sendNonce *[aeadNonceSize]byte
 }
 
@@ -77,24 +90,31 @@ type SecretConnection struct {
 // Caller should call conn.Close()
 // See docs/sts-final.pdf for more information.
 func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*SecretConnection, error) {
-	locPubKey := locPrivKey.PubKey()
+	var (
+		locPubKey = locPrivKey.PubKey()
+	)
 
 	// Generate ephemeral keys for perfect forward secrecy.
 	locEphPub, locEphPriv := genEphKeys()
 
 	// Write local ephemeral pubkey and receive one too.
-	// NOTE: every 32-byte string is accepted as a Curve25519 public key
-	// (see DJB's Curve25519 paper: http://cr.yp.to/ecdh/curve25519-20060209.pdf)
+	// NOTE: every 32-byte string is accepted as a Curve25519 public key (see
+	// DJB's Curve25519 paper: http://cr.yp.to/ecdh/curve25519-20060209.pdf)
 	remEphPub, err := shareEphPubKey(conn, locEphPub)
 	if err != nil {
 		return nil, err
 	}
 
 	// Sort by lexical order.
-	loEphPub, _ := sort32(locEphPub, remEphPub)
+	loEphPub, hiEphPub := sort32(locEphPub, remEphPub)
 
-	// Check if the local ephemeral public key
-	// was the least, lexicographically sorted.
+	transcript := merlin.NewTranscript("TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH")
+
+	transcript.AppendMessage(labelEphemeralLowerPublicKey, loEphPub[:])
+	transcript.AppendMessage(labelEphemeralUpperPublicKey, hiEphPub[:])
+
+	// Check if the local ephemeral public key was the least, lexicographically
+	// sorted.
 	locIsLeast := bytes.Equal(locEphPub[:], loEphPub[:])
 
 	// Compute common diffie hellman secret using X25519.
@@ -103,8 +123,18 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 		return nil, err
 	}
 
-	// generate the secret used for receiving, sending, challenge via hkdf-sha2 on dhSecret
-	recvSecret, sendSecret, challenge := deriveSecretAndChallenge(dhSecret, locIsLeast)
+	transcript.AppendMessage(labelDHSecret, dhSecret[:])
+
+	// Generate the secret used for receiving, sending, challenge via HKDF-SHA2
+	// on the transcript state (which itself also uses HKDF-SHA2 to derive a key
+	// from the dhSecret).
+	recvSecret, sendSecret := deriveSecrets(dhSecret, locIsLeast)
+
+	const challengeSize = 32
+	var challenge [challengeSize]byte
+	challengeSlice := transcript.ExtractBytes(labelSecretConnectionMac, challengeSize)
+
+	copy(challenge[:], challengeSlice[0:challengeSize])
 
 	sendAead, err := chacha20poly1305.New(sendSecret[:])
 	if err != nil {
@@ -114,7 +144,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	if err != nil {
 		return nil, errors.New("invalid receive SecretConnection Key")
 	}
-	// Construct SecretConnection.
+
 	sc := &SecretConnection{
 		conn:       conn,
 		recvBuffer: nil,
@@ -125,7 +155,10 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	}
 
 	// Sign the challenge bytes for authentication.
-	locSignature := signChallenge(challenge, locPrivKey)
+	locSignature, err := signChallenge(&challenge, locPrivKey)
+	if err != nil {
+		return nil, err
+	}
 
 	// Share (in secret) each other's pubkey & challenge signature
 	authSigMsg, err := shareAuthSignature(sc, locPubKey, locSignature)
@@ -134,12 +167,10 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	}
 
 	remPubKey, remSignature := authSigMsg.Key, authSigMsg.Sig
-
-	if _, ok := remPubKey.(ed25519.PubKeyEd25519); !ok {
-		return nil, errors.Errorf("expected ed25519 pubkey, got %T", remPubKey)
+	if _, ok := remPubKey.(ed25519.PubKey); !ok {
+		return nil, fmt.Errorf("expected ed25519 pubkey, got %T", remPubKey)
 	}
-
-	if !remPubKey.VerifyBytes(challenge[:], remSignature) {
+	if !remPubKey.VerifySignature(challenge[:], remSignature) {
 		return nil, errors.New("challenge verification failed")
 	}
 
@@ -223,7 +254,7 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	defer pool.Put(frame)
 	_, err = sc.recvAead.Open(frame[:0], sc.recvNonce[:], sealedFrame, nil)
 	if err != nil {
-		return n, errors.New("failed to decrypt SecretConnection")
+		return n, fmt.Errorf("failed to decrypt SecretConnection: %w", err)
 	}
 	incrNonce(sc.recvNonce)
 	// end decryption
@@ -268,27 +299,28 @@ func genEphKeys() (ephPub, ephPriv *[32]byte) {
 	return
 }
 
-func shareEphPubKey(conn io.ReadWriteCloser, locEphPub *[32]byte) (remEphPub *[32]byte, err error) {
+func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byte, err error) {
 
 	// Send our pubkey and receive theirs in tandem.
-	var trs, _ = cmn.Parallel(
-		func(_ int) (val interface{}, err error, abort bool) {
-			var _, err1 = cdc.MarshalBinaryLengthPrefixedWriter(conn, locEphPub)
-			if err1 != nil {
-				return nil, err1, true // abort
+	var trs, _ = async.Parallel(
+		func(_ int) (val interface{}, abort bool, err error) {
+			lc := *locEphPub
+			_, err = protoio.NewDelimitedWriter(conn).WriteMsg(&gogotypes.BytesValue{Value: lc[:]})
+			if err != nil {
+				return nil, true, err // abort
 			}
-			return nil, nil, false
+			return nil, false, nil
 		},
-		func(_ int) (val interface{}, err error, abort bool) {
+		func(_ int) (val interface{}, abort bool, err error) {
+			var bytes gogotypes.BytesValue
+			err = protoio.NewDelimitedReader(conn, 1024*1024).ReadMsg(&bytes)
+			if err != nil {
+				return nil, true, err // abort
+			}
+
 			var _remEphPub [32]byte
-			var _, err2 = cdc.UnmarshalBinaryLengthPrefixedReader(conn, &_remEphPub, 1024*1024) // TODO
-			if err2 != nil {
-				return nil, err2, true // abort
-			}
-			if hasSmallOrder(_remEphPub) {
-				return nil, ErrSmallOrderRemotePubKey, true
-			}
-			return _remEphPub, nil, false
+			copy(_remEphPub[:], bytes.Value)
+			return _remEphPub, false, nil
 		},
 	)
 
@@ -303,55 +335,12 @@ func shareEphPubKey(conn io.ReadWriteCloser, locEphPub *[32]byte) (remEphPub *[3
 	return &_remEphPub, nil
 }
 
-// use the samne blacklist as lib sodium (see https://eprint.iacr.org/2017/806.pdf for reference):
-// https://github.com/jedisct1/libsodium/blob/536ed00d2c5e0c65ac01e29141d69a30455f2038/src/libsodium/crypto_scalarmult/curve25519/ref10/x25519_ref10.c#L11-L17
-var blacklist = [][32]byte{
-	// 0 (order 4)
-	{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-	// 1 (order 1)
-	{0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
-	// 325606250916557431795983626356110631294008115727848805560023387167927233504
-	//   (order 8)
-	{0xe0, 0xeb, 0x7a, 0x7c, 0x3b, 0x41, 0xb8, 0xae, 0x16, 0x56, 0xe3,
-		0xfa, 0xf1, 0x9f, 0xc4, 0x6a, 0xda, 0x09, 0x8d, 0xeb, 0x9c, 0x32,
-		0xb1, 0xfd, 0x86, 0x62, 0x05, 0x16, 0x5f, 0x49, 0xb8, 0x00},
-	// 39382357235489614581723060781553021112529911719440698176882885853963445705823
-	//    (order 8)
-	{0x5f, 0x9c, 0x95, 0xbc, 0xa3, 0x50, 0x8c, 0x24, 0xb1, 0xd0, 0xb1,
-		0x55, 0x9c, 0x83, 0xef, 0x5b, 0x04, 0x44, 0x5c, 0xc4, 0x58, 0x1c,
-		0x8e, 0x86, 0xd8, 0x22, 0x4e, 0xdd, 0xd0, 0x9f, 0x11, 0x57},
-	// p-1 (order 2)
-	{0xec, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f},
-	// p (=0, order 4)
-	{0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f},
-	// p+1 (=1, order 1)
-	{0xee, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f},
-}
-
-func hasSmallOrder(pubKey [32]byte) bool {
-	isSmallOrderPoint := false
-	for _, bl := range blacklist {
-		if subtle.ConstantTimeCompare(pubKey[:], bl[:]) == 1 {
-			isSmallOrderPoint = true
-			break
-		}
-	}
-	return isSmallOrderPoint
-}
-
-func deriveSecretAndChallenge(dhSecret *[32]byte, locIsLeast bool) (recvSecret, sendSecret *[aeadKeySize]byte, challenge *[32]byte) {
+func deriveSecrets(
+	dhSecret *[32]byte,
+	locIsLeast bool,
+) (recvSecret, sendSecret *[aeadKeySize]byte) {
 	hash := sha256.New
-	hkdf := hkdf.New(hash, dhSecret[:], nil, []byte("TENDERMINT_SECRET_CONNECTION_KEY_AND_CHALLENGE_GEN"))
+	hkdf := hkdf.New(hash, dhSecret[:], nil, secretConnKeyAndChallengeGen)
 	// get enough data for 2 aead keys, and a 32 byte challenge
 	res := new([2*aeadKeySize + 32]byte)
 	_, err := io.ReadFull(hkdf, res[:])
@@ -359,11 +348,8 @@ func deriveSecretAndChallenge(dhSecret *[32]byte, locIsLeast bool) (recvSecret, 
 		panic(err)
 	}
 
-	challenge = new([32]byte)
 	recvSecret = new([aeadKeySize]byte)
 	sendSecret = new([aeadKeySize]byte)
-	// Use the last 32 bytes as the challenge
-	copy(challenge[:], res[2*aeadKeySize:2*aeadKeySize+32])
 
 	// bytes 0 through aeadKeySize - 1 are one aead key.
 	// bytes aeadKeySize through 2*aeadKeySize -1 are another aead key.
@@ -382,19 +368,14 @@ func deriveSecretAndChallenge(dhSecret *[32]byte, locIsLeast bool) (recvSecret, 
 
 // computeDHSecret computes a Diffie-Hellman shared secret key
 // from our own local private key and the other's public key.
-//
-// It returns an error if the computed shared secret is all zeroes.
-func computeDHSecret(remPubKey, locPrivKey *[32]byte) (shrKey *[32]byte, err error) {
-	shrKey = new([32]byte)
-	curve25519.ScalarMult(shrKey, locPrivKey, remPubKey)
-
-	// reject if the returned shared secret is all zeroes
-	// related to: https://github.com/tendermint/tendermint/issues/3010
-	zero := new([32]byte)
-	if subtle.ConstantTimeCompare(shrKey[:], zero[:]) == 1 {
-		return nil, ErrSharedSecretIsZero
+func computeDHSecret(remPubKey, locPrivKey *[32]byte) (*[32]byte, error) {
+	shrKey, err := curve25519.X25519(locPrivKey[:], remPubKey[:])
+	if err != nil {
+		return nil, err
 	}
-	return
+	var shrKeyArray [32]byte
+	copy(shrKeyArray[:], shrKey)
+	return &shrKeyArray, nil
 }
 
 func sort32(foo, bar *[32]byte) (lo, hi *[32]byte) {
@@ -408,13 +389,12 @@ func sort32(foo, bar *[32]byte) (lo, hi *[32]byte) {
 	return
 }
 
-func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) (signature []byte) {
+func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) ([]byte, error) {
 	signature, err := locPrivKey.Sign(challenge[:])
-	// TODO(ismail): let signChallenge return an error instead
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return
+	return signature, nil
 }
 
 type authSigMessage struct {
@@ -422,24 +402,38 @@ type authSigMessage struct {
 	Sig []byte
 }
 
-func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature []byte) (recvMsg authSigMessage, err error) {
+func shareAuthSignature(sc io.ReadWriter, pubKey crypto.PubKey, signature []byte) (recvMsg authSigMessage, err error) {
 
 	// Send our info and receive theirs in tandem.
-	var trs, _ = cmn.Parallel(
-		func(_ int) (val interface{}, err error, abort bool) {
-			var _, err1 = cdc.MarshalBinaryLengthPrefixedWriter(sc, authSigMessage{pubKey, signature})
-			if err1 != nil {
-				return nil, err1, true // abort
+	var trs, _ = async.Parallel(
+		func(_ int) (val interface{}, abort bool, err error) {
+			pbpk, err := cryptoenc.PubKeyToProto(pubKey)
+			if err != nil {
+				return nil, true, err
 			}
-			return nil, nil, false
+			_, err = protoio.NewDelimitedWriter(sc).WriteMsg(&tmp2p.AuthSigMessage{PubKey: pbpk, Sig: signature})
+			if err != nil {
+				return nil, true, err // abort
+			}
+			return nil, false, nil
 		},
-		func(_ int) (val interface{}, err error, abort bool) {
-			var _recvMsg authSigMessage
-			var _, err2 = cdc.UnmarshalBinaryLengthPrefixedReader(sc, &_recvMsg, 1024*1024) // TODO
-			if err2 != nil {
-				return nil, err2, true // abort
+		func(_ int) (val interface{}, abort bool, err error) {
+			var pba tmp2p.AuthSigMessage
+			err = protoio.NewDelimitedReader(sc, 1024*1024).ReadMsg(&pba)
+			if err != nil {
+				return nil, true, err // abort
 			}
-			return _recvMsg, nil, false
+
+			pk, err := cryptoenc.PubKeyFromProto(pba.PubKey)
+			if err != nil {
+				return nil, true, err // abort
+			}
+
+			_recvMsg := authSigMessage{
+				Key: pk,
+				Sig: pba.Sig,
+			}
+			return _recvMsg, false, nil
 		},
 	)
 

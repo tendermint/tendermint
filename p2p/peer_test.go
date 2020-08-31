@@ -7,13 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/tendermint/tendermint/config"
@@ -114,13 +113,13 @@ func testOutboundPeerConn(
 	var pc peerConn
 	conn, err := testDial(addr, config)
 	if err != nil {
-		return pc, errors.Wrap(err, "Error creating peer")
+		return pc, fmt.Errorf("error creating peer: %w", err)
 	}
 
 	pc, err = testPeerConn(conn, config, true, persistent, ourNodePrivKey, addr)
 	if err != nil {
 		if cerr := conn.Close(); cerr != nil {
-			return pc, errors.Wrap(err, cerr.Error())
+			return pc, fmt.Errorf("%v: %w", cerr.Error(), err)
 		}
 		return pc, err
 	}
@@ -128,7 +127,7 @@ func testOutboundPeerConn(
 	// ensure dialed ID matches connection ID
 	if addr.ID != pc.ID() {
 		if cerr := conn.Close(); cerr != nil {
-			return pc, errors.Wrap(err, cerr.Error())
+			return pc, fmt.Errorf("%v: %w", cerr.Error(), err)
 		}
 		return pc, ErrSwitchAuthenticationFailure{addr, pc.ID()}
 	}
@@ -140,7 +139,7 @@ type remotePeer struct {
 	PrivKey    crypto.PrivKey
 	Config     *config.P2PConfig
 	addr       *NetAddress
-	channels   cmn.HexBytes
+	channels   bytes.HexBytes
 	listenAddr string
 	listener   net.Listener
 }
@@ -220,7 +219,7 @@ func (rp *remotePeer) accept() {
 func (rp *remotePeer) nodeInfo() NodeInfo {
 	return DefaultNodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
-		ID_:             rp.Addr().ID,
+		DefaultNodeID:   rp.Addr().ID,
 		ListenAddr:      rp.listener.Addr().String(),
 		Network:         "testing",
 		Version:         "1.2.3-rc0-deadbeef",

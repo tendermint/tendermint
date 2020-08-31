@@ -3,10 +3,10 @@ package commands
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmjson "github.com/tendermint/tendermint/libs/json"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/privval"
 )
 
@@ -19,14 +19,20 @@ var ShowValidatorCmd = &cobra.Command{
 
 func showValidator(cmd *cobra.Command, args []string) error {
 	keyFilePath := config.PrivValidatorKeyFile()
-	if !cmn.FileExists(keyFilePath) {
+	if !tmos.FileExists(keyFilePath) {
 		return fmt.Errorf("private validator file %s does not exist", keyFilePath)
 	}
 
 	pv := privval.LoadFilePV(keyFilePath, config.PrivValidatorStateFile())
-	bz, err := cdc.MarshalJSON(pv.GetPubKey())
+
+	pubKey, err := pv.GetPubKey()
 	if err != nil {
-		return errors.Wrap(err, "failed to marshal private validator pubkey")
+		return fmt.Errorf("can't get pubkey: %w", err)
+	}
+
+	bz, err := tmjson.Marshal(pubKey)
+	if err != nil {
+		return fmt.Errorf("failed to marshal private validator pubkey: %w", err)
 	}
 
 	fmt.Println(string(bz))

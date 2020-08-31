@@ -1,4 +1,21 @@
+---
+order: 1
+parent:
+  title: Tendermint Core
+  order: 4
+---
+
 # Overview
 
-See the side-bar for details on the various features of Tendermint Core.
+This section dives into the internals of Tendermint the implementation.
 
+- [Using Tendermint](./using-tendermint.md)
+- [Configuration](./configuration.md)
+- [Running in Production](./running-in-production.md)
+- [Metrics](./metrics.md)
+- [Validators](./validators.md)
+- [Block Structure](./block-structure.md)
+- [RPC](./rpc.md)
+- [Fast Sync](./fast-sync.md)
+- [Mempool](./mempool.md)
+- [Light Client](./light-client.md)

@@ -19,6 +19,9 @@ type Metrics struct {
 	// Height of the chain.
 	Height metrics.Gauge
 
+	// ValidatorLastSignedHeight of a validator.
+	ValidatorLastSignedHeight metrics.Gauge
+
 	// Number of rounds.
 	Rounds metrics.Gauge
 
@@ -26,6 +29,10 @@ type Metrics struct {
 	Validators metrics.Gauge
 	// Total power of all validators.
 	ValidatorsPower metrics.Gauge
+	// Power of a validator.
+	ValidatorPower metrics.Gauge
+	// Amount of blocks missed by a validator.
+	ValidatorMissedBlocks metrics.Gauge
 	// Number of validators who did not sign.
 	MissingValidators metrics.Gauge
 	// Total power of the missing validators.
@@ -48,6 +55,8 @@ type Metrics struct {
 	CommittedHeight metrics.Gauge
 	// Whether or not a node is fast syncing. 1 if yes, 0 if no.
 	FastSyncing metrics.Gauge
+	// Whether or not a node is state syncing. 1 if yes, 0 if no.
+	StateSyncing metrics.Gauge
 
 	// Number of blockparts transmitted by peer.
 	BlockParts metrics.Counter
@@ -81,12 +90,30 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "validators",
 			Help:      "Number of validators.",
 		}, labels).With(labelsAndValues...),
+		ValidatorLastSignedHeight: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "validator_last_signed_height",
+			Help:      "Last signed height for a validator",
+		}, append(labels, "validator_address")).With(labelsAndValues...),
+		ValidatorMissedBlocks: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "validator_missed_blocks",
+			Help:      "Total missed blocks for a validator",
+		}, append(labels, "validator_address")).With(labelsAndValues...),
 		ValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "validators_power",
 			Help:      "Total power of all validators.",
 		}, labels).With(labelsAndValues...),
+		ValidatorPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "validator_power",
+			Help:      "Power of a validator",
+		}, append(labels, "validator_address")).With(labelsAndValues...),
 		MissingValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
@@ -149,6 +176,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "fast_syncing",
 			Help:      "Whether or not a node is fast syncing. 1 if yes, 0 if no.",
 		}, labels).With(labelsAndValues...),
+		StateSyncing: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "state_syncing",
+			Help:      "Whether or not a node is state syncing. 1 if yes, 0 if no.",
+		}, labels).With(labelsAndValues...),
 		BlockParts: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
@@ -163,10 +196,14 @@ func NopMetrics() *Metrics {
 	return &Metrics{
 		Height: discard.NewGauge(),
 
+		ValidatorLastSignedHeight: discard.NewGauge(),
+
 		Rounds: discard.NewGauge(),
 
 		Validators:               discard.NewGauge(),
 		ValidatorsPower:          discard.NewGauge(),
+		ValidatorPower:           discard.NewGauge(),
+		ValidatorMissedBlocks:    discard.NewGauge(),
 		MissingValidators:        discard.NewGauge(),
 		MissingValidatorsPower:   discard.NewGauge(),
 		ByzantineValidators:      discard.NewGauge(),
@@ -179,6 +216,7 @@ func NopMetrics() *Metrics {
 		TotalTxs:        discard.NewGauge(),
 		CommittedHeight: discard.NewGauge(),
 		FastSyncing:     discard.NewGauge(),
+		StateSyncing:    discard.NewGauge(),
 		BlockParts:      discard.NewCounter(),
 	}
 }

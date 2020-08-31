@@ -3,8 +3,8 @@ package consensus
 import (
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 var (
@@ -29,7 +29,7 @@ type TimeoutTicker interface {
 // Timeouts are scheduled along the tickChan,
 // and fired on the tockChan.
 type timeoutTicker struct {
-	cmn.BaseService
+	service.BaseService
 
 	timer    *time.Timer
 	tickChan chan timeoutInfo // for scheduling timeouts
@@ -43,12 +43,12 @@ func NewTimeoutTicker() TimeoutTicker {
 		tickChan: make(chan timeoutInfo, tickTockBufferSize),
 		tockChan: make(chan timeoutInfo, tickTockBufferSize),
 	}
-	tt.BaseService = *cmn.NewBaseService(nil, "TimeoutTicker", tt)
+	tt.BaseService = *service.NewBaseService(nil, "TimeoutTicker", tt)
 	tt.stopTimer() // don't want to fire until the first scheduled timeout
 	return tt
 }
 
-// OnStart implements cmn.Service. It starts the timeout routine.
+// OnStart implements service.Service. It starts the timeout routine.
 func (t *timeoutTicker) OnStart() error {
 
 	go t.timeoutRoutine()
@@ -56,7 +56,7 @@ func (t *timeoutTicker) OnStart() error {
 	return nil
 }
 
-// OnStop implements cmn.Service. It stops the timeout routine.
+// OnStop implements service.Service. It stops the timeout routine.
 func (t *timeoutTicker) OnStop() {
 	t.BaseService.OnStop()
 	t.stopTimer()

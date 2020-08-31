@@ -16,7 +16,7 @@ func TestLoggerLogsItsErrors(t *testing.T) {
 	logger.Info("foo", "baz baz", "bar")
 	msg := strings.TrimSpace(buf.String())
 	if !strings.Contains(msg, "foo") {
-		t.Errorf("Expected logger msg to contain ErrInvalidKey, got %s", msg)
+		t.Errorf("expected logger msg to contain ErrInvalidKey, got %s", msg)
 	}
 }
 

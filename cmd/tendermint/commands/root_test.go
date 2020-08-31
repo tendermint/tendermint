@@ -15,7 +15,7 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
 var (
@@ -140,7 +140,7 @@ func TestRootConfig(t *testing.T) {
 
 		// XXX: path must match cfg.defaultConfigPath
 		configFilePath := filepath.Join(defaultRoot, "config")
-		err := cmn.EnsureDir(configFilePath, 0700)
+		err := tmos.EnsureDir(configFilePath, 0700)
 		require.Nil(t, err)
 
 		// write the non-defaults to a different path
@@ -168,5 +168,5 @@ func WriteConfigVals(dir string, vals map[string]string) error {
 		data += fmt.Sprintf("%s = \"%s\"\n", k, v)
 	}
 	cfile := filepath.Join(dir, "config.toml")
-	return ioutil.WriteFile(cfile, []byte(data), 0666)
+	return ioutil.WriteFile(cfile, []byte(data), 0600)
 }

@@ -1,7 +1,6 @@
 package abcicli_test
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -12,40 +11,31 @@ import (
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/libs/service"
 )
-
-func TestSocketClientStopForErrorDeadlock(t *testing.T) {
-	c := abcicli.NewSocketClient(":80", false)
-	err := errors.New("foo-tendermint")
-
-	// See Issue https://github.com/tendermint/abci/issues/114
-	doneChan := make(chan bool)
-	go func() {
-		defer close(doneChan)
-		c.StopForError(err)
-		c.StopForError(err)
-	}()
-
-	select {
-	case <-doneChan:
-	case <-time.After(time.Second * 4):
-		t.Fatalf("Test took too long, potential deadlock still exists")
-	}
-}
 
 func TestProperSyncCalls(t *testing.T) {
 	app := slowApp{}
 
 	s, c := setupClientServer(t, app)
-	defer s.Stop()
-	defer c.Stop()
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
+	t.Cleanup(func() {
+		if err := c.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	resp := make(chan error, 1)
 	go func() {
 		// This is BeginBlockSync unrolled....
 		reqres := c.BeginBlockAsync(types.RequestBeginBlock{})
-		c.FlushSync()
+		err := c.FlushSync()
+		require.NoError(t, err)
 		res := reqres.Response.GetBeginBlock()
 		require.NotNil(t, res)
 		resp <- c.Error()
@@ -64,8 +54,16 @@ func TestHangingSyncCalls(t *testing.T) {
 	app := slowApp{}
 
 	s, c := setupClientServer(t, app)
-	defer s.Stop()
-	defer c.Stop()
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Log(err)
+		}
+	})
+	t.Cleanup(func() {
+		if err := c.Stop(); err != nil {
+			t.Log(err)
+		}
+	})
 
 	resp := make(chan error, 1)
 	go func() {
@@ -76,7 +74,8 @@ func TestHangingSyncCalls(t *testing.T) {
 		// no response yet from server
 		time.Sleep(20 * time.Millisecond)
 		// kill the server, so the connections break
-		s.Stop()
+		err := s.Stop()
+		require.NoError(t, err)
 
 		// wait for the response from BeginBlock
 		reqres.Wait()
@@ -94,9 +93,9 @@ func TestHangingSyncCalls(t *testing.T) {
 }
 
 func setupClientServer(t *testing.T, app types.Application) (
-	cmn.Service, abcicli.Client) {
+	service.Service, abcicli.Client) {
 	// some port between 20k and 30k
-	port := 20000 + cmn.RandInt32()%10000
+	port := 20000 + tmrand.Int32()%10000
 	addr := fmt.Sprintf("localhost:%d", port)
 
 	s, err := server.NewServer(addr, "socket", app)

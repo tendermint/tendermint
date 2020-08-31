@@ -1,3 +1,7 @@
+---
+order: 4
+---
+
 # Running in production
 
 ## Database
@@ -6,7 +10,7 @@ By default, Tendermint uses the `syndtr/goleveldb` package for its in-process
 key-value database. Unfortunately, this implementation of LevelDB seems to suffer under heavy load (see
 [#226](https://github.com/syndtr/goleveldb/issues/226)). It may be best to
 install the real C-implementation of LevelDB and compile Tendermint to use
-that using `make build_c`. See the [install instructions](../introduction/install.md) for details.
+that using `make build TENDERMINT_BUILD_OPTIONS=cleveldb`. See the [install instructions](../introduction/install.md) for details.
 
 Tendermint keeps multiple distinct databases in the `$TMROOT/data`:
 
@@ -17,34 +21,26 @@ Tendermint keeps multiple distinct databases in the `$TMROOT/data`:
 - `state.db`: Stores the current blockchain state (ie. height, validators,
   consensus params). Only grows if consensus params or validators change. Also
   used to temporarily store intermediate results during block processing.
-- `tx_index.db`: Indexes txs (and their results) by tx hash and by DeliverTx result tags.
+- `tx_index.db`: Indexes txs (and their results) by tx hash and by DeliverTx result events.
 
-By default, Tendermint will only index txs by their hash, not by their DeliverTx
-result tags. See [indexing transactions](../app-dev/indexing-transactions.md) for
+By default, Tendermint will only index txs by their hash and height, not by their DeliverTx
+result events. See [indexing transactions](../app-dev/indexing-transactions.md) for
 details.
 
-There is no current strategy for pruning the databases. Consider reducing
-block production by [controlling empty blocks](../tendermint-core/using-tendermint.md#no-empty-blocks)
-or by increasing the `consensus.timeout_commit` param. Note both of these are
-local settings and not enforced by the consensus.
+Applications can expose block pruning strategies to the node operator. Please read the documentation of your application
+to find out more details.
 
-We're working on [state
-syncing](https://github.com/tendermint/tendermint/issues/828),
-which will enable history to be thrown away
-and recent application state to be directly synced. We'll need to develop solutions
-for archival nodes that allow queries on historical transactions and states.
-The Cosmos project has had much success just dumping the latest state of a
-blockchain to disk and starting a new chain from that state.
+Applications can use State Sync <!--- TODO: add link to state sync doc when created ---> to help nodes bootstrap quickly.
 
 ## Logging
 
-Default logging level (`main:info,state:info,*:`) should suffice for
+Default logging level (`log_level = "main:info,state:info,statesync:info,*:error"`) should suffice for
 normal operation mode. Read [this
 post](https://blog.cosmos.network/one-of-the-exciting-new-features-in-0-10-0-release-is-smart-log-level-flag-e2506b4ab756)
 for details on how to configure `log_level` config variable. Some of the
 modules can be found [here](./how-to-read-logs.md#list-of-modules). If
 you're trying to debug Tendermint or asked to provide logs with debug
-logging level, you can do so by running tendermint with
+logging level, you can do so by running Tendermint with
 `--log_level="*:debug"`.
 
 ## Write Ahead Logs (WAL)
@@ -81,9 +77,8 @@ For the above reasons, the `mempool.wal` is disabled by default. To enable, set
 ## DOS Exposure and Mitigation
 
 Validators are supposed to setup [Sentry Node
-Architecture](https://blog.cosmos.network/tendermint-explained-bringing-bft-based-pos-to-the-public-blockchain-domain-f22e274a0fdb)
-to prevent Denial-of-service attacks. You can read more about it
-[here](../interviews/tendermint-bft.md).
+Architecture](./validators.md)
+to prevent Denial-of-service attacks.
 
 ### P2P
 
@@ -92,68 +87,75 @@ connection has `MaxPacketMsgPayloadSize`, which is the maximum packet
 size and bounded send & receive queues. One can impose restrictions on
 send & receive rate per connection (`SendRate`, `RecvRate`).
 
+The number of open P2P connections can become quite large, and hit the operating system's open
+file limit (since TCP connections are considered files on UNIX-based systems). Nodes should be
+given a sizable open file limit, e.g. 8192, via `ulimit -n 8192` or other deployment-specific
+mechanisms.
+
 ### RPC
 
 Endpoints returning multiple entries are limited by default to return 30
-elements (100 max). See the [RPC Documentation](https://tendermint.com/rpc/)
+elements (100 max). See the [RPC Documentation](https://docs.tendermint.com/master/rpc/)
 for more information.
 
 Rate-limiting and authentication are another key aspects to help protect
-against DOS attacks. While in the future we may implement these
-features, for now, validators are supposed to use external tools like
+against DOS attacks. Validators are supposed to use external tools like
 [NGINX](https://www.nginx.com/blog/rate-limiting-nginx/) or
-[traefik](https://docs.traefik.io/configuration/commons/#rate-limiting)
+[traefik](https://docs.traefik.io/middlewares/ratelimit/)
 to achieve the same things.
 
 ## Debugging Tendermint
 
-If you ever have to debug Tendermint, the first thing you should
-probably do is to check out the logs. See [How to read
-logs](./how-to-read-logs.md), where we explain what certain log
-statements mean.
+If you ever have to debug Tendermint, the first thing you should probably do is
+check out the logs. See [How to read logs](./how-to-read-logs.md), where we
+explain what certain log statements mean.
 
-If, after skimming through the logs, things are not clear still, the
-next thing to try is query the /status RPC endpoint. It provides the
-necessary info: whenever the node is syncing or not, what height it is
-on, etc.
+If, after skimming through the logs, things are not clear still, the next thing
+to try is querying the `/status` RPC endpoint. It provides the necessary info:
+whenever the node is syncing or not, what height it is on, etc.
 
-```
+```bash
 curl http(s)://{ip}:{rpcPort}/status
 ```
 
-`dump_consensus_state` will give you a detailed overview of the
-consensus state (proposer, lastest validators, peers states). From it,
-you should be able to figure out why, for example, the network had
-halted.
+`/dump_consensus_state` will give you a detailed overview of the consensus
+state (proposer, latest validators, peers states). From it, you should be able
+to figure out why, for example, the network had halted.
 
-```
+```bash
 curl http(s)://{ip}:{rpcPort}/dump_consensus_state
 ```
 
-There is a reduced version of this endpoint - `consensus_state`, which
-returns just the votes seen at the current height.
+There is a reduced version of this endpoint - `/consensus_state`, which returns
+just the votes seen at the current height.
 
-- [Github Issues](https://github.com/tendermint/tendermint/issues)
-- [StackOverflow
-  questions](https://stackoverflow.com/questions/tagged/tendermint)
+If, after consulting with the logs and above endpoints, you still have no idea
+what's happening, consider using `tendermint debug kill` sub-command. This
+command will scrap all the available info and kill the process. See
+[Debugging](../tools/debugging.md) for the exact format.
+
+You can inspect the resulting archive yourself or create an issue on
+[Github](https://github.com/tendermint/tendermint). Before opening an issue
+however, be sure to check if there's [no existing
+issue](https://github.com/tendermint/tendermint/issues) already.
 
 ## Monitoring Tendermint
 
-Each Tendermint instance has a standard `/health` RPC endpoint, which
-responds with 200 (OK) if everything is fine and 500 (or no response) -
-if something is wrong.
+Each Tendermint instance has a standard `/health` RPC endpoint, which responds
+with 200 (OK) if everything is fine and 500 (or no response) - if something is
+wrong.
 
 Other useful endpoints include mentioned earlier `/status`, `/net_info` and
 `/validators`.
 
-We have a small tool, called `tm-monitor`, which outputs information from
-the endpoints above plus some statistics. The tool can be found
-[here](https://github.com/tendermint/tendermint/tree/master/tools/tm-monitor).
-
 Tendermint also can report and serve Prometheus metrics. See
 [Metrics](./metrics.md).
 
-## What happens when my app dies?
+`tendermint debug dump` sub-command can be used to periodically dump useful
+information into an archive. See [Debugging](../tools/debugging.md) for more
+information.
+
+## What happens when my app dies
 
 You are supposed to run Tendermint under a [process
 supervisor](https://en.wikipedia.org/wiki/Process_supervision) (like
@@ -168,7 +170,7 @@ order of restart does not matter for it.
 ## Signal handling
 
 We catch SIGINT and SIGTERM and try to clean up nicely. For other
-signals we use the default behaviour in Go: [Default behavior of signals
+signals we use the default behavior in Go: [Default behavior of signals
 in Go
 programs](https://golang.org/pkg/os/signal/#hdr-Default_behavior_of_signals_in_Go_programs).
 
@@ -194,11 +196,11 @@ Other causes can be:
 - Operating system bugs
 - Admin error (e.g., directly modifying Tendermint data-directory contents)
 
-(Source: https://wiki.postgresql.org/wiki/Corruption)
+(Source: <https://wiki.postgresql.org/wiki/Corruption>)
 
 ### WAL Corruption
 
-If consensus WAL is corrupted at the lastest height and you are trying to start
+If consensus WAL is corrupted at the latest height and you are trying to start
 Tendermint, replay will fail with panic.
 
 Recovering from data corruption can be hard and time-consuming. Here are two approaches you can take:
@@ -208,47 +210,46 @@ Recovering from data corruption can be hard and time-consuming. Here are two app
 
 1) Create a backup of the corrupted WAL file:
 
-```
-cp "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal_backup
-```
+    ```sh
+    cp "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal_backup
+    ```
 
-2. Use `./scripts/wal2json` to create a human-readable version
+2) Use `./scripts/wal2json` to create a human-readable version:
 
-```
-./scripts/wal2json/wal2json "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal
-```
+    ```sh
+    ./scripts/wal2json/wal2json "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal
+    ```
 
-3. Search for a "CORRUPTED MESSAGE" line.
-4. By looking at the previous message and the message after the corrupted one
+3)  Search for a "CORRUPTED MESSAGE" line.
+4)  By looking at the previous message and the message after the corrupted one
    and looking at the logs, try to rebuild the message. If the consequent
    messages are marked as corrupted too (this may happen if length header
    got corrupted or some writes did not make it to the WAL ~ truncation),
    then remove all the lines starting from the corrupted one and restart
    Tendermint.
 
-```
-$EDITOR /tmp/corrupted_wal
-```
+    ```sh
+    $EDITOR /tmp/corrupted_wal
+    ```
 
-5. After editing, convert this file back into binary form by running:
+5)  After editing, convert this file back into binary form by running:
 
-```
-./scripts/json2wal/json2wal /tmp/corrupted_wal  $TMHOME/data/cs.wal/wal
-```
+    ```sh
+    ./scripts/json2wal/json2wal /tmp/corrupted_wal  $TMHOME/data/cs.wal/wal
+    ```
 
 ## Hardware
 
 ### Processor and Memory
 
-While actual specs vary depending on the load and validators count,
-minimal requirements are:
+While actual specs vary depending on the load and validators count, minimal
+requirements are:
 
 - 1GB RAM
 - 25GB of disk space
 - 1.4 GHz CPU
 
-SSD disks are preferable for applications with high transaction
-throughput.
+SSD disks are preferable for applications with high transaction throughput.
 
 Recommended:
 
@@ -256,21 +257,34 @@ Recommended:
 - 100GB SSD
 - x64 2.0 GHz 2v CPU
 
-While for now, Tendermint stores all the history and it may require
-significant disk space over time, we are planning to implement state
-syncing (See
-[this issue](https://github.com/tendermint/tendermint/issues/828)). So,
-storing all the past blocks will not be necessary.
+While for now, Tendermint stores all the history and it may require significant
+disk space over time, we are planning to implement state syncing (See [this
+issue](https://github.com/tendermint/tendermint/issues/828)). So, storing all
+the past blocks will not be necessary.
+
+### Validator signing on 32 bit architectures (or ARM)
+
+Both our `ed25519` and `secp256k1` implementations require constant time
+`uint64` multiplication. Non-constant time crypto can (and has) leaked
+private keys on both `ed25519` and `secp256k1`. This doesn't exist in hardware
+on 32 bit x86 platforms ([source](https://bearssl.org/ctmul.html)), and it
+depends on the compiler to enforce that it is constant time. It's unclear at
+this point whenever the Golang compiler does this correctly for all
+implementations.
+
+**We do not support nor recommend running a validator on 32 bit architectures OR
+the "VIA Nano 2000 Series", and the architectures in the ARM section rated
+"S-".**
 
 ### Operating Systems
 
-Tendermint can be compiled for a wide range of operating systems thanks
-to Go language (the list of \$OS/\$ARCH pairs can be found
+Tendermint can be compiled for a wide range of operating systems thanks to Go
+language (the list of \$OS/\$ARCH pairs can be found
 [here](https://golang.org/doc/install/source#environment)).
 
-While we do not favor any operation system, more secure and stable Linux
-server distributions (like Centos) should be preferred over desktop
-operation systems (like Mac OS).
+While we do not favor any operation system, more secure and stable Linux server
+distributions (like Centos) should be preferred over desktop operation systems
+(like Mac OS).
 
 ### Miscellaneous
 
@@ -289,7 +303,7 @@ If you are going to use Tendermint in a private domain and you have a
 private high-speed network among your peers, it makes sense to lower
 flush throttle timeout and increase other params.
 
-```
+```toml
 [p2p]
 
 send_rate=20000000 # 2MB/s
@@ -352,9 +366,11 @@ these limits.
 
 [Sysctls to tune the system to be able to open more connections](https://github.com/satori-com/tcpkali/blob/master/doc/tcpkali.man.md#sysctls-to-tune-the-system-to-be-able-to-open-more-connections)
 
+The process file limits must also be increased, e.g. via `ulimit -n 8192`.
+
 ...for N connections, such as 50k:
 
-```
+```md
 kern.maxfiles=10000+2*N         # BSD
 kern.maxfilesperproc=100+2*N    # BSD
 kern.ipc.maxsockets=10000+2*N   # BSD

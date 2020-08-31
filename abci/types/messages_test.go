@@ -9,7 +9,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 func TestMarshalJSON(t *testing.T) {
@@ -24,7 +24,7 @@ func TestMarshalJSON(t *testing.T) {
 		Events: []Event{
 			{
 				Type: "testEvent",
-				Attributes: []cmn.KVPair{
+				Attributes: []EventAttribute{
 					{Key: []byte("pho"), Value: []byte("bo")},
 				},
 			},
@@ -55,14 +55,15 @@ func TestWriteReadMessageSimple(t *testing.T) {
 		err = ReadMessage(buf, msg)
 		assert.Nil(t, err)
 
-		assert.Equal(t, c, msg)
+		assert.True(t, proto.Equal(c, msg))
 	}
 }
 
 func TestWriteReadMessage(t *testing.T) {
 	cases := []proto.Message{
-		&Header{
-			NumTxs: 4,
+		&tmproto.Header{
+			Height:  4,
+			ChainID: "test",
 		},
 		// TODO: add the rest
 	}
@@ -72,11 +73,11 @@ func TestWriteReadMessage(t *testing.T) {
 		err := WriteMessage(c, buf)
 		assert.Nil(t, err)
 
-		msg := new(Header)
+		msg := new(tmproto.Header)
 		err = ReadMessage(buf, msg)
 		assert.Nil(t, err)
 
-		assert.Equal(t, c, msg)
+		assert.True(t, proto.Equal(c, msg))
 	}
 }
 
@@ -90,7 +91,7 @@ func TestWriteReadMessage2(t *testing.T) {
 			Events: []Event{
 				{
 					Type: "testEvent",
-					Attributes: []cmn.KVPair{
+					Attributes: []EventAttribute{
 						{Key: []byte("abc"), Value: []byte("def")},
 					},
 				},
@@ -108,6 +109,6 @@ func TestWriteReadMessage2(t *testing.T) {
 		err = ReadMessage(buf, msg)
 		assert.Nil(t, err)
 
-		assert.Equal(t, c, msg)
+		assert.True(t, proto.Equal(c, msg))
 	}
 }

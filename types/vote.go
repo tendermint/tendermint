@@ -9,40 +9,40 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/protoio"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 const (
 	// MaxVoteBytes is a maximum vote size (including amino overhead).
-	MaxVoteBytes int64  = 223
+	MaxVoteBytes int64  = 209
 	nilVoteStr   string = "nil-Vote"
 )
 
 var (
-	ErrVoteUnexpectedStep            = errors.New("Unexpected step")
-	ErrVoteInvalidValidatorIndex     = errors.New("Invalid validator index")
-	ErrVoteInvalidValidatorAddress   = errors.New("Invalid validator address")
-	ErrVoteInvalidSignature          = errors.New("Invalid signature")
-	ErrVoteInvalidBlockHash          = errors.New("Invalid block hash")
-	ErrVoteNonDeterministicSignature = errors.New("Non-deterministic signature")
-	ErrVoteNil                       = errors.New("Nil vote")
+	ErrVoteUnexpectedStep            = errors.New("unexpected step")
+	ErrVoteInvalidValidatorIndex     = errors.New("invalid validator index")
+	ErrVoteInvalidValidatorAddress   = errors.New("invalid validator address")
+	ErrVoteInvalidSignature          = errors.New("invalid signature")
+	ErrVoteInvalidBlockHash          = errors.New("invalid block hash")
+	ErrVoteNonDeterministicSignature = errors.New("non-deterministic signature")
+	ErrVoteNil                       = errors.New("nil vote")
 )
 
 type ErrVoteConflictingVotes struct {
-	*DuplicateVoteEvidence
+	VoteA *Vote
+	VoteB *Vote
 }
 
 func (err *ErrVoteConflictingVotes) Error() string {
-	return fmt.Sprintf("Conflicting votes from validator %v", err.PubKey.Address())
+	return fmt.Sprintf("conflicting votes from validator %X", err.VoteA.ValidatorAddress)
 }
 
-func NewConflictingVoteError(val *Validator, voteA, voteB *Vote) *ErrVoteConflictingVotes {
+func NewConflictingVoteError(vote1, vote2 *Vote) *ErrVoteConflictingVotes {
 	return &ErrVoteConflictingVotes{
-		&DuplicateVoteEvidence{
-			PubKey: val.PubKey,
-			VoteA:  voteA,
-			VoteB:  voteB,
-		},
+		VoteA: vote1,
+		VoteB: vote2,
 	}
 }
 
@@ -52,34 +52,58 @@ type Address = crypto.Address
 // Vote represents a prevote, precommit, or commit vote from validators for
 // consensus.
 type Vote struct {
-	Type             SignedMsgType `json:"type"`
-	Height           int64         `json:"height"`
-	Round            int           `json:"round"`
-	BlockID          BlockID       `json:"block_id"` // zero if vote is nil.
-	Timestamp        time.Time     `json:"timestamp"`
-	ValidatorAddress Address       `json:"validator_address"`
-	ValidatorIndex   int           `json:"validator_index"`
-	Signature        []byte        `json:"signature"`
+	Type             tmproto.SignedMsgType `json:"type"`
+	Height           int64                 `json:"height"`
+	Round            int32                 `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
+	BlockID          BlockID               `json:"block_id"` // zero if vote is nil.
+	Timestamp        time.Time             `json:"timestamp"`
+	ValidatorAddress Address               `json:"validator_address"`
+	ValidatorIndex   int32                 `json:"validator_index"`
+	Signature        []byte                `json:"signature"`
 
 	SideTxResults []SideTxResult `json:"side_tx_results"` // side-tx result [peppermint]
 }
 
 // CommitSig converts the Vote to a CommitSig.
-// If the Vote is nil, the CommitSig will be nil.
-func (vote *Vote) CommitSig() *CommitSig {
+func (vote *Vote) CommitSig() CommitSig {
 	if vote == nil {
-		return nil
+		return NewCommitSigAbsent()
 	}
-	cs := CommitSig(*vote)
-	return &cs
+
+	var blockIDFlag BlockIDFlag
+	switch {
+	case vote.BlockID.IsComplete():
+		blockIDFlag = BlockIDFlagCommit
+	case vote.BlockID.IsZero():
+		blockIDFlag = BlockIDFlagNil
+	default:
+		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
+	}
+
+	return CommitSig{
+		BlockIDFlag:      blockIDFlag,
+		ValidatorAddress: vote.ValidatorAddress,
+		Timestamp:        vote.Timestamp,
+		Signature:        vote.Signature,
+	}
 }
 
-func (vote *Vote) SignBytes(chainID string) []byte {
-	// [peppermint] converted from amino to rlp
-	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeVote(chainID, vote))
+// [Upgraded Tendermint]
+// VoteSignBytes returns the proto-encoding of the canonicalized Vote, for
+// signing. Panics is the marshaling fails.
+//
+// The encoded Protobuf message is varint length-prefixed (using MarshalDelimited)
+// for backwards-compatibility with the Amino encoding, due to e.g. hardware
+// devices that rely on this encoding.
+//
+// See CanonicalizeVote
+func VoteSignBytes(chainID string, vote *tmproto.Vote) []byte {
+	pb := CanonicalizeVote(chainID, vote)
+	bz, err := protoio.MarshalDelimited(&pb)
 	if err != nil {
 		panic(err)
 	}
+
 	return bz
 }
 
@@ -88,15 +112,27 @@ func (vote *Vote) Copy() *Vote {
 	return &voteCopy
 }
 
+// String returns a string representation of Vote.
+//
+// 1. validator index
+// 2. first 6 bytes of validator address
+// 3. height
+// 4. round,
+// 5. type byte
+// 6. type string
+// 7. first 6 bytes of block hash
+// 8. first 6 bytes of signature
+// 9. timestamp
 func (vote *Vote) String() string {
 	if vote == nil {
 		return nilVoteStr
 	}
+
 	var typeString string
 	switch vote.Type {
-	case PrevoteType:
+	case tmproto.PrevoteType:
 		typeString = "Prevote"
-	case PrecommitType:
+	case tmproto.PrecommitType:
 		typeString = "Precommit"
 	default:
 		panic("Unknown vote type")
@@ -113,13 +149,13 @@ func (vote *Vote) String() string {
 
 	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s [%s]}",
 		vote.ValidatorIndex,
-		cmn.Fingerprint(vote.ValidatorAddress),
+		tmbytes.Fingerprint(vote.ValidatorAddress),
 		vote.Height,
 		vote.Round,
 		vote.Type,
 		typeString,
-		cmn.Fingerprint(vote.BlockID.Hash),
-		cmn.Fingerprint(vote.Signature),
+		tmbytes.Fingerprint(vote.BlockID.Hash),
+		tmbytes.Fingerprint(vote.Signature),
 		CanonicalTime(vote.Timestamp),
 		sideTxResults,
 	)
@@ -129,8 +165,8 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 	if !bytes.Equal(pubKey.Address(), vote.ValidatorAddress) {
 		return ErrVoteInvalidValidatorAddress
 	}
-
-	if !pubKey.VerifyBytes(vote.SignBytes(chainID), vote.Signature) {
+	v := vote.ToProto()
+	if !pubKey.VerifySignature(VoteSignBytes(chainID, v), vote.Signature) {
 		return ErrVoteInvalidSignature
 	}
 	return nil
@@ -139,38 +175,43 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 // ValidateBasic performs basic validation.
 func (vote *Vote) ValidateBasic() error {
 	if !IsVoteTypeValid(vote.Type) {
-		return errors.New("Invalid Type")
+		return errors.New("invalid Type")
 	}
+
 	if vote.Height < 0 {
-		return errors.New("Negative Height")
+		return errors.New("negative Height")
 	}
+
 	if vote.Round < 0 {
-		return errors.New("Negative Round")
+		return errors.New("negative Round")
 	}
 
 	// NOTE: Timestamp validation is subtle and handled elsewhere.
 
 	if err := vote.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("Wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %v", err)
 	}
+
 	// BlockID.ValidateBasic would not err if we for instance have an empty hash but a
 	// non-empty PartsSetHeader:
 	if !vote.BlockID.IsZero() && !vote.BlockID.IsComplete() {
-		return fmt.Errorf("BlockID must be either empty or complete, got: %v", vote.BlockID)
+		return fmt.Errorf("blockID must be either empty or complete, got: %v", vote.BlockID)
 	}
+
 	if len(vote.ValidatorAddress) != crypto.AddressSize {
-		return fmt.Errorf("Expected ValidatorAddress size to be %d bytes, got %d bytes",
+		return fmt.Errorf("expected ValidatorAddress size to be %d bytes, got %d bytes",
 			crypto.AddressSize,
 			len(vote.ValidatorAddress),
 		)
 	}
 	if vote.ValidatorIndex < 0 {
-		return errors.New("Negative ValidatorIndex")
+		return errors.New("negative ValidatorIndex")
 	}
 	if len(vote.Signature) == 0 {
-		return errors.New("Signature is missing")
+		return errors.New("signature is missing")
 	}
 
+	// [Upgraded Tendermint]
 	if len(vote.SideTxResults) > 0 {
 		for _, s := range vote.SideTxResults {
 			// side-tx response sig should be empty or valid 65 bytes
@@ -193,4 +234,48 @@ func (vote *Vote) ValidateBasic() error {
 	// 	return fmt.Errorf("Signature is too big (max: %d)", MaxSignatureSize)
 	// }
 	return nil
+}
+
+// ToProto converts the handwritten type to proto generated type
+// return type, nil if everything converts safely, otherwise nil, error
+func (vote *Vote) ToProto() *tmproto.Vote {
+	if vote == nil {
+		return nil
+	}
+
+	return &tmproto.Vote{
+		Type:             vote.Type,
+		Height:           vote.Height,
+		Round:            vote.Round,
+		BlockID:          vote.BlockID.ToProto(),
+		Timestamp:        vote.Timestamp,
+		ValidatorAddress: vote.ValidatorAddress,
+		ValidatorIndex:   vote.ValidatorIndex,
+		Signature:        vote.Signature,
+	}
+}
+
+//FromProto converts a proto generetad type to a handwritten type
+// return type, nil if everything converts safely, otherwise nil, error
+func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
+	if pv == nil {
+		return nil, errors.New("nil vote")
+	}
+
+	blockID, err := BlockIDFromProto(&pv.BlockID)
+	if err != nil {
+		return nil, err
+	}
+
+	vote := new(Vote)
+	vote.Type = pv.Type
+	vote.Height = pv.Height
+	vote.Round = pv.Round
+	vote.BlockID = *blockID
+	vote.Timestamp = pv.Timestamp
+	vote.ValidatorAddress = pv.ValidatorAddress
+	vote.ValidatorIndex = pv.ValidatorIndex
+	vote.Signature = pv.Signature
+
+	return vote, vote.ValidateBasic()
 }

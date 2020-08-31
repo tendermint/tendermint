@@ -5,12 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	amino "github.com/tendermint/go-amino"
-
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 // Tx is an arbitrary byte array.
@@ -48,6 +46,7 @@ func (txs Txs) Hash() []byte {
 		}
 		return merkle.SimpleHashFromByteSlices(txBzs)
 	}
+
 }
 
 // Index returns the index of this transaction in the list, or -1 if not found
@@ -79,7 +78,7 @@ func (txs Txs) Proof(i int) TxProof {
 	for i := 0; i < l; i++ {
 		bzs[i] = txs[i].Hash()
 	}
-	root, proofs := merkle.SimpleProofsFromByteSlices(bzs)
+	root, proofs := merkle.ProofsFromByteSlices(bzs)
 
 	return TxProof{
 		RootHash: root,
@@ -90,9 +89,9 @@ func (txs Txs) Proof(i int) TxProof {
 
 // TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.
 type TxProof struct {
-	RootHash cmn.HexBytes       `json:"root_hash"`
-	Data     Tx                 `json:"data"`
-	Proof    merkle.SimpleProof `json:"proof"`
+	RootHash tmbytes.HexBytes `json:"root_hash"`
+	Data     Tx               `json:"data"`
+	Proof    merkle.Proof     `json:"proof"`
 }
 
 // Leaf returns the hash(tx), which is the leaf in the merkle tree which this proof refers to.
@@ -104,42 +103,45 @@ func (tp TxProof) Leaf() []byte {
 // and if the proof is internally consistent. Otherwise, it returns a sensible error.
 func (tp TxProof) Validate(dataHash []byte) error {
 	if !bytes.Equal(dataHash, tp.RootHash) {
-		return errors.New("Proof matches different data hash")
+		return errors.New("proof matches different data hash")
 	}
 	if tp.Proof.Index < 0 {
-		return errors.New("Proof index cannot be negative")
+		return errors.New("proof index cannot be negative")
 	}
 	if tp.Proof.Total <= 0 {
-		return errors.New("Proof total must be positive")
+		return errors.New("proof total must be positive")
 	}
 	valid := tp.Proof.Verify(tp.RootHash, tp.Leaf())
 	if valid != nil {
-		return errors.New("Proof is not internally consistent")
+		return errors.New("proof is not internally consistent")
 	}
 	return nil
 }
 
-// TxResult contains results of executing the transaction.
-//
-// One usage is indexing transaction results.
-type TxResult struct {
-	Height int64                  `json:"height"`
-	Index  uint32                 `json:"index"`
-	Tx     Tx                     `json:"tx"`
-	Result abci.ResponseDeliverTx `json:"result"`
-}
+func (tp TxProof) ToProto() tmproto.TxProof {
 
-// ComputeAminoOverhead calculates the overhead for amino encoding a transaction.
-// The overhead consists of varint encoding the field number and the wire type
-// (= length-delimited = 2), and another varint encoding the length of the
-// transaction.
-// The field number can be the field number of the particular transaction, or
-// the field number of the parenting struct that contains the transactions []Tx
-// as a field (this field number is repeated for each contained Tx).
-// If some []Tx are encoded directly (without a parenting struct), the default
-// fieldNum is also 1 (see BinFieldNum in amino.MarshalBinaryBare).
-func ComputeAminoOverhead(tx Tx, fieldNum int) int64 {
-	fnum := uint64(fieldNum)
-	typ3AndFieldNum := (fnum << 3) | uint64(amino.Typ3_ByteLength)
-	return int64(amino.UvarintSize(typ3AndFieldNum)) + int64(amino.UvarintSize(uint64(len(tx))))
+	pbProof := tp.Proof.ToProto()
+
+	pbtp := tmproto.TxProof{
+		RootHash: tp.RootHash,
+		Data:     tp.Data,
+		Proof:    pbProof,
+	}
+
+	return pbtp
+}
+func TxProofFromProto(pb tmproto.TxProof) (TxProof, error) {
+
+	pbProof, err := merkle.ProofFromProto(pb.Proof)
+	if err != nil {
+		return TxProof{}, err
+	}
+
+	pbtp := TxProof{
+		RootHash: pb.RootHash,
+		Data:     pb.Data,
+		Proof:    *pbProof,
+	}
+
+	return pbtp, nil
 }

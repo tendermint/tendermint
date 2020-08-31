@@ -3,9 +3,9 @@ package events
 
 import (
 	"fmt"
-	"sync"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 // ErrListenerWasRemoved is returned by AddEvent if the listener was removed.
@@ -43,7 +43,7 @@ type Fireable interface {
 // They can be removed by calling either RemoveListenerForEvent or
 // RemoveListener (for all events).
 type EventSwitch interface {
-	cmn.Service
+	service.Service
 	Fireable
 
 	AddListenerForEvent(listenerID, event string, cb EventCallback) error
@@ -52,9 +52,9 @@ type EventSwitch interface {
 }
 
 type eventSwitch struct {
-	cmn.BaseService
+	service.BaseService
 
-	mtx        sync.RWMutex
+	mtx        tmsync.RWMutex
 	eventCells map[string]*eventCell
 	listeners  map[string]*eventListener
 }
@@ -64,7 +64,7 @@ func NewEventSwitch() EventSwitch {
 		eventCells: make(map[string]*eventCell),
 		listeners:  make(map[string]*eventListener),
 	}
-	evsw.BaseService = *cmn.NewBaseService(nil, "EventSwitch", evsw)
+	evsw.BaseService = *service.NewBaseService(nil, "EventSwitch", evsw)
 	return evsw
 }
 
@@ -162,7 +162,7 @@ func (evsw *eventSwitch) FireEvent(event string, data EventData) {
 
 // eventCell handles keeping track of listener callbacks for a given event.
 type eventCell struct {
-	mtx       sync.RWMutex
+	mtx       tmsync.RWMutex
 	listeners map[string]EventCallback
 }
 
@@ -206,7 +206,7 @@ type EventCallback func(data EventData)
 type eventListener struct {
 	id string
 
-	mtx     sync.RWMutex
+	mtx     tmsync.RWMutex
 	removed bool
 	events  []string
 }

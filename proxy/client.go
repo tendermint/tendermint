@@ -1,18 +1,18 @@
 package proxy
 
 import (
-	"sync"
-
-	"github.com/pkg/errors"
+	"fmt"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/types"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
-// NewABCIClient returns newly connected client
+// ClientCreator creates new ABCI clients.
 type ClientCreator interface {
+	// NewABCIClient returns a new ABCI client.
 	NewABCIClient() (abcicli.Client, error)
 }
 
@@ -20,13 +20,15 @@ type ClientCreator interface {
 // local proxy uses a mutex on an in-proc app
 
 type localClientCreator struct {
-	mtx *sync.Mutex
+	mtx *tmsync.Mutex
 	app types.Application
 }
 
+// NewLocalClientCreator returns a ClientCreator for the given app,
+// which will be running locally.
 func NewLocalClientCreator(app types.Application) ClientCreator {
 	return &localClientCreator{
-		mtx: new(sync.Mutex),
+		mtx: new(tmsync.Mutex),
 		app: app,
 	}
 }
@@ -44,6 +46,9 @@ type remoteClientCreator struct {
 	mustConnect bool
 }
 
+// NewRemoteClientCreator returns a ClientCreator for the given address (e.g.
+// "192.168.0.1") and transport (e.g. "tcp"). Set mustConnect to true if you
+// want the client to connect before reporting success.
 func NewRemoteClientCreator(addr, transport string, mustConnect bool) ClientCreator {
 	return &remoteClientCreator{
 		addr:        addr,
@@ -55,22 +60,23 @@ func NewRemoteClientCreator(addr, transport string, mustConnect bool) ClientCrea
 func (r *remoteClientCreator) NewABCIClient() (abcicli.Client, error) {
 	remoteApp, err := abcicli.NewClient(r.addr, r.transport, r.mustConnect)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to connect to proxy")
+		return nil, fmt.Errorf("failed to connect to proxy: %w", err)
 	}
+
 	return remoteApp, nil
 }
 
-//-----------------------------------------------------------------
-// default
-
+// DefaultClientCreator returns a default ClientCreator, which will create a
+// local client if addr is one of: 'counter', 'counter_serial', 'kvstore',
+// 'persistent_kvstore' or 'noop', otherwise - a remote client.
 func DefaultClientCreator(addr, transport, dbDir string) ClientCreator {
 	switch addr {
 	case "counter":
-		return NewLocalClientCreator(counter.NewCounterApplication(false))
+		return NewLocalClientCreator(counter.NewApplication(false))
 	case "counter_serial":
-		return NewLocalClientCreator(counter.NewCounterApplication(true))
+		return NewLocalClientCreator(counter.NewApplication(true))
 	case "kvstore":
-		return NewLocalClientCreator(kvstore.NewKVStoreApplication())
+		return NewLocalClientCreator(kvstore.NewApplication())
 	case "persistent_kvstore":
 		return NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(dbDir))
 	case "noop":

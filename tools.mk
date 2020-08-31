@@ -35,52 +35,77 @@ mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 mkfile_dir := $(shell cd $(shell dirname $(mkfile_path)); pwd)
 
 ###
-# tools
+# Go tools
 ###
 
 TOOLS_DESTDIR  ?= $(GOPATH)/bin
 
 CERTSTRAP     = $(TOOLS_DESTDIR)/certstrap
 PROTOBUF     	= $(TOOLS_DESTDIR)/protoc
-GOX						= $(TOOLS_DESTDIR)/gox
 GOODMAN 			= $(TOOLS_DESTDIR)/goodman
 
 all: tools
+.PHONY: all
 
-tools: certstrap protobuf gox goodman
+tools: certstrap protobuf goodman
+.PHONY: tools
 
 check: check_tools
+.PHONY: check
 
 check_tools:
 	@# https://stackoverflow.com/a/25668869
 	@echo "Found tools: $(foreach tool,$(notdir $(GOTOOLS)),\
         $(if $(shell which $(tool)),$(tool),$(error "No $(tool) in PATH")))"
+.PHONY: check_tools
 
 certstrap: $(CERTSTRAP)
 $(CERTSTRAP):
 	@echo "Get Certstrap"
-	@go get github.com/square/certstrap@338204a88c4349b1c135eac1e8c14c693ad007da
+	@go get github.com/square/certstrap@v1.2.0
+.PHONY: certstrap
 
 protobuf: $(PROTOBUF)
 $(PROTOBUF):
-	@echo "Get Protobuf"
-	## protobuf v1.3.0
-	@go get github.com/gogo/protobuf/protoc-gen-gogo@0ca988a254f991240804bf9821f3450d87ccbb1b
-
-gox: $(GOX)
-$(GOX):
-	@echo "Get Gox"
-# used to build tm-monitor & tm-bench binaries
-	## gox v1.0.1
-	@go get github.com/mitchellh/gox@d8caaff5a9dc98f4cfa1fcce6e7265a04689f641
+	@echo "Get GoGo Protobuf"
+	@go get github.com/gogo/protobuf/protoc-gen-gogofaster@v1.3.1
+.PHONY: protobuf
 
 goodman: $(GOODMAN)
 $(GOODMAN):
 	@echo "Get Goodman"
 	@go get github.com/snikch/goodman/cmd/goodman@10e37e294daa3c9a90abded60ff9924bafab3888
+.PHONY: goodman
 
 tools-clean:
 	rm -f $(CERTSTRAP) $(PROTOBUF) $(GOX) $(GOODMAN)
 	rm -f tools-stamp
+	rm -rf /usr/local/include/google/protobuf
+	rm -f /usr/local/bin/protoc
+.PHONY: tooks-clean
 
-.PHONY: all tools tools-clean
+###
+# Non Go tools
+###
+
+# Choose protobuf binary based on OS (only works for 64bit Linux and Mac).
+# NOTE: On Mac, installation via brew (brew install protoc) might be favorable.
+PROTOC_ZIP=""
+ifneq ($(OS),Windows_NT)
+		UNAME_S := $(shell uname -s)
+		ifeq ($(UNAME_S),Linux)
+			PROTOC_ZIP="protoc-3.10.1-linux-x86_64.zip"
+		endif
+		ifeq ($(UNAME_S),Darwin)
+			PROTOC_ZIP="protoc-3.10.1-osx-x86_64.zip"
+		endif
+endif
+
+protoc:
+	@echo "Get Protobuf"
+	@echo "In case of any errors, please install directly from https://github.com/protocolbuffers/protobuf/releases"
+	@curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.10.1/$(PROTOC_ZIP)
+	@unzip -o $(PROTOC_ZIP) -d /usr/local bin/protoc
+	@unzip -o $(PROTOC_ZIP) -d /usr/local 'include/*'
+	@rm -f $(PROTOC_ZIP)
+.PHONY: protoc

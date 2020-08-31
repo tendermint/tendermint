@@ -8,7 +8,7 @@ can manage an application state running in another.
 
 Previously, the ABCI was referred to as TMSP.
 
-The community has provided a number of addtional implementations, see the [Tendermint Ecosystem](https://tendermint.com/ecosystem)
+The community has provided a number of additional implementations, see the [Tendermint Ecosystem](https://github.com/tendermint/awesome#ecosystem)
 
 
 ## Installation & Usage
@@ -19,7 +19,7 @@ To get up and running quickly, see the [getting started guide](../docs/app-dev/g
 
 A detailed description of the ABCI methods and message types is contained in:
 
-- [The main spec](../docs/spec/abci/abci.md)
+- [The main spec](https://github.com/tendermint/spec/blob/master/spec/abci/abci.md)
 - [A protobuf file](./types/types.proto)
 - [A Go interface](./types/application.go)
 
@@ -27,11 +27,10 @@ A detailed description of the ABCI methods and message types is contained in:
 
 To compile the protobuf file, run (from the root of the repo):
 
-```
+```sh
 make protoc_abci
 ```
 
 See `protoc --help` and [the Protocol Buffers site](https://developers.google.com/protocol-buffers)
 for details on compiling for other languages. Note we also include a [GRPC](https://www.grpc.io/docs)
 service definition.
-

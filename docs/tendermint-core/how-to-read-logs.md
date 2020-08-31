@@ -1,3 +1,7 @@
+---
+order: 7
+---
+
 # How to read logs
 
 ## Walkabout example
@@ -5,7 +9,7 @@
 We first create three connections (mempool, consensus and query) to the
 application (running `kvstore` locally in this case).
 
-```
+```sh
 I[10-04|13:54:27.364] Starting multiAppConn                        module=proxy impl=multiAppConn
 I[10-04|13:54:27.366] Starting localClient                         module=abci-client connection=query impl=localClient
 I[10-04|13:54:27.366] Starting localClient                         module=abci-client connection=mempool impl=localClient
@@ -14,7 +18,7 @@ I[10-04|13:54:27.367] Starting localClient                         module=abci-c
 
 Then Tendermint Core and the application perform a handshake.
 
-```
+```sh
 I[10-04|13:54:27.367] ABCI Handshake                               module=consensus appHeight=90 appHash=E0FBAFBF6FCED8B9786DDFEB1A0D4FA2501BADAD
 I[10-04|13:54:27.368] ABCI Replay Blocks                           module=consensus appHeight=90 storeHeight=90 stateHeight=90
 I[10-04|13:54:27.368] Completed ABCI Handshake - Tendermint and App are synced module=consensus appHeight=90 appHash=E0FBAFBF6FCED8B9786DDFEB1A0D4FA2501BADAD
@@ -23,7 +27,7 @@ I[10-04|13:54:27.368] Completed ABCI Handshake - Tendermint and App are synced m
 After that, we start a few more things like the event switch, reactors,
 and perform UPNP discover in order to detect the IP address.
 
-```
+```sh
 I[10-04|13:54:27.374] Starting EventSwitch                         module=types impl=EventSwitch
 I[10-04|13:54:27.375] This node is a validator                     module=consensus
 I[10-04|13:54:27.379] Starting Node                                module=main impl=Node
@@ -46,7 +50,7 @@ validator". It also could be just an observer (regular node).
 
 Next we replay all the messages from the WAL.
 
-```
+```sh
 I[10-04|13:54:30.390] Catchup by replaying consensus messages      module=consensus height=91
 I[10-04|13:54:30.390] Replay: New Step                             module=consensus height=91 round=0 step=RoundStepNewHeight
 I[10-04|13:54:30.390] Replay: Done                                 module=consensus
@@ -54,7 +58,7 @@ I[10-04|13:54:30.390] Replay: Done                                 module=consen
 
 "Started node" message signals that everything is ready for work.
 
-```
+```sh
 I[10-04|13:54:30.391] Starting RPC HTTP server on tcp socket 0.0.0.0:26657 module=rpc-server
 I[10-04|13:54:30.392] Started node                                 module=main nodeInfo="NodeInfo{id: DF22D7C92C91082324A1312F092AA1DA197FA598DBBFB6526E, moniker: anonymous, network: test-chain-3MNw2N [remote , listen 10.0.2.15:26656], version: 0.11.0-10f361fc ([wire_version=0.6.2 p2p_version=0.5.0 consensus_version=v1/0.2.2 rpc_version=0.7.0/3 tx_index=on rpc_addr=tcp://0.0.0.0:26657])}"
 ```
@@ -62,11 +66,10 @@ I[10-04|13:54:30.392] Started node                                 module=main n
 Next follows a standard block creation cycle, where we enter a new
 round, propose a block, receive more than 2/3 of prevotes, then
 precommits and finally have a chance to commit a block. For details,
-please refer to [Consensus
-Overview](../introduction/introduction.md#consensus-overview) or [Byzantine Consensus
-Algorithm](../spec/consensus/consensus.md).
+please refer to [Byzantine Consensus
+Algorithm](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md).
 
-```
+```sh
 I[10-04|13:54:30.393] enterNewRound(91/0). Current: 91/0/RoundStepNewHeight module=consensus
 I[10-04|13:54:30.393] enterPropose(91/0). Current: 91/0/RoundStepNewRound module=consensus
 I[10-04|13:54:30.393] enterPropose: Our turn to propose            module=consensus proposer=125B0E3C5512F5C2B0E1109E31885C4511570C42 privValidator="PrivValidator{125B0E3C5512F5C2B0E1109E31885C4511570C42 LH:90, LR:0, LS:3}"
@@ -135,7 +138,7 @@ little overview what they do.
   [README](https://github.com/tendermint/tendermint/blob/master/p2p/README.md).
 - `rpc` [Tendermint's RPC](./rpc.md).
 - `rpc-server` RPC server. For implementation details, please read the
-  [doc.go](https://github.com/tendermint/tendermint/blob/master/rpc/lib/doc.go).
+  [doc.go](https://github.com/tendermint/tendermint/blob/master/rpc/jsonrpc/doc.go).
 - `state` Represents the latest state and execution submodule, which
   executes blocks against the application.
 - `types` A collection of the publicly exposed types and methods to

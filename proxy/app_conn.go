@@ -5,6 +5,8 @@ import (
 	"github.com/tendermint/tendermint/abci/types"
 )
 
+//go:generate mockery --case underscore --name AppConnConsensus|AppConnMempool|AppConnQuery|AppConnSnapshot
+
 //----------------------------------------------------------------------------------------
 // Enforce which abci msgs can be sent on a connection at the type level
 
@@ -28,6 +30,7 @@ type AppConnMempool interface {
 	Error() error
 
 	CheckTxAsync(types.RequestCheckTx) *abcicli.ReqRes
+	CheckTxSync(types.RequestCheckTx) (*types.ResponseCheckTx, error)
 
 	FlushAsync() *abcicli.ReqRes
 	FlushSync() error
@@ -43,6 +46,15 @@ type AppConnQuery interface {
 	//	SetOptionSync(key string, value string) (res types.Result)
 }
 
+type AppConnSnapshot interface {
+	Error() error
+
+	ListSnapshotsSync(types.RequestListSnapshots) (*types.ResponseListSnapshots, error)
+	OfferSnapshotSync(types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error)
+	LoadSnapshotChunkSync(types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error)
+	ApplySnapshotChunkSync(types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error)
+}
+
 //-----------------------------------------------------------------------------------------
 // Implements AppConnConsensus (subset of abcicli.Client)
 
@@ -50,7 +62,7 @@ type appConnConsensus struct {
 	appConn abcicli.Client
 }
 
-func NewAppConnConsensus(appConn abcicli.Client) *appConnConsensus {
+func NewAppConnConsensus(appConn abcicli.Client) AppConnConsensus {
 	return &appConnConsensus{
 		appConn: appConn,
 	}
@@ -99,7 +111,7 @@ type appConnMempool struct {
 	appConn abcicli.Client
 }
 
-func NewAppConnMempool(appConn abcicli.Client) *appConnMempool {
+func NewAppConnMempool(appConn abcicli.Client) AppConnMempool {
 	return &appConnMempool{
 		appConn: appConn,
 	}
@@ -125,6 +137,10 @@ func (app *appConnMempool) CheckTxAsync(req types.RequestCheckTx) *abcicli.ReqRe
 	return app.appConn.CheckTxAsync(req)
 }
 
+func (app *appConnMempool) CheckTxSync(req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+	return app.appConn.CheckTxSync(req)
+}
+
 //------------------------------------------------
 // Implements AppConnQuery (subset of abcicli.Client)
 
@@ -132,7 +148,7 @@ type appConnQuery struct {
 	appConn abcicli.Client
 }
 
-func NewAppConnQuery(appConn abcicli.Client) *appConnQuery {
+func NewAppConnQuery(appConn abcicli.Client) AppConnQuery {
 	return &appConnQuery{
 		appConn: appConn,
 	}
@@ -152,4 +168,39 @@ func (app *appConnQuery) InfoSync(req types.RequestInfo) (*types.ResponseInfo, e
 
 func (app *appConnQuery) QuerySync(reqQuery types.RequestQuery) (*types.ResponseQuery, error) {
 	return app.appConn.QuerySync(reqQuery)
+}
+
+//------------------------------------------------
+// Implements AppConnSnapshot (subset of abcicli.Client)
+
+type appConnSnapshot struct {
+	appConn abcicli.Client
+}
+
+func NewAppConnSnapshot(appConn abcicli.Client) AppConnSnapshot {
+	return &appConnSnapshot{
+		appConn: appConn,
+	}
+}
+
+func (app *appConnSnapshot) Error() error {
+	return app.appConn.Error()
+}
+
+func (app *appConnSnapshot) ListSnapshotsSync(req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
+	return app.appConn.ListSnapshotsSync(req)
+}
+
+func (app *appConnSnapshot) OfferSnapshotSync(req types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
+	return app.appConn.OfferSnapshotSync(req)
+}
+
+func (app *appConnSnapshot) LoadSnapshotChunkSync(
+	req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
+	return app.appConn.LoadSnapshotChunkSync(req)
+}
+
+func (app *appConnSnapshot) ApplySnapshotChunkSync(
+	req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
+	return app.appConn.ApplySnapshotChunkSync(req)
 }

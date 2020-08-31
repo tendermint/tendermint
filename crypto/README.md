@@ -3,6 +3,7 @@
 crypto is the cryptographic package adapted for Tendermint's uses
 
 ## Importing it
+
 To get the interfaces,
 `import "github.com/tendermint/tendermint/crypto"`
 
@@ -14,7 +15,7 @@ If you want to decode bytes into one of the types, but don't care about the spec
 
 ## Binary encoding
 
-For Binary encoding, please refer to the [Tendermint encoding spec](https://github.com/tendermint/tendermint/blob/master/docs/spec/blockchain/encoding.md).
+For Binary encoding, please refer to the [Tendermint encoding specification](https://docs.tendermint.com/master/spec/blockchain/encoding.html).
 
 ## JSON Encoding
 
@@ -23,8 +24,10 @@ crypto `.Bytes()` uses Amino:binary encoding, but Amino:JSON is also supported.
 ```go
 Example Amino:JSON encodings:
 
-ed25519.PrivKeyEd25519     - {"type":"954568A3288910","value":"EVkqJO/jIXp3rkASXfh9YnyToYXRXhBr6g9cQVxPFnQBP/5povV4HTjvsy530kybxKHwEi85iU8YL0qQhSYVoQ=="}
-ed25519.PubKeyEd25519      - {"type":"AC26791624DE60","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="}
-crypto.PrivKeySecp256k1   - {"type":"019E82E1B0F798","value":"zx4Pnh67N+g2V+5vZbQzEyRerX9c4ccNZOVzM9RvJ0Y="}
-crypto.PubKeySecp256k1    - {"type":"F8CCEAEB5AE980","value":"A8lPKJXcNl5VHt1FK8a244K9EJuS4WX1hFBnwisi0IJx"}
+ed25519.PrivKey     - {"type":"tendermint/PrivKeyEd25519","value":"EVkqJO/jIXp3rkASXfh9YnyToYXRXhBr6g9cQVxPFnQBP/5povV4HTjvsy530kybxKHwEi85iU8YL0qQhSYVoQ=="}
+ed25519.PubKey      - {"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="}
+sr25519.PrivKeySr25519   - {"type":"tendermint/PrivKeySr25519","value":"xtYVH8UCIqfrY8FIFc0QEpAEBShSG4NT0zlEOVSZ2w4="}
+sr25519.PubKeySr25519    - {"type":"tendermint/PubKeySr25519","value":"8sKBLKQ/OoXMcAJVxBqz1U7TyxRFQ5cmliuHy4MrF0s="}
+crypto.PrivKeySecp256k1   - {"type":"tendermint/PrivKeySecp256k1","value":"zx4Pnh67N+g2V+5vZbQzEyRerX9c4ccNZOVzM9RvJ0Y="}
+crypto.PubKeySecp256k1    - {"type":"tendermint/PubKeySecp256k1","value":"A8lPKJXcNl5VHt1FK8a244K9EJuS4WX1hFBnwisi0IJx"}
 ```

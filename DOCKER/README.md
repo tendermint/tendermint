@@ -2,35 +2,27 @@
 
 ## Supported tags and respective `Dockerfile` links
 
-- `0.17.1`, `latest` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/208ac32fa266657bd6c304e84ec828aa252bb0b8/DOCKER/Dockerfile)
-- `0.15.0` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/170777300ea92dc21a8aec1abc16cb51812513a4/DOCKER/Dockerfile)
-- `0.13.0` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/a28b3fff49dce2fb31f90abb2fc693834e0029c2/DOCKER/Dockerfile)
-- `0.12.1` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/457c688346b565e90735431619ca3ca597ef9007/DOCKER/Dockerfile)
-- `0.12.0` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/70d8afa6e952e24c573ece345560a5971bf2cc0e/DOCKER/Dockerfile)
-- `0.11.0` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/9177cc1f64ca88a4a0243c5d1773d10fba67e201/DOCKER/Dockerfile)
-- `0.10.0` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/e5342f4054ab784b2cd6150e14f01053d7c8deb2/DOCKER/Dockerfile)
-- `0.9.1`, `0.9`, [(Dockerfile)](https://github.com/tendermint/tendermint/blob/809e0e8c5933604ba8b2d096803ada7c5ec4dfd3/DOCKER/Dockerfile)
-- `0.9.0` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/d474baeeea6c22b289e7402449572f7c89ee21da/DOCKER/Dockerfile)
-- `0.8.0`, `0.8` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/bf64dd21fdb193e54d8addaaaa2ecf7ac371de8c/DOCKER/Dockerfile)
+DockerHub tags for official releases are [here](https://hub.docker.com/r/tendermint/tendermint/tags/). The "latest" tag will always point to the highest version number.
+
+Official releases can be found [here](https://github.com/tendermint/tendermint/releases).
+
+The Dockerfile for tendermint is not expected to change in the near future. The master file used for all builds can be found [here](https://raw.githubusercontent.com/tendermint/tendermint/master/DOCKER/Dockerfile).
+
+Respective versioned files can be found <https://raw.githubusercontent.com/tendermint/tendermint/vX.XX.XX/DOCKER/Dockerfile> (replace the Xs with the version number).
 
 ## Quick reference
 
-- **Where to get help:**
-  [cosmos.network/ecosystem](https://cosmos.network/ecosystem)
-
-- **Where to file issues:**
-  [Tendermint Issues](https://github.com/tendermint/tendermint/issues)
-
-- **Supported Docker versions:**
-  [the latest release](https://github.com/moby/moby/releases) (down to 1.6 on a best-effort basis)
+- **Where to get help:** <https://tendermint.com/>
+- **Where to file issues:** <https://github.com/tendermint/tendermint/issues>
+- **Supported Docker versions:** [the latest release](https://github.com/moby/moby/releases) (down to 1.6 on a best-effort basis)
 
 ## Tendermint
 
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine, written in any programming language, and securely replicates it on many machines.
 
-For more background, see the [the docs](https://tendermint.com/docs/introduction/#quick-start).
+For more background, see the [the docs](https://docs.tendermint.com/master/introduction/#quick-start).
 
-To get started developing applications, see the [application developers guide](https://tendermint.com/docs/introduction/quick-start.html).
+To get started developing applications, see the [application developers guide](https://docs.tendermint.com/master/introduction/quick-start.html).
 
 ## How to use this image
 
@@ -38,7 +30,7 @@ To get started developing applications, see the [application developers guide](h
 
 A quick example of a built-in app and Tendermint core in one container.
 
-```
+```sh
 docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint init
 docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint node --proxy_app=kvstore
 ```
@@ -47,7 +39,7 @@ docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint node --proxy_app
 
 To run a 4-node network, see the `Makefile` in the root of [the repo](https://github.com/tendermint/tendermint/blob/master/Makefile) and run:
 
-```
+```sh
 make build-linux
 make build-docker-localnode
 make localnet-start

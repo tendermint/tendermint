@@ -3,8 +3,8 @@ package privval
 import (
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 const (
@@ -24,6 +24,11 @@ func SignerDialerEndpointTimeoutReadWrite(timeout time.Duration) SignerServiceEn
 // SignerDialerEndpointConnRetries sets the amount of attempted retries to acceptNewConnection.
 func SignerDialerEndpointConnRetries(retries int) SignerServiceEndpointOption {
 	return func(ss *SignerDialerEndpoint) { ss.maxConnRetries = retries }
+}
+
+// SignerDialerEndpointRetryWaitInterval sets the retry wait interval to a custom value
+func SignerDialerEndpointRetryWaitInterval(interval time.Duration) SignerServiceEndpointOption {
+	return func(ss *SignerDialerEndpoint) { ss.retryWait = interval }
 }
 
 // SignerDialerEndpoint dials using its dialer and responds to any
@@ -51,7 +56,7 @@ func NewSignerDialerEndpoint(
 		maxConnRetries: defaultMaxDialRetries,
 	}
 
-	sd.BaseService = *cmn.NewBaseService(logger, "SignerDialerEndpoint", sd)
+	sd.BaseService = *service.NewBaseService(logger, "SignerDialerEndpoint", sd)
 	sd.signerEndpoint.timeoutReadWrite = defaultTimeoutReadWriteSeconds * time.Second
 
 	return sd

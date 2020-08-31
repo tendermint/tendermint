@@ -1,3 +1,7 @@
+---
+order: 2
+---
+
 # Quick Start
 
 ## Overview
@@ -12,9 +16,9 @@ works and want to get started right away, continue.
 To quickly get Tendermint installed on a fresh
 Ubuntu 16.04 machine, use [this script](https://git.io/fFfOR).
 
-WARNING: do not run this on your local machine.
+> :warning: Do not copy scripts to run on your machine without knowing what they do.
 
-```
+```sh
 curl -L https://git.io/fFfOR | bash
 source ~/.profile
 ```
@@ -29,7 +33,7 @@ For manual installation, see the [install instructions](install.md)
 
 Running:
 
-```
+```sh
 tendermint init
 ```
 
@@ -37,7 +41,7 @@ will create the required files for a single, local node.
 
 These files are found in `$HOME/.tendermint`:
 
-```
+```sh
 $ ls $HOME/.tendermint
 
 config  data
@@ -52,48 +56,50 @@ Configuring a cluster is covered further below.
 
 ## Local Node
 
-Start tendermint with a simple in-process application:
+Start Tendermint with a simple in-process application:
 
-```
+```sh
 tendermint node --proxy_app=kvstore
 ```
 
+> Note: `kvstore` is a non persistent app, if you would like to run an application with persistence run `--proxy_app=persistent_kvstore`
+
 and blocks will start to stream in:
 
-```
+```sh
 I[01-06|01:45:15.592] Executed block                               module=state height=1 validTxs=0 invalidTxs=0
 I[01-06|01:45:15.624] Committed state                              module=state height=1 txs=0 appHash=
 ```
 
 Check the status with:
 
-```
+```sh
 curl -s localhost:26657/status
 ```
 
 ### Sending Transactions
 
-With the kvstore app running, we can send transactions:
+With the KVstore app running, we can send transactions:
 
-```
+```sh
 curl -s 'localhost:26657/broadcast_tx_commit?tx="abcd"'
 ```
 
 and check that it worked with:
 
-```
+```sh
 curl -s 'localhost:26657/abci_query?data="abcd"'
 ```
 
 We can send transactions with a key and value too:
 
-```
+```sh
 curl -s 'localhost:26657/broadcast_tx_commit?tx="name=satoshi"'
 ```
 
 and query the key:
 
-```
+```sh
 curl -s 'localhost:26657/abci_query?data="name"'
 ```
 
@@ -107,7 +113,7 @@ addresses below as IP1, IP2, IP3, IP4.
 
 Then, `ssh` into each machine, and execute [this script](https://git.io/fFfOR):
 
-```
+```sh
 curl -L https://git.io/fFfOR | bash
 source ~/.profile
 ```
@@ -118,7 +124,7 @@ Next, use the `tendermint testnet` command to create four directories of config 
 
 Before you can start the network, you'll need peers identifiers (IPs are not enough and can change). We'll refer to them as ID1, ID2, ID3, ID4.
 
-```
+```sh
 tendermint show_node_id --home ./mytestnet/node0
 tendermint show_node_id --home ./mytestnet/node1
 tendermint show_node_id --home ./mytestnet/node2
@@ -127,7 +133,7 @@ tendermint show_node_id --home ./mytestnet/node3
 
 Finally, from each machine, run:
 
-```
+```sh
 tendermint node --home ./mytestnet/node0 --proxy_app=kvstore --p2p.persistent_peers="ID1@IP1:26656,ID2@IP2:26656,ID3@IP3:26656,ID4@IP4:26656"
 tendermint node --home ./mytestnet/node1 --proxy_app=kvstore --p2p.persistent_peers="ID1@IP1:26656,ID2@IP2:26656,ID3@IP3:26656,ID4@IP4:26656"
 tendermint node --home ./mytestnet/node2 --proxy_app=kvstore --p2p.persistent_peers="ID1@IP1:26656,ID2@IP2:26656,ID3@IP3:26656,ID4@IP4:26656"

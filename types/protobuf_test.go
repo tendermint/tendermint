@@ -2,31 +2,29 @@ package types
 
 import (
 	"testing"
-	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
-	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/secp256k1"
-	"github.com/tendermint/tendermint/version"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 )
 
 func TestABCIPubKey(t *testing.T) {
 	pkEd := ed25519.GenPrivKey().PubKey()
-	pkSecp := secp256k1.GenPrivKey().PubKey()
-	testABCIPubKey(t, pkEd, ABCIPubKeyTypeEd25519)
-	testABCIPubKey(t, pkSecp, ABCIPubKeyTypeSecp256k1)
+	err := testABCIPubKey(t, pkEd, ABCIPubKeyTypeEd25519)
+	assert.NoError(t, err)
 }
 
-func testABCIPubKey(t *testing.T, pk crypto.PubKey, typeStr string) {
-	abciPubKey := TM2PB.PubKey(pk)
-	pk2, err := PB2TM.PubKey(abciPubKey)
-	assert.Nil(t, err)
-	assert.Equal(t, pk, pk2)
+func testABCIPubKey(t *testing.T, pk crypto.PubKey, typeStr string) error {
+	abciPubKey, err := cryptoenc.PubKeyToProto(pk)
+	require.NoError(t, err)
+	pk2, err := cryptoenc.PubKeyFromProto(abciPubKey)
+	require.NoError(t, err)
+	require.Equal(t, pk, pk2)
+	return nil
 }
 
 func TestABCIValidators(t *testing.T) {
@@ -52,88 +50,14 @@ func TestABCIValidators(t *testing.T) {
 	tmVals, err = PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{abciVal})
 	assert.Nil(t, err)
 	assert.Equal(t, tmValExpected, tmVals[0])
-
-	// val with incorrect pubkey data
-	abciVal = TM2PB.ValidatorUpdate(tmVal)
-	abciVal.PubKey.Data = []byte("incorrect!")
-	tmVals, err = PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{abciVal})
-	assert.NotNil(t, err)
-	assert.Nil(t, tmVals)
 }
 
 func TestABCIConsensusParams(t *testing.T) {
 	cp := DefaultConsensusParams()
 	abciCP := TM2PB.ConsensusParams(cp)
-	cp2 := cp.Update(abciCP)
+	cp2 := UpdateConsensusParams(*cp, abciCP)
 
 	assert.Equal(t, *cp, cp2)
-}
-
-func newHeader(
-	height, numTxs int64,
-	commitHash, dataHash, evidenceHash []byte,
-) *Header {
-	return &Header{
-		Height:         height,
-		NumTxs:         numTxs,
-		LastCommitHash: commitHash,
-		DataHash:       dataHash,
-		EvidenceHash:   evidenceHash,
-	}
-}
-
-func TestABCIHeader(t *testing.T) {
-	// build a full header
-	var height int64 = 5
-	var numTxs int64 = 3
-	header := newHeader(
-		height, numTxs,
-		[]byte("lastCommitHash"), []byte("dataHash"), []byte("evidenceHash"),
-	)
-	protocolVersion := version.Consensus{Block: 7, App: 8}
-	timestamp := time.Now()
-	lastBlockID := BlockID{
-		Hash: []byte("hash"),
-		PartsHeader: PartSetHeader{
-			Total: 10,
-			Hash:  []byte("hash"),
-		},
-	}
-	var totalTxs int64 = 100
-	header.Populate(
-		protocolVersion, "chainID",
-		timestamp, lastBlockID, totalTxs,
-		[]byte("valHash"), []byte("nextValHash"),
-		[]byte("consHash"), []byte("appHash"), []byte("lastResultsHash"),
-		[]byte("proposerAddress"),
-	)
-
-	cdc := amino.NewCodec()
-	headerBz := cdc.MustMarshalBinaryBare(header)
-
-	pbHeader := TM2PB.Header(header)
-	pbHeaderBz, err := proto.Marshal(&pbHeader)
-	assert.NoError(t, err)
-
-	// assert some fields match
-	assert.EqualValues(t, protocolVersion.Block, pbHeader.Version.Block)
-	assert.EqualValues(t, protocolVersion.App, pbHeader.Version.App)
-	assert.EqualValues(t, "chainID", pbHeader.ChainID)
-	assert.EqualValues(t, height, pbHeader.Height)
-	assert.EqualValues(t, timestamp, pbHeader.Time)
-	assert.EqualValues(t, numTxs, pbHeader.NumTxs)
-	assert.EqualValues(t, totalTxs, pbHeader.TotalTxs)
-	assert.EqualValues(t, lastBlockID.Hash, pbHeader.LastBlockId.Hash)
-	assert.EqualValues(t, []byte("lastCommitHash"), pbHeader.LastCommitHash)
-	assert.Equal(t, []byte("proposerAddress"), pbHeader.ProposerAddress)
-
-	// assert the encodings match
-	// NOTE: they don't yet because Amino encodes
-	// int64 as zig-zag and we're using non-zigzag in the protobuf.
-	// See https://github.com/tendermint/tendermint/issues/2682
-	_, _ = headerBz, pbHeaderBz
-	// assert.EqualValues(t, headerBz, pbHeaderBz)
-
 }
 
 func TestABCIEvidence(t *testing.T) {
@@ -141,27 +65,31 @@ func TestABCIEvidence(t *testing.T) {
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
 	const chainID = "mychain"
-	pubKey := val.GetPubKey()
+	pubKey, err := val.GetPubKey()
+	require.NoError(t, err)
 	ev := &DuplicateVoteEvidence{
-		PubKey: pubKey,
-		VoteA:  makeVote(val, chainID, 0, 10, 2, 1, blockID),
-		VoteB:  makeVote(val, chainID, 0, 10, 2, 1, blockID2),
+		VoteA: makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime),
+		VoteB: makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, defaultVoteTime),
 	}
 	abciEv := TM2PB.Evidence(
 		ev,
 		NewValidatorSet([]*Validator{NewValidator(pubKey, 10)}),
-		time.Now(),
 	)
 
-	assert.Equal(t, "duplicate/vote", abciEv.Type)
+	assert.Equal(t, ABCIEvidenceTypeDuplicateVote, abciEv.Type)
+	assert.Equal(t, ev.Time(), abciEv.GetTime())
+	assert.Equal(t, ev.Address(), abciEv.Validator.GetAddress())
+	assert.Equal(t, ev.Height(), abciEv.GetHeight())
 }
 
 type pubKeyEddie struct{}
 
-func (pubKeyEddie) Address() Address                        { return []byte{} }
-func (pubKeyEddie) Bytes() []byte                           { return []byte{} }
-func (pubKeyEddie) VerifyBytes(msg []byte, sig []byte) bool { return false }
-func (pubKeyEddie) Equals(crypto.PubKey) bool               { return false }
+func (pubKeyEddie) Address() Address                            { return []byte{} }
+func (pubKeyEddie) Bytes() []byte                               { return []byte{} }
+func (pubKeyEddie) VerifySignature(msg []byte, sig []byte) bool { return false }
+func (pubKeyEddie) Equals(crypto.PubKey) bool                   { return false }
+func (pubKeyEddie) String() string                              { return "" }
+func (pubKeyEddie) Type() string                                { return "pubKeyEddie" }
 
 func TestABCIValidatorFromPubKeyAndPower(t *testing.T) {
 	pubkey := ed25519.GenPrivKey().PubKey()

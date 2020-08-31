@@ -28,13 +28,20 @@ func TestRFC6962Hasher(t *testing.T) {
 	leafHash := leafHashTrail.Hash
 	_, leafHashTrail = trailsFromByteSlices([][]byte{{}})
 	emptyLeafHash := leafHashTrail.Hash
+	_, emptyHashTrail := trailsFromByteSlices([][]byte{})
+	emptyTreeHash := emptyHashTrail.Hash
 	for _, tc := range []struct {
 		desc string
 		got  []byte
 		want string
 	}{
-		// Since creating a merkle tree of no leaves is unsupported here, we skip
-		// the corresponding trillian test vector.
+		// Check that empty trees return the hash of an empty string.
+		// echo -n '' | sha256sum
+		{
+			desc: "RFC6962 Empty Tree",
+			want: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"[:tmhash.Size*2],
+			got:  emptyTreeHash,
+		},
 
 		// Check that the empty hash is not the same as the hash of an empty leaf.
 		// echo -n 00 | xxd -r -p | sha256sum
@@ -77,7 +84,7 @@ func TestRFC6962HasherCollisions(t *testing.T) {
 	_, leafHashTrail = trailsFromByteSlices([][]byte{leaf2})
 	hash2 := leafHashTrail.Hash
 	if bytes.Equal(hash1, hash2) {
-		t.Errorf("Leaf hashes should differ, but both are %x", hash1)
+		t.Errorf("leaf hashes should differ, but both are %x", hash1)
 	}
 	// Compute an intermediate subtree hash.
 	_, subHash1Trail := trailsFromByteSlices([][]byte{hash1, hash2})
@@ -87,12 +94,12 @@ func TestRFC6962HasherCollisions(t *testing.T) {
 	_, forgedHashTrail := trailsFromByteSlices([][]byte{preimage})
 	forgedHash := forgedHashTrail.Hash
 	if bytes.Equal(subHash1, forgedHash) {
-		t.Errorf("Hasher is not second-preimage resistant")
+		t.Errorf("hasher is not second-preimage resistant")
 	}
 	// Swap the order of nodes and check that the hash is different.
 	_, subHash2Trail := trailsFromByteSlices([][]byte{hash2, hash1})
 	subHash2 := subHash2Trail.Hash
 	if bytes.Equal(subHash1, subHash2) {
-		t.Errorf("Subtree hash does not depend on the order of leaves")
+		t.Errorf("subtree hash does not depend on the order of leaves")
 	}
 }

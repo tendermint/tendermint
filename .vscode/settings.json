@@ -1,0 +1,9 @@
+{
+  "protoc": {
+    "options": [
+      "--proto_path=${workspaceRoot}/proto",
+      "--proto_path=${workspaceRoot}/third_party/proto"
+    ]
+  },
+  "clang-format.style": "{BasedOnStyle: Google, IndentWidth: 2, ColumnLimit: 0, AlignConsecutiveAssignments: true, AlignConsecutiveDeclarations: true, SpacesInSquareBrackets: true}",
+}

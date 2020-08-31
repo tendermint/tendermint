@@ -3,12 +3,12 @@ package types
 import (
 	"fmt"
 	"reflect"
-	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/secp256k1"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 //-------------------------------------------------------
@@ -16,18 +16,18 @@ import (
 
 const (
 	ABCIEvidenceTypeDuplicateVote = "duplicate/vote"
-	ABCIEvidenceTypeMockGood      = "mock/good"
+	ABCIEvidenceTypeLunatic       = "lunatic"
+	ABCIEvidenceTypeAmnesia       = "amnesia"
 )
 
 const (
-	ABCIPubKeyTypeEd25519   = "ed25519"
-	ABCIPubKeyTypeSecp256k1 = "secp256k1"
+	ABCIPubKeyTypeEd25519 = "ed25519"
 )
 
 // TODO: Make non-global by allowing for registration of more pubkey types
-var ABCIPubKeyTypesToAminoNames = map[string]string{
-	ABCIPubKeyTypeEd25519:   ed25519.PubKeyAminoName,
-	ABCIPubKeyTypeSecp256k1: secp256k1.PubKeyAminoName,
+
+var ABCIPubKeyTypesToNames = map[string]string{
+	ABCIPubKeyTypeEd25519: ed25519.PubKeyName,
 }
 
 //-------------------------------------------------------
@@ -38,19 +38,14 @@ var TM2PB = tm2pb{}
 
 type tm2pb struct{}
 
-func (tm2pb) Header(header *Header) abci.Header {
-	return abci.Header{
-		Version: abci.Version{
-			Block: header.Version.Block.Uint64(),
-			App:   header.Version.App.Uint64(),
-		},
-		ChainID:  header.ChainID,
-		Height:   header.Height,
-		Time:     header.Time,
-		NumTxs:   header.NumTxs,
-		TotalTxs: header.TotalTxs,
+func (tm2pb) Header(header *Header) tmproto.Header {
+	return tmproto.Header{
+		Version: header.Version,
+		ChainID: header.ChainID,
+		Height:  header.Height,
+		Time:    header.Time,
 
-		LastBlockId: TM2PB.BlockID(header.LastBlockID),
+		LastBlockId: header.LastBlockID.ToProto(),
 
 		LastCommitHash: header.LastCommitHash,
 		DataHash:       header.DataHash,
@@ -73,44 +68,29 @@ func (tm2pb) Validator(val *Validator) abci.Validator {
 	}
 }
 
-func (tm2pb) BlockID(blockID BlockID) abci.BlockID {
-	return abci.BlockID{
-		Hash:        blockID.Hash,
-		PartsHeader: TM2PB.PartSetHeader(blockID.PartsHeader),
+func (tm2pb) BlockID(blockID BlockID) tmproto.BlockID {
+	return tmproto.BlockID{
+		Hash:          blockID.Hash,
+		PartSetHeader: TM2PB.PartSetHeader(blockID.PartSetHeader),
 	}
 }
 
-func (tm2pb) PartSetHeader(header PartSetHeader) abci.PartSetHeader {
-	return abci.PartSetHeader{
-		Total: int32(header.Total),
+func (tm2pb) PartSetHeader(header PartSetHeader) tmproto.PartSetHeader {
+	return tmproto.PartSetHeader{
+		Total: header.Total,
 		Hash:  header.Hash,
 	}
 }
 
 // XXX: panics on unknown pubkey type
 func (tm2pb) ValidatorUpdate(val *Validator) abci.ValidatorUpdate {
-	return abci.ValidatorUpdate{
-		PubKey: TM2PB.PubKey(val.PubKey),
-		Power:  val.VotingPower,
+	pk, err := cryptoenc.PubKeyToProto(val.PubKey)
+	if err != nil {
+		panic(err)
 	}
-}
-
-// XXX: panics on nil or unknown pubkey type
-// TODO: add cases when new pubkey types are added to crypto
-func (tm2pb) PubKey(pubKey crypto.PubKey) abci.PubKey {
-	switch pk := pubKey.(type) {
-	case ed25519.PubKeyEd25519:
-		return abci.PubKey{
-			Type: ABCIPubKeyTypeEd25519,
-			Data: pk[:],
-		}
-	case secp256k1.PubKeySecp256k1:
-		return abci.PubKey{
-			Type: ABCIPubKeyTypeSecp256k1,
-			Data: pk[:],
-		}
-	default:
-		panic(fmt.Sprintf("unknown pubkey type: %v %v", pubKey, reflect.TypeOf(pubKey)))
+	return abci.ValidatorUpdate{
+		PubKey: pk,
+		Power:  val.VotingPower,
 	}
 }
 
@@ -123,29 +103,26 @@ func (tm2pb) ValidatorUpdates(vals *ValidatorSet) []abci.ValidatorUpdate {
 	return validators
 }
 
-func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
+func (tm2pb) ConsensusParams(params *tmproto.ConsensusParams) *abci.ConsensusParams {
 	return &abci.ConsensusParams{
 		Block: &abci.BlockParams{
 			MaxBytes: params.Block.MaxBytes,
 			MaxGas:   params.Block.MaxGas,
 		},
-		Evidence: &abci.EvidenceParams{
-			MaxAge: params.Evidence.MaxAge,
-		},
-		Validator: &abci.ValidatorParams{
-			PubKeyTypes: params.Validator.PubKeyTypes,
-		},
+		Evidence:  &params.Evidence,
+		Validator: &params.Validator,
 	}
 }
 
 // ABCI Evidence includes information from the past that's not included in the evidence itself
 // so Evidence types stays compact.
 // XXX: panics on nil or unknown pubkey type
-func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.Evidence {
-	_, val := valSet.GetByAddress(ev.Address())
+func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet) abci.Evidence {
+	addr := ev.Address()
+	_, val := valSet.GetByAddress(addr)
 	if val == nil {
 		// should already have checked this
-		panic(val)
+		panic(fmt.Sprintf("validator in evidence is not in val set, val addr: %v", addr))
 	}
 
 	// set type
@@ -153,25 +130,29 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 	switch ev.(type) {
 	case *DuplicateVoteEvidence:
 		evType = ABCIEvidenceTypeDuplicateVote
-	case MockGoodEvidence:
-		// XXX: not great to have test types in production paths ...
-		evType = ABCIEvidenceTypeMockGood
+	case *LunaticValidatorEvidence:
+		evType = ABCIEvidenceTypeLunatic
+	case *AmnesiaEvidence:
+		evType = ABCIEvidenceTypeAmnesia
 	default:
-		panic(fmt.Sprintf("Unknown evidence type: %v %v", ev, reflect.TypeOf(ev)))
+		panic(fmt.Sprintf("unknown evidence type: %v %v", ev, reflect.TypeOf(ev)))
 	}
 
 	return abci.Evidence{
 		Type:             evType,
 		Validator:        TM2PB.Validator(val),
 		Height:           ev.Height(),
-		Time:             evTime,
+		Time:             ev.Time(),
 		TotalVotingPower: valSet.TotalVotingPower(),
 	}
 }
 
 // XXX: panics on nil or unknown pubkey type
 func (tm2pb) NewValidatorUpdate(pubkey crypto.PubKey, power int64) abci.ValidatorUpdate {
-	pubkeyABCI := TM2PB.PubKey(pubkey)
+	pubkeyABCI, err := cryptoenc.PubKeyToProto(pubkey)
+	if err != nil {
+		panic(err)
+	}
 	return abci.ValidatorUpdate{
 		PubKey: pubkeyABCI,
 		Power:  power,
@@ -186,33 +167,10 @@ var PB2TM = pb2tm{}
 
 type pb2tm struct{}
 
-func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
-	switch pubKey.Type {
-	case ABCIPubKeyTypeEd25519:
-		if len(pubKey.Data) != ed25519.PubKeyEd25519Size {
-			return nil, fmt.Errorf("Invalid size for PubKeyEd25519. Got %d, expected %d",
-				len(pubKey.Data), ed25519.PubKeyEd25519Size)
-		}
-		var pk ed25519.PubKeyEd25519
-		copy(pk[:], pubKey.Data)
-		return pk, nil
-	case ABCIPubKeyTypeSecp256k1:
-		if len(pubKey.Data) != secp256k1.PubKeySecp256k1Size {
-			return nil, fmt.Errorf("Invalid size for PubKeySecp256k1. Got %d, expected %d",
-				len(pubKey.Data), secp256k1.PubKeySecp256k1Size)
-		}
-		var pk secp256k1.PubKeySecp256k1
-		copy(pk[:], pubKey.Data)
-		return pk, nil
-	default:
-		return nil, fmt.Errorf("Unknown pubkey type %v", pubKey.Type)
-	}
-}
-
 func (pb2tm) ValidatorUpdates(vals []abci.ValidatorUpdate) ([]*Validator, error) {
 	tmVals := make([]*Validator, len(vals))
 	for i, v := range vals {
-		pub, err := PB2TM.PubKey(v.PubKey)
+		pub, err := cryptoenc.PubKeyFromProto(v.PubKey)
 		if err != nil {
 			return nil, err
 		}
