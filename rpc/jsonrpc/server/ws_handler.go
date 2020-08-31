@@ -22,10 +22,14 @@ import (
 ///////////////////////////////////////////////////////////////////////////////
 
 const (
-	defaultWSWriteChanCapacity = 1
+	defaultWSWriteChanCapacity = 100
 	defaultWSWriteWait         = 10 * time.Second
 	defaultWSReadWait          = 30 * time.Second
 	defaultWSPingPeriod        = (defaultWSReadWait * 9) / 10
+)
+
+var (
+	newline = []byte{'\n'}
 )
 
 // WebsocketManager provides a WS handler for incoming connections and passes a
@@ -318,8 +322,8 @@ func (wsc *wsConnection) readRoutine() {
 			if err := wsc.baseConn.SetReadDeadline(time.Now().Add(wsc.readWait)); err != nil {
 				wsc.Logger.Error("failed to set read deadline", "err", err)
 			}
-			var in []byte
-			_, in, err := wsc.baseConn.ReadMessage()
+
+			_, r, err := wsc.baseConn.NextReader()
 			if err != nil {
 				if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 					wsc.Logger.Info("Client closed the connection")
@@ -331,8 +335,9 @@ func (wsc *wsConnection) readRoutine() {
 				return
 			}
 
+			dec := json.NewDecoder(r)
 			var request types.RPCRequest
-			err = json.Unmarshal(in, &request)
+			err = dec.Decode(&request)
 			if err != nil {
 				wsc.WriteRPCResponse(writeCtx, types.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err)))
 				continue
@@ -417,13 +422,40 @@ func (wsc *wsConnection) writeRoutine() {
 				return
 			}
 		case msg := <-wsc.writeChan:
+			if err := wsc.baseConn.SetWriteDeadline(time.Now().Add(wsc.writeWait)); err != nil {
+				wsc.Logger.Error("Failed to set write deadline", "err", err)
+				return
+			}
+
 			jsonBytes, err := json.MarshalIndent(msg, "", "  ")
 			if err != nil {
 				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
 				continue
 			}
-			if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
-				wsc.Logger.Error("Failed to write response", "msg", msg, "err", err)
+
+			w, err := wsc.baseConn.NextWriter(websocket.TextMessage)
+			if err != nil {
+				wsc.Logger.Error("Can't get NextWriter", "err", err)
+				return
+			}
+			w.Write(jsonBytes)
+
+			// Add queued messages to the current websocket message.
+			n := len(wsc.writeChan)
+			for i := 0; i < n; i++ {
+				w.Write(newline)
+
+				msg = <-wsc.writeChan
+				jsonBytes, err = json.MarshalIndent(msg, "", "  ")
+				if err != nil {
+					wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
+					continue
+				}
+				w.Write(jsonBytes)
+			}
+
+			if err := w.Close(); err != nil {
+				wsc.Logger.Error("Can't close NextWriter", "err", err)
 				return
 			}
 		}
