@@ -462,7 +462,7 @@ func (c *Client) VerifyLightBlockAtHeight(height int64, now time.Time) (*types.L
 //
 // If, at any moment, a LightBlock is not found by the primary provider as part of
 // verification then the provider will be replaced by another and the process will
-// restart. 
+// restart.
 func (c *Client) VerifyHeader(newHeader *types.Header, now time.Time) error {
 	if newHeader == nil {
 		return errors.New("nil header")
