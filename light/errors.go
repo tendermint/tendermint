@@ -87,8 +87,7 @@ type badWitnessCode int
 
 const (
 	noResponse badWitnessCode = iota + 1
-	invalidHeader
-	invalidValidatorSet
+	invalidLightBlock
 )
 
 // errBadWitness is returned when the witness either does not respond or
@@ -103,10 +102,8 @@ func (e errBadWitness) Error() string {
 	switch e.Code {
 	case noResponse:
 		return fmt.Sprintf("failed to get a header/vals from witness: %v", e.Reason)
-	case invalidHeader:
-		return fmt.Sprintf("witness sent us invalid header: %v", e.Reason)
-	case invalidValidatorSet:
-		return fmt.Sprintf("witness sent us invalid validator set: %v", e.Reason)
+	case invalidLightBlock:
+		return fmt.Sprintf("witness sent us an invalid light block: %v", e.Reason)
 	default:
 		return fmt.Sprintf("unknown code: %d", e.Code)
 	}

@@ -143,8 +143,8 @@ message SignedHeader {
 }
 
 message LightBlock {
-  SignedHeader                  signed_header = 1;
-  tendermint.types.ValidatorSet validator_set = 2;  
+  SignedHeader                  signed_header = 1; [(gogoproto.nullable) = false];
+  tendermint.types.ValidatorSet validator_set = 2; [(gogoproto.nullable) = false]; 
 }
 
 message BlockMeta {
