@@ -27,28 +27,20 @@ By default, Tendermint will only index txs by their hash and height, not by thei
 result events. See [indexing transactions](../app-dev/indexing-transactions.md) for
 details.
 
-There is no current strategy for pruning the databases. Consider reducing
-block production by [controlling empty blocks](../tendermint-core/using-tendermint.md#no-empty-blocks)
-or by increasing the `consensus.timeout_commit` param. Note both of these are
-local settings and not enforced by the consensus.
+Applications can expose block pruning strategies to the node operator. Please read the documentation of your application
+to find out more details.
 
-We're working on [state
-syncing](https://github.com/tendermint/tendermint/issues/828),
-which will enable history to be thrown away
-and recent application state to be directly synced. We'll need to develop solutions
-for archival nodes that allow queries on historical transactions and states.
-The Cosmos project has had much success just dumping the latest state of a
-blockchain to disk and starting a new chain from that state.
+Applications can use State Sync <!--- TODO: add link to state sync doc when created ---> to help nodes bootstrap quickly.
 
 ## Logging
 
-Default logging level (`main:info,state:info,*:`) should suffice for
+Default logging level (`log_level = "main:info,state:info,statesync:info,*:error"`) should suffice for
 normal operation mode. Read [this
 post](https://blog.cosmos.network/one-of-the-exciting-new-features-in-0-10-0-release-is-smart-log-level-flag-e2506b4ab756)
 for details on how to configure `log_level` config variable. Some of the
 modules can be found [here](./how-to-read-logs.md#list-of-modules). If
 you're trying to debug Tendermint or asked to provide logs with debug
-logging level, you can do so by running tendermint with
+logging level, you can do so by running Tendermint with
 `--log_level="*:debug"`.
 
 ## Write Ahead Logs (WAL)
@@ -86,8 +78,7 @@ For the above reasons, the `mempool.wal` is disabled by default. To enable, set
 
 Validators are supposed to setup [Sentry Node
 Architecture](./validators.md)
-to prevent Denial-of-service attacks. You can read more about it
-[here](../interviews/tendermint-bft.md).
+to prevent Denial-of-service attacks.
 
 ### P2P
 
@@ -98,7 +89,7 @@ send & receive rate per connection (`SendRate`, `RecvRate`).
 
 The number of open P2P connections can become quite large, and hit the operating system's open
 file limit (since TCP connections are considered files on UNIX-based systems). Nodes should be
-given a sizeable open file limit, e.g. 8192, via `ulimit -n 8192` or other deployment-specific
+given a sizable open file limit, e.g. 8192, via `ulimit -n 8192` or other deployment-specific
 mechanisms.
 
 ### RPC
@@ -108,8 +99,7 @@ elements (100 max). See the [RPC Documentation](https://docs.tendermint.com/mast
 for more information.
 
 Rate-limiting and authentication are another key aspects to help protect
-against DOS attacks. While in the future we may implement these
-features, for now, validators are supposed to use external tools like
+against DOS attacks. Validators are supposed to use external tools like
 [NGINX](https://www.nginx.com/blog/rate-limiting-nginx/) or
 [traefik](https://docs.traefik.io/middlewares/ratelimit/)
 to achieve the same things.

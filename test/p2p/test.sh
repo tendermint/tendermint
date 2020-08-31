@@ -35,6 +35,9 @@ bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" ab "test/p2p/atom
 # for each node, kill it and readd via fast sync
 bash test/p2p/fast_sync/test.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" "$N" "$PROXY_APP"
 
+# test double sign risk reduction for each node
+bash test/p2p/dsrr/test.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" "$N" "$PROXY_APP"
+
 # test killing all peers 3 times
 bash test/p2p/kill_all/test.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" "$N" 3
 

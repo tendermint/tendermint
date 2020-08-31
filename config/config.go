@@ -729,7 +729,9 @@ func (cfg *StateSyncConfig) TrustHashBytes() []byte {
 
 // DefaultStateSyncConfig returns a default configuration for the state sync service
 func DefaultStateSyncConfig() *StateSyncConfig {
-	return &StateSyncConfig{}
+	return &StateSyncConfig{
+		TrustPeriod: 168 * time.Hour,
+	}
 }
 
 // TestFastSyncConfig returns a default configuration for the state sync service
@@ -830,6 +832,8 @@ type ConsensusConfig struct {
 	// Reactor sleep duration parameters
 	PeerGossipSleepDuration     time.Duration `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration time.Duration `mapstructure:"peer_query_maj23_sleep_duration"`
+
+	DoubleSignCheckHeight int64 `mapstructure:"double_sign_check_height"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
@@ -848,6 +852,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		CreateEmptyBlocksInterval:   0 * time.Second,
 		PeerGossipSleepDuration:     100 * time.Millisecond,
 		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
+		DoubleSignCheckHeight:       int64(0),
 	}
 }
 
@@ -864,6 +869,7 @@ func TestConsensusConfig() *ConsensusConfig {
 	cfg.SkipTimeoutCommit = true
 	cfg.PeerGossipSleepDuration = 5 * time.Millisecond
 	cfg.PeerQueryMaj23SleepDuration = 250 * time.Millisecond
+	cfg.DoubleSignCheckHeight = int64(0)
 	return cfg
 }
 
@@ -944,6 +950,9 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 	}
 	if cfg.PeerQueryMaj23SleepDuration < 0 {
 		return errors.New("peer_query_maj23_sleep_duration can't be negative")
+	}
+	if cfg.DoubleSignCheckHeight < 0 {
+		return errors.New("double_sign_check_height can't be negative")
 	}
 	return nil
 }
