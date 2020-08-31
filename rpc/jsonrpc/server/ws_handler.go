@@ -22,7 +22,7 @@ import (
 ///////////////////////////////////////////////////////////////////////////////
 
 const (
-	defaultWSWriteChanCapacity = 1000
+	defaultWSWriteChanCapacity = 1
 	defaultWSWriteWait         = 10 * time.Second
 	defaultWSReadWait          = 30 * time.Second
 	defaultWSPingPeriod        = (defaultWSReadWait * 9) / 10
@@ -387,9 +387,7 @@ func (wsc *wsConnection) readRoutine() {
 // receives on a write channel and writes out on the socket
 func (wsc *wsConnection) writeRoutine() {
 	pingTicker := time.NewTicker(wsc.pingPeriod)
-	defer func() {
-		pingTicker.Stop()
-	}()
+	defer pingTicker.Stop()
 
 	// https://github.com/gorilla/websocket/issues/97
 	pongs := make(chan string, 1)
@@ -422,7 +420,9 @@ func (wsc *wsConnection) writeRoutine() {
 			jsonBytes, err := json.MarshalIndent(msg, "", "  ")
 			if err != nil {
 				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
-			} else if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
+				continue
+			}
+			if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
 				wsc.Logger.Error("Failed to write response", "msg", msg, "err", err)
 				return
 			}
