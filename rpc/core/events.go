@@ -47,12 +47,14 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 		for {
 			select {
 			case msg := <-sub.Out():
-				resultEvent := &ctypes.ResultEvent{Query: query, Data: msg.Data(), Events: msg.Events()}
-				ctx.WSConn.TryWriteRPCResponse(
-					rpctypes.NewRPCSuccessResponse(
-						subscriptionID,
-						resultEvent,
-					))
+				var (
+					resultEvent = &ctypes.ResultEvent{Query: query, Data: msg.Data(), Events: msg.Events()}
+					resp        = rpctypes.NewRPCSuccessResponse(subscriptionID, resultEvent)
+				)
+				if err := ctx.WSConn.WriteRPCResponse(subCtx, resp); err != nil {
+					env.Logger.Info("Can't write response",
+						"to", addr, "subscriptionID", subscriptionID, "response", resp, "err", err)
+				}
 			case <-sub.Cancelled():
 				if sub.Err() != tmpubsub.ErrUnsubscribed {
 					var reason string
@@ -61,11 +63,14 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 					} else {
 						reason = sub.Err().Error()
 					}
-					ctx.WSConn.TryWriteRPCResponse(
-						rpctypes.RPCServerError(
-							subscriptionID,
-							fmt.Errorf("subscription was cancelled (reason: %s)", reason),
-						))
+					var (
+						err  = fmt.Errorf("subscription was cancelled (reason: %s)", reason)
+						resp = rpctypes.RPCServerError(subscriptionID, err)
+					)
+					if ok := ctx.WSConn.TryWriteRPCResponse(resp); !ok {
+						env.Logger.Info("Can't write response",
+							"to", addr, "subscriptionID", subscriptionID, "response", resp, "err", err)
+					}
 				}
 				return
 			}
