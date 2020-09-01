@@ -6,11 +6,19 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ## BREAKING CHANGES
 
+- CLI/RPC/Config
+    - [config] \#5315 Rename `prof_laddr` to `pprof_laddr` and move it to `rpc` section (@melekes)
+    - [rpc] \#5315 Remove `/unsafe_start_cpu_profiler`, `/unsafe_stop_cpu_profiler` and `/unsafe_write_heap_profile`. Please use pprof functionality instead (@melekes)
+
+- Apps
+
+- P2P Protocol
+
+- Go API
+- [evidence] \# Remove ConflictingHeaders evidence type & CompositeEvidence Interface
 - [crypto/secp256k1] \#5280 `secp256k1` has been removed from the Tendermint repo. (@marbar3778)
 
-- CLI/RPC/Config
-  - [config] \#5315 Rename `prof_laddr` to `pprof_laddr` and move it to `rpc` section (@melekes)
-  - [rpc] \#5315 Remove `/unsafe_start_cpu_profiler`, `/unsafe_stop_cpu_profiler` and `/unsafe_write_heap_profile`. Please use pprof functionality instead (@melekes)
+- Blockchain Protocol
 
 ## FEATURES
 

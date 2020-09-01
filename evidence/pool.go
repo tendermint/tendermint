@@ -142,34 +142,11 @@ func (evpool *Pool) AddPOLC(polc *types.ProofOfLockChange) error {
 	return evpool.evidenceStore.Set(key, polcBytes)
 }
 
-// AddEvidence checks the evidence is valid and adds it to the pool. If
-// evidence is composite (ConflictingHeadersEvidence), it will be broken up
-// into smaller pieces.
+// AddEvidence checks the evidence is valid and adds it to the pool.
 func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
 	var evList = []types.Evidence{evidence}
 
 	evpool.logger.Debug("Attempting to add evidence", "ev", evidence)
-
-	valSet, err := evpool.stateDB.LoadValidators(evidence.Height())
-	if err != nil {
-		return fmt.Errorf("can't load validators at height #%d: %w", evidence.Height(), err)
-	}
-
-	// Break composite evidence into smaller pieces.
-	if ce, ok := evidence.(types.CompositeEvidence); ok {
-		evpool.logger.Info("Breaking up composite evidence", "ev", evidence)
-
-		blockMeta := evpool.blockStore.LoadBlockMeta(evidence.Height())
-		if blockMeta == nil {
-			return fmt.Errorf("don't have block meta at height #%d", evidence.Height())
-		}
-
-		if err := ce.VerifyComposite(&blockMeta.Header, valSet); err != nil {
-			return err
-		}
-
-		evList = ce.Split(&blockMeta.Header, valSet)
-	}
 
 	for _, ev := range evList {
 
