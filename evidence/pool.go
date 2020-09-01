@@ -37,11 +37,6 @@ type Pool struct {
 	mtx sync.Mutex
 	// latest state
 	state sm.State
-
-	// This is the closest height where at one or more of the current trial periods
-	// will have ended and we will need to then upgrade the evidence to amnesia evidence.
-	// It is set to -1 when we don't have any evidence on trial.
-	nextEvidenceTrialEndedHeight int64
 }
 
 // NewPool creates an evidence pool. If using an existing evidence store,
@@ -52,13 +47,12 @@ func NewPool(evidenceDB dbm.DB, stateDB StateStore, blockStore BlockStore) (*Poo
 	)
 
 	pool := &Pool{
-		stateDB:                      stateDB,
-		blockStore:                   blockStore,
-		state:                        state,
-		logger:                       log.NewNopLogger(),
-		evidenceStore:                evidenceDB,
-		evidenceList:                 clist.New(),
-		nextEvidenceTrialEndedHeight: -1,
+		stateDB:       stateDB,
+		blockStore:    blockStore,
+		state:         state,
+		logger:        log.NewNopLogger(),
+		evidenceStore: evidenceDB,
+		evidenceList:  clist.New(),
 	}
 
 	// if pending evidence already in db, in event of prior failure, then load it back to the evidenceList
@@ -92,7 +86,6 @@ func (evpool *Pool) AllPendingEvidence() []types.Evidence {
 }
 
 // Update uses the latest block & state to update any evidence that has been committed, to prune all expired evidence
-// and to check if any trial period of potential amnesia evidence  has finished.
 func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	// sanity check
 	if state.LastBlockHeight != block.Height {
