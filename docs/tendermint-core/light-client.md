@@ -1,5 +1,5 @@
 ---
-order: 11
+order: 12
 ---
 
 # Light Client
@@ -16,8 +16,7 @@ package](https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc).
 The objective of the light client protocol is to get a commit for a recent
 block hash where the commit includes a majority of signatures from the last
 known validator set. From there, all the application state is verifiable with
-[merkle
-proofs](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/encoding.md#iavl-tree).
+[merkle proofs](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/encoding.md#iavl-tree).
 
 ## Properties
 
@@ -49,7 +48,7 @@ $ curl -s https://233.123.0.140:26657:26657/commit | jq "{height: .result.signed
 ## Running a light client as an HTTP proxy server
 
 Tendermint comes with a built-in `tendermint light` command, which can be used
-to run a light client proxy server, verifying Tendermint rpc. All calls that
+to run a light client proxy server, verifying Tendermint RPC. All calls that
 can be tracked back to a block header by a proof will be verified before
 passing them back to the caller. Other than that, it will present the same
 interface as a full Tendermint node.
