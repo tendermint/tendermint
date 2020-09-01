@@ -910,11 +910,17 @@ func (n *Node) OnStop() {
 	n.Logger.Info("Stopping Node")
 
 	// first stop the non-reactor services
-	n.eventBus.Stop()
-	n.indexerService.Stop()
+	if err := n.eventBus.Stop(); err != nil {
+		n.Logger.Error("Error closing eventBus", "err", err)
+	}
+	if err := n.indexerService.Stop(); err != nil {
+		n.Logger.Error("Error closing indexerService", "err", err)
+	}
 
 	// now stop the reactors
-	n.sw.Stop()
+	if err := n.sw.Stop(); err != nil {
+		n.Logger.Error("Error closing switch", "err", err)
+	}
 
 	// stop mempool WAL
 	if n.config.Mempool.WalEnabled() {
@@ -936,7 +942,9 @@ func (n *Node) OnStop() {
 	}
 
 	if pvsc, ok := n.privValidator.(service.Service); ok {
-		pvsc.Stop()
+		if err := pvsc.Stop(); err != nil {
+			n.Logger.Error("Error closing private validator", "err", err)
+		}
 	}
 
 	if n.prometheusSrv != nil {

@@ -48,7 +48,9 @@ func TestReactorBroadcastTxMessage(t *testing.T) {
 	reactors := makeAndConnectReactors(config, N)
 	defer func() {
 		for _, r := range reactors {
-			r.Stop()
+			if err := r.Stop(); err != nil {
+				assert.NoError(t, err)
+			}
 		}
 	}()
 	for _, r := range reactors {
@@ -69,7 +71,9 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	reactors := makeAndConnectReactors(config, N)
 	defer func() {
 		for _, r := range reactors {
-			r.Stop()
+			if err := r.Stop(); err != nil {
+				assert.NoError(t, err)
+			}
 		}
 	}()
 
@@ -88,7 +92,9 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 	reactors := makeAndConnectReactors(config, N)
 	defer func() {
 		for _, r := range reactors {
-			r.Stop()
+			if err := r.Stop(); err != nil {
+				assert.NoError(t, err)
+			}
 		}
 	}()
 
@@ -112,7 +118,9 @@ func TestBroadcastTxForPeerStopsWhenReactorStops(t *testing.T) {
 
 	// stop reactors
 	for _, r := range reactors {
-		r.Stop()
+		if err := r.Stop(); err != nil {
+			assert.NoError(t, err)
+		}
 	}
 
 	// check that we are not leaking any go-routines
@@ -159,7 +167,9 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	reactors := makeAndConnectReactors(config, N)
 	defer func() {
 		for _, r := range reactors {
-			r.Stop()
+			if err := r.Stop(); err != nil {
+				assert.NoError(t, err)
+			}
 		}
 	}()
 	reactor := reactors[0]

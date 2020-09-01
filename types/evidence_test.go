@@ -313,7 +313,7 @@ func TestConflictingHeadersEvidence(t *testing.T) {
 
 	assert.Panics(t, func() {
 		pubKey, _ := vals[0].GetPubKey()
-		ev.Verify(chainID, pubKey)
+		ev.Verify(chainID, pubKey) //nolint:errcheck // expected to panic
 	})
 
 	assert.Equal(t, height, ev.Height())

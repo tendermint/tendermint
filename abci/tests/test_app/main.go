@@ -67,7 +67,11 @@ func testCounter() {
 	}
 
 	client := startClient(abciType)
-	defer client.Stop()
+	defer func() {
+		if err := client.Stop(); err != nil {
+			fmt.Printf("error trying client stop: %v", err)
+		}
+	}()
 
 	setOption(client, "serial", "on")
 	commit(client, nil)

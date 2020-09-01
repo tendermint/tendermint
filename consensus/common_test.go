@@ -399,7 +399,10 @@ func newStateWithConfigAndBlockStore(
 
 	eventBus := types.NewEventBus()
 	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
-	eventBus.Start()
+	err := eventBus.Start()
+	if err != nil {
+		panic(err)
+	}
 	cs.SetEventBus(eventBus)
 	return cs
 }
@@ -461,7 +464,8 @@ func randStateWithEvpool(t *testing.T, nValidators int) (*State, []*validatorStu
 
 	eventBus := types.NewEventBus()
 	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
-	eventBus.Start()
+	err = eventBus.Start()
+	require.NoError(t, err)
 	cs.SetEventBus(eventBus)
 
 	for i := 0; i < nValidators; i++ {

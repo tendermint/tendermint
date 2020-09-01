@@ -18,7 +18,9 @@ func BenchmarkReap(b *testing.B) {
 	for i := 0; i < size; i++ {
 		tx := make([]byte, 8)
 		binary.BigEndian.PutUint64(tx, uint64(i))
-		mempool.CheckTx(tx, nil, TxInfo{})
+		if err := mempool.CheckTx(tx, nil, TxInfo{}); err != nil {
+			b.Error(err)
+		}
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -35,7 +37,9 @@ func BenchmarkCheckTx(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		tx := make([]byte, 8)
 		binary.BigEndian.PutUint64(tx, uint64(i))
-		mempool.CheckTx(tx, nil, TxInfo{})
+		if err := mempool.CheckTx(tx, nil, TxInfo{}); err != nil {
+			b.Error(err)
+		}
 	}
 }
 
