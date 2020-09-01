@@ -61,16 +61,18 @@ When initializing nodes there are five parameters in the `config.toml` that may 
 - `unconditional_peer_ids:` comma separated list of nodeID's. These nodes will be connected to no matter the limits of inbound and outbound peers. This is useful for when sentry nodes have full address books.
 - `private_peer_ids:` comma separated list of nodeID's. These nodes will not be gossiped to the network. This is an important field as you do not want your validator IP gossiped to the network.
 - `addr_book_strict:` boolean. By default nodes with a routable address will be considered for connection. If this setting is turned off (false), non-routable IP addresses, like addresses in a private network can be added to the address book.
+- `double_sign_check_height` int64 height.  How many blocks to look back to check existence of the node's consensus votes before joining consensus When non-zero, the node will panic upon restart if the same consensus key was used to sign {double_sign_check_height} last blocks. So, validators should stop the state machine, wait for some blocks, and then restart the state machine to avoid panic.
 
 #### Validator Node Configuration
 
-| Config Option          | Setting                    |
-| ---------------------- | -------------------------- |
-| pex                    | false                      |
-| persistent_peers       | list of sentry nodes       |
-| private_peer_ids       | none                       |
-| unconditional_peer_ids | optionally sentry node IDs |
-| addr_book_strict       | false                      |
+| Config Option            | Setting                    |
+| ------------------------ | -------------------------- |
+| pex                      | false                      |
+| persistent_peers         | list of sentry nodes       |
+| private_peer_ids         | none                       |
+| unconditional_peer_ids   | optionally sentry node IDs |
+| addr_book_strict         | false                      |
+| double_sign_check_height | 10                         |
 
 The validator node should have `pex=false` so it does not gossip to the entire network. The persistent peers will be your sentry nodes. Private peers can be left empty as the validator is not trying to hide who it is communicating with. Setting unconditional peers is optional for a validator because they will not have a full address books.
 

@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/gogo/protobuf/proto"
 	dbm "github.com/tendermint/tm-db"
 
 	tmsync "github.com/tendermint/tendermint/libs/sync"
@@ -53,7 +52,7 @@ func (s *dbs) SaveLightBlock(lb *types.LightBlock) error {
 		return fmt.Errorf("unable to convert light block to protobuf: %w", err)
 	}
 
-	lbBz, err := proto.Marshal(lbpb)
+	lbBz, err := lbpb.Marshal()
 	if err != nil {
 		return fmt.Errorf("marshalling LightBlock: %w", err)
 	}
@@ -122,7 +121,7 @@ func (s *dbs) LightBlock(height int64) (*types.LightBlock, error) {
 	}
 
 	var lbpb tmproto.LightBlock
-	err = proto.Unmarshal(bz, &lbpb)
+	err = lbpb.Unmarshal(bz)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal error: %w", err)
 	}

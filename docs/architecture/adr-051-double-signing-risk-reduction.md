@@ -28,8 +28,8 @@ We would like to suggest a double signing risk reduction method.
 - Configuration
     - We would like to suggest by introducing `double_sign_check_height` parameter in `config.toml` and cli, how many blocks state machine looks back to check votes
     - <span v-pre>`double_sign_check_height = {{ .Consensus.DoubleSignCheckHeight }}`</span> in `config.toml`
-    - `tendermint node --double_sign_check_height` in cli
-    - State machine ignore checking procedure when `vote-check-height == 0`
+    - `tendermint node --consensus.double_sign_check_height` in cli
+    - State machine ignore checking procedure when `double_sign_check_height == 0`
 
 ## Status
 

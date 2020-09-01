@@ -10,14 +10,11 @@ go) which operates both the sending and receiving of evidence.
 
 The `Receive` function takes a list of evidence and does the following:
 
-1. Breaks it down into individual evidence if it is `Composite Evidence`
-(see types/evidence.go#ConflictingHeadersEvidence)
+1. Checks that it does not already have the evidence stored
 
-2. Checks that it does not already have the evidence stored
+2. Verifies the evidence against the node's state (see state/validation.go#VerifyEvidence)
 
-3. Verifies the evidence against the node's state (see state/validation.go#VerifyEvidence)
-
-4. Stores the evidence to a db and a concurrent list
+3. Stores the evidence to a db and a concurrent list
 
 The gossiping of evidence is initiated when a peer is added which starts a go routine to broadcast currently
 uncommitted evidence at intervals of 60 seconds (set by the by broadcastEvidenceIntervalS).

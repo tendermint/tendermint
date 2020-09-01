@@ -17,5 +17,6 @@ This section dives into the internals of Tendermint the implementation.
 - [Block Structure](./block-structure.md)
 - [RPC](./rpc.md)
 - [Fast Sync](./fast-sync.md)
+- [State Sync](./state-sync.md)
 - [Mempool](./mempool.md)
 - [Light Client](./light-client.md)

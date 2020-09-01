@@ -21,8 +21,6 @@ echo export PATH=\"\$PATH:\$GOPATH/bin\" >> ~/.bash_profile
 ### Get Source Code
 
 ```sh
-mkdir -p $GOPATH/src/github.com/tendermint
-cd $GOPATH/src/github.com/tendermint
 git clone https://github.com/tendermint/tendermint.git
 cd tendermint
 ```
@@ -47,12 +45,12 @@ make build
 
 to put the binary in `./build`.
 
-_DISCLAIMER_ The binary of tendermint is build/installed without the DWARF
-symbol table. If you would like to build/install tendermint with the DWARF
+_DISCLAIMER_ The binary of Tendermint is build/installed without the DWARF
+symbol table. If you would like to build/install Tendermint with the DWARF
 symbol and debug information, remove `-s -w` from `BUILD_FLAGS` in the make
 file.
 
-The latest tendermint is now installed. You can verify the installation by
+The latest Tendermint is now installed. You can verify the installation by
 running:
 
 ```sh
@@ -73,14 +71,12 @@ tendermint node --proxy_app=kvstore
 If you already have Tendermint installed, and you make updates, simply
 
 ```sh
-cd $GOPATH/src/github.com/tendermint/tendermint
 make install
 ```
 
 To upgrade, run
 
 ```sh
-cd $GOPATH/src/github.com/tendermint/tendermint
 git pull origin master
 make install
 ```

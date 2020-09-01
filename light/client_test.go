@@ -973,46 +973,6 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 	assert.Equal(t, 1, len(c.Witnesses()))
 }
 
-func TestClientReportsConflictingHeadersEvidence(t *testing.T) {
-	// fullNode2 sends us different header
-	altH2 := keys.GenSignedHeaderLastBlockID(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
-		hash("app_hash2"), hash("cons_hash"), hash("results_hash"),
-		0, len(keys), types.BlockID{Hash: h1.Hash()})
-	fullNode2 := mockp.New(
-		chainID,
-		map[int64]*types.SignedHeader{
-			1: h1,
-			2: altH2,
-		},
-		map[int64]*types.ValidatorSet{
-			1: vals,
-			2: vals,
-		},
-	)
-
-	c, err := light.NewClient(
-		chainID,
-		trustOptions,
-		fullNode,
-		[]provider.Provider{fullNode2},
-		dbs.New(dbm.NewMemDB(), chainID),
-		light.Logger(log.TestingLogger()),
-		light.MaxRetryAttempts(1),
-	)
-	require.NoError(t, err)
-
-	// Check verification returns an error.
-	_, err = c.VerifyLightBlockAtHeight(2, bTime.Add(2*time.Hour))
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "does not match one")
-	}
-
-	// Check evidence was sent to both full nodes.
-	ev := &types.ConflictingHeadersEvidence{H1: h2, H2: altH2}
-	assert.True(t, fullNode2.HasEvidence(ev))
-	assert.True(t, fullNode.HasEvidence(ev))
-}
-
 func TestClientPrunesHeadersAndValidatorSets(t *testing.T) {
 	c, err := light.NewClient(
 		chainID,

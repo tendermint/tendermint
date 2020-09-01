@@ -105,26 +105,11 @@ func TestMaxEvidenceBytes(t *testing.T) {
 
 	//TODO: Add other types of evidence to test and set MaxEvidenceBytes accordingly
 
-	// evl := &LunaticValidatorEvidence{
-	// Header: makeHeaderRandom(),
-	// Vote:   makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
-
-	// 	InvalidHeaderField: "",
-	// }
-
-	// signedHeader := SignedHeader{Header: makeHeaderRandom(), Commit: randCommit(time.Now())}
-	// evc := &ConflictingHeadersEvidence{
-	// 	H1: &signedHeader,
-	// 	H2: &signedHeader,
-	// }
-
 	testCases := []struct {
 		testName string
 		evidence Evidence
 	}{
 		{"DuplicateVote", ev},
-		// {"LunaticValidatorEvidence", evl},
-		// {"ConflictingHeadersEvidence", evc},
 	}
 
 	for _, tt := range testCases {
@@ -191,139 +176,6 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 func TestMockEvidenceValidateBasic(t *testing.T) {
 	goodEvidence := NewMockDuplicateVoteEvidence(int64(1), time.Now(), "mock-chain-id")
 	assert.Nil(t, goodEvidence.ValidateBasic())
-}
-
-func TestLunaticValidatorEvidence(t *testing.T) {
-	var (
-		invalidBlockID = makeBlockIDRandom()
-		header         = makeHeaderRandom()
-		altHeader      = makeHeaderRandom()
-		bTime, _       = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
-		val            = NewMockPV()
-	)
-
-	header.Time = bTime
-
-	blockID := BlockID{
-		Hash: header.Hash(),
-		PartSetHeader: PartSetHeader{
-			Total: 100,
-			Hash:  crypto.CRandBytes(tmhash.Size),
-		},
-	}
-
-	vote := makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, blockID, defaultVoteTime)
-
-	ev := NewLunaticValidatorEvidence(header, vote, "AppHash", bTime)
-
-	//happy path
-	assert.Equal(t, header.Height, ev.Height())
-	assert.Equal(t, bTime, ev.Time())
-	assert.EqualValues(t, vote.ValidatorAddress, ev.Address())
-	assert.NotEmpty(t, ev.Hash())
-	assert.NotEmpty(t, ev.Bytes())
-	assert.True(t, ev.Equal(ev))
-	pubKey, err := val.GetPubKey()
-	require.NoError(t, err)
-	assert.NoError(t, ev.Verify(header.ChainID, pubKey))
-	assert.NoError(t, ev.ValidateBasic())
-	assert.NotEmpty(t, ev.String())
-	assert.NoError(t, ev.VerifyHeader(altHeader))
-
-	// invalid evidence
-	assert.Error(t, ev.Verify("other", pubKey))
-	privKey2 := ed25519.GenPrivKey()
-	pubKey2 := privKey2.PubKey()
-	assert.Error(t, ev.Verify(header.ChainID, pubKey2))
-	assert.Error(t, ev.VerifyHeader(header))
-
-	invalidVote := makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, invalidBlockID, defaultVoteTime)
-	invalidHeightVote := makeVote(t, val, header.ChainID, 0, header.Height+1, 0, 2, blockID, defaultVoteTime)
-	emptyBlockVote := makeVote(t, val, header.ChainID, 0, header.Height, 0, 2, BlockID{}, defaultVoteTime)
-
-	invalidLunaticEvidence := []*LunaticValidatorEvidence{
-		NewLunaticValidatorEvidence(header, invalidVote, "AppHash", header.Time),
-		NewLunaticValidatorEvidence(header, invalidHeightVote, "AppHash", header.Time),
-		NewLunaticValidatorEvidence(nil, vote, "AppHash", vote.Timestamp),
-		NewLunaticValidatorEvidence(header, nil, "AppHash", header.Time),
-		NewLunaticValidatorEvidence(header, vote, "other", header.Time),
-		NewLunaticValidatorEvidence(header, emptyBlockVote, "AppHash", header.Time),
-	}
-
-	for idx, ev := range invalidLunaticEvidence {
-		assert.Error(t, ev.ValidateBasic(), "#%d", idx)
-	}
-
-}
-
-func TestConflictingHeadersEvidence(t *testing.T) {
-	const (
-		chainID       = "TestConflictingHeadersEvidence"
-		height  int64 = 37
-	)
-
-	var (
-		blockID = makeBlockIDRandom()
-		header1 = makeHeaderRandom()
-		header2 = makeHeaderRandom()
-	)
-
-	header1.Height = height
-	header1.LastBlockID = blockID
-	header1.ChainID = chainID
-
-	header2.Height = height
-	header2.LastBlockID = blockID
-	header2.ChainID = chainID
-
-	voteSet1, valSet, vals := randVoteSet(height, 1, tmproto.PrecommitType, 10, 1)
-	voteSet2 := NewVoteSet(chainID, height, 1, tmproto.PrecommitType, valSet)
-
-	commit1, err := MakeCommit(BlockID{
-		Hash: header1.Hash(),
-		PartSetHeader: PartSetHeader{
-			Total: 100,
-			Hash:  crypto.CRandBytes(tmhash.Size),
-		},
-	}, height, 1, voteSet1, vals, time.Now())
-	require.NoError(t, err)
-	commit2, err := MakeCommit(BlockID{
-		Hash: header2.Hash(),
-		PartSetHeader: PartSetHeader{
-			Total: 100,
-			Hash:  crypto.CRandBytes(tmhash.Size),
-		},
-	}, height, 1, voteSet2, vals, time.Now())
-	require.NoError(t, err)
-
-	h1 := &SignedHeader{
-		Header: header1,
-		Commit: commit1,
-	}
-	h2 := &SignedHeader{
-		Header: header2,
-		Commit: commit2,
-	}
-
-	ev := NewConflictingHeadersEvidence(h1, h2)
-
-	assert.Panics(t, func() {
-		ev.Address()
-	})
-
-	assert.Panics(t, func() {
-		pubKey, _ := vals[0].GetPubKey()
-		ev.Verify(chainID, pubKey)
-	})
-
-	assert.Equal(t, height, ev.Height())
-	assert.Equal(t, ev.H2.Time, ev.Time())
-	assert.NotEmpty(t, ev.Hash())
-	assert.NotEmpty(t, ev.Bytes())
-	assert.NoError(t, ev.VerifyComposite(header1, valSet))
-	assert.True(t, ev.Equal(ev))
-	assert.NoError(t, ev.ValidateBasic())
-	assert.NotEmpty(t, ev.String())
 }
 
 func TestPotentialAmnesiaEvidence(t *testing.T) {
@@ -643,35 +495,6 @@ func TestEvidenceProto(t *testing.T) {
 	header2.LastBlockID = blockID
 	header2.ChainID = chainID
 
-	voteSet1, valSet, vals := randVoteSet(height, 1, tmproto.PrecommitType, 10, 1)
-	voteSet2 := NewVoteSet(chainID, height, 1, tmproto.PrecommitType, valSet)
-
-	commit1, err := MakeCommit(BlockID{
-		Hash: header1.Hash(),
-		PartSetHeader: PartSetHeader{
-			Total: 100,
-			Hash:  crypto.CRandBytes(tmhash.Size),
-		},
-	}, height, 1, voteSet1, vals, time.Now())
-	require.NoError(t, err)
-	commit2, err := MakeCommit(BlockID{
-		Hash: header2.Hash(),
-		PartSetHeader: PartSetHeader{
-			Total: 100,
-			Hash:  crypto.CRandBytes(tmhash.Size),
-		},
-	}, height, 1, voteSet2, vals, time.Now())
-	require.NoError(t, err)
-
-	h1 := &SignedHeader{
-		Header: header1,
-		Commit: commit1,
-	}
-	h2 := &SignedHeader{
-		Header: header2,
-		Commit: commit2,
-	}
-
 	tests := []struct {
 		testName     string
 		evidence     Evidence
@@ -683,17 +506,6 @@ func TestEvidenceProto(t *testing.T) {
 		{"DuplicateVoteEvidence nil voteB", &DuplicateVoteEvidence{VoteA: v, VoteB: nil}, false, true},
 		{"DuplicateVoteEvidence nil voteA", &DuplicateVoteEvidence{VoteA: nil, VoteB: v}, false, true},
 		{"DuplicateVoteEvidence success", &DuplicateVoteEvidence{VoteA: v2, VoteB: v}, false, false},
-		{"ConflictingHeadersEvidence empty fail", &ConflictingHeadersEvidence{}, false, true},
-		{"ConflictingHeadersEvidence nil H2", &ConflictingHeadersEvidence{H1: h1, H2: nil}, false, true},
-		{"ConflictingHeadersEvidence nil H1", &ConflictingHeadersEvidence{H1: nil, H2: h2}, false, true},
-		{"ConflictingHeadersEvidence success", &ConflictingHeadersEvidence{H1: h1, H2: h2}, false, false},
-		{"LunaticValidatorEvidence success", &LunaticValidatorEvidence{Header: header1,
-			Vote: v, InvalidHeaderField: "ValidatorsHash"}, false, true},
-		{"&LunaticValidatorEvidence empty fail", &LunaticValidatorEvidence{}, false, true},
-		{"LunaticValidatorEvidence only header fail", &LunaticValidatorEvidence{Header: header1}, false, true},
-		{"LunaticValidatorEvidence only vote fail", &LunaticValidatorEvidence{Vote: v}, false, true},
-		{"LunaticValidatorEvidence header & vote fail", &LunaticValidatorEvidence{Header: header1, Vote: v}, false, true},
-		{"LunaticValidatorEvidence empty fail", &LunaticValidatorEvidence{}, false, true},
 		{"PotentialAmnesiaEvidence empty fail", &PotentialAmnesiaEvidence{}, false, true},
 		{"PotentialAmnesiaEvidence nil VoteB", &PotentialAmnesiaEvidence{VoteA: v, VoteB: nil}, false, true},
 		{"PotentialAmnesiaEvidence nil VoteA", &PotentialAmnesiaEvidence{VoteA: nil, VoteB: v2}, false, true},

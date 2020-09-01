@@ -34,10 +34,9 @@ func (lb LightBlock) ValidateBasic(chainID string) error {
 	}
 
 	// make sure the validator set is consistent with the header
-	if !bytes.Equal(lb.SignedHeader.ValidatorsHash, lb.ValidatorSet.Hash()) {
+	if valSetHash := lb.ValidatorSet.Hash(); !bytes.Equal(lb.SignedHeader.ValidatorsHash, valSetHash) {
 		return fmt.Errorf("expected validator hash of header to match validator set hash (%X != %X)",
-			lb.SignedHeader.ValidatorsHash,
-			lb.ValidatorSet.Hash(),
+			lb.SignedHeader.ValidatorsHash, valSetHash,
 		)
 	}
 
