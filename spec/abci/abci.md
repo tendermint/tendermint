@@ -69,26 +69,26 @@ Example:
  Events: []abci.Event{
   {
    Type: "validator.provisions",
-   Attributes: kv.Pairs{
-    kv.Pair{Key: []byte("address"), Value: []byte("...")},
-    kv.Pair{Key: []byte("amount"), Value: []byte("...")},
-    kv.Pair{Key: []byte("balance"), Value: []byte("...")},
+   Attributes: []abci.EventAttribute{
+    abci.EventAttribute{Key: []byte("address"), Value: []byte("..."), Index: true},
+    abci.EventAttribute{Key: []byte("amount"), Value: []byte("..."), Index: true},
+    abci.EventAttribute{Key: []byte("balance"), Value: []byte("..."), Index: true},
    },
   },
   {
    Type: "validator.provisions",
-   Attributes: kv.Pairs{
-    kv.Pair{Key: []byte("address"), Value: []byte("...")},
-    kv.Pair{Key: []byte("amount"), Value: []byte("...")},
-    kv.Pair{Key: []byte("balance"), Value: []byte("...")},
+   Attributes: []abci.EventAttribute{
+    abci.EventAttribute{Key: []byte("address"), Value: []byte("..."), Index: true},
+    abci.EventAttribute{Key: []byte("amount"), Value: []byte("..."), Index: false},
+    abci.EventAttribute{Key: []byte("balance"), Value: []byte("..."), Index: false},
    },
   },
   {
    Type: "validator.slashed",
-   Attributes: kv.Pairs{
-    kv.Pair{Key: []byte("address"), Value: []byte("...")},
-    kv.Pair{Key: []byte("amount"), Value: []byte("...")},
-    kv.Pair{Key: []byte("reason"), Value: []byte("...")},
+   Attributes: []abci.EventAttribute{
+    abci.EventAttribute{Key: []byte("address"), Value: []byte("..."), Index: false},
+    abci.EventAttribute{Key: []byte("amount"), Value: []byte("..."), Index: true},
+    abci.EventAttribute{Key: []byte("reason"), Value: []byte("..."), Index: true},
    },
   },
   // ...
@@ -305,7 +305,7 @@ via light client.
     - `ByzantineValidators ([]Evidence)`: List of evidence of
     validators that acted maliciously.
 - **Response**:
-    - `Tags ([]kv.Pair)`: Key-Value tags for filtering and indexing
+    - `Events ([]abci.Event)`: Type & Key-Value events for indexing
 - **Usage**:
     - Signals the beginning of a new block. Called prior to
     any DeliverTxs.
@@ -332,7 +332,7 @@ via light client.
     be non-deterministic.
     - `GasWanted (int64)`: Amount of gas requested for transaction.
     - `GasUsed (int64)`: Amount of gas consumed by transaction.
-    - `Tags ([]kv.Pair)`: Key-Value tags for filtering and indexing
+    - `Events ([]abci.Event)`: Type & Key-Value events for indexing
     transactions (eg. by account).
     - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
@@ -360,7 +360,7 @@ via light client.
     be non-deterministic.
     - `GasWanted (int64)`: Amount of gas requested for transaction.
     - `GasUsed (int64)`: Amount of gas consumed by transaction.
-    - `Tags ([]kv.Pair)`: Key-Value tags for filtering and indexing
+    - `Events ([]abci.Event)`: Type & Key-Value events for indexing
     transactions (eg. by account).
     - `Codespace (string)`: Namespace for the `Code`.
 - **Usage**:
@@ -377,7 +377,7 @@ via light client.
     voting power to 0 to remove).
     - `ConsensusParamUpdates (ConsensusParams)`: Changes to
     consensus-critical time, size, and other parameters.
-    - `Tags ([]kv.Pair)`: Key-Value tags for filtering and indexing
+    - `Events ([]abci.Event)`: Type & Key-Value events for indexing
 - **Usage**:
     - Signals the end of a block.
     - Called after all transactions, prior to each Commit.

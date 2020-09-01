@@ -196,7 +196,7 @@ not broadcasted to other peers and not included in a proposal block.
 `Data` contains the result of the CheckTx transaction execution, if any. It is
 semantically meaningless to Tendermint.
 
-`Tags` include any tags for the execution, though since the transaction has not
+`Events` include any events for the execution, though since the transaction has not
 been committed yet, they are effectively ignored by Tendermint.
 
 ### DeliverTx
