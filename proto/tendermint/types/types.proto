@@ -144,7 +144,7 @@ message SignedHeader {
 
 message LightBlock {
   SignedHeader                  signed_header = 1;
-  tendermint.types.ValidatorSet validator_set = 2;  
+  tendermint.types.ValidatorSet validator_set = 2; 
 }
 
 message BlockMeta {

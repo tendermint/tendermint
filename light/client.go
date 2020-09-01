@@ -900,10 +900,7 @@ func (c *Client) compareNewHeaderWithWitnesses(l *types.LightBlock, now time.Tim
 	defer c.providerMutex.Unlock()
 
 	// 1. Make sure AT LEAST ONE witness returns the same header.
-	var (
-		headerMatched      bool
-		lastErrConfHeaders error
-	)
+	var headerMatched bool
 
 	if len(c.witnesses) == 0 {
 		return errNoWitnesses{}
@@ -924,14 +921,10 @@ func (c *Client) compareNewHeaderWithWitnesses(l *types.LightBlock, now time.Tim
 		switch e := err.(type) {
 		case nil: // at least one header matched
 			headerMatched = true
-		case ErrConflictingHeaders: // fork detected
-			c.logger.Info("FORK DETECTED", "witness", e.Witness, "err", err)
-			c.sendConflictingHeadersEvidence(&types.ConflictingHeadersEvidence{H1: e.H1, H2: e.H2})
-			lastErrConfHeaders = e
 		case errBadWitness:
 			c.logger.Info("Requested light block from bad witness", "witness", c.witnesses[e.WitnessIndex], "err", err)
 			// if witness sent us invalid header / vals, remove it
-			if e.Code == invalidHeader || e.Code == invalidValidatorSet {
+			if e.Code == invalidLightBlock {
 				c.logger.Info("Witness sent us invalid header / vals -> removing it", "witness", c.witnesses[e.WitnessIndex])
 				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 			}
@@ -944,11 +937,7 @@ func (c *Client) compareNewHeaderWithWitnesses(l *types.LightBlock, now time.Tim
 		c.removeWitness(idx)
 	}
 
-	if lastErrConfHeaders != nil {
-		// NOTE: all of the potential forks will be reported, but we only return
-		// the last ErrConflictingHeaders error here.
-		return lastErrConfHeaders
-	} else if headerMatched {
+	if headerMatched {
 		return nil
 	}
 
@@ -961,7 +950,7 @@ func (c *Client) compareNewHeaderWithWitness(errc chan error, l *types.LightBloc
 	altBlock, err := witness.LightBlock(l.Height)
 	if err != nil {
 		if _, ok := err.(provider.ErrBadLightBlock); ok {
-			errc <- errBadWitness{Reason: err, WitnessIndex: witnessIndex}
+			errc <- errBadWitness{Reason: err, Code: invalidLightBlock, WitnessIndex: witnessIndex}
 		} else {
 			errc <- err
 		}
@@ -972,10 +961,9 @@ func (c *Client) compareNewHeaderWithWitness(errc chan error, l *types.LightBloc
 
 	if !bytes.Equal(l.Hash(), altBlock.Hash()) {
 		if bsErr := c.verifySkipping(witness, c.latestTrustedBlock, altBlock, now); bsErr != nil {
-			errc <- errBadWitness{bsErr, invalidHeader, witnessIndex}
+			errc <- errBadWitness{Reason: bsErr, Code: invalidLightBlock, WitnessIndex: witnessIndex}
 			return
 		}
-		errc <- ErrConflictingHeaders{H1: l.SignedHeader, Primary: c.primary, H2: altBlock.SignedHeader, Witness: witness}
 	}
 
 	errc <- nil
@@ -1058,26 +1046,6 @@ func (c *Client) lightBlockFromPrimary(height int64) (*types.LightBlock, error) 
 		return c.lightBlockFromPrimary(height)
 	}
 	return l, err
-}
-
-// sendConflictingHeadersEvidence sends evidence to all witnesses and primary
-// on best effort basis.
-//
-// Evidence needs to be submitted to all full nodes since there's no way to
-// determine which full node is correct (honest).
-func (c *Client) sendConflictingHeadersEvidence(ev *types.ConflictingHeadersEvidence) {
-	err := c.primary.ReportEvidence(ev)
-	if err != nil {
-		c.logger.Error("Failed to report evidence to primary", "ev", ev, "primary", c.primary)
-	}
-
-	for _, w := range c.witnesses {
-		err := w.ReportEvidence(ev)
-		if err != nil {
-			c.logger.Error("Failed to report evidence to witness", "ev", ev, "witness", w)
-		}
-	}
-	return nil
 }
 
 func hash2str(hash []byte) string {
