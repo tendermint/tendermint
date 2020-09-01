@@ -104,19 +104,11 @@ func TestMaxEvidenceBytes(t *testing.T) {
 
 	//TODO: Add other types of evidence to test and set MaxEvidenceBytes accordingly
 
-	// evl := &LunaticValidatorEvidence{
-	// Header: makeHeaderRandom(),
-	// Vote:   makeVote(t, val, chainID, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, blockID2),
-
-	// 	InvalidHeaderField: "",
-	// }
-
 	testCases := []struct {
 		testName string
 		evidence Evidence
 	}{
 		{"DuplicateVote", ev},
-		// {"LunaticValidatorEvidence", evl},
 	}
 
 	for _, tt := range testCases {

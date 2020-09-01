@@ -32,14 +32,6 @@ type Evidence interface {
 const (
 	// MaxEvidenceBytes is a maximum size of any evidence (including amino overhead).
 	MaxEvidenceBytes int64 = 444
-
-	// An invalid field in the header from LunaticValidatorEvidence.
-	// Must be a function of the ABCI application state.
-	ValidatorsHashField     = "ValidatorsHash"
-	NextValidatorsHashField = "NextValidatorsHash"
-	ConsensusHashField      = "ConsensusHash"
-	AppHashField            = "AppHash"
-	LastResultsHashField    = "LastResultsHash"
 )
 
 // ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.
