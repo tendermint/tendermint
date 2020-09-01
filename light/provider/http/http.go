@@ -122,6 +122,7 @@ func (p *http) validatorSet(height *int64) (*types.ValidatorSet, error) {
 			page++
 			break
 		}
+		return nil, provider.ErrNoResponse
 	}
 	return types.NewValidatorSet(vals), nil
 }
