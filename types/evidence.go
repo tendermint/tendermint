@@ -18,18 +18,24 @@ import (
 )
 
 // Evidence represents any provable malicious activity by a validator.
+// Verification logic for each evidence is part of the evidence module
 type Evidence interface {
-	Height() int64                                     // height of the equivocation
-	Time() time.Time                                   // time of the equivocation
-	Address() []byte                                   // address of the equivocating validator
-	Bytes() []byte                                     // bytes which comprise the evidence
-	Hash() []byte                                      // hash of the evidence
-	Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
-	Equal(Evidence) bool                               // check equality of evidence
-
-	ValidateBasic() error
-	String() string
+	Height() int64           // height of the equivocation
+	Time() time.Time         // time of the equivocation
+	Addresses() []Address    // addresses of the equivocating validator
+	Bytes() []byte           // bytes which comprise the evidence
+	Hash() []byte            // hash of the evidence
+	ValidateBasic() error	 // basic validation	
+	Type() string            // type of evidence
+	String() string										
 }
+
+const (
+	DuplicateVoteEvidenceType = "duplicate/vote"
+	LightAmnesiaEvidenceType = "light/amnesia"
+	LightLunaticEvidenceType = "light/lunatic"
+	LightEquivocationEvidenceType = "light/equivocation"
+)
 
 type CompositeEvidence interface {
 	VerifyComposite(committedHeader *Header, valSet *ValidatorSet) error
@@ -225,7 +231,7 @@ func (dve *DuplicateVoteEvidence) Time() time.Time {
 }
 
 // Address returns the address of the validator.
-func (dve *DuplicateVoteEvidence) Address() []byte {
+func (dve *DuplicateVoteEvidence) Addresses() []Address {
 	return dve.VoteA.ValidatorAddress
 }
 
@@ -300,30 +306,9 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 	return nil
 }
 
-// Equal checks if two pieces of evidence are equal.
-func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
-	if _, ok := ev.(*DuplicateVoteEvidence); !ok {
-		return false
-	}
-	pbdev := dve.ToProto()
-	bz, err := pbdev.Marshal()
-	if err != nil {
-		panic(err)
-	}
-
-	var evbz []byte
-	if ev, ok := ev.(*DuplicateVoteEvidence); ok {
-		evpb := ev.ToProto()
-		evbz, err = evpb.Marshal()
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	// just check their hashes
-	dveHash := tmhash.Sum(bz)
-	evHash := tmhash.Sum(evbz)
-	return bytes.Equal(dveHash, evHash)
+// Type returns the type of evidence as a string
+func (dve *DuplicateVoteEvidence) Type() string { 
+	return DuplicateVoteEvidenceType
 }
 
 // ValidateBasic performs basic validation.
@@ -387,7 +372,7 @@ type ConflictingHeadersEvidence struct {
 	H2 *SignedHeader `json:"h_2"`
 }
 
-var _ Evidence = &ConflictingHeadersEvidence{}
+// var _ Evidence = &ConflictingHeadersEvidence{}
 var _ CompositeEvidence = &ConflictingHeadersEvidence{}
 
 // NewConflictingHeadersEvidence creates a new instance of the respective evidence
@@ -669,7 +654,7 @@ type LunaticValidatorEvidence struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-var _ Evidence = &LunaticValidatorEvidence{}
+// var _ Evidence = &LunaticValidatorEvidence{}
 
 // NewLunaticValidatorEvidence creates a new instance of the respective evidence
 func NewLunaticValidatorEvidence(header *Header,
@@ -884,7 +869,7 @@ type PotentialAmnesiaEvidence struct {
 	Timestamp   time.Time `json:"timestamp"`
 }
 
-var _ Evidence = &PotentialAmnesiaEvidence{}
+// var _ Evidence = &PotentialAmnesiaEvidence{}
 
 // NewPotentialAmnesiaEvidence creates a new instance of the evidence and orders the votes correctly
 func NewPotentialAmnesiaEvidence(voteA, voteB *Vote, time time.Time) *PotentialAmnesiaEvidence {
@@ -1285,7 +1270,7 @@ type AmnesiaEvidence struct {
 }
 
 // Height, Time, Address, and Verify, and Hash functions are all inherited by the PotentialAmnesiaEvidence struct
-var _ Evidence = &AmnesiaEvidence{}
+// var _ Evidence = &AmnesiaEvidence{}
 
 func NewAmnesiaEvidence(pe *PotentialAmnesiaEvidence, proof *ProofOfLockChange) *AmnesiaEvidence {
 	return &AmnesiaEvidence{
@@ -1483,7 +1468,7 @@ type LightClientAttackEvidence struct {
 	ConflictingBlock *LightBlock
 	CommonHeight     int64
 	Timestamp        time.Time
-	Type             AttackType
+	AttackType       AttackType
 }
 
 var _ Evidence = &LightClientAttackEvidence{}
@@ -1504,7 +1489,7 @@ func (l *LightClientAttackEvidence) Time() time.Time {
 	return l.Timestamp
 }
 
-func (l *LightClientAttackEvidence) Address() []byte {
+func (l *LightClientAttackEvidence) Addresses() []Address {
 	return []byte("a")
 }
 
@@ -1518,16 +1503,9 @@ func (l *LightClientAttackEvidence) Hash() []byte {
 
 // Light client attack evidence cannot be verified based of these arguments
 func (l *LightClientAttackEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
-	return nil
-}
-
-
-func (l *LightClientAttackEvidence) Equal(ev Evidence) bool {
-	if lce, ok := ev.(*LightClientAttackEvidence); ok {
-		return !bytes.Equal(l.ConflictingBlock.Hash(), lce.ConflictingBlock.Hash()) && 
-		l.CommonHeight == lce.CommonHeight
+	if chainID != l.ConflictingBlock.ChainID {
+		return fmt.Errorf("different chain ID. got %s, expected %s", l.ConflictingBlock.ChainID, chainID)
 	}
-	return false
 }
 
 func (l *LightClientAttackEvidence) ValidateBasic() error {
@@ -1550,6 +1528,17 @@ func (l *LightClientAttackEvidence) ValidateBasic() error {
 	}
 
 	return nil
+}
+
+func (l *LightClientAttackEvidence) Type() string {
+	switch l.AttackType {
+	case Lunatic:
+		return LightLunaticEvidenceType
+	case Amnesia:
+		return LightAmnesiaEvidenceType
+	case Equivocation:
+		return LightEquivocationEvidenceType
+	}
 }
 
 func (l *LightClientAttackEvidence) String() string {
