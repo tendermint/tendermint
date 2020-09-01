@@ -68,11 +68,6 @@ type ValidatorSet struct {
 // MaxVotesCount - commits by a validator set larger than this will fail
 // validation.
 func NewValidatorSet(valz []*Validator) *ValidatorSet {
-	// check proposer priority to see if the validators come from
-	// an existing validator set
-	if valz[0] != nil && valz[0].ProposerPriority != 0 {
-		return validatorSetFromExistingValidators(valz)
-	}
 	vals := &ValidatorSet{}
 	err := vals.updateWithChangeSet(valz, false)
 	if err != nil {
@@ -989,11 +984,14 @@ func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 	return vals, vals.ValidateBasic()
 }
 
-// validatorSetFromExistingValidators takes an existing array of validators and rebuilds
+// ValidatorSetFromExistingValidators takes an existing array of validators and rebuilds
 // the exact same validator set that corresponds to it without changing the proposer priority or power
-func validatorSetFromExistingValidators(valz []*Validator) *ValidatorSet {
+func ValidatorSetFromExistingValidators(valz []*Validator) *ValidatorSet {
 	vals := &ValidatorSet{
 		Validators: valz,
+	}
+	if err := vals.ValidateBasic(); err != nil {
+		return &ValidatorSet{}
 	}
 	vals.Proposer = vals.findPreviousProposer()
 	vals.updateTotalVotingPower()

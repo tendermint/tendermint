@@ -116,7 +116,7 @@ func (p *http) validatorSet(height *int64) (*types.ValidatorSet, error) {
 				continue
 			}
 			if len(res.Validators) == 0 { // no more validators left
-				return types.NewValidatorSet(vals), nil
+				return types.ValidatorSetFromExistingValidators(vals), nil
 			}
 			vals = append(vals, res.Validators...)
 			page++
@@ -124,7 +124,7 @@ func (p *http) validatorSet(height *int64) (*types.ValidatorSet, error) {
 		}
 		return nil, provider.ErrNoResponse
 	}
-	return types.NewValidatorSet(vals), nil
+	return types.ValidatorSetFromExistingValidators(vals), nil
 }
 
 func (p *http) signedHeader(height *int64) (*types.SignedHeader, error) {
