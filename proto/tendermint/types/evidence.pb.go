@@ -210,78 +210,9 @@ func (m *AmnesiaEvidence) GetPolc() *ProofOfLockChange {
 	return nil
 }
 
-type LunaticValidatorEvidence struct {
-	Header             *Header   `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
-	Vote               *Vote     `protobuf:"bytes,2,opt,name=vote,proto3" json:"vote,omitempty"`
-	InvalidHeaderField string    `protobuf:"bytes,3,opt,name=invalid_header_field,json=invalidHeaderField,proto3" json:"invalid_header_field,omitempty"`
-	Timestamp          time.Time `protobuf:"bytes,4,opt,name=timestamp,proto3,stdtime" json:"timestamp"`
-}
-
-func (m *LunaticValidatorEvidence) Reset()         { *m = LunaticValidatorEvidence{} }
-func (m *LunaticValidatorEvidence) String() string { return proto.CompactTextString(m) }
-func (*LunaticValidatorEvidence) ProtoMessage()    {}
-func (*LunaticValidatorEvidence) Descriptor() ([]byte, []int) {
-	return fileDescriptor_6825fabc78e0a168, []int{3}
-}
-func (m *LunaticValidatorEvidence) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *LunaticValidatorEvidence) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_LunaticValidatorEvidence.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *LunaticValidatorEvidence) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LunaticValidatorEvidence.Merge(m, src)
-}
-func (m *LunaticValidatorEvidence) XXX_Size() int {
-	return m.Size()
-}
-func (m *LunaticValidatorEvidence) XXX_DiscardUnknown() {
-	xxx_messageInfo_LunaticValidatorEvidence.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_LunaticValidatorEvidence proto.InternalMessageInfo
-
-func (m *LunaticValidatorEvidence) GetHeader() *Header {
-	if m != nil {
-		return m.Header
-	}
-	return nil
-}
-
-func (m *LunaticValidatorEvidence) GetVote() *Vote {
-	if m != nil {
-		return m.Vote
-	}
-	return nil
-}
-
-func (m *LunaticValidatorEvidence) GetInvalidHeaderField() string {
-	if m != nil {
-		return m.InvalidHeaderField
-	}
-	return ""
-}
-
-func (m *LunaticValidatorEvidence) GetTimestamp() time.Time {
-	if m != nil {
-		return m.Timestamp
-	}
-	return time.Time{}
-}
-
 type Evidence struct {
 	// Types that are valid to be assigned to Sum:
 	//	*Evidence_DuplicateVoteEvidence
-	//	*Evidence_LunaticValidatorEvidence
 	//	*Evidence_PotentialAmnesiaEvidence
 	//	*Evidence_AmnesiaEvidence
 	Sum isEvidence_Sum `protobuf_oneof:"sum"`
@@ -291,7 +222,7 @@ func (m *Evidence) Reset()         { *m = Evidence{} }
 func (m *Evidence) String() string { return proto.CompactTextString(m) }
 func (*Evidence) ProtoMessage()    {}
 func (*Evidence) Descriptor() ([]byte, []int) {
-	return fileDescriptor_6825fabc78e0a168, []int{4}
+	return fileDescriptor_6825fabc78e0a168, []int{3}
 }
 func (m *Evidence) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -329,18 +260,14 @@ type isEvidence_Sum interface {
 type Evidence_DuplicateVoteEvidence struct {
 	DuplicateVoteEvidence *DuplicateVoteEvidence `protobuf:"bytes,1,opt,name=duplicate_vote_evidence,json=duplicateVoteEvidence,proto3,oneof" json:"duplicate_vote_evidence,omitempty"`
 }
-type Evidence_LunaticValidatorEvidence struct {
-	LunaticValidatorEvidence *LunaticValidatorEvidence `protobuf:"bytes,3,opt,name=lunatic_validator_evidence,json=lunaticValidatorEvidence,proto3,oneof" json:"lunatic_validator_evidence,omitempty"`
-}
 type Evidence_PotentialAmnesiaEvidence struct {
-	PotentialAmnesiaEvidence *PotentialAmnesiaEvidence `protobuf:"bytes,4,opt,name=potential_amnesia_evidence,json=potentialAmnesiaEvidence,proto3,oneof" json:"potential_amnesia_evidence,omitempty"`
+	PotentialAmnesiaEvidence *PotentialAmnesiaEvidence `protobuf:"bytes,2,opt,name=potential_amnesia_evidence,json=potentialAmnesiaEvidence,proto3,oneof" json:"potential_amnesia_evidence,omitempty"`
 }
 type Evidence_AmnesiaEvidence struct {
-	AmnesiaEvidence *AmnesiaEvidence `protobuf:"bytes,5,opt,name=amnesia_evidence,json=amnesiaEvidence,proto3,oneof" json:"amnesia_evidence,omitempty"`
+	AmnesiaEvidence *AmnesiaEvidence `protobuf:"bytes,3,opt,name=amnesia_evidence,json=amnesiaEvidence,proto3,oneof" json:"amnesia_evidence,omitempty"`
 }
 
 func (*Evidence_DuplicateVoteEvidence) isEvidence_Sum()    {}
-func (*Evidence_LunaticValidatorEvidence) isEvidence_Sum() {}
 func (*Evidence_PotentialAmnesiaEvidence) isEvidence_Sum() {}
 func (*Evidence_AmnesiaEvidence) isEvidence_Sum()          {}
 
@@ -354,13 +281,6 @@ func (m *Evidence) GetSum() isEvidence_Sum {
 func (m *Evidence) GetDuplicateVoteEvidence() *DuplicateVoteEvidence {
 	if x, ok := m.GetSum().(*Evidence_DuplicateVoteEvidence); ok {
 		return x.DuplicateVoteEvidence
-	}
-	return nil
-}
-
-func (m *Evidence) GetLunaticValidatorEvidence() *LunaticValidatorEvidence {
-	if x, ok := m.GetSum().(*Evidence_LunaticValidatorEvidence); ok {
-		return x.LunaticValidatorEvidence
 	}
 	return nil
 }
@@ -383,7 +303,6 @@ func (m *Evidence) GetAmnesiaEvidence() *AmnesiaEvidence {
 func (*Evidence) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
 		(*Evidence_DuplicateVoteEvidence)(nil),
-		(*Evidence_LunaticValidatorEvidence)(nil),
 		(*Evidence_PotentialAmnesiaEvidence)(nil),
 		(*Evidence_AmnesiaEvidence)(nil),
 	}
@@ -399,7 +318,7 @@ func (m *EvidenceData) Reset()         { *m = EvidenceData{} }
 func (m *EvidenceData) String() string { return proto.CompactTextString(m) }
 func (*EvidenceData) ProtoMessage()    {}
 func (*EvidenceData) Descriptor() ([]byte, []int) {
-	return fileDescriptor_6825fabc78e0a168, []int{5}
+	return fileDescriptor_6825fabc78e0a168, []int{4}
 }
 func (m *EvidenceData) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -451,7 +370,7 @@ func (m *ProofOfLockChange) Reset()         { *m = ProofOfLockChange{} }
 func (m *ProofOfLockChange) String() string { return proto.CompactTextString(m) }
 func (*ProofOfLockChange) ProtoMessage()    {}
 func (*ProofOfLockChange) Descriptor() ([]byte, []int) {
-	return fileDescriptor_6825fabc78e0a168, []int{6}
+	return fileDescriptor_6825fabc78e0a168, []int{5}
 }
 func (m *ProofOfLockChange) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -498,7 +417,6 @@ func init() {
 	proto.RegisterType((*DuplicateVoteEvidence)(nil), "tendermint.types.DuplicateVoteEvidence")
 	proto.RegisterType((*PotentialAmnesiaEvidence)(nil), "tendermint.types.PotentialAmnesiaEvidence")
 	proto.RegisterType((*AmnesiaEvidence)(nil), "tendermint.types.AmnesiaEvidence")
-	proto.RegisterType((*LunaticValidatorEvidence)(nil), "tendermint.types.LunaticValidatorEvidence")
 	proto.RegisterType((*Evidence)(nil), "tendermint.types.Evidence")
 	proto.RegisterType((*EvidenceData)(nil), "tendermint.types.EvidenceData")
 	proto.RegisterType((*ProofOfLockChange)(nil), "tendermint.types.ProofOfLockChange")
@@ -507,48 +425,41 @@ func init() {
 func init() { proto.RegisterFile("tendermint/types/evidence.proto", fileDescriptor_6825fabc78e0a168) }
 
 var fileDescriptor_6825fabc78e0a168 = []byte{
-	// 641 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x55, 0x4f, 0x4f, 0xd4, 0x40,
-	0x14, 0xdf, 0xba, 0xcb, 0x0a, 0x0f, 0x12, 0xb0, 0x01, 0x6d, 0x36, 0x64, 0x57, 0xd6, 0x83, 0x86,
-	0x68, 0x4b, 0x34, 0x86, 0x8b, 0x17, 0x56, 0x34, 0x24, 0x10, 0xc5, 0xd1, 0x70, 0xf0, 0x52, 0xa7,
-	0xed, 0x6c, 0x3b, 0xd0, 0x76, 0x9a, 0x76, 0xba, 0xb1, 0xdf, 0x82, 0x0f, 0xe0, 0xc7, 0xf0, 0xe2,
-	0x37, 0xe0, 0xc8, 0xd1, 0x93, 0x18, 0xb8, 0xfb, 0x19, 0x4c, 0xa7, 0x7f, 0x16, 0xb6, 0x5b, 0x88,
-	0xc6, 0x78, 0xd9, 0x74, 0xdf, 0xfb, 0xbd, 0x3f, 0xbf, 0xf7, 0x7b, 0x33, 0x03, 0x3d, 0x4e, 0x7c,
-	0x8b, 0x84, 0x1e, 0xf5, 0xb9, 0xc6, 0x93, 0x80, 0x44, 0x1a, 0x19, 0x51, 0x8b, 0xf8, 0x26, 0x51,
-	0x83, 0x90, 0x71, 0x26, 0x2f, 0x8d, 0x01, 0xaa, 0x00, 0x74, 0x96, 0x6d, 0x66, 0x33, 0xe1, 0xd4,
-	0xd2, 0xaf, 0x0c, 0xd7, 0xe9, 0xd9, 0x8c, 0xd9, 0x2e, 0xd1, 0xc4, 0x3f, 0x23, 0x1e, 0x6a, 0x9c,
-	0x7a, 0x24, 0xe2, 0xd8, 0x0b, 0x72, 0xc0, 0x6a, 0xa5, 0x92, 0xf8, 0x9d, 0xe2, 0x35, 0xc3, 0x24,
-	0xe0, 0x4c, 0x3b, 0x22, 0x49, 0xee, 0xed, 0x7f, 0x93, 0x60, 0x65, 0x3b, 0x0e, 0x5c, 0x6a, 0x62,
-	0x4e, 0x0e, 0x18, 0x27, 0xaf, 0xf2, 0x26, 0xe5, 0x27, 0xd0, 0x1e, 0x31, 0x4e, 0x74, 0xac, 0x48,
-	0xf7, 0xa5, 0x47, 0xf3, 0x4f, 0xef, 0xaa, 0x93, 0xfd, 0xaa, 0x29, 0x1e, 0xcd, 0xa4, 0xa8, 0xad,
-	0x12, 0x6e, 0x28, 0xb7, 0x6e, 0x86, 0x0f, 0xe4, 0x01, 0xcc, 0x95, 0x34, 0x94, 0xa6, 0x88, 0xe8,
-	0xa8, 0x19, 0x51, 0xb5, 0x20, 0xaa, 0x7e, 0x28, 0x10, 0x83, 0xd9, 0x93, 0x1f, 0xbd, 0xc6, 0xf1,
-	0x59, 0x4f, 0x42, 0xe3, 0xb0, 0xfe, 0x99, 0x04, 0xca, 0x3e, 0xe3, 0xc4, 0xe7, 0x14, 0xbb, 0x5b,
-	0x9e, 0x4f, 0x22, 0x8a, 0xff, 0x53, 0xfb, 0x6b, 0xb0, 0xe0, 0x10, 0x6a, 0x3b, 0x5c, 0x1f, 0x33,
-	0x68, 0xa2, 0xf9, 0xcc, 0xf6, 0x3e, 0x35, 0x5d, 0x65, 0xd8, 0xfa, 0x3b, 0x86, 0x5f, 0x25, 0x58,
-	0x9c, 0x24, 0xe6, 0x40, 0x27, 0x28, 0x48, 0xeb, 0x38, 0x73, 0xea, 0xc5, 0x6a, 0xe5, 0x64, 0xd7,
-	0xab, 0xdd, 0xd7, 0x0d, 0x0a, 0x29, 0x41, 0xdd, 0x08, 0x37, 0xa1, 0x15, 0x30, 0xd7, 0xcc, 0x27,
-	0xf2, 0x60, 0x4a, 0xce, 0x90, 0xb1, 0xe1, 0xdb, 0xe1, 0x1e, 0x33, 0x8f, 0x5e, 0x3a, 0xd8, 0xb7,
-	0x09, 0x12, 0x01, 0xfd, 0x5f, 0x12, 0x28, 0x7b, 0xb1, 0x8f, 0x39, 0x35, 0x0f, 0xb0, 0x4b, 0x2d,
-	0xcc, 0x59, 0x58, 0x66, 0xdd, 0x80, 0xb6, 0x43, 0xb0, 0x45, 0xc2, 0xbc, 0x57, 0xa5, 0x9a, 0x77,
-	0x47, 0xf8, 0x51, 0x8e, 0x93, 0xd7, 0xa1, 0x95, 0x4e, 0xfd, 0x06, 0x65, 0x04, 0x46, 0xde, 0x80,
-	0x65, 0xea, 0x8f, 0xd2, 0xa2, 0x7a, 0x16, 0xad, 0x0f, 0x29, 0x71, 0x2d, 0x21, 0xd0, 0x1c, 0x92,
-	0x73, 0x5f, 0x56, 0xe0, 0x75, 0xea, 0xf9, 0x27, 0x3a, 0x7d, 0x69, 0xc2, 0x6c, 0x49, 0x10, 0xc3,
-	0x3d, 0xab, 0x38, 0x51, 0xba, 0x58, 0xaa, 0x09, 0x75, 0x1e, 0x56, 0x19, 0x4c, 0x3d, 0x82, 0x3b,
-	0x0d, 0xb4, 0x62, 0x4d, 0x3d, 0x9b, 0x87, 0xd0, 0x71, 0xb3, 0xf9, 0xea, 0xa3, 0x62, 0xc0, 0xe3,
-	0x2a, 0xcd, 0xba, 0x1d, 0xa8, 0xd3, 0x64, 0xa7, 0x81, 0x14, 0xb7, 0x4e, 0xaf, 0xc3, 0x6b, 0xf7,
-	0xad, 0xf5, 0xa7, 0xfb, 0x96, 0xd6, 0xaa, 0xdd, 0xb8, 0x37, 0xb0, 0x54, 0xa9, 0x30, 0x23, 0x2a,
-	0xac, 0x55, 0x2b, 0x54, 0x13, 0x2f, 0xe2, 0xab, 0xa6, 0xc1, 0x0c, 0x34, 0xa3, 0xd8, 0xeb, 0x7f,
-	0x82, 0x85, 0xc2, 0xb4, 0x8d, 0x39, 0x96, 0x5f, 0xc0, 0xec, 0x25, 0x49, 0x9a, 0x42, 0xf1, 0x4a,
-	0xfa, 0x32, 0x49, 0x2b, 0x55, 0x1c, 0x95, 0x11, 0xb2, 0x0c, 0x2d, 0x07, 0x47, 0x8e, 0x58, 0xc7,
-	0x05, 0x24, 0xbe, 0xfb, 0x9f, 0xe1, 0x4e, 0xe5, 0x30, 0xc8, 0x8f, 0x41, 0xdc, 0x16, 0x51, 0x5e,
-	0xe3, 0xda, 0x2b, 0x25, 0x92, 0x9f, 0xc3, 0xed, 0x20, 0x36, 0xf4, 0x23, 0x92, 0xe4, 0x8b, 0xbe,
-	0x7a, 0x19, 0x9f, 0xdd, 0xdc, 0xea, 0x7e, 0x6c, 0xb8, 0xd4, 0xdc, 0x25, 0x09, 0x6a, 0x07, 0xb1,
-	0xb1, 0x4b, 0x92, 0xc1, 0xbb, 0x93, 0xf3, 0xae, 0x74, 0x7a, 0xde, 0x95, 0x7e, 0x9e, 0x77, 0xa5,
-	0xe3, 0x8b, 0x6e, 0xe3, 0xf4, 0xa2, 0xdb, 0xf8, 0x7e, 0xd1, 0x6d, 0x7c, 0xdc, 0xb4, 0x29, 0x77,
-	0x62, 0x43, 0x35, 0x99, 0xa7, 0x5d, 0x7e, 0x21, 0xc6, 0x9f, 0xd9, 0x53, 0x33, 0xf9, 0x7a, 0x18,
-	0x6d, 0x61, 0x7f, 0xf6, 0x3b, 0x00, 0x00, 0xff, 0xff, 0xc0, 0x2a, 0xcf, 0x0c, 0xc2, 0x06, 0x00,
-	0x00,
+	// 539 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x54, 0xcb, 0x6e, 0xd3, 0x40,
+	0x14, 0xb5, 0x93, 0x34, 0x84, 0x69, 0xa4, 0x16, 0x8b, 0x82, 0x15, 0x55, 0x0e, 0x35, 0x0b, 0x10,
+	0x02, 0x5b, 0x02, 0xa1, 0x6e, 0xd8, 0xd4, 0x14, 0xa9, 0x52, 0x11, 0x14, 0x83, 0x58, 0xb0, 0x31,
+	0x63, 0xe7, 0xc6, 0x36, 0xb1, 0x3d, 0xa3, 0x78, 0x5c, 0xe1, 0xbf, 0xe8, 0xa7, 0xb0, 0x60, 0xc3,
+	0x1f, 0x74, 0xd9, 0x25, 0x2b, 0x8a, 0x92, 0x1f, 0x41, 0x1e, 0x3f, 0x92, 0xc6, 0x49, 0x10, 0x2c,
+	0xba, 0x89, 0x26, 0xf7, 0x9e, 0xfb, 0x38, 0xc7, 0x47, 0x17, 0xf5, 0x19, 0x44, 0x03, 0x18, 0x87,
+	0x7e, 0xc4, 0x74, 0x96, 0x52, 0x88, 0x75, 0x38, 0xf5, 0x07, 0x10, 0x39, 0xa0, 0xd1, 0x31, 0x61,
+	0x44, 0xda, 0x9e, 0x01, 0x34, 0x0e, 0xe8, 0xdd, 0x76, 0x89, 0x4b, 0x78, 0x52, 0xcf, 0x5e, 0x39,
+	0xae, 0xd7, 0x77, 0x09, 0x71, 0x03, 0xd0, 0xf9, 0x3f, 0x3b, 0x19, 0xea, 0xcc, 0x0f, 0x21, 0x66,
+	0x38, 0xa4, 0x05, 0x60, 0xb7, 0x36, 0x89, 0xff, 0x2e, 0xc9, 0x3a, 0xe3, 0x94, 0x32, 0xa2, 0x8f,
+	0x20, 0x2d, 0xb2, 0xea, 0x0f, 0x11, 0xed, 0x1c, 0x26, 0x34, 0xf0, 0x1d, 0xcc, 0xe0, 0x23, 0x61,
+	0xf0, 0xaa, 0x58, 0x52, 0x7a, 0x82, 0xda, 0xa7, 0x84, 0x81, 0x85, 0x65, 0xf1, 0x9e, 0xf8, 0x70,
+	0xf3, 0xe9, 0x1d, 0x6d, 0x71, 0x5f, 0x2d, 0xc3, 0x9b, 0x1b, 0x19, 0xea, 0xa0, 0x82, 0xdb, 0x72,
+	0xe3, 0xef, 0x70, 0x43, 0x32, 0xd0, 0xcd, 0x8a, 0x86, 0xdc, 0xe4, 0x15, 0x3d, 0x2d, 0x27, 0xaa,
+	0x95, 0x44, 0xb5, 0x0f, 0x25, 0xc2, 0xe8, 0x9c, 0xff, 0xea, 0x0b, 0x67, 0x97, 0x7d, 0xd1, 0x9c,
+	0x95, 0xa9, 0x97, 0x22, 0x92, 0x4f, 0x08, 0x83, 0x88, 0xf9, 0x38, 0x38, 0x08, 0x23, 0x88, 0x7d,
+	0x7c, 0x4d, 0xeb, 0xef, 0xa1, 0xae, 0x07, 0xbe, 0xeb, 0x31, 0x6b, 0xc6, 0xa0, 0x69, 0x6e, 0xe6,
+	0xb1, 0xf7, 0x59, 0xe8, 0x2a, 0xc3, 0xd6, 0xff, 0x31, 0xfc, 0x2e, 0xa2, 0xad, 0x45, 0x62, 0x1e,
+	0xea, 0xd1, 0x92, 0xb4, 0x85, 0xf3, 0xa4, 0x55, 0x5a, 0xab, 0x20, 0xfb, 0xa8, 0xbe, 0xfd, 0x2a,
+	0xa1, 0x4c, 0x99, 0xae, 0x92, 0x70, 0x1f, 0xb5, 0x28, 0x09, 0x9c, 0x42, 0x91, 0xfb, 0x4b, 0x7a,
+	0x8e, 0x09, 0x19, 0xbe, 0x1d, 0xbe, 0x26, 0xce, 0xe8, 0xa5, 0x87, 0x23, 0x17, 0x4c, 0x5e, 0xa0,
+	0x7e, 0x6b, 0xa0, 0x4e, 0xd5, 0x05, 0xa3, 0xbb, 0x83, 0xd2, 0x60, 0x16, 0xd7, 0x78, 0x61, 0xd9,
+	0x07, 0xf5, 0xc6, 0x4b, 0x1d, 0x79, 0x24, 0x98, 0x3b, 0x83, 0xa5, 0x56, 0xfd, 0xb2, 0x56, 0x92,
+	0xc6, 0xbf, 0x4a, 0x72, 0x24, 0xac, 0x11, 0xe5, 0x0d, 0xda, 0xae, 0x4d, 0xc8, 0xfd, 0xbb, 0x57,
+	0x9f, 0x50, 0x6f, 0xbc, 0x85, 0xaf, 0x86, 0x8c, 0x0d, 0xd4, 0x8c, 0x93, 0x50, 0xfd, 0x8c, 0xba,
+	0x65, 0xe8, 0x10, 0x33, 0x2c, 0xbd, 0x40, 0x9d, 0x39, 0x99, 0x9a, 0xdc, 0x3c, 0xb5, 0xf6, 0x55,
+	0x93, 0x56, 0x66, 0x1e, 0xb3, 0xaa, 0x90, 0x24, 0xd4, 0xf2, 0x70, 0xec, 0x71, 0xea, 0x5d, 0x93,
+	0xbf, 0xd5, 0xaf, 0xe8, 0x56, 0xed, 0x7b, 0x49, 0x8f, 0x11, 0x37, 0x74, 0x5c, 0xcc, 0x58, 0xeb,
+	0xfa, 0x58, 0x7a, 0x8e, 0x6e, 0xd0, 0xc4, 0xb6, 0x46, 0x90, 0x16, 0xa2, 0xee, 0xce, 0xe3, 0xf3,
+	0xe3, 0xa2, 0x9d, 0x24, 0x76, 0xe0, 0x3b, 0xc7, 0x90, 0x9a, 0x6d, 0x9a, 0xd8, 0xc7, 0x90, 0x1a,
+	0xef, 0xce, 0x27, 0x8a, 0x78, 0x31, 0x51, 0xc4, 0xdf, 0x13, 0x45, 0x3c, 0x9b, 0x2a, 0xc2, 0xc5,
+	0x54, 0x11, 0x7e, 0x4e, 0x15, 0xe1, 0xd3, 0xbe, 0xeb, 0x33, 0x2f, 0xb1, 0x35, 0x87, 0x84, 0xfa,
+	0xfc, 0x11, 0x9b, 0x3d, 0xf3, 0x6b, 0xb8, 0x78, 0xe0, 0xec, 0x36, 0x8f, 0x3f, 0xfb, 0x13, 0x00,
+	0x00, 0xff, 0xff, 0x20, 0x49, 0xd9, 0x02, 0x65, 0x05, 0x00, 0x00,
 }
 
 func (m *DuplicateVoteEvidence) Marshal() (dAtA []byte, err error) {
@@ -713,68 +624,6 @@ func (m *AmnesiaEvidence) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *LunaticValidatorEvidence) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *LunaticValidatorEvidence) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *LunaticValidatorEvidence) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	n9, err9 := github_com_gogo_protobuf_types.StdTimeMarshalTo(m.Timestamp, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(m.Timestamp):])
-	if err9 != nil {
-		return 0, err9
-	}
-	i -= n9
-	i = encodeVarintEvidence(dAtA, i, uint64(n9))
-	i--
-	dAtA[i] = 0x22
-	if len(m.InvalidHeaderField) > 0 {
-		i -= len(m.InvalidHeaderField)
-		copy(dAtA[i:], m.InvalidHeaderField)
-		i = encodeVarintEvidence(dAtA, i, uint64(len(m.InvalidHeaderField)))
-		i--
-		dAtA[i] = 0x1a
-	}
-	if m.Vote != nil {
-		{
-			size, err := m.Vote.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintEvidence(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x12
-	}
-	if m.Header != nil {
-		{
-			size, err := m.Header.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintEvidence(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
 func (m *Evidence) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -828,27 +677,6 @@ func (m *Evidence_DuplicateVoteEvidence) MarshalToSizedBuffer(dAtA []byte) (int,
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Evidence_LunaticValidatorEvidence) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Evidence_LunaticValidatorEvidence) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	if m.LunaticValidatorEvidence != nil {
-		{
-			size, err := m.LunaticValidatorEvidence.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintEvidence(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x1a
-	}
-	return len(dAtA) - i, nil
-}
 func (m *Evidence_PotentialAmnesiaEvidence) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
@@ -866,7 +694,7 @@ func (m *Evidence_PotentialAmnesiaEvidence) MarshalToSizedBuffer(dAtA []byte) (i
 			i = encodeVarintEvidence(dAtA, i, uint64(size))
 		}
 		i--
-		dAtA[i] = 0x22
+		dAtA[i] = 0x12
 	}
 	return len(dAtA) - i, nil
 }
@@ -887,7 +715,7 @@ func (m *Evidence_AmnesiaEvidence) MarshalToSizedBuffer(dAtA []byte) (int, error
 			i = encodeVarintEvidence(dAtA, i, uint64(size))
 		}
 		i--
-		dAtA[i] = 0x2a
+		dAtA[i] = 0x1a
 	}
 	return len(dAtA) - i, nil
 }
@@ -1053,29 +881,6 @@ func (m *AmnesiaEvidence) Size() (n int) {
 	return n
 }
 
-func (m *LunaticValidatorEvidence) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Header != nil {
-		l = m.Header.Size()
-		n += 1 + l + sovEvidence(uint64(l))
-	}
-	if m.Vote != nil {
-		l = m.Vote.Size()
-		n += 1 + l + sovEvidence(uint64(l))
-	}
-	l = len(m.InvalidHeaderField)
-	if l > 0 {
-		n += 1 + l + sovEvidence(uint64(l))
-	}
-	l = github_com_gogo_protobuf_types.SizeOfStdTime(m.Timestamp)
-	n += 1 + l + sovEvidence(uint64(l))
-	return n
-}
-
 func (m *Evidence) Size() (n int) {
 	if m == nil {
 		return 0
@@ -1096,18 +901,6 @@ func (m *Evidence_DuplicateVoteEvidence) Size() (n int) {
 	_ = l
 	if m.DuplicateVoteEvidence != nil {
 		l = m.DuplicateVoteEvidence.Size()
-		n += 1 + l + sovEvidence(uint64(l))
-	}
-	return n
-}
-func (m *Evidence_LunaticValidatorEvidence) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.LunaticValidatorEvidence != nil {
-		l = m.LunaticValidatorEvidence.Size()
 		n += 1 + l + sovEvidence(uint64(l))
 	}
 	return n
@@ -1640,196 +1433,6 @@ func (m *AmnesiaEvidence) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *LunaticValidatorEvidence) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowEvidence
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: LunaticValidatorEvidence: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: LunaticValidatorEvidence: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Header", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvidence
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Header == nil {
-				m.Header = &Header{}
-			}
-			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Vote", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvidence
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Vote == nil {
-				m.Vote = &Vote{}
-			}
-			if err := m.Vote.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field InvalidHeaderField", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvidence
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.InvalidHeaderField = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Timestamp", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvidence
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := github_com_gogo_protobuf_types.StdTimeUnmarshal(&m.Timestamp, dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipEvidence(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if (iNdEx + skippy) < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
 func (m *Evidence) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -1894,42 +1497,7 @@ func (m *Evidence) Unmarshal(dAtA []byte) error {
 			}
 			m.Sum = &Evidence_DuplicateVoteEvidence{v}
 			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LunaticValidatorEvidence", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowEvidence
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthEvidence
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			v := &LunaticValidatorEvidence{}
-			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			m.Sum = &Evidence_LunaticValidatorEvidence{v}
-			iNdEx = postIndex
-		case 4:
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PotentialAmnesiaEvidence", wireType)
 			}
@@ -1964,7 +1532,7 @@ func (m *Evidence) Unmarshal(dAtA []byte) error {
 			}
 			m.Sum = &Evidence_PotentialAmnesiaEvidence{v}
 			iNdEx = postIndex
-		case 5:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field AmnesiaEvidence", wireType)
 			}

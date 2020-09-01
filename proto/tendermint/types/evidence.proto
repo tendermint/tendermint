@@ -32,21 +32,11 @@ message AmnesiaEvidence {
   ProofOfLockChange        polc                       = 2;
 }
 
-message LunaticValidatorEvidence {
-  Header header               = 1;
-  Vote   vote                 = 2;
-  string invalid_header_field = 3;
-
-  google.protobuf.Timestamp timestamp = 4
-      [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-}
-
 message Evidence {
   oneof sum {
     DuplicateVoteEvidence    duplicate_vote_evidence    = 1;
-    LunaticValidatorEvidence lunatic_validator_evidence = 2;
-    PotentialAmnesiaEvidence potential_amnesia_evidence = 3;
-    AmnesiaEvidence          amnesia_evidence           = 4;
+    PotentialAmnesiaEvidence potential_amnesia_evidence = 2;
+    AmnesiaEvidence          amnesia_evidence           = 3;
   }
 }
 

@@ -33,14 +33,6 @@ type Evidence interface {
 const (
 	// MaxEvidenceBytes is a maximum size of any evidence (including amino overhead).
 	MaxEvidenceBytes int64 = 444
-
-	// An invalid field in the header from LunaticValidatorEvidence.
-	// Must be a function of the ABCI application state.
-	ValidatorsHashField     = "ValidatorsHash"
-	NextValidatorsHashField = "NextValidatorsHash"
-	ConsensusHashField      = "ConsensusHash"
-	AppHashField            = "AppHash"
-	LastResultsHashField    = "LastResultsHash"
 )
 
 // ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.
@@ -92,17 +84,6 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 		}
 		return tp, nil
 
-	case *LunaticValidatorEvidence:
-		pbevi := evi.ToProto()
-
-		tp := &tmproto.Evidence{
-			Sum: &tmproto.Evidence_LunaticValidatorEvidence{
-				LunaticValidatorEvidence: pbevi,
-			},
-		}
-
-		return tp, nil
-
 	case *PotentialAmnesiaEvidence:
 		pbevi := evi.ToProto()
 
@@ -137,8 +118,6 @@ func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
 	switch evi := evidence.Sum.(type) {
 	case *tmproto.Evidence_DuplicateVoteEvidence:
 		return DuplicateVoteEvidenceFromProto(evi.DuplicateVoteEvidence)
-	case *tmproto.Evidence_LunaticValidatorEvidence:
-		return LunaticValidatorEvidenceFromProto(evi.LunaticValidatorEvidence)
 	case *tmproto.Evidence_PotentialAmnesiaEvidence:
 		return PotentialAmnesiaEvidenceFromProto(evi.PotentialAmnesiaEvidence)
 	case *tmproto.Evidence_AmnesiaEvidence:
@@ -150,7 +129,6 @@ func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
 
 func init() {
 	tmjson.RegisterType(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence")
-	tmjson.RegisterType(&LunaticValidatorEvidence{}, "tendermint/LunaticValidatorEvidence")
 	tmjson.RegisterType(&PotentialAmnesiaEvidence{}, "tendermint/PotentialAmnesiaEvidence")
 	tmjson.RegisterType(&AmnesiaEvidence{}, "tendermint/AmnesiaEvidence")
 }
@@ -358,216 +336,6 @@ func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*Duplica
 	dve := NewDuplicateVoteEvidence(vA, vB, pb.Timestamp)
 
 	return dve, dve.ValidateBasic()
-}
-
-//-------------------------------------------
-
-type LunaticValidatorEvidence struct {
-	Header             *Header `json:"header"`
-	Vote               *Vote   `json:"vote"`
-	InvalidHeaderField string  `json:"invalid_header_field"`
-
-	Timestamp time.Time `json:"timestamp"`
-}
-
-var _ Evidence = &LunaticValidatorEvidence{}
-
-// NewLunaticValidatorEvidence creates a new instance of the respective evidence
-func NewLunaticValidatorEvidence(header *Header,
-	vote *Vote, invalidHeaderField string, time time.Time) *LunaticValidatorEvidence {
-	return &LunaticValidatorEvidence{
-		Header:             header,
-		Vote:               vote,
-		InvalidHeaderField: invalidHeaderField,
-
-		Timestamp: time,
-	}
-}
-
-func (e *LunaticValidatorEvidence) Height() int64 {
-	return e.Header.Height
-}
-
-// Time returns the maximum between the header's time and vote's time.
-func (e *LunaticValidatorEvidence) Time() time.Time {
-	return e.Timestamp
-}
-
-func (e *LunaticValidatorEvidence) Address() []byte {
-	return e.Vote.ValidatorAddress
-}
-
-func (e *LunaticValidatorEvidence) Hash() []byte {
-	bz := make([]byte, tmhash.Size+crypto.AddressSize)
-	copy(bz[:tmhash.Size-1], e.Header.Hash().Bytes())
-	copy(bz[tmhash.Size:], e.Vote.ValidatorAddress.Bytes())
-	return tmhash.Sum(bz)
-}
-
-func (e *LunaticValidatorEvidence) Bytes() []byte {
-	pbe := e.ToProto()
-
-	bz, err := pbe.Marshal()
-	if err != nil {
-		panic(err)
-	}
-
-	return bz
-}
-
-func (e *LunaticValidatorEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
-	// chainID must be the same
-	if chainID != e.Header.ChainID {
-		return fmt.Errorf("chainID do not match: %s vs %s",
-			chainID,
-			e.Header.ChainID,
-		)
-	}
-
-	v := e.Vote.ToProto()
-	if !pubKey.VerifySignature(VoteSignBytes(chainID, v), e.Vote.Signature) {
-		return errors.New("invalid signature")
-	}
-
-	return nil
-}
-
-func (e *LunaticValidatorEvidence) Equal(ev Evidence) bool {
-	if e2, ok := ev.(*LunaticValidatorEvidence); ok {
-		return bytes.Equal(e.Header.Hash(), e2.Header.Hash()) &&
-			bytes.Equal(e.Vote.ValidatorAddress, e2.Vote.ValidatorAddress)
-	}
-	return false
-}
-
-func (e *LunaticValidatorEvidence) ValidateBasic() error {
-	if e == nil {
-		return errors.New("empty lunatic validator evidence")
-	}
-
-	if e.Header == nil {
-		return errors.New("empty header")
-	}
-
-	if e.Vote == nil {
-		return errors.New("empty vote")
-	}
-
-	if err := e.Header.ValidateBasic(); err != nil {
-		return fmt.Errorf("invalid header: %v", err)
-	}
-
-	if err := e.Vote.ValidateBasic(); err != nil {
-		return fmt.Errorf("invalid signature: %v", err)
-	}
-
-	if !e.Vote.BlockID.IsComplete() {
-		return errors.New("expected vote for block")
-	}
-
-	if e.Header.Height != e.Vote.Height {
-		return fmt.Errorf("header and vote have different heights: %d vs %d",
-			e.Header.Height,
-			e.Vote.Height,
-		)
-	}
-
-	switch e.InvalidHeaderField {
-	case "ValidatorsHash", "NextValidatorsHash", "ConsensusHash", "AppHash", "LastResultsHash":
-		break
-	default:
-		return errors.New("unknown invalid header field")
-	}
-
-	if !bytes.Equal(e.Header.Hash(), e.Vote.BlockID.Hash) {
-		return fmt.Errorf("vote was not for header: %X != %X",
-			e.Vote.BlockID.Hash,
-			e.Header.Hash(),
-		)
-	}
-
-	return nil
-}
-
-func (e *LunaticValidatorEvidence) String() string {
-	return fmt.Sprintf("LunaticValidatorEvidence{%X voted for %d/%X, which contains invalid %s}",
-		e.Vote.ValidatorAddress, e.Header.Height, e.Header.Hash(), e.InvalidHeaderField)
-}
-
-func (e *LunaticValidatorEvidence) VerifyHeader(committedHeader *Header) error {
-	matchErr := func(field string) error {
-		return fmt.Errorf("%s matches committed hash", field)
-	}
-
-	if committedHeader == nil {
-		return errors.New("committed header is nil")
-	}
-
-	switch e.InvalidHeaderField {
-	case ValidatorsHashField:
-		if bytes.Equal(committedHeader.ValidatorsHash, e.Header.ValidatorsHash) {
-			return matchErr(ValidatorsHashField)
-		}
-	case NextValidatorsHashField:
-		if bytes.Equal(committedHeader.NextValidatorsHash, e.Header.NextValidatorsHash) {
-			return matchErr(NextValidatorsHashField)
-		}
-	case ConsensusHashField:
-		if bytes.Equal(committedHeader.ConsensusHash, e.Header.ConsensusHash) {
-			return matchErr(ConsensusHashField)
-		}
-	case AppHashField:
-		if bytes.Equal(committedHeader.AppHash, e.Header.AppHash) {
-			return matchErr(AppHashField)
-		}
-	case LastResultsHashField:
-		if bytes.Equal(committedHeader.LastResultsHash, e.Header.LastResultsHash) {
-			return matchErr(LastResultsHashField)
-		}
-	default:
-		return errors.New("unknown InvalidHeaderField")
-	}
-
-	return nil
-}
-
-func (e *LunaticValidatorEvidence) ToProto() *tmproto.LunaticValidatorEvidence {
-	h := e.Header.ToProto()
-	v := e.Vote.ToProto()
-
-	tp := &tmproto.LunaticValidatorEvidence{
-		Header:             h,
-		Vote:               v,
-		InvalidHeaderField: e.InvalidHeaderField,
-		Timestamp:          e.Timestamp,
-	}
-
-	return tp
-}
-
-func LunaticValidatorEvidenceFromProto(pb *tmproto.LunaticValidatorEvidence) (*LunaticValidatorEvidence, error) {
-	if pb == nil {
-		return nil, errors.New("nil LunaticValidatorEvidence")
-	}
-
-	h, err := HeaderFromProto(pb.GetHeader())
-	if err != nil {
-		return nil, err
-	}
-
-	v, err := VoteFromProto(pb.GetVote())
-	if err != nil {
-		return nil, err
-	}
-
-	tp := LunaticValidatorEvidence{
-		Header:             &h,
-		Vote:               v,
-		InvalidHeaderField: pb.InvalidHeaderField,
-		Timestamp:          pb.Timestamp,
-	}
-
-	return &tp, tp.ValidateBasic()
 }
 
 //-------------------------------------------

@@ -369,16 +369,6 @@ func (evpool *Pool) SetLogger(l log.Logger) {
 	evpool.logger = l
 }
 
-// Header gets the header from the block store at a specified height.
-// Is used for validation of LunaticValidatorEvidence
-func (evpool *Pool) Header(height int64) *types.Header {
-	blockMeta := evpool.blockStore.LoadBlockMeta(height)
-	if blockMeta == nil {
-		return nil
-	}
-	return &blockMeta.Header
-}
-
 // State returns the current state of the evpool.
 func (evpool *Pool) State() sm.State {
 	evpool.mtx.Lock()
