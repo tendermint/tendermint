@@ -8,6 +8,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [crypto/secp256k1] \#5280 `secp256k1` has been removed from the Tendermint repo. (@marbar3778)
 
+- CLI/RPC/Config
+  - [config] \#5315 Rename `prof_laddr` to `pprof_laddr` and move it to `rpc` section (@melekes)
+  - [rpc] \#5315 Remove `/unsafe_start_cpu_profiler`, `/unsafe_stop_cpu_profiler` and `/unsafe_write_heap_profile`. Please use pprof functionality instead (@melekes)
+
 ## FEATURES
 
 - [privval] \#5239 Add `chainID` to requests from client. (@marbar3778)
