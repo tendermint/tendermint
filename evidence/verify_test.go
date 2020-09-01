@@ -8,8 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/types"
 )
@@ -69,21 +67,4 @@ func TestVerifyEvidenceInvalidTime(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Equal(t, errMsg, err.Error())
 	}
-}
-
-func makeValidVoteForHeader(header *types.Header, val types.MockPV) *types.Vote {
-	vote := makeVote(header.Height, 1, 0, val.PrivKey.PubKey().Address(), types.BlockID{
-		Hash: header.Hash(),
-		PartSetHeader: types.PartSetHeader{
-			Total: 100,
-			Hash:  crypto.CRandBytes(tmhash.Size),
-		},
-	}, defaultEvidenceTime)
-	v := vote.ToProto()
-	err := val.SignVote(evidenceChainID, v)
-	if err != nil {
-		panic("verify_test: failed to sign vote for header")
-	}
-	vote.Signature = v.Signature
-	return vote
 }

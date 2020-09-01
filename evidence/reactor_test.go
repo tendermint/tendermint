@@ -22,7 +22,6 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	ep "github.com/tendermint/tendermint/proto/tendermint/evidence"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -236,29 +235,6 @@ func exampleVote(t byte) *types.Vote {
 		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
 		ValidatorIndex:   56789,
 	}
-}
-
-func exampleHeader() *types.Header {
-	blockID := types.BlockID{Hash: []byte{0}, PartSetHeader: types.PartSetHeader{Total: 123, Hash: []byte{0}}}
-
-	h := &types.Header{
-		Version:            version.Consensus{Block: 1, App: 2},
-		ChainID:            "chainId",
-		Height:             3,
-		Time:               time.Date(2019, 10, 13, 16, 14, 44, 0, time.UTC),
-		LastBlockID:        blockID,
-		LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
-		DataHash:           tmhash.Sum([]byte("data_hash")),
-		ValidatorsHash:     tmhash.Sum([]byte("validators_hash")),
-		NextValidatorsHash: tmhash.Sum([]byte("next_validators_hash")),
-		ConsensusHash:      tmhash.Sum([]byte("consensus_hash")),
-		AppHash:            tmhash.Sum([]byte("app_hash")),
-		LastResultsHash:    tmhash.Sum([]byte("last_results_hash")),
-		EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
-		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
-	}
-
-	return h
 }
 
 // nolint:lll //ignore line length for tests
