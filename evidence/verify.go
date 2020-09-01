@@ -56,13 +56,6 @@ func VerifyEvidence(evidence types.Evidence, state sm.State, stateDB StateStore,
 		)
 	}
 
-	// If in the case of lunatic validator evidence we need our committed header again to verify the evidence
-	if ev, ok := evidence.(*types.LunaticValidatorEvidence); ok {
-		if err := ev.VerifyHeader(header); err != nil {
-			return err
-		}
-	}
-
 	valset, err := stateDB.LoadValidators(evidence.Height())
 	if err != nil {
 		return err
