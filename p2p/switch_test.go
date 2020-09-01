@@ -98,9 +98,9 @@ func MakeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switc
 }
 
 func initSwitchFunc(i int, sw *Switch) *Switch {
-	sw.SetAddrBook(&addrBookMock{
-		addrs:    make(map[string]struct{}),
-		ourAddrs: make(map[string]struct{})})
+	sw.SetAddrBook(&AddrBookMock{
+		Addrs:    make(map[string]struct{}),
+		OurAddrs: make(map[string]struct{})})
 
 	// Make two reactors of two channels each
 	sw.AddReactor("foo", NewTestReactor([]*conn.ChannelDescriptor{
@@ -827,29 +827,3 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 
 	b.Logf("success: %v, failure: %v", numSuccess, numFailure)
 }
-
-type addrBookMock struct {
-	addrs    map[string]struct{}
-	ourAddrs map[string]struct{}
-}
-
-var _ AddrBook = (*addrBookMock)(nil)
-
-func (book *addrBookMock) AddAddress(addr *NetAddress, src *NetAddress) error {
-	book.addrs[addr.String()] = struct{}{}
-	return nil
-}
-func (book *addrBookMock) AddOurAddress(addr *NetAddress) { book.ourAddrs[addr.String()] = struct{}{} }
-func (book *addrBookMock) OurAddress(addr *NetAddress) bool {
-	_, ok := book.ourAddrs[addr.String()]
-	return ok
-}
-func (book *addrBookMock) MarkGood(ID) {}
-func (book *addrBookMock) HasAddress(addr *NetAddress) bool {
-	_, ok := book.addrs[addr.String()]
-	return ok
-}
-func (book *addrBookMock) RemoveAddress(addr *NetAddress) {
-	delete(book.addrs, addr.String())
-}
-func (book *addrBookMock) Save() {}
