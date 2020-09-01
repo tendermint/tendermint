@@ -210,9 +210,6 @@ type BaseConfig struct { //nolint: maligned
 	// Mechanism to connect to the ABCI application: socket | grpc
 	ABCI string `mapstructure:"abci"`
 
-	// TCP or UNIX socket address for the profiling server to listen on
-	ProfListenAddress string `mapstructure:"prof_laddr"`
-
 	// If true, query the ABCI app on connecting to a new peer
 	// so the app can decide if we should keep the connection or not
 	FilterPeers bool `mapstructure:"filter_peers"` // false
@@ -230,7 +227,6 @@ func DefaultBaseConfig() BaseConfig {
 		ABCI:               "socket",
 		LogLevel:           DefaultPackageLogLevels(),
 		LogFormat:          LogFormatPlain,
-		ProfListenAddress:  "",
 		FastSyncMode:       true,
 		FilterPeers:        false,
 		DBBackend:          "goleveldb",
@@ -383,6 +379,9 @@ type RPCConfig struct {
 	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
 	// Otherwise, HTTP server is run.
 	TLSKeyFile string `mapstructure:"tls_key_file"`
+
+	// pprof listen address (https://golang.org/pkg/net/http/pprof)
+	PprofListenAddress string `mapstructure:"pprof_laddr"`
 }
 
 // DefaultRPCConfig returns a default configuration for the RPC server

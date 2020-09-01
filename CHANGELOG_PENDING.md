@@ -8,6 +8,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [crypto/secp256k1] \#5280 `secp256k1` has been removed from the Tendermint repo. (@marbar3778)
 
+- CLI/RPC/Config
+  - [config] \#5315 Rename `prof_laddr` to `pprof_laddr` and move it to `rpc` section (@melekes)
+  - [rpc] \#5315 Remove `/unsafe_start_cpu_profiler`, `/unsafe_stop_cpu_profiler` and `/unsafe_write_heap_profile`. Please use pprof functionality instead (@melekes)
+
 ## FEATURES
 
 - [privval] \#5239 Add `chainID` to requests from client. (@marbar3778)
@@ -23,3 +27,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [blockchain] \#5249 Fix fast sync halt with initial height > 1 (@erikgrinaker)
 
 - [statesync] \#5302 Fix genesis state propagation to state sync routine (@erikgrinaker)
+
+- [statesync] \#5311 Fix validator set off-by-one causing consensus failures (@erikgrinaker)
+
+- [light] [\#5307](https://github.com/tendermint/tendermint/pull/5307) Persist correct proposer priority in light client validator sets (@cmwaters)

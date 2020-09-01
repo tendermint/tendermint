@@ -120,9 +120,8 @@ func (s *lightClientStateProvider) State(height uint64) (sm.State, error) {
 		state.InitialHeight = 1
 	}
 
-	// We need to verify up until h+2, to get the validator set. This also prefetches the headers
-	// for h and h+1 in the typical case where the trusted header is after the snapshot height.
-	_, err := s.lc.VerifyHeaderAtHeight(int64(height+2), time.Now())
+	// We need to verify the previous block to get the validator set.
+	_, err := s.lc.VerifyHeaderAtHeight(int64(height-1), time.Now())
 	if err != nil {
 		return sm.State{}, err
 	}
@@ -140,15 +139,15 @@ func (s *lightClientStateProvider) State(height uint64) (sm.State, error) {
 	state.AppHash = nextHeader.AppHash
 	state.LastResultsHash = nextHeader.LastResultsHash
 
-	state.LastValidators, _, err = s.lc.TrustedValidatorSet(int64(height))
+	state.LastValidators, _, err = s.lc.TrustedValidatorSet(int64(height - 1))
 	if err != nil {
 		return sm.State{}, err
 	}
-	state.Validators, _, err = s.lc.TrustedValidatorSet(int64(height + 1))
+	state.Validators, _, err = s.lc.TrustedValidatorSet(int64(height))
 	if err != nil {
 		return sm.State{}, err
 	}
-	state.NextValidators, _, err = s.lc.TrustedValidatorSet(int64(height + 2))
+	state.NextValidators, _, err = s.lc.TrustedValidatorSet(int64(height + 1))
 	if err != nil {
 		return sm.State{}, err
 	}
