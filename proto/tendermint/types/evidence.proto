@@ -44,9 +44,9 @@ message LunaticValidatorEvidence {
 message Evidence {
   oneof sum {
     DuplicateVoteEvidence    duplicate_vote_evidence    = 1;
-    LunaticValidatorEvidence lunatic_validator_evidence = 3;
-    PotentialAmnesiaEvidence potential_amnesia_evidence = 4;
-    AmnesiaEvidence          amnesia_evidence           = 5;
+    LunaticValidatorEvidence lunatic_validator_evidence = 2;
+    PotentialAmnesiaEvidence potential_amnesia_evidence = 3;
+    AmnesiaEvidence          amnesia_evidence           = 4;
   }
 }
 
