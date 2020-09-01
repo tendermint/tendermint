@@ -570,6 +570,18 @@ paths:
             type: boolean
             example: true
         - in: query
+          name: unconditional
+          description: Have the peers you are dialing be unconditional
+          schema:
+            type: boolean
+            example: true
+        - in: query
+          name: private
+          description: Have the peers you are dialing be private
+          schema:
+            type: boolean
+            example: true
+        - in: query
           name: peers
           description: array of peers to dial
           schema:
