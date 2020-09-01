@@ -143,68 +143,62 @@ func (evpool *Pool) AddPOLC(polc *types.ProofOfLockChange) error {
 }
 
 // AddEvidence checks the evidence is valid and adds it to the pool.
-func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
-	var evList = []types.Evidence{evidence}
+func (evpool *Pool) AddEvidence(ev types.Evidence) error {
+	evpool.logger.Debug("Attempting to add evidence", "ev", ev)
 
-	evpool.logger.Debug("Attempting to add evidence", "ev", evidence)
-
-	for _, ev := range evList {
-
-		if evpool.Has(ev) {
-			// if it is an amnesia evidence we have but POLC is not absent then
-			// we should still process it else we loop to the next piece of evidence
-			if ae, ok := ev.(*types.AmnesiaEvidence); !ok || ae.Polc.IsAbsent() {
-				continue
-			}
+	if evpool.Has(ev) {
+		// if it is an amnesia evidence we have but POLC is not absent then
+		// we should still process it else we loop to the next piece of evidence
+		if ae, ok := ev.(*types.AmnesiaEvidence); !ok || ae.Polc.IsAbsent() {
+			return nil
 		}
-
-		// 1) Verify against state.
-		if err := evpool.verify(ev); err != nil {
-			return types.NewErrEvidenceInvalid(ev, err)
-		}
-
-		// For potential amnesia evidence, if this node is indicted it shall retrieve a polc
-		// to form AmensiaEvidence else start the trial period for the piece of evidence
-		if pe, ok := ev.(*types.PotentialAmnesiaEvidence); ok {
-			if err := evpool.handleInboundPotentialAmnesiaEvidence(pe); err != nil {
-				return err
-			}
-			continue
-		} else if ae, ok := ev.(*types.AmnesiaEvidence); ok {
-			// we have received an new amnesia evidence that we have never seen before so we must extract out the
-			// potential amnesia evidence part and run our own trial
-			if ae.Polc.IsAbsent() && ae.PotentialAmnesiaEvidence.VoteA.Round <
-				ae.PotentialAmnesiaEvidence.VoteB.Round {
-				if err := evpool.handleInboundPotentialAmnesiaEvidence(ae.PotentialAmnesiaEvidence); err != nil {
-					return fmt.Errorf("failed to handle amnesia evidence, err: %w", err)
-				}
-				continue
-			} else {
-				// we are going to add this amnesia evidence as it's already punishable.
-				// We also check if we already have an amnesia evidence or potential
-				// amnesia evidence that addesses the same case that we will need to remove
-				aeWithoutPolc := types.NewAmnesiaEvidence(ae.PotentialAmnesiaEvidence, types.NewEmptyPOLC())
-				if evpool.IsPending(aeWithoutPolc) {
-					evpool.removePendingEvidence(aeWithoutPolc)
-				} else if evpool.IsOnTrial(ae.PotentialAmnesiaEvidence) {
-					key := keyAwaitingTrial(ae.PotentialAmnesiaEvidence)
-					if err := evpool.evidenceStore.Delete(key); err != nil {
-						evpool.logger.Error("Failed to remove potential amnesia evidence from database", "err", err)
-					}
-				}
-			}
-		}
-
-		// 2) Save to store.
-		if err := evpool.addPendingEvidence(ev); err != nil {
-			return fmt.Errorf("database error when adding evidence: %v", err)
-		}
-
-		// 3) Add evidence to clist.
-		evpool.evidenceList.PushBack(ev)
-
-		evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
 	}
+
+	// 1) Verify against state.
+	if err := evpool.verify(ev); err != nil {
+		return types.NewErrEvidenceInvalid(ev, err)
+	}
+
+	// For potential amnesia evidence, if this node is indicted it shall retrieve a polc
+	// to form AmensiaEvidence else start the trial period for the piece of evidence
+	if pe, ok := ev.(*types.PotentialAmnesiaEvidence); ok {
+		if err := evpool.handleInboundPotentialAmnesiaEvidence(pe); err != nil {
+			return err
+		}
+		return nil
+	} else if ae, ok := ev.(*types.AmnesiaEvidence); ok {
+		// we have received an new amnesia evidence that we have never seen before so we must extract out the
+		// potential amnesia evidence part and run our own trial
+		if ae.Polc.IsAbsent() && ae.PotentialAmnesiaEvidence.VoteA.Round <
+			ae.PotentialAmnesiaEvidence.VoteB.Round {
+			if err := evpool.handleInboundPotentialAmnesiaEvidence(ae.PotentialAmnesiaEvidence); err != nil {
+				return fmt.Errorf("failed to handle amnesia evidence, err: %w", err)
+			}
+			return nil
+		}
+		// we are going to add this amnesia evidence as it's already punishable.
+		// We also check if we already have an amnesia evidence or potential
+		// amnesia evidence that addesses the same case that we will need to remove
+		aeWithoutPolc := types.NewAmnesiaEvidence(ae.PotentialAmnesiaEvidence, types.NewEmptyPOLC())
+		if evpool.IsPending(aeWithoutPolc) {
+			evpool.removePendingEvidence(aeWithoutPolc)
+		} else if evpool.IsOnTrial(ae.PotentialAmnesiaEvidence) {
+			key := keyAwaitingTrial(ae.PotentialAmnesiaEvidence)
+			if err := evpool.evidenceStore.Delete(key); err != nil {
+				evpool.logger.Error("Failed to remove potential amnesia evidence from database", "err", err)
+			}
+		}
+	}
+
+	// 2) Save to store.
+	if err := evpool.addPendingEvidence(ev); err != nil {
+		return fmt.Errorf("database error when adding evidence: %v", err)
+	}
+
+	// 3) Add evidence to clist.
+	evpool.evidenceList.PushBack(ev)
+
+	evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
 
 	return nil
 }
