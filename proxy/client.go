@@ -5,6 +5,7 @@ import (
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/counter"
+	"github.com/tendermint/tendermint/abci/example/iavlstore"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/types"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
@@ -75,6 +76,8 @@ func DefaultClientCreator(addr, transport, dbDir string) ClientCreator {
 		return NewLocalClientCreator(counter.NewApplication(false))
 	case "counter_serial":
 		return NewLocalClientCreator(counter.NewApplication(true))
+	case "iavlstore":
+		return NewLocalClientCreator(iavlstore.NewApplication(dbDir))
 	case "kvstore":
 		return NewLocalClientCreator(kvstore.NewApplication())
 	case "persistent_kvstore":
