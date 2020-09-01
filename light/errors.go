@@ -88,5 +88,5 @@ type errBadWitness struct {
 }
 
 func (e errBadWitness) Error() string {
-	return fmt.Sprint("Witness %d returned error: %s", e.Reason.Error())
+	return fmt.Sprint("Witness %d returned error: %s", e.Index, e.Reason.Error())
 }
