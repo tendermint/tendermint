@@ -175,18 +175,17 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 				return fmt.Errorf("failed to handle amnesia evidence, err: %w", err)
 			}
 			return nil
-		} else {
-			// we are going to add this amnesia evidence as it's already punishable.
-			// We also check if we already have an amnesia evidence or potential
-			// amnesia evidence that addesses the same case that we will need to remove
-			aeWithoutPolc := types.NewAmnesiaEvidence(ae.PotentialAmnesiaEvidence, types.NewEmptyPOLC())
-			if evpool.IsPending(aeWithoutPolc) {
-				evpool.removePendingEvidence(aeWithoutPolc)
-			} else if evpool.IsOnTrial(ae.PotentialAmnesiaEvidence) {
-				key := keyAwaitingTrial(ae.PotentialAmnesiaEvidence)
-				if err := evpool.evidenceStore.Delete(key); err != nil {
-					evpool.logger.Error("Failed to remove potential amnesia evidence from database", "err", err)
-				}
+		}
+		// we are going to add this amnesia evidence as it's already punishable.
+		// We also check if we already have an amnesia evidence or potential
+		// amnesia evidence that addesses the same case that we will need to remove
+		aeWithoutPolc := types.NewAmnesiaEvidence(ae.PotentialAmnesiaEvidence, types.NewEmptyPOLC())
+		if evpool.IsPending(aeWithoutPolc) {
+			evpool.removePendingEvidence(aeWithoutPolc)
+		} else if evpool.IsOnTrial(ae.PotentialAmnesiaEvidence) {
+			key := keyAwaitingTrial(ae.PotentialAmnesiaEvidence)
+			if err := evpool.evidenceStore.Delete(key); err != nil {
+				evpool.logger.Error("Failed to remove potential amnesia evidence from database", "err", err)
 			}
 		}
 	}
