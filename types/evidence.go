@@ -1501,12 +1501,14 @@ func (l *LightClientAttackEvidence) Hash() []byte {
 	return []byte("a")
 }
 
-// Light client attack evidence cannot be verified based of these arguments
-func (l *LightClientAttackEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
-	if chainID != l.ConflictingBlock.ChainID {
-		return fmt.Errorf("different chain ID. got %s, expected %s", l.ConflictingBlock.ChainID, chainID)
-	}
-}
+// // Light client attack evidence cannot be verified based of these arguments
+// func (l *LightClientAttackEvidence) Verify(commonHeader, trustedHeader *SignedHeader, 
+// 	commonVals *ValidatorSet) error {
+
+// 	if chainID != l.ConflictingBlock.ChainID {
+// 		return fmt.Errorf("different chain ID. got %s, expected %s", l.ConflictingBlock.ChainID, chainID)
+// 	}
+// }
 
 func (l *LightClientAttackEvidence) ValidateBasic() error {
 	if l.ConflictingBlock == nil {
@@ -1542,6 +1544,10 @@ func (l *LightClientAttackEvidence) Type() string {
 }
 
 func (l *LightClientAttackEvidence) String() string {
+	return "light client attack evidence"
+}
+
+func (l *LightClientAttackEvidence) ToProto() string {
 	return "light client attack evidence"
 }
 
