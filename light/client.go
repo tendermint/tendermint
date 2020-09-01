@@ -931,10 +931,7 @@ func (c *Client) compareNewHeaderWithWitnesses(l *types.LightBlock, now time.Tim
 	defer c.providerMutex.Unlock()
 
 	// 1. Make sure AT LEAST ONE witness returns the same header.
-	var (
-		headerMatched      bool
-		lastErrConfHeaders error
-	)
+	var headerMatched bool
 	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
 		if len(c.witnesses) == 0 {
 			return errNoWitnesses{}
@@ -955,10 +952,6 @@ func (c *Client) compareNewHeaderWithWitnesses(l *types.LightBlock, now time.Tim
 			switch e := err.(type) {
 			case nil: // at least one header matched
 				headerMatched = true
-			case ErrConflictingHeaders: // fork detected
-				c.logger.Info("FORK DETECTED", "witness", e.Witness, "err", err)
-				c.sendConflictingHeadersEvidence(&types.ConflictingHeadersEvidence{H1: e.H1, H2: e.H2})
-				lastErrConfHeaders = e
 			case errBadWitness:
 				c.logger.Info("Bad witness", "witness", c.witnesses[e.WitnessIndex], "err", err)
 				// if witness sent us invalid header / vals, remove it
@@ -973,11 +966,7 @@ func (c *Client) compareNewHeaderWithWitnesses(l *types.LightBlock, now time.Tim
 			c.removeWitness(idx)
 		}
 
-		if lastErrConfHeaders != nil {
-			// NOTE: all of the potential forks will be reported, but we only return
-			// the last ErrConflictingHeaders error here.
-			return lastErrConfHeaders
-		} else if headerMatched {
+		if headerMatched {
 			return nil
 		}
 
@@ -1003,7 +992,6 @@ func (c *Client) compareNewHeaderWithWitness(errc chan error, l *types.LightBloc
 			errc <- errBadWitness{bsErr, invalidLightBlock, witnessIndex}
 			return
 		}
-		errc <- ErrConflictingHeaders{H1: l.SignedHeader, Primary: c.primary, H2: altBlock.SignedHeader, Witness: witness}
 	}
 
 	errc <- nil
@@ -1118,25 +1106,6 @@ func (c *Client) validateLightBlock(l *types.LightBlock, expectedHeight int64) e
 		return fmt.Errorf("height mismatch, got: %d, expected: %d", l.Height, expectedHeight)
 	}
 	return nil
-}
-
-// sendConflictingHeadersEvidence sends evidence to all witnesses and primary
-// on best effort basis.
-//
-// Evidence needs to be submitted to all full nodes since there's no way to
-// determine which full node is correct (honest).
-func (c *Client) sendConflictingHeadersEvidence(ev *types.ConflictingHeadersEvidence) {
-	err := c.primary.ReportEvidence(ev)
-	if err != nil {
-		c.logger.Error("Failed to report evidence to primary", "ev", ev, "primary", c.primary)
-	}
-
-	for _, w := range c.witnesses {
-		err := w.ReportEvidence(ev)
-		if err != nil {
-			c.logger.Error("Failed to report evidence to witness", "ev", ev, "witness", w)
-		}
-	}
 }
 
 // exponential backoff (with jitter)
