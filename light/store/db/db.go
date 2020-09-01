@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/gogo/protobuf/proto"
 	dbm "github.com/tendermint/tm-db"
 
 	tmsync "github.com/tendermint/tendermint/libs/sync"
@@ -40,30 +39,22 @@ func New(db dbm.DB, prefix string) store.Store {
 	return &dbs{db: db, prefix: prefix, size: size}
 }
 
-// SaveSignedHeaderAndValidatorSet persists SignedHeader and ValidatorSet to
-// the db.
+// SaveLightBlock persists LightBlock to the db.
 //
 // Safe for concurrent use by multiple goroutines.
-func (s *dbs) SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *types.ValidatorSet) error {
-	if sh.Height <= 0 {
+func (s *dbs) SaveLightBlock(lb *types.LightBlock) error {
+	if lb.Height <= 0 {
 		panic("negative or zero height")
 	}
 
-	pbsh := sh.ToProto()
-
-	shBz, err := proto.Marshal(pbsh)
+	lbpb, err := lb.ToProto()
 	if err != nil {
-		return fmt.Errorf("marshalling SignedHeader: %w", err)
+		return fmt.Errorf("unable to convert light block to protobuf: %w", err)
 	}
 
-	pbvs, err := valSet.ToProto()
+	lbBz, err := lbpb.Marshal()
 	if err != nil {
-		return fmt.Errorf("unable to transition validator set to protobuf: %w", err)
-	}
-
-	valSetBz, err := proto.Marshal(pbvs)
-	if err != nil {
-		return fmt.Errorf("marshalling validator set: %w", err)
+		return fmt.Errorf("marshalling LightBlock: %w", err)
 	}
 
 	s.mtx.Lock()
@@ -71,10 +62,7 @@ func (s *dbs) SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *ty
 
 	b := s.db.NewBatch()
 	defer b.Close()
-	if err = b.Set(s.shKey(sh.Height), shBz); err != nil {
-		return err
-	}
-	if err = b.Set(s.vsKey(sh.Height), valSetBz); err != nil {
+	if err = b.Set(s.lbKey(lb.Height), lbBz); err != nil {
 		return err
 	}
 	if err = b.Set(sizeKey, marshalSize(s.size+1)); err != nil {
@@ -88,11 +76,11 @@ func (s *dbs) SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *ty
 	return nil
 }
 
-// DeleteSignedHeaderAndValidatorSet deletes SignedHeader and ValidatorSet from
+// DeleteLightBlockAndValidatorSet deletes the LightBlock from
 // the db.
 //
 // Safe for concurrent use by multiple goroutines.
-func (s *dbs) DeleteSignedHeaderAndValidatorSet(height int64) error {
+func (s *dbs) DeleteLightBlock(height int64) error {
 	if height <= 0 {
 		panic("negative or zero height")
 	}
@@ -102,10 +90,7 @@ func (s *dbs) DeleteSignedHeaderAndValidatorSet(height int64) error {
 
 	b := s.db.NewBatch()
 	defer b.Close()
-	if err := b.Delete(s.shKey(height)); err != nil {
-		return err
-	}
-	if err := b.Delete(s.vsKey(height)); err != nil {
+	if err := b.Delete(s.lbKey(height)); err != nil {
 		return err
 	}
 	if err := b.Set(sizeKey, marshalSize(s.size-1)); err != nil {
@@ -119,73 +104,43 @@ func (s *dbs) DeleteSignedHeaderAndValidatorSet(height int64) error {
 	return nil
 }
 
-// SignedHeader loads SignedHeader at the given height.
+// LightBlock retrieves the LightBlock at the given height.
 //
 // Safe for concurrent use by multiple goroutines.
-func (s *dbs) SignedHeader(height int64) (*types.SignedHeader, error) {
+func (s *dbs) LightBlock(height int64) (*types.LightBlock, error) {
 	if height <= 0 {
 		panic("negative or zero height")
 	}
 
-	bz, err := s.db.Get(s.shKey(height))
+	bz, err := s.db.Get(s.lbKey(height))
 	if err != nil {
 		panic(err)
 	}
 	if len(bz) == 0 {
-		return nil, store.ErrSignedHeaderNotFound
+		return nil, store.ErrLightBlockNotFound
 	}
 
-	var pbsh tmproto.SignedHeader
-	err = proto.Unmarshal(bz, &pbsh)
+	var lbpb tmproto.LightBlock
+	err = lbpb.Unmarshal(bz)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal error: %w", err)
 	}
 
-	signedHeader, err := types.SignedHeaderFromProto(&pbsh)
+	lightBlock, err := types.LightBlockFromProto(&lbpb)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("proto conversion error: %w", err)
 	}
 
-	return signedHeader, err
+	return lightBlock, err
 }
 
-// ValidatorSet loads ValidatorSet at the given height.
+// LastLightBlockHeight returns the last LightBlock height stored.
 //
 // Safe for concurrent use by multiple goroutines.
-func (s *dbs) ValidatorSet(height int64) (*types.ValidatorSet, error) {
-	if height <= 0 {
-		panic("negative or zero height")
-	}
-
-	bz, err := s.db.Get(s.vsKey(height))
-	if err != nil {
-		panic(err)
-	}
-	if len(bz) == 0 {
-		return nil, store.ErrValidatorSetNotFound
-	}
-
-	var pbvs tmproto.ValidatorSet
-	err = proto.Unmarshal(bz, &pbvs)
-	if err != nil {
-		return nil, err
-	}
-
-	valSet, err := types.ValidatorSetFromProto(&pbvs)
-	if err != nil {
-		return nil, err
-	}
-
-	return valSet, err
-}
-
-// LastSignedHeaderHeight returns the last SignedHeader height stored.
-//
-// Safe for concurrent use by multiple goroutines.
-func (s *dbs) LastSignedHeaderHeight() (int64, error) {
+func (s *dbs) LastLightBlockHeight() (int64, error) {
 	itr, err := s.db.ReverseIterator(
-		s.shKey(1),
-		append(s.shKey(1<<63-1), byte(0x00)),
+		s.lbKey(1),
+		append(s.lbKey(1<<63-1), byte(0x00)),
 	)
 	if err != nil {
 		panic(err)
@@ -194,7 +149,7 @@ func (s *dbs) LastSignedHeaderHeight() (int64, error) {
 
 	for itr.Valid() {
 		key := itr.Key()
-		_, height, ok := parseShKey(key)
+		_, height, ok := parseLbKey(key)
 		if ok {
 			return height, nil
 		}
@@ -204,13 +159,13 @@ func (s *dbs) LastSignedHeaderHeight() (int64, error) {
 	return -1, itr.Error()
 }
 
-// FirstSignedHeaderHeight returns the first SignedHeader height stored.
+// FirstLightBlockHeight returns the first LightBlock height stored.
 //
 // Safe for concurrent use by multiple goroutines.
-func (s *dbs) FirstSignedHeaderHeight() (int64, error) {
+func (s *dbs) FirstLightBlockHeight() (int64, error) {
 	itr, err := s.db.Iterator(
-		s.shKey(1),
-		append(s.shKey(1<<63-1), byte(0x00)),
+		s.lbKey(1),
+		append(s.lbKey(1<<63-1), byte(0x00)),
 	)
 	if err != nil {
 		panic(err)
@@ -219,7 +174,7 @@ func (s *dbs) FirstSignedHeaderHeight() (int64, error) {
 
 	for itr.Valid() {
 		key := itr.Key()
-		_, height, ok := parseShKey(key)
+		_, height, ok := parseLbKey(key)
 		if ok {
 			return height, nil
 		}
@@ -229,18 +184,18 @@ func (s *dbs) FirstSignedHeaderHeight() (int64, error) {
 	return -1, itr.Error()
 }
 
-// SignedHeaderBefore iterates over headers until it finds a header before
-// the given height. It returns ErrSignedHeaderNotFound if no such header exists.
+// LightBlockBefore iterates over light blocks until it finds a block before
+// the given height. It returns ErrLightBlockNotFound if no such block exists.
 //
 // Safe for concurrent use by multiple goroutines.
-func (s *dbs) SignedHeaderBefore(height int64) (*types.SignedHeader, error) {
+func (s *dbs) LightBlockBefore(height int64) (*types.LightBlock, error) {
 	if height <= 0 {
 		panic("negative or zero height")
 	}
 
 	itr, err := s.db.ReverseIterator(
-		s.shKey(1),
-		s.shKey(height),
+		s.lbKey(1),
+		s.lbKey(height),
 	)
 	if err != nil {
 		panic(err)
@@ -249,9 +204,9 @@ func (s *dbs) SignedHeaderBefore(height int64) (*types.SignedHeader, error) {
 
 	for itr.Valid() {
 		key := itr.Key()
-		_, existingHeight, ok := parseShKey(key)
+		_, existingHeight, ok := parseLbKey(key)
 		if ok {
-			return s.SignedHeader(existingHeight)
+			return s.LightBlock(existingHeight)
 		}
 		itr.Next()
 	}
@@ -259,7 +214,7 @@ func (s *dbs) SignedHeaderBefore(height int64) (*types.SignedHeader, error) {
 		return nil, err
 	}
 
-	return nil, store.ErrSignedHeaderNotFound
+	return nil, store.ErrLightBlockNotFound
 }
 
 // Prune prunes header & validator set pairs until there are only size pairs
@@ -279,8 +234,8 @@ func (s *dbs) Prune(size uint16) error {
 
 	// 2) Iterate over headers and perform a batch operation.
 	itr, err := s.db.Iterator(
-		s.shKey(1),
-		append(s.shKey(1<<63-1), byte(0x00)),
+		s.lbKey(1),
+		append(s.lbKey(1<<63-1), byte(0x00)),
 	)
 	if err != nil {
 		return err
@@ -293,12 +248,9 @@ func (s *dbs) Prune(size uint16) error {
 	pruned := 0
 	for itr.Valid() && numToPrune > 0 {
 		key := itr.Key()
-		_, height, ok := parseShKey(key)
+		_, height, ok := parseLbKey(key)
 		if ok {
-			if err = b.Delete(s.shKey(height)); err != nil {
-				return err
-			}
-			if err = b.Delete(s.vsKey(height)); err != nil {
+			if err = b.Delete(s.lbKey(height)); err != nil {
 				return err
 			}
 		}
@@ -337,15 +289,11 @@ func (s *dbs) Size() uint16 {
 	return s.size
 }
 
-func (s *dbs) shKey(height int64) []byte {
-	return []byte(fmt.Sprintf("sh/%s/%020d", s.prefix, height))
+func (s *dbs) lbKey(height int64) []byte {
+	return []byte(fmt.Sprintf("lb/%s/%020d", s.prefix, height))
 }
 
-func (s *dbs) vsKey(height int64) []byte {
-	return []byte(fmt.Sprintf("vs/%s/%020d", s.prefix, height))
-}
-
-var keyPattern = regexp.MustCompile(`^(sh|vs)/([^/]*)/([0-9]+)$`)
+var keyPattern = regexp.MustCompile(`^(lb)/([^/]*)/([0-9]+)$`)
 
 func parseKey(key []byte) (part string, prefix string, height int64, ok bool) {
 	submatch := keyPattern.FindSubmatch(key)
@@ -362,10 +310,10 @@ func parseKey(key []byte) (part string, prefix string, height int64, ok bool) {
 	return
 }
 
-func parseShKey(key []byte) (prefix string, height int64, ok bool) {
+func parseLbKey(key []byte) (prefix string, height int64, ok bool) {
 	var part string
 	part, prefix, height, ok = parseKey(key)
-	if part != "sh" {
+	if part != "lb" {
 		return "", 0, false
 	}
 	return

@@ -224,9 +224,13 @@ func HeaderExpired(h *types.SignedHeader, trustingPeriod time.Duration, now time
 //  of the trusted header
 //
 //  For any of these cases ErrInvalidHeader is returned.
-func VerifyBackwards(chainID string, untrustedHeader, trustedHeader *types.SignedHeader) error {
-	if err := untrustedHeader.ValidateBasic(chainID); err != nil {
+func VerifyBackwards(untrustedHeader, trustedHeader *types.Header) error {
+	if err := untrustedHeader.ValidateBasic(); err != nil {
 		return ErrInvalidHeader{err}
+	}
+
+	if untrustedHeader.ChainID != trustedHeader.ChainID {
+		return ErrInvalidHeader{errors.New("header belongs to another chain")}
 	}
 
 	if !untrustedHeader.Time.Before(trustedHeader.Time) {

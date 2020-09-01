@@ -95,7 +95,7 @@ func (c *Client) ABCIQueryWithOptions(path string, data tmbytes.HexBytes,
 
 	// Update the light client if we're behind.
 	// NOTE: AppHash for height H is in header H+1.
-	h, err := c.updateLightClientIfNeededTo(resp.Height + 1)
+	l, err := c.updateLightClientIfNeededTo(resp.Height + 1)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (c *Client) ABCIQueryWithOptions(path string, data tmbytes.HexBytes,
 		kp := merkle.KeyPath{}
 		kp = kp.AppendKey([]byte(storeName), merkle.KeyEncodingURL)
 		kp = kp.AppendKey(resp.Key, merkle.KeyEncodingURL)
-		err = c.prt.VerifyValue(resp.ProofOps, h.AppHash, kp.String(), resp.Value)
+		err = c.prt.VerifyValue(resp.ProofOps, l.AppHash, kp.String(), resp.Value)
 		if err != nil {
 			return nil, fmt.Errorf("verify value proof: %w", err)
 		}
@@ -120,7 +120,7 @@ func (c *Client) ABCIQueryWithOptions(path string, data tmbytes.HexBytes,
 
 	// OR validate the ansence proof against the trusted header.
 	// XXX How do we encode the key into a string...
-	err = c.prt.VerifyAbsence(resp.ProofOps, h.AppHash, string(resp.Key))
+	err = c.prt.VerifyAbsence(resp.ProofOps, l.AppHash, string(resp.Key))
 	if err != nil {
 		return nil, fmt.Errorf("verify absence proof: %w", err)
 	}
@@ -178,13 +178,13 @@ func (c *Client) ConsensusParams(height *int64) (*ctypes.ResultConsensusParams, 
 	}
 
 	// Update the light client if we're behind.
-	h, err := c.updateLightClientIfNeededTo(res.BlockHeight)
+	l, err := c.updateLightClientIfNeededTo(res.BlockHeight)
 	if err != nil {
 		return nil, err
 	}
 
 	// Verify hash.
-	if cH, tH := types.HashConsensusParams(res.ConsensusParams), h.ConsensusHash; !bytes.Equal(cH, tH) {
+	if cH, tH := types.HashConsensusParams(res.ConsensusParams), l.ConsensusHash; !bytes.Equal(cH, tH) {
 		return nil, fmt.Errorf("params hash %X does not match trusted hash %X",
 			cH, tH)
 	}
@@ -224,7 +224,7 @@ func (c *Client) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlock
 
 	// Verify each of the BlockMetas.
 	for _, meta := range res.BlockMetas {
-		h, err := c.lc.TrustedHeader(meta.Header.Height)
+		h, err := c.lc.TrustedLightBlock(meta.Header.Height)
 		if err != nil {
 			return nil, fmt.Errorf("trusted header %d: %w", meta.Header.Height, err)
 		}
@@ -261,13 +261,13 @@ func (c *Client) Block(height *int64) (*ctypes.ResultBlock, error) {
 	}
 
 	// Update the light client if we're behind.
-	h, err := c.updateLightClientIfNeededTo(res.Block.Height)
+	l, err := c.updateLightClientIfNeededTo(res.Block.Height)
 	if err != nil {
 		return nil, err
 	}
 
 	// Verify block.
-	if bH, tH := res.Block.Hash(), h.Hash(); !bytes.Equal(bH, tH) {
+	if bH, tH := res.Block.Hash(), l.Hash(); !bytes.Equal(bH, tH) {
 		return nil, fmt.Errorf("block header %X does not match with trusted header %X",
 			bH, tH)
 	}
@@ -295,13 +295,13 @@ func (c *Client) BlockByHash(hash []byte) (*ctypes.ResultBlock, error) {
 	}
 
 	// Update the light client if we're behind.
-	h, err := c.updateLightClientIfNeededTo(res.Block.Height)
+	l, err := c.updateLightClientIfNeededTo(res.Block.Height)
 	if err != nil {
 		return nil, err
 	}
 
 	// Verify block.
-	if bH, tH := res.Block.Hash(), h.Hash(); !bytes.Equal(bH, tH) {
+	if bH, tH := res.Block.Hash(), l.Hash(); !bytes.Equal(bH, tH) {
 		return nil, fmt.Errorf("block header %X does not match with trusted header %X",
 			bH, tH)
 	}
@@ -336,7 +336,7 @@ func (c *Client) BlockResults(height *int64) (*ctypes.ResultBlockResults, error)
 	}
 
 	// Update the light client if we're behind.
-	trustedHeader, err := c.updateLightClientIfNeededTo(h + 1)
+	trustedBlock, err := c.updateLightClientIfNeededTo(h + 1)
 	if err != nil {
 		return nil, err
 	}
@@ -364,9 +364,9 @@ func (c *Client) BlockResults(height *int64) (*ctypes.ResultBlockResults, error)
 	rH := merkle.HashFromByteSlices([][]byte{bbeBytes, results.Hash(), ebeBytes})
 
 	// Verify block results.
-	if !bytes.Equal(rH, trustedHeader.LastResultsHash) {
+	if !bytes.Equal(rH, trustedBlock.LastResultsHash) {
 		return nil, fmt.Errorf("last results %X does not match with trusted last results %X",
-			rH, trustedHeader.LastResultsHash)
+			rH, trustedBlock.LastResultsHash)
 	}
 
 	return res, nil
@@ -387,13 +387,13 @@ func (c *Client) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	}
 
 	// Update the light client if we're behind.
-	h, err := c.updateLightClientIfNeededTo(res.Height)
+	l, err := c.updateLightClientIfNeededTo(res.Height)
 	if err != nil {
 		return nil, err
 	}
 
 	// Verify commit.
-	if rH, tH := res.Hash(), h.Hash(); !bytes.Equal(rH, tH) {
+	if rH, tH := res.Hash(), l.Hash(); !bytes.Equal(rH, tH) {
 		return nil, fmt.Errorf("header %X does not match with trusted header %X",
 			rH, tH)
 	}
@@ -415,13 +415,13 @@ func (c *Client) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	}
 
 	// Update the light client if we're behind.
-	h, err := c.updateLightClientIfNeededTo(res.Height)
+	l, err := c.updateLightClientIfNeededTo(res.Height)
 	if err != nil {
 		return nil, err
 	}
 
 	// Validate the proof.
-	return res, res.Proof.Validate(h.DataHash)
+	return res, res.Proof.Validate(l.DataHash)
 }
 
 func (c *Client) TxSearch(query string, prove bool, page, perPage *int, orderBy string) (
@@ -452,7 +452,7 @@ func (c *Client) Validators(height *int64, page, perPage *int) (*ctypes.ResultVa
 	}
 
 	// Update the light client if we're behind.
-	h, err := c.updateLightClientIfNeededTo(updateHeight)
+	l, err := c.updateLightClientIfNeededTo(updateHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -462,9 +462,9 @@ func (c *Client) Validators(height *int64, page, perPage *int) (*ctypes.ResultVa
 	case 1:
 		// if it's the first block we need to validate with the current validator hash as opposed to the
 		// next validator hash
-		tH = h.ValidatorsHash
+		tH = l.ValidatorsHash
 	default:
-		tH = h.NextValidatorsHash
+		tH = l.NextValidatorsHash
 	}
 
 	// Verify validators.
@@ -495,12 +495,12 @@ func (c *Client) UnsubscribeAll(ctx context.Context, subscriber string) error {
 	return c.next.UnsubscribeAll(ctx, subscriber)
 }
 
-func (c *Client) updateLightClientIfNeededTo(height int64) (*types.SignedHeader, error) {
-	h, err := c.lc.VerifyHeaderAtHeight(height, time.Now())
+func (c *Client) updateLightClientIfNeededTo(height int64) (*types.LightBlock, error) {
+	l, err := c.lc.VerifyLightBlockAtHeight(height, time.Now())
 	if err != nil {
 		return nil, fmt.Errorf("failed to update light client to %d: %w", height, err)
 	}
-	return h, nil
+	return l, nil
 }
 
 func (c *Client) RegisterOpDecoder(typ string, dec merkle.OpDecoder) {

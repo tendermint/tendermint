@@ -9,13 +9,14 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [crypto/secp256k1] \#5280 `secp256k1` has been removed from the Tendermint repo. (@marbar3778)
 
 - CLI/RPC/Config
-  - [config] \#5315 Rename `prof_laddr` to `pprof_laddr` and move it to `rpc` section (@melekes)
-  - [rpc] \#5315 Remove `/unsafe_start_cpu_profiler`, `/unsafe_stop_cpu_profiler` and `/unsafe_write_heap_profile`. Please use pprof functionality instead (@melekes)
+- [config] \#5315 Rename `prof_laddr` to `pprof_laddr` and move it to `rpc` section (@melekes)
+- [rpc] \#5315 Remove `/unsafe_start_cpu_profiler`, `/unsafe_stop_cpu_profiler` and `/unsafe_write_heap_profile`. Please use pprof functionality instead (@melekes)
 
 ## FEATURES
 
 - [privval] \#5239 Add `chainID` to requests from client. (@marbar3778)
 - [config] Add `--consensus.double_sign_check_height` flag and `DoubleSignCheckHeight` config variable. See [ADR-51](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-051-double-signing-risk-reduction.md)
+- [light] [\#5298](https://github.com/tendermint/tendermint/pull/5298) Morph validator set and signed header into light block (@cmwaters)
 
 ## IMPROVEMENTS
 

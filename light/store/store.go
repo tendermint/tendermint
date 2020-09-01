@@ -8,43 +8,36 @@ type Store interface {
 	// ValidatorSet (h: sh.Height).
 	//
 	// height must be > 0.
-	SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *types.ValidatorSet) error
+	SaveLightBlock(lb *types.LightBlock) error
 
 	// DeleteSignedHeaderAndValidatorSet deletes SignedHeader (h: height) and
 	// ValidatorSet (h: height).
 	//
 	// height must be > 0.
-	DeleteSignedHeaderAndValidatorSet(height int64) error
+	DeleteLightBlock(height int64) error
 
-	// SignedHeader returns the SignedHeader that corresponds to the given
+	// LightBlock returns the LightBlock that corresponds to the given
 	// height.
 	//
 	// height must be > 0.
 	//
-	// If SignedHeader is not found, ErrSignedHeaderNotFound is returned.
-	SignedHeader(height int64) (*types.SignedHeader, error)
+	// If LightBlock is not found, ErrLightBlockNotFound is returned.
+	LightBlock(height int64) (*types.LightBlock, error)
 
-	// ValidatorSet returns the ValidatorSet that corresponds to height.
-	//
-	// height must be > 0.
-	//
-	// If ValidatorSet is not found, ErrValidatorSetNotFound is returned.
-	ValidatorSet(height int64) (*types.ValidatorSet, error)
-
-	// LastSignedHeaderHeight returns the last (newest) SignedHeader height.
+	// LastLightBlockHeight returns the last (newest) LightBlock height.
 	//
 	// If the store is empty, -1 and nil error are returned.
-	LastSignedHeaderHeight() (int64, error)
+	LastLightBlockHeight() (int64, error)
 
-	// FirstSignedHeaderHeight returns the first (oldest) SignedHeader height.
+	// FirstLightBlockHeight returns the first (oldest) LightBlock height.
 	//
 	// If the store is empty, -1 and nil error are returned.
-	FirstSignedHeaderHeight() (int64, error)
+	FirstLightBlockHeight() (int64, error)
 
-	// SignedHeaderBefore returns the SignedHeader before a certain height.
+	// LightBlockBefore returns the LightBlock before a certain height.
 	//
-	// height must be > 0 && <= LastSignedHeaderHeight.
-	SignedHeaderBefore(height int64) (*types.SignedHeader, error)
+	// height must be > 0 && <= LastLightBlockHeight.
+	LightBlockBefore(height int64) (*types.LightBlock, error)
 
 	// Prune removes headers & the associated validator sets when Store reaches a
 	// defined size (number of header & validator set pairs).
