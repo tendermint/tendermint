@@ -46,6 +46,7 @@ func MConnConfig(cfg *config.P2PConfig) conn.MConnConfig {
 // to store peer addresses.
 type AddrBook interface {
 	AddAddress(addr *NetAddress, src *NetAddress) error
+	AddPrivateIDs([]string)
 	AddOurAddress(*NetAddress)
 	OurAddress(*NetAddress) bool
 	MarkGood(ID)
@@ -579,6 +580,21 @@ func (sw *Switch) AddUnconditionalPeerIDs(ids []string) error {
 		}
 		sw.unconditionalPeerIDs[ID(id)] = struct{}{}
 	}
+	return nil
+}
+
+func (sw *Switch) AddPrivatePeerIDs(ids []string) error {
+	validIDs := make([]string, 0, len(ids))
+	for i, id := range ids {
+		err := validateID(ID(id))
+		if err != nil {
+			return fmt.Errorf("wrong ID #%d: %w", i, err)
+		}
+		validIDs = append(validIDs, id)
+	}
+
+	sw.addrBook.AddPrivateIDs(validIDs)
+
 	return nil
 }
 
