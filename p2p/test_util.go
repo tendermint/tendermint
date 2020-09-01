@@ -213,9 +213,6 @@ func MakeSwitch(
 	// populated and we don't have to do those awkward overrides and setters.
 	t.nodeInfo = nodeInfo
 	sw.SetNodeInfo(nodeInfo)
-	sw.SetAddrBook(&addrBookMock{
-		addrs:    make(map[string]struct{}),
-		ourAddrs: make(map[string]struct{})})
 
 	return sw
 }
@@ -284,29 +281,34 @@ func getFreePort() int {
 	return port
 }
 
-type addrBookMock struct {
-	addrs    map[string]struct{}
-	ourAddrs map[string]struct{}
+type AddrBookMock struct {
+	Addrs        map[string]struct{}
+	OurAddrs     map[string]struct{}
+	PrivateAddrs map[string]struct{}
 }
 
-var _ AddrBook = (*addrBookMock)(nil)
+var _ AddrBook = (*AddrBookMock)(nil)
 
-func (book *addrBookMock) AddAddress(addr *NetAddress, src *NetAddress) error {
-	book.addrs[addr.String()] = struct{}{}
+func (book *AddrBookMock) AddAddress(addr *NetAddress, src *NetAddress) error {
+	book.Addrs[addr.String()] = struct{}{}
 	return nil
 }
-func (book *addrBookMock) AddOurAddress(addr *NetAddress) { book.ourAddrs[addr.String()] = struct{}{} }
-func (book *addrBookMock) OurAddress(addr *NetAddress) bool {
-	_, ok := book.ourAddrs[addr.String()]
+func (book *AddrBookMock) AddOurAddress(addr *NetAddress) { book.OurAddrs[addr.String()] = struct{}{} }
+func (book *AddrBookMock) OurAddress(addr *NetAddress) bool {
+	_, ok := book.OurAddrs[addr.String()]
 	return ok
 }
-func (book *addrBookMock) MarkGood(ID) {}
-func (book *addrBookMock) HasAddress(addr *NetAddress) bool {
-	_, ok := book.addrs[addr.String()]
+func (book *AddrBookMock) MarkGood(ID) {}
+func (book *AddrBookMock) HasAddress(addr *NetAddress) bool {
+	_, ok := book.Addrs[addr.String()]
 	return ok
 }
-func (book *addrBookMock) RemoveAddress(addr *NetAddress) {
-	delete(book.addrs, addr.String())
+func (book *AddrBookMock) RemoveAddress(addr *NetAddress) {
+	delete(book.Addrs, addr.String())
 }
-func (book *addrBookMock) Save()                  {}
-func (book *addrBookMock) AddPrivateIDs([]string) {}
+func (book *AddrBookMock) Save() {}
+func (book *AddrBookMock) AddPrivateIDs(addrs []string) {
+	for _, addr := range addrs {
+		book.PrivateAddrs[addr] = struct{}{}
+	}
+}

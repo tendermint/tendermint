@@ -98,9 +98,9 @@ func MakeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switc
 }
 
 func initSwitchFunc(i int, sw *Switch) *Switch {
-	sw.SetAddrBook(&addrBookMock{
-		addrs:    make(map[string]struct{}),
-		ourAddrs: make(map[string]struct{})})
+	sw.SetAddrBook(&AddrBookMock{
+		Addrs:    make(map[string]struct{}),
+		OurAddrs: make(map[string]struct{})})
 
 	// Make two reactors of two channels each
 	sw.AddReactor("foo", NewTestReactor([]*conn.ChannelDescriptor{
