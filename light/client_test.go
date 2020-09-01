@@ -118,6 +118,7 @@ func TestMock(t *testing.T) {
 func TestClient_SequentialVerification(t *testing.T) {
 	newKeys := genPrivKeys(4)
 	newVals := newKeys.ToValidators(10, 1)
+	differentVals, _ := types.RandValidatorSet(10, 100)
 
 	testCases := []struct {
 		name         string
@@ -145,6 +146,26 @@ func TestClient_SequentialVerification(t *testing.T) {
 			},
 			true,
 			false,
+		},
+		{
+			"bad: no first signed header",
+			map[int64]*types.SignedHeader{},
+			map[int64]*types.ValidatorSet{
+				1: differentVals,
+			},
+			true,
+			true,
+		},
+		{
+			"bad: different first validator set",
+			map[int64]*types.SignedHeader{
+				1: h1,
+			},
+			map[int64]*types.ValidatorSet{
+				1: differentVals,
+			},
+			true,
+			true,
 		},
 		{
 			"bad: 1/3 signed interim header",
@@ -889,13 +910,15 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 		map[int64]*types.SignedHeader{
 			1: h1,
 			2: h2,
-			3: {Header: nil, Commit: nil},
 		},
 		map[int64]*types.ValidatorSet{
 			1: vals,
 			2: vals,
 		},
 	)
+
+	lb1, _ := badProvider1.LightBlock(2)
+	require.NotEqual(t, lb1.Hash(), l1.Hash())
 
 	c, err := light.NewClient(
 		chainID,
@@ -920,23 +943,13 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 	// remaining witnesses don't have light block -> error
 	_, err = c.VerifyLightBlockAtHeight(3, bTime.Add(2*time.Hour))
 	if assert.Error(t, err) {
-		assert.Equal(t, "awaiting response from all witnesses exceeded dropout time", err.Error())
+		assert.Equal(t, light.ErrFailedHeaderCrossReferencing, err)
 	}
 	// witness does not have a light block -> left in the list
 	assert.EqualValues(t, 1, len(c.Witnesses()))
 }
 
 func TestClient_TrustedValidatorSet(t *testing.T) {
-	noValSetNode := mockp.New(
-		chainID,
-		headerSet,
-		map[int64]*types.ValidatorSet{
-			1: nil,
-			2: nil,
-			3: nil,
-		},
-	)
-
 	differentVals, _ := types.RandValidatorSet(10, 100)
 
 	badValSetNode := mockp.New(
@@ -960,8 +973,8 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 	c, err := light.NewClient(
 		chainID,
 		trustOptions,
-		noValSetNode,
-		[]provider.Provider{badValSetNode, fullNode, fullNode},
+		fullNode,
+		[]provider.Provider{badValSetNode, fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
 		light.Logger(log.TestingLogger()),
 	)
@@ -971,46 +984,6 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 	_, err = c.VerifyLightBlockAtHeight(2, bTime.Add(2*time.Hour).Add(1*time.Second))
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(c.Witnesses()))
-}
-
-func TestClientReportsConflictingHeadersEvidence(t *testing.T) {
-	// fullNode2 sends us different header
-	altH2 := keys.GenSignedHeaderLastBlockID(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
-		hash("app_hash2"), hash("cons_hash"), hash("results_hash"),
-		0, len(keys), types.BlockID{Hash: h1.Hash()})
-	fullNode2 := mockp.New(
-		chainID,
-		map[int64]*types.SignedHeader{
-			1: h1,
-			2: altH2,
-		},
-		map[int64]*types.ValidatorSet{
-			1: vals,
-			2: vals,
-		},
-	)
-
-	c, err := light.NewClient(
-		chainID,
-		trustOptions,
-		fullNode,
-		[]provider.Provider{fullNode2},
-		dbs.New(dbm.NewMemDB(), chainID),
-		light.Logger(log.TestingLogger()),
-		light.MaxRetryAttempts(1),
-	)
-	require.NoError(t, err)
-
-	// Check verification returns an error.
-	_, err = c.VerifyLightBlockAtHeight(2, bTime.Add(2*time.Hour))
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "does not match one")
-	}
-
-	// Check evidence was sent to both full nodes.
-	ev := &types.ConflictingHeadersEvidence{H1: h2, H2: altH2}
-	assert.True(t, fullNode2.HasEvidence(ev))
-	assert.True(t, fullNode.HasEvidence(ev))
 }
 
 func TestClientPrunesHeadersAndValidatorSets(t *testing.T) {

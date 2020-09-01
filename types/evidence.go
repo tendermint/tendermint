@@ -1486,7 +1486,7 @@ type LightClientAttackEvidence struct {
 	Type             AttackType
 }
 
-// var _ Evidence = &LightClientAttackEvidence{}
+var _ Evidence = &LightClientAttackEvidence{}
 
 type AttackType int
 
@@ -1504,40 +1504,51 @@ func (l *LightClientAttackEvidence) Time() time.Time {
 	return l.Timestamp
 }
 
-// func (l *LightClientAttackEvidence) Address() []byte {
-// 	return []byte("a")
-// }
+func (l *LightClientAttackEvidence) Address() []byte {
+	return []byte("a")
+}
 
-// func (l *LightClientAttackEvidence) Bytes() []byte {
-// 	return []byte("a")
-// }
+func (l *LightClientAttackEvidence) Bytes() []byte {
+	return []byte("a")
+}
 
-// func (l *LightClientAttackEvidence) Hash() []byte {
-// 	return []byte("a")
-// }
+func (l *LightClientAttackEvidence) Hash() []byte {
+	return []byte("a")
+}
 
-// func (l *LightClientAttackEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
-// 	return nil
-// }
+// Light client attack evidence cannot be verified based of these arguments
+func (l *LightClientAttackEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+	return nil
+}
 
-// func (l *LightClientAttackEvidence) Equal(ev Evidence) bool {
-// 	return false
-// }
+
+func (l *LightClientAttackEvidence) Equal(ev Evidence) bool {
+	if lce, ok := ev.(*LightClientAttackEvidence); ok {
+		return !bytes.Equal(l.ConflictingBlock.Hash(), lce.ConflictingBlock.Hash()) && 
+		l.CommonHeight == lce.CommonHeight
+	}
+	return false
+}
 
 func (l *LightClientAttackEvidence) ValidateBasic() error {
 	if l.ConflictingBlock == nil {
 		return errors.New("conflicting block is nil")
+	}
+
+	// this check needs to be done before we can run validate basic
+	if l.ConflictingBlock.Header == nil {
+		return errors.New("conflicting block missing header")
+	}
+
+	if err := l.ConflictingBlock.ValidateBasic(l.ConflictingBlock.ChainID); err != nil {
+		return fmt.Errorf("invalid conflicting light block: %w", err)
 	}
 	
 	if l.CommonHeight >= l.ConflictingBlock.Height {
 		return fmt.Errorf("common height is ahead of the conflicting block height (%d > %d)",
 		l.CommonHeight, l.ConflictingBlock.Height)
 	}
-	
-	if err := l.ConflictingBlock.ValidateBasic(l.ConflictingBlock.ChainID); err != nil {
-		return fmt.Errorf("invalid conflicting light block: %w", err)
-	}
-	
+
 	return nil
 }
 

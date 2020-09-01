@@ -698,6 +698,7 @@ func (c *Client) verifySkipping(
 		case nil:
 			// Have we verified the last header
 			if depth == 0 {
+				trace = append(trace, newLightBlock)
 				return trace, nil
 			}
 			// If not, update the lower bound to the previous upper bound

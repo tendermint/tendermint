@@ -2,7 +2,6 @@ package light
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"time"
 
@@ -31,6 +30,8 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 		lastVerifiedHeader = primaryTrace[len(primaryTrace)-1].SignedHeader
 		witnessesToRemove  = make([]int, 0)
 	)
+	c.logger.Info("Running detector against trace", "endBlockHeight", lastVerifiedHeader.Height,
+		"endBlockHash", lastVerifiedHeader.Hash, "length", len(primaryTrace))
 
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
@@ -69,8 +70,8 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 			// We are suspecting that the primary is faulty, hence we hold the witness as the source of truth
 			// and generate evidence against the primary that we can send to the witness
 			ev := createEvidence(witnessTrace[0], witnessTrace[len(witnessTrace)-1], primaryBlock)
-			c.logger.Error("Attack detected. Sending evidence againt primary by witness", "ev", ev, 
-			"primary", c.primary, "witness", e.Witness)
+			c.logger.Error("Attack detected. Sending evidence againt primary by witness", "ev", ev,
+				"primary", c.primary, "witness", e.Witness)
 			c.sendEvidence(ev, e.Witness)
 
 			// This may not be valid because the witness itself is at fault. So now we reverse it, examining the
@@ -84,8 +85,8 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 
 			// We now use the primary trace to create evidence against the witness and send it to the primary
 			ev = createEvidence(primaryTrace[0], primaryTrace[len(primaryTrace)-1], witnessBlock)
-			c.logger.Error("Sending evidence against witness by primary", "ev", ev, 
-			"primary", c.primary, "witness", e.Witness)
+			c.logger.Error("Sending evidence against witness by primary", "ev", ev,
+				"primary", c.primary, "witness", e.Witness)
 			c.sendEvidence(ev, c.primary)
 			// We return the error and don't process anymore witnesses
 			return e
@@ -105,7 +106,6 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 		c.removeWitness(idx)
 	}
 
-
 	// 1. If we had at least one witness that returned the same header then we
 	// conclude that we can trust the header
 	if headerMatched {
@@ -113,9 +113,7 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 	}
 
 	// 2. ELse all witnesses have either not responded, don't have the block or sent invalid blocks.
-	return errors.New("All witnesses have either not responded, don't have the block or sent invalid blocks." +
-		" You should look to change your witnesses or review the light client's logs for more information.")
-
+	return ErrFailedHeaderCrossReferencing
 }
 
 // compareNewHeaderWithWitness takes the verified header from the primary and compares it with a
@@ -138,15 +136,16 @@ func (c *Client) compareNewHeaderWithWitness(errc chan error, h *types.SignedHea
 		errc <- errConflictingHeaders{Block: lightBlock, Witness: witness, Index: witnessIndex}
 	}
 
+	c.logger.Info("Matching header received by witness", "height", h.Height, "witness", witnessIndex)
 	errc <- nil
 }
 
 // sendEvidence sends evidence to a provider on a best effort basis.
 func (c *Client) sendEvidence(ev *types.LightClientAttackEvidence, receiver provider.Provider) {
-	// err := receiver.ReportEvidence(ev)
-	// if err != nil {
-	// 	c.logger.Error("Failed to report evidence to provider", "ev", ev, "provider", receiver)
-	// }
+	err := receiver.ReportEvidence(ev)
+	if err != nil {
+		c.logger.Error("Failed to report evidence to provider", "ev", ev, "provider", receiver)
+	}
 }
 
 // examineConflictingHeaderAgainstTrace takes a trace from one provider and a divergent header that

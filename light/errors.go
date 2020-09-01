@@ -1,6 +1,7 @@
 package light
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -40,18 +41,11 @@ func (e ErrInvalidHeader) Error() string {
 	return fmt.Sprintf("invalid header: %v", e.Reason)
 }
 
-// ErrConflictingHeaders is thrown when two conflicting headers are discovered.
-type errConflictingHeaders struct {
-	Block   *types.LightBlock
-	Witness provider.Provider
-	Index   int
-}
-
-func (e errConflictingHeaders) Error() string {
-	return fmt.Sprintf(
-		"header hash (%X) from witness (%v) does not match primary",
-		e.Block.Hash(), e.Witness)
-}
+// ErrFailedHeaderCrossReferencing is returned when the detector was not able to cross reference the header
+// with any of the connected witnesses.
+var ErrFailedHeaderCrossReferencing = errors.New("All witnesses have either not responded, don't have the " +
+	" blocks or sent invalid blocks. You should look to change your witnesses" +
+	"  or review the light client's logs for more information.")
 
 // ErrVerificationFailed means either sequential or skipping verification has
 // failed to verify from header #1 to header #2 due to some reason.
@@ -72,6 +66,21 @@ func (e ErrVerificationFailed) Error() string {
 		e.From, e.To, e.Reason)
 }
 
+// ----------------------------- INTERNAL ERRORS ---------------------------------
+
+// ErrConflictingHeaders is thrown when two conflicting headers are discovered.
+type errConflictingHeaders struct {
+	Block   *types.LightBlock
+	Witness provider.Provider
+	Index   int
+}
+
+func (e errConflictingHeaders) Error() string {
+	return fmt.Sprintf(
+		"header hash (%X) from witness (%v) does not match primary",
+		e.Block.Hash(), e.Witness)
+}
+
 // errNoWitnesses means that there are not enough witnesses connected to
 // continue running the light client.
 type errNoWitnesses struct{}
@@ -88,5 +97,5 @@ type errBadWitness struct {
 }
 
 func (e errBadWitness) Error() string {
-	return fmt.Sprint("Witness %d returned error: %s", e.Index, e.Reason.Error())
+	return fmt.Sprintf("Witness %d returned error: %s", e.Index, e.Reason.Error())
 }
