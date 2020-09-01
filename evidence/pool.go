@@ -116,10 +116,6 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 	evpool.logger.Debug("Attempting to add evidence", "ev", ev)
 
-	if evpool.Has(ev) {
-		return nil //could be already in?
-	}
-
 	// 1) Verify against state.
 	if err := evpool.verify(ev); err != nil {
 		return types.NewErrEvidenceInvalid(ev, err)

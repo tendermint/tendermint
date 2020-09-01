@@ -21,7 +21,7 @@ uncommitted evidence at intervals of 60 seconds (set by the by broadcastEvidence
 It uses a concurrent list to store the evidence and before sending verifies that each evidence is still valid in the
 sense that it has not exceeded the max evidence age and height (see types/params.go#EvidenceParams).
 
-There are two buckets that evidence can be stored in: Pending, Committed.
+There are two buckets that evidence can be stored in: Pending & Committed.
 
 1. Pending is awaiting to be committed (evidence is usually broadcasted then)
 

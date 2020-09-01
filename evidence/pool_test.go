@@ -13,7 +13,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/evidence/mocks"
-	"github.com/tendermint/tendermint/libs/bytes"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
@@ -250,10 +249,9 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) S
 				MaxGas:   -1,
 			},
 			Evidence: tmproto.EvidenceParams{
-				MaxAgeNumBlocks:  20,
-				MaxAgeDuration:   48 * time.Hour,
-				MaxNum:           50,
-				ProofTrialPeriod: 1,
+				MaxAgeNumBlocks: 20,
+				MaxAgeDuration:  48 * time.Hour,
+				MaxNum:          50,
 			},
 		},
 	}
@@ -309,19 +307,6 @@ func makeCommit(height int64, valAddr []byte) *types.Commit {
 		Signature:        []byte("Signature"),
 	}}
 	return types.NewCommit(height, 0, types.BlockID{}, commitSigs)
-}
-
-func makeVote(height int64, round, index int32, addr bytes.HexBytes,
-	blockID types.BlockID, time time.Time) *types.Vote {
-	return &types.Vote{
-		Type:             tmproto.SignedMsgType(2),
-		Height:           height,
-		Round:            round,
-		BlockID:          blockID,
-		Timestamp:        time,
-		ValidatorAddress: addr,
-		ValidatorIndex:   index,
-	}
 }
 
 func defaultTestPool(height int64) (*Pool, types.MockPV) {
