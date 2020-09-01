@@ -61,16 +61,6 @@ func VerifyEvidence(evidence types.Evidence, state sm.State, stateDB StateStore,
 		return err
 	}
 
-	if ae, ok := evidence.(*types.AmnesiaEvidence); ok {
-		// check the validator set against the polc to make sure that a majority of valid votes was reached
-		if !ae.Polc.IsAbsent() {
-			err = ae.Polc.ValidateVotes(valset, state.ChainID)
-			if err != nil {
-				return fmt.Errorf("amnesia evidence contains invalid polc, err: %w", err)
-			}
-		}
-	}
-
 	addr := evidence.Address()
 	var val *types.Validator
 
