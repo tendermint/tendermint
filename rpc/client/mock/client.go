@@ -138,8 +138,8 @@ func (c Client) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 	return core.UnsafeDialSeeds(&rpctypes.Context{}, seeds)
 }
 
-func (c Client) DialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, error) {
-	return core.UnsafeDialPeers(&rpctypes.Context{}, peers, persistent)
+func (c Client) DialPeers(peers []string, persistent, unconditional, private bool) (*ctypes.ResultDialPeers, error) {
+	return core.UnsafeDialPeers(&rpctypes.Context{}, peers, persistent, unconditional, private)
 }
 
 func (c Client) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {

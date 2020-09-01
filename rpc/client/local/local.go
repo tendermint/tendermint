@@ -132,8 +132,8 @@ func (c *Local) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 	return core.UnsafeDialSeeds(c.ctx, seeds)
 }
 
-func (c *Local) DialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, error) {
-	return core.UnsafeDialPeers(c.ctx, peers, persistent)
+func (c *Local) DialPeers(peers []string, persistent, unconditional, private bool) (*ctypes.ResultDialPeers, error) {
+	return core.UnsafeDialPeers(c.ctx, peers, persistent, unconditional, private)
 }
 
 func (c *Local) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {

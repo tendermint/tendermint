@@ -58,6 +58,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 		config.RPC.GRPCListenAddress,
 		"GRPC listen address (BroadcastTx only). Port required")
 	cmd.Flags().Bool("rpc.unsafe", config.RPC.Unsafe, "Enabled unsafe rpc methods")
+	cmd.Flags().String("rpc.pprof_laddr", config.RPC.PprofListenAddress, "pprof listen address (https://golang.org/pkg/net/http/pprof)")
 
 	// p2p flags
 	cmd.Flags().String(

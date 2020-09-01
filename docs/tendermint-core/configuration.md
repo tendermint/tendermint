@@ -92,9 +92,6 @@ node_key_file = "config/node_key.json"
 # Mechanism to connect to the ABCI application: socket | grpc
 abci = "socket"
 
-# TCP or UNIX socket address for the profiling server to listen on
-prof_laddr = ""
-
 # If true, query the ABCI app on connecting to a new peer
 # so the app can decide if we should keep the connection or not
 filter_peers = false
@@ -184,6 +181,9 @@ tls_cert_file = ""
 # NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
 # Otherwise, HTTP server is run.
 tls_key_file = ""
+
+# pprof listen address (https://golang.org/pkg/net/http/pprof)
+pprof_laddr = ""
 
 #######################################################
 ###           P2P Configuration Options             ###
@@ -316,7 +316,7 @@ temp_dir = ""
 # Fast Sync version to use:
 #   1) "v0" (default) - the legacy fast sync implementation
 #   2) "v1" - refactor of v0 version for better testability
-#   2) "v2" - complete redesign of v0, optimized for testability & readability 
+#   2) "v2" - complete redesign of v0, optimized for testability & readability
 version = "v0"
 
 #######################################################
@@ -357,7 +357,7 @@ peer_query_maj23_sleep_duration = "2s"
 [tx_index]
 
 # What indexer to use for transactions
-# 
+#
 # The application will set which txs to index. In some cases a node operator will be able
 # to decide which txs to index based on configuration set in the application.
 #
