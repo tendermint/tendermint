@@ -120,14 +120,22 @@ func (p *http) validatorSet(height *int64) (*types.ValidatorSet, error) {
 				continue
 			}
 			if len(res.Validators) == 0 { // no more validators left
-				return types.ValidatorSetFromExistingValidators(vals), nil
+				valSet, err := types.ValidatorSetFromExistingValidators(vals)
+				if err != nil {
+					return nil, provider.ErrBadLightBlock{Reason: err}
+				}
+				return valSet, nil
 			}
 			vals = append(vals, res.Validators...)
 			page++
 			break
 		}
 	}
-	return types.ValidatorSetFromExistingValidators(vals), nil
+	valSet, err := types.ValidatorSetFromExistingValidators(vals)
+	if err != nil {
+		return nil, provider.ErrBadLightBlock{Reason: err}
+	}
+	return valSet, nil
 }
 
 func (p *http) signedHeader(height *int64) (*types.SignedHeader, error) {
