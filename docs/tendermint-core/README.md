@@ -14,6 +14,7 @@ This section dives into the internals of Tendermint the implementation.
 - [Running in Production](./running-in-production.md)
 - [Metrics](./metrics.md)
 - [Validators](./validators.md)
+- [Subscribing to events](./subscription.md)
 - [Block Structure](./block-structure.md)
 - [RPC](./rpc.md)
 - [Fast Sync](./fast-sync.md)
