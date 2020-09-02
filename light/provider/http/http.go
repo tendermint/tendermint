@@ -55,9 +55,9 @@ func (p *http) String() string {
 	return fmt.Sprintf("http{%s}", p.client.Remote())
 }
 
-// SignedHeader fetches a SignedHeader at the given height and checks the
+// LightBlock fetches a LightBlock at the given height and checks the
 // chainID matches.
-func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
+func (p *http) LightBlock(height int64) (*types.LightBlock, error) {
 	h, err := validateHeight(height)
 	if err != nil {
 		return nil, err
@@ -65,9 +65,9 @@ func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
 
 	commit, err := p.client.Commit(h)
 	if err != nil {
-		// TODO: standartise errors on the RPC side
+		// TODO: standardize errors on the RPC side
 		if regexpMissingHeight.MatchString(err.Error()) {
-			return nil, provider.ErrSignedHeaderNotFound
+			return nil, provider.ErrLightBlockNotFound
 		}
 		return nil, err
 	}
@@ -81,23 +81,12 @@ func (p *http) SignedHeader(height int64) (*types.SignedHeader, error) {
 		return nil, fmt.Errorf("expected chainID %s, got %s", p.chainID, commit.Header.ChainID)
 	}
 
-	return &commit.SignedHeader, nil
-}
-
-// ValidatorSet fetches a ValidatorSet at the given height. Multiple HTTP
-// requests might be required if the validator set size is over 100.
-func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
-	h, err := validateHeight(height)
-	if err != nil {
-		return nil, err
-	}
-
 	maxPerPage := 100
 	res, err := p.client.Validators(h, nil, &maxPerPage)
 	if err != nil {
-		// TODO: standartise errors on the RPC side
+		// TODO: standardize errors on the RPC side
 		if regexpMissingHeight.MatchString(err.Error()) {
-			return nil, provider.ErrValidatorSetNotFound
+			return nil, provider.ErrLightBlockNotFound
 		}
 		return nil, err
 	}
@@ -119,7 +108,12 @@ func (p *http) ValidatorSet(height int64) (*types.ValidatorSet, error) {
 		page++
 	}
 
-	return types.ValidatorSetFromExistingValidators(vals)
+	valset := types.NewValidatorSet(vals)
+
+	return &types.LightBlock{
+		SignedHeader: &commit.SignedHeader,
+		ValidatorSet: valset,
+	}, nil
 }
 
 // ReportEvidence calls `/broadcast_evidence` endpoint.

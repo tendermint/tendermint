@@ -56,26 +56,9 @@ func VerifyEvidence(evidence types.Evidence, state sm.State, stateDB StateStore,
 		)
 	}
 
-	// If in the case of lunatic validator evidence we need our committed header again to verify the evidence
-	if ev, ok := evidence.(*types.LunaticValidatorEvidence); ok {
-		if err := ev.VerifyHeader(header); err != nil {
-			return err
-		}
-	}
-
 	valset, err := stateDB.LoadValidators(evidence.Height())
 	if err != nil {
 		return err
-	}
-
-	if ae, ok := evidence.(*types.AmnesiaEvidence); ok {
-		// check the validator set against the polc to make sure that a majority of valid votes was reached
-		if !ae.Polc.IsAbsent() {
-			err = ae.Polc.ValidateVotes(valset, state.ChainID)
-			if err != nil {
-				return fmt.Errorf("amnesia evidence contains invalid polc, err: %w", err)
-			}
-		}
 	}
 
 	addr := evidence.Address()

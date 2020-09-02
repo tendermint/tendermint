@@ -3,6 +3,7 @@ package db
 import (
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -10,91 +11,78 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/types"
 )
 
-func TestLast_FirstSignedHeaderHeight(t *testing.T) {
-	dbStore := New(dbm.NewMemDB(), "TestLast_FirstSignedHeaderHeight")
-	vals, _ := types.RandValidatorSet(10, 100)
+func TestLast_FirstLightBlockHeight(t *testing.T) {
+	dbStore := New(dbm.NewMemDB(), "TestLast_FirstLightBlockHeight")
 
 	// Empty store
-	height, err := dbStore.LastSignedHeaderHeight()
+	height, err := dbStore.LastLightBlockHeight()
 	require.NoError(t, err)
 	assert.EqualValues(t, -1, height)
 
-	height, err = dbStore.FirstSignedHeaderHeight()
+	height, err = dbStore.FirstLightBlockHeight()
 	require.NoError(t, err)
 	assert.EqualValues(t, -1, height)
 
 	// 1 key
-	err = dbStore.SaveSignedHeaderAndValidatorSet(
-		&types.SignedHeader{Header: &types.Header{Height: 1}}, vals)
+	err = dbStore.SaveLightBlock(randLightBlock(int64(1)))
 	require.NoError(t, err)
 
-	height, err = dbStore.LastSignedHeaderHeight()
+	height, err = dbStore.LastLightBlockHeight()
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, height)
 
-	height, err = dbStore.FirstSignedHeaderHeight()
+	height, err = dbStore.FirstLightBlockHeight()
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, height)
 }
 
-func Test_SaveSignedHeaderAndValidatorSet(t *testing.T) {
-	dbStore := New(dbm.NewMemDB(), "Test_SaveSignedHeaderAndValidatorSet")
-	vals, _ := types.RandValidatorSet(10, 100)
+func Test_SaveLightBlock(t *testing.T) {
+	dbStore := New(dbm.NewMemDB(), "Test_SaveLightBlockAndValidatorSet")
+
 	// Empty store
-	h, err := dbStore.SignedHeader(1)
+	h, err := dbStore.LightBlock(1)
 	require.Error(t, err)
 	assert.Nil(t, h)
 
-	valSet, err := dbStore.ValidatorSet(1)
-	require.Error(t, err)
-	assert.Nil(t, valSet)
-
 	// 1 key
-	pa := vals.Validators[0].Address
-	err = dbStore.SaveSignedHeaderAndValidatorSet(
-		&types.SignedHeader{Header: &types.Header{Height: 1, ProposerAddress: pa}}, vals)
+	err = dbStore.SaveLightBlock(randLightBlock(1))
 	require.NoError(t, err)
 
-	h, err = dbStore.SignedHeader(1)
+	size := dbStore.Size()
+	assert.Equal(t, uint16(1), size)
+	t.Log(size)
+
+	h, err = dbStore.LightBlock(1)
 	require.NoError(t, err)
 	assert.NotNil(t, h)
 
-	valSet, err = dbStore.ValidatorSet(1)
-	require.NoError(t, err)
-	assert.NotNil(t, valSet)
-
 	// Empty store
-	err = dbStore.DeleteSignedHeaderAndValidatorSet(1)
+	err = dbStore.DeleteLightBlock(1)
 	require.NoError(t, err)
 
-	h, err = dbStore.SignedHeader(1)
+	h, err = dbStore.LightBlock(1)
 	require.Error(t, err)
 	assert.Nil(t, h)
 
-	valSet, err = dbStore.ValidatorSet(1)
-	require.Error(t, err)
-	assert.Nil(t, valSet)
 }
 
-func Test_SignedHeaderBefore(t *testing.T) {
-	dbStore := New(dbm.NewMemDB(), "Test_SignedHeaderBefore")
-	valSet, _ := types.RandValidatorSet(10, 100)
-	pa := valSet.Proposer.Address
+func Test_LightBlockBefore(t *testing.T) {
+	dbStore := New(dbm.NewMemDB(), "Test_LightBlockBefore")
 
 	assert.Panics(t, func() {
-		_, _ = dbStore.SignedHeaderBefore(0)
-		_, _ = dbStore.SignedHeaderBefore(100)
+		_, _ = dbStore.LightBlockBefore(0)
+		_, _ = dbStore.LightBlockBefore(100)
 	})
 
-	err := dbStore.SaveSignedHeaderAndValidatorSet(
-		&types.SignedHeader{Header: &types.Header{Height: 2, ProposerAddress: pa}}, valSet)
+	err := dbStore.SaveLightBlock(randLightBlock(int64(2)))
 	require.NoError(t, err)
 
-	h, err := dbStore.SignedHeaderBefore(3)
+	h, err := dbStore.LightBlockBefore(3)
 	require.NoError(t, err)
 	if assert.NotNil(t, h) {
 		assert.EqualValues(t, 2, h.Height)
@@ -103,7 +91,6 @@ func Test_SignedHeaderBefore(t *testing.T) {
 
 func Test_Prune(t *testing.T) {
 	dbStore := New(dbm.NewMemDB(), "Test_Prune")
-	valSet, _ := types.RandValidatorSet(10, 100)
 
 	// Empty store
 	assert.EqualValues(t, 0, dbStore.Size())
@@ -111,8 +98,7 @@ func Test_Prune(t *testing.T) {
 	require.NoError(t, err)
 
 	// One header
-	err = dbStore.SaveSignedHeaderAndValidatorSet(
-		&types.SignedHeader{Header: &types.Header{Height: 2}}, valSet)
+	err = dbStore.SaveLightBlock(randLightBlock(2))
 	require.NoError(t, err)
 
 	assert.EqualValues(t, 1, dbStore.Size())
@@ -127,8 +113,7 @@ func Test_Prune(t *testing.T) {
 
 	// Multiple headers
 	for i := 1; i <= 10; i++ {
-		err = dbStore.SaveSignedHeaderAndValidatorSet(
-			&types.SignedHeader{Header: &types.Header{Height: int64(i)}}, valSet)
+		err = dbStore.SaveLightBlock(randLightBlock(int64(i)))
 		require.NoError(t, err)
 	}
 
@@ -143,7 +128,6 @@ func Test_Prune(t *testing.T) {
 
 func Test_Concurrency(t *testing.T) {
 	dbStore := New(dbm.NewMemDB(), "Test_Prune")
-	vals, _ := types.RandValidatorSet(10, 100)
 
 	var wg sync.WaitGroup
 	for i := 1; i <= 100; i++ {
@@ -151,24 +135,19 @@ func Test_Concurrency(t *testing.T) {
 		go func(i int64) {
 			defer wg.Done()
 
-			err := dbStore.SaveSignedHeaderAndValidatorSet(
-				&types.SignedHeader{Header: &types.Header{Height: i,
-					ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}, vals)
+			err := dbStore.SaveLightBlock(randLightBlock(i))
 			require.NoError(t, err)
 
-			_, err = dbStore.SignedHeader(i)
+			_, err = dbStore.LightBlock(i)
 			if err != nil {
 				t.Log(err)
 			}
-			_, err = dbStore.ValidatorSet(i)
-			if err != nil {
-				t.Log(err) // could not find validator set
-			}
-			_, err = dbStore.LastSignedHeaderHeight()
+
+			_, err = dbStore.LastLightBlockHeight()
 			if err != nil {
 				t.Log(err)
 			}
-			_, err = dbStore.FirstSignedHeaderHeight()
+			_, err = dbStore.FirstLightBlockHeight()
 			if err != nil {
 				t.Log(err)
 			}
@@ -179,7 +158,7 @@ func Test_Concurrency(t *testing.T) {
 			}
 			_ = dbStore.Size()
 
-			err = dbStore.DeleteSignedHeaderAndValidatorSet(1)
+			err = dbStore.DeleteLightBlock(1)
 			if err != nil {
 				t.Log(err)
 			}
@@ -187,4 +166,29 @@ func Test_Concurrency(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func randLightBlock(height int64) *types.LightBlock {
+	vals, _ := types.RandValidatorSet(2, 1)
+	return &types.LightBlock{
+		SignedHeader: &types.SignedHeader{
+			Header: &types.Header{
+				ChainID:            tmrand.Str(12),
+				Height:             height,
+				Time:               time.Now(),
+				LastBlockID:        types.BlockID{},
+				LastCommitHash:     crypto.CRandBytes(tmhash.Size),
+				DataHash:           crypto.CRandBytes(tmhash.Size),
+				ValidatorsHash:     crypto.CRandBytes(tmhash.Size),
+				NextValidatorsHash: crypto.CRandBytes(tmhash.Size),
+				ConsensusHash:      crypto.CRandBytes(tmhash.Size),
+				AppHash:            crypto.CRandBytes(tmhash.Size),
+				LastResultsHash:    crypto.CRandBytes(tmhash.Size),
+				EvidenceHash:       crypto.CRandBytes(tmhash.Size),
+				ProposerAddress:    crypto.CRandBytes(crypto.AddressSize),
+			},
+			Commit: &types.Commit{},
+		},
+		ValidatorSet: vals,
+	}
 }
