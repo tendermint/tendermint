@@ -111,7 +111,11 @@ func (p *http) validatorSet(height *int64) (*types.ValidatorSet, error) {
 				if regexpMissingHeight.MatchString(err.Error()) {
 					return nil, provider.ErrLightBlockNotFound
 				}
-				// we wait and try again with exponential backoff
+				// if we have exceeded retry attempts then return no response error
+				if attempt == maxRetryAttempts {
+					return nil, provider.ErrNoResponse
+				}
+				// else we wait and try again with exponential backoff
 				time.Sleep(backoffTimeout(uint16(attempt)))
 				continue
 			}
@@ -122,7 +126,6 @@ func (p *http) validatorSet(height *int64) (*types.ValidatorSet, error) {
 			page++
 			break
 		}
-		return nil, provider.ErrNoResponse
 	}
 	return types.ValidatorSetFromExistingValidators(vals), nil
 }
