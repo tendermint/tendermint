@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -48,23 +49,34 @@ func (p *Mock) String() string {
 }
 
 func (p *Mock) LightBlock(height int64) (*types.LightBlock, error) {
+	var lb *types.LightBlock
 	if height == 0 && len(p.headers) > 0 {
 		sh := p.headers[int64(len(p.headers))]
 		vals := p.vals[int64(len(p.vals))]
-		return &types.LightBlock{
+		lb = &types.LightBlock{
 			SignedHeader: sh,
 			ValidatorSet: vals,
-		}, nil
+		}
+
 	}
 	if _, ok := p.headers[height]; ok {
 		sh := p.headers[height]
 		vals := p.vals[height]
-		return &types.LightBlock{
+		lb = &types.LightBlock{
 			SignedHeader: sh,
 			ValidatorSet: vals,
-		}, nil
+		}
 	}
-	return nil, provider.ErrLightBlockNotFound
+	if lb == nil {
+		return nil, provider.ErrLightBlockNotFound
+	}
+	if lb.SignedHeader == nil || lb.ValidatorSet == nil {
+		return nil, provider.ErrBadLightBlock{Reason: errors.New("nil header or vals")}
+	}
+	if err := lb.ValidateBasic(lb.ChainID); err != nil {
+		return nil, provider.ErrBadLightBlock{Reason: err}
+	}
+	return lb, nil
 }
 
 func (p *Mock) ReportEvidence(ev types.Evidence) error {
