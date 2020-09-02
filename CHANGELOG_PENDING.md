@@ -13,6 +13,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - Apps
 
 - P2P Protocol
+  - [mempool] \#5321 Batch transactions when broadcasting them to peers (@melekes)
 
 - Go API
     - [evidence] \#5317 Remove ConflictingHeaders evidence type & CompositeEvidence Interface. (@marbar3778)
