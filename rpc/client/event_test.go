@@ -68,13 +68,9 @@ func TestBlockEvents(t *testing.T) {
 			require.NoError(t, err)
 			defer c.UnsubscribeAll(context.Background(), subscriber)
 
-			var (
-				firstBlockHeight int64
-				i                int64
-			)
-
-			select {
-			case event := <-eventCh:
+			var firstBlockHeight int64
+			for i := int64(0); i < 3; i++ {
+				event := <-eventCh
 				blockEvent, ok := event.Data.(types.EventDataNewBlock)
 				require.True(t, ok)
 
@@ -85,13 +81,7 @@ func TestBlockEvents(t *testing.T) {
 				}
 
 				require.Equal(t, firstBlockHeight+int64(i), block.Header.Height)
-				i++
-
-				if i == 3 {
-					break
-				}
 			}
-
 		})
 	}
 }
