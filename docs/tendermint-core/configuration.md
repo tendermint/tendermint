@@ -282,6 +282,9 @@ cache_size = 10000
 # NOTE: the max size of a tx transmitted over the network is {max_tx_bytes}.
 max_tx_bytes = 1048576
 
+# Maximum number of transactions to send to a peer in one message
+tx_batch_size = 100
+
 #######################################################
 ###         State Sync Configuration Options        ###
 #######################################################

@@ -1,6 +1,7 @@
 package mempool
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -135,7 +136,7 @@ func (memR *Reactor) OnStart() error {
 // GetChannels implements Reactor.
 // It returns the list of channels for this reactor.
 func (memR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
-	maxMsgSize := calcMaxMsgSize(memR.config.MaxTxBytes)
+	maxMsgSize := calcMaxMsgSize(memR.config.MaxTxBytes * memR.config.TxBatchSize)
 	return []*p2p.ChannelDescriptor{
 		{
 			ID:                  MempoolChannel,
@@ -267,11 +268,15 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 // included.
 // WARNING: mutates next!
 func (memR *Reactor) txs(next *clist.CElement, peerID uint16, peerHeight int64) [][]byte {
-	batch := make([][]byte, 0)
+	batch := make([][]byte, 0, memR.config.TxBatchSize)
 
 	memTx := next.Value.(*mempoolTx)
 	if _, ok := memTx.senders.Load(peerID); !ok {
 		batch = append(batch, []byte(memTx.tx))
+	}
+
+	if len(batch) >= memR.config.TxBatchSize {
+		return batch
 	}
 
 	n := next.Next()
@@ -290,6 +295,10 @@ func (memR *Reactor) txs(next *clist.CElement, peerID uint16, peerHeight int64) 
 		next = n
 		// Advance n (could be nil) pointer
 		n = n.Next()
+
+		if len(batch) >= memR.config.TxBatchSize {
+			return batch
+		}
 	}
 
 	return batch
@@ -337,6 +346,6 @@ func (m *TxsMessage) String() string {
 
 // calcMaxMsgSize returns the max size of TxsMessage account for proto overhead
 // of bytesValue.
-func calcMaxMsgSize(maxTxSize int) int {
-	return maxTxSize + protoOverheadForTxsMessage
+func calcMaxMsgSize(rawMsgSize int) int {
+	return rawMsgSize + protoOverheadForTxsMessage
 }
