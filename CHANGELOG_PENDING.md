@@ -17,6 +17,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - Go API
     - [evidence] \#5317 Remove ConflictingHeaders evidence type & CompositeEvidence Interface. (@marbar3778)
     - [evidence] \#5318 Remove LunaticValidator evidence type. (@marbar3778)
+    - [evidence] \#5319 Remove Amnesia & potentialAmnesia evidence types and removed POLC. (@marbar3778)
+    - [params] \#5319 Remove `ProofofTrialPeriod` from evidence params (@marbar3778)
     - [crypto/secp256k1] \#5280 `secp256k1` has been removed from the Tendermint repo. (@marbar3778)
 
 - Blockchain Protocol
