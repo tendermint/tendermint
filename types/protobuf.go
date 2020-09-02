@@ -15,10 +15,6 @@ import (
 // Use strings to distinguish types in ABCI messages
 
 const (
-	ABCIEvidenceTypeDuplicateVote = "duplicate/vote"
-)
-
-const (
 	ABCIPubKeyTypeEd25519 = "ed25519"
 )
 
