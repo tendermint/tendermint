@@ -319,6 +319,10 @@ func (memR *Reactor) decodeMsg(bz []byte) (TxsMessage, error) {
 	if i, ok := msg.Sum.(*protomem.Message_Txs); ok {
 		txs := i.Txs.GetTxs()
 
+		if len(txs) == 0 {
+			return message, errors.New("empty TxsMessage")
+		}
+
 		decoded := make([]types.Tx, len(txs))
 		for j, tx := range txs {
 			decoded[j] = types.Tx(tx)
