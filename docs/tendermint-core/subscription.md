@@ -1,5 +1,5 @@
 ---
-order: 5
+order: 7
 ---
 
 # Subscribing to events via Websocket
