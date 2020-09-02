@@ -4,8 +4,7 @@ order: 6
 
 # Indexing Transactions
 
-Tendermint allows you to index transactions and later query or subscribe
-to their results.
+Tendermint allows you to index transactions and later query or subscribe to their results.
 
 Events can be used to index transactions and blocks according to what happened
 during their execution. Note that the set of events returned for a block from
@@ -78,9 +77,8 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Resul
 }
 ```
 
-The transaction will be indexed (if the indexer is not `null`) with a certain
-attribute if the attribute's `Index` field is set to `true`. In the above
-example, all attributes will be indexed.
+The transaction will be indexed (if the indexer is not `null`) with a certain attribute if the attribute's `Index` field is set to `true`. 
+In the above example, all attributes will be indexed.
 
 ## Querying Transactions
 
