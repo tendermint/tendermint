@@ -191,10 +191,7 @@ type PeerState interface {
 // Send new mempool txs to peer.
 func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 	peerID := memR.ids.GetForPeer(peer)
-	var (
-		next  *clist.CElement
-		batch [][]byte
-	)
+	var next *clist.CElement
 	for {
 		// In case of both next.NextWaitChan() and peer.Quit() are variable at the same time
 		if !memR.IsRunning() || !peer.IsRunning() {
@@ -234,34 +231,11 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 			continue
 		}
 
-		// ensure peer hasn't already sent us this tx
-		if _, ok := memTx.senders.Load(peerID); !ok {
-			batch = append(batch, []byte(memTx.tx))
-		}
-
-		// check if there are other transactions available
-		n := next.Next()
-		for n != nil {
-			// Advance next (non-nil) pointer, which is used later to wait for next
-			// transaction to appear.
-			next = n
-
-			memTx := n.Value.(*mempoolTx)
-			if peerState.GetHeight() < memTx.Height()-1 {
-				break
-			}
-			if _, ok := memTx.senders.Load(peerID); ok {
-				break
-			}
-			batch = append(batch, []byte(memTx.tx))
-
-			n = n.Next()
-		}
-
 		// send txs
+		txs := memR.txs(next, peerID, peerState.GetHeight()) // WARNING: mutates next!
 		msg := protomem.Message{
 			Sum: &protomem.Message_Txs{
-				Txs: &protomem.Txs{Txs: batch},
+				Txs: &protomem.Txs{Txs: txs},
 			},
 		}
 		bz, err := msg.Marshal()
@@ -273,7 +247,6 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 			continue
 		}
-		batch = [][]byte{} // reset current batch
 
 		select {
 		case <-next.NextWaitChan():
@@ -285,6 +258,38 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 			return
 		}
 	}
+}
+
+// txs iterates over the transaction list and builds a batch of txs. next is
+// included.
+// WARNING: mutates next!
+func (memR *Reactor) txs(next *clist.CElement, peerID uint16, peerHeight int64) [][]byte {
+	batch := make([][]byte, 0)
+
+	memTx := next.Value.(*mempoolTx)
+	if _, ok := memTx.senders.Load(peerID); !ok {
+		batch = append(batch, []byte(memTx.tx))
+	}
+
+	n := next.Next()
+	for n != nil {
+		memTx = n.Value.(*mempoolTx)
+		if peerHeight < memTx.Height()-1 {
+			break
+		}
+
+		if _, ok := memTx.senders.Load(peerID); !ok {
+			batch = append(batch, []byte(memTx.tx))
+		}
+
+		// Advance next (non-nil) pointer, which is used later to
+		// wait (NextWaitChan) for next transaction to appear.
+		next = n
+		// Advance n (could be nil) pointer
+		n = n.Next()
+	}
+
+	return batch
 }
 
 //-----------------------------------------------------------------------------
