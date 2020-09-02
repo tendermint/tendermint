@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"time"
 
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
@@ -51,9 +52,11 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 					resultEvent = &ctypes.ResultEvent{Query: query, Data: msg.Data(), Events: msg.Events()}
 					resp        = rpctypes.NewRPCSuccessResponse(subscriptionID, resultEvent)
 				)
-				if err := ctx.WSConn.WriteRPCResponse(subCtx, resp); err != nil {
-					env.Logger.Info("Can't write response",
-						"to", addr, "subscriptionID", subscriptionID, "response", resp, "err", err)
+				writeCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				if err := ctx.WSConn.WriteRPCResponse(writeCtx, resp); err != nil {
+					env.Logger.Info("Can't write response (slow client)",
+						"to", addr, "subscriptionID", subscriptionID, "err", err)
 				}
 			case <-sub.Cancelled():
 				if sub.Err() != tmpubsub.ErrUnsubscribed {
@@ -68,8 +71,8 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 						resp = rpctypes.RPCServerError(subscriptionID, err)
 					)
 					if ok := ctx.WSConn.TryWriteRPCResponse(resp); !ok {
-						env.Logger.Info("Can't write response",
-							"to", addr, "subscriptionID", subscriptionID, "response", resp, "err", err)
+						env.Logger.Info("Can't write response (slow client)",
+							"to", addr, "subscriptionID", subscriptionID, "err", err)
 					}
 				}
 				return

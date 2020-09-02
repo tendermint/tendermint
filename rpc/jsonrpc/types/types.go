@@ -205,7 +205,7 @@ func NewRPCErrorResponse(id jsonrpcid, code int, msg string, data string) RPCRes
 
 func (resp RPCResponse) String() string {
 	if resp.Error == nil {
-		return fmt.Sprintf("RPCResponse{%s %v}", resp.ID, resp.Result)
+		return fmt.Sprintf("RPCResponse{%s %X}", resp.ID, resp.Result)
 	}
 	return fmt.Sprintf("RPCResponse{%s %v}", resp.ID, resp.Error)
 }
