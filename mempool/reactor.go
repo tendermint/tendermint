@@ -17,7 +17,7 @@ import (
 const (
 	MempoolChannel = byte(0x30)
 
-	protoOverheadForTxMessage = 4
+	protoOverheadForTxsMessage = 4
 
 	peerCatchupSleepIntervalMS = 100 // If peer is behind, sleep this amount
 
@@ -174,9 +174,11 @@ func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	if src != nil {
 		txInfo.SenderP2PID = src.ID()
 	}
-	err = memR.mempool.CheckTx(msg.Tx, nil, txInfo)
-	if err != nil {
-		memR.Logger.Info("Could not check tx", "tx", txID(msg.Tx), "err", err)
+	for _, tx := range msg.Txs {
+		err = memR.mempool.CheckTx(tx, nil, txInfo)
+		if err != nil {
+			memR.Logger.Info("Could not check tx", "tx", txID(tx), "err", err)
+		}
 	}
 	// broadcasting happens from go routines per peer
 }
@@ -189,7 +191,10 @@ type PeerState interface {
 // Send new mempool txs to peer.
 func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 	peerID := memR.ids.GetForPeer(peer)
-	var next *clist.CElement
+	var (
+		next  *clist.CElement
+		batch [][]byte
+	)
 	for {
 		// In case of both next.NextWaitChan() and peer.Quit() are variable at the same time
 		if !memR.IsRunning() || !peer.IsRunning() {
@@ -211,8 +216,6 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 			}
 		}
 
-		memTx := next.Value.(*mempoolTx)
-
 		// make sure the peer is up to date
 		peerState, ok := peer.Get(types.PeerStateKey).(PeerState)
 		if !ok {
@@ -224,6 +227,8 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 			continue
 		}
+
+		memTx := next.Value.(*mempoolTx)
 		if peerState.GetHeight() < memTx.Height()-1 { // Allow for a lag of 1 block
 			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 			continue
@@ -231,24 +236,44 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 
 		// ensure peer hasn't already sent us this tx
 		if _, ok := memTx.senders.Load(peerID); !ok {
-			msg := protomem.Message{
-				Sum: &protomem.Message_Tx{
-					Tx: &protomem.Tx{
-						Tx: []byte(memTx.tx),
-					},
-				},
-			}
-
-			bz, err := msg.Marshal()
-			if err != nil {
-				panic(err)
-			}
-			success := peer.Send(MempoolChannel, bz)
-			if !success {
-				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
-				continue
-			}
+			batch = append(batch, []byte(memTx.tx))
 		}
+
+		// check if there are other transactions available
+		n := next.Next()
+		for n != nil {
+			// Advance next (non-nil) pointer, which is used later to wait for next
+			// transaction to appear.
+			next = n
+
+			memTx := n.Value.(*mempoolTx)
+			if peerState.GetHeight() < memTx.Height()-1 {
+				break
+			}
+			if _, ok := memTx.senders.Load(peerID); ok {
+				break
+			}
+			batch = append(batch, []byte(memTx.tx))
+
+			n = n.Next()
+		}
+
+		// send txs
+		msg := protomem.Message{
+			Sum: &protomem.Message_Txs{
+				Txs: &protomem.Txs{Txs: batch},
+			},
+		}
+		bz, err := msg.Marshal()
+		if err != nil {
+			panic(err)
+		}
+		success := peer.Send(MempoolChannel, bz)
+		if !success {
+			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+			continue
+		}
+		batch = [][]byte{} // reset current batch
 
 		select {
 		case <-next.NextWaitChan():
@@ -265,18 +290,25 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 //-----------------------------------------------------------------------------
 // Messages
 
-func (memR *Reactor) decodeMsg(bz []byte) (TxMessage, error) {
+func (memR *Reactor) decodeMsg(bz []byte) (TxsMessage, error) {
 	msg := protomem.Message{}
 	err := msg.Unmarshal(bz)
 	if err != nil {
-		return TxMessage{}, err
+		return TxsMessage{}, err
 	}
 
-	var message TxMessage
+	var message TxsMessage
 
-	if i, ok := msg.Sum.(*protomem.Message_Tx); ok {
-		message = TxMessage{
-			Tx: types.Tx(i.Tx.GetTx()),
+	if i, ok := msg.Sum.(*protomem.Message_Txs); ok {
+		txs := i.Txs.GetTxs()
+
+		decoded := make([]types.Tx, len(txs))
+		for j, tx := range txs {
+			decoded[j] = types.Tx(tx)
+		}
+
+		message = TxsMessage{
+			Txs: decoded,
 		}
 		return message, nil
 	}
@@ -285,18 +317,18 @@ func (memR *Reactor) decodeMsg(bz []byte) (TxMessage, error) {
 
 //-------------------------------------
 
-// TxMessage is a Message containing a transaction.
-type TxMessage struct {
-	Tx types.Tx
+// TxsMessage is a Message containing transactions.
+type TxsMessage struct {
+	Txs []types.Tx
 }
 
-// String returns a string representation of the TxMessage.
-func (m *TxMessage) String() string {
-	return fmt.Sprintf("[TxMessage %v]", m.Tx)
+// String returns a string representation of the TxsMessage.
+func (m *TxsMessage) String() string {
+	return fmt.Sprintf("[TxsMessage %v]", m.Txs)
 }
 
-// calcMaxMsgSize returns the max size of TxMessage
-// account for proto overhead of bytesValue
+// calcMaxMsgSize returns the max size of TxsMessage account for proto overhead
+// of bytesValue.
 func calcMaxMsgSize(maxTxSize int) int {
-	return maxTxSize + protoOverheadForTxMessage
+	return maxTxSize + protoOverheadForTxsMessage
 }

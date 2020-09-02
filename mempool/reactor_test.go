@@ -251,7 +251,6 @@ func ensureNoTxs(t *testing.T, reactor *Reactor, timeout time.Duration) {
 }
 
 func TestMempoolVectors(t *testing.T) {
-
 	testCases := []struct {
 		testName string
 		tx       []byte
@@ -265,8 +264,8 @@ func TestMempoolVectors(t *testing.T) {
 		tc := tc
 
 		msg := memproto.Message{
-			Sum: &memproto.Message_Tx{
-				Tx: &memproto.Tx{Tx: tc.tx},
+			Sum: &memproto.Message_Txs{
+				Txs: &memproto.Txs{Txs: [][]byte{tc.tx}},
 			},
 		}
 		bz, err := msg.Marshal()
@@ -274,5 +273,4 @@ func TestMempoolVectors(t *testing.T) {
 
 		require.Equal(t, tc.expBytes, hex.EncodeToString(bz), tc.testName)
 	}
-
 }
