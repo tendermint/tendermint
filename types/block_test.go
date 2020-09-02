@@ -86,9 +86,6 @@ func TestBlockValidateBasic(t *testing.T) {
 		{"Tampered EvidenceHash", func(blk *Block) {
 			blk.EvidenceHash = []byte("something else")
 		}, true},
-		{"PotentialAmnesiaEvidence", func(blk *Block) {
-			blk.Evidence = EvidenceData{Evidence: []Evidence{&PotentialAmnesiaEvidence{}}}
-		}, true},
 	}
 	for i, tc := range testCases {
 		tc := tc

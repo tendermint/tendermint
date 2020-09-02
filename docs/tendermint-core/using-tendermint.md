@@ -65,9 +65,6 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
         - `max_num`: This sets the maximum number of evidence that can be committed
       in a single block. and should fall comfortably under the max block
       bytes when we consider the size of each evidence.
-        - `proof_trial_period`: Proof trial period dictates the time given for
-      nodes accused of amnesia evidence, incorrectly voting twice in two
-      different rounds to respond with their respective proofs.
     - `validator`
         - `pub_key_types`: Public key types validators can use.
     - `version`
@@ -104,7 +101,6 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
       "max_age_num_blocks": "100000",
       "max_age_duration": "172800000000000",
       "max_num": 50,
-      "proof_trial_period": "5000000"
     },
     "validator": {
       "pub_key_types": [
