@@ -66,7 +66,7 @@ func testCounter() {
 	}()
 	defer func() {
 		if err := cmd.Process.Kill(); err != nil {
-			fmt.Printf("error on proccess kill: %v", err)
+			fmt.Printf("error on process kill: %v", err)
 		}
 	}()
 

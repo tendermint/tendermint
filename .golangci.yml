@@ -40,7 +40,7 @@ linters:
     # - gocognit
     - nolintlint
   disable:
-    # - errcheck
+    - errcheck
 
 issues:
   exclude-rules:
@@ -50,7 +50,7 @@ issues:
     - linters:
         - lll
       source: "https://"
-  max-same-issues: 500
+  max-same-issues: 50
 
 linters-settings:
   dogsled:
