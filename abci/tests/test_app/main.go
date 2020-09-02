@@ -59,8 +59,16 @@ func testCounter() {
 	if err := cmd.Start(); err != nil {
 		log.Fatalf("starting %q err: %v", abciApp, err)
 	}
-	defer cmd.Wait()
-	defer cmd.Process.Kill()
+	defer func() {
+		if err := cmd.Wait(); err != nil {
+			fmt.Printf("error while waiting for cmd to exit: %v", err)
+		}
+	}()
+	defer func() {
+		if err := cmd.Process.Kill(); err != nil {
+			fmt.Printf("error on proccess kill: %v", err)
+		}
+	}()
 
 	if err := ensureABCIIsUp(abciType, maxABCIConnectTries); err != nil {
 		log.Fatalf("echo failed: %v", err)
