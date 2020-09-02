@@ -24,8 +24,8 @@ field allows ABCI applications to dictate which events should be indexed.
 The blockchain can now start from an arbitrary initial height, provided to the
 application via `RequestInitChain.InitialHeight`.
 
-A new form of evidence: amnesia evidence, has been added. Potential amnesia and
-mock evidence have been removed. Applications should be able to handle these
+ABCI evidence type is now an enum with two recognised types of evidence:
+`DUPLICATE_VOTE` and `LIGHT_CLIENT_ATTACK`. Applications should be able to handle these
 evidence types.
 
 ### P2P Protocol
