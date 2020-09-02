@@ -294,7 +294,7 @@ func (wsc *wsConnection) Context() context.Context {
 
 // Read from the socket and subscribe to or unsubscribe from events
 func (wsc *wsConnection) readRoutine() {
-	// readRoutine will block until response is written
+	// readRoutine will block until response is written or WS connection is closed
 	writeCtx := context.Background()
 
 	defer func() {
