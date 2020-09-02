@@ -38,7 +38,7 @@ func (ps peerState) GetHeight() int64 {
 
 // Send a bunch of txs to the first reactor's mempool and wait for them all to
 // be received in the others.
-func TestReactorBroadcastTxMessage(t *testing.T) {
+func TestReactorBroadcastTxsMessage(t *testing.T) {
 	config := cfg.TestConfig()
 	// if there were more than two reactors, the order of transactions could not be
 	// asserted in waitForTxsOnReactors (due to transactions gossiping). If we

@@ -233,19 +233,22 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 
 		// send txs
 		txs := memR.txs(next, peerID, peerState.GetHeight()) // WARNING: mutates next!
-		msg := protomem.Message{
-			Sum: &protomem.Message_Txs{
-				Txs: &protomem.Txs{Txs: txs},
-			},
-		}
-		bz, err := msg.Marshal()
-		if err != nil {
-			panic(err)
-		}
-		success := peer.Send(MempoolChannel, bz)
-		if !success {
-			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
-			continue
+		if len(txs) > 0 {
+			msg := protomem.Message{
+				Sum: &protomem.Message_Txs{
+					Txs: &protomem.Txs{Txs: txs},
+				},
+			}
+			bz, err := msg.Marshal()
+			if err != nil {
+				panic(err)
+			}
+			memR.Logger.Debug("Sending N txs to peer", "N", len(txs), "peer", peer)
+			success := peer.Send(MempoolChannel, bz)
+			if !success {
+				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+				continue
+			}
 		}
 
 		select {
