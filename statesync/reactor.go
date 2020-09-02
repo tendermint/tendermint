@@ -254,6 +254,10 @@ func (r *Reactor) Sync(stateProvider StateProvider) (sm.State, *types.Commit, er
 	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateProvider, r.tempDir)
 	r.mtx.Unlock()
 
+	// Request snapshots from all currently connected peers
+	r.Logger.Debug("Requesting snapshots from known peers")
+	r.Switch.Broadcast(SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
+
 	state, commit, err := r.syncer.SyncAny(defaultDiscoveryTime)
 	r.mtx.Lock()
 	r.syncer = nil
