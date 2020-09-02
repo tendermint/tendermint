@@ -40,4 +40,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [statesync] \#5311 Fix validator set off-by-one causing consensus failures (@erikgrinaker)
 
+- [statesync] \#5320 Broadcast snapshot request to all pre-connected peers on start (@erikgrinaker)
+
 - [light] [\#5307](https://github.com/tendermint/tendermint/pull/5307) Persist correct proposer priority in light client validator sets (@cmwaters)
