@@ -28,7 +28,7 @@ func zipDir(src, dest string) error {
 	dirName := filepath.Base(dest)
 	baseDir := strings.TrimSuffix(dirName, filepath.Ext(dirName))
 
-	if err := filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -67,11 +67,8 @@ func zipDir(src, dest string) error {
 
 		_, err = io.Copy(headerWriter, file)
 		return err
-	}); err != nil {
-		return err
-	}
+	})
 
-	return nil
 }
 
 // copyFile copies a file from src to dest and returns an error upon failure. The

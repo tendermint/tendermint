@@ -57,16 +57,16 @@ func testCounter() {
 	cmd := exec.Command("bash", "-c", subCommand)
 	cmd.Stdout = os.Stdout
 	if err := cmd.Start(); err != nil {
-		log.Fatalf("starting %q err: %v", abciApp, err)
+		log.Fatalf("starting %q err: %v \n", abciApp, err)
 	}
 	defer func() {
 		if err := cmd.Wait(); err != nil {
-			fmt.Printf("error while waiting for cmd to exit: %v", err)
+			fmt.Printf("error while waiting for cmd to exit: %v \n", err)
 		}
 	}()
 	defer func() {
 		if err := cmd.Process.Kill(); err != nil {
-			fmt.Printf("error on process kill: %v", err)
+			fmt.Printf("error on process kill: %v \n", err)
 		}
 	}()
 
@@ -77,7 +77,7 @@ func testCounter() {
 	client := startClient(abciType)
 	defer func() {
 		if err := client.Stop(); err != nil {
-			fmt.Printf("error trying client stop: %v", err)
+			fmt.Printf("error trying client stop: %v \n", err)
 		}
 	}()
 

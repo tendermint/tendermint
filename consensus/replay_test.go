@@ -100,7 +100,7 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Confi
 	}
 }
 
-func sendTxs(ctx context.Context, t *testing.T, cs *State) {
+func sendTxs(ctx context.Context, cs *State) {
 	for i := 0; i < 256; i++ {
 		select {
 		case <-ctx.Done():
@@ -108,7 +108,7 @@ func sendTxs(ctx context.Context, t *testing.T, cs *State) {
 		default:
 			tx := []byte{byte(i)}
 			if err := assertMempool(cs.txNotifier).CheckTx(tx, nil, mempl.TxInfo{}); err != nil {
-				t.Error(err)
+				panic(err)
 			}
 			i++
 		}
@@ -127,7 +127,7 @@ func TestWALCrash(t *testing.T) {
 			1},
 		{"many non-empty blocks",
 			func(stateDB dbm.DB, cs *State, ctx context.Context) {
-				go sendTxs(ctx, t, cs)
+				go sendTxs(ctx, cs)
 			},
 			3},
 	}
