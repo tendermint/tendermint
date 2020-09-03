@@ -66,7 +66,6 @@ func TestProvider(t *testing.T) {
 
 	// let's get the highest block
 	sh, err := p.LightBlock(0)
-
 	require.NoError(t, err)
 	assert.True(t, sh.Height < 1000)
 
