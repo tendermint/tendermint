@@ -155,7 +155,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc
 		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
-			err := light.VerifyAdjacent(chainID, header, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now, maxClockDrift)
+			err := light.VerifyAdjacent(header, tc.newHeader, tc.newVals, tc.trustingPeriod, tc.now, maxClockDrift)
 			switch {
 			case tc.expErr != nil && assert.Error(t, err):
 				assert.Equal(t, tc.expErr, err)
@@ -269,7 +269,7 @@ func TestVerifyNonAdjacentHeaders(t *testing.T) {
 	for i, tc := range testCases {
 		tc := tc
 		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
-			err := light.VerifyNonAdjacent(chainID, header, vals, tc.newHeader, tc.newVals, tc.trustingPeriod,
+			err := light.VerifyNonAdjacent(header, vals, tc.newHeader, tc.newVals, tc.trustingPeriod,
 				tc.now, maxClockDrift,
 				light.DefaultTrustLevel)
 
@@ -300,7 +300,7 @@ func TestVerifyReturnsErrorIfTrustLevelIsInvalid(t *testing.T) {
 			hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
 	)
 
-	err := light.Verify(chainID, header, vals, header, vals, 2*time.Hour, time.Now(), maxClockDrift,
+	err := light.Verify(header, vals, header, vals, 2*time.Hour, time.Now(), maxClockDrift,
 		tmmath.Fraction{Numerator: 2, Denominator: 1})
 	assert.Error(t, err)
 }

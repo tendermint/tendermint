@@ -204,11 +204,11 @@ func (c *Client) examineConflictingHeaderAgainstTrace(
 
 }
 
-// isInvalidHeader takes a trusted header and matches it againt a conflicting header
+// IsInvalidHeader takes a trusted header and matches it againt a conflicting header
 // to determine whether the conflicting header was the product of a valid state transition
 // or not. If it is then all the deterministic fields of the header should be the same.
 // If not, it is an invalid header and constitutes a lunatic attack.
-func isInvalidHeader(trusted, conflicting *types.Header) bool {
+func IsInvalidHeader(trusted, conflicting *types.Header) bool {
 	return bytes.Equal(trusted.ValidatorsHash, conflicting.ValidatorsHash) &&
 		bytes.Equal(trusted.NextValidatorsHash, conflicting.NextValidatorsHash) &&
 		bytes.Equal(trusted.ConsensusHash, conflicting.ConsensusHash) &&
@@ -219,10 +219,10 @@ func isInvalidHeader(trusted, conflicting *types.Header) bool {
 // createEvidence forms LightClientAttackEvidence and determines, based on the trusted and conflicting
 // header, the type of the attack.
 func createEvidence(common, trusted, conflicting *types.LightBlock) *types.LightClientAttackEvidence {
-	var attackType types.AttackType
+	var attackType types.LightClientAttackType
 
 	switch {
-	case isInvalidHeader(trusted.Header, conflicting.Header):
+	case IsInvalidHeader(trusted.Header, conflicting.Header):
 		attackType = types.Lunatic
 	case trusted.Commit.Round == conflicting.Commit.Round:
 		attackType = types.Equivocation
@@ -233,6 +233,7 @@ func createEvidence(common, trusted, conflicting *types.LightBlock) *types.Light
 	return &types.LightClientAttackEvidence{
 		ConflictingBlock: conflicting,
 		CommonHeight:     common.Height,
-		Type:             attackType,
+		Timestamp:        common.Time,
+		AttackType:       attackType,
 	}
 }

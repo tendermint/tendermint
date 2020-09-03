@@ -1,8 +1,12 @@
 package evidence
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"time"
 
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/light"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -56,54 +60,129 @@ func VerifyEvidence(evidence types.Evidence, state sm.State, stateDB StateStore,
 			state.LastBlockTime.Add(evidenceParams.MaxAgeDuration),
 		)
 	}
-
-	// If in the case of lunatic validator evidence we need our committed header again to verify the evidence
-	if ev, ok := evidence.(*types.LunaticValidatorEvidence); ok {
-		if err := ev.VerifyHeader(header); err != nil {
-			return err
-		}
+	
+	switch evidence.(type) {
+	case *types.DuplicateVoteEvidence:
+		return VerifyDuplicateVote(evidence.(*types.DuplicateVoteEvidence), state.ChainID, stateDB)
+	case *types.LightClientAttackEvidence:
+		return VerifyLightClientAttack(evidence.(*types.LightClientAttackEvidence), state, stateDB, blockStore)
+	default:
+		return fmt.Errorf("unrecognized evidence: %v", evidence)
 	}
+}
 
-	valset, err := stateDB.LoadValidators(evidence.Height())
+func VerifyLightClientAttack(e *types.LightClientAttackEvidence, state sm.State, stateDB StateStore, blockStore BlockStore) error {
+	commonHeader, err := getSignedHeader(blockStore, e.Height())
+	if err != nil {
+		return err
+	}
+	commonVals, err := stateDB.LoadValidators(e.Height())
 	if err != nil {
 		return err
 	}
 
-	if ae, ok := evidence.(*types.AmnesiaEvidence); ok {
-		// check the validator set against the polc to make sure that a majority of valid votes was reached
-		if !ae.Polc.IsAbsent() {
-			err = ae.Polc.ValidateVotes(valset, state.ChainID)
-			if err != nil {
-				return fmt.Errorf("amnesia evidence contains invalid polc, err: %w", err)
-			}
+	err = light.Verify(commonHeader, commonVals, e.ConflictingBlock.SignedHeader, e.ConflictingBlock.ValidatorSet, 
+	state.ConsensusParams.Evidence.MaxAgeDuration, state.LastBlockTime, 0 * time.Second, light.DefaultTrustLevel)
+	if err != nil {
+		return fmt.Errorf("skipping verification from common to conflicting header failed: %w", err)
+	}
+	
+	trustedHeader, err := getSignedHeader(blockStore, e.ConflictingBlock.Height)
+	if err != nil {
+		return err 
+	}
+	
+	if bytes.Equal(trustedHeader.Hash(), e.ConflictingBlock.Hash()) {
+		return fmt.Errorf("trusted header hash matches the evidence conflicting header (%X = %X)", 
+		trustedHeader.Hash(), e.ConflictingBlock.Hash())
+	}
+	
+	switch e.AttackType {
+	case types.Lunatic:
+		if !light.IsInvalidHeader(trustedHeader.Header, e.ConflictingBlock.Header) {
+			return errors.New("light client attack is not lunatic")
 		}
+	case types.Equivocation:
+		if trustedHeader.Commit.Round != e.ConflictingBlock.Commit.Round {
+			return errors.New("light client attack is not equivocation")
+		}
+	case types.Amnesia:
+		if trustedHeader.Commit.Round == e.ConflictingBlock.Commit.Round {
+			return errors.New("light client attack is not amnesia")
+		}
+	default:
+		return  fmt.Errorf("Unrecognized light client attack type #%d", e.AttackType)
 	}
+	
+	return nil
+}
 
-	addr := evidence.Address()
-	var val *types.Validator
-
-	// For all other types, expect evidence.Address to be a validator at height
-	// evidence.Height.
-	_, val = valset.GetByAddress(addr)
+func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string,  stateDB StateStore) error {
+	valSet, err := stateDB.LoadValidators(e.Height())
+	if err != nil {
+		return fmt.Errorf("verifying duplicate vote evidence: %w", err)
+	}
+	_, val := valSet.GetByAddress(e.Addresses()[0])
 	if val == nil {
-		return fmt.Errorf("address %X was not a validator at height %d", addr, evidence.Height())
+		return fmt.Errorf("address %X was not a validator at height %d", e.Addresses()[0], e.Height())
+	}
+	pubKey := val.PubKey
+
+	// H/R/S must be the same
+	if e.VoteA.Height != e.VoteB.Height ||
+		e.VoteA.Round != e.VoteB.Round ||
+		e.VoteA.Type != e.VoteB.Type {
+		return fmt.Errorf("h/r/s does not match: %d/%d/%v vs %d/%d/%v",
+			e.VoteA.Height, e.VoteA.Round, e.VoteA.Type,
+			e.VoteB.Height, e.VoteB.Round, e.VoteB.Type)
 	}
 
-	if err := evidence.Verify(state.ChainID, val.PubKey); err != nil {
-		return err
+	// Address must be the same
+	if !bytes.Equal(e.VoteA.ValidatorAddress, e.VoteB.ValidatorAddress) {
+		return fmt.Errorf("validator addresses do not match: %X vs %X",
+			e.VoteA.ValidatorAddress,
+			e.VoteB.ValidatorAddress,
+		)
+	}
+
+	// BlockIDs must be different
+	if e.VoteA.BlockID.Equals(e.VoteB.BlockID) {
+		return fmt.Errorf(
+			"block IDs are the same (%v) - not a real duplicate vote",
+			e.VoteA.BlockID,
+		)
+	}
+
+	// pubkey must match address (this should already be true, sanity check)
+	addr := e.VoteA.ValidatorAddress
+	if !bytes.Equal(pubKey.Address(), addr) {
+		return fmt.Errorf("address (%X) doesn't match pubkey (%v - %X)",
+			addr, pubKey, pubKey.Address())
+	}
+	va := e.VoteA.ToProto()
+	vb := e.VoteB.ToProto()
+	// Signatures must be valid
+	if !pubKey.VerifySignature(types.VoteSignBytes(chainID, va), e.VoteA.Signature) {
+		return fmt.Errorf("verifying VoteA: %w", types.ErrVoteInvalidSignature)
+	}
+	if !pubKey.VerifySignature(types.VoteSignBytes(chainID, vb), e.VoteB.Signature) {
+		return fmt.Errorf("verifying VoteB: %w", types.ErrVoteInvalidSignature)
 	}
 
 	return nil
 }
 
-func VerifyLightClientAttack(e *types.LightClientAttackEvidence, state sm.State, stateDB StateStore, blockStore BlockStore) {
-	commonBlockMeta := blockStore.LoadBlockMeta(e.Height())
-	if commonBlockMeta == nil {
-		return errors.New("don't have common header at height #%d", e.Height())
+func getSignedHeader(blockStore BlockStore, height int64) (*types.SignedHeader, error) {
+	blockMeta := blockStore.LoadBlockMeta(height)
+	if blockMeta == nil {
+		return nil, fmt.Errorf("don't have header at height #%d", height)
 	}
-	commonVals := 
-
-	err := light.Verify()
-	
-
+	commit := blockStore.LoadBlockCommit(height)
+	if commit == nil {
+		return nil, fmt.Errorf("don't have commit at height #%d", height)
+	}
+	return &types.SignedHeader{
+		Header: &blockMeta.Header,
+		Commit: commit,
+	}, nil
 }

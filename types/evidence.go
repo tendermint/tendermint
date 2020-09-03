@@ -26,16 +26,9 @@ type Evidence interface {
 	Bytes() []byte           // bytes which comprise the evidence
 	Hash() []byte            // hash of the evidence
 	ValidateBasic() error	 // basic validation	
-	Type() string            // type of evidence
+	Type() int               // type of evidence
 	String() string										
 }
-
-const (
-	DuplicateVoteEvidenceType = "duplicate/vote"
-	LightAmnesiaEvidenceType = "light/amnesia"
-	LightLunaticEvidenceType = "light/lunatic"
-	LightEquivocationEvidenceType = "light/equivocation"
-)
 
 type CompositeEvidence interface {
 	VerifyComposite(committedHeader *Header, valSet *ValidatorSet) error
@@ -232,7 +225,7 @@ func (dve *DuplicateVoteEvidence) Time() time.Time {
 
 // Address returns the address of the validator.
 func (dve *DuplicateVoteEvidence) Addresses() []Address {
-	return dve.VoteA.ValidatorAddress
+	return []Address{dve.VoteA.ValidatorAddress}
 }
 
 // Hash returns the hash of the evidence.
@@ -307,8 +300,8 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) e
 }
 
 // Type returns the type of evidence as a string
-func (dve *DuplicateVoteEvidence) Type() string { 
-	return DuplicateVoteEvidenceType
+func (dve *DuplicateVoteEvidence) Type() int { 
+	return 1
 }
 
 // ValidateBasic performs basic validation.
@@ -1468,15 +1461,15 @@ type LightClientAttackEvidence struct {
 	ConflictingBlock *LightBlock
 	CommonHeight     int64
 	Timestamp        time.Time
-	AttackType       AttackType
+	AttackType       LightClientAttackType
 }
 
 var _ Evidence = &LightClientAttackEvidence{}
 
-type AttackType int
+type LightClientAttackType int
 
 const (
-	Lunatic AttackType = iota
+	Lunatic LightClientAttackType = iota + 1
 	Equivocation
 	Amnesia
 )
@@ -1501,15 +1494,6 @@ func (l *LightClientAttackEvidence) Hash() []byte {
 	return []byte("a")
 }
 
-// // Light client attack evidence cannot be verified based of these arguments
-// func (l *LightClientAttackEvidence) Verify(commonHeader, trustedHeader *SignedHeader, 
-// 	commonVals *ValidatorSet) error {
-
-// 	if chainID != l.ConflictingBlock.ChainID {
-// 		return fmt.Errorf("different chain ID. got %s, expected %s", l.ConflictingBlock.ChainID, chainID)
-// 	}
-// }
-
 func (l *LightClientAttackEvidence) ValidateBasic() error {
 	if l.ConflictingBlock == nil {
 		return errors.New("conflicting block is nil")
@@ -1532,15 +1516,8 @@ func (l *LightClientAttackEvidence) ValidateBasic() error {
 	return nil
 }
 
-func (l *LightClientAttackEvidence) Type() string {
-	switch l.AttackType {
-	case Lunatic:
-		return LightLunaticEvidenceType
-	case Amnesia:
-		return LightAmnesiaEvidenceType
-	case Equivocation:
-		return LightEquivocationEvidenceType
-	}
+func (l *LightClientAttackEvidence) Type() int {
+	return 2
 }
 
 func (l *LightClientAttackEvidence) String() string {

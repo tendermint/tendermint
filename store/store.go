@@ -1,4 +1,4 @@
-package store
+xpackage store
 
 import (
 	"fmt"
