@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -152,75 +151,6 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 			_, err := c.BroadcastEvidence(fake)
 			require.Error(t, err, "BroadcastEvidence(%s) succeeded, but the evidence was fake", fake)
 		}
-	}
-}
-
-func TestBroadcastEvidence_ConflictingHeadersEvidence(t *testing.T) {
-	var (
-		config  = rpctest.GetConfig()
-		chainID = config.ChainID()
-		pv      = privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
-	)
-
-	for i, c := range GetClients() {
-		t.Logf("client %d", i)
-
-		h1, err := c.Commit(nil)
-		require.NoError(t, err)
-		require.NotNil(t, h1.SignedHeader.Header)
-
-		// Create an alternative header with a different AppHash.
-		h2 := &types.SignedHeader{
-			Header: &types.Header{
-				Version:            h1.Version,
-				ChainID:            h1.ChainID,
-				Height:             h1.Height,
-				Time:               h1.Time,
-				LastBlockID:        h1.LastBlockID,
-				LastCommitHash:     h1.LastCommitHash,
-				DataHash:           h1.DataHash,
-				ValidatorsHash:     h1.ValidatorsHash,
-				NextValidatorsHash: h1.NextValidatorsHash,
-				ConsensusHash:      h1.ConsensusHash,
-				AppHash:            crypto.CRandBytes(32),
-				LastResultsHash:    h1.LastResultsHash,
-				EvidenceHash:       h1.EvidenceHash,
-				ProposerAddress:    h1.ProposerAddress,
-			},
-			Commit: types.NewCommit(h1.Height, 1, h1.Commit.BlockID, h1.Commit.Signatures),
-		}
-		h2.Commit.BlockID = types.BlockID{
-			Hash:          h2.Hash(),
-			PartSetHeader: types.PartSetHeader{Total: 1, Hash: crypto.CRandBytes(32)},
-		}
-		vote := &types.Vote{
-			ValidatorAddress: pv.Key.Address,
-			ValidatorIndex:   0,
-			Height:           h2.Height,
-			Round:            h2.Commit.Round,
-			Timestamp:        h2.Time,
-			Type:             tmproto.PrecommitType,
-			BlockID:          h2.Commit.BlockID,
-		}
-
-		v := vote.ToProto()
-		signBytes, err := pv.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v))
-		require.NoError(t, err)
-		vote.Signature = v.Signature
-
-		h2.Commit.Signatures[0] = types.NewCommitSigForBlock(signBytes, pv.Key.Address, h2.Time)
-
-		t.Logf("h1 AppHash: %X", h1.AppHash)
-		t.Logf("h2 AppHash: %X", h2.AppHash)
-
-		ev := &types.ConflictingHeadersEvidence{
-			H1: &h1.SignedHeader,
-			H2: h2,
-		}
-
-		result, err := c.BroadcastEvidence(ev)
-		require.NoError(t, err, "BroadcastEvidence(%s) failed", ev)
-		assert.Equal(t, ev.Hash(), result.Hash, "expected result hash to match evidence hash")
 	}
 }
 

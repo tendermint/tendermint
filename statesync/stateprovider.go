@@ -20,7 +20,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-//go:generate mockery -case underscore -name StateProvider
+//go:generate mockery --case underscore --name StateProvider
 
 // StateProvider is a provider of trusted state data for bootstrapping a node. This refers
 // to the state.State object, not the state machine.
@@ -120,7 +120,11 @@ func (s *lightClientStateProvider) State(height uint64) (sm.State, error) {
 		state.InitialHeight = 1
 	}
 
-	// We need to verify h, h+1, h+2, to get all the validator sets.
+	// We need to verify the previous block to get the validator set.
+	prevLightBlock, err := s.lc.VerifyLightBlockAtHeight(int64(height-1), time.Now())
+	if err != nil {
+		return sm.State{}, err
+	}
 	lightBlock, err := s.lc.VerifyLightBlockAtHeight(int64(height), time.Now())
 	if err != nil {
 		return sm.State{}, err
@@ -129,18 +133,15 @@ func (s *lightClientStateProvider) State(height uint64) (sm.State, error) {
 	if err != nil {
 		return sm.State{}, err
 	}
-	followingLightBlock, err := s.lc.VerifyLightBlockAtHeight(int64(height+2), time.Now())
-	if err != nil {
-		return sm.State{}, err
-	}
+
 	state.LastBlockHeight = lightBlock.Height
 	state.LastBlockTime = lightBlock.Time
 	state.LastBlockID = lightBlock.Commit.BlockID
 	state.AppHash = nextLightBlock.AppHash
-	state.LastResultsHash = followingLightBlock.LastResultsHash
-	state.LastValidators = lightBlock.ValidatorSet
-	state.Validators = nextLightBlock.ValidatorSet
-	state.NextValidators = followingLightBlock.ValidatorSet
+	state.LastResultsHash = nextLightBlock.LastResultsHash
+	state.LastValidators = prevLightBlock.ValidatorSet
+	state.Validators = lightBlock.ValidatorSet
+	state.NextValidators = nextLightBlock.ValidatorSet
 	state.LastHeightValidatorsChanged = int64(height)
 
 	// We'll also need to fetch consensus params via RPC, using light client verification.

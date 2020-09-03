@@ -19,3 +19,4 @@ and run the following tests in docker containers:
     - send a tx on each node and ensure the state root is updated on all of them
     - crash and restart nodes one at a time and ensure they can sync back up (via fastsync)
     - crash and restart all nodes at once and ensure they can sync back up
+    - restart each nodes with double_sign_check_height and ensure panic if the same consensus key was used to sign in double_sign_check_height blocks

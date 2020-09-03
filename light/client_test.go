@@ -951,7 +951,6 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 
 func TestClient_TrustedValidatorSet(t *testing.T) {
 	differentVals, _ := types.RandValidatorSet(10, 100)
-
 	badValSetNode := mockp.New(
 		chainID,
 		map[int64]*types.SignedHeader{

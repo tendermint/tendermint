@@ -64,10 +64,9 @@ func makeParams(
 			TimeIotaMs: blockTimeIotaMs,
 		},
 		Evidence: tmproto.EvidenceParams{
-			MaxAgeNumBlocks:  evidenceAge,
-			MaxAgeDuration:   time.Duration(evidenceAge),
-			MaxNum:           maxEvidence,
-			ProofTrialPeriod: 1,
+			MaxAgeNumBlocks: evidenceAge,
+			MaxAgeDuration:  time.Duration(evidenceAge),
+			MaxNum:          maxEvidence,
 		},
 		Validator: tmproto.ValidatorParams{
 			PubKeyTypes: pubkeyTypes,

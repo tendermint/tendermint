@@ -111,19 +111,31 @@ func (p *http) validatorSet(height *int64) (*types.ValidatorSet, error) {
 				if regexpMissingHeight.MatchString(err.Error()) {
 					return nil, provider.ErrLightBlockNotFound
 				}
-				// we wait and try again with exponential backoff
+				// if we have exceeded retry attempts then return no response error
+				if attempt == maxRetryAttempts {
+					return nil, provider.ErrNoResponse
+				}
+				// else we wait and try again with exponential backoff
 				time.Sleep(backoffTimeout(uint16(attempt)))
 				continue
 			}
 			if len(res.Validators) == 0 { // no more validators left
-				return types.NewValidatorSet(vals), nil
+				valSet, err := types.ValidatorSetFromExistingValidators(vals)
+				if err != nil {
+					return nil, provider.ErrBadLightBlock{Reason: err}
+				}
+				return valSet, nil
 			}
 			vals = append(vals, res.Validators...)
 			page++
 			break
 		}
 	}
-	return types.NewValidatorSet(vals), nil
+	valSet, err := types.ValidatorSetFromExistingValidators(vals)
+	if err != nil {
+		return nil, provider.ErrBadLightBlock{Reason: err}
+	}
+	return valSet, nil
 }
 
 func (p *http) signedHeader(height *int64) (*types.SignedHeader, error) {

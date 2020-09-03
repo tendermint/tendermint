@@ -471,46 +471,6 @@ func TestVoteSet_MakeCommit(t *testing.T) {
 	}
 }
 
-func buildVoteSet(
-	height int64, round int32, nonVotes, nonNilVotes, nilVotes int,
-	voteType tmproto.SignedMsgType) (voteSet *VoteSet, valSet *ValidatorSet,
-	privValidators []PrivValidator, blockID BlockID) {
-
-	blockID = makeBlockIDRandom()
-	voteSet, valSet, privValidators = buildVoteSetForBlock(height, round, nonVotes, nonNilVotes, nilVotes, voteType,
-		blockID)
-	return
-}
-
-func buildVoteSetForBlock(height int64,
-	round int32, nonVotes, nonNilVotes, nilVotes int,
-	voteType tmproto.SignedMsgType, blockID BlockID) (*VoteSet, *ValidatorSet, []PrivValidator) {
-	valSize := nonVotes + nilVotes + nonNilVotes
-	voteSet, valSet, privValidators := randVoteSet(height, round, voteType, valSize, 1)
-	voteProto := &Vote{
-		ValidatorAddress: nil,
-		ValidatorIndex:   -1,
-		Height:           height,
-		Round:            round,
-		Type:             voteType,
-		Timestamp:        tmtime.Now(),
-		BlockID:          blockID,
-	}
-	for i := 0; i < nonNilVotes; i++ {
-		pubKey, _ := privValidators[i].GetPubKey()
-		addr := pubKey.Address()
-		vote := withValidator(voteProto, addr, int32(i))
-		_, _ = signAddVote(privValidators[i], vote, voteSet)
-	}
-	for i := nonNilVotes; i < nonNilVotes+nilVotes; i++ {
-		pubKey, _ := privValidators[i].GetPubKey()
-		addr := pubKey.Address()
-		vote := withValidator(voteProto, addr, int32(i))
-		_, _ = signAddVote(privValidators[i], withBlockHash(vote, nil), voteSet)
-	}
-	return voteSet, valSet, privValidators
-}
-
 // NOTE: privValidators are in order
 func randVoteSet(
 	height int64,

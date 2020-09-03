@@ -490,9 +490,9 @@ func (c *Client) VerifyLightBlockAtHeight(height int64, now time.Time) (*types.L
 // If the primary provides an invalid header (ErrInvalidHeader), it is rejected
 // and replaced by another provider until all are exhausted.
 //
-// If, at any moment, lightBlock or ValidatorSet are not found by the primary
-// provider, provider.ErrlightBlockNotFound /
-// provider.ErrValidatorSetNotFound error is returned.
+// If, at any moment, a LightBlock is not found by the primary provider as part of
+// verification then the provider will be replaced by another and the process will
+// restart.
 func (c *Client) VerifyHeader(newHeader *types.Header, now time.Time) error {
 	if newHeader == nil {
 		return errors.New("nil header")
@@ -530,7 +530,7 @@ func (c *Client) verifyLightBlock(newLightBlock *types.LightBlock, now time.Time
 	c.logger.Info("VerifyHeader", "height", newLightBlock.Height, "hash", hash2str(newLightBlock.Hash()))
 
 	var (
-		verifyFunc func(*types.LightBlock, *types.LightBlock, time.Time) error
+		verifyFunc func(trusted *types.LightBlock, new *types.LightBlock, now time.Time) error
 		err        error
 	)
 
@@ -952,7 +952,7 @@ func (c *Client) replacePrimaryProvider() error {
 	}
 	c.primary = c.witnesses[0]
 	c.witnesses = c.witnesses[1:]
-	c.logger.Info("Replacing primary with the first witness", "new primary", c.primary)
+	c.logger.Info("Replacing primary with the first witness", "new_primary", c.primary)
 
 	return nil
 }
