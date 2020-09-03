@@ -46,4 +46,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [statesync] \#5320 Broadcast snapshot request to all pre-connected peers on start (@erikgrinaker)
 
+- [consensus] \#5329 Fix wrong proposer schedule for validators returned by `InitChain` (@erikgrinaker)
+
 - [light] [\#5307](https://github.com/tendermint/tendermint/pull/5307) Persist correct proposer priority in light client validator sets (@cmwaters)
