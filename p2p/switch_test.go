@@ -228,7 +228,7 @@ func TestSwitchPeerFilter(t *testing.T) {
 		)
 	)
 	err := sw.Start()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := sw.Stop(); err != nil {
 			t.Error(err)
@@ -279,7 +279,7 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 		)
 	)
 	err := sw.Start()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := sw.Stop(); err != nil {
 			t.Log(err)
@@ -387,7 +387,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 
 	// simulate failure by closing connection
 	err = p.(*peer).CloseConn()
-	assert.NoError(err)
+	require.NoError(err)
 
 	assertNoPeersAfterTimeout(t, sw, 100*time.Millisecond)
 	assert.False(p.IsRunning())
@@ -399,7 +399,7 @@ func TestSwitchStopPeerForError(t *testing.T) {
 
 	scrapeMetrics := func() string {
 		resp, err := http.Get(s.URL)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer resp.Body.Close()
 		buf, _ := ioutil.ReadAll(resp.Body)
 		return string(buf)
@@ -471,7 +471,7 @@ func TestSwitchReconnectsToOutboundPersistentPeer(t *testing.T) {
 
 	p := sw.Peers().List()[0]
 	err = p.(*peer).CloseConn()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	waitUntilSwitchHasAtLeastNPeers(sw, 1)
 	assert.False(t, p.IsRunning())        // old peer instance
@@ -641,7 +641,7 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	// check conn is closed
 	one := make([]byte, 1)
 	err = conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = conn.Read(one)
 	assert.Equal(t, io.EOF, err)
 	assert.Equal(t, cfg.MaxNumInboundPeers, sw.Peers().Size())
@@ -695,24 +695,24 @@ func TestSwitchAcceptRoutineErrorCases(t *testing.T) {
 	sw := NewSwitch(cfg, errorTransport{ErrFilterTimeout{}})
 	assert.NotPanics(t, func() {
 		err := sw.Start()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = sw.Stop()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	sw = NewSwitch(cfg, errorTransport{ErrRejected{conn: nil, err: errors.New("filtered"), isFiltered: true}})
 	assert.NotPanics(t, func() {
 		err := sw.Start()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = sw.Stop()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 	// TODO(melekes) check we remove our address from addrBook
 
 	sw = NewSwitch(cfg, errorTransport{ErrTransportClosed{}})
 	assert.NotPanics(t, func() {
 		err := sw.Start()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = sw.Stop()
 		require.NoError(t, err)
 	})

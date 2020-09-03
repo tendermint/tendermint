@@ -171,7 +171,7 @@ func TestMempoolFilters(t *testing.T) {
 	}
 	for tcIndex, tt := range tests {
 		err := mempool.Update(1, emptyTxArr, abciResponses(len(emptyTxArr), abci.CodeTypeOK), tt.preFilter, tt.postFilter)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		checkTxs(t, mempool, tt.numTxsToCreate, UnknownPeerID)
 		require.Equal(t, tt.expectedNumTxs, mempool.Size(), "mempool had the incorrect size, on test case %d", tcIndex)
 		mempool.Flush()
@@ -187,7 +187,7 @@ func TestMempoolUpdate(t *testing.T) {
 	// 1. Adds valid txs to the cache
 	{
 		err := mempool.Update(1, []types.Tx{[]byte{0x01}}, abciResponses(1, abci.CodeTypeOK), nil, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = mempool.CheckTx([]byte{0x01}, nil, TxInfo{})
 		if assert.Error(t, err) {
 			assert.Equal(t, ErrTxInCache, err)
@@ -199,7 +199,7 @@ func TestMempoolUpdate(t *testing.T) {
 		err := mempool.CheckTx([]byte{0x02}, nil, TxInfo{})
 		require.NoError(t, err)
 		err = mempool.Update(1, []types.Tx{[]byte{0x02}}, abciResponses(1, abci.CodeTypeOK), nil, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Zero(t, mempool.Size())
 	}
 
@@ -208,11 +208,11 @@ func TestMempoolUpdate(t *testing.T) {
 		err := mempool.CheckTx([]byte{0x03}, nil, TxInfo{})
 		require.NoError(t, err)
 		err = mempool.Update(1, []types.Tx{[]byte{0x03}}, abciResponses(1, 1), nil, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Zero(t, mempool.Size())
 
 		err = mempool.CheckTx([]byte{0x03}, nil, TxInfo{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -390,7 +390,7 @@ func TestMempoolCloseWAL(t *testing.T) {
 	defer cleanup()
 	mempool.height = 10
 	err = mempool.InitWAL()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// 4. Ensure that the directory contains the WAL file
 	m2, err := filepath.Glob(filepath.Join(rootDir, "*"))
@@ -399,7 +399,7 @@ func TestMempoolCloseWAL(t *testing.T) {
 
 	// 5. Write some contents to the WAL
 	err = mempool.CheckTx(types.Tx([]byte("foo")), nil, TxInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	walFilepath := mempool.wal.Path
 	sum1 := checksumFile(walFilepath, t)
 
@@ -410,7 +410,7 @@ func TestMempoolCloseWAL(t *testing.T) {
 	// WAL thus any other write won't go through.
 	mempool.CloseWAL()
 	err = mempool.CheckTx(types.Tx([]byte("bar")), nil, TxInfo{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	sum2 := checksumFile(walFilepath, t)
 	require.Equal(t, sum1, sum2, "expected no change to the WAL after invoking CloseWAL() since it was discarded")
 
@@ -489,7 +489,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 
 	// 3. zero again after tx is removed by Update
 	err = mempool.Update(1, []types.Tx{[]byte{0x01}}, abciResponses(1, abci.CodeTypeOK), nil, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, 0, mempool.TxsBytes())
 
 	// 4. zero after Flush
@@ -539,7 +539,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 
 	// Pretend like we committed nothing so txBytes gets rechecked and removed.
 	err = mempool.Update(1, []types.Tx{}, abciResponses(0, abci.CodeTypeOK), nil, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.EqualValues(t, 0, mempool.TxsBytes())
 
 	// 7. Test RemoveTxByKey function

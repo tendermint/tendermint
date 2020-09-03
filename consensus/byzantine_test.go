@@ -256,10 +256,10 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 		for _, r := range reactors {
 			if rr, ok := r.(*ByzantineReactor); ok {
 				err := rr.reactor.Switch.Stop()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
 				err := r.(*Reactor).Switch.Stop()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		}
 	}()

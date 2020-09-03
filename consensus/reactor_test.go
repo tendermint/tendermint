@@ -676,7 +676,7 @@ func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*State) {
 		}
 		os.Stdout.Write([]byte("pprof.Lookup('goroutine'):\n"))
 		err := pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		capture()
 		panic("Timed out waiting for all validators to commit a block")
 	}
