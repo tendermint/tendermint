@@ -1,10 +1,11 @@
 package http
 
 import (
-	"errors"
 	"fmt"
+	"math/rand"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/tendermint/tendermint/light/provider"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -13,7 +14,10 @@ import (
 )
 
 // This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
-var regexpMissingHeight = regexp.MustCompile(`height \d+ (must be less than or equal to|is not available)`)
+var (
+	regexpMissingHeight = regexp.MustCompile(`height \d+ (must be less than or equal to|is not available)`)
+	maxRetryAttempts    = 10
+)
 
 // http provider uses an RPC client to obtain the necessary information.
 type http struct {
@@ -60,66 +64,95 @@ func (p *http) String() string {
 func (p *http) LightBlock(height int64) (*types.LightBlock, error) {
 	h, err := validateHeight(height)
 	if err != nil {
-		return nil, err
+		return nil, provider.ErrBadLightBlock{Reason: err}
 	}
 
-	commit, err := p.client.Commit(h)
+	sh, err := p.signedHeader(h)
 	if err != nil {
-		// TODO: standardize errors on the RPC side
-		if regexpMissingHeight.MatchString(err.Error()) {
-			return nil, provider.ErrLightBlockNotFound
-		}
 		return nil, err
 	}
 
-	if commit.Header == nil {
-		return nil, errors.New("header is nil")
-	}
-
-	// Verify we're still on the same chain.
-	if p.chainID != commit.Header.ChainID {
-		return nil, fmt.Errorf("expected chainID %s, got %s", p.chainID, commit.Header.ChainID)
-	}
-
-	maxPerPage := 100
-	res, err := p.client.Validators(h, nil, &maxPerPage)
+	vs, err := p.validatorSet(h)
 	if err != nil {
-		// TODO: standardize errors on the RPC side
-		if regexpMissingHeight.MatchString(err.Error()) {
-			return nil, provider.ErrLightBlockNotFound
-		}
 		return nil, err
 	}
 
-	var (
-		vals = res.Validators
-		page = 1
-	)
-
-	// Check if there are more validators.
-	for len(res.Validators) == maxPerPage {
-		res, err = p.client.Validators(h, &page, &maxPerPage)
-		if err != nil {
-			return nil, err
-		}
-		if len(res.Validators) > 0 {
-			vals = append(vals, res.Validators...)
-		}
-		page++
+	lb := &types.LightBlock{
+		SignedHeader: sh,
+		ValidatorSet: vs,
 	}
 
-	valset := types.NewValidatorSet(vals)
+	err = lb.ValidateBasic(p.chainID)
+	if err != nil {
+		return nil, provider.ErrBadLightBlock{Reason: err}
+	}
 
-	return &types.LightBlock{
-		SignedHeader: &commit.SignedHeader,
-		ValidatorSet: valset,
-	}, nil
+	return lb, nil
 }
 
 // ReportEvidence calls `/broadcast_evidence` endpoint.
 func (p *http) ReportEvidence(ev types.Evidence) error {
 	_, err := p.client.BroadcastEvidence(ev)
 	return err
+}
+
+func (p *http) validatorSet(height *int64) (*types.ValidatorSet, error) {
+	var (
+		maxPerPage = 100
+		vals       = []*types.Validator{}
+		page       = 1
+	)
+
+	for len(vals)%maxPerPage == 0 {
+		for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
+			res, err := p.client.Validators(height, &page, &maxPerPage)
+			if err != nil {
+				// TODO: standardize errors on the RPC side
+				if regexpMissingHeight.MatchString(err.Error()) {
+					return nil, provider.ErrLightBlockNotFound
+				}
+				// if we have exceeded retry attempts then return no response error
+				if attempt == maxRetryAttempts {
+					return nil, provider.ErrNoResponse
+				}
+				// else we wait and try again with exponential backoff
+				time.Sleep(backoffTimeout(uint16(attempt)))
+				continue
+			}
+			if len(res.Validators) == 0 { // no more validators left
+				valSet, err := types.ValidatorSetFromExistingValidators(vals)
+				if err != nil {
+					return nil, provider.ErrBadLightBlock{Reason: err}
+				}
+				return valSet, nil
+			}
+			vals = append(vals, res.Validators...)
+			page++
+			break
+		}
+	}
+	valSet, err := types.ValidatorSetFromExistingValidators(vals)
+	if err != nil {
+		return nil, provider.ErrBadLightBlock{Reason: err}
+	}
+	return valSet, nil
+}
+
+func (p *http) signedHeader(height *int64) (*types.SignedHeader, error) {
+	for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
+		commit, err := p.client.Commit(height)
+		if err != nil {
+			// TODO: standardize errors on the RPC side
+			if regexpMissingHeight.MatchString(err.Error()) {
+				return nil, provider.ErrLightBlockNotFound
+			}
+			// we wait and try again with exponential backoff
+			time.Sleep(backoffTimeout(uint16(attempt)))
+			continue
+		}
+		return &commit.SignedHeader, nil
+	}
+	return nil, provider.ErrNoResponse
 }
 
 func validateHeight(height int64) (*int64, error) {
@@ -132,4 +165,11 @@ func validateHeight(height int64) (*int64, error) {
 		h = nil
 	}
 	return h, nil
+}
+
+// exponential backoff (with jitter)
+// 0.5s -> 2s -> 4.5s -> 8s -> 12.5 with 1s variation
+func backoffTimeout(attempt uint16) time.Duration {
+	// nolint:gosec // G404: Use of weak random number generator
+	return time.Duration(500*attempt*attempt)*time.Millisecond + time.Duration(rand.Intn(1000))*time.Millisecond
 }
