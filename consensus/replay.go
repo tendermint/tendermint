@@ -339,7 +339,7 @@ func (h *Handshaker) ReplayBlocks(
 					return nil, err
 				}
 				state.Validators = types.NewValidatorSet(vals)
-				state.NextValidators = types.NewValidatorSet(vals)
+				state.NextValidators = types.NewValidatorSet(vals).CopyIncrementProposerPriority(1)
 			} else if len(h.genDoc.Validators) == 0 {
 				// If validator set is not set in genesis and still empty after InitChain, exit.
 				return nil, fmt.Errorf("validator set is nil in genesis and still empty after InitChain")
