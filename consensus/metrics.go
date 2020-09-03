@@ -138,14 +138,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "byzantine_validators_power",
 			Help:      "Total power of the byzantine validators.",
 		}, labels).With(labelsAndValues...),
-
 		BlockIntervalSeconds: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "block_interval_seconds",
 			Help:      "Time between this and the last block.",
 		}, labels).With(labelsAndValues...),
-
 		NumTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
