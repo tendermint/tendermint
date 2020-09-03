@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/light"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -15,7 +15,7 @@ import (
 // VerifyEvidence verifies the evidence fully by checking:
 // - it is sufficiently recent (MaxAge)
 // - it is from a key who was a validator at the given height
-// - it is internally consistent
+// - it is internally consistent with state
 // - it was properly signed by the alleged equivocator
 func VerifyEvidence(evidence types.Evidence, state sm.State, stateDB StateStore, blockStore BlockStore) error {
 	var (
@@ -28,29 +28,20 @@ func VerifyEvidence(evidence types.Evidence, state sm.State, stateDB StateStore,
 		header *types.Header
 	)
 
-	// if the evidence is from the current height - this means the evidence is fresh from the consensus
-	// and we won't have it in the block store. We thus check that the time isn't before the previous block
-	if evidence.Height() == height+1 {
-		if evidence.Time().Before(state.LastBlockTime) {
-			return fmt.Errorf("evidence is from an earlier time than the previous block: %v < %v",
-				evidence.Time(),
-				state.LastBlockTime)
-		}
-	} else {
-		// try to retrieve header from blockstore
-		blockMeta := blockStore.LoadBlockMeta(evidence.Height())
-		header = &blockMeta.Header
-		if header == nil {
-			return fmt.Errorf("don't have header at height #%d", evidence.Height())
-		}
-		if header.Time != evidence.Time() {
-			return fmt.Errorf("evidence time (%v) is different to the time of the header we have for the same height (%v)",
-				evidence.Time(),
-				header.Time,
-			)
-		}
+	// verify the time of the evidence
+	blockMeta := blockStore.LoadBlockMeta(evidence.Height())
+	header = &blockMeta.Header
+	if header == nil {
+		return fmt.Errorf("don't have header at height #%d", evidence.Height())
+	}
+	if header.Time != evidence.Time() {
+		return fmt.Errorf("evidence time (%v) is different to the time of the header we have for the same height (%v)",
+			evidence.Time(),
+			header.Time,
+		)
 	}
 
+	// check that the evidence hasn't expired
 	if ageDuration > evidenceParams.MaxAgeDuration && ageNumBlocks > evidenceParams.MaxAgeNumBlocks {
 		return fmt.Errorf(
 			"evidence from height %d (created at: %v) is too old; min height is %d and evidence can not be older than %v",
@@ -61,6 +52,7 @@ func VerifyEvidence(evidence types.Evidence, state sm.State, stateDB StateStore,
 		)
 	}
 	
+	// apply the evidence-specific verification logic
 	switch evidence.(type) {
 	case *types.DuplicateVoteEvidence:
 		return VerifyDuplicateVote(evidence.(*types.DuplicateVoteEvidence), state.ChainID, stateDB)
@@ -71,7 +63,17 @@ func VerifyEvidence(evidence types.Evidence, state sm.State, stateDB StateStore,
 	}
 }
 
+// VerifyLightClientAttack verifies LightClientAttackEvidence against the state of the full node. This involves
+// the following checks:
+//     - same chain ID
+//     - the common header from the full node has at least 1/3 voting power which is also present in 
+//       the conflicting header's commit
+//     - the nodes trusted header at the same height as the conflicting header has a different hash
 func VerifyLightClientAttack(e *types.LightClientAttackEvidence, state sm.State, stateDB StateStore, blockStore BlockStore) error {
+	if e.ConflictingBlock.ChainID != state.ChainID {
+		return fmt.Errorf("different chainID: evidence: %s, ours: %s", e.ConflictingBlock.ChainID, state.ChainID)
+	}
+	
 	commonHeader, err := getSignedHeader(blockStore, e.Height())
 	if err != nil {
 		return err
@@ -98,15 +100,15 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, state sm.State,
 	}
 	
 	switch e.AttackType {
-	case types.Lunatic:
+	case tmproto.LightClientAttackType_LUNATIC:
 		if !light.IsInvalidHeader(trustedHeader.Header, e.ConflictingBlock.Header) {
 			return errors.New("light client attack is not lunatic")
 		}
-	case types.Equivocation:
+	case tmproto.LightClientAttackType_EQUIVOCATION:
 		if trustedHeader.Commit.Round != e.ConflictingBlock.Commit.Round {
 			return errors.New("light client attack is not equivocation")
 		}
-	case types.Amnesia:
+	case tmproto.LightClientAttackType_AMNESIA:
 		if trustedHeader.Commit.Round == e.ConflictingBlock.Commit.Round {
 			return errors.New("light client attack is not amnesia")
 		}
@@ -117,6 +119,12 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, state sm.State,
 	return nil
 }
 
+// VerifyDuplicateVote verifies DuplicateVoteEvidence against the state of full node. This involves the
+// following checks:
+//      - the validator is in the validator set at the height of the evidence
+//      - the height, round, type and validator address of the votes must be the same
+//      - the block ID's must be different
+//      - The signatures must both be valid
 func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string,  stateDB StateStore) error {
 	valSet, err := stateDB.LoadValidators(e.Height())
 	if err != nil {

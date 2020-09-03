@@ -37,6 +37,9 @@ type Pool struct {
 	mtx sync.Mutex
 	// latest state
 	state sm.State
+	
+	// evidence must have a time but
+	consensusBuffer []types.Evidence
 }
 
 // NewPool creates an evidence pool. If using an existing evidence store,
@@ -138,6 +141,10 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 	return nil
 }
 
+func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence) {
+	
+}
+
 // Verify verifies the evidence against the node's (or evidence pool's) state. More specifically, to validate
 // evidence against state is to validate it against the nodes own header and validator set for that height. This ensures
 // as well as meeting the evidence's own validation rules, that the evidence hasn't expired, that the validator is still
@@ -155,6 +162,7 @@ func (evpool *Pool) Verify(evidence types.Evidence) error {
 }
 
 func (evpool *Pool) verify(evidence types.Evidence) error {
+	// has evidence come from consensus and thus we don't have time for it
 	return VerifyEvidence(evidence, evpool.State(), evpool.stateDB, evpool.blockStore)
 }
 

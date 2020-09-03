@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/light/provider"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -219,15 +220,15 @@ func IsInvalidHeader(trusted, conflicting *types.Header) bool {
 // createEvidence forms LightClientAttackEvidence and determines, based on the trusted and conflicting
 // header, the type of the attack.
 func createEvidence(common, trusted, conflicting *types.LightBlock) *types.LightClientAttackEvidence {
-	var attackType types.LightClientAttackType
+	var attackType tmproto.LightClientAttackType
 
 	switch {
 	case IsInvalidHeader(trusted.Header, conflicting.Header):
-		attackType = types.Lunatic
+		attackType = tmproto.LightClientAttackType_LUNATIC
 	case trusted.Commit.Round == conflicting.Commit.Round:
-		attackType = types.Equivocation
+		attackType = tmproto.LightClientAttackType_EQUIVOCATION
 	default:
-		attackType = types.Amnesia
+		attackType = tmproto.LightClientAttackType_AMNESIA
 	}
 
 	return &types.LightClientAttackEvidence{

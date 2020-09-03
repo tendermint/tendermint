@@ -174,7 +174,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		ev, ok := evidence.(*types.DuplicateVoteEvidence)
 		assert.True(t, ok)
 		pubkey, _ := bcs.privValidator.GetPubKey()
-		assert.Equal(t, []byte(pubkey.Address()), ev.Address())
+		assert.Equal(t, []byte(pubkey.Address()), ev.Addresses()[0])
 	}
 }
 

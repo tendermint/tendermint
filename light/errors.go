@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/types"
 )
 

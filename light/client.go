@@ -610,7 +610,7 @@ func (c *Client) verifySequential(
 			"newHeight", interimBlock.Height,
 			"newHash", hash2str(interimBlock.Hash()))
 
-		err = VerifyAdjacent(c.chainID, verifiedBlock.SignedHeader, interimBlock.SignedHeader, interimBlock.ValidatorSet,
+		err = VerifyAdjacent(verifiedBlock.SignedHeader, interimBlock.SignedHeader, interimBlock.ValidatorSet,
 			c.trustingPeriod, now, c.maxClockDrift)
 		if err != nil {
 			err := ErrVerificationFailed{From: verifiedBlock.Height, To: interimBlock.Height, Reason: err}
@@ -692,7 +692,7 @@ func (c *Client) verifySkipping(
 			"newHeight", blockCache[depth].Height,
 			"newHash", hash2str(blockCache[depth].Hash()))
 
-		err := Verify(c.chainID, verifiedBlock.SignedHeader, verifiedBlock.ValidatorSet, blockCache[depth].SignedHeader,
+		err := Verify(verifiedBlock.SignedHeader, verifiedBlock.ValidatorSet, blockCache[depth].SignedHeader,
 			blockCache[depth].ValidatorSet, c.trustingPeriod, now, c.maxClockDrift, c.trustLevel)
 		switch err.(type) {
 		case nil:

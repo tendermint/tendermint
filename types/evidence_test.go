@@ -14,73 +14,7 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
-type voteData struct {
-	vote1 *Vote
-	vote2 *Vote
-	valid bool
-}
-
 var defaultVoteTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
-
-func TestDuplicateVoteEvidence(t *testing.T) {
-	val := NewMockPV()
-	val2 := NewMockPV()
-
-	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
-	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
-	blockID3 := makeBlockID([]byte("blockhash"), 10000, []byte("partshash"))
-	blockID4 := makeBlockID([]byte("blockhash"), 10000, []byte("partshash2"))
-
-	const chainID = "mychain"
-
-	vote1 := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime)
-	v1 := vote1.ToProto()
-	err := val.SignVote(chainID, v1)
-	require.NoError(t, err)
-	badVote := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime)
-	bv := badVote.ToProto()
-	err = val2.SignVote(chainID, bv)
-	require.NoError(t, err)
-
-	vote1.Signature = v1.Signature
-	badVote.Signature = bv.Signature
-
-	cases := []voteData{
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, defaultVoteTime), true}, // different block ids
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID3, defaultVoteTime), true},
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID4, defaultVoteTime), true},
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime), false},     // wrong block id
-		{vote1, makeVote(t, val, "mychain2", 0, 10, 2, 1, blockID2, defaultVoteTime), false}, // wrong chain id
-		{vote1, makeVote(t, val, chainID, 0, 11, 2, 1, blockID2, defaultVoteTime), false},    // wrong height
-		{vote1, makeVote(t, val, chainID, 0, 10, 3, 1, blockID2, defaultVoteTime), false},    // wrong round
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 2, blockID2, defaultVoteTime), false},    // wrong step
-		{vote1, makeVote(t, val2, chainID, 0, 10, 2, 1, blockID, defaultVoteTime), false},    // wrong validator
-		{vote1, makeVote(t, val2, chainID, 0, 10, 2, 1, blockID, time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)), false},
-		{vote1, badVote, false}, // signed by wrong key
-	}
-
-	pubKey, err := val.GetPubKey()
-	require.NoError(t, err)
-	for _, c := range cases {
-		ev := &DuplicateVoteEvidence{
-			VoteA: c.vote1,
-			VoteB: c.vote2,
-
-			Timestamp: defaultVoteTime,
-		}
-		if c.valid {
-			assert.Nil(t, ev.Verify(chainID, pubKey), "evidence should be valid")
-		} else {
-			assert.NotNil(t, ev.Verify(chainID, pubKey), "evidence should be invalid")
-		}
-	}
-
-	ev := randomDuplicatedVoteEvidence(t)
-
-	assert.True(t, ev.Equal(ev))
-	assert.False(t, ev.Equal(&DuplicateVoteEvidence{}))
-
-}
 
 func TestEvidenceList(t *testing.T) {
 	ev := randomDuplicatedVoteEvidence(t)
