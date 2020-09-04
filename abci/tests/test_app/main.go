@@ -57,14 +57,13 @@ func testCounter() {
 	cmd := exec.Command("bash", "-c", subCommand)
 	cmd.Stdout = os.Stdout
 	if err := cmd.Start(); err != nil {
-		log.Fatalf("starting %q err: %v \n", abciApp, err)
+		log.Fatalf("starting %q err: %v", abciApp, err)
 	}
 	defer func() {
 		if err := cmd.Wait(); err != nil {
 			log.Printf("error while waiting for cmd to exit: %v", err)
 		}
-	}()
-	defer func() {
+
 		if err := cmd.Process.Kill(); err != nil {
 			log.Printf("error on process kill: %v", err)
 		}
