@@ -18,25 +18,9 @@ message DuplicateVoteEvidence {
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 }
 
-message PotentialAmnesiaEvidence {
-  Vote vote_a = 1;
-  Vote vote_b = 2;
-
-  int64                     height_stamp = 3;
-  google.protobuf.Timestamp timestamp    = 4
-      [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-}
-
-message AmnesiaEvidence {
-  PotentialAmnesiaEvidence potential_amnesia_evidence = 1;
-  ProofOfLockChange        polc                       = 2;
-}
-
 message Evidence {
   oneof sum {
-    DuplicateVoteEvidence    duplicate_vote_evidence    = 1;
-    PotentialAmnesiaEvidence potential_amnesia_evidence = 2;
-    AmnesiaEvidence          amnesia_evidence           = 3;
+    DuplicateVoteEvidence duplicate_vote_evidence = 1;
   }
 }
 
@@ -44,9 +28,4 @@ message Evidence {
 message EvidenceData {
   repeated Evidence evidence = 1 [(gogoproto.nullable) = false];
   bytes             hash     = 2;
-}
-
-message ProofOfLockChange {
-  repeated Vote               votes   = 1;
-  tendermint.crypto.PublicKey pub_key = 2;
 }

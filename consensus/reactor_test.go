@@ -224,8 +224,7 @@ func (m *mockEvidencePool) Update(block *types.Block, state sm.State) {
 	}
 	m.height++
 }
-func (m *mockEvidencePool) Verify(types.Evidence) error            { return nil }
-func (m *mockEvidencePool) AddPOLC(*types.ProofOfLockChange) error { return nil }
+func (m *mockEvidencePool) Verify(types.Evidence) error { return nil }
 
 //------------------------------------
 

@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -21,10 +22,14 @@ import (
 ///////////////////////////////////////////////////////////////////////////////
 
 const (
-	defaultWSWriteChanCapacity = 1000
+	defaultWSWriteChanCapacity = 100
 	defaultWSWriteWait         = 10 * time.Second
 	defaultWSReadWait          = 30 * time.Second
 	defaultWSPingPeriod        = (defaultWSReadWait * 9) / 10
+)
+
+var (
+	newline = []byte{'\n'}
 )
 
 // WebsocketManager provides a WS handler for incoming connections and passes a
@@ -249,17 +254,22 @@ func (wsc *wsConnection) GetRemoteAddr() string {
 	return wsc.remoteAddr
 }
 
-// WriteRPCResponse pushes a response to the writeChan, and blocks until it is accepted.
+// WriteRPCResponse pushes a response to the writeChan, and blocks until it is
+// accepted.
 // It implements WSRPCConnection. It is Goroutine-safe.
-func (wsc *wsConnection) WriteRPCResponse(resp types.RPCResponse) {
+func (wsc *wsConnection) WriteRPCResponse(ctx context.Context, resp types.RPCResponse) error {
 	select {
 	case <-wsc.Quit():
-		return
+		return errors.New("connection was stopped")
+	case <-ctx.Done():
+		return ctx.Err()
 	case wsc.writeChan <- resp:
+		return nil
 	}
 }
 
-// TryWriteRPCResponse attempts to push a response to the writeChan, but does not block.
+// TryWriteRPCResponse attempts to push a response to the writeChan, but does
+// not block.
 // It implements WSRPCConnection. It is Goroutine-safe
 func (wsc *wsConnection) TryWriteRPCResponse(resp types.RPCResponse) bool {
 	select {
@@ -284,6 +294,9 @@ func (wsc *wsConnection) Context() context.Context {
 
 // Read from the socket and subscribe to or unsubscribe from events
 func (wsc *wsConnection) readRoutine() {
+	// readRoutine will block until response is written or WS connection is closed
+	writeCtx := context.Background()
+
 	defer func() {
 		if r := recover(); r != nil {
 			err, ok := r.(error)
@@ -291,7 +304,7 @@ func (wsc *wsConnection) readRoutine() {
 				err = fmt.Errorf("WSJSONRPC: %v", r)
 			}
 			wsc.Logger.Error("Panic in WSJSONRPC handler", "err", err, "stack", string(debug.Stack()))
-			wsc.WriteRPCResponse(types.RPCInternalError(types.JSONRPCIntID(-1), err))
+			wsc.WriteRPCResponse(writeCtx, types.RPCInternalError(types.JSONRPCIntID(-1), err))
 			go wsc.readRoutine()
 		}
 	}()
@@ -309,8 +322,8 @@ func (wsc *wsConnection) readRoutine() {
 			if err := wsc.baseConn.SetReadDeadline(time.Now().Add(wsc.readWait)); err != nil {
 				wsc.Logger.Error("failed to set read deadline", "err", err)
 			}
-			var in []byte
-			_, in, err := wsc.baseConn.ReadMessage()
+
+			_, r, err := wsc.baseConn.NextReader()
 			if err != nil {
 				if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 					wsc.Logger.Info("Client closed the connection")
@@ -322,10 +335,11 @@ func (wsc *wsConnection) readRoutine() {
 				return
 			}
 
+			dec := json.NewDecoder(r)
 			var request types.RPCRequest
-			err = json.Unmarshal(in, &request)
+			err = dec.Decode(&request)
 			if err != nil {
-				wsc.WriteRPCResponse(types.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err)))
+				wsc.WriteRPCResponse(writeCtx, types.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err)))
 				continue
 			}
 
@@ -342,7 +356,7 @@ func (wsc *wsConnection) readRoutine() {
 			// Now, fetch the RPCFunc and execute it.
 			rpcFunc := wsc.funcMap[request.Method]
 			if rpcFunc == nil {
-				wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
+				wsc.WriteRPCResponse(writeCtx, types.RPCMethodNotFoundError(request.ID))
 				continue
 			}
 
@@ -351,7 +365,7 @@ func (wsc *wsConnection) readRoutine() {
 			if len(request.Params) > 0 {
 				fnArgs, err := jsonParamsToArgs(rpcFunc, request.Params)
 				if err != nil {
-					wsc.WriteRPCResponse(
+					wsc.WriteRPCResponse(writeCtx,
 						types.RPCInternalError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
 					)
 					continue
@@ -366,11 +380,11 @@ func (wsc *wsConnection) readRoutine() {
 
 			result, err := unreflectResult(returns)
 			if err != nil {
-				wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
+				wsc.WriteRPCResponse(writeCtx, types.RPCInternalError(request.ID, err))
 				continue
 			}
 
-			wsc.WriteRPCResponse(types.NewRPCSuccessResponse(request.ID, result))
+			wsc.WriteRPCResponse(writeCtx, types.NewRPCSuccessResponse(request.ID, result))
 		}
 	}
 }
@@ -378,9 +392,7 @@ func (wsc *wsConnection) readRoutine() {
 // receives on a write channel and writes out on the socket
 func (wsc *wsConnection) writeRoutine() {
 	pingTicker := time.NewTicker(wsc.pingPeriod)
-	defer func() {
-		pingTicker.Stop()
-	}()
+	defer pingTicker.Stop()
 
 	// https://github.com/gorilla/websocket/issues/97
 	pongs := make(chan string, 1)
@@ -410,11 +422,40 @@ func (wsc *wsConnection) writeRoutine() {
 				return
 			}
 		case msg := <-wsc.writeChan:
+			if err := wsc.baseConn.SetWriteDeadline(time.Now().Add(wsc.writeWait)); err != nil {
+				wsc.Logger.Error("Failed to set write deadline", "err", err)
+				return
+			}
+
 			jsonBytes, err := json.MarshalIndent(msg, "", "  ")
 			if err != nil {
 				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
-			} else if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
-				wsc.Logger.Error("Failed to write response", "msg", msg, "err", err)
+				continue
+			}
+
+			w, err := wsc.baseConn.NextWriter(websocket.TextMessage)
+			if err != nil {
+				wsc.Logger.Error("Can't get NextWriter", "err", err)
+				return
+			}
+			w.Write(jsonBytes)
+
+			// Add queued messages to the current websocket message.
+			n := len(wsc.writeChan)
+			for i := 0; i < n; i++ {
+				w.Write(newline)
+
+				msg = <-wsc.writeChan
+				jsonBytes, err = json.MarshalIndent(msg, "", "  ")
+				if err != nil {
+					wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
+					continue
+				}
+				w.Write(jsonBytes)
+			}
+
+			if err := w.Close(); err != nil {
+				wsc.Logger.Error("Can't close NextWriter", "err", err)
 				return
 			}
 		}
