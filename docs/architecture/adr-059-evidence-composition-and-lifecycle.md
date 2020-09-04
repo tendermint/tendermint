@@ -59,7 +59,7 @@ Evidence remains on a per validator basis. This causes the least disruption to t
 
 #### An example of a possible implementation path
 
-We would ignore amnesia evidence (as individually it's hard to make) and revert to the initial split we had before where `DuplicateVoteEvidence` is also used for light client equivocation attacks and thus we only need. We would also most likely need to remove `Verify` from the interface as this isn't really something that is necessary.
+We would ignore amnesia evidence (as individually it's hard to make) and revert to the initial split we had before where `DuplicateVoteEvidence` is also used for light client equivocation attacks and thus we only need `LunaticEvidence`. We would also most likely need to remove `Verify` from the interface as this isn't really something that can be used.
 
 ``` go
 type LunaticEvidence struct { // individual lunatic attack
@@ -108,6 +108,8 @@ type LightClientAttackEvidence struct {
 }
 ```
 
+The addresses would also be used as a look up table such that we can store evidence per address.
+
 
 ### Batch Framework
 
@@ -118,7 +120,7 @@ The last approach of this category would be to consider batch only evidence. Thi
 
 `LightClientAttackEvidence` won't change but the evidence interface will need to look like the proposed one above and `DuplicateVoteEvidence` will need to change to encompass multiple double votes. A problem with batch evidence is that it needs to be unique to avoid people from submitting different permutations.
 
-| I most likely have not captured the full picture of all these approaches and therefore would encourage others to add their takes on each of them.
+> I most likely have not captured the full picture of all these approaches and therefore would encourage others to add their takes on each of them.
 
 
 ## Evidence Interface
@@ -153,54 +155,140 @@ The 50% approach would be that validators would consider a proposal invalid if i
 The 100% approach is a lot more intricate and would be to find a protocol where upon receiving a valid proposal with evidence, current validators that had been shown to have misbehaved would be barred from voting such that the total voting power would be reduced by the voting power of the malicious validators and this would allow for 2/3 consensus to be reached regardless of what the malicious validators did.
 
 
-## Decision
+## Proposal
 
-To be made
+A Hybrid design
 
-> This section records the decision that was made.
-> It is best to record as much info as possible from the discussion that happened. This aids in not having to go back to the Pull Request to get the needed information.
+Evidence has the following simple interface:
 
-> ## Detailed Design
+```go
+type Evidence interface {  //proposed
+  Height() int64                                     // height of the equivocation
+  Bytes() []byte                                     // bytes which comprise the evidence
+  Hash() []byte                                      // hash of the evidence
+  ValidateBasic() error
+  String() string
+}
+```
 
-> This section does not need to be filled in at the start of the ADR, but must be completed prior to the merging of the implementation.
->
-> Here are some common questions that get answered as part of the detailed design:
->
-> - What are the user requirements?
->
-> - What systems will be affected?
->
-> - What new data structures are needed, what data structures will be changed?
->
-> - What new APIs will be needed, what APIs will be changed?
->
-> - What are the efficiency considerations (time/space)?
->
-> - What are the expected access patterns (load/throughput)?
->
-> - Are there any logging, monitoring or observability needs?
->
-> - Are there any security considerations?
->
-> - Are there any privacy considerations?
->
-> - How will the changes be tested?
->
-> - If the change is large, how will the changes be broken up for ease of review?
->
-> - Will these changes require a breaking (major) release?
->
-> - Does this change require coordination with the SDK or other?
+We have two recognized evidence that complies with it
+
+```go
+type LightClientAttackEvidence struct {
+  ConflictingBlock *LightBlock
+  CommonHeight
+}
+```
+where the `Hash()` is the hash of the header and commonHeight
+
+```go
+type DuplicateVoteEvidence {
+  VoteA *Vote
+  VoteB *Vote
+}
+```
+where the `Hash()` is the hash of the two votes
+
+The first is generated in the light client, the second in consensus. Both are sent to the evidence pool through `AddEvidence(ev Evidence) error` where it first runs `Has(ev Evidence)` to check if it has already received it (by comparing hashes) and then  `Verify(ev Evidence) error` before adding it to the database
+
+
+`Verify` does the following:
+
+- Use the hash to see if we already have this evidence in our committed database.
+
+- Use the height to check if the evidence hasn't expired.
+
+- If it hasn't expired use the height to find the block header and confirm that the time hasn't also expired.
+
+- Then proceed with switch statement for each of the two evidence:
+
+For `DuplicateVote`:
+
+- Check that height, round, type and validator address are the same
+
+- Check that the Block ID is different
+
+- Check the look up table for addresses to make sure there already isn't evidence against this validator
+
+- Fetch the validator set and confirm that the address is in the set
+
+- Check that the chain ID and signature is valid.
+
+For `LightClientAttack`
+
+- Fetch the common signed header and val set from the common height and use skipping verification to verify the conflicting header
+
+- Fetch the trusted signed header at the same height as the conflicting header and compare with the conflicting header to work out which type of attack it is and in doing so return the malicious validators.
+
+  - If equivocation the validators that signed for the commits of both the trusted and signed header
+
+  - If lunatic the validators from the common val set that signed in the conflicting block
+
+  - If amnesia none (we can't know which validators are malicious)
+
+- For each validator, check the look up table to make sure there already isn't evidence against this validator
+
+
+After verification we save the evidence with the following key `height/hash` and in the following struct
+
+```go
+type EvidenceInfo struct {
+  ev Evidence
+  time time.Time
+  validators []Validator
+  totalVotingPower int64
+}
+```
+
+We save extra information as this will be useful in forming the ABCI Evidence that we will come to later
+
+Receiving broadcasts from other evidence reactors works in the same manner.
+
+When it comes to prevoting and precomitting a proposal that contains evidence, the full node will once again
+call upon the evidence pool to verify the evidence using `CheckEvidence(ev []Evidence)`:
+
+This loops through all the evidence first checking that nothing has been duplicated then:
+
+runs `fastCheck(ev evidence)` which works similar to `Has` but with `LightClientAttackEvidence` if it has the
+same hash it then checks to see that the validators it has are all signers in the commit of the conflicting header. If it doesn't pass fast check (because it hasn't seen the evidence before) then it will have to verify the evidence.
+
+runs `Verify(ev Evidence)` - Note: this also saves the evidence to the db as mentioned before.
+
+
+The final part of the lifecycle is when the block is committed and the `BlockExecutor` tries to apply state. Instead of trying to form the information necessary to produce the ABCI evidence it gets the evpool to create the evidence in the update step as follows.
+
+`Update(Block, State) []abci.Evidence`
+
+```go
+abciResponses.BeginBlock.ByzantineValidators = evpool.Update(block, state)
+```
+
+Update does the following:
+- increments state which keeps track of both the current time and height used for measuring expiry
+- marks evidence as committed and saves to db. This prevents validators from proposing committed evidence in the future
+- forms abci evidence:
+```go
+for _, val := range evInfo.Validators
+  abciEv = append(abciEv, &abci.Evidence{
+    Type: evType,
+    Validator: val,
+    Height: evInfo.ev.Height(),
+    Time: evInfo.time,
+    TotalVotingPower: evInfo.totalVotingPower
+  })
+
+```
+and compiles it all together (note for `DuplicateVoteEvidence` the validators array size is 1)
+- removes expired evidence from both pending and committed
+
 
 ## Status
 
-> A decision may be "proposed" if it hasn't been agreed upon yet, or "accepted" once it is agreed upon. Once the ADR has been implemented mark the ADR as "implemented". If a later ADR changes or reverses a decision, it may be marked as "deprecated" or "superseded" with a reference to its replacement.
-
-{Proposed}
+Proposed
 
 ## Consequences
 
-> This section describes the consequences, after applying the decision. All consequences should be summarized here, not just the "positive" ones.
+<!-- > This section describes the consequences, after applying the decision. All consequences should be summarized here, not just the "positive" ones. -->
 
 ### Positive
 
@@ -210,6 +298,6 @@ To be made
 
 ## References
 
-> Are there any relevant PR comments, issues that led up to this, or articles referenced for why we made the given design choice? If so link them here!
+<!-- > Are there any relevant PR comments, issues that led up to this, or articles referenced for why we made the given design choice? If so link them here! -->
 
 - [LightClientAttackEvidence](https://github.com/informalsystems/tendermint-rs/blob/31ca3e64ce90786c1734caf186e30595832297a4/docs/spec/lightclient/attacks/evidence-handling.md)
