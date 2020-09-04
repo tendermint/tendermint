@@ -293,9 +293,19 @@ Proposed
 
 ### Positive
 
+- Evidence is better contained to the evidence pool / module
+- LightClientAttack is kept together (easier for verification and bandwidth)
+- Variations on commit sigs in LightClientAttack doesn't lead to multiple permutations and multiple evidence
+- Address to evidence map prevents dos attacks of evidence by a single validator
+
 ### Negative
 
+- Breaking change to Evidence interface and thus evidence
+- Unable to query evidence for address / time without evidence pool
+
 ### Neutral
+
+- Doesn't break the ABCI Evidence struct
 
 ## References
 
