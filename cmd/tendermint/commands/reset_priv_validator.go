@@ -59,7 +59,7 @@ func ResetAll(dbDir, addrBookFile, privValKeyFile, privValStateFile string, logg
 	}
 	// recreate the dbDir since the privVal state needs to live there
 	if err := tmos.EnsureDir(dbDir, 0700); err != nil {
-		logger.Error("unable to recreate dbDir", "error", err)
+		logger.Error("unable to recreate dbDir", "err", err)
 	}
 	resetFilePV(privValKeyFile, privValStateFile, logger)
 }

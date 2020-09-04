@@ -503,6 +503,6 @@ func (cli *socketClient) stopForError(err error) {
 
 	cli.Logger.Error(fmt.Sprintf("Stopping abci.socketClient for error: %v", err.Error()))
 	if err := cli.Stop(); err != nil {
-		cli.Logger.Error(fmt.Sprintf("error stopping abci.socketClient: %v", err.Error()))
+		cli.Logger.Error("Error stopping abci.socketClient", "err", err)
 	}
 }

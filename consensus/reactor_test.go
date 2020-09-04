@@ -172,7 +172,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		eventBus := types.NewEventBus()
 		eventBus.SetLogger(log.TestingLogger().With("module", "events"))
 		err := eventBus.Start()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		cs.SetEventBus(eventBus)
 
 		cs.SetTimeoutTicker(tickerFunc())
