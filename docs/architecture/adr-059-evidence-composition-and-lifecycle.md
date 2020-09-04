@@ -176,7 +176,7 @@ We have two recognized evidence that complies with it
 ```go
 type LightClientAttackEvidence struct {
   ConflictingBlock *LightBlock
-  CommonHeight
+  CommonHeight int64
 }
 ```
 where the `Hash()` is the hash of the header and commonHeight
@@ -192,7 +192,7 @@ where the `Hash()` is the hash of the two votes
 The first is generated in the light client, the second in consensus. Both are sent to the evidence pool through `AddEvidence(ev Evidence) error` where it first runs `Has(ev Evidence)` to check if it has already received it (by comparing hashes) and then  `Verify(ev Evidence) error` before adding it to the database
 
 
-`Verify` does the following:
+`Verify()` does the following:
 
 - Use the hash to see if we already have this evidence in our committed database.
 
@@ -224,7 +224,8 @@ For `LightClientAttack`
 
   - If lunatic the validators from the common val set that signed in the conflicting block
 
-  - If amnesia none (we can't know which validators are malicious)
+  - If amnesia none (we can't know which validators are malicious). This also means that we don't
+  send amnesia evidence to the application
 
 - For each validator, check the look up table to make sure there already isn't evidence against this validator
 
