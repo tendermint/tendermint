@@ -150,7 +150,7 @@ This would most likely need an RFC (in order to explore possible solutions). As 
 
 The 0% approach would just be simply to leave this as is.
 
-The 50% approach would be that validators would consider a proposal invalid if it didn't contain at least one of the evidence that that validator had and thus wouldn't vote on it. This solution is far less intrusive to the current consensus algorithm but it also doesn't quite solve the problem of censorship, rather this protocol will keep the chain halted until off-chain governance can intervene.
+The 50% approach would be such: If a validator received a proposal that didn't contain at least one of the evidence that that validator had in its own evidence pool it would consider the proposal invalid and thus would vote `nil`. This solution is far less intrusive to the current consensus algorithm but it also doesn't quite solve the problem of censorship, rather this protocol will keep the chain halted until off-chain governance can intervene.
 
 The 100% approach is a lot more intricate and would be to find a protocol where upon receiving a valid proposal with evidence, current validators that had been shown to have misbehaved would be barred from voting such that the total voting power would be reduced by the voting power of the malicious validators and this would allow for 2/3 consensus to be reached regardless of what the malicious validators did.
 
@@ -171,7 +171,7 @@ type Evidence interface {  //proposed
 }
 ```
 
-We have two recognized evidence that complies with it
+We have two concrete types of evidence that fulfil this interface
 
 ```go
 type LightClientAttackEvidence struct {
@@ -189,7 +189,8 @@ type DuplicateVoteEvidence {
 ```
 where the `Hash()` is the hash of the two votes
 
-The first is generated in the light client, the second in consensus. Both are sent to the evidence pool through `AddEvidence(ev Evidence) error` where it first runs `Has(ev Evidence)` to check if it has already received it (by comparing hashes) and then  `Verify(ev Evidence) error` before adding it to the database
+The first is generated in the light client, the second in consensus. Both are sent to the evidence pool through `AddEvidence(ev Evidence) error` where it first runs `Has(ev Evidence)` to check if it has already received it (by comparing hashes) and then  `Verify(ev Evidence) error` before adding it to the database. There are two databases: one
+for pending evidence that is not yet committed and another of the committed evidence (on the chain)
 
 
 `Verify()` does the following:
@@ -210,7 +211,7 @@ For `DuplicateVote`:
 
 - Check the look up table for addresses to make sure there already isn't evidence against this validator
 
-- Fetch the validator set and confirm that the address is in the set
+- Fetch the validator set and confirm that the address is in the set at the height of the attack
 
 - Check that the chain ID and signature is valid.
 
@@ -267,6 +268,7 @@ abciResponses.BeginBlock.ByzantineValidators = evpool.Update(block, state)
 Update does the following:
 - increments state which keeps track of both the current time and height used for measuring expiry
 - marks evidence as committed and saves to db. This prevents validators from proposing committed evidence in the future
+  Note: the db just saves the height and the hash. There is no need to save the entire committed evidence
 - forms abci evidence:
 ```go
 for _, val := range evInfo.Validators
