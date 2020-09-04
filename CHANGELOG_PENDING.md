@@ -16,7 +16,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - P2P Protocol
   - [mempool] \#5321 Batch transactions when broadcasting them to peers (@melekes)
-    `TxBatchSize` new config setting defines the max size of one batch.
+    `MaxBatchBytes` new config setting defines the max size of one batch.
 
 - Go API
     - [evidence] \#5317 Remove ConflictingHeaders evidence type & CompositeEvidence Interface. (@marbar3778)

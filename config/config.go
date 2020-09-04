@@ -644,16 +644,23 @@ func DefaultFuzzConnConfig() *FuzzConnConfig {
 
 // MempoolConfig defines the configuration options for the Tendermint mempool
 type MempoolConfig struct {
-	RootDir     string `mapstructure:"home"`
-	Recheck     bool   `mapstructure:"recheck"`
-	Broadcast   bool   `mapstructure:"broadcast"`
-	WalPath     string `mapstructure:"wal_dir"`
-	Size        int    `mapstructure:"size"`
-	MaxTxsBytes int64  `mapstructure:"max_txs_bytes"`
-	CacheSize   int    `mapstructure:"cache_size"`
-	MaxTxBytes  int    `mapstructure:"max_tx_bytes"`
-	// Maximum number of transactions to send to a peer in one message
-	TxBatchSize int `mapstructure:"tx_batch_size"`
+	RootDir   string `mapstructure:"home"`
+	Recheck   bool   `mapstructure:"recheck"`
+	Broadcast bool   `mapstructure:"broadcast"`
+	WalPath   string `mapstructure:"wal_dir"`
+	// Maximum number of transactions in the mempool
+	Size int `mapstructure:"size"`
+	// Limit the total size of all txs in the mempool.
+	// This only accounts for raw transactions (e.g. given 1MB transactions and
+	// max_txs_bytes=5MB, mempool will only accept 5 transactions).
+	MaxTxsBytes int64 `mapstructure:"max_txs_bytes"`
+	// Size of the cache (used to filter transactions we saw earlier) in transactions
+	CacheSize int `mapstructure:"cache_size"`
+	// Maximum size of a single transaction
+	// NOTE: the max size of a tx transmitted over the network is {max_tx_bytes}.
+	MaxTxBytes int `mapstructure:"max_tx_bytes"`
+	// Maximum size of a batch of transactions to send to a peer
+	MaxBatchBytes int `mapstructure:"max_batch_bytes"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -664,11 +671,11 @@ func DefaultMempoolConfig() *MempoolConfig {
 		WalPath:   "",
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
-		Size:        5000,
-		MaxTxsBytes: 1024 * 1024 * 1024, // 1GB
-		CacheSize:   10000,
-		MaxTxBytes:  1024 * 1024, // 1MB
-		TxBatchSize: 100,
+		Size:          5000,
+		MaxTxsBytes:   1024 * 1024 * 1024, // 1GB
+		CacheSize:     10000,
+		MaxTxBytes:    1024 * 1024,      // 1MB
+		MaxBatchBytes: 10 * 1024 * 1024, // 10MB
 	}
 }
 

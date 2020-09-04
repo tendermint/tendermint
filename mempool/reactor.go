@@ -133,10 +133,10 @@ func (memR *Reactor) OnStart() error {
 	return nil
 }
 
-// GetChannels implements Reactor.
-// It returns the list of channels for this reactor.
+// GetChannels implements Reactor by returning the list of channels for this
+// reactor.
 func (memR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
-	maxMsgSize := calcMaxMsgSize(memR.config.MaxTxBytes * memR.config.TxBatchSize)
+	maxMsgSize := memR.config.MaxBatchBytes + protoOverheadForTxsMessage
 	return []*p2p.ChannelDescriptor{
 		{
 			ID:                  MempoolChannel,
@@ -268,14 +268,19 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 // included.
 // WARNING: mutates next!
 func (memR *Reactor) txs(next *clist.CElement, peerID uint16, peerHeight int64) [][]byte {
-	batch := make([][]byte, 0, memR.config.TxBatchSize)
+	var (
+		batch     = make([][]byte, 0)
+		batchSize = 0
+	)
 
 	memTx := next.Value.(*mempoolTx)
 	if _, ok := memTx.senders.Load(peerID); !ok {
-		batch = append(batch, []byte(memTx.tx))
+		tx := []byte(memTx.tx)
+		batch = append(batch, tx)
+		batchSize += len(tx)
 	}
 
-	if len(batch) >= memR.config.TxBatchSize {
+	if batchSize >= memR.config.MaxBatchBytes {
 		return batch
 	}
 
@@ -287,7 +292,9 @@ func (memR *Reactor) txs(next *clist.CElement, peerID uint16, peerHeight int64) 
 		}
 
 		if _, ok := memTx.senders.Load(peerID); !ok {
-			batch = append(batch, []byte(memTx.tx))
+			tx := []byte(memTx.tx)
+			batch = append(batch, tx)
+			batchSize += len(tx)
 		}
 
 		// Advance next (non-nil) pointer, which is used later to
@@ -296,7 +303,7 @@ func (memR *Reactor) txs(next *clist.CElement, peerID uint16, peerHeight int64) 
 		// Advance n (could be nil) pointer
 		n = n.Next()
 
-		if len(batch) >= memR.config.TxBatchSize {
+		if batchSize >= memR.config.MaxBatchBytes {
 			return batch
 		}
 	}
@@ -346,10 +353,4 @@ type TxsMessage struct {
 // String returns a string representation of the TxsMessage.
 func (m *TxsMessage) String() string {
 	return fmt.Sprintf("[TxsMessage %v]", m.Txs)
-}
-
-// calcMaxMsgSize returns the max size of TxsMessage account for proto overhead
-// of bytesValue.
-func calcMaxMsgSize(rawMsgSize int) int {
-	return rawMsgSize + protoOverheadForTxsMessage
 }
