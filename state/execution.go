@@ -354,7 +354,7 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB,
 		}
 	}
 
-	byzVals := make([]abci.Evidence, len(block.Evidence.Evidence))
+	var byzVals []abci.Evidence
 	for i, ev := range block.Evidence.Evidence {
 		// We need the validator set. We already did this in validateBlock.
 		// TODO: Should we instead cache the valset in the evidence itself and add
@@ -363,7 +363,7 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB,
 		if err != nil {
 			panic(err)
 		}
-		byzVals[i] = types.TM2PB.Evidence(ev, valset)
+		byzVals = append(byzVals, ...types.TM2PB.Evidence(ev, valset))
 	}
 
 	return abci.LastCommitInfo{

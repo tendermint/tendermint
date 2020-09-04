@@ -715,9 +715,9 @@ func (c *Client) verifySkipping(
 			if depth == len(blockCache)-1 {
 				pivotHeight := verifiedBlock.Height + (blockCache[depth].Height-verifiedBlock.
 					Height)*verifySkippingNumerator/verifySkippingDenominator
-				interimBlock, err := source.LightBlock(pivotHeight)
+				interimBlock, providerErr := source.LightBlock(pivotHeight)
 				if err != nil {
-					return nil, ErrVerificationFailed{From: verifiedBlock.Height, To: pivotHeight, Reason: err}
+					return nil, ErrVerificationFailed{From: verifiedBlock.Height, To: pivotHeight, Reason: providerErr}
 				}
 				blockCache = append(blockCache, interimBlock)
 			}

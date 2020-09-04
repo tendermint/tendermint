@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	abciproto "github.com/tendermint/tendermint/abci/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -23,12 +23,15 @@ import (
 type Evidence interface {
 	Height() int64                  // height of the equivocation
 	Time() time.Time                // time of the equivocation
-	Addresses() []Address           // addresses of the equivocating validator
+	// addresses of the equivocating validator
 	Bytes() []byte                  // bytes which comprise the evidence
 	Hash() []byte                   // hash of the evidence
 	ValidateBasic() error	        // basic validation	
-	Type() abciproto.EvidenceType   // type of evidence
-	String() string		            // string format of the evidence								
+	Type() abci.EvidenceType        // type of evidence
+	String() string		            // string format of the evidence
+	
+	SetValidatorSet(vals *ValidatorSet)
+	ToABCI() []abci.Evidence
 }
 
 const (
@@ -44,7 +47,8 @@ type DuplicateVoteEvidence struct {
 	VoteA *Vote `json:"vote_a"`
 	VoteB *Vote `json:"vote_b"`
 
-	Timestamp time.Time `json:"timestamp"`
+	timestamp time.Time 
+	validator *Validator
 }
 
 var _ Evidence = &DuplicateVoteEvidence{}
@@ -67,7 +71,7 @@ func NewDuplicateVoteEvidence(vote1, vote2 *Vote, time time.Time) *DuplicateVote
 		VoteA: voteA,
 		VoteB: voteB,
 
-		Timestamp: time,
+		timestamp: time,
 	}
 }
 
