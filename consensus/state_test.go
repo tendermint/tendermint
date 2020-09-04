@@ -248,11 +248,15 @@ func TestStateFullRound1(t *testing.T) {
 
 	// NOTE: buffer capacity of 0 ensures we can validate prevote and last commit
 	// before consensus can move to the next height (and cause a race condition)
-	cs.eventBus.Stop()
+	if err := cs.eventBus.Stop(); err != nil {
+		t.Error(err)
+	}
 	eventBus := types.NewEventBusWithBufferCapacity(0)
 	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
 	cs.SetEventBus(eventBus)
-	eventBus.Start()
+	if err := eventBus.Start(); err != nil {
+		t.Error(err)
+	}
 
 	voteCh := subscribeUnBuffered(cs.eventBus, types.EventQueryVote)
 	propCh := subscribe(cs.eventBus, types.EventQueryCompleteProposal)

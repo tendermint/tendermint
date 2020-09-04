@@ -398,7 +398,10 @@ func newStateWithConfigAndBlockStore(
 
 	eventBus := types.NewEventBus()
 	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
-	eventBus.Start()
+	err := eventBus.Start()
+	if err != nil {
+		panic(err)
+	}
 	cs.SetEventBus(eventBus)
 	return cs
 }

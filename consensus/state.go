@@ -405,8 +405,12 @@ func (cs *State) loadWalFile() error {
 
 // OnStop implements service.Service.
 func (cs *State) OnStop() {
-	cs.evsw.Stop()
-	cs.timeoutTicker.Stop()
+	if err := cs.evsw.Stop(); err != nil {
+		cs.Logger.Error("error trying to stop eventSwitch", "error", err)
+	}
+	if err := cs.timeoutTicker.Stop(); err != nil {
+		cs.Logger.Error("error trying to stop timeoutTicket", "error", err)
+	}
 	// WAL is stopped in receiveRoutine.
 }
 
@@ -678,7 +682,9 @@ func (cs *State) receiveRoutine(maxSteps int) {
 		// priv_val tracks LastSig
 
 		// close wal now that we're done writing to it
-		cs.wal.Stop()
+		if err := cs.wal.Stop(); err != nil {
+			cs.Logger.Error("error trying to stop wal", "error", err)
+		}
 		cs.wal.Wait()
 
 		close(cs.done)

@@ -89,11 +89,15 @@ func stopConsensusNet(logger log.Logger, reactors []*Reactor, eventBuses []*type
 	logger.Info("stopConsensusNet", "n", len(reactors))
 	for i, r := range reactors {
 		logger.Info("stopConsensusNet: Stopping Reactor", "i", i)
-		r.Switch.Stop()
+		if err := r.Switch.Stop(); err != nil {
+			logger.Error("error trying to stop switch", "error", err)
+		}
 	}
 	for i, b := range eventBuses {
 		logger.Info("stopConsensusNet: Stopping eventBus", "i", i)
-		b.Stop()
+		if err := b.Stop(); err != nil {
+			logger.Error("error trying to stop eventbus", "error", err)
+		}
 	}
 	logger.Info("stopConsensusNet: DONE", "n", len(reactors))
 }
@@ -167,7 +171,8 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		eventBus := types.NewEventBus()
 		eventBus.SetLogger(log.TestingLogger().With("module", "events"))
-		eventBus.Start()
+		err := eventBus.Start()
+		require.NoError(t, err)
 		cs.SetEventBus(eventBus)
 
 		cs.SetTimeoutTicker(tickerFunc())
@@ -670,7 +675,8 @@ func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*State) {
 			t.Log("")
 		}
 		os.Stdout.Write([]byte("pprof.Lookup('goroutine'):\n"))
-		pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+		err := pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+		require.NoError(t, err)
 		capture()
 		panic("Timed out waiting for all validators to commit a block")
 	}

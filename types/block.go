@@ -252,7 +252,9 @@ func BlockFromProto(bp *tmproto.Block) (*Block, error) {
 		return nil, err
 	}
 	b.Data = data
-	b.Evidence.FromProto(&bp.Evidence)
+	if err := b.Evidence.FromProto(&bp.Evidence); err != nil {
+		return nil, err
+	}
 
 	if bp.LastCommit != nil {
 		lc, err := CommitFromProto(bp.LastCommit)

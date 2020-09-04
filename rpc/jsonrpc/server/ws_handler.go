@@ -99,7 +99,9 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 		wm.logger.Error("Failed to start connection", "err", err)
 		return
 	}
-	con.Stop()
+	if err := con.Stop(); err != nil {
+		wm.logger.Error("error while stopping connection", "error", err)
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////

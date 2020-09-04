@@ -84,7 +84,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 		eventBus := types.NewEventBus()
 		eventBus.SetLogger(log.TestingLogger().With("module", "events"))
-		eventBus.Start()
+		err = eventBus.Start()
+		require.NoError(t, err)
 		cs.SetEventBus(eventBus)
 
 		cs.SetTimeoutTicker(tickerFunc())
@@ -254,9 +255,11 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	defer func() {
 		for _, r := range reactors {
 			if rr, ok := r.(*ByzantineReactor); ok {
-				rr.reactor.Switch.Stop()
+				err := rr.reactor.Switch.Stop()
+				require.NoError(t, err)
 			} else {
-				r.(*Reactor).Switch.Stop()
+				err := r.(*Reactor).Switch.Stop()
+				require.NoError(t, err)
 			}
 		}
 	}()

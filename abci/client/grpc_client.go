@@ -99,7 +99,9 @@ func (cli *grpcClient) StopForError(err error) {
 	cli.mtx.Unlock()
 
 	cli.Logger.Error(fmt.Sprintf("Stopping abci.grpcClient for error: %v", err.Error()))
-	cli.Stop()
+	if err := cli.Stop(); err != nil {
+		cli.Logger.Error("Error stopping abci.grpcClient", "err", err)
+	}
 }
 
 func (cli *grpcClient) Error() error {

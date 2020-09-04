@@ -157,16 +157,24 @@ func (app *multiAppConn) killTMOnClientError() {
 
 func (app *multiAppConn) stopAllClients() {
 	if app.consensusConnClient != nil {
-		app.consensusConnClient.Stop()
+		if err := app.consensusConnClient.Stop(); err != nil {
+			app.Logger.Error("error while stopping consensus client", "error", err)
+		}
 	}
 	if app.mempoolConnClient != nil {
-		app.mempoolConnClient.Stop()
+		if err := app.mempoolConnClient.Stop(); err != nil {
+			app.Logger.Error("error while stopping mempool client", "error", err)
+		}
 	}
 	if app.queryConnClient != nil {
-		app.queryConnClient.Stop()
+		if err := app.queryConnClient.Stop(); err != nil {
+			app.Logger.Error("error while stopping query client", "error", err)
+		}
 	}
 	if app.snapshotConnClient != nil {
-		app.snapshotConnClient.Stop()
+		if err := app.snapshotConnClient.Stop(); err != nil {
+			app.Logger.Error("error while stopping snapshot client", "error", err)
+		}
 	}
 }
 
