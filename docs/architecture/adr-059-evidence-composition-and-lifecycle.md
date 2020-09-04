@@ -97,7 +97,6 @@ type Evidence interface { //proposed
 }
 ```
 
-
 Most likely we would therefore need to internally save the infringing validators which would make it easier to form abci evidence once the evidence has been committed on to chain. The `BlockExecutor` shouldn't have too much evidence specific logic in forming the abci evidence. Hence `LightClientAttackEvidence` should look like:
 
 ```go
@@ -108,6 +107,7 @@ type LightClientAttackEvidence struct {
   Addresses []Address // we need this data in order to know which validators were at fault.
 }
 ```
+
 
 ### Batch Framework
 
