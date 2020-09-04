@@ -129,7 +129,9 @@ func (bcR *BlockchainReactor) SwitchToFastSync(state sm.State) error {
 // OnStop implements service.Service.
 func (bcR *BlockchainReactor) OnStop() {
 	if bcR.fastSync {
-		bcR.pool.Stop()
+		if err := bcR.pool.Stop(); err != nil {
+			bcR.Logger.Error("Error stopping pool", "err", err)
+		}
 	}
 }
 
@@ -313,7 +315,9 @@ FOR_LOOP:
 				"outbound", outbound, "inbound", inbound)
 			if bcR.pool.IsCaughtUp() {
 				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
-				bcR.pool.Stop()
+				if err := bcR.pool.Stop(); err != nil {
+					bcR.Logger.Error("Error stopping pool", "err", err)
+				}
 				conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 				if ok {
 					conR.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)

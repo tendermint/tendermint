@@ -615,7 +615,9 @@ OUTER_LOOP:
 		for {
 			select {
 			case <-bpr.pool.Quit():
-				bpr.Stop()
+				if err := bpr.Stop(); err != nil {
+					bpr.Logger.Error("Error stopped requester", "err", err)
+				}
 				return
 			case <-bpr.Quit():
 				return
