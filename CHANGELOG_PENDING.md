@@ -15,8 +15,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     - [abci] [\#5324](https://github.com/tendermint/tendermint/pull/5324) abci evidence type is an enum with two types of possible evidence (@cmwaters)
 
 - P2P Protocol
-  - [mempool] \#5321 Batch transactions when broadcasting them to peers (@melekes)
-    `MaxBatchBytes` new config setting defines the max size of one batch.
+  - [mempool] \#5321 Batch transactions when broadcasting them to peers (@melekes) `MaxBatchBytes` new config setting defines the max size of one batch.
 
 - Go API
     - [evidence] \#5317 Remove ConflictingHeaders evidence type & CompositeEvidence Interface. (@marbar3778)
