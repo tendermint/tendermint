@@ -889,7 +889,6 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 		map[int64]*types.SignedHeader{
 			1: h1,
 			2: h2,
-			3: {Header: nil, Commit: nil},
 		},
 		map[int64]*types.ValidatorSet{
 			1: vals,
@@ -927,18 +926,7 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 }
 
 func TestClient_TrustedValidatorSet(t *testing.T) {
-	noValSetNode := mockp.New(
-		chainID,
-		headerSet,
-		map[int64]*types.ValidatorSet{
-			1: nil,
-			2: nil,
-			3: nil,
-		},
-	)
-
 	differentVals, _ := types.RandValidatorSet(10, 100)
-
 	badValSetNode := mockp.New(
 		chainID,
 		map[int64]*types.SignedHeader{
@@ -960,8 +948,8 @@ func TestClient_TrustedValidatorSet(t *testing.T) {
 	c, err := light.NewClient(
 		chainID,
 		trustOptions,
-		noValSetNode,
-		[]provider.Provider{badValSetNode, fullNode, fullNode},
+		fullNode,
+		[]provider.Provider{badValSetNode, fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
 		light.Logger(log.TestingLogger()),
 	)

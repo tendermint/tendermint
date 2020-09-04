@@ -12,11 +12,15 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - Apps
 
+    - [abci] [\#5324](https://github.com/tendermint/tendermint/pull/5324) abci evidence type is an enum with two types of possible evidence (@cmwaters)
+
 - P2P Protocol
 
 - Go API
     - [evidence] \#5317 Remove ConflictingHeaders evidence type & CompositeEvidence Interface. (@marbar3778)
     - [evidence] \#5318 Remove LunaticValidator evidence type. (@marbar3778)
+    - [evidence] \#5319 Remove Amnesia & potentialAmnesia evidence types and removed POLC. (@marbar3778)
+    - [params] \#5319 Remove `ProofofTrialPeriod` from evidence params (@marbar3778)
     - [crypto/secp256k1] \#5280 `secp256k1` has been removed from the Tendermint repo. (@marbar3778)
 
 - Blockchain Protocol
@@ -38,6 +42,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [statesync] \#5302 Fix genesis state propagation to state sync routine (@erikgrinaker)
 
-- [statesync] \#5311 Fix validator set off-by-one causing consensus failures (@erikgrinaker)
+- [statesync] \#5320 Broadcast snapshot request to all pre-connected peers on start (@erikgrinaker)
+
+- [consensus] \#5329 Fix wrong proposer schedule for validators returned by `InitChain` (@erikgrinaker)
 
 - [light] [\#5307](https://github.com/tendermint/tendermint/pull/5307) Persist correct proposer priority in light client validator sets (@cmwaters)

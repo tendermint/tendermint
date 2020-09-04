@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -681,7 +680,7 @@ func (c *Client) verifySkipping(
 			if depth == len(blockCache)-1 {
 				pivotHeight := verifiedBlock.Height + (blockCache[depth].Height-verifiedBlock.
 					Height)*verifySkippingNumerator/verifySkippingDenominator
-				interimBlock, err := c.lightBlockFrom(pivotHeight, source)
+				interimBlock, err := source.LightBlock(pivotHeight)
 				if err != nil {
 					return ErrVerificationFailed{From: verifiedBlock.Height, To: pivotHeight, Reason: err}
 				}
@@ -855,36 +854,6 @@ func (c *Client) updateTrustedLightBlock(l *types.LightBlock) error {
 	return nil
 }
 
-// 0 - latest header
-// Note it does not do retries nor swapping.
-func (c *Client) lightBlockFromWitness(height int64,
-	witness provider.Provider) (*types.LightBlock, *errBadWitness) {
-
-	l, err := witness.LightBlock(height)
-	if err != nil {
-		return nil, &errBadWitness{err, noResponse, -1}
-	}
-	err = c.validateLightBlock(l, height)
-	if err != nil {
-		return nil, &errBadWitness{err, invalidLightBlock, -1}
-	}
-
-	return l, nil
-}
-
-func (c *Client) lightBlockFrom(height int64,
-	source provider.Provider) (*types.LightBlock, error) {
-
-	c.providerMutex.Lock()
-	sourceIsPrimary := (c.primary == source)
-	c.providerMutex.Unlock()
-
-	if sourceIsPrimary {
-		return c.lightBlockFromPrimary(height)
-	}
-	return c.lightBlockFromWitness(height, source)
-}
-
 // backwards verification (see VerifyHeaderBackwards func in the spec) verifies
 // headers before a trusted header. If a sent header is invalid the primary is
 // replaced with another provider and the operation is repeated.
@@ -932,46 +901,44 @@ func (c *Client) compareNewHeaderWithWitnesses(l *types.LightBlock, now time.Tim
 
 	// 1. Make sure AT LEAST ONE witness returns the same header.
 	var headerMatched bool
-	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
-		if len(c.witnesses) == 0 {
-			return errNoWitnesses{}
-		}
 
-		// launch one goroutine per witness
-		errc := make(chan error, len(c.witnesses))
-		for i, witness := range c.witnesses {
-			go c.compareNewHeaderWithWitness(errc, l, witness, i, now)
-		}
+	if len(c.witnesses) == 0 {
+		return errNoWitnesses{}
+	}
 
-		witnessesToRemove := make([]int, 0)
+	// launch one goroutine per witness
+	errc := make(chan error, len(c.witnesses))
+	for i, witness := range c.witnesses {
+		go c.compareNewHeaderWithWitness(errc, l, witness, i, now)
+	}
 
-		// handle errors as they come
-		for i := 0; i < cap(errc); i++ {
-			err := <-errc
+	witnessesToRemove := make([]int, 0)
 
-			switch e := err.(type) {
-			case nil: // at least one header matched
-				headerMatched = true
-			case errBadWitness:
-				c.logger.Info("Bad witness", "witness", c.witnesses[e.WitnessIndex], "err", err)
-				// if witness sent us invalid header / vals, remove it
-				if e.Code == invalidLightBlock {
-					c.logger.Info("Witness sent us invalid header / vals -> removing it", "witness", c.witnesses[e.WitnessIndex])
-					witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
-				}
+	// handle errors as they come
+	for i := 0; i < cap(errc); i++ {
+		err := <-errc
+
+		switch e := err.(type) {
+		case nil: // at least one header matched
+			headerMatched = true
+		case errBadWitness:
+			c.logger.Info("Requested light block from bad witness", "witness", c.witnesses[e.WitnessIndex], "err", err)
+			// if witness sent us invalid header / vals, remove it
+			if e.Code == invalidLightBlock {
+				c.logger.Info("Witness sent us invalid header / vals -> removing it", "witness", c.witnesses[e.WitnessIndex])
+				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 			}
+		default:
+			c.logger.Info("Requested light block from witness but got error", "error", err)
 		}
+	}
 
-		for _, idx := range witnessesToRemove {
-			c.removeWitness(idx)
-		}
+	for _, idx := range witnessesToRemove {
+		c.removeWitness(idx)
+	}
 
-		if headerMatched {
-			return nil
-		}
-
-		// 2. Otherwise, sleep
-		time.Sleep(backoffTimeout(attempt))
+	if headerMatched {
+		return nil
 	}
 
 	return errors.New("awaiting response from all witnesses exceeded dropout time")
@@ -980,16 +947,21 @@ func (c *Client) compareNewHeaderWithWitnesses(l *types.LightBlock, now time.Tim
 func (c *Client) compareNewHeaderWithWitness(errc chan error, l *types.LightBlock,
 	witness provider.Provider, witnessIndex int, now time.Time) {
 
-	altBlock, err := c.lightBlockFromWitness(l.Height, witness)
+	altBlock, err := witness.LightBlock(l.Height)
 	if err != nil {
-		err.WitnessIndex = witnessIndex
-		errc <- err
+		if _, ok := err.(provider.ErrBadLightBlock); ok {
+			errc <- errBadWitness{Reason: err, Code: invalidLightBlock, WitnessIndex: witnessIndex}
+		} else {
+			errc <- err
+		}
+		// if not a bad light block, then the witness has either not responded or
+		// doesn't have the block -> we ignore
 		return
 	}
 
 	if !bytes.Equal(l.Hash(), altBlock.Hash()) {
 		if bsErr := c.verifySkipping(witness, c.latestTrustedBlock, altBlock, now); bsErr != nil {
-			errc <- errBadWitness{bsErr, invalidLightBlock, witnessIndex}
+			errc <- errBadWitness{Reason: bsErr, Code: invalidLightBlock, WitnessIndex: witnessIndex}
 			return
 		}
 	}
@@ -1061,58 +1033,19 @@ func (c *Client) replacePrimaryProvider() error {
 // at the specified height. Handles dropout by the primary provider by swapping
 // with an alternative provider.
 func (c *Client) lightBlockFromPrimary(height int64) (*types.LightBlock, error) {
-	for attempt := uint16(1); attempt <= c.maxRetryAttempts; attempt++ {
-		c.providerMutex.Lock()
-		l, providerErr := c.primary.LightBlock(height)
-		c.providerMutex.Unlock()
-		if providerErr == nil {
-			err := c.validateLightBlock(l, height)
-			if err != nil {
-				replaceErr := c.replacePrimaryProvider()
-				if replaceErr != nil {
-					return nil, fmt.Errorf("%v. Tried to replace primary but: %w", err.Error(), replaceErr)
-				}
-				// replace primary and request a light block again
-				return c.lightBlockFromPrimary(height)
-			}
-			// valid light block has been received
-			return l, nil
-		}
-		if providerErr == provider.ErrLightBlockNotFound {
-			return nil, providerErr
-		}
-		c.logger.Error("Failed to get signed header from primary", "attempt", attempt, "err", providerErr)
-		time.Sleep(backoffTimeout(attempt))
-	}
-
-	err := c.replacePrimaryProvider()
+	c.providerMutex.Lock()
+	l, err := c.primary.LightBlock(height)
+	c.providerMutex.Unlock()
 	if err != nil {
-		return nil, fmt.Errorf("primary dropped out. Tried to replace but: %w", err)
+		c.logger.Debug("Error on light block request from primary", "error", err)
+		replaceErr := c.replacePrimaryProvider()
+		if replaceErr != nil {
+			return nil, fmt.Errorf("%v. Tried to replace primary but: %w", err.Error(), replaceErr)
+		}
+		// replace primary and request a light block again
+		return c.lightBlockFromPrimary(height)
 	}
-
-	return c.lightBlockFromPrimary(height)
-}
-
-func (c *Client) validateLightBlock(l *types.LightBlock, expectedHeight int64) error {
-	if l == nil {
-		return errors.New("nil header")
-	}
-	err := l.ValidateBasic(c.chainID)
-	if err != nil {
-		return err
-	}
-
-	if expectedHeight > 0 && l.Height != expectedHeight {
-		return fmt.Errorf("height mismatch, got: %d, expected: %d", l.Height, expectedHeight)
-	}
-	return nil
-}
-
-// exponential backoff (with jitter)
-//		0.5s -> 2s -> 4.5s -> 8s -> 12.5 with 1s variation
-func backoffTimeout(attempt uint16) time.Duration {
-	// nolint:gosec // G404: Use of weak random number generator
-	return time.Duration(500*attempt*attempt)*time.Millisecond + time.Duration(rand.Intn(1000))*time.Millisecond
+	return l, err
 }
 
 func hash2str(hash []byte) string {
