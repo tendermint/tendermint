@@ -120,29 +120,36 @@ func (s *lightClientStateProvider) State(height uint64) (sm.State, error) {
 		state.InitialHeight = 1
 	}
 
-	// We need to verify the previous block to get the validator set.
-	prevLightBlock, err := s.lc.VerifyLightBlockAtHeight(int64(height-1), time.Now())
+	// The snapshot height maps onto the state heights as follows:
+	//
+	// height: last block, i.e. the snapshotted height
+	// height+1: current block, i.e. the first block we'll process after the snapshot
+	// height+2: next block, i.e. the second block after the snapshot
+	//
+	// We need to fetch the NextValidators from height+2 because if the application changed
+	// the validator set at the snapshot height then this only takes effect at height+2.
+	lastLightBlock, err := s.lc.VerifyLightBlockAtHeight(int64(height), time.Now())
 	if err != nil {
 		return sm.State{}, err
 	}
-	lightBlock, err := s.lc.VerifyLightBlockAtHeight(int64(height), time.Now())
+	curLightBlock, err := s.lc.VerifyLightBlockAtHeight(int64(height+1), time.Now())
 	if err != nil {
 		return sm.State{}, err
 	}
-	nextLightBlock, err := s.lc.VerifyLightBlockAtHeight(int64(height+1), time.Now())
+	nextLightBlock, err := s.lc.VerifyLightBlockAtHeight(int64(height+2), time.Now())
 	if err != nil {
 		return sm.State{}, err
 	}
 
-	state.LastBlockHeight = lightBlock.Height
-	state.LastBlockTime = lightBlock.Time
-	state.LastBlockID = lightBlock.Commit.BlockID
-	state.AppHash = nextLightBlock.AppHash
-	state.LastResultsHash = nextLightBlock.LastResultsHash
-	state.LastValidators = prevLightBlock.ValidatorSet
-	state.Validators = lightBlock.ValidatorSet
+	state.LastBlockHeight = lastLightBlock.Height
+	state.LastBlockTime = lastLightBlock.Time
+	state.LastBlockID = lastLightBlock.Commit.BlockID
+	state.AppHash = curLightBlock.AppHash
+	state.LastResultsHash = curLightBlock.LastResultsHash
+	state.LastValidators = lastLightBlock.ValidatorSet
+	state.Validators = curLightBlock.ValidatorSet
 	state.NextValidators = nextLightBlock.ValidatorSet
-	state.LastHeightValidatorsChanged = int64(height)
+	state.LastHeightValidatorsChanged = nextLightBlock.Height
 
 	// We'll also need to fetch consensus params via RPC, using light client verification.
 	primaryURL, ok := s.providers[s.lc.Primary()]

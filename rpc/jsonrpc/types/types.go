@@ -205,7 +205,7 @@ func NewRPCErrorResponse(id jsonrpcid, code int, msg string, data string) RPCRes
 
 func (resp RPCResponse) String() string {
 	if resp.Error == nil {
-		return fmt.Sprintf("RPCResponse{%s %v}", resp.ID, resp.Result)
+		return fmt.Sprintf("RPCResponse{%s %X}", resp.ID, resp.Result)
 	}
 	return fmt.Sprintf("RPCResponse{%s %v}", resp.ID, resp.Error)
 }
@@ -246,10 +246,10 @@ func RPCServerError(id jsonrpcid, err error) RPCResponse {
 type WSRPCConnection interface {
 	// GetRemoteAddr returns a remote address of the connection.
 	GetRemoteAddr() string
-	// WriteRPCResponse writes the resp onto connection (BLOCKING).
-	WriteRPCResponse(resp RPCResponse)
-	// TryWriteRPCResponse tries to write the resp onto connection (NON-BLOCKING).
-	TryWriteRPCResponse(resp RPCResponse) bool
+	// WriteRPCResponse writes the response onto connection (BLOCKING).
+	WriteRPCResponse(context.Context, RPCResponse) error
+	// TryWriteRPCResponse tries to write the response onto connection (NON-BLOCKING).
+	TryWriteRPCResponse(RPCResponse) bool
 	// Context returns the connection's context.
 	Context() context.Context
 }
