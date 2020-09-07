@@ -29,7 +29,7 @@ func (ni mockNodeInfo) Validate() error                     { return nil }
 func (ni mockNodeInfo) CompatibleWith(other NodeInfo) error { return nil }
 
 func AddPeerToSwitchPeerSet(sw *Switch, peer Peer) {
-	sw.peers.Add(peer)
+	sw.peers.Add(peer) //nolint:errcheck // ignore error
 }
 
 func CreateRandomPeer(outbound bool) Peer {

@@ -318,7 +318,9 @@ func (r *BlockchainReactor) demux(events <-chan Event) {
 		case <-doProcessBlockCh:
 			r.processor.send(rProcessBlock{})
 		case <-doStatusCh:
-			r.io.broadcastStatusRequest()
+			if err := r.io.broadcastStatusRequest(); err != nil {
+				r.logger.Error("Error broadcasting status request", "err", err)
+			}
 
 		// Events from peers. Closing the channel signals event loop termination.
 		case event, ok := <-events:
@@ -343,9 +345,13 @@ func (r *BlockchainReactor) demux(events <-chan Event) {
 				r.processor.send(event)
 			case scPeerError:
 				r.processor.send(event)
-				r.reporter.Report(behaviour.BadMessage(event.peerID, "scPeerError"))
+				if err := r.reporter.Report(behaviour.BadMessage(event.peerID, "scPeerError")); err != nil {
+					r.logger.Error("Error reporting peer", "err", err)
+				}
 			case scBlockRequest:
-				r.io.sendBlockRequest(event.peerID, event.height)
+				if err := r.io.sendBlockRequest(event.peerID, event.height); err != nil {
+					r.logger.Error("Error sending block request", "err", err)
+				}
 			case scFinishedEv:
 				r.processor.send(event)
 				r.scheduler.stop()

@@ -171,7 +171,9 @@ func (r *Reactor) OnStart() error {
 
 // OnStop implements BaseService
 func (r *Reactor) OnStop() {
-	r.book.Stop()
+	if err := r.book.Stop(); err != nil {
+		r.Logger.Error("Error stopping address book", "err", err)
+	}
 }
 
 // GetChannels implements Reactor
