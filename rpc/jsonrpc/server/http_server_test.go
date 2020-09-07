@@ -87,7 +87,7 @@ func TestServeTLS(t *testing.T) {
 
 	go func() {
 		if err := ServeTLS(ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig()); err != nil {
-			panic(err)
+			t.Log(err)
 		}
 	}()
 
