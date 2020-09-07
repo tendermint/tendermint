@@ -62,11 +62,11 @@ The following lists the functionality we would like to test:
 
 Running separate tests for all combinations of the above functionality is not feasible, as there are 2.6 million of them. However, the functionality can be grouped into three broad classes:
 
-* Global: affects the entire network, needing a separate testnet for each combination (e.g. topology, network protocol, genesis settings)
+- Global: affects the entire network, needing a separate testnet for each combination (e.g. topology, network protocol, genesis settings)
 
-* Local: affects a single node, and can be varied per node in a testnet (e.g. ABCI/privval connections, database backend, block pruning)
+- Local: affects a single node, and can be varied per node in a testnet (e.g. ABCI/privval connections, database backend, block pruning)
 
-* Temporal: can be run after each other in the same testnet (e.g. recovery and validator changes)
+- Temporal: can be run after each other in the same testnet (e.g. recovery and validator changes)
 
 Thus, we can run separate testnets for all combinations of global options (on the order of 100). In each testnet, we run nodes with randomly generated node configurations optimized for broad coverage (i.e. if one node is using GoLevelDB, then no other node should use it if possible). And in each testnet, we sequentially and randomly pick nodes to stop/start, power cycle, add/remove, disconnect, and so on.
 
