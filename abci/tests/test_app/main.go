@@ -63,7 +63,8 @@ func testCounter() {
 		if err := cmd.Wait(); err != nil {
 			log.Printf("error while waiting for cmd to exit: %v", err)
 		}
-
+	}()
+	defer func() {
 		if err := cmd.Process.Kill(); err != nil {
 			log.Printf("error on process kill: %v", err)
 		}
