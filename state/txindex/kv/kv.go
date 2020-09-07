@@ -626,7 +626,7 @@ func extractValueFromKey(key []byte) string {
 }
 
 func keyForEvent(key string, value []byte, result *abci.TxResult) []byte {
-	return []byte(fmt.Sprintf("%s/%s/%d/%d",
+	return []byte(fmt.Sprintf("%s/%s/%020d/%010d",
 		key,
 		value,
 		result.Height,
@@ -635,7 +635,7 @@ func keyForEvent(key string, value []byte, result *abci.TxResult) []byte {
 }
 
 func keyForHeight(result *abci.TxResult) []byte {
-	return []byte(fmt.Sprintf("%s/%d/%d/%d",
+	return []byte(fmt.Sprintf("%s/%d/%020d/%010d",
 		types.TxHeightKey,
 		result.Height,
 		result.Height,
