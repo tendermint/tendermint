@@ -1076,7 +1076,6 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 
 	// we expose a simplified api over grpc for convenience to app devs
 	grpcListenAddr := n.config.RPC.GRPCListenAddress
-	var errChan = make(chan error)
 	if grpcListenAddr != "" {
 		config := rpcserver.DefaultConfig()
 		config.MaxBodyBytes = n.config.RPC.MaxBodyBytes
@@ -1095,18 +1094,15 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		}
 		go func() {
 			if err := grpccore.StartGRPCServer(listener); err != nil {
-				errChan <- err
+				n.Logger.Error("Error starting gRPC server", "err", err)
 			}
 		}()
 		listeners = append(listeners, listener)
 
 	}
-	select {
-	case err = <-errChan:
-		return nil, err
-	default:
-		return listeners, nil
-	}
+
+	return listeners, nil
+
 }
 
 // startPrometheusServer starts a Prometheus HTTP server, listening for metrics

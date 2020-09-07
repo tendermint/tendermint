@@ -145,7 +145,7 @@ func extractKey(tmhome, outputPath string) {
 
 func main() {
 	if err := rootCmd.Parse(os.Args[1:]); err != nil {
-		fmt.Printf("Error parsing flags: %v", err)
+		fmt.Printf("Error parsing flags: %v\n", err)
 		os.Exit(1)
 	}
 	if rootCmd.NArg() == 0 || (rootCmd.NArg() == 1 && rootCmd.Arg(0) == "help") {
@@ -170,13 +170,13 @@ func main() {
 		}
 	case "run":
 		if err := runCmd.Parse(os.Args[2:]); err != nil {
-			fmt.Printf("Error parsing flags: %v", err)
+			fmt.Printf("Error parsing flags: %v\n", err)
 			os.Exit(1)
 		}
 		runTestHarness(flagAcceptRetries, flagBindAddr, flagTMHome)
 	case "extract_key":
 		if err := extractKeyCmd.Parse(os.Args[2:]); err != nil {
-			fmt.Printf("Error parsing flags: %v", err)
+			fmt.Printf("Error parsing flags: %v\n", err)
 			os.Exit(1)
 		}
 		extractKey(flagTMHome, flagKeyOutputPath)
