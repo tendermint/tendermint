@@ -57,7 +57,7 @@ func WaitForHeight(c StatusClient, h int64, waiter Waiter) error {
 // when the timeout duration has expired.
 //
 // This handles subscribing and unsubscribing under the hood
-func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (data types.TMEventData, err error) {
+func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (types.TMEventData, error) {
 	const subscriber = "helpers"
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -70,7 +70,7 @@ func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (data
 	// make sure to unregister after the test is over
 	defer func() {
 		if deferErr := c.UnsubscribeAll(ctx, subscriber); deferErr != nil {
-			err = deferErr
+			panic(err)
 		}
 	}()
 
