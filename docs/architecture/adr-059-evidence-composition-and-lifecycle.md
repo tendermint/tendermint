@@ -126,6 +126,7 @@ where the `Hash()` is the hash of the two votes
 
 The first is generated in the light client, the second in consensus. Both are sent to the evidence pool through `AddEvidence(ev Evidence) error`. The evidence pool's primary purpose is to verify evidence. It also gossips evidence to other peers' evidence pool and serves it to consensus so it can be committed on chain and the relevant information can be sent to the application in order to exercise punishment. When evidence is added, the pool first runs `Has(ev Evidence)` to check if it has already received it (by comparing hashes) and then  `Verify(ev Evidence) error`.  Once verified the evidence pool stores it it's pending database. There are two databases: one for pending evidence that is not yet committed and another of the committed evidence (to avoid committing evidence twice)
 
+#### Verification
 
 `Verify()` does the following:
 
@@ -164,7 +165,6 @@ For `LightClientAttack`
 
 - For each validator, check the look up table to make sure there already isn't evidence against this validator
 
-
 After verification we persist the evidence with the following key: `height/hash` to the pending evidence database in the evidence pool with the following format
 
 ```go
@@ -176,12 +176,18 @@ type EvidenceInfo struct {
 }
 ```
 
-`time`, `validators` and `totalVotingPower` are need to form the ABCI Evidence that we will come to later. The evidence pool also runs a reactor that sends the newly validated
+`time`, `validators` and `totalVotingPower` are need to form the ABCI Evidence that we will come to later.
+
+
+#### Broadcasting and receiving evidence
+
+The evidence pool also runs a reactor that broadcasts the newly validated
 evidence to all connected peers.
 
-Receiving broadcasts from other evidence reactors works in the same manner as receiving evidence from the consensus engine or a light client.
+Receiving evidence from other evidence reactors works in the same manner as receiving evidence from the consensus engine or a light client.
 
 
+#### Proposing evidence on the block
 
 When it comes to prevoting and precomitting a proposal that contains evidence, the full node will once again
 call upon the evidence pool to verify the evidence using `CheckEvidence(ev []Evidence)`:
@@ -196,6 +202,7 @@ same hash it then goes on to check that the validators it has are all signers in
 3. runs `Verify(ev Evidence)` - Note: this also saves the evidence to the db as mentioned before.
 
 
+#### Updating application and pool
 
 The final part of the lifecycle is when the block is committed and the `BlockExecutor` tries to apply state. Instead of trying to form the information necessary to produce the ABCI evidence itself, it gets the evidence pool to create it when it calls `Update(Block, State) []abci.Evidence`
 
@@ -227,6 +234,8 @@ The `Update()` function does the following:
 - Removes expired evidence from both pending and committed
 
 The ABCI evidence is then sent via the `BlockExecutor` to the application.
+
+#### Summary
 
 To summarize, we can see the lifecycle of evidence as such:
 
