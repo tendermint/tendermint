@@ -306,7 +306,9 @@ func (wsc *wsConnection) readRoutine() {
 				err = fmt.Errorf("WSJSONRPC: %v", r)
 			}
 			wsc.Logger.Error("Panic in WSJSONRPC handler", "err", err, "stack", string(debug.Stack()))
-			wsc.WriteRPCResponse(writeCtx, types.RPCInternalError(types.JSONRPCIntID(-1), err))
+			if err := wsc.WriteRPCResponse(writeCtx, types.RPCInternalError(types.JSONRPCIntID(-1), err)); err != nil {
+				wsc.Logger.Error("Error writing RPC response", "err", err)
+			}
 			go wsc.readRoutine()
 		}
 	}()
@@ -332,7 +334,9 @@ func (wsc *wsConnection) readRoutine() {
 				} else {
 					wsc.Logger.Error("Failed to read request", "err", err)
 				}
-				wsc.Stop()
+				if err := wsc.Stop(); err != nil {
+					wsc.Logger.Error("Error closing websocket connection", "err", err)
+				}
 				close(wsc.readRoutineQuit)
 				return
 			}
@@ -341,7 +345,10 @@ func (wsc *wsConnection) readRoutine() {
 			var request types.RPCRequest
 			err = dec.Decode(&request)
 			if err != nil {
-				wsc.WriteRPCResponse(writeCtx, types.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err)))
+				if err := wsc.WriteRPCResponse(writeCtx,
+					types.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err))); err != nil {
+					wsc.Logger.Error("Error writing RPC response", "err", err)
+				}
 				continue
 			}
 
@@ -358,7 +365,9 @@ func (wsc *wsConnection) readRoutine() {
 			// Now, fetch the RPCFunc and execute it.
 			rpcFunc := wsc.funcMap[request.Method]
 			if rpcFunc == nil {
-				wsc.WriteRPCResponse(writeCtx, types.RPCMethodNotFoundError(request.ID))
+				if err := wsc.WriteRPCResponse(writeCtx, types.RPCMethodNotFoundError(request.ID)); err != nil {
+					wsc.Logger.Error("Error writing RPC response", "err", err)
+				}
 				continue
 			}
 
@@ -367,9 +376,11 @@ func (wsc *wsConnection) readRoutine() {
 			if len(request.Params) > 0 {
 				fnArgs, err := jsonParamsToArgs(rpcFunc, request.Params)
 				if err != nil {
-					wsc.WriteRPCResponse(writeCtx,
+					if err := wsc.WriteRPCResponse(writeCtx,
 						types.RPCInternalError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
-					)
+					); err != nil {
+						wsc.Logger.Error("Error writing RPC response", "err", err)
+					}
 					continue
 				}
 				args = append(args, fnArgs...)
@@ -382,11 +393,15 @@ func (wsc *wsConnection) readRoutine() {
 
 			result, err := unreflectResult(returns)
 			if err != nil {
-				wsc.WriteRPCResponse(writeCtx, types.RPCInternalError(request.ID, err))
+				if err := wsc.WriteRPCResponse(writeCtx, types.RPCInternalError(request.ID, err)); err != nil {
+					wsc.Logger.Error("Error writing RPC response", "err", err)
+				}
 				continue
 			}
 
-			wsc.WriteRPCResponse(writeCtx, types.NewRPCSuccessResponse(request.ID, result))
+			if err := wsc.WriteRPCResponse(writeCtx, types.NewRPCSuccessResponse(request.ID, result)); err != nil {
+				wsc.Logger.Error("Error writing RPC response", "err", err)
+			}
 		}
 	}
 }
@@ -440,12 +455,12 @@ func (wsc *wsConnection) writeRoutine() {
 				wsc.Logger.Error("Can't get NextWriter", "err", err)
 				return
 			}
-			w.Write(jsonBytes)
+			w.Write(jsonBytes) //nolint:errcheck //ignore error
 
 			// Add queued messages to the current websocket message.
 			n := len(wsc.writeChan)
 			for i := 0; i < n; i++ {
-				w.Write(newline)
+				w.Write(newline) //nolint:errcheck //ignore error
 
 				msg = <-wsc.writeChan
 				jsonBytes, err = json.MarshalIndent(msg, "", "  ")
@@ -453,7 +468,7 @@ func (wsc *wsConnection) writeRoutine() {
 					wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
 					continue
 				}
-				w.Write(jsonBytes)
+				w.Write(jsonBytes) //nolint:errcheck //ignore error
 			}
 
 			if err := w.Close(); err != nil {

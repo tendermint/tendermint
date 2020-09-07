@@ -85,7 +85,11 @@ func TestServeTLS(t *testing.T) {
 		fmt.Fprint(w, "some body")
 	})
 
-	go ServeTLS(ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig())
+	go func() {
+		if err := ServeTLS(ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig()); err != nil {
+			panic(err)
+		}
+	}()
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},

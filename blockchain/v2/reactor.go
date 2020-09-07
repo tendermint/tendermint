@@ -349,7 +349,9 @@ func (r *BlockchainReactor) demux(events <-chan Event) {
 					r.logger.Error("Error reporting peer", "err", err)
 				}
 			case scBlockRequest:
-				r.io.sendBlockRequest(event.peerID, event.height)
+				if err := r.io.sendBlockRequest(event.peerID, event.height); err != nil {
+					r.logger.Error("Error sending block request", "err", err)
+				}
 			case scFinishedEv:
 				r.processor.send(event)
 				r.scheduler.stop()

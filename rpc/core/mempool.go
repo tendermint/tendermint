@@ -71,7 +71,11 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 		env.Logger.Error("Error on broadcast_tx_commit", "err", err)
 		return nil, err
 	}
-	defer env.EventBus.Unsubscribe(context.Background(), subscriber, q)
+	defer func() {
+		if err := env.EventBus.Unsubscribe(context.Background(), subscriber, q); err != nil {
+			env.Logger.Error("Error unsubscribing from eventBus", "err", err)
+		}
+	}()
 
 	// Broadcast tx and wait for CheckTx result
 	checkTxResCh := make(chan *abci.Response, 1)

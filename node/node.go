@@ -1046,21 +1046,29 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 			rootHandler = corsMiddleware.Handler(mux)
 		}
 		if n.config.RPC.IsTLSEnabled() {
-			go rpcserver.ServeTLS(
-				listener,
-				rootHandler,
-				n.config.RPC.CertFile(),
-				n.config.RPC.KeyFile(),
-				rpcLogger,
-				config,
-			)
+			go func() {
+				if err := rpcserver.ServeTLS(
+					listener,
+					rootHandler,
+					n.config.RPC.CertFile(),
+					n.config.RPC.KeyFile(),
+					rpcLogger,
+					config,
+				); err != nil {
+					n.Logger.Error("Error serving server with TLS", "err", err)
+				}
+			}()
 		} else {
-			go rpcserver.Serve(
-				listener,
-				rootHandler,
-				rpcLogger,
-				config,
-			)
+			go func() {
+				if err := rpcserver.Serve(
+					listener,
+					rootHandler,
+					rpcLogger,
+					config,
+				); err != nil {
+					n.Logger.Error("Error serving server", "err", err)
+				}
+			}()
 		}
 
 		listeners[i] = listener
@@ -1068,6 +1076,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 
 	// we expose a simplified api over grpc for convenience to app devs
 	grpcListenAddr := n.config.RPC.GRPCListenAddress
+	var errChan = make(chan error)
 	if grpcListenAddr != "" {
 		config := rpcserver.DefaultConfig()
 		config.MaxBodyBytes = n.config.RPC.MaxBodyBytes
@@ -1084,11 +1093,20 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		if err != nil {
 			return nil, err
 		}
-		go grpccore.StartGRPCServer(listener)
+		go func() {
+			if err := grpccore.StartGRPCServer(listener); err != nil {
+				errChan <- err
+			}
+		}()
 		listeners = append(listeners, listener)
-	}
 
-	return listeners, nil
+	}
+	select {
+	case err = <-errChan:
+		return nil, err
+	default:
+		return listeners, nil
+	}
 }
 
 // startPrometheusServer starts a Prometheus HTTP server, listening for metrics

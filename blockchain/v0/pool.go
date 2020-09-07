@@ -214,7 +214,9 @@ func (pool *BlockPool) PopRequest() {
 			PanicSanity("PopRequest() requires a valid block")
 		}
 		*/
-		r.Stop()
+		if err := r.Stop(); err != nil {
+			pool.Logger.Error("Error stopping requester", "err", err)
+		}
 		delete(pool.requesters, pool.height)
 		pool.height++
 	} else {

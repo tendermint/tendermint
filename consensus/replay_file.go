@@ -57,7 +57,11 @@ func (cs *State) ReplayFile(file string, console bool) error {
 	if err != nil {
 		return fmt.Errorf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep)
 	}
-	defer cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep)
+	defer func() {
+		if err := cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep); err != nil {
+			cs.Logger.Error("Error unsubscribing to event bus", "err", err)
+		}
+	}()
 
 	// just open the file for reading, no need to use wal
 	fp, err := os.OpenFile(file, os.O_RDONLY, 0600)
@@ -220,7 +224,11 @@ func (pb *playback) replayConsoleLoop() int {
 			if err != nil {
 				tmos.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep))
 			}
-			defer pb.cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep)
+			defer func() {
+				if err := pb.cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep); err != nil {
+					pb.cs.Logger.Error("Error unsubscribing from eventBus", "err", err)
+				}
+			}()
 
 			if len(tokens) == 1 {
 				if err := pb.replayReset(1, newStepSub); err != nil {
