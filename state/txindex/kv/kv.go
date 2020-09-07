@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	tagKeySeparator = string('\u0000')
+	separator = string('\u0000') // NULL separator
 )
 
 var _ txindex.TxIndexer = (*TxIndex)(nil)
@@ -429,7 +429,7 @@ func (txi *TxIndex) match(
 
 	case c.Op == query.OpExists:
 		// XXX: can't use startKeyBz here because c.Operand is nil
-		// (e.g. "account.owner/<nil>/" won't match w/ a single row)
+		// (e.g. "account.owner<separator>nil<separator>" won't match w/ a single row)
 		it, err := dbm.IteratePrefix(txi.store, startKey(c.CompositeKey))
 		if err != nil {
 			panic(err)
@@ -452,8 +452,11 @@ func (txi *TxIndex) match(
 
 	case c.Op == query.OpContains:
 		// XXX: startKey does not apply here.
-		// For example, if startKey = "account.owner/an/" and search query = "account.owner CONTAINS an"
-		// we can't iterate with prefix "account.owner/an/" because we might miss keys like "account.owner/Ulan/"
+		// For example, if startKey =
+		// "account.owner<separator>an<separator>" and search query =
+		// "account.owner CONTAINS an" we can't iterate with prefix
+		// "account.owner<separator>an<separator> because we might miss
+		// keys like "account.owner<separator>Ulan<separator>
 		it, err := dbm.IteratePrefix(txi.store, startKey(c.CompositeKey))
 		if err != nil {
 			panic(err)
@@ -617,22 +620,22 @@ LOOP:
 // Keys
 
 func isTagKey(key []byte) bool {
-	return strings.Count(string(key), tagKeySeparator) == 3
+	return strings.Count(string(key), separator) == 3
 }
 
 func extractValueFromKey(key []byte) string {
-	parts := strings.SplitN(string(key), tagKeySeparator, 3)
+	parts := strings.SplitN(string(key), separator, 3)
 	return parts[1]
 }
 
 func keyForEvent(key string, value []byte, result *abci.TxResult) []byte {
 	return []byte(fmt.Sprintf("%s%s%s%s%020d%s%010d",
 		key,
-		tagKeySeparator,
+		separator,
 		value,
-		tagKeySeparator,
+		separator,
 		result.Height,
-		tagKeySeparator,
+		separator,
 		result.Index,
 	))
 }
@@ -640,18 +643,18 @@ func keyForEvent(key string, value []byte, result *abci.TxResult) []byte {
 func keyForHeight(result *abci.TxResult) []byte {
 	return []byte(fmt.Sprintf("%s%s%d%s%020d%s%010d",
 		types.TxHeightKey,
-		tagKeySeparator,
+		separator,
 		result.Height,
-		tagKeySeparator,
+		separator,
 		result.Height,
-		tagKeySeparator,
+		separator,
 		result.Index,
 	))
 }
 
 func startKeyForCondition(c query.Condition, height int64) []byte {
 	if height > 0 {
-		return startKey(c.CompositeKey, c.Operand, height)
+		return startKey(c.CompositeKey, c.Operand, fmt.Sprintf("%020d", height))
 	}
 	return startKey(c.CompositeKey, c.Operand)
 }
@@ -659,7 +662,7 @@ func startKeyForCondition(c query.Condition, height int64) []byte {
 func startKey(fields ...interface{}) []byte {
 	var b bytes.Buffer
 	for _, f := range fields {
-		b.Write([]byte(fmt.Sprintf("%v%s", f, tagKeySeparator)))
+		b.Write([]byte(fmt.Sprintf("%v%s", f, separator)))
 	}
 	return b.Bytes()
 }

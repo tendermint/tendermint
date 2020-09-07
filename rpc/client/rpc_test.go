@@ -489,6 +489,7 @@ func TestTxSearch(t *testing.T) {
 	// from other tests as well
 	result, err := c.TxSearch("tx.height >= 0", true, nil, nil, "asc")
 	require.NoError(t, err)
+	require.NotEmpty(t, result.Txs)
 	txCount := len(result.Txs)
 
 	// pick out the last tx to have something to search for in tests
