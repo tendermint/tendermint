@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	tagKeySeparator = "/"
+	tagKeySeparator = '\u0000'
 )
 
 var _ txindex.TxIndexer = (*TxIndex)(nil)
