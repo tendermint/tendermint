@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	tagKeySeparator = '\u0000'
+	tagKeySeparator = string('\u0000')
 )
 
 var _ txindex.TxIndexer = (*TxIndex)(nil)
@@ -626,19 +626,25 @@ func extractValueFromKey(key []byte) string {
 }
 
 func keyForEvent(key string, value []byte, result *abci.TxResult) []byte {
-	return []byte(fmt.Sprintf("%s/%s/%020d/%010d",
+	return []byte(fmt.Sprintf("%s%s%s%s%020d%s%010d",
 		key,
+		tagKeySeparator,
 		value,
+		tagKeySeparator,
 		result.Height,
+		tagKeySeparator,
 		result.Index,
 	))
 }
 
 func keyForHeight(result *abci.TxResult) []byte {
-	return []byte(fmt.Sprintf("%s/%d/%020d/%010d",
+	return []byte(fmt.Sprintf("%s%s%d%s%020d%s%010d",
 		types.TxHeightKey,
+		tagKeySeparator,
 		result.Height,
+		tagKeySeparator,
 		result.Height,
+		tagKeySeparator,
 		result.Index,
 	))
 }
@@ -653,7 +659,7 @@ func startKeyForCondition(c query.Condition, height int64) []byte {
 func startKey(fields ...interface{}) []byte {
 	var b bytes.Buffer
 	for _, f := range fields {
-		b.Write([]byte(fmt.Sprintf("%v", f) + tagKeySeparator))
+		b.Write([]byte(fmt.Sprintf("%v%s", f, tagKeySeparator)))
 	}
 	return b.Bytes()
 }
