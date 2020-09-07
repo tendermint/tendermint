@@ -38,7 +38,7 @@ type DuplicateVoteEvidence struct {
 }
 ```
 
-Tendermint has now introduced a new type of evidence to protect light clients from being attacked. This `LightClientAttackEvidence` is vastly different to `DuplicateVoteEvidence` in that it is physically a much different size containing a complete signed header and validator set. It is formed within the light client, not the consensus engine and requires a lot more information from state to verify (`VerifyLightClientAttack(commonHeader, trustedHeader *SignedHeader, commonVals *ValidatorSet)`  vs `VerifyDuplicateVote(chainID string, pubKey PubKey)`). Finally it batches validators together as opposed to having individual evidence. This evidence stretches the existing mould that was used to accomodate new types of evidence and has thus caused us to reconsider how evidence should be formatted and processed.
+Tendermint has now introduced a new type of evidence to protect light clients from being attacked. This `LightClientAttackEvidence` (see [here](https://github.com/informalsystems/tendermint-rs/blob/31ca3e64ce90786c1734caf186e30595832297a4/docs/spec/lightclient/attacks/evidence-handling.md) for more information) is vastly different to `DuplicateVoteEvidence` in that it is physically a much different size containing a complete signed header and validator set. It is formed within the light client, not the consensus engine and requires a lot more information from state to verify (`VerifyLightClientAttack(commonHeader, trustedHeader *SignedHeader, commonVals *ValidatorSet)`  vs `VerifyDuplicateVote(chainID string, pubKey PubKey)`). Finally it batches validators together (a single piece of evidence that implicates multiple malivious validators at a height) as opposed to having individual evidence (each piece of evidence is per validator per height). This evidence stretches the existing mould that was used to accommodate new types of evidence and has thus caused us to reconsider how evidence should be formatted and processed.
 
 ```go
 type LightClientAttackEvidence struct { // proposed struct in spec
@@ -55,7 +55,7 @@ type LightClientAttackEvidence struct { // proposed struct in spec
 
 ### Individual framework
 
-Evidence remains on a per validator basis. This causes the least disruption to the current processes but requires that we break `LightClientAttackEvidence` into several pieces of evidence for each malicious validator. This not only has performance consequences in that there are n times as many database operations and that the gossiping of evidence will require more bandwidth then necessary (by requiring a header for each piece) but it potentially impacts our ability to validate it. In batch form, the full node can run the same process the light client did to see that 1/3 validating power was present in both the common block and the conflicting block whereas this becomes more difficult to verify individually without opening the possibility that malicious validators forge evidence against innocent . Not only that, but `LightClientAttackEvidence` also deals with amnesia attacks which unfortunately have the characteristic where we know the set of validators involved but not the subset that were actually malicious (more to be said about this later). And finally splitting the evidence into individual pieces makes it difficult
+Evidence remains on a per validator basis. This causes the least disruption to the current processes but requires that we break `LightClientAttackEvidence` into several pieces of evidence for each malicious validator. This not only has performance consequences in that there are n times as many database operations and that the gossiping of evidence will require more bandwidth then necessary (by requiring a header for each piece) but it potentially impacts our ability to validate it. In batch form, the full node can run the same process the light client did to see that 1/3 validating power was present in both the common block and the conflicting block whereas this becomes more difficult to verify individually without opening the possibility that malicious validators forge evidence against innocent . Not only that, but `LightClientAttackEvidence` also deals with amnesia attacks which unfortunately have the characteristic where we know the set of validators involved but not the subset that were actually malicious (more to be said about this later). And finally splitting the evidence into individual pieces makes it difficult to understand the severity of the attack (i.e. the total voting power involved in the attack)
 
 #### An example of a possible implementation path
 
@@ -122,8 +122,9 @@ type DuplicateVoteEvidence {
 ```
 where the `Hash()` is the hash of the two votes
 
-The first is generated in the light client, the second in consensus. Both are sent to the evidence pool through `AddEvidence(ev Evidence) error` where it first runs `Has(ev Evidence)` to check if it has already received it (by comparing hashes) and then  `Verify(ev Evidence) error` before adding it to the database. There are two databases: one
-for pending evidence that is not yet committed and another of the committed evidence (on the chain)
+### The Evidence Pool
+
+The first is generated in the light client, the second in consensus. Both are sent to the evidence pool through `AddEvidence(ev Evidence) error`. The evidence pool's primary purpose is to verify evidence. It also gossips evidence to other peers' evidence pool and serves it to consensus so it can be committed on chain and the relevant information can be sent to the application in order to exercise punishment. When evidence is added, the pool first runs `Has(ev Evidence)` to check if it has already received it (by comparing hashes) and then  `Verify(ev Evidence) error`.  Once verified the evidence pool stores it it's pending database. There are two databases: one for pending evidence that is not yet committed and another of the committed evidence (to avoid committing evidence twice)
 
 
 `Verify()` does the following:
@@ -164,7 +165,7 @@ For `LightClientAttack`
 - For each validator, check the look up table to make sure there already isn't evidence against this validator
 
 
-After verification we persist the evidence with the following key `height/hash` to the pending evidence database in the evidence pool with the following format
+After verification we persist the evidence with the following key: `height/hash` to the pending evidence database in the evidence pool with the following format
 
 ```go
 type EvidenceInfo struct {
@@ -175,49 +176,57 @@ type EvidenceInfo struct {
 }
 ```
 
-We persist more information than just the evidence as this will be useful in forming the ABCI Evidence that we will come to later
+`time`, `validators` and `totalVotingPower` are need to form the ABCI Evidence that we will come to later. The evidence pool also runs a reactor that sends the newly validated
+evidence to all connected peers.
 
-Receiving broadcasts from other evidence reactors works in the same manner.
+Receiving broadcasts from other evidence reactors works in the same manner as receiving evidence from the consensus engine or a light client.
+
+
 
 When it comes to prevoting and precomitting a proposal that contains evidence, the full node will once again
 call upon the evidence pool to verify the evidence using `CheckEvidence(ev []Evidence)`:
 
-This loops through all the evidence first checking that nothing has been duplicated then:
+This performs the following actions:
 
-runs `fastCheck(ev evidence)` which works similar to `Has` but with `LightClientAttackEvidence` if it has the
-same hash it then checks to see that the validators it has are all signers in the commit of the conflicting header. If it doesn't pass fast check (because it hasn't seen the evidence before) then it will have to verify the evidence.
+1. Loops through all the evidence to check that nothing has been duplicated
 
-runs `Verify(ev Evidence)` - Note: this also saves the evidence to the db as mentioned before.
+2. For each evidence, run `fastCheck(ev evidence)` which works similar to `Has` but instead for `LightClientAttackEvidence` if it has the
+same hash it then goes on to check that the validators it has are all signers in the commit of the conflicting header. If it doesn't pass fast check (because it hasn't seen the evidence before) then it will have to verify the evidence.
+
+3. runs `Verify(ev Evidence)` - Note: this also saves the evidence to the db as mentioned before.
 
 
-The final part of the lifecycle is when the block is committed and the `BlockExecutor` tries to apply state. Instead of trying to form the information necessary to produce the ABCI evidence it gets the evpool to create the evidence in the update step as follows.
 
-`Update(Block, State) []abci.Evidence`
+The final part of the lifecycle is when the block is committed and the `BlockExecutor` tries to apply state. Instead of trying to form the information necessary to produce the ABCI evidence itself, it gets the evidence pool to create it when it calls `Update(Block, State) []abci.Evidence`
 
+Here is the excerpt in the `ApplyBlock()` where the evidence pool is updated.
 ```go
 abciResponses.BeginBlock.ByzantineValidators = evpool.Update(block, state)
 ```
 
-Update does the following:
-- increments state which keeps track of both the current time and height used for measuring expiry
-- marks evidence as committed and saves to db. This prevents validators from proposing committed evidence in the future
-  Note: the db just saves the height and the hash. There is no need to save the entire committed evidence
-- forms abci evidence:
-```go
-for _, val := range evInfo.Validators {
-  abciEv = append(abciEv, &abci.Evidence{
-    Type: evType,
-    Validator: val,
-    Height: evInfo.ev.Height(),
-    Time: evInfo.time,
-    TotalVotingPower: evInfo.totalVotingPower
-  })
-}
-```
-and compiles it all together (note for `DuplicateVoteEvidence` the validators array size is 1)
-- removes expired evidence from both pending and committed
+The `Update()` function does the following:
 
-The abci evidence is then sent via the `BlockExecutor` to the application.
+- Increments state which keeps track of both the current time and height used for measuring expiry
+
+- Marks evidence as committed and saves to db. This prevents validators from proposing committed evidence in the future
+  Note: the db just saves the height and the hash. There is no need to save the entire committed evidence
+
+- Forms ABCI evidence:  (note for `DuplicateVoteEvidence` the validators array size is 1)
+  ```go
+  for _, val := range evInfo.Validators {
+    abciEv = append(abciEv, &abci.Evidence{
+      Type: evType,   // either DuplicateVote or LightClientAttack
+      Validator: val,   // the offending validator (which includes the address, pubkey and power)
+      Height: evInfo.ev.Height(),    // the height when the offense happened
+      Time: evInfo.time,      // the time when the offense happened
+      TotalVotingPower: evInfo.totalVotingPower   // the total voting power of the validator set
+    })
+  }
+  ```
+
+- Removes expired evidence from both pending and committed
+
+The ABCI evidence is then sent via the `BlockExecutor` to the application.
 
 To summarize, we can see the lifecycle of evidence as such:
 
