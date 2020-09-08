@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -18,20 +17,12 @@ import (
 
 // Evidence represents any provable malicious activity by a validator.
 // Verification logic for each evidence is part of the evidence module.
-// This interface is designed to ensure compliance with the abci evidence
-// that is passed on to the application. 
 type Evidence interface {
-	Height() int64                  // height of the equivocation
-	Time() time.Time                // time of the equivocation
-	// addresses of the equivocating validator
+	Height() int64                  // height of the infraction
 	Bytes() []byte                  // bytes which comprise the evidence
 	Hash() []byte                   // hash of the evidence
-	ValidateBasic() error	        // basic validation	
-	Type() abci.EvidenceType        // type of evidence
+	ValidateBasic() error	        // basic consistency check	
 	String() string		            // string format of the evidence
-	
-	SetValidatorSet(vals *ValidatorSet)
-	ToABCI() []abci.Evidence
 }
 
 const (
@@ -46,16 +37,13 @@ const (
 type DuplicateVoteEvidence struct {
 	VoteA *Vote `json:"vote_a"`
 	VoteB *Vote `json:"vote_b"`
-
-	timestamp time.Time 
-	validator *Validator
 }
 
 var _ Evidence = &DuplicateVoteEvidence{}
 
 // NewDuplicateVoteEvidence creates DuplicateVoteEvidence with right ordering given
 // two conflicting votes. If one of the votes is nil, evidence returned is nil as well
-func NewDuplicateVoteEvidence(vote1, vote2 *Vote, time time.Time) *DuplicateVoteEvidence {
+func NewDuplicateVoteEvidence(vote1, vote2 *Vote) *DuplicateVoteEvidence {
 	var voteA, voteB *Vote
 	if vote1 == nil || vote2 == nil {
 		return nil
@@ -70,14 +58,12 @@ func NewDuplicateVoteEvidence(vote1, vote2 *Vote, time time.Time) *DuplicateVote
 	return &DuplicateVoteEvidence{
 		VoteA: voteA,
 		VoteB: voteB,
-
-		timestamp: time,
 	}
 }
 
 // String returns a string representation of the evidence.
 func (dve *DuplicateVoteEvidence) String() string {
-	return fmt.Sprintf("DuplicateVoteEvidence{VoteA: %v, VoteB: %v, Time: %v}", dve.VoteA, dve.VoteB, dve.Timestamp)
+	return fmt.Sprintf("DuplicateVoteEvidence{VoteA: %v, VoteB: %v}", dve.VoteA, dve.VoteB)
 }
 
 // Height returns the height this evidence refers to.
@@ -85,17 +71,7 @@ func (dve *DuplicateVoteEvidence) Height() int64 {
 	return dve.VoteA.Height
 }
 
-// Time returns time of the latest vote.
-func (dve *DuplicateVoteEvidence) Time() time.Time {
-	return dve.Timestamp
-}
-
-// Address returns the address of the validator.
-func (dve *DuplicateVoteEvidence) Addresses() []Address {
-	return []Address{dve.VoteA.ValidatorAddress}
-}
-
-// Hash returns the hash of the evidence.
+// Bytes returns the proto-encoded evidence as a byte array.
 func (dve *DuplicateVoteEvidence) Bytes() []byte {
 	pbe := dve.ToProto()
 	bz, err := pbe.Marshal()
@@ -109,11 +85,6 @@ func (dve *DuplicateVoteEvidence) Bytes() []byte {
 // Hash returns the hash of the evidence.
 func (dve *DuplicateVoteEvidence) Hash() []byte {
 	return tmhash.Sum(dve.Bytes())
-}
-
-// Type returns the type of evidence as a string
-func (dve *DuplicateVoteEvidence) Type() abciproto.EvidenceType { 
-	return abciproto.EvidenceType_DUPLICATE_VOTE
 }
 
 // ValidateBasic performs basic validation.
@@ -138,17 +109,18 @@ func (dve *DuplicateVoteEvidence) ValidateBasic() error {
 	return nil
 }
 
+// ToProto encodes DuplicateVoteEvidence to protobuf
 func (dve *DuplicateVoteEvidence) ToProto() *tmproto.DuplicateVoteEvidence {
 	voteB := dve.VoteB.ToProto()
 	voteA := dve.VoteA.ToProto()
 	tp := tmproto.DuplicateVoteEvidence{
 		VoteA:     voteA,
 		VoteB:     voteB,
-		Timestamp: dve.Timestamp,
 	}
 	return &tp
 }
 
+// DuplicateVoteEvidenceFromProto decodes protobuf into DuplicateVoteEvidence
 func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*DuplicateVoteEvidence, error) {
 	if pb == nil {
 		return nil, errors.New("nil duplicate vote evidence")
@@ -164,7 +136,7 @@ func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*Duplica
 		return nil, err
 	}
 
-	dve := NewDuplicateVoteEvidence(vA, vB, pb.Timestamp)
+	dve := NewDuplicateVoteEvidence(vA, vB)
 
 	return dve, dve.ValidateBasic()
 }
@@ -175,33 +147,23 @@ func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*Duplica
 // LightClientAttackEvidence is a generalized evidence that captures all forms of known attacks on
 // a light client such that a full node can verify, propose and commit the evidence on-chain for
 // punishment of the malicious validators. There are three forms of attacks: Lunatic, Equivocation
-// and Amnesia. You can find a more detailed overview of this at
+// and Amnesia. These attacks are exhaustive. You can find a more detailed overview of this at
 // tendermint/docs/architecture/adr-047-handling-evidence-from-light-client.md
 type LightClientAttackEvidence struct {
 	ConflictingBlock *LightBlock
 	CommonHeight     int64
-	Timestamp        time.Time
-	AttackType       tmproto.LightClientAttackType
 }
 
 var _ Evidence = &LightClientAttackEvidence{}
 
+// Height returns the last height at which the primary provider and witness provider had the same header.
+// We use this as the height of the infraction rather than the actual conflicting header because we know
+// that the malicious validators were bonded at this height which is important for evidence expiry
 func (l *LightClientAttackEvidence) Height() int64 {
 	return l.CommonHeight
 }
 
-func (l *LightClientAttackEvidence) Time() time.Time {
-	return l.Timestamp
-}
-
-func (l *LightClientAttackEvidence) Addresses() []Address {
-	addresses := make([]Address, len(l.ConflictingBlock.ValidatorSet.Validators))
-	for idx, val := range l.ConflictingBlock.ValidatorSet.Validators {
-		addresses[idx] = val.Address
-	}
-	return addresses
-}
-
+// Bytes returns the proto-encoded evidence as a byte array
 func (l *LightClientAttackEvidence) Bytes() []byte {
 	pbe, err := l.ToProto()
 	if err != nil {
@@ -214,6 +176,10 @@ func (l *LightClientAttackEvidence) Bytes() []byte {
 	return bz
 }
 
+// Hash returns the hash of the header and the commonHeight. This is designed to cause hash collisions with evidence
+// that have the same conflicting header and common height but different permutations of validator commit signatures.
+// The reason for this is that we don't want to allow several permutations of the same evidence to be committed on
+// chain. Ideally we commit the header with the most commit signatures but anything greater than 1/3 is sufficient.
 func (l *LightClientAttackEvidence) Hash() []byte {
 	bz := make([]byte, tmhash.Size+8)
 	copy(bz[:tmhash.Size-1], l.ConflictingBlock.Hash().Bytes())
@@ -221,6 +187,7 @@ func (l *LightClientAttackEvidence) Hash() []byte {
 	return tmhash.Sum(bz)
 }
 
+// ValidateBasic performs basic validation such that the evidence is consistent and can now be used for verification. 
 func (l *LightClientAttackEvidence) ValidateBasic() error {
 	if l.ConflictingBlock == nil {
 		return errors.New("conflicting block is nil")
@@ -247,15 +214,13 @@ func (l *LightClientAttackEvidence) ValidateBasic() error {
 	return nil
 }
 
-func (l *LightClientAttackEvidence) Type() abciproto.EvidenceType {
-	return abciproto.EvidenceType_LIGHT_CLIENT_ATTACK
-}
-
+// String returns a string representation of LightClientAttackEvidence
 func (l *LightClientAttackEvidence) String() string {
-	return fmt.Sprintf("LightClientAttackEvidence{ConflictingBlock: %v, CommonHeight: %d, Timestamp: %v, AttackType: %v}", 
-	l.ConflictingBlock.String(), l.CommonHeight, l.Timestamp.String(), l.AttackType.String())
+	return fmt.Sprintf("LightClientAttackEvidence{ConflictingBlock: %v, CommonHeight: %d}", 
+	l.ConflictingBlock.String(), l.CommonHeight)
 }
 
+// ToProto encodes LightClientAttackEvidence to protobuf
 func (l *LightClientAttackEvidence) ToProto() (*tmproto.LightClientAttackEvidence, error) {
 	conflictingBlock, err := l.ConflictingBlock.ToProto()
 	if err != nil {
@@ -265,11 +230,10 @@ func (l *LightClientAttackEvidence) ToProto() (*tmproto.LightClientAttackEvidenc
 	return &tmproto.LightClientAttackEvidence{
 		ConflictingBlock: conflictingBlock,
 		CommonHeight: l.CommonHeight,
-		Timestamp: l.Timestamp,
-		AttackType: l.AttackType,
 	}, nil
 }
 
+// LightClientAttackEvidenceFromProto decodes protobuf 
 func LightClientAttackEvidenceFromProto(l *tmproto.LightClientAttackEvidence) (*LightClientAttackEvidence, error) {
 	if l == nil {
 		return nil, errors.New("empty light client attack evidence")
@@ -283,8 +247,6 @@ func LightClientAttackEvidenceFromProto(l *tmproto.LightClientAttackEvidence) (*
 	le := &LightClientAttackEvidence{
 		ConflictingBlock: conflictingBlock,
 		CommonHeight: l.CommonHeight,
-		Timestamp: l.Timestamp,
-		AttackType: l.AttackType,
 	}
 	
 	return le, le.ValidateBasic()
@@ -327,6 +289,8 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 
 //------------------------------------------ PROTO --------------------------------------
 
+// EvidenceToProto is a generalized function for encoding evidence that conforms to the 
+// evidence interface to protobuf
 func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 	if evidence == nil {
 		return nil, errors.New("nil evidence")
@@ -357,6 +321,8 @@ func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
 	}
 }
 
+// EvidenceFromProto is a generalized function for decoding protobuf into the
+// evidence interface
 func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
 	if evidence == nil {
 		return nil, errors.New("nil evidence")
@@ -432,7 +398,7 @@ func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
 	vB := voteB.ToProto()
 	_ = pv.SignVote(chainID, vB)
 	voteB.Signature = vB.Signature
-	return NewDuplicateVoteEvidence(voteA, voteB, time)
+	return NewDuplicateVoteEvidence(voteA, voteB)
 }
 
 func makeMockVote(height int64, round, index int32, addr Address,

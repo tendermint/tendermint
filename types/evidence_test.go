@@ -17,7 +17,7 @@ import (
 var defaultVoteTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 func TestEvidenceList(t *testing.T) {
-	ev := randomDuplicatedVoteEvidence(t)
+	ev := randomDuplicateVoteEvidence(t)
 	evl := EvidenceList([]Evidence{ev})
 
 	assert.NotNil(t, evl.Hash())
@@ -56,7 +56,7 @@ func TestMaxEvidenceBytes(t *testing.T) {
 
 }
 
-func randomDuplicatedVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
+func randomDuplicateVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
 	val := NewMockPV()
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
@@ -65,6 +65,14 @@ func randomDuplicatedVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
 		VoteA: makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime),
 		VoteB: makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, defaultVoteTime.Add(1*time.Minute)),
 	}
+}
+
+func TestDuplicateVoteEvidence(t *testing.T) {
+	const height = int64(13)
+	ev := NewMockDuplicateVoteEvidence(height, time.Now(), "mock-chain-id")
+	assert.Equal(t, ev.Hash(), tmhash.Sum(ev.Bytes()))
+	assert.NotNil(t, ev.String())
+	assert.Equal(t, ev.Height(), height)
 }
 
 func TestDuplicateVoteEvidenceValidation(t *testing.T) {
@@ -99,11 +107,50 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			vote1 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID, defaultVoteTime)
 			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID2, defaultVoteTime)
-			ev := NewDuplicateVoteEvidence(vote1, vote2, vote1.Timestamp)
+			ev := NewDuplicateVoteEvidence(vote1, vote2)
 			tc.malleateEvidence(ev)
 			assert.Equal(t, tc.expectErr, ev.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
 	}
+}
+
+func TestLightClientAttackEvidence(t *testing.T) {
+	height := int64(5)
+	voteSet, valSet, _ := randVoteSet(height, 1, tmproto.PrecommitType, 10, 1)
+	header := makeHeaderRandom()
+	header.Height = height
+	lcae := &LightClientAttackEvidence{
+		ConflictingBlock: &LightBlock{
+			SignedHeader: &SignedHeader{
+				Header: header,
+				Commit: voteSet.MakeCommit(),
+			},
+			ValidatorSet: valSet,
+		},
+		CommonHeight: height - 1,
+	}
+	assert.NotNil(t, lcae.String())
+	assert.Equal(t, lcae.Hash()[:tmhash.Size], lcae.ConflictingBlock.Hash())
+	assert.Equal(t, lcae.Height(), int64(5))
+	assert.NotNil(t, lcae.Bytes())
+}
+
+func TestLightClientAttackEvidenceValidation(t *testing.T) {
+	height := int64(5)
+	voteSet, valSet, _ := randVoteSet(height, 1, tmproto.PrecommitType, 10, 1)
+	header := makeHeaderRandom()
+	header.Height = height
+	lcae := &LightClientAttackEvidence{
+		ConflictingBlock: &LightBlock{
+			SignedHeader: &SignedHeader{
+				Header: header,
+				Commit: voteSet.MakeCommit(),
+			},
+			ValidatorSet: valSet,
+		},
+		CommonHeight: height - 1,
+	}
+	assert.NoError(t, lcae.ValidateBasic())
 }
 
 func TestMockEvidenceValidateBasic(t *testing.T) {
