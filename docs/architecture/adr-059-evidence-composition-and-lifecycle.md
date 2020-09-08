@@ -83,7 +83,7 @@ However individual evidence has the advantage that it is easy to check if a node
 
 ## Decision
 
-The decision is to adopt a hybrid design
+The decision is to adopt a hybrid design.
 
 We allow individual and batch evidence to coexist together, meaning that verification is done depending on the evidence type and that  the bulk of the work is done in the evidence pool itself (including forming the evidence to be sent to the application).
 
@@ -161,12 +161,11 @@ For `LightClientAttack`
 
 - Fetch the trusted signed header at the same height as the conflicting header and compare with the conflicting header to work out which type of attack it is and in doing so return the malicious validators.
 
-  - If equivocation the validators that signed for the commits of both the trusted and signed header
+  - If equivocation, return the validators that signed for the commits of both the trusted and signed header
 
-  - If lunatic the validators from the common val set that signed in the conflicting block
+  - If lunatic, return the validators from the common val set that signed in the conflicting block
 
-  - If amnesia none (we can't know which validators are malicious). This also means that we don't
-  send amnesia evidence to the application
+  - If amnesia, return no validators (since we can't know which validators are malicious). This also means that we don't currently send amnesia evidence to the application, although we will introduce more robust amnesia evidence handling in future Tendermint Core releases
 
 - For each validator, check the look up table to make sure there already isn't evidence against this validator
 
@@ -181,7 +180,7 @@ type EvidenceInfo struct {
 }
 ```
 
-`time`, `validators` and `totalVotingPower` are need to form the ABCI Evidence that we will come to later.
+`time`, `validators` and `totalVotingPower` are need to form the `abci.Evidence` that we send to the application layer. More in this to come later.
 
 
 #### Broadcasting and receiving evidence
@@ -281,7 +280,7 @@ Accepted
 - Evidence is better contained to the evidence pool / module
 - LightClientAttack is kept together (easier for verification and bandwidth)
 - Variations on commit sigs in LightClientAttack doesn't lead to multiple permutations and multiple evidence
-- Address to evidence map prevents dos attacks of evidence by a single validator
+- Address to evidence map prevents DOS attacks, where a single validator could DOS the network by flooding it with evidence submissions
 
 ### Negative
 
