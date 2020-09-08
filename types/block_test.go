@@ -86,6 +86,9 @@ func TestBlockValidateBasic(t *testing.T) {
 		{"Tampered EvidenceHash", func(blk *Block) {
 			blk.EvidenceHash = []byte("something else")
 		}, true},
+		{"Incorrect block protocol version", func(blk *Block) {
+			blk.Version.Block = 1
+		}, true},
 	}
 	for i, tc := range testCases {
 		tc := tc
