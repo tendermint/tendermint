@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/light/provider"
 	mockp "github.com/tendermint/tendermint/light/provider/mock"
 	dbs "github.com/tendermint/tendermint/light/store/db"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -189,7 +190,6 @@ func TestClientDivergentTraces(t *testing.T) {
 		light.MaxRetryAttempts(1),
 	)
 	require.NoError(t, err)
-
 	_, err = c.VerifyLightBlockAtHeight(10, bTime.Add(1*time.Hour))
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(c.Witnesses()))

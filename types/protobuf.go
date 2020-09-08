@@ -111,30 +111,35 @@ func (tm2pb) ConsensusParams(params *tmproto.ConsensusParams) *abci.ConsensusPar
 // ABCI Evidence includes information from the past that's not included in the evidence itself
 // so Evidence types stays compact.
 // XXX: panics on nil or unknown pubkey type
-func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet) abci.Evidence {
-	addr := ev.Address()
-	_, val := valSet.GetByAddress(addr)
-	if val == nil {
-		// should already have checked this
-		panic(fmt.Sprintf("validator in evidence is not in val set, val addr: %v", addr))
+func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet) []abci.Evidence {
+	addrs := ev.Addresses()
+	var evidence []abci.Evidence
+	for _, addr := range addrs {
+		_, val := valSet.GetByAddress(addr)
+		if val == nil {
+			// should already have checked this
+			panic(fmt.Sprintf("validator in evidence is not in val set, val addr: %v", addr))
+		}
+	
+		// set type
+		var evType abci.EvidenceType
+		switch ev.(type) {
+		case *DuplicateVoteEvidence:
+			evType = abci.EvidenceType_DUPLICATE_VOTE
+		default:
+			panic(fmt.Sprintf("unknown evidence type: %v %v", ev, reflect.TypeOf(ev)))
+		}
+	
+		ev := abci.Evidence{
+			Type:             evType,
+			Validator:        TM2PB.Validator(val),
+			Height:           ev.Height(),
+			Time:             ev.Time(),
+			TotalVotingPower: valSet.TotalVotingPower(),
+		}
+		evidence = append(evidence, ev)
 	}
-
-	// set type
-	var evType abci.EvidenceType
-	switch ev.(type) {
-	case *DuplicateVoteEvidence:
-		evType = abci.EvidenceType_DUPLICATE_VOTE
-	default:
-		panic(fmt.Sprintf("unknown evidence type: %v %v", ev, reflect.TypeOf(ev)))
-	}
-
-	return abci.Evidence{
-		Type:             evType,
-		Validator:        TM2PB.Validator(val),
-		Height:           ev.Height(),
-		Time:             ev.Time(),
-		TotalVotingPower: valSet.TotalVotingPower(),
-	}
+	return evidence
 }
 
 // XXX: panics on nil or unknown pubkey type

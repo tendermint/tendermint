@@ -1681,13 +1681,19 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.MissingValidators.Set(float64(missingValidators))
 	cs.metrics.MissingValidatorsPower.Set(float64(missingValidatorsPower))
 
-	cs.metrics.ByzantineValidators.Set(float64(len(block.Evidence.Evidence)))
+	// byzantine validators maybe be duplicate and / or
+	// at different heights depending on the nature of the byzantine behavior
 	byzantineValidatorsPower := int64(0)
+	byzantineValidatorsCount := int64(0)
 	for _, ev := range block.Evidence.Evidence {
-		if _, val := cs.Validators.GetByAddress(ev.Address()); val != nil {
-			byzantineValidatorsPower += val.VotingPower
+		for _, address := range ev.Addresses() {
+			if _, val := cs.Validators.GetByAddress(address); val != nil {
+				byzantineValidatorsCount++
+				byzantineValidatorsPower += val.VotingPower
+			}
 		}
 	}
+	cs.metrics.ByzantineValidators.Set(float64(byzantineValidatorsCount))
 	cs.metrics.ByzantineValidatorsPower.Set(float64(byzantineValidatorsPower))
 
 	if height > 1 {

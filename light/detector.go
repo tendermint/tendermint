@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/light/provider"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 

@@ -23,6 +23,37 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
+type LightClientAttackType int32
+
+const (
+	LightClientAttackType_UNKNOWN      LightClientAttackType = 0
+	LightClientAttackType_LUNATIC      LightClientAttackType = 1
+	LightClientAttackType_EQUIVOCATION LightClientAttackType = 2
+	LightClientAttackType_AMNESIA      LightClientAttackType = 3
+)
+
+var LightClientAttackType_name = map[int32]string{
+	0: "UNKNOWN",
+	1: "LUNATIC",
+	2: "EQUIVOCATION",
+	3: "AMNESIA",
+}
+
+var LightClientAttackType_value = map[string]int32{
+	"UNKNOWN":      0,
+	"LUNATIC":      1,
+	"EQUIVOCATION": 2,
+	"AMNESIA":      3,
+}
+
+func (x LightClientAttackType) String() string {
+	return proto.EnumName(LightClientAttackType_name, int32(x))
+}
+
+func (LightClientAttackType) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_6825fabc78e0a168, []int{0}
+}
+
 // DuplicateVoteEvidence contains evidence a validator signed two conflicting
 // votes.
 type DuplicateVoteEvidence struct {
@@ -268,6 +299,7 @@ func (m *EvidenceData) GetHash() []byte {
 }
 
 func init() {
+	proto.RegisterEnum("tendermint.types.LightClientAttackType", LightClientAttackType_name, LightClientAttackType_value)
 	proto.RegisterType((*DuplicateVoteEvidence)(nil), "tendermint.types.DuplicateVoteEvidence")
 	proto.RegisterType((*LightClientAttackEvidence)(nil), "tendermint.types.LightClientAttackEvidence")
 	proto.RegisterType((*Evidence)(nil), "tendermint.types.Evidence")
@@ -848,6 +880,7 @@ func (m *LightClientAttackEvidence) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+
 func (m *Evidence) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
