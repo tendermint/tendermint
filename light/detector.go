@@ -71,7 +71,7 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 			// and generate evidence against the primary that we can send to the witness
 			ev := &types.LightClientAttackEvidence{
 				ConflictingBlock: witnessTrace[len(witnessTrace)-1],
-				CommonHeight: witnessTrace[0].Height,
+				CommonHeight:     witnessTrace[0].Height,
 			}
 			c.logger.Error("Attack detected. Sending evidence againt primary by witness", "ev", ev,
 				"primary", c.primary, "witness", e.Witness)
@@ -88,8 +88,8 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 
 			// We now use the primary trace to create evidence against the witness and send it to the primary
 			ev = &types.LightClientAttackEvidence{
-				ConflictingBlock: primaryTrace[len(primaryTrace)-1], 
-				CommonHeight: primaryTrace[0].Height,
+				ConflictingBlock: primaryTrace[len(primaryTrace)-1],
+				CommonHeight:     primaryTrace[0].Height,
 			}
 			c.logger.Error("Sending evidence against witness by primary", "ev", ev,
 				"primary", c.primary, "witness", e.Witness)

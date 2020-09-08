@@ -186,7 +186,7 @@ func genMockNodeWithKeys(
 	var (
 		headers         = make(map[int64]*types.SignedHeader, blockSize)
 		valset          = make(map[int64]*types.ValidatorSet, blockSize)
-		keymap          = make(map[int64]privKeys, blockSize + 1)
+		keymap          = make(map[int64]privKeys, blockSize+1)
 		keys            = genPrivKeys(valSize)
 		totalVariation  = valVariation
 		valVariationInt int
@@ -221,7 +221,7 @@ func genMockNodeWithKeys(
 		valset[height] = keys.ToValidators(2, 0)
 		lastHeader = currentHeader
 		keys = newKeys
-		keymap[height + 1] = keys
+		keymap[height+1] = keys
 	}
 
 	return headers, valset, keymap
@@ -236,7 +236,7 @@ func genMockNode(
 	string,
 	map[int64]*types.SignedHeader,
 	map[int64]*types.ValidatorSet) {
-	headers, valset, _ := genMockNodeWithKeys(chainID, blockSize, valSize, valVariation, bTime) 
+	headers, valset, _ := genMockNodeWithKeys(chainID, blockSize, valSize, valVariation, bTime)
 	return chainID, headers, valset
 }
 
