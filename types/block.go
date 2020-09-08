@@ -376,7 +376,7 @@ func (h *Header) Populate(
 //
 // NOTE: Timestamp validation is subtle and handled elsewhere.
 func (h Header) ValidateBasic() error {
-	if h.Version.Block != 0 && h.Version.Block != version.BlockProtocol {
+	if h.Version.Block != version.BlockProtocol {
 		return fmt.Errorf("block protocol is incorrect: got: %d, want: %d ", h.Version.Block, version.BlockProtocol)
 	}
 	if len(h.ChainID) > MaxChainIDLen {
