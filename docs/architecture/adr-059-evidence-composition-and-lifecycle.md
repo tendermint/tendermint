@@ -169,7 +169,7 @@ For `LightClientAttack`
 
 - For each validator, check the look up table to make sure there already isn't evidence against this validator
 
-After verification we persist the evidence with the following key: `height/hash` to the pending evidence database in the evidence pool with the following format
+After verification we persist the evidence with the key `height/hash` to the pending evidence database in the evidence pool with the following format:
 
 ```go
 type EvidenceInfo struct {
