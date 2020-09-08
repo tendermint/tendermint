@@ -3,6 +3,7 @@ package evidence
 import (
 	"fmt"
 
+	"github.com/tendermint/tendermint/light"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -76,4 +77,16 @@ func VerifyEvidence(evidence types.Evidence, state sm.State, stateDB StateStore,
 	}
 
 	return nil
+}
+
+func VerifyLightClientAttack(e *types.LightClientAttackEvidence, state sm.State, stateDB StateStore, blockStore BlockStore) {
+	commonBlockMeta := blockStore.LoadBlockMeta(e.Height())
+	if commonBlockMeta == nil {
+		return errors.New("don't have common header at height #%d", e.Height())
+	}
+	commonVals := 
+
+	err := light.Verify()
+	
+
 }
