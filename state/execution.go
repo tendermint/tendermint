@@ -473,39 +473,49 @@ func fireEvents(
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) {
-	eventBus.PublishEventNewBlock(types.EventDataNewBlock{
+	if err := eventBus.PublishEventNewBlock(types.EventDataNewBlock{
 		Block:            block,
 		ResultBeginBlock: *abciResponses.BeginBlock,
 		ResultEndBlock:   *abciResponses.EndBlock,
-	})
-	eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
+	}); err != nil {
+		logger.Error("Error publishing new block", "err", err)
+	}
+	if err := eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
 		Header:           block.Header,
 		NumTxs:           int64(len(block.Txs)),
 		ResultBeginBlock: *abciResponses.BeginBlock,
 		ResultEndBlock:   *abciResponses.EndBlock,
-	})
+	}); err != nil {
+		logger.Error("Error publishing new block header", "err", err)
+	}
 
 	if len(block.Evidence.Evidence) != 0 {
 		for _, ev := range block.Evidence.Evidence {
-			eventBus.PublishEventNewEvidence(types.EventDataNewEvidence{
+			if err := eventBus.PublishEventNewEvidence(types.EventDataNewEvidence{
 				Evidence: ev,
 				Height:   block.Height,
-			})
+			}); err != nil {
+				logger.Error("Error publishing new evidence", "err", err)
+			}
 		}
 	}
 
 	for i, tx := range block.Data.Txs {
-		eventBus.PublishEventTx(types.EventDataTx{TxResult: abci.TxResult{
+		if err := eventBus.PublishEventTx(types.EventDataTx{TxResult: abci.TxResult{
 			Height: block.Height,
 			Index:  uint32(i),
 			Tx:     tx,
 			Result: *(abciResponses.DeliverTxs[i]),
-		}})
+		}}); err != nil {
+			logger.Error("Error publishing event TX", "err", err)
+		}
 	}
 
 	if len(validatorUpdates) > 0 {
-		eventBus.PublishEventValidatorSetUpdates(
-			types.EventDataValidatorSetUpdates{ValidatorUpdates: validatorUpdates})
+		if err := eventBus.PublishEventValidatorSetUpdates(
+			types.EventDataValidatorSetUpdates{ValidatorUpdates: validatorUpdates}); err != nil {
+			logger.Error("Error publishing event", "err", err)
+		}
 	}
 }
 

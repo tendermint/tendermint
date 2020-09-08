@@ -110,7 +110,7 @@ type addrBook struct {
 
 func newHashKey() []byte {
 	result := make([]byte, highwayhash.Size)
-	crand.Read(result)
+	crand.Read(result) //nolint:errcheck // ignore error
 	return result
 }
 
@@ -328,7 +328,9 @@ func (a *addrBook) MarkGood(id p2p.ID) {
 	}
 	ka.markGood()
 	if ka.isNew() {
-		a.moveToOld(ka)
+		if err := a.moveToOld(ka); err != nil {
+			a.Logger.Error("Error moving address to old", "err", err)
+		}
 	}
 }
 
@@ -373,7 +375,9 @@ func (a *addrBook) ReinstateBadPeers() {
 			continue
 		}
 
-		a.addToNewBucket(ka, bucket)
+		if err := a.addToNewBucket(ka, bucket); err != nil {
+			a.Logger.Error("Error adding peer to new bucket", "err", err)
+		}
 		delete(a.badPeers, ka.ID())
 
 		a.Logger.Info("Reinstated address", "addr", ka.Addr)
@@ -779,7 +783,9 @@ func (a *addrBook) moveToOld(ka *knownAddress) error {
 		if err != nil {
 			return err
 		}
-		a.addToNewBucket(oldest, newBucketIdx)
+		if err := a.addToNewBucket(oldest, newBucketIdx); err != nil {
+			a.Logger.Error("Error adding peer to old bucket", "err", err)
+		}
 
 		// Finally, add our ka to old bucket again.
 		added = a.addToOldBucket(ka, oldBucketIdx)
@@ -935,6 +941,6 @@ func (a *addrBook) hash(b []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	hasher.Write(b)
+	hasher.Write(b) //nolint:errcheck // ignore error
 	return hasher.Sum(nil), nil
 }

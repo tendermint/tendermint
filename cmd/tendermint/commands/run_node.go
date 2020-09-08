@@ -120,7 +120,9 @@ func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 			// Stop upon receiving SIGTERM or CTRL-C.
 			tmos.TrapSignal(logger, func() {
 				if n.IsRunning() {
-					n.Stop()
+					if err := n.Stop(); err != nil {
+						logger.Error("unable to stop the node", "error", err)
+					}
 				}
 			})
 

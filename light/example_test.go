@@ -66,7 +66,9 @@ func ExampleClient_Update() {
 		stdlog.Fatal(err)
 	}
 	defer func() {
-		c.Cleanup()
+		if err := c.Cleanup(); err != nil {
+			stdlog.Fatal(err)
+		}
 	}()
 
 	time.Sleep(2 * time.Second)
@@ -135,7 +137,9 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 		stdlog.Fatal(err)
 	}
 	defer func() {
-		c.Cleanup()
+		if err := c.Cleanup(); err != nil {
+			stdlog.Fatal(err)
+		}
 	}()
 
 	_, err = c.VerifyLightBlockAtHeight(3, time.Now())

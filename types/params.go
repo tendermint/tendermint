@@ -150,7 +150,10 @@ func HashConsensusParams(params tmproto.ConsensusParams) []byte {
 		panic(err)
 	}
 
-	hasher.Write(bz)
+	_, err = hasher.Write(bz)
+	if err != nil {
+		panic(err)
+	}
 	return hasher.Sum(nil)
 }
 

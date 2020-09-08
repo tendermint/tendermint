@@ -17,7 +17,11 @@ import (
 func TestSIGHUP(t *testing.T) {
 	origDir, err := os.Getwd()
 	require.NoError(t, err)
-	defer os.Chdir(origDir)
+	t.Cleanup(func() {
+		if err := os.Chdir(origDir); err != nil {
+			t.Error(err)
+		}
+	})
 
 	// First, create a temporary directory and move into it
 	dir, err := ioutil.TempDir("", "sighup_test")
