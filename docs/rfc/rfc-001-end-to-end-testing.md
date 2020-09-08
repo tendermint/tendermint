@@ -4,6 +4,8 @@
 
 - 2020-09-07: Initial draft (@erikgrinaker)
 
+- 2020-09-08: Minor improvements (@erikgrinaker)
+
 ## Authors
 
 - Erik Grinaker (@erikgrinaker)
@@ -24,69 +26,64 @@ The following lists the functionality we would like to test:
 
 #### Environments
 
-- Topology: single node, 4 nodes, sentry architecture, NAT (UPnP)
-
-- Networking: IPv4, IPv6
-
-- ABCI connection: UNIX socket, TCP, gRPC
-
-- PrivVal: file, UNIX socket, TCP
+- **Topology:** single node, 4 nodes (seeds and persistent), sentry architecture, NAT (UPnP)
+- **Networking:** IPv4, IPv6
+- **ABCI connection:** UNIX socket, TCP, gRPC
+- **PrivVal:** file, UNIX socket, TCP
 
 #### Node/App Configurations
 
-- Database: goleveldb, cleveldb, boltdb, rocksdb, badgerdb
+- **Database:** goleveldb, cleveldb, boltdb, rocksdb, badgerdb
+- **Fast sync:** disabled, v0, v1, v2
+- **State sync:** disabled, enabled
+- **Block pruning:** none, keep 20, keep 1, keep random
+- **Role:** validator, full node
+- **App persistence:** enabled, disabled
 
-- Fast sync: disabled, v0, v1, v2
+#### Geneses
 
-- State sync: disabled, enabled
-
-- Block pruning: none, keep 20, keep 1, keep random
-
-- Role: validator, full node
-
-### Geneses
-
-- Validators: none (InitChain), given
-
-- Initial height: 1, 1000
-
-- App state: none, given
+- **Validators:** none (InitChain), given
+- **Initial height:** 1, 1000
+- **App state:** none, given
 
 #### Behaviors
 
-- Recovery: stop/start, power cycling, validator outage, network partition, total network loss
-
-- Validators: add, remove, change power
+- **Recovery:** stop/start, power cycling, validator outage, network partition, total network loss
+- **Validators:** add, remove, change power
 
 ### Functional Combinations
 
-Running separate tests for all combinations of the above functionality is not feasible, as there are 2.6 million of them. However, the functionality can be grouped into three broad classes:
+Running separate tests for all combinations of the above functionality is not feasible, as there are millions of them. However, the functionality can be grouped into three broad classes:
 
-- Global: affects the entire network, needing a separate testnet for each combination (e.g. topology, network protocol, genesis settings)
+- **Global:** affects the entire network, needing a separate testnet for each combination (e.g. topology, network protocol, genesis settings)
 
-- Local: affects a single node, and can be varied per node in a testnet (e.g. ABCI/privval connections, database backend, block pruning)
+- **Local:** affects a single node, and can be varied per node in a testnet (e.g. ABCI/privval connections, database backend, block pruning)
 
-- Temporal: can be run after each other in the same testnet (e.g. recovery and validator changes)
+- **Temporal:** can be run after each other in the same testnet (e.g. recovery and validator changes)
 
 Thus, we can run separate testnets for all combinations of global options (on the order of 100). In each testnet, we run nodes with randomly generated node configurations optimized for broad coverage (i.e. if one node is using GoLevelDB, then no other node should use it if possible). And in each testnet, we sequentially and randomly pick nodes to stop/start, power cycle, add/remove, disconnect, and so on.
 
 All of the settings should be specified in a testnet configuration (or alternatively the seed that generated it) such that it can be retrieved from CI and debugged locally.
 
+A custom ABCI application will have to be built that can exhibit the necessary behavior (e.g. make validator changes, prune blocks, enable/disable persistence, and so on).
+
 ### Test Stages
 
 Given a test configuration, the test runner has the following stages:
 
-- Setup: configures the Docker containers and networks, but does not start them.
+- **Setup:** configures the Docker containers and networks, but does not start them.
 
-- Initialization: starts the Docker containers, performs fast sync/state sync, adds/removes validators, restarts nodes, perturbs networking, etc. Between each operation, check basic liveness and readiness.
+- **Initialization:** starts the Docker containers, performs fast sync/state sync.
 
-- Test: runs RPC tests independently against all network nodes, making sure data matches expectations and invariants hold.
+- **Perturbation:** adds/removes validators, restarts nodes, perturbs networking, etc - liveness and readiness checked between each operation.
+
+- **Testing:** runs RPC tests independently against all network nodes, making sure data matches expectations and invariants hold.
 
 ### Tests
 
-The test suite will do black-box testing against the Tendermint RPC service of a single network node, executed against all nodes separately. We will be testing the behavior of the network as a whole, e.g. that a fast synced node correctly catches up to the chain head and serves basic block data via RPC. Comprehensive component testing (e.g. each and every RPC method parameter) should be done via unit/integration tests. Thus the tests will not send e.g. P2P messages or examine the node database, as these are considered internal implementation details - if the network behaves correctly, presumably the internal components function correctly.
+The general approach will be to put the network through a sequence of operations (see stages above), check basic liveness and readiness after each operation, and then once the network stabilizes run an RPC test suite against each node in the network.
 
-The general approach will be to put the network through a sequence of operations (see initialization stage above), check basic liveness and readiness after each operation, and then once the network stabilizes run the test suite against each node in the network.
+The test suite will do black-box testing against a single node's RPC service. We will be testing the behavior of the network as a whole, e.g. that a fast synced node correctly catches up to the chain head and serves basic block data via RPC. Thus the tests will not send e.g. P2P messages or examine the node database, as these are considered internal implementation details - if the network behaves correctly, presumably the internal components function correctly. Comprehensive component testing (e.g. each and every RPC method parameter) should be done via unit/integration tests.
 
 The tests must take into account the node configuration (e.g. some nodes may be pruned, others may not be validators), and should somehow be provided access to expected data (i.e. complete block headers for the entire chain).
 
