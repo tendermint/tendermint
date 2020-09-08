@@ -7,11 +7,11 @@
 
 ## Scope
 
-This document is designed to collate together and surface some predicaments involving evidence in Tendermint: both it's composition and lifecycle. It then aims to find a solution to these. The scope does not extend to the verification nor detection of certain types of evidence but concerns itself mainly with the general form of evidence and its lifecycle.
+This document is designed to collate together and surface some predicaments involving evidence in Tendermint: both its composition and lifecycle. It then aims to find a solution to these. The scope does not extend to the verification nor detection of certain types of evidence but concerns itself mainly with the general form of evidence and its lifecycle.
 
 ## Background
 
-For a long time `DuplicateVoteEvidence`, formed in the consensus engine, was the only evidence Tendermint had. It was produced whenever two votes from the same validator in the same round
+For a long time `DuplicateVoteEvidence`, formed in the consensus reactor, was the only evidence Tendermint had. It was produced whenever two votes from the same validator in the same round
 was observed and thus it was made in a per validator way. It was predicted that there may come more forms of evidence and thus `DuplicateVoteEvidence` was used as the model for the `Evidence` interface and also for the form of the evidence data sent to the application. It is important to note that Tendermint concerns itself just with the detection and reporting of evidence and it is the responsibility of the application to exercise punishment.
 
 ```go
@@ -38,7 +38,7 @@ type DuplicateVoteEvidence struct {
 }
 ```
 
-Tendermint has now introduced a new type of evidence to protect light clients from being attacked. This `LightClientAttackEvidence` (see [here](https://github.com/informalsystems/tendermint-rs/blob/31ca3e64ce90786c1734caf186e30595832297a4/docs/spec/lightclient/attacks/evidence-handling.md) for more information) is vastly different to `DuplicateVoteEvidence` in that it is physically a much different size containing a complete signed header and validator set. It is formed within the light client, not the consensus engine and requires a lot more information from state to verify (`VerifyLightClientAttack(commonHeader, trustedHeader *SignedHeader, commonVals *ValidatorSet)`  vs `VerifyDuplicateVote(chainID string, pubKey PubKey)`). Finally it batches validators together (a single piece of evidence that implicates multiple malivious validators at a height) as opposed to having individual evidence (each piece of evidence is per validator per height). This evidence stretches the existing mould that was used to accommodate new types of evidence and has thus caused us to reconsider how evidence should be formatted and processed.
+Tendermint has now introduced a new type of evidence to protect light clients from being attacked. This `LightClientAttackEvidence` (see [here](https://github.com/informalsystems/tendermint-rs/blob/31ca3e64ce90786c1734caf186e30595832297a4/docs/spec/lightclient/attacks/evidence-handling.md) for more information) is vastly different to `DuplicateVoteEvidence` in that it is physically a much different size containing a complete signed header and validator set. It is formed within the light client, not the consensus reactor and requires a lot more information from state to verify (`VerifyLightClientAttack(commonHeader, trustedHeader *SignedHeader, commonVals *ValidatorSet)`  vs `VerifyDuplicateVote(chainID string, pubKey PubKey)`). Finally it batches validators together (a single piece of evidence that implicates multiple malivious validators at a height) as opposed to having individual evidence (each piece of evidence is per validator per height). This evidence stretches the existing mould that was used to accommodate new types of evidence and has thus caused us to reconsider how evidence should be formatted and processed.
 
 ```go
 type LightClientAttackEvidence struct { // proposed struct in spec
@@ -48,8 +48,8 @@ type LightClientAttackEvidence struct { // proposed struct in spec
 
   timestamp time.Time // taken from the block time at the common height
 }
-
 ```
+*Note: These three attack types have been proven by the research team to be exhaustive*
 
 ## Possible Approaches for Evidence Composition
 
@@ -83,7 +83,7 @@ However individual evidence has the advantage that it is easy to check if a node
 
 ## Decision
 
-Use a hybrid design
+The decision is to adopt a hybrid design
 
 We allow individual and batch evidence to coexist together, meaning that verification is done depending on the evidence type and that  the bulk of the work is done in the evidence pool itself (including forming the evidence to be sent to the application).
 
@@ -102,17 +102,21 @@ type Evidence interface {  //proposed
 }
 ```
 
-The changing of the interface is therefore breaking to the block.
+The changing of the interface is therefore block-breaking. This change means that evidence is hashed differently, and so when evidence is included in a block (more on that process later), the hash of blocks changes as well.
+
+This means that this change would require a network upgrade/restart. Fortunately, we have one upcoming for Stargate, so it's no problem to include this work in the Tendermint Stargate release.
 
 We have two concrete types of evidence that fulfil this interface
 
 ```go
 type LightClientAttackEvidence struct {
   ConflictingBlock *LightBlock
-  CommonHeight int64
+  CommonHeight int64 // the last height at which the primary provider and witness provider had the same header
 }
 ```
-where the `Hash()` is the hash of the header and commonHeight
+where the `Hash()` is the hash of the header and commonHeight.
+
+Note: It was also discussed whether to include the commit hash which captures the validators that signed the header. However this would open the opportunity for someone to propose multiple permutations of the same evidence (through different commit signatures) hence it was omitted. Consequentially, when it comes to verifying evidence in a block, for `LightClientAttackEvidence` we can't just check the hashes because someone could have the same hash as us but a different commit where less than 1/3 validators voted which would be an invalid version of the evidence. (see `fastCheck` for more details)
 
 ```go
 type DuplicateVoteEvidence {
@@ -121,6 +125,9 @@ type DuplicateVoteEvidence {
 }
 ```
 where the `Hash()` is the hash of the two votes
+
+For both of these types of evidence, `Bytes()` represents the proto-encoded byte array format of the evidence and `ValidateBasic` is
+an initial consistency check to make sure the evidence has a valid structure.
 
 ### The Evidence Pool
 
@@ -184,7 +191,7 @@ type EvidenceInfo struct {
 The evidence pool also runs a reactor that broadcasts the newly validated
 evidence to all connected peers.
 
-Receiving evidence from other evidence reactors works in the same manner as receiving evidence from the consensus engine or a light client.
+Receiving evidence from other evidence reactors works in the same manner as receiving evidence from the consensus reactor or a light client.
 
 
 #### Proposing evidence on the block
@@ -204,21 +211,41 @@ same hash it then goes on to check that the validators it has are all signers in
 
 #### Updating application and pool
 
-The final part of the lifecycle is when the block is committed and the `BlockExecutor` tries to apply state. Instead of trying to form the information necessary to produce the ABCI evidence itself, it gets the evidence pool to create it when it calls `Update(Block, State) []abci.Evidence`
+The final part of the lifecycle is when the block is committed and the `BlockExecutor` then updates state. As part of this process, the `BlockExecutor` gets the evidence pool to create a simplified format for the evidence to be sent to the application. This happens in `ApplyBlock` where the executor calls `Update(Block, State) []abci.Evidence`.
 
-Here is the excerpt in the `ApplyBlock()` where the evidence pool is updated.
 ```go
 abciResponses.BeginBlock.ByzantineValidators = evpool.Update(block, state)
 ```
 
-The `Update()` function does the following:
+Here is the format of the evidence that the application will receive. As seen above, this is stored as an array within `BeginBlock`.
+The changes to the application are minimal (it is still formed one for each malicious validator) with the exception of using an enum instead of a string for the evidence type.
+
+```go
+type Evidence struct {
+  // either LightClientAttackEvidence or DuplicateVoteEvidence as an enum (abci.EvidenceType)
+	Type EvidenceType `protobuf:"varint,1,opt,name=type,proto3,enum=tendermint.abci.EvidenceType" json:"type,omitempty"`
+	// The offending validator
+	Validator Validator `protobuf:"bytes,2,opt,name=validator,proto3" json:"validator"`
+	// The height when the offense occurred
+	Height int64 `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
+	// The corresponding time where the offense occurred
+	Time time.Time `protobuf:"bytes,4,opt,name=time,proto3,stdtime" json:"time"`
+	// Total voting power of the validator set in case the ABCI application does
+	// not store historical validators.
+	// https://github.com/tendermint/tendermint/issues/4581
+	TotalVotingPower int64 `protobuf:"varint,5,opt,name=total_voting_power,json=totalVotingPower,proto3" json:"total_voting_power,omitempty"`
+}
+```
+
+
+This `Update()` function does the following:
 
 - Increments state which keeps track of both the current time and height used for measuring expiry
 
 - Marks evidence as committed and saves to db. This prevents validators from proposing committed evidence in the future
   Note: the db just saves the height and the hash. There is no need to save the entire committed evidence
 
-- Forms ABCI evidence:  (note for `DuplicateVoteEvidence` the validators array size is 1)
+- Forms ABCI evidence as such:  (note for `DuplicateVoteEvidence` the validators array size is 1)
   ```go
   for _, val := range evInfo.Validators {
     abciEv = append(abciEv, &abci.Evidence{
@@ -231,7 +258,7 @@ The `Update()` function does the following:
   }
   ```
 
-- Removes expired evidence from both pending and committed
+- Removes expired evidence from both pending and committed databases
 
 The ABCI evidence is then sent via the `BlockExecutor` to the application.
 
@@ -241,7 +268,7 @@ To summarize, we can see the lifecycle of evidence as such:
 
 ![evidence_lifecycle](../imgs/evidence_lifecycle.png)
 
-Evidence is first detected and created in the light client and consensus engine. It is verified and stored as `EvidenceInfo` and gossiped to the evidence pools in other nodes. The consensus engine later communicates with the evidence pool to either retrieve evidence to be put into a block, or verify the evidence the consensus engine has retrieved in a block. Lastly when a block is added to the chain, the block executor sends the committed evidence back to the evidence pool so a pointer to the evidence can be stored in the evidence pool and it can update it's height and time. Finally, it turns the committed evidence into ABCI evidence and through the block executor passes the evidence to the application so the application can handle it.
+Evidence is first detected and created in the light client and consensus reactor. It is verified and stored as `EvidenceInfo` and gossiped to the evidence pools in other nodes. The consensus reactor later communicates with the evidence pool to either retrieve evidence to be put into a block, or verify the evidence the consensus reactor has retrieved in a block. Lastly when a block is added to the chain, the block executor sends the committed evidence back to the evidence pool so a pointer to the evidence can be stored in the evidence pool and it can update it's height and time. Finally, it turns the committed evidence into ABCI evidence and through the block executor passes the evidence to the application so the application can handle it.
 
 ## Status
 
@@ -260,12 +287,12 @@ Accepted
 
 ### Negative
 
-- Breaking change to Evidence interface and thus evidence
+- Changes the `Evidence` interface and thus is a block breaking change
+- Changes the ABCI `Evidence` and is thus a ABCI breaking change
 - Unable to query evidence for address / time without evidence pool
 
 ### Neutral
 
-- Doesn't break the ABCI Evidence struct
 
 ## References
 
