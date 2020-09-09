@@ -28,7 +28,7 @@ set +e # circle sigh :(
 	for j in `seq 2 $N`; do
 		PERSISTENT_PEERS="$PERSISTENT_PEERS,$(test/p2p/address.sh $IPV $j 26656 $DOCKER_IMAGE)"
 	done
-	bash test/p2p/peer.sh $DOCKER_IMAGE $NETWORK_NAME $IPV $ID $PROXY_APP "--p2p.persistent_peers $PERSISTENT_PEERS --p2p.pex --rpc.unsafe"
+	bash test/p2p/peer.sh $DOCKER_IMAGE $NETWORK_NAME $IPV $ID $PROXY_APP "--p2p.persistent_peers $PERSISTENT_PEERS --p2p.pex --rpc.unsafe --mode validator"
 
 	# wait for peer to sync and check the app hash
 	bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME $IPV fs_$ID "test/p2p/fast_sync/check_peer.sh $IPV $ID"

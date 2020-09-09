@@ -124,7 +124,7 @@ Restart=on-failure
 User={{service}}
 Group={{service}}
 PermissionsStartOnly=true
-ExecStart=/usr/bin/tendermint node --proxy_app=kvstore --p2p.persistent_peers=$id0@$ip0:26656,$id1@$ip1:26656,$id2@$ip2:26656,$id3@$ip3:26656
+ExecStart=/usr/bin/tendermint node --mode validator --proxy_app=kvstore --p2p.persistent_peers=$id0@$ip0:26656,$id1@$ip1:26656,$id2@$ip2:26656,$id3@$ip3:26656
 ExecReload=/bin/kill -HUP \$MAINPID
 KillSignal=SIGTERM
 

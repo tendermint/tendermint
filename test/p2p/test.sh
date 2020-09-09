@@ -39,7 +39,7 @@ bash test/p2p/fast_sync/test.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" "$N" "$PR
 bash test/p2p/dsrr/test.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" "$N" "$PROXY_APP"
 
 # test killing all peers 3 times
-bash test/p2p/kill_all/test.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" "$N" 3
+bash test/p2p/kill_all/test.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" "$N" 3 "$PROXY_APP"
 
 # test pex
 bash test/p2p/pex/test.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$IPV" "$N" "$PROXY_APP"

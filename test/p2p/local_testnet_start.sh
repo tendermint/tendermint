@@ -23,5 +23,5 @@ else
 fi
 
 for i in $(seq 1 "$N"); do
-	bash test/p2p/peer.sh "$DOCKER_IMAGE" "$NETWORK_NAME" $IPV "$i" "$APP_PROXY" "$PERSISTENT_PEERS --p2p.pex --rpc.unsafe"
+	bash test/p2p/peer.sh "$DOCKER_IMAGE" "$NETWORK_NAME" $IPV "$i" "$APP_PROXY" "$PERSISTENT_PEERS --p2p.pex --rpc.unsafe --mode validator"
 done

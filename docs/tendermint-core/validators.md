@@ -67,6 +67,7 @@ When initializing nodes there are five parameters in the `config.toml` that may 
 
 | Config Option            | Setting                    |
 | ------------------------ | -------------------------- |
+| mode                     | validator                  |
 | pex                      | false                      |
 | persistent_peers         | list of sentry nodes       |
 | private_peer_ids         | none                       |
@@ -80,6 +81,7 @@ The validator node should have `pex=false` so it does not gossip to the entire n
 
 | Config Option          | Setting                                       |
 | ---------------------- | --------------------------------------------- |
+| mode                   | fullnode                                      |
 | pex                    | true                                          |
 | persistent_peers       | validator node, optionally other sentry nodes |
 | private_peer_ids       | validator node ID                             |
