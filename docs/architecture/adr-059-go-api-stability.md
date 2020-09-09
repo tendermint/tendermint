@@ -2,25 +2,33 @@
 
 ## Changelog
 
-- 2020-09-08: Initial version (@erikgrinaker)
+- 2020-09-08: Initial version. (@erikgrinaker)
+
+- 2020-09-09: Allow changing struct comparability, adding variadic parameters, changing struct field order, and widening named numeric types. Expand glossary and clarify terms. (@erikgrinaker)
 
 ## Context
 
-With the release of Tendermint 1.0, we want to adopt [semantic versioning](https://semver.org). One major implication of this is a guarantee that we will not make backwards-incompatible changes until Tendermint 2.0 (except in pre-release versions). In order to provide this guarantee for our Go API, we must clearly define which of our APIs are public, and what changes are considered backwards-incompatible.
+With the release of Tendermint 1.0, we want to adopt [semantic versioning](https://semver.org). One major implication of this is a guarantee that we will not make backwards-incompatible changes until Tendermint 2.0 (except in pre-release versions). In order to provide this guarantee for our Go API, we must clearly define which of our APIs are public, and what changes are considered backwards-compatible.
 
 Currently, we list packages that we consider public in our [README](https://github.com/tendermint/tendermint#versioning), but since we are still at version 0.x we do not provide any backwards compatiblity guarantees at all.
 
 ### Glossary
 
-* **External package:** a different Go package, even a child or sibling package in the same project.
+* **External project:** a different Git/VCS repository or code base.
 
-* **External project:** a different Git repository.
+* **External package:** a different Go package, can be a child or sibling package in the same project.
+
+* **Internal code:** code not meant for use in external projects.
+
+* **Internal directory:** code under `internal/` which cannot be imported in external projects.
 
 * **Exported:** a Go identifier starting with an uppercase letter, which can therefore be accessed by an external package.
 
-* **Go API:** any exported Go identifier.
+* **Private:** a Go identifier starting with a lowercase letter, which therefore cannot be accessed by an external package unless via an exported field, variable, or function/method return value.
 
-* **Public API:** a Go API that can be imported into an external project.
+* **Public API:** any Go identifier that can be imported or accessed by an external project, except test code in `_test.go` files.
+
+* **Private API:** any private Go identifier that is not accessible via a public API, and all code in the internal directory.
 
 ## Alternative Approaches
 
@@ -30,7 +38,7 @@ Currently, we list packages that we consider public in our [README](https://gith
 
 ## Decision
 
-From Tendermint 1.0, all internal code will be placed in a root-level [`internal` package](https://golang.org/cmd/go/#hdr-Internal_Directories), which the Go compiler will block for use by external projects. All exported items outside of the `internal` package are considered a public API and subject to backwards compatibility guarantees, except files ending in `_test.go`.
+From Tendermint 1.0, all internal code (except private APIs) will be placed in a root-level [`internal` directory](https://golang.org/cmd/go/#hdr-Internal_Directories), which the Go compiler will block for use by external projects. All exported items outside of the `internal` directory are considered a public API and subject to backwards compatibility guarantees, except files ending in `_test.go`.
 
 The `crypto` package will be split out to a separate module in a separate repo. This is the main general-purpose package used by external projects, and is the only Tendermint dependency in e.g. IAVL which can cause some problems for projects depending on both IAVL and Tendermint.
 
@@ -40,35 +48,43 @@ The `tm-db` package will remain a separate module in a separate repo.
 
 ### Public API
 
-TODO: this will list the specific packages that are considered public APIs, and thus placed outside of the `internal` package.
+TODO: this will list the specific packages that are considered public APIs, and thus placed outside of the `internal` directory.
 
 ### Backwards-Compatible Changes
 
 In Go, [almost all API changes are backwards-incompatible](https://blog.golang.org/module-compatibility) and thus exported items in public APIs generally cannot be changed until Tendermint 2.0. The only backwards-compatible changes we can make to exported items are:
 
-- Adding a new package.
-
 - Adding a new identifier to the package scope (e.g. const, var, func, struct, interface, etc.).
 
 - Adding a new method to a struct.
 
-- Adding a new field to a struct, where the new field's type does not change the struct [comparability](https://golang.org/ref/spec#Comparison_operators), and the zero-value preserves any old behavior.
+- Adding a new field to a struct, if the zero-value preserves any old behavior.
 
-- Adding a new method to an interface _if the interface has a private method_ (since this makes it impossible for external programs to implement the interface).
+- Changing the order of fields in a struct.
 
-Note that adding methods and fields to a struct may break programs that embed two structs in a struct, causing the promoted method or field to change if there is a conflict - we do _not_ consider this breaking, and users are advised to avoid this.
+- Adding a variadic parameter to a named function or struct method.
 
-Also note that public APIs can access private types (e.g. via an exported function, method, or field), in which case the exported fields and methods on these private types are also part of the public API and covered by its backwards compatiblity guarantee. In general, private types should never be accessible via public APIs unless wrapped in an exported interface.
+- Adding a new method to an interface, or a variadic parameter to an interface method, _if the interface has a private method_ (which prevents external packages from implementing it).
 
-In particular, backwards-incompatible changes that _cannot_ be made include:
+- Widening a numeric type as long as it is a named type (e.g. `type Number int32` can change to `int64`, but not `int8` or `uint32`).
 
-- Adding a new struct field of an incomparable type (slice, map, func, or struct containing these) to a comparable struct (that does not already have an incomparable field).
+Note that public APIs can expose private types (e.g. via an exported variable, field, or function/method return value), in which case the exported fields and methods on these private types are also part of the public API and covered by its backwards compatiblity guarantee. In general, private types should never be accessible via public APIs unless wrapped in an exported interface.
 
-- Adding a new method to an interface (unless the interface contains a private method).
+Also note that if we accept, return, export, or embed types from a dependency, we assume the backwards compatibility responsibility for that dependency, and must make sure any dependency upgrades comply with the above constrains.
 
-- Changing a function or method signature in any way, including adding a variadic parameter (changing parameter names is fine).
+We should run linters on CI for minor version branches to enforce the above constraints. Examples include [breakcheck](https://github.com/gbbr/breakcheck), [apidiff](https://pkg.go.dev/golang.org/x/tools/internal/apidiff?tab=doc), and [apicombat](https://github.com/bradleyfalzon/apicompat).
 
-- Upgrading a dependency to a new major version if we return, export, or embed types from the dependency.
+#### Accepted Breakage
+
+The above changes can still break programs in a few ways - we do _not_ consider these breaking changes, and users are advised to avoid this usage:
+
+- If a program uses unkeyed struct literals (e.g. `Foo{"bar", "baz"}`) and we add fields or change the field order, the program will no longer compile or may have logic errors.
+
+- If a program embeds two structs in a struct, and we add a new field or method to an embedded Tendermint struct which also exists in the other embedded struct, the program will no longer compile.
+
+- If a program compares two structs (e.g. with `==`), and we add a new field of an incomparable type (slice, map, func, or struct that contains these) to a Tendermint struct which is compared, the program will no longer compile.
+
+- If a program assigns a Tendermint function to an identifier, and we add a variadic parameter to the function signature, the program will no longer compile.
 
 ### Strategies for API Evolution
 
@@ -81,8 +97,6 @@ The API guarantees above can be fairly constraining, but are unavoidable given t
 - Interfaces can include a private method, e.g. `interface { private() }`, to make them unimplementable by external packages and thus allow us to add new methods to the interface without breaking other programs. Of course, this can't be used for interfaces that should be implementable externally.
 
 - We can use [interface upgrades](https://avtok.com/2014/11/05/interface-upgrades.html) to allow implementers of an existing interface to also implement a new interface, as long as the old interface can still be used - e.g. the new interface `BetterReader` may have a method `ReadBetter()`, and a function that takes a `Reader` interface as an input can check if the implementer also implements `BetterReader` and in that case call `ReadBetter()` instead of `Read()`.
-
-- Structs can include a hidden field of an incomparable type, e.g. `struct { _ [0]func() }`, to prevent external programs from comparing the struct, thus allowing us to add new fields of an incomparable type (slice, map, func, or struct containing these).
 
 ## Status
 
