@@ -646,7 +646,7 @@ FOR_LOOP:
 			}
 		default:
 			err := fmt.Errorf("unknown message type %v", reflect.TypeOf(packet))
-			c.Logger.Debug("Connection failed @ recvRoutine", "conn", c, "err", err)
+			c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
 			c.stopForError(err)
 			break FOR_LOOP
 		}
