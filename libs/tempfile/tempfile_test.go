@@ -74,16 +74,18 @@ func TestWriteFileAtomicDuplicateFile(t *testing.T) {
 	// Defer here, in case there is a panic in WriteFileAtomic.
 	defer os.Remove(fileToWrite)
 
-	require.Nil(t, err)
-	f.WriteString(testString)
-	WriteFileAtomic(fileToWrite, []byte(expectedString), 0777)
+	require.NoError(t, err)
+	_, err = f.WriteString(testString)
+	require.NoError(t, err)
+	err = WriteFileAtomic(fileToWrite, []byte(expectedString), 0777)
+	require.NoError(t, err)
 	// Check that the first atomic file was untouched
 	firstAtomicFileBytes, err := ioutil.ReadFile(fname)
-	require.Nil(t, err, "Error reading first atomic file")
+	require.NoError(t, err, "Error reading first atomic file")
 	require.Equal(t, []byte(testString), firstAtomicFileBytes, "First atomic file was overwritten")
 	// Check that the resultant file is correct
 	resultantFileBytes, err := ioutil.ReadFile(fileToWrite)
-	require.Nil(t, err, "Error reading resultant file")
+	require.NoError(t, err, "Error reading resultant file")
 	require.Equal(t, []byte(expectedString), resultantFileBytes, "Written file had incorrect bytes")
 
 	// Check that the intermediate write file was deleted
@@ -113,7 +115,8 @@ func TestWriteFileAtomicManyDuplicates(t *testing.T) {
 		fname := "/tmp/" + atomicWriteFilePrefix + fileRand
 		f, err := os.OpenFile(fname, atomicWriteFileFlag, 0777)
 		require.Nil(t, err)
-		f.WriteString(fmt.Sprintf(testString, i))
+		_, err = f.WriteString(fmt.Sprintf(testString, i))
+		require.NoError(t, err)
 		defer os.Remove(fname)
 	}
 
@@ -121,7 +124,8 @@ func TestWriteFileAtomicManyDuplicates(t *testing.T) {
 	// Defer here, in case there is a panic in WriteFileAtomic.
 	defer os.Remove(fileToWrite)
 
-	WriteFileAtomic(fileToWrite, []byte(expectedString), 0777)
+	err := WriteFileAtomic(fileToWrite, []byte(expectedString), 0777)
+	require.NoError(t, err)
 	// Check that all intermittent atomic file were untouched
 	atomicWriteFileRand = defaultSeed
 	for i := 0; i < atomicWriteFileMaxNumConflicts+2; i++ {

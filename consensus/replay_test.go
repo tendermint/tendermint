@@ -83,7 +83,11 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Confi
 
 	err := cs.Start()
 	require.NoError(t, err)
-	defer cs.Stop()
+	defer func() {
+		if err := cs.Stop(); err != nil {
+			t.Error(err)
+		}
+	}()
 
 	// This is just a signal that we haven't halted; its not something contained
 	// in the WAL itself. Assuming the consensus state is running, replay of any

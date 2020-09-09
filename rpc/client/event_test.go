@@ -35,7 +35,11 @@ func TestHeaderEvents(t *testing.T) {
 				// if so, then we start it, listen, and stop it.
 				err := c.Start()
 				require.Nil(t, err, "%d: %+v", i, err)
-				defer c.Stop()
+				t.Cleanup(func() {
+					if err := c.Stop(); err != nil {
+						t.Error(err)
+					}
+				})
 			}
 
 			evtTyp := types.EventNewBlockHeader
@@ -59,14 +63,22 @@ func TestBlockEvents(t *testing.T) {
 				// if so, then we start it, listen, and stop it.
 				err := c.Start()
 				require.Nil(t, err)
-				defer c.Stop()
+				t.Cleanup(func() {
+					if err := c.Stop(); err != nil {
+						t.Error(err)
+					}
+				})
 			}
 
 			const subscriber = "TestBlockEvents"
 
 			eventCh, err := c.Subscribe(context.Background(), subscriber, types.QueryForEvent(types.EventNewBlock).String())
 			require.NoError(t, err)
-			defer c.UnsubscribeAll(context.Background(), subscriber)
+			t.Cleanup(func() {
+				if err := c.UnsubscribeAll(context.Background(), subscriber); err != nil {
+					t.Error(err)
+				}
+			})
 
 			var firstBlockHeight int64
 			for i := int64(0); i < 3; i++ {
@@ -99,7 +111,11 @@ func testTxEventsSent(t *testing.T, broadcastMethod string) {
 				// if so, then we start it, listen, and stop it.
 				err := c.Start()
 				require.Nil(t, err)
-				defer c.Stop()
+				t.Cleanup(func() {
+					if err := c.Stop(); err != nil {
+						t.Error(err)
+					}
+				})
 			}
 
 			// make the tx

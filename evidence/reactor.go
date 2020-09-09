@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
-
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -229,14 +227,16 @@ func encodeMsg(evis []types.Evidence) ([]byte, error) {
 		Evidence: evi,
 	}
 
-	return proto.Marshal(&epl)
+	return epl.Marshal()
 }
 
 // decodemsg takes an array of bytes
 // returns an array of evidence
 func decodeMsg(bz []byte) (evis []types.Evidence, err error) {
 	lm := ep.List{}
-	proto.Unmarshal(bz, &lm)
+	if err := lm.Unmarshal(bz); err != nil {
+		return nil, err
+	}
 
 	evis = make([]types.Evidence, len(lm.Evidence))
 	for i := 0; i < len(lm.Evidence); i++ {

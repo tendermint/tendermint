@@ -23,7 +23,10 @@ func parseFlags() (headPath string, chopSize int64, limitSize int64, version boo
 	flagSet.StringVar(&chopSizeStr, "chop", "100M", "Move file if greater than this")
 	flagSet.StringVar(&limitSizeStr, "limit", "10G", "Only keep this much (for each specified file). Remove old files.")
 	flagSet.BoolVar(&version, "version", false, "Version")
-	flagSet.Parse(os.Args[1:])
+	if err := flagSet.Parse(os.Args[1:]); err != nil {
+		fmt.Printf("err parsing flag: %v\n", err)
+		os.Exit(1)
+	}
 	chopSize = parseBytesize(chopSizeStr)
 	limitSize = parseBytesize(limitSizeStr)
 	return
