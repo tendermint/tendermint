@@ -68,15 +68,15 @@ In Go, [almost all API changes are backwards-incompatible](https://blog.golang.o
 
 - Widening a numeric type as long as it is a named type (e.g. `type Number int32` can change to `int64`, but not `int8` or `uint32`).
 
-Note that public APIs can expose private types (e.g. via an exported variable, field, or function/method return value), in which case the exported fields and methods on these private types are also part of the public API and covered by its backwards compatiblity guarantee. In general, private types should never be accessible via public APIs unless wrapped in an exported interface.
+Note that public APIs can expose private types (e.g. via an exported variable, field, or function/method return value), in which case the exported fields and methods on these private types are also part of the public API and covered by its backwards compatiblity guarantees. In general, private types should never be accessible via public APIs unless wrapped in an exported interface.
 
-Also note that if we accept, return, export, or embed types from a dependency, we assume the backwards compatibility responsibility for that dependency, and must make sure any dependency upgrades comply with the above constrains.
+Also note that if we accept, return, export, or embed types from a dependency, we assume the backwards compatibility responsibility for that dependency, and must make sure any dependency upgrades comply with the above constraints.
 
 We should run linters on CI for minor version branches to enforce the above constraints. Examples include [breakcheck](https://github.com/gbbr/breakcheck), [apidiff](https://pkg.go.dev/golang.org/x/tools/internal/apidiff?tab=doc), and [apicombat](https://github.com/bradleyfalzon/apicompat).
 
 #### Accepted Breakage
 
-The above changes can still break programs in a few ways - we do _not_ consider these breaking changes, and users are advised to avoid this usage:
+The above changes can still break programs in a few ways - these are _not_ considered backwards-incompatible, and users are advised to avoid this usage:
 
 - If a program uses unkeyed struct literals (e.g. `Foo{"bar", "baz"}`) and we add fields or change the field order, the program will no longer compile or may have logic errors.
 
