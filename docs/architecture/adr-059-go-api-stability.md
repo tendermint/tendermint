@@ -4,7 +4,7 @@
 
 - 2020-09-08: Initial version. (@erikgrinaker)
 
-- 2020-09-09: Allow changing struct comparability, adding variadic parameters, changing struct field order, and widening named numeric types. Expand glossary and clarify terms. (@erikgrinaker)
+- 2020-09-09: Allow changing struct comparability, adding variadic parameters, changing struct field order, and widening named numeric types. Expand glossary and clarify terms. Add initial public API packages. Add consequences. (@erikgrinaker)
 
 ## Context
 
@@ -67,7 +67,7 @@ The following current packages will be part of our public API in 1.0 in some for
 - `types` (respective packages)
 - `version`
 
-For comparison, the following are the number of Tendermint imports in the Cosmos SDK (excluding tests) - anything not listed above must be handled by the SDK itself:
+For comparison, the following are the number of Tendermint imports in the Cosmos SDK (excluding tests) - anything not listed above must be removed from the SDK or implemented there:
 
 ```
       1 github.com/tendermint/tendermint/abci/server
