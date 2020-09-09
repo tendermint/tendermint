@@ -40,7 +40,7 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	vote2.Signature, err = val.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v2))
 	require.NoError(t, err)
 
-	return types.NewDuplicateVoteEvidence(vote, vote2, defaultTestTime)
+	return types.NewDuplicateVoteEvidence(vote, vote2)
 }
 
 func makeEvidences(
@@ -118,8 +118,6 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 
 	for i, c := range GetClients() {
 		t.Logf("client %d", i)
-
-		t.Log(correct.Time())
 
 		result, err := c.BroadcastEvidence(correct)
 		require.NoError(t, err, "BroadcastEvidence(%s) failed", correct)
