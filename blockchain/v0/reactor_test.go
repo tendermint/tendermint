@@ -70,9 +70,10 @@ func newBlockchainReactor(
 
 	blockDB := dbm.NewMemDB()
 	stateDB := dbm.NewMemDB()
+	sstore := sm.NewStateStore(stateDB)
 	blockStore := store.NewBlockStore(blockDB)
 
-	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+	state, err := sstore.LoadStateFromDBOrGenesisDoc(genDoc)
 	if err != nil {
 		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
@@ -82,9 +83,10 @@ func newBlockchainReactor(
 	// pool.height is determined from the store.
 	fastSync := true
 	db := dbm.NewMemDB()
+	sstore = sm.NewStateStore(db)
 	blockExec := sm.NewBlockExecutor(db, log.TestingLogger(), proxyApp.Consensus(),
 		mock.Mempool{}, sm.MockEvidencePool{})
-	sm.SaveState(db, state)
+	sstore.SaveState(state)
 
 	// let's add some blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {

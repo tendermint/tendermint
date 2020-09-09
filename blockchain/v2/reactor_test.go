@@ -156,8 +156,9 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 			panic(fmt.Errorf("error start app: %w", err))
 		}
 		db := dbm.NewMemDB()
+		sstore := sm.NewStateStore(db)
 		appl = sm.NewBlockExecutor(db, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
-		sm.SaveState(db, state)
+		sstore.SaveState(state)
 	}
 
 	r := newReactor(state, store, reporter, appl, true)
@@ -498,16 +499,17 @@ func newReactorStore(
 
 	stateDB := dbm.NewMemDB()
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-
-	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+	sstore := sm.NewStateStore(stateDB)
+	state, err := sstore.LoadStateFromDBOrGenesisDoc(genDoc)
 	if err != nil {
 		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
 
 	db := dbm.NewMemDB()
+	sstore = sm.NewStateStore(db)
 	blockExec := sm.NewBlockExecutor(db, log.TestingLogger(), proxyApp.Consensus(),
 		mock.Mempool{}, sm.MockEvidencePool{})
-	sm.SaveState(db, state)
+	sstore.SaveState(state)
 
 	// add blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {

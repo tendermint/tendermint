@@ -232,8 +232,9 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	assert.False(t, pool.Has(expiredEvidence))
 }
 
-func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) StateStore {
+func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) sm.StateStore {
 	stateDB := dbm.NewMemDB()
+	sstore := sm.NewStateStore(stateDB)
 	state := sm.State{
 		ChainID:                     evidenceChainID,
 		InitialHeight:               1,
@@ -259,13 +260,13 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) S
 	// save all states up to height
 	for i := int64(0); i <= height; i++ {
 		state.LastBlockHeight = i
-		sm.SaveState(stateDB, state)
+		sstore.SaveState(state)
 	}
 
-	return &stateStore{db: stateDB}
+	return sstore
 }
 
-func initializeValidatorState(privVal types.PrivValidator, height int64) StateStore {
+func initializeValidatorState(privVal types.PrivValidator, height int64) sm.StateStore {
 
 	pubKey, _ := privVal.GetPubKey()
 	validator := &types.Validator{Address: pubKey.Address(), VotingPower: 0, PubKey: pubKey}

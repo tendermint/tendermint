@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	dbm "github.com/tendermint/tm-db"
-
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
 )
@@ -14,7 +12,7 @@ import (
 //-----------------------------------------------------
 // Validate block
 
-func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block *types.Block) error {
+func validateBlock(evidencePool EvidencePool, state State, block *types.Block) error {
 	// Validate internal consistency.
 	if err := block.ValidateBasic(); err != nil {
 		return err

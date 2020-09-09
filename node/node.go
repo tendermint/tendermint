@@ -185,7 +185,7 @@ type Node struct {
 
 	// services
 	eventBus          *types.EventBus // pub/sub for services
-	stateDB           dbm.DB
+	stateDB           sm.StateStore
 	blockStore        *store.BlockStore // store the blockchain to disk
 	bcReactor         p2p.Reactor       // for fast-syncing
 	mempoolReactor    *mempl.Reactor    // for gossipping transactions
@@ -342,7 +342,7 @@ func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
 		return nil, nil, err
 	}
 	evidenceLogger := logger.With("module", "evidence")
-	evidencePool, err := evidence.NewPool(evidenceDB, evidence.NewEvidenceStateStore(stateDB), blockStore)
+	evidencePool, err := evidence.NewPool(evidenceDB, sm.NewStateStore(stateDB), blockStore)
 	if err != nil {
 		return nil, nil, err
 	}
