@@ -35,6 +35,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [blockchain] \#5278 Verify only +2/3 of the signatures in a block when fast syncing. (@marbar3778)
 - [rpc] \#5293 `/dial_peers` has added `private` and `unconditional` as parameters. (@marbar3778)
+- [types] \#5340 Add check in `Header.ValidateBasic()` for block protocol version (@marbar3778)
 
 ## BUG FIXES
 
