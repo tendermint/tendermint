@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/light"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -27,7 +25,7 @@ func (evpool *Pool) verify(evidence types.Evidence) (*EvidenceInfo, error) {
 	)
 
 	// check that the evidence isn't already committed
-	if evpool.IsCommitted(evidence) {
+	if evpool.isCommitted(evidence) {
 		return nil, errors.New("evidence was already committed")
 	}
 
@@ -66,10 +64,10 @@ func (evpool *Pool) verify(evidence types.Evidence) (*EvidenceInfo, error) {
 		_, val := valSet.GetByAddress(dev.VoteA.ValidatorAddress)
 
 		return &EvidenceInfo{
-			ev: evidence,
-			time: evTime,
-			validators: []*types.Validator{val}, // just a single validator for duplicate vote evidence
-			totalVotingPower: valSet.TotalVotingPower(),
+			Evidence: evidence,
+			Time: evTime,
+			Validators: []*types.Validator{val}, // just a single validator for duplicate vote evidence
+			TotalVotingPower: valSet.TotalVotingPower(),
 		}, nil
 
 	case *types.LightClientAttackEvidence:
@@ -97,10 +95,10 @@ func (evpool *Pool) verify(evidence types.Evidence) (*EvidenceInfo, error) {
 		validators := getMaliciousValidators(evidence.(*types.LightClientAttackEvidence), commonVals, trustedHeader)
 
 		return &EvidenceInfo{
-			ev: evidence,
-			time: evTime,
-			validators: validators,
-			totalVotingPower: commonVals.TotalVotingPower,
+			Evidence: evidence,
+			Time: evTime,
+			Validators: validators,
+			TotalVotingPower: commonVals.TotalVotingPower(),
 		}, nil
 	default:
 		return nil, fmt.Errorf("unrecognized evidence: %v", evidence)
@@ -116,7 +114,7 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, t
 	commonVals *types.ValidatorSet, now time.Time, trustPeriod time.Duration) error {
 	// attempt a single verification jump between the common header and the conflicting one
 	err := light.Verify(commonHeader, commonVals, e.ConflictingBlock.SignedHeader, e.ConflictingBlock.ValidatorSet, 
-	state.ConsensusParams.Evidence.MaxAgeDuration, state.LastBlockTime, 0 * time.Second, light.DefaultTrustLevel)
+	trustPeriod, now, 0 * time.Second, light.DefaultTrustLevel)
 	if err != nil {
 		return fmt.Errorf("skipping verification from common to conflicting header failed: %w", err)
 	}

@@ -76,7 +76,7 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 			}
 			c.logger.Error("Attack detected. Sending evidence againt primary by witness", "ev", ev,
 				"primary", c.primary, "witness", supportingWitness)
-			c.sendEvidence(ev, e.Witness)
+			c.sendEvidence(ev, supportingWitness)
 
 			// This may not be valid because the witness itself is at fault. So now we reverse it, examining the
 			// trace provided by the witness and holding the primary as the source of truth. Note: primary may not
@@ -135,12 +135,12 @@ func (c *Client) compareNewHeaderWithWitness(errc chan error, h *types.SignedHea
 
 	lightBlock, err := witness.LightBlock(h.Height)
 	if err != nil {
-		errc <- errBadWitness{Reason: err, Index: witnessIndex}
+		errc <- errBadWitness{Reason: err, WitnessIndex: witnessIndex}
 		return
 	}
 
 	if !bytes.Equal(h.Hash(), lightBlock.Hash()) {
-		errc <- errConflictingHeaders{Block: lightBlock, Witness: witness, Index: witnessIndex}
+		errc <- errConflictingHeaders{Block: lightBlock, WitnessIndex: witnessIndex}
 	}
 
 	c.logger.Info("Matching header received by witness", "height", h.Height, "witness", witnessIndex)

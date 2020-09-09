@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -76,8 +75,8 @@ type errConflictingHeaders struct {
 
 func (e errConflictingHeaders) Error() string {
 	return fmt.Sprintf(
-		"header hash (%X) from witness (%v) does not match primary",
-		e.Block.Hash(), e.Witness)
+		"header hash (%X) from witness (%d) does not match primary",
+		e.Block.Hash(), e.WitnessIndex)
 }
 
 // errNoWitnesses means that there are not enough witnesses connected to
@@ -96,5 +95,5 @@ type errBadWitness struct {
 }
 
 func (e errBadWitness) Error() string {
-	return fmt.Sprintf("Witness %d returned error: %s", e.Index, e.Reason.Error())
+	return fmt.Sprintf("Witness %d returned error: %s", e.WitnessIndex, e.Reason.Error())
 }
