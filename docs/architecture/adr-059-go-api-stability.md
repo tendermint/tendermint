@@ -8,7 +8,7 @@
 
 ## Context
 
-With the release of Tendermint 1.0, we want to adopt [semantic versioning](https://semver.org). One major implication of this is a guarantee that we will not make backwards-incompatible changes until Tendermint 2.0 (except in pre-release versions). In order to provide this guarantee for our Go API, we must clearly define which of our APIs are public, and what changes are considered backwards-compatible.
+With the release of Tendermint 1.0 we will adopt [semantic versioning](https://semver.org). One major implication is a guarantee that we will not make backwards-incompatible changes until Tendermint 2.0 (except in pre-release versions). In order to provide this guarantee for our Go API, we must clearly define which of our APIs are public, and what changes are considered backwards-compatible.
 
 Currently, we list packages that we consider public in our [README](https://github.com/tendermint/tendermint#versioning), but since we are still at version 0.x we do not provide any backwards compatiblity guarantees at all.
 
@@ -28,13 +28,13 @@ Currently, we list packages that we consider public in our [README](https://gith
 
 * **Public API:** any Go identifier that can be imported or accessed by an external project, except test code in `_test.go` files.
 
-* **Private API:** any private Go identifier that is not accessible via a public API, and all code in the internal directory.
+* **Private API:** any Go identifier that is not accessible via a public API, including all code in the internal directory.
 
 ## Alternative Approaches
 
 - Split all public APIs out to separate Go modules in separate Git repositories, and consider all Tendermint code internal and not subject to API backwards compatibility at all. This was rejected, since it has been attempted by the Tendermint project earlier, resulting in too much dependency management overhead.
 
-- Simply document which APIs are public, and which are internal. This is the current approach, but external projects appear to ignore this and depend on internal code anyway.
+- Simply document which APIs are public and which are private. This is the current approach, but users should not be expected to self-enforce this, and external projects will often end up depending on internal code anyway.
 
 ## Decision
 
@@ -52,7 +52,9 @@ TODO: this will list the specific packages that are considered public APIs, and 
 
 ### Backwards-Compatible Changes
 
-In Go, [almost all API changes are backwards-incompatible](https://blog.golang.org/module-compatibility) and thus exported items in public APIs generally cannot be changed until Tendermint 2.0. The only backwards-compatible changes we can make to exported items are:
+In Go, [almost all API changes are backwards-incompatible](https://blog.golang.org/module-compatibility) and thus exported items in public APIs generally cannot be changed until Tendermint 2.0. The only backwards-compatible changes we can make to public APIs are:
+
+- Adding a package.
 
 - Adding a new identifier to the package scope (e.g. const, var, func, struct, interface, etc.).
 
@@ -64,7 +66,7 @@ In Go, [almost all API changes are backwards-incompatible](https://blog.golang.o
 
 - Adding a variadic parameter to a named function or struct method.
 
-- Adding a new method to an interface, or a variadic parameter to an interface method, _if the interface has a private method_ (which prevents external packages from implementing it).
+- Adding a new method to an interface, or a variadic parameter to an interface method, _if the interface already has a private method_ (which prevents external packages from implementing it).
 
 - Widening a numeric type as long as it is a named type (e.g. `type Number int32` can change to `int64`, but not `int8` or `uint32`).
 
@@ -76,7 +78,7 @@ We should run linters on CI for minor version branches to enforce the above cons
 
 #### Accepted Breakage
 
-The above changes can still break programs in a few ways - these are _not_ considered backwards-incompatible, and users are advised to avoid this usage:
+The above changes can still break programs in a few ways - these are _not_ considered backwards-incompatible changes, and users are advised to avoid this usage:
 
 - If a program uses unkeyed struct literals (e.g. `Foo{"bar", "baz"}`) and we add fields or change the field order, the program will no longer compile or may have logic errors.
 
