@@ -2,9 +2,9 @@ package types
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -180,9 +180,11 @@ func (l *LightClientAttackEvidence) Bytes() []byte {
 // The reason for this is that we don't want to allow several permutations of the same evidence to be committed on
 // chain. Ideally we commit the header with the most commit signatures but anything greater than 1/3 is sufficient.
 func (l *LightClientAttackEvidence) Hash() []byte {
-	bz := make([]byte, tmhash.Size+8)
+	buf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutVarint(buf, l.CommonHeight)
+	bz := make([]byte, tmhash.Size+n)
 	copy(bz[:tmhash.Size-1], l.ConflictingBlock.Hash().Bytes())
-	copy(bz[tmhash.Size:], []byte(strconv.Itoa(int(l.CommonHeight))))
+	copy(bz[tmhash.Size:], buf)
 	return tmhash.Sum(bz)
 }
 
@@ -202,7 +204,7 @@ func (l *LightClientAttackEvidence) ValidateBasic() error {
 	}
 
 	if l.CommonHeight <= 0 {
-		return fmt.Errorf("incorrect common height (#%d <= 0)", l.CommonHeight)
+		return errors.New("negative or zero common height")
 	}
 
 	if l.CommonHeight >= l.ConflictingBlock.Height {
@@ -346,8 +348,8 @@ func init() {
 
 // ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.
 type ErrEvidenceInvalid struct {
-	Evidence   Evidence
-	ErrorValue error
+	Evidence Evidence
+	Reason   error
 }
 
 // NewErrEvidenceInvalid returns a new EvidenceInvalid with the given err.
@@ -357,7 +359,7 @@ func NewErrEvidenceInvalid(ev Evidence, err error) *ErrEvidenceInvalid {
 
 // Error returns a string representation of the error.
 func (err *ErrEvidenceInvalid) Error() string {
-	return fmt.Sprintf("Invalid evidence: %v. Evidence: %v", err.ErrorValue, err.Evidence)
+	return fmt.Sprintf("Invalid evidence: %v. Evidence: %v", err.Reason, err.Evidence)
 }
 
 // ErrEvidenceOverflow is for when there is too much evidence in a block.
