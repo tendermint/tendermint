@@ -138,7 +138,7 @@ Note that public APIs can expose private types (e.g. via an exported variable, f
 
 Also note that if we accept, return, export, or embed types from a dependency, we assume the backwards compatibility responsibility for that dependency, and must make sure any dependency upgrades comply with the above constraints.
 
-We should run CI linters for minor version branches to enforce this, e.g. [breakcheck](https://github.com/gbbr/breakcheck), [apidiff](https://pkg.go.dev/golang.org/x/tools/internal/apidiff?tab=doc), and [apicombat](https://github.com/bradleyfalzon/apicompat).
+We should run CI linters for minor version branches to enforce this, e.g. [apidiff](https://go.googlesource.com/exp/+/refs/heads/master/apidiff/README.md), [breakcheck](https://github.com/gbbr/breakcheck), and [apicombat](https://github.com/bradleyfalzon/apicompat).
 
 #### Accepted Breakage
 
