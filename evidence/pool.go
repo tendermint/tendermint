@@ -149,12 +149,13 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 	)
 
 	if evpool.IsPending(ev) {
-		return nil // we already have evidence
+		return nil // we already have this evidence
 	}
 	
 	switch ev := ev.(type) {
 	case *types.DuplicateVoteEvidence:
-		vals = append(vals, valSet.GetByAddress(ev.VoteA.ValidatorAddress))
+		_, val := valSet.GetByAddress(ev.VoteA.ValidatorAddress)
+		vals = append(vals, val)
 		totalPower = valSet.TotalVotingPower
 	default:
 		return fmt.Errorf("unrecognized evidence: %v", ev)
@@ -275,7 +276,7 @@ func (evpool *Pool) State() sm.State {
 type EvidenceInfo struct {
 	ev types.Evidence
 	time time.Time
-	validators []types.Validator
+	validators []*types.Validator
 	totalVotingPower int64
 }
 
@@ -283,7 +284,7 @@ func (ei EvidenceInfo) ToProto()
 
 //--------------------------------------------------------------------------
 
-func (evpool *Pool) addPendingEvidence(evidence types.Evidence) error {
+func (evpool *Pool) addPendingEvidence(evInfo *EvidenceInfo) error {
 	evi, err := types.EvidenceToProto(evidence)
 	if err != nil {
 		return fmt.Errorf("unable to convert to proto, err: %w", err)

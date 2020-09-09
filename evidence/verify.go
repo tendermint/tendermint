@@ -20,6 +20,7 @@ import (
 // - it was properly signed by the alleged equivocator and meets the individual evidence verification requirements
 func (evpool *Pool) verify(evidence types.Evidence) (*EvidenceInfo, error) {
 	var (
+		state		   = evpool.State()
 		height         = state.LastBlockHeight
 		evidenceParams = state.ConsensusParams.Evidence
 		ageNumBlocks = height - evidence.Height()
@@ -31,19 +32,19 @@ func (evpool *Pool) verify(evidence types.Evidence) (*EvidenceInfo, error) {
 	}
 
 	// verify the time of the evidence
-	blockMeta := blockStore.LoadBlockMeta(evidence.Height())
+	blockMeta := evpool.blockStore.LoadBlockMeta(evidence.Height())
 	if blockMeta == nil {
 		return nil, fmt.Errorf("don't have header at height #%d", evidence.Height())
 	}
-	time = &blockMeta.Header
-	ageDuration := state.LastBlockTime.Sub(time)
+	evTime := blockMeta.Header.Time
+	ageDuration := state.LastBlockTime.Sub(evTime)
 
 	// check that the evidence hasn't expired
 	if ageDuration > evidenceParams.MaxAgeDuration && ageNumBlocks > evidenceParams.MaxAgeNumBlocks {
 		return nil, fmt.Errorf(
 			"evidence from height %d (created at: %v) is too old; min height is %d and evidence can not be older than %v",
 			evidence.Height(),
-			evidence.Time(),
+			evTime,
 			height-evidenceParams.MaxAgeNumBlocks,
 			state.LastBlockTime.Add(evidenceParams.MaxAgeDuration),
 		)
@@ -52,37 +53,52 @@ func (evpool *Pool) verify(evidence types.Evidence) (*EvidenceInfo, error) {
 	// apply the evidence-specific verification logic
 	switch evidence.(type) {
 	case *types.DuplicateVoteEvidence:
-		valSet, err := stateDB.LoadValidators(e.Height())
+		dev := evidence.(*types.DuplicateVoteEvidence)
+		valSet, err := evpool.stateDB.LoadValidators(evidence.Height())
+		if err != nil {
+			return nil, err
+		}
+		err = VerifyDuplicateVote(evidence.(*types.DuplicateVoteEvidence), state.ChainID, valSet)
 		if err != nil {
 			return nil, fmt.Errorf("verifying duplicate vote evidence: %w", err)
 		}
-		err := VerifyDuplicateVote(evidence.(*types.DuplicateVoteEvidence), state.ChainID, valSet)
+
+		_, val := valSet.GetByAddress(dev.VoteA.ValidatorAddress)
+
+		return &EvidenceInfo{
+			ev: evidence,
+			time: evTime,
+			validators: []*types.Validator{val}, // just a single validator for duplicate vote evidence
+			totalVotingPower: valSet.TotalVotingPower(),
+		}, nil
 
 	case *types.LightClientAttackEvidence:
-		commonHeader, err := getSignedHeader(blockStore, evidence.Height())
+		lev := evidence.(*types.LightClientAttackEvidence)
+		commonHeader, err := getSignedHeader(evpool.blockStore, evidence.Height())
 		if err != nil {
 			return nil, err
 		}
-		commonVals, err := stateDB.LoadValidators(evidence.Height())
+		commonVals, err := evpool.stateDB.LoadValidators(evidence.Height())
 		if err != nil {
 			return nil, err
 		}
-		trustedHeader, err := getSignedHeader(blockStore, e.ConflictingBlock.Height)
+		trustedHeader, err := getSignedHeader(evpool.blockStore, lev.ConflictingBlock.Height)
 		if err != nil {
 			return nil, err 
 		}
 
-		err := VerifyLightClientAttack(evidence.(*types.LightClientAttackEvidence), state, stateDB, blockStore)
+		err = VerifyLightClientAttack(evidence.(*types.LightClientAttackEvidence), commonHeader, trustedHeader, 
+		commonVals, state.LastBlockTime, state.ConsensusParams.Evidence.MaxAgeDuration)
 		if err != nil {
 			return nil, err 
 		}
 		// find out what type of attack this was and thus extract the malicious validators. Note in the case of an 
 		// Amnesia attack we don't have any malicious validators.
-		validators := getMaliciousValidators(evidence, commonVals, trustedHeader)
+		validators := getMaliciousValidators(evidence.(*types.LightClientAttackEvidence), commonVals, trustedHeader)
 
 		return &EvidenceInfo{
 			ev: evidence,
-			time: time,
+			time: evTime,
 			validators: validators,
 			totalVotingPower: commonVals.TotalVotingPower,
 		}, nil
@@ -96,9 +112,10 @@ func (evpool *Pool) verify(evidence types.Evidence) (*EvidenceInfo, error) {
 //     - the common header from the full node has at least 1/3 voting power which is also present in 
 //       the conflicting header's commit
 //     - the nodes trusted header at the same height as the conflicting header has a different hash
-func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, trustedHeader *types.SignedHeader, commonVals *types.ValidatorSet) error {
-	
-	err = light.Verify(commonHeader, commonVals, e.ConflictingBlock.SignedHeader, e.ConflictingBlock.ValidatorSet, 
+func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, trustedHeader *types.SignedHeader, 
+	commonVals *types.ValidatorSet, now time.Time, trustPeriod time.Duration) error {
+	// attempt a single verification jump between the common header and the conflicting one
+	err := light.Verify(commonHeader, commonVals, e.ConflictingBlock.SignedHeader, e.ConflictingBlock.ValidatorSet, 
 	state.ConsensusParams.Evidence.MaxAgeDuration, state.LastBlockTime, 0 * time.Second, light.DefaultTrustLevel)
 	if err != nil {
 		return fmt.Errorf("skipping verification from common to conflicting header failed: %w", err)
@@ -119,9 +136,9 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, t
 //      - the block ID's must be different
 //      - The signatures must both be valid
 func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string,  valSet *types.ValidatorSet) error {
-	_, val := valSet.GetByAddress(e.Addresses()[0])
+	_, val := valSet.GetByAddress(e.VoteA.ValidatorAddress)
 	if val == nil {
-		return fmt.Errorf("address %X was not a validator at height %d", e.Addresses()[0], e.Height())
+		return fmt.Errorf("address %X was not a validator at height %d", e.VoteA.ValidatorAddress, e.Height())
 	}
 	pubKey := val.PubKey
 
@@ -192,12 +209,12 @@ func getMaliciousValidators(evidence *types.LightClientAttackEvidence, commonVal
 	// First check if the header is invalid. This means that it is a lunatic attack and therefore we take the
 	// validators who are in the commonVals and voted for the lunatic header
 	if isInvalidHeader(trusted.Header, evidence.ConflictingBlock.Header) {
-		for _, commitSig range evidence.ConflictingBlock.Commit.Signatures {
+		for _, commitSig := range evidence.ConflictingBlock.Commit.Signatures {
 			if !commitSig.ForBlock() {
 				continue
 			}
 
-			_, val := commonVals.GetByAddress(commitSig.Address)
+			_, val := commonVals.GetByAddress(commitSig.ValidatorAddress)
 			if val == nil {
 				// validator wasn't in the common validator set
 				continue
@@ -209,20 +226,18 @@ func getMaliciousValidators(evidence *types.LightClientAttackEvidence, commonVal
 	} else if (trusted.Commit.Round == evidence.ConflictingBlock.Commit.Round) {
 		// validator hashes are the same therefore the indexing order of validators are the same and thus we
 		// only need a single loop to find the validators that voted twice. 
-		for i < len(evidence.ConflictinBlock.Commit.Signatures) {
+		for i := 0; i < len(evidence.ConflictingBlock.Commit.Signatures); i++ {
 			sigA := evidence.ConflictingBlock.Commit.Signatures[i]
 			if sigA.Absent() {
-				i++
 				continue
 			}
 
-			sigB := trusted.Commit.Signatures[j]
+			sigB := trusted.Commit.Signatures[i]
 			if sigB.Absent() {
-				i++
 				continue
 			}
 
-			_, val := evidence.ConflictingBlock.ValidatorSet.GetByAddress(sigB.Address)
+			_, val := evidence.ConflictingBlock.ValidatorSet.GetByAddress(sigB.ValidatorAddress)
 			validators = append(validators, val)
 		}
 
