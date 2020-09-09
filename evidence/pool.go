@@ -173,6 +173,7 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 // evidence has already been committed or is being proposed twice. It also adds any
 // evidence that it doesn't currently have so that it can quickly form ABCI Evidence later.
 func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
+	hashes 
 	for idx, ev := range evList {
 		// check for duplicate evidence
 		for i := idx; i < len(evList); i++ {
@@ -309,6 +310,33 @@ func (evpool *Pool) markEvidenceAsCommitted(height int64, evidence []types.Evide
 	// remove committed evidence from the clist
 	if len(blockEvidenceMap) != 0 {
 		evpool.removeEvidenceFromList(blockEvidenceMap)
+	}
+}
+
+func (evpool *Pool) fastCheck(ev types.Evidence) bool {
+	key = keyPending(evidence)
+	if lcae, ok := ev.(*types.LightClientAttackEvidence); ok {
+		evBytes, err := evpool.evidenceStore.Get(key)
+		var evpb evproto.EvidenceInfo
+		evpb.Unmarshal(evBytes)
+		evInfo, err := EvidenceInfoFromProto(evpb)
+		if err != nil {
+			return false
+		}
+		// ensure that all the validators that the evidence pool have found to be malicious
+		// are present in the list of commit signatures in the conflicting block
+		OUTER:
+		for _, sig := range lcae.ConflictingBlock.Commit.Signatures {
+			for _, val := range evInfo.Validators {
+				if val.Address == sig.ValidatorAddress {
+					continue OUTER
+				}
+			}
+			return false
+		}
+		return true
+	} else {
+		return evpool.isPending(ev)
 	}
 }
 

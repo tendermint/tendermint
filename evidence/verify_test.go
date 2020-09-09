@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	// "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -136,7 +136,7 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 }
 
 func makeVote(
-	t *testing.T, val types.PrivValidator, chainID string, valIndex int32, height int64, 
+	t *testing.T, val types.PrivValidator, chainID string, valIndex int32, height int64,
 	round int32, step int, blockID types.BlockID, time time.Time) *types.Vote {
 	pubKey, err := val.GetPubKey()
 	require.NoError(t, err)

@@ -130,9 +130,9 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet) abci.Evidence {
 	}
 
 	return abci.Evidence{
-		Type:             evType,
+		Type: evType,
 		// Validator:        TM2PB.Validator(val),
-		Height:           ev.Height(),
+		Height: ev.Height(),
 		// Time:             ev.Time(),
 		TotalVotingPower: valSet.TotalVotingPower(),
 	}

@@ -172,8 +172,8 @@ func (evR Reactor) checkSendEvidenceMessage(
 	// NOTE: We only send evidence to peers where
 	// peerHeight - maxAge < evidenceHeight < peerHeight
 	var (
-		peerHeight = peerState.GetHeight()
-		params = evR.evpool.State().ConsensusParams.Evidence
+		peerHeight   = peerState.GetHeight()
+		params       = evR.evpool.State().ConsensusParams.Evidence
 		ageNumBlocks = peerHeight - evHeight
 	)
 

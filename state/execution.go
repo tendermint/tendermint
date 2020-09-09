@@ -355,7 +355,7 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB,
 	}
 
 	var byzVals []abci.Evidence
-	for i, ev := range block.Evidence.Evidence {
+	for _, ev := range block.Evidence.Evidence {
 		// We need the validator set. We already did this in validateBlock.
 		// TODO: Should we instead cache the valset in the evidence itself and add
 		// `SetValidatorSet()` and `ToABCI` methods ?
@@ -363,7 +363,7 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB,
 		if err != nil {
 			panic(err)
 		}
-		byzVals = append(byzVals, ...types.TM2PB.Evidence(ev, valset))
+		byzVals = append(byzVals, types.TM2PB.Evidence(ev, valset))
 	}
 
 	return abci.LastCommitInfo{

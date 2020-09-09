@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tm-db"
@@ -32,6 +33,7 @@ import (
 	"github.com/tendermint/tendermint/p2p/mock"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
+	statemocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
@@ -161,7 +163,11 @@ func TestReactorWithEvidence(t *testing.T) {
 		// mock the evidence pool
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % nValidators
-		evpool := newMockEvidencePool(privVals[vIdx])
+		evpool := statemocks.EvidencePool{}
+		evpool.On("CheckEvidence", mock.AnythingOfType("*types.EvidenceList")).Return(nil)
+		evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]types.Evidence{
+			types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], config.ChainID()),
+		})
 
 		// Make State
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
@@ -214,22 +220,22 @@ func newMockEvidencePool(val types.PrivValidator) *mockEvidencePool {
 }
 
 // NOTE: maxBytes is ignored
-func (m *mockEvidencePool) PendingEvidence(maxBytes uint32) []types.Evidence {
-	if m.height > 0 {
-		return m.ev
-	}
-	return nil
-}
-func (m *mockEvidencePool) AddEvidence(types.Evidence) error { return nil }
-func (m *mockEvidencePool) Update(block *types.Block, state sm.State) {
-	if m.height > 0 {
-		if len(block.Evidence.Evidence) == 0 {
-			panic("block has no evidence")
-		}
-	}
-	m.height++
-}
-func (m *mockEvidencePool) Verify(types.Evidence) error { return nil }
+// func (m *mockEvidencePool) PendingEvidence(maxBytes uint32) []types.Evidence {
+// 	if m.height > 0 {
+// 		return m.ev
+// 	}
+// 	return nil
+// }
+func (m *mockEvidencePool) AddEvidenceFromConsensus(types.Evidence, time.Time, *types.ValidatorSet) error { return nil }
+// func (m *mockEvidencePool) Update(block *types.Block, state sm.State) {
+// 	if m.height > 0 {
+// 		if len(block.Evidence.Evidence) == 0 {
+// 			panic("block has no evidence")
+// 		}
+// 	}
+// 	m.height++
+// }
+// func (m *mockEvidencePool) Verify(types.Evidence) error { return nil }
 
 //------------------------------------
 

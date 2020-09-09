@@ -150,21 +150,5 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	}
 
 	// Validate all evidence.
-	for idx, ev := range block.Evidence.Evidence {
-		// Check that no evidence has been submitted more than once
-		for i := idx + 1; i < len(block.Evidence.Evidence); i++ {
-			if bytes.Equal(ev.Hash(), block.Evidence.Evidence[i].Hash()) {
-				return types.NewErrEvidenceInvalid(ev, errors.New("evidence was submitted twice"))
-			}
-		}
-
-		// Verify evidence using the evidence pool
-		err := evidencePool.Verify(ev)
-		if err != nil {
-			return types.NewErrEvidenceInvalid(ev, err)
-		}
-
-	}
-
-	return nil
+	return evidencePool.CheckEvidence(block.Evidence.Evidence)
 }

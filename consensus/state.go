@@ -73,7 +73,7 @@ type txNotifier interface {
 
 // interface to the evidence pool
 type evidencePool interface {
-	AddEvidence(types.Evidence) error
+	AddEvidenceFromConsensus(types.Evidence, time.Time, *types.ValidatorSet) error
 }
 
 // State handles execution of the consensus algorithm.
@@ -1861,7 +1861,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 			} else {
 				timestamp = sm.MedianTime(cs.LastCommit.MakeCommit(), cs.LastValidators)
 			}
-			evidenceErr := cs.evpool.AddEvidence(types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB, timestamp))
+			evidenceErr := cs.evpool.AddEvidenceFromConsensus(types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB), timestamp, cs.Validators)
 			if evidenceErr != nil {
 				cs.Logger.Error("Failed to add evidence to the evidence pool", "err", evidenceErr)
 			}

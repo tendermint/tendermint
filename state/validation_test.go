@@ -215,7 +215,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	evpool := &mocks.EvidencePool{}
-	evpool.On("Verify", mock.AnythingOfType("*types.DuplicateVoteEvidence")).Return(nil)
+	evpool.On("CheckEvidence", mock.AnythingOfType("*types.DuplicateVoteEvidence")).Return(nil)
 	evpool.On("Update", mock.AnythingOfType("*types.Block"), mock.AnythingOfType("state.State")).Return()
 
 	state.ConsensusParams.Evidence.MaxNum = 3
