@@ -107,13 +107,13 @@ If possible, the existing `testnet` command should be extended to set up the net
 
 ## Status
 
-Proposed
+Accepted
 
 ## Consequences
 
 ### Positive
 
-- Comprehensive end-to-end test coverage of basic Tendermint functionality
+- Comprehensive end-to-end test coverage of basic Tendermint functionality, exercising common code paths in the same way that users would
 
 - Test environments can easily be reproduced locally and debugged via standard tooling
 
@@ -124,6 +124,10 @@ Proposed
 - No coverage of malicious or adversarial behavior
 
 - Have to roll our own test framework, which takes engineering resources
+
+- Possibly slower CI times, depending on which tests are run
+
+- Operational costs and overhead, e.g. infrastructure costs and system maintenance
 
 ### Neutral
 
