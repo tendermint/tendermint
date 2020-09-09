@@ -210,15 +210,3 @@ func (c *Client) examineConflictingHeaderAgainstTrace(
 		previouslyVerifiedBlock.Hash(), divergentHeader.Hash(), trace[len(trace)-1].Hash())
 
 }
-
-// IsInvalidHeader takes a trusted header and matches it againt a conflicting header
-// to determine whether the conflicting header was the product of a valid state transition
-// or not. If it is then all the deterministic fields of the header should be the same.
-// If not, it is an invalid header and constitutes a lunatic attack.
-func IsInvalidHeader(trusted, conflicting *types.Header) bool {
-	return bytes.Equal(trusted.ValidatorsHash, conflicting.ValidatorsHash) &&
-		bytes.Equal(trusted.NextValidatorsHash, conflicting.NextValidatorsHash) &&
-		bytes.Equal(trusted.ConsensusHash, conflicting.ConsensusHash) &&
-		bytes.Equal(trusted.AppHash, conflicting.AppHash) &&
-		bytes.Equal(trusted.LastResultsHash, conflicting.LastResultsHash)
-}

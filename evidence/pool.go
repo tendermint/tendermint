@@ -37,9 +37,6 @@ type Pool struct {
 	mtx sync.Mutex
 	// latest state
 	state sm.State
-	
-	// evidence must have a time but
-	consensusBuffer []types.Evidence
 }
 
 // NewPool creates an evidence pool. If using an existing evidence store,
@@ -119,18 +116,20 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 	evpool.logger.Debug("Attempting to add evidence", "ev", ev)
 
-	if evpool.Has(ev) {
+	// We have already verified this piece of evidence - no need to do it again
+	if evpool.IsPending(evidence) {
 		return nil
 	}
 
 	// 1) Verify against state.
-	if err := evpool.verify(ev); err != nil {
+	evInfo, err := evpool.verify(ev)
+	if err != nil {
 		return types.NewErrEvidenceInvalid(ev, err)
 	}
 
 	// 2) Save to store.
-	if err := evpool.addPendingEvidence(ev); err != nil {
-		return fmt.Errorf("database error when adding evidence: %v", err)
+	if err := evpool.addPendingEvidence(evInfo); err != nil {
+		return fmt.Errorf("database error when adding evidence: %w", err)
 	}
 
 	// 3) Add evidence to clist.
@@ -141,29 +140,42 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 	return nil
 }
 
-func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence) {
+// AddEvidenceFromConsensus should be exposed only to the consensus so it can add evidence to the pool 
+// directly without the need for verification.
+func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, valSet *types.ValidatorSet) error {
+	var (
+		vals []types.Validator
+		totalPower int64
+	)
+
+	if evpool.IsPending(ev) {
+		return nil // we already have evidence
+	}
 	
-}
-
-// Verify verifies the evidence against the node's (or evidence pool's) state. More specifically, to validate
-// evidence against state is to validate it against the nodes own header and validator set for that height. This ensures
-// as well as meeting the evidence's own validation rules, that the evidence hasn't expired, that the validator is still
-// bonded and that the evidence can be committed to the chain.
-func (evpool *Pool) Verify(evidence types.Evidence) error {
-	if evpool.IsCommitted(evidence) {
-		return errors.New("evidence was already committed")
-	}
-	// We have already verified this piece of evidence - no need to do it again
-	if evpool.IsPending(evidence) {
-		return nil
+	switch ev := ev.(type) {
+	case *types.DuplicateVoteEvidence:
+		vals = append(vals, valSet.GetByAddress(ev.VoteA.ValidatorAddress))
+		totalPower = valSet.TotalVotingPower
+	default:
+		return fmt.Errorf("unrecognized evidence: %v", ev)
 	}
 
-	return evpool.verify(evidence)
-}
+	evInfo := &EvidenceInfo{
+		ev: ev, 
+		time: time,
+		validators: vals,
+		totalVotingPower: totalPower,
+	}
 
-func (evpool *Pool) verify(evidence types.Evidence) error {
-	// has evidence come from consensus and thus we don't have time for it
-	return VerifyEvidence(evidence, evpool.State(), evpool.stateDB, evpool.blockStore)
+	if err := evpool.addPendingEvidence(evInfo); err != nil {
+		return fmt.Errorf("database error when adding evidence from conensus: %w", err)
+	}
+
+	evpool.evidenceList.PushBack(ev)
+
+	evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
+
+	return nil
 }
 
 // MarkEvidenceAsCommitted marks all the evidence as committed and removes it
@@ -197,11 +209,6 @@ func (evpool *Pool) MarkEvidenceAsCommitted(height int64, evidence []types.Evide
 	if len(blockEvidenceMap) != 0 {
 		evpool.removeEvidenceFromList(blockEvidenceMap)
 	}
-}
-
-// Has checks whether the evidence exists either pending or already committed
-func (evpool *Pool) Has(evidence types.Evidence) bool {
-	return evpool.IsPending(evidence) || evpool.IsCommitted(evidence)
 }
 
 // IsEvidenceExpired checks whether evidence is past the maximum age where it can be used
@@ -262,6 +269,19 @@ func (evpool *Pool) State() sm.State {
 	defer evpool.mtx.Unlock()
 	return evpool.state
 }
+
+//--------------------------------------------------------------------------
+
+type EvidenceInfo struct {
+	ev types.Evidence
+	time time.Time
+	validators []types.Validator
+	totalVotingPower int64
+}
+
+func (ei EvidenceInfo) ToProto() 
+
+//--------------------------------------------------------------------------
 
 func (evpool *Pool) addPendingEvidence(evidence types.Evidence) error {
 	evi, err := types.EvidenceToProto(evidence)
