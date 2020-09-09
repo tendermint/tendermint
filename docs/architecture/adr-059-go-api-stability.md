@@ -18,7 +18,7 @@ Currently, we list packages that we consider public in our [README](https://gith
 
 * **External package:** a different Go package, can be a child or sibling package in the same project.
 
-* **Internal code:** code not meant for use in external projects.
+* **Internal code:** code not intended for use in external projects.
 
 * **Internal directory:** code under `internal/` which cannot be imported in external projects.
 
@@ -64,7 +64,7 @@ In Go, [almost all API changes are backwards-incompatible](https://blog.golang.o
 
 - Changing the order of fields in a struct.
 
-- Adding a variadic parameter to a named function or struct method.
+- Adding a variadic parameter to a named function or struct method, if the function type itself is not assignable in any public APIs (e.g. a callback).
 
 - Adding a new method to an interface, or a variadic parameter to an interface method, _if the interface already has a private method_ (which prevents external packages from implementing it).
 
@@ -74,7 +74,7 @@ Note that public APIs can expose private types (e.g. via an exported variable, f
 
 Also note that if we accept, return, export, or embed types from a dependency, we assume the backwards compatibility responsibility for that dependency, and must make sure any dependency upgrades comply with the above constraints.
 
-We should run linters on CI for minor version branches to enforce the above constraints. Examples include [breakcheck](https://github.com/gbbr/breakcheck), [apidiff](https://pkg.go.dev/golang.org/x/tools/internal/apidiff?tab=doc), and [apicombat](https://github.com/bradleyfalzon/apicompat).
+We should run CI linters for minor version branches to enforce this, e.g. [breakcheck](https://github.com/gbbr/breakcheck), [apidiff](https://pkg.go.dev/golang.org/x/tools/internal/apidiff?tab=doc), and [apicombat](https://github.com/bradleyfalzon/apicompat).
 
 #### Accepted Breakage
 
@@ -108,7 +108,21 @@ Proposed
 
 ### Positive
 
+- Users can safely upgrade with less fear of applications breaking, and know whether an upgrade only includes bug fixes or also functional enhancements
+
+- External developers have a predictable and well-defined API to build on that will be supported for some time
+
+- More documentation will remain accurate, since it's not chasing a moving target
+
+- Less time will be spent on code churn and more time spent on improving stuff, both for the community and for our teams
+
 ### Negative
+
+- Many improvements, changes, and bug fixes will have to be postponed until the next major version, possibly for a year or more
+
+- The pace of development will slow down, since we must work within the existing API constraints, and spend more time planning public APIs
+
+- External developers may lose access to some currently exported APIs
 
 ### Neutral
 
