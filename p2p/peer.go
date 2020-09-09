@@ -201,7 +201,7 @@ func (p *peer) OnStop() {
 	p.metricsTicker.Stop()
 	p.BaseService.OnStop()
 	if err := p.mconn.Stop(); err != nil { // stop everything and close the conn
-		p.Logger.Error("Error while stopping peer", "err", err)
+		p.Logger.Debug("Error while stopping peer", "err", err)
 	}
 }
 
