@@ -48,7 +48,69 @@ The `tm-db` package will remain a separate module in a separate repo.
 
 ### Public API
 
-TODO: this will list the specific packages that are considered public APIs, and thus placed outside of the `internal` directory.
+When preparing our public API for 1.0, we should keep these principles in mind:
+
+- Limit the number of public APIs that we start out with - we can always add new APIs later, but we can't change or remove APIs once they're made public.
+
+- Before an API is made public, do a thorough review of the API to make sure it covers any future needs, can accomodate expected changes, and follows good API design practices.
+
+The following current packages will be part of our public API in 1.0 in some form:
+
+- `abci`
+- `config`
+- `crypto` (separate module)
+- `libs/log`
+- `light`
+- `node`
+- `privval` (client parts)
+- `rpc/client`
+- `types` (respective packages)
+- `version`
+
+For comparison, the following are the number of Tendermint imports in the Cosmos SDK (excluding tests) - anything not listed above must be handled by the SDK itself:
+
+```
+      1 github.com/tendermint/tendermint/abci/server
+     73 github.com/tendermint/tendermint/abci/types
+      2 github.com/tendermint/tendermint/cmd/tendermint/commands
+      7 github.com/tendermint/tendermint/config
+     68 github.com/tendermint/tendermint/crypto
+      1 github.com/tendermint/tendermint/crypto/armor
+     10 github.com/tendermint/tendermint/crypto/ed25519
+      2 github.com/tendermint/tendermint/crypto/encoding
+      3 github.com/tendermint/tendermint/crypto/merkle
+      3 github.com/tendermint/tendermint/crypto/sr25519
+      8 github.com/tendermint/tendermint/crypto/tmhash
+      1 github.com/tendermint/tendermint/crypto/xsalsa20symmetric
+     11 github.com/tendermint/tendermint/libs/bytes
+      2 github.com/tendermint/tendermint/libs/bytes.HexBytes
+     15 github.com/tendermint/tendermint/libs/cli
+      2 github.com/tendermint/tendermint/libs/cli/flags
+      2 github.com/tendermint/tendermint/libs/json
+     30 github.com/tendermint/tendermint/libs/log
+      1 github.com/tendermint/tendermint/libs/math
+     11 github.com/tendermint/tendermint/libs/os
+      4 github.com/tendermint/tendermint/libs/rand
+      1 github.com/tendermint/tendermint/libs/strings
+      5 github.com/tendermint/tendermint/light
+      1 github.com/tendermint/tendermint/mempool
+      3 github.com/tendermint/tendermint/node
+      5 github.com/tendermint/tendermint/p2p
+      4 github.com/tendermint/tendermint/privval
+     10 github.com/tendermint/tendermint/proto/tendermint/crypto
+      1 github.com/tendermint/tendermint/proto/tendermint/libs/bits
+     24 github.com/tendermint/tendermint/proto/tendermint/types
+      3 github.com/tendermint/tendermint/proto/tendermint/version
+      2 github.com/tendermint/tendermint/proxy
+      3 github.com/tendermint/tendermint/rpc/client
+      1 github.com/tendermint/tendermint/rpc/client/http
+      2 github.com/tendermint/tendermint/rpc/client/local
+      3 github.com/tendermint/tendermint/rpc/core/types
+      1 github.com/tendermint/tendermint/rpc/jsonrpc/server
+     33 github.com/tendermint/tendermint/types
+      2 github.com/tendermint/tendermint/types/time
+      1 github.com/tendermint/tendermint/version
+```
 
 ### Backwards-Compatible Changes
 
