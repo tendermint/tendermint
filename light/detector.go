@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/light/provider"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -62,26 +61,27 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 			//
 			// We combine these actions together, verifying the witnesses headers and outputting the trace
 			// which captures the bifurcation point and if successful provides the information to create
-			witnessTrace, primaryBlock, err := c.examineConflictingHeaderAgainstTrace(primaryTrace, e.Block.SignedHeader, e.Witness, now)
+			supportingWitness := c.witnesses[e.WitnessIndex]
+			witnessTrace, primaryBlock, err := c.examineConflictingHeaderAgainstTrace(primaryTrace, e.Block.SignedHeader, supportingWitness, now)
 			if err != nil {
-				c.logger.Info("Error validating witness's divergent header", "witness", e.Witness, "err", err)
-				witnessesToRemove = append(witnessesToRemove, e.Index)
+				c.logger.Info("Error validating witness's divergent header", "witness", supportingWitness, "err", err)
+				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 				continue
 			}
 			// We are suspecting that the primary is faulty, hence we hold the witness as the source of truth
 			// and generate evidence against the primary that we can send to the witness
 			ev := &types.LightClientAttackEvidence{
-				ConflictingBlock: witnessTrace[len(witnessTrace)-1],
-				CommonHeight:     witnessTrace[0].Height,
+				ConflictingBlock: primaryBlock,
+				CommonHeight:     witnessTrace[0].Height, // the first block in the bisection is common to both providers
 			}
 			c.logger.Error("Attack detected. Sending evidence againt primary by witness", "ev", ev,
-				"primary", c.primary, "witness", e.Witness)
+				"primary", c.primary, "witness", supportingWitness)
 			c.sendEvidence(ev, e.Witness)
 
 			// This may not be valid because the witness itself is at fault. So now we reverse it, examining the
 			// trace provided by the witness and holding the primary as the source of truth. Note: primary may not
 			// respond but this is okay as we will halt anyway.
-			primaryTrace, _, err := c.examineConflictingHeaderAgainstTrace(witnessTrace, primaryBlock.SignedHeader, c.primary, now)
+			primaryTrace, witnessBlock, err := c.examineConflictingHeaderAgainstTrace(witnessTrace, primaryBlock.SignedHeader, c.primary, now)
 			if err != nil {
 				c.logger.Info("Error validating primary's divergent header", "primary", c.primary, "err", err)
 				continue
@@ -89,22 +89,22 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 
 			// We now use the primary trace to create evidence against the witness and send it to the primary
 			ev = &types.LightClientAttackEvidence{
-				ConflictingBlock: primaryTrace[len(primaryTrace)-1],
-				CommonHeight:     primaryTrace[0].Height,
+				ConflictingBlock: witnessBlock,
+				CommonHeight:     primaryTrace[0].Height, // the first block in the bisection is common to both providers
 			}
 			c.logger.Error("Sending evidence against witness by primary", "ev", ev,
-				"primary", c.primary, "witness", e.Witness)
+				"primary", c.primary, "witness", supportingWitness)
 			c.sendEvidence(ev, c.primary)
 			// We return the error and don't process anymore witnesses
 			return e
 
 		case errBadWitness:
-			c.logger.Info("Witness returned an error during header comparison", "witness", c.witnesses[e.Index], "err", err)
+			c.logger.Info("Witness returned an error during header comparison", "witness", c.witnesses[e.WitnessIndex], "err", err)
 			// if witness sent us an invalid header, then remove it. If it didn't respond or couldn't find the block, then we
 			// ignore it and move on to the next witness
 			if _, ok := e.Reason.(provider.ErrBadLightBlock); ok {
-				c.logger.Info("Witness sent us invalid header / vals -> removing it", "witness", c.witnesses[e.Index])
-				witnessesToRemove = append(witnessesToRemove, e.Index)
+				c.logger.Info("Witness sent us invalid header / vals -> removing it", "witness", c.witnesses[e.WitnessIndex])
+				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 			}
 		}
 	}
@@ -205,8 +205,7 @@ func (c *Client) examineConflictingHeaderAgainstTrace(
 
 	// We have reached the end of the trace without observing a divergence. The last header  is thus different
 	// from the divergent header that the source originally sent us, then we return an error.
-	return nil, nil, fmt.Errorf("source provided different header to the original and is the same as the targer"+
-		"header of the trace (%X != %X = %X)",
-		previouslyVerifiedBlock.Hash(), divergentHeader.Hash(), trace[len(trace)-1].Hash())
+	return nil, nil, fmt.Errorf("source provided different header to the original header it provided",
+		previouslyVerifiedBlock.Hash(), divergentHeader.Hash())
 
 }

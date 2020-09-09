@@ -70,9 +70,8 @@ func (e ErrVerificationFailed) Error() string {
 
 // ErrConflictingHeaders is thrown when two conflicting headers are discovered.
 type errConflictingHeaders struct {
-	Block   *types.LightBlock
-	Witness provider.Provider
-	Index   int
+	Block        *types.LightBlock
+	WitnessIndex int
 }
 
 func (e errConflictingHeaders) Error() string {
@@ -92,8 +91,8 @@ func (e errNoWitnesses) Error() string {
 // errBadWitness is returned when the witness either does not respond or
 // responds with an invalid header.
 type errBadWitness struct {
-	Reason error
-	Index  int
+	Reason       error
+	WitnessIndex int
 }
 
 func (e errBadWitness) Error() string {
