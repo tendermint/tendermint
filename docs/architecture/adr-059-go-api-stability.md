@@ -67,6 +67,8 @@ The following current packages will be part of our public API in 1.0 in some for
 - `types` (respective packages)
 - `version`
 
+Notably, public APIs for providing custom components (e.g. reactors and mempools) are not planned for 1.0, but may be added in a later 1.x version. This is because it's important to get these APIs right, and we don't want to bite off too much for 1.0. Users who rely on this can consider forking Tendermint.
+
 For comparison, the following are the number of Tendermint imports in the Cosmos SDK (excluding tests) - anything not listed above must be removed from the SDK or implemented there:
 
 ```
@@ -184,7 +186,7 @@ Proposed
 
 - The pace of development will slow down, since we must work within the existing API constraints, and spend more time planning public APIs
 
-- External developers may lose access to some currently exported APIs
+- External developers may lose access to some currently exported APIs and functionality
 
 ### Neutral
 
