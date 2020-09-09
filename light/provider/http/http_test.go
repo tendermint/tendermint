@@ -1,6 +1,7 @@
 package http_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -65,7 +66,7 @@ func TestProvider(t *testing.T) {
 	require.NoError(t, err)
 
 	// let's get the highest block
-	sh, err := p.LightBlock(0)
+	sh, err := p.LightBlock(context.Background(), 0)
 	require.NoError(t, err)
 	assert.True(t, sh.Height < 1000)
 
@@ -74,16 +75,16 @@ func TestProvider(t *testing.T) {
 
 	// historical queries now work :)
 	lower := sh.Height - 3
-	sh, err = p.LightBlock(lower)
+	sh, err = p.LightBlock(context.Background(), lower)
 	require.NoError(t, err)
 	assert.Equal(t, lower, sh.Height)
 
 	// fetching missing heights (both future and pruned) should return appropriate errors
-	_, err = p.LightBlock(1000)
+	_, err = p.LightBlock(context.Background(), 1000)
 	require.Error(t, err)
 	assert.Equal(t, provider.ErrLightBlockNotFound, err)
 
-	_, err = p.LightBlock(1)
+	_, err = p.LightBlock(context.Background(), 1)
 	require.Error(t, err)
 	assert.Equal(t, provider.ErrLightBlockNotFound, err)
 }
