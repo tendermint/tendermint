@@ -3,10 +3,10 @@ name: Net
 # This workflow is run on every pull request, if a *{.go, .mod, .sum} file has been modified, and push to master and release/** branches
 on:
   pull_request:
-  paths:
-    - "**.go"
-    - "**.mod"
-    - "**.sum"
+    paths:
+      - "**.go"
+      - "**.mod"
+      - "**.sum"
   push:
     branches:
       - master

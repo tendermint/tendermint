@@ -19,9 +19,11 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstore "github.com/tendermint/tendermint/proto/tendermint/store"
+	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
+	"github.com/tendermint/tendermint/version"
 )
 
 // A cleanupFunc cleans up any config / test files created for a particular
@@ -182,6 +184,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	require.Error(t, err)
 
 	header1 := types.Header{
+		Version:         tmversion.Consensus{Block: version.BlockProtocol},
 		Height:          1,
 		ChainID:         "block_test",
 		Time:            tmtime.Now(),
@@ -218,6 +221,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		{
 			block: newBlock( // New block at height 5 in empty block store is fine
 				types.Header{
+					Version:         tmversion.Consensus{Block: version.BlockProtocol},
 					Height:          5,
 					ChainID:         "block_test",
 					Time:            tmtime.Now(),
@@ -502,7 +506,9 @@ func TestLoadBlockMeta(t *testing.T) {
 	require.Contains(t, panicErr.Error(), "unmarshal to tmproto.BlockMeta")
 
 	// 3. A good blockMeta serialized and saved to the DB should be retrievable
-	meta := &types.BlockMeta{Header: types.Header{Height: 1, ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}
+	meta := &types.BlockMeta{Header: types.Header{
+		Version: tmversion.Consensus{
+			Block: version.BlockProtocol, App: 0}, Height: 1, ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}
 	pbm := meta.ToProto()
 	err = db.Set(calcBlockMetaKey(height), mustEncode(pbm))
 	require.NoError(t, err)
