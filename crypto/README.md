@@ -10,19 +10,16 @@ To get the interfaces,
 For any specific algorithm, use its specific module e.g.
 `import "github.com/tendermint/tendermint/crypto/ed25519"`
 
-If you want to decode bytes into one of the types, but don't care about the specific algorithm, use
-`import "github.com/tendermint/tendermint/crypto/amino"`
-
 ## Binary encoding
 
 For Binary encoding, please refer to the [Tendermint encoding specification](https://docs.tendermint.com/master/spec/blockchain/encoding.html).
 
 ## JSON Encoding
 
-crypto `.Bytes()` uses Amino:binary encoding, but Amino:JSON is also supported.
+JSON encoding is done using tendermint's internal json encoder. For more information on JSON encoding, please refer to [Tendermint JSON encoding](https://github.com/tendermint/tendermint/blob/ccc990498df70f5a3df06d22476c9bb83812cbe3/libs/json/doc.go)
 
 ```go
-Example Amino:JSON encodings:
+Example JSON encodings:
 
 ed25519.PrivKey     - {"type":"tendermint/PrivKeyEd25519","value":"EVkqJO/jIXp3rkASXfh9YnyToYXRXhBr6g9cQVxPFnQBP/5povV4HTjvsy530kybxKHwEi85iU8YL0qQhSYVoQ=="}
 ed25519.PubKey      - {"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="}
