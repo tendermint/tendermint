@@ -1681,13 +1681,12 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.MissingValidators.Set(float64(missingValidators))
 	cs.metrics.MissingValidatorsPower.Set(float64(missingValidatorsPower))
 
-	// byzantine validators maybe be duplicate and / or
-	// at different heights depending on the nature of the byzantine behavior
+	// byzantine validators power and count is only for consensus evidence i.e. duplicate vote
 	byzantineValidatorsPower := int64(0)
 	byzantineValidatorsCount := int64(0)
 	for _, ev := range block.Evidence.Evidence {
-		for _, address := range ev.Addresses() {
-			if _, val := cs.Validators.GetByAddress(address); val != nil {
+		if dve, ok := ev.(*types.DuplicateVoteEvidence); ok {
+			if _, val := cs.Validators.GetByAddress(dve.VoteA.ValidatorAddress); val != nil {
 				byzantineValidatorsCount++
 				byzantineValidatorsPower += val.VotingPower
 			}
@@ -1861,7 +1860,8 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 			} else {
 				timestamp = sm.MedianTime(cs.LastCommit.MakeCommit(), cs.LastValidators)
 			}
-			evidenceErr := cs.evpool.AddEvidenceFromConsensus(types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB), timestamp, cs.Validators)
+			evidenceErr := cs.evpool.AddEvidenceFromConsensus(
+				types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB), timestamp, cs.Validators)
 			if evidenceErr != nil {
 				cs.Logger.Error("Failed to add evidence to the evidence pool", "err", evidenceErr)
 			}

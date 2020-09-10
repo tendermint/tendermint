@@ -40,7 +40,8 @@ func evidenceLogger() log.Logger {
 }
 
 // connect N evidence reactors through N switches
-func makeAndConnectReactorsAndPools(config *cfg.Config, stateStores []evidence.StateStore) ([]*evidence.Reactor, []*evidence.Pool) {
+func makeAndConnectReactorsAndPools(config *cfg.Config, stateStores []evidence.StateStore) ([]*evidence.Reactor,
+	[]*evidence.Pool) {
 	N := len(stateStores)
 
 	reactors := make([]*evidence.Reactor, N)

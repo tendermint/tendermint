@@ -41,6 +41,7 @@ type BlockStore interface {
 // Get/Set/Commit
 type EvidencePool interface {
 	PendingEvidence(uint32) []types.Evidence
+	AddEvidence(types.Evidence) error
 	Update(*types.Block, State)
 	CheckEvidence(types.EvidenceList) ([]byte, error)
 }
@@ -48,6 +49,7 @@ type EvidencePool interface {
 // MockEvidencePool is an empty implementation of EvidencePool, useful for testing.
 type MockEvidencePool struct{}
 
-func (me MockEvidencePool) PendingEvidence(uint32) []types.Evidence { return nil }
-func (me MockEvidencePool) Update(*types.Block, State)              {}
-func (me MockEvidencePool) CheckEvidence(types.EvidenceList) ([]byte, error)  { return []byte{}, nil }
+func (me MockEvidencePool) PendingEvidence(uint32) []types.Evidence          { return nil }
+func (me MockEvidencePool) AddEvidence(types.Evidence) error                 { return nil }
+func (me MockEvidencePool) Update(*types.Block, State)                       {}
+func (me MockEvidencePool) CheckEvidence(types.EvidenceList) ([]byte, error) { return []byte{}, nil }

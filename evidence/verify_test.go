@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	// "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	
+
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -19,22 +19,22 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func TestVerifyLightClientAttack(t *testing.T) {	
+func TestVerifyLightClientAttack(t *testing.T) {
 	commonVals, commonPrivVals := types.RandValidatorSet(2, 10)
-	
+
 	newVal, newPrivVal := types.RandValidator(false, 9)
-	
+
 	conflictingVals, err := types.ValidatorSetFromExistingValidators(append(commonVals.Validators, newVal))
 	require.NoError(t, err)
 	conflictingPrivVals := append(commonPrivVals, newPrivVal)
-	
+
 	commonHeader := makeHeaderRandom(4)
 	commonHeader.Time = defaultEvidenceTime.Add(-1 * time.Hour)
 	trustedHeader := makeHeaderRandom(10)
-	
+
 	conflictingHeader := makeHeaderRandom(10)
 	conflictingHeader.ValidatorsHash = conflictingVals.Hash()
-	
+
 	blockID := makeBlockID(conflictingHeader.Hash(), 1000, []byte("partshash"))
 	voteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
 	commit, err := types.MakeCommit(blockID, 10, 1, voteSet, conflictingPrivVals, defaultEvidenceTime)
@@ -49,31 +49,32 @@ func TestVerifyLightClientAttack(t *testing.T) {
 		},
 		CommonHeight: 4,
 	}
-	
+
 	commonSignedHeader := &types.SignedHeader{
 		Header: commonHeader,
 		Commit: &types.Commit{},
 	}
 	trustedBlockID := makeBlockID(trustedHeader.Hash(), 1000, []byte("partshash"))
-	trustedVoteSet:= types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
+	trustedVoteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
 	trustedCommit, err := types.MakeCommit(trustedBlockID, 10, 1, trustedVoteSet, conflictingPrivVals, defaultEvidenceTime)
-	trustedSignedHeader := &types.SignedHeader {
+	require.NoError(t, err)
+	trustedSignedHeader := &types.SignedHeader{
 		Header: trustedHeader,
 		Commit: trustedCommit,
 	}
-	
+
 	// good pass -> no error
-	err = evidence.VerifyLightClientAttack(ev, commonSignedHeader, trustedSignedHeader, commonVals, 
-	defaultEvidenceTime.Add(1 * time.Minute), time.Duration(2 * time.Hour))
+	err = evidence.VerifyLightClientAttack(ev, commonSignedHeader, trustedSignedHeader, commonVals,
+		defaultEvidenceTime.Add(1*time.Minute), 2*time.Hour)
 	assert.NoError(t, err)
-	
+
 	// trusted and conflicting hashes are the same -> an error should be returned
-	err = evidence.VerifyLightClientAttack(ev, commonSignedHeader, ev.ConflictingBlock.SignedHeader, commonVals, 
-	defaultEvidenceTime.Add(1 * time.Minute), time.Duration(2 * time.Hour))
+	err = evidence.VerifyLightClientAttack(ev, commonSignedHeader, ev.ConflictingBlock.SignedHeader, commonVals,
+		defaultEvidenceTime.Add(1*time.Minute), 2*time.Hour)
 	assert.Error(t, err)
-	
+
 	state := sm.State{
-		LastBlockTime: defaultEvidenceTime.Add(1 * time.Minute),
+		LastBlockTime:   defaultEvidenceTime.Add(1 * time.Minute),
 		LastBlockHeight: 11,
 		ConsensusParams: *types.DefaultConsensusParams(),
 	}
@@ -88,7 +89,7 @@ func TestVerifyLightClientAttack(t *testing.T) {
 
 	pool, err := evidence.NewPool(dbm.NewMemDB(), stateStore, blockStore)
 	require.NoError(t, err)
-	
+
 	evList := types.EvidenceList{ev}
 	hash, err := pool.CheckEvidence(evList)
 	assert.NoError(t, err)
@@ -96,7 +97,7 @@ func TestVerifyLightClientAttack(t *testing.T) {
 
 	pendingEvs := pool.PendingEvidence(2)
 	assert.Equal(t, 1, len(pendingEvs))
-	
+
 	//later add tests to create abci evidence
 }
 
@@ -156,11 +157,11 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 			assert.NotNil(t, evidence.VerifyDuplicateVote(ev, chainID, valSet), "evidence should be invalid")
 		}
 	}
-	
+
 	goodEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID)
 	state := sm.State{
-		ChainID: chainID,
-		LastBlockTime: defaultEvidenceTime.Add(1 * time.Minute),
+		ChainID:         chainID,
+		LastBlockTime:   defaultEvidenceTime.Add(1 * time.Minute),
 		LastBlockHeight: 11,
 		ConsensusParams: *types.DefaultConsensusParams(),
 	}
@@ -172,7 +173,7 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 
 	pool, err := evidence.NewPool(dbm.NewMemDB(), stateStore, blockStore)
 	require.NoError(t, err)
-	
+
 	evList := types.EvidenceList{goodEv}
 	hash, err := pool.CheckEvidence(evList)
 	assert.NoError(t, err)

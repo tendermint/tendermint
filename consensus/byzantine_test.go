@@ -17,6 +17,7 @@ import (
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/evidence"
+	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
@@ -70,7 +71,9 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 		// Make a full instance of the evidence pool
 		evidenceDB := dbm.NewMemDB()
-		evpool, err := evidence.NewPool(evidenceDB, evidence.NewEvidenceStateStore(stateDB), blockStore)
+		stateStore := &mocks.StateStore{}
+		stateStore.On("LoadState").Return(state)
+		evpool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 		require.NoError(t, err)
 		evpool.SetLogger(logger.With("module", "evidence"))
 
@@ -175,7 +178,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		ev, ok := evidence.(*types.DuplicateVoteEvidence)
 		assert.True(t, ok)
 		pubkey, _ := bcs.privValidator.GetPubKey()
-		assert.Equal(t, []byte(pubkey.Address()), ev.Addresses()[0])
+		assert.Equal(t, []byte(pubkey.Address()), ev.VoteA.ValidatorAddress)
 	}
 }
 

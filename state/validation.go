@@ -154,11 +154,11 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	if err != nil {
 		return err
 	}
-	
+
 	if !bytes.Equal(hash, block.EvidenceHash) {
-		return fmt.Errorf("wrong Block.Header.EvidenceHash. Expected %X, got %X", 
+		return fmt.Errorf("wrong Block.Header.EvidenceHash. Expected %X, got %X",
 			hash, block.EvidenceHash)
 	}
-	
+
 	return nil
 }

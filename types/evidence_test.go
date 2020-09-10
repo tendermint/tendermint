@@ -136,6 +136,7 @@ func TestLightClientAttackEvidence(t *testing.T) {
 	assert.NotNil(t, lcae.Hash())
 	// only 7 validators sign
 	differentCommit, err := MakeCommit(blockID, height, 1, voteSet, privVals[:7], time.Now())
+	require.NoError(t, err)
 	differentEv := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{
 			SignedHeader: &SignedHeader{
@@ -207,7 +208,9 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 		{"Height is equal to divergent block", func(ev *LightClientAttackEvidence) { ev.CommonHeight = height }, true},
 		{"Nil conflicting header", func(ev *LightClientAttackEvidence) { ev.ConflictingBlock.Header = nil }, true},
 		{"Nil conflicting blocl", func(ev *LightClientAttackEvidence) { ev.ConflictingBlock = nil }, true},
-		{"Nil validator set", func(ev *LightClientAttackEvidence) { ev.ConflictingBlock.ValidatorSet = &ValidatorSet{} }, true},
+		{"Nil validator set", func(ev *LightClientAttackEvidence) {
+			ev.ConflictingBlock.ValidatorSet = &ValidatorSet{}
+		}, true},
 	}
 	for _, tc := range testCases {
 		tc := tc

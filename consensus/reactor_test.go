@@ -30,7 +30,7 @@ import (
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/p2p/mock"
+	p2pmock "github.com/tendermint/tendermint/p2p/mock"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	statemocks "github.com/tendermint/tendermint/state/mocks"
@@ -163,15 +163,20 @@ func TestReactorWithEvidence(t *testing.T) {
 		// mock the evidence pool
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % nValidators
-		evpool := statemocks.EvidencePool{}
-		evpool.On("CheckEvidence", mock.AnythingOfType("*types.EvidenceList")).Return(nil)
+		evpool := &statemocks.EvidencePool{}
+		evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(
+			func(evList types.EvidenceList) ([]byte, error) {
+				return evList.Hash(), nil
+			})
 		evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]types.Evidence{
 			types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], config.ChainID()),
 		})
 
+		evpool2 := emptyEvidencePool{}
+
 		// Make State
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
-		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
+		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool2)
 		cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 		cs.SetPrivValidator(pv)
 
@@ -204,38 +209,6 @@ func TestReactorWithEvidence(t *testing.T) {
 		assert.True(t, len(block.Evidence.Evidence) > 0)
 	}, css)
 }
-
-// mock evidence pool returns no evidence for block 1,
-// and returnes one piece for all higher blocks. The one piece
-// is for a given validator at block 1.
-type mockEvidencePool struct {
-	height int
-	ev     []types.Evidence
-}
-
-func newMockEvidencePool(val types.PrivValidator) *mockEvidencePool {
-	return &mockEvidencePool{
-		ev: []types.Evidence{types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, val, config.ChainID())},
-	}
-}
-
-// NOTE: maxBytes is ignored
-// func (m *mockEvidencePool) PendingEvidence(maxBytes uint32) []types.Evidence {
-// 	if m.height > 0 {
-// 		return m.ev
-// 	}
-// 	return nil
-// }
-func (m *mockEvidencePool) AddEvidenceFromConsensus(types.Evidence, time.Time, *types.ValidatorSet) error { return nil }
-// func (m *mockEvidencePool) Update(block *types.Block, state sm.State) {
-// 	if m.height > 0 {
-// 		if len(block.Evidence.Evidence) == 0 {
-// 			panic("block has no evidence")
-// 		}
-// 	}
-// 	m.height++
-// }
-// func (m *mockEvidencePool) Verify(types.Evidence) error { return nil }
 
 //------------------------------------
 
@@ -270,7 +243,7 @@ func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 
 	var (
 		reactor = reactors[0]
-		peer    = mock.NewPeer(nil)
+		peer    = p2pmock.NewPeer(nil)
 		msg     = MustEncode(&HasVoteMessage{Height: 1,
 			Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)
@@ -293,7 +266,7 @@ func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 
 	var (
 		reactor = reactors[0]
-		peer    = mock.NewPeer(nil)
+		peer    = p2pmock.NewPeer(nil)
 		msg     = MustEncode(&HasVoteMessage{Height: 1,
 			Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)

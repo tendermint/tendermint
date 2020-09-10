@@ -34,8 +34,8 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 			primaryValidators[height] = witnessValidators[height]
 			continue
 		}
-		primaryHeaders[height] = forgedKeys.GenSignedHeader(chainID, height, bTime.Add(time.Duration(height)*time.Minute), nil, forgedVals, forgedVals,
-			hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
+		primaryHeaders[height] = forgedKeys.GenSignedHeader(chainID, height, bTime.Add(time.Duration(height)*time.Minute),
+			nil, forgedVals, forgedVals, hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
 		primaryValidators[height] = forgedVals
 	}
 	primary := mockp.New(chainID, primaryHeaders, primaryValidators)
@@ -98,9 +98,11 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 			primaryValidators[height] = witnessValidators[height]
 			continue
 		}
-		// we don't have a network partition so we will make 4/5 (greater than 2/3) malicious and vote again for a different block (which we do by adding txs)
-		primaryHeaders[height] = keys.GenSignedHeader(chainID, height, bTime.Add(time.Duration(height)*time.Minute), []types.Tx{[]byte("abcd")}, witnessValidators[height],
-			witnessValidators[height], hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys)-1)
+		// we don't have a network partition so we will make 4/5 (greater than 2/3) malicious and vote again for
+		// a different block (which we do by adding txs)
+		primaryHeaders[height] = keys.GenSignedHeader(chainID, height, bTime.Add(time.Duration(height)*time.Minute),
+			[]types.Tx{[]byte("abcd")}, witnessValidators[height], witnessValidators[height], hash("app_hash"),
+			hash("cons_hash"), hash("results_hash"), 0, len(keys)-1)
 		primaryValidators[height] = witnessValidators[height]
 	}
 	primary := mockp.New(chainID, primaryHeaders, primaryValidators)

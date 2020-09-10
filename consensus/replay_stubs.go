@@ -1,6 +1,8 @@
 package consensus
 
 import (
+	"time"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/clist"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -54,10 +56,11 @@ var _ sm.EvidencePool = emptyEvidencePool{}
 func (emptyEvidencePool) PendingEvidence(uint32) []types.Evidence { return nil }
 func (emptyEvidencePool) AddEvidence(types.Evidence) error        { return nil }
 func (emptyEvidencePool) Update(*types.Block, sm.State)           {}
-func (emptyEvidencePool) Verify(types.Evidence) error             { return nil }
-func (emptyEvidencePool) IsCommitted(types.Evidence) bool         { return false }
-func (emptyEvidencePool) IsPending(types.Evidence) bool           { return false }
-func (emptyEvidencePool) Header(int64) *types.Header              { return nil }
+
+func (emptyEvidencePool) AddEvidenceFromConsensus(types.Evidence, time.Time, *types.ValidatorSet) error {
+	return nil
+}
+func (emptyEvidencePool) CheckEvidence(types.EvidenceList) ([]byte, error) { return []byte{}, nil }
 
 //-----------------------------------------------------------------------------
 // mockProxyApp uses ABCIResponses to give the right results.

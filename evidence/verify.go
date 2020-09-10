@@ -16,7 +16,7 @@ import (
 // - it is from a key who was a validator at the given height
 // - it is internally consistent with state
 // - it was properly signed by the alleged equivocator and meets the individual evidence verification requirements
-func (evpool *Pool) verify(evidence types.Evidence) (*EvidenceInfo, error) {
+func (evpool *Pool) verify(evidence types.Evidence) (*Info, error) {
 	var (
 		state          = evpool.State()
 		height         = state.LastBlockHeight
@@ -49,21 +49,20 @@ func (evpool *Pool) verify(evidence types.Evidence) (*EvidenceInfo, error) {
 	}
 
 	// apply the evidence-specific verification logic
-	switch evidence.(type) {
+	switch ev := evidence.(type) {
 	case *types.DuplicateVoteEvidence:
-		dev := evidence.(*types.DuplicateVoteEvidence)
 		valSet, err := evpool.stateDB.LoadValidators(evidence.Height())
 		if err != nil {
 			return nil, err
 		}
-		err = VerifyDuplicateVote(dev, state.ChainID, valSet)
+		err = VerifyDuplicateVote(ev, state.ChainID, valSet)
 		if err != nil {
 			return nil, fmt.Errorf("verifying duplicate vote evidence: %w", err)
 		}
 
-		_, val := valSet.GetByAddress(dev.VoteA.ValidatorAddress)
+		_, val := valSet.GetByAddress(ev.VoteA.ValidatorAddress)
 
-		return &EvidenceInfo{
+		return &Info{
 			Evidence:         evidence,
 			Time:             evTime,
 			Validators:       []*types.Validator{val}, // just a single validator for duplicate vote evidence
@@ -71,7 +70,6 @@ func (evpool *Pool) verify(evidence types.Evidence) (*EvidenceInfo, error) {
 		}, nil
 
 	case *types.LightClientAttackEvidence:
-		lev := evidence.(*types.LightClientAttackEvidence)
 		commonHeader, err := getSignedHeader(evpool.blockStore, evidence.Height())
 		if err != nil {
 			return nil, err
@@ -80,13 +78,13 @@ func (evpool *Pool) verify(evidence types.Evidence) (*EvidenceInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		trustedHeader, err := getSignedHeader(evpool.blockStore, lev.ConflictingBlock.Height)
+		trustedHeader, err := getSignedHeader(evpool.blockStore, ev.ConflictingBlock.Height)
 		if err != nil {
 			return nil, err
 		}
 
-		err = VerifyLightClientAttack(evidence.(*types.LightClientAttackEvidence), commonHeader, trustedHeader,
-			commonVals, state.LastBlockTime, state.ConsensusParams.Evidence.MaxAgeDuration)
+		err = VerifyLightClientAttack(ev, commonHeader, trustedHeader, commonVals, state.LastBlockTime,
+			state.ConsensusParams.Evidence.MaxAgeDuration)
 		if err != nil {
 			return nil, err
 		}
@@ -94,7 +92,7 @@ func (evpool *Pool) verify(evidence types.Evidence) (*EvidenceInfo, error) {
 		// Amnesia attack we don't have any malicious validators.
 		validators := getMaliciousValidators(evidence.(*types.LightClientAttackEvidence), commonVals, trustedHeader)
 
-		return &EvidenceInfo{
+		return &Info{
 			Evidence:         evidence,
 			Time:             evTime,
 			Validators:       validators,
@@ -199,9 +197,10 @@ func getSignedHeader(blockStore BlockStore, height int64) (*types.SignedHeader, 
 	}, nil
 }
 
-// getMaliciousValidators finds out what style of attack LightClientAttackEvidence was and then works out who the malicious validators were and
-// returns them.
-func getMaliciousValidators(evidence *types.LightClientAttackEvidence, commonVals *types.ValidatorSet, trusted *types.SignedHeader) []*types.Validator {
+// getMaliciousValidators finds out what style of attack LightClientAttackEvidence was and then works out who
+// the malicious validators were and returns them.
+func getMaliciousValidators(evidence *types.LightClientAttackEvidence, commonVals *types.ValidatorSet,
+	trusted *types.SignedHeader) []*types.Validator {
 	var validators []*types.Validator
 	// First check if the header is invalid. This means that it is a lunatic attack and therefore we take the
 	// validators who are in the commonVals and voted for the lunatic header
@@ -238,8 +237,10 @@ func getMaliciousValidators(evidence *types.LightClientAttackEvidence, commonVal
 			validators = append(validators, val)
 		}
 
-	} // if the rounds are different then this is an amnesia attack. Unfortunately, given the nature of the attack, we aren't able
-	// yet to deduce which are malicious validators and which are not hence we return an empty validator set.
+	}
+	// if the rounds are different then this is an amnesia attack. Unfortunately, given the nature of the attack,
+	// we aren't able yet to deduce which are malicious validators and which are not hence we return an
+	// empty validator set.
 	return validators
 }
 

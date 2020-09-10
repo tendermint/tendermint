@@ -14,8 +14,8 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	evproto "github.com/tendermint/tendermint/proto/tendermint/evidence"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -30,8 +30,8 @@ type Pool struct {
 	logger log.Logger
 
 	evidenceStore dbm.DB
-	evidenceList *clist.CList // concurrent linked-list of evidence
-	evidenceSize uint16 // amount of pending evidence
+	evidenceList  *clist.CList // concurrent linked-list of evidence
+	evidenceSize  uint16       // amount of pending evidence
 
 	// needed to load validators to verify evidence
 	stateDB StateStore
@@ -41,9 +41,9 @@ type Pool struct {
 	mtx sync.Mutex
 	// latest state
 	state sm.State
-	
+
 	pruningHeight int64
-	pruningTime time.Time 
+	pruningTime   time.Time
 }
 
 // NewPool creates an evidence pool. If using an existing evidence store,
@@ -61,7 +61,7 @@ func NewPool(evidenceDB dbm.DB, stateDB StateStore, blockStore BlockStore) (*Poo
 		evidenceStore: evidenceDB,
 		evidenceList:  clist.New(),
 		pruningHeight: state.LastBlockHeight,
-		pruningTime:   state.LastBlockTime,         
+		pruningTime:   state.LastBlockTime,
 	}
 
 	// if pending evidence already in db, in event of prior failure, then load it back to the evidenceList
@@ -92,6 +92,7 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 			block.Height,
 		))
 	}
+	evpool.logger.Info("Updating evidence pool", "height", state.LastBlockHeight, "time", state.LastBlockTime)
 
 	// update the state
 	evpool.updateState(state)
@@ -100,7 +101,8 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	evpool.markEvidenceAsCommitted(block.Height, block.Evidence.Evidence)
 
 	// prune pending evidence when it has expired. This also updates when the next evidence will expire
-	if evpool.evidenceSize > 0 && state.LastBlockHeight > evpool.pruningHeight && state.LastBlockTime.After(evpool.pruningTime){
+	if evpool.evidenceSize > 0 && state.LastBlockHeight > evpool.pruningHeight &&
+		state.LastBlockTime.After(evpool.pruningTime) {
 		evpool.pruningHeight, evpool.pruningTime = evpool.removeExpiredPendingEvidence()
 	}
 }
@@ -133,18 +135,18 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 	return nil
 }
 
-// AddEvidenceFromConsensus should be exposed only to the consensus so it can add evidence to the pool 
+// AddEvidenceFromConsensus should be exposed only to the consensus so it can add evidence to the pool
 // directly without the need for verification.
 func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, valSet *types.ValidatorSet) error {
 	var (
-		vals []*types.Validator
+		vals       []*types.Validator
 		totalPower int64
 	)
 
 	if evpool.isPending(ev) {
 		return nil // we already have this evidence
 	}
-	
+
 	switch ev := ev.(type) {
 	case *types.DuplicateVoteEvidence:
 		_, val := valSet.GetByAddress(ev.VoteA.ValidatorAddress)
@@ -154,10 +156,10 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 		return fmt.Errorf("unrecognized evidence: %v", ev)
 	}
 
-	evInfo := &EvidenceInfo{
-		Evidence: ev, 
-		Time: time,
-		Validators: vals,
+	evInfo := &Info{
+		Evidence:         ev,
+		Time:             time,
+		Validators:       vals,
 		TotalVotingPower: totalPower,
 	}
 
@@ -173,37 +175,37 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 }
 
 // CheckEvidence takes an array of evidence from a block and verifies all the evidence there.
-// If it has already verified the evidence then it jumps to the next one. It ensures that no 
+// If it has already verified the evidence then it jumps to the next one. It ensures that no
 // evidence has already been committed or is being proposed twice. It also adds any
 // evidence that it doesn't currently have so that it can quickly form ABCI Evidence later.
 // Check evidence returns the hash of the entire evidence list so that it can be compares with
-// the headers EvidenceHash. 
+// the headers EvidenceHash.
 func (evpool *Pool) CheckEvidence(evList types.EvidenceList) ([]byte, error) {
-	var hashes [][]byte
+	hashes := make([][]byte, len(evList))
 	for _, ev := range evList {
-	
+
 		ok := evpool.fastCheck(ev)
-		
+
 		if !ok {
 			evInfo, err := evpool.verify(ev)
 			if err != nil {
 				return []byte{}, &types.ErrEvidenceInvalid{Evidence: ev, Reason: err}
 			}
-			
+
 			if err := evpool.addPendingEvidence(evInfo); err != nil {
 				evpool.logger.Error("Database error when adding evidence: %w", err)
 			}
 		}
-		
+
 		// check for duplicate evidence. We cache hashes so we don't have to work them out again.
 		hashes = append(hashes, ev.Hash())
-		for i := len(hashes) - 2; i >= 0; i ++ {
-			if bytes.Equal(hashes[i], hashes[len(hashes) - 1]) {
+		for i := len(hashes) - 2; i >= 0; i++ {
+			if bytes.Equal(hashes[i], hashes[len(hashes)-1]) {
 				return []byte{}, &types.ErrEvidenceInvalid{Evidence: ev, Reason: errors.New("duplicate evidence")}
 			}
 		}
 	}
-	
+
 	return merkle.HashFromByteSlices(hashes), nil
 }
 
@@ -231,24 +233,24 @@ func (evpool *Pool) State() sm.State {
 
 //--------------------------------------------------------------------------
 
-// EvidenceInfo is a wrapper around the evidence that the evidence pool receives with extensive
+// Info is a wrapper around the evidence that the evidence pool receives with extensive
 // information of what validators were malicious, the time of the attack and the total voting power
 // This is saved as a form of cache so that the evidence pool can easily produce the ABCI Evidence
-// needed to be sent to the application. 
-type EvidenceInfo struct {
-	Evidence types.Evidence
-	Time time.Time
-	Validators []*types.Validator
+// needed to be sent to the application.
+type Info struct {
+	Evidence         types.Evidence
+	Time             time.Time
+	Validators       []*types.Validator
 	TotalVotingPower int64
 }
 
-// ToProto encodes into protobuf 
-func (ei EvidenceInfo) ToProto() (*evproto.EvidenceInfo, error) {
+// ToProto encodes into protobuf
+func (ei Info) ToProto() (*evproto.Info, error) {
 	evpb, err := types.EvidenceToProto(ei.Evidence)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	valsProto := make([]*tmproto.Validator, len(ei.Validators))
 	for i := 0; i < len(ei.Validators); i++ {
 		valp, err := ei.Validators[i].ToProto()
@@ -257,43 +259,43 @@ func (ei EvidenceInfo) ToProto() (*evproto.EvidenceInfo, error) {
 		}
 		valsProto[i] = valp
 	}
-	
-	return &evproto.EvidenceInfo{
-		Evidence: *evpb,
-		Time: ei.Time,
-		Validators: valsProto,
+
+	return &evproto.Info{
+		Evidence:         *evpb,
+		Time:             ei.Time,
+		Validators:       valsProto,
 		TotalVotingPower: ei.TotalVotingPower,
 	}, nil
 }
 
-// EvidenceInfoFromProto decodes from protobuf into EvidenceInfo
-func EvidenceInfoFromProto(proto *evproto.EvidenceInfo) (EvidenceInfo, error) {
+// InfoFromProto decodes from protobuf into Info
+func InfoFromProto(proto *evproto.Info) (Info, error) {
 	if proto == nil {
-		return EvidenceInfo{}, errors.New("nil evidence info")
+		return Info{}, errors.New("nil evidence info")
 	}
 
 	ev, err := types.EvidenceFromProto(&proto.Evidence)
 	if err != nil {
-		return EvidenceInfo{}, err
+		return Info{}, err
 	}
-	
+
 	vals := make([]*types.Validator, len(proto.Validators))
 	for i := 0; i < len(proto.Validators); i++ {
 		val, err := types.ValidatorFromProto(proto.Validators[i])
 		if err != nil {
-			return EvidenceInfo{}, err
+			return Info{}, err
 		}
 		vals[i] = val
 	}
-	
-	return EvidenceInfo{
-		Evidence: ev,
-		Time: proto.Time,
-		Validators: vals,
+
+	return Info{
+		Evidence:         ev,
+		Time:             proto.Time,
+		Validators:       vals,
 		TotalVotingPower: proto.TotalVotingPower,
 	}, nil
-	
-} 
+
+}
 
 //--------------------------------------------------------------------------
 
@@ -342,21 +344,30 @@ func (evpool *Pool) markEvidenceAsCommitted(height int64, evidence []types.Evide
 	}
 }
 
-// fastCheck leverages the fact that the evidence pool may have already verified the evidence to see if it can 
-// quickly conclude that the evidence is already valid. 
+// fastCheck leverages the fact that the evidence pool may have already verified the evidence to see if it can
+// quickly conclude that the evidence is already valid.
 func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 	key := keyPending(ev)
 	if lcae, ok := ev.(*types.LightClientAttackEvidence); ok {
 		evBytes, err := evpool.evidenceStore.Get(key)
-		var evpb *evproto.EvidenceInfo
-		evpb.Unmarshal(evBytes)
-		evInfo, err := EvidenceInfoFromProto(evpb)
 		if err != nil {
+			evpool.logger.Error("Fastcheck Error", "err", err)
+			return false
+		}
+		var evpb *evproto.Info
+		err = evpb.Unmarshal(evBytes)
+		if err != nil {
+			evpool.logger.Error("Fastcheck Error", "err", err)
+			return false
+		}
+		evInfo, err := InfoFromProto(evpb)
+		if err != nil {
+			evpool.logger.Error("Fastcheck Error", "err", err)
 			return false
 		}
 		// ensure that all the validators that the evidence pool have found to be malicious
 		// are present in the list of commit signatures in the conflicting block
-		OUTER:
+	OUTER:
 		for _, sig := range lcae.ConflictingBlock.Commit.Signatures {
 			for _, val := range evInfo.Validators {
 				if bytes.Equal(val.Address, sig.ValidatorAddress) {
@@ -367,10 +378,10 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 			return false
 		}
 		return true
-	} else {
-		// for all other evidence the evidence pool just checks if it is already in the pending db 
-		return evpool.isPending(ev)
 	}
+
+	// for all other evidence the evidence pool just checks if it is already in the pending db
+	return evpool.isPending(ev)
 }
 
 // IsExpired checks whether evidence or a polc is expired by checking whether a height and time is older
@@ -405,7 +416,7 @@ func (evpool *Pool) isPending(evidence types.Evidence) bool {
 	return ok
 }
 
-func (evpool *Pool) addPendingEvidence(evInfo *EvidenceInfo) error {
+func (evpool *Pool) addPendingEvidence(evInfo *Info) error {
 	evpb, err := evInfo.ToProto()
 	if err != nil {
 		return fmt.Errorf("unable to convert to proto, err: %w", err)
@@ -454,15 +465,15 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxNum int64) ([]types.Evidence
 
 		val := iter.Value()
 		var (
-			evInfo   EvidenceInfo
-			evpb     evproto.EvidenceInfo
+			evInfo Info
+			evpb   evproto.Info
 		)
 		err := evpb.Unmarshal(val)
 		if err != nil {
 			return nil, err
 		}
 
-		evInfo, err = EvidenceInfoFromProto(&evpb)
+		evInfo, err = InfoFromProto(&evpb)
 		if err != nil {
 			return nil, err
 		}
@@ -484,8 +495,8 @@ func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
 	for ; iter.Valid(); iter.Next() {
 		evBytes := iter.Value()
 		var (
-			evInfo   EvidenceInfo
-			evInfoPb evproto.EvidenceInfo
+			evInfo   Info
+			evInfoPb evproto.Info
 		)
 		err := evInfoPb.Unmarshal(evBytes)
 		if err != nil {
@@ -493,7 +504,7 @@ func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
 			continue
 		}
 
-		evInfo, err = EvidenceInfoFromProto(&evInfoPb)
+		evInfo, err = InfoFromProto(&evInfoPb)
 		if err != nil {
 			evpool.logger.Error("Error in transition evidence from protobuf", "err", err)
 			continue
@@ -504,7 +515,7 @@ func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
 			}
 			// return the time with which this evidence will have expired so we know when to prune next
 			return evInfo.Evidence.Height() + evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks + 1,
-			evInfo.Time.Add(evpool.State().ConsensusParams.Evidence.MaxAgeDuration).Add(time.Second)
+				evInfo.Time.Add(evpool.State().ConsensusParams.Evidence.MaxAgeDuration).Add(time.Second)
 		}
 		evpool.removePendingEvidence(evInfo.Evidence)
 		blockEvidenceMap[evMapKey(evInfo.Evidence)] = struct{}{}
