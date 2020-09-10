@@ -39,17 +39,27 @@ func calcABCIResponsesKey(height int64) []byte {
 //----------------------
 
 type StoreI interface {
+	// LoadStateFromDBOrGenesisFile loads the most recent state.
+	// If the chain is new it will use the genesis file from the provided genesis file path as the current state.
 	LoadStateFromDBOrGenesisFile(string) (State, error)
+	// LoadStateFromDBOrGenesisDoc loads the most recent state.
+	// If the chain is new it will use the genesis doc as the current state.
 	LoadStateFromDBOrGenesisDoc(*types.GenesisDoc) (State, error)
+	// LoadState loads the current state of the blockchain
 	LoadState() State
+	// LoadValidators loads the validator set at a given height
 	LoadValidators(int64) (*types.ValidatorSet, error)
+	// LoadABCIResponses loads the abciResponse for a given height
 	LoadABCIResponses(int64) (*tmstate.ABCIResponses, error)
+	// LoadConsensusParams loads the consensus params for a given height
 	LoadConsensusParams(int64) (tmproto.ConsensusParams, error)
-
+	// SaveState overwrites the previous state with the updated one
 	SaveState(State)
+	// SaveABCIResponses saves ABCIResponses for a given height
 	SaveABCIResponses(int64, *tmstate.ABCIResponses)
-
+	// BootstrapState is used for bootstrapping state when not starting from a initial height.
 	BootstrapState(State) error
+	// PruneStates takes the height from which to start prning and which height stop at
 	PruneStates(int64, int64) error
 }
 
