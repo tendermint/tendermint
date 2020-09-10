@@ -17,7 +17,7 @@ Consequently, this repository is in a bit of a state of flux.
 At the moment, the spec followed by the Go implementation
 (tendermint/tendermint) is in the [spec](spec) directory,
 while the spec followed by the Rust implementation
-(informalsystems/tendermint-rs) is in the rust-spec
+(informalsystems/tendermint-rs) is in the [rust-spec](rust-spec)
 directory. TLA+ specifications are also in the rust-spec directory.
 
 Over time, these specs will converge in the spec directory.
