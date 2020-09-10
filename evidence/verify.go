@@ -56,7 +56,7 @@ func (evpool *Pool) verify(evidence types.Evidence) (*EvidenceInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		err = VerifyDuplicateVote(evidence.(*types.DuplicateVoteEvidence), state.ChainID, valSet)
+		err = VerifyDuplicateVote(dev, state.ChainID, valSet)
 		if err != nil {
 			return nil, fmt.Errorf("verifying duplicate vote evidence: %w", err)
 		}

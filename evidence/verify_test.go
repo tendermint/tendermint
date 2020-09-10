@@ -1,76 +1,103 @@
-package evidence
+package evidence_test
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	// "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	
+	dbm "github.com/tendermint/tm-db"
 
-	// "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/evidence/mocks"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
-func TestVerifyEvidenceWrongAddress(t *testing.T) {
-	var height int64 = 4
-	val := types.NewMockPV()
-	stateStore := initializeValidatorState(val, height)
-	state := stateStore.LoadState()
-	blockStore := &mocks.BlockStore{}
-	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
-		&types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}},
-	)
-	evidence := types.NewMockDuplicateVoteEvidence(1, defaultEvidenceTime, evidenceChainID)
-	err := VerifyEvidence(evidence, state, stateStore, blockStore)
-	errMsg := fmt.Sprintf("address %X was not a validator at height 1", evidence.Addresses()[0])
-	if assert.Error(t, err) {
-		assert.Equal(t, err.Error(), errMsg)
+func TestVerifyLightClientAttack(t *testing.T) {	
+	commonVals, commonPrivVals := types.RandValidatorSet(2, 10)
+	
+	newVal, newPrivVal := types.RandValidator(false, 9)
+	
+	conflictingVals, err := types.ValidatorSetFromExistingValidators(append(commonVals.Validators, newVal))
+	require.NoError(t, err)
+	conflictingPrivVals := append(commonPrivVals, newPrivVal)
+	
+	commonHeader := makeHeaderRandom(4)
+	commonHeader.Time = defaultEvidenceTime.Add(-1 * time.Hour)
+	trustedHeader := makeHeaderRandom(10)
+	
+	conflictingHeader := makeHeaderRandom(10)
+	conflictingHeader.ValidatorsHash = conflictingVals.Hash()
+	
+	blockID := makeBlockID(conflictingHeader.Hash(), 1000, []byte("partshash"))
+	voteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
+	commit, err := types.MakeCommit(blockID, 10, 1, voteSet, conflictingPrivVals, defaultEvidenceTime)
+	require.NoError(t, err)
+	ev := &types.LightClientAttackEvidence{
+		ConflictingBlock: &types.LightBlock{
+			SignedHeader: &types.SignedHeader{
+				Header: conflictingHeader,
+				Commit: commit,
+			},
+			ValidatorSet: conflictingVals,
+		},
+		CommonHeight: 4,
 	}
-}
-
-func TestVerifyEvidenceExpiredEvidence(t *testing.T) {
-	var height int64 = 4
-	val := types.NewMockPV()
-	stateStore := initializeValidatorState(val, height)
-	state := stateStore.LoadState()
-	state.ConsensusParams.Evidence.MaxAgeNumBlocks = 1
-	expiredEvidenceTime := time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC)
-	blockStore := &mocks.BlockStore{}
-	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
-		&types.BlockMeta{Header: types.Header{Time: expiredEvidenceTime}},
-	)
-
-	expiredEv := types.NewMockDuplicateVoteEvidenceWithValidator(1, expiredEvidenceTime, val, evidenceChainID)
-	err := VerifyEvidence(expiredEv, state, stateStore, blockStore)
-	errMsg := "evidence from height 1 (created at: 2018-01-01 00:00:00 +0000 UTC) is too old"
-	if assert.Error(t, err) {
-		assert.Equal(t, err.Error()[:len(errMsg)], errMsg)
+	
+	commonSignedHeader := &types.SignedHeader{
+		Header: commonHeader,
+		Commit: &types.Commit{},
 	}
-}
-
-func TestVerifyEvidenceInvalidTime(t *testing.T) {
-	height := int64(4)
-	val := types.NewMockPV()
-	stateStore := initializeValidatorState(val, height)
-	state := stateStore.LoadState()
-	blockStore := &mocks.BlockStore{}
-	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
-		&types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}},
-	)
-
-	differentTime := time.Date(2019, 2, 1, 0, 0, 0, 0, time.UTC)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, differentTime, val, evidenceChainID)
-	err := VerifyEvidence(ev, state, stateStore, blockStore)
-	errMsg := "evidence time (2019-02-01 00:00:00 +0000 UTC) is different to the time" +
-		" of the header we have for the same height (2019-01-01 00:00:00 +0000 UTC)"
-	if assert.Error(t, err) {
-		assert.Equal(t, errMsg, err.Error())
+	trustedBlockID := makeBlockID(trustedHeader.Hash(), 1000, []byte("partshash"))
+	trustedVoteSet:= types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
+	trustedCommit, err := types.MakeCommit(trustedBlockID, 10, 1, trustedVoteSet, conflictingPrivVals, defaultEvidenceTime)
+	trustedSignedHeader := &types.SignedHeader {
+		Header: trustedHeader,
+		Commit: trustedCommit,
 	}
+	
+	// good pass -> no error
+	err = evidence.VerifyLightClientAttack(ev, commonSignedHeader, trustedSignedHeader, commonVals, 
+	defaultEvidenceTime.Add(1 * time.Minute), time.Duration(2 * time.Hour))
+	assert.NoError(t, err)
+	
+	// trusted and conflicting hashes are the same -> an error should be returned
+	err = evidence.VerifyLightClientAttack(ev, commonSignedHeader, ev.ConflictingBlock.SignedHeader, commonVals, 
+	defaultEvidenceTime.Add(1 * time.Minute), time.Duration(2 * time.Hour))
+	assert.Error(t, err)
+	
+	state := sm.State{
+		LastBlockTime: defaultEvidenceTime.Add(1 * time.Minute),
+		LastBlockHeight: 11,
+		ConsensusParams: *types.DefaultConsensusParams(),
+	}
+	stateStore := &mocks.StateStore{}
+	stateStore.On("LoadValidators", int64(4)).Return(commonVals, nil)
+	stateStore.On("LoadState").Return(state)
+	blockStore := &mocks.BlockStore{}
+	blockStore.On("LoadBlockMeta", int64(4)).Return(&types.BlockMeta{Header: *commonHeader})
+	blockStore.On("LoadBlockMeta", int64(10)).Return(&types.BlockMeta{Header: *trustedHeader})
+	blockStore.On("LoadBlockCommit", int64(4)).Return(commit)
+	blockStore.On("LoadBlockCommit", int64(10)).Return(trustedCommit)
+
+	pool, err := evidence.NewPool(dbm.NewMemDB(), stateStore, blockStore)
+	require.NoError(t, err)
+	
+	evList := types.EvidenceList{ev}
+	hash, err := pool.CheckEvidence(evList)
+	assert.NoError(t, err)
+	assert.Equal(t, evList.Hash(), hash)
+
+	pendingEvs := pool.PendingEvidence(2)
+	assert.Equal(t, 1, len(pendingEvs))
+	
+	//later add tests to create abci evidence
 }
 
 type voteData struct {
@@ -83,8 +110,6 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 	val := types.NewMockPV()
 	val2 := types.NewMockPV()
 	valSet := types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(1)})
-	stateStore := &mocks.StateStore{}
-	stateStore.On("LoadValidators", mock.AnythingOfType("int64")).Return(valSet)
 
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
@@ -124,15 +149,34 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 		ev := &types.DuplicateVoteEvidence{
 			VoteA: c.vote1,
 			VoteB: c.vote2,
-
-			Timestamp: defaultEvidenceTime,
 		}
 		if c.valid {
-			assert.Nil(t, VerifyDuplicateVote(ev, chainID, stateStore), "evidence should be valid")
+			assert.Nil(t, evidence.VerifyDuplicateVote(ev, chainID, valSet), "evidence should be valid")
 		} else {
-			assert.NotNil(t, VerifyDuplicateVote(ev, chainID, stateStore), "evidence should be invalid")
+			assert.NotNil(t, evidence.VerifyDuplicateVote(ev, chainID, valSet), "evidence should be invalid")
 		}
 	}
+	
+	goodEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID)
+	state := sm.State{
+		ChainID: chainID,
+		LastBlockTime: defaultEvidenceTime.Add(1 * time.Minute),
+		LastBlockHeight: 11,
+		ConsensusParams: *types.DefaultConsensusParams(),
+	}
+	stateStore := &mocks.StateStore{}
+	stateStore.On("LoadValidators", int64(10)).Return(valSet, nil)
+	stateStore.On("LoadState").Return(state)
+	blockStore := &mocks.BlockStore{}
+	blockStore.On("LoadBlockMeta", int64(10)).Return(&types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}})
+
+	pool, err := evidence.NewPool(dbm.NewMemDB(), stateStore, blockStore)
+	require.NoError(t, err)
+	
+	evList := types.EvidenceList{goodEv}
+	hash, err := pool.CheckEvidence(evList)
+	assert.NoError(t, err)
+	assert.Equal(t, evList.Hash(), hash)
 }
 
 func makeVote(
@@ -159,23 +203,23 @@ func makeVote(
 	return v
 }
 
-// func makeHeaderRandom() *Header {
-// 	return &Header{
-// 		ChainID:            tmrand.Str(12),
-// 		Height:             int64(tmrand.Uint16()) + 1,
-// 		Time:               time.Now(),
-// 		LastBlockID:        makeBlockIDRandom(),
-// 		LastCommitHash:     crypto.CRandBytes(tmhash.Size),
-// 		DataHash:           crypto.CRandBytes(tmhash.Size),
-// 		ValidatorsHash:     crypto.CRandBytes(tmhash.Size),
-// 		NextValidatorsHash: crypto.CRandBytes(tmhash.Size),
-// 		ConsensusHash:      crypto.CRandBytes(tmhash.Size),
-// 		AppHash:            crypto.CRandBytes(tmhash.Size),
-// 		LastResultsHash:    crypto.CRandBytes(tmhash.Size),
-// 		EvidenceHash:       crypto.CRandBytes(tmhash.Size),
-// 		ProposerAddress:    crypto.CRandBytes(crypto.AddressSize),
-// 	}
-// }
+func makeHeaderRandom(height int64) *types.Header {
+	return &types.Header{
+		ChainID:            evidenceChainID,
+		Height:             height,
+		Time:               defaultEvidenceTime,
+		LastBlockID:        makeBlockID([]byte("headerhash"), 1000, []byte("partshash")),
+		LastCommitHash:     crypto.CRandBytes(tmhash.Size),
+		DataHash:           crypto.CRandBytes(tmhash.Size),
+		ValidatorsHash:     crypto.CRandBytes(tmhash.Size),
+		NextValidatorsHash: crypto.CRandBytes(tmhash.Size),
+		ConsensusHash:      crypto.CRandBytes(tmhash.Size),
+		AppHash:            crypto.CRandBytes(tmhash.Size),
+		LastResultsHash:    crypto.CRandBytes(tmhash.Size),
+		EvidenceHash:       crypto.CRandBytes(tmhash.Size),
+		ProposerAddress:    crypto.CRandBytes(crypto.AddressSize),
+	}
+}
 
 func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {
 	var (

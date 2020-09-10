@@ -265,7 +265,7 @@ func (evl EvidenceList) Hash() []byte {
 	// the Evidence size is capped.
 	evidenceBzs := make([][]byte, len(evl))
 	for i := 0; i < len(evl); i++ {
-		evidenceBzs[i] = evl[i].Bytes()
+		evidenceBzs[i] = evl[i].Hash()
 	}
 	return merkle.HashFromByteSlices(evidenceBzs)
 }

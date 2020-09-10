@@ -1,6 +1,8 @@
 package evidence
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -9,6 +11,7 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/crypto/merkle"
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -28,7 +31,7 @@ type Pool struct {
 
 	evidenceStore dbm.DB
 	evidenceList *clist.CList // concurrent linked-list of evidence
-	evidenceSize int16 // amount of pending evidence
+	evidenceSize uint16 // amount of pending evidence
 
 	// needed to load validators to verify evidence
 	stateDB StateStore
@@ -57,6 +60,8 @@ func NewPool(evidenceDB dbm.DB, stateDB StateStore, blockStore BlockStore) (*Poo
 		logger:        log.NewNopLogger(),
 		evidenceStore: evidenceDB,
 		evidenceList:  clist.New(),
+		pruningHeight: state.LastBlockHeight,
+		pruningTime:   state.LastBlockTime,         
 	}
 
 	// if pending evidence already in db, in event of prior failure, then load it back to the evidenceList
@@ -69,7 +74,6 @@ func NewPool(evidenceDB dbm.DB, stateDB StateStore, blockStore BlockStore) (*Poo
 }
 
 // PendingEvidence is used primarily as part of block proposal and returns up to maxNum of uncommitted evidence.
-// If maxNum is -1, all evidence is returned. Pending evidence is prioritized based on time.
 func (evpool *Pool) PendingEvidence(maxNum uint32) []types.Evidence {
 	evpool.removeExpiredPendingEvidence()
 	evidence, err := evpool.listEvidence(baseKeyPending, int64(maxNum))
@@ -172,16 +176,35 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 // If it has already verified the evidence then it jumps to the next one. It ensures that no 
 // evidence has already been committed or is being proposed twice. It also adds any
 // evidence that it doesn't currently have so that it can quickly form ABCI Evidence later.
-func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
-	hashes 
-	for idx, ev := range evList {
-		// check for duplicate evidence
-		for i := idx; i < len(evList); i++ {
-			if bytes.Equal()
-		}	
+// Check evidence returns the hash of the entire evidence list so that it can be compares with
+// the headers EvidenceHash. 
+func (evpool *Pool) CheckEvidence(evList types.EvidenceList) ([]byte, error) {
+	var hashes [][]byte
+	for _, ev := range evList {
+	
+		ok := evpool.fastCheck(ev)
+		
+		if !ok {
+			evInfo, err := evpool.verify(ev)
+			if err != nil {
+				return []byte{}, &types.ErrEvidenceInvalid{Evidence: ev, Reason: err}
+			}
+			
+			if err := evpool.addPendingEvidence(evInfo); err != nil {
+				evpool.logger.Error("Database error when adding evidence: %w", err)
+			}
+		}
+		
+		// check for duplicate evidence. We cache hashes so we don't have to work them out again.
+		hashes = append(hashes, ev.Hash())
+		for i := len(hashes) - 2; i >= 0; i ++ {
+			if bytes.Equal(hashes[i], hashes[len(hashes) - 1]) {
+				return []byte{}, &types.ErrEvidenceInvalid{Evidence: ev, Reason: errors.New("duplicate evidence")}
+			}
+		}
 	}
 	
-	return evpool.verify()
+	return merkle.HashFromByteSlices(hashes), nil
 }
 
 // EvidenceFront goes to the first evidence in the clist
@@ -245,6 +268,10 @@ func (ei EvidenceInfo) ToProto() (*evproto.EvidenceInfo, error) {
 
 // EvidenceInfoFromProto decodes from protobuf into EvidenceInfo
 func EvidenceInfoFromProto(proto *evproto.EvidenceInfo) (EvidenceInfo, error) {
+	if proto == nil {
+		return EvidenceInfo{}, errors.New("nil evidence info")
+	}
+
 	ev, err := types.EvidenceFromProto(&proto.Evidence)
 	if err != nil {
 		return EvidenceInfo{}, err
@@ -277,6 +304,8 @@ func (evpool *Pool) allPendingEvidence() []types.Evidence {
 	if err != nil {
 		evpool.logger.Error("Unable to retrieve pending evidence", "err", err)
 	}
+	// update pool size
+	evpool.evidenceSize = uint16(len(evidence))
 	return evidence
 }
 
@@ -313,11 +342,13 @@ func (evpool *Pool) markEvidenceAsCommitted(height int64, evidence []types.Evide
 	}
 }
 
+// fastCheck leverages the fact that the evidence pool may have already verified the evidence to see if it can 
+// quickly conclude that the evidence is already valid. 
 func (evpool *Pool) fastCheck(ev types.Evidence) bool {
-	key = keyPending(evidence)
+	key := keyPending(ev)
 	if lcae, ok := ev.(*types.LightClientAttackEvidence); ok {
 		evBytes, err := evpool.evidenceStore.Get(key)
-		var evpb evproto.EvidenceInfo
+		var evpb *evproto.EvidenceInfo
 		evpb.Unmarshal(evBytes)
 		evInfo, err := EvidenceInfoFromProto(evpb)
 		if err != nil {
@@ -328,14 +359,16 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 		OUTER:
 		for _, sig := range lcae.ConflictingBlock.Commit.Signatures {
 			for _, val := range evInfo.Validators {
-				if val.Address == sig.ValidatorAddress {
+				if bytes.Equal(val.Address, sig.ValidatorAddress) {
 					continue OUTER
 				}
 			}
+			// a validator we know is malicious is not included in the commit
 			return false
 		}
 		return true
 	} else {
+		// for all other evidence the evidence pool just checks if it is already in the pending db 
 		return evpool.isPending(ev)
 	}
 }
@@ -421,20 +454,20 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxNum int64) ([]types.Evidence
 
 		val := iter.Value()
 		var (
-			ev   types.Evidence
-			evpb tmproto.Evidence
+			evInfo   EvidenceInfo
+			evpb     evproto.EvidenceInfo
 		)
-		err := proto.Unmarshal(val, &evpb)
+		err := evpb.Unmarshal(val)
 		if err != nil {
 			return nil, err
 		}
 
-		ev, err = types.EvidenceFromProto(&evpb)
+		evInfo, err = EvidenceInfoFromProto(&evpb)
 		if err != nil {
 			return nil, err
 		}
 
-		evidence = append(evidence, ev)
+		evidence = append(evidence, evInfo.Evidence)
 	}
 
 	return evidence, nil

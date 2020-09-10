@@ -150,5 +150,15 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	}
 
 	// Validate all evidence.
-	return evidencePool.CheckEvidence(block.Evidence.Evidence)
+	hash, err := evidencePool.CheckEvidence(block.Evidence.Evidence)
+	if err != nil {
+		return err
+	}
+	
+	if !bytes.Equal(hash, block.EvidenceHash) {
+		return fmt.Errorf("wrong Block.Header.EvidenceHash. Expected %X, got %X", 
+			hash, block.EvidenceHash)
+	}
+	
+	return nil
 }
