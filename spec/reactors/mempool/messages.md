@@ -2,24 +2,15 @@
 
 ## P2P Messages
 
-There is currently only one message that Mempool broadcasts
-and receives over the p2p gossip network (via the reactor):
-`TxMessage`
+There is currently only one message that Mempool broadcasts and receives over
+the p2p gossip network (via the reactor): `TxsMessage`
 
 ```go
-// TxMessage is a MempoolMessage containing a transaction.
-type TxMessage struct {
-    Tx types.Tx
+// TxsMessage is a MempoolMessage containing a list of transactions.
+type TxsMessage struct {
+    Txs []types.Tx
 }
 ```
-
-TxMessage is go-amino encoded and prepended with `0x1` as a
-"type byte". This is followed by a go-amino encoded byte-slice.
-Prefix of 40=0x28 byte tx is: `0x010128...` followed by
-the actual 40-byte tx. Prefix of 350=0x015e byte tx is:
-`0x0102015e...` followed by the actual 350 byte tx.
-
-(Please see the [go-amino repo](https://github.com/tendermint/go-amino#an-interface-example) for more information)
 
 ## RPC Messages
 
