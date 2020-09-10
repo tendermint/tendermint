@@ -81,8 +81,8 @@ func TestBlockResults(t *testing.T) {
 	}
 
 	env = &Environment{}
-	env.StateDB = dbm.NewMemDB()
-	sm.SaveABCIResponses(env.StateDB, 100, results)
+	env.StateStore = sm.NewStateStore(dbm.NewMemDB())
+	env.StateStore.SaveABCIResponses(100, results)
 	env.BlockStore = mockBlockStore{height: 100}
 
 	testCases := []struct {

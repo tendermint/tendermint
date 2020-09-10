@@ -232,7 +232,7 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	assert.False(t, pool.Has(expiredEvidence))
 }
 
-func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) sm.StateStore {
+func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) sm.StoreI {
 	stateDB := dbm.NewMemDB()
 	sstore := sm.NewStateStore(stateDB)
 	state := sm.State{
@@ -266,7 +266,7 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) s
 	return sstore
 }
 
-func initializeValidatorState(privVal types.PrivValidator, height int64) sm.StateStore {
+func initializeValidatorState(privVal types.PrivValidator, height int64) sm.StoreI {
 
 	pubKey, _ := privVal.GetPubKey()
 	validator := &types.Validator{Address: pubKey.Address(), VotingPower: 0, PubKey: pubKey}

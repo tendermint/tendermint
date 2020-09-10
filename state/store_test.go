@@ -28,15 +28,15 @@ func TestStoreLoadValidators(t *testing.T) {
 	vals := types.NewValidatorSet([]*types.Validator{val})
 
 	// 1) LoadValidators loads validators using a height where they were last changed
-	sm.SaveValidatorsInfo(stateDB, 1, 1, vals)
-	sm.SaveValidatorsInfo(stateDB, 2, 1, vals)
+	sm.SaveValidatorsInfo(sstore, 1, 1, vals)
+	sm.SaveValidatorsInfo(sstore, 2, 1, vals)
 	loadedVals, err := sstore.LoadValidators(2)
 	require.NoError(t, err)
 	assert.NotZero(t, loadedVals.Size())
 
 	// 2) LoadValidators loads validators using a checkpoint height
 
-	sm.SaveValidatorsInfo(stateDB, sm.ValSetCheckpointInterval, 1, vals)
+	sm.SaveValidatorsInfo(sstore, sm.ValSetCheckpointInterval, 1, vals)
 
 	loadedVals, err = sstore.LoadValidators(sm.ValSetCheckpointInterval)
 	require.NoError(t, err)
@@ -63,7 +63,7 @@ func BenchmarkLoadValidators(b *testing.B) {
 
 	for i := 10; i < 10000000000; i *= 10 { // 10, 100, 1000, ...
 		i := i
-		sm.SaveValidatorsInfo(stateDB, int64(i), state.LastHeightValidatorsChanged, state.NextValidators)
+		sm.SaveValidatorsInfo(sstore, int64(i), state.LastHeightValidatorsChanged, state.NextValidators)
 
 		b.Run(fmt.Sprintf("height=%d", i), func(b *testing.B) {
 			for n := 0; n < b.N; n++ {

@@ -64,7 +64,7 @@ func startConsensusNet(t *testing.T, css []*State, n int) (
 		blocksSubs = append(blocksSubs, blocksSub)
 
 		if css[i].state.LastBlockHeight == 0 { //simulate handle initChain in handshake
-			sm.SaveState(css[i].blockExec.DB(), css[i].state)
+			css[i].blockExec.Store().SaveState(css[i].state)
 		}
 	}
 	// make connected switches and start all reactors
@@ -131,7 +131,8 @@ func TestReactorWithEvidence(t *testing.T) {
 	logger := consensusLogger()
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+		sstore := sm.NewStateStore(stateDB)
+		state, _ := sstore.LoadStateFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		defer os.RemoveAll(thisConfig.RootDir)
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
@@ -164,7 +165,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		evpool := newMockEvidencePool(privVals[vIdx])
 
 		// Make State
-		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+		blockExec := sm.NewBlockExecutor(sstore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
 		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 		cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 		cs.SetPrivValidator(pv)

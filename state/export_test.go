@@ -1,8 +1,6 @@
 package state
 
 import (
-	dbm "github.com/tendermint/tm-db"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -42,12 +40,12 @@ func ValidateValidatorUpdates(abciUpdates []abci.ValidatorUpdate, params tmproto
 
 // SaveConsensusParamsInfo is an alias for the private saveConsensusParamsInfo
 // method in store.go, exported exclusively and explicitly for testing.
-func SaveConsensusParamsInfo(db dbm.DB, nextHeight, changeHeight int64, params tmproto.ConsensusParams) {
-	saveConsensusParamsInfo(db, nextHeight, changeHeight, params)
+func SaveConsensusParamsInfo(store Store, nextHeight, changeHeight int64, params tmproto.ConsensusParams) {
+	store.saveConsensusParamsInfo(nextHeight, changeHeight, params)
 }
 
 // SaveValidatorsInfo is an alias for the private saveValidatorsInfo method in
 // store.go, exported exclusively and explicitly for testing.
-func SaveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *types.ValidatorSet) {
-	saveValidatorsInfo(db, height, lastHeightChanged, valSet)
+func SaveValidatorsInfo(store Store, height, lastHeightChanged int64, valSet *types.ValidatorSet) {
+	store.saveValidatorsInfo(height, lastHeightChanged, valSet)
 }

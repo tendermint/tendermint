@@ -38,7 +38,7 @@ func calcABCIResponsesKey(height int64) []byte {
 
 //----------------------
 
-type StateStore interface {
+type StoreI interface {
 	LoadStateFromDBOrGenesisFile(string) (State, error)
 	LoadStateFromDBOrGenesisDoc(*types.GenesisDoc) (State, error)
 	LoadState() State
@@ -57,7 +57,7 @@ type Store struct {
 	db dbm.DB
 }
 
-var _ StateStore = (*Store)(nil)
+var _ StoreI = (*Store)(nil)
 
 func NewStateStore(db dbm.DB) Store {
 	return Store{db}
@@ -96,11 +96,11 @@ func (store Store) LoadStateFromDBOrGenesisDoc(genesisDoc *types.GenesisDoc) (St
 
 // LoadState loads the State from the database.
 func (store Store) LoadState() State {
-	return loadState(store.db, stateKey)
+	return store.loadState(stateKey)
 }
 
-func loadState(db dbm.DB, key []byte) (state State) {
-	buf, err := db.Get(key)
+func (store Store) loadState(key []byte) (state State) {
+	buf, err := store.db.Get(key)
 	if err != nil {
 		panic(err)
 	}
@@ -128,24 +128,24 @@ func loadState(db dbm.DB, key []byte) (state State) {
 // SaveState persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
 // This flushes the writes (e.g. calls SetSync).
 func (store Store) SaveState(state State) {
-	saveState(store.db, state, stateKey)
+	store.saveState(state, stateKey)
 }
 
-func saveState(db dbm.DB, state State, key []byte) {
+func (store Store) saveState(state State, key []byte) {
 	nextHeight := state.LastBlockHeight + 1
 	// If first block, save validators for the block.
 	if nextHeight == 1 {
 		nextHeight = state.InitialHeight
 		// This extra logic due to Tendermint validator set changes being delayed 1 block.
 		// It may get overwritten due to InitChain validator updates.
-		saveValidatorsInfo(db, nextHeight, nextHeight, state.Validators)
+		store.saveValidatorsInfo(nextHeight, nextHeight, state.Validators)
 	}
 	// Save next validators.
-	saveValidatorsInfo(db, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
+	store.saveValidatorsInfo(nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 
 	// Save next consensus params.
-	saveConsensusParamsInfo(db, nextHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams)
-	err := db.SetSync(key, state.Bytes())
+	store.saveConsensusParamsInfo(nextHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams)
+	err := store.db.SetSync(key, state.Bytes())
 	if err != nil {
 		panic(err)
 	}
@@ -158,11 +158,11 @@ func (store Store) BootstrapState(state State) error {
 		height = state.InitialHeight
 	}
 	if height > 1 && !state.LastValidators.IsNilOrEmpty() {
-		saveValidatorsInfo(store.db, height-1, height-1, state.LastValidators)
+		store.saveValidatorsInfo(height-1, height-1, state.LastValidators)
 	}
-	saveValidatorsInfo(store.db, height, height, state.Validators)
-	saveValidatorsInfo(store.db, height+1, height+1, state.NextValidators)
-	saveConsensusParamsInfo(store.db, height, height, state.ConsensusParams)
+	store.saveValidatorsInfo(height, height, state.Validators)
+	store.saveValidatorsInfo(height+1, height+1, state.NextValidators)
+	store.saveConsensusParamsInfo(height, height, state.ConsensusParams)
 	return store.db.SetSync(stateKey, state.Bytes())
 }
 
@@ -185,7 +185,7 @@ func (store Store) PruneStates(from int64, to int64) error {
 	if valInfo == nil {
 		return fmt.Errorf("validators at height %v not found", to)
 	}
-	paramsInfo := loadConsensusParamsInfo(store.db, to)
+	paramsInfo := store.loadConsensusParamsInfo(to)
 	if paramsInfo == nil {
 		return fmt.Errorf("consensus params at height %v not found", to)
 	}
@@ -245,7 +245,7 @@ func (store Store) PruneStates(from int64, to int64) error {
 		}
 
 		if keepParams[h] {
-			p := loadConsensusParamsInfo(store.db, h)
+			p := store.loadConsensusParamsInfo(h)
 			if p.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
 				p.ConsensusParams, err = store.LoadConsensusParams(h)
 				if err != nil {
@@ -435,7 +435,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) *tmstate.ValidatorsInfo {
 // `height` is the effective height for which the validator is responsible for
 // signing. It should be called from s.Save(), right before the state itself is
 // persisted.
-func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *types.ValidatorSet) {
+func (store Store) saveValidatorsInfo(height, lastHeightChanged int64, valSet *types.ValidatorSet) {
 	if lastHeightChanged > height {
 		panic("LastHeightChanged cannot be greater than ValidatorsInfo height")
 	}
@@ -457,7 +457,7 @@ func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *type
 		panic(err)
 	}
 
-	err = db.Set(calcValidatorsKey(height), bz)
+	err = store.db.Set(calcValidatorsKey(height), bz)
 	if err != nil {
 		panic(err)
 	}
@@ -471,13 +471,13 @@ func saveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *type
 func (store Store) LoadConsensusParams(height int64) (tmproto.ConsensusParams, error) {
 	empty := tmproto.ConsensusParams{}
 
-	paramsInfo := loadConsensusParamsInfo(store.db, height)
+	paramsInfo := store.loadConsensusParamsInfo(height)
 	if paramsInfo == nil {
 		return empty, ErrNoConsensusParamsForHeight{height}
 	}
 
 	if paramsInfo.ConsensusParams.Equal(&empty) {
-		paramsInfo2 := loadConsensusParamsInfo(store.db, paramsInfo.LastHeightChanged)
+		paramsInfo2 := store.loadConsensusParamsInfo(paramsInfo.LastHeightChanged)
 		if paramsInfo2 == nil {
 			panic(
 				fmt.Sprintf(
@@ -494,8 +494,8 @@ func (store Store) LoadConsensusParams(height int64) (tmproto.ConsensusParams, e
 	return paramsInfo.ConsensusParams, nil
 }
 
-func loadConsensusParamsInfo(db dbm.DB, height int64) *tmstate.ConsensusParamsInfo {
-	buf, err := db.Get(calcConsensusParamsKey(height))
+func (store Store) loadConsensusParamsInfo(height int64) *tmstate.ConsensusParamsInfo {
+	buf, err := store.db.Get(calcConsensusParamsKey(height))
 	if err != nil {
 		panic(err)
 	}
@@ -518,7 +518,7 @@ func loadConsensusParamsInfo(db dbm.DB, height int64) *tmstate.ConsensusParamsIn
 // It should be called from s.Save(), right before the state itself is persisted.
 // If the consensus params did not change after processing the latest block,
 // only the last height for which they changed is persisted.
-func saveConsensusParamsInfo(db dbm.DB, nextHeight, changeHeight int64, params tmproto.ConsensusParams) {
+func (store Store) saveConsensusParamsInfo(nextHeight, changeHeight int64, params tmproto.ConsensusParams) {
 	paramsInfo := &tmstate.ConsensusParamsInfo{
 		LastHeightChanged: changeHeight,
 	}
@@ -531,7 +531,7 @@ func saveConsensusParamsInfo(db dbm.DB, nextHeight, changeHeight int64, params t
 		panic(err)
 	}
 
-	err = db.Set(calcConsensusParamsKey(nextHeight), bz)
+	err = store.db.Set(calcConsensusParamsKey(nextHeight), bz)
 	if err != nil {
 		panic(err)
 	}

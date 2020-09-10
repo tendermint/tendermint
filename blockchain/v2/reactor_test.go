@@ -157,7 +157,7 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 		}
 		db := dbm.NewMemDB()
 		sstore := sm.NewStateStore(db)
-		appl = sm.NewBlockExecutor(db, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
+		appl = sm.NewBlockExecutor(sstore, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
 		sstore.SaveState(state)
 	}
 
@@ -507,7 +507,7 @@ func newReactorStore(
 
 	db := dbm.NewMemDB()
 	sstore = sm.NewStateStore(db)
-	blockExec := sm.NewBlockExecutor(db, log.TestingLogger(), proxyApp.Consensus(),
+	blockExec := sm.NewBlockExecutor(sstore, log.TestingLogger(), proxyApp.Consensus(),
 		mock.Mempool{}, sm.MockEvidencePool{})
 	sstore.SaveState(state)
 

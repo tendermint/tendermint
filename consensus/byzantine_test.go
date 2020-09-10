@@ -45,7 +45,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	for i := 0; i < nValidators; i++ {
 		logger := consensusLogger().With("test", "byzantine", "validator", i)
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+		sstore := sm.NewStateStore(stateDB)
+		state, _ := sstore.LoadStateFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		defer os.RemoveAll(thisConfig.RootDir)
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
@@ -70,12 +71,12 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 		// Make a full instance of the evidence pool
 		evidenceDB := dbm.NewMemDB()
-		evpool, err := evidence.NewPool(evidenceDB, evidence.NewEvidenceStateStore(stateDB), blockStore)
+		evpool, err := evidence.NewPool(evidenceDB, sstore, blockStore)
 		require.NoError(t, err)
 		evpool.SetLogger(logger.With("module", "evidence"))
 
 		// Make State
-		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+		blockExec := sm.NewBlockExecutor(sstore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
 		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 		cs.SetLogger(cs.Logger)
 		// set private validator
@@ -111,7 +112,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		blocksSubs = append(blocksSubs, blocksSub)
 
 		if css[i].state.LastBlockHeight == 0 { //simulate handle initChain in handshake
-			sm.SaveState(css[i].blockExec.DB(), css[i].state)
+			css[i].blockExec.Store().SaveState(css[i].state)
 		}
 	}
 	// make connected switches and start all reactors
@@ -249,7 +250,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 		}
 
 		reactors[i] = conRI
-		sm.SaveState(css[i].blockExec.DB(), css[i].state) //for save height 1's validators info
+		css[i].blockExec.Store().SaveState(css[i].state) //for save height 1's validators info
 	}
 
 	defer func() {

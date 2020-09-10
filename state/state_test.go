@@ -230,7 +230,7 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 	// Increment height, save; should be able to load for next & next next height.
 	state.LastBlockHeight++
 	nextHeight := state.LastBlockHeight + 1
-	sm.SaveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
+	sm.SaveValidatorsInfo(sstore, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 	vp0, err := sstore.LoadValidators(nextHeight + 0)
 	assert.Nil(err, "expected no err")
 	vp1, err := sstore.LoadValidators(nextHeight + 1)
@@ -269,7 +269,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 		state, err = sm.UpdateState(state, blockID, &header, responses, validatorUpdates)
 		require.NoError(t, err)
 		nextHeight := state.LastBlockHeight + 1
-		sm.SaveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
+		sm.SaveValidatorsInfo(sstore, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 	}
 
 	// On each height change, increment the power by one.
@@ -940,7 +940,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	state, err = sm.UpdateState(state, blockID, &header, responses, validatorUpdates)
 	require.Nil(t, err)
 	nextHeight := state.LastBlockHeight + 1
-	sm.SaveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
+	sm.SaveValidatorsInfo(sstore, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 
 	// Load nextheight, it should be the oldpubkey.
 	v0, err := sstore.LoadValidators(nextHeight)
@@ -1017,7 +1017,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 
 		require.Nil(t, err)
 		nextHeight := state.LastBlockHeight + 1
-		sm.SaveConsensusParamsInfo(stateDB, nextHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams)
+		sm.SaveConsensusParamsInfo(sstore, nextHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams)
 	}
 
 	// Make all the test cases by using the same params until after the change.

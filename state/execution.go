@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	dbm "github.com/tendermint/tm-db"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/fail"
@@ -26,7 +24,7 @@ import (
 // BlockExecutor provides the context and accessories for properly executing a block.
 type BlockExecutor struct {
 	// save state, validators, consensus params, abci responses here
-	store StateStore
+	store StoreI
 
 	// execute the app against this
 	proxyApp proxy.AppConnConsensus
@@ -55,16 +53,15 @@ func BlockExecutorWithMetrics(metrics *Metrics) BlockExecutorOption {
 // NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
 // Call SetEventBus to provide one.
 func NewBlockExecutor(
-	db dbm.DB,
+	stateStore StoreI,
 	logger log.Logger,
 	proxyApp proxy.AppConnConsensus,
 	mempool mempl.Mempool,
 	evpool EvidencePool,
 	options ...BlockExecutorOption,
 ) *BlockExecutor {
-	sstore := NewStateStore(db)
 	res := &BlockExecutor{
-		store:    sstore,
+		store:    stateStore,
 		proxyApp: proxyApp,
 		eventBus: types.NopEventBus{},
 		mempool:  mempool,
@@ -78,6 +75,10 @@ func NewBlockExecutor(
 	}
 
 	return res
+}
+
+func (blockExec *BlockExecutor) Store() StoreI {
+	return blockExec.store
 }
 
 // SetEventBus - sets the event bus for publishing block related events.
@@ -251,7 +252,7 @@ func execBlockOnProxyApp(
 	logger log.Logger,
 	proxyAppConn proxy.AppConnConsensus,
 	block *types.Block,
-	store StateStore,
+	store StoreI,
 	initialHeight int64,
 ) (*tmstate.ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
@@ -319,7 +320,7 @@ func execBlockOnProxyApp(
 	return abciResponses, nil
 }
 
-func getBeginBlockValidatorInfo(block *types.Block, store StateStore,
+func getBeginBlockValidatorInfo(block *types.Block, store StoreI,
 	initialHeight int64) (abci.LastCommitInfo, []abci.Evidence) {
 	voteInfos := make([]abci.VoteInfo, block.LastCommit.Size())
 	// Initial block -> LastCommitInfo.Votes are empty.
@@ -525,7 +526,7 @@ func ExecCommitBlock(
 	appConnConsensus proxy.AppConnConsensus,
 	block *types.Block,
 	logger log.Logger,
-	store StateStore,
+	store StoreI,
 	initialHeight int64,
 ) ([]byte, error) {
 	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
