@@ -52,4 +52,6 @@ type MockEvidencePool struct{}
 func (me MockEvidencePool) PendingEvidence(uint32) []types.Evidence          { return nil }
 func (me MockEvidencePool) AddEvidence(types.Evidence) error                 { return nil }
 func (me MockEvidencePool) Update(*types.Block, State)                       {}
-func (me MockEvidencePool) CheckEvidence(types.EvidenceList) ([]byte, error) { return []byte{}, nil }
+func (me MockEvidencePool) CheckEvidence(evList types.EvidenceList) ([]byte, error) { 
+	return evList.Hash(), nil 
+}

@@ -113,7 +113,7 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 
 	// We have already verified this piece of evidence - no need to do it again
 	if evpool.isPending(ev) {
-		return nil
+		return fmt.Errorf("evidence already verified and added, %s", ev.String())
 	}
 
 	// 1) Verify against state.
@@ -144,7 +144,7 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 	)
 
 	if evpool.isPending(ev) {
-		return nil // we already have this evidence
+		return fmt.Errorf("evidence already verified and added, %s", ev.String()) // we already have this evidence
 	}
 
 	switch ev := ev.(type) {
@@ -182,7 +182,7 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 // the headers EvidenceHash.
 func (evpool *Pool) CheckEvidence(evList types.EvidenceList) ([]byte, error) {
 	hashes := make([][]byte, len(evList))
-	for _, ev := range evList {
+	for idx, ev := range evList {
 
 		ok := evpool.fastCheck(ev)
 
@@ -198,9 +198,9 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) ([]byte, error) {
 		}
 
 		// check for duplicate evidence. We cache hashes so we don't have to work them out again.
-		hashes = append(hashes, ev.Hash())
-		for i := len(hashes) - 2; i >= 0; i++ {
-			if bytes.Equal(hashes[i], hashes[len(hashes)-1]) {
+		hashes[idx] = ev.Hash()
+		for i := idx - 1; i >= 0; i++ {
+			if bytes.Equal(hashes[i], hashes[idx]) {
 				return []byte{}, &types.ErrEvidenceInvalid{Evidence: ev, Reason: errors.New("duplicate evidence")}
 			}
 		}
