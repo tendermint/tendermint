@@ -34,7 +34,7 @@ Currently, we list packages that we consider public in our [README](https://gith
 
 - Split all public APIs out to separate Go modules in separate Git repositories, and consider all Tendermint code internal and not subject to API backwards compatibility at all. This was rejected, since it has been attempted by the Tendermint project earlier, resulting in too much dependency management overhead.
 
-- Simply document which APIs are public and which are private. This is the current approach, but users should not be expected to self-enforce this, and external projects will often end up depending on internal code anyway.
+- Simply document which APIs are public and which are private. This is the current approach, but users should not be expected to self-enforce this, the documentation is not always up-to-date, and external projects will often end up depending on internal code anyway.
 
 ## Decision
 
@@ -58,7 +58,7 @@ The following current packages will be part of our public API in 1.0 in some for
 
 - `abci`
 - `config`
-- `crypto` (separate module)
+- `crypto` (separate repository)
 - `libs/log`
 - `light`
 - `node`
@@ -176,9 +176,11 @@ Proposed
 
 - External developers have a predictable and well-defined API to build on that will be supported for some time
 
+- Less synchronization between teams, since there is a clearer contract and timeline for changes and they happen less frequently
+
 - More documentation will remain accurate, since it's not chasing a moving target
 
-- Less time will be spent on code churn and more time spent on improving stuff, both for the community and for our teams
+- Less time will be spent on code churn and more time spent on functional improvements, both for the community and for our teams
 
 ### Negative
 
