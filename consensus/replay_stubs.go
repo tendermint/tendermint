@@ -60,7 +60,7 @@ func (emptyEvidencePool) Update(*types.Block, sm.State)           {}
 func (emptyEvidencePool) AddEvidenceFromConsensus(types.Evidence, time.Time, *types.ValidatorSet) error {
 	return nil
 }
-func (emptyEvidencePool) CheckEvidence(types.EvidenceList) ([]byte, error) { return []byte{}, nil }
+func (emptyEvidencePool) CheckEvidence(types.EvidenceList) error { return nil }
 
 //-----------------------------------------------------------------------------
 // mockProxyApp uses ABCIResponses to give the right results.

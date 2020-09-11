@@ -76,11 +76,11 @@ func TestEvidencePoolBasic(t *testing.T) {
 
 	evs = pool.PendingEvidence(10)
 	assert.Equal(t, 1, len(evs))
-	
+
 	// shouldn't be able to add evidence twice
 	assert.Error(t, pool.AddEvidence(ev))
 	assert.Equal(t, 1, len(pool.PendingEvidence(10)))
-	
+
 }
 
 // Tests inbound evidence for the right time and height
@@ -142,7 +142,7 @@ func TestAddEvidenceFromConsensus(t *testing.T) {
 	next := pool.EvidenceFront()
 	assert.Equal(t, ev, next.Value.(types.Evidence))
 	// shouldn't be able to submit the same evidence twice
-	err = pool.AddEvidenceFromConsensus(ev, defaultEvidenceTime.Add(-1 * time.Second),
+	err = pool.AddEvidenceFromConsensus(ev, defaultEvidenceTime.Add(-1*time.Second),
 		types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(3)}))
 	assert.Error(t, err)
 }
@@ -170,26 +170,26 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	assert.Empty(t, pool.PendingEvidence(10))
 
 	// b) If we try to check this evidence again it should fail because it has already been committed
-	_, err = pool.CheckEvidence(types.EvidenceList{ev})
+	err = pool.CheckEvidence(types.EvidenceList{ev})
 	assert.Error(t, err)
 }
 
-func TestVeriyEvidencePendingEvidencePasses(t *testing.T) {
+func TestVerifyEvidencePendingEvidencePasses(t *testing.T) {
 	var height int64 = 1
 	pool, val := defaultTestPool(height)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
 	err := pool.AddEvidence(ev)
 	require.NoError(t, err)
 
-	_, err = pool.CheckEvidence(types.EvidenceList{ev})
+	err = pool.CheckEvidence(types.EvidenceList{ev})
 	assert.NoError(t, err)
 }
 
-func TestVeriyDuplicatedEvidenceFails(t *testing.T) {
+func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 	var height int64 = 1
 	pool, val := defaultTestPool(height)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
-	_, err := pool.CheckEvidence(types.EvidenceList{ev, ev})
+	err := pool.CheckEvidence(types.EvidenceList{ev, ev})
 	assert.Error(t, err)
 }
 

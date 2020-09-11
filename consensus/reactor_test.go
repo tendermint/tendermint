@@ -164,13 +164,11 @@ func TestReactorWithEvidence(t *testing.T) {
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % nValidators
 		evpool := &statemocks.EvidencePool{}
-		evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(
-			func(evList types.EvidenceList) ([]byte, error) {
-				return evList.Hash(), nil
-			})
-		evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]types.Evidence{
+		evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
+		evpool.On("PendingEvidence", mock.AnythingOfType("uint32")).Return([]types.Evidence{
 			types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], config.ChainID()),
 		})
+		evpool.On("Update", mock.AnythingOfType("*types.Block"), mock.AnythingOfType("state.State")).Return()
 
 		evpool2 := emptyEvidencePool{}
 
@@ -195,19 +193,14 @@ func TestReactorWithEvidence(t *testing.T) {
 	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nValidators)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
-	// wait till everyone makes the first new block with no evidence
-	timeoutWaitGroup(t, nValidators, func(j int) {
-		msg := <-blocksSubs[j].Out()
-		block := msg.Data().(types.EventDataNewBlock).Block
-		assert.True(t, len(block.Evidence.Evidence) == 0)
-	}, css)
-
-	// second block should have evidence
-	timeoutWaitGroup(t, nValidators, func(j int) {
-		msg := <-blocksSubs[j].Out()
-		block := msg.Data().(types.EventDataNewBlock).Block
-		assert.True(t, len(block.Evidence.Evidence) > 0)
-	}, css)
+	// we expect for each validator that is the proposer to propose one piece of evidence.
+	for i := 0; i < nValidators; i++ {
+		timeoutWaitGroup(t, nValidators, func(j int) {
+			msg := <-blocksSubs[j].Out()
+			block := msg.Data().(types.EventDataNewBlock).Block
+			assert.True(t, len(block.Evidence.Evidence) == 1)
+		}, css)
+	}
 }
 
 //------------------------------------
@@ -642,7 +635,7 @@ func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*State) {
 
 	// we're running many nodes in-process, possibly in in a virtual machine,
 	// and spewing debug messages - making a block could take a while,
-	timeout := time.Second * 300
+	timeout := time.Second * 120
 
 	select {
 	case <-done:

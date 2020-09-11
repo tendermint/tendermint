@@ -120,7 +120,7 @@ func TestLightClientAttackEvidence(t *testing.T) {
 	header := makeHeaderRandom()
 	header.Height = height
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
-	commit, err := MakeCommit(blockID, height, 1, voteSet, privVals, time.Now())
+	commit, err := MakeCommit(blockID, height, 1, voteSet, privVals, defaultVoteTime)
 	require.NoError(t, err)
 	lcae := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{
@@ -135,7 +135,7 @@ func TestLightClientAttackEvidence(t *testing.T) {
 	assert.NotNil(t, lcae.String())
 	assert.NotNil(t, lcae.Hash())
 	// only 7 validators sign
-	differentCommit, err := MakeCommit(blockID, height, 1, voteSet, privVals[:7], time.Now())
+	differentCommit, err := MakeCommit(blockID, height, 1, voteSet, privVals[:7], defaultVoteTime)
 	require.NoError(t, err)
 	differentEv := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{

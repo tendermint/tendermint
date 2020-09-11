@@ -215,7 +215,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	evpool := &mocks.EvidencePool{}
-	evpool.On("CheckEvidence", mock.AnythingOfType("*types.DuplicateVoteEvidence")).Return(nil)
+	evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
 	evpool.On("Update", mock.AnythingOfType("*types.Block"), mock.AnythingOfType("state.State")).Return()
 
 	state.ConsensusParams.Evidence.MaxNum = 3
@@ -275,28 +275,4 @@ func TestValidateBlockEvidence(t *testing.T) {
 		)
 		require.NoError(t, err, "height %d", height)
 	}
-}
-
-func TestValidateDuplicateEvidenceShouldFail(t *testing.T) {
-	var height int64 = 1
-	state, stateDB, privVals := makeState(2, int(height))
-	_, val := state.Validators.GetByIndex(0)
-	_, val2 := state.Validators.GetByIndex(1)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
-		privVals[val.Address.String()], chainID)
-	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
-		privVals[val2.Address.String()], chainID)
-
-	blockExec := sm.NewBlockExecutor(
-		stateDB, log.TestingLogger(),
-		nil,
-		nil,
-		sm.MockEvidencePool{})
-	// A block with a couple pieces of evidence passes.
-	block := makeBlock(state, height)
-	block.Evidence.Evidence = []types.Evidence{ev, ev2, ev2}
-	block.EvidenceHash = block.Evidence.Hash()
-	err := blockExec.ValidateBlock(state, block)
-
-	assert.Error(t, err)
 }

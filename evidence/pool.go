@@ -11,7 +11,6 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 	dbm "github.com/tendermint/tm-db"
 
-	"github.com/tendermint/tendermint/crypto/merkle"
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	evproto "github.com/tendermint/tendermint/proto/tendermint/evidence"
@@ -164,7 +163,7 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 	}
 
 	if err := evpool.addPendingEvidence(evInfo); err != nil {
-		return fmt.Errorf("database error when adding evidence from conensus: %w", err)
+		return fmt.Errorf("database error when adding evidence from consensus: %w", err)
 	}
 
 	evpool.evidenceList.PushBack(ev)
@@ -180,7 +179,7 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 // evidence that it doesn't currently have so that it can quickly form ABCI Evidence later.
 // Check evidence returns the hash of the entire evidence list so that it can be compares with
 // the headers EvidenceHash.
-func (evpool *Pool) CheckEvidence(evList types.EvidenceList) ([]byte, error) {
+func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 	hashes := make([][]byte, len(evList))
 	for idx, ev := range evList {
 
@@ -189,7 +188,7 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) ([]byte, error) {
 		if !ok {
 			evInfo, err := evpool.verify(ev)
 			if err != nil {
-				return []byte{}, &types.ErrEvidenceInvalid{Evidence: ev, Reason: err}
+				return &types.ErrEvidenceInvalid{Evidence: ev, Reason: err}
 			}
 
 			if err := evpool.addPendingEvidence(evInfo); err != nil {
@@ -199,14 +198,14 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) ([]byte, error) {
 
 		// check for duplicate evidence. We cache hashes so we don't have to work them out again.
 		hashes[idx] = ev.Hash()
-		for i := idx - 1; i >= 0; i++ {
+		for i := idx - 1; i >= 0; i-- {
 			if bytes.Equal(hashes[i], hashes[idx]) {
-				return []byte{}, &types.ErrEvidenceInvalid{Evidence: ev, Reason: errors.New("duplicate evidence")}
+				return &types.ErrEvidenceInvalid{Evidence: ev, Reason: errors.New("duplicate evidence")}
 			}
 		}
 	}
 
-	return merkle.HashFromByteSlices(hashes), nil
+	return nil
 }
 
 // EvidenceFront goes to the first evidence in the clist

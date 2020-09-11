@@ -98,7 +98,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 		}
 	}
 
-	// NOTE: We can't actually verify it's the right proposer because we dont
+	// NOTE: We can't actually verify it's the right proposer because we don't
 	// know what round the block was first proposed. So just check that it's
 	// a legit address and a known validator.
 	if len(block.ProposerAddress) != crypto.AddressSize {
@@ -150,15 +150,5 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 	}
 
 	// Validate all evidence.
-	hash, err := evidencePool.CheckEvidence(block.Evidence.Evidence)
-	if err != nil {
-		return err
-	}
-
-	if !bytes.Equal(hash, block.EvidenceHash) {
-		return fmt.Errorf("wrong Block.Header.EvidenceHash. Expected %X, got %X",
-			hash, block.EvidenceHash)
-	}
-
-	return nil
+	return evidencePool.CheckEvidence(block.Evidence.Evidence)
 }

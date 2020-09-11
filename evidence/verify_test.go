@@ -91,9 +91,8 @@ func TestVerifyLightClientAttack(t *testing.T) {
 	require.NoError(t, err)
 
 	evList := types.EvidenceList{ev}
-	hash, err := pool.CheckEvidence(evList)
+	err = pool.CheckEvidence(evList)
 	assert.NoError(t, err)
-	assert.Equal(t, evList.Hash(), hash)
 
 	pendingEvs := pool.PendingEvidence(2)
 	assert.Equal(t, 1, len(pendingEvs))
@@ -175,9 +174,8 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 	require.NoError(t, err)
 
 	evList := types.EvidenceList{goodEv}
-	hash, err := pool.CheckEvidence(evList)
+	err = pool.CheckEvidence(evList)
 	assert.NoError(t, err)
-	assert.Equal(t, evList.Hash(), hash)
 }
 
 func makeVote(

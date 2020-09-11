@@ -150,7 +150,8 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 
 func TestClientDivergentTraces(t *testing.T) {
 	primary := mockp.New(genMockNode(chainID, 10, 5, 2, bTime))
-	firstBlock, _ := primary.LightBlock(1)
+	firstBlock, err := primary.LightBlock(1)
+	require.NoError(t, err)
 	witness := mockp.New(genMockNode(chainID, 10, 5, 2, bTime))
 
 	c, err := light.NewClient(
