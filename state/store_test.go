@@ -67,7 +67,8 @@ func BenchmarkLoadValidators(b *testing.B) {
 
 	for i := 10; i < 10000000000; i *= 10 { // 10, 100, 1000, ...
 		i := i
-		if err := sm.SaveValidatorsInfo(stateDB, int64(i), state.LastHeightValidatorsChanged, state.NextValidators); err != nil {
+		if err := sm.SaveValidatorsInfo(stateDB,
+			int64(i), state.LastHeightValidatorsChanged, state.NextValidators); err != nil {
 			b.Fatal(err)
 		}
 
