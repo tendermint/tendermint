@@ -543,7 +543,8 @@ func TestTxSearch(t *testing.T) {
 		require.Equal(t, len(result.Txs), 0, "expected a lot of transactions")
 
 		// query using a compositeKey (see kvstore application) and height
-		result, err = c.TxSearch(context.Background(), "app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, nil, nil, "asc")
+		result, err = c.TxSearch(context.Background(),
+			"app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, nil, nil, "asc")
 		require.Nil(t, err)
 		require.Greater(t, len(result.Txs), 0, "expected a lot of transactions")
 

@@ -140,7 +140,13 @@ func (c Client) DialSeeds(ctx context.Context, seeds []string) (*ctypes.ResultDi
 	return core.UnsafeDialSeeds(&rpctypes.Context{}, seeds)
 }
 
-func (c Client) DialPeers(ctx context.Context, peers []string, persistent, unconditional, private bool) (*ctypes.ResultDialPeers, error) {
+func (c Client) DialPeers(
+	ctx context.Context,
+	peers []string,
+	persistent,
+	unconditional,
+	private bool,
+) (*ctypes.ResultDialPeers, error) {
 	return core.UnsafeDialPeers(&rpctypes.Context{}, peers, persistent, unconditional, private)
 }
 

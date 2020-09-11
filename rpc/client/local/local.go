@@ -135,7 +135,13 @@ func (c *Local) DialSeeds(ctx context.Context, seeds []string) (*ctypes.ResultDi
 	return core.UnsafeDialSeeds(c.ctx, seeds)
 }
 
-func (c *Local) DialPeers(ctx context.Context, peers []string, persistent, unconditional, private bool) (*ctypes.ResultDialPeers, error) {
+func (c *Local) DialPeers(
+	ctx context.Context,
+	peers []string,
+	persistent,
+	unconditional,
+	private bool,
+) (*ctypes.ResultDialPeers, error) {
 	return core.UnsafeDialPeers(c.ctx, peers, persistent, unconditional, private)
 }
 
@@ -171,8 +177,14 @@ func (c *Local) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.Result
 	return core.Tx(c.ctx, hash, prove)
 }
 
-func (c *Local) TxSearch(ctx context.Context, query string, prove bool, page, perPage *int, orderBy string) (
-	*ctypes.ResultTxSearch, error) {
+func (c *Local) TxSearch(
+	ctx context.Context,
+	query string,
+	prove bool,
+	page,
+	perPage *int,
+	orderBy string,
+) (*ctypes.ResultTxSearch, error) {
 	return core.TxSearch(c.ctx, query, prove, page, perPage, orderBy)
 }
 

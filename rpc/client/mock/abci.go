@@ -184,7 +184,11 @@ func (r *ABCIRecorder) ABCIInfo(ctx context.Context) (*ctypes.ResultABCIInfo, er
 	return res, err
 }
 
-func (r *ABCIRecorder) ABCIQuery(ctx context.Context, path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
+func (r *ABCIRecorder) ABCIQuery(
+	ctx context.Context,
+	path string,
+	data bytes.HexBytes,
+) (*ctypes.ResultABCIQuery, error) {
 	return r.ABCIQueryWithOptions(ctx, path, data, client.DefaultABCIQueryOptions)
 }
 

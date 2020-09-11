@@ -98,7 +98,12 @@ func TestABCIRecorder(t *testing.T) {
 	_, err := r.ABCIInfo(context.Background())
 	assert.Nil(err, "expected no err on info")
 
-	_, err = r.ABCIQueryWithOptions(context.Background(), "path", bytes.HexBytes("data"), client.ABCIQueryOptions{Prove: false})
+	_, err = r.ABCIQueryWithOptions(
+		context.Background(),
+		"path",
+		bytes.HexBytes("data"),
+		client.ABCIQueryOptions{Prove: false},
+	)
 	assert.NotNil(err, "expected error on query")
 	require.Equal(2, len(r.Calls))
 
@@ -180,7 +185,12 @@ func TestABCIApp(t *testing.T) {
 	}
 
 	// check the key
-	_qres, err := m.ABCIQueryWithOptions(context.Background(), "/key", bytes.HexBytes(key), client.ABCIQueryOptions{Prove: true})
+	_qres, err := m.ABCIQueryWithOptions(
+		context.Background(),
+		"/key",
+		bytes.HexBytes(key),
+		client.ABCIQueryOptions{Prove: true},
+	)
 	qres := _qres.Response
 	require.Nil(err)
 	assert.EqualValues(value, qres.Value)
