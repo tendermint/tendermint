@@ -64,13 +64,14 @@ type Store interface {
 	PruneStates(int64, int64) error
 }
 
-//
+//dbStore wraps a db (github.com/tendermint/tm-db)
 type dbStore struct {
 	db dbm.DB
 }
 
 var _ Store = (*dbStore)(nil)
 
+// NewStore creates the dbStore of the state pkg.
 func NewStore(db dbm.DB) Store {
 	return dbStore{db}
 }
