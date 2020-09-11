@@ -237,7 +237,6 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 	nextHeight := state.LastBlockHeight + 1
 	err = statestore.Save(state)
 	require.NoError(t, err)
-	// sm.SaveValidatorsInfo(statestore, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 	vp0, err := statestore.LoadValidators(nextHeight + 0)
 	assert.Nil(err, "expected no err")
 	vp1, err := statestore.LoadValidators(nextHeight + 1)
