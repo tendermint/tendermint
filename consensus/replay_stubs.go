@@ -55,7 +55,7 @@ var _ sm.EvidencePool = emptyEvidencePool{}
 
 func (emptyEvidencePool) PendingEvidence(uint32) []types.Evidence { return nil }
 func (emptyEvidencePool) AddEvidence(types.Evidence) error        { return nil }
-func (emptyEvidencePool) Update(*types.Block, sm.State)           {}
+func (emptyEvidencePool) Update(*types.Block, sm.State) []abci.Evidence  { return []abci.Evidence{} }
 
 func (emptyEvidencePool) AddEvidenceFromConsensus(types.Evidence, time.Time, *types.ValidatorSet) error {
 	return nil
