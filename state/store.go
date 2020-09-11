@@ -1,6 +1,7 @@
 package state
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"
@@ -165,7 +166,10 @@ func (store dbStore) save(state State, key []byte) error {
 	}
 
 	// Save next consensus params.
-	store.saveConsensusParamsInfo(nextHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams)
+	if err := store.saveConsensusParamsInfo(nextHeight,
+		state.LastHeightConsensusParamsChanged, state.ConsensusParams); err != nil {
+		return err
+	}
 	err := store.db.SetSync(key, state.Bytes())
 	if err != nil {
 		return err
@@ -179,18 +183,25 @@ func (store dbStore) BootstrapState(state State) error {
 	if height == 1 {
 		height = state.InitialHeight
 	}
+
 	if height > 1 && !state.LastValidators.IsNilOrEmpty() {
 		if err := store.saveValidatorsInfo(height-1, height-1, state.LastValidators); err != nil {
 			return err
 		}
 	}
+
 	if err := store.saveValidatorsInfo(height, height, state.Validators); err != nil {
 		return err
 	}
+
 	if err := store.saveValidatorsInfo(height+1, height+1, state.NextValidators); err != nil {
 		return err
 	}
-	store.saveConsensusParamsInfo(height, height, state.ConsensusParams)
+
+	if err := store.saveConsensusParamsInfo(height, height, state.ConsensusParams); err != nil {
+		return err
+	}
+
 	return store.db.SetSync(stateKey, state.Bytes())
 }
 
@@ -213,9 +224,9 @@ func (store dbStore) PruneStates(from int64, to int64) error {
 	if valInfo == nil {
 		return fmt.Errorf("validators at height %v not found", to)
 	}
-	paramsInfo := store.loadConsensusParamsInfo(to)
-	if paramsInfo == nil {
-		return fmt.Errorf("consensus params at height %v not found", to)
+	paramsInfo, err := store.loadConsensusParamsInfo(to)
+	if err != nil {
+		return fmt.Errorf("consensus params at height %v not found: %w", to, err)
 	}
 
 	keepVals := make(map[int64]bool)
@@ -231,7 +242,6 @@ func (store dbStore) PruneStates(from int64, to int64) error {
 	batch := store.db.NewBatch()
 	defer batch.Close()
 	pruned := uint64(0)
-	var err error
 
 	// We have to delete in reverse order, to avoid deleting previous heights that have validator
 	// sets and consensus params that we may need to retrieve.
@@ -273,17 +283,23 @@ func (store dbStore) PruneStates(from int64, to int64) error {
 		}
 
 		if keepParams[h] {
-			p := store.loadConsensusParamsInfo(h)
+			p, err := store.loadConsensusParamsInfo(h)
+			if err != nil {
+				return err
+			}
+
 			if p.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
 				p.ConsensusParams, err = store.LoadConsensusParams(h)
 				if err != nil {
 					return err
 				}
+
 				p.LastHeightChanged = h
 				bz, err := p.Marshal()
 				if err != nil {
 					return err
 				}
+
 				err = batch.Set(calcConsensusParamsKey(h), bz)
 				if err != nil {
 					return err
@@ -504,20 +520,19 @@ func (store dbStore) saveValidatorsInfo(height, lastHeightChanged int64, valSet 
 func (store dbStore) LoadConsensusParams(height int64) (tmproto.ConsensusParams, error) {
 	empty := tmproto.ConsensusParams{}
 
-	paramsInfo := store.loadConsensusParamsInfo(height)
-	if paramsInfo == nil {
-		return empty, ErrNoConsensusParamsForHeight{height}
+	paramsInfo, err := store.loadConsensusParamsInfo(height)
+	if err != nil {
+		return empty, fmt.Errorf("could not find consensus params for height #%d: %w", height, err)
 	}
 
 	if paramsInfo.ConsensusParams.Equal(&empty) {
-		paramsInfo2 := store.loadConsensusParamsInfo(paramsInfo.LastHeightChanged)
-		if paramsInfo2 == nil {
-			panic(
-				fmt.Sprintf(
-					"Couldn't find consensus params at height %d as last changed from height %d",
-					paramsInfo.LastHeightChanged,
-					height,
-				),
+		paramsInfo2, err := store.loadConsensusParamsInfo(paramsInfo.LastHeightChanged)
+		if err != nil {
+			return empty, fmt.Errorf(
+				"couldn't find consensus params at height %d as last changed from height %d: %w",
+				paramsInfo.LastHeightChanged,
+				height,
+				err,
 			)
 		}
 
@@ -527,13 +542,13 @@ func (store dbStore) LoadConsensusParams(height int64) (tmproto.ConsensusParams,
 	return paramsInfo.ConsensusParams, nil
 }
 
-func (store dbStore) loadConsensusParamsInfo(height int64) *tmstate.ConsensusParamsInfo {
+func (store dbStore) loadConsensusParamsInfo(height int64) (*tmstate.ConsensusParamsInfo, error) {
 	buf, err := store.db.Get(calcConsensusParamsKey(height))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	if len(buf) == 0 {
-		return nil
+		return nil, errors.New("value retrieved from db is empty")
 	}
 
 	paramsInfo := new(tmstate.ConsensusParamsInfo)
@@ -544,14 +559,14 @@ func (store dbStore) loadConsensusParamsInfo(height int64) *tmstate.ConsensusPar
 	}
 	// TODO: ensure that buf is completely read.
 
-	return paramsInfo
+	return paramsInfo, nil
 }
 
 // saveConsensusParamsInfo persists the consensus params for the next block to disk.
 // It should be called from s.Save(), right before the state itself is persisted.
 // If the consensus params did not change after processing the latest block,
 // only the last height for which they changed is persisted.
-func (store dbStore) saveConsensusParamsInfo(nextHeight, changeHeight int64, params tmproto.ConsensusParams) {
+func (store dbStore) saveConsensusParamsInfo(nextHeight, changeHeight int64, params tmproto.ConsensusParams) error {
 	paramsInfo := &tmstate.ConsensusParamsInfo{
 		LastHeightChanged: changeHeight,
 	}
@@ -561,11 +576,13 @@ func (store dbStore) saveConsensusParamsInfo(nextHeight, changeHeight int64, par
 	}
 	bz, err := paramsInfo.Marshal()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	err = store.db.Set(calcConsensusParamsKey(nextHeight), bz)
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }

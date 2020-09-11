@@ -185,7 +185,6 @@ func TestPruneStates(t *testing.T) {
 					require.False(t, params.Equal(&tmproto.ConsensusParams{}))
 				} else {
 					require.Error(t, err, "params height %v", h)
-					require.Equal(t, sm.ErrNoConsensusParamsForHeight{Height: h}, err)
 				}
 
 				abci, err := stateStore.LoadABCIResponses(h)
