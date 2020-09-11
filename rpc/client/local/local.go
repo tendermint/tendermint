@@ -80,7 +80,7 @@ func (c *Local) ABCIQuery(ctx context.Context, path string, data bytes.HexBytes)
 }
 
 func (c *Local) ABCIQueryWithOptions(
-	ctx context.Context, 
+	ctx context.Context,
 	path string,
 	data bytes.HexBytes,
 	opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
@@ -91,7 +91,7 @@ func (c *Local) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Res
 	return core.BroadcastTxCommit(c.ctx, tx)
 }
 
-func (c *Local) BroadcastTxAsync(ctx context.Context ,tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func (c *Local) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	return core.BroadcastTxAsync(c.ctx, tx)
 }
 
