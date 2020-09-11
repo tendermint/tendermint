@@ -21,27 +21,30 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// func TestStoreLoadValidators(t *testing.T) {
-// 	stateDB := dbm.NewMemDB()
-// 	stateStore := sm.NewStore(stateDB)
-// 	// val, _ := types.RandValidator(true, 10)
-// 	// vals := types.NewValidatorSet([]*types.Validator{val})
+func TestStoreLoadValidators(t *testing.T) {
+	stateDB := dbm.NewMemDB()
+	stateStore := sm.NewStore(stateDB)
+	val, _ := types.RandValidator(true, 10)
+	vals := types.NewValidatorSet([]*types.Validator{val})
 
-// 	// 1) LoadValidators loads validators using a height where they were last changed
-// 	// sm.SaveValidatorsInfo(sstore, 1, 1, vals)
-// 	// sm.SaveValidatorsInfo(sstore, 2, 1, vals)
-// 	loadedVals, err := stateStore.LoadValidators(2)
-// 	require.NoError(t, err)
-// 	assert.NotZero(t, loadedVals.Size())
+	// 1) LoadValidators loads validators using a height where they were last changed
+	err := sm.SaveValidatorsInfo(stateDB, 1, 1, vals)
+	require.NoError(t, err)
+	err = sm.SaveValidatorsInfo(stateDB, 2, 1, vals)
+	require.NoError(t, err)
+	loadedVals, err := stateStore.LoadValidators(2)
+	require.NoError(t, err)
+	assert.NotZero(t, loadedVals.Size())
 
-// 	// 2) LoadValidators loads validators using a checkpoint height
+	// 2) LoadValidators loads validators using a checkpoint height
 
-// 	// sm.SaveValidatorsInfo(sstore, sm.ValSetCheckpointInterval, 1, vals)
+	err = sm.SaveValidatorsInfo(stateDB, sm.ValSetCheckpointInterval, 1, vals)
+	require.NoError(t, err)
 
-// 	loadedVals, err = stateStore.LoadValidators(sm.ValSetCheckpointInterval)
-// 	require.NoError(t, err)
-// 	assert.NotZero(t, loadedVals.Size())
-// }
+	loadedVals, err = stateStore.LoadValidators(sm.ValSetCheckpointInterval)
+	require.NoError(t, err)
+	assert.NotZero(t, loadedVals.Size())
+}
 
 func BenchmarkLoadValidators(b *testing.B) {
 	const valSetSize = 100
@@ -64,11 +67,9 @@ func BenchmarkLoadValidators(b *testing.B) {
 
 	for i := 10; i < 10000000000; i *= 10 { // 10, 100, 1000, ...
 		i := i
-		state.LastBlockHeight = int64(i)
-		fmt.Println(state.LastBlockHeight)
-		err := stateStore.Save(state)
-		require.NoError(b, err)
-		// sm.SaveValidatorsInfo(sstore, int64(i), state.LastHeightValidatorsChanged, state.NextValidators)
+		if err := sm.SaveValidatorsInfo(stateDB, int64(i), state.LastHeightValidatorsChanged, state.NextValidators); err != nil {
+			b.Fatal(err)
+		}
 
 		b.Run(fmt.Sprintf("height=%d", i), func(b *testing.B) {
 			for n := 0; n < b.N; n++ {

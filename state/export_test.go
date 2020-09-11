@@ -5,6 +5,7 @@ import (
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 //
@@ -40,6 +41,7 @@ func ValidateValidatorUpdates(abciUpdates []abci.ValidatorUpdate, params tmproto
 
 // SaveValidatorsInfo is an alias for the private saveValidatorsInfo method in
 // store.go, exported exclusively and explicitly for testing.
-func SaveValidatorsInfo(store dbStore, height, lastHeightChanged int64, valSet *types.ValidatorSet) {
-	store.saveValidatorsInfo(height, lastHeightChanged, valSet)
+func SaveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *types.ValidatorSet) error {
+	stateStore := dbStore{db}
+	return stateStore.saveValidatorsInfo(height, lastHeightChanged, valSet)
 }

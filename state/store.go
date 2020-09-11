@@ -155,10 +155,14 @@ func (store dbStore) save(state State, key []byte) error {
 		nextHeight = state.InitialHeight
 		// This extra logic due to Tendermint validator set changes being delayed 1 block.
 		// It may get overwritten due to InitChain validator updates.
-		store.saveValidatorsInfo(nextHeight, nextHeight, state.Validators)
+		if err := store.saveValidatorsInfo(nextHeight, nextHeight, state.Validators); err != nil {
+			return err
+		}
 	}
 	// Save next validators.
-	store.saveValidatorsInfo(nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
+	if err := store.saveValidatorsInfo(nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators); err != nil {
+		return err
+	}
 
 	// Save next consensus params.
 	store.saveConsensusParamsInfo(nextHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams)
@@ -176,10 +180,16 @@ func (store dbStore) BootstrapState(state State) error {
 		height = state.InitialHeight
 	}
 	if height > 1 && !state.LastValidators.IsNilOrEmpty() {
-		store.saveValidatorsInfo(height-1, height-1, state.LastValidators)
+		if err := store.saveValidatorsInfo(height-1, height-1, state.LastValidators); err != nil {
+			return err
+		}
 	}
-	store.saveValidatorsInfo(height, height, state.Validators)
-	store.saveValidatorsInfo(height+1, height+1, state.NextValidators)
+	if err := store.saveValidatorsInfo(height, height, state.Validators); err != nil {
+		return err
+	}
+	if err := store.saveValidatorsInfo(height+1, height+1, state.NextValidators); err != nil {
+		return err
+	}
 	store.saveConsensusParamsInfo(height, height, state.ConsensusParams)
 	return store.db.SetSync(stateKey, state.Bytes())
 }
@@ -456,7 +466,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) *tmstate.ValidatorsInfo {
 // `height` is the effective height for which the validator is responsible for
 // signing. It should be called from s.Save(), right before the state itself is
 // persisted.
-func (store dbStore) saveValidatorsInfo(height, lastHeightChanged int64, valSet *types.ValidatorSet) {
+func (store dbStore) saveValidatorsInfo(height, lastHeightChanged int64, valSet *types.ValidatorSet) error {
 	if lastHeightChanged > height {
 		panic("LastHeightChanged cannot be greater than ValidatorsInfo height")
 	}
@@ -468,20 +478,22 @@ func (store dbStore) saveValidatorsInfo(height, lastHeightChanged int64, valSet 
 	if height == lastHeightChanged || height%valSetCheckpointInterval == 0 {
 		pv, err := valSet.ToProto()
 		if err != nil {
-			panic(err)
+			return err
 		}
 		valInfo.ValidatorSet = pv
 	}
 
 	bz, err := valInfo.Marshal()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	err = store.db.Set(calcValidatorsKey(height), bz)
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
 //-----------------------------------------------------------------------------
