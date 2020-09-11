@@ -112,9 +112,9 @@ func deliverTxsRange(cs *State, start, end int) {
 func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	state, privVals := randGenesisState(1, false, 10)
 	blockDB := dbm.NewMemDB()
-	sstore := sm.NewStateStore(blockDB)
+	sstore := sm.NewStore(blockDB)
 	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockDB)
-	sstore.SaveState(state)
+	sstore.Save(state)
 	newBlockHeaderCh := subscribe(cs.eventBus, types.EventQueryNewBlockHeader)
 
 	const numTxs int64 = 3000
@@ -136,9 +136,9 @@ func TestMempoolRmBadTx(t *testing.T) {
 	state, privVals := randGenesisState(1, false, 10)
 	app := NewCounterApplication()
 	blockDB := dbm.NewMemDB()
-	sstore := sm.NewStateStore(blockDB)
+	sstore := sm.NewStore(blockDB)
 	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], app, blockDB)
-	sstore.SaveState(state)
+	sstore.Save(state)
 
 	// increment the counter by 1
 	txBytes := make([]byte, 8)

@@ -65,7 +65,7 @@ func TestMain(m *testing.M) {
 // wal writer when we need to, instead of with every message.
 
 func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Config,
-	lastBlockHeight int64, blockDB dbm.DB, stateStore sm.StoreI) {
+	lastBlockHeight int64, blockDB dbm.DB, stateStore sm.Store) {
 	logger := log.TestingLogger()
 	state, _ := stateStore.LoadStateFromDBOrGenesisFile(consensusReplayConfig.GenesisFile())
 	privValidator := loadPrivValidator(consensusReplayConfig)
@@ -159,7 +159,7 @@ LOOP:
 		logger := log.NewNopLogger()
 		blockDB := dbm.NewMemDB()
 		stateDB := blockDB
-		sstore := sm.NewStateStore(stateDB)
+		sstore := sm.NewStore(stateDB)
 		state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 		require.NoError(t, err)
 		privValidator := loadPrivValidator(consensusReplayConfig)
@@ -703,7 +703,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		stateDB, genisisState, store = stateAndStore(config, pubKey, kvstore.ProtocolVersion)
 
 	}
-	sstore := sm.NewStateStore(stateDB)
+	sstore := sm.NewStore(stateDB)
 	store.chain = chain
 	store.commits = commits
 
@@ -722,8 +722,8 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		// use a throwaway tendermint state
 		proxyApp := proxy.NewAppConns(clientCreator2)
 		stateDB1 := dbm.NewMemDB()
-		sstore := sm.NewStateStore(stateDB1)
-		sstore.SaveState(genisisState)
+		sstore := sm.NewStore(stateDB1)
+		sstore.Save(genisisState)
 		buildAppStateFromChain(proxyApp, sstore, genisisState, chain, nBlocks, mode)
 	}
 
@@ -784,7 +784,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	}
 }
 
-func applyBlock(stateStore sm.StoreI, st sm.State, blk *types.Block, proxyApp proxy.AppConns) sm.State {
+func applyBlock(stateStore sm.Store, st sm.State, blk *types.Block, proxyApp proxy.AppConns) sm.State {
 	testPartSize := types.BlockPartSizeBytes
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
@@ -796,7 +796,7 @@ func applyBlock(stateStore sm.StoreI, st sm.State, blk *types.Block, proxyApp pr
 	return newState
 }
 
-func buildAppStateFromChain(proxyApp proxy.AppConns, stateStore sm.StoreI,
+func buildAppStateFromChain(proxyApp proxy.AppConns, stateStore sm.Store,
 	state sm.State, chain []*types.Block, nBlocks int, mode uint) {
 	// start a new app without handshake, play nBlocks blocks
 	if err := proxyApp.Start(); err != nil {
@@ -811,7 +811,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateStore sm.StoreI,
 	}); err != nil {
 		panic(err)
 	}
-	stateStore.SaveState(state) //save height 1's validatorsInfo
+	stateStore.Save(state) //save height 1's validatorsInfo
 
 	switch mode {
 	case 0:
@@ -838,7 +838,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateStore sm.StoreI,
 
 func buildTMStateFromChain(
 	config *cfg.Config,
-	stateStore sm.StoreI,
+	stateStore sm.Store,
 	state sm.State,
 	chain []*types.Block,
 	nBlocks int,
@@ -860,7 +860,7 @@ func buildTMStateFromChain(
 	}); err != nil {
 		panic(err)
 	}
-	stateStore.SaveState(state) //save height 1's validatorsInfo
+	stateStore.Save(state) //save height 1's validatorsInfo
 
 	switch mode {
 	case 0:
@@ -898,7 +898,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	pubKey, err := privVal.GetPubKey()
 	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(config, pubKey, appVersion)
-	sstore := sm.NewStateStore(stateDB)
+	sstore := sm.NewStore(stateDB)
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
 	state.LastValidators = state.Validators.Copy()
 	// mode = 0 for committing all the blocks
@@ -1155,11 +1155,11 @@ func stateAndStore(
 	pubKey crypto.PubKey,
 	appVersion uint64) (dbm.DB, sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
-	sstore := sm.NewStateStore(stateDB)
+	sstore := sm.NewStore(stateDB)
 	state, _ := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	state.Version.Consensus.App = appVersion
 	store := newMockBlockStore(config, state.ConsensusParams)
-	sstore.SaveState(state)
+	sstore.Save(state)
 	return stateDB, state, store
 }
 
@@ -1229,7 +1229,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	pubKey, err := privVal.GetPubKey()
 	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(config, pubKey, 0x0)
-	sstore := sm.NewStateStore(stateDB)
+	sstore := sm.NewStore(stateDB)
 
 	oldValAddr := state.Validators.Validators[0].Address
 
@@ -1249,7 +1249,8 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 		t.Fatalf("Error on abci handshake: %v", err)
 	}
 	// reload the state, check the validator set was updated
-	state = sstore.LoadState()
+	state, err = sstore.Load()
+	require.NoError(t, err)
 
 	newValAddr := state.Validators.Validators[0].Address
 	expectValAddr := val.Address

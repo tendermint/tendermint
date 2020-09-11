@@ -24,7 +24,7 @@ import (
 // BlockExecutor provides the context and accessories for properly executing a block.
 type BlockExecutor struct {
 	// save state, validators, consensus params, abci responses here
-	store StoreI
+	store Store
 
 	// execute the app against this
 	proxyApp proxy.AppConnConsensus
@@ -53,7 +53,7 @@ func BlockExecutorWithMetrics(metrics *Metrics) BlockExecutorOption {
 // NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
 // Call SetEventBus to provide one.
 func NewBlockExecutor(
-	stateStore StoreI,
+	stateStore Store,
 	logger log.Logger,
 	proxyApp proxy.AppConnConsensus,
 	mempool mempl.Mempool,
@@ -77,7 +77,7 @@ func NewBlockExecutor(
 	return res
 }
 
-func (blockExec *BlockExecutor) Store() StoreI {
+func (blockExec *BlockExecutor) Store() Store {
 	return blockExec.store
 }
 
@@ -143,7 +143,9 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	fail.Fail() // XXX
 
 	// Save the results before we commit.
-	blockExec.store.SaveABCIResponses(block.Height, abciResponses)
+	if err := blockExec.store.SaveABCIResponses(block.Height, abciResponses); err != nil {
+		return state, 0, err
+	}
 
 	fail.Fail() // XXX
 
@@ -180,7 +182,9 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// Update the app hash and save the state.
 	state.AppHash = appHash
-	blockExec.store.SaveState(state)
+	if err := blockExec.store.Save(state); err != nil {
+		return state, 0, err
+	}
 
 	fail.Fail() // XXX
 
@@ -252,7 +256,7 @@ func execBlockOnProxyApp(
 	logger log.Logger,
 	proxyAppConn proxy.AppConnConsensus,
 	block *types.Block,
-	store StoreI,
+	store Store,
 	initialHeight int64,
 ) (*tmstate.ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
@@ -320,7 +324,7 @@ func execBlockOnProxyApp(
 	return abciResponses, nil
 }
 
-func getBeginBlockValidatorInfo(block *types.Block, store StoreI,
+func getBeginBlockValidatorInfo(block *types.Block, store Store,
 	initialHeight int64) (abci.LastCommitInfo, []abci.Evidence) {
 	voteInfos := make([]abci.VoteInfo, block.LastCommit.Size())
 	// Initial block -> LastCommitInfo.Votes are empty.
@@ -526,7 +530,7 @@ func ExecCommitBlock(
 	appConnConsensus proxy.AppConnConsensus,
 	block *types.Block,
 	logger log.Logger,
-	store StoreI,
+	store Store,
 	initialHeight int64,
 ) ([]byte, error) {
 	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)

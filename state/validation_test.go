@@ -29,7 +29,7 @@ func TestValidateBlockHeader(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(3, 1)
-	sstore := sm.NewStateStore(stateDB)
+	sstore := sm.NewStore(stateDB)
 	blockExec := sm.NewBlockExecutor(
 		sstore,
 		log.TestingLogger(),
@@ -100,7 +100,7 @@ func TestValidateBlockCommit(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(1, 1)
-	sstore := sm.NewStateStore(stateDB)
+	sstore := sm.NewStore(stateDB)
 	blockExec := sm.NewBlockExecutor(
 		sstore,
 		log.TestingLogger(),
@@ -214,7 +214,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(4, 1)
-	sstore := sm.NewStateStore(stateDB)
+	sstore := sm.NewStore(stateDB)
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	evpool := &mocks.EvidencePool{}
@@ -283,7 +283,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 func TestValidateDuplicateEvidenceShouldFail(t *testing.T) {
 	var height int64 = 1
 	state, stateDB, privVals := makeState(2, int(height))
-	sstore := sm.NewStateStore(stateDB)
+	sstore := sm.NewStore(stateDB)
 	_, val := state.Validators.GetByIndex(0)
 	_, val2 := state.Validators.GetByIndex(1)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,

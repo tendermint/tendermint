@@ -185,7 +185,7 @@ type Node struct {
 
 	// services
 	eventBus          *types.EventBus // pub/sub for services
-	stateStore        sm.StoreI
+	stateStore        sm.Store
 	blockStore        *store.BlockStore // store the blockchain to disk
 	bcReactor         p2p.Reactor       // for fast-syncing
 	mempoolReactor    *mempl.Reactor    // for gossipping transactions
@@ -263,7 +263,7 @@ func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider,
 }
 
 func doHandshake(
-	stateStore sm.StoreI,
+	stateStore sm.Store,
 	state sm.State,
 	blockStore sm.BlockStore,
 	genDoc *types.GenesisDoc,
@@ -342,7 +342,7 @@ func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
 		return nil, nil, err
 	}
 	evidenceLogger := logger.With("module", "evidence")
-	evidencePool, err := evidence.NewPool(evidenceDB, sm.NewStateStore(stateDB), blockStore)
+	evidencePool, err := evidence.NewPool(evidenceDB, sm.NewStore(stateDB), blockStore)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -559,7 +559,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
 func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
 	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
-	stateStore sm.StoreI, blockStore *store.BlockStore, state sm.State) error {
+	stateStore sm.Store, blockStore *store.BlockStore, state sm.State) error {
 	ssR.Logger.Info("Starting state sync")
 
 	if stateProvider == nil {
@@ -625,7 +625,7 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	stateStore := sm.NewStateStore(stateDB)
+	stateStore := sm.NewStore(stateDB)
 
 	state, genDoc, err := LoadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
 	if err != nil {
@@ -686,7 +686,10 @@ func NewNode(config *cfg.Config,
 		// Reload the state. It will have the Version.Consensus.App set by the
 		// Handshake, and may have other modifications as well (ie. depending on
 		// what happened during block replay).
-		state = stateStore.LoadState()
+		state, err = stateStore.Load()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Determine whether we should do fast sync. This must happen after the handshake, since the
@@ -1300,7 +1303,7 @@ func LoadStateFromDBOrGenesisDocProvider(
 			return sm.State{}, nil, err
 		}
 	}
-	sstore := sm.NewStateStore(stateDB)
+	sstore := sm.NewStore(stateDB)
 	state, err := sstore.LoadStateFromDBOrGenesisDoc(genDoc)
 	if err != nil {
 		return sm.State{}, nil, err

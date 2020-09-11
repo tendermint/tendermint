@@ -198,7 +198,7 @@ func makeHeightSearchFunc(height int64) auto.SearchFunc {
 //---------------------------------------------------
 
 type Handshaker struct {
-	stateStore   sm.StoreI
+	stateStore   sm.Store
 	initialState sm.State
 	store        sm.BlockStore
 	eventBus     types.BlockEventPublisher
@@ -208,7 +208,7 @@ type Handshaker struct {
 	nBlocks int // number of blocks applied to the state
 }
 
-func NewHandshaker(sstore sm.StoreI, state sm.State,
+func NewHandshaker(sstore sm.Store, state sm.State,
 	store sm.BlockStore, genDoc *types.GenesisDoc) *Handshaker {
 
 	return &Handshaker{
@@ -349,7 +349,7 @@ func (h *Handshaker) ReplayBlocks(
 			}
 			// We update the last results hash with the empty hash, to conform with RFC-6962.
 			state.LastResultsHash = merkle.HashFromByteSlices(nil)
-			h.stateStore.SaveState(state)
+			h.stateStore.Save(state)
 		}
 	}
 

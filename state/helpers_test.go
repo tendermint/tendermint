@@ -115,13 +115,17 @@ func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValida
 	})
 
 	stateDB := dbm.NewMemDB()
-	sstore := sm.NewStateStore(stateDB)
-	sstore.SaveState(s)
+	sstore := sm.NewStore(stateDB)
+	if err := sstore.Save(s); err != nil {
+		panic(err)
+	}
 
 	for i := 1; i < height; i++ {
 		s.LastBlockHeight++
 		s.LastValidators = s.Validators.Copy()
-		sstore.SaveState(s)
+		if err := sstore.Save(s); err != nil {
+			panic(err)
+		}
 	}
 
 	return s, stateDB, privVals

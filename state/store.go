@@ -38,45 +38,49 @@ func calcABCIResponsesKey(height int64) []byte {
 
 //----------------------
 
-type StoreI interface {
+type Store interface {
 	// LoadStateFromDBOrGenesisFile loads the most recent state.
 	// If the chain is new it will use the genesis file from the provided genesis file path as the current state.
 	LoadStateFromDBOrGenesisFile(string) (State, error)
 	// LoadStateFromDBOrGenesisDoc loads the most recent state.
 	// If the chain is new it will use the genesis doc as the current state.
 	LoadStateFromDBOrGenesisDoc(*types.GenesisDoc) (State, error)
-	// LoadState loads the current state of the blockchain
-	LoadState() State
+	// Load loads the current state of the blockchain
+	Load() (State, error)
 	// LoadValidators loads the validator set at a given height
 	LoadValidators(int64) (*types.ValidatorSet, error)
 	// LoadABCIResponses loads the abciResponse for a given height
 	LoadABCIResponses(int64) (*tmstate.ABCIResponses, error)
 	// LoadConsensusParams loads the consensus params for a given height
 	LoadConsensusParams(int64) (tmproto.ConsensusParams, error)
-	// SaveState overwrites the previous state with the updated one
-	SaveState(State)
+	// Save overwrites the previous state with the updated one
+	Save(State) error
 	// SaveABCIResponses saves ABCIResponses for a given height
-	SaveABCIResponses(int64, *tmstate.ABCIResponses)
+	SaveABCIResponses(int64, *tmstate.ABCIResponses) error
 	// BootstrapState is used for bootstrapping state when not starting from a initial height.
 	BootstrapState(State) error
 	// PruneStates takes the height from which to start prning and which height stop at
 	PruneStates(int64, int64) error
 }
 
-type Store struct {
+//
+type dbStore struct {
 	db dbm.DB
 }
 
-var _ StoreI = (*Store)(nil)
+var _ Store = (*dbStore)(nil)
 
-func NewStateStore(db dbm.DB) Store {
-	return Store{db}
+func NewStore(db dbm.DB) Store {
+	return dbStore{db}
 }
 
 // LoadStateFromDBOrGenesisFile loads the most recent state from the database,
 // or creates a new one from the given genesisFilePath.
-func (store Store) LoadStateFromDBOrGenesisFile(genesisFilePath string) (State, error) {
-	state := store.LoadState()
+func (store dbStore) LoadStateFromDBOrGenesisFile(genesisFilePath string) (State, error) {
+	state, err := store.Load()
+	if err != nil {
+		return State{}, err
+	}
 	if state.IsEmpty() {
 		var err error
 		state, err = MakeGenesisStateFromFile(genesisFilePath)
@@ -90,8 +94,11 @@ func (store Store) LoadStateFromDBOrGenesisFile(genesisFilePath string) (State, 
 
 // LoadStateFromDBOrGenesisDoc loads the most recent state from the database,
 // or creates a new one from the given genesisDoc.
-func (store Store) LoadStateFromDBOrGenesisDoc(genesisDoc *types.GenesisDoc) (State, error) {
-	state := store.LoadState()
+func (store dbStore) LoadStateFromDBOrGenesisDoc(genesisDoc *types.GenesisDoc) (State, error) {
+	state, err := store.Load()
+	if err != nil {
+		return State{}, err
+	}
 
 	if state.IsEmpty() {
 		var err error
@@ -105,17 +112,17 @@ func (store Store) LoadStateFromDBOrGenesisDoc(genesisDoc *types.GenesisDoc) (St
 }
 
 // LoadState loads the State from the database.
-func (store Store) LoadState() State {
+func (store dbStore) Load() (State, error) {
 	return store.loadState(stateKey)
 }
 
-func (store Store) loadState(key []byte) (state State) {
+func (store dbStore) loadState(key []byte) (state State, err error) {
 	buf, err := store.db.Get(key)
 	if err != nil {
 		panic(err)
 	}
 	if len(buf) == 0 {
-		return state
+		return state, nil
 	}
 
 	sp := new(tmstate.State)
@@ -129,19 +136,19 @@ func (store Store) loadState(key []byte) (state State) {
 
 	sm, err := StateFromProto(sp)
 	if err != nil {
-		panic(err)
+		return state, err
 	}
 
-	return *sm
+	return *sm, nil
 }
 
-// SaveState persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
+// Save persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
 // This flushes the writes (e.g. calls SetSync).
-func (store Store) SaveState(state State) {
-	store.saveState(state, stateKey)
+func (store dbStore) Save(state State) error {
+	return store.save(state, stateKey)
 }
 
-func (store Store) saveState(state State, key []byte) {
+func (store dbStore) save(state State, key []byte) error {
 	nextHeight := state.LastBlockHeight + 1
 	// If first block, save validators for the block.
 	if nextHeight == 1 {
@@ -157,12 +164,13 @@ func (store Store) saveState(state State, key []byte) {
 	store.saveConsensusParamsInfo(nextHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams)
 	err := store.db.SetSync(key, state.Bytes())
 	if err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 // BootstrapState saves a new state, used e.g. by state sync when starting from non-zero height.
-func (store Store) BootstrapState(state State) error {
+func (store dbStore) BootstrapState(state State) error {
 	height := state.LastBlockHeight + 1
 	if height == 1 {
 		height = state.InitialHeight
@@ -184,7 +192,7 @@ func (store Store) BootstrapState(state State) error {
 // encoding not preserving ordering: https://github.com/tendermint/tendermint/issues/4567
 // This will cause some old states to be left behind when doing incremental partial prunes,
 // specifically older checkpoints and LastHeightChanged targets.
-func (store Store) PruneStates(from int64, to int64) error {
+func (store dbStore) PruneStates(from int64, to int64) error {
 	if from <= 0 || to <= 0 {
 		return fmt.Errorf("from height %v and to height %v must be greater than 0", from, to)
 	}
@@ -320,7 +328,7 @@ func ABCIResponsesResultsHash(ar *tmstate.ABCIResponses) []byte {
 // This is useful for recovering from crashes where we called app.Commit and
 // before we called s.Save(). It can also be used to produce Merkle proofs of
 // the result of txs.
-func (store Store) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, error) {
+func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, error) {
 	buf, err := store.db.Get(calcABCIResponsesKey(height))
 	if err != nil {
 		return nil, err
@@ -348,7 +356,7 @@ func (store Store) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, erro
 // Merkle proofs.
 //
 // Exposed for testing.
-func (store Store) SaveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) {
+func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) error {
 	var dtxs []*abci.ResponseDeliverTx
 	//strip nil values,
 	for _, tx := range abciResponses.DeliverTxs {
@@ -360,19 +368,22 @@ func (store Store) SaveABCIResponses(height int64, abciResponses *tmstate.ABCIRe
 
 	bz, err := abciResponses.Marshal()
 	if err != nil {
-		panic(err)
+		return err
 	}
+
 	err = store.db.SetSync(calcABCIResponsesKey(height), bz)
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
 //-----------------------------------------------------------------------------
 
 // LoadValidators loads the ValidatorSet for a given height.
 // Returns ErrNoValSetForHeight if the validator set can't be found for this height.
-func (store Store) LoadValidators(height int64) (*types.ValidatorSet, error) {
+func (store dbStore) LoadValidators(height int64) (*types.ValidatorSet, error) {
 	valInfo := loadValidatorsInfo(store.db, height)
 	if valInfo == nil {
 		return nil, ErrNoValSetForHeight{height}
@@ -445,7 +456,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) *tmstate.ValidatorsInfo {
 // `height` is the effective height for which the validator is responsible for
 // signing. It should be called from s.Save(), right before the state itself is
 // persisted.
-func (store Store) saveValidatorsInfo(height, lastHeightChanged int64, valSet *types.ValidatorSet) {
+func (store dbStore) saveValidatorsInfo(height, lastHeightChanged int64, valSet *types.ValidatorSet) {
 	if lastHeightChanged > height {
 		panic("LastHeightChanged cannot be greater than ValidatorsInfo height")
 	}
@@ -478,7 +489,7 @@ func (store Store) saveValidatorsInfo(height, lastHeightChanged int64, valSet *t
 // ConsensusParamsInfo represents the latest consensus params, or the last height it changed
 
 // LoadConsensusParams loads the ConsensusParams for a given height.
-func (store Store) LoadConsensusParams(height int64) (tmproto.ConsensusParams, error) {
+func (store dbStore) LoadConsensusParams(height int64) (tmproto.ConsensusParams, error) {
 	empty := tmproto.ConsensusParams{}
 
 	paramsInfo := store.loadConsensusParamsInfo(height)
@@ -504,7 +515,7 @@ func (store Store) LoadConsensusParams(height int64) (tmproto.ConsensusParams, e
 	return paramsInfo.ConsensusParams, nil
 }
 
-func (store Store) loadConsensusParamsInfo(height int64) *tmstate.ConsensusParamsInfo {
+func (store dbStore) loadConsensusParamsInfo(height int64) *tmstate.ConsensusParamsInfo {
 	buf, err := store.db.Get(calcConsensusParamsKey(height))
 	if err != nil {
 		panic(err)
@@ -528,7 +539,7 @@ func (store Store) loadConsensusParamsInfo(height int64) *tmstate.ConsensusParam
 // It should be called from s.Save(), right before the state itself is persisted.
 // If the consensus params did not change after processing the latest block,
 // only the last height for which they changed is persisted.
-func (store Store) saveConsensusParamsInfo(nextHeight, changeHeight int64, params tmproto.ConsensusParams) {
+func (store dbStore) saveConsensusParamsInfo(nextHeight, changeHeight int64, params tmproto.ConsensusParams) {
 	paramsInfo := &tmstate.ConsensusParamsInfo{
 		LastHeightChanged: changeHeight,
 	}

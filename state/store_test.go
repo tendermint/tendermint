@@ -23,20 +23,20 @@ import (
 
 func TestStoreLoadValidators(t *testing.T) {
 	stateDB := dbm.NewMemDB()
-	sstore := sm.NewStateStore(stateDB)
-	val, _ := types.RandValidator(true, 10)
-	vals := types.NewValidatorSet([]*types.Validator{val})
+	sstore := sm.NewStore(stateDB)
+	// val, _ := types.RandValidator(true, 10)
+	// vals := types.NewValidatorSet([]*types.Validator{val})
 
 	// 1) LoadValidators loads validators using a height where they were last changed
-	sm.SaveValidatorsInfo(sstore, 1, 1, vals)
-	sm.SaveValidatorsInfo(sstore, 2, 1, vals)
+	// sm.SaveValidatorsInfo(sstore, 1, 1, vals)
+	// sm.SaveValidatorsInfo(sstore, 2, 1, vals)
 	loadedVals, err := sstore.LoadValidators(2)
 	require.NoError(t, err)
 	assert.NotZero(t, loadedVals.Size())
 
 	// 2) LoadValidators loads validators using a checkpoint height
 
-	sm.SaveValidatorsInfo(sstore, sm.ValSetCheckpointInterval, 1, vals)
+	// sm.SaveValidatorsInfo(sstore, sm.ValSetCheckpointInterval, 1, vals)
 
 	loadedVals, err = sstore.LoadValidators(sm.ValSetCheckpointInterval)
 	require.NoError(t, err)
@@ -51,23 +51,28 @@ func BenchmarkLoadValidators(b *testing.B) {
 	dbType := dbm.BackendType(config.DBBackend)
 	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())
 	require.NoError(b, err)
-	sstore := sm.NewStateStore(stateDB)
-	state, err := sstore.LoadStateFromDBOrGenesisFile(config.GenesisFile())
+	stateStore := sm.NewStore(stateDB)
+	state, err := stateStore.LoadStateFromDBOrGenesisFile(config.GenesisFile())
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	state.Validators = genValSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
-	sstore.SaveState(state)
+	err = stateStore.Save(state)
+	require.NoError(b, err)
 
 	for i := 10; i < 10000000000; i *= 10 { // 10, 100, 1000, ...
 		i := i
-		sm.SaveValidatorsInfo(sstore, int64(i), state.LastHeightValidatorsChanged, state.NextValidators)
+		state.LastBlockHeight = int64(i)
+		fmt.Println(state.LastBlockHeight)
+		err := stateStore.Save(state)
+		require.NoError(b, err)
+		// sm.SaveValidatorsInfo(sstore, int64(i), state.LastHeightValidatorsChanged, state.NextValidators)
 
 		b.Run(fmt.Sprintf("height=%d", i), func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
-				_, err := sstore.LoadValidators(int64(i))
+				_, err := stateStore.LoadValidators(int64(i))
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -100,7 +105,7 @@ func TestPruneStates(t *testing.T) {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			db := dbm.NewMemDB()
-			sstore := sm.NewStateStore(db)
+			sstore := sm.NewStore(db)
 			pk := ed25519.GenPrivKey().PubKey()
 
 			// Generate a bunch of state data. Validators change for heights ending with 3, and
@@ -137,7 +142,8 @@ func TestPruneStates(t *testing.T) {
 					state.LastValidators = state.Validators
 				}
 
-				sstore.SaveState(state)
+				err := sstore.Save(state)
+				require.NoError(t, err)
 
 				sstore.SaveABCIResponses(h, &tmstate.ABCIResponses{
 					DeliverTxs: []*abci.ResponseDeliverTx{

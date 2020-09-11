@@ -64,7 +64,7 @@ func startConsensusNet(t *testing.T, css []*State, n int) (
 		blocksSubs = append(blocksSubs, blocksSub)
 
 		if css[i].state.LastBlockHeight == 0 { //simulate handle initChain in handshake
-			css[i].blockExec.Store().SaveState(css[i].state)
+			css[i].blockExec.Store().Save(css[i].state)
 		}
 	}
 	// make connected switches and start all reactors
@@ -131,7 +131,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	logger := consensusLogger()
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		sstore := sm.NewStateStore(stateDB)
+		sstore := sm.NewStore(stateDB)
 		state, _ := sstore.LoadStateFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		defer os.RemoveAll(thisConfig.RootDir)

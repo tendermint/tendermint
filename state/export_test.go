@@ -40,12 +40,12 @@ func ValidateValidatorUpdates(abciUpdates []abci.ValidatorUpdate, params tmproto
 
 // SaveConsensusParamsInfo is an alias for the private saveConsensusParamsInfo
 // method in store.go, exported exclusively and explicitly for testing.
-func SaveConsensusParamsInfo(store Store, nextHeight, changeHeight int64, params tmproto.ConsensusParams) {
+func SaveConsensusParamsInfo(store dbStore, nextHeight, changeHeight int64, params tmproto.ConsensusParams) {
 	store.saveConsensusParamsInfo(nextHeight, changeHeight, params)
 }
 
 // SaveValidatorsInfo is an alias for the private saveValidatorsInfo method in
 // store.go, exported exclusively and explicitly for testing.
-func SaveValidatorsInfo(store Store, height, lastHeightChanged int64, valSet *types.ValidatorSet) {
+func SaveValidatorsInfo(store dbStore, height, lastHeightChanged int64, valSet *types.ValidatorSet) {
 	store.saveValidatorsInfo(height, lastHeightChanged, valSet)
 }

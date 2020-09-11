@@ -156,9 +156,11 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 			panic(fmt.Errorf("error start app: %w", err))
 		}
 		db := dbm.NewMemDB()
-		sstore := sm.NewStateStore(db)
-		appl = sm.NewBlockExecutor(sstore, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
-		sstore.SaveState(state)
+		stateStore := sm.NewStore(db)
+		appl = sm.NewBlockExecutor(stateStore, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
+		if err = stateStore.Save(state); err != nil {
+			panic(err)
+		}
 	}
 
 	r := newReactor(state, store, reporter, appl, true)
@@ -499,17 +501,19 @@ func newReactorStore(
 
 	stateDB := dbm.NewMemDB()
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	sstore := sm.NewStateStore(stateDB)
-	state, err := sstore.LoadStateFromDBOrGenesisDoc(genDoc)
+	stateStore := sm.NewStore(stateDB)
+	state, err := stateStore.LoadStateFromDBOrGenesisDoc(genDoc)
 	if err != nil {
 		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
 
 	db := dbm.NewMemDB()
-	sstore = sm.NewStateStore(db)
-	blockExec := sm.NewBlockExecutor(sstore, log.TestingLogger(), proxyApp.Consensus(),
+	stateStore = sm.NewStore(db)
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
 		mock.Mempool{}, sm.MockEvidencePool{})
-	sstore.SaveState(state)
+	if err = stateStore.Save(state); err != nil {
+		panic(err)
+	}
 
 	// add blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {

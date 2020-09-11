@@ -35,7 +35,7 @@ func TestApplyBlock(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
-	sstore := sm.NewStateStore(stateDB)
+	sstore := sm.NewStore(stateDB)
 
 	blockExec := sm.NewBlockExecutor(sstore, log.TestingLogger(), proxyApp.Consensus(),
 		mock.Mempool{}, sm.MockEvidencePool{})
@@ -61,7 +61,7 @@ func TestBeginBlockValidators(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // no need to check error again
 
 	state, stateDB, _ := makeState(2, 2)
-	sstore := sm.NewStateStore(stateDB)
+	sstore := sm.NewStore(stateDB)
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
@@ -124,7 +124,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(2, 12)
-	sstore := sm.NewStateStore(stateDB)
+	sstore := sm.NewStore(stateDB)
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
@@ -314,7 +314,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
-	sstore := sm.NewStateStore(stateDB)
+	sstore := sm.NewStore(stateDB)
 
 	blockExec := sm.NewBlockExecutor(
 		sstore,
@@ -385,7 +385,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
-	sstore := sm.NewStateStore(stateDB)
+	sstore := sm.NewStore(stateDB)
 	blockExec := sm.NewBlockExecutor(
 		sstore,
 		log.TestingLogger(),
