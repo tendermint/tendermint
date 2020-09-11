@@ -232,7 +232,7 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	var height int64 = 1
 	state, stateDB, privVals := state(1, height)
-	sstore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB)
 	maxBytes := 16384
 	maxEvidence := 10
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
@@ -254,7 +254,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	// Make EvidencePool
 	evidenceDB := dbm.NewMemDB()
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	evidencePool, err := evidence.NewPool(evidenceDB, sstore, blockStore)
+	evidencePool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
 	evidencePool.SetLogger(logger)
 
@@ -276,7 +276,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	}
 
 	blockExec := sm.NewBlockExecutor(
-		sstore,
+		stateStore,
 		logger,
 		proxyApp.Consensus(),
 		mempool,
@@ -348,15 +348,15 @@ func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 
 	// save validators to db for 2 heights
 	stateDB := dbm.NewMemDB()
-	sstore := sm.NewStore(stateDB)
-	if err := sstore.Save(s); err != nil {
+	stateStore := sm.NewStore(stateDB)
+	if err := stateStore.Save(s); err != nil {
 		panic(err)
 	}
 
 	for i := 1; i < int(height); i++ {
 		s.LastBlockHeight++
 		s.LastValidators = s.Validators.Copy()
-		if err := sstore.Save(s); err != nil {
+		if err := stateStore.Save(s); err != nil {
 			panic(err)
 		}
 	}

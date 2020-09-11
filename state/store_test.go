@@ -23,14 +23,14 @@ import (
 
 func TestStoreLoadValidators(t *testing.T) {
 	stateDB := dbm.NewMemDB()
-	sstore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB)
 	// val, _ := types.RandValidator(true, 10)
 	// vals := types.NewValidatorSet([]*types.Validator{val})
 
 	// 1) LoadValidators loads validators using a height where they were last changed
 	// sm.SaveValidatorsInfo(sstore, 1, 1, vals)
 	// sm.SaveValidatorsInfo(sstore, 2, 1, vals)
-	loadedVals, err := sstore.LoadValidators(2)
+	loadedVals, err := stateStore.LoadValidators(2)
 	require.NoError(t, err)
 	assert.NotZero(t, loadedVals.Size())
 
@@ -38,7 +38,7 @@ func TestStoreLoadValidators(t *testing.T) {
 
 	// sm.SaveValidatorsInfo(sstore, sm.ValSetCheckpointInterval, 1, vals)
 
-	loadedVals, err = sstore.LoadValidators(sm.ValSetCheckpointInterval)
+	loadedVals, err = stateStore.LoadValidators(sm.ValSetCheckpointInterval)
 	require.NoError(t, err)
 	assert.NotZero(t, loadedVals.Size())
 }
@@ -105,7 +105,7 @@ func TestPruneStates(t *testing.T) {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			db := dbm.NewMemDB()
-			sstore := sm.NewStore(db)
+			stateStore := sm.NewStore(db)
 			pk := ed25519.GenPrivKey().PubKey()
 
 			// Generate a bunch of state data. Validators change for heights ending with 3, and
@@ -142,20 +142,21 @@ func TestPruneStates(t *testing.T) {
 					state.LastValidators = state.Validators
 				}
 
-				err := sstore.Save(state)
+				err := stateStore.Save(state)
 				require.NoError(t, err)
 
-				sstore.SaveABCIResponses(h, &tmstate.ABCIResponses{
+				err = stateStore.SaveABCIResponses(h, &tmstate.ABCIResponses{
 					DeliverTxs: []*abci.ResponseDeliverTx{
 						{Data: []byte{1}},
 						{Data: []byte{2}},
 						{Data: []byte{3}},
 					},
 				})
+				require.NoError(t, err)
 			}
 
 			// Test assertions
-			err := sstore.PruneStates(tc.pruneFrom, tc.pruneTo)
+			err := stateStore.PruneStates(tc.pruneFrom, tc.pruneTo)
 			if tc.expectErr {
 				require.Error(t, err)
 				return
@@ -167,7 +168,7 @@ func TestPruneStates(t *testing.T) {
 			expectABCI := sliceToMap(tc.expectABCI)
 
 			for h := int64(1); h <= tc.makeHeights; h++ {
-				vals, err := sstore.LoadValidators(h)
+				vals, err := stateStore.LoadValidators(h)
 				if expectVals[h] {
 					require.NoError(t, err, "validators height %v", h)
 					require.NotNil(t, vals)
@@ -176,7 +177,7 @@ func TestPruneStates(t *testing.T) {
 					require.Equal(t, sm.ErrNoValSetForHeight{Height: h}, err)
 				}
 
-				params, err := sstore.LoadConsensusParams(h)
+				params, err := stateStore.LoadConsensusParams(h)
 				if expectParams[h] {
 					require.NoError(t, err, "params height %v", h)
 					require.False(t, params.Equal(&tmproto.ConsensusParams{}))
@@ -185,7 +186,7 @@ func TestPruneStates(t *testing.T) {
 					require.Equal(t, sm.ErrNoConsensusParamsForHeight{Height: h}, err)
 				}
 
-				abci, err := sstore.LoadABCIResponses(h)
+				abci, err := stateStore.LoadABCIResponses(h)
 				if expectABCI[h] {
 					require.NoError(t, err, "abci height %v", h)
 					require.NotNil(t, abci)

@@ -159,7 +159,7 @@ LOOP:
 		logger := log.NewNopLogger()
 		blockDB := dbm.NewMemDB()
 		stateDB := blockDB
-		sstore := sm.NewStore(stateDB)
+		stateStore := sm.NewStore(stateDB)
 		state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 		require.NoError(t, err)
 		privValidator := loadPrivValidator(consensusReplayConfig)
@@ -200,7 +200,7 @@ LOOP:
 			t.Logf("WAL panicked: %v", err)
 
 			// make sure we can make blocks after a crash
-			startNewStateAndWaitForBlock(t, consensusReplayConfig, cs.Height, blockDB, sstore)
+			startNewStateAndWaitForBlock(t, consensusReplayConfig, cs.Height, blockDB, stateStore)
 
 			// stop consensus state and transactions sender (initFn)
 			cs.Stop() //nolint:errcheck // Logging this error causes failure
@@ -703,13 +703,13 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		stateDB, genisisState, store = stateAndStore(config, pubKey, kvstore.ProtocolVersion)
 
 	}
-	sstore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB)
 	store.chain = chain
 	store.commits = commits
 
 	state := genisisState.Copy()
 	// run the chain through state.ApplyBlock to build up the tendermint state
-	state = buildTMStateFromChain(config, sstore, state, chain, nBlocks, mode)
+	state = buildTMStateFromChain(config, stateStore, state, chain, nBlocks, mode)
 	latestAppHash := state.AppHash
 
 	// make a new client creator
@@ -722,9 +722,10 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		// use a throwaway tendermint state
 		proxyApp := proxy.NewAppConns(clientCreator2)
 		stateDB1 := dbm.NewMemDB()
-		sstore := sm.NewStore(stateDB1)
-		sstore.Save(genisisState)
-		buildAppStateFromChain(proxyApp, sstore, genisisState, chain, nBlocks, mode)
+		stateStore := sm.NewStore(stateDB1)
+		err := stateStore.Save(genisisState)
+		require.NoError(t, err)
+		buildAppStateFromChain(proxyApp, stateStore, genisisState, chain, nBlocks, mode)
 	}
 
 	// Prune block store if requested
@@ -738,7 +739,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 
 	// now start the app using the handshake - it should sync
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
-	handshaker := NewHandshaker(sstore, state, store, genDoc)
+	handshaker := NewHandshaker(stateStore, state, store, genDoc)
 	proxyApp := proxy.NewAppConns(clientCreator2)
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
@@ -811,8 +812,9 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateStore sm.Store,
 	}); err != nil {
 		panic(err)
 	}
-	stateStore.Save(state) //save height 1's validatorsInfo
-
+	if err := stateStore.Save(state); err != nil { //save height 1's validatorsInfo
+		panic(err)
+	}
 	switch mode {
 	case 0:
 		for i := 0; i < nBlocks; i++ {
@@ -860,8 +862,9 @@ func buildTMStateFromChain(
 	}); err != nil {
 		panic(err)
 	}
-	stateStore.Save(state) //save height 1's validatorsInfo
-
+	if err := stateStore.Save(state); err != nil { //save height 1's validatorsInfo
+		panic(err)
+	}
 	switch mode {
 	case 0:
 		// sync right up
@@ -898,7 +901,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	pubKey, err := privVal.GetPubKey()
 	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(config, pubKey, appVersion)
-	sstore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB)
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
 	state.LastValidators = state.Validators.Copy()
 	// mode = 0 for committing all the blocks
@@ -922,7 +925,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 		})
 
 		assert.Panics(t, func() {
-			h := NewHandshaker(sstore, state, store, genDoc)
+			h := NewHandshaker(stateStore, state, store, genDoc)
 			if err = h.Handshake(proxyApp); err != nil {
 				t.Log(err)
 			}
@@ -946,7 +949,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 		})
 
 		assert.Panics(t, func() {
-			h := NewHandshaker(sstore, state, store, genDoc)
+			h := NewHandshaker(stateStore, state, store, genDoc)
 			if err = h.Handshake(proxyApp); err != nil {
 				t.Log(err)
 			}
@@ -1155,11 +1158,13 @@ func stateAndStore(
 	pubKey crypto.PubKey,
 	appVersion uint64) (dbm.DB, sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
-	sstore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB)
 	state, _ := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	state.Version.Consensus.App = appVersion
 	store := newMockBlockStore(config, state.ConsensusParams)
-	sstore.Save(state)
+	if err := stateStore.Save(state); err != nil {
+		panic(err)
+	}
 	return stateDB, state, store
 }
 
@@ -1229,13 +1234,13 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	pubKey, err := privVal.GetPubKey()
 	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(config, pubKey, 0x0)
-	sstore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB)
 
 	oldValAddr := state.Validators.Validators[0].Address
 
 	// now start the app using the handshake - it should sync
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
-	handshaker := NewHandshaker(sstore, state, store, genDoc)
+	handshaker := NewHandshaker(stateStore, state, store, genDoc)
 	proxyApp := proxy.NewAppConns(clientCreator)
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
@@ -1249,7 +1254,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 		t.Fatalf("Error on abci handshake: %v", err)
 	}
 	// reload the state, check the validator set was updated
-	state, err = sstore.Load()
+	state, err = stateStore.Load()
 	require.NoError(t, err)
 
 	newValAddr := state.Validators.Validators[0].Address

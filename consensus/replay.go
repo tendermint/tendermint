@@ -208,11 +208,11 @@ type Handshaker struct {
 	nBlocks int // number of blocks applied to the state
 }
 
-func NewHandshaker(sstore sm.Store, state sm.State,
+func NewHandshaker(stateStore sm.Store, state sm.State,
 	store sm.BlockStore, genDoc *types.GenesisDoc) *Handshaker {
 
 	return &Handshaker{
-		stateStore:   sstore,
+		stateStore:   stateStore,
 		initialState: state,
 		store:        store,
 		eventBus:     types.NopEventBus{},
@@ -349,7 +349,9 @@ func (h *Handshaker) ReplayBlocks(
 			}
 			// We update the last results hash with the empty hash, to conform with RFC-6962.
 			state.LastResultsHash = merkle.HashFromByteSlices(nil)
-			h.stateStore.Save(state)
+			if err := h.stateStore.Save(state); err != nil {
+				return nil, err
+			}
 		}
 	}
 

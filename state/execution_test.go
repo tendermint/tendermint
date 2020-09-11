@@ -35,9 +35,9 @@ func TestApplyBlock(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
-	sstore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB)
 
-	blockExec := sm.NewBlockExecutor(sstore, log.TestingLogger(), proxyApp.Consensus(),
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
 		mock.Mempool{}, sm.MockEvidencePool{})
 
 	block := makeBlock(state, 1)
@@ -61,7 +61,7 @@ func TestBeginBlockValidators(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // no need to check error again
 
 	state, stateDB, _ := makeState(2, 2)
-	sstore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB)
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
@@ -96,7 +96,7 @@ func TestBeginBlockValidators(t *testing.T) {
 		// block for height 2
 		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
 
-		_, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), sstore, 1)
+		_, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1)
 		require.Nil(t, err, tc.desc)
 
 		// -> app receives a list of validators with a bool indicating if they signed
@@ -124,7 +124,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(2, 12)
-	sstore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB)
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
@@ -166,7 +166,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
 		block.Time = now
 		block.Evidence.Evidence = tc.evidence
-		_, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), sstore, 1)
+		_, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1)
 		require.Nil(t, err, tc.desc)
 
 		// -> app must receive an index of the byzantine validator
@@ -314,10 +314,10 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
-	sstore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB)
 
 	blockExec := sm.NewBlockExecutor(
-		sstore,
+		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		mock.Mempool{},
@@ -385,9 +385,9 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
-	sstore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB)
 	blockExec := sm.NewBlockExecutor(
-		sstore,
+		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		mock.Mempool{},

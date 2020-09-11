@@ -29,9 +29,9 @@ func TestValidateBlockHeader(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(3, 1)
-	sstore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB)
 	blockExec := sm.NewBlockExecutor(
-		sstore,
+		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		memmock.Mempool{},
@@ -100,9 +100,9 @@ func TestValidateBlockCommit(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(1, 1)
-	sstore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB)
 	blockExec := sm.NewBlockExecutor(
-		sstore,
+		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		memmock.Mempool{},
@@ -214,7 +214,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(4, 1)
-	sstore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB)
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	evpool := &mocks.EvidencePool{}
@@ -223,7 +223,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 	state.ConsensusParams.Evidence.MaxNum = 3
 	blockExec := sm.NewBlockExecutor(
-		sstore,
+		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		memmock.Mempool{},
@@ -283,7 +283,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 func TestValidateDuplicateEvidenceShouldFail(t *testing.T) {
 	var height int64 = 1
 	state, stateDB, privVals := makeState(2, int(height))
-	sstore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB)
 	_, val := state.Validators.GetByIndex(0)
 	_, val2 := state.Validators.GetByIndex(1)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
@@ -292,7 +292,7 @@ func TestValidateDuplicateEvidenceShouldFail(t *testing.T) {
 		privVals[val2.Address.String()], chainID)
 
 	blockExec := sm.NewBlockExecutor(
-		sstore, log.TestingLogger(),
+		stateStore, log.TestingLogger(),
 		nil,
 		nil,
 		sm.MockEvidencePool{})

@@ -1303,8 +1303,8 @@ func LoadStateFromDBOrGenesisDocProvider(
 			return sm.State{}, nil, err
 		}
 	}
-	sstore := sm.NewStore(stateDB)
-	state, err := sstore.LoadStateFromDBOrGenesisDoc(genDoc)
+	stateStore := sm.NewStore(stateDB)
+	state, err := stateStore.LoadStateFromDBOrGenesisDoc(genDoc)
 	if err != nil {
 		return sm.State{}, nil, err
 	}

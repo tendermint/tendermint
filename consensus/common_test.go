@@ -390,9 +390,12 @@ func newStateWithConfigAndBlockStore(
 
 	// Make State
 	stateDB := blockDB
-	sstore := sm.NewStore(stateDB)
-	sstore.Save(state) //for save height 1's validators info
-	blockExec := sm.NewBlockExecutor(sstore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+	stateStore := sm.NewStore(stateDB)
+	if err := stateStore.Save(state); err != nil { //for save height 1's validators info
+		panic(err)
+	}
+
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
 	cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 	cs.SetPrivValidator(pv)
@@ -677,8 +680,8 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 	configRootDirs := make([]string, 0, nValidators)
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		sstore := sm.NewStore(stateDB)
-		state, _ := sstore.LoadStateFromDBOrGenesisDoc(genDoc)
+		stateStore := sm.NewStore(stateDB)
+		state, _ := stateStore.LoadStateFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
 		for _, opt := range configOpts {
@@ -715,8 +718,8 @@ func randConsensusNetWithPeers(
 	configRootDirs := make([]string, 0, nPeers)
 	for i := 0; i < nPeers; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		sstore := sm.NewStore(stateDB)
-		state, _ := sstore.LoadStateFromDBOrGenesisDoc(genDoc)
+		stateStore := sm.NewStore(stateDB)
+		state, _ := stateStore.LoadStateFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
