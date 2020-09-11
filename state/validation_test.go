@@ -21,8 +21,6 @@ import (
 
 const validationTestsStopHeight int64 = 10
 
-var defaultTestTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
-
 func TestValidateBlockHeader(t *testing.T) {
 	proxyApp := newTestApp()
 	require.NoError(t, proxyApp.Start())

@@ -71,14 +71,11 @@ func (pkz privKeys) ToValidators(init, inc int64) *types.ValidatorSet {
 }
 
 // signHeader properly signs the header with all keys from first to last exclusive.
-func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Commit {
+func (pkz privKeys) signHeader(header *types.Header, valSet *types.ValidatorSet, first, last int) *types.Commit {
 	commitSigs := make([]types.CommitSig, len(pkz))
 	for i := 0; i < len(pkz); i++ {
 		commitSigs[i] = types.NewCommitSigAbsent()
 	}
-
-	// We need this list to keep the ordering.
-	vset := pkz.ToValidators(1, 1)
 
 	blockID := types.BlockID{
 		Hash:          header.Hash(),
@@ -87,7 +84,7 @@ func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Com
 
 	// Fill in the votes we want.
 	for i := first; i < last && i < len(pkz); i++ {
-		vote := makeVote(header, vset, pkz[i], blockID)
+		vote := makeVote(header, valSet, pkz[i], blockID)
 		commitSigs[vote.ValidatorIndex] = vote.CommitSig()
 	}
 
@@ -148,7 +145,7 @@ func (pkz privKeys) GenSignedHeader(chainID string, height int64, bTime time.Tim
 	header := genHeader(chainID, height, bTime, txs, valset, nextValset, appHash, consHash, resHash)
 	return &types.SignedHeader{
 		Header: header,
-		Commit: pkz.signHeader(header, first, last),
+		Commit: pkz.signHeader(header, valset, first, last),
 	}
 }
 
@@ -161,7 +158,7 @@ func (pkz privKeys) GenSignedHeaderLastBlockID(chainID string, height int64, bTi
 	header.LastBlockID = lastBlockID
 	return &types.SignedHeader{
 		Header: header,
-		Commit: pkz.signHeader(header, first, last),
+		Commit: pkz.signHeader(header, valset, first, last),
 	}
 }
 
@@ -185,7 +182,7 @@ func genMockNodeWithKeys(
 
 	var (
 		headers         = make(map[int64]*types.SignedHeader, blockSize)
-		valset          = make(map[int64]*types.ValidatorSet, blockSize)
+		valset          = make(map[int64]*types.ValidatorSet, blockSize+1)
 		keymap          = make(map[int64]privKeys, blockSize+1)
 		keys            = genPrivKeys(valSize)
 		totalVariation  = valVariation
@@ -201,7 +198,7 @@ func genMockNodeWithKeys(
 
 	// genesis header and vals
 	lastHeader := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Minute), nil,
-		keys.ToValidators(2, 2), newKeys.ToValidators(2, 2), hash("app_hash"), hash("cons_hash"),
+		keys.ToValidators(2, 0), newKeys.ToValidators(2, 0), hash("app_hash"), hash("cons_hash"),
 		hash("results_hash"), 0, len(keys))
 	currentHeader := lastHeader
 	headers[1] = currentHeader
