@@ -73,7 +73,7 @@ func newBlockchainReactor(
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(blockDB)
 
-	state, err := stateStore.LoadStateFromDBOrGenesisDoc(genDoc)
+	state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 	if err != nil {
 		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}

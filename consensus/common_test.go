@@ -681,7 +681,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		stateStore := sm.NewStore(stateDB)
-		state, _ := stateStore.LoadStateFromDBOrGenesisDoc(genDoc)
+		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
 		for _, opt := range configOpts {
@@ -719,7 +719,7 @@ func randConsensusNetWithPeers(
 	for i := 0; i < nPeers; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		stateStore := sm.NewStore(stateDB)
-		state, _ := stateStore.LoadStateFromDBOrGenesisDoc(genDoc)
+		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal

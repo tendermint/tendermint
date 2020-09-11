@@ -61,7 +61,7 @@ func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFu
 	blockDB := dbm.NewMemDB()
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	state, err := stateStore.LoadStateFromDBOrGenesisFile(config.GenesisFile())
+	state, err := stateStore.LoadFromDBOrGenesisFile(config.GenesisFile())
 	if err != nil {
 		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
@@ -403,7 +403,7 @@ func TestPruneBlocks(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	stateStore := sm.NewStore(dbm.NewMemDB())
-	state, err := stateStore.LoadStateFromDBOrGenesisFile(config.GenesisFile())
+	state, err := stateStore.LoadFromDBOrGenesisFile(config.GenesisFile())
 	require.NoError(t, err)
 	db := dbm.NewMemDB()
 	bs := NewBlockStore(db)

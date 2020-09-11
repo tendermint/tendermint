@@ -582,7 +582,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 			ssR.Logger.Error("State sync failed", "err", err)
 			return
 		}
-		err = stateStore.BootstrapState(state)
+		err = stateStore.Bootstrap(state)
 		if err != nil {
 			ssR.Logger.Error("Failed to bootstrap node with new state", "err", err)
 			return
@@ -1304,7 +1304,7 @@ func LoadStateFromDBOrGenesisDocProvider(
 		}
 	}
 	stateStore := sm.NewStore(stateDB)
-	state, err := stateStore.LoadStateFromDBOrGenesisDoc(genDoc)
+	state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 	if err != nil {
 		return sm.State{}, nil, err
 	}

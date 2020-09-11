@@ -40,12 +40,12 @@ func calcABCIResponsesKey(height int64) []byte {
 //----------------------
 
 type Store interface {
-	// LoadStateFromDBOrGenesisFile loads the most recent state.
+	// LoadFromDBOrGenesisFile loads the most recent state.
 	// If the chain is new it will use the genesis file from the provided genesis file path as the current state.
-	LoadStateFromDBOrGenesisFile(string) (State, error)
-	// LoadStateFromDBOrGenesisDoc loads the most recent state.
+	LoadFromDBOrGenesisFile(string) (State, error)
+	// LoadFromDBOrGenesisDoc loads the most recent state.
 	// If the chain is new it will use the genesis doc as the current state.
-	LoadStateFromDBOrGenesisDoc(*types.GenesisDoc) (State, error)
+	LoadFromDBOrGenesisDoc(*types.GenesisDoc) (State, error)
 	// Load loads the current state of the blockchain
 	Load() (State, error)
 	// LoadValidators loads the validator set at a given height
@@ -58,8 +58,8 @@ type Store interface {
 	Save(State) error
 	// SaveABCIResponses saves ABCIResponses for a given height
 	SaveABCIResponses(int64, *tmstate.ABCIResponses) error
-	// BootstrapState is used for bootstrapping state when not starting from a initial height.
-	BootstrapState(State) error
+	// Bootstrap is used for bootstrapping state when not starting from a initial height.
+	Bootstrap(State) error
 	// PruneStates takes the height from which to start prning and which height stop at
 	PruneStates(int64, int64) error
 }
@@ -78,7 +78,7 @@ func NewStore(db dbm.DB) Store {
 
 // LoadStateFromDBOrGenesisFile loads the most recent state from the database,
 // or creates a new one from the given genesisFilePath.
-func (store dbStore) LoadStateFromDBOrGenesisFile(genesisFilePath string) (State, error) {
+func (store dbStore) LoadFromDBOrGenesisFile(genesisFilePath string) (State, error) {
 	state, err := store.Load()
 	if err != nil {
 		return State{}, err
@@ -96,7 +96,7 @@ func (store dbStore) LoadStateFromDBOrGenesisFile(genesisFilePath string) (State
 
 // LoadStateFromDBOrGenesisDoc loads the most recent state from the database,
 // or creates a new one from the given genesisDoc.
-func (store dbStore) LoadStateFromDBOrGenesisDoc(genesisDoc *types.GenesisDoc) (State, error) {
+func (store dbStore) LoadFromDBOrGenesisDoc(genesisDoc *types.GenesisDoc) (State, error) {
 	state, err := store.Load()
 	if err != nil {
 		return State{}, err
@@ -179,7 +179,7 @@ func (store dbStore) save(state State, key []byte) error {
 }
 
 // BootstrapState saves a new state, used e.g. by state sync when starting from non-zero height.
-func (store dbStore) BootstrapState(state State) error {
+func (store dbStore) Bootstrap(state State) error {
 	height := state.LastBlockHeight + 1
 	if height == 1 {
 		height = state.InitialHeight

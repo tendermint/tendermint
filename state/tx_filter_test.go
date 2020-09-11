@@ -34,7 +34,7 @@ func TestTxFilter(t *testing.T) {
 		stateDB, err := dbm.NewDB("state", "memdb", os.TempDir())
 		require.NoError(t, err)
 		stateStore := sm.NewStore(stateDB)
-		state, err := stateStore.LoadStateFromDBOrGenesisDoc(genDoc)
+		state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		require.NoError(t, err)
 
 		f := sm.TxPreCheck(state) // current max size of a tx 1850

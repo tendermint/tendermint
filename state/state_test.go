@@ -31,7 +31,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
 	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())
 	stateStore := sm.NewStore(stateDB)
 	require.NoError(t, err)
-	state, err := stateStore.LoadStateFromDBOrGenesisFile(config.GenesisFile())
+	state, err := stateStore.LoadFromDBOrGenesisFile(config.GenesisFile())
 	assert.NoError(t, err, "expected no error on LoadStateFromDBOrGenesisFile")
 	err = stateStore.Save(state)
 	require.NoError(t, err)

@@ -55,7 +55,7 @@ func BenchmarkLoadValidators(b *testing.B) {
 	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())
 	require.NoError(b, err)
 	stateStore := sm.NewStore(stateDB)
-	state, err := stateStore.LoadStateFromDBOrGenesisFile(config.GenesisFile())
+	state, err := stateStore.LoadFromDBOrGenesisFile(config.GenesisFile())
 	if err != nil {
 		b.Fatal(err)
 	}

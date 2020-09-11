@@ -502,7 +502,7 @@ func newReactorStore(
 	stateDB := dbm.NewMemDB()
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	stateStore := sm.NewStore(stateDB)
-	state, err := stateStore.LoadStateFromDBOrGenesisDoc(genDoc)
+	state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 	if err != nil {
 		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}

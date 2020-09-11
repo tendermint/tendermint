@@ -67,7 +67,7 @@ func TestMain(m *testing.M) {
 func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Config,
 	lastBlockHeight int64, blockDB dbm.DB, stateStore sm.Store) {
 	logger := log.TestingLogger()
-	state, _ := stateStore.LoadStateFromDBOrGenesisFile(consensusReplayConfig.GenesisFile())
+	state, _ := stateStore.LoadFromDBOrGenesisFile(consensusReplayConfig.GenesisFile())
 	privValidator := loadPrivValidator(consensusReplayConfig)
 	cs := newStateWithConfigAndBlockStore(
 		consensusReplayConfig,
