@@ -2,3 +2,4 @@ docs/node_modules
 CHANGELOG.md
 docs/architecture/*
 scripts/*
+.github
