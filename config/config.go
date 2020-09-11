@@ -660,6 +660,7 @@ type MempoolConfig struct {
 	// NOTE: the max size of a tx transmitted over the network is {max_tx_bytes}.
 	MaxTxBytes int `mapstructure:"max_tx_bytes"`
 	// Maximum size of a batch of transactions to send to a peer
+	// Including space needed by encoding (one varint per transaction).
 	MaxBatchBytes int `mapstructure:"max_batch_bytes"`
 }
 

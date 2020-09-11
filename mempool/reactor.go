@@ -18,8 +18,6 @@ import (
 const (
 	MempoolChannel = byte(0x30)
 
-	protoOverheadForTxsMessage = 4
-
 	peerCatchupSleepIntervalMS = 100 // If peer is behind, sleep this amount
 
 	// UnknownPeerID is the peer ID to use when running CheckTx when there is
@@ -136,7 +134,7 @@ func (memR *Reactor) OnStart() error {
 // GetChannels implements Reactor by returning the list of channels for this
 // reactor.
 func (memR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
-	maxMsgSize := memR.config.MaxBatchBytes + protoOverheadForTxsMessage
+	maxMsgSize := memR.config.MaxBatchBytes
 	return []*p2p.ChannelDescriptor{
 		{
 			ID:                  MempoolChannel,
@@ -226,14 +224,19 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 			continue
 		}
 
+		// first transaction
 		memTx := next.Value.(*mempoolTx)
-		if peerState.GetHeight() < memTx.Height()-1 { // Allow for a lag of 1 block
+
+		// Allow for a lag of 1 block.
+		if peerState.GetHeight() < memTx.Height()-1 {
 			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 			continue
 		}
 
-		// send txs
+		// the rest (up to MaxBatchBytes)
 		txs := memR.txs(next, peerID, peerState.GetHeight()) // WARNING: mutates next!
+
+		// send txs
 		if len(txs) > 0 {
 			msg := protomem.Message{
 				Sum: &protomem.Message_Txs{
@@ -287,9 +290,6 @@ func (memR *Reactor) txs(next *clist.CElement, peerID uint16, peerHeight int64) 
 	n := next.Next()
 	for n != nil {
 		memTx = n.Value.(*mempoolTx)
-		if peerHeight < memTx.Height()-1 {
-			break
-		}
 
 		if _, ok := memTx.senders.Load(peerID); !ok {
 			tx := []byte(memTx.tx)

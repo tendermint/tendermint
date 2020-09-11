@@ -330,6 +330,7 @@ cache_size = {{ .Mempool.CacheSize }}
 max_tx_bytes = {{ .Mempool.MaxTxBytes }}
 
 # Maximum size of a batch of transactions to send to a peer
+# Including space needed by encoding (one varint per transaction).
 max_batch_bytes = {{ .Mempool.MaxBatchBytes }}
 
 #######################################################
