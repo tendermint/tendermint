@@ -120,7 +120,7 @@ func (store dbStore) Load() (State, error) {
 func (store dbStore) loadState(key []byte) (state State, err error) {
 	buf, err := store.db.Get(key)
 	if err != nil {
-		panic(err)
+		return state, err
 	}
 	if len(buf) == 0 {
 		return state, nil
@@ -220,9 +220,9 @@ func (store dbStore) PruneStates(from int64, to int64) error {
 	if from >= to {
 		return fmt.Errorf("from height %v must be lower than to height %v", from, to)
 	}
-	valInfo := loadValidatorsInfo(store.db, to)
-	if valInfo == nil {
-		return fmt.Errorf("validators at height %v not found", to)
+	valInfo, err := loadValidatorsInfo(store.db, to)
+	if err != nil {
+		return fmt.Errorf("validators at height %v not found: %w", to, err)
 	}
 	paramsInfo, err := store.loadConsensusParamsInfo(to)
 	if err != nil {
@@ -250,9 +250,8 @@ func (store dbStore) PruneStates(from int64, to int64) error {
 		// params, otherwise they will panic if they're retrieved directly (instead of
 		// indirectly via a LastHeightChanged pointer).
 		if keepVals[h] {
-			v := loadValidatorsInfo(store.db, h)
-			if v.ValidatorSet == nil {
-
+			v, err := loadValidatorsInfo(store.db, h)
+			if err != nil || v.ValidatorSet == nil {
 				vip, err := store.LoadValidators(h)
 				if err != nil {
 					return err
@@ -410,20 +409,20 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 // LoadValidators loads the ValidatorSet for a given height.
 // Returns ErrNoValSetForHeight if the validator set can't be found for this height.
 func (store dbStore) LoadValidators(height int64) (*types.ValidatorSet, error) {
-	valInfo := loadValidatorsInfo(store.db, height)
-	if valInfo == nil {
+	valInfo, err := loadValidatorsInfo(store.db, height)
+	if err != nil {
 		return nil, ErrNoValSetForHeight{height}
 	}
 	if valInfo.ValidatorSet == nil {
 		lastStoredHeight := lastStoredHeightFor(height, valInfo.LastHeightChanged)
-		valInfo2 := loadValidatorsInfo(store.db, lastStoredHeight)
-		if valInfo2 == nil || valInfo2.ValidatorSet == nil {
-			panic(
-				fmt.Sprintf("Couldn't find validators at height %d (height %d was originally requested)",
+		valInfo2, err := loadValidatorsInfo(store.db, lastStoredHeight)
+		if err != nil || valInfo2.ValidatorSet == nil {
+			return nil,
+				fmt.Errorf("couldn't find validators at height %d (height %d was originally requested): %w",
 					lastStoredHeight,
 					height,
-				),
-			)
+					err,
+				)
 		}
 
 		vs, err := types.ValidatorSetFromProto(valInfo2.ValidatorSet)
@@ -455,14 +454,14 @@ func lastStoredHeightFor(height, lastHeightChanged int64) int64 {
 }
 
 // CONTRACT: Returned ValidatorsInfo can be mutated.
-func loadValidatorsInfo(db dbm.DB, height int64) *tmstate.ValidatorsInfo {
+func loadValidatorsInfo(db dbm.DB, height int64) (*tmstate.ValidatorsInfo, error) {
 	buf, err := db.Get(calcValidatorsKey(height))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	if len(buf) == 0 {
-		return nil
+		return nil, errors.New("value retrieved from db is empty")
 	}
 
 	v := new(tmstate.ValidatorsInfo)
@@ -474,7 +473,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) *tmstate.ValidatorsInfo {
 	}
 	// TODO: ensure that buf is completely read.
 
-	return v
+	return v, nil
 }
 
 // saveValidatorsInfo persists the validator set.
@@ -484,7 +483,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) *tmstate.ValidatorsInfo {
 // persisted.
 func (store dbStore) saveValidatorsInfo(height, lastHeightChanged int64, valSet *types.ValidatorSet) error {
 	if lastHeightChanged > height {
-		panic("LastHeightChanged cannot be greater than ValidatorsInfo height")
+		return errors.New("lastHeightChanged cannot be greater than ValidatorsInfo height")
 	}
 	valInfo := &tmstate.ValidatorsInfo{
 		LastHeightChanged: lastHeightChanged,
