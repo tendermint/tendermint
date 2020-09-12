@@ -102,10 +102,9 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	}
 
 	var privValidator *privval.FilePV
-	switch {
-	case config.Mode == cfg.ModeValidator:
+	if config.Mode == cfg.ModeValidator {
 		privValidator = privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
-	case config.Mode == cfg.ModeFullNode:
+	} else {
 		privValidator = nil
 	}
 	return NewNode(config,
@@ -321,7 +320,8 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 		if state.Validators.HasAddress(addr) {
 			consensusLogger.Info("This node is a validator", "addr", addr, "pubKey", pubKey)
 		} else {
-			consensusLogger.Info("This node is not in ValidatorSet", "addr", addr, "pubKey", pubKey)
+			consensusLogger.Info("This node is a validator (NOT in the active validator set)",
+				"addr", addr, "pubKey", pubKey)
 		}
 	}
 }
@@ -640,6 +640,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	return nil
 }
 
+// NewSeedNode returns a new seed node, containing only p2p, pex reactor
 func NewSeedNode(config *cfg.Config,
 	nodeKey *p2p.NodeKey,
 	clientCreator proxy.ClientCreator,

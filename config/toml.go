@@ -84,6 +84,7 @@ proxy_app = "{{ .BaseConfig.ProxyApp }}"
 moniker = "{{ .BaseConfig.Moniker }}"
 
 # Mode of Node: fullnode | validator | seednode (default: "fullnode")
+# Default value is fullnode, so you need to set it to "validator" if you want to run the node as validator
 # * fullnode (default)
 #   - all reactors
 #   - No priv_validator_key.json, priv_validator_state.json
