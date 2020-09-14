@@ -198,6 +198,7 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 			if err := evpool.addPendingEvidence(evInfo); err != nil {
 				evpool.logger.Error("Database error when adding evidence: %w", err)
 			}
+			evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
 		}
 
 		// check for duplicate evidence. We cache hashes so we don't have to work them out again.
@@ -373,6 +374,7 @@ func (evpool *Pool) markEvidenceAsCommitted(height int64, evidence []types.Evide
 				TotalVotingPower: evInfo.TotalVotingPower,
 			}
 		}
+		evpool.logger.Info("Created ABCI evidence", "ev", abciEv)
 		abciEvidence = append(abciEvidence, abciEv...)
 		
 		evpool.removePendingEvidence(ev)

@@ -133,7 +133,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, 0, ErrInvalidBlock(err)
 	}
 
-	// Update evpool with the block and state.
+	// Update evpool with the block and state and get any byzantine validators for that block
 	byzVals := blockExec.evpool.Update(block, state)
 
 	startTime := time.Now().UnixNano()

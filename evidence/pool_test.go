@@ -11,6 +11,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/log"
@@ -97,7 +98,7 @@ func TestAddExpiredEvidence(t *testing.T) {
 
 	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(func(h int64) *types.BlockMeta {
 		if h == height || h == expiredHeight {
-			return &types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}}
+			return &types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime.Add(time.Duration(height) * time.Minute)}}
 		}
 		return &types.BlockMeta{Header: types.Header{Time: expiredEvidenceTime}}
 	})
@@ -153,18 +154,30 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	state := pool.State()
 
 	// create new block (no need to save it to blockStore)
-	prunedEv := types.NewMockDuplicateVoteEvidenceWithValidator(1, time.Now().Add(-1*time.Hour).Add(1*time.Minute),
+	prunedEv := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultEvidenceTime,
 		val, evidenceChainID)
 	err := pool.AddEvidence(prunedEv)
 	require.NoError(t, err)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), val, evidenceChainID)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
 	lastCommit := makeCommit(height, val.PrivKey.PubKey().Address())
 	block := types.MakeBlock(height+1, []types.Tx{}, lastCommit, []types.Evidence{ev})
 	// update state (partially)
 	state.LastBlockHeight = height + 1
-	state.LastBlockTime = time.Now().Add(1 * time.Hour)
+	state.LastBlockTime = defaultEvidenceTime.Add(22 * time.Minute)
+	err = pool.CheckEvidence(types.EvidenceList{ev})
+	require.NoError(t, err)
 
-	pool.Update(block, state)
+	byzVals := pool.Update(block, state)
+	expectedByzVals := []abci.Evidence{
+		{
+			Type: abci.EvidenceType_DUPLICATE_VOTE,
+			Validator: types.TM2PB.Validator(val.ExtractIntoValidator(10)),
+			Height: height,
+			Time: defaultEvidenceTime.Add(time.Duration(height) * time.Minute),
+			TotalVotingPower: 10,
+		},
+	}
+	assert.Equal(t, expectedByzVals, byzVals)
 
 	// a) Update marks evidence as committed so pending evidence should be empty
 	assert.Empty(t, pool.PendingEvidence(10))
@@ -254,7 +267,7 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) e
 			},
 			Evidence: tmproto.EvidenceParams{
 				MaxAgeNumBlocks: 20,
-				MaxAgeDuration:  1 * time.Hour,
+				MaxAgeDuration:  20 * time.Minute,
 				MaxNum:          50,
 			},
 		},
@@ -263,6 +276,7 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) e
 	// save all states up to height
 	for i := int64(0); i <= height; i++ {
 		state.LastBlockHeight = i
+		state.LastBlockTime = defaultEvidenceTime.Add(time.Duration(i) * time.Minute)
 		sm.SaveState(stateDB, state)
 	}
 
@@ -272,7 +286,7 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) e
 func initializeValidatorState(privVal types.PrivValidator, height int64) evidence.StateStore {
 
 	pubKey, _ := privVal.GetPubKey()
-	validator := &types.Validator{Address: pubKey.Address(), VotingPower: 0, PubKey: pubKey}
+	validator := &types.Validator{Address: pubKey.Address(), VotingPower: 10, PubKey: pubKey}
 
 	// create validator set and state
 	valSet := &types.ValidatorSet{
@@ -292,10 +306,10 @@ func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) *store.Bloc
 		lastCommit := makeCommit(i-1, valAddr)
 		block, _ := state.MakeBlock(i, []types.Tx{}, lastCommit, nil,
 			state.Validators.GetProposer().Address)
-
+		block.Header.Time = defaultEvidenceTime.Add(time.Duration(i) * time.Minute)
 		const parts = 1
 		partSet := block.MakePartSet(parts)
-
+		
 		seenCommit := makeCommit(i, valAddr)
 		blockStore.SaveBlock(block, partSet, seenCommit)
 	}
@@ -307,7 +321,7 @@ func makeCommit(height int64, valAddr []byte) *types.Commit {
 	commitSigs := []types.CommitSig{{
 		BlockIDFlag:      types.BlockIDFlagCommit,
 		ValidatorAddress: valAddr,
-		Timestamp:        time.Now(),
+		Timestamp:        defaultEvidenceTime,
 		Signature:        []byte("Signature"),
 	}}
 	return types.NewCommit(height, 0, types.BlockID{}, commitSigs)
@@ -335,4 +349,23 @@ func createState(height int64, valSet *types.ValidatorSet) sm.State {
 		Validators:      valSet,
 		ConsensusParams: *types.DefaultConsensusParams(),
 	}
+}
+
+func TestEvidenceInfo(t *testing.T) {
+	val := types.NewMockPV()
+	evInfo := evidence.Info{
+		Evidence: types.NewMockDuplicateVoteEvidence(1, defaultEvidenceTime, evidenceChainID),
+		Time: defaultEvidenceTime,
+		Validators: []*types.Validator{val.ExtractIntoValidator(10)},
+		TotalVotingPower: 10,
+	}
+	
+	proto, err := evInfo.ToProto()
+	assert.NoError(t, err)
+	assert.NotNil(t, proto)
+	
+	evInfoConverted, err := evidence.InfoFromProto(proto)
+	assert.NoError(t, err)
+	assert.Equal(t, evInfo, evInfoConverted)
+	
 }
