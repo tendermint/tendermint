@@ -103,7 +103,10 @@ func AddNodeFlags(cmd *cobra.Command) {
 func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "node",
-		Short: "Run the tendermint node\nneed to set `--mode validator` to run the node as validator",
+		Short: "Run the tendermint node",
+		Long: `Run the tendermint node
+
+need to set "--mode validator" to run the node as validator`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkGenesisHash(config); err != nil {
 				return err
