@@ -196,8 +196,9 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 			}
 
 			if err := evpool.addPendingEvidence(evInfo); err != nil {
-				evpool.logger.Error("Can't add evidence to pending list", "err", err)
+				evpool.logger.Error("Can't add evidence to pending list", "err", err, "evInfo", evInfo)
 			}
+			
 			evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
 		}
 
@@ -396,6 +397,9 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 	key := keyPending(ev)
 	if lcae, ok := ev.(*types.LightClientAttackEvidence); ok {
 		evBytes, err := evpool.evidenceStore.Get(key)
+		if evBytes == nil { // the evidence is not in the nodes pending list
+			return false
+		}        
 		if err != nil {
 			evpool.logger.Error("Failed to get evidence during fastcheck", "err", err, "ev", lcae)
 			return false
