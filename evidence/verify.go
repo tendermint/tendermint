@@ -99,7 +99,7 @@ func (evpool *Pool) verify(evidence types.Evidence) (*Info, error) {
 			TotalVotingPower: commonVals.TotalVotingPower(),
 		}, nil
 	default:
-		return nil, fmt.Errorf("unrecognized evidence: %v", evidence)
+		return nil, fmt.Errorf("unrecognized evidence type: %T", evidence)
 	}
 }
 
@@ -118,8 +118,8 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, t
 	}
 
 	if bytes.Equal(trustedHeader.Hash(), e.ConflictingBlock.Hash()) {
-		return fmt.Errorf("trusted header hash matches the evidence conflicting header (%X = %X)",
-			trustedHeader.Hash(), e.ConflictingBlock.Hash())
+		return fmt.Errorf("trusted header hash matches the evidence conflicting header hash: %X",
+			trustedHeader.Hash())
 	}
 
 	return nil

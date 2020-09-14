@@ -112,11 +112,6 @@ func (tm2pb) ConsensusParams(params *tmproto.ConsensusParams) *abci.ConsensusPar
 // so Evidence types stays compact.
 // XXX: panics on nil or unknown pubkey type
 func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet) abci.Evidence {
-	// _, val := valSet.GetByAddress(addr)
-	// if val == nil {
-	// 	// should already have checked this
-	// 	panic(fmt.Sprintf("validator in evidence is not in val set, val addr: %v", addr))
-	// }
 
 	// set type
 	var evType abci.EvidenceType
@@ -130,10 +125,8 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet) abci.Evidence {
 	}
 
 	return abci.Evidence{
-		Type: evType,
-		// Validator:        TM2PB.Validator(val),
-		Height: ev.Height(),
-		// Time:             ev.Time(),
+		Type:             evType,
+		Height:           ev.Height(),
 		TotalVotingPower: valSet.TotalVotingPower(),
 	}
 }
