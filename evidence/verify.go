@@ -99,7 +99,7 @@ func (evpool *Pool) verify(evidence types.Evidence) (*Info, error) {
 			TotalVotingPower: commonVals.TotalVotingPower(),
 		}, nil
 	default:
-		return nil, fmt.Errorf("unrecognized evidence tye: %T", evidence)
+		return nil, fmt.Errorf("unrecognized evidence type: %T", evidence)
 	}
 }
 

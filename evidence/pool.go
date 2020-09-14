@@ -112,7 +112,7 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 
 	// We have already verified this piece of evidence - no need to do it again
 	if evpool.isPending(ev) {
-		return fmt.Errorf("evidence already verified and added, %s", ev.String())
+		return fmt.Errorf("evidence already verified and added: %v", ev)
 	}
 
 	// 1) Verify against state.
@@ -123,7 +123,7 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 
 	// 2) Save to store.
 	if err := evpool.addPendingEvidence(evInfo); err != nil {
-		return fmt.Errorf("database error when adding evidence: %w", err)
+		return fmt.Errorf("can't add evidence to pending list: %w", err)
 	}
 
 	// 3) Add evidence to clist.
@@ -143,7 +143,7 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 	)
 
 	if evpool.isPending(ev) {
-		return fmt.Errorf("evidence already verified and added, %s", ev.String()) // we already have this evidence
+		return fmt.Errorf("evidence already verified and added, %v", ev) // we already have this evidence
 	}
 
 	switch ev := ev.(type) {
@@ -351,18 +351,18 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 	if lcae, ok := ev.(*types.LightClientAttackEvidence); ok {
 		evBytes, err := evpool.evidenceStore.Get(key)
 		if err != nil {
-			evpool.logger.Error("Fastcheck Error", "err", err)
+			evpool.logger.Error("Failed to get evidence during fastcheck", "err", err, "ev", lcae)
 			return false
 		}
 		var evpb *evproto.Info
 		err = evpb.Unmarshal(evBytes)
 		if err != nil {
-			evpool.logger.Error("Fastcheck Error", "err", err)
+			evpool.logger.Error("Failed to unmarshal evidence info during fastcheck", "err", err)
 			return false
 		}
 		evInfo, err := InfoFromProto(evpb)
 		if err != nil {
-			evpool.logger.Error("Fastcheck Error", "err", err)
+			evpool.logger.Error("Failed to convert evidence from proto during fastcheck", "err", err)
 			return false
 		}
 		// ensure that all the validators that the evidence pool have found to be malicious

@@ -2,7 +2,7 @@ package light
 
 import (
 	"bytes"
-	// "errors"
+	"errors"
 	"fmt"
 	"time"
 
@@ -26,8 +26,8 @@ import (
 // If there are no conflictinge headers, the light client deems the verified target header
 // trusted and saves it to the trusted store.
 func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Time) error {
-	if primaryTrace == nil {
-		return fmt.Errorf("nil or empty primary trace: %v", primaryTrace)
+	if primaryTrace == nil || len(primaryTrace) < 2 {
+		return errors.New("nil primary trace")
 	}
 	var (
 		headerMatched      bool
