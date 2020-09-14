@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	// "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tm-db"

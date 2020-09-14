@@ -152,7 +152,7 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 		vals = append(vals, val)
 		totalPower = valSet.TotalVotingPower()
 	default:
-		return fmt.Errorf("unrecognized evidence: %v", ev)
+		return fmt.Errorf("unrecognized evidence type: %T", ev)
 	}
 
 	evInfo := &Info{
@@ -163,7 +163,7 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 	}
 
 	if err := evpool.addPendingEvidence(evInfo); err != nil {
-		return fmt.Errorf("database error when adding evidence from consensus: %w", err)
+		return fmt.Errorf("can't add evidence to pending list: %w", err)
 	}
 
 	evpool.evidenceList.PushBack(ev)
@@ -192,7 +192,7 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 			}
 
 			if err := evpool.addPendingEvidence(evInfo); err != nil {
-				evpool.logger.Error("Database error when adding evidence: %w", err)
+				evpool.logger.Error("Can't add evidence to pending list", "err", err)
 			}
 		}
 
@@ -304,6 +304,7 @@ func (evpool *Pool) allPendingEvidence() []types.Evidence {
 	evidence, err := evpool.listEvidence(baseKeyPending, -1)
 	if err != nil {
 		evpool.logger.Error("Unable to retrieve pending evidence", "err", err)
+		return evidence
 	}
 	// update pool size
 	evpool.evidenceSize = uint16(len(evidence))
