@@ -205,7 +205,7 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 	}{
 		{"Good DuplicateVoteEvidence", func(ev *LightClientAttackEvidence) {}, false},
 		{"Negative height", func(ev *LightClientAttackEvidence) { ev.CommonHeight = -10 }, true},
-		{"Height is equal to divergent block", func(ev *LightClientAttackEvidence) { ev.CommonHeight = height }, true},
+		{"Height is greater than divergent block", func(ev *LightClientAttackEvidence) { ev.CommonHeight = height + 1 }, true},
 		{"Nil conflicting header", func(ev *LightClientAttackEvidence) { ev.ConflictingBlock.Header = nil }, true},
 		{"Nil conflicting blocl", func(ev *LightClientAttackEvidence) { ev.ConflictingBlock = nil }, true},
 		{"Nil validator set", func(ev *LightClientAttackEvidence) {

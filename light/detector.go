@@ -73,11 +73,19 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 				continue
 			}
+			// if this is an equivocation or amnesia attack, i.e. the validator sets are the same, then we
+			// return the height of the conflicting block else if it is a lunatic attack and the validator sets
+			// are not the same then we send the height of the common header.
+			commonHeight := primaryBlock.Height
+			if isInvalidHeader(witnessTrace[len(witnessTrace)-1].Header, primaryBlock.Header) {
+				commonHeight = witnessTrace[0].Height
+			}
+			
 			// We are suspecting that the primary is faulty, hence we hold the witness as the source of truth
 			// and generate evidence against the primary that we can send to the witness
 			ev := &types.LightClientAttackEvidence{
 				ConflictingBlock: primaryBlock,
-				CommonHeight:     witnessTrace[0].Height, // the first block in the bisection is common to both providers
+				CommonHeight:     commonHeight, // the first block in the bisection is common to both providers
 			}
 			c.logger.Error("Attack detected. Sending evidence againt primary by witness", "ev", ev,
 				"primary", c.primary, "witness", supportingWitness)
@@ -92,11 +100,18 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 				c.logger.Info("Error validating primary's divergent header", "primary", c.primary, "err", err)
 				continue
 			}
+			// if this is an equivocation or amnesia attack, i.e. the validator sets are the same, then we
+			// return the height of the conflicting block else if it is a lunatic attack and the validator sets
+			// are not the same then we send the height of the common header.
+			commonHeight = primaryBlock.Height
+			if isInvalidHeader(primaryTrace[len(primaryTrace)-1].Header, witnessBlock.Header) {
+				commonHeight = primaryTrace[0].Height
+			}
 
 			// We now use the primary trace to create evidence against the witness and send it to the primary
 			ev = &types.LightClientAttackEvidence{
 				ConflictingBlock: witnessBlock,
-				CommonHeight:     primaryTrace[0].Height, // the first block in the bisection is common to both providers
+				CommonHeight:     commonHeight, // the first block in the bisection is common to both providers
 			}
 			c.logger.Error("Sending evidence against witness by primary", "ev", ev,
 				"primary", c.primary, "witness", supportingWitness)
@@ -215,4 +230,16 @@ func (c *Client) examineConflictingHeaderAgainstTrace(
 	return nil, nil, fmt.Errorf("source provided different header to the original header it provided (%X != %X)",
 		previouslyVerifiedBlock.Hash(), divergentHeader.Hash())
 
+}
+
+// isInvalidHeader takes a trusted header and matches it againt a conflicting header
+// to determine whether the conflicting header was the product of a valid state transition
+// or not. If it is then all the deterministic fields of the header should be the same.
+// If not, it is an invalid header and constitutes a lunatic attack.
+func isInvalidHeader(trusted, conflicting *types.Header) bool {
+	return !bytes.Equal(trusted.ValidatorsHash, conflicting.ValidatorsHash) ||
+		!bytes.Equal(trusted.NextValidatorsHash, conflicting.NextValidatorsHash) ||
+		!bytes.Equal(trusted.ConsensusHash, conflicting.ConsensusHash) ||
+		!bytes.Equal(trusted.AppHash, conflicting.AppHash) ||
+		!bytes.Equal(trusted.LastResultsHash, conflicting.LastResultsHash)
 }
