@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -43,9 +42,9 @@ func (e ErrInvalidHeader) Error() string {
 
 // ErrFailedHeaderCrossReferencing is returned when the detector was not able to cross reference the header
 // with any of the connected witnesses.
-var ErrFailedHeaderCrossReferencing = errors.New("All witnesses have either not responded, don't have the " +
+var ErrFailedHeaderCrossReferencing = errors.New("all witnesses have either not responded, don't have the " +
 	" blocks or sent invalid blocks. You should look to change your witnesses" +
-	"  or review the light client's logs for more information.")
+	"  or review the light client's logs for more information")
 
 // ErrVerificationFailed means either sequential or skipping verification has
 // failed to verify from header #1 to header #2 due to some reason.
@@ -76,8 +75,8 @@ type errConflictingHeaders struct {
 
 func (e errConflictingHeaders) Error() string {
 	return fmt.Sprintf(
-		"header hash (%X) from witness (%v) does not match primary",
-		e.Block.Hash(), e.Witness)
+		"header hash (%X) from witness (%d) does not match primary",
+		e.Block.Hash(), e.WitnessIndex)
 }
 
 // errNoWitnesses means that there are not enough witnesses connected to
@@ -96,5 +95,5 @@ type errBadWitness struct {
 }
 
 func (e errBadWitness) Error() string {
-	return fmt.Sprintf("Witness %d returned error: %s", e.Index, e.Reason.Error())
+	return fmt.Sprintf("Witness %d returned error: %s", e.WitnessIndex, e.Reason.Error())
 }

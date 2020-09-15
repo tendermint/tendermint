@@ -377,15 +377,15 @@ func TestClient_SkippingVerification(t *testing.T) {
 // start from a large light block to make sure that the pivot height doesn't select a height outside
 // the appropriate range
 func TestClientLargeBisectionVerification(t *testing.T) {
-	veryLargeFullNode := mockp.New(genMockNode(chainID, 100, 3, 1, bTime))
-	l1, err := veryLargeFullNode.LightBlock(90)
+	veryLargeFullNode := mockp.New(genMockNode(chainID, 100, 3, 0, bTime))
+	trustedLightBlock, err := veryLargeFullNode.LightBlock(5)
 	require.NoError(t, err)
 	c, err := light.NewClient(
 		chainID,
 		light.TrustOptions{
 			Period: 4 * time.Hour,
-			Height: l1.Height,
-			Hash:   l1.Hash(),
+			Height: trustedLightBlock.Height,
+			Hash:   trustedLightBlock.Hash(),
 		},
 		veryLargeFullNode,
 		[]provider.Provider{veryLargeFullNode},

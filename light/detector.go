@@ -2,6 +2,7 @@ package light
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"time"
 
@@ -25,6 +26,9 @@ import (
 // If there are no conflictinge headers, the light client deems the verified target header
 // trusted and saves it to the trusted store.
 func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Time) error {
+	if primaryTrace == nil || len(primaryTrace) < 2 {
+		return errors.New("nil primary trace")
+	}
 	var (
 		headerMatched      bool
 		lastVerifiedHeader = primaryTrace[len(primaryTrace)-1].SignedHeader
@@ -62,7 +66,8 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 			// We combine these actions together, verifying the witnesses headers and outputting the trace
 			// which captures the bifurcation point and if successful provides the information to create
 			supportingWitness := c.witnesses[e.WitnessIndex]
-			witnessTrace, primaryBlock, err := c.examineConflictingHeaderAgainstTrace(primaryTrace, e.Block.SignedHeader, supportingWitness, now)
+			witnessTrace, primaryBlock, err := c.examineConflictingHeaderAgainstTrace(primaryTrace, e.Block.SignedHeader,
+				supportingWitness, now)
 			if err != nil {
 				c.logger.Info("Error validating witness's divergent header", "witness", supportingWitness, "err", err)
 				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
@@ -76,12 +81,13 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 			}
 			c.logger.Error("Attack detected. Sending evidence againt primary by witness", "ev", ev,
 				"primary", c.primary, "witness", supportingWitness)
-			c.sendEvidence(ev, e.Witness)
+			c.sendEvidence(ev, supportingWitness)
 
 			// This may not be valid because the witness itself is at fault. So now we reverse it, examining the
 			// trace provided by the witness and holding the primary as the source of truth. Note: primary may not
 			// respond but this is okay as we will halt anyway.
-			primaryTrace, witnessBlock, err := c.examineConflictingHeaderAgainstTrace(witnessTrace, primaryBlock.SignedHeader, c.primary, now)
+			primaryTrace, witnessBlock, err := c.examineConflictingHeaderAgainstTrace(witnessTrace, primaryBlock.SignedHeader,
+				c.primary, now)
 			if err != nil {
 				c.logger.Info("Error validating primary's divergent header", "primary", c.primary, "err", err)
 				continue
@@ -99,7 +105,8 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 			return e
 
 		case errBadWitness:
-			c.logger.Info("Witness returned an error during header comparison", "witness", c.witnesses[e.WitnessIndex], "err", err)
+			c.logger.Info("Witness returned an error during header comparison", "witness", c.witnesses[e.WitnessIndex],
+				"err", err)
 			// if witness sent us an invalid header, then remove it. If it didn't respond or couldn't find the block, then we
 			// ignore it and move on to the next witness
 			if _, ok := e.Reason.(provider.ErrBadLightBlock); ok {
@@ -135,12 +142,12 @@ func (c *Client) compareNewHeaderWithWitness(errc chan error, h *types.SignedHea
 
 	lightBlock, err := witness.LightBlock(h.Height)
 	if err != nil {
-		errc <- errBadWitness{Reason: err, Index: witnessIndex}
+		errc <- errBadWitness{Reason: err, WitnessIndex: witnessIndex}
 		return
 	}
 
 	if !bytes.Equal(h.Hash(), lightBlock.Hash()) {
-		errc <- errConflictingHeaders{Block: lightBlock, Witness: witness, Index: witnessIndex}
+		errc <- errConflictingHeaders{Block: lightBlock, WitnessIndex: witnessIndex}
 	}
 
 	c.logger.Info("Matching header received by witness", "height", h.Height, "witness", witnessIndex)
@@ -203,21 +210,9 @@ func (c *Client) examineConflictingHeaderAgainstTrace(
 		previouslyVerifiedBlock = sourceBlock
 	}
 
-	// We have reached the end of the trace without observing a divergence. The last header is thus different
+	// We have reached the end of the trace without observing a divergence. The last header  is thus different
 	// from the divergent header that the source originally sent us, then we return an error.
-	return nil, nil, fmt.Errorf("source provided different header to the original header it provided",
+	return nil, nil, fmt.Errorf("source provided different header to the original header it provided (%X != %X)",
 		previouslyVerifiedBlock.Hash(), divergentHeader.Hash())
 
-}
-
-// IsInvalidHeader takes a trusted header and matches it againt a conflicting header
-// to determine whether the conflicting header was the product of a valid state transition
-// or not. If it is then all the deterministic fields of the header should be the same.
-// If not, it is an invalid header and constitutes a lunatic attack.
-func IsInvalidHeader(trusted, conflicting *types.Header) bool {
-	return bytes.Equal(trusted.ValidatorsHash, conflicting.ValidatorsHash) &&
-		bytes.Equal(trusted.NextValidatorsHash, conflicting.NextValidatorsHash) &&
-		bytes.Equal(trusted.ConsensusHash, conflicting.ConsensusHash) &&
-		bytes.Equal(trusted.AppHash, conflicting.AppHash) &&
-		bytes.Equal(trusted.LastResultsHash, conflicting.LastResultsHash)
 }

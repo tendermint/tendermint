@@ -1,18 +1,19 @@
-package evidence
+package evidence_test
 
 import (
 	"os"
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/evidence/mocks"
+	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
@@ -31,23 +32,28 @@ var defaultEvidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 func TestEvidencePoolBasic(t *testing.T) {
 	var (
-		val        = types.NewMockPV()
 		height     = int64(1)
-		stateStore = initializeValidatorState(val, height)
+		stateStore = &mocks.StateStore{}
 		evidenceDB = dbm.NewMemDB()
 		blockStore = &mocks.BlockStore{}
 	)
 
+	valSet, privVals := types.RandValidatorSet(3, 10)
+
 	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
 		&types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}},
 	)
+	stateStore.On("LoadValidators", mock.AnythingOfType("int64")).Return(valSet, nil)
+	stateStore.On("LoadState").Return(createState(height+1, valSet))
 
-	pool, err := NewPool(evidenceDB, stateStore, blockStore)
+	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
 
 	// evidence not seen yet:
-	evidence := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
-	assert.False(t, pool.IsCommitted(evidence))
+	evs := pool.PendingEvidence(10)
+	assert.Equal(t, 0, len(evs))
+
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, privVals[0], evidenceChainID)
 
 	// good evidence
 	evAdded := make(chan struct{})
@@ -57,7 +63,7 @@ func TestEvidencePoolBasic(t *testing.T) {
 	}()
 
 	// evidence seen but not yet committed:
-	assert.NoError(t, pool.AddEvidence(evidence))
+	assert.NoError(t, pool.AddEvidence(ev))
 
 	select {
 	case <-evAdded:
@@ -65,27 +71,16 @@ func TestEvidencePoolBasic(t *testing.T) {
 		t.Fatal("evidence was not added to list after 5s")
 	}
 
-	assert.Equal(t, 1, pool.evidenceList.Len())
+	next := pool.EvidenceFront()
+	assert.Equal(t, ev, next.Value.(types.Evidence))
 
-	assert.False(t, pool.IsCommitted(evidence))
-	assert.True(t, pool.IsPending(evidence))
+	evs = pool.PendingEvidence(10)
+	assert.Equal(t, 1, len(evs))
 
-	// test evidence is proposed
-	proposedEvidence := pool.AllPendingEvidence()
-	assert.Equal(t, proposedEvidence[0], evidence)
+	// shouldn't be able to add evidence twice
+	assert.Error(t, pool.AddEvidence(ev))
+	assert.Equal(t, 1, len(pool.PendingEvidence(10)))
 
-	proposedEvidence = pool.PendingEvidence(1)
-	assert.Equal(t, proposedEvidence[0], evidence)
-
-	// evidence seen and committed:
-	pool.MarkEvidenceAsCommitted(height, proposedEvidence)
-	assert.True(t, pool.IsCommitted(evidence))
-	assert.False(t, pool.IsPending(evidence))
-	assert.Equal(t, 0, pool.evidenceList.Len())
-
-	// no evidence should be pending
-	proposedEvidence = pool.PendingEvidence(1)
-	assert.Empty(t, proposedEvidence)
 }
 
 // Tests inbound evidence for the right time and height
@@ -107,7 +102,7 @@ func TestAddExpiredEvidence(t *testing.T) {
 		return &types.BlockMeta{Header: types.Header{Time: expiredEvidenceTime}}
 	})
 
-	pool, err := NewPool(evidenceDB, stateStore, blockStore)
+	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -137,102 +132,111 @@ func TestAddExpiredEvidence(t *testing.T) {
 	}
 }
 
+func TestAddEvidenceFromConsensus(t *testing.T) {
+	var height int64 = 10
+	pool, val := defaultTestPool(height)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
+	err := pool.AddEvidenceFromConsensus(ev, defaultEvidenceTime,
+		types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(2)}))
+	assert.NoError(t, err)
+	next := pool.EvidenceFront()
+	assert.Equal(t, ev, next.Value.(types.Evidence))
+	// shouldn't be able to submit the same evidence twice
+	err = pool.AddEvidenceFromConsensus(ev, defaultEvidenceTime.Add(-1*time.Second),
+		types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(3)}))
+	assert.Error(t, err)
+}
+
 func TestEvidencePoolUpdate(t *testing.T) {
 	height := int64(21)
-
 	pool, val := defaultTestPool(height)
-
 	state := pool.State()
 
 	// create new block (no need to save it to blockStore)
-	evidence := types.NewMockDuplicateVoteEvidence(height, time.Now(), evidenceChainID)
+	prunedEv := types.NewMockDuplicateVoteEvidenceWithValidator(1, time.Now().Add(-1*time.Hour).Add(1*time.Minute),
+		val, evidenceChainID)
+	err := pool.AddEvidence(prunedEv)
+	require.NoError(t, err)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), val, evidenceChainID)
 	lastCommit := makeCommit(height, val.PrivKey.PubKey().Address())
-	block := types.MakeBlock(height+1, []types.Tx{}, lastCommit, []types.Evidence{evidence})
+	block := types.MakeBlock(height+1, []types.Tx{}, lastCommit, []types.Evidence{ev})
 	// update state (partially)
 	state.LastBlockHeight = height + 1
+	state.LastBlockTime = time.Now().Add(1 * time.Hour)
 
 	pool.Update(block, state)
 
-	// a) Update marks evidence as committed
-	assert.True(t, pool.IsCommitted(evidence))
+	// a) Update marks evidence as committed so pending evidence should be empty
+	assert.Empty(t, pool.PendingEvidence(10))
+
+	// b) If we try to check this evidence again it should fail because it has already been committed
+	err = pool.CheckEvidence(types.EvidenceList{ev})
+	assert.Error(t, err)
 }
 
-func TestVerifyEvidenceCommittedEvidenceFails(t *testing.T) {
-	height := int64(1)
-	pool, _ := defaultTestPool(height)
-	committedEvidence := types.NewMockDuplicateVoteEvidence(height, time.Now(), evidenceChainID)
-	pool.MarkEvidenceAsCommitted(height, []types.Evidence{committedEvidence})
-
-	err := pool.Verify(committedEvidence)
-	if assert.Error(t, err) {
-		assert.Equal(t, "evidence was already committed", err.Error())
-	}
-}
-
-func TestVeriyEvidencePendingEvidencePasses(t *testing.T) {
-	var (
-		val        = types.NewMockPV()
-		height     = int64(1)
-		stateStore = initializeValidatorState(val, height)
-		blockStore = &mocks.BlockStore{}
-	)
-
-	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
-		&types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}},
-	)
-
-	pool, err := NewPool(dbm.NewMemDB(), stateStore, blockStore)
-	require.NoError(t, err)
-	evidence := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
-	err = pool.AddEvidence(evidence)
+func TestVerifyEvidencePendingEvidencePasses(t *testing.T) {
+	var height int64 = 1
+	pool, val := defaultTestPool(height)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
+	err := pool.AddEvidence(ev)
 	require.NoError(t, err)
 
-	err = pool.Verify(evidence)
+	err = pool.CheckEvidence(types.EvidenceList{ev})
 	assert.NoError(t, err)
 }
 
-func TestRecoverPendingEvidence(t *testing.T) {
-	var (
-		val                 = types.NewMockPV()
-		valAddr             = val.PrivKey.PubKey().Address()
-		height              = int64(30)
-		stateStore          = initializeValidatorState(val, height)
-		evidenceDB          = dbm.NewMemDB()
-		blockStoreDB        = dbm.NewMemDB()
-		state               = stateStore.LoadState()
-		blockStore          = initializeBlockStore(blockStoreDB, state, valAddr)
-		expiredEvidenceTime = time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC)
-		goodEvidence        = types.NewMockDuplicateVoteEvidenceWithValidator(height,
-			defaultEvidenceTime, val, evidenceChainID)
-		expiredEvidence = types.NewMockDuplicateVoteEvidenceWithValidator(int64(1),
-			expiredEvidenceTime, val, evidenceChainID)
-	)
-
-	// load good evidence
-	goodKey := keyPending(goodEvidence)
-	evi, err := types.EvidenceToProto(goodEvidence)
-	require.NoError(t, err)
-	goodEvidenceBytes, err := proto.Marshal(evi)
-	require.NoError(t, err)
-	_ = evidenceDB.Set(goodKey, goodEvidenceBytes)
-
-	// load expired evidence
-	expiredKey := keyPending(expiredEvidence)
-	eevi, err := types.EvidenceToProto(expiredEvidence)
-	require.NoError(t, err)
-
-	expiredEvidenceBytes, err := proto.Marshal(eevi)
-	require.NoError(t, err)
-
-	_ = evidenceDB.Set(expiredKey, expiredEvidenceBytes)
-	pool, err := NewPool(evidenceDB, stateStore, blockStore)
-	require.NoError(t, err)
-	assert.Equal(t, 1, pool.evidenceList.Len())
-	assert.True(t, pool.IsPending(goodEvidence))
-	assert.False(t, pool.Has(expiredEvidence))
+func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
+	var height int64 = 1
+	pool, val := defaultTestPool(height)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
+	err := pool.CheckEvidence(types.EvidenceList{ev, ev})
+	assert.Error(t, err)
 }
 
-func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) StateStore {
+func TestRecoverPendingEvidence(t *testing.T) {
+	height := int64(10)
+	expiredEvidenceTime := time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC)
+	val := types.NewMockPV()
+	valAddress := val.PrivKey.PubKey().Address()
+	evidenceDB := dbm.NewMemDB()
+	stateStore := initializeValidatorState(val, height)
+	blockStore := initializeBlockStore(dbm.NewMemDB(), stateStore.LoadState(), valAddress)
+	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
+	require.NoError(t, err)
+	pool.SetLogger(log.TestingLogger())
+	goodEvidence := types.NewMockDuplicateVoteEvidenceWithValidator(height,
+		defaultEvidenceTime, val, evidenceChainID)
+	expiredEvidence := types.NewMockDuplicateVoteEvidenceWithValidator(int64(1),
+		expiredEvidenceTime, val, evidenceChainID)
+	err = pool.AddEvidence(goodEvidence)
+	require.NoError(t, err)
+	err = pool.AddEvidence(expiredEvidence)
+	require.NoError(t, err)
+	newStateStore := &mocks.StateStore{}
+	newStateStore.On("LoadState").Return(sm.State{
+		LastBlockTime:   defaultEvidenceTime.Add(49 * time.Hour),
+		LastBlockHeight: height + 12,
+		ConsensusParams: tmproto.ConsensusParams{
+			Block: tmproto.BlockParams{
+				MaxBytes: 22020096,
+				MaxGas:   -1,
+			},
+			Evidence: tmproto.EvidenceParams{
+				MaxAgeNumBlocks: 20,
+				MaxAgeDuration:  1 * time.Hour,
+				MaxNum:          50,
+			},
+		},
+	})
+	newPool, err := evidence.NewPool(evidenceDB, newStateStore, blockStore)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(newPool.PendingEvidence(10)))
+	next := newPool.EvidenceFront()
+	assert.Equal(t, goodEvidence, next.Value.(types.Evidence))
+
+}
+
+func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) evidence.StateStore {
 	stateDB := dbm.NewMemDB()
 	state := sm.State{
 		ChainID:                     evidenceChainID,
@@ -250,7 +254,7 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) S
 			},
 			Evidence: tmproto.EvidenceParams{
 				MaxAgeNumBlocks: 20,
-				MaxAgeDuration:  48 * time.Hour,
+				MaxAgeDuration:  1 * time.Hour,
 				MaxNum:          50,
 			},
 		},
@@ -262,10 +266,10 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) S
 		sm.SaveState(stateDB, state)
 	}
 
-	return &stateStore{db: stateDB}
+	return evidence.NewEvidenceStateStore(stateDB)
 }
 
-func initializeValidatorState(privVal types.PrivValidator, height int64) StateStore {
+func initializeValidatorState(privVal types.PrivValidator, height int64) evidence.StateStore {
 
 	pubKey, _ := privVal.GetPubKey()
 	validator := &types.Validator{Address: pubKey.Address(), VotingPower: 0, PubKey: pubKey}
@@ -309,15 +313,26 @@ func makeCommit(height int64, valAddr []byte) *types.Commit {
 	return types.NewCommit(height, 0, types.BlockID{}, commitSigs)
 }
 
-func defaultTestPool(height int64) (*Pool, types.MockPV) {
+func defaultTestPool(height int64) (*evidence.Pool, types.MockPV) {
 	val := types.NewMockPV()
 	valAddress := val.PrivKey.PubKey().Address()
 	evidenceDB := dbm.NewMemDB()
 	stateStore := initializeValidatorState(val, height)
 	blockStore := initializeBlockStore(dbm.NewMemDB(), stateStore.LoadState(), valAddress)
-	pool, err := NewPool(evidenceDB, stateStore, blockStore)
+	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	if err != nil {
 		panic("test evidence pool could not be created")
 	}
+	pool.SetLogger(log.TestingLogger())
 	return pool, val
+}
+
+func createState(height int64, valSet *types.ValidatorSet) sm.State {
+	return sm.State{
+		ChainID:         evidenceChainID,
+		LastBlockHeight: height,
+		LastBlockTime:   defaultEvidenceTime,
+		Validators:      valSet,
+		ConsensusParams: *types.DefaultConsensusParams(),
+	}
 }
