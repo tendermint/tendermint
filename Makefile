@@ -6,7 +6,7 @@ LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse 
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://github.com/tendermint/tendermint.git
 DOCKER_BUF := docker run -v $(shell pwd):/workspace --workdir /workspace bufbuild/buf
-CGO_ENABLED ?= 1
+CGO_ENABLED ?= 0
 
 # handle nostrip
 ifeq (,$(findstring nostrip,$(TENDERMINT_BUILD_OPTIONS)))
