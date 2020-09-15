@@ -12,7 +12,7 @@ import (
 // - it is from a key who was a validator at the given height
 // - it is internally consistent
 // - it was properly signed by the alleged equivocator
-func VerifyEvidence(evidence types.Evidence, state sm.State, stateDB StateStore, blockStore BlockStore) error {
+func VerifyEvidence(evidence types.Evidence, state sm.State, stateDB sm.Store, blockStore BlockStore) error {
 	var (
 		height         = state.LastBlockHeight
 		evidenceParams = state.ConsensusParams.Evidence

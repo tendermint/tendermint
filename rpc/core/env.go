@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	dbm "github.com/tendermint/tm-db"
-
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
@@ -73,7 +71,7 @@ type Environment struct {
 	ProxyAppMempool proxy.AppConnMempool
 
 	// interfaces defined in types and above
-	StateDB        dbm.DB
+	StateStore     sm.Store
 	BlockStore     sm.BlockStore
 	EvidencePool   sm.EvidencePool
 	ConsensusState Consensus

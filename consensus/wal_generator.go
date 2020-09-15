@@ -48,12 +48,16 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	}
 	blockStoreDB := db.NewMemDB()
 	stateDB := blockStoreDB
+	stateStore := sm.NewStore(stateDB)
 	state, err := sm.MakeGenesisState(genDoc)
 	if err != nil {
 		return fmt.Errorf("failed to make genesis state: %w", err)
 	}
 	state.Version.Consensus.App = kvstore.ProtocolVersion
-	sm.SaveState(stateDB, state)
+	if err = stateStore.Save(state); err != nil {
+		t.Error(err)
+	}
+
 	blockStore := store.NewBlockStore(blockStoreDB)
 
 	proxyApp := proxy.NewAppConns(proxy.NewLocalClientCreator(app))
@@ -79,7 +83,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	})
 	mempool := emptyMempool{}
 	evpool := emptyEvidencePool{}
-	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 	consensusState := NewState(config.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
 	consensusState.SetLogger(logger)
 	consensusState.SetEventBus(eventBus)
