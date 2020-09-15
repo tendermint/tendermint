@@ -59,9 +59,6 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 	}
 	trustedBlockID := makeBlockID(trustedHeader.Hash(), 1000, []byte("partshash"))
 	vals, privVals := types.RandValidatorSet(3, 8)
-	// trustedValidatorSet, err := types.ValidatorSetFromExistingValidators(append(vals.Validators, newVal))
-	// require.NoError(t, err)
-	// trustedPrivVals := append(privVals, newPrivVal)
 	trustedVoteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), vals)
 	trustedCommit, err := types.MakeCommit(trustedBlockID, 10, 1, trustedVoteSet, privVals, defaultEvidenceTime)
 	require.NoError(t, err)
