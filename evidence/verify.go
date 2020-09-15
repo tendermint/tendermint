@@ -273,7 +273,7 @@ func isInvalidHeader(trusted, conflicting *types.Header) bool {
 type lightClientAttackType int
 
 const (
-	lunaticType lightClientAttackType = iota
+	lunaticType lightClientAttackType = iota + 1
 	equivocationType
 	amnesiaType
 )

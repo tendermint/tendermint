@@ -217,20 +217,8 @@ func (evpool *Pool) ABCIEvidence(height int64, evidence []types.Evidence) []abci
 	blockEvidenceMap := make(map[string]struct{})
 	abciEvidence := make([]abci.Evidence, 0)
 	for _, ev := range evidence {
-		// As the evidence is stored in the block store we only need to record the height that it was saved at.
-		key := keyCommitted(ev)
 
-		h := gogotypes.Int64Value{Value: height}
-		evBytes, err := proto.Marshal(&h)
-		if err != nil {
-			panic(err)
-		}
-
-		if err := evpool.evidenceStore.Set(key, evBytes); err != nil {
-			evpool.logger.Error("Unable to add committed evidence", "err", err)
-		}
-
-		// if pending, remove from that bucket, remember not all evidence has been seen before
+		// get entire evidence info from pending list
 		infoBytes, err := evpool.evidenceStore.Get(keyPending(ev))
 		if err != nil {
 			evpool.logger.Error("Unable to retrieve evidence to pass to ABCI. "+
@@ -273,8 +261,23 @@ func (evpool *Pool) ABCIEvidence(height int64, evidence []types.Evidence) []abci
 		evpool.logger.Info("Created ABCI evidence", "ev", abciEv)
 		abciEvidence = append(abciEvidence, abciEv...)
 
+		// we can now remove the evidence from the pending list and the clist that we use for gossiping
 		evpool.removePendingEvidence(ev)
 		blockEvidenceMap[evMapKey(ev)] = struct{}{}
+
+		// Add evidence to the committed list
+		// As the evidence is stored in the block store we only need to record the height that it was saved at.
+		key := keyCommitted(ev)
+
+		h := gogotypes.Int64Value{Value: height}
+		evBytes, err := proto.Marshal(&h)
+		if err != nil {
+			panic(err)
+		}
+
+		if err := evpool.evidenceStore.Set(key, evBytes); err != nil {
+			evpool.logger.Error("Unable to add committed evidence", "err", err)
+		}
 	}
 
 	// remove committed evidence from the clist

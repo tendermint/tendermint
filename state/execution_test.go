@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -16,6 +17,7 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -110,6 +112,55 @@ func TestBeginBlockValidators(t *testing.T) {
 			}
 		}
 	}
+}
+
+// TestBeginBlockByzantineValidators ensures we send byzantine validators list.
+func TestBeginBlockByzantineValidators(t *testing.T) {
+	app := &testApp{}
+	cc := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(cc)
+	err := proxyApp.Start()
+	require.Nil(t, err)
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+
+	state, stateDB, _ := makeState(1, 1)
+
+	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	abciEv := []abci.Evidence{
+		{
+			Type:             abci.EvidenceType_DUPLICATE_VOTE,
+			Height:           3,
+			Time:             defaultEvidenceTime,
+			Validator:        types.TM2PB.Validator(state.Validators.Validators[0]),
+			TotalVotingPower: 33,
+		},
+		{
+			Type:             abci.EvidenceType_LIGHT_CLIENT_ATTACK,
+			Height:           8,
+			Time:             defaultEvidenceTime,
+			Validator:        types.TM2PB.Validator(state.Validators.Validators[0]),
+			TotalVotingPower: 12,
+		},
+	}
+
+	evpool := &mocks.EvidencePool{}
+	evpool.On("ABCIEvidence", mock.AnythingOfType("int64"), mock.AnythingOfType("[]types.Evidence")).Return(abciEv)
+	evpool.On("Update", mock.AnythingOfType("state.State")).Return()
+	evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
+
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
+		mmock.Mempool{}, evpool)
+
+	block := makeBlock(state, 1)
+	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
+
+	state, retainHeight, err := blockExec.ApplyBlock(state, blockID, block)
+	require.Nil(t, err)
+	assert.EqualValues(t, retainHeight, 1)
+
+	// TODO check state and mempool
+	assert.Equal(t, abciEv, app.ByzantineValidators)
 }
 
 func TestValidateValidatorUpdates(t *testing.T) {
