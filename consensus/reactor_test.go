@@ -168,9 +168,11 @@ func TestReactorWithEvidence(t *testing.T) {
 		evpool.On("PendingEvidence", mock.AnythingOfType("uint32")).Return([]types.Evidence{
 			types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], config.ChainID()),
 		})
-		evpool.On("Update", mock.AnythingOfType("*types.Block"), mock.AnythingOfType("state.State")).Return()
+		evpool.On("Update", mock.AnythingOfType("state.State")).Return()
+		evpool.On("ABCIEvidence", mock.AnythingOfType("int64"), mock.AnythingOfType("[]types.Evidence")).Return(
+			[]abci.Evidence{})
 
-		evpool2 := emptyEvidencePool{}
+		evpool2 := sm.EmptyEvidencePool{}
 
 		// Make State
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
@@ -635,7 +637,7 @@ func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*State) {
 
 	// we're running many nodes in-process, possibly in in a virtual machine,
 	// and spewing debug messages - making a block could take a while,
-	timeout := time.Second * 300
+	timeout := time.Second * 120
 
 	select {
 	case <-done:

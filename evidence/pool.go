@@ -11,6 +11,7 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 	dbm "github.com/tendermint/tm-db"
 
+	abci "github.com/tendermint/tendermint/abci/types"
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	evproto "github.com/tendermint/tendermint/proto/tendermint/evidence"
@@ -64,6 +65,7 @@ func NewPool(evidenceDB dbm.DB, stateDB StateStore, blockStore BlockStore) (*Poo
 	}
 
 	// if pending evidence already in db, in event of prior failure, then load it back to the evidenceList
+	pool.removeExpiredPendingEvidence()
 	evList := pool.allPendingEvidence()
 	for _, ev := range evList {
 		pool.evidenceList.PushBack(ev)
@@ -81,22 +83,20 @@ func (evpool *Pool) PendingEvidence(maxNum uint32) []types.Evidence {
 	return evidence
 }
 
-// Update uses the latest block & state to update any evidence that has been committed, to prune all expired evidence
-func (evpool *Pool) Update(block *types.Block, state sm.State) {
+// Update pulls the latest state to be used for expiration and evidence params and then prunes all expired evidence
+func (evpool *Pool) Update(state sm.State) {
 	// sanity check
-	if state.LastBlockHeight != block.Height {
-		panic(fmt.Sprintf("Failed EvidencePool.Update sanity check: got state.Height=%d with block.Height=%d",
+	if state.LastBlockHeight <= evpool.state.LastBlockHeight {
+		panic(fmt.Sprintf(
+			"Failed EvidencePool.Update new state height is less than or equal to previous state height: %d <= %d",
 			state.LastBlockHeight,
-			block.Height,
+			evpool.state.LastBlockHeight,
 		))
 	}
 	evpool.logger.Info("Updating evidence pool", "height", state.LastBlockHeight, "time", state.LastBlockTime)
 
 	// update the state
 	evpool.updateState(state)
-
-	// remove evidence from pending and mark committed
-	evpool.markEvidenceAsCommitted(block.Height, block.Evidence.Evidence)
 
 	// prune pending evidence when it has expired. This also updates when the next evidence will expire
 	if evpool.evidenceSize > 0 && state.LastBlockHeight > evpool.pruningHeight &&
@@ -191,8 +191,10 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 			}
 
 			if err := evpool.addPendingEvidence(evInfo); err != nil {
-				evpool.logger.Error("Can't add evidence to pending list", "err", err)
+				evpool.logger.Error("Can't add evidence to pending list", "err", err, "evInfo", evInfo)
 			}
+
+			evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
 		}
 
 		// check for duplicate evidence. We cache hashes so we don't have to work them out again.
@@ -205,6 +207,85 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 	}
 
 	return nil
+}
+
+// ABCIEvidence processes all the evidence in the block, marking it as committed and removing it
+// from the pending database. It then forms the individual abci evidence that will be passed back to
+// the application.
+func (evpool *Pool) ABCIEvidence(height int64, evidence []types.Evidence) []abci.Evidence {
+	// make a map of committed evidence to remove from the clist
+	blockEvidenceMap := make(map[string]struct{})
+	abciEvidence := make([]abci.Evidence, 0)
+	for _, ev := range evidence {
+
+		// get entire evidence info from pending list
+		infoBytes, err := evpool.evidenceStore.Get(keyPending(ev))
+		if err != nil {
+			evpool.logger.Error("Unable to retrieve evidence to pass to ABCI. "+
+				"Evidence pool should have seen this evidence before",
+				"evidence", ev, "err", err)
+			continue
+		}
+		var infoProto evproto.Info
+		err = infoProto.Unmarshal(infoBytes)
+		if err != nil {
+			evpool.logger.Error("Decoding evidence info failed", "err", err, "height", ev.Height(), "hash", ev.Hash())
+			continue
+		}
+		evInfo, err := InfoFromProto(&infoProto)
+		if err != nil {
+			evpool.logger.Error("Converting evidence info from proto failed", "err", err, "height", ev.Height(),
+				"hash", ev.Hash())
+			continue
+		}
+		abciEv := make([]abci.Evidence, len(evInfo.Validators))
+		var evType abci.EvidenceType
+		switch ev.(type) {
+		case *types.DuplicateVoteEvidence:
+			evType = abci.EvidenceType_DUPLICATE_VOTE
+		case *types.LightClientAttackEvidence:
+			evType = abci.EvidenceType_LIGHT_CLIENT_ATTACK
+		default:
+			evpool.logger.Error("Unknown evidence type", "evidence", ev)
+			continue
+		}
+		for idx, val := range evInfo.Validators {
+			abciEv[idx] = abci.Evidence{
+				Type:             evType,
+				Validator:        types.TM2PB.Validator(val),
+				Height:           ev.Height(),
+				Time:             evInfo.Time,
+				TotalVotingPower: evInfo.TotalVotingPower,
+			}
+		}
+		evpool.logger.Info("Created ABCI evidence", "ev", abciEv)
+		abciEvidence = append(abciEvidence, abciEv...)
+
+		// we can now remove the evidence from the pending list and the clist that we use for gossiping
+		evpool.removePendingEvidence(ev)
+		blockEvidenceMap[evMapKey(ev)] = struct{}{}
+
+		// Add evidence to the committed list
+		// As the evidence is stored in the block store we only need to record the height that it was saved at.
+		key := keyCommitted(ev)
+
+		h := gogotypes.Int64Value{Value: height}
+		evBytes, err := proto.Marshal(&h)
+		if err != nil {
+			panic(err)
+		}
+
+		if err := evpool.evidenceStore.Set(key, evBytes); err != nil {
+			evpool.logger.Error("Unable to add committed evidence", "err", err)
+		}
+	}
+
+	// remove committed evidence from the clist
+	if len(blockEvidenceMap) != 0 {
+		evpool.removeEvidenceFromList(blockEvidenceMap)
+	}
+
+	return abciEvidence
 }
 
 // EvidenceFront goes to the first evidence in the clist
@@ -306,45 +387,15 @@ func (evpool *Pool) allPendingEvidence() []types.Evidence {
 	return evidence
 }
 
-// markEvidenceAsCommitted marks all the evidence as committed and removes it
-// from the queue.
-func (evpool *Pool) markEvidenceAsCommitted(height int64, evidence []types.Evidence) {
-	// make a map of committed evidence to remove from the clist
-	blockEvidenceMap := make(map[string]struct{})
-	for _, ev := range evidence {
-		// As the evidence is stored in the block store we only need to record the height that it was saved at.
-		key := keyCommitted(ev)
-
-		h := gogotypes.Int64Value{Value: height}
-		evBytes, err := proto.Marshal(&h)
-		if err != nil {
-			panic(err)
-		}
-
-		if err := evpool.evidenceStore.Set(key, evBytes); err != nil {
-			evpool.logger.Error("Unable to add committed evidence", "err", err)
-			// if we can't move evidence to committed then don't remove the evidence from pending
-			continue
-		}
-		// if pending, remove from that bucket, remember not all evidence has been seen before
-		if evpool.isPending(ev) {
-			evpool.removePendingEvidence(ev)
-			blockEvidenceMap[evMapKey(ev)] = struct{}{}
-		}
-	}
-
-	// remove committed evidence from the clist
-	if len(blockEvidenceMap) != 0 {
-		evpool.removeEvidenceFromList(blockEvidenceMap)
-	}
-}
-
 // fastCheck leverages the fact that the evidence pool may have already verified the evidence to see if it can
 // quickly conclude that the evidence is already valid.
 func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 	key := keyPending(ev)
 	if lcae, ok := ev.(*types.LightClientAttackEvidence); ok {
 		evBytes, err := evpool.evidenceStore.Get(key)
+		if evBytes == nil { // the evidence is not in the nodes pending list
+			return false
+		}
 		if err != nil {
 			evpool.logger.Error("Failed to get evidence during fastcheck", "err", err, "ev", lcae)
 			return false

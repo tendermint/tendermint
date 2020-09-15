@@ -78,9 +78,13 @@ func (evpool *Pool) verify(evidence types.Evidence) (*Info, error) {
 		if err != nil {
 			return nil, err
 		}
-		trustedHeader, err := getSignedHeader(evpool.blockStore, ev.ConflictingBlock.Height)
-		if err != nil {
-			return nil, err
+		trustedHeader := commonHeader
+		// in the case of lunatic the trusted header is different to the common header
+		if evidence.Height() != ev.ConflictingBlock.Height {
+			trustedHeader, err = getSignedHeader(evpool.blockStore, ev.ConflictingBlock.Height)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		err = VerifyLightClientAttack(ev, commonHeader, trustedHeader, commonVals, state.LastBlockTime,
@@ -90,13 +94,18 @@ func (evpool *Pool) verify(evidence types.Evidence) (*Info, error) {
 		}
 		// find out what type of attack this was and thus extract the malicious validators. Note in the case of an
 		// Amnesia attack we don't have any malicious validators.
-		validators := getMaliciousValidators(evidence.(*types.LightClientAttackEvidence), commonVals, trustedHeader)
+		validators, attackType := getMaliciousValidators(evidence.(*types.LightClientAttackEvidence), commonVals,
+			trustedHeader)
+		totalVotingPower := ev.ConflictingBlock.ValidatorSet.TotalVotingPower()
+		if attackType == lunaticType {
+			totalVotingPower = commonVals.TotalVotingPower()
+		}
 
 		return &Info{
 			Evidence:         evidence,
 			Time:             evTime,
 			Validators:       validators,
-			TotalVotingPower: commonVals.TotalVotingPower(),
+			TotalVotingPower: totalVotingPower,
 		}, nil
 	default:
 		return nil, fmt.Errorf("unrecognized evidence type: %T", evidence)
@@ -110,11 +119,14 @@ func (evpool *Pool) verify(evidence types.Evidence) (*Info, error) {
 //     - the nodes trusted header at the same height as the conflicting header has a different hash
 func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, trustedHeader *types.SignedHeader,
 	commonVals *types.ValidatorSet, now time.Time, trustPeriod time.Duration) error {
-	// attempt a single verification jump between the common header and the conflicting one
-	err := light.Verify(commonHeader, commonVals, e.ConflictingBlock.SignedHeader, e.ConflictingBlock.ValidatorSet,
-		trustPeriod, now, 0*time.Second, light.DefaultTrustLevel)
-	if err != nil {
-		return fmt.Errorf("skipping verification from common to conflicting header failed: %w", err)
+	// In the case of lunatic attack we need to perform a single verification jump between the
+	// common header and the conflicting one
+	if commonHeader.Height != trustedHeader.Height {
+		err := light.Verify(commonHeader, commonVals, e.ConflictingBlock.SignedHeader, e.ConflictingBlock.ValidatorSet,
+			trustPeriod, now, 0*time.Second, light.DefaultTrustLevel)
+		if err != nil {
+			return fmt.Errorf("skipping verification from common to conflicting header failed: %w", err)
+		}
 	}
 
 	if bytes.Equal(trustedHeader.Hash(), e.ConflictingBlock.Hash()) {
@@ -200,7 +212,7 @@ func getSignedHeader(blockStore BlockStore, height int64) (*types.SignedHeader, 
 // getMaliciousValidators finds out what style of attack LightClientAttackEvidence was and then works out who
 // the malicious validators were and returns them.
 func getMaliciousValidators(evidence *types.LightClientAttackEvidence, commonVals *types.ValidatorSet,
-	trusted *types.SignedHeader) []*types.Validator {
+	trusted *types.SignedHeader) ([]*types.Validator, lightClientAttackType) {
 	var validators []*types.Validator
 	// First check if the header is invalid. This means that it is a lunatic attack and therefore we take the
 	// validators who are in the commonVals and voted for the lunatic header
@@ -217,6 +229,7 @@ func getMaliciousValidators(evidence *types.LightClientAttackEvidence, commonVal
 			}
 			validators = append(validators, val)
 		}
+		return validators, lunaticType
 		// Next, check to see if it is an equivocation attack and both commits are in the same round. If this is the
 		// case then we take the validators from the conflicting light block validator set that voted in both headers.
 	} else if trusted.Commit.Round == evidence.ConflictingBlock.Commit.Round {
@@ -233,15 +246,16 @@ func getMaliciousValidators(evidence *types.LightClientAttackEvidence, commonVal
 				continue
 			}
 
-			_, val := evidence.ConflictingBlock.ValidatorSet.GetByAddress(sigB.ValidatorAddress)
+			_, val := evidence.ConflictingBlock.ValidatorSet.GetByAddress(sigA.ValidatorAddress)
 			validators = append(validators, val)
 		}
+		return validators, equivocationType
 
 	}
 	// if the rounds are different then this is an amnesia attack. Unfortunately, given the nature of the attack,
 	// we aren't able yet to deduce which are malicious validators and which are not hence we return an
 	// empty validator set.
-	return validators
+	return validators, amnesiaType
 }
 
 // isInvalidHeader takes a trusted header and matches it againt a conflicting header
@@ -249,9 +263,17 @@ func getMaliciousValidators(evidence *types.LightClientAttackEvidence, commonVal
 // or not. If it is then all the deterministic fields of the header should be the same.
 // If not, it is an invalid header and constitutes a lunatic attack.
 func isInvalidHeader(trusted, conflicting *types.Header) bool {
-	return bytes.Equal(trusted.ValidatorsHash, conflicting.ValidatorsHash) &&
-		bytes.Equal(trusted.NextValidatorsHash, conflicting.NextValidatorsHash) &&
-		bytes.Equal(trusted.ConsensusHash, conflicting.ConsensusHash) &&
-		bytes.Equal(trusted.AppHash, conflicting.AppHash) &&
-		bytes.Equal(trusted.LastResultsHash, conflicting.LastResultsHash)
+	return !bytes.Equal(trusted.ValidatorsHash, conflicting.ValidatorsHash) ||
+		!bytes.Equal(trusted.NextValidatorsHash, conflicting.NextValidatorsHash) ||
+		!bytes.Equal(trusted.ConsensusHash, conflicting.ConsensusHash) ||
+		!bytes.Equal(trusted.AppHash, conflicting.AppHash) ||
+		!bytes.Equal(trusted.LastResultsHash, conflicting.LastResultsHash)
 }
+
+type lightClientAttackType int
+
+const (
+	lunaticType lightClientAttackType = iota + 1
+	equivocationType
+	amnesiaType
+)

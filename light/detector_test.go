@@ -133,12 +133,14 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 	}
 
 	// Check evidence was sent to both full nodes.
+	// Common height should be set to the height of the divergent header in the instance
+	// of an equivocation attack and the validator sets are the same as what the witness has
 	evAgainstPrimary := &types.LightClientAttackEvidence{
 		ConflictingBlock: &types.LightBlock{
 			SignedHeader: primaryHeaders[divergenceHeight],
 			ValidatorSet: primaryValidators[divergenceHeight],
 		},
-		CommonHeight: 4,
+		CommonHeight: divergenceHeight,
 	}
 	assert.True(t, witness.HasEvidence(evAgainstPrimary))
 
@@ -147,7 +149,7 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 			SignedHeader: witnessHeaders[divergenceHeight],
 			ValidatorSet: witnessValidators[divergenceHeight],
 		},
-		CommonHeight: 4,
+		CommonHeight: divergenceHeight,
 	}
 	assert.True(t, primary.HasEvidence(evAgainstWitness))
 }
