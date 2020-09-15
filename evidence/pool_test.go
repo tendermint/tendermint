@@ -166,8 +166,8 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	state.LastBlockTime = defaultEvidenceTime.Add(22 * time.Minute)
 	err = pool.CheckEvidence(types.EvidenceList{ev})
 	require.NoError(t, err)
-
-	byzVals := pool.Update(block, state)
+	
+	byzVals := pool.ABCIEvidence(block.Height, block.Evidence.Evidence)
 	expectedByzVals := []abci.Evidence{
 		{
 			Type: abci.EvidenceType_DUPLICATE_VOTE,
@@ -178,6 +178,9 @@ func TestEvidencePoolUpdate(t *testing.T) {
 		},
 	}
 	assert.Equal(t, expectedByzVals, byzVals)
+	assert.Equal(t, 1, len(pool.PendingEvidence(10)))
+	
+	pool.Update(state)
 
 	// a) Update marks evidence as committed so pending evidence should be empty
 	assert.Empty(t, pool.PendingEvidence(10))
@@ -185,6 +188,8 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	// b) If we try to check this evidence again it should fail because it has already been committed
 	err = pool.CheckEvidence(types.EvidenceList{ev})
 	assert.Error(t, err)
+	
+	assert.Empty(t, pool.ABCIEvidence(height, []types.Evidence{}))
 }
 
 func TestVerifyEvidencePendingEvidencePasses(t *testing.T) {

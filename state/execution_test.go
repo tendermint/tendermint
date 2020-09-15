@@ -41,7 +41,7 @@ func TestApplyBlock(t *testing.T) {
 	state, stateDB, _ := makeState(1, 1)
 
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
-		mmock.Mempool{}, sm.MockEvidencePool{})
+		mmock.Mempool{}, sm.EmptyEvidencePool{})
 
 	block := makeBlock(state, 1)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
@@ -355,7 +355,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		mmock.Mempool{},
-		sm.MockEvidencePool{},
+		sm.EmptyEvidencePool{},
 	)
 
 	eventBus := types.NewEventBus()
@@ -424,7 +424,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		mmock.Mempool{},
-		sm.MockEvidencePool{},
+		sm.EmptyEvidencePool{},
 	)
 
 	block := makeBlock(state, 1)

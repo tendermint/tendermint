@@ -110,7 +110,7 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 	lastCommit := makeCommit(state.LastBlockHeight, pubKey.Address())
 	block := types.MakeBlock(state.LastBlockHeight, []types.Tx{}, lastCommit, []types.Evidence{ev})
 	
-	abciEv := pool.Update(block, state)
+	abciEv := pool.ABCIEvidence(block.Height, block.Evidence.Evidence)
 	expectedAbciEv := make([]abci.Evidence, len(commonVals.Validators))
 	
 	// we expect evidence to be made for all validators in the common validator set
@@ -202,7 +202,7 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 	lastCommit := makeCommit(state.LastBlockHeight, pubKey.Address())
 	block := types.MakeBlock(state.LastBlockHeight, []types.Tx{}, lastCommit, []types.Evidence{ev})
 	
-	abciEv := pool.Update(block, state)
+	abciEv := pool.ABCIEvidence(block.Height, block.Evidence.Evidence)
 	expectedAbciEv := make([]abci.Evidence, len(conflictingVals.Validators))
 	
 	// we epect evidence to be made for all validators
@@ -297,11 +297,11 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 	lastCommit := makeCommit(state.LastBlockHeight, pubKey.Address())
 	block := types.MakeBlock(state.LastBlockHeight, []types.Tx{}, lastCommit, []types.Evidence{ev})
 	
-	abciEv := pool.Update(block, state)
+	abciEv := pool.ABCIEvidence(block.Height, block.Evidence.Evidence)
 	// as we are unable to find out which subset of validators in the commit were malicious, no information
 	// is sent to the application. We expect the array to be empty
 	emptyEvidenceBlock := types.MakeBlock(state.LastBlockHeight, []types.Tx{}, lastCommit, []types.Evidence{})
-	expectedAbciEv := pool.Update(emptyEvidenceBlock, state)
+	expectedAbciEv := pool.ABCIEvidence(emptyEvidenceBlock.Height, emptyEvidenceBlock.Evidence.Evidence)
 	
 	assert.Equal(t, expectedAbciEv, abciEv)
 }

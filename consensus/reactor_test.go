@@ -170,7 +170,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		})
 		evpool.On("Update", mock.AnythingOfType("*types.Block"), mock.AnythingOfType("state.State")).Return([]abci.Evidence{})
 
-		evpool2 := emptyEvidencePool{}
+		evpool2 := sm.EmptyEvidencePool{}
 
 		// Make State
 		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)

@@ -134,7 +134,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update evpool with the block and state and get any byzantine validators for that block
-	byzVals := blockExec.evpool.Update(block, state)
+	byzVals := blockExec.evpool.ABCIEvidence(block.Height, block.Evidence.Evidence)
 
 	startTime := time.Now().UnixNano()
 	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block,
@@ -177,6 +177,9 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
+	
+	// Update evpool with the latest state.
+	blockExec.evpool.Update(state)
 
 	fail.Fail() // XXX
 
