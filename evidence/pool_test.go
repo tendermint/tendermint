@@ -199,15 +199,16 @@ func TestRecoverPendingEvidence(t *testing.T) {
 		stateStore          = initializeValidatorState(val, height)
 		evidenceDB          = dbm.NewMemDB()
 		blockStoreDB        = dbm.NewMemDB()
-		state               = stateStore.LoadState()
-		blockStore          = initializeBlockStore(blockStoreDB, state, valAddr)
 		expiredEvidenceTime = time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC)
 		goodEvidence        = types.NewMockDuplicateVoteEvidenceWithValidator(height,
 			defaultEvidenceTime, val, evidenceChainID)
 		expiredEvidence = types.NewMockDuplicateVoteEvidenceWithValidator(int64(1),
 			expiredEvidenceTime, val, evidenceChainID)
 	)
+	state, err := stateStore.Load()
+	require.NoError(t, err)
 
+	blockStore := initializeBlockStore(blockStoreDB, state, valAddr)
 	// load good evidence
 	goodKey := keyPending(goodEvidence)
 	evi, err := types.EvidenceToProto(goodEvidence)
@@ -232,8 +233,9 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	assert.False(t, pool.Has(expiredEvidence))
 }
 
-func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) StateStore {
+func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) sm.Store {
 	stateDB := dbm.NewMemDB()
+	stateStore := sm.NewStore(stateDB)
 	state := sm.State{
 		ChainID:                     evidenceChainID,
 		InitialHeight:               1,
@@ -259,13 +261,15 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) S
 	// save all states up to height
 	for i := int64(0); i <= height; i++ {
 		state.LastBlockHeight = i
-		sm.SaveState(stateDB, state)
+		if err := stateStore.Save(state); err != nil {
+			panic(err)
+		}
 	}
 
-	return &stateStore{db: stateDB}
+	return stateStore
 }
 
-func initializeValidatorState(privVal types.PrivValidator, height int64) StateStore {
+func initializeValidatorState(privVal types.PrivValidator, height int64) sm.Store {
 
 	pubKey, _ := privVal.GetPubKey()
 	validator := &types.Validator{Address: pubKey.Address(), VotingPower: 0, PubKey: pubKey}
@@ -314,7 +318,8 @@ func defaultTestPool(height int64) (*Pool, types.MockPV) {
 	valAddress := val.PrivKey.PubKey().Address()
 	evidenceDB := dbm.NewMemDB()
 	stateStore := initializeValidatorState(val, height)
-	blockStore := initializeBlockStore(dbm.NewMemDB(), stateStore.LoadState(), valAddress)
+	state, _ := stateStore.Load()
+	blockStore := initializeBlockStore(dbm.NewMemDB(), state, valAddress)
 	pool, err := NewPool(evidenceDB, stateStore, blockStore)
 	if err != nil {
 		panic("test evidence pool could not be created")

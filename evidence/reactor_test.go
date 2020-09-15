@@ -22,6 +22,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	ep "github.com/tendermint/tendermint/proto/tendermint/evidence"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -39,7 +40,7 @@ func evidenceLogger() log.Logger {
 }
 
 // connect N evidence reactors through N switches
-func makeAndConnectReactors(config *cfg.Config, stateStores []StateStore) []*Reactor {
+func makeAndConnectReactors(config *cfg.Config, stateStores []sm.Store) []*Reactor {
 	N := len(stateStores)
 
 	reactors := make([]*Reactor, N)
@@ -143,7 +144,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	N := 7
 
 	// create statedb for everyone
-	stateDBs := make([]StateStore, N)
+	stateDBs := make([]sm.Store, N)
 	val := types.NewMockPV()
 	// we need validators saved for heights at least as high as we have evidence for
 	height := int64(numEvidence) + 10
@@ -188,7 +189,7 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	stateDB2 := initializeValidatorState(val, height2)
 
 	// make reactors from statedb
-	reactors := makeAndConnectReactors(config, []StateStore{stateDB1, stateDB2})
+	reactors := makeAndConnectReactors(config, []sm.Store{stateDB1, stateDB2})
 
 	// set the peer height on each reactor
 	for _, r := range reactors {
