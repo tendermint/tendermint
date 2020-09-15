@@ -87,7 +87,8 @@ func (evpool *Pool) PendingEvidence(maxNum uint32) []types.Evidence {
 func (evpool *Pool) Update(state sm.State) {
 	// sanity check
 	if state.LastBlockHeight <= evpool.state.LastBlockHeight {
-		panic(fmt.Sprintf("Failed EvidencePool.Update new state height is less than or equal to previous state height: %d <= %d",
+		panic(fmt.Sprintf(
+			"Failed EvidencePool.Update new state height is less than or equal to previous state height: %d <= %d",
 			state.LastBlockHeight,
 			evpool.state.LastBlockHeight,
 		))
@@ -192,7 +193,7 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 			if err := evpool.addPendingEvidence(evInfo); err != nil {
 				evpool.logger.Error("Can't add evidence to pending list", "err", err, "evInfo", evInfo)
 			}
-			
+
 			evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
 		}
 
@@ -214,7 +215,7 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 func (evpool *Pool) ABCIEvidence(height int64, evidence []types.Evidence) []abci.Evidence {
 	// make a map of committed evidence to remove from the clist
 	blockEvidenceMap := make(map[string]struct{})
-	var abciEvidence []abci.Evidence
+	abciEvidence := make([]abci.Evidence, 0)
 	for _, ev := range evidence {
 		// As the evidence is stored in the block store we only need to record the height that it was saved at.
 		key := keyCommitted(ev)
@@ -228,12 +229,13 @@ func (evpool *Pool) ABCIEvidence(height int64, evidence []types.Evidence) []abci
 		if err := evpool.evidenceStore.Set(key, evBytes); err != nil {
 			evpool.logger.Error("Unable to add committed evidence", "err", err)
 		}
-		
+
 		// if pending, remove from that bucket, remember not all evidence has been seen before
-		infoBytes, err := evpool.evidenceStore.Get(keyPending(ev)) 
+		infoBytes, err := evpool.evidenceStore.Get(keyPending(ev))
 		if err != nil {
-			evpool.logger.Error("Unable to retrieve evidence to pass to ABCI. Evidence pool should have seen this evidence before", 
-			"evidence", ev, "err", err)
+			evpool.logger.Error("Unable to retrieve evidence to pass to ABCI. "+
+				"Evidence pool should have seen this evidence before",
+				"evidence", ev, "err", err)
 			continue
 		}
 		var infoProto evproto.Info
@@ -244,7 +246,8 @@ func (evpool *Pool) ABCIEvidence(height int64, evidence []types.Evidence) []abci
 		}
 		evInfo, err := InfoFromProto(&infoProto)
 		if err != nil {
-			evpool.logger.Error("Converting evidence info from proto failed", "err", err, "height", ev.Height(), "hash", ev.Hash())
+			evpool.logger.Error("Converting evidence info from proto failed", "err", err, "height", ev.Height(),
+				"hash", ev.Hash())
 			continue
 		}
 		abciEv := make([]abci.Evidence, len(evInfo.Validators))
@@ -260,16 +263,16 @@ func (evpool *Pool) ABCIEvidence(height int64, evidence []types.Evidence) []abci
 		}
 		for idx, val := range evInfo.Validators {
 			abciEv[idx] = abci.Evidence{
-				Type: evType,
-				Validator: types.TM2PB.Validator(val),
-				Height: ev.Height(),
-				Time: evInfo.Time,
+				Type:             evType,
+				Validator:        types.TM2PB.Validator(val),
+				Height:           ev.Height(),
+				Time:             evInfo.Time,
 				TotalVotingPower: evInfo.TotalVotingPower,
 			}
 		}
 		evpool.logger.Info("Created ABCI evidence", "ev", abciEv)
 		abciEvidence = append(abciEvidence, abciEv...)
-		
+
 		evpool.removePendingEvidence(ev)
 		blockEvidenceMap[evMapKey(ev)] = struct{}{}
 	}
@@ -278,7 +281,7 @@ func (evpool *Pool) ABCIEvidence(height int64, evidence []types.Evidence) []abci
 	if len(blockEvidenceMap) != 0 {
 		evpool.removeEvidenceFromList(blockEvidenceMap)
 	}
-	
+
 	return abciEvidence
 }
 
@@ -389,7 +392,7 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 		evBytes, err := evpool.evidenceStore.Get(key)
 		if evBytes == nil { // the evidence is not in the nodes pending list
 			return false
-		}        
+		}
 		if err != nil {
 			evpool.logger.Error("Failed to get evidence during fastcheck", "err", err, "ev", lcae)
 			return false

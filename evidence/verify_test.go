@@ -104,27 +104,27 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 
 	pendingEvs := pool.PendingEvidence(2)
 	assert.Equal(t, 1, len(pendingEvs))
-	
+
 	pubKey, err := newPrivVal.GetPubKey()
 	require.NoError(t, err)
 	lastCommit := makeCommit(state.LastBlockHeight, pubKey.Address())
 	block := types.MakeBlock(state.LastBlockHeight, []types.Tx{}, lastCommit, []types.Evidence{ev})
-	
+
 	abciEv := pool.ABCIEvidence(block.Height, block.Evidence.Evidence)
 	expectedAbciEv := make([]abci.Evidence, len(commonVals.Validators))
-	
+
 	// we expect evidence to be made for all validators in the common validator set
 	for idx, val := range commonVals.Validators {
 		ev := abci.Evidence{
-			Type: abci.EvidenceType_LIGHT_CLIENT_ATTACK,
-			Validator: types.TM2PB.Validator(val),
-			Height: commonHeader.Height,
-			Time: commonHeader.Time,
+			Type:             abci.EvidenceType_LIGHT_CLIENT_ATTACK,
+			Validator:        types.TM2PB.Validator(val),
+			Height:           commonHeader.Height,
+			Time:             commonHeader.Time,
 			TotalVotingPower: commonVals.TotalVotingPower(),
 		}
 		expectedAbciEv[idx] = ev
 	}
-	
+
 	assert.Equal(t, expectedAbciEv, abciEv)
 }
 
@@ -196,33 +196,32 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 
 	pendingEvs := pool.PendingEvidence(2)
 	assert.Equal(t, 1, len(pendingEvs))
-	
+
 	pubKey, err := conflictingPrivVals[0].GetPubKey()
 	require.NoError(t, err)
 	lastCommit := makeCommit(state.LastBlockHeight, pubKey.Address())
 	block := types.MakeBlock(state.LastBlockHeight, []types.Tx{}, lastCommit, []types.Evidence{ev})
-	
+
 	abciEv := pool.ABCIEvidence(block.Height, block.Evidence.Evidence)
 	expectedAbciEv := make([]abci.Evidence, len(conflictingVals.Validators))
-	
+
 	// we epect evidence to be made for all validators
 	for idx, val := range conflictingVals.Validators {
 		ev := abci.Evidence{
-			Type: abci.EvidenceType_LIGHT_CLIENT_ATTACK,
-			Validator: types.TM2PB.Validator(val),
-			Height: ev.ConflictingBlock.Height,
-			Time: ev.ConflictingBlock.Time,
+			Type:             abci.EvidenceType_LIGHT_CLIENT_ATTACK,
+			Validator:        types.TM2PB.Validator(val),
+			Height:           ev.ConflictingBlock.Height,
+			Time:             ev.ConflictingBlock.Time,
 			TotalVotingPower: ev.ConflictingBlock.ValidatorSet.TotalVotingPower(),
 		}
 		expectedAbciEv[idx] = ev
 	}
-	
+
 	assert.Equal(t, expectedAbciEv, abciEv)
 }
 
 func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 	conflictingVals, conflictingPrivVals := types.RandValidatorSet(5, 10)
-	
 
 	conflictingHeader := makeHeaderRandom(10)
 	conflictingHeader.ValidatorsHash = conflictingVals.Hash()
@@ -291,18 +290,18 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 
 	pendingEvs := pool.PendingEvidence(2)
 	assert.Equal(t, 1, len(pendingEvs))
-	
+
 	pubKey, err := conflictingPrivVals[0].GetPubKey()
 	require.NoError(t, err)
 	lastCommit := makeCommit(state.LastBlockHeight, pubKey.Address())
 	block := types.MakeBlock(state.LastBlockHeight, []types.Tx{}, lastCommit, []types.Evidence{ev})
-	
+
 	abciEv := pool.ABCIEvidence(block.Height, block.Evidence.Evidence)
 	// as we are unable to find out which subset of validators in the commit were malicious, no information
 	// is sent to the application. We expect the array to be empty
 	emptyEvidenceBlock := types.MakeBlock(state.LastBlockHeight, []types.Tx{}, lastCommit, []types.Evidence{})
 	expectedAbciEv := pool.ABCIEvidence(emptyEvidenceBlock.Height, emptyEvidenceBlock.Evidence.Evidence)
-	
+
 	assert.Equal(t, expectedAbciEv, abciEv)
 }
 

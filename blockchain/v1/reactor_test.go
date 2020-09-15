@@ -115,7 +115,7 @@ func newBlockchainReactor(
 	fastSync := true
 	db := dbm.NewMemDB()
 	blockExec := sm.NewBlockExecutor(db, log.TestingLogger(), proxyApp.Consensus(),
-		mock.Mempool{}, sm.MockEvidencePool{})
+		mock.Mempool{}, sm.EmptyEvidencePool{})
 	sm.SaveState(db, state)
 
 	// let's add some blocks in

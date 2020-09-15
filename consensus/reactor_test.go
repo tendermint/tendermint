@@ -168,7 +168,9 @@ func TestReactorWithEvidence(t *testing.T) {
 		evpool.On("PendingEvidence", mock.AnythingOfType("uint32")).Return([]types.Evidence{
 			types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], config.ChainID()),
 		})
-		evpool.On("Update", mock.AnythingOfType("*types.Block"), mock.AnythingOfType("state.State")).Return([]abci.Evidence{})
+		evpool.On("Update", mock.AnythingOfType("state.State")).Return()
+		evpool.On("ABCIEvidence", mock.AnythingOfType("int64"), mock.AnythingOfType("[]types.Evidence")).Return(
+			[]abci.Evidence{})
 
 		evpool2 := sm.EmptyEvidencePool{}
 

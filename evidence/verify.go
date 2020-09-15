@@ -94,7 +94,8 @@ func (evpool *Pool) verify(evidence types.Evidence) (*Info, error) {
 		}
 		// find out what type of attack this was and thus extract the malicious validators. Note in the case of an
 		// Amnesia attack we don't have any malicious validators.
-		validators, attackType := getMaliciousValidators(evidence.(*types.LightClientAttackEvidence), commonVals, trustedHeader)
+		validators, attackType := getMaliciousValidators(evidence.(*types.LightClientAttackEvidence), commonVals,
+			trustedHeader)
 		totalVotingPower := ev.ConflictingBlock.ValidatorSet.TotalVotingPower()
 		if attackType == lunaticType {
 			totalVotingPower = commonVals.TotalVotingPower()
@@ -118,7 +119,7 @@ func (evpool *Pool) verify(evidence types.Evidence) (*Info, error) {
 //     - the nodes trusted header at the same height as the conflicting header has a different hash
 func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, trustedHeader *types.SignedHeader,
 	commonVals *types.ValidatorSet, now time.Time, trustPeriod time.Duration) error {
-	// In the case of lunatic attack we need to perform a single verification jump between the 
+	// In the case of lunatic attack we need to perform a single verification jump between the
 	// common header and the conflicting one
 	if commonHeader.Height != trustedHeader.Height {
 		err := light.Verify(commonHeader, commonVals, e.ConflictingBlock.SignedHeader, e.ConflictingBlock.ValidatorSet,
@@ -272,8 +273,7 @@ func isInvalidHeader(trusted, conflicting *types.Header) bool {
 type lightClientAttackType int
 
 const (
-	unknownType lightClientAttackType = iota
-	lunaticType
+	lunaticType lightClientAttackType = iota
 	equivocationType
 	amnesiaType
 )

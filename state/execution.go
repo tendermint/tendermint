@@ -177,7 +177,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
-	
+
 	// Update evpool with the latest state.
 	blockExec.evpool.Update(state)
 

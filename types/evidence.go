@@ -207,7 +207,7 @@ func (l *LightClientAttackEvidence) ValidateBasic() error {
 		return errors.New("negative or zero common height")
 	}
 
-	// check that common height isn't ahead of the height of the conflicting block. It 
+	// check that common height isn't ahead of the height of the conflicting block. It
 	// is possible that they are the same height if the light node witnesses either an
 	// amnesia or a equivocation attack.
 	if l.CommonHeight > l.ConflictingBlock.Height {

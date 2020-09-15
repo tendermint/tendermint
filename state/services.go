@@ -2,7 +2,7 @@ package state
 
 import (
 	"time"
-	
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -44,7 +44,7 @@ type BlockStore interface {
 type EvidencePool interface {
 	PendingEvidence(uint32) []types.Evidence
 	AddEvidence(types.Evidence) error
-	Update(State) 
+	Update(State)
 	CheckEvidence(types.EvidenceList) error
 	ABCIEvidence(int64, []types.Evidence) []abci.Evidence
 }
@@ -55,7 +55,11 @@ type EmptyEvidencePool struct{}
 
 func (EmptyEvidencePool) PendingEvidence(uint32) []types.Evidence       { return nil }
 func (EmptyEvidencePool) AddEvidence(types.Evidence) error              { return nil }
-func (EmptyEvidencePool) Update(State)                                  { }
+func (EmptyEvidencePool) Update(State)                                  {}
 func (EmptyEvidencePool) CheckEvidence(evList types.EvidenceList) error { return nil }
-func (EmptyEvidencePool) ABCIEvidence(int64, []types.Evidence) []abci.Evidence   { return []abci.Evidence{}}
-func (EmptyEvidencePool) AddEvidenceFromConsensus(types.Evidence, time.Time, *types.ValidatorSet) error { return nil }
+func (EmptyEvidencePool) ABCIEvidence(int64, []types.Evidence) []abci.Evidence {
+	return []abci.Evidence{}
+}
+func (EmptyEvidencePool) AddEvidenceFromConsensus(types.Evidence, time.Time, *types.ValidatorSet) error {
+	return nil
+}

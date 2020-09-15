@@ -80,7 +80,7 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 			if isInvalidHeader(witnessTrace[len(witnessTrace)-1].Header, primaryBlock.Header) {
 				commonHeight = witnessTrace[0].Height
 			}
-			
+
 			// We are suspecting that the primary is faulty, hence we hold the witness as the source of truth
 			// and generate evidence against the primary that we can send to the witness
 			ev := &types.LightClientAttackEvidence{
