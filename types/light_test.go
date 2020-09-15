@@ -8,7 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/proto/tendermint/version"
+	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
+	"github.com/tendermint/tendermint/version"
 )
 
 func TestLightBlockValidateBasic(t *testing.T) {
@@ -18,6 +19,7 @@ func TestLightBlockValidateBasic(t *testing.T) {
 	header.Height = commit.Height
 	header.LastBlockID = commit.BlockID
 	header.ValidatorsHash = vals.Hash()
+	header.Version.Block = version.BlockProtocol
 	vals2, _ := RandValidatorSet(3, 1)
 	vals3 := vals.Copy()
 	vals3.Proposer = &Validator{}
@@ -61,6 +63,7 @@ func TestLightBlockProtobuf(t *testing.T) {
 	vals, _ := RandValidatorSet(5, 1)
 	header.Height = commit.Height
 	header.LastBlockID = commit.BlockID
+	header.Version.Block = version.BlockProtocol
 	header.ValidatorsHash = vals.Hash()
 	vals3 := vals.Copy()
 	vals3.Proposer = &Validator{}
@@ -112,7 +115,7 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 	chainID := "𠜎"
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 	h := Header{
-		Version:            version.Consensus{Block: math.MaxInt64, App: math.MaxInt64},
+		Version:            tmversion.Consensus{Block: version.BlockProtocol, App: math.MaxInt64},
 		ChainID:            chainID,
 		Height:             commit.Height,
 		Time:               timestamp,

@@ -16,9 +16,12 @@ import (
 	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	sm "github.com/tendermint/tendermint/state"
+	smmocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/version"
 )
 
 func TestMain(m *testing.M) {
@@ -34,7 +37,7 @@ var defaultEvidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 func TestEvidencePoolBasic(t *testing.T) {
 	var (
 		height     = int64(1)
-		stateStore = &mocks.StateStore{}
+		stateStore = &smmocks.Store{}
 		evidenceDB = dbm.NewMemDB()
 		blockStore = &mocks.BlockStore{}
 	)
@@ -45,7 +48,7 @@ func TestEvidencePoolBasic(t *testing.T) {
 		&types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}},
 	)
 	stateStore.On("LoadValidators", mock.AnythingOfType("int64")).Return(valSet, nil)
-	stateStore.On("LoadState").Return(createState(height+1, valSet))
+	stateStore.On("Load").Return(createState(height+1, valSet), nil)
 
 	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
@@ -218,7 +221,9 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	valAddress := val.PrivKey.PubKey().Address()
 	evidenceDB := dbm.NewMemDB()
 	stateStore := initializeValidatorState(val, height)
-	blockStore := initializeBlockStore(dbm.NewMemDB(), stateStore.LoadState(), valAddress)
+	state, err := stateStore.Load()
+	require.NoError(t, err)
+	blockStore := initializeBlockStore(dbm.NewMemDB(), state, valAddress)
 	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
 	pool.SetLogger(log.TestingLogger())
@@ -230,8 +235,8 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	require.NoError(t, err)
 	err = pool.AddEvidence(expiredEvidence)
 	require.NoError(t, err)
-	newStateStore := &mocks.StateStore{}
-	newStateStore.On("LoadState").Return(sm.State{
+	newStateStore := &smmocks.Store{}
+	newStateStore.On("Load").Return(sm.State{
 		LastBlockTime:   defaultEvidenceTime.Add(49 * time.Hour),
 		LastBlockHeight: height + 12,
 		ConsensusParams: tmproto.ConsensusParams{
@@ -245,7 +250,7 @@ func TestRecoverPendingEvidence(t *testing.T) {
 				MaxNum:          50,
 			},
 		},
-	})
+	}, nil)
 	newPool, err := evidence.NewPool(evidenceDB, newStateStore, blockStore)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(newPool.PendingEvidence(10)))
@@ -254,8 +259,9 @@ func TestRecoverPendingEvidence(t *testing.T) {
 
 }
 
-func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) evidence.StateStore {
+func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) sm.Store {
 	stateDB := dbm.NewMemDB()
+	stateStore := sm.NewStore(stateDB)
 	state := sm.State{
 		ChainID:                     evidenceChainID,
 		InitialHeight:               1,
@@ -281,14 +287,15 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) e
 	// save all states up to height
 	for i := int64(0); i <= height; i++ {
 		state.LastBlockHeight = i
-		state.LastBlockTime = defaultEvidenceTime.Add(time.Duration(i) * time.Minute)
-		sm.SaveState(stateDB, state)
+		if err := stateStore.Save(state); err != nil {
+			panic(err)
+		}
 	}
 
-	return evidence.NewEvidenceStateStore(stateDB)
+	return stateStore
 }
 
-func initializeValidatorState(privVal types.PrivValidator, height int64) evidence.StateStore {
+func initializeValidatorState(privVal types.PrivValidator, height int64) sm.Store {
 
 	pubKey, _ := privVal.GetPubKey()
 	validator := &types.Validator{Address: pubKey.Address(), VotingPower: 10, PubKey: pubKey}
@@ -312,6 +319,7 @@ func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) *store.Bloc
 		block, _ := state.MakeBlock(i, []types.Tx{}, lastCommit, nil,
 			state.Validators.GetProposer().Address)
 		block.Header.Time = defaultEvidenceTime.Add(time.Duration(i) * time.Minute)
+		block.Header.Version = tmversion.Consensus{Block: version.BlockProtocol, App: 1}
 		const parts = 1
 		partSet := block.MakePartSet(parts)
 
@@ -337,7 +345,8 @@ func defaultTestPool(height int64) (*evidence.Pool, types.MockPV) {
 	valAddress := val.PrivKey.PubKey().Address()
 	evidenceDB := dbm.NewMemDB()
 	stateStore := initializeValidatorState(val, height)
-	blockStore := initializeBlockStore(dbm.NewMemDB(), stateStore.LoadState(), valAddress)
+	state, _ := stateStore.Load()
+	blockStore := initializeBlockStore(dbm.NewMemDB(), state, valAddress)
 	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	if err != nil {
 		panic("test evidence pool could not be created")

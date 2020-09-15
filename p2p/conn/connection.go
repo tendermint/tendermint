@@ -323,7 +323,7 @@ func (c *MConnection) flush() {
 	c.Logger.Debug("Flush", "conn", c)
 	err := c.bufConnWriter.Flush()
 	if err != nil {
-		c.Logger.Error("MConnection flush failed", "err", err)
+		c.Logger.Debug("MConnection flush failed", "err", err)
 	}
 }
 
@@ -597,7 +597,7 @@ FOR_LOOP:
 				if err == io.EOF {
 					c.Logger.Info("Connection is closed @ recvRoutine (likely by the other side)", "conn", c)
 				} else {
-					c.Logger.Error("Connection failed @ recvRoutine (reading byte)", "conn", c, "err", err)
+					c.Logger.Debug("Connection failed @ recvRoutine (reading byte)", "conn", c, "err", err)
 				}
 				c.stopForError(err)
 			}
@@ -626,7 +626,7 @@ FOR_LOOP:
 			channel, ok := c.channelsIdx[byte(pkt.PacketMsg.ChannelID)]
 			if !ok || channel == nil {
 				err := fmt.Errorf("unknown channel %X", pkt.PacketMsg.ChannelID)
-				c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
+				c.Logger.Debug("Connection failed @ recvRoutine", "conn", c, "err", err)
 				c.stopForError(err)
 				break FOR_LOOP
 			}
@@ -634,7 +634,7 @@ FOR_LOOP:
 			msgBytes, err := channel.recvPacketMsg(*pkt.PacketMsg)
 			if err != nil {
 				if c.IsRunning() {
-					c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
+					c.Logger.Debug("Connection failed @ recvRoutine", "conn", c, "err", err)
 					c.stopForError(err)
 				}
 				break FOR_LOOP

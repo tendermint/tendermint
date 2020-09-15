@@ -12,6 +12,8 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
+	"github.com/tendermint/tendermint/version"
 )
 
 var defaultVoteTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -269,6 +271,7 @@ func makeVote(
 
 func makeHeaderRandom() *Header {
 	return &Header{
+		Version:            tmversion.Consensus{Block: version.BlockProtocol, App: 1},
 		ChainID:            tmrand.Str(12),
 		Height:             int64(tmrand.Uint16()) + 1,
 		Time:               time.Now(),

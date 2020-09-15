@@ -16,8 +16,11 @@ import (
 	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	sm "github.com/tendermint/tendermint/state"
+	smmocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/version"
 )
 
 func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
@@ -82,9 +85,9 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 		LastBlockHeight: 11,
 		ConsensusParams: *types.DefaultConsensusParams(),
 	}
-	stateStore := &mocks.StateStore{}
+	stateStore := &smmocks.Store{}
 	stateStore.On("LoadValidators", int64(4)).Return(commonVals, nil)
-	stateStore.On("LoadState").Return(state)
+	stateStore.On("Load").Return(state, nil)
 	blockStore := &mocks.BlockStore{}
 	blockStore.On("LoadBlockMeta", int64(4)).Return(&types.BlockMeta{Header: *commonHeader})
 	blockStore.On("LoadBlockMeta", int64(10)).Return(&types.BlockMeta{Header: *trustedHeader})
@@ -176,9 +179,9 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 		LastBlockHeight: 11,
 		ConsensusParams: *types.DefaultConsensusParams(),
 	}
-	stateStore := &mocks.StateStore{}
+	stateStore := &smmocks.Store{}
 	stateStore.On("LoadValidators", int64(10)).Return(conflictingVals, nil)
-	stateStore.On("LoadState").Return(state)
+	stateStore.On("Load").Return(state, nil)
 	blockStore := &mocks.BlockStore{}
 	blockStore.On("LoadBlockMeta", int64(10)).Return(&types.BlockMeta{Header: *trustedHeader})
 	blockStore.On("LoadBlockCommit", int64(10)).Return(trustedCommit)
@@ -270,9 +273,9 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 		LastBlockHeight: 11,
 		ConsensusParams: *types.DefaultConsensusParams(),
 	}
-	stateStore := &mocks.StateStore{}
+	stateStore := &smmocks.Store{}
 	stateStore.On("LoadValidators", int64(10)).Return(conflictingVals, nil)
-	stateStore.On("LoadState").Return(state)
+	stateStore.On("Load").Return(state, nil)
 	blockStore := &mocks.BlockStore{}
 	blockStore.On("LoadBlockMeta", int64(10)).Return(&types.BlockMeta{Header: *trustedHeader})
 	blockStore.On("LoadBlockCommit", int64(10)).Return(trustedCommit)
@@ -366,9 +369,9 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 		LastBlockHeight: 11,
 		ConsensusParams: *types.DefaultConsensusParams(),
 	}
-	stateStore := &mocks.StateStore{}
+	stateStore := &smmocks.Store{}
 	stateStore.On("LoadValidators", int64(10)).Return(valSet, nil)
-	stateStore.On("LoadState").Return(state)
+	stateStore.On("Load").Return(state, nil)
 	blockStore := &mocks.BlockStore{}
 	blockStore.On("LoadBlockMeta", int64(10)).Return(&types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}})
 
@@ -406,6 +409,7 @@ func makeVote(
 
 func makeHeaderRandom(height int64) *types.Header {
 	return &types.Header{
+		Version:            tmversion.Consensus{Block: version.BlockProtocol, App: 1},
 		ChainID:            evidenceChainID,
 		Height:             height,
 		Time:               defaultEvidenceTime,
