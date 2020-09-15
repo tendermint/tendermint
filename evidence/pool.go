@@ -30,7 +30,7 @@ type Pool struct {
 	evidenceList  *clist.CList // concurrent linked-list of evidence
 
 	// needed to load validators to verify evidence
-	stateDB StateStore
+	stateDB sm.Store
 	// needed to load headers to verify evidence
 	blockStore BlockStore
 
@@ -41,10 +41,12 @@ type Pool struct {
 
 // NewPool creates an evidence pool. If using an existing evidence store,
 // it will add all pending evidence to the concurrent list.
-func NewPool(evidenceDB dbm.DB, stateDB StateStore, blockStore BlockStore) (*Pool, error) {
-	var (
-		state = stateDB.LoadState()
-	)
+func NewPool(evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool, error) {
+
+	state, err := stateDB.Load()
+	if err != nil {
+		return nil, fmt.Errorf("cannot load state: %w", err)
+	}
 
 	pool := &Pool{
 		stateDB:       stateDB,

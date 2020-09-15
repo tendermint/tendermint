@@ -6,7 +6,6 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -141,7 +140,7 @@ func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockR
 		return nil, err
 	}
 
-	results, err := sm.LoadABCIResponses(env.StateDB, height)
+	results, err := env.StateStore.LoadABCIResponses(height)
 	if err != nil {
 		return nil, err
 	}

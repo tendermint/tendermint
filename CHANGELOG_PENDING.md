@@ -22,6 +22,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     - [evidence] \#5319 Remove Amnesia & potentialAmnesia evidence types and removed POLC. (@marbar3778)
     - [params] \#5319 Remove `ProofofTrialPeriod` from evidence params (@marbar3778)
     - [crypto/secp256k1] \#5280 `secp256k1` has been removed from the Tendermint repo. (@marbar3778)
+    - [state] \#5348 Define an Interface for the state store. (@marbar3778)
 
 - Blockchain Protocol
 
@@ -35,6 +36,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [blockchain] \#5278 Verify only +2/3 of the signatures in a block when fast syncing. (@marbar3778)
 - [rpc] \#5293 `/dial_peers` has added `private` and `unconditional` as parameters. (@marbar3778)
+- [types] \#5340 Add check in `Header.ValidateBasic()` for block protocol version (@marbar3778)
 
 ## BUG FIXES
 
