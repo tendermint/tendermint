@@ -688,7 +688,7 @@ func NewNode(config *cfg.Config,
 		// what happened during block replay).
 		state, err = stateStore.Load()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("cannot load state: %w", err)
 		}
 	}
 
