@@ -6,7 +6,7 @@ LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse 
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://github.com/tendermint/tendermint.git
 DOCKER_BUF := docker run -v $(shell pwd):/workspace --workdir /workspace bufbuild/buf
-CGO_ENABLED ?= 0
+CGO_ENABLED ?= 1
 
 # handle nostrip
 ifeq (,$(findstring nostrip,$(TENDERMINT_BUILD_OPTIONS)))
@@ -24,6 +24,22 @@ endif
 ifeq (cleveldb,$(findstring cleveldb,$(TENDERMINT_BUILD_OPTIONS)))
   CGO_ENABLED=1
   BUILD_TAGS += cleveldb
+endif
+
+# handle badgerdb
+ifeq (badgerdb,$(findstring badgerdb,$(TENDERMINT_BUILD_OPTIONS)))
+  BUILD_TAGS += badgerdb
+endif
+
+# handle rocksdb
+ifeq (rocksdb,$(findstring rocksdb,$(TENDERMINT_BUILD_OPTIONS)))
+  CGO_ENABLED=1
+  BUILD_TAGS += rocksdb
+endif
+
+# handle boltdb
+ifeq (boltdb,$(findstring boltdb,$(TENDERMINT_BUILD_OPTIONS)))
+  BUILD_TAGS += boltdb
 endif
 
 # allow users to pass additional flags via the conventional LDFLAGS variable
