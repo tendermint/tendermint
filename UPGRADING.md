@@ -138,6 +138,8 @@ A field `State.InitialHeight` has been added to record the initial chain height,
 (not `0`) if starting from height `1`. This can be configured via the genesis field
 `initial_height`.
 
+The state package has added a `Store` interface. The interface returns errors on all methods and can be used by calling `state.NewStore(dbm.DB)`.
+
 ### Privval
 
 All requests are now accompanied by the chainID from the network.
