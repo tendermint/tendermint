@@ -22,7 +22,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	ep "github.com/tendermint/tendermint/proto/tendermint/evidence"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/proto/tendermint/version"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -40,8 +40,8 @@ func evidenceLogger() log.Logger {
 }
 
 // connect N evidence reactors through N switches
-func makeAndConnectReactors(config *cfg.Config, stateDBs []dbm.DB) []*Reactor {
-	N := len(stateDBs)
+func makeAndConnectReactors(config *cfg.Config, stateStores []sm.Store) []*Reactor {
+	N := len(stateStores)
 
 	reactors := make([]*Reactor, N)
 	logger := evidenceLogger()
@@ -53,7 +53,7 @@ func makeAndConnectReactors(config *cfg.Config, stateDBs []dbm.DB) []*Reactor {
 		blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
 			&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
 		)
-		pool, err := NewPool(stateDBs[i], evidenceDB, blockStore)
+		pool, err := NewPool(evidenceDB, stateStores[i], blockStore)
 		if err != nil {
 			panic(err)
 		}
@@ -144,7 +144,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	N := 7
 
 	// create statedb for everyone
-	stateDBs := make([]dbm.DB, N)
+	stateDBs := make([]sm.Store, N)
 	val := types.NewMockPV()
 	// we need validators saved for heights at least as high as we have evidence for
 	height := int64(numEvidence) + 10
@@ -189,7 +189,7 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	stateDB2 := initializeValidatorState(val, height2)
 
 	// make reactors from statedb
-	reactors := makeAndConnectReactors(config, []dbm.DB{stateDB1, stateDB2})
+	reactors := makeAndConnectReactors(config, []sm.Store{stateDB1, stateDB2})
 
 	// set the peer height on each reactor
 	for _, r := range reactors {
@@ -238,34 +238,10 @@ func exampleVote(t byte) *types.Vote {
 	}
 }
 
-func exampleHeader() *types.Header {
-	blockID := types.BlockID{Hash: []byte{0}, PartSetHeader: types.PartSetHeader{Total: 123, Hash: []byte{0}}}
-
-	h := &types.Header{
-		Version:            version.Consensus{Block: 1, App: 2},
-		ChainID:            "chainId",
-		Height:             3,
-		Time:               time.Date(2019, 10, 13, 16, 14, 44, 0, time.UTC),
-		LastBlockID:        blockID,
-		LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
-		DataHash:           tmhash.Sum([]byte("data_hash")),
-		ValidatorsHash:     tmhash.Sum([]byte("validators_hash")),
-		NextValidatorsHash: tmhash.Sum([]byte("next_validators_hash")),
-		ConsensusHash:      tmhash.Sum([]byte("consensus_hash")),
-		AppHash:            tmhash.Sum([]byte("app_hash")),
-		LastResultsHash:    tmhash.Sum([]byte("last_results_hash")),
-		EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
-		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
-	}
-
-	return h
-}
-
 // nolint:lll //ignore line length for tests
 func TestEvidenceVectors(t *testing.T) {
 
 	dupl := types.NewDuplicateVoteEvidence(exampleVote(1), exampleVote(2), time.Date(2019, 10, 13, 16, 14, 44, 0, time.UTC))
-	lve := types.NewLunaticValidatorEvidence(exampleHeader(), exampleVote(1), "Datahash", time.Date(2019, 10, 13, 16, 14, 44, 0, time.UTC))
 
 	testCases := []struct {
 		testName     string
@@ -273,7 +249,6 @@ func TestEvidenceVectors(t *testing.T) {
 		expBytes     string
 	}{
 		{"DuplicateVoteEvidence", []types.Evidence{dupl}, "0a81020afe010a79080210031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb031279080110031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb031a0608f49a8ded05"},
-		{"LunaticValidatorEvidence", []types.Evidence{lve}, "0ade031adb030acb020a04080110021207636861696e49641803220608f49a8ded052a0a0a01001205087b1201003220e7aad01a1af897b05bcf78c7563b5d1adc2939d543dac949a5c8712156d19bf83a206d6e28b8b98b5327042ea50a57dd46e6cc851c72e528bdeaa6efdeeefe66a0b84220db5d0767f57d844ba68132eaf74f6b8b83df6c03810a6a4378c2a6b2caf93e8d4a201eef9748a3c48ff996033757d73200886e7b2b4e9d9df07b19a34a44bae3e2c85220e5e566c41ed57e3ff8cc10f184178788b8faa602b07cf1f425217bd8179f1f245a2041cafae31cc70f5801fa1016a2dd54a9bcb8201b5b389919fe9976762532c5166220092e058630247ed6009863a12eee117d26cd9d08b5adcaab37f2ab35db475a376a2073865db08f49d58428905d389ab4ca4b96e45a3206c7a69d43a5dc7372e60714721427834082c131975497cdebfbdce6c8e5196a13541279080110031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb031a084461746168617368220608f49a8ded05"},
 	}
 
 	for _, tc := range testCases {

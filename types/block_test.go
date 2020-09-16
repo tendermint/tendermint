@@ -22,8 +22,9 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/proto/tendermint/version"
+	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	tmtime "github.com/tendermint/tendermint/types/time"
+	"github.com/tendermint/tendermint/version"
 )
 
 func TestMain(m *testing.M) {
@@ -86,11 +87,8 @@ func TestBlockValidateBasic(t *testing.T) {
 		{"Tampered EvidenceHash", func(blk *Block) {
 			blk.EvidenceHash = []byte("something else")
 		}, true},
-		{"ConflictingHeadersEvidence", func(blk *Block) {
-			blk.Evidence = EvidenceData{Evidence: []Evidence{&ConflictingHeadersEvidence{}}}
-		}, true},
-		{"PotentialAmnesiaEvidence", func(blk *Block) {
-			blk.Evidence = EvidenceData{Evidence: []Evidence{&PotentialAmnesiaEvidence{}}}
+		{"Incorrect block protocol version", func(blk *Block) {
+			blk.Version.Block = 1
 		}, true},
 	}
 	for i, tc := range testCases {
@@ -179,8 +177,8 @@ func makeBlockIDRandom() BlockID {
 		blockHash   = make([]byte, tmhash.Size)
 		partSetHash = make([]byte, tmhash.Size)
 	)
-	rand.Read(blockHash)
-	rand.Read(partSetHash)
+	rand.Read(blockHash)   //nolint: errcheck // ignore errcheck for read
+	rand.Read(partSetHash) //nolint: errcheck // ignore errcheck for read
 	return BlockID{blockHash, PartSetHeader{123, partSetHash}}
 }
 
@@ -266,7 +264,7 @@ func TestHeaderHash(t *testing.T) {
 		expectHash bytes.HexBytes
 	}{
 		{"Generates expected hash", &Header{
-			Version:            version.Consensus{Block: 1, App: 2},
+			Version:            tmversion.Consensus{Block: 1, App: 2},
 			ChainID:            "chainId",
 			Height:             3,
 			Time:               time.Date(2019, 10, 13, 16, 14, 44, 0, time.UTC),
@@ -283,7 +281,7 @@ func TestHeaderHash(t *testing.T) {
 		}, hexBytesFromString("F740121F553B5418C3EFBD343C2DBFE9E007BB67B0D020A0741374BAB65242A4")},
 		{"nil header yields nil", nil, nil},
 		{"nil ValidatorsHash yields nil", &Header{
-			Version:            version.Consensus{Block: 1, App: 2},
+			Version:            tmversion.Consensus{Block: 1, App: 2},
 			ChainID:            "chainId",
 			Height:             3,
 			Time:               time.Date(2019, 10, 13, 16, 14, 44, 0, time.UTC),
@@ -323,7 +321,7 @@ func TestHeaderHash(t *testing.T) {
 						bz, err := gogotypes.StdTimeMarshal(f)
 						require.NoError(t, err)
 						byteSlices = append(byteSlices, bz)
-					case version.Consensus:
+					case tmversion.Consensus:
 						bz, err := f.Marshal()
 						require.NoError(t, err)
 						byteSlices = append(byteSlices, bz)
@@ -358,7 +356,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 
 	h := Header{
-		Version:            version.Consensus{Block: math.MaxInt64, App: math.MaxInt64},
+		Version:            tmversion.Consensus{Block: math.MaxInt64, App: math.MaxInt64},
 		ChainID:            maxChainID,
 		Height:             math.MaxInt64,
 		Time:               timestamp,
@@ -543,59 +541,6 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 	}
 }
 
-func TestSignedHeaderValidateBasic(t *testing.T) {
-	commit := randCommit(time.Now())
-	chainID := "𠜎"
-	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
-	h := Header{
-		Version:            version.Consensus{Block: math.MaxInt64, App: math.MaxInt64},
-		ChainID:            chainID,
-		Height:             commit.Height,
-		Time:               timestamp,
-		LastBlockID:        commit.BlockID,
-		LastCommitHash:     commit.Hash(),
-		DataHash:           commit.Hash(),
-		ValidatorsHash:     commit.Hash(),
-		NextValidatorsHash: commit.Hash(),
-		ConsensusHash:      commit.Hash(),
-		AppHash:            commit.Hash(),
-		LastResultsHash:    commit.Hash(),
-		EvidenceHash:       commit.Hash(),
-		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
-	}
-
-	validSignedHeader := SignedHeader{Header: &h, Commit: commit}
-	validSignedHeader.Commit.BlockID.Hash = validSignedHeader.Hash()
-	invalidSignedHeader := SignedHeader{}
-
-	testCases := []struct {
-		testName  string
-		shHeader  *Header
-		shCommit  *Commit
-		expectErr bool
-	}{
-		{"Valid Signed Header", validSignedHeader.Header, validSignedHeader.Commit, false},
-		{"Invalid Signed Header", invalidSignedHeader.Header, validSignedHeader.Commit, true},
-		{"Invalid Signed Header", validSignedHeader.Header, invalidSignedHeader.Commit, true},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			sh := SignedHeader{
-				Header: tc.shHeader,
-				Commit: tc.shCommit,
-			}
-			assert.Equal(
-				t,
-				tc.expectErr,
-				sh.ValidateBasic(validSignedHeader.Header.ChainID) != nil,
-				"Validate Basic had an unexpected result",
-			)
-		})
-	}
-}
-
 func TestBlockIDValidateBasic(t *testing.T) {
 	validBlockID := BlockID{
 		Hash: bytes.HexBytes{},
@@ -755,7 +700,7 @@ func makeRandHeader() Header {
 	randBytes := tmrand.Bytes(tmhash.Size)
 	randAddress := tmrand.Bytes(crypto.AddressSize)
 	h := Header{
-		Version:            version.Consensus{Block: 1, App: 1},
+		Version:            tmversion.Consensus{Block: version.BlockProtocol, App: 1},
 		ChainID:            chainID,
 		Height:             height,
 		Time:               t,

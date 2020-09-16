@@ -248,11 +248,15 @@ func TestStateFullRound1(t *testing.T) {
 
 	// NOTE: buffer capacity of 0 ensures we can validate prevote and last commit
 	// before consensus can move to the next height (and cause a race condition)
-	cs.eventBus.Stop()
+	if err := cs.eventBus.Stop(); err != nil {
+		t.Error(err)
+	}
 	eventBus := types.NewEventBusWithBufferCapacity(0)
 	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
 	cs.SetEventBus(eventBus)
-	eventBus.Start()
+	if err := eventBus.Start(); err != nil {
+		t.Error(err)
+	}
 
 	voteCh := subscribeUnBuffered(cs.eventBus, types.EventQueryVote)
 	propCh := subscribe(cs.eventBus, types.EventQueryCompleteProposal)
@@ -522,7 +526,7 @@ func TestStateLockNoPOL(t *testing.T) {
 // in round one: v1 precommits, other 3 only prevote so the block isn't committed
 // in round two: v1 prevotes the same block that the node is locked on
 // the others prevote a new block hence v1 changes lock and precommits the new block with the others
-func TestStateLockPOLRelockThenChangeLock(t *testing.T) {
+func TestStateLockPOLRelock(t *testing.T) {
 	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
@@ -620,7 +624,7 @@ func TestStateLockPOLRelockThenChangeLock(t *testing.T) {
 
 // 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
 func TestStateLockPOLUnlock(t *testing.T) {
-	cs1, vss, evpool := randStateWithEvpool(t, 4)
+	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -639,7 +643,6 @@ func TestStateLockPOLUnlock(t *testing.T) {
 
 	/*
 		Round1 (cs1, B) // B B B B // B nil B nil
-
 		eg. didn't see the 2/3 prevotes
 	*/
 
@@ -681,7 +684,6 @@ func TestStateLockPOLUnlock(t *testing.T) {
 	t.Log("#### ONTO ROUND 1")
 	/*
 		Round2 (vs2, C) // B nil nil nil // nil nil nil _
-
 		cs1 unlocks!
 	*/
 	//XXX: this isnt guaranteed to get there before the timeoutPropose ...
@@ -707,15 +709,6 @@ func TestStateLockPOLUnlock(t *testing.T) {
 
 	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3)
 	ensureNewRound(newRoundCh, height, round+1)
-	// polc should be in the evpool for round 1
-	polc, err := evpool.RetrievePOLC(height, round)
-	assert.NoError(t, err)
-	assert.NotNil(t, polc)
-	assert.False(t, polc.IsAbsent())
-	// but not for round 0
-	polc, err = evpool.RetrievePOLC(height, round-1)
-	assert.NoError(t, err)
-	assert.Nil(t, polc)
 }
 
 // 4 vals, v1 locks on proposed block in the first round but the other validators only prevote
@@ -723,7 +716,7 @@ func TestStateLockPOLUnlock(t *testing.T) {
 // v1 should unlock and precommit nil. In the third round another block is proposed, all vals
 // prevote and now v1 can lock onto the third block and precommit that
 func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
-	cs1, vss, evpool := randStateWithEvpool(t, 4)
+	cs1, vss := randState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 	height, round := cs1.Height, cs1.Round
 
@@ -815,12 +808,6 @@ func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
 	thirdPropBlockParts := propBlock.MakePartSet(partSize)
 	thirdPropBlockHash := propBlock.Hash()
 	require.NotEqual(t, secondBlockHash, thirdPropBlockHash)
-
-	// polc should be in the evpool for round 1
-	polc, err := evpool.RetrievePOLC(height, round)
-	assert.NoError(t, err)
-	assert.NotNil(t, polc)
-	assert.False(t, polc.IsAbsent())
 
 	incrementRound(vs2, vs3, vs4)
 

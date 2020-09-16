@@ -288,7 +288,9 @@ func (sc *scheduler) setPeerRange(peerID p2p.ID, base int64, height int64) error
 	}
 
 	if height < peer.height {
-		sc.removePeer(peerID)
+		if err := sc.removePeer(peerID); err != nil {
+			return err
+		}
 		return fmt.Errorf("cannot move peer height lower. from %d to %d", peer.height, height)
 	}
 
@@ -611,7 +613,9 @@ func (sc *scheduler) handleTryPrunePeer(event rTryPrunePeer) (Event, error) {
 		// from that peer within sc.peerTimeout. Remove the peer. This is to ensure that a peer
 		// will be timed out even if it sends blocks at higher heights but prevents progress by
 		// not sending the block at current height.
-		sc.removePeer(sc.pendingBlocks[sc.height])
+		if err := sc.removePeer(sc.pendingBlocks[sc.height]); err != nil {
+			return nil, err
+		}
 	}
 
 	prunablePeers := sc.prunablePeers(sc.peerTimeout, sc.minRecvRate, event.time)

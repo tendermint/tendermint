@@ -34,9 +34,10 @@ import (
 // Errors
 
 var (
-	ErrInvalidProposalSignature = errors.New("error invalid proposal signature")
-	ErrInvalidProposalPOLRound  = errors.New("error invalid proposal POL round")
-	ErrAddingVote               = errors.New("error adding vote")
+	ErrInvalidProposalSignature   = errors.New("error invalid proposal signature")
+	ErrInvalidProposalPOLRound    = errors.New("error invalid proposal POL round")
+	ErrAddingVote                 = errors.New("error adding vote")
+	ErrSignatureFoundInPastBlocks = errors.New("found signature from the same key")
 
 	errPubKeyIsNotSet = errors.New("pubkey is not set. Look for \"Can't get private validator pubkey\" errors")
 )
@@ -73,7 +74,6 @@ type txNotifier interface {
 // interface to the evidence pool
 type evidencePool interface {
 	AddEvidence(types.Evidence) error
-	AddPOLC(*types.ProofOfLockChange) error
 }
 
 // State handles execution of the consensus algorithm.
@@ -329,7 +329,9 @@ func (cs *State) OnStart() error {
 			cs.Logger.Info("WAL file is corrupted. Attempting repair", "err", err)
 
 			// 1) prep work
-			cs.wal.Stop()
+			if err := cs.wal.Stop(); err != nil {
+				return err
+			}
 			repairAttempted = true
 
 			// 2) backup original WAL file
@@ -363,6 +365,11 @@ func (cs *State) OnStart() error {
 	// firing on the tockChan until the receiveRoutine is started
 	// to deal with them (by that point, at most one will be valid)
 	if err := cs.timeoutTicker.Start(); err != nil {
+		return err
+	}
+
+	// Double Signing Risk Reduction
+	if err := cs.checkDoubleSigningRisk(cs.Height); err != nil {
 		return err
 	}
 
@@ -400,8 +407,12 @@ func (cs *State) loadWalFile() error {
 
 // OnStop implements service.Service.
 func (cs *State) OnStop() {
-	cs.evsw.Stop()
-	cs.timeoutTicker.Stop()
+	if err := cs.evsw.Stop(); err != nil {
+		cs.Logger.Error("error trying to stop eventSwitch", "error", err)
+	}
+	if err := cs.timeoutTicker.Stop(); err != nil {
+		cs.Logger.Error("error trying to stop timeoutTicket", "error", err)
+	}
 	// WAL is stopped in receiveRoutine.
 }
 
@@ -649,11 +660,15 @@ func (cs *State) updateToState(state sm.State) {
 
 func (cs *State) newStep() {
 	rs := cs.RoundStateEvent()
-	cs.wal.Write(rs)
+	if err := cs.wal.Write(rs); err != nil {
+		cs.Logger.Error("Error writing to wal", "err", err)
+	}
 	cs.nSteps++
 	// newStep is called by updateToState in NewState before the eventBus is set!
 	if cs.eventBus != nil {
-		cs.eventBus.PublishEventNewRoundStep(rs)
+		if err := cs.eventBus.PublishEventNewRoundStep(rs); err != nil {
+			cs.Logger.Error("Error publishing new round step", "err", err)
+		}
 		cs.evsw.FireEvent(types.EventNewRoundStep, &cs.RoundState)
 	}
 }
@@ -673,7 +688,9 @@ func (cs *State) receiveRoutine(maxSteps int) {
 		// priv_val tracks LastSig
 
 		// close wal now that we're done writing to it
-		cs.wal.Stop()
+		if err := cs.wal.Stop(); err != nil {
+			cs.Logger.Error("error trying to stop wal", "error", err)
+		}
 		cs.wal.Wait()
 
 		close(cs.done)
@@ -709,7 +726,9 @@ func (cs *State) receiveRoutine(maxSteps int) {
 		case <-cs.txNotifier.TxsAvailable():
 			cs.handleTxsAvailable()
 		case mi = <-cs.peerMsgQueue:
-			cs.wal.Write(mi)
+			if err := cs.wal.Write(mi); err != nil {
+				cs.Logger.Error("Error writing to wal", "err", err)
+			}
 			// handles proposals, block parts, votes
 			// may generate internal events (votes, complete proposals, 2/3 majorities)
 			cs.handleMsg(mi)
@@ -730,7 +749,9 @@ func (cs *State) receiveRoutine(maxSteps int) {
 			// handles proposals, block parts, votes
 			cs.handleMsg(mi)
 		case ti := <-cs.timeoutTicker.Chan(): // tockChan:
-			cs.wal.Write(ti)
+			if err := cs.wal.Write(ti); err != nil {
+				cs.Logger.Error("Error writing to wal", "err", err)
+			}
 			// if the timeout is relevant to the rs
 			// go to the next step
 			cs.handleTimeout(ti, rs)
@@ -828,13 +849,19 @@ func (cs *State) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 	case cstypes.RoundStepNewRound:
 		cs.enterPropose(ti.Height, 0)
 	case cstypes.RoundStepPropose:
-		cs.eventBus.PublishEventTimeoutPropose(cs.RoundStateEvent())
+		if err := cs.eventBus.PublishEventTimeoutPropose(cs.RoundStateEvent()); err != nil {
+			cs.Logger.Error("Error publishing timeout propose", "err", err)
+		}
 		cs.enterPrevote(ti.Height, ti.Round)
 	case cstypes.RoundStepPrevoteWait:
-		cs.eventBus.PublishEventTimeoutWait(cs.RoundStateEvent())
+		if err := cs.eventBus.PublishEventTimeoutWait(cs.RoundStateEvent()); err != nil {
+			cs.Logger.Error("Error publishing timeout wait", "err", err)
+		}
 		cs.enterPrecommit(ti.Height, ti.Round)
 	case cstypes.RoundStepPrecommitWait:
-		cs.eventBus.PublishEventTimeoutWait(cs.RoundStateEvent())
+		if err := cs.eventBus.PublishEventTimeoutWait(cs.RoundStateEvent()); err != nil {
+			cs.Logger.Error("Error publishing timeout wait", "err", err)
+		}
 		cs.enterPrecommit(ti.Height, ti.Round)
 		cs.enterNewRound(ti.Height, ti.Round+1)
 	default:
@@ -922,7 +949,9 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	cs.Votes.SetRound(tmmath.SafeAddInt32(round, 1)) // also track next round (round+1) to allow round-skipping
 	cs.TriggeredTimeoutPrecommit = false
 
-	cs.eventBus.PublishEventNewRound(cs.NewRoundEvent())
+	if err := cs.eventBus.PublishEventNewRound(cs.NewRoundEvent()); err != nil {
+		cs.Logger.Error("Error publishing new round", "err", err)
+	}
 	cs.metrics.Rounds.Set(float64(round))
 
 	// Wait for txs to be available in the mempool
@@ -1047,7 +1076,9 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 
 	// Flush the WAL. Otherwise, we may not recompute the same proposal to sign,
 	// and the privValidator will refuse to sign anything.
-	cs.wal.FlushAndSync()
+	if err := cs.wal.FlushAndSync(); err != nil {
+		cs.Logger.Error("Error flushing to disk")
+	}
 
 	// Make proposal
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
@@ -1258,7 +1289,9 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 	}
 
 	// At this point +2/3 prevoted for a particular block or nil.
-	cs.eventBus.PublishEventPolka(cs.RoundStateEvent())
+	if err := cs.eventBus.PublishEventPolka(cs.RoundStateEvent()); err != nil {
+		cs.Logger.Error("Error publishing polka", "err", err)
+	}
 
 	// the latest POLRound should be this round.
 	polRound, _ := cs.Votes.POLInfo()
@@ -1275,7 +1308,9 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 			cs.LockedRound = -1
 			cs.LockedBlock = nil
 			cs.LockedBlockParts = nil
-			cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
+			if err := cs.eventBus.PublishEventUnlock(cs.RoundStateEvent()); err != nil {
+				cs.Logger.Error("Error publishing event unlock", "err", err)
+			}
 		}
 		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 		return
@@ -1287,7 +1322,9 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 	if cs.LockedBlock.HashesTo(blockID.Hash) {
 		logger.Info("enterPrecommit: +2/3 prevoted locked block. Relocking")
 		cs.LockedRound = round
-		cs.eventBus.PublishEventRelock(cs.RoundStateEvent())
+		if err := cs.eventBus.PublishEventRelock(cs.RoundStateEvent()); err != nil {
+			cs.Logger.Error("Error publishing event relock", "err", err)
+		}
 		cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
 		return
 	}
@@ -1302,7 +1339,9 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 		cs.LockedRound = round
 		cs.LockedBlock = cs.ProposalBlock
 		cs.LockedBlockParts = cs.ProposalBlockParts
-		cs.eventBus.PublishEventLock(cs.RoundStateEvent())
+		if err := cs.eventBus.PublishEventLock(cs.RoundStateEvent()); err != nil {
+			cs.Logger.Error("Error publishing event lock", "err", err)
+		}
 		cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
 		return
 	}
@@ -1318,32 +1357,10 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 		cs.ProposalBlock = nil
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
 	}
-	cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
+	if err := cs.eventBus.PublishEventUnlock(cs.RoundStateEvent()); err != nil {
+		cs.Logger.Error("Error publishing event unlock", "err", err)
+	}
 	cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
-}
-
-func (cs *State) savePOLC(round int32, blockID types.BlockID) {
-	// polc must be for rounds greater than 0
-	if round == 0 {
-		return
-	}
-	if cs.privValidatorPubKey == nil {
-		// This may result in this validator being slashed later during an amnesia
-		// trial.
-		cs.Logger.Error(fmt.Sprintf("savePOLC: %v", errPubKeyIsNotSet))
-		return
-	}
-	polc, err := types.NewPOLCFromVoteSet(cs.Votes.Prevotes(round), cs.privValidatorPubKey, blockID)
-	if err != nil {
-		cs.Logger.Error("Error on forming POLC", "err", err)
-		return
-	}
-	err = cs.evpool.AddPOLC(polc)
-	if err != nil {
-		cs.Logger.Error("Error on saving POLC", "err", err)
-		return
-	}
-	cs.Logger.Info("Saved POLC to evidence pool", "round", round, "height", polc.Height())
 }
 
 // Enter: any +2/3 precommits for next round.
@@ -1428,7 +1445,9 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 			// Set up ProposalBlockParts and keep waiting.
 			cs.ProposalBlock = nil
 			cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
-			cs.eventBus.PublishEventValidBlock(cs.RoundStateEvent())
+			if err := cs.eventBus.PublishEventValidBlock(cs.RoundStateEvent()); err != nil {
+				cs.Logger.Error("Error publishing valid block", "err", err)
+			}
 			cs.evsw.FireEvent(types.EventValidBlock, &cs.RoundState)
 		}
 		// else {
@@ -1598,7 +1617,7 @@ func (cs *State) pruneBlocks(retainHeight int64) (uint64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed to prune block store: %w", err)
 	}
-	err = sm.PruneStates(cs.blockExec.DB(), base, retainHeight)
+	err = cs.blockExec.Store().PruneStates(base, retainHeight)
 	if err != nil {
 		return 0, fmt.Errorf("failed to prune state database: %w", err)
 	}
@@ -1674,7 +1693,7 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 	if height > 1 {
 		lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
 		if lastBlockMeta != nil {
-			cs.metrics.BlockIntervalSeconds.Set(
+			cs.metrics.BlockIntervalSeconds.Observe(
 				block.Time.Sub(lastBlockMeta.Header.Time).Seconds(),
 			)
 		}
@@ -1769,7 +1788,9 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 		cs.ProposalBlock = block
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
-		cs.eventBus.PublishEventCompleteProposal(cs.CompleteProposalEvent())
+		if err := cs.eventBus.PublishEventCompleteProposal(cs.CompleteProposalEvent()); err != nil {
+			cs.Logger.Error("Error publishing event complete proposal", "err", err)
+		}
 
 		// Update Valid* if we can.
 		prevotes := cs.Votes.Prevotes(cs.Round)
@@ -1885,7 +1906,9 @@ func (cs *State) addVote(
 		}
 
 		cs.Logger.Info(fmt.Sprintf("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
-		cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote})
+		if err := cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote}); err != nil {
+			return added, err
+		}
 		cs.evsw.FireEvent(types.EventVote, vote)
 
 		// if we can skip timeoutCommit and have all the votes now,
@@ -1912,7 +1935,9 @@ func (cs *State) addVote(
 		return
 	}
 
-	cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote})
+	if err := cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote}); err != nil {
+		return added, err
+	}
 	cs.evsw.FireEvent(types.EventVote, vote)
 
 	switch vote.Type {
@@ -1938,10 +1963,9 @@ func (cs *State) addVote(
 				cs.LockedRound = -1
 				cs.LockedBlock = nil
 				cs.LockedBlockParts = nil
-				// If this is not the first round and we have already locked onto something then we are
-				// changing the locked block so save POLC prevotes in evidence db in case of future justification
-				cs.savePOLC(vote.Round, blockID)
-				cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
+				if err := cs.eventBus.PublishEventUnlock(cs.RoundStateEvent()); err != nil {
+					return added, err
+				}
 			}
 
 			// Update Valid* if we can.
@@ -1965,7 +1989,9 @@ func (cs *State) addVote(
 					cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
 				}
 				cs.evsw.FireEvent(types.EventValidBlock, &cs.RoundState)
-				cs.eventBus.PublishEventValidBlock(cs.RoundStateEvent())
+				if err := cs.eventBus.PublishEventValidBlock(cs.RoundStateEvent()); err != nil {
+					return added, err
+				}
 			}
 		}
 
@@ -2025,7 +2051,9 @@ func (cs *State) signVote(
 ) (*types.Vote, error) {
 	// Flush the WAL. Otherwise, we may not recompute the same vote to sign,
 	// and the privValidator will refuse to sign anything.
-	cs.wal.FlushAndSync()
+	if err := cs.wal.FlushAndSync(); err != nil {
+		return nil, err
+	}
 
 	if cs.privValidatorPubKey == nil {
 		return nil, errPubKeyIsNotSet
@@ -2111,6 +2139,29 @@ func (cs *State) updatePrivValidatorPubKey() error {
 		return err
 	}
 	cs.privValidatorPubKey = pubKey
+	return nil
+}
+
+// look back to check existence of the node's consensus votes before joining consensus
+func (cs *State) checkDoubleSigningRisk(height int64) error {
+	if cs.privValidator != nil && cs.privValidatorPubKey != nil && cs.config.DoubleSignCheckHeight > 0 && height > 0 {
+		valAddr := cs.privValidatorPubKey.Address()
+		doubleSignCheckHeight := cs.config.DoubleSignCheckHeight
+		if doubleSignCheckHeight > height {
+			doubleSignCheckHeight = height
+		}
+		for i := int64(1); i < doubleSignCheckHeight; i++ {
+			lastCommit := cs.blockStore.LoadSeenCommit(height - i)
+			if lastCommit != nil {
+				for sigIdx, s := range lastCommit.Signatures {
+					if s.BlockIDFlag == types.BlockIDFlagCommit && bytes.Equal(s.ValidatorAddress, valAddr) {
+						cs.Logger.Info("Found signature from the same key", "sig", s, "idx", sigIdx, "height", height-i)
+						return ErrSignatureFoundInPastBlocks
+					}
+				}
+			}
+		}
+	}
 	return nil
 }
 

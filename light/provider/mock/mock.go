@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -47,24 +48,35 @@ func (p *Mock) String() string {
 	return fmt.Sprintf("Mock{headers: %s, vals: %v}", headers.String(), vals.String())
 }
 
-func (p *Mock) SignedHeader(height int64) (*types.SignedHeader, error) {
+func (p *Mock) LightBlock(height int64) (*types.LightBlock, error) {
+	var lb *types.LightBlock
 	if height == 0 && len(p.headers) > 0 {
-		return p.headers[int64(len(p.headers))], nil
+		sh := p.headers[int64(len(p.headers))]
+		vals := p.vals[int64(len(p.vals))]
+		lb = &types.LightBlock{
+			SignedHeader: sh,
+			ValidatorSet: vals,
+		}
+
 	}
 	if _, ok := p.headers[height]; ok {
-		return p.headers[height], nil
+		sh := p.headers[height]
+		vals := p.vals[height]
+		lb = &types.LightBlock{
+			SignedHeader: sh,
+			ValidatorSet: vals,
+		}
 	}
-	return nil, provider.ErrSignedHeaderNotFound
-}
-
-func (p *Mock) ValidatorSet(height int64) (*types.ValidatorSet, error) {
-	if height == 0 && len(p.vals) > 0 {
-		return p.vals[int64(len(p.vals))], nil
+	if lb == nil {
+		return nil, provider.ErrLightBlockNotFound
 	}
-	if _, ok := p.vals[height]; ok {
-		return p.vals[height], nil
+	if lb.SignedHeader == nil || lb.ValidatorSet == nil {
+		return nil, provider.ErrBadLightBlock{Reason: errors.New("nil header or vals")}
 	}
-	return nil, provider.ErrValidatorSetNotFound
+	if err := lb.ValidateBasic(lb.ChainID); err != nil {
+		return nil, provider.ErrBadLightBlock{Reason: err}
+	}
+	return lb, nil
 }
 
 func (p *Mock) ReportEvidence(ev types.Evidence) error {

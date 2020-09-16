@@ -29,7 +29,7 @@ func (ni mockNodeInfo) Validate() error                     { return nil }
 func (ni mockNodeInfo) CompatibleWith(other NodeInfo) error { return nil }
 
 func AddPeerToSwitchPeerSet(sw *Switch, peer Peer) {
-	sw.peers.Add(peer)
+	sw.peers.Add(peer) //nolint:errcheck // ignore error
 }
 
 func CreateRandomPeer(outbound bool) Peer {
@@ -279,4 +279,36 @@ func getFreePort() int {
 		panic(err)
 	}
 	return port
+}
+
+type AddrBookMock struct {
+	Addrs        map[string]struct{}
+	OurAddrs     map[string]struct{}
+	PrivateAddrs map[string]struct{}
+}
+
+var _ AddrBook = (*AddrBookMock)(nil)
+
+func (book *AddrBookMock) AddAddress(addr *NetAddress, src *NetAddress) error {
+	book.Addrs[addr.String()] = struct{}{}
+	return nil
+}
+func (book *AddrBookMock) AddOurAddress(addr *NetAddress) { book.OurAddrs[addr.String()] = struct{}{} }
+func (book *AddrBookMock) OurAddress(addr *NetAddress) bool {
+	_, ok := book.OurAddrs[addr.String()]
+	return ok
+}
+func (book *AddrBookMock) MarkGood(ID) {}
+func (book *AddrBookMock) HasAddress(addr *NetAddress) bool {
+	_, ok := book.Addrs[addr.String()]
+	return ok
+}
+func (book *AddrBookMock) RemoveAddress(addr *NetAddress) {
+	delete(book.Addrs, addr.String())
+}
+func (book *AddrBookMock) Save() {}
+func (book *AddrBookMock) AddPrivateIDs(addrs []string) {
+	for _, addr := range addrs {
+		book.PrivateAddrs[addr] = struct{}{}
+	}
 }

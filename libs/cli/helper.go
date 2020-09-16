@@ -69,7 +69,7 @@ func RunCaptureWithArgs(cmd Executable, args []string, env map[string]string) (s
 		go func() {
 			var buf bytes.Buffer
 			// io.Copy will end when we call reader.Close() below
-			io.Copy(&buf, reader)
+			io.Copy(&buf, reader) //nolint:errcheck //ignore error
 			stdC <- buf.String()
 		}()
 		return &stdC

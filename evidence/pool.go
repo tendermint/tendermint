@@ -1,6 +1,7 @@
 package evidence
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -17,10 +18,8 @@ import (
 )
 
 const (
-	baseKeyCommitted     = byte(0x00)
-	baseKeyPending       = byte(0x01)
-	baseKeyPOLC          = byte(0x02)
-	baseKeyAwaitingTrial = byte(0x03)
+	baseKeyCommitted = byte(0x00)
+	baseKeyPending   = byte(0x01)
 )
 
 // Pool maintains a pool of valid evidence to be broadcasted and committed
@@ -31,35 +30,31 @@ type Pool struct {
 	evidenceList  *clist.CList // concurrent linked-list of evidence
 
 	// needed to load validators to verify evidence
-	stateDB dbm.DB
+	stateDB sm.Store
 	// needed to load headers to verify evidence
 	blockStore BlockStore
 
 	mtx sync.Mutex
 	// latest state
 	state sm.State
-
-	// This is the closest height where at one or more of the current trial periods
-	// will have ended and we will need to then upgrade the evidence to amnesia evidence.
-	// It is set to -1 when we don't have any evidence on trial.
-	nextEvidenceTrialEndedHeight int64
 }
 
-// Creates a new pool. If using an existing evidence store, it will add all pending evidence
-// to the concurrent list.
-func NewPool(stateDB, evidenceDB dbm.DB, blockStore BlockStore) (*Pool, error) {
-	var (
-		state = sm.LoadState(stateDB)
-	)
+// NewPool creates an evidence pool. If using an existing evidence store,
+// it will add all pending evidence to the concurrent list.
+func NewPool(evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool, error) {
+
+	state, err := stateDB.Load()
+	if err != nil {
+		return nil, fmt.Errorf("cannot load state: %w", err)
+	}
 
 	pool := &Pool{
-		stateDB:                      stateDB,
-		blockStore:                   blockStore,
-		state:                        state,
-		logger:                       log.NewNopLogger(),
-		evidenceStore:                evidenceDB,
-		evidenceList:                 clist.New(),
-		nextEvidenceTrialEndedHeight: -1,
+		stateDB:       stateDB,
+		blockStore:    blockStore,
+		state:         state,
+		logger:        log.NewNopLogger(),
+		evidenceStore: evidenceDB,
+		evidenceList:  clist.New(),
 	}
 
 	// if pending evidence already in db, in event of prior failure, then load it back to the evidenceList
@@ -93,7 +88,6 @@ func (evpool *Pool) AllPendingEvidence() []types.Evidence {
 }
 
 // Update uses the latest block & state to update any evidence that has been committed, to prune all expired evidence
-// and to check if any trial period of potential amnesia evidence  has finished.
 func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	// sanity check
 	if state.LastBlockHeight != block.Height {
@@ -113,147 +107,57 @@ func (evpool *Pool) Update(block *types.Block, state sm.State) {
 	// prune pending, committed and potential evidence and polc's periodically
 	if block.Height%state.ConsensusParams.Evidence.MaxAgeNumBlocks == 0 {
 		evpool.logger.Debug("Pruning expired evidence")
-		evpool.pruneExpiredPOLC()
 		// NOTE: As this is periodic, this implies that there may be some pending evidence in the
 		// db that have already expired. However, expired evidence will also be removed whenever
 		// PendingEvidence() is called ensuring that no expired evidence is proposed.
 		evpool.removeExpiredPendingEvidence()
 	}
-
-	if evpool.nextEvidenceTrialEndedHeight > 0 && block.Height > evpool.nextEvidenceTrialEndedHeight {
-		evpool.logger.Debug("Upgrading all potential amnesia evidence that have served the trial period")
-		evpool.nextEvidenceTrialEndedHeight = evpool.upgradePotentialAmnesiaEvidence()
-	}
 }
 
-// AddPOLC adds a proof of lock change to the evidence database
-// that may be needed in the future to verify votes
-func (evpool *Pool) AddPOLC(polc *types.ProofOfLockChange) error {
-	key := keyPOLC(polc)
-	pbplc, err := polc.ToProto()
-	if err != nil {
-		return err
-	}
-	polcBytes, err := proto.Marshal(pbplc)
-	if err != nil {
-		return fmt.Errorf("addPOLC: unable to marshal ProofOfLockChange: %w", err)
-	}
-	return evpool.evidenceStore.Set(key, polcBytes)
-}
+// AddEvidence checks the evidence is valid and adds it to the pool.
+func (evpool *Pool) AddEvidence(ev types.Evidence) error {
+	evpool.logger.Debug("Attempting to add evidence", "ev", ev)
 
-// AddEvidence checks the evidence is valid and adds it to the pool. If
-// evidence is composite (ConflictingHeadersEvidence), it will be broken up
-// into smaller pieces.
-func (evpool *Pool) AddEvidence(evidence types.Evidence) error {
-	var (
-		state  = evpool.State()
-		evList = []types.Evidence{evidence}
-	)
-
-	evpool.logger.Debug("Attempting to add evidence", "ev", evidence)
-
-	valSet, err := sm.LoadValidators(evpool.stateDB, evidence.Height())
-	if err != nil {
-		return fmt.Errorf("can't load validators at height #%d: %w", evidence.Height(), err)
+	if evpool.Has(ev) {
+		return nil
 	}
 
-	// Break composite evidence into smaller pieces.
-	if ce, ok := evidence.(types.CompositeEvidence); ok {
-		evpool.logger.Info("Breaking up composite evidence", "ev", evidence)
-
-		blockMeta := evpool.blockStore.LoadBlockMeta(evidence.Height())
-		if blockMeta == nil {
-			return fmt.Errorf("don't have block meta at height #%d", evidence.Height())
-		}
-
-		if err := ce.VerifyComposite(&blockMeta.Header, valSet); err != nil {
-			return err
-		}
-
-		evList = ce.Split(&blockMeta.Header, valSet)
+	// 1) Verify against state.
+	if err := evpool.verify(ev); err != nil {
+		return types.NewErrEvidenceInvalid(ev, err)
 	}
 
-	for _, ev := range evList {
-
-		if evpool.Has(ev) {
-			// if it is an amnesia evidence we have but POLC is not absent then
-			// we should still process it
-			if ae, ok := ev.(*types.AmnesiaEvidence); !ok || ae.Polc.IsAbsent() {
-				continue
-			}
-		}
-
-		// A header needs to be fetched. For lunatic evidence this is so we can verify
-		// that some of the fields are different to the ones we have. For all evidence it
-		// it so we can verify that the time of the evidence is correct
-
-		var header *types.Header
-		// if the evidence is from the current height - this means the evidence is fresh from the consensus
-		// and we won't have it in the block store. We thus check that the time isn't before the previous block
-		if ev.Height() == evpool.State().LastBlockHeight+1 {
-			if ev.Time().Before(evpool.State().LastBlockTime) {
-				return fmt.Errorf("evidence is from an earlier time than the previous block: %v < %v",
-					ev.Time(),
-					evpool.State().LastBlockTime)
-			}
-			header = &types.Header{Time: ev.Time()}
-		} else { // if the evidence is from a prior height
-			header = evpool.Header(ev.Height())
-			if header == nil {
-				return fmt.Errorf("don't have header at height #%d", ev.Height())
-			}
-		}
-
-		// 1) Verify against state.
-		if err := sm.VerifyEvidence(evpool.stateDB, state, ev, header); err != nil {
-			evpool.logger.Debug("Inbound evidence is invalid", "evidence", ev, "err", err)
-			return types.NewErrEvidenceInvalid(ev, err)
-		}
-
-		// For potential amnesia evidence, if this node is indicted it shall retrieve a polc
-		// to form AmensiaEvidence else start the trial period for the piece of evidence
-		if pe, ok := ev.(*types.PotentialAmnesiaEvidence); ok {
-			if err := evpool.handleInboundPotentialAmnesiaEvidence(pe); err != nil {
-				return err
-			}
-			continue
-		} else if ae, ok := ev.(*types.AmnesiaEvidence); ok {
-			// we have received an new amnesia evidence that we have never seen before so we must extract out the
-			// potential amnesia evidence part and run our own trial
-			if ae.Polc.IsAbsent() && ae.PotentialAmnesiaEvidence.VoteA.Round <
-				ae.PotentialAmnesiaEvidence.VoteB.Round {
-				if err := evpool.handleInboundPotentialAmnesiaEvidence(ae.PotentialAmnesiaEvidence); err != nil {
-					return fmt.Errorf("failed to handle amnesia evidence, err: %w", err)
-				}
-				continue
-			} else {
-				// we are going to add this amnesia evidence as it's already punishable.
-				// We also check if we already have an amnesia evidence or potential
-				// amnesia evidence that addesses the same case that we will need to remove
-				aeWithoutPolc := types.NewAmnesiaEvidence(ae.PotentialAmnesiaEvidence, types.NewEmptyPOLC())
-				if evpool.IsPending(aeWithoutPolc) {
-					evpool.removePendingEvidence(aeWithoutPolc)
-				} else if evpool.IsOnTrial(ae.PotentialAmnesiaEvidence) {
-					key := keyAwaitingTrial(ae.PotentialAmnesiaEvidence)
-					if err := evpool.evidenceStore.Delete(key); err != nil {
-						evpool.logger.Error("Failed to remove potential amnesia evidence from database", "err", err)
-					}
-				}
-			}
-		}
-
-		// 2) Save to store.
-		if err := evpool.addPendingEvidence(ev); err != nil {
-			return fmt.Errorf("database error when adding evidence: %v", err)
-		}
-
-		// 3) Add evidence to clist.
-		evpool.evidenceList.PushBack(ev)
-
-		evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
+	// 2) Save to store.
+	if err := evpool.addPendingEvidence(ev); err != nil {
+		return fmt.Errorf("database error when adding evidence: %v", err)
 	}
+
+	// 3) Add evidence to clist.
+	evpool.evidenceList.PushBack(ev)
+
+	evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
 
 	return nil
+}
+
+// Verify verifies the evidence against the node's (or evidence pool's) state. More specifically, to validate
+// evidence against state is to validate it against the nodes own header and validator set for that height. This ensures
+// as well as meeting the evidence's own validation rules, that the evidence hasn't expired, that the validator is still
+// bonded and that the evidence can be committed to the chain.
+func (evpool *Pool) Verify(evidence types.Evidence) error {
+	if evpool.IsCommitted(evidence) {
+		return errors.New("evidence was already committed")
+	}
+	// We have already verified this piece of evidence - no need to do it again
+	if evpool.IsPending(evidence) {
+		return nil
+	}
+
+	return evpool.verify(evidence)
+}
+
+func (evpool *Pool) verify(evidence types.Evidence) error {
+	return VerifyEvidence(evidence, evpool.State(), evpool.stateDB, evpool.blockStore)
 }
 
 // MarkEvidenceAsCommitted marks all the evidence as committed and removes it
@@ -291,7 +195,7 @@ func (evpool *Pool) MarkEvidenceAsCommitted(height int64, evidence []types.Evide
 
 // Has checks whether the evidence exists either pending or already committed
 func (evpool *Pool) Has(evidence types.Evidence) bool {
-	return evpool.IsPending(evidence) || evpool.IsCommitted(evidence) || evpool.IsOnTrial(evidence)
+	return evpool.IsPending(evidence) || evpool.IsCommitted(evidence)
 }
 
 // IsEvidenceExpired checks whether evidence is past the maximum age where it can be used
@@ -331,51 +235,6 @@ func (evpool *Pool) IsPending(evidence types.Evidence) bool {
 	return ok
 }
 
-// IsOnTrial checks whether a piece of evidence is in the awaiting bucket.
-// Only Potential Amnesia Evidence is stored here.
-func (evpool *Pool) IsOnTrial(evidence types.Evidence) bool {
-	pe, ok := evidence.(*types.PotentialAmnesiaEvidence)
-
-	if !ok {
-		return false
-	}
-
-	key := keyAwaitingTrial(pe)
-	ok, err := evpool.evidenceStore.Has(key)
-	if err != nil {
-		evpool.logger.Error("Unable to find evidence on trial", "err", err)
-	}
-	return ok
-}
-
-// RetrievePOLC attempts to find a polc at the given height and round, if not there than exist returns false, all
-// database errors are automatically logged
-func (evpool *Pool) RetrievePOLC(height int64, round int32) (*types.ProofOfLockChange, error) {
-	var pbpolc tmproto.ProofOfLockChange
-	key := keyPOLCFromHeightAndRound(height, round)
-	polcBytes, err := evpool.evidenceStore.Get(key)
-	if err != nil {
-		evpool.logger.Error("Unable to retrieve polc", "err", err)
-		return nil, err
-	}
-
-	// polc doesn't exist
-	if polcBytes == nil {
-		return nil, nil
-	}
-
-	err = proto.Unmarshal(polcBytes, &pbpolc)
-	if err != nil {
-		return nil, err
-	}
-	polc, err := types.ProofOfLockChangeFromProto(&pbpolc)
-	if err != nil {
-		return nil, err
-	}
-
-	return polc, err
-}
-
 // EvidenceFront goes to the first evidence in the clist
 func (evpool *Pool) EvidenceFront() *clist.CElement {
 	return evpool.evidenceList.Front()
@@ -389,16 +248,6 @@ func (evpool *Pool) EvidenceWaitChan() <-chan struct{} {
 // SetLogger sets the Logger.
 func (evpool *Pool) SetLogger(l log.Logger) {
 	evpool.logger = l
-}
-
-// Header gets the header from the block store at a specified height.
-// Is used for validation of LunaticValidatorEvidence
-func (evpool *Pool) Header(height int64) *types.Header {
-	blockMeta := evpool.blockStore.LoadBlockMeta(height)
-	if blockMeta == nil {
-		return nil
-	}
-	return &blockMeta.Header
 }
 
 // State returns the current state of the evpool.
@@ -520,173 +369,10 @@ func (evpool *Pool) removeEvidenceFromList(
 	}
 }
 
-func (evpool *Pool) pruneExpiredPOLC() {
-	evpool.logger.Debug("Pruning expired POLC's")
-	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{baseKeyPOLC})
-	if err != nil {
-		evpool.logger.Error("Unable to iterate over POLC's", "err", err)
-		return
-	}
-	defer iter.Close()
-	for ; iter.Valid(); iter.Next() {
-		proofBytes := iter.Value()
-		var (
-			pbproof tmproto.ProofOfLockChange
-		)
-		err := proto.Unmarshal(proofBytes, &pbproof)
-		if err != nil {
-			evpool.logger.Error("Unable to unmarshal POLC", "err", err)
-			continue
-		}
-		proof, err := types.ProofOfLockChangeFromProto(&pbproof)
-		if err != nil {
-			evpool.logger.Error("Unable to transition POLC from protobuf", "err", err)
-			continue
-		}
-		if !evpool.IsExpired(proof.Height()-1, proof.Time()) {
-			return
-		}
-		err = evpool.evidenceStore.Delete(iter.Key())
-		if err != nil {
-			evpool.logger.Error("Unable to delete expired POLC", "err", err)
-			continue
-		}
-		evpool.logger.Info("Deleted expired POLC", "polc", proof)
-	}
-}
-
 func (evpool *Pool) updateState(state sm.State) {
 	evpool.mtx.Lock()
 	defer evpool.mtx.Unlock()
 	evpool.state = state
-}
-
-// upgrades any potential evidence that has undergone the trial period and is primed to be made into
-// amnesia evidence
-func (evpool *Pool) upgradePotentialAmnesiaEvidence() int64 {
-	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{baseKeyAwaitingTrial})
-	if err != nil {
-		evpool.logger.Error("Unable to iterate over POLC's", "err", err)
-		return -1
-	}
-	defer iter.Close()
-	trialPeriod := evpool.State().ConsensusParams.Evidence.ProofTrialPeriod
-	currentHeight := evpool.State().LastBlockHeight
-	// 1) Iterate through all potential amnesia evidence in order of height
-	for ; iter.Valid(); iter.Next() {
-		paeBytes := iter.Value()
-		// 2) Retrieve the evidence
-		var evpb tmproto.Evidence
-		err := evpb.Unmarshal(paeBytes)
-		if err != nil {
-			evpool.logger.Error("Unable to unmarshal potential amnesia evidence", "err", err)
-			continue
-		}
-		ev, err := types.EvidenceFromProto(&evpb)
-		if err != nil {
-			evpool.logger.Error("Converting from proto to evidence", "err", err)
-			continue
-		}
-		// 3) Check if the trial period has lapsed and amnesia evidence can be formed
-		if pe, ok := ev.(*types.PotentialAmnesiaEvidence); ok {
-			if pe.Primed(trialPeriod, currentHeight) {
-				ae := types.NewAmnesiaEvidence(pe, types.NewEmptyPOLC())
-				err := evpool.addPendingEvidence(ae)
-				if err != nil {
-					evpool.logger.Error("Unable to add amnesia evidence", "err", err)
-					continue
-				}
-				evpool.logger.Info("Upgraded to amnesia evidence", "amnesiaEvidence", ae)
-				err = evpool.evidenceStore.Delete(iter.Key())
-				if err != nil {
-					evpool.logger.Error("Unable to delete potential amnesia evidence", "err", err)
-					continue
-				}
-			} else {
-				evpool.logger.Debug("Potential amnesia evidence is not ready to be upgraded. Ready at", "height",
-					pe.HeightStamp+trialPeriod, "currentHeight", currentHeight)
-				// once we reach a piece of evidence that isn't ready send back the height with which it will be ready
-				return pe.HeightStamp + trialPeriod
-			}
-		}
-	}
-	// if we have no evidence left to process we want to reset nextEvidenceTrialEndedHeight
-	return -1
-}
-
-func (evpool *Pool) handleInboundPotentialAmnesiaEvidence(pe *types.PotentialAmnesiaEvidence) error {
-	var (
-		height = pe.Height()
-		exists = false
-		polc   *types.ProofOfLockChange
-		err    error
-	)
-
-	evpool.logger.Debug("Received Potential Amnesia Evidence", "pe", pe)
-
-	// a) first try to find a corresponding polc
-	for round := pe.VoteB.Round; round > pe.VoteA.Round; round-- {
-		polc, err = evpool.RetrievePOLC(height, round)
-		if err != nil {
-			evpool.logger.Error("Failed to retrieve polc for potential amnesia evidence", "err", err, "pae", pe.String())
-			continue
-		}
-		if polc != nil && !polc.IsAbsent() {
-			evpool.logger.Debug("Found polc for potential amnesia evidence", "polc", polc)
-			// we should not need to verify it if both the polc and potential amnesia evidence have already
-			// been verified. We replace the potential amnesia evidence.
-			ae := types.NewAmnesiaEvidence(pe, polc)
-			err := evpool.AddEvidence(ae)
-			if err != nil {
-				evpool.logger.Error("Failed to create amnesia evidence from potential amnesia evidence", "err", err)
-				// revert back to processing potential amnesia evidence
-				exists = false
-			} else {
-				evpool.logger.Info("Formed amnesia evidence from own polc", "amnesiaEvidence", ae)
-			}
-			break
-		}
-	}
-
-	// stamp height that the evidence was received
-	pe.HeightStamp = evpool.State().LastBlockHeight
-
-	// b) check if amnesia evidence can be made now or if we need to enact the trial period
-	if !exists && pe.Primed(1, pe.HeightStamp) {
-		evpool.logger.Debug("PotentialAmnesiaEvidence can be instantly upgraded")
-		err := evpool.AddEvidence(types.NewAmnesiaEvidence(pe, types.NewEmptyPOLC()))
-		if err != nil {
-			return err
-		}
-	} else if !exists && evpool.State().LastBlockHeight+evpool.State().ConsensusParams.Evidence.ProofTrialPeriod <
-		pe.Height()+evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks {
-		// if we can't find a proof of lock change and we know that the trial period will finish before the
-		// evidence has expired, then we commence the trial period by saving it in the awaiting bucket
-		pbe, err := types.EvidenceToProto(pe)
-		if err != nil {
-			return err
-		}
-		evBytes, err := pbe.Marshal()
-		if err != nil {
-			return err
-		}
-		key := keyAwaitingTrial(pe)
-		err = evpool.evidenceStore.Set(key, evBytes)
-		if err != nil {
-			return err
-		}
-		evpool.logger.Debug("Valid potential amnesia evidence has been added. Starting trial period",
-			"ev", pe)
-		// keep track of when the next pe has finished the trial period
-		if evpool.nextEvidenceTrialEndedHeight == -1 {
-			evpool.nextEvidenceTrialEndedHeight = pe.Height() + evpool.State().ConsensusParams.Evidence.ProofTrialPeriod
-		}
-
-		// add to the broadcast list so it can continue to be gossiped
-		evpool.evidenceList.PushBack(pe)
-	}
-
-	return nil
 }
 
 func evMapKey(ev types.Evidence) string {
@@ -704,18 +390,6 @@ func keyCommitted(evidence types.Evidence) []byte {
 
 func keyPending(evidence types.Evidence) []byte {
 	return append([]byte{baseKeyPending}, keySuffix(evidence)...)
-}
-
-func keyAwaitingTrial(evidence types.Evidence) []byte {
-	return append([]byte{baseKeyAwaitingTrial}, keySuffix(evidence)...)
-}
-
-func keyPOLC(polc *types.ProofOfLockChange) []byte {
-	return keyPOLCFromHeightAndRound(polc.Height(), polc.Round())
-}
-
-func keyPOLCFromHeightAndRound(height int64, round int32) []byte {
-	return append([]byte{baseKeyPOLC}, []byte(fmt.Sprintf("%s/%s", bE(height), bE(int64(round))))...)
 }
 
 func keySuffix(evidence types.Evidence) []byte {

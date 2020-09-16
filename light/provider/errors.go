@@ -1,12 +1,25 @@
 package provider
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 var (
-	// ErrSignedHeaderNotFound is returned when a provider can't find the
+	// ErrLightBlockNotFound is returned when a provider can't find the
 	// requested header.
-	ErrSignedHeaderNotFound = errors.New("signed header not found")
-	// ErrValidatorSetNotFound is returned when a provider can't find the
-	// requested validator set.
-	ErrValidatorSetNotFound = errors.New("validator set not found")
+	ErrLightBlockNotFound = errors.New("light block not found")
+	// ErrNoResponse is returned if the provider doesn't respond to the
+	// request in a gieven time
+	ErrNoResponse = errors.New("client failed to respond")
 )
+
+// ErrBadLightBlock is returned when a provider returns an invalid
+// light block.
+type ErrBadLightBlock struct {
+	Reason error
+}
+
+func (e ErrBadLightBlock) Error() string {
+	return fmt.Sprintf("client provided bad signed header: %s", e.Reason.Error())
+}

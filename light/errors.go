@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -40,22 +39,6 @@ func (e ErrInvalidHeader) Error() string {
 	return fmt.Sprintf("invalid header: %v", e.Reason)
 }
 
-// ErrConflictingHeaders is thrown when two conflicting headers are discovered.
-type ErrConflictingHeaders struct {
-	H1      *types.SignedHeader
-	Primary provider.Provider
-
-	H2      *types.SignedHeader
-	Witness provider.Provider
-}
-
-func (e ErrConflictingHeaders) Error() string {
-	return fmt.Sprintf(
-		"header hash %X from primary %v does not match one %X from witness %v",
-		e.H1.Hash(), e.Primary,
-		e.H2.Hash(), e.Witness)
-}
-
 // ErrVerificationFailed means either sequential or skipping verification has
 // failed to verify from header #1 to header #2 due to some reason.
 type ErrVerificationFailed struct {
@@ -87,8 +70,7 @@ type badWitnessCode int
 
 const (
 	noResponse badWitnessCode = iota + 1
-	invalidHeader
-	invalidValidatorSet
+	invalidLightBlock
 )
 
 // errBadWitness is returned when the witness either does not respond or
@@ -103,10 +85,8 @@ func (e errBadWitness) Error() string {
 	switch e.Code {
 	case noResponse:
 		return fmt.Sprintf("failed to get a header/vals from witness: %v", e.Reason)
-	case invalidHeader:
-		return fmt.Sprintf("witness sent us invalid header: %v", e.Reason)
-	case invalidValidatorSet:
-		return fmt.Sprintf("witness sent us invalid validator set: %v", e.Reason)
+	case invalidLightBlock:
+		return fmt.Sprintf("witness sent us an invalid light block: %v", e.Reason)
 	default:
 		return fmt.Sprintf("unknown code: %d", e.Code)
 	}

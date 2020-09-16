@@ -46,7 +46,9 @@ func TestWALTruncate(t *testing.T) {
 	err = wal.Start()
 	require.NoError(t, err)
 	defer func() {
-		wal.Stop()
+		if err := wal.Stop(); err != nil {
+			t.Error(err)
+		}
 		// wait for the wal to finish shutting down so we
 		// can safely remove the directory
 		wal.Wait()
@@ -60,7 +62,9 @@ func TestWALTruncate(t *testing.T) {
 
 	time.Sleep(1 * time.Millisecond) //wait groupCheckDuration, make sure RotateFile run
 
-	wal.FlushAndSync()
+	if err := wal.FlushAndSync(); err != nil {
+		t.Error(err)
+	}
 
 	h := int64(50)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
@@ -115,7 +119,9 @@ func TestWALWrite(t *testing.T) {
 	err = wal.Start()
 	require.NoError(t, err)
 	defer func() {
-		wal.Stop()
+		if err := wal.Stop(); err != nil {
+			t.Error(err)
+		}
 		// wait for the wal to finish shutting down so we
 		// can safely remove the directory
 		wal.Wait()
@@ -191,7 +197,9 @@ func TestWALPeriodicSync(t *testing.T) {
 
 	require.NoError(t, wal.Start())
 	defer func() {
-		wal.Stop()
+		if err := wal.Stop(); err != nil {
+			t.Error(err)
+		}
 		wal.Wait()
 	}()
 
@@ -236,7 +244,9 @@ func benchmarkWalDecode(b *testing.B, n int) {
 	enc := NewWALEncoder(buf)
 
 	data := nBytes(n)
-	enc.Encode(&TimedWALMessage{Msg: data, Time: time.Now().Round(time.Second).UTC()})
+	if err := enc.Encode(&TimedWALMessage{Msg: data, Time: time.Now().Round(time.Second).UTC()}); err != nil {
+		b.Error(err)
+	}
 
 	encoded := buf.Bytes()
 

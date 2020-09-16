@@ -190,7 +190,8 @@ func TestABCIQuery(t *testing.T) {
 		apph := bres.Height + 1 // this is where the tx will be applied to the state
 
 		// wait before querying
-		client.WaitForHeight(c, apph, nil)
+		err = client.WaitForHeight(c, apph, nil)
+		require.NoError(t, err)
 		res, err := c.ABCIQuery("/key", k)
 		qres := res.Response
 		if assert.Nil(t, err) && assert.True(t, qres.IsOK()) {
@@ -624,7 +625,8 @@ func testBatchedJSONRPCCalls(t *testing.T, c *rpchttp.HTTP) {
 	require.Equal(t, *bresult2, *r2)
 	apph := tmmath.MaxInt64(bresult1.Height, bresult2.Height) + 1
 
-	client.WaitForHeight(c, apph, nil)
+	err = client.WaitForHeight(c, apph, nil)
+	require.NoError(t, err)
 
 	q1, err := batch.ABCIQuery("/key", k1)
 	require.NoError(t, err)

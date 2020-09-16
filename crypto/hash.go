@@ -6,6 +6,6 @@ import (
 
 func Sha256(bytes []byte) []byte {
 	hasher := sha256.New()
-	hasher.Write(bytes)
+	hasher.Write(bytes) //nolint:errcheck // ignore error
 	return hasher.Sum(nil)
 }

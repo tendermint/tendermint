@@ -37,6 +37,9 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"genesis_hash",
 		[]byte{},
 		"Optional SHA-256 hash of the genesis file")
+	cmd.Flags().Int64("consensus.double_sign_check_height", config.Consensus.DoubleSignCheckHeight,
+		"How many blocks to look back to check existence of the node's "+
+			"consensus votes before joining consensus")
 
 	// abci flags
 	cmd.Flags().String(
@@ -55,6 +58,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 		config.RPC.GRPCListenAddress,
 		"GRPC listen address (BroadcastTx only). Port required")
 	cmd.Flags().Bool("rpc.unsafe", config.RPC.Unsafe, "Enabled unsafe rpc methods")
+	cmd.Flags().String("rpc.pprof_laddr", config.RPC.PprofListenAddress, "pprof listen address (https://golang.org/pkg/net/http/pprof)")
 
 	// p2p flags
 	cmd.Flags().String(
@@ -116,7 +120,9 @@ func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 			// Stop upon receiving SIGTERM or CTRL-C.
 			tmos.TrapSignal(logger, func() {
 				if n.IsRunning() {
-					n.Stop()
+					if err := n.Stop(); err != nil {
+						logger.Error("unable to stop the node", "error", err)
+					}
 				}
 			})
 

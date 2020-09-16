@@ -24,8 +24,8 @@ field allows ABCI applications to dictate which events should be indexed.
 The blockchain can now start from an arbitrary initial height, provided to the
 application via `RequestInitChain.InitialHeight`.
 
-A new form of evidence: amnesia evidence, has been added. Potential amnesia and
-mock evidence have been removed. Applications should be able to handle these
+ABCI evidence type is now an enum with two recognised types of evidence:
+`DUPLICATE_VOTE` and `LIGHT_CLIENT_ATTACK`. Applications should be able to handle these
 evidence types.
 
 ### P2P Protocol
@@ -46,7 +46,7 @@ Merkle tree built from:
 - `BeginBlock#Events`.
 
 Merkle hashes of empty trees previously returned nothing, but now return the hash of an empty input,
-to conform with RFC-6962. This mainly affects `Header#DataHash`, `Header#LastResultsHash`, and 
+to conform with RFC-6962. This mainly affects `Header#DataHash`, `Header#LastResultsHash`, and
 `Header#EvidenceHash`, which are often empty. Non-empty hashes can also be affected, e.g. if their
 inputs depend on other (empty) Merkle hashes, giving different results.
 
@@ -96,7 +96,8 @@ Various parameters have been added to the consensus parameters.
 
 All keys have removed there type prefix. Ed25519 Pubkey went from `PubKeyEd25519` to `PubKey`. This way when calling the key you are not duplicating information (`ed25519.PubKey`). All keys are now slice of bytes(`[]byte`), previously they were a array of bytes (`[<size>]byte`).
 
-The multisig that was previously located in Tendermint has now migrated to a new home within the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go).
+- The multisig that was previously located in Tendermint has now migrated to a new home within the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go).
+- Secp256k1 has been removed from the Tendermint repo. If you would like to continue using the implementation you can find it in the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/tree/443e0c1f89bd3730a731aea30453bd732f7efa35/crypto/keys/secp256k1)
 
 #### Merkle
 
@@ -143,6 +144,13 @@ All requests are now accompanied by the chainID from the network.
 This is a optional field and can be ignored by key management systems. It
 is recommended to check the chainID if using the same key management system for multiple chains.
 
+### RPC
+
+`/unsafe_start_cpu_profiler`, `/unsafe_stop_cpu_profiler` and
+`/unsafe_write_heap_profile` were removed. Please use pprof server, which can
+be enabled through `--rpc.pprof_laddr=X` flag or `pprof_laddr=X` config setting
+in the rpc section.
+
 ## v0.33.4
 
 ### Go API
@@ -154,6 +162,19 @@ is recommended to check the chainID if using the same key management system for 
 
 When upgrading to version 0.33.4 you will have to fetch the `third_party`
 directory along with the updated proto files.
+
+### Block Retention
+
+ResponseCommit added a field for block retention. The application can provide information to Tendermint on how to prune blocks.
+If an application would like to not prune any blocks pass a `0` in this field.
+
+```proto
+message ResponseCommit {
+  // reserve 1
+  bytes  data          = 2; // the Merkle root hash
+  ++ uint64 retain_height = 3; // the oldest block height to retain ++
+}
+```
 
 ## v0.33.0
 
