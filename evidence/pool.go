@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -31,7 +32,7 @@ type Pool struct {
 
 	evidenceStore dbm.DB
 	evidenceList  *clist.CList // concurrent linked-list of evidence
-	evidenceSize  uint16       // amount of pending evidence
+	evidenceSize  uint32       // amount of pending evidence
 
 	// needed to load validators to verify evidence
 	stateDB sm.Store
@@ -62,13 +63,16 @@ func NewPool(evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool,
 		logger:        log.NewNopLogger(),
 		evidenceStore: evidenceDB,
 		evidenceList:  clist.New(),
+		evidenceSize:  0,
 		pruningHeight: state.LastBlockHeight,
 		pruningTime:   state.LastBlockTime,
 	}
 
-	// if pending evidence already in db, in event of prior failure, then load it back to the evidenceList
+	// if pending evidence already in db, in event of prior failure, then check for expiration,
+	// update the size and load it back to the evidenceList
 	pool.removeExpiredPendingEvidence()
 	evList := pool.allPendingEvidence()
+	atomic.AddUint32(&pool.evidenceSize, uint32(len(evList)))
 	for _, ev := range evList {
 		pool.evidenceList.PushBack(ev)
 	}
@@ -101,7 +105,7 @@ func (evpool *Pool) Update(state sm.State) {
 	evpool.updateState(state)
 
 	// prune pending evidence when it has expired. This also updates when the next evidence will expire
-	if evpool.evidenceSize > 0 && state.LastBlockHeight > evpool.pruningHeight &&
+	if atomic.LoadUint32(&evpool.evidenceSize) > 0 && state.LastBlockHeight > evpool.pruningHeight &&
 		state.LastBlockTime.After(evpool.pruningTime) {
 		evpool.pruningHeight, evpool.pruningTime = evpool.removeExpiredPendingEvidence()
 	}
@@ -481,7 +485,7 @@ func (evpool *Pool) addPendingEvidence(evInfo *Info) error {
 	if err != nil {
 		return fmt.Errorf("unable to persist evidence: %w", err)
 	}
-	evpool.evidenceSize++
+	atomic.AddUint32(&evpool.evidenceSize, 1)
 	return nil
 }
 
@@ -490,7 +494,7 @@ func (evpool *Pool) removePendingEvidence(evidence types.Evidence) {
 	if err := evpool.evidenceStore.Delete(key); err != nil {
 		evpool.logger.Error("Unable to delete pending evidence", "err", err)
 	} else {
-		evpool.evidenceSize--
+		atomic.AddUint32(&evpool.evidenceSize, ^uint32(0))
 		evpool.logger.Info("Deleted pending evidence", "evidence", evidence)
 	}
 }
