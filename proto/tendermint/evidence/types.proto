@@ -16,5 +16,5 @@ message Info {
   tendermint.types.Evidence           evidence = 1 [(gogoproto.nullable) = false];
   google.protobuf.Timestamp           time = 2 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   repeated tendermint.types.Validator validators = 3;
-  int64                               totalVotingPower = 4;
+  int64                               total_voting_power = 4;
 }
