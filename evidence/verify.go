@@ -127,6 +127,17 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, t
 		if err != nil {
 			return fmt.Errorf("skipping verification from common to conflicting header failed: %w", err)
 		}
+	} else {
+		// in the case of equivocation and amnesia we expect some header hashes to be correctly derived
+		if isInvalidHeader(trustedHeader.Header, e.ConflictingBlock.Header) {
+			return errors.New("common height is the same as conflicting block height so expected the conflicting" +
+				" block to be correctly derived yet it wasn't")
+		}
+		// ensure that 2/3 of the validator set did vote for this block
+		if err := e.ConflictingBlock.ValidatorSet.VerifyCommitLight(trustedHeader.ChainID, e.ConflictingBlock.Commit.BlockID,
+			e.ConflictingBlock.Height, e.ConflictingBlock.Commit); err != nil {
+			return fmt.Errorf("invalid commit from conflicting block: %w", err)
+		}
 	}
 
 	if bytes.Equal(trustedHeader.Hash(), e.ConflictingBlock.Hash()) {

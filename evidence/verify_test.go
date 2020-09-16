@@ -130,19 +130,22 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 
 func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 	conflictingVals, conflictingPrivVals := types.RandValidatorSet(5, 10)
-
-	commonHeader := makeHeaderRandom(4)
-	commonHeader.Time = defaultEvidenceTime.Add(-1 * time.Hour)
 	trustedHeader := makeHeaderRandom(10)
 
 	conflictingHeader := makeHeaderRandom(10)
 	conflictingHeader.ValidatorsHash = conflictingVals.Hash()
 
+	trustedHeader.ValidatorsHash = conflictingHeader.ValidatorsHash
+	trustedHeader.NextValidatorsHash = conflictingHeader.NextValidatorsHash
+	trustedHeader.ConsensusHash = conflictingHeader.ConsensusHash
+	trustedHeader.AppHash = conflictingHeader.AppHash
+	trustedHeader.LastResultsHash = conflictingHeader.LastResultsHash
+
 	// we are simulating a duplicate vote attack where all the validators in the conflictingVals set
 	// except the last validator vote twice
 	blockID := makeBlockID(conflictingHeader.Hash(), 1000, []byte("partshash"))
 	voteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
-	commit, err := types.MakeCommit(blockID, 10, 1, voteSet, conflictingPrivVals, defaultEvidenceTime)
+	commit, err := types.MakeCommit(blockID, 10, 1, voteSet, conflictingPrivVals[:4], defaultEvidenceTime)
 	require.NoError(t, err)
 	ev := &types.LightClientAttackEvidence{
 		ConflictingBlock: &types.LightBlock{
@@ -174,6 +177,15 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 		defaultEvidenceTime.Add(1*time.Minute), 2*time.Hour)
 	assert.Error(t, err)
 
+	// conflicting header has different next validators hash which should have been correctly derived from
+	// the previous round
+	ev.ConflictingBlock.Header.NextValidatorsHash = crypto.CRandBytes(tmhash.Size)
+	err = evidence.VerifyLightClientAttack(ev, trustedSignedHeader, trustedSignedHeader, nil,
+		defaultEvidenceTime.Add(1*time.Minute), 2*time.Hour)
+	assert.Error(t, err)
+	// revert next validators hash
+	ev.ConflictingBlock.Header.NextValidatorsHash = trustedHeader.NextValidatorsHash
+
 	state := sm.State{
 		LastBlockTime:   defaultEvidenceTime.Add(1 * time.Minute),
 		LastBlockHeight: 11,
@@ -203,10 +215,13 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 	block := types.MakeBlock(state.LastBlockHeight, []types.Tx{}, lastCommit, []types.Evidence{ev})
 
 	abciEv := pool.ABCIEvidence(block.Height, block.Evidence.Evidence)
-	expectedAbciEv := make([]abci.Evidence, len(conflictingVals.Validators))
+	expectedAbciEv := make([]abci.Evidence, len(conflictingVals.Validators)-1)
 
-	// we epect evidence to be made for all validators
+	// we expect evidence to be made for all validators except the last one
 	for idx, val := range conflictingVals.Validators {
+		if idx == 4 { // skip the last validator
+			continue
+		}
 		ev := abci.Evidence{
 			Type:             abci.EvidenceType_LIGHT_CLIENT_ATTACK,
 			Validator:        types.TM2PB.Validator(val),
@@ -344,8 +359,9 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 		{vote1, makeVote(t, val, chainID, 0, 11, 2, 1, blockID2, defaultEvidenceTime), false},    // wrong height
 		{vote1, makeVote(t, val, chainID, 0, 10, 3, 1, blockID2, defaultEvidenceTime), false},    // wrong round
 		{vote1, makeVote(t, val, chainID, 0, 10, 2, 2, blockID2, defaultEvidenceTime), false},    // wrong step
-		{vote1, makeVote(t, val2, chainID, 0, 10, 2, 1, blockID, defaultEvidenceTime), false},    // wrong validator
-		{vote1, makeVote(t, val2, chainID, 0, 10, 2, 1, blockID, time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)), false},
+		{vote1, makeVote(t, val2, chainID, 0, 10, 2, 1, blockID2, defaultEvidenceTime), false},   // wrong validator
+		// a different vote time doesn't matter
+		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)), true},
 		{vote1, badVote, false}, // signed by wrong key
 	}
 

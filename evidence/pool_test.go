@@ -195,7 +195,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	assert.Empty(t, pool.ABCIEvidence(height, []types.Evidence{}))
 }
 
-func TestVerifyEvidencePendingEvidencePasses(t *testing.T) {
+func TestVerifyPendingEvidencePasses(t *testing.T) {
 	var height int64 = 1
 	pool, val := defaultTestPool(height)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
@@ -211,6 +211,77 @@ func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 	pool, val := defaultTestPool(height)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
 	err := pool.CheckEvidence(types.EvidenceList{ev, ev})
+	assert.Error(t, err)
+}
+
+// check that
+func TestCheckEvidenceWithLightClientAttack(t *testing.T) {
+	nValidators := 5
+	conflictingVals, conflictingPrivVals := types.RandValidatorSet(nValidators, 10)
+	trustedHeader := makeHeaderRandom(10)
+
+	conflictingHeader := makeHeaderRandom(10)
+	conflictingHeader.ValidatorsHash = conflictingVals.Hash()
+
+	trustedHeader.ValidatorsHash = conflictingHeader.ValidatorsHash
+	trustedHeader.NextValidatorsHash = conflictingHeader.NextValidatorsHash
+	trustedHeader.ConsensusHash = conflictingHeader.ConsensusHash
+	trustedHeader.AppHash = conflictingHeader.AppHash
+	trustedHeader.LastResultsHash = conflictingHeader.LastResultsHash
+
+	// for simplicity we are simulating a duplicate vote attack where all the validators in the
+	// conflictingVals set voted twice
+	blockID := makeBlockID(conflictingHeader.Hash(), 1000, []byte("partshash"))
+	voteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
+	commit, err := types.MakeCommit(blockID, 10, 1, voteSet, conflictingPrivVals, defaultEvidenceTime)
+	require.NoError(t, err)
+	ev := &types.LightClientAttackEvidence{
+		ConflictingBlock: &types.LightBlock{
+			SignedHeader: &types.SignedHeader{
+				Header: conflictingHeader,
+				Commit: commit,
+			},
+			ValidatorSet: conflictingVals,
+		},
+		CommonHeight: 10,
+	}
+
+	trustedBlockID := makeBlockID(trustedHeader.Hash(), 1000, []byte("partshash"))
+	trustedVoteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
+	trustedCommit, err := types.MakeCommit(trustedBlockID, 10, 1, trustedVoteSet, conflictingPrivVals, defaultEvidenceTime)
+	require.NoError(t, err)
+
+	state := sm.State{
+		LastBlockTime:   defaultEvidenceTime.Add(1 * time.Minute),
+		LastBlockHeight: 11,
+		ConsensusParams: *types.DefaultConsensusParams(),
+	}
+	stateStore := &smmocks.Store{}
+	stateStore.On("LoadValidators", int64(10)).Return(conflictingVals, nil)
+	stateStore.On("Load").Return(state, nil)
+	blockStore := &mocks.BlockStore{}
+	blockStore.On("LoadBlockMeta", int64(10)).Return(&types.BlockMeta{Header: *trustedHeader})
+	blockStore.On("LoadBlockCommit", int64(10)).Return(trustedCommit)
+
+	pool, err := evidence.NewPool(dbm.NewMemDB(), stateStore, blockStore)
+	require.NoError(t, err)
+	pool.SetLogger(log.TestingLogger())
+
+	err = pool.AddEvidence(ev)
+	assert.NoError(t, err)
+
+	err = pool.CheckEvidence(types.EvidenceList{ev})
+	assert.NoError(t, err)
+
+	// take away the last signature -> there are less validators then what we have detected,
+	// hence we move to full verification where the evidence should still pass
+	commit.Signatures = append(commit.Signatures[:nValidators-1], types.NewCommitSigAbsent())
+	err = pool.CheckEvidence(types.EvidenceList{ev})
+	assert.NoError(t, err)
+
+	// take away the last two signatures -> should fail due to insufficient power
+	commit.Signatures = append(commit.Signatures[:nValidators-2], types.NewCommitSigAbsent(), types.NewCommitSigAbsent())
+	err = pool.CheckEvidence(types.EvidenceList{ev})
 	assert.Error(t, err)
 }
 

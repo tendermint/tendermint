@@ -406,13 +406,13 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 			evpool.logger.Error("Failed to get evidence during fastcheck", "err", err, "ev", lcae)
 			return false
 		}
-		var evpb *evproto.Info
+		var evpb evproto.Info
 		err = evpb.Unmarshal(evBytes)
 		if err != nil {
 			evpool.logger.Error("Failed to unmarshal evidence info during fastcheck", "err", err)
 			return false
 		}
-		evInfo, err := InfoFromProto(evpb)
+		evInfo, err := InfoFromProto(&evpb)
 		if err != nil {
 			evpool.logger.Error("Failed to convert evidence from proto during fastcheck", "err", err)
 			return false
@@ -427,6 +427,7 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 				}
 			}
 			// a validator we know is malicious is not included in the commit
+			evpool.logger.Info("Fast check failed: a validator we know is malicious is not in the commit sigs. Reverting to full verification")
 			return false
 		}
 		return true
