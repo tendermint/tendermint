@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -57,13 +56,10 @@ func TestMaxOpenConnections(t *testing.T) {
 			c := http.Client{Timeout: 3 * time.Second}
 			r, err := c.Get("http://" + l.Addr().String())
 			if err != nil {
-				t.Log(err)
 				atomic.AddInt32(&failed, 1)
 				return
 			}
 			defer r.Body.Close()
-			_, err = io.Copy(ioutil.Discard, r.Body)
-			require.NoError(t, err)
 		}()
 	}
 	wg.Wait()
@@ -85,11 +81,17 @@ func TestServeTLS(t *testing.T) {
 		fmt.Fprint(w, "some body")
 	})
 
+	chErr := make(chan error, 1)
 	go func() {
-		if err := ServeTLS(ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig()); err != nil {
-			t.Log(err)
-		}
+		// FIXME This goroutine leaks
+		chErr <- ServeTLS(ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig())
 	}()
+
+	select {
+	case err := <-chErr:
+		require.NoError(t, err)
+	case <-time.After(100 * time.Millisecond):
+	}
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
