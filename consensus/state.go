@@ -73,6 +73,8 @@ type txNotifier interface {
 
 // interface to the evidence pool
 type evidencePool interface {
+	// Adds consensus based evidence to the evidence pool where time is the time
+	// of the block where the offense occurred and the validator set is the current one.
 	AddEvidenceFromConsensus(types.Evidence, time.Time, *types.ValidatorSet) error
 }
 
@@ -1681,9 +1683,11 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.MissingValidators.Set(float64(missingValidators))
 	cs.metrics.MissingValidatorsPower.Set(float64(missingValidatorsPower))
 
-	// byzantine validators power and count is only for consensus evidence i.e. duplicate vote
-	byzantineValidatorsPower := int64(0)
-	byzantineValidatorsCount := int64(0)
+	// NOTE: byzantine validators power and count is only for consensus evidence i.e. duplicate vote
+	var (
+		byzantineValidatorsPower = int64(0)
+		byzantineValidatorsCount = int64(0)
+	)
 	for _, ev := range block.Evidence.Evidence {
 		if dve, ok := ev.(*types.DuplicateVoteEvidence); ok {
 			if _, val := cs.Validators.GetByAddress(dve.VoteA.ValidatorAddress); val != nil {

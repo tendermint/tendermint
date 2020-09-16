@@ -204,7 +204,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		timeoutWaitGroup(t, nValidators, func(j int) {
 			msg := <-blocksSubs[j].Out()
 			block := msg.Data().(types.EventDataNewBlock).Block
-			assert.True(t, len(block.Evidence.Evidence) == 1)
+			assert.Len(t, block.Evidence.Evidence, 1)
 		}, css)
 	}
 }

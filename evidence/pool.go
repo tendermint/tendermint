@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -71,7 +72,10 @@ func NewPool(evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool,
 	// if pending evidence already in db, in event of prior failure, then check for expiration,
 	// update the size and load it back to the evidenceList
 	pool.removeExpiredPendingEvidence()
-	evList := pool.allPendingEvidence()
+	evList, err := pool.listEvidence(baseKeyPending, -1)
+	if err != nil {
+		return nil, err
+	}
 	atomic.AddUint32(&pool.evidenceSize, uint32(len(evList)))
 	for _, ev := range evList {
 		pool.evidenceList.PushBack(ev)
@@ -99,7 +103,8 @@ func (evpool *Pool) Update(state sm.State) {
 			evpool.state.LastBlockHeight,
 		))
 	}
-	evpool.logger.Info("Updating evidence pool", "height", state.LastBlockHeight, "time", state.LastBlockTime)
+	evpool.logger.Info("Updating evidence pool", "last_block_height", state.LastBlockHeight, 
+	"last_block_time", state.LastBlockTime)
 
 	// update the state
 	evpool.updateState(state)
@@ -117,7 +122,7 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 
 	// We have already verified this piece of evidence - no need to do it again
 	if evpool.isPending(ev) {
-		return fmt.Errorf("evidence already verified and added: %v", ev)
+		return errors.New("evidence already verified and added")
 	}
 
 	// 1) Verify against state.
@@ -148,7 +153,7 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 	)
 
 	if evpool.isPending(ev) {
-		return fmt.Errorf("evidence already verified and added, %v", ev) // we already have this evidence
+		return errors.New("evidence already verified and added") // we already have this evidence
 	}
 
 	switch ev := ev.(type) {
@@ -160,7 +165,7 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 		return fmt.Errorf("unrecognized evidence type: %T", ev)
 	}
 
-	evInfo := &Info{
+	evInfo := &info{
 		Evidence:         ev,
 		Time:             time,
 		Validators:       vals,
@@ -182,8 +187,6 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 // If it has already verified the evidence then it jumps to the next one. It ensures that no
 // evidence has already been committed or is being proposed twice. It also adds any
 // evidence that it doesn't currently have so that it can quickly form ABCI Evidence later.
-// Check evidence returns the hash of the entire evidence list so that it can be compares with
-// the headers EvidenceHash.
 func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 	hashes := make([][]byte, len(evList))
 	for idx, ev := range evList {
@@ -220,7 +223,7 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 // the application.
 func (evpool *Pool) ABCIEvidence(height int64, evidence []types.Evidence) []abci.Evidence {
 	// make a map of committed evidence to remove from the clist
-	blockEvidenceMap := make(map[string]struct{})
+	blockEvidenceMap := make(map[string]struct{}, len(evidence))
 	abciEvidence := make([]abci.Evidence, 0)
 	for _, ev := range evidence {
 
@@ -238,13 +241,13 @@ func (evpool *Pool) ABCIEvidence(height int64, evidence []types.Evidence) []abci
 			evpool.logger.Error("Decoding evidence info failed", "err", err, "height", ev.Height(), "hash", ev.Hash())
 			continue
 		}
-		evInfo, err := InfoFromProto(&infoProto)
+		evInfo, err := infoFromProto(&infoProto)
 		if err != nil {
 			evpool.logger.Error("Converting evidence info from proto failed", "err", err, "height", ev.Height(),
 				"hash", ev.Hash())
 			continue
 		}
-		abciEv := make([]abci.Evidence, len(evInfo.Validators))
+
 		var evType abci.EvidenceType
 		switch ev.(type) {
 		case *types.DuplicateVoteEvidence:
@@ -252,20 +255,20 @@ func (evpool *Pool) ABCIEvidence(height int64, evidence []types.Evidence) []abci
 		case *types.LightClientAttackEvidence:
 			evType = abci.EvidenceType_LIGHT_CLIENT_ATTACK
 		default:
-			evpool.logger.Error("Unknown evidence type", "evidence", ev)
+			evpool.logger.Error("Unknown evidence type", "T", reflect.TypeOf(ev))
 			continue
 		}
-		for idx, val := range evInfo.Validators {
-			abciEv[idx] = abci.Evidence{
+		for _, val := range evInfo.Validators {
+			abciEv := abci.Evidence{
 				Type:             evType,
 				Validator:        types.TM2PB.Validator(val),
 				Height:           ev.Height(),
 				Time:             evInfo.Time,
 				TotalVotingPower: evInfo.TotalVotingPower,
 			}
+			abciEvidence = append(abciEvidence, abciEv)
+			evpool.logger.Info("Created ABCI evidence", "ev", abciEv)
 		}
-		evpool.logger.Info("Created ABCI evidence", "ev", abciEv)
-		abciEvidence = append(abciEvidence, abciEv...)
 
 		// we can now remove the evidence from the pending list and the clist that we use for gossiping
 		evpool.removePendingEvidence(ev)
@@ -322,7 +325,7 @@ func (evpool *Pool) State() sm.State {
 // information of what validators were malicious, the time of the attack and the total voting power
 // This is saved as a form of cache so that the evidence pool can easily produce the ABCI Evidence
 // needed to be sent to the application.
-type Info struct {
+type info struct {
 	Evidence         types.Evidence
 	Time             time.Time
 	Validators       []*types.Validator
@@ -330,7 +333,7 @@ type Info struct {
 }
 
 // ToProto encodes into protobuf
-func (ei Info) ToProto() (*evproto.Info, error) {
+func (ei info) ToProto() (*evproto.Info, error) {
 	evpb, err := types.EvidenceToProto(ei.Evidence)
 	if err != nil {
 		return nil, err
@@ -354,26 +357,26 @@ func (ei Info) ToProto() (*evproto.Info, error) {
 }
 
 // InfoFromProto decodes from protobuf into Info
-func InfoFromProto(proto *evproto.Info) (Info, error) {
+func infoFromProto(proto *evproto.Info) (info, error) {
 	if proto == nil {
-		return Info{}, errors.New("nil evidence info")
+		return info{}, errors.New("nil evidence info")
 	}
 
 	ev, err := types.EvidenceFromProto(&proto.Evidence)
 	if err != nil {
-		return Info{}, err
+		return info{}, err
 	}
 
 	vals := make([]*types.Validator, len(proto.Validators))
 	for i := 0; i < len(proto.Validators); i++ {
 		val, err := types.ValidatorFromProto(proto.Validators[i])
 		if err != nil {
-			return Info{}, err
+			return info{}, err
 		}
 		vals[i] = val
 	}
 
-	return Info{
+	return info{
 		Evidence:         ev,
 		Time:             proto.Time,
 		Validators:       vals,
@@ -383,15 +386,6 @@ func InfoFromProto(proto *evproto.Info) (Info, error) {
 }
 
 //--------------------------------------------------------------------------
-
-// allPendingEvidence returns all evidence ready to be proposed and committed.
-func (evpool *Pool) allPendingEvidence() []types.Evidence {
-	evidence, err := evpool.listEvidence(baseKeyPending, -1)
-	if err != nil {
-		evpool.logger.Error("Unable to retrieve pending evidence", "err", err)
-	}
-	return evidence
-}
 
 // fastCheck leverages the fact that the evidence pool may have already verified the evidence to see if it can
 // quickly conclude that the evidence is already valid.
@@ -403,18 +397,12 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 			return false
 		}
 		if err != nil {
-			evpool.logger.Error("Failed to get evidence during fastcheck", "err", err, "ev", lcae)
+			evpool.logger.Error("Failed to load evidence", "err", err, "evidence", lcae)
 			return false
 		}
-		var evpb evproto.Info
-		err = evpb.Unmarshal(evBytes)
+		evInfo, err := bytesToInfo(evBytes)
 		if err != nil {
-			evpool.logger.Error("Failed to unmarshal evidence info during fastcheck", "err", err)
-			return false
-		}
-		evInfo, err := InfoFromProto(&evpb)
-		if err != nil {
-			evpool.logger.Error("Failed to convert evidence from proto during fastcheck", "err", err)
+			evpool.logger.Error("Failed to convert evidence from proto", "err", err, "evidence", lcae)
 			return false
 		}
 		// ensure that all the validators that the evidence pool have found to be malicious
@@ -427,7 +415,8 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 				}
 			}
 			// a validator we know is malicious is not included in the commit
-			evpool.logger.Info("Fast check failed: a validator we know is malicious is not in the commit sigs. Reverting to full verification")
+			evpool.logger.Info("Fast check failed: a validator we know is malicious is not " +
+				"in the commit sigs. Reverting to full verification")
 			return false
 		}
 		return true
@@ -469,7 +458,7 @@ func (evpool *Pool) isPending(evidence types.Evidence) bool {
 	return ok
 }
 
-func (evpool *Pool) addPendingEvidence(evInfo *Info) error {
+func (evpool *Pool) addPendingEvidence(evInfo *info) error {
 	evpb, err := evInfo.ToProto()
 	if err != nil {
 		return fmt.Errorf("unable to convert to proto, err: %w", err)
@@ -516,17 +505,7 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxNum int64) ([]types.Evidence
 		}
 		count++
 
-		val := iter.Value()
-		var (
-			evInfo Info
-			evpb   evproto.Info
-		)
-		err := evpb.Unmarshal(val)
-		if err != nil {
-			return nil, err
-		}
-
-		evInfo, err = InfoFromProto(&evpb)
+		evInfo, err := bytesToInfo(iter.Value())
 		if err != nil {
 			return nil, err
 		}
@@ -546,18 +525,7 @@ func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
 	defer iter.Close()
 	blockEvidenceMap := make(map[string]struct{})
 	for ; iter.Valid(); iter.Next() {
-		evBytes := iter.Value()
-		var (
-			evInfo   Info
-			evInfoPb evproto.Info
-		)
-		err := evInfoPb.Unmarshal(evBytes)
-		if err != nil {
-			evpool.logger.Error("Unable to unmarshal Evidence", "err", err)
-			continue
-		}
-
-		evInfo, err = InfoFromProto(&evInfoPb)
+		evInfo, err := bytesToInfo(iter.Value())
 		if err != nil {
 			evpool.logger.Error("Error in transition evidence from protobuf", "err", err)
 			continue
@@ -597,6 +565,16 @@ func (evpool *Pool) updateState(state sm.State) {
 	evpool.mtx.Lock()
 	defer evpool.mtx.Unlock()
 	evpool.state = state
+}
+
+func bytesToInfo(evBytes []byte) (info, error) {
+	var evpb   evproto.Info
+	err := evpb.Unmarshal(evBytes)
+	if err != nil {
+		return info{}, err
+	}
+
+	return infoFromProto(&evpb)
 }
 
 func evMapKey(ev types.Evidence) string {

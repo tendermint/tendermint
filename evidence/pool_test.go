@@ -435,22 +435,3 @@ func createState(height int64, valSet *types.ValidatorSet) sm.State {
 		ConsensusParams: *types.DefaultConsensusParams(),
 	}
 }
-
-func TestEvidenceInfo(t *testing.T) {
-	val := types.NewMockPV()
-	evInfo := evidence.Info{
-		Evidence:         types.NewMockDuplicateVoteEvidence(1, defaultEvidenceTime, evidenceChainID),
-		Time:             defaultEvidenceTime,
-		Validators:       []*types.Validator{val.ExtractIntoValidator(10)},
-		TotalVotingPower: 10,
-	}
-
-	proto, err := evInfo.ToProto()
-	assert.NoError(t, err)
-	assert.NotNil(t, proto)
-
-	evInfoConverted, err := evidence.InfoFromProto(proto)
-	assert.NoError(t, err)
-	assert.Equal(t, evInfo, evInfoConverted)
-
-}

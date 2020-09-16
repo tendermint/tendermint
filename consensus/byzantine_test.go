@@ -188,7 +188,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	pubkey, _ := bcs.privValidator.GetPubKey()
 
-	tick := time.NewTicker(time.Second * 20)
 	select {
 	case <-done:
 		for idx, ev := range evidenceFromEachValidator {
@@ -199,10 +198,9 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 				assert.Equal(t, prevoteHeight, ev.Height())
 			}
 		}
-	case <-tick.C:
+	case <-time.After(10 * time.Second):
 		for i, reactor := range reactors {
-			t.Log(fmt.Sprintf("Consensus Reactor %v", i))
-			t.Log(fmt.Sprintf("%v", reactor))
+			t.Logf("Consensus Reactor %d\n%v", i, reactor)
 		}
 		t.Fatalf("Timed out waiting for all validators to commit first block")
 	}

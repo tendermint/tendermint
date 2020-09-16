@@ -16,7 +16,7 @@ import (
 // - it is from a key who was a validator at the given height
 // - it is internally consistent with state
 // - it was properly signed by the alleged equivocator and meets the individual evidence verification requirements
-func (evpool *Pool) verify(evidence types.Evidence) (*Info, error) {
+func (evpool *Pool) verify(evidence types.Evidence) (*info, error) {
 	var (
 		state          = evpool.State()
 		height         = state.LastBlockHeight
@@ -62,7 +62,7 @@ func (evpool *Pool) verify(evidence types.Evidence) (*Info, error) {
 
 		_, val := valSet.GetByAddress(ev.VoteA.ValidatorAddress)
 
-		return &Info{
+		return &info{
 			Evidence:         evidence,
 			Time:             evTime,
 			Validators:       []*types.Validator{val}, // just a single validator for duplicate vote evidence
@@ -101,7 +101,7 @@ func (evpool *Pool) verify(evidence types.Evidence) (*Info, error) {
 			totalVotingPower = commonVals.TotalVotingPower()
 		}
 
-		return &Info{
+		return &info{
 			Evidence:         evidence,
 			Time:             evTime,
 			Validators:       validators,
