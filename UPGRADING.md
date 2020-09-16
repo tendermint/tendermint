@@ -138,7 +138,7 @@ A field `State.InitialHeight` has been added to record the initial chain height,
 (not `0`) if starting from height `1`. This can be configured via the genesis field
 `initial_height`.
 
-The state package has added a `Store` interface. The interface returns errors on all methods and can be used by calling `state.NewStore(dbm.DB)`.
+The state package has added a `Store` interface. All functions in [state/store.go](https://github.com/tendermint/tendermint/blob/56911ee35298191c95ef1c7d3d5ec508237aaff4/state/store.go#L42-L42) are now part of the interface. The interface returns errors on all methods and can be used by calling `state.NewStore(dbm.DB)`.
 
 ### Privval
 
