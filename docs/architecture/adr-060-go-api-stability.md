@@ -4,7 +4,9 @@
 
 - 2020-09-08: Initial version. (@erikgrinaker)
 
-- 2020-09-09: Allow changing struct comparability, adding variadic parameters, changing struct field order, and widening named numeric types. Expand glossary and clarify terms. Add initial public API packages. Add consequences. (@erikgrinaker)
+- 2020-09-09: Tweak accepted changes, add initial public API packages, add consequences. (@erikgrinaker)
+
+- 2020-09-17: Clarify initial public API. (@erikgrinaker)
 
 ## Context
 
@@ -40,9 +42,9 @@ Currently, we list packages that we consider public in our [README](https://gith
 
 From Tendermint 1.0, all internal code (except private APIs) will be placed in a root-level [`internal` directory](https://golang.org/cmd/go/#hdr-Internal_Directories), which the Go compiler will block for use by external projects. All exported items outside of the `internal` directory are considered a public API and subject to backwards compatibility guarantees, except files ending in `_test.go`.
 
-The `crypto` package will be split out to a separate module in a separate repo. This is the main general-purpose package used by external projects, and is the only Tendermint dependency in e.g. IAVL which can cause some problems for projects depending on both IAVL and Tendermint.
+The `crypto` package may be split out to a separate module in a separate repo. This is the main general-purpose package used by external projects, and is the only Tendermint dependency in e.g. IAVL which can cause some problems for projects depending on both IAVL and Tendermint. This will be decided after further discussion.
 
-The `tm-db` package will remain a separate module in a separate repo.
+The `tm-db` package will remain a separate module in a separate repo. The `crypto` package may possibly be split out, pending further discussion, as this is the main general-purpose package used by other projects.
 
 ## Detailed Design
 
@@ -54,22 +56,16 @@ When preparing our public API for 1.0, we should keep these principles in mind:
 
 - Before an API is made public, do a thorough review of the API to make sure it covers any future needs, can accomodate expected changes, and follows good API design practices.
 
-The following current packages will be part of our public API in 1.0 in some form:
+The following is the minimum set of public APIs that will be included in 1.0, in some form:
 
 - `abci`
-- `config`
-- `crypto` (separate repository)
-- `libs/log`
-- `light`
-- `node`
-- `privval` (client parts)
-- `rpc/client`
-- `types` (respective packages)
-- `version`
+- `node` and related packages (e.g. possibly `config`, `libs/log`, and `version`)
+- Client APIs, i.e. `rpc/client`, `light`, and `privval`.
+- `crypto` (possibly as a separate repo)
 
-Notably, public APIs for providing custom components (e.g. reactors and mempools) are not planned for 1.0, but may be added in a later 1.x version. This is because it's important to get these APIs right, and we don't want to bite off too much for 1.0. Users who rely on this can consider forking Tendermint.
+We may offer additional APIs as well, following further discussions internally and with other stakeholders. However, public APIs for providing custom components (e.g. reactors and mempools) are not planned for 1.0, but may be added in a later 1.x version if this is something we want to offer.
 
-For comparison, the following are the number of Tendermint imports in the Cosmos SDK (excluding tests) - anything not listed above must be removed from the SDK or implemented there:
+For comparison, the following are the number of Tendermint imports in the Cosmos SDK (excluding tests), which should be mostly satisfied by the planned APIs.
 
 ```
       1 github.com/tendermint/tendermint/abci/server
@@ -166,7 +162,7 @@ The API guarantees above can be fairly constraining, but are unavoidable given t
 
 ## Status
 
-Proposed
+Accepted
 
 ## Consequences
 
@@ -190,8 +186,8 @@ Proposed
 
 - External developers may lose access to some currently exported APIs and functionality
 
-### Neutral
-
 ## References
 
 - [#4451: Place internal APIs under internal package](https://github.com/tendermint/tendermint/issues/4451)
+
+- [On Pluggability](https://docs.google.com/document/d/1G08LnwSyb6BAuCVSMF3EKn47CGdhZ5wPZYJQr4-bw58/edit?ts=5f609f11)
