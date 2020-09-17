@@ -605,7 +605,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
   /blockchain:
     get:
-      summary: Get block headers (max: 20) for minHeight <= height <= maxHeight.
+      summary: "Get block headers (max: 20) for minHeight <= height <= maxHeight."
       operationId: blockchain
       parameters:
         - in: query
@@ -623,7 +623,7 @@ paths:
       tags:
         - Info
       description: |
-        Get block headers for minHeight <= height maxHeight. 
+        Get block headers for minHeight <= height maxHeight.
 
         At most 20 items will be returned.
       responses:
