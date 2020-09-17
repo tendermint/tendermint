@@ -1,4 +1,4 @@
-# ADR 059: Go API Stability
+# ADR 060: Go API Stability
 
 ## Changelog
 
