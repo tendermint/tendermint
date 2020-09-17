@@ -9,6 +9,23 @@
 * 20-08-2020: Light client produces evidence when detected instead of passing to full node
 * 16-09-2020: Post-implementation revision
 
+### Glossary of Terms
+
+- a `LightBlock` is the unit of data that a light client receives, verifies and stores.
+It is composed of a validator set, commit and header all at the same height.
+- a **Trace** is seen as an array of light blocks across a range of heights that were
+created as a result of skipping verification.
+- a **Provider** is a full node that a light client is connected to and serves the light
+client signed headers and validator sets.
+- `VerifySkipping` (sometimes known as bisection or verify non-adjacent) is a method the
+light client uses to verify a target header from a trusted header. The process involves verifying
+intermediate headers in between the two by making sure that 1/3 of the validators that signed
+the trusted header also signed the untrusted one.
+- **Light Bifurcation Point**: If the light client was to run `VerifySkipping` with two providers
+(i.e. a primary and a witness), the bifurcation point is the height that the headers
+from each of these providers are different yet valid. This signals that one of the providers
+may be trying to fool the light client.
+
 ## Context
 
 The bisection method of header verification used by the light client exposes
@@ -16,21 +33,8 @@ itself to a potential attack if any block within the light clients trusted perio
 a malicious group of validators with power that exceeds the light clients trust level
 (default is 1/3). To improve light client (and overall network) security, the light
 client has a detector component that compares the verified header provided by the
-primary against witness headers. This ADR outlines the decision that ensues when
-the light client detector receives two conflicting headers
-
-### Glossary of Terms
-
-- a `LightBlock` is the unit of data that a light client receives, verifies and stores.
-It is composed of a validator set, commit and header all at the same height.
-- a **Trace** is seen as an array of light blocks across a range of heights that were
-created as a result of skipping verification.
-- `VerifySkipping` (sometimes known as bisection of verify non adjacent) is a method the
-light client uses to verify headers where it jumps between headers to reach a target header,
-verifying each one by making sure that 1/3 of the validators that signed the trusted header
-also signed the untrusted one.
-- **Light Bifurcation Point**: is the height where during `VerifySkipping` of the header heights
-of two providers, (i.e. a primary and a witness) the headers verified are both valid but different.
+primary against witness headers. This ADR outlines the process of mitigating attacks
+on the light client by using witness nodes to cross reference with.
 
 ## Alternative Approaches
 
