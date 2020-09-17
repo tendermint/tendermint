@@ -29,7 +29,7 @@ created as a result of skipping verification.
 light client uses to verify headers where it jumps between headers to reach a target header,
 verifying each one by making sure that 1/3 of the validators that signed the trusted header
 also signed the untrusted one.
-- Light Bifurcation Point: is the height where during `VerifySkipping` of the header heights
+- **Light Bifurcation Point**: is the height where during `VerifySkipping` of the header heights
 of two providers, (i.e. a primary and a witness) the headers verified are both valid but different.
 
 ## Alternative Approaches
@@ -118,7 +118,8 @@ we can call the witness faulty and drop it.
 This is the point of bifurcation (This could also be the last header).
 
 This function then returns the trace of blocks from the witness node between the common header and the divergent header of the primary as it
-is likely as seen in the example to the right below that multiple headers where required in order to verify the divergent one.
+is likely as seen in the example to the right below that multiple headers where required in order to verify the divergent one. This trace will
+be used later (as is also described later in this document).
 
 ![](../imgs/bifurcation-point.png)
 
