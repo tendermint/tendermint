@@ -269,7 +269,7 @@ Evidence is first detected and created in the light client and consensus reactor
 
 ## Status
 
-Accepted
+Implemented
 
 ## Consequences
 

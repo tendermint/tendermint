@@ -94,8 +94,7 @@ func (evpool *Pool) verify(evidence types.Evidence) (*info, error) {
 		}
 		// find out what type of attack this was and thus extract the malicious validators. Note in the case of an
 		// Amnesia attack we don't have any malicious validators.
-		validators, attackType := getMaliciousValidators(evidence.(*types.LightClientAttackEvidence), commonVals,
-			trustedHeader)
+		validators, attackType := getMaliciousValidators(ev, commonVals, trustedHeader)
 		totalVotingPower := ev.ConflictingBlock.ValidatorSet.TotalVotingPower()
 		if attackType == lunaticType {
 			totalVotingPower = commonVals.TotalVotingPower()

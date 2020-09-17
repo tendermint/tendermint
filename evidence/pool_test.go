@@ -148,7 +148,9 @@ func TestAddEvidenceFromConsensus(t *testing.T) {
 	// shouldn't be able to submit the same evidence twice
 	err = pool.AddEvidenceFromConsensus(ev, defaultEvidenceTime.Add(-1*time.Second),
 		types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(3)}))
-	assert.Error(t, err)
+	if assert.Error(t, err) {
+		assert.Equal(t, "evidence already verified and added", err.Error())
+	}
 }
 
 func TestEvidencePoolUpdate(t *testing.T) {
@@ -190,7 +192,9 @@ func TestEvidencePoolUpdate(t *testing.T) {
 
 	// b) If we try to check this evidence again it should fail because it has already been committed
 	err = pool.CheckEvidence(types.EvidenceList{ev})
-	assert.Error(t, err)
+	if assert.Error(t, err) {
+		assert.Equal(t, "evidence was already committed", err.(*types.ErrInvalidEvidence).Reason.Error())
+	}
 
 	assert.Empty(t, pool.ABCIEvidence(height, []types.Evidence{}))
 }
@@ -211,7 +215,9 @@ func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 	pool, val := defaultTestPool(height)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
 	err := pool.CheckEvidence(types.EvidenceList{ev, ev})
-	assert.Error(t, err)
+	if assert.Error(t, err) {
+		assert.Equal(t, "duplicate evidence", err.(*types.ErrInvalidEvidence).Reason.Error())
+	}
 }
 
 // check that

@@ -19,15 +19,19 @@ import (
 
 func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 	// primary performs a lunatic attack
-	latestHeight := int64(10)
-	valSize := 5
+	var (
+		latestHeight      = int64(10)
+		valSize           = 5
+		divergenceHeight  = int64(6)
+		primaryHeaders    = make(map[int64]*types.SignedHeader, latestHeight)
+		primaryValidators = make(map[int64]*types.ValidatorSet, latestHeight)
+	)
+
 	witnessHeaders, witnessValidators, chainKeys := genMockNodeWithKeys(chainID, latestHeight, valSize, 2, bTime)
 	witness := mockp.New(chainID, witnessHeaders, witnessValidators)
-	divergenceHeight := int64(6)
-	primaryHeaders := make(map[int64]*types.SignedHeader, latestHeight)
-	primaryValidators := make(map[int64]*types.ValidatorSet, latestHeight)
 	forgedKeys := chainKeys[divergenceHeight-1].ChangeKeys(3) // we change 3 out of the 5 validators (still 2/5 remain)
 	forgedVals := forgedKeys.ToValidators(2, 0)
+
 	for height := int64(1); height <= latestHeight; height++ {
 		if height < divergenceHeight {
 			primaryHeaders[height] = witnessHeaders[height]
@@ -86,15 +90,17 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 
 func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 	// primary performs an equivocation attack
-	latestHeight := int64(10)
-	valSize := 5
+	var (
+		latestHeight      = int64(10)
+		valSize           = 5
+		divergenceHeight  = int64(6)
+		primaryHeaders    = make(map[int64]*types.SignedHeader, latestHeight)
+		primaryValidators = make(map[int64]*types.ValidatorSet, latestHeight)
+	)
 	// validators don't change in this network (however we still use a map just for convenience)
 	witnessHeaders, witnessValidators, chainKeys := genMockNodeWithKeys(chainID, latestHeight+2, valSize, 2, bTime)
-	t.Log(len(chainKeys[5]))
 	witness := mockp.New(chainID, witnessHeaders, witnessValidators)
-	divergenceHeight := int64(6)
-	primaryHeaders := make(map[int64]*types.SignedHeader, latestHeight)
-	primaryValidators := make(map[int64]*types.ValidatorSet, latestHeight)
+
 	for height := int64(1); height <= latestHeight; height++ {
 		if height < divergenceHeight {
 			primaryHeaders[height] = witnessHeaders[height]

@@ -27,7 +27,7 @@ import (
 // trusted and saves it to the trusted store.
 func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Time) error {
 	if primaryTrace == nil || len(primaryTrace) < 2 {
-		return errors.New("nil primary trace")
+		return errors.New("nil or single block primary trace")
 	}
 	var (
 		headerMatched      bool
@@ -78,6 +78,7 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 			// are not the same then we send the height of the common header.
 			commonHeight := primaryBlock.Height
 			if isInvalidHeader(witnessTrace[len(witnessTrace)-1].Header, primaryBlock.Header) {
+				// height of the common header
 				commonHeight = witnessTrace[0].Height
 			}
 
@@ -105,6 +106,7 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 			// are not the same then we send the height of the common header.
 			commonHeight = primaryBlock.Height
 			if isInvalidHeader(primaryTrace[len(primaryTrace)-1].Header, witnessBlock.Header) {
+				// height of the common header
 				commonHeight = primaryTrace[0].Height
 			}
 

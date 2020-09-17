@@ -103,8 +103,8 @@ func (evpool *Pool) Update(state sm.State) {
 			evpool.state.LastBlockHeight,
 		))
 	}
-	evpool.logger.Info("Updating evidence pool", "last_block_height", state.LastBlockHeight, 
-	"last_block_time", state.LastBlockTime)
+	evpool.logger.Info("Updating evidence pool", "last_block_height", state.LastBlockHeight,
+		"last_block_time", state.LastBlockTime)
 
 	// update the state
 	evpool.updateState(state)
@@ -128,7 +128,7 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 	// 1) Verify against state.
 	evInfo, err := evpool.verify(ev)
 	if err != nil {
-		return types.NewErrEvidenceInvalid(ev, err)
+		return types.NewErrInvalidEvidence(ev, err)
 	}
 
 	// 2) Save to store.
@@ -196,7 +196,7 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 		if !ok {
 			evInfo, err := evpool.verify(ev)
 			if err != nil {
-				return &types.ErrEvidenceInvalid{Evidence: ev, Reason: err}
+				return &types.ErrInvalidEvidence{Evidence: ev, Reason: err}
 			}
 
 			if err := evpool.addPendingEvidence(evInfo); err != nil {
@@ -210,7 +210,7 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 		hashes[idx] = ev.Hash()
 		for i := idx - 1; i >= 0; i-- {
 			if bytes.Equal(hashes[i], hashes[idx]) {
-				return &types.ErrEvidenceInvalid{Evidence: ev, Reason: errors.New("duplicate evidence")}
+				return &types.ErrInvalidEvidence{Evidence: ev, Reason: errors.New("duplicate evidence")}
 			}
 		}
 	}
@@ -473,7 +473,7 @@ func (evpool *Pool) addPendingEvidence(evInfo *info) error {
 
 	err = evpool.evidenceStore.Set(key, evBytes)
 	if err != nil {
-		return fmt.Errorf("unable to persist evidence: %w", err)
+		return fmt.Errorf("can't persist evidence: %w", err)
 	}
 	atomic.AddUint32(&evpool.evidenceSize, 1)
 	return nil
@@ -568,7 +568,7 @@ func (evpool *Pool) updateState(state sm.State) {
 }
 
 func bytesToInfo(evBytes []byte) (info, error) {
-	var evpb   evproto.Info
+	var evpb evproto.Info
 	err := evpb.Unmarshal(evBytes)
 	if err != nil {
 		return info{}, err

@@ -349,19 +349,19 @@ func init() {
 
 //-------------------------------------------- ERRORS --------------------------------------
 
-// ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.
-type ErrEvidenceInvalid struct {
+// ErrInvalidEvidence wraps a piece of evidence and the error denoting how or why it is invalid.
+type ErrInvalidEvidence struct {
 	Evidence Evidence
 	Reason   error
 }
 
-// NewErrEvidenceInvalid returns a new EvidenceInvalid with the given err.
-func NewErrEvidenceInvalid(ev Evidence, err error) *ErrEvidenceInvalid {
-	return &ErrEvidenceInvalid{ev, err}
+// NewErrInvalidEvidence returns a new EvidenceInvalid with the given err.
+func NewErrInvalidEvidence(ev Evidence, err error) *ErrInvalidEvidence {
+	return &ErrInvalidEvidence{ev, err}
 }
 
 // Error returns a string representation of the error.
-func (err *ErrEvidenceInvalid) Error() string {
+func (err *ErrInvalidEvidence) Error() string {
 	return fmt.Sprintf("Invalid evidence: %v. Evidence: %v", err.Reason, err.Evidence)
 }
 
