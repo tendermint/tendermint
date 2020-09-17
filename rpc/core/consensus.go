@@ -5,7 +5,6 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -23,7 +22,7 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64, pagePtr, perPagePtr *in
 		return nil, err
 	}
 
-	validators, err := sm.LoadValidators(env.StateDB, height)
+	validators, err := env.StateStore.LoadValidators(height)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +98,7 @@ func ConsensusParams(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCon
 		return nil, err
 	}
 
-	consensusParams, err := sm.LoadConsensusParams(env.StateDB, height)
+	consensusParams, err := env.StateStore.LoadConsensusParams(height)
 	if err != nil {
 		return nil, err
 	}

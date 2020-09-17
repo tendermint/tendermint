@@ -123,7 +123,8 @@ func TestNodeSetAppVersion(t *testing.T) {
 	var appVersion uint64 = kvstore.ProtocolVersion
 
 	// check version is set in state
-	state := sm.LoadState(n.stateDB)
+	state, err := n.stateStore.Load()
+	require.NoError(t, err)
 	assert.Equal(t, state.Version.Consensus.App, appVersion)
 
 	// check version is set in node info
@@ -231,6 +232,7 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	var height int64 = 1
 	state, stateDB, privVals := state(1, height)
+	stateStore := sm.NewStore(stateDB)
 	maxBytes := 16384
 	maxEvidence := 10
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
@@ -252,7 +254,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	// Make EvidencePool
 	evidenceDB := dbm.NewMemDB()
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	evidencePool, err := evidence.NewPool(evidenceDB, evidence.NewEvidenceStateStore(stateDB), blockStore)
+	evidencePool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
 	evidencePool.SetLogger(logger)
 
@@ -274,7 +276,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	}
 
 	blockExec := sm.NewBlockExecutor(
-		stateDB,
+		stateStore,
 		logger,
 		proxyApp.Consensus(),
 		mempool,
@@ -346,12 +348,17 @@ func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 
 	// save validators to db for 2 heights
 	stateDB := dbm.NewMemDB()
-	sm.SaveState(stateDB, s)
+	stateStore := sm.NewStore(stateDB)
+	if err := stateStore.Save(s); err != nil {
+		panic(err)
+	}
 
 	for i := 1; i < int(height); i++ {
 		s.LastBlockHeight++
 		s.LastValidators = s.Validators.Copy()
-		sm.SaveState(stateDB, s)
+		if err := stateStore.Save(s); err != nil {
+			panic(err)
+		}
 	}
 	return s, stateDB, privVals
 }

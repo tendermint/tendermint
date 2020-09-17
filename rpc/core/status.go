@@ -8,7 +8,6 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -81,7 +80,7 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 }
 
 func validatorAtHeight(h int64) *types.Validator {
-	valsWithH, err := sm.LoadValidators(env.StateDB, h)
+	valsWithH, err := env.StateStore.LoadValidators(h)
 	if err != nil {
 		return nil
 	}
