@@ -9,7 +9,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - CLI/RPC/Config
     - [config] \#5315 Rename `prof_laddr` to `pprof_laddr` and move it to `rpc` section (@melekes)
     - [rpc] \#5315 Remove `/unsafe_start_cpu_profiler`, `/unsafe_stop_cpu_profiler` and `/unsafe_write_heap_profile`. Please use pprof functionality instead (@melekes)
-    - [rpc/client] \#5347 All client methods now accept `context.Context` as 1st param (@melekes)
+    - [rpc/client, rpc/jsonrpc/client] \#5347 All client methods now accept `context.Context` as 1st param (@melekes)
 
 - Apps
 
