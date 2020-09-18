@@ -1,7 +1,6 @@
 package ed25519
 
 import (
-	"bytes"
 	"crypto/subtle"
 	"fmt"
 	"io"
@@ -85,15 +84,15 @@ func (privKey PrivKey) PubKey() crypto.PubKey {
 // Equals - you probably don't need to use this.
 // Runs in constant time based on length of the keys.
 func (privKey PrivKey) Equals(other crypto.PrivKey) bool {
-	if otherEd, ok := other.(PrivKey); ok {
-		return subtle.ConstantTimeCompare(privKey[:], otherEd[:]) == 1
+	if privKey.Type() != other.Type() {
+		return false
 	}
 
-	return false
+	return subtle.ConstantTimeCompare(privKey.Bytes(), other.Bytes()) == 1
 }
 
 func (privKey PrivKey) Type() string {
-	return keyType
+	return PrivKeyName
 }
 
 // GenPrivKey generates a new ed25519 private key.
@@ -159,13 +158,13 @@ func (pubKey PubKey) String() string {
 }
 
 func (pubKey PubKey) Type() string {
-	return keyType
+	return PubKeyName
 }
 
 func (pubKey PubKey) Equals(other crypto.PubKey) bool {
-	if otherEd, ok := other.(PubKey); ok {
-		return bytes.Equal(pubKey[:], otherEd[:])
+	if pubKey.Type() != other.Type() {
+		return false
 	}
 
-	return false
+	return subtle.ConstantTimeCompare(pubKey.Bytes(), other.Bytes()) == 1
 }
