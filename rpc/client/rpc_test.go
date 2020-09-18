@@ -26,6 +26,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+var (
+	ctx = context.Background()
+)
+
 func getHTTPClient() *rpchttp.HTTP {
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
 	c, err := rpchttp.New(rpcAddr, "/websocket")
@@ -614,7 +618,7 @@ func testBatchedJSONRPCCalls(t *testing.T, c *rpchttp.HTTP) {
 	r2, err := batch.BroadcastTxCommit(context.Background(), tx2)
 	require.NoError(t, err)
 	require.Equal(t, 2, batch.Count())
-	bresults, err := batch.Send()
+	bresults, err := batch.Send(ctx)
 	require.NoError(t, err)
 	require.Len(t, bresults, 2)
 	require.Equal(t, 0, batch.Count())
@@ -635,7 +639,7 @@ func testBatchedJSONRPCCalls(t *testing.T, c *rpchttp.HTTP) {
 	q2, err := batch.ABCIQuery(context.Background(), "/key", k2)
 	require.NoError(t, err)
 	require.Equal(t, 2, batch.Count())
-	qresults, err := batch.Send()
+	qresults, err := batch.Send(ctx)
 	require.NoError(t, err)
 	require.Len(t, qresults, 2)
 	require.Equal(t, 0, batch.Count())
@@ -674,7 +678,7 @@ func TestBatchedJSONRPCCallsCancellation(t *testing.T) {
 func TestSendingEmptyRequestBatch(t *testing.T) {
 	c := getHTTPClient()
 	batch := c.NewBatch()
-	_, err := batch.Send()
+	_, err := batch.Send(ctx)
 	require.Error(t, err, "sending an empty batch of JSON RPC requests should result in an error")
 }
 

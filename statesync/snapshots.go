@@ -78,10 +78,10 @@ func newSnapshotPool(stateProvider StateProvider) *snapshotPool {
 // returns true if this was a new, non-blacklisted snapshot. The snapshot height is verified using
 // the light client, and the expected app hash is set for the snapshot.
 func (p *snapshotPool) Add(peer p2p.Peer, snapshot *snapshot) (bool, error) {
-	pctx, pcancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer pcancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	appHash, err := p.stateProvider.AppHash(pctx, snapshot.Height)
+	appHash, err := p.stateProvider.AppHash(ctx, snapshot.Height)
 	if err != nil {
 		return false, err
 	}

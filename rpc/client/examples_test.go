@@ -102,7 +102,7 @@ func ExampleHTTP_batching() {
 	}
 
 	// Send the batch of 2 transactions
-	if _, err := batch.Send(); err != nil {
+	if _, err := batch.Send(context.Background()); err != nil {
 		log.Fatal(err)
 	}
 
@@ -115,7 +115,7 @@ func ExampleHTTP_batching() {
 	}
 
 	// Send the 2 queries and keep the results
-	results, err := batch.Send()
+	results, err := batch.Send(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
