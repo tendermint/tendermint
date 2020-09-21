@@ -28,10 +28,6 @@ const (
 	defaultWSPingPeriod        = (defaultWSReadWait * 9) / 10
 )
 
-var (
-	newline = []byte{'\n'}
-)
-
 // WebsocketManager provides a WS handler for incoming connections and passes a
 // map of functions along with any additional params to new connections.
 // NOTE: The websocket path is defined externally, e.g. in node/node.go
