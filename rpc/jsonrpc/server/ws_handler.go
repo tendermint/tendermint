@@ -442,6 +442,7 @@ func (wsc *wsConnection) writeRoutine() {
 			}
 			if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
 				wsc.Logger.Error("Failed to write RPCResponse", "err", err)
+				return
 			}
 		}
 	}
