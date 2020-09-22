@@ -74,8 +74,8 @@ primary's header against any other header.
 
 The verification process of the light client will start from a trusted header and use a bisectional
 algorithm to verify up to a header at a given height. This becomes the verified header (does not
-mean that it is trusted yet). All headers that were verified in between are cached and known as intermediary headers
-and the entire array is sometimes referred to as a trace.
+mean that it is trusted yet). All headers that were verified in between are cached and known as
+intermediary headers and the entire array is sometimes referred to as a trace.
 
 The light client's detector then takes all the headers and runs the detect function.
 
@@ -91,11 +91,13 @@ func (c *Client) compareNewHeaderWithWitness(errc chan error, h *types.SignedHea
 	witness provider.Provider, witnessIndex int)
 ```
 
-The err channel is used to send back all the outcomes so that they can be processed in parallel. Invalid headers result in dropping
-the witness, lack of response or not having the headers is ignored just as headers that have the same hash. Headers, however,
+The err channel is used to send back all the outcomes so that they can be processed in parallel.
+Invalid headers result in dropping the witness, lack of response or not having the headers is ignored
+just as headers that have the same hash. Headers, however,
 of a different hash then trigger the detection process between the primary and that particular witness.
 
-This begins with verification of the witness's header via skipping verification which is run in tandem with locating the Light Bifurcation Point
+This begins with verification of the witness's header via skipping verification which is run in tande
+with locating the Light Bifurcation Point
 
 ![](../imgs/light-client-detector.png)
 
@@ -121,13 +123,19 @@ we can call the witness faulty and drop it.
 3. We eventually reach a verified header by the witness which is not the same as the intermediary header (In the above example this is E).
 This is the point of bifurcation (This could also be the last header).
 
-This function then returns the trace of blocks from the witness node between the common header and the divergent header of the primary as it
-is likely as seen in the example to the right below that multiple headers where required in order to verify the divergent one. This trace will
+This function then returns the trace of blocks from the witness node between the common header and the
+divergent header of the primary as it
+is likely as seen in the example to the right below that multiple headers where required in order to
+verify the divergent one. This trace will
 be used later (as is also described later in this document).
 
 ![](../imgs/bifurcation-point.png)
 
-Now, that an attack has been detected, the light client must form evidence to prove it. There are three types of attacks that either the primary of witness could have done to try fool the light client into verifying the wrong header: Lunatic, Equivocation and Amnesia. As the consequence is the same and the data required to prove it is also very similar, we bundle these attack styles together in a single evidence:
+Now, that an attack has been detected, the light client must form evidence to prove it. There are
+three types of attacks that either the primary or witness could have done to try fool the light client
+into verifying the wrong header: Lunatic, Equivocation and Amnesia. As the consequence is the same and
+the data required to prove it is also very similar, we bundle these attack styles together in a single
+evidence:
 
 ```golang
 type LightClientAttackEvidence struct {
@@ -136,22 +144,40 @@ type LightClientAttackEvidence struct {
 }
 ```
 
-The light client takes the stance of first suspecting the primary. Given the bifurcation point found above, it takes the two divergent headers and compares whether the one from the primary is valid with respect to the one from the witness. This is done by calling `isInvalidHeader()` which looks to see if any one of the deterministically derived header fields differ from one another. This could be one of `ValidatorsHash`, `NextValidatorsHash`, `ConsensusHash`, `AppHash`, and `LastResultsHash`. In this case we know it's a Lunatic attack and to help the witness verify it we send the height of the common header which is 1 in the example above or C in the example above that. If all these hashes are the same then we can infer that it is either Equivocation or Amnesia. In this case we send the height of the diverged headers because we know that the validator sets are the same, hence the malicious nodes are still bonded at that height. In the example above, this is height 10 and the example above that it is the height at E.
+The light client takes the stance of first suspecting the primary. Given the bifurcation point found
+above, it takes the two divergent headers and compares whether the one from the primary is valid with
+respect to the one from the witness. This is done by calling `isInvalidHeader()` which looks to see if
+any one of the deterministically derived header fields differ from one another. This could be one of
+`ValidatorsHash`, `NextValidatorsHash`, `ConsensusHash`, `AppHash`, and `LastResultsHash`.
+In this case we know it's a Lunatic attack and to help the witness verify it we send the height
+of the common header which is 1 in the example above or C in the example above that. If all these
+hashes are the same then we can infer that it is either Equivocation or Amnesia. In this case we send
+the height of the diverged headers because we know that the validator sets are the same, hence the
+malicious nodes are still bonded at that height. In the example above, this is height 10 and the
+example above that it is the height at E.
 
 The light client now has the evidence and broadcasts it to the witness.
 
-However, it could have been that the header the light client used from the witness against the primary was forged, so before halting the light client swaps the process and thus suspects the witness and uses the primary to create evidence. It calls `examineConflictingHeaderAgainstTrace` this time using the witness trace found earlier.
-If the primary was malicious it is likely that it will not respond but if it is innocent then the light client will produce the same evidence but this time the conflicting
-block will come from the witness node instead of the primary. The evidence is then formed and sent to the primary node
+However, it could have been that the header the light client used from the witness against the primary
+was forged, so before halting the light client swaps the process and thus suspects the witness and
+uses the primary to create evidence. It calls `examineConflictingHeaderAgainstTrace` this time using
+the witness trace found earlier.
+If the primary was malicious it is likely that it will not respond but if it is innocent then the
+light client will produce the same evidence but this time the conflicting
+block will come from the witness node instead of the primary. The evidence is then formed and sent to
+the primary node.
 
-This then ends the process and the verify function that was called at the start returns the error to the user.
+This then ends the process and the verify function that was called at the start returns the error to
+the user.
 
-For a detailed overview of how each of these three attacks can be conducted please refer to the [fork accountability spec]((https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md))
+For a detailed overview of how each of these three attacks can be conducted please refer to the
+[fork accountability spec]((https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)).
 
 ## Full Node Verification
 
 When a full node receives evidence from the light client it will need to verify
-it for itself before gossiping it to peers and trying to commit it on chain. This process is outlined in [ADR-059](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-059-evidence-composition-and-lifecycle.md)
+it for itself before gossiping it to peers and trying to commit it on chain. This process is outlined
+ in [ADR-059](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-059-evidence-composition-and-lifecycle.md).
 
 ## Status
 
