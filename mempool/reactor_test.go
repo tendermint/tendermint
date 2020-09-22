@@ -118,6 +118,7 @@ func TestReactor_MaxBatchBytes(t *testing.T) {
 	err = reactors[0].mempool.CheckTx(tx2, nil, TxInfo{SenderID: UnknownPeerID})
 	require.NoError(t, err)
 	ensureNoTxs(t, reactors[1], 100*time.Millisecond)
+	// => ensure the second reactor did not disconnect from us
 	out, in, _ := reactors[1].Switch.NumPeers()
 	assert.Equal(t, 1, out+in)
 }
