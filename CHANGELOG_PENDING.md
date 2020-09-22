@@ -50,4 +50,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [consensus] \#5329 Fix wrong proposer schedule for validators returned by `InitChain` (@erikgrinaker)
 
+- [store] \#5382 Fix race conditions when loading/saving/pruning blocks (@erikgrinaker)
+
 - [light] [\#5307](https://github.com/tendermint/tendermint/pull/5307) Persist correct proposer priority in light client validator sets (@cmwaters)
