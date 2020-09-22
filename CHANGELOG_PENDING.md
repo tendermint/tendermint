@@ -20,6 +20,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     - [evidence] \#5317 Remove ConflictingHeaders evidence type & CompositeEvidence Interface. (@marbar3778)
     - [evidence] \#5318 Remove LunaticValidator evidence type. (@marbar3778)
     - [evidence] \#5319 Remove Amnesia & potentialAmnesia evidence types and removed POLC. (@marbar3778)
+    - [evidence] [\#5361](https://github.com/tendermint/tendermint/pull/5361) Add LightClientAttackEvidence and change evidence interface (@cmwaters)
     - [params] \#5319 Remove `ProofofTrialPeriod` from evidence params (@marbar3778)
     - [crypto/secp256k1] \#5280 `secp256k1` has been removed from the Tendermint repo. (@marbar3778)
     - [state] \#5348 Define an Interface for the state store. (@marbar3778)
@@ -31,6 +32,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [privval] \#5239 Add `chainID` to requests from client. (@marbar3778)
 - [config] Add `--consensus.double_sign_check_height` flag and `DoubleSignCheckHeight` config variable. See [ADR-51](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-051-double-signing-risk-reduction.md)
 - [light] [\#5298](https://github.com/tendermint/tendermint/pull/5298) Morph validator set and signed header into light block (@cmwaters)
+- [evidence] [\#5361](https://github.com/tendermint/tendermint/pull/5361) Add LightClientAttackEvidence and refactor evidence lifecycle (@cmwaters)
 
 ## IMPROVEMENTS
 

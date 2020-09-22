@@ -35,6 +35,7 @@ import (
 func TestByzantinePrevoteEquivocation(t *testing.T) {
 	const nValidators = 4
 	const byzantineNode = 0
+	const prevoteHeight = int64(2)
 	testName := "consensus_byzantine_test"
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newCounter
@@ -129,7 +130,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	// alter prevote so that the byzantine node double votes when height is 2
 	bcs.doPrevote = func(height int64, round int32) {
 		// allow first height to happen normally so that byzantine validator is no longer proposer
-		if height == 2 {
+		if height == prevoteHeight {
 			bcs.Logger.Info("Sending two votes")
 			prevote1, err := bcs.signVote(tmproto.PrevoteType, bcs.ProposalBlock.Hash(), bcs.ProposalBlockParts.Header())
 			require.NoError(t, err)
@@ -162,22 +163,46 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	// Evidence should be submitted and committed at the third height but
 	// we will check the first five just in case
-	var evidence types.Evidence
+	evidenceFromEachValidator := make([]types.Evidence, nValidators)
 
-	for i := 0; i < 5; i++ {
-		msg := <-blocksSubs[nValidators-1].Out()
-		block := msg.Data().(types.EventDataNewBlock).Block
-		if len(block.Evidence.Evidence) > 0 {
-			evidence = block.Evidence.Evidence[0]
-			break
+	wg := new(sync.WaitGroup)
+	wg.Add(4)
+	for height := 1; height < 5; height++ {
+		for i := 0; i < nValidators; i++ {
+			go func(j int) {
+				msg := <-blocksSubs[j].Out()
+				block := msg.Data().(types.EventDataNewBlock).Block
+				if len(block.Evidence.Evidence) != 0 {
+					evidenceFromEachValidator[j] = block.Evidence.Evidence[0]
+					wg.Done()
+				}
+			}(i)
 		}
 	}
 
-	if assert.NotNil(t, evidence) {
-		ev, ok := evidence.(*types.DuplicateVoteEvidence)
-		assert.True(t, ok)
-		pubkey, _ := bcs.privValidator.GetPubKey()
-		assert.Equal(t, []byte(pubkey.Address()), ev.Address())
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	pubkey, _ := bcs.privValidator.GetPubKey()
+
+	select {
+	case <-done:
+		for idx, ev := range evidenceFromEachValidator {
+			if assert.NotNil(t, ev, idx) {
+				ev, ok := ev.(*types.DuplicateVoteEvidence)
+				assert.True(t, ok)
+				assert.Equal(t, pubkey.Address(), ev.VoteA.ValidatorAddress)
+				assert.Equal(t, prevoteHeight, ev.Height())
+			}
+		}
+	case <-time.After(10 * time.Second):
+		for i, reactor := range reactors {
+			t.Logf("Consensus Reactor %d\n%v", i, reactor)
+		}
+		t.Fatalf("Timed out waiting for all validators to commit first block")
 	}
 }
 

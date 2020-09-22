@@ -39,6 +39,12 @@ func calcABCIResponsesKey(height int64) []byte {
 
 //----------------------
 
+//go:generate mockery --case underscore --name Store
+
+// Store defines the state store interface
+//
+// It is used to retrieve current state and save and load ABCI responses,
+// validators and consensus parameters
 type Store interface {
 	// LoadFromDBOrGenesisFile loads the most recent state.
 	// If the chain is new it will use the genesis file from the provided genesis file path as the current state.

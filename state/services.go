@@ -1,6 +1,9 @@
 package state
 
 import (
+	"time"
+
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -37,19 +40,26 @@ type BlockStore interface {
 
 //go:generate mockery --case underscore --name EvidencePool
 
-// EvidencePool defines the EvidencePool interface used by the ConsensusState.
-// Get/Set/Commit
+// EvidencePool defines the EvidencePool interface used by State.
 type EvidencePool interface {
 	PendingEvidence(uint32) []types.Evidence
 	AddEvidence(types.Evidence) error
-	Update(*types.Block, State)
-	Verify(types.Evidence) error
+	Update(State)
+	CheckEvidence(types.EvidenceList) error
+	ABCIEvidence(int64, []types.Evidence) []abci.Evidence
 }
 
-// MockEvidencePool is an empty implementation of EvidencePool, useful for testing.
-type MockEvidencePool struct{}
+// EmptyEvidencePool is an empty implementation of EvidencePool, useful for testing. It also complies
+// to the consensus evidence pool interface
+type EmptyEvidencePool struct{}
 
-func (me MockEvidencePool) PendingEvidence(uint32) []types.Evidence { return nil }
-func (me MockEvidencePool) AddEvidence(types.Evidence) error        { return nil }
-func (me MockEvidencePool) Update(*types.Block, State)              {}
-func (me MockEvidencePool) Verify(types.Evidence) error             { return nil }
+func (EmptyEvidencePool) PendingEvidence(uint32) []types.Evidence       { return nil }
+func (EmptyEvidencePool) AddEvidence(types.Evidence) error              { return nil }
+func (EmptyEvidencePool) Update(State)                                  {}
+func (EmptyEvidencePool) CheckEvidence(evList types.EvidenceList) error { return nil }
+func (EmptyEvidencePool) ABCIEvidence(int64, []types.Evidence) []abci.Evidence {
+	return []abci.Evidence{}
+}
+func (EmptyEvidencePool) AddEvidenceFromConsensus(types.Evidence, time.Time, *types.ValidatorSet) error {
+	return nil
+}

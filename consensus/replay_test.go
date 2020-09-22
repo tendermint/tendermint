@@ -305,7 +305,7 @@ const (
 
 var (
 	mempool = emptyMempool{}
-	evpool  = emptyEvidencePool{}
+	evpool  = sm.EmptyEvidencePool{}
 
 	sim testSim
 )

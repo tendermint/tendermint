@@ -262,7 +262,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	// than can fit in a block
 	for i := 0; i <= maxEvidence; i++ {
 		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
-		err := evidencePool.AddEvidence(ev)
+		err := evidencePool.AddEvidenceFromConsensus(ev, time.Now(), state.Validators)
 		require.NoError(t, err)
 	}
 

@@ -660,7 +660,7 @@ func TestEvidenceDataProtoBuf(t *testing.T) {
 	const chainID = "mychain"
 	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, blockID, time.Now())
 	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, time.Now())
-	ev := NewDuplicateVoteEvidence(v2, v, v2.Timestamp)
+	ev := NewDuplicateVoteEvidence(v2, v)
 	data := &EvidenceData{Evidence: EvidenceList{ev}}
 	_ = data.Hash()
 	testCases := []struct {
