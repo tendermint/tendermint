@@ -1187,6 +1187,7 @@ func newMockBlockStore(config *cfg.Config, params tmproto.ConsensusParams) *mock
 func (bs *mockBlockStore) Height() int64                       { return int64(len(bs.chain)) }
 func (bs *mockBlockStore) Base() int64                         { return bs.base }
 func (bs *mockBlockStore) Size() int64                         { return bs.Height() - bs.Base() + 1 }
+func (bs *mockBlockStore) LoadBaseMeta() *types.BlockMeta      { return bs.LoadBlockMeta(bs.base) }
 func (bs *mockBlockStore) LoadBlock(height int64) *types.Block { return bs.chain[height-1] }
 func (bs *mockBlockStore) LoadBlockByHash(hash []byte) *types.Block {
 	return bs.chain[int64(len(bs.chain))-1]
