@@ -85,6 +85,11 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 	buf := []byte{}
 	for i := 0; i < int(blockMeta.BlockID.PartSetHeader.Total); i++ {
 		part := bs.LoadBlockPart(height, i)
+		// If the part is missing (e.g. since it has been deleted after we
+		// loaded the block meta) we consider the whole block to be missing.
+		if part == nil {
+			return nil
+		}
 		buf = append(buf, part.Bytes...)
 	}
 	err := proto.Unmarshal(buf, pbb)
