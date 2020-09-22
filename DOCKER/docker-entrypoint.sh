@@ -15,6 +15,7 @@ if [ ! -d "$TMHOME/config" ]; then
 			"$TMHOME/config/config.toml" &&
 		sed -i \
 			-e "s/^\s*\"chain_id\":.*/  \"chain_id\": \"$CHAIN_ID\",/" \
+			-e "s/^\s*\"time_iota_ms\":.*/  \"time_iota_ms\": \"500\"/" \
 			"$TMHOME/config/genesis.json"
 fi
 
