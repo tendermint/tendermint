@@ -366,6 +366,29 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	}
 }
 
+func TestLoadBaseMeta(t *testing.T) {
+	config := cfg.ResetTestRoot("blockchain_reactor_test")
+	defer os.RemoveAll(config.RootDir)
+	stateStore := sm.NewStore(dbm.NewMemDB())
+	state, err := stateStore.LoadFromDBOrGenesisFile(config.GenesisFile())
+	require.NoError(t, err)
+	bs := NewBlockStore(dbm.NewMemDB())
+
+	for h := int64(1); h <= 10; h++ {
+		block := makeBlock(h, state, new(types.Commit))
+		partSet := block.MakePartSet(2)
+		seenCommit := makeTestCommit(h, tmtime.Now())
+		bs.SaveBlock(block, partSet, seenCommit)
+	}
+
+	_, err = bs.PruneBlocks(4)
+	require.NoError(t, err)
+
+	baseBlock := bs.LoadBaseMeta()
+	assert.EqualValues(t, 4, baseBlock.Header.Height)
+	assert.EqualValues(t, 4, bs.Base())
+}
+
 func TestLoadBlockPart(t *testing.T) {
 	bs, db := freshBlockStore()
 	height, index := int64(10), 1
