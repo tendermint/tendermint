@@ -76,6 +76,11 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 			}
 		}
 	}()
+	for _, r := range reactors {
+		for _, peer := range r.Switch.Peers().List() {
+			peer.Set(types.PeerStateKey, peerState{1})
+		}
+	}
 
 	const peerID = 1
 	checkTxs(t, reactors[0].mempool, numTxs, peerID)
