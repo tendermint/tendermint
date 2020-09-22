@@ -328,6 +328,15 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 		panic("BlockStore can only save complete block part sets")
 	}
 
+	// Save block parts. This must be done before the block meta, since callers
+	// typically load the block meta first as an indication that the block exists
+	// and then go on to load block parts - we must make sure the block is
+	// complete as soon as the block meta is written.
+	for i := 0; i < int(blockParts.Total()); i++ {
+		part := blockParts.GetPart(i)
+		bs.saveBlockPart(height, i, part)
+	}
+
 	// Save block meta
 	blockMeta := types.NewBlockMeta(block, blockParts)
 	pbm := blockMeta.ToProto()
@@ -340,12 +349,6 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 	if err := bs.db.Set(calcBlockHashKey(hash), []byte(fmt.Sprintf("%d", height))); err != nil {
 		panic(err)
-	}
-
-	// Save block parts
-	for i := 0; i < int(blockParts.Total()); i++ {
-		part := blockParts.GetPart(i)
-		bs.saveBlockPart(height, i, part)
 	}
 
 	// Save block commit (duplicate and separate from the Block)
