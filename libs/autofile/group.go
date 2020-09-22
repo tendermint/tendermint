@@ -145,7 +145,9 @@ func (g *Group) OnStart() error {
 // NOTE: g.Head must be closed separately using Close.
 func (g *Group) OnStop() {
 	g.ticker.Stop()
-	g.FlushAndSync()
+	if err := g.FlushAndSync(); err != nil {
+		g.Logger.Error("Error flushin to disk", "err", err)
+	}
 }
 
 // Wait blocks until all internal goroutines are finished. Supposed to be
@@ -157,7 +159,9 @@ func (g *Group) Wait() {
 
 // Close closes the head file. The group must be stopped by this moment.
 func (g *Group) Close() {
-	g.FlushAndSync()
+	if err := g.FlushAndSync(); err != nil {
+		g.Logger.Error("Error flushin to disk", "err", err)
+	}
 
 	g.mtx.Lock()
 	_ = g.Head.closeFile()

@@ -72,7 +72,9 @@ func (tms *MetricStore) OnStop() {
 
 	// Stop all trust metric go-routines
 	for _, tm := range tms.peerMetrics {
-		tm.Stop()
+		if err := tm.Stop(); err != nil {
+			tms.Logger.Error("unable to stop metric store", "error", err)
+		}
 	}
 
 	// Make the final trust history data save
@@ -108,7 +110,9 @@ func (tms *MetricStore) GetPeerTrustMetric(key string) *Metric {
 	if !ok {
 		// If the metric is not available, we will create it
 		tm = NewMetricWithConfig(tms.config)
-		tm.Start()
+		if err := tm.Start(); err != nil {
+			tms.Logger.Error("unable to start metric store", "error", err)
+		}
 		// The metric needs to be in the map
 		tms.peerMetrics[key] = tm
 	}
@@ -168,7 +172,9 @@ func (tms *MetricStore) loadFromDB() bool {
 	for key, p := range peers {
 		tm := NewMetricWithConfig(tms.config)
 
-		tm.Start()
+		if err := tm.Start(); err != nil {
+			tms.Logger.Error("unable to start metric", "error", err)
+		}
 		tm.Init(p)
 		// Load the peer trust metric into the store
 		tms.peerMetrics[key] = tm
@@ -193,7 +199,9 @@ func (tms *MetricStore) saveToDB() {
 		tms.Logger.Error("Failed to encode the TrustHistory", "err", err)
 		return
 	}
-	tms.db.SetSync(trustMetricKey, bytes)
+	if err := tms.db.SetSync(trustMetricKey, bytes); err != nil {
+		tms.Logger.Error("failed to flush data to disk", "error", err)
+	}
 }
 
 // Periodically saves the trust history data to the DB

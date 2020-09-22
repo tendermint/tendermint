@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
-
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -75,7 +73,7 @@ func (evR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	for _, ev := range evis {
 		err := evR.evpool.AddEvidence(ev)
 		switch err.(type) {
-		case *types.ErrEvidenceInvalid:
+		case *types.ErrInvalidEvidence:
 			evR.Logger.Error(err.Error())
 			// punish peer
 			evR.Switch.StopPeerForError(src, err)
@@ -173,21 +171,15 @@ func (evR Reactor) checkSendEvidenceMessage(
 
 	// NOTE: We only send evidence to peers where
 	// peerHeight - maxAge < evidenceHeight < peerHeight
-	// and
-	// lastBlockTime - maxDuration < evidenceTime
 	var (
-		peerHeight = peerState.GetHeight()
-
-		params = evR.evpool.State().ConsensusParams.Evidence
-
-		ageDuration  = evR.evpool.State().LastBlockTime.Sub(ev.Time())
+		peerHeight   = peerState.GetHeight()
+		params       = evR.evpool.State().ConsensusParams.Evidence
 		ageNumBlocks = peerHeight - evHeight
 	)
 
 	if peerHeight < evHeight { // peer is behind. sleep while he catches up
 		return nil, true
-	} else if ageNumBlocks > params.MaxAgeNumBlocks &&
-		ageDuration > params.MaxAgeDuration { // evidence is too old, skip
+	} else if ageNumBlocks > params.MaxAgeNumBlocks { // evidence is too old relative to the peer, skip
 
 		// NOTE: if evidence is too old for an honest peer, then we're behind and
 		// either it already got committed or it never will!
@@ -196,7 +188,6 @@ func (evR Reactor) checkSendEvidenceMessage(
 			"evHeight", evHeight,
 			"maxAgeNumBlocks", params.MaxAgeNumBlocks,
 			"lastBlockTime", evR.evpool.State().LastBlockTime,
-			"evTime", ev.Time(),
 			"maxAgeDuration", params.MaxAgeDuration,
 			"peer", peer,
 		)
@@ -229,14 +220,16 @@ func encodeMsg(evis []types.Evidence) ([]byte, error) {
 		Evidence: evi,
 	}
 
-	return proto.Marshal(&epl)
+	return epl.Marshal()
 }
 
 // decodemsg takes an array of bytes
 // returns an array of evidence
 func decodeMsg(bz []byte) (evis []types.Evidence, err error) {
 	lm := ep.List{}
-	proto.Unmarshal(bz, &lm)
+	if err := lm.Unmarshal(bz); err != nil {
+		return nil, err
+	}
 
 	evis = make([]types.Evidence, len(lm.Evidence))
 	for i := 0; i < len(lm.Evidence); i++ {

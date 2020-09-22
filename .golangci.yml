@@ -5,7 +5,7 @@ linters:
     - depguard
     - dogsled
     - dupl
-    # - errcheck
+    - errcheck
     # - funlen
     # - gochecknoglobals
     # - gochecknoinits
@@ -39,8 +39,6 @@ linters:
     # - wsl
     # - gocognit
     - nolintlint
-  disable:
-    - errcheck
 
 issues:
   exclude-rules:

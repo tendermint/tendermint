@@ -28,10 +28,6 @@ const (
 	defaultWSPingPeriod        = (defaultWSReadWait * 9) / 10
 )
 
-var (
-	newline = []byte{'\n'}
-)
-
 // WebsocketManager provides a WS handler for incoming connections and passes a
 // map of functions along with any additional params to new connections.
 // NOTE: The websocket path is defined externally, e.g. in node/node.go
@@ -99,7 +95,9 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 		wm.logger.Error("Failed to start connection", "err", err)
 		return
 	}
-	con.Stop()
+	if err := con.Stop(); err != nil {
+		wm.logger.Error("error while stopping connection", "error", err)
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -304,7 +302,9 @@ func (wsc *wsConnection) readRoutine() {
 				err = fmt.Errorf("WSJSONRPC: %v", r)
 			}
 			wsc.Logger.Error("Panic in WSJSONRPC handler", "err", err, "stack", string(debug.Stack()))
-			wsc.WriteRPCResponse(writeCtx, types.RPCInternalError(types.JSONRPCIntID(-1), err))
+			if err := wsc.WriteRPCResponse(writeCtx, types.RPCInternalError(types.JSONRPCIntID(-1), err)); err != nil {
+				wsc.Logger.Error("Error writing RPC response", "err", err)
+			}
 			go wsc.readRoutine()
 		}
 	}()
@@ -330,7 +330,9 @@ func (wsc *wsConnection) readRoutine() {
 				} else {
 					wsc.Logger.Error("Failed to read request", "err", err)
 				}
-				wsc.Stop()
+				if err := wsc.Stop(); err != nil {
+					wsc.Logger.Error("Error closing websocket connection", "err", err)
+				}
 				close(wsc.readRoutineQuit)
 				return
 			}
@@ -339,7 +341,10 @@ func (wsc *wsConnection) readRoutine() {
 			var request types.RPCRequest
 			err = dec.Decode(&request)
 			if err != nil {
-				wsc.WriteRPCResponse(writeCtx, types.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err)))
+				if err := wsc.WriteRPCResponse(writeCtx,
+					types.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err))); err != nil {
+					wsc.Logger.Error("Error writing RPC response", "err", err)
+				}
 				continue
 			}
 
@@ -356,7 +361,9 @@ func (wsc *wsConnection) readRoutine() {
 			// Now, fetch the RPCFunc and execute it.
 			rpcFunc := wsc.funcMap[request.Method]
 			if rpcFunc == nil {
-				wsc.WriteRPCResponse(writeCtx, types.RPCMethodNotFoundError(request.ID))
+				if err := wsc.WriteRPCResponse(writeCtx, types.RPCMethodNotFoundError(request.ID)); err != nil {
+					wsc.Logger.Error("Error writing RPC response", "err", err)
+				}
 				continue
 			}
 
@@ -365,9 +372,11 @@ func (wsc *wsConnection) readRoutine() {
 			if len(request.Params) > 0 {
 				fnArgs, err := jsonParamsToArgs(rpcFunc, request.Params)
 				if err != nil {
-					wsc.WriteRPCResponse(writeCtx,
+					if err := wsc.WriteRPCResponse(writeCtx,
 						types.RPCInternalError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
-					)
+					); err != nil {
+						wsc.Logger.Error("Error writing RPC response", "err", err)
+					}
 					continue
 				}
 				args = append(args, fnArgs...)
@@ -380,11 +389,15 @@ func (wsc *wsConnection) readRoutine() {
 
 			result, err := unreflectResult(returns)
 			if err != nil {
-				wsc.WriteRPCResponse(writeCtx, types.RPCInternalError(request.ID, err))
+				if err := wsc.WriteRPCResponse(writeCtx, types.RPCInternalError(request.ID, err)); err != nil {
+					wsc.Logger.Error("Error writing RPC response", "err", err)
+				}
 				continue
 			}
 
-			wsc.WriteRPCResponse(writeCtx, types.NewRPCSuccessResponse(request.ID, result))
+			if err := wsc.WriteRPCResponse(writeCtx, types.NewRPCSuccessResponse(request.ID, result)); err != nil {
+				wsc.Logger.Error("Error writing RPC response", "err", err)
+			}
 		}
 	}
 }
@@ -422,40 +435,13 @@ func (wsc *wsConnection) writeRoutine() {
 				return
 			}
 		case msg := <-wsc.writeChan:
-			if err := wsc.baseConn.SetWriteDeadline(time.Now().Add(wsc.writeWait)); err != nil {
-				wsc.Logger.Error("Failed to set write deadline", "err", err)
-				return
-			}
-
 			jsonBytes, err := json.MarshalIndent(msg, "", "  ")
 			if err != nil {
 				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
 				continue
 			}
-
-			w, err := wsc.baseConn.NextWriter(websocket.TextMessage)
-			if err != nil {
-				wsc.Logger.Error("Can't get NextWriter", "err", err)
-				return
-			}
-			w.Write(jsonBytes)
-
-			// Add queued messages to the current websocket message.
-			n := len(wsc.writeChan)
-			for i := 0; i < n; i++ {
-				w.Write(newline)
-
-				msg = <-wsc.writeChan
-				jsonBytes, err = json.MarshalIndent(msg, "", "  ")
-				if err != nil {
-					wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
-					continue
-				}
-				w.Write(jsonBytes)
-			}
-
-			if err := w.Close(); err != nil {
-				wsc.Logger.Error("Can't close NextWriter", "err", err)
+			if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
+				wsc.Logger.Error("Failed to write response", "err", err, "msg", msg)
 				return
 			}
 		}

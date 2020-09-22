@@ -13,7 +13,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/gtank/merlin v0.1.1
 	github.com/libp2p/go-buffer-pool v0.0.2
-	github.com/minio/highwayhash v1.0.0
+	github.com/minio/highwayhash v1.0.1
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
@@ -27,5 +27,5 @@ require (
 	github.com/tendermint/tm-db v0.6.2
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/net v0.0.0-20200813134508-3edf25e44fcc
-	google.golang.org/grpc v1.31.1
+	google.golang.org/grpc v1.32.0
 )

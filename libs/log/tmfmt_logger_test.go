@@ -77,6 +77,7 @@ func benchmarkRunnerKitlog(b *testing.B, logger kitlog.Logger, f func(kitlog.Log
 	}
 }
 
+//nolint: errcheck // ignore errors
 var (
 	baseMessage = func(logger kitlog.Logger) { logger.Log("foo_key", "foo_value") }
 	withMessage = func(logger kitlog.Logger) { kitlog.With(logger, "a", "b").Log("d", "f") }

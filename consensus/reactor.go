@@ -93,7 +93,9 @@ func (conR *Reactor) OnStart() error {
 // state.
 func (conR *Reactor) OnStop() {
 	conR.unsubscribeFromBroadcastEvents()
-	conR.conS.Stop()
+	if err := conR.conS.Stop(); err != nil {
+		conR.Logger.Error("Error stopping consensus state", "err", err)
+	}
 	if !conR.WaitSync() {
 		conR.conS.Wait()
 	}
@@ -395,20 +397,26 @@ func (conR *Reactor) WaitSync() bool {
 // them to peers upon receiving.
 func (conR *Reactor) subscribeToBroadcastEvents() {
 	const subscriber = "consensus-reactor"
-	conR.conS.evsw.AddListenerForEvent(subscriber, types.EventNewRoundStep,
+	if err := conR.conS.evsw.AddListenerForEvent(subscriber, types.EventNewRoundStep,
 		func(data tmevents.EventData) {
 			conR.broadcastNewRoundStepMessage(data.(*cstypes.RoundState))
-		})
+		}); err != nil {
+		conR.Logger.Error("Error adding listener for events", "err", err)
+	}
 
-	conR.conS.evsw.AddListenerForEvent(subscriber, types.EventValidBlock,
+	if err := conR.conS.evsw.AddListenerForEvent(subscriber, types.EventValidBlock,
 		func(data tmevents.EventData) {
 			conR.broadcastNewValidBlockMessage(data.(*cstypes.RoundState))
-		})
+		}); err != nil {
+		conR.Logger.Error("Error adding listener for events", "err", err)
+	}
 
-	conR.conS.evsw.AddListenerForEvent(subscriber, types.EventVote,
+	if err := conR.conS.evsw.AddListenerForEvent(subscriber, types.EventVote,
 		func(data tmevents.EventData) {
 			conR.broadcastHasVoteMessage(data.(*types.Vote))
-		})
+		}); err != nil {
+		conR.Logger.Error("Error adding listener for events", "err", err)
+	}
 
 }
 

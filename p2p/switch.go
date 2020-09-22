@@ -245,7 +245,9 @@ func (sw *Switch) OnStop() {
 	// Stop reactors
 	sw.Logger.Debug("Switch: Stopping reactors")
 	for _, reactor := range sw.reactors {
-		reactor.Stop()
+		if err := reactor.Stop(); err != nil {
+			sw.Logger.Error("error while stopped reactor", "reactor", reactor, "error", err)
+		}
 	}
 }
 
@@ -349,7 +351,9 @@ func (sw *Switch) StopPeerGracefully(peer Peer) {
 
 func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 	sw.transport.Cleanup(peer)
-	peer.Stop()
+	if err := peer.Stop(); err != nil {
+		sw.Logger.Error("error while stopping peer", "error", err) // TODO: should return error to be handled accordingly
+	}
 
 	for _, reactor := range sw.reactors {
 		reactor.RemovePeer(peer, reason)

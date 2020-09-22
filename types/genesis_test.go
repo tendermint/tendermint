@@ -129,7 +129,8 @@ func TestGenesisSaveAs(t *testing.T) {
 	genDoc := randomGenesisDoc()
 
 	// save
-	genDoc.SaveAs(tmpfile.Name())
+	err = genDoc.SaveAs(tmpfile.Name())
+	require.NoError(t, err)
 	stat, err := tmpfile.Stat()
 	require.NoError(t, err)
 	if err != nil && stat.Size() <= 0 {

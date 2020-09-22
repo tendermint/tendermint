@@ -47,7 +47,8 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 - `chain_id`: ID of the blockchain. **This must be unique for
   every blockchain.** If your testnet blockchains do not have unique
   chain IDs, you will have a bad time. The ChainID must be less than 50 symbols.
-- `initial_height`: Height at which Tendermint should begin at.
+- `initial_height`: Height at which Tendermint should begin at. If a blockchain is conducting a network upgrade, 
+    starting from the stopped height brings uniqueness to previous heights. 
 - `consensus_params` [spec](https://github.com/tendermint/spec/blob/master/spec/core/state.md#consensusparams)
     - `block`
         - `max_bytes`: Max block size, in bytes.

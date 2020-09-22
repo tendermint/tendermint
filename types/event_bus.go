@@ -59,7 +59,9 @@ func (b *EventBus) OnStart() error {
 }
 
 func (b *EventBus) OnStop() {
-	b.pubsub.Stop()
+	if err := b.pubsub.Stop(); err != nil {
+		b.pubsub.Logger.Error("error trying to stop eventBus", "error", err)
+	}
 }
 
 func (b *EventBus) NumClients() int {

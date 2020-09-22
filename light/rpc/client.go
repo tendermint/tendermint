@@ -55,7 +55,9 @@ func (c *Client) OnStart() error {
 
 func (c *Client) OnStop() {
 	if c.next.IsRunning() {
-		c.next.Stop()
+		if err := c.next.Stop(); err != nil {
+			c.Logger.Error("Error stopping on next", "err", err)
+		}
 	}
 }
 

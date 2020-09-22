@@ -413,7 +413,9 @@ func (cli *socketClient) LoadSnapshotChunkSync(
 func (cli *socketClient) ApplySnapshotChunkSync(
 	req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
 	reqres := cli.queueRequest(types.ToRequestApplySnapshotChunk(req))
-	cli.FlushSync()
+	if err := cli.FlushSync(); err != nil {
+		return nil, err
+	}
 	return reqres.Response.GetApplySnapshotChunk(), cli.Error()
 }
 
@@ -500,5 +502,7 @@ func (cli *socketClient) stopForError(err error) {
 	cli.mtx.Unlock()
 
 	cli.Logger.Error(fmt.Sprintf("Stopping abci.socketClient for error: %v", err.Error()))
-	cli.Stop()
+	if err := cli.Stop(); err != nil {
+		cli.Logger.Error("Error stopping abci.socketClient", "err", err)
+	}
 }
