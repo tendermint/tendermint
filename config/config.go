@@ -712,6 +712,12 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	if cfg.MaxTxBytes < 0 {
 		return errors.New("max_tx_bytes can't be negative")
 	}
+	if cfg.MaxBatchBytes < 0 {
+		return errors.New("max_batch_bytes can't be negative")
+	}
+	if cfg.MaxBatchBytes <= cfg.MaxTxBytes {
+		return errors.New("max_batch_bytes can't be less or equal to max_tx_bytes")
+	}
 	return nil
 }
 

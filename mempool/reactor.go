@@ -6,6 +6,8 @@ import (
 	"math"
 	"time"
 
+	"google.golang.org/protobuf/encoding/protowire"
+
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
@@ -25,6 +27,17 @@ const (
 	UnknownPeerID uint16 = 0
 
 	maxActiveIDs = math.MaxUint16
+)
+
+var (
+	// proto overhead for the message with no transactions
+	// see txs
+	emptyMessage = protomem.Message{
+		Sum: &protomem.Message_Txs{
+			Txs: &protomem.Txs{},
+		},
+	}
+	emptyMessageSize = emptyMessage.Size() + 2 // 2 -> Txs key (0 above)
 )
 
 // Reactor handles mempool tx broadcasting amongst peers.
@@ -191,6 +204,7 @@ type PeerState interface {
 func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 	peerID := memR.ids.GetForPeer(peer)
 	var next *clist.CElement
+
 	for {
 		// In case of both next.NextWaitChan() and peer.Quit() are variable at the same time
 		if !memR.IsRunning() || !peer.IsRunning() {
@@ -212,7 +226,7 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 			}
 		}
 
-		// make sure the peer is up to date
+		// Make sure the peer is up to date.
 		peerState, ok := peer.Get(types.PeerStateKey).(PeerState)
 		if !ok {
 			// Peer does not have a state yet. We set it in the consensus reactor, but
@@ -224,16 +238,13 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 			continue
 		}
 
-		// first transaction
-		memTx := next.Value.(*mempoolTx)
-
 		// Allow for a lag of 1 block.
+		memTx := next.Value.(*mempoolTx)
 		if peerState.GetHeight() < memTx.Height()-1 {
 			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 			continue
 		}
 
-		// the rest (up to MaxBatchBytes)
 		txs := memR.txs(next, peerID, peerState.GetHeight()) // WARNING: mutates next!
 
 		// send txs
@@ -273,42 +284,27 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 func (memR *Reactor) txs(next *clist.CElement, peerID uint16, peerHeight int64) [][]byte {
 	var (
 		batch     = make([][]byte, 0)
-		batchSize = 0
+		batchSize = emptyMessageSize // bytes
 	)
 
-	memTx := next.Value.(*mempoolTx)
-	if _, ok := memTx.senders.Load(peerID); !ok {
+	for {
+		memTx := next.Value.(*mempoolTx)
 		tx := []byte(memTx.tx)
-		batch = append(batch, tx)
-		batchSize += len(tx)
-	}
-
-	if batchSize >= memR.config.MaxBatchBytes {
-		return batch
-	}
-
-	n := next.Next()
-	for n != nil {
-		memTx = n.Value.(*mempoolTx)
 
 		if _, ok := memTx.senders.Load(peerID); !ok {
-			tx := []byte(memTx.tx)
+			batchSize += protowire.SizeBytes(len(tx)) // tx + proto overhead
+			if batchSize > memR.config.MaxBatchBytes {
+				return batch
+			}
+
 			batch = append(batch, tx)
-			batchSize += len(tx)
 		}
 
-		// Advance next (non-nil) pointer, which is used later to
-		// wait (NextWaitChan) for next transaction to appear.
-		next = n
-		// Advance n (could be nil) pointer
-		n = n.Next()
-
-		if batchSize >= memR.config.MaxBatchBytes {
+		if next.Next() == nil {
 			return batch
 		}
+		next = next.Next()
 	}
-
-	return batch
 }
 
 //-----------------------------------------------------------------------------
