@@ -63,7 +63,7 @@ var (
 		valSet,
 	)
 	deadNode      = mockp.NewDeadMock(chainID)
-	largeFullNode = mockp.New(GenMockNode(chainID, 10, 3, 0, bTime))
+	largeFullNode = mockp.New(genMockNode(chainID, 10, 3, 0, bTime))
 )
 
 func TestValidateTrustOptions(t *testing.T) {
@@ -120,6 +120,7 @@ func TestMock(t *testing.T) {
 func TestClient_SequentialVerification(t *testing.T) {
 	newKeys := genPrivKeys(4)
 	newVals := newKeys.ToValidators(10, 1)
+	differentVals, _ := types.RandValidatorSet(10, 100)
 
 	testCases := []struct {
 		name         string
@@ -147,6 +148,26 @@ func TestClient_SequentialVerification(t *testing.T) {
 			},
 			true,
 			false,
+		},
+		{
+			"bad: no first signed header",
+			map[int64]*types.SignedHeader{},
+			map[int64]*types.ValidatorSet{
+				1: differentVals,
+			},
+			true,
+			true,
+		},
+		{
+			"bad: different first validator set",
+			map[int64]*types.SignedHeader{
+				1: h1,
+			},
+			map[int64]*types.ValidatorSet{
+				1: differentVals,
+			},
+			true,
+			true,
 		},
 		{
 			"bad: 1/3 signed interim header",
@@ -360,16 +381,16 @@ func TestClient_SkippingVerification(t *testing.T) {
 // start from a large light block to make sure that the pivot height doesn't select a height outside
 // the appropriate range
 func TestClientLargeBisectionVerification(t *testing.T) {
-	veryLargeFullNode := mockp.New(GenMockNode(chainID, 100, 3, 1, bTime))
-	l1, err := veryLargeFullNode.LightBlock(ctx, 90)
+	veryLargeFullNode := mockp.New(genMockNode(chainID, 100, 3, 0, bTime))
+	trustedLightBlock, err := veryLargeFullNode.LightBlock(ctx, 5)
 	require.NoError(t, err)
 	c, err := light.NewClient(
 		ctx,
 		chainID,
 		light.TrustOptions{
 			Period: 4 * time.Hour,
-			Height: l1.Height,
-			Hash:   l1.Hash(),
+			Height: trustedLightBlock.Height,
+			Hash:   trustedLightBlock.Hash(),
 		},
 		veryLargeFullNode,
 		[]provider.Provider{veryLargeFullNode},
@@ -914,6 +935,9 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 		},
 	)
 
+	lb1, _ := badProvider1.LightBlock(ctx, 2)
+	require.NotEqual(t, lb1.Hash(), l1.Hash())
+
 	c, err := light.NewClient(
 		ctx,
 		chainID,
@@ -938,7 +962,7 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 	// remaining witnesses don't have light block -> error
 	_, err = c.VerifyLightBlockAtHeight(ctx, 3, bTime.Add(2*time.Hour))
 	if assert.Error(t, err) {
-		assert.Equal(t, "awaiting response from all witnesses exceeded dropout time", err.Error())
+		assert.Equal(t, light.ErrFailedHeaderCrossReferencing, err)
 	}
 	// witness does not have a light block -> left in the list
 	assert.EqualValues(t, 1, len(c.Witnesses()))

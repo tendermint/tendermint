@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	dbm "github.com/tendermint/tm-db"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/fail"
@@ -26,7 +24,7 @@ import (
 // BlockExecutor provides the context and accessories for properly executing a block.
 type BlockExecutor struct {
 	// save state, validators, consensus params, abci responses here
-	db dbm.DB
+	store Store
 
 	// execute the app against this
 	proxyApp proxy.AppConnConsensus
@@ -55,7 +53,7 @@ func BlockExecutorWithMetrics(metrics *Metrics) BlockExecutorOption {
 // NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
 // Call SetEventBus to provide one.
 func NewBlockExecutor(
-	db dbm.DB,
+	stateStore Store,
 	logger log.Logger,
 	proxyApp proxy.AppConnConsensus,
 	mempool mempl.Mempool,
@@ -63,7 +61,7 @@ func NewBlockExecutor(
 	options ...BlockExecutorOption,
 ) *BlockExecutor {
 	res := &BlockExecutor{
-		db:       db,
+		store:    stateStore,
 		proxyApp: proxyApp,
 		eventBus: types.NopEventBus{},
 		mempool:  mempool,
@@ -79,8 +77,8 @@ func NewBlockExecutor(
 	return res
 }
 
-func (blockExec *BlockExecutor) DB() dbm.DB {
-	return blockExec.db
+func (blockExec *BlockExecutor) Store() Store {
+	return blockExec.store
 }
 
 // SetEventBus - sets the event bus for publishing block related events.
@@ -116,7 +114,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 // Validation does not mutate state, but does require historical information from the stateDB,
 // ie. to verify evidence from a validator at an old height.
 func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) error {
-	return validateBlock(blockExec.evpool, blockExec.db, state, block)
+	return validateBlock(blockExec.evpool, state, block)
 }
 
 // ApplyBlock validates the block against the state, executes it against the app,
@@ -133,9 +131,12 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, 0, ErrInvalidBlock(err)
 	}
 
+	// Update evpool with the block and state and get any byzantine validators for that block
+	byzVals := blockExec.evpool.ABCIEvidence(block.Height, block.Evidence.Evidence)
+
 	startTime := time.Now().UnixNano()
 	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block,
-		blockExec.db, state.InitialHeight)
+		blockExec.store, state.InitialHeight, byzVals)
 	endTime := time.Now().UnixNano()
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
 	if err != nil {
@@ -145,7 +146,9 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	fail.Fail() // XXX
 
 	// Save the results before we commit.
-	SaveABCIResponses(blockExec.db, block.Height, abciResponses)
+	if err := blockExec.store.SaveABCIResponses(block.Height, abciResponses); err != nil {
+		return state, 0, err
+	}
 
 	fail.Fail() // XXX
 
@@ -175,14 +178,16 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
 
-	// Update evpool with the block and state.
-	blockExec.evpool.Update(block, state)
+	// Update evpool with the latest state.
+	blockExec.evpool.Update(state)
 
 	fail.Fail() // XXX
 
 	// Update the app hash and save the state.
 	state.AppHash = appHash
-	SaveState(blockExec.db, state)
+	if err := blockExec.store.Save(state); err != nil {
+		return state, 0, err
+	}
 
 	fail.Fail() // XXX
 
@@ -254,8 +259,9 @@ func execBlockOnProxyApp(
 	logger log.Logger,
 	proxyAppConn proxy.AppConnConsensus,
 	block *types.Block,
-	stateDB dbm.DB,
+	store Store,
 	initialHeight int64,
+	byzVals []abci.Evidence,
 ) (*tmstate.ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
@@ -283,7 +289,7 @@ func execBlockOnProxyApp(
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
 
-	commitInfo, byzVals := getBeginBlockValidatorInfo(block, stateDB, initialHeight)
+	commitInfo := getBeginBlockValidatorInfo(block, store, initialHeight)
 
 	// Begin block
 	var err error
@@ -322,14 +328,14 @@ func execBlockOnProxyApp(
 	return abciResponses, nil
 }
 
-func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB,
-	initialHeight int64) (abci.LastCommitInfo, []abci.Evidence) {
+func getBeginBlockValidatorInfo(block *types.Block, store Store,
+	initialHeight int64) abci.LastCommitInfo {
 	voteInfos := make([]abci.VoteInfo, block.LastCommit.Size())
 	// Initial block -> LastCommitInfo.Votes are empty.
 	// Remember that the first LastCommit is intentionally empty, so it makes
 	// sense for LastCommitInfo.Votes to also be empty.
 	if block.Height > initialHeight {
-		lastValSet, err := LoadValidators(stateDB, block.Height-1)
+		lastValSet, err := store.LoadValidators(block.Height - 1)
 		if err != nil {
 			panic(err)
 		}
@@ -354,22 +360,10 @@ func getBeginBlockValidatorInfo(block *types.Block, stateDB dbm.DB,
 		}
 	}
 
-	byzVals := make([]abci.Evidence, len(block.Evidence.Evidence))
-	for i, ev := range block.Evidence.Evidence {
-		// We need the validator set. We already did this in validateBlock.
-		// TODO: Should we instead cache the valset in the evidence itself and add
-		// `SetValidatorSet()` and `ToABCI` methods ?
-		valset, err := LoadValidators(stateDB, ev.Height())
-		if err != nil {
-			panic(err)
-		}
-		byzVals[i] = types.TM2PB.Evidence(ev, valset)
-	}
-
 	return abci.LastCommitInfo{
 		Round: block.LastCommit.Round,
 		Votes: voteInfos,
-	}, byzVals
+	}
 }
 
 func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
@@ -528,10 +522,10 @@ func ExecCommitBlock(
 	appConnConsensus proxy.AppConnConsensus,
 	block *types.Block,
 	logger log.Logger,
-	stateDB dbm.DB,
+	store Store,
 	initialHeight int64,
 ) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, stateDB, initialHeight)
+	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight, []abci.Evidence{})
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err

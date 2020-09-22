@@ -23,21 +23,25 @@ import (
 
 func TestStoreLoadValidators(t *testing.T) {
 	stateDB := dbm.NewMemDB()
+	stateStore := sm.NewStore(stateDB)
 	val, _ := types.RandValidator(true, 10)
 	vals := types.NewValidatorSet([]*types.Validator{val})
 
 	// 1) LoadValidators loads validators using a height where they were last changed
-	sm.SaveValidatorsInfo(stateDB, 1, 1, vals)
-	sm.SaveValidatorsInfo(stateDB, 2, 1, vals)
-	loadedVals, err := sm.LoadValidators(stateDB, 2)
+	err := sm.SaveValidatorsInfo(stateDB, 1, 1, vals)
+	require.NoError(t, err)
+	err = sm.SaveValidatorsInfo(stateDB, 2, 1, vals)
+	require.NoError(t, err)
+	loadedVals, err := stateStore.LoadValidators(2)
 	require.NoError(t, err)
 	assert.NotZero(t, loadedVals.Size())
 
 	// 2) LoadValidators loads validators using a checkpoint height
 
-	sm.SaveValidatorsInfo(stateDB, sm.ValSetCheckpointInterval, 1, vals)
+	err = sm.SaveValidatorsInfo(stateDB, sm.ValSetCheckpointInterval, 1, vals)
+	require.NoError(t, err)
 
-	loadedVals, err = sm.LoadValidators(stateDB, sm.ValSetCheckpointInterval)
+	loadedVals, err = stateStore.LoadValidators(sm.ValSetCheckpointInterval)
 	require.NoError(t, err)
 	assert.NotZero(t, loadedVals.Size())
 }
@@ -50,22 +54,27 @@ func BenchmarkLoadValidators(b *testing.B) {
 	dbType := dbm.BackendType(config.DBBackend)
 	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())
 	require.NoError(b, err)
-	state, err := sm.LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
+	stateStore := sm.NewStore(stateDB)
+	state, err := stateStore.LoadFromDBOrGenesisFile(config.GenesisFile())
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	state.Validators = genValSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
-	sm.SaveState(stateDB, state)
+	err = stateStore.Save(state)
+	require.NoError(b, err)
 
 	for i := 10; i < 10000000000; i *= 10 { // 10, 100, 1000, ...
 		i := i
-		sm.SaveValidatorsInfo(stateDB, int64(i), state.LastHeightValidatorsChanged, state.NextValidators)
+		if err := sm.SaveValidatorsInfo(stateDB,
+			int64(i), state.LastHeightValidatorsChanged, state.NextValidators); err != nil {
+			b.Fatal(err)
+		}
 
 		b.Run(fmt.Sprintf("height=%d", i), func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
-				_, err := sm.LoadValidators(stateDB, int64(i))
+				_, err := stateStore.LoadValidators(int64(i))
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -98,6 +107,7 @@ func TestPruneStates(t *testing.T) {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			db := dbm.NewMemDB()
+			stateStore := sm.NewStore(db)
 			pk := ed25519.GenPrivKey().PubKey()
 
 			// Generate a bunch of state data. Validators change for heights ending with 3, and
@@ -134,19 +144,21 @@ func TestPruneStates(t *testing.T) {
 					state.LastValidators = state.Validators
 				}
 
-				sm.SaveState(db, state)
+				err := stateStore.Save(state)
+				require.NoError(t, err)
 
-				sm.SaveABCIResponses(db, h, &tmstate.ABCIResponses{
+				err = stateStore.SaveABCIResponses(h, &tmstate.ABCIResponses{
 					DeliverTxs: []*abci.ResponseDeliverTx{
 						{Data: []byte{1}},
 						{Data: []byte{2}},
 						{Data: []byte{3}},
 					},
 				})
+				require.NoError(t, err)
 			}
 
 			// Test assertions
-			err := sm.PruneStates(db, tc.pruneFrom, tc.pruneTo)
+			err := stateStore.PruneStates(tc.pruneFrom, tc.pruneTo)
 			if tc.expectErr {
 				require.Error(t, err)
 				return
@@ -158,7 +170,7 @@ func TestPruneStates(t *testing.T) {
 			expectABCI := sliceToMap(tc.expectABCI)
 
 			for h := int64(1); h <= tc.makeHeights; h++ {
-				vals, err := sm.LoadValidators(db, h)
+				vals, err := stateStore.LoadValidators(h)
 				if expectVals[h] {
 					require.NoError(t, err, "validators height %v", h)
 					require.NotNil(t, vals)
@@ -167,16 +179,15 @@ func TestPruneStates(t *testing.T) {
 					require.Equal(t, sm.ErrNoValSetForHeight{Height: h}, err)
 				}
 
-				params, err := sm.LoadConsensusParams(db, h)
+				params, err := stateStore.LoadConsensusParams(h)
 				if expectParams[h] {
 					require.NoError(t, err, "params height %v", h)
 					require.False(t, params.Equal(&tmproto.ConsensusParams{}))
 				} else {
 					require.Error(t, err, "params height %v", h)
-					require.Equal(t, sm.ErrNoConsensusParamsForHeight{Height: h}, err)
 				}
 
-				abci, err := sm.LoadABCIResponses(db, h)
+				abci, err := stateStore.LoadABCIResponses(h)
 				if expectABCI[h] {
 					require.NoError(t, err, "abci height %v", h)
 					require.NotNil(t, abci)

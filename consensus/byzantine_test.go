@@ -35,6 +35,7 @@ import (
 func TestByzantinePrevoteEquivocation(t *testing.T) {
 	const nValidators = 4
 	const byzantineNode = 0
+	const prevoteHeight = int64(2)
 	testName := "consensus_byzantine_test"
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newCounter
@@ -45,7 +46,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	for i := 0; i < nValidators; i++ {
 		logger := consensusLogger().With("test", "byzantine", "validator", i)
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+		stateStore := sm.NewStore(stateDB)
+		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		defer os.RemoveAll(thisConfig.RootDir)
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
@@ -70,12 +72,12 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 		// Make a full instance of the evidence pool
 		evidenceDB := dbm.NewMemDB()
-		evpool, err := evidence.NewPool(evidenceDB, evidence.NewEvidenceStateStore(stateDB), blockStore)
+		evpool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 		require.NoError(t, err)
 		evpool.SetLogger(logger.With("module", "evidence"))
 
 		// Make State
-		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
 		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 		cs.SetLogger(cs.Logger)
 		// set private validator
@@ -111,7 +113,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		blocksSubs = append(blocksSubs, blocksSub)
 
 		if css[i].state.LastBlockHeight == 0 { //simulate handle initChain in handshake
-			sm.SaveState(css[i].blockExec.DB(), css[i].state)
+			err = css[i].blockExec.Store().Save(css[i].state)
+			require.NoError(t, err)
 		}
 	}
 	// make connected switches and start all reactors
@@ -127,7 +130,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	// alter prevote so that the byzantine node double votes when height is 2
 	bcs.doPrevote = func(height int64, round int32) {
 		// allow first height to happen normally so that byzantine validator is no longer proposer
-		if height == 2 {
+		if height == prevoteHeight {
 			bcs.Logger.Info("Sending two votes")
 			prevote1, err := bcs.signVote(tmproto.PrevoteType, bcs.ProposalBlock.Hash(), bcs.ProposalBlockParts.Header())
 			require.NoError(t, err)
@@ -160,22 +163,46 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	// Evidence should be submitted and committed at the third height but
 	// we will check the first five just in case
-	var evidence types.Evidence
+	evidenceFromEachValidator := make([]types.Evidence, nValidators)
 
-	for i := 0; i < 5; i++ {
-		msg := <-blocksSubs[nValidators-1].Out()
-		block := msg.Data().(types.EventDataNewBlock).Block
-		if len(block.Evidence.Evidence) > 0 {
-			evidence = block.Evidence.Evidence[0]
-			break
+	wg := new(sync.WaitGroup)
+	wg.Add(4)
+	for height := 1; height < 5; height++ {
+		for i := 0; i < nValidators; i++ {
+			go func(j int) {
+				msg := <-blocksSubs[j].Out()
+				block := msg.Data().(types.EventDataNewBlock).Block
+				if len(block.Evidence.Evidence) != 0 {
+					evidenceFromEachValidator[j] = block.Evidence.Evidence[0]
+					wg.Done()
+				}
+			}(i)
 		}
 	}
 
-	if assert.NotNil(t, evidence) {
-		ev, ok := evidence.(*types.DuplicateVoteEvidence)
-		assert.True(t, ok)
-		pubkey, _ := bcs.privValidator.GetPubKey()
-		assert.Equal(t, []byte(pubkey.Address()), ev.Address())
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	pubkey, _ := bcs.privValidator.GetPubKey()
+
+	select {
+	case <-done:
+		for idx, ev := range evidenceFromEachValidator {
+			if assert.NotNil(t, ev, idx) {
+				ev, ok := ev.(*types.DuplicateVoteEvidence)
+				assert.True(t, ok)
+				assert.Equal(t, pubkey.Address(), ev.VoteA.ValidatorAddress)
+				assert.Equal(t, prevoteHeight, ev.Height())
+			}
+		}
+	case <-time.After(10 * time.Second):
+		for i, reactor := range reactors {
+			t.Logf("Consensus Reactor %d\n%v", i, reactor)
+		}
+		t.Fatalf("Timed out waiting for all validators to commit first block")
 	}
 }
 
@@ -249,7 +276,8 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 		}
 
 		reactors[i] = conRI
-		sm.SaveState(css[i].blockExec.DB(), css[i].state) //for save height 1's validators info
+		err = css[i].blockExec.Store().Save(css[i].state) //for save height 1's validators info
+		require.NoError(t, err)
 	}
 
 	defer func() {

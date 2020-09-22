@@ -5,51 +5,42 @@
 * 24-02-2020: Second version
 * 13-04-2020: Add PotentialAmnesiaEvidence and a few remarks
 * 31-07-2020: Remove PhantomValidatorEvidence
-* 14-08-2020: Introduce light traces
+* 14-08-2020: Introduce light traces (listed now as an alternative approach)
+* 20-08-2020: Light client produces evidence when detected instead of passing to full node
+* 16-09-2020: Post-implementation revision
+
+### Glossary of Terms
+
+- a `LightBlock` is the unit of data that a light client receives, verifies and stores.
+It is composed of a validator set, commit and header all at the same height.
+- a **Trace** is seen as an array of light blocks across a range of heights that were
+created as a result of skipping verification.
+- a **Provider** is a full node that a light client is connected to and serves the light
+client signed headers and validator sets.
+- `VerifySkipping` (sometimes known as bisection or verify non-adjacent) is a method the
+light client uses to verify a target header from a trusted header. The process involves verifying
+intermediate headers in between the two by making sure that 1/3 of the validators that signed
+the trusted header also signed the untrusted one.
+- **Light Bifurcation Point**: If the light client was to run `VerifySkipping` with two providers
+(i.e. a primary and a witness), the bifurcation point is the height that the headers
+from each of these providers are different yet valid. This signals that one of the providers
+may be trying to fool the light client.
 
 ## Context
 
 The bisection method of header verification used by the light client exposes
 itself to a potential attack if any block within the light clients trusted period has
-a malicious group of validators with power that exceeds the light clients trust level 
+a malicious group of validators with power that exceeds the light clients trust level
 (default is 1/3). To improve light client (and overall network) security, the light
 client has a detector component that compares the verified header provided by the
-primary against witness headers. This ADR outlines the decision that ensues when
-the light client detector receives two conflicting headers
+primary against witness headers. This ADR outlines the process of mitigating attacks
+on the light client by using witness nodes to cross reference with.
 
 ## Alternative Approaches
 
-One of the key arguments surrounding the decision is whether the processing required
-to extract verifiable evidence should be on the light client side or the full node side.
-As light client, indicated in it's name, is supposed to stay light, the natural 
-inclination is to avoid any load and pass it directly to the full node who also has
-the advantage of having a full state. It remains possible in future discussions to have the
-light client form the evidence types itself. The other minor downsides apart from the
-load will be that around half the evidence produced by the light client will be invalid and
-that, in the event of modified logic, it's easier and expected that the full node be up 
-to date than the light clients.
-
-## Decision
-
-When two headers have different hashes, the light client must first verify via 
-bisection that the signed header provided by the witness is also valid.
-
-It then collects all the headers that were fetched as part of bisection into two traces. 
-One containing the primary's headers and the other containing the witness's headers. 
-The light client sends the trace to the opposite provider (i.e. the primary's trace
-to the witness and the witness's trace to the primary) as the light client is 
-incapable of deciding which one is malicious. 
-
-Assuming one of the two providers is honest, that full node will then take the trace
-and extract out the relevant evidence and propogate it until it ends up on chain.
-
-*NOTE: We do not send evidence to other connected peers*
-
-*NOTE: The light client halts then and does not verify with any other witness*
-
-## Detailed Design
-
-The traces will have the following data structure: 
+A previously discussed approach to handling evidence was to pass all the data that the
+light client had witnessed when it had observed diverging headers for the full node to
+process.This was known as a light trace and had the following structure:
 
 ```go
 type ConflictingHeadersTrace struct {
@@ -57,158 +48,169 @@ type ConflictingHeadersTrace struct {
 }
 ```
 
-When a full node receives a `ConflictingHeadersTrace`, it should
-a) validate it b) figure out if malicious behaviour is obvious (immediately
-slashable) or run the amnesia protocol.
-
-### Validating headers
-
-Check headers are valid (`ValidateBasic`), are in order of ascending height, and do not exceed the `MaxTraceSize`.
-
-### Finding Block Bifurcation
-
-The node pulls the block ID's for the respective heights of the trace headers from its own block store.
-
-First it checks to see that the first header hash matches its first `BlockID` else it can discard it. 
-
-If the last header hash matches the nodes last `BlockID` then it can also discard it on the assumption that a fork can not remerge and hence this is just a trace of valid headers. 
-
-The node then continues to loop in descending order checking that the headers hash doesn't match it's own blockID for that height. Once it reaches the height that the block ID matches the hash it then sends the common header, the trusted header and the diverged header (common header is needed for lunatic evidence) to determine if the divergence is a real offense to the tendermint protocol or if it is just fabricated.
-
-### Figuring out if malicious behaviour
-
-The node first examines the case of a lunatic attack:
-
-* The validator set of the common header must have at least 1/3 validator power that signed in the divergedHeaders commit
-
-* One of the deterministically derived hashes (`ValidatorsHash`, `NextValidatorsHash`, `ConsensusHash`,
-`AppHash`, or `LastResultsHash`) of the header must not match:
-
-* We then take every validator that voted for the invalid header and was a validator in the common headers validator set and create `LunaticValidatorEvidence`
-
-If this fails then we examine the case of Equivocation (either duplicate vote or amnesia):
-
-*This only requires the trustedHeader and the divergedHeader*
-
-* if `trustedHeader.Round == divergedHeader.Round`, and a validator signed for the block in both headers then DuplicateVoteEvidence can be immediately formed
-
-* if `trustedHeader.Round != divergedHeader.Round` then we form PotentialAmnesiaEvidence as some validators in this set have behaved maliciously and protocol in ADR 56 needs to be run. 
-
-*The node does not check that there is a 1/3 overlap between headers as this may not be point of the fork and validator sets may have since changed*
-
-If no evidence can be formed from a light trace, it is not a legitimate trace and thus the 
-connection with the peer should be stopped
-
-### F1. Equivocation
-
-Existing `DuplicateVoteEvidence` needs to be created and gossiped.
+This approach has the advantage of not requiring as much processing on the light
+client side in the event that an attack happens. Although, this is not a significant
+difference as the light client would in any case have to validate all the headers
+from both witness and primary. Using traces would consume a large amount of bandwidth
+and adds a DDOS vector to the full node.
 
 
-### F5. Lunatic validator
+## Decision
 
-```go
-type LunaticValidatorEvidence struct {
-	Header             types.Header
-	Vote               types.Vote
-	InvalidHeaderField string
+The light client will be divided into two components: a `Verifier` (either sequential or
+skipping) and a `Detector` (see [Informal's Detector](https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/detection/detection.md))
+. The detector will take the trace of headers from the primary and check it against all
+witnesses. For a witness with a diverging header, the detector will first verify the header
+by bisecting through all the heights defined by the trace that the primary provided. If valid,
+the light client will trawl through both traces and find the point of bifurcation where it
+can proceed to extract any evidence (as is discussed in detail later).
+
+Upon successfully detecting the evidence, the light client will send it to both primary and
+witness before halting. It will not send evidence to other peers nor continue to verify the
+primary's header against any other header.
+
+
+## Detailed Design
+
+The verification process of the light client will start from a trusted header and use a bisectional
+algorithm to verify up to a header at a given height. This becomes the verified header (does not
+mean that it is trusted yet). All headers that were verified in between are cached and known as
+intermediary headers and the entire array is sometimes referred to as a trace.
+
+The light client's detector then takes all the headers and runs the detect function.
+
+```golang
+func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Time) error
+```
+
+The function takes the last header it received, the target header and compares it against all the witnesses
+it has through the following function:
+
+```golang
+func (c *Client) compareNewHeaderWithWitness(errc chan error, h *types.SignedHeader,
+	witness provider.Provider, witnessIndex int)
+```
+
+The err channel is used to send back all the outcomes so that they can be processed in parallel.
+Invalid headers result in dropping the witness, lack of response or not having the headers is ignored
+just as headers that have the same hash. Headers, however,
+of a different hash then trigger the detection process between the primary and that particular witness.
+
+This begins with verification of the witness's header via skipping verification which is run in tande
+with locating the Light Bifurcation Point
+
+![](../imgs/light-client-detector.png)
+
+This is done with:
+
+```golang
+func (c *Client) examineConflictingHeaderAgainstTrace(
+	trace []*types.LightBlock,
+	divergentHeader *types.SignedHeader,
+	source provider.Provider, now time.Time) ([]*types.LightBlock, *types.LightBlock, error)
+```
+
+which performs the following
+
+1. Checking that the trusted header is the same. Currently, they should not theoretically be different
+because witnesses cannot be added and removed after the client is initialized. But we do this any way
+as a sanity check. If this fails we have to drop the witness.
+
+2. Querying and verifying the witness's headers using bisection at the same heights of all the
+intermediary headers of the primary (In the above example this is A, B, C, D, F, H). If bisection fails or the witness stops responding then
+we can call the witness faulty and drop it.
+
+3. We eventually reach a verified header by the witness which is not the same as the intermediary header (In the above example this is E).
+This is the point of bifurcation (This could also be the last header).
+
+This function then returns the trace of blocks from the witness node between the common header and the
+divergent header of the primary as it
+is likely as seen in the example to the right below that multiple headers where required in order to
+verify the divergent one. This trace will
+be used later (as is also described later in this document).
+
+![](../imgs/bifurcation-point.png)
+
+Now, that an attack has been detected, the light client must form evidence to prove it. There are
+three types of attacks that either the primary or witness could have done to try fool the light client
+into verifying the wrong header: Lunatic, Equivocation and Amnesia. As the consequence is the same and
+the data required to prove it is also very similar, we bundle these attack styles together in a single
+evidence:
+
+```golang
+type LightClientAttackEvidence struct {
+	ConflictingBlock *LightBlock
+	CommonHeight     int64
 }
 ```
 
-To punish this attack, we need support for a new Evidence type -
-`LunaticValidatorEvidence`. This type includes a vote and a header. The header
-must contain fields that are invalid with respect to the previous block, and a
-vote for that header by a validator that was in a validator set within the
-unbonding period. While the attack is only possible if +1/3 of some validator
-set colludes, the evidence should be verifiable independently for each
-individual validator. This means the total evidence can be split into one piece
-of evidence per attacking validator and gossipped to nodes to be verified one
-piece at a time, reducing the DoS attack surface at the peer layer.
+The light client takes the stance of first suspecting the primary. Given the bifurcation point found
+above, it takes the two divergent headers and compares whether the one from the primary is valid with
+respect to the one from the witness. This is done by calling `isInvalidHeader()` which looks to see if
+any one of the deterministically derived header fields differ from one another. This could be one of
+`ValidatorsHash`, `NextValidatorsHash`, `ConsensusHash`, `AppHash`, and `LastResultsHash`.
+In this case we know it's a Lunatic attack and to help the witness verify it we send the height
+of the common header which is 1 in the example above or C in the example above that. If all these
+hashes are the same then we can infer that it is either Equivocation or Amnesia. In this case we send
+the height of the diverged headers because we know that the validator sets are the same, hence the
+malicious nodes are still bonded at that height. In the example above, this is height 10 and the
+example above that it is the height at E.
 
-Note it is not sufficient to simply compare this header with that committed for
-the corresponding height, as an honest node may vote for a header that is not
-ultimately committed. Certain fields may also be variable, for instance the
-`LastCommitHash` and the `Time` may depend on which votes the proposer includes.
-Thus, the header must be explicitly checked for invalid data.
+The light client now has the evidence and broadcasts it to the witness.
 
-For the attack to succeed, VC must sign a header that changes the validator set
-to consist of something they control. Without doing this, they can not
-otherwise attack the light client, since the client verifies commits according
-to validator sets. Thus, it should be sufficient to check only that
-`ValidatorsHash` and `NextValidatorsHash` are correct with respect to the
-header that was committed at the corresponding height.
+However, it could have been that the header the light client used from the witness against the primary
+was forged, so before halting the light client swaps the process and thus suspects the witness and
+uses the primary to create evidence. It calls `examineConflictingHeaderAgainstTrace` this time using
+the witness trace found earlier.
+If the primary was malicious it is likely that it will not respond but if it is innocent then the
+light client will produce the same evidence but this time the conflicting
+block will come from the witness node instead of the primary. The evidence is then formed and sent to
+the primary node.
 
-That said, if the attack is conducted by +2/3 of the validator set, they don't
-need to make an invalid change to the validator set, since they already control
-it. Instead they would make invalid changes to the `AppHash`, or possibly other
-fields. In order to punish them, then, we would have to check all header
-fields.
+This then ends the process and the verify function that was called at the start returns the error to
+the user.
 
-Note some header fields require the block itself to verify, which the light
-client, by definition, does not possess, so it may not be possible to check
-these fields. For now, then, `LunaticValidatorEvidence` must be checked against
-all header fields which are a function of the application at previous blocks.
-This includes `ValidatorsHash`, `NextValidatorsHash`, `ConsensusHash`,
-`AppHash`, and `LastResultsHash`. These should all match what's in the header
-for the block that was actually committed at the corresponding height, and
-should thus be easy to check.
+For a detailed overview of how each of these three attacks can be conducted please refer to the
+[fork accountability spec]((https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)).
 
-`InvalidHeaderField` contains the invalid field name. Note it's very likely
-that multiple fields diverge, but it's faster to check just one. This field
-MUST NOT be used to determine equality of `LunaticValidatorEvidence`.
+## Full Node Verification
 
-### F2. Amnesia
-
-```go
-type PotentialAmnesiaEvidence struct {
-	VoteA types.Vote
-	VoteB types.Vote
-}
-```
-
-To punish this attack, votes under question needs to be sent. Fork
-accountability process should then use this evidence to request additional
-information from offended validators and construct a new type of evidence to
-punish those who conducted an amnesia attack.
-
-See ADR-056 for the architecture of the handling amnesia attacks.
-
-NOTE: Conflicting headers trace used to also create PhantomValidatorEvidence
-but this has since been removed. Refer to Appendix B.  
+When a full node receives evidence from the light client it will need to verify
+it for itself before gossiping it to peers and trying to commit it on chain. This process is outlined
+ in [ADR-059](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-059-evidence-composition-and-lifecycle.md).
 
 ## Status
 
-Proposed.
+Implemented.
 
 ## Consequences
 
 ### Positive
 
-* Light client has increased secuirty against Lunatic attacks.
-* Tendermint will be able to detect & punish new types of misbehavior
-* light clients connected to multiple full nodes can help full nodes notice a
-  fork faster
+* Light client has increased security against Lunatic, Equivocation and Amnesia attacks.
+* Do not need intermediate data structures to encapsulate the malicious behavior
+* Generalized evidence makes the code simpler
 
 ### Negative
 
-* Accepting `ConflictingHeadersEvidence` from light clients opens up a large DDOS
-attack vector(same is fair for any RPC endpoint open to public; remember that
-RPC is not open by default).
+* Breaking change on the light client from versions 0.33.8 and below. Previous
+versions will still send `ConflictingHeadersEvidence` but it won't be recognized
+by the full node. Light clients will however still refuse the header and shut down.
+* Amnesia attacks although detected, will not be able to be punished as it is not
+clear from the current information which nodes behaved maliciously.
+* Evidence module must handle both individual and grouped evidence.
 
 ### Neutral
 
 ## References
 
 * [Fork accountability spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)
-* [ADR 056: Proving amnesia attakcs](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-056-proving-amnesia-attacks.md)
+* [ADR 056: Proving amnesia attacks](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-056-proving-amnesia-attacks.md)
+* [ADR-059: Evidence Composition and Lifecycle](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-059-evidence-composition-and-lifecycle.md)
+* [Informal's Light Client Detector](https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/detection/detection.md)
+
 
 ## Appendix A
-
-If there is an actual fork (full fork), a full node may follow either one or
-another branch. So both H1 or H2 can be considered committed depending on which
-branch the full node is following. It's supposed to halt if it notices an
-actual fork, but there's a small chance it doesn't.
-
-## Appendix B
 
 PhantomValidatorEvidence was used to capture when a validator that was still staked
 (i.e. within the bonded period) but was not in the current validator set had voted for a block.

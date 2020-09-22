@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
@@ -21,20 +22,19 @@ import (
 
 const validationTestsStopHeight int64 = 10
 
-var defaultTestTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
-
 func TestValidateBlockHeader(t *testing.T) {
 	proxyApp := newTestApp()
 	require.NoError(t, proxyApp.Start())
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(3, 1)
+	stateStore := sm.NewStore(stateDB)
 	blockExec := sm.NewBlockExecutor(
-		stateDB,
+		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		memmock.Mempool{},
-		sm.MockEvidencePool{},
+		sm.EmptyEvidencePool{},
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 
@@ -99,12 +99,13 @@ func TestValidateBlockCommit(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(1, 1)
+	stateStore := sm.NewStore(stateDB)
 	blockExec := sm.NewBlockExecutor(
-		stateDB,
+		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		memmock.Mempool{},
-		sm.MockEvidencePool{},
+		sm.EmptyEvidencePool{},
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 	wrongSigsCommit := types.NewCommit(1, 0, types.BlockID{}, nil)
@@ -212,15 +213,18 @@ func TestValidateBlockEvidence(t *testing.T) {
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(4, 1)
+	stateStore := sm.NewStore(stateDB)
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	evpool := &mocks.EvidencePool{}
-	evpool.On("Verify", mock.AnythingOfType("*types.DuplicateVoteEvidence")).Return(nil)
-	evpool.On("Update", mock.AnythingOfType("*types.Block"), mock.AnythingOfType("state.State")).Return()
+	evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
+	evpool.On("Update", mock.AnythingOfType("state.State")).Return()
+	evpool.On("ABCIEvidence", mock.AnythingOfType("int64"), mock.AnythingOfType("[]types.Evidence")).Return(
+		[]abci.Evidence{})
 
 	state.ConsensusParams.Evidence.MaxNum = 3
 	blockExec := sm.NewBlockExecutor(
-		stateDB,
+		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		memmock.Mempool{},
@@ -275,28 +279,4 @@ func TestValidateBlockEvidence(t *testing.T) {
 		)
 		require.NoError(t, err, "height %d", height)
 	}
-}
-
-func TestValidateDuplicateEvidenceShouldFail(t *testing.T) {
-	var height int64 = 1
-	state, stateDB, privVals := makeState(2, int(height))
-	_, val := state.Validators.GetByIndex(0)
-	_, val2 := state.Validators.GetByIndex(1)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
-		privVals[val.Address.String()], chainID)
-	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
-		privVals[val2.Address.String()], chainID)
-
-	blockExec := sm.NewBlockExecutor(
-		stateDB, log.TestingLogger(),
-		nil,
-		nil,
-		sm.MockEvidencePool{})
-	// A block with a couple pieces of evidence passes.
-	block := makeBlock(state, height)
-	block.Evidence.Evidence = []types.Evidence{ev, ev2, ev2}
-	block.EvidenceHash = block.Evidence.Hash()
-	err := blockExec.ValidateBlock(state, block)
-
-	assert.Error(t, err)
 }
