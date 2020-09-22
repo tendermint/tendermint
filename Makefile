@@ -89,6 +89,11 @@ proto-lint:
 	@$(DOCKER_BUF) check lint --error-format=json
 .PHONY: proto-lint
 
+proto-format:
+	@echo "Formatting Protobuf files"
+	docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto find ./ -not -path "./third_party/*" -name *.proto -exec clang-format -i {} \;
+.PHONY: proto-format
+
 proto-check-breaking:
 	@$(DOCKER_BUF) check breaking --against-input .git#branch=master
 .PHONY: proto-check-breaking

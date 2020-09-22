@@ -19,4 +19,4 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: check-breakage
-        run: make proto-check-breaking-ci
+        run: make proto-check-breaking
