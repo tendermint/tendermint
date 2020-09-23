@@ -33,7 +33,7 @@ func init() {
 		&nodeRPCAddr,
 		flagNodeRPCAddr,
 		"tcp://localhost:26657",
-		"The Tendermint node's RPC address (<host>:<port>)",
+		"the Tendermint node's RPC address (<host>:<port>)",
 	)
 
 	DebugCmd.AddCommand(killCmd)

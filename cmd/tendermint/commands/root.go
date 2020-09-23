@@ -23,7 +23,7 @@ func init() {
 }
 
 func registerFlagsRootCmd(cmd *cobra.Command) {
-	cmd.PersistentFlags().String("log_level", config.LogLevel, "Log level")
+	cmd.PersistentFlags().String("log_level", config.LogLevel, "log level")
 }
 
 // ParseConfig retrieves the default environment configuration,
