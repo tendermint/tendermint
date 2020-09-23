@@ -26,13 +26,13 @@ enum SignedMsgType {
   option (gogoproto.goproto_enum_stringer) = true;
   option (gogoproto.goproto_enum_prefix)   = false;
 
-  SIGNED_MSG_TYPE_UNKNOWN   = 0 [(gogoproto.enumvalue_customname) = "UnknownType"];
+  SIGNED_MSG_TYPE_UNKNOWN = 0 [(gogoproto.enumvalue_customname) = "UnknownType"];
   // Votes
   SIGNED_MSG_TYPE_PREVOTE   = 1 [(gogoproto.enumvalue_customname) = "PrevoteType"];
   SIGNED_MSG_TYPE_PRECOMMIT = 2 [(gogoproto.enumvalue_customname) = "PrecommitType"];
 
   // Proposals
-  SIGNED_MSG_TYPE_PROPOSAL  = 32 [(gogoproto.enumvalue_customname) = "ProposalType"];
+  SIGNED_MSG_TYPE_PROPOSAL = 32 [(gogoproto.enumvalue_customname) = "ProposalType"];
 }
 
 // PartsetHeader
@@ -144,7 +144,7 @@ message SignedHeader {
 
 message LightBlock {
   SignedHeader                  signed_header = 1;
-  tendermint.types.ValidatorSet validator_set = 2; 
+  tendermint.types.ValidatorSet validator_set = 2;
 }
 
 message BlockMeta {

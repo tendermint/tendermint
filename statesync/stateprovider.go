@@ -1,6 +1,7 @@
 package statesync
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -26,11 +27,11 @@ import (
 // to the state.State object, not the state machine.
 type StateProvider interface {
 	// AppHash returns the app hash after the given height has been committed.
-	AppHash(height uint64) ([]byte, error)
+	AppHash(ctx context.Context, height uint64) ([]byte, error)
 	// Commit returns the commit at the given height.
-	Commit(height uint64) (*types.Commit, error)
+	Commit(ctx context.Context, height uint64) (*types.Commit, error)
 	// State returns a state object at the given height.
-	State(height uint64) (sm.State, error)
+	State(ctx context.Context, height uint64) (sm.State, error)
 }
 
 // lightClientStateProvider is a state provider using the light client.
@@ -44,6 +45,7 @@ type lightClientStateProvider struct {
 
 // NewLightClientStateProvider creates a new StateProvider using a light client and RPC clients.
 func NewLightClientStateProvider(
+	ctx context.Context,
 	chainID string,
 	version tmstate.Version,
 	initialHeight int64,
@@ -69,7 +71,7 @@ func NewLightClientStateProvider(
 		providerRemotes[provider] = server
 	}
 
-	lc, err := light.NewClient(chainID, trustOptions, providers[0], providers[1:],
+	lc, err := light.NewClient(ctx, chainID, trustOptions, providers[0], providers[1:],
 		lightdb.New(dbm.NewMemDB(), ""), light.Logger(logger), light.MaxRetryAttempts(5))
 	if err != nil {
 		return nil, err
@@ -83,12 +85,12 @@ func NewLightClientStateProvider(
 }
 
 // AppHash implements StateProvider.
-func (s *lightClientStateProvider) AppHash(height uint64) ([]byte, error) {
+func (s *lightClientStateProvider) AppHash(ctx context.Context, height uint64) ([]byte, error) {
 	s.Lock()
 	defer s.Unlock()
 
 	// We have to fetch the next height, which contains the app hash for the previous height.
-	header, err := s.lc.VerifyLightBlockAtHeight(int64(height+1), time.Now())
+	header, err := s.lc.VerifyLightBlockAtHeight(ctx, int64(height+1), time.Now())
 	if err != nil {
 		return nil, err
 	}
@@ -96,10 +98,10 @@ func (s *lightClientStateProvider) AppHash(height uint64) ([]byte, error) {
 }
 
 // Commit implements StateProvider.
-func (s *lightClientStateProvider) Commit(height uint64) (*types.Commit, error) {
+func (s *lightClientStateProvider) Commit(ctx context.Context, height uint64) (*types.Commit, error) {
 	s.Lock()
 	defer s.Unlock()
-	header, err := s.lc.VerifyLightBlockAtHeight(int64(height), time.Now())
+	header, err := s.lc.VerifyLightBlockAtHeight(ctx, int64(height), time.Now())
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +109,7 @@ func (s *lightClientStateProvider) Commit(height uint64) (*types.Commit, error) 
 }
 
 // State implements StateProvider.
-func (s *lightClientStateProvider) State(height uint64) (sm.State, error) {
+func (s *lightClientStateProvider) State(ctx context.Context, height uint64) (sm.State, error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -128,15 +130,15 @@ func (s *lightClientStateProvider) State(height uint64) (sm.State, error) {
 	//
 	// We need to fetch the NextValidators from height+2 because if the application changed
 	// the validator set at the snapshot height then this only takes effect at height+2.
-	lastLightBlock, err := s.lc.VerifyLightBlockAtHeight(int64(height), time.Now())
+	lastLightBlock, err := s.lc.VerifyLightBlockAtHeight(ctx, int64(height), time.Now())
 	if err != nil {
 		return sm.State{}, err
 	}
-	curLightBlock, err := s.lc.VerifyLightBlockAtHeight(int64(height+1), time.Now())
+	curLightBlock, err := s.lc.VerifyLightBlockAtHeight(ctx, int64(height+1), time.Now())
 	if err != nil {
 		return sm.State{}, err
 	}
-	nextLightBlock, err := s.lc.VerifyLightBlockAtHeight(int64(height+2), time.Now())
+	nextLightBlock, err := s.lc.VerifyLightBlockAtHeight(ctx, int64(height+2), time.Now())
 	if err != nil {
 		return sm.State{}, err
 	}
@@ -161,7 +163,7 @@ func (s *lightClientStateProvider) State(height uint64) (sm.State, error) {
 		return sm.State{}, fmt.Errorf("unable to create RPC client: %w", err)
 	}
 	rpcclient := lightrpc.NewClient(primaryRPC, s.lc)
-	result, err := rpcclient.ConsensusParams(&nextLightBlock.Height)
+	result, err := rpcclient.ConsensusParams(ctx, &nextLightBlock.Height)
 	if err != nil {
 		return sm.State{}, fmt.Errorf("unable to fetch consensus parameters for height %v: %w",
 			nextLightBlock.Height, err)
