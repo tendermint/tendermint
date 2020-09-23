@@ -35,8 +35,8 @@ most notably the blockchains of the [Cosmos Network](https://cosmos.network/).
 However, we are still making breaking changes to the protocol and the APIs and have not yet released v1.0.
 See below for more details about [versioning](#versioning).
 
-In any case, if you intend to run Tendermint in production,
-please [contact us](mailto:hello@interchain.berlin) and [join the chat](https://discord.gg/AzefAFd).
+In any case, if you intend to run Tendermint in production, we're happy to help. You can
+contact us [over email](mailto:hello@interchain.berlin) or [join the chat](https://discord.gg/AzefAFd).
 
 ## Security
 
@@ -70,13 +70,9 @@ See the [install instructions](/docs/introduction/install.md).
 Please abide by the [Code of Conduct](CODE_OF_CONDUCT.md) in all interactions.
 
 Before contributing to the project, please take a look at the [contributing guidelines](CONTRIBUTING.md)
-and the [style guide](STYLE_GUIDE.md).
-
-You can also join the wider community at [Discord](https://discord.gg/AzefAFd) or jump onto the [Forum](https://forum.cosmos.network/).
-
-Finally, if you want to dig deeper, read the
+and the [style guide](STYLE_GUIDE.md). You may also find it helpful to read the
 [specifications](https://github.com/tendermint/spec), watch the [Developer Sessions](/docs/DEV_SESSIONS.md), 
-and read up on the
+and familiarize yourself with our
 [Architectural Decision Records](https://github.com/tendermint/tendermint/tree/master/docs/architecture).
 
 ## Versioning
@@ -146,8 +142,7 @@ hosted at: <https://docs.tendermint.com/master/>
 ### Tools
 
 Benchmarking is provided by [`tm-load-test`](https://github.com/informalsystems/tm-load-test).
-This binary needs to be built separately.
-Additional documentation is found in [/docs/tools](/docs/tools).
+Additional tooling can be found in [/docs/tools](/docs/tools).
 
 ### Applications
 
