@@ -6,8 +6,6 @@ import (
 	"math"
 	"time"
 
-	"google.golang.org/protobuf/encoding/protowire"
-
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
@@ -27,17 +25,6 @@ const (
 	UnknownPeerID uint16 = 0
 
 	maxActiveIDs = math.MaxUint16
-)
-
-var (
-	// proto overhead for the message with no transactions
-	// see txs
-	emptyMessage = protomem.Message{
-		Sum: &protomem.Message_Txs{
-			Txs: &protomem.Txs{},
-		},
-	}
-	emptyMessageSize = emptyMessage.Size() + 2 // 2 -> Txs key (0 above)
 )
 
 // Reactor handles mempool tx broadcasting amongst peers.
@@ -282,22 +269,23 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 // included.
 // WARNING: mutates next!
 func (memR *Reactor) txs(next *clist.CElement, peerID uint16, peerHeight int64) [][]byte {
-	var (
-		batch     = make([][]byte, 0)
-		batchSize = emptyMessageSize // bytes
-	)
+	batch := make([][]byte, 0)
 
 	for {
 		memTx := next.Value.(*mempoolTx)
-		tx := []byte(memTx.tx)
 
 		if _, ok := memTx.senders.Load(peerID); !ok {
-			batchSize += protowire.SizeBytes(len(tx)) // tx + proto overhead
-			if batchSize > memR.config.MaxBatchBytes {
+			// If current batch + this tx size is greater than max => return.
+			batchMsg := protomem.Message{
+				Sum: &protomem.Message_Txs{
+					Txs: &protomem.Txs{Txs: append(batch, memTx.tx)},
+				},
+			}
+			if batchMsg.Size() > memR.config.MaxBatchBytes {
 				return batch
 			}
 
-			batch = append(batch, tx)
+			batch = append(batch, memTx.tx)
 		}
 
 		if next.Next() == nil {
