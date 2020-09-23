@@ -21,6 +21,7 @@ type BlockStore interface {
 	Height() int64
 	Size() int64
 
+	LoadBaseMeta() *types.BlockMeta
 	LoadBlockMeta(height int64) *types.BlockMeta
 	LoadBlock(height int64) *types.Block
 
