@@ -1,9 +1,11 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
@@ -49,21 +51,34 @@ func NewURI(remote string) (*URIClient, error) {
 }
 
 // Call issues a POST form HTTP request.
-func (c *URIClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
+func (c *URIClient) Call(ctx context.Context, method string,
+	params map[string]interface{}, result interface{}) (interface{}, error) {
+
 	values, err := argsToURLValues(params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode params: %w", err)
 	}
 
-	resp, err := c.client.PostForm(c.address+"/"+method, values)
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		c.address+"/"+method,
+		strings.NewReader(values.Encode()),
+	)
 	if err != nil {
-		return nil, fmt.Errorf("post form failed: %w", err)
+		return nil, fmt.Errorf("new request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("post: %w", err)
 	}
 	defer resp.Body.Close()
 
 	responseBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return nil, fmt.Errorf("read response body: %w", err)
 	}
 
 	return unmarshalResponseBytes(responseBytes, URIClientRequestID, result)

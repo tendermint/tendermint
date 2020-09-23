@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -36,7 +37,7 @@ that, it will present the same interface as a full Tendermint node.
 Furthermore to the chainID, a fresh instance of a light client will
 need a primary RPC address, a trusted hash and height and witness RPC addresses
 (if not using sequential verification). To restart the node, thereafter
-only the chainID is required. 
+only the chainID is required.
 
 `,
 	RunE: runProxy,
@@ -148,6 +149,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	var c *light.Client
 	if trustedHeight > 0 && len(trustedHash) > 0 { // fresh installation
 		c, err = light.NewHTTPClient(
+			context.Background(),
 			chainID,
 			light.TrustOptions{
 				Period: trustingPeriod,

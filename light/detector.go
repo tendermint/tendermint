@@ -2,6 +2,7 @@ package light
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -25,7 +26,7 @@ import (
 //
 // If there are no conflictinge headers, the light client deems the verified target header
 // trusted and saves it to the trusted store.
-func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Time) error {
+func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.LightBlock, now time.Time) error {
 	if primaryTrace == nil || len(primaryTrace) < 2 {
 		return errors.New("nil or single block primary trace")
 	}
@@ -48,7 +49,7 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 	// and compare it with the header from the primary
 	errc := make(chan error, len(c.witnesses))
 	for i, witness := range c.witnesses {
-		go c.compareNewHeaderWithWitness(errc, lastVerifiedHeader, witness, i)
+		go c.compareNewHeaderWithWitness(ctx, errc, lastVerifiedHeader, witness, i)
 	}
 
 	// handle errors from the header comparisons as they come in
@@ -66,8 +67,13 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 			// We combine these actions together, verifying the witnesses headers and outputting the trace
 			// which captures the bifurcation point and if successful provides the information to create
 			supportingWitness := c.witnesses[e.WitnessIndex]
-			witnessTrace, primaryBlock, err := c.examineConflictingHeaderAgainstTrace(primaryTrace, e.Block.SignedHeader,
-				supportingWitness, now)
+			witnessTrace, primaryBlock, err := c.examineConflictingHeaderAgainstTrace(
+				ctx,
+				primaryTrace,
+				e.Block.SignedHeader,
+				supportingWitness,
+				now,
+			)
 			if err != nil {
 				c.logger.Info("Error validating witness's divergent header", "witness", supportingWitness, "err", err)
 				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
@@ -90,13 +96,18 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 			}
 			c.logger.Error("Attack detected. Sending evidence againt primary by witness", "ev", ev,
 				"primary", c.primary, "witness", supportingWitness)
-			c.sendEvidence(ev, supportingWitness)
+			c.sendEvidence(ctx, ev, supportingWitness)
 
 			// This may not be valid because the witness itself is at fault. So now we reverse it, examining the
 			// trace provided by the witness and holding the primary as the source of truth. Note: primary may not
 			// respond but this is okay as we will halt anyway.
-			primaryTrace, witnessBlock, err := c.examineConflictingHeaderAgainstTrace(witnessTrace, primaryBlock.SignedHeader,
-				c.primary, now)
+			primaryTrace, witnessBlock, err := c.examineConflictingHeaderAgainstTrace(
+				ctx,
+				witnessTrace,
+				primaryBlock.SignedHeader,
+				c.primary,
+				now,
+			)
 			if err != nil {
 				c.logger.Info("Error validating primary's divergent header", "primary", c.primary, "err", err)
 				continue
@@ -117,7 +128,7 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 			}
 			c.logger.Error("Sending evidence against witness by primary", "ev", ev,
 				"primary", c.primary, "witness", supportingWitness)
-			c.sendEvidence(ev, c.primary)
+			c.sendEvidence(ctx, ev, c.primary)
 			// We return the error and don't process anymore witnesses
 			return e
 
@@ -154,10 +165,10 @@ func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Tim
 // 2: errBadWitness -> the witness has either not responded, doesn't have the header or has given us an invalid one
 //    Note: In the case of an invalid header we remove the witness
 // 3: nil -> the hashes of the two headers match
-func (c *Client) compareNewHeaderWithWitness(errc chan error, h *types.SignedHeader,
+func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan error, h *types.SignedHeader,
 	witness provider.Provider, witnessIndex int) {
 
-	lightBlock, err := witness.LightBlock(h.Height)
+	lightBlock, err := witness.LightBlock(ctx, h.Height)
 	if err != nil {
 		errc <- errBadWitness{Reason: err, WitnessIndex: witnessIndex}
 		return
@@ -172,8 +183,8 @@ func (c *Client) compareNewHeaderWithWitness(errc chan error, h *types.SignedHea
 }
 
 // sendEvidence sends evidence to a provider on a best effort basis.
-func (c *Client) sendEvidence(ev *types.LightClientAttackEvidence, receiver provider.Provider) {
-	err := receiver.ReportEvidence(ev)
+func (c *Client) sendEvidence(ctx context.Context, ev *types.LightClientAttackEvidence, receiver provider.Provider) {
+	err := receiver.ReportEvidence(ctx, ev)
 	if err != nil {
 		c.logger.Error("Failed to report evidence to provider", "ev", ev, "provider", receiver)
 	}
@@ -188,6 +199,7 @@ func (c *Client) sendEvidence(ev *types.LightClientAttackEvidence, receiver prov
 // 2. The source stops responding, doesn't have the block or sends an invalid header in which case we
 //    return the error and remove the witness
 func (c *Client) examineConflictingHeaderAgainstTrace(
+	ctx context.Context,
 	trace []*types.LightBlock,
 	divergentHeader *types.SignedHeader,
 	source provider.Provider, now time.Time) ([]*types.LightBlock, *types.LightBlock, error) {
@@ -197,7 +209,7 @@ func (c *Client) examineConflictingHeaderAgainstTrace(
 	for idx, traceBlock := range trace {
 		// The first block in the trace MUST be the same to the light block that the source produces
 		// else we cannot continue with verification.
-		sourceBlock, err := source.LightBlock(traceBlock.Height)
+		sourceBlock, err := source.LightBlock(ctx, traceBlock.Height)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -213,7 +225,7 @@ func (c *Client) examineConflictingHeaderAgainstTrace(
 
 		// we check that the source provider can verify a block at the same height of the
 		// intermediate height
-		trace, err := c.verifySkipping(source, previouslyVerifiedBlock, sourceBlock, now)
+		trace, err := c.verifySkipping(ctx, source, previouslyVerifiedBlock, sourceBlock, now)
 		if err != nil {
 			return nil, nil, fmt.Errorf("verifySkipping of conflicting header failed: %w", err)
 		}

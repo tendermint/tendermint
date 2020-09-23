@@ -9,6 +9,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - CLI/RPC/Config
     - [config] \#5315 Rename `prof_laddr` to `pprof_laddr` and move it to `rpc` section (@melekes)
     - [rpc] \#5315 Remove `/unsafe_start_cpu_profiler`, `/unsafe_stop_cpu_profiler` and `/unsafe_write_heap_profile`. Please use pprof functionality instead (@melekes)
+    - [rpc/client, rpc/jsonrpc/client] \#5347 All client methods now accept `context.Context` as 1st param (@melekes)
 
 - Apps
 
@@ -23,6 +24,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     - [evidence] [\#5361](https://github.com/tendermint/tendermint/pull/5361) Add LightClientAttackEvidence and change evidence interface (@cmwaters)
     - [params] \#5319 Remove `ProofofTrialPeriod` from evidence params (@marbar3778)
     - [crypto/secp256k1] \#5280 `secp256k1` has been removed from the Tendermint repo. (@marbar3778)
+    - [light] \#5347 `NewClient`, `NewHTTPClient`, `VerifyHeader` and `VerifyLightBlockAtHeight` now accept `context.Context` as 1st param (@melekes)
     - [state] \#5348 Define an Interface for the state store. (@marbar3778)
 
 - Blockchain Protocol
