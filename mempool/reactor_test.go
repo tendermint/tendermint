@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/mock"
 	memproto "github.com/tendermint/tendermint/proto/tendermint/mempool"
@@ -38,7 +39,7 @@ func (ps peerState) GetHeight() int64 {
 
 // Send a bunch of txs to the first reactor's mempool and wait for them all to
 // be received in the others.
-func TestReactorBroadcastTxMessage(t *testing.T) {
+func TestReactorBroadcastTxsMessage(t *testing.T) {
 	config := cfg.TestConfig()
 	// if there were more than two reactors, the order of transactions could not be
 	// asserted in waitForTxsOnReactors (due to transactions gossiping). If we
@@ -85,6 +86,46 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	const peerID = 1
 	checkTxs(t, reactors[0].mempool, numTxs, peerID)
 	ensureNoTxs(t, reactors[peerID], 100*time.Millisecond)
+}
+
+func TestReactor_MaxBatchBytes(t *testing.T) {
+	config := cfg.TestConfig()
+	config.Mempool.MaxBatchBytes = 1024
+
+	const N = 2
+	reactors := makeAndConnectReactors(config, N)
+	defer func() {
+		for _, r := range reactors {
+			if err := r.Stop(); err != nil {
+				assert.NoError(t, err)
+			}
+		}
+	}()
+	for _, r := range reactors {
+		for _, peer := range r.Switch.Peers().List() {
+			peer.Set(types.PeerStateKey, peerState{1})
+		}
+	}
+
+	// Broadcast a tx, which has the max size (minus proto overhead)
+	// => ensure it's received by the second reactor.
+	tx1 := tmrand.Bytes(1018)
+	err := reactors[0].mempool.CheckTx(tx1, nil, TxInfo{SenderID: UnknownPeerID})
+	require.NoError(t, err)
+	waitForTxsOnReactors(t, []types.Tx{tx1}, reactors)
+
+	reactors[0].mempool.Flush()
+	reactors[1].mempool.Flush()
+
+	// Broadcast a tx, which is beyond the max size
+	// => ensure it's not sent
+	tx2 := tmrand.Bytes(1020)
+	err = reactors[0].mempool.CheckTx(tx2, nil, TxInfo{SenderID: UnknownPeerID})
+	require.NoError(t, err)
+	ensureNoTxs(t, reactors[1], 100*time.Millisecond)
+	// => ensure the second reactor did not disconnect from us
+	out, in, _ := reactors[1].Switch.NumPeers()
+	assert.Equal(t, 1, out+in)
 }
 
 func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
@@ -266,7 +307,6 @@ func ensureNoTxs(t *testing.T, reactor *Reactor, timeout time.Duration) {
 }
 
 func TestMempoolVectors(t *testing.T) {
-
 	testCases := []struct {
 		testName string
 		tx       []byte
@@ -280,8 +320,8 @@ func TestMempoolVectors(t *testing.T) {
 		tc := tc
 
 		msg := memproto.Message{
-			Sum: &memproto.Message_Tx{
-				Tx: &memproto.Tx{Tx: tc.tx},
+			Sum: &memproto.Message_Txs{
+				Txs: &memproto.Txs{Txs: [][]byte{tc.tx}},
 			},
 		}
 		bz, err := msg.Marshal()
@@ -289,5 +329,4 @@ func TestMempoolVectors(t *testing.T) {
 
 		require.Equal(t, tc.expBytes, hex.EncodeToString(bz), tc.testName)
 	}
-
 }

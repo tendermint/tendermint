@@ -420,52 +420,43 @@ func TestMempoolCloseWAL(t *testing.T) {
 	require.Equal(t, 1, len(m3), "expecting the wal match in")
 }
 
-func TestMempoolMaxMsgSize(t *testing.T) {
+func TestMempool_CheckTxChecksTxSize(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mempl, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
 	maxTxSize := mempl.config.MaxTxBytes
-	maxMsgSize := calcMaxMsgSize(maxTxSize)
 
 	testCases := []struct {
 		len int
 		err bool
 	}{
 		// check small txs. no error
-		{10, false},
-		{1000, false},
-		{1000000, false},
+		0: {10, false},
+		1: {1000, false},
+		2: {1000000, false},
 
 		// check around maxTxSize
-		// changes from no error to error
-		{maxTxSize - 2, false},
-		{maxTxSize - 1, false},
-		{maxTxSize, false},
-		{maxTxSize + 1, true},
-		{maxTxSize + 2, true},
-
-		// check around maxMsgSize. all error
-		{maxMsgSize - 1, true},
-		{maxMsgSize, true},
-		{maxMsgSize + 1, true},
+		3: {maxTxSize - 1, false},
+		4: {maxTxSize, false},
+		5: {maxTxSize + 1, true},
 	}
 
 	for i, testCase := range testCases {
 		caseString := fmt.Sprintf("case %d, len %d", i, testCase.len)
 
 		tx := tmrand.Bytes(testCase.len)
+
 		err := mempl.CheckTx(tx, nil, TxInfo{})
 		bv := gogotypes.BytesValue{Value: tx}
 		bz, err2 := bv.Marshal()
 		require.NoError(t, err2)
 		require.Equal(t, len(bz), proto.Size(&bv), caseString)
+
 		if !testCase.err {
-			require.True(t, len(bz) <= maxMsgSize, caseString)
 			require.NoError(t, err, caseString)
 		} else {
-			require.True(t, len(bz) > maxMsgSize, caseString)
 			require.Equal(t, err, ErrTxTooLarge{maxTxSize, testCase.len}, caseString)
 		}
 	}

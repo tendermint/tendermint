@@ -329,6 +329,10 @@ cache_size = {{ .Mempool.CacheSize }}
 # NOTE: the max size of a tx transmitted over the network is {max_tx_bytes}.
 max_tx_bytes = {{ .Mempool.MaxTxBytes }}
 
+# Maximum size of a batch of transactions to send to a peer
+# Including space needed by encoding (one varint per transaction).
+max_batch_bytes = {{ .Mempool.MaxBatchBytes }}
+
 #######################################################
 ###         State Sync Configuration Options        ###
 #######################################################
