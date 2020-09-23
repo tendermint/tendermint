@@ -32,7 +32,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ## FEATURES
 
 - [privval] \#5239 Add `chainID` to requests from client. (@marbar3778)
-- [config] Add `--consensus.double_sign_check_height` flag and `DoubleSignCheckHeight` config variable. See [ADR-51](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-051-double-signing-risk-reduction.md)
+- [config] \#5147 Add `--consensus.double_sign_check_height` flag and `DoubleSignCheckHeight` config variable. See [ADR-51](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-051-double-signing-risk-reduction.md)
 - [light] [\#5298](https://github.com/tendermint/tendermint/pull/5298) Morph validator set and signed header into light block (@cmwaters)
 - [evidence] [\#5361](https://github.com/tendermint/tendermint/pull/5361) Add LightClientAttackEvidence and refactor evidence lifecycle (@cmwaters)
 
@@ -45,15 +45,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ## BUG FIXES
 
 - [blockchain] \#5249 Fix fast sync halt with initial height > 1 (@erikgrinaker)
-
 - [statesync] \#5302 Fix genesis state propagation to state sync routine (@erikgrinaker)
-
 - [statesync] \#5320 Broadcast snapshot request to all pre-connected peers on start (@erikgrinaker)
-
 - [consensus] \#5329 Fix wrong proposer schedule for validators returned by `InitChain` (@erikgrinaker)
-
 - [store] \#5382 Fix race conditions when loading/saving/pruning blocks (@erikgrinaker)
-
 - [light] [\#5307](https://github.com/tendermint/tendermint/pull/5307) Persist correct proposer priority in light client validator sets (@cmwaters)
-
-- [docker] Fix incorrect `time_iota_ms` configuration in default image (@erikgrinaker)
+- [docker] \#5385 Fix incorrect `time_iota_ms` default setting causing block timestamp drift (@erikgrinaker)
