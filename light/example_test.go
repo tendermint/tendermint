@@ -75,11 +75,7 @@ func ExampleClient_Update() {
 
 	time.Sleep(2 * time.Second)
 
-	// XXX: 30 * time.Minute clock drift is needed because a) Tendermint strips
-	// monotonic component (see types/time/time.go) b) single instance is being
-	// run.
-	// https://github.com/tendermint/tendermint/issues/4489
-	h, err := c.Update(context.Background(), time.Now().Add(30*time.Minute))
+	h, err := c.Update(context.Background(), time.Now())
 	if err != nil {
 		stdlog.Fatal(err)
 	}
