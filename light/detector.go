@@ -35,7 +35,7 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 		lastVerifiedHeader = primaryTrace[len(primaryTrace)-1].SignedHeader
 		witnessesToRemove  = make([]int, 0)
 	)
-	c.logger.Info("Running detector against trace", "endBlockHeight", lastVerifiedHeader.Height,
+	c.logger.Debug("Running detector against trace", "endBlockHeight", lastVerifiedHeader.Height,
 		"endBlockHash", lastVerifiedHeader.Hash, "length", len(primaryTrace))
 
 	c.providerMutex.Lock()
@@ -178,7 +178,7 @@ func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan erro
 		errc <- errConflictingHeaders{Block: lightBlock, WitnessIndex: witnessIndex}
 	}
 
-	c.logger.Info("Matching header received by witness", "height", h.Height, "witness", witnessIndex)
+	c.logger.Debug("Matching header received by witness", "height", h.Height, "witness", witnessIndex)
 	errc <- nil
 }
 
