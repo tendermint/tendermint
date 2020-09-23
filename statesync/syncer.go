@@ -241,12 +241,15 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 		go s.fetchChunks(ctx, snapshot, chunks)
 	}
 
+	pctx, pcancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer pcancel()
+
 	// Optimistically build new state, so we don't discover any light client failures at the end.
-	state, err := s.stateProvider.State(snapshot.Height)
+	state, err := s.stateProvider.State(pctx, snapshot.Height)
 	if err != nil {
 		return sm.State{}, nil, fmt.Errorf("failed to build new state: %w", err)
 	}
-	commit, err := s.stateProvider.Commit(snapshot.Height)
+	commit, err := s.stateProvider.Commit(pctx, snapshot.Height)
 	if err != nil {
 		return sm.State{}, nil, fmt.Errorf("failed to fetch commit: %w", err)
 	}

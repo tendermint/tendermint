@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"bytes"
+	"context"
 	"testing"
 	"time"
 
@@ -119,18 +120,18 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		correct, fakes := makeEvidences(t, pv, chainID)
 		t.Logf("client %d", i)
 
-		result, err := c.BroadcastEvidence(correct)
+		result, err := c.BroadcastEvidence(context.Background(), correct)
 		require.NoError(t, err, "BroadcastEvidence(%s) failed", correct)
 		assert.Equal(t, correct.Hash(), result.Hash, "expected result hash to match evidence hash")
 
-		status, err := c.Status()
+		status, err := c.Status(context.Background())
 		require.NoError(t, err)
 		err = client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
 		require.NoError(t, err)
 
 		ed25519pub := pv.Key.PubKey.(ed25519.PubKey)
 		rawpub := ed25519pub.Bytes()
-		result2, err := c.ABCIQuery("/val", rawpub)
+		result2, err := c.ABCIQuery(context.Background(), "/val", rawpub)
 		require.NoError(t, err)
 		qres := result2.Response
 		require.True(t, qres.IsOK())
@@ -146,7 +147,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
 
 		for _, fake := range fakes {
-			_, err := c.BroadcastEvidence(fake)
+			_, err := c.BroadcastEvidence(context.Background(), fake)
 			require.Error(t, err, "BroadcastEvidence(%s) succeeded, but the evidence was fake", fake)
 		}
 	}
@@ -154,7 +155,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 
 func TestBroadcastEmptyEvidence(t *testing.T) {
 	for _, c := range GetClients() {
-		_, err := c.BroadcastEvidence(nil)
+		_, err := c.BroadcastEvidence(context.Background(), nil)
 		assert.Error(t, err)
 	}
 }

@@ -38,7 +38,7 @@ func WaitForHeight(c StatusClient, h int64, waiter Waiter) error {
 	}
 	delta := int64(1)
 	for delta > 0 {
-		s, err := c.Status()
+		s, err := c.Status(context.Background())
 		if err != nil {
 			return err
 		}
