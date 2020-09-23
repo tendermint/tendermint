@@ -45,6 +45,7 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 	primary := mockp.New(chainID, primaryHeaders, primaryValidators)
 
 	c, err := light.NewClient(
+		ctx,
 		chainID,
 		light.TrustOptions{
 			Period: 4 * time.Hour,
@@ -60,7 +61,7 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check verification returns an error.
-	_, err = c.VerifyLightBlockAtHeight(10, bTime.Add(1*time.Hour))
+	_, err = c.VerifyLightBlockAtHeight(ctx, 10, bTime.Add(1*time.Hour))
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "does not match primary")
 	}
@@ -118,6 +119,7 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 	primary := mockp.New(chainID, primaryHeaders, primaryValidators)
 
 	c, err := light.NewClient(
+		ctx,
 		chainID,
 		light.TrustOptions{
 			Period: 4 * time.Hour,
@@ -133,7 +135,7 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check verification returns an error.
-	_, err = c.VerifyLightBlockAtHeight(10, bTime.Add(1*time.Hour))
+	_, err = c.VerifyLightBlockAtHeight(ctx, 10, bTime.Add(1*time.Hour))
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "does not match primary")
 	}
@@ -162,11 +164,12 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 
 func TestClientDivergentTraces(t *testing.T) {
 	primary := mockp.New(genMockNode(chainID, 10, 5, 2, bTime))
-	firstBlock, err := primary.LightBlock(1)
+	firstBlock, err := primary.LightBlock(ctx, 1)
 	require.NoError(t, err)
 	witness := mockp.New(genMockNode(chainID, 10, 5, 2, bTime))
 
 	c, err := light.NewClient(
+		ctx,
 		chainID,
 		light.TrustOptions{
 			Height: 1,
@@ -183,7 +186,7 @@ func TestClientDivergentTraces(t *testing.T) {
 
 	// 1. Different nodes therefore a divergent header is produced but the
 	// light client can't verify it because it has a different trusted header.
-	_, err = c.VerifyLightBlockAtHeight(10, bTime.Add(1*time.Hour))
+	_, err = c.VerifyLightBlockAtHeight(ctx, 10, bTime.Add(1*time.Hour))
 	assert.Error(t, err)
 	assert.Equal(t, 0, len(c.Witnesses()))
 
@@ -191,6 +194,7 @@ func TestClientDivergentTraces(t *testing.T) {
 	// verification should be successful and all the witnesses should remain
 
 	c, err = light.NewClient(
+		ctx,
 		chainID,
 		light.TrustOptions{
 			Height: 1,
@@ -204,7 +208,7 @@ func TestClientDivergentTraces(t *testing.T) {
 		light.MaxRetryAttempts(1),
 	)
 	require.NoError(t, err)
-	_, err = c.VerifyLightBlockAtHeight(10, bTime.Add(1*time.Hour))
+	_, err = c.VerifyLightBlockAtHeight(ctx, 10, bTime.Add(1*time.Hour))
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(c.Witnesses()))
 }

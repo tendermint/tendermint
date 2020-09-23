@@ -1,6 +1,7 @@
 package light_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -22,11 +23,12 @@ import (
 // Remember that none of these benchmarks account for network latency.
 var (
 	benchmarkFullNode = mockp.New(genMockNode(chainID, 1000, 100, 1, bTime))
-	genesisBlock, _   = benchmarkFullNode.LightBlock(1)
+	genesisBlock, _   = benchmarkFullNode.LightBlock(context.Background(), 1)
 )
 
 func BenchmarkSequence(b *testing.B) {
 	c, err := light.NewClient(
+		context.Background(),
 		chainID,
 		light.TrustOptions{
 			Period: 24 * time.Hour,
@@ -45,7 +47,7 @@ func BenchmarkSequence(b *testing.B) {
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
-		_, err = c.VerifyLightBlockAtHeight(1000, bTime.Add(1000*time.Minute))
+		_, err = c.VerifyLightBlockAtHeight(context.Background(), 1000, bTime.Add(1000*time.Minute))
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -54,6 +56,7 @@ func BenchmarkSequence(b *testing.B) {
 
 func BenchmarkBisection(b *testing.B) {
 	c, err := light.NewClient(
+		context.Background(),
 		chainID,
 		light.TrustOptions{
 			Period: 24 * time.Hour,
@@ -71,7 +74,7 @@ func BenchmarkBisection(b *testing.B) {
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
-		_, err = c.VerifyLightBlockAtHeight(1000, bTime.Add(1000*time.Minute))
+		_, err = c.VerifyLightBlockAtHeight(context.Background(), 1000, bTime.Add(1000*time.Minute))
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -79,8 +82,9 @@ func BenchmarkBisection(b *testing.B) {
 }
 
 func BenchmarkBackwards(b *testing.B) {
-	trustedBlock, _ := benchmarkFullNode.LightBlock(0)
+	trustedBlock, _ := benchmarkFullNode.LightBlock(context.Background(), 0)
 	c, err := light.NewClient(
+		context.Background(),
 		chainID,
 		light.TrustOptions{
 			Period: 24 * time.Hour,
@@ -98,7 +102,7 @@ func BenchmarkBackwards(b *testing.B) {
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
-		_, err = c.VerifyLightBlockAtHeight(1, bTime)
+		_, err = c.VerifyLightBlockAtHeight(context.Background(), 1, bTime)
 		if err != nil {
 			b.Fatal(err)
 		}

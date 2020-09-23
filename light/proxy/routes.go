@@ -53,7 +53,7 @@ type rpcHealthFunc func(ctx *rpctypes.Context) (*ctypes.ResultHealth, error)
 
 func makeHealthFunc(c *lrpc.Client) rpcHealthFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultHealth, error) {
-		return c.Health()
+		return c.Health(ctx.Context())
 	}
 }
 
@@ -62,7 +62,7 @@ type rpcStatusFunc func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error)
 // nolint: interfacer
 func makeStatusFunc(c *lrpc.Client) rpcStatusFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
-		return c.Status()
+		return c.Status(ctx.Context())
 	}
 }
 
@@ -70,7 +70,7 @@ type rpcNetInfoFunc func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ct
 
 func makeNetInfoFunc(c *lrpc.Client) rpcNetInfoFunc {
 	return func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultNetInfo, error) {
-		return c.NetInfo()
+		return c.NetInfo(ctx.Context())
 	}
 }
 
@@ -78,7 +78,7 @@ type rpcBlockchainInfoFunc func(ctx *rpctypes.Context, minHeight, maxHeight int6
 
 func makeBlockchainInfoFunc(c *lrpc.Client) rpcBlockchainInfoFunc {
 	return func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
-		return c.BlockchainInfo(minHeight, maxHeight)
+		return c.BlockchainInfo(ctx.Context(), minHeight, maxHeight)
 	}
 }
 
@@ -86,7 +86,7 @@ type rpcGenesisFunc func(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error)
 
 func makeGenesisFunc(c *lrpc.Client) rpcGenesisFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error) {
-		return c.Genesis()
+		return c.Genesis(ctx.Context())
 	}
 }
 
@@ -94,7 +94,7 @@ type rpcBlockFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBloc
 
 func makeBlockFunc(c *lrpc.Client) rpcBlockFunc {
 	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlock, error) {
-		return c.Block(height)
+		return c.Block(ctx.Context(), height)
 	}
 }
 
@@ -102,7 +102,7 @@ type rpcBlockByHashFunc func(ctx *rpctypes.Context, hash []byte) (*ctypes.Result
 
 func makeBlockByHashFunc(c *lrpc.Client) rpcBlockByHashFunc {
 	return func(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultBlock, error) {
-		return c.BlockByHash(hash)
+		return c.BlockByHash(ctx.Context(), hash)
 	}
 }
 
@@ -110,7 +110,7 @@ type rpcBlockResultsFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.Res
 
 func makeBlockResultsFunc(c *lrpc.Client) rpcBlockResultsFunc {
 	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlockResults, error) {
-		return c.BlockResults(height)
+		return c.BlockResults(ctx.Context(), height)
 	}
 }
 
@@ -118,7 +118,7 @@ type rpcCommitFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultCom
 
 func makeCommitFunc(c *lrpc.Client) rpcCommitFunc {
 	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultCommit, error) {
-		return c.Commit(height)
+		return c.Commit(ctx.Context(), height)
 	}
 }
 
@@ -126,7 +126,7 @@ type rpcTxFunc func(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.Res
 
 func makeTxFunc(c *lrpc.Client) rpcTxFunc {
 	return func(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
-		return c.Tx(hash, prove)
+		return c.Tx(ctx.Context(), hash, prove)
 	}
 }
 
@@ -136,7 +136,7 @@ type rpcTxSearchFunc func(ctx *rpctypes.Context, query string, prove bool,
 func makeTxSearchFunc(c *lrpc.Client) rpcTxSearchFunc {
 	return func(ctx *rpctypes.Context, query string, prove bool, page, perPage *int, orderBy string) (
 		*ctypes.ResultTxSearch, error) {
-		return c.TxSearch(query, prove, page, perPage, orderBy)
+		return c.TxSearch(ctx.Context(), query, prove, page, perPage, orderBy)
 	}
 }
 
@@ -145,7 +145,7 @@ type rpcValidatorsFunc func(ctx *rpctypes.Context, height *int64,
 
 func makeValidatorsFunc(c *lrpc.Client) rpcValidatorsFunc {
 	return func(ctx *rpctypes.Context, height *int64, page, perPage *int) (*ctypes.ResultValidators, error) {
-		return c.Validators(height, page, perPage)
+		return c.Validators(ctx.Context(), height, page, perPage)
 	}
 }
 
@@ -153,7 +153,7 @@ type rpcDumpConsensusStateFunc func(ctx *rpctypes.Context) (*ctypes.ResultDumpCo
 
 func makeDumpConsensusStateFunc(c *lrpc.Client) rpcDumpConsensusStateFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultDumpConsensusState, error) {
-		return c.DumpConsensusState()
+		return c.DumpConsensusState(ctx.Context())
 	}
 }
 
@@ -161,7 +161,7 @@ type rpcConsensusStateFunc func(ctx *rpctypes.Context) (*ctypes.ResultConsensusS
 
 func makeConsensusStateFunc(c *lrpc.Client) rpcConsensusStateFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultConsensusState, error) {
-		return c.ConsensusState()
+		return c.ConsensusState(ctx.Context())
 	}
 }
 
@@ -169,7 +169,7 @@ type rpcConsensusParamsFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.
 
 func makeConsensusParamsFunc(c *lrpc.Client) rpcConsensusParamsFunc {
 	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultConsensusParams, error) {
-		return c.ConsensusParams(height)
+		return c.ConsensusParams(ctx.Context(), height)
 	}
 }
 
@@ -177,7 +177,7 @@ type rpcUnconfirmedTxsFunc func(ctx *rpctypes.Context, limit *int) (*ctypes.Resu
 
 func makeUnconfirmedTxsFunc(c *lrpc.Client) rpcUnconfirmedTxsFunc {
 	return func(ctx *rpctypes.Context, limit *int) (*ctypes.ResultUnconfirmedTxs, error) {
-		return c.UnconfirmedTxs(limit)
+		return c.UnconfirmedTxs(ctx.Context(), limit)
 	}
 }
 
@@ -185,7 +185,7 @@ type rpcNumUnconfirmedTxsFunc func(ctx *rpctypes.Context) (*ctypes.ResultUnconfi
 
 func makeNumUnconfirmedTxsFunc(c *lrpc.Client) rpcNumUnconfirmedTxsFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultUnconfirmedTxs, error) {
-		return c.NumUnconfirmedTxs()
+		return c.NumUnconfirmedTxs(ctx.Context())
 	}
 }
 
@@ -193,7 +193,7 @@ type rpcBroadcastTxCommitFunc func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.
 
 func makeBroadcastTxCommitFunc(c *lrpc.Client) rpcBroadcastTxCommitFunc {
 	return func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
-		return c.BroadcastTxCommit(tx)
+		return c.BroadcastTxCommit(ctx.Context(), tx)
 	}
 }
 
@@ -201,7 +201,7 @@ type rpcBroadcastTxSyncFunc func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.Re
 
 func makeBroadcastTxSyncFunc(c *lrpc.Client) rpcBroadcastTxSyncFunc {
 	return func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-		return c.BroadcastTxSync(tx)
+		return c.BroadcastTxSync(ctx.Context(), tx)
 	}
 }
 
@@ -209,7 +209,7 @@ type rpcBroadcastTxAsyncFunc func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.R
 
 func makeBroadcastTxAsyncFunc(c *lrpc.Client) rpcBroadcastTxAsyncFunc {
 	return func(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-		return c.BroadcastTxAsync(tx)
+		return c.BroadcastTxAsync(ctx.Context(), tx)
 	}
 }
 
@@ -217,7 +217,7 @@ type rpcABCIQueryFunc func(ctx *rpctypes.Context, path string, data bytes.HexByt
 
 func makeABCIQueryFunc(c *lrpc.Client) rpcABCIQueryFunc {
 	return func(ctx *rpctypes.Context, path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
-		return c.ABCIQuery(path, data)
+		return c.ABCIQuery(ctx.Context(), path, data)
 	}
 }
 
@@ -225,7 +225,7 @@ type rpcABCIInfoFunc func(ctx *rpctypes.Context) (*ctypes.ResultABCIInfo, error)
 
 func makeABCIInfoFunc(c *lrpc.Client) rpcABCIInfoFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultABCIInfo, error) {
-		return c.ABCIInfo()
+		return c.ABCIInfo(ctx.Context())
 	}
 }
 
@@ -234,6 +234,6 @@ type rpcBroadcastEvidenceFunc func(ctx *rpctypes.Context, ev types.Evidence) (*c
 // nolint: interfacer
 func makeBroadcastEvidenceFunc(c *lrpc.Client) rpcBroadcastEvidenceFunc {
 	return func(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
-		return c.BroadcastEvidence(ev)
+		return c.BroadcastEvidence(ctx.Context(), ev)
 	}
 }

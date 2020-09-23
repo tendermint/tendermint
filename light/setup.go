@@ -1,6 +1,7 @@
 package light
 
 import (
+	"context"
 	"time"
 
 	"github.com/tendermint/tendermint/light/provider"
@@ -15,6 +16,7 @@ import (
 // See all Option(s) for the additional configuration.
 // See NewClient.
 func NewHTTPClient(
+	ctx context.Context,
 	chainID string,
 	trustOptions TrustOptions,
 	primaryAddress string,
@@ -28,6 +30,7 @@ func NewHTTPClient(
 	}
 
 	return NewClient(
+		ctx,
 		chainID,
 		trustOptions,
 		providers[len(providers)-1],

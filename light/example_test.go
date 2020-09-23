@@ -1,6 +1,7 @@
 package light_test
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	stdlog "log"
@@ -40,7 +41,7 @@ func ExampleClient_Update() {
 		stdlog.Fatal(err)
 	}
 
-	block, err := primary.LightBlock(2)
+	block, err := primary.LightBlock(context.Background(), 2)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -51,6 +52,7 @@ func ExampleClient_Update() {
 	}
 
 	c, err := light.NewClient(
+		context.Background(),
 		chainID,
 		light.TrustOptions{
 			Period: 504 * time.Hour, // 21 days
@@ -77,7 +79,7 @@ func ExampleClient_Update() {
 	// monotonic component (see types/time/time.go) b) single instance is being
 	// run.
 	// https://github.com/tendermint/tendermint/issues/4489
-	h, err := c.Update(time.Now().Add(30 * time.Minute))
+	h, err := c.Update(context.Background(), time.Now().Add(30*time.Minute))
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -111,7 +113,7 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 		stdlog.Fatal(err)
 	}
 
-	block, err := primary.LightBlock(2)
+	block, err := primary.LightBlock(context.Background(), 2)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -122,6 +124,7 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 	}
 
 	c, err := light.NewClient(
+		context.Background(),
 		chainID,
 		light.TrustOptions{
 			Period: 504 * time.Hour, // 21 days
@@ -142,7 +145,7 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 		}
 	}()
 
-	_, err = c.VerifyLightBlockAtHeight(3, time.Now())
+	_, err = c.VerifyLightBlockAtHeight(context.Background(), 3, time.Now())
 	if err != nil {
 		stdlog.Fatal(err)
 	}
