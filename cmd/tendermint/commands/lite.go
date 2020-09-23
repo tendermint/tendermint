@@ -74,7 +74,8 @@ func init() {
 		"connect to a Tendermint node at this address")
 	LightCmd.Flags().StringVarP(&witnessAddrsJoined, "witnesses", "w", "",
 		"tendermint nodes to cross-check the primary node, comma-separated")
-	LightCmd.Flags().StringVar(&home, "home-dir", os.ExpandEnv(filepath.Join("$HOME", ".tendermint-light")), "specify the home directory")
+	LightCmd.Flags().StringVar(&home, "home-dir", os.ExpandEnv(filepath.Join("$HOME", ".tendermint-light")),
+		"specify the home directory")
 	LightCmd.Flags().IntVar(
 		&maxOpenConnections,
 		"max-open-connections",
