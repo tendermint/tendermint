@@ -28,7 +28,7 @@ see our recent paper, "[The latest gossip on BFT consensus](https://arxiv.org/ab
 
 ## Releases
 
-Note: Please, do not depend on master as your production branch, use [releases](https://github.com/tendermint/tendermint/releases) instead.
+Please do not depend on master as your production branch. Use [releases](https://github.com/tendermint/tendermint/releases) instead.
 
 Tendermint is being used in production in both private and public environments,
 most notably the blockchains of the [Cosmos Network](https://cosmos.network/).
@@ -41,9 +41,8 @@ please [contact us](mailto:hello@interchain.berlin) and [join the chat](https://
 ## Security
 
 To report a security vulnerability, see our [bug bounty
-program](https://hackerone.com/tendermint)
-
-For examples of the kinds of bugs we're looking for, see [SECURITY.md](SECURITY.md)
+program](https://hackerone.com/tendermint). 
+For examples of the kinds of bugs we're looking for, see [our security policy](SECURITY.md)
 
 ## Minimum requirements
 
@@ -57,13 +56,13 @@ Complete documentation can be found on the [website](https://docs.tendermint.com
 
 ### Install
 
-See the [install instructions](/docs/introduction/install.md)
+See the [install instructions](/docs/introduction/install.md).
 
 ### Quick Start
 
 - [Single node](/docs/introduction/quick-start.md)
 - [Local cluster using docker-compose](/docs/networks/docker-compose.md)
-- [Remote cluster using terraform and ansible](/docs/networks/terraform-and-ansible.md)
+- [Remote cluster using Terraform and Ansible](/docs/networks/terraform-and-ansible.md)
 - [Join the Cosmos testnet](https://cosmos.network/testnet)
 
 ## Contributing
@@ -73,10 +72,11 @@ Please abide by the [Code of Conduct](CODE_OF_CONDUCT.md) in all interactions.
 Before contributing to the project, please take a look at the [contributing guidelines](CONTRIBUTING.md)
 and the [style guide](STYLE_GUIDE.md).
 
-To get more active, Join the wider community at [Discord](https://discord.gg/AzefAFd) or jump onto the [Forum](https://forum.cosmos.network/).
+You can also join the wider community at [Discord](https://discord.gg/AzefAFd) or jump onto the [Forum](https://forum.cosmos.network/).
 
-Learn more by reading the code and the
-[specifications](https://github.com/tendermint/spec) or watch the [Developer Sessions](/docs/DEV_SESSIONS.md) and read up on the
+Finally, if you want to dig deeper, read the
+[specifications](https://github.com/tendermint/spec), watch the [Developer Sessions](/docs/DEV_SESSIONS.md), 
+and read up on the
 [Architectural Decision Records](https://github.com/tendermint/tendermint/tree/master/docs/architecture).
 
 ## Versioning
@@ -89,7 +89,7 @@ According to SemVer, anything in the public API can change at any time before ve
 To provide some stability to Tendermint users in these 0.X.X days, the MINOR version is used
 to signal breaking changes across a subset of the total public API. This subset includes all
 interfaces exposed to other processes (cli, rpc, p2p, etc.), but does not
-include the in-process Go APIs.
+include the Go APIs.
 
 That said, breaking changes in the following packages will be documented in the
 CHANGELOG even if they don't lead to MINOR version bumps:
@@ -114,20 +114,15 @@ CHANGELOG even if they don't lead to MINOR version bumps:
 - rpc/client
 - types
 
-Exported objects in these packages that are not covered by the versioning scheme
-are explicitly marked by `// UNSTABLE` in their go doc comment and may change at any
-time without notice. Functions, types, and values in any other package may also change at any time.
-
 ### Upgrades
 
 In an effort to avoid accumulating technical debt prior to 1.0.0,
 we do not guarantee that breaking changes (ie. bumps in the MINOR version)
 will work with existing Tendermint blockchains. In these cases you will
 have to start a new blockchain, or write something custom to get the old
-data into the new chain.
+data into the new chain. However, any bump in the PATCH version should be 
+compatible with existing blockchain histories.
 
-However, any bump in the PATCH version should be compatible with existing histories
-(if not please open an [issue](https://github.com/tendermint/tendermint/issues)).
 
 For more information on upgrading, see [UPGRADING.md](./UPGRADING.md).
 
@@ -150,14 +145,9 @@ hosted at: <https://docs.tendermint.com/master/>
 
 ### Tools
 
-Benchmarking is provided by `tm-load-test`.
-The code for `tm-load-test` can be found [here](https://github.com/informalsystems/tm-load-test) this binary needs to be built separately.
-Additional documentation is found [here](/docs/tools).
-
-### Sub-projects
-
-- [IAVL](http://github.com/tendermint/iavl), Merkleized IAVL+ Tree implementation
-- [Tm-db](http://github.com/tendermint/tm-db), Data Base abstractions to be used in applications.
+Benchmarking is provided by [`tm-load-test`](https://github.com/informalsystems/tm-load-test).
+This binary needs to be built separately.
+Additional documentation is found in [/docs/tools](/docs/tools).
 
 ### Applications
 
