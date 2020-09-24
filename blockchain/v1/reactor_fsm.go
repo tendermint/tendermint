@@ -278,7 +278,7 @@ func init() {
 			case noBlockResponseEv:
 				fsm.logger.Error("peer does not have requested block", "peer", data.peerID)
 				fsm.pool.RemovePeer(data.peerID, errors.New("peer does not have block"))
-				fsm.logger.Error("send peer error for", "peer", first.peer.ID)
+				fsm.logger.Error("send peer error for", "peer", data.peerID)
 				fsm.toBcR.sendPeerError(errors.New("peer does not have block"), data.peerID)
 
 				return waitForBlock, nil
