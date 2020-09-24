@@ -47,10 +47,10 @@ directory. For more, see "Protobuf," below.
 
 * `Header#LastResultsHash` previously was the root hash of a Merkle tree built from `ResponseDeliverTx(Code, Data)` responses. 
   As of 0.34,`Header#LastResultsHash` is now the root hash of a Merkle tree built from:
-  * `BeginBlock#Events`
-  * Root hash of a Merkle tree built from `ResponseDeliverTx(Code, Data,
+    * `BeginBlock#Events`
+    * Root hash of a Merkle tree built from `ResponseDeliverTx(Code, Data,
       GasWanted, GasUsed, Events)` responses
-  * `BeginBlock#Events`
+    * `BeginBlock#Events`
 
 * Merkle hashes of empty trees previously returned nothing, but now return the hash of an empty input,
   to conform with [RFC-6962](https://tools.ietf.org/html/rfc6962). 
@@ -104,11 +104,11 @@ Tendermint 0.34 includes new and updated consensus parameters.
 
 #### Version Parameters (New)
 
-- `AppVersion`, which is the version of the ABCI application.
+* `AppVersion`, which is the version of the ABCI application.
 
 #### Evidence Parameters
 
-- `MaxNum`, which caps the total amount of evidence by a absolute number. The default is 50.
+* `MaxNum`, which caps the total amount of evidence by a absolute number. The default is 50.
 
 ### Crypto
 
@@ -121,7 +121,7 @@ Tendermint 0.34 includes new and updated consensus parameters.
   a new home within the Cosmos SDK: 
   [`cosmos/cosmos-sdk/types/multisig`](https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go).
 * Similarly, secp256k1 has been removed from the Tendermint repo. 
-  There is still [a secp256k1 implementation in the Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/tree/443e0c1f89bd3730a731aea30453bd732f7efa35/crypto/keys/secp256k1), 
+  There is still [a secp256k1 implementation in the Cosmos SDK](https://github.com/cosmos/cosmos-sdk/tree/443e0c1f89bd3730a731aea30453bd732f7efa35/crypto/keys/secp256k1), 
   and we recommend you use that package for all your secp256k1 needs.
 
 #### `merkle` Package
@@ -164,7 +164,7 @@ Other user-relevant changes include:
 
 * A new field `State.InitialHeight` has been added to record the initial chain height, which must be `1`
   (not `0`) if starting from height `1`. This can be configured via the genesis field `initial_height`.
- * The `state` package now has a `Store` interface. All functions in 
+* The `state` package now has a `Store` interface. All functions in 
   [state/store.go](https://github.com/tendermint/tendermint/blob/56911ee35298191c95ef1c7d3d5ec508237aaff4/state/store.go#L42-L42) 
   are now part of the interface. The interface returns errors on all methods and can be used by calling `state.NewStore(dbm.DB)`.
 
