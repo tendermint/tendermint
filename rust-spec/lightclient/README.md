@@ -73,11 +73,12 @@ no bug is reported up to depth k.
 
 ![Experimental results](experiments.png)
 
-## Fork Detection
+## Attack Detection
 
 This is a work-in-progress draft.
 
-The [English specification](detection/detection.md) defines blockchain forks and describes
+The [English specification](detection/detection_001_reviewed.md)
+defines blockchain forks and light client attacks, and describes
 the problem of a light client detecting them from communication with a network
 of full nodes, where at least one is correct.
 
