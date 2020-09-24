@@ -186,7 +186,7 @@ in the rpc section.
 
 ### Go API
 
-- `rpc/client` HTTP and local clients have been moved into `http` and `local`
+* `rpc/client` HTTP and local clients have been moved into `http` and `local`
   subpackages, and their constructors have been renamed to `New()`.
 
 ### Protobuf Changes
@@ -266,26 +266,26 @@ keys are called
 
 Evidence Params has been changed to include duration.
 
-- `consensus_params.evidence.max_age_duration`.
-- Renamed `consensus_params.evidence.max_age` to `max_age_num_blocks`.
+* `consensus_params.evidence.max_age_duration`.
+* Renamed `consensus_params.evidence.max_age` to `max_age_num_blocks`.
 
 ### Go API
 
-- `libs/common` has been removed in favor of specific pkgs.
-    - `async`
-    - `service`
-    - `rand`
-    - `net`
-    - `strings`
-    - `cmap`
-- removal of `errors` pkg
+* `libs/common` has been removed in favor of specific pkgs.
+    * `async`
+    * `service`
+    * `rand`
+    * `net`
+    * `strings`
+    * `cmap`
+* removal of `errors` pkg
 
 ### RPC Changes
 
-- `/validators` is now paginated (default: 30 vals per page)
-- `/block_results` response format updated [see RPC docs for details](https://docs.tendermint.com/master/rpc/#/Info/block_results)
-- Event suffix has been removed from the ID in event responses
-- IDs are now integers not `json-client-XYZ`
+* `/validators` is now paginated (default: 30 vals per page)
+* `/block_results` response format updated [see RPC docs for details](https://docs.tendermint.com/master/rpc/#/Info/block_results)
+* Event suffix has been removed from the ID in event responses
+* IDs are now integers not `json-client-XYZ`
 
 ## v0.32.0
 
@@ -477,14 +477,14 @@ due to changes in how various data structures are hashed.
 Any implementations of Tendermint blockchain verification, including lite clients,
 will need to be updated. For specific details:
 
-- [Merkle tree](https://github.com/tendermint/spec/blob/master/spec/blockchain/encoding.md#merkle-trees)
-- [ConsensusParams](https://github.com/tendermint/spec/blob/master/spec/blockchain/state.md#consensusparams)
+* [Merkle tree](https://github.com/tendermint/spec/blob/master/spec/blockchain/encoding.md#merkle-trees)
+* [ConsensusParams](https://github.com/tendermint/spec/blob/master/spec/blockchain/state.md#consensusparams)
 
 There was also a small change to field ordering in the vote struct. Any
 implementations of an out-of-process validator (like a Key-Management Server)
 will need to be updated. For specific details:
 
-- [Vote](https://github.com/tendermint/spec/blob/master/spec/consensus/signing.md#votes)
+* [Vote](https://github.com/tendermint/spec/blob/master/spec/consensus/signing.md#votes)
 
 Finally, the proposer selection algorithm continues to evolve. See the
 [work-in-progress
@@ -638,10 +638,10 @@ just the `Data` field set:
 
 For more information, see:
 
-- [ADR-026](https://github.com/tendermint/tendermint/blob/30519e8361c19f4bf320ef4d26288ebc621ad725/docs/architecture/adr-026-general-merkle-proof.md)
-- [Relevant ABCI
+* [ADR-026](https://github.com/tendermint/tendermint/blob/30519e8361c19f4bf320ef4d26288ebc621ad725/docs/architecture/adr-026-general-merkle-proof.md)
+* [Relevant ABCI
   documentation](https://github.com/tendermint/tendermint/blob/30519e8361c19f4bf320ef4d26288ebc621ad725/docs/spec/abci/apps.md#query-proofs)
-- [Description of
+* [Description of
   keys](https://github.com/tendermint/tendermint/blob/30519e8361c19f4bf320ef4d26288ebc621ad725/crypto/merkle/proof_key_path.go#L14)
 
 ### Go API Changes
