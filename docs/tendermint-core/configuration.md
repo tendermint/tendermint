@@ -473,3 +473,17 @@ Here's a brief summary of the timeouts:
 - `timeout_commit` = how long we wait after committing a block, before starting
   on the new height (this gives us a chance to receive some more precommits,
   even though we already have +2/3)
+
+## P2P settings 
+
+This section will cover settings within the p2p section of the `config.toml`. 
+
+- `external_address` = is the address that will be advertised for other nodes to use. We recommend setting this field with your public IP and p2p port. 
+- `seeds` = is a list of comma separated seed nodes. A seed node is a node that does not participate in consensus but only helps propagate peers to nodes in the networks
+- `persistent_peers` = is a list of comma separated peers that you will always want to be connected to. If your address book is full, persistent peers will not be added. 
+- `max_num_inbound_peers` = is the total amount of peers you will receive data from.
+- `max_num_outbound_peers` = is the total amount of peers you will send data to.
+- `unconditional_peer_ids` = is similar to `persistent_peers` except that these peers will be connected to even if your address books is filled.
+- `pex` = turns the peer exchange reactor on or off. If you are running a validator, you will want the `pex` turned off so it would not begin gossiping to unknown peers on the network.
+- `seed_mode` = is used for when node operators want to run their node as a seed node. To minimize the servers usage setting the mempool's size to 0 is recommended.
+-  `private_peer_ids` = is a comma separated list of node ids that you would not like exposed. This can be filled with a validators node id. 
