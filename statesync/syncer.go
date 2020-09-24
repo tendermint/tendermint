@@ -18,8 +18,6 @@ import (
 )
 
 const (
-	// defaultDiscoveryTime is the time to spend discovering snapshots.
-	defaultDiscoveryTime = 20 * time.Second
 	// chunkFetchers is the number of concurrent chunk fetchers to run.
 	chunkFetchers = 4
 	// chunkTimeout is the timeout while waiting for the next chunk from the chunk queue.
