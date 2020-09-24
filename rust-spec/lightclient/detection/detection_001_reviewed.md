@@ -695,13 +695,8 @@ func CreateEvidenceForPeer(peer PeerID, root LightBlock, trace LightStore)
             else {
                 // the peer agrees with the trace, we move common forward
                 // we could delete auxLS as it will be overwritten in
-<<<<<<< HEAD:rust-spec/lightclient/detection/detection_001_reviewed.md
-                // the next iterationt
-                common := trace[i].Header
-=======
                 // the next iteration
                 common := trace[i]
->>>>>>> bc3d1aff5ba358afb68f1698e5834995662ba74c:rust-spec/lightclient/detection/detection.md
             }
         }
     }
