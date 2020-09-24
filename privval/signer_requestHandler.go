@@ -81,6 +81,7 @@ func DefaultValidationRequestHandler(
 	case *privvalproto.Message_PingRequest:
 		err, res = nil, mustWrapMsg(&privvalproto.PingResponse{})
 
+	case nil:
 	default:
 		err = fmt.Errorf("unknown msg: %v", r)
 	}
