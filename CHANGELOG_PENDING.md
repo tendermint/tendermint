@@ -51,3 +51,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [store] \#5382 Fix race conditions when loading/saving/pruning blocks (@erikgrinaker)
 - [light] [\#5307](https://github.com/tendermint/tendermint/pull/5307) Persist correct proposer priority in light client validator sets (@cmwaters)
 - [docker] \#5385 Fix incorrect `time_iota_ms` default setting causing block timestamp drift (@erikgrinaker)
+- [abci] \#5395 Fix socket client error for state sync responses (@erikgrinaker)
