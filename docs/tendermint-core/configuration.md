@@ -480,10 +480,10 @@ This section will cover settings within the p2p section of the `config.toml`.
 
 - `external_address` = is the address that will be advertised for other nodes to use. We recommend setting this field with your public IP and p2p port. 
 - `seeds` = is a list of comma separated seed nodes. A seed node is a node that does not participate in consensus but only helps propagate peers to nodes in the networks
-- `persistent_peers` = is a list of comma separated peers that you will always want to be connected to. If your address book is full, persistent peers will not be added. 
-- `max_num_inbound_peers` = is the total amount of peers you will receive data from.
-- `max_num_outbound_peers` = is the total amount of peers you will send data to.
-- `unconditional_peer_ids` = is similar to `persistent_peers` except that these peers will be connected to even if your address books is filled.
+- `persistent_peers` = is a list of comma separated peers that you will always want to be connected to. If you're already connected to the maximum number of peers, persistent peers will not be added. 
+- `max_num_inbound_peers` = is the maximum number of peers you will accept inbound connections from at one time (where they dial your address and initiate the connection).
+- `max_num_outbound_peers` = is the maximum number of peers you will initiate outbound connects to at one time (where you dial their address and initiate the connection).
+- `unconditional_peer_ids` = is similar to `persistent_peers` except that these peers will be connected to even if you are already connected to the maximum number of peers.
 - `pex` = turns the peer exchange reactor on or off. If you are running a validator, you will want the `pex` turned off so it would not begin gossiping to unknown peers on the network.
-- `seed_mode` = is used for when node operators want to run their node as a seed node. To minimize the servers usage setting the mempool's size to 0 is recommended.
--  `private_peer_ids` = is a comma separated list of node ids that you would not like exposed. This can be filled with a validators node id. 
+- `seed_mode` = is used for when node operators want to run their node as a seed node. Seed node's run a variation of the PeX protocol that disconnects from peers after sending them a list of peers to connect to. To minimize the servers usage, it is recommended to set the mempool's size to 0.
+-  `private_peer_ids` = is a comma separated list of node ids that you would not like exposed to other peers (ie. you will not tell other peers about the private_peer_ids). This can be filled with a validators node id. 
