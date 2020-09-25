@@ -665,17 +665,17 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	var commits []*types.Commit
 	var store *mockBlockStore
 	var stateDB dbm.DB
-	var genisisState sm.State
+	var genesisState sm.State
 	if testValidatorsChange {
 		testConfig := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
 		defer os.RemoveAll(testConfig.RootDir)
 		stateDB = dbm.NewMemDB()
 
-		genisisState = sim.GenesisState
+		genesisState = sim.GenesisState
 		config = sim.Config
 		chain = append([]*types.Block{}, sim.Chain...) // copy chain
 		commits = sim.Commits
-		store = newMockBlockStore(config, genisisState.ConsensusParams)
+		store = newMockBlockStore(config, genesisState.ConsensusParams)
 	} else { //test single node
 		testConfig := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
 		defer os.RemoveAll(testConfig.RootDir)
@@ -700,14 +700,14 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		require.NoError(t, err)
 		pubKey, err := privVal.GetPubKey()
 		require.NoError(t, err)
-		stateDB, genisisState, store = stateAndStore(config, pubKey, kvstore.ProtocolVersion)
+		stateDB, genesisState, store = stateAndStore(config, pubKey, kvstore.ProtocolVersion)
 
 	}
 	stateStore := sm.NewStore(stateDB)
 	store.chain = chain
 	store.commits = commits
 
-	state := genisisState.Copy()
+	state := genesisState.Copy()
 	// run the chain through state.ApplyBlock to build up the tendermint state
 	state = buildTMStateFromChain(config, stateStore, state, chain, nBlocks, mode)
 	latestAppHash := state.AppHash
@@ -723,9 +723,9 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		proxyApp := proxy.NewAppConns(clientCreator2)
 		stateDB1 := dbm.NewMemDB()
 		stateStore := sm.NewStore(stateDB1)
-		err := stateStore.Save(genisisState)
+		err := stateStore.Save(genesisState)
 		require.NoError(t, err)
-		buildAppStateFromChain(proxyApp, stateStore, genisisState, chain, nBlocks, mode)
+		buildAppStateFromChain(proxyApp, stateStore, genesisState, chain, nBlocks, mode)
 	}
 
 	// Prune block store if requested
