@@ -306,7 +306,10 @@ enable = false
 rpc_servers = ""
 trust_height = 0
 trust_hash = ""
-trust_period = "0s"
+trust_period = "168h0m0s"
+
+# Time to spend discovering snapshots before initiating a restore.
+discovery_time = "15s"
 
 # Temporary directory for state sync snapshot chunks, defaults to the OS tempdir (typically /tmp).
 # Will create a new, randomly named directory within, and remove it when done.
