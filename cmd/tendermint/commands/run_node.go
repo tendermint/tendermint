@@ -22,34 +22,34 @@ var (
 // These are exposed for convenience of commands embedding a tendermint node
 func AddNodeFlags(cmd *cobra.Command) {
 	// bind flags
-	cmd.Flags().String("moniker", config.Moniker, "Node Name")
+	cmd.Flags().String("moniker", config.Moniker, "node name")
 
 	// priv val flags
 	cmd.Flags().String(
 		"priv_validator_laddr",
 		config.PrivValidatorListenAddr,
-		"Socket address to listen on for connections from external priv_validator process")
+		"socket address to listen on for connections from external priv_validator process")
 
 	// node flags
-	cmd.Flags().Bool("fast_sync", config.FastSyncMode, "Fast blockchain syncing")
+	cmd.Flags().Bool("fast_sync", config.FastSyncMode, "fast blockchain syncing")
 	cmd.Flags().BytesHexVar(
 		&genesisHash,
 		"genesis_hash",
 		[]byte{},
-		"Optional SHA-256 hash of the genesis file")
+		"optional SHA-256 hash of the genesis file")
 	cmd.Flags().Int64("consensus.double_sign_check_height", config.Consensus.DoubleSignCheckHeight,
-		"How many blocks to look back to check existence of the node's "+
+		"how many blocks to look back to check existence of the node's "+
 			"consensus votes before joining consensus")
 
 	// abci flags
 	cmd.Flags().String(
 		"proxy_app",
 		config.ProxyApp,
-		"Proxy app address, or one of: 'kvstore',"+
+		"proxy app address, or one of: 'kvstore',"+
 			" 'persistent_kvstore',"+
 			" 'counter',"+
 			" 'counter_serial' or 'noop' for local testing.")
-	cmd.Flags().String("abci", config.ABCI, "Specify abci transport (socket | grpc)")
+	cmd.Flags().String("abci", config.ABCI, "specify abci transport (socket | grpc)")
 
 	// rpc flags
 	cmd.Flags().String("rpc.laddr", config.RPC.ListenAddress, "RPC listen address. Port required")
@@ -57,42 +57,42 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"rpc.grpc_laddr",
 		config.RPC.GRPCListenAddress,
 		"GRPC listen address (BroadcastTx only). Port required")
-	cmd.Flags().Bool("rpc.unsafe", config.RPC.Unsafe, "Enabled unsafe rpc methods")
+	cmd.Flags().Bool("rpc.unsafe", config.RPC.Unsafe, "enabled unsafe rpc methods")
 	cmd.Flags().String("rpc.pprof_laddr", config.RPC.PprofListenAddress, "pprof listen address (https://golang.org/pkg/net/http/pprof)")
 
 	// p2p flags
 	cmd.Flags().String(
 		"p2p.laddr",
 		config.P2P.ListenAddress,
-		"Node listen address. (0.0.0.0:0 means any interface, any port)")
-	cmd.Flags().String("p2p.seeds", config.P2P.Seeds, "Comma-delimited ID@host:port seed nodes")
-	cmd.Flags().String("p2p.persistent_peers", config.P2P.PersistentPeers, "Comma-delimited ID@host:port persistent peers")
+		"node listen address. (0.0.0.0:0 means any interface, any port)")
+	cmd.Flags().String("p2p.seeds", config.P2P.Seeds, "comma-delimited ID@host:port seed nodes")
+	cmd.Flags().String("p2p.persistent_peers", config.P2P.PersistentPeers, "comma-delimited ID@host:port persistent peers")
 	cmd.Flags().String("p2p.unconditional_peer_ids",
-		config.P2P.UnconditionalPeerIDs, "Comma-delimited IDs of unconditional peers")
-	cmd.Flags().Bool("p2p.upnp", config.P2P.UPNP, "Enable/disable UPNP port forwarding")
-	cmd.Flags().Bool("p2p.pex", config.P2P.PexReactor, "Enable/disable Peer-Exchange")
-	cmd.Flags().Bool("p2p.seed_mode", config.P2P.SeedMode, "Enable/disable seed mode")
-	cmd.Flags().String("p2p.private_peer_ids", config.P2P.PrivatePeerIDs, "Comma-delimited private peer IDs")
+		config.P2P.UnconditionalPeerIDs, "comma-delimited IDs of unconditional peers")
+	cmd.Flags().Bool("p2p.upnp", config.P2P.UPNP, "enable/disable UPNP port forwarding")
+	cmd.Flags().Bool("p2p.pex", config.P2P.PexReactor, "enable/disable Peer-Exchange")
+	cmd.Flags().Bool("p2p.seed_mode", config.P2P.SeedMode, "enable/disable seed mode")
+	cmd.Flags().String("p2p.private_peer_ids", config.P2P.PrivatePeerIDs, "comma-delimited private peer IDs")
 
 	// consensus flags
 	cmd.Flags().Bool(
 		"consensus.create_empty_blocks",
 		config.Consensus.CreateEmptyBlocks,
-		"Set this to false to only produce blocks when there are txs or when the AppHash changes")
+		"set this to false to only produce blocks when there are txs or when the AppHash changes")
 	cmd.Flags().String(
 		"consensus.create_empty_blocks_interval",
 		config.Consensus.CreateEmptyBlocksInterval.String(),
-		"The possible interval between empty blocks")
+		"the possible interval between empty blocks")
 
 	// db flags
 	cmd.Flags().String(
 		"db_backend",
 		config.DBBackend,
-		"Database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb")
+		"database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb")
 	cmd.Flags().String(
 		"db_dir",
 		config.DBPath,
-		"Database directory")
+		"database directory")
 }
 
 // NewRunNodeCmd returns the command that allows the CLI to start a node.
