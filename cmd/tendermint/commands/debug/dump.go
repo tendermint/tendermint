@@ -32,14 +32,14 @@ func init() {
 		&frequency,
 		flagFrequency,
 		30,
-		"The frequency (seconds) in which to poll, aggregate and dump Tendermint debug data",
+		"the frequency (seconds) in which to poll, aggregate and dump Tendermint debug data",
 	)
 
 	dumpCmd.Flags().StringVar(
 		&profAddr,
 		flagProfAddr,
 		"",
-		"The profiling server address (<host>:<port>)",
+		"the profiling server address (<host>:<port>)",
 	)
 }
 
