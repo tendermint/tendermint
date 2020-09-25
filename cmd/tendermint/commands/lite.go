@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -68,27 +69,28 @@ var (
 
 func init() {
 	LightCmd.Flags().StringVar(&listenAddr, "laddr", "tcp://localhost:8888",
-		"Serve the proxy on the given address")
+		"serve the proxy on the given address")
 	LightCmd.Flags().StringVarP(&primaryAddr, "primary", "p", "",
-		"Connect to a Tendermint node at this address")
+		"connect to a Tendermint node at this address")
 	LightCmd.Flags().StringVarP(&witnessAddrsJoined, "witnesses", "w", "",
-		"Tendermint nodes to cross-check the primary node, comma-separated")
-	LightCmd.Flags().StringVar(&home, "home-dir", ".tendermint-light", "Specify the home directory")
+		"tendermint nodes to cross-check the primary node, comma-separated")
+	LightCmd.Flags().StringVar(&home, "home-dir", os.ExpandEnv(filepath.Join("$HOME", ".tendermint-light")),
+		"specify the home directory")
 	LightCmd.Flags().IntVar(
 		&maxOpenConnections,
 		"max-open-connections",
 		900,
-		"Maximum number of simultaneous connections (including WebSocket).")
+		"maximum number of simultaneous connections (including WebSocket).")
 	LightCmd.Flags().DurationVar(&trustingPeriod, "trusting-period", 168*time.Hour,
-		"Trusting period that headers can be verified within. Should be significantly less than the unbonding period")
+		"trusting period that headers can be verified within. Should be significantly less than the unbonding period")
 	LightCmd.Flags().Int64Var(&trustedHeight, "height", 1, "Trusted header's height")
 	LightCmd.Flags().BytesHexVar(&trustedHash, "hash", []byte{}, "Trusted header's hash")
 	LightCmd.Flags().BoolVar(&verbose, "verbose", false, "Verbose output")
 	LightCmd.Flags().StringVar(&trustLevelStr, "trust-level", "1/3",
-		"Trust level. Must be between 1/3 and 3/3",
+		"trust level. Must be between 1/3 and 3/3",
 	)
 	LightCmd.Flags().BoolVar(&sequential, "sequential", false,
-		"Sequential Verification. Verify all headers sequentially as opposed to using skipping verification",
+		"sequential verification. Verify all headers sequentially as opposed to using skipping verification",
 	)
 }
 
