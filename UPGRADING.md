@@ -154,6 +154,7 @@ Other user-relevant changes include:
 * The `Verifier` was broken up into two pieces:
     * Core verification logic (pure `VerifyX` functions)
     * `Client` object, which represents the complete light client
+* The new light clients stores headers & validator sets as `LightBlock`s
 * The RPC client can be found in the `/rpc` directory.
 * The HTTP(S) proxy is located in the `/proxy` directory.
 
