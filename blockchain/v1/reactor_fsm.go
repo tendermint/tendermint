@@ -276,10 +276,10 @@ func init() {
 				}
 				return waitForBlock, err
 			case noBlockResponseEv:
-				fsm.logger.Error("peer does not have requested block", "peer", data.peerID)
-				fsm.pool.RemovePeer(data.peerID, errors.New("peer does not have block"))
+				fsm.logger.Error("peer does not have requested block", "peer", data.peerID, "height", data.height)
+				fsm.pool.RemovePeer(data.peerID, fmt.Errorf("peer does not have block %d", data.height))
 				fsm.logger.Error("send peer error for", "peer", data.peerID)
-				fsm.toBcR.sendPeerError(errors.New("peer does not have block"), data.peerID)
+				fsm.toBcR.sendPeerError(fmt.Errorf("peer does not have block %d", data.height), data.peerID)
 
 				return waitForBlock, nil
 			case processedBlockEv:
