@@ -718,6 +718,9 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 // signatures.
 func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID,
 	height int64, commit *Commit) error {
+	if commit == nil {
+		return errors.New("nil commit")
+	}
 
 	if vals.Size() != len(commit.Signatures) {
 		return NewErrInvalidCommitSignatures(vals.Size(), len(commit.Signatures))
