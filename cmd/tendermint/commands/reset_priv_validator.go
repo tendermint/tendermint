@@ -21,7 +21,7 @@ var ResetAllCmd = &cobra.Command{
 var keepAddrBook bool
 
 func init() {
-	ResetAllCmd.Flags().BoolVar(&keepAddrBook, "keep-addr-book", false, "Keep the address book intact")
+	ResetAllCmd.Flags().BoolVar(&keepAddrBook, "keep-addr-book", false, "keep the address book intact")
 }
 
 // ResetPrivValidatorCmd resets the private validator files.
