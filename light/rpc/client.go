@@ -13,6 +13,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	service "github.com/tendermint/tendermint/libs/service"
 	light "github.com/tendermint/tendermint/light"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -375,32 +376,16 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*ctypes.Resul
 }
 
 func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit, error) {
-	res, err := c.next.Commit(ctx, height)
+	// Update the light client if we're behind and retrieve the light block at the requested height
+	l, err := c.updateLightClientIfNeededTo(ctx, *height)
 	if err != nil {
 		return nil, err
 	}
 
-	// Validate res.
-	if err := res.SignedHeader.ValidateBasic(c.lc.ChainID()); err != nil {
-		return nil, err
-	}
-	if res.Height <= 0 {
-		return nil, errNegOrZeroHeight
-	}
-
-	// Update the light client if we're behind.
-	l, err := c.updateLightClientIfNeededTo(ctx, res.Height)
-	if err != nil {
-		return nil, err
-	}
-
-	// Verify commit.
-	if rH, tH := res.Hash(), l.Hash(); !bytes.Equal(rH, tH) {
-		return nil, fmt.Errorf("header %X does not match with trusted header %X",
-			rH, tH)
-	}
-
-	return res, nil
+	return &ctypes.ResultCommit{
+		SignedHeader:    *l.SignedHeader,
+		CanonicalCommit: true,
+	}, nil
 }
 
 // Tx calls rpcclient#Tx method and then verifies the proof if such was
@@ -432,52 +417,30 @@ func (c *Client) TxSearch(ctx context.Context, query string, prove bool, page, p
 }
 
 // Validators fetches and verifies validators.
-//
-// WARNING: only full validator sets are verified (when length of validators is
-// less than +perPage+. +perPage+ default is 30, max is 100).
-func (c *Client) Validators(ctx context.Context, height *int64, page, perPage *int) (*ctypes.ResultValidators, error) {
-	res, err := c.next.Validators(ctx, height, page, perPage)
+func (c *Client) Validators(ctx context.Context, height *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators,
+	error) {
+	// Update the light client if we're behind and retrieve the light block at the requested height.
+	l, err := c.updateLightClientIfNeededTo(ctx, *height)
 	if err != nil {
 		return nil, err
 	}
 
-	// Validate res.
-	if res.BlockHeight <= 0 {
-		return nil, errNegOrZeroHeight
-	}
-
-	updateHeight := res.BlockHeight - 1
-
-	// updateHeight can't be zero which happens when we are looking for the validators of the first block
-	if updateHeight == 0 {
-		updateHeight = 1
-	}
-
-	// Update the light client if we're behind.
-	l, err := c.updateLightClientIfNeededTo(ctx, updateHeight)
+	totalCount := len(l.ValidatorSet.Validators)
+	perPage := validatePerPage(perPagePtr)
+	page, err := validatePage(pagePtr, perPage, totalCount)
 	if err != nil {
 		return nil, err
 	}
 
-	var tH tmbytes.HexBytes
-	switch res.BlockHeight {
-	case 1:
-		// if it's the first block we need to validate with the current validator hash as opposed to the
-		// next validator hash
-		tH = l.ValidatorsHash
-	default:
-		tH = l.NextValidatorsHash
-	}
+	skipCount := validateSkipCount(page, perPage)
 
-	// Verify validators.
-	if res.Count <= res.Total {
-		if rH := types.NewValidatorSet(res.Validators).Hash(); !bytes.Equal(rH, tH) {
-			return nil, fmt.Errorf("validators %X does not match with trusted validators %X",
-				rH, tH)
-		}
-	}
+	v := l.ValidatorSet.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
 
-	return res, nil
+	return &ctypes.ResultValidators{
+		BlockHeight: *height,
+		Validators:  v,
+		Count:       len(v),
+		Total:       totalCount}, nil
 }
 
 func (c *Client) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
@@ -574,4 +537,55 @@ func parseQueryStorePath(path string) (storeName string, err error) {
 	}
 
 	return paths[1], nil
+}
+
+// XXX: Copied from rpc/core/env.go
+const (
+	// see README
+	defaultPerPage = 30
+	maxPerPage     = 100
+)
+
+func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
+	if perPage < 1 {
+		panic(fmt.Sprintf("zero or negative perPage: %d", perPage))
+	}
+
+	if pagePtr == nil { // no page parameter
+		return 1, nil
+	}
+
+	pages := ((totalCount - 1) / perPage) + 1
+	if pages == 0 {
+		pages = 1 // one page (even if it's empty)
+	}
+	page := *pagePtr
+	if page <= 0 || page > pages {
+		return 1, fmt.Errorf("page should be within [1, %d] range, given %d", pages, page)
+	}
+
+	return page, nil
+}
+
+func validatePerPage(perPagePtr *int) int {
+	if perPagePtr == nil { // no per_page parameter
+		return defaultPerPage
+	}
+
+	perPage := *perPagePtr
+	if perPage < 1 {
+		return defaultPerPage
+	} else if perPage > maxPerPage {
+		return maxPerPage
+	}
+	return perPage
+}
+
+func validateSkipCount(page, perPage int) int {
+	skipCount := (page - 1) * perPage
+	if skipCount < 0 {
+		return 0
+	}
+
+	return skipCount
 }
