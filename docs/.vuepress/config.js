@@ -25,8 +25,47 @@ module.exports = {
       banner: false,
     },
     sidebar: {
-      auto: true,
+      auto: false,
       nav: [
+        {
+          children: [
+            {
+              title: "Introduction",
+              path: "/introduction",
+              directory: true,
+            },
+            {
+              title: "Guides",
+              path: "/tutorials",
+              directory: true,
+            },
+            {
+              title: "Apps",
+              path: "/app-dev",
+              directory: true,
+            },
+            {
+              title: "Tendermint Core",
+              path: "/tendermint-core",
+              directory: true,
+            },
+            {
+              title: "Networks",
+              path: "/networks",
+              directory: true,
+            },
+            {
+              title: "Tools",
+              path: "/tools",
+              directory: true,
+            },
+            {
+              title: "Tendermint Spec",
+              path: "/spec",
+              directory: true,
+            },
+          ]
+        },
         {
           title: 'Resources',
           children: [
@@ -39,16 +78,15 @@ module.exports = {
               path: 'https://docs.tendermint.com/master/rpc/',
               static: true
             },
-            // TODO: remove once https://github.com/cosmos/vuepress-theme-cosmos/issues/91 is closed
             {
               title: 'Version 0.32',
-              path: '/v0.32',
-              static: true
+              path: '/0.32',
+              directory: true,
             },
             {
               title: 'Version 0.33',
-              path: '/v0.33',
-              static: true
+              path: '/0.33',
+              directory: true,
             },
           ]
         }
@@ -138,7 +176,7 @@ module.exports = {
           children: [
             {
               title: 'Contributing to the docs',
-              url: 'https://github.com/tendermint/tendermint'
+              url: 'https://github.com/tendermint/tendermint/blob/master/docs/DOCS_README.md'
             },
             {
               title: 'Source code on GitHub',
