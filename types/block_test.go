@@ -85,10 +85,20 @@ func TestBlockValidateBasic(t *testing.T) {
 			blk.DataHash = tmrand.Bytes(len(blk.DataHash))
 		}, true},
 		{"Tampered EvidenceHash", func(blk *Block) {
-			blk.EvidenceHash = []byte("something else")
+			blk.EvidenceHash = tmrand.Bytes(len(blk.EvidenceHash))
 		}, true},
 		{"Incorrect block protocol version", func(blk *Block) {
 			blk.Version.Block = 1
+		}, true},
+		{"Missing LastCommit", func(blk *Block) {
+			blk.LastCommit = nil
+		}, true},
+		{"Invalid LastCommit", func(blk *Block) {
+			blk.LastCommit = NewCommit(-1, 0, *voteSet.maj23, nil)
+		}, true},
+		{"Invalid Evidence", func(blk *Block) {
+			emptyEv := &DuplicateVoteEvidence{}
+			blk.Evidence = EvidenceData{Evidence: []Evidence{emptyEv}}
 		}, true},
 	}
 	for i, tc := range testCases {
@@ -99,6 +109,7 @@ func TestBlockValidateBasic(t *testing.T) {
 			block.ProposerAddress = valSet.GetProposer().Address
 			tc.malleateBlock(block)
 			err = block.ValidateBasic()
+			t.Log(err)
 			assert.Equal(t, tc.expErr, err != nil, "#%d: %v", i, err)
 		})
 	}
