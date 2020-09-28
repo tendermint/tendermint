@@ -256,6 +256,17 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		bcR.Logger.Info("Received", "src", src, "height", msg.Block.Height)
 		bcR.messagesForFSMCh <- msgForFSM
 
+	case *bcNoBlockResponseMessage:
+		msgForFSM := bcReactorMessage{
+			event: noBlockResponseEv,
+			data: bReactorEventData{
+				peerID: src.ID(),
+				height: msg.Height,
+			},
+		}
+		bcR.Logger.Debug("Peer does not have requested block", "peer", src, "height", msg.Height)
+		bcR.messagesForFSMCh <- msgForFSM
+
 	case *bcStatusResponseMessage:
 		// Got a peer status. Unverified.
 		msgForFSM := bcReactorMessage{
