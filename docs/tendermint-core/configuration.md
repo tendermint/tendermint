@@ -479,7 +479,7 @@ Here's a brief summary of the timeouts:
 This section will cover settings within the p2p section of the `config.toml`. 
 
 - `external_address` = is the address that will be advertised for other nodes to use. We recommend setting this field with your public IP and p2p port. 
-- `seeds` = is a list of comma separated seed nodes. A seed node is a node that does not participate in consensus but only helps propagate peers to nodes in the networks
+- `seeds` = is a list of comma separated seed nodes that you will connect upon a start and ask for peers. A seed node is a node that does not participate in consensus but only helps propagate peers to nodes in the networks
 - `persistent_peers` = is a list of comma separated peers that you will always want to be connected to. If you're already connected to the maximum number of peers, persistent peers will not be added. 
 - `max_num_inbound_peers` = is the maximum number of peers you will accept inbound connections from at one time (where they dial your address and initiate the connection).
 - `max_num_outbound_peers` = is the maximum number of peers you will initiate outbound connects to at one time (where you dial their address and initiate the connection).
