@@ -10,10 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -1355,25 +1352,9 @@ func TestScSelectPeer(t *testing.T) {
 	}
 }
 
-// makeScBlock makes a random valid block.
+// makeScBlock makes an empty block.
 func makeScBlock(height int64) *types.Block {
-	txs := []types.Tx{types.Tx("foo"), types.Tx("bar")}
-	lastID := &types.BlockID{Hash: tmrand.Bytes(tmhash.Size),
-		PartSetHeader: types.PartSetHeader{Total: 100, Hash: tmrand.Bytes(tmhash.Size)}}
-	valSet, privValidators := types.RandValidatorSet(5, 10)
-	commit := &types.Commit{}
-	var err error
-	if height != 1 {
-		voteSet := types.NewVoteSet("test_chain_id", height-1, 0, tmproto.PrecommitType, valSet)
-		commit, err = types.MakeCommit(*lastID, height-1, 0, voteSet, privValidators, time.Now())
-		if err != nil {
-			panic(fmt.Errorf("error making commit for block: %w", err))
-		}
-	}
-	block := types.MakeBlock(height, txs, commit, nil)
-	block.Header.ProposerAddress = valSet.Proposer.Address
-	return block
-	// return &types.Block{Header: types.Header{Height: height}}
+	return &types.Block{Header: types.Header{Height: height}}
 }
 
 // used in place of assert.Equal(t, want, actual) to avoid failures due to
@@ -1419,14 +1400,6 @@ func TestScHandleBlockResponse(t *testing.T) {
 		size:   100,
 		block:  makeScBlock(6),
 	}
-
-	blockWithEmptyCommitFromP1 := bcBlockResponse{
-		time:   now.Add(time.Millisecond),
-		peerID: p2p.ID("P1"),
-		size:   100,
-		block:  makeScBlock(6),
-	}
-	blockWithEmptyCommitFromP1.block.LastCommit = nil
 
 	type args struct {
 		event bcBlockResponse
@@ -1479,17 +1452,6 @@ func TestScHandleBlockResponse(t *testing.T) {
 				pendingTime: map[int64]time.Time{6: now.Add(time.Second)},
 			},
 			args:      args{event: block6FromP1},
-			wantEvent: scPeerError{peerID: "P1", reason: fmt.Errorf("some error")},
-		},
-		{
-			name: "invalid block - nil commit",
-			fields: scTestParams{
-				peers:       map[string]*scPeer{"P1": {height: 8, state: peerStateReady}},
-				allB:        []int64{1, 2, 3, 4, 5, 6, 7, 8},
-				pending:     map[int64]p2p.ID{6: "P1"},
-				pendingTime: map[int64]time.Time{6: now},
-			},
-			args:      args{event: blockWithEmptyCommitFromP1},
 			wantEvent: scPeerError{peerID: "P1", reason: fmt.Errorf("some error")},
 		},
 		{
