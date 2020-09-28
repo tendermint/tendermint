@@ -288,10 +288,11 @@ func (memR *Reactor) txs(next *clist.CElement, peerID uint16, peerHeight int64) 
 			batch = append(batch, memTx.tx)
 		}
 
-		if next.Next() == nil {
+		n := next.Next()
+		if n == nil {
 			return batch
 		}
-		next = next.Next()
+		next = n
 	}
 }
 
