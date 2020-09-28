@@ -227,6 +227,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		bi, err := types.BlockFromProto(msg.Block)
 		if err != nil {
 			bcR.Logger.Error("Block content is invalid", "err", err)
+			bcR.Switch.StopPeerForError(src, err)
 			return
 		}
 		bcR.pool.AddBlock(src.ID(), bi, len(msgBytes))

@@ -83,10 +83,8 @@ func ValidateMsg(pb proto.Message) error {
 			return errors.New("negative Height")
 		}
 	case *bcproto.BlockResponse:
-		_, err := types.BlockFromProto(msg.Block)
-		if err != nil {
-			return err
-		}
+		// validate basic is called later when converting from proto
+		return nil
 	case *bcproto.NoBlockResponse:
 		if msg.Height < 0 {
 			return errors.New("negative Height")

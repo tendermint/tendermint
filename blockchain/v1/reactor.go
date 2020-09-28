@@ -285,6 +285,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		bi, err := types.BlockFromProto(msg.Block)
 		if err != nil {
 			bcR.Logger.Error("error transition block from protobuf", "err", err)
+			_ = bcR.swReporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
 			return
 		}
 		msgForFSM := bcReactorMessage{
