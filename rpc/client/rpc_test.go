@@ -302,6 +302,36 @@ func TestAppCalls(t *testing.T) {
 	}
 }
 
+func TestBlockchainInfo(t *testing.T) {
+	for i, c := range GetClients() {
+		err := client.WaitForHeight(c, 10, nil)
+		require.NoError(t, err)
+
+		res, err := c.BlockchainInfo(context.Background(), 0, 0)
+		require.Nil(t, err, "%d: %+v", i, err)
+		assert.True(t, res.LastHeight > 0)
+		assert.True(t, len(res.BlockMetas) > 0)
+
+		res, err = c.BlockchainInfo(context.Background(), 1, 1)
+		require.Nil(t, err, "%d: %+v", i, err)
+		assert.True(t, res.LastHeight > 0)
+		assert.True(t, len(res.BlockMetas) == 1)
+
+		res, err = c.BlockchainInfo(context.Background(), 1, 10000)
+		require.Nil(t, err, "%d: %+v", i, err)
+		assert.True(t, res.LastHeight > 0)
+		assert.True(t, len(res.BlockMetas) < 100)
+		for _, m := range res.BlockMetas {
+			assert.NotNil(t, m)
+		}
+
+		res, err = c.BlockchainInfo(context.Background(), 10000, 1)
+		require.NotNil(t, err)
+		assert.Nil(t, res)
+		assert.Contains(t, err.Error(), "can't be greater than max")
+	}
+}
+
 func TestBroadcastTxSync(t *testing.T) {
 	require := require.New(t)
 
