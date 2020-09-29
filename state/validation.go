@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -99,12 +98,7 @@ func validateBlock(evidencePool EvidencePool, state State, block *types.Block) e
 	// NOTE: We can't actually verify it's the right proposer because we don't
 	// know what round the block was first proposed. So just check that it's
 	// a legit address and a known validator.
-	if len(block.ProposerAddress) != crypto.AddressSize {
-		return fmt.Errorf("expected ProposerAddress size %d, got %d",
-			crypto.AddressSize,
-			len(block.ProposerAddress),
-		)
-	}
+	// The length is checked in ValidateBasic above.
 	if !state.Validators.HasAddress(block.ProposerAddress) {
 		return fmt.Errorf("block.Header.ProposerAddress %X is not a validator",
 			block.ProposerAddress,
