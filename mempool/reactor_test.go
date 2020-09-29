@@ -65,6 +65,7 @@ func TestReactorBroadcastTxsMessage(t *testing.T) {
 	waitForTxsOnReactors(t, txs, reactors)
 }
 
+// regression test for https://github.com/tendermint/tendermint/issues/5408
 func TestReactorConcurrency(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 2
@@ -88,8 +89,8 @@ func TestReactorConcurrency(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		wg.Add(2)
 
-		// submit a bunch of txs
-		// update the whole mempool
+		// 1. submit a bunch of txs
+		// 2. update the whole mempool
 		txs := checkTxs(t, reactors[0].mempool, numTxs, UnknownPeerID)
 		go func() {
 			defer wg.Done()
@@ -104,8 +105,8 @@ func TestReactorConcurrency(t *testing.T) {
 			reactors[0].mempool.Update(1, txs, deliverTxResponses, nil, nil)
 		}()
 
-		// submit a bunch of txs
-		// update none
+		// 1. submit a bunch of txs
+		// 2. update none
 		_ = checkTxs(t, reactors[1].mempool, numTxs, UnknownPeerID)
 		go func() {
 			defer wg.Done()
@@ -115,8 +116,7 @@ func TestReactorConcurrency(t *testing.T) {
 			reactors[1].mempool.Update(1, []types.Tx{}, make([]*abci.ResponseDeliverTx, 0), nil, nil)
 		}()
 
-		// submit a bunch of txs
-		// flush the mempool
+		// 1. flush the mempool
 		reactors[1].mempool.Flush()
 	}
 
