@@ -31,8 +31,13 @@ module.exports = {
         text: "Help us improve this page by suggesting edits on GitHub."
       }
     },
+    topbar: {
+      banner: false
+    },
     footer: {
-      questionsText: "Chat with Cosmos developers in [Discord](https://discordapp.com/channels/669268347736686612) or reach out on the [SDK Developer Forum](https://forum.cosmos.network/c/tendermint) to learn more.",
+      question: {
+        text: 'Chat with Tendermint developers in <a href=\'https://discord.gg/W8trcGV\' target=\'_blank\'>Discord</a> or reach out on the <a href=\'https://forum.cosmos.network/c/tendermint\' target=\'_blank\'>Tendermint Forum</a> to learn more.'
+      },
       logo: "/logo-bw.svg",
       textLink: {
         text: "tendermint.com",
