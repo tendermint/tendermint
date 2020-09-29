@@ -345,14 +345,6 @@ a block minus it's overhead ( ~ `MaxBytes`).
 
 The amount must be a positive number.
 
-### EvidenceParams.ProofTrialPeriod
-
-This is the duration in terms of blocks that an indicted validator has to prove a
-correct lock change in the event of amnesia evidence when a validator voted more
-than once across different rounds.
-
-This must be positive and less then `EvidenceParams.MaxAgeNumBlocks`.
-
 ### Updates
 
 The application may set the ConsensusParams during InitChain, and update them during

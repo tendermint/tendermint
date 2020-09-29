@@ -1147,16 +1147,16 @@ func Main (primary PeerID, lightStore LightStore, targetHeight Height)
 [TMBC-SOUND-DISTR-POSS-COMMIT-link]: #tmbc-sound-distr-poss-commit1
 
 [lightclient]: https://github.com/interchainio/tendermint-rs/blob/e2cb9aca0b95430fca2eac154edddc9588038982/docs/architecture/adr-002-lite-client.md
-[fork-detector]: https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/detection.md
-[fullnode]: https://github.com/tendermint/spec/blob/master/spec/blockchain/fullnode.md
+[fork-detector]: https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/detection/detection_001_reviewed.md
+<!-- [fullnode]: https://github.com/tendermint/spec/blob/master/spec/blockchain/fullnode.md -->
 
 [ibc-rs]:https://github.com/informalsystems/ibc-rs
 
-[FN-LuckyCase-link]: https://github.com/tendermint/spec/blob/master/spec/blockchain/fullnode.md#fn-luckycase
+<!-- [FN-LuckyCase-link]: https://github.com/tendermint/spec/blob/master/spec/blockchain/fullnode.md#fn-luckycase -->
 
 [blockchain-validator-set]: https://github.com/tendermint/spec/blob/master/spec/blockchain/blockchain.md#data-structures
-[fullnode-data-structures]: https://github.com/tendermint/spec/blob/master/spec/blockchain/fullnode.md#data-structures
+[fullnode-data-structures]: https://github.com/tendermint/spec/blob/master/spec/core/data_structures.md
 
-[FN-ManifestFaulty-link]: https://github.com/tendermint/spec/blob/master/spec/blockchain/fullnode.md#fn-manifestfaulty
+<!-- [FN-ManifestFaulty-link]: https://github.com/tendermint/spec/blob/master/spec/blockchain/fullnode.md#fn-manifestfaulty -->
 
 [arXiv]: https://arxiv.org/abs/1807.04938

@@ -17,7 +17,7 @@ we account for amino overhead for each transaction.
 ```go
 func MaxDataBytes(maxBytes int64, valsCount, evidenceCount int) int64 {
  return maxBytes -
-  MaxAminoOverheadForBlock -
+  MaxOverheadForBlock -
   MaxHeaderBytes -
   int64(valsCount)*MaxVoteBytes -
   int64(evidenceCount)*MaxEvidenceBytes
@@ -28,15 +28,13 @@ func MaxDataBytes(maxBytes int64, valsCount, evidenceCount int) int64 {
 
 Before we accept a transaction in the mempool, we check if it's size is no more
 than {MaxDataSize}. {MaxDataSize} is calculated using the same formula as
-above, except because the evidence size is unknown at the moment, we subtract
-maximum evidence size (1/10th of the maximum block size).
+above, except we subtract the max number of evidence, {MaxNum} by the maximum size of evidence
 
 ```go
 func MaxDataBytesUnknownEvidence(maxBytes int64, valsCount int) int64 {
  return maxBytes -
-  MaxAminoOverheadForBlock -
+  MaxOverheadForBlock -
   MaxHeaderBytes -
-  int64(valsCount)*MaxVoteBytes -
-  MaxEvidenceBytesPerBlock(maxBytes)
+  (maxNumEvidence * MaxEvidenceBytes)
 }
 ```

@@ -207,15 +207,10 @@ It is implemented as the following interface.
 ```go
 type Evidence interface {
  Height() int64                                     // height of the equivocation
- Time() time.Time                                   // time of the equivocation
- Address() []byte                                   // address of the equivocating validator
  Bytes() []byte                                     // bytes which comprise the evidence
- Hash() []byte                                      // hash of the evidence
- Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
- Equal(Evidence) bool                               // check equality of evidence
-
- ValidateBasic() error
- String() string
+ Hash() []byte                                      // hash of the evidence (this is also used for equality)
+ ValidateBasic() error                              // consistency check of the data
+ String() string                                    // string representation of the evidence
 }
 ```
 
@@ -231,16 +226,14 @@ in the same round of the same height. Votes are lexicographically sorted on `Blo
 
 ```go
 type DuplicateVoteEvidence struct {
- VoteA  *Vote
- VoteB  *Vote
-
- Timestamp time.Time
+    VoteA  *Vote
+    VoteB  *Vote
 }
 ```
 
 Valid Duplicate Vote Evidence must adhere to the following rules:
 
-- Validator Address, Height, Round and Type of vote must be the same for both votes
+- Validator Address, Height, Round and Type must be the same for both votes
 
 - BlockID must be different for both votes (BlockID can be for a nil block)
 
@@ -248,7 +241,31 @@ Valid Duplicate Vote Evidence must adhere to the following rules:
 
 - Vote signature must be valid (using the chainID)
 
-- Time must be equal to the block time
+- Evidence must not have expired: either age in terms of height or time must be
+    less than the age stated in the consensus params. Time is the block time that the
+    votes were a part of.
+
+### LightClientAttackEvidence
+
+```go
+type LightClientAttackEvidence struct {
+ ConflictingBlock *LightBlock
+ CommonHeight     int64
+}
+```
+
+Valid Light Client Attack Evidence encompasses three types of attack and must adhere to the following rules
+
+- If the header of the light block is invalid, thus indicating a lunatic attack, the node must check that
+    they can use `verifySkipping` from their header at the common height to the conflicting header
+
+- If the header is valid, then the validator sets are the same and this is either a form of equivocation
+    or amnesia. We therefore check that 2/3 of the validator set also signed the conflicting header
+
+- The trusted header of the node at the same height as the conflicting header must have a different hash to
+    the conflicting header.
+
+- Evidence must not have expired. The height (and thus the time) is taken from the common height.
 
 ## Validation
 
