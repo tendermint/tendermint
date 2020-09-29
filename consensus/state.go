@@ -1784,11 +1784,17 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 		if err != nil {
 			return added, err
 		}
+		
 		var pbb = new(tmproto.Block)
 		err = proto.Unmarshal(bz, pbb)
 		if err != nil {
 			return added, err
 		}
+		if int64(pbb.Size()) > cs.state.ConsensusParams.Block.MaxBytes {
+			cs.Logger.Info("")
+		}
+		
+		
 		block, err := types.BlockFromProto(pbb)
 		if err != nil {
 			return added, err
