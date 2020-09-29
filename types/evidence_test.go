@@ -33,18 +33,37 @@ func TestMaxEvidenceBytes(t *testing.T) {
 	blockID2 := makeBlockID(tmhash.Sum([]byte("blockhash2")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	maxTime := time.Date(9999, 0, 0, 0, 0, 0, 0, time.UTC)
 	const chainID = "mychain"
-	ev := &DuplicateVoteEvidence{
+	dve := &DuplicateVoteEvidence{
 		VoteA: makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, math.MaxInt64, blockID, maxTime),
 		VoteB: makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, math.MaxInt64, blockID2, maxTime),
 	}
-
-	//TODO: Add other types of evidence to test and set MaxEvidenceBytes accordingly
+	
+	header := makeHeaderRandom()
+	header.Height = math.MaxInt64
+	header.Time = maxTime
+	
+	// we set the upper bounds of validators to be 500
+	voteSet, valSet, privVals := randVoteSet(header.Height, 1, tmproto.PrecommitType, 500, math.MaxInt32)
+	commit, err := MakeCommit(blockID, header.Height, 1, voteSet, privVals, maxTime)
+	require.NoError(t, err)
+	
+	lcae := &LightClientAttackEvidence{
+		ConflictingBlock: &LightBlock{
+			SignedHeader: &SignedHeader{
+				Header: header,
+				Commit: commit,
+			},
+			ValidatorSet: valSet,
+		},
+		CommonHeight: math.MaxInt64,
+	}
 
 	testCases := []struct {
 		testName string
 		evidence Evidence
 	}{
-		{"DuplicateVote", ev},
+		{"DuplicateVote", dve},
+		{"LightClientAttackEvidence", lcae},
 	}
 
 	for _, tt := range testCases {
