@@ -3,9 +3,9 @@
 Spins up and tests Tendermint networks in Docker Compose based on a testnet manifest file. To run the CI testnet:
 
 ```sh
-$ make docker
-$ make runner
-$ ./build/runner -f networks/ci.toml
+make docker
+make runner
+./build/runner -f networks/ci.toml
 ```
 
 This creates a testnet named `ci` under `networks/ci` (given by manifest filename), spins up Docker containers, and runs tests against them.
@@ -43,8 +43,8 @@ Test cases are written as normal Go tests in `tests/`. They use a test runner `t
 To run tests manually, the `E2E_MANIFEST` environment variable gives the path to the testnet manifest (e.g. `networks/ci.toml`). Optionally, `E2E_NODE` can specify the name of the testnet node to test. Tests can then be run as normal, e.g.:
 
 ```sh
-$ ./build/runner -f networks/ci.toml start
-$ E2E_MANIFEST=networks/ci.toml go test -v ./tests/...
+./build/runner -f networks/ci.toml start
+E2E_MANIFEST=networks/ci.toml go test -v ./tests/...
 ```
 
 These environment variables can also be specified in `tests/e2e_test.go` to run tests from an editor or IDE:
