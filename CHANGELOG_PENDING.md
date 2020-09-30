@@ -22,5 +22,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
+- [privval] `NewSignerDialerEndpoint` can now be given `SignerServiceEndpointOption` (@erikgrinaker)
+
 ### BUG FIXES
 
