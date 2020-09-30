@@ -170,7 +170,7 @@ func TestClientDivergentTraces(t *testing.T) {
 
 	// 1. Different nodes therefore a divergent header is produced. The
 	// light client can't start because primary and witness has a different view.
-	c, err := light.NewClient(
+	_, err = light.NewClient(
 		ctx,
 		chainID,
 		light.TrustOptions{
@@ -189,7 +189,7 @@ func TestClientDivergentTraces(t *testing.T) {
 
 	// 2. Two out of three nodes don't respond but the third has a header that matches
 	// verification should be successful and all the witnesses should remain
-	c, err = light.NewClient(
+	c, err := light.NewClient(
 		ctx,
 		chainID,
 		light.TrustOptions{
