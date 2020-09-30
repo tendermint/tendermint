@@ -356,20 +356,20 @@ func (c *Client) initializeWithTrustOptions(ctx context.Context, options TrustOp
 		return fmt.Errorf("expected header's hash %X, but got %X", options.Hash, l.Hash())
 	}
 
-	// Ensure that +2/3 of validators signed correctly.
+	// 2) Ensure that +2/3 of validators signed correctly.
 	err = l.ValidatorSet.VerifyCommitLight(c.chainID, l.Commit.BlockID, l.Height, l.Commit)
 	if err != nil {
 		return fmt.Errorf("invalid commit: %w", err)
 	}
 
-	// Cross-verify with witnesses to ensure everybody has the same state
+	// 3) Cross-verify with witnesses to ensure everybody has the same state.
 	if len(c.witnesses) > 0 {
 		if err := c.compareFirstHeaderWithWitnesses(ctx, l.SignedHeader); err != nil {
 			return err
 		}
 	}
 
-	// 3) Persist both of them and continue.
+	// 4) Persist both of them and continue.
 	return c.updateTrustedLightBlock(l)
 }
 
