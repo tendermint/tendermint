@@ -29,7 +29,6 @@ import (
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
-	"github.com/tendermint/tendermint/version"
 )
 
 func TestNodeStartStop(t *testing.T) {
@@ -57,7 +56,8 @@ func TestNodeStartStop(t *testing.T) {
 
 	// stop the node
 	go func() {
-		n.Stop()
+		err = n.Stop()
+		require.NoError(t, err)
 	}()
 
 	select {
@@ -105,7 +105,7 @@ func TestNodeDelayedStart(t *testing.T) {
 
 	err = n.Start()
 	require.NoError(t, err)
-	defer n.Stop()
+	defer n.Stop() //nolint:errcheck // ignore for tests
 
 	startTime := tmtime.Now()
 	assert.Equal(t, true, startTime.After(n.GenesisDoc().GenesisTime))
@@ -120,10 +120,11 @@ func TestNodeSetAppVersion(t *testing.T) {
 	require.NoError(t, err)
 
 	// default config uses the kvstore app
-	var appVersion version.Protocol = kvstore.ProtocolVersion
+	var appVersion uint64 = kvstore.ProtocolVersion
 
 	// check version is set in state
-	state := sm.LoadState(n.stateDB)
+	state, err := n.stateStore.Load()
+	require.NoError(t, err)
 	assert.Equal(t, state.Version.Consensus.App, appVersion)
 
 	// check version is set in node info
@@ -156,7 +157,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 			panic(err)
 		}
 	}()
-	defer signerServer.Stop()
+	defer signerServer.Stop() //nolint:errcheck // ignore for tests
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
@@ -200,7 +201,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 		err := pvsc.Start()
 		require.NoError(t, err)
 	}()
-	defer pvsc.Stop()
+	defer pvsc.Stop() //nolint:errcheck // ignore for tests
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
@@ -219,20 +220,19 @@ func testFreeAddr(t *testing.T) string {
 // create a proposal block using real and full
 // mempool and evidence pool and validate it.
 func TestCreateProposalBlock(t *testing.T) {
-	const minEvSize = 12
-
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
 	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
-	defer proxyApp.Stop()
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	logger := log.TestingLogger()
 
 	var height int64 = 1
-	state, stateDB := state(1, height)
+	state, stateDB, privVals := state(1, height)
+	stateStore := sm.NewStore(stateDB)
 	maxBytes := 16384
 	maxEvidence := 10
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
@@ -252,19 +252,17 @@ func TestCreateProposalBlock(t *testing.T) {
 	mempool.SetLogger(logger)
 
 	// Make EvidencePool
-	types.RegisterMockEvidencesGlobal() // XXX!
-	evidence.RegisterMockEvidences()
 	evidenceDB := dbm.NewMemDB()
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	evidencePool, err := evidence.NewPool(stateDB, evidenceDB, blockStore)
+	evidencePool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
 	evidencePool.SetLogger(logger)
 
 	// fill the evidence pool with more evidence
 	// than can fit in a block
 	for i := 0; i <= maxEvidence; i++ {
-		ev := types.NewMockRandomEvidence(height, time.Now(), proposerAddr, tmrand.Bytes(minEvSize))
-		err := evidencePool.AddEvidence(ev)
+		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
+		err := evidencePool.AddEvidenceFromConsensus(ev, time.Now(), state.Validators)
 		require.NoError(t, err)
 	}
 
@@ -278,7 +276,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	}
 
 	blockExec := sm.NewBlockExecutor(
-		stateDB,
+		stateStore,
 		logger,
 		proxyApp.Consensus(),
 		mempool,
@@ -320,7 +318,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 
 	err = n.Start()
 	require.NoError(t, err)
-	defer n.Stop()
+	defer n.Stop() //nolint:errcheck // ignore for tests
 
 	assert.True(t, cr.IsRunning())
 	assert.Equal(t, cr, n.Switch().Reactor("FOO"))
@@ -329,14 +327,15 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 	assert.Equal(t, customBlockchainReactor, n.Switch().Reactor("BLOCKCHAIN"))
 }
 
-func state(nVals int, height int64) (sm.State, dbm.DB) {
+func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
+	privVals := make([]types.PrivValidator, nVals)
 	vals := make([]types.GenesisValidator, nVals)
 	for i := 0; i < nVals; i++ {
-		secret := []byte(fmt.Sprintf("test%d", i))
-		pk := ed25519.GenPrivKeyFromSecret(secret)
+		privVal := types.NewMockPV()
+		privVals[i] = privVal
 		vals[i] = types.GenesisValidator{
-			Address: pk.PubKey().Address(),
-			PubKey:  pk.PubKey(),
+			Address: privVal.PrivKey.PubKey().Address(),
+			PubKey:  privVal.PrivKey.PubKey(),
 			Power:   1000,
 			Name:    fmt.Sprintf("test%d", i),
 		}
@@ -349,12 +348,17 @@ func state(nVals int, height int64) (sm.State, dbm.DB) {
 
 	// save validators to db for 2 heights
 	stateDB := dbm.NewMemDB()
-	sm.SaveState(stateDB, s)
+	stateStore := sm.NewStore(stateDB)
+	if err := stateStore.Save(s); err != nil {
+		panic(err)
+	}
 
 	for i := 1; i < int(height); i++ {
 		s.LastBlockHeight++
 		s.LastValidators = s.Validators.Copy()
-		sm.SaveState(stateDB, s)
+		if err := stateStore.Save(s); err != nil {
+			panic(err)
+		}
 	}
-	return s, stateDB
+	return s, stateDB, privVals
 }

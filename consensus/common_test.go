@@ -29,9 +29,11 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -67,16 +69,16 @@ func ResetConfig(name string) *cfg.Config {
 // validator stub (a kvstore consensus peer we control)
 
 type validatorStub struct {
-	Index  int // Validator index. NOTE: we don't assume validator set changes.
+	Index  int32 // Validator index. NOTE: we don't assume validator set changes.
 	Height int64
-	Round  int
+	Round  int32
 	types.PrivValidator
 	VotingPower int64
 }
 
 var testMinPower int64 = 10
 
-func newValidatorStub(privValidator types.PrivValidator, valIndex int) *validatorStub {
+func newValidatorStub(privValidator types.PrivValidator, valIndex int32) *validatorStub {
 	return &validatorStub{
 		Index:         valIndex,
 		PrivValidator: privValidator,
@@ -85,7 +87,7 @@ func newValidatorStub(privValidator types.PrivValidator, valIndex int) *validato
 }
 
 func (vs *validatorStub) signVote(
-	voteType types.SignedMsgType,
+	voteType tmproto.SignedMsgType,
 	hash []byte,
 	header types.PartSetHeader) (*types.Vote, error) {
 
@@ -101,15 +103,17 @@ func (vs *validatorStub) signVote(
 		Round:            vs.Round,
 		Timestamp:        tmtime.Now(),
 		Type:             voteType,
-		BlockID:          types.BlockID{Hash: hash, PartsHeader: header},
+		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
+	v := vote.ToProto()
+	err = vs.PrivValidator.SignVote(config.ChainID(), v)
+	vote.Signature = v.Signature
 
-	err = vs.PrivValidator.SignVote(config.ChainID(), vote)
 	return vote, err
 }
 
 // Sign vote for type/hash/header
-func signVote(vs *validatorStub, voteType types.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
+func signVote(vs *validatorStub, voteType tmproto.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
 	v, err := vs.signVote(voteType, hash, header)
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
@@ -118,7 +122,7 @@ func signVote(vs *validatorStub, voteType types.SignedMsgType, hash []byte, head
 }
 
 func signVotes(
-	voteType types.SignedMsgType,
+	voteType tmproto.SignedMsgType,
 	hash []byte,
 	header types.PartSetHeader,
 	vss ...*validatorStub) []*types.Vote {
@@ -166,15 +170,15 @@ func (vss ValidatorStubsByPower) Less(i, j int) bool {
 func (vss ValidatorStubsByPower) Swap(i, j int) {
 	it := vss[i]
 	vss[i] = vss[j]
-	vss[i].Index = i
+	vss[i].Index = int32(i)
 	vss[j] = it
-	vss[j].Index = j
+	vss[j].Index = int32(j)
 }
 
 //-------------------------------------------------------------------------------
 // Functions for transitioning the consensus state
 
-func startTestRound(cs *State, height int64, round int) {
+func startTestRound(cs *State, height int64, round int32) {
 	cs.enterNewRound(height, round)
 	cs.startRoutines(0)
 }
@@ -184,7 +188,7 @@ func decideProposal(
 	cs1 *State,
 	vs *validatorStub,
 	height int64,
-	round int,
+	round int32,
 ) (proposal *types.Proposal, block *types.Block) {
 	cs1.mtx.Lock()
 	block, blockParts := cs1.createProposalBlock()
@@ -196,11 +200,15 @@ func decideProposal(
 	}
 
 	// Make proposal
-	polRound, propBlockID := validRound, types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
+	polRound, propBlockID := validRound, types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 	proposal = types.NewProposal(height, round, polRound, propBlockID)
-	if err := vs.SignProposal(chainID, proposal); err != nil {
+	p := proposal.ToProto()
+	if err := vs.SignProposal(chainID, p); err != nil {
 		panic(err)
 	}
+
+	proposal.Signature = p.Signature
+
 	return
 }
 
@@ -212,7 +220,7 @@ func addVotes(to *State, votes ...*types.Vote) {
 
 func signAddVotes(
 	to *State,
-	voteType types.SignedMsgType,
+	voteType tmproto.SignedMsgType,
 	hash []byte,
 	header types.PartSetHeader,
 	vss ...*validatorStub,
@@ -221,7 +229,7 @@ func signAddVotes(
 	addVotes(to, votes...)
 }
 
-func validatePrevote(t *testing.T, cs *State, round int, privVal *validatorStub, blockHash []byte) {
+func validatePrevote(t *testing.T, cs *State, round int32, privVal *validatorStub, blockHash []byte) {
 	prevotes := cs.Votes.Prevotes(round)
 	pubKey, err := privVal.GetPubKey()
 	require.NoError(t, err)
@@ -259,7 +267,7 @@ func validatePrecommit(
 	t *testing.T,
 	cs *State,
 	thisRound,
-	lockRound int,
+	lockRound int32,
 	privVal *validatorStub,
 	votedBlockHash,
 	lockedBlockHash []byte,
@@ -307,7 +315,7 @@ func validatePrevoteAndPrecommit(
 	t *testing.T,
 	cs *State,
 	thisRound,
-	lockRound int,
+	lockRound int32,
 	privVal *validatorStub,
 	votedBlockHash,
 	lockedBlockHash []byte,
@@ -367,7 +375,7 @@ func newStateWithConfigAndBlockStore(
 	blockStore := store.NewBlockStore(blockDB)
 
 	// one for mempool, one for consensus
-	mtx := new(sync.Mutex)
+	mtx := new(tmsync.Mutex)
 	proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
 	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
@@ -378,19 +386,26 @@ func newStateWithConfigAndBlockStore(
 		mempool.EnableTxsAvailable()
 	}
 
-	evpool := emptyEvidencePool{}
+	evpool := sm.EmptyEvidencePool{}
 
 	// Make State
 	stateDB := blockDB
-	sm.SaveState(stateDB, state) //for save height 1's validators info
-	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+	stateStore := sm.NewStore(stateDB)
+	if err := stateStore.Save(state); err != nil { //for save height 1's validators info
+		panic(err)
+	}
+
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
 	cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 	cs.SetPrivValidator(pv)
 
 	eventBus := types.NewEventBus()
 	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
-	eventBus.Start()
+	err := eventBus.Start()
+	if err != nil {
+		panic(err)
+	}
 	cs.SetEventBus(eventBus)
 	return cs
 }
@@ -413,7 +428,7 @@ func randState(nValidators int) (*State, []*validatorStub) {
 	cs := newState(state, privVals[0], counter.NewApplication(true))
 
 	for i := 0; i < nValidators; i++ {
-		vss[i] = newValidatorStub(privVals[i], i)
+		vss[i] = newValidatorStub(privVals[i], int32(i))
 	}
 	// since cs1 starts at 1
 	incrementHeight(vss[1:]...)
@@ -462,7 +477,7 @@ func ensureNoNewTimeout(stepCh <-chan tmpubsub.Message, timeout int64) {
 		"We should be stuck waiting, not receiving NewTimeout event")
 }
 
-func ensureNewEvent(ch <-chan tmpubsub.Message, height int64, round int, timeout time.Duration, errorMessage string) {
+func ensureNewEvent(ch <-chan tmpubsub.Message, height int64, round int32, timeout time.Duration, errorMessage string) {
 	select {
 	case <-time.After(timeout):
 		panic(errorMessage)
@@ -482,7 +497,7 @@ func ensureNewEvent(ch <-chan tmpubsub.Message, height int64, round int, timeout
 	}
 }
 
-func ensureNewRound(roundCh <-chan tmpubsub.Message, height int64, round int) {
+func ensureNewRound(roundCh <-chan tmpubsub.Message, height int64, round int32) {
 	select {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for NewRound event")
@@ -501,13 +516,13 @@ func ensureNewRound(roundCh <-chan tmpubsub.Message, height int64, round int) {
 	}
 }
 
-func ensureNewTimeout(timeoutCh <-chan tmpubsub.Message, height int64, round int, timeout int64) {
+func ensureNewTimeout(timeoutCh <-chan tmpubsub.Message, height int64, round int32, timeout int64) {
 	timeoutDuration := time.Duration(timeout*10) * time.Nanosecond
 	ensureNewEvent(timeoutCh, height, round, timeoutDuration,
 		"Timeout expired while waiting for NewTimeout event")
 }
 
-func ensureNewProposal(proposalCh <-chan tmpubsub.Message, height int64, round int) {
+func ensureNewProposal(proposalCh <-chan tmpubsub.Message, height int64, round int32) {
 	select {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for NewProposal event")
@@ -526,7 +541,7 @@ func ensureNewProposal(proposalCh <-chan tmpubsub.Message, height int64, round i
 	}
 }
 
-func ensureNewValidBlock(validBlockCh <-chan tmpubsub.Message, height int64, round int) {
+func ensureNewValidBlock(validBlockCh <-chan tmpubsub.Message, height int64, round int32) {
 	ensureNewEvent(validBlockCh, height, round, ensureTimeout,
 		"Timeout expired while waiting for NewValidBlock event")
 }
@@ -566,12 +581,12 @@ func ensureNewBlockHeader(blockCh <-chan tmpubsub.Message, height int64, blockHa
 	}
 }
 
-func ensureNewUnlock(unlockCh <-chan tmpubsub.Message, height int64, round int) {
+func ensureNewUnlock(unlockCh <-chan tmpubsub.Message, height int64, round int32) {
 	ensureNewEvent(unlockCh, height, round, ensureTimeout,
 		"Timeout expired while waiting for NewUnlock event")
 }
 
-func ensureProposal(proposalCh <-chan tmpubsub.Message, height int64, round int, propID types.BlockID) {
+func ensureProposal(proposalCh <-chan tmpubsub.Message, height int64, round int32, propID types.BlockID) {
 	select {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for NewProposal event")
@@ -593,16 +608,16 @@ func ensureProposal(proposalCh <-chan tmpubsub.Message, height int64, round int,
 	}
 }
 
-func ensurePrecommit(voteCh <-chan tmpubsub.Message, height int64, round int) {
-	ensureVote(voteCh, height, round, types.PrecommitType)
+func ensurePrecommit(voteCh <-chan tmpubsub.Message, height int64, round int32) {
+	ensureVote(voteCh, height, round, tmproto.PrecommitType)
 }
 
-func ensurePrevote(voteCh <-chan tmpubsub.Message, height int64, round int) {
-	ensureVote(voteCh, height, round, types.PrevoteType)
+func ensurePrevote(voteCh <-chan tmpubsub.Message, height int64, round int32) {
+	ensureVote(voteCh, height, round, tmproto.PrevoteType)
 }
 
-func ensureVote(voteCh <-chan tmpubsub.Message, height int64, round int,
-	voteType types.SignedMsgType) {
+func ensureVote(voteCh <-chan tmpubsub.Message, height int64, round int32,
+	voteType tmproto.SignedMsgType) {
 	select {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for NewVote event")
@@ -622,6 +637,14 @@ func ensureVote(voteCh <-chan tmpubsub.Message, height int64, round int,
 		if vote.Type != voteType {
 			panic(fmt.Sprintf("expected type %v, got %v", voteType, vote.Type))
 		}
+	}
+}
+
+func ensurePrecommitTimeout(ch <-chan tmpubsub.Message) {
+	select {
+	case <-time.After(ensureTimeout):
+		panic("Timeout expired while waiting for the Precommit to Timeout")
+	case <-ch:
 	}
 }
 
@@ -657,7 +680,8 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 	configRootDirs := make([]string, 0, nValidators)
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+		stateStore := sm.NewStore(stateDB)
+		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
 		for _, opt := range configOpts {
@@ -694,7 +718,8 @@ func randConsensusNetWithPeers(
 	configRootDirs := make([]string, 0, nPeers)
 	for i := 0; i < nPeers; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+		stateStore := sm.NewStore(stateDB)
+		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
@@ -763,9 +788,10 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	sort.Sort(types.PrivValidatorsByAddress(privValidators))
 
 	return &types.GenesisDoc{
-		GenesisTime: tmtime.Now(),
-		ChainID:     config.ChainID(),
-		Validators:  validators,
+		GenesisTime:   tmtime.Now(),
+		InitialHeight: 1,
+		ChainID:       config.ChainID(),
+		Validators:    validators,
 	}, privValidators
 }
 

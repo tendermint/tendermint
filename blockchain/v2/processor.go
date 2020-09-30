@@ -148,8 +148,8 @@ func (state *pcState) handle(event Event) (Event, error) {
 		first, second := firstItem.block, secondItem.block
 
 		firstParts := first.MakePartSet(types.BlockPartSizeBytes)
-		firstPartsHeader := firstParts.Header()
-		firstID := types.BlockID{Hash: first.Hash(), PartsHeader: firstPartsHeader}
+		firstPartSetHeader := firstParts.Header()
+		firstID := types.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
 
 		err = state.context.verifyCommit(tmState.ChainID, firstID, first.Height, second.LastCommit)
 		if err != nil {

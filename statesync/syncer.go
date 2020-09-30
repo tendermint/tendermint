@@ -5,21 +5,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
+	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 const (
-	// defaultDiscoveryTime is the time to spend discovering snapshots.
-	defaultDiscoveryTime = 20 * time.Second
 	// chunkFetchers is the number of concurrent chunk fetchers to run.
 	chunkFetchers = 4
 	// chunkTimeout is the timeout while waiting for the next chunk from the chunk queue.
@@ -58,7 +56,7 @@ type syncer struct {
 	snapshots     *snapshotPool
 	tempDir       string
 
-	mtx    sync.RWMutex
+	mtx    tmsync.RWMutex
 	chunks *chunkQueue
 }
 
@@ -115,7 +113,7 @@ func (s *syncer) AddSnapshot(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 // to discover snapshots, later we may want to do retries and stuff.
 func (s *syncer) AddPeer(peer p2p.Peer) {
 	s.logger.Debug("Requesting snapshots from peer", "peer", peer.ID())
-	peer.Send(SnapshotChannel, cdc.MustMarshalBinaryBare(&snapshotsRequestMessage{}))
+	peer.Send(SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
 }
 
 // RemovePeer removes a peer from the pool.
@@ -241,12 +239,15 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 		go s.fetchChunks(ctx, snapshot, chunks)
 	}
 
+	pctx, pcancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer pcancel()
+
 	// Optimistically build new state, so we don't discover any light client failures at the end.
-	state, err := s.stateProvider.State(snapshot.Height)
+	state, err := s.stateProvider.State(pctx, snapshot.Height)
 	if err != nil {
 		return sm.State{}, nil, fmt.Errorf("failed to build new state: %w", err)
 	}
-	commit, err := s.stateProvider.Commit(snapshot.Height)
+	commit, err := s.stateProvider.Commit(pctx, snapshot.Height)
 	if err != nil {
 		return sm.State{}, nil, fmt.Errorf("failed to fetch commit: %w", err)
 	}
@@ -262,7 +263,7 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 	if err != nil {
 		return sm.State{}, nil, err
 	}
-	state.Version.Consensus.App = version.Protocol(appVersion)
+	state.Version.Consensus.App = appVersion
 
 	// Done! 🎉
 	s.logger.Info("Snapshot restored", "height", snapshot.Height, "format", snapshot.Format,
@@ -303,7 +304,7 @@ func (s *syncer) offerSnapshot(snapshot *snapshot) error {
 	case abci.ResponseOfferSnapshot_REJECT_SENDER:
 		return errRejectSender
 	default:
-		return fmt.Errorf("invalid ResponseOfferSnapshot result %v", resp.Result)
+		return fmt.Errorf("unknown ResponseOfferSnapshot result %v", resp.Result)
 	}
 }
 
@@ -411,7 +412,7 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 	}
 	s.logger.Debug("Requesting snapshot chunk", "height", snapshot.Height,
 		"format", snapshot.Format, "chunk", chunk, "peer", peer.ID())
-	peer.Send(ChunkChannel, cdc.MustMarshalBinaryBare(&chunkRequestMessage{
+	peer.Send(ChunkChannel, mustEncodeMsg(&ssproto.ChunkRequest{
 		Height: snapshot.Height,
 		Format: snapshot.Format,
 		Index:  chunk,

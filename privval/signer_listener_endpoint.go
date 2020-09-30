@@ -3,11 +3,12 @@ package privval
 import (
 	"fmt"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
+	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 )
 
 // SignerValidatorEndpointOption sets an optional parameter on the SocketVal.
@@ -25,7 +26,7 @@ type SignerListenerEndpoint struct {
 	timeoutAccept time.Duration
 	pingTimer     *time.Ticker
 
-	instanceMtx sync.Mutex // Ensures instance public methods access, i.e. SendRequest
+	instanceMtx tmsync.Mutex // Ensures instance public methods access, i.e. SendRequest
 }
 
 // NewSignerListenerEndpoint returns an instance of SignerListenerEndpoint.
@@ -83,7 +84,7 @@ func (sl *SignerListenerEndpoint) WaitForConnection(maxWait time.Duration) error
 }
 
 // SendRequest ensures there is a connection, sends a request and waits for a response
-func (sl *SignerListenerEndpoint) SendRequest(request SignerMessage) (SignerMessage, error) {
+func (sl *SignerListenerEndpoint) SendRequest(request privvalproto.Message) (*privvalproto.Message, error) {
 	sl.instanceMtx.Lock()
 	defer sl.instanceMtx.Unlock()
 
@@ -102,7 +103,7 @@ func (sl *SignerListenerEndpoint) SendRequest(request SignerMessage) (SignerMess
 		return nil, err
 	}
 
-	return res, nil
+	return &res, nil
 }
 
 func (sl *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error {
@@ -185,7 +186,7 @@ func (sl *SignerListenerEndpoint) pingLoop() {
 		select {
 		case <-sl.pingTimer.C:
 			{
-				_, err := sl.SendRequest(&PingRequest{})
+				_, err := sl.SendRequest(mustWrapMsg(&privvalproto.PingRequest{}))
 				if err != nil {
 					sl.Logger.Error("SignerListener: Ping timeout")
 					sl.triggerReconnect()

@@ -1,10 +1,9 @@
 package abcicli
 
 import (
-	"sync"
-
 	types "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/service"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 var _ Client = (*localClient)(nil)
@@ -16,14 +15,14 @@ var _ Client = (*localClient)(nil)
 type localClient struct {
 	service.BaseService
 
-	mtx *sync.Mutex
+	mtx *tmsync.Mutex
 	types.Application
 	Callback
 }
 
-func NewLocalClient(mtx *sync.Mutex, app types.Application) Client {
+func NewLocalClient(mtx *tmsync.Mutex, app types.Application) Client {
 	if mtx == nil {
-		mtx = new(sync.Mutex)
+		mtx = new(tmsync.Mutex)
 	}
 	cli := &localClient{
 		mtx:         mtx,

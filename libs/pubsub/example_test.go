@@ -15,8 +15,13 @@ import (
 func TestExample(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
-	s.Start()
-	defer s.Stop()
+	err := s.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	subscription, err := s.Subscribe(ctx, "example-client", query.MustParse("abci.account.name='John'"))

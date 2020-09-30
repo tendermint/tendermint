@@ -1,12 +1,14 @@
 package statesync
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"math/rand"
 	"sort"
-	"sync"
+	"time"
 
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -30,9 +32,9 @@ type snapshot struct {
 func (s *snapshot) Key() snapshotKey {
 	// Hash.Write() never returns an error.
 	hasher := sha256.New()
-	hasher.Write([]byte(fmt.Sprintf("%v:%v:%v", s.Height, s.Format, s.Chunks)))
-	hasher.Write(s.Hash)
-	hasher.Write(s.Metadata)
+	hasher.Write([]byte(fmt.Sprintf("%v:%v:%v", s.Height, s.Format, s.Chunks))) //nolint:errcheck // ignore error
+	hasher.Write(s.Hash)                                                        //nolint:errcheck // ignore error
+	hasher.Write(s.Metadata)                                                    //nolint:errcheck // ignore error
 	var key snapshotKey
 	copy(key[:], hasher.Sum(nil))
 	return key
@@ -42,7 +44,7 @@ func (s *snapshot) Key() snapshotKey {
 type snapshotPool struct {
 	stateProvider StateProvider
 
-	sync.Mutex
+	tmsync.Mutex
 	snapshots     map[snapshotKey]*snapshot
 	snapshotPeers map[snapshotKey]map[p2p.ID]p2p.Peer
 
@@ -76,7 +78,10 @@ func newSnapshotPool(stateProvider StateProvider) *snapshotPool {
 // returns true if this was a new, non-blacklisted snapshot. The snapshot height is verified using
 // the light client, and the expected app hash is set for the snapshot.
 func (p *snapshotPool) Add(peer p2p.Peer, snapshot *snapshot) (bool, error) {
-	appHash, err := p.stateProvider.AppHash(snapshot.Height)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	appHash, err := p.stateProvider.AppHash(ctx, snapshot.Height)
 	if err != nil {
 		return false, err
 	}
@@ -140,7 +145,7 @@ func (p *snapshotPool) GetPeer(snapshot *snapshot) p2p.Peer {
 	if len(peers) == 0 {
 		return nil
 	}
-	return peers[rand.Intn(len(peers))]
+	return peers[rand.Intn(len(peers))] // nolint:gosec // G404: Use of weak random number generator
 }
 
 // GetPeers returns the peers for a snapshot.

@@ -8,12 +8,13 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	"github.com/tendermint/tendermint/libs/protoio"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 const (
 	// MaxVoteBytes is a maximum vote size (including amino overhead).
-	MaxVoteBytes int64  = 223
+	MaxVoteBytes int64  = 209
 	nilVoteStr   string = "nil-Vote"
 )
 
@@ -28,16 +29,18 @@ var (
 )
 
 type ErrVoteConflictingVotes struct {
-	*DuplicateVoteEvidence
+	VoteA *Vote
+	VoteB *Vote
 }
 
 func (err *ErrVoteConflictingVotes) Error() string {
 	return fmt.Sprintf("conflicting votes from validator %X", err.VoteA.ValidatorAddress)
 }
 
-func NewConflictingVoteError(val *Validator, vote1, vote2 *Vote) *ErrVoteConflictingVotes {
+func NewConflictingVoteError(vote1, vote2 *Vote) *ErrVoteConflictingVotes {
 	return &ErrVoteConflictingVotes{
-		NewDuplicateVoteEvidence(vote1, vote2),
+		VoteA: vote1,
+		VoteB: vote2,
 	}
 }
 
@@ -47,14 +50,14 @@ type Address = crypto.Address
 // Vote represents a prevote, precommit, or commit vote from validators for
 // consensus.
 type Vote struct {
-	Type             SignedMsgType `json:"type"`
-	Height           int64         `json:"height"`
-	Round            int           `json:"round"`
-	BlockID          BlockID       `json:"block_id"` // zero if vote is nil.
-	Timestamp        time.Time     `json:"timestamp"`
-	ValidatorAddress Address       `json:"validator_address"`
-	ValidatorIndex   int           `json:"validator_index"`
-	Signature        []byte        `json:"signature"`
+	Type             tmproto.SignedMsgType `json:"type"`
+	Height           int64                 `json:"height"`
+	Round            int32                 `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
+	BlockID          BlockID               `json:"block_id"` // zero if vote is nil.
+	Timestamp        time.Time             `json:"timestamp"`
+	ValidatorAddress Address               `json:"validator_address"`
+	ValidatorIndex   int32                 `json:"validator_index"`
+	Signature        []byte                `json:"signature"`
 }
 
 // CommitSig converts the Vote to a CommitSig.
@@ -81,11 +84,21 @@ func (vote *Vote) CommitSig() CommitSig {
 	}
 }
 
-func (vote *Vote) SignBytes(chainID string) []byte {
-	bz, err := cdc.MarshalBinaryLengthPrefixed(CanonicalizeVote(chainID, vote))
+// VoteSignBytes returns the proto-encoding of the canonicalized Vote, for
+// signing. Panics is the marshaling fails.
+//
+// The encoded Protobuf message is varint length-prefixed (using MarshalDelimited)
+// for backwards-compatibility with the Amino encoding, due to e.g. hardware
+// devices that rely on this encoding.
+//
+// See CanonicalizeVote
+func VoteSignBytes(chainID string, vote *tmproto.Vote) []byte {
+	pb := CanonicalizeVote(chainID, vote)
+	bz, err := protoio.MarshalDelimited(&pb)
 	if err != nil {
 		panic(err)
 	}
+
 	return bz
 }
 
@@ -94,6 +107,17 @@ func (vote *Vote) Copy() *Vote {
 	return &voteCopy
 }
 
+// String returns a string representation of Vote.
+//
+// 1. validator index
+// 2. first 6 bytes of validator address
+// 3. height
+// 4. round,
+// 5. type byte
+// 6. type string
+// 7. first 6 bytes of block hash
+// 8. first 6 bytes of signature
+// 9. timestamp
 func (vote *Vote) String() string {
 	if vote == nil {
 		return nilVoteStr
@@ -101,9 +125,9 @@ func (vote *Vote) String() string {
 
 	var typeString string
 	switch vote.Type {
-	case PrevoteType:
+	case tmproto.PrevoteType:
 		typeString = "Prevote"
-	case PrecommitType:
+	case tmproto.PrecommitType:
 		typeString = "Precommit"
 	default:
 		panic("Unknown vote type")
@@ -126,8 +150,8 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 	if !bytes.Equal(pubKey.Address(), vote.ValidatorAddress) {
 		return ErrVoteInvalidValidatorAddress
 	}
-
-	if !pubKey.VerifyBytes(vote.SignBytes(chainID), vote.Signature) {
+	v := vote.ToProto()
+	if !pubKey.VerifySignature(VoteSignBytes(chainID, v), vote.Signature) {
 		return ErrVoteInvalidSignature
 	}
 	return nil
@@ -138,9 +162,11 @@ func (vote *Vote) ValidateBasic() error {
 	if !IsVoteTypeValid(vote.Type) {
 		return errors.New("invalid Type")
 	}
+
 	if vote.Height < 0 {
 		return errors.New("negative Height")
 	}
+
 	if vote.Round < 0 {
 		return errors.New("negative Round")
 	}
@@ -150,11 +176,13 @@ func (vote *Vote) ValidateBasic() error {
 	if err := vote.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("wrong BlockID: %v", err)
 	}
+
 	// BlockID.ValidateBasic would not err if we for instance have an empty hash but a
 	// non-empty PartsSetHeader:
 	if !vote.BlockID.IsZero() && !vote.BlockID.IsComplete() {
 		return fmt.Errorf("blockID must be either empty or complete, got: %v", vote.BlockID)
 	}
+
 	if len(vote.ValidatorAddress) != crypto.AddressSize {
 		return fmt.Errorf("expected ValidatorAddress size to be %d bytes, got %d bytes",
 			crypto.AddressSize,
@@ -167,9 +195,11 @@ func (vote *Vote) ValidateBasic() error {
 	if len(vote.Signature) == 0 {
 		return errors.New("signature is missing")
 	}
+
 	if len(vote.Signature) > MaxSignatureSize {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
+
 	return nil
 }
 
@@ -181,13 +211,13 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 	}
 
 	return &tmproto.Vote{
-		Type:             tmproto.SignedMsgType(vote.Type),
+		Type:             vote.Type,
 		Height:           vote.Height,
-		Round:            int64(vote.Round),
+		Round:            vote.Round,
 		BlockID:          vote.BlockID.ToProto(),
 		Timestamp:        vote.Timestamp,
 		ValidatorAddress: vote.ValidatorAddress,
-		ValidatorIndex:   int64(vote.ValidatorIndex),
+		ValidatorIndex:   vote.ValidatorIndex,
 		Signature:        vote.Signature,
 	}
 }
@@ -205,13 +235,13 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 	}
 
 	vote := new(Vote)
-	vote.Type = SignedMsgType(pv.Type)
+	vote.Type = pv.Type
 	vote.Height = pv.Height
-	vote.Round = int(pv.Round)
+	vote.Round = pv.Round
 	vote.BlockID = *blockID
 	vote.Timestamp = pv.Timestamp
 	vote.ValidatorAddress = pv.ValidatorAddress
-	vote.ValidatorIndex = int(pv.ValidatorIndex)
+	vote.ValidatorIndex = pv.ValidatorIndex
 	vote.Signature = pv.Signature
 
 	return vote, vote.ValidateBasic()

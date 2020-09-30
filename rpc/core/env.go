@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	dbm "github.com/tendermint/tm-db"
-
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
@@ -58,6 +56,8 @@ type transport interface {
 
 type peers interface {
 	AddPersistentPeers([]string) error
+	AddUnconditionalPeerIDs([]string) error
+	AddPrivatePeerIDs([]string) error
 	DialPeersAsync([]string) error
 	Peers() p2p.IPeerSet
 }
@@ -67,10 +67,11 @@ type peers interface {
 // to be setup once during startup.
 type Environment struct {
 	// external, thread safe interfaces
-	ProxyAppQuery proxy.AppConnQuery
+	ProxyAppQuery   proxy.AppConnQuery
+	ProxyAppMempool proxy.AppConnMempool
 
 	// interfaces defined in types and above
-	StateDB        dbm.DB
+	StateStore     sm.Store
 	BlockStore     sm.BlockStore
 	EvidencePool   sm.EvidencePool
 	ConsensusState Consensus
@@ -92,27 +93,33 @@ type Environment struct {
 
 //----------------------------------------------
 
-func validatePage(page, perPage, totalCount int) (int, error) {
+func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	if perPage < 1 {
 		panic(fmt.Sprintf("zero or negative perPage: %d", perPage))
 	}
 
-	if page == 0 {
-		return 1, nil // default
+	if pagePtr == nil { // no page parameter
+		return 1, nil
 	}
 
 	pages := ((totalCount - 1) / perPage) + 1
 	if pages == 0 {
 		pages = 1 // one page (even if it's empty)
 	}
-	if page < 0 || page > pages {
-		return 1, fmt.Errorf("page should be within [0, %d] range, given %d", pages, page)
+	page := *pagePtr
+	if page <= 0 || page > pages {
+		return 1, fmt.Errorf("page should be within [1, %d] range, given %d", pages, page)
 	}
 
 	return page, nil
 }
 
-func validatePerPage(perPage int) int {
+func validatePerPage(perPagePtr *int) int {
+	if perPagePtr == nil { // no per_page parameter
+		return defaultPerPage
+	}
+
+	perPage := *perPagePtr
 	if perPage < 1 {
 		return defaultPerPage
 	} else if perPage > maxPerPage {
@@ -143,7 +150,7 @@ func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
 		}
 		base := env.BlockStore.Base()
 		if height < base {
-			return 0, fmt.Errorf("height %v is not available, blocks pruned at height %v",
+			return 0, fmt.Errorf("height %v is not available, lowest height is %v",
 				height, base)
 		}
 		return height, nil

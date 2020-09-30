@@ -4,8 +4,8 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/clist"
 	mempl "github.com/tendermint/tendermint/mempool"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/proxy"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -45,25 +45,12 @@ func (emptyMempool) InitWAL() error { return nil }
 func (emptyMempool) CloseWAL()      {}
 
 //-----------------------------------------------------------------------------
-
-type emptyEvidencePool struct{}
-
-var _ sm.EvidencePool = emptyEvidencePool{}
-
-func (emptyEvidencePool) PendingEvidence(uint32) []types.Evidence { return nil }
-func (emptyEvidencePool) AddEvidence(types.Evidence) error        { return nil }
-func (emptyEvidencePool) Update(*types.Block, sm.State)           {}
-func (emptyEvidencePool) IsCommitted(types.Evidence) bool         { return false }
-func (emptyEvidencePool) IsPending(types.Evidence) bool           { return false }
-func (emptyEvidencePool) AddPOLC(types.ProofOfLockChange) error   { return nil }
-
-//-----------------------------------------------------------------------------
 // mockProxyApp uses ABCIResponses to give the right results.
 //
 // Useful because we don't want to call Commit() twice for the same block on
 // the real app.
 
-func newMockProxyApp(appHash []byte, abciResponses *sm.ABCIResponses) proxy.AppConnConsensus {
+func newMockProxyApp(appHash []byte, abciResponses *tmstate.ABCIResponses) proxy.AppConnConsensus {
 	clientCreator := proxy.NewLocalClientCreator(&mockProxyApp{
 		appHash:       appHash,
 		abciResponses: abciResponses,
@@ -81,13 +68,13 @@ type mockProxyApp struct {
 
 	appHash       []byte
 	txCount       int
-	abciResponses *sm.ABCIResponses
+	abciResponses *tmstate.ABCIResponses
 }
 
 func (mock *mockProxyApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
 	r := mock.abciResponses.DeliverTxs[mock.txCount]
 	mock.txCount++
-	if r == nil { //it could be nil because of amino unMarshall, it will cause an empty ResponseDeliverTx to become nil
+	if r == nil {
 		return abci.ResponseDeliverTx{}
 	}
 	return *r

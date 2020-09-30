@@ -2,7 +2,7 @@
 
 The documentation for Tendermint Core is hosted at:
 
-- https://docs.tendermint.com/master/
+- <https://docs.tendermint.com/master/>
 
 built from the files in this (`/docs`) directory for
 [master](https://github.com/tendermint/tendermint/tree/master/docs) respectively.
@@ -61,25 +61,25 @@ to send users to the GitHub.
 
 Make sure you are in the `docs` directory and run the following commands:
 
-```sh
+```bash
 rm -rf node_modules
 ```
 
 This command will remove old version of the visual theme and required packages. This step is optional.
 
-```sh
+```bash
 npm install
 ```
 
 Install the theme and all dependencies.
 
-```sh
+```bash
 npm run serve
 ```
 
 <!-- markdown-link-check-disable -->
 
-Run `pre` and `post` hooks and start a hot-reloading web-server. See output of this command for the URL (it is often https://localhost:8080).
+Run `pre` and `post` hooks and start a hot-reloading web-server. See output of this command for the URL (it is often <https://localhost:8080>).
 
 <!-- markdown-link-check-enable -->
 

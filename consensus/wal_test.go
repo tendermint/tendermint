@@ -46,7 +46,9 @@ func TestWALTruncate(t *testing.T) {
 	err = wal.Start()
 	require.NoError(t, err)
 	defer func() {
-		wal.Stop()
+		if err := wal.Stop(); err != nil {
+			t.Error(err)
+		}
 		// wait for the wal to finish shutting down so we
 		// can safely remove the directory
 		wal.Wait()
@@ -60,7 +62,9 @@ func TestWALTruncate(t *testing.T) {
 
 	time.Sleep(1 * time.Millisecond) //wait groupCheckDuration, make sure RotateFile run
 
-	wal.FlushAndSync()
+	if err := wal.FlushAndSync(); err != nil {
+		t.Error(err)
+	}
 
 	h := int64(50)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
@@ -82,6 +86,7 @@ func TestWALEncoderDecoder(t *testing.T) {
 	msgs := []TimedWALMessage{
 		{Time: now, Msg: EndHeightMessage{0}},
 		{Time: now, Msg: timeoutInfo{Duration: time.Second, Height: 1, Round: 1, Step: types.RoundStepPropose}},
+		{Time: now, Msg: tmtypes.EventDataRoundState{Height: 1, Round: 1, Step: ""}},
 	}
 
 	b := new(bytes.Buffer)
@@ -98,7 +103,6 @@ func TestWALEncoderDecoder(t *testing.T) {
 		dec := NewWALDecoder(b)
 		decoded, err := dec.Decode()
 		require.NoError(t, err)
-
 		assert.Equal(t, msg.Time.UTC(), decoded.Time)
 		assert.Equal(t, msg.Msg, decoded.Msg)
 	}
@@ -115,7 +119,9 @@ func TestWALWrite(t *testing.T) {
 	err = wal.Start()
 	require.NoError(t, err)
 	defer func() {
-		wal.Stop()
+		if err := wal.Stop(); err != nil {
+			t.Error(err)
+		}
 		// wait for the wal to finish shutting down so we
 		// can safely remove the directory
 		wal.Wait()
@@ -128,14 +134,17 @@ func TestWALWrite(t *testing.T) {
 		Part: &tmtypes.Part{
 			Index: 1,
 			Bytes: make([]byte, 1),
-			Proof: merkle.SimpleProof{
+			Proof: merkle.Proof{
 				Total:    1,
 				Index:    1,
 				LeafHash: make([]byte, maxMsgSizeBytes-30),
 			},
 		},
 	}
-	err = wal.Write(msg)
+
+	err = wal.Write(msgInfo{
+		Msg: msg,
+	})
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "msg is too big")
 	}
@@ -188,7 +197,9 @@ func TestWALPeriodicSync(t *testing.T) {
 
 	require.NoError(t, wal.Start())
 	defer func() {
-		wal.Stop()
+		if err := wal.Stop(); err != nil {
+			t.Error(err)
+		}
 		wal.Wait()
 	}()
 
@@ -233,7 +244,9 @@ func benchmarkWalDecode(b *testing.B, n int) {
 	enc := NewWALEncoder(buf)
 
 	data := nBytes(n)
-	enc.Encode(&TimedWALMessage{Msg: data, Time: time.Now().Round(time.Second).UTC()})
+	if err := enc.Encode(&TimedWALMessage{Msg: data, Time: time.Now().Round(time.Second).UTC()}); err != nil {
+		b.Error(err)
+	}
 
 	encoded := buf.Bytes()
 

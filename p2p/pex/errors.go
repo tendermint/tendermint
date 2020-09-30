@@ -15,6 +15,17 @@ func (err ErrAddrBookNonRoutable) Error() string {
 	return fmt.Sprintf("Cannot add non-routable address %v", err.Addr)
 }
 
+type errAddrBookOldAddressNewBucket struct {
+	Addr     *p2p.NetAddress
+	BucketID int
+}
+
+func (err errAddrBookOldAddressNewBucket) Error() string {
+	return fmt.Sprintf("failed consistency check!"+
+		" Cannot add pre-existing address %v into new bucket %v",
+		err.Addr, err.BucketID)
+}
+
 type ErrAddrBookSelf struct {
 	Addr *p2p.NetAddress
 }

@@ -22,7 +22,7 @@ func main() {
 			// We need a proper example of path and data
 			strings.HasPrefix(t.Name, "ABCI > /abci_query") ||
 			// We need to find a way to make a transaction before starting the tests,
-			// that hash should replace the dummy one in hte swagger file
+			// that hash should replace the dummy one in the openapi file
 			strings.HasPrefix(t.Name, "Info > /tx") {
 			t.Skip = true
 			fmt.Printf("%s Has been skipped\n", t.Name)

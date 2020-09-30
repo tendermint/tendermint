@@ -8,12 +8,12 @@ Official releases can be found [here](https://github.com/tendermint/tendermint/r
 
 The Dockerfile for tendermint is not expected to change in the near future. The master file used for all builds can be found [here](https://raw.githubusercontent.com/tendermint/tendermint/master/DOCKER/Dockerfile).
 
-Respective versioned files can be found https://raw.githubusercontent.com/tendermint/tendermint/vX.XX.XX/DOCKER/Dockerfile (replace the Xs with the version number).
+Respective versioned files can be found <https://raw.githubusercontent.com/tendermint/tendermint/vX.XX.XX/DOCKER/Dockerfile> (replace the Xs with the version number).
 
 ## Quick reference
 
-- **Where to get help:** https://tendermint.com/
-- **Where to file issues:** https://github.com/tendermint/tendermint/issues
+- **Where to get help:** <https://tendermint.com/>
+- **Where to file issues:** <https://github.com/tendermint/tendermint/issues>
 - **Supported Docker versions:** [the latest release](https://github.com/moby/moby/releases) (down to 1.6 on a best-effort basis)
 
 ## Tendermint
@@ -30,7 +30,7 @@ To get started developing applications, see the [application developers guide](h
 
 A quick example of a built-in app and Tendermint core in one container.
 
-```
+```sh
 docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint init
 docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint node --proxy_app=kvstore
 ```
@@ -39,7 +39,7 @@ docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint node --proxy_app
 
 To run a 4-node network, see the `Makefile` in the root of [the repo](https://github.com/tendermint/tendermint/blob/master/Makefile) and run:
 
-```
+```sh
 make build-linux
 make build-docker-localnode
 make localnet-start

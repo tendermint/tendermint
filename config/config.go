@@ -177,6 +177,9 @@ type BaseConfig struct { //nolint: maligned
 	//   - EXPERIMENTAL
 	//   - requires gcc
 	//   - use rocksdb build tag (go build -tags rocksdb)
+	// * badgerdb (uses github.com/dgraph-io/badger)
+	//   - EXPERIMENTAL
+	//   - use badgerdb build tag (go build -tags badgerdb)
 	DBBackend string `mapstructure:"db_backend"`
 
 	// Database directory
@@ -207,9 +210,6 @@ type BaseConfig struct { //nolint: maligned
 	// Mechanism to connect to the ABCI application: socket | grpc
 	ABCI string `mapstructure:"abci"`
 
-	// TCP or UNIX socket address for the profiling server to listen on
-	ProfListenAddress string `mapstructure:"prof_laddr"`
-
 	// If true, query the ABCI app on connecting to a new peer
 	// so the app can decide if we should keep the connection or not
 	FilterPeers bool `mapstructure:"filter_peers"` // false
@@ -227,7 +227,6 @@ func DefaultBaseConfig() BaseConfig {
 		ABCI:               "socket",
 		LogLevel:           DefaultPackageLogLevels(),
 		LogFormat:          LogFormatPlain,
-		ProfListenAddress:  "",
 		FastSyncMode:       true,
 		FilterPeers:        false,
 		DBBackend:          "goleveldb",
@@ -380,6 +379,9 @@ type RPCConfig struct {
 	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
 	// Otherwise, HTTP server is run.
 	TLSKeyFile string `mapstructure:"tls_key_file"`
+
+	// pprof listen address (https://golang.org/pkg/net/http/pprof)
+	PprofListenAddress string `mapstructure:"pprof_laddr"`
 }
 
 // DefaultRPCConfig returns a default configuration for the RPC server
@@ -642,14 +644,24 @@ func DefaultFuzzConnConfig() *FuzzConnConfig {
 
 // MempoolConfig defines the configuration options for the Tendermint mempool
 type MempoolConfig struct {
-	RootDir     string `mapstructure:"home"`
-	Recheck     bool   `mapstructure:"recheck"`
-	Broadcast   bool   `mapstructure:"broadcast"`
-	WalPath     string `mapstructure:"wal_dir"`
-	Size        int    `mapstructure:"size"`
-	MaxTxsBytes int64  `mapstructure:"max_txs_bytes"`
-	CacheSize   int    `mapstructure:"cache_size"`
-	MaxTxBytes  int    `mapstructure:"max_tx_bytes"`
+	RootDir   string `mapstructure:"home"`
+	Recheck   bool   `mapstructure:"recheck"`
+	Broadcast bool   `mapstructure:"broadcast"`
+	WalPath   string `mapstructure:"wal_dir"`
+	// Maximum number of transactions in the mempool
+	Size int `mapstructure:"size"`
+	// Limit the total size of all txs in the mempool.
+	// This only accounts for raw transactions (e.g. given 1MB transactions and
+	// max_txs_bytes=5MB, mempool will only accept 5 transactions).
+	MaxTxsBytes int64 `mapstructure:"max_txs_bytes"`
+	// Size of the cache (used to filter transactions we saw earlier) in transactions
+	CacheSize int `mapstructure:"cache_size"`
+	// Maximum size of a single transaction
+	// NOTE: the max size of a tx transmitted over the network is {max_tx_bytes}.
+	MaxTxBytes int `mapstructure:"max_tx_bytes"`
+	// Maximum size of a batch of transactions to send to a peer
+	// Including space needed by encoding (one varint per transaction).
+	MaxBatchBytes int `mapstructure:"max_batch_bytes"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -660,10 +672,11 @@ func DefaultMempoolConfig() *MempoolConfig {
 		WalPath:   "",
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
-		Size:        5000,
-		MaxTxsBytes: 1024 * 1024 * 1024, // 1GB
-		CacheSize:   10000,
-		MaxTxBytes:  1024 * 1024, // 1MB
+		Size:          5000,
+		MaxTxsBytes:   1024 * 1024 * 1024, // 1GB
+		CacheSize:     10000,
+		MaxTxBytes:    1024 * 1024,      // 1MB
+		MaxBatchBytes: 10 * 1024 * 1024, // 10MB
 	}
 }
 
@@ -699,6 +712,12 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	if cfg.MaxTxBytes < 0 {
 		return errors.New("max_tx_bytes can't be negative")
 	}
+	if cfg.MaxBatchBytes < 0 {
+		return errors.New("max_batch_bytes can't be negative")
+	}
+	if cfg.MaxBatchBytes <= cfg.MaxTxBytes {
+		return errors.New("max_batch_bytes can't be less or equal to max_tx_bytes")
+	}
 	return nil
 }
 
@@ -707,12 +726,13 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 
 // StateSyncConfig defines the configuration for the Tendermint state sync service
 type StateSyncConfig struct {
-	Enable      bool          `mapstructure:"enable"`
-	TempDir     string        `mapstructure:"temp_dir"`
-	RPCServers  []string      `mapstructure:"rpc_servers"`
-	TrustPeriod time.Duration `mapstructure:"trust_period"`
-	TrustHeight int64         `mapstructure:"trust_height"`
-	TrustHash   string        `mapstructure:"trust_hash"`
+	Enable        bool          `mapstructure:"enable"`
+	TempDir       string        `mapstructure:"temp_dir"`
+	RPCServers    []string      `mapstructure:"rpc_servers"`
+	TrustPeriod   time.Duration `mapstructure:"trust_period"`
+	TrustHeight   int64         `mapstructure:"trust_height"`
+	TrustHash     string        `mapstructure:"trust_hash"`
+	DiscoveryTime time.Duration `mapstructure:"discovery_time"`
 }
 
 func (cfg *StateSyncConfig) TrustHashBytes() []byte {
@@ -726,7 +746,10 @@ func (cfg *StateSyncConfig) TrustHashBytes() []byte {
 
 // DefaultStateSyncConfig returns a default configuration for the state sync service
 func DefaultStateSyncConfig() *StateSyncConfig {
-	return &StateSyncConfig{}
+	return &StateSyncConfig{
+		TrustPeriod:   168 * time.Hour,
+		DiscoveryTime: 15 * time.Second,
+	}
 }
 
 // TestFastSyncConfig returns a default configuration for the state sync service
@@ -809,13 +832,23 @@ type ConsensusConfig struct {
 	WalPath string `mapstructure:"wal_file"`
 	walFile string // overrides WalPath if set
 
-	TimeoutPropose        time.Duration `mapstructure:"timeout_propose"`
-	TimeoutProposeDelta   time.Duration `mapstructure:"timeout_propose_delta"`
-	TimeoutPrevote        time.Duration `mapstructure:"timeout_prevote"`
-	TimeoutPrevoteDelta   time.Duration `mapstructure:"timeout_prevote_delta"`
-	TimeoutPrecommit      time.Duration `mapstructure:"timeout_precommit"`
+	// How long we wait for a proposal block before prevoting nil
+	TimeoutPropose time.Duration `mapstructure:"timeout_propose"`
+	// How much timeout_propose increases with each round
+	TimeoutProposeDelta time.Duration `mapstructure:"timeout_propose_delta"`
+	// How long we wait after receiving +2/3 prevotes for “anything” (ie. not a single block or nil)
+	TimeoutPrevote time.Duration `mapstructure:"timeout_prevote"`
+	// How much the timeout_prevote increases with each round
+	TimeoutPrevoteDelta time.Duration `mapstructure:"timeout_prevote_delta"`
+	// How long we wait after receiving +2/3 precommits for “anything” (ie. not a single block or nil)
+	TimeoutPrecommit time.Duration `mapstructure:"timeout_precommit"`
+	// How much the timeout_precommit increases with each round
 	TimeoutPrecommitDelta time.Duration `mapstructure:"timeout_precommit_delta"`
-	TimeoutCommit         time.Duration `mapstructure:"timeout_commit"`
+	// How long we wait after committing a block, before starting on the new
+	// height (this gives us a chance to receive some more precommits, even
+	// though we already have +2/3).
+	// NOTE: when modifying, make sure to update time_iota_ms genesis parameter
+	TimeoutCommit time.Duration `mapstructure:"timeout_commit"`
 
 	// Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 	SkipTimeoutCommit bool `mapstructure:"skip_timeout_commit"`
@@ -827,6 +860,8 @@ type ConsensusConfig struct {
 	// Reactor sleep duration parameters
 	PeerGossipSleepDuration     time.Duration `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration time.Duration `mapstructure:"peer_query_maj23_sleep_duration"`
+
+	DoubleSignCheckHeight int64 `mapstructure:"double_sign_check_height"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
@@ -845,6 +880,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		CreateEmptyBlocksInterval:   0 * time.Second,
 		PeerGossipSleepDuration:     100 * time.Millisecond,
 		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
+		DoubleSignCheckHeight:       int64(0),
 	}
 }
 
@@ -857,10 +893,12 @@ func TestConsensusConfig() *ConsensusConfig {
 	cfg.TimeoutPrevoteDelta = 1 * time.Millisecond
 	cfg.TimeoutPrecommit = 10 * time.Millisecond
 	cfg.TimeoutPrecommitDelta = 1 * time.Millisecond
+	// NOTE: when modifying, make sure to update time_iota_ms (testGenesisFmt) in toml.go
 	cfg.TimeoutCommit = 10 * time.Millisecond
 	cfg.SkipTimeoutCommit = true
 	cfg.PeerGossipSleepDuration = 5 * time.Millisecond
 	cfg.PeerQueryMaj23SleepDuration = 250 * time.Millisecond
+	cfg.DoubleSignCheckHeight = int64(0)
 	return cfg
 }
 
@@ -870,21 +908,21 @@ func (cfg *ConsensusConfig) WaitForTxs() bool {
 }
 
 // Propose returns the amount of time to wait for a proposal
-func (cfg *ConsensusConfig) Propose(round int) time.Duration {
+func (cfg *ConsensusConfig) Propose(round int32) time.Duration {
 	return time.Duration(
 		cfg.TimeoutPropose.Nanoseconds()+cfg.TimeoutProposeDelta.Nanoseconds()*int64(round),
 	) * time.Nanosecond
 }
 
 // Prevote returns the amount of time to wait for straggler votes after receiving any +2/3 prevotes
-func (cfg *ConsensusConfig) Prevote(round int) time.Duration {
+func (cfg *ConsensusConfig) Prevote(round int32) time.Duration {
 	return time.Duration(
 		cfg.TimeoutPrevote.Nanoseconds()+cfg.TimeoutPrevoteDelta.Nanoseconds()*int64(round),
 	) * time.Nanosecond
 }
 
 // Precommit returns the amount of time to wait for straggler votes after receiving any +2/3 precommits
-func (cfg *ConsensusConfig) Precommit(round int) time.Duration {
+func (cfg *ConsensusConfig) Precommit(round int32) time.Duration {
 	return time.Duration(
 		cfg.TimeoutPrecommit.Nanoseconds()+cfg.TimeoutPrecommitDelta.Nanoseconds()*int64(round),
 	) * time.Nanosecond
@@ -942,6 +980,9 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 	if cfg.PeerQueryMaj23SleepDuration < 0 {
 		return errors.New("peer_query_maj23_sleep_duration can't be negative")
 	}
+	if cfg.DoubleSignCheckHeight < 0 {
+		return errors.New("double_sign_check_height can't be negative")
+	}
 	return nil
 }
 
@@ -964,31 +1005,12 @@ type TxIndexConfig struct {
 	//   2) "kv" (default) - the simplest possible indexer,
 	//      backed by key-value storage (defaults to levelDB; see DBBackend).
 	Indexer string `mapstructure:"indexer"`
-
-	// Comma-separated list of compositeKeys to index (by default the only key is "tx.hash")
-	//
-	// You can also index transactions by height by adding "tx.height" key here.
-	//
-	// It's recommended to index only a subset of keys due to possible memory
-	// bloat. This is, of course, depends on the indexer's DB and the volume of
-	// transactions.
-	IndexKeys string `mapstructure:"index_keys"`
-
-	// When set to true, tells indexer to index all compositeKeys (predefined keys:
-	// "tx.hash", "tx.height" and all keys from DeliverTx responses).
-	//
-	// Note this may be not desirable (see the comment above). IndexKeys has a
-	// precedence over IndexAllKeys (i.e. when given both, IndexKeys will be
-	// indexed).
-	IndexAllKeys bool `mapstructure:"index_all_keys"`
 }
 
 // DefaultTxIndexConfig returns a default configuration for the transaction indexer.
 func DefaultTxIndexConfig() *TxIndexConfig {
 	return &TxIndexConfig{
-		Indexer:      "kv",
-		IndexKeys:    "",
-		IndexAllKeys: false,
+		Indexer: "kv",
 	}
 }
 

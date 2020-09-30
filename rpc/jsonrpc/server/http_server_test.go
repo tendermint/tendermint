@@ -2,11 +2,12 @@ package server
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -16,7 +17,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/libs/log"
+	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
+
+type sampleResult struct {
+	Value string `json:"value"`
+}
 
 func TestMaxOpenConnections(t *testing.T) {
 	const max = 5 // max simultaneous connections
@@ -37,7 +43,7 @@ func TestMaxOpenConnections(t *testing.T) {
 	l, err := Listen("tcp://127.0.0.1:0", config)
 	require.NoError(t, err)
 	defer l.Close()
-	go Serve(l, mux, log.TestingLogger(), config)
+	go Serve(l, mux, log.TestingLogger(), config) //nolint:errcheck // ignore for tests
 
 	// Make N GET calls to the server.
 	attempts := max * 2
@@ -50,12 +56,10 @@ func TestMaxOpenConnections(t *testing.T) {
 			c := http.Client{Timeout: 3 * time.Second}
 			r, err := c.Get("http://" + l.Addr().String())
 			if err != nil {
-				t.Log(err)
 				atomic.AddInt32(&failed, 1)
 				return
 			}
 			defer r.Body.Close()
-			io.Copy(ioutil.Discard, r.Body)
 		}()
 	}
 	wg.Wait()
@@ -77,10 +81,20 @@ func TestServeTLS(t *testing.T) {
 		fmt.Fprint(w, "some body")
 	})
 
-	go ServeTLS(ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig())
+	chErr := make(chan error, 1)
+	go func() {
+		// FIXME This goroutine leaks
+		chErr <- ServeTLS(ln, mux, "test.crt", "test.key", log.TestingLogger(), DefaultConfig())
+	}()
+
+	select {
+	case err := <-chErr:
+		require.NoError(t, err)
+	case <-time.After(100 * time.Millisecond):
+	}
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // nolint: gosec
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	c := &http.Client{Transport: tr}
 	res, err := c.Get("https://" + ln.Addr().String())
@@ -91,4 +105,76 @@ func TestServeTLS(t *testing.T) {
 	body, err := ioutil.ReadAll(res.Body)
 	require.NoError(t, err)
 	assert.Equal(t, []byte("some body"), body)
+}
+
+func TestWriteRPCResponseHTTP(t *testing.T) {
+	id := types.JSONRPCIntID(-1)
+
+	// one argument
+	w := httptest.NewRecorder()
+	WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(id, &sampleResult{"hello"}))
+	resp := w.Result()
+	body, err := ioutil.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	require.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	assert.Equal(t, `{
+  "jsonrpc": "2.0",
+  "id": -1,
+  "result": {
+    "value": "hello"
+  }
+}`, string(body))
+
+	// multiple arguments
+	w = httptest.NewRecorder()
+	WriteRPCResponseHTTP(w,
+		types.NewRPCSuccessResponse(id, &sampleResult{"hello"}),
+		types.NewRPCSuccessResponse(id, &sampleResult{"world"}))
+	resp = w.Result()
+	body, err = ioutil.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	require.NoError(t, err)
+
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	assert.Equal(t, `[
+  {
+    "jsonrpc": "2.0",
+    "id": -1,
+    "result": {
+      "value": "hello"
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": -1,
+    "result": {
+      "value": "world"
+    }
+  }
+]`, string(body))
+}
+
+func TestWriteRPCResponseHTTPError(t *testing.T) {
+	w := httptest.NewRecorder()
+	WriteRPCResponseHTTPError(w,
+		http.StatusInternalServerError,
+		types.RPCInternalError(types.JSONRPCIntID(-1), errors.New("foo")))
+	resp := w.Result()
+	body, err := ioutil.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	assert.Equal(t, `{
+  "jsonrpc": "2.0",
+  "id": -1,
+  "error": {
+    "code": -32603,
+    "message": "Internal error",
+    "data": "foo"
+  }
+}`, string(body))
 }

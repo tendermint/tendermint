@@ -6,7 +6,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	amino "github.com/tendermint/go-amino"
+	"github.com/stretchr/testify/require"
+
+	tmcrypto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
 const ProofOpDomino = "test:domino"
@@ -27,22 +29,18 @@ func NewDominoOp(key, input, output string) DominoOp {
 	}
 }
 
-//nolint:unused
-func DominoOpDecoder(pop ProofOp) (ProofOperator, error) {
-	if pop.Type != ProofOpDomino {
-		panic("unexpected proof op type")
+func (dop DominoOp) ProofOp() tmcrypto.ProofOp {
+	dopb := tmcrypto.DominoOp{
+		Key:    dop.key,
+		Input:  dop.Input,
+		Output: dop.Output,
 	}
-	var op DominoOp // a bit strange as we'll discard this, but it works.
-	err := amino.UnmarshalBinaryLengthPrefixed(pop.Data, &op)
+	bz, err := dopb.Marshal()
 	if err != nil {
-		return nil, fmt.Errorf("decoding ProofOp.Data into SimpleValueOp: %w", err)
+		panic(err)
 	}
-	return NewDominoOp(string(pop.Key), op.Input, op.Output), nil
-}
 
-func (dop DominoOp) ProofOp() ProofOp {
-	bz := amino.MustMarshalBinaryLengthPrefixed(dop)
-	return ProofOp{
+	return tmcrypto.ProofOp{
 		Type: ProofOpDomino,
 		Key:  []byte(dop.key),
 		Data: bz,
@@ -71,8 +69,6 @@ func TestProofOperators(t *testing.T) {
 
 	// ProofRuntime setup
 	// TODO test this somehow.
-	// prt := NewProofRuntime()
-	// prt.RegisterOpDecoder(ProofOpDomino, DominoOpDecoder)
 
 	// ProofOperators setup
 	op1 := NewDominoOp("KEY1", "INPUT1", "INPUT2")
@@ -139,4 +135,66 @@ func TestProofOperators(t *testing.T) {
 
 func bz(s string) []byte {
 	return []byte(s)
+}
+
+func TestProofValidateBasic(t *testing.T) {
+	testCases := []struct {
+		testName      string
+		malleateProof func(*Proof)
+		errStr        string
+	}{
+		{"Good", func(sp *Proof) {}, ""},
+		{"Negative Total", func(sp *Proof) { sp.Total = -1 }, "negative Total"},
+		{"Negative Index", func(sp *Proof) { sp.Index = -1 }, "negative Index"},
+		{"Invalid LeafHash", func(sp *Proof) { sp.LeafHash = make([]byte, 10) },
+			"expected LeafHash size to be 32, got 10"},
+		{"Too many Aunts", func(sp *Proof) { sp.Aunts = make([][]byte, MaxAunts+1) },
+			"expected no more than 100 aunts, got 101"},
+		{"Invalid Aunt", func(sp *Proof) { sp.Aunts[0] = make([]byte, 10) },
+			"expected Aunts#0 size to be 32, got 10"},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			_, proofs := ProofsFromByteSlices([][]byte{
+				[]byte("apple"),
+				[]byte("watermelon"),
+				[]byte("kiwi"),
+			})
+			tc.malleateProof(proofs[0])
+			err := proofs[0].ValidateBasic()
+			if tc.errStr != "" {
+				assert.Contains(t, err.Error(), tc.errStr)
+			}
+		})
+	}
+}
+func TestVoteProtobuf(t *testing.T) {
+
+	_, proofs := ProofsFromByteSlices([][]byte{
+		[]byte("apple"),
+		[]byte("watermelon"),
+		[]byte("kiwi"),
+	})
+	testCases := []struct {
+		testName string
+		v1       *Proof
+		expPass  bool
+	}{
+		{"empty proof", &Proof{}, false},
+		{"failure nil", nil, false},
+		{"success", proofs[0], true},
+	}
+	for _, tc := range testCases {
+		pb := tc.v1.ToProto()
+
+		v, err := ProofFromProto(pb)
+		if tc.expPass {
+			require.NoError(t, err)
+			require.Equal(t, tc.v1, v, tc.testName)
+		} else {
+			require.Error(t, err)
+		}
+	}
 }

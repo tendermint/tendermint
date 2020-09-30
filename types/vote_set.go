@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/tendermint/tendermint/libs/bits"
+	tmjson "github.com/tendermint/tendermint/libs/json"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 const (
@@ -59,11 +61,11 @@ type P2PID string
 type VoteSet struct {
 	chainID       string
 	height        int64
-	round         int
-	signedMsgType SignedMsgType
+	round         int32
+	signedMsgType tmproto.SignedMsgType
 	valSet        *ValidatorSet
 
-	mtx           sync.Mutex
+	mtx           tmsync.Mutex
 	votesBitArray *bits.BitArray
 	votes         []*Vote                // Primary votes to share
 	sum           int64                  // Sum of voting power for seen votes, discounting conflicts
@@ -73,7 +75,8 @@ type VoteSet struct {
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
-func NewVoteSet(chainID string, height int64, round int, signedMsgType SignedMsgType, valSet *ValidatorSet) *VoteSet {
+func NewVoteSet(chainID string, height int64, round int32,
+	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
@@ -105,7 +108,7 @@ func (voteSet *VoteSet) GetHeight() int64 {
 }
 
 // Implements VoteSetReader.
-func (voteSet *VoteSet) GetRound() int {
+func (voteSet *VoteSet) GetRound() int32 {
 	if voteSet == nil {
 		return -1
 	}
@@ -204,7 +207,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	// Add vote and get conflicting vote if any.
 	added, conflicting := voteSet.addVerifiedVote(vote, blockKey, val.VotingPower)
 	if conflicting != nil {
-		return added, NewConflictingVoteError(val, conflicting, vote)
+		return added, NewConflictingVoteError(conflicting, vote)
 	}
 	if !added {
 		panic("Expected to add non-conflicting vote")
@@ -213,7 +216,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 }
 
 // Returns (vote, true) if vote exists for valIndex and blockKey.
-func (voteSet *VoteSet) getVote(valIndex int, blockKey string) (vote *Vote, ok bool) {
+func (voteSet *VoteSet) getVote(valIndex int32, blockKey string) (vote *Vote, ok bool) {
 	if existing := voteSet.votes[valIndex]; existing != nil && existing.BlockID.Key() == blockKey {
 		return existing, true
 	}
@@ -242,13 +245,13 @@ func (voteSet *VoteSet) addVerifiedVote(
 		// Replace vote if blockKey matches voteSet.maj23.
 		if voteSet.maj23 != nil && voteSet.maj23.Key() == blockKey {
 			voteSet.votes[valIndex] = vote
-			voteSet.votesBitArray.SetIndex(valIndex, true)
+			voteSet.votesBitArray.SetIndex(int(valIndex), true)
 		}
 		// Otherwise don't add it to voteSet.votes
 	} else {
 		// Add to voteSet.votes and incr .sum
 		voteSet.votes[valIndex] = vote
-		voteSet.votesBitArray.SetIndex(valIndex, true)
+		voteSet.votesBitArray.SetIndex(int(valIndex), true)
 		voteSet.sum += votingPower
 	}
 
@@ -363,7 +366,7 @@ func (voteSet *VoteSet) BitArrayByBlockID(blockID BlockID) *bits.BitArray {
 
 // NOTE: if validator has conflicting votes, returns "canonical" vote
 // Implements VoteSetReader.
-func (voteSet *VoteSet) GetByIndex(valIndex int) *Vote {
+func (voteSet *VoteSet) GetByIndex(valIndex int32) *Vote {
 	if voteSet == nil {
 		return nil
 	}
@@ -399,7 +402,7 @@ func (voteSet *VoteSet) IsCommit() bool {
 	if voteSet == nil {
 		return false
 	}
-	if voteSet.signedMsgType != PrecommitType {
+	if voteSet.signedMsgType != tmproto.PrecommitType {
 		return false
 	}
 	voteSet.mtx.Lock()
@@ -439,6 +442,9 @@ func (voteSet *VoteSet) TwoThirdsMajority() (blockID BlockID, ok bool) {
 //--------------------------------------------------------------------------------
 // Strings and JSON
 
+// String returns a string representation of VoteSet.
+//
+// See StringIndented.
 func (voteSet *VoteSet) String() string {
 	if voteSet == nil {
 		return "nil-VoteSet"
@@ -446,9 +452,18 @@ func (voteSet *VoteSet) String() string {
 	return voteSet.StringIndented("")
 }
 
+// StringIndented returns an indented String.
+//
+// Height Round Type
+// Votes
+// Votes bit array
+// 2/3+ majority
+//
+// See Vote#String.
 func (voteSet *VoteSet) StringIndented(indent string) string {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
+
 	voteStrings := make([]string, len(voteSet.votes))
 	for i, vote := range voteSet.votes {
 		if vote == nil {
@@ -475,7 +490,7 @@ func (voteSet *VoteSet) StringIndented(indent string) string {
 func (voteSet *VoteSet) MarshalJSON() ([]byte, error) {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
-	return cdc.MarshalJSON(VoteSetJSON{
+	return tmjson.Marshal(VoteSetJSON{
 		voteSet.voteStrings(),
 		voteSet.bitArrayString(),
 		voteSet.peerMaj23s,
@@ -525,6 +540,15 @@ func (voteSet *VoteSet) voteStrings() []string {
 	return voteStrings
 }
 
+// StringShort returns a short representation of VoteSet.
+//
+// 1. height
+// 2. round
+// 3. signed msg type
+// 4. first 2/3+ majority
+// 5. fraction of voted power
+// 6. votes bit array
+// 7. 2/3+ majority for each peer
 func (voteSet *VoteSet) StringShort() string {
 	if voteSet == nil {
 		return "nil-VoteSet"
@@ -546,11 +570,13 @@ func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
 //--------------------------------------------------------------------------------
 // Commit
 
-// MakeCommit constructs a Commit from the VoteSet.
-// Panics if the vote type is not PrecommitType or if
-// there's no +2/3 votes for a single block.
+// MakeCommit constructs a Commit from the VoteSet. It only includes precommits
+// for the block, which has 2/3+ majority, and nil.
+//
+// Panics if the vote type is not PrecommitType or if there's no +2/3 votes for
+// a single block.
 func (voteSet *VoteSet) MakeCommit() *Commit {
-	if voteSet.signedMsgType != PrecommitType {
+	if voteSet.signedMsgType != tmproto.PrecommitType {
 		panic("Cannot MakeCommit() unless VoteSet.Type is PrecommitType")
 	}
 	voteSet.mtx.Lock()
@@ -564,7 +590,12 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	// For every validator, get the precommit
 	commitSigs := make([]CommitSig, len(voteSet.votes))
 	for i, v := range voteSet.votes {
-		commitSigs[i] = v.CommitSig()
+		commitSig := v.CommitSig()
+		// if block ID exists but doesn't match, exclude sig
+		if commitSig.ForBlock() && !v.BlockID.Equals(*voteSet.maj23) {
+			commitSig = NewCommitSigAbsent()
+		}
+		commitSigs[i] = commitSig
 	}
 
 	return NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, commitSigs)
@@ -597,13 +628,13 @@ func newBlockVotes(peerMaj23 bool, numValidators int) *blockVotes {
 func (vs *blockVotes) addVerifiedVote(vote *Vote, votingPower int64) {
 	valIndex := vote.ValidatorIndex
 	if existing := vs.votes[valIndex]; existing == nil {
-		vs.bitArray.SetIndex(valIndex, true)
+		vs.bitArray.SetIndex(int(valIndex), true)
 		vs.votes[valIndex] = vote
 		vs.sum += votingPower
 	}
 }
 
-func (vs *blockVotes) getByIndex(index int) *Vote {
+func (vs *blockVotes) getByIndex(index int32) *Vote {
 	if vs == nil {
 		return nil
 	}
@@ -615,10 +646,10 @@ func (vs *blockVotes) getByIndex(index int) *Vote {
 // Common interface between *consensus.VoteSet and types.Commit
 type VoteSetReader interface {
 	GetHeight() int64
-	GetRound() int
+	GetRound() int32
 	Type() byte
 	Size() int
 	BitArray() *bits.BitArray
-	GetByIndex(int) *Vote
+	GetByIndex(int32) *Vote
 	IsCommit() bool
 }

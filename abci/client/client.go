@@ -6,6 +6,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/service"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 const (
@@ -84,7 +85,7 @@ type ReqRes struct {
 	*sync.WaitGroup
 	*types.Response // Not set atomically, so be sure to use WaitGroup.
 
-	mtx  sync.Mutex
+	mtx  tmsync.Mutex
 	done bool                  // Gets set to true once *after* WaitGroup.Done().
 	cb   func(*types.Response) // A single callback that may be set.
 }

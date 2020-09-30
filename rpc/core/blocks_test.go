@@ -10,6 +10,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -69,7 +70,7 @@ func TestBlockchainInfo(t *testing.T) {
 }
 
 func TestBlockResults(t *testing.T) {
-	results := &sm.ABCIResponses{
+	results := &tmstate.ABCIResponses{
 		DeliverTxs: []*abci.ResponseDeliverTx{
 			{Code: 0, Data: []byte{0x01}, Log: "ok"},
 			{Code: 0, Data: []byte{0x02}, Log: "ok"},
@@ -80,8 +81,9 @@ func TestBlockResults(t *testing.T) {
 	}
 
 	env = &Environment{}
-	env.StateDB = dbm.NewMemDB()
-	sm.SaveABCIResponses(env.StateDB, 100, results)
+	env.StateStore = sm.NewStore(dbm.NewMemDB())
+	err := env.StateStore.SaveABCIResponses(100, results)
+	require.NoError(t, err)
 	env.BlockStore = mockBlockStore{height: 100}
 
 	testCases := []struct {
@@ -120,6 +122,7 @@ type mockBlockStore struct {
 func (mockBlockStore) Base() int64                                       { return 1 }
 func (store mockBlockStore) Height() int64                               { return store.height }
 func (store mockBlockStore) Size() int64                                 { return store.height }
+func (mockBlockStore) LoadBaseMeta() *types.BlockMeta                    { return nil }
 func (mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta       { return nil }
 func (mockBlockStore) LoadBlock(height int64) *types.Block               { return nil }
 func (mockBlockStore) LoadBlockByHash(hash []byte) *types.Block          { return nil }

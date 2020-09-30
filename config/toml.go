@@ -72,7 +72,9 @@ const defaultConfigTemplate = `# This is a TOML config file.
 # "$HOME/.tendermint" by default, but could be changed via $TMHOME env variable
 # or --home cmd flag.
 
-##### main base config options #####
+#######################################################################
+###                   Main Base Config Options                      ###
+#######################################################################
 
 # TCP or UNIX socket address of the ABCI application,
 # or the name of an ABCI application compiled in with the Tendermint binary
@@ -86,7 +88,7 @@ moniker = "{{ .BaseConfig.Moniker }}"
 # and verifying their commits
 fast_sync = {{ .BaseConfig.FastSyncMode }}
 
-# Database backend: goleveldb | cleveldb | boltdb | rocksdb
+# Database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
 #   - pure go
 #   - stable
@@ -102,6 +104,9 @@ fast_sync = {{ .BaseConfig.FastSyncMode }}
 #   - EXPERIMENTAL
 #   - requires gcc
 #   - use rocksdb build tag (go build -tags rocksdb)
+# * badgerdb (uses github.com/dgraph-io/badger)
+#   - EXPERIMENTAL
+#   - use badgerdb build tag (go build -tags badgerdb)
 db_backend = "{{ .BaseConfig.DBBackend }}"
 
 # Database directory
@@ -134,16 +139,18 @@ node_key_file = "{{ js .BaseConfig.NodeKey }}"
 # Mechanism to connect to the ABCI application: socket | grpc
 abci = "{{ .BaseConfig.ABCI }}"
 
-# TCP or UNIX socket address for the profiling server to listen on
-prof_laddr = "{{ .BaseConfig.ProfListenAddress }}"
-
 # If true, query the ABCI app on connecting to a new peer
 # so the app can decide if we should keep the connection or not
 filter_peers = {{ .BaseConfig.FilterPeers }}
 
-##### advanced configuration options #####
 
-##### rpc server configuration options #####
+#######################################################################
+###                 Advanced Configuration Options                  ###
+#######################################################################
+
+#######################################################
+###       RPC Server Configuration Options          ###
+#######################################################
 [rpc]
 
 # TCP or UNIX socket address for the RPC server to listen on
@@ -222,7 +229,12 @@ tls_cert_file = "{{ .RPC.TLSCertFile }}"
 # Otherwise, HTTP server is run.
 tls_key_file = "{{ .RPC.TLSKeyFile }}"
 
-##### peer to peer configuration options #####
+# pprof listen address (https://golang.org/pkg/net/http/pprof)
+pprof_laddr = "{{ .RPC.PprofListenAddress }}"
+
+#######################################################
+###           P2P Configuration Options             ###
+#######################################################
 [p2p]
 
 # Address to listen for incoming connections
@@ -293,7 +305,9 @@ allow_duplicate_ip = {{ .P2P.AllowDuplicateIP }}
 handshake_timeout = "{{ .P2P.HandshakeTimeout }}"
 dial_timeout = "{{ .P2P.DialTimeout }}"
 
-##### mempool configuration options #####
+#######################################################
+###          Mempool Configurattion Option          ###
+#######################################################
 [mempool]
 
 recheck = {{ .Mempool.Recheck }}
@@ -312,10 +326,16 @@ max_txs_bytes = {{ .Mempool.MaxTxsBytes }}
 cache_size = {{ .Mempool.CacheSize }}
 
 # Maximum size of a single transaction.
-# NOTE: the max size of a tx transmitted over the network is {max_tx_bytes} + {amino overhead}.
+# NOTE: the max size of a tx transmitted over the network is {max_tx_bytes}.
 max_tx_bytes = {{ .Mempool.MaxTxBytes }}
 
-##### state sync configuration options #####
+# Maximum size of a batch of transactions to send to a peer
+# Including space needed by encoding (one varint per transaction).
+max_batch_bytes = {{ .Mempool.MaxBatchBytes }}
+
+#######################################################
+###         State Sync Configuration Options        ###
+#######################################################
 [statesync]
 # State sync rapidly bootstraps a new node by discovering, fetching, and restoring a state machine
 # snapshot from peers instead of fetching and replaying historical blocks. Requires some peers in
@@ -335,31 +355,53 @@ trust_height = {{ .StateSync.TrustHeight }}
 trust_hash = "{{ .StateSync.TrustHash }}"
 trust_period = "{{ .StateSync.TrustPeriod }}"
 
+# Time to spend discovering snapshots before initiating a restore.
+discovery_time = "{{ .StateSync.DiscoveryTime }}"
+
 # Temporary directory for state sync snapshot chunks, defaults to the OS tempdir (typically /tmp).
 # Will create a new, randomly named directory within, and remove it when done.
 temp_dir = "{{ .StateSync.TempDir }}"
 
-##### fast sync configuration options #####
+#######################################################
+###       Fast Sync Configuration Connections       ###
+#######################################################
 [fastsync]
 
 # Fast Sync version to use:
 #   1) "v0" (default) - the legacy fast sync implementation
 #   2) "v1" - refactor of v0 version for better testability
-#   3) "v2" - refactor of v1 version for better usability
+#   2) "v2" - complete redesign of v0, optimized for testability & readability
 version = "{{ .FastSync.Version }}"
 
-##### consensus configuration options #####
+#######################################################
+###         Consensus Configuration Options         ###
+#######################################################
 [consensus]
 
 wal_file = "{{ js .Consensus.WalPath }}"
 
+# How long we wait for a proposal block before prevoting nil
 timeout_propose = "{{ .Consensus.TimeoutPropose }}"
+# How much timeout_propose increases with each round
 timeout_propose_delta = "{{ .Consensus.TimeoutProposeDelta }}"
+# How long we wait after receiving +2/3 prevotes for “anything” (ie. not a single block or nil)
 timeout_prevote = "{{ .Consensus.TimeoutPrevote }}"
+# How much the timeout_prevote increases with each round
 timeout_prevote_delta = "{{ .Consensus.TimeoutPrevoteDelta }}"
+# How long we wait after receiving +2/3 precommits for “anything” (ie. not a single block or nil)
 timeout_precommit = "{{ .Consensus.TimeoutPrecommit }}"
+# How much the timeout_precommit increases with each round
 timeout_precommit_delta = "{{ .Consensus.TimeoutPrecommitDelta }}"
+# How long we wait after committing a block, before starting on the new
+# height (this gives us a chance to receive some more precommits, even
+# though we already have +2/3).
 timeout_commit = "{{ .Consensus.TimeoutCommit }}"
+
+# How many blocks to look back to check existence of the node's consensus votes before joining consensus
+# When non-zero, the node will panic upon restart
+# if the same consensus key was used to sign {double_sign_check_height} last blocks.
+# So, validators should stop the state machine, wait for some blocks, and then restart the state machine to avoid panic.
+double_sign_check_height = {{ .Consensus.DoubleSignCheckHeight }}
 
 # Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 skip_timeout_commit = {{ .Consensus.SkipTimeoutCommit }}
@@ -372,39 +414,25 @@ create_empty_blocks_interval = "{{ .Consensus.CreateEmptyBlocksInterval }}"
 peer_gossip_sleep_duration = "{{ .Consensus.PeerGossipSleepDuration }}"
 peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 
-##### transactions indexer configuration options #####
+#######################################################
+###   Transaction Indexer Configuration Options     ###
+#######################################################
 [tx_index]
 
 # What indexer to use for transactions
 #
+# The application will set which txs to index. In some cases a node operator will be able
+# to decide which txs to index based on configuration set in the application.
+#
 # Options:
 #   1) "null"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+# 		- When "kv" is chosen "tx.height" and "tx.hash" will always be indexed.
 indexer = "{{ .TxIndex.Indexer }}"
 
-# Comma-separated list of compositeKeys to index (by default the only key is "tx.hash")
-# Remember that Event has the following structure: type.key
-# type: [
-#  key: value,
-#  ...
-# ]
-#
-# You can also index transactions by height by adding "tx.height" key here.
-#
-# It's recommended to index only a subset of keys due to possible memory
-# bloat. This is, of course, depends on the indexer's DB and the volume of
-# transactions.
-index_keys = "{{ .TxIndex.IndexKeys }}"
-
-# When set to true, tells indexer to index all compositeKeys (predefined keys:
-# "tx.hash", "tx.height" and all keys from DeliverTx responses).
-#
-# Note this may be not desirable (see the comment above). IndexKeys has a
-# precedence over IndexAllKeys (i.e. when given both, IndexKeys will be
-# indexed).
-index_all_keys = {{ .TxIndex.IndexAllKeys }}
-
-##### instrumentation configuration options #####
+#######################################################
+###       Instrumentation Configuration Options     ###
+#######################################################
 [instrumentation]
 
 # When true, Prometheus metrics are served under /metrics on
@@ -473,6 +501,25 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 var testGenesisFmt = `{
   "genesis_time": "2018-10-10T08:20:13.695936996Z",
   "chain_id": "%s",
+  "initial_height": "1",
+	"consensus_params": {
+		"block": {
+			"max_bytes": "22020096",
+			"max_gas": "-1",
+			"time_iota_ms": "10"
+		},
+		"evidence": {
+			"max_age_num_blocks": "100000",
+			"max_age_duration": "172800000000000",
+			"max_num": 50
+		},
+		"validator": {
+			"pub_key_types": [
+				"ed25519"
+			]
+		},
+		"version": {}
+	},
   "validators": [
     {
       "pub_key": {
@@ -500,6 +547,6 @@ var testPrivValidatorKey = `{
 
 var testPrivValidatorState = `{
   "height": "0",
-  "round": "0",
+  "round": 0,
   "step": 0
 }`

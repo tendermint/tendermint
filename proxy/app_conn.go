@@ -5,7 +5,7 @@ import (
 	"github.com/tendermint/tendermint/abci/types"
 )
 
-//go:generate mockery -case underscore -name AppConnConsensus|AppConnMempool|AppConnQuery|AppConnSnapshot
+//go:generate mockery --case underscore --name AppConnConsensus|AppConnMempool|AppConnQuery|AppConnSnapshot
 
 //----------------------------------------------------------------------------------------
 // Enforce which abci msgs can be sent on a connection at the type level
@@ -27,6 +27,7 @@ type AppConnMempool interface {
 	Error() error
 
 	CheckTxAsync(types.RequestCheckTx) *abcicli.ReqRes
+	CheckTxSync(types.RequestCheckTx) (*types.ResponseCheckTx, error)
 
 	FlushAsync() *abcicli.ReqRes
 	FlushSync() error
@@ -123,6 +124,10 @@ func (app *appConnMempool) FlushSync() error {
 
 func (app *appConnMempool) CheckTxAsync(req types.RequestCheckTx) *abcicli.ReqRes {
 	return app.appConn.CheckTxAsync(req)
+}
+
+func (app *appConnMempool) CheckTxSync(req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+	return app.appConn.CheckTxSync(req)
 }
 
 //------------------------------------------------

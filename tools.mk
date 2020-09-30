@@ -68,7 +68,7 @@ $(CERTSTRAP):
 protobuf: $(PROTOBUF)
 $(PROTOBUF):
 	@echo "Get GoGo Protobuf"
-	@go get github.com/gogo/protobuf/protoc-gen-gogo@v1.3.1
+	@go get github.com/gogo/protobuf/protoc-gen-gogofaster@v1.3.1
 .PHONY: protobuf
 
 goodman: $(GOODMAN)

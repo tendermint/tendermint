@@ -9,43 +9,43 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 var (
-	valEd25519   = []string{ABCIPubKeyTypeEd25519}
-	valSecp256k1 = []string{ABCIPubKeyTypeSecp256k1}
+	valEd25519 = []string{ABCIPubKeyTypeEd25519}
 )
 
 func TestConsensusParamsValidation(t *testing.T) {
 	testCases := []struct {
-		params ConsensusParams
+		params tmproto.ConsensusParams
 		valid  bool
 	}{
 		// test block params
-		0: {makeParams(1, 0, 10, 1, 0, valEd25519), true},
-		1: {makeParams(0, 0, 10, 1, 0, valEd25519), false},
-		2: {makeParams(47*1024*1024, 0, 10, 1, 0, valEd25519), true},
-		3: {makeParams(10, 0, 10, 1, 0, valEd25519), true},
-		4: {makeParams(100*1024*1024, 0, 10, 1, 0, valEd25519), true},
-		5: {makeParams(101*1024*1024, 0, 10, 1, 0, valEd25519), false},
-		6: {makeParams(1024*1024*1024, 0, 10, 1, 0, valEd25519), false},
+		0: {makeParams(1, 0, 10, 2, 0, valEd25519), true},
+		1: {makeParams(0, 0, 10, 2, 0, valEd25519), false},
+		2: {makeParams(47*1024*1024, 0, 10, 2, 0, valEd25519), true},
+		3: {makeParams(10, 0, 10, 2, 0, valEd25519), true},
+		4: {makeParams(100*1024*1024, 0, 10, 2, 0, valEd25519), true},
+		5: {makeParams(101*1024*1024, 0, 10, 2, 0, valEd25519), false},
+		6: {makeParams(1024*1024*1024, 0, 10, 2, 0, valEd25519), false},
 		7: {makeParams(1024*1024*1024, 0, 10, -1, 0, valEd25519), false},
-		8: {makeParams(1, 0, -10, 1, 0, valEd25519), false},
+		8: {makeParams(1, 0, -10, 2, 0, valEd25519), false},
 		// test evidence params
 		9:  {makeParams(1, 0, 10, 0, 0, valEd25519), false},
-		10: {makeParams(1, 0, 10, 1, 1, valEd25519), false},
-		11: {makeParams(1000, 0, 10, 1, 1, valEd25519), true},
+		10: {makeParams(1, 0, 10, 2, 1, valEd25519), false},
+		11: {makeParams(1000, 0, 10, 2, 1, valEd25519), true},
 		12: {makeParams(1, 0, 10, -1, 0, valEd25519), false},
 		// test no pubkey type provided
-		13: {makeParams(1, 0, 10, 1, 0, []string{}), false},
+		13: {makeParams(1, 0, 10, 2, 0, []string{}), false},
 		// test invalid pubkey type provided
-		14: {makeParams(1, 0, 10, 1, 0, []string{"potatoes make good pubkeys"}), false},
+		14: {makeParams(1, 0, 10, 2, 0, []string{"potatoes make good pubkeys"}), false},
 	}
 	for i, tc := range testCases {
 		if tc.valid {
-			assert.NoErrorf(t, tc.params.Validate(), "expected no error for valid params (#%d)", i)
+			assert.NoErrorf(t, ValidateConsensusParams(tc.params), "expected no error for valid params (#%d)", i)
 		} else {
-			assert.Errorf(t, tc.params.Validate(), "expected error for non valid params (#%d)", i)
+			assert.Errorf(t, ValidateConsensusParams(tc.params), "expected error for non valid params (#%d)", i)
 		}
 	}
 }
@@ -56,26 +56,26 @@ func makeParams(
 	evidenceAge int64,
 	maxEvidence uint32,
 	pubkeyTypes []string,
-) ConsensusParams {
-	return ConsensusParams{
-		Block: BlockParams{
+) tmproto.ConsensusParams {
+	return tmproto.ConsensusParams{
+		Block: tmproto.BlockParams{
 			MaxBytes:   blockBytes,
 			MaxGas:     blockGas,
 			TimeIotaMs: blockTimeIotaMs,
 		},
-		Evidence: EvidenceParams{
+		Evidence: tmproto.EvidenceParams{
 			MaxAgeNumBlocks: evidenceAge,
 			MaxAgeDuration:  time.Duration(evidenceAge),
 			MaxNum:          maxEvidence,
 		},
-		Validator: ValidatorParams{
+		Validator: tmproto.ValidatorParams{
 			PubKeyTypes: pubkeyTypes,
 		},
 	}
 }
 
 func TestConsensusParamsHash(t *testing.T) {
-	params := []ConsensusParams{
+	params := []tmproto.ConsensusParams{
 		makeParams(4, 2, 10, 3, 1, valEd25519),
 		makeParams(1, 4, 10, 3, 1, valEd25519),
 		makeParams(1, 2, 10, 4, 1, valEd25519),
@@ -88,7 +88,7 @@ func TestConsensusParamsHash(t *testing.T) {
 
 	hashes := make([][]byte, len(params))
 	for i := range params {
-		hashes[i] = params[i].Hash()
+		hashes[i] = HashConsensusParams(params[i])
 	}
 
 	// make sure there are no duplicates...
@@ -103,9 +103,9 @@ func TestConsensusParamsHash(t *testing.T) {
 
 func TestConsensusParamsUpdate(t *testing.T) {
 	testCases := []struct {
-		params        ConsensusParams
+		params        tmproto.ConsensusParams
 		updates       *abci.ConsensusParams
-		updatedParams ConsensusParams
+		updatedParams tmproto.ConsensusParams
 	}{
 		// empty updates
 		{
@@ -121,19 +121,30 @@ func TestConsensusParamsUpdate(t *testing.T) {
 					MaxBytes: 100,
 					MaxGas:   200,
 				},
-				Evidence: &abci.EvidenceParams{
+				Evidence: &tmproto.EvidenceParams{
 					MaxAgeNumBlocks: 300,
 					MaxAgeDuration:  time.Duration(300),
 					MaxNum:          50,
 				},
-				Validator: &abci.ValidatorParams{
-					PubKeyTypes: valSecp256k1,
+				Validator: &tmproto.ValidatorParams{
+					PubKeyTypes: valEd25519,
 				},
 			},
-			makeParams(100, 200, 10, 300, 50, valSecp256k1),
+			makeParams(100, 200, 10, 300, 50, valEd25519),
 		},
 	}
 	for _, tc := range testCases {
-		assert.Equal(t, tc.updatedParams, tc.params.Update(tc.updates))
+		assert.Equal(t, tc.updatedParams, UpdateConsensusParams(tc.params, tc.updates))
 	}
+}
+
+func TestConsensusParamsUpdate_AppVersion(t *testing.T) {
+	params := makeParams(1, 2, 10, 3, 0, valEd25519)
+
+	assert.EqualValues(t, 0, params.Version.AppVersion)
+
+	updated := UpdateConsensusParams(params,
+		&abci.ConsensusParams{Version: &tmproto.VersionParams{AppVersion: 1}})
+
+	assert.EqualValues(t, 1, updated.Version.AppVersion)
 }

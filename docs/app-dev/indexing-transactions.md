@@ -4,8 +4,7 @@ order: 6
 
 # Indexing Transactions
 
-Tendermint allows you to index transactions and later query or subscribe
-to their results.
+Tendermint allows you to index transactions and later query or subscribe to their results.
 
 Events can be used to index transactions and blocks according to what happened
 during their execution. Note that the set of events returned for a block from
@@ -14,9 +13,13 @@ type, only the key-value pairs defined in `EndBlock` are used.
 
 Each event contains a type and a list of attributes, which are key-value pairs
 denoting something about what happened during the method's execution. For more
-details on `Events`, see the [ABCI]https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#events) documentation.
+details on `Events`, see the
+[ABCI](https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#events)
+documentation.
 
-An Event has a composite key associated with it. A `compositeKey` is constructed by its type and key separated by a dot.
+An Event has a composite key associated with it. A `compositeKey` is
+constructed by its type and key separated by a dot.
+
 For example:
 
 ```json
@@ -39,34 +42,20 @@ Let's take a look at the `[tx_index]` config section:
 #   1) "null"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 indexer = "kv"
-
-# Comma-separated list of composite keys to index (by default the only key is "tx.hash")
-#
-# You can also index transactions by height by adding "tx.height" key here.
-#
-# It's recommended to index only a subset of keys due to possible memory
-# bloat. This is, of course, depends on the indexer's DB and the volume of
-# transactions.
-index_keys = ""
-
-# When set to true, tells indexer to index all compositeKeys (predefined keys:
-# "tx.hash", "tx.height" and all keys from DeliverTx responses).
-#
-# Note this may be not desirable (see the comment above). Indexkeys has a
-# precedence over IndexAllKeys (i.e. when given both, IndexKeys will be
-# indexed).
-index_all_keys = false
 ```
 
 By default, Tendermint will index all transactions by their respective
-hashes using an embedded simple indexer. Note, we are planning to add
-more options in the future (e.g., PostgreSQL indexer).
+hashes and height using an embedded simple indexer.
+
+You can turn off indexing completely by setting `tx_index` to `null`.
 
 ## Adding Events
 
-In your application's `DeliverTx` method, add the `Events` field with pairs of
-UTF-8 encoded strings (e.g. "transfer.sender": "Bob", "transfer.recipient": "Alice",
-"transfer.balance": "100").
+Applications are free to define which events to index. Tendermint does not
+expose functionality to define which events to index and which to ignore. In
+your application's `DeliverTx` method, add the `Events` field with pairs of
+UTF-8 encoded strings (e.g. "transfer.sender": "Bob", "transfer.recipient":
+"Alice", "transfer.balance": "100").
 
 Example:
 
@@ -77,9 +66,9 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Resul
         {
             Type: "transfer",
             Attributes: []abci.EventAttribute{
-                {Key: []byte("sender"), Value: []byte("Bob")},
-                {Key: []byte("recipient"), Value: []byte("Alice")},
-                {Key: []byte("balance"), Value: []byte("100")},
+                {Key: []byte("sender"), Value: []byte("Bob"), Index: true},
+                {Key: []byte("recipient"), Value: []byte("Alice"), Index: true},
+                {Key: []byte("balance"), Value: []byte("100"), Index: true},
                 {Key: []byte("note"), Value: []byte("nothing"), Index: true},
             },
         },
@@ -88,25 +77,14 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Resul
 }
 ```
 
-If you want Tendermint to only index transactions by "transfer.sender" event type,
-in the config set `tx_index.index_tags="transfer.sender"`. If you to index all events,
-set `index_all_tags=true`
-
-Note, there are a few predefined event types:
-
-- `tx.hash` (transaction's hash)
-- `tx.height` (height of the block transaction was committed in)
-
-Tendermint will throw a warning if you try to use any of the above keys.
-
-The index will be added if the `Index` field of attribute is set to true. In above example, querying
-using `transfer.note` will work.
+The transaction will be indexed (if the indexer is not `null`) with a certain attribute if the attribute's `Index` field is set to `true`. 
+In the above example, all attributes will be indexed.
 
 ## Querying Transactions
 
 You can query the transaction results by calling `/tx_search` RPC endpoint:
 
-```shell
+```bash
 curl "localhost:26657/tx_search?query=\"account.name='igor'\"&prove=true"
 ```
 

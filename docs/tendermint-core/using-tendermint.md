@@ -20,7 +20,7 @@ this by setting the `TMHOME` environment variable.
 
 Initialize the root directory by running:
 
-```
+```sh
 tendermint init
 ```
 
@@ -29,9 +29,9 @@ genesis file (`genesis.json`) containing the associated public key, in
 `$TMHOME/config`. This is all that's necessary to run a local testnet
 with one validator.
 
-For more elaborate initialization, see the tesnet command:
+For more elaborate initialization, see the testnet command:
 
-```
+```sh
 tendermint testnet --help
 ```
 
@@ -44,26 +44,46 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 #### Fields
 
 - `genesis_time`: Official time of blockchain start.
-- `chain_id`: ID of the blockchain. This must be unique for
-  every blockchain. If your testnet blockchains do not have unique
+- `chain_id`: ID of the blockchain. **This must be unique for
+  every blockchain.** If your testnet blockchains do not have unique
   chain IDs, you will have a bad time. The ChainID must be less than 50 symbols.
-- `consensus_params`
-  - `block`
-    - `time_iota_ms`: Minimum time increment between consecutive blocks (in
+- `initial_height`: Height at which Tendermint should begin at. If a blockchain is conducting a network upgrade, 
+    starting from the stopped height brings uniqueness to previous heights. 
+- `consensus_params` [spec](https://github.com/tendermint/spec/blob/master/spec/core/state.md#consensusparams)
+    - `block`
+        - `max_bytes`: Max block size, in bytes.
+        - `max_gas`: Max gas per block.
+        - `time_iota_ms`: Minimum time increment between consecutive blocks (in
       milliseconds). If the block header timestamp is ahead of the system clock,
       decrease this value.
+    - `evidence`
+        - `max_age_num_blocks`: Max age of evidence, in blocks. The basic formula
+      for calculating this is: MaxAgeDuration / {average block time}.
+        - `max_age_duration`: Max age of evidence, in time. It should correspond
+      with an app's "unbonding period" or other similar mechanism for handling
+      [Nothing-At-Stake
+      attacks](https://github.com/ethereum/wiki/wiki/Proof-of-Stake-FAQ#what-is-the-nothing-at-stake-problem-and-how-can-it-be-fixed).
+        - `max_num`: This sets the maximum number of evidence that can be committed
+      in a single block. and should fall comfortably under the max block
+      bytes when we consider the size of each evidence.
+    - `validator`
+        - `pub_key_types`: Public key types validators can use.
+    - `version`
+        - `app_version`: ABCI application version.
 - `validators`: List of initial validators. Note this may be overridden entirely by the
   application, and may be left empty to make explicit that the
   application will initialize the validator set with ResponseInitChain.
-  - `pub_key`: The first element specifies the `pub_key` type. 1
+    - `pub_key`: The first element specifies the `pub_key` type. 1
     == Ed25519. The second element are the pubkey bytes.
-  - `power`: The validator's voting power.
-  - `name`: Name of the validator (optional).
+    - `power`: The validator's voting power.
+    - `name`: Name of the validator (optional).
 - `app_hash`: The expected application hash (as returned by the
   `ResponseInfo` ABCI message) upon genesis. If the app's hash does
   not match, Tendermint will panic.
 - `app_state`: The application state (e.g. initial distribution
   of tokens).
+
+> :warning: **ChainID must be unique to every blockchain. Reusing old chainID can cause issues**
 
 #### Sample genesis.json
 
@@ -71,6 +91,7 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 {
   "genesis_time": "2020-04-21T11:17:42.341227868Z",
   "chain_id": "test-chain-ROp9KF",
+  "initial_height": "0",
   "consensus_params": {
     "block": {
       "max_bytes": "22020096",
@@ -79,7 +100,8 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
     },
     "evidence": {
       "max_age_num_blocks": "100000",
-      "max_age_duration": "172800000000000"
+      "max_age_duration": "172800000000000",
+      "max_num": 50,
     },
     "validator": {
       "pub_key_types": [
@@ -106,7 +128,7 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 
 To run a Tendermint node, use:
 
-```sh
+```bash
 tendermint node
 ```
 
@@ -115,7 +137,7 @@ By default, Tendermint will try to connect to an ABCI application on
 another window. If you don't, kill Tendermint and run an in-process version of
 the `kvstore` app:
 
-```sh
+```bash
 tendermint node --proxy_app=kvstore
 ```
 
@@ -129,7 +151,7 @@ in-process with Tendermint if it's written in Go. If your app is not written in
 Go, run it in another process, and use the `--proxy_app` flag to specify the
 address of the socket it is listening on, for instance:
 
-```sh
+```bash
 tendermint node --proxy_app=/var/run/abci.sock
 ```
 
@@ -140,33 +162,28 @@ You can find out what flags are supported by running `tendermint node --help`.
 To send a transaction, use `curl` to make requests to the Tendermint RPC
 server, for example:
 
-```
+```sh
 curl http://localhost:26657/broadcast_tx_commit?tx=\"abcd\"
 ```
 
 We can see the chain's status at the `/status` end-point:
 
-```
+```sh
 curl http://localhost:26657/status | json_pp
 ```
 
 and the `latest_app_hash` in particular:
 
-```
+```sh
 curl http://localhost:26657/status | json_pp | grep latest_app_hash
 ```
 
-<!-- markdown-link-check-disable -->
-
-Visit http://localhost:26657 in your browser to see the list of other
+Visit `http://localhost:26657` in your browser to see the list of other
 endpoints. Some take no arguments (like `/status`), while others specify
 the argument name and use `_` as a placeholder.
 
-<!-- markdown-link-check-enable -->
 
-::: tip
-Find the RPC Documentation [here](https://docs.tendermint.com/master/rpc/)
-:::
+> TIP: Find the RPC Documentation [here](https://docs.tendermint.com/master/rpc/)
 
 ### Formatting
 
@@ -175,24 +192,24 @@ taken into account:
 
 With `GET`:
 
-To send a UTF8 string byte array, quote the value of the tx pramater:
+To send a UTF8 string byte array, quote the value of the tx parameter:
 
-```
+```sh
 curl 'http://localhost:26657/broadcast_tx_commit?tx="hello"'
 ```
 
 which sends a 5 byte transaction: "h e l l o" \[68 65 6c 6c 6f\].
 
-Note the URL must be wrapped with single quoes, else bash will ignore
+Note the URL must be wrapped with single quotes, else bash will ignore
 the double quotes. To avoid the single quotes, escape the double quotes:
 
-```
+```sh
 curl http://localhost:26657/broadcast_tx_commit?tx=\"hello\"
 ```
 
 Using a special character:
 
-```
+```sh
 curl 'http://localhost:26657/broadcast_tx_commit?tx="€5"'
 ```
 
@@ -200,7 +217,7 @@ sends a 4 byte transaction: "€5" (UTF8) \[e2 82 ac 35\].
 
 To send as raw hex, omit quotes AND prefix the hex string with `0x`:
 
-```
+```sh
 curl http://localhost:26657/broadcast_tx_commit?tx=0x01020304
 ```
 
@@ -208,7 +225,7 @@ which sends a 4 byte transaction: \[01 02 03 04\].
 
 With `POST` (using `json`), the raw hex must be `base64` encoded:
 
-```
+```sh
 curl --data-binary '{"jsonrpc":"2.0","id":"anything","method":"broadcast_tx_commit","params": {"tx": "AQIDBA=="}}' -H 'content-type:text/plain;' http://localhost:26657
 ```
 
@@ -218,14 +235,13 @@ Note that raw hex cannot be used in `POST` transactions.
 
 ## Reset
 
-::: warning
-**UNSAFE** Only do this in development and only if you can
+> :warning: **UNSAFE** Only do this in development and only if you can
 afford to lose all blockchain data!
-:::
+
 
 To reset a blockchain, stop the node and run:
 
-```
+```sh
 tendermint unsafe_reset_all
 ```
 
@@ -246,7 +262,7 @@ Some fields from the config file can be overwritten with flags.
 
 ## No Empty Blocks
 
-While the default behaviour of `tendermint` is still to create blocks
+While the default behavior of `tendermint` is still to create blocks
 approximately once per second, it is possible to disable empty blocks or
 set a block creation interval. In the former case, blocks will be
 created when there are new transactions or when the AppHash changes.
@@ -255,13 +271,13 @@ To configure Tendermint to not produce empty blocks unless there are
 transactions or the app hash changes, run Tendermint with this
 additional flag:
 
-```
+```sh
 tendermint node --consensus.create_empty_blocks=false
 ```
 
 or set the configuration via the `config.toml` file:
 
-```
+```toml
 [consensus]
 create_empty_blocks = false
 ```
@@ -272,13 +288,13 @@ empty blocks requires the config option to be set to `false`.
 The block interval setting allows for a delay (in time.Duration format [ParseDuration](https://golang.org/pkg/time/#ParseDuration)) between the
 creation of each new empty block. It can be set with this additional flag:
 
-```
+```sh
 --consensus.create_empty_blocks_interval="5s"
 ```
 
 or set the configuration via the `config.toml` file:
 
-```
+```toml
 [consensus]
 create_empty_blocks_interval = "5s"
 ```
@@ -298,7 +314,7 @@ eventually included in a block.
 Since there are multiple phases to processing a transaction, we offer
 multiple endpoints to broadcast a transaction:
 
-```
+```md
 /broadcast_tx_async
 /broadcast_tx_sync
 /broadcast_tx_commit
@@ -416,7 +432,7 @@ another address from the address book. On restarts you will always try to
 connect to these peers regardless of the size of your address book.
 
 All peers relay peers they know of by default. This is called the peer exchange
-protocol (PeX). With PeX, peers will be gossipping about known peers and forming
+protocol (PeX). With PeX, peers will be gossiping about known peers and forming
 a network, storing peer addresses in the addrbook. Because of this, you don't
 have to use a seed node if you have a live persistent peer.
 
@@ -430,14 +446,14 @@ persistent connections with.
 
 For example,
 
-```
+```sh
 tendermint node --p2p.seeds "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656,0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"
 ```
 
 Alternatively, you can use the `/dial_seeds` endpoint of the RPC to
 specify seeds for a running node to connect to:
 
-```
+```sh
 curl 'localhost:26657/dial_seeds?seeds=\["f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656","0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"\]'
 ```
 
@@ -450,7 +466,7 @@ maintain a persistent connection with each, you can use the
 `config.toml` or the `/dial_peers` RPC endpoint to do it without
 stopping Tendermint core instance.
 
-```
+```sh
 tendermint node --p2p.persistent_peers "429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656,96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"
 
 curl 'localhost:26657/dial_peers?persistent=true&peers=\["429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656","96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"\]'
@@ -473,7 +489,7 @@ before starting the network. For instance, we could make a new
 
 We can generate a new `priv_validator_key.json` with the command:
 
-```
+```sh
 tendermint gen_validator
 ```
 

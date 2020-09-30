@@ -1,6 +1,7 @@
 package mock_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,7 +30,7 @@ func TestStatus(t *testing.T) {
 	require.Equal(0, len(r.Calls))
 
 	// make sure response works proper
-	status, err := r.Status()
+	status, err := r.Status(context.Background())
 	require.Nil(err, "%+v", err)
 	assert.EqualValues("block", status.SyncInfo.LatestBlockHash)
 	assert.EqualValues(10, status.SyncInfo.LatestBlockHeight)

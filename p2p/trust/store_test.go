@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -17,12 +18,11 @@ import (
 
 func TestTrustMetricStoreSaveLoad(t *testing.T) {
 	dir, err := ioutil.TempDir("", "trust_test")
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	defer os.Remove(dir)
 
-	historyDB := dbm.NewDB("trusthistory", "goleveldb", dir)
+	historyDB, err := dbm.NewDB("trusthistory", "goleveldb", dir)
+	require.NoError(t, err)
 
 	// 0 peers saved
 	store := NewTrustMetricStore(historyDB, DefaultConfig())
@@ -31,7 +31,8 @@ func TestTrustMetricStoreSaveLoad(t *testing.T) {
 	// Load the data from the file
 	store = NewTrustMetricStore(historyDB, DefaultConfig())
 	store.SetLogger(log.TestingLogger())
-	store.Start()
+	err = store.Start()
+	require.NoError(t, err)
 	// Make sure we still have 0 entries
 	assert.Zero(t, store.Size())
 
@@ -48,7 +49,8 @@ func TestTrustMetricStoreSaveLoad(t *testing.T) {
 		tm := NewMetric()
 
 		tm.SetTicker(tt[i])
-		tm.Start()
+		err = tm.Start()
+		require.NoError(t, err)
 		store.AddPeerTrustMetric(key, tm)
 
 		tm.BadEvents(10)
@@ -62,12 +64,14 @@ func TestTrustMetricStoreSaveLoad(t *testing.T) {
 		tt[i].NextTick()
 	}
 	// Stop all the trust metrics and save
-	store.Stop()
+	err = store.Stop()
+	require.NoError(t, err)
 
 	// Load the data from the DB
 	store = NewTrustMetricStore(historyDB, DefaultConfig())
 	store.SetLogger(log.TestingLogger())
-	store.Start()
+	err = store.Start()
+	require.NoError(t, err)
 
 	// Check that we still have 100 peers with imperfect trust values
 	assert.Equal(t, 100, store.Size())
@@ -75,11 +79,13 @@ func TestTrustMetricStoreSaveLoad(t *testing.T) {
 		assert.NotEqual(t, 1.0, tm.TrustValue())
 	}
 
-	store.Stop()
+	err = store.Stop()
+	require.NoError(t, err)
 }
 
 func TestTrustMetricStoreConfig(t *testing.T) {
-	historyDB := dbm.NewDB("", "memdb", "")
+	historyDB, err := dbm.NewDB("", "memdb", "")
+	require.NoError(t, err)
 
 	config := MetricConfig{
 		ProportionalWeight: 0.5,
@@ -89,7 +95,8 @@ func TestTrustMetricStoreConfig(t *testing.T) {
 	// Create a store with custom config
 	store := NewTrustMetricStore(historyDB, config)
 	store.SetLogger(log.TestingLogger())
-	store.Start()
+	err = store.Start()
+	require.NoError(t, err)
 
 	// Have the store make us a metric with the config
 	tm := store.GetPeerTrustMetric("TestKey")
@@ -97,15 +104,18 @@ func TestTrustMetricStoreConfig(t *testing.T) {
 	// Check that the options made it to the metric
 	assert.Equal(t, 0.5, tm.proportionalWeight)
 	assert.Equal(t, 0.5, tm.integralWeight)
-	store.Stop()
+	err = store.Stop()
+	require.NoError(t, err)
 }
 
 func TestTrustMetricStoreLookup(t *testing.T) {
-	historyDB := dbm.NewDB("", "memdb", "")
+	historyDB, err := dbm.NewDB("", "memdb", "")
+	require.NoError(t, err)
 
 	store := NewTrustMetricStore(historyDB, DefaultConfig())
 	store.SetLogger(log.TestingLogger())
-	store.Start()
+	err = store.Start()
+	require.NoError(t, err)
 
 	// Create 100 peers in the trust metric store
 	for i := 0; i < 100; i++ {
@@ -117,15 +127,18 @@ func TestTrustMetricStoreLookup(t *testing.T) {
 		assert.NotNil(t, ktm, "Expected to find TrustMetric %s but wasn't there.", key)
 	}
 
-	store.Stop()
+	err = store.Stop()
+	require.NoError(t, err)
 }
 
 func TestTrustMetricStorePeerScore(t *testing.T) {
-	historyDB := dbm.NewDB("", "memdb", "")
+	historyDB, err := dbm.NewDB("", "memdb", "")
+	require.NoError(t, err)
 
 	store := NewTrustMetricStore(historyDB, DefaultConfig())
 	store.SetLogger(log.TestingLogger())
-	store.Start()
+	err = store.Start()
+	require.NoError(t, err)
 
 	key := "TestKey"
 	tm := store.GetPeerTrustMetric(key)
@@ -149,5 +162,6 @@ func TestTrustMetricStorePeerScore(t *testing.T) {
 	// We will remember our experiences with this peer
 	tm = store.GetPeerTrustMetric(key)
 	assert.NotEqual(t, 100, tm.TrustScore())
-	store.Stop()
+	err = store.Stop()
+	require.NoError(t, err)
 }

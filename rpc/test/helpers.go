@@ -41,10 +41,9 @@ func waitForRPC() {
 	if err != nil {
 		panic(err)
 	}
-	ctypes.RegisterAmino(client.Codec())
 	result := new(ctypes.ResultStatus)
 	for {
-		_, err := client.Call("status", map[string]interface{}{}, result)
+		_, err := client.Call(context.Background(), "status", map[string]interface{}{}, result)
 		if err == nil {
 			return
 		}
@@ -100,7 +99,6 @@ func createConfig() *cfg.Config {
 	c.RPC.ListenAddress = rpc
 	c.RPC.CORSAllowedOrigins = []string{"https://tendermint.com/"}
 	c.RPC.GRPCListenAddress = grpc
-	c.TxIndex.IndexKeys = "app.creator,tx.height" // see kvstore application
 	return c
 }
 
@@ -143,7 +141,9 @@ func StartTendermint(app abci.Application, opts ...func(*Options)) *nm.Node {
 // StopTendermint stops a test tendermint server, waits until it's stopped and
 // cleans up test/config files.
 func StopTendermint(node *nm.Node) {
-	node.Stop()
+	if err := node.Stop(); err != nil {
+		node.Logger.Error("Error when tryint to stop node", "err", err)
+	}
 	node.Wait()
 	os.RemoveAll(node.Config().RootDir)
 }

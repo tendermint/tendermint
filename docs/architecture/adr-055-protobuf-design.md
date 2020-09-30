@@ -3,6 +3,7 @@
 ## Changelog
 
 - 2020-4-15: Created (@marbar3778)
+- 2020-6-18: Updated (@marbar3778)
 
 ## Context
 
@@ -33,13 +34,13 @@ There are a few options to pick from:
 
 Transition Tendermint to Protobuf because of its performance and tooling. The Ecosystem behind Protobuf is vast and has outstanding [support for many languages](https://developers.google.com/protocol-buffers/docs/tutorials).
 
-We will be making this possible by keeping the current types in there current form (handwritten) and creating a `/proto` directory in which all the `.proto` files will live. Where encoding is needed, on disk and over the wire, we will call util functions that will transition the types from handwritten go types to protobuf generated types.
+We will be making this possible by keeping the current types in there current form (handwritten) and creating a `/proto` directory in which all the `.proto` files will live. Where encoding is needed, on disk and over the wire, we will call util functions that will transition the types from handwritten go types to protobuf generated types. This is inline with the recommended file structure from [buf](https://buf.build). You can find more information on this file structure [here](https://buf.build/docs/lint-checkers#file_layout).
 
 By going with this design we will enable future changes to types and allow for a more modular codebase.
 
 ## Status
 
-Proposed
+Completed
 
 ## Consequences
 

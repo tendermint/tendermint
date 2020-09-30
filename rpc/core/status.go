@@ -7,7 +7,6 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
-	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -16,14 +15,14 @@ import (
 // More: https://docs.tendermint.com/master/rpc/#/Info/status
 func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	var (
+		earliestBlockHeight   int64
 		earliestBlockHash     tmbytes.HexBytes
 		earliestAppHash       tmbytes.HexBytes
 		earliestBlockTimeNano int64
-
-		earliestBlockHeight = env.BlockStore.Base()
 	)
 
-	if earliestBlockMeta := env.BlockStore.LoadBlockMeta(earliestBlockHeight); earliestBlockMeta != nil {
+	if earliestBlockMeta := env.BlockStore.LoadBaseMeta(); earliestBlockMeta != nil {
+		earliestBlockHeight = earliestBlockMeta.Header.Height
 		earliestAppHash = earliestBlockMeta.Header.AppHash
 		earliestBlockHash = earliestBlockMeta.BlockID.Hash
 		earliestBlockTimeNano = earliestBlockMeta.Header.Time.UnixNano()
@@ -38,8 +37,7 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	)
 
 	if latestHeight != 0 {
-		latestBlockMeta := env.BlockStore.LoadBlockMeta(latestHeight)
-		if latestBlockMeta != nil {
+		if latestBlockMeta := env.BlockStore.LoadBlockMeta(latestHeight); latestBlockMeta != nil {
 			latestBlockHash = latestBlockMeta.BlockID.Hash
 			latestAppHash = latestBlockMeta.Header.AppHash
 			latestBlockTimeNano = latestBlockMeta.Header.Time.UnixNano()
@@ -77,7 +75,7 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 }
 
 func validatorAtHeight(h int64) *types.Validator {
-	vals, err := sm.LoadValidators(env.StateDB, h)
+	vals, err := env.StateStore.LoadValidators(h)
 	if err != nil {
 		return nil
 	}

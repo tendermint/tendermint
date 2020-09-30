@@ -40,7 +40,7 @@ func TestPaginationPage(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		p, err := validatePage(c.page, c.perPage, c.totalCount)
+		p, err := validatePage(&c.page, c.perPage, c.totalCount)
 		if c.expErr {
 			assert.Error(t, err)
 			continue
@@ -49,6 +49,11 @@ func TestPaginationPage(t *testing.T) {
 		assert.Equal(t, c.newPage, p, fmt.Sprintf("%v", c))
 	}
 
+	// nil case
+	p, err := validatePage(nil, 1, 1)
+	if assert.NoError(t, err) {
+		assert.Equal(t, 1, p)
+	}
 }
 
 func TestPaginationPerPage(t *testing.T) {
@@ -67,7 +72,11 @@ func TestPaginationPerPage(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		p := validatePerPage(c.perPage)
+		p := validatePerPage(&c.perPage)
 		assert.Equal(t, c.newPerPage, p, fmt.Sprintf("%v", c))
 	}
+
+	// nil case
+	p := validatePerPage(nil)
+	assert.Equal(t, defaultPerPage, p)
 }

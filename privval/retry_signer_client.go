@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -53,29 +54,41 @@ func (sc *RetrySignerClient) GetPubKey() (crypto.PubKey, error) {
 		if err == nil {
 			return pk, nil
 		}
+		// If remote signer errors, we don't retry.
+		if _, ok := err.(*RemoteSignerError); ok {
+			return nil, err
+		}
 		time.Sleep(sc.timeout)
 	}
 	return nil, fmt.Errorf("exhausted all attempts to get pubkey: %w", err)
 }
 
-func (sc *RetrySignerClient) SignVote(chainID string, vote *types.Vote) error {
+func (sc *RetrySignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
 		err = sc.next.SignVote(chainID, vote)
 		if err == nil {
 			return nil
 		}
+		// If remote signer errors, we don't retry.
+		if _, ok := err.(*RemoteSignerError); ok {
+			return err
+		}
 		time.Sleep(sc.timeout)
 	}
 	return fmt.Errorf("exhausted all attempts to sign vote: %w", err)
 }
 
-func (sc *RetrySignerClient) SignProposal(chainID string, proposal *types.Proposal) error {
+func (sc *RetrySignerClient) SignProposal(chainID string, proposal *tmproto.Proposal) error {
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
 		err = sc.next.SignProposal(chainID, proposal)
 		if err == nil {
 			return nil
+		}
+		// If remote signer errors, we don't retry.
+		if _, ok := err.(*RemoteSignerError); ok {
+			return err
 		}
 		time.Sleep(sc.timeout)
 	}

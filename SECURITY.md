@@ -1,6 +1,7 @@
 # Security
 
 ## Reporting a Bug
+
 As part of our [Coordinated Vulnerability Disclosure
 Policy](https://tendermint.com/security), we operate a [bug
 bounty](https://hackerone.com/tendermint).
@@ -21,6 +22,7 @@ If you follow these guidelines when reporting an issue to us, we commit to:
 * Work with you to understand, resolve and ultimately disclose the issue in a timely fashion 
 
 ## Disclosure Process 
+
 Tendermint Core uses the following disclosure process:
 
 1. Once a security report is received, the Tendermint Core team works to verify the issue and confirm its severity level using CVSS. 
@@ -37,6 +39,7 @@ Tendermint Core uses the following disclosure process:
 This process can take some time. Every effort will be made to handle the bug in as timely a manner as possible, however it's important that we follow the process described above to ensure that disclosures are handled consistently and to keep Tendermint Core and its downstream dependent projects--including but not limited to Gaia and the Cosmos Hub--as secure as possible. 
 
 ### Example Timeline 
+
 The following is an example timeline for the triage and response. The required roles and team members are described in parentheses after each task; however, multiple people can play each role and each person may play multiple roles. 
 
 #### > 24 Hours Before Release Time
@@ -54,6 +57,7 @@ The following is an example timeline for the triage and response. The required r
 4. Send emails to validators or other users (PARTNERSHIPS LEAD) 
 
 #### Release Time
+
 1. Cut Tendermint releases for eligible versions (TENDERMINT ENG, TENDERMINT LEAD)
 2. Cut Cosmos SDK release for eligible versions (COSMOS ENG)
 3. Cut Gaia release for eligible versions (GAIA ENG)
@@ -64,19 +68,23 @@ The following is an example timeline for the triage and response. The required r
 8. Publish Security Advisory and CVE, if CVE has no sensitive information (ADMIN) 
 
 #### After Release Time
+
 1. Write forum post with exploit details (TENDERMINT LEAD)
 2. Approve pay-out on HackerOne for submitter (ADMIN) 
 
 #### 7 Days After Release Time
+
 1. Publish CVE if it has not yet been published (ADMIN) 
 2. Publish forum post with exploit details (TENDERMINT ENG, TENDERMINT LEAD)
 
 ## Supported Releases
+
 The Tendermint Core team commits to releasing security patch releases for both the latest minor release as well for the major/minor release that the Cosmos Hub is running. 
 
 If you are running older versions of Tendermint Core, we encourage you to upgrade at your earliest opportunity so that you can receive security patches directly from the Tendermint repo. While you are welcome to backport security patches to older versions for your own use, we will not publish or promote these backports. 
 
 ## Scope
+
 The full scope of our bug bounty program is outlined on our [Hacker One program page](https://hackerone.com/tendermint). Please also note that, in the interest of the safety of our users and staff, a few things are explicitly excluded from scope:
 
 * Any third-party services 
@@ -84,6 +92,7 @@ The full scope of our bug bounty program is outlined on our [Hacker One program 
 * Findings derived from social engineering (e.g., phishing)
 
 ## Example Vulnerabilities 
+
 The following is a list of examples of the kinds of vulnerabilities that we’re most interested in. It is not exhaustive: there are other kinds of issues we may also be interested in! 
 
 ### Specification
@@ -143,6 +152,3 @@ Attacks may come through the P2P network or the RPC layer:
 
 * Core verification 
 * Bisection/sequential algorithms
-
-
-

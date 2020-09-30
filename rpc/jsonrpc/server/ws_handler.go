@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -10,8 +11,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-
-	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -23,7 +22,7 @@ import (
 ///////////////////////////////////////////////////////////////////////////////
 
 const (
-	defaultWSWriteChanCapacity = 1000
+	defaultWSWriteChanCapacity = 100
 	defaultWSWriteWait         = 10 * time.Second
 	defaultWSReadWait          = 30 * time.Second
 	defaultWSPingPeriod        = (defaultWSReadWait * 9) / 10
@@ -36,7 +35,6 @@ type WebsocketManager struct {
 	websocket.Upgrader
 
 	funcMap       map[string]*RPCFunc
-	cdc           *amino.Codec
 	logger        log.Logger
 	wsConnOptions []func(*wsConnection)
 }
@@ -45,12 +43,10 @@ type WebsocketManager struct {
 // functions, connection options and logger to new WS connections.
 func NewWebsocketManager(
 	funcMap map[string]*RPCFunc,
-	cdc *amino.Codec,
 	wsConnOptions ...func(*wsConnection),
 ) *WebsocketManager {
 	return &WebsocketManager{
 		funcMap: funcMap,
-		cdc:     cdc,
 		Upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				// TODO ???
@@ -91,7 +87,7 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 	}()
 
 	// register connection
-	con := newWSConnection(wsConn, wm.funcMap, wm.cdc, wm.wsConnOptions...)
+	con := newWSConnection(wsConn, wm.funcMap, wm.wsConnOptions...)
 	con.SetLogger(wm.logger.With("remote", wsConn.RemoteAddr()))
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
 	err = con.Start() // BLOCKING
@@ -99,7 +95,9 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 		wm.logger.Error("Failed to start connection", "err", err)
 		return
 	}
-	con.Stop()
+	if err := con.Stop(); err != nil {
+		wm.logger.Error("error while stopping connection", "error", err)
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -123,7 +121,6 @@ type wsConnection struct {
 	readRoutineQuit chan struct{}
 
 	funcMap map[string]*RPCFunc
-	cdc     *amino.Codec
 
 	// write channel capacity
 	writeChanCapacity int
@@ -156,14 +153,12 @@ type wsConnection struct {
 func newWSConnection(
 	baseConn *websocket.Conn,
 	funcMap map[string]*RPCFunc,
-	cdc *amino.Codec,
 	options ...func(*wsConnection),
 ) *wsConnection {
 	wsc := &wsConnection{
 		remoteAddr:        baseConn.RemoteAddr().String(),
 		baseConn:          baseConn,
 		funcMap:           funcMap,
-		cdc:               cdc,
 		writeWait:         defaultWSWriteWait,
 		writeChanCapacity: defaultWSWriteChanCapacity,
 		readWait:          defaultWSReadWait,
@@ -257,17 +252,22 @@ func (wsc *wsConnection) GetRemoteAddr() string {
 	return wsc.remoteAddr
 }
 
-// WriteRPCResponse pushes a response to the writeChan, and blocks until it is accepted.
+// WriteRPCResponse pushes a response to the writeChan, and blocks until it is
+// accepted.
 // It implements WSRPCConnection. It is Goroutine-safe.
-func (wsc *wsConnection) WriteRPCResponse(resp types.RPCResponse) {
+func (wsc *wsConnection) WriteRPCResponse(ctx context.Context, resp types.RPCResponse) error {
 	select {
 	case <-wsc.Quit():
-		return
+		return errors.New("connection was stopped")
+	case <-ctx.Done():
+		return ctx.Err()
 	case wsc.writeChan <- resp:
+		return nil
 	}
 }
 
-// TryWriteRPCResponse attempts to push a response to the writeChan, but does not block.
+// TryWriteRPCResponse attempts to push a response to the writeChan, but does
+// not block.
 // It implements WSRPCConnection. It is Goroutine-safe
 func (wsc *wsConnection) TryWriteRPCResponse(resp types.RPCResponse) bool {
 	select {
@@ -278,12 +278,6 @@ func (wsc *wsConnection) TryWriteRPCResponse(resp types.RPCResponse) bool {
 	default:
 		return false
 	}
-}
-
-// Codec returns an amino codec used to decode parameters and encode results.
-// It implements WSRPCConnection.
-func (wsc *wsConnection) Codec() *amino.Codec {
-	return wsc.cdc
 }
 
 // Context returns the connection's context.
@@ -298,6 +292,9 @@ func (wsc *wsConnection) Context() context.Context {
 
 // Read from the socket and subscribe to or unsubscribe from events
 func (wsc *wsConnection) readRoutine() {
+	// readRoutine will block until response is written or WS connection is closed
+	writeCtx := context.Background()
+
 	defer func() {
 		if r := recover(); r != nil {
 			err, ok := r.(error)
@@ -305,7 +302,9 @@ func (wsc *wsConnection) readRoutine() {
 				err = fmt.Errorf("WSJSONRPC: %v", r)
 			}
 			wsc.Logger.Error("Panic in WSJSONRPC handler", "err", err, "stack", string(debug.Stack()))
-			wsc.WriteRPCResponse(types.RPCInternalError(types.JSONRPCIntID(-1), err))
+			if err := wsc.WriteRPCResponse(writeCtx, types.RPCInternalError(types.JSONRPCIntID(-1), err)); err != nil {
+				wsc.Logger.Error("Error writing RPC response", "err", err)
+			}
 			go wsc.readRoutine()
 		}
 	}()
@@ -323,23 +322,29 @@ func (wsc *wsConnection) readRoutine() {
 			if err := wsc.baseConn.SetReadDeadline(time.Now().Add(wsc.readWait)); err != nil {
 				wsc.Logger.Error("failed to set read deadline", "err", err)
 			}
-			var in []byte
-			_, in, err := wsc.baseConn.ReadMessage()
+
+			_, r, err := wsc.baseConn.NextReader()
 			if err != nil {
 				if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 					wsc.Logger.Info("Client closed the connection")
 				} else {
 					wsc.Logger.Error("Failed to read request", "err", err)
 				}
-				wsc.Stop()
+				if err := wsc.Stop(); err != nil {
+					wsc.Logger.Error("Error closing websocket connection", "err", err)
+				}
 				close(wsc.readRoutineQuit)
 				return
 			}
 
+			dec := json.NewDecoder(r)
 			var request types.RPCRequest
-			err = json.Unmarshal(in, &request)
+			err = dec.Decode(&request)
 			if err != nil {
-				wsc.WriteRPCResponse(types.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err)))
+				if err := wsc.WriteRPCResponse(writeCtx,
+					types.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err))); err != nil {
+					wsc.Logger.Error("Error writing RPC response", "err", err)
+				}
 				continue
 			}
 
@@ -356,18 +361,22 @@ func (wsc *wsConnection) readRoutine() {
 			// Now, fetch the RPCFunc and execute it.
 			rpcFunc := wsc.funcMap[request.Method]
 			if rpcFunc == nil {
-				wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
+				if err := wsc.WriteRPCResponse(writeCtx, types.RPCMethodNotFoundError(request.ID)); err != nil {
+					wsc.Logger.Error("Error writing RPC response", "err", err)
+				}
 				continue
 			}
 
 			ctx := &types.Context{JSONReq: &request, WSConn: wsc}
 			args := []reflect.Value{reflect.ValueOf(ctx)}
 			if len(request.Params) > 0 {
-				fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
+				fnArgs, err := jsonParamsToArgs(rpcFunc, request.Params)
 				if err != nil {
-					wsc.WriteRPCResponse(
+					if err := wsc.WriteRPCResponse(writeCtx,
 						types.RPCInternalError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
-					)
+					); err != nil {
+						wsc.Logger.Error("Error writing RPC response", "err", err)
+					}
 					continue
 				}
 				args = append(args, fnArgs...)
@@ -380,11 +389,15 @@ func (wsc *wsConnection) readRoutine() {
 
 			result, err := unreflectResult(returns)
 			if err != nil {
-				wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
+				if err := wsc.WriteRPCResponse(writeCtx, types.RPCInternalError(request.ID, err)); err != nil {
+					wsc.Logger.Error("Error writing RPC response", "err", err)
+				}
 				continue
 			}
 
-			wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, result))
+			if err := wsc.WriteRPCResponse(writeCtx, types.NewRPCSuccessResponse(request.ID, result)); err != nil {
+				wsc.Logger.Error("Error writing RPC response", "err", err)
+			}
 		}
 	}
 }
@@ -392,9 +405,7 @@ func (wsc *wsConnection) readRoutine() {
 // receives on a write channel and writes out on the socket
 func (wsc *wsConnection) writeRoutine() {
 	pingTicker := time.NewTicker(wsc.pingPeriod)
-	defer func() {
-		pingTicker.Stop()
-	}()
+	defer pingTicker.Stop()
 
 	// https://github.com/gorilla/websocket/issues/97
 	pongs := make(chan string, 1)
@@ -427,8 +438,10 @@ func (wsc *wsConnection) writeRoutine() {
 			jsonBytes, err := json.MarshalIndent(msg, "", "  ")
 			if err != nil {
 				wsc.Logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
-			} else if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
-				wsc.Logger.Error("Failed to write response", "msg", msg, "err", err)
+				continue
+			}
+			if err = wsc.writeMessageWithDeadline(websocket.TextMessage, jsonBytes); err != nil {
+				wsc.Logger.Error("Failed to write response", "err", err, "msg", msg)
 				return
 			}
 		}

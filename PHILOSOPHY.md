@@ -1,16 +1,16 @@
-## Design goals
+# Design goals
 
 The design goals for Tendermint (and the SDK and related libraries) are:
 
- * Simplicity and Legibility
- * Parallel performance, namely ability to utilize multicore architecture
- * Ability to evolve the codebase bug-free
- * Debuggability
- * Complete correctness that considers all edge cases, esp in concurrency
- * Future-proof modular architecture, message protocol, APIs, and encapsulation
+* Simplicity and Legibility
+* Parallel performance, namely ability to utilize multicore architecture
+* Ability to evolve the codebase bug-free
+* Debuggability
+* Complete correctness that considers all edge cases, esp in concurrency
+* Future-proof modular architecture, message protocol, APIs, and encapsulation
 
 
-### Justification
+## Justification
 
 Legibility is key to maintaining bug-free software as it evolves toward more
 optimizations, more ease of debugging, and additional features.
@@ -44,7 +44,7 @@ become more complicated over time, and it becomes more and more difficult to
 assess the correctness of such a for-loop by visual inspection.
 
 
-### On performance
+## On performance
 
 It doesn't matter whether there are alternative implementations that are 2x or
 3x more performant, when the software doesn't work, deadlocks, or if bugs
@@ -74,7 +74,7 @@ that works well enough, can be debugged and maintained, and can serve as a spec
 for future implementations.
 
 
-### On encapsulation
+## On encapsulation
 
 In order to create maintainable, forward-optimizable software, it is critical
 to develop well-encapsulated objects that have well understood properties, and
@@ -92,12 +92,12 @@ and the rand.Rand struct.  It's one single struct declaration that can be used
 in both concurrent and non-concurrent logic, and due to its well encapsulation,
 it's easy to get the usage of the mutex right.
 
-#### example: rand.Rand:
+### example: rand.Rand
 
 `The default Source is safe for concurrent use by multiple goroutines, but
 Sources created by NewSource are not`.  The reason why the default
 package-level source is safe for concurrent use is because it is protected (see
-`lockedSource` in https://golang.org/src/math/rand/rand.go).
+`lockedSource` in <https://golang.org/src/math/rand/rand.go>).
 
 But we shouldn't rely on the global source, we should be creating our own
 Rand/Source instances and using them, especially for determinism in testing.
@@ -120,7 +120,7 @@ clear what methods have what side effects, then there is something wrong about
 the design of abstractions that should be revisited.
 
 
-### On concurrency
+## On concurrency
 
 In order for Tendermint to remain relevant in the years to come, it is vital
 for Tendermint to take advantage of multicore architectures.  Due to the nature
@@ -131,24 +131,24 @@ design, especially when it comes to the reactor design, and also for RPC
 request handling.
 
 
-## Guidelines
+# Guidelines
 
 Here are some guidelines for designing for (sufficient) performance and concurrency:
 
- * Mutex locks are cheap enough when there isn't contention.
- * Do not optimize code without analytical or observed proof that it is in a hot path.
- * Don't over-use channels when mutex locks w/ encapsulation are sufficient.
- * The need to drain channels are often a hint of unconsidered edge cases.
- * The creation of O(N) one-off goroutines is generally technical debt that
+* Mutex locks are cheap enough when there isn't contention.
+* Do not optimize code without analytical or observed proof that it is in a hot path.
+* Don't over-use channels when mutex locks w/ encapsulation are sufficient.
+* The need to drain channels are often a hint of unconsidered edge cases.
+* The creation of O(N) one-off goroutines is generally technical debt that
    needs to get addressed sooner than later.  Avoid creating too many
 goroutines as a patch around incomplete concurrency design, or at least be
 aware of the debt and do not invest in the debt.  On the other hand, Tendermint
 is designed to have a limited number of peers (e.g. 10 or 20), so the creation
 of O(C) goroutines per O(P) peers is still O(C\*P=constant).
-  * Use defer statements to unlock as much as possible.  If you want to unlock sooner,
+* Use defer statements to unlock as much as possible.  If you want to unlock sooner,
     try to create more modular functions that do make use of defer statements.
 
-## Matras
+# Mantras
 
 * Premature optimization kills
 * Readability is paramount

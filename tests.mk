@@ -103,7 +103,7 @@ vagrant_test:
 ### go tests
 test:
 	@echo "--> Running go test"
-	@go test -p 1 $(PACKAGES)
+	@go test -p 1 $(PACKAGES) -tags deadlock
 .PHONY: test
 
 test_race:
@@ -111,28 +111,7 @@ test_race:
 	@go test -p 1 -v -race $(PACKAGES)
 .PHONY: test_race
 
-# uses https://github.com/sasha-s/go-deadlock/ to detect potential deadlocks
-test_with_deadlock:
-	make set_with_deadlock
-	make test
-	make cleanup_after_test_with_deadlock
-.PHONY: test_with_deadlock
-
-set_with_deadlock:
-	@echo "Get Goid"
-	@go get github.com/petermattis/goid@b0b1615b78e5ee59739545bb38426383b2cda4c9
-	@echo "Get Go-Deadlock"
-	@go get github.com/sasha-s/go-deadlock@d68e2bc52ae3291765881b9056f2c1527f245f1e
-	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 sed -i.bak 's/sync.RWMutex/deadlock.RWMutex/'
-	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 sed -i.bak 's/sync.Mutex/deadlock.Mutex/'
-	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 goimports -w
-.PHONY: set_with_deadlock
-
-# cleanes up after you ran test_with_deadlock
-cleanup_after_test_with_deadlock:
-	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 sed -i.bak 's/deadlock.RWMutex/sync.RWMutex/'
-	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 sed -i.bak 's/deadlock.Mutex/sync.Mutex/'
-	find . -name "*.go" | grep -v "vendor/" | xargs -n 1 goimports -w
-	# cleans up the deps to not include the need libs
-	go mod tidy
-.PHONY: cleanup_after_test_with_deadlock
+test_deadlock:
+	@echo "--> Running go test --deadlock"
+	@go test -p 1 -v  $(PACKAGES) -tags deadlock 
+.PHONY: test_race

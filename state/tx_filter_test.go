@@ -26,16 +26,18 @@ func TestTxFilter(t *testing.T) {
 		isErr bool
 	}{
 		{types.Tx(tmrand.Bytes(1680)), false},
-		{types.Tx(tmrand.Bytes(1839)), true},
+		{types.Tx(tmrand.Bytes(1853)), true},
 		{types.Tx(tmrand.Bytes(3000)), true},
 	}
 
 	for i, tc := range testCases {
-		stateDB := dbm.NewDB("state", "memdb", os.TempDir())
-		state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+		stateDB, err := dbm.NewDB("state", "memdb", os.TempDir())
+		require.NoError(t, err)
+		stateStore := sm.NewStore(stateDB)
+		state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		require.NoError(t, err)
 
-		f := sm.TxPreCheck(state)
+		f := sm.TxPreCheck(state) // current max size of a tx 1850
 		if tc.isErr {
 			assert.NotNil(t, f(tc.tx), "#%v", i)
 		} else {

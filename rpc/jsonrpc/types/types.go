@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"strings"
 
-	amino "github.com/tendermint/go-amino"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 )
 
 // a wrapper to emulate a sum type: jsonrpcid = string | int
@@ -94,17 +94,17 @@ func (req RPCRequest) String() string {
 	return fmt.Sprintf("RPCRequest{%s %s/%X}", req.ID, req.Method, req.Params)
 }
 
-func MapToRequest(cdc *amino.Codec, id jsonrpcid, method string, params map[string]interface{}) (RPCRequest, error) {
+func MapToRequest(id jsonrpcid, method string, params map[string]interface{}) (RPCRequest, error) {
 	var paramsMap = make(map[string]json.RawMessage, len(params))
 	for name, value := range params {
-		valueJSON, err := cdc.MarshalJSON(value)
+		valueJSON, err := tmjson.Marshal(value)
 		if err != nil {
 			return RPCRequest{}, err
 		}
 		paramsMap[name] = valueJSON
 	}
 
-	payload, err := json.Marshal(paramsMap) // NOTE: Amino doesn't handle maps yet.
+	payload, err := json.Marshal(paramsMap)
 	if err != nil {
 		return RPCRequest{}, err
 	}
@@ -112,17 +112,17 @@ func MapToRequest(cdc *amino.Codec, id jsonrpcid, method string, params map[stri
 	return NewRPCRequest(id, method, payload), nil
 }
 
-func ArrayToRequest(cdc *amino.Codec, id jsonrpcid, method string, params []interface{}) (RPCRequest, error) {
+func ArrayToRequest(id jsonrpcid, method string, params []interface{}) (RPCRequest, error) {
 	var paramsMap = make([]json.RawMessage, len(params))
 	for i, value := range params {
-		valueJSON, err := cdc.MarshalJSON(value)
+		valueJSON, err := tmjson.Marshal(value)
 		if err != nil {
 			return RPCRequest{}, err
 		}
 		paramsMap[i] = valueJSON
 	}
 
-	payload, err := json.Marshal(paramsMap) // NOTE: Amino doesn't handle maps yet.
+	payload, err := json.Marshal(paramsMap)
 	if err != nil {
 		return RPCRequest{}, err
 	}
@@ -180,12 +180,12 @@ func (resp *RPCResponse) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func NewRPCSuccessResponse(cdc *amino.Codec, id jsonrpcid, res interface{}) RPCResponse {
+func NewRPCSuccessResponse(id jsonrpcid, res interface{}) RPCResponse {
 	var rawMsg json.RawMessage
 
 	if res != nil {
 		var js []byte
-		js, err := cdc.MarshalJSON(res)
+		js, err := tmjson.Marshal(res)
 		if err != nil {
 			return RPCInternalError(id, fmt.Errorf("error marshalling response: %w", err))
 		}
@@ -205,7 +205,7 @@ func NewRPCErrorResponse(id jsonrpcid, code int, msg string, data string) RPCRes
 
 func (resp RPCResponse) String() string {
 	if resp.Error == nil {
-		return fmt.Sprintf("RPCResponse{%s %v}", resp.ID, resp.Result)
+		return fmt.Sprintf("RPCResponse{%s %X}", resp.ID, resp.Result)
 	}
 	return fmt.Sprintf("RPCResponse{%s %v}", resp.ID, resp.Error)
 }
@@ -246,12 +246,10 @@ func RPCServerError(id jsonrpcid, err error) RPCResponse {
 type WSRPCConnection interface {
 	// GetRemoteAddr returns a remote address of the connection.
 	GetRemoteAddr() string
-	// WriteRPCResponse writes the resp onto connection (BLOCKING).
-	WriteRPCResponse(resp RPCResponse)
-	// TryWriteRPCResponse tries to write the resp onto connection (NON-BLOCKING).
-	TryWriteRPCResponse(resp RPCResponse) bool
-	// Codec returns an Amino codec used.
-	Codec() *amino.Codec
+	// WriteRPCResponse writes the response onto connection (BLOCKING).
+	WriteRPCResponse(context.Context, RPCResponse) error
+	// TryWriteRPCResponse tries to write the response onto connection (NON-BLOCKING).
+	TryWriteRPCResponse(RPCResponse) bool
 	// Context returns the connection's context.
 	Context() context.Context
 }

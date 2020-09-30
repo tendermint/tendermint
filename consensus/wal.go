@@ -2,28 +2,26 @@ package consensus
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
 	"path/filepath"
 	"time"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/gogo/protobuf/proto"
 
 	auto "github.com/tendermint/tendermint/libs/autofile"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/types"
+	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 const (
-	// amino overhead + time.Time + max consensus msg size
-	//
-	// q: where 24 bytes are coming from?
-	// a: cdc.MustMarshalBinaryBare(empty consensus part msg) = 14 bytes. +10
-	// bytes just in case amino will require more space in the future.
+	// time.Time + max consensus msg size
 	maxMsgSizeBytes = maxMsgSize + 24
 
 	// how often the WAL should be sync'd during period sync'ing
@@ -47,12 +45,10 @@ type EndHeightMessage struct {
 
 type WALMessage interface{}
 
-func RegisterWALMessages(cdc *amino.Codec) {
-	cdc.RegisterInterface((*WALMessage)(nil), nil)
-	cdc.RegisterConcrete(types.EventDataRoundState{}, "tendermint/wal/EventDataRoundState", nil)
-	cdc.RegisterConcrete(msgInfo{}, "tendermint/wal/MsgInfo", nil)
-	cdc.RegisterConcrete(timeoutInfo{}, "tendermint/wal/TimeoutInfo", nil)
-	cdc.RegisterConcrete(EndHeightMessage{}, "tendermint/wal/EndHeightMessage", nil)
+func init() {
+	tmjson.RegisterType(msgInfo{}, "tendermint/wal/MsgInfo")
+	tmjson.RegisterType(timeoutInfo{}, "tendermint/wal/TimeoutInfo")
+	tmjson.RegisterType(EndHeightMessage{}, "tendermint/wal/EndHeightMessage")
 }
 
 //--------------------------------------------------------
@@ -130,7 +126,9 @@ func (wal *BaseWAL) OnStart() error {
 	if err != nil {
 		return err
 	} else if size == 0 {
-		wal.WriteSync(EndHeightMessage{0})
+		if err := wal.WriteSync(EndHeightMessage{0}); err != nil {
+			return err
+		}
 	}
 	err = wal.group.Start()
 	if err != nil {
@@ -165,8 +163,12 @@ func (wal *BaseWAL) FlushAndSync() error {
 // before cleaning up files.
 func (wal *BaseWAL) OnStop() {
 	wal.flushTicker.Stop()
-	wal.FlushAndSync()
-	wal.group.Stop()
+	if err := wal.FlushAndSync(); err != nil {
+		wal.Logger.Error("error on flush data to disk", "error", err)
+	}
+	if err := wal.group.Stop(); err != nil {
+		wal.Logger.Error("error trying to stop wal", "error", err)
+	}
 	wal.group.Close()
 }
 
@@ -284,7 +286,7 @@ func (wal *BaseWAL) SearchForEndHeight(
 
 // A WALEncoder writes custom-encoded WAL messages to an output stream.
 //
-// Format: 4 bytes CRC sum + 4 bytes length + arbitrary-length value (go-amino encoded)
+// Format: 4 bytes CRC sum + 4 bytes length + arbitrary-length value
 type WALEncoder struct {
 	wr io.Writer
 }
@@ -295,10 +297,22 @@ func NewWALEncoder(wr io.Writer) *WALEncoder {
 }
 
 // Encode writes the custom encoding of v to the stream. It returns an error if
-// the amino-encoded size of v is greater than 1MB. Any error encountered
+// the encoded size of v is greater than 1MB. Any error encountered
 // during the write is also returned.
 func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
-	data := cdc.MustMarshalBinaryBare(v)
+	pbMsg, err := WALToProto(v.Msg)
+	if err != nil {
+		return err
+	}
+	pv := tmcons.TimedWALMessage{
+		Time: v.Time,
+		Msg:  pbMsg,
+	}
+
+	data, err := proto.Marshal(&pv)
+	if err != nil {
+		panic(fmt.Errorf("encode timed wall message failure: %w", err))
+	}
 
 	crc := crc32.Checksum(data, crc32c)
 	length := uint32(len(data))
@@ -312,7 +326,7 @@ func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
 	binary.BigEndian.PutUint32(msg[4:8], length)
 	copy(msg[8:], data)
 
-	_, err := enc.wr.Write(msg)
+	_, err = enc.wr.Write(msg)
 	return err
 }
 
@@ -356,7 +370,7 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 	b := make([]byte, 4)
 
 	_, err := dec.rd.Read(b)
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		return nil, err
 	}
 	if err != nil {
@@ -390,13 +404,22 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 		return nil, DataCorruptionError{fmt.Errorf("checksums do not match: read: %v, actual: %v", crc, actualCRC)}
 	}
 
-	var res = new(TimedWALMessage)
-	err = cdc.UnmarshalBinaryBare(data, res)
+	var res = new(tmcons.TimedWALMessage)
+	err = proto.Unmarshal(data, res)
 	if err != nil {
 		return nil, DataCorruptionError{fmt.Errorf("failed to decode data: %v", err)}
 	}
 
-	return res, err
+	walMsg, err := WALFromProto(res.Msg)
+	if err != nil {
+		return nil, DataCorruptionError{fmt.Errorf("failed to convert from proto: %w", err)}
+	}
+	tMsgWal := &TimedWALMessage{
+		Time: res.Time,
+		Msg:  walMsg,
+	}
+
+	return tMsgWal, err
 }
 
 type nilWAL struct{}

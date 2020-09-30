@@ -1,7 +1,6 @@
 package kvstore
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"sort"
@@ -16,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/code"
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 const (
@@ -103,7 +103,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	// make and apply block
 	height = int64(1)
 	hash := []byte("foo")
-	header := types.Header{
+	header := tmproto.Header{
 		Height: height,
 	}
 	kvstore.BeginBlock(types.RequestBeginBlock{Hash: hash, Header: header})
@@ -129,7 +129,7 @@ func TestValUpdates(t *testing.T) {
 	total := 10
 	nInit := 5
 	vals := RandVals(total)
-	// iniitalize with the first nInit
+	// initialize with the first nInit
 	kvstore.InitChain(types.RequestInitChain{
 		Validators: vals[:nInit],
 	})
@@ -193,7 +193,7 @@ func makeApplyBlock(
 	// make and apply block
 	height := int64(heightInt)
 	hash := []byte("foo")
-	header := types.Header{
+	header := tmproto.Header{
 		Height: height,
 	}
 
@@ -219,7 +219,7 @@ func valsEqual(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
 	sort.Sort(types.ValidatorUpdates(vals2))
 	for i, v1 := range vals1 {
 		v2 := vals2[i]
-		if !bytes.Equal(v1.PubKey.Data, v2.PubKey.Data) ||
+		if !v1.PubKey.Equal(v2.PubKey) ||
 			v1.Power != v2.Power {
 			t.Fatalf("vals dont match at index %d. got %X/%d , expected %X/%d", i, v2.PubKey, v2.Power, v1.PubKey, v1.Power)
 		}
@@ -241,7 +241,9 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 	client := abcicli.NewSocketClient(socket, false)
 	client.SetLogger(logger.With("module", "abci-client"))
 	if err := client.Start(); err != nil {
-		server.Stop()
+		if err = server.Stop(); err != nil {
+			return nil, nil, err
+		}
 		return nil, nil, err
 	}
 
@@ -263,7 +265,9 @@ func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, s
 	client := abcicli.NewGRPCClient(socket, true)
 	client.SetLogger(logger.With("module", "abci-client"))
 	if err := client.Start(); err != nil {
-		server.Stop()
+		if err := server.Stop(); err != nil {
+			return nil, nil, err
+		}
 		return nil, nil, err
 	}
 	return client, server, nil
@@ -273,18 +277,35 @@ func TestClientServer(t *testing.T) {
 	// set up socket app
 	kvstore := NewApplication()
 	client, server, err := makeSocketClientServer(kvstore, "kvstore-socket")
-	require.Nil(t, err)
-	defer server.Stop()
-	defer client.Stop()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := server.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
+	t.Cleanup(func() {
+		if err := client.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	runClientTests(t, client)
 
 	// set up grpc app
 	kvstore = NewApplication()
 	gclient, gserver, err := makeGRPCClientServer(kvstore, "kvstore-grpc")
-	require.Nil(t, err)
-	defer gserver.Stop()
-	defer gclient.Stop()
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		if err := gserver.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
+	t.Cleanup(func() {
+		if err := gclient.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	runClientTests(t, gclient)
 }

@@ -3,7 +3,7 @@ package types
 import (
 	"time"
 
-	"github.com/tendermint/tendermint/libs/bytes"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
@@ -12,69 +12,52 @@ import (
 // TimeFormat is used for generating the sigs
 const TimeFormat = time.RFC3339Nano
 
-type CanonicalBlockID struct {
-	Hash        bytes.HexBytes
-	PartsHeader CanonicalPartSetHeader
-}
-
-type CanonicalPartSetHeader struct {
-	Hash  bytes.HexBytes
-	Total int
-}
-
-type CanonicalProposal struct {
-	Type      SignedMsgType // type alias for byte
-	Height    int64         `binary:"fixed64"`
-	Round     int64         `binary:"fixed64"`
-	POLRound  int64         `binary:"fixed64"`
-	BlockID   CanonicalBlockID
-	Timestamp time.Time
-	ChainID   string
-}
-
-type CanonicalVote struct {
-	Type      SignedMsgType // type alias for byte
-	Height    int64         `binary:"fixed64"`
-	Round     int64         `binary:"fixed64"`
-	BlockID   CanonicalBlockID
-	Timestamp time.Time
-	ChainID   string
-}
-
 //-----------------------------------
 // Canonicalize the structs
 
-func CanonicalizeBlockID(blockID BlockID) CanonicalBlockID {
-	return CanonicalBlockID{
-		Hash:        blockID.Hash,
-		PartsHeader: CanonicalizePartSetHeader(blockID.PartsHeader),
+func CanonicalizeBlockID(bid tmproto.BlockID) *tmproto.CanonicalBlockID {
+	rbid, err := BlockIDFromProto(&bid)
+	if err != nil {
+		panic(err)
 	}
+	var cbid *tmproto.CanonicalBlockID
+	if rbid == nil || rbid.IsZero() {
+		cbid = nil
+	} else {
+		cbid = &tmproto.CanonicalBlockID{
+			Hash:          bid.Hash,
+			PartSetHeader: CanonicalizePartSetHeader(bid.PartSetHeader),
+		}
+	}
+
+	return cbid
 }
 
-func CanonicalizePartSetHeader(psh PartSetHeader) CanonicalPartSetHeader {
-	return CanonicalPartSetHeader{
-		psh.Hash,
-		psh.Total,
-	}
+// CanonicalizeVote transforms the given PartSetHeader to a CanonicalPartSetHeader.
+func CanonicalizePartSetHeader(psh tmproto.PartSetHeader) tmproto.CanonicalPartSetHeader {
+	return tmproto.CanonicalPartSetHeader(psh)
 }
 
-func CanonicalizeProposal(chainID string, proposal *Proposal) CanonicalProposal {
-	return CanonicalProposal{
-		Type:      ProposalType,
-		Height:    proposal.Height,
-		Round:     int64(proposal.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
-		POLRound:  int64(proposal.POLRound),
+// CanonicalizeVote transforms the given Proposal to a CanonicalProposal.
+func CanonicalizeProposal(chainID string, proposal *tmproto.Proposal) tmproto.CanonicalProposal {
+	return tmproto.CanonicalProposal{
+		Type:      tmproto.ProposalType,
+		Height:    proposal.Height,       // encoded as sfixed64
+		Round:     int64(proposal.Round), // encoded as sfixed64
+		POLRound:  int64(proposal.PolRound),
 		BlockID:   CanonicalizeBlockID(proposal.BlockID),
 		Timestamp: proposal.Timestamp,
 		ChainID:   chainID,
 	}
 }
 
-func CanonicalizeVote(chainID string, vote *Vote) CanonicalVote {
-	return CanonicalVote{
+// CanonicalizeVote transforms the given Vote to a CanonicalVote, which does
+// not contain ValidatorIndex and ValidatorAddress fields.
+func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote {
+	return tmproto.CanonicalVote{
 		Type:      vote.Type,
-		Height:    vote.Height,
-		Round:     int64(vote.Round), // cast int->int64 to make amino encode it fixed64 (does not work for int)
+		Height:    vote.Height,       // encoded as sfixed64
+		Round:     int64(vote.Round), // encoded as sfixed64
 		BlockID:   CanonicalizeBlockID(vote.BlockID),
 		Timestamp: vote.Timestamp,
 		ChainID:   chainID,

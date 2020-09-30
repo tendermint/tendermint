@@ -3,9 +3,13 @@ package types
 import (
 	"fmt"
 	"time"
+
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
+	"github.com/tendermint/tendermint/version"
 )
 
-func MakeCommit(blockID BlockID, height int64, round int,
+func MakeCommit(blockID BlockID, height int64, round int32,
 	voteSet *VoteSet, validators []PrivValidator, now time.Time) (*Commit, error) {
 
 	// all sign
@@ -16,10 +20,10 @@ func MakeCommit(blockID BlockID, height int64, round int,
 		}
 		vote := &Vote{
 			ValidatorAddress: pubKey.Address(),
-			ValidatorIndex:   i,
+			ValidatorIndex:   int32(i),
 			Height:           height,
 			Round:            round,
-			Type:             PrecommitType,
+			Type:             tmproto.PrecommitType,
 			BlockID:          blockID,
 			Timestamp:        now,
 		}
@@ -34,10 +38,12 @@ func MakeCommit(blockID BlockID, height int64, round int,
 }
 
 func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
-	err = privVal.SignVote(voteSet.ChainID(), vote)
+	v := vote.ToProto()
+	err = privVal.SignVote(voteSet.ChainID(), v)
 	if err != nil {
 		return false, err
 	}
+	vote.Signature = v.Signature
 	return voteSet.AddVote(vote)
 }
 
@@ -61,12 +67,17 @@ func MakeVote(
 		Height:           height,
 		Round:            0,
 		Timestamp:        now,
-		Type:             PrecommitType,
+		Type:             tmproto.PrecommitType,
 		BlockID:          blockID,
 	}
-	if err := privVal.SignVote(chainID, vote); err != nil {
+	v := vote.ToProto()
+
+	if err := privVal.SignVote(chainID, v); err != nil {
 		return nil, err
 	}
+
+	vote.Signature = v.Signature
+
 	return vote, nil
 }
 
@@ -76,7 +87,8 @@ func MakeVote(
 func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) *Block {
 	block := &Block{
 		Header: Header{
-			Height: height,
+			Version: tmversion.Consensus{Block: version.BlockProtocol, App: 0},
+			Height:  height,
 		},
 		Data: Data{
 			Txs: txs,

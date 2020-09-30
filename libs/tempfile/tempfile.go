@@ -7,8 +7,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
+
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 const (
@@ -31,7 +32,7 @@ const (
 
 var (
 	atomicWriteFileRand   uint64
-	atomicWriteFileRandMu sync.Mutex
+	atomicWriteFileRandMu tmsync.Mutex
 )
 
 func writeFileRandReseed() uint64 {

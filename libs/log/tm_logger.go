@@ -54,7 +54,7 @@ func (l *tmLogger) Info(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Info(l.srcLogger)
 	if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
 		errLogger := kitlevel.Error(l.srcLogger)
-		kitlog.With(errLogger, msgKey, msg).Log("err", err)
+		kitlog.With(errLogger, msgKey, msg).Log("err", err) //nolint:errcheck // no need to check error again
 	}
 }
 
@@ -63,7 +63,7 @@ func (l *tmLogger) Debug(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Debug(l.srcLogger)
 	if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
 		errLogger := kitlevel.Error(l.srcLogger)
-		kitlog.With(errLogger, msgKey, msg).Log("err", err)
+		kitlog.With(errLogger, msgKey, msg).Log("err", err) //nolint:errcheck // no need to check error again
 	}
 }
 
@@ -72,7 +72,7 @@ func (l *tmLogger) Error(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Error(l.srcLogger)
 	lWithMsg := kitlog.With(lWithLevel, msgKey, msg)
 	if err := lWithMsg.Log(keyvals...); err != nil {
-		lWithMsg.Log("err", err)
+		lWithMsg.Log("err", err) //nolint:errcheck // no need to check error again
 	}
 }
 

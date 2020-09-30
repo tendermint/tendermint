@@ -7,12 +7,12 @@ import (
 	"net"
 	"os"
 	"runtime"
-	"sync"
 
 	"github.com/tendermint/tendermint/abci/types"
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 // var maxNumberConnections = 2
@@ -25,11 +25,11 @@ type SocketServer struct {
 	addr     string
 	listener net.Listener
 
-	connsMtx   sync.Mutex
+	connsMtx   tmsync.Mutex
 	conns      map[int]net.Conn
 	nextConnID int
 
-	appMtx sync.Mutex
+	appMtx tmsync.Mutex
 	app    types.Application
 }
 

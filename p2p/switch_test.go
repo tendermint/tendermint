@@ -11,7 +11,6 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -23,6 +22,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
@@ -45,7 +45,7 @@ type PeerMessage struct {
 type TestReactor struct {
 	BaseReactor
 
-	mtx          sync.Mutex
+	mtx          tmsync.Mutex
 	channels     []*conn.ChannelDescriptor
 	logMessages  bool
 	msgsCounter  int
@@ -98,9 +98,9 @@ func MakeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switc
 }
 
 func initSwitchFunc(i int, sw *Switch) *Switch {
-	sw.SetAddrBook(&addrBookMock{
-		addrs:    make(map[string]struct{}),
-		ourAddrs: make(map[string]struct{})})
+	sw.SetAddrBook(&AddrBookMock{
+		Addrs:    make(map[string]struct{}),
+		OurAddrs: make(map[string]struct{})})
 
 	// Make two reactors of two channels each
 	sw.AddReactor("foo", NewTestReactor([]*conn.ChannelDescriptor{
@@ -117,8 +117,16 @@ func initSwitchFunc(i int, sw *Switch) *Switch {
 
 func TestSwitches(t *testing.T) {
 	s1, s2 := MakeSwitchPair(t, initSwitchFunc)
-	defer s1.Stop()
-	defer s2.Stop()
+	t.Cleanup(func() {
+		if err := s1.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
+	t.Cleanup(func() {
+		if err := s2.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	if s1.Peers().Size() != 1 {
 		t.Errorf("expected exactly 1 peer in s1, got %v", s1.Peers().Size())
@@ -219,12 +227,18 @@ func TestSwitchPeerFilter(t *testing.T) {
 			SwitchPeerFilters(filters...),
 		)
 	)
-	defer sw.Stop()
+	err := sw.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := sw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	// simulate remote peer
 	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
 	rp.Start()
-	defer rp.Stop()
+	t.Cleanup(rp.Stop)
 
 	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
 		chDescs:      sw.chDescs,
@@ -264,7 +278,13 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 			SwitchPeerFilters(filters...),
 		)
 	)
-	defer sw.Stop()
+	err := sw.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := sw.Stop(); err != nil {
+			t.Log(err)
+		}
+	})
 
 	// simulate remote peer
 	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
@@ -289,8 +309,13 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 
 func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
-	sw.Start()
-	defer sw.Stop()
+	err := sw.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := sw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	// simulate remote peer
 	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
@@ -336,7 +361,11 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	defer sw.Stop()
+	t.Cleanup(func() {
+		if err := sw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	// simulate remote peer
 	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
@@ -357,7 +386,8 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	require.NotNil(sw.Peers().Get(rp.ID()))
 
 	// simulate failure by closing connection
-	p.(*peer).CloseConn()
+	err = p.(*peer).CloseConn()
+	require.NoError(err)
 
 	assertNoPeersAfterTimeout(t, sw, 100*time.Millisecond)
 	assert.False(p.IsRunning())
@@ -369,7 +399,7 @@ func TestSwitchStopPeerForError(t *testing.T) {
 
 	scrapeMetrics := func() string {
 		resp, err := http.Get(s.URL)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer resp.Body.Close()
 		buf, _ := ioutil.ReadAll(resp.Body)
 		return string(buf)
@@ -404,7 +434,11 @@ func TestSwitchStopPeerForError(t *testing.T) {
 
 	// stop sw2. this should cause the p to fail,
 	// which results in calling StopPeerForError internally
-	sw2.Stop()
+	t.Cleanup(func() {
+		if err := sw2.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	// now call StopPeerForError explicitly, eg. from a reactor
 	sw1.StopPeerForError(p, fmt.Errorf("some err"))
@@ -417,7 +451,11 @@ func TestSwitchReconnectsToOutboundPersistentPeer(t *testing.T) {
 	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
 	err := sw.Start()
 	require.NoError(t, err)
-	defer sw.Stop()
+	t.Cleanup(func() {
+		if err := sw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	// 1. simulate failure by closing connection
 	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
@@ -432,7 +470,8 @@ func TestSwitchReconnectsToOutboundPersistentPeer(t *testing.T) {
 	require.NotNil(t, sw.Peers().Get(rp.ID()))
 
 	p := sw.Peers().List()[0]
-	p.(*peer).CloseConn()
+	err = p.(*peer).CloseConn()
+	require.NoError(t, err)
 
 	waitUntilSwitchHasAtLeastNPeers(sw, 1)
 	assert.False(t, p.IsRunning())        // old peer instance
@@ -462,7 +501,11 @@ func TestSwitchReconnectsToInboundPersistentPeer(t *testing.T) {
 	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
 	err := sw.Start()
 	require.NoError(t, err)
-	defer sw.Stop()
+	t.Cleanup(func() {
+		if err := sw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	// 1. simulate failure by closing the connection
 	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
@@ -491,7 +534,11 @@ func TestSwitchDialPeersAsync(t *testing.T) {
 	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
 	err := sw.Start()
 	require.NoError(t, err)
-	defer sw.Stop()
+	t.Cleanup(func() {
+		if err := sw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
 	rp.Start()
@@ -517,7 +564,12 @@ func TestSwitchFullConnectivity(t *testing.T) {
 	switches := MakeConnectedSwitches(cfg, 3, initSwitchFunc, Connect2Switches)
 	defer func() {
 		for _, sw := range switches {
-			sw.Stop()
+			sw := sw
+			t.Cleanup(func() {
+				if err := sw.Stop(); err != nil {
+					t.Error(err)
+				}
+			})
 		}
 	}()
 
@@ -546,10 +598,15 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 
 	// make switch
 	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
-	sw.AddUnconditionalPeerIDs(unconditionalPeerIDs)
-	err := sw.Start()
+	err := sw.AddUnconditionalPeerIDs(unconditionalPeerIDs)
 	require.NoError(t, err)
-	defer sw.Stop()
+	err = sw.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := sw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	// 0. check there are no peers
 	assert.Equal(t, 0, sw.Peers().Size())
@@ -583,7 +640,8 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	require.NoError(t, err)
 	// check conn is closed
 	one := make([]byte, 1)
-	conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
+	err = conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
+	require.NoError(t, err)
 	_, err = conn.Read(one)
 	assert.Equal(t, io.EOF, err)
 	assert.Equal(t, cfg.MaxNumInboundPeers, sw.Peers().Size())
@@ -637,23 +695,26 @@ func TestSwitchAcceptRoutineErrorCases(t *testing.T) {
 	sw := NewSwitch(cfg, errorTransport{ErrFilterTimeout{}})
 	assert.NotPanics(t, func() {
 		err := sw.Start()
-		assert.NoError(t, err)
-		sw.Stop()
+		require.NoError(t, err)
+		err = sw.Stop()
+		require.NoError(t, err)
 	})
 
 	sw = NewSwitch(cfg, errorTransport{ErrRejected{conn: nil, err: errors.New("filtered"), isFiltered: true}})
 	assert.NotPanics(t, func() {
 		err := sw.Start()
-		assert.NoError(t, err)
-		sw.Stop()
+		require.NoError(t, err)
+		err = sw.Stop()
+		require.NoError(t, err)
 	})
 	// TODO(melekes) check we remove our address from addrBook
 
 	sw = NewSwitch(cfg, errorTransport{ErrTransportClosed{}})
 	assert.NotPanics(t, func() {
 		err := sw.Start()
-		assert.NoError(t, err)
-		sw.Stop()
+		require.NoError(t, err)
+		err = sw.Stop()
+		require.NoError(t, err)
 	})
 }
 
@@ -698,7 +759,11 @@ func TestSwitchInitPeerIsNotCalledBeforeRemovePeer(t *testing.T) {
 	})
 	err := sw.Start()
 	require.NoError(t, err)
-	defer sw.Stop()
+	t.Cleanup(func() {
+		if err := sw.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	// add peer
 	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
@@ -739,8 +804,18 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 		}, false))
 		return sw
 	})
-	defer s1.Stop()
-	defer s2.Stop()
+
+	b.Cleanup(func() {
+		if err := s1.Stop(); err != nil {
+			b.Error(err)
+		}
+	})
+
+	b.Cleanup(func() {
+		if err := s2.Stop(); err != nil {
+			b.Error(err)
+		}
+	})
 
 	// Allow time for goroutines to boot up
 	time.Sleep(1 * time.Second)
@@ -764,29 +839,3 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 
 	b.Logf("success: %v, failure: %v", numSuccess, numFailure)
 }
-
-type addrBookMock struct {
-	addrs    map[string]struct{}
-	ourAddrs map[string]struct{}
-}
-
-var _ AddrBook = (*addrBookMock)(nil)
-
-func (book *addrBookMock) AddAddress(addr *NetAddress, src *NetAddress) error {
-	book.addrs[addr.String()] = struct{}{}
-	return nil
-}
-func (book *addrBookMock) AddOurAddress(addr *NetAddress) { book.ourAddrs[addr.String()] = struct{}{} }
-func (book *addrBookMock) OurAddress(addr *NetAddress) bool {
-	_, ok := book.ourAddrs[addr.String()]
-	return ok
-}
-func (book *addrBookMock) MarkGood(ID) {}
-func (book *addrBookMock) HasAddress(addr *NetAddress) bool {
-	_, ok := book.addrs[addr.String()]
-	return ok
-}
-func (book *addrBookMock) RemoveAddress(addr *NetAddress) {
-	delete(book.addrs, addr.String())
-}
-func (book *addrBookMock) Save() {}

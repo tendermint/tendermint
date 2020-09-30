@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -112,8 +113,10 @@ func deliverTxsRange(cs *State, start, end int) {
 func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	state, privVals := randGenesisState(1, false, 10)
 	blockDB := dbm.NewMemDB()
+	stateStore := sm.NewStore(blockDB)
 	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockDB)
-	sm.SaveState(blockDB, state)
+	err := stateStore.Save(state)
+	require.NoError(t, err)
 	newBlockHeaderCh := subscribe(cs.eventBus, types.EventQueryNewBlockHeader)
 
 	const numTxs int64 = 3000
@@ -135,8 +138,10 @@ func TestMempoolRmBadTx(t *testing.T) {
 	state, privVals := randGenesisState(1, false, 10)
 	app := NewCounterApplication()
 	blockDB := dbm.NewMemDB()
+	stateStore := sm.NewStore(blockDB)
 	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], app, blockDB)
-	sm.SaveState(blockDB, state)
+	err := stateStore.Save(state)
+	require.NoError(t, err)
 
 	// increment the counter by 1
 	txBytes := make([]byte, 8)

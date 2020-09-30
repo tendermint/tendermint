@@ -43,6 +43,4 @@ terraform.tfstate
 terraform.tfstate.backup
 terraform.tfstate.d
 
-.vscode
-
 profile\.out

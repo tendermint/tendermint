@@ -37,6 +37,6 @@ manner. We might ask you to provide additional logs and data (tendermint & app).
 
 **node command runtime flags**:
 
-**`/dump_consensus_state` output for consensus bugs**
+**Please provide the output from the `http://<ip>:<port>/dump_consensus_state` RPC endpoint for consensus bugs**
 
 **Anything else we need to know**:

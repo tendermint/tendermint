@@ -23,7 +23,7 @@ const (
 	"pub_key": {
 		"type": "tendermint/PubKeyEd25519",
 		"value": "ZCsuTjaczEyon70nmKxwvwu+jqrbq5OH3yQjcK0SFxc="
-	},
+		},
 	"priv_key": {
 		"type": "tendermint/PrivKeyEd25519",
 		"value": "8O39AkQsoe1sBQwud/Kdul8lg8K9SFsql9aZvwXQSt1kKy5ONpzMTKifvSeYrHC/C76Oqturk4ffJCNwrRIXFw=="
@@ -32,7 +32,7 @@ const (
 
 	stateFileContents = `{
 	"height": "0",
-	"round": "0",
+	"round": 0,
 	"step": 0
 }`
 
@@ -48,7 +48,7 @@ const (
 		"evidence": {
 			"max_age_num_blocks": "100000",
 			"max_age_duration": "172800000000000",
-			"max_num_evidence": 50
+			"max_num": 50
 		},
 		"validator": {
 			"pub_key_types": [
@@ -160,7 +160,7 @@ func harnessTest(t *testing.T, signerServerMaker func(th *TestHarness) *privval.
 	ss := signerServerMaker(th)
 	require.NoError(t, ss.Start())
 	assert.True(t, ss.IsRunning())
-	defer ss.Stop()
+	defer ss.Stop() //nolint:errcheck // ignore for tests
 
 	<-donec
 	assert.Equal(t, expectedExitCode, th.exitCode)

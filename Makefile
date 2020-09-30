@@ -26,6 +26,22 @@ ifeq (cleveldb,$(findstring cleveldb,$(TENDERMINT_BUILD_OPTIONS)))
   BUILD_TAGS += cleveldb
 endif
 
+# handle badgerdb
+ifeq (badgerdb,$(findstring badgerdb,$(TENDERMINT_BUILD_OPTIONS)))
+  BUILD_TAGS += badgerdb
+endif
+
+# handle rocksdb
+ifeq (rocksdb,$(findstring rocksdb,$(TENDERMINT_BUILD_OPTIONS)))
+  CGO_ENABLED=1
+  BUILD_TAGS += rocksdb
+endif
+
+# handle boltdb
+ifeq (boltdb,$(findstring boltdb,$(TENDERMINT_BUILD_OPTIONS)))
+  BUILD_TAGS += boltdb
+endif
+
 # allow users to pass additional flags via the conventional LDFLAGS variable
 LD_FLAGS += $(LDFLAGS)
 
@@ -72,6 +88,11 @@ proto-gen-docker:
 proto-lint:
 	@$(DOCKER_BUF) check lint --error-format=json
 .PHONY: proto-lint
+
+proto-format:
+	@echo "Formatting Protobuf files"
+	docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto find ./ -not -path "./third_party/*" -name *.proto -exec clang-format -i {} \;
+.PHONY: proto-format
 
 proto-check-breaking:
 	@$(DOCKER_BUF) check breaking --against-input .git#branch=master
@@ -169,7 +190,7 @@ DESTINATION = ./index.html.md
 build-docs:
 	cd docs && \
 	while read p; do \
-		(git checkout $${p} && npm install && VUEPRESS_BASE="/$${p}/" npm run build) ; \
+		(git checkout $${p} . && npm install && VUEPRESS_BASE="/$${p}/" npm run build) ; \
 		mkdir -p ~/output/$${p} ; \
 		cp -r .vuepress/dist/* ~/output/$${p}/ ; \
 		cp ~/output/$${p}/index.html ~/output ; \
@@ -188,7 +209,7 @@ sync-docs:
 ###                            Docker image                                 ###
 ###############################################################################
 
-build-docker:
+build-docker: build-linux
 	cp $(OUTPUT) DOCKER/tendermint
 	docker build --label=tendermint --tag="tendermint/tendermint" DOCKER
 	rm -rf DOCKER/tendermint
@@ -217,7 +238,7 @@ build_c-amazonlinux:
 
 # Run a 4-node testnet locally
 localnet-start: localnet-stop build-docker-localnode
-	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --config /etc/tendermint/config-template.toml --v 4 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2; fi
+	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --config /etc/tendermint/config-template.toml --o . --starting-ip-address 192.167.10.2; fi
 	docker-compose up
 .PHONY: localnet-start
 

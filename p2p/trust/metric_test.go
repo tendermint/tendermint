@@ -5,11 +5,13 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTrustMetricScores(t *testing.T) {
 	tm := NewMetric()
-	tm.Start()
+	err := tm.Start()
+	require.NoError(t, err)
 
 	// Perfect score
 	tm.GoodEvents(1)
@@ -20,7 +22,8 @@ func TestTrustMetricScores(t *testing.T) {
 	tm.BadEvents(10)
 	score = tm.TrustScore()
 	assert.NotEqual(t, 100, score)
-	tm.Stop()
+	err = tm.Stop()
+	require.NoError(t, err)
 }
 
 func TestTrustMetricConfig(t *testing.T) {
@@ -32,7 +35,8 @@ func TestTrustMetricConfig(t *testing.T) {
 	}
 
 	tm := NewMetricWithConfig(config)
-	tm.Start()
+	err := tm.Start()
+	require.NoError(t, err)
 
 	// The max time intervals should be the TrackingWindow / IntervalLen
 	assert.Equal(t, int(config.TrackingWindow/config.IntervalLength), tm.maxIntervals)
@@ -41,18 +45,21 @@ func TestTrustMetricConfig(t *testing.T) {
 	// These weights should still be the default values
 	assert.Equal(t, dc.ProportionalWeight, tm.proportionalWeight)
 	assert.Equal(t, dc.IntegralWeight, tm.integralWeight)
-	tm.Stop()
+	err = tm.Stop()
+	require.NoError(t, err)
 	tm.Wait()
 
 	config.ProportionalWeight = 0.3
 	config.IntegralWeight = 0.7
 	tm = NewMetricWithConfig(config)
-	tm.Start()
+	err = tm.Start()
+	require.NoError(t, err)
 
 	// These weights should be equal to our custom values
 	assert.Equal(t, config.ProportionalWeight, tm.proportionalWeight)
 	assert.Equal(t, config.IntegralWeight, tm.integralWeight)
-	tm.Stop()
+	err = tm.Stop()
+	require.NoError(t, err)
 	tm.Wait()
 }
 
@@ -72,7 +79,8 @@ func _TestTrustMetricStopPause(t *testing.T) {
 	tt := NewTestTicker()
 	tm := NewMetric()
 	tm.SetTicker(tt)
-	tm.Start()
+	err := tm.Start()
+	require.NoError(t, err)
 	// Allow some time intervals to pass and pause
 	tt.NextTick()
 	tt.NextTick()
@@ -91,7 +99,8 @@ func _TestTrustMetricStopPause(t *testing.T) {
 	// Allow some time intervals to pass and stop
 	tt.NextTick()
 	tt.NextTick()
-	tm.Stop()
+	err = tm.Stop()
+	require.NoError(t, err)
 	tm.Wait()
 
 	second := tm.Copy().numIntervals

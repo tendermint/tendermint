@@ -62,4 +62,3 @@ By default, the command will upload the file `/tmp/workspace/tendermint_${CIRCLE
 
 ## github-publish.py
 Publish a GitHub release. The release is defined by the mandatory `--id` (release ID) input parameter.
-

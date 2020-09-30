@@ -2,11 +2,11 @@ package p2p
 
 import (
 	"net"
-	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/config"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 // FuzzedConnection wraps any net.Conn and depending on the mode either delays
@@ -14,7 +14,7 @@ import (
 type FuzzedConnection struct {
 	conn net.Conn
 
-	mtx    sync.Mutex
+	mtx    tmsync.Mutex
 	start  <-chan time.Time
 	active bool
 
@@ -123,7 +123,7 @@ func (fc *FuzzedConnection) fuzz() bool {
 		case r < fc.config.ProbDropRW+fc.config.ProbDropConn:
 			// XXX: can't this fail because machine precision?
 			// XXX: do we need an error?
-			fc.Close() // nolint: errcheck, gas
+			fc.Close()
 			return true
 		case r < fc.config.ProbDropRW+fc.config.ProbDropConn+fc.config.ProbSleep:
 			time.Sleep(fc.randomDuration())

@@ -10,16 +10,19 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/behaviour"
+	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
+	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
@@ -96,7 +99,7 @@ func (sio *mockSwitchIo) sendBlockRequest(peerID p2p.ID, height int64) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) sendStatusResponse(height int64, peerID p2p.ID) error {
+func (sio *mockSwitchIo) sendStatusResponse(base, height int64, peerID p2p.ID) error {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.numStatusResponse++
@@ -124,7 +127,8 @@ func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, skipWAL bool) bool
 	return true
 }
 
-func (sio *mockSwitchIo) broadcastStatusRequest(base int64, height int64) {
+func (sio *mockSwitchIo) broadcastStatusRequest() error {
+	return nil
 }
 
 type testReactorParams struct {
@@ -152,8 +156,11 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 			panic(fmt.Errorf("error start app: %w", err))
 		}
 		db := dbm.NewMemDB()
-		appl = sm.NewBlockExecutor(db, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.MockEvidencePool{})
-		sm.SaveState(db, state)
+		stateStore := sm.NewStore(db)
+		appl = sm.NewBlockExecutor(stateStore, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.EmptyEvidencePool{})
+		if err = stateStore.Save(state); err != nil {
+			panic(err)
+		}
 	}
 
 	r := newReactor(state, store, reporter, appl, true)
@@ -370,10 +377,10 @@ func TestReactorHelperMode(t *testing.T) {
 			name:   "status request",
 			params: params,
 			msgs: []testEvent{
-				{"P1", bcStatusRequestMessage{}},
-				{"P1", bcBlockRequestMessage{Height: 13}},
-				{"P1", bcBlockRequestMessage{Height: 20}},
-				{"P1", bcBlockRequestMessage{Height: 22}},
+				{"P1", bcproto.StatusRequest{}},
+				{"P1", bcproto.BlockRequest{Height: 13}},
+				{"P1", bcproto.BlockRequest{Height: 20}},
+				{"P1", bcproto.BlockRequest{Height: 22}},
 			},
 		},
 	}
@@ -384,28 +391,37 @@ func TestReactorHelperMode(t *testing.T) {
 			reactor := newTestReactor(params)
 			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
 			reactor.io = mockSwitch
-			reactor.Start()
+			err := reactor.Start()
+			require.NoError(t, err)
 
 			for i := 0; i < len(tt.msgs); i++ {
 				step := tt.msgs[i]
 				switch ev := step.event.(type) {
-				case bcStatusRequestMessage:
+				case bcproto.StatusRequest:
 					old := mockSwitch.numStatusResponse
-					reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(ev))
+					msg, err := bc.EncodeMsg(&ev)
+					assert.NoError(t, err)
+					reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
 					assert.Equal(t, old+1, mockSwitch.numStatusResponse)
-				case bcBlockRequestMessage:
+				case bcproto.BlockRequest:
 					if ev.Height > params.startHeight {
 						old := mockSwitch.numNoBlockResponse
-						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(ev))
+						msg, err := bc.EncodeMsg(&ev)
+						assert.NoError(t, err)
+						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
 						assert.Equal(t, old+1, mockSwitch.numNoBlockResponse)
 					} else {
 						old := mockSwitch.numBlockResponse
-						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, cdc.MustMarshalBinaryBare(ev))
+						msg, err := bc.EncodeMsg(&ev)
+						assert.NoError(t, err)
+						assert.NoError(t, err)
+						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
 						assert.Equal(t, old+1, mockSwitch.numBlockResponse)
 					}
 				}
 			}
-			reactor.Stop()
+			err = reactor.Stop()
+			require.NoError(t, err)
 		})
 	}
 }
@@ -485,16 +501,19 @@ func newReactorStore(
 
 	stateDB := dbm.NewMemDB()
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-
-	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+	stateStore := sm.NewStore(stateDB)
+	state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 	if err != nil {
 		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
 
 	db := dbm.NewMemDB()
-	blockExec := sm.NewBlockExecutor(db, log.TestingLogger(), proxyApp.Consensus(),
-		mock.Mempool{}, sm.MockEvidencePool{})
-	sm.SaveState(db, state)
+	stateStore = sm.NewStore(db)
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
+		mock.Mempool{}, sm.EmptyEvidencePool{})
+	if err = stateStore.Save(state); err != nil {
+		panic(err)
+	}
 
 	// add blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
@@ -520,7 +539,7 @@ func newReactorStore(
 		thisBlock := makeBlock(blockHeight, state, lastCommit)
 
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
-		blockID := types.BlockID{Hash: thisBlock.Hash(), PartsHeader: thisParts.Header()}
+		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
 		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {

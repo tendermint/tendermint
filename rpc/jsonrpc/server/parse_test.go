@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/libs/bytes"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -137,7 +136,6 @@ func TestParseJSONArray(t *testing.T) {
 func TestParseJSONRPC(t *testing.T) {
 	demo := func(ctx *types.Context, height int, name string) {}
 	call := NewRPCFunc(demo, "height,name")
-	cdc := amino.NewCodec()
 
 	cases := []struct {
 		raw    string
@@ -158,7 +156,7 @@ func TestParseJSONRPC(t *testing.T) {
 	for idx, tc := range cases {
 		i := strconv.Itoa(idx)
 		data := []byte(tc.raw)
-		vals, err := jsonParamsToArgs(call, cdc, data)
+		vals, err := jsonParamsToArgs(call, data)
 		if tc.fail {
 			assert.NotNil(t, err, i)
 		} else {
@@ -175,7 +173,6 @@ func TestParseJSONRPC(t *testing.T) {
 func TestParseURI(t *testing.T) {
 	demo := func(ctx *types.Context, height int, name string) {}
 	call := NewRPCFunc(demo, "height,name")
-	cdc := amino.NewCodec()
 
 	cases := []struct {
 		raw    []string
@@ -201,7 +198,7 @@ func TestParseURI(t *testing.T) {
 			tc.raw[0], tc.raw[1])
 		req, err := http.NewRequest("GET", url, nil)
 		assert.NoError(t, err)
-		vals, err := httpParamsToArgs(call, cdc, req)
+		vals, err := httpParamsToArgs(call, req)
 		if tc.fail {
 			assert.NotNil(t, err, i)
 		} else {

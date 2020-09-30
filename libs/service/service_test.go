@@ -18,7 +18,8 @@ func (testService) OnReset() error {
 func TestBaseServiceWait(t *testing.T) {
 	ts := &testService{}
 	ts.BaseService = *NewBaseService(nil, "TestService", ts)
-	ts.Start()
+	err := ts.Start()
+	require.NoError(t, err)
 
 	waitFinished := make(chan struct{})
 	go func() {
@@ -26,7 +27,7 @@ func TestBaseServiceWait(t *testing.T) {
 		waitFinished <- struct{}{}
 	}()
 
-	go ts.Stop()
+	go ts.Stop() //nolint:errcheck // ignore for tests
 
 	select {
 	case <-waitFinished:
@@ -39,12 +40,14 @@ func TestBaseServiceWait(t *testing.T) {
 func TestBaseServiceReset(t *testing.T) {
 	ts := &testService{}
 	ts.BaseService = *NewBaseService(nil, "TestService", ts)
-	ts.Start()
+	err := ts.Start()
+	require.NoError(t, err)
 
-	err := ts.Reset()
+	err = ts.Reset()
 	require.Error(t, err, "expected cant reset service error")
 
-	ts.Stop()
+	err = ts.Stop()
+	require.NoError(t, err)
 
 	err = ts.Reset()
 	require.NoError(t, err)

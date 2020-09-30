@@ -9,7 +9,7 @@ import (
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	tmprotobits "github.com/tendermint/tendermint/proto/libs/bits"
+	tmprotobits "github.com/tendermint/tendermint/proto/tendermint/libs/bits"
 )
 
 // BitArray is a thread-safe implementation of a bit array.
@@ -355,14 +355,12 @@ func (bA *BitArray) Update(o *BitArray) {
 	if bA == nil || o == nil {
 		return
 	}
+
 	bA.mtx.Lock()
 	o.mtx.Lock()
-	defer func() {
-		bA.mtx.Unlock()
-		o.mtx.Unlock()
-	}()
-
 	copy(bA.Elems, o.Elems)
+	o.mtx.Unlock()
+	bA.mtx.Unlock()
 }
 
 // MarshalJSON implements json.Marshaler interface by marshaling bit array

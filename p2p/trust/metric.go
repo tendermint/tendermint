@@ -5,10 +5,10 @@ package trust
 
 import (
 	"math"
-	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/service"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 //---------------------------------------------------------------------------------------
@@ -36,7 +36,7 @@ type Metric struct {
 	service.BaseService
 
 	// Mutex that protects the metric from concurrent access
-	mtx sync.Mutex
+	mtx tmsync.Mutex
 
 	// Determines the percentage given to current behavior
 	proportionalWeight float64
