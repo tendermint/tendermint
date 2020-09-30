@@ -441,7 +441,7 @@ go mod init github.com/me/example
 This should create a `go.mod` file. The current tutorial only works with
 tendermint > v0.34, so let's make sure we're using the latest version:
 
-```
+```go
 module github.com/me/example
 
 go 1.15
