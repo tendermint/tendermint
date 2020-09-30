@@ -1,0 +1,80 @@
+# This testnet is (will be) run by CI, and attempts to cover a broad range of
+# functionality with a single network.
+
+seed = 78430260757
+initial_height = 1000
+initial_state = { initial01 = "a", initial02 = "b", initial03 = "c" }
+
+[validators]
+validator01 = 100
+
+[validator_update.0]
+validator01 = 10
+validator02 = 20
+validator03 = 30
+validator04 = 40
+
+[validator_update.1020]
+validator05 = 50
+
+# validator03 gets killed and validator05 has lots of perturbations, so weight them low.
+[validator_update.1030]
+validator01 = 100
+validator02 = 100
+validator03 = 50
+validator04 = 100
+validator05 = 50
+
+[node.seed01]
+mode = "seed"
+
+[node.validator01]
+seeds = ["seed01"]
+snapshot_interval = 5
+perturb = ["disconnect"]
+
+[node.validator02]
+seeds = ["seed01"]
+database = "boltdb"
+abci_protocol = "tcp"
+privval_protocol = "tcp"
+persist_interval = 0
+perturb = ["restart"]
+
+[node.validator03]
+seeds = ["seed01"]
+database = "badgerdb"
+abci_protocol = "grpc"
+privval_protocol = "unix"
+persist_interval = 3
+retain_blocks = 3
+perturb = ["kill"]
+
+[node.validator04]
+persistent_peers = ["validator01"]
+database = "rocksdb"
+abci_protocol = "grpc"
+retain_blocks = 1
+perturb = ["pause"]
+
+[node.validator05]
+start_at = 1010 # Becomes part of the validator set at 1020
+seeds = ["seed01"]
+database = "cleveldb"
+privval_protocol = "tcp"
+perturb = ["kill", "pause", "disconnect", "restart"]
+
+[node.full01]
+start_at = 1020
+mode = "full"
+fast_sync = "v0"
+persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
+perturb = ["restart"]
+
+[node.full02]
+start_at = 1030
+mode = "full"
+fast_sync = "v2"
+state_sync = true
+seeds = ["seed01"]
+perturb = ["restart"]
