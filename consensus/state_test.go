@@ -251,7 +251,7 @@ func TestStateOversizedBlock(t *testing.T) {
 	voteCh := subscribe(cs1.eventBus, types.EventQueryVote)
 	
 	propBlock, _ := cs1.createProposalBlock()
-	propBlock.Data.Txs = []types.Tx{tmrand.Bytes(2000)}
+	propBlock.Data.Txs = []types.Tx{tmrand.Bytes(2001)}
 	propBlock.Header.DataHash = propBlock.Data.Hash()
 	
 	// make the second validator the proposer by incrementing round
