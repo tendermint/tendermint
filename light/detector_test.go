@@ -168,6 +168,8 @@ func TestClientDivergentTraces(t *testing.T) {
 	require.NoError(t, err)
 	witness := mockp.New(genMockNode(chainID, 10, 5, 2, bTime))
 
+	// 1. Different nodes therefore a divergent header is produced. The
+	// light client can't start because primary and witness has a different view.
 	c, err := light.NewClient(
 		ctx,
 		chainID,
@@ -182,17 +184,11 @@ func TestClientDivergentTraces(t *testing.T) {
 		light.Logger(log.TestingLogger()),
 		light.MaxRetryAttempts(1),
 	)
-	require.NoError(t, err)
-
-	// 1. Different nodes therefore a divergent header is produced but the
-	// light client can't verify it because it has a different trusted header.
-	_, err = c.VerifyLightBlockAtHeight(ctx, 10, bTime.Add(1*time.Hour))
-	assert.Error(t, err)
-	assert.Equal(t, 0, len(c.Witnesses()))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "does not match primary")
 
 	// 2. Two out of three nodes don't respond but the third has a header that matches
 	// verification should be successful and all the witnesses should remain
-
 	c, err = light.NewClient(
 		ctx,
 		chainID,
@@ -208,6 +204,7 @@ func TestClientDivergentTraces(t *testing.T) {
 		light.MaxRetryAttempts(1),
 	)
 	require.NoError(t, err)
+
 	_, err = c.VerifyLightBlockAtHeight(ctx, 10, bTime.Add(1*time.Hour))
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(c.Witnesses()))
