@@ -1010,9 +1010,9 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 		case nil:
 			continue
 		case errConflictingHeaders:
-			c.logger.Error(`Witness has a different header. Please check primary is correct
-and remove witness. Otherwise, use the different primary`)
-			return fmt.Errorf("witness %v: %w", c.witnesses[e.WitnessIndex], err)
+			c.logger.Error(fmt.Sprintf(`Witness #%d has a different header. Please check primary is correct
+and remove witness. Otherwise, use the different primary`, e.WitnessIndex), "witness", c.witnesses[e.WitnessIndex])
+			return err
 		case errBadWitness:
 			// If witness sent us an invalid header, then remove it. If it didn't
 			// respond or couldn't find the block, then we ignore it and move on to
