@@ -24,11 +24,15 @@ var (
 // testNode runs tests for testnet nodes. The callback function is given a
 // single node to test, running as a subtest in parallel with other subtests.
 //
-// The testnet manifest must be given as the envvar E2E_MANIFEST. If E2E_NODE is
-// also set, only the specified node is tested, otherwise all nodes are tested.
+// The testnet manifest must be given as the envvar E2E_MANIFEST. If not set,
+// these tests are skipped so that they're not picked up during normal unit
+// test runs. If E2E_NODE is also set, only the specified node is tested,
+// otherwise all nodes are tested.
 func testNode(t *testing.T, testFunc func(*testing.T, e2e.Node)) {
 	manifest := os.Getenv("E2E_MANIFEST")
-	require.NotEmpty(t, manifest, "Envvar E2E_MANIFEST not set")
+	if manifest == "" {
+		t.Skip("E2E_MANIFEST not set, not an end-to-end test run")
+	}
 	if !filepath.IsAbs(manifest) {
 		manifest = filepath.Join("..", manifest)
 	}
