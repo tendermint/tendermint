@@ -362,7 +362,7 @@ func (c *Client) initializeWithTrustOptions(ctx context.Context, options TrustOp
 		return fmt.Errorf("invalid commit: %w", err)
 	}
 
-	// Cross-verify with witnesses to ensure everybody have the same view
+	// Cross-verify with witnesses to ensure everybody has the same state
 	if len(c.witnesses) > 0 {
 		if err := c.compareFirstHeaderWithWitnesses(ctx, l.SignedHeader); err != nil {
 			return err

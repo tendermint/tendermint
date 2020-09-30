@@ -164,7 +164,7 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 
 // 1. Different nodes therefore a divergent header is produced.
 // => light client returns an error upon creation because primary and witness
-// has a different view.
+// have a different view.
 func TestClientDivergentTraces1(t *testing.T) {
 	primary := mockp.New(genMockNode(chainID, 10, 5, 2, bTime))
 	firstBlock, err := primary.LightBlock(ctx, 1)
