@@ -247,13 +247,13 @@ func TestStateOversizedBlock(t *testing.T) {
 
 	partSize := types.BlockPartSizeBytes
 
-	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
+	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
 	voteCh := subscribe(cs1.eventBus, types.EventQueryVote)
-	
+
 	propBlock, _ := cs1.createProposalBlock()
 	propBlock.Data.Txs = []types.Tx{tmrand.Bytes(2001)}
 	propBlock.Header.DataHash = propBlock.Data.Hash()
-	
+
 	// make the second validator the proposer by incrementing round
 	round++
 	incrementRound(vss[1:]...)
@@ -266,35 +266,32 @@ func TestStateOversizedBlock(t *testing.T) {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
-	
+
 	totalBytes := 0
 	for i := 0; i < int(propBlockParts.Total()); i++ {
 		part := propBlockParts.GetPart(i)
 		totalBytes += len(part.Bytes)
 	}
-	
-	
+
 	if err := cs1.SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
 
 	// start the machine
 	startTestRound(cs1, height, round)
-	
-	t.Log("Block Sizes",  "Limit", cs1.state.ConsensusParams.Block.MaxBytes, "Current", totalBytes)
 
-	// wait for proposal
-	ensureProposal(proposalCh, height, round, blockID)
+	t.Log("Block Sizes", "Limit", cs1.state.ConsensusParams.Block.MaxBytes, "Current", totalBytes)
 
-	// wait for prevote
+	// c1 should log an error with the block part message as it exceeds the consensus params. The
+	// block is not added to cs.ProposalBlock so the node timeouts.
+	ensureNewTimeout(timeoutProposeCh, height, round, cs1.config.Propose(round).Nanoseconds())
+
+	// and then should send nil prevote and precommit regardless of whether other validators prevote and
+	// precommit on it
 	ensurePrevote(voteCh, height, round)
 	validatePrevote(t, cs1, round, vss[0], nil)
-
-	// add bad prevote from vs2 and wait for it
 	signAddVotes(cs1, tmproto.PrevoteType, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
 	ensurePrevote(voteCh, height, round)
-
-	// wait for precommit
 	ensurePrecommit(voteCh, height, round)
 	validatePrecommit(t, cs1, round, -1, vss[0], nil, nil)
 	signAddVotes(cs1, tmproto.PrecommitType, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)

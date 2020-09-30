@@ -156,8 +156,8 @@ type PartSet struct {
 	partsBitArray *bits.BitArray
 	count         uint32
 	// a count of the total size (in bytes). Used to ensure that the
-	// part set doesn't exceed the maximum block bytes 
-	byteSize      int64
+	// part set doesn't exceed the maximum block bytes
+	byteSize int64
 }
 
 // Returns an immutable, full PartSet from the data bytes.
