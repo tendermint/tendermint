@@ -94,7 +94,7 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 				ConflictingBlock: primaryBlock,
 				CommonHeight:     commonHeight, // the first block in the bisection is common to both providers
 			}
-			c.logger.Error("Attack detected. Sending evidence againt primary by witness", "ev", ev,
+			c.logger.Error("Attack detected. Sending evidence againt primary by witness", "ev", primaryEv,
 				"primary", c.primary, "witness", supportingWitness)
 			c.sendEvidence(ctx, primaryEv, supportingWitness)
 
@@ -110,7 +110,7 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 			)
 			if err != nil {
 				c.logger.Info("Error validating primary's divergent header", "primary", c.primary, "err", err)
-				return e // return the original error
+				return ErrLightClientAttack
 			}
 			// if this is an equivocation or amnesia attack, i.e. the validator sets are the same, then we
 			// return the height of the conflicting block else if it is a lunatic attack and the validator sets
@@ -126,11 +126,11 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 				ConflictingBlock: witnessBlock,
 				CommonHeight:     commonHeight, // the first block in the bisection is common to both providers
 			}
-			c.logger.Error("Sending evidence against witness by primary", "ev", ev,
+			c.logger.Error("Sending evidence against witness by primary", "ev", witnessEv,
 				"primary", c.primary, "witness", supportingWitness)
 			c.sendEvidence(ctx, witnessEv, c.primary)
 			// We return the error and don't process anymore witnesses
-			return e
+			return ErrLightClientAttack
 
 		case errBadWitness:
 			c.logger.Info("Witness returned an error during header comparison", "witness", c.witnesses[e.WitnessIndex],
