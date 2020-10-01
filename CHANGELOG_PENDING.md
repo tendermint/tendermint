@@ -28,5 +28,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### BUG FIXES
 
-- [privval] Fix faulty ping message encoding causing nil message errors in logs (@erikgrinaker)
+- [privval] \#5441 Fix faulty ping message encoding causing nil message errors in logs (@erikgrinaker)
 
