@@ -136,6 +136,9 @@ services:
   {{ .Name }}:
     container_name: {{ .Name }}
     image: tendermint/e2e-node
+{{- if eq .ABCIProtocol "builtin" }}
+    entrypoint: /usr/bin/entrypoint-builtin
+{{- end }}
     init: true
     ports:
     - 26656
@@ -208,6 +211,9 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	case e2e.ProtocolGRPC:
 		cfg.ProxyApp = AppAddressTCP
 		cfg.ABCI = "grpc"
+	case e2e.ProtocolBuiltin:
+		cfg.ProxyApp = ""
+		cfg.ABCI = ""
 	default:
 		return nil, fmt.Errorf("unexpected ABCI protocol setting %q", node.ABCIProtocol)
 	}
@@ -285,7 +291,7 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		"chain_id":          node.Testnet.Name,
 		"dir":               "data/app",
 		"listen":            AppAddressUNIX,
-		"grpc":              false,
+		"protocol":          "socket",
 		"persist_interval":  node.PersistInterval,
 		"snapshot_interval": node.SnapshotInterval,
 		"retain_blocks":     node.RetainBlocks,
@@ -295,9 +301,12 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		cfg["listen"] = AppAddressUNIX
 	case e2e.ProtocolTCP:
 		cfg["listen"] = AppAddressTCP
-	case "grpc":
+	case e2e.ProtocolGRPC:
 		cfg["listen"] = AppAddressTCP
-		cfg["grpc"] = true
+		cfg["protocol"] = "grpc"
+	case e2e.ProtocolBuiltin:
+		delete(cfg, "listen")
+		cfg["protocol"] = "builtin"
 	default:
 		return nil, fmt.Errorf("unexpected ABCI protocol setting %q", node.ABCIProtocol)
 	}

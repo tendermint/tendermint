@@ -5,7 +5,10 @@ ci: runner
 	./build/runner -f networks/ci.toml
 
 app:
-	go build -o build/app ./app
+	# We need to build support for database backends into the app in
+	# order to build a binary with a Tendermint node in it (for built-in
+	# ABCI testing).
+	go build -o build/app -tags badgerdb,boltdb,cleveldb,rocksdb ./app
 
 runner:
 	go build -o build/runner ./runner

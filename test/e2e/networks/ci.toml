@@ -53,7 +53,7 @@ perturb = ["kill"]
 [node.validator04]
 persistent_peers = ["validator01"]
 database = "rocksdb"
-abci_protocol = "grpc"
+abci_protocol = "builtin"
 retain_blocks = 1
 perturb = ["pause"]
 
@@ -61,13 +61,17 @@ perturb = ["pause"]
 start_at = 1010 # Becomes part of the validator set at 1020
 seeds = ["seed01"]
 database = "cleveldb"
+fast_sync = "v0"
+abci_protocol = "grpc"
 privval_protocol = "tcp"
 perturb = ["kill", "pause", "disconnect", "restart"]
 
 [node.full01]
 start_at = 1020
 mode = "full"
-fast_sync = "v0"
+# FIXME Should test v1, but it won't catch up since some nodes don't have all blocks.
+# https://github.com/tendermint/tendermint/issues/5444
+fast_sync = "v2"
 persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
 perturb = ["restart"]
 

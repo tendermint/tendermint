@@ -11,7 +11,7 @@ import (
 type Config struct {
 	ChainID          string `toml:"chain_id"`
 	Listen           string
-	GRPC             bool `toml:"grpc"`
+	Protocol         string
 	Dir              string
 	PersistInterval  uint64                      `toml:"persist_interval"`
 	SnapshotInterval uint64                      `toml:"snapshot_interval"`
@@ -26,7 +26,7 @@ type Config struct {
 func LoadConfig(file string) (*Config, error) {
 	cfg := &Config{
 		Listen:          "unix:///var/run/app.sock",
-		GRPC:            false,
+		Protocol:        "socket",
 		PersistInterval: 1,
 	}
 	_, err := toml.DecodeFile(file, &cfg)
@@ -42,7 +42,7 @@ func (cfg Config) Validate() error {
 	switch {
 	case cfg.ChainID == "":
 		return errors.New("chain_id parameter is required")
-	case cfg.Listen == "":
+	case cfg.Listen == "" && cfg.Protocol != "builtin":
 		return errors.New("listen parameter is required")
 	default:
 		return nil

@@ -1,4 +1,3 @@
-// nolint: gosec
 package e2e
 
 import (
@@ -26,10 +25,11 @@ const (
 	ModeFull      Mode = "full"
 	ModeSeed      Mode = "seed"
 
-	ProtocolFile Protocol = "file"
-	ProtocolGRPC Protocol = "grpc"
-	ProtocolTCP  Protocol = "tcp"
-	ProtocolUNIX Protocol = "unix"
+	ProtocolBuiltin Protocol = "builtin"
+	ProtocolFile    Protocol = "file"
+	ProtocolGRPC    Protocol = "grpc"
+	ProtocolTCP     Protocol = "tcp"
+	ProtocolUNIX    Protocol = "unix"
 
 	PerturbationDisconnect Perturbation = "disconnect"
 	PerturbationKill       Perturbation = "kill"
@@ -278,7 +278,7 @@ func (n Node) Validate(testnet Testnet) error {
 		return fmt.Errorf("invalid database setting %q", n.Database)
 	}
 	switch n.ABCIProtocol {
-	case ProtocolUNIX, ProtocolTCP, ProtocolGRPC:
+	case ProtocolBuiltin, ProtocolUNIX, ProtocolTCP, ProtocolGRPC:
 	default:
 		return fmt.Errorf("invalid ABCI protocol setting %q", n.ABCIProtocol)
 	}
