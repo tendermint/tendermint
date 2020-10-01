@@ -155,6 +155,9 @@ type PartSet struct {
 	parts         []*Part
 	partsBitArray *bits.BitArray
 	count         uint32
+	// a count of the total size (in bytes). Used to ensure that the
+	// part set doesn't exceed the maximum block bytes
+	byteSize int64
 }
 
 // Returns an immutable, full PartSet from the data bytes.
@@ -186,6 +189,7 @@ func NewPartSetFromData(data []byte, partSize uint32) *PartSet {
 		parts:         parts,
 		partsBitArray: partsBitArray,
 		count:         total,
+		byteSize:      int64(len(data)),
 	}
 }
 
@@ -197,6 +201,7 @@ func NewPartSetFromHeader(header PartSetHeader) *PartSet {
 		parts:         make([]*Part, header.Total),
 		partsBitArray: bits.NewBitArray(int(header.Total)),
 		count:         0,
+		byteSize:      0,
 	}
 }
 
@@ -244,6 +249,13 @@ func (ps *PartSet) Count() uint32 {
 	return ps.count
 }
 
+func (ps *PartSet) ByteSize() int64 {
+	if ps == nil {
+		return 0
+	}
+	return ps.byteSize
+}
+
 func (ps *PartSet) Total() uint32 {
 	if ps == nil {
 		return 0
@@ -277,6 +289,7 @@ func (ps *PartSet) AddPart(part *Part) (bool, error) {
 	ps.parts[part.Index] = part
 	ps.partsBitArray.SetIndex(int(part.Index), true)
 	ps.count++
+	ps.byteSize += int64(len(part.Bytes))
 	return true, nil
 }
 
