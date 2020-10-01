@@ -1,7 +1,7 @@
 # We need to build in a Linux environment to support C libraries, e.g. RocksDB.
 # We use Debian instead of Alpine, so that we can use binary database packages
 # instead of spending time compiling them.
-FROM golang:1.15 AS build
+FROM golang:1.15
 
 RUN apt-get update -y && apt-get upgrade -y
 RUN apt-get install -y libleveldb-dev librocksdb-dev
