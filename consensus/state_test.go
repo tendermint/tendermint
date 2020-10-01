@@ -29,6 +29,7 @@ x * TestProposerSelection2 - round robin ordering, round 2++
 x * TestEnterProposeNoValidator - timeout into prevote round
 x * TestEnterPropose - finish propose without timing out (we have the proposal)
 x * TestBadProposal - 2 vals, bad proposal (bad block state hash), should prevote and precommit nil
+x * TestOversizedBlock - block with too many txs should be rejected
 FullRoundSuite
 x * TestFullRound1 - 1 val, full successful round
 x * TestFullRoundNil - 1 val, full round of nil
@@ -233,6 +234,64 @@ func TestStateBadProposal(t *testing.T) {
 	ensurePrevote(voteCh, height, round)
 
 	// wait for precommit
+	ensurePrecommit(voteCh, height, round)
+	validatePrecommit(t, cs1, round, -1, vss[0], nil, nil)
+	signAddVotes(cs1, tmproto.PrecommitType, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
+}
+
+func TestStateOversizedBlock(t *testing.T) {
+	cs1, vss := randState(2)
+	cs1.state.ConsensusParams.Block.MaxBytes = 2000
+	height, round := cs1.Height, cs1.Round
+	vs2 := vss[1]
+
+	partSize := types.BlockPartSizeBytes
+
+	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
+	voteCh := subscribe(cs1.eventBus, types.EventQueryVote)
+
+	propBlock, _ := cs1.createProposalBlock()
+	propBlock.Data.Txs = []types.Tx{tmrand.Bytes(2001)}
+	propBlock.Header.DataHash = propBlock.Data.Hash()
+
+	// make the second validator the proposer by incrementing round
+	round++
+	incrementRound(vss[1:]...)
+
+	propBlockParts := propBlock.MakePartSet(partSize)
+	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
+	proposal := types.NewProposal(height, round, -1, blockID)
+	p := proposal.ToProto()
+	if err := vs2.SignProposal(config.ChainID(), p); err != nil {
+		t.Fatal("failed to sign bad proposal", err)
+	}
+	proposal.Signature = p.Signature
+
+	totalBytes := 0
+	for i := 0; i < int(propBlockParts.Total()); i++ {
+		part := propBlockParts.GetPart(i)
+		totalBytes += len(part.Bytes)
+	}
+
+	if err := cs1.SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+		t.Fatal(err)
+	}
+
+	// start the machine
+	startTestRound(cs1, height, round)
+
+	t.Log("Block Sizes", "Limit", cs1.state.ConsensusParams.Block.MaxBytes, "Current", totalBytes)
+
+	// c1 should log an error with the block part message as it exceeds the consensus params. The
+	// block is not added to cs.ProposalBlock so the node timeouts.
+	ensureNewTimeout(timeoutProposeCh, height, round, cs1.config.Propose(round).Nanoseconds())
+
+	// and then should send nil prevote and precommit regardless of whether other validators prevote and
+	// precommit on it
+	ensurePrevote(voteCh, height, round)
+	validatePrevote(t, cs1, round, vss[0], nil)
+	signAddVotes(cs1, tmproto.PrevoteType, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
+	ensurePrevote(voteCh, height, round)
 	ensurePrecommit(voteCh, height, round)
 	validatePrecommit(t, cs1, round, -1, vss[0], nil, nil)
 	signAddVotes(cs1, tmproto.PrecommitType, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)

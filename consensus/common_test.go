@@ -603,7 +603,7 @@ func ensureProposal(proposalCh <-chan tmpubsub.Message, height int64, round int3
 			panic(fmt.Sprintf("expected round %v, got %v", round, proposalEvent.Round))
 		}
 		if !proposalEvent.BlockID.Equals(propID) {
-			panic("Proposed block does not match expected block")
+			panic(fmt.Sprintf("Proposed block does not match expected block (%v != %v)", proposalEvent.BlockID, propID))
 		}
 	}
 }
