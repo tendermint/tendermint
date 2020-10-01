@@ -22,5 +22,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
+- [privval] `NewSignerDialerEndpoint` can now be given `SignerServiceEndpointOption` (@erikgrinaker)
+
+- [config] \#5433 `statesync.rpc_servers` is now properly set when writing the configuration file (@erikgrinaker)
+
 ### BUG FIXES
 
