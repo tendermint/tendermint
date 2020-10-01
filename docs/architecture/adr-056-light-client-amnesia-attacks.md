@@ -1,4 +1,4 @@
-# ADR 056: Proving light client amnesia attacks
+# ADR 056: Light client amnesia attacks
 
 ## Changelog
 
