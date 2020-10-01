@@ -24,5 +24,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [config] \#5433 `statesync.rpc_servers` is now properly set when writing the configuration file (@erikgrinaker)
 
+- [privval] \#5437 `NewSignerDialerEndpoint` can now be given `SignerServiceEndpointOption` (@erikgrinaker)
+
 ### BUG FIXES
 
