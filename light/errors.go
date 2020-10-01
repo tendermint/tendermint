@@ -65,6 +65,19 @@ func (e ErrVerificationFailed) Error() string {
 		e.From, e.To, e.Reason)
 }
 
+// ErrLightClientAttack is returned when the light client has detected an attempt
+// to verify a false header and has sent the evidence to either a witness or primary.
+type ErrLightClientAttack struct {
+	primaryEv *types.LightClientAttackEvidence
+	witnessEv *types.LightClientAttackEvidence
+}
+
+func (e ErrLightClientAttack) Error() string {
+	return fmt.Sprintf("ATTACK DETECTED. Light client received valid conflicting header from witness." +
+		" Unable to verify header. Evidence has been sent to both providers." + 
+		" Primary evidence: %v Witness evidence: %v". e.primaryEv, e.witnessEv)
+}
+
 // ----------------------------- INTERNAL ERRORS ---------------------------------
 
 // ErrConflictingHeaders is thrown when two conflicting headers are discovered.
