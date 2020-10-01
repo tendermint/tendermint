@@ -29,11 +29,11 @@ func mustWrapMsg(pb proto.Message) privvalproto.Message {
 	case *privvalproto.SignProposalRequest:
 		msg.Sum = &privvalproto.Message_SignProposalRequest{SignProposalRequest: pb}
 	case *privvalproto.PingRequest:
-		msg.Sum = &privvalproto.Message_PingRequest{}
+		msg.Sum = &privvalproto.Message_PingRequest{PingRequest: pb}
 	case *privvalproto.PingResponse:
-		msg.Sum = &privvalproto.Message_PingResponse{}
+		msg.Sum = &privvalproto.Message_PingResponse{PingResponse: pb}
 	default:
-		panic(fmt.Errorf("unknown message type %T", msg))
+		panic(fmt.Errorf("unknown message type %T", pb))
 	}
 
 	return msg
