@@ -78,8 +78,8 @@ func TestPrivvalVectors(t *testing.T) {
 		msg      proto.Message
 		expBytes string
 	}{
-		{"ping request", &privproto.PingRequest{}, ""},
-		{"ping response", &privproto.PingResponse{}, ""},
+		{"ping request", &privproto.PingRequest{}, "3a00"},
+		{"ping response", &privproto.PingResponse{}, "4200"},
 		{"pubKey request", &privproto.PubKeyRequest{}, "0a00"},
 		{"pubKey response", &privproto.PubKeyResponse{PubKey: &ppk, Error: nil}, "12240a220a20556a436f1218d30942efe798420f51dc9b6a311b929c578257457d05c5fcf230"},
 		{"pubKey response with error", &privproto.PubKeyResponse{PubKey: nil, Error: remoteError}, "121212100801120c697427732061206572726f72"},
