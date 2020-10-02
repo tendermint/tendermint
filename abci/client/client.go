@@ -14,6 +14,8 @@ const (
 	echoRetryIntervalSeconds = 1
 )
 
+//go:generate mockery --case underscore --name Client
+
 // Client defines an interface for an ABCI client.
 // All `Async` methods return a `ReqRes` object.
 // All `Sync` methods return the appropriate protobuf ResponseXxx struct and an error.
