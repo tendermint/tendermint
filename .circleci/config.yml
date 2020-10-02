@@ -205,23 +205,6 @@ jobs:
             export GOOS=linux GOARCH=arm64   && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
             python -u scripts/release_management/github-upload.py --file "/tmp/workspace/SHA256SUMS" --id "${RELEASE_ID}"
             python -u scripts/release_management/github-publish.py --id "${RELEASE_ID}"
-  release_docker:
-    machine:
-      image: ubuntu-1604:201903-01
-    steps:
-      - checkout
-      - attach_workspace:
-          at: /tmp/workspace
-      - run:
-          name: "Deploy to Docker Hub"
-          command: |
-            # Setting CIRCLE_TAG because we do not tag the release ourselves.
-            source /tmp/workspace/release-version.source
-            cp /tmp/workspace/tendermint_linux_amd64 DOCKER/tendermint
-            docker build --label="tendermint" --tag="tendermint/tendermint:${CIRCLE_TAG}" --tag="tendermint/tendermint:latest" "DOCKER"
-            docker login -u "${DOCKERHUB_USER}" --password-stdin \<<< "${DOCKERHUB_PASS}"
-            docker push "tendermint/tendermint"
-            docker logout
   reproducible_builds:
     executor: golang
     steps:
@@ -328,12 +311,3 @@ workflows:
             branches:
               only:
                 - /v[0-9]+\.[0-9]+/
-      - release_docker:
-          requires:
-            - prepare_build
-            - build_artifacts
-          filters:
-            branches:
-              only:
-                - /v[0-9]+\.[0-9]+/
-                - master
