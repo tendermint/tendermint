@@ -1,6 +1,6 @@
 # End-to-End Tests
 
-Spins up and tests Tendermint networks in Docker Compose based on a testnet manifest file. To run the CI testnet:
+Spins up and tests Tendermint networks in Docker Compose based on a testnet manifest. To run the CI testnet:
 
 ```sh
 make docker
@@ -8,13 +8,11 @@ make runner
 ./build/runner -f networks/ci.toml
 ```
 
-This creates a testnet named `ci` under `networks/ci` (given by manifest filename), spins up Docker containers, and runs tests against them.
+This creates a testnet named `ci` under `networks/ci/` (determined by the manifest filename).
 
 ## Testnet Manifests
 
 Testnets are specified as TOML manifests. For an example see [`networks/ci.toml`](networks/ci.toml), and for documentation see [`pkg/manifest.go`](pkg/manifest.go).
-
-Testnets take their name from the basename of the manifest, and create a directory next to it. For example, the `networks/ci.toml` testnet will be named `ci` and generated in `networks/ci/`.
 
 ## Test Stages
 
@@ -36,16 +34,18 @@ The test runner has the following stages, which can also be executed explicitly 
 
 ## Tests
 
-Test cases are written as normal Go tests in `tests/`. They use a test runner `testNode()` which executes the test as a parallel subtest against each node in the network.
+Test cases are written as normal Go tests in `tests/`. They use a test runner `testNode()` which executes the test as a parallel subtest for each node in the network.
 
 ### Running Manual Tests
 
-To run tests manually, the `E2E_MANIFEST` environment variable gives the path to the testnet manifest (e.g. `networks/ci.toml`). Optionally, `E2E_NODE` can specify the name of the testnet node to test. Tests can then be run as normal, e.g.:
+To run tests manually, set the `E2E_MANIFEST` environment variable to the path of the testnet manifest (e.g. `networks/ci.toml`). Tests can then be run as normal, e.g.:
 
 ```sh
 ./build/runner -f networks/ci.toml start
 E2E_MANIFEST=networks/ci.toml go test -v ./tests/...
 ```
+
+Optionally, `E2E_NODE` specifies the name of a single testnet node to test.
 
 These environment variables can also be specified in `tests/e2e_test.go` to run tests from an editor or IDE:
 
@@ -58,9 +58,9 @@ func init() {
 }
 ```
 
-## Debugging Failures
+### Debugging Failures
 
-If a command or test fails, the runner simply exits with an error message and non-zero status code. The testnet is left running, and can be inspected e.g. with `docker ps` and `docker logs` and in the testnet directory. To shut down and remove the testnet, run `./build/runner -f <manifest> cleanup`.
+If a command or test fails, the runner simply exits with an error message and non-zero status code. The testnet is left running with data in the testnet directory, and can be inspected with e.g. `docker ps` and `docker logs`. To shut down and remove the testnet, run `./build/runner -f <manifest> cleanup`.
 
 ## Enabling IPv6
 
