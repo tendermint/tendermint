@@ -16,7 +16,7 @@ func exec(args ...string) error {
 	case nil:
 		return nil
 	case *osexec.ExitError:
-		return fmt.Errorf("failed to run docker %q:\n%v", args, string(out))
+		return fmt.Errorf("failed to run %q:\n%v", args, string(out))
 	default:
 		return err
 	}
