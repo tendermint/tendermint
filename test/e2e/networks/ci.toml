@@ -39,16 +39,22 @@ database = "boltdb"
 abci_protocol = "tcp"
 privval_protocol = "tcp"
 persist_interval = 0
-perturb = ["restart"]
+# FIXME The WAL gets corrupted when restarted
+# https://github.com/tendermint/tendermint/issues/5422
+#perturb = ["restart"]
 
 [node.validator03]
 seeds = ["seed01"]
 database = "badgerdb"
-abci_protocol = "grpc"
+# FIXME Should use grpc, but it has race conditions
+# https://github.com/tendermint/tendermint/issues/5439
+abci_protocol = "unix"
 privval_protocol = "unix"
 persist_interval = 3
 retain_blocks = 3
-perturb = ["kill"]
+# FIXME The WAL gets corrupted when killed
+# https://github.com/tendermint/tendermint/issues/5422
+#perturb = ["kill"]
 
 [node.validator04]
 persistent_peers = ["validator01"]
@@ -62,18 +68,24 @@ start_at = 1010 # Becomes part of the validator set at 1020
 seeds = ["seed01"]
 database = "cleveldb"
 fast_sync = "v0"
-abci_protocol = "grpc"
+# FIXME Should use grpc, but it has race conditions
+# https://github.com/tendermint/tendermint/issues/5439
+abci_protocol = "tcp"
 privval_protocol = "tcp"
-perturb = ["kill", "pause", "disconnect", "restart"]
+# FIXME The WAL gets corrupted when killed
+# https://github.com/tendermint/tendermint/issues/5422
+#perturb = ["kill", "pause", "disconnect", "restart"]
 
 [node.full01]
 start_at = 1020
 mode = "full"
-# FIXME Should test v1, but it won't catch up since some nodes don't have all blocks.
+# FIXME Should use v1, but it won't catch up since some nodes don't have all blocks
 # https://github.com/tendermint/tendermint/issues/5444
 fast_sync = "v2"
 persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
-perturb = ["restart"]
+# FIXME The WAL gets corrupted when restarted
+# https://github.com/tendermint/tendermint/issues/5422
+#perturb = ["restart"]
 
 [node.full02]
 start_at = 1030
@@ -81,4 +93,6 @@ mode = "full"
 fast_sync = "v2"
 state_sync = true
 seeds = ["seed01"]
-perturb = ["restart"]
+# FIXME The WAL gets corrupted when restarted
+# https://github.com/tendermint/tendermint/issues/5422
+#perturb = ["restart"]
