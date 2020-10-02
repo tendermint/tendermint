@@ -47,7 +47,7 @@ type Testnet struct {
 	InitialHeight    int64
 	InitialState     map[string]string
 	Validators       map[*Node]int64
-	ValidatorUpdates map[uint64]map[*Node]int64
+	ValidatorUpdates map[int64]map[*Node]int64
 	Nodes            []*Node
 }
 
@@ -103,7 +103,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 		InitialHeight:    1,
 		InitialState:     manifest.InitialState,
 		Validators:       map[*Node]int64{},
-		ValidatorUpdates: map[uint64]map[*Node]int64{},
+		ValidatorUpdates: map[int64]map[*Node]int64{},
 		Nodes:            []*Node{},
 	}
 	if manifest.InitialHeight > 0 {
@@ -222,7 +222,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			}
 			valUpdate[node] = power
 		}
-		testnet.ValidatorUpdates[uint64(height)] = valUpdate
+		testnet.ValidatorUpdates[int64(height)] = valUpdate
 	}
 
 	return testnet, testnet.Validate()
