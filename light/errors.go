@@ -65,6 +65,13 @@ func (e ErrVerificationFailed) Error() string {
 		e.From, e.To, e.Reason)
 }
 
+// ErrLightClientAttack is returned when the light client has detected an attempt
+// to verify a false header and has sent the evidence to either a witness or primary.
+var ErrLightClientAttack = errors.New("attempted attack detected." +
+	" Light client received valid conflicting header from witness." +
+	" Unable to verify header. Evidence has been sent to both providers." +
+	" Check logs for full evidence and trace")
+
 // ----------------------------- INTERNAL ERRORS ---------------------------------
 
 // ErrConflictingHeaders is thrown when two conflicting headers are discovered.
