@@ -48,7 +48,7 @@ func DefaultEvidenceParams() tmproto.EvidenceParams {
 	return tmproto.EvidenceParams{
 		MaxAgeNumBlocks: 100000, // 27.8 hrs at 1block/s
 		MaxAgeDuration:  48 * time.Hour,
-		MaxNum:          50,
+		MaxBytes:        50,
 	}
 }
 
