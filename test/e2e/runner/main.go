@@ -68,7 +68,7 @@ func NewCLI() *CLI {
 			if err := Perturb(cli.testnet); err != nil {
 				return err
 			}
-			if err := Wait(cli.testnet, 5); err != nil {
+			if err := Wait(cli.testnet, 5); err != nil { // wait for network to settle
 				return err
 			}
 
@@ -76,7 +76,9 @@ func NewCLI() *CLI {
 			if err := <-chLoadResult; err != nil {
 				return err
 			}
-
+			if err := Wait(cli.testnet, 3); err != nil { // wait for last txs to commit
+				return err
+			}
 			if err := Test(cli.testnet); err != nil {
 				return err
 			}
