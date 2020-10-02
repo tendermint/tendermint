@@ -94,7 +94,7 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 				ConflictingBlock: primaryBlock,
 				CommonHeight:     commonHeight, // the first block in the bisection is common to both providers
 			}
-			c.logger.Error("Attack detected. Sending evidence againt primary by witness", "ev", primaryEv,
+			c.logger.Error("Attempted attack detected. Sending evidence againt primary by witness", "ev", primaryEv,
 				"primary", c.primary, "witness", supportingWitness)
 			c.sendEvidence(ctx, primaryEv, supportingWitness)
 
