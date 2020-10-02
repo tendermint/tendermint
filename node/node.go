@@ -595,7 +595,10 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 
 	if stateProvider == nil {
 		var err error
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
 		stateProvider, err = statesync.NewLightClientStateProvider(
+			ctx,
 			state.ChainID, state.Version, state.InitialHeight,
 			config.RPCServers, light.TrustOptions{
 				Period: config.TrustPeriod,
@@ -608,7 +611,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	}
 
 	go func() {
-		state, commit, err := ssR.Sync(stateProvider)
+		state, commit, err := ssR.Sync(stateProvider, config.DiscoveryTime)
 		if err != nil {
 			ssR.Logger.Error("State sync failed", "err", err)
 			return

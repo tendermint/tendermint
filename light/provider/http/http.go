@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"regexp"
@@ -61,18 +62,18 @@ func (p *http) String() string {
 
 // LightBlock fetches a LightBlock at the given height and checks the
 // chainID matches.
-func (p *http) LightBlock(height int64) (*types.LightBlock, error) {
+func (p *http) LightBlock(ctx context.Context, height int64) (*types.LightBlock, error) {
 	h, err := validateHeight(height)
 	if err != nil {
 		return nil, provider.ErrBadLightBlock{Reason: err}
 	}
 
-	sh, err := p.signedHeader(h)
+	sh, err := p.signedHeader(ctx, h)
 	if err != nil {
 		return nil, err
 	}
 
-	vs, err := p.validatorSet(h)
+	vs, err := p.validatorSet(ctx, h)
 	if err != nil {
 		return nil, err
 	}
@@ -91,12 +92,12 @@ func (p *http) LightBlock(height int64) (*types.LightBlock, error) {
 }
 
 // ReportEvidence calls `/broadcast_evidence` endpoint.
-func (p *http) ReportEvidence(ev types.Evidence) error {
-	_, err := p.client.BroadcastEvidence(ev)
+func (p *http) ReportEvidence(ctx context.Context, ev types.Evidence) error {
+	_, err := p.client.BroadcastEvidence(ctx, ev)
 	return err
 }
 
-func (p *http) validatorSet(height *int64) (*types.ValidatorSet, error) {
+func (p *http) validatorSet(ctx context.Context, height *int64) (*types.ValidatorSet, error) {
 	var (
 		maxPerPage = 100
 		vals       = []*types.Validator{}
@@ -105,7 +106,7 @@ func (p *http) validatorSet(height *int64) (*types.ValidatorSet, error) {
 
 	for len(vals)%maxPerPage == 0 {
 		for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
-			res, err := p.client.Validators(height, &page, &maxPerPage)
+			res, err := p.client.Validators(ctx, height, &page, &maxPerPage)
 			if err != nil {
 				// TODO: standardize errors on the RPC side
 				if regexpMissingHeight.MatchString(err.Error()) {
@@ -138,9 +139,9 @@ func (p *http) validatorSet(height *int64) (*types.ValidatorSet, error) {
 	return valSet, nil
 }
 
-func (p *http) signedHeader(height *int64) (*types.SignedHeader, error) {
+func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHeader, error) {
 	for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
-		commit, err := p.client.Commit(height)
+		commit, err := p.client.Commit(ctx, height)
 		if err != nil {
 			// TODO: standardize errors on the RPC side
 			if regexpMissingHeight.MatchString(err.Error()) {

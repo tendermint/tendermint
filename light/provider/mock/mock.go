@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -48,7 +49,7 @@ func (p *Mock) String() string {
 	return fmt.Sprintf("Mock{headers: %s, vals: %v}", headers.String(), vals.String())
 }
 
-func (p *Mock) LightBlock(height int64) (*types.LightBlock, error) {
+func (p *Mock) LightBlock(_ context.Context, height int64) (*types.LightBlock, error) {
 	var lb *types.LightBlock
 	if height == 0 && len(p.headers) > 0 {
 		sh := p.headers[int64(len(p.headers))]
@@ -79,7 +80,7 @@ func (p *Mock) LightBlock(height int64) (*types.LightBlock, error) {
 	return lb, nil
 }
 
-func (p *Mock) ReportEvidence(ev types.Evidence) error {
+func (p *Mock) ReportEvidence(_ context.Context, ev types.Evidence) error {
 	p.evidenceToReport[string(ev.Hash())] = ev
 	return nil
 }

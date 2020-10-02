@@ -15,6 +15,7 @@ want to directly call a tendermint node in process, you can use the
 */
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/tendermint/tendermint/libs/bytes"
@@ -79,93 +80,100 @@ func (c Call) GetResponse(args interface{}) (interface{}, error) {
 	return nil, c.Error
 }
 
-func (c Client) Status() (*ctypes.ResultStatus, error) {
+func (c Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 	return core.Status(&rpctypes.Context{})
 }
 
-func (c Client) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
+func (c Client) ABCIInfo(ctx context.Context) (*ctypes.ResultABCIInfo, error) {
 	return core.ABCIInfo(&rpctypes.Context{})
 }
 
-func (c Client) ABCIQuery(path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
-	return c.ABCIQueryWithOptions(path, data, client.DefaultABCIQueryOptions)
+func (c Client) ABCIQuery(ctx context.Context, path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
+	return c.ABCIQueryWithOptions(ctx, path, data, client.DefaultABCIQueryOptions)
 }
 
 func (c Client) ABCIQueryWithOptions(
+	ctx context.Context,
 	path string,
 	data bytes.HexBytes,
 	opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	return core.ABCIQuery(&rpctypes.Context{}, path, data, opts.Height, opts.Prove)
 }
 
-func (c Client) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func (c Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	return core.BroadcastTxCommit(&rpctypes.Context{}, tx)
 }
 
-func (c Client) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func (c Client) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	return core.BroadcastTxAsync(&rpctypes.Context{}, tx)
 }
 
-func (c Client) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func (c Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	return core.BroadcastTxSync(&rpctypes.Context{}, tx)
 }
 
-func (c Client) CheckTx(tx types.Tx) (*ctypes.ResultCheckTx, error) {
+func (c Client) CheckTx(ctx context.Context, tx types.Tx) (*ctypes.ResultCheckTx, error) {
 	return core.CheckTx(&rpctypes.Context{}, tx)
 }
 
-func (c Client) NetInfo() (*ctypes.ResultNetInfo, error) {
+func (c Client) NetInfo(ctx context.Context) (*ctypes.ResultNetInfo, error) {
 	return core.NetInfo(&rpctypes.Context{})
 }
 
-func (c Client) ConsensusState() (*ctypes.ResultConsensusState, error) {
+func (c Client) ConsensusState(ctx context.Context) (*ctypes.ResultConsensusState, error) {
 	return core.ConsensusState(&rpctypes.Context{})
 }
 
-func (c Client) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
+func (c Client) DumpConsensusState(ctx context.Context) (*ctypes.ResultDumpConsensusState, error) {
 	return core.DumpConsensusState(&rpctypes.Context{})
 }
 
-func (c Client) ConsensusParams(height *int64) (*ctypes.ResultConsensusParams, error) {
+func (c Client) ConsensusParams(ctx context.Context, height *int64) (*ctypes.ResultConsensusParams, error) {
 	return core.ConsensusParams(&rpctypes.Context{}, height)
 }
 
-func (c Client) Health() (*ctypes.ResultHealth, error) {
+func (c Client) Health(ctx context.Context) (*ctypes.ResultHealth, error) {
 	return core.Health(&rpctypes.Context{})
 }
 
-func (c Client) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
+func (c Client) DialSeeds(ctx context.Context, seeds []string) (*ctypes.ResultDialSeeds, error) {
 	return core.UnsafeDialSeeds(&rpctypes.Context{}, seeds)
 }
 
-func (c Client) DialPeers(peers []string, persistent, unconditional, private bool) (*ctypes.ResultDialPeers, error) {
+func (c Client) DialPeers(
+	ctx context.Context,
+	peers []string,
+	persistent,
+	unconditional,
+	private bool,
+) (*ctypes.ResultDialPeers, error) {
 	return core.UnsafeDialPeers(&rpctypes.Context{}, peers, persistent, unconditional, private)
 }
 
-func (c Client) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
+func (c Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
 	return core.BlockchainInfo(&rpctypes.Context{}, minHeight, maxHeight)
 }
 
-func (c Client) Genesis() (*ctypes.ResultGenesis, error) {
+func (c Client) Genesis(ctx context.Context) (*ctypes.ResultGenesis, error) {
 	return core.Genesis(&rpctypes.Context{})
 }
 
-func (c Client) Block(height *int64) (*ctypes.ResultBlock, error) {
+func (c Client) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock, error) {
 	return core.Block(&rpctypes.Context{}, height)
 }
 
-func (c Client) BlockByHash(hash []byte) (*ctypes.ResultBlock, error) {
+func (c Client) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBlock, error) {
 	return core.BlockByHash(&rpctypes.Context{}, hash)
 }
 
-func (c Client) Commit(height *int64) (*ctypes.ResultCommit, error) {
+func (c Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit, error) {
 	return core.Commit(&rpctypes.Context{}, height)
 }
 
-func (c Client) Validators(height *int64, page, perPage *int) (*ctypes.ResultValidators, error) {
+func (c Client) Validators(ctx context.Context, height *int64, page, perPage *int) (*ctypes.ResultValidators, error) {
 	return core.Validators(&rpctypes.Context{}, height, page, perPage)
 }
 
-func (c Client) BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+func (c Client) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 	return core.BroadcastEvidence(&rpctypes.Context{}, ev)
 }

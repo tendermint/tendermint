@@ -469,6 +469,7 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		bi, err := types.BlockFromProto(msg.Block)
 		if err != nil {
 			r.logger.Error("error transitioning block from protobuf", "err", err)
+			_ = r.reporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
 			return
 		}
 		if r.events != nil {

@@ -126,12 +126,13 @@ func testTxEventsSent(t *testing.T, broadcastMethod string) {
 				var (
 					txres *ctypes.ResultBroadcastTx
 					err   error
+					ctx   = context.Background()
 				)
 				switch broadcastMethod {
 				case "async":
-					txres, err = c.BroadcastTxAsync(tx)
+					txres, err = c.BroadcastTxAsync(ctx, tx)
 				case "sync":
-					txres, err = c.BroadcastTxSync(tx)
+					txres, err = c.BroadcastTxSync(ctx, tx)
 				default:
 					panic(fmt.Sprintf("Unknown broadcastMethod %s", broadcastMethod))
 				}

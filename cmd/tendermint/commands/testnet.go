@@ -42,38 +42,38 @@ const (
 
 func init() {
 	TestnetFilesCmd.Flags().IntVar(&nValidators, "v", 4,
-		"Number of validators to initialize the testnet with")
+		"number of validators to initialize the testnet with")
 	TestnetFilesCmd.Flags().StringVar(&configFile, "config", "",
-		"Config file to use (note some options may be overwritten)")
+		"config file to use (note some options may be overwritten)")
 	TestnetFilesCmd.Flags().IntVar(&nNonValidators, "n", 0,
-		"Number of non-validators to initialize the testnet with")
+		"number of non-validators to initialize the testnet with")
 	TestnetFilesCmd.Flags().StringVar(&outputDir, "o", "./mytestnet",
-		"Directory to store initialization data for the testnet")
+		"directory to store initialization data for the testnet")
 	TestnetFilesCmd.Flags().StringVar(&nodeDirPrefix, "node-dir-prefix", "node",
-		"Prefix the directory name for each node with (node results in node0, node1, ...)")
+		"prefix the directory name for each node with (node results in node0, node1, ...)")
 	TestnetFilesCmd.Flags().Int64Var(&initialHeight, "initial-height", 0,
-		"Initial height of the first block")
+		"initial height of the first block")
 
 	TestnetFilesCmd.Flags().BoolVar(&populatePersistentPeers, "populate-persistent-peers", true,
-		"Update config of each node with the list of persistent peers build using either"+
+		"update config of each node with the list of persistent peers build using either"+
 			" hostname-prefix or"+
 			" starting-ip-address")
 	TestnetFilesCmd.Flags().StringVar(&hostnamePrefix, "hostname-prefix", "node",
-		"Hostname prefix (\"node\" results in persistent peers list ID0@node0:26656, ID1@node1:26656, ...)")
+		"hostname prefix (\"node\" results in persistent peers list ID0@node0:26656, ID1@node1:26656, ...)")
 	TestnetFilesCmd.Flags().StringVar(&hostnameSuffix, "hostname-suffix", "",
-		"Hostname suffix ("+
+		"hostname suffix ("+
 			"\".xyz.com\""+
 			" results in persistent peers list ID0@node0.xyz.com:26656, ID1@node1.xyz.com:26656, ...)")
 	TestnetFilesCmd.Flags().StringVar(&startingIPAddress, "starting-ip-address", "",
-		"Starting IP address ("+
+		"starting IP address ("+
 			"\"192.168.0.1\""+
 			" results in persistent peers list ID0@192.168.0.1:26656, ID1@192.168.0.2:26656, ...)")
 	TestnetFilesCmd.Flags().StringArrayVar(&hostnames, "hostname", []string{},
-		"Manually override all hostnames of validators and non-validators (use --hostname multiple times for multiple hosts)")
+		"manually override all hostnames of validators and non-validators (use --hostname multiple times for multiple hosts)")
 	TestnetFilesCmd.Flags().IntVar(&p2pPort, "p2p-port", 26656,
 		"P2P Port")
 	TestnetFilesCmd.Flags().BoolVar(&randomMonikers, "random-monikers", false,
-		"Randomize the moniker for each generated node")
+		"randomize the moniker for each generated node")
 }
 
 // TestnetFilesCmd allows initialisation of files for a Tendermint testnet.

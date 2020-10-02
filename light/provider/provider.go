@@ -1,6 +1,8 @@
 package provider
 
 import (
+	"context"
+
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -20,8 +22,8 @@ type Provider interface {
 	// issues, an error will be returned.
 	// If there's no LightBlock for the given height, ErrLightBlockNotFound
 	// error is returned.
-	LightBlock(height int64) (*types.LightBlock, error)
+	LightBlock(ctx context.Context, height int64) (*types.LightBlock, error)
 
 	// ReportEvidence reports an evidence of misbehavior.
-	ReportEvidence(ev types.Evidence) error
+	ReportEvidence(context.Context, types.Evidence) error
 }

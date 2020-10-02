@@ -822,7 +822,7 @@ const (
 	maxRequestsPerPeerTest      = 20
 	maxTotalPendingRequestsTest = 600
 	maxNumPeersTest             = 1000
-	maxNumBlocksInChainTest     = 10000 //should be smaller than 9999999
+	maxNumBlocksInChainTest     = 10000 // should be smaller than 9999999
 )
 
 func makeCorrectTransitionSequenceWithRandomParameters() testFields {

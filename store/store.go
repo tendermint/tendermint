@@ -33,6 +33,11 @@ The store can be assumed to contain all contiguous blocks between base and heigh
 type BlockStore struct {
 	db dbm.DB
 
+	// mtx guards access to the struct fields listed below it. We rely on the database to enforce
+	// fine-grained concurrency control for its data, and thus this mutex does not apply to
+	// database contents. The only reason for keeping these fields in the struct is that the data
+	// can't efficiently be queried from the database since the key encoding we use is not
+	// lexicographically ordered (see https://github.com/tendermint/tendermint/issues/4567).
 	mtx    tmsync.RWMutex
 	base   int64
 	height int64
@@ -73,6 +78,16 @@ func (bs *BlockStore) Size() int64 {
 	return bs.height - bs.base + 1
 }
 
+// LoadBase atomically loads the base block meta, or returns nil if no base is found.
+func (bs *BlockStore) LoadBaseMeta() *types.BlockMeta {
+	bs.mtx.RLock()
+	defer bs.mtx.RUnlock()
+	if bs.base == 0 {
+		return nil
+	}
+	return bs.LoadBlockMeta(bs.base)
+}
+
 // LoadBlock returns the block with the given height.
 // If no block is found for that height, it returns nil.
 func (bs *BlockStore) LoadBlock(height int64) *types.Block {
@@ -85,6 +100,11 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 	buf := []byte{}
 	for i := 0; i < int(blockMeta.BlockID.PartSetHeader.Total); i++ {
 		part := bs.LoadBlockPart(height, i)
+		// If the part is missing (e.g. since it has been deleted after we
+		// loaded the block meta) we consider the whole block to be missing.
+		if part == nil {
+			return nil
+		}
 		buf = append(buf, part.Bytes...)
 	}
 	err := proto.Unmarshal(buf, pbb)
@@ -323,6 +343,15 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 		panic("BlockStore can only save complete block part sets")
 	}
 
+	// Save block parts. This must be done before the block meta, since callers
+	// typically load the block meta first as an indication that the block exists
+	// and then go on to load block parts - we must make sure the block is
+	// complete as soon as the block meta is written.
+	for i := 0; i < int(blockParts.Total()); i++ {
+		part := blockParts.GetPart(i)
+		bs.saveBlockPart(height, i, part)
+	}
+
 	// Save block meta
 	blockMeta := types.NewBlockMeta(block, blockParts)
 	pbm := blockMeta.ToProto()
@@ -335,12 +364,6 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 	if err := bs.db.Set(calcBlockHashKey(hash), []byte(fmt.Sprintf("%d", height))); err != nil {
 		panic(err)
-	}
-
-	// Save block parts
-	for i := 0; i < int(blockParts.Total()); i++ {
-		part := blockParts.GetPart(i)
-		bs.saveBlockPart(height, i, part)
 	}
 
 	// Save block commit (duplicate and separate from the Block)

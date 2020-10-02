@@ -85,10 +85,20 @@ func TestBlockValidateBasic(t *testing.T) {
 			blk.DataHash = tmrand.Bytes(len(blk.DataHash))
 		}, true},
 		{"Tampered EvidenceHash", func(blk *Block) {
-			blk.EvidenceHash = []byte("something else")
+			blk.EvidenceHash = tmrand.Bytes(len(blk.EvidenceHash))
 		}, true},
 		{"Incorrect block protocol version", func(blk *Block) {
 			blk.Version.Block = 1
+		}, true},
+		{"Missing LastCommit", func(blk *Block) {
+			blk.LastCommit = nil
+		}, true},
+		{"Invalid LastCommit", func(blk *Block) {
+			blk.LastCommit = NewCommit(-1, 0, *voteSet.maj23, nil)
+		}, true},
+		{"Invalid Evidence", func(blk *Block) {
+			emptyEv := &DuplicateVoteEvidence{}
+			blk.Evidence = EvidenceData{Evidence: []Evidence{emptyEv}}
 		}, true},
 	}
 	for i, tc := range testCases {
@@ -99,6 +109,7 @@ func TestBlockValidateBasic(t *testing.T) {
 			block.ProposerAddress = valSet.GetProposer().Address
 			tc.malleateBlock(block)
 			err = block.ValidateBasic()
+			t.Log(err)
 			assert.Equal(t, tc.expErr, err != nil, "#%d: %v", i, err)
 		})
 	}
@@ -660,7 +671,7 @@ func TestEvidenceDataProtoBuf(t *testing.T) {
 	const chainID = "mychain"
 	v := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, blockID, time.Now())
 	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, time.Now())
-	ev := NewDuplicateVoteEvidence(v2, v, v2.Timestamp)
+	ev := NewDuplicateVoteEvidence(v2, v)
 	data := &EvidenceData{Evidence: EvidenceList{ev}}
 	_ = data.Hash()
 	testCases := []struct {

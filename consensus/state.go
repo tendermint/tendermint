@@ -73,7 +73,9 @@ type txNotifier interface {
 
 // interface to the evidence pool
 type evidencePool interface {
-	AddEvidence(types.Evidence) error
+	// Adds consensus based evidence to the evidence pool where time is the time
+	// of the block where the offense occurred and the validator set is the current one.
+	AddEvidenceFromConsensus(types.Evidence, time.Time, *types.ValidatorSet) error
 }
 
 // State handles execution of the consensus algorithm.
@@ -1681,13 +1683,20 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.MissingValidators.Set(float64(missingValidators))
 	cs.metrics.MissingValidatorsPower.Set(float64(missingValidatorsPower))
 
-	cs.metrics.ByzantineValidators.Set(float64(len(block.Evidence.Evidence)))
-	byzantineValidatorsPower := int64(0)
+	// NOTE: byzantine validators power and count is only for consensus evidence i.e. duplicate vote
+	var (
+		byzantineValidatorsPower = int64(0)
+		byzantineValidatorsCount = int64(0)
+	)
 	for _, ev := range block.Evidence.Evidence {
-		if _, val := cs.Validators.GetByAddress(ev.Address()); val != nil {
-			byzantineValidatorsPower += val.VotingPower
+		if dve, ok := ev.(*types.DuplicateVoteEvidence); ok {
+			if _, val := cs.Validators.GetByAddress(dve.VoteA.ValidatorAddress); val != nil {
+				byzantineValidatorsCount++
+				byzantineValidatorsPower += val.VotingPower
+			}
 		}
 	}
+	cs.metrics.ByzantineValidators.Set(float64(byzantineValidatorsCount))
 	cs.metrics.ByzantineValidatorsPower.Set(float64(byzantineValidatorsPower))
 
 	if height > 1 {
@@ -1770,16 +1779,23 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 	if err != nil {
 		return added, err
 	}
+	if cs.ProposalBlockParts.ByteSize() > cs.state.ConsensusParams.Block.MaxBytes {
+		return added, fmt.Errorf("total size of proposal block parts exceeds maximum block bytes (%d > %d)",
+			cs.ProposalBlockParts.ByteSize(), cs.state.ConsensusParams.Block.MaxBytes,
+		)
+	}
 	if added && cs.ProposalBlockParts.IsComplete() {
 		bz, err := ioutil.ReadAll(cs.ProposalBlockParts.GetReader())
 		if err != nil {
 			return added, err
 		}
+
 		var pbb = new(tmproto.Block)
 		err = proto.Unmarshal(bz, pbb)
 		if err != nil {
 			return added, err
 		}
+
 		block, err := types.BlockFromProto(pbb)
 		if err != nil {
 			return added, err
@@ -1855,7 +1871,8 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 			} else {
 				timestamp = sm.MedianTime(cs.LastCommit.MakeCommit(), cs.LastValidators)
 			}
-			evidenceErr := cs.evpool.AddEvidence(types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB, timestamp))
+			evidenceErr := cs.evpool.AddEvidenceFromConsensus(
+				types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB), timestamp, cs.Validators)
 			if evidenceErr != nil {
 				cs.Logger.Error("Failed to add evidence to the evidence pool", "err", evidenceErr)
 			}
@@ -2117,7 +2134,7 @@ func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header 
 	vote, err := cs.signVote(msgType, hash, header)
 	if err == nil {
 		cs.sendInternalMessage(msgInfo{&VoteMessage{vote}, ""})
-		cs.Logger.Info("Signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)
+		cs.Logger.Info("Signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)
 		return vote
 	}
 	//if !cs.replayMode {

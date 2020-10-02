@@ -48,12 +48,17 @@ type SignerDialerEndpoint struct {
 func NewSignerDialerEndpoint(
 	logger log.Logger,
 	dialer SocketDialer,
+	options ...SignerServiceEndpointOption,
 ) *SignerDialerEndpoint {
 
 	sd := &SignerDialerEndpoint{
 		dialer:         dialer,
 		retryWait:      defaultRetryWaitMilliseconds * time.Millisecond,
 		maxConnRetries: defaultMaxDialRetries,
+	}
+
+	for _, optionFunc := range options {
+		optionFunc(sd)
 	}
 
 	sd.BaseService = *service.NewBaseService(logger, "SignerDialerEndpoint", sd)

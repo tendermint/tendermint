@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"bytes"
+	"context"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/rpc/client"
@@ -40,7 +42,7 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	vote2.Signature, err = val.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v2))
 	require.NoError(t, err)
 
-	return types.NewDuplicateVoteEvidence(vote, vote2, defaultTestTime)
+	return types.NewDuplicateVoteEvidence(vote, vote2)
 }
 
 func makeEvidences(
@@ -56,7 +58,7 @@ func makeEvidences(
 		Type:             tmproto.PrevoteType,
 		Timestamp:        defaultTestTime,
 		BlockID: types.BlockID{
-			Hash: tmhash.Sum([]byte("blockhash")),
+			Hash: tmhash.Sum(tmrand.Bytes(tmhash.Size)),
 			PartSetHeader: types.PartSetHeader{
 				Total: 1000,
 				Hash:  tmhash.Sum([]byte("partset")),
@@ -114,25 +116,22 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		pv      = privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	)
 
-	correct, fakes := makeEvidences(t, pv, chainID)
-
 	for i, c := range GetClients() {
+		correct, fakes := makeEvidences(t, pv, chainID)
 		t.Logf("client %d", i)
 
-		t.Log(correct.Time())
-
-		result, err := c.BroadcastEvidence(correct)
+		result, err := c.BroadcastEvidence(context.Background(), correct)
 		require.NoError(t, err, "BroadcastEvidence(%s) failed", correct)
 		assert.Equal(t, correct.Hash(), result.Hash, "expected result hash to match evidence hash")
 
-		status, err := c.Status()
+		status, err := c.Status(context.Background())
 		require.NoError(t, err)
 		err = client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
 		require.NoError(t, err)
 
 		ed25519pub := pv.Key.PubKey.(ed25519.PubKey)
 		rawpub := ed25519pub.Bytes()
-		result2, err := c.ABCIQuery("/val", rawpub)
+		result2, err := c.ABCIQuery(context.Background(), "/val", rawpub)
 		require.NoError(t, err)
 		qres := result2.Response
 		require.True(t, qres.IsOK())
@@ -148,7 +147,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
 
 		for _, fake := range fakes {
-			_, err := c.BroadcastEvidence(fake)
+			_, err := c.BroadcastEvidence(context.Background(), fake)
 			require.Error(t, err, "BroadcastEvidence(%s) succeeded, but the evidence was fake", fake)
 		}
 	}
@@ -156,7 +155,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 
 func TestBroadcastEmptyEvidence(t *testing.T) {
 	for _, c := range GetClients() {
-		_, err := c.BroadcastEvidence(nil)
+		_, err := c.BroadcastEvidence(context.Background(), nil)
 		assert.Error(t, err)
 	}
 }

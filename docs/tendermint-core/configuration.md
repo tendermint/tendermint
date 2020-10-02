@@ -295,6 +295,10 @@ cache_size = 10000
 # NOTE: the max size of a tx transmitted over the network is {max_tx_bytes}.
 max_tx_bytes = 1048576
 
+# Maximum size of a batch of transactions to send to a peer
+# Including space needed by encoding (one varint per transaction).
+max_batch_bytes = 10485760
+
 #######################################################
 ###         State Sync Configuration Options        ###
 #######################################################
@@ -315,7 +319,10 @@ enable = false
 rpc_servers = ""
 trust_height = 0
 trust_hash = ""
-trust_period = "0s"
+trust_period = "168h0m0s"
+
+# Time to spend discovering snapshots before initiating a restore.
+discovery_time = "15s"
 
 # Temporary directory for state sync snapshot chunks, defaults to the OS tempdir (typically /tmp).
 # Will create a new, randomly named directory within, and remove it when done.
@@ -339,12 +346,21 @@ version = "v0"
 
 wal_file = "data/cs.wal/wal"
 
+# How long we wait for a proposal block before prevoting nil
 timeout_propose = "3s"
+# How much timeout_propose increases with each round
 timeout_propose_delta = "500ms"
+# How long we wait after receiving +2/3 prevotes for “anything” (ie. not a single block or nil)
 timeout_prevote = "1s"
+# How much the timeout_prevote increases with each round
 timeout_prevote_delta = "500ms"
+# How long we wait after receiving +2/3 precommits for “anything” (ie. not a single block or nil)
 timeout_precommit = "1s"
+# How much the timeout_precommit increases with each round
 timeout_precommit_delta = "500ms"
+# How long we wait after committing a block, before starting on the new
+# height (this gives us a chance to receive some more precommits, even
+# though we already have +2/3).
 timeout_commit = "1s"
 
 # How many blocks to look back to check existence of the node's consensus votes before joining consensus
@@ -473,3 +489,17 @@ Here's a brief summary of the timeouts:
 - `timeout_commit` = how long we wait after committing a block, before starting
   on the new height (this gives us a chance to receive some more precommits,
   even though we already have +2/3)
+
+## P2P settings 
+
+This section will cover settings within the p2p section of the `config.toml`. 
+
+- `external_address` = is the address that will be advertised for other nodes to use. We recommend setting this field with your public IP and p2p port. 
+- `seeds` = is a list of comma separated seed nodes that you will connect upon a start and ask for peers. A seed node is a node that does not participate in consensus but only helps propagate peers to nodes in the networks
+- `persistent_peers` = is a list of comma separated peers that you will always want to be connected to. If you're already connected to the maximum number of peers, persistent peers will not be added. 
+- `max_num_inbound_peers` = is the maximum number of peers you will accept inbound connections from at one time (where they dial your address and initiate the connection).
+- `max_num_outbound_peers` = is the maximum number of peers you will initiate outbound connects to at one time (where you dial their address and initiate the connection).
+- `unconditional_peer_ids` = is similar to `persistent_peers` except that these peers will be connected to even if you are already connected to the maximum number of peers. This can be a validator node ID on your sentry node.
+- `pex` = turns the peer exchange reactor on or off. Validator node will want the `pex` turned off so it would not begin gossiping to unknown peers on the network. PeX can also be turned off for statically configured networks with fixed network connectivity. For full nodes on open, dynamic networks, it should be turned on.
+- `seed_mode` = is used for when node operators want to run their node as a seed node. Seed node's run a variation of the PeX protocol that disconnects from peers after sending them a list of peers to connect to. To minimize the servers usage, it is recommended to set the mempool's size to 0.
+-  `private_peer_ids` = is a comma separated list of node ids that you would not like exposed to other peers (ie. you will not tell other peers about the private_peer_ids). This can be filled with a validators node id. 

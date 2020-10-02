@@ -12,78 +12,14 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
+	"github.com/tendermint/tendermint/version"
 )
-
-type voteData struct {
-	vote1 *Vote
-	vote2 *Vote
-	valid bool
-}
 
 var defaultVoteTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
-func TestDuplicateVoteEvidence(t *testing.T) {
-	val := NewMockPV()
-	val2 := NewMockPV()
-
-	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
-	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
-	blockID3 := makeBlockID([]byte("blockhash"), 10000, []byte("partshash"))
-	blockID4 := makeBlockID([]byte("blockhash"), 10000, []byte("partshash2"))
-
-	const chainID = "mychain"
-
-	vote1 := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime)
-	v1 := vote1.ToProto()
-	err := val.SignVote(chainID, v1)
-	require.NoError(t, err)
-	badVote := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime)
-	bv := badVote.ToProto()
-	err = val2.SignVote(chainID, bv)
-	require.NoError(t, err)
-
-	vote1.Signature = v1.Signature
-	badVote.Signature = bv.Signature
-
-	cases := []voteData{
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, defaultVoteTime), true}, // different block ids
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID3, defaultVoteTime), true},
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID4, defaultVoteTime), true},
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime), false},     // wrong block id
-		{vote1, makeVote(t, val, "mychain2", 0, 10, 2, 1, blockID2, defaultVoteTime), false}, // wrong chain id
-		{vote1, makeVote(t, val, chainID, 0, 11, 2, 1, blockID2, defaultVoteTime), false},    // wrong height
-		{vote1, makeVote(t, val, chainID, 0, 10, 3, 1, blockID2, defaultVoteTime), false},    // wrong round
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 2, blockID2, defaultVoteTime), false},    // wrong step
-		{vote1, makeVote(t, val2, chainID, 0, 10, 2, 1, blockID, defaultVoteTime), false},    // wrong validator
-		{vote1, makeVote(t, val2, chainID, 0, 10, 2, 1, blockID, time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)), false},
-		{vote1, badVote, false}, // signed by wrong key
-	}
-
-	pubKey, err := val.GetPubKey()
-	require.NoError(t, err)
-	for _, c := range cases {
-		ev := &DuplicateVoteEvidence{
-			VoteA: c.vote1,
-			VoteB: c.vote2,
-
-			Timestamp: defaultVoteTime,
-		}
-		if c.valid {
-			assert.Nil(t, ev.Verify(chainID, pubKey), "evidence should be valid")
-		} else {
-			assert.NotNil(t, ev.Verify(chainID, pubKey), "evidence should be invalid")
-		}
-	}
-
-	ev := randomDuplicatedVoteEvidence(t)
-
-	assert.True(t, ev.Equal(ev))
-	assert.False(t, ev.Equal(&DuplicateVoteEvidence{}))
-
-}
-
 func TestEvidenceList(t *testing.T) {
-	ev := randomDuplicatedVoteEvidence(t)
+	ev := randomDuplicateVoteEvidence(t)
 	evl := EvidenceList([]Evidence{ev})
 
 	assert.NotNil(t, evl.Hash())
@@ -122,7 +58,7 @@ func TestMaxEvidenceBytes(t *testing.T) {
 
 }
 
-func randomDuplicatedVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
+func randomDuplicateVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
 	val := NewMockPV()
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
@@ -131,6 +67,14 @@ func randomDuplicatedVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
 		VoteA: makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime),
 		VoteB: makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, defaultVoteTime.Add(1*time.Minute)),
 	}
+}
+
+func TestDuplicateVoteEvidence(t *testing.T) {
+	const height = int64(13)
+	ev := NewMockDuplicateVoteEvidence(height, time.Now(), "mock-chain-id")
+	assert.Equal(t, ev.Hash(), tmhash.Sum(ev.Bytes()))
+	assert.NotNil(t, ev.String())
+	assert.Equal(t, ev.Height(), height)
 }
 
 func TestDuplicateVoteEvidenceValidation(t *testing.T) {
@@ -165,11 +109,135 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			vote1 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID, defaultVoteTime)
 			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID2, defaultVoteTime)
-			ev := NewDuplicateVoteEvidence(vote1, vote2, vote1.Timestamp)
+			ev := NewDuplicateVoteEvidence(vote1, vote2)
 			tc.malleateEvidence(ev)
 			assert.Equal(t, tc.expectErr, ev.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
 	}
+}
+
+func TestLightClientAttackEvidence(t *testing.T) {
+	height := int64(5)
+	voteSet, valSet, privVals := randVoteSet(height, 1, tmproto.PrecommitType, 10, 1)
+	header := makeHeaderRandom()
+	header.Height = height
+	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+	commit, err := MakeCommit(blockID, height, 1, voteSet, privVals, defaultVoteTime)
+	require.NoError(t, err)
+	lcae := &LightClientAttackEvidence{
+		ConflictingBlock: &LightBlock{
+			SignedHeader: &SignedHeader{
+				Header: header,
+				Commit: commit,
+			},
+			ValidatorSet: valSet,
+		},
+		CommonHeight: height - 1,
+	}
+	assert.NotNil(t, lcae.String())
+	assert.NotNil(t, lcae.Hash())
+	// only 7 validators sign
+	differentCommit, err := MakeCommit(blockID, height, 1, voteSet, privVals[:7], defaultVoteTime)
+	require.NoError(t, err)
+	differentEv := &LightClientAttackEvidence{
+		ConflictingBlock: &LightBlock{
+			SignedHeader: &SignedHeader{
+				Header: header,
+				Commit: differentCommit,
+			},
+			ValidatorSet: valSet,
+		},
+		CommonHeight: height - 1,
+	}
+	assert.Equal(t, lcae.Hash(), differentEv.Hash())
+	// different header hash
+	differentHeader := makeHeaderRandom()
+	differentEv = &LightClientAttackEvidence{
+		ConflictingBlock: &LightBlock{
+			SignedHeader: &SignedHeader{
+				Header: differentHeader,
+				Commit: differentCommit,
+			},
+			ValidatorSet: valSet,
+		},
+		CommonHeight: height - 1,
+	}
+	assert.NotEqual(t, lcae.Hash(), differentEv.Hash())
+	// different common height should produce a different header
+	differentEv = &LightClientAttackEvidence{
+		ConflictingBlock: &LightBlock{
+			SignedHeader: &SignedHeader{
+				Header: header,
+				Commit: differentCommit,
+			},
+			ValidatorSet: valSet,
+		},
+		CommonHeight: height - 2,
+	}
+	assert.NotEqual(t, lcae.Hash(), differentEv.Hash())
+	assert.Equal(t, lcae.Height(), int64(4)) // Height should be the common Height
+	assert.NotNil(t, lcae.Bytes())
+}
+
+func TestLightClientAttackEvidenceValidation(t *testing.T) {
+	height := int64(5)
+	voteSet, valSet, privVals := randVoteSet(height, 1, tmproto.PrecommitType, 10, 1)
+	header := makeHeaderRandom()
+	header.Height = height
+	header.ValidatorsHash = valSet.Hash()
+	blockID := makeBlockID(header.Hash(), math.MaxInt32, tmhash.Sum([]byte("partshash")))
+	commit, err := MakeCommit(blockID, height, 1, voteSet, privVals, time.Now())
+	require.NoError(t, err)
+	lcae := &LightClientAttackEvidence{
+		ConflictingBlock: &LightBlock{
+			SignedHeader: &SignedHeader{
+				Header: header,
+				Commit: commit,
+			},
+			ValidatorSet: valSet,
+		},
+		CommonHeight: height - 1,
+	}
+	assert.NoError(t, lcae.ValidateBasic())
+
+	testCases := []struct {
+		testName         string
+		malleateEvidence func(*LightClientAttackEvidence)
+		expectErr        bool
+	}{
+		{"Good DuplicateVoteEvidence", func(ev *LightClientAttackEvidence) {}, false},
+		{"Negative height", func(ev *LightClientAttackEvidence) { ev.CommonHeight = -10 }, true},
+		{"Height is greater than divergent block", func(ev *LightClientAttackEvidence) {
+			ev.CommonHeight = height + 1
+		}, true},
+		{"Nil conflicting header", func(ev *LightClientAttackEvidence) { ev.ConflictingBlock.Header = nil }, true},
+		{"Nil conflicting blocl", func(ev *LightClientAttackEvidence) { ev.ConflictingBlock = nil }, true},
+		{"Nil validator set", func(ev *LightClientAttackEvidence) {
+			ev.ConflictingBlock.ValidatorSet = &ValidatorSet{}
+		}, true},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			lcae := &LightClientAttackEvidence{
+				ConflictingBlock: &LightBlock{
+					SignedHeader: &SignedHeader{
+						Header: header,
+						Commit: commit,
+					},
+					ValidatorSet: valSet,
+				},
+				CommonHeight: height - 1,
+			}
+			tc.malleateEvidence(lcae)
+			if tc.expectErr {
+				assert.Error(t, lcae.ValidateBasic(), tc.testName)
+			} else {
+				assert.NoError(t, lcae.ValidateBasic(), tc.testName)
+			}
+		})
+	}
+
 }
 
 func TestMockEvidenceValidateBasic(t *testing.T) {
@@ -203,6 +271,7 @@ func makeVote(
 
 func makeHeaderRandom() *Header {
 	return &Header{
+		Version:            tmversion.Consensus{Block: version.BlockProtocol, App: 1},
 		ChainID:            tmrand.Str(12),
 		Height:             int64(tmrand.Uint16()) + 1,
 		Time:               time.Now(),

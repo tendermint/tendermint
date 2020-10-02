@@ -486,6 +486,14 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_BeginBlock)
 	case *types.Request_EndBlock:
 		_, ok = res.Value.(*types.Response_EndBlock)
+	case *types.Request_ApplySnapshotChunk:
+		_, ok = res.Value.(*types.Response_ApplySnapshotChunk)
+	case *types.Request_LoadSnapshotChunk:
+		_, ok = res.Value.(*types.Response_LoadSnapshotChunk)
+	case *types.Request_ListSnapshots:
+		_, ok = res.Value.(*types.Response_ListSnapshots)
+	case *types.Request_OfferSnapshot:
+		_, ok = res.Value.(*types.Response_OfferSnapshot)
 	}
 	return ok
 }

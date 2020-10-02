@@ -661,6 +661,9 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
 // with a bonus for including more than +2/3 of the signatures.
 func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 	height int64, commit *Commit) error {
+	if commit == nil {
+		return errors.New("nil commit")
+	}
 
 	if vals.Size() != len(commit.Signatures) {
 		return NewErrInvalidCommitSignatures(vals.Size(), len(commit.Signatures))
@@ -718,6 +721,9 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 // signatures.
 func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID,
 	height int64, commit *Commit) error {
+	if commit == nil {
+		return errors.New("nil commit")
+	}
 
 	if vals.Size() != len(commit.Signatures) {
 		return NewErrInvalidCommitSignatures(vals.Size(), len(commit.Signatures))
@@ -770,9 +776,12 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID,
 // This method is primarily used by the light client and does not check all the
 // signatures.
 func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Commit, trustLevel tmmath.Fraction) error {
-	// sanity check
+	// sanity checks
 	if trustLevel.Denominator == 0 {
 		return errors.New("trustLevel has zero Denominator")
+	}
+	if commit == nil {
+		return errors.New("nil commit")
 	}
 
 	var (

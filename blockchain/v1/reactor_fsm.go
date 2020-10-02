@@ -74,6 +74,7 @@ const (
 	startFSMEv = iota + 1
 	statusResponseEv
 	blockResponseEv
+	noBlockResponseEv
 	processedBlockEv
 	makeRequestsEv
 	stopFSMEv
@@ -94,6 +95,9 @@ func (msg *bcReactorMessage) String() string {
 	case blockResponseEv:
 		dataStr = fmt.Sprintf("peer=%v block.height=%v length=%v",
 			msg.data.peerID, msg.data.block.Height, msg.data.length)
+	case noBlockResponseEv:
+		dataStr = fmt.Sprintf("peer=%v requested height=%v",
+			msg.data.peerID, msg.data.height)
 	case processedBlockEv:
 		dataStr = fmt.Sprintf("error=%v", msg.data.err)
 	case makeRequestsEv:
@@ -119,6 +123,8 @@ func (ev bReactorEvent) String() string {
 		return "statusResponseEv"
 	case blockResponseEv:
 		return "blockResponseEv"
+	case noBlockResponseEv:
+		return "noBlockResponseEv"
 	case processedBlockEv:
 		return "processedBlockEv"
 	case makeRequestsEv:
@@ -269,7 +275,10 @@ func init() {
 					return waitForPeer, err
 				}
 				return waitForBlock, err
+			case noBlockResponseEv:
+				fsm.logger.Error("peer does not have requested block", "peer", data.peerID)
 
+				return waitForBlock, nil
 			case processedBlockEv:
 				if data.err != nil {
 					first, second, _ := fsm.pool.FirstTwoBlocksAndPeers()

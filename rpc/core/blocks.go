@@ -10,11 +10,18 @@ import (
 )
 
 // BlockchainInfo gets block headers for minHeight <= height <= maxHeight.
-// Block headers are returned in descending order (highest first).
+//
+// If maxHeight does not yet exist, blocks up to the current height will be
+// returned. If minHeight does not exist (due to pruning), earliest existing
+// height will be used.
+//
+// At most 20 items will be returned. Block headers are returned in descending
+// order (highest first).
+//
 // More: https://docs.tendermint.com/master/rpc/#/Info/blockchain
 func BlockchainInfo(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
-	// maximum 20 block metas
 	const limit int64 = 20
+
 	var err error
 	minHeight, maxHeight, err = filterMinMax(
 		env.BlockStore.Base(),
@@ -25,12 +32,14 @@ func BlockchainInfo(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.
 	if err != nil {
 		return nil, err
 	}
-	env.Logger.Debug("BlockchainInfoHandler", "maxHeight", maxHeight, "minHeight", minHeight)
+	env.Logger.Debug("BlockchainInfo", "maxHeight", maxHeight, "minHeight", minHeight)
 
-	blockMetas := []*types.BlockMeta{}
+	blockMetas := make([]*types.BlockMeta, 0, maxHeight-minHeight+1)
 	for height := maxHeight; height >= minHeight; height-- {
 		blockMeta := env.BlockStore.LoadBlockMeta(height)
-		blockMetas = append(blockMetas, blockMeta)
+		if blockMeta != nil {
+			blockMetas = append(blockMetas, blockMeta)
+		}
 	}
 
 	return &ctypes.ResultBlockchainInfo{

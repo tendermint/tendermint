@@ -1,4 +1,4 @@
-package evidence
+package evidence_test
 
 import (
 	"encoding/hex"
@@ -17,6 +17,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -40,10 +41,12 @@ func evidenceLogger() log.Logger {
 }
 
 // connect N evidence reactors through N switches
-func makeAndConnectReactors(config *cfg.Config, stateStores []sm.Store) []*Reactor {
+func makeAndConnectReactorsAndPools(config *cfg.Config, stateStores []sm.Store) ([]*evidence.Reactor,
+	[]*evidence.Pool) {
 	N := len(stateStores)
 
-	reactors := make([]*Reactor, N)
+	reactors := make([]*evidence.Reactor, N)
+	pools := make([]*evidence.Pool, N)
 	logger := evidenceLogger()
 	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
@@ -53,11 +56,12 @@ func makeAndConnectReactors(config *cfg.Config, stateStores []sm.Store) []*React
 		blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
 			&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
 		)
-		pool, err := NewPool(evidenceDB, stateStores[i], blockStore)
+		pool, err := evidence.NewPool(evidenceDB, stateStores[i], blockStore)
 		if err != nil {
 			panic(err)
 		}
-		reactors[i] = NewReactor(pool)
+		pools[i] = pool
+		reactors[i] = evidence.NewReactor(pool)
 		reactors[i].SetLogger(logger.With("validator", i))
 	}
 
@@ -67,16 +71,16 @@ func makeAndConnectReactors(config *cfg.Config, stateStores []sm.Store) []*React
 
 	}, p2p.Connect2Switches)
 
-	return reactors
+	return reactors, pools
 }
 
 // wait for all evidence on all reactors
-func waitForEvidence(t *testing.T, evs types.EvidenceList, reactors []*Reactor) {
+func waitForEvidence(t *testing.T, evs types.EvidenceList, pools []*evidence.Pool) {
 	// wait for the evidence in all evpools
 	wg := new(sync.WaitGroup)
-	for i := 0; i < len(reactors); i++ {
+	for i := 0; i < len(pools); i++ {
 		wg.Add(1)
-		go _waitForEvidence(t, wg, evs, i, reactors)
+		go _waitForEvidence(t, wg, evs, i, pools)
 	}
 
 	done := make(chan struct{})
@@ -98,15 +102,15 @@ func _waitForEvidence(
 	t *testing.T,
 	wg *sync.WaitGroup,
 	evs types.EvidenceList,
-	reactorIdx int,
-	reactors []*Reactor,
+	poolIdx int,
+	pools []*evidence.Pool,
 ) {
-	evpool := reactors[reactorIdx].evpool
-	for len(evpool.AllPendingEvidence()) != len(evs) {
+	evpool := pools[poolIdx]
+	for len(evpool.PendingEvidence(uint32(len(evs)))) != len(evs) {
 		time.Sleep(time.Millisecond * 100)
 	}
 
-	reapedEv := evpool.AllPendingEvidence()
+	reapedEv := evpool.PendingEvidence(uint32(len(evs)))
 	// put the reaped evidence in a map so we can quickly check we got everything
 	evMap := make(map[string]types.Evidence)
 	for _, e := range reapedEv {
@@ -115,14 +119,14 @@ func _waitForEvidence(
 	for i, expectedEv := range evs {
 		gotEv := evMap[string(expectedEv.Hash())]
 		assert.Equal(t, expectedEv, gotEv,
-			fmt.Sprintf("evidence at index %d on reactor %d don't match: %v vs %v",
-				i, reactorIdx, expectedEv, gotEv))
+			fmt.Sprintf("evidence at index %d on pool %d don't match: %v vs %v",
+				i, poolIdx, expectedEv, gotEv))
 	}
 
 	wg.Done()
 }
 
-func sendEvidence(t *testing.T, evpool *Pool, val types.PrivValidator, n int) types.EvidenceList {
+func sendEvidence(t *testing.T, evpool *evidence.Pool, val types.PrivValidator, n int) types.EvidenceList {
 	evList := make([]types.Evidence, n)
 	for i := 0; i < n; i++ {
 		ev := types.NewMockDuplicateVoteEvidenceWithValidator(int64(i+1),
@@ -153,7 +157,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	}
 
 	// make reactors from statedb
-	reactors := makeAndConnectReactors(config, stateDBs)
+	reactors, pools := makeAndConnectReactorsAndPools(config, stateDBs)
 
 	// set the peer height on each reactor
 	for _, r := range reactors {
@@ -165,8 +169,8 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 
 	// send a bunch of valid evidence to the first reactor's evpool
 	// and wait for them all to be received in the others
-	evList := sendEvidence(t, reactors[0].evpool, val, numEvidence)
-	waitForEvidence(t, evList, reactors)
+	evList := sendEvidence(t, pools[0], val, numEvidence)
+	waitForEvidence(t, evList, pools)
 }
 
 type peerState struct {
@@ -189,7 +193,7 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	stateDB2 := initializeValidatorState(val, height2)
 
 	// make reactors from statedb
-	reactors := makeAndConnectReactors(config, []sm.Store{stateDB1, stateDB2})
+	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
 
 	// set the peer height on each reactor
 	for _, r := range reactors {
@@ -205,10 +209,10 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	peer.Set(types.PeerStateKey, ps)
 
 	// send a bunch of valid evidence to the first reactor's evpool
-	evList := sendEvidence(t, reactors[0].evpool, val, numEvidence)
+	evList := sendEvidence(t, pools[0], val, numEvidence)
 
 	// only ones less than the peers height should make it through
-	waitForEvidence(t, evList[:numEvidence/2], reactors[1:2])
+	waitForEvidence(t, evList[:numEvidence/2], pools[1:2])
 
 	// peers should still be connected
 	peers := reactors[1].Switch.Peers().List()
@@ -241,14 +245,14 @@ func exampleVote(t byte) *types.Vote {
 // nolint:lll //ignore line length for tests
 func TestEvidenceVectors(t *testing.T) {
 
-	dupl := types.NewDuplicateVoteEvidence(exampleVote(1), exampleVote(2), time.Date(2019, 10, 13, 16, 14, 44, 0, time.UTC))
+	dupl := types.NewDuplicateVoteEvidence(exampleVote(1), exampleVote(2))
 
 	testCases := []struct {
 		testName     string
 		evidenceList []types.Evidence
 		expBytes     string
 	}{
-		{"DuplicateVoteEvidence", []types.Evidence{dupl}, "0a81020afe010a79080210031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb031279080110031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb031a0608f49a8ded05"},
+		{"DuplicateVoteEvidence", []types.Evidence{dupl}, "0af9010af6010a79080210031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb031279080110031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb03"},
 	}
 
 	for _, tc := range testCases {

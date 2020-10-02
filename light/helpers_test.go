@@ -73,14 +73,11 @@ func (pkz privKeys) ToValidators(init, inc int64) *types.ValidatorSet {
 }
 
 // signHeader properly signs the header with all keys from first to last exclusive.
-func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Commit {
+func (pkz privKeys) signHeader(header *types.Header, valSet *types.ValidatorSet, first, last int) *types.Commit {
 	commitSigs := make([]types.CommitSig, len(pkz))
 	for i := 0; i < len(pkz); i++ {
 		commitSigs[i] = types.NewCommitSigAbsent()
 	}
-
-	// We need this list to keep the ordering.
-	vset := pkz.ToValidators(1, 1)
 
 	blockID := types.BlockID{
 		Hash:          header.Hash(),
@@ -89,7 +86,7 @@ func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Com
 
 	// Fill in the votes we want.
 	for i := first; i < last && i < len(pkz); i++ {
-		vote := makeVote(header, vset, pkz[i], blockID)
+		vote := makeVote(header, valSet, pkz[i], blockID)
 		commitSigs[vote.ValidatorIndex] = vote.CommitSig()
 	}
 
@@ -151,7 +148,7 @@ func (pkz privKeys) GenSignedHeader(chainID string, height int64, bTime time.Tim
 	header := genHeader(chainID, height, bTime, txs, valset, nextValset, appHash, consHash, resHash)
 	return &types.SignedHeader{
 		Header: header,
-		Commit: pkz.signHeader(header, first, last),
+		Commit: pkz.signHeader(header, valset, first, last),
 	}
 }
 
@@ -164,7 +161,7 @@ func (pkz privKeys) GenSignedHeaderLastBlockID(chainID string, height int64, bTi
 	header.LastBlockID = lastBlockID
 	return &types.SignedHeader{
 		Header: header,
-		Commit: pkz.signHeader(header, first, last),
+		Commit: pkz.signHeader(header, valset, first, last),
 	}
 }
 
@@ -176,19 +173,20 @@ func (pkz privKeys) ChangeKeys(delta int) privKeys {
 // Generates the header and validator set to create a full entire mock node with blocks to height (
 // blockSize) and with variation in validator sets. BlockIntervals are in per minute.
 // NOTE: Expected to have a large validator set size ~ 100 validators.
-func GenMockNode(
+func genMockNodeWithKeys(
 	chainID string,
 	blockSize int64,
 	valSize int,
 	valVariation float32,
 	bTime time.Time) (
-	string,
 	map[int64]*types.SignedHeader,
-	map[int64]*types.ValidatorSet) {
+	map[int64]*types.ValidatorSet,
+	map[int64]privKeys) {
 
 	var (
 		headers         = make(map[int64]*types.SignedHeader, blockSize)
-		valset          = make(map[int64]*types.ValidatorSet, blockSize)
+		valset          = make(map[int64]*types.ValidatorSet, blockSize+1)
+		keymap          = make(map[int64]privKeys, blockSize+1)
 		keys            = genPrivKeys(valSize)
 		totalVariation  = valVariation
 		valVariationInt int
@@ -198,14 +196,16 @@ func GenMockNode(
 	valVariationInt = int(totalVariation)
 	totalVariation = -float32(valVariationInt)
 	newKeys = keys.ChangeKeys(valVariationInt)
+	keymap[1] = keys
+	keymap[2] = newKeys
 
 	// genesis header and vals
 	lastHeader := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Minute), nil,
-		keys.ToValidators(2, 2), newKeys.ToValidators(2, 2), hash("app_hash"), hash("cons_hash"),
+		keys.ToValidators(2, 0), newKeys.ToValidators(2, 0), hash("app_hash"), hash("cons_hash"),
 		hash("results_hash"), 0, len(keys))
 	currentHeader := lastHeader
 	headers[1] = currentHeader
-	valset[1] = keys.ToValidators(2, 2)
+	valset[1] = keys.ToValidators(2, 0)
 	keys = newKeys
 
 	for height := int64(2); height <= blockSize; height++ {
@@ -215,14 +215,28 @@ func GenMockNode(
 		newKeys = keys.ChangeKeys(valVariationInt)
 		currentHeader = keys.GenSignedHeaderLastBlockID(chainID, height, bTime.Add(time.Duration(height)*time.Minute),
 			nil,
-			keys.ToValidators(2, 2), newKeys.ToValidators(2, 2), hash("app_hash"), hash("cons_hash"),
+			keys.ToValidators(2, 0), newKeys.ToValidators(2, 0), hash("app_hash"), hash("cons_hash"),
 			hash("results_hash"), 0, len(keys), types.BlockID{Hash: lastHeader.Hash()})
 		headers[height] = currentHeader
-		valset[height] = keys.ToValidators(2, 2)
+		valset[height] = keys.ToValidators(2, 0)
 		lastHeader = currentHeader
 		keys = newKeys
+		keymap[height+1] = keys
 	}
 
+	return headers, valset, keymap
+}
+
+func genMockNode(
+	chainID string,
+	blockSize int64,
+	valSize int,
+	valVariation float32,
+	bTime time.Time) (
+	string,
+	map[int64]*types.SignedHeader,
+	map[int64]*types.ValidatorSet) {
+	headers, valset, _ := genMockNodeWithKeys(chainID, blockSize, valSize, valVariation, bTime)
 	return chainID, headers, valset
 }
 

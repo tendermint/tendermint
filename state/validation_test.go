@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/log"
@@ -21,8 +22,6 @@ import (
 
 const validationTestsStopHeight int64 = 10
 
-var defaultTestTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
-
 func TestValidateBlockHeader(t *testing.T) {
 	proxyApp := newTestApp()
 	require.NoError(t, proxyApp.Start())
@@ -35,7 +34,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		memmock.Mempool{},
-		sm.MockEvidencePool{},
+		sm.EmptyEvidencePool{},
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 
@@ -56,6 +55,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		{"ChainID wrong", func(block *types.Block) { block.ChainID = "not-the-real-one" }},
 		{"Height wrong", func(block *types.Block) { block.Height += 10 }},
 		{"Time wrong", func(block *types.Block) { block.Time = block.Time.Add(-time.Second * 1) }},
+		{"Time wrong 2", func(block *types.Block) { block.Time = block.Time.Add(time.Second * 1) }},
 
 		{"LastBlockID wrong", func(block *types.Block) { block.LastBlockID.PartSetHeader.Total += 10 }},
 		{"LastCommitHash wrong", func(block *types.Block) { block.LastCommitHash = wrongHash }},
@@ -70,6 +70,11 @@ func TestValidateBlockHeader(t *testing.T) {
 		{"EvidenceHash wrong", func(block *types.Block) { block.EvidenceHash = wrongHash }},
 		{"Proposer wrong", func(block *types.Block) { block.ProposerAddress = ed25519.GenPrivKey().PubKey().Address() }},
 		{"Proposer invalid", func(block *types.Block) { block.ProposerAddress = []byte("wrong size") }},
+
+		{"first LastCommit contains signatures", func(block *types.Block) {
+			block.LastCommit = types.NewCommit(0, 0, types.BlockID{}, []types.CommitSig{types.NewCommitSigAbsent()})
+			block.LastCommitHash = block.LastCommit.Hash()
+		}},
 	}
 
 	// Build up state for multiple heights
@@ -82,6 +87,7 @@ func TestValidateBlockHeader(t *testing.T) {
 			block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, proposerAddr)
 			tc.malleateBlock(block)
 			err := blockExec.ValidateBlock(state, block)
+			t.Logf("%s: %v", tc.name, err)
 			require.Error(t, err, tc.name)
 		}
 
@@ -92,6 +98,19 @@ func TestValidateBlockHeader(t *testing.T) {
 		state, _, lastCommit, err = makeAndCommitGoodBlock(state, height, lastCommit, proposerAddr, blockExec, privVals, nil)
 		require.NoError(t, err, "height %d", height)
 	}
+
+	nextHeight := validationTestsStopHeight
+	block, _ := state.MakeBlock(
+		nextHeight,
+		makeTxs(nextHeight),
+		lastCommit,
+		nil,
+		state.Validators.GetProposer().Address,
+	)
+	state.InitialHeight = nextHeight + 1
+	err := blockExec.ValidateBlock(state, block)
+	require.Error(t, err, "expected an error when state is ahead of block")
+	assert.Contains(t, err.Error(), "lower than initial height")
 }
 
 func TestValidateBlockCommit(t *testing.T) {
@@ -106,7 +125,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		log.TestingLogger(),
 		proxyApp.Consensus(),
 		memmock.Mempool{},
-		sm.MockEvidencePool{},
+		sm.EmptyEvidencePool{},
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 	wrongSigsCommit := types.NewCommit(1, 0, types.BlockID{}, nil)
@@ -218,8 +237,10 @@ func TestValidateBlockEvidence(t *testing.T) {
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	evpool := &mocks.EvidencePool{}
-	evpool.On("Verify", mock.AnythingOfType("*types.DuplicateVoteEvidence")).Return(nil)
-	evpool.On("Update", mock.AnythingOfType("*types.Block"), mock.AnythingOfType("state.State")).Return()
+	evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
+	evpool.On("Update", mock.AnythingOfType("state.State")).Return()
+	evpool.On("ABCIEvidence", mock.AnythingOfType("int64"), mock.AnythingOfType("[]types.Evidence")).Return(
+		[]abci.Evidence{})
 
 	state.ConsensusParams.Evidence.MaxNum = 3
 	blockExec := sm.NewBlockExecutor(
@@ -278,29 +299,4 @@ func TestValidateBlockEvidence(t *testing.T) {
 		)
 		require.NoError(t, err, "height %d", height)
 	}
-}
-
-func TestValidateDuplicateEvidenceShouldFail(t *testing.T) {
-	var height int64 = 1
-	state, stateDB, privVals := makeState(2, int(height))
-	stateStore := sm.NewStore(stateDB)
-	_, val := state.Validators.GetByIndex(0)
-	_, val2 := state.Validators.GetByIndex(1)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
-		privVals[val.Address.String()], chainID)
-	ev2 := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultTestTime,
-		privVals[val2.Address.String()], chainID)
-
-	blockExec := sm.NewBlockExecutor(
-		stateStore, log.TestingLogger(),
-		nil,
-		nil,
-		sm.MockEvidencePool{})
-	// A block with a couple pieces of evidence passes.
-	block := makeBlock(state, height)
-	block.Evidence.Evidence = []types.Evidence{ev, ev2, ev2}
-	block.EvidenceHash = block.Evidence.Hash()
-	err := blockExec.ValidateBlock(state, block)
-
-	assert.Error(t, err)
 }

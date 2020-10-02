@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -17,7 +18,10 @@ var configTemplate *template.Template
 
 func init() {
 	var err error
-	if configTemplate, err = template.New("configFileTemplate").Parse(defaultConfigTemplate); err != nil {
+	tmpl := template.New("configFileTemplate").Funcs(template.FuncMap{
+		"StringsJoin": strings.Join,
+	})
+	if configTemplate, err = tmpl.Parse(defaultConfigTemplate); err != nil {
 		panic(err)
 	}
 }
@@ -342,6 +346,10 @@ cache_size = {{ .Mempool.CacheSize }}
 # NOTE: the max size of a tx transmitted over the network is {max_tx_bytes}.
 max_tx_bytes = {{ .Mempool.MaxTxBytes }}
 
+# Maximum size of a batch of transactions to send to a peer
+# Including space needed by encoding (one varint per transaction).
+max_batch_bytes = {{ .Mempool.MaxBatchBytes }}
+
 #######################################################
 ###         State Sync Configuration Options        ###
 #######################################################
@@ -359,10 +367,13 @@ enable = {{ .StateSync.Enable }}
 #
 # For Cosmos SDK-based chains, trust_period should usually be about 2/3 of the unbonding time (~2
 # weeks) during which they can be financially punished (slashed) for misbehavior.
-rpc_servers = ""
+rpc_servers = "{{ StringsJoin .StateSync.RPCServers "," }}"
 trust_height = {{ .StateSync.TrustHeight }}
 trust_hash = "{{ .StateSync.TrustHash }}"
 trust_period = "{{ .StateSync.TrustPeriod }}"
+
+# Time to spend discovering snapshots before initiating a restore.
+discovery_time = "{{ .StateSync.DiscoveryTime }}"
 
 # Temporary directory for state sync snapshot chunks, defaults to the OS tempdir (typically /tmp).
 # Will create a new, randomly named directory within, and remove it when done.
@@ -386,12 +397,21 @@ version = "{{ .FastSync.Version }}"
 
 wal_file = "{{ js .Consensus.WalPath }}"
 
+# How long we wait for a proposal block before prevoting nil
 timeout_propose = "{{ .Consensus.TimeoutPropose }}"
+# How much timeout_propose increases with each round
 timeout_propose_delta = "{{ .Consensus.TimeoutProposeDelta }}"
+# How long we wait after receiving +2/3 prevotes for “anything” (ie. not a single block or nil)
 timeout_prevote = "{{ .Consensus.TimeoutPrevote }}"
+# How much the timeout_prevote increases with each round
 timeout_prevote_delta = "{{ .Consensus.TimeoutPrevoteDelta }}"
+# How long we wait after receiving +2/3 precommits for “anything” (ie. not a single block or nil)
 timeout_precommit = "{{ .Consensus.TimeoutPrecommit }}"
+# How much the timeout_precommit increases with each round
 timeout_precommit_delta = "{{ .Consensus.TimeoutPrecommitDelta }}"
+# How long we wait after committing a block, before starting on the new
+# height (this gives us a chance to receive some more precommits, even
+# though we already have +2/3).
 timeout_commit = "{{ .Consensus.TimeoutCommit }}"
 
 # How many blocks to look back to check existence of the node's consensus votes before joining consensus
@@ -499,6 +519,24 @@ var testGenesisFmt = `{
   "genesis_time": "2018-10-10T08:20:13.695936996Z",
   "chain_id": "%s",
   "initial_height": "1",
+	"consensus_params": {
+		"block": {
+			"max_bytes": "22020096",
+			"max_gas": "-1",
+			"time_iota_ms": "10"
+		},
+		"evidence": {
+			"max_age_num_blocks": "100000",
+			"max_age_duration": "172800000000000",
+			"max_num": 50
+		},
+		"validator": {
+			"pub_key_types": [
+				"ed25519"
+			]
+		},
+		"version": {}
+	},
   "validators": [
     {
       "pub_key": {

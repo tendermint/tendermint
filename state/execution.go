@@ -131,9 +131,12 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, 0, ErrInvalidBlock(err)
 	}
 
+	// Update evpool with the block and state and get any byzantine validators for that block
+	byzVals := blockExec.evpool.ABCIEvidence(block.Height, block.Evidence.Evidence)
+
 	startTime := time.Now().UnixNano()
 	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block,
-		blockExec.store, state.InitialHeight)
+		blockExec.store, state.InitialHeight, byzVals)
 	endTime := time.Now().UnixNano()
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
 	if err != nil {
@@ -175,8 +178,8 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
 
-	// Update evpool with the block and state.
-	blockExec.evpool.Update(block, state)
+	// Update evpool with the latest state.
+	blockExec.evpool.Update(state)
 
 	fail.Fail() // XXX
 
@@ -258,6 +261,7 @@ func execBlockOnProxyApp(
 	block *types.Block,
 	store Store,
 	initialHeight int64,
+	byzVals []abci.Evidence,
 ) (*tmstate.ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
@@ -285,7 +289,7 @@ func execBlockOnProxyApp(
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
 
-	commitInfo, byzVals := getBeginBlockValidatorInfo(block, store, initialHeight)
+	commitInfo := getBeginBlockValidatorInfo(block, store, initialHeight)
 
 	// Begin block
 	var err error
@@ -325,7 +329,7 @@ func execBlockOnProxyApp(
 }
 
 func getBeginBlockValidatorInfo(block *types.Block, store Store,
-	initialHeight int64) (abci.LastCommitInfo, []abci.Evidence) {
+	initialHeight int64) abci.LastCommitInfo {
 	voteInfos := make([]abci.VoteInfo, block.LastCommit.Size())
 	// Initial block -> LastCommitInfo.Votes are empty.
 	// Remember that the first LastCommit is intentionally empty, so it makes
@@ -356,22 +360,10 @@ func getBeginBlockValidatorInfo(block *types.Block, store Store,
 		}
 	}
 
-	byzVals := make([]abci.Evidence, len(block.Evidence.Evidence))
-	for i, ev := range block.Evidence.Evidence {
-		// We need the validator set. We already did this in validateBlock.
-		// TODO: Should we instead cache the valset in the evidence itself and add
-		// `SetValidatorSet()` and `ToABCI` methods ?
-		valset, err := store.LoadValidators(ev.Height())
-		if err != nil {
-			panic(err)
-		}
-		byzVals[i] = types.TM2PB.Evidence(ev, valset)
-	}
-
 	return abci.LastCommitInfo{
 		Round: block.LastCommit.Round,
 		Votes: voteInfos,
-	}, byzVals
+	}
 }
 
 func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
@@ -533,7 +525,7 @@ func ExecCommitBlock(
 	store Store,
 	initialHeight int64,
 ) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
+	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight, []abci.Evidence{})
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err

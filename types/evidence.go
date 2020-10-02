@@ -2,12 +2,12 @@ package types
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -16,17 +16,13 @@ import (
 )
 
 // Evidence represents any provable malicious activity by a validator.
+// Verification logic for each evidence is part of the evidence module.
 type Evidence interface {
-	Height() int64                                     // height of the equivocation
-	Time() time.Time                                   // time of the equivocation
-	Address() []byte                                   // address of the equivocating validator
-	Bytes() []byte                                     // bytes which comprise the evidence
-	Hash() []byte                                      // hash of the evidence
-	Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
-	Equal(Evidence) bool                               // check equality of evidence
-
-	ValidateBasic() error
-	String() string
+	Height() int64        // height of the infraction
+	Bytes() []byte        // bytes which comprise the evidence
+	Hash() []byte         // hash of the evidence
+	ValidateBasic() error // basic consistency check
+	String() string       // string format of the evidence
 }
 
 const (
@@ -34,93 +30,20 @@ const (
 	MaxEvidenceBytes int64 = 444
 )
 
-// ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.
-type ErrEvidenceInvalid struct {
-	Evidence   Evidence
-	ErrorValue error
-}
-
-// NewErrEvidenceInvalid returns a new EvidenceInvalid with the given err.
-func NewErrEvidenceInvalid(ev Evidence, err error) *ErrEvidenceInvalid {
-	return &ErrEvidenceInvalid{ev, err}
-}
-
-// Error returns a string representation of the error.
-func (err *ErrEvidenceInvalid) Error() string {
-	return fmt.Sprintf("Invalid evidence: %v. Evidence: %v", err.ErrorValue, err.Evidence)
-}
-
-// ErrEvidenceOverflow is for when there is too much evidence in a block.
-type ErrEvidenceOverflow struct {
-	MaxNum int
-	GotNum int
-}
-
-// NewErrEvidenceOverflow returns a new ErrEvidenceOverflow where got > max.
-func NewErrEvidenceOverflow(max, got int) *ErrEvidenceOverflow {
-	return &ErrEvidenceOverflow{max, got}
-}
-
-// Error returns a string representation of the error.
-func (err *ErrEvidenceOverflow) Error() string {
-	return fmt.Sprintf("Too much evidence: Max %d, got %d", err.MaxNum, err.GotNum)
-}
-
-//-------------------------------------------
-
-func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
-	if evidence == nil {
-		return nil, errors.New("nil evidence")
-	}
-
-	switch evi := evidence.(type) {
-	case *DuplicateVoteEvidence:
-		pbevi := evi.ToProto()
-		tp := &tmproto.Evidence{
-			Sum: &tmproto.Evidence_DuplicateVoteEvidence{
-				DuplicateVoteEvidence: pbevi,
-			},
-		}
-		return tp, nil
-
-	default:
-		return nil, fmt.Errorf("toproto: evidence is not recognized: %T", evi)
-	}
-}
-
-func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
-	if evidence == nil {
-		return nil, errors.New("nil evidence")
-	}
-
-	switch evi := evidence.Sum.(type) {
-	case *tmproto.Evidence_DuplicateVoteEvidence:
-		return DuplicateVoteEvidenceFromProto(evi.DuplicateVoteEvidence)
-	default:
-		return nil, errors.New("evidence is not recognized")
-	}
-}
-
-func init() {
-	tmjson.RegisterType(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence")
-}
-
-//-------------------------------------------
+//--------------------------------------------------------------------------------------
 
 // DuplicateVoteEvidence contains evidence a validator signed two conflicting
 // votes.
 type DuplicateVoteEvidence struct {
 	VoteA *Vote `json:"vote_a"`
 	VoteB *Vote `json:"vote_b"`
-
-	Timestamp time.Time `json:"timestamp"`
 }
 
 var _ Evidence = &DuplicateVoteEvidence{}
 
 // NewDuplicateVoteEvidence creates DuplicateVoteEvidence with right ordering given
 // two conflicting votes. If one of the votes is nil, evidence returned is nil as well
-func NewDuplicateVoteEvidence(vote1, vote2 *Vote, time time.Time) *DuplicateVoteEvidence {
+func NewDuplicateVoteEvidence(vote1, vote2 *Vote) *DuplicateVoteEvidence {
 	var voteA, voteB *Vote
 	if vote1 == nil || vote2 == nil {
 		return nil
@@ -135,14 +58,12 @@ func NewDuplicateVoteEvidence(vote1, vote2 *Vote, time time.Time) *DuplicateVote
 	return &DuplicateVoteEvidence{
 		VoteA: voteA,
 		VoteB: voteB,
-
-		Timestamp: time,
 	}
 }
 
 // String returns a string representation of the evidence.
 func (dve *DuplicateVoteEvidence) String() string {
-	return fmt.Sprintf("DuplicateVoteEvidence{VoteA: %v, VoteB: %v, Time: %v}", dve.VoteA, dve.VoteB, dve.Timestamp)
+	return fmt.Sprintf("DuplicateVoteEvidence{VoteA: %v, VoteB: %v}", dve.VoteA, dve.VoteB)
 }
 
 // Height returns the height this evidence refers to.
@@ -150,17 +71,7 @@ func (dve *DuplicateVoteEvidence) Height() int64 {
 	return dve.VoteA.Height
 }
 
-// Time returns time of the latest vote.
-func (dve *DuplicateVoteEvidence) Time() time.Time {
-	return dve.Timestamp
-}
-
-// Address returns the address of the validator.
-func (dve *DuplicateVoteEvidence) Address() []byte {
-	return dve.VoteA.ValidatorAddress
-}
-
-// Hash returns the hash of the evidence.
+// Bytes returns the proto-encoded evidence as a byte array.
 func (dve *DuplicateVoteEvidence) Bytes() []byte {
 	pbe := dve.ToProto()
 	bz, err := pbe.Marshal()
@@ -173,88 +84,7 @@ func (dve *DuplicateVoteEvidence) Bytes() []byte {
 
 // Hash returns the hash of the evidence.
 func (dve *DuplicateVoteEvidence) Hash() []byte {
-	pbe := dve.ToProto()
-	bz, err := pbe.Marshal()
-	if err != nil {
-		panic(err)
-	}
-
-	return tmhash.Sum(bz)
-}
-
-// Verify returns an error if the two votes aren't conflicting.
-//
-// To be conflicting, they must be from the same validator, for the same H/R/S,
-// but for different blocks.
-func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
-	// H/R/S must be the same
-	if dve.VoteA.Height != dve.VoteB.Height ||
-		dve.VoteA.Round != dve.VoteB.Round ||
-		dve.VoteA.Type != dve.VoteB.Type {
-		return fmt.Errorf("h/r/s does not match: %d/%d/%v vs %d/%d/%v",
-			dve.VoteA.Height, dve.VoteA.Round, dve.VoteA.Type,
-			dve.VoteB.Height, dve.VoteB.Round, dve.VoteB.Type)
-	}
-
-	// Address must be the same
-	if !bytes.Equal(dve.VoteA.ValidatorAddress, dve.VoteB.ValidatorAddress) {
-		return fmt.Errorf("validator addresses do not match: %X vs %X",
-			dve.VoteA.ValidatorAddress,
-			dve.VoteB.ValidatorAddress,
-		)
-	}
-
-	// BlockIDs must be different
-	if dve.VoteA.BlockID.Equals(dve.VoteB.BlockID) {
-		return fmt.Errorf(
-			"block IDs are the same (%v) - not a real duplicate vote",
-			dve.VoteA.BlockID,
-		)
-	}
-
-	// pubkey must match address (this should already be true, sanity check)
-	addr := dve.VoteA.ValidatorAddress
-	if !bytes.Equal(pubKey.Address(), addr) {
-		return fmt.Errorf("address (%X) doesn't match pubkey (%v - %X)",
-			addr, pubKey, pubKey.Address())
-	}
-	va := dve.VoteA.ToProto()
-	vb := dve.VoteB.ToProto()
-	// Signatures must be valid
-	if !pubKey.VerifySignature(VoteSignBytes(chainID, va), dve.VoteA.Signature) {
-		return fmt.Errorf("verifying VoteA: %w", ErrVoteInvalidSignature)
-	}
-	if !pubKey.VerifySignature(VoteSignBytes(chainID, vb), dve.VoteB.Signature) {
-		return fmt.Errorf("verifying VoteB: %w", ErrVoteInvalidSignature)
-	}
-
-	return nil
-}
-
-// Equal checks if two pieces of evidence are equal.
-func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
-	if _, ok := ev.(*DuplicateVoteEvidence); !ok {
-		return false
-	}
-	pbdev := dve.ToProto()
-	bz, err := pbdev.Marshal()
-	if err != nil {
-		panic(err)
-	}
-
-	var evbz []byte
-	if ev, ok := ev.(*DuplicateVoteEvidence); ok {
-		evpb := ev.ToProto()
-		evbz, err = evpb.Marshal()
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	// just check their hashes
-	dveHash := tmhash.Sum(bz)
-	evHash := tmhash.Sum(evbz)
-	return bytes.Equal(dveHash, evHash)
+	return tmhash.Sum(dve.Bytes())
 }
 
 // ValidateBasic performs basic validation.
@@ -279,17 +109,18 @@ func (dve *DuplicateVoteEvidence) ValidateBasic() error {
 	return nil
 }
 
+// ToProto encodes DuplicateVoteEvidence to protobuf
 func (dve *DuplicateVoteEvidence) ToProto() *tmproto.DuplicateVoteEvidence {
 	voteB := dve.VoteB.ToProto()
 	voteA := dve.VoteA.ToProto()
 	tp := tmproto.DuplicateVoteEvidence{
-		VoteA:     voteA,
-		VoteB:     voteB,
-		Timestamp: dve.Timestamp,
+		VoteA: voteA,
+		VoteB: voteB,
 	}
 	return &tp
 }
 
+// DuplicateVoteEvidenceFromProto decodes protobuf into DuplicateVoteEvidence
 func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*DuplicateVoteEvidence, error) {
 	if pb == nil {
 		return nil, errors.New("nil duplicate vote evidence")
@@ -305,12 +136,127 @@ func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*Duplica
 		return nil, err
 	}
 
-	dve := NewDuplicateVoteEvidence(vA, vB, pb.Timestamp)
+	dve := NewDuplicateVoteEvidence(vA, vB)
 
 	return dve, dve.ValidateBasic()
 }
 
-//--------------------------------------------------
+//------------------------------------ LIGHT EVIDENCE --------------------------------------
+
+// LightClientAttackEvidence is a generalized evidence that captures all forms of known attacks on
+// a light client such that a full node can verify, propose and commit the evidence on-chain for
+// punishment of the malicious validators. There are three forms of attacks: Lunatic, Equivocation
+// and Amnesia. These attacks are exhaustive. You can find a more detailed overview of this at
+// tendermint/docs/architecture/adr-047-handling-evidence-from-light-client.md
+type LightClientAttackEvidence struct {
+	ConflictingBlock *LightBlock
+	CommonHeight     int64
+}
+
+var _ Evidence = &LightClientAttackEvidence{}
+
+// Height returns the last height at which the primary provider and witness provider had the same header.
+// We use this as the height of the infraction rather than the actual conflicting header because we know
+// that the malicious validators were bonded at this height which is important for evidence expiry
+func (l *LightClientAttackEvidence) Height() int64 {
+	return l.CommonHeight
+}
+
+// Bytes returns the proto-encoded evidence as a byte array
+func (l *LightClientAttackEvidence) Bytes() []byte {
+	pbe, err := l.ToProto()
+	if err != nil {
+		panic(err)
+	}
+	bz, err := pbe.Marshal()
+	if err != nil {
+		panic(err)
+	}
+	return bz
+}
+
+// Hash returns the hash of the header and the commonHeight. This is designed to cause hash collisions with evidence
+// that have the same conflicting header and common height but different permutations of validator commit signatures.
+// The reason for this is that we don't want to allow several permutations of the same evidence to be committed on
+// chain. Ideally we commit the header with the most commit signatures but anything greater than 1/3 is sufficient.
+func (l *LightClientAttackEvidence) Hash() []byte {
+	buf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutVarint(buf, l.CommonHeight)
+	bz := make([]byte, tmhash.Size+n)
+	copy(bz[:tmhash.Size-1], l.ConflictingBlock.Hash().Bytes())
+	copy(bz[tmhash.Size:], buf)
+	return tmhash.Sum(bz)
+}
+
+// ValidateBasic performs basic validation such that the evidence is consistent and can now be used for verification.
+func (l *LightClientAttackEvidence) ValidateBasic() error {
+	if l.ConflictingBlock == nil {
+		return errors.New("conflicting block is nil")
+	}
+
+	// this check needs to be done before we can run validate basic
+	if l.ConflictingBlock.Header == nil {
+		return errors.New("conflicting block missing header")
+	}
+
+	if err := l.ConflictingBlock.ValidateBasic(l.ConflictingBlock.ChainID); err != nil {
+		return fmt.Errorf("invalid conflicting light block: %w", err)
+	}
+
+	if l.CommonHeight <= 0 {
+		return errors.New("negative or zero common height")
+	}
+
+	// check that common height isn't ahead of the height of the conflicting block. It
+	// is possible that they are the same height if the light node witnesses either an
+	// amnesia or a equivocation attack.
+	if l.CommonHeight > l.ConflictingBlock.Height {
+		return fmt.Errorf("common height is ahead of the conflicting block height (%d > %d)",
+			l.CommonHeight, l.ConflictingBlock.Height)
+	}
+
+	return nil
+}
+
+// String returns a string representation of LightClientAttackEvidence
+func (l *LightClientAttackEvidence) String() string {
+	return fmt.Sprintf("LightClientAttackEvidence{ConflictingBlock: %v, CommonHeight: %d}",
+		l.ConflictingBlock.String(), l.CommonHeight)
+}
+
+// ToProto encodes LightClientAttackEvidence to protobuf
+func (l *LightClientAttackEvidence) ToProto() (*tmproto.LightClientAttackEvidence, error) {
+	conflictingBlock, err := l.ConflictingBlock.ToProto()
+	if err != nil {
+		return nil, err
+	}
+
+	return &tmproto.LightClientAttackEvidence{
+		ConflictingBlock: conflictingBlock,
+		CommonHeight:     l.CommonHeight,
+	}, nil
+}
+
+// LightClientAttackEvidenceFromProto decodes protobuf
+func LightClientAttackEvidenceFromProto(l *tmproto.LightClientAttackEvidence) (*LightClientAttackEvidence, error) {
+	if l == nil {
+		return nil, errors.New("empty light client attack evidence")
+	}
+
+	conflictingBlock, err := LightBlockFromProto(l.ConflictingBlock)
+	if err != nil {
+		return nil, err
+	}
+
+	le := &LightClientAttackEvidence{
+		ConflictingBlock: conflictingBlock,
+		CommonHeight:     l.CommonHeight,
+	}
+
+	return le, le.ValidateBasic()
+}
+
+//------------------------------------------------------------------------------------------
 
 // EvidenceList is a list of Evidence. Evidences is not a word.
 type EvidenceList []Evidence
@@ -338,11 +284,101 @@ func (evl EvidenceList) String() string {
 // Has returns true if the evidence is in the EvidenceList.
 func (evl EvidenceList) Has(evidence Evidence) bool {
 	for _, ev := range evl {
-		if ev.Equal(evidence) {
+		if bytes.Equal(evidence.Hash(), ev.Hash()) {
 			return true
 		}
 	}
 	return false
+}
+
+//------------------------------------------ PROTO --------------------------------------
+
+// EvidenceToProto is a generalized function for encoding evidence that conforms to the
+// evidence interface to protobuf
+func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
+	if evidence == nil {
+		return nil, errors.New("nil evidence")
+	}
+
+	switch evi := evidence.(type) {
+	case *DuplicateVoteEvidence:
+		pbev := evi.ToProto()
+		return &tmproto.Evidence{
+			Sum: &tmproto.Evidence_DuplicateVoteEvidence{
+				DuplicateVoteEvidence: pbev,
+			},
+		}, nil
+
+	case *LightClientAttackEvidence:
+		pbev, err := evi.ToProto()
+		if err != nil {
+			return nil, err
+		}
+		return &tmproto.Evidence{
+			Sum: &tmproto.Evidence_LightClientAttackEvidence{
+				LightClientAttackEvidence: pbev,
+			},
+		}, nil
+
+	default:
+		return nil, fmt.Errorf("toproto: evidence is not recognized: %T", evi)
+	}
+}
+
+// EvidenceFromProto is a generalized function for decoding protobuf into the
+// evidence interface
+func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
+	if evidence == nil {
+		return nil, errors.New("nil evidence")
+	}
+
+	switch evi := evidence.Sum.(type) {
+	case *tmproto.Evidence_DuplicateVoteEvidence:
+		return DuplicateVoteEvidenceFromProto(evi.DuplicateVoteEvidence)
+	case *tmproto.Evidence_LightClientAttackEvidence:
+		return LightClientAttackEvidenceFromProto(evi.LightClientAttackEvidence)
+	default:
+		return nil, errors.New("evidence is not recognized")
+	}
+}
+
+func init() {
+	tmjson.RegisterType(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence")
+	tmjson.RegisterType(&LightClientAttackEvidence{}, "tendermint/LightClientAttackEvidence")
+}
+
+//-------------------------------------------- ERRORS --------------------------------------
+
+// ErrInvalidEvidence wraps a piece of evidence and the error denoting how or why it is invalid.
+type ErrInvalidEvidence struct {
+	Evidence Evidence
+	Reason   error
+}
+
+// NewErrInvalidEvidence returns a new EvidenceInvalid with the given err.
+func NewErrInvalidEvidence(ev Evidence, err error) *ErrInvalidEvidence {
+	return &ErrInvalidEvidence{ev, err}
+}
+
+// Error returns a string representation of the error.
+func (err *ErrInvalidEvidence) Error() string {
+	return fmt.Sprintf("Invalid evidence: %v. Evidence: %v", err.Reason, err.Evidence)
+}
+
+// ErrEvidenceOverflow is for when there is too much evidence in a block.
+type ErrEvidenceOverflow struct {
+	MaxNum int
+	GotNum int
+}
+
+// NewErrEvidenceOverflow returns a new ErrEvidenceOverflow where got > max.
+func NewErrEvidenceOverflow(max, got int) *ErrEvidenceOverflow {
+	return &ErrEvidenceOverflow{max, got}
+}
+
+// Error returns a string representation of the error.
+func (err *ErrEvidenceOverflow) Error() string {
+	return fmt.Sprintf("Too much evidence: Max %d, got %d", err.MaxNum, err.GotNum)
 }
 
 //-------------------------------------------- MOCKING --------------------------------------
@@ -366,7 +402,7 @@ func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
 	vB := voteB.ToProto()
 	_ = pv.SignVote(chainID, vB)
 	voteB.Signature = vB.Signature
-	return NewDuplicateVoteEvidence(voteA, voteB, time)
+	return NewDuplicateVoteEvidence(voteA, voteB)
 }
 
 func makeMockVote(height int64, round, index int32, addr Address,

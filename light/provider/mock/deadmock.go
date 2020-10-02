@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"context"
 	"errors"
 
 	"github.com/tendermint/tendermint/light/provider"
@@ -22,10 +23,10 @@ func (p *deadMock) ChainID() string { return p.chainID }
 
 func (p *deadMock) String() string { return "deadMock" }
 
-func (p *deadMock) LightBlock(height int64) (*types.LightBlock, error) {
+func (p *deadMock) LightBlock(_ context.Context, height int64) (*types.LightBlock, error) {
 	return nil, errNoResp
 }
 
-func (p *deadMock) ReportEvidence(ev types.Evidence) error {
+func (p *deadMock) ReportEvidence(_ context.Context, ev types.Evidence) error {
 	return errNoResp
 }

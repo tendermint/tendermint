@@ -671,13 +671,14 @@ OUTER_LOOP:
 
 		// Catchup logic
 		// If peer is lagging by more than 1, send Commit.
-		if prs.Height != 0 && rs.Height >= prs.Height+2 {
+		if prs.Height != 0 && rs.Height >= prs.Height+2 && prs.Height >= conR.conS.blockStore.Base() {
 			// Load the block commit for prs.Height,
 			// which contains precommit signatures for prs.Height.
-			commit := conR.conS.blockStore.LoadBlockCommit(prs.Height)
-			if ps.PickSendVote(commit) {
-				logger.Debug("Picked Catchup commit to send", "height", prs.Height)
-				continue OUTER_LOOP
+			if commit := conR.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
+				if ps.PickSendVote(commit) {
+					logger.Debug("Picked Catchup commit to send", "height", prs.Height)
+					continue OUTER_LOOP
+				}
 			}
 		}
 
