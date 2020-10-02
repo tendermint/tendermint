@@ -43,7 +43,6 @@ However, this method should not be implemented like that, because checkTx will s
 type Application interface {
    // Info/Query Connection
    Info(RequestInfo) ResponseInfo                // Return application info
-   SetOption(RequestSetOption) ResponseSetOption // Set application option
    Query(RequestQuery) ResponseQuery             // Query for state
 
    // Mempool Connection
