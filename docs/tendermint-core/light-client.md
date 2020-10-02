@@ -13,7 +13,7 @@ package](https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc).
 
 ## Overview
 
-The the light client protocol verifies headers by retrieving a chain of headers,
+The light client protocol verifies headers by retrieving a chain of headers,
 commits and validator sets from a trusted height to the target height, verifying
 the signatures of each of these intermediary signed headers till it reaches the
 target height. From there, all the application state is verifiable with
@@ -45,8 +45,11 @@ Similar to a full node, light clients can also be subject to byzantine attacks.
 A light client also runs a detector process which cross verifies headers from a
 primary with witnesses. Therefore light clients should be set with enough witnesses.
 
-If the detector observes a faulty provider it will report it to another provider
-and fail verification.
+If the light client observes a faulty provider it will report it to another provider
+and return an error.
+
+In summary, the light client is not safe when a) more than the trust level of
+validators are malicious and b) all witnesses are malicious.
 
 ## Where to obtain trusted height & hash
 
