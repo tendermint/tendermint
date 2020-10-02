@@ -54,7 +54,7 @@ func makeParams(
 	blockBytes, blockGas int64,
 	blockTimeIotaMs int64,
 	evidenceAge int64,
-	maxEvidence uint32,
+	maxEvidence int64,
 	pubkeyTypes []string,
 ) tmproto.ConsensusParams {
 	return tmproto.ConsensusParams{
@@ -66,7 +66,7 @@ func makeParams(
 		Evidence: tmproto.EvidenceParams{
 			MaxAgeNumBlocks: evidenceAge,
 			MaxAgeDuration:  time.Duration(evidenceAge),
-			MaxNum:          maxEvidence,
+			MaxBytes:        maxEvidence,
 		},
 		Validator: tmproto.ValidatorParams{
 			PubKeyTypes: pubkeyTypes,
@@ -124,7 +124,7 @@ func TestConsensusParamsUpdate(t *testing.T) {
 				Evidence: &tmproto.EvidenceParams{
 					MaxAgeNumBlocks: 300,
 					MaxAgeDuration:  time.Duration(300),
-					MaxNum:          50,
+					MaxBytes:          50,
 				},
 				Validator: &tmproto.ValidatorParams{
 					PubKeyTypes: valEd25519,

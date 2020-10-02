@@ -1065,6 +1065,7 @@ type EvidenceData struct {
 
 	// Volatile
 	hash tmbytes.HexBytes
+	bytes int64
 }
 
 // Hash returns the hash of the data.
@@ -1073,6 +1074,10 @@ func (data *EvidenceData) Hash() tmbytes.HexBytes {
 		data.hash = data.Evidence.Hash()
 	}
 	return data.hash
+}
+
+func (data *EvidenceData) Bytes() int64 {
+	return data.bytes
 }
 
 // StringIndented returns a string representation of the evidence.
