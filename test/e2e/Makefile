@@ -4,10 +4,10 @@ docker:
 ci: runner
 	./build/runner -f networks/ci.toml
 
+# We need to build support for database backends into the app in
+# order to build a binary with a Tendermint node in it (for built-in
+# ABCI testing).
 app:
-	# We need to build support for database backends into the app in
-	# order to build a binary with a Tendermint node in it (for built-in
-	# ABCI testing).
 	go build -o build/app -tags badgerdb,boltdb,cleveldb,rocksdb ./app
 
 runner:
