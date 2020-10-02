@@ -11,6 +11,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - CLI/RPC/Config
 
 - Apps
+    - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
 
 - P2P Protocol
 
@@ -29,4 +30,3 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### BUG FIXES
 
 - [privval] \#5441 Fix faulty ping message encoding causing nil message errors in logs (@erikgrinaker)
-
