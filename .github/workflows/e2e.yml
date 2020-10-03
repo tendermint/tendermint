@@ -15,7 +15,7 @@ on:
 jobs:
   e2e-ci:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v2
       - name: CI testnet
