@@ -1,0 +1,28 @@
+name: End-to-End CI Tests
+# Runs the CI end-to-end test network on all pushes to master or release branches
+# and every pull request.
+on:
+  pull_request:
+    #paths:
+    #  - "**.go"
+    #  - "**.mod"
+    #  - "**.sum"
+  push:
+    branches:
+      - master
+      - release/**
+
+jobs:
+  e2e-ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v2
+      - name: CI testnet
+        working-directory: test/e2e
+        run: |
+          make docker runner
+          ./build/runner -f networks/ci.toml
+      - name: Emit logs on failure
+        if: ${{ failure() }}
+        run: ./build/runner -f networks/ci.toml logs
