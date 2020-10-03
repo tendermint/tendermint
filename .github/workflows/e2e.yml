@@ -22,7 +22,8 @@ jobs:
         working-directory: test/e2e
         run: |
           make docker runner
-          ./build/runner -f networks/ci.toml
-      - name: Emit logs on failure
+          sudo ./build/runner -f networks/ci.toml
+      - name: Emit failure logs
         if: ${{ failure() }}
+        working-directory: test/e2e
         run: ./build/runner -f networks/ci.toml logs
