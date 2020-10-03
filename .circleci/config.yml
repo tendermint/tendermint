@@ -72,12 +72,6 @@ jobs:
           paths:
             - "."
 
-  test_persistence:
-    executor: golang
-    steps:
-      - run_test:
-          script_path: test/persist/test_failure_indices.sh
-
   deploy_docs:
     executor: docs
     steps:
@@ -262,9 +256,6 @@ workflows:
               only:
                 - docs-staging
       - setup_dependencies
-      - test_persistence:
-          requires:
-            - setup_dependencies
       - reproducible_builds:
           filters:
             branches:
