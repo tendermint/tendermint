@@ -78,24 +78,6 @@ jobs:
       - run_test:
           script_path: test/persist/test_failure_indices.sh
 
-  test_p2p:
-    environment:
-      GOBIN: /home/circleci/.go_workspace/bin
-      GOPATH: /home/circleci/.go_workspace
-    machine:
-      image: circleci/classic:latest
-    parameters:
-      ipv:
-        type: integer
-        default: 4
-    steps:
-      - checkout
-      - run: mkdir -p $GOPATH/src/github.com/tendermint
-      - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
-      - run: bash test/p2p/circleci.sh << parameters.ipv >>
-      - store_artifacts:
-          path: /home/circleci/project/test/p2p/logs
-
   deploy_docs:
     executor: docs
     steps:
@@ -283,10 +265,6 @@ workflows:
       - test_persistence:
           requires:
             - setup_dependencies
-      - test_p2p
-      - test_p2p:
-          name: test_p2p_ipv6
-          ipv: 6
       - reproducible_builds:
           filters:
             branches:
