@@ -3,8 +3,8 @@
 # instead of spending time compiling them.
 FROM golang:1.15
 
-RUN apt-get update -y && apt-get upgrade -y
-RUN apt-get install -y libleveldb-dev librocksdb-dev
+RUN apt-get -qq update -y && apt-get -qq upgrade -y >/dev/null
+RUN apt-get -qq install -y libleveldb-dev librocksdb-dev >/dev/null
 
 # Set up build directory /src/tendermint
 ENV TENDERMINT_BUILD_OPTIONS badgerdb,boltdb,cleveldb,rocksdb
