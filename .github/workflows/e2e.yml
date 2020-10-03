@@ -1,4 +1,4 @@
-name: End-to-End CI Tests
+name: E2E tests
 # Runs the CI end-to-end test network on all pushes to master or release branches
 # and every pull request.
 on:
