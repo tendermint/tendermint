@@ -18,12 +18,13 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v2
-      - name: CI testnet
+      - name: Build
         working-directory: test/e2e
-        run: |
-          make docker runner
-          sudo ./build/runner -f networks/ci.toml
-      - name: Emit failure logs
+        run: make docker runner
+      - name: Run CI testnet
+        working-directory: test/e2e
+        run: sudo ./build/runner -f networks/ci.toml
+      - name: Emit logs on failure
         if: ${{ failure() }}
         working-directory: test/e2e
         run: ./build/runner -f networks/ci.toml logs
