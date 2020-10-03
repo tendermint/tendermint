@@ -8,10 +8,6 @@ import (
 
 // Manifest represents a TOML testnet manifest.
 type Manifest struct {
-	// Seed is a random seed used for generating e.g. node keys and IP networks.
-	// If not given, a fixed seed is used instead.
-	Seed int64
-
 	// IPv6 uses IPv6 networking instead of IPv4. Defaults to IPv4.
 	IPv6 bool `toml:"ipv6"`
 

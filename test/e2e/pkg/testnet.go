@@ -17,6 +17,13 @@ import (
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
 
+const (
+	randomSeed     int64  = 2308084734268
+	proxyPortFirst uint32 = 5701
+	networkIPv4           = "10.186.73.0/24"
+	networkIPv6           = "fd80:b10c::/48"
+)
+
 type Mode string
 type Protocol string
 type Perturbation string
@@ -85,15 +92,19 @@ func LoadTestnet(file string) (*Testnet, error) {
 	}
 	dir := strings.TrimSuffix(file, filepath.Ext(file))
 
-	// Set up pseudorandom generators. They all use the same initial seed, such
-	// that e.g. adding a new node won't cause the network address to change.
-	seed := int64(2308084734268)
-	if manifest.Seed != 0 {
-		seed = manifest.Seed
+	// Set up resource generators. These must be deterministic.
+	netAddress := networkIPv4
+	if manifest.IPv6 {
+		netAddress = networkIPv6
 	}
-	keyGen := newKeyGenerator(seed)
-	ipGen := newIPGenerator(seed, manifest.IPv6)
-	proxyPortGen := newPortGenerator(5701)
+	_, ipNet, err := net.ParseCIDR(netAddress)
+	if err != nil {
+		return nil, fmt.Errorf("invalid IP network address %q: %w", netAddress, err)
+	}
+
+	ipGen := newIPGenerator(ipNet)
+	keyGen := newKeyGenerator(randomSeed)
+	proxyPortGen := newPortGenerator(proxyPortFirst)
 
 	testnet := &Testnet{
 		Name:             filepath.Base(dir),
@@ -426,30 +437,10 @@ type ipGenerator struct {
 	nextIP  net.IP
 }
 
-func newIPGenerator(seed int64, ipv6 bool) *ipGenerator {
-	r := rand.New(rand.NewSource(seed))
-	n := &net.IPNet{}
-	if ipv6 {
-		n.IP = net.IPv6zero
-		n.Mask = net.CIDRMask(48, 128) // 2^80 hosts.
-		n.IP[0] = 0xfd                 // Local IPv6 network, see RFC-4193.
-		_, err := r.Read(n.IP[1:6])    // Next 40 bits of prefix are random.
-		if err != nil {
-			panic(err) // Shouldn't happen
-		}
-	} else {
-		n.IP = []byte{0x0a, 0, 0, 0}       // 10.
-		n.Mask = net.CIDRMask(24, 32)      // 254 hosts.
-		for n.IP[1] == 0 && n.IP[2] == 0 { // Never use 10.0.0.0
-			if _, err := r.Read(n.IP[1:3]); err != nil {
-				panic(err) // Shouldn't happen
-			}
-		}
-	}
-
-	nextIP := make([]byte, len(n.IP))
-	copy(nextIP, n.IP)
-	gen := &ipGenerator{network: n, nextIP: nextIP}
+func newIPGenerator(network *net.IPNet) *ipGenerator {
+	nextIP := make([]byte, len(network.IP))
+	copy(nextIP, network.IP)
+	gen := &ipGenerator{network: network, nextIP: nextIP}
 	// Skip network and gateway addresses
 	gen.Next()
 	gen.Next()
