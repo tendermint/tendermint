@@ -10,12 +10,18 @@ import (
 // Tests that all nodes have peered with each other, regardless of discovery method.
 func TestNet_Peers(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
+		// Seed nodes shouldn't necessarily mesh with the entire network.
+		if node.Mode == e2e.ModeSeed {
+			return
+		}
+
 		client, err := node.Client()
 		require.NoError(t, err)
 		netInfo, err := client.NetInfo(ctx)
 		require.NoError(t, err)
 
-		require.Equal(t, len(node.Testnet.Nodes)-1, netInfo.NPeers)
+		require.Equal(t, len(node.Testnet.Nodes)-1, netInfo.NPeers,
+			"node is not fully meshed with peers")
 
 		seen := map[string]bool{}
 		for _, n := range node.Testnet.Nodes {
