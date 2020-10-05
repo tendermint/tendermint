@@ -72,30 +72,6 @@ jobs:
           paths:
             - "."
 
-  test_persistence:
-    executor: golang
-    steps:
-      - run_test:
-          script_path: test/persist/test_failure_indices.sh
-
-  test_p2p:
-    environment:
-      GOBIN: /home/circleci/.go_workspace/bin
-      GOPATH: /home/circleci/.go_workspace
-    machine:
-      image: circleci/classic:latest
-    parameters:
-      ipv:
-        type: integer
-        default: 4
-    steps:
-      - checkout
-      - run: mkdir -p $GOPATH/src/github.com/tendermint
-      - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
-      - run: bash test/p2p/circleci.sh << parameters.ipv >>
-      - store_artifacts:
-          path: /home/circleci/project/test/p2p/logs
-
   deploy_docs:
     executor: docs
     steps:
@@ -234,7 +210,7 @@ jobs:
 
 workflows:
   version: 2
-  test-suite:
+  docs:
     jobs:
       - deploy_docs:
           context: tendermint-docs
@@ -251,24 +227,24 @@ workflows:
             branches:
               only:
                 - docs-staging
-      - setup_dependencies
-      - test_persistence:
-          requires:
-            - setup_dependencies
-      - test_p2p
-      - test_p2p:
-          name: test_p2p_ipv6
-          ipv: 6
       # - contract_tests:
       #     requires:
       #       - setup_dependencies
 
   release:
     jobs:
-      - prepare_build
+      - prepare_build:
+          filters:
+            branches:
+              only:
+                - /v[0-9]+\.[0-9]+/
       - build_artifacts:
           requires:
             - prepare_build
+          filters:
+            branches:
+              only:
+                - /v[0-9]+\.[0-9]+/
       - release_artifacts:
           requires:
             - prepare_build
