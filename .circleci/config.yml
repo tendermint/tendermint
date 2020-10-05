@@ -240,7 +240,7 @@ workflows:
   version: 2
   docs:
     jobs:
-      - deploy_docs:
+      - deploy:
           context: tendermint-docs
           filters:
             branches:
@@ -249,7 +249,7 @@ workflows:
             tags:
               only:
                 - /^v.*/
-      - deploy_docs:
+      - deploy_staging:
           context: tendermint-docs-staging
           filters:
             branches:
