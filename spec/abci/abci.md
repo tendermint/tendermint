@@ -9,7 +9,7 @@ ABCI methods are split across four separate ABCI _connections_:
 
 - Consensus connection: `InitChain`, `BeginBlock`, `DeliverTx`, `EndBlock`, `Commit`
 - Mempool connection: `CheckTx`
-- Info connection: `Info`, `SetOption`, `Query`
+- Info connection: `Info`, `Query`
 - Snapshot connection: `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, `ApplySnapshotChunk`
 
 The consensus connection is driven by a consensus protocol and is responsible
@@ -35,7 +35,7 @@ don't return errors because an error would indicate a critical failure
 in the application and there's nothing Tendermint can do. The problem
 should be addressed and both Tendermint and the application restarted.
 
-All other methods (`SetOption, Query, CheckTx, DeliverTx`) return an
+All other methods (`Query, CheckTx, DeliverTx`) return an
 application-specific response `Code uint32`, where only `0` is reserved
 for `OK`.
 
@@ -158,7 +158,7 @@ Sources of non-determinism in applications may include:
 
 See [#56](https://github.com/tendermint/abci/issues/56) for original discussion.
 
-Note that some methods (`SetOption, Query, CheckTx, DeliverTx`) return
+Note that some methods (`Query, CheckTx, DeliverTx`) return
 explicitly non-deterministic data in the form of `Info` and `Log` fields. The `Log` is
 intended for the literal output from the application's logger, while the
 `Info` is any additional info that should be returned. These are the only fields
@@ -235,23 +235,6 @@ via light client.
     - Tendermint expects `LastBlockAppHash` and `LastBlockHeight` to
     be updated during `Commit`, ensuring that `Commit` is never
     called twice for the same block height.
-
-### SetOption
-
-- **Request**:
-    - `Key (string)`: Key to set
-    - `Value (string)`: Value to set for key
-- **Response**:
-    - `Code (uint32)`: Response code
-    - `Log (string)`: The output of the application's logger. May
-    be non-deterministic.
-    - `Info (string)`: Additional information. May
-    be non-deterministic.
-- **Usage**:
-    - Set non-consensus critical application specific options.
-    - e.g. Key="min-fee", Value="100fermion" could set the minimum fee
-    required for CheckTx (but not DeliverTx - that would be
-    consensus critical).
 
 ### InitChain
 
