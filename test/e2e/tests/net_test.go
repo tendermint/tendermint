@@ -7,7 +7,7 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-// Tests that all nodes have peered with each other.
+// Tests that all nodes have peered with each other, regardless of discovery method.
 func TestNet_Peers(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
 		client, err := node.Client()
