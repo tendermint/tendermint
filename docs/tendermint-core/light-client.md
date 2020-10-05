@@ -13,9 +13,10 @@ package](https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc).
 
 ## Overview
 
-The objective of the light client protocol is to get a commit for a recent
-block hash where the commit includes a majority of signatures from the last
-known validator set. From there, all the application state is verifiable with
+The light client protocol verifies headers by retrieving a chain of headers,
+commits and validator sets from a trusted height to the target height, verifying
+the signatures of each of these intermediary signed headers till it reaches the
+target height. From there, all the application state is verifiable with
 [merkle proofs](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/encoding.md#iavl-tree).
 
 ## Properties
@@ -30,11 +31,29 @@ known validator set. From there, all the application state is verifiable with
   name-registry without worrying about fork censorship attacks, without posting
   a commit and waiting for confirmations. It's fast, secure, and free!
 
+## Security
+
+A light client is initialized from a point of trust using [Trust Options](https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc#TrustOptions),
+a provider and a set of witnesses. This sets the trust period: the period that
+full nodes should be accountable for faulty behavior and a trust level: the
+fraction of validators in a validator set with which we trust that at least one
+is correct. As Tendermint consensus can withstand 1/3 byzantine faults, this is
+the default trust level, however, for greater security you can increase it (max:  
+1).
+
+Similar to a full node, light clients can also be subject to byzantine attacks.
+A light client also runs a detector process which cross verifies headers from a
+primary with witnesses. Therefore light clients should be set with enough witnesses.
+
+If the light client observes a faulty provider it will report it to another provider
+and return an error.
+
+In summary, the light client is not safe when a) more than the trust level of
+validators are malicious and b) all witnesses are malicious.
+
 ## Where to obtain trusted height & hash
 
-[Trust Options](https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc#TrustOptions)
-
-One way to obtain semi-trusted hash & height is to query multiple full nodes
+One way to obtain a semi-trusted hash & height is to query multiple full nodes
 and compare their hashes:
 
 ```bash

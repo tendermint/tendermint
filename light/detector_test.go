@@ -63,7 +63,7 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 	// Check verification returns an error.
 	_, err = c.VerifyLightBlockAtHeight(ctx, 10, bTime.Add(1*time.Hour))
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "does not match primary")
+		assert.Equal(t, err, light.ErrLightClientAttack)
 	}
 
 	// Check evidence was sent to both full nodes.
@@ -137,7 +137,7 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 	// Check verification returns an error.
 	_, err = c.VerifyLightBlockAtHeight(ctx, 10, bTime.Add(1*time.Hour))
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "does not match primary")
+		assert.Equal(t, err, light.ErrLightClientAttack)
 	}
 
 	// Check evidence was sent to both full nodes.
