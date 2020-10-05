@@ -136,7 +136,7 @@ func validateBlock(evidencePool EvidencePool, state State, block *types.Block) e
 			block.Height, state.InitialHeight)
 	}
 
-	// Check evidence doesn't exceed the limit. MaxNumEvidence is capped at uint16, so conversion is always safe.
+	// Check evidence doesn't exceed the limit amount of bytes.
 	if max, got := state.ConsensusParams.Evidence.MaxBytes, block.Evidence.Bytes(); got > max {
 		return types.NewErrEvidenceOverflow(max, got)
 	}

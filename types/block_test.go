@@ -438,32 +438,30 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	}
 }
 
-func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
+func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 	testCases := []struct {
-		maxBytes    int64
-		maxEvidence uint32
-		valsCount   int
-		panics      bool
-		result      int64
+		maxBytes  int64
+		valsCount int
+		panics    bool
+		result    int64
 	}{
-		0: {-10, 0, 1, true, 0},
-		1: {10, 0, 1, true, 0},
-		2: {845, 0, 1, true, 0},
-		3: {846, 0, 1, false, 0},
-		4: {1290, 1, 1, false, 0},
-		5: {1291, 1, 1, false, 1},
+		0: {-10, 1, true, 0},
+		1: {10, 1, true, 0},
+		2: {845, 1, true, 0},
+		3: {846, 1, false, 0},
+		4: {847, 1, false, 1},
 	}
 
 	for i, tc := range testCases {
 		tc := tc
 		if tc.panics {
 			assert.Panics(t, func() {
-				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount, tc.maxEvidence)
+				MaxDataBytesNoEvidence(tc.maxBytes, tc.valsCount)
 			}, "#%v", i)
 		} else {
 			assert.Equal(t,
 				tc.result,
-				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount, tc.maxEvidence),
+				MaxDataBytesNoEvidence(tc.maxBytes, tc.valsCount),
 				"#%v", i)
 		}
 	}

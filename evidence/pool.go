@@ -85,8 +85,8 @@ func NewPool(evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool,
 }
 
 // PendingEvidence is used primarily as part of block proposal and returns up to maxNum of uncommitted evidence.
-func (evpool *Pool) PendingEvidence(maxNum uint32) []types.Evidence {
-	evidence, err := evpool.listEvidence(baseKeyPending, int64(maxNum))
+func (evpool *Pool) PendingEvidence(maxBytes int64) []types.Evidence {
+	evidence, err := evpool.listEvidence(baseKeyPending, maxBytes)
 	if err != nil {
 		evpool.logger.Error("Unable to retrieve pending evidence", "err", err)
 	}
@@ -330,6 +330,7 @@ type info struct {
 	Time             time.Time
 	Validators       []*types.Validator
 	TotalVotingPower int64
+	ByteSize         int64
 }
 
 // ToProto encodes into protobuf
@@ -337,6 +338,11 @@ func (ei info) ToProto() (*evproto.Info, error) {
 	evpb, err := types.EvidenceToProto(ei.Evidence)
 	if err != nil {
 		return nil, err
+	}
+
+	bytes := ei.ByteSize
+	if bytes == 0 {
+		bytes = int64(evpb.Size())
 	}
 
 	valsProto := make([]*tmproto.Validator, len(ei.Validators))
@@ -353,6 +359,7 @@ func (ei info) ToProto() (*evproto.Info, error) {
 		Time:             ei.Time,
 		Validators:       valsProto,
 		TotalVotingPower: ei.TotalVotingPower,
+		ByteSize:         bytes,
 	}, nil
 }
 
@@ -381,6 +388,7 @@ func infoFromProto(proto *evproto.Info) (info, error) {
 		Time:             proto.Time,
 		Validators:       vals,
 		TotalVotingPower: proto.TotalVotingPower,
+		ByteSize:         proto.ByteSize,
 	}, nil
 
 }
@@ -489,9 +497,9 @@ func (evpool *Pool) removePendingEvidence(evidence types.Evidence) {
 	}
 }
 
-// listEvidence lists up to maxNum pieces of evidence for the given prefix key.
-// If maxNum is -1, there's no cap on the size of returned evidence.
-func (evpool *Pool) listEvidence(prefixKey byte, maxNum int64) ([]types.Evidence, error) {
+// listEvidence retrieves lists evidence from oldest to newest within maxBytes.
+// If maxBytes is -1, there's no cap on the size of returned evidence.
+func (evpool *Pool) listEvidence(prefixKey byte, maxBytes int64) ([]types.Evidence, error) {
 	var count int64
 	var evidence []types.Evidence
 	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{prefixKey})
@@ -500,14 +508,15 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxNum int64) ([]types.Evidence
 	}
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
-		if count == maxNum {
-			return evidence, nil
-		}
-		count++
-
 		evInfo, err := bytesToInfo(iter.Value())
 		if err != nil {
 			return nil, err
+		}
+
+		count += evInfo.ByteSize
+
+		if count > maxBytes {
+			return evidence, nil
 		}
 
 		evidence = append(evidence, evInfo.Evidence)

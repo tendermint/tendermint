@@ -106,9 +106,9 @@ func ValidateConsensusParams(params tmproto.ConsensusParams) error {
 			params.Evidence.MaxAgeDuration)
 	}
 
-	if params.Evidence.MaxBytes > params.Block.MaxBytes - MaxHeaderBytes - MaxOverheadForBlock {
+	if params.Evidence.MaxBytes > params.Block.MaxBytes-MaxHeaderBytes-MaxOverheadForBlock {
 		return fmt.Errorf("evidenceParams.MaxBytesEvidence is greater than upper bound, %d > %d",
-			params.Evidence.MaxBytes, params.Block.MaxBytes - MaxHeaderBytes - MaxOverheadForBlock)
+			params.Evidence.MaxBytes, params.Block.MaxBytes-MaxHeaderBytes-MaxOverheadForBlock)
 	}
 
 	if params.Evidence.MaxBytes < 0 {

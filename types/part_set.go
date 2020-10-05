@@ -121,7 +121,7 @@ func (psh PartSetHeader) ValidateBasic() error {
 	return nil
 }
 
-// ToProto converts BloPartSetHeaderckID to protobuf
+// ToProto converts PartSetHeader to protobuf
 func (psh *PartSetHeader) ToProto() tmproto.PartSetHeader {
 	if psh == nil {
 		return tmproto.PartSetHeader{}

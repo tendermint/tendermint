@@ -124,7 +124,7 @@ func TestConsensusParamsUpdate(t *testing.T) {
 				Evidence: &tmproto.EvidenceParams{
 					MaxAgeNumBlocks: 300,
 					MaxAgeDuration:  time.Duration(300),
-					MaxBytes:          50,
+					MaxBytes:        50,
 				},
 				Validator: &tmproto.ValidatorParams{
 					PubKeyTypes: valEd25519,

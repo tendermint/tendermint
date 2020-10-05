@@ -37,16 +37,16 @@ func TestMaxEvidenceBytes(t *testing.T) {
 		VoteA: makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, math.MaxInt64, blockID, maxTime),
 		VoteB: makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, math.MaxInt64, blockID2, maxTime),
 	}
-	
+
 	header := makeHeaderRandom()
 	header.Height = math.MaxInt64
 	header.Time = maxTime
-	
+
 	// we set the upper bounds of validators to be 500
 	voteSet, valSet, privVals := randVoteSet(header.Height, 1, tmproto.PrecommitType, 500, math.MaxInt32)
 	commit, err := MakeCommit(blockID, header.Height, 1, voteSet, privVals, maxTime)
 	require.NoError(t, err)
-	
+
 	lcae := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{
 			SignedHeader: &SignedHeader{
