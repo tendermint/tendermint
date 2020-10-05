@@ -322,6 +322,8 @@ need to update your code.**
 
 ## v0.33.5
 
+*May 28, 2020*
+
 Special thanks to external contributors on this release: @tau3,
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
