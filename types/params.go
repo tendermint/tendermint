@@ -19,8 +19,6 @@ const (
 
 	// MaxBlockPartsCount is the maximum number of block parts.
 	MaxBlockPartsCount = (MaxBlockSizeBytes / BlockPartSizeBytes) + 1
-
-	// MaxLastCommitBytes = 79094 // based off the max commit size of 1000 validators
 )
 
 // DefaultConsensusParams returns a default ConsensusParams.
@@ -112,7 +110,7 @@ func ValidateConsensusParams(params tmproto.ConsensusParams) error {
 	}
 
 	if params.Evidence.MaxBytes < 0 {
-		return fmt.Errorf("evidence.MaxBytes must be greater than 0. Got: %d",
+		return fmt.Errorf("evidence.MaxBytes must be non negative. Got: %d",
 			params.Evidence.MaxBytes)
 	}
 

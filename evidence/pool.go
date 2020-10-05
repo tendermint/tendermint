@@ -64,9 +64,6 @@ func NewPool(evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool,
 		logger:        log.NewNopLogger(),
 		evidenceStore: evidenceDB,
 		evidenceList:  clist.New(),
-		evidenceSize:  0,
-		pruningHeight: state.LastBlockHeight,
-		pruningTime:   state.LastBlockTime,
 	}
 
 	// if pending evidence already in db, in event of prior failure, then check for expiration,
@@ -345,7 +342,11 @@ func (ei info) ToProto() (*evproto.Info, error) {
 
 	bytes := ei.ByteSize
 	if bytes == 0 {
-		bytes = int64(evpb.Size())
+		bz, err := evpb.Marshal()
+		if err != nil {
+			return nil, err
+		}
+		bytes = int64(len(bz))
 	}
 
 	valsProto := make([]*tmproto.Validator, len(ei.Validators))
