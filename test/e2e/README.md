@@ -34,9 +34,7 @@ The test runner has the following stages, which can also be executed explicitly 
 
 * `cleanup`: removes configuration files and Docker containers/networks.
 
-* `logs`: emits all node logs.
-
-* `tail`: tails (follows) node logs until command is aborted.
+* `logs`: outputs all node logs.
 
 ## Tests
 
