@@ -17,15 +17,17 @@ const (
 
 func TestBasicPartSet(t *testing.T) {
 	// Construct random data of size partSize * 100
-	data := tmrand.Bytes(testPartSize * 100)
+	nParts := 100
+	data := tmrand.Bytes(testPartSize * nParts)
 	partSet := NewPartSetFromData(data, testPartSize)
 
 	assert.NotEmpty(t, partSet.Hash())
-	assert.EqualValues(t, 100, partSet.Total())
-	assert.Equal(t, 100, partSet.BitArray().Size())
+	assert.EqualValues(t, nParts, partSet.Total())
+	assert.Equal(t, nParts, partSet.BitArray().Size())
 	assert.True(t, partSet.HashesTo(partSet.Hash()))
 	assert.True(t, partSet.IsComplete())
-	assert.EqualValues(t, 100, partSet.Count())
+	assert.EqualValues(t, nParts, partSet.Count())
+	assert.EqualValues(t, testPartSize*nParts, partSet.ByteSize())
 
 	// Test adding parts to a new partSet.
 	partSet2 := NewPartSetFromHeader(partSet.Header())
@@ -49,7 +51,8 @@ func TestBasicPartSet(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, partSet.Hash(), partSet2.Hash())
-	assert.EqualValues(t, 100, partSet2.Total())
+	assert.EqualValues(t, nParts, partSet2.Total())
+	assert.EqualValues(t, nParts*testPartSize, partSet.ByteSize())
 	assert.True(t, partSet2.IsComplete())
 
 	// Reconstruct data, assert that they are equal.

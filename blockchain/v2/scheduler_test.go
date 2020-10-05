@@ -1377,6 +1377,9 @@ func checkScResults(t *testing.T, wantErr bool, err error, wantEvent Event, even
 		t.Errorf("error = %v, wantErr %v", err, wantErr)
 		return
 	}
+	if !assert.IsType(t, wantEvent, event) {
+		t.Log(fmt.Sprintf("Wrong type received, got: %v", event))
+	}
 	switch wantEvent := wantEvent.(type) {
 	case scPeerError:
 		assert.Equal(t, wantEvent.peerID, event.(scPeerError).peerID)
@@ -1460,7 +1463,7 @@ func TestScHandleBlockResponse(t *testing.T) {
 				pendingTime: map[int64]time.Time{6: now},
 			},
 			args:      args{event: block6FromP1},
-			wantEvent: scBlockReceived{peerID: "P1", block: makeScBlock(6)},
+			wantEvent: scBlockReceived{peerID: "P1", block: block6FromP1.block},
 		},
 	}
 
@@ -2047,6 +2050,8 @@ func TestScHandle(t *testing.T) {
 		priorityNormal
 	}
 
+	block1, block2, block3 := makeScBlock(1), makeScBlock(2), makeScBlock(3)
+
 	t0 := time.Now()
 	tick := make([]time.Time, 100)
 	for i := range tick {
@@ -2135,8 +2140,8 @@ func TestScHandle(t *testing.T) {
 					},
 				},
 				{ // block response 1
-					args:      args{event: bcBlockResponse{peerID: "P1", time: tick[4], size: 100, block: makeScBlock(1)}},
-					wantEvent: scBlockReceived{peerID: "P1", block: makeScBlock(1)},
+					args:      args{event: bcBlockResponse{peerID: "P1", time: tick[4], size: 100, block: block1}},
+					wantEvent: scBlockReceived{peerID: "P1", block: block1},
 					wantSc: &scTestParams{
 						startTime:   now,
 						peers:       map[string]*scPeer{"P1": {height: 3, state: peerStateReady, lastTouched: tick[4]}},
@@ -2148,8 +2153,8 @@ func TestScHandle(t *testing.T) {
 					},
 				},
 				{ // block response 2
-					args:      args{event: bcBlockResponse{peerID: "P1", time: tick[5], size: 100, block: makeScBlock(2)}},
-					wantEvent: scBlockReceived{peerID: "P1", block: makeScBlock(2)},
+					args:      args{event: bcBlockResponse{peerID: "P1", time: tick[5], size: 100, block: block2}},
+					wantEvent: scBlockReceived{peerID: "P1", block: block2},
 					wantSc: &scTestParams{
 						startTime:   now,
 						peers:       map[string]*scPeer{"P1": {height: 3, state: peerStateReady, lastTouched: tick[5]}},
@@ -2161,8 +2166,8 @@ func TestScHandle(t *testing.T) {
 					},
 				},
 				{ // block response 3
-					args:      args{event: bcBlockResponse{peerID: "P1", time: tick[6], size: 100, block: makeScBlock(3)}},
-					wantEvent: scBlockReceived{peerID: "P1", block: makeScBlock(3)},
+					args:      args{event: bcBlockResponse{peerID: "P1", time: tick[6], size: 100, block: block3}},
+					wantEvent: scBlockReceived{peerID: "P1", block: block3},
 					wantSc: &scTestParams{
 						startTime: now,
 						peers:     map[string]*scPeer{"P1": {height: 3, state: peerStateReady, lastTouched: tick[6]}},

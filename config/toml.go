@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -17,7 +18,10 @@ var configTemplate *template.Template
 
 func init() {
 	var err error
-	if configTemplate, err = template.New("configFileTemplate").Parse(defaultConfigTemplate); err != nil {
+	tmpl := template.New("configFileTemplate").Funcs(template.FuncMap{
+		"StringsJoin": strings.Join,
+	})
+	if configTemplate, err = tmpl.Parse(defaultConfigTemplate); err != nil {
 		panic(err)
 	}
 }
@@ -350,7 +354,7 @@ enable = {{ .StateSync.Enable }}
 #
 # For Cosmos SDK-based chains, trust_period should usually be about 2/3 of the unbonding time (~2
 # weeks) during which they can be financially punished (slashed) for misbehavior.
-rpc_servers = ""
+rpc_servers = "{{ StringsJoin .StateSync.RPCServers "," }}"
 trust_height = {{ .StateSync.TrustHeight }}
 trust_hash = "{{ .StateSync.TrustHash }}"
 trust_period = "{{ .StateSync.TrustPeriod }}"
