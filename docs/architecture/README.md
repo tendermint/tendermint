@@ -76,6 +76,6 @@ Note the context/background should be written in the present tense.
 - [ADR-053-State-Sync-Prototype](./adr-053-state-sync-prototype.md)
 - [ADR-054-crypto-encoding-2](./adr-054-crypto-encoding-2.md)
 - [ADR-055-protobuf-design](./adr-055-protobuf-design.md)
-- [ADR-056-proving-amnesia-attacks](./adr-056-proving-amnesia-attacks.md)
+- [ADR-056-light-client-amnesia-attacks](./adr-056-light-client-amnesia-attacks)
 - [ADR-057-RPC](./adr-057-RPC.md)
 - [ADR-058-event-hashing](./adr-058-event-hashing.md)
