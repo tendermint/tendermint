@@ -83,8 +83,10 @@ func loadTestnet(t *testing.T) e2e.Testnet {
 
 // fetchBlockChain fetches a complete, up-to-date block history from
 // the freshest testnet archive node.
-func fetchBlockChain(t *testing.T, testnet e2e.Testnet) []*types.Block {
+func fetchBlockChain(t *testing.T) []*types.Block {
 	t.Helper()
+
+	testnet := loadTestnet(t)
 
 	// Find the freshest archive node
 	var (

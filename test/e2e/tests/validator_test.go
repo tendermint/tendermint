@@ -50,7 +50,7 @@ func TestValidator_Sets(t *testing.T) {
 // Tests that a validator proposes blocks when it's supposed to. It tolerates some
 // missed blocks, e.g. due to testnet perturbations.
 func TestValidator_Propose(t *testing.T) {
-	blocks := fetchBlockChain(t, loadTestnet(t))
+	blocks := fetchBlockChain(t)
 	testNode(t, func(t *testing.T, node e2e.Node) {
 		if node.Mode != e2e.ModeValidator {
 			return
@@ -80,7 +80,7 @@ func TestValidator_Propose(t *testing.T) {
 // Tests that a validator signs blocks when it's supposed to. It tolerates some
 // missed blocks, e.g. due to testnet perturbations.
 func TestValidator_Sign(t *testing.T) {
-	blocks := fetchBlockChain(t, loadTestnet(t))
+	blocks := fetchBlockChain(t)
 	testNode(t, func(t *testing.T, node e2e.Node) {
 		if node.Mode != e2e.ModeValidator {
 			return

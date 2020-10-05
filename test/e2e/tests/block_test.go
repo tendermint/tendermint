@@ -8,10 +8,9 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-// Tests that any block headers present on all nodes are the same.
+// Tests that block headers are identical across nodes where present.
 func TestBlock_Header(t *testing.T) {
-	blocks := fetchBlockChain(t, loadTestnet(t))
-
+	blocks := fetchBlockChain(t)
 	testNode(t, func(t *testing.T, node e2e.Node) {
 		client, err := node.Client()
 		require.NoError(t, err)
@@ -67,8 +66,8 @@ func TestBlock_Range(t *testing.T) {
 
 		for h := first; h <= last; h++ {
 			resp, err := client.Block(ctx, &(h))
-			if err != nil && node.RetainBlocks > 0 && h < first+1 {
-				// Ignore errors in first block if node is pruning blocks.
+			if err != nil && node.RetainBlocks > 0 && h == first {
+				// Ignore errors in first block if node is pruning blocks due to race conditions.
 				continue
 			}
 			require.NoError(t, err)
