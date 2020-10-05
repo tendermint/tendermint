@@ -205,34 +205,6 @@ jobs:
             export GOOS=linux GOARCH=arm64   && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
             python -u scripts/release_management/github-upload.py --file "/tmp/workspace/SHA256SUMS" --id "${RELEASE_ID}"
             python -u scripts/release_management/github-publish.py --id "${RELEASE_ID}"
-  reproducible_builds:
-    executor: golang
-    steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - checkout
-      - setup_remote_docker:
-          docker_layer_caching: true
-      - run:
-          name: Build tendermint
-          no_output_timeout: 20m
-          command: |
-            sudo apt-get update
-            sudo apt-get install -y ruby
-            bash -x ./scripts/gitian-build.sh all
-            for os in darwin linux windows; do
-              cp gitian-build-${os}/result/tendermint-${os}-res.yml .
-              cp gitian-build-${os}/build/out/tendermint-*.tar.gz .
-              rm -rf gitian-build-${os}/
-            done
-      - store_artifacts:
-          path: /go/src/github.com/tendermint/tendermint/tendermint-darwin-res.yml
-      - store_artifacts:
-          path: /go/src/github.com/tendermint/tendermint/tendermint-linux-res.yml
-      - store_artifacts:
-          path: /go/src/github.com/tendermint/tendermint/tendermint-windows-res.yml
-      - store_artifacts:
-          path: /go/src/github.com/tendermint/tendermint/tendermint-*.tar.gz
 
   # # Test RPC implementation against the swagger documented specs
   # contract_tests:
@@ -287,12 +259,6 @@ workflows:
       - test_p2p:
           name: test_p2p_ipv6
           ipv: 6
-      - reproducible_builds:
-          filters:
-            branches:
-              only:
-                - master
-                - /v[0-9]+\.[0-9]+/
       # - contract_tests:
       #     requires:
       #       - setup_dependencies
