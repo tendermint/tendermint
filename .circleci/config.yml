@@ -238,9 +238,9 @@ jobs:
 
 workflows:
   version: 2
-  test-suite:
+  docs:
     jobs:
-      - deploy_docs:
+      - deploy:
           context: tendermint-docs
           filters:
             branches:
@@ -249,24 +249,34 @@ workflows:
             tags:
               only:
                 - /^v.*/
-      - deploy_docs:
+      - deploy_staging:
           context: tendermint-docs-staging
           filters:
             branches:
               only:
                 - docs-staging
+
+  reproducible_builds:
+    filters:
+      branches:
+        only:
+          - master
+          - /v[0-9]+\.[0-9]+/
+    jobs:
       - setup_dependencies
       - reproducible_builds:
-          filters:
-            branches:
-              only:
-                - master
-                - /v[0-9]+\.[0-9]+/
+          requires:
+            - setup_dependencies
+
       # - contract_tests:
       #     requires:
       #       - setup_dependencies
 
   release:
+    filters:
+      branches:
+        only:
+          - /v[0-9]+\.[0-9]+/
     jobs:
       - prepare_build
       - build_artifacts:
@@ -276,7 +286,3 @@ workflows:
           requires:
             - prepare_build
             - build_artifacts
-          filters:
-            branches:
-              only:
-                - /v[0-9]+\.[0-9]+/
