@@ -8,7 +8,7 @@ make runner
 ./build/runner -f networks/ci.toml
 ```
 
-This creates a testnet named `ci` under `networks/ci/` (determined by the manifest filename).
+This creates and runs a testnet named `ci` under `networks/ci/` (determined by the manifest filename).
 
 ## Testnet Manifests
 
@@ -22,6 +22,8 @@ The test runner has the following stages, which can also be executed explicitly 
 
 * `start`: starts Docker containers.
 
+* `load`: generates a transaction load against the testnet nodes.
+
 * `perturb`: runs any requested perturbations (e.g. node restarts or network disconnects).
 
 * `wait`: waits for a few blocks to be produced, and for all nodes to catch up to it.
@@ -32,13 +34,17 @@ The test runner has the following stages, which can also be executed explicitly 
 
 * `cleanup`: removes configuration files and Docker containers/networks.
 
+* `logs`: emits all node logs.
+
+* `tail`: tails (follows) node logs until command is aborted.
+
 ## Tests
 
-Test cases are written as normal Go tests in `tests/`. They use a test runner `testNode()` which executes the test as a parallel subtest for each node in the network.
+Test cases are written as normal Go tests in `tests/`. They use a `testNode()` helper which executes each test as a parallel subtest for each node in the network.
 
 ### Running Manual Tests
 
-To run tests manually, set the `E2E_MANIFEST` environment variable to the path of the testnet manifest (e.g. `networks/ci.toml`). Tests can then be run as normal, e.g.:
+To run tests manually, set the `E2E_MANIFEST` environment variable to the path of the testnet manifest (e.g. `networks/ci.toml`) and run them as normal, e.g.:
 
 ```sh
 ./build/runner -f networks/ci.toml start
@@ -60,7 +66,7 @@ func init() {
 
 ### Debugging Failures
 
-If a command or test fails, the runner simply exits with an error message and non-zero status code. The testnet is left running with data in the testnet directory, and can be inspected with e.g. `docker ps` and `docker logs`. To shut down and remove the testnet, run `./build/runner -f <manifest> cleanup`.
+If a command or test fails, the runner simply exits with an error message and non-zero status code. The testnet is left running with data in the testnet directory, and can be inspected with e.g. `docker ps`, `docker logs`, or `./build/runner -f <manifest> logs` or `tail`. To shut down and remove the testnet, run `./build/runner -f <manifest> cleanup`.
 
 ## Enabling IPv6
 
