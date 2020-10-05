@@ -152,11 +152,8 @@ type FilePV struct {
 	LastSignState FilePVLastSignState
 }
 
-// GenFilePV generates a new validator with randomly generated private key
-// and sets the filePaths, but does not call Save().
-func GenFilePV(keyFilePath, stateFilePath string) *FilePV {
-	privKey := ed25519.GenPrivKey()
-
+// NewFilePV generates a new validator from the given key and paths.
+func NewFilePV(privKey crypto.PrivKey, keyFilePath, stateFilePath string) *FilePV {
 	return &FilePV{
 		Key: FilePVKey{
 			Address:  privKey.PubKey().Address(),
@@ -169,6 +166,12 @@ func GenFilePV(keyFilePath, stateFilePath string) *FilePV {
 			filePath: stateFilePath,
 		},
 	}
+}
+
+// GenFilePV generates a new validator with randomly generated private key
+// and sets the filePaths, but does not call Save().
+func GenFilePV(keyFilePath, stateFilePath string) *FilePV {
+	return NewFilePV(ed25519.GenPrivKey(), keyFilePath, stateFilePath)
 }
 
 // LoadFilePV loads a FilePV from the filePaths.  The FilePV handles double
