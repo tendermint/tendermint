@@ -28,7 +28,7 @@ type State struct {
 // NewState creates a new state.
 func NewState(file string, persistInterval uint64) (*State, error) {
 	state := &State{
-		Values:          make(map[string]string, 1024),
+		Values:          make(map[string]string),
 		file:            file,
 		persistInterval: persistInterval,
 	}

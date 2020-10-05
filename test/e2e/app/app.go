@@ -204,7 +204,7 @@ func (app *Application) validatorUpdates(height uint64) (abci.ValidatorUpdates, 
 	return valUpdates, nil
 }
 
-// parseTx parses a tx in 'key=value' format into a key and value. Keys cannot start with _.
+// parseTx parses a tx in 'key=value' format into a key and value.
 func parseTx(tx []byte) (string, string, error) {
 	parts := bytes.Split(tx, []byte("="))
 	if len(parts) != 2 {
@@ -212,9 +212,6 @@ func parseTx(tx []byte) (string, string, error) {
 	}
 	if len(parts[0]) == 0 {
 		return "", "", errors.New("key cannot be empty")
-	}
-	if parts[0][0] == '_' {
-		return "", "", errors.New("keys cannot start with _")
 	}
 	return string(parts[0]), string(parts[1]), nil
 }
