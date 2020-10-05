@@ -90,13 +90,19 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 
 			// We are suspecting that the primary is faulty, hence we hold the witness as the source of truth
 			// and generate evidence against the primary that we can send to the witness
-			ev := &types.LightClientAttackEvidence{
+			primaryEv := &types.LightClientAttackEvidence{
 				ConflictingBlock: primaryBlock,
 				CommonHeight:     commonHeight, // the first block in the bisection is common to both providers
 			}
-			c.logger.Error("Attack detected. Sending evidence againt primary by witness", "ev", ev,
+			c.logger.Error("Attempted attack detected. Sending evidence againt primary by witness", "ev", primaryEv,
 				"primary", c.primary, "witness", supportingWitness)
-			c.sendEvidence(ctx, ev, supportingWitness)
+			c.sendEvidence(ctx, primaryEv, supportingWitness)
+
+			if primaryBlock.Commit.Round != witnessTrace[len(witnessTrace)-1].Commit.Round {
+				c.logger.Info("The light client has detected, and prevented, an attempted amnesia attack." +
+					" We think this attack is pretty unlikely, so if you see it, that's interesting to us." +
+					" Can you let us know by opening an issue through https://github.com/tendermint/tendermint/issues/new?")
+			}
 
 			// This may not be valid because the witness itself is at fault. So now we reverse it, examining the
 			// trace provided by the witness and holding the primary as the source of truth. Note: primary may not
@@ -110,7 +116,7 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 			)
 			if err != nil {
 				c.logger.Info("Error validating primary's divergent header", "primary", c.primary, "err", err)
-				continue
+				return ErrLightClientAttack
 			}
 			// if this is an equivocation or amnesia attack, i.e. the validator sets are the same, then we
 			// return the height of the conflicting block else if it is a lunatic attack and the validator sets
@@ -122,15 +128,15 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 			}
 
 			// We now use the primary trace to create evidence against the witness and send it to the primary
-			ev = &types.LightClientAttackEvidence{
+			witnessEv := &types.LightClientAttackEvidence{
 				ConflictingBlock: witnessBlock,
 				CommonHeight:     commonHeight, // the first block in the bisection is common to both providers
 			}
-			c.logger.Error("Sending evidence against witness by primary", "ev", ev,
+			c.logger.Error("Sending evidence against witness by primary", "ev", witnessEv,
 				"primary", c.primary, "witness", supportingWitness)
-			c.sendEvidence(ctx, ev, c.primary)
+			c.sendEvidence(ctx, witnessEv, c.primary)
 			// We return the error and don't process anymore witnesses
-			return e
+			return ErrLightClientAttack
 
 		case errBadWitness:
 			c.logger.Info("Witness returned an error during header comparison", "witness", c.witnesses[e.WitnessIndex],

@@ -72,30 +72,6 @@ jobs:
           paths:
             - "."
 
-  test_persistence:
-    executor: golang
-    steps:
-      - run_test:
-          script_path: test/persist/test_failure_indices.sh
-
-  test_p2p:
-    environment:
-      GOBIN: /home/circleci/.go_workspace/bin
-      GOPATH: /home/circleci/.go_workspace
-    machine:
-      image: circleci/classic:latest
-    parameters:
-      ipv:
-        type: integer
-        default: 4
-    steps:
-      - checkout
-      - run: mkdir -p $GOPATH/src/github.com/tendermint
-      - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
-      - run: bash test/p2p/circleci.sh << parameters.ipv >>
-      - store_artifacts:
-          path: /home/circleci/project/test/p2p/logs
-
   deploy_docs:
     executor: docs
     steps:
@@ -205,51 +181,6 @@ jobs:
             export GOOS=linux GOARCH=arm64   && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
             python -u scripts/release_management/github-upload.py --file "/tmp/workspace/SHA256SUMS" --id "${RELEASE_ID}"
             python -u scripts/release_management/github-publish.py --id "${RELEASE_ID}"
-  release_docker:
-    machine:
-      image: ubuntu-1604:201903-01
-    steps:
-      - checkout
-      - attach_workspace:
-          at: /tmp/workspace
-      - run:
-          name: "Deploy to Docker Hub"
-          command: |
-            # Setting CIRCLE_TAG because we do not tag the release ourselves.
-            source /tmp/workspace/release-version.source
-            cp /tmp/workspace/tendermint_linux_amd64 DOCKER/tendermint
-            docker build --label="tendermint" --tag="tendermint/tendermint:${CIRCLE_TAG}" --tag="tendermint/tendermint:latest" "DOCKER"
-            docker login -u "${DOCKERHUB_USER}" --password-stdin \<<< "${DOCKERHUB_PASS}"
-            docker push "tendermint/tendermint"
-            docker logout
-  reproducible_builds:
-    executor: golang
-    steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - checkout
-      - setup_remote_docker:
-          docker_layer_caching: true
-      - run:
-          name: Build tendermint
-          no_output_timeout: 20m
-          command: |
-            sudo apt-get update
-            sudo apt-get install -y ruby
-            bash -x ./scripts/gitian-build.sh all
-            for os in darwin linux windows; do
-              cp gitian-build-${os}/result/tendermint-${os}-res.yml .
-              cp gitian-build-${os}/build/out/tendermint-*.tar.gz .
-              rm -rf gitian-build-${os}/
-            done
-      - store_artifacts:
-          path: /go/src/github.com/tendermint/tendermint/tendermint-darwin-res.yml
-      - store_artifacts:
-          path: /go/src/github.com/tendermint/tendermint/tendermint-linux-res.yml
-      - store_artifacts:
-          path: /go/src/github.com/tendermint/tendermint/tendermint-windows-res.yml
-      - store_artifacts:
-          path: /go/src/github.com/tendermint/tendermint/tendermint-*.tar.gz
 
   # # Test RPC implementation against the swagger documented specs
   # contract_tests:
@@ -279,7 +210,7 @@ jobs:
 
 workflows:
   version: 2
-  test-suite:
+  docs:
     jobs:
       - deploy_docs:
           context: tendermint-docs
@@ -296,30 +227,24 @@ workflows:
             branches:
               only:
                 - docs-staging
-      - setup_dependencies
-      - test_persistence:
-          requires:
-            - setup_dependencies
-      - test_p2p
-      - test_p2p:
-          name: test_p2p_ipv6
-          ipv: 6
-      - reproducible_builds:
-          filters:
-            branches:
-              only:
-                - master
-                - /v[0-9]+\.[0-9]+/
       # - contract_tests:
       #     requires:
       #       - setup_dependencies
 
   release:
     jobs:
-      - prepare_build
+      - prepare_build:
+          filters:
+            branches:
+              only:
+                - /v[0-9]+\.[0-9]+/
       - build_artifacts:
           requires:
             - prepare_build
+          filters:
+            branches:
+              only:
+                - /v[0-9]+\.[0-9]+/
       - release_artifacts:
           requires:
             - prepare_build
@@ -328,12 +253,3 @@ workflows:
             branches:
               only:
                 - /v[0-9]+\.[0-9]+/
-      - release_docker:
-          requires:
-            - prepare_build
-            - build_artifacts
-          filters:
-            branches:
-              only:
-                - /v[0-9]+\.[0-9]+/
-                - master
