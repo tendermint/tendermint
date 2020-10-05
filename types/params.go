@@ -97,22 +97,22 @@ func ValidateConsensusParams(params tmproto.ConsensusParams) error {
 	}
 
 	if params.Evidence.MaxAgeNumBlocks <= 0 {
-		return fmt.Errorf("evidenceParams.MaxAgeNumBlocks must be greater than 0. Got %d",
+		return fmt.Errorf("evidence.MaxAgeNumBlocks must be greater than 0. Got %d",
 			params.Evidence.MaxAgeNumBlocks)
 	}
 
 	if params.Evidence.MaxAgeDuration <= 0 {
-		return fmt.Errorf("evidenceParams.MaxAgeDuration must be grater than 0 if provided, Got %v",
+		return fmt.Errorf("evidence.MaxAgeDuration must be grater than 0 if provided, Got %v",
 			params.Evidence.MaxAgeDuration)
 	}
 
-	if params.Evidence.MaxBytes > params.Block.MaxBytes-MaxHeaderBytes-MaxOverheadForBlock {
-		return fmt.Errorf("evidenceParams.MaxBytesEvidence is greater than upper bound, %d > %d",
-			params.Evidence.MaxBytes, params.Block.MaxBytes-MaxHeaderBytes-MaxOverheadForBlock)
+	if params.Evidence.MaxBytes > params.Block.MaxBytes {
+		return fmt.Errorf("evidence.MaxBytesEvidence is greater than upper bound, %d > %d",
+			params.Evidence.MaxBytes, params.Block.MaxBytes)
 	}
 
 	if params.Evidence.MaxBytes < 0 {
-		return fmt.Errorf("Evidence.MaxBytes must be greater than 0. Got: %d",
+		return fmt.Errorf("evidence.MaxBytes must be greater than 0. Got: %d",
 			params.Evidence.MaxBytes)
 	}
 

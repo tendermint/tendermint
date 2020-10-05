@@ -412,7 +412,7 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	testCases := []struct {
 		maxBytes      int64
 		valsCount     int
-		evidenceCount int
+		evidenceBytes int64
 		panics        bool
 		result        int64
 	}{
@@ -427,12 +427,12 @@ func TestBlockMaxDataBytes(t *testing.T) {
 		tc := tc
 		if tc.panics {
 			assert.Panics(t, func() {
-				MaxDataBytes(tc.maxBytes, tc.valsCount, tc.evidenceCount)
+				MaxDataBytes(tc.maxBytes, tc.evidenceBytes, tc.valsCount)
 			}, "#%v", i)
 		} else {
 			assert.Equal(t,
 				tc.result,
-				MaxDataBytes(tc.maxBytes, tc.valsCount, tc.evidenceCount),
+				MaxDataBytes(tc.maxBytes, tc.evidenceBytes, tc.valsCount),
 				"#%v", i)
 		}
 	}
@@ -629,7 +629,7 @@ func TestBlockProtoBuf(t *testing.T) {
 			require.NoError(t, err, tc.msg)
 			require.EqualValues(t, tc.b1.Header, block.Header, tc.msg)
 			require.EqualValues(t, tc.b1.Data, block.Data, tc.msg)
-			require.EqualValues(t, tc.b1.Evidence, block.Evidence, tc.msg)
+			require.EqualValues(t, tc.b1.Evidence.Evidence, block.Evidence.Evidence, tc.msg)
 			require.EqualValues(t, *tc.b1.LastCommit, *block.LastCommit, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
@@ -662,6 +662,8 @@ func TestDataProtoBuf(t *testing.T) {
 	}
 }
 
+// TestEvidenceDataProtoBuf ensures parity in converting to and from proto. Note that evidence data has two fields
+// hash and bytes which are internal and are thus not transferred across but calculated when called.
 func TestEvidenceDataProtoBuf(t *testing.T) {
 	val := NewMockPV()
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
@@ -671,7 +673,6 @@ func TestEvidenceDataProtoBuf(t *testing.T) {
 	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, time.Now())
 	ev := NewDuplicateVoteEvidence(v2, v)
 	data := &EvidenceData{Evidence: EvidenceList{ev}}
-	_ = data.Hash()
 	testCases := []struct {
 		msg      string
 		data1    *EvidenceData

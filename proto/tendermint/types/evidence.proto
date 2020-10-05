@@ -29,4 +29,5 @@ message Evidence {
 message EvidenceData {
   repeated Evidence evidence = 1 [(gogoproto.nullable) = false];
   bytes             hash     = 2;
+  int64             byteSize = 3;
 }

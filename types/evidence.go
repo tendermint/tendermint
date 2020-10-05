@@ -25,11 +25,6 @@ type Evidence interface {
 	String() string       // string format of the evidence
 }
 
-const (
-	// MaxEvidenceBytes is a maximum size of any evidence (including amino overhead).
-	MaxEvidenceBytes int64 = 444
-)
-
 //--------------------------------------------------------------------------------------
 
 // DuplicateVoteEvidence contains evidence a validator signed two conflicting
