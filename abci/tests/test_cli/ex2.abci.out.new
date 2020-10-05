@@ -1,0 +1,23 @@
+> check_tx 0x00
+-> code: OK
+
+> check_tx 0xff
+-> code: OK
+
+> deliver_tx 0x00
+-> code: OK
+
+> check_tx 0x00
+-> code: OK
+
+> deliver_tx 0x01
+-> code: OK
+
+> deliver_tx 0x04
+-> code: OK
+
+> info 
+-> code: OK
+-> data: {"hashes":0,"txs":3}
+-> data.hex: 0x7B22686173686573223A302C22747873223A337D
+

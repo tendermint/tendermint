@@ -175,7 +175,6 @@ you'd like to run:
 
 where example.file looks something like:
 
-    set_option serial on
     check_tx 0x00
     check_tx 0xff
     deliver_tx 0x00
@@ -197,7 +196,7 @@ This command opens an interactive console for running any of the other commands
 without opening a new connection each time
 `,
 	Args:      cobra.ExactArgs(0),
-	ValidArgs: []string{"echo", "info", "set_option", "deliver_tx", "check_tx", "commit", "query"},
+	ValidArgs: []string{"echo", "info", "deliver_tx", "check_tx", "commit", "query"},
 	RunE:      cmdConsole,
 }
 
