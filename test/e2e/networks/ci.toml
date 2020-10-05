@@ -1,0 +1,97 @@
+# This testnet is (will be) run by CI, and attempts to cover a broad range of
+# functionality with a single network.
+
+initial_height = 1000
+initial_state = { initial01 = "a", initial02 = "b", initial03 = "c" }
+
+[validators]
+validator01 = 100
+
+[validator_update.0]
+validator01 = 10
+validator02 = 20
+validator03 = 30
+validator04 = 40
+
+[validator_update.1010]
+validator05 = 50
+
+# validator03 gets killed and validator05 has lots of perturbations, so weight them low.
+[validator_update.1020]
+validator01 = 100
+validator02 = 100
+validator03 = 50
+validator04 = 100
+validator05 = 50
+
+[node.seed01]
+mode = "seed"
+
+[node.validator01]
+seeds = ["seed01"]
+snapshot_interval = 5
+perturb = ["disconnect"]
+
+[node.validator02]
+seeds = ["seed01"]
+database = "boltdb"
+abci_protocol = "tcp"
+privval_protocol = "tcp"
+persist_interval = 0
+# FIXME The WAL gets corrupted when restarted
+# https://github.com/tendermint/tendermint/issues/5422
+#perturb = ["restart"]
+
+[node.validator03]
+seeds = ["seed01"]
+database = "badgerdb"
+# FIXME Should use grpc, but it has race conditions
+# https://github.com/tendermint/tendermint/issues/5439
+abci_protocol = "unix"
+privval_protocol = "unix"
+persist_interval = 3
+retain_blocks = 3
+# FIXME The WAL gets corrupted when killed
+# https://github.com/tendermint/tendermint/issues/5422
+#perturb = ["kill"]
+
+[node.validator04]
+persistent_peers = ["validator01"]
+database = "rocksdb"
+abci_protocol = "builtin"
+retain_blocks = 1
+perturb = ["pause"]
+
+[node.validator05]
+start_at = 1005 # Becomes part of the validator set at 1010
+seeds = ["seed01"]
+database = "cleveldb"
+fast_sync = "v0"
+# FIXME Should use grpc, but it has race conditions
+# https://github.com/tendermint/tendermint/issues/5439
+abci_protocol = "tcp"
+privval_protocol = "tcp"
+# FIXME The WAL gets corrupted when killed
+# https://github.com/tendermint/tendermint/issues/5422
+#perturb = ["kill", "pause", "disconnect", "restart"]
+
+[node.full01]
+start_at = 1010
+mode = "full"
+# FIXME Should use v1, but it won't catch up since some nodes don't have all blocks
+# https://github.com/tendermint/tendermint/issues/5444
+fast_sync = "v2"
+persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
+# FIXME The WAL gets corrupted when restarted
+# https://github.com/tendermint/tendermint/issues/5422
+#perturb = ["restart"]
+
+[node.full02]
+start_at = 1015
+mode = "full"
+fast_sync = "v2"
+state_sync = true
+seeds = ["seed01"]
+# FIXME The WAL gets corrupted when restarted
+# https://github.com/tendermint/tendermint/issues/5422
+#perturb = ["restart"]
