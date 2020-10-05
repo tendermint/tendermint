@@ -36,6 +36,8 @@ The test runner has the following stages, which can also be executed explicitly 
 
 * `logs`: outputs all node logs.
 
+* `tail`: tails (follows) node logs until cancelled.
+
 ## Tests
 
 Test cases are written as normal Go tests in `tests/`. They use a `testNode()` helper which executes each test as a parallel subtest for each node in the network.
