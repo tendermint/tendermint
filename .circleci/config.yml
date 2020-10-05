@@ -255,7 +255,12 @@ workflows:
             branches:
               only:
                 - docs-staging
-      - setup_dependencies
+      - setup_dependencies:
+          filters:
+            branches:
+              only:
+                - master
+                - /v[0-9]+\.[0-9]+/
       - reproducible_builds:
           filters:
             branches:
@@ -268,10 +273,18 @@ workflows:
 
   release:
     jobs:
-      - prepare_build
+      - prepare_build:
+      filters:
+        branches:
+          only:
+            - /v[0-9]+\.[0-9]+/
       - build_artifacts:
           requires:
             - prepare_build
+          filters:
+            branches:
+              only:
+                - /v[0-9]+\.[0-9]+/
       - release_artifacts:
           requires:
             - prepare_build
