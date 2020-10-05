@@ -3,10 +3,6 @@ name: e2e-tests
 # and every pull request, but only if any Go files have been changed.
 on:
   pull_request:
-    paths:
-      - "**.go"
-      - "**.mod"
-      - "**.sum"
   push:
     branches:
       - master
@@ -18,6 +14,15 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v2
+      - uses: technote-space/get-diff-action@v3
+        with:
+          SUFFIX_FILTER: |
+            .go
+            .mod
+            .sum
+          SET_ENV_NAME_INSERTIONS: 1
+          SET_ENV_NAME_LINES: 1
+
       - name: Build
         working-directory: test/e2e
         run: make docker runner
