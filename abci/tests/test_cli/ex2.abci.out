@@ -1,7 +1,3 @@
-> set_option serial on
--> code: OK
--> log: OK (SetOption doesn't return anything.)
-
 > check_tx 0x00
 -> code: OK
 
@@ -26,4 +22,3 @@
 -> code: OK
 -> data: {"hashes":0,"txs":2}
 -> data.hex: 0x7B22686173686573223A302C22747873223A327D
-
