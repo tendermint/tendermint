@@ -168,6 +168,14 @@ func NewCLI() *CLI {
 		Use:   "logs",
 		Short: "Shows the testnet logs",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			return execComposeVerbose(cli.testnet.Dir, "logs")
+		},
+	})
+
+	cli.root.AddCommand(&cobra.Command{
+		Use:   "tail",
+		Short: "Tails the testnet logs",
+		RunE: func(cmd *cobra.Command, args []string) error {
 			return execComposeVerbose(cli.testnet.Dir, "logs", "--follow")
 		},
 	})
