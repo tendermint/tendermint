@@ -662,8 +662,7 @@ func TestDataProtoBuf(t *testing.T) {
 	}
 }
 
-// TestEvidenceDataProtoBuf ensures parity in converting to and from proto. Note that evidence data has two fields
-// hash and bytes which are internal and are thus not transferred across but calculated when called.
+// TestEvidenceDataProtoBuf ensures parity in converting to and from proto.
 func TestEvidenceDataProtoBuf(t *testing.T) {
 	val := NewMockPV()
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
@@ -673,6 +672,7 @@ func TestEvidenceDataProtoBuf(t *testing.T) {
 	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, time.Now())
 	ev := NewDuplicateVoteEvidence(v2, v)
 	data := &EvidenceData{Evidence: EvidenceList{ev}}
+	_ = data.ByteSize()
 	testCases := []struct {
 		msg      string
 		data1    *EvidenceData

@@ -181,7 +181,7 @@ type EvidenceParams struct {
 	MaxAgeDuration time.Duration `protobuf:"bytes,2,opt,name=max_age_duration,json=maxAgeDuration,proto3,stdduration" json:"max_age_duration"`
 	// This sets the maximum size of total evidence in bytes that can be committed in a single block.
 	// and should fall comfortably under the max block bytes.
-	// Default is 50
+	// Default is 1048576 or 1MB
 	MaxBytes int64 `protobuf:"varint,3,opt,name=max_bytes,json=maxBytes,proto3" json:"max_bytes,omitempty"`
 }
 

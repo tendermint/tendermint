@@ -340,15 +340,6 @@ func (ei info) ToProto() (*evproto.Info, error) {
 		return nil, err
 	}
 
-	bytes := ei.ByteSize
-	if bytes == 0 {
-		bz, err := evpb.Marshal()
-		if err != nil {
-			return nil, err
-		}
-		bytes = int64(len(bz))
-	}
-
 	valsProto := make([]*tmproto.Validator, len(ei.Validators))
 	for i := 0; i < len(ei.Validators); i++ {
 		valp, err := ei.Validators[i].ToProto()
@@ -363,7 +354,6 @@ func (ei info) ToProto() (*evproto.Info, error) {
 		Time:             ei.Time,
 		Validators:       valsProto,
 		TotalVotingPower: ei.TotalVotingPower,
-		ByteSize:         bytes,
 	}, nil
 }
 
@@ -392,7 +382,7 @@ func infoFromProto(proto *evproto.Info) (info, error) {
 		Time:             proto.Time,
 		Validators:       vals,
 		TotalVotingPower: proto.TotalVotingPower,
-		ByteSize:         proto.ByteSize,
+		ByteSize:         int64(proto.Evidence.Size()),
 	}, nil
 
 }
@@ -504,29 +494,29 @@ func (evpool *Pool) removePendingEvidence(evidence types.Evidence) {
 // listEvidence retrieves lists evidence from oldest to newest within maxBytes.
 // If maxBytes is -1, there's no cap on the size of returned evidence.
 func (evpool *Pool) listEvidence(prefixKey byte, maxBytes int64) ([]types.Evidence, int64, error) {
-	var count int64
+	var totalSize int64
 	var evidence []types.Evidence
 	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{prefixKey})
 	if err != nil {
-		return nil, count, fmt.Errorf("database error: %v", err)
+		return nil, totalSize, fmt.Errorf("database error: %v", err)
 	}
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
 		evInfo, err := bytesToInfo(iter.Value())
 		if err != nil {
-			return nil, count, err
+			return nil, totalSize, err
 		}
 
-		count += evInfo.ByteSize
+		totalSize += evInfo.ByteSize
 
-		if maxBytes != -1 && count > maxBytes {
-			return evidence, count - evInfo.ByteSize, nil
+		if maxBytes != -1 && totalSize > maxBytes {
+			return evidence, totalSize - evInfo.ByteSize, nil
 		}
 
 		evidence = append(evidence, evInfo.Evidence)
 	}
 
-	return evidence, count, nil
+	return evidence, totalSize, nil
 }
 
 func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {

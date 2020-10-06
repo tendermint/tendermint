@@ -1074,11 +1074,19 @@ func (data *EvidenceData) Hash() tmbytes.HexBytes {
 	return data.hash
 }
 
-// Bytes returns the total byte size of all the evidence
+// ByteSize returns the total byte size of all the evidence
 func (data *EvidenceData) ByteSize() int64 {
 	if data.byteSize == 0 && len(data.Evidence) != 0 {
 		for _, ev := range data.Evidence {
-			data.byteSize += int64(len(ev.Bytes()))
+			pb, err := EvidenceToProto(ev)
+			if err != nil {
+				panic(err)
+			}
+			bz, err := pb.Marshal()
+			if err != nil {
+				panic(err)
+			}
+			data.byteSize += int64(len(bz))
 		}
 	}
 	return data.byteSize
@@ -1141,6 +1149,7 @@ func (data *EvidenceData) FromProto(eviData *tmproto.EvidenceData) error {
 			return err
 		}
 		eviBzs[i] = evi
+		data.byteSize += int64(eviData.Evidence[i].Size())
 	}
 	data.Evidence = eviBzs
 
