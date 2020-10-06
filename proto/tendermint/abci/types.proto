@@ -24,17 +24,17 @@ message Request {
     RequestEcho               echo                 = 1;
     RequestFlush              flush                = 2;
     RequestInfo               info                 = 3;
-    RequestInitChain          init_chain           = 5;
-    RequestQuery              query                = 6;
-    RequestBeginBlock         begin_block          = 7;
-    RequestCheckTx            check_tx             = 8;
-    RequestDeliverTx          deliver_tx           = 9;
-    RequestEndBlock           end_block            = 10;
-    RequestCommit             commit               = 11;
-    RequestListSnapshots      list_snapshots       = 12;
-    RequestOfferSnapshot      offer_snapshot       = 13;
-    RequestLoadSnapshotChunk  load_snapshot_chunk  = 14;
-    RequestApplySnapshotChunk apply_snapshot_chunk = 15;
+    RequestInitChain          init_chain           = 4;
+    RequestQuery              query                = 5;
+    RequestBeginBlock         begin_block          = 6;
+    RequestCheckTx            check_tx             = 7;
+    RequestDeliverTx          deliver_tx           = 8;
+    RequestEndBlock           end_block            = 9;
+    RequestCommit             commit               = 10;
+    RequestListSnapshots      list_snapshots       = 11;
+    RequestOfferSnapshot      offer_snapshot       = 12;
+    RequestLoadSnapshotChunk  load_snapshot_chunk  = 13;
+    RequestApplySnapshotChunk apply_snapshot_chunk = 14;
   }
 }
 
@@ -127,17 +127,17 @@ message Response {
     ResponseEcho               echo                 = 2;
     ResponseFlush              flush                = 3;
     ResponseInfo               info                 = 4;
-    ResponseInitChain          init_chain           = 6;
-    ResponseQuery              query                = 7;
-    ResponseBeginBlock         begin_block          = 8;
-    ResponseCheckTx            check_tx             = 9;
-    ResponseDeliverTx          deliver_tx           = 10;
-    ResponseEndBlock           end_block            = 11;
-    ResponseCommit             commit               = 12;
-    ResponseListSnapshots      list_snapshots       = 13;
-    ResponseOfferSnapshot      offer_snapshot       = 14;
-    ResponseLoadSnapshotChunk  load_snapshot_chunk  = 15;
-    ResponseApplySnapshotChunk apply_snapshot_chunk = 16;
+    ResponseInitChain          init_chain           = 5;
+    ResponseQuery              query                = 6;
+    ResponseBeginBlock         begin_block          = 7;
+    ResponseCheckTx            check_tx             = 8;
+    ResponseDeliverTx          deliver_tx           = 9;
+    ResponseEndBlock           end_block            = 10;
+    ResponseCommit             commit               = 11;
+    ResponseListSnapshots      list_snapshots       = 12;
+    ResponseOfferSnapshot      offer_snapshot       = 13;
+    ResponseLoadSnapshotChunk  load_snapshot_chunk  = 14;
+    ResponseApplySnapshotChunk apply_snapshot_chunk = 15;
   }
 }
 
