@@ -26,6 +26,11 @@ validator05 = 50
 
 [node.seed01]
 mode = "seed"
+persistent_peers = ["seed02"]
+
+[node.seed02]
+mode = "seed"
+persistent_peers = ["seed01"]
 
 [node.validator01]
 seeds = ["seed01"]
@@ -33,7 +38,7 @@ snapshot_interval = 5
 perturb = ["disconnect"]
 
 [node.validator02]
-seeds = ["seed01"]
+seeds = ["seed02"]
 database = "boltdb"
 abci_protocol = "tcp"
 privval_protocol = "tcp"
@@ -64,7 +69,7 @@ perturb = ["pause"]
 
 [node.validator05]
 start_at = 1005 # Becomes part of the validator set at 1010
-seeds = ["seed01"]
+seeds = ["seed02"]
 database = "cleveldb"
 fast_sync = "v0"
 # FIXME Should use grpc, but it has race conditions
