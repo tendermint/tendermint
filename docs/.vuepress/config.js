@@ -14,8 +14,29 @@ module.exports = {
     docsRepo: "tendermint/tendermint",
     editLinks: true,
     docsDir: "docs",
-    logo: "/logo.svg",
     label: "core",
+    topbar: {
+      banner: false
+    },
+    sidebar: {
+      auto: true,
+      nav: [
+        {
+          title: 'Resources',
+          children: [
+            {
+              title: 'Developer Sessions',
+              path: '/DEV_SESSIONS.html'
+            },
+            {
+              title: 'RPC',
+              path: 'https://docs.tendermint.com/master/rpc/',
+              static: true
+            },
+          ]
+        }
+      ]
+    },
     gutter: {
       title: "Help & Support",
       editLink: true,
@@ -30,9 +51,6 @@ module.exports = {
         title: "Found an Issue?",
         text: "Help us improve this page by suggesting edits on GitHub."
       }
-    },
-    topbar: {
-      banner: false
     },
     footer: {
       question: {
@@ -117,22 +135,6 @@ module.exports = {
         }
       ]
     },
-    sidebar: [
-      {
-        title: "Resources",
-        children: [
-          {
-            title: "Developer Sessions",
-            path: "/DEV_SESSIONS.html"
-          },
-          {
-            title: "RPC",
-            path: "/master/rpc/",
-            static: true
-          }
-        ]
-      }
-    ]
   },
   plugins: [
     [
