@@ -61,6 +61,23 @@ Each event has a `type` which is meant to categorize the event for a particular
 particular event. Every key and value in an event's attributes must be UTF-8
 encoded strings along with the event type itself.
 
+```protobuf
+message Event {
+  string                  type       = 1;
+  repeated EventAttribute attributes = 2;
+}
+```
+
+The attributes of an `Event` consist of a `key`, `value` and a `index`. The index field notifies the indexer within Tendermint to index the event. This field is non-deterministic and will vary across different nodes in the network.
+
+```protobuf
+message EventAttribute {
+  bytes key   = 1;
+  bytes value = 2;
+  bool  index = 3;  // nondeterministic
+}
+```
+
 Example:
 
 ```go
@@ -563,12 +580,7 @@ via light client.
 ### PubKey
 
 - **Fields**:
-    - `Type (string)`: Type of the public key. A simple string like `"ed25519"`.
-    In the future, may indicate a serialization algorithm to parse the `Data`,
-    for instance `"amino"`.
-    - `Data ([]byte)`: Public key data. For a simple public key, it's just the
-    raw bytes. If the `Type` indicates an encoding algorithm, this is the
-    encoded public key.
+    - `Sum (oneof PublicKey)`: This field is a Protobuf [`oneof`](https://developers.google.com/protocol-buffers/docs/proto#oneof)
 - **Usage**:
     - A generic and extensible typed public key
 
@@ -626,8 +638,8 @@ via light client.
 ### ValidatorParams
 
 - **Fields**:
-    - `PubKeyTypes ([]string)`: List of accepted pubkey types. Uses same
-    naming as `PubKey.Type`.
+    - `PubKeyTypes ([]string)`: List of accepted public key types.
+        - Uses same naming as `PubKey.Type`.
 
 ### VersionParams
 

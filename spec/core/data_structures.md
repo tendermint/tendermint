@@ -89,11 +89,11 @@ parts (ie. `len(MakeParts(block))`)
 ```go
 type BlockID struct {
     Hash []byte
-    PartsHeader PartSetHeader
+    PartSetHeader PartSetHeader
 }
 
 type PartSetHeader struct {
-    Total int32
+    Total uint32
     Hash []byte
 }
 ```
@@ -125,7 +125,7 @@ validator. It also contains the relevant BlockID, height and round:
 ```go
 type Commit struct {
  Height     int64
- Round      int
+ Round      int32
  BlockID    BlockID
  Signatures []CommitSig
 }
@@ -168,14 +168,25 @@ The vote includes information about the validator signing it.
 
 ```go
 type Vote struct {
- Type             byte
+ Type             SignedMsgType
  Height           int64
- Round            int
+ Round            int32
  BlockID          BlockID
  Timestamp        Time
  ValidatorAddress []byte
- ValidatorIndex   int
+ ValidatorIndex   int32
  Signature        []byte
+}
+```
+
+```protobuf
+enum SignedMsgType {
+  SIGNED_MSG_TYPE_UNKNOWN = 0;
+  // Votes
+  PREVOTE_TYPE   = 1;
+  PRECOMMIT_TYPE = 2;
+  // Proposals
+  PROPOSAL_TYPE = 32;
 }
 ```
 
@@ -412,7 +423,7 @@ first by voting power (descending), then by address (ascending).
 block.ConsensusHash == state.ConsensusParams.Hash()
 ```
 
-Hash of the amino-encoding of a subset of the consensus parameters.
+Hash of the protobuf-encoding of a subset of the consensus parameters.
 
 ### AppHash
 
@@ -497,9 +508,9 @@ The number of votes in a commit is limited to 10000 (see `types.MaxVotesCount`).
 ### Vote
 
 A vote is a signed message broadcast in the consensus for a particular block at a particular height and round.
-When stored in the blockchain or propagated over the network, votes are encoded in Amino.
-For signing, votes are represented via `CanonicalVote` and also encoded using amino (protobuf compatible) via
-`Vote.SignBytes` which includes the `ChainID`, and uses a different ordering of
+When stored in the blockchain or propagated over the network, votes are encoded in Protobuf.
+For signing, votes are represented via `CanonicalVote` and also encoded using Protobuf via
+`VoteSignBytes` which includes the `ChainID`, and uses a different ordering of
 the fields.
 
 We define a method `Verify` that returns `true` if the signature verifies against the pubkey for the `SignBytes`

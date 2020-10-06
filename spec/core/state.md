@@ -7,7 +7,7 @@ necessary for validating new blocks. For instance, the validators set and the re
 transactions are never included in blocks, but their Merkle roots are - the state keeps track of them.
 
 Note that the `State` object itself is an implementation detail, since it is never
-included in a block or gossipped over the network, and we never compute
+included in a block or gossiped over the network, and we never compute
 its hash. Thus we do not include here details of how the `State` object is
 persisted or queried. That said, the types it contains are part of the specification, since
 their Merkle roots are included in blocks and their values are used in
@@ -55,21 +55,24 @@ type Consensus struct {
 }
 ```
 
-### Result
+### ResponseDeliverTx
 
-```go
-type Result struct {
-    Code uint32
-    Data []byte
+```protobuf
+message ResponseDeliverTx {
+  uint32         code       = 1;
+  bytes          data       = 2;
+  string         log        = 3;  // nondeterministic
+  string         info       = 4;  // nondeterministic
+  int64          gas_wanted = 5;
+  int64          gas_used   = 6;
+  repeated Event events     = 7
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  string codespace = 8;
 }
 ```
 
-`Result` is the result of executing a transaction against the application.
-It returns a result code and an arbitrary byte array (ie. a return value).
-
-NOTE: the Result needs to be updated to include more fields returned from
-processing transactions, like gas variables and events - see
-[issue 1007](https://github.com/tendermint/tendermint/issues/1007).
+`ResponseDeliverTx` is the result of executing a transaction against the application.
+It returns a result code (`uint32`), an arbitrary byte array (`[]byte`) (ie. a return value), Log (`string`), Info (`string`), GasWanted (`int64`), GasUsed (`int64`), Events (`[]Events`) and a Codespace (`string`).
 
 ### Validator
 
@@ -110,45 +113,48 @@ Like validator sets, they are set during genesis and can be updated by the appli
 When hashed, only a subset of the params are included, to allow the params to
 evolve without breaking the header.
 
-```go
-type ConsensusParams struct {
- Block
- Evidence
- Validator
- Version
+```protobuf
+message ConsensusParams {
+  BlockParams     block     = 1;
+  EvidenceParams  evidence  = 2;
+  ValidatorParams validator = 3;
+  VersionParams   version   = 4;
 }
+```
 
+```go
 type hashedParams struct {
  BlockMaxBytes int64
  BlockMaxGas   int64
 }
 
-func (params ConsensusParams) Hash() []byte {
+func HashConsensusParams() []byte {
  SHA256(hashedParams{
   BlockMaxBytes: params.Block.MaxBytes,
   BlockMaxGas:   params.Block.MaxGas,
  })
 }
+```
 
-type BlockParams struct {
- MaxBytes   int64
- MaxGas     int64
- TimeIotaMs int64
+```protobuf
+message BlockParams {
+  int64 max_bytes = 1;
+  int64 max_gas = 2;
+  int64 time_iota_ms = 3; // not exposed to the application
 }
 
-type EvidenceParams struct {
- MaxAgeNumBlocks  int64
- MaxAgeDuration   time.Duration
- MaxNum           uint32
- ProofTrialPeriod int64
+message EvidenceParams {
+  int64 max_age_num_blocks = 1;
+  google.protobuf.Duration max_age_duration = 2;
+  uint32 max_num = 3;
 }
 
-type ValidatorParams struct {
- PubKeyTypes []string
+message ValidatorParams {
+  repeated string pub_key_types = 1;
 }
 
-type VersionParams struct {
- AppVersion uint64
+message VersionParams {
+  uint64 AppVersion = 1;
 }
 ```
 
