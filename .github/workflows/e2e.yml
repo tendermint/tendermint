@@ -27,10 +27,12 @@ jobs:
         working-directory: test/e2e
         # Run two make jobs in parallel, since we can't run steps in parallel.
         run: make -j2 docker runner
+        if: "env.GIT_DIFF != ''"
 
       - name: Run CI testnet
         working-directory: test/e2e
         run: sudo ./build/runner -f networks/ci.toml
+        if: "env.GIT_DIFF != ''"
 
       - name: Emit logs on failure
         if: ${{ failure() }}
