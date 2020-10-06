@@ -54,8 +54,23 @@ func TestVerify(t *testing.T) {
 				1*time.Second,
 				light.DefaultTrustLevel,
 			)
-			if input.Verdict == "SUCCESS" && err != nil {
-				t.Fatalf("verification failed: %v\n HEADER: %v", err, newSignedHeader)
+			if err != nil {
+				t.Logf("TRUSTED HEADER %v\nNEW HEADER %v", trustedSignedHeader, newSignedHeader)
+
+				switch input.Verdict {
+				case "SUCCESS":
+					t.Fatalf("unexpected error: %v", err)
+				case "NOT_ENOUGH_TRUST":
+					if _, ok := err.(light.ErrNewValSetCantBeTrusted); !ok {
+						t.Fatalf("expected ErrNewValSetCantBeTrusted, but got %v", err)
+					}
+				case "INVALID":
+					if _, ok := err.(light.ErrInvalidHeader); !ok {
+						t.Fatalf("expected ErrInvalidHeader, but got %v", err)
+					}
+				default:
+					t.Fatalf("unexpected verdict: %q", input.Verdict)
+				}
 			} else {
 				trustedSignedHeader = *newSignedHeader
 				trustedNextVals = *newVals
