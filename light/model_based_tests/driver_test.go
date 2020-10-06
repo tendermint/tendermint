@@ -30,12 +30,12 @@ func TestVerify(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		t.Log(tc.Description)
+
 		var (
-			// chainID             = tc.Initial.SignedHeader.Header.ChainID
 			trustedSignedHeader = tc.Initial.SignedHeader
 			trustedNextVals     = tc.Initial.NextValidatorSet
 			trustingPeriod      = time.Duration(tc.Initial.TrustingPeriod) * time.Microsecond
-			// now                 = tc.Initial.Now
 		)
 
 		for _, input := range tc.Input {
@@ -71,82 +71,15 @@ func TestVerify(t *testing.T) {
 				default:
 					t.Fatalf("unexpected verdict: %q", input.Verdict)
 				}
-			} else {
+			} else { // advance
 				trustedSignedHeader = *newSignedHeader
-				trustedNextVals = *newVals
+				trustedNextVals = *input.LightBlock.NextValidatorSet
 			}
 		}
 	}
-
 }
 
-// func TestBisection(t *testing.T) {
-// 	tests, err := getTestPaths("./json/bisection/")
-// 	if err != nil {
-// 		fmt.Println(err)
-// 	}
-
-// 	for _, test := range tests {
-
-// 		// we skip this one for now because the current version (v0.33.6)
-// 		// does not panic on receiving conflicting commits from witnesses
-// 		skippedTest := "json/bisection/multi_peer/conflicting_valid_commits_from_one_of_the_witnesses.json"
-// 		if test == skippedTest {
-// 			fmt.Printf("\ntest case skipped: %v", skippedTest)
-// 			continue
-// 		}
-
-// 		data := generator.ReadFile(test)
-
-// 		cdc := amino.NewCodec()
-// 		cryptoAmino.RegisterAmino(cdc)
-
-// 		cdc.RegisterInterface((*provider.Provider)(nil), nil)
-// 		cdc.RegisterConcrete(generator.MockProvider{}, "com.tendermint/MockProvider", nil)
-
-// 		var testBisection generator.TestBisection
-// 		e := cdc.UnmarshalJSON(data, &testBisection)
-// 		if e != nil {
-// 			fmt.Printf("error: %v", e)
-// 		}
-
-// 		fmt.Println(testBisection.Description)
-
-// 		trustedStore := dbs.New(dbm.NewMemDB(), testBisection.Primary.ChainID())
-// 		witnesses := testBisection.Witnesses
-// 		trustOptions := lite.TrustOptions{
-// 			Period: testBisection.TrustOptions.Period,
-// 			Height: testBisection.TrustOptions.Height,
-// 			Hash:   testBisection.TrustOptions.Hash,
-// 		}
-// 		trustLevel := testBisection.TrustOptions.TrustLevel
-// 		expectedOutput := testBisection.ExpectedOutput
-
-// 		client, e := lite.NewClient(
-// 			testBisection.Primary.ChainID(),
-// 			trustOptions,
-// 			testBisection.Primary,
-// 			witnesses,
-// 			trustedStore,
-// 			lite.SkippingVerification(trustLevel))
-// 		if e != nil {
-// 			fmt.Println(e)
-// 		}
-
-// 		height := testBisection.HeightToVerify
-// 		_, e = client.VerifyHeaderAtHeight(height, testBisection.Now)
-// 		// ---
-// 		fmt.Println(e)
-// 		// ---
-// 		err := e != nil
-// 		expectsError := expectedOutput == "error"
-// 		if (err && !expectsError) || (!err && expectsError) {
-// 			t.Errorf("\n Failing test: %s \n Error: %v \n Expected error: %v", testBisection.Description, e, testBisection.ExpectedOutput)
-
-// 		}
-// 	}
-// }
-
+// jsonFilenames returns a list of files in jsonDir directory
 func jsonFilenames(t *testing.T) []string {
 	names := make([]string, 0)
 
@@ -180,7 +113,15 @@ type initialData struct {
 }
 
 type inputData struct {
-	LightBlock types.LightBlock `json:"block"`
-	Now        time.Time        `json:"now"`
-	Verdict    string           `json:"verdict"`
+	LightBlock lightBlockWithNextValidatorSet `json:"block"`
+	Now        time.Time                      `json:"now"`
+	Verdict    string                         `json:"verdict"`
+}
+
+// In tendermint-rs, NextValidatorSet is used to verify new blocks (opposite to
+// Go tendermint).
+type lightBlockWithNextValidatorSet struct {
+	*types.SignedHeader `json:"signed_header"`
+	ValidatorSet        *types.ValidatorSet `json:"validator_set"`
+	NextValidatorSet    *types.ValidatorSet `json:"next_validator_set"`
 }
