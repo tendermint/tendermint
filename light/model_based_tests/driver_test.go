@@ -1,12 +1,12 @@
 package model_based_tests
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
 	"time"
 
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/types"
 )
@@ -17,13 +17,15 @@ func TestVerify(t *testing.T) {
 	filenames := jsonFilenames(t)
 
 	for _, filename := range filenames {
+		t.Logf("-> %s", filename)
+
 		jsonBlob, err := ioutil.ReadFile(filename)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		var tc testCase
-		err = json.Unmarshal(jsonBlob, &tc)
+		err = tmjson.Unmarshal(jsonBlob, &tc)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -53,7 +55,7 @@ func TestVerify(t *testing.T) {
 				light.DefaultTrustLevel,
 			)
 			if input.Verdict == "SUCCESS" && err != nil {
-				t.Fatalf("verification failed: %v", err)
+				t.Fatalf("verification failed: %v\n HEADER: %v", err, newSignedHeader)
 			} else {
 				trustedSignedHeader = *newSignedHeader
 				trustedNextVals = *newVals
