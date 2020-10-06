@@ -4,7 +4,7 @@
     "signed_header": {
       "header": {
         "version": {
-          "block": "0",
+          "block": "11",
           "app": "0"
         },
         "chain_id": "test-chain",
@@ -87,7 +87,7 @@
         "signed_header": {
           "header": {
             "version": {
-              "block": "0",
+              "block": "11",
               "app": "0"
             },
             "chain_id": "test-chain",
@@ -207,7 +207,7 @@
         "signed_header": {
           "header": {
             "version": {
-              "block": "0",
+              "block": "11",
               "app": "0"
             },
             "chain_id": "test-chain",
@@ -294,7 +294,7 @@
         "signed_header": {
           "header": {
             "version": {
-              "block": "0",
+              "block": "11",
               "app": "0"
             },
             "chain_id": "test-chain",
@@ -390,7 +390,7 @@
         "signed_header": {
           "header": {
             "version": {
-              "block": "0",
+              "block": "11",
               "app": "0"
             },
             "chain_id": "test-chain",
