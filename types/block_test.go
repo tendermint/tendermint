@@ -401,7 +401,7 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	testCases := []struct {
 		maxBytes      int64
 		valsCount     int
-		evidenceCount int
+		evidenceBytes int64
 		panics        bool
 		result        int64
 	}{
@@ -416,43 +416,41 @@ func TestBlockMaxDataBytes(t *testing.T) {
 		tc := tc
 		if tc.panics {
 			assert.Panics(t, func() {
-				MaxDataBytes(tc.maxBytes, tc.valsCount, tc.evidenceCount)
+				MaxDataBytes(tc.maxBytes, tc.evidenceBytes, tc.valsCount)
 			}, "#%v", i)
 		} else {
 			assert.Equal(t,
 				tc.result,
-				MaxDataBytes(tc.maxBytes, tc.valsCount, tc.evidenceCount),
+				MaxDataBytes(tc.maxBytes, tc.evidenceBytes, tc.valsCount),
 				"#%v", i)
 		}
 	}
 }
 
-func TestBlockMaxDataBytesUnknownEvidence(t *testing.T) {
+func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 	testCases := []struct {
-		maxBytes    int64
-		maxEvidence uint32
-		valsCount   int
-		panics      bool
-		result      int64
+		maxBytes  int64
+		valsCount int
+		panics    bool
+		result    int64
 	}{
-		0: {-10, 0, 1, true, 0},
-		1: {10, 0, 1, true, 0},
-		2: {845, 0, 1, true, 0},
-		3: {846, 0, 1, false, 0},
-		4: {1290, 1, 1, false, 0},
-		5: {1291, 1, 1, false, 1},
+		0: {-10, 1, true, 0},
+		1: {10, 1, true, 0},
+		2: {845, 1, true, 0},
+		3: {846, 1, false, 0},
+		4: {847, 1, false, 1},
 	}
 
 	for i, tc := range testCases {
 		tc := tc
 		if tc.panics {
 			assert.Panics(t, func() {
-				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount, tc.maxEvidence)
+				MaxDataBytesNoEvidence(tc.maxBytes, tc.valsCount)
 			}, "#%v", i)
 		} else {
 			assert.Equal(t,
 				tc.result,
-				MaxDataBytesUnknownEvidence(tc.maxBytes, tc.valsCount, tc.maxEvidence),
+				MaxDataBytesNoEvidence(tc.maxBytes, tc.valsCount),
 				"#%v", i)
 		}
 	}
@@ -620,7 +618,7 @@ func TestBlockProtoBuf(t *testing.T) {
 			require.NoError(t, err, tc.msg)
 			require.EqualValues(t, tc.b1.Header, block.Header, tc.msg)
 			require.EqualValues(t, tc.b1.Data, block.Data, tc.msg)
-			require.EqualValues(t, tc.b1.Evidence, block.Evidence, tc.msg)
+			require.EqualValues(t, tc.b1.Evidence.Evidence, block.Evidence.Evidence, tc.msg)
 			require.EqualValues(t, *tc.b1.LastCommit, *block.LastCommit, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
@@ -653,6 +651,7 @@ func TestDataProtoBuf(t *testing.T) {
 	}
 }
 
+// TestEvidenceDataProtoBuf ensures parity in converting to and from proto.
 func TestEvidenceDataProtoBuf(t *testing.T) {
 	val := NewMockPV()
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
@@ -662,7 +661,7 @@ func TestEvidenceDataProtoBuf(t *testing.T) {
 	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, time.Now())
 	ev := NewDuplicateVoteEvidence(v2, v)
 	data := &EvidenceData{Evidence: EvidenceList{ev}}
-	_ = data.Hash()
+	_ = data.ByteSize()
 	testCases := []struct {
 		msg      string
 		data1    *EvidenceData

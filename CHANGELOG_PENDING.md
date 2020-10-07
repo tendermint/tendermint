@@ -15,6 +15,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - P2P Protocol
 
 - Go API
+    - [evidence] [\#5499](https://github.com/tendermint/tendermint/pull/5449) `MaxNum` evidence consensus parameter has been changed to `MaxBytes` (@cmwaters)
 
 - Blockchain Protocol
 
