@@ -64,19 +64,16 @@ func NewPool(evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool,
 		logger:        log.NewNopLogger(),
 		evidenceStore: evidenceDB,
 		evidenceList:  clist.New(),
-		evidenceSize:  0,
-		pruningHeight: state.LastBlockHeight,
-		pruningTime:   state.LastBlockTime,
 	}
 
 	// if pending evidence already in db, in event of prior failure, then check for expiration,
 	// update the size and load it back to the evidenceList
-	pool.removeExpiredPendingEvidence()
-	evList, err := pool.listEvidence(baseKeyPending, -1)
+	pool.pruningHeight, pool.pruningTime = pool.removeExpiredPendingEvidence()
+	evList, _, err := pool.listEvidence(baseKeyPending, -1)
 	if err != nil {
 		return nil, err
 	}
-	atomic.AddUint32(&pool.evidenceSize, uint32(len(evList)))
+	atomic.StoreUint32(&pool.evidenceSize, uint32(len(evList)))
 	for _, ev := range evList {
 		pool.evidenceList.PushBack(ev)
 	}
@@ -85,12 +82,15 @@ func NewPool(evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool,
 }
 
 // PendingEvidence is used primarily as part of block proposal and returns up to maxNum of uncommitted evidence.
-func (evpool *Pool) PendingEvidence(maxNum uint32) []types.Evidence {
-	evidence, err := evpool.listEvidence(baseKeyPending, int64(maxNum))
+func (evpool *Pool) PendingEvidence(maxBytes int64) ([]types.Evidence, int64) {
+	if atomic.LoadUint32(&evpool.evidenceSize) == 0 {
+		return []types.Evidence{}, 0
+	}
+	evidence, size, err := evpool.listEvidence(baseKeyPending, maxBytes)
 	if err != nil {
 		evpool.logger.Error("Unable to retrieve pending evidence", "err", err)
 	}
-	return evidence
+	return evidence, size
 }
 
 // Update pulls the latest state to be used for expiration and evidence params and then prunes all expired evidence
@@ -330,6 +330,7 @@ type info struct {
 	Time             time.Time
 	Validators       []*types.Validator
 	TotalVotingPower int64
+	ByteSize         int64
 }
 
 // ToProto encodes into protobuf
@@ -381,6 +382,7 @@ func infoFromProto(proto *evproto.Info) (info, error) {
 		Time:             proto.Time,
 		Validators:       vals,
 		TotalVotingPower: proto.TotalVotingPower,
+		ByteSize:         int64(proto.Evidence.Size()),
 	}, nil
 
 }
@@ -489,31 +491,32 @@ func (evpool *Pool) removePendingEvidence(evidence types.Evidence) {
 	}
 }
 
-// listEvidence lists up to maxNum pieces of evidence for the given prefix key.
-// If maxNum is -1, there's no cap on the size of returned evidence.
-func (evpool *Pool) listEvidence(prefixKey byte, maxNum int64) ([]types.Evidence, error) {
-	var count int64
+// listEvidence retrieves lists evidence from oldest to newest within maxBytes.
+// If maxBytes is -1, there's no cap on the size of returned evidence.
+func (evpool *Pool) listEvidence(prefixKey byte, maxBytes int64) ([]types.Evidence, int64, error) {
+	var totalSize int64
 	var evidence []types.Evidence
 	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{prefixKey})
 	if err != nil {
-		return nil, fmt.Errorf("database error: %v", err)
+		return nil, totalSize, fmt.Errorf("database error: %v", err)
 	}
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
-		if count == maxNum {
-			return evidence, nil
-		}
-		count++
-
 		evInfo, err := bytesToInfo(iter.Value())
 		if err != nil {
-			return nil, err
+			return nil, totalSize, err
+		}
+
+		totalSize += evInfo.ByteSize
+
+		if maxBytes != -1 && totalSize > maxBytes {
+			return evidence, totalSize - evInfo.ByteSize, nil
 		}
 
 		evidence = append(evidence, evInfo.Evidence)
 	}
 
-	return evidence, nil
+	return evidence, totalSize, nil
 }
 
 func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
@@ -534,7 +537,8 @@ func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
 			if len(blockEvidenceMap) != 0 {
 				evpool.removeEvidenceFromList(blockEvidenceMap)
 			}
-			// return the time with which this evidence will have expired so we know when to prune next
+
+			// return the height and time with which this evidence will have expired so we know when to prune next
 			return evInfo.Evidence.Height() + evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks + 1,
 				evInfo.Time.Add(evpool.State().ConsensusParams.Evidence.MaxAgeDuration).Add(time.Second)
 		}

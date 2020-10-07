@@ -61,11 +61,11 @@ func (_m *EvidencePool) CheckEvidence(_a0 types.EvidenceList) error {
 }
 
 // PendingEvidence provides a mock function with given fields: _a0
-func (_m *EvidencePool) PendingEvidence(_a0 uint32) []types.Evidence {
+func (_m *EvidencePool) PendingEvidence(_a0 int64) ([]types.Evidence, int64) {
 	ret := _m.Called(_a0)
 
 	var r0 []types.Evidence
-	if rf, ok := ret.Get(0).(func(uint32) []types.Evidence); ok {
+	if rf, ok := ret.Get(0).(func(int64) []types.Evidence); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
@@ -73,7 +73,14 @@ func (_m *EvidencePool) PendingEvidence(_a0 uint32) []types.Evidence {
 		}
 	}
 
-	return r0
+	var r1 int64
+	if rf, ok := ret.Get(1).(func(int64) int64); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Get(1).(int64)
+	}
+
+	return r0, r1
 }
 
 // Update provides a mock function with given fields: _a0

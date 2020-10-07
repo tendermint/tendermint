@@ -32,7 +32,10 @@ func TestMain(m *testing.M) {
 
 const evidenceChainID = "test_chain"
 
-var defaultEvidenceTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+var (
+	defaultEvidenceTime           = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+	defaultEvidenceMaxBytes int64 = 1000
+)
 
 func TestEvidencePoolBasic(t *testing.T) {
 	var (
@@ -52,10 +55,12 @@ func TestEvidencePoolBasic(t *testing.T) {
 
 	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
+	pool.SetLogger(log.TestingLogger())
 
 	// evidence not seen yet:
-	evs := pool.PendingEvidence(10)
+	evs, size := pool.PendingEvidence(defaultEvidenceMaxBytes)
 	assert.Equal(t, 0, len(evs))
+	assert.Zero(t, size)
 
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, privVals[0], evidenceChainID)
 
@@ -78,12 +83,14 @@ func TestEvidencePoolBasic(t *testing.T) {
 	next := pool.EvidenceFront()
 	assert.Equal(t, ev, next.Value.(types.Evidence))
 
-	evs = pool.PendingEvidence(10)
+	evs, size = pool.PendingEvidence(defaultEvidenceMaxBytes)
 	assert.Equal(t, 1, len(evs))
+	assert.Equal(t, int64(357), size) // check that the size of the single evidence in bytes is correct
 
 	// shouldn't be able to add evidence twice
 	assert.Error(t, pool.AddEvidence(ev))
-	assert.Equal(t, 1, len(pool.PendingEvidence(10)))
+	evs, _ = pool.PendingEvidence(defaultEvidenceMaxBytes)
+	assert.Equal(t, 1, len(evs))
 
 }
 
@@ -183,12 +190,15 @@ func TestEvidencePoolUpdate(t *testing.T) {
 		},
 	}
 	assert.Equal(t, expectedByzVals, byzVals)
-	assert.Equal(t, 1, len(pool.PendingEvidence(10)))
+	evList, _ := pool.PendingEvidence(defaultEvidenceMaxBytes)
+	assert.Equal(t, 1, len(evList))
 
 	pool.Update(state)
 
 	// a) Update marks evidence as committed so pending evidence should be empty
-	assert.Empty(t, pool.PendingEvidence(10))
+	evList, evSize := pool.PendingEvidence(defaultEvidenceMaxBytes)
+	assert.Empty(t, evList)
+	assert.Zero(t, evSize)
 
 	// b) If we try to check this evidence again it should fail because it has already been committed
 	err = pool.CheckEvidence(types.EvidenceList{ev})
@@ -293,7 +303,6 @@ func TestCheckEvidenceWithLightClientAttack(t *testing.T) {
 
 func TestRecoverPendingEvidence(t *testing.T) {
 	height := int64(10)
-	expiredEvidenceTime := time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC)
 	val := types.NewMockPV()
 	valAddress := val.PrivKey.PubKey().Address()
 	evidenceDB := dbm.NewMemDB()
@@ -301,21 +310,24 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	state, err := stateStore.Load()
 	require.NoError(t, err)
 	blockStore := initializeBlockStore(dbm.NewMemDB(), state, valAddress)
+	// create previous pool and populate it
 	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
 	pool.SetLogger(log.TestingLogger())
 	goodEvidence := types.NewMockDuplicateVoteEvidenceWithValidator(height,
 		defaultEvidenceTime, val, evidenceChainID)
 	expiredEvidence := types.NewMockDuplicateVoteEvidenceWithValidator(int64(1),
-		expiredEvidenceTime, val, evidenceChainID)
+		defaultEvidenceTime, val, evidenceChainID)
 	err = pool.AddEvidence(goodEvidence)
 	require.NoError(t, err)
 	err = pool.AddEvidence(expiredEvidence)
 	require.NoError(t, err)
+
+	// now recover from the previous pool at a different time
 	newStateStore := &smmocks.Store{}
 	newStateStore.On("Load").Return(sm.State{
-		LastBlockTime:   defaultEvidenceTime.Add(49 * time.Hour),
-		LastBlockHeight: height + 12,
+		LastBlockTime:   defaultEvidenceTime.Add(25 * time.Minute),
+		LastBlockHeight: height + 15,
 		ConsensusParams: tmproto.ConsensusParams{
 			Block: tmproto.BlockParams{
 				MaxBytes: 22020096,
@@ -323,14 +335,15 @@ func TestRecoverPendingEvidence(t *testing.T) {
 			},
 			Evidence: tmproto.EvidenceParams{
 				MaxAgeNumBlocks: 20,
-				MaxAgeDuration:  1 * time.Hour,
-				MaxNum:          50,
+				MaxAgeDuration:  20 * time.Minute,
+				MaxBytes:        1000,
 			},
 		},
 	}, nil)
 	newPool, err := evidence.NewPool(evidenceDB, newStateStore, blockStore)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(newPool.PendingEvidence(10)))
+	evList, _ := newPool.PendingEvidence(defaultEvidenceMaxBytes)
+	assert.Equal(t, 1, len(evList))
 	next := newPool.EvidenceFront()
 	assert.Equal(t, goodEvidence, next.Value.(types.Evidence))
 
@@ -356,7 +369,7 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) s
 			Evidence: tmproto.EvidenceParams{
 				MaxAgeNumBlocks: 20,
 				MaxAgeDuration:  20 * time.Minute,
-				MaxNum:          50,
+				MaxBytes:        1000,
 			},
 		},
 	}

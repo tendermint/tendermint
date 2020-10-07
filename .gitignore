@@ -10,6 +10,8 @@ remote_dump
 .revision
 vendor
 .vagrant
+test/e2e/build
+test/e2e/networks/*/
 test/p2p/data/
 test/logs
 coverage.txt

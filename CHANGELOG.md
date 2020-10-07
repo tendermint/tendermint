@@ -240,7 +240,7 @@ This release was removed, as a premature GitHub tag was recorded on sum.golang.o
 
 *August 11, 2020*
 
-## Go security update
+### Go security update
 
 Go reported a security vulnerability that affected the `encoding/binary` package. The most recent binary for tendermint is using 1.14.6, for this
 reason the Tendermint engineering team has opted to conduct a release to aid users in using the correct version of Go. Read more about the security issue [here](https://github.com/golang/go/issues/40618).
@@ -321,6 +321,8 @@ function to `VerifyCommitLightTrusting`. If you were relying on the light client
 need to update your code.**
 
 ## v0.33.5
+
+*May 28, 2020*
 
 Special thanks to external contributors on this release: @tau3,
 
