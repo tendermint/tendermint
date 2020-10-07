@@ -29,4 +29,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### BUG FIXES
 
 - [privval] \#5441 Fix faulty ping message encoding causing nil message errors in logs (@erikgrinaker)
-
+- [rpc] \#5459 Register the interface of public keys for json encoding (@marbar3778)
