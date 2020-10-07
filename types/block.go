@@ -1082,11 +1082,7 @@ func (data *EvidenceData) ByteSize() int64 {
 			if err != nil {
 				panic(err)
 			}
-			bz, err := pb.Marshal()
-			if err != nil {
-				panic(err)
-			}
-			data.byteSize += int64(len(bz))
+			data.byteSize += int64(pb.Size())
 		}
 	}
 	return data.byteSize
