@@ -19,9 +19,6 @@ const (
 
 	// MaxBlockPartsCount is the maximum number of block parts.
 	MaxBlockPartsCount = (MaxBlockSizeBytes / BlockPartSizeBytes) + 1
-
-	// Restrict the upper bound of the amount of evidence (uses uint16 for safe conversion)
-	MaxEvidencePerBlock = 65535
 )
 
 // DefaultConsensusParams returns a default ConsensusParams.
@@ -48,7 +45,7 @@ func DefaultEvidenceParams() tmproto.EvidenceParams {
 	return tmproto.EvidenceParams{
 		MaxAgeNumBlocks: 100000, // 27.8 hrs at 1block/s
 		MaxAgeDuration:  48 * time.Hour,
-		MaxNum:          50,
+		MaxBytes:        1048576, // 1MB
 	}
 }
 
@@ -98,23 +95,23 @@ func ValidateConsensusParams(params tmproto.ConsensusParams) error {
 	}
 
 	if params.Evidence.MaxAgeNumBlocks <= 0 {
-		return fmt.Errorf("evidenceParams.MaxAgeNumBlocks must be greater than 0. Got %d",
+		return fmt.Errorf("evidence.MaxAgeNumBlocks must be greater than 0. Got %d",
 			params.Evidence.MaxAgeNumBlocks)
 	}
 
 	if params.Evidence.MaxAgeDuration <= 0 {
-		return fmt.Errorf("evidenceParams.MaxAgeDuration must be grater than 0 if provided, Got %v",
+		return fmt.Errorf("evidence.MaxAgeDuration must be grater than 0 if provided, Got %v",
 			params.Evidence.MaxAgeDuration)
 	}
 
-	if params.Evidence.MaxNum > MaxEvidencePerBlock {
-		return fmt.Errorf("evidenceParams.MaxNumEvidence is greater than upper bound, %d > %d",
-			params.Evidence.MaxNum, MaxEvidencePerBlock)
+	if params.Evidence.MaxBytes > params.Block.MaxBytes {
+		return fmt.Errorf("evidence.MaxBytesEvidence is greater than upper bound, %d > %d",
+			params.Evidence.MaxBytes, params.Block.MaxBytes)
 	}
 
-	if int64(params.Evidence.MaxNum)*MaxEvidenceBytes > params.Block.MaxBytes {
-		return fmt.Errorf("total possible evidence size is bigger than block.MaxBytes, %d > %d",
-			int64(params.Evidence.MaxNum)*MaxEvidenceBytes, params.Block.MaxBytes)
+	if params.Evidence.MaxBytes < 0 {
+		return fmt.Errorf("evidence.MaxBytes must be non negative. Got: %d",
+			params.Evidence.MaxBytes)
 	}
 
 	if len(params.Validator.PubKeyTypes) == 0 {
@@ -174,7 +171,7 @@ func UpdateConsensusParams(params tmproto.ConsensusParams, params2 *abci.Consens
 	if params2.Evidence != nil {
 		res.Evidence.MaxAgeNumBlocks = params2.Evidence.MaxAgeNumBlocks
 		res.Evidence.MaxAgeDuration = params2.Evidence.MaxAgeDuration
-		res.Evidence.MaxNum = params2.Evidence.MaxNum
+		res.Evidence.MaxBytes = params2.Evidence.MaxBytes
 	}
 	if params2.Validator != nil {
 		// Copy params2.Validator.PubkeyTypes, and set result's value to the copy.

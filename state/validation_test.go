@@ -222,7 +222,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	evpool.On("ABCIEvidence", mock.AnythingOfType("int64"), mock.AnythingOfType("[]types.Evidence")).Return(
 		[]abci.Evidence{})
 
-	state.ConsensusParams.Evidence.MaxNum = 3
+	state.ConsensusParams.Evidence.MaxBytes = 1000
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		log.TestingLogger(),
@@ -234,17 +234,19 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		proposerAddr := state.Validators.GetProposer().Address
-		maxNumEvidence := state.ConsensusParams.Evidence.MaxNum
+		maxBytesEvidence := state.ConsensusParams.Evidence.MaxBytes
 		if height > 1 {
 			/*
 				A block with too much evidence fails
 			*/
-			require.True(t, maxNumEvidence > 2)
 			evidence := make([]types.Evidence, 0)
-			// one more than the maximum allowed evidence
-			for i := uint32(0); i <= maxNumEvidence; i++ {
-				evidence = append(evidence, types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(),
-					privVals[proposerAddr.String()], chainID))
+			var currentBytes int64 = 0
+			// more bytes than the maximum allowed for evidence
+			for currentBytes <= maxBytesEvidence {
+				newEv := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(),
+					privVals[proposerAddr.String()], chainID)
+				evidence = append(evidence, newEv)
+				currentBytes += int64(len(newEv.Bytes()))
 			}
 			block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
 			err := blockExec.ValidateBlock(state, block)
@@ -257,14 +259,17 @@ func TestValidateBlockEvidence(t *testing.T) {
 		/*
 			A good block with several pieces of good evidence passes
 		*/
-		require.True(t, maxNumEvidence > 2)
 		evidence := make([]types.Evidence, 0)
+		var currentBytes int64 = 0
 		// precisely the amount of allowed evidence
-		for i := int32(0); uint32(i) < maxNumEvidence; i++ {
-			// make different evidence for each validator
-			_, val := state.Validators.GetByIndex(i)
-			evidence = append(evidence, types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime,
-				privVals[val.Address.String()], chainID))
+		for {
+			newEv := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime,
+				privVals[proposerAddr.String()], chainID)
+			currentBytes += int64(len(newEv.Bytes()))
+			if currentBytes >= maxBytesEvidence {
+				break
+			}
+			evidence = append(evidence, newEv)
 		}
 
 		var err error
