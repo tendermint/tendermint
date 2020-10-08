@@ -102,7 +102,7 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 	err = pool.CheckEvidence(evList)
 	assert.NoError(t, err)
 
-	pendingEvs := pool.PendingEvidence(2)
+	pendingEvs, _ := pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
 	assert.Equal(t, 1, len(pendingEvs))
 
 	pubKey, err := newPrivVal.GetPubKey()
@@ -206,7 +206,7 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 	err = pool.CheckEvidence(evList)
 	assert.NoError(t, err)
 
-	pendingEvs := pool.PendingEvidence(2)
+	pendingEvs, _ := pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
 	assert.Equal(t, 1, len(pendingEvs))
 
 	pubKey, err := conflictingPrivVals[0].GetPubKey()
@@ -303,7 +303,7 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 	err = pool.CheckEvidence(evList)
 	assert.NoError(t, err)
 
-	pendingEvs := pool.PendingEvidence(2)
+	pendingEvs, _ := pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
 	assert.Equal(t, 1, len(pendingEvs))
 
 	pubKey, err := conflictingPrivVals[0].GetPubKey()
