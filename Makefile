@@ -280,7 +280,6 @@ build-reproducible:
 		--env APP=tendermint \
 		--env COMMIT=$(shell git rev-parse --short=8 HEAD) \
 		--env VERSION=$(shell git describe --tags) \
-		--env DEBUG=y \
 		--name latest-build cosmossdk/rbuilder:latest
 	docker cp -a latest-build:/home/builder/artifacts/ $(CURDIR)/
 .PHONY: build-reproducible
