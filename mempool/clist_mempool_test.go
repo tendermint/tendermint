@@ -262,7 +262,6 @@ func TestTxsAvailable(t *testing.T) {
 
 func TestSerialReap(t *testing.T) {
 	app := counter.NewApplication(true)
-	app.SetOption(abci.RequestSetOption{Key: "serial", Value: "on"})
 	cc := proxy.NewLocalClientCreator(app)
 
 	mempool, cleanup := newMempoolWithApp(cc)

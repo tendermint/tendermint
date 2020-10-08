@@ -200,9 +200,6 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 	case *types.Request_Info:
 		res := s.app.Info(*r.Info)
 		responses <- types.ToResponseInfo(res)
-	case *types.Request_SetOption:
-		res := s.app.SetOption(*r.SetOption)
-		responses <- types.ToResponseSetOption(res)
 	case *types.Request_DeliverTx:
 		res := s.app.DeliverTx(*r.DeliverTx)
 		responses <- types.ToResponseDeliverTx(res)
