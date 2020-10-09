@@ -271,7 +271,7 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	// fill the mempool with more txs
 	// than can fit in a block
-	txLength := 10
+	txLength := 1000
 	for i := 0; i <= maxBytes/txLength; i++ {
 		tx := tmrand.Bytes(txLength)
 		err := mempool.CheckTx(tx, nil, mempl.TxInfo{})
@@ -304,7 +304,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		require.True(t, added)
 	}
 	assert.EqualValues(t, partSetFromHeader.ByteSize(), partSet.ByteSize())
-	
+
 	pb, err := block.ToProto()
 	require.NoError(t, err)
 	require.EqualValues(t, int64(pb.Size()), partSet.ByteSize())

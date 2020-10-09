@@ -279,7 +279,6 @@ func MaxDataBytes(maxBytes, evidenceBytes int64, valsCount int) int64 {
 	}
 
 	return maxDataBytes
-
 }
 
 // MaxDataBytesNoEvidence returns the maximum size of block's data when

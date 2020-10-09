@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"container/list"
 	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -527,11 +528,13 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	txs := make([]types.Tx, 0, mem.txs.Len())
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
+		txLength, _ := binary.Varint(memTx.tx)
+		txSize := txLength + int64(len(memTx.tx))
 		// Check total size requirement
-		if maxBytes > -1 && totalBytes+int64(len(memTx.tx)) > maxBytes {
+		if maxBytes > -1 && totalBytes+int64(len(memTx.tx))+txSize > maxBytes {
 			return txs
 		}
-		totalBytes += int64(len(memTx.tx))
+		totalBytes += int64(len(memTx.tx)) + txSize
 		// Check total gas requirement.
 		// If maxGas is negative, skip this check.
 		// Since newTotalGas < masGas, which

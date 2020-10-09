@@ -106,16 +106,8 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	maxDataBytes := types.MaxDataBytes(maxBytes, evSize, state.Validators.Size())
 
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
-	length := 0
-	for _, tx := range txs {
-		length += len(tx)
-	}
-
-	panic(fmt.Sprintf("%d,%d", maxDataBytes, length))
 
 	block, partSet := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
-	pbb, _ := block.ToProto()
-	panic(pbb.Size())
 
 	return block, partSet
 }
