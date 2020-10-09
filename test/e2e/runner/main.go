@@ -76,7 +76,7 @@ func NewCLI() *CLI {
 			if err := <-chLoadResult; err != nil {
 				return err
 			}
-			if err := Wait(cli.testnet, 10); err != nil { // wait for network to settle before tests
+			if err := Wait(cli.testnet, 5); err != nil { // wait for network to settle before tests
 				return err
 			}
 			if err := Test(cli.testnet); err != nil {
