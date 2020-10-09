@@ -925,10 +925,7 @@ func (commit *Commit) ToProto() *tmproto.Commit {
 	c.Height = commit.Height
 	c.Round = commit.Round
 	c.BlockID = commit.BlockID.ToProto()
-	if commit.hash != nil {
-		c.Hash = commit.hash
-	}
-	c.BitArray = commit.bitArray.ToProto()
+
 	return c
 }
 
@@ -940,16 +937,13 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 	}
 
 	var (
-		commit   = new(Commit)
-		bitArray *bits.BitArray
+		commit = new(Commit)
 	)
 
 	bi, err := BlockIDFromProto(&cp.BlockID)
 	if err != nil {
 		return nil, err
 	}
-
-	bitArray.FromProto(cp.BitArray)
 
 	sigs := make([]CommitSig, len(cp.Signatures))
 	for i := range cp.Signatures {
@@ -962,8 +956,6 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 	commit.Height = cp.Height
 	commit.Round = cp.Round
 	commit.BlockID = *bi
-	commit.hash = cp.Hash
-	commit.bitArray = bitArray
 
 	return commit, commit.ValidateBasic()
 }
@@ -1025,10 +1017,6 @@ func (data *Data) ToProto() tmproto.Data {
 		tp.Txs = txBzs
 	}
 
-	if data.hash != nil {
-		tp.Hash = data.hash
-	}
-
 	return *tp
 }
 
@@ -1049,8 +1037,6 @@ func DataFromProto(dp *tmproto.Data) (Data, error) {
 	} else {
 		data.Txs = Txs{}
 	}
-
-	data.hash = dp.Hash
 
 	return *data, nil
 }

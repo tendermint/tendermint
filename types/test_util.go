@@ -97,5 +97,8 @@ func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) 
 		LastCommit: lastCommit,
 	}
 	block.fillHeader()
+	
+	pbb := block.Data.ToProto()
+	panic(pbb.Size())
 	return block
 }
