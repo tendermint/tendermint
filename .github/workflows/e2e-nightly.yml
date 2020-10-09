@@ -11,6 +11,7 @@ jobs:
   test:
     # Run parallel jobs for the listed testnet groups
     strategy:
+      fail-fast: false
       matrix:
         group: ['00', '01', '02', '03']
     runs-on: ubuntu-latest
