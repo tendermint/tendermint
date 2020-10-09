@@ -38,6 +38,8 @@ the encoding format (see "Protocol Buffers," below) and the block header (see "B
 * The field `Proof`, on the ABCI type `ResponseQuery`, is now named `ProofOps`.
   For more, see "Crypto," below.
 
+* The method `SetOption` has been removed from the ABCI.Client interface. This feature was used in the early ABCI implementation's. 
+
 ### P2P Protocol
 
 The default codec is now proto3, not amino. The schema files can be found in the `/proto`

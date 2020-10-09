@@ -29,17 +29,6 @@ func InitChain(client abcicli.Client) error {
 	return nil
 }
 
-func SetOption(client abcicli.Client, key, value string) error {
-	_, err := client.SetOptionSync(types.RequestSetOption{Key: key, Value: value})
-	if err != nil {
-		fmt.Println("Failed test: SetOption")
-		fmt.Printf("error while setting %v=%v: \nerror: %v\n", key, value, err)
-		return err
-	}
-	fmt.Println("Passed test: SetOption")
-	return nil
-}
-
 func Commit(client abcicli.Client, hashExp []byte) error {
 	res, err := client.CommitSync()
 	data := res.Data
