@@ -9,7 +9,10 @@ docker:
 app:
 	go build -o build/app -tags badgerdb,boltdb,cleveldb,rocksdb ./app
 
+maverick:
+	CGO_ENABLED=1 go build -o build/maverick -mod=readonly -tags badgerdb,boltdb,cleveldb,rocksdb ./maverick
+
 runner:
 	go build -o build/runner ./runner
 
-.PHONY: app docker runner
+.PHONY: app docker maverick runner 

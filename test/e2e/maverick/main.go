@@ -135,16 +135,16 @@ func main() {
 	nodeCmd.Flags().String(
 		"behavior",
 		behaviorFlag,
-		"Select a particular behavior for the node to execute:"+
-			" e.g. --behavior=Equivocation")
+		"Select a particular behavior for the node to execute (no behavior selected will mean the node will behave normally):"+
+			" e.g. --behavior equivocation")
 
 	nodeCmd.Flags().Int(
 		"height",
 		heightFlag,
 		"Select the height to execute the behavior (in other heights the node behaves normally): "+
-			" e.g. --height=3")
+			" e.g. --height 3")
 
-	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv(filepath.Join("$HOME", "maverick")))
+	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv(filepath.Join("$HOME", ".maverick")))
 	if err := cmd.Execute(); err != nil {
 		panic(err)
 	}
@@ -237,3 +237,13 @@ func initFilesWithConfig(config *cfg.Config) error {
 
 	return nil
 }
+
+// var ListBehaviorCmd = &cobra.Command{
+// 	Use:   "list",
+// 	Short: "Lists possible behaviors",
+// 	RunE:  listBehaviors,
+// }
+
+// func listBehaviors(cmd *cobra.Command, args []string) error {
+// 	fmt.Prin
+// } 
