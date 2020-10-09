@@ -488,7 +488,7 @@ func TestClientRestoresTrustedHeaderAfterStartup1(t *testing.T) {
 		err := trustedStore.SaveLightBlock(l1)
 		require.NoError(t, err)
 
-		// header1 != header
+		// header1 != h1
 		header1 := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Hour), nil, vals, vals,
 			hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
 

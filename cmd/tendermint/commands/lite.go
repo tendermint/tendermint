@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -140,7 +141,25 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("can't parse trust level: %w", err)
 	}
 
-	options := []light.Option{light.Logger(logger)}
+	options := []light.Option{
+		light.Logger(logger),
+		light.ConfirmationFunction(func(action string) bool {
+			fmt.Println(action)
+			scanner := bufio.NewScanner(os.Stdin)
+			for {
+				scanner.Scan()
+				response := scanner.Text()
+				switch response {
+				case "y", "Y":
+					return true
+				case "n", "N":
+					return false
+				default:
+					fmt.Println("please input 'Y' or 'n' and press ENTER")
+				}
+			}
+		}),
+	}
 
 	if sequential {
 		options = append(options, light.SequentialVerification())
