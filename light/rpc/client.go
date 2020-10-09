@@ -134,7 +134,7 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 
 	// Validate the value proof against the trusted header.
 	if resp.Value != nil {
-		// 1) extract store name from path using regexp
+		// 1) build a Merkle key path from path and resp.Key
 		if c.keyPathFn == nil {
 			return nil, errors.New("please configure Client with KeyPathFn option")
 		}
@@ -144,7 +144,7 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 			return nil, fmt.Errorf("can't build merkle key path: %w", err)
 		}
 
-		// 3) verify value
+		// 2) verify value
 		err = c.prt.VerifyValue(resp.ProofOps, l.AppHash, kp.String(), resp.Value)
 		if err != nil {
 			return nil, fmt.Errorf("verify value proof: %w", err)
