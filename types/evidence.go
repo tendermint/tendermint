@@ -25,11 +25,6 @@ type Evidence interface {
 	String() string       // string format of the evidence
 }
 
-const (
-	// MaxEvidenceBytes is a maximum size of any evidence (including amino overhead).
-	MaxEvidenceBytes int64 = 444
-)
-
 //--------------------------------------------------------------------------------------
 
 // DuplicateVoteEvidence contains evidence a validator signed two conflicting
@@ -365,20 +360,20 @@ func (err *ErrInvalidEvidence) Error() string {
 	return fmt.Sprintf("Invalid evidence: %v. Evidence: %v", err.Reason, err.Evidence)
 }
 
-// ErrEvidenceOverflow is for when there is too much evidence in a block.
+// ErrEvidenceOverflow is for when there the amount of evidence exceeds the max bytes.
 type ErrEvidenceOverflow struct {
-	MaxNum int
-	GotNum int
+	Max int64
+	Got int64
 }
 
 // NewErrEvidenceOverflow returns a new ErrEvidenceOverflow where got > max.
-func NewErrEvidenceOverflow(max, got int) *ErrEvidenceOverflow {
+func NewErrEvidenceOverflow(max, got int64) *ErrEvidenceOverflow {
 	return &ErrEvidenceOverflow{max, got}
 }
 
 // Error returns a string representation of the error.
 func (err *ErrEvidenceOverflow) Error() string {
-	return fmt.Sprintf("Too much evidence: Max %d, got %d", err.MaxNum, err.GotNum)
+	return fmt.Sprintf("Too much evidence: Max %d, got %d", err.Max, err.Got)
 }
 
 //-------------------------------------------- MOCKING --------------------------------------

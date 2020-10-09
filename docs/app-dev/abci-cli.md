@@ -285,9 +285,6 @@ abci-cli counter
 In another window, start the `abci-cli console`:
 
 ```sh
-> set_option serial on
--> code: OK
--> log: OK (SetOption doesn't return anything.)
 
 > check_tx 0x00
 -> code: OK

@@ -234,9 +234,9 @@ func TestCreateProposalBlock(t *testing.T) {
 	state, stateDB, privVals := state(1, height)
 	stateStore := sm.NewStore(stateDB)
 	maxBytes := 16384
-	maxEvidence := 10
+	maxEvidenceBytes := int64(maxBytes / 2)
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
-	state.ConsensusParams.Evidence.MaxNum = uint32(maxEvidence)
+	state.ConsensusParams.Evidence.MaxBytes = maxEvidenceBytes
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
@@ -260,8 +260,10 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	// fill the evidence pool with more evidence
 	// than can fit in a block
-	for i := 0; i <= maxEvidence; i++ {
+	var currentBytes int64 = 0
+	for currentBytes <= maxEvidenceBytes {
 		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
+		currentBytes += int64(len(ev.Bytes()))
 		err := evidencePool.AddEvidenceFromConsensus(ev, time.Now(), state.Validators)
 		require.NoError(t, err)
 	}

@@ -5,8 +5,14 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/libs/json"
 	pc "github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
+
+func init() {
+	json.RegisterType((*pc.PublicKey)(nil), "tendermint.crypto.PublicKey")
+	json.RegisterType((*pc.PublicKey_Ed25519)(nil), "tendermint.crypto.PublicKey_Ed25519")
+}
 
 // PubKeyToProto takes crypto.PubKey and transforms it to a protobuf Pubkey
 func PubKeyToProto(k crypto.PubKey) (pc.PublicKey, error) {
