@@ -300,6 +300,10 @@ func (n Node) Validate(testnet Testnet) error {
 		return fmt.Errorf("invalid privval protocol setting %q", n.PrivvalProtocol)
 	}
 
+	if n.StartAt > 0 && n.StartAt < n.Testnet.InitialHeight {
+		return fmt.Errorf("cannot start at height %v lower than initial height %v",
+			n.StartAt, n.Testnet.InitialHeight)
+	}
 	if n.StateSync && n.StartAt == 0 {
 		return errors.New("state synced nodes cannot start at the initial height")
 	}
