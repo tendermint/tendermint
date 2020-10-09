@@ -356,13 +356,20 @@ func (c *Client) initializeWithTrustOptions(ctx context.Context, options TrustOp
 		return fmt.Errorf("expected header's hash %X, but got %X", options.Hash, l.Hash())
 	}
 
-	// Ensure that +2/3 of validators signed correctly.
+	// 2) Ensure that +2/3 of validators signed correctly.
 	err = l.ValidatorSet.VerifyCommitLight(c.chainID, l.Commit.BlockID, l.Height, l.Commit)
 	if err != nil {
 		return fmt.Errorf("invalid commit: %w", err)
 	}
 
-	// 3) Persist both of them and continue.
+	// 3) Cross-verify with witnesses to ensure everybody has the same state.
+	if len(c.witnesses) > 0 {
+		if err := c.compareFirstHeaderWithWitnesses(ctx, l.SignedHeader); err != nil {
+			return err
+		}
+	}
+
+	// 4) Persist both of them and continue.
 	return c.updateTrustedLightBlock(l)
 }
 
@@ -980,6 +987,48 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 		return c.lightBlockFromPrimary(ctx, height)
 	}
 	return l, err
+}
+
+// compareFirstHeaderWithWitnesses compares h with all witnesses. If any
+// witness reports a different header than h, the function returns an error.
+func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.SignedHeader) error {
+	compareCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errc := make(chan error, len(c.witnesses))
+	for i, witness := range c.witnesses {
+		go c.compareNewHeaderWithWitness(compareCtx, errc, h, witness, i)
+	}
+
+	witnessesToRemove := make([]int, 0, len(c.witnesses))
+
+	// handle errors from the header comparisons as they come in
+	for i := 0; i < cap(errc); i++ {
+		err := <-errc
+
+		switch e := err.(type) {
+		case nil:
+			continue
+		case errConflictingHeaders:
+			c.logger.Error(fmt.Sprintf(`Witness #%d has a different header. Please check primary is correct
+and remove witness. Otherwise, use the different primary`, e.WitnessIndex), "witness", c.witnesses[e.WitnessIndex])
+			return err
+		case errBadWitness:
+			// If witness sent us an invalid header, then remove it. If it didn't
+			// respond or couldn't find the block, then we ignore it and move on to
+			// the next witness.
+			if _, ok := e.Reason.(provider.ErrBadLightBlock); ok {
+				c.logger.Info("Witness sent us invalid header / vals -> removing it", "witness", c.witnesses[e.WitnessIndex])
+				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
+			}
+		}
+	}
+
+	for _, idx := range witnessesToRemove {
+		c.removeWitness(idx)
+	}
+
+	return nil
 }
 
 func hash2str(hash []byte) string {

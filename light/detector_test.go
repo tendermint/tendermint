@@ -162,11 +162,73 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 	assert.True(t, primary.HasEvidence(evAgainstWitness))
 }
 
-func TestClientDivergentTraces(t *testing.T) {
+// 1. Different nodes therefore a divergent header is produced.
+// => light client returns an error upon creation because primary and witness
+// have a different view.
+func TestClientDivergentTraces1(t *testing.T) {
 	primary := mockp.New(genMockNode(chainID, 10, 5, 2, bTime))
 	firstBlock, err := primary.LightBlock(ctx, 1)
 	require.NoError(t, err)
 	witness := mockp.New(genMockNode(chainID, 10, 5, 2, bTime))
+
+	_, err = light.NewClient(
+		ctx,
+		chainID,
+		light.TrustOptions{
+			Height: 1,
+			Hash:   firstBlock.Hash(),
+			Period: 4 * time.Hour,
+		},
+		primary,
+		[]provider.Provider{witness},
+		dbs.New(dbm.NewMemDB(), chainID),
+		light.Logger(log.TestingLogger()),
+		light.MaxRetryAttempts(1),
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "does not match primary")
+}
+
+// 2. Two out of three nodes don't respond but the third has a header that matches
+// => verification should be successful and all the witnesses should remain
+func TestClientDivergentTraces2(t *testing.T) {
+	primary := mockp.New(genMockNode(chainID, 10, 5, 2, bTime))
+	firstBlock, err := primary.LightBlock(ctx, 1)
+	require.NoError(t, err)
+	c, err := light.NewClient(
+		ctx,
+		chainID,
+		light.TrustOptions{
+			Height: 1,
+			Hash:   firstBlock.Hash(),
+			Period: 4 * time.Hour,
+		},
+		primary,
+		[]provider.Provider{deadNode, deadNode, primary},
+		dbs.New(dbm.NewMemDB(), chainID),
+		light.Logger(log.TestingLogger()),
+		light.MaxRetryAttempts(1),
+	)
+	require.NoError(t, err)
+
+	_, err = c.VerifyLightBlockAtHeight(ctx, 10, bTime.Add(1*time.Hour))
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(c.Witnesses()))
+}
+
+// 3. witness has the same first header, but different second header
+// => creation should succeed, but the verification should fail
+func TestClientDivergentTraces3(t *testing.T) {
+	_, primaryHeaders, primaryVals := genMockNode(chainID, 10, 5, 2, bTime)
+	primary := mockp.New(chainID, primaryHeaders, primaryVals)
+
+	firstBlock, err := primary.LightBlock(ctx, 1)
+	require.NoError(t, err)
+
+	_, mockHeaders, mockVals := genMockNode(chainID, 10, 5, 2, bTime)
+	mockHeaders[1] = primaryHeaders[1]
+	mockVals[1] = primaryVals[1]
+	witness := mockp.New(chainID, mockHeaders, mockVals)
 
 	c, err := light.NewClient(
 		ctx,
@@ -184,31 +246,7 @@ func TestClientDivergentTraces(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	// 1. Different nodes therefore a divergent header is produced but the
-	// light client can't verify it because it has a different trusted header.
 	_, err = c.VerifyLightBlockAtHeight(ctx, 10, bTime.Add(1*time.Hour))
 	assert.Error(t, err)
 	assert.Equal(t, 0, len(c.Witnesses()))
-
-	// 2. Two out of three nodes don't respond but the third has a header that matches
-	// verification should be successful and all the witnesses should remain
-
-	c, err = light.NewClient(
-		ctx,
-		chainID,
-		light.TrustOptions{
-			Height: 1,
-			Hash:   firstBlock.Hash(),
-			Period: 4 * time.Hour,
-		},
-		primary,
-		[]provider.Provider{deadNode, deadNode, primary},
-		dbs.New(dbm.NewMemDB(), chainID),
-		light.Logger(log.TestingLogger()),
-		light.MaxRetryAttempts(1),
-	)
-	require.NoError(t, err)
-	_, err = c.VerifyLightBlockAtHeight(ctx, 10, bTime.Add(1*time.Hour))
-	assert.NoError(t, err)
-	assert.Equal(t, 3, len(c.Witnesses()))
 }
