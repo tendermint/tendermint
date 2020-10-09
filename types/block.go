@@ -1123,10 +1123,6 @@ func (data *EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
 	}
 	evi.Evidence = eviBzs
 
-	if data.hash != nil {
-		evi.Hash = data.hash
-	}
-
 	return evi, nil
 }
 

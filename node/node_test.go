@@ -292,14 +292,16 @@ func TestCreateProposalBlock(t *testing.T) {
 		state, commit,
 		proposerAddr,
 	)
-	
+
 	// check that the part set does not exceed the maximum block size
 	partSet := block.MakePartSet(partSize)
 	assert.Less(t, partSet.ByteSize(), int64(maxBytes))
-	
+
 	partSetFromHeader := types.NewPartSetFromHeader(partSet.Header())
 	for partSetFromHeader.Count() < partSetFromHeader.Total() {
-		partSetFromHeader.AddPart(partSet.GetPart(int(partSetFromHeader.Count())))
+		added, err := partSetFromHeader.AddPart(partSet.GetPart(int(partSetFromHeader.Count())))
+		require.NoError(t, err)
+		require.True(t, added)
 	}
 	assert.EqualValues(t, partSetFromHeader.ByteSize(), partSet.ByteSize())
 
