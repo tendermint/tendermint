@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/BurntSushi/toml"
 )
@@ -27,7 +28,7 @@ type Manifest struct {
 	// specifying an empty set will start with no validators in genesis, and
 	// the application must return the validator set in InitChain via the
 	// setting validator_update.0 (see below).
-	Validators *map[string]int64
+	Validators *map[string]int64 `toml:"validators"`
 
 	// ValidatorUpdates is a map of heights to validator names and their power,
 	// and will be returned by the ABCI application. For example, the following
@@ -44,7 +45,7 @@ type Manifest struct {
 	ValidatorUpdates map[string]map[string]int64 `toml:"validator_update"`
 
 	// Nodes specifies the network nodes. At least one node must be given.
-	Nodes map[string]ManifestNode `toml:"node"`
+	Nodes map[string]*ManifestNode `toml:"node"`
 }
 
 // ManifestNode represents a node in a testnet manifest.
@@ -52,10 +53,10 @@ type ManifestNode struct {
 	// Mode specifies the type of node: "validator", "full", or "seed". Defaults to
 	// "validator". Full nodes do not get a signing key (a dummy key is generated),
 	// and seed nodes run in seed mode with the PEX reactor enabled.
-	Mode string
+	Mode string `toml:"mode"`
 
 	// Seeds is the list of node names to use as P2P seed nodes. Defaults to none.
-	Seeds []string
+	Seeds []string `toml:"seeds"`
 
 	// PersistentPeers is a list of node names to maintain persistent P2P
 	// connections to. If neither seeds nor persistent peers are specified,
@@ -64,7 +65,7 @@ type ManifestNode struct {
 
 	// Database specifies the database backend: "goleveldb", "cleveldb",
 	// "rocksdb", "boltdb", or "badgerdb". Defaults to goleveldb.
-	Database string
+	Database string `toml:"database"`
 
 	// ABCIProtocol specifies the protocol used to communicate with the ABCI
 	// application: "unix", "tcp", "grpc", or "builtin". Defaults to unix.
@@ -113,7 +114,16 @@ type ManifestNode struct {
 	// kill:       kills the node with SIGKILL then restarts it
 	// pause:      temporarily pauses (freezes) the node
 	// restart:    restarts the node, shutting it down with SIGTERM
-	Perturb []string
+	Perturb []string `toml:"perturb"`
+}
+
+// Save saves the testnet manifest to a file.
+func (m Manifest) Save(file string) error {
+	f, err := os.Create(file)
+	if err != nil {
+		return fmt.Errorf("failed to create manifest file %q: %w", file, err)
+	}
+	return toml.NewEncoder(f).Encode(m)
 }
 
 // LoadManifest loads a testnet manifest from a file.
