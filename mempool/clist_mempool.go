@@ -531,10 +531,10 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		txLength, _ := binary.Varint(memTx.tx)
 		txSize := txLength + int64(len(memTx.tx))
 		// Check total size requirement
-		if maxBytes > -1 && totalBytes+int64(len(memTx.tx))+txSize > maxBytes {
+		if maxBytes > -1 && totalBytes+txSize > maxBytes {
 			return txs
 		}
-		totalBytes += int64(len(memTx.tx)) + txSize
+		totalBytes += txSize
 		// Check total gas requirement.
 		// If maxGas is negative, skip this check.
 		// Since newTotalGas < masGas, which

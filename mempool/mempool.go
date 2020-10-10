@@ -1,6 +1,7 @@
 package mempool
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -105,7 +106,9 @@ type TxInfo struct {
 // PreCheckMaxBytes checks that the size of the transaction is smaller or equal to the expected maxBytes.
 func PreCheckMaxBytes(maxBytes int64) PreCheckFunc {
 	return func(tx types.Tx) error {
-		txSize := int64(len(tx))
+		txLength, _ := binary.Varint(tx) // protobf length prefixes [] using varint
+		txSize := int64(len(tx)) + txLength
+
 		if txSize > maxBytes {
 			return fmt.Errorf("tx size is too big: %d, max: %d",
 				txSize, maxBytes)
