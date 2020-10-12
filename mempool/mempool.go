@@ -1,7 +1,6 @@
 package mempool
 
 import (
-	"encoding/binary"
 	"fmt"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -107,9 +106,8 @@ type TxInfo struct {
 func PreCheckMaxBytes(maxBytes int64) PreCheckFunc {
 	return func(tx types.Tx) error {
 		// protobuf length prefixes using varint this needs to be calculated and added to the txSize
-		buf := make([]byte, binary.MaxVarintLen64)
-		txLength := binary.PutVarint(buf, int64(len(tx)))
-		txSize := len(tx) + txLength
+		txLength := types.ComputeProtoOverhead(tx, 1)
+		txSize := int64(len(tx)) + txLength
 
 		if int64(txSize) > maxBytes {
 			return fmt.Errorf("tx size is too big: %d, max: %d",
