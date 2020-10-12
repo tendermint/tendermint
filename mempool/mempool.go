@@ -108,7 +108,7 @@ func PreCheckMaxBytes(maxBytes int64) PreCheckFunc {
 	return func(tx types.Tx) error {
 		// protobuf length prefixes using varint this needs to be calculated and added to the txSize
 		buf := make([]byte, binary.MaxVarintLen64)
-		txLength := binary.PutUvarint(buf, uint64(len(tx)))
+		txLength := binary.PutVarint(buf, int64(len(tx)))
 		txSize := len(tx) + txLength
 
 		if int64(txSize) > maxBytes {
