@@ -3,8 +3,7 @@
 Spins up and tests Tendermint networks in Docker Compose based on a testnet manifest. To run the CI testnet:
 
 ```sh
-make docker
-make runner
+make
 ./build/runner -f networks/ci.toml
 ```
 
@@ -13,6 +12,23 @@ This creates and runs a testnet named `ci` under `networks/ci/` (determined by t
 ## Testnet Manifests
 
 Testnets are specified as TOML manifests. For an example see [`networks/ci.toml`](networks/ci.toml), and for documentation see [`pkg/manifest.go`](pkg/manifest.go).
+
+## Random Testnet Generation
+
+Random (but deterministic) combinations of testnets can be generated with `generator`:
+
+```sh
+./build/generator -d networks/generated/
+
+# Split networks into 8 groups (by filename)
+./build/generator -g 8 -d networks/generated/
+```
+
+Multiple testnets can be run with the `run-multiple.sh` script:
+
+```sh
+./run-multiple.sh networks/generated/gen-group3-*.toml
+```
 
 ## Test Stages
 

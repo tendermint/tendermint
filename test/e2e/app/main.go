@@ -45,6 +45,17 @@ func run(configFile string) error {
 		return err
 	}
 
+	// Start remote signer (must start before node if running builtin).
+	if cfg.PrivValServer != "" {
+		if err = startSigner(cfg); err != nil {
+			return err
+		}
+		if cfg.Protocol == "builtin" {
+			time.Sleep(1 * time.Second)
+		}
+	}
+
+	// Start app server.
 	switch cfg.Protocol {
 	case "socket", "grpc":
 		err = startApp(cfg)
@@ -55,13 +66,6 @@ func run(configFile string) error {
 	}
 	if err != nil {
 		return err
-	}
-
-	// Start remote signer
-	if cfg.PrivValServer != "" {
-		if err = startSigner(cfg); err != nil {
-			return err
-		}
 	}
 
 	// Apparently there's no way to wait for the server, so we just sleep

@@ -234,6 +234,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	state, stateDB, privVals := state(1, height)
 	stateStore := sm.NewStore(stateDB)
 	maxBytes := 16384
+	var partSize uint32 = 256
 	maxEvidenceBytes := int64(maxBytes / 2)
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Evidence.MaxBytes = maxEvidenceBytes
@@ -270,8 +271,8 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	// fill the mempool with more txs
 	// than can fit in a block
-	txLength := 1000
-	for i := 0; i < maxBytes/txLength; i++ {
+	txLength := 100
+	for i := 0; i <= maxBytes/txLength; i++ {
 		tx := tmrand.Bytes(txLength)
 		err := mempool.CheckTx(tx, nil, mempl.TxInfo{})
 		assert.NoError(t, err)
@@ -291,6 +292,18 @@ func TestCreateProposalBlock(t *testing.T) {
 		state, commit,
 		proposerAddr,
 	)
+
+	// check that the part set does not exceed the maximum block size
+	partSet := block.MakePartSet(partSize)
+	assert.Less(t, partSet.ByteSize(), int64(maxBytes))
+
+	partSetFromHeader := types.NewPartSetFromHeader(partSet.Header())
+	for partSetFromHeader.Count() < partSetFromHeader.Total() {
+		added, err := partSetFromHeader.AddPart(partSet.GetPart(int(partSetFromHeader.Count())))
+		require.NoError(t, err)
+		require.True(t, added)
+	}
+	assert.EqualValues(t, partSetFromHeader.ByteSize(), partSet.ByteSize())
 
 	err = blockExec.ValidateBlock(state, block)
 	assert.NoError(t, err)
