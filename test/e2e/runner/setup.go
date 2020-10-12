@@ -138,7 +138,8 @@ services:
     image: tendermint/e2e-node
 {{- if eq .ABCIProtocol "builtin" }}
     entrypoint: /usr/bin/entrypoint-builtin
-{{- else if eq .Behavior }}
+{{- else if ne .Behaviors "" }}
+		entrypoint: /user/bin/entrypoint-maverick
 {{- end }}
     init: true
     ports:

@@ -28,13 +28,13 @@ type Behavior struct {
 
 func NewDefaultBehavior() Behavior {
 	return Behavior{
-		String: "default",
-		EnterPropose: DefaultEnterPropose,
-		EnterPrevote: DefaultEnterPrevote,
-		EnterPrecommit: DefaultEnterPrecommit,
-		ReceivePrevote: DefaultReceivePrevote,
-		ReceivePrecommit: DefaultReceivePrecommit, 
-		ReceiveProposal: DefaultReceiveProposal,
+		String:           "default",
+		EnterPropose:     DefaultEnterPropose,
+		EnterPrevote:     DefaultEnterPrevote,
+		EnterPrecommit:   DefaultEnterPrecommit,
+		ReceivePrevote:   DefaultReceivePrevote,
+		ReceivePrecommit: DefaultReceivePrecommit,
+		ReceiveProposal:  DefaultReceiveProposal,
 	}
 }
 
@@ -43,21 +43,21 @@ func NewDoublePrevoteBehavior() Behavior {
 	b.String = "double-prevote"
 	b.EnterPrevote = func(cs *State, height int64, round int32) {
 		logger := cs.Logger.With("height", height, "round", round)
-	
+
 		// If a block is locked, prevote that.
 		if cs.LockedBlock != nil {
 			logger.Info("enterPrevote: Already locked on a block, prevoting locked block")
 			cs.signAddVote(tmproto.PrevoteType, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
 			return
 		}
-	
+
 		// If ProposalBlock is nil, prevote nil.
 		if cs.ProposalBlock == nil {
 			logger.Info("enterPrevote: ProposalBlock is nil")
 			cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 			return
 		}
-	
+
 		// Validate proposal block
 		err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock)
 		if err != nil {
@@ -66,7 +66,7 @@ func NewDoublePrevoteBehavior() Behavior {
 			cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 			return
 		}
-	
+
 		if cs.sw == nil {
 			logger.Error("nil switch")
 			return
@@ -75,7 +75,7 @@ func NewDoublePrevoteBehavior() Behavior {
 		// there has to be at least two other peers connected else this behavior works normally
 		for idx, peer := range peers {
 			var prevote *types.Vote
-			if idx % 2 == 0 { // sign the proposal block
+			if idx%2 == 0 { // sign the proposal block
 				prevote, err = cs.signVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
 				if err != nil {
 					logger.Error("enterPrevote: Unable to sign block", "err", err)
@@ -92,7 +92,7 @@ func NewDoublePrevoteBehavior() Behavior {
 	return b
 }
 
-// DEFAULTS 
+// DEFAULTS
 
 func DefaultEnterPropose(cs *State, height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)

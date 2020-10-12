@@ -114,6 +114,15 @@ type ManifestNode struct {
 	// pause:      temporarily pauses (freezes) the node
 	// restart:    restarts the node, shutting it down with SIGTERM
 	Perturb []string
+
+	// Behaviors sets how a validator behaves during consensus at a
+	// certain height. Multiple behaviors at different heights can be used
+	//
+	// An example of a behavior
+	//    "double-prevote,10"
+	//
+	// For more information, look at the readme in the maverick folden
+	Behaviors string
 }
 
 // LoadManifest loads a testnet manifest from a file.

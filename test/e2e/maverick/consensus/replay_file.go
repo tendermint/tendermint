@@ -130,7 +130,7 @@ func (pb *playback) replayReset(count int, newStepSub types.Subscription) error 
 	pb.cs.Wait()
 
 	newCS := NewState(pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
-		pb.cs.blockStore, pb.cs.txNotifier, pb.cs.evpool, map[int64]Behavior{} )
+		pb.cs.blockStore, pb.cs.txNotifier, pb.cs.evpool, map[int64]Behavior{})
 	newCS.SetEventBus(pb.cs.eventBus)
 	newCS.startForReplay()
 

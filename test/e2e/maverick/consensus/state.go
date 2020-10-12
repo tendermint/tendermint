@@ -6,31 +6,29 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"runtime/debug"
 	"reflect"
+	"runtime/debug"
 	"sync"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
 
-	cstypes "github.com/tendermint/tendermint/consensus/types"
 	cfg "github.com/tendermint/tendermint/config"
+	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/crypto"
 	tmevents "github.com/tendermint/tendermint/libs/events"
-	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/libs/fail"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
-		
 )
-
 
 // State handles execution of the consensus algorithm.
 // It processes votes and proposals, and upon reaching agreement,
@@ -123,21 +121,21 @@ func NewState(
 	options ...StateOption,
 ) *State {
 	cs := &State{
-		config:               config,
-		blockExec:            blockExec,
-		blockStore:           blockStore,
-		txNotifier:           txNotifier,
-		peerMsgQueue:         make(chan msgInfo, msgQueueSize),
-		internalMsgQueue:     make(chan msgInfo, msgQueueSize),
-		timeoutTicker:        NewTimeoutTicker(),
-		statsMsgQueue:        make(chan msgInfo, msgQueueSize),
-		done:                 make(chan struct{}),
-		doWALCatchup:         true,
-		wal:                  nilWAL{},
-		evpool:               evpool,
-		evsw:                 tmevents.NewEventSwitch(),
-		metrics:              NopMetrics(),
-		behaviors:            behaviors,
+		config:           config,
+		blockExec:        blockExec,
+		blockStore:       blockStore,
+		txNotifier:       txNotifier,
+		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
+		internalMsgQueue: make(chan msgInfo, msgQueueSize),
+		timeoutTicker:    NewTimeoutTicker(),
+		statsMsgQueue:    make(chan msgInfo, msgQueueSize),
+		done:             make(chan struct{}),
+		doWALCatchup:     true,
+		wal:              nilWAL{},
+		evpool:           evpool,
+		evsw:             tmevents.NewEventSwitch(),
+		metrics:          NopMetrics(),
+		behaviors:        behaviors,
 	}
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
@@ -180,7 +178,7 @@ func (cs *State) handleMsg(mi msgInfo) {
 		// once proposal is set, we can receive block parts
 		// err = cs.setProposal(msg.Proposal)
 		if b, ok := cs.behaviors[cs.Height]; ok {
-			err = b.ReceiveProposal(cs, msg.Proposal) 
+			err = b.ReceiveProposal(cs, msg.Proposal)
 		} else {
 			err = DefaultReceiveProposal(cs, msg.Proposal)
 		}
@@ -300,7 +298,7 @@ func (cs *State) enterPrevote(height int64, round int32) {
 
 	// Sign and broadcast vote as necessary
 	if b, ok := cs.behaviors[cs.Height]; ok {
-		b.EnterPrevote(cs, height, round) 
+		b.EnterPrevote(cs, height, round)
 	} else {
 		DefaultEnterPrevote(cs, height, round)
 	}
@@ -342,7 +340,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 	} else {
 		DefaultEnterPrecommit(cs, height, round)
 	}
-	
+
 }
 
 func (cs *State) addVote(
@@ -1879,7 +1877,6 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 }
 
 //-----------------------------------------------------------------------------
-
 
 // CONTRACT: cs.privValidator is not nil.
 func (cs *State) signVote(

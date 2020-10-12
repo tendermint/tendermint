@@ -82,7 +82,7 @@ privval_protocol = "tcp"
 
 [node.validator06]
 persistent_peers = ["validator02"]
-behaviors = [{name = "double-vote", height = 100}]
+behaviors = "double-prevote,3"
 
 [node.full01]
 start_at = 1010

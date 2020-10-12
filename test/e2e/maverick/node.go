@@ -48,9 +48,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
-
-	
-	
 )
 
 //------------------------------------------------------------------------------
@@ -369,7 +366,6 @@ func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
 	evidenceReactor.SetLogger(evidenceLogger)
 	return evidenceReactor, evidencePool, nil
 }
-
 
 func createBlockchainReactor(config *cfg.Config,
 	state sm.State,
@@ -1340,7 +1336,7 @@ func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
 }
 
 func createAndStartPrivValidatorSocketClient(
-	listenAddr, 
+	listenAddr,
 	chainID string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {

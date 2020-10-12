@@ -133,7 +133,12 @@ func startNode(cfg *Config) error {
 	}
 
 	// application needs to support maverick node
-	if cfg.Behavior != "" {
+	if cfg.Behaviors != "" {
+		behaviors, err := maverick.ParseBehaviors(cfg.Behaviors)
+		if err != nil {
+			return fmt.Errorf("failed to parse behaviors: %w", err)
+		}
+
 		n, err := maverick.NewNode(tmcfg,
 			privval.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
 			nodeKey,
@@ -142,15 +147,16 @@ func startNode(cfg *Config) error {
 			maverick.DefaultDBProvider,
 			maverick.DefaultMetricsProvider(tmcfg.Instrumentation),
 			logger,
+			behaviors,
 		)
-		
+
 		if err != nil {
 			return err
 		}
-		
+
 		return n.Start()
 	}
-	
+
 	n, err := node.NewNode(tmcfg,
 		privval.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
 		nodeKey,
@@ -160,7 +166,7 @@ func startNode(cfg *Config) error {
 		node.DefaultMetricsProvider(tmcfg.Instrumentation),
 		logger,
 	)
-	
+
 	if err != nil {
 		return err
 	}

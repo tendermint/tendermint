@@ -14,15 +14,15 @@ import (
 	cmd "github.com/tendermint/tendermint/cmd/tendermint/commands"
 	"github.com/tendermint/tendermint/cmd/tendermint/commands/debug"
 	cfg "github.com/tendermint/tendermint/config"
-	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
 	"github.com/tendermint/tendermint/libs/cli"
+	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
+	cs "github.com/tendermint/tendermint/test/e2e/maverick/consensus"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
-	cs "github.com/tendermint/tendermint/test/e2e/maverick/consensus"
 )
 
 var (
@@ -32,8 +32,8 @@ var (
 )
 
 // BehaviorList encompasses a list of all possible behaviors
-var BehaviorList = map[string]cs.Behavior {
-	"double-prevote": cs.NewDoublePrevoteBehavior(), 
+var BehaviorList = map[string]cs.Behavior{
+	"double-prevote": cs.NewDoublePrevoteBehavior(),
 }
 
 func init() {
@@ -62,9 +62,9 @@ func ParseConfig() (*cfg.Config, error) {
 var RootCmd = &cobra.Command{
 	Use:   "maverick",
 	Short: "Tendermint Maverick Node",
-	Long:  "Tendermint Maverick Node for testing with faulty consensus behaviors in a testnet. Contains " + 
-	"all the functionality of a normal node but custom behaviors can be injected when running the node " + 
-	"through a flag. See maverick node --help for how the behavior flag is constructured",
+	Long: "Tendermint Maverick Node for testing with faulty consensus behaviors in a testnet. Contains " +
+		"all the functionality of a normal node but custom behaviors can be injected when running the node " +
+		"through a flag. See maverick node --help for how the behavior flag is constructured",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
 		config, err = ParseConfig()
 		if err != nil {
@@ -122,8 +122,8 @@ func main() {
 		&behaviorFlag,
 		"behaviors",
 		"",
-		"Select the behaviors of the node (comma-separated, no spaces in between): \n" +
-			"e.g. --behavior double-prevote,3\n" +
+		"Select the behaviors of the node (comma-separated, no spaces in between): \n"+
+			"e.g. --behavior double-prevote,3\n"+
 			"You can also have multiple behaviors: e.g. double-prevote,3,no-vote,5")
 
 	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv(filepath.Join("$HOME", ".maverick")))
@@ -134,11 +134,11 @@ func main() {
 
 func startNode(config *cfg.Config, logger log.Logger, behaviorFlag string) error {
 	fmt.Printf("behavior string: %s", behaviorFlag)
-	behaviors, err := parseBehaviors(behaviorFlag) 
+	behaviors, err := ParseBehaviors(behaviorFlag)
 	if err != nil {
 		return err
 	}
-	
+
 	node, err := DefaultNewNode(config, logger, behaviors)
 	if err != nil {
 		return fmt.Errorf("failed to create node: %w", err)
@@ -161,31 +161,31 @@ func startNode(config *cfg.Config, logger log.Logger, behaviorFlag string) error
 	select {}
 }
 
-func parseBehaviors(str string) (map[int64]cs.Behavior, error) {
+func ParseBehaviors(str string) (map[int64]cs.Behavior, error) {
 	// check if string is empty in which case we run a normal node
 	var behaviors = make(map[int64]cs.Behavior)
-	if str == "" { 
+	if str == "" {
 		return behaviors, nil
 	}
 	strs := strings.Split(str, ",")
-	if len(strs) % 2 != 0 {
+	if len(strs)%2 != 0 {
 		return behaviors, errors.New("missing either height or behavior name in the behavior flag")
 	}
 OUTER_LOOP:
 	for i := 0; i < len(strs); i += 2 {
-		height, err := strconv.ParseInt(strs[i + 1], 10, 64)
+		height, err := strconv.ParseInt(strs[i+1], 10, 64)
 		if err != nil {
 			return behaviors, fmt.Errorf("failed to parse behavior height: %w", err)
 		}
 		for key, behavior := range BehaviorList {
 			if key == strs[i] {
-				behaviors[height] = behavior 
+				behaviors[height] = behavior
 				continue OUTER_LOOP
-			}	
+			}
 		}
 		return behaviors, fmt.Errorf("received unknown behavior: %s. Did you forget to add it?", strs[i])
 	}
-		
+
 	return behaviors, nil
 }
 
@@ -267,4 +267,4 @@ func listBehaviors(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Printf(str)
 	return nil
-} 
+}
