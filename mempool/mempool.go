@@ -108,7 +108,7 @@ func PreCheckMaxBytes(maxBytes int64) PreCheckFunc {
 		txLength := types.ComputeProtoOverhead(tx, 1)
 		txSize := int64(len(tx)) + txLength
 
-		if int64(txSize) > maxBytes {
+		if txSize > maxBytes {
 			return fmt.Errorf("tx size is too big: %d, max: %d",
 				txSize, maxBytes)
 		}
