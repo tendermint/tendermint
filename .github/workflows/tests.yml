@@ -38,7 +38,7 @@ jobs:
       - name: install
         run: make install install_abci
         if: "env.GIT_DIFF != ''"
-      - uses: actions/cache@v2.1.1
+      - uses: actions/cache@v2.1.2
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -46,7 +46,7 @@ jobs:
             ${{ runner.os }}-go-
         if: "env.GIT_DIFF != ''"
       # Cache binaries for use by other jobs
-      - uses: actions/cache@v2.1.1
+      - uses: actions/cache@v2.1.2
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-${{ github.sha }}-tm-binary
@@ -69,14 +69,14 @@ jobs:
       - name: Set GOBIN
         run: |
           echo "::add-path::$(go env GOPATH)/bin"
-      - uses: actions/cache@v2.1.1
+      - uses: actions/cache@v2.1.2
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
         if: "env.GIT_DIFF != ''"
-      - uses: actions/cache@v2.1.1
+      - uses: actions/cache@v2.1.2
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-${{ github.sha }}-tm-binary
@@ -103,14 +103,14 @@ jobs:
       - name: Set GOBIN
         run: |
           echo "::add-path::$(go env GOPATH)/bin"
-      - uses: actions/cache@v2.1.1
+      - uses: actions/cache@v2.1.2
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
         if: "env.GIT_DIFF != ''"
-      - uses: actions/cache@v2.1.1
+      - uses: actions/cache@v2.1.2
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-${{ github.sha }}-tm-binary
@@ -136,14 +136,14 @@ jobs:
       - name: Set GOBIN
         run: |
           echo "::add-path::$(go env GOPATH)/bin"
-      - uses: actions/cache@v2.1.1
+      - uses: actions/cache@v2.1.2
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
         if: "env.GIT_DIFF != ''"
-      - uses: actions/cache@v2.1.1
+      - uses: actions/cache@v2.1.2
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-${{ github.sha }}-tm-binary
