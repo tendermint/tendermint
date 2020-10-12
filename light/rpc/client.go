@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -15,7 +14,6 @@ import (
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	service "github.com/tendermint/tendermint/libs/service"
-	light "github.com/tendermint/tendermint/light"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -24,26 +22,54 @@ import (
 
 var errNegOrZeroHeight = errors.New("negative or zero height")
 
-// Client is an RPC client, which uses light#Client to verify data (if it can be
-// proved!).
+// KeyPathFunc builds a merkle path out of the given path and key.
+type KeyPathFunc func(path string, key []byte) (merkle.KeyPath, error)
+
+// LightClient is an interface that contains functionality needed by Client from the light client.
+type LightClient interface {
+	ChainID() string
+	VerifyLightBlockAtHeight(ctx context.Context, height int64, now time.Time) (*types.LightBlock, error)
+	TrustedLightBlock(height int64) (*types.LightBlock, error)
+}
+
+// Client is an RPC client, which uses light#Client to verify data (if it can
+// be proved!). merkle.DefaultProofRuntime is used to verify values returned by
+// ABCIQuery.
 type Client struct {
 	service.BaseService
 
 	next rpcclient.Client
-	lc   *light.Client
-	prt  *merkle.ProofRuntime
+	lc   LightClient
+	// Proof runtime used to verify values returned by ABCIQuery
+	prt       *merkle.ProofRuntime
+	keyPathFn KeyPathFunc
 }
 
 var _ rpcclient.Client = (*Client)(nil)
 
+// Option allow you to tweak Client.
+type Option func(*Client)
+
+// KeyPathFn option can be used to set a function, which parses a given path
+// and builds the merkle path for the prover. It must be provided if you want
+// to call ABCIQuery or ABCIQueryWithOptions.
+func KeyPathFn(fn KeyPathFunc) Option {
+	return func(c *Client) {
+		c.keyPathFn = fn
+	}
+}
+
 // NewClient returns a new client.
-func NewClient(next rpcclient.Client, lc *light.Client) *Client {
+func NewClient(next rpcclient.Client, lc LightClient, opts ...Option) *Client {
 	c := &Client{
 		next: next,
 		lc:   lc,
-		prt:  defaultProofRuntime(),
+		prt:  merkle.DefaultProofRuntime(),
 	}
 	c.BaseService = *service.NewBaseService(nil, "Client", c)
+	for _, o := range opts {
+		o(c)
+	}
 	return c
 }
 
@@ -70,14 +96,17 @@ func (c *Client) ABCIInfo(ctx context.Context) (*ctypes.ResultABCIInfo, error) {
 	return c.next.ABCIInfo(ctx)
 }
 
+// ABCIQuery requests proof by default.
 func (c *Client) ABCIQuery(ctx context.Context, path string, data tmbytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
 	return c.ABCIQueryWithOptions(ctx, path, data, rpcclient.DefaultABCIQueryOptions)
 }
 
-// GetWithProofOptions is useful if you want full access to the ABCIQueryOptions.
-// XXX Usage of path?  It's not used, and sometimes it's /, sometimes /key, sometimes /store.
+// ABCIQueryWithOptions returns an error if opts.Prove is false.
 func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmbytes.HexBytes,
 	opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+
+	// always request the proof
+	opts.Prove = true
 
 	res, err := c.next.ABCIQueryWithOptions(ctx, path, data, opts)
 	if err != nil {
@@ -89,8 +118,11 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 	if resp.IsErr() {
 		return nil, fmt.Errorf("err response code: %v", resp.Code)
 	}
-	if len(resp.Key) == 0 || resp.ProofOps == nil {
-		return nil, errors.New("empty tree")
+	if len(resp.Key) == 0 {
+		return nil, errors.New("empty key")
+	}
+	if resp.ProofOps == nil || len(resp.ProofOps.Ops) == 0 {
+		return nil, errors.New("no proof ops")
 	}
 	if resp.Height <= 0 {
 		return nil, errNegOrZeroHeight
@@ -105,28 +137,28 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 
 	// Validate the value proof against the trusted header.
 	if resp.Value != nil {
-		// Value exists
-		// XXX How do we encode the key into a string...
-		storeName, err := parseQueryStorePath(path)
-		if err != nil {
-			return nil, err
+		// 1) build a Merkle key path from path and resp.Key
+		if c.keyPathFn == nil {
+			return nil, errors.New("please configure Client with KeyPathFn option")
 		}
-		kp := merkle.KeyPath{}
-		kp = kp.AppendKey([]byte(storeName), merkle.KeyEncodingURL)
-		kp = kp.AppendKey(resp.Key, merkle.KeyEncodingURL)
+
+		kp, err := c.keyPathFn(path, resp.Key)
+		if err != nil {
+			return nil, fmt.Errorf("can't build merkle key path: %w", err)
+		}
+
+		// 2) verify value
 		err = c.prt.VerifyValue(resp.ProofOps, l.AppHash, kp.String(), resp.Value)
 		if err != nil {
 			return nil, fmt.Errorf("verify value proof: %w", err)
 		}
-		return &ctypes.ResultABCIQuery{Response: resp}, nil
+	} else { // OR validate the absence proof against the trusted header.
+		err = c.prt.VerifyAbsence(resp.ProofOps, l.AppHash, string(resp.Key))
+		if err != nil {
+			return nil, fmt.Errorf("verify absence proof: %w", err)
+		}
 	}
 
-	// OR validate the ansence proof against the trusted header.
-	// XXX How do we encode the key into a string...
-	err = c.prt.VerifyAbsence(resp.ProofOps, l.AppHash, string(resp.Key))
-	if err != nil {
-		return nil, fmt.Errorf("verify absence proof: %w", err)
-	}
 	return &ctypes.ResultABCIQuery{Response: resp}, nil
 }
 
@@ -519,24 +551,6 @@ func (c *Client) UnsubscribeAllWS(ctx *rpctypes.Context) (*ctypes.ResultUnsubscr
 		return nil, err
 	}
 	return &ctypes.ResultUnsubscribe{}, nil
-}
-
-func parseQueryStorePath(path string) (storeName string, err error) {
-	if !strings.HasPrefix(path, "/") {
-		return "", errors.New("expected path to start with /")
-	}
-
-	paths := strings.SplitN(path[1:], "/", 3)
-	switch {
-	case len(paths) != 3:
-		return "", errors.New("expected format like /store/<storeName>/key")
-	case paths[0] != "store":
-		return "", errors.New("expected format like /store/<storeName>/key")
-	case paths[2] != "key":
-		return "", errors.New("expected format like /store/<storeName>/key")
-	}
-
-	return paths[1], nil
 }
 
 // XXX: Copied from rpc/core/env.go
