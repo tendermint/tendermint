@@ -14,14 +14,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v3
+      - uses: technote-space/get-diff-action@v4
         with:
-          SUFFIX_FILTER: |
-            .go
-            .mod
-            .sum
-          SET_ENV_NAME_INSERTIONS: 1
-          SET_ENV_NAME_LINES: 1
+          PATTERNS: |
+            **/**.go
+            go.mod
+            go.sum
 
       - name: Build
         working-directory: test/e2e

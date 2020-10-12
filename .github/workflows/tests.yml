@@ -24,14 +24,12 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v3
+      - uses: technote-space/get-diff-action@v4
         with:
-          SUFFIX_FILTER: |
-            .go
-            .mod
-            .sum
-          SET_ENV_NAME_INSERTIONS: 1
-          SET_ENV_NAME_LINES: 1
+          PATTERNS: |
+            **/**.go
+            go.mod
+            go.sum
       - name: Set GOBIN
         run: |
           echo "::add-path::$(go env GOPATH)/bin"
@@ -44,13 +42,13 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
       # Cache binaries for use by other jobs
       - uses: actions/cache@v2.1.2
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-${{ github.sha }}-tm-binary
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
 
   test_abci_apps:
     runs-on: ubuntu-latest
@@ -58,14 +56,12 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v3
+      - uses: technote-space/get-diff-action@v4
         with:
-          SUFFIX_FILTER: |
-            .go
-            .mod
-            .sum
-          SET_ENV_NAME_INSERTIONS: 1
-          SET_ENV_NAME_LINES: 1
+          PATTERNS: |
+            **/**.go
+            go.mod
+            go.sum
       - name: Set GOBIN
         run: |
           echo "::add-path::$(go env GOPATH)/bin"
@@ -75,16 +71,16 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
       - uses: actions/cache@v2.1.2
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-${{ github.sha }}-tm-binary
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
       - name: test_abci_apps
         run: abci/tests/test_app/test.sh
         shell: bash
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
 
   test_abci_cli:
     runs-on: ubuntu-latest
@@ -92,14 +88,12 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v3
+      - uses: technote-space/get-diff-action@v4
         with:
-          SUFFIX_FILTER: |
-            .go
-            .mod
-            .sum
-          SET_ENV_NAME_INSERTIONS: 1
-          SET_ENV_NAME_LINES: 1
+          PATTERNS: |
+            **/**.go
+            go.mod
+            go.sum
       - name: Set GOBIN
         run: |
           echo "::add-path::$(go env GOPATH)/bin"
@@ -109,15 +103,15 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
       - uses: actions/cache@v2.1.2
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-${{ github.sha }}-tm-binary
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
       - run: abci/tests/test_cli/test.sh
         shell: bash
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
 
   test_apps:
     runs-on: ubuntu-latest
@@ -125,14 +119,12 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v3
+      - uses: technote-space/get-diff-action@v4
         with:
-          SUFFIX_FILTER: |
-            .go
-            .mod
-            .sum
-          SET_ENV_NAME_INSERTIONS: 1
-          SET_ENV_NAME_LINES: 1
+          PATTERNS: |
+            **/**.go
+            go.mod
+            go.sum
       - name: Set GOBIN
         run: |
           echo "::add-path::$(go env GOPATH)/bin"
@@ -142,13 +134,13 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
       - uses: actions/cache@v2.1.2
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-${{ github.sha }}-tm-binary
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
       - name: test_apps
         run: test/app/test.sh
         shell: bash
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF

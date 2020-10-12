@@ -38,101 +38,93 @@ jobs:
     needs: split-test-files
     steps:
       - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v3
+      - uses: technote-space/get-diff-action@v4
         with:
-          SUFFIX_FILTER: |
-            .go
-            .mod
-            .sum
-          SET_ENV_NAME_INSERTIONS: 1
-          SET_ENV_NAME_LINES: 1
+          PATTERNS: |
+            **/**.go
+            go.mod
+            go.sum
       - uses: actions/download-artifact@v2
         with:
           name: "${{ github.sha }}-aa"
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
       - name: test & coverage report creation
         run: |
           cat xaa.txt | xargs go test -mod=readonly -timeout 8m -race -coverprofile=coverage.txt -covermode=atomic
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
       - uses: codecov/codecov-action@v1.0.13
         with:
           file: ./coverage.txt
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
 
   test-coverage-part-2:
     runs-on: ubuntu-latest
     needs: split-test-files
     steps:
       - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v3
+      - uses: technote-space/get-diff-action@v4
         with:
-          SUFFIX_FILTER: |
-            .go
-            .mod
-            .sum
-          SET_ENV_NAME_INSERTIONS: 1
-          SET_ENV_NAME_LINES: 1
+          PATTERNS: |
+            **/**.go
+            go.mod
+            go.sum
       - uses: actions/download-artifact@v2
         with:
           name: "${{ github.sha }}-ab"
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
       - name: test & coverage report creation
         run: |
           cat xab.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
       - uses: codecov/codecov-action@v1.0.13
         with:
           file: ./coverage.txt
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
 
   test-coverage-part-3:
     runs-on: ubuntu-latest
     needs: split-test-files
     steps:
       - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v3
+      - uses: technote-space/get-diff-action@v4
         with:
-          SUFFIX_FILTER: |
-            .go
-            .mod
-            .sum
-          SET_ENV_NAME_INSERTIONS: 1
-          SET_ENV_NAME_LINES: 1
+          PATTERNS: |
+            **/**.go
+            go.mod
+            go.sum
       - uses: actions/download-artifact@v2
         with:
           name: "${{ github.sha }}-ac"
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
       - name: test & coverage report creation
         run: |
           cat xac.txt | xargs go test -mod=readonly -timeout 10m -race -coverprofile=coverage.txt -covermode=atomic
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
       - uses: codecov/codecov-action@v1.0.13
         with:
           file: ./coverage.txt
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
 
   test-coverage-part-4:
     runs-on: ubuntu-latest
     needs: split-test-files
     steps:
       - uses: actions/checkout@v2
-      - uses: technote-space/get-diff-action@v3
+      - uses: technote-space/get-diff-action@v4
         with:
-          SUFFIX_FILTER: |
-            .go
-            .mod
-            .sum
-          SET_ENV_NAME_INSERTIONS: 1
-          SET_ENV_NAME_LINES: 1
+          PATTERNS: |
+            **/**.go
+            go.mod
+            go.sum
       - uses: actions/download-artifact@v2
         with:
           name: "${{ github.sha }}-ad"
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
       - name: test & coverage report creation
         run: |
           cat xad.txt | xargs go test -mod=readonly -timeout 5m -race -coverprofile=coverage.txt -covermode=atomic
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
       - uses: codecov/codecov-action@v1.0.13
         with:
           file: ./coverage.txt
-        if: "env.GIT_DIFF != ''"
+        if: env.GIT_DIFF
