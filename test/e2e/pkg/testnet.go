@@ -27,6 +27,10 @@ const (
 type Mode string
 type Protocol string
 type Perturbation string
+type Behavior struct {
+	Name    string
+	Height  int64
+}
 
 const (
 	ModeValidator Mode = "validator"
@@ -78,6 +82,7 @@ type Node struct {
 	Seeds            []*Node
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
+	Behaviors        []Behavior
 }
 
 // LoadTestnet loads a testnet from a manifest file, using the filename to

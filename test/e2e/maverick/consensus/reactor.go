@@ -80,6 +80,7 @@ func (conR *Reactor) OnStart() error {
 	conR.subscribeToBroadcastEvents()
 
 	if !conR.WaitSync() {
+		conR.conS.SetSwitch(conR.Switch)
 		err := conR.conS.Start()
 		if err != nil {
 			return err
@@ -124,6 +125,7 @@ func (conR *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 	if skipWAL {
 		conR.conS.doWALCatchup = false
 	}
+	conR.conS.SetSwitch(conR.Switch)
 	err := conR.conS.Start()
 	if err != nil {
 		panic(fmt.Sprintf(`Failed to start consensus state: %v
@@ -1405,17 +1407,17 @@ type Message interface {
 	ValidateBasic() error
 }
 
-func init() {
-	tmjson.RegisterType(&NewRoundStepMessage{}, "tendermint/NewRoundStepMessage")
-	tmjson.RegisterType(&NewValidBlockMessage{}, "tendermint/NewValidBlockMessage")
-	tmjson.RegisterType(&ProposalMessage{}, "tendermint/Proposal")
-	tmjson.RegisterType(&ProposalPOLMessage{}, "tendermint/ProposalPOL")
-	tmjson.RegisterType(&BlockPartMessage{}, "tendermint/BlockPart")
-	tmjson.RegisterType(&VoteMessage{}, "tendermint/Vote")
-	tmjson.RegisterType(&HasVoteMessage{}, "tendermint/HasVote")
-	tmjson.RegisterType(&VoteSetMaj23Message{}, "tendermint/VoteSetMaj23")
-	tmjson.RegisterType(&VoteSetBitsMessage{}, "tendermint/VoteSetBits")
-}
+// func init() {
+// 	tmjson.RegisterType(&NewRoundStepMessage{}, "tendermint/NewRoundStepMessage")
+// 	tmjson.RegisterType(&NewValidBlockMessage{}, "tendermint/NewValidBlockMessage")
+// 	tmjson.RegisterType(&ProposalMessage{}, "tendermint/Proposal")
+// 	tmjson.RegisterType(&ProposalPOLMessage{}, "tendermint/ProposalPOL")
+// 	tmjson.RegisterType(&BlockPartMessage{}, "tendermint/BlockPart")
+// 	tmjson.RegisterType(&VoteMessage{}, "tendermint/Vote")
+// 	tmjson.RegisterType(&HasVoteMessage{}, "tendermint/HasVote")
+// 	tmjson.RegisterType(&VoteSetMaj23Message{}, "tendermint/VoteSetMaj23")
+// 	tmjson.RegisterType(&VoteSetBitsMessage{}, "tendermint/VoteSetBits")
+// }
 
 func decodeMsg(bz []byte) (msg Message, err error) {
 	pb := &tmcons.Message{}

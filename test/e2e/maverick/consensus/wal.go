@@ -12,7 +12,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 
 	auto "github.com/tendermint/tendermint/libs/autofile"
-	tmjson "github.com/tendermint/tendermint/libs/json"
+	// tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
@@ -45,11 +45,11 @@ type EndHeightMessage struct {
 
 type WALMessage interface{}
 
-func init() {
-	tmjson.RegisterType(msgInfo{}, "tendermint/wal/MsgInfo")
-	tmjson.RegisterType(timeoutInfo{}, "tendermint/wal/TimeoutInfo")
-	tmjson.RegisterType(EndHeightMessage{}, "tendermint/wal/EndHeightMessage")
-}
+// func init() {
+// 	tmjson.RegisterType(msgInfo{}, "tendermint/wal/MsgInfo")
+// 	tmjson.RegisterType(timeoutInfo{}, "tendermint/wal/TimeoutInfo")
+// 	tmjson.RegisterType(EndHeightMessage{}, "tendermint/wal/EndHeightMessage")
+// }
 
 //--------------------------------------------------------
 // Simple write-ahead logger

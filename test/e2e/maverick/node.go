@@ -90,24 +90,10 @@ type Provider func(*cfg.Config, log.Logger) (*Node, error)
 // DefaultNewNode returns a Tendermint node with default settings for the
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
-func DefaultNewNode(config *cfg.Config, logger log.Logger, behavior string, interval int64) (*Node, error) {
+func DefaultNewNode(config *cfg.Config, logger log.Logger, behaviors map[int64]cs.Behavior) (*Node, error) {
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load or gen node key %s, err: %w", config.NodeKeyFile(), err)
-	}
-
-	var b cs.Behavior
-
-	if behavior == "" {
-		b, err = getBehavior("Default")
-		if err != nil {
-			panic("Can't find the default node behavior")
-		}
-	} else {
-		b, err = getBehavior(behavior)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return NewNode(config,
@@ -118,8 +104,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger, behavior string, inte
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
 		logger,
-		b,
-		interval,
+		behaviors,
 	)
 
 }
@@ -419,8 +404,7 @@ func createConsensusReactor(config *cfg.Config,
 	waitSync bool,
 	eventBus *types.EventBus,
 	consensusLogger log.Logger,
-	behavior cs.Behavior,
-	behaviorHeight int64) (*cs.Reactor, *cs.State) {
+	behaviors map[int64]cs.Behavior) (*cs.Reactor, *cs.State) {
 
 	consensusState := cs.NewState(
 		config.Consensus,
@@ -429,8 +413,7 @@ func createConsensusReactor(config *cfg.Config,
 		blockStore,
 		mempool,
 		evidencePool,
-		behavior,
-		behaviorHeight,
+		behaviors,
 		cs.StateMetrics(csMetrics),
 	)
 	consensusState.SetLogger(consensusLogger)
@@ -660,8 +643,7 @@ func NewNode(config *cfg.Config,
 	dbProvider DBProvider,
 	metricsProvider MetricsProvider,
 	logger log.Logger,
-	behavior cs.Behavior,
-	behaviorHeight int64,
+	behaviors map[int64]cs.Behavior,
 	options ...Option) (*Node, error) {
 
 	blockStore, stateDB, err := initDBs(config, dbProvider)
@@ -775,9 +757,10 @@ func NewNode(config *cfg.Config,
 		csMetrics.FastSyncing.Set(1)
 	}
 
+	logger.Info("Setting up maverick consensus reactor", "Behaviors", behaviors)
 	consensusReactor, consensusState := createConsensusReactor(
 		config, state, blockExec, blockStore, mempool, evidencePool,
-		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger, behavior, behaviorHeight)
+		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger, behaviors)
 
 	// Set up state sync reactor, and schedule a sync if requested.
 	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,

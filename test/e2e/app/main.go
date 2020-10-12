@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
+	maverick "github.com/tendermint/tendermint/test/e2e/maverick"
 )
 
 var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
@@ -131,6 +132,25 @@ func startNode(cfg *Config) error {
 		return fmt.Errorf("failed to load or gen node key %s: %w", tmcfg.NodeKeyFile(), err)
 	}
 
+	// application needs to support maverick node
+	if cfg.Behavior != "" {
+		n, err := maverick.NewNode(tmcfg,
+			privval.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
+			nodeKey,
+			proxy.NewLocalClientCreator(app),
+			maverick.DefaultGenesisDocProviderFunc(tmcfg),
+			maverick.DefaultDBProvider,
+			maverick.DefaultMetricsProvider(tmcfg.Instrumentation),
+			logger,
+		)
+		
+		if err != nil {
+			return err
+		}
+		
+		return n.Start()
+	}
+	
 	n, err := node.NewNode(tmcfg,
 		privval.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
 		nodeKey,
@@ -140,6 +160,7 @@ func startNode(cfg *Config) error {
 		node.DefaultMetricsProvider(tmcfg.Instrumentation),
 		logger,
 	)
+	
 	if err != nil {
 		return err
 	}

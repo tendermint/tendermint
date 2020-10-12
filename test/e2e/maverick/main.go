@@ -1,9 +1,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -26,31 +29,11 @@ var (
 	config       = cfg.DefaultConfig()
 	logger       = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 	behaviorFlag = ""
-	heightFlag = 1
 )
 
-// Behaviors
-//
-// Add any new behaviors to this array and to the switch statement below in order for the maverick node instance
-// to recognize the behavior
-
-var (
-	AllBehaviors = []cs.Behavior{
-		&cs.DefaultBehavior{},
-		&cs.EquivocationBehavior{},
-	}
-)
-
-func getBehavior(name string) (cs.Behavior, error) {
-	switch name {
-	// Never remove the default behavior
-	case "Default":
-		return &cs.DefaultBehavior{}, nil
-	case "Equivocation":
-		return &cs.EquivocationBehavior{}, nil
-	default:
-		return  &cs.DefaultBehavior{}, fmt.Errorf("unable to recognize behavior have you added it: %s", name)
-	}
+// BehaviorList encompasses a list of all possible behaviors
+var BehaviorList = map[string]cs.Behavior {
+	"double-prevote": cs.NewDoublePrevoteBehavior(), 
 }
 
 func init() {
@@ -79,7 +62,9 @@ func ParseConfig() (*cfg.Config, error) {
 var RootCmd = &cobra.Command{
 	Use:   "maverick",
 	Short: "Tendermint Maverick Node",
-	Long:  "Tendermint Maverick Node for testing with faulty consensus behavior in a testnet",
+	Long:  "Tendermint Maverick Node for testing with faulty consensus behaviors in a testnet. Contains " + 
+	"all the functionality of a normal node but custom behaviors can be injected when running the node " + 
+	"through a flag. See maverick node --help for how the behavior flag is constructured",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
 		config, err = ParseConfig()
 		if err != nil {
@@ -103,6 +88,7 @@ var RootCmd = &cobra.Command{
 func main() {
 	rootCmd := RootCmd
 	rootCmd.AddCommand(
+		ListBehaviorCmd,
 		cmd.GenValidatorCmd,
 		InitFilesCmd,
 		cmd.ProbeUpnpCmd,
@@ -122,7 +108,7 @@ func main() {
 		Use:   "node",
 		Short: "Run the maverick node",
 		RunE: func(command *cobra.Command, args []string) error {
-			return startNode(config, logger, behaviorFlag, heightFlag)
+			return startNode(config, logger, behaviorFlag)
 		},
 	}
 
@@ -132,17 +118,13 @@ func main() {
 	rootCmd.AddCommand(nodeCmd)
 
 	// add special flag for behaviors
-	nodeCmd.Flags().String(
-		"behavior",
-		behaviorFlag,
-		"Select a particular behavior for the node to execute (no behavior selected will mean the node will behave normally):"+
-			" e.g. --behavior equivocation")
-
-	nodeCmd.Flags().Int(
-		"height",
-		heightFlag,
-		"Select the height to execute the behavior (in other heights the node behaves normally): "+
-			" e.g. --height 3")
+	nodeCmd.Flags().StringVar(
+		&behaviorFlag,
+		"behaviors",
+		"",
+		"Select the behaviors of the node (comma-separated, no spaces in between): \n" +
+			"e.g. --behavior double-prevote,3\n" +
+			"You can also have multiple behaviors: e.g. double-prevote,3,no-vote,5")
 
 	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv(filepath.Join("$HOME", ".maverick")))
 	if err := cmd.Execute(); err != nil {
@@ -150,8 +132,14 @@ func main() {
 	}
 }
 
-func startNode(config *cfg.Config, logger log.Logger, behaviorFlag string, heightFlag int) error {
-	node, err := DefaultNewNode(config, logger, behaviorFlag, int64(heightFlag))
+func startNode(config *cfg.Config, logger log.Logger, behaviorFlag string) error {
+	fmt.Printf("behavior string: %s", behaviorFlag)
+	behaviors, err := parseBehaviors(behaviorFlag) 
+	if err != nil {
+		return err
+	}
+	
+	node, err := DefaultNewNode(config, logger, behaviors)
 	if err != nil {
 		return fmt.Errorf("failed to create node: %w", err)
 	}
@@ -171,6 +159,34 @@ func startNode(config *cfg.Config, logger log.Logger, behaviorFlag string, heigh
 
 	// Run forever.
 	select {}
+}
+
+func parseBehaviors(str string) (map[int64]cs.Behavior, error) {
+	// check if string is empty in which case we run a normal node
+	var behaviors = make(map[int64]cs.Behavior)
+	if str == "" { 
+		return behaviors, nil
+	}
+	strs := strings.Split(str, ",")
+	if len(strs) % 2 != 0 {
+		return behaviors, errors.New("missing either height or behavior name in the behavior flag")
+	}
+OUTER_LOOP:
+	for i := 0; i < len(strs); i += 2 {
+		height, err := strconv.ParseInt(strs[i + 1], 10, 64)
+		if err != nil {
+			return behaviors, fmt.Errorf("failed to parse behavior height: %w", err)
+		}
+		for key, behavior := range BehaviorList {
+			if key == strs[i] {
+				behaviors[height] = behavior 
+				continue OUTER_LOOP
+			}	
+		}
+		return behaviors, fmt.Errorf("received unknown behavior: %s. Did you forget to add it?", strs[i])
+	}
+		
+	return behaviors, nil
 }
 
 var InitFilesCmd = &cobra.Command{
@@ -238,12 +254,17 @@ func initFilesWithConfig(config *cfg.Config) error {
 	return nil
 }
 
-// var ListBehaviorCmd = &cobra.Command{
-// 	Use:   "list",
-// 	Short: "Lists possible behaviors",
-// 	RunE:  listBehaviors,
-// }
+var ListBehaviorCmd = &cobra.Command{
+	Use:   "behaviors",
+	Short: "Lists possible behaviors",
+	RunE:  listBehaviors,
+}
 
-// func listBehaviors(cmd *cobra.Command, args []string) error {
-// 	fmt.Prin
-// } 
+func listBehaviors(cmd *cobra.Command, args []string) error {
+	str := "Currently registered behaviors: \n"
+	for key := range BehaviorList {
+		str += fmt.Sprintf("- %s\n", key)
+	}
+	fmt.Printf(str)
+	return nil
+} 

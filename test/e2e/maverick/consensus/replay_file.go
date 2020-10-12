@@ -130,7 +130,7 @@ func (pb *playback) replayReset(count int, newStepSub types.Subscription) error 
 	pb.cs.Wait()
 
 	newCS := NewState(pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
-		pb.cs.blockStore, pb.cs.txNotifier, pb.cs.evpool, &DefaultBehavior{}, 1)
+		pb.cs.blockStore, pb.cs.txNotifier, pb.cs.evpool, map[int64]Behavior{} )
 	newCS.SetEventBus(pb.cs.eventBus)
 	newCS.startForReplay()
 
@@ -331,7 +331,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
 	consensusState := NewState(csConfig, state.Copy(), blockExec,
-		blockStore, mempool, evpool, &DefaultBehavior{}, 1)
+		blockStore, mempool, evpool, map[int64]Behavior{})
 
 	consensusState.SetEventBus(eventBus)
 	return consensusState

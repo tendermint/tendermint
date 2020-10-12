@@ -80,6 +80,10 @@ privval_protocol = "tcp"
 # https://github.com/tendermint/tendermint/issues/5422
 #perturb = ["kill", "pause", "disconnect", "restart"]
 
+[node.validator06]
+persistent_peers = ["validator02"]
+behaviors = [{name = "double-vote", height = 100}]
+
 [node.full01]
 start_at = 1010
 mode = "full"
