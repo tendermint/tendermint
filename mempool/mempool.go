@@ -106,7 +106,8 @@ type TxInfo struct {
 // PreCheckMaxBytes checks that the size of the transaction is smaller or equal to the expected maxBytes.
 func PreCheckMaxBytes(maxBytes int64) PreCheckFunc {
 	return func(tx types.Tx) error {
-		txLength, _ := binary.Varint(tx) // protobuf length prefixes using varint this needs to be caluculated and added to the txSize
+		// protobuf length prefixes using varint this needs to be calculated and added to the txSize
+		txLength, _ := binary.Varint(tx)
 		txSize := int64(len(tx)) + txLength
 
 		if txSize > maxBytes {
