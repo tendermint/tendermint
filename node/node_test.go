@@ -261,18 +261,18 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	// fill the evidence pool with more evidence
 	// than can fit in a block
-	// var currentBytes int64 = 0
-	// for currentBytes <= maxEvidenceBytes {
-	// 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
-	// 	currentBytes += int64(len(ev.Bytes()))
-	// 	err := evidencePool.AddEvidenceFromConsensus(ev, time.Now(), state.Validators)
-	// 	require.NoError(t, err)
-	// }
+	var currentBytes int64 = 0
+	for currentBytes <= maxEvidenceBytes {
+		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
+		currentBytes += int64(len(ev.Bytes()))
+		err := evidencePool.AddEvidenceFromConsensus(ev, time.Now(), state.Validators)
+		require.NoError(t, err)
+	}
 
 	// fill the mempool with more txs
 	// than can fit in a block
-	txLength := 1000
-	for i := 0; i <= maxBytes/txLength; i++ {
+	txLength := 100
+	for i := 0; i < maxBytes/txLength; i++ {
 		tx := tmrand.Bytes(txLength)
 		err := mempool.CheckTx(tx, nil, mempl.TxInfo{})
 		assert.NoError(t, err)
@@ -305,10 +305,13 @@ func TestCreateProposalBlock(t *testing.T) {
 	}
 	assert.EqualValues(t, partSetFromHeader.ByteSize(), partSet.ByteSize())
 
+<<<<<<< HEAD
 	pb, err := block.ToProto()
 	require.NoError(t, err)
 	require.EqualValues(t, int64(pb.Size()), partSet.ByteSize())
 
+=======
+>>>>>>> master
 	err = blockExec.ValidateBlock(state, block)
 	assert.NoError(t, err)
 }
