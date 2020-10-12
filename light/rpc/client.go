@@ -118,8 +118,11 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 	if resp.IsErr() {
 		return nil, fmt.Errorf("err response code: %v", resp.Code)
 	}
-	if len(resp.Key) == 0 || resp.ProofOps == nil {
-		return nil, errors.New("empty key or proof ops")
+	if len(resp.Key) == 0 {
+		return nil, errors.New("empty key")
+	}
+	if resp.ProofOps == nil || len(resp.ProofOps.Ops) == 0 {
+		return nil, errors.New("no proof ops")
 	}
 	if resp.Height <= 0 {
 		return nil, errNegOrZeroHeight
