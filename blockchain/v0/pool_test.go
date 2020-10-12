@@ -22,7 +22,7 @@ type testPeer struct {
 	id        p2p.ID
 	base      int64
 	height    int64
-	inputChan chan inputData //make sure each peer's data is sequential
+	inputChan chan inputData // make sure each peer's data is sequential
 }
 
 type inputData struct {

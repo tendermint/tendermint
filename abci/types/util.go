@@ -27,7 +27,5 @@ func (v ValidatorUpdates) Less(i, j int) bool {
 }
 
 func (v ValidatorUpdates) Swap(i, j int) {
-	v1 := v[i]
-	v[i] = v[j]
-	v[j] = v1
+	v[i], v[j] = v[j], v[i]
 }

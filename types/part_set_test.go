@@ -35,7 +35,7 @@ func TestBasicPartSet(t *testing.T) {
 	assert.True(t, partSet2.HasHeader(partSet.Header()))
 	for i := 0; i < int(partSet.Total()); i++ {
 		part := partSet.GetPart(i)
-		//t.Logf("\n%v", part)
+		// t.Logf("\n%v", part)
 		added, err := partSet2.AddPart(part)
 		if !added || err != nil {
 			t.Errorf("failed to add part %v, error: %v", i, err)

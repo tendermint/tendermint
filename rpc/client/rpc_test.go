@@ -82,7 +82,7 @@ func TestCustomHTTPClient(t *testing.T) {
 
 func TestCorsEnabled(t *testing.T) {
 	origin := rpctest.GetConfig().RPC.CORSAllowedOrigins[0]
-	remote := strings.Replace(rpctest.GetConfig().RPC.ListenAddress, "tcp", "http", -1)
+	remote := strings.ReplaceAll(rpctest.GetConfig().RPC.ListenAddress, "tcp", "http")
 
 	req, err := http.NewRequest("GET", remote, nil)
 	require.Nil(t, err, "%+v", err)
