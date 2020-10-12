@@ -321,7 +321,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	logger := log.TestingLogger()
 
 	var height int64 = 1
-	state, stateDB, _ := state(2, height)
+	state, stateDB, _ := state(1, height)
 	stateStore := sm.NewStore(stateDB)
 	var maxBytes int64 = 16384
 	var partSize uint32 = 256
@@ -340,12 +340,9 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	)
 	mempool.SetLogger(logger)
 
-	// fill the mempool with more txs
-	// than can fit in a block
-	t.Log(maxBytes)
+	// fill the mempool with one txs just below the maximum size
 	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, 1))
-	t.Log(txLength)
-	tx := tmrand.Bytes(txLength)
+	tx := tmrand.Bytes(txLength - 4) // to account for the varint
 	err = mempool.CheckTx(tx, nil, mempl.TxInfo{})
 	assert.NoError(t, err)
 
@@ -366,7 +363,6 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	pb, err := block.ToProto()
 	require.NoError(t, err)
-
 	assert.Less(t, int64(pb.Size()), maxBytes)
 
 	// check that the part set does not exceed the maximum block size
