@@ -271,10 +271,10 @@ func defaultMerkleKeyPathFn() lrpc.KeyPathFunc {
 
 	return func(path string, key []byte) (merkle.KeyPath, error) {
 		matches := storeNameRegexp.FindStringSubmatch(path)
-		if len(matches) != 1 {
+		if len(matches) != 2 {
 			return nil, fmt.Errorf("can't find store name in %s using %s", path, storeNameRegexp)
 		}
-		storeName := matches[0]
+		storeName := matches[1]
 
 		kp := merkle.KeyPath{}
 		kp = kp.AppendKey([]byte(storeName), merkle.KeyEncodingURL)
