@@ -106,14 +106,17 @@ func _waitForEvidence(
 	pools []*evidence.Pool,
 ) {
 	evpool := pools[poolIdx]
-	for len(evpool.PendingEvidence(uint32(len(evs)))) != len(evs) {
+	var evList []types.Evidence
+	currentPoolSize := 0
+	for currentPoolSize != len(evs) {
+		evList, _ = evpool.PendingEvidence(int64(len(evs) * 500)) // each evidence should not be more than 500 bytes
+		currentPoolSize = len(evList)
 		time.Sleep(time.Millisecond * 100)
 	}
 
-	reapedEv := evpool.PendingEvidence(uint32(len(evs)))
 	// put the reaped evidence in a map so we can quickly check we got everything
 	evMap := make(map[string]types.Evidence)
-	for _, e := range reapedEv {
+	for _, e := range evList {
 		evMap[string(e.Hash())] = e
 	}
 	for i, expectedEv := range evs {
