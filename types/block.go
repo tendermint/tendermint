@@ -292,7 +292,6 @@ func MaxDataBytesNoEvidence(maxBytes int64, valsCount int) int64 {
 		MaxHeaderBytes -
 		MaxCommitBytes(valsCount)
 
-	fmt.Println(maxDataBytes)
 	if maxDataBytes < 0 {
 		panic(fmt.Sprintf(
 			"Negative MaxDataBytesUnknownEvidence. Block.MaxBytes=%d is too small to accommodate header&lastCommit&evidence=%d",

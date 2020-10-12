@@ -275,7 +275,7 @@ func TestMaxCommitSigBytes(t *testing.T) {
 
 	cs := &CommitSig{
 		BlockIDFlag:      BlockIDFlagNil,
-		ValidatorAddress: []byte("validator_address"),
+		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
 		Timestamp:        timestamp,
 		Signature:        tmhash.Sum([]byte("signature")),
 	}
@@ -464,9 +464,9 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	}{
 		0: {-10, 1, 0, true, 0},
 		1: {10, 1, 0, true, 0},
-		2: {844, 1, 0, true, 0},
-		3: {846, 1, 0, false, 0},
-		4: {847, 1, 0, false, 1},
+		2: {809, 1, 0, true, 0},
+		3: {810, 1, 0, false, 0},
+		4: {811, 1, 0, false, 1},
 	}
 
 	for i, tc := range testCases {
@@ -502,9 +502,9 @@ func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 	}{
 		0: {-10, 1, true, 0},
 		1: {10, 1, true, 0},
-		2: {845, 1, true, 0},
-		3: {846, 1, false, 0},
-		4: {847, 1, false, 1},
+		2: {809, 1, true, 0},
+		3: {810, 1, false, 0},
+		4: {811, 1, false, 1},
 	}
 
 	for i, tc := range testCases {

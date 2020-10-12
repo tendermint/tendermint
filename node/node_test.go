@@ -325,7 +325,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	stateStore := sm.NewStore(stateDB)
 	var maxBytes int64 = 16384
 	var partSize uint32 = 256
-	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
+	state.ConsensusParams.Block.MaxBytes = maxBytes
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
