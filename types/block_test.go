@@ -268,6 +268,52 @@ func TestCommitValidateBasic(t *testing.T) {
 	}
 }
 
+func TestMaxCommitSigBytes(t *testing.T) {
+	// time is varint encoded so need to pick the max.
+	// year int, month Month, day, hour, min, sec, nsec int, loc *Location
+	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
+
+	cs := &CommitSig{
+		BlockIDFlag:      BlockIDFlagNil,
+		ValidatorAddress: []byte("validator_address"),
+		Timestamp:        timestamp,
+		Signature:        tmhash.Sum([]byte("signature")),
+	}
+
+	pb := cs.ToProto()
+
+	assert.EqualValues(t, MaxCommitSigBytes, pb.Size())
+}
+
+func TestMaxCommitBytes(t *testing.T) {
+	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
+
+	cs := CommitSig{
+		BlockIDFlag:      BlockIDFlagNil,
+		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
+		Timestamp:        timestamp,
+		Signature:        tmhash.Sum([]byte("signature")),
+	}
+
+	commit := &Commit{
+		Height: math.MaxInt64,
+		Round:  math.MaxInt32,
+		BlockID: BlockID{
+			Hash: tmhash.Sum([]byte("blockID_hash")),
+			PartSetHeader: PartSetHeader{
+				Total: math.MaxInt32,
+				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
+			},
+		},
+		Signatures: []CommitSig{cs},
+	}
+
+	pb := commit.ToProto()
+
+	assert.EqualValues(t, MaxCommitBytes(1), int64(pb.Size()))
+
+}
+
 func TestHeaderHash(t *testing.T) {
 	testCases := []struct {
 		desc       string
@@ -436,6 +482,15 @@ func TestBlockMaxDataBytes(t *testing.T) {
 				"#%v", i)
 		}
 	}
+}
+
+func TestEmptyEvidenceBytes(t *testing.T) {
+	ed := tmproto.EvidenceData{}
+	t.Log(ed.Size())
+}
+
+func TestMaxDataBytesNoEvidence(t *testing.T) {
+	t.Log(MaxDataBytesNoEvidence(1000, 1))
 }
 
 func TestBlockMaxDataBytesNoEvidence(t *testing.T) {

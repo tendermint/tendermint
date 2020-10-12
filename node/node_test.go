@@ -309,6 +309,71 @@ func TestCreateProposalBlock(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestMaxProposalBlockSize(t *testing.T) {
+	config := cfg.ResetTestRoot("node_create_proposal")
+	defer os.RemoveAll(config.RootDir)
+	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	proxyApp := proxy.NewAppConns(cc)
+	err := proxyApp.Start()
+	require.Nil(t, err)
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+
+	logger := log.TestingLogger()
+
+	var height int64 = 1
+	state, stateDB, _ := state(2, height)
+	stateStore := sm.NewStore(stateDB)
+	var maxBytes int64 = 16384
+	var partSize uint32 = 256
+	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
+	proposerAddr, _ := state.Validators.GetByIndex(0)
+
+	// Make Mempool
+	memplMetrics := mempl.PrometheusMetrics("node_test")
+	mempool := mempl.NewCListMempool(
+		config.Mempool,
+		proxyApp.Mempool(),
+		state.LastBlockHeight,
+		mempl.WithMetrics(memplMetrics),
+		mempl.WithPreCheck(sm.TxPreCheck(state)),
+		mempl.WithPostCheck(sm.TxPostCheck(state)),
+	)
+	mempool.SetLogger(logger)
+
+	// fill the mempool with more txs
+	// than can fit in a block
+	t.Log(maxBytes)
+	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, 1))
+	t.Log(txLength)
+	tx := tmrand.Bytes(txLength)
+	err = mempool.CheckTx(tx, nil, mempl.TxInfo{})
+	assert.NoError(t, err)
+
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		logger,
+		proxyApp.Consensus(),
+		mempool,
+		sm.EmptyEvidencePool{},
+	)
+
+	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
+	block, _ := blockExec.CreateProposalBlock(
+		height,
+		state, commit,
+		proposerAddr,
+	)
+
+	pb, err := block.ToProto()
+	require.NoError(t, err)
+
+	assert.Less(t, int64(pb.Size()), maxBytes)
+
+	// check that the part set does not exceed the maximum block size
+	partSet := block.MakePartSet(partSize)
+	assert.EqualValues(t, partSet.ByteSize(), int64(pb.Size()))
+}
+
 func TestNodeNewNodeCustomReactors(t *testing.T) {
 	config := cfg.ResetTestRoot("node_new_node_custom_reactors_test")
 	defer os.RemoveAll(config.RootDir)

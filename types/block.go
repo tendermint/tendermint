@@ -267,7 +267,7 @@ func MaxDataBytes(maxBytes, evidenceBytes int64, valsCount int) int64 {
 	maxDataBytes := maxBytes -
 		MaxOverheadForBlock -
 		MaxHeaderBytes -
-		int64(valsCount)*MaxVoteBytes -
+		MaxCommitBytes(valsCount) -
 		evidenceBytes
 
 	if maxDataBytes < 0 {
@@ -290,8 +290,9 @@ func MaxDataBytesNoEvidence(maxBytes int64, valsCount int) int64 {
 	maxDataBytes := maxBytes -
 		MaxOverheadForBlock -
 		MaxHeaderBytes -
-		int64(valsCount)*MaxVoteBytes
+		MaxCommitBytes(valsCount)
 
+	fmt.Println(maxDataBytes)
 	if maxDataBytes < 0 {
 		panic(fmt.Sprintf(
 			"Negative MaxDataBytesUnknownEvidence. Block.MaxBytes=%d is too small to accommodate header&lastCommit&evidence=%d",
@@ -570,6 +571,11 @@ const (
 	BlockIDFlagNil
 )
 
+const (
+	MaxCommitOverheadBytes int64 = 96 // Max size of commit without any commitSigs
+	MaxCommitSigBytes      int64 = 77
+)
+
 // CommitSig is a part of the Vote included in a Commit.
 type CommitSig struct {
 	BlockIDFlag      BlockIDFlag `json:"block_id_flag"`
@@ -588,9 +594,8 @@ func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) Commi
 	}
 }
 
-// ForBlock returns true if CommitSig is for the block.
-func (cs CommitSig) ForBlock() bool {
-	return cs.BlockIDFlag == BlockIDFlagCommit
+func MaxCommitBytes(valCount int) int64 {
+	return MaxCommitOverheadBytes + (MaxCommitSigBytes * int64(valCount))
 }
 
 // NewCommitSigAbsent returns new CommitSig with BlockIDFlagAbsent. Other
@@ -599,6 +604,11 @@ func NewCommitSigAbsent() CommitSig {
 	return CommitSig{
 		BlockIDFlag: BlockIDFlagAbsent,
 	}
+}
+
+// ForBlock returns true if CommitSig is for the block.
+func (cs CommitSig) ForBlock() bool {
+	return cs.BlockIDFlag == BlockIDFlagCommit
 }
 
 // Absent returns true if CommitSig is absent.
