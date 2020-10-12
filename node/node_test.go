@@ -231,7 +231,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	logger := log.TestingLogger()
 
 	var height int64 = 1
-	state, stateDB, _ := state(1, height)
+	state, stateDB, privVals := state(1, height)
 	stateStore := sm.NewStore(stateDB)
 	maxBytes := 16384
 	var partSize uint32 = 256
@@ -305,13 +305,6 @@ func TestCreateProposalBlock(t *testing.T) {
 	}
 	assert.EqualValues(t, partSetFromHeader.ByteSize(), partSet.ByteSize())
 
-<<<<<<< HEAD
-	pb, err := block.ToProto()
-	require.NoError(t, err)
-	require.EqualValues(t, int64(pb.Size()), partSet.ByteSize())
-
-=======
->>>>>>> master
 	err = blockExec.ValidateBlock(state, block)
 	assert.NoError(t, err)
 }
