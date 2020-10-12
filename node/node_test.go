@@ -272,7 +272,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	// fill the mempool with more txs
 	// than can fit in a block
 	txLength := 100
-	for i := 0; i < maxBytes/txLength; i++ {
+	for i := 0; i <= maxBytes/txLength; i++ {
 		tx := tmrand.Bytes(txLength)
 		err := mempool.CheckTx(tx, nil, mempl.TxInfo{})
 		assert.NoError(t, err)
