@@ -268,6 +268,62 @@ func TestCommitValidateBasic(t *testing.T) {
 	}
 }
 
+func TestMaxCommitSigBytes(t *testing.T) {
+	// time is varint encoded so need to pick the max.
+	// year int, month Month, day, hour, min, sec, nsec int, loc *Location
+	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
+
+	cs := &CommitSig{
+		BlockIDFlag:      BlockIDFlagNil,
+		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
+		Timestamp:        timestamp,
+		Signature:        tmhash.Sum([]byte("signature")),
+	}
+
+	pb := cs.ToProto()
+
+	assert.EqualValues(t, MaxCommitSigBytes, pb.Size())
+}
+
+func TestMaxCommitBytes(t *testing.T) {
+	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
+
+	cs := CommitSig{
+		BlockIDFlag:      BlockIDFlagNil,
+		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
+		Timestamp:        timestamp,
+		Signature:        tmhash.Sum([]byte("signature")),
+	}
+
+	// check size with a single commit
+	commit := &Commit{
+		Height: math.MaxInt64,
+		Round:  math.MaxInt32,
+		BlockID: BlockID{
+			Hash: tmhash.Sum([]byte("blockID_hash")),
+			PartSetHeader: PartSetHeader{
+				Total: math.MaxInt32,
+				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
+			},
+		},
+		Signatures: []CommitSig{cs},
+	}
+
+	pb := commit.ToProto()
+
+	assert.EqualValues(t, MaxCommitBytes(1), int64(pb.Size()))
+
+	// check the upper bound of the commit size
+	for i := 1; i < MaxVotesCount; i++ {
+		commit.Signatures = append(commit.Signatures, cs)
+	}
+
+	pb = commit.ToProto()
+
+	assert.EqualValues(t, MaxCommitBytes(MaxVotesCount), int64(pb.Size()))
+
+}
+
 func TestHeaderHash(t *testing.T) {
 	testCases := []struct {
 		desc       string
@@ -418,9 +474,9 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	}{
 		0: {-10, 1, 0, true, 0},
 		1: {10, 1, 0, true, 0},
-		2: {844, 1, 0, true, 0},
-		3: {846, 1, 0, false, 0},
-		4: {847, 1, 0, false, 1},
+		2: {809, 1, 0, true, 0},
+		3: {810, 1, 0, false, 0},
+		4: {811, 1, 0, false, 1},
 	}
 
 	for i, tc := range testCases {
@@ -447,9 +503,9 @@ func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 	}{
 		0: {-10, 1, true, 0},
 		1: {10, 1, true, 0},
-		2: {845, 1, true, 0},
-		3: {846, 1, false, 0},
-		4: {847, 1, false, 1},
+		2: {809, 1, true, 0},
+		3: {810, 1, false, 0},
+		4: {811, 1, false, 1},
 	}
 
 	for i, tc := range testCases {
