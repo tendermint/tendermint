@@ -2,7 +2,6 @@ package types
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
 
