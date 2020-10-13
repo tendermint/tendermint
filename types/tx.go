@@ -2,9 +2,10 @@ package types
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
+
+	gogotypes "github.com/gogo/protobuf/types"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -139,17 +140,9 @@ func TxProofFromProto(pb tmproto.TxProof) (TxProof, error) {
 	return pbtp, nil
 }
 
-// ComputeProtoOverheadForTx calculates the overhead for protobuf encoding of a transaction.
-// The overhead consists of varint encoding the field number and the wire type
-// (= length-delimited = 2), and another varint encoding the length of the
-// transaction. https://developers.google.com/protocol-buffers/docs/encoding
-func ComputeProtoOverheadForTx(tx Tx, fieldNum int) int64 {
-	fnum := uint64(fieldNum)
-	typ3AndFieldNum := (fnum << 3) | uint64(2) // (field_number << 3) | wire_type
-	buf := make([]byte, binary.MaxVarintLen64)
-	length := binary.PutVarint(buf, int64(len(tx)))
-
-	buf2 := make([]byte, binary.MaxVarintLen64)
-	fm := binary.PutVarint(buf2, int64(typ3AndFieldNum))
-	return int64(fm + length)
+// ComputeProtoOverheadForTx calculates the size for a protobuf encoded transaction.
+// https://developers.google.com/protocol-buffers/docs/encoding
+func ComputeProtoOverheadForTx(tx Tx) int64 {
+	tt := gogotypes.BytesValue{Value: tx}
+	return int64(tt.Size())
 }
