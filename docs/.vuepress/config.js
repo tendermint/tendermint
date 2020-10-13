@@ -105,7 +105,7 @@ module.exports = {
         }
       ],
       smallprint:
-          'The development of the Tendermint project is led primarily by [Interhcain GmbH](https://interchain.berlin/). Funding for this development comes primarily from the Interchain Foundation, a Swiss non-profit.',
+          'The development of the Tendermint project is led primarily by [Interchain GmbH](https://interchain.berlin/). Funding for this development comes primarily from the Interchain Foundation, a Swiss non-profit.',
       links: [
         {
           title: 'Documentation',
