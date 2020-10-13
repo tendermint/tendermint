@@ -138,7 +138,7 @@ func TxProofFromProto(pb tmproto.TxProof) (TxProof, error) {
 	return pbtp, nil
 }
 
-// ComputeProtoOverheadForTx calculates the size for a protobuf encoded transactions.
+// ComputeProtoOverheadForTxs wraps the transactions in tmproto.Data{} and calculates the size.
 // https://developers.google.com/protocol-buffers/docs/encoding
 func ComputeProtoSizeForTxs(txs []Tx, tx Tx) int64 {
 	tt := make(Txs, len(txs)+1)
@@ -150,7 +150,7 @@ func ComputeProtoSizeForTxs(txs []Tx, tx Tx) int64 {
 	return int64(pdData.Size())
 }
 
-// ComputeProtoSizeForTx calculates the size for a protobuf encoded transactions.
+// ComputeProtoSizeForTx wraps the transaction in tmproto.Data{} and calculates the size.
 // https://developers.google.com/protocol-buffers/docs/encoding
 func ComputeProtoSizeForTx(tx Tx) int64 {
 	pbdata := tmproto.Data{Txs: [][]byte{tx}}
