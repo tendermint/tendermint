@@ -25,8 +25,8 @@ func TestTxFilter(t *testing.T) {
 		tx    types.Tx
 		isErr bool
 	}{
-		{types.Tx(tmrand.Bytes(2154)), false},
-		{types.Tx(tmrand.Bytes(2155)), true},
+		{types.Tx(tmrand.Bytes(2187)), false},
+		{types.Tx(tmrand.Bytes(2188)), true},
 		{types.Tx(tmrand.Bytes(3000)), true},
 	}
 
@@ -37,7 +37,7 @@ func TestTxFilter(t *testing.T) {
 		state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		require.NoError(t, err)
 
-		f := sm.TxPreCheck(state) // current max size of a tx 1850
+		f := sm.TxPreCheck(state)
 		if tc.isErr {
 			assert.NotNil(t, f(tc.tx), "#%v", i)
 		} else {

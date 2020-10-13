@@ -1,7 +1,6 @@
 package types
 
 import (
-	"math"
 	"testing"
 	"time"
 
@@ -216,38 +215,6 @@ func TestVoteVerify(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrVoteInvalidSignature, err)
 	}
-}
-
-func TestMaxVoteBytes(t *testing.T) {
-	// time is varint encoded so need to pick the max.
-	// year int, month Month, day, hour, min, sec, nsec int, loc *Location
-	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
-
-	vote := &Vote{
-		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
-		ValidatorIndex:   math.MaxInt32,
-		Height:           math.MaxInt64,
-		Round:            math.MaxInt32,
-		Timestamp:        timestamp,
-		Type:             tmproto.PrevoteType,
-		BlockID: BlockID{
-			Hash: tmhash.Sum([]byte("blockID_hash")),
-			PartSetHeader: PartSetHeader{
-				Total: math.MaxInt32,
-				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
-			},
-		},
-	}
-
-	v := vote.ToProto()
-	privVal := NewMockPV()
-	err := privVal.SignVote("test_chain_id", v)
-	require.NoError(t, err)
-
-	bz, err := proto.Marshal(v)
-	require.NoError(t, err)
-
-	assert.EqualValues(t, MaxVoteBytes, len(bz))
 }
 
 func TestVoteString(t *testing.T) {
