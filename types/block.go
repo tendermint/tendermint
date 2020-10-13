@@ -572,7 +572,7 @@ const (
 
 const (
 	// Max size of commit without any commitSigs -> 82 for BlockID, 8 for Height, 4 for Round.
-	MaxCommitOverheadBytes int64 = 94 
+	MaxCommitOverheadBytes int64 = 94
 	MaxCommitSigBytes      int64 = 77
 )
 
@@ -595,7 +595,9 @@ func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) Commi
 }
 
 func MaxCommitBytes(valCount int) int64 {
-	return MaxCommitOverheadBytes + ((MaxCommitSigBytes + 2) * int64(valCount)) // 2 for the proto-encoding of the repeated commit sig field
+	// From the repeated commit sig field
+	var protoEncodingOverhead int64 = 2
+	return MaxCommitOverheadBytes + ((MaxCommitSigBytes + protoEncodingOverhead) * int64(valCount))
 }
 
 // NewCommitSigAbsent returns new CommitSig with BlockIDFlagAbsent. Other

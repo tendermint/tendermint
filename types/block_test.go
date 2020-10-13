@@ -320,7 +320,6 @@ func TestMaxCommitBytes(t *testing.T) {
 
 	pb = commit.ToProto()
 
-	
 	assert.EqualValues(t, MaxCommitBytes(MaxVotesCount), int64(pb.Size()))
 
 }
