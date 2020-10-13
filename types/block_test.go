@@ -628,9 +628,7 @@ func TestBlockProtoBuf(t *testing.T) {
 
 func TestDataProtoBuf(t *testing.T) {
 	data := &Data{Txs: Txs{Tx([]byte{1}), Tx([]byte{2}), Tx([]byte{3})}}
-	_ = data.Hash()
 	data2 := &Data{Txs: Txs{}}
-	_ = data2.Hash()
 	testCases := []struct {
 		msg     string
 		data1   *Data
