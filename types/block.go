@@ -573,7 +573,9 @@ const (
 const (
 	// Max size of commit without any commitSigs -> 82 for BlockID, 8 for Height, 4 for Round.
 	MaxCommitOverheadBytes int64 = 94
-	MaxCommitSigBytes      int64 = 77
+	// Commit sig size is made up of 32 bytes for the signature, 20 bytes for the address,
+	// 1 byte for the flag and 14 bytes for the timestamp
+	MaxCommitSigBytes int64 = 77
 )
 
 // CommitSig is a part of the Vote included in a Commit.
