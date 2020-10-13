@@ -210,7 +210,7 @@ func newScheduler(initHeight int64, startTime time.Time) *scheduler {
 		receivedBlocks: make(map[int64]p2p.ID),
 		targetPending:  10,               // TODO - pass as param
 		peerTimeout:    15 * time.Second, // TODO - pass as param
-		minRecvRate:    0,                //int64(7680), TODO - pass as param
+		minRecvRate:    0,                // int64(7680), TODO - pass as param
 	}
 
 	return &sc
@@ -532,9 +532,7 @@ func (peers PeerByID) Less(i, j int) bool {
 }
 
 func (peers PeerByID) Swap(i, j int) {
-	it := peers[i]
-	peers[i] = peers[j]
-	peers[j] = it
+	peers[i], peers[j] = peers[j], peers[i]
 }
 
 // Handlers

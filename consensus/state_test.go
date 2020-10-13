@@ -191,7 +191,7 @@ func TestStateBadProposal(t *testing.T) {
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
 	voteCh := subscribe(cs1.eventBus, types.EventQueryVote)
 
-	propBlock, _ := cs1.createProposalBlock() //changeProposer(t, cs1, vs2)
+	propBlock, _ := cs1.createProposalBlock() // changeProposer(t, cs1, vs2)
 
 	// make the second validator the proposer by incrementing round
 	round++
@@ -380,7 +380,7 @@ func TestStateFullRound2(t *testing.T) {
 	signAddVotes(cs1, tmproto.PrevoteType, propBlockHash, propPartSetHeader, vs2)
 	ensurePrevote(voteCh, height, round) // prevote
 
-	ensurePrecommit(voteCh, height, round) //precommit
+	ensurePrecommit(voteCh, height, round) // precommit
 	// the proposed block should now be locked and our precommit added
 	validatePrecommit(t, cs1, 0, 0, vss[0], propBlockHash, propBlockHash)
 

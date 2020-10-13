@@ -708,9 +708,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 	return nil
 }
 
-///////////////////////////////////////////////////////////////////////////////
 // LIGHT CLIENT VERIFICATION METHODS
-///////////////////////////////////////////////////////////////////////////////
 
 // VerifyCommitLight verifies +2/3 of the set had signed the given commit.
 //
@@ -1026,7 +1024,6 @@ func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []Pr
 	return NewValidatorSet(valz), privValidators
 }
 
-///////////////////////////////////////////////////////////////////////////////
 // safe addition/subtraction/multiplication
 
 func safeAdd(a, b int64) (int64, bool) {
