@@ -69,7 +69,7 @@ func testCounter() {
 	}()
 
 	if err := ensureABCIIsUp(abciType, maxABCIConnectTries); err != nil {
-		log.Fatalf("echo failed: %v", err)
+		log.Fatalf("echo failed: %v", err) //nolint:gocritic
 	}
 
 	client := startClient(abciType)

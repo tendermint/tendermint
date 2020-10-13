@@ -60,7 +60,7 @@ func TestWALTruncate(t *testing.T) {
 	err = WALGenerateNBlocks(t, wal.Group(), 60)
 	require.NoError(t, err)
 
-	time.Sleep(1 * time.Millisecond) //wait groupCheckDuration, make sure RotateFile run
+	time.Sleep(1 * time.Millisecond) // wait groupCheckDuration, make sure RotateFile run
 
 	if err := wal.FlushAndSync(); err != nil {
 		t.Error(err)

@@ -346,7 +346,7 @@ FOR_LOOP:
 
 			// See if there are any blocks to sync.
 			first, second := bcR.pool.PeekTwoBlocks()
-			//bcR.Logger.Info("TrySync peeked", "first", first, "second", second)
+			// bcR.Logger.Info("TrySync peeked", "first", first, "second", second)
 			if first == nil || second == nil {
 				// We need both to sync the first block.
 				continue FOR_LOOP

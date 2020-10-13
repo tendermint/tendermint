@@ -70,7 +70,7 @@ type Store interface {
 	PruneStates(int64, int64) error
 }
 
-//dbStore wraps a db (github.com/tendermint/tm-db)
+// dbStore wraps a db (github.com/tendermint/tm-db)
 type dbStore struct {
 	db dbm.DB
 }
@@ -390,7 +390,7 @@ func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, er
 // Exposed for testing.
 func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) error {
 	var dtxs []*abci.ResponseDeliverTx
-	//strip nil values,
+	// strip nil values,
 	for _, tx := range abciResponses.DeliverTxs {
 		if tx != nil {
 			dtxs = append(dtxs, tx)

@@ -220,7 +220,7 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 	}
 }
 
-//FromProto converts a proto generetad type to a handwritten type
+// FromProto converts a proto generetad type to a handwritten type
 // return type, nil if everything converts safely, otherwise nil, error
 func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 	if pv == nil {
