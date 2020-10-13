@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	gogotypes "github.com/gogo/protobuf/types"
-
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -140,9 +138,22 @@ func TxProofFromProto(pb tmproto.TxProof) (TxProof, error) {
 	return pbtp, nil
 }
 
-// ComputeProtoOverheadForTx calculates the size for a protobuf encoded transaction.
+// ComputeProtoOverheadForTx calculates the size for a protobuf encoded transactions.
 // https://developers.google.com/protocol-buffers/docs/encoding
-func ComputeProtoOverheadForTx(tx Tx) int64 {
-	tt := gogotypes.BytesValue{Value: tx}
-	return int64(tt.Size())
+func ComputeProtoSizeForTxs(txs []Tx, tx Tx) int64 {
+	tt := make(Txs, len(txs)+1)
+
+	tt = append(tt, txs...)
+	tt = append(tt, tx)
+	data := Data{Txs: tt}
+	pdData := data.ToProto()
+	return int64(pdData.Size())
+}
+
+// ComputeProtoSizeForTx calculates the size for a protobuf encoded transactions.
+// https://developers.google.com/protocol-buffers/docs/encoding
+func ComputeProtoSizeForTx(tx Tx) int64 {
+	pbdata := tmproto.Data{Txs: [][]byte{tx}}
+
+	return int64(pbdata.Size())
 }
