@@ -50,11 +50,11 @@ func iotest(writer protoio.WriteCloser, reader protoio.ReadCloser) error {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := range msgs {
 		msgs[i] = test.NewPopulatedNinOptNative(r, true)
-		//issue 31
+		// issue 31
 		if i == 5 {
 			msgs[i] = &test.NinOptNative{}
 		}
-		//issue 31
+		// issue 31
 		if i == 999 {
 			msgs[i] = &test.NinOptNative{}
 		}
@@ -133,7 +133,7 @@ func TestVarintNoClose(t *testing.T) {
 	}
 }
 
-//issue 32
+// issue 32
 func TestVarintMaxSize(t *testing.T) {
 	buf := newBuffer()
 	writer := protoio.NewDelimitedWriter(buf)
