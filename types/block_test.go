@@ -295,6 +295,7 @@ func TestMaxCommitBytes(t *testing.T) {
 		Signature:        tmhash.Sum([]byte("signature")),
 	}
 
+	// check size with a single commit
 	commit := &Commit{
 		Height: math.MaxInt64,
 		Round:  math.MaxInt32,
@@ -311,6 +312,16 @@ func TestMaxCommitBytes(t *testing.T) {
 	pb := commit.ToProto()
 
 	assert.EqualValues(t, MaxCommitBytes(1), int64(pb.Size()))
+
+	// check the upper bound of the commit size
+	for i := 1; i < MaxVotesCount; i++ {
+		commit.Signatures = append(commit.Signatures, cs)
+	}
+
+	pb = commit.ToProto()
+
+	
+	assert.EqualValues(t, MaxCommitBytes(MaxVotesCount), int64(pb.Size()))
 
 }
 
@@ -482,15 +493,6 @@ func TestBlockMaxDataBytes(t *testing.T) {
 				"#%v", i)
 		}
 	}
-}
-
-func TestEmptyEvidenceBytes(t *testing.T) {
-	ed := tmproto.EvidenceData{}
-	t.Log(ed.Size())
-}
-
-func TestMaxDataBytesNoEvidence(t *testing.T) {
-	t.Log(MaxDataBytesNoEvidence(1000, 1))
 }
 
 func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
