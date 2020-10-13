@@ -22,7 +22,7 @@ func TestIterateKeysWithValues(t *testing.T) {
 
 	// Iterating Keys, checking for matching Value
 	for _, key := range cmap.Keys() {
-		val := strings.Replace(key, "key", "value", -1)
+		val := strings.ReplaceAll(key, "key", "value")
 		assert.Equal(t, val, cmap.Get(key))
 	}
 

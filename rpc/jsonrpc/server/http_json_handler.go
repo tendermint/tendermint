@@ -14,9 +14,7 @@ import (
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
-///////////////////////////////////////////////////////////////////////////////
 // HTTP + JSON handler
-///////////////////////////////////////////////////////////////////////////////
 
 // jsonrpc calls grab the given method's function info and runs reflect.Call
 func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.HandlerFunc {

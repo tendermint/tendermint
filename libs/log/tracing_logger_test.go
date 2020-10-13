@@ -22,16 +22,16 @@ func TestTracingLogger(t *testing.T) {
 	err2 := errors.New("it does not matter how slowly you go, so long as you do not stop")
 	logger1.With("err1", err1).Info("foo", "err2", err2)
 
-	want := strings.Replace(
-		strings.Replace(
+	want := strings.ReplaceAll(
+		strings.ReplaceAll(
 			`{"_msg":"foo","err1":"`+
 				fmt.Sprintf("%+v", err1)+
 				`","err2":"`+
 				fmt.Sprintf("%+v", err2)+
 				`","level":"info"}`,
-			"\t", "", -1,
-		), "\n", "", -1)
-	have := strings.Replace(strings.Replace(strings.TrimSpace(buf.String()), "\\n", "", -1), "\\t", "", -1)
+			"\t", "",
+		), "\n", "")
+	have := strings.ReplaceAll(strings.ReplaceAll(strings.TrimSpace(buf.String()), "\\n", ""), "\\t", "")
 	if want != have {
 		t.Errorf("\nwant '%s'\nhave '%s'", want, have)
 	}
