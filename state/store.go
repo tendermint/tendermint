@@ -70,7 +70,7 @@ type Store interface {
 	PruneStates(int64, int64) error
 }
 
-//dbStore wraps a db (github.com/tendermint/tm-db)
+// dbStore wraps a db (github.com/tendermint/tm-db)
 type dbStore struct {
 	db dbm.DB
 }

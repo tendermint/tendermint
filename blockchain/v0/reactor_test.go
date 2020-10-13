@@ -247,7 +247,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 		}
 	}
 
-	//at this time, reactors[0-3] is the newest
+	// at this time, reactors[0-3] is the newest
 	assert.Equal(t, 3, reactorPairs[1].reactor.Switch.Peers().Size())
 
 	// Mark reactorPairs[3] as an invalid peer. Fiddling with .store without a mutex is a data

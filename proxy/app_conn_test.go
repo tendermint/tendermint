@@ -123,7 +123,7 @@ func BenchmarkEcho(b *testing.B) {
 
 	b.StopTimer()
 	// info := proxy.InfoSync(types.RequestInfo{""})
-	//b.Log("N: ", b.N, info)
+	// b.Log("N: ", b.N, info)
 }
 
 func TestInfo(t *testing.T) {
