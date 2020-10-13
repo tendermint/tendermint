@@ -17,6 +17,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [config] [\#5433](https://github.com/tendermint/tendermint/issues/5433) `statesync.rpc_servers` is now properly set when writing the configuration file (@erikgrinaker)
 
 - [privval] [\#5437](https://github.com/tendermint/tendermint/issues/5437) `NewSignerDialerEndpoint` can now be given `SignerServiceEndpointOption` (@erikgrinaker)
+- [types] [\#5490](https://github.com/tendermint/tendermint/pull/5490) Use `Commit` and `CommitSig` max sizes instead of vote max size to calculate the maxiumum block size. (@cmwaters) 
 
 ### BUG FIXES
 
