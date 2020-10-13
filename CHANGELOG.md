@@ -22,6 +22,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [privval] [\#5441](https://github.com/tendermint/tendermint/issues/5441) Fix faulty ping message encoding causing nil message errors in logs (@erikgrinaker)
 - [rpc] [\#5459](https://github.com/tendermint/tendermint/issues/5459) Register the interface of public keys for json encoding (@marbar3778)
+- [consensus] [\#5431](https://github.com/tendermint/tendermint/pull/5431) Check BlockParts do not exceed Maxium block size. (@cmwaters)
+- [mempool] [\#5483](https://github.com/tendermint/tendermint/pull/5483) Check tx size does not exceed available free space in the block. (@marbar3778)
 
 ## v0.34.0-rc4
 
