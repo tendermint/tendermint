@@ -17,7 +17,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
-	maverick "github.com/tendermint/tendermint/test/e2e/maverick"
+	maverick "github.com/tendermint/tendermint/test/e2e/maverick/node"
 )
 
 var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))

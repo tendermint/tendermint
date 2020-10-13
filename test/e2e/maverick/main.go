@@ -1,12 +1,9 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -21,6 +18,7 @@ import (
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 	cs "github.com/tendermint/tendermint/test/e2e/maverick/consensus"
+	nd "github.com/tendermint/tendermint/test/e2e/maverick/node"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -30,11 +28,6 @@ var (
 	logger       = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 	behaviorFlag = ""
 )
-
-// BehaviorList encompasses a list of all possible behaviors
-var BehaviorList = map[string]cs.Behavior{
-	"double-prevote": cs.NewDoublePrevoteBehavior(),
-}
 
 func init() {
 	registerFlagsRootCmd(RootCmd)
@@ -134,12 +127,12 @@ func main() {
 
 func startNode(config *cfg.Config, logger log.Logger, behaviorFlag string) error {
 	fmt.Printf("behavior string: %s", behaviorFlag)
-	behaviors, err := ParseBehaviors(behaviorFlag)
+	behaviors, err := nd.ParseBehaviors(behaviorFlag)
 	if err != nil {
 		return err
 	}
 
-	node, err := DefaultNewNode(config, logger, behaviors)
+	node, err := nd.DefaultNewNode(config, logger, behaviors)
 	if err != nil {
 		return fmt.Errorf("failed to create node: %w", err)
 	}
@@ -161,34 +154,6 @@ func startNode(config *cfg.Config, logger log.Logger, behaviorFlag string) error
 	select {}
 }
 
-func ParseBehaviors(str string) (map[int64]cs.Behavior, error) {
-	// check if string is empty in which case we run a normal node
-	var behaviors = make(map[int64]cs.Behavior)
-	if str == "" {
-		return behaviors, nil
-	}
-	strs := strings.Split(str, ",")
-	if len(strs)%2 != 0 {
-		return behaviors, errors.New("missing either height or behavior name in the behavior flag")
-	}
-OUTER_LOOP:
-	for i := 0; i < len(strs); i += 2 {
-		height, err := strconv.ParseInt(strs[i+1], 10, 64)
-		if err != nil {
-			return behaviors, fmt.Errorf("failed to parse behavior height: %w", err)
-		}
-		for key, behavior := range BehaviorList {
-			if key == strs[i] {
-				behaviors[height] = behavior
-				continue OUTER_LOOP
-			}
-		}
-		return behaviors, fmt.Errorf("received unknown behavior: %s. Did you forget to add it?", strs[i])
-	}
-
-	return behaviors, nil
-}
-
 var InitFilesCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize Tendermint",
@@ -203,13 +168,13 @@ func initFilesWithConfig(config *cfg.Config) error {
 	// private validator
 	privValKeyFile := config.PrivValidatorKeyFile()
 	privValStateFile := config.PrivValidatorStateFile()
-	var pv *FilePV
+	var pv *nd.FilePV
 	if tmos.FileExists(privValKeyFile) {
-		pv = LoadFilePV(privValKeyFile, privValStateFile)
+		pv = nd.LoadFilePV(privValKeyFile, privValStateFile)
 		logger.Info("Found private validator", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
 	} else {
-		pv = GenFilePV(privValKeyFile, privValStateFile)
+		pv = nd.GenFilePV(privValKeyFile, privValStateFile)
 		pv.Save()
 		logger.Info("Generated private validator", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
@@ -262,7 +227,7 @@ var ListBehaviorCmd = &cobra.Command{
 
 func listBehaviors(cmd *cobra.Command, args []string) error {
 	str := "Currently registered behaviors: \n"
-	for key := range BehaviorList {
+	for key := range cs.BehaviorList {
 		str += fmt.Sprintf("- %s\n", key)
 	}
 	fmt.Printf(str)

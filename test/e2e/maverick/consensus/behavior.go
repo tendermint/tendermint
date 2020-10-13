@@ -8,6 +8,11 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// BehaviorList encompasses a list of all possible behaviors
+var BehaviorList = map[string]Behavior{
+	"double-prevote": NewDoublePrevoteBehavior(),
+}
+
 type Behavior struct {
 	String string
 

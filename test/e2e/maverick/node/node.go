@@ -1,4 +1,4 @@
-package main
+package node
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
+	"strconv"
 	"strings"
 	"time"
 
@@ -51,6 +52,37 @@ import (
 )
 
 //------------------------------------------------------------------------------
+
+// ParseBehaviors is a util function that converts a comma separated string into
+// a map of behaviors to be executed by the maverick node
+func ParseBehaviors(str string) (map[int64]cs.Behavior, error) {
+	// check if string is empty in which case we run a normal node
+	var behaviors = make(map[int64]cs.Behavior)
+	if str == "" {
+		return behaviors, nil
+	}
+	strs := strings.Split(str, ",")
+	if len(strs)%2 != 0 {
+		return behaviors, errors.New("missing either height or behavior name in the behavior flag")
+	}
+OUTER_LOOP:
+	for i := 0; i < len(strs); i += 2 {
+		height, err := strconv.ParseInt(strs[i+1], 10, 64)
+		if err != nil {
+			return behaviors, fmt.Errorf("failed to parse behavior height: %w", err)
+		}
+		for key, behavior := range cs.BehaviorList {
+			if key == strs[i] {
+				behaviors[height] = behavior
+				continue OUTER_LOOP
+			}
+		}
+		return behaviors, fmt.Errorf("received unknown behavior: %s. Did you forget to add it?", strs[i])
+	}
+
+	return behaviors, nil
+}
+
 
 // DBContext specifies config information for loading a new DB.
 type DBContext struct {

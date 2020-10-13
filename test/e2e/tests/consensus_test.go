@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	maverick "github.com/tendermint/tendermint/test/e2e/maverick"
+  nd "github.com/tendermint/tendermint/test/e2e/maverick/node"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
@@ -24,7 +24,7 @@ func TestEvidence_DoubleVote(t *testing.T) {
 		status, err := client.Status(ctx)
 		require.NoError(t, err)
 
-		behaviors, err := maverick.ParseBehaviors(node.Behaviors)
+		behaviors, err := nd.ParseBehaviors(node.Behaviors)
 		require.NoError(t, err)
 
 		for height, behavior := range behaviors {
