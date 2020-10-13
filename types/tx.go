@@ -139,17 +139,22 @@ func TxProofFromProto(pb tmproto.TxProof) (TxProof, error) {
 	return pbtp, nil
 }
 
-// ComputeProtoOverhead calculates the overhead for protobuf encoding of a transaction.
-// The overhead consists of varint encoding the field number and the wire type
-// (= length-delimited = 2), and another varint encoding the length of the
-// transaction. https://developers.google.com/protocol-buffers/docs/encoding
-func ComputeProtoOverhead(tx Tx, fieldNum int) int64 {
-	fnum := uint64(fieldNum)
-	typ3AndFieldNum := (fnum << 3) | uint64(2) // (field_number << 3) | wire_type
-	buf := make([]byte, binary.MaxVarintLen64)
-	txLength := binary.PutVarint(buf, int64(len(tx)))
+// ComputeProtoOverheadForTxs wraps the transactions in tmproto.Data{} and calculates the size.
+// https://developers.google.com/protocol-buffers/docs/encoding
+func ComputeProtoSizeForTxs(txs []Tx, tx Tx) int64 {
+	tt := make(Txs, len(txs)+1)
 
-	buf2 := make([]byte, binary.MaxVarintLen64)
-	fm := binary.PutVarint(buf2, int64(typ3AndFieldNum))
-	return int64(fm + txLength)
+	tt = append(tt, txs...)
+	tt = append(tt, tx)
+	data := Data{Txs: tt}
+	pdData := data.ToProto()
+	return int64(pdData.Size())
+}
+
+// ComputeProtoSizeForTx wraps the transaction in tmproto.Data{} and calculates the size.
+// https://developers.google.com/protocol-buffers/docs/encoding
+func ComputeProtoSizeForTx(tx Tx) int64 {
+	pbdata := tmproto.Data{Txs: [][]byte{tx}}
+
+	return int64(pbdata.Size())
 }

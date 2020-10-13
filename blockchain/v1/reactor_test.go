@@ -305,10 +305,10 @@ outerFor:
 		break
 	}
 
-	//at this time, reactors[0-3] is the newest
+	// at this time, reactors[0-3] is the newest
 	assert.Equal(t, numNodes-1, reactorPairs[1].bcR.Switch.Peers().Size())
 
-	//mark last reactorPair as an invalid peer
+	// mark last reactorPair as an invalid peer
 	reactorPairs[numNodes-1].bcR.store = otherChain.bcR.store
 
 	lastLogger := log.TestingLogger()
