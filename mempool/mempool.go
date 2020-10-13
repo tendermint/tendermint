@@ -105,8 +105,8 @@ type TxInfo struct {
 // PreCheckMaxBytes checks that the size of the transaction is smaller or equal to the expected maxBytes.
 func PreCheckMaxBytes(maxBytes int64) PreCheckFunc {
 	return func(tx types.Tx) error {
-		txLength := types.ComputeProtoOverhead(tx, 1)
-		txSize := int64(len(tx)) + txLength
+		protoOverhead := types.ComputeProtoOverheadForTx(tx, 1)
+		txSize := int64(len(tx)) + protoOverhead
 
 		if txSize > maxBytes {
 			return fmt.Errorf("tx size is too big: %d, max: %d",

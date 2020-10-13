@@ -528,8 +528,8 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 
-		txLength := types.ComputeProtoOverhead(memTx.tx, 1)
-		txSize := int64(len(memTx.tx)) + txLength
+		protoOverhead := types.ComputeProtoOverheadForTx(memTx.tx, 1)
+		txSize := int64(len(memTx.tx)) + protoOverhead
 		// Check total size requirement
 		if maxBytes > -1 && totalBytes+txSize > maxBytes {
 			return txs

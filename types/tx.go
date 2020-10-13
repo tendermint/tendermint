@@ -139,17 +139,17 @@ func TxProofFromProto(pb tmproto.TxProof) (TxProof, error) {
 	return pbtp, nil
 }
 
-// ComputeProtoOverhead calculates the overhead for protobuf encoding of a transaction.
+// ComputeProtoOverheadForTx calculates the overhead for protobuf encoding of a transaction.
 // The overhead consists of varint encoding the field number and the wire type
 // (= length-delimited = 2), and another varint encoding the length of the
 // transaction. https://developers.google.com/protocol-buffers/docs/encoding
-func ComputeProtoOverhead(tx Tx, fieldNum int) int64 {
+func ComputeProtoOverheadForTx(tx Tx, fieldNum int) int64 {
 	fnum := uint64(fieldNum)
 	typ3AndFieldNum := (fnum << 3) | uint64(2) // (field_number << 3) | wire_type
 	buf := make([]byte, binary.MaxVarintLen64)
-	txLength := binary.PutVarint(buf, int64(len(tx)))
+	length := binary.PutVarint(buf, int64(len(tx)))
 
 	buf2 := make([]byte, binary.MaxVarintLen64)
 	fm := binary.PutVarint(buf2, int64(typ3AndFieldNum))
-	return int64(fm + txLength)
+	return int64(fm + length)
 }
