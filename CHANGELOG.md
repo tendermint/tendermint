@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.34.0-rc5
+
+*October 13, 2020*
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES
+
+- Go API
+    - [evidence] [\#5499](https://github.com/tendermint/tendermint/pull/5449) `MaxNum` evidence consensus parameter has been changed to `MaxBytes` (@cmwaters)
+    - [mempool] [\#5493](https://github.com/tendermint/tendermint/issues/5493) reduce `ComputeProtoSizeForTxs` to take one parameter (@marbar3778)
+
+### IMPROVEMENTS
+
+- [config] [\#5433](https://github.com/tendermint/tendermint/issues/5433) `statesync.rpc_servers` is now properly set when writing the configuration file (@erikgrinaker)
+
+- [privval] [\#5437](https://github.com/tendermint/tendermint/issues/5437) `NewSignerDialerEndpoint` can now be given `SignerServiceEndpointOption` (@erikgrinaker)
+- [types] [\#5490](https://github.com/tendermint/tendermint/pull/5490) Use `Commit` and `CommitSig` max sizes instead of vote max size to calculate the maxiumum block size. (@cmwaters) 
+
+### BUG FIXES
+
+- [privval] [\#5441](https://github.com/tendermint/tendermint/issues/5441) Fix faulty ping message encoding causing nil message errors in logs (@erikgrinaker)
+- [rpc] [\#5459](https://github.com/tendermint/tendermint/issues/5459) Register the interface of public keys for json encoding (@marbar3778)
+- [consensus] [\#5431](https://github.com/tendermint/tendermint/pull/5431) Check BlockParts do not exceed Maxium block size. (@cmwaters)
+- [mempool] [\#5483](https://github.com/tendermint/tendermint/pull/5483) Check tx size does not exceed available free space in the block. (@marbar3778)
+
 ## v0.34.0-rc4
 
 *September 24, 2020*
