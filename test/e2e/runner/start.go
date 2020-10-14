@@ -24,7 +24,7 @@ func Start(testnet *e2e.Testnet) error {
 		if err := execCompose(testnet.Dir, "up", "-d", node.Name); err != nil {
 			return err
 		}
-		if _, err := waitForNode(node, 0, 10*time.Second); err != nil {
+		if _, err := waitForNode(node, 0, 15*time.Second); err != nil {
 			return err
 		}
 		logger.Info(fmt.Sprintf("Node %v up on http://127.0.0.1:%v", node.Name, node.ProxyPort))
@@ -56,7 +56,7 @@ func Start(testnet *e2e.Testnet) error {
 		if err := execCompose(testnet.Dir, "up", "-d", node.Name); err != nil {
 			return err
 		}
-		status, err := waitForNode(node, node.StartAt, 30*time.Second)
+		status, err := waitForNode(node, node.StartAt, 1*time.Minute)
 		if err != nil {
 			return err
 		}

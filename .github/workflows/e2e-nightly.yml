@@ -1,0 +1,43 @@
+# Runs randomly generated E2E testnets nightly.
+name: e2e-nightly
+on:
+  workflow_dispatch: # allow running workflow manually
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  e2e-nightly-test:
+    # Run parallel jobs for the listed testnet groups (must match the
+    # ./build/generator -g flag)
+    strategy:
+      fail-fast: false
+      matrix:
+        group: ['00', '01', '02', '03']
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build
+        working-directory: test/e2e
+        # Run make jobs in parallel, since we can't run steps in parallel.
+        run: make -j2 docker generator runner
+
+      - name: Generate testnets
+        working-directory: test/e2e
+        run: ./build/generator -g 4 -d networks/nightly
+
+      - name: Run testnets in group ${{ matrix.group }}
+        working-directory: test/e2e
+        run: sudo ./run-multiple.sh networks/nightly/*-group${{ matrix.group }}-*.toml
+
+      - name: Notify Slack on failure
+        uses: rtCamp/action-slack-notify@e9db0ef
+        if: ${{ failure() }}
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: tendermint-internal
+          SLACK_USERNAME: Nightly E2E Test Failure
+          SLACK_COLOR: danger
+          SLACK_MESSAGE: Nightly E2E test failed (group ${{ matrix.group }})
+          SLACK_FOOTER: ''
