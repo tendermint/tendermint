@@ -418,7 +418,7 @@ func (sc *scheduler) markProcessed(height int64) error {
 		return fmt.Errorf("cannot mark height %d received from block state %s", height, state)
 	}
 
-	sc.height++
+	sc.height = height + 1
 	delete(sc.receivedBlocks, height)
 	delete(sc.blockStates, height)
 	sc.addNewBlocks()

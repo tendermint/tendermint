@@ -144,16 +144,20 @@ func (state *pcState) handle(event Event) (Event, error) {
 			}
 			return noOp, nil
 		}
-		first, second := firstItem.block, secondItem.block
 
-		firstParts := first.MakePartSet(types.BlockPartSizeBytes)
-		firstPartSetHeader := firstParts.Header()
-		firstID := types.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
+		var (
+			first, second = firstItem.block, secondItem.block
+			firstParts    = first.MakePartSet(types.BlockPartSizeBytes)
+			firstID       = types.BlockID{Hash: first.Hash(), PartSetHeader: firstParts.Header()}
+		)
 
+		// verify if +second+ last commit "confirms" +first+ block
 		err = state.context.verifyCommit(tmState.ChainID, firstID, first.Height, second.LastCommit)
 		if err != nil {
 			state.purgePeer(firstItem.peerID)
-			state.purgePeer(secondItem.peerID)
+			if firstItem.peerID != secondItem.peerID {
+				state.purgePeer(secondItem.peerID)
+			}
 			return pcBlockVerificationFailure{
 					height: first.Height, firstPeerID: firstItem.peerID, secondPeerID: secondItem.peerID},
 				nil
@@ -169,7 +173,6 @@ func (state *pcState) handle(event Event) (Event, error) {
 		state.blocksSynced++
 
 		return pcBlockProcessed{height: first.Height, peerID: firstItem.peerID}, nil
-
 	}
 
 	return noOp, nil
