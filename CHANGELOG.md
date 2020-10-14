@@ -2,9 +2,8 @@
 
 ## v0.34.0-rc5
 
-October 13, 2020*
+*October 13, 2020*
 
-Special thanks to external contributors on this release:
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
