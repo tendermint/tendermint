@@ -1736,6 +1736,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 
 	p := proposal.ToProto()
 	// Verify signature
+	fmt.Println(cs.Validators.GetProposer().PubKey.Type())
 	if !cs.Validators.GetProposer().PubKey.VerifySignature(
 		types.ProposalSignBytes(cs.state.ChainID, p), proposal.Signature,
 	) {
