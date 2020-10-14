@@ -303,13 +303,15 @@ Minor releases are done differently from major releases: They are built off of l
 Before creating an official release, especially a major release, we may want to create a 
 release candidate (RC) for our friends and partners to test out. We use git tags to 
 create RCs, and we build them off of RC branches. RC branches typically have names formatted
-like `RCX/vX.X.X` (or, concretely, `RC0/v0.34.0`). 
+like `RCX/vX.X.X` (or, concretely, `RC0/v0.34.0`), while the tags themselves follow
+the "standard" release naming conventions, with `-rcX` at the end (`vX.X.X-rcX`).
+
 (Note that branches and tags _cannot_ have the same names, so it's important that these branches
 have distinct names from the tags/release names.)
 
 1. Start from the RC branch (e.g. `RC0/v0.34.0`).
 2. Create the new tag, specifying a name and a tag "message":  
-   `git tag -a v0.34.0-rc0 -m "Release Candidate 0.34.0-rc0` 
+   `git tag -a v0.34.0-rc0 -m "Release Candidate v0.34.0-rc0` 
 3. Push the tag back up to origin:  
    `git push origin v0.34.0-rc4`  
    Now the tag should be available on the repo's releases page. 
