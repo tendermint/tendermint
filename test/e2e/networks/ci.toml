@@ -26,11 +26,11 @@ validator05 = 50
 
 [node.seed01]
 mode = "seed"
-persistent_peers = ["seed02"]
+seeds = ["seed02"]
 
 [node.seed02]
 mode = "seed"
-persistent_peers = ["seed01"]
+seeds = ["seed01"]
 
 [node.validator01]
 seeds = ["seed01"]
