@@ -293,10 +293,10 @@ Minor releases are done differently from major releases: They are built off of l
 
 1. Start from the existing release branch you want to backport changes to (e.g. v0.30)
    Branch to a release/vX.X.X branch locally (e.g. release/v0.30.7)
-2. cherry pick the commit(s) that contain the changes you want to backport (usually these commits are from squash-merged PRs which were already reviewed)
-3. steps 2 and 3 from [Major Release](#major-release)
-4. push changes to release/vX.X.X branch
-5. open a PR against the existing vX.X branch
+2. Cherry pick the commit(s) that contain the changes you want to backport (usually these commits are from squash-merged PRs which were already reviewed)
+3. Follow steps 2 and 3 from [Major Release](#major-release)
+4. Push changes to release/vX.X.X branch
+5. Open a PR against the existing vX.X branch
 
 #### Release Candidates 
 
@@ -308,12 +308,12 @@ like `RCX/vX.X.X` (or, concretely, `RC0/v0.34.0`).
 have distinct names from the tags/release names.)
 
 1. Start from the RC branch (e.g. `RC0/v0.34.0`).
-2. Create the new tag, specifying a name and a tag "message": 
+2. Create the new tag, specifying a name and a tag "message":  
    `git tag -a v0.34.0-rc0 -m "Release Candidate 0.34.0-rc0` 
-3. Push the tag back up to origin: 
+3. Push the tag back up to origin:  
    `git push origin v0.34.0-rc4`  
    Now the tag should be available on the repo's releases page. 
-4. Create a new release candidate branch for any possible updates to the RC:
+4. Create a new release candidate branch for any possible updates to the RC:  
    `git checkout -b RC1/v0.34.0; git push origin RC1/v0.34.0`
 
 ## Testing
