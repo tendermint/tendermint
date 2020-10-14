@@ -25,7 +25,7 @@ func (fr Fraction) String() string {
 // to the equivalent fraction else returns an error. The format of the string must be
 // one number followed by a slash (/) and then the other number.
 func ParseFraction(f string) (Fraction, error) {
-	o := strings.SplitN(f, "/", -1)
+	o := strings.Split(f, "/")
 	if len(o) != 2 {
 		return Fraction{}, errors.New("incorrect formating: should be like \"1/3\"")
 	}

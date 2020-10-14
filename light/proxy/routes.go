@@ -3,6 +3,7 @@ package proxy
 import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	lrpc "github.com/tendermint/tendermint/light/rpc"
+	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -213,11 +214,17 @@ func makeBroadcastTxAsyncFunc(c *lrpc.Client) rpcBroadcastTxAsyncFunc {
 	}
 }
 
-type rpcABCIQueryFunc func(ctx *rpctypes.Context, path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error)
+type rpcABCIQueryFunc func(ctx *rpctypes.Context, path string,
+	data bytes.HexBytes, height int64, prove bool) (*ctypes.ResultABCIQuery, error)
 
 func makeABCIQueryFunc(c *lrpc.Client) rpcABCIQueryFunc {
-	return func(ctx *rpctypes.Context, path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
-		return c.ABCIQuery(ctx.Context(), path, data)
+	return func(ctx *rpctypes.Context, path string, data bytes.HexBytes,
+		height int64, prove bool) (*ctypes.ResultABCIQuery, error) {
+
+		return c.ABCIQueryWithOptions(ctx.Context(), path, data, rpcclient.ABCIQueryOptions{
+			Height: height,
+			Prove:  prove,
+		})
 	}
 }
 

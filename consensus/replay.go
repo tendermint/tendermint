@@ -323,7 +323,7 @@ func (h *Handshaker) ReplayBlocks(
 
 		appHash = res.AppHash
 
-		if stateBlockHeight == 0 { //we only update state when we are in initial state
+		if stateBlockHeight == 0 { // we only update state when we are in initial state
 			// If the app did not return an app hash, we keep the one set from the genesis doc in
 			// the state. We don't set appHash since we don't want the genesis doc app hash
 			// recorded in the genesis block. We should probably just remove GenesisDoc.AppHash.

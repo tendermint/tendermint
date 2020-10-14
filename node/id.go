@@ -30,6 +30,6 @@ type SignedNodeGreeting struct {
 }
 
 func (pnid *PrivNodeID) SignGreeting() *SignedNodeGreeting {
-	//greeting := NodeGreeting{}
+	// greeting := NodeGreeting{}
 	return nil
 }
