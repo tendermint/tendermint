@@ -1,4 +1,4 @@
-name: e2e-tests
+name: e2e
 # Runs the CI end-to-end test network on all pushes to master or release branches
 # and every pull request, but only if any Go files have been changed.
 on:
@@ -9,7 +9,7 @@ on:
       - release/**
 
 jobs:
-  test:
+  e2e-test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
