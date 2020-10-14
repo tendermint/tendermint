@@ -11,7 +11,7 @@ maintained by Informal Systems.
 
 There have been inadvertent divergences in the specs followed
 by the Go implementation and the Rust implementation respectively.
-However, we are worked to reconverge these specs into a single unified spec.
+However, we are working toward reconverging these specs into a single unified spec.
 Consequently, this repository is in a bit of a state of flux.
 
 At the moment, the spec followed by the Go implementation
