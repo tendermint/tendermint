@@ -61,7 +61,11 @@ func run(configFile string) error {
 	case "socket", "grpc":
 		err = startApp(cfg)
 	case "builtin":
-		err = startNode(cfg)
+		if cfg.Behaviors == "" {
+			err = startNode(cfg)
+		} else {
+			err = startMaverick(cfg)
+		}
 	default:
 		err = fmt.Errorf("invalid protocol %q", cfg.Protocol)
 	}
@@ -103,62 +107,14 @@ func startNode(cfg *Config) error {
 		return err
 	}
 
-	home := os.Getenv("TMHOME")
-	if home == "" {
-		return errors.New("TMHOME not set")
-	}
-	viper.AddConfigPath(filepath.Join(home, "config"))
-	viper.SetConfigName("config")
-	err = viper.ReadInConfig()
+	tmcfg, err := setupConfigAndLogger()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to setup config: %w", err)
 	}
-	tmcfg := config.DefaultConfig()
-	err = viper.Unmarshal(tmcfg)
-	if err != nil {
-		return err
-	}
-	tmcfg.SetRoot(home)
-	if err = tmcfg.ValidateBasic(); err != nil {
-		return fmt.Errorf("error in config file: %v", err)
-	}
-	if tmcfg.LogFormat == config.LogFormatJSON {
-		logger = log.NewTMJSONLogger(log.NewSyncWriter(os.Stdout))
-	}
-	logger, err = tmflags.ParseLogLevel(tmcfg.LogLevel, logger, config.DefaultLogLevel())
-	if err != nil {
-		return err
-	}
-	logger = logger.With("module", "main")
 
 	nodeKey, err := p2p.LoadOrGenNodeKey(tmcfg.NodeKeyFile())
 	if err != nil {
 		return fmt.Errorf("failed to load or gen node key %s: %w", tmcfg.NodeKeyFile(), err)
-	}
-
-	// application needs to support maverick node
-	if cfg.Behaviors != "" {
-		behaviors, err := maverick.ParseBehaviors(cfg.Behaviors)
-		if err != nil {
-			return fmt.Errorf("failed to parse behaviors: %w", err)
-		}
-
-		n, err := maverick.NewNode(tmcfg,
-			maverick.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
-			nodeKey,
-			proxy.NewLocalClientCreator(app),
-			maverick.DefaultGenesisDocProviderFunc(tmcfg),
-			maverick.DefaultDBProvider,
-			maverick.DefaultMetricsProvider(tmcfg.Instrumentation),
-			logger,
-			behaviors,
-		)
-
-		if err != nil {
-			return err
-		}
-
-		return n.Start()
 	}
 
 	n, err := node.NewNode(tmcfg,
@@ -170,10 +126,49 @@ func startNode(cfg *Config) error {
 		node.DefaultMetricsProvider(tmcfg.Instrumentation),
 		logger,
 	)
-
 	if err != nil {
 		return err
 	}
+	return n.Start()
+}
+
+// startMaverick starts a Maverick node that runs the application directly. It assumes the Tendermint
+// configuration is in $TMHOME/config/tendermint.toml.
+func startMaverick(cfg *Config) error {
+	app, err := NewApplication(cfg)
+	if err != nil {
+		return err
+	}
+
+	tmcfg, err := setupConfigAndLogger()
+	if err != nil {
+		return fmt.Errorf("failed to setup config: %w", err)
+	}
+
+	nodeKey, err := p2p.LoadOrGenNodeKey(tmcfg.NodeKeyFile())
+	if err != nil {
+		return fmt.Errorf("failed to load or gen node key %s: %w", tmcfg.NodeKeyFile(), err)
+	}
+
+	behaviors, err := maverick.ParseBehaviors(cfg.Behaviors)
+	if err != nil {
+		return fmt.Errorf("failed to parse behaviors: %w", err)
+	}
+
+	n, err := maverick.NewNode(tmcfg,
+		maverick.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
+		nodeKey,
+		proxy.NewLocalClientCreator(app),
+		maverick.DefaultGenesisDocProviderFunc(tmcfg),
+		maverick.DefaultDBProvider,
+		maverick.DefaultMetricsProvider(tmcfg.Instrumentation),
+		logger,
+		behaviors,
+	)
+	if err != nil {
+		return err
+	}
+
 	return n.Start()
 }
 
@@ -201,4 +196,37 @@ func startSigner(cfg *Config) error {
 	}
 	logger.Info(fmt.Sprintf("Remote signer connecting to %v", cfg.PrivValServer))
 	return nil
+}
+
+func setupConfigAndLogger() (*config.Config, error) {
+	var tmcfg *config.Config
+
+	home := os.Getenv("TMHOME")
+	if home == "" {
+		return nil, errors.New("TMHOME not set")
+	}
+	viper.AddConfigPath(filepath.Join(home, "config"))
+	viper.SetConfigName("config")
+	err := viper.ReadInConfig()
+	if err != nil {
+		return nil, err
+	}
+	tmcfg = config.DefaultConfig()
+	err = viper.Unmarshal(tmcfg)
+	if err != nil {
+		return nil, err
+	}
+	tmcfg.SetRoot(home)
+	if err = tmcfg.ValidateBasic(); err != nil {
+		return nil, fmt.Errorf("error in config file: %v", err)
+	}
+	if tmcfg.LogFormat == config.LogFormatJSON {
+		logger = log.NewTMJSONLogger(log.NewSyncWriter(os.Stdout))
+	}
+	logger, err = tmflags.ParseLogLevel(tmcfg.LogLevel, logger, config.DefaultLogLevel())
+	if err != nil {
+		return nil, err
+	}
+	logger = logger.With("module", "main")
+	return tmcfg, nil
 }

@@ -18,4 +18,4 @@ generator:
 runner:
 	go build -o build/runner ./runner
 
-.PHONY: app docker generator maverick runner 
+.PHONY: all app docker generator maverick runner 
