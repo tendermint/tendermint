@@ -243,11 +243,11 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 
 // add, update, or remove a validator
 func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate) types.ResponseDeliverTx {
-	key := []byte("val:" + string(v.PubKey.GetEd25519()))
 	pubkey, err := cryptoenc.PubKeyFromProto(v.PubKey)
 	if err != nil {
 		panic(fmt.Errorf("can't decode public key: %w", err))
 	}
+	key := []byte("val:" + string(pubkey.Bytes()))
 
 	if v.Power == 0 {
 		// remove validator

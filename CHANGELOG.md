@@ -51,7 +51,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     - [evidence] [\#5319](https://github.com/tendermint/tendermint/issues/5319) Remove Amnesia & potentialAmnesia evidence types and removed POLC. (@marbar3778)
     - [evidence] [\#5361](https://github.com/tendermint/tendermint/pull/5361) Add LightClientAttackEvidence and change evidence interface (@cmwaters)
     - [params] [\#5319](https://github.com/tendermint/tendermint/issues/5319) Remove `ProofofTrialPeriod` from evidence params (@marbar3778)
-    - [crypto/secp256k1] [\#5280](https://github.com/tendermint/tendermint/issues/5280) `secp256k1` has been removed from the Tendermint repo. (@marbar3778)
     - [light] [\#5347](https://github.com/tendermint/tendermint/issues/5347) `NewClient`, `NewHTTPClient`, `VerifyHeader` and `VerifyLightBlockAtHeight` now accept `context.Context` as 1st param (@melekes)
     - [state] [\#5348](https://github.com/tendermint/tendermint/issues/5348) Define an Interface for the state store. (@marbar3778)
 
