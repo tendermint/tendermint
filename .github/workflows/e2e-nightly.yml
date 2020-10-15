@@ -29,7 +29,7 @@ jobs:
 
       - name: Run testnets in group ${{ matrix.group }}
         working-directory: test/e2e
-        run: sudo ./run-multiple.sh networks/nightly/*-group${{ matrix.group }}-*.toml
+        run: ./run-multiple.sh networks/nightly/*-group${{ matrix.group }}-*.toml
 
       - name: Notify Slack on failure
         uses: rtCamp/action-slack-notify@e9db0ef
