@@ -246,22 +246,24 @@ Each PR should have one commit once it lands on `master`; this can be accomplish
 
 #### Major Release
 
-1. start on `master`
-2. run integration tests (see `test_integrations` in Makefile)
-3. prepare release in a pull request against `master` (to be squash merged):
-   - copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
-   - run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
+1. Start on `master`
+2. Run integration tests (see `test_integrations` in Makefile)
+3. Prepare release in a pull request against `master` (to be squash merged):
+   - Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`; if this release 
+      had release candidates, squash all the RC updates into one
+   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
      all issues
-   - run `bash ./scripts/authors.sh` to get a list of authors since the latest
+   - Run `bash ./scripts/authors.sh` to get a list of authors since the latest
      release, and add the github aliases of external contributors to the top of
      the changelog. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
-   - reset the `CHANGELOG_PENDING.md`
-   - bump Tendermint version in `version.go`
-   - bump P2P and block protocol versions in  `version.go`, if necessary
-   - bump ABCI protocol version in `version.go`, if necessary
-   - make sure all significant breaking changes are covered in `UPGRADING.md`
-4. push your changes with prepared release details to `vX.X` (this will trigger the release `vX.X.0`)
-5. merge back to master (don't squash merge!)
+   - Reset the `CHANGELOG_PENDING.md`
+   - Bump Tendermint version in `version.go`
+   - Bump P2P and block protocol versions in  `version.go`, if necessary
+   - Bump ABCI protocol version in `version.go`, if necessary
+   - Make sure all significant breaking changes are covered in `UPGRADING.md`
+4. Push your changes with prepared release details to `vX.X` (this will trigger the release `vX.X.0`)
+5. Merge back to master (don't squash merge!)
+6. Delete any RC branches and tags for this release (if applicable)
 
 #### Minor Release
 
