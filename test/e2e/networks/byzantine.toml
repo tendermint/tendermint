@@ -1,5 +1,7 @@
 [node.validator01]
 [node.validator02]
 [node.validator03]
+abci_protocol = "builtin"
+behaviors = "double-prevote,14"
 [node.validator04]
 behaviors = "double-prevote,10"

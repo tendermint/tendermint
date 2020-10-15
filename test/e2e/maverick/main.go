@@ -59,6 +59,7 @@ var RootCmd = &cobra.Command{
 		"all the functionality of a normal node but custom behaviors can be injected when running the node " +
 		"through a flag. See maverick node --help for how the behavior flag is constructured",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
+		fmt.Printf("use: %v, args: %v", cmd.Use, cmd.Args)
 		config, err = ParseConfig()
 		if err != nil {
 			return err
@@ -116,10 +117,10 @@ func main() {
 		"behaviors",
 		"",
 		"Select the behaviors of the node (comma-separated, no spaces in between): \n"+
-			"e.g. --behavior double-prevote,3\n"+
+			"e.g. --behaviors double-prevote,3\n"+
 			"You can also have multiple behaviors: e.g. double-prevote,3,no-vote,5")
 
-	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv(filepath.Join("$HOME", ".maverick")))
+	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv(filepath.Join("$HOME", cfg.DefaultTendermintDir)))
 	if err := cmd.Execute(); err != nil {
 		panic(err)
 	}

@@ -139,7 +139,7 @@ services:
 {{- if eq .ABCIProtocol "builtin" }}
     entrypoint: /usr/bin/entrypoint-builtin
 {{- else if ne .Behaviors "" }}
-		entrypoint: /user/bin/entrypoint-maverick
+    entrypoint: /usr/bin/entrypoint-maverick
 {{- end }}
     init: true
     ports:

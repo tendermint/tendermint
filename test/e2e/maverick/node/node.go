@@ -83,7 +83,6 @@ OUTER_LOOP:
 	return behaviors, nil
 }
 
-
 // DBContext specifies config information for loading a new DB.
 type DBContext struct {
 	ID     string
