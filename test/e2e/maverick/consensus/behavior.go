@@ -202,7 +202,7 @@ func DefaultEnterPrecommit(cs *State, height int64, round int32) {
 	}
 
 	// At this point +2/3 prevoted for a particular block or nil.
-	cs.eventBus.PublishEventPolka(cs.RoundStateEvent())
+	_ = cs.eventBus.PublishEventPolka(cs.RoundStateEvent())
 
 	// the latest POLRound should be this round.
 	polRound, _ := cs.Votes.POLInfo()
@@ -219,7 +219,7 @@ func DefaultEnterPrecommit(cs *State, height int64, round int32) {
 			cs.LockedRound = -1
 			cs.LockedBlock = nil
 			cs.LockedBlockParts = nil
-			cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
+			_ = cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 		}
 		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 		return
@@ -231,7 +231,7 @@ func DefaultEnterPrecommit(cs *State, height int64, round int32) {
 	if cs.LockedBlock.HashesTo(blockID.Hash) {
 		logger.Info("enterPrecommit: +2/3 prevoted locked block. Relocking")
 		cs.LockedRound = round
-		cs.eventBus.PublishEventRelock(cs.RoundStateEvent())
+		_ = cs.eventBus.PublishEventRelock(cs.RoundStateEvent())
 		cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
 		return
 	}
@@ -246,7 +246,7 @@ func DefaultEnterPrecommit(cs *State, height int64, round int32) {
 		cs.LockedRound = round
 		cs.LockedBlock = cs.ProposalBlock
 		cs.LockedBlockParts = cs.ProposalBlockParts
-		cs.eventBus.PublishEventLock(cs.RoundStateEvent())
+		_ = cs.eventBus.PublishEventLock(cs.RoundStateEvent())
 		cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
 		return
 	}
@@ -262,7 +262,7 @@ func DefaultEnterPrecommit(cs *State, height int64, round int32) {
 		cs.ProposalBlock = nil
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
 	}
-	cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
+	_ = cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 	cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 }
 
@@ -288,7 +288,7 @@ func DefaultReceivePrevote(cs *State, vote *types.Vote) {
 			cs.LockedRound = -1
 			cs.LockedBlock = nil
 			cs.LockedBlockParts = nil
-			cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
+			_ = cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 		}
 
 		// Update Valid* if we can.
@@ -312,7 +312,7 @@ func DefaultReceivePrevote(cs *State, vote *types.Vote) {
 				cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
 			}
 			cs.evsw.FireEvent(types.EventValidBlock, &cs.RoundState)
-			cs.eventBus.PublishEventValidBlock(cs.RoundStateEvent())
+			_ = cs.eventBus.PublishEventValidBlock(cs.RoundStateEvent())
 		}
 	}
 
@@ -381,7 +381,8 @@ func DefaultReceiveProposal(cs *State, proposal *types.Proposal) error {
 
 	p := proposal.ToProto()
 	// Verify signature
-	if !cs.Validators.GetProposer().PubKey.VerifySignature(types.ProposalSignBytes(cs.state.ChainID, p), proposal.Signature) {
+	if !cs.Validators.GetProposer().PubKey.VerifySignature(
+		types.ProposalSignBytes(cs.state.ChainID, p), proposal.Signature) {
 		return ErrInvalidProposalSignature
 	}
 

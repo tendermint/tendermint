@@ -147,7 +147,9 @@ func startNode(config *cfg.Config, logger log.Logger, behaviorFlag string) error
 	// Stop upon receiving SIGTERM or CTRL-C.
 	tmos.TrapSignal(logger, func() {
 		if node.IsRunning() {
-			node.Stop()
+			if err := node.Stop(); err != nil {
+				logger.Error("unable to stop the node", "error", err)
+			}
 		}
 	})
 
@@ -231,6 +233,6 @@ func listBehaviors(cmd *cobra.Command, args []string) error {
 	for key := range cs.BehaviorList {
 		str += fmt.Sprintf("- %s\n", key)
 	}
-	fmt.Printf(str)
+	fmt.Println(str)
 	return nil
 }

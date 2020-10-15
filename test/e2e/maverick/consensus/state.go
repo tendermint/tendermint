@@ -372,7 +372,7 @@ func (cs *State) addVote(
 		}
 
 		cs.Logger.Info(fmt.Sprintf("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
-		cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote})
+		_ = cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote})
 		cs.evsw.FireEvent(types.EventVote, vote)
 
 		// if we can skip timeoutCommit and have all the votes now,
@@ -398,7 +398,7 @@ func (cs *State) addVote(
 		return
 	}
 
-	cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote})
+	_ = cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote})
 	cs.evsw.FireEvent(types.EventVote, vote)
 
 	switch vote.Type {
@@ -653,17 +653,6 @@ func (cs *State) OnStart() error {
 	cs.scheduleRound0(cs.GetRoundState())
 
 	return nil
-}
-
-// timeoutRoutine: receive requests for timeouts on tickChan and fire timeouts on tockChan
-// receiveRoutine: serializes processing of proposoals, block parts, votes; coordinates state transitions
-func (cs *State) startRoutines(maxSteps int) {
-	err := cs.timeoutTicker.Start()
-	if err != nil {
-		cs.Logger.Error("Error starting timeout ticker", "err", err)
-		return
-	}
-	go cs.receiveRoutine(maxSteps)
 }
 
 // loadWalFile loads WAL data from file. It overwrites cs.wal.
@@ -1287,39 +1276,6 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr)
 }
 
-func (cs *State) defaultDoPrevote(height int64, round int32) {
-	logger := cs.Logger.With("height", height, "round", round)
-
-	// If a block is locked, prevote that.
-	if cs.LockedBlock != nil {
-		logger.Info("enterPrevote: Already locked on a block, prevoting locked block")
-		cs.signAddVote(tmproto.PrevoteType, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
-		return
-	}
-
-	// If ProposalBlock is nil, prevote nil.
-	if cs.ProposalBlock == nil {
-		logger.Info("enterPrevote: ProposalBlock is nil")
-		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
-		return
-	}
-
-	// Validate proposal block
-	err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock)
-	if err != nil {
-		// ProposalBlock is invalid, prevote nil.
-		logger.Error("enterPrevote: ProposalBlock is invalid", "err", err)
-		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
-		return
-	}
-
-	// Prevote cs.ProposalBlock
-	// NOTE: the proposal signature is validated when it is received,
-	// and the proposal block parts are validated as they are received (against the merkle hash in the proposal)
-	logger.Info("enterPrevote: ProposalBlock is valid")
-	cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
-}
-
 // Enter: any +2/3 prevotes at next round.
 func (cs *State) enterPrevoteWait(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
@@ -1699,44 +1655,6 @@ func (cs *State) recordMetrics(height int64, block *types.Block) {
 }
 
 //-----------------------------------------------------------------------------
-
-func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
-	// Already have one
-	// TODO: possibly catch double proposals
-	if cs.Proposal != nil {
-		return nil
-	}
-
-	// Does not apply
-	if proposal.Height != cs.Height || proposal.Round != cs.Round {
-		return nil
-	}
-
-	// Verify POLRound, which must be -1 or in range [0, proposal.Round).
-	if proposal.POLRound < -1 ||
-		(proposal.POLRound >= 0 && proposal.POLRound >= proposal.Round) {
-		return ErrInvalidProposalPOLRound
-	}
-
-	p := proposal.ToProto()
-	// Verify signature
-	if !cs.Validators.GetProposer().PubKey.VerifySignature(
-		types.ProposalSignBytes(cs.state.ChainID, p), proposal.Signature,
-	) {
-		return ErrInvalidProposalSignature
-	}
-
-	proposal.Signature = p.Signature
-	cs.Proposal = proposal
-	// We don't update cs.ProposalBlockParts if it is already set.
-	// This happens if we're already in cstypes.RoundStepCommit or if there is a valid block in the current round.
-	// TODO: We can check if Proposal is for a different block as this is a sign of misbehavior!
-	if cs.ProposalBlockParts == nil {
-		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
-	}
-	cs.Logger.Info("Received proposal", "proposal", proposal)
-	return nil
-}
 
 // NOTE: block is not necessarily valid.
 // Asynchronously triggers either enterPrevote (before we timeout of propose) or tryFinalizeCommit,
