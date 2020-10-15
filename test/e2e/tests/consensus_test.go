@@ -1,13 +1,15 @@
 package e2e_test
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-  nd "github.com/tendermint/tendermint/test/e2e/maverick/node"
+	nd "github.com/tendermint/tendermint/test/e2e/maverick/node"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestEvidence_DoubleVote(t *testing.T) {
@@ -33,8 +35,17 @@ func TestEvidence_DoubleVote(t *testing.T) {
 				var reportHeight int64 = height + 1
 				resp, err := client.Block(ctx, &reportHeight)
 				require.NoError(t, err)
-				assert.NotEmpty(t, resp.Block.Evidence, "no evidence seen of node %v equivocating at height %d",
+				assert.NotEmpty(t, resp.Block.Evidence.Evidence, "no evidence seen of node %v equivocating at height %d",
 					node.Name, height)
+				containsMaverick := false
+				for _, ev := range resp.Block.Evidence.Evidence {
+					if dev, ok := ev.(*types.DuplicateVoteEvidence); ok {
+						if bytes.Equal(dev.VoteA.ValidatorAddress, node.Key.PubKey().Address()) {
+							containsMaverick = true
+						}
+					}
+				}
+				assert.True(t, containsMaverick)
 			}
 		}
 

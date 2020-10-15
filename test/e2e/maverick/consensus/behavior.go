@@ -12,7 +12,7 @@ import (
 
 // BehaviorList encompasses a list of all possible behaviors
 var BehaviorList = map[string]Behavior{
-	"double-prevote": NewDoublePrevoteBehavior(),
+	"double-prevote": DoublePrevoteBehavior(),
 }
 
 type Behavior struct {
@@ -33,7 +33,7 @@ type Behavior struct {
 
 // BEHAVIORS
 
-func NewDefaultBehavior() Behavior {
+func DefaultBehavior() Behavior {
 	return Behavior{
 		String:           "default",
 		EnterPropose:     DefaultEnterPropose,
@@ -45,12 +45,11 @@ func NewDefaultBehavior() Behavior {
 	}
 }
 
-func NewDoublePrevoteBehavior() Behavior {
-	b := NewDefaultBehavior()
+func DoublePrevoteBehavior() Behavior {
+	b := DefaultBehavior()
 	b.String = "double-prevote"
 	b.EnterPrevote = func(cs *State, height int64, round int32) {
 		logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("behavior", b.String, "height", height)
-		logger.Info("Executing prevote behavior")
 
 		// If a block is locked, prevote that.
 		if cs.LockedBlock != nil {
@@ -92,10 +91,6 @@ func NewDoublePrevoteBehavior() Behavior {
 
 		// add our own vote
 		cs.sendInternalMessage(msgInfo{&VoteMessage{prevote}, ""})
-		// added, err := cs.addVote(prevote, "")
-		// if err != nil || !added {
-		// 	logger.Error("enterPrevote: failed to add own vote", "err", err)
-		// }
 
 		logger.Info("Sending conflicting votes")
 		peers := cs.sw.Peers().List()
@@ -107,7 +102,6 @@ func NewDoublePrevoteBehavior() Behavior {
 				peer.Send(VoteChannel, MustEncode(&VoteMessage{nilPrevote}))
 			}
 		}
-		logger.Info("Finished double prevote behavior")
 	}
 	return b
 }
@@ -115,8 +109,7 @@ func NewDoublePrevoteBehavior() Behavior {
 // DEFAULTS
 
 func DefaultEnterPropose(cs *State, height int64, round int32) {
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("behavior", "default", "height", height)
-	logger.Info("Executing behavior at enter propose")
+	logger := cs.Logger.With("height", height, "round", round)
 	// If we don't get the proposal and all block parts quick enough, enterPrevote
 	cs.scheduleTimeout(cs.config.Propose(round), height, round, cstypes.RoundStepPropose)
 
@@ -159,8 +152,7 @@ func DefaultEnterPropose(cs *State, height int64, round int32) {
 }
 
 func DefaultEnterPrevote(cs *State, height int64, round int32) {
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("behavior", "default", "height", height)
-	logger.Info("Executing behavior at enter prevote")
+	logger := cs.Logger.With("height", height, "round", round)
 
 	// If a block is locked, prevote that.
 	if cs.LockedBlock != nil {
@@ -193,8 +185,8 @@ func DefaultEnterPrevote(cs *State, height int64, round int32) {
 }
 
 func DefaultEnterPrecommit(cs *State, height int64, round int32) {
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("behavior", "default", "height", height)
-	logger.Info("Executing behavior at enter precommit")
+	logger := cs.Logger.With("height", height, "round", round)
+
 	// check for a polka
 	blockID, ok := cs.Votes.Prevotes(round).TwoThirdsMajority()
 
@@ -277,9 +269,6 @@ func DefaultEnterPrecommit(cs *State, height int64, round int32) {
 func DefaultReceivePrevote(cs *State, vote *types.Vote) {
 	height := cs.Height
 	prevotes := cs.Votes.Prevotes(vote.Round)
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("behavior", "default", "height", height)
-	logger.Info("Executing behavior at receive prevote")
-
 
 	// If +2/3 prevotes for a block or nil for *any* round:
 	if blockID, ok := prevotes.TwoThirdsMajority(); ok {
@@ -351,8 +340,6 @@ func DefaultReceivePrevote(cs *State, vote *types.Vote) {
 func DefaultReceivePrecommit(cs *State, vote *types.Vote) {
 	height := cs.Height
 	precommits := cs.Votes.Precommits(vote.Round)
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("behavior", "default", "height", height)
-	logger.Info("Executing behavior at receive precommit")
 	cs.Logger.Info("Added to precommit", "vote", vote, "precommits", precommits.StringShort())
 
 	blockID, ok := precommits.TwoThirdsMajority()

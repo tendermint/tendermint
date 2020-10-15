@@ -140,6 +140,7 @@ services:
     entrypoint: /usr/bin/entrypoint-builtin
 {{- else if ne .Behaviors "" }}
     entrypoint: /usr/bin/entrypoint-maverick
+    command: ["node", "--behaviors", "{{ .Behaviors }}"]
 {{- end }}
     init: true
     ports:

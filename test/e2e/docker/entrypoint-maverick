@@ -7,4 +7,4 @@ rm -rf /var/run/privval.sock /var/run/app.sock
 
 sleep 1
 
-/usr/bin/maverick "$@"
+/usr/bin/maverick node --behaviors double-prevote,10

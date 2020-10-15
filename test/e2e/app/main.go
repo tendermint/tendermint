@@ -140,7 +140,7 @@ func startNode(cfg *Config) error {
 		}
 
 		n, err := maverick.NewNode(tmcfg,
-			privval.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
+			maverick.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
 			nodeKey,
 			proxy.NewLocalClientCreator(app),
 			maverick.DefaultGenesisDocProviderFunc(tmcfg),
