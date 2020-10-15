@@ -30,7 +30,7 @@ func Cleanup(testnet *e2e.Testnet) error {
 	// runs as root inside the container, so we need to clean them up from within a
 	// container running as root too.
 	for _, node := range testnet.Nodes {
-		err = execCompose(testnet.Dir, "run", "--entrypoint", "", node.Name, "rm", "-rf", "/tendermint/*")
+		err = execCompose(testnet.Dir, "run", "--entrypoint", "", node.Name, "sh", "-c", "rm -rf /tendermint/*")
 		if err != nil {
 			return err
 		}
