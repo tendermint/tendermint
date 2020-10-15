@@ -116,14 +116,14 @@ type ManifestNode struct {
 	// restart:    restarts the node, shutting it down with SIGTERM
 	Perturb []string `toml:"perturb"`
 
-	// Behaviors sets how a validator behaves during consensus at a
-	// certain height. Multiple behaviors at different heights can be used
+	// Misbehaviors sets how a validator behaves during consensus at a
+	// certain height. Multiple misbehaviors at different heights can be used
 	//
-	// An example of a behavior
+	// An example of a misbehavior
 	//    "double-prevote,10"
 	//
 	// For more information, look at the readme in the maverick folden
-	Behaviors string `toml:"behaviors"`
+	Misbehaviors string `toml:"misbehaviors"`
 }
 
 // Save saves the testnet manifest to a file.

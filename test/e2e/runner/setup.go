@@ -138,9 +138,9 @@ services:
     image: tendermint/e2e-node
 {{- if eq .ABCIProtocol "builtin" }}
     entrypoint: /usr/bin/entrypoint-builtin
-{{- else if ne .Behaviors "" }}
+{{- else if ne .Misbehaviors "" }}
     entrypoint: /usr/bin/entrypoint-maverick
-    command: ["node", "--behaviors", "{{ .Behaviors }}"]
+    command: ["node", "--misbehaviors", "{{ .Misbehaviors }}"]
 {{- end }}
     init: true
     ports:
@@ -298,7 +298,7 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		"persist_interval":  node.PersistInterval,
 		"snapshot_interval": node.SnapshotInterval,
 		"retain_blocks":     node.RetainBlocks,
-		"behaviors":         node.Behaviors,
+		"misbehaviors":      node.Misbehaviors,
 	}
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:

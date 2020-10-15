@@ -24,9 +24,9 @@ import (
 )
 
 var (
-	config       = cfg.DefaultConfig()
-	logger       = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-	behaviorFlag = ""
+	config          = cfg.DefaultConfig()
+	logger          = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	misbehaviorFlag = ""
 )
 
 func init() {
@@ -55,9 +55,9 @@ func ParseConfig() (*cfg.Config, error) {
 var RootCmd = &cobra.Command{
 	Use:   "maverick",
 	Short: "Tendermint Maverick Node",
-	Long: "Tendermint Maverick Node for testing with faulty consensus behaviors in a testnet. Contains " +
-		"all the functionality of a normal node but custom behaviors can be injected when running the node " +
-		"through a flag. See maverick node --help for how the behavior flag is constructured",
+	Long: "Tendermint Maverick Node for testing with faulty consensus misbehaviors in a testnet. Contains " +
+		"all the functionality of a normal node but custom misbehaviors can be injected when running the node " +
+		"through a flag. See maverick node --help for how the misbehavior flag is constructured",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
 		fmt.Printf("use: %v, args: %v", cmd.Use, cmd.Args)
 		config, err = ParseConfig()
@@ -82,7 +82,7 @@ var RootCmd = &cobra.Command{
 func main() {
 	rootCmd := RootCmd
 	rootCmd.AddCommand(
-		ListBehaviorCmd,
+		ListMisbehaviorCmd,
 		cmd.GenValidatorCmd,
 		InitFilesCmd,
 		cmd.ProbeUpnpCmd,
@@ -102,7 +102,7 @@ func main() {
 		Use:   "node",
 		Short: "Run the maverick node",
 		RunE: func(command *cobra.Command, args []string) error {
-			return startNode(config, logger, behaviorFlag)
+			return startNode(config, logger, misbehaviorFlag)
 		},
 	}
 
@@ -111,14 +111,14 @@ func main() {
 	// Create & start node
 	rootCmd.AddCommand(nodeCmd)
 
-	// add special flag for behaviors
+	// add special flag for misbehaviors
 	nodeCmd.Flags().StringVar(
-		&behaviorFlag,
-		"behaviors",
+		&misbehaviorFlag,
+		"misbehaviors",
 		"",
-		"Select the behaviors of the node (comma-separated, no spaces in between): \n"+
-			"e.g. --behaviors double-prevote,3\n"+
-			"You can also have multiple behaviors: e.g. double-prevote,3,no-vote,5")
+		"Select the misbehaviors of the node (comma-separated, no spaces in between): \n"+
+			"e.g. --misbehaviors double-prevote,3\n"+
+			"You can also have multiple misbehaviors: e.g. double-prevote,3,no-vote,5")
 
 	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv(filepath.Join("$HOME", cfg.DefaultTendermintDir)))
 	if err := cmd.Execute(); err != nil {
@@ -126,14 +126,14 @@ func main() {
 	}
 }
 
-func startNode(config *cfg.Config, logger log.Logger, behaviorFlag string) error {
-	fmt.Printf("behavior string: %s", behaviorFlag)
-	behaviors, err := nd.ParseBehaviors(behaviorFlag)
+func startNode(config *cfg.Config, logger log.Logger, misbehaviorFlag string) error {
+	fmt.Printf("misbehavior string: %s", misbehaviorFlag)
+	misbehaviors, err := nd.ParseMisbehaviors(misbehaviorFlag)
 	if err != nil {
 		return err
 	}
 
-	node, err := nd.DefaultNewNode(config, logger, behaviors)
+	node, err := nd.DefaultNewNode(config, logger, misbehaviors)
 	if err != nil {
 		return fmt.Errorf("failed to create node: %w", err)
 	}
@@ -222,15 +222,15 @@ func initFilesWithConfig(config *cfg.Config) error {
 	return nil
 }
 
-var ListBehaviorCmd = &cobra.Command{
-	Use:   "behaviors",
-	Short: "Lists possible behaviors",
-	RunE:  listBehaviors,
+var ListMisbehaviorCmd = &cobra.Command{
+	Use:   "misbehaviors",
+	Short: "Lists possible misbehaviors",
+	RunE:  listMisbehaviors,
 }
 
-func listBehaviors(cmd *cobra.Command, args []string) error {
-	str := "Currently registered behaviors: \n"
-	for key := range cs.BehaviorList {
+func listMisbehaviors(cmd *cobra.Command, args []string) error {
+	str := "Currently registered misbehaviors: \n"
+	for key := range cs.MisbehaviorList {
 		str += fmt.Sprintf("- %s\n", key)
 	}
 	fmt.Println(str)

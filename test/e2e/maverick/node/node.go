@@ -53,34 +53,34 @@ import (
 
 //------------------------------------------------------------------------------
 
-// ParseBehaviors is a util function that converts a comma separated string into
-// a map of behaviors to be executed by the maverick node
-func ParseBehaviors(str string) (map[int64]cs.Behavior, error) {
+// ParseMisbehaviors is a util function that converts a comma separated string into
+// a map of misbehaviors to be executed by the maverick node
+func ParseMisbehaviors(str string) (map[int64]cs.Misbehavior, error) {
 	// check if string is empty in which case we run a normal node
-	var behaviors = make(map[int64]cs.Behavior)
+	var misbehaviors = make(map[int64]cs.Misbehavior)
 	if str == "" {
-		return behaviors, nil
+		return misbehaviors, nil
 	}
 	strs := strings.Split(str, ",")
 	if len(strs)%2 != 0 {
-		return behaviors, errors.New("missing either height or behavior name in the behavior flag")
+		return misbehaviors, errors.New("missing either height or misbehavior name in the misbehavior flag")
 	}
 OUTER_LOOP:
 	for i := 0; i < len(strs); i += 2 {
 		height, err := strconv.ParseInt(strs[i+1], 10, 64)
 		if err != nil {
-			return behaviors, fmt.Errorf("failed to parse behavior height: %w", err)
+			return misbehaviors, fmt.Errorf("failed to parse misbehavior height: %w", err)
 		}
-		for key, behavior := range cs.BehaviorList {
+		for key, misbehavior := range cs.MisbehaviorList {
 			if key == strs[i] {
-				behaviors[height] = behavior
+				misbehaviors[height] = misbehavior
 				continue OUTER_LOOP
 			}
 		}
-		return behaviors, fmt.Errorf("received unknown behavior: %s. Did you forget to add it?", strs[i])
+		return misbehaviors, fmt.Errorf("received unknown misbehavior: %s. Did you forget to add it?", strs[i])
 	}
 
-	return behaviors, nil
+	return misbehaviors, nil
 }
 
 // DBContext specifies config information for loading a new DB.
@@ -118,7 +118,7 @@ type Provider func(*cfg.Config, log.Logger) (*Node, error)
 // DefaultNewNode returns a Tendermint node with default settings for the
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
-func DefaultNewNode(config *cfg.Config, logger log.Logger, behaviors map[int64]cs.Behavior) (*Node, error) {
+func DefaultNewNode(config *cfg.Config, logger log.Logger, misbehaviors map[int64]cs.Misbehavior) (*Node, error) {
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load or gen node key %s, err: %w", config.NodeKeyFile(), err)
@@ -132,7 +132,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger, behaviors map[int64]c
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
 		logger,
-		behaviors,
+		misbehaviors,
 	)
 
 }
@@ -431,7 +431,7 @@ func createConsensusReactor(config *cfg.Config,
 	waitSync bool,
 	eventBus *types.EventBus,
 	consensusLogger log.Logger,
-	behaviors map[int64]cs.Behavior) (*cs.Reactor, *cs.State) {
+	misbehaviors map[int64]cs.Misbehavior) (*cs.Reactor, *cs.State) {
 
 	consensusState := cs.NewState(
 		config.Consensus,
@@ -440,7 +440,7 @@ func createConsensusReactor(config *cfg.Config,
 		blockStore,
 		mempool,
 		evidencePool,
-		behaviors,
+		misbehaviors,
 		cs.StateMetrics(csMetrics),
 	)
 	consensusState.SetLogger(consensusLogger)
@@ -670,7 +670,7 @@ func NewNode(config *cfg.Config,
 	dbProvider DBProvider,
 	metricsProvider MetricsProvider,
 	logger log.Logger,
-	behaviors map[int64]cs.Behavior,
+	misbehaviors map[int64]cs.Misbehavior,
 	options ...Option) (*Node, error) {
 
 	blockStore, stateDB, err := initDBs(config, dbProvider)
@@ -784,10 +784,10 @@ func NewNode(config *cfg.Config,
 		csMetrics.FastSyncing.Set(1)
 	}
 
-	logger.Info("Setting up maverick consensus reactor", "Behaviors", behaviors)
+	logger.Info("Setting up maverick consensus reactor", "Misbehaviors", misbehaviors)
 	consensusReactor, consensusState := createConsensusReactor(
 		config, state, blockExec, blockStore, mempool, evidencePool,
-		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger, behaviors)
+		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger, misbehaviors)
 
 	// Set up state sync reactor, and schedule a sync if requested.
 	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,

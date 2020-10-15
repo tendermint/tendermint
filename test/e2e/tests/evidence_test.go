@@ -12,12 +12,14 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func TestEvidence_DoubleVote(t *testing.T) {
+func TestEvidence_Misbehavior(t *testing.T) {
+	blocks := fetchBlockChain(t)
+	misbehaviors := fetchMisbehaviors(t)
 	testNode(t, func(t *testing.T, node e2e.Node) {
 		// We only use the maverick nodes to check misbehavior as
 		// it's the only way to ensure that the network at least
 		// has a maverick node
-		if node.Behaviors == "" {
+		if node.Misbehaviors == "" {
 			return
 		}
 
@@ -26,11 +28,11 @@ func TestEvidence_DoubleVote(t *testing.T) {
 		status, err := client.Status(ctx)
 		require.NoError(t, err)
 
-		behaviors, err := nd.ParseBehaviors(node.Behaviors)
+		misbehaviors, err := nd.ParseMisbehaviors(node.Misbehaviors)
 		require.NoError(t, err)
 
-		for height, behavior := range behaviors {
-			if behavior.String == "double-prevote" && height < status.SyncInfo.LatestBlockHeight {
+		for height, misbehavior := range misbehaviors {
+			if misbehavior.String == "double-prevote" && height < status.SyncInfo.LatestBlockHeight {
 				// we expect evidence to be formed in the height directly after hence height + 1
 				var reportHeight int64 = height + 1
 				resp, err := client.Block(ctx, &reportHeight)
@@ -52,4 +54,14 @@ func TestEvidence_DoubleVote(t *testing.T) {
 		}
 
 	})
+}
+
+func fetchMisebehaviors(t *testing.T) {
+	t.Helper()
+
+	misbehavior = 
+
+	testnet := loadTestnet(t)
+	for 
+
 }

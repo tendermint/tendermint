@@ -61,7 +61,7 @@ func run(configFile string) error {
 	case "socket", "grpc":
 		err = startApp(cfg)
 	case "builtin":
-		if cfg.Behaviors == "" {
+		if cfg.Misbehaviors == "" {
 			err = startNode(cfg)
 		} else {
 			err = startMaverick(cfg)
@@ -150,9 +150,9 @@ func startMaverick(cfg *Config) error {
 		return fmt.Errorf("failed to load or gen node key %s: %w", tmcfg.NodeKeyFile(), err)
 	}
 
-	behaviors, err := maverick.ParseBehaviors(cfg.Behaviors)
+	misbehaviors, err := maverick.ParseMisbehaviors(cfg.Misbehaviors)
 	if err != nil {
-		return fmt.Errorf("failed to parse behaviors: %w", err)
+		return fmt.Errorf("failed to parse misbehaviors: %w", err)
 	}
 
 	n, err := maverick.NewNode(tmcfg,
@@ -163,7 +163,7 @@ func startMaverick(cfg *Config) error {
 		maverick.DefaultDBProvider,
 		maverick.DefaultMetricsProvider(tmcfg.Instrumentation),
 		logger,
-		behaviors,
+		misbehaviors,
 	)
 	if err != nil {
 		return err

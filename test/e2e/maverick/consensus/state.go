@@ -98,10 +98,10 @@ type State struct {
 	// for reporting metrics
 	metrics *Metrics
 
-	// behaviors mapped for each height (can't have more than one behavior per height)
-	behaviors map[int64]Behavior
+	// misbehaviors mapped for each height (can't have more than one misbehavior per height)
+	misbehaviors map[int64]Misbehavior
 
-	// the switch is passed to the state so that maveick behaviors can directly control which
+	// the switch is passed to the state so that maveick misbehaviors can directly control which
 	// information they send to which nodes
 	sw *p2p.Switch
 }
@@ -117,7 +117,7 @@ func NewState(
 	blockStore sm.BlockStore,
 	txNotifier txNotifier,
 	evpool evidencePool,
-	behaviors map[int64]Behavior,
+	misbehaviors map[int64]Misbehavior,
 	options ...StateOption,
 ) *State {
 	cs := &State{
@@ -135,7 +135,7 @@ func NewState(
 		evpool:           evpool,
 		evsw:             tmevents.NewEventSwitch(),
 		metrics:          NopMetrics(),
-		behaviors:        behaviors,
+		misbehaviors:     misbehaviors,
 	}
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
@@ -177,7 +177,7 @@ func (cs *State) handleMsg(mi msgInfo) {
 		// will not cause transition.
 		// once proposal is set, we can receive block parts
 		// err = cs.setProposal(msg.Proposal)
-		if b, ok := cs.behaviors[cs.Height]; ok {
+		if b, ok := cs.misbehaviors[cs.Height]; ok {
 			err = b.ReceiveProposal(cs, msg.Proposal)
 		} else {
 			err = DefaultReceiveProposal(cs, msg.Proposal)
@@ -265,7 +265,7 @@ func (cs *State) enterPropose(height int64, round int32) {
 		}
 	}()
 
-	if b, ok := cs.behaviors[cs.Height]; ok {
+	if b, ok := cs.misbehaviors[cs.Height]; ok {
 		b.EnterPropose(cs, height, round)
 	} else {
 		DefaultEnterPropose(cs, height, round)
@@ -297,7 +297,7 @@ func (cs *State) enterPrevote(height int64, round int32) {
 	cs.Logger.Info(fmt.Sprintf("enterPrevote(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	// Sign and broadcast vote as necessary
-	if b, ok := cs.behaviors[cs.Height]; ok {
+	if b, ok := cs.misbehaviors[cs.Height]; ok {
 		b.EnterPrevote(cs, height, round)
 	} else {
 		DefaultEnterPrevote(cs, height, round)
@@ -335,7 +335,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 		cs.newStep()
 	}()
 
-	if b, ok := cs.behaviors[cs.Height]; ok {
+	if b, ok := cs.misbehaviors[cs.Height]; ok {
 		b.EnterPrecommit(cs, height, round)
 	} else {
 		DefaultEnterPrecommit(cs, height, round)
@@ -403,14 +403,14 @@ func (cs *State) addVote(
 
 	switch vote.Type {
 	case tmproto.PrevoteType:
-		if b, ok := cs.behaviors[cs.Height]; ok {
+		if b, ok := cs.misbehaviors[cs.Height]; ok {
 			b.ReceivePrevote(cs, vote)
 		} else {
 			DefaultReceivePrevote(cs, vote)
 		}
 
 	case tmproto.PrecommitType:
-		if b, ok := cs.behaviors[cs.Height]; ok {
+		if b, ok := cs.misbehaviors[cs.Height]; ok {
 			b.ReceivePrecommit(cs, vote)
 		}
 		DefaultReceivePrecommit(cs, vote)

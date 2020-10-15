@@ -10,12 +10,12 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// BehaviorList encompasses a list of all possible behaviors
-var BehaviorList = map[string]Behavior{
-	"double-prevote": DoublePrevoteBehavior(),
+// MisbehaviorList encompasses a list of all possible behaviors
+var MisbehaviorList = map[string]Misbehavior{
+	"double-prevote": DoublePrevoteMisbehavior(),
 }
 
-type Behavior struct {
+type Misbehavior struct {
 	String string
 
 	EnterPropose func(cs *State, height int64, round int32)
@@ -33,8 +33,8 @@ type Behavior struct {
 
 // BEHAVIORS
 
-func DefaultBehavior() Behavior {
-	return Behavior{
+func DefaultMisbehavior() Misbehavior {
+	return Misbehavior{
 		String:           "default",
 		EnterPropose:     DefaultEnterPropose,
 		EnterPrevote:     DefaultEnterPrevote,
@@ -45,8 +45,8 @@ func DefaultBehavior() Behavior {
 	}
 }
 
-func DoublePrevoteBehavior() Behavior {
-	b := DefaultBehavior()
+func DoublePrevoteMisbehavior() Misbehavior {
+	b := DefaultMisbehavior()
 	b.String = "double-prevote"
 	b.EnterPrevote = func(cs *State, height int64, round int32) {
 		logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("behavior", b.String, "height", height)

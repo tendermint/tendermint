@@ -2,14 +2,14 @@
 
 ![](https://assets.rollingstone.com/assets/2015/article/tom-cruise-to-fight-drones-in-top-gun-sequel-20150629/201166/large_rect/1435581755/1401x788-Top-Gun-3.jpg)
 
-A byzantine node used to test Tendermint consensus against a plethora of different faulty behaviors. Designed to easily create new faulty behaviors to examine how a Tendermint network reacts to the behavior. Can also be used for fuzzy testing with different network arrangements.
+A byzantine node used to test Tendermint consensus against a plethora of different faulty misbehaviors. Designed to easily create new faulty misbehaviors to examine how a Tendermint network reacts to the misbehavior. Can also be used for fuzzy testing with different network arrangements.
 
-## Behaviors
+## Misbehaviors
 
-A behavior allows control at the following stages as highlighted by the struct below
+A misbehavior allows control at the following stages as highlighted by the struct below
 
 ```go
-type Behavior struct {
+type Misbehavior struct {
 	String string
 
 	EnterPropose func(cs *State, height int64, round int32)
@@ -26,11 +26,11 @@ type Behavior struct {
 }
 ```
 
-At each of these events, the node can exhibit a different behavior. To create a new behavior define a function that builds off the existing default behavior and then overrides one or more of these functions. Then append it to the behaviors list so the node recognizes it like so:
+At each of these events, the node can exhibit a different misbehavior. To create a new misbehavior define a function that builds off the existing default misbehavior and then overrides one or more of these functions. Then append it to the misbehaviors list so the node recognizes it like so:
 
 ```go
-var BehaviorList = map[string]Behavior{
-	"double-prevote": DoublePrevoteBehavior(),
+var MisbehaviorList = map[string]Misbehavior{
+	"double-prevote": DoublePrevoteMisbehavior(),
 }
 ```
 
@@ -42,10 +42,10 @@ The maverick node takes most of the functionality from the existing Tendermint C
 go build
 ```
 
-Use `maverick init` to initialize a single node and `maverick node` to run it. This will run it normally unless you use the behaviors flag as follows:
+Use `maverick init` to initialize a single node and `maverick node` to run it. This will run it normally unless you use the misbehaviors flag as follows:
 
 ```bash
-maverick node --proxy_app persistent_kvstore --behaviors double-vote,10
+maverick node --proxy_app persistent_kvstore --misbehaviors double-vote,10
 ```
 
-This would cause the node to vote twice in every round at height 10. To add more behaviors at different heights, append the next behavior and height after the first (with comma separation).
+This would cause the node to vote twice in every round at height 10. To add more misbehaviors at different heights, append the next misbehavior and height after the first (with comma separation).

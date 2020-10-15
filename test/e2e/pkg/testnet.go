@@ -78,7 +78,7 @@ type Node struct {
 	Seeds            []*Node
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
-	Behaviors        string
+	Misbehaviors     string
 }
 
 // LoadTestnet loads a testnet from a manifest file, using the filename to
@@ -148,7 +148,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			SnapshotInterval: nodeManifest.SnapshotInterval,
 			RetainBlocks:     nodeManifest.RetainBlocks,
 			Perturbations:    []Perturbation{},
-			Behaviors:        nodeManifest.Behaviors,
+			Misbehaviors:     nodeManifest.Misbehaviors,
 		}
 		if nodeManifest.Mode != "" {
 			node.Mode = Mode(nodeManifest.Mode)
