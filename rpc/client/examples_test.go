@@ -22,7 +22,7 @@ func ExampleHTTP_simple() {
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
 	c, err := rpchttp.New(rpcAddr, "/websocket")
 	if err != nil {
-		log.Fatal(err) //nolint:gocritic
+		log.Fatal(err)
 	}
 
 	// Create a transaction
@@ -98,7 +98,7 @@ func ExampleHTTP_batching() {
 		// Broadcast the transaction and wait for it to commit (rather use
 		// c.BroadcastTxSync though in production).
 		if _, err := batch.BroadcastTxCommit(context.Background(), tx); err != nil {
-			log.Fatal(err) //nolint:gocritic
+			log.Fatal(err)
 		}
 	}
 
