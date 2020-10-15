@@ -65,7 +65,7 @@ func startConsensusNet(t *testing.T, css []*State, n int) (
 		require.NoError(t, err)
 		blocksSubs = append(blocksSubs, blocksSub)
 
-		if css[i].state.LastBlockHeight == 0 { //simulate handle initChain in handshake
+		if css[i].state.LastBlockHeight == 0 { // simulate handle initChain in handshake
 			if err := css[i].blockExec.Store().Save(css[i].state); err != nil {
 				t.Error(err)
 			}
@@ -167,11 +167,11 @@ func TestReactorWithEvidence(t *testing.T) {
 		// mock the evidence pool
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % nValidators
+		ev := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], config.ChainID())
 		evpool := &statemocks.EvidencePool{}
 		evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
-		evpool.On("PendingEvidence", mock.AnythingOfType("uint32")).Return([]types.Evidence{
-			types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], config.ChainID()),
-		})
+		evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]types.Evidence{
+			ev}, int64(len(ev.Bytes())))
 		evpool.On("Update", mock.AnythingOfType("state.State")).Return()
 		evpool.On("ABCIEvidence", mock.AnythingOfType("int64"), mock.AnythingOfType("[]types.Evidence")).Return(
 			[]abci.Evidence{})

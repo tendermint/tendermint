@@ -68,7 +68,7 @@ func NewCLI() *CLI {
 			if err := Perturb(cli.testnet); err != nil {
 				return err
 			}
-			if err := Wait(cli.testnet, 5); err != nil { // wait for network to settle
+			if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
 				return err
 			}
 
@@ -76,7 +76,7 @@ func NewCLI() *CLI {
 			if err := <-chLoadResult; err != nil {
 				return err
 			}
-			if err := Wait(cli.testnet, 3); err != nil { // wait for last txs to commit
+			if err := Wait(cli.testnet, 5); err != nil { // wait for network to settle before tests
 				return err
 			}
 			if err := Test(cli.testnet); err != nil {
@@ -167,6 +167,14 @@ func NewCLI() *CLI {
 	cli.root.AddCommand(&cobra.Command{
 		Use:   "logs",
 		Short: "Shows the testnet logs",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return execComposeVerbose(cli.testnet.Dir, "logs")
+		},
+	})
+
+	cli.root.AddCommand(&cobra.Command{
+		Use:   "tail",
+		Short: "Tails the testnet logs",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return execComposeVerbose(cli.testnet.Dir, "logs", "--follow")
 		},

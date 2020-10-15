@@ -148,7 +148,6 @@ func addCommands() {
 	RootCmd.AddCommand(consoleCmd)
 	RootCmd.AddCommand(echoCmd)
 	RootCmd.AddCommand(infoCmd)
-	RootCmd.AddCommand(setOptionCmd)
 	RootCmd.AddCommand(deliverTxCmd)
 	RootCmd.AddCommand(checkTxCmd)
 	RootCmd.AddCommand(commitCmd)
@@ -176,7 +175,6 @@ you'd like to run:
 
 where example.file looks something like:
 
-    set_option serial on
     check_tx 0x00
     check_tx 0xff
     deliver_tx 0x00
@@ -198,7 +196,7 @@ This command opens an interactive console for running any of the other commands
 without opening a new connection each time
 `,
 	Args:      cobra.ExactArgs(0),
-	ValidArgs: []string{"echo", "info", "set_option", "deliver_tx", "check_tx", "commit", "query"},
+	ValidArgs: []string{"echo", "info", "deliver_tx", "check_tx", "commit", "query"},
 	RunE:      cmdConsole,
 }
 
@@ -215,13 +213,6 @@ var infoCmd = &cobra.Command{
 	Long:  "get some info about the application",
 	Args:  cobra.ExactArgs(0),
 	RunE:  cmdInfo,
-}
-var setOptionCmd = &cobra.Command{
-	Use:   "set_option",
-	Short: "set an option on the application",
-	Long:  "set an option on the application",
-	Args:  cobra.ExactArgs(2),
-	RunE:  cmdSetOption,
 }
 
 var deliverTxCmd = &cobra.Command{
@@ -324,7 +315,6 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 	return compose(
 		[]func() error{
 			func() error { return servertest.InitChain(client) },
-			func() error { return servertest.SetOption(client, "serial", "on") },
 			func() error { return servertest.Commit(client, nil) },
 			func() error { return servertest.DeliverTx(client, []byte("abc"), code.CodeTypeBadNonce, nil) },
 			func() error { return servertest.Commit(client, nil) },
@@ -439,8 +429,6 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 		return cmdInfo(cmd, actualArgs)
 	case "query":
 		return cmdQuery(cmd, actualArgs)
-	case "set_option":
-		return cmdSetOption(cmd, actualArgs)
 	default:
 		return cmdUnimplemented(cmd, pArgs)
 	}
@@ -464,7 +452,6 @@ func cmdUnimplemented(cmd *cobra.Command, args []string) error {
 	fmt.Printf("%s: %s\n", deliverTxCmd.Use, deliverTxCmd.Short)
 	fmt.Printf("%s: %s\n", queryCmd.Use, queryCmd.Short)
 	fmt.Printf("%s: %s\n", commitCmd.Use, commitCmd.Short)
-	fmt.Printf("%s: %s\n", setOptionCmd.Use, setOptionCmd.Short)
 	fmt.Println("Use \"[command] --help\" for more information about a command.")
 
 	return nil
@@ -503,25 +490,6 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 }
 
 const codeBad uint32 = 10
-
-// Set an option on the application
-func cmdSetOption(cmd *cobra.Command, args []string) error {
-	if len(args) < 2 {
-		printResponse(cmd, args, response{
-			Code: codeBad,
-			Log:  "want at least arguments of the form: <key> <value>",
-		})
-		return nil
-	}
-
-	key, val := args[0], args[1]
-	_, err := client.SetOptionSync(types.RequestSetOption{Key: key, Value: val})
-	if err != nil {
-		return err
-	}
-	printResponse(cmd, args, response{Log: "OK (SetOption doesn't return anything.)"}) // NOTE: Nothing to show...
-	return nil
-}
 
 // Append a new tx to application
 func cmdDeliverTx(cmd *cobra.Command, args []string) error {

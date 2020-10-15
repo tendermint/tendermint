@@ -16,9 +16,17 @@ import (
 // Load generates transactions against the network until the given
 // context is cancelled.
 func Load(ctx context.Context, testnet *e2e.Testnet) error {
-	concurrency := 50
+	// Since transactions are executed across all nodes in the network, we need
+	// to reduce transaction load for larger networks to avoid using too much
+	// CPU. This gives high-throughput small networks and low-throughput large ones.
+	// This also limits the number of TCP connections, since each worker has
+	// a connection to all nodes.
+	concurrency := 64 / len(testnet.Nodes)
+	if concurrency == 0 {
+		concurrency = 1
+	}
 	initialTimeout := 1 * time.Minute
-	stallTimeout := 15 * time.Second
+	stallTimeout := 30 * time.Second
 
 	chTx := make(chan types.Tx)
 	chSuccess := make(chan types.Tx)
@@ -26,7 +34,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	defer cancel()
 
 	// Spawn job generator and processors.
-	logger.Info("Starting transaction load...")
+	logger.Info(fmt.Sprintf("Starting transaction load (%v workers)...", concurrency))
 	started := time.Now()
 
 	go loadGenerate(ctx, chTx)

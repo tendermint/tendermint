@@ -310,18 +310,20 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 	default:
 		return nil, fmt.Errorf("unexpected ABCI protocol setting %q", node.ABCIProtocol)
 	}
-	switch node.PrivvalProtocol {
-	case e2e.ProtocolFile:
-	case e2e.ProtocolTCP:
-		cfg["privval_server"] = PrivvalAddressTCP
-		cfg["privval_key"] = PrivvalKeyFile
-		cfg["privval_state"] = PrivvalStateFile
-	case e2e.ProtocolUNIX:
-		cfg["privval_server"] = PrivvalAddressUNIX
-		cfg["privval_key"] = PrivvalKeyFile
-		cfg["privval_state"] = PrivvalStateFile
-	default:
-		return nil, fmt.Errorf("unexpected privval protocol setting %q", node.PrivvalProtocol)
+	if node.Mode == e2e.ModeValidator {
+		switch node.PrivvalProtocol {
+		case e2e.ProtocolFile:
+		case e2e.ProtocolTCP:
+			cfg["privval_server"] = PrivvalAddressTCP
+			cfg["privval_key"] = PrivvalKeyFile
+			cfg["privval_state"] = PrivvalStateFile
+		case e2e.ProtocolUNIX:
+			cfg["privval_server"] = PrivvalAddressUNIX
+			cfg["privval_key"] = PrivvalKeyFile
+			cfg["privval_state"] = PrivvalStateFile
+		default:
+			return nil, fmt.Errorf("unexpected privval protocol setting %q", node.PrivvalProtocol)
+		}
 	}
 
 	if len(node.Testnet.ValidatorUpdates) > 0 {

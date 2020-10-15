@@ -1,6 +1,6 @@
 # Unreleased Changes
 
-## v0.34.0-rc5
+## vX.X
 
 Special thanks to external contributors on this release:
 
@@ -22,11 +22,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
-- [privval] \#5434 `NewSignerDialerEndpoint` can now be given `SignerServiceEndpointOption` (@erikgrinaker)
-
-- [config] \#5433 `statesync.rpc_servers` is now properly set when writing the configuration file (@erikgrinaker)
-
 ### BUG FIXES
-
-- [privval] \#5441 Fix faulty ping message encoding causing nil message errors in logs (@erikgrinaker)
-

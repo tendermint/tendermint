@@ -1,8 +1,7 @@
+all: docker generator runner
+
 docker:
 	docker build --tag tendermint/e2e-node -f docker/Dockerfile ../..
-
-ci: runner
-	./build/runner -f networks/ci.toml
 
 # We need to build support for database backends into the app in
 # order to build a binary with a Tendermint node in it (for built-in
@@ -10,7 +9,10 @@ ci: runner
 app:
 	go build -o build/app -tags badgerdb,boltdb,cleveldb,rocksdb ./app
 
+generator:
+	go build -o build/generator ./generator
+
 runner:
 	go build -o build/runner ./runner
 
-.PHONY: app ci docker runner
+.PHONY: all app docker generator runner

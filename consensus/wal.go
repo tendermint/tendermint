@@ -208,7 +208,7 @@ func (wal *BaseWAL) WriteSync(msg WALMessage) error {
 	}
 
 	if err := wal.FlushAndSync(); err != nil {
-		wal.Logger.Error(`WriteSync failed to flush consensus wal. 
+		wal.Logger.Error(`WriteSync failed to flush consensus wal.
 		WARNING: may result in creating alternative proposals / votes for the current height iff the node restarted`,
 			"err", err)
 		return err
@@ -282,8 +282,6 @@ func (wal *BaseWAL) SearchForEndHeight(
 	return nil, false, nil
 }
 
-///////////////////////////////////////////////////////////////////////////////
-
 // A WALEncoder writes custom-encoded WAL messages to an output stream.
 //
 // Format: 4 bytes CRC sum + 4 bytes length + arbitrary-length value
@@ -329,8 +327,6 @@ func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
 	_, err = enc.wr.Write(msg)
 	return err
 }
-
-///////////////////////////////////////////////////////////////////////////////
 
 // IsDataCorruptionError returns true if data has been corrupted inside WAL.
 func IsDataCorruptionError(err error) bool {

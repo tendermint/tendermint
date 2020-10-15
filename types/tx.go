@@ -137,3 +137,11 @@ func TxProofFromProto(pb tmproto.TxProof) (TxProof, error) {
 
 	return pbtp, nil
 }
+
+// ComputeProtoSizeForTxs wraps the transactions in tmproto.Data{} and calculates the size.
+// https://developers.google.com/protocol-buffers/docs/encoding
+func ComputeProtoSizeForTxs(txs []Tx) int64 {
+	data := Data{Txs: txs}
+	pdData := data.ToProto()
+	return int64(pdData.Size())
+}

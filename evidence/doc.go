@@ -32,7 +32,7 @@ All evidence is proto encoded to disk.
 Proposing
 
 When a new block is being proposed (in state/execution.go#CreateProposalBlock),
-`PendingEvidence(maxNum)` is called to send up to the maxNum number of uncommitted evidence, from the evidence store,
+`PendingEvidence(maxBytes)` is called to send up to the maxBytes of uncommitted evidence, from the evidence store,
 prioritized in order of age. All evidence is checked for expiration.
 
 When a node receives evidence in a block it will use the evidence module as a cache first to see if it has
