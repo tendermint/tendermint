@@ -112,7 +112,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		require.NoError(t, err)
 		blocksSubs = append(blocksSubs, blocksSub)
 
-		if css[i].state.LastBlockHeight == 0 { //simulate handle initChain in handshake
+		if css[i].state.LastBlockHeight == 0 { // simulate handle initChain in handshake
 			err = css[i].blockExec.Store().Save(css[i].state)
 			require.NoError(t, err)
 		}
@@ -276,7 +276,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 		}
 
 		reactors[i] = conRI
-		err = css[i].blockExec.Store().Save(css[i].state) //for save height 1's validators info
+		err = css[i].blockExec.Store().Save(css[i].state) // for save height 1's validators info
 		require.NoError(t, err)
 	}
 

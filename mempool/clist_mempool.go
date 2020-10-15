@@ -517,21 +517,21 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	mem.updateMtx.RLock()
 	defer mem.updateMtx.RUnlock()
 
-	var (
-		totalBytes int64
-		totalGas   int64
-	)
+	var totalGas int64
+
 	// TODO: we will get a performance boost if we have a good estimate of avg
 	// size per tx, and set the initial capacity based off of that.
 	// txs := make([]types.Tx, 0, tmmath.MinInt(mem.txs.Len(), max/mem.avgTxSize))
 	txs := make([]types.Tx, 0, mem.txs.Len())
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
+
+		dataSize := types.ComputeProtoSizeForTxs(append(txs, memTx.tx))
+
 		// Check total size requirement
-		if maxBytes > -1 && totalBytes+int64(len(memTx.tx)) > maxBytes {
+		if maxBytes > -1 && dataSize > maxBytes {
 			return txs
 		}
-		totalBytes += int64(len(memTx.tx))
 		// Check total gas requirement.
 		// If maxGas is negative, skip this check.
 		// Since newTotalGas < masGas, which

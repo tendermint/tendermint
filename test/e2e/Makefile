@@ -1,4 +1,4 @@
-all: docker runner
+all: docker generator runner
 
 docker:
 	docker build --tag tendermint/e2e-node -f docker/Dockerfile ../..
@@ -12,7 +12,10 @@ app:
 maverick:
 	CGO_ENABLED=1 go build -o build/maverick -mod=readonly -tags badgerdb,boltdb,cleveldb,rocksdb ./maverick
 
+generator:
+	go build -o build/generator ./generator
+
 runner:
 	go build -o build/runner ./runner
 
-.PHONY: app docker maverick runner 
+.PHONY: app docker generator maverick runner 

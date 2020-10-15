@@ -28,5 +28,4 @@ message Evidence {
 // EvidenceData contains any evidence of malicious wrong-doing by validators
 message EvidenceData {
   repeated Evidence evidence = 1 [(gogoproto.nullable) = false];
-  bytes             hash     = 2;
 }

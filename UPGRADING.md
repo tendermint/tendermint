@@ -38,6 +38,8 @@ the encoding format (see "Protocol Buffers," below) and the block header (see "B
 * The field `Proof`, on the ABCI type `ResponseQuery`, is now named `ProofOps`.
   For more, see "Crypto," below.
 
+* The method `SetOption` has been removed from the ABCI.Client interface. This feature was used in the early ABCI implementation's.
+
 ### P2P Protocol
 
 The default codec is now proto3, not amino. The schema files can be found in the `/proto`
@@ -117,9 +119,6 @@ Tendermint 0.34 includes new and updated consensus parameters.
 * The multisig functionality that was previously in Tendermint now has
   a new home within the Cosmos SDK:
   [`cosmos/cosmos-sdk/types/multisig`](https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go).
-* Similarly, secp256k1 has been removed from the Tendermint repo.
-  There is still [a secp256k1 implementation in the Cosmos SDK](https://github.com/cosmos/cosmos-sdk/tree/443e0c1f89bd3730a731aea30453bd732f7efa35/crypto/keys/secp256k1),
-  and we recommend you use that package for all your secp256k1 needs.
 
 #### `merkle` Package
 

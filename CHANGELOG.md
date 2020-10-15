@@ -1,5 +1,38 @@
 # Changelog
 
+## v0.34.0-rc5
+
+*October 13, 2020*
+
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+
+- Apps
+    - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
+
+- P2P Protocol
+
+- Go API
+    - [evidence] [\#5499](https://github.com/tendermint/tendermint/pull/5449) `MaxNum` evidence consensus parameter has been changed to `MaxBytes` (@cmwaters)
+
+- Blockchain Protocol
+
+### FEATURES
+
+### IMPROVEMENTS
+
+- [privval] \#5434 `NewSignerDialerEndpoint` can now be given `SignerServiceEndpointOption` (@erikgrinaker)
+
+- [config] \#5433 `statesync.rpc_servers` is now properly set when writing the configuration file (@erikgrinaker)
+
+### BUG FIXES
+
+- [privval] \#5441 Fix faulty ping message encoding causing nil message errors in logs (@erikgrinaker)
+
 ## v0.34.0-rc4
 
 *September 24, 2020*
@@ -25,7 +58,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     - [evidence] [\#5319](https://github.com/tendermint/tendermint/issues/5319) Remove Amnesia & potentialAmnesia evidence types and removed POLC. (@marbar3778)
     - [evidence] [\#5361](https://github.com/tendermint/tendermint/pull/5361) Add LightClientAttackEvidence and change evidence interface (@cmwaters)
     - [params] [\#5319](https://github.com/tendermint/tendermint/issues/5319) Remove `ProofofTrialPeriod` from evidence params (@marbar3778)
-    - [crypto/secp256k1] [\#5280](https://github.com/tendermint/tendermint/issues/5280) `secp256k1` has been removed from the Tendermint repo. (@marbar3778)
     - [light] [\#5347](https://github.com/tendermint/tendermint/issues/5347) `NewClient`, `NewHTTPClient`, `VerifyHeader` and `VerifyLightBlockAtHeight` now accept `context.Context` as 1st param (@melekes)
     - [state] [\#5348](https://github.com/tendermint/tendermint/issues/5348) Define an Interface for the state store. (@marbar3778)
 
