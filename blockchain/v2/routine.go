@@ -68,7 +68,7 @@ func (rt *Routine) start() {
 		if r := recover(); r != nil {
 			var b strings.Builder
 			for i := len(rt.history) - 1; i >= 0; i-- {
-				fmt.Fprintln(&b, rt.history[i])
+				fmt.Fprintf(&b, "%+v\n", rt.history[i])
 			}
 			panic(fmt.Sprintf("%v\nlast events:\n%v", r, b.String()))
 		}
