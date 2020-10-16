@@ -144,7 +144,7 @@ func TestPcBlockResponse(t *testing.T) {
 		},
 
 		{
-			name: "add two blocks",
+			name: "add two different blocks",
 			steps: []pcFsmMakeStateValues{
 				{
 					currentState: &params{}, event: mBlockResponse("P1", 3),
@@ -153,6 +153,20 @@ func TestPcBlockResponse(t *testing.T) {
 				{ // use previous wantState as currentState,
 					event:     mBlockResponse("P1", 4),
 					wantState: &params{items: []pcBlock{{"P1", 3}, {"P1", 4}}}, wantNextEvent: noOp,
+				},
+			},
+		},
+
+		{
+			name: "add two same blocks",
+			steps: []pcFsmMakeStateValues{
+				{
+					currentState: &params{}, event: mBlockResponse("P1", 3),
+					wantState: &params{items: []pcBlock{{"P1", 3}}}, wantNextEvent: noOp,
+				},
+				{ // use previous wantState as currentState,
+					event:     mBlockResponse("P1", 3),
+					wantState: &params{items: []pcBlock{{"P1", 3}}}, wantNextEvent: noOp,
 				},
 			},
 		},

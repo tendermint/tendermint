@@ -87,9 +87,10 @@ func (state *pcState) synced() bool {
 }
 
 func (state *pcState) enqueue(peerID p2p.ID, block *types.Block, height int64) {
-	if _, ok := state.queue[height]; !ok {
-		state.queue[height] = queueItem{block: block, peerID: peerID}
+	if _, ok := state.queue[height]; ok {
+		panic("duplicate block enqueued by processor")
 	}
+	state.queue[height] = queueItem{block: block, peerID: peerID}
 }
 
 func (state *pcState) height() int64 {
