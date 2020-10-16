@@ -53,7 +53,7 @@ func (rt *Routine) setMetrics(metrics *Metrics) {
 }
 
 func (rt *Routine) start() {
-	rt.logger.Info(fmt.Sprintf("%s: run\n", rt.name))
+	rt.logger.Info(fmt.Sprintf("%s: run", rt.name))
 	running := atomic.CompareAndSwapUint32(rt.running, uint32(0), uint32(1))
 	if !running {
 		panic(fmt.Sprintf("%s is already running", rt.name))
@@ -82,7 +82,7 @@ func (rt *Routine) start() {
 			return
 		}
 		rt.metrics.EventsOut.With("routine", rt.name).Add(1)
-		rt.logger.Debug(fmt.Sprintf("%s: produced %T %+v\n", rt.name, oEvent, oEvent))
+		rt.logger.Debug(fmt.Sprintf("%s: produced %T %+v", rt.name, oEvent, oEvent))
 
 		rt.out <- oEvent
 	}
@@ -97,7 +97,7 @@ func (rt *Routine) send(event Event) bool {
 	err := rt.queue.Put(event)
 	if err != nil {
 		rt.metrics.EventsShed.With("routine", rt.name).Add(1)
-		rt.logger.Info(fmt.Sprintf("%s: send failed, queue was full/stopped \n", rt.name))
+		rt.logger.Error(fmt.Sprintf("%s: send failed, queue was full/stopped", rt.name))
 		return false
 	}
 
@@ -122,7 +122,7 @@ func (rt *Routine) stop() {
 		return
 	}
 
-	rt.logger.Info(fmt.Sprintf("%s: stop\n", rt.name))
+	rt.logger.Info(fmt.Sprintf("%s: stop", rt.name))
 	rt.queue.Dispose() // this should block until all queue items are free?
 }
 

@@ -550,6 +550,7 @@ func (sc *scheduler) handleBlockProcessed(event pcBlockProcessed) (Event, error)
 	if event.height != sc.height {
 		panic(fmt.Sprintf("processed height %d but expected height %d", event.height, sc.height))
 	}
+
 	err := sc.markProcessed(event.height)
 	if err != nil {
 		// It is possible that a peer error or timeout is handled after the processor
