@@ -87,10 +87,12 @@ func (state *pcState) synced() bool {
 }
 
 func (state *pcState) enqueue(peerID p2p.ID, block *types.Block, height int64) {
-	if existingBlock, ok := state.queue[height]; ok {
-		panic(fmt.Sprintf("duplicate block %d (%X) enqueued by processor (sent by %v; existing block %X from %v)",
-			height, block.Hash(), peerID, existingBlock.block.Hash(), existingBlock.peerID))
+	if item, ok := state.queue[height]; ok {
+		panic(fmt.Sprintf(
+			"duplicate block %d (%X) enqueued by processor (sent by %v; existing block %X from %v)",
+			height, block.Hash(), peerID, item.block.Hash(), item.peerID))
 	}
+
 	state.queue[height] = queueItem{block: block, peerID: peerID}
 }
 
