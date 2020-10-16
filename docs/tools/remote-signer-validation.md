@@ -5,7 +5,7 @@ repository](https://github.com/tendermint/tendermint).
 
 The Tendermint remote signer test harness facilitates integration testing
 between Tendermint and remote signers such as
-[KMS](https://github.com/tendermint/kms). Such remote signers allow for signing
+[tkkms](https://github.com/iqlusioninc/tmkms). Such remote signers allow for signing
 of important Tendermint messages using
 [HSMs](https://en.wikipedia.org/wiki/Hardware_security_module), providing
 additional security.
@@ -49,14 +49,14 @@ make docker-image
 ## Running against KMS
 
 As an example of how to use `tm-signer-harness`, the following instructions show
-you how to execute its tests against [KMS](https://github.com/tendermint/kms).
+you how to execute its tests against [tkkms](https://github.com/iqlusioninc/tmkms).
 For this example, we will make use of the **software signing module in KMS**, as
 the hardware signing module requires a physical
 [YubiHSM](https://www.yubico.com/products/yubihsm/) device.
 
 ### Step 1: Install KMS on your local machine
 
-See the [KMS repo](https://github.com/tendermint/kms) for details on how to set
+See the [tkkms repo](https://github.com/iqlusioninc/tmkms) for details on how to set
 KMS up on your local machine.
 
 If you have [Rust](https://www.rust-lang.org/) installed on your local machine,
