@@ -94,9 +94,9 @@ func (s *lightClientStateProvider) AppHash(ctx context.Context, height uint64) (
 	if err != nil {
 		return nil, err
 	}
-	// We also try to fetch the blocks as height H and H+2, since we need these
-	// when building the state while restoring the snapshot. This avoid the race
-	// condition where we try to restore a snapshot but H+2 does not exist yet.
+	// We also try to fetch the blocks at height H and H+2, since we need these
+	// when building the state while restoring the snapshot. This avoids the race
+	// condition where we try to restore a snapshot before H+2 exists.
 	//
 	// FIXME This is a hack, since we can't add new methods to the interface without
 	// breaking it. We should instead have a Has(ctx, height) method which checks
