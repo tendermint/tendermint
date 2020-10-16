@@ -78,7 +78,7 @@ type Node struct {
 	Seeds            []*Node
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
-	Misbehaviors     string
+	Misbehaviors     map[string]string
 }
 
 // LoadTestnet loads a testnet from a manifest file, using the filename to

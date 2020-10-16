@@ -123,7 +123,7 @@ type ManifestNode struct {
 	//    "double-prevote,10"
 	//
 	// For more information, look at the readme in the maverick folden
-	Misbehaviors string `toml:"misbehaviors"`
+	Misbehaviors map[string]string `toml:"misbehaviors"`
 }
 
 // Save saves the testnet manifest to a file.

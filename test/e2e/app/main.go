@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/config"
 	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
@@ -17,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
+	mcs "github.com/tendermint/tendermint/test/e2e/maverick/consensus"
 	maverick "github.com/tendermint/tendermint/test/e2e/maverick/node"
 )
 
@@ -61,7 +63,7 @@ func run(configFile string) error {
 	case "socket", "grpc":
 		err = startApp(cfg)
 	case "builtin":
-		if cfg.Misbehaviors == "" {
+		if len(cfg.Misbehaviors) == 0 {
 			err = startNode(cfg)
 		} else {
 			err = startMaverick(cfg)
@@ -150,9 +152,11 @@ func startMaverick(cfg *Config) error {
 		return fmt.Errorf("failed to load or gen node key %s: %w", tmcfg.NodeKeyFile(), err)
 	}
 
-	misbehaviors, err := maverick.ParseMisbehaviors(cfg.Misbehaviors)
-	if err != nil {
-		return fmt.Errorf("failed to parse misbehaviors: %w", err)
+	misbehaviors := make(map[int64]mcs.Misbehavior)
+	for height, misbehaviorString := range cfg.Misbehaviors {
+		if misbehavior, ok := mcs.MisbehaviorList[misbehaviorString]; ok {
+			misbehaviors[height] = misbehavior
+		}
 	}
 
 	n, err := maverick.NewNode(tmcfg,

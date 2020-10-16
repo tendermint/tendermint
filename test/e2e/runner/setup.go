@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/p2p"
@@ -118,7 +119,19 @@ func Setup(testnet *e2e.Testnet) error {
 // MakeDockerCompose generates a Docker Compose config for a testnet.
 func MakeDockerCompose(testnet *e2e.Testnet) ([]byte, error) {
 	// Must use version 2 Docker Compose format, to support IPv6.
-	tmpl, err := template.New("docker-compose").Parse(`version: '2.4'
+	tmpl, err := template.New("docker-compose").Funcs(template.FuncMap{
+		"misbehaviorsToString": func(misbehaviors map[string]string) string {
+			str := ""
+			for height, misbehavior := range misbehaviors {
+				// after the first behavior set, a comma must be prepended
+				if str != "" {
+					str += ","
+				}
+				str += misbehavior + "," + height
+			}
+			return str
+		},
+	}).Parse(`version: '2.4'
 
 networks:
   {{ .Name }}:
@@ -138,9 +151,9 @@ services:
     image: tendermint/e2e-node
 {{- if eq .ABCIProtocol "builtin" }}
     entrypoint: /usr/bin/entrypoint-builtin
-{{- else if ne .Misbehaviors "" }}
+{{- else if .Misbehaviors }}
     entrypoint: /usr/bin/entrypoint-maverick
-    command: ["node", "--misbehaviors", "{{ .Misbehaviors }}"]
+    command: ["node", "--misbehaviors", "{{ misbehaviorsToString .Misbehaviors }}"]
 {{- end }}
     init: true
     ports:

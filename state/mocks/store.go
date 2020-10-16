@@ -4,6 +4,7 @@ package mocks
 
 import (
 	mock "github.com/stretchr/testify/mock"
+
 	state "github.com/tendermint/tendermint/state"
 
 	tendermintstate "github.com/tendermint/tendermint/proto/tendermint/state"
