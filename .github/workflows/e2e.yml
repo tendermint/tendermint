@@ -29,7 +29,7 @@ jobs:
 
       - name: Run CI testnet
         working-directory: test/e2e
-        run: sudo ./build/runner -f networks/ci.toml
+        run: ./build/runner -f networks/ci.toml
         if: "env.GIT_DIFF != ''"
 
       - name: Emit logs on failure
