@@ -25,6 +25,7 @@ jobs:
 
       - name: Generate testnets
         working-directory: test/e2e
+        # When changing -g, also change the matrix groups above
         run: ./build/generator -g 4 -d networks/nightly
 
       - name: Run testnets in group ${{ matrix.group }}
@@ -38,6 +39,7 @@ jobs:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SLACK_CHANNEL: tendermint-internal
           SLACK_USERNAME: Nightly E2E Test Failure
+          SLACK_ICON_EMOJI: ':skull:'
           SLACK_COLOR: danger
           SLACK_MESSAGE: Nightly E2E test failed (group ${{ matrix.group }})
           SLACK_FOOTER: ''
