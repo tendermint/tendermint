@@ -1614,8 +1614,10 @@ func TestScHandleBlockProcessed(t *testing.T) {
 		{
 			name: "processed block from removed peer",
 			fields: scTestParams{
-				initHeight:  6,
-				peers:       map[string]*scPeer{"P1": {height: 8, state: peerStateReady}, "P2": {height: 8, state: peerStateRemoved}},
+				initHeight: 6,
+				peers: map[string]*scPeer{
+					"P1": {height: 8, state: peerStateReady},
+					"P2": {height: 8, state: peerStateRemoved}},
 				allB:        []int64{6, 7, 8},
 				pending:     map[int64]p2p.ID{6: "P1"},
 				pendingTime: map[int64]time.Time{6: now},

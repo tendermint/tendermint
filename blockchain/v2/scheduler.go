@@ -628,6 +628,9 @@ func (sc *scheduler) handleRemovePeer(event bcRemovePeer) (Event, error) {
 	if sc.allBlocksProcessed() {
 		return scFinishedEv{reason: "removed peer"}, nil
 	}
+
+	// Return scPeerError so the peer (and all associated blocks) is removed from
+	// the processor.
 	return scPeerError{peerID: event.peerID, reason: errors.New("peer was stopped")}, nil
 }
 
