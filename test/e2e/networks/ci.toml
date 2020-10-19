@@ -15,6 +15,7 @@ validator04 = 40
 
 [validator_update.1010]
 validator05 = 50
+validator06 = 60
 
 # validator03 gets killed and validator05 has lots of perturbations, so weight them low.
 [validator_update.1020]
@@ -23,6 +24,7 @@ validator02 = 100
 validator03 = 50
 validator04 = 100
 validator05 = 50
+validator06 = 50
 
 [node.seed01]
 mode = "seed"

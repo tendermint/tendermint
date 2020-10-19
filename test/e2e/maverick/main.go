@@ -127,7 +127,6 @@ func main() {
 }
 
 func startNode(config *cfg.Config, logger log.Logger, misbehaviorFlag string) error {
-	fmt.Printf("misbehavior string: %s", misbehaviorFlag)
 	misbehaviors, err := nd.ParseMisbehaviors(misbehaviorFlag)
 	if err != nil {
 		return err

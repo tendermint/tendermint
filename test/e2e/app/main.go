@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/spf13/viper"
@@ -153,8 +154,12 @@ func startMaverick(cfg *Config) error {
 	}
 
 	misbehaviors := make(map[int64]mcs.Misbehavior)
-	for height, misbehaviorString := range cfg.Misbehaviors {
+	for heightString, misbehaviorString := range cfg.Misbehaviors {
 		if misbehavior, ok := mcs.MisbehaviorList[misbehaviorString]; ok {
+			height, err := strconv.ParseInt(heightString, 10, 64)
+			if err != nil {
+				return fmt.Errorf("unable to parse provided height (%s) in config: %v", heightString, err)
+			}
 			misbehaviors[height] = misbehavior
 		}
 	}
