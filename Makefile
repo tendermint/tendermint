@@ -4,7 +4,7 @@ PACKAGES=$(shell go list ./...)
 BUILDDIR ?= $(CURDIR)/build
 
 BUILD_TAGS?=tendermint
-VERSION := $(shell echo $(shell git describe --always) | sed 's/^v//')
+VERSION := $(shell echo $(shell git describe --always) | sed 's/-rc[0-9]//' | sed 's/^v//')
 COMMIT := $(shell git rev-parse --short=8 HEAD)
 LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=$(COMMIT) \
 					-X github.com/tendermint/tendermint/version.Version=$(VERSION)
