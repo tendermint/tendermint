@@ -88,7 +88,7 @@ func TestEvidencePoolBasic(t *testing.T) {
 	assert.Equal(t, int64(357), size) // check that the size of the single evidence in bytes is correct
 
 	// shouldn't be able to add evidence twice
-	assert.Error(t, pool.AddEvidence(ev))
+	assert.NoError(t, pool.AddEvidence(ev))
 	evs, _ = pool.PendingEvidence(defaultEvidenceMaxBytes)
 	assert.Equal(t, 1, len(evs))
 
@@ -147,17 +147,48 @@ func TestAddEvidenceFromConsensus(t *testing.T) {
 	var height int64 = 10
 	pool, val := defaultTestPool(height)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
-	err := pool.AddEvidenceFromConsensus(ev, defaultEvidenceTime,
-		types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(2)}))
+	valSet := types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(2)})
+	err := pool.AddEvidenceFromConsensus(ev, defaultEvidenceTime, valSet)
 	assert.NoError(t, err)
+
+	// Evidence shouldn't be propagated straight away as the block currently still doesn't exist
 	next := pool.EvidenceFront()
+	assert.Nil(t, next)
+
+	updateState := sm.State{
+		ChainID:                     evidenceChainID,
+		InitialHeight:               1,
+		LastBlockHeight:             height + 1,
+		LastBlockTime:               defaultEvidenceTime.Add(1 * time.Second),
+		Validators:                  valSet,
+		NextValidators:              valSet.CopyIncrementProposerPriority(1),
+		LastValidators:              valSet,
+		LastHeightValidatorsChanged: 1,
+		ConsensusParams: tmproto.ConsensusParams{
+			Block: tmproto.BlockParams{
+				MaxBytes: 22020096,
+				MaxGas:   -1,
+			},
+			Evidence: tmproto.EvidenceParams{
+				MaxAgeNumBlocks: 20,
+				MaxAgeDuration:  20 * time.Minute,
+				MaxBytes:        1000,
+			},
+		},
+	}
+
+	// When we update the pool with the latest state we expect the block of the height of the evidence to be sealed
+	// and thus the evidence reactor can now propagate the evidence
+	pool.Update(updateState)
+	next = pool.EvidenceFront()
 	assert.Equal(t, ev, next.Value.(types.Evidence))
+
 	// shouldn't be able to submit the same evidence twice
 	err = pool.AddEvidenceFromConsensus(ev, defaultEvidenceTime.Add(-1*time.Second),
 		types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(3)}))
-	if assert.Error(t, err) {
-		assert.Equal(t, "evidence already verified and added", err.Error())
-	}
+	assert.NoError(t, err)
+	evs, _ := pool.PendingEvidence(defaultEvidenceMaxBytes)
+	assert.Equal(t, 1, len(evs))
 }
 
 func TestEvidencePoolUpdate(t *testing.T) {
