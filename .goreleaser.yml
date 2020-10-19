@@ -1,4 +1,9 @@
-# .goreleaser.yml
+project_name: Tendermint
+
+env:
+  # Require use of Go modules.
+  - GO111MODULE=on
+
 builds:
   -
     id: "Tendermint"
@@ -18,5 +23,6 @@ builds:
 checksum:
   name_template: SHA256SUMS-{{.Version}}.txt
   algorithm: sha256
+
 release:
-  name_template: "{{.ProjectName}} {{.Version}}"
+  name_template: "{{.ProjectName}} {{.Version}}" #todo: alpha software?

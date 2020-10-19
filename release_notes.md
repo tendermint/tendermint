@@ -1,3 +1,3 @@
-# Alfalfa
+# Spanky
 
-This is a release that will make your hair stick up.
+This release follows the little rascals.
