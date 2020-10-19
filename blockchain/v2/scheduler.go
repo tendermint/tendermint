@@ -18,6 +18,10 @@ type scFinishedEv struct {
 	reason string
 }
 
+func (e scFinishedEv) String() string {
+	return fmt.Sprintf("scFinishedEv{%v}", e.reason)
+}
+
 // send a blockRequest message
 type scBlockRequest struct {
 	priorityNormal
@@ -25,11 +29,19 @@ type scBlockRequest struct {
 	height int64
 }
 
+func (e scBlockRequest) String() string {
+	return fmt.Sprintf("scBlockRequest{%d from %v}", e.height, e.peerID)
+}
+
 // a block has been received and validated by the scheduler
 type scBlockReceived struct {
 	priorityNormal
 	peerID p2p.ID
 	block  *types.Block
+}
+
+func (e scBlockReceived) String() string {
+	return fmt.Sprintf("scBlockReceived{%d#%X from %v}", e.block.Height, e.block.Hash(), e.peerID)
 }
 
 // scheduler detected a peer error
@@ -40,7 +52,7 @@ type scPeerError struct {
 }
 
 func (e scPeerError) String() string {
-	return fmt.Sprintf("scPeerError - peerID %s, err %s", e.peerID, e.reason)
+	return fmt.Sprintf("scPeerError{%v errored with %v}", e.peerID, e.reason)
 }
 
 // scheduler removed a set of peers (timed out or slow peer)
@@ -49,11 +61,19 @@ type scPeersPruned struct {
 	peers []p2p.ID
 }
 
+func (e scPeersPruned) String() string {
+	return fmt.Sprintf("scPeersPruned{%v}", e.peers)
+}
+
 // XXX: make this fatal?
 // scheduler encountered a fatal error
 type scSchedulerFail struct {
 	priorityHigh
 	reason error
+}
+
+func (e scSchedulerFail) String() string {
+	return fmt.Sprintf("scSchedulerFail{%v}", e.reason)
 }
 
 type blockState int

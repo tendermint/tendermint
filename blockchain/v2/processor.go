@@ -17,11 +17,20 @@ type pcBlockVerificationFailure struct {
 	secondPeerID p2p.ID
 }
 
+func (e pcBlockVerificationFailure) String() string {
+	return fmt.Sprintf("pcBlockVerificationFailure{%d 1st peer: %v, 2nd peer: %v}",
+		e.height, e.firstPeerID, e.secondPeerID)
+}
+
 // successful block execution
 type pcBlockProcessed struct {
 	priorityNormal
 	height int64
 	peerID p2p.ID
+}
+
+func (e pcBlockProcessed) String() string {
+	return fmt.Sprintf("pcBlockProcessed{%d peer: %v}", e.height, e.peerID)
 }
 
 // processor has finished

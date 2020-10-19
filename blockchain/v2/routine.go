@@ -12,7 +12,7 @@ import (
 
 type handleFunc = func(event Event) (Event, error)
 
-const historySize = 10
+const historySize = 25
 
 // Routine is a structure that models a finite state machine as serialized
 // stream of events processed by a handle function. This Routine structure
@@ -96,9 +96,18 @@ func (rt *Routine) start() {
 		rt.metrics.EventsOut.With("routine", rt.name).Add(1)
 		rt.logger.Debug(fmt.Sprintf("%s: produced %T %+v", rt.name, oEvent, oEvent))
 
-		rt.history = append(rt.history, events[0].(Event))
-		if len(rt.history) > historySize {
-			rt.history = rt.history[1:]
+		if e, ok := events[0].(Event); ok {
+			// Skip rTrySchedule and rProcessBlock events as they clutter the history
+			// due to their frequency.
+			switch events[0].(type) {
+			case rTrySchedule:
+			case rProcessBlock:
+			default:
+				rt.history = append(rt.history, e)
+				if len(rt.history) > historySize {
+					rt.history = rt.history[1:]
+				}
+			}
 		}
 
 		rt.out <- oEvent
