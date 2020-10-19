@@ -44,4 +44,3 @@ CMD ["node"]
 
 # Expose the data directory as a volume since there's mutable state in there
 VOLUME [ "$TMHOME" ]
-
