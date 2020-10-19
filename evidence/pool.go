@@ -46,6 +46,9 @@ type Pool struct {
 
 	pruningHeight int64
 	pruningTime   time.Time
+
+	// consensus evidence must wait for the block to be produced before it is gossiped
+	consensusEvBuffer []types.Evidence
 }
 
 // NewPool creates an evidence pool. If using an existing evidence store,
@@ -64,6 +67,7 @@ func NewPool(evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool,
 		logger:        log.NewNopLogger(),
 		evidenceStore: evidenceDB,
 		evidenceList:  clist.New(),
+		consensusEvBuffer: make([]types.Evidence, 0),
 	}
 
 	// if pending evidence already in db, in event of prior failure, then check for expiration,
@@ -109,6 +113,15 @@ func (evpool *Pool) Update(state sm.State) {
 	// update the state
 	evpool.updateState(state)
 
+	if len(evpool.consensusEvBuffer) != 0 {
+		// load evidence from buffer to clist for gossiping
+		for _, ev := range evpool.consensusEvBuffer {
+			evpool.evidenceList.PushBack((ev))
+		}
+		// flush evidence buffer
+		evpool.consensusEvBuffer = []types.Evidence{}
+	}
+
 	// prune pending evidence when it has expired. This also updates when the next evidence will expire
 	if atomic.LoadUint32(&evpool.evidenceSize) > 0 && state.LastBlockHeight > evpool.pruningHeight &&
 		state.LastBlockTime.After(evpool.pruningTime) {
@@ -122,7 +135,8 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 
 	// We have already verified this piece of evidence - no need to do it again
 	if evpool.isPending(ev) {
-		return errors.New("evidence already verified and added")
+		evpool.logger.Info("Evidence already pending, ignoring this one", "ev", ev)
+		return nil
 	}
 
 	// 1) Verify against state.
@@ -152,8 +166,10 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 		totalPower int64
 	)
 
+	// we already have this evidence, log this but don't return an error.
 	if evpool.isPending(ev) {
-		return errors.New("evidence already verified and added") // we already have this evidence
+		evpool.logger.Info("Evidence already pending, ignoring this one", "ev", ev)
+		return nil
 	}
 
 	switch ev := ev.(type) {
@@ -176,7 +192,8 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 		return fmt.Errorf("can't add evidence to pending list: %w", err)
 	}
 
-	evpool.evidenceList.PushBack(ev)
+	// add evidence to the consensus evidence buffer to be gossiped in the following height
+	evpool.consensusEvBuffer = append(evpool.consensusEvBuffer, ev)
 
 	evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
 
