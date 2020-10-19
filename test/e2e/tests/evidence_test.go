@@ -47,7 +47,8 @@ func TestEvidence_Misbehavior(t *testing.T) {
 							}
 						}
 					}
-					assert.True(t, containsMaverick, "expected duplicate vote evidence by %v not witnessed by %v", misbehavior.ValAddress, node.Key.PubKey().Address())
+					assert.True(t, containsMaverick, "expected duplicate vote evidence by %v not witnessed by %v",
+						misbehavior.ValAddress, node.Key.PubKey().Address())
 				}
 			}
 		}
@@ -77,7 +78,7 @@ func fetchMisbehaviors(t *testing.T) map[int64][]misbehaviorNodeSet {
 				// if we already have an attack at this height we append to the behaviors else create a new one
 				misbehaviorSet := misbehaviorNodeSet{
 					Misbehavior: misbehavior,
-					ValAddress: node.Key.PubKey().Address(),
+					ValAddress:  node.Key.PubKey().Address(),
 				}
 				if misbehaviors, ok := networkMisbehaviors[height]; ok {
 					networkMisbehaviors[height] = append(misbehaviors, misbehaviorSet)
@@ -93,5 +94,5 @@ func fetchMisbehaviors(t *testing.T) map[int64][]misbehaviorNodeSet {
 // misbehaviorNodeSet pairs an intended misbehavior with the address of the maverick
 type misbehaviorNodeSet struct {
 	Misbehavior cs.Misbehavior
-	ValAddress types.Address
+	ValAddress  types.Address
 }
