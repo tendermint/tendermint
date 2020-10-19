@@ -550,14 +550,12 @@ func (sc *scheduler) handleBlockResponse(event bcBlockResponse) (Event, error) {
 }
 
 func (sc *scheduler) handleNoBlockResponse(event bcNoBlockResponse) (Event, error) {
-	if len(sc.peers) == 0 {
-		return noOp, nil
-	}
-
+	// No such peer or peer was removed.
 	peer, ok := sc.peers[event.peerID]
 	if !ok || peer.state == peerStateRemoved {
 		return noOp, nil
 	}
+
 	// The peer may have been just removed due to errors, low speed or timeouts.
 	_ = sc.removePeer(event.peerID)
 
@@ -567,8 +565,14 @@ func (sc *scheduler) handleNoBlockResponse(event bcNoBlockResponse) (Event, erro
 }
 
 func (sc *scheduler) handleBlockProcessed(event pcBlockProcessed) (Event, error) {
+	// No such peer or peer was removed.
+	peer, ok := sc.peers[event.peerID]
+	if !ok || peer.state == peerStateRemoved {
+		return noOp, nil
+	}
+
 	if event.height != sc.height {
-		panic(fmt.Sprintf("processed height %d but expected height %d", event.height, sc.height))
+		panic(fmt.Sprintf("processed height %d, but expected height %d", event.height, sc.height))
 	}
 
 	err := sc.markProcessed(event.height)

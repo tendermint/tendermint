@@ -66,9 +66,13 @@ func (rt *Routine) start() {
 	close(rt.rdy)
 	defer func() {
 		if r := recover(); r != nil {
-			var b strings.Builder
+			var (
+				b strings.Builder
+				j int
+			)
 			for i := len(rt.history) - 1; i >= 0; i-- {
-				fmt.Fprintf(&b, "%+v\n", rt.history[i])
+				fmt.Fprintf(&b, "%d: %+v\n", j, rt.history[i])
+				j++
 			}
 			panic(fmt.Sprintf("%v\nlast events:\n%v", r, b.String()))
 		}
