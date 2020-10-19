@@ -2,6 +2,7 @@ package v2
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -630,11 +631,10 @@ func (sc *scheduler) handleRemovePeer(event bcRemovePeer) (Event, error) {
 	if sc.allBlocksProcessed() {
 		return scFinishedEv{reason: "removed peer"}, nil
 	}
-	return noOp, nil
+	return scPeerError{peerID: event.peerID, reason: errors.New("peer was stopped")}, nil
 }
 
 func (sc *scheduler) handleTryPrunePeer(event rTryPrunePeer) (Event, error) {
-
 	// Check behavior of peer responsible to deliver block at sc.height.
 	timeHeightAsked, ok := sc.pendingTime[sc.height]
 	if ok && time.Since(timeHeightAsked) > sc.peerTimeout {
