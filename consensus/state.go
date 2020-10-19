@@ -1873,7 +1873,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 			}
 			evidence := types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB)
 			evidenceErr := cs.evpool.AddEvidenceFromConsensus(evidence, timestamp, cs.Validators)
-				
+
 			if evidenceErr != nil {
 				cs.Logger.Error("Failed to add evidence to the evidence pool", "err", evidenceErr)
 			} else {

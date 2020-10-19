@@ -61,12 +61,12 @@ func NewPool(evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool,
 	}
 
 	pool := &Pool{
-		stateDB:       stateDB,
-		blockStore:    blockStore,
-		state:         state,
-		logger:        log.NewNopLogger(),
-		evidenceStore: evidenceDB,
-		evidenceList:  clist.New(),
+		stateDB:           stateDB,
+		blockStore:        blockStore,
+		state:             state,
+		logger:            log.NewNopLogger(),
+		evidenceStore:     evidenceDB,
+		evidenceList:      clist.New(),
 		consensusEvBuffer: make([]types.Evidence, 0),
 	}
 
