@@ -30,7 +30,7 @@ func TestEvidence_Misbehavior(t *testing.T) {
 				continue
 			}
 			for _, misbehavior := range misbehaviorsAtThisHeight {
-				if misbehavior.String == "double-prevote" && height < status.SyncInfo.LatestBlockHeight {
+				if misbehavior.Misbehavior.String == "double-prevote" && height < status.SyncInfo.LatestBlockHeight {
 					// we expect evidence to be formed in the height directly after hence height + 1
 					var reportHeight int64 = height + 1
 					resp, err := client.Block(ctx, &reportHeight)
@@ -42,12 +42,12 @@ func TestEvidence_Misbehavior(t *testing.T) {
 					// and contain the maverick nodes address
 					for _, ev := range resp.Block.Evidence.Evidence {
 						if dev, ok := ev.(*types.DuplicateVoteEvidence); ok {
-							if bytes.Equal(dev.VoteA.ValidatorAddress, node.Key.PubKey().Address()) {
+							if bytes.Equal(dev.VoteA.ValidatorAddress, misbehavior.ValAddress) {
 								containsMaverick = true
 							}
 						}
 					}
-					assert.True(t, containsMaverick)
+					assert.True(t, containsMaverick, "expected duplicate vote evidence by %v not witnessed by %v", misbehavior.ValAddress, node.Key.PubKey().Address())
 				}
 			}
 		}
@@ -55,10 +55,10 @@ func TestEvidence_Misbehavior(t *testing.T) {
 	})
 }
 
-func fetchMisbehaviors(t *testing.T) map[int64][]cs.Misbehavior {
+func fetchMisbehaviors(t *testing.T) map[int64][]misbehaviorNodeSet {
 	t.Helper()
 
-	networkMisbehaviors := make(map[int64][]cs.Misbehavior)
+	networkMisbehaviors := make(map[int64][]misbehaviorNodeSet)
 
 	testnet := loadTestnet(t)
 	for _, node := range testnet.Nodes {
@@ -75,13 +75,23 @@ func fetchMisbehaviors(t *testing.T) map[int64][]cs.Misbehavior {
 				}
 
 				// if we already have an attack at this height we append to the behaviors else create a new one
+				misbehaviorSet := misbehaviorNodeSet{
+					Misbehavior: misbehavior,
+					ValAddress: node.Key.PubKey().Address(),
+				}
 				if misbehaviors, ok := networkMisbehaviors[height]; ok {
-					networkMisbehaviors[height] = append(misbehaviors, misbehavior)
+					networkMisbehaviors[height] = append(misbehaviors, misbehaviorSet)
 				} else {
-					networkMisbehaviors[height] = []cs.Misbehavior{misbehavior}
+					networkMisbehaviors[height] = []misbehaviorNodeSet{misbehaviorSet}
 				}
 			}
 		}
 	}
 	return networkMisbehaviors
+}
+
+// misbehaviorNodeSet pairs an intended misbehavior with the address of the maverick
+type misbehaviorNodeSet struct {
+	Misbehavior cs.Misbehavior
+	ValAddress types.Address
 }
