@@ -273,6 +273,9 @@ func (sc *scheduler) removePeer(peerID p2p.ID) error {
 			maxPeerHeight = otherPeer.height
 		}
 	}
+	if maxPeerHeight == 0 { // no peers
+		return nil
+	}
 	for h := range sc.blockStates {
 		if h > maxPeerHeight {
 			delete(sc.blockStates, h)
