@@ -246,22 +246,24 @@ Each PR should have one commit once it lands on `master`; this can be accomplish
 
 #### Major Release
 
-1. start on `master`
-2. run integration tests (see `test_integrations` in Makefile)
-3. prepare release in a pull request against `master` (to be squash merged):
-   - copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
-   - run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
+1. Start on `master`
+2. Run integration tests (see `test_integrations` in Makefile)
+3. Prepare release in a pull request against `master` (to be squash merged):
+   - Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`; if this release 
+      had release candidates, squash all the RC updates into one
+   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
      all issues
-   - run `bash ./scripts/authors.sh` to get a list of authors since the latest
+   - Run `bash ./scripts/authors.sh` to get a list of authors since the latest
      release, and add the github aliases of external contributors to the top of
      the changelog. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
-   - reset the `CHANGELOG_PENDING.md`
-   - bump Tendermint version in `version.go`
-   - bump P2P and block protocol versions in  `version.go`, if necessary
-   - bump ABCI protocol version in `version.go`, if necessary
-   - make sure all significant breaking changes are covered in `UPGRADING.md`
-4. push your changes with prepared release details to `vX.X` (this will trigger the release `vX.X.0`)
-5. merge back to master (don't squash merge!)
+   - Reset the `CHANGELOG_PENDING.md`
+   - Bump Tendermint version in `version.go`
+   - Bump P2P and block protocol versions in  `version.go`, if necessary
+   - Bump ABCI protocol version in `version.go`, if necessary
+   - Make sure all significant breaking changes are covered in `UPGRADING.md`
+4. Push your changes with prepared release details to `vX.X` (this will trigger the release `vX.X.0`)
+5. Merge back to master (don't squash merge!)
+6. Delete any RC branches and tags for this release (if applicable)
 
 #### Minor Release
 
@@ -291,12 +293,32 @@ Minor releases are done differently from major releases: They are built off of l
 
 #### Backport Release
 
-1. start from the existing release branch you want to backport changes to (e.g. v0.30)
+1. Start from the existing release branch you want to backport changes to (e.g. v0.30)
    Branch to a release/vX.X.X branch locally (e.g. release/v0.30.7)
-2. cherry pick the commit(s) that contain the changes you want to backport (usually these commits are from squash-merged PRs which were already reviewed)
-3. steps 2 and 3 from [Major Release](#major-release)
-4. push changes to release/vX.X.X branch
-5. open a PR against the existing vX.X branch
+2. Cherry pick the commit(s) that contain the changes you want to backport (usually these commits are from squash-merged PRs which were already reviewed)
+3. Follow steps 2 and 3 from [Major Release](#major-release)
+4. Push changes to release/vX.X.X branch
+5. Open a PR against the existing vX.X branch
+
+#### Release Candidates 
+
+Before creating an official release, especially a major release, we may want to create a 
+release candidate (RC) for our friends and partners to test out. We use git tags to 
+create RCs, and we build them off of RC branches. RC branches typically have names formatted
+like `RCX/vX.X.X` (or, concretely, `RC0/v0.34.0`), while the tags themselves follow
+the "standard" release naming conventions, with `-rcX` at the end (`vX.X.X-rcX`).
+
+(Note that branches and tags _cannot_ have the same names, so it's important that these branches
+have distinct names from the tags/release names.)
+
+1. Start from the RC branch (e.g. `RC0/v0.34.0`).
+2. Create the new tag, specifying a name and a tag "message":  
+   `git tag -a v0.34.0-rc0 -m "Release Candidate v0.34.0-rc0` 
+3. Push the tag back up to origin:  
+   `git push origin v0.34.0-rc4`  
+   Now the tag should be available on the repo's releases page. 
+4. Create a new release candidate branch for any possible updates to the RC:  
+   `git checkout -b RC1/v0.34.0; git push origin RC1/v0.34.0`
 
 ## Testing
 

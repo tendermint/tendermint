@@ -1,6 +1,6 @@
 # Unreleased Changes
 
-## v0.34.0-rc5
+## vX.X
 
 Special thanks to external contributors on this release:
 
@@ -11,12 +11,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - CLI/RPC/Config
 
 - Apps
-    - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
 
 - P2P Protocol
 
 - Go API
-    - [evidence] [\#5499](https://github.com/tendermint/tendermint/pull/5449) `MaxNum` evidence consensus parameter has been changed to `MaxBytes` (@cmwaters)
 
 - Blockchain Protocol
 
@@ -26,10 +24,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
-- [privval] \#5434 `NewSignerDialerEndpoint` can now be given `SignerServiceEndpointOption` (@erikgrinaker)
-
-- [config] \#5433 `statesync.rpc_servers` is now properly set when writing the configuration file (@erikgrinaker)
+- [statesync] \#5516 Check that all heights necessary to rebuild state for a snapshot exist before adding the snapshot to the pool. (@erikgrinaker)
 
 ### BUG FIXES
 
-- [privval] \#5441 Fix faulty ping message encoding causing nil message errors in logs (@erikgrinaker)
+- [types] \#5523 Change json naming of `PartSetHeader` within `BlockID` from `parts` to `part_set_header` (@marbar3778)

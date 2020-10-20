@@ -75,7 +75,7 @@ func (tr *TestReactor) Receive(chID byte, peer Peer, msgBytes []byte) {
 	if tr.logMessages {
 		tr.mtx.Lock()
 		defer tr.mtx.Unlock()
-		//fmt.Printf("Received: %X, %X\n", chID, msgBytes)
+		// fmt.Printf("Received: %X, %X\n", chID, msgBytes)
 		tr.msgsReceived[chID] = append(tr.msgsReceived[chID], PeerMessage{peer.ID(), msgBytes, tr.msgsCounter})
 		tr.msgsCounter++
 	}

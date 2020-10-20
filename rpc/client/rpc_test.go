@@ -82,7 +82,7 @@ func TestCustomHTTPClient(t *testing.T) {
 
 func TestCorsEnabled(t *testing.T) {
 	origin := rpctest.GetConfig().RPC.CORSAllowedOrigins[0]
-	remote := strings.Replace(rpctest.GetConfig().RPC.ListenAddress, "tcp", "http", -1)
+	remote := strings.ReplaceAll(rpctest.GetConfig().RPC.ListenAddress, "tcp", "http")
 
 	req, err := http.NewRequest("GET", remote, nil)
 	require.Nil(t, err, "%+v", err)
@@ -290,7 +290,7 @@ func TestAppCalls(t *testing.T) {
 		h = apph - 1
 		commit2, err := c.Commit(context.Background(), &h)
 		require.NoError(err)
-		assert.Equal(block.Block.LastCommit, commit2.Commit)
+		assert.Equal(block.Block.LastCommitHash, commit2.Commit.Hash())
 
 		// and we got a proof that works!
 		_pres, err := c.ABCIQueryWithOptions(context.Background(), "/key", k, client.ABCIQueryOptions{Prove: true})
