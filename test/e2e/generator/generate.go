@@ -27,9 +27,8 @@ var (
 	nodeDatabases        = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
 	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "grpc", "builtin"}
 	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp"}
-	// FIXME disabled v1 due to https://github.com/tendermint/tendermint/issues/5444
-	// FIXME disabled v2 due to https://github.com/tendermint/tendermint/issues/5513
-	nodeFastSyncs         = uniformChoice{"", "v0"} // "v1", "v2"
+	// FIXME v1 disabled due to https://github.com/tendermint/tendermint/issues/5444
+	nodeFastSyncs         = uniformChoice{"", "v0", "v2"} // "v1",
 	nodeStateSyncs        = uniformChoice{false, true}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
