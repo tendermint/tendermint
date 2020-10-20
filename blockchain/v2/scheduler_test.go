@@ -1574,7 +1574,7 @@ func TestScHandleBlockProcessed(t *testing.T) {
 			name:      "empty scheduler",
 			fields:    scTestParams{height: 6},
 			args:      args{event: processed6FromP1},
-			wantEvent: noOpEvent{},
+			wantEvent: scSchedulerFail{reason: fmt.Errorf("some error")},
 		},
 		{
 			name: "processed block we don't have",
@@ -1609,20 +1609,6 @@ func TestScHandleBlockProcessed(t *testing.T) {
 				received:   map[int64]p2p.ID{6: "P1"},
 			},
 			args:      args{event: processed6FromP1},
-			wantEvent: noOpEvent{},
-		},
-		{
-			name: "processed block from removed peer",
-			fields: scTestParams{
-				initHeight: 6,
-				peers: map[string]*scPeer{
-					"P1": {height: 8, state: peerStateReady},
-					"P2": {height: 8, state: peerStateRemoved}},
-				allB:        []int64{6, 7, 8},
-				pending:     map[int64]p2p.ID{6: "P1"},
-				pendingTime: map[int64]time.Time{6: now},
-			},
-			args:      args{event: pcBlockProcessed{peerID: p2p.ID("P2"), height: 6}},
 			wantEvent: noOpEvent{},
 		},
 	}

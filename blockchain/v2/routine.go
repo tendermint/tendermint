@@ -38,7 +38,7 @@ func newRoutine(name string, handleFunc handleFunc, bufferSize int) *Routine {
 		name:    name,
 		handle:  handleFunc,
 		queue:   queue.NewPriorityQueue(bufferSize, true),
-		history: make([]Event, 0),
+		history: make([]Event, 0, historySize),
 		out:     make(chan Event, bufferSize),
 		rdy:     make(chan struct{}, 1),
 		fin:     make(chan error, 1),
