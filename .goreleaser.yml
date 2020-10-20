@@ -3,6 +3,11 @@ project_name: Tendermint
 env:
   # Require use of Go modules.
   - GO111MODULE=on
+  
+before:
+  # Templates for the commands to be ran.
+  hooks:
+  - sh scripts/release_notes.md {{.Version}}
 
 builds:
   -

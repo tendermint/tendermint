@@ -3,26 +3,19 @@ package version
 var (
 	// GitCommit is the current HEAD set using ldflags.
 	GitCommit string
-	// Version is the current version of Tendermint Core.
+	// TMCoreSemVer is the current version of Tendermint Core.
 	// It's the Semantic Version of the software.
-	// Must be a string because scripts like dist.sh read this file.
 	// Version is the built softwares version.
-	Version = TMCoreSemVer
+	TMCoreSemVer string
 )
 
 func init() {
 	if GitCommit != "" {
-		Version += "-" + GitCommit
+		TMCoreSemVer += "-" + GitCommit
 	}
 }
 
 const (
-	// TMCoreSemVer is the current version of Tendermint Core.
-	// It's the Semantic Version of the software.
-	// Must be a string because scripts like dist.sh read this file.
-	// XXX: Don't change the name of this variable or you will break
-	// automation :)
-	TMCoreSemVer = "0.34.0" // TODO: remove
 
 	// ABCISemVer is the semantic version of the ABCI library
 	ABCISemVer = "0.17.0"
