@@ -257,7 +257,6 @@ Each PR should have one commit once it lands on `master`; this can be accomplish
      release, and add the github aliases of external contributors to the top of
      the changelog. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
    - Reset the `CHANGELOG_PENDING.md`
-   - Bump Tendermint version in `version.go`
    - Bump P2P and block protocol versions in  `version.go`, if necessary
    - Bump ABCI protocol version in `version.go`, if necessary
    - Make sure all significant breaking changes are covered in `UPGRADING.md`
@@ -279,7 +278,6 @@ Minor releases are done differently from major releases: They are built off of l
    - run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
    - run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
    - reset the `CHANGELOG_PENDING.md`
-   - bump Tendermint version in `version.go`
    - bump P2P and block protocol versions in  `version.go`, if necessary
    - bump ABCI protocol version in `version.go`, if necessary
    - make sure all significant breaking changes are covered in `UPGRADING.md`
@@ -318,12 +316,12 @@ the "standard" release naming conventions, with `-rcX` at the end (`vX.X.X-rcX`)
 have distinct names from the tags/release names.)
 
 1. Start from the RC branch (e.g. `RC0/v0.34.0`).
-2. Create the new tag, specifying a name and a tag "message":
-   `git tag -a v0.34.0-rc0 -m "Release Candidate v0.34.0-rc0`
-3. Push the tag back up to origin:
-   `git push origin v0.34.0-rc4`
-   Now the tag should be available on the repo's releases page.
-4. Create a new release candidate branch for any possible updates to the RC:
+2. Create the new tag, specifying a name and a tag "message":  
+   `git tag -a v0.34.0-rc0 -m "Release Candidate v0.34.0-rc0` 
+3. Push the tag back up to origin:  
+   `git push origin v0.34.0-rc4`  
+   Now the tag should be available on the repo's releases page. 
+4. Create a new release candidate branch for any possible updates to the RC:  
    `git checkout -b RC1/v0.34.0; git push origin RC1/v0.34.0`
 
 ## Testing
