@@ -50,9 +50,7 @@ persist_interval = 0
 [node.validator03]
 seeds = ["seed01"]
 database = "badgerdb"
-# FIXME Should use grpc, but it has race conditions
-# https://github.com/tendermint/tendermint/issues/5439
-abci_protocol = "unix"
+abci_protocol = "grpc"
 privval_protocol = "unix"
 persist_interval = 3
 retain_blocks = 3
@@ -72,9 +70,7 @@ start_at = 1005 # Becomes part of the validator set at 1010
 seeds = ["seed02"]
 database = "cleveldb"
 fast_sync = "v0"
-# FIXME Should use grpc, but it has race conditions
-# https://github.com/tendermint/tendermint/issues/5439
-abci_protocol = "tcp"
+abci_protocol = "grpc"
 privval_protocol = "tcp"
 # FIXME The WAL gets corrupted when killed
 # https://github.com/tendermint/tendermint/issues/5422
