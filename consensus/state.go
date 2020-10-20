@@ -1871,10 +1871,13 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 			} else {
 				timestamp = sm.MedianTime(cs.LastCommit.MakeCommit(), cs.LastValidators)
 			}
-			evidenceErr := cs.evpool.AddEvidenceFromConsensus(
-				types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB), timestamp, cs.Validators)
+			evidence := types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB)
+			evidenceErr := cs.evpool.AddEvidenceFromConsensus(evidence, timestamp, cs.Validators)
+
 			if evidenceErr != nil {
 				cs.Logger.Error("Failed to add evidence to the evidence pool", "err", evidenceErr)
+			} else {
+				cs.Logger.Debug("Added evidence to the evidence pool", "evidence", evidence)
 			}
 			return added, err
 		} else if err == types.ErrVoteNonDeterministicSignature {
