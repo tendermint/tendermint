@@ -30,3 +30,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [abci/grpc] \#5520 Return async responses in order, to avoid mempool panics. (@erikgrinaker)
 
 - [types] \#5523 Change json naming of `PartSetHeader` within `BlockID` from `parts` to `part_set_header` (@marbar3778)
+- [blockchain/v2] \#5530 Fix "processed height 4541 but expected height 4540" panic (@melekes)
