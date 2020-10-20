@@ -88,7 +88,7 @@ func TestEvidencePoolBasic(t *testing.T) {
 	assert.Equal(t, int64(357), size) // check that the size of the single evidence in bytes is correct
 
 	// shouldn't be able to add evidence twice
-	assert.Error(t, pool.AddEvidence(ev))
+	assert.NoError(t, pool.AddEvidence(ev))
 	evs, _ = pool.PendingEvidence(defaultEvidenceMaxBytes)
 	assert.Equal(t, 1, len(evs))
 
@@ -147,17 +147,18 @@ func TestAddEvidenceFromConsensus(t *testing.T) {
 	var height int64 = 10
 	pool, val := defaultTestPool(height)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
-	err := pool.AddEvidenceFromConsensus(ev, defaultEvidenceTime,
-		types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(2)}))
+	valSet := types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(2)})
+	err := pool.AddEvidenceFromConsensus(ev, defaultEvidenceTime, valSet)
 	assert.NoError(t, err)
 	next := pool.EvidenceFront()
 	assert.Equal(t, ev, next.Value.(types.Evidence))
+
 	// shouldn't be able to submit the same evidence twice
 	err = pool.AddEvidenceFromConsensus(ev, defaultEvidenceTime.Add(-1*time.Second),
 		types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(3)}))
-	if assert.Error(t, err) {
-		assert.Equal(t, "evidence already verified and added", err.Error())
-	}
+	assert.NoError(t, err)
+	evs, _ := pool.PendingEvidence(defaultEvidenceMaxBytes)
+	assert.Equal(t, 1, len(evs))
 }
 
 func TestEvidencePoolUpdate(t *testing.T) {
