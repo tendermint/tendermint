@@ -28,3 +28,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [blockchain/v2] \#5499 Fix "duplicate block enqueued by processor" panic (@melekes)
 - [abci/grpc] \#5520 Return async responses in order, to avoid mempool panics. (@erikgrinaker)
+
+- [blockchain/v2] \#5530 Fix "processed height 4541 but expected height 4540" panic (@melekes)
