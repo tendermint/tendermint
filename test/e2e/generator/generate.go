@@ -36,9 +36,8 @@ var (
 	nodePerturbations     = probSetChoice{
 		"disconnect": 0.1,
 		"pause":      0.1,
-		// FIXME disabled due to https://github.com/tendermint/tendermint/issues/5422
-		// "kill":       0.1,
-		// "restart":    0.1,
+		"kill":       0.1,
+		"restart":    0.1,
 	}
 )
 
