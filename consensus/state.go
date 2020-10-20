@@ -328,7 +328,7 @@ func (cs *State) OnStart() error {
 				return err
 			}
 
-			cs.Logger.Info("WAL file is corrupted. Attempting repair", "err", err)
+			cs.Logger.Error("WAL file is corrupted, attempting repair", "err", err)
 
 			// 1) prep work
 			if err := cs.wal.Stop(); err != nil {
@@ -345,7 +345,7 @@ func (cs *State) OnStart() error {
 
 			// 3) try to repair (WAL file will be overwritten!)
 			if err := repairWalFile(corruptedFile, cs.config.WalFile()); err != nil {
-				cs.Logger.Error("Repair failed", "err", err)
+				cs.Logger.Error("WAL repair failed", "err", err)
 				return err
 			}
 			cs.Logger.Info("Successful repair")
@@ -1871,10 +1871,13 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 			} else {
 				timestamp = sm.MedianTime(cs.LastCommit.MakeCommit(), cs.LastValidators)
 			}
-			evidenceErr := cs.evpool.AddEvidenceFromConsensus(
-				types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB), timestamp, cs.Validators)
+			evidence := types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB)
+			evidenceErr := cs.evpool.AddEvidenceFromConsensus(evidence, timestamp, cs.Validators)
+
 			if evidenceErr != nil {
 				cs.Logger.Error("Failed to add evidence to the evidence pool", "err", evidenceErr)
+			} else {
+				cs.Logger.Debug("Added evidence to the evidence pool", "evidence", evidence)
 			}
 			return added, err
 		} else if err == types.ErrVoteNonDeterministicSignature {
@@ -2212,7 +2215,7 @@ func repairWalFile(src, dst string) error {
 	}
 	defer in.Close()
 
-	out, err := os.Open(dst)
+	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}

@@ -177,7 +177,7 @@ func (evR Reactor) checkSendEvidenceMessage(
 		ageNumBlocks = peerHeight - evHeight
 	)
 
-	if peerHeight < evHeight { // peer is behind. sleep while he catches up
+	if peerHeight <= evHeight { // peer is behind. sleep while he catches up
 		return nil, true
 	} else if ageNumBlocks > params.MaxAgeNumBlocks { // evidence is too old relative to the peer, skip
 
