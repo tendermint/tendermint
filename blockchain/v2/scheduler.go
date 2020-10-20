@@ -412,17 +412,17 @@ func (sc *scheduler) markPending(peerID p2p.ID, height int64, time time.Time) er
 }
 
 func (sc *scheduler) markProcessed(height int64) error {
+	// It is possible that a peer error or timeout is handled after the processor
+	// has processed the block but before the scheduler received this event, so
+	// when pcBlockProcessed event is received, the block had been requested
+	// again => don't check the block state.
 	sc.lastAdvance = time.Now()
-	state := sc.getStateAtHeight(height)
-	if state != blockStateReceived {
-		return fmt.Errorf("cannot mark height %d received from block state %s", height, state)
-	}
-
 	sc.height++
+	delete(sc.pendingBlocks, height)
+	delete(sc.pendingTime, height)
 	delete(sc.receivedBlocks, height)
 	delete(sc.blockStates, height)
 	sc.addNewBlocks()
-
 	return nil
 }
 
@@ -550,11 +550,9 @@ func (sc *scheduler) handleBlockProcessed(event pcBlockProcessed) (Event, error)
 	if event.height != sc.height {
 		panic(fmt.Sprintf("processed height %d but expected height %d", event.height, sc.height))
 	}
+
 	err := sc.markProcessed(event.height)
 	if err != nil {
-		// It is possible that a peer error or timeout is handled after the processor
-		// has processed the block but before the scheduler received this event,
-		// so when pcBlockProcessed event is received the block had been requested again.
 		return scSchedulerFail{reason: err}, nil
 	}
 
