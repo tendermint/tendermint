@@ -2,6 +2,7 @@ package v2
 
 import (
 	"fmt"
+	"strings"
 	"sync/atomic"
 
 	"github.com/Workiva/go-datastructures/queue"
@@ -10,6 +11,8 @@ import (
 )
 
 type handleFunc = func(event Event) (Event, error)
+
+const historySize = 25
 
 // Routine is a structure that models a finite state machine as serialized
 // stream of events processed by a handle function. This Routine structure
@@ -21,6 +24,7 @@ type Routine struct {
 	name    string
 	handle  handleFunc
 	queue   *queue.PriorityQueue
+	history []Event
 	out     chan Event
 	fin     chan error
 	rdy     chan struct{}
@@ -34,6 +38,7 @@ func newRoutine(name string, handleFunc handleFunc, bufferSize int) *Routine {
 		name:    name,
 		handle:  handleFunc,
 		queue:   queue.NewPriorityQueue(bufferSize, true),
+		history: make([]Event, 0, historySize),
 		out:     make(chan Event, bufferSize),
 		rdy:     make(chan struct{}, 1),
 		fin:     make(chan error, 1),
@@ -53,13 +58,24 @@ func (rt *Routine) setMetrics(metrics *Metrics) {
 }
 
 func (rt *Routine) start() {
-	rt.logger.Info(fmt.Sprintf("%s: run\n", rt.name))
+	rt.logger.Info(fmt.Sprintf("%s: run", rt.name))
 	running := atomic.CompareAndSwapUint32(rt.running, uint32(0), uint32(1))
 	if !running {
 		panic(fmt.Sprintf("%s is already running", rt.name))
 	}
 	close(rt.rdy)
 	defer func() {
+		if r := recover(); r != nil {
+			var (
+				b strings.Builder
+				j int
+			)
+			for i := len(rt.history) - 1; i >= 0; i-- {
+				fmt.Fprintf(&b, "%d: %+v\n", j, rt.history[i])
+				j++
+			}
+			panic(fmt.Sprintf("%v\nlast events:\n%v", r, b.String()))
+		}
 		stopped := atomic.CompareAndSwapUint32(rt.running, uint32(1), uint32(0))
 		if !stopped {
 			panic(fmt.Sprintf("%s is failed to stop", rt.name))
@@ -82,7 +98,19 @@ func (rt *Routine) start() {
 			return
 		}
 		rt.metrics.EventsOut.With("routine", rt.name).Add(1)
-		rt.logger.Debug(fmt.Sprintf("%s: produced %T %+v\n", rt.name, oEvent, oEvent))
+		rt.logger.Debug(fmt.Sprintf("%s: produced %T %+v", rt.name, oEvent, oEvent))
+
+		// Skip rTrySchedule and rProcessBlock events as they clutter the history
+		// due to their frequency.
+		switch events[0].(type) {
+		case rTrySchedule:
+		case rProcessBlock:
+		default:
+			rt.history = append(rt.history, events[0].(Event))
+			if len(rt.history) > historySize {
+				rt.history = rt.history[1:]
+			}
+		}
 
 		rt.out <- oEvent
 	}
@@ -97,7 +125,7 @@ func (rt *Routine) send(event Event) bool {
 	err := rt.queue.Put(event)
 	if err != nil {
 		rt.metrics.EventsShed.With("routine", rt.name).Add(1)
-		rt.logger.Info(fmt.Sprintf("%s: send failed, queue was full/stopped \n", rt.name))
+		rt.logger.Error(fmt.Sprintf("%s: send failed, queue was full/stopped", rt.name))
 		return false
 	}
 
@@ -122,7 +150,7 @@ func (rt *Routine) stop() {
 		return
 	}
 
-	rt.logger.Info(fmt.Sprintf("%s: stop\n", rt.name))
+	rt.logger.Info(fmt.Sprintf("%s: stop", rt.name))
 	rt.queue.Dispose() // this should block until all queue items are free?
 }
 

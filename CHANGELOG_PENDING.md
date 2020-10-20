@@ -26,4 +26,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### BUG FIXES
 
+- [blockchain/v2] \#5499 Fix "duplicate block enqueued by processor" panic (@melekes)
 - [abci/grpc] \#5520 Return async responses in order, to avoid mempool panics. (@erikgrinaker)
