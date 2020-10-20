@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	valEd25519 = []string{ABCIPubKeyTypeEd25519}
+	valEd25519   = []string{ABCIPubKeyTypeEd25519}
+	valSecp256k1 = []string{ABCIPubKeyTypeSecp256k1}
 )
 
 func TestConsensusParamsValidation(t *testing.T) {
@@ -127,10 +128,10 @@ func TestConsensusParamsUpdate(t *testing.T) {
 					MaxBytes:        50,
 				},
 				Validator: &tmproto.ValidatorParams{
-					PubKeyTypes: valEd25519,
+					PubKeyTypes: valSecp256k1,
 				},
 			},
-			makeParams(100, 200, 10, 300, 50, valEd25519),
+			makeParams(100, 200, 10, 300, 50, valSecp256k1),
 		},
 	}
 	for _, tc := range testCases {
