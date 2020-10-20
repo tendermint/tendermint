@@ -5,11 +5,10 @@ env:
   - GO111MODULE=on
 
 builds:
-  -
-    id: "Tendermint"
+  - id: "Tendermint"
     main: ./cmd/tendermint/main.go
     ldflags:
-     - -s -w -X github.com/tendermint/tendermint/version.GitCommit={{.Commit }} -X github.com/tendermint/tendermint/version.Version={{ .Version }}
+     - -s -w -X github.com/tendermint/tendermint/version.GitCommit={{.Commit }} -X github.com/tendermint/tendermint/version.TMCoreSemVer={{ .Version }}
     env:
       - CGO_ENABLED=0
     goos:

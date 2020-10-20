@@ -4,17 +4,14 @@ var (
 	// GitCommit is the current HEAD set using ldflags.
 	GitCommit string
 
-	// Version is the built softwares version.
-	Version string
-
 	// TMCoreSemVer is the current version of Tendermint Core.
 	// It's the Semantic Version of the software.
-	TMCoreSemVer = Version
+	TMCoreSemVer string
 )
 
 func init() {
 	if GitCommit != "" {
-		Version += "-" + GitCommit
+		TMCoreSemVer += "-" + GitCommit
 	}
 }
 
