@@ -187,7 +187,7 @@ type rTryPrunePeer struct {
 }
 
 func (e rTryPrunePeer) String() string {
-	return fmt.Sprintf(": %v", e.time)
+	return fmt.Sprintf("rTryPrunePeer{%v}", e.time)
 }
 
 // ticker event for scheduling block requests
@@ -197,12 +197,16 @@ type rTrySchedule struct {
 }
 
 func (e rTrySchedule) String() string {
-	return fmt.Sprintf(": %v", e.time)
+	return fmt.Sprintf("rTrySchedule{%v}", e.time)
 }
 
 // ticker for block processing
 type rProcessBlock struct {
 	priorityNormal
+}
+
+func (e rProcessBlock) String() string {
+	return "rProcessBlock"
 }
 
 // reactor generated events based on blockchain related messages from peers:
@@ -215,12 +219,22 @@ type bcBlockResponse struct {
 	block  *types.Block
 }
 
+func (resp bcBlockResponse) String() string {
+	return fmt.Sprintf("bcBlockResponse{%d#%X (size: %d bytes) from %v at %v}",
+		resp.block.Height, resp.block.Hash(), resp.size, resp.peerID, resp.time)
+}
+
 // blockNoResponse message received from a peer
 type bcNoBlockResponse struct {
 	priorityNormal
 	time   time.Time
 	peerID p2p.ID
 	height int64
+}
+
+func (resp bcNoBlockResponse) String() string {
+	return fmt.Sprintf("bcNoBlockResponse{%v has no block at height %d at %v}",
+		resp.peerID, resp.height, resp.time)
 }
 
 // statusResponse message received from a peer
@@ -232,10 +246,19 @@ type bcStatusResponse struct {
 	height int64
 }
 
+func (resp bcStatusResponse) String() string {
+	return fmt.Sprintf("bcStatusResponse{%v is at height %d (base: %d) at %v}",
+		resp.peerID, resp.height, resp.base, resp.time)
+}
+
 // new peer is connected
 type bcAddNewPeer struct {
 	priorityNormal
 	peerID p2p.ID
+}
+
+func (resp bcAddNewPeer) String() string {
+	return fmt.Sprintf("bcAddNewPeer{%v}", resp.peerID)
 }
 
 // existing peer is removed
@@ -245,10 +268,18 @@ type bcRemovePeer struct {
 	reason interface{}
 }
 
+func (resp bcRemovePeer) String() string {
+	return fmt.Sprintf("bcRemovePeer{%v due to %v}", resp.peerID, resp.reason)
+}
+
 // resets the scheduler and processor state, e.g. following a switch from state syncing
 type bcResetState struct {
 	priorityHigh
 	state state.State
+}
+
+func (e bcResetState) String() string {
+	return fmt.Sprintf("bcResetState{%v}", e.state)
 }
 
 // Takes the channel as a parameter to avoid race conditions on r.events.
