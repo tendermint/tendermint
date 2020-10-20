@@ -586,8 +586,7 @@ func TestScSetPeerRange(t *testing.T) {
 				allB:  []int64{1, 2, 3, 4}},
 			args: args{peerID: "P1", base: 6, height: 5},
 			wantFields: scTestParams{
-				peers: map[string]*scPeer{"P1": {height: 4, state: peerStateReady}},
-				allB:  []int64{1, 2, 3, 4}},
+				peers: map[string]*scPeer{"P1": {height: 4, state: peerStateRemoved}}},
 			wantErr: true,
 		},
 		{
