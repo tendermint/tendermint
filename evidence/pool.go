@@ -46,12 +46,6 @@ type Pool struct {
 
 	pruningHeight int64
 	pruningTime   time.Time
-
-	// As votes are produced before the block is, evidence from consensus that contain these votes
-	// must wait until the block is committed before being gossiped as the block is needed for
-	// validating the time that the evidence occurred. Hence we store consensus evidence in a
-	// buffer until Update is called.
-	consensusEvBuffer []types.Evidence
 }
 
 // NewPool creates an evidence pool. If using an existing evidence store,
@@ -64,13 +58,12 @@ func NewPool(evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool,
 	}
 
 	pool := &Pool{
-		stateDB:           stateDB,
-		blockStore:        blockStore,
-		state:             state,
-		logger:            log.NewNopLogger(),
-		evidenceStore:     evidenceDB,
-		evidenceList:      clist.New(),
-		consensusEvBuffer: make([]types.Evidence, 0),
+		stateDB:       stateDB,
+		blockStore:    blockStore,
+		state:         state,
+		logger:        log.NewNopLogger(),
+		evidenceStore: evidenceDB,
+		evidenceList:  clist.New(),
 	}
 
 	// if pending evidence already in db, in event of prior failure, then check for expiration,
@@ -115,15 +108,6 @@ func (evpool *Pool) Update(state sm.State) {
 
 	// update the state
 	evpool.updateState(state)
-
-	if len(evpool.consensusEvBuffer) != 0 {
-		// load evidence from buffer to clist for gossiping
-		for _, ev := range evpool.consensusEvBuffer {
-			evpool.evidenceList.PushBack((ev))
-		}
-		// flush evidence buffer
-		evpool.consensusEvBuffer = []types.Evidence{}
-	}
 
 	// prune pending evidence when it has expired. This also updates when the next evidence will expire
 	if atomic.LoadUint32(&evpool.evidenceSize) > 0 && state.LastBlockHeight > evpool.pruningHeight &&
@@ -194,9 +178,8 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 	if err := evpool.addPendingEvidence(evInfo); err != nil {
 		return fmt.Errorf("can't add evidence to pending list: %w", err)
 	}
-
-	// add evidence to the consensus evidence buffer to be gossiped in the following height
-	evpool.consensusEvBuffer = append(evpool.consensusEvBuffer, ev)
+	// add evidence to be gossiped with peers
+	evpool.evidenceList.PushBack(ev)
 
 	evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
 

@@ -150,37 +150,7 @@ func TestAddEvidenceFromConsensus(t *testing.T) {
 	valSet := types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(2)})
 	err := pool.AddEvidenceFromConsensus(ev, defaultEvidenceTime, valSet)
 	assert.NoError(t, err)
-
-	// Evidence shouldn't be propagated straight away as the block currently still doesn't exist
 	next := pool.EvidenceFront()
-	assert.Nil(t, next)
-
-	updateState := sm.State{
-		ChainID:                     evidenceChainID,
-		InitialHeight:               1,
-		LastBlockHeight:             height + 1,
-		LastBlockTime:               defaultEvidenceTime.Add(1 * time.Second),
-		Validators:                  valSet,
-		NextValidators:              valSet.CopyIncrementProposerPriority(1),
-		LastValidators:              valSet,
-		LastHeightValidatorsChanged: 1,
-		ConsensusParams: tmproto.ConsensusParams{
-			Block: tmproto.BlockParams{
-				MaxBytes: 22020096,
-				MaxGas:   -1,
-			},
-			Evidence: tmproto.EvidenceParams{
-				MaxAgeNumBlocks: 20,
-				MaxAgeDuration:  20 * time.Minute,
-				MaxBytes:        1000,
-			},
-		},
-	}
-
-	// When we update the pool with the latest state we expect the block of the height of the evidence to be sealed
-	// and thus the evidence reactor can now propagate the evidence
-	pool.Update(updateState)
-	next = pool.EvidenceFront()
 	assert.Equal(t, ev, next.Value.(types.Evidence))
 
 	// shouldn't be able to submit the same evidence twice
