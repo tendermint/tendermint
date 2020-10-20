@@ -283,6 +283,7 @@ Minor releases are done differently from major releases: They are built off of l
    - bump P2P and block protocol versions in  `version.go`, if necessary
    - bump ABCI protocol version in `version.go`, if necessary
    - make sure all significant breaking changes are covered in `UPGRADING.md`
+   - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
 4. Create a release branch `release/vX.X.x` off the release candidate branch:
    - `git checkout -b release/vX.X.x`
    - `git push -u origin release/vX.X.x`
