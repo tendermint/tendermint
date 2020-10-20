@@ -47,7 +47,10 @@ type Pool struct {
 	pruningHeight int64
 	pruningTime   time.Time
 
-	// consensus evidence must wait for the block to be produced before it is gossiped
+	// As votes are produced before the block is, evidence from consensus that contain these votes
+	// must wait until the block is committed before being gossiped as the block is needed for
+	// validating the time that the evidence occurred. Hence we store consensus evidence in a
+	// buffer until Update is called.
 	consensusEvBuffer []types.Evidence
 }
 
