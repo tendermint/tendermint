@@ -5,7 +5,11 @@ var (
 	GitCommit string
 
 	// Version is the built softwares version.
-	Version = TMCoreSemVer
+	Version string
+
+	// TMCoreSemVer is the current version of Tendermint Core.
+	// It's the Semantic Version of the software.
+	TMCoreSemVer = Version
 )
 
 func init() {
@@ -15,10 +19,6 @@ func init() {
 }
 
 const (
-	// TMCoreSemVer is the current version of Tendermint Core.
-	// It's the Semantic Version of the software.
-	TMCoreSemVer = "0.34.0"
-
 	// ABCISemVer is the semantic version of the ABCI library
 	ABCISemVer = "0.17.0"
 

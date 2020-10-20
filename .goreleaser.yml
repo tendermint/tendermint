@@ -25,4 +25,4 @@ checksum:
   algorithm: sha256
 
 release:
-  name_template: "{{.ProjectName}} {{.Version}}" #todo: alpha software?
+  name_template: "{{.Version}} (WARNING: BETA SOFTWARE)"
