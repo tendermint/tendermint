@@ -122,7 +122,8 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 
 	// We have already verified this piece of evidence - no need to do it again
 	if evpool.isPending(ev) {
-		return errors.New("evidence already verified and added")
+		evpool.logger.Info("Evidence already pending, ignoring this one", "ev", ev)
+		return nil
 	}
 
 	// 1) Verify against state.
@@ -152,8 +153,10 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 		totalPower int64
 	)
 
+	// we already have this evidence, log this but don't return an error.
 	if evpool.isPending(ev) {
-		return errors.New("evidence already verified and added") // we already have this evidence
+		evpool.logger.Info("Evidence already pending, ignoring this one", "ev", ev)
+		return nil
 	}
 
 	switch ev := ev.(type) {
@@ -175,7 +178,7 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence, time time.Time, 
 	if err := evpool.addPendingEvidence(evInfo); err != nil {
 		return fmt.Errorf("can't add evidence to pending list: %w", err)
 	}
-
+	// add evidence to be gossiped with peers
 	evpool.evidenceList.PushBack(ev)
 
 	evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
