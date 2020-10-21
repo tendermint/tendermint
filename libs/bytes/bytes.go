@@ -28,7 +28,7 @@ func (bz *HexBytes) Unmarshal(data []byte) error {
 }
 
 // MarshalJSON implements the json.Marshaler interface. The hex bytes is a
-// quoted hexidecimal encoded string.
+// quoted hexadecimal encoded string.
 func (bz HexBytes) MarshalJSON() ([]byte, error) {
 	s := strings.ToUpper(hex.EncodeToString(bz))
 	jbz := make([]byte, len(s)+2)
