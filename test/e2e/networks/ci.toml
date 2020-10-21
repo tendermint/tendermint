@@ -2,7 +2,7 @@
 # functionality with a single network.
 
 initial_height = 1000
-initial_state = {initial01 = "a", initial02 = "b", initial03 = "c"}
+initial_state = { initial01 = "a", initial02 = "b", initial03 = "c" }
 
 [validators]
 validator01 = 100
@@ -33,20 +33,21 @@ mode = "seed"
 seeds = ["seed01"]
 
 [node.validator01]
-perturb = ["disconnect"]
 seeds = ["seed01"]
 snapshot_interval = 5
-misbehaviors = { 1011 = "double-prevote"}
+perturb = ["disconnect"]
+misbehaviors = { 1015 = "double-prevote"}
 
 [node.validator02]
 seeds = ["seed02"]
-abci_protocol = "tcp"
 database = "boltdb"
+abci_protocol = "tcp"
+privval_protocol = "tcp"
 persist_interval = 0
 perturb = ["restart"]
-privval_protocol = "tcp"
 
 [node.validator03]
+seeds = ["seed01"]
 database = "badgerdb"
 abci_protocol = "grpc"
 privval_protocol = "unix"
@@ -55,24 +56,24 @@ retain_blocks = 3
 perturb = ["kill"]
 
 [node.validator04]
-abci_protocol = "builtin"
-database = "rocksdb"
 persistent_peers = ["validator01"]
-perturb = ["pause"]
+database = "rocksdb"
+abci_protocol = "builtin"
 retain_blocks = 1
+perturb = ["pause"]
 
 [node.validator05]
-database = "cleveldb" 
-fast_sync = "v0" 
-seeds = ["seed02"] 
 start_at = 1005 # Becomes part of the validator set at 1010
+seeds = ["seed02"]
+database = "cleveldb"
+fast_sync = "v0"
 abci_protocol = "grpc"
 privval_protocol = "tcp"
 perturb = ["kill", "pause", "disconnect", "restart"]
 
 [node.full01]
-mode = "full"
 start_at = 1010
+mode = "full"
 # FIXME Should use v1, but it won't catch up since some nodes don't have all blocks
 # https://github.com/tendermint/tendermint/issues/5444
 fast_sync = "v2"
@@ -81,8 +82,8 @@ perturb = ["restart"]
 
 [node.full02]
 start_at = 1015
-fast_sync = "v2"
 mode = "full"
+fast_sync = "v2"
 state_sync = true
 seeds = ["seed01"]
 perturb = ["restart"]
