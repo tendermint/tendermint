@@ -11,7 +11,10 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+var (
+	logger         = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	preserveOutput = false
+)
 
 func main() {
 	NewCLI().Run()
@@ -83,8 +86,10 @@ func NewCLI() *CLI {
 			if err := Test(cli.testnet); err != nil {
 				return err
 			}
-			if err := Cleanup(cli.testnet); err != nil {
-				return err
+			if !preserveOutput {
+				if err := Cleanup(cli.testnet); err != nil {
+					return err
+				}
 			}
 			return nil
 		},
@@ -92,6 +97,8 @@ func NewCLI() *CLI {
 
 	cli.root.PersistentFlags().StringP("file", "f", "", "Testnet TOML manifest")
 	_ = cli.root.MarkPersistentFlagRequired("file")
+
+	cli.root.Flags().BoolVarP(&preserveOutput, "preserve", "p", false, "Preserve node logs and state")
 
 	cli.root.AddCommand(&cobra.Command{
 		Use:   "setup",

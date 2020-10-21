@@ -313,7 +313,6 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		"persist_interval":  node.PersistInterval,
 		"snapshot_interval": node.SnapshotInterval,
 		"retain_blocks":     node.RetainBlocks,
-		"misbehaviors":      node.Misbehaviors,
 	}
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
@@ -344,6 +343,12 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 			return nil, fmt.Errorf("unexpected privval protocol setting %q", node.PrivvalProtocol)
 		}
 	}
+
+	misbehaviors := make(map[string]string)
+	for height, misbehavior := range node.Misbehaviors {
+		misbehaviors[strconv.Itoa(int(height))] = misbehavior
+	}
+	cfg["misbehaviors"] = misbehaviors
 
 	if len(node.Testnet.ValidatorUpdates) > 0 {
 		validatorUpdates := map[string]map[string]int64{}

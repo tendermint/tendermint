@@ -15,7 +15,6 @@ validator04 = 40
 
 [validator_update.1010]
 validator05 = 50
-validator06 = 60
 
 # validator03 gets killed and validator05 has lots of perturbations, so weight them low.
 [validator_update.1020]
@@ -24,7 +23,6 @@ validator02 = 100
 validator03 = 50
 validator04 = 100
 validator05 = 50
-validator06 = 50
 
 [node.seed01]
 mode = "seed"
@@ -44,14 +42,13 @@ abci_protocol = "tcp"
 database = "boltdb"
 persist_interval = 0
 perturb = ["restart"]
-misbehaviors = { 1011 = "double-prevote"}
+misbehaviors = { "1011" = "double-prevote"}
 
 [node.validator03]
 database = "badgerdb"
 abci_protocol = "grpc"
 privval_protocol = "unix"
 persist_interval = 3
-privval_protocol = "unix"
 retain_blocks = 3
 perturb = ["kill"]
 
@@ -67,9 +64,6 @@ database = "cleveldb"
 fast_sync = "v0" 
 seeds = ["seed02"] 
 start_at = 1005 # Becomes part of the validator set at 1010
-seeds = ["seed02"]
-database = "cleveldb"
-fast_sync = "v0"
 abci_protocol = "grpc"
 privval_protocol = "tcp"
 perturb = ["kill", "pause", "disconnect", "restart"]
