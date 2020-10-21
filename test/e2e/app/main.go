@@ -19,8 +19,8 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
-	mcs "github.com/tendermint/tendermint/test/e2e/maverick/consensus"
-	maverick "github.com/tendermint/tendermint/test/e2e/maverick/node"
+	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
+	maverick "github.com/tendermint/tendermint/test/maverick/node"
 )
 
 var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))

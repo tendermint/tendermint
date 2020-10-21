@@ -15,7 +15,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
-	mcs "github.com/tendermint/tendermint/test/e2e/maverick/consensus"
+	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
 )
 
 const (

@@ -10,7 +10,7 @@ app:
 	go build -o build/app -tags badgerdb,boltdb,cleveldb,rocksdb ./app
 	
 maverick:
-	go build -o build/maverick -tags badgerdb,boltdb,cleveldb,rocksdb ./maverick
+	go build -o build/maverick -tags badgerdb,boltdb,cleveldb,rocksdb ../maverick
 
 generator:
 	go build -o build/generator ./generator

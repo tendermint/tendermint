@@ -17,8 +17,8 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
-	cs "github.com/tendermint/tendermint/test/e2e/maverick/consensus"
-	nd "github.com/tendermint/tendermint/test/e2e/maverick/node"
+	cs "github.com/tendermint/tendermint/test/maverick/consensus"
+	nd "github.com/tendermint/tendermint/test/maverick/node"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )

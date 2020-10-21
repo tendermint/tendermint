@@ -12,7 +12,7 @@ remote_dump
 vendor
 .vagrant
 test/e2e/build
-test/e2e/maverick/maverick
+test/maverick/maverick
 test/e2e/networks/*/
 test/p2p/data/
 test/logs
