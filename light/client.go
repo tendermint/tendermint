@@ -671,7 +671,7 @@ func (c *Client) verifySequential(
 		// 3) Update verifiedBlock
 		verifiedBlock = interimBlock
 
-		// 4) Add interimBlock to trace
+		// 4) Add verifiedBlock to trace
 		trace = append(trace, verifiedBlock)
 	}
 
