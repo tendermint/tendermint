@@ -215,7 +215,7 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	evList := sendEvidence(t, pools[0], val, numEvidence)
 
 	// only ones less than the peers height should make it through
-	waitForEvidence(t, evList[:numEvidence/2], pools[1:2])
+	waitForEvidence(t, evList[:numEvidence/2-1], pools[1:2])
 
 	// peers should still be connected
 	peers := reactors[1].Switch.Peers().List()
