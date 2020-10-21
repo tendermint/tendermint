@@ -10,7 +10,7 @@ app:
 	go build -o build/app -tags badgerdb,boltdb,cleveldb,rocksdb ./app
 	
 maverick:
-	CGO_ENABLED=1 go build -o build/maverick -mod=readonly -tags badgerdb,boltdb,cleveldb,rocksdb ./maverick
+	go build -o build/maverick -tags badgerdb,boltdb,cleveldb,rocksdb ./maverick
 
 generator:
 	go build -o build/generator ./generator

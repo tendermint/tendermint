@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -120,14 +121,15 @@ func Setup(testnet *e2e.Testnet) error {
 func MakeDockerCompose(testnet *e2e.Testnet) ([]byte, error) {
 	// Must use version 2 Docker Compose format, to support IPv6.
 	tmpl, err := template.New("docker-compose").Funcs(template.FuncMap{
-		"misbehaviorsToString": func(misbehaviors map[string]string) string {
+		"misbehaviorsToString": func(misbehaviors map[int64]string) string {
 			str := ""
 			for height, misbehavior := range misbehaviors {
 				// after the first behavior set, a comma must be prepended
 				if str != "" {
 					str += ","
 				}
-				str += misbehavior + "," + height
+				heightString := strconv.Itoa(int(height))
+				str += misbehavior + "," + heightString
 			}
 			return str
 		},

@@ -110,14 +110,9 @@ func startNode(cfg *Config) error {
 		return err
 	}
 
-	tmcfg, err := setupConfigAndLogger()
+	tmcfg, logger, nodeKey, err := setupNode()
 	if err != nil {
 		return fmt.Errorf("failed to setup config: %w", err)
-	}
-
-	nodeKey, err := p2p.LoadOrGenNodeKey(tmcfg.NodeKeyFile())
-	if err != nil {
-		return fmt.Errorf("failed to load or gen node key %s: %w", tmcfg.NodeKeyFile(), err)
 	}
 
 	n, err := node.NewNode(tmcfg,
@@ -143,14 +138,9 @@ func startMaverick(cfg *Config) error {
 		return err
 	}
 
-	tmcfg, err := setupConfigAndLogger()
+	tmcfg, logger, nodeKey, err := setupNode()
 	if err != nil {
 		return fmt.Errorf("failed to setup config: %w", err)
-	}
-
-	nodeKey, err := p2p.LoadOrGenNodeKey(tmcfg.NodeKeyFile())
-	if err != nil {
-		return fmt.Errorf("failed to load or gen node key %s: %w", tmcfg.NodeKeyFile(), err)
 	}
 
 	misbehaviors := make(map[int64]mcs.Misbehavior)
@@ -207,35 +197,41 @@ func startSigner(cfg *Config) error {
 	return nil
 }
 
-func setupConfigAndLogger() (*config.Config, error) {
+func setupNode() (*config.Config, log.Logger, *p2p.NodeKey, error) {
 	var tmcfg *config.Config
 
 	home := os.Getenv("TMHOME")
 	if home == "" {
-		return nil, errors.New("TMHOME not set")
+		return nil, nil, nil, errors.New("TMHOME not set")
 	}
 	viper.AddConfigPath(filepath.Join(home, "config"))
 	viper.SetConfigName("config")
 	err := viper.ReadInConfig()
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	tmcfg = config.DefaultConfig()
 	err = viper.Unmarshal(tmcfg)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	tmcfg.SetRoot(home)
 	if err = tmcfg.ValidateBasic(); err != nil {
-		return nil, fmt.Errorf("error in config file: %v", err)
+		return nil, nil, nil, fmt.Errorf("error in config file: %v", err)
 	}
 	if tmcfg.LogFormat == config.LogFormatJSON {
 		logger = log.NewTMJSONLogger(log.NewSyncWriter(os.Stdout))
 	}
 	logger, err = tmflags.ParseLogLevel(tmcfg.LogLevel, logger, config.DefaultLogLevel())
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 	logger = logger.With("module", "main")
-	return tmcfg, nil
+
+	nodeKey, err := p2p.LoadOrGenNodeKey(tmcfg.NodeKeyFile())
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to load or gen node key %s: %w", tmcfg.NodeKeyFile(), err)
+	}
+
+	return tmcfg, logger, nodeKey, nil
 }

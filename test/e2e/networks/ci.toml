@@ -45,6 +45,7 @@ database = "boltdb"
 persist_interval = 0
 privval_protocol = "tcp"
 seeds = ["seed02"]
+misbehaviors = {"115" = "double-prevote"}
 # FIXME The WAL gets corrupted when restarted
 # https://github.com/tendermint/tendermint/issues/5422
 #perturb = ["restart"]
@@ -81,10 +82,6 @@ privval_protocol = "tcp"
 # FIXME The WAL gets corrupted when killed
 # https://github.com/tendermint/tendermint/issues/5422
 #perturb = ["kill", "pause", "disconnect", "restart"]
-
-[node.validator06]
-misbehaviors = "double-prevote,1015"
-persistent_peers = ["validator02"]
 
 [node.full01]
 mode = "full"

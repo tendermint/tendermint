@@ -119,10 +119,11 @@ type ManifestNode struct {
 	// Misbehaviors sets how a validator behaves during consensus at a
 	// certain height. Multiple misbehaviors at different heights can be used
 	//
-	// An example of a misbehavior
-	//    "double-prevote,10"
+	// An example of misbehaviors
+	//    { "10" = "double-prevote", "20" = "double-prevote"}
 	//
-	// For more information, look at the readme in the maverick folden
+	// For more information, look at the readme in the maverick folder.
+	// A list of all behaviors can be found in ../maverick/consensus/behavior.go
 	Misbehaviors map[string]string `toml:"misbehaviors"`
 }
 
