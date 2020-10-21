@@ -2,6 +2,7 @@
 [node.validator02]
 [node.validator03]
 abci_protocol = "builtin"
-misbehaviors = {"8" = "double-prevote"}
+misbehaviors = { 8 = "double-prevote" }
 [node.validator04]
-misbehaviors = {"10" = "double-prevote"}
+privval_protocol = "tcp"
+misbehaviors = { 10 = "double-prevote" }

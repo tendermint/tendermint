@@ -12,8 +12,7 @@ import (
 )
 
 var (
-	logger         = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-	preserveOutput = false
+	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 )
 
 func main() {
@@ -22,13 +21,14 @@ func main() {
 
 // CLI is the Cobra-based command-line interface.
 type CLI struct {
-	root    *cobra.Command
-	testnet *e2e.Testnet
+	root           *cobra.Command
+	testnet        *e2e.Testnet
+	preserveOutput bool
 }
 
 // NewCLI sets up the CLI.
 func NewCLI() *CLI {
-	cli := &CLI{}
+	cli := &CLI{preserveOutput: false}
 	cli.root = &cobra.Command{
 		Use:           "runner",
 		Short:         "End-to-end test runner",
@@ -86,7 +86,7 @@ func NewCLI() *CLI {
 			if err := Test(cli.testnet); err != nil {
 				return err
 			}
-			if !preserveOutput {
+			if !cli.preserveOutput {
 				if err := Cleanup(cli.testnet); err != nil {
 					return err
 				}
@@ -98,7 +98,7 @@ func NewCLI() *CLI {
 	cli.root.PersistentFlags().StringP("file", "f", "", "Testnet TOML manifest")
 	_ = cli.root.MarkPersistentFlagRequired("file")
 
-	cli.root.Flags().BoolVarP(&preserveOutput, "preserve", "p", false, "Preserve node logs and state")
+	cli.root.Flags().BoolVarP(&cli.preserveOutput, "preserve", "p", false, "Preserve node logs and state")
 
 	cli.root.AddCommand(&cobra.Command{
 		Use:   "setup",

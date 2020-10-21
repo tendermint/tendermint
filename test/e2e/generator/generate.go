@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
+	"strconv"
 	"strings"
 
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
@@ -38,6 +39,12 @@ var (
 		"pause":      0.1,
 		"kill":       0.1,
 		"restart":    0.1,
+	}
+	// Less than 10 percent chance that node double prevotes.
+	// Height is set to be 20 above node.StartAt height
+	nodeMisbehaviors = weightedChoice{
+		misbehaviorOption{"double-prevote"}: 1,
+		misbehaviorOption{}:                 9,
 	}
 )
 
@@ -82,7 +89,8 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 
 	// First we generate seed nodes, starting at the initial height.
 	for i := 1; i <= numSeeds; i++ {
-		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = generateNode(r, e2e.ModeSeed, 0, false)
+		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = generateNode(
+			r, e2e.ModeSeed, 0, false, manifest.InitialHeight)
 	}
 
 	// Next, we generate validators. We make sure a BFT quorum of validators start
@@ -97,7 +105,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			nextStartAt += 5
 		}
 		name := fmt.Sprintf("validator%02d", i)
-		manifest.Nodes[name] = generateNode(r, e2e.ModeValidator, startAt, i <= 2)
+		manifest.Nodes[name] = generateNode(r, e2e.ModeValidator, startAt, i <= 2, manifest.InitialHeight)
 
 		if startAt == 0 {
 			(*manifest.Validators)[name] = int64(30 + r.Intn(71))
@@ -125,7 +133,8 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			startAt = nextStartAt
 			nextStartAt += 5
 		}
-		manifest.Nodes[fmt.Sprintf("full%02d", i)] = generateNode(r, e2e.ModeFull, startAt, false)
+		manifest.Nodes[fmt.Sprintf("full%02d", i)] = generateNode(
+			r, e2e.ModeFull, startAt, false, manifest.InitialHeight)
 	}
 
 	// We now set up peer discovery for nodes. Seed nodes are fully meshed with
@@ -174,7 +183,8 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 // generating invalid configurations. We do not set Seeds or PersistentPeers
 // here, since we need to know the overall network topology and startup
 // sequencing.
-func generateNode(r *rand.Rand, mode e2e.Mode, startAt int64, forceArchive bool) *e2e.ManifestNode {
+func generateNode(
+	r *rand.Rand, mode e2e.Mode, startAt int64, forceArchive bool, initialHeight int64) *e2e.ManifestNode {
 	node := e2e.ManifestNode{
 		Mode:             string(mode),
 		StartAt:          startAt,
@@ -194,6 +204,14 @@ func generateNode(r *rand.Rand, mode e2e.Mode, startAt int64, forceArchive bool)
 	if forceArchive {
 		node.RetainBlocks = 0
 		node.SnapshotInterval = 3
+	}
+
+	if node.Mode == "validator" && node.PrivvalProtocol == "file" {
+		misbehaviorHeight := startAt + 20
+		if initialHeight >= misbehaviorHeight {
+			misbehaviorHeight = initialHeight + 20
+		}
+		node.Misbehaviors = nodeMisbehaviors.Choose(r).(misbehaviorOption).atHeight(misbehaviorHeight)
 	}
 
 	// If a node which does not persist state also does not retain blocks, randomly
@@ -222,4 +240,17 @@ func generateNode(r *rand.Rand, mode e2e.Mode, startAt int64, forceArchive bool)
 
 func ptrUint64(i uint64) *uint64 {
 	return &i
+}
+
+type misbehaviorOption struct {
+	misbehavior string
+}
+
+func (m misbehaviorOption) atHeight(height int64) map[string]string {
+	misbehaviorMap := make(map[string]string)
+	if m.misbehavior == "" {
+		return misbehaviorMap
+	}
+	misbehaviorMap[strconv.Itoa(int(height))] = m.misbehavior
+	return misbehaviorMap
 }

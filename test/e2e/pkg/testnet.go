@@ -335,6 +335,10 @@ func (n Node) Validate(testnet Testnet) error {
 		}
 	}
 
+	if (n.PrivvalProtocol != "file" || n.Mode != "validator") && len(n.Misbehaviors) != 0 {
+		return fmt.Errorf("must be using \"file\" privval protocol to implement misbehaviors for %s", n.Name)
+	}
+
 	for height, misbehavior := range n.Misbehaviors {
 		if height < n.StartAt {
 			return fmt.Errorf("misbehavior height %d is before start height %d", height, n.StartAt)

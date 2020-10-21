@@ -120,7 +120,7 @@ type ManifestNode struct {
 	// certain height. Multiple misbehaviors at different heights can be used
 	//
 	// An example of misbehaviors
-	//    { "10" = "double-prevote", "20" = "double-prevote"}
+	//    { 10 = "double-prevote", 20 = "double-prevote"}
 	//
 	// For more information, look at the readme in the maverick folder.
 	// A list of all behaviors can be found in ../maverick/consensus/behavior.go
