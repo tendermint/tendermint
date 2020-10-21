@@ -3,6 +3,7 @@ package state
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -270,6 +271,7 @@ func execBlockOnProxyApp(
 	abciResponses := new(tmstate.ABCIResponses)
 	dtxs := make([]*abci.ResponseDeliverTx, len(block.Txs))
 	abciResponses.DeliverTxs = dtxs
+	wgTxs := sync.WaitGroup{}
 
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
@@ -286,6 +288,7 @@ func execBlockOnProxyApp(
 			}
 			abciResponses.DeliverTxs[txIndex] = txRes
 			txIndex++
+			wgTxs.Done()
 		}
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
@@ -316,6 +319,8 @@ func execBlockOnProxyApp(
 			return nil, err
 		}
 	}
+	wgTxs.Add(len(block.Txs))
+	wgTxs.Wait()
 
 	// End block.
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
