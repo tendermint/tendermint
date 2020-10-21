@@ -1,4 +1,4 @@
-package model_based_tests
+package mbt
 
 import (
 	"io/ioutil"
