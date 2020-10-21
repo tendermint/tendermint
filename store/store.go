@@ -488,7 +488,7 @@ func LoadBlockStoreState(db dbm.DB) tmstore.BlockStoreState {
 	return bsj
 }
 
-//mustEncode proto encodes a proto.message and panics if fails
+// mustEncode proto encodes a proto.message and panics if fails
 func mustEncode(pb proto.Message) []byte {
 	bz, err := proto.Marshal(pb)
 	if err != nil {

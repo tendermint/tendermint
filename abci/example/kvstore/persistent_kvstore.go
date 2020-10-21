@@ -62,10 +62,6 @@ func (app *PersistentKVStoreApplication) Info(req types.RequestInfo) types.Respo
 	return res
 }
 
-func (app *PersistentKVStoreApplication) SetOption(req types.RequestSetOption) types.ResponseSetOption {
-	return app.app.SetOption(req)
-}
-
 // tx is either "val:pubkey!power" or "key=value" or just arbitrary bytes
 func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	// if it starts with "val:", update the validator set
@@ -212,7 +208,7 @@ func isValidatorTx(tx []byte) bool {
 func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.ResponseDeliverTx {
 	tx = tx[len(ValidatorSetChangePrefix):]
 
-	//get the pubkey and power
+	//  get the pubkey and power
 	pubKeyAndPower := strings.Split(string(tx), "!")
 	if len(pubKeyAndPower) != 2 {
 		return types.ResponseDeliverTx{
@@ -243,11 +239,11 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 
 // add, update, or remove a validator
 func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate) types.ResponseDeliverTx {
-	key := []byte("val:" + string(v.PubKey.GetEd25519()))
 	pubkey, err := cryptoenc.PubKeyFromProto(v.PubKey)
 	if err != nil {
 		panic(fmt.Errorf("can't decode public key: %w", err))
 	}
+	key := []byte("val:" + string(pubkey.Bytes()))
 
 	if v.Power == 0 {
 		// remove validator

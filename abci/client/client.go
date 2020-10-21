@@ -14,6 +14,8 @@ const (
 	echoRetryIntervalSeconds = 1
 )
 
+//go:generate mockery --case underscore --name Client
+
 // Client defines an interface for an ABCI client.
 // All `Async` methods return a `ReqRes` object.
 // All `Sync` methods return the appropriate protobuf ResponseXxx struct and an error.
@@ -28,7 +30,6 @@ type Client interface {
 	FlushAsync() *ReqRes
 	EchoAsync(msg string) *ReqRes
 	InfoAsync(types.RequestInfo) *ReqRes
-	SetOptionAsync(types.RequestSetOption) *ReqRes
 	DeliverTxAsync(types.RequestDeliverTx) *ReqRes
 	CheckTxAsync(types.RequestCheckTx) *ReqRes
 	QueryAsync(types.RequestQuery) *ReqRes
@@ -44,7 +45,6 @@ type Client interface {
 	FlushSync() error
 	EchoSync(msg string) (*types.ResponseEcho, error)
 	InfoSync(types.RequestInfo) (*types.ResponseInfo, error)
-	SetOptionSync(types.RequestSetOption) (*types.ResponseSetOption, error)
 	DeliverTxSync(types.RequestDeliverTx) (*types.ResponseDeliverTx, error)
 	CheckTxSync(types.RequestCheckTx) (*types.ResponseCheckTx, error)
 	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)

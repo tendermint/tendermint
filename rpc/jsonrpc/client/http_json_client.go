@@ -66,7 +66,7 @@ func (u parsedURL) GetHostWithPath() string {
 // Get a trimmed address - useful for WS connections
 func (u parsedURL) GetTrimmedHostWithPath() string {
 	// replace / with . for http requests (kvstore domain)
-	return strings.Replace(u.GetHostWithPath(), "/", ".", -1)
+	return strings.ReplaceAll(u.GetHostWithPath(), "/", ".")
 }
 
 // Get a trimmed address with protocol - useful as address in RPC connections

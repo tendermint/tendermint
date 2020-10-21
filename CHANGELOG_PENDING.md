@@ -1,6 +1,6 @@
 # Unreleased Changes
 
-## v0.34.0-rc5
+## vX.X
 
 Special thanks to external contributors on this release:
 
@@ -22,11 +22,12 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
-- [privval] \#5434 `NewSignerDialerEndpoint` can now be given `SignerServiceEndpointOption` (@erikgrinaker)
-
-- [config] \#5433 `statesync.rpc_servers` is now properly set when writing the configuration file (@erikgrinaker)
+- [statesync] \#5516 Check that all heights necessary to rebuild state for a snapshot exist before adding the snapshot to the pool. (@erikgrinaker)
 
 ### BUG FIXES
 
-- [privval] \#5441 Fix faulty ping message encoding causing nil message errors in logs (@erikgrinaker)
-
+- [blockchain/v2] \#5499 Fix "duplicate block enqueued by processor" panic (@melekes)
+- [abci/grpc] \#5520 Return async responses in order, to avoid mempool panics. (@erikgrinaker)
+- [types] \#5523 Change json naming of `PartSetHeader` within `BlockID` from `parts` to `part_set_header` (@marbar3778)
+- [blockchain/v2] \#5530 Fix "processed height 4541 but expected height 4540" panic (@melekes)
+- [consensus/wal] Fix WAL autorepair by opening target WAL in read/write mode (@erikgrinaker)

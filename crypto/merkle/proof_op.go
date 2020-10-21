@@ -60,7 +60,7 @@ func (poz ProofOperators) Verify(root []byte, keypath string, args [][]byte) (er
 		}
 	}
 	if !bytes.Equal(root, args[0]) {
-		return fmt.Errorf("calculated root hash is invalid: expected %+v but got %+v", root, args[0])
+		return fmt.Errorf("calculated root hash is invalid: expected %X but got %X", root, args[0])
 	}
 	if len(keys) != 0 {
 		return errors.New("keypath not consumed all")

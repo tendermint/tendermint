@@ -24,24 +24,6 @@ func (app *Application) Info(req types.RequestInfo) types.ResponseInfo {
 	return types.ResponseInfo{Data: fmt.Sprintf("{\"hashes\":%v,\"txs\":%v}", app.hashCount, app.txCount)}
 }
 
-func (app *Application) SetOption(req types.RequestSetOption) types.ResponseSetOption {
-	key, value := req.Key, req.Value
-	if key == "serial" && value == "on" {
-		app.serial = true
-	} else {
-		/*
-			TODO Panic and have the ABCI server pass an exception.
-			The client can call SetOptionSync() and get an `error`.
-			return types.ResponseSetOption{
-				Error: fmt.Sprintf("Unknown key (%s) or value (%s)", key, value),
-			}
-		*/
-		return types.ResponseSetOption{}
-	}
-
-	return types.ResponseSetOption{}
-}
-
 func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	if app.serial {
 		if len(req.Tx) > 8 {
@@ -69,6 +51,7 @@ func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 				Code: code.CodeTypeEncodingError,
 				Log:  fmt.Sprintf("Max tx size is 8 bytes, got %d", len(req.Tx))}
 		}
+
 		tx8 := make([]byte, 8)
 		copy(tx8[len(tx8)-len(req.Tx):], req.Tx)
 		txValue := binary.BigEndian.Uint64(tx8)

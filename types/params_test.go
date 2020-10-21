@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	valEd25519 = []string{ABCIPubKeyTypeEd25519}
+	valEd25519   = []string{ABCIPubKeyTypeEd25519}
+	valSecp256k1 = []string{ABCIPubKeyTypeSecp256k1}
 )
 
 func TestConsensusParamsValidation(t *testing.T) {
@@ -33,7 +34,7 @@ func TestConsensusParamsValidation(t *testing.T) {
 		8: {makeParams(1, 0, -10, 2, 0, valEd25519), false},
 		// test evidence params
 		9:  {makeParams(1, 0, 10, 0, 0, valEd25519), false},
-		10: {makeParams(1, 0, 10, 2, 1, valEd25519), false},
+		10: {makeParams(1, 0, 10, 2, 2, valEd25519), false},
 		11: {makeParams(1000, 0, 10, 2, 1, valEd25519), true},
 		12: {makeParams(1, 0, 10, -1, 0, valEd25519), false},
 		// test no pubkey type provided
@@ -54,7 +55,7 @@ func makeParams(
 	blockBytes, blockGas int64,
 	blockTimeIotaMs int64,
 	evidenceAge int64,
-	maxEvidence uint32,
+	maxEvidenceBytes int64,
 	pubkeyTypes []string,
 ) tmproto.ConsensusParams {
 	return tmproto.ConsensusParams{
@@ -66,7 +67,7 @@ func makeParams(
 		Evidence: tmproto.EvidenceParams{
 			MaxAgeNumBlocks: evidenceAge,
 			MaxAgeDuration:  time.Duration(evidenceAge),
-			MaxNum:          maxEvidence,
+			MaxBytes:        maxEvidenceBytes,
 		},
 		Validator: tmproto.ValidatorParams{
 			PubKeyTypes: pubkeyTypes,
@@ -124,13 +125,13 @@ func TestConsensusParamsUpdate(t *testing.T) {
 				Evidence: &tmproto.EvidenceParams{
 					MaxAgeNumBlocks: 300,
 					MaxAgeDuration:  time.Duration(300),
-					MaxNum:          50,
+					MaxBytes:        50,
 				},
 				Validator: &tmproto.ValidatorParams{
-					PubKeyTypes: valEd25519,
+					PubKeyTypes: valSecp256k1,
 				},
 			},
-			makeParams(100, 200, 10, 300, 50, valEd25519),
+			makeParams(100, 200, 10, 300, 50, valSecp256k1),
 		},
 	}
 	for _, tc := range testCases {

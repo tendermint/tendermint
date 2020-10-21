@@ -391,7 +391,7 @@ func newStateWithConfigAndBlockStore(
 	// Make State
 	stateDB := blockDB
 	stateStore := sm.NewStore(stateDB)
-	if err := stateStore.Save(state); err != nil { //for save height 1's validators info
+	if err := stateStore.Save(state); err != nil { // for save height 1's validators info
 		panic(err)
 	}
 
@@ -749,7 +749,7 @@ func randConsensusNetWithPeers(
 			state.Version.Consensus.App = kvstore.ProtocolVersion
 		}
 		app.InitChain(abci.RequestInitChain{Validators: vals})
-		//sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
+		// sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
 
 		css[i] = newStateWithConfig(thisConfig, state, privVal, app)
 		css[i].SetTimeoutTicker(tickerFunc())

@@ -39,9 +39,7 @@ func (pvs PrivValidatorsByAddress) Less(i, j int) bool {
 }
 
 func (pvs PrivValidatorsByAddress) Swap(i, j int) {
-	it := pvs[i]
-	pvs[i] = pvs[j]
-	pvs[j] = it
+	pvs[i], pvs[j] = pvs[j], pvs[i]
 }
 
 //----------------------------------------

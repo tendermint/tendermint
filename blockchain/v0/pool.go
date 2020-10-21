@@ -509,7 +509,7 @@ type bpRequester struct {
 	pool       *BlockPool
 	height     int64
 	gotBlockCh chan struct{}
-	redoCh     chan p2p.ID //redo may send multitime, add peerId to identify repeat
+	redoCh     chan p2p.ID // redo may send multitime, add peerId to identify repeat
 
 	mtx    tmsync.Mutex
 	peerID p2p.ID
@@ -601,7 +601,7 @@ OUTER_LOOP:
 			}
 			peer = bpr.pool.pickIncrAvailablePeer(bpr.height)
 			if peer == nil {
-				//log.Info("No peers available", "height", height)
+				// log.Info("No peers available", "height", height)
 				time.Sleep(requestIntervalMS * time.Millisecond)
 				continue PICK_PEER_LOOP
 			}
