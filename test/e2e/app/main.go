@@ -110,7 +110,7 @@ func startNode(cfg *Config) error {
 		return err
 	}
 
-	tmcfg, logger, nodeKey, err := setupNode()
+	tmcfg, nodeLogger, nodeKey, err := setupNode()
 	if err != nil {
 		return fmt.Errorf("failed to setup config: %w", err)
 	}
@@ -122,7 +122,7 @@ func startNode(cfg *Config) error {
 		node.DefaultGenesisDocProviderFunc(tmcfg),
 		node.DefaultDBProvider,
 		node.DefaultMetricsProvider(tmcfg.Instrumentation),
-		logger,
+		nodeLogger,
 	)
 	if err != nil {
 		return err
@@ -222,16 +222,16 @@ func setupNode() (*config.Config, log.Logger, *p2p.NodeKey, error) {
 	if tmcfg.LogFormat == config.LogFormatJSON {
 		logger = log.NewTMJSONLogger(log.NewSyncWriter(os.Stdout))
 	}
-	logger, err = tmflags.ParseLogLevel(tmcfg.LogLevel, logger, config.DefaultLogLevel())
+	nodeLogger, err := tmflags.ParseLogLevel(tmcfg.LogLevel, logger, config.DefaultLogLevel())
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	logger = logger.With("module", "main")
+	nodeLogger = nodeLogger.With("module", "main")
 
 	nodeKey, err := p2p.LoadOrGenNodeKey(tmcfg.NodeKeyFile())
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to load or gen node key %s: %w", tmcfg.NodeKeyFile(), err)
 	}
 
-	return tmcfg, logger, nodeKey, nil
+	return tmcfg, nodeLogger, nodeKey, nil
 }

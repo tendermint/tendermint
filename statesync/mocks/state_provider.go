@@ -6,7 +6,6 @@ import (
 	context "context"
 
 	mock "github.com/stretchr/testify/mock"
-
 	state "github.com/tendermint/tendermint/state"
 
 	types "github.com/tendermint/tendermint/types"
