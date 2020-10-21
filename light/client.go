@@ -600,6 +600,7 @@ func (c *Client) verifySequential(
 		verifiedBlock = trustedBlock
 		interimBlock  *types.LightBlock
 		err           error
+		trace         = []*types.LightBlock{trustedBlock}
 	)
 
 	for height := trustedBlock.Height + 1; height <= newLightBlock.Height; height++ {
@@ -669,9 +670,17 @@ func (c *Client) verifySequential(
 
 		// 3) Update verifiedBlock
 		verifiedBlock = interimBlock
+
+		// 4) Add interimBlock to trace
+		trace = append(trace, verifiedBlock)
 	}
 
-	return nil
+	// Compare header with the witnesses to ensure it's not a fork.
+	// More witnesses we have, more chance to notice one.
+	//
+	// CORRECTNESS ASSUMPTION: there's at least 1 correct full node
+	// (primary or one of the witnesses).
+	return c.detectDivergence(ctx, trace, now)
 }
 
 // see VerifyHeader
