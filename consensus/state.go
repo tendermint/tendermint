@@ -328,7 +328,7 @@ func (cs *State) OnStart() error {
 				return err
 			}
 
-			cs.Logger.Info("WAL file is corrupted. Attempting repair", "err", err)
+			cs.Logger.Error("WAL file is corrupted, attempting repair", "err", err)
 
 			// 1) prep work
 			if err := cs.wal.Stop(); err != nil {
@@ -345,7 +345,7 @@ func (cs *State) OnStart() error {
 
 			// 3) try to repair (WAL file will be overwritten!)
 			if err := repairWalFile(corruptedFile, cs.config.WalFile()); err != nil {
-				cs.Logger.Error("Repair failed", "err", err)
+				cs.Logger.Error("WAL repair failed", "err", err)
 				return err
 			}
 			cs.Logger.Info("Successful repair")
@@ -2212,7 +2212,7 @@ func repairWalFile(src, dst string) error {
 	}
 	defer in.Close()
 
-	out, err := os.Open(dst)
+	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
