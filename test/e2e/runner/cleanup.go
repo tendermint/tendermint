@@ -27,14 +27,18 @@ func Cleanup(testnet *e2e.Testnet) error {
 func cleanupDocker() error {
 	logger.Info("Removing Docker containers and networks")
 
-	// '' is required since xargs runs even when there's no input, and
-	// macOS' xargs does not support the -r switch.
-	err := exec("sh", "-c", "docker container ls -q --filter label=e2e | xargs docker container rm -f ''")
+	// GNU xargs requires the -r flag to not run when input is empty, macOS
+	// does this by default. Ugly, but works.
+	xargsR := `$(if [[ $OSTYPE == "linux-gnu"* ]]; then echo -n "-r"; fi)`
+
+	err := exec("sh", "-c", fmt.Sprintf(
+		"docker container ls -q --filter label=e2e | xargs %v docker container rm -f", xargsR))
 	if err != nil {
 		return err
 	}
 
-	err = exec("sh", "-c", "docker network ls -q --filter label=e2e | xargs docker network rm ''")
+	err = exec("sh", "-c", fmt.Sprintf(
+		"docker network ls -q --filter label=e2e | xargs %v docker network rm", xargsR))
 	if err != nil {
 		return err
 	}
