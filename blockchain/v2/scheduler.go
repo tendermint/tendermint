@@ -529,7 +529,7 @@ func (sc *scheduler) handleBlockResponse(event bcBlockResponse) (Event, error) {
 	err := sc.touchPeer(event.peerID, event.time)
 	if err != nil {
 		// peer does not exist OR not ready
-		return noOpEvent{}, nil
+		return noOp, nil
 	}
 
 	err = sc.markReceived(event.peerID, event.block.Height, event.size, event.time)
