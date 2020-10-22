@@ -37,6 +37,7 @@ jobs:
   e2e-nightly-fail:
     needs: e2e-nightly-test
     if: ${{ failure() }}
+    runs-on: ubuntu-latest
     steps:
       - name: Notify Slack on failure
         uses: rtCamp/action-slack-notify@e9db0ef
