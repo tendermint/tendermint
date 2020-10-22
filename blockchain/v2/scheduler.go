@@ -243,9 +243,8 @@ func (sc *scheduler) removePeer(peerID p2p.ID) error {
 	if !ok {
 		return nil
 	}
-
 	if peer.state == peerStateRemoved {
-		return fmt.Errorf("tried to remove peer %s in peerStateRemoved", peerID)
+		return nil
 	}
 
 	for height, pendingPeerID := range sc.pendingBlocks {
