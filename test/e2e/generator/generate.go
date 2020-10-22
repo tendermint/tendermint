@@ -44,8 +44,6 @@ var (
 		misbehaviorOption{"double-prevote"}: 1,
 		misbehaviorOption{}:                 9,
 	}
-	// amount of blocks from startup before misbehavior occurs
-	misbehaviorHeighDelta = uniformChoice{9, 11, 13, 15}
 )
 
 // Generate generates random testnets using the given RNG.
@@ -205,9 +203,11 @@ func generateNode(
 	}
 
 	if node.Mode == "validator" {
-		misbehaviorHeight := startAt + misbehaviorHeighDelta.Choose(r).(int64)
-		node.Misbehaviors = nodeMisbehaviors.Choose(r).(misbehaviorOption).atHeight(misbehaviorHeight)
-		node.PrivvalProtocol = "file"
+		node.Misbehaviors = nodeMisbehaviors.Choose(r).(misbehaviorOption).
+			atHeight(startAt + 5 + int64(r.Intn(10)))
+		if len(node.Misbehaviors) != 0 {
+			node.PrivvalProtocol = "file"
+		}
 	}
 
 	// If a node which does not persist state also does not retain blocks, randomly
