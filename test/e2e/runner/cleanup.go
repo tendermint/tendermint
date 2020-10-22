@@ -31,13 +31,13 @@ func cleanupDocker() error {
 	// does this by default. Ugly, but works.
 	xargsR := `$(if [[ $OSTYPE == "linux-gnu"* ]]; then echo -n "-r"; fi)`
 
-	err := exec("sh", "-c", fmt.Sprintf(
+	err := exec("bash", "-c", fmt.Sprintf(
 		"docker container ls -q --filter label=e2e | xargs %v docker container rm -f", xargsR))
 	if err != nil {
 		return err
 	}
 
-	err = exec("sh", "-c", fmt.Sprintf(
+	err = exec("bash", "-c", fmt.Sprintf(
 		"docker network ls -q --filter label=e2e | xargs %v docker network rm", xargsR))
 	if err != nil {
 		return err
