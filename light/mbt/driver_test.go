@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/light"
 	"github.com/tendermint/tendermint/types"
@@ -54,24 +56,21 @@ func TestVerify(t *testing.T) {
 				1*time.Second,
 				light.DefaultTrustLevel,
 			)
-			if err != nil {
-				t.Logf("TRUSTED HEADER %v\nNEW HEADER %v", trustedSignedHeader, newSignedHeader)
 
-				switch input.Verdict {
-				case "SUCCESS":
-					t.Fatalf("unexpected error: %v", err)
-				case "NOT_ENOUGH_TRUST":
-					if _, ok := err.(light.ErrNewValSetCantBeTrusted); !ok {
-						t.Fatalf("expected ErrNewValSetCantBeTrusted, but got %v", err)
-					}
-				case "INVALID":
-					if _, ok := err.(light.ErrInvalidHeader); !ok {
-						t.Fatalf("expected ErrInvalidHeader, but got %v", err)
-					}
-				default:
-					t.Fatalf("unexpected verdict: %q", input.Verdict)
-				}
-			} else { // advance
+			t.Logf("%d -> %d", trustedSignedHeader.Height, newSignedHeader.Height)
+
+			switch input.Verdict {
+			case "SUCCESS":
+				require.NoError(t, err)
+			case "NOT_ENOUGH_TRUST":
+				require.IsType(t, light.ErrNewValSetCantBeTrusted{}, err)
+			case "INVALID":
+				require.IsType(t, light.ErrInvalidHeader{}, err)
+			default:
+				t.Fatalf("unexpected verdict: %q", input.Verdict)
+			}
+
+			if err == nil { // advance
 				trustedSignedHeader = *newSignedHeader
 				trustedNextVals = *input.LightBlock.NextValidatorSet
 			}
