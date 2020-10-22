@@ -180,7 +180,7 @@ func (cs *State) handleMsg(mi msgInfo) {
 		if b, ok := cs.misbehaviors[cs.Height]; ok {
 			err = b.ReceiveProposal(cs, msg.Proposal)
 		} else {
-			err = DefaultReceiveProposal(cs, msg.Proposal)
+			err = defaultReceiveProposal(cs, msg.Proposal)
 		}
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
@@ -268,7 +268,7 @@ func (cs *State) enterPropose(height int64, round int32) {
 	if b, ok := cs.misbehaviors[cs.Height]; ok {
 		b.EnterPropose(cs, height, round)
 	} else {
-		DefaultEnterPropose(cs, height, round)
+		defaultEnterPropose(cs, height, round)
 	}
 }
 
@@ -300,7 +300,7 @@ func (cs *State) enterPrevote(height int64, round int32) {
 	if b, ok := cs.misbehaviors[cs.Height]; ok {
 		b.EnterPrevote(cs, height, round)
 	} else {
-		DefaultEnterPrevote(cs, height, round)
+		defaultEnterPrevote(cs, height, round)
 	}
 
 	// Once `addVote` hits any +2/3 prevotes, we will go to PrevoteWait
@@ -338,7 +338,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 	if b, ok := cs.misbehaviors[cs.Height]; ok {
 		b.EnterPrecommit(cs, height, round)
 	} else {
-		DefaultEnterPrecommit(cs, height, round)
+		defaultEnterPrecommit(cs, height, round)
 	}
 
 }
@@ -406,14 +406,14 @@ func (cs *State) addVote(
 		if b, ok := cs.misbehaviors[cs.Height]; ok {
 			b.ReceivePrevote(cs, vote)
 		} else {
-			DefaultReceivePrevote(cs, vote)
+			defaultReceivePrevote(cs, vote)
 		}
 
 	case tmproto.PrecommitType:
 		if b, ok := cs.misbehaviors[cs.Height]; ok {
 			b.ReceivePrecommit(cs, vote)
 		}
-		DefaultReceivePrecommit(cs, vote)
+		defaultReceivePrecommit(cs, vote)
 
 	default:
 		panic(fmt.Sprintf("Unexpected vote type %v", vote.Type))

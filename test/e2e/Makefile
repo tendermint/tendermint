@@ -9,8 +9,8 @@ docker:
 app:
 	go build -o build/app -tags badgerdb,boltdb,cleveldb,rocksdb ./app
 	
-# To be used primarying by the e2e docker instance. If you want to produce this binary
-# elsewhere then run go build in the maverick directory. 
+# To be used primarily by the e2e docker instance. If you want to produce this binary
+# elsewhere, then run go build in the maverick directory. 
 maverick:
 	go build -o build/maverick -tags badgerdb,boltdb,cleveldb,rocksdb ../maverick
 

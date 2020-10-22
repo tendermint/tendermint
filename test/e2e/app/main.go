@@ -143,7 +143,7 @@ func startMaverick(cfg *Config) error {
 		return fmt.Errorf("failed to setup config: %w", err)
 	}
 
-	misbehaviors := make(map[int64]mcs.Misbehavior)
+	misbehaviors := make(map[int64]mcs.Misbehavior, len(cfg.Misbehaviors))
 	for heightString, misbehaviorString := range cfg.Misbehaviors {
 		if misbehavior, ok := mcs.MisbehaviorList[misbehaviorString]; ok {
 			height, err := strconv.ParseInt(heightString, 10, 64)
@@ -217,7 +217,7 @@ func setupNode() (*config.Config, log.Logger, *p2p.NodeKey, error) {
 	}
 	tmcfg.SetRoot(home)
 	if err = tmcfg.ValidateBasic(); err != nil {
-		return nil, nil, nil, fmt.Errorf("error in config file: %v", err)
+		return nil, nil, nil, fmt.Errorf("error in config file: %w", err)
 	}
 	if tmcfg.LogFormat == config.LogFormatJSON {
 		logger = log.NewTMJSONLogger(log.NewSyncWriter(os.Stdout))

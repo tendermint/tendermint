@@ -336,7 +336,7 @@ func (n Node) Validate(testnet Testnet) error {
 	}
 
 	if (n.PrivvalProtocol != "file" || n.Mode != "validator") && len(n.Misbehaviors) != 0 {
-		return fmt.Errorf("must be using \"file\" privval protocol to implement misbehaviors for %s", n.Name)
+		return errors.New("must be using \"file\" privval protocol to implement misbehaviors")
 	}
 
 	for height, misbehavior := range n.Misbehaviors {
