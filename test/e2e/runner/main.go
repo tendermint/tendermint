@@ -69,7 +69,7 @@ func NewCLI() *CLI {
 			if err := Start(cli.testnet); err != nil {
 				return err
 			}
-			if err := WaitForAllMisbehaviors(cli.testnet); err != nil {
+			if err := waitForAllMisbehaviors(cli.testnet); err != nil {
 				return err
 			}
 			if err := Perturb(cli.testnet); err != nil {

@@ -25,11 +25,11 @@ func Wait(testnet *e2e.Testnet, blocks int64) error {
 	return nil
 }
 
-// WaitForAllMisbehaviors calculates how many blocks from the start does the chain
-// need to run through before it has gone through all the misbehaviors
-// It adds the InterphaseWaitPeriod afterwards
-func WaitForAllMisbehaviors(testnet *e2e.Testnet) error {
-	return Wait(testnet, lastMisbehaviorHeight(testnet))
+// WaitForAllMisbehaviors calculates the height of the last misbehavior and ensures the entire
+// testnet has surpassed this height before moving on to the next phase
+func waitForAllMisbehaviors(testnet *e2e.Testnet) error {
+	_, _, err := waitForHeight(testnet, lastMisbehaviorHeight(testnet))
+	return err
 }
 
 func lastMisbehaviorHeight(testnet *e2e.Testnet) int64 {
@@ -41,7 +41,5 @@ func lastMisbehaviorHeight(testnet *e2e.Testnet) int64 {
 			}
 		}
 	}
-	// remember we want to know how many blocks to wait so we
-	// must calculate the difference between the initial height
-	return (lastHeight + interphaseWaitPeriod) - testnet.InitialHeight
+	return lastHeight + interphaseWaitPeriod
 }
