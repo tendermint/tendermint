@@ -1,19 +1,10 @@
 package version
 
 var (
-	// GitCommit is the current HEAD set using ldflags.
-	GitCommit string
-
 	// TMCoreSemVer is the current version of Tendermint Core.
 	// It's the Semantic Version of the software.
 	TMCoreSemVer string
 )
-
-func init() {
-	if GitCommit != "" {
-		TMCoreSemVer += "-" + GitCommit
-	}
-}
 
 const (
 	// ABCISemVer is the semantic version of the ABCI library

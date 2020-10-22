@@ -4,10 +4,8 @@ PACKAGES=$(shell go list ./...)
 BUILDDIR ?= $(CURDIR)/build
 
 BUILD_TAGS?=tendermint
-VERSION := $(shell echo $(shell git describe --always) | sed 's/-rc[0-9]//' | sed 's/^v//')
-COMMIT := $(shell git rev-parse --short=8 HEAD)
-LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=$(COMMIT) \
-					-X github.com/tendermint/tendermint/version.TMCoreSemVer=$(VERSION)
+VERSION := $(shell echo $(shell git describe --always))
+LD_FLAGS = -X github.com/tendermint/tendermint/version.TMCoreSemVer=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://github.com/tendermint/tendermint.git
 DOCKER_BUF := docker run -v $(shell pwd):/workspace --workdir /workspace bufbuild/buf
