@@ -2,7 +2,7 @@
 (**
  * A state-machine specification of the lite client, following the English spec:
  *
- * https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/verification.md
+ * ./verification_001_published.md
  *) 
 
 EXTENDS Integers, FiniteSets
