@@ -37,7 +37,7 @@ func TestVerify(t *testing.T) {
 		var (
 			trustedSignedHeader = tc.Initial.SignedHeader
 			trustedNextVals     = tc.Initial.NextValidatorSet
-			trustingPeriod      = time.Duration(tc.Initial.TrustingPeriod) * time.Microsecond
+			trustingPeriod      = time.Duration(tc.Initial.TrustingPeriod) * time.Nanosecond
 		)
 
 		for _, input := range tc.Input {
@@ -65,7 +65,12 @@ func TestVerify(t *testing.T) {
 			case "NOT_ENOUGH_TRUST":
 				require.IsType(t, light.ErrNewValSetCantBeTrusted{}, err)
 			case "INVALID":
-				require.IsType(t, light.ErrInvalidHeader{}, err)
+				switch err.(type) {
+				case light.ErrOldHeaderExpired:
+				case light.ErrInvalidHeader:
+				default:
+					t.Fatalf("expected either ErrInvalidHeader or ErrOldHeaderExpired, but got %v", err)
+				}
 			default:
 				t.Fatalf("unexpected verdict: %q", input.Verdict)
 			}
