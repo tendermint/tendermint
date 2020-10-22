@@ -27,12 +27,14 @@ func Cleanup(testnet *e2e.Testnet) error {
 func cleanupDocker() error {
 	logger.Info("Removing Docker containers and networks")
 
-	err := exec("sh", "-c", "docker container ls -q --filter label=e2e | xargs docker container rm -f")
+	// '' is required since xargs runs even when there's no input, and
+	// macOS' xargs does not support the -r switch.
+	err := exec("sh", "-c", "docker container ls -q --filter label=e2e | xargs docker container rm -f ''")
 	if err != nil {
 		return err
 	}
 
-	err = exec("sh", "-c", "docker network ls -q --filter label=e2e | xargs docker network rm")
+	err = exec("sh", "-c", "docker network ls -q --filter label=e2e | xargs docker network rm ''")
 	if err != nil {
 		return err
 	}
