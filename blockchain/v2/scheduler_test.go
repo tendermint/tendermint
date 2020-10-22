@@ -418,7 +418,6 @@ func TestScRemovePeer(t *testing.T) {
 					"P1": {height: 10, state: peerStateRemoved},
 					"P2": {height: 11, state: peerStateReady}},
 				allB: []int64{8, 9, 10, 11}},
-			wantErr: true,
 		},
 		{
 			name: "remove Ready peer with blocks requested",
