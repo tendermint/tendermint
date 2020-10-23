@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+
 	"github.com/tendermint/tendermint/libs/log"
 )
 

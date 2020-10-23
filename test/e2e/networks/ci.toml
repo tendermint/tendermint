@@ -36,6 +36,7 @@ seeds = ["seed01"]
 seeds = ["seed01"]
 snapshot_interval = 5
 perturb = ["disconnect"]
+misbehaviors = { 1012 = "double-prevote", 1018 = "double-prevote" }
 
 [node.validator02]
 seeds = ["seed02"]
