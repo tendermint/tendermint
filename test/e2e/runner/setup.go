@@ -12,11 +12,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
 
 	"github.com/BurntSushi/toml"
+
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/p2p"
@@ -118,7 +120,20 @@ func Setup(testnet *e2e.Testnet) error {
 // MakeDockerCompose generates a Docker Compose config for a testnet.
 func MakeDockerCompose(testnet *e2e.Testnet) ([]byte, error) {
 	// Must use version 2 Docker Compose format, to support IPv6.
-	tmpl, err := template.New("docker-compose").Parse(`version: '2.4'
+	tmpl, err := template.New("docker-compose").Funcs(template.FuncMap{
+		"misbehaviorsToString": func(misbehaviors map[int64]string) string {
+			str := ""
+			for height, misbehavior := range misbehaviors {
+				// after the first behavior set, a comma must be prepended
+				if str != "" {
+					str += ","
+				}
+				heightString := strconv.Itoa(int(height))
+				str += misbehavior + "," + heightString
+			}
+			return str
+		},
+	}).Parse(`version: '2.4'
 
 networks:
   {{ .Name }}:
@@ -142,6 +157,9 @@ services:
     image: tendermint/e2e-node
 {{- if eq .ABCIProtocol "builtin" }}
     entrypoint: /usr/bin/entrypoint-builtin
+{{- else if .Misbehaviors }}
+    entrypoint: /usr/bin/entrypoint-maverick
+    command: ["node", "--misbehaviors", "{{ misbehaviorsToString .Misbehaviors }}"]
 {{- end }}
     init: true
     ports:
@@ -329,6 +347,12 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 			return nil, fmt.Errorf("unexpected privval protocol setting %q", node.PrivvalProtocol)
 		}
 	}
+
+	misbehaviors := make(map[string]string)
+	for height, misbehavior := range node.Misbehaviors {
+		misbehaviors[strconv.Itoa(int(height))] = misbehavior
+	}
+	cfg["misbehaviors"] = misbehaviors
 
 	if len(node.Testnet.ValidatorUpdates) > 0 {
 		validatorUpdates := map[string]map[string]int64{}
