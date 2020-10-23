@@ -122,6 +122,8 @@ func MakeDockerCompose(testnet *e2e.Testnet) ([]byte, error) {
 
 networks:
   {{ .Name }}:
+    labels:
+      e2e: true
     driver: bridge
 {{- if .IPv6 }}
     enable_ipv6: true
@@ -134,6 +136,8 @@ networks:
 services:
 {{- range .Nodes }}
   {{ .Name }}:
+    labels:
+      e2e: true
     container_name: {{ .Name }}
     image: tendermint/e2e-node
 {{- if eq .ABCIProtocol "builtin" }}
