@@ -151,6 +151,9 @@ func LoadTestnet(file string) (*Testnet, error) {
 			Perturbations:    []Perturbation{},
 			Misbehaviors:     make(map[int64]string),
 		}
+		if node.StartAt == testnet.InitialHeight {
+			node.StartAt = 0 // normalize to 0 for initial nodes, since code expects this
+		}
 		if nodeManifest.Mode != "" {
 			node.Mode = Mode(nodeManifest.Mode)
 		}
