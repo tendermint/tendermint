@@ -15,6 +15,12 @@ func Start(testnet *e2e.Testnet) error {
 	sort.SliceStable(nodeQueue, func(i, j int) bool {
 		return nodeQueue[i].StartAt < nodeQueue[j].StartAt
 	})
+	if len(nodeQueue) == 0 {
+		return fmt.Errorf("no nodes in testnet")
+	}
+	if nodeQueue[0].StartAt > 0 {
+		return fmt.Errorf("no initial nodes in testnet")
+	}
 
 	// Start initial nodes (StartAt: 0)
 	logger.Info("Starting initial network nodes...")

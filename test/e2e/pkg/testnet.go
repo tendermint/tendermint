@@ -151,6 +151,9 @@ func LoadTestnet(file string) (*Testnet, error) {
 			Perturbations:    []Perturbation{},
 			Misbehaviors:     make(map[int64]string),
 		}
+		if node.StartAt == testnet.InitialHeight {
+			node.StartAt = 0 // normalize to 0 for initial nodes, since code expects this
+		}
 		if nodeManifest.Mode != "" {
 			node.Mode = Mode(nodeManifest.Mode)
 		}
@@ -341,7 +344,12 @@ func (n Node) Validate(testnet Testnet) error {
 
 	for height, misbehavior := range n.Misbehaviors {
 		if height < n.StartAt {
-			return fmt.Errorf("misbehavior height %d is before start height %d", height, n.StartAt)
+			return fmt.Errorf("misbehavior height %d is below node start height %d",
+				height, n.StartAt)
+		}
+		if height < testnet.InitialHeight {
+			return fmt.Errorf("misbehavior height %d is below network initial height %d",
+				height, testnet.InitialHeight)
 		}
 		exists := false
 		for possibleBehaviors := range mcs.MisbehaviorList {
@@ -393,6 +401,19 @@ func (t Testnet) RandomNode() *Node {
 // IPv6 returns true if the testnet is an IPv6 network.
 func (t Testnet) IPv6() bool {
 	return t.IP.IP.To4() == nil
+}
+
+// LastMisbehaviorHeight returns the height of the last misbehavior.
+func (t Testnet) LastMisbehaviorHeight() int64 {
+	lastHeight := int64(0)
+	for _, node := range t.Nodes {
+		for height := range node.Misbehaviors {
+			if height > lastHeight {
+				lastHeight = height
+			}
+		}
+	}
+	return lastHeight
 }
 
 // Address returns a P2P endpoint address for the node.
