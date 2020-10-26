@@ -69,13 +69,16 @@ func NewCLI() *CLI {
 			if err := Start(cli.testnet); err != nil {
 				return err
 			}
-			if err := waitForAllMisbehaviors(cli.testnet); err != nil {
-				return err
+			if lastMisbehavior := cli.testnet.LastMisbehaviorHeight(); lastMisbehavior > 0 {
+				// wait for misbehaviors before starting perturbations
+				if err := WaitUntil(cli.testnet, lastMisbehavior+5); err != nil {
+					return err
+				}
 			}
 			if err := Perturb(cli.testnet); err != nil {
 				return err
 			}
-			if err := Wait(cli.testnet, interphaseWaitPeriod); err != nil { // allow some txs to go through
+			if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
 				return err
 			}
 
@@ -84,7 +87,7 @@ func NewCLI() *CLI {
 				return err
 			}
 			// wait for network to settle before tests
-			if err := Wait(cli.testnet, interphaseWaitPeriod); err != nil {
+			if err := Wait(cli.testnet, 5); err != nil {
 				return err
 			}
 			if err := Test(cli.testnet); err != nil {

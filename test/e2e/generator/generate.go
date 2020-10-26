@@ -104,7 +104,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		name := fmt.Sprintf("validator%02d", i)
 		manifest.Nodes[name] = generateNode(r, e2e.ModeValidator, startAt, i <= 2)
 
-		if startAt == 0 {
+		if startAt == manifest.InitialHeight {
 			(*manifest.Validators)[name] = int64(30 + r.Intn(71))
 		} else {
 			manifest.ValidatorUpdates[fmt.Sprint(startAt+5)] = map[string]int64{
