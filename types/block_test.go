@@ -268,21 +268,6 @@ func TestCommitValidateBasic(t *testing.T) {
 	}
 }
 
-func TestMaxCommitSigBytes(t *testing.T) {
-	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
-
-	cs := &CommitSig{
-		BlockIDFlag:      BlockIDFlagNil,
-		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
-		Timestamp:        timestamp,
-		Signature:        crypto.CRandBytes(MaxSignatureSize),
-	}
-
-	pb := cs.ToProto()
-
-	assert.EqualValues(t, MaxCommitSigBytes, pb.Size())
-}
-
 func TestMaxCommitBytes(t *testing.T) {
 	// time is varint encoded so need to pick the max.
 	// year int, month Month, day, hour, min, sec, nsec int, loc *Location
@@ -296,7 +281,7 @@ func TestMaxCommitBytes(t *testing.T) {
 	}
 
 	pbSig := cs.ToProto()
-
+	// test that a single commit sig doesn't exceed max commit sig bytes
 	assert.EqualValues(t, MaxCommitSigBytes, pbSig.Size())
 
 	// check size with a single commit
