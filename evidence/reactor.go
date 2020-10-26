@@ -169,6 +169,11 @@ func (evR Reactor) checkSendEvidenceMessage(
 		return nil, true
 	}
 
+	if evR.evpool.Size() == 0 {
+		// XXX: We have evidence in the clist which no longer exists in the pool.
+		return nil, false
+	}
+
 	// NOTE: We only send evidence to peers where
 	// peerHeight - maxAge < evidenceHeight < peerHeight
 	var (
