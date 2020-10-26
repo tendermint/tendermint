@@ -205,8 +205,7 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 		if !ok {
 			// check that the evidence isn't already committed
 			if evpool.isCommitted(ev) {
-				evpool.logger.Debug("Evidence was already committed, ignoring this one", "ev", ev)
-				return nil
+				return &types.ErrInvalidEvidence{Evidence: ev, Reason: errors.New("evidence was already committed")}
 			}
 
 			evInfo, err := evpool.verify(ev)
@@ -578,7 +577,6 @@ func (evpool *Pool) removeEvidenceFromList(
 		// Remove from clist
 		ev := e.Value.(types.Evidence)
 		if _, ok := blockEvidenceMap[evMapKey(ev)]; ok {
-			evpool.logger.Error("removing pending evidence", "ev", ev)
 			evpool.evidenceList.Remove(e)
 			e.DetachPrev()
 		}
