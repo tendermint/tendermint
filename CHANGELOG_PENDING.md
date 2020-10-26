@@ -30,3 +30,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [abci/grpc] \#5520 Return async responses in order, to avoid mempool panics. (@erikgrinaker)
 - [blockchain/v2] \#5530 Fix "processed height 4541 but expected height 4540" panic (@melekes)
 - [consensus/wal] Fix WAL autorepair by opening target WAL in read/write mode (@erikgrinaker)
+- [block] \#5567 Fix MaxCommitSigBytes (@cmwaters)
