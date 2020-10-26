@@ -257,32 +257,21 @@ func TestCommitValidateBasic(t *testing.T) {
 	}
 }
 
-func TestMaxCommitSigBytes(t *testing.T) {
+func TestMaxCommitBytes(t *testing.T) {
 	// time is varint encoded so need to pick the max.
 	// year int, month Month, day, hour, min, sec, nsec int, loc *Location
-	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
-
-	cs := &CommitSig{
-		BlockIDFlag:      BlockIDFlagNil,
-		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
-		Timestamp:        timestamp,
-		Signature:        tmhash.Sum([]byte("signature")),
-	}
-
-	pb := cs.ToProto()
-
-	assert.EqualValues(t, MaxCommitSigBytes, pb.Size())
-}
-
-func TestMaxCommitBytes(t *testing.T) {
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 
 	cs := CommitSig{
 		BlockIDFlag:      BlockIDFlagNil,
 		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
 		Timestamp:        timestamp,
-		Signature:        tmhash.Sum([]byte("signature")),
+		Signature:        crypto.CRandBytes(MaxSignatureSize),
 	}
+
+	pbSig := cs.ToProto()
+	// test that a single commit sig doesn't exceed max commit sig bytes
+	assert.EqualValues(t, MaxCommitSigBytes, pbSig.Size())
 
 	// check size with a single commit
 	commit := &Commit{
@@ -463,9 +452,11 @@ func TestBlockMaxDataBytes(t *testing.T) {
 	}{
 		0: {-10, 1, 0, true, 0},
 		1: {10, 1, 0, true, 0},
-		2: {809, 1, 0, true, 0},
-		3: {810, 1, 0, false, 0},
-		4: {811, 1, 0, false, 1},
+		2: {841, 1, 0, true, 0},
+		3: {842, 1, 0, false, 0},
+		4: {843, 1, 0, false, 1},
+		5: {954, 2, 0, false, 1},
+		6: {1053, 2, 100, false, 0},
 	}
 
 	for i, tc := range testCases {
@@ -492,9 +483,9 @@ func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 	}{
 		0: {-10, 1, true, 0},
 		1: {10, 1, true, 0},
-		2: {809, 1, true, 0},
-		3: {810, 1, false, 0},
-		4: {811, 1, false, 1},
+		2: {841, 1, true, 0},
+		3: {842, 1, false, 0},
+		4: {843, 1, false, 1},
 	}
 
 	for i, tc := range testCases {
