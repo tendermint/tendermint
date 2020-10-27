@@ -1,0 +1,27 @@
+project_name: Tendermint
+
+env:
+  # Require use of Go modules.
+  - GO111MODULE=on
+
+builds:
+  - id: "Tendermint"
+    main: ./cmd/tendermint/main.go
+    ldflags:
+     - -s -w -X github.com/tendermint/tendermint/version.TMCoreSemVer={{ .Version }}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm
+      - arm64
+
+checksum:
+  name_template: SHA256SUMS-{{.Version}}.txt
+  algorithm: sha256
+
+release:
+  name_template: "{{.Version}} (WARNING: BETA SOFTWARE)"
