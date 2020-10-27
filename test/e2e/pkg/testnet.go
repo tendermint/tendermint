@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
+	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
 )
 
 const (
@@ -78,6 +79,7 @@ type Node struct {
 	Seeds            []*Node
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
+	Misbehaviors     map[int64]string
 }
 
 // LoadTestnet loads a testnet from a manifest file, using the filename to
@@ -147,6 +149,10 @@ func LoadTestnet(file string) (*Testnet, error) {
 			SnapshotInterval: nodeManifest.SnapshotInterval,
 			RetainBlocks:     nodeManifest.RetainBlocks,
 			Perturbations:    []Perturbation{},
+			Misbehaviors:     make(map[int64]string),
+		}
+		if node.StartAt == testnet.InitialHeight {
+			node.StartAt = 0 // normalize to 0 for initial nodes, since code expects this
 		}
 		if nodeManifest.Mode != "" {
 			node.Mode = Mode(nodeManifest.Mode)
@@ -165,6 +171,13 @@ func LoadTestnet(file string) (*Testnet, error) {
 		}
 		for _, p := range nodeManifest.Perturb {
 			node.Perturbations = append(node.Perturbations, Perturbation(p))
+		}
+		for heightString, misbehavior := range nodeManifest.Misbehaviors {
+			height, err := strconv.ParseInt(heightString, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse height %s to int64: %w", heightString, err)
+			}
+			node.Misbehaviors[height] = misbehavior
 		}
 		testnet.Nodes = append(testnet.Nodes, node)
 	}
@@ -324,6 +337,31 @@ func (n Node) Validate(testnet Testnet) error {
 			return fmt.Errorf("invalid perturbation %q", perturbation)
 		}
 	}
+
+	if (n.PrivvalProtocol != "file" || n.Mode != "validator") && len(n.Misbehaviors) != 0 {
+		return errors.New("must be using \"file\" privval protocol to implement misbehaviors")
+	}
+
+	for height, misbehavior := range n.Misbehaviors {
+		if height < n.StartAt {
+			return fmt.Errorf("misbehavior height %d is below node start height %d",
+				height, n.StartAt)
+		}
+		if height < testnet.InitialHeight {
+			return fmt.Errorf("misbehavior height %d is below network initial height %d",
+				height, testnet.InitialHeight)
+		}
+		exists := false
+		for possibleBehaviors := range mcs.MisbehaviorList {
+			if possibleBehaviors == misbehavior {
+				exists = true
+			}
+		}
+		if !exists {
+			return fmt.Errorf("misbehavior %s does not exist", misbehavior)
+		}
+	}
+
 	return nil
 }
 
@@ -363,6 +401,19 @@ func (t Testnet) RandomNode() *Node {
 // IPv6 returns true if the testnet is an IPv6 network.
 func (t Testnet) IPv6() bool {
 	return t.IP.IP.To4() == nil
+}
+
+// LastMisbehaviorHeight returns the height of the last misbehavior.
+func (t Testnet) LastMisbehaviorHeight() int64 {
+	lastHeight := int64(0)
+	for _, node := range t.Nodes {
+		for height := range node.Misbehaviors {
+			if height > lastHeight {
+				lastHeight = height
+			}
+		}
+	}
+	return lastHeight
 }
 
 // Address returns a P2P endpoint address for the node.
