@@ -37,8 +37,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: split-test-files
     strategy:
+      fail-fast: false
       matrix:
-        parts: ["00", "01", "02", "03"]
+        part: ["00", "01", "02", "03"]
     steps:
       - uses: actions/checkout@v2
       - uses: technote-space/get-diff-action@v4
@@ -49,16 +50,16 @@ jobs:
             go.sum
       - uses: actions/download-artifact@v2
         with:
-          name: "${{ github.sha }}-${{ matrix.parts }}"
+          name: "${{ github.sha }}-${{ matrix.part }}"
         if: env.GIT_DIFF
       - name: test & coverage report creation
         run: |
-          cat pkgs.txt.part.${{ matrix.parts }} | xargs go test -mod=readonly -timeout 8m -race -coverprofile=${{ matrix.parts }}profile.out -covermode=atomic
+          cat pkgs.txt.part.${{ matrix.part }} | xargs go test -mod=readonly -timeout 8m -race -coverprofile=${{ matrix.part }}profile.out -covermode=atomic
         if: env.GIT_DIFF
       - uses: actions/upload-artifact@v2
         with:
-          name: "${{ github.sha }}-${{ matrix.parts }}-coverage"
-          path: ./${{ matrix.parts }}profile.out
+          name: "${{ github.sha }}-${{ matrix.part }}-coverage"
+          path: ./${{ matrix.part }}profile.out
 
   upload-coverage-report:
     runs-on: ubuntu-latest
