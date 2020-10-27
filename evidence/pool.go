@@ -128,6 +128,8 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 
 	// check that the evidence isn't already committed
 	if evpool.isCommitted(ev) {
+		// this can happen if the peer that sent us the evidence is behind so we shouldn't
+		// punish the peer.
 		evpool.logger.Debug("Evidence was already committed, ignoring this one", "ev", ev)
 		return nil
 	}
@@ -214,6 +216,8 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 			}
 
 			if err := evpool.addPendingEvidence(evInfo); err != nil {
+				// Something went wrong with adding the evidence but we already know it is valid
+				// hence we log an error and continue
 				evpool.logger.Error("Can't add evidence to pending list", "err", err, "evInfo", evInfo)
 			}
 

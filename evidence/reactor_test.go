@@ -27,6 +27,162 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+var (
+	numEvidence = 10
+	timeout     = 120 * time.Second // ridiculously high because CircleCI is slow
+)
+
+// We have N evidence reactors connected to one another. The first reactor
+// receives a number of evidence at varying heights. We test that all
+// other reactors receive the evidence and add it to their own respective
+// evidence pools.
+func TestReactorBroadcastEvidence(t *testing.T) {
+	config := cfg.TestConfig()
+	N := 7
+
+	// create statedb for everyone
+	stateDBs := make([]sm.Store, N)
+	val := types.NewMockPV()
+	// we need validators saved for heights at least as high as we have evidence for
+	height := int64(numEvidence) + 10
+	for i := 0; i < N; i++ {
+		stateDBs[i] = initializeValidatorState(val, height)
+	}
+
+	// make reactors from statedb
+	reactors, pools := makeAndConnectReactorsAndPools(config, stateDBs)
+
+	// set the peer height on each reactor
+	for _, r := range reactors {
+		for _, peer := range r.Switch.Peers().List() {
+			ps := peerState{height}
+			peer.Set(types.PeerStateKey, ps)
+		}
+	}
+
+	// send a bunch of valid evidence to the first reactor's evpool
+	// and wait for them all to be received in the others
+	evList := sendEvidence(t, pools[0], val, numEvidence)
+	waitForEvidence(t, evList, pools)
+}
+
+// We have two evidence reactors connected to one another but are at different heights.
+// Reactor 1 which is ahead receives a number of evidence. It should only send the evidence
+// that is below the height of the peer to that peer.
+func TestReactorSelectiveBroadcast(t *testing.T) {
+	config := cfg.TestConfig()
+
+	val := types.NewMockPV()
+	height1 := int64(numEvidence) + 10
+	height2 := int64(numEvidence) / 2
+
+	// DB1 is ahead of DB2
+	stateDB1 := initializeValidatorState(val, height1)
+	stateDB2 := initializeValidatorState(val, height2)
+
+	// make reactors from statedb
+	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
+
+	// set the peer height on each reactor
+	for _, r := range reactors {
+		for _, peer := range r.Switch.Peers().List() {
+			ps := peerState{height1}
+			peer.Set(types.PeerStateKey, ps)
+		}
+	}
+
+	// update the first reactor peer's height to be very small
+	peer := reactors[0].Switch.Peers().List()[0]
+	ps := peerState{height2}
+	peer.Set(types.PeerStateKey, ps)
+
+	// send a bunch of valid evidence to the first reactor's evpool
+	evList := sendEvidence(t, pools[0], val, numEvidence)
+
+	// only ones less than the peers height should make it through
+	waitForEvidence(t, evList[:numEvidence/2-1], []*evidence.Pool{pools[1]})
+
+	// peers should still be connected
+	peers := reactors[1].Switch.Peers().List()
+	assert.Equal(t, 1, len(peers))
+}
+
+// This tests aims to ensure that reactors don't send evidence that they have committed or that ar
+// not ready for the peer through three scenarios.
+// First, committed evidence to a newly connected peer
+// Second, evidence to a peer that is behind
+// Third, evidence that was pending and became committed just before the peer caught up
+func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
+	config := cfg.TestConfig()
+
+	val := types.NewMockPV()
+	var height int64 = 10
+
+	// DB1 is ahead of DB2
+	stateDB1 := initializeValidatorState(val, height)
+	stateDB2 := initializeValidatorState(val, height-2)
+
+	// make reactors from statedb
+	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
+
+	evList := sendEvidence(t, pools[0], val, 2)
+	abciEvs := pools[0].ABCIEvidence(height, evList)
+	require.EqualValues(t, 2, len(abciEvs))
+	require.EqualValues(t, uint32(0), pools[0].Size())
+
+	time.Sleep(100 * time.Millisecond)
+
+	peer := reactors[0].Switch.Peers().List()[0]
+	ps := peerState{height - 2}
+	peer.Set(types.PeerStateKey, ps)
+
+	peer = reactors[1].Switch.Peers().List()[0]
+	ps = peerState{height}
+	peer.Set(types.PeerStateKey, ps)
+
+	// wait to see that no evidence comes through
+	time.Sleep(300 * time.Millisecond)
+
+	// the second pool should not have received any evidence because it has already been committed
+	assert.Equal(t, uint32(0), pools[1].Size(), "second reactor should not have received evidence")
+
+	// the first reactor receives three more evidence
+	evList = make([]types.Evidence, 3)
+	for i := 0; i < 3; i++ {
+		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height-3+int64(i),
+			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val, evidenceChainID)
+		err := pools[0].AddEvidence(ev)
+		require.NoError(t, err)
+		evList[i] = ev
+	}
+
+	// wait to see that only one evidence is sent
+	time.Sleep(300 * time.Millisecond)
+
+	// the second pool should only have received the first evidence because it is behind
+	peerEv, _ := pools[1].PendingEvidence(1000)
+	assert.EqualValues(t, []types.Evidence{evList[0]}, peerEv)
+
+	// the last evidence is committed and the second reactor catches up in state to the first
+	// reactor. We therefore expect that the second reactor only receives one more evidence, the
+	// one that is still pending and not the evidence that has already been committed.
+	_ = pools[0].ABCIEvidence(height, []types.Evidence{evList[2]})
+	// the first reactor should have the two remaining pending evidence
+	require.EqualValues(t, uint32(2), pools[0].Size())
+
+	// now update the state of the second reactor
+	pools[1].Update(sm.State{LastBlockHeight: height})
+	peer = reactors[0].Switch.Peers().List()[0]
+	ps = peerState{height}
+	peer.Set(types.PeerStateKey, ps)
+
+	// wait to see that only two evidence is sent
+	time.Sleep(300 * time.Millisecond)
+
+	peerEv, _ = pools[1].PendingEvidence(1000)
+	assert.EqualValues(t, evList[0:1], peerEv)
+}
+
 // evidenceLogger is a TestingLogger which uses a different
 // color for each validator ("validator" key must exist).
 func evidenceLogger() log.Logger {
@@ -141,85 +297,12 @@ func sendEvidence(t *testing.T, evpool *evidence.Pool, val types.PrivValidator, 
 	return evList
 }
 
-var (
-	numEvidence = 10
-	timeout     = 120 * time.Second // ridiculously high because CircleCI is slow
-)
-
-func TestReactorBroadcastEvidence(t *testing.T) {
-	config := cfg.TestConfig()
-	N := 7
-
-	// create statedb for everyone
-	stateDBs := make([]sm.Store, N)
-	val := types.NewMockPV()
-	// we need validators saved for heights at least as high as we have evidence for
-	height := int64(numEvidence) + 10
-	for i := 0; i < N; i++ {
-		stateDBs[i] = initializeValidatorState(val, height)
-	}
-
-	// make reactors from statedb
-	reactors, pools := makeAndConnectReactorsAndPools(config, stateDBs)
-
-	// set the peer height on each reactor
-	for _, r := range reactors {
-		for _, peer := range r.Switch.Peers().List() {
-			ps := peerState{height}
-			peer.Set(types.PeerStateKey, ps)
-		}
-	}
-
-	// send a bunch of valid evidence to the first reactor's evpool
-	// and wait for them all to be received in the others
-	evList := sendEvidence(t, pools[0], val, numEvidence)
-	waitForEvidence(t, evList, pools)
-}
-
 type peerState struct {
 	height int64
 }
 
 func (ps peerState) GetHeight() int64 {
 	return ps.height
-}
-
-func TestReactorSelectiveBroadcast(t *testing.T) {
-	config := cfg.TestConfig()
-
-	val := types.NewMockPV()
-	height1 := int64(numEvidence) + 10
-	height2 := int64(numEvidence) / 2
-
-	// DB1 is ahead of DB2
-	stateDB1 := initializeValidatorState(val, height1)
-	stateDB2 := initializeValidatorState(val, height2)
-
-	// make reactors from statedb
-	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
-
-	// set the peer height on each reactor
-	for _, r := range reactors {
-		for _, peer := range r.Switch.Peers().List() {
-			ps := peerState{height1}
-			peer.Set(types.PeerStateKey, ps)
-		}
-	}
-
-	// update the first reactor peer's height to be very small
-	peer := reactors[0].Switch.Peers().List()[0]
-	ps := peerState{height2}
-	peer.Set(types.PeerStateKey, ps)
-
-	// send a bunch of valid evidence to the first reactor's evpool
-	evList := sendEvidence(t, pools[0], val, numEvidence)
-
-	// only ones less than the peers height should make it through
-	waitForEvidence(t, evList[:numEvidence/2-1], pools[1:2])
-
-	// peers should still be connected
-	peers := reactors[1].Switch.Peers().List()
-	assert.Equal(t, 1, len(peers))
 }
 
 func exampleVote(t byte) *types.Vote {
