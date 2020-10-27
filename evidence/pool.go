@@ -83,7 +83,7 @@ func NewPool(evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool,
 
 // PendingEvidence is used primarily as part of block proposal and returns up to maxNum of uncommitted evidence.
 func (evpool *Pool) PendingEvidence(maxBytes int64) ([]types.Evidence, int64) {
-	if atomic.LoadUint32(&evpool.evidenceSize) == 0 {
+	if evpool.Size() == 0 {
 		return []types.Evidence{}, 0
 	}
 	evidence, size, err := evpool.listEvidence(baseKeyPending, maxBytes)
@@ -110,7 +110,7 @@ func (evpool *Pool) Update(state sm.State) {
 	evpool.updateState(state)
 
 	// prune pending evidence when it has expired. This also updates when the next evidence will expire
-	if atomic.LoadUint32(&evpool.evidenceSize) > 0 && state.LastBlockHeight > evpool.pruningHeight &&
+	if evpool.Size() > 0 && state.LastBlockHeight > evpool.pruningHeight &&
 		state.LastBlockTime.After(evpool.pruningTime) {
 		evpool.pruningHeight, evpool.pruningTime = evpool.removeExpiredPendingEvidence()
 	}
@@ -123,6 +123,14 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 	// We have already verified this piece of evidence - no need to do it again
 	if evpool.isPending(ev) {
 		evpool.logger.Info("Evidence already pending, ignoring this one", "ev", ev)
+		return nil
+	}
+
+	// check that the evidence isn't already committed
+	if evpool.isCommitted(ev) {
+		// this can happen if the peer that sent us the evidence is behind so we shouldn't
+		// punish the peer.
+		evpool.logger.Debug("Evidence was already committed, ignoring this one", "ev", ev)
 		return nil
 	}
 
@@ -197,12 +205,19 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 		ok := evpool.fastCheck(ev)
 
 		if !ok {
+			// check that the evidence isn't already committed
+			if evpool.isCommitted(ev) {
+				return &types.ErrInvalidEvidence{Evidence: ev, Reason: errors.New("evidence was already committed")}
+			}
+
 			evInfo, err := evpool.verify(ev)
 			if err != nil {
 				return &types.ErrInvalidEvidence{Evidence: ev, Reason: err}
 			}
 
 			if err := evpool.addPendingEvidence(evInfo); err != nil {
+				// Something went wrong with adding the evidence but we already know it is valid
+				// hence we log an error and continue
 				evpool.logger.Error("Can't add evidence to pending list", "err", err, "evInfo", evInfo)
 			}
 
@@ -313,6 +328,10 @@ func (evpool *Pool) EvidenceWaitChan() <-chan struct{} {
 // SetLogger sets the Logger.
 func (evpool *Pool) SetLogger(l log.Logger) {
 	evpool.logger = l
+}
+
+func (evpool *Pool) Size() uint32 {
+	return atomic.LoadUint32(&evpool.evidenceSize)
 }
 
 // State returns the current state of the evpool.
