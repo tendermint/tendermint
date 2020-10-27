@@ -17,8 +17,13 @@ const (
 
 	maxMsgSize = 1048576 // 1MB TODO make it configurable
 
-	broadcastEvidenceIntervalS = 1   // broadcast uncommitted evidence this often
-	peerCatchupSleepIntervalMS = 100 // If peer is behind, sleep this amount
+	// broadcast all uncommitted evidence this often. This sets when the reactor
+	// goes back to the start of the list and begins sending the evidence again.
+	// Most evidence should be committed in the very next block that is why we wait
+	// just over the block production rate before sending evidence again.
+	broadcastEvidenceIntervalS = 10
+	// If a message fails wait this much before sending it again
+	peerRetryMessageIntervalMS = 100
 )
 
 // Reactor handles evpool evidence broadcasting amongst peers.
@@ -126,7 +131,7 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 
 			success := peer.Send(EvidenceChannel, msgBytes)
 			if !success {
-				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+				time.Sleep(peerRetryMessageIntervalMS * time.Millisecond)
 				continue
 			}
 		}
