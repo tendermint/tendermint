@@ -16,6 +16,9 @@ import (
 // Tests that any initial state given in genesis has made it into the app.
 func TestApp_InitialState(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
+		if node.Mode == e2e.ModeSeed {
+			return
+		}
 		if len(node.Testnet.InitialState) == 0 {
 			return
 		}
