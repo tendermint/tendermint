@@ -24,11 +24,6 @@ func (evpool *Pool) verify(evidence types.Evidence) (*info, error) {
 		ageNumBlocks   = height - evidence.Height()
 	)
 
-	// check that the evidence isn't already committed
-	if evpool.isCommitted(evidence) {
-		return nil, errors.New("evidence was already committed")
-	}
-
 	// verify the time of the evidence
 	blockMeta := evpool.blockStore.LoadBlockMeta(evidence.Height())
 	if blockMeta == nil {
