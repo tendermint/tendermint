@@ -29,7 +29,10 @@ var (
 	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "grpc", "builtin"}
 	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp"}
 	// FIXME v1 disabled due to https://github.com/tendermint/tendermint/issues/5444
-	nodeFastSyncs         = uniformChoice{"", "v0", "v2"} // "v1",
+	// FIXME v2 disabled due to:
+	// https://github.com/tendermint/tendermint/issues/5513
+	// https://github.com/tendermint/tendermint/issues/5541
+	nodeFastSyncs         = uniformChoice{"", "v0"} // "v1", "v2"
 	nodeStateSyncs        = uniformChoice{false, true}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
@@ -87,7 +90,8 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 
 	// First we generate seed nodes, starting at the initial height.
 	for i := 1; i <= numSeeds; i++ {
-		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = generateNode(r, e2e.ModeSeed, 0, false)
+		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = generateNode(
+			r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
 	}
 
 	// Next, we generate validators. We make sure a BFT quorum of validators start
@@ -96,15 +100,16 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	nextStartAt := manifest.InitialHeight + 5
 	quorum := numValidators*2/3 + 1
 	for i := 1; i <= numValidators; i++ {
-		startAt := manifest.InitialHeight
+		startAt := int64(0)
 		if i > quorum {
 			startAt = nextStartAt
 			nextStartAt += 5
 		}
 		name := fmt.Sprintf("validator%02d", i)
-		manifest.Nodes[name] = generateNode(r, e2e.ModeValidator, startAt, i <= 2)
+		manifest.Nodes[name] = generateNode(
+			r, e2e.ModeValidator, startAt, manifest.InitialHeight, i <= 2)
 
-		if startAt == manifest.InitialHeight {
+		if startAt == 0 {
 			(*manifest.Validators)[name] = int64(30 + r.Intn(71))
 		} else {
 			manifest.ValidatorUpdates[fmt.Sprint(startAt+5)] = map[string]int64{
@@ -130,7 +135,8 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			startAt = nextStartAt
 			nextStartAt += 5
 		}
-		manifest.Nodes[fmt.Sprintf("full%02d", i)] = generateNode(r, e2e.ModeFull, startAt, false)
+		manifest.Nodes[fmt.Sprintf("full%02d", i)] = generateNode(
+			r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
 	}
 
 	// We now set up peer discovery for nodes. Seed nodes are fully meshed with
@@ -180,7 +186,8 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 // here, since we need to know the overall network topology and startup
 // sequencing.
 func generateNode(
-	r *rand.Rand, mode e2e.Mode, startAt int64, forceArchive bool) *e2e.ManifestNode {
+	r *rand.Rand, mode e2e.Mode, startAt int64, initialHeight int64, forceArchive bool,
+) *e2e.ManifestNode {
 	node := e2e.ManifestNode{
 		Mode:             string(mode),
 		StartAt:          startAt,
@@ -203,8 +210,11 @@ func generateNode(
 	}
 
 	if node.Mode == "validator" {
-		node.Misbehaviors = nodeMisbehaviors.Choose(r).(misbehaviorOption).
-			atHeight(startAt + 5 + int64(r.Intn(10)))
+		misbehaveAt := startAt + 5 + int64(r.Intn(10))
+		if startAt == 0 {
+			misbehaveAt += initialHeight - 1
+		}
+		node.Misbehaviors = nodeMisbehaviors.Choose(r).(misbehaviorOption).atHeight(misbehaveAt)
 		if len(node.Misbehaviors) != 0 {
 			node.PrivvalProtocol = "file"
 		}

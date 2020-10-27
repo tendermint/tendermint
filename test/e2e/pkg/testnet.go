@@ -403,6 +403,16 @@ func (t Testnet) IPv6() bool {
 	return t.IP.IP.To4() == nil
 }
 
+// HasPerturbations returns whether the network has any perturbations.
+func (t Testnet) HasPerturbations() bool {
+	for _, node := range t.Nodes {
+		if len(node.Perturbations) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // LastMisbehaviorHeight returns the height of the last misbehavior.
 func (t Testnet) LastMisbehaviorHeight() int64 {
 	lastHeight := int64(0)

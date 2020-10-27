@@ -32,7 +32,7 @@ func cleanupDocker() error {
 	xargsR := `$(if [[ $OSTYPE == "linux-gnu"* ]]; then echo -n "-r"; fi)`
 
 	err := exec("bash", "-c", fmt.Sprintf(
-		"docker container ls -q --filter label=e2e | xargs %v docker container rm -f", xargsR))
+		"docker container ls -qa --filter label=e2e | xargs %v docker container rm -f", xargsR))
 	if err != nil {
 		return err
 	}

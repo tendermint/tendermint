@@ -10,8 +10,21 @@ import (
 
 func Start(testnet *e2e.Testnet) error {
 
-	// Sort nodes by starting order
+	// Nodes are already sorted by name. Sort them by name then startAt,
+	// which gives the overall order startAt, mode, name.
 	nodeQueue := testnet.Nodes
+	sort.SliceStable(nodeQueue, func(i, j int) bool {
+		a, b := nodeQueue[i], nodeQueue[j]
+		switch {
+		case a.Mode == b.Mode:
+			return false
+		case a.Mode == e2e.ModeSeed:
+			return true
+		case a.Mode == e2e.ModeValidator && b.Mode == e2e.ModeFull:
+			return true
+		}
+		return false
+	})
 	sort.SliceStable(nodeQueue, func(i, j int) bool {
 		return nodeQueue[i].StartAt < nodeQueue[j].StartAt
 	})
