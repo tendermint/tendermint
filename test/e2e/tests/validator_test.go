@@ -14,6 +14,10 @@ import (
 // scheduled validator updates.
 func TestValidator_Sets(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
+		if node.Mode == e2e.ModeSeed {
+			return
+		}
+
 		client, err := node.Client()
 		require.NoError(t, err)
 		status, err := client.Status(ctx)
