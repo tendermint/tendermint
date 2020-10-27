@@ -29,7 +29,10 @@ var (
 	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "grpc", "builtin"}
 	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp"}
 	// FIXME v1 disabled due to https://github.com/tendermint/tendermint/issues/5444
-	nodeFastSyncs         = uniformChoice{"", "v0", "v2"} // "v1",
+	// FIXME v2 disabled due to:
+	// https://github.com/tendermint/tendermint/issues/5513
+	// https://github.com/tendermint/tendermint/issues/5541
+	nodeFastSyncs         = uniformChoice{"", "v0"} // "v1", "v2"
 	nodeStateSyncs        = uniformChoice{false, true}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
