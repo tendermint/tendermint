@@ -31,3 +31,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [types] \#5523 Change json naming of `PartSetHeader` within `BlockID` from `parts` to `part_set_header` (@marbar3778)
 - [blockchain/v2] \#5530 Fix "processed height 4541 but expected height 4540" panic (@melekes)
 - [consensus/wal] Fix WAL autorepair by opening target WAL in read/write mode (@erikgrinaker)
+- [evidence] \#5574 Fix bug where node sends committed evidence to peer (@cmwaters)
