@@ -66,20 +66,32 @@ jobs:
     needs: tests
     steps:
       - uses: actions/checkout@v2
+      - uses: technote-space/get-diff-action@v4
+        with:
+          PATTERNS: |
+            **/**.go
+            go.mod
+            go.sum
       - uses: actions/download-artifact@v2
         with:
           name: "${{ github.sha }}-00-coverage"
+        if: env.GIT_DIFF
       - uses: actions/download-artifact@v2
         with:
           name: "${{ github.sha }}-01-coverage"
+        if: env.GIT_DIFF
       - uses: actions/download-artifact@v2
         with:
           name: "${{ github.sha }}-02-coverage"
+        if: env.GIT_DIFF
       - uses: actions/download-artifact@v2
         with:
           name: "${{ github.sha }}-03-coverage"
+        if: env.GIT_DIFF
       - run: |
           cat ./*profile.out | grep -v "mode: atomic" >> coverage.txt
+        if: env.GIT_DIFF
       - uses: codecov/codecov-action@v1.0.13
         with:
           file: ./coverage.txt
+        if: env.GIT_DIFF
