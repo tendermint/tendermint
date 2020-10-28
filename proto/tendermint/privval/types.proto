@@ -3,6 +3,7 @@ package tendermint.privval;
 
 import "tendermint/crypto/keys.proto";
 import "tendermint/types/types.proto";
+import "gogoproto/gogo.proto";
 
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/privval";
 
@@ -27,7 +28,7 @@ message PubKeyRequest {
 
 // PubKeyResponse is a response message containing the public key.
 message PubKeyResponse {
-  tendermint.crypto.PublicKey pub_key = 1;
+  tendermint.crypto.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
   RemoteSignerError           error   = 2;
 }
 
@@ -39,7 +40,7 @@ message SignVoteRequest {
 
 // SignedVoteResponse is a response containing a signed vote or an error
 message SignedVoteResponse {
-  tendermint.types.Vote vote  = 1;
+  tendermint.types.Vote vote  = 1 [(gogoproto.nullable) = false];
   RemoteSignerError     error = 2;
 }
 
@@ -51,7 +52,7 @@ message SignProposalRequest {
 
 // SignedProposalResponse is response containing a signed proposal or an error
 message SignedProposalResponse {
-  tendermint.types.Proposal proposal = 1;
+  tendermint.types.Proposal proposal = 1 [(gogoproto.nullable) = false];
   RemoteSignerError         error    = 2;
 }
 
