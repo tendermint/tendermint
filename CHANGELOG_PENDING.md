@@ -32,3 +32,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [consensus/wal] Fix WAL autorepair by opening target WAL in read/write mode (@erikgrinaker)
 - [block] \#5567 Fix MaxCommitSigBytes (@cmwaters)
 - [evidence] \#5574 Fix bug where node sends committed evidence to peer (@cmwaters)
+- [privval] \#5583 Make `Vote`, `Proposal` & `PubKey` non-nullable in Responses (@marbar3778)
