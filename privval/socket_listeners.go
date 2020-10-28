@@ -10,7 +10,7 @@ import (
 
 const (
 	defaultTimeoutAcceptSeconds   = 3
-	defaultPingPeriodMilliseconds = 100
+	defaultPingPeriodMilliseconds = 5000
 )
 
 // timeoutError can be used to check if an error returned from the netp package
