@@ -239,6 +239,7 @@ func (th *TestHarness) TestSignProposal() error {
 	th.logger.Debug("Signed proposal", "prop", prop)
 	// first check that it's a basically valid proposal
 	if err := prop.ValidateBasic(); err != nil {
+		fmt.Println("there")
 		th.logger.Error("FAILED: Signed proposal is invalid", "err", err)
 		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
 	}
