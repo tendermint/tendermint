@@ -21,7 +21,6 @@ import (
 	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
-	ep "github.com/tendermint/tendermint/proto/tendermint/evidence"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -126,8 +125,7 @@ func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
 	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
 
 	evList := sendEvidence(t, pools[0], val, 2)
-	abciEvs := pools[0].ABCIEvidence(height, evList)
-	require.EqualValues(t, 2, len(abciEvs))
+	pools[0].Update(sm.State{LastBlockHeight: height}, evList)
 	require.EqualValues(t, uint32(0), pools[0].Size())
 
 	time.Sleep(100 * time.Millisecond)
@@ -166,12 +164,12 @@ func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
 	// the last evidence is committed and the second reactor catches up in state to the first
 	// reactor. We therefore expect that the second reactor only receives one more evidence, the
 	// one that is still pending and not the evidence that has already been committed.
-	_ = pools[0].ABCIEvidence(height, []types.Evidence{evList[2]})
+	pools[0].Update(sm.State{LastBlockHeight: height}, []types.Evidence{evList[2]})
 	// the first reactor should have the two remaining pending evidence
 	require.EqualValues(t, uint32(2), pools[0].Size())
 
 	// now update the state of the second reactor
-	pools[1].Update(sm.State{LastBlockHeight: height})
+	pools[1].Update(sm.State{LastBlockHeight: height}, types.EvidenceList{})
 	peer = reactors[0].Switch.Peers().List()[0]
 	ps = peerState{height}
 	peer.Set(types.PeerStateKey, ps)
@@ -331,27 +329,39 @@ func exampleVote(t byte) *types.Vote {
 // nolint:lll //ignore line length for tests
 func TestEvidenceVectors(t *testing.T) {
 
-	dupl := types.NewDuplicateVoteEvidence(exampleVote(1), exampleVote(2))
+	val := &types.Validator{
+		Address:     crypto.AddressHash([]byte("validator_address")),
+		VotingPower: 10,
+	}
+
+	valSet := types.NewValidatorSet([]*types.Validator{val})
+
+	dupl := types.NewDuplicateVoteEvidence(
+		exampleVote(1),
+		exampleVote(2),
+		defaultEvidenceTime,
+		valSet,
+	)
 
 	testCases := []struct {
 		testName     string
 		evidenceList []types.Evidence
 		expBytes     string
 	}{
-		{"DuplicateVoteEvidence", []types.Evidence{dupl}, "0af9010af6010a79080210031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb031279080110031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb03"},
+		{"DuplicateVoteEvidence", []types.Evidence{dupl}, "0a85020a82020a79080210031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb031279080110031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb03180a200a2a060880dbaae105"},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 
-		evi := make([]*tmproto.Evidence, len(tc.evidenceList))
+		evi := make([]tmproto.Evidence, len(tc.evidenceList))
 		for i := 0; i < len(tc.evidenceList); i++ {
 			ev, err := types.EvidenceToProto(tc.evidenceList[i])
 			require.NoError(t, err, tc.testName)
-			evi[i] = ev
+			evi[i] = *ev
 		}
 
-		epl := ep.List{
+		epl := tmproto.EvidenceList{
 			Evidence: evi,
 		}
 

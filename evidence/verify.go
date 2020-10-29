@@ -16,7 +16,7 @@ import (
 // - it is from a key who was a validator at the given height
 // - it is internally consistent with state
 // - it was properly signed by the alleged equivocator and meets the individual evidence verification requirements
-func (evpool *Pool) verify(evidence types.Evidence) (*info, error) {
+func (evpool *Pool) verify(evidence types.Evidence) error {
 	var (
 		state          = evpool.State()
 		height         = state.LastBlockHeight
@@ -27,14 +27,18 @@ func (evpool *Pool) verify(evidence types.Evidence) (*info, error) {
 	// verify the time of the evidence
 	blockMeta := evpool.blockStore.LoadBlockMeta(evidence.Height())
 	if blockMeta == nil {
-		return nil, fmt.Errorf("don't have header at height #%d", evidence.Height())
+		return fmt.Errorf("don't have header at height #%d", evidence.Height())
 	}
 	evTime := blockMeta.Header.Time
+	if evidence.Time() != evTime {
+		return fmt.Errorf("evidence has a different time to the block it is associated with (%v != %v)",
+			evidence.Time(), evTime)
+	}
 	ageDuration := state.LastBlockTime.Sub(evTime)
 
 	// check that the evidence hasn't expired
 	if ageDuration > evidenceParams.MaxAgeDuration && ageNumBlocks > evidenceParams.MaxAgeNumBlocks {
-		return nil, fmt.Errorf(
+		return fmt.Errorf(
 			"evidence from height %d (created at: %v) is too old; min height is %d and evidence can not be older than %v",
 			evidence.Height(),
 			evTime,
@@ -48,61 +52,57 @@ func (evpool *Pool) verify(evidence types.Evidence) (*info, error) {
 	case *types.DuplicateVoteEvidence:
 		valSet, err := evpool.stateDB.LoadValidators(evidence.Height())
 		if err != nil {
-			return nil, err
+			return err
 		}
-		err = VerifyDuplicateVote(ev, state.ChainID, valSet)
-		if err != nil {
-			return nil, fmt.Errorf("verifying duplicate vote evidence: %w", err)
-		}
-
-		_, val := valSet.GetByAddress(ev.VoteA.ValidatorAddress)
-
-		return &info{
-			Evidence:         evidence,
-			Time:             evTime,
-			Validators:       []*types.Validator{val}, // just a single validator for duplicate vote evidence
-			TotalVotingPower: valSet.TotalVotingPower(),
-		}, nil
+		return VerifyDuplicateVote(ev, state.ChainID, valSet)
 
 	case *types.LightClientAttackEvidence:
 		commonHeader, err := getSignedHeader(evpool.blockStore, evidence.Height())
 		if err != nil {
-			return nil, err
+			return err
 		}
 		commonVals, err := evpool.stateDB.LoadValidators(evidence.Height())
 		if err != nil {
-			return nil, err
+			return err
 		}
 		trustedHeader := commonHeader
 		// in the case of lunatic the trusted header is different to the common header
 		if evidence.Height() != ev.ConflictingBlock.Height {
 			trustedHeader, err = getSignedHeader(evpool.blockStore, ev.ConflictingBlock.Height)
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
 
 		err = VerifyLightClientAttack(ev, commonHeader, trustedHeader, commonVals, state.LastBlockTime,
 			state.ConsensusParams.Evidence.MaxAgeDuration)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		// find out what type of attack this was and thus extract the malicious validators. Note in the case of an
 		// Amnesia attack we don't have any malicious validators.
-		validators, attackType := getMaliciousValidators(ev, commonVals, trustedHeader)
-		totalVotingPower := ev.ConflictingBlock.ValidatorSet.TotalVotingPower()
-		if attackType == lunaticType {
-			totalVotingPower = commonVals.TotalVotingPower()
+		validators := getMaliciousValidators(ev, commonVals, trustedHeader)
+		// ensure this matches the validators that are listed in the evidence. They should be in the same order as
+		// that of the commit.
+
+		if len(validators) != len(ev.ByzantineValidators) {
+			return fmt.Errorf("expected %d byzantine validators from evidence but got %d",
+				len(validators), len(ev.ByzantineValidators))
 		}
 
-		return &info{
-			Evidence:         evidence,
-			Time:             evTime,
-			Validators:       validators,
-			TotalVotingPower: totalVotingPower,
-		}, nil
+		for idx, val := range validators {
+			if !bytes.Equal(ev.ByzantineValidators[idx].Address, val.Address) {
+				return fmt.Errorf("evidence contained a different byzantine validator address to the one we were expecting."+"Expected %v, got %v", val.Address, ev.ByzantineValidators[idx].Address)
+			}
+			if ev.ByzantineValidators[idx].VotingPower != val.VotingPower {
+				return fmt.Errorf("evidence contained a byzantine validator with a different power to the one we were expecting."+
+					"Expected %d, got %d", val.VotingPower, ev.ByzantineValidators[idx].VotingPower)
+			}
+		}
+
+		return nil
 	default:
-		return nil, fmt.Errorf("unrecognized evidence type: %T", evidence)
+		return fmt.Errorf("unrecognized evidence type: %T", evidence)
 	}
 }
 
@@ -132,6 +132,11 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, t
 			e.ConflictingBlock.Height, e.ConflictingBlock.Commit); err != nil {
 			return fmt.Errorf("invalid commit from conflicting block: %w", err)
 		}
+	}
+
+	if e.TotalVotingPower != commonVals.TotalVotingPower() {
+		return fmt.Errorf("total voting power between the evidence and out validator set doesn't match (%d != %d)",
+			e.TotalVotingPower, commonVals.TotalVotingPower())
 	}
 
 	if bytes.Equal(trustedHeader.Hash(), e.ConflictingBlock.Hash()) {
@@ -186,6 +191,17 @@ func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet 
 		return fmt.Errorf("address (%X) doesn't match pubkey (%v - %X)",
 			addr, pubKey, pubKey.Address())
 	}
+
+	// validator voting power and total voting power must match
+	if val.VotingPower != e.ValidatorPower {
+		return fmt.Errorf("validator power between evidence and our validator set doesn't match (%d != %d)",
+			e.ValidatorPower, val.VotingPower)
+	}
+	if valSet.TotalVotingPower() != e.TotalVotingPower {
+		return fmt.Errorf("total voting power between the evidence and out validator set doesn't match (%d != %d)",
+			e.TotalVotingPower, valSet.TotalVotingPower())
+	}
+
 	va := e.VoteA.ToProto()
 	vb := e.VoteB.ToProto()
 	// Signatures must be valid
@@ -217,7 +233,7 @@ func getSignedHeader(blockStore BlockStore, height int64) (*types.SignedHeader, 
 // getMaliciousValidators finds out what style of attack LightClientAttackEvidence was and then works out who
 // the malicious validators were and returns them.
 func getMaliciousValidators(evidence *types.LightClientAttackEvidence, commonVals *types.ValidatorSet,
-	trusted *types.SignedHeader) ([]*types.Validator, lightClientAttackType) {
+	trusted *types.SignedHeader) []*types.Validator {
 	var validators []*types.Validator
 	// First check if the header is invalid. This means that it is a lunatic attack and therefore we take the
 	// validators who are in the commonVals and voted for the lunatic header
@@ -234,7 +250,7 @@ func getMaliciousValidators(evidence *types.LightClientAttackEvidence, commonVal
 			}
 			validators = append(validators, val)
 		}
-		return validators, lunaticType
+		return validators
 		// Next, check to see if it is an equivocation attack and both commits are in the same round. If this is the
 		// case then we take the validators from the conflicting light block validator set that voted in both headers.
 	} else if trusted.Commit.Round == evidence.ConflictingBlock.Commit.Round {
@@ -254,13 +270,13 @@ func getMaliciousValidators(evidence *types.LightClientAttackEvidence, commonVal
 			_, val := evidence.ConflictingBlock.ValidatorSet.GetByAddress(sigA.ValidatorAddress)
 			validators = append(validators, val)
 		}
-		return validators, equivocationType
+		return validators
 
 	}
 	// if the rounds are different then this is an amnesia attack. Unfortunately, given the nature of the attack,
 	// we aren't able yet to deduce which are malicious validators and which are not hence we return an
 	// empty validator set.
-	return validators, amnesiaType
+	return validators
 }
 
 // isInvalidHeader takes a trusted header and matches it againt a conflicting header

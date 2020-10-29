@@ -265,7 +265,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	for currentBytes <= maxEvidenceBytes {
 		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
 		currentBytes += int64(len(ev.Bytes()))
-		err := evidencePool.AddEvidenceFromConsensus(ev, time.Now(), state.Validators)
+		err := evidencePool.AddEvidenceFromConsensus(ev.VoteA, ev.VoteB, time.Now(), state.Validators)
 		require.NoError(t, err)
 	}
 

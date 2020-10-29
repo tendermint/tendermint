@@ -9,7 +9,6 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/evidence"
@@ -39,8 +38,7 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 	conflictingHeader := makeHeaderRandom(10)
 	conflictingHeader.ValidatorsHash = conflictingVals.Hash()
 
-	// we are simulating a duplicate vote attack where all the validators in the conflictingVals set
-	// vote twice
+	// we are simulating a light client attack
 	blockID := makeBlockID(conflictingHeader.Hash(), 1000, []byte("partshash"))
 	voteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
 	commit, err := types.MakeCommit(blockID, 10, 1, voteSet, conflictingPrivVals, defaultEvidenceTime)
@@ -104,28 +102,6 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 
 	pendingEvs, _ := pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
 	assert.Equal(t, 1, len(pendingEvs))
-
-	pubKey, err := newPrivVal.GetPubKey()
-	require.NoError(t, err)
-	lastCommit := makeCommit(state.LastBlockHeight, pubKey.Address())
-	block := types.MakeBlock(state.LastBlockHeight, []types.Tx{}, lastCommit, []types.Evidence{ev})
-
-	abciEv := pool.ABCIEvidence(block.Height, block.Evidence.Evidence)
-	expectedAbciEv := make([]abci.Evidence, len(commonVals.Validators))
-
-	// we expect evidence to be made for all validators in the common validator set
-	for idx, val := range commonVals.Validators {
-		ev := abci.Evidence{
-			Type:             abci.EvidenceType_LIGHT_CLIENT_ATTACK,
-			Validator:        types.TM2PB.Validator(val),
-			Height:           commonHeader.Height,
-			Time:             commonHeader.Time,
-			TotalVotingPower: commonVals.TotalVotingPower(),
-		}
-		expectedAbciEv[idx] = ev
-	}
-
-	assert.Equal(t, expectedAbciEv, abciEv)
 }
 
 func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
@@ -208,31 +184,6 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 
 	pendingEvs, _ := pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
 	assert.Equal(t, 1, len(pendingEvs))
-
-	pubKey, err := conflictingPrivVals[0].GetPubKey()
-	require.NoError(t, err)
-	lastCommit := makeCommit(state.LastBlockHeight, pubKey.Address())
-	block := types.MakeBlock(state.LastBlockHeight, []types.Tx{}, lastCommit, []types.Evidence{ev})
-
-	abciEv := pool.ABCIEvidence(block.Height, block.Evidence.Evidence)
-	expectedAbciEv := make([]abci.Evidence, len(conflictingVals.Validators)-1)
-
-	// we expect evidence to be made for all validators except the last one
-	for idx, val := range conflictingVals.Validators {
-		if idx == 4 { // skip the last validator
-			continue
-		}
-		ev := abci.Evidence{
-			Type:             abci.EvidenceType_LIGHT_CLIENT_ATTACK,
-			Validator:        types.TM2PB.Validator(val),
-			Height:           ev.ConflictingBlock.Height,
-			Time:             ev.ConflictingBlock.Time,
-			TotalVotingPower: ev.ConflictingBlock.ValidatorSet.TotalVotingPower(),
-		}
-		expectedAbciEv[idx] = ev
-	}
-
-	assert.Equal(t, expectedAbciEv, abciEv)
 }
 
 func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
@@ -305,19 +256,6 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 
 	pendingEvs, _ := pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
 	assert.Equal(t, 1, len(pendingEvs))
-
-	pubKey, err := conflictingPrivVals[0].GetPubKey()
-	require.NoError(t, err)
-	lastCommit := makeCommit(state.LastBlockHeight, pubKey.Address())
-	block := types.MakeBlock(state.LastBlockHeight, []types.Tx{}, lastCommit, []types.Evidence{ev})
-
-	abciEv := pool.ABCIEvidence(block.Height, block.Evidence.Evidence)
-	// as we are unable to find out which subset of validators in the commit were malicious, no information
-	// is sent to the application. We expect the array to be empty
-	emptyEvidenceBlock := types.MakeBlock(state.LastBlockHeight, []types.Tx{}, lastCommit, []types.Evidence{})
-	expectedAbciEv := pool.ABCIEvidence(emptyEvidenceBlock.Height, emptyEvidenceBlock.Evidence.Evidence)
-
-	assert.Equal(t, expectedAbciEv, abciEv)
 }
 
 type voteData struct {

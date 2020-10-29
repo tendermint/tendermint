@@ -11,7 +11,6 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/log"
@@ -148,13 +147,13 @@ func TestAddEvidenceFromConsensus(t *testing.T) {
 	pool, val := defaultTestPool(height)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
 	valSet := types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(2)})
-	err := pool.AddEvidenceFromConsensus(ev, defaultEvidenceTime, valSet)
+	err := pool.AddEvidenceFromConsensus(ev.VoteA, ev.VoteB, defaultEvidenceTime, valSet)
 	assert.NoError(t, err)
 	next := pool.EvidenceFront()
 	assert.Equal(t, ev, next.Value.(types.Evidence))
 
 	// shouldn't be able to submit the same evidence twice
-	err = pool.AddEvidenceFromConsensus(ev, defaultEvidenceTime.Add(-1*time.Second),
+	err = pool.AddEvidenceFromConsensus(ev.VoteA, ev.VoteB, defaultEvidenceTime.Add(-1*time.Second),
 		types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(3)}))
 	assert.NoError(t, err)
 	evs, _ := pool.PendingEvidence(defaultEvidenceMaxBytes)
@@ -180,22 +179,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	err = pool.CheckEvidence(types.EvidenceList{ev})
 	require.NoError(t, err)
 
-	byzVals := pool.ABCIEvidence(block.Height, block.Evidence.Evidence)
-	expectedByzVals := []abci.Evidence{
-		{
-			Type:             abci.EvidenceType_DUPLICATE_VOTE,
-			Validator:        types.TM2PB.Validator(val.ExtractIntoValidator(10)),
-			Height:           height,
-			Time:             defaultEvidenceTime.Add(time.Duration(height) * time.Minute),
-			TotalVotingPower: 10,
-		},
-	}
-	assert.Equal(t, expectedByzVals, byzVals)
-	evList, _ := pool.PendingEvidence(defaultEvidenceMaxBytes)
-	assert.Equal(t, 1, len(evList))
-
-	pool.Update(state)
-
+	pool.Update(state, block.Evidence.Evidence)
 	// a) Update marks evidence as committed so pending evidence should be empty
 	evList, evSize := pool.PendingEvidence(defaultEvidenceMaxBytes)
 	assert.Empty(t, evList)
@@ -206,8 +190,6 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Equal(t, "evidence was already committed", err.(*types.ErrInvalidEvidence).Reason.Error())
 	}
-
-	assert.Empty(t, pool.ABCIEvidence(height, []types.Evidence{}))
 }
 
 func TestVerifyPendingEvidencePasses(t *testing.T) {

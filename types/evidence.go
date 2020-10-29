@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -18,11 +19,13 @@ import (
 // Evidence represents any provable malicious activity by a validator.
 // Verification logic for each evidence is part of the evidence module.
 type Evidence interface {
-	Height() int64        // height of the infraction
-	Bytes() []byte        // bytes which comprise the evidence
-	Hash() []byte         // hash of the evidence
-	ValidateBasic() error // basic consistency check
-	String() string       // string format of the evidence
+	ABCI() []abci.Evidence // forms individual evidence to be sent to the application
+	Bytes() []byte         // bytes which comprise the evidence
+	Hash() []byte          // hash of the evidence
+	Height() int64         // height of the infraction
+	String() string        // string format of the evidence
+	Time() time.Time       // time of the infraction
+	ValidateBasic() error  // basic consistency check
 }
 
 //--------------------------------------------------------------------------------------
@@ -32,17 +35,27 @@ type Evidence interface {
 type DuplicateVoteEvidence struct {
 	VoteA *Vote `json:"vote_a"`
 	VoteB *Vote `json:"vote_b"`
+
+	// abci specific information
+	TotalVotingPower int64
+	ValidatorPower   int64
+	time             time.Time
 }
 
 var _ Evidence = &DuplicateVoteEvidence{}
 
 // NewDuplicateVoteEvidence creates DuplicateVoteEvidence with right ordering given
 // two conflicting votes. If one of the votes is nil, evidence returned is nil as well
-func NewDuplicateVoteEvidence(vote1, vote2 *Vote) *DuplicateVoteEvidence {
+func NewDuplicateVoteEvidence(vote1, vote2 *Vote, time time.Time, valSet *ValidatorSet) *DuplicateVoteEvidence {
 	var voteA, voteB *Vote
-	if vote1 == nil || vote2 == nil {
+	if vote1 == nil || vote2 == nil || valSet == nil {
 		return nil
 	}
+	idx, val := valSet.GetByAddress(vote1.ValidatorAddress)
+	if idx == -1 {
+		return nil
+	}
+
 	if strings.Compare(vote1.BlockID.Key(), vote2.BlockID.Key()) == -1 {
 		voteA = vote1
 		voteB = vote2
@@ -51,19 +64,26 @@ func NewDuplicateVoteEvidence(vote1, vote2 *Vote) *DuplicateVoteEvidence {
 		voteB = vote1
 	}
 	return &DuplicateVoteEvidence{
-		VoteA: voteA,
-		VoteB: voteB,
+		VoteA:            voteA,
+		VoteB:            voteB,
+		TotalVotingPower: valSet.TotalVotingPower(),
+		ValidatorPower:   val.VotingPower,
+		time:             time,
 	}
 }
 
-// String returns a string representation of the evidence.
-func (dve *DuplicateVoteEvidence) String() string {
-	return fmt.Sprintf("DuplicateVoteEvidence{VoteA: %v, VoteB: %v}", dve.VoteA, dve.VoteB)
-}
-
-// Height returns the height this evidence refers to.
-func (dve *DuplicateVoteEvidence) Height() int64 {
-	return dve.VoteA.Height
+// ABCI returns the application relevant representation of the evidence
+func (dve *DuplicateVoteEvidence) ABCI() []abci.Evidence {
+	return []abci.Evidence{{
+		Type: abci.EvidenceType_DUPLICATE_VOTE,
+		Validator: abci.Validator{
+			Address: dve.VoteA.ValidatorAddress,
+			Power:   dve.ValidatorPower,
+		},
+		Height:           dve.VoteA.Height,
+		Time:             dve.time,
+		TotalVotingPower: dve.TotalVotingPower,
+	}}
 }
 
 // Bytes returns the proto-encoded evidence as a byte array.
@@ -80,6 +100,21 @@ func (dve *DuplicateVoteEvidence) Bytes() []byte {
 // Hash returns the hash of the evidence.
 func (dve *DuplicateVoteEvidence) Hash() []byte {
 	return tmhash.Sum(dve.Bytes())
+}
+
+// Height returns the height of the infraction
+func (dve *DuplicateVoteEvidence) Height() int64 {
+	return dve.VoteA.Height
+}
+
+// String returns a string representation of the evidence.
+func (dve *DuplicateVoteEvidence) String() string {
+	return fmt.Sprintf("DuplicateVoteEvidence{VoteA: %v, VoteB: %v}", dve.VoteA, dve.VoteB)
+}
+
+// Time returns the time of the infraction
+func (dve *DuplicateVoteEvidence) Time() time.Time {
+	return dve.time
 }
 
 // ValidateBasic performs basic validation.
@@ -109,8 +144,11 @@ func (dve *DuplicateVoteEvidence) ToProto() *tmproto.DuplicateVoteEvidence {
 	voteB := dve.VoteB.ToProto()
 	voteA := dve.VoteA.ToProto()
 	tp := tmproto.DuplicateVoteEvidence{
-		VoteA: voteA,
-		VoteB: voteB,
+		VoteA:            voteA,
+		VoteB:            voteB,
+		TotalVotingPower: dve.TotalVotingPower,
+		ValidatorPower:   dve.ValidatorPower,
+		Time:             dve.time,
 	}
 	return &tp
 }
@@ -131,7 +169,13 @@ func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*Duplica
 		return nil, err
 	}
 
-	dve := NewDuplicateVoteEvidence(vA, vB)
+	dve := &DuplicateVoteEvidence{
+		VoteA:            vA,
+		VoteB:            vB,
+		TotalVotingPower: pb.TotalVotingPower,
+		ValidatorPower:   pb.ValidatorPower,
+		time:             pb.Time,
+	}
 
 	return dve, dve.ValidateBasic()
 }
@@ -146,15 +190,27 @@ func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*Duplica
 type LightClientAttackEvidence struct {
 	ConflictingBlock *LightBlock
 	CommonHeight     int64
+
+	// abci specific information
+	ByzantineValidators []Validator
+	TotalVotingPower    int64
+	time                time.Time
 }
 
 var _ Evidence = &LightClientAttackEvidence{}
 
-// Height returns the last height at which the primary provider and witness provider had the same header.
-// We use this as the height of the infraction rather than the actual conflicting header because we know
-// that the malicious validators were bonded at this height which is important for evidence expiry
-func (l *LightClientAttackEvidence) Height() int64 {
-	return l.CommonHeight
+func (l *LightClientAttackEvidence) ABCI() []abci.Evidence {
+	abciEv := make([]abci.Evidence, len(l.ByzantineValidators))
+	for idx, byzVal := range l.ByzantineValidators {
+		abciEv[idx] = abci.Evidence{
+			Type:             abci.EvidenceType_LIGHT_CLIENT_ATTACK,
+			Validator:        TM2PB.Validator(&byzVal),
+			Height:           l.Height(),
+			Time:             l.time,
+			TotalVotingPower: l.TotalVotingPower,
+		}
+	}
+	return abciEv
 }
 
 // Bytes returns the proto-encoded evidence as a byte array
@@ -170,10 +226,11 @@ func (l *LightClientAttackEvidence) Bytes() []byte {
 	return bz
 }
 
-// Hash returns the hash of the header and the commonHeight. This is designed to cause hash collisions with evidence
-// that have the same conflicting header and common height but different permutations of validator commit signatures.
-// The reason for this is that we don't want to allow several permutations of the same evidence to be committed on
-// chain. Ideally we commit the header with the most commit signatures but anything greater than 1/3 is sufficient.
+// Hash returns the hash of the header and the commonHeight. This is designed to cause hash collisions
+// with evidence that have the same conflicting header and common height but different permutations
+// of validator commit signatures. The reason for this is that we don't want to allow several
+// permutations of the same evidence to be committed on chain. Ideally we commit the header with the
+// most commit signatures (captures the most byzantine validators) but anything greater than 1/3 is sufficient.
 func (l *LightClientAttackEvidence) Hash() []byte {
 	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutVarint(buf, l.CommonHeight)
@@ -181,6 +238,24 @@ func (l *LightClientAttackEvidence) Hash() []byte {
 	copy(bz[:tmhash.Size-1], l.ConflictingBlock.Hash().Bytes())
 	copy(bz[tmhash.Size:], buf)
 	return tmhash.Sum(bz)
+}
+
+// Height returns the last height at which the primary provider and witness provider had the same header.
+// We use this as the height of the infraction rather than the actual conflicting header because we know
+// that the malicious validators were bonded at this height which is important for evidence expiry
+func (l *LightClientAttackEvidence) Height() int64 {
+	return l.CommonHeight
+}
+
+// String returns a string representation of LightClientAttackEvidence
+func (l *LightClientAttackEvidence) String() string {
+	return fmt.Sprintf("LightClientAttackEvidence{ConflictingBlock: %v, CommonHeight: %d}",
+		l.ConflictingBlock.String(), l.CommonHeight)
+}
+
+// Time returns the time of the common block where the infraction leveraged off.
+func (l *LightClientAttackEvidence) Time() time.Time {
+	return l.time
 }
 
 // ValidateBasic performs basic validation such that the evidence is consistent and can now be used for verification.
@@ -213,12 +288,6 @@ func (l *LightClientAttackEvidence) ValidateBasic() error {
 	return nil
 }
 
-// String returns a string representation of LightClientAttackEvidence
-func (l *LightClientAttackEvidence) String() string {
-	return fmt.Sprintf("LightClientAttackEvidence{ConflictingBlock: %v, CommonHeight: %d}",
-		l.ConflictingBlock.String(), l.CommonHeight)
-}
-
 // ToProto encodes LightClientAttackEvidence to protobuf
 func (l *LightClientAttackEvidence) ToProto() (*tmproto.LightClientAttackEvidence, error) {
 	conflictingBlock, err := l.ConflictingBlock.ToProto()
@@ -226,29 +295,53 @@ func (l *LightClientAttackEvidence) ToProto() (*tmproto.LightClientAttackEvidenc
 		return nil, err
 	}
 
+	byzVals := make([]tmproto.Validator, len(l.ByzantineValidators))
+	for idx, val := range l.ByzantineValidators {
+		valpb, err := val.ToProto()
+		if err != nil {
+			return nil, err
+		}
+		byzVals[idx] = *valpb
+	}
+
 	return &tmproto.LightClientAttackEvidence{
-		ConflictingBlock: conflictingBlock,
-		CommonHeight:     l.CommonHeight,
+		ConflictingBlock:    conflictingBlock,
+		CommonHeight:        l.CommonHeight,
+		ByzantineValidators: byzVals,
+		TotalVotingPower:    l.TotalVotingPower,
+		Time:                l.time,
 	}, nil
 }
 
 // LightClientAttackEvidenceFromProto decodes protobuf
-func LightClientAttackEvidenceFromProto(l *tmproto.LightClientAttackEvidence) (*LightClientAttackEvidence, error) {
-	if l == nil {
+func LightClientAttackEvidenceFromProto(lpb *tmproto.LightClientAttackEvidence) (*LightClientAttackEvidence, error) {
+	if lpb == nil {
 		return nil, errors.New("empty light client attack evidence")
 	}
 
-	conflictingBlock, err := LightBlockFromProto(l.ConflictingBlock)
+	conflictingBlock, err := LightBlockFromProto(lpb.ConflictingBlock)
 	if err != nil {
 		return nil, err
 	}
 
-	le := &LightClientAttackEvidence{
-		ConflictingBlock: conflictingBlock,
-		CommonHeight:     l.CommonHeight,
+	byzVals := make([]Validator, len(lpb.ByzantineValidators))
+	for idx, valpb := range lpb.ByzantineValidators {
+		val, err := ValidatorFromProto(&valpb)
+		if err != nil {
+			return nil, err
+		}
+		byzVals[idx] = *val
 	}
 
-	return le, le.ValidateBasic()
+	l := &LightClientAttackEvidence{
+		ConflictingBlock:    conflictingBlock,
+		CommonHeight:        lpb.CommonHeight,
+		ByzantineValidators: byzVals,
+		TotalVotingPower:    lpb.TotalVotingPower,
+		time:                lpb.Time,
+	}
+
+	return l, l.ValidateBasic()
 }
 
 //------------------------------------------------------------------------------------------
@@ -389,6 +482,7 @@ func NewMockDuplicateVoteEvidence(height int64, time time.Time, chainID string) 
 func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
 	pv PrivValidator, chainID string) *DuplicateVoteEvidence {
 	pubKey, _ := pv.GetPubKey()
+	val := NewValidator(pubKey, 10)
 	voteA := makeMockVote(height, 0, 0, pubKey.Address(), randBlockID(), time)
 	vA := voteA.ToProto()
 	_ = pv.SignVote(chainID, vA)
@@ -397,7 +491,7 @@ func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
 	vB := voteB.ToProto()
 	_ = pv.SignVote(chainID, vB)
 	voteB.Signature = vB.Signature
-	return NewDuplicateVoteEvidence(voteA, voteB)
+	return NewDuplicateVoteEvidence(voteA, voteB, time, NewValidatorSet([]*Validator{val}))
 }
 
 func makeMockVote(height int64, round, index int32, addr Address,

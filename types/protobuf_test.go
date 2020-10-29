@@ -60,26 +60,6 @@ func TestABCIConsensusParams(t *testing.T) {
 	assert.Equal(t, *cp, cp2)
 }
 
-func TestABCIEvidence(t *testing.T) {
-	val := NewMockPV()
-	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
-	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
-	const chainID = "mychain"
-	pubKey, err := val.GetPubKey()
-	require.NoError(t, err)
-	ev := &DuplicateVoteEvidence{
-		VoteA: makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultVoteTime),
-		VoteB: makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, defaultVoteTime),
-	}
-	abciEv := TM2PB.Evidence(
-		ev,
-		NewValidatorSet([]*Validator{NewValidator(pubKey, 10)}),
-	)
-
-	assert.Equal(t, abci.EvidenceType_DUPLICATE_VOTE, abciEv.Type)
-	assert.Equal(t, ev.Height(), abciEv.GetHeight())
-}
-
 type pubKeyEddie struct{}
 
 func (pubKeyEddie) Address() Address                            { return []byte{} }
