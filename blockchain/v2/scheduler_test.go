@@ -418,7 +418,6 @@ func TestScRemovePeer(t *testing.T) {
 					"P1": {height: 10, state: peerStateRemoved},
 					"P2": {height: 11, state: peerStateReady}},
 				allB: []int64{8, 9, 10, 11}},
-			wantErr: true,
 		},
 		{
 			name: "remove Ready peer with blocks requested",
@@ -492,9 +491,7 @@ func TestScRemovePeer(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sc := newTestScheduler(tt.fields)
-			if err := sc.removePeer(tt.args.peerID); (err != nil) != tt.wantErr {
-				t.Errorf("removePeer() wantErr %v, error = %v", tt.wantErr, err)
-			}
+			sc.removePeer(tt.args.peerID)
 			wantSc := newTestScheduler(tt.wantFields)
 			assert.Equal(t, wantSc, sc, "wanted peers %v, got %v", wantSc.peers, sc.peers)
 		})
@@ -1413,13 +1410,13 @@ func TestScHandleBlockResponse(t *testing.T) {
 			name:      "empty scheduler",
 			fields:    scTestParams{},
 			args:      args{event: block6FromP1},
-			wantEvent: scPeerError{peerID: "P1", reason: fmt.Errorf("some error")},
+			wantEvent: noOpEvent{},
 		},
 		{
 			name:      "block from removed peer",
 			fields:    scTestParams{peers: map[string]*scPeer{"P1": {height: 8, state: peerStateRemoved}}},
 			args:      args{event: block6FromP1},
-			wantEvent: scPeerError{peerID: "P1", reason: fmt.Errorf("some error")},
+			wantEvent: noOpEvent{},
 		},
 		{
 			name: "block we haven't asked for",
@@ -1438,7 +1435,7 @@ func TestScHandleBlockResponse(t *testing.T) {
 				pendingTime: map[int64]time.Time{6: now},
 			},
 			args:      args{event: block6FromP1},
-			wantEvent: scPeerError{peerID: "P1", reason: fmt.Errorf("some error")},
+			wantEvent: noOpEvent{},
 		},
 		{
 			name: "block with bad timestamp",
