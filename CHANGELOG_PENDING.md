@@ -10,6 +10,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - CLI/RPC/Config
 
+    - [config/p2p] The `test_fuzz` and `test_fuzz_config` P2P settings have been removed.
+
 - Apps
 
 - P2P Protocol
