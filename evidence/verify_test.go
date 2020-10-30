@@ -30,6 +30,10 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 	conflictingVals, err := types.ValidatorSetFromExistingValidators(append(commonVals.Validators, newVal))
 	require.NoError(t, err)
 	conflictingPrivVals := append(commonPrivVals, newPrivVal)
+	byzVals := make([]types.Validator, 2)
+	for idx, val := range commonVals.Validators {
+		byzVals[idx] = *val
+	}
 
 	commonHeader := makeHeaderRandom(4)
 	commonHeader.Time = defaultEvidenceTime.Add(-1 * time.Hour)
@@ -38,7 +42,7 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 	conflictingHeader := makeHeaderRandom(10)
 	conflictingHeader.ValidatorsHash = conflictingVals.Hash()
 
-	// we are simulating a light client attack
+	// we are simulating a lunatic light client attack
 	blockID := makeBlockID(conflictingHeader.Hash(), 1000, []byte("partshash"))
 	voteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
 	commit, err := types.MakeCommit(blockID, 10, 1, voteSet, conflictingPrivVals, defaultEvidenceTime)
@@ -51,7 +55,10 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 			},
 			ValidatorSet: conflictingVals,
 		},
-		CommonHeight: 4,
+		CommonHeight:        4,
+		TotalVotingPower:    20,
+		ByzantineValidators: byzVals,
+		Timestamp:           defaultEvidenceTime,
 	}
 
 	commonSignedHeader := &types.SignedHeader{

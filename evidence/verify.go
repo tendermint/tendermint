@@ -104,6 +104,7 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 	default:
 		return fmt.Errorf("unrecognized evidence type: %T", evidence)
 	}
+
 }
 
 // VerifyLightClientAttack verifies LightClientAttackEvidence against the state of the full node. This involves
@@ -135,7 +136,7 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, t
 	}
 
 	if e.TotalVotingPower != commonVals.TotalVotingPower() {
-		return fmt.Errorf("total voting power between the evidence and out validator set doesn't match (%d != %d)",
+		return fmt.Errorf("total voting power from the evidence and our validator set does not match (%d != %d)",
 			e.TotalVotingPower, commonVals.TotalVotingPower())
 	}
 
@@ -194,11 +195,11 @@ func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet 
 
 	// validator voting power and total voting power must match
 	if val.VotingPower != e.ValidatorPower {
-		return fmt.Errorf("validator power between evidence and our validator set doesn't match (%d != %d)",
+		return fmt.Errorf("validator power from evidence and our validator set does not match (%d != %d)",
 			e.ValidatorPower, val.VotingPower)
 	}
 	if valSet.TotalVotingPower() != e.TotalVotingPower {
-		return fmt.Errorf("total voting power between the evidence and out validator set doesn't match (%d != %d)",
+		return fmt.Errorf("total voting power from the evidence and our validator set does not match (%d != %d)",
 			e.TotalVotingPower, valSet.TotalVotingPower())
 	}
 

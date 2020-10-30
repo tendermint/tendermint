@@ -127,7 +127,7 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 			if err != nil {
 				panic(err)
 			}
-
+			evR.Logger.Info("Gossiping evidence to peer", "ev", ev, "peer", peer.ID())
 			success := peer.Send(EvidenceChannel, msgBytes)
 			if !success {
 				time.Sleep(peerRetryMessageIntervalMS * time.Millisecond)

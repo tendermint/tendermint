@@ -39,14 +39,14 @@ type DuplicateVoteEvidence struct {
 	// abci specific information
 	TotalVotingPower int64
 	ValidatorPower   int64
-	time             time.Time
+	Timestamp        time.Time
 }
 
 var _ Evidence = &DuplicateVoteEvidence{}
 
 // NewDuplicateVoteEvidence creates DuplicateVoteEvidence with right ordering given
 // two conflicting votes. If one of the votes is nil, evidence returned is nil as well
-func NewDuplicateVoteEvidence(vote1, vote2 *Vote, time time.Time, valSet *ValidatorSet) *DuplicateVoteEvidence {
+func NewDuplicateVoteEvidence(vote1, vote2 *Vote, blockTime time.Time, valSet *ValidatorSet) *DuplicateVoteEvidence {
 	var voteA, voteB *Vote
 	if vote1 == nil || vote2 == nil || valSet == nil {
 		return nil
@@ -68,7 +68,7 @@ func NewDuplicateVoteEvidence(vote1, vote2 *Vote, time time.Time, valSet *Valida
 		VoteB:            voteB,
 		TotalVotingPower: valSet.TotalVotingPower(),
 		ValidatorPower:   val.VotingPower,
-		time:             time,
+		Timestamp:        blockTime,
 	}
 }
 
@@ -81,7 +81,7 @@ func (dve *DuplicateVoteEvidence) ABCI() []abci.Evidence {
 			Power:   dve.ValidatorPower,
 		},
 		Height:           dve.VoteA.Height,
-		Time:             dve.time,
+		Time:             dve.Timestamp,
 		TotalVotingPower: dve.TotalVotingPower,
 	}}
 }
@@ -114,7 +114,7 @@ func (dve *DuplicateVoteEvidence) String() string {
 
 // Time returns the time of the infraction
 func (dve *DuplicateVoteEvidence) Time() time.Time {
-	return dve.time
+	return dve.Timestamp
 }
 
 // ValidateBasic performs basic validation.
@@ -148,7 +148,7 @@ func (dve *DuplicateVoteEvidence) ToProto() *tmproto.DuplicateVoteEvidence {
 		VoteB:            voteB,
 		TotalVotingPower: dve.TotalVotingPower,
 		ValidatorPower:   dve.ValidatorPower,
-		Time:             dve.time,
+		Timestamp:        dve.Timestamp,
 	}
 	return &tp
 }
@@ -174,7 +174,7 @@ func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*Duplica
 		VoteB:            vB,
 		TotalVotingPower: pb.TotalVotingPower,
 		ValidatorPower:   pb.ValidatorPower,
-		time:             pb.Time,
+		Timestamp:        pb.Timestamp,
 	}
 
 	return dve, dve.ValidateBasic()
@@ -194,11 +194,12 @@ type LightClientAttackEvidence struct {
 	// abci specific information
 	ByzantineValidators []Validator
 	TotalVotingPower    int64
-	time                time.Time
+	Timestamp           time.Time
 }
 
 var _ Evidence = &LightClientAttackEvidence{}
 
+// ABCI forms an array of abci evidence for each byzantine validator
 func (l *LightClientAttackEvidence) ABCI() []abci.Evidence {
 	abciEv := make([]abci.Evidence, len(l.ByzantineValidators))
 	for idx, byzVal := range l.ByzantineValidators {
@@ -206,7 +207,7 @@ func (l *LightClientAttackEvidence) ABCI() []abci.Evidence {
 			Type:             abci.EvidenceType_LIGHT_CLIENT_ATTACK,
 			Validator:        TM2PB.Validator(&byzVal),
 			Height:           l.Height(),
-			Time:             l.time,
+			Time:             l.Timestamp,
 			TotalVotingPower: l.TotalVotingPower,
 		}
 	}
@@ -255,7 +256,7 @@ func (l *LightClientAttackEvidence) String() string {
 
 // Time returns the time of the common block where the infraction leveraged off.
 func (l *LightClientAttackEvidence) Time() time.Time {
-	return l.time
+	return l.Timestamp
 }
 
 // ValidateBasic performs basic validation such that the evidence is consistent and can now be used for verification.
@@ -309,7 +310,7 @@ func (l *LightClientAttackEvidence) ToProto() (*tmproto.LightClientAttackEvidenc
 		CommonHeight:        l.CommonHeight,
 		ByzantineValidators: byzVals,
 		TotalVotingPower:    l.TotalVotingPower,
-		Time:                l.time,
+		Timestamp:           l.Timestamp,
 	}, nil
 }
 
@@ -338,7 +339,7 @@ func LightClientAttackEvidenceFromProto(lpb *tmproto.LightClientAttackEvidence) 
 		CommonHeight:        lpb.CommonHeight,
 		ByzantineValidators: byzVals,
 		TotalVotingPower:    lpb.TotalVotingPower,
-		time:                lpb.Time,
+		Timestamp:           lpb.Timestamp,
 	}
 
 	return l, l.ValidateBasic()
@@ -479,6 +480,7 @@ func NewMockDuplicateVoteEvidence(height int64, time time.Time, chainID string) 
 	return NewMockDuplicateVoteEvidenceWithValidator(height, time, val, chainID)
 }
 
+// assumes voting power to be 10 and validator to be the only one in the set
 func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
 	pv PrivValidator, chainID string) *DuplicateVoteEvidence {
 	pubKey, _ := pv.GetPubKey()
