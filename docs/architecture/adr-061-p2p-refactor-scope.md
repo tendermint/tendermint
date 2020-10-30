@@ -2,7 +2,7 @@
 
 ## Changelog
 
-- 2020-10-29: Initial draft (@erikgrinaker)
+- 2020-10-30: Initial version (@erikgrinaker)
 
 ## Context
 
