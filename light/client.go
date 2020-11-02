@@ -123,7 +123,7 @@ type Client struct {
 	providerMutex tmsync.Mutex
 	// Primary provider of new headers.
 	primary provider.Provider
-	// See Witnesses option
+	// Providers used to "witness" new headers.
 	witnesses []provider.Provider
 
 	// Where trusted light blocks are stored.
@@ -218,7 +218,7 @@ func NewClientFromTrustedStore(
 	}
 
 	// Validate the number of witnesses.
-	if len(c.witnesses) < 1 && c.verificationMode == skipping {
+	if len(c.witnesses) < 1 {
 		return nil, errNoWitnesses{}
 	}
 
@@ -363,10 +363,8 @@ func (c *Client) initializeWithTrustOptions(ctx context.Context, options TrustOp
 	}
 
 	// 3) Cross-verify with witnesses to ensure everybody has the same state.
-	if len(c.witnesses) > 0 {
-		if err := c.compareFirstHeaderWithWitnesses(ctx, l.SignedHeader); err != nil {
-			return err
-		}
+	if err := c.compareFirstHeaderWithWitnesses(ctx, l.SignedHeader); err != nil {
+		return err
 	}
 
 	// 4) Persist both of them and continue.
@@ -443,7 +441,7 @@ func (c *Client) Update(ctx context.Context, now time.Time) (*types.LightBlock, 
 }
 
 // VerifyLightBlockAtHeight fetches the light block at the given height
-// and calls verifyLightBlock. It returns the block immediately if it exists in
+// and verifies it. It returns the block immediately if it exists in
 // the trustedStore (no verification is needed).
 //
 // height must be > 0.
@@ -1003,6 +1001,10 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.SignedHeader) error {
 	compareCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	if len(c.witnesses) < 1 {
+		return errNoWitnesses{}
+	}
 
 	errc := make(chan error, len(c.witnesses))
 	for i, witness := range c.witnesses {
