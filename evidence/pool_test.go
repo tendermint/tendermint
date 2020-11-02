@@ -82,9 +82,10 @@ func TestEvidencePoolBasic(t *testing.T) {
 	next := pool.EvidenceFront()
 	assert.Equal(t, ev, next.Value.(types.Evidence))
 
-	evs, size = pool.PendingEvidence(defaultEvidenceMaxBytes)
+	var evidenceBytes int64 = 372
+	evs, size = pool.PendingEvidence(evidenceBytes)
 	assert.Equal(t, 1, len(evs))
-	assert.Equal(t, int64(369), size) // check that the size of the single evidence in bytes is correct
+	assert.Equal(t, evidenceBytes, size) // check that the size of the single evidence in bytes is correct
 
 	// shouldn't be able to add evidence twice
 	assert.NoError(t, pool.AddEvidence(ev))
@@ -170,7 +171,8 @@ func TestEvidencePoolUpdate(t *testing.T) {
 		val, evidenceChainID)
 	err := pool.AddEvidence(prunedEv)
 	require.NoError(t, err)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(21*time.Minute), val, evidenceChainID)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(21*time.Minute),
+		val, evidenceChainID)
 	lastCommit := makeCommit(height, val.PrivKey.PubKey().Address())
 	block := types.MakeBlock(height+1, []types.Tx{}, lastCommit, []types.Evidence{ev})
 	// update state (partially)
@@ -195,7 +197,8 @@ func TestEvidencePoolUpdate(t *testing.T) {
 func TestVerifyPendingEvidencePasses(t *testing.T) {
 	var height int64 = 1
 	pool, val := defaultTestPool(height)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(1*time.Minute), val, evidenceChainID)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(1*time.Minute),
+		val, evidenceChainID)
 	err := pool.AddEvidence(ev)
 	require.NoError(t, err)
 
@@ -206,7 +209,8 @@ func TestVerifyPendingEvidencePasses(t *testing.T) {
 func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 	var height int64 = 1
 	pool, val := defaultTestPool(height)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(1*time.Minute), val, evidenceChainID)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(1*time.Minute),
+		val, evidenceChainID)
 	err := pool.CheckEvidence(types.EvidenceList{ev, ev})
 	if assert.Error(t, err) {
 		assert.Equal(t, "duplicate evidence", err.(*types.ErrInvalidEvidence).Reason.Error())
@@ -260,7 +264,8 @@ func TestCheckEvidenceWithLightClientAttack(t *testing.T) {
 
 	trustedBlockID := makeBlockID(trustedHeader.Hash(), 1000, []byte("partshash"))
 	trustedVoteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), conflictingVals)
-	trustedCommit, err := types.MakeCommit(trustedBlockID, height, 1, trustedVoteSet, conflictingPrivVals, defaultEvidenceTime)
+	trustedCommit, err := types.MakeCommit(trustedBlockID, height, 1, trustedVoteSet, conflictingPrivVals,
+		defaultEvidenceTime)
 	require.NoError(t, err)
 
 	state := sm.State{
@@ -269,11 +274,11 @@ func TestCheckEvidenceWithLightClientAttack(t *testing.T) {
 		ConsensusParams: *types.DefaultConsensusParams(),
 	}
 	stateStore := &smmocks.Store{}
-	stateStore.On("LoadValidators", int64(height)).Return(conflictingVals, nil)
+	stateStore.On("LoadValidators", height).Return(conflictingVals, nil)
 	stateStore.On("Load").Return(state, nil)
 	blockStore := &mocks.BlockStore{}
-	blockStore.On("LoadBlockMeta", int64(height)).Return(&types.BlockMeta{Header: *trustedHeader})
-	blockStore.On("LoadBlockCommit", int64(height)).Return(trustedCommit)
+	blockStore.On("LoadBlockMeta", height).Return(&types.BlockMeta{Header: *trustedHeader})
+	blockStore.On("LoadBlockCommit", height).Return(trustedCommit)
 
 	pool, err := evidence.NewPool(dbm.NewMemDB(), stateStore, blockStore)
 	require.NoError(t, err)

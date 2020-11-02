@@ -230,13 +230,13 @@ func (c *Client) examineConflictingHeaderAgainstTrace(
 
 }
 
-// newLightClientAttackEvidence determines the type of attack and then forms the evidence filling out 
+// newLightClientAttackEvidence determines the type of attack and then forms the evidence filling out
 // all the fields such that it is ready to be sent to a full node.
 func newLightClientAttackEvidence(conflicted, trusted, common *types.LightBlock) *types.LightClientAttackEvidence {
 	ev := &types.LightClientAttackEvidence{ConflictingBlock: conflicted}
 	// if this is an equivocation or amnesia attack, i.e. the validator sets are the same, then we
-			// return the height of the conflicting block else if it is a lunatic attack and the validator sets
-			// are not the same then we send the height of the common header.
+	// return the height of the conflicting block else if it is a lunatic attack and the validator sets
+	// are not the same then we send the height of the common header.
 	if ev.ConflictingHeaderIsInvalid(trusted.Header) {
 		ev.CommonHeight = common.Height
 		ev.Timestamp = common.Time

@@ -269,6 +269,11 @@ func TestCreateProposalBlock(t *testing.T) {
 		require.NoError(t, err)
 	}
 
+	evList, size := evidencePool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
+	require.Less(t, size, state.ConsensusParams.Evidence.MaxBytes+1)
+	evData := &types.EvidenceData{Evidence: evList}
+	require.EqualValues(t, size, evData.ByteSize())
+
 	// fill the mempool with more txs
 	// than can fit in a block
 	txLength := 100

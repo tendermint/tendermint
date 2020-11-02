@@ -154,7 +154,8 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 
 // AddEvidenceFromConsensus should be exposed only to the consensus so it can add evidence to the pool
 // directly without the need for verification.
-func (evpool *Pool) AddEvidenceFromConsensus(voteA, voteB *types.Vote, time time.Time, valSet *types.ValidatorSet) error {
+func (evpool *Pool) AddEvidenceFromConsensus(voteA, voteB *types.Vote, time time.Time,
+	valSet *types.ValidatorSet) error {
 
 	ev := types.NewDuplicateVoteEvidence(voteA, voteB, time, valSet)
 	if ev == nil {
@@ -220,85 +221,6 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 	return nil
 }
 
-// ABCIEvidence processes all the evidence in the block, marking it as committed and removing it
-// from the pending database. It then forms the individual abci evidence that will be passed back to
-// the application.
-// func (evpool *Pool) ABCIEvidence(height int64, evidence []types.Evidence) []abci.Evidence {
-// 	// make a map of committed evidence to remove from the clist
-// 	blockEvidenceMap := make(map[string]struct{}, len(evidence))
-// 	abciEvidence := make([]abci.Evidence, 0)
-// 	for _, ev := range evidence {
-
-// 		// get entire evidence info from pending list
-// 		infoBytes, err := evpool.evidenceStore.Get(keyPending(ev))
-// 		if err != nil {
-// 			evpool.logger.Error("Unable to retrieve evidence to pass to ABCI. "+
-// 				"Evidence pool should have seen this evidence before",
-// 				"evidence", ev, "err", err)
-// 			continue
-// 		}
-// 		var infoProto evproto.Info
-// 		err = infoProto.Unmarshal(infoBytes)
-// 		if err != nil {
-// 			evpool.logger.Error("Decoding evidence info failed", "err", err, "height", ev.Height(), "hash", ev.Hash())
-// 			continue
-// 		}
-// 		evInfo, err := infoFromProto(&infoProto)
-// 		if err != nil {
-// 			evpool.logger.Error("Converting evidence info from proto failed", "err", err, "height", ev.Height(),
-// 				"hash", ev.Hash())
-// 			continue
-// 		}
-
-// 		var evType abci.EvidenceType
-// 		switch ev.(type) {
-// 		case *types.DuplicateVoteEvidence:
-// 			evType = abci.EvidenceType_DUPLICATE_VOTE
-// 		case *types.LightClientAttackEvidence:
-// 			evType = abci.EvidenceType_LIGHT_CLIENT_ATTACK
-// 		default:
-// 			evpool.logger.Error("Unknown evidence type", "T", reflect.TypeOf(ev))
-// 			continue
-// 		}
-// 		for _, val := range evInfo.Validators {
-// 			abciEv := abci.Evidence{
-// 				Type:             evType,
-// 				Validator:        types.TM2PB.Validator(val),
-// 				Height:           ev.Height(),
-// 				Time:             evInfo.Time,
-// 				TotalVotingPower: evInfo.TotalVotingPower,
-// 			}
-// 			abciEvidence = append(abciEvidence, abciEv)
-// 			evpool.logger.Info("Created ABCI evidence", "ev", abciEv)
-// 		}
-
-// 		// we can now remove the evidence from the pending list and the clist that we use for gossiping
-// 		evpool.removePendingEvidence(ev)
-// 		blockEvidenceMap[evMapKey(ev)] = struct{}{}
-
-// 		// Add evidence to the committed list
-// 		// As the evidence is stored in the block store we only need to record the height that it was saved at.
-// 		key := keyCommitted(ev)
-
-// 		h := gogotypes.Int64Value{Value: height}
-// 		evBytes, err := proto.Marshal(&h)
-// 		if err != nil {
-// 			panic(err)
-// 		}
-
-// 		if err := evpool.evidenceStore.Set(key, evBytes); err != nil {
-// 			evpool.logger.Error("Unable to add committed evidence", "err", err)
-// 		}
-// 	}
-
-// 	// remove committed evidence from the clist
-// 	if len(blockEvidenceMap) != 0 {
-// 		evpool.removeEvidenceFromList(blockEvidenceMap)
-// 	}
-
-// 	return abciEvidence
-// }
-
 // EvidenceFront goes to the first evidence in the clist
 func (evpool *Pool) EvidenceFront() *clist.CElement {
 	return evpool.evidenceList.Front()
@@ -314,6 +236,7 @@ func (evpool *Pool) SetLogger(l log.Logger) {
 	evpool.logger = l
 }
 
+// Size returns the number of evidence in the pool.
 func (evpool *Pool) Size() uint32 {
 	return atomic.LoadUint32(&evpool.evidenceSize)
 }
@@ -476,22 +399,24 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxBytes int64) ([]types.Eviden
 		return nil, totalSize, fmt.Errorf("database error: %v", err)
 	}
 	defer iter.Close()
+	var protoOverheadBytes int64 = 3
 	for ; iter.Valid(); iter.Next() {
 		var evpb tmproto.Evidence
 		err := evpb.Unmarshal(iter.Value())
 		if err != nil {
 			return evidence, totalSize, err
 		}
-		totalSize += int64(evpb.Size())
+		evSize := int64(evpb.Size())
+		if maxBytes != -1 && totalSize+evSize+protoOverheadBytes > maxBytes {
+			return evidence, totalSize, nil
+		}
 
 		ev, err := types.EvidenceFromProto(&evpb)
 		if err != nil {
 			return nil, totalSize, err
 		}
 
-		if maxBytes != -1 && totalSize > maxBytes {
-			return evidence, totalSize, nil
-		}
+		totalSize += (evSize + protoOverheadBytes)
 
 		evidence = append(evidence, ev)
 	}

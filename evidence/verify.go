@@ -73,7 +73,7 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 				return err
 			}
 		}
-		
+
 		err = VerifyLightClientAttack(ev, commonHeader, trustedHeader, commonVals, state.LastBlockTime,
 			state.ConsensusParams.Evidence.MaxAgeDuration)
 		if err != nil {
@@ -91,7 +91,8 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 
 		for idx, val := range validators {
 			if !bytes.Equal(ev.ByzantineValidators[idx].Address, val.Address) {
-				return fmt.Errorf("evidence contained a different byzantine validator address to the one we were expecting."+"Expected %v, got %v", val.Address, ev.ByzantineValidators[idx].Address)
+				return fmt.Errorf("evidence contained a different byzantine validator address to the one we wer expecting."+
+					"Expected %v, got %v", val.Address, ev.ByzantineValidators[idx].Address)
 			}
 			if ev.ByzantineValidators[idx].VotingPower != val.VotingPower {
 				return fmt.Errorf("evidence contained a byzantine validator with a different power to the one we were expecting."+
@@ -241,11 +242,3 @@ func isInvalidHeader(trusted, conflicting *types.Header) bool {
 		!bytes.Equal(trusted.AppHash, conflicting.AppHash) ||
 		!bytes.Equal(trusted.LastResultsHash, conflicting.LastResultsHash)
 }
-
-type lightClientAttackType int
-
-const (
-	lunaticType lightClientAttackType = iota + 1
-	equivocationType
-	amnesiaType
-)

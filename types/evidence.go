@@ -230,7 +230,8 @@ func (l *LightClientAttackEvidence) Bytes() []byte {
 // GetByzantineValidators finds out what style of attack LightClientAttackEvidence was and then works out who
 // the malicious validators were and returns them. This is used both for forming the ByzantineValidators
 // field and for validating that it is correct
-func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *ValidatorSet, trusted *SignedHeader) []Validator{
+func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *ValidatorSet,
+	trusted *SignedHeader) []Validator {
 	var validators []Validator
 	// First check if the header is invalid. This means that it is a lunatic attack and therefore we take the
 	// validators who are in the commonVals and voted for the lunatic header
@@ -280,12 +281,12 @@ func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *Validator
 // to determine whether the conflicting header was the product of a valid state transition
 // or not. If it is then all the deterministic fields of the header should be the same.
 // If not, it is an invalid header and constitutes a lunatic attack.
-func (l* LightClientAttackEvidence) ConflictingHeaderIsInvalid(trustedHeader *Header) bool {
+func (l *LightClientAttackEvidence) ConflictingHeaderIsInvalid(trustedHeader *Header) bool {
 	return !bytes.Equal(trustedHeader.ValidatorsHash, l.ConflictingBlock.ValidatorsHash) ||
-	!bytes.Equal(trustedHeader.NextValidatorsHash, l.ConflictingBlock.NextValidatorsHash) ||
-	!bytes.Equal(trustedHeader.ConsensusHash, l.ConflictingBlock.ConsensusHash) ||
-	!bytes.Equal(trustedHeader.AppHash, l.ConflictingBlock.AppHash) ||
-	!bytes.Equal(trustedHeader.LastResultsHash, l.ConflictingBlock.LastResultsHash)
+		!bytes.Equal(trustedHeader.NextValidatorsHash, l.ConflictingBlock.NextValidatorsHash) ||
+		!bytes.Equal(trustedHeader.ConsensusHash, l.ConflictingBlock.ConsensusHash) ||
+		!bytes.Equal(trustedHeader.AppHash, l.ConflictingBlock.AppHash) ||
+		!bytes.Equal(trustedHeader.LastResultsHash, l.ConflictingBlock.LastResultsHash)
 
 }
 
