@@ -60,9 +60,7 @@ func (e ErrVerificationFailed) Unwrap() error {
 }
 
 func (e ErrVerificationFailed) Error() string {
-	return fmt.Sprintf(
-		"verify from #%d to #%d failed: %v",
-		e.From, e.To, e.Reason)
+	return fmt.Sprintf("verify from #%d to #%d failed: %v", e.From, e.To, e.Reason)
 }
 
 // ErrLightClientAttack is returned when the light client has detected an attempt
