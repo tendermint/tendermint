@@ -1,4 +1,6 @@
-name: Build and Deploy
+name: Build & Deploy Documentation
+# This job builds and deploys documenation.
+# It runs on every push to master.
 on:
   push:
     branches:
