@@ -21,6 +21,7 @@ type Config struct {
 	PrivValServer    string                      `toml:"privval_server"`
 	PrivValKey       string                      `toml:"privval_key"`
 	PrivValState     string                      `toml:"privval_state"`
+	Misbehaviors     map[string]string           `toml:"misbehaviors"`
 }
 
 // LoadConfig loads the configuration from disk.

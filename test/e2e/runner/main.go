@@ -6,11 +6,14 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
 	"github.com/tendermint/tendermint/libs/log"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+var (
+	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+)
 
 func main() {
 	NewCLI().Run()
@@ -18,8 +21,9 @@ func main() {
 
 // CLI is the Cobra-based command-line interface.
 type CLI struct {
-	root    *cobra.Command
-	testnet *e2e.Testnet
+	root     *cobra.Command
+	testnet  *e2e.Testnet
+	preserve bool
 }
 
 // NewCLI sets up the CLI.
@@ -65,11 +69,26 @@ func NewCLI() *CLI {
 			if err := Start(cli.testnet); err != nil {
 				return err
 			}
-			if err := Perturb(cli.testnet); err != nil {
-				return err
+
+			if lastMisbehavior := cli.testnet.LastMisbehaviorHeight(); lastMisbehavior > 0 {
+				// wait for misbehaviors before starting perturbations. We do a separate
+				// wait for another 5 blocks, since the last misbehavior height may be
+				// in the past depending on network startup ordering.
+				if err := WaitUntil(cli.testnet, lastMisbehavior); err != nil {
+					return err
+				}
 			}
 			if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
 				return err
+			}
+
+			if cli.testnet.HasPerturbations() {
+				if err := Perturb(cli.testnet); err != nil {
+					return err
+				}
+				if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
+					return err
+				}
 			}
 
 			loadCancel()
@@ -82,8 +101,10 @@ func NewCLI() *CLI {
 			if err := Test(cli.testnet); err != nil {
 				return err
 			}
-			if err := Cleanup(cli.testnet); err != nil {
-				return err
+			if !cli.preserve {
+				if err := Cleanup(cli.testnet); err != nil {
+					return err
+				}
 			}
 			return nil
 		},
@@ -91,6 +112,9 @@ func NewCLI() *CLI {
 
 	cli.root.PersistentFlags().StringP("file", "f", "", "Testnet TOML manifest")
 	_ = cli.root.MarkPersistentFlagRequired("file")
+
+	cli.root.Flags().BoolVarP(&cli.preserve, "preserve", "p", false,
+		"Preserves the running of the test net after tests are completed")
 
 	cli.root.AddCommand(&cobra.Command{
 		Use:   "setup",

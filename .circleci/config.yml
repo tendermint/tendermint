@@ -118,70 +118,6 @@ jobs:
           paths:
             - "/go/pkg/mod"
 
-  build_artifacts:
-    executor: golang
-    parallelism: 5
-    steps:
-      - restore_cache:
-          name: "Restore source code cache"
-          keys:
-            - go-src-v1-{{ .Revision }}
-      - checkout
-      - restore_cache:
-          name: "Restore release dependencies cache"
-          keys:
-            - v2-release-deps-{{ checksum "go.sum" }}
-      - attach_workspace:
-          at: /tmp/workspace
-      - run:
-          name: Build artifact
-          command: |
-            # Setting CIRCLE_TAG because we do not tag the release ourselves.
-            source /tmp/workspace/release-version.source
-            if test ${CIRCLE_NODE_INDEX:-0} == 0 ;then export GOOS=linux GOARCH=amd64   && export OUTPUT=build/tendermint_${GOOS}_${GOARCH} && make build && python -u scripts/release_management/zip-file.py ;fi
-            if test ${CIRCLE_NODE_INDEX:-0} == 1 ;then export GOOS=darwin GOARCH=amd64  && export OUTPUT=build/tendermint_${GOOS}_${GOARCH} && make build && python -u scripts/release_management/zip-file.py ;fi
-            if test ${CIRCLE_NODE_INDEX:-0} == 2 ;then export GOOS=windows GOARCH=amd64 && export OUTPUT=build/tendermint_${GOOS}_${GOARCH} && make build && python -u scripts/release_management/zip-file.py ;fi
-            if test ${CIRCLE_NODE_INDEX:-0} == 3 ;then export GOOS=linux GOARCH=arm     && export OUTPUT=build/tendermint_${GOOS}_${GOARCH} && make build && python -u scripts/release_management/zip-file.py ;fi
-            if test ${CIRCLE_NODE_INDEX:-0} == 4 ;then export GOOS=linux GOARCH=arm64   && export OUTPUT=build/tendermint_${GOOS}_${GOARCH} && make build && python -u scripts/release_management/zip-file.py ;fi
-      - persist_to_workspace:
-          root: build
-          paths:
-            - "*.zip"
-            - "tendermint_linux_amd64"
-
-  release_artifacts:
-    executor: golang
-    steps:
-      - restore_cache:
-          name: "Restore source code cache"
-          keys:
-            - go-src-v1-{{ .Revision }}
-      - checkout
-      - attach_workspace:
-          at: /tmp/workspace
-      - run:
-          name: "Deploy to GitHub"
-          command: |
-            # Setting CIRCLE_TAG because we do not tag the release ourselves.
-            source /tmp/workspace/release-version.source
-            echo "---"
-            ls -la /tmp/workspace/*.zip
-            echo "---"
-            python -u scripts/release_management/sha-files.py
-            echo "---"
-            cat /tmp/workspace/SHA256SUMS
-            echo "---"
-            export RELEASE_ID="`python -u scripts/release_management/github-draft.py`"
-            echo "Release ID: ${RELEASE_ID}"
-            #Todo: Parallelize uploads
-            export GOOS=linux GOARCH=amd64   && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
-            export GOOS=darwin GOARCH=amd64  && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
-            export GOOS=windows GOARCH=amd64 && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
-            export GOOS=linux GOARCH=arm     && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
-            export GOOS=linux GOARCH=arm64   && python -u scripts/release_management/github-upload.py --id "${RELEASE_ID}"
-            python -u scripts/release_management/github-upload.py --file "/tmp/workspace/SHA256SUMS" --id "${RELEASE_ID}"
-            python -u scripts/release_management/github-publish.py --id "${RELEASE_ID}"
-
   # # Test RPC implementation against the swagger documented specs
   # contract_tests:
   #   working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
@@ -230,26 +166,3 @@ workflows:
       # - contract_tests:
       #     requires:
       #       - setup_dependencies
-
-  release:
-    jobs:
-      - prepare_build:
-          filters:
-            branches:
-              only:
-                - /v[0-9]+\.[0-9]+/
-      - build_artifacts:
-          requires:
-            - prepare_build
-          filters:
-            branches:
-              only:
-                - /v[0-9]+\.[0-9]+/
-      - release_artifacts:
-          requires:
-            - prepare_build
-            - build_artifacts
-          filters:
-            branches:
-              only:
-                - /v[0-9]+\.[0-9]+/
