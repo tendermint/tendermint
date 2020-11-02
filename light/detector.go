@@ -15,8 +15,7 @@ import (
 // More info here:
 // tendermint/docs/architecture/adr-047-handling-evidence-from-light-client.md
 
-// detectDivergence is a second wall of defense for the light client and is used
-// only in the case of skipping verification which employs the trust level mechanism.
+// detectDivergence is a second wall of defense for the light client.
 //
 // It takes the target verified header and compares it with the headers of a set of
 // witness providers that the light client is connected to. If a conflicting header
