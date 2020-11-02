@@ -19,88 +19,78 @@ func TestVerify(t *testing.T) {
 	filenames := jsonFilenames(t)
 
 	for _, filename := range filenames {
-		t.Logf("-> %s", filename)
+		t.Run(filename, func(t *testing.T) {
 
-		jsonBlob, err := ioutil.ReadFile(filename)
-		if err != nil {
-			t.Fatal(err)
-		}
+			jsonBlob, err := ioutil.ReadFile(filename)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		var tc testCase
-		err = tmjson.Unmarshal(jsonBlob, &tc)
-		if err != nil {
-			t.Fatal(err)
-		}
+			var tc testCase
+			err = tmjson.Unmarshal(jsonBlob, &tc)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		t.Log(tc.Description)
+			t.Log(tc.Description)
 
-		var (
-			trustedSignedHeader = tc.Initial.SignedHeader
-			trustedNextVals     = tc.Initial.NextValidatorSet
-			trustingPeriod      = time.Duration(tc.Initial.TrustingPeriod) * time.Nanosecond
-		)
-
-		for _, input := range tc.Input {
 			var (
-				newSignedHeader = input.LightBlock.SignedHeader
-				newVals         = input.LightBlock.ValidatorSet
+				trustedSignedHeader = tc.Initial.SignedHeader
+				trustedNextVals     = tc.Initial.NextValidatorSet
+				trustingPeriod      = time.Duration(tc.Initial.TrustingPeriod) * time.Nanosecond
 			)
 
-			err = light.Verify(
-				&trustedSignedHeader,
-				&trustedNextVals,
-				newSignedHeader,
-				newVals,
-				trustingPeriod,
-				input.Now,
-				1*time.Second,
-				light.DefaultTrustLevel,
-			)
+			for _, input := range tc.Input {
+				var (
+					newSignedHeader = input.LightBlock.SignedHeader
+					newVals         = input.LightBlock.ValidatorSet
+				)
 
-			t.Logf("%d -> %d", trustedSignedHeader.Height, newSignedHeader.Height)
+				err = light.Verify(
+					&trustedSignedHeader,
+					&trustedNextVals,
+					newSignedHeader,
+					newVals,
+					trustingPeriod,
+					input.Now,
+					1*time.Second,
+					light.DefaultTrustLevel,
+				)
 
-			switch input.Verdict {
-			case "SUCCESS":
-				require.NoError(t, err)
-			case "NOT_ENOUGH_TRUST":
-				require.IsType(t, light.ErrNewValSetCantBeTrusted{}, err)
-			case "INVALID":
-				switch err.(type) {
-				case light.ErrOldHeaderExpired:
-				case light.ErrInvalidHeader:
+				t.Logf("%d -> %d", trustedSignedHeader.Height, newSignedHeader.Height)
+
+				switch input.Verdict {
+				case "SUCCESS":
+					require.NoError(t, err)
+				case "NOT_ENOUGH_TRUST":
+					require.IsType(t, light.ErrNewValSetCantBeTrusted{}, err)
+				case "INVALID":
+					switch err.(type) {
+					case light.ErrOldHeaderExpired:
+					case light.ErrInvalidHeader:
+					default:
+						t.Fatalf("expected either ErrInvalidHeader or ErrOldHeaderExpired, but got %v", err)
+					}
 				default:
-					t.Fatalf("expected either ErrInvalidHeader or ErrOldHeaderExpired, but got %v", err)
+					t.Fatalf("unexpected verdict: %q", input.Verdict)
 				}
-			default:
-				t.Fatalf("unexpected verdict: %q", input.Verdict)
-			}
 
-			if err == nil { // advance
-				trustedSignedHeader = *newSignedHeader
-				trustedNextVals = *input.LightBlock.NextValidatorSet
+				if err == nil { // advance
+					trustedSignedHeader = *newSignedHeader
+					trustedNextVals = *input.LightBlock.NextValidatorSet
+				}
 			}
-		}
+		})
 	}
 }
 
 // jsonFilenames returns a list of files in jsonDir directory
 func jsonFilenames(t *testing.T) []string {
-	names := make([]string, 0)
-
-	files, err := ioutil.ReadDir(jsonDir)
+	matches, err := filepath.Glob(filepath.Join(jsonDir, "*.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	base := filepath.Base(jsonDir)
-
-	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".json" {
-			names = append(names, filepath.Join(base, file.Name()))
-		}
-	}
-
-	return names
+	return matches
 }
 
 type testCase struct {
