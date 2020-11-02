@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
 )
@@ -15,6 +16,9 @@ import (
 // Tests that any initial state given in genesis has made it into the app.
 func TestApp_InitialState(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
+		if node.Mode == e2e.ModeSeed {
+			return
+		}
 		if len(node.Testnet.InitialState) == 0 {
 			return
 		}
@@ -34,6 +38,10 @@ func TestApp_InitialState(t *testing.T) {
 // block and the node sync status.
 func TestApp_Hash(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
+		if node.Mode == e2e.ModeSeed {
+			return
+		}
+
 		client, err := node.Client()
 		require.NoError(t, err)
 		info, err := client.ABCIInfo(ctx)
@@ -55,6 +63,10 @@ func TestApp_Hash(t *testing.T) {
 // Tests that we can set a value and retrieve it.
 func TestApp_Tx(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
+		if node.Mode == e2e.ModeSeed {
+			return
+		}
+
 		client, err := node.Client()
 		require.NoError(t, err)
 
