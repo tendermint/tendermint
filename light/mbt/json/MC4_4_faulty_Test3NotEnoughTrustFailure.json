@@ -1,0 +1,538 @@
+{
+  "description": "MC4_4_faulty_Test3NotEnoughTrustFailure.json",
+  "initial": {
+    "signed_header": {
+      "header": {
+        "version": {
+          "block": "11",
+          "app": "0"
+        },
+        "chain_id": "test-chain",
+        "height": "1",
+        "time": "1970-01-01T00:00:01Z",
+        "last_block_id": null,
+        "last_commit_hash": null,
+        "data_hash": null,
+        "validators_hash": "5A69ACB73672274A2C020C7FAE539B2086D30F3B7E5B168A8031A21931FCA07D",
+        "next_validators_hash": "5F7419DA4B1BCFC2D2EB8C663405D9FF67DDE3BF88DB0A8A5D579E6FF1AD814E",
+        "consensus_hash": "5A69ACB73672274A2C020C7FAE539B2086D30F3B7E5B168A8031A21931FCA07D",
+        "app_hash": "",
+        "last_results_hash": null,
+        "evidence_hash": null,
+        "proposer_address": "0616A636E7D0579A632EC37ED3C3F2B7E8522A0A"
+      },
+      "commit": {
+        "height": "1",
+        "round": 1,
+        "block_id": {
+          "hash": "F7DC6F348F04E01EC7DEA4348A3BFA2F0D7533900986EA66F6006C70BDD52D2E",
+          "part_set_header": {
+            "total": 1,
+            "hash": "F7DC6F348F04E01EC7DEA4348A3BFA2F0D7533900986EA66F6006C70BDD52D2E"
+          }
+        },
+        "signatures": [
+          {
+            "block_id_flag": 2,
+            "validator_address": "0616A636E7D0579A632EC37ED3C3F2B7E8522A0A",
+            "timestamp": "1970-01-01T00:00:01Z",
+            "signature": "S5wM4flAsMJ7uGSGduppmUqDeFZBUBFKkp+LTy249+AgM3oup9ULs7eUzNiwjhV4gWnPnLJ91m6IZ3s047xzAg=="
+          },
+          {
+            "block_id_flag": 2,
+            "validator_address": "6AE5C701F508EB5B63343858E068C5843F28105F",
+            "timestamp": "1970-01-01T00:00:01Z",
+            "signature": "ZLOGEO5mgrVoTpFA5DLMLX0ggBWnWLWmMF5tAorZC732T+oR2u2USAvGhkZtpM73WN3NUp04aVHInGMsYtz9Dg=="
+          },
+          {
+            "block_id_flag": 2,
+            "validator_address": "81D85BE9567F7069A4760C663062E66660DADF34",
+            "timestamp": "1970-01-01T00:00:01Z",
+            "signature": "Lwa9l7+dJci4+mXD9ZsvLnbX0TuzWYIjfj9vU51rAftFRGEig7DHToufWaMfjwGMN53WrG72YfHAXxBigWaBBg=="
+          },
+          {
+            "block_id_flag": 2,
+            "validator_address": "C479DB6F37AB9757035CFBE10B687E27668EE7DF",
+            "timestamp": "1970-01-01T00:00:01Z",
+            "signature": "SSHBm3HdeyC1fgPqjTp647mRGxaCKA/GGraM0UFcuXv3mUjfjowL8CNjthJHgXIQCmYdF0HDwLZb1SCvWFe0Aw=="
+          }
+        ]
+      }
+    },
+    "next_validator_set": {
+      "validators": [
+        {
+          "address": "0616A636E7D0579A632EC37ED3C3F2B7E8522A0A",
+          "pub_key": {
+            "type": "tendermint/PubKeyEd25519",
+            "value": "kwd8trZ8t5ASwgUbBEAnDq49nRRrrKvt2onhS4JSfQM="
+          },
+          "voting_power": "50",
+          "proposer_priority": null
+        },
+        {
+          "address": "6AE5C701F508EB5B63343858E068C5843F28105F",
+          "pub_key": {
+            "type": "tendermint/PubKeyEd25519",
+            "value": "GQEC/HB4sDBAVhHtUzyv4yct9ZGnudaP209QQBSTfSQ="
+          },
+          "voting_power": "50",
+          "proposer_priority": null
+        },
+        {
+          "address": "81D85BE9567F7069A4760C663062E66660DADF34",
+          "pub_key": {
+            "type": "tendermint/PubKeyEd25519",
+            "value": "Lk4zm2cJO4FpzXFF9WUV9NzOLfr5jV+ps7EhwUDKlZM="
+          },
+          "voting_power": "50",
+          "proposer_priority": null
+        }
+      ]
+    },
+    "trusting_period": "1400000000000",
+    "now": "2020-10-21T08:46:51.160327001Z"
+  },
+  "input": [
+    {
+      "block": {
+        "signed_header": {
+          "header": {
+            "version": {
+              "block": "11",
+              "app": "0"
+            },
+            "chain_id": "test-chain",
+            "height": "4",
+            "time": "1970-01-01T00:00:07Z",
+            "last_block_id": null,
+            "last_commit_hash": null,
+            "data_hash": null,
+            "validators_hash": "F49C3E794533450FEA327755F5962F99C88F5545453E6D517BBDD96EA066B50C",
+            "next_validators_hash": "75E6DD63C2DC2B58FE0ED82792EAB369C4308C7EC16B69446382CC4B41D46068",
+            "consensus_hash": "F49C3E794533450FEA327755F5962F99C88F5545453E6D517BBDD96EA066B50C",
+            "app_hash": "",
+            "last_results_hash": null,
+            "evidence_hash": null,
+            "proposer_address": "81D85BE9567F7069A4760C663062E66660DADF34"
+          },
+          "commit": {
+            "height": "4",
+            "round": 1,
+            "block_id": {
+              "hash": "A63EEADF3FB32E33B113FF28726100E2ACA295E7C467005BF35FB43ADC0D53C8",
+              "part_set_header": {
+                "total": 1,
+                "hash": "A63EEADF3FB32E33B113FF28726100E2ACA295E7C467005BF35FB43ADC0D53C8"
+              }
+            },
+            "signatures": [
+              {
+                "block_id_flag": 2,
+                "validator_address": "81D85BE9567F7069A4760C663062E66660DADF34",
+                "timestamp": "1970-01-01T00:00:07Z",
+                "signature": "lDmtsNALIr3ZysmMkrYW5jPufVGQcR7U2rpGFwJfFeTQSohqm9yVjzLVeGsPZFjdmGUltxwi7nH63iIIjl7VCg=="
+              }
+            ]
+          }
+        },
+        "validator_set": {
+          "validators": [
+            {
+              "address": "81D85BE9567F7069A4760C663062E66660DADF34",
+              "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "Lk4zm2cJO4FpzXFF9WUV9NzOLfr5jV+ps7EhwUDKlZM="
+              },
+              "voting_power": "50",
+              "proposer_priority": null
+            }
+          ]
+        },
+        "next_validator_set": {
+          "validators": [
+            {
+              "address": "6AE5C701F508EB5B63343858E068C5843F28105F",
+              "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "GQEC/HB4sDBAVhHtUzyv4yct9ZGnudaP209QQBSTfSQ="
+              },
+              "voting_power": "50",
+              "proposer_priority": null
+            }
+          ]
+        },
+        "provider": "BADFADAD0BEFEEDC0C0ADEADBEEFC0FFEEFACADE"
+      },
+      "now": "1970-01-01T00:00:08Z",
+      "verdict": "NOT_ENOUGH_TRUST"
+    },
+    {
+      "block": {
+        "signed_header": {
+          "header": {
+            "version": {
+              "block": "11",
+              "app": "0"
+            },
+            "chain_id": "test-chain",
+            "height": "3",
+            "time": "1970-01-01T00:00:07Z",
+            "last_block_id": null,
+            "last_commit_hash": null,
+            "data_hash": null,
+            "validators_hash": "C8CFFADA9808F685C4111693E1ADFDDBBEE9B9493493BEF805419F143C5B0D0A",
+            "next_validators_hash": "C4DFBC98F77BE756D7EB3B475471189E82F7760DD111754AA2A25CF548AE6EF8",
+            "consensus_hash": "C8CFFADA9808F685C4111693E1ADFDDBBEE9B9493493BEF805419F143C5B0D0A",
+            "app_hash": "",
+            "last_results_hash": null,
+            "evidence_hash": null,
+            "proposer_address": "C479DB6F37AB9757035CFBE10B687E27668EE7DF"
+          },
+          "commit": {
+            "height": "3",
+            "round": 1,
+            "block_id": {
+              "hash": "13C32ED0F2BED33E19B4832CEEB6F949E822449F770B9B3A7F02254F391B7CD0",
+              "part_set_header": {
+                "total": 1,
+                "hash": "13C32ED0F2BED33E19B4832CEEB6F949E822449F770B9B3A7F02254F391B7CD0"
+              }
+            },
+            "signatures": [
+              {
+                "block_id_flag": 2,
+                "validator_address": "C479DB6F37AB9757035CFBE10B687E27668EE7DF",
+                "timestamp": "1970-01-01T00:00:07Z",
+                "signature": "KZ0VUajBcnvw1Lp7DnYFGTPt6sstretUcfMY9nkszfQtvcJ1x4sFvJ/D0LWkpsNVMtNSWYobw+gfETQLVbmAAQ=="
+              }
+            ]
+          }
+        },
+        "validator_set": {
+          "validators": [
+            {
+              "address": "C479DB6F37AB9757035CFBE10B687E27668EE7DF",
+              "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "3wf60CidQcsIO7TksXzEZsJefMUFF73k6nP1YeEo9to="
+              },
+              "voting_power": "50",
+              "proposer_priority": null
+            }
+          ]
+        },
+        "next_validator_set": {
+          "validators": [
+            {
+              "address": "81D85BE9567F7069A4760C663062E66660DADF34",
+              "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "Lk4zm2cJO4FpzXFF9WUV9NzOLfr5jV+ps7EhwUDKlZM="
+              },
+              "voting_power": "50",
+              "proposer_priority": null
+            },
+            {
+              "address": "C479DB6F37AB9757035CFBE10B687E27668EE7DF",
+              "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "3wf60CidQcsIO7TksXzEZsJefMUFF73k6nP1YeEo9to="
+              },
+              "voting_power": "50",
+              "proposer_priority": null
+            }
+          ]
+        },
+        "provider": "BADFADAD0BEFEEDC0C0ADEADBEEFC0FFEEFACADE"
+      },
+      "now": "1970-01-01T00:00:09Z",
+      "verdict": "NOT_ENOUGH_TRUST"
+    },
+    {
+      "block": {
+        "signed_header": {
+          "header": {
+            "version": {
+              "block": "11",
+              "app": "0"
+            },
+            "chain_id": "test-chain",
+            "height": "2",
+            "time": "1970-01-01T00:00:03Z",
+            "last_block_id": null,
+            "last_commit_hash": null,
+            "data_hash": null,
+            "validators_hash": "5F7419DA4B1BCFC2D2EB8C663405D9FF67DDE3BF88DB0A8A5D579E6FF1AD814E",
+            "next_validators_hash": "5A69ACB73672274A2C020C7FAE539B2086D30F3B7E5B168A8031A21931FCA07D",
+            "consensus_hash": "5F7419DA4B1BCFC2D2EB8C663405D9FF67DDE3BF88DB0A8A5D579E6FF1AD814E",
+            "app_hash": "",
+            "last_results_hash": null,
+            "evidence_hash": null,
+            "proposer_address": "0616A636E7D0579A632EC37ED3C3F2B7E8522A0A"
+          },
+          "commit": {
+            "height": "2",
+            "round": 1,
+            "block_id": {
+              "hash": "E98C8412BF8736722EEBFF209C5D0AB9F82B599344D043139B4D4747E1FF21EE",
+              "part_set_header": {
+                "total": 1,
+                "hash": "E98C8412BF8736722EEBFF209C5D0AB9F82B599344D043139B4D4747E1FF21EE"
+              }
+            },
+            "signatures": [
+              {
+                "block_id_flag": 2,
+                "validator_address": "0616A636E7D0579A632EC37ED3C3F2B7E8522A0A",
+                "timestamp": "1970-01-01T00:00:03Z",
+                "signature": "V2LEkvNw6vwCh5t/eTqOE0QMnRveeNV6nS9bqAD8S/dDtVnzUTwfwEgEHPwPFJDkszVkZ/9pqoKTInoO2bsHAg=="
+              },
+              {
+                "block_id_flag": 2,
+                "validator_address": "6AE5C701F508EB5B63343858E068C5843F28105F",
+                "timestamp": "1970-01-01T00:00:03Z",
+                "signature": "AyDrm3XpFjB1OWJdYegH3dYp+Q9ZXV/kAstddVzpvU4pL187Tad2bNMqcgoroTiwaCWC7jtOrHd4l8Tq5myjDA=="
+              },
+              {
+                "block_id_flag": 2,
+                "validator_address": "81D85BE9567F7069A4760C663062E66660DADF34",
+                "timestamp": "1970-01-01T00:00:03Z",
+                "signature": "cyQzNOgKd1OKNQJChG/E0pk9+fZ4p8bIpAqD5oZy0xT+e1DywIVUVDx0LBqbfm38C4djq3klKMvTUwTcDypCDQ=="
+              }
+            ]
+          }
+        },
+        "validator_set": {
+          "validators": [
+            {
+              "address": "0616A636E7D0579A632EC37ED3C3F2B7E8522A0A",
+              "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "kwd8trZ8t5ASwgUbBEAnDq49nRRrrKvt2onhS4JSfQM="
+              },
+              "voting_power": "50",
+              "proposer_priority": null
+            },
+            {
+              "address": "6AE5C701F508EB5B63343858E068C5843F28105F",
+              "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "GQEC/HB4sDBAVhHtUzyv4yct9ZGnudaP209QQBSTfSQ="
+              },
+              "voting_power": "50",
+              "proposer_priority": null
+            },
+            {
+              "address": "81D85BE9567F7069A4760C663062E66660DADF34",
+              "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "Lk4zm2cJO4FpzXFF9WUV9NzOLfr5jV+ps7EhwUDKlZM="
+              },
+              "voting_power": "50",
+              "proposer_priority": null
+            }
+          ]
+        },
+        "next_validator_set": {
+          "validators": [
+            {
+              "address": "0616A636E7D0579A632EC37ED3C3F2B7E8522A0A",
+              "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "kwd8trZ8t5ASwgUbBEAnDq49nRRrrKvt2onhS4JSfQM="
+              },
+              "voting_power": "50",
+              "proposer_priority": null
+            },
+            {
+              "address": "6AE5C701F508EB5B63343858E068C5843F28105F",
+              "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "GQEC/HB4sDBAVhHtUzyv4yct9ZGnudaP209QQBSTfSQ="
+              },
+              "voting_power": "50",
+              "proposer_priority": null
+            },
+            {
+              "address": "81D85BE9567F7069A4760C663062E66660DADF34",
+              "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "Lk4zm2cJO4FpzXFF9WUV9NzOLfr5jV+ps7EhwUDKlZM="
+              },
+              "voting_power": "50",
+              "proposer_priority": null
+            },
+            {
+              "address": "C479DB6F37AB9757035CFBE10B687E27668EE7DF",
+              "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "3wf60CidQcsIO7TksXzEZsJefMUFF73k6nP1YeEo9to="
+              },
+              "voting_power": "50",
+              "proposer_priority": null
+            }
+          ]
+        },
+        "provider": "BADFADAD0BEFEEDC0C0ADEADBEEFC0FFEEFACADE"
+      },
+      "now": "1970-01-01T00:00:09Z",
+      "verdict": "SUCCESS"
+    },
+    {
+      "block": {
+        "signed_header": {
+          "header": {
+            "version": {
+              "block": "11",
+              "app": "0"
+            },
+            "chain_id": "test-chain",
+            "height": "4",
+            "time": "1970-01-01T00:00:07Z",
+            "last_block_id": null,
+            "last_commit_hash": null,
+            "data_hash": null,
+            "validators_hash": "F49C3E794533450FEA327755F5962F99C88F5545453E6D517BBDD96EA066B50C",
+            "next_validators_hash": "75E6DD63C2DC2B58FE0ED82792EAB369C4308C7EC16B69446382CC4B41D46068",
+            "consensus_hash": "F49C3E794533450FEA327755F5962F99C88F5545453E6D517BBDD96EA066B50C",
+            "app_hash": "",
+            "last_results_hash": null,
+            "evidence_hash": null,
+            "proposer_address": "81D85BE9567F7069A4760C663062E66660DADF34"
+          },
+          "commit": {
+            "height": "4",
+            "round": 1,
+            "block_id": {
+              "hash": "A63EEADF3FB32E33B113FF28726100E2ACA295E7C467005BF35FB43ADC0D53C8",
+              "part_set_header": {
+                "total": 1,
+                "hash": "A63EEADF3FB32E33B113FF28726100E2ACA295E7C467005BF35FB43ADC0D53C8"
+              }
+            },
+            "signatures": [
+              {
+                "block_id_flag": 2,
+                "validator_address": "81D85BE9567F7069A4760C663062E66660DADF34",
+                "timestamp": "1970-01-01T00:00:07Z",
+                "signature": "lDmtsNALIr3ZysmMkrYW5jPufVGQcR7U2rpGFwJfFeTQSohqm9yVjzLVeGsPZFjdmGUltxwi7nH63iIIjl7VCg=="
+              }
+            ]
+          }
+        },
+        "validator_set": {
+          "validators": [
+            {
+              "address": "81D85BE9567F7069A4760C663062E66660DADF34",
+              "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "Lk4zm2cJO4FpzXFF9WUV9NzOLfr5jV+ps7EhwUDKlZM="
+              },
+              "voting_power": "50",
+              "proposer_priority": null
+            }
+          ]
+        },
+        "next_validator_set": {
+          "validators": [
+            {
+              "address": "6AE5C701F508EB5B63343858E068C5843F28105F",
+              "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "GQEC/HB4sDBAVhHtUzyv4yct9ZGnudaP209QQBSTfSQ="
+              },
+              "voting_power": "50",
+              "proposer_priority": null
+            }
+          ]
+        },
+        "provider": "BADFADAD0BEFEEDC0C0ADEADBEEFC0FFEEFACADE"
+      },
+      "now": "1970-01-01T00:00:09Z",
+      "verdict": "NOT_ENOUGH_TRUST"
+    },
+    {
+      "block": {
+        "signed_header": {
+          "header": {
+            "version": {
+              "block": "11",
+              "app": "0"
+            },
+            "chain_id": "test-chain",
+            "height": "3",
+            "time": "1970-01-01T00:00:07Z",
+            "last_block_id": null,
+            "last_commit_hash": null,
+            "data_hash": null,
+            "validators_hash": "C8CFFADA9808F685C4111693E1ADFDDBBEE9B9493493BEF805419F143C5B0D0A",
+            "next_validators_hash": "C4DFBC98F77BE756D7EB3B475471189E82F7760DD111754AA2A25CF548AE6EF8",
+            "consensus_hash": "C8CFFADA9808F685C4111693E1ADFDDBBEE9B9493493BEF805419F143C5B0D0A",
+            "app_hash": "",
+            "last_results_hash": null,
+            "evidence_hash": null,
+            "proposer_address": "C479DB6F37AB9757035CFBE10B687E27668EE7DF"
+          },
+          "commit": {
+            "height": "3",
+            "round": 1,
+            "block_id": {
+              "hash": "13C32ED0F2BED33E19B4832CEEB6F949E822449F770B9B3A7F02254F391B7CD0",
+              "part_set_header": {
+                "total": 1,
+                "hash": "13C32ED0F2BED33E19B4832CEEB6F949E822449F770B9B3A7F02254F391B7CD0"
+              }
+            },
+            "signatures": [
+              {
+                "block_id_flag": 2,
+                "validator_address": "C479DB6F37AB9757035CFBE10B687E27668EE7DF",
+                "timestamp": "1970-01-01T00:00:07Z",
+                "signature": "KZ0VUajBcnvw1Lp7DnYFGTPt6sstretUcfMY9nkszfQtvcJ1x4sFvJ/D0LWkpsNVMtNSWYobw+gfETQLVbmAAQ=="
+              }
+            ]
+          }
+        },
+        "validator_set": {
+          "validators": [
+            {
+              "address": "C479DB6F37AB9757035CFBE10B687E27668EE7DF",
+              "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "3wf60CidQcsIO7TksXzEZsJefMUFF73k6nP1YeEo9to="
+              },
+              "voting_power": "50",
+              "proposer_priority": null
+            }
+          ]
+        },
+        "next_validator_set": {
+          "validators": [
+            {
+              "address": "81D85BE9567F7069A4760C663062E66660DADF34",
+              "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "Lk4zm2cJO4FpzXFF9WUV9NzOLfr5jV+ps7EhwUDKlZM="
+              },
+              "voting_power": "50",
+              "proposer_priority": null
+            },
+            {
+              "address": "C479DB6F37AB9757035CFBE10B687E27668EE7DF",
+              "pub_key": {
+                "type": "tendermint/PubKeyEd25519",
+                "value": "3wf60CidQcsIO7TksXzEZsJefMUFF73k6nP1YeEo9to="
+              },
+              "voting_power": "50",
+              "proposer_priority": null
+            }
+          ]
+        },
+        "provider": "BADFADAD0BEFEEDC0C0ADEADBEEFC0FFEEFACADE"
+      },
+      "now": "1970-01-01T00:00:09Z",
+      "verdict": "INVALID"
+    }
+  ]
+}
