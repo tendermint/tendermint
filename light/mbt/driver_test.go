@@ -19,6 +19,7 @@ func TestVerify(t *testing.T) {
 	filenames := jsonFilenames(t)
 
 	for _, filename := range filenames {
+		filename := filename
 		t.Run(filename, func(t *testing.T) {
 
 			jsonBlob, err := ioutil.ReadFile(filename)
