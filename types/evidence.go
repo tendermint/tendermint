@@ -227,6 +227,68 @@ func (l *LightClientAttackEvidence) Bytes() []byte {
 	return bz
 }
 
+// GetByzantineValidators finds out what style of attack LightClientAttackEvidence was and then works out who
+// the malicious validators were and returns them. This is used both for forming the ByzantineValidators
+// field and for validating that it is correct
+func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *ValidatorSet, trusted *SignedHeader) []Validator{
+	var validators []Validator
+	// First check if the header is invalid. This means that it is a lunatic attack and therefore we take the
+	// validators who are in the commonVals and voted for the lunatic header
+	if l.ConflictingHeaderIsInvalid(trusted.Header) {
+		for _, commitSig := range l.ConflictingBlock.Commit.Signatures {
+			if !commitSig.ForBlock() {
+				continue
+			}
+
+			_, val := commonVals.GetByAddress(commitSig.ValidatorAddress)
+			if val == nil {
+				// validator wasn't in the common validator set
+				continue
+			}
+			validators = append(validators, *val)
+		}
+		return validators
+		// Next, check to see if it is an equivocation attack and both commits are in the same round. If this is the
+		// case then we take the validators from the conflicting light block validator set that voted in both headers.
+	} else if trusted.Commit.Round == l.ConflictingBlock.Commit.Round {
+		// validator hashes are the same therefore the indexing order of validators are the same and thus we
+		// only need a single loop to find the validators that voted twice.
+		for i := 0; i < len(l.ConflictingBlock.Commit.Signatures); i++ {
+			sigA := l.ConflictingBlock.Commit.Signatures[i]
+			if sigA.Absent() {
+				continue
+			}
+
+			sigB := trusted.Commit.Signatures[i]
+			if sigB.Absent() {
+				continue
+			}
+
+			_, val := l.ConflictingBlock.ValidatorSet.GetByAddress(sigA.ValidatorAddress)
+			validators = append(validators, *val)
+		}
+		return validators
+
+	}
+	// if the rounds are different then this is an amnesia attack. Unfortunately, given the nature of the attack,
+	// we aren't able yet to deduce which are malicious validators and which are not hence we return an
+	// empty validator set.
+	return validators
+}
+
+// ConflictingHeaderIsInvalid takes a trusted header and matches it againt a conflicting header
+// to determine whether the conflicting header was the product of a valid state transition
+// or not. If it is then all the deterministic fields of the header should be the same.
+// If not, it is an invalid header and constitutes a lunatic attack.
+func (l* LightClientAttackEvidence) ConflictingHeaderIsInvalid(trustedHeader *Header) bool {
+	return !bytes.Equal(trustedHeader.ValidatorsHash, l.ConflictingBlock.ValidatorsHash) ||
+	!bytes.Equal(trustedHeader.NextValidatorsHash, l.ConflictingBlock.NextValidatorsHash) ||
+	!bytes.Equal(trustedHeader.ConsensusHash, l.ConflictingBlock.ConsensusHash) ||
+	!bytes.Equal(trustedHeader.AppHash, l.ConflictingBlock.AppHash) ||
+	!bytes.Equal(trustedHeader.LastResultsHash, l.ConflictingBlock.LastResultsHash)
+
+}
+
 // Hash returns the hash of the header and the commonHeight. This is designed to cause hash collisions
 // with evidence that have the same conflicting header and common height but different permutations
 // of validator commit signatures. The reason for this is that we don't want to allow several

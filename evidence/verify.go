@@ -73,7 +73,7 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 				return err
 			}
 		}
-
+		
 		err = VerifyLightClientAttack(ev, commonHeader, trustedHeader, commonVals, state.LastBlockTime,
 			state.ConsensusParams.Evidence.MaxAgeDuration)
 		if err != nil {
@@ -81,10 +81,9 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 		}
 		// find out what type of attack this was and thus extract the malicious validators. Note in the case of an
 		// Amnesia attack we don't have any malicious validators.
-		validators := getMaliciousValidators(ev, commonVals, trustedHeader)
+		validators := ev.GetByzantineValidators(commonVals, trustedHeader)
 		// ensure this matches the validators that are listed in the evidence. They should be in the same order as
 		// that of the commit.
-
 		if len(validators) != len(ev.ByzantineValidators) {
 			return fmt.Errorf("expected %d byzantine validators from evidence but got %d",
 				len(validators), len(ev.ByzantineValidators))
@@ -229,55 +228,6 @@ func getSignedHeader(blockStore BlockStore, height int64) (*types.SignedHeader, 
 		Header: &blockMeta.Header,
 		Commit: commit,
 	}, nil
-}
-
-// getMaliciousValidators finds out what style of attack LightClientAttackEvidence was and then works out who
-// the malicious validators were and returns them.
-func getMaliciousValidators(evidence *types.LightClientAttackEvidence, commonVals *types.ValidatorSet,
-	trusted *types.SignedHeader) []*types.Validator {
-	var validators []*types.Validator
-	// First check if the header is invalid. This means that it is a lunatic attack and therefore we take the
-	// validators who are in the commonVals and voted for the lunatic header
-	if isInvalidHeader(trusted.Header, evidence.ConflictingBlock.Header) {
-		for _, commitSig := range evidence.ConflictingBlock.Commit.Signatures {
-			if !commitSig.ForBlock() {
-				continue
-			}
-
-			_, val := commonVals.GetByAddress(commitSig.ValidatorAddress)
-			if val == nil {
-				// validator wasn't in the common validator set
-				continue
-			}
-			validators = append(validators, val)
-		}
-		return validators
-		// Next, check to see if it is an equivocation attack and both commits are in the same round. If this is the
-		// case then we take the validators from the conflicting light block validator set that voted in both headers.
-	} else if trusted.Commit.Round == evidence.ConflictingBlock.Commit.Round {
-		// validator hashes are the same therefore the indexing order of validators are the same and thus we
-		// only need a single loop to find the validators that voted twice.
-		for i := 0; i < len(evidence.ConflictingBlock.Commit.Signatures); i++ {
-			sigA := evidence.ConflictingBlock.Commit.Signatures[i]
-			if sigA.Absent() {
-				continue
-			}
-
-			sigB := trusted.Commit.Signatures[i]
-			if sigB.Absent() {
-				continue
-			}
-
-			_, val := evidence.ConflictingBlock.ValidatorSet.GetByAddress(sigA.ValidatorAddress)
-			validators = append(validators, val)
-		}
-		return validators
-
-	}
-	// if the rounds are different then this is an amnesia attack. Unfortunately, given the nature of the attack,
-	// we aren't able yet to deduce which are malicious validators and which are not hence we return an
-	// empty validator set.
-	return validators
 }
 
 // isInvalidHeader takes a trusted header and matches it againt a conflicting header

@@ -36,10 +36,11 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 	}
 
 	commonHeader := makeHeaderRandom(4)
-	commonHeader.Time = defaultEvidenceTime.Add(-1 * time.Hour)
+	commonHeader.Time = defaultEvidenceTime
 	trustedHeader := makeHeaderRandom(10)
 
 	conflictingHeader := makeHeaderRandom(10)
+	conflictingHeader.Time = defaultEvidenceTime.Add(1*time.Hour)
 	conflictingHeader.ValidatorsHash = conflictingVals.Hash()
 
 	// we are simulating a lunatic light client attack
@@ -77,16 +78,23 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 
 	// good pass -> no error
 	err = evidence.VerifyLightClientAttack(ev, commonSignedHeader, trustedSignedHeader, commonVals,
-		defaultEvidenceTime.Add(1*time.Minute), 2*time.Hour)
+		defaultEvidenceTime.Add(2*time.Hour), 3*time.Hour)
 	assert.NoError(t, err)
 
 	// trusted and conflicting hashes are the same -> an error should be returned
 	err = evidence.VerifyLightClientAttack(ev, commonSignedHeader, ev.ConflictingBlock.SignedHeader, commonVals,
-		defaultEvidenceTime.Add(1*time.Minute), 2*time.Hour)
+		defaultEvidenceTime.Add(2*time.Hour), 3*time.Hour)
 	assert.Error(t, err)
+	
+	// evidence with diferent total validator power should fail
+	ev.TotalVotingPower = 1
+	err = evidence.VerifyLightClientAttack(ev, commonSignedHeader, trustedSignedHeader, commonVals,
+		defaultEvidenceTime.Add(2*time.Hour), 3*time.Hour)
+	assert.Error(t, err)
+	ev.TotalVotingPower = 20
 
 	state := sm.State{
-		LastBlockTime:   defaultEvidenceTime.Add(1 * time.Minute),
+		LastBlockTime:   defaultEvidenceTime.Add(2 * time.Hour),
 		LastBlockHeight: 11,
 		ConsensusParams: *types.DefaultConsensusParams(),
 	}
@@ -109,6 +117,20 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 
 	pendingEvs, _ := pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
 	assert.Equal(t, 1, len(pendingEvs))
+	
+	// if we submit evidence only against a single byzantine validator when we see there are more validators then this 
+	// should return an error
+	ev.ByzantineValidators = []types.Validator{*commonVals.Validators[0]}
+	err = pool.CheckEvidence(evList)
+	assert.Error(t, err)
+	ev.ByzantineValidators = byzVals // restore evidence
+	
+	// If evidence is submitted with an altered timestamp it should return an error
+	ev.Timestamp = defaultEvidenceTime.Add(1*time.Minute)
+	err = pool.CheckEvidence(evList)
+	assert.Error(t, err)
+
+	
 }
 
 func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
@@ -123,6 +145,11 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 	trustedHeader.ConsensusHash = conflictingHeader.ConsensusHash
 	trustedHeader.AppHash = conflictingHeader.AppHash
 	trustedHeader.LastResultsHash = conflictingHeader.LastResultsHash
+	
+	byzVals := make([]types.Validator, 4)
+	for idx, val := range conflictingVals.Validators[:4] {
+		byzVals[idx] = *val
+	}
 
 	// we are simulating a duplicate vote attack where all the validators in the conflictingVals set
 	// except the last validator vote twice
@@ -139,6 +166,9 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 			ValidatorSet: conflictingVals,
 		},
 		CommonHeight: 10,
+		ByzantineValidators: byzVals,
+		TotalVotingPower: 50,
+		Timestamp: defaultEvidenceTime,
 	}
 
 	trustedBlockID := makeBlockID(trustedHeader.Hash(), 1000, []byte("partshash"))
@@ -151,12 +181,12 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 	}
 
 	// good pass -> no error
-	err = evidence.VerifyLightClientAttack(ev, trustedSignedHeader, trustedSignedHeader, nil,
+	err = evidence.VerifyLightClientAttack(ev, trustedSignedHeader, trustedSignedHeader, conflictingVals,
 		defaultEvidenceTime.Add(1*time.Minute), 2*time.Hour)
 	assert.NoError(t, err)
 
 	// trusted and conflicting hashes are the same -> an error should be returned
-	err = evidence.VerifyLightClientAttack(ev, trustedSignedHeader, ev.ConflictingBlock.SignedHeader, nil,
+	err = evidence.VerifyLightClientAttack(ev, trustedSignedHeader, ev.ConflictingBlock.SignedHeader, conflictingVals,
 		defaultEvidenceTime.Add(1*time.Minute), 2*time.Hour)
 	assert.Error(t, err)
 
@@ -220,6 +250,9 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 			ValidatorSet: conflictingVals,
 		},
 		CommonHeight: 10,
+		ByzantineValidators: []types.Validator{}, // with amnesia evidence no validators are submitted as abci evidence
+		TotalVotingPower: 50,
+		Timestamp: defaultEvidenceTime,
 	}
 
 	trustedBlockID := makeBlockID(trustedHeader.Hash(), 1000, []byte("partshash"))
@@ -232,12 +265,12 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 	}
 
 	// good pass -> no error
-	err = evidence.VerifyLightClientAttack(ev, trustedSignedHeader, trustedSignedHeader, nil,
+	err = evidence.VerifyLightClientAttack(ev, trustedSignedHeader, trustedSignedHeader, conflictingVals,
 		defaultEvidenceTime.Add(1*time.Minute), 2*time.Hour)
 	assert.NoError(t, err)
 
 	// trusted and conflicting hashes are the same -> an error should be returned
-	err = evidence.VerifyLightClientAttack(ev, trustedSignedHeader, ev.ConflictingBlock.SignedHeader, nil,
+	err = evidence.VerifyLightClientAttack(ev, trustedSignedHeader, ev.ConflictingBlock.SignedHeader, conflictingVals,
 		defaultEvidenceTime.Add(1*time.Minute), 2*time.Hour)
 	assert.Error(t, err)
 
@@ -315,6 +348,9 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 		ev := &types.DuplicateVoteEvidence{
 			VoteA: c.vote1,
 			VoteB: c.vote2,
+			ValidatorPower: 1,
+			TotalVotingPower: 1,
+			Timestamp: defaultEvidenceTime,
 		}
 		if c.valid {
 			assert.Nil(t, evidence.VerifyDuplicateVote(ev, chainID, valSet), "evidence should be valid")
@@ -323,7 +359,14 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 		}
 	}
 
+	// create good evidence and correct validator power
 	goodEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID)
+	goodEv.ValidatorPower = 1 
+	goodEv.TotalVotingPower = 1
+	badEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID)
+	badTimeEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime.Add(1*time.Minute), val, chainID)
+	badTimeEv.ValidatorPower = 1 
+	badTimeEv.TotalVotingPower = 1
 	state := sm.State{
 		ChainID:         chainID,
 		LastBlockTime:   defaultEvidenceTime.Add(1 * time.Minute),
@@ -342,6 +385,16 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 	evList := types.EvidenceList{goodEv}
 	err = pool.CheckEvidence(evList)
 	assert.NoError(t, err)
+	
+	// evidence with a different validator power should fail
+	evList = types.EvidenceList{badEv}
+	err = pool.CheckEvidence(evList)
+	assert.Error(t, err)
+	
+	// evidence with a different timestamp should fail
+	evList = types.EvidenceList{badTimeEv}
+	err = pool.CheckEvidence(evList)
+	assert.Error(t, err)
 }
 
 func makeVote(
