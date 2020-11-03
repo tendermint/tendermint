@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/tendermint/tendermint/light"
@@ -94,14 +95,23 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 				exp, got)
 		}
 
+		byzValsCopy := make([]*types.Validator, len(ev.ByzantineValidators))
+		for i, v := range ev.ByzantineValidators {
+			byzValsCopy[i] = v.Copy()
+		}
+
+		// ensure that both validator arrays are in the same order
+		sort.Sort(types.ValidatorsByVotingPower(byzValsCopy))
+		sort.Sort(types.ValidatorsByVotingPower(validators))
+
 		for idx, val := range validators {
-			if !bytes.Equal(ev.ByzantineValidators[idx].Address, val.Address) {
-				return fmt.Errorf("evidence contained a different byzantine validator address to the one we wer expecting."+
-					"Expected %v, got %v", val.Address, ev.ByzantineValidators[idx].Address)
+			if !bytes.Equal(byzValsCopy[idx].Address, val.Address) {
+				return fmt.Errorf("evidence contained a different byzantine validator address to the one we were expecting."+
+					"Expected %v, got %v", val.Address, byzValsCopy[idx].Address)
 			}
-			if ev.ByzantineValidators[idx].VotingPower != val.VotingPower {
+			if byzValsCopy[idx].VotingPower != val.VotingPower {
 				return fmt.Errorf("evidence contained a byzantine validator with a different power to the one we were expecting."+
-					"Expected %d, got %d", val.VotingPower, ev.ByzantineValidators[idx].VotingPower)
+					"Expected %d, got %d", val.VotingPower, byzValsCopy[idx].VotingPower)
 			}
 		}
 

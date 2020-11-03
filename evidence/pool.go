@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -275,14 +276,30 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 		if len(trustedEv.ByzantineValidators) != len(lcae.ByzantineValidators) {
 			return false
 		}
-		for idx, val := range trustedEv.ByzantineValidators {
-			if !bytes.Equal(lcae.ByzantineValidators[idx].Address, val.Address) {
+
+		byzValsCopy := make([]*types.Validator, len(lcae.ByzantineValidators))
+		for i, v := range lcae.ByzantineValidators {
+			byzValsCopy[i] = v.Copy()
+		}
+
+		trustedValsCopy := make([]*types.Validator, len(trustedEv.ByzantineValidators))
+		for i, v := range trustedEv.ByzantineValidators {
+			trustedValsCopy[i] = v.Copy()
+		}
+
+		// ensure that both validator arrays are in the same order
+		sort.Sort(types.ValidatorsByVotingPower(byzValsCopy))
+		sort.Sort(types.ValidatorsByVotingPower(trustedValsCopy))
+
+		for idx, val := range trustedValsCopy {
+			if !bytes.Equal(byzValsCopy[idx].Address, val.Address) {
 				return false
 			}
-			if lcae.ByzantineValidators[idx].VotingPower != val.VotingPower {
-				return false
+			if byzValsCopy[idx].VotingPower != val.VotingPower {
+				return  false
 			}
 		}
+
 		return true
 	}
 
