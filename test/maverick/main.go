@@ -204,19 +204,14 @@ func initFilesWithConfig(config *cfg.Config) error {
 	if tmos.FileExists(genFile) {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
-		var genDoc types.GenesisDoc
+		genDoc := types.GenesisDoc{
+			ChainID:     fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
+			GenesisTime: tmtime.Now(),
+		}
 		if keyType == "secp256k1" {
-			genDoc = types.GenesisDoc{
-				ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
-				GenesisTime:     tmtime.Now(),
-				ConsensusParams: types.SecpConsensusParams(),
-			}
+			genDoc.ConsensusParams = types.SecpConsensusParams()
 		} else {
-			genDoc = types.GenesisDoc{
-				ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
-				GenesisTime:     tmtime.Now(),
-				ConsensusParams: types.DefaultConsensusParams(),
-			}
+			genDoc.ConsensusParams = types.DefaultConsensusParams()
 		}
 		pubKey, err := pv.GetPubKey()
 		if err != nil {

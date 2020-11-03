@@ -179,25 +179,17 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	var genDoc *types.GenesisDoc
+	// Generate genesis doc from generated validators
+	genDoc := &types.GenesisDoc{
+		ChainID:       "chain-" + tmrand.Str(6),
+		GenesisTime:   tmtime.Now(),
+		InitialHeight: initialHeight,
+		Validators:    genVals,
+	}
 	if keyType == "secp256k1" {
-		// Generate genesis doc from generated validators
-		genDoc = &types.GenesisDoc{
-			ChainID:         "chain-" + tmrand.Str(6),
-			ConsensusParams: types.SecpConsensusParams(),
-			GenesisTime:     tmtime.Now(),
-			InitialHeight:   initialHeight,
-			Validators:      genVals,
-		}
+		genDoc.ConsensusParams = types.SecpConsensusParams()
 	} else {
-		// Generate genesis doc from generated validators
-		genDoc = &types.GenesisDoc{
-			ChainID:         "chain-" + tmrand.Str(6),
-			ConsensusParams: types.DefaultConsensusParams(),
-			GenesisTime:     tmtime.Now(),
-			InitialHeight:   initialHeight,
-			Validators:      genVals,
-		}
+		genDoc.ConsensusParams = types.DefaultConsensusParams()
 	}
 
 	// Write genesis file.

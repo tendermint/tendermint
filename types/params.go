@@ -31,6 +31,8 @@ func DefaultConsensusParams() *tmproto.ConsensusParams {
 	}
 }
 
+// SecpConsensusParams returns a modified BlockParams,
+// allowing secp keys to be set in genesis.
 func SecpConsensusParams() *tmproto.ConsensusParams {
 
 	return &tmproto.ConsensusParams{
@@ -67,8 +69,8 @@ func DefaultValidatorParams() tmproto.ValidatorParams {
 	}
 }
 
-// DefaultValidatorParams returns a default ValidatorParams, which allows
-// only ed25519 pubkeys.
+// SecpValidatorParams returns a modified ValidatorParam, which allows
+// only secp256k1 pubkeys.
 func SecpValidatorParams() tmproto.ValidatorParams {
 	return tmproto.ValidatorParams{
 		PubKeyTypes: []string{ABCIPubKeyTypeSecp256k1},
