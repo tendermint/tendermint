@@ -84,6 +84,11 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 		validators := ev.GetByzantineValidators(commonVals, trustedHeader)
 		// ensure this matches the validators that are listed in the evidence. They should be in the same order as
 		// that of the commit.
+		if validators == nil && ev.ByzantineValidators != nil {
+			return fmt.Errorf("expected nil validators from an amnesia light client attack but got %d",
+				len(ev.ByzantineValidators))
+		}
+
 		if exp, got := len(validators), len(ev.ByzantineValidators); exp != got {
 			return fmt.Errorf("expected %d byzantine validators from evidence but got %d",
 				exp, got)

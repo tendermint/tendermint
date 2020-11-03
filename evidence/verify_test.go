@@ -30,10 +30,6 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 	conflictingVals, err := types.ValidatorSetFromExistingValidators(append(commonVals.Validators, newVal))
 	require.NoError(t, err)
 	conflictingPrivVals := append(commonPrivVals, newPrivVal)
-	byzVals := make([]types.Validator, 2)
-	for idx, val := range commonVals.Validators {
-		byzVals[idx] = *val
-	}
 
 	commonHeader := makeHeaderRandom(4)
 	commonHeader.Time = defaultEvidenceTime
@@ -58,7 +54,7 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 		},
 		CommonHeight:        4,
 		TotalVotingPower:    20,
-		ByzantineValidators: byzVals,
+		ByzantineValidators: commonVals.Validators,
 		Timestamp:           defaultEvidenceTime,
 	}
 
@@ -120,10 +116,10 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 
 	// if we submit evidence only against a single byzantine validator when we see there are more validators then this
 	// should return an error
-	ev.ByzantineValidators = []types.Validator{*commonVals.Validators[0]}
+	ev.ByzantineValidators = []*types.Validator{commonVals.Validators[0]}
 	err = pool.CheckEvidence(evList)
 	assert.Error(t, err)
-	ev.ByzantineValidators = byzVals // restore evidence
+	ev.ByzantineValidators = commonVals.Validators // restore evidence
 
 	// If evidence is submitted with an altered timestamp it should return an error
 	ev.Timestamp = defaultEvidenceTime.Add(1 * time.Minute)
@@ -145,11 +141,6 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 	trustedHeader.AppHash = conflictingHeader.AppHash
 	trustedHeader.LastResultsHash = conflictingHeader.LastResultsHash
 
-	byzVals := make([]types.Validator, 4)
-	for idx, val := range conflictingVals.Validators[:4] {
-		byzVals[idx] = *val
-	}
-
 	// we are simulating a duplicate vote attack where all the validators in the conflictingVals set
 	// except the last validator vote twice
 	blockID := makeBlockID(conflictingHeader.Hash(), 1000, []byte("partshash"))
@@ -165,7 +156,7 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 			ValidatorSet: conflictingVals,
 		},
 		CommonHeight:        10,
-		ByzantineValidators: byzVals,
+		ByzantineValidators: conflictingVals.Validators[:4],
 		TotalVotingPower:    50,
 		Timestamp:           defaultEvidenceTime,
 	}
@@ -249,7 +240,7 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 			ValidatorSet: conflictingVals,
 		},
 		CommonHeight:        10,
-		ByzantineValidators: []types.Validator{}, // with amnesia evidence no validators are submitted as abci evidence
+		ByzantineValidators: nil, // with amnesia evidence no validators are submitted as abci evidence
 		TotalVotingPower:    50,
 		Timestamp:           defaultEvidenceTime,
 	}

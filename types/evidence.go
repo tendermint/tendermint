@@ -30,8 +30,7 @@ type Evidence interface {
 
 //--------------------------------------------------------------------------------------
 
-// DuplicateVoteEvidence contains evidence a validator signed two conflicting
-// votes.
+// DuplicateVoteEvidence contains evidence of a single validator signing two conflicting votes.
 type DuplicateVoteEvidence struct {
 	VoteA *Vote `json:"vote_a"`
 	VoteB *Vote `json:"vote_b"`
@@ -192,9 +191,9 @@ type LightClientAttackEvidence struct {
 	CommonHeight     int64
 
 	// abci specific information
-	ByzantineValidators []Validator
-	TotalVotingPower    int64
-	Timestamp           time.Time
+	ByzantineValidators []*Validator // validators in the validator set that misbehaved in creating the conflicting block
+	TotalVotingPower    int64        // total voting power of the validator set at the common height
+	Timestamp           time.Time    // timestamp of the block at the common height
 }
 
 var _ Evidence = &LightClientAttackEvidence{}
@@ -205,7 +204,7 @@ func (l *LightClientAttackEvidence) ABCI() []abci.Evidence {
 	for idx := range l.ByzantineValidators {
 		abciEv[idx] = abci.Evidence{
 			Type:             abci.EvidenceType_LIGHT_CLIENT_ATTACK,
-			Validator:        TM2PB.Validator(&l.ByzantineValidators[idx]),
+			Validator:        TM2PB.Validator(l.ByzantineValidators[idx]),
 			Height:           l.Height(),
 			Time:             l.Timestamp,
 			TotalVotingPower: l.TotalVotingPower,
@@ -231,8 +230,8 @@ func (l *LightClientAttackEvidence) Bytes() []byte {
 // the malicious validators were and returns them. This is used both for forming the ByzantineValidators
 // field and for validating that it is correct
 func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *ValidatorSet,
-	trusted *SignedHeader) []Validator {
-	var validators []Validator
+	trusted *SignedHeader) []*Validator {
+	var validators []*Validator
 	// First check if the header is invalid. This means that it is a lunatic attack and therefore we take the
 	// validators who are in the commonVals and voted for the lunatic header
 	if l.ConflictingHeaderIsInvalid(trusted.Header) {
@@ -246,13 +245,13 @@ func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *Validator
 				// validator wasn't in the common validator set
 				continue
 			}
-			validators = append(validators, *val)
+			validators = append(validators, val)
 		}
 		return validators
-		// Next, check to see if it is an equivocation attack and both commits are in the same round. If this is the
-		// case then we take the validators from the conflicting light block validator set that voted in both headers.
 	} else if trusted.Commit.Round == l.ConflictingBlock.Commit.Round {
-		// validator hashes are the same therefore the indexing order of validators are the same and thus we
+		// This is an equivocation attack as both commits are in the same round. We then find the validators
+		// from the conflicting light block validator set that voted in both headers.
+		// Validator hashes are the same therefore the indexing order of validators are the same and thus we
 		// only need a single loop to find the validators that voted twice.
 		for i := 0; i < len(l.ConflictingBlock.Commit.Signatures); i++ {
 			sigA := l.ConflictingBlock.Commit.Signatures[i]
@@ -266,7 +265,7 @@ func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *Validator
 			}
 
 			_, val := l.ConflictingBlock.ValidatorSet.GetByAddress(sigA.ValidatorAddress)
-			validators = append(validators, *val)
+			validators = append(validators, val)
 		}
 		return validators
 
@@ -359,13 +358,13 @@ func (l *LightClientAttackEvidence) ToProto() (*tmproto.LightClientAttackEvidenc
 		return nil, err
 	}
 
-	byzVals := make([]tmproto.Validator, len(l.ByzantineValidators))
+	byzVals := make([]*tmproto.Validator, len(l.ByzantineValidators))
 	for idx, val := range l.ByzantineValidators {
 		valpb, err := val.ToProto()
 		if err != nil {
 			return nil, err
 		}
-		byzVals[idx] = *valpb
+		byzVals[idx] = valpb
 	}
 
 	return &tmproto.LightClientAttackEvidence{
@@ -388,13 +387,13 @@ func LightClientAttackEvidenceFromProto(lpb *tmproto.LightClientAttackEvidence) 
 		return nil, err
 	}
 
-	byzVals := make([]Validator, len(lpb.ByzantineValidators))
+	byzVals := make([]*Validator, len(lpb.ByzantineValidators))
 	for idx := range lpb.ByzantineValidators {
-		val, err := ValidatorFromProto(&lpb.ByzantineValidators[idx])
+		val, err := ValidatorFromProto(lpb.ByzantineValidators[idx])
 		if err != nil {
 			return nil, err
 		}
-		byzVals[idx] = *val
+		byzVals[idx] = val
 	}
 
 	l := &LightClientAttackEvidence{

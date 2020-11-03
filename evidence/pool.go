@@ -254,20 +254,20 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 			return false
 		}
 		if err != nil {
-			evpool.logger.Error("Failed to load light client attack evidence", "err", err, "height", ev.Height(), "key", key)
+			evpool.logger.Error("Failed to load light client attack evidence", "err", err, "key(height/hash)", key)
 			return false
 		}
 		var trustedPb tmproto.LightClientAttackEvidence
 		err = trustedPb.Unmarshal(evBytes)
 		if err != nil {
 			evpool.logger.Error("Failed to convert light client attack evidence from bytes",
-				"err", err, "height", ev.Height(), "key", key)
+				"err", err, "key(height/hash)", key)
 			return false
 		}
 		trustedEv, err := types.LightClientAttackEvidenceFromProto(&trustedPb)
 		if err != nil {
 			evpool.logger.Error("Failed to convert light client attack evidence from protobuf",
-				"err", err, "height", ev.Height(), "key", key)
+				"err", err, "key(height/hash)", key)
 			return false
 		}
 		// ensure that all the byzantine validators that the evidence pool has match the byzantine validators
@@ -370,12 +370,12 @@ func (evpool *Pool) markEvidenceAsCommitted(evidence types.EvidenceList) {
 		h := gogotypes.Int64Value{Value: ev.Height()}
 		evBytes, err := proto.Marshal(&h)
 		if err != nil {
-			evpool.logger.Error("failed to marshal committed evidence", "err", err, "height", ev.Height())
+			evpool.logger.Error("failed to marshal committed evidence", "err", err, "key(height/hash)", key)
 			continue
 		}
 
 		if err := evpool.evidenceStore.Set(key, evBytes); err != nil {
-			evpool.logger.Error("Unable to save committed evidence", "err", err)
+			evpool.logger.Error("Unable to save committed evidence", "err", err, "key(height/hash)", key)
 		}
 	}
 
@@ -409,6 +409,9 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxBytes int64) ([]types.Eviden
 		evList.Evidence = append(evList.Evidence, evpb)
 		evSize = int64(evList.Size())
 		if maxBytes != -1 && evSize > maxBytes {
+			if err := iter.Error(); err != nil {
+				return evidence, totalSize, err
+			}
 			return evidence, totalSize, nil
 		}
 
@@ -421,6 +424,9 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxBytes int64) ([]types.Eviden
 		evidence = append(evidence, ev)
 	}
 
+	if err := iter.Error(); err != nil {
+		return evidence, totalSize, err
+	}
 	return evidence, totalSize, nil
 }
 

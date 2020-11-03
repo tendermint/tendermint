@@ -225,10 +225,6 @@ func TestCheckEvidenceWithLightClientAttack(t *testing.T) {
 		height         int64 = 10
 	)
 	conflictingVals, conflictingPrivVals := types.RandValidatorSet(nValidators, validatorPower)
-	byzVals := make([]types.Validator, len(conflictingVals.Validators))
-	for idx, val := range conflictingVals.Validators {
-		byzVals[idx] = *val
-	}
 	trustedHeader := makeHeaderRandom(height)
 	trustedHeader.Time = defaultEvidenceTime
 
@@ -257,7 +253,7 @@ func TestCheckEvidenceWithLightClientAttack(t *testing.T) {
 		},
 		CommonHeight:        10,
 		TotalVotingPower:    int64(nValidators) * validatorPower,
-		ByzantineValidators: byzVals,
+		ByzantineValidators: conflictingVals.Validators,
 		Timestamp:           defaultEvidenceTime,
 	}
 

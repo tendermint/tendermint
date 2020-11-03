@@ -169,7 +169,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 			ValidatorSet: state.Validators,
 		},
 		CommonHeight:        8,
-		ByzantineValidators: []types.Validator{*state.Validators.Validators[0]},
+		ByzantineValidators: []*types.Validator{state.Validators.Validators[0]},
 		TotalVotingPower:    12,
 		Timestamp:           defaultEvidenceTime,
 	}
