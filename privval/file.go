@@ -11,6 +11,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -170,8 +171,13 @@ func NewFilePV(privKey crypto.PrivKey, keyFilePath, stateFilePath string) *FileP
 
 // GenFilePV generates a new validator with randomly generated private key
 // and sets the filePaths, but does not call Save().
-func GenFilePV(keyFilePath, stateFilePath string) *FilePV {
-	return NewFilePV(ed25519.GenPrivKey(), keyFilePath, stateFilePath)
+func GenFilePV(keyFilePath, stateFilePath, key string) *FilePV {
+	switch key {
+	case "secp256k1":
+		return NewFilePV(secp256k1.GenPrivKey(), keyFilePath, stateFilePath)
+	default:
+		return NewFilePV(ed25519.GenPrivKey(), keyFilePath, stateFilePath)
+	}
 }
 
 // LoadFilePV loads a FilePV from the filePaths.  The FilePV handles double
@@ -232,7 +238,7 @@ func LoadOrGenFilePV(keyFilePath, stateFilePath string) *FilePV {
 	if tmos.FileExists(keyFilePath) {
 		pv = LoadFilePV(keyFilePath, stateFilePath)
 	} else {
-		pv = GenFilePV(keyFilePath, stateFilePath)
+		pv = GenFilePV(keyFilePath, stateFilePath, "")
 		pv.Save()
 	}
 	return pv

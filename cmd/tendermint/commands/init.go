@@ -21,6 +21,15 @@ var InitFilesCmd = &cobra.Command{
 	RunE:  initFiles,
 }
 
+var (
+	keyType string
+)
+
+func init() {
+	InitFilesCmd.Flags().StringVar(&keyType, "key", "ed25519",
+		"Key type to generate privval file with. Options: ed25519, secp256k1")
+}
+
 func initFiles(cmd *cobra.Command, args []string) error {
 	return initFilesWithConfig(config)
 }
@@ -35,7 +44,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 		logger.Info("Found private validator", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
 	} else {
-		pv = privval.GenFilePV(privValKeyFile, privValStateFile)
+		pv = privval.GenFilePV(privValKeyFile, privValStateFile, keyType)
 		pv.Save()
 		logger.Info("Generated private validator", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
@@ -56,10 +65,19 @@ func initFilesWithConfig(config *cfg.Config) error {
 	if tmos.FileExists(genFile) {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
-		genDoc := types.GenesisDoc{
-			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
-			GenesisTime:     tmtime.Now(),
-			ConsensusParams: types.DefaultConsensusParams(),
+		var genDoc types.GenesisDoc
+		if keyType == "secp256k1" {
+			genDoc = types.GenesisDoc{
+				ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
+				GenesisTime:     tmtime.Now(),
+				ConsensusParams: types.SecpConsensusParams(),
+			}
+		} else {
+			genDoc = types.GenesisDoc{
+				ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
+				GenesisTime:     tmtime.Now(),
+				ConsensusParams: types.DefaultConsensusParams(),
+			}
 		}
 		pubKey, err := pv.GetPubKey()
 		if err != nil {

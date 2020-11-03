@@ -188,7 +188,7 @@ func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 	genesis := types.GenesisDoc{
 		GenesisTime:     time.Now(),
 		ChainID:         testnet.Name,
-		ConsensusParams: types.DefaultConsensusParams(),
+		ConsensusParams: types.DefaultConsensusParams(), //todo configurable
 		InitialHeight:   testnet.InitialHeight,
 	}
 	for validator, power := range testnet.Validators {

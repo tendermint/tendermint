@@ -156,10 +156,17 @@ func startNode(config *cfg.Config, logger log.Logger, misbehaviorFlag string) er
 	select {}
 }
 
+var keyType string
+
 var InitFilesCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize Tendermint",
 	RunE:  initFiles,
+}
+
+func init() {
+	InitFilesCmd.Flags().StringVar(&keyType, "key", "ed25519",
+		"Key type to generate privval file with. Options: ed25519, secp256k1")
 }
 
 func initFiles(cmd *cobra.Command, args []string) error {
@@ -197,10 +204,19 @@ func initFilesWithConfig(config *cfg.Config) error {
 	if tmos.FileExists(genFile) {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
-		genDoc := types.GenesisDoc{
-			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
-			GenesisTime:     tmtime.Now(),
-			ConsensusParams: types.DefaultConsensusParams(),
+		var genDoc types.GenesisDoc
+		if keyType == "secp256k1" {
+			genDoc = types.GenesisDoc{
+				ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
+				GenesisTime:     tmtime.Now(),
+				ConsensusParams: types.SecpConsensusParams(),
+			}
+		} else {
+			genDoc = types.GenesisDoc{
+				ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
+				GenesisTime:     tmtime.Now(),
+				ConsensusParams: types.DefaultConsensusParams(),
+			}
 		}
 		pubKey, err := pv.GetPubKey()
 		if err != nil {

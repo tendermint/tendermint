@@ -74,6 +74,8 @@ func init() {
 		"P2P Port")
 	TestnetFilesCmd.Flags().BoolVar(&randomMonikers, "random-monikers", false,
 		"randomize the moniker for each generated node")
+	TestnetFilesCmd.Flags().StringVar(&keyType, "key", "ed25519",
+		"Key type to generate privval file with. Options: ed25519, secp256k1")
 }
 
 // TestnetFilesCmd allows initialisation of files for a Tendermint testnet.
@@ -177,13 +179,25 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Generate genesis doc from generated validators
-	genDoc := &types.GenesisDoc{
-		ChainID:         "chain-" + tmrand.Str(6),
-		ConsensusParams: types.DefaultConsensusParams(),
-		GenesisTime:     tmtime.Now(),
-		InitialHeight:   initialHeight,
-		Validators:      genVals,
+	var genDoc *types.GenesisDoc
+	if keyType == "secp256k1" {
+		// Generate genesis doc from generated validators
+		genDoc = &types.GenesisDoc{
+			ChainID:         "chain-" + tmrand.Str(6),
+			ConsensusParams: types.SecpConsensusParams(),
+			GenesisTime:     tmtime.Now(),
+			InitialHeight:   initialHeight,
+			Validators:      genVals,
+		}
+	} else {
+		// Generate genesis doc from generated validators
+		genDoc = &types.GenesisDoc{
+			ChainID:         "chain-" + tmrand.Str(6),
+			ConsensusParams: types.DefaultConsensusParams(),
+			GenesisTime:     tmtime.Now(),
+			InitialHeight:   initialHeight,
+			Validators:      genVals,
+		}
 	}
 
 	// Write genesis file.

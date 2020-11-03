@@ -31,6 +31,16 @@ func DefaultConsensusParams() *tmproto.ConsensusParams {
 	}
 }
 
+func SecpConsensusParams() *tmproto.ConsensusParams {
+
+	return &tmproto.ConsensusParams{
+		Block:     DefaultBlockParams(),
+		Evidence:  DefaultEvidenceParams(),
+		Validator: SecpValidatorParams(),
+		Version:   DefaultVersionParams(),
+	}
+}
+
 // DefaultBlockParams returns a default BlockParams.
 func DefaultBlockParams() tmproto.BlockParams {
 	return tmproto.BlockParams{
@@ -54,6 +64,14 @@ func DefaultEvidenceParams() tmproto.EvidenceParams {
 func DefaultValidatorParams() tmproto.ValidatorParams {
 	return tmproto.ValidatorParams{
 		PubKeyTypes: []string{ABCIPubKeyTypeEd25519},
+	}
+}
+
+// DefaultValidatorParams returns a default ValidatorParams, which allows
+// only ed25519 pubkeys.
+func SecpValidatorParams() tmproto.ValidatorParams {
+	return tmproto.ValidatorParams{
+		PubKeyTypes: []string{ABCIPubKeyTypeSecp256k1},
 	}
 }
 

@@ -17,8 +17,13 @@ var GenValidatorCmd = &cobra.Command{
 	Run:   genValidator,
 }
 
+func init() {
+	GenValidatorCmd.Flags().StringVar(&keyType, "key", "ed25519",
+		"Key type to generate privval file with. Options: ed25519, secp256k1")
+}
+
 func genValidator(cmd *cobra.Command, args []string) {
-	pv := privval.GenFilePV("", "")
+	pv := privval.GenFilePV("", "", keyType)
 	jsbz, err := tmjson.Marshal(pv)
 	if err != nil {
 		panic(err)
