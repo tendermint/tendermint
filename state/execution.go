@@ -292,7 +292,7 @@ func execBlockOnProxyApp(
 
 	commitInfo := getBeginBlockValidatorInfo(block, store, initialHeight)
 
-	var byzVals []abci.Evidence //nolint:prealloc
+	byzVals := make([]abci.Evidence, 0)
 	for _, evidence := range block.Evidence.Evidence {
 		byzVals = append(byzVals, evidence.ABCI()...)
 	}
