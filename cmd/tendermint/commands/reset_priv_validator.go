@@ -18,9 +18,7 @@ var ResetAllCmd = &cobra.Command{
 	Run:   resetAll,
 }
 
-var (
-	keepAddrBook bool
-)
+var keepAddrBook bool
 
 func init() {
 	ResetAllCmd.Flags().BoolVar(&keepAddrBook, "keep-addr-book", false, "keep the address book intact")
