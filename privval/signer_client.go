@@ -16,7 +16,6 @@ import (
 type SignerClient struct {
 	endpoint *SignerListenerEndpoint
 	chainID  string
-	pubKey crypto.PubKey
 }
 
 var _ types.PrivValidator = (*SignerClient)(nil)
@@ -73,11 +72,6 @@ func (sc *SignerClient) Ping() error {
 // returns an error if client is not able to provide the key
 func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 	sc.endpoint.Logger.Info("SignerClient: GetPubKey")
-	if sc.pubKey != nil {
-		sc.endpoint.Logger.Info("SignerClient: GetPubKey use cached key")
-		return sc.pubKey, nil
-	}
-
 	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.PubKeyRequest{ChainId: sc.chainID}))
 
 	if err != nil {
@@ -97,7 +91,6 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 		return nil, err
 	}
 
-	sc.pubKey = pk
 	return pk, nil
 }
 
