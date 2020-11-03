@@ -25,6 +25,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS
 
 - [statesync] \#5516 Check that all heights necessary to rebuild state for a snapshot exist before adding the snapshot to the pool. (@erikgrinaker)
+- [abci] \#5613 Introduce `BlockGasUsed` of type `int64` to the `ResponseCheckTx` and `ResponseDeliverTx` types (@alexanderbez).
 
 ### BUG FIXES
 
