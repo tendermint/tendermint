@@ -1,8 +1,6 @@
 package state
 
 import (
-	"time"
-
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -58,6 +56,6 @@ func (EmptyEvidencePool) PendingEvidence(maxBytes int64) (ev []types.Evidence, s
 func (EmptyEvidencePool) AddEvidence(types.Evidence) error              { return nil }
 func (EmptyEvidencePool) Update(State, types.EvidenceList)              {}
 func (EmptyEvidencePool) CheckEvidence(evList types.EvidenceList) error { return nil }
-func (EmptyEvidencePool) AddEvidenceFromConsensus(*types.Vote, *types.Vote, time.Time, *types.ValidatorSet) error {
+func (EmptyEvidencePool) AddEvidenceFromConsensus(evidence types.Evidence) error {
 	return nil
 }

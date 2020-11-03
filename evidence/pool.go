@@ -152,15 +152,9 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 	return nil
 }
 
-// AddEvidenceFromConsensus should be exposed only to the consensus so it can add evidence to the pool
-// directly without the need for verification.
-func (evpool *Pool) AddEvidenceFromConsensus(voteA, voteB *types.Vote, time time.Time,
-	valSet *types.ValidatorSet) error {
-
-	ev := types.NewDuplicateVoteEvidence(voteA, voteB, time, valSet)
-	if ev == nil {
-		return errors.New("received incomplete duplicate vote information from consensus")
-	}
+// AddEvidenceFromConsensus should be exposed only to the consensus reactor so it can add evidence
+// to the pool directly without the need for verification.
+func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence) error {
 
 	// we already have this evidence, log this but don't return an error.
 	if evpool.isPending(ev) {
@@ -260,21 +254,23 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 			return false
 		}
 		if err != nil {
-			evpool.logger.Error("Failed to load evidence", "err", err, "evidence", lcae)
+			evpool.logger.Error("Failed to load light client attack evidence", "err", err, "height", ev.Height(), "key", key)
 			return false
 		}
 		var trustedPb tmproto.LightClientAttackEvidence
 		err = trustedPb.Unmarshal(evBytes)
 		if err != nil {
-			evpool.logger.Error("Failed to convert evidence from bytes", "err", err, "evidence", lcae)
+			evpool.logger.Error("Failed to convert light client attack evidence from bytes",
+				"err", err, "height", ev.Height(), "key", key)
 			return false
 		}
 		trustedEv, err := types.LightClientAttackEvidenceFromProto(&trustedPb)
 		if err != nil {
-			evpool.logger.Error("Failed to convert evidence from protobuf", "err", err, "evidence", lcae)
+			evpool.logger.Error("Failed to convert light client attack evidence from protobuf",
+				"err", err, "height", ev.Height(), "key", key)
 			return false
 		}
-		// ensure that all the validators that the evidence pool has matches the validators
+		// ensure that all the byzantine validators that the evidence pool has match the byzantine validators
 		// in this evidence
 		if len(trustedEv.ByzantineValidators) != len(lcae.ByzantineValidators) {
 			return false
@@ -379,7 +375,7 @@ func (evpool *Pool) markEvidenceAsCommitted(evidence types.EvidenceList) {
 		}
 
 		if err := evpool.evidenceStore.Set(key, evBytes); err != nil {
-			evpool.logger.Error("Unable to add committed evidence", "err", err)
+			evpool.logger.Error("Unable to save committed evidence", "err", err)
 		}
 	}
 
@@ -392,22 +388,27 @@ func (evpool *Pool) markEvidenceAsCommitted(evidence types.EvidenceList) {
 // listEvidence retrieves lists evidence from oldest to newest within maxBytes.
 // If maxBytes is -1, there's no cap on the size of returned evidence.
 func (evpool *Pool) listEvidence(prefixKey byte, maxBytes int64) ([]types.Evidence, int64, error) {
-	var totalSize int64
-	var evidence []types.Evidence
+	var (
+		evSize    int64
+		totalSize int64
+		evidence  []types.Evidence
+		evList    tmproto.EvidenceList // used for calculating the bytes size
+	)
+
 	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{prefixKey})
 	if err != nil {
 		return nil, totalSize, fmt.Errorf("database error: %v", err)
 	}
 	defer iter.Close()
-	var protoOverheadBytes int64 = 3
 	for ; iter.Valid(); iter.Next() {
 		var evpb tmproto.Evidence
 		err := evpb.Unmarshal(iter.Value())
 		if err != nil {
 			return evidence, totalSize, err
 		}
-		evSize := int64(evpb.Size())
-		if maxBytes != -1 && totalSize+evSize+protoOverheadBytes > maxBytes {
+		evList.Evidence = append(evList.Evidence, evpb)
+		evSize = int64(evList.Size())
+		if maxBytes != -1 && evSize > maxBytes {
 			return evidence, totalSize, nil
 		}
 
@@ -416,8 +417,7 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxBytes int64) ([]types.Eviden
 			return nil, totalSize, err
 		}
 
-		totalSize += (evSize + protoOverheadBytes)
-
+		totalSize = evSize
 		evidence = append(evidence, ev)
 	}
 

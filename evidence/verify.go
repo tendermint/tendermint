@@ -27,7 +27,7 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 	// verify the time of the evidence
 	blockMeta := evpool.blockStore.LoadBlockMeta(evidence.Height())
 	if blockMeta == nil {
-		return fmt.Errorf("don't have header at height #%d", evidence.Height())
+		return fmt.Errorf("don't have header #%d", evidence.Height())
 	}
 	evTime := blockMeta.Header.Time
 	if evidence.Time() != evTime {
@@ -84,9 +84,9 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 		validators := ev.GetByzantineValidators(commonVals, trustedHeader)
 		// ensure this matches the validators that are listed in the evidence. They should be in the same order as
 		// that of the commit.
-		if len(validators) != len(ev.ByzantineValidators) {
+		if exp, got := len(validators), len(ev.ByzantineValidators); exp != got {
 			return fmt.Errorf("expected %d byzantine validators from evidence but got %d",
-				len(validators), len(ev.ByzantineValidators))
+				exp, got)
 		}
 
 		for idx, val := range validators {
@@ -135,13 +135,13 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, t
 		}
 	}
 
-	if e.TotalVotingPower != commonVals.TotalVotingPower() {
+	if evTotal, valsTotal := e.TotalVotingPower, commonVals.TotalVotingPower(); evTotal != valsTotal {
 		return fmt.Errorf("total voting power from the evidence and our validator set does not match (%d != %d)",
-			e.TotalVotingPower, commonVals.TotalVotingPower())
+			evTotal, valsTotal)
 	}
 
 	if bytes.Equal(trustedHeader.Hash(), e.ConflictingBlock.Hash()) {
-		return fmt.Errorf("trusted header hash matches the evidence conflicting header hash: %X",
+		return fmt.Errorf("trusted header hash matches the evidence's conflicting header hash: %X",
 			trustedHeader.Hash())
 	}
 
