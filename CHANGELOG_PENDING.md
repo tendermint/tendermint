@@ -25,6 +25,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS
 
 - [statesync] \#5516 Check that all heights necessary to rebuild state for a snapshot exist before adding the snapshot to the pool. (@erikgrinaker)
+- [privval] \#5603 Add `--key` to `init`, `gen_validator`, `testnet` & `unsafe_reset_priv_validator` for use in generating `secp256k1` keys. 
 
 ### BUG FIXES
 
