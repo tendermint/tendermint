@@ -296,7 +296,7 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 				return false
 			}
 			if byzValsCopy[idx].VotingPower != val.VotingPower {
-				return  false
+				return false
 			}
 		}
 

@@ -201,10 +201,10 @@ var _ Evidence = &LightClientAttackEvidence{}
 // ABCI forms an array of abci evidence for each byzantine validator
 func (l *LightClientAttackEvidence) ABCI() []abci.Evidence {
 	abciEv := make([]abci.Evidence, len(l.ByzantineValidators))
-	for idx := range l.ByzantineValidators {
+	for idx, val := range l.ByzantineValidators {
 		abciEv[idx] = abci.Evidence{
 			Type:             abci.EvidenceType_LIGHT_CLIENT_ATTACK,
-			Validator:        TM2PB.Validator(l.ByzantineValidators[idx]),
+			Validator:        TM2PB.Validator(val),
 			Height:           l.Height(),
 			Time:             l.Timestamp,
 			TotalVotingPower: l.TotalVotingPower,
@@ -388,8 +388,8 @@ func LightClientAttackEvidenceFromProto(lpb *tmproto.LightClientAttackEvidence) 
 	}
 
 	byzVals := make([]*Validator, len(lpb.ByzantineValidators))
-	for idx := range lpb.ByzantineValidators {
-		val, err := ValidatorFromProto(lpb.ByzantineValidators[idx])
+	for idx, valpb := range lpb.ByzantineValidators {
+		val, err := ValidatorFromProto(valpb)
 		if err != nil {
 			return nil, err
 		}
