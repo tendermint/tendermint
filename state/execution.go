@@ -115,7 +115,11 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 // Validation does not mutate state, but does require historical information from the stateDB,
 // ie. to verify evidence from a validator at an old height.
 func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) error {
-	return validateBlock(blockExec.evpool, state, block)
+	err := validateBlock(state, block)
+	if err != nil {
+		return err
+	}
+	return blockExec.evpool.CheckEvidence(block.Evidence.Evidence)
 }
 
 // ApplyBlock validates the block against the state, executes it against the app,
@@ -128,16 +132,13 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	state State, blockID types.BlockID, block *types.Block,
 ) (State, int64, error) {
 
-	if err := blockExec.ValidateBlock(state, block); err != nil {
+	if err := validateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
 	}
 
-	// Update evpool with the block and state and get any byzantine validators for that block
-	byzVals := blockExec.evpool.ABCIEvidence(block.Height, block.Evidence.Evidence)
-
 	startTime := time.Now().UnixNano()
 	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block,
-		blockExec.store, state.InitialHeight, byzVals)
+		blockExec.store, state.InitialHeight)
 	endTime := time.Now().UnixNano()
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
 	if err != nil {
@@ -180,7 +181,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update evpool with the latest state.
-	blockExec.evpool.Update(state)
+	blockExec.evpool.Update(state, block.Evidence.Evidence)
 
 	fail.Fail() // XXX
 
@@ -262,7 +263,6 @@ func execBlockOnProxyApp(
 	block *types.Block,
 	store Store,
 	initialHeight int64,
-	byzVals []abci.Evidence,
 ) (*tmstate.ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
@@ -291,6 +291,11 @@ func execBlockOnProxyApp(
 	proxyAppConn.SetResponseCallback(proxyCb)
 
 	commitInfo := getBeginBlockValidatorInfo(block, store, initialHeight)
+
+	byzVals := make([]abci.Evidence, 0)
+	for _, evidence := range block.Evidence.Evidence {
+		byzVals = append(byzVals, evidence.ABCI()...)
+	}
 
 	// Begin block
 	var err error
@@ -526,7 +531,7 @@ func ExecCommitBlock(
 	store Store,
 	initialHeight int64,
 ) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight, []abci.Evidence{})
+	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err

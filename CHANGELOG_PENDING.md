@@ -36,3 +36,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [consensus/wal] Fix WAL autorepair by opening target WAL in read/write mode (@erikgrinaker)
 - [blockchain/v2] \#5553 Make the removal of an already removed peer a noop (@melekes)
 - [evidence] \#5574 Fix bug where node sends committed evidence to peer (@cmwaters)
+- [evidence] \5610 Make it possible for abci evidence to be formed from tm evidence (@cmwaters)
