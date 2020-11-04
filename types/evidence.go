@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -228,7 +229,7 @@ func (l *LightClientAttackEvidence) Bytes() []byte {
 
 // GetByzantineValidators finds out what style of attack LightClientAttackEvidence was and then works out who
 // the malicious validators were and returns them. This is used both for forming the ByzantineValidators
-// field and for validating that it is correct
+// field and for validating that it is correct. Validators are ordered based on validator power
 func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *ValidatorSet,
 	trusted *SignedHeader) []*Validator {
 	var validators []*Validator
@@ -247,6 +248,7 @@ func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *Validator
 			}
 			validators = append(validators, val)
 		}
+		sort.Sort(ValidatorsByVotingPower(validators))
 		return validators
 	} else if trusted.Commit.Round == l.ConflictingBlock.Commit.Round {
 		// This is an equivocation attack as both commits are in the same round. We then find the validators
@@ -267,8 +269,8 @@ func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *Validator
 			_, val := l.ConflictingBlock.ValidatorSet.GetByAddress(sigA.ValidatorAddress)
 			validators = append(validators, val)
 		}
+		sort.Sort(ValidatorsByVotingPower(validators))
 		return validators
-
 	}
 	// if the rounds are different then this is an amnesia attack. Unfortunately, given the nature of the attack,
 	// we aren't able yet to deduce which are malicious validators and which are not hence we return an

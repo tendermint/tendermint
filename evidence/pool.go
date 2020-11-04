@@ -273,6 +273,10 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 		}
 		// ensure that all the byzantine validators that the evidence pool has match the byzantine validators
 		// in this evidence
+		if trustedEv.ByzantineValidators == nil && lcae.ByzantineValidators != nil {
+			return false
+		}
+
 		if len(trustedEv.ByzantineValidators) != len(lcae.ByzantineValidators) {
 			return false
 		}
@@ -282,16 +286,11 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 			byzValsCopy[i] = v.Copy()
 		}
 
-		trustedValsCopy := make([]*types.Validator, len(trustedEv.ByzantineValidators))
-		for i, v := range trustedEv.ByzantineValidators {
-			trustedValsCopy[i] = v.Copy()
-		}
-
 		// ensure that both validator arrays are in the same order
 		sort.Sort(types.ValidatorsByVotingPower(byzValsCopy))
-		sort.Sort(types.ValidatorsByVotingPower(trustedValsCopy))
 
-		for idx, val := range trustedValsCopy {
+
+		for idx, val := range trustedEv.ByzantineValidators {
 			if !bytes.Equal(byzValsCopy[idx].Address, val.Address) {
 				return false
 			}

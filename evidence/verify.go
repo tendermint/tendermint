@@ -83,8 +83,7 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 		// find out what type of attack this was and thus extract the malicious validators. Note in the case of an
 		// Amnesia attack we don't have any malicious validators.
 		validators := ev.GetByzantineValidators(commonVals, trustedHeader)
-		// ensure this matches the validators that are listed in the evidence. They should be in the same order as
-		// that of the commit.
+		// ensure this matches the validators that are listed in the evidence. They should be ordered based on power.
 		if validators == nil && ev.ByzantineValidators != nil {
 			return fmt.Errorf("expected nil validators from an amnesia light client attack but got %d",
 				len(ev.ByzantineValidators))
@@ -95,23 +94,17 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 				exp, got)
 		}
 
-		byzValsCopy := make([]*types.Validator, len(ev.ByzantineValidators))
-		for i, v := range ev.ByzantineValidators {
-			byzValsCopy[i] = v.Copy()
-		}
-
 		// ensure that both validator arrays are in the same order
-		sort.Sort(types.ValidatorsByVotingPower(byzValsCopy))
-		sort.Sort(types.ValidatorsByVotingPower(validators))
+		sort.Sort(types.ValidatorsByVotingPower(ev.ByzantineValidators))
 
 		for idx, val := range validators {
-			if !bytes.Equal(byzValsCopy[idx].Address, val.Address) {
+			if !bytes.Equal(ev.ByzantineValidators[idx].Address, val.Address) {
 				return fmt.Errorf("evidence contained a different byzantine validator address to the one we were expecting."+
-					"Expected %v, got %v", val.Address, byzValsCopy[idx].Address)
+					"Expected %v, got %v", val.Address, ev.ByzantineValidators[idx].Address)
 			}
-			if byzValsCopy[idx].VotingPower != val.VotingPower {
+			if ev.ByzantineValidators[idx].VotingPower != val.VotingPower {
 				return fmt.Errorf("evidence contained a byzantine validator with a different power to the one we were expecting."+
-					"Expected %d, got %d", val.VotingPower, byzValsCopy[idx].VotingPower)
+					"Expected %d, got %d", val.VotingPower, ev.ByzantineValidators[idx].VotingPower)
 			}
 		}
 
