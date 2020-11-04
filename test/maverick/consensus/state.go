@@ -467,7 +467,7 @@ type txNotifier interface {
 type evidencePool interface {
 	// Adds consensus based evidence to the evidence pool where time is the time
 	// of the block where the offense occurred and the validator set is the current one.
-	AddEvidenceFromConsensus(types.Evidence, time.Time, *types.ValidatorSet) error
+	AddEvidenceFromConsensus(evidence types.Evidence) error
 }
 
 //----------------------------------------
@@ -1773,8 +1773,8 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 			} else {
 				timestamp = sm.MedianTime(cs.LastCommit.MakeCommit(), cs.LastValidators)
 			}
-			evidenceErr := cs.evpool.AddEvidenceFromConsensus(
-				types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB), timestamp, cs.Validators)
+			ev := types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB, timestamp, cs.Validators)
+			evidenceErr := cs.evpool.AddEvidenceFromConsensus(ev)
 			if evidenceErr != nil {
 				cs.Logger.Error("Failed to add evidence to the evidence pool", "err", evidenceErr)
 			}

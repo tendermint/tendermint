@@ -41,11 +41,8 @@ var (
 		"restart":    0.1,
 	}
 	nodeMisbehaviors = weightedChoice{
-		// FIXME Disabled due to:
-		// https://github.com/tendermint/tendermint/issues/5554
-		// https://github.com/tendermint/tendermint/issues/5560
-		// misbehaviorOption{"double-prevote"}: 1,
-		misbehaviorOption{}: 9,
+		misbehaviorOption{"double-prevote"}: 1,
+		misbehaviorOption{}:                 9,
 	}
 )
 

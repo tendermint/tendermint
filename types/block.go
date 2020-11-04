@@ -1118,12 +1118,12 @@ func (data *EvidenceData) StringIndented(indent string) string {
 }
 
 // ToProto converts EvidenceData to protobuf
-func (data *EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
+func (data *EvidenceData) ToProto() (*tmproto.EvidenceList, error) {
 	if data == nil {
 		return nil, errors.New("nil evidence data")
 	}
 
-	evi := new(tmproto.EvidenceData)
+	evi := new(tmproto.EvidenceList)
 	eviBzs := make([]tmproto.Evidence, len(data.Evidence))
 	for i := range data.Evidence {
 		protoEvi, err := EvidenceToProto(data.Evidence[i])
@@ -1138,7 +1138,7 @@ func (data *EvidenceData) ToProto() (*tmproto.EvidenceData, error) {
 }
 
 // FromProto sets a protobuf EvidenceData to the given pointer.
-func (data *EvidenceData) FromProto(eviData *tmproto.EvidenceData) error {
+func (data *EvidenceData) FromProto(eviData *tmproto.EvidenceList) error {
 	if eviData == nil {
 		return errors.New("nil evidenceData")
 	}

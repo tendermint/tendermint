@@ -7,7 +7,6 @@ import (
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
-	ep "github.com/tendermint/tendermint/proto/tendermint/evidence"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -128,7 +127,7 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 			if err != nil {
 				panic(err)
 			}
-
+			evR.Logger.Debug("Gossiping evidence to peer", "ev", ev, "peer", peer.ID())
 			success := peer.Send(EvidenceChannel, msgBytes)
 			if !success {
 				time.Sleep(peerRetryMessageIntervalMS * time.Millisecond)
@@ -210,16 +209,15 @@ type PeerState interface {
 // encodemsg takes a array of evidence
 // returns the byte encoding of the List Message
 func encodeMsg(evis []types.Evidence) ([]byte, error) {
-	evi := make([]*tmproto.Evidence, len(evis))
+	evi := make([]tmproto.Evidence, len(evis))
 	for i := 0; i < len(evis); i++ {
 		ev, err := types.EvidenceToProto(evis[i])
 		if err != nil {
 			return nil, err
 		}
-		evi[i] = ev
+		evi[i] = *ev
 	}
-
-	epl := ep.List{
+	epl := tmproto.EvidenceList{
 		Evidence: evi,
 	}
 
@@ -229,14 +227,14 @@ func encodeMsg(evis []types.Evidence) ([]byte, error) {
 // decodemsg takes an array of bytes
 // returns an array of evidence
 func decodeMsg(bz []byte) (evis []types.Evidence, err error) {
-	lm := ep.List{}
+	lm := tmproto.EvidenceList{}
 	if err := lm.Unmarshal(bz); err != nil {
 		return nil, err
 	}
 
 	evis = make([]types.Evidence, len(lm.Evidence))
 	for i := 0; i < len(lm.Evidence); i++ {
-		ev, err := types.EvidenceFromProto(lm.Evidence[i])
+		ev, err := types.EvidenceFromProto(&lm.Evidence[i])
 		if err != nil {
 			return nil, err
 		}

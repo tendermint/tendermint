@@ -1,9 +1,6 @@
 package types
 
 import (
-	"fmt"
-	"reflect"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -108,29 +105,6 @@ func (tm2pb) ConsensusParams(params *tmproto.ConsensusParams) *abci.ConsensusPar
 		},
 		Evidence:  &params.Evidence,
 		Validator: &params.Validator,
-	}
-}
-
-// ABCI Evidence includes information from the past that's not included in the evidence itself
-// so Evidence types stays compact.
-// XXX: panics on nil or unknown pubkey type
-func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet) abci.Evidence {
-
-	// set type
-	var evType abci.EvidenceType
-	switch ev.(type) {
-	case *DuplicateVoteEvidence:
-		evType = abci.EvidenceType_DUPLICATE_VOTE
-	case *LightClientAttackEvidence:
-		evType = abci.EvidenceType_LIGHT_CLIENT_ATTACK
-	default:
-		panic(fmt.Sprintf("unknown evidence type: %v %v", ev, reflect.TypeOf(ev)))
-	}
-
-	return abci.Evidence{
-		Type:             evType,
-		Height:           ev.Height(),
-		TotalVotingPower: valSet.TotalVotingPower(),
 	}
 }
 
