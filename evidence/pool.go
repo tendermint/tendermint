@@ -289,7 +289,6 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 		// ensure that both validator arrays are in the same order
 		sort.Sort(types.ValidatorsByVotingPower(byzValsCopy))
 
-
 		for idx, val := range trustedEv.ByzantineValidators {
 			if !bytes.Equal(byzValsCopy[idx].Address, val.Address) {
 				return false
