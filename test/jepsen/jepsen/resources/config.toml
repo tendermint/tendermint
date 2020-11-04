@@ -5,7 +5,6 @@ proxy_app = "tcp://127.0.0.1:26658"
 moniker = "anonymous"
 fast_sync = true
 db_backend = "goleveldb"
-# log_level = "state:info,consensus:debug,*:error"
 log_level = "state:info,consensus:debug,*:error"
 
 [rpc]
