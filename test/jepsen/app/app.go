@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -14,6 +15,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -306,21 +308,28 @@ func (app *MerkleEyesApp) Query(req abci.RequestQuery) (res abci.ResponseQuery) 
 		}
 
 	case "/index": // Get by Index
-		index := wire.GetInt64(req.Data)
-		key, value := tree.GetByIndex(int(index))
+		index, n := binary.Varint(req.Data)
+		if n != len(req.Data) {
+			res.Code = CodeTypeEncodingError
+			res.Log = "Varint did not consume all of in"
+			return
+		}
+
+		key, value := tree.GetByIndex(index)
 		res.Key = key
 		res.Index = int64(index)
 		res.Value = value
 
 	case "/size": // Get size
-		size := tree.Size()
-		sizeBytes := wire.BinaryBytes(size)
-		res.Value = sizeBytes
+		buf := make([]byte, binary.MaxVarintLen64)
+		n := binary.PutVarint(buf, tree.Size())
+		res.Value = buf[:n]
 
 	default:
-		res.Code = CodeType_UnknownRequest
+		res.Code = CodeTypeUnknownRequest
 		res.Log = fmt.Sprintf("Unexpected Query path: %v", req.Path)
 	}
+
 	return
 }
 
@@ -355,42 +364,31 @@ func (app *MerkleEyesApp) doTx(tree *iavl.MutableTree, tx []byte) abci.ResponseD
 	tx = tx[1:]
 	switch typeByte {
 	case TxTypeSet: // Set
-		key, n, err := wire.GetByteSlice(tx)
-		if err != nil {
-			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError, Log: fmt.Sprintf("Error reading key: %v", err)}
+		key, errResp := unmarshalBytes(tx, "key", false)
+		if key == nil {
+			return errResp
 		}
-		tx = tx[n:]
-		value, n, err := wire.GetByteSlice(tx)
-		if err != nil {
-			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError, Log: fmt.Sprintf("Error reading value: %v", err)}
-		}
-		tx = tx[n:]
-		if len(tx) != 0 {
-			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError, Log: "Got bytes left over"}
+
+		value, errResp = unmarshalBytes(tx[len(key):], "value", true)
+		if value == nil {
+			return errResp
 		}
 
 		tree.Set(storeKey(key), value)
 
 		fmt.Println("SET", fmt.Sprintf("%X", key), fmt.Sprintf("%X", value))
 	case TxTypeRm: // Remove
-		key, n, err := wire.GetByteSlice(tx)
-		if err != nil {
-			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError, Log: fmt.Sprintf("Error reading key: %v", err)}
+		key, errResp := unmarshalBytes(tx, "key", true)
+		if key == nil {
+			return errResp
 		}
-		tx = tx[n:]
-		if len(tx) != 0 {
-			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError, Log: fmt.Sprintf("Got bytes left over")}
-		}
+
 		tree.Remove(storeKey(key))
 		fmt.Println("RM", fmt.Sprintf("%X", key))
 	case TxTypeGet: // Get
-		key, n, err := wire.GetByteSlice(tx)
-		if err != nil {
-			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError, Log: fmt.Sprintf("Error reading key: %v", err)}
-		}
-		tx = tx[n:]
-		if len(tx) != 0 {
-			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError, Log: "Got bytes left over"}
+		key, errResp := unmarshalBytes(tx, "key", true)
+		if key == nil {
+			return errResp
 		}
 
 		_, value := tree.Get(storeKey(key))
@@ -402,33 +400,27 @@ func (app *MerkleEyesApp) doTx(tree *iavl.MutableTree, tx []byte) abci.ResponseD
 		return abci.ResponseDeliverTx{Code: CodeTypeErrBaseUnknownAddress,
 			Log: fmt.Sprintf("Cannot find key: %X", key)}
 	case TxTypeCompareAndSet: // Compare and Set
-		key, n, err := wire.GetByteSlice(tx)
-		if err != nil {
-			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError, Log: fmt.Sprintf("Error reading key: %v", err)}
-		}
-		tx = tx[n:]
-
-		compareValue, n, err := wire.GetByteSlice(tx)
-		if err != nil {
-			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError, Log: fmt.Sprintf("Error reading compare value: %v", err)}
-		}
-		tx = tx[n:]
-
-		setValue, n, err := wire.GetByteSlice(tx)
-		if err != nil {
-			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError, Log: fmt.Sprintf("Error reading set value: %v", err)}
-		}
-		tx = tx[n:]
-
-		if len(tx) != 0 {
-			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError, Log: "Got bytes left over"}
+		key, errResp := unmarshalBytes(tx, "key", false)
+		if key == nil {
+			return errResp
 		}
 
-		_, value, exists := tree.Get(storeKey(key))
-		if !exists {
+		compareKey, errResp := unmarshalBytes(tx[len(key):], "compareKey", false)
+		if compareKey == nil {
+			return errResp
+		}
+
+		setValue, errResp := unmarshalBytes(tx[len(key)+len(compareKey):], "setValue", true)
+		if setValue == nil {
+			return errResp
+		}
+
+		_, value := tree.Get(storeKey(key))
+		if value == nil {
 			return abci.ResponseDeliverTx{Code: CodeTypeErrBaseUnknownAddress,
 				Log: fmt.Sprintf("Cannot find key: %X", key)}
 		}
+
 		if !bytes.Equal(value, compareValue) {
 			return abci.ResponseDeliverTx{Code: CodeTypeErrUnauthorized,
 				Log: fmt.Sprintf("Value was %X, not %X", value, compareValue)}
@@ -437,23 +429,29 @@ func (app *MerkleEyesApp) doTx(tree *iavl.MutableTree, tx []byte) abci.ResponseD
 
 		fmt.Println("CAS-SET", fmt.Sprintf("%X", key), fmt.Sprintf("%X", compareValue), fmt.Sprintf("%X", setValue))
 	case TxTypeValSetChange:
-		pubKey, n, err := wire.GetByteSlice(tx)
-		if err != nil {
-			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError, Log: fmt.Sprintf("Error reading pubkey: %v", err)}
+		pubKey, errResp := unmarshalBytes(tx, "pubKey", false)
+		if pubKey == nil {
+			return errResp
 		}
-		if len(pubKey) != 32 {
+
+		if len(pubKey) != ed25519.PubKeySize {
 			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError,
-				Log: fmt.Sprintf("Pubkey must be 32 bytes: %X is %d bytes", pubKey, len(pubKey))}
+				Log: fmt.Sprintf("PubKey must be %d bytes: %X is %d bytes", ed25519.PubKeySize, pubKey, len(pubKey))}
 		}
-		tx = tx[n:]
-		if len(tx) != 8 {
+
+		tx = tx[ed25519.PubKeySize:]
+		// if len(tx) != 8 {
+		// 	return abci.ResponseDeliverTx{Code: CodeTypeEncodingError,
+		// 		Log: fmt.Sprintf("Power must be 8 bytes: %X is %d bytes", tx, len(tx))}
+		// }
+
+		power, n := binary.Uvarint(tx)
+		if n != len(tx) {
 			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError,
-				Log: fmt.Sprintf("Power must be 8 bytes: %X is %d bytes", tx, len(tx))}
+				Log: "Power must be uvarint"}
 		}
-		power := wire.GetUint64(tx)
 
 		return app.updateValidator(pubKey, power)
-
 	case TxTypeValSetRead:
 		b, err := json.Marshal(app.validators)
 		if err != nil {
@@ -520,4 +518,20 @@ func (app *MerkleEyesApp) updateValidator(pubKey []byte, power uint64) abci.Resp
 	app.changes = append(app.changes, &abci.Validator{pubKeyEd.Bytes(), power})
 
 	return abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+}
+
+func unmarshalBytes(buf []byte, key string, checkNoMoreBytes bool) ([]byte, abci.ResponseDeliverTx) {
+	var bytes gogotypes.BytesValue
+	err := protoio.UnmarshalDelimited(buf, &bytes)
+	if err != nil {
+		return nil, abci.ResponseDeliverTx{Code: CodeTypeEncodingError, Log: fmt.Sprintf("Error reading %s: %v", key, err)}
+	}
+
+	if checkNoMoreBytes {
+		if len(buf) > len(bytes.Value) {
+			return nil, abci.ResponseDeliverTx{Code: CodeTypeEncodingError, Log: "Got bytes left over"}
+		}
+	}
+
+	return bytes.Value, abci.ResponseDeliverTx{}
 }
