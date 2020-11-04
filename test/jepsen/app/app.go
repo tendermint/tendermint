@@ -199,7 +199,7 @@ func (app *MerkleEyesApp) Info(req abci.RequestInfo) abci.ResponseInfo {
 		Version:          version.ABCIVersion,
 		AppVersion:       1,
 		LastBlockHeight:  app.height,
-		LastBlockAppHash: app.state.Deliver().Hash(),
+		LastBlockAppHash: app.state.Committed().Hash(),
 	}
 }
 
@@ -210,7 +210,7 @@ func (app *MerkleEyesApp) InitChain(req abci.RequestInitChain) abci.ResponseInit
 	}
 
 	return abci.ResponseInitChain{
-		AppHash: app.state.Deliver().Hash(),
+		AppHash: app.state.Committed().Hash(),
 	}
 }
 
@@ -221,7 +221,7 @@ func (app *MerkleEyesApp) CheckTx(_ abci.RequestCheckTx) abci.ResponseCheckTx {
 
 // DeliverTx implements ABCI.
 func (app *MerkleEyesApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	tree := app.state.Deliver()
+	tree := app.state.Working()
 	r := app.doTx(tree, req.Tx)
 	if r.IsErr() {
 		fmt.Println("DeliverTx Err", r)
@@ -273,8 +273,7 @@ func (app *MerkleEyesApp) Query(req abci.RequestQuery) (res abci.ResponseQuery) 
 	if len(req.Data) == 0 {
 		return
 	}
-	// tree := app.state.Committed()
-	tree := app.state.Deliver()
+	tree := app.state.Committed()
 
 	if req.Height != 0 {
 		// TODO: support older commits

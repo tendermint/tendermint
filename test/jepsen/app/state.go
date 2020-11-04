@@ -5,47 +5,43 @@ import (
 )
 
 // State represents the app states, separating the commited state (for queries)
-// from the working state (for CheckTx and AppendTx)
+// from the working state (for CheckTx and DeliverTx).
 type State struct {
-	deliverTx  *iavl.MutableTree
-	checkTx    *iavl.ImmutableTree
-	persistent bool
+	working   *iavl.MutableTree
+	committed *iavl.ImmutableTree
 }
 
-func NewState(tree *iavl.MutableTree, version int64, persistent bool) State {
-	iTree, err := tree.GetImmutable(0)
+func NewState(tree *iavl.MutableTree, lastVersion int64) State {
+	iTree, err := tree.GetImmutable(lastVersion)
 	if err != nil {
 		panic(err)
 	}
+
 	return State{
-		deliverTx:  tree,
-		checkTx:    iTree,
-		persistent: persistent,
+		working:   tree,
+		committed: iTree,
 	}
 }
 
-func (s State) Deliver() *iavl.MutableTree {
-	return s.deliverTx
+func (s State) Working() *iavl.MutableTree {
+	return s.working
 }
 
-func (s State) Check() *iavl.ImmutableTree {
-	return s.checkTx
+func (s State) Committed() *iavl.ImmutableTree {
+	return s.committed
 }
 
-// Commit stores the current Deliver() state as committed
-// starts new Append/Check state, and
-// returns the hash for the commit
 func (s *State) Commit() []byte {
-	hash, version, err := s.deliverTx.SaveVersion()
+	hash, version, err := s.working.SaveVersion()
 	if err != nil {
 		panic(err)
 	}
 
-	iTree, err := s.deliverTx.GetImmutable(version)
+	iTree, err := s.working.GetImmutable(version)
 	if err != nil {
 		panic(err)
 	}
-	s.checkTx = iTree
+	s.committed = iTree
 
 	return hash
 }
