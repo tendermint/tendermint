@@ -9,12 +9,14 @@ import (
 	"path/filepath"
 
 	"github.com/cosmos/iavl"
+	gogotypes "github.com/gogo/protobuf/types"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/version"
 )
@@ -124,7 +126,7 @@ func NewMerkleEyesApp(dbName string, cacheSize int) *MerkleEyesApp {
 		}
 
 		return &MerkleEyesApp{
-			state:  NewState(tree, 0, false),
+			state:  NewState(tree, 0),
 			db:     nil,
 			height: initialHeight,
 		}
@@ -181,7 +183,7 @@ func NewMerkleEyesApp(dbName string, cacheSize int) *MerkleEyesApp {
 	}
 
 	return &MerkleEyesApp{
-		state:      NewState(tree, version, true),
+		state:      NewState(tree, version),
 		db:         db,
 		height:     eyesState.Height,
 		validators: new(ValidatorSetState),
@@ -369,7 +371,7 @@ func (app *MerkleEyesApp) doTx(tree *iavl.MutableTree, tx []byte) abci.ResponseD
 			return errResp
 		}
 
-		value, errResp = unmarshalBytes(tx[len(key):], "value", true)
+		value, errResp := unmarshalBytes(tx[len(key):], "value", true)
 		if value == nil {
 			return errResp
 		}
@@ -405,12 +407,12 @@ func (app *MerkleEyesApp) doTx(tree *iavl.MutableTree, tx []byte) abci.ResponseD
 			return errResp
 		}
 
-		compareKey, errResp := unmarshalBytes(tx[len(key):], "compareKey", false)
-		if compareKey == nil {
+		compareValue, errResp := unmarshalBytes(tx[len(key):], "compareKey", false)
+		if compareValue == nil {
 			return errResp
 		}
 
-		setValue, errResp := unmarshalBytes(tx[len(key)+len(compareKey):], "setValue", true)
+		setValue, errResp := unmarshalBytes(tx[len(key)+len(compareValue):], "setValue", true)
 		if setValue == nil {
 			return errResp
 		}
@@ -451,7 +453,7 @@ func (app *MerkleEyesApp) doTx(tree *iavl.MutableTree, tx []byte) abci.ResponseD
 				Log: "Power must be uvarint"}
 		}
 
-		return app.updateValidator(pubKey, power)
+		return app.updateValidator(pubKey, int64(power))
 	case TxTypeValSetRead:
 		b, err := json.Marshal(app.validators)
 		if err != nil {
@@ -461,34 +463,40 @@ func (app *MerkleEyesApp) doTx(tree *iavl.MutableTree, tx []byte) abci.ResponseD
 		return abci.ResponseDeliverTx{Code: abci.CodeTypeOK, Data: b, Log: string(b)}
 
 	case TxTypeValSetCAS:
-		if len(tx) < 8 {
-			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError,
-				Log: fmt.Sprintf("Version number must be 8 bytes: remaining tx (%X) is %d bytes", tx, len(tx))}
-		}
-		version := wire.GetUint64(tx)
+		version, n := binary.Uvarint(tx)
+		// if n != len(tx) {
+		// 	return abci.ResponseDeliverTx{Code: CodeTypeEncodingError,
+		// 		Log: "Power must be uvarint"}
+		// }
+		// if len(tx) < 8 {
+		// 	return abci.ResponseDeliverTx{Code: CodeTypeEncodingError,
+		// 		Log: fmt.Sprintf("Version number must be 8 bytes: remaining tx (%X) is %d bytes", tx, len(tx))}
+		// }
 		if app.validators.Version != version {
 			return abci.ResponseDeliverTx{Code: CodeTypeErrUnauthorized,
 				Log: fmt.Sprintf("Version was %d, not %d", app.validators.Version, version)}
 		}
-		tx = tx[8:]
 
-		pubKey, n, err := wire.GetByteSlice(tx)
-		if err != nil {
-			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError,
-				Log: fmt.Sprintf("Error reading pubkey: %v", err)}
-		}
-		if len(pubKey) != 32 {
-			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError,
-				Log: fmt.Sprintf("Pubkey must be 32 bytes: %X is %d bytes", pubKey, len(pubKey))}
-		}
 		tx = tx[n:]
-		if len(tx) != 8 {
-			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError,
-				Log: fmt.Sprintf("Power must be 8 bytes: %X is %d bytes", tx, len(tx))}
-		}
-		power := wire.GetUint64(tx)
 
-		return app.updateValidator(pubKey, power)
+		pubKey, errResp := unmarshalBytes(tx, "pubKey", false)
+		if pubKey == nil {
+			return errResp
+		}
+		if len(pubKey) != ed25519.PubKeySize {
+			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError,
+				Log: fmt.Sprintf("PubKey must be %d bytes: %X is %d bytes", ed25519.PubKeySize, pubKey, len(pubKey))}
+		}
+
+		tx = tx[ed25519.PubKeySize:]
+
+		power, n := binary.Uvarint(tx)
+		if n != len(tx) {
+			return abci.ResponseDeliverTx{Code: CodeTypeEncodingError,
+				Log: "Power must be uvarint"}
+		}
+
+		return app.updateValidator(pubKey, int64(power))
 
 	default:
 		return abci.ResponseDeliverTx{Code: CodeTypeErrUnknownRequest,
@@ -498,8 +506,8 @@ func (app *MerkleEyesApp) doTx(tree *iavl.MutableTree, tx []byte) abci.ResponseD
 	return abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
 }
 
-func (app *MerkleEyesApp) updateValidator(pubKey []byte, power uint64) abci.ResponseDeliverTx {
-	v := &Validator{PubKey: pubKey, Power: power}
+func (app *MerkleEyesApp) updateValidator(pubKey []byte, power int64) abci.ResponseDeliverTx {
+	v := &Validator{PubKey: ed25519.PubKey(pubKey), Power: power}
 	if v.Power == 0 {
 		// remove validator
 		if !app.validators.Has(v) {
@@ -512,10 +520,13 @@ func (app *MerkleEyesApp) updateValidator(pubKey []byte, power uint64) abci.Resp
 		app.validators.Set(v)
 	}
 
-	// copy to PubKeyEd25519 so we can go-wire encode properly for the changes array
-	var pubKeyEd crypto.PubKeyEd25519
+	var pubKeyEd ed25519.PubKey
 	copy(pubKeyEd[:], pubKey)
-	app.changes = append(app.changes, &abci.Validator{pubKeyEd.Bytes(), power})
+	pk, err := cryptoenc.PubKeyToProto(pubKeyEd)
+	if err != nil {
+		panic(err)
+	}
+	app.changes = append(app.changes, abci.ValidatorUpdate{PubKey: pk, Power: power})
 
 	return abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
 }
