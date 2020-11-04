@@ -42,7 +42,10 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	vote2.Signature, err = val.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v2))
 	require.NoError(t, err)
 
-	return types.NewDuplicateVoteEvidence(vote, vote2)
+	validator := types.NewValidator(val.Key.PubKey, 10)
+	valSet := types.NewValidatorSet([]*types.Validator{validator})
+
+	return types.NewDuplicateVoteEvidence(vote, vote2, defaultTestTime, valSet)
 }
 
 func makeEvidences(
