@@ -1,0 +1,4 @@
+
+key_type = "secp256k1"
+
+[node.validator]

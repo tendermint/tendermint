@@ -50,6 +50,7 @@ var (
 		// misbehaviorOption{"double-prevote"}: 1,
 		misbehaviorOption{}: 9,
 	}
+	keyTypes = uniformChoice{"ed25519", "secp256k1"}
 )
 
 // Generate generates random testnets using the given RNG.
@@ -74,6 +75,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		Validators:       &map[string]int64{},
 		ValidatorUpdates: map[string]map[string]int64{},
 		Nodes:            map[string]*e2e.ManifestNode{},
+		KeyType:          keyTypes.Choose(r).(string),
 	}
 
 	var numSeeds, numValidators, numFulls int

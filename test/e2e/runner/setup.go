@@ -23,6 +23,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
 )
@@ -188,8 +189,13 @@ func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 	genesis := types.GenesisDoc{
 		GenesisTime:     time.Now(),
 		ChainID:         testnet.Name,
-		ConsensusParams: types.DefaultConsensusParams(), //todo configurable
+		ConsensusParams: types.DefaultConsensusParams(),
 		InitialHeight:   testnet.InitialHeight,
+	}
+	if testnet.KeyType == "secp256k1" {
+		genesis.ConsensusParams.Validator = tmproto.ValidatorParams{
+			PubKeyTypes: []string{types.ABCIPubKeyTypeSecp256k1},
+		}
 	}
 	for validator, power := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{

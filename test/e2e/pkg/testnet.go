@@ -14,6 +14,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
 )
@@ -57,6 +58,7 @@ type Testnet struct {
 	Validators       map[*Node]int64
 	ValidatorUpdates map[int64]map[*Node]int64
 	Nodes            []*Node
+	KeyType          string
 }
 
 // Node represents a Tendermint node in a testnet.
@@ -119,6 +121,9 @@ func LoadTestnet(file string) (*Testnet, error) {
 		ValidatorUpdates: map[int64]map[*Node]int64{},
 		Nodes:            []*Node{},
 	}
+	if len(manifest.KeyType) != 0 {
+		testnet.KeyType = manifest.KeyType
+	}
 	if manifest.InitialHeight > 0 {
 		testnet.InitialHeight = manifest.InitialHeight
 	}
@@ -135,7 +140,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 		node := &Node{
 			Name:             name,
 			Testnet:          testnet,
-			Key:              keyGen.Generate(),
+			Key:              keyGen.Generate(manifest.KeyType),
 			IP:               ipGen.Next(),
 			ProxyPort:        proxyPortGen.Next(),
 			Mode:             ModeValidator,
@@ -466,7 +471,17 @@ func newKeyGenerator(seed int64) *keyGenerator {
 	}
 }
 
-func (g *keyGenerator) Generate() crypto.PrivKey {
+func (g *keyGenerator) Generate(keyType string) crypto.PrivKey {
+	if keyType == "secp256k1" {
+		var seed []byte
+		_, err := io.ReadFull(g.random, seed)
+		if err != nil {
+			panic(err) // this shouldn't happen
+		}
+
+		return secp256k1.GenPrivKeySecp256k1(seed)
+
+	}
 	seed := make([]byte, ed25519.SeedSize)
 
 	_, err := io.ReadFull(g.random, seed)
