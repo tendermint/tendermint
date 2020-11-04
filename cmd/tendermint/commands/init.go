@@ -10,6 +10,7 @@ import (
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -67,13 +68,14 @@ func initFilesWithConfig(config *cfg.Config) error {
 	} else {
 
 		genDoc := types.GenesisDoc{
-			ChainID:     fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
-			GenesisTime: tmtime.Now(),
+			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
+			GenesisTime:     tmtime.Now(),
+			ConsensusParams: types.DefaultConsensusParams(),
 		}
 		if keyType == "secp256k1" {
-			genDoc.ConsensusParams = types.SecpConsensusParams()
-		} else {
-			genDoc.ConsensusParams = types.DefaultConsensusParams()
+			genDoc.ConsensusParams.Validator = tmproto.ValidatorParams{
+				PubKeyTypes: []string{types.ABCIPubKeyTypeSecp256k1},
+			}
 		}
 		pubKey, err := pv.GetPubKey()
 		if err != nil {

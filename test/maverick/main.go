@@ -17,6 +17,7 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	cs "github.com/tendermint/tendermint/test/maverick/consensus"
 	nd "github.com/tendermint/tendermint/test/maverick/node"
 	"github.com/tendermint/tendermint/types"
@@ -205,13 +206,14 @@ func initFilesWithConfig(config *cfg.Config) error {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
 		genDoc := types.GenesisDoc{
-			ChainID:     fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
-			GenesisTime: tmtime.Now(),
+			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
+			GenesisTime:     tmtime.Now(),
+			ConsensusParams: types.DefaultConsensusParams(),
 		}
 		if keyType == "secp256k1" {
-			genDoc.ConsensusParams = types.SecpConsensusParams()
-		} else {
-			genDoc.ConsensusParams = types.DefaultConsensusParams()
+			genDoc.ConsensusParams.Validator = tmproto.ValidatorParams{
+				PubKeyTypes: []string{types.ABCIPubKeyTypeSecp256k1},
+			}
 		}
 		pubKey, err := pv.GetPubKey()
 		if err != nil {
