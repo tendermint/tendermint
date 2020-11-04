@@ -33,3 +33,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [block] \#5567 Fix MaxCommitSigBytes (@cmwaters)
 - [evidence] \#5574 Fix bug where node sends committed evidence to peer (@cmwaters)
 - [privval] \#5583 Make `Vote`, `Proposal` & `PubKey` non-nullable in Responses (@marbar3778)
+- [evidence] \#5610 Make it possible for abci evidence to be formed from tm evidence (@cmwaters)

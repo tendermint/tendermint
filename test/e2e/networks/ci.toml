@@ -36,10 +36,7 @@ seeds = ["seed01"]
 seeds = ["seed01"]
 snapshot_interval = 5
 perturb = ["disconnect"]
-# FIXME Evidence handling causes panics and halts
-# https://github.com/tendermint/tendermint/issues/5554
-# https://github.com/tendermint/tendermint/issues/5560
-#misbehaviors = { 1012 = "double-prevote", 1018 = "double-prevote" }
+misbehaviors = { 1018 = "double-prevote" }
 
 [node.validator02]
 seeds = ["seed02"]
@@ -62,7 +59,6 @@ perturb = ["kill"]
 persistent_peers = ["validator01"]
 database = "rocksdb"
 abci_protocol = "builtin"
-retain_blocks = 1
 perturb = ["pause"]
 
 [node.validator05]
@@ -81,6 +77,7 @@ mode = "full"
 # https://github.com/tendermint/tendermint/issues/5444
 fast_sync = "v2"
 persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
+retain_blocks = 1
 perturb = ["restart"]
 
 [node.full02]
