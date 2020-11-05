@@ -531,7 +531,6 @@ func TestScSetPeerRange(t *testing.T) {
 				peers: map[string]*scPeer{"P1": {height: 2, state: peerStateRemoved}}},
 			args:       args{peerID: "P1", height: 4},
 			wantFields: scTestParams{peers: map[string]*scPeer{"P1": {height: 2, state: peerStateRemoved}}},
-			wantErr:    true,
 		},
 		{
 			name: "decrease height of single peer",
@@ -1995,7 +1994,7 @@ func TestScHandleStatusResponse(t *testing.T) {
 			name:      "increase height of removed peer",
 			fields:    scTestParams{peers: map[string]*scPeer{"P1": {height: 2, state: peerStateRemoved}}},
 			args:      args{event: statusRespP1Ev},
-			wantEvent: scPeerError{peerID: "P1", reason: fmt.Errorf("some error")},
+			wantEvent: noOpEvent{},
 		},
 
 		{
