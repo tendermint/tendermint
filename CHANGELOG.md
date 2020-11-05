@@ -1,6 +1,29 @@
 # Changelog
 
+## v0.34.0-rc6
+
+*November 5, 2020*
+
 ## v0.34.0-rc5
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+### IMPROVEMENTS
+
+- [statesync] [\#5516](https://github.com/tendermint/tendermint/issues/5516) Check that all heights necessary to rebuild state for a snapshot exist before adding the snapshot to the pool. (@erikgrinaker)
+
+### BUG FIXES
+
+- [blockchain/v2] [\#5499](https://github.com/tendermint/tendermint/issues/5499) Fix "duplicate block enqueued by processor" panic (@melekes)
+- [abci/grpc] [\#5520](https://github.com/tendermint/tendermint/issues/5520) Return async responses in order, to avoid mempool panics. (@erikgrinaker)
+- [blockchain/v2] [\#5530](https://github.com/tendermint/tendermint/issues/5530) Fix "processed height 4541 but expected height 4540" panic (@melekes)
+- [consensus/wal] Fix WAL autorepair by opening target WAL in read/write mode (@erikgrinaker)
+- [block] [\#5567](https://github.com/tendermint/tendermint/issues/5567) Fix MaxCommitSigBytes (@cmwaters)
+- [blockchain/v2] [\#5553](https://github.com/tendermint/tendermint/issues/5553) Make the removal of an already removed peer a noop (@melekes)
+- [evidence] [\#5574](https://github.com/tendermint/tendermint/issues/5574) Fix bug where node sends committed evidence to peer (@cmwaters)
+- [privval] [\#5583](https://github.com/tendermint/tendermint/issues/5583) Make `Vote`, `Proposal` & `PubKey` non-nullable in Responses (@marbar3778)
+- [evidence] [\#5610](https://github.com/tendermint/tendermint/issues/5610) Make it possible for abci evidence to be formed from tm evidence (@cmwaters)
+- [light] [\#5392](https://github.com/tendermint/tendermint/issues/5392) Make light client home directory same as the full node default (@cmwaters)
 
 *October 13, 2020*
 
@@ -17,7 +40,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [config] [\#5433](https://github.com/tendermint/tendermint/issues/5433) `statesync.rpc_servers` is now properly set when writing the configuration file (@erikgrinaker)
 
 - [privval] [\#5437](https://github.com/tendermint/tendermint/issues/5437) `NewSignerDialerEndpoint` can now be given `SignerServiceEndpointOption` (@erikgrinaker)
-- [types] [\#5490](https://github.com/tendermint/tendermint/pull/5490) Use `Commit` and `CommitSig` max sizes instead of vote max size to calculate the maxiumum block size. (@cmwaters) 
+- [types] [\#5490](https://github.com/tendermint/tendermint/pull/5490) Use `Commit` and `CommitSig` max sizes instead of vote max size to calculate the maxiumum block size. (@cmwaters)
 
 ### BUG FIXES
 
