@@ -940,3 +940,26 @@ func TestCommitSig_ValidateBasic(t *testing.T) {
 		})
 	}
 }
+
+func TestHeader_ValidateBasic(t *testing.T) {
+	testCases := []struct {
+		name      string
+		cs        Header
+		expectErr bool
+	}{
+		{
+			"invalid version block",
+			Header{Version: tmversion.Consensus{Block: version.BlockProtocol + 1}},
+			true,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.cs.ValidateBasic()
+			require.Equal(t, tc.expectErr, err != nil, err)
+		})
+	}
+}
