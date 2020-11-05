@@ -952,6 +952,59 @@ func TestHeader_ValidateBasic(t *testing.T) {
 			Header{Version: tmversion.Consensus{Block: version.BlockProtocol + 1}},
 			true,
 		},
+		{
+			"invalid chain ID length",
+			Header{
+				Version: tmversion.Consensus{Block: version.BlockProtocol},
+				ChainID: string(make([]byte, MaxChainIDLen+1)),
+			},
+			true,
+		},
+		{
+			"invalid height (negative)",
+			Header{
+				Version: tmversion.Consensus{Block: version.BlockProtocol},
+				ChainID: string(make([]byte, MaxChainIDLen)),
+				Height:  -1,
+			},
+			true,
+		},
+		{
+			"invalid height (zero)",
+			Header{
+				Version: tmversion.Consensus{Block: version.BlockProtocol},
+				ChainID: string(make([]byte, MaxChainIDLen)),
+				Height:  0,
+			},
+			true,
+		},
+		{
+			"invalid block ID hash",
+			Header{
+				Version: tmversion.Consensus{Block: version.BlockProtocol},
+				ChainID: string(make([]byte, MaxChainIDLen)),
+				Height:  1,
+				LastBlockID: BlockID{
+					Hash: make([]byte, tmhash.Size+1),
+				},
+			},
+			true,
+		},
+		{
+			"invalid block ID parts header hash",
+			Header{
+				Version: tmversion.Consensus{Block: version.BlockProtocol},
+				ChainID: string(make([]byte, MaxChainIDLen)),
+				Height:  1,
+				LastBlockID: BlockID{
+					Hash: make([]byte, tmhash.Size),
+					PartSetHeader: PartSetHeader{
+						Hash: make([]byte, tmhash.Size+1),
+					},
+				},
+			},
+			true,
+		},
 	}
 
 	for _, tc := range testCases {
