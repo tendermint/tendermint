@@ -68,6 +68,8 @@ type MerkleEyesState struct {
 	Validators *ValidatorSetState `json:"validators"`
 }
 
+// ValidatorSetState contains the validator set and its version (~ the number
+// of times it was changed).
 type ValidatorSetState struct {
 	Version    uint64       `json:"version"`
 	Validators []*Validator `json:"validators"`
