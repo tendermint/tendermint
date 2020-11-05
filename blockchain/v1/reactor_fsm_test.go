@@ -136,7 +136,7 @@ func sMakeRequestsEvErrored(current, expected string,
 
 func sBlockRespEv(current, expected string, peerID p2p.ID, height int64, prevBlocks []int64) fsmStepTestValues {
 	txs := []types.Tx{types.Tx("foo"), types.Tx("bar")}
-	chainLock := types.NewMockChainLock()
+	chainLock := types.NewMockChainLock(1)
 	return fsmStepTestValues{
 		currentState: current,
 		event:        blockResponseEv,
@@ -153,7 +153,7 @@ func sBlockRespEv(current, expected string, peerID p2p.ID, height int64, prevBlo
 func sBlockRespEvErrored(current, expected string,
 	peerID p2p.ID, height int64, prevBlocks []int64, wantErr error, peersRemoved []p2p.ID) fsmStepTestValues {
 	txs := []types.Tx{types.Tx("foo"), types.Tx("bar")}
-	chainLock := types.NewMockChainLock()
+	chainLock := types.NewMockChainLock(1)
 	return fsmStepTestValues{
 		currentState: current,
 		event:        blockResponseEv,

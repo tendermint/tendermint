@@ -3,6 +3,7 @@ package counter
 import (
 	"encoding/binary"
 	"fmt"
+	types1 "github.com/tendermint/tendermint/types"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
@@ -11,13 +12,16 @@ import (
 type Application struct {
 	types.BaseApplication
 
-	hashCount int
-	txCount   int
-	serial    bool
+	hashCount              int
+	txCount                int
+	serial                 bool
+	HasChainLocks          bool
+	CurrentChainLockHeight uint32
+	ChainLockStep          int32
 }
 
 func NewApplication(serial bool) *Application {
-	return &Application{serial: serial}
+	return &Application{serial: serial, ChainLockStep:1}
 }
 
 func (app *Application) Info(req types.RequestInfo) types.ResponseInfo {
@@ -99,5 +103,17 @@ func (app *Application) Query(reqQuery types.RequestQuery) types.ResponseQuery {
 		return types.ResponseQuery{Value: []byte(fmt.Sprintf("%v", app.txCount))}
 	default:
 		return types.ResponseQuery{Log: fmt.Sprintf("Invalid query path. Expected hash or tx, got %v", reqQuery.Path)}
+	}
+}
+
+func (app *Application) EndBlock(reqEndBlock types.RequestEndBlock) types.ResponseEndBlock {
+	if app.HasChainLocks {
+		app.CurrentChainLockHeight = uint32(int32(app.CurrentChainLockHeight) + app.ChainLockStep)
+		chainLock := types1.NewMockChainLock(app.CurrentChainLockHeight)
+		return types.ResponseEndBlock{
+			NextChainLockUpdate: chainLock.ToProto(),
+		}
+	} else {
+		return types.ResponseEndBlock{}
 	}
 }

@@ -75,7 +75,7 @@ func makeBlockPool(bcr *testBcR, height int64, peers []BpPeer, blocks map[int64]
 		bPool.peers[p.ID].SetLogger(bcr.logger)
 
 	}
-	chainLock := types.NewMockChainLock()
+	chainLock := types.NewMockChainLock(1)
 	bPool.MaxPeerHeight = maxH
 	for h, p := range blocks {
 		bPool.blocks[h] = p.id
@@ -376,7 +376,7 @@ func TestBlockPoolSendRequestBatch(t *testing.T) {
 func TestBlockPoolAddBlock(t *testing.T) {
 	testBcR := newTestBcR()
 	txs := []types.Tx{types.Tx("foo"), types.Tx("bar")}
-	chainLock := types.NewMockChainLock()
+	chainLock := types.NewMockChainLock(1)
 
 	type args struct {
 		peerID    p2p.ID

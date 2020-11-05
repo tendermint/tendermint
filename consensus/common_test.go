@@ -789,7 +789,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	}
 	sort.Sort(types.PrivValidatorsByAddress(privValidators))
 
-	chainLock := types.NewMockChainLock()
+	chainLock := types.NewMockChainLock(1)
 
 	return &types.GenesisDoc{
 		GenesisTime:   tmtime.Now(),

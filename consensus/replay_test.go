@@ -40,12 +40,14 @@ func TestMain(m *testing.M) {
 	configStateTest := ResetConfig("consensus_state_test")
 	configMempoolTest := ResetConfig("consensus_mempool_test")
 	configByzantineTest := ResetConfig("consensus_byzantine_test")
+	configChainLocksTest := ResetConfig("consensus_chainlocks_test")
 	code := m.Run()
 	os.RemoveAll(config.RootDir)
 	os.RemoveAll(consensusReplayConfig.RootDir)
 	os.RemoveAll(configStateTest.RootDir)
 	os.RemoveAll(configMempoolTest.RootDir)
 	os.RemoveAll(configByzantineTest.RootDir)
+	os.RemoveAll(configChainLocksTest.RootDir)
 	os.Exit(code)
 }
 

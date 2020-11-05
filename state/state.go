@@ -54,7 +54,6 @@ type State struct {
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
 	LastBlockHeight     int64
-	LastCoreBlockHeight uint32
 	LastBlockID         types.BlockID
 	LastBlockTime       time.Time
 
@@ -95,7 +94,6 @@ func (state State) Copy() State {
 		InitialHeight: state.InitialHeight,
 
 		LastBlockHeight: state.LastBlockHeight,
-		LastCoreBlockHeight: state.LastCoreBlockHeight,
 		LastBlockID:     state.LastBlockID,
 		LastBlockTime:   state.LastBlockTime,
 
@@ -154,7 +152,6 @@ func (state *State) ToProto() (*tmstate.State, error) {
 	sm.InitialHeight = state.InitialHeight
 	sm.LastBlockHeight = state.LastBlockHeight
 
-	sm.LastCoreBlockHeight = state.LastCoreBlockHeight
 	sm.LastChainLock = tmproto.ChainLock(state.LastChainLock)
 	sm.NextChainLock = tmproto.ChainLock(state.NextChainLock)
 
@@ -378,7 +375,6 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		LastBlockID:     types.BlockID{},
 		LastBlockTime:   genDoc.GenesisTime,
 
-		LastChainLock: initialChainLock,
 		NextChainLock: initialChainLock,
 
 		NextValidators:              nextValidatorSet,

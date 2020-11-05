@@ -35,6 +35,7 @@ import (
 
 var (
 	ErrInvalidProposalSignature   = errors.New("error invalid proposal signature")
+	ErrInvalidProposalCoreHeight  = errors.New("error invalid proposal core height")
 	ErrInvalidProposalPOLRound    = errors.New("error invalid proposal POL round")
 	ErrAddingVote                 = errors.New("error adding vote")
 	ErrSignatureFoundInPastBlocks = errors.New("found signature from the same key")
@@ -1734,6 +1735,10 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 		return ErrInvalidProposalPOLRound
 	}
 
+	if proposal.CoreChainLockedHeight < cs.state.LastChainLock.CoreBlockHeight {
+		return ErrInvalidProposalCoreHeight
+	}
+
 	p := proposal.ToProto()
 	// Verify signature
 	if !cs.Validators.GetProposer().PubKey.VerifySignature(
@@ -1799,6 +1804,10 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 		block, err := types.BlockFromProto(pbb)
 		if err != nil {
 			return added, err
+		}
+
+		if cs.RoundState.Proposal != nil && block.Header.CoreChainLockedHeight != cs.RoundState.Proposal.CoreChainLockedHeight {
+			return added, errors.New("core chain lock height of block does not match proposal")
 		}
 
 		cs.ProposalBlock = block

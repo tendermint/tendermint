@@ -462,6 +462,10 @@ func updateState(
 		nextChainLock = &state.NextChainLock
 	}
 
+	if nextChainLock.CoreBlockHeight < lastChainLock.CoreBlockHeight {
+		nextChainLock = lastChainLock
+	}
+
 	// NOTE: the AppHash has not been populated.
 	// It will be filled on state.Save.
 	return State{
