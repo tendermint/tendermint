@@ -25,6 +25,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS
 
 - [statesync] \#5516 Check that all heights necessary to rebuild state for a snapshot exist before adding the snapshot to the pool. (@erikgrinaker)
+- [crypto/ed25519] \# Adopt zip215 `ed25519` verification. 
 
 ### BUG FIXES
 
