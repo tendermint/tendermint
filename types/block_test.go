@@ -898,12 +898,12 @@ func TestCommitSig_ValidateBasic(t *testing.T) {
 			false,
 		},
 		{
-			"invalid validator address",
+			"non-BlockIDFlagAbsent invalid validator address",
 			CommitSig{BlockIDFlag: BlockIDFlagCommit, ValidatorAddress: make([]byte, 1)},
 			true,
 		},
 		{
-			"invalid signature (zero)",
+			"non-BlockIDFlagAbsent invalid signature (zero)",
 			CommitSig{
 				BlockIDFlag:      BlockIDFlagCommit,
 				ValidatorAddress: make([]byte, crypto.AddressSize),
@@ -912,7 +912,7 @@ func TestCommitSig_ValidateBasic(t *testing.T) {
 			true,
 		},
 		{
-			"invalid signature (too large)",
+			"non-BlockIDFlagAbsent invalid signature (too large)",
 			CommitSig{
 				BlockIDFlag:      BlockIDFlagCommit,
 				ValidatorAddress: make([]byte, crypto.AddressSize),
@@ -921,7 +921,7 @@ func TestCommitSig_ValidateBasic(t *testing.T) {
 			true,
 		},
 		{
-			"valid",
+			"non-BlockIDFlagAbsent valid",
 			CommitSig{
 				BlockIDFlag:      BlockIDFlagCommit,
 				ValidatorAddress: make([]byte, crypto.AddressSize),
