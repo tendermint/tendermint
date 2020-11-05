@@ -4,8 +4,6 @@
 
 *November 5, 2020*
 
-## v0.34.0-rc5
-
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES
