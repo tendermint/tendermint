@@ -4,8 +4,6 @@
 
 *November 5, 2020*
 
-## v0.34.0-rc5
-
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES
@@ -30,6 +28,8 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [evidence] [\#5574](https://github.com/tendermint/tendermint/issues/5574) Fix bug where node sends committed evidence to peer (@cmwaters)
 - [privval] [\#5583](https://github.com/tendermint/tendermint/issues/5583) Make `Vote`, `Proposal` & `PubKey` non-nullable in Responses (@marbar3778)
 - [light] [\#5392](https://github.com/tendermint/tendermint/issues/5392) Make light client home directory same as the full node default (@cmwaters)
+
+## v0.34.0-rc5
 
 *October 13, 2020*
 
