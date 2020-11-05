@@ -8,6 +8,13 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
 
+### BREAKING CHANGES
+
+- [evidence] [\#5610](https://github.com/tendermint/tendermint/issues/5610) Make it possible for abci evidence to be formed from tm evidence (@cmwaters) 
+    - This makes breaking changes to `DuplicateVoteEvidence` and `LightClientAttackEvidence` 
+    such that ABCI evidence can be reconstructed from these types, and is necessary for nodes 
+    to successfully sync to block heights with recorded evidence
+
 ### IMPROVEMENTS
 
 - [statesync] [\#5516](https://github.com/tendermint/tendermint/issues/5516) Check that all heights necessary to rebuild state for a snapshot exist before adding the snapshot to the pool. (@erikgrinaker)
@@ -22,7 +29,6 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [blockchain/v2] [\#5553](https://github.com/tendermint/tendermint/issues/5553) Make the removal of an already removed peer a noop (@melekes)
 - [evidence] [\#5574](https://github.com/tendermint/tendermint/issues/5574) Fix bug where node sends committed evidence to peer (@cmwaters)
 - [privval] [\#5583](https://github.com/tendermint/tendermint/issues/5583) Make `Vote`, `Proposal` & `PubKey` non-nullable in Responses (@marbar3778)
-- [evidence] [\#5610](https://github.com/tendermint/tendermint/issues/5610) Make it possible for abci evidence to be formed from tm evidence (@cmwaters)
 - [light] [\#5392](https://github.com/tendermint/tendermint/issues/5392) Make light client home directory same as the full node default (@cmwaters)
 
 *October 13, 2020*
