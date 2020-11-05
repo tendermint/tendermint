@@ -11,7 +11,7 @@ import (
 //-----------------------------------------------------
 // Validate block
 
-func validateBlock(evidencePool EvidencePool, state State, block *types.Block) error {
+func validateBlock(state State, block *types.Block) error {
 	// Validate internal consistency.
 	if err := block.ValidateBasic(); err != nil {
 		return err
@@ -141,6 +141,5 @@ func validateBlock(evidencePool EvidencePool, state State, block *types.Block) e
 		return types.NewErrEvidenceOverflow(max, got)
 	}
 
-	// Validate all evidence.
-	return evidencePool.CheckEvidence(block.Evidence.Evidence)
+	return nil
 }
