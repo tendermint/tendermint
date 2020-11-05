@@ -389,6 +389,10 @@ func (r *BlockchainReactor) demux(events <-chan Event) {
 			case scSchedulerFail:
 				r.logger.Error("Scheduler failure", "err", event.reason.Error())
 			case scPeersPruned:
+				// Remove peers from the processor.
+				for _, peerID := range event.peers {
+					r.processor.send(scPeerError{peerID: peerID, reason: errors.New("peer was pruned")})
+				}
 				r.logger.Debug("Pruned peers", "count", len(event.peers))
 			case noOpEvent:
 			default:
