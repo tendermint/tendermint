@@ -865,3 +865,20 @@ func TestBlockIDEquals(t *testing.T) {
 	assert.True(t, blockIDEmpty.Equals(blockIDEmpty))
 	assert.False(t, blockIDEmpty.Equals(blockIDDifferent))
 }
+
+func TestCommitSig_ValidateBasic(t *testing.T) {
+	testCases := []struct {
+		name      string
+		cs        CommitSig
+		expectErr bool
+	}{}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.cs.ValidateBasic()
+			require.Equal(t, tc.expectErr, err != nil, err)
+		})
+	}
+}
