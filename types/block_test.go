@@ -871,7 +871,65 @@ func TestCommitSig_ValidateBasic(t *testing.T) {
 		name      string
 		cs        CommitSig
 		expectErr bool
-	}{}
+	}{
+		{
+			"invalid ID flag",
+			CommitSig{BlockIDFlag: BlockIDFlag(0xFF)},
+			true,
+		},
+		{
+			"BlockIDFlagAbsent validator address present",
+			CommitSig{BlockIDFlag: BlockIDFlagAbsent, ValidatorAddress: crypto.Address("testaddr")},
+			true,
+		},
+		{
+			"BlockIDFlagAbsent timestamp present",
+			CommitSig{BlockIDFlag: BlockIDFlagAbsent, Timestamp: time.Now().UTC()},
+			true,
+		},
+		{
+			"BlockIDFlagAbsent signatures present",
+			CommitSig{BlockIDFlag: BlockIDFlagAbsent, Signature: []byte{0xAA}},
+			true,
+		},
+		{
+			"BlockIDFlagAbsent valid BlockIDFlagAbsent",
+			CommitSig{BlockIDFlag: BlockIDFlagAbsent},
+			false,
+		},
+		{
+			"invalid validator address",
+			CommitSig{BlockIDFlag: BlockIDFlagCommit, ValidatorAddress: make([]byte, 1)},
+			true,
+		},
+		{
+			"invalid signature (zero)",
+			CommitSig{
+				BlockIDFlag:      BlockIDFlagCommit,
+				ValidatorAddress: make([]byte, crypto.AddressSize),
+				Signature:        make([]byte, 0),
+			},
+			true,
+		},
+		{
+			"invalid signature (too large)",
+			CommitSig{
+				BlockIDFlag:      BlockIDFlagCommit,
+				ValidatorAddress: make([]byte, crypto.AddressSize),
+				Signature:        make([]byte, MaxSignatureSize+1),
+			},
+			true,
+		},
+		{
+			"valid",
+			CommitSig{
+				BlockIDFlag:      BlockIDFlagCommit,
+				ValidatorAddress: make([]byte, crypto.AddressSize),
+				Signature:        make([]byte, MaxSignatureSize),
+			},
+			false,
+		},
+	}
 
 	for _, tc := range testCases {
 		tc := tc
