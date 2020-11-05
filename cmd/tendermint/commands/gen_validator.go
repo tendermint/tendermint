@@ -23,7 +23,10 @@ func init() {
 }
 
 func genValidator(cmd *cobra.Command, args []string) {
-	pv := privval.GenFilePV("", "", keyType)
+	pv, err := privval.GenFilePV("", "", keyType)
+	if err != nil {
+		panic(err)
+	}
 	jsbz, err := tmjson.Marshal(pv)
 	if err != nil {
 		panic(err)

@@ -45,7 +45,10 @@ func initFilesWithConfig(config *cfg.Config) error {
 		logger.Info("Found private validator", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
 	} else {
-		pv = privval.GenFilePV(privValKeyFile, privValStateFile, keyType)
+		pv, err := privval.GenFilePV(privValKeyFile, privValStateFile, keyType)
+		if err != nil {
+			return err
+		}
 		pv.Save()
 		logger.Info("Generated private validator", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)

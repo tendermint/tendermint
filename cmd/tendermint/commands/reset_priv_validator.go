@@ -73,7 +73,10 @@ func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger) {
 		logger.Info("Reset private validator file to genesis state", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
 	} else {
-		pv := privval.GenFilePV(privValKeyFile, privValStateFile, keyType)
+		pv, err := privval.GenFilePV(privValKeyFile, privValStateFile, keyType)
+		if err != nil {
+			panic(err)
+		}
 		pv.Save()
 		logger.Info("Generated private validator file", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)

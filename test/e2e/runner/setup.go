@@ -192,10 +192,13 @@ func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 		ConsensusParams: types.DefaultConsensusParams(),
 		InitialHeight:   testnet.InitialHeight,
 	}
-	if testnet.KeyType == "secp256k1" {
+	switch testnet.KeyType {
+	case "", "ed25519", "secp256k1":
 		genesis.ConsensusParams.Validator = tmproto.ValidatorParams{
 			PubKeyTypes: []string{types.ABCIPubKeyTypeSecp256k1},
 		}
+	default:
+		return genesis, errors.New("unsupported doc")
 	}
 	for validator, power := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
