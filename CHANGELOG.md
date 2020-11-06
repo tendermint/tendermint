@@ -12,6 +12,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
     - This makes breaking changes to `DuplicateVoteEvidence` and `LightClientAttackEvidence` 
     such that ABCI evidence can be reconstructed from these types, and is necessary for nodes 
     to successfully sync to block heights with recorded evidence
+- [version] [\#5527](https://github.com/tendermint/tendermint/pull/5527) We've updated our release tooling, and `version.Version` is now `version.TMCoreSemVer` (@marbar3778)
 
 ### IMPROVEMENTS
 
