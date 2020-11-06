@@ -944,7 +944,7 @@ func TestCommitSig_ValidateBasic(t *testing.T) {
 func TestHeader_ValidateBasic(t *testing.T) {
 	testCases := []struct {
 		name      string
-		cs        Header
+		header    Header
 		expectErr bool
 	}{
 		{
@@ -1211,7 +1211,100 @@ func TestHeader_ValidateBasic(t *testing.T) {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.cs.ValidateBasic()
+			err := tc.header.ValidateBasic()
+			require.Equal(t, tc.expectErr, err != nil, err)
+		})
+	}
+}
+
+func TestCommit_ValidateBasic(t *testing.T) {
+	testCases := []struct {
+		name      string
+		commit    *Commit
+		expectErr bool
+	}{
+		{
+			"invalid height",
+			&Commit{Height: -1},
+			true,
+		},
+		{
+			"invalid round",
+			&Commit{Height: 1, Round: -1},
+			true,
+		},
+		{
+			"invalid block ID",
+			&Commit{
+				Height:  1,
+				Round:   1,
+				BlockID: BlockID{},
+			},
+			true,
+		},
+		{
+			"no signatures",
+			&Commit{
+				Height: 1,
+				Round:  1,
+				BlockID: BlockID{
+					Hash: make([]byte, tmhash.Size),
+					PartSetHeader: PartSetHeader{
+						Hash: make([]byte, tmhash.Size),
+					},
+				},
+			},
+			true,
+		},
+		{
+			"invalid signature",
+			&Commit{
+				Height: 1,
+				Round:  1,
+				BlockID: BlockID{
+					Hash: make([]byte, tmhash.Size),
+					PartSetHeader: PartSetHeader{
+						Hash: make([]byte, tmhash.Size),
+					},
+				},
+				Signatures: []CommitSig{
+					{
+						BlockIDFlag:      BlockIDFlagCommit,
+						ValidatorAddress: make([]byte, crypto.AddressSize),
+						Signature:        make([]byte, MaxSignatureSize+1),
+					},
+				},
+			},
+			true,
+		},
+		{
+			"valid commit",
+			&Commit{
+				Height: 1,
+				Round:  1,
+				BlockID: BlockID{
+					Hash: make([]byte, tmhash.Size),
+					PartSetHeader: PartSetHeader{
+						Hash: make([]byte, tmhash.Size),
+					},
+				},
+				Signatures: []CommitSig{
+					{
+						BlockIDFlag:      BlockIDFlagCommit,
+						ValidatorAddress: make([]byte, crypto.AddressSize),
+						Signature:        make([]byte, MaxSignatureSize),
+					},
+				},
+			},
+			false,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.commit.ValidateBasic()
 			require.Equal(t, tc.expectErr, err != nil, err)
 		})
 	}
