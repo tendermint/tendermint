@@ -44,8 +44,11 @@ var (
 		"restart":    0.1,
 	}
 	nodeMisbehaviors = weightedChoice{
-		misbehaviorOption{"double-prevote"}: 1,
-		misbehaviorOption{}:                 9,
+		// FIXME evidence disabled due to node panicing when not
+		// having sufficient block history to process evidence.
+		// https://github.com/tendermint/tendermint/issues/5617
+		// misbehaviorOption{"double-prevote"}: 1,
+		misbehaviorOption{}: 9,
 	}
 )
 
