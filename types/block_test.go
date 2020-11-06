@@ -1005,6 +1005,206 @@ func TestHeader_ValidateBasic(t *testing.T) {
 			},
 			true,
 		},
+		{
+			"invalid last commit hash",
+			Header{
+				Version: tmversion.Consensus{Block: version.BlockProtocol},
+				ChainID: string(make([]byte, MaxChainIDLen)),
+				Height:  1,
+				LastBlockID: BlockID{
+					Hash: make([]byte, tmhash.Size),
+					PartSetHeader: PartSetHeader{
+						Hash: make([]byte, tmhash.Size),
+					},
+				},
+				LastCommitHash: make([]byte, tmhash.Size+1),
+			},
+			true,
+		},
+		{
+			"invalid data hash",
+			Header{
+				Version: tmversion.Consensus{Block: version.BlockProtocol},
+				ChainID: string(make([]byte, MaxChainIDLen)),
+				Height:  1,
+				LastBlockID: BlockID{
+					Hash: make([]byte, tmhash.Size),
+					PartSetHeader: PartSetHeader{
+						Hash: make([]byte, tmhash.Size),
+					},
+				},
+				LastCommitHash: make([]byte, tmhash.Size),
+				DataHash:       make([]byte, tmhash.Size+1),
+			},
+			true,
+		},
+		{
+			"invalid evidence hash",
+			Header{
+				Version: tmversion.Consensus{Block: version.BlockProtocol},
+				ChainID: string(make([]byte, MaxChainIDLen)),
+				Height:  1,
+				LastBlockID: BlockID{
+					Hash: make([]byte, tmhash.Size),
+					PartSetHeader: PartSetHeader{
+						Hash: make([]byte, tmhash.Size),
+					},
+				},
+				LastCommitHash: make([]byte, tmhash.Size),
+				DataHash:       make([]byte, tmhash.Size),
+				EvidenceHash:   make([]byte, tmhash.Size+1),
+			},
+			true,
+		},
+		{
+			"invalid proposer address",
+			Header{
+				Version: tmversion.Consensus{Block: version.BlockProtocol},
+				ChainID: string(make([]byte, MaxChainIDLen)),
+				Height:  1,
+				LastBlockID: BlockID{
+					Hash: make([]byte, tmhash.Size),
+					PartSetHeader: PartSetHeader{
+						Hash: make([]byte, tmhash.Size),
+					},
+				},
+				LastCommitHash:  make([]byte, tmhash.Size),
+				DataHash:        make([]byte, tmhash.Size),
+				EvidenceHash:    make([]byte, tmhash.Size),
+				ProposerAddress: make([]byte, crypto.AddressSize+1),
+			},
+			true,
+		},
+		{
+			"invalid validator hash",
+			Header{
+				Version: tmversion.Consensus{Block: version.BlockProtocol},
+				ChainID: string(make([]byte, MaxChainIDLen)),
+				Height:  1,
+				LastBlockID: BlockID{
+					Hash: make([]byte, tmhash.Size),
+					PartSetHeader: PartSetHeader{
+						Hash: make([]byte, tmhash.Size),
+					},
+				},
+				LastCommitHash:  make([]byte, tmhash.Size),
+				DataHash:        make([]byte, tmhash.Size),
+				EvidenceHash:    make([]byte, tmhash.Size),
+				ProposerAddress: make([]byte, crypto.AddressSize),
+				ValidatorsHash:  make([]byte, tmhash.Size+1),
+			},
+			true,
+		},
+		{
+			"invalid next validator hash",
+			Header{
+				Version: tmversion.Consensus{Block: version.BlockProtocol},
+				ChainID: string(make([]byte, MaxChainIDLen)),
+				Height:  1,
+				LastBlockID: BlockID{
+					Hash: make([]byte, tmhash.Size),
+					PartSetHeader: PartSetHeader{
+						Hash: make([]byte, tmhash.Size),
+					},
+				},
+				LastCommitHash:     make([]byte, tmhash.Size),
+				DataHash:           make([]byte, tmhash.Size),
+				EvidenceHash:       make([]byte, tmhash.Size),
+				ProposerAddress:    make([]byte, crypto.AddressSize),
+				ValidatorsHash:     make([]byte, tmhash.Size),
+				NextValidatorsHash: make([]byte, tmhash.Size+1),
+			},
+			true,
+		},
+		{
+			"invalid next validator hash",
+			Header{
+				Version: tmversion.Consensus{Block: version.BlockProtocol},
+				ChainID: string(make([]byte, MaxChainIDLen)),
+				Height:  1,
+				LastBlockID: BlockID{
+					Hash: make([]byte, tmhash.Size),
+					PartSetHeader: PartSetHeader{
+						Hash: make([]byte, tmhash.Size),
+					},
+				},
+				LastCommitHash:     make([]byte, tmhash.Size),
+				DataHash:           make([]byte, tmhash.Size),
+				EvidenceHash:       make([]byte, tmhash.Size),
+				ProposerAddress:    make([]byte, crypto.AddressSize),
+				ValidatorsHash:     make([]byte, tmhash.Size),
+				NextValidatorsHash: make([]byte, tmhash.Size+1),
+			},
+			true,
+		},
+		{
+			"invalid consensus hash",
+			Header{
+				Version: tmversion.Consensus{Block: version.BlockProtocol},
+				ChainID: string(make([]byte, MaxChainIDLen)),
+				Height:  1,
+				LastBlockID: BlockID{
+					Hash: make([]byte, tmhash.Size),
+					PartSetHeader: PartSetHeader{
+						Hash: make([]byte, tmhash.Size),
+					},
+				},
+				LastCommitHash:     make([]byte, tmhash.Size),
+				DataHash:           make([]byte, tmhash.Size),
+				EvidenceHash:       make([]byte, tmhash.Size),
+				ProposerAddress:    make([]byte, crypto.AddressSize),
+				ValidatorsHash:     make([]byte, tmhash.Size),
+				NextValidatorsHash: make([]byte, tmhash.Size),
+				ConsensusHash:      make([]byte, tmhash.Size+1),
+			},
+			true,
+		},
+		{
+			"invalid last results hash",
+			Header{
+				Version: tmversion.Consensus{Block: version.BlockProtocol},
+				ChainID: string(make([]byte, MaxChainIDLen)),
+				Height:  1,
+				LastBlockID: BlockID{
+					Hash: make([]byte, tmhash.Size),
+					PartSetHeader: PartSetHeader{
+						Hash: make([]byte, tmhash.Size),
+					},
+				},
+				LastCommitHash:     make([]byte, tmhash.Size),
+				DataHash:           make([]byte, tmhash.Size),
+				EvidenceHash:       make([]byte, tmhash.Size),
+				ProposerAddress:    make([]byte, crypto.AddressSize),
+				ValidatorsHash:     make([]byte, tmhash.Size),
+				NextValidatorsHash: make([]byte, tmhash.Size),
+				ConsensusHash:      make([]byte, tmhash.Size),
+				LastResultsHash:    make([]byte, tmhash.Size+1),
+			},
+			true,
+		},
+		{
+			"valid header",
+			Header{
+				Version: tmversion.Consensus{Block: version.BlockProtocol},
+				ChainID: string(make([]byte, MaxChainIDLen)),
+				Height:  1,
+				LastBlockID: BlockID{
+					Hash: make([]byte, tmhash.Size),
+					PartSetHeader: PartSetHeader{
+						Hash: make([]byte, tmhash.Size),
+					},
+				},
+				LastCommitHash:     make([]byte, tmhash.Size),
+				DataHash:           make([]byte, tmhash.Size),
+				EvidenceHash:       make([]byte, tmhash.Size),
+				ProposerAddress:    make([]byte, crypto.AddressSize),
+				ValidatorsHash:     make([]byte, tmhash.Size),
+				NextValidatorsHash: make([]byte, tmhash.Size),
+				ConsensusHash:      make([]byte, tmhash.Size),
+				LastResultsHash:    make([]byte, tmhash.Size),
+			},
+			false,
+		},
 	}
 
 	for _, tc := range testCases {
