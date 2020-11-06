@@ -21,7 +21,7 @@ The Tendermint blockchains consists of a short list of data types:
 - [`Evidence`](#evidence)
 - [`DuplicateVoteEvidence`](#duplicatevoteevidence)
 - [`LightClientAttackEvidence`](#lightclientattackevidence)
-- [`LightBlock](#lightblock)
+- [`LightBlock`](#lightblock)
 - [`SignedHeader`](#signedheader)
 - [`Validator`](#validator)
 - [`ValidatorSet`](#validatorset)
@@ -294,10 +294,13 @@ the timestamp of the block that the evidence occurred at to indicate the age of 
 `DuplicateVoteEvidence` represents a validator that has voted for two different blocks
 in the same round of the same height. Votes are lexicographically sorted on `BlockID`.
 
-| Name  | Type          | Description                                                     | Validation                                          |
-|-------|---------------|-----------------------------------------------------------------|-----------------------------------------------------|
-| VoteA | [Vote](#vote) | One of the votes submitted by a validator when they equivocated | VoteA must adhere to [Vote](#vote) validation rules |
-| VoteB | [Vote](#vote) | The second vote submitted by a validator when they equivocated  | VoteB must adhere to [Vote](#vote) validation rules |
+| Name             | Type          | Description                                                        | Validation                                          |
+|------------------|---------------|--------------------------------------------------------------------|-----------------------------------------------------|
+| VoteA            | [Vote](#vote) | One of the votes submitted by a validator when they equivocated    | VoteA must adhere to [Vote](#vote) validation rules |
+| VoteB            | [Vote](#vote) | The second vote submitted by a validator when they equivocated     | VoteB must adhere to [Vote](#vote) validation rules |
+| TotalVotingPower | int64         | The total power of the validator set at the height of equivocation | Must be equal to nodes own copy of the data         |
+| ValidatorPower   | int64         | Power of the equivocating validator at the height                  | Must be equal to the nodes own copy of the data     |
+| Timestamp        | [Time](#Time) | Time of the block where the equivocation occurred                  | Must be equal to the nodes own copy of the data     |
 
 Valid Duplicate Vote Evidence must adhere to the following rules:
 
@@ -311,6 +314,8 @@ Valid Duplicate Vote Evidence must adhere to the following rules:
 
 - For DuplicateVoteEvidence to be included in a block it must be within the time period outlined in [evidenceParams](../abci/abci.md#evidenceparams). Evidence expiration is measured as a combination of age in terms of height and time.
 
+- Information required to form ABCI evidence (`TotalVotingPower`, `ValidatorPower` and `Timestamp`) must all match the nodes own state at that height.
+
 ### LightClientAttackEvidence
 
 LightClientAttackEvidence is a generalized evidence that captures all forms of known attacks on
@@ -318,10 +323,13 @@ a light client such that a full node can verify, propose and commit the evidence
 punishment of the malicious validators. There are three forms of attacks: Lunatic, Equivocation
 and Amnesia. These attacks are exhaustive. You can find a more detailed overview of this [here](../light-client/accountability#the_misbehavior_of_faulty_validators)
 
-| Name             | Type                      | Description | Validation |
-|------------------|---------------------------|-------------|------------|
-| ConflictingBlock | [LightBlock](#LightBlock) | Read Below  | Must adhere to the validation rules of [lightBlock](#lightblock) |
-| CommonHeight     | int64                     | Read Below  | must be > 0 |
+| Name                 | Type                               | Description                                                          | Validation                                                       |
+|----------------------|------------------------------------|----------------------------------------------------------------------|------------------------------------------------------------------|
+| ConflictingBlock     | [LightBlock](#LightBlock)          | Read Below                                                           | Must adhere to the validation rules of [lightBlock](#lightblock) |
+| CommonHeight         | int64                              | Read Below                                                           | must be > 0                                                      |
+| Byzantine Validators | Array of [Validators](#Validators) | validators that acted maliciously                                    | Read Below                                                       |
+| TotalVotingPower     | int64                              | The total power of the validator set at the height of the infraction | Must be equal to the nodes own copy of the data                  |
+| Timestamp            | [Time](#Time)                      | Time of the block where the infraction occurred                      | Must be equal to the nodes own copy of the data                  |
 
 Valid Light Client Attack Evidence must adhere to the following rules:
 
@@ -329,12 +337,16 @@ Valid Light Client Attack Evidence must adhere to the following rules:
     they can use `verifySkipping` from their header at the common height to the conflicting header
 
 - If the header is valid, then the validator sets are the same and this is either a form of equivocation
-    or amnesia. We therefore check that 2/3 of the validator set also signed the conflicting header
+    or amnesia. We therefore check that 2/3 of the validator set also signed the conflicting header.
 
 - The trusted header of the node at the same height as the conflicting header must have a different hash to
     the conflicting header.
 
+- The `ByzantineValidators` provided must be the overlap between validators in the common validator set and those that voted in the commit of the conflicting block.
+
 - For LightClientAttackEvidence to be included in a block it must be within the time period outlined in [evidenceParams](../abci/abci.md#evidenceparams). Evidence expiration is measured as a combination of age in terms of height and time.
+
+- Information required to form ABCI evidence (`TotalVotingPower` and `Timestamp`) must all match the nodes own state at that height.
 
 ## LightBlock
 
