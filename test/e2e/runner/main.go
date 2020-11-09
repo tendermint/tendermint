@@ -69,25 +69,33 @@ func NewCLI() *CLI {
 			if err := Start(cli.testnet); err != nil {
 				return err
 			}
+
 			if lastMisbehavior := cli.testnet.LastMisbehaviorHeight(); lastMisbehavior > 0 {
-				// wait for misbehaviors before starting perturbations
-				if err := WaitUntil(cli.testnet, lastMisbehavior+5); err != nil {
+				// wait for misbehaviors before starting perturbations. We do a separate
+				// wait for another 5 blocks, since the last misbehavior height may be
+				// in the past depending on network startup ordering.
+				if err := WaitUntil(cli.testnet, lastMisbehavior); err != nil {
 					return err
 				}
 			}
-			if err := Perturb(cli.testnet); err != nil {
-				return err
-			}
 			if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
 				return err
+			}
+
+			if cli.testnet.HasPerturbations() {
+				if err := Perturb(cli.testnet); err != nil {
+					return err
+				}
+				if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
+					return err
+				}
 			}
 
 			loadCancel()
 			if err := <-chLoadResult; err != nil {
 				return err
 			}
-			// wait for network to settle before tests
-			if err := Wait(cli.testnet, 5); err != nil {
+			if err := Wait(cli.testnet, 5); err != nil { // wait for network to settle before tests
 				return err
 			}
 			if err := Test(cli.testnet); err != nil {

@@ -15,8 +15,7 @@ import (
 // More info here:
 // tendermint/docs/architecture/adr-047-handling-evidence-from-light-client.md
 
-// detectDivergence is a second wall of defense for the light client and is used
-// only in the case of skipping verification which employs the trust level mechanism.
+// detectDivergence is a second wall of defense for the light client.
 //
 // It takes the target verified header and compares it with the headers of a set of
 // witness providers that the light client is connected to. If a conflicting header
@@ -79,21 +78,10 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 				continue
 			}
-			// if this is an equivocation or amnesia attack, i.e. the validator sets are the same, then we
-			// return the height of the conflicting block else if it is a lunatic attack and the validator sets
-			// are not the same then we send the height of the common header.
-			commonHeight := primaryBlock.Height
-			if isInvalidHeader(witnessTrace[len(witnessTrace)-1].Header, primaryBlock.Header) {
-				// height of the common header
-				commonHeight = witnessTrace[0].Height
-			}
 
 			// We are suspecting that the primary is faulty, hence we hold the witness as the source of truth
 			// and generate evidence against the primary that we can send to the witness
-			primaryEv := &types.LightClientAttackEvidence{
-				ConflictingBlock: primaryBlock,
-				CommonHeight:     commonHeight, // the first block in the bisection is common to both providers
-			}
+			primaryEv := newLightClientAttackEvidence(primaryBlock, witnessTrace[len(witnessTrace)-1], witnessTrace[0])
 			c.logger.Error("Attempted attack detected. Sending evidence againt primary by witness", "ev", primaryEv,
 				"primary", c.primary, "witness", supportingWitness)
 			c.sendEvidence(ctx, primaryEv, supportingWitness)
@@ -118,20 +106,9 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 				c.logger.Info("Error validating primary's divergent header", "primary", c.primary, "err", err)
 				return ErrLightClientAttack
 			}
-			// if this is an equivocation or amnesia attack, i.e. the validator sets are the same, then we
-			// return the height of the conflicting block else if it is a lunatic attack and the validator sets
-			// are not the same then we send the height of the common header.
-			commonHeight = primaryBlock.Height
-			if isInvalidHeader(primaryTrace[len(primaryTrace)-1].Header, witnessBlock.Header) {
-				// height of the common header
-				commonHeight = primaryTrace[0].Height
-			}
 
 			// We now use the primary trace to create evidence against the witness and send it to the primary
-			witnessEv := &types.LightClientAttackEvidence{
-				ConflictingBlock: witnessBlock,
-				CommonHeight:     commonHeight, // the first block in the bisection is common to both providers
-			}
+			witnessEv := newLightClientAttackEvidence(witnessBlock, primaryTrace[len(primaryTrace)-1], primaryTrace[0])
 			c.logger.Error("Sending evidence against witness by primary", "ev", witnessEv,
 				"primary", c.primary, "witness", supportingWitness)
 			c.sendEvidence(ctx, witnessEv, c.primary)
@@ -252,14 +229,22 @@ func (c *Client) examineConflictingHeaderAgainstTrace(
 
 }
 
-// isInvalidHeader takes a trusted header and matches it againt a conflicting header
-// to determine whether the conflicting header was the product of a valid state transition
-// or not. If it is then all the deterministic fields of the header should be the same.
-// If not, it is an invalid header and constitutes a lunatic attack.
-func isInvalidHeader(trusted, conflicting *types.Header) bool {
-	return !bytes.Equal(trusted.ValidatorsHash, conflicting.ValidatorsHash) ||
-		!bytes.Equal(trusted.NextValidatorsHash, conflicting.NextValidatorsHash) ||
-		!bytes.Equal(trusted.ConsensusHash, conflicting.ConsensusHash) ||
-		!bytes.Equal(trusted.AppHash, conflicting.AppHash) ||
-		!bytes.Equal(trusted.LastResultsHash, conflicting.LastResultsHash)
+// newLightClientAttackEvidence determines the type of attack and then forms the evidence filling out
+// all the fields such that it is ready to be sent to a full node.
+func newLightClientAttackEvidence(conflicted, trusted, common *types.LightBlock) *types.LightClientAttackEvidence {
+	ev := &types.LightClientAttackEvidence{ConflictingBlock: conflicted}
+	// if this is an equivocation or amnesia attack, i.e. the validator sets are the same, then we
+	// return the height of the conflicting block else if it is a lunatic attack and the validator sets
+	// are not the same then we send the height of the common header.
+	if ev.ConflictingHeaderIsInvalid(trusted.Header) {
+		ev.CommonHeight = common.Height
+		ev.Timestamp = common.Time
+		ev.TotalVotingPower = common.ValidatorSet.TotalVotingPower()
+	} else {
+		ev.CommonHeight = trusted.Height
+		ev.Timestamp = trusted.Time
+		ev.TotalVotingPower = trusted.ValidatorSet.TotalVotingPower()
+	}
+	ev.ByzantineValidators = ev.GetByzantineValidators(common.ValidatorSet, trusted.SignedHeader)
+	return ev
 }

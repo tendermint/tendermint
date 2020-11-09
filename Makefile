@@ -4,7 +4,8 @@ PACKAGES=$(shell go list ./...)
 BUILDDIR ?= $(CURDIR)/build
 
 BUILD_TAGS?=tendermint
-LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`
+VERSION := $(shell git describe --always)
+LD_FLAGS = -X github.com/tendermint/tendermint/version.TMCoreSemVer=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://github.com/tendermint/tendermint.git
 DOCKER_BUF := docker run -v $(shell pwd):/workspace --workdir /workspace bufbuild/buf
@@ -191,7 +192,7 @@ DESTINATION = ./index.html.md
 ###############################################################################
 ###                           Documentation                                 ###
 ###############################################################################
-
+# todo remove once tendermint.com DNS is solved
 build-docs:
 	@cd docs && \
 	while read -r branch path_prefix; do \
@@ -202,6 +203,17 @@ build-docs:
 	done < versions ;
 .PHONY: build-docs
 
+build-gh-docs:
+	@cd docs && \
+	while read -r branch path_prefix; do \
+		(git checkout $${branch} && npm install && VUEPRESS_BASE="/tendermint/$${path_prefix}/" npm run build) ; \
+		mkdir -p ~/output/$${path_prefix} ; \
+		cp -r .vuepress/dist/* ~/output/$${path_prefix}/ ; \
+		cp ~/output/$${path_prefix}/index.html ~/output ; \
+	done < versions ;
+.PHONY: build-docs
+
+# todo remove once tendermint.com DNS is solved
 sync-docs:
 	cd ~/output && \
 	echo "role_arn = ${DEPLOYMENT_ROLE_ARN}" >> /root/.aws/config ; \

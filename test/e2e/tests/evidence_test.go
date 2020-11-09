@@ -10,11 +10,12 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// assert that all nodes that have blocks during the height (or height + 1) of a misbehavior has evidence
+// assert that all nodes that have blocks at the height of a misbehavior has evidence
 // for that misbehavior
 func TestEvidence_Misbehavior(t *testing.T) {
 	blocks := fetchBlockChain(t)
 	testNode(t, func(t *testing.T, node e2e.Node) {
+		seenEvidence := make(map[int64]struct{})
 		for _, block := range blocks {
 			// Find any evidence blaming this node in this block
 			var nodeEvidence types.Evidence
@@ -28,16 +29,14 @@ func TestEvidence_Misbehavior(t *testing.T) {
 					t.Fatalf("unexpected evidence type %T", evidence)
 				}
 			}
-
-			// Check that evidence was as expected (evidence is submitted in following height)
-			misbehavior, ok := node.Misbehaviors[block.Height-1]
-			if !ok {
-				require.Nil(t, nodeEvidence, "found unexpected evidence %v in height %v",
-					nodeEvidence, block.Height)
-				continue
+			if nodeEvidence == nil {
+				continue // no evidence for the node at this height
 			}
-			require.NotNil(t, nodeEvidence, "no evidence found for misbehavior %v in height %v",
-				misbehavior, block.Height)
+
+			// Check that evidence was as expected
+			misbehavior, ok := node.Misbehaviors[nodeEvidence.Height()]
+			require.True(t, ok, "found unexpected evidence %v in height %v",
+				nodeEvidence, block.Height)
 
 			switch misbehavior {
 			case "double-prevote":
@@ -45,6 +44,14 @@ func TestEvidence_Misbehavior(t *testing.T) {
 			default:
 				t.Fatalf("unknown misbehavior %v", misbehavior)
 			}
+
+			seenEvidence[nodeEvidence.Height()] = struct{}{}
+		}
+		// see if there is any evidence that we were expecting but didn't see
+		for height, misbehavior := range node.Misbehaviors {
+			_, ok := seenEvidence[height]
+			require.True(t, ok, "expected evidence for %v misbehavior at height %v by node but was never found",
+				misbehavior, height)
 		}
 	})
 }

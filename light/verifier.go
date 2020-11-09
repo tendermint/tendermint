@@ -119,7 +119,7 @@ func VerifyAdjacent(
 			trustedHeader.NextValidatorsHash,
 			untrustedHeader.ValidatorsHash,
 		)
-		return err
+		return ErrInvalidHeader{err}
 	}
 
 	// Ensure that +2/3 of new validators signed correctly.
