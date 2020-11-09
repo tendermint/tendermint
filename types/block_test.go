@@ -1213,16 +1213,17 @@ func TestCommit_ValidateBasic(t *testing.T) {
 		name      string
 		commit    *Commit
 		expectErr bool
+		errString string
 	}{
 		{
 			"invalid height",
 			&Commit{Height: -1},
-			true,
+			true, "negative Height",
 		},
 		{
 			"invalid round",
 			&Commit{Height: 1, Round: -1},
-			true,
+			true, "negative Round",
 		},
 		{
 			"invalid block ID",
@@ -1231,7 +1232,7 @@ func TestCommit_ValidateBasic(t *testing.T) {
 				Round:   1,
 				BlockID: BlockID{},
 			},
-			true,
+			true, "commit cannot be for nil block",
 		},
 		{
 			"no signatures",
@@ -1245,7 +1246,7 @@ func TestCommit_ValidateBasic(t *testing.T) {
 					},
 				},
 			},
-			true,
+			true, "no signatures in commit",
 		},
 		{
 			"invalid signature",
@@ -1266,7 +1267,7 @@ func TestCommit_ValidateBasic(t *testing.T) {
 					},
 				},
 			},
-			true,
+			true, "wrong CommitSig",
 		},
 		{
 			"valid commit",
@@ -1287,7 +1288,7 @@ func TestCommit_ValidateBasic(t *testing.T) {
 					},
 				},
 			},
-			false,
+			false, "",
 		},
 	}
 
@@ -1296,7 +1297,12 @@ func TestCommit_ValidateBasic(t *testing.T) {
 
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.commit.ValidateBasic()
-			require.Equal(t, tc.expectErr, err != nil, err)
+			if tc.expectErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errString)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }
