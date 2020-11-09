@@ -871,36 +871,37 @@ func TestCommitSig_ValidateBasic(t *testing.T) {
 		name      string
 		cs        CommitSig
 		expectErr bool
+		errString string
 	}{
 		{
 			"invalid ID flag",
 			CommitSig{BlockIDFlag: BlockIDFlag(0xFF)},
-			true,
+			true, "unknown BlockIDFlag",
 		},
 		{
 			"BlockIDFlagAbsent validator address present",
 			CommitSig{BlockIDFlag: BlockIDFlagAbsent, ValidatorAddress: crypto.Address("testaddr")},
-			true,
+			true, "validator address is present",
 		},
 		{
 			"BlockIDFlagAbsent timestamp present",
 			CommitSig{BlockIDFlag: BlockIDFlagAbsent, Timestamp: time.Now().UTC()},
-			true,
+			true, "time is present",
 		},
 		{
 			"BlockIDFlagAbsent signatures present",
 			CommitSig{BlockIDFlag: BlockIDFlagAbsent, Signature: []byte{0xAA}},
-			true,
+			true, "signature is present",
 		},
 		{
 			"BlockIDFlagAbsent valid BlockIDFlagAbsent",
 			CommitSig{BlockIDFlag: BlockIDFlagAbsent},
-			false,
+			false, "",
 		},
 		{
 			"non-BlockIDFlagAbsent invalid validator address",
 			CommitSig{BlockIDFlag: BlockIDFlagCommit, ValidatorAddress: make([]byte, 1)},
-			true,
+			true, "expected ValidatorAddress size",
 		},
 		{
 			"non-BlockIDFlagAbsent invalid signature (zero)",
@@ -909,7 +910,7 @@ func TestCommitSig_ValidateBasic(t *testing.T) {
 				ValidatorAddress: make([]byte, crypto.AddressSize),
 				Signature:        make([]byte, 0),
 			},
-			true,
+			true, "signature is missing",
 		},
 		{
 			"non-BlockIDFlagAbsent invalid signature (too large)",
@@ -918,7 +919,7 @@ func TestCommitSig_ValidateBasic(t *testing.T) {
 				ValidatorAddress: make([]byte, crypto.AddressSize),
 				Signature:        make([]byte, MaxSignatureSize+1),
 			},
-			true,
+			true, "signature is too big",
 		},
 		{
 			"non-BlockIDFlagAbsent valid",
@@ -927,7 +928,7 @@ func TestCommitSig_ValidateBasic(t *testing.T) {
 				ValidatorAddress: make([]byte, crypto.AddressSize),
 				Signature:        make([]byte, MaxSignatureSize),
 			},
-			false,
+			false, "",
 		},
 	}
 
@@ -936,7 +937,12 @@ func TestCommitSig_ValidateBasic(t *testing.T) {
 
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.cs.ValidateBasic()
-			require.Equal(t, tc.expectErr, err != nil, err)
+			if tc.expectErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errString)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }
