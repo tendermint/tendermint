@@ -41,8 +41,6 @@ Each type specifies it's own pubkey, address, and signature format.
 
 #### Ed25519
 
-TODO: pubkey
-
 The address is the first 20-bytes of the SHA256 hash of the raw 32-byte public key:
 
 ```go
@@ -50,6 +48,18 @@ address = SHA256(pubkey)[:20]
 ```
 
 The signature is the raw 64-byte ED25519 signature.
+
+Tendermint adopted [zip215](https://zips.z.cash/zip-0215) for verification of ed25519 signatures.
+
+> Note: This change will be released in the next major release of Tendermint-Go (0.35).
+
+#### Secp256k1
+
+The address is the first 20-bytes of the SHA256 hash of the raw 32-byte public key:
+
+```go
+address = SHA256(pubkey)[:20]
+```
 
 ## Other Common Types
 
@@ -60,14 +70,10 @@ validators, or parts received in a block. It is represented
 with a struct containing the number of bits (`Bits`) and the bit-array itself
 encoded in base64 (`Elems`).
 
-```go
-type BitArray struct {
-    Bits  int64
-    Elems []uint64
-}
-```
-
-This type is easily encoded directly by Amino.
+| Name  | Type                       |
+|-------|----------------------------|
+| bits  | int64                      |
+| elems | slice of int64 (`[]int64`) |
 
 Note BitArray receives a special JSON encoding in the form of `x` and `_`
 representing `1` and `0`. Ie. the BitArray `10110` would be JSON encoded as
@@ -82,13 +88,11 @@ Part contains the index of the part (`Index`), the actual
 underlying data of the part (`Bytes`), and a Merkle proof that the part is contained in
 the set (`Proof`).
 
-```go
-type Part struct {
-    Index uint32
-    Bytes []byte
-    Proof SimpleProof
-}
-```
+| Name  | Type                      |
+|-------|---------------------------|
+| index | uint32                    |
+| bytes | slice of bytes (`[]byte`) |
+| proof | [proof](#merkle-proof)    |
 
 See details of SimpleProof, below.
 
@@ -194,14 +198,12 @@ For `[]struct` arguments, we compute a `[][]byte` by protobuf encoding the indiv
 
 Proof that a leaf is in a Merkle tree is composed as follows:
 
-```golang
-type Proof struct {
-  Total int
-  Index int
-  LeafHash []byte
-  Aunts [][]byte
-}
-```
+| Name     | Type                       |
+|----------|----------------------------|
+| total    | int64                      |
+| index    | int64                      |
+| leafHash | slice of bytes (`[]byte`)  |
+| aunts    | Matrix of bytes ([][]byte) |
 
 Which is verified as follows:
 
@@ -245,7 +247,7 @@ Because Tendermint only uses a Simple Merkle Tree, application developers are ex
 
 ## JSON
 
-Tendermint has its own JSON encoding in order to keep backwards compatibility with the prvious RPC layer.
+Tendermint has its own JSON encoding in order to keep backwards compatibility with the previous RPC layer.
 
 Registered types are encoded as:
 
