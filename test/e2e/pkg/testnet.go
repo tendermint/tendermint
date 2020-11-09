@@ -272,7 +272,7 @@ func (t Testnet) Validate() error {
 	switch t.KeyType {
 	case "", "ed25519", "secp256k1":
 	default:
-		return errors.New("unsupported keyType")
+		return errors.New("unsupported KeyType")
 	}
 	for _, node := range t.Nodes {
 		if err := node.Validate(t); err != nil {
@@ -490,7 +490,7 @@ func (g *keyGenerator) Generate(keyType string) crypto.PrivKey {
 	case "", "ed25519":
 		return ed25519.GenPrivKeyFromSecret(seed)
 	default:
-		panic("Keytype not supported") // should not make it this far
+		panic("KeyType not supported") // should not make it this far
 	}
 }
 
