@@ -10,6 +10,7 @@ import (
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -21,6 +22,15 @@ var InitFilesCmd = &cobra.Command{
 	RunE:  initFiles,
 }
 
+var (
+	keyType string
+)
+
+func init() {
+	InitFilesCmd.Flags().StringVar(&keyType, "key", types.ABCIPubKeyTypeEd25519,
+		"Key type to generate privval file with. Options: ed25519, secp256k1")
+}
+
 func initFiles(cmd *cobra.Command, args []string) error {
 	return initFilesWithConfig(config)
 }
@@ -29,13 +39,19 @@ func initFilesWithConfig(config *cfg.Config) error {
 	// private validator
 	privValKeyFile := config.PrivValidatorKeyFile()
 	privValStateFile := config.PrivValidatorStateFile()
-	var pv *privval.FilePV
+	var (
+		pv  *privval.FilePV
+		err error
+	)
 	if tmos.FileExists(privValKeyFile) {
 		pv = privval.LoadFilePV(privValKeyFile, privValStateFile)
 		logger.Info("Found private validator", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
 	} else {
-		pv = privval.GenFilePV(privValKeyFile, privValStateFile)
+		pv, err = privval.GenFilePV(privValKeyFile, privValStateFile, keyType)
+		if err != nil {
+			return err
+		}
 		pv.Save()
 		logger.Info("Generated private validator", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
@@ -56,10 +72,16 @@ func initFilesWithConfig(config *cfg.Config) error {
 	if tmos.FileExists(genFile) {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
+
 		genDoc := types.GenesisDoc{
 			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
 			GenesisTime:     tmtime.Now(),
 			ConsensusParams: types.DefaultConsensusParams(),
+		}
+		if keyType == "secp256k1" {
+			genDoc.ConsensusParams.Validator = tmproto.ValidatorParams{
+				PubKeyTypes: []string{types.ABCIPubKeyTypeSecp256k1},
+			}
 		}
 		pubKey, err := pv.GetPubKey()
 		if err != nil {
