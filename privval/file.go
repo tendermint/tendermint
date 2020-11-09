@@ -173,9 +173,9 @@ func NewFilePV(privKey crypto.PrivKey, keyFilePath, stateFilePath string) *FileP
 // and sets the filePaths, but does not call Save().
 func GenFilePV(keyFilePath, stateFilePath, keyType string) (*FilePV, error) {
 	switch keyType {
-	case "secp256k1":
+	case types.ABCIPubKeyTypeSecp256k1:
 		return NewFilePV(secp256k1.GenPrivKey(), keyFilePath, stateFilePath), nil
-	case "", "ed25519":
+	case "", types.ABCIPubKeyTypeEd25519:
 		return NewFilePV(ed25519.GenPrivKey(), keyFilePath, stateFilePath), nil
 	default:
 		return nil, fmt.Errorf("key type: %s is not supported", keyType)

@@ -192,7 +192,7 @@ func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 		InitialHeight:   testnet.InitialHeight,
 	}
 	switch testnet.KeyType {
-	case "", "ed25519", "secp256k1":
+	case "", types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1:
 		genesis.ConsensusParams.Validator.PubKeyTypes =
 			append(genesis.ConsensusParams.Validator.PubKeyTypes, types.ABCIPubKeyTypeSecp256k1)
 	default:

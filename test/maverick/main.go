@@ -166,7 +166,7 @@ var InitFilesCmd = &cobra.Command{
 }
 
 func init() {
-	InitFilesCmd.Flags().StringVar(&keyType, "key", "ed25519",
+	InitFilesCmd.Flags().StringVar(&keyType, "key", types.ABCIPubKeyTypeEd25519,
 		"Key type to generate privval file with. Options: ed25519, secp256k1")
 }
 

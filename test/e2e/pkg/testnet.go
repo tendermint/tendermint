@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -270,7 +271,7 @@ func (t Testnet) Validate() error {
 		return errors.New("network has no nodes")
 	}
 	switch t.KeyType {
-	case "", "ed25519", "secp256k1":
+	case "", types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1:
 	default:
 		return errors.New("unsupported KeyType")
 	}
