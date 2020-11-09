@@ -34,27 +34,36 @@ many intermediate headers by exploiting overlap in trusted and untrusted validat
 When there is not enough overlap, a bisection routine can be used to find a
 minimal set of headers that do provide the required overlap.
 
-The [TLA+ specification](verification/Lightclient_A_1.tla) is a formal description of the
+The [TLA+ specification ver. 001](verification/Lightclient_A_1.tla)
+is a formal description of the
 commit verification protocol executed by a client, including the safety and
-liveness properties, which can be model checked with Apalache.
+termination, which can be model checked with Apalache.
+
+A more detailed TLA+ specification of
+[Light client verification ver. 003](verification/Lightclient_003_draft.tla)
+is currently under peer review.
 
 The `MC*.tla` files contain concrete parameters for the
 [TLA+ specification](verification/Lightclient_A_1.tla), in order to do model checking.
 For instance, [MC4_3_faulty.tla](verification/MC4_3_faulty.tla) contains the following parameters
-for the nodes, heights, the trusting period, and correctness of the primary node:
+for the nodes, heights, the trusting period, the clock drifts,
+correctness of the primary node, and the ratio of the faulty processes:
 
 ```tla
 AllNodes == {"n1", "n2", "n3", "n4"}
 TRUSTED_HEIGHT == 1
 TARGET_HEIGHT == 3
-TRUSTING_PERIOD == 1400 \* two weeks, one day is 100 time units :-)
+TRUSTING_PERIOD == 1400     \* the trusting period in some time units
+CLOCK_DRIFT = 10            \* how much we assume the local clock is drifting
+REAL_CLOCK_DRIFT = 3        \* how much the local clock is actually drifting
 IS_PRIMARY_CORRECT == FALSE
+FAULTY_RATIO == <<1, 3>>    \* < 1 / 3 faulty validators
 ```
 
 To run a complete set of experiments, clone [apalache](https://github.com/informalsystems/apalache) and [apalache-tests](https://github.com/informalsystems/apalache-tests) into a directory `$DIR` and run the following commands:
 
 ```sh
-$DIR/apalache-tests/scripts/mk-run.py --memlimit 28 001bmc-apalache.csv $DIR/apalache . out
+$DIR/apalache-tests/scripts/mk-run.py --memlimit 28 002bmc-apalache-ok.csv $DIR/apalache . out
 ./out/run-all.sh
 ```
 
@@ -65,7 +74,23 @@ cd ./out
 $DIR/apalache-tests/scripts/parse-logs.py --human .
 ```
 
-The following table summarizes the experimental results. The TLA+ properties can be found in the
+All lines in `results.csv` should report `Deadlock`, which means that the algorithm
+has terminated and no invariant violation was found.
+
+Similar to [002bmc-apalache-ok.csv](verification/002bmc-apalache-ok.csv),
+file [003bmc-apalache-error.csv](verification/003bmc-apalache-error.csv) specifies
+the set of experiments that should result in counterexamples:
+
+```sh
+$DIR/apalache-tests/scripts/mk-run.py --memlimit 28 003bmc-apalache-error.csv $DIR/apalache . out
+./out/run-all.sh
+```
+
+All lines in `results.csv` should report `Error`.
+
+
+The following table summarizes the experimental results for Light client verification
+version 001. The TLA+ properties can be found in the
 [TLA+ specification](verification/Lightclient_A_1.tla).
  The experiments were run in an AWS instance equipped with 32GB
 RAM and a 4-core Intel® Xeon® CPU E5-2686 v4 @ 2.30GHz CPU.
@@ -73,6 +98,8 @@ We write “✗=k” when a bug is reported at depth k, and “✓<=k” when
 no bug is reported up to depth k.
 
 ![Experimental results](experiments.png)
+
+The experimental results for version 003 are to be added.
 
 ## Attack Detection
 
@@ -92,7 +119,61 @@ and generates
 of misbehavior that can be submitted to a full node so that
 the faulty validators can be punished.
 
-There is no TLA+ yet.
+The [TLA+ specification](detection/LCDetector_003_draft.tla)
+is a formal description of the
+detection protocol for two peers, including the safety and
+termination, which can be model checked with Apalache.
+
+
+The `LCD_MC*.tla` files contain concrete parameters for the
+[TLA+ specification](detection/LCDetector_003_draft.tla),
+in order to run the model checker.
+For instance, [LCD_MC4_4_faulty.tla](detection/MC4_4_faulty.tla)
+contains the following parameters
+for the nodes, heights, the trusting period, the clock drifts,
+correctness of the nodes, and the ratio of the faulty processes:
+
+```tla
+AllNodes == {"n1", "n2", "n3", "n4"}
+TRUSTED_HEIGHT == 1
+TARGET_HEIGHT == 3
+TRUSTING_PERIOD == 1400     \* the trusting period in some time units
+CLOCK_DRIFT = 10            \* how much we assume the local clock is drifting
+REAL_CLOCK_DRIFT = 3        \* how much the local clock is actually drifting
+IS_PRIMARY_CORRECT == FALSE
+IS_SECONDARY_CORRECT == FALSE
+FAULTY_RATIO == <<1, 3>>    \* < 1 / 3 faulty validators
+```
+
+To run a complete set of experiments, clone [apalache](https://github.com/informalsystems/apalache) and [apalache-tests](https://github.com/informalsystems/apalache-tests) into a directory `$DIR` and run the following commands:
+
+```sh
+$DIR/apalache-tests/scripts/mk-run.py --memlimit 28 004bmc-apalache-ok.csv $DIR/apalache . out
+./out/run-all.sh
+```
+
+After the experiments have finished, you can collect the logs by executing the following command:
+
+```sh
+cd ./out
+$DIR/apalache-tests/scripts/parse-logs.py --human .
+```
+
+All lines in `results.csv` should report `Deadlock`, which means that the algorithm
+has terminated and no invariant violation was found.
+
+Similar to [004bmc-apalache-ok.csv](verification/004bmc-apalache-ok.csv),
+file [005bmc-apalache-error.csv](verification/005bmc-apalache-error.csv) specifies
+the set of experiments that should result in counterexamples:
+
+```sh
+$DIR/apalache-tests/scripts/mk-run.py --memlimit 28 005bmc-apalache-error.csv $DIR/apalache . out
+./out/run-all.sh
+```
+
+All lines in `results.csv` should report `Error`.
+
+The detailed experimental results are to be added soon.
 
 ## Fork Accountability
 

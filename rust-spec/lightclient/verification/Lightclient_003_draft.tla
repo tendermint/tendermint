@@ -1,6 +1,7 @@
 -------------------------- MODULE Lightclient_003_draft ----------------------------
 (**
- * A state-machine specification of the lite client, following the English spec:
+ * A state-machine specification of the lite client verification,
+ * following the English spec:
  *
  * https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/verification.md
  *) 
@@ -15,6 +16,11 @@ CONSTANTS
     (* an index of the block header that the light client tries to verify *)
   TRUSTING_PERIOD,
     (* the period within which the validators are trusted *)
+  CLOCK_DRIFT,
+    (* the assumed precision of the clock *)
+  REAL_CLOCK_DRIFT,
+    (* the actual clock drift, which under normal circumstances should not
+       be larger than CLOCK_DRIFT (otherwise, there will be a bug) *)
   IS_PRIMARY_CORRECT,
     (* is primary correct? *)  
   FAULTY_RATIO
@@ -22,6 +28,7 @@ CONSTANTS
        from above (exclusive). Tendermint security model prescribes 1 / 3. *)
 
 VARIABLES       (* see TypeOK below for the variable types *)
+  localClock,   (* the local clock of the light client *)
   state,        (* the current state of the light client *)
   nextHeight,   (* the next height to explore by the light client *)
   nprobes       (* the lite client iteration, or the number of block tests *)
@@ -33,25 +40,26 @@ VARIABLES
   latestVerified      (* the latest verified block *)
 
 (* the variables of the lite client *)
-lcvars == <<state, nextHeight, fetchedLightBlocks, lightBlockStatus, latestVerified>>
+lcvars == <<localClock, state, nextHeight,
+            fetchedLightBlocks, lightBlockStatus, latestVerified>>
 
 (* the light client previous state components, used for monitoring *)
 VARIABLES
   prevVerified,
   prevCurrent,
-  prevNow,
+  prevLocalClock,
   prevVerdict
 
-InitMonitor(verified, current, now, verdict) ==
+InitMonitor(verified, current, pLocalClock, verdict) ==
   /\ prevVerified = verified
   /\ prevCurrent = current
-  /\ prevNow = now
+  /\ prevLocalClock = pLocalClock
   /\ prevVerdict = verdict
 
-NextMonitor(verified, current, now, verdict) ==
+NextMonitor(verified, current, pLocalClock, verdict) ==
   /\ prevVerified' = verified
   /\ prevCurrent' = current
-  /\ prevNow' = now
+  /\ prevLocalClock' = pLocalClock
   /\ prevVerdict' = verdict
 
 
@@ -63,10 +71,10 @@ CONSTANTS
     (* a set of all nodes that can act as validators (correct and faulty) *)
 
 \* the state variables of Blockchain, see Blockchain.tla for the details
-VARIABLES now, blockchain, Faulty
+VARIABLES refClock, blockchain, Faulty
 
 \* All the variables of Blockchain. For some reason, BC!vars does not work
-bcvars == <<now, blockchain, Faulty>>
+bcvars == <<refClock, blockchain, Faulty>>
 
 (* Create an instance of Blockchain.
    We could write EXTENDS Blockchain, but then all the constants and state variables
@@ -75,7 +83,7 @@ bcvars == <<now, blockchain, Faulty>>
 ULTIMATE_HEIGHT == TARGET_HEIGHT + 1 
  
 BC == INSTANCE Blockchain_003_draft WITH
-  now <- now, blockchain <- blockchain, Faulty <- Faulty
+  refClock <- refClock, blockchain <- blockchain, Faulty <- Faulty
 
 (************************** Lite client ************************************)
 
@@ -85,69 +93,17 @@ HEIGHTS == TRUSTED_HEIGHT..TARGET_HEIGHT
 (* the control states of the lite client *) 
 States == { "working", "finishedSuccess", "finishedFailure" }
 
-(**
- Check the precondition of ValidAndVerified.
- 
- [LCV-FUNC-VALID.1::TLA-PRE.1]
- *)
-ValidAndVerifiedPre(trusted, untrusted) ==
-  LET thdr == trusted.header
-      uhdr == untrusted.header
-  IN
-  /\ BC!InTrustingPeriod(thdr)
-  /\ thdr.height < uhdr.height
-     \* the trusted block has been created earlier (no drift here)
-  /\ thdr.time < uhdr.time
-     \* the untrusted block is not from the future
-  /\ uhdr.time < now
-  /\ untrusted.Commits \subseteq uhdr.VS
-  /\ LET TP == Cardinality(uhdr.VS)
-         SP == Cardinality(untrusted.Commits)
-     IN
-     3 * SP > 2 * TP     
-  /\ thdr.height + 1 = uhdr.height => thdr.NextVS = uhdr.VS
-  (* As we do not have explicit hashes we ignore these three checks of the English spec:
-   
-     1. "trusted.Commit is a commit is for the header trusted.Header,
-      i.e. it contains the correct hash of the header".
-     2. untrusted.Validators = hash(untrusted.Header.Validators)
-     3. untrusted.NextValidators = hash(untrusted.Header.NextValidators)
-   *)
+\* The verification functions are implemented in the API
+API == INSTANCE LCVerificationApi_003_draft
 
-(**
-  * Check that the commits in an untrusted block form 1/3 of the next validators
-  * in a trusted header.
- *)
-SignedByOneThirdOfTrusted(trusted, untrusted) ==
-  LET TP == Cardinality(trusted.header.NextVS)
-      SP == Cardinality(untrusted.Commits \intersect trusted.header.NextVS)
-  IN
-  3 * SP > TP     
-
-(**
- Check, whether an untrusted block is valid and verifiable w.r.t. a trusted header.
- 
- [LCV-FUNC-VALID.1::TLA.1]
- *)   
-ValidAndVerified(trusted, untrusted) ==
-    IF ~ValidAndVerifiedPre(trusted, untrusted)
-    THEN "INVALID"
-    ELSE IF ~BC!InTrustingPeriod(untrusted.header)
-    (* We leave the following test for the documentation purposes.
-       The implementation should do this test, as signature verification may be slow.
-       In the TLA+ specification, ValidAndVerified happens in no time.
-     *) 
-    THEN "FAILED_TRUSTING_PERIOD" 
-    ELSE IF untrusted.header.height = trusted.header.height + 1
-             \/ SignedByOneThirdOfTrusted(trusted, untrusted)
-         THEN "SUCCESS"
-         ELSE "NOT_ENOUGH_TRUST"
 
 (*
  Initial states of the light client.
  Initially, only the trusted light block is present.
  *)
 LCInit ==
+    /\ \E tm \in Int:
+        tm >= 0 /\ API!IsLocalClockWithinDrift(tm, refClock) /\ localClock = tm
     /\ state = "working"
     /\ nextHeight = TARGET_HEIGHT
     /\ nprobes = 0  \* no tests have been done so far
@@ -160,7 +116,7 @@ LCInit ==
         /\ lightBlockStatus = [h \in {TRUSTED_HEIGHT} |-> "StateVerified"]
         \* the latest verified block the the trusted block
         /\ latestVerified = trustedLightBlock
-        /\ InitMonitor(trustedLightBlock, trustedLightBlock, now, "SUCCESS")
+        /\ InitMonitor(trustedLightBlock, trustedLightBlock, localClock, "SUCCESS")
 
 \* block should contain a copy of the block from the reference chain, with a matching commit
 CopyLightBlockFromChain(block, height) ==
@@ -232,8 +188,8 @@ VerifyToTargetLoop ==
         \* Record that one more probe has been done (for complexity and model checking)
         /\ nprobes' = nprobes + 1
         \* Verify the current block
-        /\ LET verdict == ValidAndVerified(latestVerified, current) IN
-           NextMonitor(latestVerified, current, now, verdict) /\
+        /\ LET verdict == API!ValidAndVerified(latestVerified, current, TRUE) IN
+           NextMonitor(latestVerified, current, localClock, verdict) /\
            \* Decide whether/how to continue
            CASE verdict = "SUCCESS" ->
               /\ lightBlockStatus' = LightStoreUpdateStates(lightBlockStatus, nextHeight, "StateVerified")
@@ -272,7 +228,22 @@ VerifyToTargetDone ==
     /\ latestVerified.header.height >= TARGET_HEIGHT
     /\ state' = "finishedSuccess"
     /\ UNCHANGED <<nextHeight, nprobes, fetchedLightBlocks, lightBlockStatus, latestVerified>>
-    /\ UNCHANGED <<prevVerified, prevCurrent, prevNow, prevVerdict>>
+    /\ UNCHANGED <<prevVerified, prevCurrent, prevLocalClock, prevVerdict>>
+
+(*
+  The local and global clocks can be updated. They can also drift from each other.
+  Note that the local clock can actually go backwards in time.
+  However, it still stays in the drift envelope
+  of [refClock - REAL_CLOCK_DRIFT, refClock + REAL_CLOCK_DRIFT].
+ *)
+AdvanceClocks ==
+    /\ BC!AdvanceTime
+    /\ \E tm \in Int:
+        /\ tm >= 0
+        /\ API!IsLocalClockWithinDrift(tm, refClock')
+        /\ localClock' = tm
+        \* if you like the clock to always grow monotonically, uncomment the next line:
+        \*/\ localClock' > localClock
             
 (********************* Lite client + Blockchain *******************)
 Init ==
@@ -290,11 +261,13 @@ Init ==
 Next ==
     /\ state = "working"
     /\ VerifyToTargetLoop \/ VerifyToTargetDone 
-    /\ BC!AdvanceTime \* the global clock is advanced by zero or more time units
+    /\ AdvanceClocks
 
 (************************* Types ******************************************)
 TypeOK ==
     /\ state \in States
+    /\ localClock \in Nat
+    /\ refClock \in Nat
     /\ nextHeight \in HEIGHTS
     /\ latestVerified \in BC!LightBlocks
     /\ \E HS \in SUBSET HEIGHTS:
@@ -316,13 +289,21 @@ NeverFinishNegative ==
 \* This invariant holds true, when the primary is correct. 
 \* This invariant candidate is false when the primary is faulty.    
 NeverFinishNegativeWhenTrusted ==
-    (*(minTrustedHeight <= TRUSTED_HEIGHT)*)
     BC!InTrustingPeriod(blockchain[TRUSTED_HEIGHT])
       => state /= "finishedFailure"     
 
 \* this invariant candidate is false    
 NeverFinishPositive ==
     state /= "finishedSuccess"
+
+
+(**
+ Check that the target height has been reached upon successful termination.
+ *)
+TargetHeightOnSuccessInv ==
+    state = "finishedSuccess" =>
+        /\ TARGET_HEIGHT \in DOMAIN fetchedLightBlocks
+        /\ lightBlockStatus[TARGET_HEIGHT] = "StateVerified"
 
 (**
   Correctness states that all the obtained headers are exactly like in the blockchain.
@@ -338,7 +319,8 @@ CorrectnessInv ==
             fetchedLightBlocks[h].header = blockchain[h]
 
 (**
- 
+ No faulty block was used to construct a proof. This invariant holds,
+ only if FAULTY_RATIO < 1/3.
  *)
 NoTrustOnFaultyBlockInv ==
     (state = "finishedSuccess"
@@ -358,11 +340,16 @@ StoredHeadersAreVerifiedInv ==
             \/ \E mh \in DOMAIN fetchedLightBlocks:
                 lh < mh /\ mh < rh
                \* or we can verify the right one using the left one
-            \/ "SUCCESS" = ValidAndVerified(fetchedLightBlocks[lh], fetchedLightBlocks[rh])
+            \/ "SUCCESS" = API!ValidAndVerified(fetchedLightBlocks[lh],
+                                                fetchedLightBlocks[rh], FALSE)
 
-\* An improved version of StoredHeadersAreSound, assuming that a header may be not trusted.
+\* An improved version of StoredHeadersAreVerifiedInv,
+\* assuming that a header may be not trusted.
 \* This invariant candidate is also violated,
 \* as there may be some unverified blocks left in the middle.
+\* This property is violated under two conditions:
+\* (1) the primary is faulty and there are at least 4 blocks,
+\* (2) the primary is correct and there are at least 5 blocks.
 StoredHeadersAreVerifiedOrNotTrustedInv ==
     state = "finishedSuccess"
         =>
@@ -372,14 +359,15 @@ StoredHeadersAreVerifiedOrNotTrustedInv ==
             \/ \E mh \in DOMAIN fetchedLightBlocks:
                 lh < mh /\ mh < rh
                \* or we can verify the right one using the left one
-            \/ "SUCCESS" = ValidAndVerified(fetchedLightBlocks[lh], fetchedLightBlocks[rh])
+            \/ "SUCCESS" = API!ValidAndVerified(fetchedLightBlocks[lh],
+                                                fetchedLightBlocks[rh], FALSE)
                \* or the left header is outside the trusting period, so no guarantees
-            \/ ~BC!InTrustingPeriod(fetchedLightBlocks[lh].header) 
+            \/ ~API!InTrustingPeriodLocal(fetchedLightBlocks[lh].header) 
 
 (**
  * An improved version of StoredHeadersAreSoundOrNotTrusted,
  * checking the property only for the verified headers.
- * This invariant holds true.
+ * This invariant holds true if CLOCK_DRIFT <= REAL_CLOCK_DRIFT.
  *)
 ProofOfChainOfTrustInv ==
     state = "finishedSuccess"
@@ -393,9 +381,10 @@ ProofOfChainOfTrustInv ==
             \/ \E mh \in DOMAIN fetchedLightBlocks:
                 lh < mh /\ mh < rh /\ lightBlockStatus[mh] = "StateVerified"
                \* or the left header is outside the trusting period, so no guarantees
-            \/ ~(BC!InTrustingPeriod(fetchedLightBlocks[lh].header))
+            \/ ~(API!InTrustingPeriodLocal(fetchedLightBlocks[lh].header))
                \* or we can verify the right one using the left one
-            \/ "SUCCESS" = ValidAndVerified(fetchedLightBlocks[lh], fetchedLightBlocks[rh])
+            \/ "SUCCESS" = API!ValidAndVerified(fetchedLightBlocks[lh],
+                                                fetchedLightBlocks[rh], FALSE)
 
 (**
  * When the light client terminates, there are no failed blocks. (Otherwise, someone lied to us.) 
@@ -409,10 +398,12 @@ NoFailedBlocksOnSuccessInv ==
 \* the trusted header is still within the trusting period.
 \* We expect this property to be violated. And Apalache shows us a counterexample.
 PositiveBeforeTrustedHeaderExpires ==
-    (state = "finishedSuccess") => BC!InTrustingPeriod(blockchain[TRUSTED_HEIGHT])
+    (state = "finishedSuccess") =>
+        BC!InTrustingPeriod(blockchain[TRUSTED_HEIGHT])
     
 \* If the primary is correct and the initial trusted block has not expired,
-\* then whenever the algorithm terminates, it reports "success"    
+\* then whenever the algorithm terminates, it reports "success".
+\* This property fails.
 CorrectPrimaryAndTimeliness ==
   (BC!InTrustingPeriod(blockchain[TRUSTED_HEIGHT])
     /\ state /= "working" /\ IS_PRIMARY_CORRECT) =>
@@ -421,10 +412,25 @@ CorrectPrimaryAndTimeliness ==
 (**
   If the primary is correct and there is a trusted block that has not expired,
   then whenever the algorithm terminates, it reports "success".
+  This property only holds true, if the local clock is always growing monotonically.
+  If the local clock can go backwards in the envelope
+  [refClock - CLOCK_DRIFT, refClock + CLOCK_DRIFT], then the property fails.
 
   [LCV-DIST-LIVE.1::SUCCESS-CORR-PRIMARY-CHAIN-OF-TRUST.1]
  *)
-SuccessOnCorrectPrimaryAndChainOfTrust ==
+SuccessOnCorrectPrimaryAndChainOfTrustLocal ==
+  (\E h \in DOMAIN fetchedLightBlocks:
+        /\ lightBlockStatus[h] = "StateVerified"
+        /\ API!InTrustingPeriodLocal(blockchain[h])
+    /\ state /= "working" /\ IS_PRIMARY_CORRECT) =>
+      state = "finishedSuccess"     
+
+(**
+  Similar to SuccessOnCorrectPrimaryAndChainOfTrust, but using the blockchain clock.
+  It fails because the local clock of the client drifted away, so it rejects a block
+  that has not expired yet (according to the local clock).
+ *)
+SuccessOnCorrectPrimaryAndChainOfTrustGlobal ==
   (\E h \in DOMAIN fetchedLightBlocks:
         lightBlockStatus[h] = "StateVerified" /\ BC!InTrustingPeriod(blockchain[h])
     /\ state /= "working" /\ IS_PRIMARY_CORRECT) =>
@@ -439,6 +445,8 @@ SuccessOnCorrectPrimaryAndChainOfTrust ==
 \* We decompose completeness into Termination (liveness) and Precision (safety).
 \* Once again, Precision is an inverse version of the safety property in Completeness,
 \* as A => B is logically equivalent to ~B => ~A. 
+\*
+\* This property holds only when CLOCK_DRIFT = 0 and REAL_CLOCK_DRIFT = 0.
 PrecisionInv ==
     (state = "finishedFailure")
       => \/ ~BC!InTrustingPeriod(blockchain[TRUSTED_HEIGHT]) \* outside of the trusting period
@@ -463,6 +471,15 @@ Complexity ==
     LET N == TARGET_HEIGHT - TRUSTED_HEIGHT + 1 IN
     state /= "working" =>
         (2 * nprobes <= N * (N - 1)) 
+
+(**
+ If the light client has terminated, then the expected postcondition holds true.
+ *)
+ApiPostInv ==
+    state /= "working" =>
+        API!VerifyToTargetPost(blockchain, IS_PRIMARY_CORRECT,
+                fetchedLightBlocks, lightBlockStatus,
+                TRUSTED_HEIGHT, TARGET_HEIGHT, state)
 
 (*
  We omit termination, as the algorithm deadlocks in the end.
