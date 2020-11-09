@@ -27,6 +27,5 @@ jobs:
           DEFAULT_BRANCH: master
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_MD: true
-          MARKDOWN_CONFIG_FILE: .markdownlint.yml
           VALIDATE_OPAENAPI: true
           VALIDATE_YAML: true
