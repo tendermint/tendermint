@@ -83,11 +83,11 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Confi
 
 	err := cs.Start()
 	require.NoError(t, err)
-	defer func() {
+	t.Cleanup(func() {
 		if err := cs.Stop(); err != nil {
 			t.Error(err)
 		}
-	}()
+	})
 
 	// This is just a signal that we haven't halted; its not something contained
 	// in the WAL itself. Assuming the consensus state is running, replay of any
@@ -658,7 +658,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	var genesisState sm.State
 	if testValidatorsChange {
 		testConfig := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
-		defer os.RemoveAll(testConfig.RootDir)
+		t.Cleanup(func() { _ = os.RemoveAll(testConfig.RootDir) })
 		stateDB = dbm.NewMemDB()
 
 		genesisState = sim.GenesisState
@@ -668,7 +668,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		store = newMockBlockStore(config, genesisState.ConsensusParams)
 	} else { // test single node
 		testConfig := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
-		defer os.RemoveAll(testConfig.RootDir)
+		t.Cleanup(func() { _ = os.RemoveAll(testConfig.RootDir) })
 		walBody, err := WALWithNBlocks(t, numBlocks)
 		require.NoError(t, err)
 		walFile := tempWALWithData(walBody)
@@ -885,7 +885,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	//		- 0x02
 	//		- 0x03
 	config := ResetConfig("handshake_test_")
-	defer os.RemoveAll(config.RootDir)
+	t.Cleanup(func() { os.RemoveAll(config.RootDir) })
 	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	const appVersion = 0x0
 	pubKey, err := privVal.GetPubKey()
@@ -1220,7 +1220,8 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	clientCreator := proxy.NewLocalClientCreator(app)
 
 	config := ResetConfig("handshake_test_")
-	defer os.RemoveAll(config.RootDir)
+	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
+
 	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	pubKey, err := privVal.GetPubKey()
 	require.NoError(t, err)
