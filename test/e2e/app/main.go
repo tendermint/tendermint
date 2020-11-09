@@ -116,8 +116,12 @@ func startNode(cfg *Config) error {
 		return fmt.Errorf("failed to setup config: %w", err)
 	}
 
+	pval, err := privval.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile())
+	if err != nil {
+		return err
+	}
 	n, err := node.NewNode(tmcfg,
-		privval.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
+		pval,
 		nodeKey,
 		proxy.NewLocalClientCreator(app),
 		node.DefaultGenesisDocProviderFunc(tmcfg),

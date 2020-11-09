@@ -192,6 +192,13 @@ func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 		ConsensusParams: types.DefaultConsensusParams(),
 		InitialHeight:   testnet.InitialHeight,
 	}
+	switch testnet.KeyType {
+	case "", types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1:
+		genesis.ConsensusParams.Validator.PubKeyTypes =
+			append(genesis.ConsensusParams.Validator.PubKeyTypes, types.ABCIPubKeyTypeSecp256k1)
+	default:
+		return genesis, errors.New("unsupported KeyType")
+	}
 	for validator, power := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
 			Name:    validator.Name,

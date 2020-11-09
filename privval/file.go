@@ -11,6 +11,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -170,8 +171,15 @@ func NewFilePV(privKey crypto.PrivKey, keyFilePath, stateFilePath string) *FileP
 
 // GenFilePV generates a new validator with randomly generated private key
 // and sets the filePaths, but does not call Save().
-func GenFilePV(keyFilePath, stateFilePath string) *FilePV {
-	return NewFilePV(ed25519.GenPrivKey(), keyFilePath, stateFilePath)
+func GenFilePV(keyFilePath, stateFilePath, keyType string) (*FilePV, error) {
+	switch keyType {
+	case types.ABCIPubKeyTypeSecp256k1:
+		return NewFilePV(secp256k1.GenPrivKey(), keyFilePath, stateFilePath), nil
+	case "", types.ABCIPubKeyTypeEd25519:
+		return NewFilePV(ed25519.GenPrivKey(), keyFilePath, stateFilePath), nil
+	default:
+		return nil, fmt.Errorf("key type: %s is not supported", keyType)
+	}
 }
 
 // LoadFilePV loads a FilePV from the filePaths.  The FilePV handles double
@@ -227,15 +235,18 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 
 // LoadOrGenFilePV loads a FilePV from the given filePaths
 // or else generates a new one and saves it to the filePaths.
-func LoadOrGenFilePV(keyFilePath, stateFilePath string) *FilePV {
-	var pv *FilePV
+func LoadOrGenFilePV(keyFilePath, stateFilePath string) (*FilePV, error) {
+	var (
+		pv  *FilePV
+		err error
+	)
 	if tmos.FileExists(keyFilePath) {
 		pv = LoadFilePV(keyFilePath, stateFilePath)
 	} else {
-		pv = GenFilePV(keyFilePath, stateFilePath)
+		pv, err = GenFilePV(keyFilePath, stateFilePath, "")
 		pv.Save()
 	}
-	return pv
+	return pv, err
 }
 
 // GetAddress returns the address of the validator.

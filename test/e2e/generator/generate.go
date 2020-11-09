@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -22,6 +23,7 @@ var (
 			map[string]string{"initial01": "a", "initial02": "b", "initial03": "c"},
 		},
 		"validators": {"genesis", "initchain"},
+		"keyType":    {types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1},
 	}
 
 	// The following specify randomly chosen values for testnet nodes.
@@ -72,6 +74,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		Validators:       &map[string]int64{},
 		ValidatorUpdates: map[string]map[string]int64{},
 		Nodes:            map[string]*e2e.ManifestNode{},
+		KeyType:          opt["keyType"].(string),
 	}
 
 	var numSeeds, numValidators, numFulls int

@@ -22,6 +22,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
+- [privval] \#5603 Add `--key` to `init`, `gen_validator`, `testnet` & `unsafe_reset_priv_validator` for use in generating `secp256k1` keys. 
+
 ### BUG FIXES
 
 - [light] \#6022 Fix a bug when the number of validators equals 100 (@melekes)

@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -121,6 +122,10 @@ func LoadTestnet(file string) (*Testnet, error) {
 		Validators:       map[*Node]int64{},
 		ValidatorUpdates: map[int64]map[*Node]int64{},
 		Nodes:            []*Node{},
+		KeyType:          "ed25519",
+	}
+	if len(manifest.KeyType) != 0 {
+		testnet.KeyType = manifest.KeyType
 	}
 	if manifest.InitialHeight > 0 {
 		testnet.InitialHeight = manifest.InitialHeight
@@ -266,6 +271,11 @@ func (t Testnet) Validate() error {
 	}
 	if len(t.Nodes) == 0 {
 		return errors.New("network has no nodes")
+	}
+	switch t.KeyType {
+	case "", types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1:
+	default:
+		return errors.New("unsupported KeyType")
 	}
 	for _, node := range t.Nodes {
 		if err := node.Validate(t); err != nil {
