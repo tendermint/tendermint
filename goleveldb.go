@@ -7,6 +7,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/opt"
+	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 func init() {
@@ -175,7 +176,7 @@ func (db *GoLevelDB) Iterator(start, end []byte) (Iterator, error) {
 	if (start != nil && len(start) == 0) || (end != nil && len(end) == 0) {
 		return nil, errKeyEmpty
 	}
-	itr := db.db.NewIterator(nil, nil)
+	itr := db.db.NewIterator(&util.Range{Start: start, Limit: end}, nil)
 	return newGoLevelDBIterator(itr, start, end, false), nil
 }
 
@@ -184,6 +185,6 @@ func (db *GoLevelDB) ReverseIterator(start, end []byte) (Iterator, error) {
 	if (start != nil && len(start) == 0) || (end != nil && len(end) == 0) {
 		return nil, errKeyEmpty
 	}
-	itr := db.db.NewIterator(nil, nil)
+	itr := db.db.NewIterator(&util.Range{Start: start, Limit: end}, nil)
 	return newGoLevelDBIterator(itr, start, end, true), nil
 }

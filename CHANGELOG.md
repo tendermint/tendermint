@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- [\#134](https://github.com/tendermint/tm-db/pull/134) Improve GoLevelDB iterator performance by bounding underlying iterator range (@klim0v)
+
 ## 0.6.2
 
 **2020-08-27**
