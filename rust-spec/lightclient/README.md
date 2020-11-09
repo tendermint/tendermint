@@ -12,8 +12,9 @@ verifying a minimal set of data from a network of full nodes (at least one of wh
 
 The light client is decomposed into three components:
 
-- Commit Verification - verify signed headers and associated validator set changes from a single full node
-- Fork Detection -  verify commits across multiple full nodes and detect conflicts (ie. the existence of forks)
+- Commit Verification - verify signed headers and associated validator
+  set changes from a single full node, called primary
+- Fork Detection -  verify commits across multiple full nodes (called secondaries) and detect conflicts (ie. the existence of forks)
 - Fork Accountability - given a fork, which validators are responsible for it.
 
 ## Commit Verification
@@ -75,12 +76,21 @@ no bug is reported up to depth k.
 
 ## Attack Detection
 
-This is a work-in-progress draft.
-
-The [English specification](detection/detection_001_reviewed.md)
-defines blockchain forks and light client attacks, and describes
-the problem of a light client detecting them from communication with a network
-of full nodes, where at least one is correct.
+The [English specification](detection/detection_003_reviewed.md) 
+defines light client attacks (and how they differ from blockchain
+     forks), and describes the problem of a light client detecting
+     these attacks by communicating with a network of full nodes,
+     where at least one is correct.
+	 
+The specification also contains a detection protocol that checks
+whether the header obtained from the primary via the verification
+protocol matches corresponding headers provided by the secondaries.
+If this is not the case, the protocol analyses the verification traces
+of the involved full nodes
+and generates
+[evidence](detection/detection_003_reviewed.md#tmbc-lc-evidence-data1)
+of misbehavior that can be submitted to a full node so that
+the faulty validators can be punished.
 
 There is no TLA+ yet.
 

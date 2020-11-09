@@ -646,9 +646,9 @@ func (ls LightStore) TraceTo(lightBlock LightBlock) (LightBlock, LightStore)
 
 ### Invariants
 
-#### **[LCV-INV-TP.2]**
+#### **[LCV-INV-TP.1]**
 
-It is always the case that *LightStore.LatestVerified.Header.Time > now - trustingPeriod*.
+It is always the case that *LightStore.LatestTrusted.Header.Time > now - trustingPeriod*.
 
 > If the invariant is violated, the light client does not have a
 > header it can trust. A trusted header must be obtained externally,
