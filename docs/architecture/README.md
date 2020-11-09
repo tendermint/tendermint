@@ -79,3 +79,4 @@ Note the context/background should be written in the present tense.
 - [ADR-056-light-client-amnesia-attacks](./adr-056-light-client-amnesia-attacks)
 - [ADR-057-RPC](./adr-057-RPC.md)
 - [ADR-058-event-hashing](./adr-058-event-hashing.md)
+- [ADR-062-P2P-Architecture](./adr-062-p2p-architecture.md)
