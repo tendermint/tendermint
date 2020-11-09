@@ -8,6 +8,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/privval"
+	"github.com/tendermint/tendermint/types"
 )
 
 // ResetAllCmd removes the database of this Tendermint core
@@ -22,6 +23,8 @@ var keepAddrBook bool
 
 func init() {
 	ResetAllCmd.Flags().BoolVar(&keepAddrBook, "keep-addr-book", false, "keep the address book intact")
+	ResetPrivValidatorCmd.Flags().StringVar(&keyType, "key", types.ABCIPubKeyTypeEd25519,
+		"Key type to generate privval file with. Options: ed25519, secp256k1")
 }
 
 // ResetPrivValidatorCmd resets the private validator files.
@@ -71,7 +74,10 @@ func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger) {
 		logger.Info("Reset private validator file to genesis state", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
 	} else {
-		pv := privval.GenFilePV(privValKeyFile, privValStateFile)
+		pv, err := privval.GenFilePV(privValKeyFile, privValStateFile, keyType)
+		if err != nil {
+			panic(err)
+		}
 		pv.Save()
 		logger.Info("Generated private validator file", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
