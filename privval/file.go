@@ -178,7 +178,7 @@ func GenFilePV(keyFilePath, stateFilePath, keyType string) (*FilePV, error) {
 	case "", "ed25519":
 		return NewFilePV(ed25519.GenPrivKey(), keyFilePath, stateFilePath), nil
 	default:
-		return nil, fmt.Errorf("key type: %T is not supported", keyType)
+		return nil, fmt.Errorf("key type: %s is not supported", keyType)
 	}
 }
 
