@@ -1,0 +1,90 @@
+#lang ivy1.7
+# ---
+# layout: page
+# title: Proof of Classic Safety
+# ---
+
+include order # this is a file from the standard library (`ivy/ivy/include/1.7/order.ivy`)
+
+isolate round = {
+    type this
+    individual minus_one:this
+    relation succ(R1:round, R2:round)
+    action incr(i:this) returns (j:this)
+    specification {
+# to simplify verification, we treat rounds as an abstract totally ordered set with a successor relation.
+        instantiate totally_ordered(this)
+        property minus_one < 0
+        property succ(X,Z) -> (X < Z & ~(X < Y & Y < Z))
+        after incr {
+            ensure succ(i,j)
+        }
+    }
+    implementation {
+# here we prove that the abstraction is sound.
+        interpret this -> int # rounds are integers in the Tendermint specification.
+        definition minus_one = 0-1
+        definition succ(R1,R2) = R2 = R1 + 1
+        implement incr {
+            j := i+1;
+        }
+    }
+}
+
+instance node : iterable # nodes are a set with an order, that can be iterated over (see order.ivy in the standard library)
+relation well_behaved(N:node) # whether a node is well-behaved or not. NOTE: Use only in the proof! Nodes do know know that.
+
+isolate proposers = {
+    # each round has a unique proposer in Tendermint. In order to avoid a
+    # function from round to node (which makes verification more difficult), we
+    # abstract over this function using a relation.
+    relation is_proposer(N:node, R:round)
+    action get_proposer(r:round) returns (n:node)
+    specification {
+        property is_proposer(N1,R) & is_proposer(N2,R) -> N1 = N2
+        after get_proposer {
+            ensure is_proposer(n,r);
+        }
+    }
+    implementation {
+    # here we prove that the abstraction is sound
+        function f(R:round):node
+        definition is_proposer(N,R) = N = f(R)
+        implement get_proposer {
+            n := f(r);
+        }
+    }
+}
+
+isolate value = { # the type of values
+    type this
+    relation valid(V:value)
+    individual nil:value
+    specification {
+        property ~valid(nil)
+    }
+    implementation {
+        definition valid(V) = V ~= nil
+    }
+}
+
+object nset = { # the type of node sets
+    type this # a set of N=3f+i nodes for 0<i<=3
+    relation member(N:node, S:nset) # set-membership relation
+    relation is_quorum(S:nset) # intent: sets of cardinality at least 2f+i+1
+    relation is_blocking(S:nset) # intent: at least f+1 nodes
+}
+
+object classic_bft = {
+    relation quorum_intersection
+    private {
+        definition [quorum_intersection_def] quorum_intersection = forall Q1,Q2. exists N. well_behaved(N) & nset.member(N, Q1) & nset.member(N, Q2) # every two quorums have a well-behaved node in common
+    }
+}
+
+trusted isolate accountable_bft = {
+    # this is our baseline assumption about quorums:
+    private {
+        property [max_2f_byzantine] exists N . well_behaved(N) & nset.member(N,Q) # every quorum has a well-behaved member
+    }
+}# with nset
