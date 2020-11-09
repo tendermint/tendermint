@@ -952,11 +952,12 @@ func TestHeader_ValidateBasic(t *testing.T) {
 		name      string
 		header    Header
 		expectErr bool
+		errString string
 	}{
 		{
 			"invalid version block",
 			Header{Version: tmversion.Consensus{Block: version.BlockProtocol + 1}},
-			true,
+			true, "block protocol is incorrect",
 		},
 		{
 			"invalid chain ID length",
@@ -964,7 +965,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				Version: tmversion.Consensus{Block: version.BlockProtocol},
 				ChainID: string(make([]byte, MaxChainIDLen+1)),
 			},
-			true,
+			true, "chainID is too long",
 		},
 		{
 			"invalid height (negative)",
@@ -973,7 +974,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				ChainID: string(make([]byte, MaxChainIDLen)),
 				Height:  -1,
 			},
-			true,
+			true, "negative Height",
 		},
 		{
 			"invalid height (zero)",
@@ -982,7 +983,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				ChainID: string(make([]byte, MaxChainIDLen)),
 				Height:  0,
 			},
-			true,
+			true, "zero Height",
 		},
 		{
 			"invalid block ID hash",
@@ -994,7 +995,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 					Hash: make([]byte, tmhash.Size+1),
 				},
 			},
-			true,
+			true, "wrong Hash",
 		},
 		{
 			"invalid block ID parts header hash",
@@ -1009,7 +1010,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 					},
 				},
 			},
-			true,
+			true, "wrong PartSetHeader",
 		},
 		{
 			"invalid last commit hash",
@@ -1025,7 +1026,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				},
 				LastCommitHash: make([]byte, tmhash.Size+1),
 			},
-			true,
+			true, "wrong LastCommitHash",
 		},
 		{
 			"invalid data hash",
@@ -1042,7 +1043,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				LastCommitHash: make([]byte, tmhash.Size),
 				DataHash:       make([]byte, tmhash.Size+1),
 			},
-			true,
+			true, "wrong DataHash",
 		},
 		{
 			"invalid evidence hash",
@@ -1060,7 +1061,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				DataHash:       make([]byte, tmhash.Size),
 				EvidenceHash:   make([]byte, tmhash.Size+1),
 			},
-			true,
+			true, "wrong EvidenceHash",
 		},
 		{
 			"invalid proposer address",
@@ -1079,7 +1080,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				EvidenceHash:    make([]byte, tmhash.Size),
 				ProposerAddress: make([]byte, crypto.AddressSize+1),
 			},
-			true,
+			true, "invalid ProposerAddress length",
 		},
 		{
 			"invalid validator hash",
@@ -1099,7 +1100,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				ProposerAddress: make([]byte, crypto.AddressSize),
 				ValidatorsHash:  make([]byte, tmhash.Size+1),
 			},
-			true,
+			true, "wrong ValidatorsHash",
 		},
 		{
 			"invalid next validator hash",
@@ -1120,28 +1121,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				ValidatorsHash:     make([]byte, tmhash.Size),
 				NextValidatorsHash: make([]byte, tmhash.Size+1),
 			},
-			true,
-		},
-		{
-			"invalid next validator hash",
-			Header{
-				Version: tmversion.Consensus{Block: version.BlockProtocol},
-				ChainID: string(make([]byte, MaxChainIDLen)),
-				Height:  1,
-				LastBlockID: BlockID{
-					Hash: make([]byte, tmhash.Size),
-					PartSetHeader: PartSetHeader{
-						Hash: make([]byte, tmhash.Size),
-					},
-				},
-				LastCommitHash:     make([]byte, tmhash.Size),
-				DataHash:           make([]byte, tmhash.Size),
-				EvidenceHash:       make([]byte, tmhash.Size),
-				ProposerAddress:    make([]byte, crypto.AddressSize),
-				ValidatorsHash:     make([]byte, tmhash.Size),
-				NextValidatorsHash: make([]byte, tmhash.Size+1),
-			},
-			true,
+			true, "wrong NextValidatorsHash",
 		},
 		{
 			"invalid consensus hash",
@@ -1163,7 +1143,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				NextValidatorsHash: make([]byte, tmhash.Size),
 				ConsensusHash:      make([]byte, tmhash.Size+1),
 			},
-			true,
+			true, "wrong ConsensusHash",
 		},
 		{
 			"invalid last results hash",
@@ -1186,7 +1166,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				ConsensusHash:      make([]byte, tmhash.Size),
 				LastResultsHash:    make([]byte, tmhash.Size+1),
 			},
-			true,
+			true, "wrong LastResultsHash",
 		},
 		{
 			"valid header",
@@ -1209,7 +1189,7 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				ConsensusHash:      make([]byte, tmhash.Size),
 				LastResultsHash:    make([]byte, tmhash.Size),
 			},
-			false,
+			false, "",
 		},
 	}
 
@@ -1218,7 +1198,12 @@ func TestHeader_ValidateBasic(t *testing.T) {
 
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.header.ValidateBasic()
-			require.Equal(t, tc.expectErr, err != nil, err)
+			if tc.expectErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errString)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }
