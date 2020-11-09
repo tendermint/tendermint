@@ -22,10 +22,9 @@
             [jepsen.os.debian :as debian]
             [cheshire.core :as json]
             [jepsen.tendermint [client :as tc]
-                               [db :as td]
-                               [util :refer [base-dir]]
-                               [validator :as tv]]
-            ))
+             [db :as td]
+             [util :refer [base-dir]]
+             [validator :as tv]]))
 
 (defn r   [_ _] {:type :invoke, :f :read,  :value nil})
 (defn w   [_ _] {:type :invoke, :f :write, :value (rand-int 10)})
@@ -45,38 +44,37 @@
                      :fail
                      :info)]
          (try+
-           (case (:f op)
-             :read  (assoc op
-                           :type :ok
-                           :value (independent/tuple k (tc/read node k)))
-             :write (do (tc/write! node k v)
-                        (assoc op :type :ok))
-             :cas   (let [[v v'] v]
-                      (tc/cas! node k v v')
-                      (assoc op :type :ok)))
+          (case (:f op)
+            :read  (assoc op
+                          :type :ok
+                          :value (independent/tuple k (tc/read node k)))
+            :write (do (tc/write! node k v)
+                       (assoc op :type :ok))
+            :cas   (let [[v v'] v]
+                     (tc/cas! node k v v')
+                     (assoc op :type :ok)))
 
-           (catch [:type :unauthorized] e
-             (assoc op :type :fail, :error :precondition-failed))
+          (catch [:type :unauthorized] e
+            (assoc op :type :fail, :error :precondition-failed))
 
-           (catch [:type :base-unknown-address] e
-             (assoc op :type :fail, :error :not-found))
+          (catch [:type :base-unknown-address] e
+            (assoc op :type :fail, :error :not-found))
 
-           (catch org.apache.http.NoHttpResponseException e
-             (assoc op :type crash, :error :no-http-response))
+          (catch org.apache.http.NoHttpResponseException e
+            (assoc op :type crash, :error :no-http-response))
 
-           (catch java.net.ConnectException e
-             (condp re-find (.getMessage e)
-               #"Connection refused"
-               (assoc op :type :fail, :error :connection-refused)
+          (catch java.net.ConnectException e
+            (condp re-find (.getMessage e)
+              #"Connection refused"
+              (assoc op :type :fail, :error :connection-refused)
 
-               (assoc op :type crash, :error [:connect-exception
-                                              (.getMessage e)])))
+              (assoc op :type crash, :error [:connect-exception
+                                             (.getMessage e)])))
 
-           (catch java.net.SocketTimeoutException e
-             (assoc op :type crash, :error :timeout)))))
+          (catch java.net.SocketTimeoutException e
+            (assoc op :type crash, :error :timeout)))))
 
      (teardown! [_ test]))))
-
 
 (defn set-client
   ([]
@@ -92,45 +90,45 @@
                      :fail
                      :info)]
          (try+
-           (case (:f op)
-             :init (with-retry [tries 0]
-                     (tc/write! node k [])
-                     (assoc op :type :ok)
-                     (catch Exception e
-                       (if (<= 10 tries)
-                         (throw e)
-                         (do (info "Couldn't initialize key" k ":" (.getMessage e) "- retrying")
-                             (Thread/sleep (* 50 (Math/pow 2 tries)))
-                             (retry (inc tries))))))
-             :add (let [s (or (vec (tc/read node k)) [])
-                        s' (conj s v)]
-                    (tc/cas! node k s s')
-                    (assoc op :type :ok))
-             :read (assoc op
-                          :type :ok
-                          :value (independent/tuple
-                                   k
-                                   (into (sorted-set) (tc/read node k)))))
+          (case (:f op)
+            :init (with-retry [tries 0]
+                    (tc/write! node k [])
+                    (assoc op :type :ok)
+                    (catch Exception e
+                      (if (<= 10 tries)
+                        (throw e)
+                        (do (info "Couldn't initialize key" k ":" (.getMessage e) "- retrying")
+                            (Thread/sleep (* 50 (Math/pow 2 tries)))
+                            (retry (inc tries))))))
+            :add (let [s (or (vec (tc/read node k)) [])
+                       s' (conj s v)]
+                   (tc/cas! node k s s')
+                   (assoc op :type :ok))
+            :read (assoc op
+                         :type :ok
+                         :value (independent/tuple
+                                 k
+                                 (into (sorted-set) (tc/read node k)))))
 
-           (catch [:type :unauthorized] e
-             (assoc op :type :fail, :error :precondition-failed))
+          (catch [:type :unauthorized] e
+            (assoc op :type :fail, :error :precondition-failed))
 
-           (catch [:type :base-unknown-address] e
-             (assoc op :type :fail, :error :not-found))
+          (catch [:type :base-unknown-address] e
+            (assoc op :type :fail, :error :not-found))
 
-           (catch org.apache.http.NoHttpResponseException e
-             (assoc op :type crash, :error :no-http-response))
+          (catch org.apache.http.NoHttpResponseException e
+            (assoc op :type crash, :error :no-http-response))
 
-           (catch java.net.ConnectException e
-             (condp re-find (.getMessage e)
-               #"Connection refused"
-               (assoc op :type :fail, :error :connection-refused)
+          (catch java.net.ConnectException e
+            (condp re-find (.getMessage e)
+              #"Connection refused"
+              (assoc op :type :fail, :error :connection-refused)
 
-               (assoc op :type crash, :error [:connect-exception
-                                              (.getMessage e)])))
+              (assoc op :type crash, :error [:connect-exception
+                                             (.getMessage e)])))
 
-           (catch java.net.SocketTimeoutException e
-             (assoc op :type crash, :error :timeout)))))
+          (catch java.net.SocketTimeoutException e
+            (assoc op :type crash, :error :timeout)))))
 
      (teardown! [_ test]))))
 
@@ -144,15 +142,15 @@
     ; main component, and compute the remaining complement for each dup
     ; group.
     (let [{:keys [groups singles dups]} (tv/dup-groups
-                                          @(:validator-config test))
+                                         @(:validator-config test))
           chosen-ones (map (comp hash-set rand-nth vec) dups)
           exiles      (map remove chosen-ones dups)]
       (nemesis/complete-grudge
-        (cons ; Main group
-              (set (concat (apply concat singles)
-                           (apply concat chosen-ones)))
+       (cons ; Main group
+        (set (concat (apply concat singles)
+                     (apply concat chosen-ones)))
               ; Exiles
-              exiles)))))
+        exiles)))))
 
 (defn split-dup-validators-grudge
   "Takes a test. Returns a function which takes a collection of nodes from that
@@ -162,18 +160,18 @@
   [test]
   (fn [nodes]
     (let [{:keys [groups singles dups]} (tv/dup-groups
-                                          @(:validator-config test))
+                                         @(:validator-config test))
           n (reduce max (map count dups))]
-        (->> groups
-             shuffle
-             (map shuffle)
-             (apply concat)
-             (reduce (fn [[components i] node]
-                       [(update components (mod i n) conj node)
-                        (inc i)])
-                     [[] 0])
-             first
-             nemesis/complete-grudge))))
+      (->> groups
+           shuffle
+           (map shuffle)
+           (apply concat)
+           (reduce (fn [[components i] node]
+                     [(update components (mod i n) conj node)
+                      (inc i)])
+                   [[] 0])
+           first
+           nemesis/complete-grudge))))
 
 (defn crash-truncate-nemesis
   "A nemesis which kills tendermint, kills merkleeyes, truncates the merkleeyes
@@ -195,9 +193,9 @@
                         (td/stop-tendermint! test node)
                         (td/stop-merkleeyes! test node)
                         (c/su
-                          (c/exec :truncate :-c :-s
-                                  (str "-" (rand-int 1048576))
-                                  (str base-dir file)))
+                         (c/exec :truncate :-c :-s
+                                 (str "-" (rand-int 1048576))
+                                 (str base-dir file)))
                         (td/start-merkleeyes! test node)
                         (td/start-tendermint! test node))))
         op)
@@ -266,7 +264,7 @@
               ; state to reflect the new state of things.
               (swap! (:validator-config test) #(tv/post-step % t)))))
 
-            (assoc op :value :done))
+      (assoc op :value :done))
 
     (teardown! [this test])))
 
@@ -278,11 +276,11 @@
                           :generator (gen/stagger 10 (tv/generator))}
 
     :peekaboo-dup-validators {:nemesis (nemesis/partitioner
-                                         (peekaboo-dup-validators-grudge test))
+                                        (peekaboo-dup-validators-grudge test))
                               :generator (gen/start-stop 0 5)}
 
     :split-dup-validators {:nemesis (nemesis/partitioner
-                                      (split-dup-validators-grudge test))
+                                     (split-dup-validators-grudge test))
                            :generator (gen/once {:type :info, :f :start})}
 
     :half-partitions {:nemesis   (nemesis/partition-random-halves)
@@ -301,12 +299,12 @@
                  :generator (gen/start-stop 15 0)}
 
     :truncate-merkleeyes {:nemesis (crash-truncate-nemesis
-                                     test 1/3 "/jepsen/jepsen.db/000001.log")
+                                    test 1/3 "/jepsen/jepsen.db/000001.log")
                           :generator (->> {:type :info, :f :crash}
                                           (gen/delay 10))}
 
     :truncate-tendermint {:nemesis (crash-truncate-nemesis
-                                     test 1/3 "/data/cs.wal/wal")
+                                    test 1/3 "/data/cs.wal/wal")
                           :generator (->> {:type :info, :f :crash}
                                           (gen/delay 10))}
 
@@ -336,76 +334,75 @@
       :cas-register {:client    (cas-register-client)
                      :model     (model/cas-register)
                      :generator (independent/concurrent-generator
-                                  (* 2 n)
-                                  (range)
-                                  (fn [k]
-                                    (->> (gen/mix [w cas])
-                                         (gen/reserve n r)
-                                         (gen/stagger 1)
-                                         (gen/limit 120))))
+                                 (* 2 n)
+                                 (range)
+                                 (fn [k]
+                                   (->> (gen/mix [w cas])
+                                        (gen/reserve n r)
+                                        (gen/stagger 1)
+                                        (gen/limit 120))))
                      :final-generator nil
                      :checker {:linear (independent/checker
-                                         (checker/linearizable))}}
+                                        (checker/linearizable))}}
       :set
       (let [keys (atom [])]
         {:client (set-client)
          :model  nil
          :generator (independent/concurrent-generator
-                      n
-                      (range)
-                      (fn [k]
-                        (swap! keys conj k)
-                        (gen/phases
-                          (gen/once {:type :invoke, :f :init})
-                          (->> (range)
-                               (map (fn [x]
-                                      {:type :invoke
-                                       :f    :add
-                                       :value x}))
-                               gen/seq
-                               (gen/stagger 1/2)))))
+                     n
+                     (range)
+                     (fn [k]
+                       (swap! keys conj k)
+                       (gen/phases
+                        (gen/once {:type :invoke, :f :init})
+                        (->> (range)
+                             (map (fn [x]
+                                    {:type :invoke
+                                     :f    :add
+                                     :value x}))
+                             gen/seq
+                             (gen/stagger 1/2)))))
          :final-generator (deref-gen
-                            (delay
-                              (locking keys
-                                (independent/concurrent-generator
-                                  n
-                                  @keys
-                                  (fn [k]
-                                    (gen/each (gen/once {:type :invoke
-                                                         :f :read})))))))
+                           (delay
+                            (locking keys
+                              (independent/concurrent-generator
+                               n
+                               @keys
+                               (fn [k]
+                                 (gen/each (gen/once {:type :invoke
+                                                      :f :read})))))))
          :checker {:set (independent/checker (checker/set))}}))))
-
 
 (defn test
   [opts]
   (let [validator-config (atom nil)
         test (merge
-               tests/noop-test
-               opts
-               {:name (str "tendermint " (name (:workload opts)) " "
-                           (name (:nemesis opts)))
-                :os   debian/os
-                :nonserializable-keys [:validator-config]
-                :validator-config validator-config})
+              tests/noop-test
+              opts
+              {:name (str "tendermint " (name (:workload opts)) " "
+                          (name (:nemesis opts)))
+               :os   debian/os
+               :nonserializable-keys [:validator-config]
+               :validator-config validator-config})
         db        (td/db test)
         nemesis   (nemesis test)
         workload  (workload test)
         checker   (checker/compose
-                    (merge {:timeline (independent/checker (timeline/html))
-                            :perf     (checker/perf)}
-                           (:checker workload)))
+                   (merge {:timeline (independent/checker (timeline/html))
+                           :perf     (checker/perf)}
+                          (:checker workload)))
         test    (merge test
                        {:db         db
                         :client     (:client workload)
                         :generator  (gen/phases
-                                      (->> (:generator workload)
-                                           (gen/nemesis (:generator nemesis))
-                                           (gen/time-limit (:time-limit opts)))
-                                      (gen/nemesis
-                                        (gen/once {:type :info, :f :stop}))
-                                      (gen/sleep 30)
-                                      (gen/clients
-                                        (:final-generator workload)))
+                                     (->> (:generator workload)
+                                          (gen/nemesis (:generator nemesis))
+                                          (gen/time-limit (:time-limit opts)))
+                                     (gen/nemesis
+                                      (gen/once {:type :info, :f :stop}))
+                                     (gen/sleep 30)
+                                     (gen/clients
+                                      (:final-generator workload)))
                         :nemesis    (:nemesis nemesis)
                         :model      (:model workload)
                         :checker    checker})]

@@ -33,7 +33,7 @@
     (loop [i 0]
       (when (< i n)
         (aset a i (unchecked-byte (Integer/parseInt
-                                    (subs s (* i 2) (+ (* i 2) 2)) 16)))
+                                   (subs s (* i 2) (+ (* i 2) 2)) 16)))
         (recur (inc i))))
     (ByteBuffer/wrap a)))
 
@@ -54,7 +54,7 @@
     0   tx
     4   (throw+ {:type :unauthorized :log (:log tx)})
     111 (throw+ {:type :base-unknown-address, :log (:log tx)})
-        (throw+ (assoc tx :type :unknown-tx-error))))
+    (throw+ (assoc tx :type :unknown-tx-error))))
 
 (def port "HTTP interface port" 26657)
 
@@ -146,11 +146,11 @@
   "Reads the current validator set, transactionally."
   [node]
   (-> (broadcast-tx! node (tx :validator-set-read))
-              :deliver_tx
-              :data
-              hex->byte-buf
-              (bs/convert java.io.Reader)
-              (json/parse-stream true)))
+      :deliver_tx
+      :data
+      hex->byte-buf
+      (bs/convert java.io.Reader)
+      (json/parse-stream true)))
 
 (defn validator-set-change!
   "Change the weight of a validator, given by private key (a hex string), and a

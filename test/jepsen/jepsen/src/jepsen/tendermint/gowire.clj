@@ -32,8 +32,8 @@
   Writable
   (byte-size [_] (.remaining x))
   (write! [_ buf]
-          (.put buf x)
-          buf))
+    (.put buf x)
+    buf))
 
 (defn fixed-bytes
   [x]
@@ -57,14 +57,14 @@
   Long
   (byte-size [n]
     (cond (<  n 0x0)        (throw (IllegalArgumentException.
-                                     (str "Number " n " can't be negative")))
+                                    (str "Number " n " can't be negative")))
           (<= n 0x0)        1
           (<= n 0xff)       2
           (<= n 0xffff)     3
           (<= n 0xffffff)   4
           (<= n 0xffffffff) 5
           true              (throw (IllegalArgumentException.
-                                     (str "Number " n " is too large")))))
+                                    (str "Number " n " is too large")))))
 
   (write! [n buf]
     (let [int-size (dec (byte-size n))]

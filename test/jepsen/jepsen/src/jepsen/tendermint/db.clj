@@ -7,16 +7,16 @@
             [clojure.pprint :refer [pprint]]
             [slingshot.slingshot :refer [try+]]
             [jepsen [core :as jepsen]
-                    [control :as c]
-                    [db :as db]
-                    [util :as util :refer [timeout with-retry map-vals]]]
+             [control :as c]
+             [db :as db]
+             [util :as util :refer [timeout with-retry map-vals]]]
             [jepsen.control.util :as cu]
             [jepsen.os.debian :as debian]
             [jepsen.nemesis.time :as nt]
             [cheshire.core :as json]
             [jepsen.tendermint [client :as tc]
-                               [util :refer [base-dir]]
-                               [validator :as tv]]))
+             [util :refer [base-dir]]
+             [validator :as tv]]))
 
 (defn install-component!
   "Download and install a tendermint component"
@@ -29,27 +29,27 @@
   "Writes out the given validator structure to priv_validator.json."
   [validator]
   (c/su
-    (c/cd base-dir
-          (c/exec :echo (json/generate-string validator)
-                  :> "priv_validator_key.json")
-          (info "Wrote priv_validator_key.json"))))
+   (c/cd base-dir
+         (c/exec :echo (json/generate-string validator)
+                 :> "priv_validator_key.json")
+         (info "Wrote priv_validator_key.json"))))
 
 (defn write-genesis!
   "Writes a genesis structure to a JSON file on disk."
   [genesis]
   (c/su
-    (c/cd base-dir
-          (c/exec :echo (json/generate-string genesis)
-                  :> "genesis.json")
-          (info "Wrote genesis.json"))))
+   (c/cd base-dir
+         (c/exec :echo (json/generate-string genesis)
+                 :> "genesis.json")
+         (info "Wrote genesis.json"))))
 
 (defn write-config!
   "Writes out a config.toml file to the current node."
   []
   (c/su
-    (c/cd base-dir
-          (c/exec :echo (slurp (io/resource "config.toml"))
-                  :> "config.toml"))))
+   (c/cd base-dir
+         (c/exec :echo (slurp (io/resource "config.toml"))
+                 :> "config.toml"))))
 
 (defn seeds
   "Constructs a --seeds command line for a test, so a tendermint node knows
@@ -74,31 +74,31 @@
   "Starts tendermint as a daemon."
   [test node]
   (c/su
-    (c/cd base-dir
-          (cu/start-daemon!
-            {:logfile tendermint-logfile
-             :pidfile tendermint-pidfile
-             :chdir   base-dir}
-            "./tendermint"
-            :--home base-dir
-            :node
-            :--proxy_app socket
-            :--p2p.seeds (seeds test node))))
+   (c/cd base-dir
+         (cu/start-daemon!
+          {:logfile tendermint-logfile
+           :pidfile tendermint-pidfile
+           :chdir   base-dir}
+          "./tendermint"
+          :--home base-dir
+          :node
+          :--proxy_app socket
+          :--p2p.seeds (seeds test node))))
   :started)
 
 (defn start-merkleeyes!
   "Starts merkleeyes as a daemon."
   [test node]
   (c/su
-    (c/cd base-dir
-          (cu/start-daemon!
-            {:logfile merkleeyes-logfile
-             :pidfile merkleeyes-pidfile
-             :chdir   base-dir}
-            "./merkleeyes"
-            :start
-            :--dbName   "jepsen"
-            :--address  socket)))
+   (c/cd base-dir
+         (cu/start-daemon!
+          {:logfile merkleeyes-logfile
+           :pidfile merkleeyes-pidfile
+           :chdir   base-dir}
+          "./merkleeyes"
+          :start
+          :--dbName   "jepsen"
+          :--address  socket)))
   :started)
 
 (defn stop-tendermint! [test node]
@@ -146,46 +146,45 @@
   (reify db/DB
     (setup! [_ test node]
       (c/su
-        (install-component! "tendermint"  opts)
-        (install-component! "abci"        opts)
-        (install-component! "merkleeyes"  opts)
+       (install-component! "tendermint"  opts)
+       (install-component! "abci"        opts)
+       (install-component! "merkleeyes"  opts)
 
-        (write-config!)
+       (write-config!)
 
         ; OK we're ready to compute the initial validator config.
-        (jepsen/synchronize test)
-        (when (= node (jepsen/primary test))
-          (let [validator-config (tv/initial-config test)]
-            (info :initial-config (with-out-str (pprint validator-config)))
-            (assert (compare-and-set! (:validator-config opts)
-                                      nil
-                                      validator-config)
-                    "Initial validator config already established!")))
+       (jepsen/synchronize test)
+       (when (= node (jepsen/primary test))
+         (let [validator-config (tv/initial-config test)]
+           (info :initial-config (with-out-str (pprint validator-config)))
+           (assert (compare-and-set! (:validator-config opts)
+                                     nil
+                                     validator-config)
+                   "Initial validator config already established!")))
 
         ; Now apply that config.
-        (jepsen/synchronize test)
-        (let [vc @(:validator-config opts)]
-          (write-genesis! (tv/genesis vc))
-          (write-validator! (get (:validators vc)
-                                 (get-in vc [:nodes node]))))
+       (jepsen/synchronize test)
+       (let [vc @(:validator-config opts)]
+         (write-genesis! (tv/genesis vc))
+         (write-validator! (get (:validators vc)
+                                (get-in vc [:nodes node]))))
 
-        (start-merkleeyes! test node)
-        (start-tendermint! test node)
+       (start-merkleeyes! test node)
+       (start-tendermint! test node)
 
-        (nt/install!)
+       (nt/install!)
 
-        (Thread/sleep 1000)))
+       (Thread/sleep 1000)))
 
     (teardown! [_ test node]
       (stop-merkleeyes! test node)
       (stop-tendermint! test node)
       (c/su
-        (c/exec :rm :-rf base-dir)))
+       (c/exec :rm :-rf base-dir)))
 
     db/LogFiles
     (log-files [_ test node]
       [tendermint-logfile
        merkleeyes-logfile
        (str base-dir "/priv_validator.json")
-       (str base-dir "/genesis.json")
-       ])))
+       (str base-dir "/genesis.json")])))
