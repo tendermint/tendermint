@@ -16,6 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.4'
+
       - uses: actions/checkout@v2
 
       - name: Build
