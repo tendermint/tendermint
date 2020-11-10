@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.33.9
+
+*November 10, 2020*
+
+This release reduces the pings frequency for remote private validators and the
+number of `GetPubKey` requests. Fixes
+[\#5550](https://github.com/tendermint/tendermint/issues/5550).
+
+Special thanks to external contributors on this release:
+@JoeKash, @joe-bowman
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### IMPROVEMENTS:
+
+- [consensus] [\#5143](https://github.com/tendermint/tendermint/pull/5143) Only call `privValidator.GetPubKey` once per block (@melekes)
+
+### BUG FIXES:
+
+- [consensus] [\#4895](https://github.com/tendermint/tendermint/pull/4895) Cache the address of the validator to reduce querying a remote KMS (@joe-bowman)
+- [privval] [\#5638](https://github.com/tendermint/tendermint/pull/5638) Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
+
 ## v0.33.8
 
 *August 11, 2020*
@@ -28,12 +50,12 @@ This security release fixes:
 
 Tendermint 0.33.0 and above allow block proposers to include signatures for the
 wrong block. This may happen naturally if you start a network, have it run for
-some time and restart it **without changing the chainID**. (It is a 
-[misconfiguration](https://docs.tendermint.com/master/tendermint-core/using-tendermint.html) 
-to reuse chainIDs.) Correct block proposers will accidentally include signatures 
-for the wrong block if they see these signatures, and then commits won't validate, 
-making all proposed blocks invalid. A malicious validator (even with a minimal 
-amount of stake) can use this vulnerability to completely halt the network. 
+some time and restart it **without changing the chainID**. (It is a
+[misconfiguration](https://docs.tendermint.com/master/tendermint-core/using-tendermint.html)
+to reuse chainIDs.) Correct block proposers will accidentally include signatures
+for the wrong block if they see these signatures, and then commits won't validate,
+making all proposed blocks invalid. A malicious validator (even with a minimal
+amount of stake) can use this vulnerability to completely halt the network.
 
 Tendermint 0.33.6 checks all the signatures are for the block with +2/3
 majority before creating a commit.
@@ -51,7 +73,7 @@ lot of invalid data.
 _This was already true of blocks, since they could include invalid txs filled
 with garbage, but in that case the application knew that they are invalid and
 could punish the proposer. But since applications didn't--and don't--
-verify commit signatures directly (they trust Tendermint to do that), 
+verify commit signatures directly (they trust Tendermint to do that),
 they won't be able to detect it._
 
 This can impact incentivization logic in the application that depends on the
@@ -63,7 +85,7 @@ their signatures. There may be other tricks that can be played because of this.
 
 Tendermint 0.33.6 verifies all the signatures during block execution.
 
-_Please note that the light client does not check nil votes and exits as soon 
+_Please note that the light client does not check nil votes and exits as soon
 as 2/3+ of the signatures are checked._
 
 **All clients are recommended to upgrade.**
