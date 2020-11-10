@@ -22,6 +22,7 @@ func TrapSignal(logger logger, cleanupFunc func()) {
 	go func() {
 		sig := <-sigs
 
+		logger.Info(fmt.Sprintf("captured %v, exiting...", sig))
 		if cleanupFunc != nil {
 			cleanupFunc()
 		}
