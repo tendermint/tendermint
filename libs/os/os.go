@@ -13,19 +13,29 @@ type logger interface {
 	Info(msg string, keyvals ...interface{})
 }
 
-// TrapSignal catches the SIGTERM/SIGINT and executes cb function. After that it exits
-// with code 0.
-func TrapSignal(logger logger, cb func()) {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+// TrapSignal catches the SIGTERM and SIGINT and executes the clean up
+// function before exiting with a value that is greater than 128.
+func TrapSignal(logger logger, cleanupFunc func()) {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
 	go func() {
-		for sig := range c {
-			logger.Info(fmt.Sprintf("captured %v, exiting...", sig))
-			if cb != nil {
-				cb()
-			}
-			os.Exit(0)
+		sig := <-sigs
+
+		if cleanupFunc != nil {
+			cleanupFunc()
 		}
+
+		exitCode := 128
+
+		switch sig {
+		case syscall.SIGINT:
+			exitCode += int(syscall.SIGINT)
+		case syscall.SIGTERM:
+			exitCode += int(syscall.SIGTERM)
+		}
+
+		os.Exit(exitCode)
 	}()
 }
 
