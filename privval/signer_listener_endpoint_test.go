@@ -156,7 +156,11 @@ func newSignerListenerEndpoint(logger log.Logger, addr string, timeoutReadWrite 
 		listener = tcpLn
 	}
 
-	return NewSignerListenerEndpoint(logger, listener)
+	return NewSignerListenerEndpoint(
+		logger,
+		listener,
+		SignerListenerEndpointTimeoutReadWrite(testTimeoutReadWrite),
+	)
 }
 
 func startListenerEndpointAsync(t *testing.T, sle *SignerListenerEndpoint, endpointIsOpenCh chan struct{}) {
