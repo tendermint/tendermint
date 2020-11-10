@@ -45,7 +45,7 @@ These abstractions and related concepts are illustrated in the following diagram
 
 ### Transports
 
-Transports are arbitrary mechanisms for exchanging raw bytes with a peer. For example, a gRPC transport would connect to a peer over TCP/IP and send data using the gRPC protocol, while an in-memory transport might communicate with a peer running in another goroutine using internal byte buffers. Note that transports don't have a notion of a `peer` as such - instead, they communicate with arbitrary endpoint addresses (e.g. IP address and port number), to decouple them from the rest of the P2P stack.
+Transports are arbitrary mechanisms for exchanging raw bytes with a peer. For example, a gRPC transport would connect to a peer over TCP/IP and send data using the gRPC protocol, while an in-memory transport might communicate with a peer running in another goroutine using internal byte buffers. Note that transports don't have a notion of a `peer` as such - instead, they communicate with an arbitrary endpoint address (e.g. IP address and port number), to decouple them from the rest of the P2P stack.
 
 Transports must satisfy the following requirements:
 
@@ -62,7 +62,7 @@ The `Transport` interface is:
 ```go
 // Transport is an arbitrary mechanism for exchanging bytes with a peer.
 type Transport interface {
-    // Accept waits for the next inbound connection in a listening endpoint.
+    // Accept waits for the next inbound connection on a listening endpoint.
     Accept(context.Context) (Connection, error)
 
     // Dial creates an outbound connection to an endpoint.
@@ -106,7 +106,7 @@ type Endpoint struct {
 type Protocol string
 ```
 
-Endpoints are arbitrary transport-specific addresses, but if they are networked they must use IP addresses and thus rely on IP as a fundamental packet routing protocol. This enables policies for address discovery, advertisement, and exchange - for example, a private `192.168.0.0/24` IP address should only be advertised to peers on that IP network, while the public address `8.8.8.8` may be advertised to all peers. Similarly, any port numbers if given must represent TCP and/or UDP port numbers, in order to use [UPnP](https://en.wikipedia.org/wiki/Universal_Plug_and_Play) to autoconfigure e.g. NAT gateways.
+Endpoints are arbitrary transport-specific addresses, but if they are networked they must use IP addresses and thus rely on IP as a fundamental packet routing protocol. This enables policies for address discovery, advertisement, and exchange - for example, a private `192.168.0.0/24` IP address should only be advertised to peers on that IP network, while the public address `8.8.8.8` may be advertised to all peers. Similarly, any port numbers if given must represent TCP and/or UDP port numbers, in order to use [UPnP](https://en.wikipedia.org/wiki/Universal_Plug_and_Play) to autoconfigure e.g. NAT gateways. Note that a concrete design for detection and advertisement of externally-reachable addresses (e.g. via NAT gateways) is out of scope for this ADR, and may be covered in a separate ADR.
 
 Non-networked endpoints (without an IP address) are considered local, and will only be advertised to other peers connecting via the same protocol. For example, an in-memory transport might use `Endpoint{Protocol: "memory", Path: "foo"}` as an address for the node "foo", and this should only be advertised to other nodes using `Protocol: "memory"`.
 
@@ -152,7 +152,13 @@ type Stream interface {
 
 ### Peers
 
-Peers are remote network nodes. Each peer is identified by a unique `PeerID`, and has a set of `PeerAddress` addresses expressed as URLs that they can be reached at. Addresses are resolved into one or more transport endpoints, e.g. by resolving DNS hostnames into IP addresses (which should be refreshed periodically). Peers should always be expressed as address URLs, and never as endpoints which are a lower-level construct.
+Peers are other Tendermint network nodes. Each peer is identified by a unique `PeerID`, and has a set of `PeerAddress` addresses expressed as URLs that they can be reached at. Examples of peer addresses might be e.g.:
+
+* `mconn://b10c@host.domain.com:25567/path`
+* `unix:///var/run/tendermint/peer.sock`
+* `memory:testpeer`
+
+Addresses are resolved into one or more transport endpoints, e.g. by resolving DNS hostnames into IP addresses (which should be refreshed periodically). Peers should always be expressed as address URLs, and never as endpoints which are a lower-level construct.
 
 ```go
 // PeerID is a unique peer ID, generally expressed in hex form.
@@ -164,7 +170,7 @@ type PeerID []byte
 type PeerAddress url.URL
 
 // Resolve resolves a PeerAddress into a set of Endpoints, typically by
-// expanding out any DNS names given in Host to IP addresses. Fields mapping:
+// expanding out any DNS names given in Host to IP addresses. Field mapping:
 //
 //   Scheme → Endpoint.Protocol
 //   Host   → Endpoint.IP
@@ -174,7 +180,7 @@ type PeerAddress url.URL
 func (a PeerAddress) Resolve(ctx context.Context) []Endpoint { return nil }
 ```
 
-The P2P stack needs to track a lot of internal information about peers, such as endpoints, status, priorities, and so on. This is done done in an internal `peer` struct, which should not be exposed outside of the `p2p` package (e.g. to reactors) in order to avoid race conditions and lock contention (other packages should use `PeerID`).
+The P2P stack needs to track a lot of internal information about peers, such as endpoints, status, priorities, and so on. This is done in an internal `peer` struct, which should not be exposed outside of the `p2p` package (e.g. to reactors) in order to avoid race conditions and lock contention - other packages should use `PeerID`.
 
 The `peer` struct might look like the following, but is intentionally underspecified and will depend on implementation requirements (for example, it will almost certainly have to track statistics about connection failures and retries):
 
@@ -187,7 +193,7 @@ type peer struct {
     Endpoints map[PeerAddress][]Endpoint // Resolved endpoints by address.
 }
 
-// PeerStatus specifies the status of a peer.
+// PeerStatus specifies peer statuses.
 type PeerStatus string
 
 const (
@@ -208,9 +214,7 @@ const (
 )
 ```
 
-Peer information is stored in a `peerStore`, which may be persisted in an underlying database. It is kept internal to avoid race conditions and tight coupling. The peer store will replace the current address book, either partially or in full.
-
-The `peerStore` should at the very least contain basic CRUD functionality as outlined below, but will likely need additional functionality and is intentionally underspecified:
+Peer information is stored in a `peerStore`, which may be persisted in an underlying database, and will replace the current address book either partially or in full. It is kept internal to avoid race conditions and tight coupling, and should at the very least contain basic CRUD functionality as outlined below (but will likely need additional functionality and is intentionally underspecified):
 
 ```go
 // peerStore contains information about peers, possibly persisted to disk.
@@ -373,7 +377,7 @@ message PongMessage {
 }
 ```
 
-If we implement the `Wrapper` interface for `EchoMessage`, we can transparently pass `PingMessage` and `PongMessage` through the channel and it will automatically be (un)wrapped in an `EchoMessage`:
+Implementing the `Wrapper` interface for `EchoMessage` allows transparently passing `PingMessage` and `PongMessage` through the channel, where it will automatically be (un)wrapped in an `EchoMessage`:
 
 ```go
 func (m *EchoMessage) Wrap(inner proto.Message) error {
