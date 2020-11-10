@@ -123,6 +123,9 @@ func (sl *SignerListenerEndpoint) SendRequest(request privvalproto.Message) (*pr
 		return nil, err
 	}
 
+	// Reset pingTimer to avoid sending unnecessary pings.
+	sl.pingTimer.Reset(sl.pingInterval)
+
 	return &res, nil
 }
 
