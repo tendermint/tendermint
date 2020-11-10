@@ -24,3 +24,4 @@ program](https://hackerone.com/tendermint).
 ### BUG FIXES:
 
 - [consensus] [\#4895](https://github.com/tendermint/tendermint/pull/4895) Cache the address of the validator to reduce querying a remote KMS (@joe-bowman)
+- [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
