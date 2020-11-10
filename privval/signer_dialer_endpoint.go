@@ -15,24 +15,26 @@ const (
 // SignerServiceEndpointOption sets an optional parameter on the SignerDialerEndpoint.
 type SignerServiceEndpointOption func(*SignerDialerEndpoint)
 
-// SignerDialerEndpointTimeoutReadWrite sets the read and write timeout for connections
-// from external signing processes.
+// SignerDialerEndpointTimeoutReadWrite sets the read and write timeout for
+// connections from client processes.
 func SignerDialerEndpointTimeoutReadWrite(timeout time.Duration) SignerServiceEndpointOption {
 	return func(ss *SignerDialerEndpoint) { ss.timeoutReadWrite = timeout }
 }
 
-// SignerDialerEndpointConnRetries sets the amount of attempted retries to acceptNewConnection.
+// SignerDialerEndpointConnRetries sets the amount of attempted retries to
+// acceptNewConnection.
 func SignerDialerEndpointConnRetries(retries int) SignerServiceEndpointOption {
 	return func(ss *SignerDialerEndpoint) { ss.maxConnRetries = retries }
 }
 
-// SignerDialerEndpointRetryWaitInterval sets the retry wait interval to a custom value
+// SignerDialerEndpointRetryWaitInterval sets the retry wait interval to a
+// custom value.
 func SignerDialerEndpointRetryWaitInterval(interval time.Duration) SignerServiceEndpointOption {
 	return func(ss *SignerDialerEndpoint) { ss.retryWait = interval }
 }
 
-// SignerDialerEndpoint dials using its dialer and responds to any
-// signature requests using its privVal.
+// SignerDialerEndpoint dials using its dialer and responds to any signature
+// requests using its privVal.
 type SignerDialerEndpoint struct {
 	signerEndpoint
 
