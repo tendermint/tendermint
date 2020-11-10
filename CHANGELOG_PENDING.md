@@ -29,4 +29,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### BUG FIXES
 
 - [types] \#5523 Change json naming of `PartSetHeader` within `BlockID` from `parts` to `part_set_header` (@marbar3778)
-- [privval] \#5638 Increase ping timeout to 5s (@JoeKash)
+- [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
