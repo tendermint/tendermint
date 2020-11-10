@@ -6,7 +6,7 @@
 
 ### Improvements
 
-- [\#134](https://github.com/tendermint/tm-db/pull/134) Improve GoLevelDB iterator performance by bounding underlying iterator range (@klim0v)
+- [goleveldb] [\#134](https://github.com/tendermint/tm-db/pull/134) Improve iterator performance by bounding underlying iterator range (@klim0v)
 
 ## 0.6.2
 
@@ -43,6 +43,14 @@ Bump grpc, badger and goleveldb (see versions in go.mod file)
 ### Bug Fixes
 
 - [\#97](https://github.com/tendermint/tm-db/pull/97) `RemoteDB` iterators are now correctly primed with the first item when created, without calling `Next()` (@erikgrinaker)
+
+## 0.5.2
+
+**2020-11-10**
+
+### Improvements
+
+- [goleveldb] [\#134](https://github.com/tendermint/tm-db/pull/134) Improve iterator performance by bounding underlying iterator range (@klim0v)
 
 ## 0.5.1
 
