@@ -10,7 +10,7 @@ In [ADR 061](adr-061-p2p-refactor-scope.md) we decided to refactor the peer-to-p
 
 ## Alternative Approaches
 
-Several variations of the proposed design were considered, including e.g. calling interface methods instead of passing messages (like the current architecture), merging channels with streams, exposing the internal peer data structure to reactors, being message format-agnostic via arbitrary codecs, and so on. The final design was chosen because it has very loose coupling, is simpler to reason about and more convenient to use, avoids race conditions and lock contention for internal data structures, gives reactors better control of message ordering and processing semantics, and allows for QoS scheduling and backpressure in a very natural way.
+Several variations of the proposed design were considered, including e.g. calling interface methods instead of passing messages (like the current architecture), merging channels with streams, exposing the internal peer data structure to reactors, being message format-agnostic via arbitrary codecs, and so on. This design was chosen because it has very loose coupling, is simpler to reason about and more convenient to use, avoids race conditions and lock contention for internal data structures, gives reactors better control of message ordering and processing semantics, and allows for QoS scheduling and backpressure in a very natural way.
 
 There were also proposals to use LibP2P instead of maintaining our own P2P stack, which was rejected (for now) in [ADR 061](adr-061-p2p-refactor-scope.md).
 
@@ -29,12 +29,12 @@ Primary design objectives have been:
 * Better scheduling of messages, with improved prioritization, backpressure, and performance.
 * Centralized peer lifecycle and connection management.
 * Better peer address detection, advertisement, and exchange.
-* Backwards compatibility with the current P2P network protocols.
+* Backwards compatibility at the wire-level with current P2P network protocols.
 
 The main abstractions in the new stack are:
 
 * `peer`: A node in the network, uniquely identified by a `PeerID` and stored in a `peerStore`.
-* `Transport`: An arbitrary mechanism to exchange raw bytes with a single peer using IO streams.
+* `Transport`: An arbitrary mechanism to exchange bytes with a peer using IO `Stream`s across a `Connection`.
 * `Channel`: A bidirectional channel to asynchronously exchange Protobuf messages with peers addressed with `PeerID`.
 * `Router`: Maintains transport connections to relevant peers and routes channel messages.
 * Reactor: A design pattern loosely defined as "something which listens on a channel and reacts to messages".
