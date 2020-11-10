@@ -52,11 +52,6 @@ test100:
 	@for i in {1..100}; do make test; done
 .PHONY: test100
 
-vagrant_test:
-	vagrant up
-	vagrant ssh -c 'make test_integrations'
-.PHONY: vagrant_test
-
 ### go tests
 test:
 	@echo "--> Running go test"
@@ -70,5 +65,5 @@ test_race:
 
 test_deadlock:
 	@echo "--> Running go test --deadlock"
-	@go test -p 1 -v  $(PACKAGES) -tags deadlock 
+	@go test -p 1 -v  $(PACKAGES) -tags deadlock
 .PHONY: test_race
