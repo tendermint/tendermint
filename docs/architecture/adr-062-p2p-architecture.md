@@ -12,7 +12,9 @@ In [ADR 061](adr-061-p2p-refactor-scope.md) we decided to refactor the peer-to-p
 
 Several variations of the proposed design were considered, including e.g. calling interface methods instead of passing messages (like the current architecture), merging channels with streams, exposing the internal peer data structure to reactors, being message format-agnostic via arbitrary codecs, and so on. This design was chosen because it has very loose coupling, is simpler to reason about and more convenient to use, avoids race conditions and lock contention for internal data structures, gives reactors better control of message ordering and processing semantics, and allows for QoS scheduling and backpressure in a very natural way.
 
-There were also proposals to use LibP2P instead of maintaining our own P2P stack, which was rejected (for now) in [ADR 061](adr-061-p2p-refactor-scope.md).
+[multiaddr](https://github.com/multiformats/multiaddr) was considered as a transport-agnostic peer address format over regular URLs, but it does not appear to have very widespread adoption, and advanced features like protocol encapsulation and tunneling do not appear to be immediately useful to us.
+
+There were also proposals to use LibP2P instead of maintaining our own P2P stack, which were rejected (for now) in [ADR 061](adr-061-p2p-refactor-scope.md).
 
 ## Decision
 
@@ -39,7 +41,7 @@ The main abstractions in the new stack are:
 * `Router`: Maintains transport connections to relevant peers and routes channel messages.
 * Reactor: A design pattern loosely defined as "something which listens on a channel and reacts to messages".
 
-These abstractions and related concepts are illustrated in the following diagram and described in detail below.
+These abstractions are illustrated in the following diagram (representing the internals of node A) and described in detail below.
 
 ![P2P Architecture Diagram](img/adr-062-architecture.svg)
 
@@ -75,11 +77,11 @@ type Transport interface {
 }
 ```
 
-How the transport configures listening is transport-dependent, and not covered by the interface. This typically happens during transport construction.
+How the transport configures listening is transport-dependent, and not covered by the interface. This typically happens during transport construction, where a single instance of the transport is created and set to listen on an appropriate network interface before being passed to the router.
 
 #### Endpoints
 
-`Endpoint` represents a transport endpoint (e.g. an IP address and port). A connection always has two endpoints: one at the local node and one at the remote peer. An outbound connection to a remote endpoint is made via a `Dial()` call, and inbound connections to listening endpoints are returned via `Accept()`.
+`Endpoint` represents a transport endpoint (e.g. an IP address and port). A connection always has two endpoints: one at the local node and one at the remote peer. Outbound connections to remote endpoints are made via `Dial()`, and inbound connections to listening endpoints are returned via `Accept()`.
 
 The `Endpoint` struct is:
 
@@ -108,11 +110,11 @@ type Protocol string
 
 Endpoints are arbitrary transport-specific addresses, but if they are networked they must use IP addresses and thus rely on IP as a fundamental packet routing protocol. This enables policies for address discovery, advertisement, and exchange - for example, a private `192.168.0.0/24` IP address should only be advertised to peers on that IP network, while the public address `8.8.8.8` may be advertised to all peers. Similarly, any port numbers if given must represent TCP and/or UDP port numbers, in order to use [UPnP](https://en.wikipedia.org/wiki/Universal_Plug_and_Play) to autoconfigure e.g. NAT gateways. Note that a concrete design for detection and advertisement of externally-reachable addresses (including via NAT gateways) is out of scope for this ADR, and may be covered in a separate ADR.
 
-Non-networked endpoints (without an IP address) are considered local, and will only be advertised to other peers connecting via the same protocol. For example, an in-memory transport might use `Endpoint{Protocol: "memory", Path: "foo"}` as an address for the node "foo", and this should only be advertised to other nodes using `Protocol: "memory"`.
+Non-networked endpoints (without an IP address) are considered local, and will only be advertised to other peers connecting via the same protocol. For example, an in-memory transport used for testing might have `Endpoint{Protocol: "memory", Path: "foo"}` as an address for the node "foo", and this should only be advertised to other nodes using `Protocol: "memory"`.
 
 #### Connections and Streams
 
-A connection represents an established transport connection between two endpoints (and thus two nodes), which can be used to exchange bytes via logically distinct IO streams. Connections are set up either via `Transport.Dial()` (outbound) or `Transport.Accept()` (inbound). The caller is responsible for verifying the remote peer's public key as returned by the connection.
+A connection represents an established transport connection between two endpoints (and thus two nodes), which can be used to exchange bytes via logically distinct IO streams. Connections are set up either via `Transport.Dial()` (outbound) or `Transport.Accept()` (inbound). The caller is responsible for verifying the remote peer's public key as returned by the connection, following the current MConn protocol behavior for now.
 
 Data is exchanged over IO streams created with `Connection.Stream()` using an arbitrary `StreamID`. These implement the standard Go `io.Reader` and `io.Writer` interfaces to read and write bytes. Transports are free to choose how to implement such streams, e.g. by taking advantage of native stream support in the underlying protocol or through multiplexing.
 
@@ -170,7 +172,7 @@ type PeerID []byte
 type PeerAddress url.URL
 
 // Resolve resolves a PeerAddress into a set of Endpoints, typically by
-// expanding out any DNS names given in Host to IP addresses. Field mapping:
+// expanding out a DNS name in Host to its IP addresses. Field mapping:
 //
 //   Scheme → Endpoint.Protocol
 //   Host   → Endpoint.IP
@@ -214,7 +216,7 @@ const (
 )
 ```
 
-Peer information is stored in a `peerStore`, which may be persisted in an underlying database, and will replace the current address book either partially or in full. It is kept internal to avoid race conditions and tight coupling, and should at the very least contain basic CRUD functionality as outlined below (but will likely need additional functionality and is intentionally underspecified):
+Peer information is stored in a `peerStore`, which may be persisted in an underlying database, and will replace the current address book either partially or in full. It is kept internal to avoid race conditions and tight coupling, and should at the very least contain basic CRUD functionality as outlined below, but will likely need additional functionality and is intentionally underspecified:
 
 ```go
 // peerStore contains information about peers, possibly persisted to disk.
@@ -383,9 +385,9 @@ Implementing the `Wrapper` interface for `EchoMessage` allows transparently pass
 func (m *EchoMessage) Wrap(inner proto.Message) error {
     switch inner := inner.(type) {
     case *PingMessage:
-        m.Inner = &EchoMessage_PingMessage{PingMessage: inner}
+        m.Inner = &EchoMessage_PingMessage{Ping: inner}
     case *PongMessage:
-        m.Inner = &EchoMessage_PongMessage{PongMessage: inner}
+        m.Inner = &EchoMessage_PongMessage{Pong: inner}
     default:
         return fmt.Errorf("unknown message %T", inner)
     }
@@ -395,9 +397,9 @@ func (m *EchoMessage) Wrap(inner proto.Message) error {
 func (m *EchoMessage) Unwrap() (proto.Message, error) {
     switch inner := m.Inner.(type) {
     case *EchoMessage_PingMessage:
-        return inner.PingMessage, nil
+        return inner.Ping, nil
     case *EchoMessage_PongMessage:
-        return inner.PongMessage, nil
+        return inner.Pong, nil
     default:
         return nil, fmt.Errorf("unknown message %T", inner)
     }
@@ -407,7 +409,7 @@ func (m *EchoMessage) Unwrap() (proto.Message, error) {
 The reactor itself would be implemented e.g. like this:
 
 ```go
-// RunEchoReactor wires up a reactor to a router and runs it.
+// RunEchoReactor wires up an echo reactor to a router and runs it.
 func RunEchoReactor(router *p2p.Router) error {
     ctx, cancel := context.WithCancel(context.Background())
     defer cancel()
