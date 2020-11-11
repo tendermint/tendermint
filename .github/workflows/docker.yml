@@ -2,6 +2,7 @@ name: Build & Push
 #  Build & Push rebuilds the tendermint docker image on every push to master and creation of tags
 # and pushes the image to https://hub.docker.com/r/interchainio/simapp/tags
 on:
+  pull_request:
   push:
     branches:
       - master
@@ -13,6 +14,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "^1.15.4"
       - uses: actions/checkout@master
       - name: Prepare
         id: prep
