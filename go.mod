@@ -28,7 +28,7 @@ require (
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.6.1
-	github.com/tendermint/tm-db v0.6.2
+	github.com/tendermint/tm-db v0.6.3
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
 	golang.org/x/net v0.0.0-20200813134508-3edf25e44fcc
 	google.golang.org/grpc v1.33.2
