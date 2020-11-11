@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"syscall"
 	"testing"
 	"time"
 
@@ -42,7 +41,7 @@ func TestCopyFile(t *testing.T) {
 }
 
 func TestTrapSignal(t *testing.T) {
-	if os.Getenv("TRAP_SIGNAL_TEST") == "1" {
+	if os.Getenv("TM_TRAP_SIGNAL_TEST") == "1" {
 		t.Log("inside test process")
 		killer()
 		return
@@ -50,17 +49,16 @@ func TestTrapSignal(t *testing.T) {
 
 	cmd := exec.Command(os.Args[0], "-test.run="+t.Name())
 	mockStderr := bytes.NewBufferString("")
-	cmd.Env = append(os.Environ(), "TRAP_SIGNAL_TEST=1")
+	cmd.Env = append(os.Environ(), "TM_TRAP_SIGNAL_TEST=1")
 	cmd.Stderr = mockStderr
 
 	err := cmd.Run()
-	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
-		want := int(syscall.SIGTERM) + 128
-		if e.ExitCode() != int(syscall.SIGTERM)+128 {
-			t.Fatalf("wrong exit code, want %d, got %d", want, e.ExitCode())
-		}
-
+	if err == nil {
 		return
+	}
+
+	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
+		t.Fatalf("wrong exit code, want 0, got %d", e.ExitCode())
 	}
 
 	t.Fatal("this error should not be triggered")
