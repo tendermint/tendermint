@@ -54,6 +54,11 @@ func TestTrapSignal(t *testing.T) {
 
 	err := cmd.Run()
 	if err == nil {
+		wantStderr := "exiting"
+		if mockStderr.String() != wantStderr {
+			t.Fatalf("stderr: want %q, got %q", wantStderr, mockStderr.String())
+		}
+
 		return
 	}
 
@@ -72,7 +77,7 @@ func (ml mockLogger) Info(msg string, keyvals ...interface{}) {}
 func killer() {
 	logger := mockLogger{}
 
-	tmos.TrapSignal(logger, nil)
+	tmos.TrapSignal(logger, func() { _, _ = fmt.Fprintf(os.Stderr, "exiting") })
 	time.Sleep(1 * time.Second)
 
 	// use Kill() to test SIGTERM
