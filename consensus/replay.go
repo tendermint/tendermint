@@ -334,6 +334,7 @@ func (h *Handshaker) ReplayBlocks(
 			if len(res.Validators) > 0 {
 				vals, err := types.PB2TM.ValidatorUpdates(res.Validators)
 				if err != nil {
+					fmt.Println(2)
 					return nil, err
 				}
 				state.Validators = types.NewValidatorSet(vals)

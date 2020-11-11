@@ -1,19 +1,34 @@
 package types
 
 import (
+	"fmt"
+
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
+	tmcrypto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
-const (
-	PubKeyEd25519 = "ed25519"
-)
-
-func Ed25519ValidatorUpdate(pk []byte, power int64) ValidatorUpdate {
-	pke := ed25519.PubKey(pk)
-	pkp, err := cryptoenc.PubKeyToProto(pke)
-	if err != nil {
-		panic(err)
+func UpdateValidator(pk []byte, power int64, keyType string) ValidatorUpdate {
+	var (
+		pkp tmcrypto.PublicKey
+		err error
+	)
+	fmt.Println(keyType)
+	switch keyType {
+	case "", ed25519.KeyType:
+		fmt.Println(1)
+		pke := ed25519.PubKey(pk)
+		pkp, err = cryptoenc.PubKeyToProto(pke)
+		if err != nil {
+			panic(err)
+		}
+	case secp256k1.KeyType:
+		pke := secp256k1.PubKey(pk)
+		pkp, err = cryptoenc.PubKeyToProto(pke)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return ValidatorUpdate{

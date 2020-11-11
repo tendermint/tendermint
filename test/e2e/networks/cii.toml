@@ -1,0 +1,168 @@
+initial_height = 0
+ipv6 = true
+key_type = "secp256k1"
+
+[initial_state]
+
+[validators]
+
+[validator_update]
+[validator_update.0]
+validator01 = 55
+validator02 = 79
+validator03 = 68
+validator04 = 91
+validator05 = 39
+[validator_update.10]
+validator06 = 100
+
+[node]
+[node.full01]
+abci_protocol = "unix"
+database = "rocksdb"
+fast_sync = ""
+mode = "full"
+persist_interval = 0
+persistent_peers = ["validator05", "validator02"]
+perturb = []
+privval_protocol = "tcp"
+retain_blocks = 0
+snapshot_interval = 3
+start_at = 10
+state_sync = false
+[node.full02]
+abci_protocol = "tcp"
+database = "boltdb"
+fast_sync = "v0"
+mode = "full"
+persist_interval = 0
+perturb = []
+privval_protocol = "file"
+retain_blocks = 0
+seeds = ["seed01"]
+snapshot_interval = 3
+start_at = 0
+state_sync = false
+[node.full03]
+abci_protocol = "unix"
+database = "boltdb"
+fast_sync = "v0"
+mode = "full"
+persist_interval = 1
+persistent_peers = ["full02"]
+perturb = []
+privval_protocol = "unix"
+retain_blocks = 3
+snapshot_interval = 3
+start_at = 0
+state_sync = false
+[node.seed01]
+abci_protocol = "unix"
+database = "rocksdb"
+fast_sync = ""
+mode = "seed"
+persist_interval = 1
+perturb = []
+privval_protocol = "file"
+retain_blocks = 1
+seeds = ["seed02"]
+snapshot_interval = 0
+start_at = 0
+state_sync = false
+[node.seed02]
+abci_protocol = "grpc"
+database = "cleveldb"
+fast_sync = ""
+mode = "seed"
+persist_interval = 1
+perturb = []
+privval_protocol = "file"
+retain_blocks = 0
+seeds = ["seed01"]
+snapshot_interval = 0
+start_at = 0
+state_sync = false
+[node.validator01]
+abci_protocol = "unix"
+database = "boltdb"
+fast_sync = "v0"
+mode = "validator"
+persist_interval = 0
+persistent_peers = ["full03"]
+perturb = []
+privval_protocol = "tcp"
+retain_blocks = 0
+snapshot_interval = 3
+start_at = 0
+state_sync = false
+[node.validator01.misbehaviors]
+[node.validator02]
+abci_protocol = "grpc"
+database = "boltdb"
+fast_sync = "v0"
+mode = "validator"
+persist_interval = 0
+persistent_peers = ["validator01"]
+perturb = ["pause"]
+privval_protocol = "tcp"
+retain_blocks = 0
+snapshot_interval = 3
+start_at = 0
+state_sync = false
+[node.validator02.misbehaviors]
+[node.validator03]
+abci_protocol = "unix"
+database = "badgerdb"
+fast_sync = ""
+mode = "validator"
+persist_interval = 1
+persistent_peers = ["full03", "validator02"]
+perturb = []
+privval_protocol = "file"
+retain_blocks = 5
+snapshot_interval = 3
+start_at = 0
+state_sync = false
+[node.validator03.misbehaviors]
+[node.validator04]
+abci_protocol = "builtin"
+database = "rocksdb"
+fast_sync = "v0"
+mode = "validator"
+persist_interval = 5
+perturb = []
+privval_protocol = "unix"
+retain_blocks = 5
+seeds = ["seed01"]
+snapshot_interval = 3
+start_at = 0
+state_sync = false
+[node.validator04.misbehaviors]
+[node.validator05]
+abci_protocol = "grpc"
+database = "boltdb"
+fast_sync = "v0"
+mode = "validator"
+persist_interval = 1
+persistent_peers = ["validator01"]
+perturb = []
+privval_protocol = "file"
+retain_blocks = 1
+snapshot_interval = 0
+start_at = 0
+state_sync = false
+[node.validator05.misbehaviors]
+[node.validator06]
+abci_protocol = "grpc"
+database = "badgerdb"
+fast_sync = ""
+mode = "validator"
+persist_interval = 5
+persistent_peers = ["validator02", "full03", "validator05", "full02"]
+perturb = []
+privval_protocol = "unix"
+retain_blocks = 5
+snapshot_interval = 0
+start_at = 5
+state_sync = true
+[node.validator06.misbehaviors]

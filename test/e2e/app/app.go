@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -37,6 +38,7 @@ func NewApplication(cfg *Config) (*Application, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(cfg.PrivValKey)
 	return &Application{
 		logger:    log.NewTMLogger(log.NewSyncWriter(os.Stdout)),
 		state:     state,
@@ -193,13 +195,19 @@ func (app *Application) validatorUpdates(height uint64) (abci.ValidatorUpdates, 
 	if len(updates) == 0 {
 		return nil, nil
 	}
+
 	valUpdates := abci.ValidatorUpdates{}
 	for keyString, power := range updates {
+
 		keyBytes, err := base64.StdEncoding.DecodeString(keyString)
 		if err != nil {
 			return nil, fmt.Errorf("invalid base64 pubkey value %q: %w", keyString, err)
 		}
-		valUpdates = append(valUpdates, abci.Ed25519ValidatorUpdate(keyBytes, int64(power)))
+		switch app.cfg.KeyType {
+		case "", types.ABCIPubKeyTypeEd25519:
+			valUpdates = append(valUpdates, abci.UpdateValidator(keyBytes, int64(power), app.cfg.KeyType)) //todo: key types are global
+		case types.ABCIPubKeyTypeSecp256k1:
+		}
 	}
 	return valUpdates, nil
 }
