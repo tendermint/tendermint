@@ -10,8 +10,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
 func TestSIGHUP(t *testing.T) {
@@ -71,10 +69,10 @@ func TestSIGHUP(t *testing.T) {
 	require.NoError(t, err)
 
 	// Both files should exist
-	if body := tmos.MustReadFile(filepath.Join(dir, name+"_old")); string(body) != "Line 1\nLine 2\n" {
+	if body := mustReadFile(t, filepath.Join(dir, name+"_old")); string(body) != "Line 1\nLine 2\n" {
 		t.Errorf("unexpected body %s", body)
 	}
-	if body := tmos.MustReadFile(filepath.Join(dir, name)); string(body) != "Line 3\nLine 4\n" {
+	if body := mustReadFile(t, filepath.Join(dir, name)); string(body) != "Line 3\nLine 4\n" {
 		t.Errorf("unexpected body %s", body)
 	}
 
@@ -146,4 +144,12 @@ func TestAutoFileSize(t *testing.T) {
 
 	// Cleanup
 	_ = os.Remove(f.Name())
+}
+
+func mustReadFile(t *testing.T, filePath string) []byte {
+	fileBytes, err := ioutil.ReadFile(filePath)
+
+	require.NoError(t, err)
+
+	return fileBytes
 }

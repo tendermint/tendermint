@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"syscall"
 	"testing"
 	"time"
 
@@ -76,62 +77,16 @@ func killer() {
 	tmos.TrapSignal(logger, func() { _, _ = fmt.Fprintf(os.Stderr, "exiting") })
 	time.Sleep(1 * time.Second)
 
-	// use Kill() to test SIGTERM
-	if err := tmos.Kill(); err != nil {
+	p, err := os.FindProcess(os.Getpid())
+	if err != nil {
+		panic(err)
+	}
+
+	if err := p.Signal(syscall.SIGTERM); err != nil {
 		panic(err)
 	}
 
 	time.Sleep(1 * time.Second)
-}
-
-func TestMustWriteFile(t *testing.T) {
-	tmpdir := t.TempDir()
-	if os.Getenv("TM_MUST_WRITE_FILE_TEST") == "1" {
-		t.Log("inside test process")
-		tmos.MustWriteFile(tmpdir, []byte("test"), 0644)
-		return
-	}
-
-	cmd, _, _ := newTestProgram(t, "TM_MUST_WRITE_FILE_TEST")
-
-	err := cmd.Run()
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	e, ok := err.(*exec.ExitError)
-	if !ok {
-		t.Fatal("this error should not be triggered")
-	}
-
-	if e.ExitCode() != 1 {
-		t.Fatalf("wrong exit code, want 1, got %d", e.ExitCode())
-	}
-}
-
-func TestMustReadFile(t *testing.T) {
-	tmpdir := t.TempDir()
-	if os.Getenv("TM_MUST_READ_FILE_TEST") == "1" {
-		t.Log("inside test process")
-		tmos.MustReadFile(tmpdir)
-		return
-	}
-
-	cmd, _, _ := newTestProgram(t, "TM_MUST_READ_FILE_TEST")
-
-	err := cmd.Run()
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	e, ok := err.(*exec.ExitError)
-	if !ok {
-		t.Fatal("this error should not be triggered")
-	}
-
-	if e.ExitCode() != 1 {
-		t.Fatalf("wrong exit code, want 1, got %d", e.ExitCode())
-	}
 }
 
 func newTestProgram(t *testing.T, environVar string) (cmd *exec.Cmd, stdout *bytes.Buffer, stderr *bytes.Buffer) {
