@@ -58,10 +58,6 @@ func FileExists(filePath string) bool {
 	return !os.IsNotExist(err)
 }
 
-func ReadFile(filePath string) ([]byte, error) {
-	return ioutil.ReadFile(filePath)
-}
-
 func MustReadFile(filePath string) []byte {
 	fileBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
@@ -71,13 +67,8 @@ func MustReadFile(filePath string) []byte {
 	return fileBytes
 }
 
-func WriteFile(filePath string, contents []byte, mode os.FileMode) error {
-	return ioutil.WriteFile(filePath, contents, mode)
-}
-
 func MustWriteFile(filePath string, contents []byte, mode os.FileMode) {
-	err := WriteFile(filePath, contents, mode)
-	if err != nil {
+	if err := ioutil.WriteFile(filePath, contents, mode); err != nil {
 		Exit(fmt.Sprintf("MustWriteFile failed: %v", err))
 	}
 }
