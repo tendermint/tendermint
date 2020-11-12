@@ -1,8 +1,6 @@
 package types
 
 import (
-	"fmt"
-
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
@@ -14,7 +12,7 @@ func UpdateValidator(pk []byte, power int64, keyType string) ValidatorUpdate {
 		pkp tmcrypto.PublicKey
 		err error
 	)
-	fmt.Println(keyType)
+
 	switch keyType {
 	case "", ed25519.KeyType:
 		pke := ed25519.PubKey(pk)
