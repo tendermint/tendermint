@@ -303,10 +303,10 @@ have distinct names from the tags/release names.)
 
 1. Start from the RC branch (e.g. `RC0/v0.34.0`).
 2. Create the new tag, specifying a name and a tag "message":  
-   `git tag -a v0.34.0-rc0 -m "Release Candidate v0.34.0-rc0`
+   `git tag -a v0.34.0-rc0 -m "Release Candidate v0.34.0-rc0` 
 3. Push the tag back up to origin:  
    `git push origin v0.34.0-rc4`  
-   Now the tag should be available on the repo's releases page.
+   Now the tag should be available on the repo's releases page. 
 4. Create a new release candidate branch for any possible updates to the RC:  
    `git checkout -b RC1/v0.34.0; git push origin RC1/v0.34.0`
 
