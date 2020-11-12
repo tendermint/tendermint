@@ -127,20 +127,6 @@ make install
 
 You should now be able to run `make proto-gen` from inside the root Tendermint directory to generate new files from proto files.
 
-## Vagrant
-
-If you are a [Vagrant](https://www.vagrantup.com/) user, you can get started
-hacking Tendermint with the commands below.
-
-NOTE: In case you installed Vagrant in 2017, you might need to run
-`vagrant box update` to upgrade to the latest `ubuntu/xenial64`.
-
-```sh
-vagrant up
-vagrant ssh
-make test
-```
-
 ## Changelog
 
 Every fix, improvement, feature, or breaking change should be made in a

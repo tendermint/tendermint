@@ -302,7 +302,7 @@ func (sc *scheduler) setPeerRange(peerID p2p.ID, base int64, height int64) error
 	peer := sc.ensurePeer(peerID)
 
 	if peer.state == peerStateRemoved {
-		return fmt.Errorf("cannot set peer height for a peer in peerStateRemoved")
+		return nil // noop
 	}
 
 	if height < peer.height {

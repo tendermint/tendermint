@@ -7,6 +7,7 @@ import (
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/privval"
+	"github.com/tendermint/tendermint/types"
 )
 
 // GenValidatorCmd allows the generation of a keypair for a
@@ -17,8 +18,16 @@ var GenValidatorCmd = &cobra.Command{
 	Run:   genValidator,
 }
 
+func init() {
+	GenValidatorCmd.Flags().StringVar(&keyType, "key", types.ABCIPubKeyTypeEd25519,
+		"Key type to generate privval file with. Options: ed25519, secp256k1")
+}
+
 func genValidator(cmd *cobra.Command, args []string) {
-	pv := privval.GenFilePV("", "")
+	pv, err := privval.GenFilePV("", "", keyType)
+	if err != nil {
+		panic(err)
+	}
 	jsbz, err := tmjson.Marshal(pv)
 	if err != nil {
 		panic(err)

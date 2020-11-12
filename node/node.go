@@ -101,14 +101,17 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		)
 	}
 
-	var privValidator *privval.FilePV
+	var pval *privval.FilePV
 	if config.Mode == cfg.ModeValidator {
-		privValidator = privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+		pval, err = privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+		if err != nil {
+			return nil, err
+		}
 	} else {
-		privValidator = nil
+		pval = nil
 	}
 	return NewNode(config,
-		privValidator,
+		pval,
 		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),

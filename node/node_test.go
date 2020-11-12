@@ -265,9 +265,14 @@ func TestCreateProposalBlock(t *testing.T) {
 	for currentBytes <= maxEvidenceBytes {
 		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
 		currentBytes += int64(len(ev.Bytes()))
-		err := evidencePool.AddEvidenceFromConsensus(ev, time.Now(), state.Validators)
+		err := evidencePool.AddEvidenceFromConsensus(ev)
 		require.NoError(t, err)
 	}
+
+	evList, size := evidencePool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
+	require.Less(t, size, state.ConsensusParams.Evidence.MaxBytes+1)
+	evData := &types.EvidenceData{Evidence: evList}
+	require.EqualValues(t, size, evData.ByteSize())
 
 	// fill the mempool with more txs
 	// than can fit in a block
@@ -379,9 +384,11 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	require.NoError(t, err)
+	pval, err := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+	require.NoError(t, err)
 
 	n, err := NewNode(config,
-		privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile()),
+		pval,
 		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
