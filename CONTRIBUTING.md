@@ -106,12 +106,12 @@ specify exactly the dependency you want to update, eg.
 
 We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along with [gogoproto](https://github.com/gogo/protobuf) to generate code for use across Tendermint Core.
 
-For linting and checking breaking changes, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will need to have docker running locally. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
+For linting, checking breaking changes and generating proto stubs, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will need to have docker running locally. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
 
 There are two ways to generate your proto stubs.
 
 1. Use Docker, pull an image that will generate your proto stubs with no need to install anything. `make proto-gen-docker`
-2. Run `make proto-gen` after installing `protoc` and gogoproto, you can do this by running `make protobuf`.
+2. Run `make proto-gen` after installing `buf` and `gogoproto`, you can do this by running `make protobuf`.
 
 ### Installation Instructions
 
@@ -303,10 +303,10 @@ have distinct names from the tags/release names.)
 
 1. Start from the RC branch (e.g. `RC0/v0.34.0`).
 2. Create the new tag, specifying a name and a tag "message":  
-   `git tag -a v0.34.0-rc0 -m "Release Candidate v0.34.0-rc0` 
+   `git tag -a v0.34.0-rc0 -m "Release Candidate v0.34.0-rc0`
 3. Push the tag back up to origin:  
    `git push origin v0.34.0-rc4`  
-   Now the tag should be available on the repo's releases page. 
+   Now the tag should be available on the repo's releases page.
 4. Create a new release candidate branch for any possible updates to the RC:  
    `git checkout -b RC1/v0.34.0; git push origin RC1/v0.34.0`
 
