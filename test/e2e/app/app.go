@@ -37,7 +37,6 @@ func NewApplication(cfg *Config) (*Application, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(cfg.PrivValKey)
 	return &Application{
 		logger:    log.NewTMLogger(log.NewSyncWriter(os.Stdout)),
 		state:     state,

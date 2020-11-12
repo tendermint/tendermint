@@ -449,7 +449,7 @@ func (n Node) AddressP2P(withID bool) string {
 	}
 	addr := fmt.Sprintf("%v:26656", ip)
 	if withID {
-		addr = fmt.Sprintf("%x@%v", n.PrivvalKey.PubKey().Address().Bytes(), addr)
+		addr = fmt.Sprintf("%x@%v", n.NodeKey.PubKey().Address().Bytes(), addr)
 	}
 	return addr
 }

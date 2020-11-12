@@ -17,7 +17,6 @@ func UpdateValidator(pk []byte, power int64, keyType string) ValidatorUpdate {
 	fmt.Println(keyType)
 	switch keyType {
 	case "", ed25519.KeyType:
-		fmt.Println(1)
 		pke := ed25519.PubKey(pk)
 		pkp, err = cryptoenc.PubKeyToProto(pke)
 		if err != nil {
