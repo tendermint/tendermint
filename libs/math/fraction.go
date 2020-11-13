@@ -7,14 +7,13 @@ import (
 	"strings"
 )
 
-// Fraction defined in terms of a numerator divided by a denominator in int64
-// format.
+// Fraction defined in terms of a numerator divided by a denominator in uint64
+// format. Fraction must be positive.
 type Fraction struct {
 	// The portion of the denominator in the faction, e.g. 2 in 2/3.
-	Numerator int64 `json:"numerator"`
-	// The value by which the numerator is divided, e.g. 3 in 2/3. Must be
-	// positive.
-	Denominator int64 `json:"denominator"`
+	Numerator uint64 `json:"numerator"`
+	// The value by which the numerator is divided, e.g. 3 in 2/3.
+	Denominator uint64 `json:"denominator"`
 }
 
 func (fr Fraction) String() string {
@@ -38,5 +37,11 @@ func ParseFraction(f string) (Fraction, error) {
 	if err != nil {
 		return Fraction{}, fmt.Errorf("incorrect formatting, err: %w", err)
 	}
-	return Fraction{Numerator: numerator, Denominator: denominator}, nil
+	if denominator == 0 {
+		return Fraction{}, errors.New("denominator can't be 0")
+	}
+	if numerator < 0 || denominator < 0 {
+		return Fraction{}, fmt.Errorf("numerator and denomintor can't be negative. Got %d and %d respectively", numerator, denominator)
+	}
+	return Fraction{Numerator: uint64(numerator), Denominator: uint64(denominator)}, nil
 }

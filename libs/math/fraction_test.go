@@ -24,14 +24,19 @@ func TestParseFraction(t *testing.T) {
 			err: false,
 		},
 		{
+			f:   "2/0",
+			exp: Fraction{},
+			err: true,
+		},
+		{
 			f:   "-1/2",
-			exp: Fraction{-1, 2},
-			err: false,
+			exp: Fraction{},
+			err: true,
 		},
 		{
 			f:   "1/-2",
-			exp: Fraction{1, -2},
-			err: false,
+			exp: Fraction{},
+			err: true,
 		},
 		{
 			f:   "2/3/4",
