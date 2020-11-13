@@ -4,7 +4,7 @@
 
 - 2020-11-09: Initial version (@erikgrinaker)
 
-- 2020-11-13: Remove stream IDs (@erikgrinaker)
+- 2020-11-13: Remove stream IDs, note on moving PEX into core (@erikgrinaker)
 
 ## Context
 
@@ -110,7 +110,7 @@ type Endpoint struct {
 type Protocol string
 ```
 
-Endpoints are arbitrary transport-specific addresses, but if they are networked they must use IP addresses and thus rely on IP as a fundamental packet routing protocol. This enables policies for address discovery, advertisement, and exchange - for example, a private `192.168.0.0/24` IP address should only be advertised to peers on that IP network, while the public address `8.8.8.8` may be advertised to all peers. Similarly, any port numbers if given must represent TCP and/or UDP port numbers, in order to use [UPnP](https://en.wikipedia.org/wiki/Universal_Plug_and_Play) to autoconfigure e.g. NAT gateways. Note that a concrete design for detection and advertisement of externally-reachable addresses (including via NAT gateways) is out of scope for this ADR, and may be covered in a separate ADR.
+Endpoints are arbitrary transport-specific addresses, but if they are networked they must use IP addresses and thus rely on IP as a fundamental packet routing protocol. This enables policies for address discovery, advertisement, and exchange - for example, a private `192.168.0.0/24` IP address should only be advertised to peers on that IP network, while the public address `8.8.8.8` may be advertised to all peers. Similarly, any port numbers if given must represent TCP and/or UDP port numbers, in order to use [UPnP](https://en.wikipedia.org/wiki/Universal_Plug_and_Play) to autoconfigure e.g. NAT gateways.
 
 Non-networked endpoints (without an IP address) are considered local, and will only be advertised to other peers connecting via the same protocol. For example, an in-memory transport used for testing might have `Endpoint{Protocol: "memory", Path: "foo"}` as an address for the node "foo", and this should only be advertised to other nodes using `Protocol: "memory"`.
 
@@ -227,6 +227,8 @@ func (p *peerStore) Get(id PeerID) (peer, bool) { return peer{}, false }
 func (p *peerStore) List() []peer               { return nil }
 func (p *peerStore) Set(peer peer) error        { return nil }
 ```
+
+Peer address detection, advertisement and exchange (including detection of externally-reachable addresses via e.g. NAT gateways) is out of scope for this ADR, but may be covered in a separate ADR. The current PEX reactor should probably be absorbed into the core P2P stack and protocol instead of running as a separate reactor, since this needs to mutate the core peer data structures and will thus be tightly coupled with the router.
 
 ### Channels
 
@@ -486,9 +488,11 @@ The existing P2P stack should be gradually migrated towards this design. The eas
 
 5. Replace the existing `Switch` abstraction with the new `Router`.
 
-6. Consider rewriting and/or cleaning up reactors and other P2P-related code to make better use of the new abstractions.
+6. Move the PEX reactor and other address advertisement/exchange into the P2P core, possibly the `Router`.
 
- A note on backwards-compatibility: the current MConn protocol takes whole messages expressed as byte slices and splits them up into `PacketMsg` messages, where the final packet of a message has `PacketMsg.EOF` set. In order to maintain wire-compatibility with this protocol, the MConn transport needs to be aware of message boundaries, even though it does not care what the messages actually are. One way to handle this is to break abstraction boundaries and have the transport decode the input's length-prefixed message framing and use this to determine message boundaries. Then at some point in the future when we can break protocol compatibility we either remove the MConn protocol completely or drop the `PacketMsg.EOF` field and rely on the length-prefix framing.
+7. Consider rewriting and/or cleaning up reactors and other P2P-related code to make better use of the new abstractions.
+
+A note on backwards-compatibility: the current MConn protocol takes whole messages expressed as byte slices and splits them up into `PacketMsg` messages, where the final packet of a message has `PacketMsg.EOF` set. In order to maintain wire-compatibility with this protocol, the MConn transport needs to be aware of message boundaries, even though it does not care what the messages actually are. One way to handle this is to break abstraction boundaries and have the transport decode the input's length-prefixed message framing and use this to determine message boundaries. Then at some point in the future when we can break protocol compatibility we either remove the MConn protocol completely or drop the `PacketMsg.EOF` field and rely on the length-prefix framing.
 
 ## Status
 
