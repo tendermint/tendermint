@@ -283,8 +283,6 @@ Since a channel can only exchange messages of a single type, it is often useful 
 // automatically (un)wrap passed messages using the container type, such that
 // the channel can transparently support multiple message types.
 type Wrapper interface {
-    proto.Message
-
     // Wrap will take a message and wrap it in this one.
     Wrap(proto.Message) error
 
