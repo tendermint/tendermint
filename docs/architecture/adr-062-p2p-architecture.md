@@ -4,7 +4,7 @@
 
 - 2020-11-09: Initial version (@erikgrinaker)
 
-- 2020-11-13: Remove stream IDs, note on moving PEX into core (@erikgrinaker)
+- 2020-11-13: Remove stream IDs, move peer errors onto channel, note on moving PEX into core (@erikgrinaker)
 
 ## Context
 
@@ -253,6 +253,10 @@ type Channel struct {
     // Out is a channel for sending outbound messages. Envelope.To or Broadcast
     // must be set, otherwise the message is discarded.
     Out chan<- Envelope
+
+    // Error is a channel for reporting peer errors to the router, typically used
+    // when peers send a malformed, invalid, or malignant message.
+    Error chan<- PeerError
 }
 
 // Close closes the channel, and is equivalent to close(Channel.Out). This will
@@ -269,6 +273,25 @@ type Envelope struct {
     Broadcast bool          // Send message to all connected peers, ignoring To.
     Message   proto.Message // Payload.
 }
+
+// PeerError is a peer error reported by a reactor via the Error channel. The
+// severity may cause the peer to be disconnected or banned depending on the
+// router's policy.
+type PeerError struct {
+    PeerID   PeerID
+    Err      error
+    Severity PeerErrorSeverity
+}
+
+// PeerErrorSeverity determines the severity of a peer error, which may cause the
+// peer to be disconnected or banned as appropriate.
+type PeerErrorSeverity string
+
+const (
+    PeerErrorSeverityMinor    PeerErrorSeverity = "minor"    // Mostly ignored.
+    PeerErrorSeverityMajor    PeerErrorSeverity = "major"    // May disconnect.
+    PeerErrorSeverityCritical PeerErrorSeverity = "critical" // Ban.
+)
 ```
 
 A channel can reach any connected peer, and is implemented using transport streams against each individual peer, with an initial handshake to exchange the channel ID and any other metadata. The channel will automatically (un)marshal Protobuf to byte slices and use length-prefixed framing (the de facto standard for Protobuf streams) when writing them to the stream.
@@ -293,7 +316,7 @@ type Wrapper interface {
 
 ### Routers
 
-The router manages all P2P networking for a node, and is responsible for keeping track of network peers, maintaining transport connections, and routing channel messages. As such, it must do e.g. connection retries and backoff, message QoS scheduling and backpressure, peer quality assessments, and endpoint detection and advertisement. In addition, the router provides mechanisms for reactors to receive updates about peer status changes and to report peer errors (which can optionally cause the peers to be disconnected or banned).
+The router manages all P2P networking for a node, and is responsible for keeping track of network peers, maintaining transport connections, and routing channel messages. As such, it must do e.g. connection retries and backoff, message QoS scheduling and backpressure, peer quality assessments, and endpoint detection and advertisement. In addition, the router provides a mechanism to subscribe to peer updates (e.g. peers connecting or disconnecting), and handles reported peer errors from reactors.
 
 The implementation of the router is likely to be non-trivial, and is intentionally unspecified here. A separate ADR will likely be submitted for this.
 
@@ -313,42 +336,17 @@ func NewRouter(peerStore *peerStore, transports map[Protocol]Transport) *Router 
 // message can implement Wrapper for automatic message (un)wrapping.
 func (r *Router) Channel(id ChannelID, messageType proto.Message) (*Channel, error) { return nil, nil }
 
-// PeerErrors returns a channel that can be used to submit peer errors,
-// specifying an action to take. The sender should not close the channel.
-func (r *Router) PeerErrors() chan<- PeerError { return nil }
-
 // PeerUpdates returns a channel with peer updates. The caller must cancel the
 // context to end the subscription, and keep consuming messages in a timely
 // fashion until the channel is closed to avoid blocking updates.
-func (r *Router) PeerUpdates(ctx context.Context) <-chan PeerUpdate { return nil }
-
-// PeerErrors is a channel for submitting peer errors.
-type PeerErrors chan<- PeerError
-
-// PeerError is a peer error reported by a reactor, and an action to take.
-type PeerError struct {
-    ID     PeerID
-    Err    error
-    Action PeerAction
-}
-
-func (e PeerError) Error() string { return "" }
-
-// PeerAction is an action to take for a peer error.
-type PeerAction string
-
-const (
-    PeerActionNone       PeerAction = "none"
-    PeerActionDisconnect PeerAction = "disconnect"
-    PeerActionBan        PeerAction = "ban"
-)
+func (r *Router) PeerUpdates(ctx context.Context) PeerUpdates { return nil }
 
 // PeerUpdates is a channel for receiving peer updates.
 type PeerUpdates <-chan PeerUpdate
 
 // PeerUpdate is a peer status update for reactors.
 type PeerUpdate struct {
-    ID     PeerID
+    PeerID PeerID
     Status PeerStatus
 }
 ```
@@ -417,16 +415,11 @@ func RunEchoReactor(router *p2p.Router) error {
     }
     defer channel.Close()
 
-    return EchoReactor(ctx, channel, router.PeerUpdates(ctx), router.PeerErrors())
+    return EchoReactor(ctx, channel, router.PeerUpdates(ctx))
 }
 
 // EchoReactor provides an echo service, pinging all known peers until cancelled.
-func EchoReactor(
-    ctx context.Context,
-    channel *p2p.Channel,
-    peerUpdates p2p.PeerUpdates,
-    peerErrors p2p.PeerErrors,
-) error {
+func EchoReactor(ctx context.Context, channel *p2p.Channel, peerUpdates p2p.PeerUpdates) error {
     ticker := time.NewTicker(5 * time.Second)
     defer ticker.Stop()
 
@@ -453,16 +446,16 @@ func EchoReactor(
                 fmt.Printf("%q replied with %q\n", envelope.From, msg.Content)
 
             default:
-                peerErrors <- PeerError{
-                    ID:     envelope.From,
-                    Err:    fmt.Errorf("unexpected message %T", msg),
-                    Action: PeerActionDisconnect,
+                channel.Error <- PeerError{
+                    PeerID:   envelope.From,
+                    Err:      fmt.Errorf("unexpected message %T", msg),
+                    Severity: PeerErrorSeverityMinor,
                 }
             }
 
         // Output info about any peer status changes.
         case peerUpdate := <-peerUpdates:
-            fmt.Printf("Peer %q changed status to %q", peerUpdate.ID, peerUpdate.Status)
+            fmt.Printf("Peer %q changed status to %q", peerUpdate.PeerID, peerUpdate.Status)
 
         // Exit when context is cancelled.
         case <-ctx.Done():
@@ -491,6 +484,8 @@ The existing P2P stack should be gradually migrated towards this design. The eas
 7. Consider rewriting and/or cleaning up reactors and other P2P-related code to make better use of the new abstractions.
 
 A note on backwards-compatibility: the current MConn protocol takes whole messages expressed as byte slices and splits them up into `PacketMsg` messages, where the final packet of a message has `PacketMsg.EOF` set. In order to maintain wire-compatibility with this protocol, the MConn transport needs to be aware of message boundaries, even though it does not care what the messages actually are. One way to handle this is to break abstraction boundaries and have the transport decode the input's length-prefixed message framing and use this to determine message boundaries. Then at some point in the future when we can break protocol compatibility we either remove the MConn protocol completely or drop the `PacketMsg.EOF` field and rely on the length-prefix framing.
+
+Similarly, implementing channel handshakes with the current MConn protocol would require doing an initial connection handshake as today and use that information to "fake" the local channel handshake without it hitting the wire.
 
 ## Status
 
