@@ -433,7 +433,7 @@ func EchoReactor(ctx context.Context, channel *p2p.Channel, peerUpdates p2p.Peer
             }
 
         // When we receive a message from a peer, either respond to ping, output
-        // pong, or disconnect peer on unknown message type.
+        // pong, or report peer error on unknown message type.
         case envelope := <-channel.In:
             switch msg := envelope.Message.(type) {
             case *PingMessage:
@@ -449,7 +449,7 @@ func EchoReactor(ctx context.Context, channel *p2p.Channel, peerUpdates p2p.Peer
                 channel.Error <- PeerError{
                     PeerID:   envelope.From,
                     Err:      fmt.Errorf("unexpected message %T", msg),
-                    Severity: PeerErrorSeverityMinor,
+                    Severity: PeerErrorSeverityLow,
                 }
             }
 
