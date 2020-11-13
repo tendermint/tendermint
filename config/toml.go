@@ -505,7 +505,7 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 
 func mustWriteFile(filePath string, contents []byte, mode os.FileMode) {
 	if err := ioutil.WriteFile(filePath, contents, mode); err != nil {
-		tmos.Exit(fmt.Sprintf("MustWriteFile failed: %v", err))
+		tmos.Exit(fmt.Sprintf("failed to write file: %v", err))
 	}
 }
 
