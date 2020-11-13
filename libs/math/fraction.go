@@ -41,7 +41,7 @@ func ParseFraction(f string) (Fraction, error) {
 		return Fraction{}, errors.New("denominator can't be 0")
 	}
 	if numerator < 0 || denominator < 0 {
-		return Fraction{}, fmt.Errorf("numerator and denomintor can't be negative. Got %d and %d respectively",
+		return Fraction{}, fmt.Errorf("numerator and denominator can't be negative. Got %d and %d respectively",
 			numerator, denominator)
 	}
 	return Fraction{Numerator: uint64(numerator), Denominator: uint64(denominator)}, nil
