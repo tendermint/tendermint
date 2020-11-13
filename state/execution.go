@@ -161,7 +161,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// validate the validator updates and convert to tendermint types
 	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
-	nextChainLock, err := types.ChainLockFromProto(abciResponses.EndBlock.NextChainLockUpdate)
+	nextChainLock, err := types.CoreChainLockFromProto(abciResponses.EndBlock.CoreChainLockUpdate)
 	if err != nil {
 		return state, 0, fmt.Errorf("error in chain lock from proto: %v", err)
 	}
@@ -178,7 +178,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update the state with the block and responses.
-	state, err = updateState(state, blockID, &block.Header, block.ChainLock, nextChainLock, abciResponses, validatorUpdates)
+	state, err = updateState(state, blockID, &block.Header, block.CoreChainLock, nextChainLock, abciResponses, validatorUpdates)
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
@@ -411,8 +411,8 @@ func updateState(
 	state State,
 	blockID types.BlockID,
 	header *types.Header,
-	lastChainLock *types.ChainLock,
-	nextChainLock *types.ChainLock,
+	lastChainLock *types.CoreChainLock,
+	nextChainLock *types.CoreChainLock,
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) (State, error) {
@@ -455,14 +455,14 @@ func updateState(
 	nextVersion := state.Version
 
 	if lastChainLock == nil {
-		lastChainLock = &state.LastChainLock
+		lastChainLock = &state.LastCoreChainLock
 	}
 
 	if nextChainLock == nil {
-		nextChainLock = &state.NextChainLock
+		nextChainLock = &state.NextCoreChainLock
 	}
 
-	if nextChainLock.CoreBlockHeight < lastChainLock.CoreBlockHeight {
+	if nextChainLock.BlockHeight < lastChainLock.BlockHeight {
 		nextChainLock = lastChainLock
 	}
 
@@ -475,8 +475,8 @@ func updateState(
 		LastBlockHeight:                  header.Height,
 		LastBlockID:                      blockID,
 		LastBlockTime:                    header.Time,
-		LastChainLock: 					  *lastChainLock,
-		NextChainLock:                    *nextChainLock,
+		LastCoreChainLock:                *lastChainLock,
+		NextCoreChainLock:                *nextChainLock,
 		NextValidators:                   nValSet,
 		Validators:                       state.NextValidators.Copy(),
 		LastValidators:                   state.Validators.Copy(),

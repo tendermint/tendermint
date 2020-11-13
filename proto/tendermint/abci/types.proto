@@ -21,22 +21,21 @@ import "gogoproto/gogo.proto";
 
 message Request {
   oneof value {
-    RequestEcho                 echo                 = 1;
-    RequestFlush                flush                = 2;
-    RequestInfo                 info                 = 3;
-    RequestSetOption            set_option           = 4;
-    RequestInitChain            init_chain           = 5;
-    RequestQuery                query                = 6;
-    RequestBeginBlock           begin_block          = 7;
-    RequestCheckTx              check_tx             = 8;
-    RequestCheckQuorumSignature check_quorum_signature = 9;
-    RequestDeliverTx            deliver_tx           = 10;
-    RequestEndBlock             end_block            = 11;
-    RequestCommit               commit               = 12;
-    RequestListSnapshots        list_snapshots       = 13;
-    RequestOfferSnapshot        offer_snapshot       = 14;
-    RequestLoadSnapshotChunk    load_snapshot_chunk  = 15;
-    RequestApplySnapshotChunk   apply_snapshot_chunk = 16;
+    RequestEcho               echo                 = 1;
+    RequestFlush              flush                = 2;
+    RequestInfo               info                 = 3;
+    RequestSetOption          set_option           = 4;
+    RequestInitChain          init_chain           = 5;
+    RequestQuery              query                = 6;
+    RequestBeginBlock         begin_block          = 7;
+    RequestCheckTx            check_tx             = 8;
+    RequestDeliverTx          deliver_tx           = 9;
+    RequestEndBlock           end_block            = 10;
+    RequestCommit             commit               = 11;
+    RequestListSnapshots      list_snapshots       = 12;
+    RequestOfferSnapshot      offer_snapshot       = 13;
+    RequestLoadSnapshotChunk  load_snapshot_chunk  = 14;
+    RequestApplySnapshotChunk apply_snapshot_chunk = 15;
   }
 }
 
@@ -92,14 +91,6 @@ message RequestCheckTx {
   CheckTxType type = 2;
 }
 
-message RequestCheckQuorumSignature {
-  uint32 coreHeight = 1;
-  uint32 quorumType = 2;
-  bytes  requestId  = 3;
-  bytes  digest     = 4;
-  bytes  signature  = 5;
-}
-
 message RequestDeliverTx {
   bytes tx = 1;
 }
@@ -139,23 +130,22 @@ message RequestApplySnapshotChunk {
 
 message Response {
   oneof value {
-    ResponseException            exception              = 1;
-    ResponseEcho                 echo                   = 2;
-    ResponseFlush                flush                  = 3;
-    ResponseInfo                 info                   = 4;
-    ResponseSetOption            set_option             = 5;
-    ResponseInitChain            init_chain             = 6;
-    ResponseQuery                query                  = 7;
-    ResponseBeginBlock           begin_block            = 8;
-    ResponseCheckTx              check_tx               = 9;
-    ResponseCheckQuorumSignature check_quorum_signature = 10;
-    ResponseDeliverTx            deliver_tx             = 11;
-    ResponseEndBlock             end_block              = 12;
-    ResponseCommit               commit                 = 13;
-    ResponseListSnapshots        list_snapshots         = 14;
-    ResponseOfferSnapshot        offer_snapshot         = 15;
-    ResponseLoadSnapshotChunk    load_snapshot_chunk    = 16;
-    ResponseApplySnapshotChunk   apply_snapshot_chunk   = 17;
+    ResponseException          exception            = 1;
+    ResponseEcho               echo                 = 2;
+    ResponseFlush              flush                = 3;
+    ResponseInfo               info                 = 4;
+    ResponseSetOption          set_option           = 5;
+    ResponseInitChain          init_chain           = 6;
+    ResponseQuery              query                = 7;
+    ResponseBeginBlock         begin_block          = 8;
+    ResponseCheckTx            check_tx             = 9;
+    ResponseDeliverTx          deliver_tx           = 10;
+    ResponseEndBlock           end_block            = 11;
+    ResponseCommit             commit               = 12;
+    ResponseListSnapshots      list_snapshots       = 13;
+    ResponseOfferSnapshot      offer_snapshot       = 14;
+    ResponseLoadSnapshotChunk  load_snapshot_chunk  = 15;
+    ResponseApplySnapshotChunk apply_snapshot_chunk = 16;
   }
 }
 
@@ -224,10 +214,6 @@ message ResponseCheckTx {
   string codespace = 8;
 }
 
-message ResponseCheckQuorumSignature {
-  uint32         code       = 1;
-}
-
 message ResponseDeliverTx {
   uint32         code       = 1;
   bytes          data       = 2;
@@ -246,7 +232,8 @@ message ResponseEndBlock {
   ConsensusParams consensus_param_updates = 2;
   repeated Event  events                  = 3
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
-  tendermint.types.ChainLock  next_chain_lock_update  = 4;
+
+  tendermint.types.CoreChainLock  core_chain_lock_update  = 100;
 }
 
 message ResponseCommit {
@@ -297,10 +284,10 @@ message ResponseApplySnapshotChunk {
 // ConsensusParams contains all consensus-relevant parameters
 // that can be adjusted by the abci app
 message ConsensusParams {
-  BlockParams                       block       = 1;
-  tendermint.types.EvidenceParams   evidence    = 2;
-  tendermint.types.ValidatorParams  validator   = 3;
-  tendermint.types.VersionParams    version     = 4;
+  BlockParams                      block     = 1;
+  tendermint.types.EvidenceParams  evidence  = 2;
+  tendermint.types.ValidatorParams validator = 3;
+  tendermint.types.VersionParams   version   = 4;
 }
 
 // BlockParams contains limits on the block size.
@@ -410,7 +397,6 @@ service ABCIApplication {
   rpc SetOption(RequestSetOption) returns (ResponseSetOption);
   rpc DeliverTx(RequestDeliverTx) returns (ResponseDeliverTx);
   rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
-  rpc CheckQuorumSignature(RequestCheckQuorumSignature) returns (ResponseCheckQuorumSignature);
   rpc Query(RequestQuery) returns (ResponseQuery);
   rpc Commit(RequestCommit) returns (ResponseCommit);
   rpc InitChain(RequestInitChain) returns (ResponseInitChain);

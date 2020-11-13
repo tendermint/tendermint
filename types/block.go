@@ -26,7 +26,7 @@ const (
 	// MaxHeaderBytes is a maximum header size.
 	// NOTE: Because app hash can be of arbitrary size, the header is therefore not
 	// capped in size and thus this number should be seen as a soft max
-	MaxHeaderBytes int64 = 632
+	MaxHeaderBytes int64 = 633
 	MaxChainLockSize int64 = 132
 
 	// MaxOverheadForBlock - maximum overhead to encode a block (up to
@@ -44,11 +44,11 @@ const (
 type Block struct {
 	mtx tmsync.Mutex
 
-	Header     `json:"header"`
-	Data       `json:"data"`
-	ChainLock  *ChainLock    `json:"chain_lock"`
-	Evidence   EvidenceData `json:"evidence"`
-	LastCommit *Commit      `json:"last_commit"`
+	Header        `json:"header"`
+	Data          `json:"data"`
+	CoreChainLock *CoreChainLock `json:"core_chain_lock"`
+	Evidence      EvidenceData   `json:"evidence"`
+	LastCommit    *Commit        `json:"last_commit"`
 }
 
 // ValidateBasic performs basic validation that doesn't involve state data.
@@ -66,8 +66,8 @@ func (b *Block) ValidateBasic() error {
 		return fmt.Errorf("invalid header: %w", err)
 	}
 
-	if b.ChainLock != nil {
-		if err := b.ChainLock.ValidateBasic(); err != nil {
+	if b.CoreChainLock != nil {
+		if err := b.CoreChainLock.ValidateBasic(); err != nil {
 			return fmt.Errorf("invalid chain lock data: %w", err)
 		}
 	}
@@ -212,7 +212,7 @@ func (b *Block) StringIndented(indent string) string {
 %s  %v
 %s}#%v`,
 		indent, b.Header.StringIndented(indent+"  "),
-		indent, b.ChainLock.StringIndented(indent+"  "),
+		indent, b.CoreChainLock.StringIndented(indent+"  "),
 		indent, b.Data.StringIndented(indent+"  "),
 		indent, b.Evidence.StringIndented(indent+"  "),
 		indent, b.LastCommit.StringIndented(indent+"  "),
@@ -236,7 +236,7 @@ func (b *Block) ToProto() (*tmproto.Block, error) {
 	pb := new(tmproto.Block)
 
 	pb.Header = *b.Header.ToProto()
-	pb.ChainLock = b.ChainLock.ToProto()
+	pb.CoreChainLock = b.CoreChainLock.ToProto()
 	pb.LastCommit = b.LastCommit.ToProto()
 	pb.Data = b.Data.ToProto()
 
@@ -271,11 +271,11 @@ func BlockFromProto(bp *tmproto.Block) (*Block, error) {
 		return nil, err
 	}
 
-	chainLock, err := ChainLockFromProto(bp.ChainLock)
+	chainLock, err := CoreChainLockFromProto(bp.CoreChainLock)
 	if err != nil {
 		return nil, err
 	}
-	b.ChainLock = chainLock
+	b.CoreChainLock = chainLock
 
 	if bp.LastCommit != nil {
 		lc, err := CommitFromProto(bp.LastCommit)

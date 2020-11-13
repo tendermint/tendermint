@@ -12,16 +12,16 @@ import (
 
 func newCounterWithChainLocks() abci.Application {
 	counterApp := counter.NewApplication(true)
-	counterApp.HasChainLocks = true
-	counterApp.CurrentChainLockHeight = 1
+	counterApp.HasCoreChainLocks = true
+	counterApp.CurrentCoreChainLockHeight = 1
 	return counterApp
 }
 
 func newCounterWithBackwardsChainLocks() abci.Application {
 	counterApp := counter.NewApplication(true)
-	counterApp.HasChainLocks = true
-	counterApp.CurrentChainLockHeight = 100
-	counterApp.ChainLockStep = -1
+	counterApp.HasCoreChainLocks = true
+	counterApp.CurrentCoreChainLockHeight = 100
+	counterApp.CoreChainLockStep = -1
 	return counterApp
 }
 
@@ -124,7 +124,7 @@ func invalidProposeChainLockFunc(t *testing.T, height int64, round int32, cs *St
 
 	// Make proposal
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-	proposal := types.NewProposal(height, cs.state.NextChainLock.CoreBlockHeight - 1, round, cs.ValidRound, propBlockID)
+	proposal := types.NewProposal(height, cs.state.NextCoreChainLock.BlockHeight- 1, round, cs.ValidRound, propBlockID)
 	p := proposal.ToProto()
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, p); err == nil {
 		proposal.Signature = p.Signature

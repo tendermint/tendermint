@@ -28,8 +28,8 @@ func UpdateState(
 	state State,
 	blockID types.BlockID,
 	header *types.Header,
-	lastChainLock *types.ChainLock,
-	nextChainLock *types.ChainLock,
+	lastChainLock *types.CoreChainLock,
+	nextChainLock *types.CoreChainLock,
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) (State, error) {

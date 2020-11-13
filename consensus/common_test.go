@@ -792,11 +792,11 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	chainLock := types.NewMockChainLock(1)
 
 	return &types.GenesisDoc{
-		GenesisTime:   tmtime.Now(),
-		InitialHeight: 1,
-		ChainID:       config.ChainID(),
-		Validators:    validators,
-		GenesisChainLock: chainLock.ToProto(),
+		GenesisTime:          tmtime.Now(),
+		InitialHeight:        1,
+		ChainID:              config.ChainID(),
+		Validators:           validators,
+		GenesisCoreChainLock: chainLock.ToProto(),
 	}, privValidators
 }
 

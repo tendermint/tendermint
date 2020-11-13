@@ -12,16 +12,16 @@ import (
 type Application struct {
 	types.BaseApplication
 
-	hashCount              int
-	txCount                int
-	serial                 bool
-	HasChainLocks          bool
-	CurrentChainLockHeight uint32
-	ChainLockStep          int32
+	hashCount                  int
+	txCount                    int
+	serial                     bool
+	HasCoreChainLocks          bool
+	CurrentCoreChainLockHeight uint32
+	CoreChainLockStep          int32
 }
 
 func NewApplication(serial bool) *Application {
-	return &Application{serial: serial, ChainLockStep:1}
+	return &Application{serial: serial, CoreChainLockStep:1}
 }
 
 func (app *Application) Info(req types.RequestInfo) types.ResponseInfo {
@@ -97,6 +97,8 @@ func (app *Application) Commit() (resp types.ResponseCommit) {
 
 func (app *Application) Query(reqQuery types.RequestQuery) types.ResponseQuery {
 	switch reqQuery.Path {
+	case "verify-chainlock":
+		return types.ResponseQuery{Code: 0}
 	case "hash":
 		return types.ResponseQuery{Value: []byte(fmt.Sprintf("%v", app.hashCount))}
 	case "tx":
@@ -107,11 +109,11 @@ func (app *Application) Query(reqQuery types.RequestQuery) types.ResponseQuery {
 }
 
 func (app *Application) EndBlock(reqEndBlock types.RequestEndBlock) types.ResponseEndBlock {
-	if app.HasChainLocks {
-		app.CurrentChainLockHeight = uint32(int32(app.CurrentChainLockHeight) + app.ChainLockStep)
-		chainLock := types1.NewMockChainLock(app.CurrentChainLockHeight)
+	if app.HasCoreChainLocks {
+		app.CurrentCoreChainLockHeight = uint32(int32(app.CurrentCoreChainLockHeight) + app.CoreChainLockStep)
+		chainLock := types1.NewMockChainLock(app.CurrentCoreChainLockHeight)
 		return types.ResponseEndBlock{
-			NextChainLockUpdate: chainLock.ToProto(),
+			CoreChainLockUpdate: chainLock.ToProto(),
 		}
 	} else {
 		return types.ResponseEndBlock{}

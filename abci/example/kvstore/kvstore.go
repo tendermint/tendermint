@@ -120,10 +120,6 @@ func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
 
-func (app *Application) CheckQuorumSignature(req types.RequestCheckQuorumSignature) types.ResponseCheckQuorumSignature {
-	return types.ResponseCheckQuorumSignature{Code: code.CodeTypeOK}
-}
-
 func (app *Application) Commit() types.ResponseCommit {
 	// Using a memdb - just return the big endian size of the db
 	appHash := make([]byte, 8)
@@ -141,36 +137,43 @@ func (app *Application) Commit() types.ResponseCommit {
 
 // Returns an associated value or nil if missing.
 func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
-	if reqQuery.Prove {
-		value, err := app.state.db.Get(prefixKey(reqQuery.Data))
-		if err != nil {
-			panic(err)
-		}
-		if value == nil {
-			resQuery.Log = "does not exist"
-		} else {
-			resQuery.Log = "exists"
-		}
-		resQuery.Index = -1 // TODO make Proof return index
-		resQuery.Key = reqQuery.Data
-		resQuery.Value = value
-		resQuery.Height = app.state.Height
+	switch reqQuery.Path {
+		case "/verify-chainlock":
+			resQuery.Code = 0
 
-		return
-	}
+			return resQuery
+		default:
+			if reqQuery.Prove {
+				value, err := app.state.db.Get(prefixKey(reqQuery.Data))
+				if err != nil {
+					panic(err)
+				}
+				if value == nil {
+					resQuery.Log = "does not exist"
+				} else {
+					resQuery.Log = "exists"
+				}
+				resQuery.Index = -1 // TODO make Proof return index
+				resQuery.Key = reqQuery.Data
+				resQuery.Value = value
+				resQuery.Height = app.state.Height
 
-	resQuery.Key = reqQuery.Data
-	value, err := app.state.db.Get(prefixKey(reqQuery.Data))
-	if err != nil {
-		panic(err)
-	}
-	if value == nil {
-		resQuery.Log = "does not exist"
-	} else {
-		resQuery.Log = "exists"
-	}
-	resQuery.Value = value
-	resQuery.Height = app.state.Height
+				return
+			}
 
-	return resQuery
+			resQuery.Key = reqQuery.Data
+			value, err := app.state.db.Get(prefixKey(reqQuery.Data))
+			if err != nil {
+				panic(err)
+			}
+			if value == nil {
+				resQuery.Log = "does not exist"
+			} else {
+				resQuery.Log = "exists"
+			}
+			resQuery.Value = value
+			resQuery.Height = app.state.Height
+
+			return resQuery
+	}
 }

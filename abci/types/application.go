@@ -17,9 +17,6 @@ type Application interface {
 	// Mempool Connection
 	CheckTx(RequestCheckTx) ResponseCheckTx // Validate a tx for the mempool
 
-	// Validation Connection
-	CheckQuorumSignature(RequestCheckQuorumSignature) ResponseCheckQuorumSignature //Check signatures from application
-
 	// Consensus Connection
 	InitChain(RequestInitChain) ResponseInitChain    // Initialize blockchain w validators/other info from TendermintCore
 	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
@@ -60,10 +57,6 @@ func (BaseApplication) DeliverTx(req RequestDeliverTx) ResponseDeliverTx {
 
 func (BaseApplication) CheckTx(req RequestCheckTx) ResponseCheckTx {
 	return ResponseCheckTx{Code: CodeTypeOK}
-}
-
-func (BaseApplication) CheckQuorumSignature(req RequestCheckQuorumSignature) ResponseCheckQuorumSignature {
-	return ResponseCheckQuorumSignature{Code: CodeTypeOK}
 }
 
 func (BaseApplication) Commit() ResponseCommit {
@@ -138,11 +131,6 @@ func (app *GRPCApplication) DeliverTx(ctx context.Context, req *RequestDeliverTx
 
 func (app *GRPCApplication) CheckTx(ctx context.Context, req *RequestCheckTx) (*ResponseCheckTx, error) {
 	res := app.app.CheckTx(*req)
-	return &res, nil
-}
-
-func (app *GRPCApplication) CheckQuorumSignature(ctx context.Context, req *RequestCheckQuorumSignature) (*ResponseCheckQuorumSignature, error) {
-	res := app.app.CheckQuorumSignature(*req)
 	return &res, nil
 }
 

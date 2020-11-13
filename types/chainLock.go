@@ -8,52 +8,52 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
-type ChainLock struct {
-	CoreBlockHeight    uint32          `json:"core_block_height,string,omitempty"`   // height of Chain Lock.
-	CoreBlockHash      []byte         `json:"core_block_hash,string,omitempty"`     // hash of Chain Lock.
-	Signature          []byte         `json:"signature,string,omitempty"`           // signature.
+type CoreChainLock struct {
+	BlockHeight uint32 `json:"block_height,string,omitempty"` // height of Chain Lock.
+	BlockHash   []byte `json:"block_hash,string,omitempty"`   // hash of Chain Lock.
+	Signature   []byte `json:"signature,string,omitempty"`    // signature.
 }
 
 // ToProto converts Header to protobuf
-func (cl *ChainLock) ToProto() *tmproto.ChainLock {
+func (cl *CoreChainLock) ToProto() *tmproto.CoreChainLock {
 	if cl == nil {
 		return nil
 	}
 
-	return &tmproto.ChainLock{
-		CoreBlockHeight:         cl.CoreBlockHeight,
-		CoreBlockHash:           cl.CoreBlockHash,
-		Signature:               cl.Signature,
+	return &tmproto.CoreChainLock{
+		BlockHeight: cl.BlockHeight,
+		BlockHash:   cl.BlockHash,
+		Signature:   cl.Signature,
 	}
 }
 
 // Copy the chain lock.
-func (cl ChainLock) Copy() ChainLock {
-	return ChainLock{
-		CoreBlockHeight:       cl.CoreBlockHeight,
-		CoreBlockHash:         cl.CoreBlockHash,
-		Signature:             cl.Signature,
+func (cl CoreChainLock) Copy() CoreChainLock {
+	return CoreChainLock{
+		BlockHeight: cl.BlockHeight,
+		BlockHash:   cl.BlockHash,
+		Signature:   cl.Signature,
 	}
 }
 
-func (cl *ChainLock) PopulateFromProto(clp *tmproto.ChainLock) error {
+func (cl *CoreChainLock) PopulateFromProto(clp *tmproto.CoreChainLock) error {
 
 	if clp == nil {
 		return fmt.Errorf("chain lock is empty")
 	}
 
-	cl.CoreBlockHeight = clp.CoreBlockHeight
-	cl.CoreBlockHash = clp.CoreBlockHash
+	cl.BlockHeight = clp.BlockHeight
+	cl.BlockHash = clp.BlockHash
 	cl.Signature = clp.Signature
 
 	return cl.ValidateBasic()
 }
 
-func (cl ChainLock) RequestId() []byte {
+func (cl CoreChainLock) RequestId() []byte {
 	s := []byte{0x05, 0x63, 0x6c, 0x73, 0x69, 0x67} //5 clsig
 
 	var coreBlockHeightBytes [4]byte
-	binary.LittleEndian.PutUint32(coreBlockHeightBytes[:],cl.CoreBlockHeight)
+	binary.LittleEndian.PutUint32(coreBlockHeightBytes[:],cl.BlockHeight)
 
 
 	s = append(s,coreBlockHeightBytes[:]...)
@@ -63,17 +63,17 @@ func (cl ChainLock) RequestId() []byte {
 // ValidateBasic performs stateless validation on a Chain Lock returning an error
 // if any validation fails.
 // It does not verify the signature
-func (cl ChainLock) ValidateBasic() error {
+func (cl CoreChainLock) ValidateBasic() error {
 
-	if cl.CoreBlockHeight == 0 {
+	if cl.BlockHeight == 0 {
 		return errors.New("zero Chain Lock Height")
 	}
 
-	if len(cl.CoreBlockHash) == 0 {
+	if len(cl.BlockHash) == 0 {
 		return fmt.Errorf("chain lock block hash is empty")
 	}
 
-	if err := ValidateHash(cl.CoreBlockHash); err != nil {
+	if err := ValidateHash(cl.BlockHash); err != nil {
 		return fmt.Errorf("chain lock block hash is wrong size")
 	}
 
@@ -89,38 +89,38 @@ func (cl ChainLock) ValidateBasic() error {
 }
 
 // StringIndented returns a string representation of the header
-func (cl *ChainLock) StringIndented(indent string) string {
+func (cl *CoreChainLock) StringIndented(indent string) string {
 	if cl == nil {
-		return "nil-ChainLock"
+		return "nil-CoreChainLock"
 	}
-	return fmt.Sprintf(`ChainLock{
-%s  CoreBlockHeight:   %v
-%s  CoreBlockHash:     %v
+	return fmt.Sprintf(`CoreChainLock{
+%s  BlockHeight:   %v
+%s  BlockHash:     %v
 %s  Signature:         %v}`,
-		indent, cl.CoreBlockHeight,
-		indent, cl.CoreBlockHash,
+		indent, cl.BlockHeight,
+		indent, cl.BlockHash,
 		indent, cl.Signature )
 }
 
 // FromProto sets a protobuf Header to the given pointer.
 // It returns an error if the chain lock is invalid.
-func ChainLockFromProto(clp *tmproto.ChainLock) (*ChainLock, error) {
+func CoreChainLockFromProto(clp *tmproto.CoreChainLock) (*CoreChainLock, error) {
 	if clp == nil {
 		return nil, nil
 	}
 
-	cl := new(ChainLock)
-	cl.CoreBlockHeight = clp.CoreBlockHeight
-	cl.CoreBlockHash = clp.CoreBlockHash
+	cl := new(CoreChainLock)
+	cl.BlockHeight = clp.BlockHeight
+	cl.BlockHash = clp.BlockHash
 	cl.Signature = clp.Signature
 
 	return cl, cl.ValidateBasic()
 }
 
-func NewMockChainLock(height uint32) ChainLock {
-	return ChainLock{
-		CoreBlockHeight: height,
-		CoreBlockHash: []uint8{0x72, 0x3e, 0x3, 0x4e, 0x19, 0x53, 0x35, 0x75, 0xe7,
+func NewMockChainLock(height uint32) CoreChainLock {
+	return CoreChainLock{
+		BlockHeight: height,
+		BlockHash: []uint8{0x72, 0x3e, 0x3, 0x4e, 0x19, 0x53, 0x35, 0x75, 0xe7,
 			0x0, 0x1d, 0xfe, 0x14, 0x34, 0x17, 0xcf, 0x61, 0x72, 0xf3, 0xf3, 0xd6,
 			0x5, 0x8d, 0xdd, 0x60, 0xf7, 0x20, 0x99, 0x3, 0x28, 0xce, 0xde},
 		Signature: []uint8{0xa3, 0x10, 0xf8, 0x2c, 0x3, 0xf7, 0x39, 0xa0, 0x1, 0x84,

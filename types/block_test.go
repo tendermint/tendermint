@@ -45,7 +45,7 @@ func TestBlockAddEvidence(t *testing.T) {
 	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
 	evList := []Evidence{ev}
 
-	block := MakeBlock(h, chainLock.CoreBlockHeight, &chainLock, txs, commit, evList)
+	block := MakeBlock(h, chainLock.BlockHeight, &chainLock, txs, commit, evList)
 	require.NotNil(t, block)
 	require.Equal(t, 1, len(block.Evidence.Evidence))
 	require.NotNil(t, block.EvidenceHash)
@@ -411,21 +411,21 @@ func TestMaxHeaderBytes(t *testing.T) {
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
 
 	h := Header{
-		Version:            tmversion.Consensus{Block: math.MaxInt64, App: math.MaxInt64},
-		ChainID:            maxChainID,
-		Height:             math.MaxInt64,
+		Version:               tmversion.Consensus{Block: math.MaxInt64, App: math.MaxInt64},
+		ChainID:               maxChainID,
+		Height:                math.MaxInt64,
 		CoreChainLockedHeight: math.MaxUint32,
-		Time:               timestamp,
-		LastBlockID:        makeBlockID(make([]byte, tmhash.Size), math.MaxInt32, make([]byte, tmhash.Size)),
-		LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
-		DataHash:           tmhash.Sum([]byte("data_hash")),
-		ValidatorsHash:     tmhash.Sum([]byte("validators_hash")),
-		NextValidatorsHash: tmhash.Sum([]byte("next_validators_hash")),
-		ConsensusHash:      tmhash.Sum([]byte("consensus_hash")),
-		AppHash:            tmhash.Sum([]byte("app_hash")),
-		LastResultsHash:    tmhash.Sum([]byte("last_results_hash")),
-		EvidenceHash:       tmhash.Sum([]byte("evidence_hash")),
-		ProposerAddress:    crypto.AddressHash([]byte("proposer_address")),
+		Time:                  timestamp,
+		LastBlockID:           makeBlockID(make([]byte, tmhash.Size), math.MaxInt32, make([]byte, tmhash.Size)),
+		LastCommitHash:        tmhash.Sum([]byte("last_commit_hash")),
+		DataHash:              tmhash.Sum([]byte("data_hash")),
+		ValidatorsHash:        tmhash.Sum([]byte("validators_hash")),
+		NextValidatorsHash:    tmhash.Sum([]byte("next_validators_hash")),
+		ConsensusHash:         tmhash.Sum([]byte("consensus_hash")),
+		AppHash:               tmhash.Sum([]byte("app_hash")),
+		LastResultsHash:       tmhash.Sum([]byte("last_results_hash")),
+		EvidenceHash:          tmhash.Sum([]byte("evidence_hash")),
+		ProposerAddress:       crypto.AddressHash([]byte("proposer_address")),
 	}
 
 	bz, err := h.ToProto().Marshal()
@@ -465,15 +465,15 @@ func TestBlockMaxDataBytes(t *testing.T) {
 		0: {-10, crypto.Ed25519, 1, 0, true, 0},
 		1: {10, crypto.Ed25519, 1, 0, true, 0},
 		2: {979, crypto.Ed25519, 1, 0, true, 0},
-		3: {980, crypto.Ed25519, 1, 0, false, 0},
-		4: {981, crypto.Ed25519, 1, 0, false, 1},
-		5: {1092, crypto.Ed25519, 2, 0, false, 1},
-		6: {1191, crypto.Ed25519, 2, 100, false, 0},
+		3: {981, crypto.Ed25519, 1, 0, false, 0},
+		4: {982, crypto.Ed25519, 1, 0, false, 1},
+		5: {1093, crypto.Ed25519, 2, 0, false, 1},
+		6: {1192, crypto.Ed25519, 2, 100, false, 0},
 		7: {1012, crypto.BLS12381, 1, 0, true, 0},
-		8: {1013, crypto.BLS12381, 1, 0, false, 0},
-		9: {1014, crypto.BLS12381, 1, 0, false, 1},
-		10: {1158, crypto.BLS12381, 2, 0, false, 1},
-		11: {1257, crypto.BLS12381, 2, 100, false, 0},
+		8: {1014, crypto.BLS12381, 1, 0, false, 0},
+		9: {1015, crypto.BLS12381, 1, 0, false, 1},
+		10: {1159, crypto.BLS12381, 2, 0, false, 1},
+		11: {1258, crypto.BLS12381, 2, 100, false, 0},
 	}
 	// An extra 33 bytes (32 for sig, 1 for proto encoding are needed for BLS compared to edwards per validator
 
@@ -504,11 +504,11 @@ func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 		0: {-10, 1, crypto.Ed25519,1, true, 0},
 		1: {10, 1, crypto.Ed25519,1, true, 0},
 		2: {979, 1, crypto.Ed25519,1, true, 0},
-		3: {980, 1, crypto.Ed25519,1, false, 0},
-		4: {981, 1, crypto.Ed25519,1, false, 1},
+		3: {981, 1, crypto.Ed25519,1, false, 0},
+		4: {982, 1, crypto.Ed25519,1, false, 1},
 		5: {1012, 1, crypto.BLS12381,1, true, 0},
-		6: {1013, 1, crypto.BLS12381,1, false, 0},
-		7: {1014, 1, crypto.BLS12381,1, false, 1},
+		6: {1014, 1, crypto.BLS12381,1, false, 0},
+		7: {1015, 1, crypto.BLS12381,1, false, 1},
 	}
 
 	for i, tc := range testCases {

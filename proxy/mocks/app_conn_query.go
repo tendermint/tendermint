@@ -4,7 +4,7 @@ package mocks
 
 import (
 	mock "github.com/stretchr/testify/mock"
-	abcicli "github.com/tendermint/tendermint/abci/client"
+
 	types "github.com/tendermint/tendermint/abci/types"
 )
 
@@ -95,43 +95,3 @@ func (_m *AppConnQuery) QuerySync(_a0 types.RequestQuery) (*types.ResponseQuery,
 
 	return r0, r1
 }
-
-// CheckQuorumSignatureAsync provides a mock function with given fields: _a0
-func (_m *AppConnQuery) CheckQuorumSignatureAsync(_a0 types.RequestCheckQuorumSignature) *abcicli.ReqRes {
-	ret := _m.Called(_a0)
-
-	var r0 *abcicli.ReqRes
-	if rf, ok := ret.Get(0).(func(types.RequestCheckQuorumSignature) *abcicli.ReqRes); ok {
-		r0 = rf(_a0)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*abcicli.ReqRes)
-		}
-	}
-
-	return r0
-}
-
-// CheckQuorumSignatureSync provides a mock function with given fields: _a0
-func (_m *AppConnQuery) CheckQuorumSignatureSync(_a0 types.RequestCheckQuorumSignature) (*types.ResponseCheckQuorumSignature, error) {
-	ret := _m.Called(_a0)
-
-	var r0 *types.ResponseCheckQuorumSignature
-	if rf, ok := ret.Get(0).(func(types.RequestCheckQuorumSignature) *types.ResponseCheckQuorumSignature); ok {
-		r0 = rf(_a0)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.ResponseCheckQuorumSignature)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(types.RequestCheckQuorumSignature) error); ok {
-		r1 = rf(_a0)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-

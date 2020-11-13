@@ -39,8 +39,6 @@ type AppConnQuery interface {
 	EchoSync(string) (*types.ResponseEcho, error)
 	InfoSync(types.RequestInfo) (*types.ResponseInfo, error)
 	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
-	CheckQuorumSignatureAsync(types.RequestCheckQuorumSignature) *abcicli.ReqRes
-	CheckQuorumSignatureSync(types.RequestCheckQuorumSignature) (*types.ResponseCheckQuorumSignature, error)
 
 	//	SetOptionSync(key string, value string) (res types.Result)
 }
@@ -159,14 +157,6 @@ func (app *appConnQuery) InfoSync(req types.RequestInfo) (*types.ResponseInfo, e
 
 func (app *appConnQuery) QuerySync(reqQuery types.RequestQuery) (*types.ResponseQuery, error) {
 	return app.appConn.QuerySync(reqQuery)
-}
-
-func (app *appConnQuery) CheckQuorumSignatureAsync(req types.RequestCheckQuorumSignature) *abcicli.ReqRes {
-	return app.appConn.CheckQuorumSignatureAsync(req)
-}
-
-func (app *appConnQuery) CheckQuorumSignatureSync(req types.RequestCheckQuorumSignature) (*types.ResponseCheckQuorumSignature, error) {
-	return app.appConn.CheckQuorumSignatureSync(req)
 }
 
 //------------------------------------------------

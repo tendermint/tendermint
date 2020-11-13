@@ -82,7 +82,7 @@ func makeBlockPool(bcr *testBcR, height int64, peers []BpPeer, blocks map[int64]
 		bPool.peers[p.id].RequestSent(h)
 		if p.create {
 			// simulate that a block at height h has been received
-			_ = bPool.peers[p.id].AddBlock(types.MakeBlock(h,chainLock.CoreBlockHeight, &chainLock, txs, nil, nil), 100)
+			_ = bPool.peers[p.id].AddBlock(types.MakeBlock(h,chainLock.BlockHeight, &chainLock, txs, nil, nil), 100)
 		}
 	}
 	return bPool
@@ -394,7 +394,7 @@ func TestBlockPoolAddBlock(t *testing.T) {
 			pool: makeBlockPool(testBcR, 10, []BpPeer{{ID: "P1", Height: 100}}, map[int64]tPBlocks{}),
 			args: args{
 				peerID:    "P2",
-				block:     types.MakeBlock(int64(10),chainLock.CoreBlockHeight, &chainLock, txs, nil, nil),
+				block:     types.MakeBlock(int64(10),chainLock.BlockHeight, &chainLock, txs, nil, nil),
 				blockSize: 100,
 			},
 			poolWanted: makeBlockPool(testBcR, 10, []BpPeer{{ID: "P1", Height: 100}}, map[int64]tPBlocks{}),
@@ -406,7 +406,7 @@ func TestBlockPoolAddBlock(t *testing.T) {
 				map[int64]tPBlocks{10: {"P1", false}}),
 			args: args{
 				peerID:    "P1",
-				block:     types.MakeBlock(int64(11),chainLock.CoreBlockHeight, &chainLock, txs, nil, nil),
+				block:     types.MakeBlock(int64(11),chainLock.BlockHeight, &chainLock, txs, nil, nil),
 				blockSize: 100,
 			},
 			poolWanted: makeBlockPool(testBcR, 10,
@@ -420,7 +420,7 @@ func TestBlockPoolAddBlock(t *testing.T) {
 				map[int64]tPBlocks{10: {"P1", true}, 11: {"P1", false}}),
 			args: args{
 				peerID:    "P1",
-				block:     types.MakeBlock(int64(10),chainLock.CoreBlockHeight, &chainLock, txs, nil, nil),
+				block:     types.MakeBlock(int64(10),chainLock.BlockHeight, &chainLock, txs, nil, nil),
 				blockSize: 100,
 			},
 			poolWanted: makeBlockPool(testBcR, 10,
@@ -434,7 +434,7 @@ func TestBlockPoolAddBlock(t *testing.T) {
 				map[int64]tPBlocks{10: {"P1", false}}),
 			args: args{
 				peerID:    "P2",
-				block:     types.MakeBlock(int64(10),chainLock.CoreBlockHeight, &chainLock, txs, nil, nil),
+				block:     types.MakeBlock(int64(10),chainLock.BlockHeight, &chainLock, txs, nil, nil),
 				blockSize: 100,
 			},
 			poolWanted: makeBlockPool(testBcR, 10,
@@ -448,7 +448,7 @@ func TestBlockPoolAddBlock(t *testing.T) {
 				map[int64]tPBlocks{10: {"P1", false}}),
 			args: args{
 				peerID:    "P1",
-				block:     types.MakeBlock(int64(10),chainLock.CoreBlockHeight, &chainLock, txs, nil, nil),
+				block:     types.MakeBlock(int64(10),chainLock.BlockHeight, &chainLock, txs, nil, nil),
 				blockSize: 100,
 			},
 			poolWanted: makeBlockPool(testBcR, 10,

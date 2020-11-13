@@ -1085,7 +1085,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 
 	// Make proposal
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-	proposal := types.NewProposal(height, cs.state.NextChainLock.CoreBlockHeight, round, cs.ValidRound, propBlockID)
+	proposal := types.NewProposal(height, cs.state.NextCoreChainLock.BlockHeight, round, cs.ValidRound, propBlockID)
 	p := proposal.ToProto()
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, p); err == nil {
 		proposal.Signature = p.Signature
@@ -1735,7 +1735,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 		return ErrInvalidProposalPOLRound
 	}
 
-	if proposal.CoreChainLockedHeight < cs.state.LastChainLock.CoreBlockHeight {
+	if proposal.CoreChainLockedHeight < cs.state.LastCoreChainLock.BlockHeight {
 		return ErrInvalidProposalCoreHeight
 	}
 

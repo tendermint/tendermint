@@ -221,15 +221,6 @@ func (cli *grpcClient) CheckTxAsync(params types.RequestCheckTx) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_CheckTx{CheckTx: res}})
 }
 
-func (cli *grpcClient) CheckQuorumSignatureAsync(params types.RequestCheckQuorumSignature) *ReqRes {
-	req := types.ToRequestCheckQuorumSignature(params)
-	res, err := cli.client.CheckQuorumSignature(context.Background(), req.GetCheckQuorumSignature(), grpc.WaitForReady(true))
-	if err != nil {
-		cli.StopForError(err)
-	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_CheckQuorumSignature{CheckQuorumSignature: res}})
-}
-
 func (cli *grpcClient) QueryAsync(params types.RequestQuery) *ReqRes {
 	req := types.ToRequestQuery(params)
 	res, err := cli.client.Query(context.Background(), req.GetQuery(), grpc.WaitForReady(true))
@@ -378,11 +369,6 @@ func (cli *grpcClient) DeliverTxSync(params types.RequestDeliverTx) (*types.Resp
 func (cli *grpcClient) CheckTxSync(params types.RequestCheckTx) (*types.ResponseCheckTx, error) {
 	reqres := cli.CheckTxAsync(params)
 	return cli.finishSyncCall(reqres).GetCheckTx(), cli.Error()
-}
-
-func (cli *grpcClient) CheckQuorumSignatureSync(params types.RequestCheckQuorumSignature) (*types.ResponseCheckQuorumSignature, error) {
-	reqres := cli.CheckQuorumSignatureAsync(params)
-	return reqres.Response.GetCheckQuorumSignature(), cli.Error()
 }
 
 func (cli *grpcClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {
