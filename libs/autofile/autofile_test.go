@@ -148,7 +148,6 @@ func TestAutoFileSize(t *testing.T) {
 
 func mustReadFile(t *testing.T, filePath string) []byte {
 	fileBytes, err := ioutil.ReadFile(filePath)
-
 	require.NoError(t, err)
 
 	return fileBytes
