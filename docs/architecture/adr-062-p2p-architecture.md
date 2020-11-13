@@ -33,7 +33,7 @@ Primary design objectives have been:
 * Better scheduling of messages, with improved prioritization, backpressure, and performance.
 * Centralized peer lifecycle and connection management.
 * Better peer address detection, advertisement, and exchange.
-* Backwards compatibility at the wire-level with current P2P network protocols.
+* Wire-level backwards compatibility with current P2P network protocols, except where it proves too obstructive.
 
 The main abstractions in the new stack are:
 
@@ -59,7 +59,7 @@ Transports must satisfy the following requirements:
 
 * Provide the public key of the peer, and possibly encrypt or sign the traffic as appropriate. This should be compared with known data (e.g. the peer ID) to authenticate the peer and avoid man-in-the-middle attacks.
 
-The initial transport implementation will be a port of the current MConn protocol currently used by Tendermint, and should be backwards-compatible at the wire level. This will be followed by an in-memory transport for testing, and a QUIC transport that may eventually replace MConn.
+The initial transport implementation will be a port of the current MConn protocol currently used by Tendermint, and should be backwards-compatible at the wire level as far as possible. This will be followed by an in-memory transport for testing, and a QUIC transport that may eventually replace MConn.
 
 The `Transport` interface is:
 
@@ -483,7 +483,7 @@ The existing P2P stack should be gradually migrated towards this design. The eas
 
 7. Consider rewriting and/or cleaning up reactors and other P2P-related code to make better use of the new abstractions.
 
-A note on backwards-compatibility: the current MConn protocol takes whole messages expressed as byte slices and splits them up into `PacketMsg` messages, where the final packet of a message has `PacketMsg.EOF` set. In order to maintain wire-compatibility with this protocol, the MConn transport needs to be aware of message boundaries, even though it does not care what the messages actually are. One way to handle this is to break abstraction boundaries and have the transport decode the input's length-prefixed message framing and use this to determine message boundaries. Then at some point in the future when we can break protocol compatibility we either remove the MConn protocol completely or drop the `PacketMsg.EOF` field and rely on the length-prefix framing.
+A note on backwards-compatibility: the current MConn protocol takes whole messages expressed as byte slices and splits them up into `PacketMsg` messages, where the final packet of a message has `PacketMsg.EOF` set. In order to maintain wire-compatibility with this protocol, the MConn transport needs to be aware of message boundaries, even though it does not care what the messages actually are. One way to handle this is to break abstraction boundaries and have the transport decode the input's length-prefixed message framing and use this to determine message boundaries, unless we accept breaking the protocol here.
 
 Similarly, implementing channel handshakes with the current MConn protocol would require doing an initial connection handshake as today and use that information to "fake" the local channel handshake without it hitting the wire.
 
