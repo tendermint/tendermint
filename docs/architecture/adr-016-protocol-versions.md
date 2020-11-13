@@ -184,7 +184,6 @@ message ResponseInfo {
 ```
 
 The existing `version` field should be called `software_version` but we will leave it for now to reduce the number of breaking changes.
-Upon handshake, the node will check that the returned version string matches `TMCoreSemVer` else it will return an error. 
 
 We also need to be able to update versions throughout the life of a blockchain. The natural place to do this is EndBlock.
 
@@ -258,6 +257,13 @@ AppVersion is also included in the block Header and the NodeInfo.
 AppVersion essentially defines how the AppHash and LastResults are computed.
 
 ### RPCVersion
+
+The goal with the RPC, is to have something that can be robust to the developments of Tendermint over time yet 
+be a reliable interface for the entire lifespan of a blockchain
+
+There are two relatively distinct ways that the RPC can be modified and thus require a new version: 
+The first is that the block protocol changes. This means that the response and perhaps even the request
+is modified to support the new data structures. The second are the endpoints themselves.
 
 RPCVersion does not need to be included outside of the RPC. The `/status` endpoint will hold the version number so that external clients can simply query `/status` as part of their handshake with the rpc server. 
 
