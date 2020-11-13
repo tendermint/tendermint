@@ -1,6 +1,6 @@
 # Unreleased Changes
 
-## v0.34.0-rc6
+## v0.34.0-rc7
 
 Special thanks to external contributors on this release:
 
@@ -9,6 +9,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### BREAKING CHANGES
 
 - CLI/RPC/Config
+    - [config] \#5598 The `test_fuzz` and `test_fuzz_config` P2P settings have been removed. (@erikgrinaker)
 
 - Apps
 
@@ -35,4 +36,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [evidence] \#5574 Fix bug where node sends committed evidence to peer (@cmwaters)
 - [privval] \#5583 Make `Vote`, `Proposal` & `PubKey` non-nullable in Responses (@marbar3778)
 - [evidence] \#5610 Make it possible for abci evidence to be formed from tm evidence (@cmwaters)
+- [rpc] \#5660 Set `application/json` as the `Content-Type` header in RPC responses.
+- [types] \#5523 Change json naming of `PartSetHeader` within `BlockID` from `parts` to `part_set_header` (@marbar3778)
 - [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
