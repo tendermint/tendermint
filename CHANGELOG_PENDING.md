@@ -18,6 +18,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - Go API
 
+- [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
+
 - Blockchain Protocol
 
 ### FEATURES

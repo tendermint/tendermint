@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"syscall"
 	"testing"
 	"time"
 
@@ -47,10 +48,7 @@ func TestTrapSignal(t *testing.T) {
 		return
 	}
 
-	cmd := exec.Command(os.Args[0], "-test.run="+t.Name())
-	mockStderr := bytes.NewBufferString("")
-	cmd.Env = append(os.Environ(), "TM_TRAP_SIGNAL_TEST=1")
-	cmd.Stderr = mockStderr
+	cmd, _, mockStderr := newTestProgram(t, "TM_TRAP_SIGNAL_TEST")
 
 	err := cmd.Run()
 	if err == nil {
@@ -67,7 +65,6 @@ func TestTrapSignal(t *testing.T) {
 	}
 
 	t.Fatal("this error should not be triggered")
-
 }
 
 type mockLogger struct{}
@@ -80,10 +77,26 @@ func killer() {
 	tmos.TrapSignal(logger, func() { _, _ = fmt.Fprintf(os.Stderr, "exiting") })
 	time.Sleep(1 * time.Second)
 
-	// use Kill() to test SIGTERM
-	if err := tmos.Kill(); err != nil {
+	p, err := os.FindProcess(os.Getpid())
+	if err != nil {
+		panic(err)
+	}
+
+	if err := p.Signal(syscall.SIGTERM); err != nil {
 		panic(err)
 	}
 
 	time.Sleep(1 * time.Second)
+}
+
+func newTestProgram(t *testing.T, environVar string) (cmd *exec.Cmd, stdout *bytes.Buffer, stderr *bytes.Buffer) {
+	t.Helper()
+
+	cmd = exec.Command(os.Args[0], "-test.run="+t.Name())
+	stdout, stderr = bytes.NewBufferString(""), bytes.NewBufferString("")
+	cmd.Env = append(os.Environ(), fmt.Sprintf("%s=1", environVar))
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+
+	return
 }
