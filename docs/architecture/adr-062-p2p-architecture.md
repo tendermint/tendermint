@@ -257,7 +257,7 @@ type Channel struct {
     Out chan<- Envelope
 
     // Error is a channel for reporting peer errors to the router, typically used
-    // when peers send a malformed, invalid, or malignant message.
+    // when peers send an invalid or malignant message.
     Error chan<- PeerError
 }
 
@@ -277,21 +277,19 @@ type Envelope struct {
 }
 
 // PeerError is a peer error reported by a reactor via the Error channel. The
-// severity may cause the peer to be disconnected or banned depending on the
-// router's policy.
+// severity may cause the peer to be disconnected or banned depending on policy.
 type PeerError struct {
     PeerID   PeerID
     Err      error
     Severity PeerErrorSeverity
 }
 
-// PeerErrorSeverity determines the severity of a peer error, which may cause the
-// peer to be disconnected or banned as appropriate.
+// PeerErrorSeverity determines the severity of a peer error.
 type PeerErrorSeverity string
 
 const (
-    PeerErrorSeverityMinor    PeerErrorSeverity = "minor"    // Mostly ignored.
-    PeerErrorSeverityMajor    PeerErrorSeverity = "major"    // May disconnect.
+    PeerErrorSeverityLow      PeerErrorSeverity = "low"      // Mostly ignored.
+    PeerErrorSeverityHigh     PeerErrorSeverity = "high"     // May disconnect.
     PeerErrorSeverityCritical PeerErrorSeverity = "critical" // Ban.
 )
 ```
