@@ -155,6 +155,7 @@ message ResponseFlush {}
 message ResponseInfo {
   string data = 1;
 
+  // this is the software version of the application. TODO: remove?
   string version     = 2;
   uint64 app_version = 3;
 

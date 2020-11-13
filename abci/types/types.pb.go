@@ -1529,7 +1529,8 @@ func (m *ResponseFlush) XXX_DiscardUnknown() {
 var xxx_messageInfo_ResponseFlush proto.InternalMessageInfo
 
 type ResponseInfo struct {
-	Data             string `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	Data string `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	// this is the software version of the application. TODO: remove?
 	Version          string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	AppVersion       uint64 `protobuf:"varint,3,opt,name=app_version,json=appVersion,proto3" json:"app_version,omitempty"`
 	LastBlockHeight  int64  `protobuf:"varint,4,opt,name=last_block_height,json=lastBlockHeight,proto3" json:"last_block_height,omitempty"`
