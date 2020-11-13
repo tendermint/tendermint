@@ -4,6 +4,8 @@
 
 - 2020-11-09: Initial version (@erikgrinaker)
 
+- 2020-11-13: Remove stream IDs (@erikgrinaker)
+
 ## Context
 
 In [ADR 061](adr-061-p2p-refactor-scope.md) we decided to refactor the peer-to-peer (P2P) networking stack. The first phase is to redesign and refactor the internal P2P architecture, while retaining protocol compatibility as far as possible.
@@ -116,17 +118,15 @@ Non-networked endpoints (without an IP address) are considered local, and will o
 
 A connection represents an established transport connection between two endpoints (and thus two nodes), which can be used to exchange bytes via logically distinct IO streams. Connections are set up either via `Transport.Dial()` (outbound) or `Transport.Accept()` (inbound). The caller is responsible for verifying the remote peer's public key as returned by the connection, following the current MConn protocol behavior for now.
 
-Data is exchanged over IO streams created with `Connection.Stream()` using an arbitrary `StreamID`. These implement the standard Go `io.Reader` and `io.Writer` interfaces to read and write bytes. Transports are free to choose how to implement such streams, e.g. by taking advantage of native stream support in the underlying protocol or through multiplexing.
+Data is exchanged over IO streams created with `Connection.Stream()`. These implement the standard Go `io.Reader` and `io.Writer` interfaces to read and write bytes. Transports are free to choose how to implement such streams, e.g. by taking advantage of native stream support in the underlying protocol or through multiplexing.
 
 `Connection` and the related `Stream` interfaces are:
 
 ```go
 // Connection represents an established connection between two endpoints.
 type Connection interface {
-    // Stream opens a logically distinct IO stream within the connection,
-    // using an arbitrary stream ID. The stream must be created before it
-    // can receive data, and must be closed before the ID can be reused.
-    Stream(StreamID) Stream
+    // Stream creates a new logically distinct IO stream within the connection.
+    Stream() (Stream, error)
 
     // LocalEndpoint returns the local endpoint for the connection.
     LocalEndpoint() Endpoint
@@ -140,9 +140,6 @@ type Connection interface {
     // Close closes the connection.
     Close() error
 }
-
-// StreamID is an arbitrary stream ID.
-type StreamID uint8
 
 // Stream represents a single logical IO stream within a connection.
 type Stream interface {
@@ -260,8 +257,8 @@ type Channel struct {
 // cause Channel.In to be closed when appropriate. The ID can then be reused.
 func (c *Channel) Close() error { return nil }
 
-// ChannelID is an arbitrary channel ID, and maps directly onto a stream ID.
-type ChannelID StreamID
+// ChannelID is an arbitrary channel ID.
+type ChannelID uint16
 
 // Envelope specifies the message receiver and sender.
 type Envelope struct {
@@ -272,7 +269,7 @@ type Envelope struct {
 }
 ```
 
-A channel can reach any connected peer, and is implemented using transport streams against each individual peer (with `StreamID` equal to `ChannelID`). The channel will automatically (un)marshal Protobuf to byte slices and use length-prefixed framing (the de facto standard for Protobuf streams) when writing them to the stream.
+A channel can reach any connected peer, and is implemented using transport streams against each individual peer, with an initial handshake to exchange the channel ID and any other metadata. The channel will automatically (un)marshal Protobuf to byte slices and use length-prefixed framing (the de facto standard for Protobuf streams) when writing them to the stream.
 
 Message scheduling and queueing is left as an implementation detail, and can use any number of algorithms such as FIFO, round-robin, priority queues, etc. Since message delivery is not guaranteed, both inbound and outbound messages may be dropped, buffered, or blocked as appropriate.
 
