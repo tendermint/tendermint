@@ -15,11 +15,15 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/libs/timer"
+	"golang.org/x/net/context"
 )
 
 const (
-	reqQueueSize    = 256 // TODO make configurable
-	flushThrottleMS = 20  // Don't wait longer than...
+	// Max number of queued requests
+	// (memory: 256MB max assuming 1MB transactions)
+	reqQueueSize = 256
+	// Don't wait longer than...
+	flushThrottleMS = 20
 )
 
 // This is goroutine-safe, but users should beware that the application in
@@ -221,198 +225,222 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 
 //----------------------------------------
 
-func (cli *socketClient) EchoAsync(msg string) *ReqRes {
-	return cli.queueRequest(types.ToRequestEcho(msg))
+func (cli *socketClient) EchoAsync(msg string) (*ReqRes, error) {
+	return cli.queueRequestAsync(types.ToRequestEcho(msg))
 }
 
-func (cli *socketClient) FlushAsync() *ReqRes {
-	return cli.queueRequest(types.ToRequestFlush())
+func (cli *socketClient) FlushAsync() (*ReqRes, error) {
+	return cli.queueRequestAsync(types.ToRequestFlush())
 }
 
-func (cli *socketClient) InfoAsync(req types.RequestInfo) *ReqRes {
-	return cli.queueRequest(types.ToRequestInfo(req))
+func (cli *socketClient) InfoAsync(req types.RequestInfo) (*ReqRes, error) {
+	return cli.queueRequestAsync(types.ToRequestInfo(req))
 }
 
-func (cli *socketClient) DeliverTxAsync(req types.RequestDeliverTx) *ReqRes {
-	return cli.queueRequest(types.ToRequestDeliverTx(req))
+func (cli *socketClient) DeliverTxAsync(req types.RequestDeliverTx) (*ReqRes, error) {
+	return cli.queueRequestAsync(types.ToRequestDeliverTx(req))
 }
 
-func (cli *socketClient) CheckTxAsync(req types.RequestCheckTx) *ReqRes {
-	return cli.queueRequest(types.ToRequestCheckTx(req))
+func (cli *socketClient) CheckTxAsync(req types.RequestCheckTx) (*ReqRes, error) {
+	return cli.queueRequestAsync(types.ToRequestCheckTx(req))
 }
 
-func (cli *socketClient) QueryAsync(req types.RequestQuery) *ReqRes {
-	return cli.queueRequest(types.ToRequestQuery(req))
+func (cli *socketClient) QueryAsync(req types.RequestQuery) (*ReqRes, error) {
+	return cli.queueRequestAsync(types.ToRequestQuery(req))
 }
 
-func (cli *socketClient) CommitAsync() *ReqRes {
-	return cli.queueRequest(types.ToRequestCommit())
+func (cli *socketClient) CommitAsync() (*ReqRes, error) {
+	return cli.queueRequestAsync(types.ToRequestCommit())
 }
 
-func (cli *socketClient) InitChainAsync(req types.RequestInitChain) *ReqRes {
-	return cli.queueRequest(types.ToRequestInitChain(req))
+func (cli *socketClient) InitChainAsync(req types.RequestInitChain) (*ReqRes, error) {
+	return cli.queueRequestAsync(types.ToRequestInitChain(req))
 }
 
-func (cli *socketClient) BeginBlockAsync(req types.RequestBeginBlock) *ReqRes {
-	return cli.queueRequest(types.ToRequestBeginBlock(req))
+func (cli *socketClient) BeginBlockAsync(req types.RequestBeginBlock) (*ReqRes, error) {
+	return cli.queueRequestAsync(types.ToRequestBeginBlock(req))
 }
 
-func (cli *socketClient) EndBlockAsync(req types.RequestEndBlock) *ReqRes {
-	return cli.queueRequest(types.ToRequestEndBlock(req))
+func (cli *socketClient) EndBlockAsync(req types.RequestEndBlock) (*ReqRes, error) {
+	return cli.queueRequestAsync(types.ToRequestEndBlock(req))
 }
 
-func (cli *socketClient) ListSnapshotsAsync(req types.RequestListSnapshots) *ReqRes {
-	return cli.queueRequest(types.ToRequestListSnapshots(req))
+func (cli *socketClient) ListSnapshotsAsync(req types.RequestListSnapshots) (*ReqRes, error) {
+	return cli.queueRequestAsync(types.ToRequestListSnapshots(req))
 }
 
-func (cli *socketClient) OfferSnapshotAsync(req types.RequestOfferSnapshot) *ReqRes {
-	return cli.queueRequest(types.ToRequestOfferSnapshot(req))
+func (cli *socketClient) OfferSnapshotAsync(req types.RequestOfferSnapshot) (*ReqRes, error) {
+	return cli.queueRequestAsync(types.ToRequestOfferSnapshot(req))
 }
 
-func (cli *socketClient) LoadSnapshotChunkAsync(req types.RequestLoadSnapshotChunk) *ReqRes {
-	return cli.queueRequest(types.ToRequestLoadSnapshotChunk(req))
+func (cli *socketClient) LoadSnapshotChunkAsync(req types.RequestLoadSnapshotChunk) (*ReqRes, error) {
+	return cli.queueRequestAsync(types.ToRequestLoadSnapshotChunk(req))
 }
 
-func (cli *socketClient) ApplySnapshotChunkAsync(req types.RequestApplySnapshotChunk) *ReqRes {
-	return cli.queueRequest(types.ToRequestApplySnapshotChunk(req))
+func (cli *socketClient) ApplySnapshotChunkAsync(req types.RequestApplySnapshotChunk) (*ReqRes, error) {
+	return cli.queueRequestAsync(types.ToRequestApplySnapshotChunk(req))
 }
 
 //----------------------------------------
 
-func (cli *socketClient) FlushSync() error {
-	reqRes := cli.queueRequest(types.ToRequestFlush())
+func (cli *socketClient) FlushSync(ctx context.Context) error {
+	reqRes, err := cli.queueRequest(ctx, types.ToRequestFlush(), true)
+	if err != nil {
+		return queueErr(err)
+	}
+
 	if err := cli.Error(); err != nil {
 		return err
 	}
-	reqRes.Wait() // NOTE: if we don't flush the queue, its possible to get stuck here
-	return cli.Error()
+
+	gotResp := make(chan struct{})
+	go func() {
+		// NOTE: if we don't flush the queue, its possible to get stuck here
+		reqRes.Wait()
+		close(gotResp)
+	}()
+
+	select {
+	case <-gotResp:
+		return cli.Error()
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
-func (cli *socketClient) EchoSync(msg string) (*types.ResponseEcho, error) {
-	reqres := cli.queueRequest(types.ToRequestEcho(msg))
-	if err := cli.FlushSync(); err != nil {
+func (cli *socketClient) EchoSync(ctx context.Context, msg string) (*types.ResponseEcho, error) {
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestEcho(msg))
+	if err != nil {
 		return nil, err
 	}
-
-	return reqres.Response.GetEcho(), cli.Error()
+	return reqres.Response.GetEcho(), nil
 }
 
-func (cli *socketClient) InfoSync(req types.RequestInfo) (*types.ResponseInfo, error) {
-	reqres := cli.queueRequest(types.ToRequestInfo(req))
-	if err := cli.FlushSync(); err != nil {
+func (cli *socketClient) InfoSync(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestInfo(req))
+	if err != nil {
 		return nil, err
 	}
-
-	return reqres.Response.GetInfo(), cli.Error()
+	return reqres.Response.GetInfo(), nil
 }
 
-func (cli *socketClient) DeliverTxSync(req types.RequestDeliverTx) (*types.ResponseDeliverTx, error) {
-	reqres := cli.queueRequest(types.ToRequestDeliverTx(req))
-	if err := cli.FlushSync(); err != nil {
+func (cli *socketClient) DeliverTxSync(ctx context.Context, req types.RequestDeliverTx) (*types.ResponseDeliverTx, error) {
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestDeliverTx(req))
+	if err != nil {
 		return nil, err
 	}
-
-	return reqres.Response.GetDeliverTx(), cli.Error()
+	return reqres.Response.GetDeliverTx(), nil
 }
 
-func (cli *socketClient) CheckTxSync(req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
-	reqres := cli.queueRequest(types.ToRequestCheckTx(req))
-	if err := cli.FlushSync(); err != nil {
+func (cli *socketClient) CheckTxSync(ctx context.Context, req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestCheckTx(req))
+	if err != nil {
 		return nil, err
 	}
-
-	return reqres.Response.GetCheckTx(), cli.Error()
+	return reqres.Response.GetCheckTx(), nil
 }
 
-func (cli *socketClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {
-	reqres := cli.queueRequest(types.ToRequestQuery(req))
-	if err := cli.FlushSync(); err != nil {
+func (cli *socketClient) QuerySync(ctx context.Context, req types.RequestQuery) (*types.ResponseQuery, error) {
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestQuery(req))
+	if err != nil {
 		return nil, err
 	}
-
-	return reqres.Response.GetQuery(), cli.Error()
+	return reqres.Response.GetQuery(), nil
 }
 
-func (cli *socketClient) CommitSync() (*types.ResponseCommit, error) {
-	reqres := cli.queueRequest(types.ToRequestCommit())
-	if err := cli.FlushSync(); err != nil {
+func (cli *socketClient) CommitSync(ctx context.Context) (*types.ResponseCommit, error) {
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestCommit())
+	if err != nil {
 		return nil, err
 	}
-
-	return reqres.Response.GetCommit(), cli.Error()
+	return reqres.Response.GetCommit(), nil
 }
 
-func (cli *socketClient) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {
-	reqres := cli.queueRequest(types.ToRequestInitChain(req))
-	if err := cli.FlushSync(); err != nil {
+func (cli *socketClient) InitChainSync(ctx context.Context, req types.RequestInitChain) (*types.ResponseInitChain, error) {
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestInitChain(req))
+	if err != nil {
 		return nil, err
 	}
-
-	return reqres.Response.GetInitChain(), cli.Error()
+	return reqres.Response.GetInitChain(), nil
 }
 
-func (cli *socketClient) BeginBlockSync(req types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
-	reqres := cli.queueRequest(types.ToRequestBeginBlock(req))
-	if err := cli.FlushSync(); err != nil {
+func (cli *socketClient) BeginBlockSync(ctx context.Context, req types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestBeginBlock(req))
+	if err != nil {
 		return nil, err
 	}
-
-	return reqres.Response.GetBeginBlock(), cli.Error()
+	return reqres.Response.GetBeginBlock(), nil
 }
 
-func (cli *socketClient) EndBlockSync(req types.RequestEndBlock) (*types.ResponseEndBlock, error) {
-	reqres := cli.queueRequest(types.ToRequestEndBlock(req))
-	if err := cli.FlushSync(); err != nil {
+func (cli *socketClient) EndBlockSync(ctx context.Context, req types.RequestEndBlock) (*types.ResponseEndBlock, error) {
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestEndBlock(req))
+	if err != nil {
 		return nil, err
 	}
-
-	return reqres.Response.GetEndBlock(), cli.Error()
+	return reqres.Response.GetEndBlock(), nil
 }
 
-func (cli *socketClient) ListSnapshotsSync(req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
-	reqres := cli.queueRequest(types.ToRequestListSnapshots(req))
-	if err := cli.FlushSync(); err != nil {
+func (cli *socketClient) ListSnapshotsSync(ctx context.Context, req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestListSnapshots(req))
+	if err != nil {
 		return nil, err
 	}
-
-	return reqres.Response.GetListSnapshots(), cli.Error()
+	return reqres.Response.GetListSnapshots(), nil
 }
 
-func (cli *socketClient) OfferSnapshotSync(req types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
-	reqres := cli.queueRequest(types.ToRequestOfferSnapshot(req))
-	if err := cli.FlushSync(); err != nil {
+func (cli *socketClient) OfferSnapshotSync(ctx context.Context, req types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestOfferSnapshot(req))
+	if err != nil {
 		return nil, err
 	}
-
-	return reqres.Response.GetOfferSnapshot(), cli.Error()
+	return reqres.Response.GetOfferSnapshot(), nil
 }
 
 func (cli *socketClient) LoadSnapshotChunkSync(
+	ctx context.Context,
 	req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
-	reqres := cli.queueRequest(types.ToRequestLoadSnapshotChunk(req))
-	if err := cli.FlushSync(); err != nil {
+
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestLoadSnapshotChunk(req))
+	if err != nil {
 		return nil, err
 	}
-
-	return reqres.Response.GetLoadSnapshotChunk(), cli.Error()
+	return reqres.Response.GetLoadSnapshotChunk(), nil
 }
 
 func (cli *socketClient) ApplySnapshotChunkSync(
+	ctx context.Context,
 	req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
-	reqres := cli.queueRequest(types.ToRequestApplySnapshotChunk(req))
-	if err := cli.FlushSync(); err != nil {
+
+	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestApplySnapshotChunk(req))
+	if err != nil {
 		return nil, err
 	}
-	return reqres.Response.GetApplySnapshotChunk(), cli.Error()
+	return reqres.Response.GetApplySnapshotChunk(), nil
 }
 
 //----------------------------------------
 
-func (cli *socketClient) queueRequest(req *types.Request) *ReqRes {
+// queueRequest enqueues req onto the queue. If the queue is full, it ether
+// returns an error (sync=false) or blocks (sync=true). ctx only works when
+// sync=true.
+//
+// The caller is responsible for checking cli.Error.
+func (cli *socketClient) queueRequest(ctx context.Context, req *types.Request, sync bool) (*ReqRes, error) {
 	reqres := NewReqRes(req)
 
-	// TODO: set cli.err if reqQueue times out
-	cli.reqQueue <- reqres
+	if sync {
+		select {
+		case cli.reqQueue <- reqres:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	} else {
+		select {
+		case cli.reqQueue <- reqres:
+		default:
+			return nil, errors.New("buffer is full")
+		}
+	}
 
 	// Maybe auto-flush, or unset auto-flush
 	switch req.Value.(type) {
@@ -422,7 +450,41 @@ func (cli *socketClient) queueRequest(req *types.Request) *ReqRes {
 		cli.flushTimer.Set()
 	}
 
-	return reqres
+	return reqres, nil
+}
+
+func (cli *socketClient) queueRequestAsync(
+	req *types.Request,
+) (*ReqRes, error) {
+
+	// NOTE: context is ignored
+	reqres, err := cli.queueRequest(context.TODO(), req, false)
+	if err != nil {
+		return nil, queueErr(err)
+	}
+
+	return reqres, cli.Error()
+}
+
+func (cli *socketClient) queueRequestAndFlushSync(
+	ctx context.Context,
+	req *types.Request,
+) (*ReqRes, error) {
+
+	reqres, err := cli.queueRequest(ctx, req, true)
+	if err != nil {
+		return nil, queueErr(err)
+	}
+
+	if err := cli.FlushSync(ctx); err != nil {
+		return nil, err
+	}
+
+	return reqres, cli.Error()
+}
+
+func queueErr(e error) error {
+	return fmt.Errorf("can't queue req: %w", err)
 }
 
 func (cli *socketClient) flushQueue() {
@@ -489,12 +551,10 @@ func (cli *socketClient) stopForError(err error) {
 	}
 
 	cli.mtx.Lock()
-	if cli.err == nil {
-		cli.err = err
-	}
+	cli.err = err
 	cli.mtx.Unlock()
 
-	cli.Logger.Error(fmt.Sprintf("Stopping abci.socketClient for error: %v", err.Error()))
+	cli.Logger.Info("Stopping abci.socketClient", "reason", err)
 	if err := cli.Stop(); err != nil {
 		cli.Logger.Error("Error stopping abci.socketClient", "err", err)
 	}

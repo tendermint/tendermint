@@ -7,6 +7,7 @@ import (
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -27,35 +28,35 @@ type Client interface {
 	SetResponseCallback(Callback)
 	Error() error
 
-	FlushAsync() *ReqRes
-	EchoAsync(msg string) *ReqRes
-	InfoAsync(types.RequestInfo) *ReqRes
-	DeliverTxAsync(types.RequestDeliverTx) *ReqRes
-	CheckTxAsync(types.RequestCheckTx) *ReqRes
-	QueryAsync(types.RequestQuery) *ReqRes
-	CommitAsync() *ReqRes
-	InitChainAsync(types.RequestInitChain) *ReqRes
-	BeginBlockAsync(types.RequestBeginBlock) *ReqRes
-	EndBlockAsync(types.RequestEndBlock) *ReqRes
-	ListSnapshotsAsync(types.RequestListSnapshots) *ReqRes
-	OfferSnapshotAsync(types.RequestOfferSnapshot) *ReqRes
-	LoadSnapshotChunkAsync(types.RequestLoadSnapshotChunk) *ReqRes
-	ApplySnapshotChunkAsync(types.RequestApplySnapshotChunk) *ReqRes
+	FlushAsync() (*ReqRes, error)
+	EchoAsync(msg string) (*ReqRes, error)
+	InfoAsync(types.RequestInfo) (*ReqRes, error)
+	DeliverTxAsync(types.RequestDeliverTx) (*ReqRes, error)
+	CheckTxAsync(types.RequestCheckTx) (*ReqRes, error)
+	QueryAsync(types.RequestQuery) (*ReqRes, error)
+	CommitAsync() (*ReqRes, error)
+	InitChainAsync(types.RequestInitChain) (*ReqRes, error)
+	BeginBlockAsync(types.RequestBeginBlock) (*ReqRes, error)
+	EndBlockAsync(types.RequestEndBlock) (*ReqRes, error)
+	ListSnapshotsAsync(types.RequestListSnapshots) (*ReqRes, error)
+	OfferSnapshotAsync(types.RequestOfferSnapshot) (*ReqRes, error)
+	LoadSnapshotChunkAsync(types.RequestLoadSnapshotChunk) (*ReqRes, error)
+	ApplySnapshotChunkAsync(types.RequestApplySnapshotChunk) (*ReqRes, error)
 
-	FlushSync() error
-	EchoSync(msg string) (*types.ResponseEcho, error)
-	InfoSync(types.RequestInfo) (*types.ResponseInfo, error)
-	DeliverTxSync(types.RequestDeliverTx) (*types.ResponseDeliverTx, error)
-	CheckTxSync(types.RequestCheckTx) (*types.ResponseCheckTx, error)
-	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
-	CommitSync() (*types.ResponseCommit, error)
-	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
-	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
-	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
-	ListSnapshotsSync(types.RequestListSnapshots) (*types.ResponseListSnapshots, error)
-	OfferSnapshotSync(types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error)
-	LoadSnapshotChunkSync(types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error)
-	ApplySnapshotChunkSync(types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error)
+	FlushSync(context.Context) error
+	EchoSync(ctx context.Context, msg string) (*types.ResponseEcho, error)
+	InfoSync(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
+	DeliverTxSync(context.Context, types.RequestDeliverTx) (*types.ResponseDeliverTx, error)
+	CheckTxSync(context.Context, types.RequestCheckTx) (*types.ResponseCheckTx, error)
+	QuerySync(context.Context, types.RequestQuery) (*types.ResponseQuery, error)
+	CommitSync(context.Context) (*types.ResponseCommit, error)
+	InitChainSync(context.Context, types.RequestInitChain) (*types.ResponseInitChain, error)
+	BeginBlockSync(context.Context, types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
+	EndBlockSync(context.Context, types.RequestEndBlock) (*types.ResponseEndBlock, error)
+	ListSnapshotsSync(context.Context, types.RequestListSnapshots) (*types.ResponseListSnapshots, error)
+	OfferSnapshotSync(context.Context, types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error)
+	LoadSnapshotChunkSync(context.Context, types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error)
+	ApplySnapshotChunkSync(context.Context, types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error)
 }
 
 //----------------------------------------
