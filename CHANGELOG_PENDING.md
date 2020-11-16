@@ -36,5 +36,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [privval] \#5583 Make `Vote`, `Proposal` & `PubKey` non-nullable in Responses (@marbar3778)
 - [evidence] \#5610 Make it possible for abci evidence to be formed from tm evidence (@cmwaters)
 - [rpc] \#5660 Set `application/json` as the `Content-Type` header in RPC responses.
-- [types] \#5523 Change json naming of `PartSetHeader` within `BlockID` from `parts` to `part_set_header` (@marbar3778)
 - [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
