@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"net/url"
@@ -16,6 +17,11 @@ import (
 
 // PeerID is a unique peer ID, generally expressed in hex form.
 type PeerID []byte
+
+// String implements the fmt.Stringer interface for the PeerID type.
+func (pid PeerID) String() string {
+	return hex.EncodeToString(pid)
+}
 
 // PeerAddress is a peer address URL. The User field, if set, gives the
 // hex-encoded remote PeerID, which should be verified with the remote peer's
