@@ -100,34 +100,146 @@ func (m *Block) GetLastCommit() *Commit {
 	return nil
 }
 
+// TODO: Remove later
+type BlockTestOne struct {
+	FirstField  string `protobuf:"bytes,1,opt,name=firstField,proto3" json:"firstField,omitempty"`
+	SecondField string `protobuf:"bytes,2,opt,name=secondField,proto3" json:"secondField,omitempty"`
+}
+
+func (m *BlockTestOne) Reset()         { *m = BlockTestOne{} }
+func (m *BlockTestOne) String() string { return proto.CompactTextString(m) }
+func (*BlockTestOne) ProtoMessage()    {}
+func (*BlockTestOne) Descriptor() ([]byte, []int) {
+	return fileDescriptor_70840e82f4357ab1, []int{1}
+}
+func (m *BlockTestOne) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *BlockTestOne) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_BlockTestOne.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *BlockTestOne) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockTestOne.Merge(m, src)
+}
+func (m *BlockTestOne) XXX_Size() int {
+	return m.Size()
+}
+func (m *BlockTestOne) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockTestOne.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_BlockTestOne proto.InternalMessageInfo
+
+func (m *BlockTestOne) GetFirstField() string {
+	if m != nil {
+		return m.FirstField
+	}
+	return ""
+}
+
+func (m *BlockTestOne) GetSecondField() string {
+	if m != nil {
+		return m.SecondField
+	}
+	return ""
+}
+
+// TODO: Remove later
+type BlockTestTwo struct {
+	FirstField string `protobuf:"bytes,1,opt,name=firstField,proto3" json:"firstField,omitempty"`
+	ThirdField string `protobuf:"bytes,100,opt,name=thirdField,proto3" json:"thirdField,omitempty"`
+}
+
+func (m *BlockTestTwo) Reset()         { *m = BlockTestTwo{} }
+func (m *BlockTestTwo) String() string { return proto.CompactTextString(m) }
+func (*BlockTestTwo) ProtoMessage()    {}
+func (*BlockTestTwo) Descriptor() ([]byte, []int) {
+	return fileDescriptor_70840e82f4357ab1, []int{2}
+}
+func (m *BlockTestTwo) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *BlockTestTwo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_BlockTestTwo.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *BlockTestTwo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BlockTestTwo.Merge(m, src)
+}
+func (m *BlockTestTwo) XXX_Size() int {
+	return m.Size()
+}
+func (m *BlockTestTwo) XXX_DiscardUnknown() {
+	xxx_messageInfo_BlockTestTwo.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_BlockTestTwo proto.InternalMessageInfo
+
+func (m *BlockTestTwo) GetFirstField() string {
+	if m != nil {
+		return m.FirstField
+	}
+	return ""
+}
+
+func (m *BlockTestTwo) GetThirdField() string {
+	if m != nil {
+		return m.ThirdField
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*Block)(nil), "tendermint.types.Block")
+	proto.RegisterType((*BlockTestOne)(nil), "tendermint.types.BlockTestOne")
+	proto.RegisterType((*BlockTestTwo)(nil), "tendermint.types.BlockTestTwo")
 }
 
 func init() { proto.RegisterFile("tendermint/types/block.proto", fileDescriptor_70840e82f4357ab1) }
 
 var fileDescriptor_70840e82f4357ab1 = []byte{
-	// 310 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x29, 0x49, 0xcd, 0x4b,
-	0x49, 0x2d, 0xca, 0xcd, 0xcc, 0x2b, 0xd1, 0x2f, 0xa9, 0x2c, 0x48, 0x2d, 0xd6, 0x4f, 0xca, 0xc9,
-	0x4f, 0xce, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x12, 0x40, 0xc8, 0xea, 0x81, 0x65, 0xa5,
-	0x44, 0xd2, 0xf3, 0xd3, 0xf3, 0xc1, 0x92, 0xfa, 0x20, 0x16, 0x44, 0x9d, 0x14, 0xa6, 0x29, 0x60,
-	0x12, 0x2a, 0x2b, 0x8f, 0x21, 0x9b, 0x5a, 0x96, 0x99, 0x92, 0x9a, 0x97, 0x9c, 0x0a, 0x51, 0xa0,
-	0xb4, 0x97, 0x89, 0x8b, 0xd5, 0x09, 0x64, 0xad, 0x90, 0x19, 0x17, 0x5b, 0x46, 0x6a, 0x62, 0x4a,
-	0x6a, 0x91, 0x04, 0xa3, 0x02, 0xa3, 0x06, 0xb7, 0x91, 0x84, 0x1e, 0xba, 0x0b, 0xf4, 0x3c, 0xc0,
-	0xf2, 0x4e, 0x2c, 0x27, 0xee, 0xc9, 0x33, 0x04, 0x41, 0x55, 0x0b, 0x19, 0x70, 0xb1, 0xa4, 0x24,
-	0x96, 0x24, 0x4a, 0x30, 0x81, 0x75, 0x89, 0x61, 0xea, 0x72, 0x49, 0x2c, 0x49, 0x84, 0xea, 0x01,
-	0xab, 0x14, 0xf2, 0xe5, 0xe2, 0x4f, 0xce, 0x2f, 0x4a, 0x8d, 0x4f, 0xce, 0x48, 0xcc, 0xcc, 0x8b,
-	0x07, 0x59, 0x2e, 0x91, 0x02, 0xd6, 0x2c, 0x8f, 0xa9, 0xd9, 0x39, 0xbf, 0x28, 0xd5, 0x19, 0xa4,
-	0xce, 0x27, 0x3f, 0x39, 0x1b, 0x6c, 0x0a, 0x63, 0x10, 0x6f, 0x32, 0xb2, 0xa0, 0x90, 0x03, 0x17,
-	0x07, 0xcc, 0x53, 0x12, 0xcc, 0x60, 0x73, 0xe4, 0x30, 0xcd, 0x71, 0x85, 0xaa, 0xf0, 0xc9, 0x2c,
-	0x2e, 0x81, 0x3a, 0x06, 0xae, 0x4b, 0xc8, 0x92, 0x8b, 0x3b, 0x27, 0xb1, 0xb8, 0x24, 0x3e, 0x39,
-	0x3f, 0x37, 0x37, 0xb3, 0x44, 0x82, 0x05, 0x97, 0xff, 0x9d, 0xc1, 0xf2, 0x41, 0x5c, 0x20, 0xc5,
-	0x10, 0xb6, 0x53, 0xe0, 0x89, 0x47, 0x72, 0x8c, 0x17, 0x1e, 0xc9, 0x31, 0x3e, 0x78, 0x24, 0xc7,
-	0x38, 0xe1, 0xb1, 0x1c, 0xc3, 0x85, 0xc7, 0x72, 0x0c, 0x37, 0x1e, 0xcb, 0x31, 0x44, 0x99, 0xa7,
-	0x67, 0x96, 0x64, 0x94, 0x26, 0xe9, 0x25, 0xe7, 0xe7, 0xea, 0x23, 0xc7, 0x02, 0x82, 0x09, 0x89,
-	0x4b, 0xf4, 0x18, 0x4a, 0x62, 0x03, 0x8b, 0x1b, 0x03, 0x02, 0x00, 0x00, 0xff, 0xff, 0x78, 0x38,
-	0x77, 0x84, 0x20, 0x02, 0x00, 0x00,
+	// 372 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x92, 0xcd, 0x4a, 0xc3, 0x40,
+	0x14, 0x85, 0x93, 0x5a, 0x8b, 0x4e, 0x15, 0x65, 0x10, 0x09, 0x45, 0xa6, 0xa5, 0x2b, 0x57, 0x89,
+	0x28, 0x28, 0xee, 0xa4, 0x55, 0x71, 0x51, 0xff, 0x42, 0x57, 0x6e, 0x4a, 0x3a, 0x73, 0x6d, 0x86,
+	0x36, 0x99, 0x92, 0x8c, 0x8a, 0x6f, 0xe1, 0x0b, 0xb9, 0xef, 0xb2, 0x4b, 0x57, 0x22, 0xed, 0x8b,
+	0x48, 0x6e, 0xa2, 0x0d, 0x0d, 0xe2, 0x26, 0x5c, 0xce, 0xf9, 0xce, 0xc9, 0xcc, 0x70, 0xc9, 0x9e,
+	0x86, 0x50, 0x40, 0x14, 0xc8, 0x50, 0x3b, 0xfa, 0x75, 0x0c, 0xb1, 0xd3, 0x1f, 0x29, 0x3e, 0xb4,
+	0xc7, 0x91, 0xd2, 0x8a, 0x6e, 0x2f, 0x5c, 0x1b, 0xdd, 0xda, 0xce, 0x40, 0x0d, 0x14, 0x9a, 0x4e,
+	0x32, 0xa5, 0x5c, 0xad, 0xd8, 0x82, 0xdf, 0xcc, 0xad, 0x17, 0x5c, 0x78, 0x96, 0x02, 0x42, 0x0e,
+	0x29, 0xd0, 0x7c, 0x2f, 0x91, 0xd5, 0x56, 0xf2, 0x5b, 0x7a, 0x4c, 0x2a, 0x3e, 0x78, 0x02, 0x22,
+	0xcb, 0x6c, 0x98, 0xfb, 0xd5, 0x43, 0xcb, 0x5e, 0x3e, 0x81, 0x7d, 0x85, 0x7e, 0xab, 0x3c, 0xf9,
+	0xac, 0x1b, 0x6e, 0x46, 0xd3, 0x03, 0x52, 0x16, 0x9e, 0xf6, 0xac, 0x12, 0xa6, 0x76, 0x8b, 0xa9,
+	0x73, 0x4f, 0x7b, 0x59, 0x06, 0x49, 0x7a, 0x4d, 0xb6, 0xb8, 0x8a, 0xa0, 0xc7, 0x7d, 0x4f, 0x86,
+	0xbd, 0xe4, 0xe7, 0x96, 0xc0, 0x70, 0xbd, 0x18, 0x6e, 0xab, 0x08, 0xda, 0x09, 0xd7, 0x51, 0x7c,
+	0x88, 0x2d, 0xa6, 0xbb, 0xc9, 0xf3, 0x22, 0x3d, 0x23, 0x6b, 0x3f, 0x97, 0xb2, 0x56, 0xb0, 0x87,
+	0x15, 0x7b, 0x2e, 0x32, 0xa2, 0x23, 0x63, 0x9d, 0x1d, 0xe6, 0x37, 0x45, 0x4f, 0x49, 0x75, 0xe4,
+	0xc5, 0xba, 0xc7, 0x55, 0x10, 0x48, 0x6d, 0x95, 0xff, 0xba, 0x7f, 0x1b, 0x7d, 0x97, 0x24, 0x70,
+	0x3a, 0x37, 0xef, 0xc8, 0x06, 0x3e, 0x5f, 0x17, 0x62, 0x7d, 0x1b, 0x02, 0x65, 0x84, 0x3c, 0xca,
+	0x28, 0xd6, 0x97, 0x12, 0x46, 0x02, 0x5f, 0x72, 0xdd, 0xcd, 0x29, 0xb4, 0x41, 0xaa, 0x31, 0x70,
+	0x15, 0x8a, 0x14, 0x28, 0x21, 0x90, 0x97, 0x9a, 0x37, 0xb9, 0xc6, 0xee, 0x8b, 0xfa, 0xb7, 0x91,
+	0x11, 0xa2, 0x7d, 0x19, 0x65, 0x85, 0x22, 0xf5, 0x17, 0x4a, 0xeb, 0x7e, 0x32, 0x63, 0xe6, 0x74,
+	0xc6, 0xcc, 0xaf, 0x19, 0x33, 0xdf, 0xe6, 0xcc, 0x98, 0xce, 0x99, 0xf1, 0x31, 0x67, 0xc6, 0xc3,
+	0xc9, 0x40, 0x6a, 0xff, 0xa9, 0x6f, 0x73, 0x15, 0x38, 0xf9, 0x3d, 0x59, 0x8c, 0xe9, 0xb6, 0x2d,
+	0xef, 0x50, 0xbf, 0x82, 0xfa, 0xd1, 0x77, 0x00, 0x00, 0x00, 0xff, 0xff, 0x25, 0xda, 0x2a, 0x4a,
+	0xc2, 0x02, 0x00, 0x00,
 }
 
 func (m *Block) Marshal() (dAtA []byte, err error) {
@@ -209,6 +321,82 @@ func (m *Block) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *BlockTestOne) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *BlockTestOne) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *BlockTestOne) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.SecondField) > 0 {
+		i -= len(m.SecondField)
+		copy(dAtA[i:], m.SecondField)
+		i = encodeVarintBlock(dAtA, i, uint64(len(m.SecondField)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.FirstField) > 0 {
+		i -= len(m.FirstField)
+		copy(dAtA[i:], m.FirstField)
+		i = encodeVarintBlock(dAtA, i, uint64(len(m.FirstField)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *BlockTestTwo) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *BlockTestTwo) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *BlockTestTwo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.ThirdField) > 0 {
+		i -= len(m.ThirdField)
+		copy(dAtA[i:], m.ThirdField)
+		i = encodeVarintBlock(dAtA, i, uint64(len(m.ThirdField)))
+		i--
+		dAtA[i] = 0x6
+		i--
+		dAtA[i] = 0xa2
+	}
+	if len(m.FirstField) > 0 {
+		i -= len(m.FirstField)
+		copy(dAtA[i:], m.FirstField)
+		i = encodeVarintBlock(dAtA, i, uint64(len(m.FirstField)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintBlock(dAtA []byte, offset int, v uint64) int {
 	offset -= sovBlock(v)
 	base := offset
@@ -238,6 +426,40 @@ func (m *Block) Size() (n int) {
 	}
 	if m.CoreChainLock != nil {
 		l = m.CoreChainLock.Size()
+		n += 2 + l + sovBlock(uint64(l))
+	}
+	return n
+}
+
+func (m *BlockTestOne) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.FirstField)
+	if l > 0 {
+		n += 1 + l + sovBlock(uint64(l))
+	}
+	l = len(m.SecondField)
+	if l > 0 {
+		n += 1 + l + sovBlock(uint64(l))
+	}
+	return n
+}
+
+func (m *BlockTestTwo) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.FirstField)
+	if l > 0 {
+		n += 1 + l + sovBlock(uint64(l))
+	}
+	l = len(m.ThirdField)
+	if l > 0 {
 		n += 2 + l + sovBlock(uint64(l))
 	}
 	return n
@@ -448,6 +670,240 @@ func (m *Block) Unmarshal(dAtA []byte) error {
 			if err := m.CoreChainLock.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipBlock(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthBlock
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthBlock
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *BlockTestOne) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowBlock
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: BlockTestOne: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: BlockTestOne: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FirstField", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBlock
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthBlock
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthBlock
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.FirstField = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SecondField", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBlock
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthBlock
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthBlock
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SecondField = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipBlock(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthBlock
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthBlock
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *BlockTestTwo) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowBlock
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: BlockTestTwo: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: BlockTestTwo: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FirstField", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBlock
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthBlock
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthBlock
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.FirstField = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 100:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ThirdField", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBlock
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthBlock
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthBlock
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ThirdField = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

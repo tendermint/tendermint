@@ -877,3 +877,34 @@ func TestBlockIDEquals(t *testing.T) {
 	assert.True(t, blockIDEmpty.Equals(blockIDEmpty))
 	assert.False(t, blockIDEmpty.Equals(blockIDDifferent))
 }
+
+// TODO: Remove later
+func TestProtoIndexGapCompatibility(t *testing.T) {
+	// Marshal the first message and unmarshal it with the second proto
+
+	protoOne := tmproto.BlockTestOne{FirstField: "hello", SecondField: "world!"}
+	protoOneBytes, err := protoOne.Marshal()
+	if err != nil {
+		panic("die")
+	}
+
+	protoTwo := tmproto.BlockTestTwo{}
+	protoTwo.Unmarshal(protoOneBytes)
+
+	assert.Equal(t, protoOne.FirstField, protoTwo.FirstField)
+	assert.Empty(t, protoTwo.ThirdField)
+
+	// Marshal the second message and unmarshal it with first proto
+
+	protoTwo.ThirdField = "from third"
+
+	protoTwoBytes, err := protoTwo.Marshal()
+
+	protoOneAgain := new(tmproto.BlockTestOne)
+
+	protoOneAgain.Unmarshal(protoTwoBytes)
+
+	assert.Equal(t, protoOneAgain.FirstField, protoTwo.FirstField)
+	assert.Empty(t, protoOneAgain.SecondField)
+}
+

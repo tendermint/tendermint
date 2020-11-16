@@ -14,3 +14,15 @@ message Block {
   tendermint.types.EvidenceList evidence    = 3 [(gogoproto.nullable) = false];
   Commit                        last_commit = 4;
 }
+
+// TODO: Remove later
+message BlockTestOne {
+  string firstField = 1;
+  string secondField = 2;
+}
+
+// TODO: Remove later
+message BlockTestTwo {
+  string firstField = 1;
+  string thirdField = 100;
+}
