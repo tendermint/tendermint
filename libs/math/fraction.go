@@ -3,6 +3,7 @@ package math
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -39,6 +40,9 @@ func ParseFraction(f string) (Fraction, error) {
 	}
 	if denominator == 0 {
 		return Fraction{}, errors.New("denominator can't be 0")
+	}
+	if numerator > math.MaxInt64 || denominator > math.MaxInt64 {
+		return Fraction{}, fmt.Errorf("value overflow, numerator and denominator must be less than %d", math.MaxInt64)
 	}
 	return Fraction{Numerator: numerator, Denominator: denominator}, nil
 }
