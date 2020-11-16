@@ -1,8 +1,10 @@
 package p2p
 
 import (
+	"context"
 	"fmt"
 	"net"
+	"net/url"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/cmap"
@@ -11,6 +13,76 @@ import (
 
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
+
+// PeerID is a unique peer ID, generally expressed in hex form.
+type PeerID []byte
+
+// PeerAddress is a peer address URL. The User field, if set, gives the
+// hex-encoded remote PeerID, which should be verified with the remote peer's
+// public key as returned by the connection.
+type PeerAddress url.URL
+
+// Resolve resolves a PeerAddress into a set of Endpoints, typically by
+// expanding out a DNS name in Host to its IP addresses. Field mapping:
+//
+//   Scheme → Endpoint.Protocol
+//   Host   → Endpoint.IP
+//   Port   → Endpoint.Port
+//   Path+Query+Fragment,Opaque → Endpoint.Path
+//
+func (a PeerAddress) Resolve(ctx context.Context) []Endpoint { return nil }
+
+// peer tracks internal status information about a peer.
+//
+// TODO: Rename once legacy p2p types are removed.
+// ref: https://github.com/tendermint/tendermint/issues/5670
+type peerInternal struct {
+	ID        PeerID
+	Status    PeerStatus
+	Priority  PeerPriority
+	Endpoints map[PeerAddress][]Endpoint // Resolved endpoints by address.
+}
+
+// PeerStatus specifies peer statuses.
+type PeerStatus string
+
+const (
+	PeerStatusNew     = "new"     // New peer which we haven't tried to contact yet.
+	PeerStatusUp      = "up"      // Peer which we have an active connection to.
+	PeerStatusDown    = "down"    // Peer which we're temporarily disconnected from.
+	PeerStatusRemoved = "removed" // Peer which has been removed.
+	PeerStatusBanned  = "banned"  // Peer which is banned for misbehavior.
+)
+
+// PeerPriority specifies peer priorities.
+type PeerPriority int
+
+const (
+	PeerPriorityNormal PeerPriority = iota + 1
+	PeerPriorityValidator
+	PeerPriorityPersistent
+)
+
+// PeerError is a peer error reported by a reactor via the Error channel. The
+// severity may cause the peer to be disconnected or banned depending on policy.
+type PeerError struct {
+	PeerID   PeerID
+	Err      error
+	Severity PeerErrorSeverity
+}
+
+// PeerErrorSeverity determines the severity of a peer error.
+type PeerErrorSeverity string
+
+const (
+	PeerErrorSeverityLow      PeerErrorSeverity = "low"      // Mostly ignored.
+	PeerErrorSeverityHigh     PeerErrorSeverity = "high"     // May disconnect.
+	PeerErrorSeverityCritical PeerErrorSeverity = "critical" // Ban.
+)
+
+// ============================================================================
+// Types and business logic below may be deprecated
+// ============================================================================
 
 //go:generate mockery --case underscore --name Peer
 

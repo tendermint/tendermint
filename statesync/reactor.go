@@ -25,6 +25,10 @@ const (
 
 // Reactor handles state sync, both restoring snapshots for the local node and serving snapshots
 // for other nodes.
+//
+// TODO: Remove any fields or embedded types that are no longer needed once the
+// new p2p router is fully implemented.
+// ref: https://github.com/tendermint/tendermint/issues/5670
 type Reactor struct {
 	p2p.BaseReactor
 
@@ -38,8 +42,9 @@ type Reactor struct {
 	syncer *syncer
 }
 
-// NewReactor creates a new state sync reactor.
-func NewReactor(conn proxy.AppConnSnapshot, connQuery proxy.AppConnQuery, tempDir string) *Reactor {
+// NewReactorDeprecated creates a new state sync reactor using the deprecated
+// p2p stack.
+func NewReactorDeprecated(conn proxy.AppConnSnapshot, connQuery proxy.AppConnQuery, tempDir string) *Reactor {
 	r := &Reactor{
 		conn:      conn,
 		connQuery: connQuery,
