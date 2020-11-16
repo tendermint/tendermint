@@ -1,6 +1,7 @@
 package statesync
 
 import (
+	"context"
 	"errors"
 	"sort"
 	"time"
@@ -36,11 +37,161 @@ type Reactor struct {
 	connQuery proxy.AppConnQuery
 	tempDir   string
 
-	// This will only be set when a state sync is in progress. It is used to feed received
-	// snapshots and chunks into the sync.
+	ctx         context.Context
+	snapshotCh  *p2p.Channel
+	chunkCh     *p2p.Channel
+	peerUpdates <-chan interface{}
+
+	// This will only be set when a state sync is in progress. It is used to feed
+	// received snapshots and chunks into the sync.
 	mtx    tmsync.RWMutex
 	syncer *syncer
 }
+
+// NewReactor returns a reference to a new state-sync reactor. It accepts a Context
+// which will be used for cancellations and deadlines when executing the reactor,
+// a p2p Channel used to receive and send messages, and a router that will be
+// used to get updates on peers.
+//
+// TODO: Replace peerUpdates with the concrete type once implemented.
+// ref: https://github.com/tendermint/tendermint/issues/5670
+func NewReactor(ctx context.Context, snapshotCh, chunkCh *p2p.Channel, peerUpdates <-chan interface{}, tempDir string) *Reactor {
+	return &Reactor{
+		ctx:         ctx,
+		snapshotCh:  snapshotCh,
+		chunkCh:     chunkCh,
+		peerUpdates: peerUpdates,
+		tempDir:     tempDir,
+	}
+}
+
+// Start starts a blocking process for the state sync reactor. It listens for
+// Envelope messages on a snapshot p2p Channel and chunk p2p Channel, in order
+// of preference. In addition, the reactor will also listen for peer updates
+// sent from the Router and respond to those updates accordingly. It returns when
+// the reactor's context is cancelled.
+func (r *Reactor) Start() error {
+	for {
+		select {
+		case envelope := <-r.snapshotCh.In:
+			switch msg := envelope.Message.(type) {
+			case *ssproto.SnapshotsRequest:
+				snapshots, err := r.recentSnapshots(recentSnapshots)
+				if err != nil {
+					r.Logger.Error("failed to fetch snapshots", "err", err)
+					continue
+				}
+
+				for _, snapshot := range snapshots {
+					r.Logger.Debug("advertising snapshot", "height", snapshot.Height, "format", snapshot.Format, "peer", envelope.From.String())
+					r.snapshotCh.Out <- p2p.Envelope{
+						To: envelope.From,
+						Message: &ssproto.SnapshotsResponse{
+							Height:   snapshot.Height,
+							Format:   snapshot.Format,
+							Chunks:   snapshot.Chunks,
+							Hash:     snapshot.Hash,
+							Metadata: snapshot.Metadata,
+						},
+					}
+				}
+
+			case *ssproto.SnapshotsResponse:
+				r.mtx.RLock()
+				defer r.mtx.RUnlock()
+
+				if r.syncer == nil {
+					r.Logger.Debug("received unexpected snapshot; no state sync in progress")
+					continue
+				}
+
+				r.Logger.Debug("received snapshot", "height", msg.Height, "format", msg.Format, "peer", envelope.From.String())
+				_, err := r.syncer.AddSnapshot(envelope.From, &snapshot{
+					Height:   msg.Height,
+					Format:   msg.Format,
+					Chunks:   msg.Chunks,
+					Hash:     msg.Hash,
+					Metadata: msg.Metadata,
+				})
+				if err != nil {
+					r.Logger.Error("failed to add snapshot", "height", msg.Height, "format", msg.Format, "err", err, "channel", r.snapshotCh.ID)
+					continue
+				}
+
+			default:
+				r.Logger.Error("received unknown message: %T", msg)
+			}
+
+		case envelope := <-r.chunkCh.In:
+			switch msg := envelope.Message.(type) {
+			case *ssproto.ChunkRequest:
+				r.Logger.Debug("received chunk request", "height", msg.Height, "format", msg.Format, "chunk", msg.Index, "peer", envelope.From.String())
+				resp, err := r.conn.LoadSnapshotChunkSync(abci.RequestLoadSnapshotChunk{
+					Height: msg.Height,
+					Format: msg.Format,
+					Chunk:  msg.Index,
+				})
+				if err != nil {
+					r.Logger.Error("failed to load chunk", "height", msg.Height, "format", msg.Format, "chunk", msg.Index, "err", err, "peer", envelope.From.String())
+					continue
+				}
+
+				r.Logger.Debug("sending chunk", "height", msg.Height, "format", msg.Format, "chunk", msg.Index, "peer", envelope.From.String())
+				r.chunkCh.Out <- p2p.Envelope{
+					To: envelope.From,
+					Message: &ssproto.ChunkResponse{
+						Height:  msg.Height,
+						Format:  msg.Format,
+						Index:   msg.Index,
+						Chunk:   resp.Chunk,
+						Missing: resp.Chunk == nil,
+					},
+				}
+
+			case *ssproto.ChunkResponse:
+				r.mtx.RLock()
+				defer r.mtx.RUnlock()
+
+				if r.syncer == nil {
+					r.Logger.Debug("received unexpected chunk, no state sync in progress", "peer", envelope.From.String())
+					continue
+				}
+
+				r.Logger.Debug("received chunk; adding to sync", "height", msg.Height, "format", msg.Format, "chunk", msg.Index, "peer", envelope.From.String())
+				_, err := r.syncer.AddChunk(&chunk{
+					Height: msg.Height,
+					Format: msg.Format,
+					Index:  msg.Index,
+					Chunk:  msg.Chunk,
+					Sender: envelope.From,
+				})
+				if err != nil {
+					r.Logger.Error("failed to add chunk", "height", msg.Height, "format", msg.Format, "chunk", msg.Index, "err", err, "peer", envelope.From.String())
+					continue
+				}
+
+			default:
+				r.Logger.Error("received unknown message: %T", msg)
+			}
+
+		// handle peer updates
+		case peerUpdate := <-r.peerUpdates:
+			r.Logger.Debug("peer update", "peer", peerUpdate)
+			// TODO: Handle peer update.
+
+		// return when context is cancelled
+		case <-r.ctx.Done():
+			return nil
+		}
+	}
+}
+
+// ============================================================================
+// Types and business logic below may be deprecated.
+//
+// TODO: Rename once legacy p2p types are removed.
+// ref: https://github.com/tendermint/tendermint/issues/5670
+// ============================================================================
 
 // NewReactorDeprecated creates a new state sync reactor using the deprecated
 // p2p stack.
