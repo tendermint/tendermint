@@ -23,7 +23,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES
 
-- [libs/math] \#5665 Make fractions unsigned integers
+- [libs/math] \#5665 Make fractions unsigned integers (uint64) (@cmwaters)
 
 ### IMPROVEMENTS
 
