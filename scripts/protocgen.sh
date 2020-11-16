@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-buf generate
+buf generate --path proto/tendermint
 
 mv ./proto/tendermint/abci/types.pb.go ./abci/types
 
