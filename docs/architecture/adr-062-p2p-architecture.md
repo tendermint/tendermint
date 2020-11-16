@@ -355,7 +355,9 @@ type PeerUpdate struct {
 
 While reactors are a first-class concept in the current P2P stack (i.e. there is an explicit `p2p.Reactor` interface), they will simply be a design pattern in the new stack, loosely defined as "something which listens on a channel and reacts to messages".
 
-Below is an example of a simple echo reactor implemented as a function. The reactor will exchange the following Protobuf messages:
+Since reactors have very few formal constraints, they can be implemented in a variety of ways. There is currently no recommended pattern for implementing reactors, to avoid overspecification and scope creep in this ADR. However, prototyping and developing a reactor pattern should be done early during implementation, to make sure reactors built using the `Channel` interface can satisfy the needs for convenience, deterministic tests, and reliability.
+
+Below is a trivial example of a simple echo reactor implemented as a function. The reactor will exchange the following Protobuf messages:
 
 ```protobuf
 message EchoMessage {
@@ -469,11 +471,11 @@ func EchoReactor(ctx context.Context, channel *p2p.Channel, peerUpdates p2p.Peer
 
 The existing P2P stack should be gradually migrated towards this design. The easiest path would likely be:
 
-1. Port the `privval` package to no longer use `SecretConnection` (e.g. by using gRPC instead), or temporarily duplicate its functionality.
+1. Implement the `Channel` and `PeerUpdates` APIs as shims on top of the current `Switch` and `Peer` APIs, and rewrite all reactors to use them instead.
 
-2. Rewrite the current MConn connection and transport code to use the new `Transport` API, and migrate existing code to use it instead.
+2. Port the `privval` package to no longer use `SecretConnection` (e.g. by using gRPC instead), or temporarily duplicate its functionality.
 
-3. Implement the `Channel`, `PeerUpdates`, and `PeerErrors` APIs as shims on top of the current `Switch` and `Peer` APIs, and rewrite all reactors to use them instead.
+3. Rewrite the current MConn connection and transport code to use the new `Transport` API, and migrate existing code to use it instead.
 
 4. Implement the new `peer` and `peerStore` APIs, and either make the current address book a shim on top of these or replace it.
 
@@ -489,7 +491,7 @@ Similarly, implementing channel handshakes with the current MConn protocol would
 
 ## Status
 
-Proposed
+Accepted
 
 ## Consequences
 
