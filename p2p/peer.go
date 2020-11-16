@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
@@ -21,6 +22,11 @@ type PeerID []byte
 // String implements the fmt.Stringer interface for the PeerID type.
 func (pid PeerID) String() string {
 	return hex.EncodeToString(pid)
+}
+
+// Equal reports whether two PeerID are equal.
+func (pid PeerID) Equal(other PeerID) bool {
+	return bytes.Equal(pid, other)
 }
 
 // PeerAddress is a peer address URL. The User field, if set, gives the
