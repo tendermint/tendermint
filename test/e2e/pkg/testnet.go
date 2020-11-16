@@ -64,7 +64,8 @@ type Node struct {
 	Name             string
 	Testnet          *Testnet
 	Mode             Mode
-	Key              crypto.PrivKey
+	PrivvalKey       crypto.PrivKey
+	NodeKey          crypto.PrivKey
 	IP               net.IP
 	ProxyPort        uint32
 	StartAt          int64
@@ -135,7 +136,8 @@ func LoadTestnet(file string) (*Testnet, error) {
 		node := &Node{
 			Name:             name,
 			Testnet:          testnet,
-			Key:              keyGen.Generate(),
+			PrivvalKey:       keyGen.Generate(manifest.KeyType),
+			NodeKey:          keyGen.Generate("ed25519"),
 			IP:               ipGen.Next(),
 			ProxyPort:        proxyPortGen.Next(),
 			Mode:             ModeValidator,
@@ -435,7 +437,7 @@ func (n Node) AddressP2P(withID bool) string {
 	}
 	addr := fmt.Sprintf("%v:26656", ip)
 	if withID {
-		addr = fmt.Sprintf("%x@%v", n.Key.PubKey().Address().Bytes(), addr)
+		addr = fmt.Sprintf("%x@%v", n.NodeKey.PubKey().Address().Bytes(), addr)
 	}
 	return addr
 }
