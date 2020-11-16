@@ -1,7 +1,7 @@
 package p2p
 
 import (
-	"google.golang.org/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 )
 
 // ChannelID is an arbitrary channel ID.
@@ -37,6 +37,7 @@ type Channel struct {
 	Error chan<- PeerError
 }
 
-// Close closes the channel, and is equivalent to close(Channel.Out). This will
-// cause Channel.In to be closed when appropriate. The ID can then be reused.
+// Close closes the outbound channel, and is equivalent to close(Channel.Out).
+// This will cause Channel.In to be closed when appropriate. The ID can then be
+// reused.
 func (c *Channel) Close() error { return nil }

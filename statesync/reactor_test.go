@@ -60,7 +60,7 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 			}
 
 			// Start a reactor and send a ssproto.ChunkRequest, then wait for and check response
-			r := NewReactor(conn, nil, "")
+			r := NewReactorDeprecated(conn, nil, "")
 			err := r.Start()
 			require.NoError(t, err)
 			t.Cleanup(func() {
@@ -137,7 +137,7 @@ func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 			}
 
 			// Start a reactor and send a SnapshotsRequestMessage, then wait for and check responses
-			r := NewReactor(conn, nil, "")
+			r := NewReactorDeprecated(conn, nil, "")
 			err := r.Start()
 			require.NoError(t, err)
 			t.Cleanup(func() {
