@@ -24,6 +24,17 @@ func (pid PeerID) String() string {
 	return hex.EncodeToString(pid)
 }
 
+// PeerIDFromString returns a PeerID from an encoded string or an error upon
+// decode failure.
+func PeerIDFromString(s string) (PeerID, error) {
+	bz, err := hex.DecodeString(s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode PeerID (%s): %w", s, err)
+	}
+
+	return PeerID(bz), err
+}
+
 // Equal reports whether two PeerID are equal.
 func (pid PeerID) Equal(other PeerID) bool {
 	return bytes.Equal(pid, other)
