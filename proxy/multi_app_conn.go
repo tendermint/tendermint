@@ -2,10 +2,11 @@ package proxy
 
 import (
 	"fmt"
+	"os"
+	"syscall"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	tmlog "github.com/tendermint/tendermint/libs/log"
-	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -129,8 +130,7 @@ func (app *multiAppConn) killTMOnClientError() {
 		logger.Error(
 			fmt.Sprintf("%s connection terminated. Did the application crash? Please restart tendermint", conn),
 			"err", err)
-		killErr := tmos.Kill()
-		if killErr != nil {
+		if killErr := kill(); killErr != nil {
 			logger.Error("Failed to kill this process - please do so manually", "err", killErr)
 		}
 	}
@@ -188,4 +188,13 @@ func (app *multiAppConn) abciClientFor(conn string) (abcicli.Client, error) {
 		return nil, fmt.Errorf("error starting ABCI client (%s connection): %w", conn, err)
 	}
 	return c, nil
+}
+
+func kill() error {
+	p, err := os.FindProcess(os.Getpid())
+	if err != nil {
+		return err
+	}
+
+	return p.Signal(syscall.SIGTERM)
 }

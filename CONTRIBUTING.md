@@ -106,12 +106,12 @@ specify exactly the dependency you want to update, eg.
 
 We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along with [gogoproto](https://github.com/gogo/protobuf) to generate code for use across Tendermint Core.
 
-For linting and checking breaking changes, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will need to have docker running locally. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
+For linting, checking breaking changes and generating proto stubs, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will need to have docker running locally. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
 
 There are two ways to generate your proto stubs.
 
 1. Use Docker, pull an image that will generate your proto stubs with no need to install anything. `make proto-gen-docker`
-2. Run `make proto-gen` after installing `protoc` and gogoproto, you can do this by running `make protobuf`.
+2. Run `make proto-gen` after installing `buf` and `gogoproto`, you can do this by running `make protobuf`.
 
 ### Installation Instructions
 
@@ -126,20 +126,6 @@ make install
 ```
 
 You should now be able to run `make proto-gen` from inside the root Tendermint directory to generate new files from proto files.
-
-## Vagrant
-
-If you are a [Vagrant](https://www.vagrantup.com/) user, you can get started
-hacking Tendermint with the commands below.
-
-NOTE: In case you installed Vagrant in 2017, you might need to run
-`vagrant box update` to upgrade to the latest `ubuntu/xenial64`.
-
-```sh
-vagrant up
-vagrant ssh
-make test
-```
 
 ## Changelog
 

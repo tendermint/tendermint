@@ -193,13 +193,15 @@ func (app *Application) validatorUpdates(height uint64) (abci.ValidatorUpdates, 
 	if len(updates) == 0 {
 		return nil, nil
 	}
+
 	valUpdates := abci.ValidatorUpdates{}
 	for keyString, power := range updates {
+
 		keyBytes, err := base64.StdEncoding.DecodeString(keyString)
 		if err != nil {
 			return nil, fmt.Errorf("invalid base64 pubkey value %q: %w", keyString, err)
 		}
-		valUpdates = append(valUpdates, abci.Ed25519ValidatorUpdate(keyBytes, int64(power)))
+		valUpdates = append(valUpdates, abci.UpdateValidator(keyBytes, int64(power), app.cfg.KeyType))
 	}
 	return valUpdates, nil
 }
