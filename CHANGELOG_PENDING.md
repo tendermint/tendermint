@@ -35,3 +35,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [evidence] \#5574 Fix bug where node sends committed evidence to peer (@cmwaters)
 - [privval] \#5583 Make `Vote`, `Proposal` & `PubKey` non-nullable in Responses (@marbar3778)
 - [evidence] \#5610 Make it possible for abci evidence to be formed from tm evidence (@cmwaters)
+- [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
