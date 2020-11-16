@@ -37,9 +37,11 @@ type Reactor struct {
 	connQuery proxy.AppConnQuery
 	tempDir   string
 
-	ctx         context.Context
-	snapshotCh  *p2p.Channel
-	chunkCh     *p2p.Channel
+	snapshotCh *p2p.Channel
+	chunkCh    *p2p.Channel
+
+	// TODO: Replace peerUpdates with the concrete type once implemented.
+	// ref: https://github.com/tendermint/tendermint/issues/5670
 	peerUpdates <-chan interface{}
 
 	// This will only be set when a state sync is in progress. It is used to feed
@@ -52,12 +54,16 @@ type Reactor struct {
 // which will be used for cancellations and deadlines when executing the reactor,
 // a p2p Channel used to receive and send messages, and a router that will be
 // used to get updates on peers.
-//
-// TODO: Replace peerUpdates with the concrete type once implemented.
-// ref: https://github.com/tendermint/tendermint/issues/5670
-func NewReactor(ctx context.Context, snapshotCh, chunkCh *p2p.Channel, peerUpdates <-chan interface{}, tempDir string) *Reactor {
+func NewReactor(
+	conn proxy.AppConnSnapshot,
+	connQuery proxy.AppConnQuery,
+	snapshotCh, chunkCh *p2p.Channel,
+	peerUpdates <-chan interface{},
+	tempDir string,
+) *Reactor {
 	return &Reactor{
-		ctx:         ctx,
+		conn:        conn,
+		connQuery:   connQuery,
 		snapshotCh:  snapshotCh,
 		chunkCh:     chunkCh,
 		peerUpdates: peerUpdates,
@@ -65,12 +71,17 @@ func NewReactor(ctx context.Context, snapshotCh, chunkCh *p2p.Channel, peerUpdat
 	}
 }
 
-// Start starts a blocking process for the state sync reactor. It listens for
+// Run starts a blocking process for the state sync reactor. It listens for
 // Envelope messages on a snapshot p2p Channel and chunk p2p Channel, in order
 // of preference. In addition, the reactor will also listen for peer updates
 // sent from the Router and respond to those updates accordingly. It returns when
 // the reactor's context is cancelled.
-func (r *Reactor) Start() error {
+//
+// TODO: There is no guaranteed order in which the Go scheduler will execute/handle
+// the individual cases when reading from p2p Channels. This means that certain
+// channels like the chunk p2p Channel can cause IO contention preventing other
+// p2p Channels from executing effectively.
+func (r *Reactor) Run(ctx context.Context) error {
 	for {
 		select {
 		case envelope := <-r.snapshotCh.In:
@@ -180,7 +191,7 @@ func (r *Reactor) Start() error {
 			// TODO: Handle peer update.
 
 		// return when context is cancelled
-		case <-r.ctx.Done():
+		case <-ctx.Done():
 			return nil
 		}
 	}
@@ -231,8 +242,16 @@ func (r *Reactor) OnStart() error {
 func (r *Reactor) AddPeer(peer p2p.Peer) {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
+
 	if r.syncer != nil {
-		r.syncer.AddPeer(peer)
+		peerID, err := p2p.PeerIDFromString(string(peer.ID()))
+		if err != nil {
+			// It is OK to panic here as we'll be removing the Reactor interface and
+			// Peer type in favor of using a PeerID directly.
+			panic(err)
+		}
+
+		r.syncer.AddPeer(peerID)
 	}
 }
 
@@ -240,8 +259,16 @@ func (r *Reactor) AddPeer(peer p2p.Peer) {
 func (r *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
+
 	if r.syncer != nil {
-		r.syncer.RemovePeer(peer)
+		peerID, err := p2p.PeerIDFromString(string(peer.ID()))
+		if err != nil {
+			// It is OK to panic here as we'll be removing the Reactor interface and
+			// Peer type in favor of using a PeerID directly.
+			panic(err)
+		}
+
+		r.syncer.RemovePeer(peerID)
 	}
 }
 
@@ -292,8 +319,16 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				r.Logger.Debug("Received unexpected snapshot, no state sync in progress")
 				return
 			}
+
+			peerID, err := p2p.PeerIDFromString(string(src.ID()))
+			if err != nil {
+				// It is OK to panic here as we'll be removing the Reactor interface and
+				// Peer type in favor of using a PeerID directly.
+				panic(err)
+			}
+
 			r.Logger.Debug("Received snapshot", "height", msg.Height, "format", msg.Format, "peer", src.ID())
-			_, err := r.syncer.AddSnapshot(src, &snapshot{
+			_, err = r.syncer.AddSnapshot(peerID, &snapshot{
 				Height:   msg.Height,
 				Format:   msg.Format,
 				Chunks:   msg.Chunks,
@@ -342,14 +377,21 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				r.Logger.Debug("Received unexpected chunk, no state sync in progress", "peer", src.ID())
 				return
 			}
-			r.Logger.Debug("Received chunk, adding to sync", "height", msg.Height, "format", msg.Format,
-				"chunk", msg.Index, "peer", src.ID())
-			_, err := r.syncer.AddChunk(&chunk{
+
+			peerID, err := p2p.PeerIDFromString(string(src.ID()))
+			if err != nil {
+				// It is OK to panic here as we'll be removing the Reactor interface and
+				// Peer type in favor of using a PeerID directly.
+				panic(err)
+			}
+
+			r.Logger.Debug("Received chunk, adding to sync", "height", msg.Height, "format", msg.Format, "chunk", msg.Index, "peer", src.ID())
+			_, err = r.syncer.AddChunk(&chunk{
 				Height: msg.Height,
 				Format: msg.Format,
 				Index:  msg.Index,
 				Chunk:  msg.Chunk,
-				Sender: src.ID(),
+				Sender: peerID,
 			})
 			if err != nil {
 				r.Logger.Error("Failed to add chunk", "height", msg.Height, "format", msg.Format,
