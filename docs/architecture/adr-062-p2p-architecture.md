@@ -6,6 +6,8 @@
 
 - 2020-11-13: Remove stream IDs, move peer errors onto channel, note on moving PEX into core (@erikgrinaker)
 
+- 2020-11-16: Notes on recommended reactor implementation patterns, approve ADR (@erikgrinaker)
+
 ## Context
 
 In [ADR 061](adr-061-p2p-refactor-scope.md) we decided to refactor the peer-to-peer (P2P) networking stack. The first phase is to redesign and refactor the internal P2P architecture, while retaining protocol compatibility as far as possible.
@@ -526,4 +528,4 @@ Accepted
 ## References
 
 * [ADR 061: P2P Refactor Scope](adr-061-p2p-refactor-scope.md)
-* [#2067: P2P Refactor](https://github.com/tendermint/tendermint/issues/2067)
+* [#5670 p2p: internal refactor and architecture redesign](https://github.com/tendermint/tendermint/issues/5670)
