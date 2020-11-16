@@ -254,19 +254,20 @@ func (state State) MakeBlock(
 	proposerAddress []byte,
 ) (*types.Block, *types.PartSet) {
 
-	var chainLock *types.CoreChainLock = nil
-	if state.NextCoreChainLock.BlockHeight > state.LastCoreChainLock.BlockHeight {
-		chainLock = &state.NextCoreChainLock
+	var coreChainLock *types.CoreChainLock = nil
+	if state.NextCoreChainLock.CoreBlockHeight > state.LastCoreChainLock.CoreBlockHeight {
+		coreChainLock = &state.NextCoreChainLock
 	}
 
-	var chainLockHeight uint32
-	if chainLock == nil {
-		chainLockHeight = state.LastCoreChainLock.BlockHeight
+	var coreChainLockHeight uint32
+	if coreChainLock == nil {
+		coreChainLockHeight = state.LastCoreChainLock.CoreBlockHeight
 	} else {
-		chainLockHeight = chainLock.BlockHeight
+		coreChainLockHeight = coreChainLock.CoreBlockHeight
 	}
+
 	// Build base block with block data.
-	block := types.MakeBlock(height, chainLockHeight, chainLock, txs, commit, evidence)
+	block := types.MakeBlock(height, coreChainLockHeight, coreChainLock, txs, commit, evidence)
 
 	// Set time.
 	var timestamp time.Time

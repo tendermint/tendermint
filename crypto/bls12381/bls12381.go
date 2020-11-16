@@ -65,6 +65,10 @@ func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 //
 // Panics if the private key is not initialized.
 func (privKey PrivKey) PubKey() crypto.PubKey {
+	if len(privKey.Bytes()) != PrivateKeySize {
+		panic(fmt.Sprintf("incorrect private key %d bytes but expected %d bytes", len(privKey.Bytes()), PrivateKeySize))
+	}
+
 	// set modOrder flag to true so that too big random bytes will wrap around and be a valid key
 	blsPrivateKey, err := bls.PrivateKeyFromBytes(privKey, true)
 	if err != nil {

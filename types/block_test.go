@@ -36,7 +36,8 @@ func TestBlockAddEvidence(t *testing.T) {
 	txs := []Tx{Tx("foo"), Tx("bar")}
 	lastID := makeBlockIDRandom()
 	h := int64(3)
-	chainLock := NewMockChainLock(1)
+
+	coreChainLock := NewMockChainLock(1)
 
 	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
@@ -45,7 +46,7 @@ func TestBlockAddEvidence(t *testing.T) {
 	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
 	evList := []Evidence{ev}
 
-	block := MakeBlock(h, chainLock.BlockHeight, &chainLock, txs, commit, evList)
+	block := MakeBlock(h, coreChainLock.CoreBlockHeight, &coreChainLock, txs, commit, evList)
 	require.NotNil(t, block)
 	require.Equal(t, 1, len(block.Evidence.Evidence))
 	require.NotNil(t, block.EvidenceHash)
@@ -877,34 +878,3 @@ func TestBlockIDEquals(t *testing.T) {
 	assert.True(t, blockIDEmpty.Equals(blockIDEmpty))
 	assert.False(t, blockIDEmpty.Equals(blockIDDifferent))
 }
-
-// TODO: Remove later
-func TestProtoIndexGapCompatibility(t *testing.T) {
-	// Marshal the first message and unmarshal it with the second proto
-
-	protoOne := tmproto.BlockTestOne{FirstField: "hello", SecondField: "world!"}
-	protoOneBytes, err := protoOne.Marshal()
-	if err != nil {
-		panic("die")
-	}
-
-	protoTwo := tmproto.BlockTestTwo{}
-	protoTwo.Unmarshal(protoOneBytes)
-
-	assert.Equal(t, protoOne.FirstField, protoTwo.FirstField)
-	assert.Empty(t, protoTwo.ThirdField)
-
-	// Marshal the second message and unmarshal it with first proto
-
-	protoTwo.ThirdField = "from third"
-
-	protoTwoBytes, err := protoTwo.Marshal()
-
-	protoOneAgain := new(tmproto.BlockTestOne)
-
-	protoOneAgain.Unmarshal(protoTwoBytes)
-
-	assert.Equal(t, protoOneAgain.FirstField, protoTwo.FirstField)
-	assert.Empty(t, protoOneAgain.SecondField)
-}
-

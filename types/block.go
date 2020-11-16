@@ -26,8 +26,8 @@ const (
 	// MaxHeaderBytes is a maximum header size.
 	// NOTE: Because app hash can be of arbitrary size, the header is therefore not
 	// capped in size and thus this number should be seen as a soft max
-	MaxHeaderBytes int64 = 633
-	MaxChainLockSize int64 = 132
+	MaxHeaderBytes       int64 = 633
+	MaxCoreChainLockSize int64 = 132
 
 	// MaxOverheadForBlock - maximum overhead to encode a block (up to
 	// MaxBlockSizeBytes in size) not including it's parts except Data.
@@ -271,11 +271,12 @@ func BlockFromProto(bp *tmproto.Block) (*Block, error) {
 		return nil, err
 	}
 
-	chainLock, err := CoreChainLockFromProto(bp.CoreChainLock)
+	coreChainLock, err := CoreChainLockFromProto(bp.CoreChainLock)
 	if err != nil {
 		return nil, err
 	}
-	b.CoreChainLock = chainLock
+
+	b.CoreChainLock = coreChainLock
 
 	if bp.LastCommit != nil {
 		lc, err := CommitFromProto(bp.LastCommit)
@@ -298,7 +299,7 @@ func MaxDataBytes(maxBytes int64, keyType crypto.KeyType, evidenceBytes int64, v
 	maxDataBytes := maxBytes -
 		MaxOverheadForBlock -
 		MaxHeaderBytes -
-		MaxChainLockSize -
+		MaxCoreChainLockSize -
 		MaxCommitBytes(valsCount, keyType) -
 		evidenceBytes
 
@@ -323,7 +324,7 @@ func MaxDataBytesNoEvidence(maxBytes int64, keyType crypto.KeyType, valsCount in
 	maxDataBytes := maxBytes -
 		MaxOverheadForBlock -
 		MaxHeaderBytes -
-		MaxChainLockSize -
+		MaxCoreChainLockSize -
 		MaxCommitBytes(valsCount, keyType)
 
 	if maxDataBytes < 0 {

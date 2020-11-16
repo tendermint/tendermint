@@ -85,8 +85,8 @@ message Header {
 // CoreChainLock represents a core chain lock for synchronization between state data and core chain
 message CoreChainLock {
   option (gogoproto.equal)    = true;
-  uint32 block_height = 1;
-  bytes block_hash = 2;
+  uint32 core_block_height = 1;
+  bytes core_block_hash = 2;
   bytes signature = 3;
 }
 

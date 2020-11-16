@@ -264,19 +264,19 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 	power := val.VotingPower
 	var err error
 	var validatorUpdates []*types.Validator
-	var nextChainLock *types.CoreChainLock
+	var nextCoreChainLock *types.CoreChainLock
 	for i := int64(1); i < highestHeight; i++ {
 		// When we get to a change height, use the next pubkey.
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
 			changeIndex++
 			power++
 		}
-		header, chainLock, blockID, responses := makeHeaderPartsResponsesValPowerChange(state, power)
+		header, coreChainLock, blockID, responses := makeHeaderPartsResponsesValPowerChange(state, power)
 		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.EndBlock.ValidatorUpdates)
 		require.NoError(t, err)
-		nextChainLock, err = types.CoreChainLockFromProto(responses.EndBlock.CoreChainLockUpdate)
+		nextCoreChainLock, err = types.CoreChainLockFromProto(responses.EndBlock.CoreChainLockUpdate)
 		require.NoError(t, err)
-		state, err = sm.UpdateState(state, blockID, &header, chainLock, nextChainLock, responses, validatorUpdates)
+		state, err = sm.UpdateState(state, blockID, &header, coreChainLock, nextCoreChainLock, responses, validatorUpdates)
 		require.NoError(t, err)
 		err := stateStore.Save(state)
 		require.NoError(t, err)
@@ -962,15 +962,15 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	pubkey := bls12381.GenPrivKey().PubKey()
 
 	// Swap the first validator with a new one (validator set size stays the same).
-	header, chainLock, blockID, responses := makeHeaderPartsResponsesValPubKeyChange(state, pubkey)
+	header, coreChainLock, blockID, responses := makeHeaderPartsResponsesValPubKeyChange(state, pubkey)
 
 	// Save state etc.
 	var validatorUpdates []*types.Validator
 	validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.EndBlock.ValidatorUpdates)
 	require.NoError(t, err)
-	nextChainLock, err := types.CoreChainLockFromProto(responses.EndBlock.CoreChainLockUpdate)
+	nextCoreChainLock, err := types.CoreChainLockFromProto(responses.EndBlock.CoreChainLockUpdate)
 	require.NoError(t, err)
-	state, err = sm.UpdateState(state, blockID, &header, chainLock, nextChainLock, responses, validatorUpdates)
+	state, err = sm.UpdateState(state, blockID, &header, coreChainLock, nextCoreChainLock, responses, validatorUpdates)
 	require.Nil(t, err)
 	nextHeight := state.LastBlockHeight + 1
 	err = stateStore.Save(state)

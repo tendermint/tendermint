@@ -242,7 +242,7 @@ func TestVoteSet_2_3MajorityRedux(t *testing.T) {
 			"there should be no 2/3 majority: last vote added had different PartSetHeader Total")
 	}
 
-	// 70th validator voted for different BlockHash
+	// 70th validator voted for different CoreBlockHash
 	{
 		pubKey, err := privValidators[69].GetPubKey()
 		require.NoError(t, err)
@@ -252,10 +252,10 @@ func TestVoteSet_2_3MajorityRedux(t *testing.T) {
 		require.NoError(t, err)
 		blockID, ok = voteSet.TwoThirdsMajority()
 		assert.False(t, ok || !blockID.IsZero(),
-			"there should be no 2/3 majority: last vote added had different BlockHash")
+			"there should be no 2/3 majority: last vote added had different CoreBlockHash")
 	}
 
-	// 71st validator voted for the right BlockHash & BlockPartSetHeader
+	// 71st validator voted for the right CoreBlockHash & BlockPartSetHeader
 	{
 		pubKey, err := privValidators[70].GetPubKey()
 		require.NoError(t, err)

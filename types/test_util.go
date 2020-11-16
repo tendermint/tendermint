@@ -84,14 +84,14 @@ func MakeVote(
 // MakeBlock returns a new block with an empty header, except what can be
 // computed from itself.
 // It populates the same set of fields validated by ValidateBasic.
-func MakeBlock(height int64, coreChainLockedHeight uint32, chainLock *CoreChainLock, txs []Tx, lastCommit *Commit, evidence []Evidence) *Block {
+func MakeBlock(height int64, coreChainLockedHeight uint32, coreChainLock *CoreChainLock, txs []Tx, lastCommit *Commit, evidence []Evidence) *Block {
 	block := &Block{
 		Header: Header{
 			Version: tmversion.Consensus{Block: version.BlockProtocol, App: 0},
 			Height: height,
 			CoreChainLockedHeight: coreChainLockedHeight,
 		},
-		CoreChainLock: chainLock,
+		CoreChainLock: coreChainLock,
 		Data: Data{
 			Txs: txs,
 		},

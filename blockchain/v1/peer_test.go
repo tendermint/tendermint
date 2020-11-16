@@ -276,6 +276,7 @@ func checkByStoppingPeerTimer(t *testing.T, peer *BpPeer, running bool) {
 }
 
 func makeSmallBlock(height int) *types.Block {
-	chainLock := types.NewMockChainLock(1)
-	return types.MakeBlock(int64(height),chainLock.BlockHeight, &chainLock, []types.Tx{types.Tx("foo")}, nil, nil)
+	coreChainLock := types.NewMockChainLock(1)
+
+	return types.MakeBlock(int64(height), coreChainLock.CoreBlockHeight, &coreChainLock, []types.Tx{types.Tx("foo")}, nil, nil)
 }

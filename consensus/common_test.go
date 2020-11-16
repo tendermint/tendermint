@@ -789,14 +789,14 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	}
 	sort.Sort(types.PrivValidatorsByAddress(privValidators))
 
-	chainLock := types.NewMockChainLock(1)
+	coreChainLock := types.NewMockChainLock(1)
 
 	return &types.GenesisDoc{
 		GenesisTime:          tmtime.Now(),
 		InitialHeight:        1,
 		ChainID:              config.ChainID(),
 		Validators:           validators,
-		GenesisCoreChainLock: chainLock.ToProto(),
+		GenesisCoreChainLock: coreChainLock.ToProto(),
 	}, privValidators
 }
 

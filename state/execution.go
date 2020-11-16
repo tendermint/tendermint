@@ -161,10 +161,12 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// validate the validator updates and convert to tendermint types
 	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
-	nextChainLock, err := types.CoreChainLockFromProto(abciResponses.EndBlock.CoreChainLockUpdate)
+
+	nextCoreChainLock, err := types.CoreChainLockFromProto(abciResponses.EndBlock.CoreChainLockUpdate)
 	if err != nil {
 		return state, 0, fmt.Errorf("error in chain lock from proto: %v", err)
 	}
+
 	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
 	if err != nil {
 		return state, 0, fmt.Errorf("error in validator updates: %v", err)
@@ -178,7 +180,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update the state with the block and responses.
-	state, err = updateState(state, blockID, &block.Header, block.CoreChainLock, nextChainLock, abciResponses, validatorUpdates)
+	state, err = updateState(state, blockID, &block.Header, block.CoreChainLock, nextCoreChainLock, abciResponses, validatorUpdates)
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
@@ -411,8 +413,8 @@ func updateState(
 	state State,
 	blockID types.BlockID,
 	header *types.Header,
-	lastChainLock *types.CoreChainLock,
-	nextChainLock *types.CoreChainLock,
+	lastCoreChainLock *types.CoreChainLock,
+	nextCoreChainLock *types.CoreChainLock,
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) (State, error) {
@@ -454,16 +456,16 @@ func updateState(
 
 	nextVersion := state.Version
 
-	if lastChainLock == nil {
-		lastChainLock = &state.LastCoreChainLock
+	if lastCoreChainLock == nil {
+		lastCoreChainLock = &state.LastCoreChainLock
 	}
 
-	if nextChainLock == nil {
-		nextChainLock = &state.NextCoreChainLock
+	if nextCoreChainLock == nil {
+		nextCoreChainLock = &state.NextCoreChainLock
 	}
 
-	if nextChainLock.BlockHeight < lastChainLock.BlockHeight {
-		nextChainLock = lastChainLock
+	if nextCoreChainLock.CoreBlockHeight < lastCoreChainLock.CoreBlockHeight {
+		nextCoreChainLock = lastCoreChainLock
 	}
 
 	// NOTE: the AppHash has not been populated.
@@ -475,8 +477,8 @@ func updateState(
 		LastBlockHeight:                  header.Height,
 		LastBlockID:                      blockID,
 		LastBlockTime:                    header.Time,
-		LastCoreChainLock:                *lastChainLock,
-		NextCoreChainLock:                *nextChainLock,
+		LastCoreChainLock:                *lastCoreChainLock,
+		NextCoreChainLock:                *nextCoreChainLock,
 		NextValidators:                   nValSet,
 		Validators:                       state.NextValidators.Copy(),
 		LastValidators:                   state.Validators.Copy(),

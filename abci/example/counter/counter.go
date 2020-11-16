@@ -111,9 +111,11 @@ func (app *Application) Query(reqQuery types.RequestQuery) types.ResponseQuery {
 func (app *Application) EndBlock(reqEndBlock types.RequestEndBlock) types.ResponseEndBlock {
 	if app.HasCoreChainLocks {
 		app.CurrentCoreChainLockHeight = uint32(int32(app.CurrentCoreChainLockHeight) + app.CoreChainLockStep)
-		chainLock := types1.NewMockChainLock(app.CurrentCoreChainLockHeight)
+
+		coreChainLock := types1.NewMockChainLock(app.CurrentCoreChainLockHeight)
+
 		return types.ResponseEndBlock{
-			CoreChainLockUpdate: chainLock.ToProto(),
+			CoreChainLockUpdate: coreChainLock.ToProto(),
 		}
 	} else {
 		return types.ResponseEndBlock{}

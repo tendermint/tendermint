@@ -152,28 +152,28 @@ func validateBlock(proxyAppQueryConn proxy.AppConnQuery, state State, block *typ
 
 	if block.CoreChainLock != nil {
 		//If there is a new Chain Lock we need to make sure the height in the header is the same as the chain lock
-		if block.Header.CoreChainLockedHeight != block.CoreChainLock.BlockHeight {
-			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight. CoreChainLock BlockHeight %d, got %d",
-				block.CoreChainLock.BlockHeight,
+		if block.Header.CoreChainLockedHeight != block.CoreChainLock.CoreBlockHeight {
+			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight. CoreChainLock CoreBlockHeight %d, got %d",
+				block.CoreChainLock.CoreBlockHeight,
 				block.Header.CoreChainLockedHeight,
 			)
 		}
 
 		//We also need to make sure that the new height is superior to the old height
-		if block.Header.CoreChainLockedHeight <= state.LastCoreChainLock.BlockHeight {
+		if block.Header.CoreChainLockedHeight <= state.LastCoreChainLock.CoreBlockHeight {
 			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight. Previous CoreChainLockedHeight %d, got %d",
-				state.LastCoreChainLock.BlockHeight,
+				state.LastCoreChainLock.CoreBlockHeight,
 				block.Header.CoreChainLockedHeight,
 			)
 		}
 
-		chainLocksBytes, err := block.CoreChainLock.ToProto().Marshal()
+		coreChainLocksBytes, err := block.CoreChainLock.ToProto().Marshal()
 		if err != nil {
 			panic(err)
 		}
 
 		verifySignatureQueryRequest := abci.RequestQuery{
-			Data: chainLocksBytes,
+			Data: coreChainLocksBytes,
 			Path: "/verify-chainlock",
 		}
 
@@ -189,9 +189,9 @@ func validateBlock(proxyAppQueryConn proxy.AppConnQuery, state State, block *typ
 		}
 	} else {
 		//If there is no new Chain Lock we need to make sure the height has stayed the same
-		if block.Header.CoreChainLockedHeight != state.LastCoreChainLock.BlockHeight {
+		if block.Header.CoreChainLockedHeight != state.LastCoreChainLock.CoreBlockHeight {
 			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight when no new Chain Lock. Previous CoreChainLockedHeight %d, got %d",
-				state.LastCoreChainLock.BlockHeight,
+				state.LastCoreChainLock.CoreBlockHeight,
 				block.Header.CoreChainLockedHeight,
 			)
 		}

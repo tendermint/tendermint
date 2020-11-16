@@ -173,18 +173,20 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(21*time.Minute),
 		val, evidenceChainID)
 	lastCommit := makeCommit(height, val.PrivKey.PubKey().Address())
-	var chainLock *types.CoreChainLock = nil
-	if state.NextCoreChainLock.BlockHeight > state.LastCoreChainLock.BlockHeight {
-		chainLock = &state.NextCoreChainLock
+
+	var coreChainLock *types.CoreChainLock = nil
+	if state.NextCoreChainLock.CoreBlockHeight > state.LastCoreChainLock.CoreBlockHeight {
+		coreChainLock = &state.NextCoreChainLock
 	}
 
-	var chainLockHeight uint32
-	if chainLock == nil {
-		chainLockHeight = state.LastCoreChainLock.BlockHeight
+	var coreChainLockHeight uint32
+	if coreChainLock == nil {
+		coreChainLockHeight = state.LastCoreChainLock.CoreBlockHeight
 	} else {
-		chainLockHeight = chainLock.BlockHeight
+		coreChainLockHeight = coreChainLock.CoreBlockHeight
 	}
-	block := types.MakeBlock(height+1, chainLockHeight, chainLock, []types.Tx{}, lastCommit, []types.Evidence{ev})
+
+	block := types.MakeBlock(height + 1, coreChainLockHeight, coreChainLock, []types.Tx{}, lastCommit, []types.Evidence{ev})
 	// update state (partially)
 	state.LastBlockHeight = height + 1
 	state.LastBlockTime = defaultEvidenceTime.Add(22 * time.Minute)

@@ -10,14 +10,14 @@ import (
 	"testing"
 )
 
-func newCounterWithChainLocks() abci.Application {
+func newCounterWithCoreChainLocks() abci.Application {
 	counterApp := counter.NewApplication(true)
 	counterApp.HasCoreChainLocks = true
 	counterApp.CurrentCoreChainLockHeight = 1
 	return counterApp
 }
 
-func newCounterWithBackwardsChainLocks() abci.Application {
+func newCounterWithBackwardsCoreChainLocks() abci.Application {
 	counterApp := counter.NewApplication(true)
 	counterApp.HasCoreChainLocks = true
 	counterApp.CurrentCoreChainLockHeight = 100
@@ -25,9 +25,9 @@ func newCounterWithBackwardsChainLocks() abci.Application {
 	return counterApp
 }
 
-func TestValidProposalChainLocks(t *testing.T) {
+func TestValidProposalCoreChainLocks(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_chainlocks_test", newMockTickerFunc(true), newCounterWithChainLocks)
+	css, cleanup := randConsensusNet(N, "consensus_core_chainlocks_test", newMockTickerFunc(true), newCounterWithCoreChainLocks)
 	defer cleanup()
 
 	for i := 0; i < 4; i++ {
@@ -51,9 +51,9 @@ func TestValidProposalChainLocks(t *testing.T) {
 }
 
 // one byz val sends a proposal for a height 1 less than it should, but then sends the correct block after it
-func TestReactorInvalidProposalHeightForChainLocks(t *testing.T) {
+func TestReactorInvalidProposalHeightForCoreChainLocks(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_chainlocks_test", newMockTickerFunc(true), newCounterWithChainLocks)
+	css, cleanup := randConsensusNet(N, "consensus_core_chainlocks_test", newMockTickerFunc(true), newCounterWithCoreChainLocks)
 	defer cleanup()
 
 	for i := 0; i < 4; i++ {
@@ -77,7 +77,7 @@ func TestReactorInvalidProposalHeightForChainLocks(t *testing.T) {
 	byzProposer.decideProposal = func(j int32) func(int64, int32) {
 		return func(height int64, round int32) {
 			//hitIt = true
-			invalidProposeChainLockFunc(t, height, round, css[j])
+			invalidProposeCoreChainLockFunc(t, height, round, css[j])
 		}
 	}(int32(0))
 	byzProposer.mtx.Unlock()
@@ -95,7 +95,7 @@ func TestReactorInvalidProposalHeightForChainLocks(t *testing.T) {
 	}
 }
 
-func invalidProposeChainLockFunc(t *testing.T, height int64, round int32, cs *State) {
+func invalidProposeCoreChainLockFunc(t *testing.T, height int64, round int32, cs *State) {
 	// routine to:
 	// - precommit for a random block
 	// - send precommit to all peers
@@ -124,7 +124,7 @@ func invalidProposeChainLockFunc(t *testing.T, height int64, round int32, cs *St
 
 	// Make proposal
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-	proposal := types.NewProposal(height, cs.state.NextCoreChainLock.BlockHeight- 1, round, cs.ValidRound, propBlockID)
+	proposal := types.NewProposal(height, cs.state.NextCoreChainLock.CoreBlockHeight- 1, round, cs.ValidRound, propBlockID)
 	p := proposal.ToProto()
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, p); err == nil {
 		proposal.Signature = p.Signature
@@ -144,9 +144,9 @@ func invalidProposeChainLockFunc(t *testing.T, height int64, round int32, cs *St
 
 
 // one byz val sends a proposal for the correct height update, but does not include the chain lock
-func TestReactorInvalidBlockChainLock(t *testing.T) {
+func TestReactorInvalidBlockCoreChainLock(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_chainlocks_test", newMockTickerFunc(true), newCounterWithBackwardsChainLocks)
+	css, cleanup := randConsensusNet(N, "consensus_core_chainlocks_test", newMockTickerFunc(true), newCounterWithBackwardsCoreChainLocks)
 	defer cleanup()
 
 	for i := 0; i < 4; i++ {
