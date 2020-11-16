@@ -26,23 +26,19 @@ func (fr Fraction) String() string {
 func ParseFraction(f string) (Fraction, error) {
 	o := strings.Split(f, "/")
 	if len(o) != 2 {
-		return Fraction{}, errors.New("incorrect formating: should be like \"1/3\"")
+		return Fraction{}, errors.New("incorrect formating: should have a single slash i.e. \"1/3\"")
 	}
-	numerator, err := strconv.ParseInt(o[0], 10, 64)
+	numerator, err := strconv.ParseUint(o[0], 10, 64)
 	if err != nil {
 		return Fraction{}, fmt.Errorf("incorrect formatting, err: %w", err)
 	}
 
-	denominator, err := strconv.ParseInt(o[1], 10, 64)
+	denominator, err := strconv.ParseUint(o[1], 10, 64)
 	if err != nil {
 		return Fraction{}, fmt.Errorf("incorrect formatting, err: %w", err)
 	}
 	if denominator == 0 {
 		return Fraction{}, errors.New("denominator can't be 0")
 	}
-	if numerator < 0 || denominator < 0 {
-		return Fraction{}, fmt.Errorf("numerator and denominator can't be negative. Got %d and %d respectively",
-			numerator, denominator)
-	}
-	return Fraction{Numerator: uint64(numerator), Denominator: uint64(denominator)}, nil
+	return Fraction{Numerator: numerator, Denominator: denominator}, nil
 }
