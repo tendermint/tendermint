@@ -484,7 +484,7 @@ func (cli *socketClient) queueRequestAndFlushSync(
 }
 
 func queueErr(e error) error {
-	return fmt.Errorf("can't queue req: %w", err)
+	return fmt.Errorf("can't queue req: %w", e)
 }
 
 func (cli *socketClient) flushQueue() {

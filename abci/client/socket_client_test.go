@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/context"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/server"
@@ -33,11 +34,12 @@ func TestProperSyncCalls(t *testing.T) {
 	resp := make(chan error, 1)
 	go func() {
 		// This is BeginBlockSync unrolled....
-		reqres := c.BeginBlockAsync(types.RequestBeginBlock{})
-		err := c.FlushSync()
-		require.NoError(t, err)
+		reqres, err := c.BeginBlockAsync(types.RequestBeginBlock{})
+		assert.NoError(t, err)
+		err = c.FlushSync(context.Background())
+		assert.NoError(t, err)
 		res := reqres.Response.GetBeginBlock()
-		require.NotNil(t, res)
+		assert.NotNil(t, res)
 		resp <- c.Error()
 	}()
 
@@ -68,14 +70,16 @@ func TestHangingSyncCalls(t *testing.T) {
 	resp := make(chan error, 1)
 	go func() {
 		// Start BeginBlock and flush it
-		reqres := c.BeginBlockAsync(types.RequestBeginBlock{})
-		flush := c.FlushAsync()
+		reqres, err := c.BeginBlockAsync(types.RequestBeginBlock{})
+		assert.NoError(t, err)
+		flush, err := c.FlushAsync()
+		assert.NoError(t, err)
 		// wait 20 ms for all events to travel socket, but
 		// no response yet from server
 		time.Sleep(20 * time.Millisecond)
 		// kill the server, so the connections break
-		err := s.Stop()
-		require.NoError(t, err)
+		err = s.Stop()
+		assert.NoError(t, err)
 
 		// wait for the response from BeginBlock
 		reqres.Wait()

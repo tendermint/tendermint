@@ -26,4 +26,4 @@
 //
 // sync: waits for all Async calls to complete (essentially what Flush does in
 // the socket client) and calls Sync method.
-package client
+package abcicli
