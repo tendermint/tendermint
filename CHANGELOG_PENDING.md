@@ -23,6 +23,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES
 
+- [libs/math] \#5665 Make fractions unsigned integers (uint64) (@cmwaters)
+
 ### IMPROVEMENTS
 
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
