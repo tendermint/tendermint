@@ -597,7 +597,7 @@ via light client.
 ### LastCommitInfo
 
 - **Fields**:
-    - `Round (int32)`: Commit round.
+    - `Round (int32)`: Commit round. Reflects the total amount of rounds it took to come to consensus for the current block.
     - `Votes ([]VoteInfo)`: List of validators addresses in the last validator set
     with their voting power and whether or not they signed a vote.
 
