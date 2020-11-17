@@ -16,6 +16,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - P2P Protocol
 
 - Go API
+  - [abci/client, proxy] \#5673 `Async` funcs return an error, `Sync` funcs accept `context.Context` (@melekes)
 
 - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
 
@@ -27,6 +28,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
 - [privval] \#5603 Add `--key` to `init`, `gen_validator`, `testnet` & `unsafe_reset_priv_validator` for use in generating `secp256k1` keys.
+- [abci/client] \#5673 `Async` requests return an error if queue is full (@melekes)
 
 ### BUG FIXES
 
