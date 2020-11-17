@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -15,30 +16,30 @@ import (
 
 //----------------------------------------
 
-type AppConnTest interface {
-	EchoAsync(string) *abcicli.ReqRes
-	FlushSync() error
-	InfoSync(types.RequestInfo) (*types.ResponseInfo, error)
+type appConnTestI interface {
+	EchoAsync(string) (*abcicli.ReqRes, error)
+	FlushSync(context.Context) error
+	InfoSync(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
 }
 
 type appConnTest struct {
 	appConn abcicli.Client
 }
 
-func NewAppConnTest(appConn abcicli.Client) AppConnTest {
+func newAppConnTest(appConn abcicli.Client) appConnTestI {
 	return &appConnTest{appConn}
 }
 
-func (app *appConnTest) EchoAsync(msg string) *abcicli.ReqRes {
+func (app *appConnTest) EchoAsync(msg string) (*abcicli.ReqRes, error) {
 	return app.appConn.EchoAsync(msg)
 }
 
-func (app *appConnTest) FlushSync() error {
-	return app.appConn.FlushSync()
+func (app *appConnTest) FlushSync(ctx context.Context) error {
+	return app.appConn.FlushSync(ctx)
 }
 
-func (app *appConnTest) InfoSync(req types.RequestInfo) (*types.ResponseInfo, error) {
-	return app.appConn.InfoSync(req)
+func (app *appConnTest) InfoSync(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
+	return app.appConn.InfoSync(ctx, req)
 }
 
 //----------------------------------------
@@ -71,13 +72,13 @@ func TestEcho(t *testing.T) {
 		t.Fatalf("Error starting ABCI client: %v", err.Error())
 	}
 
-	proxy := NewAppConnTest(cli)
+	proxy := newAppConnTest(cli)
 	t.Log("Connected")
 
 	for i := 0; i < 1000; i++ {
 		proxy.EchoAsync(fmt.Sprintf("echo-%v", i))
 	}
-	if err := proxy.FlushSync(); err != nil {
+	if err := proxy.FlushSync(context.Background()); err != nil {
 		t.Error(err)
 	}
 }
@@ -109,7 +110,7 @@ func BenchmarkEcho(b *testing.B) {
 		b.Fatalf("Error starting ABCI client: %v", err.Error())
 	}
 
-	proxy := NewAppConnTest(cli)
+	proxy := newAppConnTest(cli)
 	b.Log("Connected")
 	echoString := strings.Repeat(" ", 200)
 	b.StartTimer() // Start benchmarking tests
@@ -117,7 +118,7 @@ func BenchmarkEcho(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		proxy.EchoAsync(echoString)
 	}
-	if err := proxy.FlushSync(); err != nil {
+	if err := proxy.FlushSync(context.Background()); err != nil {
 		b.Error(err)
 	}
 
@@ -152,10 +153,10 @@ func TestInfo(t *testing.T) {
 		t.Fatalf("Error starting ABCI client: %v", err.Error())
 	}
 
-	proxy := NewAppConnTest(cli)
+	proxy := newAppConnTest(cli)
 	t.Log("Connected")
 
-	resInfo, err := proxy.InfoSync(RequestInfo)
+	resInfo, err := proxy.InfoSync(context.Background(), RequestInfo)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}

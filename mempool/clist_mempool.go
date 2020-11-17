@@ -3,6 +3,7 @@ package mempool
 import (
 	"bytes"
 	"container/list"
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"sync"
@@ -185,7 +186,7 @@ func (mem *CListMempool) TxsBytes() int64 {
 
 // Lock() must be help by the caller during execution.
 func (mem *CListMempool) FlushAppConn() error {
-	return mem.proxyAppConn.FlushSync()
+	return mem.proxyAppConn.FlushSync(context.Background())
 }
 
 // XXX: Unsafe! Calling Flush may leave mempool in inconsistent state.
@@ -285,7 +286,11 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 		return ErrTxInCache
 	}
 
-	reqRes := mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
+	reqRes, err := mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
+	if err != nil {
+		mem.cache.Remove(tx)
+		return err
+	}
 	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderP2PID, cb))
 
 	return nil

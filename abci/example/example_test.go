@@ -104,9 +104,9 @@ func testStream(t *testing.T, app types.Application) {
 	// Write requests
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
-		reqRes := client.DeliverTxAsync(types.RequestDeliverTx{Tx: []byte("test")})
+		reqRes, err := client.DeliverTxAsync(types.RequestDeliverTx{Tx: []byte("test")})
+		require.NoError(t, err)
 		_ = reqRes
-		// check err ?
 
 		// Sometimes send flush messages
 		if counter%123 == 0 {

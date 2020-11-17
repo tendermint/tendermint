@@ -3,8 +3,11 @@
 package mocks
 
 import (
-	mock "github.com/stretchr/testify/mock"
+	context "context"
+
 	abcicli "github.com/tendermint/tendermint/abci/client"
+
+	mock "github.com/stretchr/testify/mock"
 
 	types "github.com/tendermint/tendermint/abci/types"
 )
@@ -14,13 +17,13 @@ type AppConnConsensus struct {
 	mock.Mock
 }
 
-// BeginBlockSync provides a mock function with given fields: _a0
-func (_m *AppConnConsensus) BeginBlockSync(_a0 types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
-	ret := _m.Called(_a0)
+// BeginBlockSync provides a mock function with given fields: _a0, _a1
+func (_m *AppConnConsensus) BeginBlockSync(_a0 context.Context, _a1 types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 *types.ResponseBeginBlock
-	if rf, ok := ret.Get(0).(func(types.RequestBeginBlock) *types.ResponseBeginBlock); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestBeginBlock) *types.ResponseBeginBlock); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*types.ResponseBeginBlock)
@@ -28,7 +31,30 @@ func (_m *AppConnConsensus) BeginBlockSync(_a0 types.RequestBeginBlock) (*types.
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(types.RequestBeginBlock) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, types.RequestBeginBlock) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CommitSync provides a mock function with given fields: _a0
+func (_m *AppConnConsensus) CommitSync(_a0 context.Context) (*types.ResponseCommit, error) {
+	ret := _m.Called(_a0)
+
+	var r0 *types.ResponseCommit
+	if rf, ok := ret.Get(0).(func(context.Context) *types.ResponseCommit); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.ResponseCommit)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
 		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
@@ -37,31 +63,8 @@ func (_m *AppConnConsensus) BeginBlockSync(_a0 types.RequestBeginBlock) (*types.
 	return r0, r1
 }
 
-// CommitSync provides a mock function with given fields:
-func (_m *AppConnConsensus) CommitSync() (*types.ResponseCommit, error) {
-	ret := _m.Called()
-
-	var r0 *types.ResponseCommit
-	if rf, ok := ret.Get(0).(func() *types.ResponseCommit); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.ResponseCommit)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // DeliverTxAsync provides a mock function with given fields: _a0
-func (_m *AppConnConsensus) DeliverTxAsync(_a0 types.RequestDeliverTx) *abcicli.ReqRes {
+func (_m *AppConnConsensus) DeliverTxAsync(_a0 types.RequestDeliverTx) (*abcicli.ReqRes, error) {
 	ret := _m.Called(_a0)
 
 	var r0 *abcicli.ReqRes
@@ -73,16 +76,23 @@ func (_m *AppConnConsensus) DeliverTxAsync(_a0 types.RequestDeliverTx) *abcicli.
 		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(types.RequestDeliverTx) error); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
-// EndBlockSync provides a mock function with given fields: _a0
-func (_m *AppConnConsensus) EndBlockSync(_a0 types.RequestEndBlock) (*types.ResponseEndBlock, error) {
-	ret := _m.Called(_a0)
+// EndBlockSync provides a mock function with given fields: _a0, _a1
+func (_m *AppConnConsensus) EndBlockSync(_a0 context.Context, _a1 types.RequestEndBlock) (*types.ResponseEndBlock, error) {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 *types.ResponseEndBlock
-	if rf, ok := ret.Get(0).(func(types.RequestEndBlock) *types.ResponseEndBlock); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestEndBlock) *types.ResponseEndBlock); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*types.ResponseEndBlock)
@@ -90,8 +100,8 @@ func (_m *AppConnConsensus) EndBlockSync(_a0 types.RequestEndBlock) (*types.Resp
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(types.RequestEndBlock) error); ok {
-		r1 = rf(_a0)
+	if rf, ok := ret.Get(1).(func(context.Context, types.RequestEndBlock) error); ok {
+		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -113,13 +123,13 @@ func (_m *AppConnConsensus) Error() error {
 	return r0
 }
 
-// InitChainSync provides a mock function with given fields: _a0
-func (_m *AppConnConsensus) InitChainSync(_a0 types.RequestInitChain) (*types.ResponseInitChain, error) {
-	ret := _m.Called(_a0)
+// InitChainSync provides a mock function with given fields: _a0, _a1
+func (_m *AppConnConsensus) InitChainSync(_a0 context.Context, _a1 types.RequestInitChain) (*types.ResponseInitChain, error) {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 *types.ResponseInitChain
-	if rf, ok := ret.Get(0).(func(types.RequestInitChain) *types.ResponseInitChain); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, types.RequestInitChain) *types.ResponseInitChain); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*types.ResponseInitChain)
@@ -127,8 +137,8 @@ func (_m *AppConnConsensus) InitChainSync(_a0 types.RequestInitChain) (*types.Re
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(types.RequestInitChain) error); ok {
-		r1 = rf(_a0)
+	if rf, ok := ret.Get(1).(func(context.Context, types.RequestInitChain) error); ok {
+		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}
