@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	// Max number of queued requests
+	// reqQueueSize is the max number of queued async requests.
 	// (memory: 256MB max assuming 1MB transactions)
 	reqQueueSize = 256
 	// Don't wait longer than...

@@ -45,7 +45,7 @@ func TestGRPC(t *testing.T) {
 }
 
 func testStream(t *testing.T, app types.Application) {
-	numDeliverTxs := 20000
+	const numDeliverTxs = 20000
 	socketFile := fmt.Sprintf("test-%08x.sock", rand.Int31n(1<<30))
 	defer os.Remove(socketFile)
 	socket := fmt.Sprintf("unix://%v", socketFile)
@@ -53,9 +53,8 @@ func testStream(t *testing.T, app types.Application) {
 	// Start the listener
 	server := abciserver.NewSocketServer(socket, app)
 	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
-	if err := server.Start(); err != nil {
-		require.NoError(t, err, "Error starting socket server")
-	}
+	err := server.Start()
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := server.Stop(); err != nil {
 			t.Error(err)
@@ -65,9 +64,8 @@ func testStream(t *testing.T, app types.Application) {
 	// Connect to the socket
 	client := abcicli.NewSocketClient(socket, false)
 	client.SetLogger(log.TestingLogger().With("module", "abci-client"))
-	if err := client.Start(); err != nil {
-		t.Fatalf("Error starting socket client: %v", err.Error())
-	}
+	err = client.Start()
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := client.Stop(); err != nil {
 			t.Error(err)
@@ -104,19 +102,19 @@ func testStream(t *testing.T, app types.Application) {
 	// Write requests
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
-		reqRes, err := client.DeliverTxAsync(types.RequestDeliverTx{Tx: []byte("test")})
+		_, err = client.DeliverTxAsync(types.RequestDeliverTx{Tx: []byte("test")})
 		require.NoError(t, err)
-		_ = reqRes
 
 		// Sometimes send flush messages
-		if counter%123 == 0 {
-			client.FlushAsync()
-			// check err ?
+		if counter%128 == 0 {
+			err = client.FlushSync(context.Background())
+			require.NoError(t, err)
 		}
 	}
 
 	// Send final flush message
-	client.FlushAsync()
+	_, err = client.FlushAsync()
+	require.NoError(t, err)
 
 	<-done
 }
