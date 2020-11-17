@@ -37,10 +37,13 @@ type Channel struct {
 	Error chan<- PeerError
 }
 
-// Close closes the outbound channel, and is equivalent to close(Channel.Out).
-// This will cause Channel.In to be closed when appropriate. The ID can then be
-// reused.
-func (c *Channel) Close() error { return nil }
+// Close closes the outbound channel and is equivalent to close(Channel.Out).
+// Close is intended to be called by the caller, whereas the sender must must
+// coordinate when to close the inbound channel.
+func (c *Channel) Close() error {
+	close(c.Out)
+	return nil
+}
 
 // Wrapper is a Protobuf message that can contain a variety of inner messages.
 // If a Channel's message type implements Wrapper, the channel will
