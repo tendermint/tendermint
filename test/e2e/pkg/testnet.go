@@ -14,6 +14,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
 )
@@ -57,6 +58,7 @@ type Testnet struct {
 	Validators       map[*Node]int64
 	ValidatorUpdates map[int64]map[*Node]int64
 	Nodes            []*Node
+	KeyType          string
 }
 
 // Node represents a Tendermint node in a testnet.
@@ -468,15 +470,21 @@ func newKeyGenerator(seed int64) *keyGenerator {
 	}
 }
 
-func (g *keyGenerator) Generate() crypto.PrivKey {
+func (g *keyGenerator) Generate(keyType string) crypto.PrivKey {
 	seed := make([]byte, ed25519.SeedSize)
 
 	_, err := io.ReadFull(g.random, seed)
 	if err != nil {
 		panic(err) // this shouldn't happen
 	}
-
-	return ed25519.GenPrivKeyFromSecret(seed)
+	switch keyType {
+	case "secp256k1":
+		return secp256k1.GenPrivKeySecp256k1(seed)
+	case "", "ed25519":
+		return ed25519.GenPrivKeyFromSecret(seed)
+	default:
+		panic("KeyType not supported") // should not make it this far
+	}
 }
 
 // portGenerator generates local Docker proxy ports for each node.
