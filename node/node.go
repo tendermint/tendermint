@@ -1363,7 +1363,8 @@ func createAndStartPrivValidatorSocketClient(
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
-
+	err = pvsc.Ping()
+	fmt.Println(err)
 	// try to get a pubkey from private validate first time
 	_, err = pvsc.GetPubKey()
 	if err != nil {

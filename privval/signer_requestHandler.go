@@ -34,6 +34,7 @@ func DefaultValidationRequestHandler(
 		pubKey, err = privVal.GetPubKey()
 		pk, err := cryptoenc.PubKeyToProto(pubKey)
 		if err != nil {
+			fmt.Println("here")
 			return res, err
 		}
 
