@@ -94,7 +94,7 @@ func (r *Reactor) Run(ctx context.Context) {
 		select {
 		case peerUpdate := <-r.peerUpdates:
 			r.Logger.Debug("peer update", "peer", peerUpdate.PeerID.String())
-			// TODO: Handle peer update.
+			r.handlePeerUpdate(peerUpdate)
 
 		case <-ctx.Done():
 			return
@@ -233,6 +233,21 @@ func (r *Reactor) processChunkCh(ctx context.Context) {
 		case <-ctx.Done():
 			r.Logger.Debug("stopped listening on chunk channel")
 			return
+		}
+	}
+}
+
+func (r *Reactor) handlePeerUpdate(peerUpdate p2p.PeerUpdate) {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	if r.syncer != nil {
+		switch peerUpdate.Status {
+		case p2p.PeerStatusNew, p2p.PeerStatusUp:
+			r.syncer.AddPeer(peerUpdate.PeerID)
+
+		case p2p.PeerStatusDown, p2p.PeerStatusRemoved, p2p.PeerStatusBanned:
+			r.syncer.RemovePeer(peerUpdate.PeerID)
 		}
 	}
 }
