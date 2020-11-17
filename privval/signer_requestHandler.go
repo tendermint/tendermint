@@ -24,14 +24,17 @@ func DefaultValidationRequestHandler(
 	switch r := req.Sum.(type) {
 	case *privvalproto.Message_PubKeyRequest:
 		if r.PubKeyRequest.GetChainId() != chainID {
-			res = mustWrapMsg(&privvalproto.SignedVoteResponse{
-				Vote: tmproto.Vote{}, Error: &privvalproto.RemoteSignerError{
+			res = mustWrapMsg(&privvalproto.PubKeyResponse{
+				PubKey: cryptoproto.PublicKey{}, Error: &privvalproto.RemoteSignerError{
 					Code: 0, Description: "unable to provide pubkey"}})
 			return res, fmt.Errorf("want chainID: %s, got chainID: %s", r.PubKeyRequest.GetChainId(), chainID)
 		}
 
 		var pubKey crypto.PubKey
 		pubKey, err = privVal.GetPubKey()
+		if err != nil {
+			return res, err
+		}
 		pk, err := cryptoenc.PubKeyToProto(pubKey)
 		if err != nil {
 			return res, err
@@ -64,8 +67,8 @@ func DefaultValidationRequestHandler(
 
 	case *privvalproto.Message_SignProposalRequest:
 		if r.SignProposalRequest.GetChainId() != chainID {
-			res = mustWrapMsg(&privvalproto.SignedVoteResponse{
-				Vote: tmproto.Vote{}, Error: &privvalproto.RemoteSignerError{
+			res = mustWrapMsg(&privvalproto.SignedProposalResponse{
+				Proposal: tmproto.Proposal{}, Error: &privvalproto.RemoteSignerError{
 					Code:        0,
 					Description: "unable to sign proposal"}})
 			return res, fmt.Errorf("want chainID: %s, got chainID: %s", r.SignProposalRequest.GetChainId(), chainID)
