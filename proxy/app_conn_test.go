@@ -76,7 +76,10 @@ func TestEcho(t *testing.T) {
 	t.Log("Connected")
 
 	for i := 0; i < 1000; i++ {
-		proxy.EchoAsync(fmt.Sprintf("echo-%v", i))
+		_, err = proxy.EchoAsync(fmt.Sprintf("echo-%v", i))
+		if err != nil {
+			t.Error(err)
+		}
 	}
 	if err := proxy.FlushSync(context.Background()); err != nil {
 		t.Error(err)
@@ -116,7 +119,10 @@ func BenchmarkEcho(b *testing.B) {
 	b.StartTimer() // Start benchmarking tests
 
 	for i := 0; i < b.N; i++ {
-		proxy.EchoAsync(echoString)
+		_, err = proxy.EchoAsync(echoString)
+		if err != nil {
+			b.Error(err)
+		}
 	}
 	if err := proxy.FlushSync(context.Background()); err != nil {
 		b.Error(err)

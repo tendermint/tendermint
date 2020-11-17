@@ -643,13 +643,19 @@ func (mem *CListMempool) recheckTxs() {
 	// NOTE: globalCb may be called concurrently.
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
-		mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{
+		_, err := mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{
 			Tx:   memTx.tx,
 			Type: abci.CheckTxType_Recheck,
 		})
+		if err != nil {
+			mem.logger.Error("Can't check tx", "err", err)
+		}
 	}
 
-	mem.proxyAppConn.FlushAsync()
+	_, err := mem.proxyAppConn.FlushAsync()
+	if err != nil {
+		mem.logger.Error("Can't flush txs", "err", err)
+	}
 }
 
 //--------------------------------------------------------------------------------

@@ -286,7 +286,10 @@ func (cli *grpcClient) ApplySnapshotChunkAsync(params types.RequestApplySnapshot
 	if err != nil {
 		return nil, err
 	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_ApplySnapshotChunk{ApplySnapshotChunk: res}}), nil
+	return cli.finishAsyncCall(
+		req,
+		&types.Response{Value: &types.Response_ApplySnapshotChunk{ApplySnapshotChunk: res}},
+	), nil
 }
 
 // finishAsyncCall creates a ReqRes for an async call, and immediately populates it
@@ -348,7 +351,11 @@ func (cli *grpcClient) InfoSync(ctx context.Context, req types.RequestInfo) (*ty
 	return cli.finishSyncCall(reqres).GetInfo(), cli.Error()
 }
 
-func (cli *grpcClient) DeliverTxSync(ctx context.Context, params types.RequestDeliverTx) (*types.ResponseDeliverTx, error) {
+func (cli *grpcClient) DeliverTxSync(
+	ctx context.Context,
+	params types.RequestDeliverTx,
+) (*types.ResponseDeliverTx, error) {
+
 	reqres, err := cli.DeliverTxAsync(params)
 	if err != nil {
 		return nil, err
@@ -356,7 +363,11 @@ func (cli *grpcClient) DeliverTxSync(ctx context.Context, params types.RequestDe
 	return cli.finishSyncCall(reqres).GetDeliverTx(), cli.Error()
 }
 
-func (cli *grpcClient) CheckTxSync(ctx context.Context, params types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+func (cli *grpcClient) CheckTxSync(
+	ctx context.Context,
+	params types.RequestCheckTx,
+) (*types.ResponseCheckTx, error) {
+
 	reqres, err := cli.CheckTxAsync(params)
 	if err != nil {
 		return nil, err
@@ -380,7 +391,11 @@ func (cli *grpcClient) CommitSync(ctx context.Context) (*types.ResponseCommit, e
 	return cli.finishSyncCall(reqres).GetCommit(), cli.Error()
 }
 
-func (cli *grpcClient) InitChainSync(ctx context.Context, params types.RequestInitChain) (*types.ResponseInitChain, error) {
+func (cli *grpcClient) InitChainSync(
+	ctx context.Context,
+	params types.RequestInitChain,
+) (*types.ResponseInitChain, error) {
+
 	reqres, err := cli.InitChainAsync(params)
 	if err != nil {
 		return nil, err
@@ -388,7 +403,11 @@ func (cli *grpcClient) InitChainSync(ctx context.Context, params types.RequestIn
 	return cli.finishSyncCall(reqres).GetInitChain(), cli.Error()
 }
 
-func (cli *grpcClient) BeginBlockSync(ctx context.Context, params types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
+func (cli *grpcClient) BeginBlockSync(
+	ctx context.Context,
+	params types.RequestBeginBlock,
+) (*types.ResponseBeginBlock, error) {
+
 	reqres, err := cli.BeginBlockAsync(params)
 	if err != nil {
 		return nil, err
@@ -396,7 +415,11 @@ func (cli *grpcClient) BeginBlockSync(ctx context.Context, params types.RequestB
 	return cli.finishSyncCall(reqres).GetBeginBlock(), cli.Error()
 }
 
-func (cli *grpcClient) EndBlockSync(ctx context.Context, params types.RequestEndBlock) (*types.ResponseEndBlock, error) {
+func (cli *grpcClient) EndBlockSync(
+	ctx context.Context,
+	params types.RequestEndBlock,
+) (*types.ResponseEndBlock, error) {
+
 	reqres, err := cli.EndBlockAsync(params)
 	if err != nil {
 		return nil, err
@@ -404,7 +427,11 @@ func (cli *grpcClient) EndBlockSync(ctx context.Context, params types.RequestEnd
 	return cli.finishSyncCall(reqres).GetEndBlock(), cli.Error()
 }
 
-func (cli *grpcClient) ListSnapshotsSync(ctx context.Context, params types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
+func (cli *grpcClient) ListSnapshotsSync(
+	ctx context.Context,
+	params types.RequestListSnapshots,
+) (*types.ResponseListSnapshots, error) {
+
 	reqres, err := cli.ListSnapshotsAsync(params)
 	if err != nil {
 		return nil, err
@@ -412,7 +439,11 @@ func (cli *grpcClient) ListSnapshotsSync(ctx context.Context, params types.Reque
 	return cli.finishSyncCall(reqres).GetListSnapshots(), cli.Error()
 }
 
-func (cli *grpcClient) OfferSnapshotSync(ctx context.Context, params types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
+func (cli *grpcClient) OfferSnapshotSync(
+	ctx context.Context,
+	params types.RequestOfferSnapshot,
+) (*types.ResponseOfferSnapshot, error) {
+
 	reqres, err := cli.OfferSnapshotAsync(params)
 	if err != nil {
 		return nil, err
