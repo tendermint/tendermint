@@ -30,6 +30,8 @@ import (
 var (
 	client abcicli.Client
 	logger log.Logger
+
+	ctx = context.Background()
 )
 
 // flags
@@ -464,7 +466,7 @@ func cmdEcho(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		msg = args[0]
 	}
-	res, err := client.EchoSync(context.Background(), msg)
+	res, err := client.EchoSync(ctx, msg)
 	if err != nil {
 		return err
 	}
@@ -480,7 +482,7 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		version = args[0]
 	}
-	res, err := client.InfoSync(context.Background(), types.RequestInfo{Version: version})
+	res, err := client.InfoSync(ctx, types.RequestInfo{Version: version})
 	if err != nil {
 		return err
 	}
@@ -505,7 +507,7 @@ func cmdDeliverTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := client.DeliverTxSync(context.Background(), types.RequestDeliverTx{Tx: txBytes})
+	res, err := client.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: txBytes})
 	if err != nil {
 		return err
 	}
@@ -531,7 +533,7 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := client.CheckTxSync(context.Background(), types.RequestCheckTx{Tx: txBytes})
+	res, err := client.CheckTxSync(ctx, types.RequestCheckTx{Tx: txBytes})
 	if err != nil {
 		return err
 	}
@@ -546,7 +548,7 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 
 // Get application Merkle root hash
 func cmdCommit(cmd *cobra.Command, args []string) error {
-	res, err := client.CommitSync(context.Background())
+	res, err := client.CommitSync(ctx)
 	if err != nil {
 		return err
 	}
@@ -571,7 +573,7 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resQuery, err := client.QuerySync(context.Background(), types.RequestQuery{
+	resQuery, err := client.QuerySync(ctx, types.RequestQuery{
 		Data:   queryBytes,
 		Path:   flagPath,
 		Height: int64(flagHeight),
