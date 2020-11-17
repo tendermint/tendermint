@@ -103,6 +103,15 @@ const (
 	PeerErrorSeverityCritical PeerErrorSeverity = "critical" // Ban.
 )
 
+// PeerUpdates is a channel for receiving peer updates.
+type PeerUpdates <-chan PeerUpdate
+
+// PeerUpdate is a peer status update for reactors.
+type PeerUpdate struct {
+	PeerID PeerID
+	Status PeerStatus
+}
+
 // ============================================================================
 // Types and business logic below may be deprecated.
 //
