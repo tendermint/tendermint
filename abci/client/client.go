@@ -1,13 +1,13 @@
 package abcicli
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
-	"golang.org/x/net/context"
 )
 
 const (

@@ -1,12 +1,12 @@
 package abcicli
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"sync"
 	"time"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	"github.com/tendermint/tendermint/abci/types"

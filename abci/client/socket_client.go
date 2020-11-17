@@ -3,6 +3,7 @@ package abcicli
 import (
 	"bufio"
 	"container/list"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,7 +16,6 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/libs/timer"
-	"golang.org/x/net/context"
 )
 
 const (

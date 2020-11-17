@@ -1,6 +1,7 @@
 package example
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"net"
@@ -12,8 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc"
-
-	"golang.org/x/net/context"
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"

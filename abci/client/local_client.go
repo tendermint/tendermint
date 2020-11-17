@@ -1,10 +1,11 @@
 package abcicli
 
 import (
+	"context"
+
 	types "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
-	"golang.org/x/net/context"
 )
 
 // NOTE: use defer to unlock mutex because Application might panic (e.g., in
