@@ -34,15 +34,11 @@ const (
 type Reactor struct {
 	p2p.BaseReactor
 
-	conn      proxy.AppConnSnapshot
-	connQuery proxy.AppConnQuery
-	tempDir   string
-
-	snapshotCh *p2p.Channel
-	chunkCh    *p2p.Channel
-
-	// TODO: Replace peerUpdates with the concrete type once implemented.
-	// ref: https://github.com/tendermint/tendermint/issues/5670
+	conn        proxy.AppConnSnapshot
+	connQuery   proxy.AppConnQuery
+	tempDir     string
+	snapshotCh  *p2p.Channel
+	chunkCh     *p2p.Channel
 	peerUpdates p2p.PeerUpdates
 
 	// This will only be set when a state sync is in progress. It is used to feed
