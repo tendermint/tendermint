@@ -54,6 +54,8 @@ type syncer struct {
 	conn          proxy.AppConnSnapshot
 	connQuery     proxy.AppConnQuery
 	snapshots     *snapshotPool
+	snapshotCh    chan<- p2p.Envelope
+	chunkCh       chan<- p2p.Envelope
 	tempDir       string
 
 	mtx    tmsync.RWMutex
@@ -61,14 +63,22 @@ type syncer struct {
 }
 
 // newSyncer creates a new syncer.
-func newSyncer(logger log.Logger, conn proxy.AppConnSnapshot, connQuery proxy.AppConnQuery,
-	stateProvider StateProvider, tempDir string) *syncer {
+func newSyncer(
+	logger log.Logger,
+	conn proxy.AppConnSnapshot,
+	connQuery proxy.AppConnQuery,
+	stateProvider StateProvider,
+	snapshotCh, chunkCh chan<- p2p.Envelope,
+	tempDir string,
+) *syncer {
 	return &syncer{
 		logger:        logger,
 		stateProvider: stateProvider,
 		conn:          conn,
 		connQuery:     connQuery,
 		snapshots:     newSnapshotPool(stateProvider),
+		snapshotCh:    snapshotCh,
+		chunkCh:       chunkCh,
 		tempDir:       tempDir,
 	}
 }
@@ -97,7 +107,7 @@ func (s *syncer) AddChunk(chunk *chunk) (bool, error) {
 
 // AddSnapshot adds a snapshot to the snapshot pool. It returns true if a new, previously unseen
 // snapshot was accepted and added.
-func (s *syncer) AddSnapshot(peer p2p.Peer, snapshot *snapshot) (bool, error) {
+func (s *syncer) AddSnapshot(peer p2p.PeerID, snapshot *snapshot) (bool, error) {
 	added, err := s.snapshots.Add(peer, snapshot)
 	if err != nil {
 		return false, err
@@ -109,17 +119,20 @@ func (s *syncer) AddSnapshot(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 	return added, nil
 }
 
-// AddPeer adds a peer to the pool. For now we just keep it simple and send a single request
-// to discover snapshots, later we may want to do retries and stuff.
-func (s *syncer) AddPeer(peer p2p.Peer) {
-	s.logger.Debug("Requesting snapshots from peer", "peer", peer.ID())
-	peer.Send(SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
+// AddPeer adds a peer to the pool. For now we just keep it simple and send a
+// single request to discover snapshots, later we may want to do retries and stuff.
+func (s *syncer) AddPeer(peer p2p.PeerID) {
+	s.logger.Debug("Requesting snapshots from peer", "peer", peer.String())
+	s.snapshotCh <- p2p.Envelope{
+		To:      peer,
+		Message: &ssproto.SnapshotsRequest{},
+	}
 }
 
 // RemovePeer removes a peer from the pool.
-func (s *syncer) RemovePeer(peer p2p.Peer) {
-	s.logger.Debug("Removing peer from sync", "peer", peer.ID())
-	s.snapshots.RemovePeer(peer.ID())
+func (s *syncer) RemovePeer(peer p2p.PeerID) {
+	s.logger.Debug("Removing peer from sync", "peer", peer.String())
+	s.snapshots.RemovePeer(peer)
 }
 
 // SyncAny tries to sync any of the snapshots in the snapshot pool, waiting to discover further
@@ -192,8 +205,8 @@ func (s *syncer) SyncAny(discoveryTime time.Duration) (sm.State, *types.Commit, 
 			s.logger.Info("Snapshot senders rejected", "height", snapshot.Height, "format", snapshot.Format,
 				"hash", fmt.Sprintf("%X", snapshot.Hash))
 			for _, peer := range s.snapshots.GetPeers(snapshot) {
-				s.snapshots.RejectPeer(peer.ID())
-				s.logger.Info("Snapshot sender rejected", "peer", peer.ID())
+				s.snapshots.RejectPeer(peer)
+				s.logger.Info("Snapshot sender rejected", "peer", peer.String())
 			}
 
 		default:
@@ -341,9 +354,14 @@ func (s *syncer) applyChunks(chunks *chunkQueue) error {
 		// Reject any senders as requested by the app
 		for _, sender := range resp.RejectSenders {
 			if sender != "" {
-				s.snapshots.RejectPeer(p2p.ID(sender))
-				err := chunks.DiscardSender(p2p.ID(sender))
+				peerID, err := p2p.PeerIDFromString(sender)
 				if err != nil {
+					return err
+				}
+
+				s.snapshots.RejectPeer(peerID)
+
+				if err := chunks.DiscardSender(peerID); err != nil {
 					return fmt.Errorf("failed to reject sender: %w", err)
 				}
 			}
@@ -410,13 +428,16 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 			"format", snapshot.Format, "hash", snapshot.Hash)
 		return
 	}
-	s.logger.Debug("Requesting snapshot chunk", "height", snapshot.Height,
-		"format", snapshot.Format, "chunk", chunk, "peer", peer.ID())
-	peer.Send(ChunkChannel, mustEncodeMsg(&ssproto.ChunkRequest{
-		Height: snapshot.Height,
-		Format: snapshot.Format,
-		Index:  chunk,
-	}))
+
+	s.logger.Debug("Requesting snapshot chunk", "height", snapshot.Height, "format", snapshot.Format, "chunk", chunk, "peer", peer.String())
+	s.chunkCh <- p2p.Envelope{
+		To: peer,
+		Message: &ssproto.ChunkRequest{
+			Height: snapshot.Height,
+			Format: snapshot.Format,
+			Index:  chunk,
+		},
+	}
 }
 
 // verifyApp verifies the sync, checking the app hash and last block height. It returns the
@@ -426,18 +447,19 @@ func (s *syncer) verifyApp(snapshot *snapshot) (uint64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed to query ABCI app for appHash: %w", err)
 	}
+
 	if !bytes.Equal(snapshot.trustedAppHash, resp.LastBlockAppHash) {
 		s.logger.Error("appHash verification failed",
 			"expected", fmt.Sprintf("%X", snapshot.trustedAppHash),
 			"actual", fmt.Sprintf("%X", resp.LastBlockAppHash))
 		return 0, errVerifyFailed
 	}
+
 	if uint64(resp.LastBlockHeight) != snapshot.Height {
-		s.logger.Error("ABCI app reported unexpected last block height",
-			"expected", snapshot.Height, "actual", resp.LastBlockHeight)
+		s.logger.Error("ABCI app reported unexpected last block height", "expected", snapshot.Height, "actual", resp.LastBlockHeight)
 		return 0, errVerifyFailed
 	}
-	s.logger.Info("Verified ABCI app", "height", snapshot.Height,
-		"appHash", fmt.Sprintf("%X", snapshot.trustedAppHash))
+
+	s.logger.Info("Verified ABCI app", "height", snapshot.Height, "appHash", fmt.Sprintf("%X", snapshot.trustedAppHash))
 	return resp.AppVersion, nil
 }

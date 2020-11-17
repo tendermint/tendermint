@@ -505,7 +505,7 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 		r.mtx.Unlock()
 		return sm.State{}, nil, errors.New("a state sync is already in progress")
 	}
-	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateProvider, r.tempDir)
+	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateProvider, r.snapshotCh.Out, r.chunkCh.Out, r.tempDir)
 	r.mtx.Unlock()
 
 	// Request snapshots from all currently connected peers
