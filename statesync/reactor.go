@@ -3,6 +3,7 @@ package statesync
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"time"
 
@@ -133,12 +134,14 @@ func (r *Reactor) processSnapshotCh(ctx context.Context) {
 
 			case *ssproto.SnapshotsResponse:
 				r.mtx.RLock()
-				defer r.mtx.RUnlock()
 
 				if r.syncer == nil {
+					r.mtx.RUnlock()
 					r.Logger.Debug("received unexpected snapshot; no state sync in progress")
 					continue
 				}
+
+				r.mtx.RUnlock()
 
 				r.Logger.Debug("received snapshot", "height", msg.Height, "format", msg.Format, "peer", envelope.From.String())
 				_, err := r.syncer.AddSnapshot(envelope.From, &snapshot{
@@ -155,9 +158,15 @@ func (r *Reactor) processSnapshotCh(ctx context.Context) {
 
 			default:
 				r.Logger.Error("received unknown message: %T", msg)
+				r.chunkCh.Error <- p2p.PeerError{
+					PeerID:   envelope.From,
+					Err:      fmt.Errorf("unexpected message: %T", msg),
+					Severity: p2p.PeerErrorSeverityLow,
+				}
 			}
 
 		case <-ctx.Done():
+			r.Logger.Debug("stopped listening on snapshot channel")
 			return
 		}
 	}
@@ -194,12 +203,14 @@ func (r *Reactor) processChunkCh(ctx context.Context) {
 
 			case *ssproto.ChunkResponse:
 				r.mtx.RLock()
-				defer r.mtx.RUnlock()
 
 				if r.syncer == nil {
-					r.Logger.Debug("received unexpected chunk, no state sync in progress", "peer", envelope.From.String())
+					r.mtx.RUnlock()
+					r.Logger.Debug("received unexpected chunk; no state sync in progress", "peer", envelope.From.String())
 					continue
 				}
+
+				r.mtx.RUnlock()
 
 				r.Logger.Debug("received chunk; adding to sync", "height", msg.Height, "format", msg.Format, "chunk", msg.Index, "peer", envelope.From.String())
 				_, err := r.syncer.AddChunk(&chunk{
@@ -216,9 +227,15 @@ func (r *Reactor) processChunkCh(ctx context.Context) {
 
 			default:
 				r.Logger.Error("received unknown message: %T", msg)
+				r.chunkCh.Error <- p2p.PeerError{
+					PeerID:   envelope.From,
+					Err:      fmt.Errorf("unexpected message: %T", msg),
+					Severity: p2p.PeerErrorSeverityLow,
+				}
 			}
 
 		case <-ctx.Done():
+			r.Logger.Debug("stopped listening on chunk channel")
 			return
 		}
 	}
