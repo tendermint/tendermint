@@ -181,7 +181,7 @@ type Node struct {
 	privValidator types.PrivValidator // local node's validator key
 
 	// network
-	transport   *p2p.MultiplexTransport
+	transport   *p2p.MConnTransport
 	sw          *p2p.Switch  // p2p connections
 	addrBook    pex.AddrBook // known peers
 	nodeInfo    p2p.NodeInfo
@@ -417,12 +417,10 @@ func createTransport(
 	nodeKey *p2p.NodeKey,
 	proxyApp proxy.AppConns,
 ) (
-	*p2p.MultiplexTransport,
+	*p2p.MConnTransport,
 	[]p2p.PeerFilterFunc,
 ) {
 	var (
-		mConnConfig = p2p.MConnConfig(config.P2P)
-		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey, mConnConfig)
 		connFilters = []p2p.ConnFilterFunc{}
 		peerFilters = []p2p.PeerFilterFunc{}
 	)
@@ -471,17 +469,20 @@ func createTransport(
 		)
 	}
 
-	p2p.MultiplexTransportConnFilters(connFilters...)(transport)
+	max := config.P2P.MaxNumInboundPeers + len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
+
+	transport := p2p.NewMConnTransport(nodeInfo, *nodeKey, p2p.MConnConfig(config.P2P),
+		p2p.MultiplexTransportConnFilters(connFilters...),
+		p2p.MultiplexTransportMaxIncomingConnections(max),
+	)
 
 	// Limit the number of incoming connections.
-	max := config.P2P.MaxNumInboundPeers + len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
-	p2p.MultiplexTransportMaxIncomingConnections(max)(transport)
 
 	return transport, peerFilters
 }
 
 func createSwitch(config *cfg.Config,
-	transport p2p.Transport,
+	transport p2p.NewTransport,
 	p2pMetrics *p2p.Metrics,
 	peerFilters []p2p.PeerFilterFunc,
 	mempoolReactor *mempl.Reactor,

@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"sync"
@@ -82,7 +83,7 @@ type Switch struct {
 	persistentPeersAddrs []*NetAddress
 	unconditionalPeerIDs map[ID]struct{}
 
-	transport Transport
+	transport NewTransport
 
 	filterTimeout time.Duration
 	peerFilters   []PeerFilterFunc
@@ -94,8 +95,15 @@ type Switch struct {
 
 // NetAddress returns the address the switch is listening on.
 func (sw *Switch) NetAddress() *NetAddress {
-	addr := sw.transport.NetAddress()
-	return &addr
+	endpoints := sw.transport.Endpoints()
+	if len(endpoints) == 0 {
+		return nil
+	}
+	return &NetAddress{
+		ID:   endpoints[0].PeerID,
+		IP:   endpoints[0].IP,
+		Port: endpoints[0].Port,
+	}
 }
 
 // SwitchOption sets an optional parameter on the Switch.
@@ -104,7 +112,7 @@ type SwitchOption func(*Switch)
 // NewSwitch creates a new Switch with the given config.
 func NewSwitch(
 	cfg *config.P2PConfig,
-	transport Transport,
+	transport NewTransport,
 	options ...SwitchOption,
 ) *Switch {
 	sw := &Switch{
@@ -354,7 +362,7 @@ func (sw *Switch) StopPeerGracefully(peer Peer) {
 }
 
 func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
-	sw.transport.Cleanup(peer)
+	//sw.transport.Cleanup(peer) // FIXME Do we need to clean up anything?
 	if err := peer.Stop(); err != nil {
 		sw.Logger.Error("error while stopping peer", "error", err) // TODO: should return error to be handled accordingly
 	}
@@ -616,14 +624,19 @@ func (sw *Switch) IsPeerPersistent(na *NetAddress) bool {
 }
 
 func (sw *Switch) acceptRoutine() {
-	for {
-		p, err := sw.transport.Accept(peerConfig{
+	// FIXME Hack to handle old MConn transport
+	if t, ok := sw.transport.(*MConnTransport); ok {
+		t.setPeerConfig(peerConfig{
 			chDescs:      sw.chDescs,
 			onPeerError:  sw.StopPeerForError,
 			reactorsByCh: sw.reactorsByCh,
 			metrics:      sw.metrics,
 			isPersistent: sw.IsPeerPersistent,
 		})
+	}
+
+	for {
+		c, err := sw.transport.Accept(context.Background())
 		if err != nil {
 			switch err := err.(type) {
 			case ErrRejected:
@@ -670,6 +683,7 @@ func (sw *Switch) acceptRoutine() {
 
 			break
 		}
+		p := c.(*mConnConnection).peer
 
 		if !sw.IsPeerUnconditional(p.NodeInfo().ID()) {
 			// Ignore connection if we already have enough peers.
@@ -682,7 +696,7 @@ func (sw *Switch) acceptRoutine() {
 					"max", sw.config.MaxNumInboundPeers,
 				)
 
-				sw.transport.Cleanup(p)
+				//sw.transport.Cleanup(p) // FIXME We may need to clean up
 
 				continue
 			}
@@ -690,7 +704,7 @@ func (sw *Switch) acceptRoutine() {
 		}
 
 		if err := sw.addPeer(p); err != nil {
-			sw.transport.Cleanup(p)
+			//sw.transport.Cleanup(p) // FIXME Need to clean up
 			if p.IsRunning() {
 				_ = p.Stop()
 			}
@@ -720,12 +734,22 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		return fmt.Errorf("dial err (peerConfig.DialFail == true)")
 	}
 
-	p, err := sw.transport.Dial(*addr, peerConfig{
-		chDescs:      sw.chDescs,
-		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.IsPeerPersistent,
-		reactorsByCh: sw.reactorsByCh,
-		metrics:      sw.metrics,
+	// FIXME Hack to handle old MConn transport
+	if t, ok := sw.transport.(*MConnTransport); ok {
+		t.setPeerConfig(peerConfig{
+			chDescs:      sw.chDescs,
+			onPeerError:  sw.StopPeerForError,
+			reactorsByCh: sw.reactorsByCh,
+			metrics:      sw.metrics,
+			isPersistent: sw.IsPeerPersistent,
+		})
+	}
+
+	c, err := sw.transport.Dial(context.Background(), Endpoint{
+		Protocol: MConnProtocol,
+		PeerID:   addr.ID,
+		IP:       addr.IP,
+		Port:     addr.Port,
 	})
 	if err != nil {
 		if e, ok := err.(ErrRejected); ok {
@@ -748,8 +772,10 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		return err
 	}
 
+	p := c.(*mConnConnection).peer
+
 	if err := sw.addPeer(p); err != nil {
-		sw.transport.Cleanup(p)
+		//sw.transport.Cleanup(p) // FIXME Cleanup
 		if p.IsRunning() {
 			_ = p.Stop()
 		}

@@ -192,7 +192,7 @@ func MakeSwitch(
 		panic(err)
 	}
 
-	t := NewMultiplexTransport(nodeInfo, nodeKey, MConnConfig(cfg))
+	t := NewMConnTransport(nodeInfo, nodeKey, MConnConfig(cfg))
 
 	if err := t.Listen(*addr); err != nil {
 		panic(err)
@@ -211,7 +211,7 @@ func MakeSwitch(
 
 	// TODO: We need to setup reactors ahead of time so the NodeInfo is properly
 	// populated and we don't have to do those awkward overrides and setters.
-	t.nodeInfo = nodeInfo
+	t.mconn.nodeInfo = nodeInfo
 	sw.SetNodeInfo(nodeInfo)
 
 	return sw

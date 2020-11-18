@@ -28,6 +28,13 @@ type Protocol string
 
 // Endpoint represents a transport connection endpoint, either local or remote.
 type Endpoint struct {
+	// PeerID specifies the peer ID of the endpoint.
+	//
+	// FIXME This is here for backwards-compatibility with the existing MConn
+	// protocol, we should consider moving this higher in the stack (i.e. to
+	// the router).
+	PeerID ID
+
 	// Protocol specifies the transport protocol, used by the router to pick a
 	// transport for an endpoint.
 	Protocol Protocol
