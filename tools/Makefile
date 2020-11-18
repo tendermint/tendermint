@@ -43,6 +43,11 @@ TOOLS_DESTDIR  ?= $(GOPATH)/bin
 CERTSTRAP     = $(TOOLS_DESTDIR)/certstrap
 PROTOBUF     	= $(TOOLS_DESTDIR)/protoc
 GOODMAN 			= $(TOOLS_DESTDIR)/goodman
+BUF_VERSION = "0.30.0"
+BINARY_NAME = "buf"
+BIN = "/usr/local/bin"
+OS = $(shell uname -s)
+ARCH = $(shell uname -m)
 
 all: tools
 .PHONY: all
@@ -71,6 +76,14 @@ $(PROTOBUF):
 	@go get github.com/gogo/protobuf/protoc-gen-gogofaster@v1.3.1
 .PHONY: protobuf
 
+buf:
+	@echo "Install Buf"
+	curl -sSL \
+    "https://github.com/bufbuild/buf/releases/download/v$(BUF_VERSION)/$(BINARY_NAME)-$(OS)-$(ARCH)" \
+    -o "${BIN}/${BINARY_NAME}" && \
+  chmod +x "${BIN}/${BINARY_NAME}"
+.PHONY: buf
+
 goodman: $(GOODMAN)
 $(GOODMAN):
 	@echo "Get Goodman"
@@ -80,32 +93,5 @@ $(GOODMAN):
 tools-clean:
 	rm -f $(CERTSTRAP) $(PROTOBUF) $(GOX) $(GOODMAN)
 	rm -f tools-stamp
-	rm -rf /usr/local/include/google/protobuf
-	rm -f /usr/local/bin/protoc
+	rm -f "${BIN}/${BINARY_NAME}"
 .PHONY: tooks-clean
-
-###
-# Non Go tools
-###
-
-# Choose protobuf binary based on OS (only works for 64bit Linux and Mac).
-# NOTE: On Mac, installation via brew (brew install protoc) might be favorable.
-PROTOC_ZIP=""
-ifneq ($(OS),Windows_NT)
-		UNAME_S := $(shell uname -s)
-		ifeq ($(UNAME_S),Linux)
-			PROTOC_ZIP="protoc-3.10.1-linux-x86_64.zip"
-		endif
-		ifeq ($(UNAME_S),Darwin)
-			PROTOC_ZIP="protoc-3.10.1-osx-x86_64.zip"
-		endif
-endif
-
-protoc:
-	@echo "Get Protobuf"
-	@echo "In case of any errors, please install directly from https://github.com/protocolbuffers/protobuf/releases"
-	@curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.10.1/$(PROTOC_ZIP)
-	@unzip -o $(PROTOC_ZIP) -d /usr/local bin/protoc
-	@unzip -o $(PROTOC_ZIP) -d /usr/local 'include/*'
-	@rm -f $(PROTOC_ZIP)
-.PHONY: protoc
