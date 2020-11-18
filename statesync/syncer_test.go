@@ -146,14 +146,14 @@ func TestSyncer_SyncAny(t *testing.T) {
 	chunkRequestsMtx := tmsync.Mutex{}
 	onChunkRequest := func(args mock.Arguments) {
 		pb, err := decodeMsg(args[1].([]byte))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		msg := pb.(*ssproto.ChunkRequest)
-		require.EqualValues(t, 1, msg.Height)
-		require.EqualValues(t, 1, msg.Format)
-		require.LessOrEqual(t, msg.Index, uint32(len(chunks)))
+		assert.EqualValues(t, 1, msg.Height)
+		assert.EqualValues(t, 1, msg.Format)
+		assert.LessOrEqual(t, msg.Index, uint32(len(chunks)))
 
 		added, err := syncer.AddChunk(chunks[msg.Index])
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		assert.True(t, added)
 
 		chunkRequestsMtx.Lock()
