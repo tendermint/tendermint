@@ -73,11 +73,17 @@ func (app *appConnConsensus) Error() error {
 	return app.appConn.Error()
 }
 
-func (app *appConnConsensus) InitChainSync(ctx context.Context, req types.RequestInitChain) (*types.ResponseInitChain, error) {
+func (app *appConnConsensus) InitChainSync(
+	ctx context.Context,
+	req types.RequestInitChain,
+) (*types.ResponseInitChain, error) {
 	return app.appConn.InitChainSync(ctx, req)
 }
 
-func (app *appConnConsensus) BeginBlockSync(ctx context.Context, req types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
+func (app *appConnConsensus) BeginBlockSync(
+	ctx context.Context,
+	req types.RequestBeginBlock,
+) (*types.ResponseBeginBlock, error) {
 	return app.appConn.BeginBlockSync(ctx, req)
 }
 
@@ -85,7 +91,10 @@ func (app *appConnConsensus) DeliverTxAsync(req types.RequestDeliverTx) (*abcicl
 	return app.appConn.DeliverTxAsync(req)
 }
 
-func (app *appConnConsensus) EndBlockSync(ctx context.Context, req types.RequestEndBlock) (*types.ResponseEndBlock, error) {
+func (app *appConnConsensus) EndBlockSync(
+	ctx context.Context,
+	req types.RequestEndBlock,
+) (*types.ResponseEndBlock, error) {
 	return app.appConn.EndBlockSync(ctx, req)
 }
 
@@ -176,11 +185,17 @@ func (app *appConnSnapshot) Error() error {
 	return app.appConn.Error()
 }
 
-func (app *appConnSnapshot) ListSnapshotsSync(ctx context.Context, req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
+func (app *appConnSnapshot) ListSnapshotsSync(
+	ctx context.Context,
+	req types.RequestListSnapshots,
+) (*types.ResponseListSnapshots, error) {
 	return app.appConn.ListSnapshotsSync(ctx, req)
 }
 
-func (app *appConnSnapshot) OfferSnapshotSync(ctx context.Context, req types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
+func (app *appConnSnapshot) OfferSnapshotSync(
+	ctx context.Context,
+	req types.RequestOfferSnapshot,
+) (*types.ResponseOfferSnapshot, error) {
 	return app.appConn.OfferSnapshotSync(ctx, req)
 }
 
