@@ -29,6 +29,7 @@ var (
 //
 // maxClockDrift defines how much untrustedHeader.Time can drift into the
 // future.
+// trustedHeader must have a ChainID, Height and Time
 func VerifyNonAdjacent(
 	trustedHeader *types.SignedHeader, // height=X
 	trustedVals *types.ValidatorSet, // height=X or height=X+1
@@ -92,6 +93,7 @@ func VerifyNonAdjacent(
 //
 // maxClockDrift defines how much untrustedHeader.Time can drift into the
 // future.
+// trustedHeader must have a ChainID, Height, Time and NextValidatorsHash
 func VerifyAdjacent(
 	trustedHeader *types.SignedHeader, // height=X
 	untrustedHeader *types.SignedHeader, // height=X+1
