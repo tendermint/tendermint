@@ -191,10 +191,16 @@ func MakeSwitch(
 	if err != nil {
 		panic(err)
 	}
+	endpoint := Endpoint{
+		Protocol: MConnProtocol,
+		PeerID:   addr.ID,
+		IP:       addr.IP,
+		Port:     addr.Port,
+	}
 
 	t := NewMConnTransport(nodeInfo, nodeKey, MConnConfig(cfg))
 
-	if err := t.Listen(*addr); err != nil {
+	if err := t.Listen(endpoint); err != nil {
 		panic(err)
 	}
 

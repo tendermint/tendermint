@@ -11,8 +11,8 @@ import (
 
 const MConnProtocol Protocol = "mconn"
 
-// MConnTransport is a NewTransport implementation using the current multiplexed
-// Tendermint protocol.
+// MConnTransport is a Transport implementation using the current multiplexed
+// Tendermint protocol ("MConn").
 type MConnTransport struct {
 	mconn *MultiplexTransport
 	mtx   struct {
@@ -42,9 +42,12 @@ func (m *MConnTransport) setPeerConfig(peerConfig peerConfig) {
 	m.mtx.peerConfig = peerConfig
 }
 
-// takes NetAddress for compatibility with rest of code
-func (m *MConnTransport) Listen(addr NetAddress) error {
-	return m.mconn.Listen(addr)
+func (m *MConnTransport) Listen(endpoint Endpoint) error {
+	return m.mconn.Listen(NetAddress{
+		ID:   endpoint.PeerID,
+		IP:   endpoint.IP,
+		Port: endpoint.Port,
+	})
 }
 
 func (m *MConnTransport) Close() error {

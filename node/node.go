@@ -877,7 +877,13 @@ func (n *Node) OnStart() error {
 	if err != nil {
 		return err
 	}
-	if err := n.transport.Listen(*addr); err != nil {
+	endpoint := p2p.Endpoint{ // FIXME Should construct this directly
+		PeerID:   addr.ID,
+		Protocol: p2p.MConnProtocol,
+		IP:       addr.IP,
+		Port:     addr.Port,
+	}
+	if err := n.transport.Listen(endpoint); err != nil {
 		return err
 	}
 
