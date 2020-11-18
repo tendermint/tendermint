@@ -7,7 +7,7 @@ parent:
 
 # Overview
 
-This section dives into the internals of Tendermint the implementation.
+This section dives into the internals of Go-Tendermint.
 
 - [Using Tendermint](./using-tendermint.md)
 - [Running in Production](./running-in-production.md)

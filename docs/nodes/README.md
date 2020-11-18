@@ -32,7 +32,7 @@ This section will focus on how to operate full nodes, validators and light clien
 
  A seed node provides a node with a list of peers which a node can connect to. When starting a node you must provide at least one type of node to be able to connect to the desired network.
 
- This is helpful for nodes that are starting up. When a node starts it's address book will be empty, to populate an address book efficiently a node will connect to the seed node and request a list of peers for it to dial. If a node has seed mode enabled it will connect to peers provide them with a list of peers they can connect to then disconnect. This type of node is useful for people operating countless nodes.
+ When a node starts it's address book will be empty, to populate an address book efficiently a node will connect to the seed node and request a list of peers for it to dial. If a node has seed mode enabled it will connect to peers provide them with a list of peers then disconnect.
 
 ### Sentry Node
 
