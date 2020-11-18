@@ -2,8 +2,11 @@ package p2p
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"net"
+	"net/url"
 
 	"github.com/tendermint/tendermint/crypto"
 )
@@ -48,6 +51,39 @@ type Endpoint struct {
 	// Port is a network port (either TCP or UDP). If not set, a default port
 	// may be used depending on the protocol.
 	Port uint16
+}
+
+// String formats an endpoint as a URL string.
+func (e Endpoint) String() string {
+	u := url.URL{Scheme: string(e.Protocol)}
+	if e.PeerID != "" {
+		u.User = url.User(string(e.PeerID))
+	}
+	if len(e.IP) > 0 {
+		u.Host = e.IP.String()
+		if e.Port > 0 {
+			u.Host += fmt.Sprintf(":%v", e.Port)
+		}
+	} else if e.Path != "" {
+		u.Opaque = e.Path
+	}
+	return u.String()
+}
+
+// Validate validates an endpoint.
+func (e Endpoint) Validate() error {
+	switch {
+	case e.PeerID == "":
+		return errors.New("endpoint has no peer ID")
+	case e.Protocol == "":
+		return errors.New("endpoint has to protocol")
+	case len(e.IP) == 0 && len(e.Path) == 0:
+		return errors.New("endpoint must have either IP or path")
+	case e.Port > 0 && len(e.IP) == 0:
+		return fmt.Errorf("endpoint has port %v but no IP", e.Port)
+	default:
+		return nil
+	}
 }
 
 // Connection represents an established connection between two endpoints.

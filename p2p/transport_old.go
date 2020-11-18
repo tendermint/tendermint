@@ -100,7 +100,7 @@ func MultiplexTransportMaxIncomingConnections(n int) MultiplexTransportOption {
 type MultiplexTransport struct {
 	netAddr                NetAddress
 	listener               net.Listener
-	maxIncomingConnections int // see MaxIncomingConnections
+	maxIncomingConnections int
 
 	acceptc chan accept
 	closec  chan struct{}
@@ -138,11 +138,6 @@ func NewMultiplexTransport(
 		nodeKey:          nodeKey,
 		conns:            NewConnSet(),
 	}
-}
-
-// NetAddress implements Transport.
-func (mt *MultiplexTransport) NetAddress() NetAddress {
-	return mt.netAddr
 }
 
 // Accept implements Transport.
