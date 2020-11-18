@@ -1,9 +1,7 @@
 package p2p
 
 import (
-	"bytes"
 	"encoding/hex"
-	"fmt"
 	"io/ioutil"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -93,28 +91,4 @@ func (nodeKey *NodeKey) SaveAs(filePath string) error {
 		return err
 	}
 	return nil
-}
-
-//------------------------------------------------------------------------------
-
-// MakePoWTarget returns the big-endian encoding of 2^(targetBits - difficulty) - 1.
-// It can be used as a Proof of Work target.
-// NOTE: targetBits must be a multiple of 8 and difficulty must be less than targetBits.
-func MakePoWTarget(difficulty, targetBits uint) []byte {
-	if targetBits%8 != 0 {
-		panic(fmt.Sprintf("targetBits (%d) not a multiple of 8", targetBits))
-	}
-	if difficulty >= targetBits {
-		panic(fmt.Sprintf("difficulty (%d) >= targetBits (%d)", difficulty, targetBits))
-	}
-	targetBytes := targetBits / 8
-	zeroPrefixLen := (int(difficulty) / 8)
-	prefix := bytes.Repeat([]byte{0}, zeroPrefixLen)
-	mod := (difficulty % 8)
-	if mod > 0 {
-		nonZeroPrefix := byte(1<<(8-mod) - 1)
-		prefix = append(prefix, nonZeroPrefix)
-	}
-	tailLen := int(targetBytes) - len(prefix)
-	return append(prefix, bytes.Repeat([]byte{0xFF}, tailLen)...)
 }
