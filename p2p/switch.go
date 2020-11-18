@@ -362,7 +362,7 @@ func (sw *Switch) StopPeerGracefully(peer Peer) {
 }
 
 func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
-	//sw.transport.Cleanup(peer) // FIXME Do we need to clean up anything?
+	sw.transport.(*MConnTransport).mconn.Cleanup(peer) // FIXME
 	if err := peer.Stop(); err != nil {
 		sw.Logger.Error("error while stopping peer", "error", err) // TODO: should return error to be handled accordingly
 	}
@@ -696,7 +696,7 @@ func (sw *Switch) acceptRoutine() {
 					"max", sw.config.MaxNumInboundPeers,
 				)
 
-				//sw.transport.Cleanup(p) // FIXME We may need to clean up
+				sw.transport.(*MConnTransport).mconn.Cleanup(p) // FIXME
 
 				continue
 			}
@@ -704,7 +704,7 @@ func (sw *Switch) acceptRoutine() {
 		}
 
 		if err := sw.addPeer(p); err != nil {
-			//sw.transport.Cleanup(p) // FIXME Need to clean up
+			sw.transport.(*MConnTransport).mconn.Cleanup(p) // FIXME
 			if p.IsRunning() {
 				_ = p.Stop()
 			}
@@ -775,7 +775,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	p := c.(*mConnConnection).peer
 
 	if err := sw.addPeer(p); err != nil {
-		//sw.transport.Cleanup(p) // FIXME Cleanup
+		sw.transport.(*MConnTransport).mconn.Cleanup(p) // FIXME
 		if p.IsRunning() {
 			_ = p.Stop()
 		}

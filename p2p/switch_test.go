@@ -2,20 +2,12 @@ package p2p
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
-	"net/http"
-	"net/http/httptest"
-	"regexp"
-	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -211,7 +203,7 @@ func TestSwitchFiltersOutItself(t *testing.T) {
 	assertNoPeersAfterTimeout(t, s1, 100*time.Millisecond)
 }
 
-func TestSwitchPeerFilter(t *testing.T) {
+/*func TestSwitchPeerFilter(t *testing.T) {
 	var (
 		filters = []PeerFilterFunc{
 			func(_ IPeerSet, _ Peer) error { return nil },
@@ -346,13 +338,6 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	}
 }
 
-func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) {
-	time.Sleep(timeout)
-	if sw.Peers().Size() != 0 {
-		t.Fatalf("Expected %v to not connect to some peers, got %d", sw, sw.Peers().Size())
-	}
-}
-
 func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
@@ -445,7 +430,7 @@ func TestSwitchStopPeerForError(t *testing.T) {
 
 	assert.Equal(t, len(sw1.Peers().List()), 0)
 	assert.EqualValues(t, 0, peersMetricValue())
-}
+}*/
 
 func TestSwitchReconnectsToOutboundPersistentPeer(t *testing.T) {
 	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
@@ -673,6 +658,7 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	}
 }
 
+/*
 type errorTransport struct {
 	acceptErr error
 }
@@ -716,7 +702,7 @@ func TestSwitchAcceptRoutineErrorCases(t *testing.T) {
 		err = sw.Stop()
 		require.NoError(t, err)
 	})
-}
+}*/
 
 // mockReactor checks that InitPeer never called before RemovePeer. If that's
 // not true, InitCalledBeforeRemoveFinished will return true.
@@ -838,4 +824,11 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 	}
 
 	b.Logf("success: %v, failure: %v", numSuccess, numFailure)
+}
+
+func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) {
+	time.Sleep(timeout)
+	if sw.Peers().Size() != 0 {
+		t.Fatalf("Expected %v to not connect to some peers, got %d", sw, sw.Peers().Size())
+	}
 }

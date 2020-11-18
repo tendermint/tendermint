@@ -132,6 +132,7 @@ func (c *mConnConnection) Stream(id uint16) (Stream, error) {
 }
 
 func (c *mConnConnection) Close() error {
+	c.transport.mconn.Cleanup(c.peer)
 	return c.peer.Stop()
 }
 
