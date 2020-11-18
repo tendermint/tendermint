@@ -424,6 +424,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 	default:
 		r.Logger.Error("received message on an invalid channel", "ch_id", chID)
+		return
 	}
 
 	// Mimic the current p2p behavior where we send a response back to the source
