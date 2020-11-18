@@ -212,7 +212,11 @@ func (app *localClient) InfoSync(ctx context.Context, req types.RequestInfo) (*t
 	return &res, nil
 }
 
-func (app *localClient) DeliverTxSync(ctx context.Context, req types.RequestDeliverTx) (*types.ResponseDeliverTx, error) {
+func (app *localClient) DeliverTxSync(
+	ctx context.Context,
+	req types.RequestDeliverTx,
+) (*types.ResponseDeliverTx, error) {
+
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -244,7 +248,11 @@ func (app *localClient) CommitSync(ctx context.Context) (*types.ResponseCommit, 
 	return &res, nil
 }
 
-func (app *localClient) InitChainSync(ctx context.Context, req types.RequestInitChain) (*types.ResponseInitChain, error) {
+func (app *localClient) InitChainSync(
+	ctx context.Context,
+	req types.RequestInitChain,
+) (*types.ResponseInitChain, error) {
+
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -252,7 +260,11 @@ func (app *localClient) InitChainSync(ctx context.Context, req types.RequestInit
 	return &res, nil
 }
 
-func (app *localClient) BeginBlockSync(ctx context.Context, req types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
+func (app *localClient) BeginBlockSync(
+	ctx context.Context,
+	req types.RequestBeginBlock,
+) (*types.ResponseBeginBlock, error) {
+
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -260,7 +272,11 @@ func (app *localClient) BeginBlockSync(ctx context.Context, req types.RequestBeg
 	return &res, nil
 }
 
-func (app *localClient) EndBlockSync(ctx context.Context, req types.RequestEndBlock) (*types.ResponseEndBlock, error) {
+func (app *localClient) EndBlockSync(
+	ctx context.Context,
+	req types.RequestEndBlock,
+) (*types.ResponseEndBlock, error) {
+
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 

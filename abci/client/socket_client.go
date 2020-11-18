@@ -324,7 +324,11 @@ func (cli *socketClient) InfoSync(ctx context.Context, req types.RequestInfo) (*
 	return reqres.Response.GetInfo(), nil
 }
 
-func (cli *socketClient) DeliverTxSync(ctx context.Context, req types.RequestDeliverTx) (*types.ResponseDeliverTx, error) {
+func (cli *socketClient) DeliverTxSync(
+	ctx context.Context,
+	req types.RequestDeliverTx,
+) (*types.ResponseDeliverTx, error) {
+
 	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestDeliverTx(req))
 	if err != nil {
 		return nil, err
@@ -356,7 +360,11 @@ func (cli *socketClient) CommitSync(ctx context.Context) (*types.ResponseCommit,
 	return reqres.Response.GetCommit(), nil
 }
 
-func (cli *socketClient) InitChainSync(ctx context.Context, req types.RequestInitChain) (*types.ResponseInitChain, error) {
+func (cli *socketClient) InitChainSync(
+	ctx context.Context,
+	req types.RequestInitChain,
+) (*types.ResponseInitChain, error) {
+
 	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestInitChain(req))
 	if err != nil {
 		return nil, err
@@ -364,7 +372,11 @@ func (cli *socketClient) InitChainSync(ctx context.Context, req types.RequestIni
 	return reqres.Response.GetInitChain(), nil
 }
 
-func (cli *socketClient) BeginBlockSync(ctx context.Context, req types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
+func (cli *socketClient) BeginBlockSync(
+	ctx context.Context,
+	req types.RequestBeginBlock,
+) (*types.ResponseBeginBlock, error) {
+
 	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestBeginBlock(req))
 	if err != nil {
 		return nil, err
@@ -372,7 +384,11 @@ func (cli *socketClient) BeginBlockSync(ctx context.Context, req types.RequestBe
 	return reqres.Response.GetBeginBlock(), nil
 }
 
-func (cli *socketClient) EndBlockSync(ctx context.Context, req types.RequestEndBlock) (*types.ResponseEndBlock, error) {
+func (cli *socketClient) EndBlockSync(
+	ctx context.Context,
+	req types.RequestEndBlock,
+) (*types.ResponseEndBlock, error) {
+
 	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestEndBlock(req))
 	if err != nil {
 		return nil, err
@@ -380,7 +396,11 @@ func (cli *socketClient) EndBlockSync(ctx context.Context, req types.RequestEndB
 	return reqres.Response.GetEndBlock(), nil
 }
 
-func (cli *socketClient) ListSnapshotsSync(ctx context.Context, req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
+func (cli *socketClient) ListSnapshotsSync(
+	ctx context.Context,
+	req types.RequestListSnapshots,
+) (*types.ResponseListSnapshots, error) {
+
 	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestListSnapshots(req))
 	if err != nil {
 		return nil, err
@@ -388,7 +408,11 @@ func (cli *socketClient) ListSnapshotsSync(ctx context.Context, req types.Reques
 	return reqres.Response.GetListSnapshots(), nil
 }
 
-func (cli *socketClient) OfferSnapshotSync(ctx context.Context, req types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
+func (cli *socketClient) OfferSnapshotSync(
+	ctx context.Context,
+	req types.RequestOfferSnapshot,
+) (*types.ResponseOfferSnapshot, error) {
+
 	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestOfferSnapshot(req))
 	if err != nil {
 		return nil, err

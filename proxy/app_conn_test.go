@@ -80,6 +80,12 @@ func TestEcho(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+		// flush sometimes
+		if i%128 == 0 {
+			if err := proxy.FlushSync(context.Background()); err != nil {
+				t.Error(err)
+			}
+		}
 	}
 	if err := proxy.FlushSync(context.Background()); err != nil {
 		t.Error(err)
@@ -122,6 +128,12 @@ func BenchmarkEcho(b *testing.B) {
 		_, err = proxy.EchoAsync(echoString)
 		if err != nil {
 			b.Error(err)
+		}
+		// flush sometimes
+		if i%128 == 0 {
+			if err := proxy.FlushSync(context.Background()); err != nil {
+				b.Error(err)
+			}
 		}
 	}
 	if err := proxy.FlushSync(context.Background()); err != nil {
