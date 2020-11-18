@@ -8,6 +8,8 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 This release is not compatible with previous blockchains due to changes to
 the encoding format (see "Protocol Buffers," below) and the block header (see "Blockchain Protocol").
 
+Note also that Tendermint 0.34 also requires Go 1.15 or higher. 
+
 ### ABCI Changes
 
 * New ABCI methods (`ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, and `ApplySnapshotChunk`)
@@ -107,7 +109,7 @@ Tendermint 0.34 includes new and updated consensus parameters.
 
 #### Evidence Parameters
 
-* `MaxNum`, which caps the total amount of evidence by a absolute number. The default is 50.
+* `MaxBytes`, which caps the total amount of evidence. The default is 1048576 (1 MB). 
 
 ### Crypto
 
@@ -168,16 +170,19 @@ Other user-relevant changes include:
 ### `privval` Package
 
 All requests are now accompanied by the chain ID from the network.
-This is a optional field and can be ignored by key management systems.
-It is recommended to check the chain ID if using the same key management system for multiple chains.
+This is a optional field and can be ignored by key management systems;
+however, if you are using the same key management system for multiple different
+blockchains, we recommend that you check the chain ID.
+
 
 ### RPC
 
-`/unsafe_start_cpu_profiler`, `/unsafe_stop_cpu_profiler` and
-`/unsafe_write_heap_profile` were removed.
-For profiling, please use the pprof server, which can
-be enabled through `--rpc.pprof_laddr=X` flag or `pprof_laddr=X` config setting
-in the rpc section.
+* `/unsafe_start_cpu_profiler`, `/unsafe_stop_cpu_profiler` and
+  `/unsafe_write_heap_profile` were removed.
+   For profiling, please use the pprof server, which can
+  be enabled through `--rpc.pprof_laddr=X` flag or `pprof_laddr=X` config setting
+  in the rpc section.
+* The `Content-Type` header returned on RPC calls is now (correctly) set as `application/json`.
 
 ## v0.33.4
 
