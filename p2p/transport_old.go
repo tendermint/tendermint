@@ -20,11 +20,6 @@ const (
 	defaultHandshakeTimeout = 3 * time.Second
 )
 
-// IPResolver is a behaviour subset of net.Resolver.
-type IPResolver interface {
-	LookupIPAddr(context.Context, string) ([]net.IPAddr, error)
-}
-
 // accept is the container to carry the upgraded connection and NodeInfo from an
 // asynchronously running routine to the Accept method.
 type accept struct {
@@ -94,12 +89,6 @@ func MultiplexTransportFilterTimeout(
 	return func(mt *MultiplexTransport) { mt.filterTimeout = timeout }
 }
 
-// MultiplexTransportResolver sets the Resolver used for ip lokkups, defaults to
-// net.DefaultResolver.
-func MultiplexTransportResolver(resolver IPResolver) MultiplexTransportOption {
-	return func(mt *MultiplexTransport) { mt.resolver = resolver }
-}
-
 // MultiplexTransportMaxIncomingConnections sets the maximum number of
 // simultaneous connections (incoming). Default: 0 (unlimited)
 func MultiplexTransportMaxIncomingConnections(n int) MultiplexTransportOption {
@@ -125,7 +114,6 @@ type MultiplexTransport struct {
 	handshakeTimeout time.Duration
 	nodeInfo         NodeInfo
 	nodeKey          NodeKey
-	resolver         IPResolver
 
 	// TODO(xla): This config is still needed as we parameterise peerConn and
 	// peer currently. All relevant configuration should be refactored into options
@@ -149,7 +137,6 @@ func NewMultiplexTransport(
 		nodeInfo:         nodeInfo,
 		nodeKey:          nodeKey,
 		conns:            NewConnSet(),
-		resolver:         net.DefaultResolver,
 	}
 }
 
@@ -328,7 +315,7 @@ func (mt *MultiplexTransport) filterConn(c net.Conn) (err error) {
 	}
 
 	// Resolve ips for incoming conn.
-	ips, err := resolveIPs(mt.resolver, c)
+	ips, err := resolveIPs(c)
 	if err != nil {
 		return err
 	}
@@ -545,22 +532,20 @@ func upgradeSecretConn(
 	return sc, sc.SetDeadline(time.Time{})
 }
 
-func resolveIPs(resolver IPResolver, c net.Conn) ([]net.IP, error) {
+func resolveIPs(c net.Conn) ([]net.IP, error) {
 	host, _, err := net.SplitHostPort(c.RemoteAddr().String())
 	if err != nil {
 		return nil, err
 	}
 
-	addrs, err := resolver.LookupIPAddr(context.Background(), host)
+	addrs, err := net.DefaultResolver.LookupIPAddr(context.Background(), host)
 	if err != nil {
 		return nil, err
 	}
 
 	ips := []net.IP{}
-
 	for _, addr := range addrs {
 		ips = append(ips, addr.IP)
 	}
-
 	return ips, nil
 }
