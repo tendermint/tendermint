@@ -47,7 +47,11 @@ type Endpoint struct {
 // Connection represents an established connection between two endpoints.
 type Connection interface {
 	// Stream creates a new logically distinct IO stream within the connection.
-	Stream() (Stream, error)
+	//
+	// FIXME We use a stream ID for now, to allow the MConnTransport to get the
+	// stream corresponding to a channel without protocol changes. We should
+	// change this to use a channel handshake instead.
+	Stream(id uint16) (Stream, error)
 
 	// LocalEndpoint returns the local endpoint for the connection.
 	LocalEndpoint() Endpoint

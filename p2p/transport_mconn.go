@@ -95,7 +95,7 @@ func (c *mConnConnection) RemoteEndpoint() Endpoint {
 	}
 }
 
-func (c *mConnConnection) Stream() (Stream, error) {
+func (c *mConnConnection) Stream(id uint16) (Stream, error) {
 	return &mConnStream{}, nil
 }
 
