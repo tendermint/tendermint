@@ -16,6 +16,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - P2P Protocol
 
 - Go API
+  - [p2p] Removed unused function `MakePoWTarget`. (@erikgrinaker)
 
 - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
 
