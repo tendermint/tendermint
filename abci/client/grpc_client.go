@@ -164,132 +164,59 @@ func (cli *grpcClient) SetResponseCallback(resCb Callback) {
 // but hopefully not :D
 
 func (cli *grpcClient) EchoAsync(msg string) (*ReqRes, error) {
-	req := types.ToRequestEcho(msg)
-	res, err := cli.client.Echo(context.Background(), req.GetEcho(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Echo{Echo: res}}), nil
+	return cli.echoAsync(context.Background(), msg)
 }
 
 func (cli *grpcClient) FlushAsync() (*ReqRes, error) {
-	req := types.ToRequestFlush()
-	res, err := cli.client.Flush(context.Background(), req.GetFlush(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Flush{Flush: res}}), nil
+	return cli.flushAsync(context.Background())
 }
 
 func (cli *grpcClient) InfoAsync(params types.RequestInfo) (*ReqRes, error) {
-	req := types.ToRequestInfo(params)
-	res, err := cli.client.Info(context.Background(), req.GetInfo(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Info{Info: res}}), nil
+	return cli.infoAsync(context.Background(), params)
 }
 
 func (cli *grpcClient) DeliverTxAsync(params types.RequestDeliverTx) (*ReqRes, error) {
-	req := types.ToRequestDeliverTx(params)
-	res, err := cli.client.DeliverTx(context.Background(), req.GetDeliverTx(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_DeliverTx{DeliverTx: res}}), nil
+	return cli.deliverTxAsync(context.Background(), params)
 }
 
 func (cli *grpcClient) CheckTxAsync(params types.RequestCheckTx) (*ReqRes, error) {
-	req := types.ToRequestCheckTx(params)
-	res, err := cli.client.CheckTx(context.Background(), req.GetCheckTx(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_CheckTx{CheckTx: res}}), nil
+	return cli.checkTxAsync(context.Background(), params)
 }
 
 func (cli *grpcClient) QueryAsync(params types.RequestQuery) (*ReqRes, error) {
-	req := types.ToRequestQuery(params)
-	res, err := cli.client.Query(context.Background(), req.GetQuery(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Query{Query: res}}), nil
+	return cli.queryAsync(context.Background(), params)
 }
 
 func (cli *grpcClient) CommitAsync() (*ReqRes, error) {
-	req := types.ToRequestCommit()
-	res, err := cli.client.Commit(context.Background(), req.GetCommit(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Commit{Commit: res}}), nil
+	return cli.commitAsync(context.Background())
 }
 
 func (cli *grpcClient) InitChainAsync(params types.RequestInitChain) (*ReqRes, error) {
-	req := types.ToRequestInitChain(params)
-	res, err := cli.client.InitChain(context.Background(), req.GetInitChain(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_InitChain{InitChain: res}}), nil
+	return cli.initChainAsync(context.Background(), params)
 }
 
 func (cli *grpcClient) BeginBlockAsync(params types.RequestBeginBlock) (*ReqRes, error) {
-	req := types.ToRequestBeginBlock(params)
-	res, err := cli.client.BeginBlock(context.Background(), req.GetBeginBlock(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_BeginBlock{BeginBlock: res}}), nil
+	return cli.beginBlockAsync(context.Background(), params)
 }
 
 func (cli *grpcClient) EndBlockAsync(params types.RequestEndBlock) (*ReqRes, error) {
-	req := types.ToRequestEndBlock(params)
-	res, err := cli.client.EndBlock(context.Background(), req.GetEndBlock(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_EndBlock{EndBlock: res}}), nil
+	return cli.endBlockAsync(context.Background(), params)
 }
 
 func (cli *grpcClient) ListSnapshotsAsync(params types.RequestListSnapshots) (*ReqRes, error) {
-	req := types.ToRequestListSnapshots(params)
-	res, err := cli.client.ListSnapshots(context.Background(), req.GetListSnapshots(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_ListSnapshots{ListSnapshots: res}}), nil
+	return cli.listSnapshotsAsync(context.Background(), params)
 }
 
 func (cli *grpcClient) OfferSnapshotAsync(params types.RequestOfferSnapshot) (*ReqRes, error) {
-	req := types.ToRequestOfferSnapshot(params)
-	res, err := cli.client.OfferSnapshot(context.Background(), req.GetOfferSnapshot(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_OfferSnapshot{OfferSnapshot: res}}), nil
+	return cli.offerSnapshotAsync(context.Background(), params)
 }
 
 func (cli *grpcClient) LoadSnapshotChunkAsync(params types.RequestLoadSnapshotChunk) (*ReqRes, error) {
-	req := types.ToRequestLoadSnapshotChunk(params)
-	res, err := cli.client.LoadSnapshotChunk(context.Background(), req.GetLoadSnapshotChunk(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_LoadSnapshotChunk{LoadSnapshotChunk: res}}), nil
+	return cli.loadSnapshotChunkAsync(context.Background(), params)
 }
 
 func (cli *grpcClient) ApplySnapshotChunkAsync(params types.RequestApplySnapshotChunk) (*ReqRes, error) {
-	req := types.ToRequestApplySnapshotChunk(params)
-	res, err := cli.client.ApplySnapshotChunk(context.Background(), req.GetApplySnapshotChunk(), grpc.WaitForReady(true))
-	if err != nil {
-		return nil, err
-	}
-	return cli.finishAsyncCall(
-		req,
-		&types.Response{Value: &types.Response_ApplySnapshotChunk{ApplySnapshotChunk: res}},
-	), nil
+	return cli.applySnapshotChunkAsync(context.Background(), params)
 }
 
 // finishAsyncCall creates a ReqRes for an async call, and immediately populates it
@@ -336,7 +263,7 @@ func (cli *grpcClient) FlushSync(ctx context.Context) error {
 }
 
 func (cli *grpcClient) EchoSync(ctx context.Context, msg string) (*types.ResponseEcho, error) {
-	reqres, err := cli.EchoAsync(msg)
+	reqres, err := cli.echoAsync(ctx, msg)
 	if err != nil {
 		return nil, err
 	}
@@ -344,7 +271,7 @@ func (cli *grpcClient) EchoSync(ctx context.Context, msg string) (*types.Respons
 }
 
 func (cli *grpcClient) InfoSync(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
-	reqres, err := cli.InfoAsync(req)
+	reqres, err := cli.infoAsync(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -356,7 +283,7 @@ func (cli *grpcClient) DeliverTxSync(
 	params types.RequestDeliverTx,
 ) (*types.ResponseDeliverTx, error) {
 
-	reqres, err := cli.DeliverTxAsync(params)
+	reqres, err := cli.deliverTxAsync(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -368,7 +295,7 @@ func (cli *grpcClient) CheckTxSync(
 	params types.RequestCheckTx,
 ) (*types.ResponseCheckTx, error) {
 
-	reqres, err := cli.CheckTxAsync(params)
+	reqres, err := cli.checkTxAsync(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -376,7 +303,7 @@ func (cli *grpcClient) CheckTxSync(
 }
 
 func (cli *grpcClient) QuerySync(ctx context.Context, req types.RequestQuery) (*types.ResponseQuery, error) {
-	reqres, err := cli.QueryAsync(req)
+	reqres, err := cli.queryAsync(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -384,7 +311,7 @@ func (cli *grpcClient) QuerySync(ctx context.Context, req types.RequestQuery) (*
 }
 
 func (cli *grpcClient) CommitSync(ctx context.Context) (*types.ResponseCommit, error) {
-	reqres, err := cli.CommitAsync()
+	reqres, err := cli.commitAsync(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -396,7 +323,7 @@ func (cli *grpcClient) InitChainSync(
 	params types.RequestInitChain,
 ) (*types.ResponseInitChain, error) {
 
-	reqres, err := cli.InitChainAsync(params)
+	reqres, err := cli.initChainAsync(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -408,7 +335,7 @@ func (cli *grpcClient) BeginBlockSync(
 	params types.RequestBeginBlock,
 ) (*types.ResponseBeginBlock, error) {
 
-	reqres, err := cli.BeginBlockAsync(params)
+	reqres, err := cli.beginBlockAsync(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -420,7 +347,7 @@ func (cli *grpcClient) EndBlockSync(
 	params types.RequestEndBlock,
 ) (*types.ResponseEndBlock, error) {
 
-	reqres, err := cli.EndBlockAsync(params)
+	reqres, err := cli.endBlockAsync(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -432,7 +359,7 @@ func (cli *grpcClient) ListSnapshotsSync(
 	params types.RequestListSnapshots,
 ) (*types.ResponseListSnapshots, error) {
 
-	reqres, err := cli.ListSnapshotsAsync(params)
+	reqres, err := cli.listSnapshotsAsync(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -444,7 +371,7 @@ func (cli *grpcClient) OfferSnapshotSync(
 	params types.RequestOfferSnapshot,
 ) (*types.ResponseOfferSnapshot, error) {
 
-	reqres, err := cli.OfferSnapshotAsync(params)
+	reqres, err := cli.offerSnapshotAsync(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -455,7 +382,7 @@ func (cli *grpcClient) LoadSnapshotChunkSync(
 	ctx context.Context,
 	params types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
 
-	reqres, err := cli.LoadSnapshotChunkAsync(params)
+	reqres, err := cli.loadSnapshotChunkAsync(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -466,9 +393,138 @@ func (cli *grpcClient) ApplySnapshotChunkSync(
 	ctx context.Context,
 	params types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
 
-	reqres, err := cli.ApplySnapshotChunkAsync(params)
+	reqres, err := cli.applySnapshotChunkAsync(ctx, params)
 	if err != nil {
 		return nil, err
 	}
 	return cli.finishSyncCall(reqres).GetApplySnapshotChunk(), cli.Error()
+}
+
+func (cli *grpcClient) echoAsync(ctx context.Context, msg string) (*ReqRes, error) {
+	req := types.ToRequestEcho(msg)
+	res, err := cli.client.Echo(ctx, req.GetEcho(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Echo{Echo: res}}), nil
+}
+
+func (cli *grpcClient) flushAsync(ctx context.Context) (*ReqRes, error) {
+	req := types.ToRequestFlush()
+	res, err := cli.client.Flush(ctx, req.GetFlush(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Flush{Flush: res}}), nil
+}
+
+func (cli *grpcClient) infoAsync(ctx context.Context, params types.RequestInfo) (*ReqRes, error) {
+	req := types.ToRequestInfo(params)
+	res, err := cli.client.Info(ctx, req.GetInfo(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Info{Info: res}}), nil
+}
+
+func (cli *grpcClient) deliverTxAsync(ctx context.Context, params types.RequestDeliverTx) (*ReqRes, error) {
+	req := types.ToRequestDeliverTx(params)
+	res, err := cli.client.DeliverTx(ctx, req.GetDeliverTx(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_DeliverTx{DeliverTx: res}}), nil
+}
+
+func (cli *grpcClient) checkTxAsync(ctx context.Context, params types.RequestCheckTx) (*ReqRes, error) {
+	req := types.ToRequestCheckTx(params)
+	res, err := cli.client.CheckTx(ctx, req.GetCheckTx(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_CheckTx{CheckTx: res}}), nil
+}
+
+func (cli *grpcClient) queryAsync(ctx context.Context, params types.RequestQuery) (*ReqRes, error) {
+	req := types.ToRequestQuery(params)
+	res, err := cli.client.Query(ctx, req.GetQuery(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Query{Query: res}}), nil
+}
+
+func (cli *grpcClient) commitAsync(ctx context.Context) (*ReqRes, error) {
+	req := types.ToRequestCommit()
+	res, err := cli.client.Commit(ctx, req.GetCommit(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Commit{Commit: res}}), nil
+}
+
+func (cli *grpcClient) initChainAsync(ctx context.Context, params types.RequestInitChain) (*ReqRes, error) {
+	req := types.ToRequestInitChain(params)
+	res, err := cli.client.InitChain(ctx, req.GetInitChain(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_InitChain{InitChain: res}}), nil
+}
+
+func (cli *grpcClient) beginBlockAsync(ctx context.Context, params types.RequestBeginBlock) (*ReqRes, error) {
+	req := types.ToRequestBeginBlock(params)
+	res, err := cli.client.BeginBlock(ctx, req.GetBeginBlock(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_BeginBlock{BeginBlock: res}}), nil
+}
+
+func (cli *grpcClient) endBlockAsync(ctx context.Context, params types.RequestEndBlock) (*ReqRes, error) {
+	req := types.ToRequestEndBlock(params)
+	res, err := cli.client.EndBlock(ctx, req.GetEndBlock(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_EndBlock{EndBlock: res}}), nil
+}
+
+func (cli *grpcClient) listSnapshotsAsync(ctx context.Context, params types.RequestListSnapshots) (*ReqRes, error) {
+	req := types.ToRequestListSnapshots(params)
+	res, err := cli.client.ListSnapshots(ctx, req.GetListSnapshots(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_ListSnapshots{ListSnapshots: res}}), nil
+}
+
+func (cli *grpcClient) offerSnapshotAsync(ctx context.Context, params types.RequestOfferSnapshot) (*ReqRes, error) {
+	req := types.ToRequestOfferSnapshot(params)
+	res, err := cli.client.OfferSnapshot(ctx, req.GetOfferSnapshot(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_OfferSnapshot{OfferSnapshot: res}}), nil
+}
+
+func (cli *grpcClient) loadSnapshotChunkAsync(ctx context.Context, params types.RequestLoadSnapshotChunk) (*ReqRes, error) {
+	req := types.ToRequestLoadSnapshotChunk(params)
+	res, err := cli.client.LoadSnapshotChunk(ctx, req.GetLoadSnapshotChunk(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_LoadSnapshotChunk{LoadSnapshotChunk: res}}), nil
+}
+
+func (cli *grpcClient) applySnapshotChunkAsync(ctx context.Context, params types.RequestApplySnapshotChunk) (*ReqRes, error) {
+	req := types.ToRequestApplySnapshotChunk(params)
+	res, err := cli.client.ApplySnapshotChunk(ctx, req.GetApplySnapshotChunk(), grpc.WaitForReady(true))
+	if err != nil {
+		return nil, err
+	}
+	return cli.finishAsyncCall(
+		req,
+		&types.Response{Value: &types.Response_ApplySnapshotChunk{ApplySnapshotChunk: res}},
+	), nil
 }
