@@ -184,6 +184,15 @@ blockchains, we recommend that you check the chain ID.
   in the rpc section.
 * The `Content-Type` header returned on RPC calls is now (correctly) set as `application/json`.
 
+### Version
+
+Version is now set through Go linker flags `ld_flags`. Applications that are using tendermint as a library should set this at compile time. 
+
+Example:
+`
+go install -mod=readonly -ldflags "-X github.com/tendermint/tendermint/version.TMCoreSemVer=$(go list -m github.com/tendermint/tendermint | sed  's/ /\@/g') -s -w " -trimpath ./cmd
+`
+
 ## v0.33.4
 
 ### Go API
