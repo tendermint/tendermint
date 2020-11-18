@@ -749,8 +749,13 @@ func NewNode(config *cfg.Config,
 	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
-	stateSyncReactor := statesync.NewReactorDeprecated(proxyApp.Snapshot(), proxyApp.Query(),
-		config.StateSync.TempDir)
+	//
+	// TODO: Do we need to defer cancelling the state sync reactor's shim Context?
+	stateSyncReactor := statesync.NewReactorDeprecated(
+		proxyApp.Snapshot(),
+		proxyApp.Query(),
+		config.StateSync.TempDir,
+	)
 	stateSyncReactor.SetLogger(logger.With("module", "statesync"))
 
 	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
