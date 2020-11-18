@@ -12,6 +12,8 @@ Note also that Tendermint 0.34 also requires Go 1.15 or higher.
 
 ### ABCI Changes
 
+* The `ABCIVersion` is now `0.17.0`.
+
 * New ABCI methods (`ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, and `ApplySnapshotChunk`)
   were added to support the new State Sync feature.
   Previously, syncing a new node to a preexisting network could take days; but with State Sync,
