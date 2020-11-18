@@ -224,7 +224,10 @@ func (app *localClient) DeliverTxSync(
 	return &res, nil
 }
 
-func (app *localClient) CheckTxSync(ctx context.Context, req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+func (app *localClient) CheckTxSync(
+	ctx context.Context,
+	req types.RequestCheckTx,
+) (*types.ResponseCheckTx, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -232,7 +235,10 @@ func (app *localClient) CheckTxSync(ctx context.Context, req types.RequestCheckT
 	return &res, nil
 }
 
-func (app *localClient) QuerySync(ctx context.Context, req types.RequestQuery) (*types.ResponseQuery, error) {
+func (app *localClient) QuerySync(
+	ctx context.Context,
+	req types.RequestQuery,
+) (*types.ResponseQuery, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 

@@ -316,7 +316,10 @@ func (cli *socketClient) EchoSync(ctx context.Context, msg string) (*types.Respo
 	return reqres.Response.GetEcho(), nil
 }
 
-func (cli *socketClient) InfoSync(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
+func (cli *socketClient) InfoSync(
+	ctx context.Context,
+	req types.RequestInfo,
+) (*types.ResponseInfo, error) {
 	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestInfo(req))
 	if err != nil {
 		return nil, err
@@ -336,7 +339,10 @@ func (cli *socketClient) DeliverTxSync(
 	return reqres.Response.GetDeliverTx(), nil
 }
 
-func (cli *socketClient) CheckTxSync(ctx context.Context, req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+func (cli *socketClient) CheckTxSync(
+	ctx context.Context,
+	req types.RequestCheckTx,
+) (*types.ResponseCheckTx, error) {
 	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestCheckTx(req))
 	if err != nil {
 		return nil, err
@@ -344,7 +350,10 @@ func (cli *socketClient) CheckTxSync(ctx context.Context, req types.RequestCheck
 	return reqres.Response.GetCheckTx(), nil
 }
 
-func (cli *socketClient) QuerySync(ctx context.Context, req types.RequestQuery) (*types.ResponseQuery, error) {
+func (cli *socketClient) QuerySync(
+	ctx context.Context,
+	req types.RequestQuery,
+) (*types.ResponseQuery, error) {
 	reqres, err := cli.queueRequestAndFlushSync(ctx, types.ToRequestQuery(req))
 	if err != nil {
 		return nil, err
