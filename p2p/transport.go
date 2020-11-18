@@ -9,8 +9,7 @@ import (
 )
 
 // Transport is an arbitrary mechanism for exchanging bytes with a peer.
-// FIXME Rename Transport when old Transport is removed.
-type NewTransport interface {
+type Transport interface {
 	// Accept waits for the next inbound connection on a listening endpoint.
 	Accept(context.Context) (Connection, error)
 

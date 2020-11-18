@@ -83,7 +83,7 @@ type Switch struct {
 	persistentPeersAddrs []*NetAddress
 	unconditionalPeerIDs map[ID]struct{}
 
-	transport NewTransport
+	transport Transport
 
 	filterTimeout time.Duration
 	peerFilters   []PeerFilterFunc
@@ -112,7 +112,7 @@ type SwitchOption func(*Switch)
 // NewSwitch creates a new Switch with the given config.
 func NewSwitch(
 	cfg *config.P2PConfig,
-	transport NewTransport,
+	transport Transport,
 	options ...SwitchOption,
 ) *Switch {
 	sw := &Switch{

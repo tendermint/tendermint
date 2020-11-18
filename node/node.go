@@ -482,7 +482,7 @@ func createTransport(
 }
 
 func createSwitch(config *cfg.Config,
-	transport p2p.NewTransport,
+	transport p2p.Transport,
 	p2pMetrics *p2p.Metrics,
 	peerFilters []p2p.PeerFilterFunc,
 	mempoolReactor *mempl.Reactor,

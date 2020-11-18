@@ -21,7 +21,7 @@ type MConnTransport struct {
 	}
 }
 
-var _ NewTransport = (*MConnTransport)(nil)
+var _ Transport = (*MConnTransport)(nil)
 
 func NewMConnTransport(
 	nodeInfo NodeInfo,

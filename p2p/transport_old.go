@@ -52,30 +52,6 @@ type peerConfig struct {
 	metrics      *Metrics
 }
 
-// Transport emits and connects to Peers. The implementation of Peer is left to
-// the transport. Each transport is also responsible to filter establishing
-// peers specific to its domain.
-type Transport interface {
-	// Listening address.
-	NetAddress() NetAddress
-
-	// Accept returns a newly connected Peer.
-	Accept(peerConfig) (Peer, error)
-
-	// Dial connects to the Peer for the address.
-	Dial(NetAddress, peerConfig) (Peer, error)
-
-	// Cleanup any resources associated with Peer.
-	Cleanup(Peer)
-}
-
-// transportLifecycle bundles the methods for callers to control start and stop
-// behaviour.
-type transportLifecycle interface {
-	Close() error
-	Listen(NetAddress) error
-}
-
 // ConnFilterFunc to be implemented by filter hooks after a new connection has
 // been established. The set of exisiting connections is passed along together
 // with all resolved IPs for the new connection.
@@ -156,10 +132,6 @@ type MultiplexTransport struct {
 	// with sane defaults.
 	mConfig conn.MConnConfig
 }
-
-// Test multiplexTransport for interface completeness.
-var _ Transport = (*MultiplexTransport)(nil)
-var _ transportLifecycle = (*MultiplexTransport)(nil)
 
 // NewMultiplexTransport returns a tcp connected multiplexed peer.
 func NewMultiplexTransport(
