@@ -52,8 +52,8 @@ all: check build test install
 .PHONY: all
 
 # The below include contains the tools.
-include tools.mk
-include tests.mk
+include tools/Makefile
+include test/Makefile
 
 ###############################################################################
 ###                                Build Tendermint                        ###
