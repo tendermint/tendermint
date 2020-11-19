@@ -131,7 +131,7 @@ And as always, friendly reminder, that we have a [bug bounty program](https://ha
 - [rpc] [\#5017](https://github.com/tendermint/tendermint/pull/5017) Add `/check_tx` endpoint to check transactions without executing them or adding them to the mempool (@melekes)
 - [rpc] [\#5108](https://github.com/tendermint/tendermint/pull/5108) Subscribe using the websocket for new evidence events (@cmwaters)
 - [statesync] Add state sync support, where a new node can be rapidly bootstrapped by fetching state snapshots from peers instead of replaying blocks. See the `[statesync]` config section.
-- [evidence] [\#5361](https://github.com/tendermint/tendermint/pull/5361) Add LightClientAttackEvidence and refactor evidence lifecycle (@cmwaters)
+- [evidence] [\#5361](https://github.com/tendermint/tendermint/pull/5361) Add LightClientAttackEvidence and refactor evidence lifecycle - for more information see [ADR-059](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-059-evidence-composition-and-lifecycle.md) (@cmwaters)
 
 ### IMPROVEMENTS
 
@@ -170,8 +170,8 @@ And as always, friendly reminder, that we have a [bug bounty program](https://ha
 - [consensus] [\#4970](https://github.com/tendermint/tendermint/pull/4970) Don't allow `LastCommitRound` to be negative (@cuonglm)
 - [consensus] [\#5329](https://github.com/tendermint/tendermint/pull/5329) Fix wrong proposer schedule for validators returned by `InitChain` (@erikgrinaker)
 - [docker] [\#5385](https://github.com/tendermint/tendermint/pull/5385) Fix incorrect `time_iota_ms` default setting causing block timestamp drift (@erikgrinaker)
-- [evidence] [\#5170](https://github.com/tendermint/tendermint/pull/5170) Change abci evidence time to the time the infraction happened not the time the evidence was committed on the block (@cmwaters)
-- [evidence] [\#5610](https://github.com/tendermint/tendermint/pull/5610) Make it possible for abci evidence to be formed from tm evidence (@cmwaters)
+- [evidence] [\#5170](https://github.com/tendermint/tendermint/pull/5170) Change ABCI evidence time to the time the infraction happened not the time the evidence was committed on the block (@cmwaters)
+- [evidence] [\#5610](https://github.com/tendermint/tendermint/pull/5610) Make it possible for ABCI evidence to be formed from Tendermint evidence (@cmwaters)
 - [libs/rand] [\#5215](https://github.com/tendermint/tendermint/pull/5215) Fix out-of-memory error on unexpected argument of Str() (@SadPencil)
 - [light] [\#5307](https://github.com/tendermint/tendermint/pull/5307) Persist correct proposer priority in light client validator sets (@cmwaters)
 - [p2p] [\#5136](https://github.com/tendermint/tendermint/pull/5136) Fix error for peer with the same ID but different IPs (@valardragon)
