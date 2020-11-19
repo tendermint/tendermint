@@ -39,6 +39,7 @@ type MConnTransport struct {
 
 	maxIncomingConnections int
 	handshakeTimeout       time.Duration
+	dialTimeout            time.Duration
 }
 
 // NewMConnTransport sets up a new MConn transport.
@@ -51,6 +52,7 @@ func NewMConnTransport(
 		nodeInfo:         nodeInfo.(DefaultNodeInfo),
 		nodeKey:          nodeKey,
 		handshakeTimeout: defaultHandshakeTimeout,
+		dialTimeout:      defaultDialTimeout,
 
 		chAccept: make(chan *mConnConnection),
 		chError:  make(chan error),
@@ -134,7 +136,22 @@ func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 
 // Dial implements Transport.
 func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connection, error) {
-	return nil, nil
+	err := m.normalizeEndpoint(&endpoint)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, m.dialTimeout)
+	defer cancel()
+
+	dialer := net.Dialer{}
+	tcpConn, err := dialer.DialContext(ctx, "tcp", fmt.Sprintf("%v:%v", endpoint.IP, endpoint.Port))
+	if err != nil {
+		return nil, err
+	}
+
+	// FIXME Filter connections
+
+	return newMConnConnection(m, tcpConn)
 }
 
 // Endpoints implements Transport.
@@ -242,6 +259,8 @@ func newMConnConnection(
 		}
 		return
 	}
+
+	// FIXME Check node IDs
 
 	err = tcpConn.SetDeadline(time.Time{})
 	if err != nil {
