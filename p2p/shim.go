@@ -173,6 +173,11 @@ func (rs *ReactorShim) RemovePeer(peer Peer, reason interface{}) {
 	}
 }
 
+// Receive implements a generic wrapper around implementing the Receive method
+// on the legacy Reactor p2p interface. If the reactor is running, Receive will
+// find the corresponding new p2p Channel, create and decode the appropriate
+// proto.Message from the msgBytes, execute any validation and finally construct
+// and send a p2p Envelope on the appropriate p2p Channel.
 func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 	if !rs.IsRunning() {
 		return
