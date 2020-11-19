@@ -28,7 +28,7 @@ type Client interface {
 	SetResponseCallback(Callback)
 	Error() error
 
-	// Asyncronous requests
+	// Asynchronous requests
 	FlushAsync(context.Context) (*ReqRes, error)
 	EchoAsync(ctx context.Context, msg string) (*ReqRes, error)
 	InfoAsync(context.Context, types.RequestInfo) (*ReqRes, error)
@@ -44,7 +44,7 @@ type Client interface {
 	LoadSnapshotChunkAsync(context.Context, types.RequestLoadSnapshotChunk) (*ReqRes, error)
 	ApplySnapshotChunkAsync(context.Context, types.RequestApplySnapshotChunk) (*ReqRes, error)
 
-	// Syncronous requests
+	// Synchronous requests
 	FlushSync(context.Context) error
 	EchoSync(ctx context.Context, msg string) (*types.ResponseEcho, error)
 	InfoSync(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
