@@ -127,22 +127,24 @@ func (m *MConnTransport) accept() {
 		tcpConn, err := m.listener.Accept()
 		if err != nil {
 			select {
-			case <-m.chClose:
 			case m.chError <- err:
+			case <-m.chClose:
 			}
 			return
 		}
 		go func() {
-			c, err := m.acceptConn(tcpConn)
+			conn, err := m.acceptConn(tcpConn)
 			if err != nil {
+				_ = tcpConn.Close()
 				select {
 				case m.chError <- err:
 				case <-m.chClose:
 				}
 			} else {
 				select {
-				case m.chAccept <- c:
+				case m.chAccept <- conn:
 				case <-m.chClose:
+					_ = conn.Close()
 				}
 			}
 		}()
@@ -170,7 +172,7 @@ func (m *MConnTransport) acceptConn(tcpConn net.Conn) (conn *mConnConnection, er
 
 	// FIXME This needs to filter connections, see mt.filterConn().
 	conn, err = newMConnConnection(tcpConn, m.nodeKey.PrivKey)
-	return conn, err
+	return
 }
 
 // Accept implements Transport.
