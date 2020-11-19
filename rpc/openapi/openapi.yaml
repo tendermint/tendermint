@@ -1144,7 +1144,7 @@ paths:
             type: string
             example: "JSON_EVIDENCE_encoded"
       tags:
-        - Info
+        - Evidence
       description: |
         Broadcast evidence of the misbehavior.
       responses:

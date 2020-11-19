@@ -41,6 +41,9 @@ jobs:
       matrix:
         part: ["00", "01", "02", "03"]
     steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.4'
       - uses: actions/checkout@v2
       - uses: technote-space/get-diff-action@v4
         with:
@@ -91,7 +94,7 @@ jobs:
       - run: |
           cat ./*profile.out | grep -v "mode: atomic" >> coverage.txt
         if: env.GIT_DIFF
-      - uses: codecov/codecov-action@v1.0.14
+      - uses: codecov/codecov-action@v1.0.15
         with:
           file: ./coverage.txt
         if: env.GIT_DIFF

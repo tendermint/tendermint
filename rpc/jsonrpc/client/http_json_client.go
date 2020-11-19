@@ -151,10 +151,13 @@ func NewWithHTTPClient(remote string, client *http.Client) (*Client, error) {
 }
 
 // Call issues a POST HTTP request. Requests are JSON encoded. Content-Type:
-// text/json.
-func (c *Client) Call(ctx context.Context, method string,
-	params map[string]interface{}, result interface{}) (interface{}, error) {
-
+// application/json.
+func (c *Client) Call(
+	ctx context.Context,
+	method string,
+	params map[string]interface{},
+	result interface{},
+) (interface{}, error) {
 	id := c.nextRequestID()
 
 	request, err := types.MapToRequest(id, method, params)
@@ -172,14 +175,18 @@ func (c *Client) Call(ctx context.Context, method string,
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
-	httpRequest.Header.Set("Content-Type", "text/json")
+
+	httpRequest.Header.Set("Content-Type", "application/json")
+
 	if c.username != "" || c.password != "" {
 		httpRequest.SetBasicAuth(c.username, c.password)
 	}
+
 	httpResponse, err := c.client.Do(httpRequest)
 	if err != nil {
 		return nil, fmt.Errorf("post failed: %w", err)
 	}
+
 	defer httpResponse.Body.Close()
 
 	responseBytes, err := ioutil.ReadAll(httpResponse.Body)
@@ -216,14 +223,18 @@ func (c *Client) sendBatch(ctx context.Context, requests []*jsonRPCBufferedReque
 	if err != nil {
 		return nil, fmt.Errorf("new request: %w", err)
 	}
-	httpRequest.Header.Set("Content-Type", "text/json")
+
+	httpRequest.Header.Set("Content-Type", "application/json")
+
 	if c.username != "" || c.password != "" {
 		httpRequest.SetBasicAuth(c.username, c.password)
 	}
+
 	httpResponse, err := c.client.Do(httpRequest)
 	if err != nil {
 		return nil, fmt.Errorf("post: %w", err)
 	}
+
 	defer httpResponse.Body.Close()
 
 	responseBytes, err := ioutil.ReadAll(httpResponse.Body)

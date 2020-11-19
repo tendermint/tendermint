@@ -116,8 +116,9 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 	var (
 		config  = rpctest.GetConfig()
 		chainID = config.ChainID()
-		pv      = privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	)
+	pv, err := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+	require.NoError(t, err)
 
 	for i, c := range GetClients() {
 		correct, fakes := makeEvidences(t, pv, chainID)

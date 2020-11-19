@@ -23,6 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "^1.15.4"
       - uses: actions/checkout@v2
       - uses: technote-space/get-diff-action@v4
         with:
@@ -30,13 +33,10 @@ jobs:
             **/**.go
             go.mod
             go.sum
-      - name: Set GOBIN
-        run: |
-          echo "::add-path::$(go env GOPATH)/bin"
       - name: install
         run: make install install_abci
         if: "env.GIT_DIFF != ''"
-      - uses: actions/cache@v2.1.2
+      - uses: actions/cache@v2.1.3
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -44,7 +44,7 @@ jobs:
             ${{ runner.os }}-go-
         if: env.GIT_DIFF
       # Cache binaries for use by other jobs
-      - uses: actions/cache@v2.1.2
+      - uses: actions/cache@v2.1.3
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-${{ github.sha }}-tm-binary
@@ -55,6 +55,9 @@ jobs:
     needs: Build
     timeout-minutes: 5
     steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "^1.15.4"
       - uses: actions/checkout@v2
       - uses: technote-space/get-diff-action@v4
         with:
@@ -62,17 +65,14 @@ jobs:
             **/**.go
             go.mod
             go.sum
-      - name: Set GOBIN
-        run: |
-          echo "::add-path::$(go env GOPATH)/bin"
-      - uses: actions/cache@v2.1.2
+      - uses: actions/cache@v2.1.3
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
         if: env.GIT_DIFF
-      - uses: actions/cache@v2.1.2
+      - uses: actions/cache@v2.1.3
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-${{ github.sha }}-tm-binary
@@ -87,6 +87,9 @@ jobs:
     needs: Build
     timeout-minutes: 5
     steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "^1.15.4"
       - uses: actions/checkout@v2
       - uses: technote-space/get-diff-action@v4
         with:
@@ -94,17 +97,14 @@ jobs:
             **/**.go
             go.mod
             go.sum
-      - name: Set GOBIN
-        run: |
-          echo "::add-path::$(go env GOPATH)/bin"
-      - uses: actions/cache@v2.1.2
+      - uses: actions/cache@v2.1.3
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
         if: env.GIT_DIFF
-      - uses: actions/cache@v2.1.2
+      - uses: actions/cache@v2.1.3
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-${{ github.sha }}-tm-binary
@@ -118,6 +118,9 @@ jobs:
     needs: Build
     timeout-minutes: 5
     steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "^1.15.4"
       - uses: actions/checkout@v2
       - uses: technote-space/get-diff-action@v4
         with:
@@ -125,17 +128,14 @@ jobs:
             **/**.go
             go.mod
             go.sum
-      - name: Set GOBIN
-        run: |
-          echo "::add-path::$(go env GOPATH)/bin"
-      - uses: actions/cache@v2.1.2
+      - uses: actions/cache@v2.1.3
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
         if: env.GIT_DIFF
-      - uses: actions/cache@v2.1.2
+      - uses: actions/cache@v2.1.3
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-${{ github.sha }}-tm-binary

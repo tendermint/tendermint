@@ -5,12 +5,10 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	p2pconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
 const (
-	defaultTimeoutAcceptSeconds   = 3
-	defaultPingPeriodMilliseconds = 100
+	defaultTimeoutAcceptSeconds = 3
 )
 
 // timeoutError can be used to check if an error returned from the netp package
@@ -77,7 +75,7 @@ func (ln *TCPListener) Accept() (net.Conn, error) {
 
 	// Wrap the conn in our timeout and encryption wrappers
 	timeoutConn := newTimeoutConn(tc, ln.timeoutReadWrite)
-	secretConn, err := p2pconn.MakeSecretConnection(timeoutConn, ln.secretConnKey)
+	secretConn, err := MakeSecretConnection(timeoutConn, ln.secretConnKey)
 	if err != nil {
 		return nil, err
 	}
