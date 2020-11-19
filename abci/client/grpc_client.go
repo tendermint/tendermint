@@ -171,7 +171,7 @@ func (cli *grpcClient) EchoAsync(ctx context.Context, msg string) (*ReqRes, erro
 	if err != nil {
 		return nil, err
 	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Echo{Echo: res}}), nil
+	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_Echo{Echo: res}})
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
@@ -181,7 +181,7 @@ func (cli *grpcClient) FlushAsync(ctx context.Context) (*ReqRes, error) {
 	if err != nil {
 		return nil, err
 	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Flush{Flush: res}}), nil
+	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_Flush{Flush: res}})
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
@@ -191,7 +191,7 @@ func (cli *grpcClient) InfoAsync(ctx context.Context, params types.RequestInfo) 
 	if err != nil {
 		return nil, err
 	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Info{Info: res}}), nil
+	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_Info{Info: res}})
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
@@ -201,7 +201,7 @@ func (cli *grpcClient) DeliverTxAsync(ctx context.Context, params types.RequestD
 	if err != nil {
 		return nil, err
 	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_DeliverTx{DeliverTx: res}}), nil
+	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_DeliverTx{DeliverTx: res}})
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
@@ -211,7 +211,7 @@ func (cli *grpcClient) CheckTxAsync(ctx context.Context, params types.RequestChe
 	if err != nil {
 		return nil, err
 	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_CheckTx{CheckTx: res}}), nil
+	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_CheckTx{CheckTx: res}})
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
@@ -221,7 +221,7 @@ func (cli *grpcClient) QueryAsync(ctx context.Context, params types.RequestQuery
 	if err != nil {
 		return nil, err
 	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Query{Query: res}}), nil
+	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_Query{Query: res}})
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
@@ -231,7 +231,7 @@ func (cli *grpcClient) CommitAsync(ctx context.Context) (*ReqRes, error) {
 	if err != nil {
 		return nil, err
 	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Commit{Commit: res}}), nil
+	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_Commit{Commit: res}})
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
@@ -241,7 +241,7 @@ func (cli *grpcClient) InitChainAsync(ctx context.Context, params types.RequestI
 	if err != nil {
 		return nil, err
 	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_InitChain{InitChain: res}}), nil
+	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_InitChain{InitChain: res}})
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
@@ -251,7 +251,7 @@ func (cli *grpcClient) BeginBlockAsync(ctx context.Context, params types.Request
 	if err != nil {
 		return nil, err
 	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_BeginBlock{BeginBlock: res}}), nil
+	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_BeginBlock{BeginBlock: res}})
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
@@ -261,7 +261,7 @@ func (cli *grpcClient) EndBlockAsync(ctx context.Context, params types.RequestEn
 	if err != nil {
 		return nil, err
 	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_EndBlock{EndBlock: res}}), nil
+	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_EndBlock{EndBlock: res}})
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
@@ -271,7 +271,7 @@ func (cli *grpcClient) ListSnapshotsAsync(ctx context.Context, params types.Requ
 	if err != nil {
 		return nil, err
 	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_ListSnapshots{ListSnapshots: res}}), nil
+	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_ListSnapshots{ListSnapshots: res}})
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
@@ -281,7 +281,7 @@ func (cli *grpcClient) OfferSnapshotAsync(ctx context.Context, params types.Requ
 	if err != nil {
 		return nil, err
 	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_OfferSnapshot{OfferSnapshot: res}}), nil
+	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_OfferSnapshot{OfferSnapshot: res}})
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
@@ -291,7 +291,7 @@ func (cli *grpcClient) LoadSnapshotChunkAsync(ctx context.Context, params types.
 	if err != nil {
 		return nil, err
 	}
-	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_LoadSnapshotChunk{LoadSnapshotChunk: res}}), nil
+	return cli.finishAsyncCall(ctx, req, &types.Response{Value: &types.Response_LoadSnapshotChunk{LoadSnapshotChunk: res}})
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
@@ -302,18 +302,23 @@ func (cli *grpcClient) ApplySnapshotChunkAsync(ctx context.Context, params types
 		return nil, err
 	}
 	return cli.finishAsyncCall(
+		ctx,
 		req,
 		&types.Response{Value: &types.Response_ApplySnapshotChunk{ApplySnapshotChunk: res}},
-	), nil
+	)
 }
 
 // finishAsyncCall creates a ReqRes for an async call, and immediately populates it
 // with the response. We don't complete it until it's been ordered via the channel.
-func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) *ReqRes {
+func (cli *grpcClient) finishAsyncCall(ctx context.Context, req *types.Request, res *types.Response) (*ReqRes, error) {
 	reqres := NewReqRes(req)
 	reqres.Response = res
-	cli.chReqRes <- reqres // use channel for async responses, since they must be ordered
-	return reqres
+	select {
+	case cli.chReqRes <- reqres: // use channel for async responses, since they must be ordered
+		return reqres, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 // finishSyncCall waits for an async call to complete. It is necessary to call all

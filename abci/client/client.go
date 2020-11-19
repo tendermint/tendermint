@@ -18,10 +18,13 @@ const (
 //go:generate mockery --case underscore --name Client
 
 // Client defines an interface for an ABCI client.
-// All `Async` methods return a `ReqRes` object.
+//
+// All `Async` methods return a `ReqRes` object and an error.
 // All `Sync` methods return the appropriate protobuf ResponseXxx struct and an error.
-// Note these are client errors, eg. ABCI socket connectivity issues.
-// Application-related errors are reflected in response via ABCI error codes and logs.
+//
+// NOTE these are client errors, eg. ABCI socket connectivity issues.
+// Application-related errors are reflected in response via ABCI error codes
+// and logs.
 type Client interface {
 	service.Service
 
