@@ -16,7 +16,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - P2P Protocol
 
 - Go API
-  - [abci/client, proxy] \#5673 `Async` funcs return an error, `Sync` funcs accept `context.Context` (@melekes)
+  - [abci/client, proxy] \#5673 `Async` funcs return an error, `Sync` and `Async` funcs accept `context.Context` (@melekes)
 
 - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
 
