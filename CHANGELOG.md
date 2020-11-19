@@ -45,13 +45,11 @@ And as always, friendly reminder, that we have a [bug bounty program](https://ha
 
 - Blockchain Protocol
 
-  - [evidence] [\#4780](https://github.com/tendermint/tendermint/pull/4780) Cap evidence to an absolute number (@cmwaters)
-    - Note that this is superceded by #5499, below
   - [evidence] [\#4725](https://github.com/tendermint/tendermint/pull/4725) Remove `Pubkey` from `DuplicateVoteEvidence` (@marbar3778) 
   - [state] [\#4845](https://github.com/tendermint/tendermint/pull/4845) Include `GasWanted` and `GasUsed` into `LastResultsHash` (@melekes)
   - [types] [\#4792](https://github.com/tendermint/tendermint/pull/4792) Sort validators by voting power to enable faster commit verification (@melekes)
   - [merkle] [\#5193](https://github.com/tendermint/tendermint/pull/5193) Header hashes are no longer empty for empty inputs, notably `DataHash`, `EvidenceHash`, and `LastResultsHash` (@erikgrinaker)
-  - [evidence] [\#5499](https://github.com/tendermint/tendermint/pull/5449) `MaxNum` evidence consensus parameter has been changed to `MaxBytes` (@cmwaters)
+  - [evidence] [\#5499](https://github.com/tendermint/tendermint/pull/5449) Cap evidence to a maximum number of bytes (supercedes [\#4780](https://github.com/tendermint/tendermint/pull/4780)) (@cmwaters)
 
 - On-disk serialization
 
