@@ -174,7 +174,10 @@ func (app *localClient) OfferSnapshotAsync(ctx context.Context, req types.Reques
 	), nil
 }
 
-func (app *localClient) LoadSnapshotChunkAsync(ctx context.Context, req types.RequestLoadSnapshotChunk) (*ReqRes, error) {
+func (app *localClient) LoadSnapshotChunkAsync(
+	ctx context.Context,
+	req types.RequestLoadSnapshotChunk,
+) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -185,7 +188,10 @@ func (app *localClient) LoadSnapshotChunkAsync(ctx context.Context, req types.Re
 	), nil
 }
 
-func (app *localClient) ApplySnapshotChunkAsync(ctx context.Context, req types.RequestApplySnapshotChunk) (*ReqRes, error) {
+func (app *localClient) ApplySnapshotChunkAsync(
+	ctx context.Context,
+	req types.RequestApplySnapshotChunk,
+) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
