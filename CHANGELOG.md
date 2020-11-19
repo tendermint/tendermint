@@ -106,7 +106,7 @@ And as always, friendly reminder, that we have a [bug bounty program](https://ha
   - [state] [\#5191](https://github.com/tendermint/tendermint/pull/5191) Add `State.InitialHeight` field to record initial block height, must be `1` (not `0`) to start from 1 (@erikgrinaker)
   - [state] [\#5231](https://github.com/tendermint/tendermint/pull/5231) `LoadStateFromDBOrGenesisFile()` and `LoadStateFromDBOrGenesisDoc()` no longer saves the state in the database if not found, the genesis state is simply returned (@erikgrinaker)
   - [crypto] [\#5236](https://github.com/tendermint/tendermint/pull/5236) `VerifyBytes` is now `VerifySignature` on the `crypto.PubKey` interface (@marbar3778)
-  - [evidence] [\#5361](https://github.com/tendermint/tendermint/pull/5361) Add LightClientAttackEvidence and change evidence interface (@cmwaters)
+  - [evidence] [\#5361](https://github.com/tendermint/tendermint/pull/5361) Add LightClientAttackEvidence and change evidence interface - for more information see [ADR-059](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-059-evidence-composition-and-lifecycle.md) (@cmwaters)
   - [light] [\#5347](https://github.com/tendermint/tendermint/pull/5347) `NewClient`, `NewHTTPClient`, `VerifyHeader` and `VerifyLightBlockAtHeight` now accept `context.Context` as 1st param (@melekes)
   - [state] [\#5348](https://github.com/tendermint/tendermint/pull/5348) Define an Interface for the state store. (@marbar3778)
   - [evidence] [\#5499](https://github.com/tendermint/tendermint/pull/5449) `MaxNum` evidence consensus parameter has been changed to `MaxBytes` (@cmwaters)
@@ -138,7 +138,7 @@ And as always, friendly reminder, that we have a [bug bounty program](https://ha
 
 - [consensus] [\#4578](https://github.com/tendermint/tendermint/pull/4578) Attempt to repair the consensus WAL file (`data/cs.wal/wal`) automatically in case of corruption (@alessio)
   - The original WAL file will be backed up to `data/cs.wal/wal.CORRUPTED`.
-- [evidence] [\#4722](https://github.com/tendermint/tendermint/pull/4722) Improved evidence db (@cmwaters)
+- [evidence] [\#4722](https://github.com/tendermint/tendermint/pull/4722) Consolidate evidence store and pool types to improve evidence DB (@cmwaters)
 - [evidence] [\#4839](https://github.com/tendermint/tendermint/pull/4839) Reject duplicate evidence from being proposed (@cmwaters)
 - [light] [\#4935](https://github.com/tendermint/tendermint/pull/4935) Fetch and compare a new header with witnesses in parallel (@melekes)
 - [light] [\#4929](https://github.com/tendermint/tendermint/pull/4929) Compare header with witnesses only when doing bisection (@melekes)
@@ -164,7 +164,7 @@ And as always, friendly reminder, that we have a [bug bounty program](https://ha
 
 - [blockchain/v2] [\#4971](https://github.com/tendermint/tendermint/pull/4971) Correctly set block store base in status responses (@erikgrinaker)
 - [consensus] [\#4895](https://github.com/tendermint/tendermint/pull/4895) Cache the address of the validator to reduce querying a remote KMS (@joe-bowman)
-- [consensus] [\#4970](https://github.com/tendermint/tendermint/pull/4970) Stricter on `LastCommitRound` check (@cuonglm)
+- [consensus] [\#4970](https://github.com/tendermint/tendermint/pull/4970) Don't allow `LastCommitRound` to be negative (@cuonglm)
 - [p2p] [\#5136](https://github.com/tendermint/tendermint/pull/5136) Fix error for peer with the same ID but different IPs (@valardragon)
 - [proxy] [\#5078](https://github.com/tendermint/tendermint/pull/5078) Force Tendermint to exit when ABCI app crashes  (@melekes)
 - [evidence] [\#5170](https://github.com/tendermint/tendermint/pull/5170) Change abci evidence time to the time the infraction happened not the time the evidence was committed on the block (@cmwaters)
