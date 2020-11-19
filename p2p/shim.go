@@ -9,12 +9,26 @@ import (
 var _ Reactor = (*ReactorShim)(nil)
 
 type (
-	CodecShim interface {
-		Marshal(proto.Message) ([]byte, error)
-		Unmarshal([]byte) (proto.Message, error)
-		Validate(proto.Message) error
+	// ReactorShim defines a generic shim wrapper around a BaseReactor. It is
+	// responsible for wiring up legacy p2p behavior to the new p2p semantics
+	// (e.g. proxying Envelope messages to legacy peers).
+	ReactorShim struct {
+		BaseReactor
+
+		Name             string
+		PeerUpdateCh     chan PeerUpdate
+		Channels         map[ChannelID]*ChannelShim
+		MessageValidator MessageValidator
 	}
 
+	MessageValidator interface {
+		OnUnmarshalFailure(chID byte, src Peer, msgBytes []byte, err error)
+		Validate(chID byte, src Peer, msgBytes []byte, msg proto.Message) error
+	}
+
+	// ChannelShim defines a generic shim wrapper around a legacy p2p channel
+	// and the new p2p Channel. It also includes the raw bi-directional Go channels
+	// so we can proxy message delivery.
 	ChannelShim struct {
 		Descriptor *ChannelDescriptor
 		Channel    *Channel
@@ -23,29 +37,29 @@ type (
 		PeerErrCh  chan PeerError
 	}
 
-	ReactorShim struct {
-		BaseReactor
-
-		Name         string
-		Codec        CodecShim
-		PeerUpdateCh chan PeerUpdate
-		Channels     map[ChannelID]*ChannelShim
+	// ChannelDescriptorShim defines a shim wrapper around a legacy p2p channel
+	// and the proto.Message the new p2p Channel is responsible for handling.
+	// A ChannelDescriptorShim is not contained in ReactorShim, but is rather
+	// used to construct a ReactorShim.
+	ChannelDescriptorShim struct {
+		MsgType    proto.Message
+		Descriptor *ChannelDescriptor
 	}
 )
 
-func NewShim(name string, codec CodecShim, impl Reactor, descriptors []*ChannelDescriptor) *ReactorShim {
+func NewShim(name string, impl Reactor, descriptors []*ChannelDescriptorShim, msgVal MessageValidator) *ReactorShim {
 	br := *NewBaseReactor(name, impl)
 
 	channels := make(map[ChannelID]*ChannelShim)
-	for _, cd := range descriptors {
-		cID := ChannelID(cd.ID)
+	for _, cds := range descriptors {
+		cID := ChannelID(cds.Descriptor.ID)
 		inCh := make(chan Envelope)
 		outCh := make(chan Envelope)
 		peerErrCh := make(chan PeerError)
 
 		channels[cID] = &ChannelShim{
-			Descriptor: cd,
-			Channel:    NewChannel(cID, nil, inCh, outCh, peerErrCh),
+			Descriptor: cds.Descriptor,
+			Channel:    NewChannel(cID, cds.MsgType, inCh, outCh, peerErrCh),
 			InCh:       inCh,
 			OutCh:      outCh,
 			PeerErrCh:  peerErrCh,
@@ -53,43 +67,18 @@ func NewShim(name string, codec CodecShim, impl Reactor, descriptors []*ChannelD
 	}
 
 	return &ReactorShim{
-		BaseReactor:  br,
-		Name:         name,
-		Codec:        codec,
-		PeerUpdateCh: make(chan PeerUpdate),
-		Channels:     channels,
-	}
-}
-
-// proxyPeerErrors iterates over each p2p Channel and starts a separate go-routine
-// where we listen for peer errors on the channel's PeerErrCh and send a PeerUpdate
-// on the PeerUpdateCh with a status PeerStatusBanned.
-func (rs *ReactorShim) proxyPeerErrors() {
-	for _, c := range rs.Channels {
-		go func(peerErrCh chan PeerError) {
-			for peerErr := range peerErrCh {
-				select {
-				case rs.PeerUpdateCh <- PeerUpdate{PeerID: peerErr.PeerID, Status: PeerStatusBanned}:
-					rs.Logger.Debug(
-						"sent peer update due to error",
-						"reactor", rs.Name, "peer", peerErr.PeerID.String(), "status", PeerStatusBanned, "err", peerErr.Err,
-					)
-
-				default:
-					rs.Logger.Debug(
-						"dropped peer update due to error",
-						"reactor", rs.Name, "peer", peerErr.PeerID.String(), "status", PeerStatusBanned, "err", peerErr.Err,
-					)
-				}
-			}
-		}(c.PeerErrCh)
+		BaseReactor:      br,
+		Name:             name,
+		PeerUpdateCh:     make(chan PeerUpdate),
+		Channels:         channels,
+		MessageValidator: msgVal,
 	}
 }
 
 // proxyPeerEnvelopes iterates over each p2p Channel and starts a separate
 // go-routine where we listen for outbound envelopes sent during Receive
-// executions and proxy them to the coressponding Peer using the To field from
-// the envelope.
+// executions (or anything else that may send on the Channel) and proxy them to
+// the coressponding Peer using the To field from the envelope.
 func (rs *ReactorShim) proxyPeerEnvelopes() {
 	for _, c := range rs.Channels {
 		go func(chID byte, outCh chan Envelope) {
@@ -99,7 +88,7 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 					panic(fmt.Sprintf("failed to proxy envelope; failed to find peer (%s)", e.To))
 				}
 
-				bz, err := rs.Codec.Marshal(e.Message)
+				bz, err := proto.Marshal(e.Message)
 				if err != nil {
 					panic(fmt.Sprintf("failed to proxy envelope; failed to encode message: %s", err))
 				}
@@ -126,7 +115,6 @@ func (rs *ReactorShim) GetChannels() []*ChannelDescriptor {
 // necessary go-routines in order to proxy peer errors and messages.
 func (rs *ReactorShim) OnStart() error {
 	if rs.IsRunning() {
-		rs.proxyPeerErrors()
 		rs.proxyPeerEnvelopes()
 	}
 
@@ -136,9 +124,9 @@ func (rs *ReactorShim) OnStart() error {
 // OnStop executes the reactor shim's OnStop hook where all p2p Channels are
 // closed and the PeerUpdateCh is closed.
 func (rs *ReactorShim) OnStop() {
-	for _, c := range rs.Channels {
-		if err := c.Channel.Close(); err != nil {
-			rs.Logger.Error("failed to close channel", "reactor", rs.Name, "ch_id", c.Channel.ID, "err", err)
+	for _, cs := range rs.Channels {
+		if err := cs.Channel.Close(); err != nil {
+			rs.Logger.Error("failed to close channel", "reactor", rs.Name, "ch_id", cs.Channel.ID, "err", err)
 		}
 	}
 
@@ -191,23 +179,29 @@ func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 	}
 
 	cID := ChannelID(chID)
-	channel, ok := rs.Channels[cID]
+	channelShim, ok := rs.Channels[cID]
 	if !ok {
 		rs.Logger.Error("unexpected channel", "peer", src, "ch_id", chID)
 		return
 	}
 
-	msg, err := rs.Codec.Unmarshal(msgBytes)
-	if err != nil {
+	msg := proto.Clone(channelShim.Channel.messageType)
+	msg.Reset()
+
+	if err := proto.Unmarshal(msgBytes, msg); err != nil {
 		rs.Logger.Error("error decoding message", "peer", src, "ch_id", cID, "msg", msg, "err", err)
-		// TODO: We need a way to handle custom business logic on error.
+		if rs.MessageValidator != nil {
+			rs.MessageValidator.OnUnmarshalFailure(chID, src, msgBytes, err)
+		}
+
 		return
 	}
 
-	if err := rs.Codec.Validate(msg); err != nil {
-		rs.Logger.Error("invalid message", "peer", src, "ch_id", cID, "msg", msg, "err", err)
-		// TODO: We need a way to handle custom business logic on error.
-		return
+	if rs.MessageValidator != nil {
+		if err := rs.MessageValidator.Validate(chID, src, msgBytes, msg); err != nil {
+			rs.Logger.Error("invalid message", "peer", src, "ch_id", cID, "msg", msg, "err", err)
+			return
+		}
 	}
 
 	peerID, err := PeerIDFromString(string(src.ID()))
@@ -218,7 +212,7 @@ func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 	}
 
 	select {
-	case channel.InCh <- Envelope{From: peerID, Message: msg}:
+	case channelShim.InCh <- Envelope{From: peerID, Message: msg}:
 		rs.Logger.Debug("proxied envelope", "reactor", rs.Name, "ch_id", cID, "peer", peerID.String())
 
 	default:
