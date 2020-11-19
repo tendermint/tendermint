@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"math"
 	"net"
 	"time"
 
@@ -29,8 +31,10 @@ func MConnTransportMaxIncomingConnections(max int) MConnTransportOption {
 // MConnTransport is a Transport implementation using the current multiplexed
 // Tendermint protocol ("MConn").
 type MConnTransport struct {
-	nodeKey  NodeKey
-	nodeInfo DefaultNodeInfo
+	nodeKey      NodeKey
+	nodeInfo     DefaultNodeInfo
+	channelDescs []*ChannelDescriptor
+	mConnConfig  tmconn.MConnConfig
 
 	listener net.Listener
 	chAccept chan *mConnConnection
@@ -46,6 +50,7 @@ type MConnTransport struct {
 func NewMConnTransport(
 	nodeInfo NodeInfo,
 	nodeKey NodeKey,
+	mConnConfig tmconn.MConnConfig,
 	opts ...MConnTransportOption,
 ) *MConnTransport {
 	m := &MConnTransport{
@@ -64,11 +69,22 @@ func NewMConnTransport(
 	return m
 }
 
+// SetChannelDescriptors is used to set MConn channel descriptors. It exists for
+// the switch to configure this separately from transport construction (which is
+// done by the node). It must be called before Listen().
+func (m *MConnTransport) SetChannelDescriptors(channelDescs []*ChannelDescriptor) {
+	m.channelDescs = channelDescs
+}
+
 // Listen listens for inbound connections on the given endpoint.
 func (m *MConnTransport) Listen(endpoint Endpoint) error {
 	if m.listener != nil {
 		return fmt.Errorf("MConn transport is already listening")
 	}
+	// FIXME Maybe check this, needs code restructuring
+	/*if len(m.channelDescs) == 0 {
+		return fmt.Errorf("No MConn channel descriptors")
+	}*/
 	err := m.normalizeEndpoint(&endpoint)
 	if err != nil {
 		return fmt.Errorf("invalid MConn endpoint %q: %w", endpoint, err)
@@ -206,6 +222,8 @@ func (m *MConnTransport) normalizeEndpoint(endpoint *Endpoint) error {
 type mConnConnection struct {
 	transport  *MConnTransport
 	secretConn *tmconn.SecretConnection
+	mConn      *tmconn.MConnection
+	streams    map[byte]*mConnStream
 	nodeInfo   DefaultNodeInfo
 }
 
@@ -240,6 +258,7 @@ func newMConnConnection(
 
 	conn = &mConnConnection{
 		transport: transport,
+		streams:   make(map[byte]*mConnStream), // FIXME capacity
 	}
 	conn.secretConn, err = tmconn.MakeSecretConnection(tcpConn, transport.nodeKey.PrivKey)
 	if err != nil {
@@ -271,6 +290,30 @@ func newMConnConnection(
 		}
 		return
 	}
+
+	for _, chDesc := range transport.channelDescs {
+		conn.streams[chDesc.ID], err = newMConnStream(conn, uint16(chDesc.ID))
+		if err != nil {
+			err = ErrRejected{
+				conn:          tcpConn,
+				err:           fmt.Errorf("secret conn failed: %v", err),
+				isAuthFailure: true,
+			}
+			return
+		}
+	}
+	conn.mConn = tmconn.NewMConnectionWithConfig(
+		conn.secretConn,
+		transport.channelDescs,
+		func(chID byte, bz []byte) {
+			if stream, ok := conn.streams[chID]; ok {
+				stream.chReceive <- bz
+			}
+		},
+		func(err interface{}) { panic(fmt.Sprintf("onError: %v", err)) },
+		// FIXME Configure this
+		tmconn.MConnConfig{},
+	)
 
 	return
 }
@@ -324,7 +367,7 @@ func (c *mConnConnection) RemoteEndpoint() Endpoint {
 
 // Stream implements Connection.
 func (c *mConnConnection) Stream(id uint16) (Stream, error) {
-	return &mConnStream{}, nil
+	return newMConnStream(c, id)
 }
 
 // Close implements Connection.
@@ -334,16 +377,44 @@ func (c *mConnConnection) Close() error {
 
 // mConnStream implements Stream for MConnTransport.
 type mConnStream struct {
+	connection *mConnConnection
+	id         byte
+	chReceive  chan []byte
 }
 
+// newMConnStream represents a stream in a connection. It corresponds
+// to a MConnection Channel.
+func newMConnStream(connection *mConnConnection, id uint16) (*mConnStream, error) {
+	if id > math.MaxUint8 {
+		return nil, fmt.Errorf("MConn only supports channel IDs up to 255")
+	}
+	return &mConnStream{
+		connection: connection,
+		id:         byte(id),
+		chReceive:  make(chan []byte),
+	}, nil
+}
+
+// Close implements Stream.
 func (s *mConnStream) Close() error {
-	panic("not implemented")
+	return nil
 }
 
+// Write implements Stream.
 func (s *mConnStream) Write(bz []byte) (int, error) {
-	panic("not implemented")
+	if !s.connection.mConn.Send(s.id, bz) {
+		return 0, errors.New("MConn send failed")
+	}
+	return len(bz), nil
 }
 
+// Read implements Stream.
 func (s *mConnStream) Read(target []byte) (int, error) {
-	panic("not implemented")
+	select {
+	case bz := <-s.chReceive:
+		copy(target, bz)
+		return len(bz), nil
+	case <-s.connection.transport.chClose:
+		return 0, io.EOF
+	}
 }

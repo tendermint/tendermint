@@ -624,15 +624,17 @@ func (sw *Switch) IsPeerPersistent(na *NetAddress) bool {
 }
 
 func (sw *Switch) acceptRoutine() {
-	// FIXME Hack to handle old MConn transport
+	// FIXME Hack to handle old MConn transport. This should
+	// probably happen elsewhere.
 	if t, ok := sw.transport.(*MConnTransport); ok {
-		t.setPeerConfig(peerConfig{
+		t.SetChannelDescriptors(sw.chDescs)
+		/*t.setPeerConfig(peerConfig{
 			chDescs:      sw.chDescs,
 			onPeerError:  sw.StopPeerForError,
 			reactorsByCh: sw.reactorsByCh,
 			metrics:      sw.metrics,
 			isPersistent: sw.IsPeerPersistent,
-		})
+		})*/
 	}
 
 	for {
@@ -735,7 +737,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	}
 
 	// FIXME Hack to handle old MConn transport
-	if t, ok := sw.transport.(*MConnTransport); ok {
+	/*if t, ok := sw.transport.(*MConnTransport); ok {
 		t.setPeerConfig(peerConfig{
 			chDescs:      sw.chDescs,
 			onPeerError:  sw.StopPeerForError,
@@ -743,7 +745,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 			metrics:      sw.metrics,
 			isPersistent: sw.IsPeerPersistent,
 		})
-	}
+	}*/
 
 	c, err := sw.transport.Dial(context.Background(), Endpoint{
 		Protocol: MConnProtocol,
