@@ -17,12 +17,15 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - Go API
   - [abci/client, proxy] \#5673 `Async` funcs return an error, `Sync` and `Async` funcs accept `context.Context` (@melekes)
+  - [p2p] Removed unused function `MakePoWTarget`. (@erikgrinaker)
 
 - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
 
 - Blockchain Protocol
 
 ### FEATURES
+
+- [libs/math] \#5665 Make fractions unsigned integers (uint64) (@cmwaters)
 
 ### IMPROVEMENTS
 
