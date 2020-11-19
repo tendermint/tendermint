@@ -37,11 +37,22 @@ type Channel struct {
 	Error chan<- PeerError
 }
 
+func NewChannel(id ChannelID, mType proto.Message, in <-chan Envelope, out chan<- Envelope, err chan<- PeerError) *Channel {
+	return &Channel{
+		ID:          id,
+		messageType: mType,
+		In:          in,
+		Out:         out,
+		Error:       err,
+	}
+}
+
 // Close closes the outbound channel and is equivalent to close(Channel.Out).
 // Close is intended to be called by the caller, whereas the sender must must
 // coordinate when to close the inbound channel.
 func (c *Channel) Close() error {
 	close(c.Out)
+	close(c.Error)
 	return nil
 }
 
