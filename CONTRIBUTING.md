@@ -127,6 +127,22 @@ make install
 
 You should now be able to run `make proto-gen` from inside the root Tendermint directory to generate new files from proto files.
 
+
+### Visual Studio Code
+
+If you are a VS Code user, you may want to add the following to your `.vscode/settings.json`:  
+
+```
+{	
+  "protoc": {	
+    "options": [	
+      "--proto_path=${workspaceRoot}/proto",	
+      "--proto_path=${workspaceRoot}/third_party/proto"	
+    ]	
+  }	
+}
+```
+
 ## Vagrant
 
 If you are a [Vagrant](https://www.vagrantup.com/) user, you can get started
