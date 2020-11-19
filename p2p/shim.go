@@ -54,9 +54,7 @@ type (
 	}
 )
 
-func NewShim(name string, impl Reactor, descriptors []*ChannelDescriptorShim, msgVal MessageValidator) *ReactorShim {
-	br := *NewBaseReactor(name, impl)
-
+func NewShim(name string, descriptors []*ChannelDescriptorShim, msgVal MessageValidator) *ReactorShim {
 	channels := make(map[ChannelID]*ChannelShim)
 	for _, cds := range descriptors {
 		cID := ChannelID(cds.Descriptor.ID)
@@ -73,13 +71,16 @@ func NewShim(name string, impl Reactor, descriptors []*ChannelDescriptorShim, ms
 		}
 	}
 
-	return &ReactorShim{
-		BaseReactor:      br,
+	rs := &ReactorShim{
 		Name:             name,
 		PeerUpdateCh:     make(chan PeerUpdate),
 		Channels:         channels,
 		MessageValidator: msgVal,
 	}
+
+	rs.BaseReactor = *NewBaseReactor(name, rs)
+
+	return rs
 }
 
 // proxyPeerEnvelopes iterates over each p2p Channel and starts a separate
