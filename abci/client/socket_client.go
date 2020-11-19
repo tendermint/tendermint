@@ -283,11 +283,17 @@ func (cli *socketClient) OfferSnapshotAsync(ctx context.Context, req types.Reque
 	return cli.queueRequestAsync(ctx, types.ToRequestOfferSnapshot(req))
 }
 
-func (cli *socketClient) LoadSnapshotChunkAsync(ctx context.Context, req types.RequestLoadSnapshotChunk) (*ReqRes, error) {
+func (cli *socketClient) LoadSnapshotChunkAsync(
+	ctx context.Context,
+	req types.RequestLoadSnapshotChunk,
+) (*ReqRes, error) {
 	return cli.queueRequestAsync(ctx, types.ToRequestLoadSnapshotChunk(req))
 }
 
-func (cli *socketClient) ApplySnapshotChunkAsync(ctx context.Context, req types.RequestApplySnapshotChunk) (*ReqRes, error) {
+func (cli *socketClient) ApplySnapshotChunkAsync(
+	ctx context.Context,
+	req types.RequestApplySnapshotChunk,
+) (*ReqRes, error) {
 	return cli.queueRequestAsync(ctx, types.ToRequestApplySnapshotChunk(req))
 }
 

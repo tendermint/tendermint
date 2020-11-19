@@ -285,7 +285,10 @@ func (cli *grpcClient) OfferSnapshotAsync(ctx context.Context, params types.Requ
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
-func (cli *grpcClient) LoadSnapshotChunkAsync(ctx context.Context, params types.RequestLoadSnapshotChunk) (*ReqRes, error) {
+func (cli *grpcClient) LoadSnapshotChunkAsync(
+	ctx context.Context,
+	params types.RequestLoadSnapshotChunk,
+) (*ReqRes, error) {
 	req := types.ToRequestLoadSnapshotChunk(params)
 	res, err := cli.client.LoadSnapshotChunk(ctx, req.GetLoadSnapshotChunk(), grpc.WaitForReady(true))
 	if err != nil {
@@ -295,7 +298,10 @@ func (cli *grpcClient) LoadSnapshotChunkAsync(ctx context.Context, params types.
 }
 
 // NOTE: call is synchronous, use ctx to break early if needed
-func (cli *grpcClient) ApplySnapshotChunkAsync(ctx context.Context, params types.RequestApplySnapshotChunk) (*ReqRes, error) {
+func (cli *grpcClient) ApplySnapshotChunkAsync(
+	ctx context.Context,
+	params types.RequestApplySnapshotChunk,
+) (*ReqRes, error) {
 	req := types.ToRequestApplySnapshotChunk(params)
 	res, err := cli.client.ApplySnapshotChunk(ctx, req.GetApplySnapshotChunk(), grpc.WaitForReady(true))
 	if err != nil {
