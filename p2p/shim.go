@@ -6,6 +6,13 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
+// ============================================================================
+// TODO: Types and business logic below are temporary and will be removed once
+// the legacy p2p stack is removed in favor of the new model.
+//
+// ref: https://github.com/tendermint/tendermint/issues/5670
+// ============================================================================
+
 var _ Reactor = (*ReactorShim)(nil)
 
 type (

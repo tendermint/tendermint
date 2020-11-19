@@ -7,6 +7,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
@@ -15,6 +16,8 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
+
+var _ p2p.MessageValidator = (*Reactor)(nil)
 
 const (
 	// SnapshotChannel exchanges snapshot metadata
@@ -45,23 +48,6 @@ type Reactor struct {
 	// received snapshots and chunks into the sync.
 	mtx    tmsync.RWMutex
 	syncer *syncer
-
-	shim *reactorShim
-}
-
-// reactorShim is a temporary shim that resides in the Reactor that allows us
-// to continue to fulfill the current p2p Reactor interface while using the new
-// underlying p2p semantics.
-type reactorShim struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-
-	snapshotInCh  chan p2p.Envelope
-	snapshotOutCh chan p2p.Envelope
-	chunkInCh     chan p2p.Envelope
-	chunkOutCh    chan p2p.Envelope
-	peerErrCh     chan p2p.PeerError
-	peerUpdateCh  chan p2p.PeerUpdate
 }
 
 // NewReactor returns a reference to a new state-sync reactor. It accepts a Context
@@ -269,188 +255,6 @@ func (r *Reactor) handlePeerUpdate(peerUpdate p2p.PeerUpdate) {
 	}
 }
 
-// ============================================================================
-// Types and business logic below may be deprecated.
-//
-// TODO: Rename once legacy p2p types are removed.
-// ref: https://github.com/tendermint/tendermint/issues/5670
-// ============================================================================
-
-func newReactorShim() *reactorShim {
-	ctx, cancel := context.WithCancel(context.Background())
-	return &reactorShim{
-		ctx:           ctx,
-		cancel:        cancel,
-		snapshotInCh:  make(chan p2p.Envelope),
-		snapshotOutCh: make(chan p2p.Envelope),
-		chunkInCh:     make(chan p2p.Envelope),
-		chunkOutCh:    make(chan p2p.Envelope),
-		peerErrCh:     make(chan p2p.PeerError),
-		peerUpdateCh:  make(chan p2p.PeerUpdate),
-	}
-}
-
-// NewReactorDeprecated creates a new state sync reactor using the deprecated
-// p2p stack.
-func NewReactorDeprecated(conn proxy.AppConnSnapshot, connQuery proxy.AppConnQuery, tempDir string) *Reactor {
-	shim := newReactorShim()
-
-	snapshotCh := &p2p.Channel{
-		ID:    p2p.ChannelID(SnapshotChannel),
-		In:    shim.snapshotInCh,
-		Out:   shim.snapshotOutCh,
-		Error: shim.peerErrCh,
-	}
-
-	chunkCh := &p2p.Channel{
-		ID:    p2p.ChannelID(ChunkChannel),
-		In:    shim.chunkInCh,
-		Out:   shim.chunkOutCh,
-		Error: shim.peerErrCh,
-	}
-
-	r := NewReactor(conn, connQuery, snapshotCh, chunkCh, shim.peerUpdateCh, tempDir)
-	r.BaseReactor = *p2p.NewBaseReactor("StateSync", r)
-	r.shim = shim
-
-	return r
-}
-
-// GetChannels implements p2p.Reactor.
-func (r *Reactor) GetChannels() []*p2p.ChannelDescriptor {
-	return []*p2p.ChannelDescriptor{
-		{
-			ID:                  SnapshotChannel,
-			Priority:            3,
-			SendQueueCapacity:   10,
-			RecvMessageCapacity: snapshotMsgSize,
-		},
-		{
-			ID:                  ChunkChannel,
-			Priority:            1,
-			SendQueueCapacity:   4,
-			RecvMessageCapacity: chunkMsgSize,
-		},
-	}
-}
-
-// OnStart implements p2p.Reactor.
-func (r *Reactor) OnStart() error {
-	if r.IsRunning() {
-		go r.Run(r.shim.ctx)
-	}
-
-	return nil
-}
-
-// AddPeer implements p2p.Reactor.
-func (r *Reactor) AddPeer(peer p2p.Peer) {
-	r.mtx.RLock()
-	defer r.mtx.RUnlock()
-
-	if r.syncer != nil {
-		peerID, err := p2p.PeerIDFromString(string(peer.ID()))
-		if err != nil {
-			// It is OK to panic here as we'll be removing the Reactor interface and
-			// Peer type in favor of using a PeerID directly.
-			panic(err)
-		}
-
-		r.syncer.AddPeer(peerID)
-	}
-}
-
-// RemovePeer implements p2p.Reactor.
-func (r *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
-	r.mtx.RLock()
-	defer r.mtx.RUnlock()
-
-	if r.syncer != nil {
-		peerID, err := p2p.PeerIDFromString(string(peer.ID()))
-		if err != nil {
-			// It is OK to panic here as we'll be removing the Reactor interface and
-			// Peer type in favor of using a PeerID directly.
-			panic(err)
-		}
-
-		r.syncer.RemovePeer(peerID)
-	}
-}
-
-// Receive implements p2p.Reactor.
-func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	if !r.IsRunning() {
-		return
-	}
-
-	msg, err := decodeMsg(msgBytes)
-	if err != nil {
-		r.Logger.Error("error decoding message", "peer", src, "ch_id", chID, "msg", msg, "err", err, "bytes", msgBytes)
-		r.Switch.StopPeerForError(src, err)
-		return
-	}
-
-	if err = validateMsg(msg); err != nil {
-		r.Logger.Error("invalid message", "peer", src, "ch_id", chID, "msg", msg, "err", err)
-		r.Switch.StopPeerForError(src, err)
-		return
-	}
-
-	peerID, err := p2p.PeerIDFromString(string(src.ID()))
-	if err != nil {
-		// It is OK to panic here as we'll be removing the Reactor interface and
-		// Peer type in favor of using a PeerID directly.
-		panic(err)
-	}
-
-	// Mimic the current p2p behavior where we proxy receiving a message by sending
-	// a p2p envelope on the appropriate (new) p2p Channel.
-	switch chID {
-	case SnapshotChannel:
-		go func() {
-			r.shim.snapshotInCh <- p2p.Envelope{
-				From:    peerID,
-				Message: msg,
-			}
-		}()
-
-	case ChunkChannel:
-		go func() {
-			r.shim.chunkInCh <- p2p.Envelope{
-				From:    peerID,
-				Message: msg,
-			}
-		}()
-
-	default:
-		r.Logger.Error("received message on an invalid channel", "ch_id", chID)
-		return
-	}
-
-	// Mimic the current p2p behavior where we send a response back to the source
-	// peer on the appropriate channel.
-	//
-	// NOTE:
-	// 1. We do not listen on peerErrCh because we're guaranteed the message is
-	// valid by the above validateMsg call. Otherwise, we'd need to read off of it
-	// since we do not want Receive to block.
-	// 2. We only listen for envelopes on outbound channel(s) to send to the source
-	// peer based on the specific message type. For messages that do not result
-	// in a outbound envelopes (e.g. SnapshotsResponse), we do not listen otherwise
-	// we'd need to either wait with a timeout or use complicated ACKs.
-	_, chunkReq := msg.(*ssproto.ChunkRequest)
-	_, snapReq := msg.(*ssproto.SnapshotsRequest)
-	if chunkReq || snapReq {
-		select {
-		case e := <-r.shim.snapshotOutCh:
-			src.Send(chID, mustEncodeMsg(e.Message.(*ssproto.SnapshotsResponse)))
-
-		case e := <-r.shim.chunkOutCh:
-			src.Send(chID, mustEncodeMsg(e.Message.(*ssproto.ChunkResponse)))
-		}
-	}
-}
-
 // recentSnapshots fetches the n most recent snapshots from the app
 func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
 	resp, err := r.conn.ListSnapshotsSync(abci.RequestListSnapshots{})
@@ -513,4 +317,23 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 	r.mtx.Unlock()
 
 	return state, commit, err
+}
+
+// ============================================================================
+// TODO: Remove once legacy p2p stack is removed.
+//
+// ref: https://github.com/tendermint/tendermint/issues/5670
+// ============================================================================
+
+func (r *Reactor) OnUnmarshalFailure(_ byte, src p2p.Peer, _ []byte, err error) {
+	r.Switch.StopPeerForError(src, err)
+}
+
+func (r *Reactor) Validate(_ byte, src p2p.Peer, _ []byte, msg proto.Message) error {
+	if err := validateMsg(msg); err != nil {
+		r.Switch.StopPeerForError(src, err)
+		return err
+	}
+
+	return nil
 }
