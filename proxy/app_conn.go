@@ -19,7 +19,7 @@ type AppConnConsensus interface {
 	InitChainSync(context.Context, types.RequestInitChain) (*types.ResponseInitChain, error)
 
 	BeginBlockSync(context.Context, types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
-	DeliverTxAsync(types.RequestDeliverTx) (*abcicli.ReqRes, error)
+	DeliverTxAsync(context.Context, types.RequestDeliverTx) (*abcicli.ReqRes, error)
 	EndBlockSync(context.Context, types.RequestEndBlock) (*types.ResponseEndBlock, error)
 	CommitSync(context.Context) (*types.ResponseCommit, error)
 }
@@ -28,10 +28,10 @@ type AppConnMempool interface {
 	SetResponseCallback(abcicli.Callback)
 	Error() error
 
-	CheckTxAsync(types.RequestCheckTx) (*abcicli.ReqRes, error)
+	CheckTxAsync(context.Context, types.RequestCheckTx) (*abcicli.ReqRes, error)
 	CheckTxSync(context.Context, types.RequestCheckTx) (*types.ResponseCheckTx, error)
 
-	FlushAsync() (*abcicli.ReqRes, error)
+	FlushAsync(context.Context) (*abcicli.ReqRes, error)
 	FlushSync(context.Context) error
 }
 
@@ -87,8 +87,8 @@ func (app *appConnConsensus) BeginBlockSync(
 	return app.appConn.BeginBlockSync(ctx, req)
 }
 
-func (app *appConnConsensus) DeliverTxAsync(req types.RequestDeliverTx) (*abcicli.ReqRes, error) {
-	return app.appConn.DeliverTxAsync(req)
+func (app *appConnConsensus) DeliverTxAsync(ctx context.Context, req types.RequestDeliverTx) (*abcicli.ReqRes, error) {
+	return app.appConn.DeliverTxAsync(ctx, req)
 }
 
 func (app *appConnConsensus) EndBlockSync(
@@ -123,16 +123,16 @@ func (app *appConnMempool) Error() error {
 	return app.appConn.Error()
 }
 
-func (app *appConnMempool) FlushAsync() (*abcicli.ReqRes, error) {
-	return app.appConn.FlushAsync()
+func (app *appConnMempool) FlushAsync(ctx context.Context) (*abcicli.ReqRes, error) {
+	return app.appConn.FlushAsync(ctx)
 }
 
 func (app *appConnMempool) FlushSync(ctx context.Context) error {
 	return app.appConn.FlushSync(ctx)
 }
 
-func (app *appConnMempool) CheckTxAsync(req types.RequestCheckTx) (*abcicli.ReqRes, error) {
-	return app.appConn.CheckTxAsync(req)
+func (app *appConnMempool) CheckTxAsync(ctx context.Context, req types.RequestCheckTx) (*abcicli.ReqRes, error) {
+	return app.appConn.CheckTxAsync(ctx, req)
 }
 
 func (app *appConnMempool) CheckTxSync(ctx context.Context, req types.RequestCheckTx) (*types.ResponseCheckTx, error) {

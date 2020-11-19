@@ -233,6 +233,9 @@ func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
 //
 // Safe for concurrent use by multiple goroutines.
 func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) error {
+	// TODO
+	ctx := context.TODO()
+
 	mem.updateMtx.RLock()
 	// use defer to unlock mutex because application (*local client*) might panic
 	defer mem.updateMtx.RUnlock()
@@ -286,7 +289,7 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 		return ErrTxInCache
 	}
 
-	reqRes, err := mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
+	reqRes, err := mem.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{Tx: tx})
 	if err != nil {
 		mem.cache.Remove(tx)
 		return err
@@ -639,20 +642,23 @@ func (mem *CListMempool) recheckTxs() {
 	mem.recheckCursor = mem.txs.Front()
 	mem.recheckEnd = mem.txs.Back()
 
+	ctx := context.Background()
+
 	// Push txs to proxyAppConn
 	// NOTE: globalCb may be called concurrently.
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
-		_, err := mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{
+		_, err := mem.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{
 			Tx:   memTx.tx,
 			Type: abci.CheckTxType_Recheck,
 		})
 		if err != nil {
+			// No need in retrying since memTx will be rechecked after next block.
 			mem.logger.Error("Can't check tx", "err", err)
 		}
 	}
 
-	_, err := mem.proxyAppConn.FlushAsync()
+	_, err := mem.proxyAppConn.FlushAsync(ctx)
 	if err != nil {
 		mem.logger.Error("Can't flush txs", "err", err)
 	}

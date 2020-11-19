@@ -17,7 +17,7 @@ import (
 //----------------------------------------
 
 type appConnTestI interface {
-	EchoAsync(string) (*abcicli.ReqRes, error)
+	EchoAsync(ctx context.Context, msg string) (*abcicli.ReqRes, error)
 	FlushSync(context.Context) error
 	InfoSync(context.Context, types.RequestInfo) (*types.ResponseInfo, error)
 }
@@ -30,8 +30,8 @@ func newAppConnTest(appConn abcicli.Client) appConnTestI {
 	return &appConnTest{appConn}
 }
 
-func (app *appConnTest) EchoAsync(msg string) (*abcicli.ReqRes, error) {
-	return app.appConn.EchoAsync(msg)
+func (app *appConnTest) EchoAsync(ctx context.Context, msg string) (*abcicli.ReqRes, error) {
+	return app.appConn.EchoAsync(ctx, msg)
 }
 
 func (app *appConnTest) FlushSync(ctx context.Context) error {
@@ -75,19 +75,20 @@ func TestEcho(t *testing.T) {
 	proxy := newAppConnTest(cli)
 	t.Log("Connected")
 
+	ctx := context.Background()
 	for i := 0; i < 1000; i++ {
-		_, err = proxy.EchoAsync(fmt.Sprintf("echo-%v", i))
+		_, err = proxy.EchoAsync(ctx, fmt.Sprintf("echo-%v", i))
 		if err != nil {
 			t.Error(err)
 		}
 		// flush sometimes
 		if i%128 == 0 {
-			if err := proxy.FlushSync(context.Background()); err != nil {
+			if err := proxy.FlushSync(ctx); err != nil {
 				t.Error(err)
 			}
 		}
 	}
-	if err := proxy.FlushSync(context.Background()); err != nil {
+	if err := proxy.FlushSync(ctx); err != nil {
 		t.Error(err)
 	}
 }
@@ -124,19 +125,20 @@ func BenchmarkEcho(b *testing.B) {
 	echoString := strings.Repeat(" ", 200)
 	b.StartTimer() // Start benchmarking tests
 
+	ctx := context.Background()
 	for i := 0; i < b.N; i++ {
-		_, err = proxy.EchoAsync(echoString)
+		_, err = proxy.EchoAsync(ctx, echoString)
 		if err != nil {
 			b.Error(err)
 		}
 		// flush sometimes
 		if i%128 == 0 {
-			if err := proxy.FlushSync(context.Background()); err != nil {
+			if err := proxy.FlushSync(ctx); err != nil {
 				b.Error(err)
 			}
 		}
 	}
-	if err := proxy.FlushSync(context.Background()); err != nil {
+	if err := proxy.FlushSync(ctx); err != nil {
 		b.Error(err)
 	}
 

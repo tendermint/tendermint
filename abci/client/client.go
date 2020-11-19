@@ -28,21 +28,23 @@ type Client interface {
 	SetResponseCallback(Callback)
 	Error() error
 
-	FlushAsync() (*ReqRes, error)
-	EchoAsync(msg string) (*ReqRes, error)
-	InfoAsync(types.RequestInfo) (*ReqRes, error)
-	DeliverTxAsync(types.RequestDeliverTx) (*ReqRes, error)
-	CheckTxAsync(types.RequestCheckTx) (*ReqRes, error)
-	QueryAsync(types.RequestQuery) (*ReqRes, error)
-	CommitAsync() (*ReqRes, error)
-	InitChainAsync(types.RequestInitChain) (*ReqRes, error)
-	BeginBlockAsync(types.RequestBeginBlock) (*ReqRes, error)
-	EndBlockAsync(types.RequestEndBlock) (*ReqRes, error)
-	ListSnapshotsAsync(types.RequestListSnapshots) (*ReqRes, error)
-	OfferSnapshotAsync(types.RequestOfferSnapshot) (*ReqRes, error)
-	LoadSnapshotChunkAsync(types.RequestLoadSnapshotChunk) (*ReqRes, error)
-	ApplySnapshotChunkAsync(types.RequestApplySnapshotChunk) (*ReqRes, error)
+	// Asyncronous requests
+	FlushAsync(context.Context) (*ReqRes, error)
+	EchoAsync(ctx context.Context, msg string) (*ReqRes, error)
+	InfoAsync(context.Context, types.RequestInfo) (*ReqRes, error)
+	DeliverTxAsync(context.Context, types.RequestDeliverTx) (*ReqRes, error)
+	CheckTxAsync(context.Context, types.RequestCheckTx) (*ReqRes, error)
+	QueryAsync(context.Context, types.RequestQuery) (*ReqRes, error)
+	CommitAsync(context.Context) (*ReqRes, error)
+	InitChainAsync(context.Context, types.RequestInitChain) (*ReqRes, error)
+	BeginBlockAsync(context.Context, types.RequestBeginBlock) (*ReqRes, error)
+	EndBlockAsync(context.Context, types.RequestEndBlock) (*ReqRes, error)
+	ListSnapshotsAsync(context.Context, types.RequestListSnapshots) (*ReqRes, error)
+	OfferSnapshotAsync(context.Context, types.RequestOfferSnapshot) (*ReqRes, error)
+	LoadSnapshotChunkAsync(context.Context, types.RequestLoadSnapshotChunk) (*ReqRes, error)
+	ApplySnapshotChunkAsync(context.Context, types.RequestApplySnapshotChunk) (*ReqRes, error)
 
+	// Syncronous requests
 	FlushSync(context.Context) error
 	EchoSync(ctx context.Context, msg string) (*types.ResponseEcho, error)
 	InfoSync(context.Context, types.RequestInfo) (*types.ResponseInfo, error)

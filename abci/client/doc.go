@@ -1,4 +1,4 @@
-// Package client provides an ABCI implementation in Go.
+// Package abcicli provides an ABCI implementation in Go.
 //
 // There are 3 clients available:
 //		1. socket (unix or TCP)

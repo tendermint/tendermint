@@ -98,10 +98,12 @@ func testStream(t *testing.T, app types.Application) {
 		}
 	})
 
+	ctx := context.Background()
+
 	// Write requests
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
-		_, err = client.DeliverTxAsync(types.RequestDeliverTx{Tx: []byte("test")})
+		_, err = client.DeliverTxAsync(ctx, types.RequestDeliverTx{Tx: []byte("test")})
 		require.NoError(t, err)
 
 		// Sometimes send flush messages
@@ -112,7 +114,7 @@ func testStream(t *testing.T, app types.Application) {
 	}
 
 	// Send final flush message
-	_, err = client.FlushAsync()
+	_, err = client.FlushAsync(ctx)
 	require.NoError(t, err)
 
 	<-done

@@ -24,6 +24,8 @@ var _ Client = (*localClient)(nil)
 
 // NewLocalClient creates a local client, which will be directly calling the
 // methods of the given app.
+//
+// Both Async and Sync methods ignore the given context.Context parameter.
 func NewLocalClient(mtx *tmsync.Mutex, app types.Application) Client {
 	if mtx == nil {
 		mtx = new(tmsync.Mutex)
@@ -47,12 +49,12 @@ func (app *localClient) Error() error {
 	return nil
 }
 
-func (app *localClient) FlushAsync() (*ReqRes, error) {
+func (app *localClient) FlushAsync(ctx context.Context) (*ReqRes, error) {
 	// Do nothing
 	return newLocalReqRes(types.ToRequestFlush(), nil), nil
 }
 
-func (app *localClient) EchoAsync(msg string) (*ReqRes, error) {
+func (app *localClient) EchoAsync(ctx context.Context, msg string) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -62,7 +64,7 @@ func (app *localClient) EchoAsync(msg string) (*ReqRes, error) {
 	), nil
 }
 
-func (app *localClient) InfoAsync(req types.RequestInfo) (*ReqRes, error) {
+func (app *localClient) InfoAsync(ctx context.Context, req types.RequestInfo) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -73,7 +75,7 @@ func (app *localClient) InfoAsync(req types.RequestInfo) (*ReqRes, error) {
 	), nil
 }
 
-func (app *localClient) DeliverTxAsync(params types.RequestDeliverTx) (*ReqRes, error) {
+func (app *localClient) DeliverTxAsync(ctx context.Context, params types.RequestDeliverTx) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -84,7 +86,7 @@ func (app *localClient) DeliverTxAsync(params types.RequestDeliverTx) (*ReqRes, 
 	), nil
 }
 
-func (app *localClient) CheckTxAsync(req types.RequestCheckTx) (*ReqRes, error) {
+func (app *localClient) CheckTxAsync(ctx context.Context, req types.RequestCheckTx) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -95,7 +97,7 @@ func (app *localClient) CheckTxAsync(req types.RequestCheckTx) (*ReqRes, error) 
 	), nil
 }
 
-func (app *localClient) QueryAsync(req types.RequestQuery) (*ReqRes, error) {
+func (app *localClient) QueryAsync(ctx context.Context, req types.RequestQuery) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -106,7 +108,7 @@ func (app *localClient) QueryAsync(req types.RequestQuery) (*ReqRes, error) {
 	), nil
 }
 
-func (app *localClient) CommitAsync() (*ReqRes, error) {
+func (app *localClient) CommitAsync(ctx context.Context) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -117,7 +119,7 @@ func (app *localClient) CommitAsync() (*ReqRes, error) {
 	), nil
 }
 
-func (app *localClient) InitChainAsync(req types.RequestInitChain) (*ReqRes, error) {
+func (app *localClient) InitChainAsync(ctx context.Context, req types.RequestInitChain) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -128,7 +130,7 @@ func (app *localClient) InitChainAsync(req types.RequestInitChain) (*ReqRes, err
 	), nil
 }
 
-func (app *localClient) BeginBlockAsync(req types.RequestBeginBlock) (*ReqRes, error) {
+func (app *localClient) BeginBlockAsync(ctx context.Context, req types.RequestBeginBlock) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -139,7 +141,7 @@ func (app *localClient) BeginBlockAsync(req types.RequestBeginBlock) (*ReqRes, e
 	), nil
 }
 
-func (app *localClient) EndBlockAsync(req types.RequestEndBlock) (*ReqRes, error) {
+func (app *localClient) EndBlockAsync(ctx context.Context, req types.RequestEndBlock) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -150,7 +152,7 @@ func (app *localClient) EndBlockAsync(req types.RequestEndBlock) (*ReqRes, error
 	), nil
 }
 
-func (app *localClient) ListSnapshotsAsync(req types.RequestListSnapshots) (*ReqRes, error) {
+func (app *localClient) ListSnapshotsAsync(ctx context.Context, req types.RequestListSnapshots) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -161,7 +163,7 @@ func (app *localClient) ListSnapshotsAsync(req types.RequestListSnapshots) (*Req
 	), nil
 }
 
-func (app *localClient) OfferSnapshotAsync(req types.RequestOfferSnapshot) (*ReqRes, error) {
+func (app *localClient) OfferSnapshotAsync(ctx context.Context, req types.RequestOfferSnapshot) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -172,7 +174,7 @@ func (app *localClient) OfferSnapshotAsync(req types.RequestOfferSnapshot) (*Req
 	), nil
 }
 
-func (app *localClient) LoadSnapshotChunkAsync(req types.RequestLoadSnapshotChunk) (*ReqRes, error) {
+func (app *localClient) LoadSnapshotChunkAsync(ctx context.Context, req types.RequestLoadSnapshotChunk) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -183,7 +185,7 @@ func (app *localClient) LoadSnapshotChunkAsync(req types.RequestLoadSnapshotChun
 	), nil
 }
 
-func (app *localClient) ApplySnapshotChunkAsync(req types.RequestApplySnapshotChunk) (*ReqRes, error) {
+func (app *localClient) ApplySnapshotChunkAsync(ctx context.Context, req types.RequestApplySnapshotChunk) (*ReqRes, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 

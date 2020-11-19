@@ -16,6 +16,8 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 )
 
+var ctx = context.Background()
+
 func TestProperSyncCalls(t *testing.T) {
 	app := slowApp{}
 
@@ -34,7 +36,7 @@ func TestProperSyncCalls(t *testing.T) {
 	resp := make(chan error, 1)
 	go func() {
 		// This is BeginBlockSync unrolled....
-		reqres, err := c.BeginBlockAsync(types.RequestBeginBlock{})
+		reqres, err := c.BeginBlockAsync(ctx, types.RequestBeginBlock{})
 		assert.NoError(t, err)
 		err = c.FlushSync(context.Background())
 		assert.NoError(t, err)
@@ -70,9 +72,9 @@ func TestHangingSyncCalls(t *testing.T) {
 	resp := make(chan error, 1)
 	go func() {
 		// Start BeginBlock and flush it
-		reqres, err := c.BeginBlockAsync(types.RequestBeginBlock{})
+		reqres, err := c.BeginBlockAsync(ctx, types.RequestBeginBlock{})
 		assert.NoError(t, err)
-		flush, err := c.FlushAsync()
+		flush, err := c.FlushAsync(ctx)
 		assert.NoError(t, err)
 		// wait 20 ms for all events to travel socket, but
 		// no response yet from server

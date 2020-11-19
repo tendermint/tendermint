@@ -26,6 +26,11 @@ const (
 	flushThrottleMS = 20
 )
 
+type reqResWithContext struct {
+	R *ReqRes
+	C context.Context // if context.Err is not nil, reqRes will be thrown away (ignored)
+}
+
 // This is goroutine-safe, but users should beware that the application in
 // general is not meant to be interfaced with concurrent callers.
 type socketClient struct {
@@ -35,7 +40,7 @@ type socketClient struct {
 	mustConnect bool
 	conn        net.Conn
 
-	reqQueue   chan *ReqRes
+	reqQueue   chan *reqResWithContext
 	flushTimer *timer.ThrottleTimer
 
 	mtx     tmsync.Mutex
@@ -51,7 +56,7 @@ var _ Client = (*socketClient)(nil)
 // if it fails to connect.
 func NewSocketClient(addr string, mustConnect bool) Client {
 	cli := &socketClient{
-		reqQueue:    make(chan *ReqRes, reqQueueSize),
+		reqQueue:    make(chan *reqResWithContext, reqQueueSize),
 		flushTimer:  timer.NewThrottleTimer("socketClient", flushThrottleMS),
 		mustConnect: mustConnect,
 
@@ -127,15 +132,20 @@ func (cli *socketClient) sendRequestsRoutine(conn io.Writer) {
 		case reqres := <-cli.reqQueue:
 			// cli.Logger.Debug("Sent request", "requestType", reflect.TypeOf(reqres.Request), "request", reqres.Request)
 
-			cli.willSendReq(reqres)
-			err := types.WriteMessage(reqres.Request, w)
+			if reqres.C.Err() != nil {
+				cli.Logger.Debug("Request's context is done", "req", reqres.R, "err", reqres.C.Err())
+				continue
+			}
+
+			cli.willSendReq(reqres.R)
+			err := types.WriteMessage(reqres.R.Request, w)
 			if err != nil {
 				cli.stopForError(fmt.Errorf("write to buffer: %w", err))
 				return
 			}
 
 			// If it's a flush request, flush the current buffer.
-			if _, ok := reqres.Request.Value.(*types.Request_Flush); ok {
+			if _, ok := reqres.R.Request.Value.(*types.Request_Flush); ok {
 				err = w.Flush()
 				if err != nil {
 					cli.stopForError(fmt.Errorf("flush buffer: %w", err))
@@ -144,7 +154,7 @@ func (cli *socketClient) sendRequestsRoutine(conn io.Writer) {
 			}
 		case <-cli.flushTimer.Ch: // flush queue
 			select {
-			case cli.reqQueue <- NewReqRes(types.ToRequestFlush()):
+			case cli.reqQueue <- &reqResWithContext{R: NewReqRes(types.ToRequestFlush()), C: context.Background()}:
 			default:
 				// Probably will fill the buffer, or retry later.
 			}
@@ -225,60 +235,60 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 
 //----------------------------------------
 
-func (cli *socketClient) EchoAsync(msg string) (*ReqRes, error) {
-	return cli.queueRequestAsync(types.ToRequestEcho(msg))
+func (cli *socketClient) EchoAsync(ctx context.Context, msg string) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestEcho(msg))
 }
 
-func (cli *socketClient) FlushAsync() (*ReqRes, error) {
-	return cli.queueRequestAsync(types.ToRequestFlush())
+func (cli *socketClient) FlushAsync(ctx context.Context) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestFlush())
 }
 
-func (cli *socketClient) InfoAsync(req types.RequestInfo) (*ReqRes, error) {
-	return cli.queueRequestAsync(types.ToRequestInfo(req))
+func (cli *socketClient) InfoAsync(ctx context.Context, req types.RequestInfo) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestInfo(req))
 }
 
-func (cli *socketClient) DeliverTxAsync(req types.RequestDeliverTx) (*ReqRes, error) {
-	return cli.queueRequestAsync(types.ToRequestDeliverTx(req))
+func (cli *socketClient) DeliverTxAsync(ctx context.Context, req types.RequestDeliverTx) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestDeliverTx(req))
 }
 
-func (cli *socketClient) CheckTxAsync(req types.RequestCheckTx) (*ReqRes, error) {
-	return cli.queueRequestAsync(types.ToRequestCheckTx(req))
+func (cli *socketClient) CheckTxAsync(ctx context.Context, req types.RequestCheckTx) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestCheckTx(req))
 }
 
-func (cli *socketClient) QueryAsync(req types.RequestQuery) (*ReqRes, error) {
-	return cli.queueRequestAsync(types.ToRequestQuery(req))
+func (cli *socketClient) QueryAsync(ctx context.Context, req types.RequestQuery) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestQuery(req))
 }
 
-func (cli *socketClient) CommitAsync() (*ReqRes, error) {
-	return cli.queueRequestAsync(types.ToRequestCommit())
+func (cli *socketClient) CommitAsync(ctx context.Context) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestCommit())
 }
 
-func (cli *socketClient) InitChainAsync(req types.RequestInitChain) (*ReqRes, error) {
-	return cli.queueRequestAsync(types.ToRequestInitChain(req))
+func (cli *socketClient) InitChainAsync(ctx context.Context, req types.RequestInitChain) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestInitChain(req))
 }
 
-func (cli *socketClient) BeginBlockAsync(req types.RequestBeginBlock) (*ReqRes, error) {
-	return cli.queueRequestAsync(types.ToRequestBeginBlock(req))
+func (cli *socketClient) BeginBlockAsync(ctx context.Context, req types.RequestBeginBlock) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestBeginBlock(req))
 }
 
-func (cli *socketClient) EndBlockAsync(req types.RequestEndBlock) (*ReqRes, error) {
-	return cli.queueRequestAsync(types.ToRequestEndBlock(req))
+func (cli *socketClient) EndBlockAsync(ctx context.Context, req types.RequestEndBlock) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestEndBlock(req))
 }
 
-func (cli *socketClient) ListSnapshotsAsync(req types.RequestListSnapshots) (*ReqRes, error) {
-	return cli.queueRequestAsync(types.ToRequestListSnapshots(req))
+func (cli *socketClient) ListSnapshotsAsync(ctx context.Context, req types.RequestListSnapshots) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestListSnapshots(req))
 }
 
-func (cli *socketClient) OfferSnapshotAsync(req types.RequestOfferSnapshot) (*ReqRes, error) {
-	return cli.queueRequestAsync(types.ToRequestOfferSnapshot(req))
+func (cli *socketClient) OfferSnapshotAsync(ctx context.Context, req types.RequestOfferSnapshot) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestOfferSnapshot(req))
 }
 
-func (cli *socketClient) LoadSnapshotChunkAsync(req types.RequestLoadSnapshotChunk) (*ReqRes, error) {
-	return cli.queueRequestAsync(types.ToRequestLoadSnapshotChunk(req))
+func (cli *socketClient) LoadSnapshotChunkAsync(ctx context.Context, req types.RequestLoadSnapshotChunk) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestLoadSnapshotChunk(req))
 }
 
-func (cli *socketClient) ApplySnapshotChunkAsync(req types.RequestApplySnapshotChunk) (*ReqRes, error) {
-	return cli.queueRequestAsync(types.ToRequestApplySnapshotChunk(req))
+func (cli *socketClient) ApplySnapshotChunkAsync(ctx context.Context, req types.RequestApplySnapshotChunk) (*ReqRes, error) {
+	return cli.queueRequestAsync(ctx, types.ToRequestApplySnapshotChunk(req))
 }
 
 //----------------------------------------
@@ -454,8 +464,11 @@ func (cli *socketClient) ApplySnapshotChunkSync(
 //----------------------------------------
 
 // queueRequest enqueues req onto the queue. If the queue is full, it ether
-// returns an error (sync=false) or blocks (sync=true). ctx only works when
-// sync=true.
+// returns an error (sync=false) or blocks (sync=true).
+//
+// When sync=true, ctx can be used to break early. When sync=false, ctx will be
+// used later to determine if request should be dropped (if ctx.Err is
+// non-nil).
 //
 // The caller is responsible for checking cli.Error.
 func (cli *socketClient) queueRequest(ctx context.Context, req *types.Request, sync bool) (*ReqRes, error) {
@@ -463,13 +476,13 @@ func (cli *socketClient) queueRequest(ctx context.Context, req *types.Request, s
 
 	if sync {
 		select {
-		case cli.reqQueue <- reqres:
+		case cli.reqQueue <- &reqResWithContext{R: reqres, C: context.Background()}:
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
 	} else {
 		select {
-		case cli.reqQueue <- reqres:
+		case cli.reqQueue <- &reqResWithContext{R: reqres, C: ctx}:
 		default:
 			return nil, errors.New("buffer is full")
 		}
@@ -487,11 +500,11 @@ func (cli *socketClient) queueRequest(ctx context.Context, req *types.Request, s
 }
 
 func (cli *socketClient) queueRequestAsync(
+	ctx context.Context,
 	req *types.Request,
 ) (*ReqRes, error) {
 
-	// NOTE: context is ignored
-	reqres, err := cli.queueRequest(context.TODO(), req, false)
+	reqres, err := cli.queueRequest(ctx, req, false)
 	if err != nil {
 		return nil, queueErr(err)
 	}
@@ -535,7 +548,7 @@ LOOP:
 	for {
 		select {
 		case reqres := <-cli.reqQueue:
-			reqres.Done()
+			reqres.R.Done()
 		default:
 			break LOOP
 		}
