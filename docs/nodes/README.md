@@ -30,11 +30,11 @@ We will cover the various types of node types within Tendermint.
 
 ### Seed Nodes
 
- A seed node provides a node with a list of peers which a node can connect to. When starting a node you must provide at least one type of node to be able to connect to the desired network. By providing a seed node you will be able to populate the address. A seed node will not be kept as a peer but will disconnect from your node after it has provided a list of peers.
+ A seed node provides a node with a list of peers which a node can connect to. When starting a node you must provide at least one type of node to be able to connect to the desired network. By providing a seed node you will be able to populate your address quickly. A seed node will not be kept as a peer but will disconnect from your node after it has provided a list of peers.
 
 ### Sentry Node
 
- A sentry node is similar to a full node in almost every way. The difference is a sentry node will have one or more private peers. These peers may be validators or other full nodes in the network. A sentry node is meant to provide a layer of security for your validator, you can think of it as a firewall for the validator.
+ A sentry node is similar to a full node in almost every way. The difference is a sentry node will have one or more private peers. These peers may be validators or other full nodes in the network. A sentry node is meant to provide a layer of security for your validator, similar to how a firewall works with a computer.
 
 ### Validators
 
