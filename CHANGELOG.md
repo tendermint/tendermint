@@ -31,7 +31,7 @@ And as always, friendly reminder, that we have a [bug bounty program](https://ha
   - [abci] [\#4704](https://github.com/tendermint/tendermint/pull/4704) Add ABCI methods `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, and `ApplySnapshotChunk` for state sync snapshots. `ABCIVersion` bumped to 0.17.0. (@erikgrinaker)
   - [abci] [\#4989](https://github.com/tendermint/tendermint/pull/4989) `Proof` within `ResponseQuery` has been renamed to `ProofOps`  (@marbar3778)
   - [abci] [\#5096](https://github.com/tendermint/tendermint/pull/5096) `CheckTxType` Protobuf enum names are now uppercase, to follow Protobuf style guide (@erikgrinaker)
-  - [abci] [\#5324](https://github.com/tendermint/tendermint/pull/5324) abci evidence type is an enum with two types of possible evidence (@cmwaters)
+  - [abci] [\#5324](https://github.com/tendermint/tendermint/pull/5324) ABCI evidence type is now an enum with two types of possible evidence (@cmwaters)
 
 - P2P Protocol
 
@@ -113,7 +113,7 @@ And as always, friendly reminder, that we have a [bug bounty program](https://ha
 ### FEATURES
 
 - [abci] [\#5031](https://github.com/tendermint/tendermint/pull/5031) Add `AppVersion` to consensus parameters (@james-ray)
-  - ... making it possible to update your ABCI application version via `EndBlock` response
+  - This makes it possible to update your ABCI application version via `EndBlock` response
 - [abci] [\#5174](https://github.com/tendermint/tendermint/pull/5174) Remove `MockEvidence` in favor of testing with actual evidence types (`DuplicateVoteEvidence` & `LightClientAttackEvidence`) (@cmwaters)
 - [abci] [\#5191](https://github.com/tendermint/tendermint/pull/5191) Add `InitChain.InitialHeight` field giving the initial block height (@erikgrinaker)
 - [abci] [\#5227](https://github.com/tendermint/tendermint/pull/5227) Add `ResponseInitChain.app_hash` which is recorded in genesis block (@erikgrinaker)
