@@ -20,7 +20,7 @@ import (
 // CheckTx nor DeliverTx results.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_async
 func BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	err := env.Mempool.CheckTx(tx, nil, mempl.TxInfo{})
+	err := env.Mempool.CheckTx(tx, nil, mempl.TxInfo{Context: ctx.Context()})
 
 	if err != nil {
 		return nil, err
@@ -35,7 +35,7 @@ func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcas
 	resCh := make(chan *abci.Response, 1)
 	err := env.Mempool.CheckTx(tx, func(res *abci.Response) {
 		resCh <- res
-	}, mempl.TxInfo{})
+	}, mempl.TxInfo{Context: ctx.Context()})
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 	checkTxResCh := make(chan *abci.Response, 1)
 	err = env.Mempool.CheckTx(tx, func(res *abci.Response) {
 		checkTxResCh <- res
-	}, mempl.TxInfo{})
+	}, mempl.TxInfo{Context: ctx.Context()})
 	if err != nil {
 		env.Logger.Error("Error on broadcastTxCommit", "err", err)
 		return nil, fmt.Errorf("error on broadcastTxCommit: %v", err)
