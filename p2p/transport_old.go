@@ -502,7 +502,7 @@ func handshake(
 		}
 	}
 
-	peerNodeInfo, err := DefaultNodeInfoFromToProto(&pbpeerNodeInfo)
+	peerNodeInfo, err := DefaultNodeInfoFromProto(&pbpeerNodeInfo)
 	if err != nil {
 		return nil, err
 	}

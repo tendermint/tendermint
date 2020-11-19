@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"sync"
+	"time"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/p2p/conn"
+	"github.com/tendermint/tendermint/libs/protoio"
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
+	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 	"golang.org/x/net/netutil"
 )
 
@@ -28,7 +29,8 @@ func MConnTransportMaxIncomingConnections(max int) MConnTransportOption {
 // MConnTransport is a Transport implementation using the current multiplexed
 // Tendermint protocol ("MConn").
 type MConnTransport struct {
-	nodeKey NodeKey
+	nodeKey  NodeKey
+	nodeInfo DefaultNodeInfo
 
 	listener net.Listener
 	chAccept chan *mConnConnection
@@ -36,25 +38,20 @@ type MConnTransport struct {
 	chClose  chan struct{}
 
 	maxIncomingConnections int
-
-	mconn *MultiplexTransport
-	mtx   struct {
-		sync.RWMutex
-		peerConfig peerConfig
-	}
+	handshakeTimeout       time.Duration
 }
-
-var _ Transport = (*MConnTransport)(nil)
 
 // NewMConnTransport sets up a new MConn transport.
 func NewMConnTransport(
 	nodeInfo NodeInfo,
 	nodeKey NodeKey,
-	mConfig conn.MConnConfig,
 	opts ...MConnTransportOption,
 ) *MConnTransport {
 	m := &MConnTransport{
-		nodeKey:  nodeKey,
+		nodeInfo:         nodeInfo.(DefaultNodeInfo),
+		nodeKey:          nodeKey,
+		handshakeTimeout: defaultHandshakeTimeout,
+
 		chAccept: make(chan *mConnConnection),
 		chError:  make(chan error),
 		chClose:  make(chan struct{}),
@@ -63,36 +60,6 @@ func NewMConnTransport(
 		opt(m)
 	}
 	return m
-}
-
-func (m *MConnTransport) setPeerConfig(peerConfig peerConfig) {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-	m.mtx.peerConfig = peerConfig
-}
-
-// normalizeEndpoint normalizes an endpoint, returning an error
-// if invalid.
-func (m *MConnTransport) normalizeEndpoint(endpoint *Endpoint) error {
-	if endpoint == nil {
-		return errors.New("nil endpoint")
-	}
-	if err := endpoint.Validate(); err != nil {
-		return err
-	}
-	if endpoint.Protocol != MConnProtocol {
-		return fmt.Errorf("unsupported protocol %q", endpoint.Protocol)
-	}
-	if len(endpoint.IP) == 0 {
-		return errors.New("endpoint must have an IP address")
-	}
-	if endpoint.Path != "" {
-		return fmt.Errorf("endpoint cannot have path (got %q)", endpoint.Path)
-	}
-	if endpoint.Port == 0 {
-		endpoint.Port = 26657
-	}
-	return nil
 }
 
 // Listen listens for inbound connections on the given endpoint.
@@ -119,8 +86,8 @@ func (m *MConnTransport) Listen(endpoint Endpoint) error {
 	return nil
 }
 
-// accept accepts inbound connections in a loop, and asynchronously
-// handshakes with the peer to avoid head-of-line blocking.
+// accept accepts inbound connections in a loop, and asynchronously handshakes
+// with the peer to avoid head-of-line blocking.
 // See: https://github.com/tendermint/tendermint/issues/204
 func (m *MConnTransport) accept() {
 	for {
@@ -133,7 +100,7 @@ func (m *MConnTransport) accept() {
 			return
 		}
 		go func() {
-			conn, err := m.acceptConn(tcpConn)
+			conn, err := newMConnConnection(m, tcpConn)
 			if err != nil {
 				_ = tcpConn.Close()
 				select {
@@ -151,61 +118,37 @@ func (m *MConnTransport) accept() {
 	}
 }
 
-// acceptConn accepts a connection and performs a handshake. It is called
-// asynchronously by accept().
-func (m *MConnTransport) acceptConn(tcpConn net.Conn) (conn *mConnConnection, err error) {
-	// FIXME Since the MConnection code panics, we need to recover here
-	// and turn it into an error.
-	//
-	// Be careful with err, since the recover function needs to be able to
-	// write to the variable that is returned from the main function, otherwise
-	// the error will be lost.
-	defer func() {
-		if r := recover(); r != nil {
-			err = ErrRejected{
-				conn:          tcpConn,
-				err:           fmt.Errorf("recovered from panic: %v", r),
-				isAuthFailure: true,
-			}
-		}
-	}()
-
-	// FIXME This needs to filter connections, see mt.filterConn().
-	conn, err = newMConnConnection(tcpConn, m.nodeKey.PrivKey)
-	return
-}
-
 // Accept implements Transport.
 func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
-	m.mtx.RLock()
-	peerConfig := m.mtx.peerConfig
-	m.mtx.RUnlock()
-	p, err := m.mconn.Accept(peerConfig)
-	if err != nil {
+	select {
+	case conn := <-m.chAccept:
+		return conn, nil
+	case err := <-m.chError:
 		return nil, err
+	case <-m.chClose:
+		return nil, ErrTransportClosed{}
+	case <-ctx.Done():
+		return nil, nil
 	}
-	return &mConnConnection{
-		transport: m,
-		peer:      p.(*peer),
-	}, nil
 }
 
+// Dial implements Transport.
 func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connection, error) {
-	m.mtx.RLock()
-	peerConfig := m.mtx.peerConfig
-	m.mtx.RUnlock()
-	p, err := m.mconn.Dial(NetAddress{
-		ID:   endpoint.PeerID,
-		IP:   endpoint.IP,
-		Port: endpoint.Port,
-	}, peerConfig)
-	if err != nil {
-		return nil, err
+	return nil, nil
+}
+
+// Endpoints implements Transport.
+func (m *MConnTransport) Endpoints() []Endpoint {
+	if m.listener == nil {
+		return []Endpoint{}
 	}
-	return &mConnConnection{
-		transport: m,
-		peer:      p.(*peer),
-	}, nil
+	addr := m.listener.Addr().(*net.TCPAddr)
+	return []Endpoint{{
+		Protocol: MConnProtocol,
+		PeerID:   m.nodeInfo.ID(),
+		IP:       addr.IP,
+		Port:     uint16(addr.Port),
+	}}
 }
 
 // Close implements Transport.
@@ -217,75 +160,157 @@ func (m *MConnTransport) Close() error {
 	return nil
 }
 
-func (m *MConnTransport) Endpoints() []Endpoint {
-	if !m.mconn.netAddr.HasID() {
-		return []Endpoint{}
+// normalizeEndpoint normalizes an endpoint, returning an error
+// if invalid.
+func (m *MConnTransport) normalizeEndpoint(endpoint *Endpoint) error {
+	if endpoint == nil {
+		return errors.New("nil endpoint")
 	}
-	return []Endpoint{{
-		Protocol: MConnProtocol,
-		PeerID:   m.mconn.nodeInfo.ID(),
-		IP:       m.mconn.netAddr.IP, // FIXME copy
-		Port:     m.mconn.netAddr.Port,
-	}}
+	if err := endpoint.Validate(); err != nil {
+		return err
+	}
+	if endpoint.Protocol != MConnProtocol {
+		return fmt.Errorf("unsupported protocol %q", endpoint.Protocol)
+	}
+	if len(endpoint.IP) == 0 {
+		return errors.New("endpoint must have an IP address")
+	}
+	if endpoint.Path != "" {
+		return fmt.Errorf("endpoint cannot have path (got %q)", endpoint.Path)
+	}
+	if endpoint.Port == 0 {
+		endpoint.Port = 26657
+	}
+	return nil
 }
 
-// mConnConnection implements Connection for MConnTransport. It takes
-// a base TCP connection as input, and upgrades it to MConn with a
-// handshake.
+// mConnConnection implements Connection for MConnTransport. It takes a base TCP
+// connection as input, and upgrades it to MConn with a handshake.
 type mConnConnection struct {
+	transport  *MConnTransport
 	secretConn *tmconn.SecretConnection
+	nodeInfo   DefaultNodeInfo
 }
 
 // newMConnConnection creates a new mConnConnection by handshaking
 // with a peer.
-func newMConnConnection(conn net.Conn, privKey crypto.PrivKey) (*mConnConnection, error) {
-	// FIXME Needs to set deadlines.
-	sconn, err := tmconn.MakeSecretConnection(conn, privKey)
+func newMConnConnection(
+	transport *MConnTransport,
+	tcpConn net.Conn,
+) (conn *mConnConnection, err error) {
+	// FIXME Since the MConnection code panics, we need to recover here
+	// and turn it into an error. Be careful not to alias err, so we can
+	// update it from within this function.
+	defer func() {
+		if r := recover(); r != nil {
+			err = ErrRejected{
+				conn:          tcpConn,
+				err:           fmt.Errorf("recovered from panic: %v", r),
+				isAuthFailure: true,
+			}
+		}
+	}()
+
+	err = tcpConn.SetDeadline(time.Now().Add(transport.handshakeTimeout))
 	if err != nil {
-		return nil, ErrRejected{
-			conn:          conn,
+		err = ErrRejected{
+			conn:          tcpConn,
 			err:           fmt.Errorf("secret conn failed: %v", err),
 			isAuthFailure: true,
 		}
+		return
 	}
-	return &mConnConnection{
-		secretConn: sconn,
-	}, nil
+
+	conn = &mConnConnection{
+		transport: transport,
+	}
+	conn.secretConn, err = tmconn.MakeSecretConnection(tcpConn, transport.nodeKey.PrivKey)
+	if err != nil {
+		err = ErrRejected{
+			conn:          tcpConn,
+			err:           fmt.Errorf("secret conn failed: %v", err),
+			isAuthFailure: true,
+		}
+		return
+	}
+	conn.nodeInfo, err = conn.handshake()
+	if err != nil {
+		err = ErrRejected{
+			conn:          tcpConn,
+			err:           fmt.Errorf("handshake failed: %v", err),
+			isAuthFailure: true,
+		}
+		return
+	}
+
+	err = tcpConn.SetDeadline(time.Time{})
+	if err != nil {
+		err = ErrRejected{
+			conn:          tcpConn,
+			err:           fmt.Errorf("secret conn failed: %v", err),
+			isAuthFailure: true,
+		}
+		return
+	}
+
+	return
 }
 
-var _ Connection = (*mConnConnection)(nil)
+// handshake performs an MConn handshake, returning the peer's node info.
+func (c *mConnConnection) handshake() (DefaultNodeInfo, error) {
+	var pbNodeInfo p2pproto.DefaultNodeInfo
+	chErr := make(chan error, 2)
+	go func() {
+		_, err := protoio.NewDelimitedWriter(c.secretConn).WriteMsg(c.transport.nodeInfo.ToProto())
+		chErr <- err
+	}()
+	go func() {
+		chErr <- protoio.NewDelimitedReader(c.secretConn, MaxNodeInfoSize()).ReadMsg(&pbNodeInfo)
+	}()
+	for i := 0; i < cap(chErr); i++ {
+		if err := <-chErr; err != nil {
+			return DefaultNodeInfo{}, err
+		}
+	}
 
+	return DefaultNodeInfoFromProto(&pbNodeInfo)
+}
+
+// PubKey implements Connection.
 func (c *mConnConnection) PubKey() crypto.PubKey {
-	return c.peer.conn.(*conn.SecretConnection).RemotePubKey()
+	return c.secretConn.RemotePubKey()
 }
 
+// LocalEndpoint implements Connection.
 func (c *mConnConnection) LocalEndpoint() Endpoint {
-	addr := c.peer.conn.LocalAddr().(*net.TCPAddr)
+	addr := c.secretConn.LocalAddr().(*net.TCPAddr)
 	return Endpoint{
 		Protocol: MConnProtocol,
-		PeerID:   c.transport.mconn.nodeInfo.ID(),
+		PeerID:   c.transport.nodeInfo.ID(),
 		IP:       addr.IP,
 		Port:     uint16(addr.Port),
 	}
 }
 
+// RemoteEndpoint implements Connection.
 func (c *mConnConnection) RemoteEndpoint() Endpoint {
-	addr := c.peer.conn.RemoteAddr().(*net.TCPAddr)
+	addr := c.secretConn.RemoteAddr().(*net.TCPAddr)
 	return Endpoint{
 		Protocol: MConnProtocol,
-		PeerID:   c.peer.ID(),
+		PeerID:   c.nodeInfo.ID(),
 		IP:       addr.IP,
 		Port:     uint16(addr.Port),
 	}
 }
 
+// Stream implements Connection.
 func (c *mConnConnection) Stream(id uint16) (Stream, error) {
 	return &mConnStream{}, nil
 }
 
+// Close implements Connection.
 func (c *mConnConnection) Close() error {
-	c.transport.mconn.Cleanup(c.peer)
-	return c.peer.Stop()
+	return c.secretConn.Close()
 }
 
 // mConnStream implements Stream for MConnTransport.

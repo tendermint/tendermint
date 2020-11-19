@@ -198,7 +198,7 @@ func MakeSwitch(
 		Port:     addr.Port,
 	}
 
-	t := NewMConnTransport(nodeInfo, nodeKey, MConnConfig(cfg))
+	t := NewMConnTransport(nodeInfo, nodeKey)
 
 	if err := t.Listen(endpoint); err != nil {
 		panic(err)
@@ -217,7 +217,7 @@ func MakeSwitch(
 
 	// TODO: We need to setup reactors ahead of time so the NodeInfo is properly
 	// populated and we don't have to do those awkward overrides and setters.
-	t.mconn.nodeInfo = nodeInfo
+	t.nodeInfo = nodeInfo.(DefaultNodeInfo)
 	sw.SetNodeInfo(nodeInfo)
 
 	return sw

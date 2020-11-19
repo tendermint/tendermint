@@ -599,7 +599,7 @@ func TestTransportHandshake(t *testing.T) {
 				t.Error(err)
 			}
 
-			_, err = DefaultNodeInfoFromToProto(&pbni)
+			_, err = DefaultNodeInfoFromProto(&pbni)
 			if err != nil {
 				t.Error(err)
 			}
