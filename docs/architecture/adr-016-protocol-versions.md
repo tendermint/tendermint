@@ -1,10 +1,5 @@
 # ADR 016: Protocol Versions
 
-## TODO
-
-- How to / should we version the authenticated encryption handshake itself (ie.
-  upfront protocol negotiation for the P2PVersion)
-
 ## Changelog
 
 - 11-11-2020: Address both RPC and ABCI versioning
@@ -48,15 +43,15 @@ We can consider the complete version of the protocol to contain the following su
 *BlockVersion*, *P2PVersion*, *AppVersion*. These versions reflect the major sub-components
 of the software that are likely to evolve together, at different rates, and in different ways.
 
-### What does each Protocol Versions correspond to and how are they allowed to evolve
+### What does each protocol version correspond to and how are they allowed to evolve
+
+Each of BlockVersion, AppVersion, and P2PVersion is a monotonically increasing uint64. Incrementing the version number indicates a change that is incompatible with the previous version.
 
 #### BlockVersion
 
-This consists of all Tendermint data-structures (headers, votes, commits, txs,
-responses, etc.). A complete list of data structures can be found in the 
-[spec](https://github.com/tendermint/spec/blob/master/spec/core/data_structures.md)
-Block versions are denoted with a MAJOR and MINOR version. MINOR version changes are
-backwards compatible. This means that external clients
+- This consists of all Tendermint data-structures (headers, votes, commits, txs,
+  responses, etc.). A complete list of data structures can be found in the 
+  [spec](https://github.com/tendermint/spec/blob/master/spec/core/data_structures.md)
 
 #### P2PVersion
 
@@ -64,27 +59,29 @@ backwards compatible. This means that external clients
 - Will change gradually as reactors evolve to improve performance and support new features - eg proposed new message types BatchTx in the mempool and HasBlockPart in the consensus
 - It's easy to determine the version of a peer from its first serialized message/s
 - New versions must be compatible with at least one old version to allow gradual upgrades
+- We need the peer/reactor protocols to take the versions of peers into account when sending messages so that we
+  don't send messages that the peer won't understand or won't expect.
 
 #### AppVersion
 
 - The ABCI state machine itself.
 - Tendermint needs to know the version of the application to ensure that AppHash and Results are calculated in the same manner across the entire network.
 
-In addition, the block version is the parent of two further sub versions: RPCVersion and ABCIVersion. These hold the same relationship
-
-All of these versions may change over the life of a blockchain, and we need to be able to help new nodes sync up across version changes. This means we must be willing to connect to peers with older version.
+In addition, the block version is the parent of two further sub versions: *RPCVersion* and *ABCIVersion*. These are denoted using semantic versioning. Changing the block protocol will require a new major release for each of these versions as the data structures they serve have changed, however major and minor releases wouldn't necessarily mean a block protocol change. 
 
 #### RPCVersion
 
-- All RPC endpoints and their respective requests and responses.
-- Backwards compatibility should be upheld between minor software versions. i.e. we only add new endpoints for a minor software release 1.2 → 1.3 but can remove deprecated endpoints in a major release (1.5 → 2.0)
-- In the case of an introduction of a new interface with external users (i.e gRPC), this would also fall under the RPCVersion.
+This covers all RPC endpoints and their respective requests and responses. In the case of an introduction of a new interface with external users (i.e gRPC), this would also fall under the RPCVersion. Minor changes could be adding new endpoints or adding fields so long as these fields would not affect verification.
 
-Each of BlockVersion, AppVersion, P2PVersion, and RPCVersion is a monotonically increasing uint64.
+#### ABCIVersion
 
-To use these versions, we need to update the block Header, the p2p NodeInfo, and the ABCI and the RPC's ResultStatus.
+Refers to the entire ABCI Library and predominantly the application interface. Similarly with RPCVersion, minor changes could be adding fields (so long as they are optional and not connected with )
 
-### Header
+### Where are versions located and how are they updated
+
+To use these versions, we need to update the block Header, the p2p NodeInfo, the ABCI and add an RPC endpoint.
+
+#### Header
 
 Block Header should include a `Version` struct as its first field like:
 
@@ -105,10 +102,7 @@ Since we have settled on a proto3 header, the ability to read the BlockVersion o
 Using a Version struct gives us more flexibility to add fields without breaking
 the header.
 
-The ProtocolVersion struct includes both the Block and App versions - it should
-serve as a complete description of the consensus-critical protocol.
-
-### NodeInfo
+#### NodeInfo
 
 NodeInfo should include a Version struct as its first field like:
 
@@ -128,22 +122,23 @@ should be easy to read this out of the serialized header if need be to facilitat
 The `Version.Other` here should include additional information like the name of the software client and
 it's SemVer version - this is for convenience only. Eg. `tendermint-core/v0.22.8`. It's a `[]string` so it can include information about the version of Tendermint, of the app, of Tendermint libraries, etc.
 
-### ABCI
+Note NodeInfo is only exchanged after the authenticated encryption handshake to ensure that it's private.
+Doing any version exchange before encrypting could be considered information leakage, though I'm not sure
+how much that matters compared to being able to upgrade the protocol.
+
+#### ABCI
 
 Since the ABCI is responsible for keeping Tendermint and the App in sync, we need to communicate version information through it.
 
-On startup, we use Info to perform a basic handshake. It should include all the version information so the node can check for compatibility.
-It was discussed prior whether Tendermint also needed to keep an ABCI protocol version to ensure that the application's ABCI client was compatible.
-Given that such changes should be very irregular, it suffices to use the Tendermint version itself as a proxy for the ABCI protocol.
+On startup, we use Info to perform a basic handshake. It should include all the version information so the node can check for compatibility. This would also include tha ABCI version so applications using a socket connection can ensure they are using the correct version. 
 
-Breaking changes to ABCI protocol should only be performed on major releases (i.e 1.5 → 2.0)  
-
-#### Info
+##### Info
 
 RequestInfo should add support for protocol versions like:
 
 ```
 message RequestInfo {
+  string abci_version
   string version
   uint64 block_version
   uint64 p2p_version
@@ -168,7 +163,7 @@ The existing `version` field should be called `software_version` but we will
 
 We also need to be able to update versions throughout the life of a blockchain. The natural place to do this is EndBlock.
 
-#### EndBlock
+##### EndBlock
 
 Updating the version could be done either with new fields or by using the
 existing `tags`. Since we're trying to communicate information that will be
@@ -198,68 +193,9 @@ to be updated live. If the `app_version` is set, it signals that the app's
 protocol version has changed, and the new `app_version` will be included in the
 `Block.Header.Version.App` for the next block.
 
-### BlockVersion
+#### RPC
 
-BlockVersion is included in both the Header and the NodeInfo.
-
-Changing BlockVersion should happen quite infrequently and ideally only for
-critical upgrades. For now, it is not encoded in ABCI, though it's always
-possible to use tags to signal an external process to co-ordinate an upgrade.
-
-Note Ethereum has not had to make an upgrade like this (everything has been at state machine level, AFAIK).
-
-### P2PVersion
-
-P2PVersion is not included in the block Header, just the NodeInfo.
-
-P2PVersion is the first field in the NodeInfo. NodeInfo is also proto3 so this is easy to read out.
-
-Note we need the peer/reactor protocols to take the versions of peers into account when sending messages:
-
-- don't send messages they don't understand
-- don't send messages they don't expect
-
-Doing this will be specific to the upgrades being made.
-
-Note we also include the list of reactor channels in the NodeInfo and already don't send messages for channels the peer doesn't understand.
-If upgrades always use new channels, this simplifies the development cost of backwards compatibility.
-
-Note NodeInfo is only exchanged after the authenticated encryption handshake to ensure that it's private.
-Doing any version exchange before encrypting could be considered information leakage, though I'm not sure
-how much that matters compared to being able to upgrade the protocol.
-
-XXX: if needed, can we change the meaning of the first byte of the first message to encode a handshake version?
-this is the first byte of a 32-byte ed25519 pubkey.
-
-### AppVersion
-
-AppVersion is also included in the block Header and the NodeInfo.
-
-AppVersion essentially defines how the AppHash and LastResults are computed.
-
-### RPCVersion
-
-The goal with the RPC, is to have something that can be robust to the developments of Tendermint over time yet
-be a reliable interface for the entire lifespan of a blockchain
-
-There are two relatively distinct ways that the RPC can be modified and thus require a new version:
-The first is that the block protocol changes. This means that the response and perhaps even the request
-is modified to support the new data structures. The second are the endpoints themselves.
-
-RPCVersion does not need to be included outside of the RPC. The `/status` endpoint will hold the version number so that external clients can simply query `/status` as part of their handshake with the rpc server.
-
-```jsx
-type ResultStatus struct {
-	RpcVersion    uint64              `json:"rpc_version"`
-	NodeInfo      p2p.DefaultNodeInfo `json:"node_info"`
-	SyncInfo      SyncInfo            `json:"sync_info"`
-	ValidatorInfo ValidatorInfo       `json:"validator_info"`
-}
-```
-
-To update the RPC version, one needs only to download a later Tendermint version. RPCVersion should be compatible with serving all data structures of the equivalent BlockVersion.
-i.e. if the TM 1.3 release has a BlockVersion of 9 and RPCVersion of 3 then RPCVersion 3 must support BlockVersion 9. If in the future a TM release supports multiple BlockVersion's then
-so must the RPCVersion.
+Clients can communicate the RPC version that they are able to parse in the request. This can be either through the base URL path or in the header. If the requested version is incompatible with the node's RPCVersion (i.e. different major versions) then it will return a version error. If the client can support multiple RPC versions then it can use the `/version` endpoint to ascertain the exact RPCVersion of the node. 
 
 ### Peer Compatibility
 
