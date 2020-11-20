@@ -89,12 +89,12 @@ func createOutboundPeerAndPerformHandshake(
 	}
 	timeout := 1 * time.Second
 	ourNodeInfo := testNodeInfo(addr.ID, "host_peer")
-	peerNodeInfo, err := handshake(pc.conn, timeout, ourNodeInfo)
+	peerNodeInfo, err := handshake(nil, timeout, ourNodeInfo)
 	if err != nil {
 		return nil, err
 	}
 
-	p := newPeer(pc, mConfig, peerNodeInfo, reactorsByCh, chDescs, func(p Peer, r interface{}) {})
+	p := newPeer(pc, peerNodeInfo, reactorsByCh, chDescs, func(p Peer, r interface{}) {})
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p, nil
 }
@@ -186,11 +186,11 @@ func (rp *remotePeer) Dial(addr *NetAddress) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	pc, err := testInboundPeerConn(conn, rp.Config, rp.PrivKey)
+	/*pc, err := testInboundPeerConn(conn, rp.Config, rp.PrivKey)
 	if err != nil {
 		return nil, err
-	}
-	_, err = handshake(pc.conn, time.Second, rp.nodeInfo())
+	}*/
+	_, err = handshake(nil, time.Second, rp.nodeInfo())
 	if err != nil {
 		return nil, err
 	}
@@ -210,12 +210,12 @@ func (rp *remotePeer) accept() {
 			return
 		}
 
-		pc, err := testInboundPeerConn(conn, rp.Config, rp.PrivKey)
+		/*pc, err := testInboundPeerConn(conn, rp.Config, rp.PrivKey)
 		if err != nil {
 			golog.Fatalf("Failed to create a peer: %+v", err)
-		}
+		}*/
 
-		_, err = handshake(pc.conn, time.Second, rp.nodeInfo())
+		_, err = handshake(nil, time.Second, rp.nodeInfo())
 		if err != nil {
 			golog.Fatalf("Failed to perform handshake: %+v", err)
 		}

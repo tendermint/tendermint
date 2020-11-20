@@ -436,7 +436,7 @@ func (mt *MultiplexTransport) wrapPeer(
 	socketAddr *NetAddress,
 ) Peer {
 
-	persistent := false
+	/*persistent := false
 	if cfg.isPersistent != nil {
 		if cfg.outbound {
 			persistent = cfg.isPersistent(socketAddr)
@@ -446,18 +446,17 @@ func (mt *MultiplexTransport) wrapPeer(
 				persistent = cfg.isPersistent(selfReportedAddr)
 			}
 		}
-	}
+	}*/
 
-	peerConn := newPeerConn(
+	/*peerConn := newPeerConn(
 		cfg.outbound,
 		persistent,
 		c,
 		socketAddr,
-	)
+	)*/
 
 	p := newPeer(
-		peerConn,
-		mt.mConfig,
+		peerConn{},
 		ni,
 		cfg.reactorsByCh,
 		cfg.chDescs,

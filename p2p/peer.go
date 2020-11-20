@@ -47,9 +47,7 @@ type Peer interface {
 type peerConn struct {
 	outbound   bool
 	persistent bool
-	conn       net.Conn // source connection
-
-	socketAddr *NetAddress
+	conn       Connection
 
 	// cached RemoteIP()
 	ip net.IP
@@ -57,22 +55,19 @@ type peerConn struct {
 
 func newPeerConn(
 	outbound, persistent bool,
-	conn net.Conn,
-	socketAddr *NetAddress,
+	conn Connection,
 ) peerConn {
 
 	return peerConn{
 		outbound:   outbound,
 		persistent: persistent,
 		conn:       conn,
-		socketAddr: socketAddr,
 	}
 }
 
 // ID only exists for SecretConnection.
-// NOTE: Will panic if conn is not *SecretConnection.
 func (pc peerConn) ID() ID {
-	return PubKeyToID(pc.conn.(*tmconn.SecretConnection).RemotePubKey())
+	return PubKeyToID(pc.conn.PubKey())
 }
 
 // Return the IP from the connection RemoteAddr
@@ -80,19 +75,7 @@ func (pc peerConn) RemoteIP() net.IP {
 	if pc.ip != nil {
 		return pc.ip
 	}
-
-	host, _, err := net.SplitHostPort(pc.conn.RemoteAddr().String())
-	if err != nil {
-		panic(err)
-	}
-
-	ips, err := net.LookupIP(host)
-	if err != nil {
-		panic(err)
-	}
-
-	pc.ip = ips[0]
-
+	pc.ip = pc.conn.RemoteEndpoint().IP
 	return pc.ip
 }
 
@@ -104,13 +87,15 @@ type peer struct {
 
 	// raw peerConn and the multiplex connection
 	peerConn
-	mconn *tmconn.MConnection
 
 	// peer's node info and the channel it knows about
 	// channels = nodeInfo.Channels
 	// cached to avoid copying nodeInfo in hasChannel
 	nodeInfo NodeInfo
 	channels []byte
+	chDescs  []*ChannelDescriptor
+	streams  map[byte]Stream
+	reactors map[byte]Reactor
 
 	// User data
 	Data *cmap.CMap
@@ -123,7 +108,6 @@ type PeerOption func(*peer)
 
 func newPeer(
 	pc peerConn,
-	mConfig tmconn.MConnConfig,
 	nodeInfo NodeInfo,
 	reactorsByCh map[byte]Reactor,
 	chDescs []*tmconn.ChannelDescriptor,
@@ -134,19 +118,22 @@ func newPeer(
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
 		channels:      nodeInfo.(DefaultNodeInfo).Channels, // TODO
+		chDescs:       chDescs,
+		reactors:      reactorsByCh,
+		streams:       map[byte]Stream{},
 		Data:          cmap.NewCMap(),
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),
 	}
 
-	p.mconn = createMConnection(
+	/*p.mconn = createMConnection(
 		pc.conn,
 		p,
 		reactorsByCh,
 		chDescs,
 		onPeerError,
 		mConfig,
-	)
+	)*/
 	p.BaseService = *service.NewBaseService(nil, "Peer", p)
 	for _, option := range options {
 		option(p)
@@ -158,10 +145,10 @@ func newPeer(
 // String representation.
 func (p *peer) String() string {
 	if p.outbound {
-		return fmt.Sprintf("Peer{%v %v out}", p.mconn, p.ID())
+		return fmt.Sprintf("Peer{%v %v out}", p.conn, p.ID())
 	}
 
-	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.ID())
+	return fmt.Sprintf("Peer{%v %v in}", p.conn, p.ID())
 }
 
 //---------------------------------------------------
@@ -170,7 +157,7 @@ func (p *peer) String() string {
 // SetLogger implements BaseService.
 func (p *peer) SetLogger(l log.Logger) {
 	p.Logger = l
-	p.mconn.SetLogger(l)
+	p.conn.(*mConnConnection).mConn.SetLogger(l)
 }
 
 // OnStart implements BaseService.
@@ -179,7 +166,32 @@ func (p *peer) OnStart() error {
 		return err
 	}
 
-	if err := p.mconn.Start(); err != nil {
+	for _, chDesc := range p.chDescs {
+		stream, err := p.conn.Stream(uint16(chDesc.ID))
+		if err != nil {
+			return err
+		}
+		p.streams[chDesc.ID] = stream
+		fmt.Printf("Peer %v opened stream %v\n", p.ID(), chDesc.ID)
+
+		go func(chDesc *tmconn.ChannelDescriptor, stream Stream, reactor Reactor) {
+			for {
+				fmt.Printf("reading from channel %v\n", chDesc.ID)
+				bz := make([]byte, chDesc.RecvMessageCapacity)
+				n, err := stream.Read(bz)
+				if err != nil {
+					p.Logger.Error(fmt.Sprintf("stream read failed: %v", err))
+					continue
+				}
+				fmt.Printf("read %v bytes from channel %v\n", n, chDesc.ID)
+				reactor.Receive(chDesc.ID, p, bz[:n])
+				fmt.Println("called reactor.Receive()")
+			}
+		}(chDesc, stream, p.reactors[chDesc.ID])
+	}
+
+	err := p.conn.(*mConnConnection).mConn.Start()
+	if err != nil {
 		return err
 	}
 
@@ -193,14 +205,14 @@ func (p *peer) OnStart() error {
 func (p *peer) FlushStop() {
 	p.metricsTicker.Stop()
 	p.BaseService.OnStop()
-	p.mconn.FlushStop() // stop everything and close the conn
+	// FIXME Flush and close connection.
 }
 
 // OnStop implements BaseService.
 func (p *peer) OnStop() {
 	p.metricsTicker.Stop()
 	p.BaseService.OnStop()
-	if err := p.mconn.Stop(); err != nil { // stop everything and close the conn
+	if err := p.conn.Close(); err != nil {
 		p.Logger.Debug("Error while stopping peer", "err", err)
 	}
 }
@@ -233,12 +245,17 @@ func (p *peer) NodeInfo() NodeInfo {
 // For inbound peers, it's the address returned by the underlying connection
 // (not what's reported in the peer's NodeInfo).
 func (p *peer) SocketAddr() *NetAddress {
-	return p.peerConn.socketAddr
+	endpoint := p.peerConn.conn.RemoteEndpoint()
+	return &NetAddress{
+		ID:   p.ID(),
+		IP:   endpoint.IP,
+		Port: endpoint.Port,
+	}
 }
 
 // Status returns the peer's ConnectionStatus.
 func (p *peer) Status() tmconn.ConnectionStatus {
-	return p.mconn.Status()
+	return p.conn.(*mConnConnection).mConn.Status()
 }
 
 // Send msg bytes to the channel identified by chID byte. Returns false if the
@@ -251,15 +268,17 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	res := p.mconn.Send(chID, msgBytes)
-	if res {
-		labels := []string{
-			"peer_id", string(p.ID()),
-			"chID", fmt.Sprintf("%#x", chID),
-		}
-		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
+	_, err := p.streams[chID].Write(msgBytes)
+	if err != nil {
+		p.Logger.Error(fmt.Sprintf("Failed to send on stream %v: %v", chID, err))
+		return false
 	}
-	return res
+	labels := []string{
+		"peer_id", string(p.ID()),
+		"chID", fmt.Sprintf("%#x", chID),
+	}
+	p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
+	return true
 }
 
 // TrySend msg bytes to the channel identified by chID byte. Immediately returns
@@ -270,15 +289,17 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	res := p.mconn.TrySend(chID, msgBytes)
-	if res {
-		labels := []string{
-			"peer_id", string(p.ID()),
-			"chID", fmt.Sprintf("%#x", chID),
-		}
-		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
+	_, err := p.streams[chID].Write(msgBytes)
+	if err != nil {
+		p.Logger.Error(fmt.Sprintf("Failed to send on stream %v: %v", chID, err))
+		return false
 	}
-	return res
+	labels := []string{
+		"peer_id", string(p.ID()),
+		"chID", fmt.Sprintf("%#x", chID),
+	}
+	p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
+	return true
 }
 
 // Get the data for a given key.
@@ -327,7 +348,11 @@ func (pc *peerConn) CloseConn() {
 
 // RemoteAddr returns peer's remote network address.
 func (p *peer) RemoteAddr() net.Addr {
-	return p.peerConn.conn.RemoteAddr()
+	endpoint := p.conn.RemoteEndpoint()
+	return &net.TCPAddr{
+		IP:   endpoint.IP,
+		Port: int(endpoint.Port),
+	}
 }
 
 // CanSend returns true if the send queue is not full, false otherwise.
@@ -335,7 +360,8 @@ func (p *peer) CanSend(chID byte) bool {
 	if !p.IsRunning() {
 		return false
 	}
-	return p.mconn.CanSend(chID)
+	return true
+	//return p.mconn.CanSend(chID) FIXME
 }
 
 //---------------------------------------------------
@@ -350,7 +376,7 @@ func (p *peer) metricsReporter() {
 	for {
 		select {
 		case <-p.metricsTicker.C:
-			status := p.mconn.Status()
+			status := p.conn.(*mConnConnection).mConn.Status()
 			var sendQueueSize float64
 			for _, chStatus := range status.Channels {
 				sendQueueSize += float64(chStatus.SendQueueSize)

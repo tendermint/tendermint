@@ -58,6 +58,7 @@ func NewMConnTransport(
 		nodeKey:          nodeKey,
 		handshakeTimeout: defaultHandshakeTimeout,
 		dialTimeout:      defaultDialTimeout,
+		mConnConfig:      mConnConfig,
 
 		chAccept: make(chan *mConnConnection),
 		chError:  make(chan error),
@@ -306,15 +307,20 @@ func newMConnConnection(
 		conn.secretConn,
 		transport.channelDescs,
 		func(chID byte, bz []byte) {
+			fmt.Printf("recv bytes on channel %v\n", chID)
 			if stream, ok := conn.streams[chID]; ok {
-				stream.chReceive <- bz
+				bzCopy := make([]byte, len(bz))
+				copy(bzCopy, bz)
+				stream.chReceive <- bzCopy
+				fmt.Printf("sent bytes to channel %v\n", chID)
+			} else {
+				fmt.Printf("unknown stream %v\n", chID)
 			}
 		},
 		func(err interface{}) { panic(fmt.Sprintf("onError: %v", err)) },
-		// FIXME Configure this
-		tmconn.MConnConfig{},
+		transport.mConnConfig,
 	)
-
+	//err = conn.mConn.Start()
 	return
 }
 
@@ -367,7 +373,8 @@ func (c *mConnConnection) RemoteEndpoint() Endpoint {
 
 // Stream implements Connection.
 func (c *mConnConnection) Stream(id uint16) (Stream, error) {
-	return newMConnStream(c, id)
+	// FIXME Check byte
+	return c.streams[byte(id)], nil
 }
 
 // Close implements Connection.

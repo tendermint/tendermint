@@ -36,12 +36,12 @@ func CreateRandomPeer(outbound bool) Peer {
 	addr, netAddr := CreateRoutableAddr()
 	p := &peer{
 		peerConn: peerConn{
-			outbound:   outbound,
-			socketAddr: netAddr,
+			outbound: outbound,
+			//socketAddr: netAddr,
 		},
 		nodeInfo: mockNodeInfo{netAddr},
-		mconn:    &conn.MConnection{},
-		metrics:  NopMetrics(),
+		//mconn:    &conn.MConnection{},
+		metrics: NopMetrics(),
 	}
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p
@@ -146,7 +146,6 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 
 	p := newPeer(
 		pc,
-		MConnConfig(sw.config),
 		ni,
 		sw.reactorsByCh,
 		sw.chDescs,
@@ -247,7 +246,7 @@ func testPeerConn(
 	}
 
 	// Only the information we already have
-	return newPeerConn(outbound, persistent, conn, socketAddr), nil
+	return newPeerConn(outbound, persistent, nil), nil
 }
 
 //----------------------------------------------------------------
