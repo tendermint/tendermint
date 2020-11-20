@@ -16,7 +16,7 @@ func InitChain(client abcicli.Client) error {
 	for i := 0; i < total; i++ {
 		pubkey := tmrand.Bytes(33)
 		power := tmrand.Int()
-		vals[i] = types.Ed25519ValidatorUpdate(pubkey, int64(power))
+		vals[i] = types.UpdateValidator(pubkey, int64(power), "")
 	}
 	_, err := client.InitChainSync(types.RequestInitChain{
 		Validators: vals,

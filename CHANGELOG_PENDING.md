@@ -9,18 +9,22 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### BREAKING CHANGES
 
 - CLI/RPC/Config
-
-    - [config] \#5598 The `test_fuzz` and `test_fuzz_config` P2P settings have been removed. (@erikgrinaker)
+  - [config] \#5598 The `test_fuzz` and `test_fuzz_config` P2P settings have been removed. (@erikgrinaker)
 
 - Apps
 
 - P2P Protocol
 
 - Go API
+  - [p2p] Removed unused function `MakePoWTarget`. (@erikgrinaker)
+
+- [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
 
 - Blockchain Protocol
 
 ### FEATURES
+
+
 
 ### IMPROVEMENTS
 
