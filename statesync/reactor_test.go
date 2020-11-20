@@ -1,6 +1,7 @@
 package statesync
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	p2pmocks "github.com/tendermint/tendermint/p2p/mocks"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
@@ -47,9 +49,10 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 				Chunk:  tc.request.Index,
 			}).Return(&abci.ResponseLoadSnapshotChunk{Chunk: tc.chunk}, nil)
 
-			// Mock peer to store response, if found
+			// mock peer to store response, if found
 			peer := &p2pmocks.Peer{}
-			peer.On("ID").Return(p2p.ID("id"))
+			peer.On("ID").Return(p2p.ID("FF"))
+
 			var response *ssproto.ChunkResponse
 			if tc.expectResponse != nil {
 				peer.On("Send", ChunkChannel, mock.Anything).Run(func(args mock.Arguments) {
@@ -59,17 +62,41 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 				}).Return(true)
 			}
 
-			// Start a reactor and send a ssproto.ChunkRequest, then wait for and check response
-			r := NewReactorDeprecated(conn, nil, "")
-			err := r.Start()
-			require.NoError(t, err)
+			// Start a reactor and send a ssproto.ChunkRequest, then wait for and check
+			// response.
+			shim := p2p.NewShim("StateSync", GetChannelShims())
+
+			cfg := config.DefaultP2PConfig()
+			p2pSwitch := p2p.MakeSwitch(cfg, 1, "testing", "123.123.123", func(_ int, sw *p2p.Switch) *p2p.Switch {
+				p2p.AddPeerToSwitchPeerSet(sw, peer)
+				sw.AddReactor(shim.Name, shim)
+				return sw
+			})
+
+			r := NewReactor(
+				shim.Logger,
+				p2pSwitch,
+				conn,
+				nil,
+				shim.GetChannel(p2p.ChannelID(SnapshotChannel)),
+				shim.GetChannel(p2p.ChannelID(ChunkChannel)),
+				shim.PeerUpdateCh,
+				"",
+			)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			go r.Run(ctx)
+			require.NoError(t, shim.Start())
+
 			t.Cleanup(func() {
-				if err := r.Stop(); err != nil {
+				cancel()
+
+				if err := shim.Stop(); err != nil {
 					t.Error(err)
 				}
 			})
 
-			r.Receive(ChunkChannel, peer, mustEncodeMsg(tc.request))
+			shim.Receive(ChunkChannel, peer, mustEncodeMsg(tc.request))
 			time.Sleep(100 * time.Millisecond)
 			assert.Equal(t, tc.expectResponse, response)
 
@@ -118,17 +145,19 @@ func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			// Mock ABCI connection to return local snapshots
+			// mock ABCI connection to return local snapshots
 			conn := &proxymocks.AppConnSnapshot{}
 			conn.On("ListSnapshotsSync", abci.RequestListSnapshots{}).Return(&abci.ResponseListSnapshots{
 				Snapshots: tc.snapshots,
 			}, nil)
 
-			// Mock peer to catch responses and store them in a slice
+			// mock peer to catch responses and store them in a slice
 			responses := []*ssproto.SnapshotsResponse{}
+
 			peer := &p2pmocks.Peer{}
+			peer.On("ID").Return(p2p.ID("FF"))
+
 			if len(tc.expectResponses) > 0 {
-				peer.On("ID").Return(p2p.ID("id"))
 				peer.On("Send", SnapshotChannel, mock.Anything).Run(func(args mock.Arguments) {
 					msg, err := decodeMsg(args[1].([]byte))
 					require.NoError(t, err)
@@ -136,17 +165,41 @@ func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 				}).Return(true)
 			}
 
-			// Start a reactor and send a SnapshotsRequestMessage, then wait for and check responses
-			r := NewReactorDeprecated(conn, nil, "")
-			err := r.Start()
-			require.NoError(t, err)
+			// Start a reactor and send a ssproto.ChunkRequest, then wait for and check
+			// response.
+			shim := p2p.NewShim("StateSync", GetChannelShims())
+
+			cfg := config.DefaultP2PConfig()
+			p2pSwitch := p2p.MakeSwitch(cfg, 1, "testing", "123.123.123", func(_ int, sw *p2p.Switch) *p2p.Switch {
+				p2p.AddPeerToSwitchPeerSet(sw, peer)
+				sw.AddReactor(shim.Name, shim)
+				return sw
+			})
+
+			r := NewReactor(
+				shim.Logger,
+				p2pSwitch,
+				conn,
+				nil,
+				shim.GetChannel(p2p.ChannelID(SnapshotChannel)),
+				shim.GetChannel(p2p.ChannelID(ChunkChannel)),
+				shim.PeerUpdateCh,
+				"",
+			)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			go r.Run(ctx)
+			require.NoError(t, shim.Start())
+
 			t.Cleanup(func() {
-				if err := r.Stop(); err != nil {
+				cancel()
+
+				if err := shim.Stop(); err != nil {
 					t.Error(err)
 				}
 			})
 
-			r.Receive(SnapshotChannel, peer, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
+			shim.Receive(SnapshotChannel, peer, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
 			time.Sleep(100 * time.Millisecond)
 			assert.Equal(t, tc.expectResponses, responses)
 
