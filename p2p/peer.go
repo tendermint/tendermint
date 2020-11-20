@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/cmap"
@@ -21,7 +22,7 @@ type PeerID []byte
 
 // String implements the fmt.Stringer interface for the PeerID type.
 func (pid PeerID) String() string {
-	return hex.EncodeToString(pid)
+	return strings.ToUpper(hex.EncodeToString(pid))
 }
 
 // PeerIDFromString returns a PeerID from an encoded string or an error upon

@@ -54,7 +54,7 @@ type (
 	}
 )
 
-func NewShim(name string, descriptors []*ChannelDescriptorShim, msgVal MessageValidator) *ReactorShim {
+func NewShim(name string, descriptors []*ChannelDescriptorShim) *ReactorShim {
 	channels := make(map[ChannelID]*ChannelShim)
 	for _, cds := range descriptors {
 		cID := ChannelID(cds.Descriptor.ID)
@@ -72,10 +72,9 @@ func NewShim(name string, descriptors []*ChannelDescriptorShim, msgVal MessageVa
 	}
 
 	rs := &ReactorShim{
-		Name:             name,
-		PeerUpdateCh:     make(chan PeerUpdate),
-		Channels:         channels,
-		MessageValidator: msgVal,
+		Name:         name,
+		PeerUpdateCh: make(chan PeerUpdate),
+		Channels:     channels,
 	}
 
 	rs.BaseReactor = *NewBaseReactor(name, rs)
@@ -88,25 +87,78 @@ func NewShim(name string, descriptors []*ChannelDescriptorShim, msgVal MessageVa
 // executions (or anything else that may send on the Channel) and proxy them to
 // the coressponding Peer using the To field from the envelope.
 func (rs *ReactorShim) proxyPeerEnvelopes() {
-	for _, c := range rs.Channels {
-		go func(chID byte, outCh chan Envelope) {
-			for e := range outCh {
-				src := rs.Switch.peers.Get(ID(e.To.String()))
+	if rs.Switch == nil {
+		panic("proxyPeerEnvelopes: reactor shim switch is nil")
+	}
+
+	for _, cs := range rs.Channels {
+		go func(cs *ChannelShim) {
+			for e := range cs.OutCh {
+				src := rs.Switch.Peers().Get(ID(e.To.String()))
 				if src == nil {
 					panic(fmt.Sprintf("failed to proxy envelope; failed to find peer (%s)", e.To))
 				}
 
-				bz, err := proto.Marshal(e.Message)
+				msg := proto.Clone(cs.Channel.messageType)
+				msg.Reset()
+
+				wrapper, ok := msg.(Wrapper)
+				if ok {
+					if err := wrapper.Wrap(e.Message); err != nil {
+						rs.Logger.Error("failed to wrap message", "peer", src, "ch_id", cs.Descriptor.ID, "msg", e.Message, "err", err)
+						continue
+					}
+				} else {
+					msg = e.Message
+				}
+
+				bz, err := proto.Marshal(msg)
 				if err != nil {
 					panic(fmt.Sprintf("failed to proxy envelope; failed to encode message: %s", err))
 				}
 
-				_ = src.Send(chID, bz)
+				_ = src.Send(cs.Descriptor.ID, bz)
 			}
-		}(c.Descriptor.ID, c.OutCh)
+		}(cs)
 	}
 }
 
+// handlePeerErrors iterates over each p2p Channel and starts a separate go-routine
+// where we listen for peer errors. For each peer error, we find the peer from
+// the legacy p2p Switch and execute a StopPeerForError call with the corresponding
+// peer error.
+func (rs *ReactorShim) handlePeerErrors() {
+	if rs.Switch == nil {
+		panic("handlePeerErrors: reactor shim switch is nil")
+	}
+
+	for _, c := range rs.Channels {
+		go func(peerErrCh chan PeerError) {
+			for pErr := range peerErrCh {
+				peer := rs.Switch.peers.Get(ID(pErr.PeerID.String()))
+				if peer == nil {
+					panic(fmt.Sprintf("failed to handle peer error; failed to find peer (%s)", pErr.PeerID))
+				}
+
+				rs.Switch.StopPeerForError(peer, pErr.Err)
+			}
+		}(c.PeerErrCh)
+	}
+}
+
+// GetChannel returns a p2p Channel reference for a given ChannelID. If no
+// Channel exists, nil is returned.
+func (rs *ReactorShim) GetChannel(cID ChannelID) *Channel {
+	channelShim, ok := rs.Channels[cID]
+	if ok {
+		return channelShim.Channel
+	}
+
+	return nil
+}
+
+// GetChannels implements the legacy Reactor interface for getting a slice of all
+// the supported ChannelDescriptors.
 func (rs *ReactorShim) GetChannels() []*ChannelDescriptor {
 	descriptors := make([]*ChannelDescriptor, len(rs.Channels))
 	i := 0
@@ -124,6 +176,7 @@ func (rs *ReactorShim) GetChannels() []*ChannelDescriptor {
 func (rs *ReactorShim) OnStart() error {
 	if rs.IsRunning() {
 		rs.proxyPeerEnvelopes()
+		rs.handlePeerErrors()
 	}
 
 	return nil
@@ -222,6 +275,17 @@ func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 		// It is OK to panic here as we'll be removing the Reactor interface and
 		// Peer type in favor of using a PeerID directly.
 		panic(err)
+	}
+
+	wrapper, ok := msg.(Wrapper)
+	if ok {
+		var err error
+
+		msg, err = wrapper.Unwrap()
+		if err != nil {
+			rs.Logger.Error("failed to unwrap message", "peer", src, "ch_id", chID, "msg", msg, "err", err)
+			return
+		}
 	}
 
 	select {
