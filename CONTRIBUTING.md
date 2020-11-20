@@ -247,6 +247,36 @@ Each PR should have one commit once it lands on `master`; this can be accomplish
 
 #### Major Release
 
+This major release process assumes that this release was preceded by release candidates. 
+If there were no release candidates, and you'd like to cut a major release directly from master, see below. 
+
+1. Start on the latest RC branch (`RCx/vX.X.0`).
+2. Run integration tests.
+3. Branch off of the RC branch (`git checkout -b release-prep`) and prepare the release:
+   - "Squash" changes from the changelog entries for the RCs into a single entry, 
+      and add all changes included in `CHANGELOG_PENDING.md`. 
+      (Squashing includes both combining all entries, as well as removing or simplifying
+      any intra-RC changes. It may also help to alphabetize the entries by package name.)
+   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
+     all PRs 
+   - Ensure that UPGRADING.md is up-to-date and includes notes on any breaking changes
+      or other upgrading flows. 
+   - Bump P2P and block protocol versions in  `version.go`, if necessary
+   - Bump ABCI protocol version in `version.go`, if necessary
+   - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
+4. Open a PR with these changes against the RC branch (`RCx/vX.X.0`). 
+5. Once these changes are on the RC branch, branch off of the RC branch again to create a release branch:
+   - `git checkout RCx/vX.X.0`
+   - `git checkout -b release/vX.X.0` 
+6. Push a tag with prepared release details. This will trigger the actual release `vX.X.0`.
+   - `git tag -a vX.X.0 -m 'Release vX.X.0'`
+   - `git push origin vX.X.0`
+7. Make sure that `master` is updated with the latest `CHANGELOG.md`, `CHANGELOG_PENDING.md`, and `UPGRADING.md`. 
+8. Create the long-lived minor release branch `RC0/vX.X.1` for the next point release on this
+   new major release series. 
+
+##### Major Release (from `master`)
+
 1. Start on `master`
 2. Run integration tests (see `test_integrations` in Makefile)
 3. Prepare release in a pull request against `master` (to be squash merged):
@@ -265,7 +295,7 @@ Each PR should have one commit once it lands on `master`; this can be accomplish
 4. Push a tag with prepared release details (this will trigger the release `vX.X.0`)
    - `git tag -a vX.X.x -m 'Release vX.X.x'`
    - `git push origin vX.X.x`
-5. Update the changelog.md file on master with the releases changelog.
+5. Update the `CHANGELOG.md` file on master with the releases changelog.
 6. Delete any RC branches and tags for this release (if applicable)
 
 #### Minor Release
