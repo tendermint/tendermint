@@ -94,7 +94,7 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 	for _, cs := range rs.Channels {
 		go func(cs *ChannelShim) {
 			for e := range cs.OutCh {
-				src := rs.Switch.Peers().Get(ID(e.To.String()))
+				src := rs.Switch.peers.Get(ID(e.To.String()))
 				if src == nil {
 					panic(fmt.Sprintf("failed to proxy envelope; failed to find peer (%s)", e.To))
 				}
@@ -251,6 +251,13 @@ func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 		return
 	}
 
+	peerID, err := PeerIDFromString(string(src.ID()))
+	if err != nil {
+		// It is OK to panic here as we'll be removing the Reactor interface and
+		// Peer type in favor of using a PeerID directly.
+		panic(err)
+	}
+
 	msg := proto.Clone(channelShim.Channel.messageType)
 	msg.Reset()
 
@@ -268,13 +275,6 @@ func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 			rs.Logger.Error("invalid message", "peer", src, "ch_id", cID, "msg", msg, "err", err)
 			return
 		}
-	}
-
-	peerID, err := PeerIDFromString(string(src.ID()))
-	if err != nil {
-		// It is OK to panic here as we'll be removing the Reactor interface and
-		// Peer type in favor of using a PeerID directly.
-		panic(err)
 	}
 
 	wrapper, ok := msg.(Wrapper)
