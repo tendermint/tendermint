@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Notify Slack on failure
-        uses: rtCamp/action-slack-notify@e9db0ef
+        uses: rtCamp/action-slack-notify@ecc1353ce30ef086ce3fc3d1ea9ac2e32e150402
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SLACK_CHANNEL: tendermint-internal
