@@ -27,13 +27,13 @@ changes, the software version changes, but not necessarily vice versa.
 
 Software version should be included in NodeInfo for convenience/diagnostics.
 
-We are also interested in versioning across different blockchains in a
-meaningful way, for instance to differentiate branches of a contentious
-hard-fork. We leave that for a later ADR.
-
 We need to version components of the blockchain that may be independently upgraded.
 We need to do it in a way that is scalable and maintainable - we can't just litter
-the code with conditionals.
+the code with conditionals. We need a versioning system that supports a range of
+stakeholders throughout the lifespan of a blockchain.
+
+We also need to consider the lifespan of the application itself and be accommodating
+to how it upgrades.
 
 ## Proposal
 
@@ -45,7 +45,8 @@ of the software that are likely to evolve together, at different rates, and in d
 
 ### What does each protocol version correspond to and how are they allowed to evolve
 
-Each of BlockVersion, AppVersion, and P2PVersion is a monotonically increasing uint64. Incrementing the version number indicates a change that is incompatible with the previous version.
+Each of BlockVersion, AppVersion, and P2PVersion is a monotonically increasing uint64. 
+Incrementing the version number indicates a change that is incompatible with the previous version.
 
 #### BlockVersion
 
@@ -56,8 +57,7 @@ Each of BlockVersion, AppVersion, and P2PVersion is a monotonically increasing u
 #### P2PVersion
 
 - All p2p and reactor messaging (messages, detectable behavior)
-- Will change gradually as reactors evolve to improve performance and support new features - eg proposed new message types BatchTx in the mempool and HasBlockPart in the consensus
-- It's easy to determine the version of a peer from its first serialized message/s
+- It should be easy to determine the version of a peer from its first serialized message/s
 - New versions must be compatible with at least one old version to allow gradual upgrades
 - We need the peer/reactor protocols to take the versions of peers into account when sending messages so that we
   don't send messages that the peer won't understand or won't expect.
@@ -67,15 +67,27 @@ Each of BlockVersion, AppVersion, and P2PVersion is a monotonically increasing u
 - The ABCI state machine itself.
 - Tendermint needs to know the version of the application to ensure that AppHash and Results are calculated in the same manner across the entire network.
 
-In addition, the block version is the parent of two further sub versions: *RPCVersion* and *ABCIVersion*. These are denoted using semantic versioning. Changing the block protocol will require a new major release for each of these versions as the data structures they serve have changed, however major and minor releases wouldn't necessarily mean a block protocol change. 
+In addition, the block version is the parent of two further sub versions: *RPCVersion* and *ABCIVersion*. 
+These are denoted using semantic versioning. Changing the block protocol will require either a new major
+ or minor release for each of these versions as the data structures they serve have changed, 
+ however major and minor releases wouldn't necessarily mean a block protocol change. 
 
 #### RPCVersion
 
-This covers all RPC endpoints and their respective requests and responses. In the case of an introduction of a new interface with external users (i.e gRPC), this would also fall under the RPCVersion. Minor changes could be adding new endpoints or adding fields so long as these fields would not affect verification.
+This covers all RPC endpoints and their respective requests and responses. 
+In the case of an introduction of a new interface with external users (i.e gRPC), 
+this would also fall under the RPCVersion. Minor changes could be adding new endpoints or 
+adding fields so long as these fields would not affect verification (in other words,
+doesn't affect a hash).
 
 #### ABCIVersion
 
-Refers to the entire ABCI Library and predominantly the application interface. Similarly with RPCVersion, minor changes could be adding fields (so long as they are optional and not connected with )
+Refers to the entire ABCI Library and predominantly the application interface. 
+Similarly with RPCVersion, minor changes could be adding fields or calls 
+(so long as they are optional and not connected with the replication logic). 
+Because the application isn't concerned with verification logic or assessing hashes, 
+a block protocol version change does not necessarily imply a major version change. 
+A minor version change could suffice.
 
 ### Where are versions located and how are they updated
 
@@ -120,7 +132,8 @@ Note this effectively makes `Version.P2P` the first field in the NodeInfo, so it
 should be easy to read this out of the serialized header if need be to facilitate an upgrade.
 
 The `Version.Other` here should include additional information like the name of the software client and
-it's SemVer version - this is for convenience only. Eg. `tendermint-core/v0.22.8`. It's a `[]string` so it can include information about the version of Tendermint, of the app, of Tendermint libraries, etc.
+it's SemVer version - this is for convenience only. Eg. `tendermint-core/v0.22.8`. It's a `[]string` so 
+it can include information about the version of Tendermint, of the app, of Tendermint libraries, etc.
 
 Note NodeInfo is only exchanged after the authenticated encryption handshake to ensure that it's private.
 Doing any version exchange before encrypting could be considered information leakage, though I'm not sure
@@ -130,7 +143,8 @@ how much that matters compared to being able to upgrade the protocol.
 
 Since the ABCI is responsible for keeping Tendermint and the App in sync, we need to communicate version information through it.
 
-On startup, we use Info to perform a basic handshake. It should include all the version information so the node can check for compatibility. This would also include tha ABCI version so applications using a socket connection can ensure they are using the correct version. 
+On startup, we use Info to perform a basic handshake. It should include all the version information so the node can check for compatibility. 
+This would also include tha ABCI version so applications using a socket connection can ensure they are using the correct version. 
 
 ##### Info
 
@@ -195,7 +209,11 @@ protocol version has changed, and the new `app_version` will be included in th
 
 #### RPC
 
-Clients can communicate the RPC version that they are able to parse in the request. This can be either through the base URL path or in the header. If the requested version is incompatible with the node's RPCVersion (i.e. different major versions) then it will return a version error. If the client can support multiple RPC versions then it can use the `/version` endpoint to ascertain the exact RPCVersion of the node. 
+Clients can communicate the RPC version that they are able to parse in the request. 
+This can be either through the base URL path or in the header. 
+If the requested version is incompatible with the node's RPCVersion (i.e. different major versions) 
+then it will return a version error. If the client can support multiple RPC versions 
+then it can use the `/version` endpoint to ascertain the exact RPCVersion of the node. 
 
 ### Peer Compatibility
 
