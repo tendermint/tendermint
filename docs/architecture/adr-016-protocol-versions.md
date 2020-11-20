@@ -58,7 +58,7 @@ blockchain. It may change gradually.
 The AppVersion determines how we compute app specific information, like the
 AppHash and the Results.
 
-The RPCVersion defines the endpoints as well as the requests and the responses that the RPC serves. This helps external software such as wallets, blockchain explorers and node managers know how to handle the rpc server. 
+The RPCVersion defines the endpoints as well as the requests and the responses that the RPC serves. This helps external software such as wallets, blockchain explorers and node managers know how to handle the rpc server.
 
 All of these versions may change over the life of a blockchain, and we need to be able to help new nodes sync up across version changes. This means we must be willing to connect to peers with older version.
 
@@ -89,15 +89,13 @@ All of these versions may change over the life of a blockchain, and we need to b
 
 ### RPCVersion
 
-- All rpc endpoints and their respective requests and responses.
+- All RPC endpoints and their respective requests and responses.
 - Backwards compatibility should be upheld between minor software versions. i.e. we only add new endpoints for a minor software release 1.2 → 1.3 but can remove deprecated endpoints in a major release (1.5 → 2.0)
 - In the case of an introduction of a new interface with external users (i.e gRPC), this would also fall under the RPCVersion.
 
-## Ideal
-
-Each component of the software is independently versioned in a modular way and its easy to mix and match and upgrade.
-
 ## Proposal
+
+Ideally, each component of the software is independently versioned in a modular way and its easy to mix and match and upgrade.
 
 Each of BlockVersion, AppVersion, P2PVersion, and RPCVersion is a monotonically increasing uint64.
 
@@ -258,14 +256,14 @@ AppVersion essentially defines how the AppHash and LastResults are computed.
 
 ### RPCVersion
 
-The goal with the RPC, is to have something that can be robust to the developments of Tendermint over time yet 
+The goal with the RPC, is to have something that can be robust to the developments of Tendermint over time yet
 be a reliable interface for the entire lifespan of a blockchain
 
-There are two relatively distinct ways that the RPC can be modified and thus require a new version: 
+There are two relatively distinct ways that the RPC can be modified and thus require a new version:
 The first is that the block protocol changes. This means that the response and perhaps even the request
 is modified to support the new data structures. The second are the endpoints themselves.
 
-RPCVersion does not need to be included outside of the RPC. The `/status` endpoint will hold the version number so that external clients can simply query `/status` as part of their handshake with the rpc server. 
+RPCVersion does not need to be included outside of the RPC. The `/status` endpoint will hold the version number so that external clients can simply query `/status` as part of their handshake with the rpc server.
 
 ```jsx
 type ResultStatus struct {
@@ -273,12 +271,12 @@ type ResultStatus struct {
 	NodeInfo      p2p.DefaultNodeInfo `json:"node_info"`
 	SyncInfo      SyncInfo            `json:"sync_info"`
 	ValidatorInfo ValidatorInfo       `json:"validator_info"`
-} 
+}
 ```
 
-To update the RPC version, one needs only to download a later Tendermint version. RPCVersion should be compatible with serving all data structures of the equivalent BlockVersion. 
+To update the RPC version, one needs only to download a later Tendermint version. RPCVersion should be compatible with serving all data structures of the equivalent BlockVersion.
 i.e. if the TM 1.3 release has a BlockVersion of 9 and RPCVersion of 3 then RPCVersion 3 must support BlockVersion 9. If in the future a TM release supports multiple BlockVersion's then
-so must the RPCVersion. 
+so must the RPCVersion.
 
 ### Peer Compatibility
 
