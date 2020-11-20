@@ -7,8 +7,7 @@
 
 ## Changelog
 
-- 11-11-2020: Add RPC version
-    - and address ABCI Version
+- 11-11-2020: Address both RPC and ABCI versioning
 - 18-09-2018: Updates after working a bit on implementation
     - ABCI Handshake needs to happen independently of starting the app conns so we can see the result
     - Add question about ABCI protocol version
@@ -25,7 +24,7 @@
 
 ## Context
 
-Here we focus on software-agnostic protocol versions.
+This ADR focuses on software-agnostic protocol versions.
 
 The Software Version is covered by SemVer and described elsewhere.
 It is not relevant to the protocol description, suffice to say that if any protocol version
@@ -37,65 +36,49 @@ We are also interested in versioning across different blockchains in a
 meaningful way, for instance to differentiate branches of a contentious
 hard-fork. We leave that for a later ADR.
 
-## Requirements
-
 We need to version components of the blockchain that may be independently upgraded.
 We need to do it in a way that is scalable and maintainable - we can't just litter
 the code with conditionals.
 
+## Proposal
+
+Ideally, each component of the software is independently versioned in a modular way and its easy to mix and match and upgrade.
+
 We can consider the complete version of the protocol to contain the following sub-versions:
-BlockVersion, P2PVersion, AppVersion, RPCVersion. These versions reflect the major sub-components
-of the software that are likely to evolve together, at different rates, and in different ways,
-as described below.
+*BlockVersion*, *P2PVersion*, *AppVersion*. These versions reflect the major sub-components
+of the software that are likely to evolve together, at different rates, and in different ways.
 
-The BlockVersion defines the core of the blockchain data structures and
-should change infrequently.
+### What does each Protocol Versions correspond to and how are they allowed to evolve
 
-The P2PVersion defines how peers connect and communicate with each other - it's
-not part of the blockchain data structures, but defines the protocols used to build the
-blockchain. It may change gradually.
+#### BlockVersion
 
-The AppVersion determines how we compute app specific information, like the
-AppHash and the Results.
+This consists of all Tendermint data-structures (headers, votes, commits, txs,
+responses, etc.). A complete list of data structures can be found in the 
+[spec](https://github.com/tendermint/spec/blob/master/spec/core/data_structures.md)
+Block versions are denoted with a MAJOR and MINOR version. MINOR version changes are
+backwards compatible. This means that external clients
 
-The RPCVersion defines the endpoints as well as the requests and the responses that the RPC serves. This helps external software such as wallets, blockchain explorers and node managers know how to handle the rpc server.
-
-All of these versions may change over the life of a blockchain, and we need to be able to help new nodes sync up across version changes. This means we must be willing to connect to peers with older version.
-
-### BlockVersion
-
-- All Tendermint hashed data-structures (headers, votes, txs, responses, etc.).
-    - Note the semantic meaning of a transaction may change according to the AppVersion, but the way txs are merklized into the header is part of the BlockVersion
-- It should be the least frequent/likely to change.
-    - Tendermint should be stabilizing - it's just Atomic Broadcast.
-    - We can start considering for Tendermint v2.0 in a year
-- It's easy to determine the version of a block from its serialized form
-
-### P2PVersion
+#### P2PVersion
 
 - All p2p and reactor messaging (messages, detectable behavior)
 - Will change gradually as reactors evolve to improve performance and support new features - eg proposed new message types BatchTx in the mempool and HasBlockPart in the consensus
 - It's easy to determine the version of a peer from its first serialized message/s
 - New versions must be compatible with at least one old version to allow gradual upgrades
 
-### AppVersion
+#### AppVersion
 
-- The ABCI state machine (txs, begin/endblock behavior, commit hashing)
-- Behavior and message types will change abruptly in the course of the life of a chain
-- Need to minimize complexity of the code for supporting different AppVersions at different heights
-- Ideally, each version of the software supports only a *single* AppVersion at one time
-    - this means we checkout different versions of the software at different heights instead of littering the code with conditionals
-    - minimize the number of data migrations required across AppVersion (ie. most AppVersion should be able to read the same state from disk as previous AppVersion).
+- The ABCI state machine itself.
+- Tendermint needs to know the version of the application to ensure that AppHash and Results are calculated in the same manner across the entire network.
 
-### RPCVersion
+In addition, the block version is the parent of two further sub versions: RPCVersion and ABCIVersion. These hold the same relationship
+
+All of these versions may change over the life of a blockchain, and we need to be able to help new nodes sync up across version changes. This means we must be willing to connect to peers with older version.
+
+#### RPCVersion
 
 - All RPC endpoints and their respective requests and responses.
 - Backwards compatibility should be upheld between minor software versions. i.e. we only add new endpoints for a minor software release 1.2 → 1.3 but can remove deprecated endpoints in a major release (1.5 → 2.0)
 - In the case of an introduction of a new interface with external users (i.e gRPC), this would also fall under the RPCVersion.
-
-## Proposal
-
-Ideally, each component of the software is independently versioned in a modular way and its easy to mix and match and upgrade.
 
 Each of BlockVersion, AppVersion, P2PVersion, and RPCVersion is a monotonically increasing uint64.
 
