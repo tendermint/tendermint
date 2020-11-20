@@ -44,8 +44,7 @@ Ideally, each component of the software is independently versioned in a modular
 way and its easy to mix and match and upgrade.
 
 We can consider the complete version of the protocol to contain the following
-sub-versions:
-  *BlockVersion*, *P2PVersion*, *AppVersion*
+sub-versions: **BlockVersion**, **P2PVersion**, **AppVersion**.
 These versions reflect the major sub-components of the software that are likely
 to evolve together, at different rates, and in different ways.
 
@@ -79,11 +78,10 @@ with the previous version.
   and Results are calculated in the same manner across the entire network.
 
 In addition, the block version is the parent of two further sub versions:
-  *RPCVersion* and *ABCIVersion*.
-These are denoted using semantic versioning. Changing the block protocol will
-require either a new major or minor release for each of these versions as the
-data structures they serve have changed, however major and minor releases
-wouldn't necessarily mean a block protocol change.
+**RPCVersion** and **ABCIVersion**.These are denoted using semantic versioning. 
+Changing the block protocol will require either a new major or minor release 
+for each of these versions as the data structures they serve have changed, 
+however major and minor releases wouldn't necessarily mean a block protocol change.
 
 #### RPCVersion
 
