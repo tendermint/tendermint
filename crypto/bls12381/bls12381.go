@@ -1,4 +1,4 @@
-package ed25519
+package bls12381
 
 import (
 	"bytes"
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"golang.org/x/crypto/ed25519"
+	bls "github.com/quantumexplorer/bls-signatures/go-bindings"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -18,20 +18,19 @@ import (
 var _ crypto.PrivKey = PrivKey{}
 
 const (
-	PrivKeyName = "tendermint/PrivKeyEd25519"
-	PubKeyName  = "tendermint/PubKeyEd25519"
+	PrivKeyName = "tendermint/PrivKeyBLS12381"
+	PubKeyName  = "tendermint/PubKeyBLS12381"
 	// PubKeySize is is the size, in bytes, of public keys as used in this package.
-	PubKeySize = 32
+	PubKeySize = 48
 	// PrivateKeySize is the size, in bytes, of private keys as used in this package.
-	PrivateKeySize = 64
-	// Size of an Edwards25519 signature. Namely the size of a compressed
-	// Edwards25519 point, and a field element. Both of which are 32 bytes.
-	SignatureSize = 64
+	PrivateKeySize = 32
+	// Size of an BLS12381 signature.
+	SignatureSize = 96
 	// SeedSize is the size, in bytes, of private key seeds. These are the
 	// private key representations used by RFC 8032.
 	SeedSize = 32
 
-	KeyType = "ed25519"
+	KeyType = "bls12381"
 )
 
 func init() {
@@ -50,65 +49,61 @@ func (privKey PrivKey) Bytes() []byte {
 // Sign produces a signature on the provided message.
 // This assumes the privkey is wellformed in the golang format.
 // The first 32 bytes should be random,
-// corresponding to the normal ed25519 private key.
+// corresponding to the normal bls12381 private key.
 // The latter 32 bytes should be the compressed public key.
 // If these conditions aren't met, Sign will panic or produce an
 // incorrect signature.
 func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
-	signatureBytes := ed25519.Sign(ed25519.PrivateKey(privKey), msg)
-	return signatureBytes, nil
+	// set modOrder flag to true so that too big random bytes will wrap around and be a valid key
+	blsPrivateKey, err := bls.PrivateKeyFromBytes(privKey, true)
+	if err != nil {
+		return nil, err
+	}
+	insecureSignature := blsPrivateKey.SignInsecure(msg)
+	return insecureSignature.Serialize(), nil
 }
 
 // PubKey gets the corresponding public key from the private key.
 //
 // Panics if the private key is not initialized.
 func (privKey PrivKey) PubKey() crypto.PubKey {
-	// If the latter 32 bytes of the privkey are all zero, privkey is not
-	// initialized.
-	initialized := false
-	for _, v := range privKey[32:] {
-		if v != 0 {
-			initialized = true
-			break
-		}
+	// set modOrder flag to true so that too big random bytes will wrap around and be a valid key
+	blsPrivateKey, err := bls.PrivateKeyFromBytes(privKey, true)
+	if err != nil {
+		// should probably change method sign to return an error but since
+		// that's not available just panic...
+		panic("bad key")
 	}
-
-	if !initialized {
-		panic("Expected ed25519 PrivKey to include concatenated pubkey bytes")
-	}
-
-	pubkeyBytes := make([]byte, PubKeySize)
-	copy(pubkeyBytes, privKey[32:])
-	return PubKey(pubkeyBytes)
+	publicKeyBytes := blsPrivateKey.PublicKey().Serialize()
+	return PubKey(publicKeyBytes)
 }
 
 // Equals - you probably don't need to use this.
 // Runs in constant time based on length of the keys.
 func (privKey PrivKey) Equals(other crypto.PrivKey) bool {
-	if otherEd, ok := other.(PrivKey); ok {
-		return subtle.ConstantTimeCompare(privKey[:], otherEd[:]) == 1
+	if otherBLS, ok := other.(PrivKey); ok {
+		return subtle.ConstantTimeCompare(privKey[:], otherBLS[:]) == 1
 	}
 
 	return false
 }
-
 
 func (privKey PrivKey) TypeIdentifier() string {
 	return KeyType
 }
 
 func (privKey PrivKey) Type() crypto.KeyType {
-	return crypto.Ed25519
+	return crypto.BLS12381
 }
 
-// GenPrivKey generates a new ed25519 private key.
+// GenPrivKey generates a new bls12381 private key.
 // It uses OS randomness in conjunction with the current global random seed
 // in tendermint/libs/common to generate the private key.
 func GenPrivKey() PrivKey {
 	return genPrivKey(crypto.CReader())
 }
 
-// genPrivKey generates a new ed25519 private key using the provided reader.
+// genPrivKey generates a new bls12381 private key using the provided reader.
 func genPrivKey(rand io.Reader) PrivKey {
 	seed := make([]byte, SeedSize)
 
@@ -117,7 +112,7 @@ func genPrivKey(rand io.Reader) PrivKey {
 		panic(err)
 	}
 
-	return PrivKey(ed25519.NewKeyFromSeed(seed))
+	return PrivKey(bls.PrivateKeyFromSeed(seed).Serialize())
 }
 
 // GenPrivKeyFromSecret hashes the secret with SHA2, and uses
@@ -127,14 +122,14 @@ func genPrivKey(rand io.Reader) PrivKey {
 func GenPrivKeyFromSecret(secret []byte) PrivKey {
 	seed := crypto.Sha256(secret) // Not Ripemd160 because we want 32 bytes.
 
-	return PrivKey(ed25519.NewKeyFromSeed(seed))
+	return PrivKey(bls.PrivateKeyFromSeed(seed).Serialize())
 }
 
 //-------------------------------------
 
 var _ crypto.PubKey = PubKey{}
 
-// PubKeyEd25519 implements crypto.PubKey for the Ed25519 signature scheme.
+// PubKeyBLS12381 implements crypto.PubKey for the bls12381 signature scheme.
 type PubKey []byte
 
 // Address is the SHA256-20 of the raw pubkey bytes.
@@ -155,26 +150,37 @@ func (pubKey PubKey) VerifySignature(msg []byte, sig []byte) bool {
 	if len(sig) != SignatureSize {
 		return false
 	}
-
-	return ed25519.Verify(ed25519.PublicKey(pubKey), msg, sig)
+	publicKey, err := bls.PublicKeyFromBytes(pubKey)
+	if err != nil {
+		return false
+	}
+	aggregationInfo := bls.AggregationInfoFromMsg(publicKey, msg)
+	if err != nil {
+		return false
+	}
+	blsSignature, err := bls.SignatureFromBytesWithAggregationInfo(sig, aggregationInfo)
+	if err != nil {
+		// maybe log/panic?
+		return false
+	}
+	return blsSignature.Verify()
 }
 
 func (pubKey PubKey) String() string {
-	return fmt.Sprintf("PubKeyEd25519{%X}", []byte(pubKey))
+	return fmt.Sprintf("PubKeyBLS12381{%X}", []byte(pubKey))
 }
-
 
 func (pubKey PubKey) TypeIdentifier() string {
 	return KeyType
 }
 
 func (pubKey PubKey) Type() crypto.KeyType {
-	return crypto.Ed25519
+	return crypto.BLS12381
 }
 
 func (pubKey PubKey) Equals(other crypto.PubKey) bool {
-	if otherEd, ok := other.(PubKey); ok {
-		return bytes.Equal(pubKey[:], otherEd[:])
+	if otherBLS, ok := other.(PubKey); ok {
+		return bytes.Equal(pubKey[:], otherBLS[:])
 	}
 
 	return false

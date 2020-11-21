@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"math"
 	"sort"
 	"strings"
@@ -168,7 +169,7 @@ func BenchmarkValidatorSetCopy(b *testing.B) {
 	b.StopTimer()
 	vset := NewValidatorSet([]*Validator{})
 	for i := 0; i < 1000; i++ {
-		privKey := ed25519.GenPrivKey()
+		privKey := bls12381.GenPrivKey()
 		pubKey := privKey.PubKey()
 		val := NewValidator(pubKey, 10)
 		err := vset.UpdateWithChangeSet([]*Validator{val})
@@ -310,7 +311,7 @@ func TestProposerSelection3(t *testing.T) {
 	proposerOrder := make([]*Validator, 4)
 	for i := 0; i < 4; i++ {
 		// need to give all validators to have keys
-		pk := ed25519.GenPrivKey().PubKey()
+		pk := bls12381.GenPrivKey().PubKey()
 		vset.Validators[i].PubKey = pk
 		proposerOrder[i] = vset.GetProposer()
 		vset.IncrementProposerPriority(1)
@@ -367,9 +368,9 @@ func newValidator(address []byte, power int64) *Validator {
 }
 
 func randPubKey() crypto.PubKey {
-	pubKey := make(ed25519.PubKey, ed25519.PubKeySize)
-	copy(pubKey, tmrand.Bytes(32))
-	return ed25519.PubKey(tmrand.Bytes(32))
+	pubKey := make(bls12381.PubKey, bls12381.PubKeySize)
+	copy(pubKey, tmrand.Bytes(bls12381.PubKeySize))
+	return bls12381.PubKey(tmrand.Bytes(bls12381.PubKeySize))
 }
 
 func randValidator(totalVotingPower int64) *Validator {

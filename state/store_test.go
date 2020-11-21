@@ -2,6 +2,7 @@ package state_test
 
 import (
 	"fmt"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"os"
 	"testing"
 
@@ -13,7 +14,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -108,7 +108,7 @@ func TestPruneStates(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			db := dbm.NewMemDB()
 			stateStore := sm.NewStore(db)
-			pk := ed25519.GenPrivKey().PubKey()
+			pk := bls12381.GenPrivKey().PubKey()
 
 			// Generate a bunch of state data. Validators change for heights ending with 3, and
 			// parameters when ending with 5.

@@ -132,7 +132,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 
 	partSet := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(512)
 	assert.NotNil(t, partSet)
-	assert.EqualValues(t, 4, partSet.Total())
+	assert.EqualValues(t, 5, partSet.Total())
 }
 
 func TestBlockHashesTo(t *testing.T) {
@@ -271,7 +271,7 @@ func TestMaxCommitBytes(t *testing.T) {
 
 	pbSig := cs.ToProto()
 	// test that a single commit sig doesn't exceed max commit sig bytes
-	assert.EqualValues(t, MaxCommitSigBytes, pbSig.Size())
+	assert.EqualValues(t, MaxCommitSigBytesBLS12381, pbSig.Size())
 
 	// check size with a single commit
 	commit := &Commit{
@@ -289,7 +289,7 @@ func TestMaxCommitBytes(t *testing.T) {
 
 	pb := commit.ToProto()
 
-	assert.EqualValues(t, MaxCommitBytes(1), int64(pb.Size()))
+	assert.EqualValues(t, MaxCommitBytes(1, crypto.BLS12381), int64(pb.Size()))
 
 	// check the upper bound of the commit size
 	for i := 1; i < MaxVotesCount; i++ {
@@ -298,7 +298,7 @@ func TestMaxCommitBytes(t *testing.T) {
 
 	pb = commit.ToProto()
 
-	assert.EqualValues(t, MaxCommitBytes(MaxVotesCount), int64(pb.Size()))
+	assert.EqualValues(t, MaxCommitBytes(MaxVotesCount, crypto.BLS12381), int64(pb.Size()))
 
 }
 
@@ -445,30 +445,37 @@ func hexBytesFromString(s string) bytes.HexBytes {
 func TestBlockMaxDataBytes(t *testing.T) {
 	testCases := []struct {
 		maxBytes      int64
+		keyType       crypto.KeyType
 		valsCount     int
 		evidenceBytes int64
 		panics        bool
 		result        int64
 	}{
-		0: {-10, 1, 0, true, 0},
-		1: {10, 1, 0, true, 0},
-		2: {841, 1, 0, true, 0},
-		3: {842, 1, 0, false, 0},
-		4: {843, 1, 0, false, 1},
-		5: {954, 2, 0, false, 1},
-		6: {1053, 2, 100, false, 0},
+		0: {-10, crypto.Ed25519, 1, 0, true, 0},
+		1: {10, crypto.Ed25519, 1, 0, true, 0},
+		2: {841, crypto.Ed25519, 1, 0, true, 0},
+		3: {842, crypto.Ed25519, 1, 0, false, 0},
+		4: {843, crypto.Ed25519, 1, 0, false, 1},
+		5: {954, crypto.Ed25519, 2, 0, false, 1},
+		6: {1053, crypto.Ed25519, 2, 100, false, 0},
+		7: {874, crypto.BLS12381, 1, 0, true, 0},
+		8: {875, crypto.BLS12381, 1, 0, false, 0},
+		9: {876, crypto.BLS12381, 1, 0, false, 1},
+		10: {1020, crypto.BLS12381, 2, 0, false, 1},
+		11: {1119, crypto.BLS12381, 2, 100, false, 0},
 	}
+	//An extra 33 bytes (32 for sig, 1 for proto encoding are needed for BLS compared to edwards per validator
 
 	for i, tc := range testCases {
 		tc := tc
 		if tc.panics {
 			assert.Panics(t, func() {
-				MaxDataBytes(tc.maxBytes, tc.evidenceBytes, tc.valsCount)
+				MaxDataBytes(tc.maxBytes, tc.keyType, tc.evidenceBytes, tc.valsCount)
 			}, "#%v", i)
 		} else {
 			assert.Equal(t,
 				tc.result,
-				MaxDataBytes(tc.maxBytes, tc.evidenceBytes, tc.valsCount),
+				MaxDataBytes(tc.maxBytes, tc.keyType, tc.evidenceBytes, tc.valsCount),
 				"#%v", i)
 		}
 	}
@@ -476,28 +483,33 @@ func TestBlockMaxDataBytes(t *testing.T) {
 
 func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 	testCases := []struct {
-		maxBytes  int64
-		valsCount int
-		panics    bool
-		result    int64
+		maxBytes    int64
+		maxEvidence uint32
+		keyType       crypto.KeyType
+		valsCount   int
+		panics      bool
+		result      int64
 	}{
-		0: {-10, 1, true, 0},
-		1: {10, 1, true, 0},
-		2: {841, 1, true, 0},
-		3: {842, 1, false, 0},
-		4: {843, 1, false, 1},
+		0: {-10, 1, crypto.Ed25519,1, true, 0},
+		1: {10, 1, crypto.Ed25519,1, true, 0},
+		2: {841, 1, crypto.Ed25519,1, true, 0},
+		3: {842, 1, crypto.Ed25519,1, false, 0},
+		4: {843, 1, crypto.Ed25519,1, false, 1},
+		5: {874, 1, crypto.BLS12381,1, true, 0},
+		6: {875, 1, crypto.BLS12381,1, false, 0},
+		7: {876, 1, crypto.BLS12381,1, false, 1},
 	}
 
 	for i, tc := range testCases {
 		tc := tc
 		if tc.panics {
 			assert.Panics(t, func() {
-				MaxDataBytesNoEvidence(tc.maxBytes, tc.valsCount)
+				MaxDataBytesNoEvidence(tc.maxBytes, tc.keyType, tc.valsCount)
 			}, "#%v", i)
 		} else {
 			assert.Equal(t,
 				tc.result,
-				MaxDataBytesNoEvidence(tc.maxBytes, tc.valsCount),
+				MaxDataBytesNoEvidence(tc.maxBytes, tc.keyType, tc.valsCount),
 				"#%v", i)
 		}
 	}

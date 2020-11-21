@@ -50,10 +50,10 @@ func DefaultEvidenceParams() tmproto.EvidenceParams {
 }
 
 // DefaultValidatorParams returns a default ValidatorParams, which allows
-// only ed25519 pubkeys.
+// only bls12381 pubkeys.
 func DefaultValidatorParams() tmproto.ValidatorParams {
 	return tmproto.ValidatorParams{
-		PubKeyTypes: []string{ABCIPubKeyTypeEd25519},
+		PubKeyTypes: []string{ABCIPubKeyTypeBLS12381},
 	}
 }
 
@@ -103,6 +103,7 @@ func ValidateConsensusParams(params tmproto.ConsensusParams) error {
 		return fmt.Errorf("evidence.MaxAgeDuration must be grater than 0 if provided, Got %v",
 			params.Evidence.MaxAgeDuration)
 	}
+
 
 	if params.Evidence.MaxBytes > params.Block.MaxBytes {
 		return fmt.Errorf("evidence.MaxBytesEvidence is greater than upper bound, %d > %d",

@@ -275,11 +275,12 @@ func BlockFromProto(bp *tmproto.Block) (*Block, error) {
 // MaxDataBytes returns the maximum size of block's data.
 //
 // XXX: Panics on negative result.
-func MaxDataBytes(maxBytes, evidenceBytes int64, valsCount int) int64 {
+
+func MaxDataBytes(maxBytes int64, keyType crypto.KeyType, evidenceBytes int64, valsCount int) int64 {
 	maxDataBytes := maxBytes -
 		MaxOverheadForBlock -
 		MaxHeaderBytes -
-		MaxCommitBytes(valsCount) -
+		MaxCommitBytes(valsCount,keyType) -
 		evidenceBytes
 
 	if maxDataBytes < 0 {
@@ -298,11 +299,12 @@ func MaxDataBytes(maxBytes, evidenceBytes int64, valsCount int) int64 {
 // of evidence.
 //
 // XXX: Panics on negative result.
-func MaxDataBytesNoEvidence(maxBytes int64, valsCount int) int64 {
+
+func MaxDataBytesNoEvidence(maxBytes int64, keyType crypto.KeyType, valsCount int) int64 {
 	maxDataBytes := maxBytes -
 		MaxOverheadForBlock -
 		MaxHeaderBytes -
-		MaxCommitBytes(valsCount)
+		MaxCommitBytes(valsCount, keyType)
 
 	if maxDataBytes < 0 {
 		panic(fmt.Sprintf(
@@ -587,7 +589,10 @@ const (
 	MaxCommitOverheadBytes int64 = 94
 	// Commit sig size is made up of 64 bytes for the signature, 20 bytes for the address,
 	// 1 byte for the flag and 14 bytes for the timestamp
-	MaxCommitSigBytes int64 = 109
+	MaxCommitSigBytesEd25519 int64 = 109
+	// Commit sig size is made up of 96 bytes for the signature, 20 bytes for the address,
+	// 1 byte for the flag and 14 bytes for the timestamp
+	MaxCommitSigBytesBLS12381 int64 = 141
 )
 
 // CommitSig is a part of the Vote included in a Commit.
@@ -608,10 +613,29 @@ func NewCommitSigForBlock(signature []byte, valAddr Address, ts time.Time) Commi
 	}
 }
 
-func MaxCommitBytes(valCount int) int64 {
+func MaxCommitSigBytesForKeyType(keyType crypto.KeyType) int64 {
+	switch keyType {
+	case crypto.BLS12381:
+		return MaxCommitSigBytesBLS12381
+	case crypto.Ed25519:
+		return MaxCommitSigBytesEd25519
+	default:
+		return MaxCommitSigBytesEd25519
+	}
+}
+
+func MaxCommitBytes(valCount int, keyType crypto.KeyType) int64 {
 	// From the repeated commit sig field
-	var protoEncodingOverhead int64 = 2
-	return MaxCommitOverheadBytes + ((MaxCommitSigBytes + protoEncodingOverhead) * int64(valCount))
+	var maxCommitBytes = MaxCommitSigBytesForKeyType(keyType)
+	var protoEncodingOverhead int64
+	//protobuff encodes up to signed 128 bits with 2 extra bits, more would take 3 or more. While we could have more than 3
+	// in the case of very large signatures (maybe lattice based signatures), this is good enough for now
+	if maxCommitBytes < 128 {
+		protoEncodingOverhead = 2
+	} else {
+		protoEncodingOverhead = 3
+	}
+	return MaxCommitOverheadBytes + ((maxCommitBytes + protoEncodingOverhead) * int64(valCount))
 }
 
 // NewCommitSigAbsent returns new CommitSig with BlockIDFlagAbsent. Other

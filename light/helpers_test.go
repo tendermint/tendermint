@@ -1,10 +1,11 @@
 package light_test
 
 import (
+	"github.com/tendermint/tendermint/crypto/bls12381"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
@@ -23,10 +24,16 @@ import (
 type privKeys []crypto.PrivKey
 
 // genPrivKeys produces an array of private keys to generate commits.
-func genPrivKeys(n int) privKeys {
+func genPrivKeys(n int, keyType crypto.KeyType) privKeys {
 	res := make(privKeys, n)
 	for i := range res {
-		res[i] = ed25519.GenPrivKey()
+		if keyType == crypto.BLS12381 {
+			res[i] = bls12381.GenPrivKey()
+		} else if keyType == crypto.Ed25519 {
+			res[i] = ed25519.GenPrivKey()
+		} else {
+			res[i] = ed25519.GenPrivKey()
+		}
 	}
 	return res
 }
@@ -41,7 +48,7 @@ func genPrivKeys(n int) privKeys {
 
 // Extend adds n more keys (to remove, just take a slice).
 func (pkz privKeys) Extend(n int) privKeys {
-	extra := genPrivKeys(n)
+	extra := genPrivKeys(n, crypto.BLS12381)
 	return append(pkz, extra...)
 }
 
@@ -187,7 +194,7 @@ func genMockNodeWithKeys(
 		headers         = make(map[int64]*types.SignedHeader, blockSize)
 		valset          = make(map[int64]*types.ValidatorSet, blockSize+1)
 		keymap          = make(map[int64]privKeys, blockSize+1)
-		keys            = genPrivKeys(valSize)
+		keys            = genPrivKeys(valSize,crypto.BLS12381)
 		totalVariation  = valVariation
 		valVariationInt int
 		newKeys         privKeys

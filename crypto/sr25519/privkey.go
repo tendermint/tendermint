@@ -69,8 +69,12 @@ func (privKey PrivKey) Equals(other crypto.PrivKey) bool {
 	return false
 }
 
-func (privKey PrivKey) Type() string {
+func (privKey PrivKey) TypeIdentifier() string {
 	return keyType
+}
+
+func (privKey PrivKey) Type() crypto.KeyType {
+	return crypto.Sr25519
 }
 
 // GenPrivKey generates a new sr25519 private key.

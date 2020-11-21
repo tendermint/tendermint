@@ -19,15 +19,15 @@ import (
 
 const (
 	keyFileContents = `{
-	"address": "D08FCA3BA74CF17CBFC15E64F9505302BB0E2748",
-	"pub_key": {
-		"type": "tendermint/PubKeyEd25519",
-		"value": "ZCsuTjaczEyon70nmKxwvwu+jqrbq5OH3yQjcK0SFxc="
-		},
-	"priv_key": {
-		"type": "tendermint/PrivKeyEd25519",
-		"value": "8O39AkQsoe1sBQwud/Kdul8lg8K9SFsql9aZvwXQSt1kKy5ONpzMTKifvSeYrHC/C76Oqturk4ffJCNwrRIXFw=="
-	}
+	"address": "DDAD59BB10A10088C5A9CA219C3CF5BB4599B54E",
+  	"pub_key": {
+    	"type": "tendermint/PubKeyBLS12381",
+    	"value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"
+  	},
+  	"priv_key": {
+    	"type": "tendermint/PrivKeyBLS12381",
+    	"value": "RokcLOxJWTyBkh5HPbdIACng/B65M8a5PYH1Nw6xn70="
+  	}
 }`
 
 	stateFileContents = `{
@@ -52,16 +52,16 @@ const (
 		},
 		"validator": {
 			"pub_key_types": [
-				"ed25519"
+				"bls12381"
 			]
 		}
 	},
 	"validators": [
 		{
-		"address": "D08FCA3BA74CF17CBFC15E64F9505302BB0E2748",
+		"address": "DDAD59BB10A10088C5A9CA219C3CF5BB4599B54E",
 		"pub_key": {
-			"type": "tendermint/PubKeyEd25519",
-			"value": "ZCsuTjaczEyon70nmKxwvwu+jqrbq5OH3yQjcK0SFxc="
+			"type": "tendermint/PubKeyBLS12381",
+			"value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"
 		},
 		"power": "10",
 		"name": ""

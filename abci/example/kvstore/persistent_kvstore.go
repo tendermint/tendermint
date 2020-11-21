@@ -208,7 +208,7 @@ func isValidatorTx(tx []byte) bool {
 }
 
 // format is "val:pubkey!power"
-// pubkey is a base64-encoded 32-byte ed25519 key
+// pubkey is a base64-encoded 48-byte bls12381 key
 func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.ResponseDeliverTx {
 	tx = tx[len(ValidatorSetChangePrefix):]
 
@@ -238,7 +238,8 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 	}
 
 	// update
-	return app.updateValidator(types.UpdateValidator(pubkey, power, ""))
+
+	return app.updateValidator(types.UpdateValidator(pubkey, power))
 }
 
 // add, update, or remove a validator

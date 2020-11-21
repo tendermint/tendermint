@@ -2,6 +2,7 @@ package light_test
 
 import (
 	"context"
+	"github.com/tendermint/tendermint/crypto"
 	"sync"
 	"testing"
 	"time"
@@ -25,7 +26,7 @@ const (
 
 var (
 	ctx      = context.Background()
-	keys     = genPrivKeys(4)
+	keys     = genPrivKeys(4, crypto.BLS12381)
 	vals     = keys.ToValidators(20, 10)
 	bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
 	h1       = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
@@ -118,7 +119,7 @@ func TestMock(t *testing.T) {
 }
 
 func TestClient_SequentialVerification(t *testing.T) {
-	newKeys := genPrivKeys(4)
+	newKeys := genPrivKeys(4, crypto.BLS12381)
 	newVals := newKeys.ToValidators(10, 1)
 	differentVals, _ := types.RandValidatorSet(10, 100)
 
@@ -255,7 +256,7 @@ func TestClient_SequentialVerification(t *testing.T) {
 
 func TestClient_SkippingVerification(t *testing.T) {
 	// required for 2nd test case
-	newKeys := genPrivKeys(4)
+	newKeys := genPrivKeys(4, crypto.BLS12381)
 	newVals := newKeys.ToValidators(10, 1)
 
 	// 1/3+ of vals, 2/3- of newVals

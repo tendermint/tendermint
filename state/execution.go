@@ -3,6 +3,7 @@ package state
 import (
 	"errors"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -89,7 +90,7 @@ func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) 
 
 // CreateProposalBlock calls state.MakeBlock with evidence from the evpool
 // and txs from the mempool. The max bytes must be big enough to fit the commit.
-// Up to 1/10th of the block space is allcoated for maximum sized evidence.
+// Up to 1/10th of the block space is allocated for maximum sized evidence.
 // The rest is given to txs, up to the max gas.
 func (blockExec *BlockExecutor) CreateProposalBlock(
 	height int64,
@@ -103,7 +104,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	evidence, evSize := blockExec.evpool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
 
 	// Fetch a limited amount of valid txs
-	maxDataBytes := types.MaxDataBytes(maxBytes, evSize, state.Validators.Size())
+	maxDataBytes := types.MaxDataBytes(maxBytes, crypto.BLS12381, evSize, state.Validators.Size())
 
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
@@ -389,9 +390,9 @@ func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
 			return err
 		}
 
-		if !types.IsValidPubkeyType(params, pk.Type()) {
+		if !types.IsValidPubkeyType(params, pk.TypeIdentifier()) {
 			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
-				valUpdate, pk.Type())
+				valUpdate, pk.TypeIdentifier())
 		}
 	}
 	return nil

@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"bytes"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
@@ -44,7 +44,7 @@ func TestNodeKeySaveAs(t *testing.T) {
 
 	assert.NoFileExists(t, filePath)
 
-	privKey := ed25519.GenPrivKey()
+	privKey := bls12381.GenPrivKey()
 	nodeKey := &NodeKey{
 		PrivKey: privKey,
 	}

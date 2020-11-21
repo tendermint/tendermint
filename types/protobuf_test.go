@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,13 +9,12 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 )
 
 func TestABCIPubKey(t *testing.T) {
-	pkEd := ed25519.GenPrivKey().PubKey()
-	err := testABCIPubKey(t, pkEd, ABCIPubKeyTypeEd25519)
+	pkBLS := bls12381.GenPrivKey().PubKey()
+	err := testABCIPubKey(t, pkBLS, ABCIPubKeyTypeEd25519)
 	assert.NoError(t, err)
 }
 
@@ -28,7 +28,7 @@ func testABCIPubKey(t *testing.T, pk crypto.PubKey, typeStr string) error {
 }
 
 func TestABCIValidators(t *testing.T) {
-	pkEd := ed25519.GenPrivKey().PubKey()
+	pkEd := bls12381.GenPrivKey().PubKey()
 
 	// correct validator
 	tmValExpected := NewValidator(pkEd, 10)
@@ -60,33 +60,34 @@ func TestABCIConsensusParams(t *testing.T) {
 	assert.Equal(t, *cp, cp2)
 }
 
-type pubKeyEddie struct{}
+type pubKeyBLS struct{}
 
-func (pubKeyEddie) Address() Address                            { return []byte{} }
-func (pubKeyEddie) Bytes() []byte                               { return []byte{} }
-func (pubKeyEddie) VerifySignature(msg []byte, sig []byte) bool { return false }
-func (pubKeyEddie) Equals(crypto.PubKey) bool                   { return false }
-func (pubKeyEddie) String() string                              { return "" }
-func (pubKeyEddie) Type() string                                { return "pubKeyEddie" }
+func (pubKeyBLS) Address() Address                        { return []byte{} }
+func (pubKeyBLS) Bytes() []byte                           { return []byte{} }
+func (pubKeyBLS) VerifySignature(msg []byte, sig []byte) bool { return false }
+func (pubKeyBLS) Equals(crypto.PubKey) bool               { return false }
+func (pubKeyBLS) String() string                          { return "" }
+func (pubKeyBLS) TypeIdentifier() string                  { return "pubKeyBLS12381" }
+func (pubKeyBLS) Type() crypto.KeyType                    { return crypto.BLS12381 }
 
 func TestABCIValidatorFromPubKeyAndPower(t *testing.T) {
-	pubkey := ed25519.GenPrivKey().PubKey()
+	pubkey := bls12381.GenPrivKey().PubKey()
 
 	abciVal := TM2PB.NewValidatorUpdate(pubkey, 10)
 	assert.Equal(t, int64(10), abciVal.Power)
 
 	assert.Panics(t, func() { TM2PB.NewValidatorUpdate(nil, 10) })
-	assert.Panics(t, func() { TM2PB.NewValidatorUpdate(pubKeyEddie{}, 10) })
+	assert.Panics(t, func() { TM2PB.NewValidatorUpdate(pubKeyBLS{}, 10) })
 }
 
 func TestABCIValidatorWithoutPubKey(t *testing.T) {
-	pkEd := ed25519.GenPrivKey().PubKey()
+	pkBLS := bls12381.GenPrivKey().PubKey()
 
-	abciVal := TM2PB.Validator(NewValidator(pkEd, 10))
+	abciVal := TM2PB.Validator(NewValidator(pkBLS, 10))
 
 	// pubkey must be nil
 	tmValExpected := abci.Validator{
-		Address: pkEd.Address(),
+		Address: pkBLS.Address(),
 		Power:   10,
 	}
 

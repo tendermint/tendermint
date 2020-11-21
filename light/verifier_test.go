@@ -2,6 +2,7 @@ package light_test
 
 import (
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"testing"
 	"time"
 
@@ -24,7 +25,7 @@ func TestVerifyAdjacentHeaders(t *testing.T) {
 	)
 
 	var (
-		keys = genPrivKeys(4)
+		keys = genPrivKeys(4, crypto.BLS12381)
 		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
 		vals     = keys.ToValidators(20, 10)
 		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
@@ -176,7 +177,7 @@ func TestVerifyNonAdjacentHeaders(t *testing.T) {
 	)
 
 	var (
-		keys = genPrivKeys(4)
+		keys = genPrivKeys(4, crypto.BLS12381)
 		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
 		vals     = keys.ToValidators(20, 10)
 		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
@@ -292,7 +293,7 @@ func TestVerifyReturnsErrorIfTrustLevelIsInvalid(t *testing.T) {
 	)
 
 	var (
-		keys = genPrivKeys(4)
+		keys = genPrivKeys(4, crypto.BLS12381)
 		// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
 		vals     = keys.ToValidators(20, 10)
 		bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")

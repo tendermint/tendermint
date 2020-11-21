@@ -58,8 +58,12 @@ func (privKey PrivKey) Equals(other crypto.PrivKey) bool {
 	return false
 }
 
-func (privKey PrivKey) Type() string {
+func (privKey PrivKey) TypeIdentifier() string {
 	return KeyType
+}
+
+func (privKey PrivKey) Type() crypto.KeyType {
+	return crypto.Secp256k1
 }
 
 // GenPrivKey generates a new ECDSA private key on curve secp256k1 private key.
@@ -161,13 +165,17 @@ func (pubKey PubKey) String() string {
 	return fmt.Sprintf("PubKeySecp256k1{%X}", pubKey[:])
 }
 
+func (pubKey PubKey) TypeIdentifier() string {
+	return KeyType
+}
+
+func (pubKey PubKey) Type() crypto.KeyType {
+	return crypto.Secp256k1
+}
+
 func (pubKey PubKey) Equals(other crypto.PubKey) bool {
 	if otherSecp, ok := other.(PubKey); ok {
 		return bytes.Equal(pubKey[:], otherSecp[:])
 	}
 	return false
-}
-
-func (pubKey PubKey) Type() string {
-	return KeyType
 }

@@ -5,7 +5,7 @@ on:
     branches:
       - master
       - release/**
-
+​
 jobs:
   split-test-files:
     runs-on: ubuntu-latest
@@ -32,7 +32,6 @@ jobs:
         with:
           name: "${{ github.sha }}-03"
           path: ./pkgs.txt.part.03
-
   tests:
     runs-on: ubuntu-latest
     needs: split-test-files
@@ -55,15 +54,23 @@ jobs:
         with:
           name: "${{ github.sha }}-${{ matrix.part }}"
         if: env.GIT_DIFF
+      - name: Set GOPATH
+        run: |
+          echo "::set-env name=GOPATH::$(go env GOPATH)"
+      - name: Set CGO_LDFLAGS
+        run: |
+          echo "::set-env name=CGO_LDFLAGS::"-L${GOPATH}/src/github.com/quantumexplorer/bls-signatures/build""
+      - name: Set CGO_CXXFLAGS
+        run: |
+          echo "::set-env name=CGO_CXXFLAGS::"-I${GOPATH}/src/github.com/quantumexplorer/bls-signatures/src -I${GOPATH}/src/github.com/quantumexplorer/bls-signatures/contrib/relic/include -I${GOPATH}/src/github.com/quantumexplorer/bls-signatures/build/contrib/relic/include""
       - name: test & coverage report creation
         run: |
-          cat pkgs.txt.part.${{ matrix.part }} | xargs go test -mod=readonly -timeout 8m -race -coverprofile=${{ matrix.part }}profile.out -covermode=atomic
+          (echo "Gopath: $CGO_CXXFLAGS") && (cat pkgs.txt.part.${{ matrix.part }} | xargs CGO_CXXFLAGS="$CGO_CXXFLAGS" CGO_LDFLAGS="$CGO_LDFLAGS" go test -mod=readonly -timeout 8m -race -coverprofile=${{ matrix.part }}profile.out -covermode=atomic)
         if: env.GIT_DIFF
       - uses: actions/upload-artifact@v2
         with:
           name: "${{ github.sha }}-${{ matrix.part }}-coverage"
           path: ./${{ matrix.part }}profile.out
-
   upload-coverage-report:
     runs-on: ubuntu-latest
     needs: tests

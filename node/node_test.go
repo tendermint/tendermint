@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"net"
 	"os"
 	"syscall"
@@ -346,7 +347,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	mempool.SetLogger(logger)
 
 	// fill the mempool with one txs just below the maximum size
-	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, 1))
+	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, crypto.BLS12381, 1))
 	tx := tmrand.Bytes(txLength - 4) // to account for the varint
 	err = mempool.CheckTx(tx, nil, mempl.TxInfo{})
 	assert.NoError(t, err)

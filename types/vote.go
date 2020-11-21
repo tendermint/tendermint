@@ -14,7 +14,20 @@ import (
 
 const (
 	nilVoteStr string = "nil-Vote"
+	// MaxVoteBytes is a maximum vote size (including amino overhead).
+	MaxVoteBytesBLS12381 int64  = 241
+	MaxVoteBytesEd25519 int64 = 209
 )
+
+func MaxVoteBytesForKeyType(keyType crypto.KeyType) int64 {
+	switch keyType {
+	case crypto.Ed25519:
+		return MaxVoteBytesEd25519
+	case crypto.BLS12381:
+		return MaxVoteBytesBLS12381
+	}
+	return MaxVoteBytesBLS12381
+}
 
 var (
 	ErrVoteUnexpectedStep            = errors.New("unexpected step")
