@@ -297,7 +297,7 @@ func newMConnConnection(
 		if err != nil {
 			err = ErrRejected{
 				conn:          tcpConn,
-				err:           fmt.Errorf("secret conn failed: %v", err),
+				err:           fmt.Errorf("mconn failed: %v", err),
 				isAuthFailure: true,
 			}
 			return
@@ -307,17 +307,20 @@ func newMConnConnection(
 		conn.secretConn,
 		transport.channelDescs,
 		func(chID byte, bz []byte) {
-			fmt.Printf("recv bytes on channel %v\n", chID)
+			fmt.Printf("recv bytes on channel 0x%x\n", chID)
 			if stream, ok := conn.streams[chID]; ok {
 				bzCopy := make([]byte, len(bz))
 				copy(bzCopy, bz)
 				stream.chReceive <- bzCopy
-				fmt.Printf("sent bytes to channel %v\n", chID)
+				fmt.Printf("queued bytes for channel 0x%x\n", chID)
 			} else {
-				fmt.Printf("unknown stream %v\n", chID)
+				fmt.Printf("unknown stream 0x%x\n", chID)
 			}
 		},
-		func(err interface{}) { panic(fmt.Sprintf("onError: %v", err)) },
+		func(err interface{}) {
+			fmt.Printf("connection error: %v\n", err)
+			_ = conn.Close()
+		},
 		transport.mConnConfig,
 	)
 	//err = conn.mConn.Start()
@@ -410,7 +413,7 @@ func (s *mConnStream) Close() error {
 // Write implements Stream.
 func (s *mConnStream) Write(bz []byte) (int, error) {
 	if !s.connection.mConn.Send(s.id, bz) {
-		return 0, errors.New("MConn send failed")
+		return 0, errors.New(fmt.Sprintf("MConn send failed for stream 0x%x", s.id))
 	}
 	return len(bz), nil
 }

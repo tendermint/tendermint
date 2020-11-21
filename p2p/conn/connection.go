@@ -349,6 +349,7 @@ func (c *MConnection) stopForError(r interface{}) {
 // Queues a message to be sent to channel.
 func (c *MConnection) Send(chID byte, msgBytes []byte) bool {
 	if !c.IsRunning() {
+		c.Logger.Error(fmt.Sprintf("Connection not running for ch %x\n", chID))
 		return false
 	}
 
@@ -369,7 +370,7 @@ func (c *MConnection) Send(chID byte, msgBytes []byte) bool {
 		default:
 		}
 	} else {
-		c.Logger.Debug("Send failed", "channel", chID, "conn", c, "msgBytes", fmt.Sprintf("%X", msgBytes))
+		c.Logger.Error("Send failed", "channel", chID, "conn", c, "msgBytes", fmt.Sprintf("%X", msgBytes))
 	}
 	return success
 }

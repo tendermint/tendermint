@@ -91,11 +91,12 @@ type peer struct {
 	// peer's node info and the channel it knows about
 	// channels = nodeInfo.Channels
 	// cached to avoid copying nodeInfo in hasChannel
-	nodeInfo NodeInfo
-	channels []byte
-	chDescs  []*ChannelDescriptor
-	streams  map[byte]Stream
-	reactors map[byte]Reactor
+	nodeInfo    NodeInfo
+	channels    []byte
+	chDescs     []*ChannelDescriptor
+	streams     map[byte]Stream
+	reactors    map[byte]Reactor
+	onPeerError func(Peer, interface{})
 
 	// User data
 	Data *cmap.CMap
@@ -121,6 +122,7 @@ func newPeer(
 		chDescs:       chDescs,
 		reactors:      reactorsByCh,
 		streams:       map[byte]Stream{},
+		onPeerError:   onPeerError,
 		Data:          cmap.NewCMap(),
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),
@@ -172,20 +174,21 @@ func (p *peer) OnStart() error {
 			return err
 		}
 		p.streams[chDesc.ID] = stream
-		fmt.Printf("Peer %v opened stream %v\n", p.ID(), chDesc.ID)
+		fmt.Printf("Peer %v opened stream for channel 0x%x\n", p.ID(), chDesc.ID)
 
 		go func(chDesc *tmconn.ChannelDescriptor, stream Stream, reactor Reactor) {
+			bz := make([]byte, chDesc.RecvMessageCapacity)
 			for {
-				fmt.Printf("reading from channel %v\n", chDesc.ID)
-				bz := make([]byte, chDesc.RecvMessageCapacity)
+				fmt.Printf("reading from channel 0x%x\n", chDesc.ID)
 				n, err := stream.Read(bz)
 				if err != nil {
 					p.Logger.Error(fmt.Sprintf("stream read failed: %v", err))
+					p.onPeerError(p, err)
 					continue
 				}
-				fmt.Printf("read %v bytes from channel %v\n", n, chDesc.ID)
+				fmt.Printf("read %v bytes from channel 0x%x\n", n, chDesc.ID)
 				reactor.Receive(chDesc.ID, p, bz[:n])
-				fmt.Println("called reactor.Receive()")
+				fmt.Printf("called Receive() on reactor %v for channel 0x%x\n", reactor, chDesc.ID)
 			}
 		}(chDesc, stream, p.reactors[chDesc.ID])
 	}
@@ -270,7 +273,8 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	}
 	_, err := p.streams[chID].Write(msgBytes)
 	if err != nil {
-		p.Logger.Error(fmt.Sprintf("Failed to send on stream %v: %v", chID, err))
+		p.Logger.Error(fmt.Sprintf("Failed to send on channel 0x%x: %v", chID, err))
+		p.onPeerError(p, err)
 		return false
 	}
 	labels := []string{
@@ -291,7 +295,8 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	}
 	_, err := p.streams[chID].Write(msgBytes)
 	if err != nil {
-		p.Logger.Error(fmt.Sprintf("Failed to send on stream %v: %v", chID, err))
+		p.Logger.Error(fmt.Sprintf("Failed to send on channel 0x%x: %v", chID, err))
+		p.onPeerError(p, err)
 		return false
 	}
 	labels := []string{
