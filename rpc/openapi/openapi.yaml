@@ -54,7 +54,7 @@ info:
   version: "Master"
   license:
     name: Apache 2.0
-    url: https://github.com/tendermint/tendermint/blob/master/LICENSE
+    url: https://github.com/dashevo/tenderdash/blob/master/LICENSE
 servers:
   - url: https://rpc.cosmos.network
     description: Cosmos mainnet node to interact with the Tendermint RPC

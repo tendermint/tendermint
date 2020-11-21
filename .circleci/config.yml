@@ -4,7 +4,7 @@ executors:
   golang:
     docker:
       - image: tendermintdev/docker-tendermint-build
-    working_directory: /go/src/github.com/tendermint/tendermint
+    working_directory: /go/src/github.com/dashevo/tenderdash
     environment:
       GOBIN: /tmp/bin
   release:
@@ -120,7 +120,7 @@ jobs:
 
   # # Test RPC implementation against the swagger documented specs
   # contract_tests:
-  #   working_directory: /home/circleci/.go_workspace/src/github.com/tendermint/tendermint
+  #   working_directory: /home/circleci/.go_workspace/src/github.com/dashevo/tenderdash
   #   machine:
   #     image: circleci/classic:latest
   #   environment:
@@ -139,7 +139,7 @@ jobs:
   #           # install node and dredd
   #           ./scripts/get_nodejs.sh
   #           # build the binaries with a proper version of Go
-  #           docker run --rm -v "$PWD":/go/src/github.com/tendermint/tendermint -w /go/src/github.com/tendermint/tendermint golang make build-linux build-contract-tests-hooks
+  #           docker run --rm -v "$PWD":/go/src/github.com/dashevo/tenderdash -w /go/src/github.com/tendermint/tendermint golang make build-linux build-contract-tests-hooks
   #           # This docker image works with go 1.7, we can install here the hook handler that contract-tests is going to use
   #           go get github.com/snikch/goodman/cmd/goodman
   #           make contract-tests

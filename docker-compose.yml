@@ -3,7 +3,7 @@ version: '3'
 services:
   node0:
     container_name: node0
-    image: "tendermint/localnode"
+    image: "dashpay/tenderdash:localnode"
     ports:
       - "26656-26657:26656-26657"
     environment:
@@ -17,7 +17,7 @@ services:
 
   node1:
     container_name: node1
-    image: "tendermint/localnode"
+    image: "dashpay/tenderdash:localnode"
     ports:
       - "26659-26660:26656-26657"
     environment:
@@ -31,7 +31,7 @@ services:
 
   node2:
     container_name: node2
-    image: "tendermint/localnode"
+    image: "dashpay/tenderdash:localnode"
     environment:
       - ID=2
       - LOG=${LOG:-tendermint.log}
@@ -45,7 +45,7 @@ services:
 
   node3:
     container_name: node3
-    image: "tendermint/localnode"
+    image: "dashpay/tenderdash:localnode"
     environment:
       - ID=3
       - LOG=${LOG:-tendermint.log}

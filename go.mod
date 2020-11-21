@@ -33,3 +33,5 @@ require (
 	golang.org/x/net v0.0.0-20200822124328-c89045814202
 	google.golang.org/grpc v1.33.2
 )
+
+replace github.com/tendermint/tendermint => ./

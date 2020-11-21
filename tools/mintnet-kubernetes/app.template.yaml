@@ -64,7 +64,7 @@ spec:
       annotations:
         pod.beta.kubernetes.io/init-containers: '[{
           "name": "tm-gen-validator",
-          "image": "tendermint/tendermint:0.10.0",
+          "image": "dashpay/tenderdash:0.10.0",
           "imagePullPolicy": "IfNotPresent",
           "command": ["bash", "-c", "
             set -ex\n
@@ -82,7 +82,7 @@ spec:
       containers:
       - name: tm
         imagePullPolicy: IfNotPresent
-        image: tendermint/tendermint:0.10.0
+        image: dashpay/tenderdash:0.10.0
         resources:
           requests:
             cpu: 50m

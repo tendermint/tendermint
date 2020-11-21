@@ -11,9 +11,9 @@ module.exports = {
   // },
   base: process.env.VUEPRESS_BASE,
   themeConfig: {
-    repo: 'tendermint/tendermint',
-    docsRepo: 'tendermint/tendermint',
-    docsDir: 'docs',
+    repo: 'tendermint/tenderdash',
+    docsRepo: 'tendermint/tenderdash',
+    docsDir: "docs",
     editLinks: true,
     label: 'core',
     algolia: {
@@ -138,11 +138,11 @@ module.exports = {
           children: [
             {
               title: 'Contributing to the docs',
-              url: 'https://github.com/tendermint/tendermint'
+              url: 'https://github.com/dashevo/tenderdash'
             },
             {
               title: 'Source code on GitHub',
-              url: 'https://github.com/tendermint/tendermint'
+              url: 'https://github.com/dashevo/tenderdash'
             },
             {
               title: 'Careers at Tendermint',

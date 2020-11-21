@@ -14,7 +14,7 @@ With Docker Compose, you can spin up local testnets with a single command.
 
 ## Build
 
-Build the `tendermint` binary and, optionally, the `tendermint/localnode`
+Build the `tendermint` binary and, optionally, the `dashpay/tenderdash:localnode`
 docker image.
 
 Note the binary will be mounted into the container so it can be updated without
@@ -24,7 +24,7 @@ rebuilding the image.
 # Build the linux binary in ./build
 make build-linux
 
-# (optionally) Build tendermint/localnode image
+# (optionally) Build dashpay/tenderdash:localnode image
 make build-docker-localnode
 ```
 
@@ -63,7 +63,7 @@ To change the number of validators / non-validators change the `localnet-start` 
 
 ```makefile
 localnet-start: localnet-stop
-  @if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --v 5 --n 3 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2 ; fi
+  @if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z dashpay/tenderdash:localnode testnet --v 5 --n 3 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2 ; fi
   docker-compose up
 ```
 
@@ -150,7 +150,7 @@ Override the [command](https://github.com/tendermint/tendermint/blob/master/netw
 ```yml
   node0:
     container_name: node0
-    image: "tendermint/localnode"
+    image: "dashpay/tenderdash:localnode"
     ports:
       - "26656-26657:26656-26657"
     environment:
