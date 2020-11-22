@@ -159,7 +159,6 @@ func (p *peer) String() string {
 // SetLogger implements BaseService.
 func (p *peer) SetLogger(l log.Logger) {
 	p.Logger = l
-	p.conn.(*mConnConnection).mConn.SetLogger(l)
 }
 
 // OnStart implements BaseService.
@@ -191,11 +190,6 @@ func (p *peer) OnStart() error {
 				fmt.Printf("called Receive() on reactor %v for channel 0x%x\n", reactor, chDesc.ID)
 			}
 		}(chDesc, stream, p.reactors[chDesc.ID])
-	}
-
-	err := p.conn.(*mConnConnection).mConn.Start()
-	if err != nil {
-		return err
 	}
 
 	go p.metricsReporter()

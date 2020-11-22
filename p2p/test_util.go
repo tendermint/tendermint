@@ -197,11 +197,13 @@ func MakeSwitch(
 		Port:     addr.Port,
 	}
 
-	t := NewMConnTransport(nodeInfo, nodeKey.PrivKey, MConnConfig(cfg))
+	logger := log.TestingLogger().With("switch", i)
+
+	t := NewMConnTransport(logger, nodeInfo, nodeKey.PrivKey, MConnConfig(cfg)).(*mConnTransport)
 
 	// TODO: let the config be passed in?
 	sw := initSwitch(i, NewSwitch(cfg, t, opts...))
-	sw.SetLogger(log.TestingLogger().With("switch", i))
+	sw.SetLogger(logger)
 	sw.SetNodeKey(&nodeKey)
 
 	if err := t.Listen(endpoint); err != nil {

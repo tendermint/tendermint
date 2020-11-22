@@ -233,7 +233,7 @@ func (sw *Switch) OnStart() error {
 	// FIXME Temporary hack to pass channel descriptors to MConn transport,
 	// since they are not available when it is constructed. This will be
 	// fixed when we implement the new router abstraction.
-	if t, ok := sw.transport.(*MConnTransport); ok {
+	if t, ok := sw.transport.(*mConnTransport); ok {
 		t.channelDescs = sw.chDescs
 	}
 
@@ -370,7 +370,6 @@ func (sw *Switch) StopPeerGracefully(peer Peer) {
 }
 
 func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
-	//sw.transport.(*MConnTransport).mconn.Cleanup(peer) // FIXME
 	if err := peer.Stop(); err != nil {
 		sw.Logger.Error("error while stopping peer", "error", err) // TODO: should return error to be handled accordingly
 	}
@@ -700,16 +699,14 @@ func (sw *Switch) acceptRoutine() {
 					"have", in,
 					"max", sw.config.MaxNumInboundPeers,
 				)
-
-				//sw.transport.(*MConnTransport).mconn.Cleanup(p) // FIXME
-
+				_ = p.CloseConn()
 				continue
 			}
 
 		}
 
 		if err := sw.addPeer(p); err != nil {
-			//sw.transport.(*MConnTransport).mconn.Cleanup(p) // FIXME
+			_ = p.CloseConn()
 			if p.IsRunning() {
 				_ = p.Stop()
 			}
@@ -776,7 +773,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	)
 
 	if err := sw.addPeer(p); err != nil {
-		//sw.transport.(*MConnTransport).mconn.Cleanup(p) // FIXME
+		_ = p.CloseConn()
 		if p.IsRunning() {
 			_ = p.Stop()
 		}

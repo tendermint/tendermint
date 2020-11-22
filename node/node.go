@@ -181,7 +181,7 @@ type Node struct {
 	privValidator types.PrivValidator // local node's validator key
 
 	// network
-	transport   *p2p.MConnTransport
+	transport   p2p.Transport
 	sw          *p2p.Switch  // p2p connections
 	addrBook    pex.AddrBook // known peers
 	nodeInfo    p2p.NodeInfo
@@ -412,12 +412,13 @@ func createConsensusReactor(config *cfg.Config,
 }
 
 func createTransport(
+	logger log.Logger,
 	config *cfg.Config,
 	nodeInfo p2p.NodeInfo,
 	nodeKey *p2p.NodeKey,
 	proxyApp proxy.AppConns,
 ) (
-	*p2p.MConnTransport,
+	p2p.Transport,
 	[]p2p.PeerFilterFunc,
 ) {
 	var (
@@ -472,7 +473,10 @@ func createTransport(
 	// Limit the number of incoming connections.
 	max := config.P2P.MaxNumInboundPeers + len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
 
-	transport := p2p.NewMConnTransport(nodeInfo, nodeKey.PrivKey, p2p.MConnConfig(config.P2P),
+	logger = logger.With("module", "transport")
+
+	transport := p2p.NewMConnTransport(
+		logger, nodeInfo, nodeKey.PrivKey, p2p.MConnConfig(config.P2P),
 		p2p.MConnTransportConnFilters(connFilters...),
 		p2p.MConnTransportMaxIncomingConnections(max),
 	)
@@ -758,11 +762,9 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	// Setup Transport.
-	transport, peerFilters := createTransport(config, nodeInfo, nodeKey, proxyApp)
-
-	// Setup Switch.
+	// Setup Transport and Switch.
 	p2pLogger := logger.With("module", "p2p")
+	transport, peerFilters := createTransport(p2pLogger, config, nodeInfo, nodeKey, proxyApp)
 	sw := createSwitch(
 		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
 		stateSyncReactor, consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
@@ -871,6 +873,20 @@ func (n *Node) OnStart() error {
 		n.prometheusSrv = n.startPrometheusServer(n.config.Instrumentation.PrometheusListenAddr)
 	}
 
+	// Start the mempool.
+	if n.config.Mempool.WalEnabled() {
+		err := n.mempool.InitWAL()
+		if err != nil {
+			return fmt.Errorf("init mempool WAL: %w", err)
+		}
+	}
+
+	// Start the switch (the P2P server).
+	err := n.sw.Start()
+	if err != nil {
+		return err
+	}
+
 	// Start the transport.
 	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(n.nodeKey.ID(), n.config.P2P.ListenAddress))
 	if err != nil {
@@ -887,19 +903,6 @@ func (n *Node) OnStart() error {
 	}
 
 	n.isListening = true
-
-	if n.config.Mempool.WalEnabled() {
-		err = n.mempool.InitWAL()
-		if err != nil {
-			return fmt.Errorf("init mempool WAL: %w", err)
-		}
-	}
-
-	// Start the switch (the P2P server).
-	err = n.sw.Start()
-	if err != nil {
-		return err
-	}
 
 	// Always connect to persistent peers
 	err = n.sw.DialPeersAsync(splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
