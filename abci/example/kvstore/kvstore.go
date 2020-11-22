@@ -120,6 +120,10 @@ func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
 
+func (app *Application) CheckQuorumSignature(req types.RequestCheckQuorumSignature) types.ResponseCheckQuorumSignature {
+	return types.ResponseCheckQuorumSignature{Code: code.CodeTypeOK}
+}
+
 func (app *Application) Commit() types.ResponseCommit {
 	// Using a memdb - just return the big endian size of the db
 	appHash := make([]byte, 8)

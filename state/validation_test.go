@@ -34,6 +34,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
+		proxyApp.Query(),
 		memmock.Mempool{},
 		sm.EmptyEvidencePool{},
 	)
@@ -105,6 +106,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
+		proxyApp.Query(),
 		memmock.Mempool{},
 		sm.EmptyEvidencePool{},
 	)
@@ -228,6 +230,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 		stateStore,
 		log.TestingLogger(),
 		proxyApp.Consensus(),
+		proxyApp.Query(),
 		memmock.Mempool{},
 		evpool,
 	)

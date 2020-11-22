@@ -2,6 +2,9 @@ package types
 
 import (
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -33,6 +36,26 @@ func ValidateHash(h []byte) error {
 	if len(h) > 0 && len(h) != tmhash.Size {
 		return fmt.Errorf("expected size to be %d bytes, got %d bytes",
 			tmhash.Size,
+			len(h),
+		)
+	}
+	return nil
+}
+
+// ValidateSignature returns an error if the signature is not empty, but its
+// size != tmhash.Size.
+func ValidateSignatureSize(keyType crypto.KeyType, h []byte) error {
+	var signatureSize = int(64) //default
+	switch keyType {
+	case crypto.Ed25519:
+		signatureSize = ed25519.SignatureSize
+		break
+	case crypto.BLS12381:
+		signatureSize = bls12381.SignatureSize
+	}
+	if len(h) > 0 && len(h) != signatureSize {
+		return fmt.Errorf("expected size to be %d bytes, got %d bytes",
+			bls12381.SignatureSize,
 			len(h),
 		)
 	}

@@ -125,7 +125,6 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 	ev.Timestamp = defaultEvidenceTime.Add(1 * time.Minute)
 	err = pool.CheckEvidence(evList)
 	assert.Error(t, err)
-
 }
 
 func TestVerifyLightClientAttack_Equivocation(t *testing.T) {

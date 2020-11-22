@@ -63,6 +63,19 @@ func newMockProxyApp(appHash []byte, abciResponses *tmstate.ABCIResponses) proxy
 	return proxy.NewAppConnConsensus(cli)
 }
 
+func newMockProxyQry(appHash []byte, abciResponses *tmstate.ABCIResponses) proxy.AppConnQuery {
+	clientCreator := proxy.NewLocalClientCreator(&mockProxyApp{
+		appHash:       appHash,
+		abciResponses: abciResponses,
+	})
+	cli, _ := clientCreator.NewABCIClient()
+	err := cli.Start()
+	if err != nil {
+		panic(err)
+	}
+	return proxy.NewAppConnQuery(cli)
+}
+
 type mockProxyApp struct {
 	abci.BaseApplication
 

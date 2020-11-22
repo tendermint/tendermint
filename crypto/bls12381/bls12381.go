@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"crypto/subtle"
 	"fmt"
-	"io"
-
 	bls "github.com/dashpay/bls-signatures/go-bindings"
+	"io"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -54,6 +53,9 @@ func (privKey PrivKey) Bytes() []byte {
 // If these conditions aren't met, Sign will panic or produce an
 // incorrect signature.
 func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
+	if len(privKey.Bytes()) != PrivateKeySize {
+		panic(fmt.Sprintf("incorrect private key %d bytes but expected %d bytes", len(privKey.Bytes()), PrivateKeySize))
+	}
 	// set modOrder flag to true so that too big random bytes will wrap around and be a valid key
 	blsPrivateKey, err := bls.PrivateKeyFromBytes(privKey, true)
 	if err != nil {
@@ -67,6 +69,9 @@ func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 //
 // Panics if the private key is not initialized.
 func (privKey PrivKey) PubKey() crypto.PubKey {
+	if len(privKey.Bytes()) != PrivateKeySize {
+		panic(fmt.Sprintf("incorrect private key %d bytes but expected %d bytes", len(privKey.Bytes()), PrivateKeySize))
+	}
 	// set modOrder flag to true so that too big random bytes will wrap around and be a valid key
 	blsPrivateKey, err := bls.PrivateKeyFromBytes(privKey, true)
 	if err != nil {

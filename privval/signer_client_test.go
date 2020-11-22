@@ -121,6 +121,7 @@ func TestSignerProposal(t *testing.T) {
 		have := &types.Proposal{
 			Type:      tmproto.ProposalType,
 			Height:    1,
+			CoreChainLockedHeight: 1,
 			Round:     2,
 			POLRound:  2,
 			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
@@ -129,6 +130,7 @@ func TestSignerProposal(t *testing.T) {
 		want := &types.Proposal{
 			Type:      tmproto.ProposalType,
 			Height:    1,
+			CoreChainLockedHeight: 1,
 			Round:     2,
 			POLRound:  2,
 			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
@@ -328,6 +330,7 @@ func TestSignerSignProposalErrors(t *testing.T) {
 		proposal := &types.Proposal{
 			Type:      tmproto.ProposalType,
 			Height:    1,
+			CoreChainLockedHeight: 1,
 			Round:     2,
 			POLRound:  2,
 			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},

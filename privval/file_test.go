@@ -230,7 +230,7 @@ func TestSignProposal(t *testing.T) {
 	height, round := int64(10), int32(1)
 
 	// sign a proposal for first time
-	proposal := newProposal(height, round, block1)
+	proposal := newProposal(height, 1, round, block1)
 	pbp := proposal.ToProto()
 	err = privVal.SignProposal("mychainid", pbp)
 	assert.NoError(err, "expected no error signing proposal")
@@ -241,10 +241,10 @@ func TestSignProposal(t *testing.T) {
 
 	// now try some bad Proposals
 	cases := []*types.Proposal{
-		newProposal(height, round-1, block1),   // round regression
-		newProposal(height-1, round, block1),   // height regression
-		newProposal(height-2, round+4, block1), // height regression and different round
-		newProposal(height, round, block2),     // different block
+		newProposal(height, 1, round-1, block1),   // round regression
+		newProposal(height-1, 1, round, block1),   // height regression
+		newProposal(height-2, 1, round+4, block1), // height regression and different round
+		newProposal(height, 1, round, block2),     // different block
 	}
 
 	for _, c := range cases {
@@ -274,7 +274,7 @@ func TestDifferByTimestamp(t *testing.T) {
 
 	// test proposal
 	{
-		proposal := newProposal(height, round, block1)
+		proposal := newProposal(height, 1, round, block1)
 		pb := proposal.ToProto()
 		err := privVal.SignProposal(chainID, pb)
 		assert.NoError(t, err, "expected no error signing proposal")
@@ -334,9 +334,10 @@ func newVote(addr types.Address, idx int32, height int64, round int32,
 	}
 }
 
-func newProposal(height int64, round int32, blockID types.BlockID) *types.Proposal {
+func newProposal(height int64, coreChainLockedHeight uint32, round int32, blockID types.BlockID) *types.Proposal {
 	return &types.Proposal{
 		Height:    height,
+		CoreChainLockedHeight: coreChainLockedHeight,
 		Round:     round,
 		BlockID:   blockID,
 		Timestamp: tmtime.Now(),

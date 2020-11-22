@@ -30,6 +30,7 @@ type BlockExecutor struct {
 
 	// execute the app against this
 	proxyApp proxy.AppConnConsensus
+	queryApp proxy.AppConnQuery
 
 	// events
 	eventBus types.BlockEventPublisher
@@ -58,6 +59,7 @@ func NewBlockExecutor(
 	stateStore Store,
 	logger log.Logger,
 	proxyApp proxy.AppConnConsensus,
+	queryApp proxy.AppConnQuery,
 	mempool mempl.Mempool,
 	evpool EvidencePool,
 	options ...BlockExecutorOption,
@@ -65,6 +67,7 @@ func NewBlockExecutor(
 	res := &BlockExecutor{
 		store:    stateStore,
 		proxyApp: proxyApp,
+		queryApp: queryApp,
 		eventBus: types.NopEventBus{},
 		mempool:  mempool,
 		evpool:   evpool,
@@ -117,7 +120,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 // Validation does not mutate state, but does require historical information from the stateDB,
 // ie. to verify evidence from a validator at an old height.
 func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) error {
-	err := validateBlock(state, block)
+	err := validateBlock(blockExec.queryApp, state, block)
 	if err != nil {
 		return err
 	}
@@ -134,7 +137,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	state State, blockID types.BlockID, block *types.Block,
 ) (State, int64, error) {
 
-	if err := validateBlock(state, block); err != nil {
+	if err := validateBlock(blockExec.queryApp, state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
 	}
 
@@ -158,6 +161,10 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// validate the validator updates and convert to tendermint types
 	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
+	nextChainLock, err := types.ChainLockFromProto(abciResponses.EndBlock.NextChainLockUpdate)
+	if err != nil {
+		return state, 0, fmt.Errorf("error in chain lock from proto: %v", err)
+	}
 	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
 	if err != nil {
 		return state, 0, fmt.Errorf("error in validator updates: %v", err)
@@ -171,7 +178,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update the state with the block and responses.
-	state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
+	state, err = updateState(state, blockID, &block.Header, block.ChainLock, nextChainLock, abciResponses, validatorUpdates)
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
@@ -404,6 +411,8 @@ func updateState(
 	state State,
 	blockID types.BlockID,
 	header *types.Header,
+	lastChainLock *types.ChainLock,
+	nextChainLock *types.ChainLock,
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) (State, error) {
@@ -445,6 +454,14 @@ func updateState(
 
 	nextVersion := state.Version
 
+	if lastChainLock == nil {
+		lastChainLock = &state.LastChainLock
+	}
+
+	if nextChainLock == nil {
+		nextChainLock = &state.NextChainLock
+	}
+
 	// NOTE: the AppHash has not been populated.
 	// It will be filled on state.Save.
 	return State{
@@ -454,6 +471,8 @@ func updateState(
 		LastBlockHeight:                  header.Height,
 		LastBlockID:                      blockID,
 		LastBlockTime:                    header.Time,
+		LastChainLock: 					  *lastChainLock,
+		NextChainLock:                    *nextChainLock,
 		NextValidators:                   nValSet,
 		Validators:                       state.NextValidators.Copy(),
 		LastValidators:                   state.Validators.Copy(),

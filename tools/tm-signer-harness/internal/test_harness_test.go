@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -97,7 +98,7 @@ func TestRemoteSignerPublicKeyCheckFailed(t *testing.T) {
 	harnessTest(
 		t,
 		func(th *TestHarness) *privval.SignerServer {
-			return newMockSignerServer(t, th, ed25519.GenPrivKey(), false, false)
+			return newMockSignerServer(t, th, bls12381.GenPrivKey(), false, false)
 		},
 		ErrTestPublicKeyFailed,
 	)

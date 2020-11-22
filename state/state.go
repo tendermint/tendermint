@@ -53,9 +53,15 @@ type State struct {
 	InitialHeight int64 // should be 1, not 0, when starting from height 1
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
-	LastBlockHeight int64
-	LastBlockID     types.BlockID
-	LastBlockTime   time.Time
+	LastBlockHeight     int64
+	LastCoreBlockHeight uint32
+	LastBlockID         types.BlockID
+	LastBlockTime       time.Time
+
+	//Last Chain Lock is the last known chain lock in consensus, and does not go to nil if a block had no chain lock
+	//Next Chain Lock is a chain lock being proposed by the abci application
+	LastChainLock types.ChainLock
+	NextChainLock types.ChainLock
 
 	// LastValidators is used to validate block.LastCommit.
 	// Validators are persisted to the database separately every time they change,
@@ -89,8 +95,12 @@ func (state State) Copy() State {
 		InitialHeight: state.InitialHeight,
 
 		LastBlockHeight: state.LastBlockHeight,
+		LastCoreBlockHeight: state.LastCoreBlockHeight,
 		LastBlockID:     state.LastBlockID,
 		LastBlockTime:   state.LastBlockTime,
+
+		LastChainLock: state.LastChainLock,
+		NextChainLock: state.NextChainLock,
 
 		NextValidators:              state.NextValidators.Copy(),
 		Validators:                  state.Validators.Copy(),
@@ -144,6 +154,10 @@ func (state *State) ToProto() (*tmstate.State, error) {
 	sm.InitialHeight = state.InitialHeight
 	sm.LastBlockHeight = state.LastBlockHeight
 
+	sm.LastCoreBlockHeight = state.LastCoreBlockHeight
+	sm.LastChainLock = tmproto.ChainLock(state.LastChainLock)
+	sm.NextChainLock = tmproto.ChainLock(state.NextChainLock)
+
 	sm.LastBlockID = state.LastBlockID.ToProto()
 	sm.LastBlockTime = state.LastBlockTime
 	vals, err := state.Validators.ToProto()
@@ -195,6 +209,9 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 	state.LastBlockHeight = pb.LastBlockHeight
 	state.LastBlockTime = pb.LastBlockTime
 
+	state.LastChainLock = types.ChainLock(pb.LastChainLock)
+	state.NextChainLock = types.ChainLock(pb.NextChainLock)
+
 	vals, err := types.ValidatorSetFromProto(pb.Validators)
 	if err != nil {
 		return nil, err
@@ -240,8 +257,19 @@ func (state State) MakeBlock(
 	proposerAddress []byte,
 ) (*types.Block, *types.PartSet) {
 
+	var chainLock *types.ChainLock = nil
+	if state.NextChainLock.CoreBlockHeight > state.LastChainLock.CoreBlockHeight {
+		chainLock = &state.NextChainLock
+	}
+
+	var chainLockHeight uint32
+	if chainLock == nil {
+		chainLockHeight = state.LastChainLock.CoreBlockHeight
+	} else {
+		chainLockHeight = chainLock.CoreBlockHeight
+	}
 	// Build base block with block data.
-	block := types.MakeBlock(height, txs, commit, evidence)
+	block := types.MakeBlock(height, chainLockHeight, chainLock, txs, commit, evidence)
 
 	// Set time.
 	var timestamp time.Time
@@ -251,6 +279,7 @@ func (state State) MakeBlock(
 		timestamp = MedianTime(commit, state.LastValidators)
 	}
 
+
 	// Fill rest of header with state data.
 	block.Header.Populate(
 		state.Version.Consensus, state.ChainID,
@@ -259,6 +288,8 @@ func (state State) MakeBlock(
 		types.HashConsensusParams(state.ConsensusParams), state.AppHash, state.LastResultsHash,
 		proposerAddress,
 	)
+
+
 
 	return block, block.MakePartSet(types.BlockPartSizeBytes)
 }
@@ -334,6 +365,10 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		nextValidatorSet = types.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
 	}
 
+	var initialChainLock types.ChainLock
+
+	initialChainLock.PopulateFromProto(genDoc.GenesisChainLock)
+
 	return State{
 		Version:       InitStateVersion,
 		ChainID:       genDoc.ChainID,
@@ -342,6 +377,9 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		LastBlockHeight: 0,
 		LastBlockID:     types.BlockID{},
 		LastBlockTime:   genDoc.GenesisTime,
+
+		LastChainLock: initialChainLock,
+		NextChainLock: initialChainLock,
 
 		NextValidators:              nextValidatorSet,
 		Validators:                  validatorSet,

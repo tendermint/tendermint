@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	connConsensus = "consensus"
-	connMempool   = "mempool"
-	connQuery     = "query"
-	connSnapshot  = "snapshot"
+	connConsensus    = "consensus"
+	connMempool      = "mempool"
+	connQuery        = "query"
+	connSnapshot     = "snapshot"
 )
 
 // AppConns is the Tendermint's interface to the application that consists of
@@ -44,15 +44,15 @@ func NewAppConns(clientCreator ClientCreator) AppConns {
 type multiAppConn struct {
 	service.BaseService
 
-	consensusConn AppConnConsensus
-	mempoolConn   AppConnMempool
-	queryConn     AppConnQuery
-	snapshotConn  AppConnSnapshot
+	consensusConn   AppConnConsensus
+	mempoolConn     AppConnMempool
+	queryConn       AppConnQuery
+	snapshotConn    AppConnSnapshot
 
-	consensusConnClient abcicli.Client
-	mempoolConnClient   abcicli.Client
-	queryConnClient     abcicli.Client
-	snapshotConnClient  abcicli.Client
+	consensusConnClient  abcicli.Client
+	mempoolConnClient    abcicli.Client
+	queryConnClient      abcicli.Client
+	snapshotConnClient   abcicli.Client
 
 	clientCreator ClientCreator
 }

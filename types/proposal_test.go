@@ -27,6 +27,7 @@ func init() {
 	}
 	testProposal = &Proposal{
 		Height: 12345,
+		CoreChainLockedHeight: 100,
 		Round:  23456,
 		BlockID: BlockID{Hash: []byte("--June_15_2020_amino_was_removed"),
 			PartSetHeader: PartSetHeader{Total: 111, Hash: []byte("--June_15_2020_amino_was_removed")}},
@@ -60,7 +61,7 @@ func TestProposalVerifySignature(t *testing.T) {
 	require.NoError(t, err)
 
 	prop := NewProposal(
-		4, 2, 2,
+		4, 1,2, 2,
 		BlockID{tmrand.Bytes(tmhash.Size), PartSetHeader{777, tmrand.Bytes(tmhash.Size)}})
 	p := prop.ToProto()
 	signBytes := ProposalSignBytes("test_chain_id", p)
@@ -151,7 +152,7 @@ func TestProposalValidateBasic(t *testing.T) {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			prop := NewProposal(
-				4, 2, 2,
+				4, 1,2, 2,
 				blockID)
 			p := prop.ToProto()
 			err := privVal.SignProposal("test_chain_id", p)
@@ -164,9 +165,9 @@ func TestProposalValidateBasic(t *testing.T) {
 }
 
 func TestProposalProtoBuf(t *testing.T) {
-	proposal := NewProposal(1, 2, 3, makeBlockID([]byte("hash"), 2, []byte("part_set_hash")))
+	proposal := NewProposal(1, 1,2, 3, makeBlockID([]byte("hash"), 2, []byte("part_set_hash")))
 	proposal.Signature = []byte("sig")
-	proposal2 := NewProposal(1, 2, 3, BlockID{})
+	proposal2 := NewProposal(1, 1,2, 3, BlockID{})
 
 	testCases := []struct {
 		msg     string

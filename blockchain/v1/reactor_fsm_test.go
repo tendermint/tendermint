@@ -136,13 +136,14 @@ func sMakeRequestsEvErrored(current, expected string,
 
 func sBlockRespEv(current, expected string, peerID p2p.ID, height int64, prevBlocks []int64) fsmStepTestValues {
 	txs := []types.Tx{types.Tx("foo"), types.Tx("bar")}
+	chainLock := types.NewMockChainLock()
 	return fsmStepTestValues{
 		currentState: current,
 		event:        blockResponseEv,
 		data: bReactorEventData{
 			peerID: peerID,
 			height: height,
-			block:  types.MakeBlock(height, txs, nil, nil),
+			block:  types.MakeBlock(height,chainLock.CoreBlockHeight, &chainLock, txs, nil, nil),
 			length: 100},
 		wantState:     expected,
 		wantNewBlocks: append(prevBlocks, height),
@@ -152,14 +153,14 @@ func sBlockRespEv(current, expected string, peerID p2p.ID, height int64, prevBlo
 func sBlockRespEvErrored(current, expected string,
 	peerID p2p.ID, height int64, prevBlocks []int64, wantErr error, peersRemoved []p2p.ID) fsmStepTestValues {
 	txs := []types.Tx{types.Tx("foo"), types.Tx("bar")}
-
+	chainLock := types.NewMockChainLock()
 	return fsmStepTestValues{
 		currentState: current,
 		event:        blockResponseEv,
 		data: bReactorEventData{
 			peerID: peerID,
 			height: height,
-			block:  types.MakeBlock(height, txs, nil, nil),
+			block:  types.MakeBlock(height,chainLock.CoreBlockHeight, &chainLock, txs, nil, nil),
 			length: 100},
 		wantState:        expected,
 		wantErr:          wantErr,

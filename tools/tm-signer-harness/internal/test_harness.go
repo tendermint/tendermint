@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"net"
 	"os"
 	"os/signal"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/state"
 
@@ -218,6 +218,7 @@ func (th *TestHarness) TestSignProposal() error {
 	prop := &types.Proposal{
 		Type:     tmproto.ProposalType,
 		Height:   100,
+		CoreChainLockedHeight: 1,
 		Round:    0,
 		POLRound: -1,
 		BlockID: types.BlockID{

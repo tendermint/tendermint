@@ -102,6 +102,17 @@ func (app *localClient) CheckTxAsync(req types.RequestCheckTx) *ReqRes {
 	)
 }
 
+func (app *localClient) CheckQuorumSignatureAsync(req types.RequestCheckQuorumSignature) *ReqRes {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.CheckQuorumSignature(req)
+	return app.callback(
+		types.ToRequestCheckQuorumSignature(req),
+		types.ToResponseCheckQuorumSignature(res),
+	)
+}
+
 func (app *localClient) QueryAsync(req types.RequestQuery) *ReqRes {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
@@ -240,6 +251,14 @@ func (app *localClient) CheckTxSync(req types.RequestCheckTx) (*types.ResponseCh
 	defer app.mtx.Unlock()
 
 	res := app.Application.CheckTx(req)
+	return &res, nil
+}
+
+func (app *localClient) CheckQuorumSignatureSync(req types.RequestCheckQuorumSignature) (*types.ResponseCheckQuorumSignature, error) {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.CheckQuorumSignature(req)
 	return &res, nil
 }
 

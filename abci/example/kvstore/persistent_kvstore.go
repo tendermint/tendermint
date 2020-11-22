@@ -84,6 +84,10 @@ func (app *PersistentKVStoreApplication) CheckTx(req types.RequestCheckTx) types
 	return app.app.CheckTx(req)
 }
 
+func (app *PersistentKVStoreApplication) CheckQuorumSignature(req types.RequestCheckQuorumSignature) types.ResponseCheckQuorumSignature {
+	return app.app.CheckQuorumSignature(req)
+}
+
 // Commit will panic if InitChain was not called
 func (app *PersistentKVStoreApplication) Commit() types.ResponseCommit {
 	return app.app.Commit()

@@ -105,6 +105,12 @@ func ToRequestCheckTx(req RequestCheckTx) *Request {
 	}
 }
 
+func ToRequestCheckQuorumSignature(req RequestCheckQuorumSignature) *Request {
+	return &Request{
+		Value: &Request_CheckQuorumSignature{&req},
+	}
+}
+
 func ToRequestCommit() *Request {
 	return &Request{
 		Value: &Request_Commit{&RequestCommit{}},
@@ -200,6 +206,12 @@ func ToResponseDeliverTx(res ResponseDeliverTx) *Response {
 func ToResponseCheckTx(res ResponseCheckTx) *Response {
 	return &Response{
 		Value: &Response_CheckTx{&res},
+	}
+}
+
+func ToResponseCheckQuorumSignature(res ResponseCheckQuorumSignature) *Response {
+	return &Response{
+		Value: &Response_CheckQuorumSignature{&res},
 	}
 }
 

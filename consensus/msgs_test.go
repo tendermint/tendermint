@@ -47,13 +47,14 @@ func TestMsgToProto(t *testing.T) {
 	require.NoError(t, err)
 
 	proposal := types.Proposal{
-		Type:      tmproto.ProposalType,
-		Height:    1,
-		Round:     1,
-		POLRound:  1,
-		BlockID:   bi,
-		Timestamp: time.Now(),
-		Signature: tmrand.Bytes(20),
+		Type:                  tmproto.ProposalType,
+		Height:                1,
+		CoreChainLockedHeight: 1,
+		Round:                 1,
+		POLRound:              1,
+		BlockID:               bi,
+		Timestamp:             time.Now(),
+		Signature:             tmrand.Bytes(20),
 	}
 	pbProposal := proposal.ToProto()
 
@@ -347,6 +348,7 @@ func TestConsMsgsVectors(t *testing.T) {
 	proposal := types.Proposal{
 		Type:      tmproto.ProposalType,
 		Height:    1,
+		CoreChainLockedHeight: 1,
 		Round:     1,
 		POLRound:  1,
 		BlockID:   bi,
@@ -390,7 +392,7 @@ func TestConsMsgsVectors(t *testing.T) {
 				Height: 1, Round: 1, BlockPartSetHeader: pbPsh, BlockParts: pbBits, IsCommit: false}}},
 			"1231080110011a24080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d22050801120100"},
 		{"Proposal", &tmcons.Message{Sum: &tmcons.Message_Proposal{Proposal: &tmcons.Proposal{Proposal: *pbProposal}}},
-			"1a720a7008201001180120012a480a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d1224080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d320608c0b89fdc053a146164645f6d6f72655f6578636c616d6174696f6e"},
+			"1a740a720820100118012001280132480a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d1224080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d3a0608c0b89fdc0542146164645f6d6f72655f6578636c616d6174696f6e"},
 		{"ProposalPol", &tmcons.Message{Sum: &tmcons.Message_ProposalPol{
 			ProposalPol: &tmcons.ProposalPOL{Height: 1, ProposalPolRound: 1}}},
 			"2206080110011a00"},

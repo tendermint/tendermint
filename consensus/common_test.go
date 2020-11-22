@@ -201,7 +201,7 @@ func decideProposal(
 
 	// Make proposal
 	polRound, propBlockID := validRound, types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-	proposal = types.NewProposal(height, round, polRound, propBlockID)
+	proposal = types.NewProposal(height, 1, round, polRound, propBlockID)
 	p := proposal.ToProto()
 	if err := vs.SignProposal(chainID, p); err != nil {
 		panic(err)
@@ -374,10 +374,11 @@ func newStateWithConfigAndBlockStore(
 	// Get BlockStore
 	blockStore := store.NewBlockStore(blockDB)
 
-	// one for mempool, one for consensus
+	// one for mempool, one for consensus, one for signature validation
 	mtx := new(tmsync.Mutex)
 	proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
 	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+	proxyAppConnQry := abcicli.NewLocalClient(mtx, app)
 
 	// Make Mempool
 	mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
@@ -395,7 +396,8 @@ func newStateWithConfigAndBlockStore(
 		panic(err)
 	}
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry, mempool, evpool)
+
 	cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 	cs.SetPrivValidator(pv)
@@ -787,11 +789,14 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	}
 	sort.Sort(types.PrivValidatorsByAddress(privValidators))
 
+	chainLock := types.NewMockChainLock()
+
 	return &types.GenesisDoc{
 		GenesisTime:   tmtime.Now(),
 		InitialHeight: 1,
 		ChainID:       config.ChainID(),
 		Validators:    validators,
+		GenesisChainLock: chainLock.ToProto(),
 	}, privValidators
 }
 

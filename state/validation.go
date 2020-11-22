@@ -4,18 +4,25 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
 //-----------------------------------------------------
 // Validate block
 
-func validateBlock(state State, block *types.Block) error {
+func validateBlock(proxyAppQueryConn proxy.AppConnQuery, state State, block *types.Block) error {
 	// Validate internal consistency.
 	if err := block.ValidateBasic(); err != nil {
 		return err
+	}
+
+	if block.ChainLock != nil {
+		if err := block.ChainLock.ValidateBasic(); err != nil {
+			return err
+		}
 	}
 
 	// Validate basic info.
@@ -137,10 +144,65 @@ func validateBlock(state State, block *types.Block) error {
 			)
 		}
 
+
 	default:
 		return fmt.Errorf("block height %v lower than initial height %v",
 			block.Height, state.InitialHeight)
 	}
+
+	//if block.Header.CoreChainLockedHeight < state.LastCoreBlockHeight {
+	//	return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight. Previous LastCoreBlockHeight %d, got %d",
+	//		state.LastCoreBlockHeight,
+	//		block.Header.CoreChainLockedHeight,
+	//	)
+	//}
+
+	if block.ChainLock != nil {
+		//If there is a new Chain Lock we need to make sure the height in the header is the same as the chain lock
+		if block.Header.CoreChainLockedHeight != block.ChainLock.CoreBlockHeight {
+			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight. ChainLock CoreBlockHeight %d, got %d",
+				block.ChainLock.CoreBlockHeight,
+				block.Header.CoreChainLockedHeight,
+			)
+		}
+
+		//We also need to make sure that the new height is superior to the old height
+		if block.Header.CoreChainLockedHeight <= state.LastChainLock.CoreBlockHeight {
+			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight. Previous CoreChainLockedHeight %d, got %d",
+				state.LastChainLock.CoreBlockHeight,
+				block.Header.CoreChainLockedHeight,
+			)
+		}
+
+		signatureCheckRequest := abci.RequestCheckQuorumSignature{
+			CoreHeight: block.ChainLock.CoreBlockHeight,
+			QuorumType: 1,
+			RequestId: block.ChainLock.RequestId(),
+			Digest: block.ChainLock.CoreBlockHash,
+			Signature: block.ChainLock.Signature,
+		}
+
+		//We need to query our abci application to make sure the chain lock signature is valid
+
+		checkQuorumSignatureResponse, err := proxyAppQueryConn.CheckQuorumSignatureSync(signatureCheckRequest)
+		if err != nil {
+			return err
+		}
+
+		if checkQuorumSignatureResponse.Code != 0 {
+			return fmt.Errorf("chain Lock signature deemed invalid by abci application")
+		}
+	} else {
+		//If there is no new Chain Lock we need to make sure the height has stayed the same
+		if block.Header.CoreChainLockedHeight != state.LastChainLock.CoreBlockHeight {
+			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight when no new Chain Lock. Previous CoreChainLockedHeight %d, got %d",
+				state.LastChainLock.CoreBlockHeight,
+				block.Header.CoreChainLockedHeight,
+			)
+		}
+	}
+
+
 
 	// Check evidence doesn't exceed the limit amount of bytes.
 	if max, got := state.ConsensusParams.Evidence.MaxBytes, block.Evidence.ByteSize(); got > max {

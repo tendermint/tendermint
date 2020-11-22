@@ -10,19 +10,21 @@ import (
 
 // BlockMeta contains meta information.
 type BlockMeta struct {
-	BlockID   BlockID `json:"block_id"`
-	BlockSize int     `json:"block_size"`
-	Header    Header  `json:"header"`
-	NumTxs    int     `json:"num_txs"`
+	BlockID      BlockID `json:"block_id"`
+	BlockSize    int     `json:"block_size"`
+	Header       Header  `json:"header"`
+	HasChainLock bool    `json:"has_chain_lock"`
+	NumTxs       int     `json:"num_txs"`
 }
 
 // NewBlockMeta returns a new BlockMeta.
 func NewBlockMeta(block *Block, blockParts *PartSet) *BlockMeta {
 	return &BlockMeta{
-		BlockID:   BlockID{block.Hash(), blockParts.Header()},
-		BlockSize: block.Size(),
-		Header:    block.Header,
-		NumTxs:    len(block.Data.Txs),
+		BlockID:      BlockID{block.Hash(), blockParts.Header()},
+		BlockSize:    block.Size(),
+		Header:       block.Header,
+		HasChainLock: block.ChainLock != nil,
+		NumTxs:       len(block.Data.Txs),
 	}
 }
 
@@ -32,10 +34,11 @@ func (bm *BlockMeta) ToProto() *tmproto.BlockMeta {
 	}
 
 	pb := &tmproto.BlockMeta{
-		BlockID:   bm.BlockID.ToProto(),
-		BlockSize: int64(bm.BlockSize),
-		Header:    *bm.Header.ToProto(),
-		NumTxs:    int64(bm.NumTxs),
+		BlockID:      bm.BlockID.ToProto(),
+		BlockSize:    int64(bm.BlockSize),
+		Header:       *bm.Header.ToProto(),
+		HasChainLock: bm.HasChainLock,
+		NumTxs:       int64(bm.NumTxs),
 	}
 	return pb
 }
@@ -60,6 +63,7 @@ func BlockMetaFromProto(pb *tmproto.BlockMeta) (*BlockMeta, error) {
 	bm.BlockID = *bi
 	bm.BlockSize = int(pb.BlockSize)
 	bm.Header = h
+	bm.HasChainLock = pb.HasChainLock
 	bm.NumTxs = int(pb.NumTxs)
 
 	return bm, bm.ValidateBasic()

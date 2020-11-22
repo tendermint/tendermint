@@ -245,6 +245,10 @@ func (cli *socketClient) CheckTxAsync(req types.RequestCheckTx) *ReqRes {
 	return cli.queueRequest(types.ToRequestCheckTx(req))
 }
 
+func (cli *socketClient) CheckQuorumSignatureAsync(req types.RequestCheckQuorumSignature) *ReqRes {
+	return cli.queueRequest(types.ToRequestCheckQuorumSignature(req))
+}
+
 func (cli *socketClient) QueryAsync(req types.RequestQuery) *ReqRes {
 	return cli.queueRequest(types.ToRequestQuery(req))
 }
@@ -335,6 +339,15 @@ func (cli *socketClient) CheckTxSync(req types.RequestCheckTx) (*types.ResponseC
 	}
 
 	return reqres.Response.GetCheckTx(), cli.Error()
+}
+
+func (cli *socketClient) CheckQuorumSignatureSync(req types.RequestCheckQuorumSignature) (*types.ResponseCheckQuorumSignature, error) {
+	reqres := cli.queueRequest(types.ToRequestCheckQuorumSignature(req))
+	if err := cli.FlushSync(); err != nil {
+		return nil, err
+	}
+
+	return reqres.Response.GetCheckQuorumSignature(), cli.Error()
 }
 
 func (cli *socketClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {
