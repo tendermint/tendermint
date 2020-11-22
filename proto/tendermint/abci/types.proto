@@ -233,7 +233,7 @@ message ResponseEndBlock {
   repeated Event  events                  = 3
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 
-  tendermint.types.CoreChainLock  core_chain_lock_update  = 100;
+  tendermint.types.CoreChainLock  next_core_chain_lock_update  = 100;
 }
 
 message ResponseCommit {

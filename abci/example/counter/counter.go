@@ -115,7 +115,7 @@ func (app *Application) EndBlock(reqEndBlock types.RequestEndBlock) types.Respon
 		coreChainLock := types1.NewMockChainLock(app.CurrentCoreChainLockHeight)
 
 		return types.ResponseEndBlock{
-			CoreChainLockUpdate: coreChainLock.ToProto(),
+			NextCoreChainLockUpdate: coreChainLock.ToProto(),
 		}
 	} else {
 		return types.ResponseEndBlock{}

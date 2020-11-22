@@ -162,7 +162,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	// validate the validator updates and convert to tendermint types
 	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
 
-	nextCoreChainLock, err := types.CoreChainLockFromProto(abciResponses.EndBlock.CoreChainLockUpdate)
+	nextCoreChainLock, err := types.CoreChainLockFromProto(abciResponses.EndBlock.NextCoreChainLockUpdate)
 	if err != nil {
 		return state, 0, fmt.Errorf("error in chain lock from proto: %v", err)
 	}
