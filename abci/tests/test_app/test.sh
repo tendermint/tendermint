@@ -5,8 +5,8 @@ set -e
 
 GOPATH=$(go env GOPATH)
 export CGO_ENABLED="1"
-export CGO_LDFLAGS="-L${GOPATH}/src/github.com/quantumexplorer/bls-signatures/build"
-export CGO_CXXFLAGS="-I${GOPATH}/src/github.com/quantumexplorer/bls-signatures/src -I${GOPATH}/src/github.com/quantumexplorer/bls-signatures/contrib/relic/include -I${GOPATH}/src/github.com/quantumexplorer/bls-signatures/build/contrib/relic/include"
+export CGO_LDFLAGS="-L${GOPATH}/src/github.com/dashpay/bls-signatures/build"
+export CGO_CXXFLAGS="-I${GOPATH}/src/github.com/dashpay/bls-signatures/src -I${GOPATH}/src/github.com/dashpay/bls-signatures/contrib/relic/include -I${GOPATH}/src/github.com/dashpay/bls-signatures/build/contrib/relic/include"
 
 # Get the directory of where this script is.
 export PATH="$GOBIN:$PATH"

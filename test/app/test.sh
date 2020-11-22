@@ -11,8 +11,8 @@ set -ex
 GOPATH=$(go env GOPATH)
 export PATH="$GOBIN:$PATH"
 export TMHOME=$HOME/.tendermint_app
-export CGO_LDFLAGS="-L${GOPATH}/src/github.com/quantumexplorer/bls-signatures/build"
-export CGO_CXXFLAGS="-I${GOPATH}/src/github.com/quantumexplorer/bls-signatures/src -I${GOPATH}/src/github.com/quantumexplorer/bls-signatures/contrib/relic/include -I${GOPATH}/src/github.com/quantumexplorer/bls-signatures/build/contrib/relic/include"
+export CGO_LDFLAGS="-L${GOPATH}/src/github.com/dashpay/bls-signatures/build"
+export CGO_CXXFLAGS="-I${GOPATH}/src/github.com/dashpay/bls-signatures/src -I${GOPATH}/src/github.com/dashpay/bls-signatures/contrib/relic/include -I${GOPATH}/src/github.com/dashpay/bls-signatures/build/contrib/relic/include"
 
 function kvstore_over_socket(){
     rm -rf $TMHOME

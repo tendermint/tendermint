@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	bls "github.com/quantumexplorer/bls-signatures/go-bindings"
+	bls "github.com/dashpay/bls-signatures/go-bindings"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -111,8 +111,11 @@ func genPrivKey(rand io.Reader) PrivKey {
 	if err != nil {
 		panic(err)
 	}
-
-	return PrivKey(bls.PrivateKeyFromSeed(seed).Serialize())
+	privateKey, err := bls.PrivateKeyFromSeed(seed)
+	if err != nil {
+		panic(err)
+	}
+	return PrivKey(privateKey.Serialize())
 }
 
 // GenPrivKeyFromSecret hashes the secret with SHA2, and uses
@@ -122,7 +125,11 @@ func genPrivKey(rand io.Reader) PrivKey {
 func GenPrivKeyFromSecret(secret []byte) PrivKey {
 	seed := crypto.Sha256(secret) // Not Ripemd160 because we want 32 bytes.
 
-	return PrivKey(bls.PrivateKeyFromSeed(seed).Serialize())
+	privateKey, err := bls.PrivateKeyFromSeed(seed)
+	if err != nil {
+		panic(err)
+	}
+	return PrivKey(privateKey.Serialize())
 }
 
 //-------------------------------------

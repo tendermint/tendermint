@@ -5,8 +5,8 @@ REPO_NAME=github.com/dashevo/tenderdash
 BUILD_TAGS?=tendermint
 VERSION := $(shell git describe --always)
 LD_FLAGS = -X ${REPO_NAME}/version.TMCoreSemVer=$(VERSION)
-CGO_LDFLAGS = "-L${GOPATH}/src/github.com/quantumexplorer/bls-signatures/build"
-CGO_CXXFLAGS = "-I${GOPATH}/src/github.com/quantumexplorer/bls-signatures/src -I${GOPATH}/src/github.com/quantumexplorer/bls-signatures/contrib/relic/include -I${GOPATH}/src/github.com/quantumexplorer/bls-signatures/build/contrib/relic/include"
+CGO_LDFLAGS = "-L${GOPATH}/src/github.com/dashpay/bls-signatures/build"
+CGO_CXXFLAGS = "-I${GOPATH}/src/github.com/dashpay/bls-signatures/src -I${GOPATH}/src/github.com/dashpay/bls-signatures/contrib/relic/include -I${GOPATH}/src/github.com/dashpay/bls-signatures/build/contrib/relic/include"
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://${REPO_NAME}.git
 DOCKER_BUF := docker run -v $(shell pwd):/workspace --workdir /workspace bufbuild/buf

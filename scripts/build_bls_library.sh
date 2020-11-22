@@ -1,5 +1,5 @@
 GOPATH=$(go env GOPATH)
-BLS_REPO_PATH="${GOPATH}"/src/github.com/quantumexplorer/bls-signatures
+BLS_REPO_PATH="${GOPATH}"/src/github.com/dashpay/bls-signatures
 
 # Install packages for bindings
 GO111MODULE=off go get golang.org/x/tools/cmd/goimports
@@ -10,7 +10,7 @@ rm -rf "${BLS_REPO_PATH}"
 mkdir -pv "${GOPATH}"/github.com/quantumexplorer/
 
 # Cloning bls repo and fetching dependencies
-git clone https://github.com/quantumexplorer/bls-signatures.git "$BLS_REPO_PATH"
+git clone https://github.com/dashpay/bls-signatures.git "$BLS_REPO_PATH"
 cd "$BLS_REPO_PATH"
 git submodule update --init --recursive
 
