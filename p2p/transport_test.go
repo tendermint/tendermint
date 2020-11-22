@@ -539,8 +539,7 @@ func TestTransportMultiplexRejectSelf(t *testing.T) {
 }
 
 func TestTransportConnDuplicateIPFilter(t *testing.T) {
-	filter := ConnDuplicateIPFilter()
-
+	filter := ConnDuplicateIPFilter
 	if err := filter(nil, &testTransportConn{}, nil); err != nil {
 		t.Fatal(err)
 	}

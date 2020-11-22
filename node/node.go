@@ -426,7 +426,7 @@ func createTransport(
 	)
 
 	if !config.P2P.AllowDuplicateIP {
-		connFilters = append(connFilters, p2p.ConnDuplicateIPFilter())
+		connFilters = append(connFilters, p2p.ConnDuplicateIPFilter)
 	}
 
 	// Filter peers by addr or pubkey with an ABCI query.

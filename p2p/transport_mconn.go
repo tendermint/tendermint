@@ -52,20 +52,17 @@ type ConnFilterFunc func(ConnSet, net.Conn, []net.IP) error
 
 // ConnDuplicateIPFilter resolves and keeps all ips for an incoming connection
 // and refuses new ones if they come from a known ip.
-func ConnDuplicateIPFilter() ConnFilterFunc {
-	return func(cs ConnSet, c net.Conn, ips []net.IP) error {
-		for _, ip := range ips {
-			if cs.HasIP(ip) {
-				return ErrRejected{
-					conn:        c,
-					err:         fmt.Errorf("ip<%v> already connected", ip),
-					isDuplicate: true,
-				}
+var ConnDuplicateIPFilter ConnFilterFunc = func(cs ConnSet, c net.Conn, ips []net.IP) error {
+	for _, ip := range ips {
+		if cs.HasIP(ip) {
+			return ErrRejected{
+				conn:        c,
+				err:         fmt.Errorf("ip<%v> already connected", ip),
+				isDuplicate: true,
 			}
 		}
-
-		return nil
 	}
+	return nil
 }
 
 // MConnTransport is a Transport implementation using the current multiplexed
