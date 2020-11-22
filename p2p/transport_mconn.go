@@ -94,18 +94,16 @@ type MConnTransport struct {
 
 // NewMConnTransport sets up a new MConn transport.
 func NewMConnTransport(
-	nodeInfo NodeInfo, // FIXME should just take DefaultNodeInfo
+	nodeInfo NodeInfo, // FIXME should use DefaultNodeInfo, left for code compatibility
 	privKey crypto.PrivKey,
 	mConnConfig tmconn.MConnConfig,
 	opts ...MConnTransportOption,
 ) *MConnTransport {
 	m := &MConnTransport{
-		privKey:     privKey,
-		nodeInfo:    nodeInfo.(DefaultNodeInfo),
-		mConnConfig: mConnConfig,
-		// FIXME For compatibility with existing code structure, this is set
-		// directly by the switch on startup.
-		channelDescs: []*ChannelDescriptor{},
+		privKey:      privKey,
+		nodeInfo:     nodeInfo.(DefaultNodeInfo),
+		mConnConfig:  mConnConfig,
+		channelDescs: []*ChannelDescriptor{}, // FIXME Set by switch, for code compatibility
 
 		dialTimeout:      defaultDialTimeout,
 		handshakeTimeout: defaultHandshakeTimeout,
@@ -122,13 +120,6 @@ func NewMConnTransport(
 		opt(m)
 	}
 	return m
-}
-
-// SetChannelDescriptors is used to set MConn channel descriptors. It exists for
-// the switch to configure this separately from transport construction (which is
-// done by the node). It must be called before Listen().
-func (m *MConnTransport) SetChannelDescriptors(channelDescs []*ChannelDescriptor) {
-	m.channelDescs = channelDescs
 }
 
 // Listen listens for inbound connections on the given endpoint.

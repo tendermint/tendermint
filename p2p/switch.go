@@ -229,6 +229,14 @@ func (sw *Switch) SetNodeKey(nodeKey *NodeKey) {
 
 // OnStart implements BaseService. It starts all the reactors and peers.
 func (sw *Switch) OnStart() error {
+
+	// FIXME Temporary hack to pass channel descriptors to MConn transport,
+	// since they are not available when it is constructed. This will be
+	// fixed when we implement the new router abstraction.
+	if t, ok := sw.transport.(*MConnTransport); ok {
+		t.channelDescs = sw.chDescs
+	}
+
 	// Start reactors
 	for _, reactor := range sw.reactors {
 		err := reactor.Start()
@@ -624,19 +632,6 @@ func (sw *Switch) IsPeerPersistent(na *NetAddress) bool {
 }
 
 func (sw *Switch) acceptRoutine() {
-	// FIXME Hack to handle old MConn transport. This should
-	// probably happen elsewhere.
-	if t, ok := sw.transport.(*MConnTransport); ok {
-		t.SetChannelDescriptors(sw.chDescs)
-		/*t.setPeerConfig(peerConfig{
-			chDescs:      sw.chDescs,
-			onPeerError:  sw.StopPeerForError,
-			reactorsByCh: sw.reactorsByCh,
-			metrics:      sw.metrics,
-			isPersistent: sw.IsPeerPersistent,
-		})*/
-	}
-
 	for {
 		c, err := sw.transport.Accept(context.Background())
 		if err != nil {
@@ -743,17 +738,6 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		go sw.reconnectToPeer(addr)
 		return fmt.Errorf("dial err (peerConfig.DialFail == true)")
 	}
-
-	// FIXME Hack to handle old MConn transport
-	/*if t, ok := sw.transport.(*MConnTransport); ok {
-		t.setPeerConfig(peerConfig{
-			chDescs:      sw.chDescs,
-			onPeerError:  sw.StopPeerForError,
-			reactorsByCh: sw.reactorsByCh,
-			metrics:      sw.metrics,
-			isPersistent: sw.IsPeerPersistent,
-		})
-	}*/
 
 	c, err := sw.transport.Dial(context.Background(), Endpoint{
 		Protocol: MConnProtocol,
