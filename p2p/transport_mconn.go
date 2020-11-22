@@ -175,7 +175,7 @@ func (m *mConnTransport) accept() {
 				case <-m.chClose:
 				}
 			}
-			conn, err := newMConnConnection(m, tcpConn)
+			conn, err := newMConnConnection(m, tcpConn, "")
 			if err != nil {
 				_ = tcpConn.Close()
 				select {
@@ -227,7 +227,7 @@ func (m *mConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 		return nil, err
 	}
 
-	return newMConnConnection(m, tcpConn)
+	return newMConnConnection(m, tcpConn, endpoint.PeerID)
 }
 
 // Endpoints implements Transport.
@@ -345,6 +345,7 @@ type mConnConnection struct {
 func newMConnConnection(
 	transport *mConnTransport,
 	tcpConn net.Conn,
+	expectPeerID ID,
 ) (conn *mConnConnection, err error) {
 	// FIXME Since the MConnection code panics, we need to recover here
 	// and turn it into an error. Be careful not to alias err, so we can
@@ -391,8 +392,58 @@ func newMConnConnection(
 		}
 		return
 	}
+	err = conn.nodeInfo.Validate()
+	if err != nil {
+		err = ErrRejected{
+			conn:              tcpConn,
+			err:               err,
+			isNodeInfoInvalid: true,
+		}
+		return
+	}
 
-	// FIXME Check node IDs
+	// FIXME All of the ID verification code below should be moved to the
+	// router, or whatever ends up managing peer lifecycles.
+
+	// For outgoing conns, ensure connection key matches dialed key.
+	if expectPeerID != "" {
+		peerID := PubKeyToID(conn.PubKey())
+		if expectPeerID != peerID {
+			err = ErrRejected{
+				conn: tcpConn,
+				id:   peerID,
+				err: fmt.Errorf(
+					"conn.ID (%v) dialed ID (%v) mismatch",
+					peerID,
+					expectPeerID,
+				),
+				isAuthFailure: true,
+			}
+			return
+		}
+	}
+
+	// Reject self.
+	if transport.nodeInfo.ID() == conn.nodeInfo.ID() {
+		err = ErrRejected{
+			addr:   *NewNetAddress(conn.nodeInfo.ID(), conn.secretConn.RemoteAddr()),
+			conn:   tcpConn,
+			id:     conn.nodeInfo.ID(),
+			isSelf: true,
+		}
+		return
+	}
+
+	err = transport.nodeInfo.CompatibleWith(conn.nodeInfo)
+	if err != nil {
+		err = ErrRejected{
+			conn:           tcpConn,
+			err:            err,
+			id:             conn.nodeInfo.ID(),
+			isIncompatible: true,
+		}
+		return
+	}
 
 	err = tcpConn.SetDeadline(time.Time{})
 	if err != nil {
