@@ -14,12 +14,6 @@ import (
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
-const (
-	defaultDialTimeout      = time.Second
-	defaultFilterTimeout    = 5 * time.Second
-	defaultHandshakeTimeout = 3 * time.Second
-)
-
 // accept is the container to carry the upgraded connection and NodeInfo from an
 // asynchronously running routine to the Accept method.
 type accept struct {
@@ -45,29 +39,6 @@ type peerConfig struct {
 	isPersistent func(*NetAddress) bool
 	reactorsByCh map[byte]Reactor
 	metrics      *Metrics
-}
-
-// ConnFilterFunc to be implemented by filter hooks after a new connection has
-// been established. The set of exisiting connections is passed along together
-// with all resolved IPs for the new connection.
-type ConnFilterFunc func(ConnSet, net.Conn, []net.IP) error
-
-// ConnDuplicateIPFilter resolves and keeps all ips for an incoming connection
-// and refuses new ones if they come from a known ip.
-func ConnDuplicateIPFilter() ConnFilterFunc {
-	return func(cs ConnSet, c net.Conn, ips []net.IP) error {
-		for _, ip := range ips {
-			if cs.HasIP(ip) {
-				return ErrRejected{
-					conn:        c,
-					err:         fmt.Errorf("ip<%v> already connected", ip),
-					isDuplicate: true,
-				}
-			}
-		}
-
-		return nil
-	}
 }
 
 // MultiplexTransportOption sets an optional parameter on the

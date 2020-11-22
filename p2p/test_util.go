@@ -197,7 +197,7 @@ func MakeSwitch(
 		Port:     addr.Port,
 	}
 
-	t := NewMConnTransport(nodeInfo, nodeKey, MConnConfig(cfg))
+	t := NewMConnTransport(nodeInfo, nodeKey.PrivKey, MConnConfig(cfg))
 
 	// TODO: let the config be passed in?
 	sw := initSwitch(i, NewSwitch(cfg, t, opts...))

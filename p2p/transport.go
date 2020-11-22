@@ -76,7 +76,7 @@ func (e Endpoint) Validate() error {
 	case e.PeerID == "":
 		return errors.New("endpoint has no peer ID")
 	case e.Protocol == "":
-		return errors.New("endpoint has to protocol")
+		return errors.New("endpoint has no protocol")
 	case len(e.IP) == 0 && len(e.Path) == 0:
 		return errors.New("endpoint must have either IP or path")
 	case e.Port > 0 && len(e.IP) == 0:

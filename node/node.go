@@ -472,8 +472,8 @@ func createTransport(
 	// Limit the number of incoming connections.
 	max := config.P2P.MaxNumInboundPeers + len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
 
-	transport := p2p.NewMConnTransport(nodeInfo, *nodeKey, p2p.MConnConfig(config.P2P),
-		//p2p.MultiplexTransportConnFilters(connFilters...), // FIXME
+	transport := p2p.NewMConnTransport(nodeInfo, nodeKey.PrivKey, p2p.MConnConfig(config.P2P),
+		p2p.MConnTransportConnFilters(connFilters...),
 		p2p.MConnTransportMaxIncomingConnections(max),
 	)
 

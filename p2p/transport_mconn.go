@@ -13,7 +13,14 @@ import (
 	"github.com/tendermint/tendermint/libs/protoio"
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
+
 	"golang.org/x/net/netutil"
+)
+
+const (
+	defaultDialTimeout      = time.Second
+	defaultFilterTimeout    = 5 * time.Second
+	defaultHandshakeTimeout = 3 * time.Second
 )
 
 // MConnProtocol is the MConn protocol identifier.
@@ -28,41 +35,88 @@ func MConnTransportMaxIncomingConnections(max int) MConnTransportOption {
 	return func(mt *MConnTransport) { mt.maxIncomingConnections = max }
 }
 
+// MConnTransportFilterTimeout sets the timeout for filter callbacks.
+func MConnTransportFilterTimeout(timeout time.Duration) MConnTransportOption {
+	return func(mt *MConnTransport) { mt.filterTimeout = timeout }
+}
+
+// MConnTransportConnFilters sets connection filters.
+func MConnTransportConnFilters(filters ...ConnFilterFunc) MConnTransportOption {
+	return func(mt *MConnTransport) { mt.connFilters = filters }
+}
+
+// ConnFilterFunc is a callback for connection filtering. If it returns an
+// error, the connection is rejected. The set of existing connections is passed
+// along with the new connection and all resolved IPs.
+type ConnFilterFunc func(ConnSet, net.Conn, []net.IP) error
+
+// ConnDuplicateIPFilter resolves and keeps all ips for an incoming connection
+// and refuses new ones if they come from a known ip.
+func ConnDuplicateIPFilter() ConnFilterFunc {
+	return func(cs ConnSet, c net.Conn, ips []net.IP) error {
+		for _, ip := range ips {
+			if cs.HasIP(ip) {
+				return ErrRejected{
+					conn:        c,
+					err:         fmt.Errorf("ip<%v> already connected", ip),
+					isDuplicate: true,
+				}
+			}
+		}
+
+		return nil
+	}
+}
+
 // MConnTransport is a Transport implementation using the current multiplexed
 // Tendermint protocol ("MConn").
 type MConnTransport struct {
-	nodeKey      NodeKey
+	privKey      crypto.PrivKey
 	nodeInfo     DefaultNodeInfo
 	channelDescs []*ChannelDescriptor
 	mConnConfig  tmconn.MConnConfig
+
+	maxIncomingConnections int
+	dialTimeout            time.Duration
+	handshakeTimeout       time.Duration
+	filterTimeout          time.Duration
 
 	listener net.Listener
 	chAccept chan *mConnConnection
 	chError  chan error
 	chClose  chan struct{}
 
-	maxIncomingConnections int
-	handshakeTimeout       time.Duration
-	dialTimeout            time.Duration
+	// FIXME This is a vestige from the old transport, and should be managed
+	// by the router once we rewrite the P2P core.
+	conns       ConnSet
+	connFilters []ConnFilterFunc
 }
 
 // NewMConnTransport sets up a new MConn transport.
 func NewMConnTransport(
-	nodeInfo NodeInfo,
-	nodeKey NodeKey,
+	nodeInfo NodeInfo, // FIXME should just take DefaultNodeInfo
+	privKey crypto.PrivKey,
 	mConnConfig tmconn.MConnConfig,
 	opts ...MConnTransportOption,
 ) *MConnTransport {
 	m := &MConnTransport{
-		nodeInfo:         nodeInfo.(DefaultNodeInfo),
-		nodeKey:          nodeKey,
-		handshakeTimeout: defaultHandshakeTimeout,
+		privKey:     privKey,
+		nodeInfo:    nodeInfo.(DefaultNodeInfo),
+		mConnConfig: mConnConfig,
+		// FIXME For compatibility with existing code structure, this is set
+		// directly by the switch on startup.
+		channelDescs: []*ChannelDescriptor{},
+
 		dialTimeout:      defaultDialTimeout,
-		mConnConfig:      mConnConfig,
+		handshakeTimeout: defaultHandshakeTimeout,
+		filterTimeout:    defaultFilterTimeout,
 
 		chAccept: make(chan *mConnConnection),
 		chError:  make(chan error),
 		chClose:  make(chan struct{}),
+
+		conns:       NewConnSet(),
+		connFilters: []ConnFilterFunc{},
 	}
 	for _, opt := range opts {
 		opt(m)
@@ -106,7 +160,8 @@ func (m *MConnTransport) Listen(endpoint Endpoint) error {
 }
 
 // accept accepts inbound connections in a loop, and asynchronously handshakes
-// with the peer to avoid head-of-line blocking.
+// with the peer to avoid head-of-line blocking. Established connections are
+// passed to Accept() via the channel m.chAccept.
 // See: https://github.com/tendermint/tendermint/issues/204
 func (m *MConnTransport) accept() {
 	for {
@@ -119,6 +174,14 @@ func (m *MConnTransport) accept() {
 			return
 		}
 		go func() {
+			err := m.filterTCPConn(tcpConn)
+			if err != nil {
+				_ = tcpConn.Close()
+				select {
+				case m.chError <- err:
+				case <-m.chClose:
+				}
+			}
 			conn, err := newMConnConnection(m, tcpConn)
 			if err != nil {
 				_ = tcpConn.Close()
@@ -153,12 +216,13 @@ func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 
 // Dial implements Transport.
 func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connection, error) {
+	ctx, cancel := context.WithTimeout(ctx, m.dialTimeout)
+	defer cancel()
+
 	err := m.normalizeEndpoint(&endpoint)
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, m.dialTimeout)
-	defer cancel()
 
 	dialer := net.Dialer{}
 	tcpConn, err := dialer.DialContext(ctx, "tcp", fmt.Sprintf("%v:%v", endpoint.IP, endpoint.Port))
@@ -166,9 +230,60 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 		return nil, err
 	}
 
+	err = m.filterTCPConn(tcpConn)
+	if err != nil {
+		return nil, err
+	}
+
 	// FIXME Filter connections
 
 	return newMConnConnection(m, tcpConn)
+}
+
+// filterConn filters a TCP connection, rejecting it if this function errors.
+func (m *MConnTransport) filterTCPConn(tcpConn net.Conn) error {
+
+	// Reject if connection is already present.
+	if m.conns.Has(tcpConn) {
+		return ErrRejected{conn: tcpConn, isDuplicate: true}
+	}
+
+	// Resolve IPs for incoming connections.
+	host, _, err := net.SplitHostPort(tcpConn.RemoteAddr().String())
+	if err != nil {
+		return err
+	}
+	addrs, err := net.DefaultResolver.LookupIPAddr(context.Background(), host)
+	if err != nil {
+		return err
+	}
+	ips := []net.IP{}
+	for _, addr := range addrs {
+		ips = append(ips, addr.IP)
+	}
+
+	// Apply filter callbacks.
+	errc := make(chan error, len(m.connFilters))
+	for _, connFilter := range m.connFilters {
+		go func(connFilter ConnFilterFunc) {
+			errc <- connFilter(m.conns, tcpConn, ips)
+		}(connFilter)
+	}
+
+	for i := 0; i < cap(errc); i++ {
+		select {
+		case err := <-errc:
+			if err != nil {
+				return ErrRejected{conn: tcpConn, err: err, isFiltered: true}
+			}
+		case <-time.After(m.filterTimeout):
+			return ErrFilterTimeout{}
+		}
+
+	}
+
+	m.conns.Set(tcpConn, ips)
+	return nil
 }
 
 // Endpoints implements Transport.
@@ -261,7 +376,7 @@ func newMConnConnection(
 		transport: transport,
 		streams:   make(map[byte]*mConnStream), // FIXME capacity
 	}
-	conn.secretConn, err = tmconn.MakeSecretConnection(tcpConn, transport.nodeKey.PrivKey)
+	conn.secretConn, err = tmconn.MakeSecretConnection(tcpConn, transport.privKey)
 	if err != nil {
 		err = ErrRejected{
 			conn:          tcpConn,
@@ -323,7 +438,7 @@ func newMConnConnection(
 		},
 		transport.mConnConfig,
 	)
-	//err = conn.mConn.Start()
+	// err = conn.mConn.Start()
 	return
 }
 
@@ -413,7 +528,7 @@ func (s *mConnStream) Close() error {
 // Write implements Stream.
 func (s *mConnStream) Write(bz []byte) (int, error) {
 	if !s.connection.mConn.Send(s.id, bz) {
-		return 0, errors.New(fmt.Sprintf("MConn send failed for stream 0x%x", s.id))
+		return 0, fmt.Errorf("MConn send failed for stream 0x%x", s.id)
 	}
 	return len(bz), nil
 }
