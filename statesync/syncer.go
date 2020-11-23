@@ -123,10 +123,13 @@ func (s *syncer) AddSnapshot(peer p2p.PeerID, snapshot *snapshot) (bool, error) 
 // single request to discover snapshots, later we may want to do retries and stuff.
 func (s *syncer) AddPeer(peer p2p.PeerID) {
 	s.logger.Debug("Requesting snapshots from peer", "peer", peer.String())
-	s.snapshotCh <- p2p.Envelope{
-		To:      peer,
-		Message: &ssproto.SnapshotsRequest{},
-	}
+
+	go func() {
+		s.snapshotCh <- p2p.Envelope{
+			To:      peer,
+			Message: &ssproto.SnapshotsRequest{},
+		}
+	}()
 }
 
 // RemovePeer removes a peer from the pool.
@@ -335,7 +338,7 @@ func (s *syncer) applyChunks(chunks *chunkQueue) error {
 		resp, err := s.conn.ApplySnapshotChunkSync(abci.RequestApplySnapshotChunk{
 			Index:  chunk.Index,
 			Chunk:  chunk.Chunk,
-			Sender: string(chunk.Sender),
+			Sender: chunk.Sender.String(),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to apply chunk %v: %w", chunk.Index, err)
@@ -430,14 +433,17 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 	}
 
 	s.logger.Debug("Requesting snapshot chunk", "height", snapshot.Height, "format", snapshot.Format, "chunk", chunk, "peer", peer.String())
-	s.chunkCh <- p2p.Envelope{
-		To: peer,
-		Message: &ssproto.ChunkRequest{
-			Height: snapshot.Height,
-			Format: snapshot.Format,
-			Index:  chunk,
-		},
-	}
+
+	go func() {
+		s.chunkCh <- p2p.Envelope{
+			To: peer,
+			Message: &ssproto.ChunkRequest{
+				Height: snapshot.Height,
+				Format: snapshot.Format,
+				Index:  chunk,
+			},
+		}
+	}()
 }
 
 // verifyApp verifies the sync, checking the app hash and last block height. It returns the
