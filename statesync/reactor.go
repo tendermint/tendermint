@@ -79,6 +79,10 @@ func NewReactor(
 	}
 }
 
+func (r *Reactor) Logger() log.Logger {
+	return r.logger
+}
+
 // Run starts a blocking process for the state sync reactor. It listens for
 // Envelope messages on a snapshot p2p Channel and chunk p2p Channel, in order
 // of preference. In addition, the reactor will also listen for peer updates

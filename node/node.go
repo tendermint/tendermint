@@ -180,6 +180,10 @@ type Node struct {
 	genesisDoc    *types.GenesisDoc   // initial validator set
 	privValidator types.PrivValidator // local node's validator key
 
+	// XXX: Needed to start/stop reactors with shims.
+	reactorCtx context.Context
+	cancel     context.CancelFunc
+
 	// network
 	transport   *p2p.MultiplexTransport
 	sw          *p2p.Switch  // p2p connections
@@ -486,7 +490,7 @@ func createSwitch(config *cfg.Config,
 	peerFilters []p2p.PeerFilterFunc,
 	mempoolReactor *mempl.Reactor,
 	bcReactor p2p.Reactor,
-	stateSyncReactor *statesync.Reactor,
+	stateSyncReactor *p2p.ReactorShim,
 	consensusReactor *cs.Reactor,
 	evidenceReactor *evidence.Reactor,
 	nodeInfo p2p.NodeInfo,
@@ -565,7 +569,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
 	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
 	stateStore sm.Store, blockStore *store.BlockStore, state sm.State) error {
-	ssR.Logger.Info("Starting state sync")
+	ssR.Logger().Info("Starting state sync")
 
 	if stateProvider == nil {
 		var err error
@@ -578,7 +582,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 				Period: config.TrustPeriod,
 				Height: config.TrustHeight,
 				Hash:   config.TrustHashBytes(),
-			}, ssR.Logger.With("module", "light"))
+			}, ssR.Logger().With("module", "light"))
 		if err != nil {
 			return fmt.Errorf("failed to set up light client state provider: %w", err)
 		}
@@ -587,17 +591,17 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	go func() {
 		state, commit, err := ssR.Sync(stateProvider, config.DiscoveryTime)
 		if err != nil {
-			ssR.Logger.Error("State sync failed", "err", err)
+			ssR.Logger().Error("State sync failed", "err", err)
 			return
 		}
 		err = stateStore.Bootstrap(state)
 		if err != nil {
-			ssR.Logger.Error("Failed to bootstrap node with new state", "err", err)
+			ssR.Logger().Error("Failed to bootstrap node with new state", "err", err)
 			return
 		}
 		err = blockStore.SaveSeenCommit(state.LastBlockHeight, commit)
 		if err != nil {
-			ssR.Logger.Error("Failed to store last seen commit", "err", err)
+			ssR.Logger().Error("Failed to store last seen commit", "err", err)
 			return
 		}
 
@@ -607,7 +611,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 			conR.Metrics.FastSyncing.Set(1)
 			err = bcR.SwitchToFastSync(state)
 			if err != nil {
-				ssR.Logger.Error("Failed to switch to fast sync", "err", err)
+				ssR.Logger().Error("Failed to switch to fast sync", "err", err)
 				return
 			}
 		} else {
@@ -749,14 +753,8 @@ func NewNode(config *cfg.Config,
 	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
-	//
-	// TODO: Do we need to defer cancelling the state sync reactor's shim Context?
-	stateSyncReactor := statesync.NewReactorDeprecated(
-		proxyApp.Snapshot(),
-		proxyApp.Query(),
-		config.StateSync.TempDir,
-	)
-	stateSyncReactor.SetLogger(logger.With("module", "statesync"))
+	stateSyncReactorShim := p2p.NewShim("StateSync", statesync.GetChannelShims())
+	stateSyncReactorShim.SetLogger(logger.With("module", "statesync"))
 
 	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
 	if err != nil {
@@ -770,7 +768,18 @@ func NewNode(config *cfg.Config,
 	p2pLogger := logger.With("module", "p2p")
 	sw := createSwitch(
 		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
-		stateSyncReactor, consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
+		stateSyncReactorShim, consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
+	)
+
+	stateSyncReactor := statesync.NewReactor(
+		stateSyncReactorShim.Logger,
+		sw,
+		proxyApp.Snapshot(),
+		proxyApp.Query(),
+		stateSyncReactorShim.GetChannel(p2p.ChannelID(statesync.SnapshotChannel)),
+		stateSyncReactorShim.GetChannel(p2p.ChannelID(statesync.ChunkChannel)),
+		stateSyncReactorShim.PeerUpdateCh,
+		config.StateSync.TempDir,
 	)
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
@@ -812,10 +821,15 @@ func NewNode(config *cfg.Config,
 		}()
 	}
 
+	reactorCtx, cancel := context.WithCancel(context.Background())
+
 	node := &Node{
 		config:        config,
 		genesisDoc:    genDoc,
 		privValidator: privValidator,
+
+		reactorCtx: reactorCtx,
+		cancel:     cancel,
 
 		transport: transport,
 		sw:        sw,
@@ -894,6 +908,8 @@ func (n *Node) OnStart() error {
 		}
 	}
 
+	go n.stateSyncReactor.Run(n.reactorCtx)
+
 	// Start the switch (the P2P server).
 	err = n.sw.Start()
 	if err != nil {
@@ -935,6 +951,8 @@ func (n *Node) OnStop() {
 	if err := n.indexerService.Stop(); err != nil {
 		n.Logger.Error("Error closing indexerService", "err", err)
 	}
+
+	n.cancel()
 
 	// now stop the reactors
 	if err := n.sw.Stop(); err != nil {
