@@ -44,6 +44,9 @@ type Reactor interface {
 	// copying.
 	//
 	// CONTRACT: msgBytes are not nil.
+	//
+	// XXX: do not call any methods that can block or incur heavy processing.
+	// https://github.com/tendermint/tendermint/issues/2888
 	Receive(chID byte, peer Peer, msgBytes []byte)
 }
 
