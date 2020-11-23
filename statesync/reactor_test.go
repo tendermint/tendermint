@@ -12,7 +12,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
-	p2pmocks "github.com/tendermint/tendermint/p2p/mocks"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	proxymocks "github.com/tendermint/tendermint/proxy/mocks"
 )
@@ -50,15 +49,18 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 			}).Return(&abci.ResponseLoadSnapshotChunk{Chunk: tc.chunk}, nil)
 
 			// mock peer to store response, if found
-			peer := &p2pmocks.Peer{}
-			peer.On("ID").Return(p2p.ID("FF"))
+			peer, _ := simplePeer(t, "FF")
 
 			var response *ssproto.ChunkResponse
+			received := true
+
 			if tc.expectResponse != nil {
+				received = false
 				peer.On("Send", ChunkChannel, mock.Anything).Run(func(args mock.Arguments) {
 					msg, err := decodeMsg(args[1].([]byte))
 					require.NoError(t, err)
 					response = msg.(*ssproto.ChunkResponse)
+					received = true
 				}).Return(true)
 			}
 
@@ -97,7 +99,7 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 			})
 
 			shim.Receive(ChunkChannel, peer, mustEncodeMsg(tc.request))
-			time.Sleep(100 * time.Millisecond)
+			tryUntil(t, func() bool { return received }, time.Millisecond, time.Second)
 			assert.Equal(t, tc.expectResponse, response)
 
 			conn.AssertExpectations(t)
@@ -153,15 +155,17 @@ func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 
 			// mock peer to catch responses and store them in a slice
 			responses := []*ssproto.SnapshotsResponse{}
+			received := true
 
-			peer := &p2pmocks.Peer{}
-			peer.On("ID").Return(p2p.ID("FF"))
+			peer, _ := simplePeer(t, "FF")
 
 			if len(tc.expectResponses) > 0 {
+				received = false
 				peer.On("Send", SnapshotChannel, mock.Anything).Run(func(args mock.Arguments) {
 					msg, err := decodeMsg(args[1].([]byte))
 					require.NoError(t, err)
 					responses = append(responses, msg.(*ssproto.SnapshotsResponse))
+					received = true
 				}).Return(true)
 			}
 
@@ -200,7 +204,7 @@ func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 			})
 
 			shim.Receive(SnapshotChannel, peer, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
-			time.Sleep(100 * time.Millisecond)
+			tryUntil(t, func() bool { return received }, time.Millisecond, time.Second)
 			assert.Equal(t, tc.expectResponses, responses)
 
 			conn.AssertExpectations(t)

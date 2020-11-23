@@ -1,6 +1,7 @@
 package statesync
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -10,10 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
-	p2pmocks "github.com/tendermint/tendermint/p2p/mocks"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
@@ -25,21 +26,65 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-// Sets up a basic syncer that can be used to test OfferSnapshot requests
-func setupOfferSyncer(t *testing.T) (*syncer, *proxymocks.AppConnSnapshot) {
-	connQuery := &proxymocks.AppConnQuery{}
-	connSnapshot := &proxymocks.AppConnSnapshot{}
-	stateProvider := &mocks.StateProvider{}
-	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
-	syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
-	return syncer, connSnapshot
+func newTestSyncer(
+	t *testing.T,
+	shim *p2p.ReactorShim,
+	p2pSwitch *p2p.Switch,
+	conn proxy.AppConnSnapshot,
+	connQuery proxy.AppConnQuery,
+	stateProvider StateProvider,
+) *syncer {
+	t.Helper()
+
+	snapshotCh := shim.GetChannel(p2p.ChannelID(SnapshotChannel))
+	chunkCh := shim.GetChannel(p2p.ChannelID(ChunkChannel))
+	r := NewReactor(
+		shim.Logger,
+		p2pSwitch,
+		conn,
+		connQuery,
+		snapshotCh,
+		chunkCh,
+		shim.PeerUpdateCh,
+		"",
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go r.Run(ctx)
+	require.NoError(t, shim.Start())
+
+	t.Cleanup(func() {
+		cancel()
+
+		if err := shim.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
+
+	return newSyncer(log.NewNopLogger(), conn, connQuery, stateProvider, snapshotCh.Out, chunkCh.Out, "")
 }
 
-// Sets up a simple peer mock with an ID
-func simplePeer(id string) *p2pmocks.Peer {
-	peer := &p2pmocks.Peer{}
-	peer.On("ID").Return(p2p.ID(id))
-	return peer
+// Sets up a basic syncer that can be used to test OfferSnapshot requests
+func setupOfferSyncer(t *testing.T) (*syncer, *proxymocks.AppConnSnapshot) {
+	t.Helper()
+
+	connQuery := &proxymocks.AppConnQuery{}
+	connSnapshot := &proxymocks.AppConnSnapshot{}
+
+	stateProvider := &mocks.StateProvider{}
+	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
+
+	shim := p2p.NewShim("StateSync", GetChannelShims())
+
+	cfg := config.DefaultP2PConfig()
+	p2pSwitch := p2p.MakeSwitch(cfg, 1, "testing", "123.123.123", func(_ int, sw *p2p.Switch) *p2p.Switch {
+		sw.AddReactor(shim.Name, shim)
+		return sw
+	})
+
+	syncer := newTestSyncer(t, shim, p2pSwitch, connSnapshot, connQuery, stateProvider)
+
+	return syncer, connSnapshot
 }
 
 func TestSyncer_SyncAny(t *testing.T) {
@@ -84,36 +129,49 @@ func TestSyncer_SyncAny(t *testing.T) {
 	connSnapshot := &proxymocks.AppConnSnapshot{}
 	connQuery := &proxymocks.AppConnQuery{}
 
-	syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
+	peerA, peerAID := simplePeer(t, "AA")
+	peerB, peerBID := simplePeer(t, "BB")
+
+	shim := p2p.NewShim("StateSync", GetChannelShims())
+
+	cfg := config.DefaultP2PConfig()
+	p2pSwitch := p2p.MakeSwitch(cfg, 1, "testing", "123.123.123", func(_ int, sw *p2p.Switch) *p2p.Switch {
+		p2p.AddPeerToSwitchPeerSet(sw, peerA)
+		p2p.AddPeerToSwitchPeerSet(sw, peerB)
+		sw.AddReactor(shim.Name, shim)
+		return sw
+	})
+
+	syncer := newTestSyncer(t, shim, p2pSwitch, connSnapshot, connQuery, stateProvider)
 
 	// Adding a chunk should error when no sync is in progress
 	_, err := syncer.AddChunk(&chunk{Height: 1, Format: 1, Index: 0, Chunk: []byte{1}})
 	require.Error(t, err)
 
 	// Adding a couple of peers should trigger snapshot discovery messages
-	peerA := &p2pmocks.Peer{}
-	peerA.On("ID").Return(p2p.ID("a"))
-	peerA.On("Send", SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{})).Return(true)
-	syncer.AddPeer(peerA)
+	aReceived := false
+	peerA.On("Send", SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{})).Run(func(_ mock.Arguments) { aReceived = true }).Return(true)
+	syncer.AddPeer(peerAID)
+	tryUntil(t, func() bool { return aReceived }, time.Millisecond, time.Second)
 	peerA.AssertExpectations(t)
 
-	peerB := &p2pmocks.Peer{}
-	peerB.On("ID").Return(p2p.ID("b"))
-	peerB.On("Send", SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{})).Return(true)
-	syncer.AddPeer(peerB)
+	bReceived := false
+	peerB.On("Send", SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{})).Run(func(_ mock.Arguments) { bReceived = true }).Return(true)
+	syncer.AddPeer(peerBID)
+	tryUntil(t, func() bool { return bReceived }, time.Millisecond, time.Second)
 	peerB.AssertExpectations(t)
 
 	// Both peers report back with snapshots. One of them also returns a snapshot we don't want, in
 	// format 2, which will be rejected by the ABCI application.
-	new, err := syncer.AddSnapshot(peerA, s)
+	new, err := syncer.AddSnapshot(peerAID, s)
 	require.NoError(t, err)
 	assert.True(t, new)
 
-	new, err = syncer.AddSnapshot(peerB, s)
+	new, err = syncer.AddSnapshot(peerBID, s)
 	require.NoError(t, err)
 	assert.False(t, new)
 
-	new, err = syncer.AddSnapshot(peerB, &snapshot{Height: 2, Format: 2, Chunks: 3, Hash: []byte{1}})
+	new, err = syncer.AddSnapshot(peerBID, &snapshot{Height: 2, Format: 2, Chunks: 3, Hash: []byte{1}})
 	require.NoError(t, err)
 	assert.True(t, new)
 
@@ -157,6 +215,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 		chunkRequests[msg.Index]++
 		chunkRequestsMtx.Unlock()
 	}
+
 	peerA.On("Send", ChunkChannel, mock.Anything).Maybe().Run(onChunkRequest).Return(true)
 	peerB.On("Send", ChunkChannel, mock.Anything).Maybe().Run(onChunkRequest).Return(true)
 
@@ -218,8 +277,14 @@ func TestSyncer_SyncAny_abort(t *testing.T) {
 	syncer, connSnapshot := setupOfferSyncer(t)
 
 	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
-	_, err := syncer.AddSnapshot(simplePeer("id"), s)
+	p, pID := simplePeer(t, "FF")
+
+	pID, err := p2p.PeerIDFromString(string(p.ID()))
 	require.NoError(t, err)
+
+	_, err = syncer.AddSnapshot(pID, s)
+	require.NoError(t, err)
+
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: toABCI(s), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ABORT}, nil)
@@ -236,11 +301,19 @@ func TestSyncer_SyncAny_reject(t *testing.T) {
 	s22 := &snapshot{Height: 2, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
 	s12 := &snapshot{Height: 1, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
 	s11 := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
-	_, err := syncer.AddSnapshot(simplePeer("id"), s22)
+
+	p, pID := simplePeer(t, "FF")
+
+	pID, err := p2p.PeerIDFromString(string(p.ID()))
 	require.NoError(t, err)
-	_, err = syncer.AddSnapshot(simplePeer("id"), s12)
+
+	_, err = syncer.AddSnapshot(pID, s22)
 	require.NoError(t, err)
-	_, err = syncer.AddSnapshot(simplePeer("id"), s11)
+
+	_, err = syncer.AddSnapshot(pID, s12)
+	require.NoError(t, err)
+
+	_, err = syncer.AddSnapshot(pID, s11)
 	require.NoError(t, err)
 
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
@@ -267,11 +340,19 @@ func TestSyncer_SyncAny_reject_format(t *testing.T) {
 	s22 := &snapshot{Height: 2, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
 	s12 := &snapshot{Height: 1, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
 	s11 := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
-	_, err := syncer.AddSnapshot(simplePeer("id"), s22)
+
+	p, pID := simplePeer(t, "FF")
+
+	pID, err := p2p.PeerIDFromString(string(p.ID()))
 	require.NoError(t, err)
-	_, err = syncer.AddSnapshot(simplePeer("id"), s12)
+
+	_, err = syncer.AddSnapshot(pID, s22)
 	require.NoError(t, err)
-	_, err = syncer.AddSnapshot(simplePeer("id"), s11)
+
+	_, err = syncer.AddSnapshot(pID, s12)
+	require.NoError(t, err)
+
+	_, err = syncer.AddSnapshot(pID, s11)
 	require.NoError(t, err)
 
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
@@ -290,9 +371,9 @@ func TestSyncer_SyncAny_reject_format(t *testing.T) {
 func TestSyncer_SyncAny_reject_sender(t *testing.T) {
 	syncer, connSnapshot := setupOfferSyncer(t)
 
-	peerA := simplePeer("a")
-	peerB := simplePeer("b")
-	peerC := simplePeer("c")
+	_, peerAID := simplePeer(t, "AA")
+	_, peerBID := simplePeer(t, "BB")
+	_, peerCID := simplePeer(t, "CC")
 
 	// sbc will be offered first, which will be rejected with reject_sender, causing all snapshots
 	// submitted by both b and c (i.e. sb, sc, sbc) to be rejected. Finally, sa will reject and
@@ -301,15 +382,20 @@ func TestSyncer_SyncAny_reject_sender(t *testing.T) {
 	sb := &snapshot{Height: 2, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 	sc := &snapshot{Height: 3, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 	sbc := &snapshot{Height: 4, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
-	_, err := syncer.AddSnapshot(peerA, sa)
+
+	_, err := syncer.AddSnapshot(peerAID, sa)
 	require.NoError(t, err)
-	_, err = syncer.AddSnapshot(peerB, sb)
+
+	_, err = syncer.AddSnapshot(peerBID, sb)
 	require.NoError(t, err)
-	_, err = syncer.AddSnapshot(peerC, sc)
+
+	_, err = syncer.AddSnapshot(peerCID, sc)
 	require.NoError(t, err)
-	_, err = syncer.AddSnapshot(peerB, sbc)
+
+	_, err = syncer.AddSnapshot(peerBID, sbc)
 	require.NoError(t, err)
-	_, err = syncer.AddSnapshot(peerC, sbc)
+
+	_, err = syncer.AddSnapshot(peerCID, sbc)
 	require.NoError(t, err)
 
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
@@ -330,8 +416,15 @@ func TestSyncer_SyncAny_abciError(t *testing.T) {
 
 	errBoom := errors.New("boom")
 	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
-	_, err := syncer.AddSnapshot(simplePeer("id"), s)
+
+	p, pID := simplePeer(t, "FF")
+
+	pID, err := p2p.PeerIDFromString(string(p.ID()))
 	require.NoError(t, err)
+
+	_, err = syncer.AddSnapshot(pID, s)
+	require.NoError(t, err)
+
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: toABCI(s), AppHash: []byte("app_hash"),
 	}).Once().Return(nil, errBoom)
@@ -407,7 +500,16 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 			connSnapshot := &proxymocks.AppConnSnapshot{}
 			stateProvider := &mocks.StateProvider{}
 			stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
-			syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
+
+			shim := p2p.NewShim("StateSync", GetChannelShims())
+
+			cfg := config.DefaultP2PConfig()
+			p2pSwitch := p2p.MakeSwitch(cfg, 1, "testing", "123.123.123", func(_ int, sw *p2p.Switch) *p2p.Switch {
+				sw.AddReactor(shim.Name, shim)
+				return sw
+			})
+
+			syncer := newTestSyncer(t, shim, p2pSwitch, connSnapshot, connQuery, stateProvider)
 
 			body := []byte{1, 2, 3}
 			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 1}, "")
@@ -458,7 +560,16 @@ func TestSyncer_applyChunks_RefetchChunks(t *testing.T) {
 			connSnapshot := &proxymocks.AppConnSnapshot{}
 			stateProvider := &mocks.StateProvider{}
 			stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
-			syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
+
+			shim := p2p.NewShim("StateSync", GetChannelShims())
+
+			cfg := config.DefaultP2PConfig()
+			p2pSwitch := p2p.MakeSwitch(cfg, 1, "testing", "123.123.123", func(_ int, sw *p2p.Switch) *p2p.Switch {
+				sw.AddReactor(shim.Name, shim)
+				return sw
+			})
+
+			syncer := newTestSyncer(t, shim, p2pSwitch, connSnapshot, connQuery, stateProvider)
 
 			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 3}, "")
 			require.NoError(t, err)
@@ -521,59 +632,77 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 			connSnapshot := &proxymocks.AppConnSnapshot{}
 			stateProvider := &mocks.StateProvider{}
 			stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
-			syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
+
+			shim := p2p.NewShim("StateSync", GetChannelShims())
+
+			cfg := config.DefaultP2PConfig()
+			p2pSwitch := p2p.MakeSwitch(cfg, 1, "testing", "123.123.123", func(_ int, sw *p2p.Switch) *p2p.Switch {
+				sw.AddReactor(shim.Name, shim)
+				return sw
+			})
+
+			syncer := newTestSyncer(t, shim, p2pSwitch, connSnapshot, connQuery, stateProvider)
 
 			// Set up three peers across two snapshots, and ask for one of them to be banned.
 			// It should be banned from all snapshots.
-			peerA := simplePeer("a")
-			peerB := simplePeer("b")
-			peerC := simplePeer("c")
+			_, peerAID := simplePeer(t, "AA")
+			_, peerBID := simplePeer(t, "BB")
+			_, peerCID := simplePeer(t, "CC")
 
 			s1 := &snapshot{Height: 1, Format: 1, Chunks: 3}
 			s2 := &snapshot{Height: 2, Format: 1, Chunks: 3}
-			_, err := syncer.AddSnapshot(peerA, s1)
+
+			_, err := syncer.AddSnapshot(peerAID, s1)
 			require.NoError(t, err)
-			_, err = syncer.AddSnapshot(peerA, s2)
+
+			_, err = syncer.AddSnapshot(peerAID, s2)
 			require.NoError(t, err)
-			_, err = syncer.AddSnapshot(peerB, s1)
+
+			_, err = syncer.AddSnapshot(peerBID, s1)
 			require.NoError(t, err)
-			_, err = syncer.AddSnapshot(peerB, s2)
+
+			_, err = syncer.AddSnapshot(peerBID, s2)
 			require.NoError(t, err)
-			_, err = syncer.AddSnapshot(peerC, s1)
+
+			_, err = syncer.AddSnapshot(peerCID, s1)
 			require.NoError(t, err)
-			_, err = syncer.AddSnapshot(peerC, s2)
+
+			_, err = syncer.AddSnapshot(peerCID, s2)
 			require.NoError(t, err)
 
 			chunks, err := newChunkQueue(s1, "")
 			require.NoError(t, err)
-			added, err := chunks.Add(&chunk{Height: 1, Format: 1, Index: 0, Chunk: []byte{0}, Sender: peerA.ID()})
+
+			added, err := chunks.Add(&chunk{Height: 1, Format: 1, Index: 0, Chunk: []byte{0}, Sender: peerAID})
 			require.True(t, added)
 			require.NoError(t, err)
-			added, err = chunks.Add(&chunk{Height: 1, Format: 1, Index: 1, Chunk: []byte{1}, Sender: peerB.ID()})
+
+			added, err = chunks.Add(&chunk{Height: 1, Format: 1, Index: 1, Chunk: []byte{1}, Sender: peerBID})
 			require.True(t, added)
 			require.NoError(t, err)
-			added, err = chunks.Add(&chunk{Height: 1, Format: 1, Index: 2, Chunk: []byte{2}, Sender: peerC.ID()})
+
+			added, err = chunks.Add(&chunk{Height: 1, Format: 1, Index: 2, Chunk: []byte{2}, Sender: peerCID})
 			require.True(t, added)
 			require.NoError(t, err)
 
 			// The first two chunks are accepted, before the last one asks for b sender to be rejected
 			connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
-				Index: 0, Chunk: []byte{0}, Sender: "a",
+				Index: 0, Chunk: []byte{0}, Sender: "AA",
 			}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 			connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
-				Index: 1, Chunk: []byte{1}, Sender: "b",
+				Index: 1, Chunk: []byte{1}, Sender: "BB",
 			}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 			connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
-				Index: 2, Chunk: []byte{2}, Sender: "c",
+				Index: 2, Chunk: []byte{2}, Sender: "CC",
 			}).Once().Return(&abci.ResponseApplySnapshotChunk{
 				Result:        tc.result,
-				RejectSenders: []string{string(peerB.ID())},
+				RejectSenders: []string{peerBID.String()},
 			}, nil)
 
 			// On retry, the last chunk will be tried again, so we just accept it then.
 			if tc.result == abci.ResponseApplySnapshotChunk_RETRY {
 				connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
-					Index: 2, Chunk: []byte{2}, Sender: "c",
+					Index: 2, Chunk: []byte{2}, Sender: "CC",
 				}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 			}
 
@@ -587,14 +716,14 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 			time.Sleep(50 * time.Millisecond)
 
 			s1peers := syncer.snapshots.GetPeers(s1)
-			assert.Len(t, s1peers, 2)
-			assert.EqualValues(t, "a", s1peers[0].ID())
-			assert.EqualValues(t, "c", s1peers[1].ID())
+			require.Len(t, s1peers, 2)
+			require.EqualValues(t, "AA", s1peers[0].String())
+			require.EqualValues(t, "CC", s1peers[1].String())
 
 			syncer.snapshots.GetPeers(s1)
-			assert.Len(t, s1peers, 2)
-			assert.EqualValues(t, "a", s1peers[0].ID())
-			assert.EqualValues(t, "c", s1peers[1].ID())
+			require.Len(t, s1peers, 2)
+			require.EqualValues(t, "AA", s1peers[0].String())
+			require.EqualValues(t, "CC", s1peers[1].String())
 
 			err = chunks.Close()
 			require.NoError(t, err)
@@ -634,7 +763,16 @@ func TestSyncer_verifyApp(t *testing.T) {
 			connQuery := &proxymocks.AppConnQuery{}
 			connSnapshot := &proxymocks.AppConnSnapshot{}
 			stateProvider := &mocks.StateProvider{}
-			syncer := newSyncer(log.NewNopLogger(), connSnapshot, connQuery, stateProvider, "")
+
+			shim := p2p.NewShim("StateSync", GetChannelShims())
+
+			cfg := config.DefaultP2PConfig()
+			p2pSwitch := p2p.MakeSwitch(cfg, 1, "testing", "123.123.123", func(_ int, sw *p2p.Switch) *p2p.Switch {
+				sw.AddReactor(shim.Name, shim)
+				return sw
+			})
+
+			syncer := newTestSyncer(t, shim, p2pSwitch, connSnapshot, connQuery, stateProvider)
 
 			connQuery.On("InfoSync", proxy.RequestInfo).Return(tc.response, tc.err)
 			version, err := syncer.verifyApp(s)
