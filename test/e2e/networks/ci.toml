@@ -8,21 +8,12 @@ initial_state = { initial01 = "a", initial02 = "b", initial03 = "c" }
 validator01 = 100
 
 [validator_update.0]
-validator01 = 10
-validator02 = 20
-validator03 = 30
-validator04 = 40
+validator02 = 100
+validator03 = 100
+validator04 = 100
 
 [validator_update.1010]
-validator05 = 50
-
-# validator03 gets killed and validator05 has lots of perturbations, so weight them low.
-[validator_update.1020]
-validator01 = 100
-validator02 = 100
-validator03 = 50
-validator04 = 100
-validator05 = 50
+validator05 = 100
 
 [node.seed01]
 mode = "seed"

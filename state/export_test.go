@@ -1,6 +1,7 @@
 package state
 
 import (
+	"github.com/tendermint/tendermint/crypto"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -32,8 +33,9 @@ func UpdateState(
 	nextCoreChainLock *types.CoreChainLock,
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
+	newThresholdPublicKey crypto.PubKey,
 ) (State, error) {
-	return updateState(state, blockID, header, lastCoreChainLock, nextCoreChainLock, abciResponses, validatorUpdates)
+	return updateState(state, blockID, header, lastCoreChainLock, nextCoreChainLock, abciResponses, validatorUpdates, newThresholdPublicKey)
 }
 
 // ValidateValidatorUpdates is an alias for validateValidatorUpdates exported

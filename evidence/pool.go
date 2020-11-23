@@ -52,7 +52,7 @@ func NewPool(evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool,
 
 	state, err := stateDB.Load()
 	if err != nil {
-		return nil, fmt.Errorf("cannot load state: %w", err)
+		return nil, fmt.Errorf("cannot load state for new pool: %w", err)
 	}
 
 	pool := &Pool{

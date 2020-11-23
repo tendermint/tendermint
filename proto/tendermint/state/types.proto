@@ -48,6 +48,8 @@ message State {
   int64                    last_block_height = 3;
   tendermint.types.BlockID last_block_id     = 4
       [(gogoproto.nullable) = false, (gogoproto.customname) = "LastBlockID"];
+  tendermint.types.StateID last_state_id     = 102
+  [(gogoproto.nullable) = false, (gogoproto.customname) = "LastStateID"];
   google.protobuf.Timestamp last_block_time = 5
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 

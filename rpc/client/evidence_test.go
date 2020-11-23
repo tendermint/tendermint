@@ -6,11 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto/bls12381"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -36,14 +37,20 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	v := vote.ToProto()
 	v2 := vote2.ToProto()
 
-	vote.Signature, err = val.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v))
+	vote.BlockSignature, err = val.Key.PrivKey.Sign(types.VoteBlockSignBytes(chainID, v))
 	require.NoError(t, err)
 
-	vote2.Signature, err = val.Key.PrivKey.Sign(types.VoteSignBytes(chainID, v2))
+	vote2.BlockSignature, err = val.Key.PrivKey.Sign(types.VoteBlockSignBytes(chainID, v2))
 	require.NoError(t, err)
 
-	validator := types.NewValidator(val.Key.PubKey, 10)
-	valSet := types.NewValidatorSet([]*types.Validator{validator})
+	vote.StateSignature, err = val.Key.PrivKey.Sign(types.VoteStateSignBytes(chainID, v))
+	require.NoError(t, err)
+
+	vote2.StateSignature, err = val.Key.PrivKey.Sign(types.VoteStateSignBytes(chainID, v2))
+	require.NoError(t, err)
+
+	validator := types.NewValidator(val.Key.PubKey, 100, val.Key.ProTxHash)
+	valSet := types.NewValidatorSet([]*types.Validator{validator}, validator.PubKey)
 
 	return types.NewDuplicateVoteEvidence(vote, vote2, defaultTestTime, valSet)
 }
@@ -54,18 +61,20 @@ func makeEvidences(
 	chainID string,
 ) (correct *types.DuplicateVoteEvidence, fakes []*types.DuplicateVoteEvidence) {
 	vote := types.Vote{
-		ValidatorAddress: val.Key.Address,
-		ValidatorIndex:   0,
-		Height:           1,
-		Round:            0,
-		Type:             tmproto.PrevoteType,
-		Timestamp:        defaultTestTime,
+		ValidatorProTxHash: val.Key.ProTxHash,
+		ValidatorIndex:     0,
+		Height:             1,
+		Round:              0,
+		Type:               tmproto.PrevoteType,
 		BlockID: types.BlockID{
 			Hash: tmhash.Sum(tmrand.Bytes(tmhash.Size)),
 			PartSetHeader: types.PartSetHeader{
 				Total: 1000,
 				Hash:  tmhash.Sum([]byte("partset")),
 			},
+		},
+		StateID: types.StateID{
+			LastAppHash: tmhash.Sum(tmrand.Bytes(tmhash.Size)),
 		},
 	}
 
@@ -78,7 +87,7 @@ func makeEvidences(
 	// different address
 	{
 		v := vote2
-		v.ValidatorAddress = []byte("some_address")
+		v.ValidatorProTxHash = []byte("some_pro_tx_hash")
 		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID))
 	}
 
@@ -132,9 +141,10 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		err = client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
 		require.NoError(t, err)
 
+		proTxHash := pv.Key.ProTxHash
 		bls12381pub := pv.Key.PubKey.(bls12381.PubKey)
 		rawpub := bls12381pub.Bytes()
-		result2, err := c.ABCIQuery(context.Background(), "/val", rawpub)
+		result2, err := c.ABCIQuery(context.Background(), "/val", proTxHash.Bytes())
 		require.NoError(t, err)
 		qres := result2.Response
 		require.True(t, qres.IsOK())
@@ -147,7 +157,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		require.NoError(t, err)
 
 		require.EqualValues(t, rawpub, pk, "Stored PubKey not equal with expected, value %v", string(qres.Value))
-		require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
+		require.Equal(t, types.DefaultDashVotingPower, v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
 
 		for _, fake := range fakes {
 			_, err := c.BroadcastEvidence(context.Background(), fake)

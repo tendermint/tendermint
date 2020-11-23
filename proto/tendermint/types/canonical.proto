@@ -12,6 +12,10 @@ message CanonicalBlockID {
   CanonicalPartSetHeader part_set_header = 2 [(gogoproto.nullable) = false];
 }
 
+message CanonicalStateID {
+  bytes                  last_app_hash            = 1;
+}
+
 message CanonicalPartSetHeader {
   uint32 total = 1;
   bytes  hash  = 2;
@@ -32,6 +36,11 @@ message CanonicalVote {
   sfixed64                  height    = 2;  // canonicalization requires fixed size encoding here
   sfixed64                  round     = 3;  // canonicalization requires fixed size encoding here
   CanonicalBlockID          block_id  = 4 [(gogoproto.customname) = "BlockID"];
-  google.protobuf.Timestamp timestamp = 5 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  CanonicalStateID          state_id  = 7 [(gogoproto.customname) = "StateID"];
   string                    chain_id  = 6 [(gogoproto.customname) = "ChainID"];
+}
+
+message CanonicalStateVote {
+  sfixed64                  height      = 1;  // canonicalization requires fixed size encoding here
+  CanonicalStateID          state_id    = 2 [(gogoproto.customname) = "StateID"];
 }

@@ -357,7 +357,7 @@ func (c *Client) initializeWithTrustOptions(ctx context.Context, options TrustOp
 	}
 
 	// 2) Ensure that +2/3 of validators signed correctly.
-	err = l.ValidatorSet.VerifyCommitLight(c.chainID, l.Commit.BlockID, l.Height, l.Commit)
+	err = l.ValidatorSet.VerifyCommitLight(c.chainID, l.Commit.BlockID, l.Commit.StateID, l.Height, l.Commit)
 	if err != nil {
 		return fmt.Errorf("invalid commit: %w", err)
 	}

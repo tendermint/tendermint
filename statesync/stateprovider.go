@@ -162,6 +162,7 @@ func (s *lightClientStateProvider) State(ctx context.Context, height uint64) (sm
 	state.LastBlockHeight = lastLightBlock.Height
 	state.LastBlockTime = lastLightBlock.Time
 	state.LastBlockID = lastLightBlock.Commit.BlockID
+	state.LastStateID = lastLightBlock.Commit.StateID
 	state.AppHash = curLightBlock.AppHash
 	state.LastResultsHash = curLightBlock.LastResultsHash
 	state.LastValidators = lastLightBlock.ValidatorSet

@@ -99,7 +99,7 @@ func TestBlockResults(t *testing.T) {
 			TxsResults:            results.DeliverTxs,
 			BeginBlockEvents:      results.BeginBlock.Events,
 			EndBlockEvents:        results.EndBlock.Events,
-			ValidatorUpdates:      results.EndBlock.ValidatorUpdates,
+			ValidatorSetUpdate:    results.EndBlock.ValidatorSetUpdate,
 			ConsensusParamUpdates: results.EndBlock.ConsensusParamUpdates,
 		}},
 	}

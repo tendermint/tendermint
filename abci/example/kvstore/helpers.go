@@ -2,30 +2,30 @@ package kvstore
 
 import (
 	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 )
 
-// RandVal creates one random validator, with a key derived
-// from the input value
-func RandVal(i int) types.ValidatorUpdate {
-	pubkey := bls12381.GenPrivKey().PubKey().Bytes()
-	power := tmrand.Uint16() + 1
-
-	v := types.UpdateValidator(pubkey, int64(power))
-	return v
+func ValUpdate(pubKey crypto.PubKey, proTxHash crypto.ProTxHash) types.ValidatorUpdate {
+	return types.UpdateValidator(proTxHash, pubKey.Bytes(), 100)
 }
 
-// RandVals returns a list of cnt validators for initializing
+// RandValidatorSetUpdate returns a list of cnt validators for initializing
 // the application. Note that the keys are deterministically
-// derived from the index in the array, while the power is
-// random (Change this if not desired)
-func RandVals(cnt int) []types.ValidatorUpdate {
+// derived from the index in the array
+func RandValidatorSetUpdate(cnt int) types.ValidatorSetUpdate {
 	res := make([]types.ValidatorUpdate, cnt)
+
+	privKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQDataDefaultThreshold(cnt)
 	for i := 0; i < cnt; i++ {
-		res[i] = RandVal(i)
+		res[i] = ValUpdate(privKeys[i].PubKey(), proTxHashes[i])
 	}
-	return res
+	thresholdPublicKeyABCI, err := cryptoenc.PubKeyToProto(thresholdPublicKey)
+	if err != nil {
+		panic(err)
+	}
+	return types.ValidatorSetUpdate{ValidatorUpdates: res, ThresholdPublicKey: thresholdPublicKeyABCI}
 }
 
 // InitKVStore initializes the kvstore app with some data,
@@ -33,6 +33,6 @@ func RandVals(cnt int) []types.ValidatorUpdate {
 // don't make any tx that modify the validator state
 func InitKVStore(app *PersistentKVStoreApplication) {
 	app.InitChain(types.RequestInitChain{
-		Validators: RandVals(1),
+		ValidatorSet: RandValidatorSetUpdate(1),
 	})
 }

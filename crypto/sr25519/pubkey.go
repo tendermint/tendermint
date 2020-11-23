@@ -2,6 +2,7 @@ package sr25519
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -29,6 +30,14 @@ func (pubKey PubKey) Address() crypto.Address {
 // Bytes returns the byte representation of the PubKey.
 func (pubKey PubKey) Bytes() []byte {
 	return []byte(pubKey)
+}
+
+func (pubKey PubKey) AggregateSignatures(sigSharesData [][]byte, messages [][]byte) ([]byte, error) {
+	return nil, errors.New("should not aggregate an edwards signature")
+}
+
+func (pubKey PubKey) VerifyAggregateSignature(messages [][]byte, sig []byte) bool {
+	return false
 }
 
 func (pubKey PubKey) VerifySignature(msg []byte, sig []byte) bool {

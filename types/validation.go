@@ -2,10 +2,11 @@ package types
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"time"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -49,7 +50,6 @@ func ValidateSignatureSize(keyType crypto.KeyType, h []byte) error {
 	switch keyType {
 	case crypto.Ed25519:
 		signatureSize = ed25519.SignatureSize
-		break
 	case crypto.BLS12381:
 		signatureSize = bls12381.SignatureSize
 	}

@@ -52,6 +52,11 @@ message BlockID {
   PartSetHeader part_set_header = 2 [(gogoproto.nullable) = false];
 }
 
+// StateID
+message StateID {
+  bytes         last_app_hash            = 1;
+}
+
 // --------------------------------
 
 // Header defines the structure of a Tendermint block header.
@@ -79,7 +84,7 @@ message Header {
 
   // consensus info
   bytes evidence_hash    = 13;  // evidence included in the block
-  bytes proposer_address = 14;  // original proposer of the block
+  bytes proposer_pro_tx_hash = 101;  // original proposer of the block
 }
 
 // CoreChainLock represents a core chain lock for synchronization between state data and core chain
@@ -106,11 +111,11 @@ message Vote {
   int32         round    = 3;
   BlockID       block_id = 4
       [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];  // zero if vote is nil.
-  google.protobuf.Timestamp timestamp = 5
-      [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  bytes validator_address = 6;
+  StateID       state_id = 9 [(gogoproto.customname) = "StateID", (gogoproto.nullable) = false];
+  bytes validator_pro_tx_hash = 6;
   int32 validator_index   = 7;
-  bytes signature         = 8;
+  bytes block_signature         = 8;
+  bytes state_signature         = 10;
 }
 
 // Commit contains the evidence that a block was committed by a set of validators.
@@ -118,27 +123,28 @@ message Commit {
   int64                         height     = 1;
   int32                         round      = 2;
   BlockID                       block_id   = 3 [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];
+  StateID                       state_id   = 5 [(gogoproto.nullable) = false, (gogoproto.customname) = "StateID"];
   repeated CommitSig            signatures = 4 [(gogoproto.nullable) = false];
+  bytes threshold_block_signature = 6;
+  bytes threshold_state_signature = 7;
 }
 
 // CommitSig is a part of the Vote included in a Commit.
 message CommitSig {
   BlockIDFlag               block_id_flag     = 1;
-  bytes                     validator_address = 2;
-  google.protobuf.Timestamp timestamp         = 3
-      [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  bytes signature = 4;
+  bytes                     validator_pro_tx_hash = 2;
+  bytes block_signature = 4;
+  bytes state_signature = 5;
 }
 
 message Proposal {
   SignedMsgType             type      = 1;
   int64                     height    = 2;
+  uint32                    core_chain_locked_height = 100;
   int32                     round     = 3;
   int32                     pol_round = 4;
   BlockID                   block_id  = 5 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
-  google.protobuf.Timestamp timestamp = 6
-      [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  uint32                    core_chain_locked_height = 100;
+  google.protobuf.Timestamp timestamp = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes signature = 7;
 }
 
@@ -154,10 +160,11 @@ message LightBlock {
 
 message BlockMeta {
   BlockID block_id   = 1 [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
+  StateID state_id   = 101 [(gogoproto.customname) = "StateID", (gogoproto.nullable) = false];
   int64   block_size = 2;
   Header  header     = 3 [(gogoproto.nullable) = false];
   int64   num_txs    = 4;
-  bool    has_core_chain_lock = 5;
+  bool    has_core_chain_lock = 100;
 }
 
 // TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.

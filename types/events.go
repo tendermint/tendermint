@@ -95,8 +95,8 @@ type EventDataRoundState struct {
 }
 
 type ValidatorInfo struct {
-	Address Address `json:"address"`
-	Index   int32   `json:"index"`
+	ProTxHash ProTxHash `json:"pro_tx_hash"`
+	Index     int32     `json:"index"`
 }
 
 type EventDataNewRound struct {

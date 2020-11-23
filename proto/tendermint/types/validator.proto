@@ -7,9 +7,10 @@ import "gogoproto/gogo.proto";
 import "tendermint/crypto/keys.proto";
 
 message ValidatorSet {
-  repeated Validator validators         = 1;
-  Validator          proposer           = 2;
-  int64              total_voting_power = 3;
+  repeated Validator          validators           = 1;
+  Validator                   proposer             = 2;
+  int64                       total_voting_power   = 3;
+  tendermint.crypto.PublicKey threshold_public_key = 4 [(gogoproto.nullable) = false];
 }
 
 message Validator {
@@ -17,6 +18,7 @@ message Validator {
   tendermint.crypto.PublicKey pub_key           = 2 [(gogoproto.nullable) = false];
   int64                       voting_power      = 3;
   int64                       proposer_priority = 4;
+  bytes                       pro_tx_hash       = 5;
 }
 
 message SimpleValidator {

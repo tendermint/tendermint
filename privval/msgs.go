@@ -20,6 +20,10 @@ func mustWrapMsg(pb proto.Message) privvalproto.Message {
 		msg.Sum = &privvalproto.Message_PubKeyRequest{PubKeyRequest: pb}
 	case *privvalproto.PubKeyResponse:
 		msg.Sum = &privvalproto.Message_PubKeyResponse{PubKeyResponse: pb}
+	case *privvalproto.ProTxHashRequest:
+		msg.Sum = &privvalproto.Message_ProTxHashRequest{ProTxHashRequest: pb}
+	case *privvalproto.ProTxHashResponse:
+		msg.Sum = &privvalproto.Message_ProTxHashResponse{ProTxHashResponse: pb}
 	case *privvalproto.SignVoteRequest:
 		msg.Sum = &privvalproto.Message_SignVoteRequest{SignVoteRequest: pb}
 	case *privvalproto.SignedVoteResponse:

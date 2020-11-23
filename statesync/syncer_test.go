@@ -56,6 +56,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 
 		LastBlockHeight: 1,
 		LastBlockID:     types.BlockID{Hash: []byte("blockhash")},
+		LastStateID:     types.StateID{LastAppHash: []byte("statehash")},
 		LastBlockTime:   time.Now(),
 		LastResultsHash: []byte("last_results_hash"),
 		AppHash:         []byte("app_hash"),

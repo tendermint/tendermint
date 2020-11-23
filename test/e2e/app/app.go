@@ -3,10 +3,15 @@ package main
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/tendermint/tendermint/types"
 	"os"
 	"path/filepath"
+
+	"github.com/tendermint/tendermint/crypto/bls12381"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -68,9 +73,11 @@ func (app *Application) InitChain(req abci.RequestInitChain) abci.ResponseInitCh
 	resp := abci.ResponseInitChain{
 		AppHash: app.state.Hash,
 	}
-	if resp.Validators, err = app.validatorUpdates(0); err != nil {
+	validatorSetUpdate, err := app.validatorSetUpdates(0)
+	if err != nil {
 		panic(err)
 	}
+	resp.ValidatorSetUpdate = *validatorSetUpdate
 	return resp
 }
 
@@ -100,7 +107,7 @@ func (app *Application) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDelive
 func (app *Application) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
 	var err error
 	resp := abci.ResponseEndBlock{}
-	if resp.ValidatorUpdates, err = app.validatorUpdates(uint64(req.Height)); err != nil {
+	if resp.ValidatorSetUpdate, err = app.validatorSetUpdates(uint64(req.Height)); err != nil {
 		panic(err)
 	}
 	return resp
@@ -188,22 +195,44 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 }
 
 // validatorUpdates generates a validator set update.
-func (app *Application) validatorUpdates(height uint64) (abci.ValidatorUpdates, error) {
+func (app *Application) validatorSetUpdates(height uint64) (*abci.ValidatorSetUpdate, error) {
 	updates := app.cfg.ValidatorUpdates[fmt.Sprintf("%v", height)]
 	if len(updates) == 0 {
 		return nil, nil
 	}
 
-	valUpdates := abci.ValidatorUpdates{}
-	for keyString, power := range updates {
+	thresholdPublicKeyUpdateString := app.cfg.ThesholdPublicKeyUpdate[fmt.Sprintf("%v", height)]
+	if len(thresholdPublicKeyUpdateString) == 0 {
+		return nil, fmt.Errorf("thresholdPublicKeyUpdate must be set")
+	}
+	thresholdPublicKeyUpdateBytes, err := base64.StdEncoding.DecodeString(thresholdPublicKeyUpdateString)
+	if err != nil {
+		return nil, fmt.Errorf("invalid base64 pubkey value %q: %w", thresholdPublicKeyUpdateString, err)
+	}
+	thresholdPublicKeyUpdate := bls12381.PubKey(thresholdPublicKeyUpdateBytes)
+	abciThresholdPublicKeyUpdate, err := cryptoenc.PubKeyToProto(thresholdPublicKeyUpdate)
+	if err != nil {
+		panic(err)
+	}
 
+	valSetUpdates := abci.ValidatorSetUpdate{}
+
+	valUpdates := abci.ValidatorUpdates{}
+	for proTxHashString, keyString := range updates {
 		keyBytes, err := base64.StdEncoding.DecodeString(keyString)
 		if err != nil {
 			return nil, fmt.Errorf("invalid base64 pubkey value %q: %w", keyString, err)
 		}
-		valUpdates = append(valUpdates, abci.UpdateValidator(keyBytes, int64(power)))
+		proTxHashBytes, err := hex.DecodeString(proTxHashString)
+		if err != nil {
+			return nil, fmt.Errorf("invalid hex proTxHash value %q: %w", proTxHashBytes, err)
+		}
+		publicKeyUpdate := bls12381.PubKey(keyBytes)
+		valUpdates = append(valUpdates, abci.UpdateValidator(proTxHashBytes, publicKeyUpdate, types.DefaultDashVotingPower))
 	}
-	return valUpdates, nil
+	valSetUpdates.ValidatorUpdates = valUpdates
+	valSetUpdates.ThresholdPublicKey = abciThresholdPublicKeyUpdate
+	return &valSetUpdates, nil
 }
 
 // parseTx parses a tx in 'key=value' format into a key and value.

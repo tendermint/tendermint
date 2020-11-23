@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -51,7 +53,7 @@ func NewDuplicateVoteEvidence(vote1, vote2 *Vote, blockTime time.Time, valSet *V
 	if vote1 == nil || vote2 == nil || valSet == nil {
 		return nil
 	}
-	idx, val := valSet.GetByAddress(vote1.ValidatorAddress)
+	idx, val := valSet.GetByProTxHash(vote1.ValidatorProTxHash)
 	if idx == -1 {
 		return nil
 	}
@@ -77,8 +79,8 @@ func (dve *DuplicateVoteEvidence) ABCI() []abci.Evidence {
 	return []abci.Evidence{{
 		Type: abci.EvidenceType_DUPLICATE_VOTE,
 		Validator: abci.Validator{
-			Address: dve.VoteA.ValidatorAddress,
-			Power:   dve.ValidatorPower,
+			ProTxHash: dve.VoteA.ValidatorProTxHash,
+			Power:     dve.ValidatorPower,
 		},
 		Height:           dve.VoteA.Height,
 		Time:             dve.Timestamp,
@@ -241,7 +243,7 @@ func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *Validator
 				continue
 			}
 
-			_, val := commonVals.GetByAddress(commitSig.ValidatorAddress)
+			_, val := commonVals.GetByProTxHash(commitSig.ValidatorProTxHash)
 			if val == nil {
 				// validator wasn't in the common validator set
 				continue
@@ -266,7 +268,7 @@ func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *Validator
 				continue
 			}
 
-			_, val := l.ConflictingBlock.ValidatorSet.GetByAddress(sigA.ValidatorAddress)
+			_, val := l.ConflictingBlock.ValidatorSet.GetByProTxHash(sigA.ValidatorProTxHash)
 			validators = append(validators, val)
 		}
 		sort.Sort(ValidatorsByVotingPower(validators))
@@ -544,32 +546,54 @@ func NewMockDuplicateVoteEvidence(height int64, time time.Time, chainID string) 
 	return NewMockDuplicateVoteEvidenceWithValidator(height, time, val, chainID)
 }
 
-// assumes voting power to be 10 and validator to be the only one in the set
+// assumes voting power to be DefaultDashVotingPower and validator to be the only one in the set
 func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
 	pv PrivValidator, chainID string) *DuplicateVoteEvidence {
 	pubKey, _ := pv.GetPubKey()
-	val := NewValidator(pubKey, 10)
-	voteA := makeMockVote(height, 0, 0, pubKey.Address(), randBlockID(), time)
+	proTxHash, _ := pv.GetProTxHash()
+	val := NewValidator(pubKey, DefaultDashVotingPower, proTxHash)
+
+	voteA := makeMockVote(height, 0, 0, proTxHash, randBlockID(), randStateID())
 	vA := voteA.ToProto()
 	_ = pv.SignVote(chainID, vA)
-	voteA.Signature = vA.Signature
-	voteB := makeMockVote(height, 0, 0, pubKey.Address(), randBlockID(), time)
+	voteA.BlockSignature = vA.BlockSignature
+	voteA.StateSignature = vA.StateSignature
+	voteB := makeMockVote(height, 0, 0, proTxHash, randBlockID(), randStateID())
 	vB := voteB.ToProto()
 	_ = pv.SignVote(chainID, vB)
-	voteB.Signature = vB.Signature
-	return NewDuplicateVoteEvidence(voteA, voteB, time, NewValidatorSet([]*Validator{val}))
+	voteB.BlockSignature = vB.BlockSignature
+	voteB.StateSignature = vB.StateSignature
+	return NewDuplicateVoteEvidence(voteA, voteB, time, NewValidatorSet([]*Validator{val}, val.PubKey))
 }
 
-func makeMockVote(height int64, round, index int32, addr Address,
-	blockID BlockID, time time.Time) *Vote {
+// assumes voting power to be DefaultDashVotingPower and validator to be the only one in the set
+func NewMockDuplicateVoteEvidenceWithPrivValInValidatorSet(height int64, time time.Time,
+	pv PrivValidator, valSet *ValidatorSet, chainID string) *DuplicateVoteEvidence {
+	proTxHash, _ := pv.GetProTxHash()
+
+	voteA := makeMockVote(height, 0, 0, proTxHash, randBlockID(), randStateID())
+	vA := voteA.ToProto()
+	_ = pv.SignVote(chainID, vA)
+	voteA.BlockSignature = vA.BlockSignature
+	voteA.StateSignature = vA.StateSignature
+	voteB := makeMockVote(height, 0, 0, proTxHash, randBlockID(), randStateID())
+	vB := voteB.ToProto()
+	_ = pv.SignVote(chainID, vB)
+	voteB.BlockSignature = vB.BlockSignature
+	voteB.StateSignature = vB.StateSignature
+	return NewDuplicateVoteEvidence(voteA, voteB, time, valSet)
+}
+
+func makeMockVote(height int64, round, index int32, proTxHash crypto.ProTxHash,
+	blockID BlockID, stateID StateID) *Vote {
 	return &Vote{
-		Type:             tmproto.SignedMsgType(2),
-		Height:           height,
-		Round:            round,
-		BlockID:          blockID,
-		Timestamp:        time,
-		ValidatorAddress: addr,
-		ValidatorIndex:   index,
+		Type:               tmproto.SignedMsgType(2),
+		Height:             height,
+		Round:              round,
+		BlockID:            blockID,
+		ValidatorProTxHash: proTxHash,
+		ValidatorIndex:     index,
+		StateID:            stateID,
 	}
 }
 
@@ -580,5 +604,11 @@ func randBlockID() BlockID {
 			Total: 1,
 			Hash:  tmrand.Bytes(tmhash.Size),
 		},
+	}
+}
+
+func randStateID() StateID {
+	return StateID{
+		LastAppHash: tmrand.Bytes(tmhash.Size),
 	}
 }

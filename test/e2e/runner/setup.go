@@ -4,9 +4,12 @@ package main
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -20,7 +23,6 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
@@ -101,14 +103,18 @@ func Setup(testnet *e2e.Testnet) error {
 			return err
 		}
 
-		(privval.NewFilePV(node.PrivvalKey,
-			filepath.Join(nodeDir, PrivvalKeyFile),
-			filepath.Join(nodeDir, PrivvalStateFile),
-		)).Save()
-
+		if node.Mode == e2e.ModeValidator {
+			if len(node.ProTxHash) != crypto.ProTxHashSize {
+				return fmt.Errorf("node proTxHash should be 32 bytes")
+			}
+			(privval.NewFilePV(node.PrivvalKey, node.ProTxHash.Bytes(), node.NextPrivvalKeys, node.NextPrivvalHeights,
+				filepath.Join(nodeDir, PrivvalKeyFile),
+				filepath.Join(nodeDir, PrivvalStateFile),
+			)).Save()
+		}
 		// Set up a dummy validator. Tenderdash requires a file PV even when not used, so we
 		// give it a dummy such that it will fail if it actually tries to use it.
-		(privval.NewFilePV(ed25519.GenPrivKey(),
+		(privval.NewFilePV(bls12381.GenPrivKey(), crypto.RandProTxHash(), nil, nil,
 			filepath.Join(nodeDir, PrivvalDummyKeyFile),
 			filepath.Join(nodeDir, PrivvalDummyStateFile),
 		)).Save()
@@ -186,17 +192,19 @@ services:
 // MakeGenesis generates a genesis document.
 func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 	genesis := types.GenesisDoc{
-		GenesisTime:     time.Now(),
-		ChainID:         testnet.Name,
-		ConsensusParams: types.DefaultConsensusParams(),
-		InitialHeight:   testnet.InitialHeight,
+		GenesisTime:        time.Now(),
+		ChainID:            testnet.Name,
+		ConsensusParams:    types.DefaultConsensusParams(),
+		InitialHeight:      testnet.InitialHeight,
+		ThresholdPublicKey: testnet.ThresholdPublicKey,
 	}
-	for validator, power := range testnet.Validators {
+	for validator, pubkey := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
-			Name:    validator.Name,
-			Address: validator.PrivvalKey.PubKey().Address(),
-			PubKey:  validator.PrivvalKey.PubKey(),
-			Power:   power,
+			Name:      validator.Name,
+			Address:   pubkey.Address(),
+			PubKey:    pubkey,
+			ProTxHash: validator.ProTxHash,
+			Power:     types.DefaultDashVotingPower,
 		})
 	}
 	// The validator set will be sorted internally by Tenderdash ranked by power,
@@ -356,15 +364,22 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 	cfg["misbehaviors"] = misbehaviors
 
 	if len(node.Testnet.ValidatorUpdates) > 0 {
-		validatorUpdates := map[string]map[string]int64{}
+		validatorUpdates := map[string]map[string]string{}
 		for height, validators := range node.Testnet.ValidatorUpdates {
-			updateVals := map[string]int64{}
-			for node, power := range validators {
-				updateVals[base64.StdEncoding.EncodeToString(node.PrivvalKey.PubKey().Bytes())] = power
+			updateVals := map[string]string{}
+			for node, pubkey := range validators {
+				updateVals[hex.EncodeToString(node.ProTxHash.Bytes())] = base64.StdEncoding.EncodeToString(pubkey.Bytes())
 			}
 			validatorUpdates[fmt.Sprintf("%v", height)] = updateVals
 		}
 		cfg["validator_update"] = validatorUpdates
+
+		thresholdPublicKeyUpdates := map[string]string{}
+		for height, thresholdPublicKey := range node.Testnet.ThresholdPublicKeyUpdates {
+
+			thresholdPublicKeyUpdates[fmt.Sprintf("%v", height)] = base64.StdEncoding.EncodeToString(thresholdPublicKey.Bytes())
+		}
+		cfg["threshold_public_key_update"] = thresholdPublicKeyUpdates
 	}
 
 	var buf bytes.Buffer

@@ -2,7 +2,6 @@ package encoding
 
 import (
 	"fmt"
-
 	"github.com/tendermint/tendermint/crypto/bls12381"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -14,6 +13,7 @@ import (
 
 func init() {
 	json.RegisterType((*pc.PublicKey)(nil), "tendermint.crypto.PublicKey")
+	json.RegisterType((*pc.PublicKey_Bls12381)(nil), "tendermint.crypto.PublicKey_Bls12381")
 	json.RegisterType((*pc.PublicKey_Ed25519)(nil), "tendermint.crypto.PublicKey_Ed25519")
 	json.RegisterType((*pc.PublicKey_Secp256K1)(nil), "tendermint.crypto.PublicKey_Secp256K1")
 }
@@ -48,6 +48,9 @@ func PubKeyToProto(k crypto.PubKey) (pc.PublicKey, error) {
 
 // PubKeyFromProto takes a protobuf Pubkey and transforms it to a crypto.Pubkey
 func PubKeyFromProto(k pc.PublicKey) (crypto.PubKey, error) {
+	if k.Sum == nil {
+		return nil, fmt.Errorf("fromproto: key is nil")
+	}
 	switch k := k.Sum.(type) {
 	case *pc.PublicKey_Ed25519:
 		if len(k.Ed25519) != ed25519.PubKeySize {

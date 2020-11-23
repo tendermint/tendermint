@@ -3,6 +3,7 @@ package ed25519
 import (
 	"bytes"
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"io"
 
@@ -149,13 +150,23 @@ func (pubKey PubKey) Bytes() []byte {
 	return []byte(pubKey)
 }
 
+func (pubKey PubKey) AggregateSignatures(sigSharesData [][]byte, messages [][]byte) ([]byte, error) {
+	return nil, errors.New("should not aggregate an edwards signature")
+}
+
+func (pubKey PubKey) VerifyAggregateSignature(messages [][]byte, sig []byte) bool {
+	return false
+}
+
 func (pubKey PubKey) VerifySignature(msg []byte, sig []byte) bool {
 	// make sure we use the same algorithm to sign
 	if len(sig) != SignatureSize {
 		return false
 	}
 
-	return ed25519.Verify(ed25519.PublicKey(pubKey), msg, sig)
+	verified := ed25519.Verify(ed25519.PublicKey(pubKey), msg, sig)
+	// fmt.Printf("ed25519 verified (%t) sig %X from message %X with key %X\n", verified, sig, msg, pubKey.Bytes())
+	return verified
 }
 
 func (pubKey PubKey) String() string {

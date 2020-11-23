@@ -24,7 +24,7 @@ var (
 // a so-called Proof-of-Lock (POL) round, as noted in the POLRound.
 // If POLRound >= 0, then BlockID corresponds to the block that is locked in POLRound.
 type Proposal struct {
-	Type       			  tmproto.SignedMsgType
+	Type                  tmproto.SignedMsgType
 	Height                int64     `json:"height"`
 	CoreChainLockedHeight uint32    `json:"core_height"`
 	Round                 int32     `json:"round"`     // there can not be greater than 2_147_483_647 rounds
@@ -113,7 +113,7 @@ func (p *Proposal) String() string {
 // devices that rely on this encoding.
 //
 // See CanonicalizeProposal
-func ProposalSignBytes(chainID string, p *tmproto.Proposal) []byte {
+func ProposalBlockSignBytes(chainID string, p *tmproto.Proposal) []byte {
 	pb := CanonicalizeProposal(chainID, p)
 	bz, err := protoio.MarshalDelimited(&pb)
 	if err != nil {

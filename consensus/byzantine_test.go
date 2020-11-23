@@ -53,7 +53,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		app.InitChain(abci.RequestInitChain{ValidatorSet: vals})
 
 		blockDB := dbm.NewMemDB()
 		blockStore := store.NewBlockStore(blockDB)
@@ -187,7 +187,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		close(done)
 	}()
 
-	pubkey, _ := bcs.privValidator.GetPubKey()
+	proTxHash, _ := bcs.privValidator.GetProTxHash()
 
 	select {
 	case <-done:
@@ -195,11 +195,11 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			if assert.NotNil(t, ev, idx) {
 				ev, ok := ev.(*types.DuplicateVoteEvidence)
 				assert.True(t, ok)
-				assert.Equal(t, pubkey.Address(), ev.VoteA.ValidatorAddress)
+				assert.Equal(t, proTxHash, ev.VoteA.ValidatorProTxHash)
 				assert.Equal(t, prevoteHeight, ev.Height())
 			}
 		}
-	case <-time.After(10 * time.Second):
+	case <-time.After(100 * time.Second):
 		for i, reactor := range reactors {
 			t.Logf("Consensus Reactor %d\n%v", i, reactor)
 		}
@@ -207,11 +207,11 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	}
 }
 
-// 4 validators. 1 is byzantine. The other three are partitioned into A (1 val) and B (2 vals).
-// byzantine validator sends conflicting proposals into A and B,
-// and prevotes/precommits on both of them.
-// B sees a commit, A doesn't.
-// Heal partition and ensure A sees the commit
+//4 validators. 1 is byzantine. The other three are partitioned into A (1 val) and B (2 vals).
+//byzantine validator sends conflicting proposals into A and B,
+//and prevotes/precommits on both of them.
+//B sees a commit, A doesn't.
+//Heal partition and ensure A sees the commit
 func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	N := 4
 	logger := consensusLogger().With("test", "byzantine")
@@ -247,7 +247,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 		if i == 0 {
 			// NOTE: Now, test validators are MockPV, which by default doesn't
 			// do any safety checks.
-			css[i].privValidator.(types.MockPV).DisableChecks()
+			css[i].privValidator.(*types.MockPV).DisableChecks()
 			css[i].decideProposal = func(j int32) func(int64, int32) {
 				return func(height int64, round int32) {
 					byzantineDecideProposalFunc(t, height, round, css[j], switches[j])

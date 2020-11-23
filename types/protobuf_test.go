@@ -15,7 +15,7 @@ import (
 
 func TestABCIPubKey(t *testing.T) {
 	pkBLS := bls12381.GenPrivKey().PubKey()
-	err := testABCIPubKey(t, pkBLS, ABCIPubKeyTypeEd25519)
+	err := testABCIPubKey(t, pkBLS, ABCIPubKeyTypeBLS12381)
 	assert.NoError(t, err)
 }
 
@@ -29,23 +29,27 @@ func testABCIPubKey(t *testing.T, pk crypto.PubKey, typeStr string) error {
 }
 
 func TestABCIValidators(t *testing.T) {
-	pkEd := bls12381.GenPrivKey().PubKey()
+	pkBLS := bls12381.GenPrivKey().PubKey()
+	proTxHash := crypto.RandProTxHash()
 
 	// correct validator
-	tmValExpected := NewValidator(pkEd, 10)
+	tmValExpected := NewValidatorDefaultVotingPower(pkBLS, proTxHash)
 
-	tmVal := NewValidator(pkEd, 10)
+	tmVal := NewValidatorDefaultVotingPower(pkBLS, proTxHash)
 
 	abciVal := TM2PB.ValidatorUpdate(tmVal)
 	tmVals, err := PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{abciVal})
 	assert.Nil(t, err)
 	assert.Equal(t, tmValExpected, tmVals[0])
 
-	abciVals := TM2PB.ValidatorUpdates(NewValidatorSet(tmVals))
-	assert.Equal(t, []abci.ValidatorUpdate{abciVal}, abciVals)
+	abciVals := TM2PB.ValidatorUpdates(NewValidatorSet(tmVals, tmVal.PubKey))
+	assert.Equal(t, abci.ValidatorSetUpdate{
+		ValidatorUpdates:   []abci.ValidatorUpdate{abciVal},
+		ThresholdPublicKey: abciVal.PubKey,
+	}, abciVals)
 
 	// val with address
-	tmVal.Address = pkEd.Address()
+	tmVal.Address = pkBLS.Address()
 
 	abciVal = TM2PB.ValidatorUpdate(tmVal)
 	tmVals, err = PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{abciVal})
@@ -66,30 +70,35 @@ type pubKeyBLS struct{}
 func (pubKeyBLS) Address() Address                            { return []byte{} }
 func (pubKeyBLS) Bytes() []byte                               { return []byte{} }
 func (pubKeyBLS) VerifySignature(msg []byte, sig []byte) bool { return false }
-func (pubKeyBLS) Equals(crypto.PubKey) bool                   { return false }
-func (pubKeyBLS) String() string                              { return "" }
-func (pubKeyBLS) Type() string                                { return "pubKeyBLS12381" }
-func (pubKeyBLS) TypeValue() crypto.KeyType                   { return crypto.BLS12381 }
+func (pubKeyBLS) AggregateSignatures(sigSharesData [][]byte, messages [][]byte) ([]byte, error) {
+	return []byte{}, nil
+}
+func (pubKeyBLS) VerifyAggregateSignature(msgs [][]byte, sig []byte) bool { return false }
+func (pubKeyBLS) Equals(crypto.PubKey) bool                               { return false }
+func (pubKeyBLS) String() string                                          { return "" }
+func (pubKeyBLS) Type() string                                            { return "pubKeyBLS12381" }
+func (pubKeyBLS) TypeValue() crypto.KeyType                               { return crypto.BLS12381 }
 
 func TestABCIValidatorFromPubKeyAndPower(t *testing.T) {
 	pubkey := bls12381.GenPrivKey().PubKey()
 
-	abciVal := TM2PB.NewValidatorUpdate(pubkey, 10)
-	assert.Equal(t, int64(10), abciVal.Power)
+	abciVal := TM2PB.NewValidatorUpdate(pubkey, DefaultDashVotingPower, crypto.RandProTxHash())
+	assert.Equal(t, DefaultDashVotingPower, abciVal.Power)
 
-	assert.Panics(t, func() { TM2PB.NewValidatorUpdate(nil, 10) })
-	assert.Panics(t, func() { TM2PB.NewValidatorUpdate(pubKeyBLS{}, 10) })
+	assert.Panics(t, func() { TM2PB.NewValidatorUpdate(nil, DefaultDashVotingPower, crypto.RandProTxHash()) })
+	assert.Panics(t, func() { TM2PB.NewValidatorUpdate(pubKeyBLS{}, DefaultDashVotingPower, crypto.RandProTxHash()) })
 }
 
 func TestABCIValidatorWithoutPubKey(t *testing.T) {
 	pkBLS := bls12381.GenPrivKey().PubKey()
+	proTxHash := crypto.RandProTxHash()
 
-	abciVal := TM2PB.Validator(NewValidator(pkBLS, 10))
+	abciVal := TM2PB.Validator(NewValidatorDefaultVotingPower(pkBLS, proTxHash))
 
 	// pubkey must be nil
 	tmValExpected := abci.Validator{
-		Address: pkBLS.Address(),
-		Power:   10,
+		Power:     DefaultDashVotingPower,
+		ProTxHash: proTxHash,
 	}
 
 	assert.Equal(t, tmValExpected, abciVal)

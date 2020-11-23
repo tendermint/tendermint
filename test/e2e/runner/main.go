@@ -39,6 +39,7 @@ func NewCLI() *CLI {
 			if err != nil {
 				return err
 			}
+			logger.Info(fmt.Sprintf("Loading testnet %q", file))
 			testnet, err := e2e.LoadTestnet(file)
 			if err != nil {
 				return err

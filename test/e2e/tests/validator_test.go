@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/tendermint/tendermint/crypto"
+
 	"github.com/stretchr/testify/require"
 
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
@@ -32,21 +34,37 @@ func TestValidator_Sets(t *testing.T) {
 		}
 
 		valSchedule := newValidatorSchedule(*node.Testnet)
+		// fmt.Printf("node %s(%X) validator schedule is %v\n", node.Name, node.ProTxHash, valSchedule)
 		valSchedule.Increment(first - node.Testnet.InitialHeight)
 
 		for h := first; h <= last; h++ {
 			validators := []*types.Validator{}
+			var thresholdPublicKey crypto.PubKey
 			perPage := 100
 			for page := 1; ; page++ {
-				resp, err := client.Validators(ctx, &(h), &(page), &perPage)
+				requestThresholdPublicKey := page == 1
+				resp, err := client.Validators(ctx, &(h), &(page), &perPage, &requestThresholdPublicKey)
 				require.NoError(t, err)
 				validators = append(validators, resp.Validators...)
+				if requestThresholdPublicKey {
+					thresholdPublicKey = *resp.ThresholdPublicKey
+				}
 				if len(validators) == resp.Total {
 					break
 				}
 			}
+			// fmt.Printf("node %s(%X) validator set for height %d is %v\n", node.Name, node.ProTxHash, h, valSchedule.Set)
+			for i, valScheduleValidator := range valSchedule.Set.Validators {
+				validator := validators[i]
+				require.Equal(t, valScheduleValidator.ProTxHash, validator.ProTxHash,
+					"mismatching validator proTxHashes at height %v (%X <=> %X", h, valScheduleValidator.ProTxHash, validator.ProTxHash)
+				require.Equal(t, valScheduleValidator.PubKey.Bytes(), validator.PubKey.Bytes(),
+					"mismatching validator %X publicKey at height %v (%X <=> %X", valScheduleValidator.ProTxHash, h, valScheduleValidator.PubKey.Bytes(), validator.PubKey.Bytes())
+			}
 			require.Equal(t, valSchedule.Set.Validators, validators,
 				"incorrect validator set at height %v", h)
+			require.Equal(t, valSchedule.Set.ThresholdPublicKey, thresholdPublicKey,
+				"incorrect thresholdPublicKey at height %v", h)
 			valSchedule.Increment(1)
 		}
 	})
@@ -60,15 +78,15 @@ func TestValidator_Propose(t *testing.T) {
 		if node.Mode != e2e.ModeValidator {
 			return
 		}
-		address := node.PrivvalKey.PubKey().Address()
+		proTxHash := node.ProTxHash
 		valSchedule := newValidatorSchedule(*node.Testnet)
 
 		expectCount := 0
 		proposeCount := 0
 		for _, block := range blocks {
-			if bytes.Equal(valSchedule.Set.Proposer.Address, address) {
+			if bytes.Equal(valSchedule.Set.Proposer.Address, proTxHash) {
 				expectCount++
-				if bytes.Equal(block.ProposerAddress, address) {
+				if bytes.Equal(block.ProposerProTxHash, proTxHash) {
 					proposeCount++
 				}
 			}
@@ -90,7 +108,7 @@ func TestValidator_Sign(t *testing.T) {
 		if node.Mode != e2e.ModeValidator {
 			return
 		}
-		address := node.PrivvalKey.PubKey().Address()
+		proTxHash := node.ProTxHash
 		valSchedule := newValidatorSchedule(*node.Testnet)
 
 		expectCount := 0
@@ -98,12 +116,12 @@ func TestValidator_Sign(t *testing.T) {
 		for _, block := range blocks[1:] { // Skip first block, since it has no signatures
 			signed := false
 			for _, sig := range block.LastCommit.Signatures {
-				if bytes.Equal(sig.ValidatorAddress, address) {
+				if bytes.Equal(sig.ValidatorProTxHash, proTxHash) {
 					signed = true
 					break
 				}
 			}
-			if valSchedule.Set.HasAddress(address) {
+			if valSchedule.Set.HasProTxHash(proTxHash) {
 				expectCount++
 				if signed {
 					signCount++
@@ -124,20 +142,32 @@ func TestValidator_Sign(t *testing.T) {
 // validatorSchedule is a validator set iterator, which takes into account
 // validator set updates.
 type validatorSchedule struct {
-	Set     *types.ValidatorSet
-	height  int64
-	updates map[int64]map[*e2e.Node]int64
+	Set                       *types.ValidatorSet
+	height                    int64
+	updates                   map[int64]map[*e2e.Node]crypto.PubKey
+	thresholdPublicKeyUpdates map[int64]crypto.PubKey
 }
 
 func newValidatorSchedule(testnet e2e.Testnet) *validatorSchedule {
-	valMap := testnet.Validators                  // genesis validators
+	valMap := testnet.Validators // genesis validators
+	thresholdPublicKey := testnet.ThresholdPublicKey
+	if thresholdPublicKey == nil {
+		panic("threshold public key must be set")
+	}
 	if v, ok := testnet.ValidatorUpdates[0]; ok { // InitChain validators
 		valMap = v
+		if t, ok := testnet.ThresholdPublicKeyUpdates[0]; ok { // InitChain threshold public key
+			thresholdPublicKey = t
+		} else {
+			panic("threshold public key must be set for height 0 if validator changes")
+		}
 	}
+
 	return &validatorSchedule{
-		height:  testnet.InitialHeight,
-		Set:     types.NewValidatorSet(makeVals(valMap)),
-		updates: testnet.ValidatorUpdates,
+		height:                    testnet.InitialHeight,
+		Set:                       types.NewValidatorSet(makeVals(valMap), thresholdPublicKey),
+		updates:                   testnet.ValidatorUpdates,
+		thresholdPublicKeyUpdates: testnet.ThresholdPublicKeyUpdates,
 	}
 }
 
@@ -148,8 +178,10 @@ func (s *validatorSchedule) Increment(heights int64) {
 			// validator set updates are offset by 2, since they only take effect
 			// two blocks after they're returned.
 			if update, ok := s.updates[s.height-2]; ok {
-				if err := s.Set.UpdateWithChangeSet(makeVals(update)); err != nil {
-					panic(err)
+				if thresholdPublicKeyUpdate, ok := s.thresholdPublicKeyUpdates[s.height-2]; ok {
+					if err := s.Set.UpdateWithChangeSet(makeVals(update), thresholdPublicKeyUpdate); err != nil {
+						panic(err)
+					}
 				}
 			}
 		}
@@ -157,10 +189,10 @@ func (s *validatorSchedule) Increment(heights int64) {
 	}
 }
 
-func makeVals(valMap map[*e2e.Node]int64) []*types.Validator {
+func makeVals(valMap map[*e2e.Node]crypto.PubKey) []*types.Validator {
 	vals := make([]*types.Validator, 0, len(valMap))
-	for node, power := range valMap {
-		vals = append(vals, types.NewValidator(node.PrivvalKey.PubKey(), power))
+	for node, pubkey := range valMap {
+		vals = append(vals, types.NewValidatorDefaultVotingPower(pubkey, node.ProTxHash))
 	}
 	return vals
 }

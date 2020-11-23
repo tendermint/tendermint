@@ -3,6 +3,7 @@ package counter
 import (
 	"encoding/binary"
 	"fmt"
+
 	types1 "github.com/tendermint/tendermint/types"
 
 	"github.com/tendermint/tendermint/abci/example/code"
@@ -21,7 +22,7 @@ type Application struct {
 }
 
 func NewApplication(serial bool) *Application {
-	return &Application{serial: serial, CoreChainLockStep:1}
+	return &Application{serial: serial, CoreChainLockStep: 1}
 }
 
 func (app *Application) Info(req types.RequestInfo) types.ResponseInfo {
@@ -90,8 +91,10 @@ func (app *Application) Commit() (resp types.ResponseCommit) {
 	if app.txCount == 0 {
 		return types.ResponseCommit{}
 	}
-	hash := make([]byte, 8)
-	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
+	hash := make([]byte, 24)
+	endHash := make([]byte, 8)
+	binary.BigEndian.PutUint64(endHash, uint64(app.txCount))
+	hash = append(hash, endHash...)
 	return types.ResponseCommit{Data: hash}
 }
 

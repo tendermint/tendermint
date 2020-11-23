@@ -743,7 +743,7 @@ func NewNode(config *cfg.Config,
 		// what happened during block replay).
 		state, err = stateStore.Load()
 		if err != nil {
-			return nil, fmt.Errorf("cannot load state: %w", err)
+			return nil, fmt.Errorf("cannot load state for new test node: %w", err)
 		}
 	}
 
@@ -1016,6 +1016,10 @@ func (n *Node) OnStop() {
 
 // ConfigureRPC makes sure RPC has all the objects it needs to operate.
 func (n *Node) ConfigureRPC() error {
+	proTxHash, err := n.privValidator.GetProTxHash()
+	if err != nil {
+		return fmt.Errorf("can't get proTxHash: %w", err)
+	}
 	pubKey, err := n.privValidator.GetPubKey()
 	if err != nil {
 		return fmt.Errorf("can't get pubkey: %w", err)
@@ -1031,6 +1035,7 @@ func (n *Node) ConfigureRPC() error {
 		P2PPeers:       n.sw,
 		P2PTransport:   n,
 
+		ProTxHash:        proTxHash,
 		PubKey:           pubKey,
 		GenDoc:           n.genesisDoc,
 		TxIndexer:        n.txIndexer,

@@ -65,12 +65,12 @@ func Generate(r *rand.Rand) ([]e2e.Manifest, error) {
 // generateTestnet generates a single testnet with the given options.
 func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, error) {
 	manifest := e2e.Manifest{
-		IPv6:             opt["ipv6"].(bool),
-		InitialHeight:    int64(opt["initialHeight"].(int)),
-		InitialState:     opt["initialState"].(map[string]string),
-		Validators:       &map[string]int64{},
-		ValidatorUpdates: map[string]map[string]int64{},
-		Nodes:            map[string]*e2e.ManifestNode{},
+		IPv6:                      opt["ipv6"].(bool),
+		InitialHeight:             int64(opt["initialHeight"].(int)),
+		InitialState:              opt["initialState"].(map[string]string),
+		Validators:                &map[string]int64{},
+		ValidatorUpdates:          map[string]map[string]int64{},
+		Nodes:                     map[string]*e2e.ManifestNode{},
 	}
 
 	var numSeeds, numValidators, numFulls int
@@ -110,10 +110,10 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			r, e2e.ModeValidator, startAt, manifest.InitialHeight, i <= 2)
 
 		if startAt == 0 {
-			(*manifest.Validators)[name] = int64(30 + r.Intn(71))
+			(*manifest.Validators)[name] = 100
 		} else {
 			manifest.ValidatorUpdates[fmt.Sprint(startAt+5)] = map[string]int64{
-				name: int64(30 + r.Intn(71)),
+				name: 100,
 			}
 		}
 	}

@@ -65,6 +65,7 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 			CatchingUp:          env.ConsensusReactor.WaitSync(),
 		},
 		ValidatorInfo: ctypes.ValidatorInfo{
+			ProTxHash:   env.ProTxHash,
 			Address:     env.PubKey.Address(),
 			PubKey:      env.PubKey,
 			VotingPower: votingPower,
@@ -79,7 +80,7 @@ func validatorAtHeight(h int64) *types.Validator {
 	if err != nil {
 		return nil
 	}
-	privValAddress := env.PubKey.Address()
-	_, val := vals.GetByAddress(privValAddress)
+	privValProTxHash := env.ProTxHash
+	_, val := vals.GetByProTxHash(privValProTxHash)
 	return val
 }

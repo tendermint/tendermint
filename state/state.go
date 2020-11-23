@@ -53,12 +53,15 @@ type State struct {
 	InitialHeight int64 // should be 1, not 0, when starting from height 1
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
-	LastBlockHeight     int64
-	LastBlockID         types.BlockID
-	LastBlockTime       time.Time
+	LastBlockHeight int64
+	LastBlockID     types.BlockID
+	LastBlockTime   time.Time
 
-	//Last Chain Lock is the last known chain lock in consensus, and does not go to nil if a block had no chain lock
-	//Next Chain Lock is a chain lock being proposed by the abci application
+	// The Last StateID is actually the previous App Hash
+	LastStateID types.StateID
+
+	// Last Chain Lock is the last known chain lock in consensus, and does not go to nil if a block had no chain lock
+	// Next Chain Lock is a chain lock being proposed by the abci application
 	LastCoreChainLock types.CoreChainLock
 	NextCoreChainLock types.CoreChainLock
 
@@ -96,6 +99,8 @@ func (state State) Copy() State {
 		LastBlockHeight: state.LastBlockHeight,
 		LastBlockID:     state.LastBlockID,
 		LastBlockTime:   state.LastBlockTime,
+
+		LastStateID: state.LastStateID,
 
 		LastCoreChainLock: state.LastCoreChainLock,
 		NextCoreChainLock: state.NextCoreChainLock,
@@ -163,6 +168,8 @@ func (state *State) ToProto() (*tmstate.State, error) {
 	}
 	sm.Validators = vals
 
+	sm.LastStateID = state.LastStateID.ToProto()
+
 	nVals, err := state.NextValidators.ToProto()
 	if err != nil {
 		return nil, err
@@ -206,6 +213,13 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 	state.LastBlockHeight = pb.LastBlockHeight
 	state.LastBlockTime = pb.LastBlockTime
 
+	si, err := types.StateIDFromProto(&pb.LastStateID)
+	if err != nil {
+		return nil, err
+	}
+
+	state.LastStateID = *si
+
 	state.LastCoreChainLock = types.CoreChainLock(pb.LastCoreChainLock)
 	state.NextCoreChainLock = types.CoreChainLock(pb.NextCoreChainLock)
 
@@ -228,7 +242,7 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 		}
 		state.LastValidators = lVals
 	} else {
-		state.LastValidators = types.NewValidatorSet(nil)
+		state.LastValidators = types.NewValidatorSet(nil, nil)
 	}
 
 	state.LastHeightValidatorsChanged = pb.LastHeightValidatorsChanged
@@ -244,14 +258,14 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 // Create a block from the latest state
 
 // MakeBlock builds a block from the current state with the given txs, commit,
-// and evidence. Note it also takes a proposerAddress because the state does not
+// and evidence. Note it also takes a proposerProTxHash because the state does not
 // track rounds, and hence does not know the correct proposer. TODO: fix this!
 func (state State) MakeBlock(
 	height int64,
 	txs []types.Tx,
 	commit *types.Commit,
 	evidence []types.Evidence,
-	proposerAddress []byte,
+	proposerProTxHash types.ProTxHash,
 ) (*types.Block, *types.PartSet) {
 
 	var coreChainLock *types.CoreChainLock = nil
@@ -274,9 +288,8 @@ func (state State) MakeBlock(
 	if height == state.InitialHeight {
 		timestamp = state.LastBlockTime // genesis time
 	} else {
-		timestamp = MedianTime(commit, state.LastValidators)
+		timestamp = tmtime.Now() //proposer proposes time
 	}
-
 
 	// Fill rest of header with state data.
 	block.Header.Populate(
@@ -284,35 +297,10 @@ func (state State) MakeBlock(
 		timestamp, state.LastBlockID,
 		state.Validators.Hash(), state.NextValidators.Hash(),
 		types.HashConsensusParams(state.ConsensusParams), state.AppHash, state.LastResultsHash,
-		proposerAddress,
+		proposerProTxHash,
 	)
 
-
-
 	return block, block.MakePartSet(types.BlockPartSizeBytes)
-}
-
-// MedianTime computes a median time for a given Commit (based on Timestamp field of votes messages) and the
-// corresponding validator set. The computed time is always between timestamps of
-// the votes sent by honest processes, i.e., a faulty processes can not arbitrarily increase or decrease the
-// computed value.
-func MedianTime(commit *types.Commit, validators *types.ValidatorSet) time.Time {
-	weightedTimes := make([]*tmtime.WeightedTime, len(commit.Signatures))
-	totalVotingPower := int64(0)
-
-	for i, commitSig := range commit.Signatures {
-		if commitSig.Absent() {
-			continue
-		}
-		_, validator := validators.GetByAddress(commitSig.ValidatorAddress)
-		// If there's no condition, TestValidateBlockCommit panics; not needed normally.
-		if validator != nil {
-			totalVotingPower += validator.VotingPower
-			weightedTimes[i] = tmtime.NewWeightedTime(commitSig.Timestamp, validator.VotingPower)
-		}
-	}
-
-	return tmtime.WeightedMedian(weightedTimes, totalVotingPower)
 }
 
 //------------------------------------------------------------------------
@@ -352,15 +340,15 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 
 	var validatorSet, nextValidatorSet *types.ValidatorSet
 	if genDoc.Validators == nil {
-		validatorSet = types.NewValidatorSet(nil)
-		nextValidatorSet = types.NewValidatorSet(nil)
+		validatorSet = types.NewValidatorSet(nil, nil)
+		nextValidatorSet = types.NewValidatorSet(nil, nil)
 	} else {
 		validators := make([]*types.Validator, len(genDoc.Validators))
 		for i, val := range genDoc.Validators {
-			validators[i] = types.NewValidator(val.PubKey, val.Power)
+			validators[i] = types.NewValidatorDefaultVotingPower(val.PubKey, val.ProTxHash)
 		}
-		validatorSet = types.NewValidatorSet(validators)
-		nextValidatorSet = types.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
+		validatorSet = types.NewValidatorSet(validators, genDoc.ThresholdPublicKey)
+		nextValidatorSet = types.NewValidatorSet(validators, genDoc.ThresholdPublicKey).CopyIncrementProposerPriority(1)
 	}
 
 	var initialChainLock types.CoreChainLock
@@ -374,13 +362,14 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 
 		LastBlockHeight: 0,
 		LastBlockID:     types.BlockID{},
+		LastStateID:     types.StateID{},
 		LastBlockTime:   genDoc.GenesisTime,
 
 		NextCoreChainLock: initialChainLock,
 
 		NextValidators:              nextValidatorSet,
 		Validators:                  validatorSet,
-		LastValidators:              types.NewValidatorSet(nil),
+		LastValidators:              types.NewValidatorSet(nil, nil),
 		LastHeightValidatorsChanged: genDoc.InitialHeight,
 
 		ConsensusParams:                  *genDoc.ConsensusParams,

@@ -122,7 +122,7 @@ func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 
 func (app *Application) Commit() types.ResponseCommit {
 	// Using a memdb - just return the big endian size of the db
-	appHash := make([]byte, 8)
+	appHash := make([]byte, 32)
 	binary.PutVarint(appHash, app.state.Size)
 	app.state.AppHash = appHash
 	app.state.Height++
@@ -138,30 +138,12 @@ func (app *Application) Commit() types.ResponseCommit {
 // Returns an associated value or nil if missing.
 func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
 	switch reqQuery.Path {
-		case "/verify-chainlock":
-			resQuery.Code = 0
+	case "/verify-chainlock":
+		resQuery.Code = 0
 
-			return resQuery
-		default:
-			if reqQuery.Prove {
-				value, err := app.state.db.Get(prefixKey(reqQuery.Data))
-				if err != nil {
-					panic(err)
-				}
-				if value == nil {
-					resQuery.Log = "does not exist"
-				} else {
-					resQuery.Log = "exists"
-				}
-				resQuery.Index = -1 // TODO make Proof return index
-				resQuery.Key = reqQuery.Data
-				resQuery.Value = value
-				resQuery.Height = app.state.Height
-
-				return
-			}
-
-			resQuery.Key = reqQuery.Data
+		return resQuery
+	default:
+		if reqQuery.Prove {
 			value, err := app.state.db.Get(prefixKey(reqQuery.Data))
 			if err != nil {
 				panic(err)
@@ -171,9 +153,27 @@ func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.Respo
 			} else {
 				resQuery.Log = "exists"
 			}
+			resQuery.Index = -1 // TODO make Proof return index
+			resQuery.Key = reqQuery.Data
 			resQuery.Value = value
 			resQuery.Height = app.state.Height
 
-			return resQuery
+			return
+		}
+
+		resQuery.Key = reqQuery.Data
+		value, err := app.state.db.Get(prefixKey(reqQuery.Data))
+		if err != nil {
+			panic(err)
+		}
+		if value == nil {
+			resQuery.Log = "does not exist"
+		} else {
+			resQuery.Log = "exists"
+		}
+		resQuery.Value = value
+		resQuery.Height = app.state.Height
+
+		return resQuery
 	}
 }

@@ -169,8 +169,8 @@ func (c *Local) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit
 	return core.Commit(c.ctx, height)
 }
 
-func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *int) (*ctypes.ResultValidators, error) {
-	return core.Validators(c.ctx, height, page, perPage)
+func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *int, requestThresholdPublicKey *bool) (*ctypes.ResultValidators, error) {
+	return core.Validators(c.ctx, height, page, perPage, requestThresholdPublicKey)
 }
 
 func (c *Local) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {

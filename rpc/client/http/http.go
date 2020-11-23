@@ -494,6 +494,7 @@ func (c *baseRPCClient) Validators(
 	height *int64,
 	page,
 	perPage *int,
+	requestThresholdPublicKey *bool,
 ) (*ctypes.ResultValidators, error) {
 	result := new(ctypes.ResultValidators)
 	params := make(map[string]interface{})
@@ -505,6 +506,9 @@ func (c *baseRPCClient) Validators(
 	}
 	if height != nil {
 		params["height"] = height
+	}
+	if requestThresholdPublicKey != nil {
+		params["request_threshold_public_key"] = requestThresholdPublicKey
 	}
 	_, err := c.caller.Call(ctx, "validators", params, result)
 	if err != nil {

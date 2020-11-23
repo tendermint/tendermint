@@ -303,9 +303,9 @@ func (h *Handshaker) ReplayBlocks(
 	if appBlockHeight == 0 {
 		validators := make([]*types.Validator, len(h.genDoc.Validators))
 		for i, val := range h.genDoc.Validators {
-			validators[i] = types.NewValidator(val.PubKey, val.Power)
+			validators[i] = types.NewValidatorDefaultVotingPower(val.PubKey, val.ProTxHash)
 		}
-		validatorSet := types.NewValidatorSet(validators)
+		validatorSet := types.NewValidatorSet(validators, h.genDoc.ThresholdPublicKey)
 		nextVals := types.TM2PB.ValidatorUpdates(validatorSet)
 		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
 		req := abci.RequestInitChain{
@@ -313,7 +313,7 @@ func (h *Handshaker) ReplayBlocks(
 			ChainId:         h.genDoc.ChainID,
 			InitialHeight:   h.genDoc.InitialHeight,
 			ConsensusParams: csParams,
-			Validators:      nextVals,
+			ValidatorSet:    nextVals,
 			AppStateBytes:   h.genDoc.AppState,
 		}
 		res, err := proxyApp.Consensus().InitChainSync(req)
@@ -331,13 +331,13 @@ func (h *Handshaker) ReplayBlocks(
 				state.AppHash = res.AppHash
 			}
 			// If the app returned validators or consensus params, update the state.
-			if len(res.Validators) > 0 {
-				vals, err := types.PB2TM.ValidatorUpdates(res.Validators)
+			if len(res.ValidatorSetUpdate.ValidatorUpdates) > 0 {
+				vals, thresholdPublicKey, err := types.PB2TM.ValidatorUpdatesFromValidatorSet(&res.ValidatorSetUpdate)
 				if err != nil {
 					return nil, err
 				}
-				state.Validators = types.NewValidatorSet(vals)
-				state.NextValidators = types.NewValidatorSet(vals).CopyIncrementProposerPriority(1)
+				state.Validators = types.NewValidatorSet(vals, thresholdPublicKey)
+				state.NextValidators = types.NewValidatorSet(vals, thresholdPublicKey).CopyIncrementProposerPriority(1)
 			} else if len(h.genDoc.Validators) == 0 {
 				// If validator set is not set in genesis and still empty after InitChain, exit.
 				return nil, fmt.Errorf("validator set is nil in genesis and still empty after InitChain")

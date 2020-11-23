@@ -3,7 +3,6 @@ package v0
 import (
 	"fmt"
 	"os"
-	"sort"
 	"testing"
 	"time"
 
@@ -26,23 +25,13 @@ import (
 
 var config *cfg.Config
 
-func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
-	validators := make([]types.GenesisValidator, numValidators)
-	privValidators := make([]types.PrivValidator, numValidators)
-	for i := 0; i < numValidators; i++ {
-		val, privVal := types.RandValidator(randPower, minPower)
-		validators[i] = types.GenesisValidator{
-			PubKey: val.PubKey,
-			Power:  val.VotingPower,
-		}
-		privValidators[i] = privVal
-	}
-	sort.Sort(types.PrivValidatorsByAddress(privValidators))
-
+func randGenesisDoc(numValidators int) (*types.GenesisDoc, []types.PrivValidator) {
+	validators, privValidators, thresholdPublicKey := types.GenerateGenesisValidators(numValidators)
 	return &types.GenesisDoc{
-		GenesisTime: tmtime.Now(),
-		ChainID:     config.ChainID(),
-		Validators:  validators,
+		GenesisTime:        tmtime.Now(),
+		ChainID:            config.ChainID(),
+		Validators:         validators,
+		ThresholdPublicKey: thresholdPublicKey,
 	}, privValidators
 }
 
@@ -51,11 +40,7 @@ type BlockchainReactorPair struct {
 	app     proxy.AppConns
 }
 
-func newBlockchainReactor(
-	logger log.Logger,
-	genDoc *types.GenesisDoc,
-	privVals []types.PrivValidator,
-	maxBlockHeight int64) BlockchainReactorPair {
+func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals []types.PrivValidator, maxBlockHeight int64) BlockchainReactorPair {
 	if len(privVals) != 1 {
 		panic("only support one validator")
 	}
@@ -92,7 +77,7 @@ func newBlockchainReactor(
 
 	// let's add some blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil)
+		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, types.StateID{LastAppHash: nil}, nil, nil, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
@@ -100,16 +85,18 @@ func newBlockchainReactor(
 			vote, err := types.MakeVote(
 				lastBlock.Header.Height,
 				lastBlockMeta.BlockID,
+				lastBlockMeta.StateID,
 				state.Validators,
 				privVals[0],
 				lastBlock.Header.ChainID,
-				time.Now(),
 			)
 			if err != nil {
 				panic(err)
 			}
+			commitSig := vote.CommitSig()
+			//since there is only 1 vote, use it as threshold
 			lastCommit = types.NewCommit(vote.Height, vote.Round,
-				lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
+				lastBlockMeta.BlockID, lastBlockMeta.StateID, []types.CommitSig{commitSig}, commitSig.BlockSignature, commitSig.StateSignature)
 		}
 
 		thisBlock := makeBlock(blockHeight, state, lastCommit)
@@ -134,7 +121,7 @@ func newBlockchainReactor(
 func TestNoBlockResponse(t *testing.T) {
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
-	genDoc, privVals := randGenesisDoc(1, false, 30)
+	genDoc, privVals := randGenesisDoc(1)
 
 	maxBlockHeight := int64(65)
 
@@ -196,12 +183,12 @@ func TestNoBlockResponse(t *testing.T) {
 func TestBadBlockStopsPeer(t *testing.T) {
 	config = cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
-	genDoc, privVals := randGenesisDoc(1, false, 30)
+	genDoc, privVals := randGenesisDoc(1)
 
 	maxBlockHeight := int64(148)
 
 	// Other chain needs a different validator set
-	otherGenDoc, otherPrivVals := randGenesisDoc(1, false, 30)
+	otherGenDoc, otherPrivVals := randGenesisDoc(1)
 	otherChain := newBlockchainReactor(log.TestingLogger(), otherGenDoc, otherPrivVals, maxBlockHeight)
 
 	defer func() {
@@ -289,7 +276,7 @@ func makeTxs(height int64) (txs []types.Tx) {
 }
 
 func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
+	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().ProTxHash)
 	return block
 }
 

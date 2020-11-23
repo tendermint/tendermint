@@ -20,9 +20,9 @@ type Manifest struct {
 	InitialState map[string]string `toml:"initial_state"`
 
 	// Validators is the initial validator set in genesis, given as node names
-	// and power:
+	// and power (for Dash power must all be set to default power):
 	//
-	// validators = { validator01 = 10; validator02 = 20; validator03 = 30 }
+	// validators = { validator01 = 100; validator02 = 100; validator03 = 100 }
 	//
 	// Defaults to all nodes that have mode=validator at power 100. Explicitly
 	// specifying an empty set will start with no validators in genesis, and
@@ -30,13 +30,13 @@ type Manifest struct {
 	// setting validator_update.0 (see below).
 	Validators *map[string]int64 `toml:"validators"`
 
-	// ValidatorUpdates is a map of heights to validator names and their power,
+	// ValidatorUpdates is a map of heights to validator proTxHashes and their power,
 	// and will be returned by the ABCI application. For example, the following
-	// changes the power of validator01 and validator02 at height 1000:
+	// adds validator01 and validator02 at height 1000:
 	//
 	// [validator_update.1000]
-	// validator01 = 20
-	// validator02 = 10
+	// validator01 = 100
+	// validator02 = 100
 	//
 	// Specifying height 0 returns the validator update during InitChain. The
 	// application returns the validator updates as-is, i.e. removing a

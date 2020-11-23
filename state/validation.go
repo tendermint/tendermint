@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/proxy"
@@ -96,25 +97,26 @@ func validateBlock(proxyAppQueryConn proxy.AppConnQuery, state State, block *typ
 			return errors.New("initial block can't have LastCommit signatures")
 		}
 	} else {
+		// fmt.Printf("validating against state with lastBlockId %s lastStateId %s\n", state.LastBlockID.String(), state.LastStateID.String())
 		// LastCommit.Signatures length is checked in VerifyCommit.
 		if err := state.LastValidators.VerifyCommit(
-			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit); err != nil {
+			state.ChainID, state.LastBlockID, state.LastStateID, block.Height-1, block.LastCommit); err != nil {
 			return err
 		}
 	}
 
 	// NOTE: We can't actually verify it's the right proposer because we don't
 	// know what round the block was first proposed. So just check that it's
-	// a legit address and a known validator.
-	if len(block.ProposerAddress) != crypto.AddressSize {
-		return fmt.Errorf("expected ProposerAddress size %d, got %d",
-			crypto.AddressSize,
-			len(block.ProposerAddress),
+	// a legit pro_tx_hash and a known validator.
+	if len(block.ProposerProTxHash) != crypto.DefaultHashSize {
+		return fmt.Errorf("expected ProposerProTxHash size %d, got %d",
+			crypto.DefaultHashSize,
+			len(block.ProposerProTxHash),
 		)
 	}
-	if !state.Validators.HasAddress(block.ProposerAddress) {
-		return fmt.Errorf("block.Header.ProposerAddress %X is not a validator",
-			block.ProposerAddress,
+	if !state.Validators.HasProTxHash(block.ProposerProTxHash) {
+		return fmt.Errorf("block.Header.ProposerProTxHash %X is not a validator",
+			block.ProposerProTxHash,
 		)
 	}
 
@@ -127,13 +129,6 @@ func validateBlock(proxyAppQueryConn proxy.AppConnQuery, state State, block *typ
 				state.LastBlockTime,
 			)
 		}
-		medianTime := MedianTime(block.LastCommit, state.LastValidators)
-		if !block.Time.Equal(medianTime) {
-			return fmt.Errorf("invalid block time. Expected %v, got %v",
-				medianTime,
-				block.Time,
-			)
-		}
 
 	case block.Height == state.InitialHeight:
 		genesisTime := state.LastBlockTime
@@ -143,7 +138,6 @@ func validateBlock(proxyAppQueryConn proxy.AppConnQuery, state State, block *typ
 				genesisTime,
 			)
 		}
-
 
 	default:
 		return fmt.Errorf("block height %v lower than initial height %v",
@@ -196,8 +190,6 @@ func validateBlock(proxyAppQueryConn proxy.AppConnQuery, state State, block *typ
 			)
 		}
 	}
-
-
 
 	// Check evidence doesn't exceed the limit amount of bytes.
 	if max, got := state.ConsensusParams.Evidence.MaxBytes, block.Evidence.ByteSize(); got > max {

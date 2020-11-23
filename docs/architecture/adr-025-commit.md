@@ -15,7 +15,7 @@ type Commit struct {
 }
 
 type Vote struct {
-    ValidatorAddress Address   `json:"validator_address"`
+    ValidatorProTxHash Address `json:"validator_pro_tx_hash"`
     ValidatorIndex   int       `json:"validator_index"`
     Height           int64     `json:"height"`
     Round            int       `json:"round"`

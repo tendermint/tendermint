@@ -273,7 +273,7 @@ endif
 
 # Run a nodejs tool to test endpoints against a localnet
 # The command takes care of starting and stopping the network
-# prerequisits: build-contract-tests-hooks build-linux
+# prerequisites: build-contract-tests-hooks build-linux
 # the two build commands were not added to let this command run from generic containers or machines.
 # The binaries should be built beforehand
 contract-tests:

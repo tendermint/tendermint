@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto"
+
 	"github.com/gogo/protobuf/proto"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -449,7 +451,7 @@ func (c *Client) TxSearch(ctx context.Context, query string, prove bool, page, p
 }
 
 // Validators fetches and verifies validators.
-func (c *Client) Validators(ctx context.Context, height *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators,
+func (c *Client) Validators(ctx context.Context, height *int64, pagePtr, perPagePtr *int, requestThresholdPublicKey *bool) (*ctypes.ResultValidators,
 	error) {
 	// Update the light client if we're behind and retrieve the light block at the requested height.
 	l, err := c.updateLightClientIfNeededTo(ctx, *height)
@@ -467,12 +469,18 @@ func (c *Client) Validators(ctx context.Context, height *int64, pagePtr, perPage
 	skipCount := validateSkipCount(page, perPage)
 
 	v := l.ValidatorSet.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
+	var thresholdPublicKey crypto.PubKey = nil
+	if *requestThresholdPublicKey {
+		thresholdPublicKey = l.ValidatorSet.ThresholdPublicKey
+	}
 
 	return &ctypes.ResultValidators{
-		BlockHeight: *height,
-		Validators:  v,
-		Count:       len(v),
-		Total:       totalCount}, nil
+		BlockHeight:        *height,
+		Validators:         v,
+		ThresholdPublicKey: &thresholdPublicKey,
+		Count:              len(v),
+		Total:              totalCount}, nil
+
 }
 
 func (c *Client) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
