@@ -320,7 +320,12 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 
 	// request snapshots from all currently connected peers
 	r.logger.Debug("requesting snapshots from known peers")
-	r.p2pSwitch.Broadcast(SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
+	go func() {
+		r.snapshotCh.Out <- p2p.Envelope{
+			Broadcast: true,
+			Message:   &ssproto.SnapshotsRequest{},
+		}
+	}()
 
 	state, commit, err := r.syncer.SyncAny(discoveryTime)
 
@@ -338,12 +343,17 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 // ============================================================================
 
 func (r *Reactor) OnUnmarshalFailure(_ byte, src p2p.Peer, _ []byte, err error) {
-	r.p2pSwitch.StopPeerForError(src, err)
+	if r.p2pSwitch != nil {
+		r.p2pSwitch.StopPeerForError(src, err)
+	}
 }
 
 func (r *Reactor) Validate(_ byte, src p2p.Peer, _ []byte, msg proto.Message) error {
 	if err := validateMsg(msg); err != nil {
-		r.p2pSwitch.StopPeerForError(src, err)
+		if r.p2pSwitch != nil {
+			r.p2pSwitch.StopPeerForError(src, err)
+		}
+
 		return err
 	}
 
