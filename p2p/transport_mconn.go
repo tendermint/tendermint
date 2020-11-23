@@ -333,6 +333,7 @@ func (m *mConnTransport) normalizeEndpoint(endpoint *Endpoint) error {
 // mConnConnection implements Connection for mConnTransport. It takes a base TCP
 // connection as input, and upgrades it to MConn with a handshake.
 type mConnConnection struct {
+	logger     log.Logger
 	transport  *mConnTransport
 	secretConn *tmconn.SecretConnection
 	mConn      *tmconn.MConnection
@@ -455,6 +456,7 @@ func newMConnConnection(
 		return
 	}
 
+	// Set up the MConnection wrapper
 	for _, chDesc := range transport.channelDescs {
 		conn.streams[chDesc.ID], err = newMConnStream(conn, uint16(chDesc.ID))
 		if err != nil {
@@ -469,26 +471,13 @@ func newMConnConnection(
 	conn.mConn = tmconn.NewMConnectionWithConfig(
 		conn.secretConn,
 		transport.channelDescs,
-		func(chID byte, bz []byte) {
-			fmt.Printf("recv bytes on channel 0x%x\n", chID)
-			if stream, ok := conn.streams[chID]; ok {
-				bzCopy := make([]byte, len(bz))
-				copy(bzCopy, bz)
-				stream.chReceive <- bzCopy
-				fmt.Printf("queued bytes for channel 0x%x\n", chID)
-			} else {
-				fmt.Printf("unknown stream 0x%x\n", chID)
-			}
-		},
-		func(err interface{}) {
-			fmt.Printf("connection error: %v\n", err)
-			_ = conn.Close()
-		},
+		conn.onReceive,
+		conn.onError,
 		transport.mConnConfig,
 	)
-	conn.mConn.SetLogger(transport.logger.With("peer", conn.RemoteEndpoint().String()))
+	conn.logger = transport.logger.With("peer", conn.RemoteEndpoint().String())
+	conn.mConn.SetLogger(conn.logger)
 	err = conn.mConn.Start()
-
 	return
 }
 
@@ -510,6 +499,25 @@ func (c *mConnConnection) handshake() (DefaultNodeInfo, error) {
 	}
 
 	return DefaultNodeInfoFromProto(&pbNodeInfo)
+}
+
+// onReceive is a callback for MConnection received messages.
+func (c *mConnConnection) onReceive(chID byte, bz []byte) {
+	stream, ok := c.streams[chID]
+	if !ok {
+		c.logger.Error("received message for unknown channel", "channel", chID)
+		return
+	}
+	bzCopy := make([]byte, len(bz))
+	copy(bzCopy, bz)
+	stream.chReceive <- bzCopy
+}
+
+// onError is a callback for MConnection errors.
+func (c *mConnConnection) onError(err interface{}) {
+	// FIXME Probably need to do something better here
+	c.logger.Error("connection failure", "err", err)
+	_ = c.Close()
 }
 
 // PubKey implements Connection.
