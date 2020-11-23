@@ -100,6 +100,19 @@ func sProcessedBlockEv(current, expected string, reactorError error) fsmStepTest
 	}
 }
 
+func sNoBlockResponseEv(current, expected string, peerID p2p.ID, height int64, err error) fsmStepTestValues {
+	return fsmStepTestValues{
+		currentState: current,
+		event:        noBlockResponseEv,
+		data: bReactorEventData{
+			peerID: peerID,
+			height: height,
+		},
+		wantState: expected,
+		wantErr:   err,
+	}
+}
+
 func sStatusEv(current, expected string, peerID p2p.ID, height int64, err error) fsmStepTestValues {
 	return fsmStepTestValues{
 		currentState: current,
@@ -335,6 +348,46 @@ func TestFSMBlockVerificationFailure(t *testing.T) {
 
 				// process block failure, should remove P1 and all blocks
 				sProcessedBlockEv("waitForBlock", "waitForBlock", errBlockVerificationFailure),
+
+				// get blocks 1-3 from P2
+				sMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
+				sBlockRespEv("waitForBlock", "waitForBlock", "P2", 1, []int64{}),
+				sBlockRespEv("waitForBlock", "waitForBlock", "P2", 2, []int64{1}),
+				sBlockRespEv("waitForBlock", "waitForBlock", "P2", 3, []int64{1, 2}),
+
+				// finish after processing blocks 1 and 2
+				sProcessedBlockEv("waitForBlock", "waitForBlock", nil),
+				sProcessedBlockEv("waitForBlock", "finished", nil),
+			},
+		},
+	}
+
+	executeFSMTests(t, tests, false)
+}
+
+func TestFSMNoBlockResponse(t *testing.T) {
+	tests := []testFields{
+		{
+			name:               "no block response",
+			startingHeight:     1,
+			maxRequestsPerPeer: 3,
+			steps: []fsmStepTestValues{
+				sStartFSMEv(),
+
+				// add P1 and get blocks 1-3 from it
+				sStatusEv("waitForPeer", "waitForBlock", "P1", 3, nil),
+				sMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),
+				sBlockRespEv("waitForBlock", "waitForBlock", "P1", 1, []int64{}),
+				sBlockRespEv("waitForBlock", "waitForBlock", "P1", 2, []int64{1}),
+				sBlockRespEv("waitForBlock", "waitForBlock", "P1", 3, []int64{1, 2}),
+
+				// add P2
+				sStatusEv("waitForBlock", "waitForBlock", "P2", 3, nil),
+
+				// process block failure, should remove P1 and all blocks
+				sNoBlockResponseEv("waitForBlock", "waitForBlock", "P1", 1, nil),
+				sNoBlockResponseEv("waitForBlock", "waitForBlock", "P1", 2, nil),
+				sNoBlockResponseEv("waitForBlock", "waitForBlock", "P1", 3, nil),
 
 				// get blocks 1-3 from P2
 				sMakeRequestsEv("waitForBlock", "waitForBlock", maxNumRequests),

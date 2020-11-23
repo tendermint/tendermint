@@ -21,3 +21,4 @@ program](https://hackerone.com/tendermint).
 
 ### BUG FIXES:
 
+- [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
