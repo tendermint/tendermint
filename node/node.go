@@ -908,8 +908,6 @@ func (n *Node) OnStart() error {
 		}
 	}
 
-	go n.stateSyncReactor.Run(n.reactorCtx)
-
 	// Start the switch (the P2P server).
 	err = n.sw.Start()
 	if err != nil {
@@ -924,6 +922,8 @@ func (n *Node) OnStart() error {
 
 	// Run state sync
 	if n.stateSync {
+		go n.stateSyncReactor.Run(n.reactorCtx)
+
 		bcR, ok := n.bcReactor.(fastSyncReactor)
 		if !ok {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
