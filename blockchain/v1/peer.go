@@ -30,6 +30,7 @@ type BpPeer struct {
 	Height                  int64                  // the peer reported height
 	NumPendingBlockRequests int                    // number of requests still waiting for block responses
 	blocks                  map[int64]*types.Block // blocks received or expected to be received from this peer
+	noBlocks                map[int64]struct{}     // heights for which the peer does not have blocks
 	blockResponseTimer      *time.Timer
 	recvMonitor             *flow.Monitor
 	params                  *BpPeerParams // parameters for timer and monitor
@@ -45,12 +46,13 @@ func NewBpPeer(
 		params = BpPeerDefaultParams()
 	}
 	return &BpPeer{
-		ID:     peerID,
-		Height: height,
-		blocks: make(map[int64]*types.Block, maxRequestsPerPeer),
-		logger: log.NewNopLogger(),
-		onErr:  onErr,
-		params: params,
+		ID:       peerID,
+		Height:   height,
+		blocks:   make(map[int64]*types.Block, maxRequestsPerPeer),
+		noBlocks: make(map[int64]struct{}),
+		logger:   log.NewNopLogger(),
+		onErr:    onErr,
+		params:   params,
 	}
 }
 
@@ -127,6 +129,19 @@ func (peer *BpPeer) AddBlock(block *types.Block, recvSize int) error {
 // RemoveBlock removes the block of given height
 func (peer *BpPeer) RemoveBlock(height int64) {
 	delete(peer.blocks, height)
+}
+
+// SetNoBlock records that the peer does not have a block for height.
+func (peer *BpPeer) SetNoBlock(height int64) {
+	peer.noBlocks[height] = struct{}{}
+}
+
+// NoBlock returns true if the peer does not have a block for height.
+func (peer *BpPeer) NoBlock(height int64) bool {
+	if _, ok := peer.noBlocks[height]; ok {
+		return true
+	}
+	return false
 }
 
 // RequestSent records that a request was sent, and starts the peer timer and monitor if needed.
