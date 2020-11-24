@@ -277,6 +277,7 @@ func init() {
 				return waitForBlock, err
 			case noBlockResponseEv:
 				fsm.logger.Error("peer does not have requested block", "peer", data.peerID)
+				fsm.pool.SetNoBlock(data.peerID, data.height)
 
 				return waitForBlock, nil
 			case processedBlockEv:
