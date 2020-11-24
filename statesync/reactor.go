@@ -79,6 +79,13 @@ func NewReactor(
 	}
 }
 
+func (r *Reactor) setConn(conn proxy.AppConnSnapshot) {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
+	r.conn = conn
+}
+
+// Logger returns the reactor's logger.
 func (r *Reactor) Logger() log.Logger {
 	return r.logger
 }
@@ -169,9 +176,9 @@ func (r *Reactor) processSnapshotCh(ctx context.Context) {
 
 			default:
 				r.logger.Error("received unknown message: %T", msg)
-				r.chunkCh.Error <- p2p.PeerError{
+				r.snapshotCh.Error <- p2p.PeerError{
 					PeerID:   envelope.From,
-					Err:      fmt.Errorf("unexpected message: %T", msg),
+					Err:      fmt.Errorf("received unknown message: %T", msg),
 					Severity: p2p.PeerErrorSeverityLow,
 				}
 			}
@@ -240,7 +247,7 @@ func (r *Reactor) processChunkCh(ctx context.Context) {
 				r.logger.Error("received unknown message: %T", msg)
 				r.chunkCh.Error <- p2p.PeerError{
 					PeerID:   envelope.From,
-					Err:      fmt.Errorf("unexpected message: %T", msg),
+					Err:      fmt.Errorf("received unknown message: %T", msg),
 					Severity: p2p.PeerErrorSeverityLow,
 				}
 			}
@@ -269,6 +276,9 @@ func (r *Reactor) handlePeerUpdate(peerUpdate p2p.PeerUpdate) {
 
 // recentSnapshots fetches the n most recent snapshots from the app
 func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
 	resp, err := r.conn.ListSnapshotsSync(abci.RequestListSnapshots{})
 	if err != nil {
 		return nil, err
@@ -363,9 +373,9 @@ func (r *Reactor) Validate(_ byte, src p2p.Peer, _ []byte, msg proto.Message) er
 // GetChannelShims returns a slice of ChannelDescriptorShim objects, where each
 // object wraps a reference to a legacy p2p ChannelDescriptor and the corresponding
 // p2p proto.Message the new p2p Channel is responsible for handling.
-func GetChannelShims() []*p2p.ChannelDescriptorShim {
-	return []*p2p.ChannelDescriptorShim{
-		{
+func GetChannelShims() map[p2p.ChannelID]*p2p.ChannelDescriptorShim {
+	return map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
+		p2p.ChannelID(SnapshotChannel): {
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  SnapshotChannel,
@@ -374,7 +384,7 @@ func GetChannelShims() []*p2p.ChannelDescriptorShim {
 				RecvMessageCapacity: snapshotMsgSize,
 			},
 		},
-		{
+		p2p.ChannelID(ChunkChannel): {
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  ChunkChannel,
