@@ -237,6 +237,7 @@ via light client.
     - `Version (string)`: The Tendermint software semantic version
     - `BlockVersion (uint64)`: The Tendermint Block Protocol version
     - `P2PVersion (uint64)`: The Tendermint P2P Protocol version
+    - `ABCIVersion (string)`: The Tendermint ABCI semantic version
 - **Response**:
     - `Data (string)`: Some arbitrary information
     - `Version (string)`: The application software semantic version
@@ -252,6 +253,8 @@ via light client.
     - Tendermint expects `LastBlockAppHash` and `LastBlockHeight` to
     be updated during `Commit`, ensuring that `Commit` is never
     called twice for the same block height.
+
+> Note: Semantic version is reference to [semantic versioning](https://semver.org/). Semantic versions in info will be displayed as X.X.x.
 
 ### InitChain
 
