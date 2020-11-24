@@ -203,16 +203,6 @@ build-docs:
 	done < versions ;
 .PHONY: build-docs
 
-build-gh-docs:
-	@cd docs && \
-	while read -r branch path_prefix; do \
-		(git checkout $${branch} && npm install && VUEPRESS_BASE="/tendermint/$${path_prefix}/" npm run build) ; \
-		mkdir -p ~/output/$${path_prefix} ; \
-		cp -r .vuepress/dist/* ~/output/$${path_prefix}/ ; \
-		cp ~/output/$${path_prefix}/index.html ~/output ; \
-	done < versions ;
-.PHONY: build-docs
-
 ###############################################################################
 ###                            Docker image                                 ###
 ###############################################################################
