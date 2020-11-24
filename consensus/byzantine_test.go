@@ -171,7 +171,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		go func(i int) {
 			for msg := range blocksSubs[i].Out() {
 				block := msg.Data().(types.EventDataNewBlock).Block
-				fmt.Printf("XXX: validator=%v height=%v evidencelen=%v\n", i, block.Height, len(block.Evidence.Evidence))
 				if len(block.Evidence.Evidence) != 0 {
 					evidenceFromEachValidator[i] = block.Evidence.Evidence[0]
 					wg.Done()
