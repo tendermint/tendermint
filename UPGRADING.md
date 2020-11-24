@@ -80,12 +80,12 @@ Applications can notify Tendermint to index a specific transaction by setting
 
 ```go
 []types.Event{
- {
-  Type: "app",
-  Attributes: []types.EventAttribute{
-   {Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko"), Index: true},
-  },
- },
+	{
+		Type: "app",
+		Attributes: []types.EventAttribute{
+			{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko"), Index: true},
+		},
+	},
 }
 ```
 
@@ -117,7 +117,7 @@ Tendermint 0.34 includes new and updated consensus parameters.
 
 #### Evidence Parameters
 
-* `MaxBytes`, which caps the total amount of evidence. The default is 1048576 (1 MB).
+* `MaxBytes`, which caps the total amount of evidence. The default is 1048576 (1 MB). 
 
 ### Crypto
 
@@ -161,8 +161,8 @@ Other user-relevant changes include:
 
 * The old `lite` package was removed; the new light client uses the `light` package.
 * The `Verifier` was broken up into two pieces:
-  * Core verification logic (pure `VerifyX` functions)
-  * `Client` object, which represents the complete light client
+    * Core verification logic (pure `VerifyX` functions)
+    * `Client` object, which represents the complete light client
 * The new light clients stores headers & validator sets as `LightBlock`s
 * The RPC client can be found in the `/rpc` directory.
 * The HTTP(S) proxy is located in the `/proxy` directory.
@@ -182,6 +182,7 @@ This is a optional field and can be ignored by key management systems;
 however, if you are using the same key management system for multiple different
 blockchains, we recommend that you check the chain ID.
 
+
 ### RPC
 
 * `/unsafe_start_cpu_profiler`, `/unsafe_stop_cpu_profiler` and
@@ -193,7 +194,7 @@ blockchains, we recommend that you check the chain ID.
 
 ### Version
 
-Version is now set through Go linker flags `ld_flags`. Applications that are using tendermint as a library should set this at compile time.
+Version is now set through Go linker flags `ld_flags`. Applications that are using tendermint as a library should set this at compile time. 
 
 Example:
 
@@ -201,7 +202,7 @@ Example:
 go install -mod=readonly -ldflags "-X github.com/tendermint/tendermint/version.TMCoreSemVer=$(go list -m github.com/tendermint/tendermint | sed  's/ /\@/g') -s -w " -trimpath ./cmd
 ```
 
-Additionally, the exported constant `version.Version` is now `version.TMCoreSemVer`.
+Additionally, the exported constant `version.Version` is now `version.TMCoreSemVer`. 
 
 ## v0.33.4
 
@@ -240,10 +241,10 @@ mostly of just signatures.
 
 ```go
 type Commit struct {
- Height     int64
- Round      int
- BlockID    BlockID
- Signatures []CommitSig
+	Height     int64
+	Round      int
+	BlockID    BlockID
+	Signatures []CommitSig
 }
 ```
 
@@ -251,19 +252,19 @@ type Commit struct {
 type BlockIDFlag byte
 
 const (
- // BlockIDFlagAbsent - no vote was received from a validator.
- BlockIDFlagAbsent BlockIDFlag = 0x01
- // BlockIDFlagCommit - voted for the Commit.BlockID.
- BlockIDFlagCommit = 0x02
- // BlockIDFlagNil - voted for nil.
- BlockIDFlagNil = 0x03
+	// BlockIDFlagAbsent - no vote was received from a validator.
+	BlockIDFlagAbsent BlockIDFlag = 0x01
+	// BlockIDFlagCommit - voted for the Commit.BlockID.
+	BlockIDFlagCommit = 0x02
+	// BlockIDFlagNil - voted for nil.
+	BlockIDFlagNil = 0x03
 )
 
 type CommitSig struct {
- BlockIDFlag      BlockIDFlag
- ValidatorAddress Address
- Timestamp        time.Time
- Signature        []byte
+	BlockIDFlag      BlockIDFlag
+	ValidatorAddress Address
+	Timestamp        time.Time
+	Signature        []byte
 }
 ```
 
@@ -293,12 +294,12 @@ Evidence Params has been changed to include duration.
 ### Go API
 
 * `libs/common` has been removed in favor of specific pkgs.
-  * `async`
-  * `service`
-  * `rand`
-  * `net`
-  * `strings`
-  * `cmap`
+    * `async`
+    * `service`
+    * `rand`
+    * `net`
+    * `strings`
+    * `cmap`
 * removal of `errors` pkg
 
 ### RPC Changes
