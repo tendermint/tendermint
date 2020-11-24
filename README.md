@@ -42,7 +42,7 @@ contact us [over email](mailto:hello@interchain.berlin) or [join the chat](https
 
 To report a security vulnerability, see our [bug bounty
 program](https://hackerone.com/tendermint). 
-For examples of the kinds of bugs we're looking for, see [our security policy](SECURITY.md)
+For examples of the kinds of bugs we're looking for, see [our security policy](SECURITY.md).
 
 ## Minimum requirements
 
@@ -155,4 +155,5 @@ Additional tooling can be found in [/docs/tools](/docs/tools).
 - [The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)
 - [Master's Thesis on Tendermint](https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769)
 - [Original Whitepaper: "Tendermint: Consensus Without Mining"](https://tendermint.com/static/docs/tendermint.pdf)
-- [Blog](https://blog.cosmos.network/tendermint/home)
+- [Tendermint Core Blog](https://medium.com/tendermint/tagged/tendermint-core)
+- [Cosmos Blog](https://blog.cosmos.network/tendermint/home)
