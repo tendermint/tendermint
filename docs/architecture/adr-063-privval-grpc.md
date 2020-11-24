@@ -8,27 +8,23 @@
 
 Validators use remote signers to help secure their keys. This system is Tendermint's recommended way to secure validators, but the path to integration with Tendermint's private validator client is plagued with custom protocols. 
 
-Tendermint uses its own custom secure connection protocol (`SecretConnection`) and a raw tcp connection protocol. The secure connection protocol until recently was exposed to man in the middle attacks and limits the amount and speed of integrations users can make. The raw tcp connection protocol is less custom, but has been causing minuet issues with users on mainnet chains. 
+Tendermint uses its own custom secure connection protocol (`SecretConnection`) and a raw tcp connection protocol. The secure connection protocol until recently was exposed to man in the middle attacks and limits the amount and speed of integrations users can make. The raw tcp connection protocol is less custom, but has been causing minuet issues with users. 
 
 Migrating Tendermint's private validator to a widely adopted protocol will ease the current maintenance and integration burden experienced with the current protocol. 
 
 ## Decision
 
-After discussing with multiple stake holders [gRPC](https://grpc.io/) was decided to be implemented to replace Privval. GRPC is a widely adopted protocol in the micro-service and cloud infrastructure world. GRPC uses [Protobuf](https://developers.google.com/protocol-buffers) to describe its service definition providing a language agnostic implementation. 
-
-> This section records the decision that was made.
-> It is best to record as much info as possible from the discussion that happened. This aids in not having to go back to the Pull Request to get the needed information.
-
+After discussing with multiple stake holders [gRPC](https://grpc.io/) was decided on to replace the current private validator protocol. GRPC is a widely adopted protocol in the micro-service and cloud infrastructure world. GRPC uses [protocol-buffers](https://developers.google.com/protocol-buffers) to describe its service definition providing a language agnostic implementation. Tendermint uses protobuf for on disk and over the wire encoding. 
 
 ## Alternative Approaches
 
-- JSON-RPC: We did not consider this as an alternative. 
+- JSON-RPC: We did not consider JSON-RPC because Tendermint uses protobuf extensively make gRPC a natural choice. JSON-RPC passes information of the wire in JSON. This can lead to performance bottle necks for low block time chains. 
 
 ## Detailed Design
 
 With the recent integration of [Protobuf](https://developers.google.com/protocol-buffers) into Tendermint the needed changes to migrate from the current private validator protocol to gRPC is not large. 
 
-The [service definition](https://grpc.io/docs/what-is-grpc/core-concepts/#service-definition) for gRPC will be outlined as:
+The [service definition](https://grpc.io/docs/what-is-grpc/core-concepts/#service-definition) for gRPC will be defined as:
 
 ```proto
 service PrivValidatorAPI {
@@ -40,7 +36,7 @@ service PrivValidatorAPI {
 
 #### Keep Alive
 
-If you have worked on the private validator system you will see that we are removing the `PingRequest` and `PingResponse` calls. These calls were used to create functionality which kept the connection alive. With gRPC there is a [keep alive feature](https://github.com/grpc/grpc/blob/master/doc/keepalive.md) that will be added along side the integration to provide the same functionality. 
+If you have worked on the private validator system you will see that we are removing the `PingRequest` and `PingResponse` messages. These messages were used to create functionality which kept the connection alive. With gRPC there is a [keep alive feature](https://github.com/grpc/grpc/blob/master/doc/keepalive.md) that will be added along side the integration to provide the same functionality. 
 
 #### Metrics
 
@@ -56,12 +52,9 @@ This is a largely breaking change for validator operators. The optimal upgrade p
 
 The upgrade of tmkms will be coordinated with Iqlusion. They will be able to make the necessary upgrades to allow users to migrate to gRPC from the current protocol. 
 
-
-
-
 ## Status
 
-Accepted
+Proposed
 
 ## Consequences
 
