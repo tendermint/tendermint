@@ -26,6 +26,7 @@ type ReactorTestSuite struct {
 	peerUpdateCh   chan p2p.PeerUpdate
 }
 
+// SetupTest is executed per test and creates and starts a new state sync reactor.
 func (rts *ReactorTestSuite) SetupTest() {
 	conn := &proxymocks.AppConnSnapshot{}
 	rts.snapshotChShim = p2p.NewChannelShim(GetChannelShims()[p2p.ChannelID(SnapshotChannel)], 100)
@@ -48,9 +49,18 @@ func (rts *ReactorTestSuite) SetupTest() {
 	go rts.reactor.Run(rts.ctx)
 }
 
-// TearDownTest cleans up the curret test network after _each_ test.
+// TearDownTest is executed after each test and stops the currently running
+// state sync reactor.
 func (rts *ReactorTestSuite) TearDownTest() {
 	rts.cancel()
+
+	// wait for go routines to catch the cancel and exit
+	time.Sleep(time.Second)
+
+	rts.snapshotChShim.Channel.Close()
+	rts.chunkChShim.Channel.Close()
+	close(rts.snapshotChShim.InCh)
+	close(rts.chunkChShim.InCh)
 }
 
 func TestReactorTestSuite(t *testing.T) {
