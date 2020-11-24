@@ -1,6 +1,13 @@
+---
+order: 1
+parent:
+  title: Debugging
+  order: 1
+---
+
 # Debugging
 
-## tendermint debug kill
+## Tendermint debug kill
 
 Tendermint comes with a `debug` sub-command that allows you to kill a live
 Tendermint process while collecting useful information in a compressed archive.
