@@ -49,6 +49,9 @@ var (
 
 	defaultNodeKeyPath  = filepath.Join(defaultConfigDir, defaultNodeKeyName)
 	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
+
+	// if a certificate is not provided the privval connection with a remote signer will be insecure
+	defaultPrivValClientCertificate = ""
 )
 
 // Config defines the top level configuration for a Tendermint node

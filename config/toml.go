@@ -138,6 +138,10 @@ priv_validator_state_file = "{{ js .BaseConfig.PrivValidatorState }}"
 # connections from an external PrivValidator process
 priv_validator_laddr = "{{ .BaseConfig.PrivValidatorListenAddr }}"
 
+secure private validator connection. 
+# If a remote validator address is provided but no certificate, the connection will be insecure
+priv_validator_client_certificate = "{{ js .BaseConfig.PrivValidatorClientCertificate }}"
+
 # Path to the JSON file containing the private key to use for node authentication in the p2p protocol
 node_key_file = "{{ js .BaseConfig.NodeKey }}"
 
