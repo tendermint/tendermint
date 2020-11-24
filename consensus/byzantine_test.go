@@ -108,7 +108,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		eventBuses[i] = css[i].eventBus
 		reactors[i].SetEventBus(eventBuses[i])
 
-		blocksSub, err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
+		blocksSub, err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, 100)
 		require.NoError(t, err)
 		blocksSubs = append(blocksSubs, blocksSub)
 
@@ -167,17 +167,17 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	wg := new(sync.WaitGroup)
 	wg.Add(4)
-	for height := 1; height < 6; height++ {
-		for i := 0; i < nValidators; i++ {
-			go func(j int) {
-				msg := <-blocksSubs[j].Out()
+	for i := 0; i < nValidators; i++ {
+		go func(i int) {
+			for msg := range blocksSubs[i].Out() {
 				block := msg.Data().(types.EventDataNewBlock).Block
 				if len(block.Evidence.Evidence) != 0 {
-					evidenceFromEachValidator[j] = block.Evidence.Evidence[0]
+					evidenceFromEachValidator[i] = block.Evidence.Evidence[0]
 					wg.Done()
+					return
 				}
-			}(i)
-		}
+			}
+		}(i)
 	}
 
 	done := make(chan struct{})
@@ -186,7 +186,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		close(done)
 	}()
 
-	pubkey, _ := bcs.privValidator.GetPubKey()
+	pubkey, err := bcs.privValidator.GetPubKey()
+	require.NoError(t, err)
 
 	select {
 	case <-done:
@@ -198,11 +199,11 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 				assert.Equal(t, prevoteHeight, ev.Height())
 			}
 		}
-	case <-time.After(10 * time.Second):
+	case <-time.After(20 * time.Second):
 		for i, reactor := range reactors {
 			t.Logf("Consensus Reactor %d\n%v", i, reactor)
 		}
-		t.Fatalf("Timed out waiting for all validators to commit first block")
+		t.Fatalf("Timed out waiting for validators to commit evidence")
 	}
 }
 
