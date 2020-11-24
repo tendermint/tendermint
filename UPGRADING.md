@@ -2,13 +2,19 @@
 
 This guide provides instructions for upgrading to specific versions of Tendermint Core.
 
+## Unreleased
+
+### ABCI Changes
+
+* Added `AbciVersion` to `RequestInfo`. Applications should check that the ABCI version they expect is being used in order to avoid unimplemented changes errors.
+
 ## v0.34.0
 
 **Upgrading to Tendermint 0.34 requires a blockchain restart.**
 This release is not compatible with previous blockchains due to changes to
 the encoding format (see "Protocol Buffers," below) and the block header (see "Blockchain Protocol").
 
-Note also that Tendermint 0.34 also requires Go 1.15 or higher. 
+Note also that Tendermint 0.34 also requires Go 1.15 or higher.
 
 ### ABCI Changes
 
