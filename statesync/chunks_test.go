@@ -315,8 +315,8 @@ func TestChunkQueue_GetSender(t *testing.T) {
 	queue, teardown := setupChunkQueue(t)
 	defer teardown()
 
-	_, peerAID := simplePeer(t, "AA")
-	_, peerBID := simplePeer(t, "BB")
+	peerAID := p2p.PeerID{0xAA}
+	peerBID := p2p.PeerID{0xBB}
 
 	_, err := queue.Add(&chunk{Height: 3, Format: 1, Index: 0, Chunk: []byte{1}, Sender: peerAID})
 	require.NoError(t, err)
