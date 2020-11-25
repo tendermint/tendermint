@@ -179,6 +179,7 @@ func (m *mConnTransport) accept() {
 			}
 			conn, err := newMConnConnection(m, tcpConn, "")
 			if err != nil {
+				m.conns.Remove(tcpConn)
 				_ = tcpConn.Close()
 				select {
 				case m.chError <- err:
@@ -229,7 +230,13 @@ func (m *mConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 		return nil, err
 	}
 
-	return newMConnConnection(m, tcpConn, endpoint.PeerID)
+	conn, err := newMConnConnection(m, tcpConn, endpoint.PeerID)
+	if err != nil {
+		m.conns.Remove(tcpConn)
+		return nil, err
+	}
+
+	return conn, nil
 }
 
 // Endpoints implements Transport.
