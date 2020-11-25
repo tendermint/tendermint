@@ -1,4 +1,4 @@
-package privval
+package grpc
 
 import (
 	context "context"
@@ -13,7 +13,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
-	privvalproto "github.com/tendermint/tendermint/proto/privval"
+	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -28,7 +28,8 @@ type SignerServer struct {
 	Srv     *grpc.Server
 }
 
-func NewSignerServer(target string, chainID string, privVal types.PrivValidator, log log.Logger, opts []grpc.ServerOption) *SignerServer {
+func NewSignerServer(target string, chainID string,
+	privVal types.PrivValidator, log log.Logger, opts []grpc.ServerOption) *SignerServer {
 	return &SignerServer{
 		Logger: log,
 
@@ -82,7 +83,7 @@ func (ss *SignerServer) GetPubKey(ctx context.Context, req *privvalproto.PubKeyR
 		return nil, status.Errorf(codes.InvalidArgument, "error transistioning pubkey to proto: %v", err)
 	}
 
-	return &privvalproto.PubKeyResponse{PubKey: &pk}, nil
+	return &privvalproto.PubKeyResponse{PubKey: pk}, nil
 }
 
 // SignVote receives a vote sign requests, attempts to sign it
@@ -96,7 +97,7 @@ func (ss *SignerServer) SignVote(ctx context.Context, req *privvalproto.SignVote
 		return nil, status.Errorf(codes.InvalidArgument, "error signing vote: %v", err)
 	}
 
-	return &privvalproto.SignedVoteResponse{Vote: vote}, nil
+	return &privvalproto.SignedVoteResponse{Vote: *vote}, nil
 }
 
 // SignProposal receives a proposal sign requests, attempts to sign it
@@ -110,5 +111,5 @@ func (ss *SignerServer) SignProposal(ctx context.Context, req *privvalproto.Sign
 		return nil, status.Errorf(codes.InvalidArgument, "error signing proposal: %v", err)
 	}
 
-	return &privvalproto.SignedProposalResponse{Proposal: proposal}, nil
+	return &privvalproto.SignedProposalResponse{Proposal: *proposal}, nil
 }

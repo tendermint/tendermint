@@ -3,14 +3,14 @@ package main
 import (
 	"flag"
 	"os"
-	"time"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+
 	"github.com/tendermint/tendermint/libs/log"
-	tmnet "github.com/tendermint/tendermint/libs/net"
 	tmos "github.com/tendermint/tendermint/libs/os"
-
 	"github.com/tendermint/tendermint/privval"
+	grpcprivval "github.com/tendermint/tendermint/privval/grpc"
 )
 
 func main() {
@@ -19,6 +19,9 @@ func main() {
 		chainID          = flag.String("chain-id", "mychain", "chain id")
 		privValKeyPath   = flag.String("priv-key", "", "priv val key file path")
 		privValStatePath = flag.String("priv-state", "", "priv val state file path")
+		insecure         = flag.Bool("priv-insecure", false, "")
+		withCert         = flag.String("cert", "", "absolutepath to server certificate")
+		withKey          = flag.String("key", "", "absolutepath to server key")
 
 		logger = log.NewTMLogger(
 			log.NewSyncWriter(os.Stdout),
@@ -36,21 +39,18 @@ func main() {
 
 	pv := privval.LoadFilePV(*privValKeyPath, *privValStatePath)
 
-	var dialer privval.SocketDialer
-	protocol, address := tmnet.ProtocolAndAddress(*addr)
-	switch protocol {
-	case "unix":
-		dialer = privval.DialUnixFn(address)
-	case "tcp":
-		connTimeout := 3 * time.Second // TODO
-		dialer = privval.DialTCPFn(address, connTimeout, ed25519.GenPrivKey())
-	default:
-		logger.Error("Unknown protocol", "protocol", protocol)
-		os.Exit(1)
+	opts := []grpc.ServerOption{}
+	if !*insecure {
+		creds, err := credentials.NewServerTLSFromFile(*withCert, *withKey)
+		if err != nil {
+			logger.Error("Could not load TLS keys:", "err", err)
+		}
+		opts = append(opts, grpc.Creds(creds))
+	} else {
+		logger.Error("You are using an insecure gRPC connection! Provide a certificate and key to connect securely")
 	}
 
-	sd := privval.NewSignerDialerEndpoint(logger, dialer)
-	ss := privval.NewSignerServer(sd, *chainID, pv)
+	ss := grpcprivval.NewSignerServer(*addr, *chainID, pv, logger, opts)
 
 	err := ss.Start()
 	if err != nil {

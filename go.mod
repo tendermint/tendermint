@@ -16,12 +16,14 @@ require (
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.4.3
 	github.com/gorilla/websocket v1.4.2
+	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/gtank/merlin v0.1.1
 	github.com/hdevalence/ed25519consensus v0.0.0-20200813231810-1694d75e712a
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/minio/highwayhash v1.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.8.0
+	github.com/prometheus/common v0.14.0
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
 	github.com/rs/cors v1.7.0
 	github.com/sasha-s/go-deadlock v0.2.0

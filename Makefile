@@ -121,6 +121,18 @@ install_abci:
 .PHONY: install_abci
 
 ###############################################################################
+###                           Build Privval Server                          ###
+###############################################################################
+
+build_privval_server:
+	@go build -mod=readonly -i ./cmd/priv_val_server/...
+.PHONY: build_abci
+
+install_privval_server:
+	@go install -mod=readonly ./cmd/priv_val_server/...
+.PHONY: install_abci
+
+###############################################################################
 ###                              Distribution                               ###
 ###############################################################################
 

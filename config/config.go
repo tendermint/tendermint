@@ -49,9 +49,6 @@ var (
 
 	defaultNodeKeyPath  = filepath.Join(defaultConfigDir, defaultNodeKeyName)
 	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
-
-	// if a certificate is not provided the privval connection with a remote signer will be insecure
-	defaultPrivValClientCertificate = ""
 )
 
 // Config defines the top level configuration for a Tendermint node
@@ -206,6 +203,9 @@ type BaseConfig struct { //nolint: maligned
 	// TCP or UNIX socket address for Tendermint to listen on for
 	// connections from an external PrivValidator process
 	PrivValidatorListenAddr string `mapstructure:"priv_validator_laddr"`
+
+	// Defines which private validator protocol to use gRPC or tcp, unix socket
+	PrivValidatorProtocol string `mapstructure:"priv_validator_protocol"`
 
 	// A JSON file containing the private key to use for p2p authenticated encryption
 	NodeKey string `mapstructure:"node_key_file"`

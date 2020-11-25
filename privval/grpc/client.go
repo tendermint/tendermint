@@ -1,4 +1,4 @@
-package privval
+package grpc
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
-	privvalproto "github.com/tendermint/tendermint/proto/privval"
-	tmproto "github.com/tendermint/tendermint/proto/types"
+	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -72,7 +72,7 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 		return nil, fmt.Errorf("send GetPubKey request: %w", errStatus.Err())
 	}
 
-	pk, err := cryptoenc.PubKeyFromProto(*resp.PubKey)
+	pk, err := cryptoenc.PubKeyFromProto(resp.PubKey)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
 		return fmt.Errorf("send SignVote request: %w", errStatus.Err())
 	}
 
-	*vote = *resp.Vote
+	*vote = resp.Vote
 
 	return nil
 }
@@ -105,7 +105,7 @@ func (sc *SignerClient) SignProposal(chainID string, proposal *tmproto.Proposal)
 		return fmt.Errorf("send SignProposal request: %w", errStatus.Err())
 	}
 
-	*proposal = *resp.Proposal
+	*proposal = resp.Proposal
 
 	return nil
 }

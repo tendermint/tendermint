@@ -138,6 +138,10 @@ priv_validator_state_file = "{{ js .BaseConfig.PrivValidatorState }}"
 # connections from an external PrivValidator process
 priv_validator_laddr = "{{ .BaseConfig.PrivValidatorListenAddr }}"
 
+# Defines which private validator protocol to use gRPC or tcp, unix socket
+# Default is tcp, unix
+priv_validator_protocol = "{{ .BaseConfig.PrivValidatorProtocol }}"
+
 secure private validator connection. 
 # If a remote validator address is provided but no certificate, the connection will be insecure
 priv_validator_client_certificate = "{{ js .BaseConfig.PrivValidatorClientCertificate }}"

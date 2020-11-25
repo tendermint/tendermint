@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
-	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -34,6 +33,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/privval"
+	grpcprivval "github.com/tendermint/tendermint/privval/grpc"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
@@ -665,9 +665,16 @@ func NewNode(config *cfg.Config,
 	// external signing process.
 	if config.PrivValidatorListenAddr != "" {
 		// FIXME: we should start services inside OnStart
-		privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, genDoc.ChainID, logger)
-		if err != nil {
-			return nil, fmt.Errorf("error with private validator socket client: %w", err)
+		if config.PrivValidatorProtocol == "grpc" {
+			privValidator, err = createAndStartPrivValidatorGRPCClient(config.PrivValidatorListenAddr, genDoc.ChainID, logger)
+			if err != nil {
+				return nil, fmt.Errorf("error with private validator socket client: %w", err)
+			}
+		} else {
+			privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, genDoc.ChainID, logger)
+			if err != nil {
+				return nil, fmt.Errorf("error with private validator socket client: %w", err)
+			}
 		}
 	}
 
@@ -1354,6 +1361,7 @@ func createAndStartPrivValidatorSocketClient(
 	chainID string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
+
 	pve, err := privval.NewSignerListener(listenAddr, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
@@ -1379,23 +1387,27 @@ func createAndStartPrivValidatorSocketClient(
 	return pvscWithRetries, nil
 }
 
-// splitAndTrimEmpty slices s into all subslices separated by sep and returns a
-// slice of the string s with all leading and trailing Unicode code points
-// contained in cutset removed. If sep is empty, SplitAndTrim splits after each
-// UTF-8 sequence. First part is equivalent to strings.SplitN with a count of
-// -1.  also filter out empty strings, only return non-empty strings.
-func splitAndTrimEmpty(s, sep, cutset string) []string {
-	if s == "" {
-		return []string{}
-	}
+func createAndStartPrivValidatorGRPCClient(
+	listenAddr string,
+	cert string,
+	logger log.Logger,
+) (types.PrivValidator, error) {
 
-	spl := strings.Split(s, sep)
-	nonEmptyStrings := make([]string, 0, len(spl))
-	for i := 0; i < len(spl); i++ {
-		element := strings.Trim(spl[i], cutset)
-		if element != "" {
-			nonEmptyStrings = append(nonEmptyStrings, element)
-		}
+	dialOptions := ConstructDialOptions(cert)
+
+	pvsc, err := grpcprivval.NewSignerClient(listenAddr, dialOptions, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
-	return nonEmptyStrings
+	// try to get a pubkey from private validate first time
+	_, err = pvsc.GetPubKey()
+	if err != nil {
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
+	}
+	const (
+		retries = 50 // 50 * 100ms = 5s total
+		timeout = 100 * time.Millisecond
+	)
+
+	return pvsc, nil
 }
