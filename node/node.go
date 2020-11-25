@@ -1,6 +1,7 @@
 package node
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -676,11 +677,7 @@ func NewNode(config *cfg.Config,
 	}
 
 	// Determine whether we should attempt state sync.
-	//
-	// If the validator has 1/3+ of the voting power, no new blocks were minted
-	// since 2/3+ of the voting power is required, hence we can safely skip fast
-	// and state sync.
-	stateSync := config.StateSync.Enable && !validatorHasMoreThan13Power(state, pubKey)
+	stateSync := config.StateSync.Enable && !onlyValidatorIsUs(state, pubKey)
 	if stateSync && state.LastBlockHeight > 0 {
 		logger.Info("Found local state with non-zero height, skipping state sync")
 		stateSync = false
@@ -711,8 +708,10 @@ func NewNode(config *cfg.Config,
 	//
 	// If the validator has 1/3+ of the voting power, no new blocks were minted
 	// since 2/3+ of the voting power is required, hence we can safely skip fast
-	// and state sync.
-	fastSync := config.FastSyncMode && !validatorHasMoreThan13Power(state, pubKey)
+	// sync. The only exception is when height is zero (database corruption), in
+	// which case we'd want to attempt fast sync.
+	fastSync := config.FastSyncMode && !(onlyValidatorIsUs(state, pubKey) ||
+		(state.LastBlockHeight > 0 && validatorHasMoreThan13Power(state, pubKey)))
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 
@@ -1408,4 +1407,12 @@ func splitAndTrimEmpty(s, sep, cutset string) []string {
 		}
 	}
 	return nonEmptyStrings
+}
+
+func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
+	if state.Validators.Size() > 1 {
+		return false
+	}
+	addr, _ := state.Validators.GetByIndex(0)
+	return bytes.Equal(pubKey.Address(), addr)
 }
