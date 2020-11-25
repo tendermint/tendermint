@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -79,11 +80,12 @@ type mConnTransport struct {
 	handshakeTimeout       time.Duration
 	filterTimeout          time.Duration
 
-	logger   log.Logger
-	listener net.Listener
-	chAccept chan *mConnConnection
-	chError  chan error
-	chClose  chan struct{}
+	logger      log.Logger
+	listener    net.Listener
+	chAccept    chan *mConnConnection
+	chError     chan error
+	chClose     chan struct{}
+	chCloseOnce sync.Once
 
 	// FIXME This is a vestige from the old transport, and should be managed
 	// by the router once we rewrite the P2P core.
@@ -246,9 +248,7 @@ func (m *mConnTransport) Endpoints() []Endpoint {
 
 // Close implements Transport.
 func (m *mConnTransport) Close() error {
-	if _, ok := <-m.chClose; !ok {
-		close(m.chClose)
-	}
+	m.chCloseOnce.Do(func() { close(m.chClose) })
 	if m.listener != nil {
 		return m.listener.Close()
 	}
@@ -298,7 +298,7 @@ func (m *mConnTransport) filterTCPConn(tcpConn net.Conn) error {
 	}
 
 	// FIXME Doesn't really make sense to set this here, but this is where
-	// we have access to ips. Clean this up when we move connection tracking
+	// we have access to IPs. Clean this up when we move connection tracking
 	// to the router.
 	m.conns.Set(tcpConn, ips)
 	return nil
@@ -508,9 +508,11 @@ func (c *mConnConnection) onReceive(chID byte, bz []byte) {
 		c.logger.Error("received message for unknown channel", "channel", chID)
 		return
 	}
-	bzCopy := make([]byte, len(bz))
-	copy(bzCopy, bz)
-	stream.chReceive <- bzCopy
+	err := stream.receive(bz)
+	if err != nil {
+		c.logger.Error(err.Error(), "channel", chID)
+		return
+	}
 }
 
 // onError is a callback for MConnection errors.
@@ -560,14 +562,21 @@ func (c *mConnConnection) Close() error {
 	if e := c.secretConn.Close(); e != nil && err == nil {
 		err = e
 	}
+	for _, stream := range c.streams {
+		if e := stream.Close(); e != nil && err == nil {
+			err = e
+		}
+	}
 	return err
 }
 
 // mConnStream implements Stream for mConnTransport.
 type mConnStream struct {
-	connection *mConnConnection
-	id         byte
-	chReceive  chan []byte
+	connection  *mConnConnection
+	id          byte
+	chReceive   chan []byte
+	chClose     chan struct{}
+	chCloseOnce sync.Once
 }
 
 // newMConnStream represents a stream in a connection. It corresponds
@@ -580,29 +589,68 @@ func newMConnStream(connection *mConnConnection, id uint16) (*mConnStream, error
 		connection: connection,
 		id:         byte(id),
 		chReceive:  make(chan []byte),
+		chClose:    make(chan struct{}),
 	}, nil
 }
 
-// Close implements Stream.
-func (s *mConnStream) Close() error {
-	return nil
+// isClosed checks whether the stream has been closed.
+func (s *mConnStream) isClosed() bool {
+	select {
+	case <-s.chClose:
+		return true
+	default:
+		return false
+	}
 }
 
-// Write implements Stream.
-func (s *mConnStream) Write(bz []byte) (int, error) {
-	if !s.connection.mConn.Send(s.id, bz) {
-		return 0, fmt.Errorf("MConn send failed for stream 0x%x", s.id)
+// receive is used by the connection to provide data for the stream.
+func (s *mConnStream) receive(bz []byte) error {
+	// FIXME Need to avoid copying here
+	bzCopy := make([]byte, len(bz))
+	copy(bzCopy, bz)
+	select {
+	case s.chReceive <- bzCopy:
+		return nil
+	case <-s.chClose:
+		return fmt.Errorf("stream 0x%x has been closed", s.id)
 	}
-	return len(bz), nil
 }
 
 // Read implements Stream.
 func (s *mConnStream) Read(target []byte) (int, error) {
 	select {
 	case bz := <-s.chReceive:
+		// FIXME We don't really have to error here, we could keep the partially
+		// used byte slice around in the stream and provide it on the next read.
+		// However, changing the mconn onRead semantics to actually read into a
+		// provided buffer should fix this, so we should do that instead.
+		if len(bz) > len(target) {
+			return 0, io.ErrShortBuffer
+		}
+		// FIXME This copying may get too expensive, but is necessary due to
+		// the io.Reader API where the caller provides the target buffer.
 		copy(target, bz)
 		return len(bz), nil
-	case <-s.connection.transport.chClose:
+	case <-s.chClose:
 		return 0, io.EOF
 	}
+}
+
+// Write implements Stream.
+func (s *mConnStream) Write(bz []byte) (int, error) {
+	if s.isClosed() {
+		return 0, fmt.Errorf("stream %v is closed", s.id)
+	}
+	if !s.connection.mConn.Send(s.id, bz) {
+		return 0, fmt.Errorf("MConn send failed for stream 0x%x", s.id)
+	}
+	return len(bz), nil
+}
+
+// Close implements Stream.
+func (s *mConnStream) Close() error {
+	s.chCloseOnce.Do(func() {
+		close(s.chClose)
+	})
+	return nil
 }

@@ -29,7 +29,8 @@ type Transport interface {
 	// valid), as they should be preprocessed before being advertised.
 	Endpoints() []Endpoint
 
-	// Close stops listening and closes all active connections.
+	// Close stops listening, but does not close active connections -- these
+	// must be closed individually.
 	Close() error
 }
 
