@@ -99,11 +99,7 @@ func (sw *Switch) NetAddress() *NetAddress {
 	if len(endpoints) == 0 {
 		return nil
 	}
-	return &NetAddress{
-		ID:   endpoints[0].PeerID,
-		IP:   endpoints[0].IP,
-		Port: endpoints[0].Port,
-	}
+	return endpoints[0].NetAddress()
 }
 
 // SwitchOption sets an optional parameter on the Switch.
@@ -681,7 +677,7 @@ func (sw *Switch) acceptRoutine() {
 		}
 
 		p := newPeer(
-			newPeerConn(true, false, c),
+			newPeerConn(true, sw.IsPeerPersistent(c.RemoteEndpoint().NetAddress()), c),
 			sw.nodeInfo,
 			sw.reactorsByCh,
 			sw.chDescs,
@@ -764,7 +760,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	}
 
 	p := newPeer(
-		newPeerConn(false, false, c),
+		newPeerConn(false, sw.IsPeerPersistent(c.RemoteEndpoint().NetAddress()), c),
 		sw.nodeInfo,
 		sw.reactorsByCh,
 		sw.chDescs,

@@ -95,6 +95,16 @@ func (e Endpoint) Validate() error {
 	}
 }
 
+// NetAddress returns a NetAddress for the endpoint.
+// FIXME This is temporary for compatibility with the old P2P stack.
+func (e Endpoint) NetAddress() *NetAddress {
+	return &NetAddress{
+		ID:   e.PeerID,
+		IP:   e.IP,
+		Port: e.Port,
+	}
+}
+
 // Connection represents an established connection between two endpoints.
 type Connection interface {
 	// Stream creates a new logically distinct IO stream within the connection.

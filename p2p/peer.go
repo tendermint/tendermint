@@ -1,7 +1,9 @@
 package p2p
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"time"
 
@@ -173,21 +175,26 @@ func (p *peer) OnStart() error {
 			return err
 		}
 		p.streams[chDesc.ID] = stream
-		fmt.Printf("Peer %v opened stream for channel 0x%x\n", p.ID(), chDesc.ID)
+		p.Logger.Error("opened stream", "peer", p.ID(), "channel", chDesc.ID)
 
 		go func(chDesc *tmconn.ChannelDescriptor, stream Stream, reactor Reactor) {
 			bz := make([]byte, chDesc.RecvMessageCapacity)
 			for {
-				fmt.Printf("reading from channel 0x%x\n", chDesc.ID)
+				p.Logger.Error("reading from stream", "peer", p.ID(), "channel", chDesc.ID)
 				n, err := stream.Read(bz)
-				if err != nil {
+				switch {
+				case errors.Is(err, io.EOF):
+					p.Logger.Debug("closed channel", "peer", p.ID(), "channel", chDesc.ID)
+					p.onPeerError(p, err)
+					return
+				case err != nil:
 					p.Logger.Error(fmt.Sprintf("stream read failed: %v", err))
 					p.onPeerError(p, err)
-					continue
+					return
 				}
-				fmt.Printf("read %v bytes from channel 0x%x\n", n, chDesc.ID)
+				p.Logger.Error(fmt.Sprintf("read %v bytes, passing to reactor", n),
+					"channel", chDesc.ID, "reactor", reactor)
 				reactor.Receive(chDesc.ID, p, bz[:n])
-				fmt.Printf("called Receive() on reactor %v for channel 0x%x\n", reactor, chDesc.ID)
 			}
 		}(chDesc, stream, p.reactors[chDesc.ID])
 	}
@@ -203,6 +210,9 @@ func (p *peer) FlushStop() {
 	p.metricsTicker.Stop()
 	p.BaseService.OnStop()
 	// FIXME Flush and close connection.
+	if err := p.conn.Close(); err != nil {
+		p.Logger.Debug("Error while stopping peer", "err", err)
+	}
 }
 
 // OnStop implements BaseService.
@@ -242,12 +252,7 @@ func (p *peer) NodeInfo() NodeInfo {
 // For inbound peers, it's the address returned by the underlying connection
 // (not what's reported in the peer's NodeInfo).
 func (p *peer) SocketAddr() *NetAddress {
-	endpoint := p.peerConn.conn.RemoteEndpoint()
-	return &NetAddress{
-		ID:   p.ID(),
-		IP:   endpoint.IP,
-		Port: endpoint.Port,
-	}
+	return p.peerConn.conn.RemoteEndpoint().NetAddress()
 }
 
 // Status returns the peer's ConnectionStatus.
