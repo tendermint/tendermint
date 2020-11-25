@@ -90,6 +90,8 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"db_dir",
 		config.DBPath,
 		"Database directory")
+
+	addMoreFlags(cmd)
 }
 
 // NewRunNodeCmd returns the command that allows the CLI to start a node.

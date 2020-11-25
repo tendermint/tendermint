@@ -58,6 +58,12 @@ type Metrics struct {
 
 	// Number of blockparts transmitted by peer.
 	BlockParts metrics.Counter
+
+	NewRoundProcessingTime  metrics.Gauge
+	ProposeProcessingTime   metrics.Gauge
+	PrevoteProcessingTime   metrics.Gauge
+	PrecommitProcessingTime metrics.Gauge
+	CommitProcessingTime    metrics.Gauge
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -180,6 +186,36 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "block_parts",
 			Help:      "Number of blockparts transmitted by peer.",
 		}, append(labels, "peer_id")).With(labelsAndValues...),
+		NewRoundProcessingTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "new_round_processing_time",
+			Help:      "Time about new round",
+		}, labels).With(labelsAndValues...),
+		ProposeProcessingTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "propose_processing_time",
+			Help:      "Time about propose",
+		}, labels).With(labelsAndValues...),
+		PrevoteProcessingTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "prevote_processing_time",
+			Help:      "Time about prevote",
+		}, labels).With(labelsAndValues...),
+		PrecommitProcessingTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "precommit_processing_time",
+			Help:      "Time about precommit",
+		}, labels).With(labelsAndValues...),
+		CommitProcessingTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "commit_processing_time",
+			Help:      "Time about commit",
+		}, labels).With(labelsAndValues...),
 	}
 }
 
@@ -209,5 +245,11 @@ func NopMetrics() *Metrics {
 		CommittedHeight: discard.NewGauge(),
 		FastSyncing:     discard.NewGauge(),
 		BlockParts:      discard.NewCounter(),
+
+		NewRoundProcessingTime:  discard.NewGauge(),
+		ProposeProcessingTime:   discard.NewGauge(),
+		PrevoteProcessingTime:   discard.NewGauge(),
+		PrecommitProcessingTime: discard.NewGauge(),
+		CommitProcessingTime:    discard.NewGauge(),
 	}
 }

@@ -49,6 +49,10 @@ var (
 
 	defaultNodeKeyPath  = filepath.Join(defaultConfigDir, defaultNodeKeyName)
 	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
+
+	DefaultLogPath     = os.ExpandEnv("$HOME/.okexchaind")
+	defaultLogFileName = "okexchaind.log"
+	defaultLogFile     = filepath.Join(DefaultLogPath, defaultLogFileName)
 )
 
 var (
@@ -106,6 +110,11 @@ func (cfg *Config) SetRoot(root string) *Config {
 	cfg.P2P.RootDir = root
 	cfg.Mempool.RootDir = root
 	cfg.Consensus.RootDir = root
+
+	// okexchain change LogFile base on cfg.BaseConfig.RootDir
+	if root != DefaultLogPath && cfg.BaseConfig.LogFile == defaultLogFile {
+		cfg.BaseConfig.LogFile = filepath.Join(root, defaultLogFileName)
+	}
 	return cfg
 }
 
@@ -212,6 +221,12 @@ type BaseConfig struct { //nolint: maligned
 	// If true, query the ABCI app on connecting to a new peer
 	// so the app can decide if we should keep the connection or not
 	FilterPeers bool `mapstructure:"filter_peers"` // false
+
+	// Logging file directory
+	LogFile string `mapstructure:"log_file"`
+
+	// Logging stdout
+	LogStdout bool `mapstructure:"log_stdout"`
 }
 
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
@@ -226,11 +241,13 @@ func DefaultBaseConfig() BaseConfig {
 		ABCI:               "socket",
 		LogLevel:           DefaultPackageLogLevels(),
 		LogFormat:          LogFormatPlain,
-		ProfListenAddress:  "",
 		FastSyncMode:       true,
 		FilterPeers:        false,
 		DBBackend:          "goleveldb",
 		DBPath:             "data",
+		LogFile:            defaultLogFile,
+		LogStdout:          true,
+		ProfListenAddress:  "localhost:6060",
 	}
 }
 
@@ -384,7 +401,7 @@ type RPCConfig struct {
 // DefaultRPCConfig returns a default configuration for the RPC server
 func DefaultRPCConfig() *RPCConfig {
 	return &RPCConfig{
-		ListenAddress:          "tcp://127.0.0.1:26657",
+		ListenAddress:          "tcp://0.0.0.0:26657",
 		CORSAllowedOrigins:     []string{},
 		CORSAllowedMethods:     []string{http.MethodHead, http.MethodGet, http.MethodPost},
 		CORSAllowedHeaders:     []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time"},
@@ -395,7 +412,7 @@ func DefaultRPCConfig() *RPCConfig {
 		MaxOpenConnections: 900,
 
 		MaxSubscriptionClients:    100,
-		MaxSubscriptionsPerClient: 5,
+		MaxSubscriptionsPerClient: 1000,
 		TimeoutBroadcastTxCommit:  10 * time.Second,
 
 		MaxBodyBytes:   int64(1000000), // 1MB
@@ -659,7 +676,7 @@ func DefaultMempoolConfig() *MempoolConfig {
 		WalPath:   "",
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
-		Size:        5000,
+		Size:        2000,               // okexchain memory pool size(max tx num)
 		MaxTxsBytes: 1024 * 1024 * 1024, // 1GB
 		CacheSize:   10000,
 		MaxTxBytes:  1024 * 1024, // 1MB
@@ -960,7 +977,7 @@ type InstrumentationConfig struct {
 // reporting.
 func DefaultInstrumentationConfig() *InstrumentationConfig {
 	return &InstrumentationConfig{
-		Prometheus:           false,
+		Prometheus:           true,
 		PrometheusListenAddr: ":26660",
 		MaxOpenConnections:   3,
 		Namespace:            "tendermint",

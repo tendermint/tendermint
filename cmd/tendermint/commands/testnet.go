@@ -34,6 +34,7 @@ var (
 	hostnames               []string
 	p2pPort                 int
 	randomMonikers          bool
+	basePort                int
 )
 
 const (
@@ -72,6 +73,7 @@ func init() {
 		"P2P Port")
 	TestnetFilesCmd.Flags().BoolVar(&randomMonikers, "random-monikers", false,
 		"Randomize the moniker for each generated node")
+	TestnetFilesCmd.Flags().IntVar(&basePort, "base-port", 20056, "P2P Port")
 }
 
 // TestnetFilesCmd allows initialisation of files for a Tendermint testnet.

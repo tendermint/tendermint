@@ -24,6 +24,8 @@ func init() {
 
 func registerFlagsRootCmd(cmd *cobra.Command) {
 	cmd.PersistentFlags().String("log_level", config.LogLevel, "Log level")
+	cmd.PersistentFlags().String("log_file", config.LogFile, "Log file")
+	cmd.PersistentFlags().Bool("log_stdout", config.LogStdout, "Print log to stdout, rather than a file")
 }
 
 // ParseConfig retrieves the default environment configuration,

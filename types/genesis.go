@@ -50,6 +50,33 @@ func (genDoc *GenesisDoc) SaveAs(file string) error {
 	if err != nil {
 		return err
 	}
+
+	var genDocRaw struct {
+		GenesisTime     string            `json:"genesis_time"`
+		ChainID         string            `json:"chain_id"`
+		ConsensusParams json.RawMessage   `json:"consensus_params,omitempty"`
+		Validators      []json.RawMessage `json:"validators,omitempty"`
+		AppHash         string            `json:"app_hash"`
+		AppState        json.RawMessage   `json:"app_state,omitempty"`
+	}
+	err = json.Unmarshal(genDocBytes, &genDocRaw)
+	if err != nil {
+		return err
+	}
+	var appStateObj interface{}
+	err = json.Unmarshal(genDocRaw.AppState, &appStateObj)
+	if err != nil {
+		return err
+	}
+	sortedAppStateBytes, err := json.Marshal(appStateObj)
+	if err != nil {
+		return err
+	}
+	genDocRaw.AppState = sortedAppStateBytes
+	genDocBytes, err = json.MarshalIndent(genDocRaw, "", "  ")
+	if err != nil {
+		return err
+	}
 	return tmos.WriteFile(file, genDocBytes, 0644)
 }
 

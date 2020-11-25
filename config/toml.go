@@ -399,6 +399,12 @@ max_open_connections = {{ .Instrumentation.MaxOpenConnections }}
 
 # Instrumentation namespace
 namespace = "{{ .Instrumentation.Namespace }}"
+
+# Log file
+log_file = "{{ js .BaseConfig.LogFile }}"
+
+# Log stdout
+log_stdout = "{{ .BaseConfig.LogStdout }}"
 `
 
 /****** these are for test settings ***********/

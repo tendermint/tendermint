@@ -107,7 +107,7 @@ func (p *provider) getValidatorSet(chainID string, height int64) (valset *types.
 		err = fmt.Errorf("expected chainID %s, got %s", p.chainID, chainID)
 		return
 	}
-	if height < 1 {
+	if height < types.GetStartBlockHeight()+1 {
 		err = fmt.Errorf("expected height >= 1, got height %v", height)
 		return
 	}

@@ -141,7 +141,7 @@ func (state State) MakeBlock(
 
 	// Set time.
 	var timestamp time.Time
-	if height == 1 {
+	if height == types.GetStartBlockHeight()+1 {
 		timestamp = state.LastBlockTime // genesis time
 	} else {
 		timestamp = MedianTime(commit, state.LastValidators)
@@ -234,17 +234,17 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		Version: initStateVersion,
 		ChainID: genDoc.ChainID,
 
-		LastBlockHeight: 0,
+		LastBlockHeight: types.GetStartBlockHeight(),
 		LastBlockID:     types.BlockID{},
 		LastBlockTime:   genDoc.GenesisTime,
 
 		NextValidators:              nextValidatorSet,
 		Validators:                  validatorSet,
 		LastValidators:              types.NewValidatorSet(nil),
-		LastHeightValidatorsChanged: 1,
+		LastHeightValidatorsChanged: types.GetStartBlockHeight() + 1,
 
 		ConsensusParams:                  *genDoc.ConsensusParams,
-		LastHeightConsensusParamsChanged: 1,
+		LastHeightConsensusParamsChanged: types.GetStartBlockHeight() + 1,
 
 		AppHash: genDoc.AppHash,
 	}, nil
