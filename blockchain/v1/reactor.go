@@ -156,14 +156,11 @@ func (bcR *BlockchainReactor) OnStop() {
 }
 
 func (bcR *BlockchainReactor) isSyncEnded() bool {
-	if atomic.LoadInt32(&(bcR.syncEnded)) != 0 {
-		return true
-	}
-	return false
+	return atomic.LoadInt32(&(bcR.syncEnded)) != 0
 }
 
 func (bcR *BlockchainReactor) setSyncEnded() {
-	atomic.StoreInt32(&(bcR.syncEnded), int32(1))
+	atomic.StoreInt32(&(bcR.syncEnded), 1)
 }
 
 // SwitchToFastSync is called by the state sync reactor when switching to fast sync.
