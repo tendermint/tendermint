@@ -706,7 +706,8 @@ func NewNode(config *cfg.Config,
 	// Determine whether we should do fast sync.
 	//
 	// NOTE: This must happen after the handshake, since the app may modify the
-	// validator set, specifying ourself as the only validator.
+	// validator set, e.g. specifying ourselves as a validator with 1/3+
+	// voting power.
 	//
 	// If the validator has 1/3+ of the voting power, no new blocks were minted
 	// since 2/3+ of the voting power is required, hence we can safely skip fast
