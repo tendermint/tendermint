@@ -309,7 +309,7 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 	}
 }
 
-func validatorHadMoreThan13Power(state sm.State, pubKey crypto.PubKey) bool {
+func validatorHasMoreThan13Power(state sm.State, pubKey crypto.PubKey) bool {
 	_, val := state.Validators.GetByAddress(pubKey.Address())
 	if val != nil {
 		return val.VotingPower > (state.Validators.TotalVotingPower() / 3)
@@ -677,10 +677,10 @@ func NewNode(config *cfg.Config,
 
 	// Determine whether we should attempt state sync.
 	//
-	// If the validator had 1/3+ of the voting power, no new blocks were minted
+	// If the validator has 1/3+ of the voting power, no new blocks were minted
 	// since 2/3+ of the voting power is required, hence we can safely skip fast
 	// and state sync.
-	stateSync := config.StateSync.Enable && !validatorHadMoreThan13Power(state, pubKey)
+	stateSync := config.StateSync.Enable && !validatorHasMoreThan13Power(state, pubKey)
 	if stateSync && state.LastBlockHeight > 0 {
 		logger.Info("Found local state with non-zero height, skipping state sync")
 		stateSync = false
@@ -708,10 +708,10 @@ func NewNode(config *cfg.Config,
 	// NOTE: This must happen after the handshake, since the app may modify the
 	// validator set, specifying ourself as the only validator.
 	//
-	// If the validator had 1/3+ of the voting power, no new blocks were minted
+	// If the validator has 1/3+ of the voting power, no new blocks were minted
 	// since 2/3+ of the voting power is required, hence we can safely skip fast
 	// and state sync.
-	fastSync := config.FastSyncMode && !validatorHadMoreThan13Power(state, pubKey)
+	fastSync := config.FastSyncMode && !validatorHasMoreThan13Power(state, pubKey)
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 
