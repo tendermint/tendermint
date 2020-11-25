@@ -1,7 +1,6 @@
 package node
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -310,12 +309,12 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 	}
 }
 
-func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
-	if state.Validators.Size() > 1 {
-		return false
+func validatorHadMoreThan13Power(state sm.State, pubKey crypto.PubKey) bool {
+	_, val := state.Validators.GetByAddress(pubKey.Address())
+	if val != nil {
+		return val.VotingPower > (state.Validators.TotalVotingPower() / 3)
 	}
-	addr, _ := state.Validators.GetByIndex(0)
-	return bytes.Equal(pubKey.Address(), addr)
+	return false
 }
 
 func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
@@ -677,7 +676,11 @@ func NewNode(config *cfg.Config,
 	}
 
 	// Determine whether we should attempt state sync.
-	stateSync := config.StateSync.Enable && !onlyValidatorIsUs(state, pubKey)
+	//
+	// If the validator had 1/3+ of the voting power, no new blocks were minted
+	// since 2/3+ of the voting power is required, hence we can safely skip fast
+	// and state sync.
+	stateSync := config.StateSync.Enable && !validatorHadMoreThan13Power(state, pubKey)
 	if stateSync && state.LastBlockHeight > 0 {
 		logger.Info("Found local state with non-zero height, skipping state sync")
 		stateSync = false
@@ -700,9 +703,15 @@ func NewNode(config *cfg.Config,
 		}
 	}
 
-	// Determine whether we should do fast sync. This must happen after the handshake, since the
-	// app may modify the validator set, specifying ourself as the only validator.
-	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
+	// Determine whether we should do fast sync.
+	//
+	// NOTE: This must happen after the handshake, since the app may modify the
+	// validator set, specifying ourself as the only validator.
+	//
+	// If the validator had 1/3+ of the voting power, no new blocks were minted
+	// since 2/3+ of the voting power is required, hence we can safely skip fast
+	// and state sync.
+	fastSync := config.FastSyncMode && !validatorHadMoreThan13Power(state, pubKey)
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 
