@@ -529,6 +529,11 @@ func (c *mConnConnection) onError(err interface{}) {
 	_ = c.Close()
 }
 
+// NodeInfo implements Connection.
+func (c *mConnConnection) NodeInfo() DefaultNodeInfo {
+	return c.nodeInfo
+}
+
 // PubKey implements Connection.
 func (c *mConnConnection) PubKey() crypto.PubKey {
 	return c.secretConn.RemotePubKey()

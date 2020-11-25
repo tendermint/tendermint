@@ -676,13 +676,16 @@ func (sw *Switch) acceptRoutine() {
 			break
 		}
 
+		peerNodeInfo := c.NodeInfo()
+		isPersistent := false
+		addr, err := peerNodeInfo.NetAddress()
+		if err == nil {
+			isPersistent = sw.IsPeerPersistent(addr)
+		}
+
 		p := newPeer(
-			// FIXME This needs to get the self-reported address, not the actual socket
-			// address, since that's what IsPeerPersistent() assumes. For now, we just
-			// always set the peer as persistent.
-			// newPeerConn(false, sw.IsPeerPersistent(c.RemoteEndpoint().NetAddress()), c),
-			newPeerConn(false, true, c),
-			sw.nodeInfo,
+			newPeerConn(false, isPersistent, c),
+			peerNodeInfo,
 			sw.reactorsByCh,
 			sw.chDescs,
 			sw.StopPeerForError,
@@ -765,7 +768,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 
 	p := newPeer(
 		newPeerConn(true, sw.IsPeerPersistent(c.RemoteEndpoint().NetAddress()), c),
-		sw.nodeInfo,
+		c.NodeInfo(),
 		sw.reactorsByCh,
 		sw.chDescs,
 		sw.StopPeerForError,

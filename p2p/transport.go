@@ -123,6 +123,10 @@ type Connection interface {
 	// PubKey returns the public key of the remote peer.
 	PubKey() crypto.PubKey
 
+	// NodeInfo returns the remote peer's node info.
+	// FIXME We may want to do something else here.
+	NodeInfo() DefaultNodeInfo
+
 	// Close closes the connection.
 	Close() error
 }
