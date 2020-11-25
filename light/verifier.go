@@ -61,7 +61,7 @@ func VerifyNonAdjacent(
 		return ErrInvalidHeader{err}
 	}
 
-	// Ensure that +`trustLevel` (default 1/3) or more in voting power of the last trusted validator 
+	// Ensure that +`trustLevel` (default 1/3) or more in voting power of the last trusted validator
 	// set signed correctly.
 	err := trustedVals.VerifyCommitLightTrusting(trustedHeader.ChainID, untrustedHeader.Commit, trustLevel)
 	if err != nil {
@@ -192,7 +192,7 @@ func HeaderExpired(h *types.SignedHeader, trustingPeriod time.Duration, now time
 //  of the trusted header
 //
 // For any of these cases ErrInvalidHeader is returned.
-// NOTE: This does not check whether the trusted header has expired or not. 
+// NOTE: This does not check whether the trusted header has expired or not.
 func VerifyBackwards(untrustedHeader, trustedHeader *types.Header) error {
 	if err := untrustedHeader.ValidateBasic(); err != nil {
 		return ErrInvalidHeader{err}

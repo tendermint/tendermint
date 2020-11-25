@@ -81,7 +81,7 @@ type ErrLightStore struct {
 }
 
 func (e ErrLightStore) Error() string {
-	return fmt.Sprintf("error with light client db: %w", e.Reason)
+	return fmt.Sprintf("error with light client db: %v", e.Reason)
 }
 
 // ----------------------------- INTERNAL ERRORS ---------------------------------
