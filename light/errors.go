@@ -45,7 +45,6 @@ func (e ErrInvalidHeader) Error() string {
 var ErrFailedHeaderCrossReferencing = errors.New("all witnesses have either not responded, don't have the " +
 	" blocks or sent invalid blocks. You should look to change your witnesses" +
 	" or review the light client's logs for more information")
-}
 
 // ErrVerificationFailed means either sequential or skipping verification has
 // failed to verify from header #1 to header #2 due to some reason.
@@ -70,11 +69,10 @@ var ErrLightClientAttack = errors.New("attempted attack detected." +
 	" Light client received valid conflicting header from witness." +
 	" Unable to verify header. Evidence has been sent to both providers." +
 	" Check logs for full evidence and trace")
-}
 
 // ErrNoWitnesses means that there are not enough witnesses connected to
 // continue running the light client.
-type ErrNoWitnesses = errors.New("no witnesses connected. please reset light client")
+var ErrNoWitnesses = errors.New("no witnesses connected. please reset light client")
 
 // ErrLightStore reflects an error that has occurred with the database that
 // the light client is using.

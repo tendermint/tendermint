@@ -219,7 +219,7 @@ func NewClientFromTrustedStore(
 
 	// Validate the number of witnesses.
 	if len(c.witnesses) < 1 {
-		return nil, ErrNoWitnesses{}
+		return nil, ErrNoWitnesses
 	}
 
 	// Validate trust level.
@@ -960,7 +960,7 @@ func (c *Client) replacePrimaryProvider() error {
 	defer c.providerMutex.Unlock()
 
 	if len(c.witnesses) <= 1 {
-		return ErrNoWitnesses{}
+		return ErrNoWitnesses
 	}
 	c.primary = c.witnesses[0]
 	c.witnesses = c.witnesses[1:]
@@ -995,7 +995,7 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 	defer cancel()
 
 	if len(c.witnesses) < 1 {
-		return ErrNoWitnesses{}
+		return ErrNoWitnesses
 	}
 
 	errc := make(chan error, len(c.witnesses))

@@ -199,7 +199,7 @@ func VerifyBackwards(untrustedHeader, trustedHeader *types.Header) error {
 	}
 
 	if untrustedHeader.ChainID != trustedHeader.ChainID {
-		return ErrInvalidHeader{fmt.Error("new header belongs to a different chain (%s != %s)",
+		return ErrInvalidHeader{fmt.Errorf("new header belongs to a different chain (%s != %s)",
 			untrustedHeader.ChainID, trustedHeader.ChainID)}
 	}
 
