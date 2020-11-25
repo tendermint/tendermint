@@ -130,14 +130,6 @@ func newPeer(
 		metrics:       NopMetrics(),
 	}
 
-	/*p.mconn = createMConnection(
-		pc.conn,
-		p,
-		reactorsByCh,
-		chDescs,
-		onPeerError,
-		mConfig,
-	)*/
 	p.BaseService = *service.NewBaseService(nil, "Peer", p)
 	for _, option := range options {
 		option(p)
