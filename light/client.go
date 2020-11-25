@@ -219,15 +219,7 @@ func NewClientFromTrustedStore(
 
 	// Validate the number of witnesses.
 	if len(c.witnesses) < 1 {
-		return nil, errNoWitnesses{}
-	}
-
-	// Verify witnesses are all on the same chain.
-	for i, w := range witnesses {
-		if w.ChainID() != chainID {
-			return nil, fmt.Errorf("witness #%d: %v is on another chain %s, expected %s",
-				i, w, w.ChainID(), chainID)
-		}
+		return nil, ErrNoWitnesses{}
 	}
 
 	// Validate trust level.
@@ -455,7 +447,7 @@ func (c *Client) VerifyLightBlockAtHeight(ctx context.Context, height int64, now
 		return nil, errors.New("negative or zero height")
 	}
 
-	// Check if the light block already verified.
+	// Check if the light block is already verified.
 	h, err := c.TrustedLightBlock(height)
 	if err == nil {
 		c.logger.Info("Header has already been verified", "height", height, "hash", hash2str(h.Hash()))
@@ -968,7 +960,7 @@ func (c *Client) replacePrimaryProvider() error {
 	defer c.providerMutex.Unlock()
 
 	if len(c.witnesses) <= 1 {
-		return errNoWitnesses{}
+		return ErrNoWitnesses{}
 	}
 	c.primary = c.witnesses[0]
 	c.witnesses = c.witnesses[1:]
@@ -1003,7 +995,7 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 	defer cancel()
 
 	if len(c.witnesses) < 1 {
-		return errNoWitnesses{}
+		return ErrNoWitnesses{}
 	}
 
 	errc := make(chan error, len(c.witnesses))

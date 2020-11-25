@@ -46,6 +46,10 @@ func VerifyNonAdjacent(
 		return errors.New("headers must be non adjacent in height")
 	}
 
+	if err := ValidateTrustLevel(trustLevel); err != nil {
+		return err
+	}
+
 	if HeaderExpired(trustedHeader, trustingPeriod, now) {
 		return ErrOldHeaderExpired{trustedHeader.Time.Add(trustingPeriod), now}
 	}
@@ -57,14 +61,15 @@ func VerifyNonAdjacent(
 		return ErrInvalidHeader{err}
 	}
 
-	// Ensure that +`trustLevel` (default 1/3) or more of last trusted validators signed correctly.
+	// Ensure that +`trustLevel` (default 1/3) or more in voting power of the last trusted validator 
+	// set signed correctly.
 	err := trustedVals.VerifyCommitLightTrusting(trustedHeader.ChainID, untrustedHeader.Commit, trustLevel)
 	if err != nil {
 		switch e := err.(type) {
 		case types.ErrNotEnoughVotingPowerSigned:
 			return ErrNewValSetCantBeTrusted{e}
 		default:
-			return e
+			return ErrInvalidHeader{e}
 		}
 	}
 
@@ -186,14 +191,16 @@ func HeaderExpired(h *types.SignedHeader, trustingPeriod time.Duration, now time
 //  c) that the LastBlockID hash of the trusted header is the same as the hash
 //  of the trusted header
 //
-//  For any of these cases ErrInvalidHeader is returned.
+// For any of these cases ErrInvalidHeader is returned.
+// NOTE: This does not check whether the trusted header has expired or not. 
 func VerifyBackwards(untrustedHeader, trustedHeader *types.Header) error {
 	if err := untrustedHeader.ValidateBasic(); err != nil {
 		return ErrInvalidHeader{err}
 	}
 
 	if untrustedHeader.ChainID != trustedHeader.ChainID {
-		return ErrInvalidHeader{errors.New("header belongs to another chain")}
+		return ErrInvalidHeader{fmt.Error("new header belongs to a different chain (%s != %s)",
+			untrustedHeader.ChainID, trustedHeader.ChainID)}
 	}
 
 	if !untrustedHeader.Time.Before(trustedHeader.Time) {
