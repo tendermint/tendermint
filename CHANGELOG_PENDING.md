@@ -29,6 +29,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
 - [privval] \#5603 Add `--key` to `init`, `gen_validator`, `testnet` & `unsafe_reset_priv_validator` for use in generating `secp256k1` keys.
 - [abci] \#5706 Added `AbciVersion` to `RequestInfo` allowing applications to check ABCI version when connecting to Tendermint. (@marbar3778)
+- [libs/bits] \#5720 Copy elems and validate BitArray in FromProto (@melekes)
 
 ### BUG FIXES
 
