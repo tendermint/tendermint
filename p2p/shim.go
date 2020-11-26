@@ -26,24 +26,17 @@ type (
 		PeerUpdateCh           chan PeerUpdate
 		Channels               map[ChannelID]*ChannelShim
 		ChannelDescriptorShims []*ChannelDescriptorShim
-		MessageValidator       MessageValidator
-	}
-
-	MessageValidator interface {
-		Validate(chID byte, src Peer, msgBytes []byte, msg proto.Message) error
 	}
 
 	// ChannelShim defines a generic shim wrapper around a legacy p2p channel
 	// and the new p2p Channel. It also includes the raw bi-directional Go channels
 	// so we can proxy message delivery.
 	ChannelShim struct {
-		Descriptor    *ChannelDescriptor
-		Channel       *Channel
-		InCh          chan Envelope
-		OutCh         chan Envelope
-		OutChDone     chan bool
-		PeerErrCh     chan PeerError
-		PeerErrChDone chan bool
+		Descriptor *ChannelDescriptor
+		Channel    *Channel
+		InCh       chan Envelope
+		OutCh      chan Envelope
+		PeerErrCh  chan PeerError
 	}
 
 	// ChannelDescriptorShim defines a shim wrapper around a legacy p2p channel
@@ -81,13 +74,11 @@ func NewChannelShim(cds *ChannelDescriptorShim, buf uint) *ChannelShim {
 	peerErrCh := make(chan PeerError, buf)
 
 	return &ChannelShim{
-		Descriptor:    cds.Descriptor,
-		Channel:       NewChannel(ChannelID(cds.Descriptor.ID), cds.MsgType, inCh, outCh, peerErrCh),
-		InCh:          inCh,
-		OutCh:         outCh,
-		OutChDone:     make(chan bool, 1),
-		PeerErrCh:     peerErrCh,
-		PeerErrChDone: make(chan bool, 1),
+		Descriptor: cds.Descriptor,
+		Channel:    NewChannel(ChannelID(cds.Descriptor.ID), cds.MsgType, inCh, outCh, peerErrCh),
+		InCh:       inCh,
+		OutCh:      outCh,
+		PeerErrCh:  peerErrCh,
 	}
 }
 
@@ -128,10 +119,6 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 
 				_ = src.Send(cs.Descriptor.ID, bz)
 			}
-
-			// When the OutCh is closed via a Channel#Close, we can safely signal
-			// that we're done and as a result the inbound channel can be closed.
-			cs.OutChDone <- true
 		}(cs)
 	}
 }
@@ -155,12 +142,28 @@ func (rs *ReactorShim) handlePeerErrors() {
 
 				rs.Switch.StopPeerForError(peer, pErr.Err)
 			}
-
-			// When the PeerErrCh is closed via a Channel#Close, we can safely signal
-			// that we're done and as a result the inbound channel can be closed.
-			cs.PeerErrChDone <- true
 		}(cs)
 	}
+}
+
+// OnStart executes the reactor shim's OnStart hook where we start all the
+// necessary go-routines in order to proxy peer envelopes and errors per p2p
+// Channel.
+func (rs *ReactorShim) OnStart() error {
+	rs.proxyPeerEnvelopes()
+	rs.handlePeerErrors()
+	return nil
+}
+
+// OnStop executes the reactor shim's OnStop hook where all inbound p2p Channels
+// are closed and the PeerUpdateCh is closed. The caller must be sure to also
+// stop the real reactor so the shim's go routines can exit successfully.
+func (rs *ReactorShim) OnStop() {
+	for _, cs := range rs.Channels {
+		close(cs.InCh)
+	}
+
+	close(rs.PeerUpdateCh)
 }
 
 // GetChannel returns a p2p Channel reference for a given ChannelID. If no
@@ -186,43 +189,6 @@ func (rs *ReactorShim) GetChannels() []*ChannelDescriptor {
 	}
 
 	return descriptors
-}
-
-// OnStart executes the reactor shim's OnStart hook where we start all the
-// necessary go-routines in order to proxy peer errors and messages.
-func (rs *ReactorShim) OnStart() error {
-	rs.proxyPeerEnvelopes()
-	rs.handlePeerErrors()
-	return nil
-}
-
-// OnStop executes the reactor shim's OnStop hook where all p2p Channels are
-// closed and the PeerUpdateCh is closed.
-func (rs *ReactorShim) OnStop() {
-	for _, cs := range rs.Channels {
-		if err := cs.Channel.Close(); err != nil {
-			rs.Logger.Error("failed to close channel", "reactor", rs.Name, "ch_id", cs.Channel.ID, "err", err)
-		}
-
-		// Wait for go routines to exit for each channel shim so we can safely close
-		// the inbound channels.
-		<-cs.OutChDone
-		<-cs.PeerErrChDone
-		close(cs.InCh)
-	}
-
-	close(rs.PeerUpdateCh)
-}
-
-// OnReset recreates all the channel shims so ReactorShim#OnStart can be safely
-// called again.
-func (rs *ReactorShim) OnReset() error {
-	for _, cds := range rs.ChannelDescriptorShims {
-		chShim := NewChannelShim(cds, 1)
-		rs.Channels[chShim.Channel.ID] = chShim
-	}
-
-	return nil
 }
 
 // AddPeer sends a PeerUpdate with status PeerStatusUp on the PeerUpdateCh.
@@ -298,16 +264,14 @@ func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 		return
 	}
 
-	if rs.MessageValidator != nil {
-		if err := rs.MessageValidator.Validate(chID, src, msgBytes, msg); err != nil {
+	wrapper, ok := msg.(Wrapper)
+	if ok {
+		if err := wrapper.Validate(); err != nil {
 			rs.Logger.Error("invalid message", "peer", src, "ch_id", cID, "msg", msg, "err", err)
 			rs.Switch.StopPeerForError(src, err)
 			return
 		}
-	}
 
-	wrapper, ok := msg.(Wrapper)
-	if ok {
 		var err error
 
 		msg, err = wrapper.Unwrap()
