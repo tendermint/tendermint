@@ -2,7 +2,9 @@ package bits
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"strings"
 	"sync"
@@ -27,7 +29,7 @@ func NewBitArray(bits int) *BitArray {
 	}
 	return &BitArray{
 		Bits:  bits,
-		Elems: make([]uint64, (bits+63)/64),
+		Elems: make([]uint64, numElems(bits)),
 	}
 }
 
@@ -100,7 +102,7 @@ func (bA *BitArray) copy() *BitArray {
 }
 
 func (bA *BitArray) copyBits(bits int) *BitArray {
-	c := make([]uint64, (bits+63)/64)
+	c := make([]uint64, numElems(bits))
 	copy(c, bA.Elems)
 	return &BitArray{
 		Bits:  bits,
@@ -421,7 +423,8 @@ func (bA *BitArray) UnmarshalJSON(bz []byte) error {
 // ToProto converts BitArray to protobuf. It returns nil if BitArray is
 // nil/empty.
 func (bA *BitArray) ToProto() *tmprotobits.BitArray {
-	if bA == nil || len(bA.Elems) == 0 {
+	if bA == nil ||
+		(len(bA.Elems) == 0 && bA.Bits == 0) { // empty
 		return nil
 	}
 
@@ -430,18 +433,31 @@ func (bA *BitArray) ToProto() *tmprotobits.BitArray {
 	return pbA
 }
 
-// FromProto sets BitArray to the given protoBitArray. It does nothing if the
-// protoBitArray is nil/emptry or has 0/negative Bits.
-func (bA *BitArray) FromProto(protoBitArray *tmprotobits.BitArray) {
-	if protoBitArray == nil || len(protoBitArray.Elems) == 0 {
-		return
+// FromProto sets BitArray to the given protoBitArray. It returns an error if
+// protoBitArray is invalid or nil.
+func (bA *BitArray) FromProto(protoBitArray *tmprotobits.BitArray) error {
+	if protoBitArray == nil {
+		return nil
 	}
 
-	if protoBitArray.Bits <= 0 {
-		return
+	// Validate protoBitArray.
+	if protoBitArray.Bits < 0 {
+		return errors.New("negative Bits")
+	}
+	// #[32bit]
+	if protoBitArray.Bits > math.MaxInt32 { // prevent overflow on 32bit systems
+		return errors.New("too many Bits")
+	}
+	if got, exp := len(protoBitArray.Elems), numElems(int(protoBitArray.Bits)); got != exp {
+		return fmt.Errorf("invalid number of Elems: got %d, but exp %d", got, exp)
 	}
 
 	bA.Bits = int(protoBitArray.Bits)
 	bA.Elems = make([]uint64, len(protoBitArray.Elems))
 	copy(bA.Elems, protoBitArray.Elems)
+	return nil
+}
+
+func numElems(bits int) int {
+	return (bits + 63) / 64
 }
