@@ -418,27 +418,30 @@ func (bA *BitArray) UnmarshalJSON(bz []byte) error {
 	return nil
 }
 
-// ToProto converts BitArray to protobuf
+// ToProto converts BitArray to protobuf. It returns nil if BitArray is
+// nil/empty.
 func (bA *BitArray) ToProto() *tmprotobits.BitArray {
 	if bA == nil || len(bA.Elems) == 0 {
 		return nil
 	}
 
-	return &tmprotobits.BitArray{
-		Bits:  int64(bA.Bits),
-		Elems: bA.Elems,
-	}
+	pbA := &tmprotobits.BitArray{Bits: int64(bA.Bits), Elems: make([]uint64, len(bA.Elems))}
+	copy(pbA.Elems, bA.Elems)
+	return pbA
 }
 
-// FromProto sets a protobuf BitArray to the given pointer.
+// FromProto sets BitArray to the given protoBitArray. It does nothing if the
+// protoBitArray is nil/emptry or has 0/negative Bits.
 func (bA *BitArray) FromProto(protoBitArray *tmprotobits.BitArray) {
-	if protoBitArray == nil {
-		bA = nil
+	if protoBitArray == nil || len(protoBitArray.Elems) == 0 {
+		return
+	}
+
+	if protoBitArray.Bits <= 0 {
 		return
 	}
 
 	bA.Bits = int(protoBitArray.Bits)
-	if len(protoBitArray.Elems) > 0 {
-		bA.Elems = protoBitArray.Elems
-	}
+	bA.Elems = make([]uint64, len(protoBitArray.Elems))
+	copy(bA.Elems, protoBitArray.Elems)
 }
