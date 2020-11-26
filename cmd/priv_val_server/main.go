@@ -20,8 +20,8 @@ func main() {
 		privValKeyPath   = flag.String("priv-key", "", "priv val key file path")
 		privValStatePath = flag.String("priv-state", "", "priv val state file path")
 		insecure         = flag.Bool("priv-insecure", false, "")
-		withCert         = flag.String("cert", "", "absolutepath to server certificate")
-		withKey          = flag.String("key", "", "absolutepath to server key")
+		withCert         = flag.String("cert", "", "absolute path to server certificate")
+		withKey          = flag.String("key", "", "absolute path to server key")
 
 		logger = log.NewTMLogger(
 			log.NewSyncWriter(os.Stdout),
