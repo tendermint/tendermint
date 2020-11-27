@@ -93,11 +93,11 @@ func (privKey PrivKey) Equals(other crypto.PrivKey) bool {
 }
 
 
-func (privKey PrivKey) TypeIdentifier() string {
+func (privKey PrivKey) Type() string {
 	return KeyType
 }
 
-func (privKey PrivKey) Type() crypto.KeyType {
+func (privKey PrivKey) TypeValue() crypto.KeyType {
 	return crypto.Ed25519
 }
 
@@ -164,11 +164,11 @@ func (pubKey PubKey) String() string {
 }
 
 
-func (pubKey PubKey) TypeIdentifier() string {
+func (pubKey PubKey) Type() string {
 	return KeyType
 }
 
-func (pubKey PubKey) Type() crypto.KeyType {
+func (pubKey PubKey) TypeValue() crypto.KeyType {
 	return crypto.Ed25519
 }
 

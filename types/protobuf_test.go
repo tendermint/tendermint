@@ -67,8 +67,8 @@ func (pubKeyBLS) Bytes() []byte                           { return []byte{} }
 func (pubKeyBLS) VerifySignature(msg []byte, sig []byte) bool { return false }
 func (pubKeyBLS) Equals(crypto.PubKey) bool               { return false }
 func (pubKeyBLS) String() string                          { return "" }
-func (pubKeyBLS) TypeIdentifier() string                  { return "pubKeyBLS12381" }
-func (pubKeyBLS) Type() crypto.KeyType                    { return crypto.BLS12381 }
+func (pubKeyBLS) Type() string                            { return "pubKeyBLS12381" }
+func (pubKeyBLS) TypeValue() crypto.KeyType               { return crypto.BLS12381 }
 
 func TestABCIValidatorFromPubKeyAndPower(t *testing.T) {
 	pubkey := bls12381.GenPrivKey().PubKey()

@@ -88,11 +88,11 @@ func (privKey PrivKey) Equals(other crypto.PrivKey) bool {
 	return false
 }
 
-func (privKey PrivKey) TypeIdentifier() string {
+func (privKey PrivKey) Type() string {
 	return KeyType
 }
 
-func (privKey PrivKey) Type() crypto.KeyType {
+func (privKey PrivKey) TypeValue() crypto.KeyType {
 	return crypto.BLS12381
 }
 
@@ -177,12 +177,12 @@ func (pubKey PubKey) String() string {
 	return fmt.Sprintf("PubKeyBLS12381{%X}", []byte(pubKey))
 }
 
-func (pubKey PubKey) TypeIdentifier() string {
-	return KeyType
+func (pubKey PubKey) TypeValue() crypto.KeyType {
+	return crypto.BLS12381
 }
 
-func (pubKey PubKey) Type() crypto.KeyType {
-	return crypto.BLS12381
+func (pubKey PubKey) Type() string {
+	return KeyType
 }
 
 func (pubKey PubKey) Equals(other crypto.PubKey) bool {
