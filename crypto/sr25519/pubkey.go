@@ -71,10 +71,10 @@ func (pubKey PubKey) Equals(other crypto.PubKey) bool {
 	return false
 }
 
-func (pubKey PubKey) TypeIdentifier() string {
+func (pubKey PubKey) Type() string {
 	return keyType
 }
 
-func (pubKey PubKey) Type() crypto.KeyType {
+func (pubKey PubKey) TypeValue() crypto.KeyType {
 	return crypto.Sr25519
 }

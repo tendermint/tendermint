@@ -34,8 +34,8 @@ type PubKey interface {
 	Bytes() []byte
 	VerifySignature(msg []byte, sig []byte) bool
 	Equals(PubKey) bool
-	TypeIdentifier() string
-	Type() KeyType
+	Type() string
+	TypeValue() KeyType
 }
 
 type PrivKey interface {
@@ -43,8 +43,8 @@ type PrivKey interface {
 	Sign(msg []byte) ([]byte, error)
 	PubKey() PubKey
 	Equals(PrivKey) bool
-	TypeIdentifier() string
-	Type() KeyType
+	Type() string
+	TypeValue() KeyType
 }
 
 type Symmetric interface {
