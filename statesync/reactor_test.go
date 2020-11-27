@@ -19,6 +19,10 @@ type reactorTestSuite struct {
 	reactor *Reactor
 	syncer  *syncer
 
+	conn          *proxymocks.AppConnSnapshot
+	connQuery     *proxymocks.AppConnQuery
+	stateProvider *mocks.StateProvider
+
 	snapshotChannel   *p2p.Channel
 	snapshotInCh      chan p2p.Envelope
 	snapshotOutCh     chan p2p.Envelope
@@ -57,6 +61,9 @@ func setup(
 		chunkOutCh:        make(chan p2p.Envelope, chBuf),
 		chunkPeerErrCh:    make(chan p2p.PeerError, chBuf),
 		peerUpdateCh:      make(chan p2p.PeerUpdate, chBuf),
+		conn:              conn,
+		connQuery:         connQuery,
+		stateProvider:     stateProvider,
 	}
 
 	rts.snapshotChannel = p2p.NewChannel(
@@ -101,6 +108,9 @@ func setup(
 	teardown := func() {
 		require.NoError(t, rts.reactor.Stop())
 		require.False(t, rts.reactor.IsRunning())
+		close(rts.peerUpdateCh)
+		close(rts.chunkInCh)
+		close(rts.snapshotInCh)
 	}
 
 	return rts, teardown
