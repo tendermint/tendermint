@@ -32,16 +32,9 @@ func Fail() {
 	}
 
 	if callIndex == callIndexToFail {
-		Exit()
+		fmt.Printf("*** fail-test %d ***\n", callIndex)
+		os.Exit(1)
 	}
 
 	callIndex++
-}
-
-func Exit() {
-	fmt.Printf("*** fail-test %d ***\n", callIndex)
-	os.Exit(1)
-	//	proc, _ := os.FindProcess(os.Getpid())
-	//	proc.Signal(os.Interrupt)
-	//	panic(fmt.Sprintf("*** fail-test %d ***", callIndex))
 }

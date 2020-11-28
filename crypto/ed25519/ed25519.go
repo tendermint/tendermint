@@ -2,11 +2,12 @@ package ed25519
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"crypto/subtle"
 	"fmt"
 	"io"
 
-	"golang.org/x/crypto/ed25519"
+	"github.com/hdevalence/ed25519consensus"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -151,7 +152,7 @@ func (pubKey PubKey) VerifySignature(msg []byte, sig []byte) bool {
 		return false
 	}
 
-	return ed25519.Verify(ed25519.PublicKey(pubKey), msg, sig)
+	return ed25519consensus.Verify(ed25519.PublicKey(pubKey), msg, sig)
 }
 
 func (pubKey PubKey) String() string {

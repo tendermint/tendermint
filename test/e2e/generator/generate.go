@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -22,17 +23,14 @@ var (
 			map[string]string{"initial01": "a", "initial02": "b", "initial03": "c"},
 		},
 		"validators": {"genesis", "initchain"},
+		"keyType":    {types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1},
 	}
 
 	// The following specify randomly chosen values for testnet nodes.
-	nodeDatabases        = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
-	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "grpc", "builtin"}
-	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp"}
-	// FIXME v1 disabled due to https://github.com/tendermint/tendermint/issues/5444
-	// FIXME v2 disabled due to:
-	// https://github.com/tendermint/tendermint/issues/5513
-	// https://github.com/tendermint/tendermint/issues/5541
-	nodeFastSyncs         = uniformChoice{"", "v0"} // "v1", "v2"
+	nodeDatabases         = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
+	nodeABCIProtocols     = uniformChoice{"unix", "tcp", "grpc", "builtin"}
+	nodePrivvalProtocols  = uniformChoice{"file", "unix", "tcp"}
+	nodeFastSyncs         = uniformChoice{"", "v0", "v1", "v2"}
 	nodeStateSyncs        = uniformChoice{false, true}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
@@ -74,6 +72,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		Validators:       &map[string]int64{},
 		ValidatorUpdates: map[string]map[string]int64{},
 		Nodes:            map[string]*e2e.ManifestNode{},
+		KeyType:          opt["keyType"].(string),
 	}
 
 	var numSeeds, numValidators, numFulls int

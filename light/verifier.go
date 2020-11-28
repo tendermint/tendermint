@@ -29,6 +29,7 @@ var (
 //
 // maxClockDrift defines how much untrustedHeader.Time can drift into the
 // future.
+// trustedHeader must have a ChainID, Height and Time
 func VerifyNonAdjacent(
 	trustedHeader *types.SignedHeader, // height=X
 	trustedVals *types.ValidatorSet, // height=X or height=X+1
@@ -38,6 +39,8 @@ func VerifyNonAdjacent(
 	now time.Time,
 	maxClockDrift time.Duration,
 	trustLevel tmmath.Fraction) error {
+
+	checkRequiredHeaderFields(trustedHeader)
 
 	if untrustedHeader.Height == trustedHeader.Height+1 {
 		return errors.New("headers must be non adjacent in height")
@@ -90,6 +93,7 @@ func VerifyNonAdjacent(
 //
 // maxClockDrift defines how much untrustedHeader.Time can drift into the
 // future.
+// trustedHeader must have a ChainID, Height, Time and NextValidatorsHash
 func VerifyAdjacent(
 	trustedHeader *types.SignedHeader, // height=X
 	untrustedHeader *types.SignedHeader, // height=X+1
@@ -97,6 +101,12 @@ func VerifyAdjacent(
 	trustingPeriod time.Duration,
 	now time.Time,
 	maxClockDrift time.Duration) error {
+
+	checkRequiredHeaderFields(trustedHeader)
+
+	if len(trustedHeader.NextValidatorsHash) == 0 {
+		panic("next validators hash in trusted header is empty")
+	}
 
 	if untrustedHeader.Height != trustedHeader.Height+1 {
 		return errors.New("headers must be adjacent in height")
@@ -150,47 +160,6 @@ func Verify(
 	return VerifyAdjacent(trustedHeader, untrustedHeader, untrustedVals, trustingPeriod, now, maxClockDrift)
 }
 
-func verifyNewHeaderAndVals(
-	untrustedHeader *types.SignedHeader,
-	untrustedVals *types.ValidatorSet,
-	trustedHeader *types.SignedHeader,
-	now time.Time,
-	maxClockDrift time.Duration) error {
-
-	if err := untrustedHeader.ValidateBasic(trustedHeader.ChainID); err != nil {
-		return fmt.Errorf("untrustedHeader.ValidateBasic failed: %w", err)
-	}
-
-	if untrustedHeader.Height <= trustedHeader.Height {
-		return fmt.Errorf("expected new header height %d to be greater than one of old header %d",
-			untrustedHeader.Height,
-			trustedHeader.Height)
-	}
-
-	if !untrustedHeader.Time.After(trustedHeader.Time) {
-		return fmt.Errorf("expected new header time %v to be after old header time %v",
-			untrustedHeader.Time,
-			trustedHeader.Time)
-	}
-
-	if !untrustedHeader.Time.Before(now.Add(maxClockDrift)) {
-		return fmt.Errorf("new header has a time from the future %v (now: %v; max clock drift: %v)",
-			untrustedHeader.Time,
-			now,
-			maxClockDrift)
-	}
-
-	if !bytes.Equal(untrustedHeader.ValidatorsHash, untrustedVals.Hash()) {
-		return fmt.Errorf("expected new header validators (%X) to match those that were supplied (%X) at height %d",
-			untrustedHeader.ValidatorsHash,
-			untrustedVals.Hash(),
-			untrustedHeader.Height,
-		)
-	}
-
-	return nil
-}
-
 // ValidateTrustLevel checks that trustLevel is within the allowed range [1/3,
 // 1]. If not, it returns an error. 1/3 is the minimum amount of trust needed
 // which does not break the security model.
@@ -242,4 +211,60 @@ func VerifyBackwards(untrustedHeader, trustedHeader *types.Header) error {
 	}
 
 	return nil
+}
+
+func verifyNewHeaderAndVals(
+	untrustedHeader *types.SignedHeader,
+	untrustedVals *types.ValidatorSet,
+	trustedHeader *types.SignedHeader,
+	now time.Time,
+	maxClockDrift time.Duration) error {
+
+	if err := untrustedHeader.ValidateBasic(trustedHeader.ChainID); err != nil {
+		return fmt.Errorf("untrustedHeader.ValidateBasic failed: %w", err)
+	}
+
+	if untrustedHeader.Height <= trustedHeader.Height {
+		return fmt.Errorf("expected new header height %d to be greater than one of old header %d",
+			untrustedHeader.Height,
+			trustedHeader.Height)
+	}
+
+	if !untrustedHeader.Time.After(trustedHeader.Time) {
+		return fmt.Errorf("expected new header time %v to be after old header time %v",
+			untrustedHeader.Time,
+			trustedHeader.Time)
+	}
+
+	if !untrustedHeader.Time.Before(now.Add(maxClockDrift)) {
+		return fmt.Errorf("new header has a time from the future %v (now: %v; max clock drift: %v)",
+			untrustedHeader.Time,
+			now,
+			maxClockDrift)
+	}
+
+	if !bytes.Equal(untrustedHeader.ValidatorsHash, untrustedVals.Hash()) {
+		return fmt.Errorf("expected new header validators (%X) to match those that were supplied (%X) at height %d",
+			untrustedHeader.ValidatorsHash,
+			untrustedVals.Hash(),
+			untrustedHeader.Height,
+		)
+	}
+
+	return nil
+}
+
+func checkRequiredHeaderFields(h *types.SignedHeader) {
+	if h.Height == 0 {
+		panic("height in trusted header must be set (non zero")
+	}
+
+	zeroTime := time.Time{}
+	if h.Time == zeroTime {
+		panic("time in trusted header must be set")
+	}
+
+	if h.ChainID == "" {
+		panic("chain ID in trusted header must be set")
+	}
 }

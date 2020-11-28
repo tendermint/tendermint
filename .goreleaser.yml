@@ -8,12 +8,13 @@ builds:
   - id: "Tendermint"
     main: ./cmd/tendermint/main.go
     ldflags:
-     - -s -w -X github.com/tendermint/tendermint/version.TMCoreSemVer={{ .Version }}
+      - -s -w -X github.com/tendermint/tendermint/version.TMCoreSemVer={{ .Version }}
     env:
       - CGO_ENABLED=0
     goos:
       - darwin
       - linux
+      - windows
     goarch:
       - amd64
       - arm

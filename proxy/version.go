@@ -12,4 +12,5 @@ var RequestInfo = abci.RequestInfo{
 	Version:      version.TMCoreSemVer,
 	BlockVersion: version.BlockProtocol,
 	P2PVersion:   version.P2PProtocol,
+	AbciVersion:  version.ABCIVersion,
 }

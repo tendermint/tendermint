@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -21,7 +22,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/sr25519"
 	"github.com/tendermint/tendermint/libs/async"
-	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
@@ -228,8 +228,7 @@ func TestDeriveSecretsAndChallengeGolden(t *testing.T) {
 	if *update {
 		t.Logf("Updating golden test vector file %s", goldenFilepath)
 		data := createGoldenTestVectors(t)
-		err := tmos.WriteFile(goldenFilepath, []byte(data), 0644)
-		require.NoError(t, err)
+		require.NoError(t, ioutil.WriteFile(goldenFilepath, []byte(data), 0644))
 	}
 	f, err := os.Open(goldenFilepath)
 	if err != nil {

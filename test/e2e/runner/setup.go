@@ -96,12 +96,12 @@ func Setup(testnet *e2e.Testnet) error {
 			return err
 		}
 
-		err = (&p2p.NodeKey{PrivKey: node.Key}).SaveAs(filepath.Join(nodeDir, "config", "node_key.json"))
+		err = (&p2p.NodeKey{PrivKey: node.NodeKey}).SaveAs(filepath.Join(nodeDir, "config", "node_key.json"))
 		if err != nil {
 			return err
 		}
 
-		(privval.NewFilePV(node.Key,
+		(privval.NewFilePV(node.PrivvalKey,
 			filepath.Join(nodeDir, PrivvalKeyFile),
 			filepath.Join(nodeDir, PrivvalStateFile),
 		)).Save()
@@ -191,11 +191,18 @@ func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 		ConsensusParams: types.DefaultConsensusParams(),
 		InitialHeight:   testnet.InitialHeight,
 	}
+	switch testnet.KeyType {
+	case "", types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1:
+		genesis.ConsensusParams.Validator.PubKeyTypes =
+			append(genesis.ConsensusParams.Validator.PubKeyTypes, types.ABCIPubKeyTypeSecp256k1)
+	default:
+		return genesis, errors.New("unsupported KeyType")
+	}
 	for validator, power := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
 			Name:    validator.Name,
-			Address: validator.Key.PubKey().Address(),
-			PubKey:  validator.Key.PubKey(),
+			Address: validator.PrivvalKey.PubKey().Address(),
+			PubKey:  validator.PrivvalKey.PubKey(),
 			Power:   power,
 		})
 	}
@@ -317,6 +324,7 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		"persist_interval":  node.PersistInterval,
 		"snapshot_interval": node.SnapshotInterval,
 		"retain_blocks":     node.RetainBlocks,
+		"key_type":          node.PrivvalKey.Type(),
 	}
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
@@ -359,7 +367,7 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		for height, validators := range node.Testnet.ValidatorUpdates {
 			updateVals := map[string]int64{}
 			for node, power := range validators {
-				updateVals[base64.StdEncoding.EncodeToString(node.Key.PubKey().Bytes())] = power
+				updateVals[base64.StdEncoding.EncodeToString(node.PrivvalKey.PubKey().Bytes())] = power
 			}
 			validatorUpdates[fmt.Sprintf("%v", height)] = updateVals
 		}

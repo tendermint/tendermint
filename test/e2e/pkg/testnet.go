@@ -14,8 +14,10 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
+	"github.com/tendermint/tendermint/types"
 )
 
 const (
@@ -57,6 +59,7 @@ type Testnet struct {
 	Validators       map[*Node]int64
 	ValidatorUpdates map[int64]map[*Node]int64
 	Nodes            []*Node
+	KeyType          string
 }
 
 // Node represents a Tendermint node in a testnet.
@@ -64,7 +67,8 @@ type Node struct {
 	Name             string
 	Testnet          *Testnet
 	Mode             Mode
-	Key              crypto.PrivKey
+	PrivvalKey       crypto.PrivKey
+	NodeKey          crypto.PrivKey
 	IP               net.IP
 	ProxyPort        uint32
 	StartAt          int64
@@ -118,6 +122,10 @@ func LoadTestnet(file string) (*Testnet, error) {
 		Validators:       map[*Node]int64{},
 		ValidatorUpdates: map[int64]map[*Node]int64{},
 		Nodes:            []*Node{},
+		KeyType:          "ed25519",
+	}
+	if len(manifest.KeyType) != 0 {
+		testnet.KeyType = manifest.KeyType
 	}
 	if manifest.InitialHeight > 0 {
 		testnet.InitialHeight = manifest.InitialHeight
@@ -135,7 +143,8 @@ func LoadTestnet(file string) (*Testnet, error) {
 		node := &Node{
 			Name:             name,
 			Testnet:          testnet,
-			Key:              keyGen.Generate(),
+			PrivvalKey:       keyGen.Generate(manifest.KeyType),
+			NodeKey:          keyGen.Generate("ed25519"),
 			IP:               ipGen.Next(),
 			ProxyPort:        proxyPortGen.Next(),
 			Mode:             ModeValidator,
@@ -262,6 +271,11 @@ func (t Testnet) Validate() error {
 	}
 	if len(t.Nodes) == 0 {
 		return errors.New("network has no nodes")
+	}
+	switch t.KeyType {
+	case "", types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1:
+	default:
+		return errors.New("unsupported KeyType")
 	}
 	for _, node := range t.Nodes {
 		if err := node.Validate(t); err != nil {
@@ -435,7 +449,7 @@ func (n Node) AddressP2P(withID bool) string {
 	}
 	addr := fmt.Sprintf("%v:26656", ip)
 	if withID {
-		addr = fmt.Sprintf("%x@%v", n.Key.PubKey().Address().Bytes(), addr)
+		addr = fmt.Sprintf("%x@%v", n.NodeKey.PubKey().Address().Bytes(), addr)
 	}
 	return addr
 }
@@ -466,15 +480,21 @@ func newKeyGenerator(seed int64) *keyGenerator {
 	}
 }
 
-func (g *keyGenerator) Generate() crypto.PrivKey {
+func (g *keyGenerator) Generate(keyType string) crypto.PrivKey {
 	seed := make([]byte, ed25519.SeedSize)
 
 	_, err := io.ReadFull(g.random, seed)
 	if err != nil {
 		panic(err) // this shouldn't happen
 	}
-
-	return ed25519.GenPrivKeyFromSecret(seed)
+	switch keyType {
+	case "secp256k1":
+		return secp256k1.GenPrivKeySecp256k1(seed)
+	case "", "ed25519":
+		return ed25519.GenPrivKeyFromSecret(seed)
+	default:
+		panic("KeyType not supported") // should not make it this far
+	}
 }
 
 // portGenerator generates local Docker proxy ports for each node.

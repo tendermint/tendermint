@@ -100,6 +100,18 @@ func (pool *BlockPool) UpdatePeer(peerID p2p.ID, base int64, height int64) error
 	return nil
 }
 
+// SetNoBlock records that the peer does not have a block for height and
+// schedules a new request for that height from another peer.
+func (pool *BlockPool) SetNoBlock(peerID p2p.ID, height int64) {
+	peer := pool.peers[peerID]
+	if peer == nil {
+		return
+	}
+	peer.SetNoBlock(height)
+
+	pool.rescheduleRequest(peerID, height)
+}
+
 // Cleans and deletes the peer. Recomputes the max peer height.
 func (pool *BlockPool) deletePeer(peer *BpPeer) {
 	if peer == nil {
@@ -214,7 +226,7 @@ func (pool *BlockPool) sendRequest(height int64) bool {
 		if peer.NumPendingBlockRequests >= maxRequestsPerPeer {
 			continue
 		}
-		if peer.Base > height || peer.Height < height {
+		if peer.Base > height || peer.Height < height || peer.NoBlock(height) {
 			continue
 		}
 
