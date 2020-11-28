@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/gogo/protobuf/proto"
 )
@@ -22,10 +23,9 @@ type (
 	ReactorShim struct {
 		BaseReactor
 
-		Name                   string
-		PeerUpdateCh           chan PeerUpdate
-		Channels               map[ChannelID]*ChannelShim
-		ChannelDescriptorShims []*ChannelDescriptorShim
+		Name         string
+		PeerUpdateCh chan PeerUpdate
+		Channels     map[ChannelID]*ChannelShim
 	}
 
 	// ChannelShim defines a generic shim wrapper around a legacy p2p channel
@@ -49,18 +49,18 @@ type (
 	}
 )
 
-func NewShim(name string, descriptors []*ChannelDescriptorShim) *ReactorShim {
+func NewShim(name string, descriptors map[ChannelID]*ChannelDescriptorShim) *ReactorShim {
 	channels := make(map[ChannelID]*ChannelShim)
+
 	for _, cds := range descriptors {
 		chShim := NewChannelShim(cds, 1)
 		channels[chShim.Channel.ID] = chShim
 	}
 
 	rs := &ReactorShim{
-		Name:                   name,
-		PeerUpdateCh:           make(chan PeerUpdate),
-		ChannelDescriptorShims: descriptors,
-		Channels:               channels,
+		Name:         name,
+		PeerUpdateCh: make(chan PeerUpdate),
+		Channels:     channels,
 	}
 
 	rs.BaseReactor = *NewBaseReactor(name, rs)
@@ -181,11 +181,16 @@ func (rs *ReactorShim) GetChannel(cID ChannelID) *Channel {
 // the supported ChannelDescriptors.
 func (rs *ReactorShim) GetChannels() []*ChannelDescriptor {
 	descriptors := make([]*ChannelDescriptor, len(rs.Channels))
-	i := 0
 
-	for _, c := range rs.Channels {
-		descriptors[i] = c.Descriptor
-		i++
+	sortedChIDs := make([]ChannelID, 0, len(descriptors))
+	for cID := range rs.Channels {
+		sortedChIDs = append(sortedChIDs, cID)
+	}
+
+	sort.Slice(sortedChIDs, func(i, j int) bool { return sortedChIDs[i] < sortedChIDs[j] })
+
+	for i, cID := range sortedChIDs {
+		descriptors[i] = rs.Channels[cID].Descriptor
 	}
 
 	return descriptors
@@ -202,13 +207,10 @@ func (rs *ReactorShim) AddPeer(peer Peer) {
 		panic(err)
 	}
 
-	select {
-	case rs.PeerUpdateCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusUp}:
+	go func() {
+		rs.PeerUpdateCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusUp}
 		rs.Logger.Debug("sent peer update", "reactor", rs.Name, "peer", peerID.String(), "status", PeerStatusUp)
-
-	default:
-		rs.Logger.Debug("dropped peer update", "reactor", rs.Name, "peer", peerID.String(), "status", PeerStatusUp)
-	}
+	}()
 }
 
 // RemovePeer sends a PeerUpdate with status PeerStatusDown on the PeerUpdateCh.
@@ -222,13 +224,16 @@ func (rs *ReactorShim) RemovePeer(peer Peer, reason interface{}) {
 		panic(err)
 	}
 
-	select {
-	case rs.PeerUpdateCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusDown}:
-		rs.Logger.Debug("sent peer update", "reactor", rs.Name, "peer", peerID.String(), "status", PeerStatusDown)
-
-	default:
-		rs.Logger.Debug("dropped peer update", "reactor", rs.Name, "peer", peerID.String(), "status", PeerStatusDown)
-	}
+	go func() {
+		rs.PeerUpdateCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusDown}
+		rs.Logger.Debug(
+			"sent peer update",
+			"reactor", rs.Name,
+			"peer", peerID.String(),
+			"reason", reason,
+			"status", PeerStatusDown,
+		)
+	}()
 }
 
 // Receive implements a generic wrapper around implementing the Receive method
