@@ -71,11 +71,11 @@ type peerInternal struct {
 type PeerStatus string
 
 const (
-	PeerStatusNew     = "new"     // New peer which we haven't tried to contact yet.
-	PeerStatusUp      = "up"      // Peer which we have an active connection to.
-	PeerStatusDown    = "down"    // Peer which we're temporarily disconnected from.
-	PeerStatusRemoved = "removed" // Peer which has been removed.
-	PeerStatusBanned  = "banned"  // Peer which is banned for misbehavior.
+	PeerStatusNew     = PeerStatus("new")     // New peer which we haven't tried to contact yet.
+	PeerStatusUp      = PeerStatus("up")      // Peer which we have an active connection to.
+	PeerStatusDown    = PeerStatus("down")    // Peer which we're temporarily disconnected from.
+	PeerStatusRemoved = PeerStatus("removed") // Peer which has been removed.
+	PeerStatusBanned  = PeerStatus("banned")  // Peer which is banned for misbehavior.
 )
 
 // PeerPriority specifies peer priorities.
