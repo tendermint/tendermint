@@ -297,7 +297,7 @@ func TestMConnectionMultiplePings(t *testing.T) {
 
 func TestMConnectionPingPongs(t *testing.T) {
 	// check that we are not leaking any go-routines
-	defer leaktest.CheckTimeout(t, 10*time.Second)()
+	t.Cleanup(leaktest.CheckTimeout(t, 10*time.Second))
 
 	server, client := net.Pipe()
 	t.Cleanup(closeAll(t, client, server))
