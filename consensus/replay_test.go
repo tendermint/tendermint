@@ -136,10 +136,10 @@ func TestWALCrash(t *testing.T) {
 			3},
 	}
 
-	for i, tc := range testCases {
+	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			consensusReplayConfig := ResetConfig(fmt.Sprintf("%s_%d", tc.name, i))
+			consensusReplayConfig := ResetConfig(tc.name)
 			crashWALandCheckLiveness(t, consensusReplayConfig, tc.initFn, tc.heightToStop)
 		})
 	}
