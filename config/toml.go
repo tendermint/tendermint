@@ -3,13 +3,12 @@ package config
 import (
 	"bytes"
 	"fmt"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
-
-	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
 // DefaultDirPerm is the default permissions used when creating directories.
@@ -457,6 +456,59 @@ max_open_connections = {{ .Instrumentation.MaxOpenConnections }}
 # Instrumentation namespace
 namespace = "{{ .Instrumentation.Namespace }}"
 `
+
+type T interface {
+	TempDir() string
+	Fatal(...interface{})
+	Fatalf(string, ...interface{})
+}
+
+func SetupTestConfiguration(t T) *Config {
+	return SetupTestConfigurationWithChainID(t, "")
+}
+
+func SetupTestConfigurationWithChainID(t T, chainID string) *Config {
+	// create a unique, concurrency-safe test directory under os.TempDir()
+	rootDir := t.TempDir()
+	// ensure config and data subdirs are created
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
+		t.Fatal(err)
+	}
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
+		t.Fatal(err)
+	}
+
+	baseConfig := DefaultBaseConfig()
+	configFilePath := filepath.Join(rootDir, defaultConfigFilePath)
+	genesisFilePath := filepath.Join(rootDir, baseConfig.Genesis)
+	privKeyFilePath := filepath.Join(rootDir, baseConfig.PrivValidatorKey)
+	privStateFilePath := filepath.Join(rootDir, baseConfig.PrivValidatorState)
+
+	// Write default config file if missing.
+	if !tmos.FileExists(configFilePath) {
+		writeDefaultConfigFile(configFilePath)
+	}
+	if !tmos.FileExists(genesisFilePath) {
+		if chainID == "" {
+			chainID = "tendermint_test"
+		}
+		testGenesis := fmt.Sprintf(testGenesisFmt, chainID)
+		mustWriteFileHelper(t, genesisFilePath, []byte(testGenesis), 0644)
+	}
+	// we always overwrite the priv val
+	mustWriteFileHelper(t, privKeyFilePath, []byte(testPrivValidatorKey), 0644)
+	mustWriteFileHelper(t, privStateFilePath, []byte(testPrivValidatorState), 0644)
+
+	config := TestConfig().SetRoot(rootDir)
+	return config
+}
+
+func mustWriteFileHelper(t T, filePath string, contents []byte, mode os.FileMode) {
+	if err := ioutil.WriteFile(filePath, contents, mode); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+}
+
 
 /****** these are for test settings ***********/
 

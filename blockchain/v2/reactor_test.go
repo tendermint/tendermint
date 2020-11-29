@@ -3,7 +3,6 @@ package v2
 import (
 	"fmt"
 	"net"
-	"os"
 	"sort"
 	"sync"
 	"testing"
@@ -351,8 +350,7 @@ func TestReactorHelperMode(t *testing.T) {
 		channelID = byte(0x40)
 	)
 
-	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
-	defer os.RemoveAll(config.RootDir)
+	config := cfg.SetupTestConfiguration(t)
 	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
 
 	params := testReactorParams{
@@ -427,8 +425,7 @@ func TestReactorHelperMode(t *testing.T) {
 }
 
 func TestReactorSetSwitchNil(t *testing.T) {
-	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
-	defer os.RemoveAll(config.RootDir)
+	config := cfg.SetupTestConfiguration(t)
 	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
 
 	reactor := newTestReactor(testReactorParams{

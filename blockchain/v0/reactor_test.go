@@ -2,7 +2,6 @@ package v0
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"testing"
 	"time"
@@ -132,8 +131,7 @@ func newBlockchainReactor(
 }
 
 func TestNoBlockResponse(t *testing.T) {
-	config = cfg.ResetTestRoot("blockchain_reactor_test")
-	defer os.RemoveAll(config.RootDir)
+	config = cfg.SetupTestConfiguration(t)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
 	maxBlockHeight := int64(65)
@@ -149,14 +147,14 @@ func TestNoBlockResponse(t *testing.T) {
 
 	}, p2p.Connect2Switches)
 
-	defer func() {
+	t.Cleanup(func() {
 		for _, r := range reactorPairs {
 			err := r.reactor.Stop()
 			require.NoError(t, err)
 			err = r.app.Stop()
 			require.NoError(t, err)
 		}
-	}()
+	})
 
 	tests := []struct {
 		height   int64
@@ -194,8 +192,7 @@ func TestNoBlockResponse(t *testing.T) {
 // Alternatively we could actually dial a TCP conn but
 // that seems extreme.
 func TestBadBlockStopsPeer(t *testing.T) {
-	config = cfg.ResetTestRoot("blockchain_reactor_test")
-	defer os.RemoveAll(config.RootDir)
+	config = cfg.SetupTestConfiguration(t)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
 	maxBlockHeight := int64(148)
@@ -204,12 +201,12 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	otherGenDoc, otherPrivVals := randGenesisDoc(1, false, 30)
 	otherChain := newBlockchainReactor(log.TestingLogger(), otherGenDoc, otherPrivVals, maxBlockHeight)
 
-	defer func() {
+	t.Cleanup(func() {
 		err := otherChain.reactor.Stop()
 		require.Error(t, err)
 		err = otherChain.app.Stop()
 		require.NoError(t, err)
-	}()
+	})
 
 	reactorPairs := make([]BlockchainReactorPair, 4)
 
@@ -224,7 +221,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 
 	}, p2p.Connect2Switches)
 
-	defer func() {
+	t.Cleanup(func() {
 		for _, r := range reactorPairs {
 			err := r.reactor.Stop()
 			require.NoError(t, err)
@@ -232,7 +229,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 			err = r.app.Stop()
 			require.NoError(t, err)
 		}
-	}()
+	})
 
 	for {
 		time.Sleep(1 * time.Second)

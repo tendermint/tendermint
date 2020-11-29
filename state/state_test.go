@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,8 +24,8 @@ import (
 )
 
 // setupTestCase does setup common to all test cases.
-func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
-	config := cfg.ResetTestRoot("state_")
+func setupTestCase(t *testing.T) (dbm.DB, sm.State) {
+	config := cfg.SetupTestConfiguration(t)
 	dbType := dbm.BackendType(config.DBBackend)
 	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())
 	stateStore := sm.NewStore(stateDB)
@@ -36,15 +35,12 @@ func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
 	err = stateStore.Save(state)
 	require.NoError(t, err)
 
-	tearDown := func(t *testing.T) { os.RemoveAll(config.RootDir) }
-
-	return tearDown, stateDB, state
+	return stateDB, state
 }
 
 // TestStateCopy tests the correct copying behaviour of State.
 func TestStateCopy(t *testing.T) {
-	tearDown, _, state := setupTestCase(t)
-	defer tearDown(t)
+	_, state := setupTestCase(t)
 	assert := assert.New(t)
 
 	stateCopy := state.Copy()
@@ -74,8 +70,7 @@ func TestMakeGenesisStateNilValidators(t *testing.T) {
 
 // TestStateSaveLoad tests saving and loading State from a db.
 func TestStateSaveLoad(t *testing.T) {
-	tearDown, stateDB, state := setupTestCase(t)
-	defer tearDown(t)
+	stateDB, state := setupTestCase(t)
 	stateStore := sm.NewStore(stateDB)
 	assert := assert.New(t)
 
@@ -93,8 +88,7 @@ func TestStateSaveLoad(t *testing.T) {
 
 // TestABCIResponsesSaveLoad tests saving and loading ABCIResponses.
 func TestABCIResponsesSaveLoad1(t *testing.T) {
-	tearDown, stateDB, state := setupTestCase(t)
-	defer tearDown(t)
+	stateDB, state := setupTestCase(t)
 	stateStore := sm.NewStore(stateDB)
 	assert := assert.New(t)
 
@@ -124,8 +118,7 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 
 // TestResultsSaveLoad tests saving and loading ABCI results.
 func TestABCIResponsesSaveLoad2(t *testing.T) {
-	tearDown, stateDB, _ := setupTestCase(t)
-	defer tearDown(t)
+	stateDB, _ := setupTestCase(t)
 	assert := assert.New(t)
 
 	stateStore := sm.NewStore(stateDB)
@@ -212,8 +205,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 
 // TestValidatorSimpleSaveLoad tests saving and loading validators.
 func TestValidatorSimpleSaveLoad(t *testing.T) {
-	tearDown, stateDB, state := setupTestCase(t)
-	defer tearDown(t)
+	stateDB, state := setupTestCase(t)
 	assert := assert.New(t)
 
 	statestore := sm.NewStore(stateDB)
@@ -247,8 +239,7 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 
 // TestValidatorChangesSaveLoad tests saving and loading a validator set with changes.
 func TestOneValidatorChangesSaveLoad(t *testing.T) {
-	tearDown, stateDB, state := setupTestCase(t)
-	defer tearDown(t)
+	stateDB, state := setupTestCase(t)
 	stateStore := sm.NewStore(stateDB)
 
 	// Change vals at these heights.
@@ -304,7 +295,6 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 }
 
 func TestProposerFrequency(t *testing.T) {
-
 	// some explicit test cases
 	testCases := []struct {
 		powers []int64
@@ -431,8 +421,7 @@ func testProposerFreq(t *testing.T, caseNum int, valSet *types.ValidatorSet) {
 // TestProposerPriorityDoesNotGetResetToZero assert that we preserve accum when calling updateState
 // see https://github.com/tendermint/tendermint/issues/2718
 func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
-	tearDown, _, state := setupTestCase(t)
-	defer tearDown(t)
+	_, state := setupTestCase(t)
 	val1VotingPower := int64(10)
 	val1PubKey := ed25519.GenPrivKey().PubKey()
 	val1 := &types.Validator{Address: val1PubKey.Address(), PubKey: val1PubKey, VotingPower: val1VotingPower}
@@ -545,8 +534,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	// IncrementProposerPriority change.
 	// Additionally, make sure that same power validators alternate if both
 	// have the same voting power (and the 2nd was added later).
-	tearDown, _, state := setupTestCase(t)
-	defer tearDown(t)
+	_, state := setupTestCase(t)
 	val1VotingPower := int64(10)
 	val1PubKey := ed25519.GenPrivKey().PubKey()
 	val1 := &types.Validator{Address: val1PubKey.Address(), PubKey: val1PubKey, VotingPower: val1VotingPower}
@@ -716,8 +704,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 }
 
 func TestLargeGenesisValidator(t *testing.T) {
-	tearDown, _, state := setupTestCase(t)
-	defer tearDown(t)
+	_, state := setupTestCase(t)
 
 	genesisVotingPower := types.MaxTotalVotingPower / 1000
 	genesisPubKey := ed25519.GenPrivKey().PubKey()
@@ -899,8 +886,7 @@ func TestLargeGenesisValidator(t *testing.T) {
 
 func TestStoreLoadValidatorsIncrementsProposerPriority(t *testing.T) {
 	const valSetSize = 2
-	tearDown, stateDB, state := setupTestCase(t)
-	t.Cleanup(func() { tearDown(t) })
+	stateDB, state := setupTestCase(t)
 	stateStore := sm.NewStore(stateDB)
 	state.Validators = genValSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
@@ -924,8 +910,7 @@ func TestStoreLoadValidatorsIncrementsProposerPriority(t *testing.T) {
 // changes.
 func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	const valSetSize = 7
-	tearDown, stateDB, state := setupTestCase(t)
-	defer tearDown(t)
+	stateDB, state := setupTestCase(t)
 	stateStore := sm.NewStore(stateDB)
 	require.Equal(t, int64(0), state.LastBlockHeight)
 	state.Validators = genValSet(valSetSize)
@@ -972,9 +957,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 }
 
 func TestStateMakeBlock(t *testing.T) {
-	tearDown, _, state := setupTestCase(t)
-	defer tearDown(t)
-
+	_, state := setupTestCase(t)
 	proposerAddress := state.Validators.GetProposer().Address
 	stateVersion := state.Version.Consensus
 	block := makeBlock(state, 2)
@@ -987,11 +970,8 @@ func TestStateMakeBlock(t *testing.T) {
 // TestConsensusParamsChangesSaveLoad tests saving and loading consensus params
 // with changes.
 func TestConsensusParamsChangesSaveLoad(t *testing.T) {
-	tearDown, stateDB, state := setupTestCase(t)
-	defer tearDown(t)
-
+	stateDB, state := setupTestCase(t)
 	stateStore := sm.NewStore(stateDB)
-
 	// Change vals at these heights.
 	changeHeights := []int64{1, 2, 4, 5, 10, 15, 16, 17, 20}
 	N := len(changeHeights)
@@ -1052,9 +1032,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 }
 
 func TestStateProto(t *testing.T) {
-	tearDown, _, state := setupTestCase(t)
-	defer tearDown(t)
-
+	_, state := setupTestCase(t)
 	tc := []struct {
 		testName string
 		state    *sm.State

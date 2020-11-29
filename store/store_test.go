@@ -3,7 +3,6 @@ package store
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"runtime/debug"
 	"strings"
 	"testing"
@@ -25,10 +24,6 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
 )
-
-// A cleanupFunc cleans up any config / test files created for a particular
-// test.
-type cleanupFunc func()
 
 // make a Commit with a single vote containing just the height and a timestamp
 func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
@@ -54,8 +49,8 @@ func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Bl
 	return block
 }
 
-func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFunc) {
-	config := cfg.ResetTestRoot("blockchain_reactor_test")
+func makeStateAndBlockStore(t *testing.T) (sm.State, *BlockStore) {
+	config := cfg.SetupTestConfiguration(t)
 	// blockDB := dbm.NewDebugDB("blockDB", dbm.NewMemDB())
 	// stateDB := dbm.NewDebugDB("stateDB", dbm.NewMemDB())
 	blockDB := dbm.NewMemDB()
@@ -65,7 +60,22 @@ func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFu
 	if err != nil {
 		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
-	return state, NewBlockStore(blockDB), func() { os.RemoveAll(config.RootDir) }
+	return state, NewBlockStore(blockDB)
+}
+
+func makeTestStateAndBlockStore(t *testing.T, logger log.Logger) (sm.State, *BlockStore) {
+	config := cfg.SetupTestConfiguration(t)
+	// blockDB := dbm.NewDebugDB("blockDB", dbm.NewMemDB())
+	// stateDB := dbm.NewDebugDB("stateDB", dbm.NewMemDB())
+	blockDB := dbm.NewMemDB()
+	stateDB := dbm.NewMemDB()
+	stateStore := sm.NewStore(stateDB)
+	state, err := stateStore.LoadFromDBOrGenesisFile(config.GenesisFile())
+	if err != nil {
+		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
+	}
+
+	return state, NewBlockStore(blockDB)
 }
 
 func TestLoadBlockStoreState(t *testing.T) {
@@ -133,33 +143,43 @@ func freshBlockStore() (*BlockStore, dbm.DB) {
 	return NewBlockStore(db), db
 }
 
-var (
+type testFixture struct {
 	state       sm.State
 	block       *types.Block
 	partSet     *types.PartSet
 	part1       *types.Part
 	part2       *types.Part
 	seenCommit1 *types.Commit
-)
+	store       *BlockStore
 
-func TestMain(m *testing.M) {
-	var cleanup cleanupFunc
-	state, _, cleanup = makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
-	block = makeBlock(1, state, new(types.Commit))
-	partSet = block.MakePartSet(2)
-	part1 = partSet.GetPart(0)
-	part2 = partSet.GetPart(1)
-	seenCommit1 = makeTestCommit(10, tmtime.Now())
-	code := m.Run()
-	cleanup()
-	os.Exit(code)
+	t *testing.T
+}
+
+func newTestFixture(t *testing.T) *testFixture {
+	state, store := makeStateAndBlockStore(t)
+	block := makeBlock(1, state, new(types.Commit))
+	partSet := block.MakePartSet(2)
+	part1 := partSet.GetPart(0)
+	part2 := partSet.GetPart(1)
+	seenCommit1 := makeTestCommit(10, tmtime.Now())
+
+	return &testFixture{
+		state:       state,
+		block:       block,
+		partSet:     partSet,
+		part1:       part1,
+		part2:       part2,
+		seenCommit1: seenCommit1,
+		store:       store,
+		t:           t,
+	}
 }
 
 // TODO: This test should be simplified ...
 
 func TestBlockStoreSaveLoadBlock(t *testing.T) {
-	state, bs, cleanup := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
-	defer cleanup()
+	fixture := newTestFixture(t)
+	state, bs := makeTestStateAndBlockStore(t, log.NewTMLogger(new(bytes.Buffer)))
 	require.Equal(t, bs.Base(), int64(0), "initially the base should be zero")
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
 
@@ -175,13 +195,13 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	block := makeBlock(bs.Height()+1, state, new(types.Commit))
 	validPartSet := block.MakePartSet(2)
 	seenCommit := makeTestCommit(10, tmtime.Now())
-	bs.SaveBlock(block, partSet, seenCommit)
+	bs.SaveBlock(block, fixture.partSet, seenCommit)
 	require.EqualValues(t, 1, bs.Base(), "expecting the new height to be changed")
 	require.EqualValues(t, block.Header.Height, bs.Height(), "expecting the new height to be changed")
 
 	incompletePartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 2})
 	uncontiguousPartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 0})
-	_, err := uncontiguousPartSet.AddPart(part2)
+	_, err := uncontiguousPartSet.AddPart(fixture.part2)
 	require.Error(t, err)
 
 	header1 := types.Header{
@@ -211,7 +231,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		{
 			block:      newBlock(header1, commitAtH10),
 			parts:      validPartSet,
-			seenCommit: seenCommit1,
+			seenCommit: fixture.seenCommit1,
 		},
 
 		{
@@ -242,7 +262,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		{
 			block:             newBlock(header1, commitAtH10),
 			parts:             validPartSet,
-			seenCommit:        seenCommit1,
+			seenCommit:        fixture.seenCommit1,
 			corruptCommitInDB: true, // Corrupt the DB's commit entry
 			wantPanic:         "error reading block commit",
 		},
@@ -250,7 +270,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		{
 			block:            newBlock(header1, commitAtH10),
 			parts:            validPartSet,
-			seenCommit:       seenCommit1,
+			seenCommit:       fixture.seenCommit1,
 			wantPanic:        "unmarshal to tmproto.BlockMeta",
 			corruptBlockInDB: true, // Corrupt the DB's block entry
 		},
@@ -258,7 +278,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		{
 			block:      newBlock(header1, commitAtH10),
 			parts:      validPartSet,
-			seenCommit: seenCommit1,
+			seenCommit: fixture.seenCommit1,
 
 			// Expecting no error and we want a nil back
 			eraseSeenCommitInDB: true,
@@ -267,7 +287,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		{
 			block:      newBlock(header1, commitAtH10),
 			parts:      validPartSet,
-			seenCommit: seenCommit1,
+			seenCommit: fixture.seenCommit1,
 
 			corruptSeenCommitInDB: true,
 			wantPanic:             "error reading block seen commit",
@@ -276,7 +296,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		{
 			block:      newBlock(header1, commitAtH10),
 			parts:      validPartSet,
-			seenCommit: seenCommit1,
+			seenCommit: fixture.seenCommit1,
 
 			// Expecting no error and we want a nil back
 			eraseCommitInDB: true,
@@ -367,8 +387,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 }
 
 func TestLoadBaseMeta(t *testing.T) {
-	config := cfg.ResetTestRoot("blockchain_reactor_test")
-	defer os.RemoveAll(config.RootDir)
+	config := cfg.SetupTestConfiguration(t)
 	stateStore := sm.NewStore(dbm.NewMemDB())
 	state, err := stateStore.LoadFromDBOrGenesisFile(config.GenesisFile())
 	require.NoError(t, err)
@@ -390,6 +409,7 @@ func TestLoadBaseMeta(t *testing.T) {
 }
 
 func TestLoadBlockPart(t *testing.T) {
+	fixture := newTestFixture(t)
 	bs, db := freshBlockStore()
 	height, index := int64(10), 1
 	loadPart := func() (interface{}, error) {
@@ -411,20 +431,19 @@ func TestLoadBlockPart(t *testing.T) {
 	require.Contains(t, panicErr.Error(), "unmarshal to tmproto.Part failed")
 
 	// 3. A good block serialized and saved to the DB should be retrievable
-	pb1, err := part1.ToProto()
+	pb1, err := fixture.part1.ToProto()
 	require.NoError(t, err)
 	err = db.Set(calcBlockPartKey(height, index), mustEncode(pb1))
 	require.NoError(t, err)
 	gotPart, _, panicErr := doFn(loadPart)
 	require.Nil(t, panicErr, "an existent and proper block should not panic")
 	require.Nil(t, res, "a properly saved block should return a proper block")
-	require.Equal(t, gotPart.(*types.Part), part1,
+	require.Equal(t, gotPart.(*types.Part), fixture.part1,
 		"expecting successful retrieval of previously saved block")
 }
 
 func TestPruneBlocks(t *testing.T) {
-	config := cfg.ResetTestRoot("blockchain_reactor_test")
-	defer os.RemoveAll(config.RootDir)
+	config := cfg.SetupTestConfiguration(t)
 	stateStore := sm.NewStore(dbm.NewMemDB())
 	state, err := stateStore.LoadFromDBOrGenesisFile(config.GenesisFile())
 	require.NoError(t, err)
@@ -549,8 +568,7 @@ func TestLoadBlockMeta(t *testing.T) {
 }
 
 func TestBlockFetchAtHeight(t *testing.T) {
-	state, bs, cleanup := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
-	defer cleanup()
+	state, bs := makeTestStateAndBlockStore(t, log.NewTMLogger(new(bytes.Buffer)))
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
 	block := makeBlock(bs.Height()+1, state, new(types.Commit))
 

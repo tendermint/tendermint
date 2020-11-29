@@ -41,6 +41,25 @@ func TestEnsureRoot(t *testing.T) {
 	ensureFiles(t, tmpDir, "data")
 }
 
+func TestSetupConfiguration(t *testing.T) {
+	require := require.New(t)
+	// create root dir
+	cfg := SetupTestConfiguration(t)
+	rootDir := cfg.RootDir
+
+	// make sure config is set properly
+	data, err := ioutil.ReadFile(filepath.Join(rootDir, defaultConfigFilePath))
+	require.Nil(err)
+
+	if !checkConfig(string(data)) {
+		t.Fatalf("config file missing some information")
+	}
+
+	// TODO: make sure the cfg returned and testconfig are the same!
+	baseConfig := DefaultBaseConfig()
+	ensureFiles(t, rootDir, defaultDataDir, baseConfig.Genesis, baseConfig.PrivValidatorKey, baseConfig.PrivValidatorState)
+}
+
 func TestEnsureTestRoot(t *testing.T) {
 	require := require.New(t)
 

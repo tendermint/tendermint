@@ -2,7 +2,6 @@ package v1
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"sync"
 	"testing"
@@ -180,9 +179,7 @@ func (conR *consensusReactorTest) SwitchToConsensus(state sm.State, blocksSynced
 }
 
 func TestFastSyncNoBlockResponse(t *testing.T) {
-
-	config = cfg.ResetTestRoot("blockchain_new_reactor_test")
-	defer os.RemoveAll(config.RootDir)
+	config = cfg.SetupTestConfiguration(t)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
 	maxBlockHeight := int64(65)
@@ -203,12 +200,12 @@ func TestFastSyncNoBlockResponse(t *testing.T) {
 
 	}, p2p.Connect2Switches)
 
-	defer func() {
+	t.Cleanup(func() {
 		for _, r := range reactorPairs {
 			_ = r.bcR.Stop()
 			_ = r.conR.Stop()
 		}
-	}()
+	})
 
 	tests := []struct {
 		height   int64
@@ -251,15 +248,14 @@ func TestFastSyncBadBlockStopsPeer(t *testing.T) {
 	numNodes := 4
 	maxBlockHeight := int64(148)
 
-	config = cfg.ResetTestRoot("blockchain_reactor_test")
-	defer os.RemoveAll(config.RootDir)
+	config = cfg.SetupTestConfiguration(t)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
 	otherChain := newBlockchainReactorPair(t, log.TestingLogger(), genDoc, privVals, maxBlockHeight)
-	defer func() {
+	t.Cleanup(func() {
 		_ = otherChain.bcR.Stop()
 		_ = otherChain.conR.Stop()
-	}()
+	})
 
 	reactorPairs := make([]BlockchainReactorPair, numNodes)
 	logger := make([]log.Logger, numNodes)
@@ -284,12 +280,12 @@ func TestFastSyncBadBlockStopsPeer(t *testing.T) {
 
 	}, p2p.Connect2Switches)
 
-	defer func() {
+	t.Cleanup(func() {
 		for _, r := range reactorPairs {
 			_ = r.bcR.Stop()
 			_ = r.conR.Stop()
 		}
-	}()
+	})
 
 outerFor:
 	for {
