@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: "^1.15.4"
+          go-version: "^1.15.5"
       - uses: actions/checkout@master
       - name: Prepare
         id: prep
