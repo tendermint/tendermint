@@ -42,27 +42,6 @@ func mustEncodeMsg(pb proto.Message) []byte {
 	return bz
 }
 
-// decodeMsg decodes a Protobuf message.
-func decodeMsg(bz []byte) (proto.Message, error) {
-	pb := &ssproto.Message{}
-	err := proto.Unmarshal(bz, pb)
-	if err != nil {
-		return nil, err
-	}
-	switch msg := pb.Sum.(type) {
-	case *ssproto.Message_ChunkRequest:
-		return msg.ChunkRequest, nil
-	case *ssproto.Message_ChunkResponse:
-		return msg.ChunkResponse, nil
-	case *ssproto.Message_SnapshotsRequest:
-		return msg.SnapshotsRequest, nil
-	case *ssproto.Message_SnapshotsResponse:
-		return msg.SnapshotsResponse, nil
-	default:
-		return nil, fmt.Errorf("unknown message type %T", msg)
-	}
-}
-
 // validateMsg validates a message.
 func validateMsg(pb proto.Message) error {
 	if pb == nil {

@@ -159,7 +159,12 @@ func (r *Reactor) processSnapshotCh() {
 				}
 
 				for _, snapshot := range snapshots {
-					r.Logger.Debug("advertising snapshot", "height", snapshot.Height, "format", snapshot.Format, "peer", envelope.From.String())
+					r.Logger.Debug(
+						"advertising snapshot",
+						"height", snapshot.Height,
+						"format", snapshot.Format,
+						"peer", envelope.From.String(),
+					)
 					r.snapshotCh.Out <- p2p.Envelope{
 						To: envelope.From,
 						Message: &ssproto.SnapshotsResponse{
@@ -183,7 +188,12 @@ func (r *Reactor) processSnapshotCh() {
 
 				r.mtx.RUnlock()
 
-				r.Logger.Debug("received snapshot", "height", msg.Height, "format", msg.Format, "peer", envelope.From.String())
+				r.Logger.Debug(
+					"received snapshot",
+					"height", msg.Height,
+					"format", msg.Format,
+					"peer", envelope.From.String(),
+				)
 				_, err := r.syncer.AddSnapshot(envelope.From, &snapshot{
 					Height:   msg.Height,
 					Format:   msg.Format,
@@ -192,7 +202,13 @@ func (r *Reactor) processSnapshotCh() {
 					Metadata: msg.Metadata,
 				})
 				if err != nil {
-					r.Logger.Error("failed to add snapshot", "height", msg.Height, "format", msg.Format, "err", err, "channel", r.snapshotCh.ID)
+					r.Logger.Error(
+						"failed to add snapshot",
+						"height", msg.Height,
+						"format", msg.Format,
+						"err", err,
+						"channel", r.snapshotCh.ID,
+					)
 					continue
 				}
 
@@ -218,18 +234,37 @@ func (r *Reactor) processChunkCh() {
 		case envelope := <-r.chunkCh.In:
 			switch msg := envelope.Message.(type) {
 			case *ssproto.ChunkRequest:
-				r.Logger.Debug("received chunk request", "height", msg.Height, "format", msg.Format, "chunk", msg.Index, "peer", envelope.From.String())
+				r.Logger.Debug(
+					"received chunk request",
+					"height", msg.Height,
+					"format", msg.Format,
+					"chunk", msg.Index,
+					"peer", envelope.From.String(),
+				)
 				resp, err := r.conn.LoadSnapshotChunkSync(context.Background(), abci.RequestLoadSnapshotChunk{
 					Height: msg.Height,
 					Format: msg.Format,
 					Chunk:  msg.Index,
 				})
 				if err != nil {
-					r.Logger.Error("failed to load chunk", "height", msg.Height, "format", msg.Format, "chunk", msg.Index, "err", err, "peer", envelope.From.String())
+					r.Logger.Error(
+						"failed to load chunk",
+						"height", msg.Height,
+						"format", msg.Format,
+						"chunk", msg.Index,
+						"err", err,
+						"peer", envelope.From.String(),
+					)
 					continue
 				}
 
-				r.Logger.Debug("sending chunk", "height", msg.Height, "format", msg.Format, "chunk", msg.Index, "peer", envelope.From.String())
+				r.Logger.Debug(
+					"sending chunk",
+					"height", msg.Height,
+					"format", msg.Format,
+					"chunk", msg.Index,
+					"peer", envelope.From.String(),
+				)
 				r.chunkCh.Out <- p2p.Envelope{
 					To: envelope.From,
 					Message: &ssproto.ChunkResponse{
@@ -252,7 +287,13 @@ func (r *Reactor) processChunkCh() {
 
 				r.mtx.RUnlock()
 
-				r.Logger.Debug("received chunk; adding to sync", "height", msg.Height, "format", msg.Format, "chunk", msg.Index, "peer", envelope.From.String())
+				r.Logger.Debug(
+					"received chunk; adding to sync",
+					"height", msg.Height,
+					"format", msg.Format,
+					"chunk", msg.Index,
+					"peer", envelope.From.String(),
+				)
 				_, err := r.syncer.AddChunk(&chunk{
 					Height: msg.Height,
 					Format: msg.Format,
@@ -261,7 +302,14 @@ func (r *Reactor) processChunkCh() {
 					Sender: envelope.From,
 				})
 				if err != nil {
-					r.Logger.Error("failed to add chunk", "height", msg.Height, "format", msg.Format, "chunk", msg.Index, "err", err, "peer", envelope.From.String())
+					r.Logger.Error(
+						"failed to add chunk",
+						"height", msg.Height,
+						"format", msg.Format,
+						"chunk", msg.Index,
+						"err", err,
+						"peer", envelope.From.String(),
+					)
 					continue
 				}
 

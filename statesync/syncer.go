@@ -432,7 +432,13 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 		return
 	}
 
-	s.logger.Debug("Requesting snapshot chunk", "height", snapshot.Height, "format", snapshot.Format, "chunk", chunk, "peer", peer.String())
+	s.logger.Debug(
+		"Requesting snapshot chunk",
+		"height", snapshot.Height,
+		"format", snapshot.Format,
+		"chunk", chunk,
+		"peer", peer.String(),
+	)
 
 	go func() {
 		s.chunkCh <- p2p.Envelope{
@@ -462,7 +468,11 @@ func (s *syncer) verifyApp(snapshot *snapshot) (uint64, error) {
 	}
 
 	if uint64(resp.LastBlockHeight) != snapshot.Height {
-		s.logger.Error("ABCI app reported unexpected last block height", "expected", snapshot.Height, "actual", resp.LastBlockHeight)
+		s.logger.Error(
+			"ABCI app reported unexpected last block height",
+			"expected", snapshot.Height,
+			"actual", resp.LastBlockHeight,
+		)
 		return 0, errVerifyFailed
 	}
 

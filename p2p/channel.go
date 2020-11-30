@@ -37,7 +37,13 @@ type Channel struct {
 	Error chan<- PeerError
 }
 
-func NewChannel(id ChannelID, mType proto.Message, in <-chan Envelope, out chan<- Envelope, err chan<- PeerError) *Channel {
+func NewChannel(
+	id ChannelID,
+	mType proto.Message,
+	in <-chan Envelope,
+	out chan<- Envelope,
+	err chan<- PeerError,
+) *Channel {
 	return &Channel{
 		ID:          id,
 		messageType: mType,

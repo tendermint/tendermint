@@ -60,7 +60,7 @@ func (a PeerAddress) Resolve(ctx context.Context) []Endpoint { return nil }
 //
 // TODO: Rename once legacy p2p types are removed.
 // ref: https://github.com/tendermint/tendermint/issues/5670
-type peerInternal struct {
+type peerInternal struct { //nolint:unused,deadcode
 	ID        PeerID
 	Status    PeerStatus
 	Priority  PeerPriority
