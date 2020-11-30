@@ -277,7 +277,7 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 func (s *syncer) offerSnapshot(snapshot *snapshot) error {
 	s.logger.Info("Offering snapshot to ABCI app", "height", snapshot.Height,
 		"format", snapshot.Format, "hash", fmt.Sprintf("%X", snapshot.Hash))
-	resp, err := s.conn.OfferSnapshotSync(abci.RequestOfferSnapshot{
+	resp, err := s.conn.OfferSnapshotSync(context.Background(), abci.RequestOfferSnapshot{
 		Snapshot: &abci.Snapshot{
 			Height:   snapshot.Height,
 			Format:   snapshot.Format,
@@ -319,7 +319,7 @@ func (s *syncer) applyChunks(chunks *chunkQueue) error {
 			return fmt.Errorf("failed to fetch chunk: %w", err)
 		}
 
-		resp, err := s.conn.ApplySnapshotChunkSync(abci.RequestApplySnapshotChunk{
+		resp, err := s.conn.ApplySnapshotChunkSync(context.Background(), abci.RequestApplySnapshotChunk{
 			Index:  chunk.Index,
 			Chunk:  chunk.Chunk,
 			Sender: string(chunk.Sender),
@@ -422,7 +422,7 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 // verifyApp verifies the sync, checking the app hash and last block height. It returns the
 // app version, which should be returned as part of the initial state.
 func (s *syncer) verifyApp(snapshot *snapshot) (uint64, error) {
-	resp, err := s.connQuery.InfoSync(proxy.RequestInfo)
+	resp, err := s.connQuery.InfoSync(context.Background(), proxy.RequestInfo)
 	if err != nil {
 		return 0, fmt.Errorf("failed to query ABCI app for appHash: %w", err)
 	}

@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -223,7 +224,7 @@ func (blockExec *BlockExecutor) Commit(
 	}
 
 	// Commit block, get hash back
-	res, err := blockExec.proxyApp.CommitSync()
+	res, err := blockExec.proxyApp.CommitSync(context.Background())
 	if err != nil {
 		blockExec.logger.Error(
 			"Client error during proxyAppConn.CommitSync",
@@ -297,18 +298,22 @@ func execBlockOnProxyApp(
 		byzVals = append(byzVals, evidence.ABCI()...)
 	}
 
+	ctx := context.Background()
+
 	// Begin block
 	var err error
 	pbh := block.Header.ToProto()
 	if pbh == nil {
 		return nil, errors.New("nil header")
 	}
-	abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
-		Hash:                block.Hash(),
-		Header:              *pbh,
-		LastCommitInfo:      commitInfo,
-		ByzantineValidators: byzVals,
-	})
+	abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(
+		ctx,
+		abci.RequestBeginBlock{
+			Hash:                block.Hash(),
+			Header:              *pbh,
+			LastCommitInfo:      commitInfo,
+			ByzantineValidators: byzVals,
+		})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
 		return nil, err
@@ -316,14 +321,14 @@ func execBlockOnProxyApp(
 
 	// Run txs of block.
 	for _, tx := range block.Txs {
-		proxyAppConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
-		if err := proxyAppConn.Error(); err != nil {
+		_, err = proxyAppConn.DeliverTxAsync(ctx, abci.RequestDeliverTx{Tx: tx})
+		if err != nil {
 			return nil, err
 		}
 	}
 
 	// End block.
-	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
+	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(ctx, abci.RequestEndBlock{Height: block.Height})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
 		return nil, err
@@ -537,7 +542,7 @@ func ExecCommitBlock(
 		return nil, err
 	}
 	// Commit block, get hash back
-	res, err := appConnConsensus.CommitSync()
+	res, err := appConnConsensus.CommitSync(context.Background())
 	if err != nil {
 		logger.Error("Client error during proxyAppConn.CommitSync", "err", res)
 		return nil, err

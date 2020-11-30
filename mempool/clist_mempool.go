@@ -3,6 +3,7 @@ package mempool
 import (
 	"bytes"
 	"container/list"
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"sync"
@@ -185,7 +186,7 @@ func (mem *CListMempool) TxsBytes() int64 {
 
 // Lock() must be help by the caller during execution.
 func (mem *CListMempool) FlushAppConn() error {
-	return mem.proxyAppConn.FlushSync()
+	return mem.proxyAppConn.FlushSync(context.Background())
 }
 
 // XXX: Unsafe! Calling Flush may leave mempool in inconsistent state.
@@ -285,7 +286,16 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 		return ErrTxInCache
 	}
 
-	reqRes := mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
+	ctx := context.Background()
+	if txInfo.Context != nil {
+		ctx = txInfo.Context
+	}
+
+	reqRes, err := mem.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{Tx: tx})
+	if err != nil {
+		mem.cache.Remove(tx)
+		return err
+	}
 	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderP2PID, cb))
 
 	return nil
@@ -634,17 +644,26 @@ func (mem *CListMempool) recheckTxs() {
 	mem.recheckCursor = mem.txs.Front()
 	mem.recheckEnd = mem.txs.Back()
 
+	ctx := context.Background()
+
 	// Push txs to proxyAppConn
 	// NOTE: globalCb may be called concurrently.
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
-		mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{
+		_, err := mem.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{
 			Tx:   memTx.tx,
 			Type: abci.CheckTxType_Recheck,
 		})
+		if err != nil {
+			// No need in retrying since memTx will be rechecked after next block.
+			mem.logger.Error("Can't check tx", "err", err)
+		}
 	}
 
-	mem.proxyAppConn.FlushAsync()
+	_, err := mem.proxyAppConn.FlushAsync(ctx)
+	if err != nil {
+		mem.logger.Error("Can't flush txs", "err", err)
+	}
 }
 
 //--------------------------------------------------------------------------------
