@@ -3,8 +3,6 @@ package consensus
 import (
 	"bytes"
 	"crypto/rand"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 
 	// "sync"
@@ -27,10 +25,7 @@ const (
 )
 
 func TestWALTruncate(t *testing.T) {
-	walDir, err := ioutil.TempDir("", "wal")
-	require.NoError(t, err)
-	defer os.RemoveAll(walDir)
-
+	walDir := t.TempDir()
 	walFile := filepath.Join(walDir, "wal")
 
 	// this magic number 4K can truncate the content when RotateFile.
@@ -45,14 +40,14 @@ func TestWALTruncate(t *testing.T) {
 	wal.SetLogger(log.TestingLogger())
 	err = wal.Start()
 	require.NoError(t, err)
-	defer func() {
+	t.Cleanup(func() {
 		if err := wal.Stop(); err != nil {
 			t.Error(err)
 		}
 		// wait for the wal to finish shutting down so we
 		// can safely remove the directory
 		wal.Wait()
-	}()
+	})
 
 	// 60 block's size nearly 70K, greater than group's headBuf size(4096 * 10),
 	// when headBuf is full, truncate content will Flush to the file. at this
@@ -71,7 +66,7 @@ func TestWALTruncate(t *testing.T) {
 	assert.NoError(t, err, "expected not to err on height %d", h)
 	assert.True(t, found, "expected to find end height for %d", h)
 	assert.NotNil(t, gr)
-	defer gr.Close()
+	t.Cleanup(func() { _ = gr.Close() })
 
 	dec := NewWALDecoder(gr)
 	msg, err := dec.Decode()
@@ -109,23 +104,21 @@ func TestWALEncoderDecoder(t *testing.T) {
 }
 
 func TestWALWrite(t *testing.T) {
-	walDir, err := ioutil.TempDir("", "wal")
-	require.NoError(t, err)
-	defer os.RemoveAll(walDir)
+	walDir := t.TempDir()
 	walFile := filepath.Join(walDir, "wal")
 
 	wal, err := NewWAL(walFile)
 	require.NoError(t, err)
 	err = wal.Start()
 	require.NoError(t, err)
-	defer func() {
+	t.Cleanup(func() {
 		if err := wal.Stop(); err != nil {
 			t.Error(err)
 		}
 		// wait for the wal to finish shutting down so we
 		// can safely remove the directory
 		wal.Wait()
-	}()
+	})
 
 	// 1) Write returns an error if msg is too big
 	msg := &BlockPartMessage{
@@ -166,7 +159,7 @@ func TestWALSearchForEndHeight(t *testing.T) {
 	assert.NoError(t, err, "expected not to err on height %d", h)
 	assert.True(t, found, "expected to find end height for %d", h)
 	assert.NotNil(t, gr)
-	defer gr.Close()
+	t.Cleanup(func() { _ = gr.Close() })
 
 	dec := NewWALDecoder(gr)
 	msg, err := dec.Decode()
@@ -177,12 +170,10 @@ func TestWALSearchForEndHeight(t *testing.T) {
 }
 
 func TestWALPeriodicSync(t *testing.T) {
-	walDir, err := ioutil.TempDir("", "wal")
-	require.NoError(t, err)
-	defer os.RemoveAll(walDir)
-
+	walDir := t.TempDir()
 	walFile := filepath.Join(walDir, "wal")
 	wal, err := NewWAL(walFile, autofile.GroupCheckDuration(1*time.Millisecond))
+
 	require.NoError(t, err)
 
 	wal.SetFlushInterval(walTestFlushInterval)
@@ -196,12 +187,12 @@ func TestWALPeriodicSync(t *testing.T) {
 	assert.NotZero(t, wal.Group().Buffered())
 
 	require.NoError(t, wal.Start())
-	defer func() {
+	t.Cleanup(func() {
 		if err := wal.Stop(); err != nil {
 			t.Error(err)
 		}
 		wal.Wait()
-	}()
+	})
 
 	time.Sleep(walTestFlushInterval + (10 * time.Millisecond))
 
@@ -239,7 +230,6 @@ func nBytes(n int) []byte {
 
 func benchmarkWalDecode(b *testing.B, n int) {
 	// registerInterfacesOnce()
-
 	buf := new(bytes.Buffer)
 	enc := NewWALEncoder(buf)
 

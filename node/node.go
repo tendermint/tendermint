@@ -439,7 +439,7 @@ func createTransport(
 			connFilters,
 			// ABCI query for address filtering.
 			func(_ p2p.ConnSet, c net.Conn, _ []net.IP) error {
-				res, err := proxyApp.Query().QuerySync(abci.RequestQuery{
+				res, err := proxyApp.Query().QuerySync(context.Background(), abci.RequestQuery{
 					Path: fmt.Sprintf("/p2p/filter/addr/%s", c.RemoteAddr().String()),
 				})
 				if err != nil {
@@ -457,7 +457,7 @@ func createTransport(
 			peerFilters,
 			// ABCI query for ID filtering.
 			func(_ p2p.IPeerSet, p p2p.Peer) error {
-				res, err := proxyApp.Query().QuerySync(abci.RequestQuery{
+				res, err := proxyApp.Query().QuerySync(context.Background(), abci.RequestQuery{
 					Path: fmt.Sprintf("/p2p/filter/id/%s", p.ID()),
 				})
 				if err != nil {
