@@ -9,8 +9,9 @@ import (
 // Provider provides information for the light client to sync (verification
 // happens in the client).
 type Provider interface {
-	// ChainID returns the blockchain ID.
-	ChainID() string
+	// String returns an identifier for the provider. This should be unique.
+	// This is only used for logging and returning errors.
+	String() string
 
 	// LightBlock returns the LightBlock that corresponds to the given
 	// height.

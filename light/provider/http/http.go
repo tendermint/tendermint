@@ -51,11 +51,6 @@ func NewWithClient(chainID string, client rpcclient.RemoteClient) provider.Provi
 	}
 }
 
-// ChainID returns a chainID this provider was configured with.
-func (p *http) ChainID() string {
-	return p.chainID
-}
-
 func (p *http) String() string {
 	return fmt.Sprintf("http{%s}", p.client.Remote())
 }

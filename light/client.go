@@ -626,7 +626,7 @@ func (c *Client) verifySequential(
 
 				// If some intermediate header is invalid, replace the primary and try
 				// again.
-				c.logger.Error("primary sent invalid header -> replacing", "err", err)
+				c.logger.Error("primary sent invalid header -> replacing", "err", err, "primary", c.primary)
 				replaceErr := c.replacePrimaryProvider()
 				if replaceErr != nil {
 					c.logger.Error("Can't replace primary", "err", replaceErr)
@@ -760,7 +760,7 @@ func (c *Client) verifySkippingAgainstPrimary(
 
 		// If some intermediate header is invalid, replace the primary and try
 		// again.
-		c.logger.Error("primary sent invalid header -> replacing", "err", err)
+		c.logger.Error("primary sent invalid header -> replacing", "err", err, "primary", c.primary)
 		replaceErr := c.replacePrimaryProvider()
 		if replaceErr != nil {
 			c.logger.Error("Can't replace primary", "err", replaceErr)
@@ -845,7 +845,7 @@ func (c *Client) Witnesses() []provider.Provider {
 // Cleanup removes all the data (headers and validator sets) stored. Note: the
 // client must be stopped at this point.
 func (c *Client) Cleanup() error {
-	c.logger.Info("Removing all the data")
+	c.logger.Info("Removing all light blocks")
 	c.latestTrustedBlock = nil
 	return c.trustedStore.Prune(0)
 }
@@ -924,7 +924,7 @@ func (c *Client) backwards(
 			"newHeight", interimHeader.Height,
 			"newHash", hash2str(interimHeader.Hash()))
 		if err := VerifyBackwards(interimHeader, verifiedHeader); err != nil {
-			c.logger.Error("primary sent invalid header -> replacing", "err", err)
+			c.logger.Error("primary sent invalid header -> replacing", "err", err, "primary", c.primary)
 			if replaceErr := c.replacePrimaryProvider(); replaceErr != nil {
 				c.logger.Error("Can't replace primary", "err", replaceErr)
 				// return original error
@@ -977,7 +977,7 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 	l, err := c.primary.LightBlock(ctx, height)
 	c.providerMutex.Unlock()
 	if err != nil {
-		c.logger.Debug("Error on light block request from primary", "error", err)
+		c.logger.Debug("Error on light block request from primary", "error", err, "provider", c.primary)
 		replaceErr := c.replacePrimaryProvider()
 		if replaceErr != nil {
 			return nil, fmt.Errorf("%v. Tried to replace primary but: %w", err.Error(), replaceErr)
