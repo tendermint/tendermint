@@ -44,7 +44,7 @@ Remote signers are crucial to operating secure and consistently up Validators. I
 
 #### Security
 
-[TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security) is widely adopted with the use of gRPC. The private validator server and client will require TLS files in order to run. This requires users to generate both client and server certificates for a TLS connection. Tendermint will provide a make command to help users with the generation of this.  A --insecure flag will be provided for development/testing purposes. 
+[TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security) is widely adopted with the use of gRPC. There are various forms of TLS (one-way & two-way). One way is the client identifying who the server is, while two way is both parties identifying the other. For Tendermints use case having both parties identifying each other provides and extra layer of security. This requires users to generate both client and server certificates for a TLS connection. [Certstrap](https://github.com/square/certstrap) is an alternative to openssl that reduces the complexity of creating and self signing certificates.  A --insecure flag will be provided for development/testing purposes. 
 
 #### Upgrade Path
 
