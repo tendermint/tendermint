@@ -74,16 +74,6 @@ var ErrLightClientAttack = errors.New("attempted attack detected." +
 // continue running the light client.
 var ErrNoWitnesses = errors.New("no witnesses connected. please reset light client")
 
-// ErrLightStore reflects an error that has occurred with the database that
-// the light client is using.
-type ErrLightStore struct {
-	Reason error
-}
-
-func (e ErrLightStore) Error() string {
-	return fmt.Sprintf("error with light client db: %v", e.Reason)
-}
-
 // ----------------------------- INTERNAL ERRORS ---------------------------------
 
 // ErrConflictingHeaders is thrown when two conflicting headers are discovered.
