@@ -45,13 +45,12 @@ func createMConnectionWithCallbacks(
 
 func TestMConnectionSendFlushStop(t *testing.T) {
 	server, client := NetPipe()
-	defer server.Close()
-	defer client.Close()
+	t.Cleanup(closeAll(t, client, server))
 
 	clientConn := createTestMConnection(client)
 	err := clientConn.Start()
 	require.Nil(t, err)
-	defer clientConn.Stop() // nolint:errcheck // ignore for tests
+	t.Cleanup(stopAll(t, clientConn))
 
 	msg := []byte("abc")
 	assert.True(t, clientConn.Send(0x01, msg))
@@ -83,13 +82,12 @@ func TestMConnectionSendFlushStop(t *testing.T) {
 
 func TestMConnectionSend(t *testing.T) {
 	server, client := NetPipe()
-	defer server.Close()
-	defer client.Close()
+	t.Cleanup(closeAll(t, client, server))
 
 	mconn := createTestMConnection(client)
 	err := mconn.Start()
 	require.Nil(t, err)
-	defer mconn.Stop() // nolint:errcheck // ignore for tests
+	t.Cleanup(stopAll(t, mconn))
 
 	msg := []byte("Ant-Man")
 	assert.True(t, mconn.Send(0x01, msg))
@@ -114,8 +112,7 @@ func TestMConnectionSend(t *testing.T) {
 
 func TestMConnectionReceive(t *testing.T) {
 	server, client := NetPipe()
-	defer server.Close()
-	defer client.Close()
+	t.Cleanup(closeAll(t, client, server))
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
@@ -128,12 +125,12 @@ func TestMConnectionReceive(t *testing.T) {
 	mconn1 := createMConnectionWithCallbacks(client, onReceive, onError)
 	err := mconn1.Start()
 	require.Nil(t, err)
-	defer mconn1.Stop() // nolint:errcheck // ignore for tests
+	t.Cleanup(stopAll(t, mconn1))
 
 	mconn2 := createTestMConnection(server)
 	err = mconn2.Start()
 	require.Nil(t, err)
-	defer mconn2.Stop() // nolint:errcheck // ignore for tests
+	t.Cleanup(stopAll(t, mconn2))
 
 	msg := []byte("Cyclops")
 	assert.True(t, mconn2.Send(0x01, msg))
@@ -150,13 +147,12 @@ func TestMConnectionReceive(t *testing.T) {
 
 func TestMConnectionStatus(t *testing.T) {
 	server, client := NetPipe()
-	defer server.Close()
-	defer client.Close()
+	t.Cleanup(closeAll(t, client, server))
 
 	mconn := createTestMConnection(client)
 	err := mconn.Start()
 	require.Nil(t, err)
-	defer mconn.Stop() // nolint:errcheck // ignore for tests
+	t.Cleanup(stopAll(t, mconn))
 
 	status := mconn.Status()
 	assert.NotNil(t, status)
@@ -165,8 +161,7 @@ func TestMConnectionStatus(t *testing.T) {
 
 func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 	server, client := net.Pipe()
-	defer server.Close()
-	defer client.Close()
+	t.Cleanup(closeAll(t, client, server))
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
@@ -179,7 +174,7 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
 	err := mconn.Start()
 	require.Nil(t, err)
-	defer mconn.Stop() // nolint:errcheck // ignore for tests
+	t.Cleanup(stopAll(t, mconn))
 
 	serverGotPing := make(chan struct{})
 	go func() {
@@ -204,8 +199,7 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 
 func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	server, client := net.Pipe()
-	defer server.Close()
-	defer client.Close()
+	t.Cleanup(closeAll(t, client, server))
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
@@ -218,7 +212,7 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
 	err := mconn.Start()
 	require.Nil(t, err)
-	defer mconn.Stop() // nolint:errcheck // ignore for tests
+	t.Cleanup(stopAll(t, mconn))
 
 	// sending 3 pongs in a row (abuse)
 	protoWriter := protoio.NewDelimitedWriter(server)
@@ -259,8 +253,7 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 
 func TestMConnectionMultiplePings(t *testing.T) {
 	server, client := net.Pipe()
-	defer server.Close()
-	defer client.Close()
+	t.Cleanup(closeAll(t, client, server))
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
@@ -273,7 +266,7 @@ func TestMConnectionMultiplePings(t *testing.T) {
 	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
 	err := mconn.Start()
 	require.Nil(t, err)
-	defer mconn.Stop() // nolint:errcheck // ignore for tests
+	t.Cleanup(stopAll(t, mconn))
 
 	// sending 3 pings in a row (abuse)
 	// see https://github.com/tendermint/tendermint/issues/1190
@@ -304,12 +297,10 @@ func TestMConnectionMultiplePings(t *testing.T) {
 
 func TestMConnectionPingPongs(t *testing.T) {
 	// check that we are not leaking any go-routines
-	defer leaktest.CheckTimeout(t, 10*time.Second)()
+	t.Cleanup(leaktest.CheckTimeout(t, 10*time.Second))
 
 	server, client := net.Pipe()
-
-	defer server.Close()
-	defer client.Close()
+	t.Cleanup(closeAll(t, client, server))
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
@@ -322,7 +313,7 @@ func TestMConnectionPingPongs(t *testing.T) {
 	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
 	err := mconn.Start()
 	require.Nil(t, err)
-	defer mconn.Stop() // nolint:errcheck // ignore for tests
+	t.Cleanup(stopAll(t, mconn))
 
 	serverGotPing := make(chan struct{})
 	go func() {
@@ -366,8 +357,7 @@ func TestMConnectionPingPongs(t *testing.T) {
 
 func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	server, client := NetPipe()
-	defer server.Close()
-	defer client.Close()
+	t.Cleanup(closeAll(t, client, server))
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
@@ -380,7 +370,7 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
 	err := mconn.Start()
 	require.Nil(t, err)
-	defer mconn.Stop() // nolint:errcheck // ignore for tests
+	t.Cleanup(stopAll(t, mconn))
 
 	if err := client.Close(); err != nil {
 		t.Error(err)
@@ -446,18 +436,7 @@ func TestMConnectionReadErrorBadEncoding(t *testing.T) {
 	_, err := client.Write([]byte{1, 2, 3, 4, 5})
 	require.NoError(t, err)
 	assert.True(t, expectSend(chOnErr), "badly encoded msgPacket")
-
-	t.Cleanup(func() {
-		if err := mconnClient.Stop(); err != nil {
-			t.Log(err)
-		}
-	})
-
-	t.Cleanup(func() {
-		if err := mconnServer.Stop(); err != nil {
-			t.Log(err)
-		}
-	})
+	t.Cleanup(stopAll(t, mconnClient, mconnServer))
 }
 
 func TestMConnectionReadErrorUnknownChannel(t *testing.T) {
@@ -473,18 +452,7 @@ func TestMConnectionReadErrorUnknownChannel(t *testing.T) {
 	// should cause an error
 	assert.True(t, mconnClient.Send(0x02, msg))
 	assert.True(t, expectSend(chOnErr), "unknown channel")
-
-	t.Cleanup(func() {
-		if err := mconnClient.Stop(); err != nil {
-			t.Log(err)
-		}
-	})
-
-	t.Cleanup(func() {
-		if err := mconnServer.Stop(); err != nil {
-			t.Log(err)
-		}
-	})
+	t.Cleanup(stopAll(t, mconnClient, mconnServer))
 }
 
 func TestMConnectionReadErrorLongMessage(t *testing.T) {
@@ -492,8 +460,7 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	chOnRcv := make(chan struct{})
 
 	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(t, chOnErr)
-	defer mconnClient.Stop() // nolint:errcheck // ignore for tests
-	defer mconnServer.Stop() // nolint:errcheck // ignore for tests
+	t.Cleanup(stopAll(t, mconnClient, mconnServer))
 
 	mconnServer.onReceive = func(chID byte, msgBytes []byte) {
 		chOnRcv <- struct{}{}
@@ -528,8 +495,7 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
 	chOnErr := make(chan struct{})
 	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(t, chOnErr)
-	defer mconnClient.Stop() // nolint:errcheck // ignore for tests
-	defer mconnServer.Stop() // nolint:errcheck // ignore for tests
+	t.Cleanup(stopAll(t, mconnClient, mconnServer))
 
 	// send msg with unknown msg type
 	_, err := protoio.NewDelimitedWriter(mconnClient.conn).WriteMsg(&types.Header{ChainID: "x"})
@@ -539,13 +505,12 @@ func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
 
 func TestMConnectionTrySend(t *testing.T) {
 	server, client := NetPipe()
-	defer server.Close()
-	defer client.Close()
+	t.Cleanup(closeAll(t, client, server))
 
 	mconn := createTestMConnection(client)
 	err := mconn.Start()
 	require.Nil(t, err)
-	defer mconn.Stop() // nolint:errcheck // ignore for tests
+	t.Cleanup(stopAll(t, mconn))
 
 	msg := []byte("Semicolon-Woman")
 	resultCh := make(chan string, 2)
@@ -585,5 +550,33 @@ func TestConnVectors(t *testing.T) {
 		require.NoError(t, err, tc.testName)
 
 		require.Equal(t, tc.expBytes, hex.EncodeToString(bz), tc.testName)
+	}
+}
+
+type stopper interface {
+	Stop() error
+}
+
+func stopAll(t *testing.T, stoppers ...stopper) func() {
+	return func() {
+		for _, s := range stoppers {
+			if err := s.Stop(); err != nil {
+				t.Log(err)
+			}
+		}
+	}
+}
+
+type closer interface {
+	Close() error
+}
+
+func closeAll(t *testing.T, closers ...closer) func() {
+	return func() {
+		for _, s := range closers {
+			if err := s.Close(); err != nil {
+				t.Log(err)
+			}
+		}
 	}
 }
