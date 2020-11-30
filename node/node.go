@@ -569,7 +569,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
 	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
 	stateStore sm.Store, blockStore *store.BlockStore, state sm.State) error {
-	ssR.Logger().Info("Starting state sync")
+	ssR.Logger.Info("Starting state sync")
 
 	if stateProvider == nil {
 		var err error
@@ -582,7 +582,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 				Period: config.TrustPeriod,
 				Height: config.TrustHeight,
 				Hash:   config.TrustHashBytes(),
-			}, ssR.Logger().With("module", "light"))
+			}, ssR.Logger.With("module", "light"))
 		if err != nil {
 			return fmt.Errorf("failed to set up light client state provider: %w", err)
 		}
@@ -591,17 +591,17 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	go func() {
 		state, commit, err := ssR.Sync(stateProvider, config.DiscoveryTime)
 		if err != nil {
-			ssR.Logger().Error("State sync failed", "err", err)
+			ssR.Logger.Error("State sync failed", "err", err)
 			return
 		}
 		err = stateStore.Bootstrap(state)
 		if err != nil {
-			ssR.Logger().Error("Failed to bootstrap node with new state", "err", err)
+			ssR.Logger.Error("Failed to bootstrap node with new state", "err", err)
 			return
 		}
 		err = blockStore.SaveSeenCommit(state.LastBlockHeight, commit)
 		if err != nil {
-			ssR.Logger().Error("Failed to store last seen commit", "err", err)
+			ssR.Logger.Error("Failed to store last seen commit", "err", err)
 			return
 		}
 
@@ -611,7 +611,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 			conR.Metrics.FastSyncing.Set(1)
 			err = bcR.SwitchToFastSync(state)
 			if err != nil {
-				ssR.Logger().Error("Failed to switch to fast sync", "err", err)
+				ssR.Logger.Error("Failed to switch to fast sync", "err", err)
 				return
 			}
 		} else {
@@ -753,8 +753,18 @@ func NewNode(config *cfg.Config,
 	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
-	stateSyncReactorShim := p2p.NewShim("StateSync", statesync.GetChannelShims())
+	stateSyncReactorShim := p2p.NewShim("StateSyncShim", statesync.ChannelShims)
 	stateSyncReactorShim.SetLogger(logger.With("module", "statesync"))
+
+	stateSyncReactor := statesync.NewReactor(
+		stateSyncReactorShim.Logger,
+		proxyApp.Snapshot(),
+		proxyApp.Query(),
+		stateSyncReactorShim.GetChannel(p2p.ChannelID(statesync.SnapshotChannel)),
+		stateSyncReactorShim.GetChannel(p2p.ChannelID(statesync.ChunkChannel)),
+		stateSyncReactorShim.PeerUpdateCh,
+		config.StateSync.TempDir,
+	)
 
 	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
 	if err != nil {
@@ -769,17 +779,6 @@ func NewNode(config *cfg.Config,
 	sw := createSwitch(
 		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
 		stateSyncReactorShim, consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
-	)
-
-	stateSyncReactor := statesync.NewReactor(
-		stateSyncReactorShim.Logger,
-		sw,
-		proxyApp.Snapshot(),
-		proxyApp.Query(),
-		stateSyncReactorShim.GetChannel(p2p.ChannelID(statesync.SnapshotChannel)),
-		stateSyncReactorShim.GetChannel(p2p.ChannelID(statesync.ChunkChannel)),
-		stateSyncReactorShim.PeerUpdateCh,
-		config.StateSync.TempDir,
 	)
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
@@ -922,7 +921,9 @@ func (n *Node) OnStart() error {
 
 	// Run state sync
 	if n.stateSync {
-		go n.stateSyncReactor.Run(n.reactorCtx)
+		if err := n.stateSyncReactor.Start(); err != nil {
+			return err
+		}
 
 		bcR, ok := n.bcReactor.(fastSyncReactor)
 		if !ok {
@@ -957,6 +958,12 @@ func (n *Node) OnStop() {
 	// now stop the reactors
 	if err := n.sw.Stop(); err != nil {
 		n.Logger.Error("Error closing switch", "err", err)
+	}
+
+	if n.stateSync {
+		if err := n.stateSyncReactor.Stop(); err != nil {
+			n.Logger.Error("failed to stop state sync service", "err", err)
+		}
 	}
 
 	// stop mempool WAL

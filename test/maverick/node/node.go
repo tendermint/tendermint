@@ -530,7 +530,7 @@ func createSwitch(config *cfg.Config,
 	peerFilters []p2p.PeerFilterFunc,
 	mempoolReactor *mempl.Reactor,
 	bcReactor p2p.Reactor,
-	stateSyncReactor *statesync.Reactor,
+	stateSyncReactor *p2p.ReactorShim,
 	consensusReactor *cs.Reactor,
 	evidenceReactor *evidence.Reactor,
 	nodeInfo p2p.NodeInfo,
@@ -793,9 +793,18 @@ func NewNode(config *cfg.Config,
 	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
-	stateSyncReactor := statesync.NewReactorDeprecated(proxyApp.Snapshot(), proxyApp.Query(),
-		config.StateSync.TempDir)
-	stateSyncReactor.SetLogger(logger.With("module", "statesync"))
+	stateSyncReactorShim := p2p.NewShim("StateSyncShim", statesync.ChannelShims)
+	stateSyncReactorShim.SetLogger(logger.With("module", "statesync"))
+
+	stateSyncReactor := statesync.NewReactor(
+		stateSyncReactorShim.Logger,
+		proxyApp.Snapshot(),
+		proxyApp.Query(),
+		stateSyncReactorShim.GetChannel(p2p.ChannelID(statesync.SnapshotChannel)),
+		stateSyncReactorShim.GetChannel(p2p.ChannelID(statesync.ChunkChannel)),
+		stateSyncReactorShim.PeerUpdateCh,
+		config.StateSync.TempDir,
+	)
 
 	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
 	if err != nil {
@@ -809,7 +818,7 @@ func NewNode(config *cfg.Config,
 	p2pLogger := logger.With("module", "p2p")
 	sw := createSwitch(
 		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
-		stateSyncReactor, consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
+		stateSyncReactorShim, consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
 	)
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
@@ -947,6 +956,10 @@ func (n *Node) OnStart() error {
 
 	// Run state sync
 	if n.stateSync {
+		if err := n.stateSyncReactor.Start(); err != nil {
+			return err
+		}
+
 		bcR, ok := n.bcReactor.(fastSyncReactor)
 		if !ok {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
@@ -978,6 +991,12 @@ func (n *Node) OnStop() {
 	// now stop the reactors
 	if err := n.sw.Stop(); err != nil {
 		n.Logger.Error("Error closing switch", "err", err)
+	}
+
+	if n.stateSync {
+		if err := n.stateSyncReactor.Stop(); err != nil {
+			n.Logger.Error("failed to stop state sync service", "err", err)
+		}
 	}
 
 	// stop mempool WAL
