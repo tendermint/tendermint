@@ -13,6 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
+	"google.golang.org/grpc"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -666,7 +667,8 @@ func NewNode(config *cfg.Config,
 	if config.PrivValidatorListenAddr != "" {
 		// FIXME: we should start services inside OnStart
 		if config.PrivValidatorProtocol == "grpc" {
-			privValidator, err = createAndStartPrivValidatorGRPCClient(config.PrivValidatorListenAddr, genDoc.ChainID, logger)
+			privValidator, err = createAndStartPrivValidatorGRPCClient(config.PrivValidatorListenAddr,
+				config.PrivValidatorClientCertificate, config.PrivValidatorClientKey, config.PrivValidatorCertificateAuthority, genDoc.ChainID, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator socket client: %w", err)
 			}
@@ -1389,11 +1391,20 @@ func createAndStartPrivValidatorSocketClient(
 
 func createAndStartPrivValidatorGRPCClient(
 	listenAddr string,
-	cert string,
+	cert, key, ca, chainID string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
 
-	dialOptions := ConstructDialOptions(cert)
+	var transportSecurity grpc.DialOption
+	if cert != "" && key != "" && ca != "" {
+		transportSecurity = generateTLS(cert, key, ca)
+	} else {
+		transportSecurity = grpc.WithInsecure()
+		logger.Error("Using an insecure gRPC connection! Please provide a certificate and key to use a secure connection.")
+	}
+	dialOptions := ConstructDialOptions()
+
+	dialOptions = append(dialOptions, transportSecurity)
 
 	pvsc, err := grpcprivval.NewSignerClient(listenAddr, dialOptions, logger)
 	if err != nil {

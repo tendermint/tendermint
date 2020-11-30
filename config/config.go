@@ -207,6 +207,15 @@ type BaseConfig struct { //nolint: maligned
 	// Defines which private validator protocol to use gRPC or tcp, unix socket
 	PrivValidatorProtocol string `mapstructure:"priv_validator_protocol"`
 
+	// Defines which private validator protocol to use gRPC or tcp, unix socket
+	PrivValidatorClientCertificate string `mapstructure:"priv_validator_client_certificate"`
+
+	// Defines which private validator protocol to use gRPC or tcp, unix socket
+	PrivValidatorClientKey string `mapstructure:"priv_validator_client_key"`
+
+	// Defines which private validator protocol to use gRPC or tcp, unix socket
+	PrivValidatorCertificateAuthority string `mapstructure:"priv_validator_certificate_authority"`
+
 	// A JSON file containing the private key to use for p2p authenticated encryption
 	NodeKey string `mapstructure:"node_key_file"`
 

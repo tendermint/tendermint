@@ -132,6 +132,19 @@ install_privval_server:
 	@go install -mod=readonly ./cmd/priv_val_server/...
 .PHONY: install_abci
 
+generate_test_cert:
+	# generate self signing ceritificate authority
+	@certstrap init --common-name "My Root CA" --expires "20 years"
+	# generate server cerificate
+	@certstrap request-cert -cn server -ip 127.0.0.1
+	# self-sign server cerificate with rootCA
+	@certstrap sign server --CA "My Root CA" 
+	# generate client cerificate
+	@certstrap request-cert -cn client -ip 127.0.0.1
+	# self-sign client cerificate with rootCA
+	@certstrap sign client --CA "My Root CA" 
+.PHONY: generate_test_cert
+
 ###############################################################################
 ###                              Distribution                               ###
 ###############################################################################

@@ -1,6 +1,9 @@
 package node
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"io/ioutil"
 	"strings"
 	"time"
 
@@ -34,22 +37,8 @@ func splitAndTrimEmpty(s, sep, cutset string) []string {
 
 // ConstructDialOptions constructs a list of grpc dial options
 func ConstructDialOptions(
-	withCert string,
 	extraOpts ...grpc.DialOption,
 ) []grpc.DialOption {
-	var transportSecurity grpc.DialOption
-	if withCert != "" {
-		creds, err := credentials.NewClientTLSFromFile(withCert, "")
-		if err != nil {
-			log.Errorf("Could not get valid credentials: %v", err)
-			return nil
-		}
-		transportSecurity = grpc.WithTransportCredentials(creds)
-	} else {
-		transportSecurity = grpc.WithInsecure()
-		log.Warn("Using an insecure gRPC connection! Please provide a certificate and key to use a secure connection.")
-	}
-
 	const (
 		retries            = 50 // 50 * 100ms = 5s total
 		timeout            = 100 * time.Millisecond
@@ -66,7 +55,6 @@ func ConstructDialOptions(
 	}
 
 	dialOpts := []grpc.DialOption{
-		transportSecurity,
 		grpc.WithKeepaliveParams(kacp),
 		grpc.WithDefaultCallOptions(
 			grpc.MaxCallRecvMsgSize(maxCallRecvMsgSize),
@@ -77,9 +65,36 @@ func ConstructDialOptions(
 		),
 	}
 
-	for _, opt := range extraOpts {
-		dialOpts = append(dialOpts, opt)
-	}
+	dialOpts = append(dialOpts, extraOpts...)
 
 	return dialOpts
+}
+
+func generateTLS(certPath, keyPath, ca string) grpc.DialOption {
+	certificate, err := tls.LoadX509KeyPair(
+		certPath,
+		keyPath,
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	certPool := x509.NewCertPool()
+	bs, err := ioutil.ReadFile(ca)
+	if err != nil {
+		log.Fatalf("failed to read ca cert: %s", err)
+	}
+
+	ok := certPool.AppendCertsFromPEM(bs)
+	if !ok {
+		log.Fatal("failed to append certs")
+	}
+
+	transportCreds := credentials.NewTLS(&tls.Config{
+		Certificates: []tls.Certificate{certificate},
+		RootCAs:      certPool,
+		MinVersion:   tls.VersionTLS13,
+	})
+
+	return grpc.WithTransportCredentials(transportCreds)
 }

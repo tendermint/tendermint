@@ -21,6 +21,7 @@ type SignerClient struct {
 	ctx           context.Context
 	privValidator privvalproto.PrivValidatorAPIClient
 	conn          *grpc.ClientConn
+	chainID       string
 	logger        log.Logger
 }
 
@@ -65,7 +66,7 @@ func (sc *SignerClient) Close() error {
 // GetPubKey retrieves a public key from a remote signer
 // returns an error if client is not able to provide the key
 func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
-	resp, err := sc.privValidator.GetPubKey(sc.ctx, &privvalproto.PubKeyRequest{})
+	resp, err := sc.privValidator.GetPubKey(sc.ctx, &privvalproto.PubKeyRequest{ChainId: sc.chainID})
 	if err != nil {
 		errStatus, _ := status.FromError(err)
 		sc.logger.Error("SignerClient::GetPubKey", "err", errStatus.Message())
@@ -82,7 +83,7 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 
 // SignVote requests a remote signer to sign a vote
 func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
-	resp, err := sc.privValidator.SignVote(sc.ctx, &privvalproto.SignVoteRequest{ChainId: chainID, Vote: vote})
+	resp, err := sc.privValidator.SignVote(sc.ctx, &privvalproto.SignVoteRequest{ChainId: sc.chainID, Vote: vote})
 	if err != nil {
 		errStatus, _ := status.FromError(err)
 		sc.logger.Error("Client SignVote", "err", errStatus.Message())

@@ -1,7 +1,10 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"flag"
+	"io/ioutil"
 	"os"
 
 	"google.golang.org/grpc"
@@ -22,6 +25,7 @@ func main() {
 		insecure         = flag.Bool("priv-insecure", false, "")
 		withCert         = flag.String("cert", "", "absolute path to server certificate")
 		withKey          = flag.String("key", "", "absolute path to server key")
+		rootCA           = flag.String("rootCA", "", "absolute path to root CA")
 
 		logger = log.NewTMLogger(
 			log.NewSyncWriter(os.Stdout),
@@ -41,11 +45,32 @@ func main() {
 
 	opts := []grpc.ServerOption{}
 	if !*insecure {
-		creds, err := credentials.NewServerTLSFromFile(*withCert, *withKey)
+
+		certificate, err := tls.LoadX509KeyPair(
+			*withCert,
+			*withKey,
+		)
+
+		certPool := x509.NewCertPool()
+		bs, err := ioutil.ReadFile(*rootCA)
 		if err != nil {
-			logger.Error("Could not load TLS keys:", "err", err)
+			logger.Error("failed to read client ca cert: %s", err)
 		}
-		opts = append(opts, grpc.Creds(creds))
+
+		ok := certPool.AppendCertsFromPEM(bs)
+		if !ok {
+			logger.Error("failed to append client certs")
+		}
+
+		tlsConfig := &tls.Config{
+			ClientAuth:   tls.RequireAndVerifyClientCert,
+			Certificates: []tls.Certificate{certificate},
+			ClientCAs:    certPool,
+			MinVersion:   tls.VersionSSL30,
+		}
+
+		creds := grpc.Creds(credentials.NewTLS(tlsConfig))
+		opts = append(opts, creds)
 	} else {
 		logger.Error("You are using an insecure gRPC connection! Provide a certificate and key to connect securely")
 	}
