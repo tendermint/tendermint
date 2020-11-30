@@ -32,8 +32,7 @@ import (
 )
 
 func TestNodeStartStop(t *testing.T) {
-	config := cfg.ResetTestRoot("node_node_test")
-	defer os.RemoveAll(config.RootDir)
+	config := cfg.SetupTestConfiguration(t)
 
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
@@ -94,8 +93,7 @@ func TestSplitAndTrimEmpty(t *testing.T) {
 }
 
 func TestNodeDelayedStart(t *testing.T) {
-	config := cfg.ResetTestRoot("node_delayed_start_test")
-	defer os.RemoveAll(config.RootDir)
+	config := cfg.SetupTestConfiguration(t)
 	now := tmtime.Now()
 
 	// create & start node
@@ -112,8 +110,7 @@ func TestNodeDelayedStart(t *testing.T) {
 }
 
 func TestNodeSetAppVersion(t *testing.T) {
-	config := cfg.ResetTestRoot("node_app_version_test")
-	defer os.RemoveAll(config.RootDir)
+	config := cfg.SetupTestConfiguration(t)
 
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
@@ -134,8 +131,7 @@ func TestNodeSetAppVersion(t *testing.T) {
 func TestNodeSetPrivValTCP(t *testing.T) {
 	addr := "tcp://" + testFreeAddr(t)
 
-	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
-	defer os.RemoveAll(config.RootDir)
+	config := cfg.SetupTestConfiguration(t)
 	config.BaseConfig.PrivValidatorListenAddr = addr
 
 	dialer := privval.DialTCPFn(addr, 100*time.Millisecond, ed25519.GenPrivKey())
@@ -157,7 +153,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 			panic(err)
 		}
 	}()
-	defer signerServer.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() { _ = signerServer.Stop() })
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
@@ -168,8 +164,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 	addrNoPrefix := testFreeAddr(t)
 
-	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
-	defer os.RemoveAll(config.RootDir)
+	config := cfg.SetupTestConfiguration(t)
 	config.BaseConfig.PrivValidatorListenAddr = addrNoPrefix
 
 	_, err := DefaultNewNode(config, log.TestingLogger())
@@ -178,10 +173,9 @@ func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 
 func TestNodeSetPrivValIPC(t *testing.T) {
 	tmpfile := "/tmp/kms." + tmrand.Str(6) + ".sock"
-	defer os.Remove(tmpfile) // clean up
+	t.Cleanup(func() { _ = os.Remove(tmpfile) })
 
-	config := cfg.ResetTestRoot("node_priv_val_tcp_test")
-	defer os.RemoveAll(config.RootDir)
+	config := cfg.SetupTestConfiguration(t)
 	config.BaseConfig.PrivValidatorListenAddr = "unix://" + tmpfile
 
 	dialer := privval.DialUnixFn(tmpfile)
@@ -201,7 +195,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 		err := pvsc.Start()
 		require.NoError(t, err)
 	}()
-	defer pvsc.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() { _ = pvsc.Stop() })
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
@@ -210,9 +204,10 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 
 // testFreeAddr claims a free port so we don't block on listener being ready.
 func testFreeAddr(t *testing.T) string {
+	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	return fmt.Sprintf("127.0.0.1:%d", ln.Addr().(*net.TCPAddr).Port)
 }
@@ -220,13 +215,12 @@ func testFreeAddr(t *testing.T) string {
 // create a proposal block using real and full
 // mempool and evidence pool and validate it.
 func TestCreateProposalBlock(t *testing.T) {
-	config := cfg.ResetTestRoot("node_create_proposal")
-	defer os.RemoveAll(config.RootDir)
+	config := cfg.SetupTestConfiguration(t)
 	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() { _ = proxyApp.Stop() })
 
 	logger := log.TestingLogger()
 
@@ -315,13 +309,12 @@ func TestCreateProposalBlock(t *testing.T) {
 }
 
 func TestMaxProposalBlockSize(t *testing.T) {
-	config := cfg.ResetTestRoot("node_create_proposal")
-	defer os.RemoveAll(config.RootDir)
+	config := cfg.SetupTestConfiguration(t)
 	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
 	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() { _ = proxyApp.Stop() })
 
 	logger := log.TestingLogger()
 
@@ -376,12 +369,9 @@ func TestMaxProposalBlockSize(t *testing.T) {
 }
 
 func TestNodeNewNodeCustomReactors(t *testing.T) {
-	config := cfg.ResetTestRoot("node_new_node_custom_reactors_test")
-	defer os.RemoveAll(config.RootDir)
-
+	config := cfg.SetupTestConfiguration(t)
 	cr := p2pmock.NewReactor()
 	customBlockchainReactor := p2pmock.NewReactor()
-
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	require.NoError(t, err)
 	pval, err := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
@@ -401,7 +391,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 
 	err = n.Start()
 	require.NoError(t, err)
-	defer n.Stop() //nolint:errcheck // ignore for tests
+	t.Cleanup(func() { _ = n.Stop() })
 
 	assert.True(t, cr.IsRunning())
 	assert.Equal(t, cr, n.Switch().Reactor("FOO"))
