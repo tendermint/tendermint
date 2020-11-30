@@ -68,7 +68,10 @@ var ConnDuplicateIPFilter ConnFilterFunc = func(cs ConnSet, c net.Conn, ips []ne
 }
 
 // mConnTransport is a Transport implementation using the current multiplexed
-// Tendermint protocol ("MConn").
+// Tendermint protocol ("MConn"). It inherits lots of code and logic from the
+// previous implementation for parity with the current P2P stack (such as
+// connection filtering, peer verification, and panic handling), this should be
+// moved out of the transport once the rest of the P2P stack is rewritten.
 type mConnTransport struct {
 	privKey      crypto.PrivKey
 	nodeInfo     DefaultNodeInfo
@@ -503,17 +506,12 @@ func (c *mConnConnection) handshake() (DefaultNodeInfo, error) {
 }
 
 // onReceive is a callback for MConnection received messages.
-func (c *mConnConnection) onReceive(chID byte, bz []byte) {
+func (c *mConnConnection) onReceive(chID byte, bz []byte, eof bool) error {
 	stream, ok := c.streams[chID]
 	if !ok {
-		c.logger.Error("received message for unknown channel", "channel", chID)
-		return
+		return fmt.Errorf("received message for unknown channel %v", chID)
 	}
-	err := stream.receive(bz)
-	if err != nil {
-		c.logger.Error(err.Error(), "channel", chID)
-		return
-	}
+	return stream.receive(bz, eof)
 }
 
 // onError is a callback for MConnection errors.
@@ -610,19 +608,31 @@ func (s *mConnStream) isClosed() bool {
 }
 
 // receive is used by the connection to provide data for the stream.
-func (s *mConnStream) receive(bz []byte) error {
-	// FIXME Need to avoid copying here
-	bzCopy := make([]byte, len(bz))
-	copy(bzCopy, bz)
-	select {
-	case s.chReceive <- bzCopy:
-		return nil
-	case <-s.chClose:
-		return fmt.Errorf("stream 0x%x has been closed", s.id)
+func (s *mConnStream) receive(bz []byte, eof bool) error {
+	if len(bz) > 0 {
+		select {
+		case s.chReceive <- bz:
+		case <-s.chClose:
+			return fmt.Errorf("stream 0x%x has been closed", s.id)
+		}
 	}
+	if eof {
+		select {
+		case s.chReceive <- []byte{}: // marker for end of logical message
+			return nil
+		case <-s.chClose:
+			return fmt.Errorf("stream 0x%x has been closed", s.id)
+		}
+	}
+	return nil
 }
 
 // Read implements Stream.
+//
+// FIXME For backwards compatibility with the old MConnection protocol
+// (which uses EOF markers at the end of logical messages instead of
+// e.g. length-prefixed framing), Read() will read 0 bytes to mark the
+// end of a logical message.
 func (s *mConnStream) Read(target []byte) (int, error) {
 	select {
 	case bz := <-s.chReceive:
@@ -633,8 +643,6 @@ func (s *mConnStream) Read(target []byte) (int, error) {
 		if len(bz) > len(target) {
 			return 0, io.ErrShortBuffer
 		}
-		// FIXME This copying may get too expensive, but is necessary due to
-		// the io.Reader API where the caller provides the target buffer.
 		copy(target, bz)
 		return len(bz), nil
 	case <-s.chClose:
@@ -643,6 +651,10 @@ func (s *mConnStream) Read(target []byte) (int, error) {
 }
 
 // Write implements Stream.
+//
+// FIXME For backwards compatibility with the old MConnection protocol (which
+// uses an EOF marker at the end of logical messages), a single Write() call has
+// to provide a single, complete logical message.
 func (s *mConnStream) Write(bz []byte) (int, error) {
 	if s.isClosed() {
 		return 0, fmt.Errorf("stream %v is closed", s.id)

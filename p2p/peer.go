@@ -162,6 +162,7 @@ func (p *peer) OnStart() error {
 	}
 
 	for _, chDesc := range p.chDescs {
+		chDesc := chDesc.FillDefaults()
 		stream, err := p.conn.Stream(uint16(chDesc.ID))
 		if err != nil {
 			return err
@@ -169,11 +170,12 @@ func (p *peer) OnStart() error {
 		p.streams[chDesc.ID] = stream
 		p.Logger.Error("opened stream", "peer", p.ID(), "channel", chDesc.ID)
 
-		go func(chDesc *tmconn.ChannelDescriptor, stream Stream, reactor Reactor) {
-			bz := make([]byte, chDesc.RecvMessageCapacity)
+		go func(chDesc tmconn.ChannelDescriptor, stream Stream, reactor Reactor) {
+			msg := make([]byte, 0)
+			buf := make([]byte, chDesc.RecvBufferCapacity)
 			for {
 				p.Logger.Error("reading from stream", "peer", p.ID(), "channel", chDesc.ID)
-				n, err := stream.Read(bz)
+				n, err := stream.Read(buf)
 				switch {
 				case errors.Is(err, io.EOF):
 					p.Logger.Debug("closed channel", "peer", p.ID(), "channel", chDesc.ID)
@@ -183,10 +185,23 @@ func (p *peer) OnStart() error {
 					p.Logger.Error(fmt.Sprintf("stream read failed: %v", err))
 					p.onPeerError(p, err)
 					return
+				// FIXME For backwards compatibility with old MConnection
+				// protocol, which uses message EOF markers to signify end of
+				// logical messages, we interpret empty byte slices and EOF
+				// markers.
+				case len(msg)+n > chDesc.RecvMessageCapacity:
+					p.Logger.Error("received too large message")
+					p.onPeerError(p, fmt.Errorf("message exceeds max channel capacity %vb", chDesc.RecvMessageCapacity))
+					return
+				case n == 0:
+					p.Logger.Error("passing message to reactor",
+						"msg", msg, "channel", chDesc.ID, "reactor", reactor)
+					reactor.Receive(chDesc.ID, p, msg)
+					msg = make([]byte, 0)
+				default:
+					p.Logger.Error("received message part", "n", n)
+					msg = append(msg, buf[:n]...)
 				}
-				p.Logger.Error(fmt.Sprintf("read %v bytes, passing to reactor", n),
-					"channel", chDesc.ID, "reactor", reactor)
-				reactor.Receive(chDesc.ID, p, bz[:n])
 			}
 		}(chDesc, stream, p.reactors[chDesc.ID])
 	}
@@ -397,7 +412,7 @@ func createMConnection(
 	config tmconn.MConnConfig,
 ) *tmconn.MConnection {
 
-	onReceive := func(chID byte, msgBytes []byte) {
+	onReceive := func(chID byte, msgBytes []byte, eof bool) error {
 		reactor := reactorsByCh[chID]
 		if reactor == nil {
 			// Note that its ok to panic here as it's caught in the conn._recover,
@@ -410,6 +425,7 @@ func createMConnection(
 		}
 		p.metrics.PeerReceiveBytesTotal.With(labels...).Add(float64(len(msgBytes)))
 		reactor.Receive(chID, p, msgBytes)
+		return nil
 	}
 
 	onError := func(r interface{}) {
