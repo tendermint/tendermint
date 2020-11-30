@@ -3,12 +3,13 @@ package config
 import (
 	"bytes"
 	"fmt"
-	tmos "github.com/tendermint/tendermint/libs/os"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
 // DefaultDirPerm is the default permissions used when creating directories.
@@ -508,7 +509,6 @@ func mustWriteFileHelper(t T, filePath string, contents []byte, mode os.FileMode
 		t.Fatalf("failed to write file: %v", err)
 	}
 }
-
 
 /****** these are for test settings ***********/
 
