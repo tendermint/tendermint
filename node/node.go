@@ -668,7 +668,8 @@ func NewNode(config *cfg.Config,
 		// FIXME: we should start services inside OnStart
 		if config.PrivValidatorProtocol == "grpc" {
 			privValidator, err = createAndStartPrivValidatorGRPCClient(config.PrivValidatorListenAddr,
-				config.PrivValidatorClientCertificate, config.PrivValidatorClientKey, config.PrivValidatorCertificateAuthority, genDoc.ChainID, logger)
+				config.PrivValidatorClientCertificate, config.PrivValidatorClientKey,
+				config.PrivValidatorCertificateAuthority, genDoc.ChainID, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator socket client: %w", err)
 			}
@@ -1415,10 +1416,6 @@ func createAndStartPrivValidatorGRPCClient(
 	if err != nil {
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
-	const (
-		retries = 50 // 50 * 100ms = 5s total
-		timeout = 100 * time.Millisecond
-	)
 
 	return pvsc, nil
 }
