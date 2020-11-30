@@ -820,15 +820,10 @@ func NewNode(config *cfg.Config,
 		}()
 	}
 
-	reactorCtx, cancel := context.WithCancel(context.Background())
-
 	node := &Node{
 		config:        config,
 		genesisDoc:    genDoc,
 		privValidator: privValidator,
-
-		reactorCtx: reactorCtx,
-		cancel:     cancel,
 
 		transport: transport,
 		sw:        sw,
