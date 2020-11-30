@@ -107,7 +107,7 @@ func TestReactorShim_GetChannels(t *testing.T) {
 }
 
 func TestReactorShim_AddPeer(t *testing.T) {
-	peerA, peerIDA := simplePeer(t, "AA")
+	peerA, peerIDA := simplePeer(t, "aa")
 
 	rts, teardown := setup(t, []p2p.Peer{peerA})
 
@@ -123,7 +123,7 @@ func TestReactorShim_AddPeer(t *testing.T) {
 }
 
 func TestReactorShim_RemovePeer(t *testing.T) {
-	peerA, peerIDA := simplePeer(t, "AA")
+	peerA, peerIDA := simplePeer(t, "aa")
 
 	rts, teardown := setup(t, []p2p.Peer{peerA})
 
@@ -151,7 +151,7 @@ func simplePeer(t *testing.T, id string) (*p2pmocks.Peer, p2p.PeerID) {
 }
 
 func TestReactorShim_Receive(t *testing.T) {
-	peerA, peerIDA := simplePeer(t, "AA")
+	peerA, peerIDA := simplePeer(t, "aa")
 
 	rts, teardown := setup(t, []p2p.Peer{peerA})
 
