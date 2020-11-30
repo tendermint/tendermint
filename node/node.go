@@ -180,10 +180,6 @@ type Node struct {
 	genesisDoc    *types.GenesisDoc   // initial validator set
 	privValidator types.PrivValidator // local node's validator key
 
-	// XXX: Needed to start/stop reactors with shims.
-	reactorCtx context.Context
-	cancel     context.CancelFunc
-
 	// network
 	transport   *p2p.MultiplexTransport
 	sw          *p2p.Switch  // p2p connections
@@ -947,8 +943,6 @@ func (n *Node) OnStop() {
 	if err := n.indexerService.Stop(); err != nil {
 		n.Logger.Error("Error closing indexerService", "err", err)
 	}
-
-	n.cancel()
 
 	// now stop the reactors
 	if err := n.sw.Stop(); err != nil {
