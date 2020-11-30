@@ -234,7 +234,7 @@ func TestDeriveSecretsAndChallengeGolden(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer f.Close()
+	t.Cleanup(closeAll(t, f))
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -258,8 +258,7 @@ func TestDeriveSecretsAndChallengeGolden(t *testing.T) {
 
 func TestNilPubkey(t *testing.T) {
 	var fooConn, barConn = makeKVStoreConnPair()
-	defer fooConn.Close()
-	defer barConn.Close()
+	t.Cleanup(closeAll(t, fooConn, barConn))
 	var fooPrvKey = ed25519.GenPrivKey()
 	var barPrvKey = privKeyWithNilPubKey{ed25519.GenPrivKey()}
 
@@ -272,8 +271,8 @@ func TestNilPubkey(t *testing.T) {
 
 func TestNonEd25519Pubkey(t *testing.T) {
 	var fooConn, barConn = makeKVStoreConnPair()
-	defer fooConn.Close()
-	defer barConn.Close()
+	t.Cleanup(closeAll(t, fooConn, barConn))
+
 	var fooPrvKey = ed25519.GenPrivKey()
 	var barPrvKey = sr25519.GenPrivKey()
 
