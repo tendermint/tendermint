@@ -2,7 +2,6 @@ package state_test
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -49,8 +48,7 @@ func TestStoreLoadValidators(t *testing.T) {
 func BenchmarkLoadValidators(b *testing.B) {
 	const valSetSize = 100
 
-	config := cfg.ResetTestRoot("state_")
-	defer os.RemoveAll(config.RootDir)
+	config := cfg.SetupTestConfiguration(b)
 	dbType := dbm.BackendType(config.DBBackend)
 	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())
 	require.NoError(b, err)

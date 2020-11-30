@@ -47,7 +47,7 @@ func TestReactorBroadcastTxsMessage(t *testing.T) {
 	// replace Connect2Switches (full mesh) with a func, which connects first
 	// reactor to others and nothing else, this test should also pass with >2 reactors.
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -69,7 +69,7 @@ func TestReactorBroadcastTxsMessage(t *testing.T) {
 func TestReactorConcurrency(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -130,7 +130,7 @@ func TestReactorConcurrency(t *testing.T) {
 func TestReactorNoBroadcastToSender(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -154,7 +154,7 @@ func TestReactor_MaxBatchBytes(t *testing.T) {
 	config.Mempool.MaxBatchBytes = 1024
 
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -196,7 +196,7 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -221,7 +221,7 @@ func TestBroadcastTxForPeerStopsWhenReactorStops(t *testing.T) {
 
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 
 	// stop reactors
 	for _, r := range reactors {
@@ -271,7 +271,7 @@ func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
 func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 1
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -302,15 +302,13 @@ func mempoolLogger() log.Logger {
 }
 
 // connect N mempool reactors through N switches
-func makeAndConnectReactors(config *cfg.Config, n int) []*Reactor {
+func makeAndConnectReactors(t *testing.T, config *cfg.Config, n int) []*Reactor {
 	reactors := make([]*Reactor, n)
 	logger := mempoolLogger()
 	for i := 0; i < n; i++ {
 		app := kvstore.NewApplication()
 		cc := proxy.NewLocalClientCreator(app)
-		mempool, cleanup := newMempoolWithApp(cc)
-		defer cleanup()
-
+		mempool := newMempoolWithApp(t, cc)
 		reactors[i] = NewReactor(config.Mempool, mempool) // so we dont start the consensus states
 		reactors[i].SetLogger(logger.With("validator", i))
 	}

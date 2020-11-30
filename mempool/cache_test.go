@@ -39,8 +39,7 @@ func TestCacheRemove(t *testing.T) {
 func TestCacheAfterUpdate(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mempool, cleanup := newMempoolWithApp(cc)
-	defer cleanup()
+	mempool := newMempoolWithApp(t, cc)
 
 	// reAddIndices & txsInCache can have elements > numTxsToCreate
 	// also assumes max index is 255 for convenience
