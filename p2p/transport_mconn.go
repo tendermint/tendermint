@@ -265,30 +265,24 @@ func (m *mConnTransport) Close() error {
 // filterTCPConn filters a TCP connection, rejecting it if this function errors.
 func (m *mConnTransport) filterTCPConn(tcpConn net.Conn) error {
 
-	// Reject if connection is already present.
 	if m.conns.Has(tcpConn) {
 		return ErrRejected{conn: tcpConn, isDuplicate: true}
 	}
 
-	// Resolve IPs for incoming connections.
 	host, _, err := net.SplitHostPort(tcpConn.RemoteAddr().String())
 	if err != nil {
 		return err
 	}
-	addrs, err := net.DefaultResolver.LookupIPAddr(context.Background(), host)
-	if err != nil {
-		return err
-	}
-	ips := []net.IP{}
-	for _, addr := range addrs {
-		ips = append(ips, addr.IP)
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return fmt.Errorf("connection address has invalid IP address %q", host)
 	}
 
 	// Apply filter callbacks.
 	chErr := make(chan error, len(m.connFilters))
 	for _, connFilter := range m.connFilters {
 		go func(connFilter ConnFilterFunc) {
-			chErr <- connFilter(m.conns, tcpConn, ips)
+			chErr <- connFilter(m.conns, tcpConn, []net.IP{ip})
 		}(connFilter)
 	}
 
@@ -304,10 +298,10 @@ func (m *mConnTransport) filterTCPConn(tcpConn net.Conn) error {
 
 	}
 
-	// FIXME Doesn't really make sense to set this here, but this is where
-	// we have access to IPs. Clean this up when we move connection tracking
-	// to the router.
-	m.conns.Set(tcpConn, ips)
+	// FIXME Doesn't really make sense to set this here, but we preserve the
+	// behavior from the previous P2P transport implementation. This should
+	// be moved to the router.
+	m.conns.Set(tcpConn, []net.IP{ip})
 	return nil
 }
 
