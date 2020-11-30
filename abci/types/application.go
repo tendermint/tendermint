@@ -1,7 +1,7 @@
 package types
 
 import (
-	context "golang.org/x/net/context"
+	"context"
 )
 
 // Application is an interface that enables any finite, deterministic state machine

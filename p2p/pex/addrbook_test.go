@@ -380,6 +380,7 @@ func TestAddrBookHasAddress(t *testing.T) {
 }
 
 func testCreatePrivateAddrs(t *testing.T, numAddrs int) ([]*p2p.NetAddress, []string) {
+	t.Helper()
 	addrs := make([]*p2p.NetAddress, numAddrs)
 	for i := 0; i < numAddrs; i++ {
 		addrs[i] = randIPv4Address(t)
@@ -689,6 +690,7 @@ func assertMOldAndNNewAddrsInSelection(t *testing.T, m, n int, addrs []*p2p.NetA
 }
 
 func createTempFileName(t *testing.T, prefix string) string {
+	t.Helper()
 	f, err := ioutil.TempFile("", prefix)
 	if err != nil {
 		panic(err)
@@ -705,6 +707,7 @@ func createTempFileName(t *testing.T, prefix string) string {
 }
 
 func createAddrBookWithMOldAndNNewAddrs(t *testing.T, nOld, nNew int) (book *addrBook, fname string) {
+	t.Helper()
 	fname = createTempFileName(t, "addrbook_test")
 
 	book = NewAddrBook(fname, true).(*addrBook)
