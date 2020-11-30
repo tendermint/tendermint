@@ -637,13 +637,13 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 
 			// The first two chunks are accepted, before the last one asks for b sender to be rejected
 			rts.conn.On("ApplySnapshotChunkSync", ctx, abci.RequestApplySnapshotChunk{
-				Index: 0, Chunk: []byte{0}, Sender: "AA",
+				Index: 0, Chunk: []byte{0}, Sender: "aa",
 			}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 			rts.conn.On("ApplySnapshotChunkSync", ctx, abci.RequestApplySnapshotChunk{
-				Index: 1, Chunk: []byte{1}, Sender: "BB",
+				Index: 1, Chunk: []byte{1}, Sender: "bb",
 			}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 			rts.conn.On("ApplySnapshotChunkSync", ctx, abci.RequestApplySnapshotChunk{
-				Index: 2, Chunk: []byte{2}, Sender: "CC",
+				Index: 2, Chunk: []byte{2}, Sender: "cc",
 			}).Once().Return(&abci.ResponseApplySnapshotChunk{
 				Result:        tc.result,
 				RejectSenders: []string{peerBID.String()},
@@ -652,7 +652,7 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 			// On retry, the last chunk will be tried again, so we just accept it then.
 			if tc.result == abci.ResponseApplySnapshotChunk_RETRY {
 				rts.conn.On("ApplySnapshotChunkSync", ctx, abci.RequestApplySnapshotChunk{
-					Index: 2, Chunk: []byte{2}, Sender: "CC",
+					Index: 2, Chunk: []byte{2}, Sender: "cc",
 				}).Once().Return(&abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
 			}
 
@@ -667,13 +667,13 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 
 			s1peers := rts.syncer.snapshots.GetPeers(s1)
 			require.Len(t, s1peers, 2)
-			require.EqualValues(t, "AA", s1peers[0].String())
-			require.EqualValues(t, "CC", s1peers[1].String())
+			require.EqualValues(t, "aa", s1peers[0].String())
+			require.EqualValues(t, "cc", s1peers[1].String())
 
 			rts.syncer.snapshots.GetPeers(s1)
 			require.Len(t, s1peers, 2)
-			require.EqualValues(t, "AA", s1peers[0].String())
-			require.EqualValues(t, "CC", s1peers[1].String())
+			require.EqualValues(t, "aa", s1peers[0].String())
+			require.EqualValues(t, "cc", s1peers[1].String())
 
 			require.NoError(t, chunks.Close())
 		})

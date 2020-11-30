@@ -315,16 +315,16 @@ func TestChunkQueue_GetSender(t *testing.T) {
 	queue, teardown := setupChunkQueue(t)
 	defer teardown()
 
-	peerAID := p2p.PeerID{0xAA}
-	peerBID := p2p.PeerID{0xBB}
+	peerAID := p2p.PeerID{0xaa}
+	peerBID := p2p.PeerID{0xbb}
 
 	_, err := queue.Add(&chunk{Height: 3, Format: 1, Index: 0, Chunk: []byte{1}, Sender: peerAID})
 	require.NoError(t, err)
 	_, err = queue.Add(&chunk{Height: 3, Format: 1, Index: 1, Chunk: []byte{2}, Sender: peerBID})
 	require.NoError(t, err)
 
-	assert.Equal(t, "AA", queue.GetSender(0).String())
-	assert.Equal(t, "BB", queue.GetSender(1).String())
+	assert.Equal(t, "aa", queue.GetSender(0).String())
+	assert.Equal(t, "bb", queue.GetSender(1).String())
 	assert.Equal(t, "", queue.GetSender(2).String())
 
 	// After the chunk has been processed, we should still know who the sender was
@@ -332,7 +332,7 @@ func TestChunkQueue_GetSender(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, chunk)
 	require.EqualValues(t, 0, chunk.Index)
-	assert.Equal(t, "AA", queue.GetSender(0).String())
+	assert.Equal(t, "aa", queue.GetSender(0).String())
 }
 
 func TestChunkQueue_Next(t *testing.T) {

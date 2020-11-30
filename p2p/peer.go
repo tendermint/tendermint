@@ -22,7 +22,7 @@ type PeerID []byte
 
 // String implements the fmt.Stringer interface for the PeerID type.
 func (pid PeerID) String() string {
-	return strings.ToUpper(hex.EncodeToString(pid))
+	return strings.ToLower(hex.EncodeToString(pid))
 }
 
 // PeerIDFromString returns a PeerID from an encoded string or an error upon
