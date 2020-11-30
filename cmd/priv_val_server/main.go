@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -50,23 +51,26 @@ func main() {
 			*withCert,
 			*withKey,
 		)
+		if err != nil {
+			panic(err)
+		}
 
 		certPool := x509.NewCertPool()
 		bs, err := ioutil.ReadFile(*rootCA)
 		if err != nil {
-			logger.Error("failed to read client ca cert: %s", err)
+			panic(fmt.Sprintf("failed to read client ca cert: %s", err))
 		}
 
 		ok := certPool.AppendCertsFromPEM(bs)
 		if !ok {
-			logger.Error("failed to append client certs")
+			panic("failed to append client certs")
 		}
 
 		tlsConfig := &tls.Config{
 			ClientAuth:   tls.RequireAndVerifyClientCert,
 			Certificates: []tls.Certificate{certificate},
 			ClientCAs:    certPool,
-			MinVersion:   tls.VersionSSL30,
+			MinVersion:   tls.VersionTLS13,
 		}
 
 		creds := grpc.Creds(credentials.NewTLS(tlsConfig))
