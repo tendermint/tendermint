@@ -169,7 +169,7 @@ func TestReactor_ChunkRequest(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			// mock ABCI connection to return local snapshots
 			conn := &proxymocks.AppConnSnapshot{}
-			conn.On("LoadSnapshotChunkSync", abci.RequestLoadSnapshotChunk{
+			conn.On("LoadSnapshotChunkSync", context.Background(), abci.RequestLoadSnapshotChunk{
 				Height: tc.request.Height,
 				Format: tc.request.Format,
 				Chunk:  tc.request.Index,
@@ -256,7 +256,7 @@ func TestReactor_SnapshotsRequest(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			// mock ABCI connection to return local snapshots
 			conn := &proxymocks.AppConnSnapshot{}
-			conn.On("ListSnapshotsSync", abci.RequestListSnapshots{}).Return(&abci.ResponseListSnapshots{
+			conn.On("ListSnapshotsSync", context.Background(), abci.RequestListSnapshots{}).Return(&abci.ResponseListSnapshots{
 				Snapshots: tc.snapshots,
 			}, nil)
 

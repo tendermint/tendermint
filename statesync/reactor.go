@@ -1,6 +1,7 @@
 package statesync
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -218,7 +219,7 @@ func (r *Reactor) processChunkCh() {
 			switch msg := envelope.Message.(type) {
 			case *ssproto.ChunkRequest:
 				r.Logger.Debug("received chunk request", "height", msg.Height, "format", msg.Format, "chunk", msg.Index, "peer", envelope.From.String())
-				resp, err := r.conn.LoadSnapshotChunkSync(abci.RequestLoadSnapshotChunk{
+				resp, err := r.conn.LoadSnapshotChunkSync(context.Background(), abci.RequestLoadSnapshotChunk{
 					Height: msg.Height,
 					Format: msg.Format,
 					Chunk:  msg.Index,
@@ -311,7 +312,7 @@ func (r *Reactor) handlePeerUpdate(peerUpdate p2p.PeerUpdate) {
 
 // recentSnapshots fetches the n most recent snapshots from the app
 func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
-	resp, err := r.conn.ListSnapshotsSync(abci.RequestListSnapshots{})
+	resp, err := r.conn.ListSnapshotsSync(context.Background(), abci.RequestListSnapshots{})
 	if err != nil {
 		return nil, err
 	}

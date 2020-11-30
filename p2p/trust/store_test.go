@@ -5,8 +5,6 @@ package trust
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,9 +15,7 @@ import (
 )
 
 func TestTrustMetricStoreSaveLoad(t *testing.T) {
-	dir, err := ioutil.TempDir("", "trust_test")
-	require.NoError(t, err)
-	defer os.Remove(dir)
+	dir := t.TempDir()
 
 	historyDB, err := dbm.NewDB("trusthistory", "goleveldb", dir)
 	require.NoError(t, err)
