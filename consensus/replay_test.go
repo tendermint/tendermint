@@ -627,7 +627,8 @@ func TestMockProxyApp(t *testing.T) {
 		mock.SetResponseCallback(proxyCb)
 
 		someTx := []byte("tx")
-		mock.DeliverTxAsync(abci.RequestDeliverTx{Tx: someTx})
+		_, err = mock.DeliverTxAsync(context.Background(), abci.RequestDeliverTx{Tx: someTx})
+		assert.NoError(t, err)
 	})
 	assert.True(t, validTxs == 1)
 	assert.True(t, invalidTxs == 0)
@@ -750,7 +751,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	}
 
 	// get the latest app hash from the app
-	res, err := proxyApp.Query().InfoSync(abci.RequestInfo{Version: ""})
+	res, err := proxyApp.Query().InfoSync(context.Background(), abci.RequestInfo{Version: ""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -797,7 +798,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateStore sm.Store,
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion // simulate handshake, receive app version
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
-	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
+	if _, err := proxyApp.Consensus().InitChainSync(context.Background(), abci.RequestInitChain{
 		Validators: validators,
 	}); err != nil {
 		panic(err)
@@ -847,7 +848,7 @@ func buildTMStateFromChain(
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion // simulate handshake, receive app version
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
-	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
+	if _, err := proxyApp.Consensus().InitChainSync(context.Background(), abci.RequestInitChain{
 		Validators: validators,
 	}); err != nil {
 		panic(err)
