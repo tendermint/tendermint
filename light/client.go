@@ -977,7 +977,7 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 	l, err := c.primary.LightBlock(ctx, height)
 	c.providerMutex.Unlock()
 	if err != nil {
-		c.logger.Debug("Error on light block request from primary", "error", err, "provider", c.primary)
+		c.logger.Debug("Error on light block request from primary", "error", err, "primary", c.primary)
 		replaceErr := c.replacePrimaryProvider()
 		if replaceErr != nil {
 			return nil, fmt.Errorf("%v. Tried to replace primary but: %w", err.Error(), replaceErr)
