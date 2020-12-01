@@ -1,6 +1,8 @@
 package p2p
 
 import (
+	"sync"
+
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -17,6 +19,8 @@ type Envelope struct {
 
 // Channel is a bidirectional channel for Protobuf message exchange with peers.
 type Channel struct {
+	once sync.Once
+
 	// ID contains the channel ID.
 	ID ChannelID
 
@@ -57,8 +61,11 @@ func NewChannel(
 // Close is intended to be called by the caller, whereas the sender must must
 // coordinate when to close the inbound channel.
 func (c *Channel) Close() error {
-	close(c.Out)
-	close(c.Error)
+	c.once.Do(func() {
+		close(c.Out)
+		close(c.Error)
+	})
+
 	return nil
 }
 
