@@ -17,6 +17,10 @@ import (
 var _ Reactor = (*ReactorShim)(nil)
 
 type (
+	messageValidator interface {
+		Validate() error
+	}
+
 	// ReactorShim defines a generic shim wrapper around a BaseReactor. It is
 	// responsible for wiring up legacy p2p behavior to the new p2p semantics
 	// (e.g. proxying Envelope messages to legacy peers).
@@ -278,14 +282,17 @@ func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 		return
 	}
 
-	wrapper, ok := msg.(Wrapper)
+	validator, ok := msg.(messageValidator)
 	if ok {
-		if err := wrapper.Validate(); err != nil {
+		if err := validator.Validate(); err != nil {
 			rs.Logger.Error("invalid message", "peer", src, "ch_id", cID, "msg", msg, "err", err)
 			rs.Switch.StopPeerForError(src, err)
 			return
 		}
+	}
 
+	wrapper, ok := msg.(Wrapper)
+	if ok {
 		var err error
 
 		msg, err = wrapper.Unwrap()

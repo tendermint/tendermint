@@ -72,6 +72,4 @@ type Wrapper interface {
 
 	// Unwrap will unwrap the inner message contained in this message.
 	Unwrap() (proto.Message, error)
-
-	Validate() error
 }
