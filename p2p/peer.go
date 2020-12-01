@@ -25,6 +25,11 @@ func (pid PeerID) String() string {
 	return strings.ToLower(hex.EncodeToString(pid))
 }
 
+// Empty returns true if the PeerID is considered empty.
+func (pid PeerID) Empty() bool {
+	return len(pid) == 0
+}
+
 // PeerIDFromString returns a PeerID from an encoded string or an error upon
 // decode failure.
 func PeerIDFromString(s string) (PeerID, error) {

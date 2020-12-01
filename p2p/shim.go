@@ -139,12 +139,14 @@ func (rs *ReactorShim) handlePeerErrors() {
 	for _, cs := range rs.Channels {
 		go func(cs *ChannelShim) {
 			for pErr := range cs.PeerErrCh {
-				peer := rs.Switch.peers.Get(ID(pErr.PeerID.String()))
-				if peer == nil {
-					panic(fmt.Sprintf("failed to handle peer error; failed to find peer (%s)", pErr.PeerID))
-				}
+				if !pErr.PeerID.Empty() {
+					peer := rs.Switch.peers.Get(ID(pErr.PeerID.String()))
+					if peer == nil {
+						panic(fmt.Sprintf("failed to handle peer error; failed to find peer (%s)", pErr.PeerID))
+					}
 
-				rs.Switch.StopPeerForError(peer, pErr.Err)
+					rs.Switch.StopPeerForError(peer, pErr.Err)
+				}
 			}
 		}(cs)
 	}
