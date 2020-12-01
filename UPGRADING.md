@@ -8,6 +8,10 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 * Added `AbciVersion` to `RequestInfo`. Applications should check that the ABCI version they expect is being used in order to avoid unimplemented changes errors.
 
+### Config Changes
+
+* `fast_sync = "v1"` is no longer supported. Please use `v2` instead.
+
 ## v0.34.0
 
 **Upgrading to Tendermint 0.34 requires a blockchain restart.**
@@ -117,7 +121,7 @@ Tendermint 0.34 includes new and updated consensus parameters.
 
 #### Evidence Parameters
 
-* `MaxBytes`, which caps the total amount of evidence. The default is 1048576 (1 MB). 
+* `MaxBytes`, which caps the total amount of evidence. The default is 1048576 (1 MB).
 
 ### Crypto
 
@@ -194,7 +198,7 @@ blockchains, we recommend that you check the chain ID.
 
 ### Version
 
-Version is now set through Go linker flags `ld_flags`. Applications that are using tendermint as a library should set this at compile time. 
+Version is now set through Go linker flags `ld_flags`. Applications that are using tendermint as a library should set this at compile time.
 
 Example:
 
@@ -202,7 +206,7 @@ Example:
 go install -mod=readonly -ldflags "-X github.com/tendermint/tendermint/version.TMCoreSemVer=$(go list -m github.com/tendermint/tendermint | sed  's/ /\@/g') -s -w " -trimpath ./cmd
 ```
 
-Additionally, the exported constant `version.Version` is now `version.TMCoreSemVer`. 
+Additionally, the exported constant `version.Version` is now `version.TMCoreSemVer`.
 
 ## v0.33.4
 
