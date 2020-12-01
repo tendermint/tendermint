@@ -78,6 +78,18 @@ func setup(
 	return rts, teardown
 }
 
+func simplePeer(t *testing.T, id string) (*p2pmocks.Peer, p2p.PeerID) {
+	t.Helper()
+
+	peer := &p2pmocks.Peer{}
+	peer.On("ID").Return(p2p.ID(id))
+
+	pID, err := p2p.PeerIDFromString(string(peer.ID()))
+	require.NoError(t, err)
+
+	return peer, pID
+}
+
 func TestReactorShim_GetChannel(t *testing.T) {
 	rts, teardown := setup(t, nil)
 
@@ -115,9 +127,18 @@ func TestReactorShim_AddPeer(t *testing.T) {
 		teardown()
 	})
 
-	rts.shim.AddPeer(peerA)
+	var wg sync.WaitGroup
+	wg.Add(1)
 
-	peerUpdate := <-rts.shim.PeerUpdateCh
+	var peerUpdate p2p.PeerUpdate
+	go func() {
+		peerUpdate = <-rts.shim.PeerUpdateCh
+		wg.Done()
+	}()
+
+	rts.shim.AddPeer(peerA)
+	wg.Wait()
+
 	require.Equal(t, peerIDA, peerUpdate.PeerID)
 	require.Equal(t, p2p.PeerStatusUp, peerUpdate.Status)
 }
@@ -131,23 +152,20 @@ func TestReactorShim_RemovePeer(t *testing.T) {
 		teardown()
 	})
 
-	rts.shim.RemovePeer(peerA, "test reason")
+	var wg sync.WaitGroup
+	wg.Add(1)
 
-	peerUpdate := <-rts.shim.PeerUpdateCh
+	var peerUpdate p2p.PeerUpdate
+	go func() {
+		peerUpdate = <-rts.shim.PeerUpdateCh
+		wg.Done()
+	}()
+
+	rts.shim.RemovePeer(peerA, "test reason")
+	wg.Wait()
+
 	require.Equal(t, peerIDA, peerUpdate.PeerID)
 	require.Equal(t, p2p.PeerStatusDown, peerUpdate.Status)
-}
-
-func simplePeer(t *testing.T, id string) (*p2pmocks.Peer, p2p.PeerID) {
-	t.Helper()
-
-	peer := &p2pmocks.Peer{}
-	peer.On("ID").Return(p2p.ID(id))
-
-	pID, err := p2p.PeerIDFromString(string(peer.ID()))
-	require.NoError(t, err)
-
-	return peer, pID
 }
 
 func TestReactorShim_Receive(t *testing.T) {

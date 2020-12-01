@@ -220,10 +220,8 @@ func (rs *ReactorShim) AddPeer(peer Peer) {
 		panic(err)
 	}
 
-	go func() {
-		rs.PeerUpdateCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusUp}
-		rs.Logger.Debug("sent peer update", "reactor", rs.Name, "peer", peerID.String(), "status", PeerStatusUp)
-	}()
+	rs.PeerUpdateCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusUp}
+	rs.Logger.Debug("sent peer update", "reactor", rs.Name, "peer", peerID.String(), "status", PeerStatusUp)
 }
 
 // RemovePeer sends a PeerUpdate with status PeerStatusDown on the PeerUpdateCh.
@@ -237,16 +235,14 @@ func (rs *ReactorShim) RemovePeer(peer Peer, reason interface{}) {
 		panic(err)
 	}
 
-	go func() {
-		rs.PeerUpdateCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusDown}
-		rs.Logger.Debug(
-			"sent peer update",
-			"reactor", rs.Name,
-			"peer", peerID.String(),
-			"reason", reason,
-			"status", PeerStatusDown,
-		)
-	}()
+	rs.PeerUpdateCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusDown}
+	rs.Logger.Debug(
+		"sent peer update",
+		"reactor", rs.Name,
+		"peer", peerID.String(),
+		"reason", reason,
+		"status", PeerStatusDown,
+	)
 }
 
 // Receive implements a generic wrapper around implementing the Receive method
