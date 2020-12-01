@@ -32,7 +32,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [abci/client] \#5673 `Async` requests return an error if queue is full (@melekes)
 - [mempool] \#5673 Cancel `CheckTx` requests if RPC client disconnects or times out (@melekes)
 - [abci] \#5706 Added `AbciVersion` to `RequestInfo` allowing applications to check ABCI version when connecting to Tendermint. (@marbar3778)
-- [libs/bits] \#5720 Copy elems and validate BitArray in FromProto (@melekes)
+- [libs/bits] \#5720 Validate `BitArray` in `FromProto` (@melekes)
 
 ### BUG FIXES
 
