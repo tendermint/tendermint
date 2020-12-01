@@ -67,7 +67,7 @@ func setup(
 	}
 
 	rts.snapshotChannel = p2p.NewChannel(
-		p2p.ChannelID(SnapshotChannel),
+		SnapshotChannel,
 		new(ssproto.Message),
 		rts.snapshotInCh,
 		rts.snapshotOutCh,
@@ -75,7 +75,7 @@ func setup(
 	)
 
 	rts.chunkChannel = p2p.NewChannel(
-		p2p.ChannelID(ChunkChannel),
+		ChunkChannel,
 		new(ssproto.Message),
 		rts.chunkInCh,
 		rts.chunkOutCh,

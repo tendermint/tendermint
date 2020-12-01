@@ -29,19 +29,19 @@ var (
 	// TODO: Remove once p2p refactor is complete.
 	// ref: https://github.com/tendermint/tendermint/issues/5670
 	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
-		p2p.ChannelID(SnapshotChannel): {
+		SnapshotChannel: {
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  SnapshotChannel,
+				ID:                  byte(SnapshotChannel),
 				Priority:            3,
 				SendQueueCapacity:   10,
 				RecvMessageCapacity: snapshotMsgSize,
 			},
 		},
-		p2p.ChannelID(ChunkChannel): {
+		ChunkChannel: {
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
-				ID:                  ChunkChannel,
+				ID:                  byte(ChunkChannel),
 				Priority:            1,
 				SendQueueCapacity:   4,
 				RecvMessageCapacity: chunkMsgSize,
@@ -52,9 +52,11 @@ var (
 
 const (
 	// SnapshotChannel exchanges snapshot metadata
-	SnapshotChannel = byte(0x60)
+	SnapshotChannel = p2p.ChannelID(0x60)
+
 	// ChunkChannel exchanges chunk contents
-	ChunkChannel = byte(0x61)
+	ChunkChannel = p2p.ChannelID(0x61)
+
 	// recentSnapshots is the number of recent snapshots to send and receive per peer.
 	recentSnapshots = 10
 )
