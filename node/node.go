@@ -1407,7 +1407,7 @@ func createAndStartPrivValidatorGRPCClient(
 
 	dialOptions = append(dialOptions, transportSecurity)
 
-	pvsc, err := grpcprivval.NewSignerClient(listenAddr, dialOptions, logger)
+	pvsc, err := grpcprivval.NewSignerClient(listenAddr, chainID, dialOptions, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}

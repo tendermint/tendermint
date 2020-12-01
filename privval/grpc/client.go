@@ -29,7 +29,7 @@ var _ types.PrivValidator = (*SignerClient)(nil)
 
 // NewSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func NewSignerClient(target string,
+func NewSignerClient(target, chainID string,
 	opts []grpc.DialOption, log log.Logger) (*SignerClient, error) {
 	if target == "" {
 		return nil, fmt.Errorf("target connection parameter missing. endpoint %s", target)
@@ -44,6 +44,7 @@ func NewSignerClient(target string,
 
 	sc := &SignerClient{
 		ctx:           ctx,
+		chainID:       chainID,
 		privValidator: privvalproto.NewPrivValidatorAPIClient(conn), // Create the Private Validator Client
 		logger:        log,
 	}
