@@ -2,10 +2,11 @@ package light_test
 
 import (
 	"context"
-	"github.com/tendermint/tendermint/crypto"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

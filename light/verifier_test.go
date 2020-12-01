@@ -2,9 +2,10 @@ package light_test
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 

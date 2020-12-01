@@ -2,10 +2,11 @@ package p2p
 
 import (
 	"bytes"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/tendermint/tendermint/crypto/bls12381"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -3,13 +3,14 @@ package types
 import (
 	"bytes"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	"math"
 	"sort"
 	"strings"
 	"testing"
 	"testing/quick"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto/bls12381"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -280,7 +280,7 @@ func MaxDataBytes(maxBytes int64, keyType crypto.KeyType, evidenceBytes int64, v
 	maxDataBytes := maxBytes -
 		MaxOverheadForBlock -
 		MaxHeaderBytes -
-		MaxCommitBytes(valsCount,keyType) -
+		MaxCommitBytes(valsCount, keyType) -
 		evidenceBytes
 
 	if maxDataBytes < 0 {

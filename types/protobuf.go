@@ -15,9 +15,9 @@ import (
 // Use strings to distinguish types in ABCI messages
 
 const (
-	ABCIPubKeyTypeEd25519   = ed25519.KeyType
-	ABCIPubKeyTypeSecp256k1 = secp256k1.KeyType
-	ABCIPubKeyTypeBLS12381 = bls12381.KeyType
+	ABCIPubKeyTypeEd25519            = ed25519.KeyType
+	ABCIPubKeyTypeSecp256k1          = secp256k1.KeyType
+	ABCIPubKeyTypeBLS12381           = bls12381.KeyType
 	ABCIEvidenceTypeDuplicateVote    = "duplicate/vote"
 	ABCIEvidenceTypePhantom          = "phantom"
 	ABCIEvidenceTypeLunatic          = "lunatic"
@@ -30,7 +30,7 @@ const (
 var ABCIPubKeyTypesToNames = map[string]string{
 	ABCIPubKeyTypeEd25519:   ed25519.PubKeyName,
 	ABCIPubKeyTypeSecp256k1: secp256k1.PubKeyName,
-	ABCIPubKeyTypeBLS12381: bls12381.PubKeyName,
+	ABCIPubKeyTypeBLS12381:  bls12381.PubKeyName,
 }
 
 //-------------------------------------------------------

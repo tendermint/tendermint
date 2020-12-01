@@ -15,8 +15,8 @@ import (
 const (
 	nilVoteStr string = "nil-Vote"
 	// MaxVoteBytes is a maximum vote size (including amino overhead).
-	MaxVoteBytesBLS12381 int64  = 241
-	MaxVoteBytesEd25519 int64 = 209
+	MaxVoteBytesBLS12381 int64 = 241
+	MaxVoteBytesEd25519  int64 = 209
 )
 
 func MaxVoteBytesForKeyType(keyType crypto.KeyType) int64 {

@@ -1,8 +1,9 @@
 package p2p
 
 import (
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	"testing"
+
+	"github.com/tendermint/tendermint/crypto/ed25519"
 
 	"github.com/stretchr/testify/assert"
 )

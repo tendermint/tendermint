@@ -451,16 +451,16 @@ func TestBlockMaxDataBytes(t *testing.T) {
 		panics        bool
 		result        int64
 	}{
-		0: {-10, crypto.Ed25519, 1, 0, true, 0},
-		1: {10, crypto.Ed25519, 1, 0, true, 0},
-		2: {841, crypto.Ed25519, 1, 0, true, 0},
-		3: {842, crypto.Ed25519, 1, 0, false, 0},
-		4: {843, crypto.Ed25519, 1, 0, false, 1},
-		5: {954, crypto.Ed25519, 2, 0, false, 1},
-		6: {1053, crypto.Ed25519, 2, 100, false, 0},
-		7: {874, crypto.BLS12381, 1, 0, true, 0},
-		8: {875, crypto.BLS12381, 1, 0, false, 0},
-		9: {876, crypto.BLS12381, 1, 0, false, 1},
+		0:  {-10, crypto.Ed25519, 1, 0, true, 0},
+		1:  {10, crypto.Ed25519, 1, 0, true, 0},
+		2:  {841, crypto.Ed25519, 1, 0, true, 0},
+		3:  {842, crypto.Ed25519, 1, 0, false, 0},
+		4:  {843, crypto.Ed25519, 1, 0, false, 1},
+		5:  {954, crypto.Ed25519, 2, 0, false, 1},
+		6:  {1053, crypto.Ed25519, 2, 100, false, 0},
+		7:  {874, crypto.BLS12381, 1, 0, true, 0},
+		8:  {875, crypto.BLS12381, 1, 0, false, 0},
+		9:  {876, crypto.BLS12381, 1, 0, false, 1},
 		10: {1020, crypto.BLS12381, 2, 0, false, 1},
 		11: {1119, crypto.BLS12381, 2, 100, false, 0},
 	}
@@ -485,19 +485,19 @@ func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 	testCases := []struct {
 		maxBytes    int64
 		maxEvidence uint32
-		keyType       crypto.KeyType
+		keyType     crypto.KeyType
 		valsCount   int
 		panics      bool
 		result      int64
 	}{
-		0: {-10, 1, crypto.Ed25519,1, true, 0},
-		1: {10, 1, crypto.Ed25519,1, true, 0},
-		2: {841, 1, crypto.Ed25519,1, true, 0},
-		3: {842, 1, crypto.Ed25519,1, false, 0},
-		4: {843, 1, crypto.Ed25519,1, false, 1},
-		5: {874, 1, crypto.BLS12381,1, true, 0},
-		6: {875, 1, crypto.BLS12381,1, false, 0},
-		7: {876, 1, crypto.BLS12381,1, false, 1},
+		0: {-10, 1, crypto.Ed25519, 1, true, 0},
+		1: {10, 1, crypto.Ed25519, 1, true, 0},
+		2: {841, 1, crypto.Ed25519, 1, true, 0},
+		3: {842, 1, crypto.Ed25519, 1, false, 0},
+		4: {843, 1, crypto.Ed25519, 1, false, 1},
+		5: {874, 1, crypto.BLS12381, 1, true, 0},
+		6: {875, 1, crypto.BLS12381, 1, false, 0},
+		7: {876, 1, crypto.BLS12381, 1, false, 1},
 	}
 
 	for i, tc := range testCases {

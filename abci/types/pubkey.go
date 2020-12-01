@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	PubKeyEd25519 = "ed25519"
+	PubKeyEd25519  = "ed25519"
 	PubKeyBLS12381 = "bls12381"
 )
 

@@ -2,6 +2,7 @@ package encoding
 
 import (
 	"fmt"
+
 	"github.com/tendermint/tendermint/crypto/bls12381"
 
 	"github.com/tendermint/tendermint/crypto"

@@ -1,9 +1,10 @@
 package light_test
 
 import (
+	"time"
+
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"time"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -194,7 +195,7 @@ func genMockNodeWithKeys(
 		headers         = make(map[int64]*types.SignedHeader, blockSize)
 		valset          = make(map[int64]*types.ValidatorSet, blockSize+1)
 		keymap          = make(map[int64]privKeys, blockSize+1)
-		keys            = genPrivKeys(valSize,crypto.BLS12381)
+		keys            = genPrivKeys(valSize, crypto.BLS12381)
 		totalVariation  = valVariation
 		valVariationInt int
 		newKeys         privKeys

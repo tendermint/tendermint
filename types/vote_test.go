@@ -1,9 +1,10 @@
 package types
 
 import (
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto/bls12381"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
@@ -216,7 +217,6 @@ func TestVoteVerify(t *testing.T) {
 		assert.Equal(t, ErrVoteInvalidSignature, err)
 	}
 }
-
 
 func TestVoteString(t *testing.T) {
 	str := examplePrecommit().String()

@@ -3,8 +3,9 @@ package state
 import (
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
