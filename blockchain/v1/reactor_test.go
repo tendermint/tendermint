@@ -235,11 +235,9 @@ func TestFastSyncNoBlockResponse(t *testing.T) {
 	}
 }
 
-// NOTE: This is too hard to test without
-// an easy way to add test peer to switch
-// or without significant refactoring of the module.
-// Alternatively we could actually dial a TCP conn but
-// that seems extreme.
+// NOTE: This is too hard to test without an easy way to add test peer to
+// switch or without significant refactoring of the module. Alternatively we
+// could actually dial a TCP conn but that seems extreme.
 func TestFastSyncBadBlockStopsPeer(t *testing.T) {
 	numNodes := 4
 	maxBlockHeight := int64(148)
