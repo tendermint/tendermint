@@ -27,7 +27,7 @@ func TestPeerIDFromString(t *testing.T) {
 	}{
 		"empty peer ID string":   {"", PeerID{}, false},
 		"invalid peer ID string": {"foo", nil, true},
-		"valid peer ID string":   {"FF", PeerID{0xFF}, false},
+		"valid peer ID string":   {"ff", PeerID{0xFF}, false},
 	}
 
 	for name, tc := range testCases {
@@ -42,7 +42,7 @@ func TestPeerIDFromString(t *testing.T) {
 
 func TestPeerID_String(t *testing.T) {
 	require.Equal(t, "", PeerID{}.String())
-	require.Equal(t, "FF", PeerID{0xFF}.String())
+	require.Equal(t, "ff", PeerID{0xFF}.String())
 }
 
 func TestPeerID_Equal(t *testing.T) {
