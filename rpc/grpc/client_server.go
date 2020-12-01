@@ -1,9 +1,9 @@
 package coregrpc
 
 import (
+	"context"
 	"net"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	tmnet "github.com/tendermint/tendermint/libs/net"
