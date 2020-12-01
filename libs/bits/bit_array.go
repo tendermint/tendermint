@@ -428,9 +428,7 @@ func (bA *BitArray) ToProto() *tmprotobits.BitArray {
 		return nil
 	}
 
-	pbA := &tmprotobits.BitArray{Bits: int64(bA.Bits), Elems: make([]uint64, len(bA.Elems))}
-	copy(pbA.Elems, bA.Elems)
-	return pbA
+	return &tmprotobits.BitArray{Bits: int64(bA.Bits), Elems: bA.Elems}
 }
 
 // FromProto sets BitArray to the given protoBitArray. It returns an error if
@@ -453,8 +451,7 @@ func (bA *BitArray) FromProto(protoBitArray *tmprotobits.BitArray) error {
 	}
 
 	bA.Bits = int(protoBitArray.Bits)
-	bA.Elems = make([]uint64, len(protoBitArray.Elems))
-	copy(bA.Elems, protoBitArray.Elems)
+	bA.Elems = protoBitArray.Elems
 	return nil
 }
 
