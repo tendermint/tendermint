@@ -53,7 +53,7 @@ type (
 	}
 )
 
-func NewShim(name string, descriptors map[ChannelID]*ChannelDescriptorShim) *ReactorShim {
+func NewReactorShim(name string, descriptors map[ChannelID]*ChannelDescriptorShim) *ReactorShim {
 	channels := make(map[ChannelID]*ChannelShim)
 
 	for _, cds := range descriptors {
