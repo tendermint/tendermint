@@ -28,12 +28,13 @@ type privKeys []crypto.PrivKey
 func genPrivKeys(n int, keyType crypto.KeyType) privKeys {
 	res := make(privKeys, n)
 	for i := range res {
-		if keyType == crypto.BLS12381 {
+		switch keyType {
+		case crypto.BLS12381:
 			res[i] = bls12381.GenPrivKey()
-		} else if keyType == crypto.Ed25519 {
+		case crypto.Ed25519:
 			res[i] = ed25519.GenPrivKey()
-		} else {
-			res[i] = ed25519.GenPrivKey()
+		default:
+			panic("genPrivKeys: unsupported keyType received")
 		}
 	}
 	return res

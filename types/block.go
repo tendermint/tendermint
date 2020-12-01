@@ -628,8 +628,8 @@ func MaxCommitBytes(valCount int, keyType crypto.KeyType) int64 {
 	// From the repeated commit sig field
 	var maxCommitBytes = MaxCommitSigBytesForKeyType(keyType)
 	var protoEncodingOverhead int64
-	//protobuff encodes up to signed 128 bits with 2 extra bits, more would take 3 or more. While we could have more than 3
-	// in the case of very large signatures (maybe lattice based signatures), this is good enough for now
+	// protobuff encodes up to signed 128 bits with 2 extra bits, more would take 3 or more. While we could have more
+	// than 3 in the case of very large signatures (maybe lattice based signatures), this is good enough for now
 	if maxCommitBytes < 128 {
 		protoEncodingOverhead = 2
 	} else {

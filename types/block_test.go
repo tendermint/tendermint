@@ -464,7 +464,7 @@ func TestBlockMaxDataBytes(t *testing.T) {
 		10: {1020, crypto.BLS12381, 2, 0, false, 1},
 		11: {1119, crypto.BLS12381, 2, 100, false, 0},
 	}
-	//An extra 33 bytes (32 for sig, 1 for proto encoding are needed for BLS compared to edwards per validator
+	// An extra 33 bytes (32 for sig, 1 for proto encoding are needed for BLS compared to edwards per validator
 
 	for i, tc := range testCases {
 		tc := tc

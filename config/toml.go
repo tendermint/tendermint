@@ -502,41 +502,6 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 	return config
 }
 
-var testEd25519GenesisFmt = `{
-  "genesis_time": "2018-10-10T08:20:13.695936996Z",
-  "chain_id": "%s",
-  "initial_height": "1",
-	"consensus_params": {
-		"block": {
-			"max_bytes": "22020096",
-			"max_gas": "-1",
-			"time_iota_ms": "10"
-		},
-		"evidence": {
-			"max_age_num_blocks": "100000",
-			"max_age_duration": "172800000000000",
-			"max_bytes": "1048576"
-		},
-		"validator": {
-			"pub_key_types": [
-				"ed25519"
-			]
-		},
-		"version": {}
-	},
-  "validators": [
-    {
-      "pub_key": {
-        "type": "tendermint/PubKeyEd25519",
-        "value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="
-      },
-      "power": "10",
-      "name": ""
-    }
-  ],
-  "app_hash": ""
-}`
-
 var testGenesisFmt = `{
   "genesis_time": "2018-10-10T08:20:13.695936996Z",
   "chain_id": "%s",
@@ -570,18 +535,6 @@ var testGenesisFmt = `{
     }
   ],
   "app_hash": ""
-}`
-
-var testEd25519PrivValidatorKey = `{
-  "address": "A3258DCBF45DCA0DF052981870F2D1441A36D145",
-  "pub_key": {
-    "type": "tendermint/PubKeyEd25519",
-    "value": "AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="
-  },
-  "priv_key": {
-    "type": "tendermint/PrivKeyEd25519",
-    "value": "EVkqJO/jIXp3rkASXfh9YnyToYXRXhBr6g9cQVxPFnQBP/5povV4HTjvsy530kybxKHwEi85iU8YL0qQhSYVoQ=="
-  }
 }`
 
 var testPrivValidatorKey = `{
