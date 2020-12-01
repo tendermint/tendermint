@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync/atomic"
 	"time"
 
 	amino "github.com/tendermint/go-amino"
@@ -74,6 +75,9 @@ type BlockchainReactor struct {
 	eventsFromFSMCh chan bcFsmMessage
 
 	swReporter *behaviour.SwitchReporter
+
+	// Atomic integer (0 - sync in progress, 1 - finished syncing)
+	syncEnded int32
 }
 
 // NewBlockchainReactor returns new reactor instance.
@@ -145,13 +149,22 @@ func (bcR *BlockchainReactor) OnStart() error {
 	bcR.swReporter = behaviour.NewSwitchReporter(bcR.BaseReactor.Switch)
 	if bcR.fastSync {
 		go bcR.poolRoutine()
+	} else { // if we're not fast syncing, mark it as finished
+		bcR.setSyncEnded()
 	}
 	return nil
 }
 
 // OnStop implements service.Service.
 func (bcR *BlockchainReactor) OnStop() {
-	_ = bcR.Stop()
+}
+
+func (bcR *BlockchainReactor) isSyncEnded() bool {
+	return atomic.LoadInt32(&(bcR.syncEnded)) != 0
+}
+
+func (bcR *BlockchainReactor) setSyncEnded() {
+	atomic.StoreInt32(&(bcR.syncEnded), 1)
 }
 
 // GetChannels implements Reactor
@@ -208,6 +221,10 @@ func (bcR *BlockchainReactor) sendStatusResponseToPeer(msg *bcStatusRequestMessa
 
 // RemovePeer implements Reactor by removing peer from the pool.
 func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
+	if bcR.isSyncEnded() {
+		return
+	}
+
 	msgData := bcReactorMessage{
 		event: peerRemoveEv,
 		data: bReactorEventData{
@@ -251,6 +268,10 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		}
 
 	case *bcBlockResponseMessage:
+		if bcR.isSyncEnded() {
+			return
+		}
+
 		msgForFSM := bcReactorMessage{
 			event: blockResponseEv,
 			data: bReactorEventData{
@@ -264,6 +285,10 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		bcR.messagesForFSMCh <- msgForFSM
 
 	case *bcNoBlockResponseMessage:
+		if bcR.isSyncEnded() {
+			return
+		}
+
 		msgForFSM := bcReactorMessage{
 			event: noBlockResponseEv,
 			data: bReactorEventData{
@@ -275,6 +300,9 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		bcR.messagesForFSMCh <- msgForFSM
 
 	case *bcStatusResponseMessage:
+		if bcR.isSyncEnded() {
+			return
+		}
 		// Got a peer status. Unverified.
 		msgForFSM := bcReactorMessage{
 			event: statusResponseEv,
@@ -285,7 +313,6 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			},
 		}
 		bcR.messagesForFSMCh <- msgForFSM
-
 	default:
 		bcR.Logger.Error(fmt.Sprintf("unknown message type %v", reflect.TypeOf(msg)))
 	}
@@ -293,16 +320,20 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 
 // processBlocksRoutine processes blocks until signlaed to stop over the stopProcessing channel
 func (bcR *BlockchainReactor) processBlocksRoutine(stopProcessing chan struct{}) {
-
 	processReceivedBlockTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
-	doProcessBlockCh := make(chan struct{}, 1)
+	defer processReceivedBlockTicker.Stop()
 
-	lastHundred := time.Now()
-	lastRate := 0.0
+	var (
+		doProcessBlockCh = make(chan struct{}, 1)
+		lastHundred      = time.Now()
+		lastRate         = 0.0
+	)
 
 ForLoop:
 	for {
 		select {
+		case <-bcR.Quit():
+			break ForLoop
 		case <-stopProcessing:
 			bcR.Logger.Info("finishing block execution")
 			break ForLoop
@@ -345,11 +376,13 @@ ForLoop:
 
 // poolRoutine receives and handles messages from the Receive() routine and from the FSM.
 func (bcR *BlockchainReactor) poolRoutine() {
-
 	bcR.fsm.Start()
 
 	sendBlockRequestTicker := time.NewTicker(trySendIntervalMS * time.Millisecond)
 	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
+
+	defer sendBlockRequestTicker.Stop()
+	// NOTE: statusUpdateTicker can continue to run
 
 	stopProcessing := make(chan struct{}, 1)
 	go bcR.processBlocksRoutine(stopProcessing)
@@ -383,12 +416,10 @@ ForLoop:
 
 		case msg := <-bcR.eventsFromFSMCh:
 			switch msg.event {
-			case syncFinishedEv:
+			case syncFinishedEv: // Sent from the FSM when it enters finished state.
 				stopProcessing <- struct{}{}
-				// Sent from the FSM when it enters finished state.
-				break ForLoop
-			case peerErrorEv:
-				// Sent from the FSM when it detects peer error
+				bcR.setSyncEnded()
+			case peerErrorEv: // Sent from the FSM when it detects peer error
 				bcR.reportPeerErrorToSwitch(msg.data.err, msg.data.peerID)
 				if msg.data.err == errNoPeerResponse {
 					// Sent from the peer timeout handler routine
@@ -455,7 +486,6 @@ func (bcR *BlockchainReactor) processBlock() error {
 	return nil
 }
 
-// Implements bcRNotifier
 // sendStatusRequest broadcasts `BlockStore` height.
 func (bcR *BlockchainReactor) sendStatusRequest() {
 	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusRequestMessage{
@@ -465,7 +495,6 @@ func (bcR *BlockchainReactor) sendStatusRequest() {
 	bcR.Switch.Broadcast(BlockchainChannel, msgBytes)
 }
 
-// Implements bcRNotifier
 // BlockRequest sends `BlockRequest` height.
 func (bcR *BlockchainReactor) sendBlockRequest(peerID p2p.ID, height int64) error {
 	peer := bcR.Switch.Peers().Get(peerID)
@@ -481,19 +510,14 @@ func (bcR *BlockchainReactor) sendBlockRequest(peerID p2p.ID, height int64) erro
 	return nil
 }
 
-// Implements bcRNotifier
 func (bcR *BlockchainReactor) switchToConsensus() {
 	conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 	if ok {
 		conR.SwitchToConsensus(bcR.state, bcR.blocksSynced)
 		bcR.eventsFromFSMCh <- bcFsmMessage{event: syncFinishedEv}
 	}
-	// else {
-	// Should only happen during testing.
-	// }
 }
 
-// Implements bcRNotifier
 // Called by FSM and pool:
 // - pool calls when it detects slow peer or when peer times out
 // - FSM calls when:
@@ -511,7 +535,6 @@ func (bcR *BlockchainReactor) sendPeerError(err error, peerID p2p.ID) {
 	bcR.eventsFromFSMCh <- msgData
 }
 
-// Implements bcRNotifier
 func (bcR *BlockchainReactor) resetStateTimer(name string, timer **time.Timer, timeout time.Duration) {
 	if timer == nil {
 		panic("nil timer pointer parameter")
