@@ -13,6 +13,6 @@ mkdir -p $BUILD_PATH
 cmake -B $BUILD_PATH -S $SRC_PATH
 
 # Build the library
-make -C $BUILD_PATH
+make -C $BUILD_PATH chiabls
 
 exit 0

@@ -9,6 +9,6 @@ if [ ! -d $BUILD_PATH ]; then
 fi
 
 # Install the library
-make -C $BUILD_PATH install
+cmake -P $BUILD_PATH/cmake_install.cmake
 
 exit 0
