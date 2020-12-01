@@ -1,8 +1,8 @@
 PACKAGES=$(shell go list ./...)
-OUTPUT?=build/tendermint
+OUTPUT?=build/tenderdash
 
 REPO_NAME=github.com/dashevo/tenderdash
-BUILD_TAGS?=tendermint
+BUILD_TAGS?=tenderdash
 VERSION := $(shell git describe --always)
 LD_FLAGS = -X ${REPO_NAME}/version.TMCoreSemVer=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
@@ -227,9 +227,9 @@ sync-docs:
 ###############################################################################
 
 build-docker: build-linux
-	cp $(OUTPUT) DOCKER/tendermint
-	docker build --label=tendermint --tag="dashpay/tenderdash" DOCKER
-	rm -rf DOCKER/tendermint
+	cp $(OUTPUT) DOCKER/tenderdash
+	docker build --label=tenderdash --tag="dashpay/tenderdash" DOCKER
+	rm -rf DOCKER/tenderdash
 .PHONY: build-docker
 
 ###############################################################################

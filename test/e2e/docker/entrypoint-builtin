@@ -3,4 +3,4 @@
 # Forcibly remove any stray UNIX sockets left behind from previous runs
 rm -rf /var/run/privval.sock /var/run/app.sock
 
-/usr/bin/app /tendermint/config/app.toml
+/usr/bin/app /tenderdash/config/app.toml

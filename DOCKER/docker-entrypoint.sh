@@ -2,8 +2,8 @@
 set -e
 
 if [ ! -d "$TMHOME/config" ]; then
-	echo "Running tendermint init to create (default) configuration for docker run."
-	tendermint init
+	echo "Running tenderdash init to create (default) configuration for docker run."
+	tenderdash init
 
 	sed -i \
 		-e "s/^proxy_app\s*=.*/proxy_app = \"$PROXY_APP\"/" \
@@ -20,4 +20,4 @@ if [ ! -d "$TMHOME/config" ]; then
 	mv "$TMHOME/config/genesis.json.new" "$TMHOME/config/genesis.json"
 fi
 
-exec tendermint "$@"
+exec tenderdash "$@"

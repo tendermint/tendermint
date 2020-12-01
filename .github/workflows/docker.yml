@@ -21,7 +21,7 @@ jobs:
       - name: Prepare
         id: prep
         run: |
-          DOCKER_IMAGE=tendermint/tendermint
+          DOCKER_IMAGE=dashpay/tenderdash
           VERSION=noop
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             VERSION=${GITHUB_REF#refs/tags/}
@@ -46,9 +46,9 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build Tendermint
+      - name: Build Tenderdash
         run: |
-          make build-linux && cp build/tendermint DOCKER/tendermint
+          make build-linux && cp build/tenderdash DOCKER/tenderdash
 
       - name: Publish to Docker Hub
         uses: docker/build-push-action@v2

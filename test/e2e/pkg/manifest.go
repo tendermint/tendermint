@@ -73,8 +73,8 @@ type ManifestNode struct {
 
 	// ABCIProtocol specifies the protocol used to communicate with the ABCI
 	// application: "unix", "tcp", "grpc", or "builtin". Defaults to unix.
-	// builtin will build a complete Tendermint node into the application and
-	// launch it instead of launching a separate Tendermint process.
+	// builtin will build a complete Tenderdash node into the application and
+	// launch it instead of launching a separate Tenderdash process.
 	ABCIProtocol string `toml:"abci_protocol"`
 
 	// PrivvalProtocol specifies the protocol used to sign consensus messages:

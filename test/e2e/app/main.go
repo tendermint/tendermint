@@ -83,7 +83,7 @@ func run(configFile string) error {
 	}
 }
 
-// startApp starts the application server, listening for connections from Tendermint.
+// startApp starts the application server, listening for connections from Tenderdash.
 func startApp(cfg *Config) error {
 	app, err := NewApplication(cfg)
 	if err != nil {
@@ -101,8 +101,8 @@ func startApp(cfg *Config) error {
 	return nil
 }
 
-// startNode starts a Tendermint node running the application directly. It assumes the Tendermint
-// configuration is in $TMHOME/config/tendermint.toml.
+// startNode starts a Tenderdash node running the application directly. It assumes the Tenderdash
+// configuration is in $TMHOME/config/tenderdash.toml.
 //
 // FIXME There is no way to simply load the configuration from a file, so we need to pull in Viper.
 func startNode(cfg *Config) error {
@@ -131,8 +131,8 @@ func startNode(cfg *Config) error {
 	return n.Start()
 }
 
-// startMaverick starts a Maverick node that runs the application directly. It assumes the Tendermint
-// configuration is in $TMHOME/config/tendermint.toml.
+// startMaverick starts a Maverick node that runs the application directly. It assumes the Tenderdash
+// configuration is in $TMHOME/config/tenderdash.toml.
 func startMaverick(cfg *Config) error {
 	app, err := NewApplication(cfg)
 	if err != nil {

@@ -1,6 +1,6 @@
 # End-to-End Tests
 
-Spins up and tests Tendermint networks in Docker Compose based on a testnet manifest. To run the CI testnet:
+Spins up and tests Tenderdash networks in Docker Compose based on a testnet manifest. To run the CI testnet:
 
 ```sh
 make

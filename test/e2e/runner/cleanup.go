@@ -61,7 +61,7 @@ func cleanupDir(dir string) error {
 
 	logger.Info(fmt.Sprintf("Removing testnet directory %q", dir))
 
-	// On Linux, some local files in the volume will be owned by root since Tendermint
+	// On Linux, some local files in the volume will be owned by root since Tenderdash
 	// runs as root inside the container, so we need to clean them up from within a
 	// container running as root too.
 	absDir, err := filepath.Abs(dir)
@@ -69,7 +69,7 @@ func cleanupDir(dir string) error {
 		return err
 	}
 	err = execDocker("run", "--rm", "--entrypoint", "", "-v", fmt.Sprintf("%v:/network", absDir),
-		"tendermint/e2e-node", "sh", "-c", "rm -rf /network/*/")
+		"tenderdash/e2e-node", "sh", "-c", "rm -rf /network/*/")
 	if err != nil {
 		return err
 	}
