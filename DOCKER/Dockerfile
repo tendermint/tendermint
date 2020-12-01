@@ -1,3 +1,16 @@
+FROM golang:1.15-alpine AS build
+
+RUN apk update && \
+    apk upgrade && \
+    apk add bash git gmp-dev sudo cmake build-base
+
+COPY . /go/src/github.com/dashevo/tenderdash
+
+WORKDIR /go/src/github.com/dashevo/tenderdash
+
+RUN make install-bls
+RUN make build-linux
+
 FROM alpine:3.9
 LABEL maintainer="developers@dash.org"
 
@@ -15,7 +28,7 @@ ENV TMHOME /tenderdash
 # could execute bash commands.
 RUN apk update && \
     apk upgrade && \
-    apk --no-cache add curl jq bash && \
+    apk --no-cache add curl jq bash gmp libstdc++ && \
     addgroup tmuser && \
     adduser -S -G tmuser tmuser -h "$TMHOME"
 
@@ -29,15 +42,14 @@ EXPOSE 26656 26657 26660
 
 STOPSIGNAL SIGTERM
 
-ARG BINARY=tenderdash
-COPY $BINARY /usr/bin/tenderdash
+COPY --from=build /go/src/github.com/dashevo/tenderdash/build/tenderdash /usr/bin/tenderdash
 
 # You can overwrite these before the first run to influence
 # config.json and genesis.json. Additionally, you can override
 # CMD to add parameters to `tenderdash node`.
 ENV PROXY_APP=kvstore MONIKER=dockernode CHAIN_ID=dockerchain
 
-COPY ./docker-entrypoint.sh /usr/local/bin/
+COPY ./DOCKER/docker-entrypoint.sh /usr/local/bin/
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node"]

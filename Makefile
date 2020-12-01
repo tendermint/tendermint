@@ -226,10 +226,8 @@ sync-docs:
 ###                            Docker image                                 ###
 ###############################################################################
 
-build-docker: build-linux
-	cp $(OUTPUT) DOCKER/tenderdash
-	docker build --label=tenderdash --tag="dashpay/tenderdash" DOCKER
-	rm -rf DOCKER/tenderdash
+build-docker:
+	docker build --label=tenderdash --tag="dashpay/tenderdash" --file DOCKER/Dockerfile .
 .PHONY: build-docker
 
 ###############################################################################
