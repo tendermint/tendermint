@@ -89,7 +89,7 @@ func NewChannelShim(cds *ChannelDescriptorShim, buf uint) *ChannelShim {
 // proxyPeerEnvelopes iterates over each p2p Channel and starts a separate
 // go-routine where we listen for outbound envelopes sent during Receive
 // executions (or anything else that may send on the Channel) and proxy them to
-// the coressponding Peer using the To field from the envelope.
+// the corresponding Peer using the To field from the envelope.
 func (rs *ReactorShim) proxyPeerEnvelopes() {
 	if rs.Switch == nil {
 		panic("proxyPeerEnvelopes: reactor shim switch is nil")
