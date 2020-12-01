@@ -18,11 +18,12 @@ import (
 // SignerClient implements PrivValidator.
 // Handles remote validator connections that provide signing services
 type SignerClient struct {
-	ctx           context.Context
-	privValidator privvalproto.PrivValidatorAPIClient
-	conn          *grpc.ClientConn
-	chainID       string
-	logger        log.Logger
+	ctx    context.Context
+	logger log.Logger
+
+	client  privvalproto.PrivValidatorAPIClient
+	conn    *grpc.ClientConn
+	chainID string
 }
 
 var _ types.PrivValidator = (*SignerClient)(nil)
@@ -43,10 +44,10 @@ func NewSignerClient(target, chainID string,
 	}
 
 	sc := &SignerClient{
-		ctx:           ctx,
-		chainID:       chainID,
-		privValidator: privvalproto.NewPrivValidatorAPIClient(conn), // Create the Private Validator Client
-		logger:        log,
+		ctx:     ctx,
+		logger:  log,
+		chainID: chainID,
+		client:  privvalproto.NewPrivValidatorAPIClient(conn), // Create the Private Validator Client
 	}
 
 	return sc, nil
@@ -67,7 +68,7 @@ func (sc *SignerClient) Close() error {
 // GetPubKey retrieves a public key from a remote signer
 // returns an error if client is not able to provide the key
 func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
-	resp, err := sc.privValidator.GetPubKey(sc.ctx, &privvalproto.PubKeyRequest{ChainId: sc.chainID})
+	resp, err := sc.client.GetPubKey(sc.ctx, &privvalproto.PubKeyRequest{ChainId: sc.chainID})
 	if err != nil {
 		errStatus, _ := status.FromError(err)
 		sc.logger.Error("SignerClient::GetPubKey", "err", errStatus.Message())
@@ -84,7 +85,7 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 
 // SignVote requests a remote signer to sign a vote
 func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
-	resp, err := sc.privValidator.SignVote(sc.ctx, &privvalproto.SignVoteRequest{ChainId: sc.chainID, Vote: vote})
+	resp, err := sc.client.SignVote(sc.ctx, &privvalproto.SignVoteRequest{ChainId: sc.chainID, Vote: vote})
 	if err != nil {
 		errStatus, _ := status.FromError(err)
 		sc.logger.Error("Client SignVote", "err", errStatus.Message())
@@ -98,7 +99,7 @@ func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
 
 // SignProposal requests a remote signer to sign a proposal
 func (sc *SignerClient) SignProposal(chainID string, proposal *tmproto.Proposal) error {
-	resp, err := sc.privValidator.SignProposal(
+	resp, err := sc.client.SignProposal(
 		sc.ctx, &privvalproto.SignProposalRequest{ChainId: chainID, Proposal: proposal})
 
 	if err != nil {

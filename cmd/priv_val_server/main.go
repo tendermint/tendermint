@@ -6,24 +6,27 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
 	"github.com/tendermint/tendermint/libs/log"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/privval"
 	grpcprivval "github.com/tendermint/tendermint/privval/grpc"
+	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 )
 
 func main() {
 	var (
-		addr             = flag.String("addr", ":26659", "Address of client to connect to")
+		addr             = flag.String("addr", "tcp://127.0.0.1:26659", "Address of client to connect to")
 		chainID          = flag.String("chain-id", "mychain", "chain id")
 		privValKeyPath   = flag.String("priv-key", "", "priv val key file path")
 		privValStatePath = flag.String("priv-state", "", "priv val state file path")
-		insecure         = flag.Bool("priv-insecure", false, "")
+		insecure         = flag.Bool("insecure", false, "allow server to as insecure (no TLS)")
 		withCert         = flag.String("cert", "", "absolute path to server certificate")
 		withKey          = flag.String("key", "", "absolute path to server key")
 		rootCA           = flag.String("rootCA", "", "absolute path to root CA")
@@ -40,13 +43,16 @@ func main() {
 		"chainID", *chainID,
 		"privKeyPath", *privValKeyPath,
 		"privStatePath", *privValStatePath,
+		"insecure", *insecure,
+		"withCert", *withCert,
+		"withKey", *withKey,
+		"rootCA", *rootCA,
 	)
 
 	pv := privval.LoadFilePV(*privValKeyPath, *privValStatePath)
 
 	opts := []grpc.ServerOption{}
 	if !*insecure {
-
 		certificate, err := tls.LoadX509KeyPair(
 			*withCert,
 			*withKey,
@@ -79,19 +85,27 @@ func main() {
 		logger.Error("You are using an insecure gRPC connection! Provide a certificate and key to connect securely")
 	}
 
-	ss := grpcprivval.NewSignerServer(*addr, *chainID, pv, logger, opts)
+	ss := grpcprivval.NewSignerServer(*chainID, pv, logger)
 
-	err := ss.Start()
+	protocol, address := tmnet.ProtocolAndAddress(*addr)
+
+	lis, err := net.Listen(protocol, address)
 	if err != nil {
+		logger.Error("failed to listen: ", "err", err)
+	}
+
+	s := grpc.NewServer(opts...)
+
+	privvalproto.RegisterPrivValidatorAPIServer(s, ss)
+
+	if err := s.Serve(lis); err != nil {
 		panic(err)
 	}
 
 	// Stop upon receiving SIGTERM or CTRL-C.
 	tmos.TrapSignal(logger, func() {
-		err := ss.Stop()
-		if err != nil {
-			panic(err)
-		}
+		logger.Debug("SignerServer: OnStop calling Close")
+		s.GracefulStop()
 	})
 
 	// Run forever.
