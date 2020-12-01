@@ -948,6 +948,11 @@ func (n *Node) OnStart() error {
 		return err
 	}
 
+	// Start the real state sync reactor separately since the switch uses the shim.
+	if err := n.stateSyncReactor.Start(); err != nil {
+		return err
+	}
+
 	// Always connect to persistent peers
 	err = n.sw.DialPeersAsync(splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
@@ -956,10 +961,6 @@ func (n *Node) OnStart() error {
 
 	// Run state sync
 	if n.stateSync {
-		if err := n.stateSyncReactor.Start(); err != nil {
-			return err
-		}
-
 		bcR, ok := n.bcReactor.(fastSyncReactor)
 		if !ok {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
@@ -993,10 +994,9 @@ func (n *Node) OnStop() {
 		n.Logger.Error("Error closing switch", "err", err)
 	}
 
-	if n.stateSync {
-		if err := n.stateSyncReactor.Stop(); err != nil {
-			n.Logger.Error("failed to stop state sync service", "err", err)
-		}
+	// Stop the real state sync reactor separately since the switch uses the shim.
+	if err := n.stateSyncReactor.Stop(); err != nil {
+		n.Logger.Error("failed to stop state sync service", "err", err)
 	}
 
 	// stop mempool WAL
