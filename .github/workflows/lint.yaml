@@ -13,16 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
-      - name: Set GOPATH
-        run: |
-          echo "::set-env name=GOPATH::$(go env GOPATH)"
-      - name: Set CGO_LDFLAGS
-        run: |
-          echo "::set-env name=CGO_LDFLAGS::"-L${GOPATH}/src/github.com/dashpay/bls-signatures/build""
-      - name: Set CGO_CXXFLAGS
-        run: |
-          echo "::set-env name=CGO_CXXFLAGS::"-I${GOPATH}/src/github.com/dashpay/bls-signatures/src -I${GOPATH}/src/github.com/dashpay/bls-signatures/contrib/relic/include -I${GOPATH}/src/github.com/dashpay/bls-signatures/build/contrib/relic/include""
-      - name: test & coverage report creation
       - uses: actions/checkout@v2
       - uses: technote-space/get-diff-action@v4
         with:

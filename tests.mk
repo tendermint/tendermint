@@ -60,7 +60,7 @@ vagrant_test:
 ### go tests
 test:
 	@echo "--> Running go test"
-	CGO_LDFLAGS=$(CGO_LDFLAGS) CGO_CXXFLAGS=$(CGO_CXXFLAGS) go test -p 1 $(PACKAGES) -tags deadlock
+	@go test -p 1 $(PACKAGES) -tags deadlock
 .PHONY: test
 
 test_race:

@@ -10,7 +10,7 @@ require (
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/confio/ics23/go v0.6.3
 	github.com/cosmos/iavl v0.15.0-rc5
-	github.com/dashpay/bls-signatures/go-bindings v0.0.0-20201119162734-497e2f1bb053
+	github.com/dashpay/bls-signatures/go-bindings v0.0.0-20201127091120-745324b80143
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/go-kit/kit v0.10.0
 	github.com/go-logfmt/logfmt v0.5.0

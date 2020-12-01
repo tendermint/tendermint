@@ -47,3 +47,5 @@ terraform.tfstate.backup
 terraform.tfstate.d
 
 profile\.out
+
+third_party/bls-signatures/build

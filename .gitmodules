@@ -1,0 +1,3 @@
+[submodule "third_party/bls-signatures/src"]
+	path = third_party/bls-signatures/src
+	url = https://github.com/dashpay/bls-signatures
