@@ -42,9 +42,10 @@ func (e ErrInvalidHeader) Error() string {
 
 // ErrFailedHeaderCrossReferencing is returned when the detector was not able to cross reference the header
 // with any of the connected witnesses.
-var ErrFailedHeaderCrossReferencing = errors.New("all witnesses have either not responded, don't have the " +
-	" blocks or sent invalid blocks. You should look to change your witnesses" +
-	"  or review the light client's logs for more information")
+var ErrFailedHeaderCrossReferencing = errors.New(
+	`all witnesses have either not responded, don't have the blocks or sent invalid blocks. 
+	You should look to change your witnesses or review the light client's logs for more information`,
+)
 
 // ErrVerificationFailed means either sequential or skipping verification has
 // failed to verify from header #1 to header #2 due to some reason.
@@ -65,10 +66,15 @@ func (e ErrVerificationFailed) Error() string {
 
 // ErrLightClientAttack is returned when the light client has detected an attempt
 // to verify a false header and has sent the evidence to either a witness or primary.
-var ErrLightClientAttack = errors.New("attempted attack detected." +
-	" Light client received valid conflicting header from witness." +
-	" Unable to verify header. Evidence has been sent to both providers." +
-	" Check logs for full evidence and trace")
+var ErrLightClientAttack = errors.New(`attempted attack detected.
+	Light client received valid conflicting header from witness.
+	Unable to verify header. Evidence has been sent to both providers.
+	Check logs for full evidence and trace`,
+)
+
+// ErrNoWitnesses means that there are not enough witnesses connected to
+// continue running the light client.
+var ErrNoWitnesses = errors.New("no witnesses connected. please reset light client")
 
 // ----------------------------- INTERNAL ERRORS ---------------------------------
 
@@ -82,14 +88,6 @@ func (e errConflictingHeaders) Error() string {
 	return fmt.Sprintf(
 		"header hash (%X) from witness (%d) does not match primary",
 		e.Block.Hash(), e.WitnessIndex)
-}
-
-// errNoWitnesses means that there are not enough witnesses connected to
-// continue running the light client.
-type errNoWitnesses struct{}
-
-func (e errNoWitnesses) Error() string {
-	return "no witnesses connected. please reset light client"
 }
 
 // errBadWitness is returned when the witness either does not respond or
