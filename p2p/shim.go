@@ -120,7 +120,14 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 						panic(fmt.Sprintf("failed to proxy envelope; failed to find peer (%s)", e.To))
 					}
 
-					_ = src.Send(cs.Descriptor.ID, bz)
+					if !src.Send(cs.Descriptor.ID, bz) {
+						rs.Logger.Error(
+							"failed to proxy message to peer",
+							"ch_id", cs.Descriptor.ID,
+							"msg", e.Message,
+							"peer", e.To.String(),
+						)
+					}
 				}
 			}
 		}(cs)
