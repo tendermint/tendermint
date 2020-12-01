@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmprotobits "github.com/tendermint/tendermint/proto/tendermint/libs/bits"
 )
 
 func randBitArray(bits int) (*BitArray, []byte) {
@@ -266,7 +268,7 @@ func TestJSONMarshalUnmarshal(t *testing.T) {
 	}
 }
 
-func TestBitArrayProtoBuf(t *testing.T) {
+func TestBitArrayToFromProto(t *testing.T) {
 	testCases := []struct {
 		msg     string
 		bA1     *BitArray
@@ -280,11 +282,41 @@ func TestBitArrayProtoBuf(t *testing.T) {
 	for _, tc := range testCases {
 		protoBA := tc.bA1.ToProto()
 		ba := new(BitArray)
-		ba.FromProto(protoBA)
+		err := ba.FromProto(protoBA)
 		if tc.expPass {
+			assert.NoError(t, err)
 			require.Equal(t, tc.bA1, ba, tc.msg)
 		} else {
 			require.NotEqual(t, tc.bA1, ba, tc.msg)
+		}
+	}
+}
+
+func TestBitArrayFromProto(t *testing.T) {
+	testCases := []struct {
+		pbA    *tmprotobits.BitArray
+		resA   *BitArray
+		expErr bool
+	}{
+		0: {nil, &BitArray{}, false},
+		1: {&tmprotobits.BitArray{}, &BitArray{}, false},
+
+		2: {&tmprotobits.BitArray{Bits: 1, Elems: make([]uint64, 1)}, &BitArray{Bits: 1, Elems: make([]uint64, 1)}, false},
+
+		3: {&tmprotobits.BitArray{Bits: -1, Elems: make([]uint64, 1)}, &BitArray{}, true},
+		4: {&tmprotobits.BitArray{Bits: math.MaxInt32 + 1, Elems: make([]uint64, 1)}, &BitArray{}, true},
+		5: {&tmprotobits.BitArray{Bits: 1, Elems: make([]uint64, 2)}, &BitArray{}, true},
+	}
+
+	for i, tc := range testCases {
+		bA := new(BitArray)
+		err := bA.FromProto(tc.pbA)
+		if tc.expErr {
+			assert.Error(t, err, "#%d", i)
+			assert.Equal(t, tc.resA, bA, "#%d", i)
+		} else {
+			assert.NoError(t, err, "#%d", i)
+			assert.Equal(t, tc.resA, bA, "#%d", i)
 		}
 	}
 }
