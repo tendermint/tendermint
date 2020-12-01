@@ -299,7 +299,7 @@ func TestBitArrayFromProto(t *testing.T) {
 		expErr bool
 	}{
 		0: {nil, &BitArray{}, false},
-		1: {&tmprotobits.BitArray{}, &BitArray{Elems: make([]uint64, 0)}, false},
+		1: {&tmprotobits.BitArray{}, &BitArray{}, false},
 
 		2: {&tmprotobits.BitArray{Bits: 1, Elems: make([]uint64, 1)}, &BitArray{Bits: 1, Elems: make([]uint64, 1)}, false},
 

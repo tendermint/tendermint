@@ -422,6 +422,8 @@ func (bA *BitArray) UnmarshalJSON(bz []byte) error {
 
 // ToProto converts BitArray to protobuf. It returns nil if BitArray is
 // nil/empty.
+//
+// XXX: It does not copy the array.
 func (bA *BitArray) ToProto() *tmprotobits.BitArray {
 	if bA == nil ||
 		(len(bA.Elems) == 0 && bA.Bits == 0) { // empty
@@ -432,7 +434,9 @@ func (bA *BitArray) ToProto() *tmprotobits.BitArray {
 }
 
 // FromProto sets BitArray to the given protoBitArray. It returns an error if
-// protoBitArray is invalid or nil.
+// protoBitArray is invalid.
+//
+// XXX: It does not copy the array.
 func (bA *BitArray) FromProto(protoBitArray *tmprotobits.BitArray) error {
 	if protoBitArray == nil {
 		return nil
