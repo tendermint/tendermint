@@ -213,7 +213,7 @@ func (r *Reactor) processSnapshotCh() {
 				}
 
 			default:
-				r.Logger.Error("received unknown message: %T", msg)
+				r.Logger.Error("received unknown message", "msg", msg, "peer", envelope.From.String())
 				r.snapshotCh.Error <- p2p.PeerError{
 					PeerID:   envelope.From,
 					Err:      fmt.Errorf("received unknown message: %T", msg),
@@ -314,7 +314,7 @@ func (r *Reactor) processChunkCh() {
 				}
 
 			default:
-				r.Logger.Error("received unknown message: %T", msg)
+				r.Logger.Error("received unknown message", "msg", msg, "peer", envelope.From.String())
 				r.chunkCh.Error <- p2p.PeerError{
 					PeerID:   envelope.From,
 					Err:      fmt.Errorf("received unknown message: %T", msg),
