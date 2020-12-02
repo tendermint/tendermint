@@ -3,6 +3,8 @@ package pex
 import (
 	"encoding/hex"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -69,7 +71,7 @@ func TestPEXReactorRunning(t *testing.T) {
 	switches := make([]*p2p.Switch, N)
 
 	// directory to store address books
-	dir := t.TempDir()
+	dir := tempDir(t)
 
 	books := make([]AddrBook, N)
 	logger := log.TestingLogger()
@@ -196,7 +198,7 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 
 func TestCheckSeeds(t *testing.T) {
 	// directory to store address books
-	dir := t.TempDir()
+	dir := tempDir(t)
 
 	// 1. test creating peer with no seeds works
 	peerSwitch := testCreateDefaultPeer(dir, 0)
@@ -233,7 +235,7 @@ func TestCheckSeeds(t *testing.T) {
 
 func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 	// directory to store address books
-	dir := t.TempDir()
+	dir := tempDir(t)
 
 	// 1. create seed
 	seed := testCreateSeed(dir, 0, []*p2p.NetAddress{}, []*p2p.NetAddress{})
@@ -243,7 +245,7 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 	// 2. create usual peer with only seed configured.
 	peer := testCreatePeerWithSeed(dir, 1, seed)
 	require.Nil(t, peer.Start())
-	t.Cleanup(func() { _ = seed.Stop() })
+	t.Cleanup(func() { _ = peer.Stop() })
 
 	// 3. check that the peer connects to seed immediately
 	assertPeersWithTimeout(t, []*p2p.Switch{peer}, 10*time.Millisecond, 3*time.Second, 1)
@@ -251,7 +253,7 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 
 func TestConnectionSpeedForPeerReceivedFromSeed(t *testing.T) {
 	// directory to store address books
-	dir := t.TempDir()
+	dir := tempDir(t)
 
 	// 1. create peer
 	peerSwitch := testCreateDefaultPeer(dir, 1)
@@ -278,7 +280,7 @@ func TestConnectionSpeedForPeerReceivedFromSeed(t *testing.T) {
 
 func TestPEXReactorSeedMode(t *testing.T) {
 	// directory to store address books
-	dir := t.TempDir()
+	dir := tempDir(t)
 
 	pexRConfig := &ReactorConfig{SeedMode: true, SeedDisconnectWaitPeriod: 10 * time.Millisecond}
 	pexR, book := createReactor(t, pexRConfig)
@@ -313,7 +315,7 @@ func TestPEXReactorSeedMode(t *testing.T) {
 
 func TestPEXReactorDoesNotDisconnectFromPersistentPeerInSeedMode(t *testing.T) {
 	// directory to store address books
-	dir := t.TempDir()
+	dir := tempDir(t)
 
 	pexRConfig := &ReactorConfig{SeedMode: true, SeedDisconnectWaitPeriod: 1 * time.Millisecond}
 	pexR, book := createReactor(t, pexRConfig)
@@ -376,7 +378,7 @@ func TestPEXReactorSeedModeFlushStop(t *testing.T) {
 	switches := make([]*p2p.Switch, N)
 
 	// directory to store address books
-	dir := t.TempDir()
+	dir := tempDir(t)
 
 	books := make([]AddrBook, N)
 	logger := log.TestingLogger()
@@ -608,7 +610,7 @@ func testCreatePeerWithSeed(dir string, id int, seed *p2p.Switch) *p2p.Switch {
 
 func createReactor(t *testing.T, conf *ReactorConfig) (r *Reactor, book AddrBook) {
 	// directory to store address book
-	book = NewAddrBook(filepath.Join(t.TempDir(), "addrbook.json"), true)
+	book = NewAddrBook(filepath.Join(tempDir(t), "addrbook.json"), true)
 	book.SetLogger(log.TestingLogger())
 
 	r = NewReactor(book, conf)
@@ -649,4 +651,21 @@ func TestPexVectors(t *testing.T) {
 
 		require.Equal(t, tc.expBytes, hex.EncodeToString(bz), tc.testName)
 	}
+}
+
+// FIXME: This function is used in place of testing.TB.TempDir()
+// as the latter seems to cause test cases to fail when it is
+// unable to remove the temporary directory once  the test case
+// execution terminates. This seems to  happen often with pex
+// reactor test cases.
+//
+// References:
+// https://github.com/tendermint/tendermint/pull/5733
+// https://github.com/tendermint/tendermint/issues/5732
+func tempDir(t *testing.T) string {
+	t.Helper()
+	dir, err := ioutil.TempDir("", "")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	return dir
 }
