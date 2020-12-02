@@ -8,17 +8,17 @@
 
 Validators use remote signers to help secure their keys. This system is Tendermint's recommended way to secure validators, but the path to integration with Tendermint's private validator client is plagued with custom protocols. 
 
-Tendermint uses its own custom secure connection protocol (`SecretConnection`) and a raw tcp connection protocol. The secure connection protocol until recently was exposed to man in the middle attacks and limits the amount and speed of integrations users can make. The raw tcp connection protocol is less custom, but has been causing minuet issues with users. 
+Tendermint uses its own custom secure connection protocol (`SecretConnection`) and a raw tcp/unix socket connection protocol. The secure connection protocol until recently was exposed to man in the middle attacks and limits the amount and speed of integrations users can make. The raw tcp connection protocol is less custom, but has been causing minuet issues with users. 
 
 Migrating Tendermint's private validator to a widely adopted protocol will ease the current maintenance and integration burden experienced with the current protocol. 
 
 ## Decision
 
-After discussing with multiple stake holders [gRPC](https://grpc.io/) was decided on to replace the current private validator protocol. GRPC is a widely adopted protocol in the micro-service and cloud infrastructure world. GRPC uses [protocol-buffers](https://developers.google.com/protocol-buffers) to describe its service definition providing a language agnostic implementation. Tendermint uses protobuf for on disk and over the wire encoding. 
+After discussing with multiple stake holders, [gRPC](https://grpc.io/) was decided on to replace the current private validator protocol. GRPC is a widely adopted protocol in the micro-service and cloud infrastructure world. GRPC uses [protocol-buffers](https://developers.google.com/protocol-buffers) to describe its services, providing a language agnostic implementation. Tendermint uses protobuf for on disk and over the wire encoding already making the integration with gRPC simpler. 
 
 ## Alternative Approaches
 
-- JSON-RPC: We did not consider JSON-RPC because Tendermint uses protobuf extensively make gRPC a natural choice. JSON-RPC passes information of the wire in JSON. This can lead to performance bottle necks for low block time chains. 
+- JSON-RPC: We did not consider JSON-RPC because Tendermint uses protobuf extensively making gRPC a natural choice.
 
 ## Detailed Design
 
@@ -44,13 +44,13 @@ Remote signers are crucial to operating secure and consistently up Validators. I
 
 #### Security
 
-[TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security) is widely adopted with the use of gRPC. There are various forms of TLS (one-way & two-way). One way is the client identifying who the server is, while two way is both parties identifying the other. For Tendermints use case having both parties identifying each other provides and extra layer of security. This requires users to generate both client and server certificates for a TLS connection. [Certstrap](https://github.com/square/certstrap) is an alternative to openssl that reduces the complexity of creating and self signing certificates.  A --insecure flag will be provided for development/testing purposes. 
+[TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security) is widely adopted with the use of gRPC. There are various forms of TLS (one-way & two-way). One way is the client identifying who the server is, while two way is both parties identifying the other. For Tendermints use case having both parties identifying each other provides and extra layer of security. This requires users to generate both client and server certificates for a TLS connection. 
 
 #### Upgrade Path
 
-This is a largely breaking change for validator operators. The optimal upgrade path would be to release gRPC in a minor release, allow kms to use the upgraded system, then in the next major release the current system is removed. This allows users to migrate to the new system and not have to coordinate upgrading the key management system alongside a network upgrade. 
+This is a largely breaking change for validator operators. The optimal upgrade path would be to release gRPC in a minor release, allow key management systems to migrate to the new protocol. In the next major release the current system (raw tcp/unix) is removed. This allows users to migrate to the new system and not have to coordinate upgrading the key management system alongside a network upgrade. 
 
-The upgrade of tmkms will be coordinated with Iqlusion. They will be able to make the necessary upgrades to allow users to migrate to gRPC from the current protocol. 
+The upgrade of [tmkms](https://github.com/iqlusioninc/tmkms) will be coordinated with Iqlusion. They will be able to make the necessary upgrades to allow users to migrate to gRPC from the current protocol. 
 
 ## Status
 
@@ -73,9 +73,3 @@ Proposed
 - Users will need to generate certificates to use TLS. (Added step)
 
 ### Neutral
-
-## References
-
-> Are there any relevant PR comments, issues that led up to this, or articles referenced for why we made the given design choice? If so link them here!
-
-- {reference link}
