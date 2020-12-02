@@ -230,19 +230,20 @@ type BaseConfig struct { //nolint: maligned
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
-		Genesis:            defaultGenesisJSONPath,
-		PrivValidatorKey:   defaultPrivValKeyPath,
-		PrivValidatorState: defaultPrivValStatePath,
-		NodeKey:            defaultNodeKeyPath,
-		Moniker:            defaultMoniker,
-		ProxyApp:           "tcp://127.0.0.1:26658",
-		ABCI:               "socket",
-		LogLevel:           DefaultPackageLogLevels(),
-		LogFormat:          LogFormatPlain,
-		FastSyncMode:       true,
-		FilterPeers:        false,
-		DBBackend:          "goleveldb",
-		DBPath:             "data",
+		Genesis:               defaultGenesisJSONPath,
+		PrivValidatorKey:      defaultPrivValKeyPath,
+		PrivValidatorState:    defaultPrivValStatePath,
+		PrivValidatorProtocol: "raw",
+		NodeKey:               defaultNodeKeyPath,
+		Moniker:               defaultMoniker,
+		ProxyApp:              "tcp://127.0.0.1:26658",
+		ABCI:                  "socket",
+		LogLevel:              DefaultPackageLogLevels(),
+		LogFormat:             LogFormatPlain,
+		FastSyncMode:          true,
+		FilterPeers:           false,
+		DBBackend:             "goleveldb",
+		DBPath:                "data",
 	}
 }
 
@@ -263,6 +264,21 @@ func (cfg BaseConfig) ChainID() string {
 // GenesisFile returns the full path to the genesis.json file
 func (cfg BaseConfig) GenesisFile() string {
 	return rootify(cfg.Genesis, cfg.RootDir)
+}
+
+// PrivValidatorKeyFile returns the full path to the priv_validator_key.json file
+func (cfg BaseConfig) PrivValidatorClientKeyFile() string {
+	return rootify(cfg.PrivValidatorClientKey, cfg.RootDir)
+}
+
+// PrivValidatorKeyFile returns the full path to the priv_validator_key.json file
+func (cfg BaseConfig) PrivValidatorClientCertificateFile() string {
+	return rootify(cfg.PrivValidatorClientCertificate, cfg.RootDir)
+}
+
+// PrivValidatorKeyFile returns the full path to the priv_validator_key.json file
+func (cfg BaseConfig) PrivValidatorCertificateAuthorityFile() string {
+	return rootify(cfg.PrivValidatorCertificateAuthority, cfg.RootDir)
 }
 
 // PrivValidatorKeyFile returns the full path to the priv_validator_key.json file

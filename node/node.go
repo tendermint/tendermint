@@ -667,9 +667,7 @@ func NewNode(config *cfg.Config,
 	if config.PrivValidatorListenAddr != "" {
 		// FIXME: we should start services inside OnStart
 		if config.PrivValidatorProtocol == "grpc" {
-			privValidator, err = createAndStartPrivValidatorGRPCClient(config.PrivValidatorListenAddr,
-				config.PrivValidatorClientCertificate, config.PrivValidatorClientKey,
-				config.PrivValidatorCertificateAuthority, genDoc.ChainID, logger)
+			privValidator, err = createAndStartPrivValidatorGRPCClient(config, genDoc.ChainID, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator socket client: %w", err)
 			}
@@ -1391,17 +1389,16 @@ func createAndStartPrivValidatorSocketClient(
 }
 
 func createAndStartPrivValidatorGRPCClient(
-	listenAddr string,
-	cert, key, ca, chainID string,
+	config *cfg.Config,
+	chainID string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
-	if listenAddr == "" {
-		return nil, fmt.Errorf("target connection parameter missing. endpoint %s", listenAddr)
-	}
-
+	listenAddr := config.PrivValidatorListenAddr
 	var transportSecurity grpc.DialOption
-	if cert != "" && key != "" && ca != "" {
-		transportSecurity = generateTLS(cert, key, ca)
+	if config.PrivValidatorClientCertificate != "" &&
+		config.PrivValidatorClientKey != "" &&
+		config.PrivValidatorCertificateAuthority != "" {
+		transportSecurity = generateTLS(config.PrivValidatorClientCertificateFile(), config.PrivValidatorClientKeyFile(), config.PrivValidatorCertificateAuthorityFile())
 	} else {
 		transportSecurity = grpc.WithInsecure()
 		logger.Error("Using an insecure gRPC connection! Please provide a certificate and key to use a secure connection.")
@@ -1421,13 +1418,13 @@ func createAndStartPrivValidatorGRPCClient(
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
 
-	{
-		// try to get a pubkey from private validate first time
-		_, err = pvsc.GetPubKey()
-		if err != nil {
-			return nil, fmt.Errorf("can't get pubkey: %w", err)
-		}
+	// try to get a pubkey from private validate first time
+	_, err = pvsc.GetPubKey()
+	if err != nil {
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
+
+	fmt.Println(3)
 
 	return pvsc, nil
 }

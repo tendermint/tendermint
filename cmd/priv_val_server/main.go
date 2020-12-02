@@ -34,7 +34,7 @@ var (
 
 func main() {
 	var (
-		addr             = flag.String("addr", "tcp://127.0.0.1:26659", "Address of client to connect to")
+		addr             = flag.String("addr", "127.0.0.1:26659", "Address of client to connect to")
 		chainID          = flag.String("chain-id", "mychain", "chain id")
 		privValKeyPath   = flag.String("priv-key", "", "priv val key file path")
 		privValStatePath = flag.String("priv-state", "", "priv val state file path")
@@ -94,8 +94,9 @@ func main() {
 
 		creds := grpc.Creds(credentials.NewTLS(tlsConfig))
 		opts = append(opts, creds)
+		logger.Info("SignerServer: Creating security credentials")
 	} else {
-		logger.Error("You are using an insecure gRPC connection! Provide a certificate and key to connect securely")
+		logger.Error("SignerServer: You are using an insecure gRPC connection! Provide a certificate and key to connect securely")
 	}
 
 	// add prometheus metrics for unary RPC calls
@@ -128,13 +129,14 @@ func main() {
 		}()
 	}
 
+	logger.Info("SignerServer: Starting grpc server")
 	if err := s.Serve(lis); err != nil {
 		panic(err)
 	}
 
 	// Stop upon receiving SIGTERM or CTRL-C.
 	tmos.TrapSignal(logger, func() {
-		logger.Debug("SignerServer: OnStop calling Close")
+		logger.Debug("SignerServer: calling Close")
 		s.GracefulStop()
 	})
 

@@ -47,6 +47,7 @@ func (ss *SignerServer) GetPubKey(ctx context.Context, req *privvalproto.PubKeyR
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "error transistioning pubkey to proto: %v", err)
 	}
+	ss.Logger.Info("SignerServer: GetPubKey Success")
 
 	return &privvalproto.PubKeyResponse{PubKey: pk}, nil
 }
@@ -62,6 +63,8 @@ func (ss *SignerServer) SignVote(ctx context.Context, req *privvalproto.SignVote
 		return nil, status.Errorf(codes.InvalidArgument, "error signing vote: %v", err)
 	}
 
+	ss.Logger.Info("SignerServer: SignVote Success")
+
 	return &privvalproto.SignedVoteResponse{Vote: *vote}, nil
 }
 
@@ -76,5 +79,6 @@ func (ss *SignerServer) SignProposal(ctx context.Context, req *privvalproto.Sign
 		return nil, status.Errorf(codes.InvalidArgument, "error signing proposal: %v", err)
 	}
 
+	ss.Logger.Info("SignerServer: SignProposal Success")
 	return &privvalproto.SignedProposalResponse{Proposal: *proposal}, nil
 }

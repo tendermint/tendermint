@@ -146,10 +146,10 @@ priv_validator_protocol = "{{ .BaseConfig.PrivValidatorProtocol }}"
 # If a remote validator address is provided but no certificate, the connection will be insecure
 priv_validator_client_certificate = "{{ js .BaseConfig.PrivValidatorClientCertificate }}"
 
-# If a remote validator address is provided but no certificate, the connection will be insecure
+# If a remote validator address is provided but no key, the connection will be insecure
 priv_validator_client_key = "{{ js .BaseConfig.PrivValidatorClientKey }}"
 
-# If a remote validator address is provided but no certificate, the connection will be insecure
+# If a remote validator address is provided but no atuhority, the connection will be insecure
 priv_validator_certificate_authority = "{{ js .BaseConfig.PrivValidatorCertificateAuthority }}"
 
 # Path to the JSON file containing the private key to use for node authentication in the p2p protocol
