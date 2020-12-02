@@ -4,7 +4,7 @@
 FROM golang:1.15
 
 RUN apt-get -qq update -y && apt-get -qq upgrade -y >/dev/null
-RUN apt-get -qq install -y libleveldb-dev librocksdb-dev >/dev/null
+RUN apt-get -qq install -y cmake sudo libgmp-dev libleveldb-dev librocksdb-dev >/dev/null
 
 # Set up build directory /src/tenderdash
 ENV TENDERMINT_BUILD_OPTIONS badgerdb,boltdb,cleveldb,rocksdb
@@ -14,8 +14,11 @@ WORKDIR /src/tenderdash
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Build Tenderdash and install into /usr/bin/tenderdash
+# Copy Tenderdash source
 COPY . .
+# Install BLS library
+RUN make install-bls
+# Build Tenderdash and install into /usr/bin/tenderdash
 RUN make build && cp build/tenderdash /usr/bin/tenderdash
 COPY test/e2e/docker/entrypoint* /usr/bin/
 RUN cd test/e2e && make maverick && cp build/maverick /usr/bin/maverick
