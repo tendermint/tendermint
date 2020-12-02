@@ -172,16 +172,23 @@ func TestReactorShim_Receive(t *testing.T) {
 		wg.Done()
 	}).Return(true)
 
-	wg.Add(1)
-	rts.shim.Receive(channelID1, peerA, bz)
+	p2pCh := rts.shim.Channels[p2p.ChannelID(channelID1)]
+
+	wg.Add(2)
 
 	// Simulate receiving the envelope in some real reactor and replying back with
-	// the same envelope.
-	p2pCh := rts.shim.Channels[p2p.ChannelID(channelID1)]
-	e := <-p2pCh.InCh
-	require.Equal(t, peerIDA, e.From)
-	require.NotNil(t, e.Message)
-	p2pCh.OutCh <- p2p.Envelope{To: e.From, Message: e.Message}
+	// the same envelope and then closing the Channel.
+	go func() {
+		e := <-p2pCh.InCh
+		require.Equal(t, peerIDA, e.From)
+		require.NotNil(t, e.Message)
+
+		p2pCh.OutCh <- p2p.Envelope{To: e.From, Message: e.Message}
+		p2pCh.Channel.Close()
+		wg.Done()
+	}()
+
+	rts.shim.Receive(channelID1, peerA, bz)
 
 	// wait until the mock peer called Send and we (fake) proxied the envelope
 	wg.Wait()
@@ -190,6 +197,11 @@ func TestReactorShim_Receive(t *testing.T) {
 	m, err := response.Unwrap()
 	require.NoError(t, err)
 	require.Equal(t, msg.GetChunkRequest(), m)
+
+	// Since p2pCh was closed in the simulated reactor above, calling Receive
+	// should not block.
+	rts.shim.Receive(channelID1, peerA, bz)
+	require.Empty(t, p2pCh.InCh)
 
 	peerA.AssertExpectations(t)
 }

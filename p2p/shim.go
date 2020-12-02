@@ -58,7 +58,7 @@ func NewReactorShim(name string, descriptors map[ChannelID]*ChannelDescriptorShi
 	channels := make(map[ChannelID]*ChannelShim)
 
 	for _, cds := range descriptors {
-		chShim := NewChannelShim(cds, 1)
+		chShim := NewChannelShim(cds, 0)
 		channels[chShim.Channel.ID] = chShim
 	}
 
@@ -193,14 +193,12 @@ func (rs *ReactorShim) OnStart() error {
 	return nil
 }
 
-// OnStop executes the reactor shim's OnStop hook where all inbound p2p Channels
-// are closed and the PeerUpdateCh is closed. The caller must be sure to also
-// stop the real reactor so the shim's go routines can exit successfully.
+// OnStop executes the reactor shim's OnStop hook where the PeerUpdateCh is
+// closed. The caller must be sure to also stop the real reactor so the shim's
+// proxyPeerEnvelopes can exit successfully. Note, the inbound InCh is explicitly
+// closed on Receive once the real reactor stops and closes all of its p2p
+// Channels.
 func (rs *ReactorShim) OnStop() {
-	for _, cs := range rs.Channels {
-		close(cs.InCh)
-	}
-
 	close(rs.PeerUpdateCh)
 }
 
@@ -322,6 +320,11 @@ func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 		}
 	}
 
-	channelShim.InCh <- Envelope{From: peerID, Message: msg}
-	rs.Logger.Debug("proxied envelope", "reactor", rs.Name, "ch_id", cID, "peer", peerID.String())
+	select {
+	case channelShim.InCh <- Envelope{From: peerID, Message: msg}:
+		rs.Logger.Debug("proxied envelope", "reactor", rs.Name, "ch_id", cID, "peer", peerID.String())
+
+	case <-channelShim.Channel.Done():
+		close(channelShim.InCh)
+	}
 }

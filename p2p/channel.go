@@ -39,6 +39,11 @@ type Channel struct {
 	// Error is a channel for reporting peer errors to the router, typically used
 	// when peers send an invalid or malignant message.
 	Error chan<- PeerError
+
+	// doneCh is used to signal that a Channel is closed. A Channel is bi-directional
+	// and should be closed by the reactor, where as the router is responsible
+	// for explicitly closing the internal In channel.
+	doneCh chan struct{}
 }
 
 func NewChannel(
@@ -54,19 +59,28 @@ func NewChannel(
 		In:          in,
 		Out:         out,
 		Error:       err,
+		doneCh:      make(chan struct{}),
 	}
 }
 
-// Close closes the outbound channel and is equivalent to close(Channel.Out).
-// Close is intended to be called by the caller, whereas the sender must must
-// coordinate when to close the inbound channel.
+// Close closes the outbound channel and marks the Channel as done. Internally,
+// the outbound Out and peer error Error channels are closed. It is the reactor's
+// responsibility to invoke Close. After a channel is closed, the router may
+// safely and explicitly close the internal In channel.
 func (c *Channel) Close() error {
 	c.once.Do(func() {
+		close(c.doneCh)
 		close(c.Out)
 		close(c.Error)
 	})
 
 	return nil
+}
+
+// Done returns the Channel's internal channel that should be used by a router
+// to signal when it is safe to explicitly close the internal In channel.
+func (c *Channel) Done() <-chan struct{} {
+	return c.doneCh
 }
 
 // Wrapper is a Protobuf message that can contain a variety of inner messages.

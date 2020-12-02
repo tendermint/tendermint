@@ -132,10 +132,13 @@ func (r *Reactor) OnStart() error {
 	return nil
 }
 
-// OnStop stops the reactor by signaling to all spawned go routines to exit and
+// OnStop stops the reactor by signaling to all spawned goroutines to exit and
 // blocking until they all exit. Finally, it will close the snapshot and chunk
 // p2p Channels respectively.
 func (r *Reactor) OnStop() {
+	// Wait for all goroutines to safely exit before proceeding to close all p2p
+	// Channels. After closing, the router can be signaled that it is safe to stop
+	// sending on the inbound In channel and close it.
 	r.snapshotChDone <- true
 	r.chunkChDone <- true
 	r.peerUpdatesDone <- true
