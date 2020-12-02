@@ -30,7 +30,8 @@ var _ types.PrivValidator = (*SignerClient)(nil)
 
 // NewSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func NewSignerClient(ctx context.Context, conn *grpc.ClientConn, chainID string, log log.Logger) (*SignerClient, error) {
+func NewSignerClient(ctx context.Context, conn *grpc.ClientConn,
+	chainID string, log log.Logger) (*SignerClient, error) {
 
 	sc := &SignerClient{
 		ctx:     ctx,
