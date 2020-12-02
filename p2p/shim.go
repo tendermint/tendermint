@@ -317,8 +317,6 @@ func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 		}
 	}
 
-	go func() {
-		channelShim.InCh <- Envelope{From: peerID, Message: msg}
-		rs.Logger.Debug("proxied envelope", "reactor", rs.Name, "ch_id", cID, "peer", peerID.String())
-	}()
+	channelShim.InCh <- Envelope{From: peerID, Message: msg}
+	rs.Logger.Debug("proxied envelope", "reactor", rs.Name, "ch_id", cID, "peer", peerID.String())
 }
