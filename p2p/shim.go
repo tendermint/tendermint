@@ -124,13 +124,15 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 					continue
 				}
 
-				if e.Broadcast {
+				switch {
+				case e.Broadcast:
 					rs.Switch.Broadcast(cs.Descriptor.ID, bz)
-				} else {
+
+				case !e.To.Empty():
 					src := rs.Switch.peers.Get(ID(e.To.String()))
 					if src == nil {
 						rs.Logger.Error(
-							"failed to proxy envelope; failed to find peer ",
+							"failed to proxy envelope; failed to find peer",
 							"ch_id", cs.Descriptor.ID,
 							"msg", e.Message,
 							"peer", e.To.String(),
@@ -146,6 +148,9 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 							"peer", e.To.String(),
 						)
 					}
+
+				default:
+					rs.Logger.Error("failed to proxy envelope; missing peer ID", "ch_id", cs.Descriptor.ID, "msg", e.Message)
 				}
 			}
 		}(cs)
