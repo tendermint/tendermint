@@ -82,10 +82,10 @@ type Reactor struct {
 	syncer *syncer
 }
 
-// NewReactor returns a reference to a new state-sync reactor. It accepts a Context
-// which will be used for cancellations and deadlines when executing the reactor,
-// a p2p Channel used to receive and send messages, and a router that will be
-// used to get updates on peers.
+// NewReactor returns a reference to a new state sync reactor, which implements
+// the service.Service interface. It accepts a logger, connections for snapshots
+// and querying, references to p2p Channels and a channel to listen for peer
+// updates on. Note, the reactor will close all p2p Channels when stopping.
 func NewReactor(
 	logger log.Logger,
 	conn proxy.AppConnSnapshot,

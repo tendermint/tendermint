@@ -46,10 +46,8 @@ type reactorShimTestSuite struct {
 	sw   *p2p.Switch
 }
 
-func setup(
-	t *testing.T,
-	peers []p2p.Peer,
-) (*reactorShimTestSuite, func()) {
+func setup(t *testing.T, peers []p2p.Peer) *reactorShimTestSuite {
+	t.Helper()
 
 	rts := &reactorShimTestSuite{
 		shim: p2p.NewReactorShim("TestShim", testChannelShims),
@@ -67,15 +65,15 @@ func setup(
 	// start the reactor shim
 	require.NoError(t, rts.shim.Start())
 
-	teardown := func() {
+	t.Cleanup(func() {
 		require.NoError(t, rts.shim.Stop())
 
 		for _, chs := range rts.shim.Channels {
 			require.NoError(t, chs.Channel.Close())
 		}
-	}
+	})
 
-	return rts, teardown
+	return rts
 }
 
 func simplePeer(t *testing.T, id string) (*p2pmocks.Peer, p2p.PeerID) {
@@ -91,11 +89,7 @@ func simplePeer(t *testing.T, id string) (*p2pmocks.Peer, p2p.PeerID) {
 }
 
 func TestReactorShim_GetChannel(t *testing.T) {
-	rts, teardown := setup(t, nil)
-
-	t.Cleanup(func() {
-		teardown()
-	})
+	rts := setup(t, nil)
 
 	p2pCh := rts.shim.GetChannel(p2p.ChannelID(channelID1))
 	require.NotNil(t, p2pCh)
@@ -106,11 +100,7 @@ func TestReactorShim_GetChannel(t *testing.T) {
 }
 
 func TestReactorShim_GetChannels(t *testing.T) {
-	rts, teardown := setup(t, nil)
-
-	t.Cleanup(func() {
-		teardown()
-	})
+	rts := setup(t, nil)
 
 	p2pChs := rts.shim.GetChannels()
 	require.Len(t, p2pChs, 2)
@@ -120,12 +110,7 @@ func TestReactorShim_GetChannels(t *testing.T) {
 
 func TestReactorShim_AddPeer(t *testing.T) {
 	peerA, peerIDA := simplePeer(t, "aa")
-
-	rts, teardown := setup(t, []p2p.Peer{peerA})
-
-	t.Cleanup(func() {
-		teardown()
-	})
+	rts := setup(t, []p2p.Peer{peerA})
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -145,12 +130,7 @@ func TestReactorShim_AddPeer(t *testing.T) {
 
 func TestReactorShim_RemovePeer(t *testing.T) {
 	peerA, peerIDA := simplePeer(t, "aa")
-
-	rts, teardown := setup(t, []p2p.Peer{peerA})
-
-	t.Cleanup(func() {
-		teardown()
-	})
+	rts := setup(t, []p2p.Peer{peerA})
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -170,12 +150,7 @@ func TestReactorShim_RemovePeer(t *testing.T) {
 
 func TestReactorShim_Receive(t *testing.T) {
 	peerA, peerIDA := simplePeer(t, "aa")
-
-	rts, teardown := setup(t, []p2p.Peer{peerA})
-
-	t.Cleanup(func() {
-		teardown()
-	})
+	rts := setup(t, []p2p.Peer{peerA})
 
 	msg := &ssproto.Message{
 		Sum: &ssproto.Message_ChunkRequest{

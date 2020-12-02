@@ -69,11 +69,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 	peerAID := p2p.PeerID{0xAA}
 	peerBID := p2p.PeerID{0xBB}
 
-	rts, teardown := setup(t, connSnapshot, connQuery, stateProvider, 3)
-
-	t.Cleanup(func() {
-		teardown()
-	})
+	rts := setup(t, connSnapshot, connQuery, stateProvider, 3)
 
 	// Adding a chunk should error when no sync is in progress
 	_, err := rts.syncer.AddChunk(&chunk{Height: 1, Format: 1, Index: 0, Chunk: []byte{1}})
@@ -198,11 +194,7 @@ func TestSyncer_SyncAny_noSnapshots(t *testing.T) {
 	stateProvider := &mocks.StateProvider{}
 	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-	rts, teardown := setup(t, nil, nil, stateProvider, 2)
-
-	t.Cleanup(func() {
-		teardown()
-	})
+	rts := setup(t, nil, nil, stateProvider, 2)
 
 	_, _, err := rts.syncer.SyncAny(0)
 	require.Equal(t, errNoSnapshots, err)
@@ -212,11 +204,7 @@ func TestSyncer_SyncAny_abort(t *testing.T) {
 	stateProvider := &mocks.StateProvider{}
 	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-	rts, teardown := setup(t, nil, nil, stateProvider, 2)
-
-	t.Cleanup(func() {
-		teardown()
-	})
+	rts := setup(t, nil, nil, stateProvider, 2)
 
 	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 	peerID := p2p.PeerID{0xAA}
@@ -237,11 +225,7 @@ func TestSyncer_SyncAny_reject(t *testing.T) {
 	stateProvider := &mocks.StateProvider{}
 	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-	rts, teardown := setup(t, nil, nil, stateProvider, 2)
-
-	t.Cleanup(func() {
-		teardown()
-	})
+	rts := setup(t, nil, nil, stateProvider, 2)
 
 	// s22 is tried first, then s12, then s11, then errNoSnapshots
 	s22 := &snapshot{Height: 2, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
@@ -280,11 +264,7 @@ func TestSyncer_SyncAny_reject_format(t *testing.T) {
 	stateProvider := &mocks.StateProvider{}
 	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-	rts, teardown := setup(t, nil, nil, stateProvider, 2)
-
-	t.Cleanup(func() {
-		teardown()
-	})
+	rts := setup(t, nil, nil, stateProvider, 2)
 
 	// s22 is tried first, which reject s22 and s12, then s11 will abort.
 	s22 := &snapshot{Height: 2, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
@@ -319,11 +299,7 @@ func TestSyncer_SyncAny_reject_sender(t *testing.T) {
 	stateProvider := &mocks.StateProvider{}
 	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-	rts, teardown := setup(t, nil, nil, stateProvider, 2)
-
-	t.Cleanup(func() {
-		teardown()
-	})
+	rts := setup(t, nil, nil, stateProvider, 2)
 
 	peerAID := p2p.PeerID{0xAA}
 	peerBID := p2p.PeerID{0xBB}
@@ -369,11 +345,7 @@ func TestSyncer_SyncAny_abciError(t *testing.T) {
 	stateProvider := &mocks.StateProvider{}
 	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-	rts, teardown := setup(t, nil, nil, stateProvider, 2)
-
-	t.Cleanup(func() {
-		teardown()
-	})
+	rts := setup(t, nil, nil, stateProvider, 2)
 
 	errBoom := errors.New("boom")
 	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
@@ -416,11 +388,7 @@ func TestSyncer_offerSnapshot(t *testing.T) {
 			stateProvider := &mocks.StateProvider{}
 			stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-			rts, teardown := setup(t, nil, nil, stateProvider, 2)
-
-			t.Cleanup(func() {
-				teardown()
-			})
+			rts := setup(t, nil, nil, stateProvider, 2)
 
 			s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}, trustedAppHash: []byte("app_hash")}
 			rts.conn.On("OfferSnapshotSync", ctx, abci.RequestOfferSnapshot{
@@ -466,11 +434,7 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 			stateProvider := &mocks.StateProvider{}
 			stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-			rts, teardown := setup(t, nil, nil, stateProvider, 2)
-
-			t.Cleanup(func() {
-				teardown()
-			})
+			rts := setup(t, nil, nil, stateProvider, 2)
 
 			body := []byte{1, 2, 3}
 			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 1}, "")
@@ -521,11 +485,7 @@ func TestSyncer_applyChunks_RefetchChunks(t *testing.T) {
 			stateProvider := &mocks.StateProvider{}
 			stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-			rts, teardown := setup(t, nil, nil, stateProvider, 2)
-
-			t.Cleanup(func() {
-				teardown()
-			})
+			rts := setup(t, nil, nil, stateProvider, 2)
 
 			chunks, err := newChunkQueue(&snapshot{Height: 1, Format: 1, Chunks: 3}, "")
 			require.NoError(t, err)
@@ -587,11 +547,7 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 			stateProvider := &mocks.StateProvider{}
 			stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 
-			rts, teardown := setup(t, nil, nil, stateProvider, 2)
-
-			t.Cleanup(func() {
-				teardown()
-			})
+			rts := setup(t, nil, nil, stateProvider, 2)
 
 			// Set up three peers across two snapshots, and ask for one of them to be banned.
 			// It should be banned from all snapshots.
@@ -709,11 +665,7 @@ func TestSyncer_verifyApp(t *testing.T) {
 	for name, tc := range testcases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			rts, teardown := setup(t, nil, nil, nil, 2)
-
-			t.Cleanup(func() {
-				teardown()
-			})
+			rts := setup(t, nil, nil, nil, 2)
 
 			rts.connQuery.On("InfoSync", ctx, proxy.RequestInfo).Return(tc.response, tc.err)
 			version, err := rts.syncer.verifyApp(s)

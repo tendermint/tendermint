@@ -42,7 +42,9 @@ func setup(
 	connQuery *proxymocks.AppConnQuery,
 	stateProvider *mocks.StateProvider,
 	chBuf uint,
-) (*reactorTestSuite, func()) {
+) *reactorTestSuite {
+	t.Helper()
+
 	if conn == nil {
 		conn = &proxymocks.AppConnSnapshot{}
 	}
@@ -105,23 +107,19 @@ func setup(
 	require.NoError(t, rts.reactor.Start())
 	require.True(t, rts.reactor.IsRunning())
 
-	teardown := func() {
+	t.Cleanup(func() {
 		require.NoError(t, rts.reactor.Stop())
 		require.False(t, rts.reactor.IsRunning())
 		close(rts.peerUpdateCh)
 		close(rts.chunkInCh)
 		close(rts.snapshotInCh)
-	}
+	})
 
-	return rts, teardown
+	return rts
 }
 
 func TestReactor_ChunkRequest_InvalidRequest(t *testing.T) {
-	rts, teardown := setup(t, nil, nil, nil, 2)
-
-	t.Cleanup(func() {
-		teardown()
-	})
+	rts := setup(t, nil, nil, nil, 2)
 
 	rts.chunkInCh <- p2p.Envelope{
 		From:    p2p.PeerID{0xAA},
@@ -175,11 +173,7 @@ func TestReactor_ChunkRequest(t *testing.T) {
 				Chunk:  tc.request.Index,
 			}).Return(&abci.ResponseLoadSnapshotChunk{Chunk: tc.chunk}, nil)
 
-			rts, teardown := setup(t, conn, nil, nil, 2)
-
-			t.Cleanup(func() {
-				teardown()
-			})
+			rts := setup(t, conn, nil, nil, 2)
 
 			rts.chunkInCh <- p2p.Envelope{
 				From:    p2p.PeerID{0xAA},
@@ -196,11 +190,7 @@ func TestReactor_ChunkRequest(t *testing.T) {
 }
 
 func TestReactor_SnapshotsRequest_InvalidRequest(t *testing.T) {
-	rts, teardown := setup(t, nil, nil, nil, 2)
-
-	t.Cleanup(func() {
-		teardown()
-	})
+	rts := setup(t, nil, nil, nil, 2)
 
 	rts.snapshotInCh <- p2p.Envelope{
 		From:    p2p.PeerID{0xAA},
@@ -260,11 +250,7 @@ func TestReactor_SnapshotsRequest(t *testing.T) {
 				Snapshots: tc.snapshots,
 			}, nil)
 
-			rts, teardown := setup(t, conn, nil, nil, 100)
-
-			t.Cleanup(func() {
-				teardown()
-			})
+			rts := setup(t, conn, nil, nil, 100)
 
 			rts.snapshotInCh <- p2p.Envelope{
 				From:    p2p.PeerID{0xAA},
