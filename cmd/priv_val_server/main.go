@@ -96,7 +96,8 @@ func main() {
 		opts = append(opts, creds)
 		logger.Info("SignerServer: Creating security credentials")
 	} else {
-		logger.Error("SignerServer: You are using an insecure gRPC connection! Provide a certificate and key to connect securely")
+		logger.Error(`SignerServer: You are using an insecure gRPC connection! 
+		Provide a certificate and key to connect securely`)
 	}
 
 	// add prometheus metrics for unary RPC calls

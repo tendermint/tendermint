@@ -1398,7 +1398,8 @@ func createAndStartPrivValidatorGRPCClient(
 	if config.PrivValidatorClientCertificate != "" &&
 		config.PrivValidatorClientKey != "" &&
 		config.PrivValidatorCertificateAuthority != "" {
-		transportSecurity = generateTLS(config.PrivValidatorClientCertificateFile(), config.PrivValidatorClientKeyFile(), config.PrivValidatorCertificateAuthorityFile())
+		transportSecurity = generateTLS(config.PrivValidatorClientCertificateFile(),
+			config.PrivValidatorClientKeyFile(), config.PrivValidatorCertificateAuthorityFile())
 	} else {
 		transportSecurity = grpc.WithInsecure()
 		logger.Error("Using an insecure gRPC connection! Please provide a certificate and key to use a secure connection.")
