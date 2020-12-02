@@ -2,11 +2,9 @@ package p2p
 
 import (
 	"bytes"
-	"context"
 	"encoding/hex"
 	"fmt"
 	"net"
-	"net/url"
 	"strings"
 	"time"
 
@@ -44,32 +42,6 @@ func PeerIDFromString(s string) (PeerID, error) {
 // Equal reports whether two PeerID are equal.
 func (pid PeerID) Equal(other PeerID) bool {
 	return bytes.Equal(pid, other)
-}
-
-// PeerAddress is a peer address URL. The User field, if set, gives the
-// hex-encoded remote PeerID, which should be verified with the remote peer's
-// public key as returned by the connection.
-type PeerAddress url.URL
-
-// Resolve resolves a PeerAddress into a set of Endpoints, typically by
-// expanding out a DNS name in Host to its IP addresses. Field mapping:
-//
-//   Scheme → Endpoint.Protocol
-//   Host   → Endpoint.IP
-//   Port   → Endpoint.Port
-//   Path+Query+Fragment,Opaque → Endpoint.Path
-//
-func (a PeerAddress) Resolve(ctx context.Context) []Endpoint { return nil }
-
-// peer tracks internal status information about a peer.
-//
-// TODO: Rename once legacy p2p types are removed.
-// ref: https://github.com/tendermint/tendermint/issues/5670
-type peerInternal struct { //nolint:unused,deadcode
-	ID        PeerID
-	Status    PeerStatus
-	Priority  PeerPriority
-	Endpoints map[PeerAddress][]Endpoint // Resolved endpoints by address.
 }
 
 // PeerStatus specifies peer statuses.
