@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
@@ -91,10 +92,6 @@ func NewChannelShim(cds *ChannelDescriptorShim, buf uint) *ChannelShim {
 // executions (or anything else that may send on the Channel) and proxy them to
 // the corresponding Peer using the To field from the envelope.
 func (rs *ReactorShim) proxyPeerEnvelopes() {
-	if rs.Switch == nil {
-		panic("proxyPeerEnvelopes: reactor shim switch is nil")
-	}
-
 	for _, cs := range rs.Channels {
 		go func(cs *ChannelShim) {
 			for e := range cs.OutCh {
@@ -143,10 +140,6 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 // the legacy p2p Switch and execute a StopPeerForError call with the corresponding
 // peer error.
 func (rs *ReactorShim) handlePeerErrors() {
-	if rs.Switch == nil {
-		panic("handlePeerErrors: reactor shim switch is nil")
-	}
-
 	for _, cs := range rs.Channels {
 		go func(cs *ChannelShim) {
 			for pErr := range cs.PeerErrCh {
@@ -167,8 +160,14 @@ func (rs *ReactorShim) handlePeerErrors() {
 // necessary go-routines in order to proxy peer envelopes and errors per p2p
 // Channel.
 func (rs *ReactorShim) OnStart() error {
+	if rs.Switch == nil {
+		return errors.New("proxyPeerEnvelopes: reactor shim switch is nil")
+	}
+
+	// start envelope proxying and peer error handling in separate go routines
 	rs.proxyPeerEnvelopes()
 	rs.handlePeerErrors()
+
 	return nil
 }
 
