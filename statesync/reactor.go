@@ -413,12 +413,10 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 
 	// request snapshots from all currently connected peers
 	r.Logger.Debug("requesting snapshots from known peers")
-	go func() {
-		r.snapshotCh.Out <- p2p.Envelope{
-			Broadcast: true,
-			Message:   &ssproto.SnapshotsRequest{},
-		}
-	}()
+	r.snapshotCh.Out <- p2p.Envelope{
+		Broadcast: true,
+		Message:   &ssproto.SnapshotsRequest{},
+	}
 
 	state, commit, err := r.syncer.SyncAny(discoveryTime)
 
