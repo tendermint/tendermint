@@ -336,26 +336,23 @@ func (r *Reactor) processPeerUpdates() {
 		select {
 		case peerUpdate := <-r.peerUpdates:
 			r.Logger.Debug("peer update", "peer", peerUpdate.PeerID.String())
-			r.handlePeerUpdate(peerUpdate)
+			r.mtx.RLock()
+
+			if r.syncer != nil {
+				switch peerUpdate.Status {
+				case p2p.PeerStatusNew, p2p.PeerStatusUp:
+					r.syncer.AddPeer(peerUpdate.PeerID)
+
+				case p2p.PeerStatusDown, p2p.PeerStatusRemoved, p2p.PeerStatusBanned:
+					r.syncer.RemovePeer(peerUpdate.PeerID)
+				}
+			}
+
+			r.mtx.RUnlock()
 
 		case <-r.peerUpdatesDone:
 			r.Logger.Debug("stopped listening on peer updates channel")
 			return
-		}
-	}
-}
-
-func (r *Reactor) handlePeerUpdate(peerUpdate p2p.PeerUpdate) {
-	r.mtx.RLock()
-	defer r.mtx.RUnlock()
-
-	if r.syncer != nil {
-		switch peerUpdate.Status {
-		case p2p.PeerStatusNew, p2p.PeerStatusUp:
-			r.syncer.AddPeer(peerUpdate.PeerID)
-
-		case p2p.PeerStatusDown, p2p.PeerStatusRemoved, p2p.PeerStatusBanned:
-			r.syncer.RemovePeer(peerUpdate.PeerID)
 		}
 	}
 }
