@@ -83,11 +83,11 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Confi
 
 	err := cs.Start()
 	require.NoError(t, err)
-	t.Cleanup(func() {
+	defer func() {
 		if err := cs.Stop(); err != nil {
 			t.Error(err)
 		}
-	})
+	}()
 
 	// This is just a signal that we haven't halted; its not something contained
 	// in the WAL itself. Assuming the consensus state is running, replay of any
@@ -659,7 +659,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	var genesisState sm.State
 	if testValidatorsChange {
 		testConfig := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
-		t.Cleanup(func() { _ = os.RemoveAll(testConfig.RootDir) })
+		defer func() { _ = os.RemoveAll(testConfig.RootDir) }()
 		stateDB = dbm.NewMemDB()
 
 		genesisState = sim.GenesisState
@@ -669,7 +669,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		store = newMockBlockStore(config, genesisState.ConsensusParams)
 	} else { // test single node
 		testConfig := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
-		t.Cleanup(func() { _ = os.RemoveAll(testConfig.RootDir) })
+		defer func() { _ = os.RemoveAll(testConfig.RootDir) }()
 		walBody, err := WALWithNBlocks(t, numBlocks)
 		require.NoError(t, err)
 		walFile := tempWALWithData(walBody)
