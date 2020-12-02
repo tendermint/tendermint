@@ -284,9 +284,8 @@ func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 
 	peerID, err := PeerIDFromString(string(src.ID()))
 	if err != nil {
-		// It is OK to panic here as we'll be removing the Reactor interface and
-		// Peer type in favor of using a PeerID directly.
-		panic(err)
+		rs.Logger.Error("failed to convert peer ID", "peer", src, "ch_id", chID, "err", err)
+		return
 	}
 
 	msg := proto.Clone(channelShim.Channel.messageType)
