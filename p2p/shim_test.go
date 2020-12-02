@@ -52,7 +52,7 @@ func setup(
 ) (*reactorShimTestSuite, func()) {
 
 	rts := &reactorShimTestSuite{
-		shim: p2p.NewShim("TestShim", testChannelShims),
+		shim: p2p.NewReactorShim("TestShim", testChannelShims),
 	}
 
 	rts.sw = p2p.MakeSwitch(p2pCfg, 1, "testing", "123.123.123", func(_ int, sw *p2p.Switch) *p2p.Switch {

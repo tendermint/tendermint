@@ -123,13 +123,10 @@ func (s *syncer) AddSnapshot(peer p2p.PeerID, snapshot *snapshot) (bool, error) 
 // single request to discover snapshots, later we may want to do retries and stuff.
 func (s *syncer) AddPeer(peer p2p.PeerID) {
 	s.logger.Debug("Requesting snapshots from peer", "peer", peer.String())
-
-	go func() {
-		s.snapshotCh <- p2p.Envelope{
-			To:      peer,
-			Message: &ssproto.SnapshotsRequest{},
-		}
-	}()
+	s.snapshotCh <- p2p.Envelope{
+		To:      peer,
+		Message: &ssproto.SnapshotsRequest{},
+	}
 }
 
 // RemovePeer removes a peer from the pool.
@@ -440,16 +437,14 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 		"peer", peer.String(),
 	)
 
-	go func() {
-		s.chunkCh <- p2p.Envelope{
-			To: peer,
-			Message: &ssproto.ChunkRequest{
-				Height: snapshot.Height,
-				Format: snapshot.Format,
-				Index:  chunk,
-			},
-		}
-	}()
+	s.chunkCh <- p2p.Envelope{
+		To: peer,
+		Message: &ssproto.ChunkRequest{
+			Height: snapshot.Height,
+			Format: snapshot.Format,
+			Index:  chunk,
+		},
+	}
 }
 
 // verifyApp verifies the sync, checking the app hash and last block height. It returns the
