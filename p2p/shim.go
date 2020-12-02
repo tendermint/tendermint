@@ -101,7 +101,12 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 				wrapper, ok := msg.(Wrapper)
 				if ok {
 					if err := wrapper.Wrap(e.Message); err != nil {
-						rs.Logger.Error("failed to wrap message", "ch_id", cs.Descriptor.ID, "msg", e.Message, "err", err)
+						rs.Logger.Error(
+							"failed to proxy envelope; failed to wrap message",
+							"ch_id", cs.Descriptor.ID,
+							"msg", e.Message,
+							"err", err,
+						)
 						continue
 					}
 				} else {
@@ -110,7 +115,13 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 
 				bz, err := proto.Marshal(msg)
 				if err != nil {
-					panic(fmt.Sprintf("failed to proxy envelope; failed to encode message: %s", err))
+					rs.Logger.Error(
+						"failed to proxy envelope; failed to encode message",
+						"ch_id", cs.Descriptor.ID,
+						"msg", e.Message,
+						"err", err,
+					)
+					continue
 				}
 
 				if e.Broadcast {
@@ -118,7 +129,13 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 				} else {
 					src := rs.Switch.peers.Get(ID(e.To.String()))
 					if src == nil {
-						panic(fmt.Sprintf("failed to proxy envelope; failed to find peer (%s)", e.To))
+						rs.Logger.Error(
+							"failed to proxy envelope; failed to find peer ",
+							"ch_id", cs.Descriptor.ID,
+							"msg", e.Message,
+							"peer", e.To.String(),
+						)
+						continue
 					}
 
 					if !src.Send(cs.Descriptor.ID, bz) {
