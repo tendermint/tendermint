@@ -2,19 +2,14 @@ package grpc_test
 
 import (
 	"context"
-	"fmt"
-	"net"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	grpc "google.golang.org/grpc"
-	"google.golang.org/grpc/test/bufconn"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
@@ -23,6 +18,7 @@ import (
 )
 
 // Unit
+// todo: make into table driven tests
 func TestGetPubKey(t *testing.T) {
 	mockPV := types.NewMockPV()
 
@@ -122,68 +118,3 @@ func TestSignProposal(t *testing.T) {
 
 	assert.Equal(t, pbProposal.Signature, resp.Proposal.Signature)
 }
-
-// Integration
-const bufSize = 1024 * 1024
-
-var lis *bufconn.Listener
-
-func init() {
-	lis = bufconn.Listen(bufSize)
-	logger := log.TestingLogger()
-	chainID := tmrand.Str(12)
-	mockPV := types.NewMockPV()
-
-	s := grpc.NewServer()
-	ss := tmgrpc.NewSignerServer(chainID, mockPV, logger)
-	privvalproto.RegisterPrivValidatorAPIServer(s, ss)
-
-	go func() {
-		if err := s.Serve(lis); err != nil {
-			panic(fmt.Sprintf("Server exited with error: %v", err))
-		}
-	}()
-}
-
-func bufDialer(context.Context, string) (net.Conn, error) {
-	return lis.Dial()
-}
-
-// func TestGetPubKeySigner(t *testing.T) {
-// 	ctx := context.Background()
-// 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
-// 	if err != nil {
-// 		t.Fatalf("Failed to dial bufnet: %v", err)
-// 	}
-// 	defer conn.Close()
-// 	client := privvalproto.NewPrivValidatorAPIClient(conn)
-
-// 	// for _, tc := range getSignerTestCases(t) {
-// 	// 	tc := tc
-// 	// 	t.Cleanup(func() {
-// 	// 		if err := tc.signerClient.Close(); err != nil {
-// 	// 			t.Error(err)
-// 	// 		}
-// 	// 	})
-
-// 	// 	fmt.Println(1)
-// 	// 	err := tc.signerServer.Start()
-// 	// 	require.NoError(t, err)
-// 	// 	fmt.Println(2)
-
-// 	// 	pubKey, err := tc.signerClient.GetPubKey()
-// 	// 	require.NoError(t, err)
-// 	// 	expectedPubKey, err := tc.mockPV.GetPubKey()
-// 	// 	require.NoError(t, err)
-
-// 	// 	assert.Equal(t, expectedPubKey, pubKey)
-
-// 	// 	pubKey, err = tc.signerClient.GetPubKey()
-// 	// 	require.NoError(t, err)
-// 	// 	expectedpk, err := tc.mockPV.GetPubKey()
-// 	// 	require.NoError(t, err)
-// 	// 	expectedAddr := expectedpk.Address()
-
-// 	// 	assert.Equal(t, expectedAddr, pubKey.Address())
-// 	// }
-// }

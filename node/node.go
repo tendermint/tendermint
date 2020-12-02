@@ -1395,6 +1395,9 @@ func createAndStartPrivValidatorGRPCClient(
 	cert, key, ca, chainID string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
+	if listenAddr == "" {
+		return nil, fmt.Errorf("target connection parameter missing. endpoint %s", listenAddr)
+	}
 
 	var transportSecurity grpc.DialOption
 	if cert != "" && key != "" && ca != "" {
@@ -1407,14 +1410,23 @@ func createAndStartPrivValidatorGRPCClient(
 
 	dialOptions = append(dialOptions, transportSecurity)
 
-	pvsc, err := grpcprivval.NewSignerClient(listenAddr, chainID, dialOptions, logger)
+	ctx := context.Background()
+
+	conn, err := grpc.DialContext(ctx, listenAddr, dialOptions...)
+	if err != nil {
+		logger.Error("unable to connect to client.", "target", listenAddr, "err", err)
+	}
+	pvsc, err := grpcprivval.NewSignerClient(ctx, conn, chainID, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
-	// try to get a pubkey from private validate first time
-	_, err = pvsc.GetPubKey()
-	if err != nil {
-		return nil, fmt.Errorf("can't get pubkey: %w", err)
+
+	{
+		// try to get a pubkey from private validate first time
+		_, err = pvsc.GetPubKey()
+		if err != nil {
+			return nil, fmt.Errorf("can't get pubkey: %w", err)
+		}
 	}
 
 	return pvsc, nil
