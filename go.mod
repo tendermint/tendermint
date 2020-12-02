@@ -17,6 +17,7 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/gorilla/websocket v1.4.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
+	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/gtank/merlin v0.1.1
 	github.com/hdevalence/ed25519consensus v0.0.0-20200813231810-1694d75e712a
 	github.com/libp2p/go-buffer-pool v0.0.2

@@ -7,8 +7,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
@@ -18,6 +22,14 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	grpcprivval "github.com/tendermint/tendermint/privval/grpc"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
+)
+
+var (
+	// Create a metrics registry.
+	reg = prometheus.NewRegistry()
+
+	// Create some standard server metrics.
+	grpcMetrics = grpc_prometheus.NewServerMetrics()
 )
 
 func main() {
@@ -30,6 +42,7 @@ func main() {
 		withCert         = flag.String("cert", "", "absolute path to server certificate")
 		withKey          = flag.String("key", "", "absolute path to server key")
 		rootCA           = flag.String("rootCA", "", "absolute path to root CA")
+		prometheusAddr   = flag.String("prometheusAddr", "", "address for prometheus endpoint")
 
 		logger = log.NewTMLogger(
 			log.NewSyncWriter(os.Stdout),
@@ -85,6 +98,9 @@ func main() {
 		logger.Error("You are using an insecure gRPC connection! Provide a certificate and key to connect securely")
 	}
 
+	// add prometheus metrics for unary RPC calls
+	opts = append(opts, grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor))
+
 	ss := grpcprivval.NewSignerServer(*chainID, pv, logger)
 
 	protocol, address := tmnet.ProtocolAndAddress(*addr)
@@ -97,6 +113,20 @@ func main() {
 	s := grpc.NewServer(opts...)
 
 	privvalproto.RegisterPrivValidatorAPIServer(s, ss)
+
+	if *prometheusAddr != "" {
+		// Initialize all metrics.
+		grpcMetrics.InitializeMetrics(s)
+		// create http server to serve prometheus
+		httpServer := &http.Server{Handler: promhttp.HandlerFor(reg, promhttp.HandlerOpts{}),
+			Addr: fmt.Sprintf("0.0.0.0:%d", 9092)}
+
+		go func() {
+			if err := httpServer.ListenAndServe(); err != nil {
+				panic("Unable to start a http server.")
+			}
+		}()
+	}
 
 	if err := s.Serve(lis); err != nil {
 		panic(err)

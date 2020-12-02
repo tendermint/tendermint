@@ -17,104 +17,177 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// Unit
-// todo: make into table driven tests
+const ChainID = "123"
+
 func TestGetPubKey(t *testing.T) {
-	mockPV := types.NewMockPV()
 
-	s := tmgrpc.SignerServer{
-		ChainID: "123",
-		PrivVal: mockPV,
+	testCases := []struct {
+		name string
+		pv   types.PrivValidator
+		err  bool
+	}{
+		{name: "valid", pv: types.NewMockPV(), err: false},
+		{name: "error on pubkey", pv: types.NewErroringMockPV(), err: true},
 	}
 
-	req := &privvalproto.PubKeyRequest{ChainId: s.ChainID}
-	resp, err := s.GetPubKey(context.Background(), req)
-	if err != nil {
-		t.Errorf("got unexpected error")
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			s := tmgrpc.SignerServer{
+				ChainID: ChainID,
+				PrivVal: tc.pv,
+			}
+
+			req := &privvalproto.PubKeyRequest{ChainId: s.ChainID}
+			resp, err := s.GetPubKey(context.Background(), req)
+			if tc.err {
+				require.Error(t, err)
+			} else {
+				pk, err := tc.pv.GetPubKey()
+				require.NoError(t, err)
+				assert.Equal(t, resp.PubKey.GetEd25519(), pk.Bytes())
+			}
+		})
 	}
 
-	assert.Equal(t, resp.PubKey.GetEd25519(), mockPV.PrivKey.PubKey().Bytes())
 }
-func TestSignVote(t *testing.T) {
-	mockPV := types.NewMockPV()
 
-	s := tmgrpc.SignerServer{
-		ChainID: "123",
-		PrivVal: mockPV,
-	}
+func TestSignVote(t *testing.T) {
 
 	ts := time.Now()
 	hash := tmrand.Bytes(tmhash.Size)
 	valAddr := tmrand.Bytes(crypto.AddressSize)
 
-	want := &types.Vote{
-		Type:             tmproto.PrecommitType,
-		Height:           1,
-		Round:            2,
-		BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-		Timestamp:        ts,
-		ValidatorAddress: valAddr,
-		ValidatorIndex:   1,
+	testCases := []struct {
+		name       string
+		pv         types.PrivValidator
+		have, want *types.Vote
+		err        bool
+	}{
+		{name: "valid", pv: types.NewMockPV(), have: &types.Vote{
+			Type:             tmproto.PrecommitType,
+			Height:           1,
+			Round:            2,
+			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp:        ts,
+			ValidatorAddress: valAddr,
+			ValidatorIndex:   1,
+		}, want: &types.Vote{
+			Type:             tmproto.PrecommitType,
+			Height:           1,
+			Round:            2,
+			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp:        ts,
+			ValidatorAddress: valAddr,
+			ValidatorIndex:   1,
+		},
+			err: false},
+		{name: "invalid vote", pv: types.NewErroringMockPV(), have: &types.Vote{
+			Type:             tmproto.PrecommitType,
+			Height:           1,
+			Round:            2,
+			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp:        ts,
+			ValidatorAddress: valAddr,
+			ValidatorIndex:   1,
+			Signature:        []byte("signed"),
+		}, want: &types.Vote{
+			Type:             tmproto.PrecommitType,
+			Height:           1,
+			Round:            2,
+			BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp:        ts,
+			ValidatorAddress: valAddr,
+			ValidatorIndex:   1,
+			Signature:        []byte("signed"),
+		},
+			err: true},
 	}
 
-	have := &types.Vote{
-		Type:             tmproto.PrecommitType,
-		Height:           1,
-		Round:            2,
-		BlockID:          types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-		Timestamp:        ts,
-		ValidatorAddress: valAddr,
-		ValidatorIndex:   1,
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			s := tmgrpc.SignerServer{
+				ChainID: ChainID,
+				PrivVal: tc.pv,
+			}
+			req := &privvalproto.SignVoteRequest{ChainId: s.ChainID, Vote: tc.have.ToProto()}
+			resp, err := s.SignVote(context.Background(), req)
+			if tc.err {
+				require.Error(t, err)
+			} else {
+				pbVote := tc.want.ToProto()
+
+				require.NoError(t, tc.pv.SignVote(s.ChainID, pbVote))
+				assert.Equal(t, pbVote.Signature, resp.Vote.Signature)
+			}
+		})
 	}
-
-	req := &privvalproto.SignVoteRequest{ChainId: s.ChainID, Vote: have.ToProto()}
-	resp, err := s.SignVote(context.Background(), req)
-	if err != nil {
-		t.Errorf("got unexpected error")
-	}
-
-	pbVote := want.ToProto()
-
-	require.NoError(t, mockPV.SignVote(s.ChainID, pbVote))
-
-	assert.Equal(t, pbVote.Signature, resp.Vote.Signature)
 }
-func TestSignProposal(t *testing.T) {
-	mockPV := types.NewMockPV()
 
-	s := tmgrpc.SignerServer{
-		ChainID: "123",
-		PrivVal: mockPV,
-	}
+func TestSignProposal(t *testing.T) {
 
 	ts := time.Now()
 	hash := tmrand.Bytes(tmhash.Size)
-	have := &types.Proposal{
-		Type:      tmproto.ProposalType,
-		Height:    1,
-		Round:     2,
-		POLRound:  2,
-		BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-		Timestamp: ts,
+
+	testCases := []struct {
+		name       string
+		pv         types.PrivValidator
+		have, want *types.Proposal
+		err        bool
+	}{
+		{name: "valid", pv: types.NewMockPV(), have: &types.Proposal{
+			Type:      tmproto.ProposalType,
+			Height:    1,
+			Round:     2,
+			POLRound:  2,
+			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp: ts,
+		}, want: &types.Proposal{
+			Type:      tmproto.ProposalType,
+			Height:    1,
+			Round:     2,
+			POLRound:  2,
+			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp: ts,
+		},
+			err: false},
+		{name: "invalid proposal", pv: types.NewErroringMockPV(), have: &types.Proposal{
+			Type:      tmproto.ProposalType,
+			Height:    1,
+			Round:     2,
+			POLRound:  2,
+			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp: ts,
+			Signature: []byte("signed"),
+		}, want: &types.Proposal{
+			Type:      tmproto.ProposalType,
+			Height:    1,
+			Round:     2,
+			POLRound:  2,
+			BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
+			Timestamp: ts,
+			Signature: []byte("signed"),
+		},
+			err: true},
 	}
-	want := &types.Proposal{
-		Type:      tmproto.ProposalType,
-		Height:    1,
-		Round:     2,
-		POLRound:  2,
-		BlockID:   types.BlockID{Hash: hash, PartSetHeader: types.PartSetHeader{Hash: hash, Total: 2}},
-		Timestamp: ts,
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			s := tmgrpc.SignerServer{
+				ChainID: ChainID,
+				PrivVal: tc.pv,
+			}
+			req := &privvalproto.SignProposalRequest{ChainId: s.ChainID, Proposal: tc.have.ToProto()}
+			resp, err := s.SignProposal(context.Background(), req)
+			if tc.err {
+				require.Error(t, err)
+			} else {
+				pbProposal := tc.want.ToProto()
+				require.NoError(t, tc.pv.SignProposal(s.ChainID, pbProposal))
+				assert.Equal(t, pbProposal.Signature, resp.Proposal.Signature)
+			}
+		})
 	}
-
-	req := &privvalproto.SignProposalRequest{ChainId: s.ChainID, Proposal: have.ToProto()}
-	resp, err := s.SignProposal(context.Background(), req)
-	if err != nil {
-		t.Errorf("got unexpected error")
-	}
-
-	pbProposal := want.ToProto()
-
-	require.NoError(t, mockPV.SignProposal(s.ChainID, pbProposal))
-
-	assert.Equal(t, pbProposal.Signature, resp.Proposal.Signature)
 }

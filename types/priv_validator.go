@@ -129,6 +129,11 @@ type ErroringMockPV struct {
 var ErroringMockPVErr = errors.New("erroringMockPV always returns an error")
 
 // Implements PrivValidator.
+func (pv *ErroringMockPV) GetPubKey() (crypto.PubKey, error) {
+	return nil, ErroringMockPVErr
+}
+
+// Implements PrivValidator.
 func (pv *ErroringMockPV) SignVote(chainID string, vote *tmproto.Vote) error {
 	return ErroringMockPVErr
 }
