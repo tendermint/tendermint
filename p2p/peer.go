@@ -36,7 +36,7 @@ func PeerIDFromString(s string) (PeerID, error) {
 		return nil, fmt.Errorf("failed to decode PeerID (%s): %w", s, err)
 	}
 
-	return PeerID(bz), err
+	return PeerID(bz), nil
 }
 
 // Equal reports whether two PeerID are equal.
