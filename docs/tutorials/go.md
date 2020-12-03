@@ -101,6 +101,10 @@ func NewKVStoreApplication() *KVStoreApplication {
 	return &KVStoreApplication{}
 }
 
+func (KVStoreApplication) SetOption(abcitypes.RequestSetOption) abcitypes.ResponseSetOption {
+	return abcitypes.ResponseSetOption{}
+}
+
 func (KVStoreApplication) Info(req abcitypes.RequestInfo) abcitypes.ResponseInfo {
 	return abcitypes.ResponseInfo{}
 }
