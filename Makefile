@@ -5,7 +5,7 @@ BUILDDIR ?= $(CURDIR)/build
 
 BUILD_TAGS?=tendermint
 
-# If using a release, please checkout the tag to get the correct version setting
+# If building a release, please checkout the version tag to get the correct version setting
 ifneq ($(shell git branch --show-current),)
 VERSION := unreleased-$(shell git branch --show-current)-$(shell git rev-parse HEAD)
 else
