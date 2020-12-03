@@ -14,6 +14,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - Apps
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
+  - [ABCI] \#5447 Reset `Oneof` indexes for  `Request` and `Response`.
+
 - P2P Protocol
 
 - Go API
