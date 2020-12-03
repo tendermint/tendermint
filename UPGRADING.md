@@ -8,6 +8,8 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 * Added `AbciVersion` to `RequestInfo`. Applications should check that the ABCI version they expect is being used in order to avoid unimplemented changes errors.
 
+* The method `SetOption` has been removed from the ABCI.Client interface. This feature was used in the early ABCI implementation's.
+
 ### Config Changes
 
 * `fast_sync = "v1"` is no longer supported. Please use `v2` instead.
@@ -84,12 +86,12 @@ Applications can notify Tendermint to index a specific transaction by setting
 
 ```go
 []types.Event{
-	{
-		Type: "app",
-		Attributes: []types.EventAttribute{
-			{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko"), Index: true},
-		},
-	},
+ {
+  Type: "app",
+  Attributes: []types.EventAttribute{
+   {Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko"), Index: true},
+  },
+ },
 }
 ```
 
@@ -165,8 +167,8 @@ Other user-relevant changes include:
 
 * The old `lite` package was removed; the new light client uses the `light` package.
 * The `Verifier` was broken up into two pieces:
-    * Core verification logic (pure `VerifyX` functions)
-    * `Client` object, which represents the complete light client
+  * Core verification logic (pure `VerifyX` functions)
+  * `Client` object, which represents the complete light client
 * The new light clients stores headers & validator sets as `LightBlock`s
 * The RPC client can be found in the `/rpc` directory.
 * The HTTP(S) proxy is located in the `/proxy` directory.
@@ -185,7 +187,6 @@ All requests are now accompanied by the chain ID from the network.
 This is a optional field and can be ignored by key management systems;
 however, if you are using the same key management system for multiple different
 blockchains, we recommend that you check the chain ID.
-
 
 ### RPC
 
@@ -245,10 +246,10 @@ mostly of just signatures.
 
 ```go
 type Commit struct {
-	Height     int64
-	Round      int
-	BlockID    BlockID
-	Signatures []CommitSig
+ Height     int64
+ Round      int
+ BlockID    BlockID
+ Signatures []CommitSig
 }
 ```
 
@@ -256,19 +257,19 @@ type Commit struct {
 type BlockIDFlag byte
 
 const (
-	// BlockIDFlagAbsent - no vote was received from a validator.
-	BlockIDFlagAbsent BlockIDFlag = 0x01
-	// BlockIDFlagCommit - voted for the Commit.BlockID.
-	BlockIDFlagCommit = 0x02
-	// BlockIDFlagNil - voted for nil.
-	BlockIDFlagNil = 0x03
+ // BlockIDFlagAbsent - no vote was received from a validator.
+ BlockIDFlagAbsent BlockIDFlag = 0x01
+ // BlockIDFlagCommit - voted for the Commit.BlockID.
+ BlockIDFlagCommit = 0x02
+ // BlockIDFlagNil - voted for nil.
+ BlockIDFlagNil = 0x03
 )
 
 type CommitSig struct {
-	BlockIDFlag      BlockIDFlag
-	ValidatorAddress Address
-	Timestamp        time.Time
-	Signature        []byte
+ BlockIDFlag      BlockIDFlag
+ ValidatorAddress Address
+ Timestamp        time.Time
+ Signature        []byte
 }
 ```
 
@@ -298,12 +299,12 @@ Evidence Params has been changed to include duration.
 ### Go API
 
 * `libs/common` has been removed in favor of specific pkgs.
-    * `async`
-    * `service`
-    * `rand`
-    * `net`
-    * `strings`
-    * `cmap`
+  * `async`
+  * `service`
+  * `rand`
+  * `net`
+  * `strings`
+  * `cmap`
 * removal of `errors` pkg
 
 ### RPC Changes
