@@ -216,15 +216,14 @@ func (rs *ReactorShim) GetChannel(cID ChannelID) *Channel {
 // GetChannels implements the legacy Reactor interface for getting a slice of all
 // the supported ChannelDescriptors.
 func (rs *ReactorShim) GetChannels() []*ChannelDescriptor {
-	descriptors := make([]*ChannelDescriptor, len(rs.Channels))
-
-	sortedChIDs := make([]ChannelID, 0, len(descriptors))
+	sortedChIDs := make([]ChannelID, 0, len(rs.Channels))
 	for cID := range rs.Channels {
 		sortedChIDs = append(sortedChIDs, cID)
 	}
 
 	sort.Slice(sortedChIDs, func(i, j int) bool { return sortedChIDs[i] < sortedChIDs[j] })
 
+	descriptors := make([]*ChannelDescriptor, len(rs.Channels))
 	for i, cID := range sortedChIDs {
 		descriptors[i] = rs.Channels[cID].Descriptor
 	}
@@ -238,9 +237,8 @@ func (rs *ReactorShim) GetChannels() []*ChannelDescriptor {
 func (rs *ReactorShim) AddPeer(peer Peer) {
 	peerID, err := PeerIDFromString(string(peer.ID()))
 	if err != nil {
-		// It is OK to panic here as we'll be removing the Reactor interface and
-		// Peer type in favor of using a PeerID directly.
-		panic(err)
+		rs.Logger.Error("failed to add peer", "peer", peer.ID(), "err", err)
+		return
 	}
 
 	rs.PeerUpdateCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusUp}
@@ -253,9 +251,8 @@ func (rs *ReactorShim) AddPeer(peer Peer) {
 func (rs *ReactorShim) RemovePeer(peer Peer, reason interface{}) {
 	peerID, err := PeerIDFromString(string(peer.ID()))
 	if err != nil {
-		// It is OK to panic here as we'll be removing the Reactor interface and
-		// Peer type in favor of using a PeerID directly.
-		panic(err)
+		rs.Logger.Error("failed to remove peer", "peer", peer.ID(), "err", err)
+		return
 	}
 
 	rs.PeerUpdateCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusDown}
