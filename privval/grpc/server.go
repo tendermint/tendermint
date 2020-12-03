@@ -45,7 +45,7 @@ func (ss *SignerServer) GetPubKey(ctx context.Context, req *privvalproto.PubKeyR
 
 	pk, err := cryptoenc.PubKeyToProto(pubKey)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "error transistioning pubkey to proto: %v", err)
+		return nil, status.Errorf(codes.Internal, "error transitioning pubkey to proto: %v", err)
 	}
 	ss.Logger.Info("SignerServer: GetPubKey Success")
 

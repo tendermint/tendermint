@@ -38,7 +38,7 @@ func main() {
 		chainID          = flag.String("chain-id", "mychain", "chain id")
 		privValKeyPath   = flag.String("priv-key", "", "priv val key file path")
 		privValStatePath = flag.String("priv-state", "", "priv val state file path")
-		insecure         = flag.Bool("insecure", false, "allow server to as insecure (no TLS)")
+		insecure         = flag.Bool("insecure", false, "allow server to run insecurely (no TLS)")
 		withCert         = flag.String("cert", "", "absolute path to server certificate")
 		withKey          = flag.String("key", "", "absolute path to server key")
 		rootCA           = flag.String("rootCA", "", "absolute path to root CA")
@@ -107,7 +107,8 @@ func main() {
 
 	lis, err := net.Listen(protocol, address)
 	if err != nil {
-		logger.Error("SignerServer: Failed to listen ", "err", err)
+		fmt.Fprintf(os.Stderr, "SignerServer: Failed to listen %v", err)
+		os.Exit(1)
 	}
 
 	s := grpc.NewServer(opts...)

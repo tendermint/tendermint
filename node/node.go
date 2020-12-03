@@ -35,6 +35,7 @@ import (
 	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/privval"
 	grpcprivval "github.com/tendermint/tendermint/privval/grpc"
+	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
@@ -669,7 +670,7 @@ func NewNode(config *cfg.Config,
 		if config.PrivValidatorProtocol == "grpc" {
 			privValidator, err = createAndStartPrivValidatorGRPCClient(config, genDoc.ChainID, logger)
 			if err != nil {
-				return nil, fmt.Errorf("error with private validator socket client: %w", err)
+				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
 			}
 		} else {
 			privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, genDoc.ChainID, logger)
@@ -1398,13 +1399,13 @@ func createAndStartPrivValidatorGRPCClient(
 	if config.PrivValidatorClientCertificate != "" &&
 		config.PrivValidatorClientKey != "" &&
 		config.PrivValidatorCertificateAuthority != "" {
-		transportSecurity = generateTLS(config.PrivValidatorClientCertificateFile(),
+		transportSecurity = tmgrpc.GenerateTLS(config.PrivValidatorClientCertificateFile(),
 			config.PrivValidatorClientKeyFile(), config.PrivValidatorCertificateAuthorityFile())
 	} else {
 		transportSecurity = grpc.WithInsecure()
 		logger.Error("Using an insecure gRPC connection! Please provide a certificate and key to use a secure connection.")
 	}
-	dialOptions := ConstructDialOptions()
+	dialOptions := tmgrpc.DefaultDialOptions()
 
 	dialOptions = append(dialOptions, transportSecurity)
 
@@ -1424,8 +1425,6 @@ func createAndStartPrivValidatorGRPCClient(
 	if err != nil {
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
-
-	fmt.Println(3)
 
 	return pvsc, nil
 }
