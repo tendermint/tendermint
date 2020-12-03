@@ -307,7 +307,7 @@ func (n Node) Validate(testnet Testnet) error {
 		}
 	}
 	switch n.FastSync {
-	case "", "v0", "v1", "v2":
+	case "", "v0", "v2":
 	default:
 		return fmt.Errorf("invalid fast sync setting %q", n.FastSync)
 	}
