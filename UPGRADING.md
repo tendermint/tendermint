@@ -8,6 +8,8 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 * Added `AbciVersion` to `RequestInfo`. Applications should check that the ABCI version they expect is being used in order to avoid unimplemented changes errors.
 
+* The method `SetOption` has been removed from the ABCI.Client interface. This feature was used in the early ABCI implementation's. 
+
 ### Config Changes
 
 * `fast_sync = "v1"` is no longer supported. Please use `v2` instead.
