@@ -163,7 +163,7 @@ func (memR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	msg, err := memR.decodeMsg(msgBytes)
 	if err != nil {
-		memR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+		memR.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
 		memR.Switch.StopPeerForError(src, err)
 		return
 	}
