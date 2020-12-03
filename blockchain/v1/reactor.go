@@ -253,8 +253,7 @@ func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	msg, err := bc.DecodeMsg(msgBytes)
 	if err != nil {
-		bcR.Logger.Error("error decoding message",
-			"src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+		bcR.Logger.Error("error decoding message", "src", src, "chId", chID, "err", err)
 		_ = bcR.swReporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
 		return
 	}
