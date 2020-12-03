@@ -18,6 +18,8 @@ type Envelope struct {
 }
 
 // Channel is a bidirectional channel for Protobuf message exchange with peers.
+//
+// Channel is safe for concurrent use by multiple goroutines.
 type Channel struct {
 	once sync.Once
 
