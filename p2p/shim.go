@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"errors"
-	"fmt"
 	"sort"
 
 	"github.com/gogo/protobuf/proto"
@@ -168,7 +167,8 @@ func (rs *ReactorShim) handlePeerErrors() {
 				if !pErr.PeerID.Empty() {
 					peer := rs.Switch.peers.Get(ID(pErr.PeerID.String()))
 					if peer == nil {
-						panic(fmt.Sprintf("failed to handle peer error; failed to find peer (%s)", pErr.PeerID))
+						rs.Logger.Error("failed to handle peer error; failed to find peer", "peer", pErr.PeerID.String())
+						continue
 					}
 
 					rs.Switch.StopPeerForError(peer, pErr.Err)
