@@ -257,28 +257,32 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 // Handle messages from the poolReactor telling the reactor what to do.
 // NOTE: Don't sleep in the FOR_LOOP or otherwise slow it down!
 func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
+	var (
+		trySyncTicker           = time.NewTicker(trySyncIntervalMS * time.Millisecond)
+		statusUpdateTicker      = time.NewTicker(statusUpdateIntervalSeconds * time.Second)
+		switchToConsensusTicker = time.NewTicker(switchToConsensusIntervalSeconds * time.Second)
 
-	trySyncTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
-	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
-	switchToConsensusTicker := time.NewTicker(switchToConsensusIntervalSeconds * time.Second)
+		blocksSynced = uint64(0)
 
-	blocksSynced := uint64(0)
+		chainID = bcR.initialState.ChainID
+		state   = bcR.initialState
 
-	chainID := bcR.initialState.ChainID
-	state := bcR.initialState
+		lastHundred = time.Now()
+		lastRate    = 0.0
 
-	lastHundred := time.Now()
-	lastRate := 0.0
-
-	didProcessCh := make(chan struct{}, 1)
+		didProcessCh = make(chan struct{}, 1)
+	)
 
 	go func() {
 		for {
 			select {
+
 			case <-bcR.Quit():
 				return
+
 			case <-bcR.pool.Quit():
 				return
+
 			case request := <-bcR.requestsCh:
 				peer := bcR.Switch.Peers().Get(request.PeerID)
 				if peer == nil {
@@ -286,7 +290,7 @@ func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
 				}
 				msgBytes, err := bc.EncodeMsg(&bcproto.BlockRequest{Height: request.Height})
 				if err != nil {
-					bcR.Logger.Error("could not convert msg to proto", "err", err)
+					bcR.Logger.Error("could not convert BlockRequest to proto", "err", err)
 					continue
 				}
 
@@ -294,6 +298,7 @@ func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
 				if !queued {
 					bcR.Logger.Debug("Send queue is full, drop block request", "peer", peer.ID(), "height", request.Height)
 				}
+
 			case err := <-bcR.errorsCh:
 				peer := bcR.Switch.Peers().Get(err.peerID)
 				if peer != nil {
@@ -302,8 +307,7 @@ func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
 
 			case <-statusUpdateTicker.C:
 				// ask for status updates
-				go bcR.BroadcastStatusRequest() // nolint: errcheck
-
+				go bcR.BroadcastStatusRequest()
 			}
 		}
 	}()
@@ -311,11 +315,19 @@ func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
 FOR_LOOP:
 	for {
 		select {
+
 		case <-switchToConsensusTicker.C:
-			height, numPending, lenRequesters := bcR.pool.GetStatus()
-			outbound, inbound, _ := bcR.Switch.NumPeers()
-			bcR.Logger.Debug("Consensus ticker", "numPending", numPending, "total", lenRequesters,
-				"outbound", outbound, "inbound", inbound)
+			var (
+				height, numPending, lenRequesters = bcR.pool.GetStatus()
+				outbound, inbound, _              = bcR.Switch.NumPeers()
+			)
+
+			bcR.Logger.Debug("Consensus ticker",
+				"numPending", numPending,
+				"total", lenRequesters,
+				"outbound", outbound,
+				"inbound", inbound)
+
 			if bcR.pool.IsCaughtUp() {
 				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
 				if err := bcR.pool.Stop(); err != nil {
@@ -325,11 +337,12 @@ FOR_LOOP:
 				if ok {
 					conR.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)
 				}
-				// else {
-				// should only happen during testing
-				// }
 
 				break FOR_LOOP
+			} else {
+				bcR.Logger.Info("Not caught up yet",
+					"height", height, "max_peer_height", bcR.pool.MaxPeerHeight(),
+					"timeout_in", syncTimeout-time.Since(bcR.pool.StartTime()))
 			}
 
 		case <-trySyncTicker.C: // chan time
@@ -416,14 +429,13 @@ FOR_LOOP:
 }
 
 // BroadcastStatusRequest broadcasts `BlockStore` base and height.
-func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
+func (bcR *BlockchainReactor) BroadcastStatusRequest() {
 	bm, err := bc.EncodeMsg(&bcproto.StatusRequest{})
 	if err != nil {
-		bcR.Logger.Error("could not convert msg to proto", "err", err)
-		return fmt.Errorf("could not convert msg to proto: %w", err)
+		bcR.Logger.Error("could not convert StatusRequest to proto", "err", err)
+		return
 	}
 
-	bcR.Switch.Broadcast(BlockchainChannel, bm)
-
-	return nil
+	// We don't care about whenever broadcast is successful or not.
+	_ = bcR.Switch.Broadcast(BlockchainChannel, bm)
 }
