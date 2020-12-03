@@ -175,24 +175,31 @@ func startMaverick(cfg *Config) error {
 func startSigner(cfg *Config) error {
 	filePV := privval.LoadFilePV(cfg.PrivValKey, cfg.PrivValState)
 
-	protocol, address := tmnet.ProtocolAndAddress(cfg.PrivValServer)
-	var dialFn privval.SocketDialer
-	switch protocol {
-	case "tcp":
-		dialFn = privval.DialTCPFn(address, 3*time.Second, ed25519.GenPrivKey())
-	case "unix":
-		dialFn = privval.DialUnixFn(address)
+	switch cfg.Protocol {
+	case "raw":
+		protocol, address := tmnet.ProtocolAndAddress(cfg.PrivValServer)
+		var dialFn privval.SocketDialer
+		switch protocol {
+		case "tcp":
+			dialFn = privval.DialTCPFn(address, 3*time.Second, ed25519.GenPrivKey())
+		case "unix":
+			dialFn = privval.DialUnixFn(address)
+		default:
+			return fmt.Errorf("invalid privval protocol %q", protocol)
+		}
+
+		endpoint := privval.NewSignerDialerEndpoint(logger, dialFn,
+			privval.SignerDialerEndpointRetryWaitInterval(1*time.Second),
+			privval.SignerDialerEndpointConnRetries(100))
+		err := privval.NewSignerServer(endpoint, cfg.ChainID, filePV).Start()
+		if err != nil {
+			return err
+		}
+	case "grpc":
 	default:
-		return fmt.Errorf("invalid privval protocol %q", protocol)
+		return fmt.Errorf("unknown protocol %s", cfg.Protocol)
 	}
 
-	endpoint := privval.NewSignerDialerEndpoint(logger, dialFn,
-		privval.SignerDialerEndpointRetryWaitInterval(1*time.Second),
-		privval.SignerDialerEndpointConnRetries(100))
-	err := privval.NewSignerServer(endpoint, cfg.ChainID, filePV).Start()
-	if err != nil {
-		return err
-	}
 	logger.Info(fmt.Sprintf("Remote signer connecting to %v", cfg.PrivValServer))
 	return nil
 }

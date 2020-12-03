@@ -29,7 +29,8 @@ var (
 	// The following specify randomly chosen values for testnet nodes.
 	nodeDatabases         = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
 	nodeABCIProtocols     = uniformChoice{"unix", "tcp", "grpc", "builtin"}
-	nodePrivvalProtocols  = uniformChoice{"file", "unix", "tcp"}
+	nodePrivvalProtocols  = uniformChoice{"file", "raw", "grpc"}
+	nodePrivvalAddrType   = uniformChoice{"tcp", "unix"}
 	nodeFastSyncs         = uniformChoice{"", "v0", "v1", "v2"}
 	nodeStateSyncs        = uniformChoice{false, true}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
@@ -196,6 +197,7 @@ func generateNode(
 		Database:         nodeDatabases.Choose(r).(string),
 		ABCIProtocol:     nodeABCIProtocols.Choose(r).(string),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r).(string),
+		PrivvalAddrType:  nodePrivvalAddrType.Choose(r).(string),
 		FastSync:         nodeFastSyncs.Choose(r).(string),
 		StateSync:        nodeStateSyncs.Choose(r).(bool) && startAt > 0,
 		PersistInterval:  ptrUint64(uint64(nodePersistIntervals.Choose(r).(int))),

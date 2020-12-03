@@ -42,7 +42,8 @@ misbehaviors = { 1018 = "double-prevote" }
 seeds = ["seed02"]
 database = "boltdb"
 abci_protocol = "tcp"
-privval_protocol = "tcp"
+privval_protocol = "raw"
+privval_addr_type = "tcp"
 persist_interval = 0
 perturb = ["restart"]
 
@@ -50,7 +51,8 @@ perturb = ["restart"]
 seeds = ["seed01"]
 database = "badgerdb"
 abci_protocol = "grpc"
-privval_protocol = "unix"
+privval_protocol = "raw"
+privval_addr_type = "unix"
 persist_interval = 3
 retain_blocks = 3
 perturb = ["kill"]
@@ -67,7 +69,8 @@ seeds = ["seed02"]
 database = "cleveldb"
 fast_sync = "v0"
 abci_protocol = "grpc"
-privval_protocol = "tcp"
+privval_protocol = "raw"
+privval_addr_type = "tcp"
 perturb = ["kill", "pause", "disconnect", "restart"]
 
 [node.full01]

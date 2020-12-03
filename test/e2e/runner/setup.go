@@ -31,7 +31,7 @@ const (
 	AppAddressTCP  = "tcp://127.0.0.1:30000"
 	AppAddressUNIX = "unix:///var/run/app.sock"
 
-	PrivvalAddressTCP     = "tcp://0.0.0.0:27559"
+	PrivvalAddressTCP     = "0.0.0.0:27559"
 	PrivvalAddressUNIX    = "unix:///var/run/privval.sock"
 	PrivvalKeyFile        = "config/priv_validator_key.json"
 	PrivvalStateFile      = "data/priv_validator_state.json"
@@ -257,14 +257,22 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 
 	switch node.Mode {
 	case e2e.ModeValidator:
+		if node.PrivvalProtocol == e2e.ProtocolGRPC {
+			cfg.PrivValidatorProtocol = "grpc"
+		}
 		switch node.PrivvalProtocol {
 		case e2e.ProtocolFile:
 			cfg.PrivValidatorKey = PrivvalKeyFile
 			cfg.PrivValidatorState = PrivvalStateFile
-		case e2e.ProtocolUNIX:
-			cfg.PrivValidatorListenAddr = PrivvalAddressUNIX
-		case e2e.ProtocolTCP:
-			cfg.PrivValidatorListenAddr = PrivvalAddressTCP
+		case e2e.ProtocolRaw, e2e.ProtocolGRPC:
+			switch node.PrivvalAddrType {
+			case e2e.ProtocolUNIX:
+				cfg.PrivValidatorListenAddr = PrivvalAddressUNIX
+			case e2e.ProtocolTCP:
+				cfg.PrivValidatorListenAddr = PrivvalAddressTCP
+			default:
+				return nil, fmt.Errorf("invalid privval protocol address type %q", node.PrivvalAddrType)
+			}
 		default:
 			return nil, fmt.Errorf("invalid privval protocol setting %q", node.PrivvalProtocol)
 		}
@@ -341,16 +349,24 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		return nil, fmt.Errorf("unexpected ABCI protocol setting %q", node.ABCIProtocol)
 	}
 	if node.Mode == e2e.ModeValidator {
+		if node.PrivvalProtocol == e2e.ProtocolGRPC {
+			cfg["privval_server_protocol"] = e2e.ProtocolGRPC
+		}
 		switch node.PrivvalProtocol {
 		case e2e.ProtocolFile:
-		case e2e.ProtocolTCP:
-			cfg["privval_server"] = PrivvalAddressTCP
-			cfg["privval_key"] = PrivvalKeyFile
-			cfg["privval_state"] = PrivvalStateFile
-		case e2e.ProtocolUNIX:
-			cfg["privval_server"] = PrivvalAddressUNIX
-			cfg["privval_key"] = PrivvalKeyFile
-			cfg["privval_state"] = PrivvalStateFile
+		case e2e.ProtocolRaw, e2e.ProtocolGRPC:
+			switch node.PrivvalAddrType {
+			case e2e.ProtocolTCP:
+				cfg["privval_server"] = PrivvalAddressTCP
+				cfg["privval_key"] = PrivvalKeyFile
+				cfg["privval_state"] = PrivvalStateFile
+			case e2e.ProtocolUNIX:
+				cfg["privval_server"] = PrivvalAddressUNIX
+				cfg["privval_key"] = PrivvalKeyFile
+				cfg["privval_state"] = PrivvalStateFile
+			default:
+				return nil, fmt.Errorf("unexpected privval protocol setting %q", node.PrivvalProtocol)
+			}
 		default:
 			return nil, fmt.Errorf("unexpected privval protocol setting %q", node.PrivvalProtocol)
 		}
