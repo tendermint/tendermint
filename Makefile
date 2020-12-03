@@ -126,7 +126,7 @@ install_abci:
 
 build_privval_server:
 	@go build -mod=readonly -o $(BUILDDIR)/ -i ./cmd/priv_val_server/...
-.PHONY: build_abci
+.PHONY: build_privval_server
 
 generate_test_cert:
 	# generate self signing ceritificate authority
