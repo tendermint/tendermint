@@ -48,6 +48,9 @@ type Channel struct {
 	doneCh chan struct{}
 }
 
+// NewChannel returns a reference to a new p2p Channel. It is the reactor's
+// responsibility to close the Channel. After a channel is closed, the router may
+// safely and explicitly close the internal In channel.
 func NewChannel(
 	id ChannelID,
 	mType proto.Message,
