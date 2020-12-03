@@ -227,7 +227,7 @@ func (r *PEXReactor) logErrAddrBook(err error) {
 func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 	msg, err := decodeMsg(msgBytes)
 	if err != nil {
-		r.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+		r.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
 		r.Switch.StopPeerForError(src, err)
 		return
 	}

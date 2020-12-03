@@ -97,7 +97,6 @@ func (r *Reactor) demux() {
 
 func (r *Reactor) Stop() {
 	r.logger.Info("reactor stopping")
-
 	r.ticker.Stop()
 	r.scheduler.stop()
 	r.processor.stop()
