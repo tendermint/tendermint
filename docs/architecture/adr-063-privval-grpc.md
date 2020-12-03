@@ -8,13 +8,13 @@
 
 Validators use remote signers to help secure their keys. This system is Tendermint's recommended way to secure validators, but the path to integration with Tendermint's private validator client is plagued with custom protocols. 
 
-Tendermint uses its own custom secure connection protocol (`SecretConnection`) and a raw tcp/unix socket connection protocol. The secure connection protocol until recently was exposed to man in the middle attacks and limits the amount and speed of integrations users can make. The raw tcp connection protocol is less custom, but has been causing minuet issues with users. 
+Tendermint uses its own custom secure connection protocol (`SecretConnection`) and a raw tcp/unix socket connection protocol. The secure connection protocol until recently was exposed to man in the middle attacks and can take longer to integrate if not using Golang. The raw tcp connection protocol is less custom, but has been causing minute issues with users. 
 
-Migrating Tendermint's private validator to a widely adopted protocol will ease the current maintenance and integration burden experienced with the current protocol. 
+Migrating Tendermint's private validator client to a widely adopted protocol, gRPC, will ease the current maintenance and integration burden experienced with the current protocol. 
 
 ## Decision
 
-After discussing with multiple stake holders, [gRPC](https://grpc.io/) was decided on to replace the current private validator protocol. GRPC is a widely adopted protocol in the micro-service and cloud infrastructure world. GRPC uses [protocol-buffers](https://developers.google.com/protocol-buffers) to describe its services, providing a language agnostic implementation. Tendermint uses protobuf for on disk and over the wire encoding already making the integration with gRPC simpler. 
+After discussing with multiple stake holders, [gRPC](https://grpc.io/) was decided on to replace the current private validator protocol. gRPC is a widely adopted protocol in the micro-service and cloud infrastructure world. gRPC uses [protocol-buffers](https://developers.google.com/protocol-buffers) to describe its services, providing a language agnostic implementation. Tendermint uses protobuf for on disk and over the wire encoding already making the integration with gRPC simpler. 
 
 ## Alternative Approaches
 
@@ -44,7 +44,7 @@ Remote signers are crucial to operating secure and consistently up Validators. I
 
 #### Security
 
-[TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security) is widely adopted with the use of gRPC. There are various forms of TLS (one-way & two-way). One way is the client identifying who the server is, while two way is both parties identifying the other. For Tendermints use case having both parties identifying each other provides and extra layer of security. This requires users to generate both client and server certificates for a TLS connection. 
+[TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security) is widely adopted with the use of gRPC. There are various forms of TLS (one-way & two-way). One way is the client identifying who the server is, while two way is both parties identifying the other. For Tendermint's use case having both parties identifying each other provides adds an extra layer of security. This requires users to generate both client and server certificates for a TLS connection. 
 
 #### Upgrade Path
 
@@ -55,10 +55,6 @@ The upgrade of [tmkms](https://github.com/iqlusioninc/tmkms) will be coordinated
 ## Status
 
 Proposed
-
-## Consequences
-
-> This section describes the consequences, after applying the decision. All consequences should be summarized here, not just the "positive" ones.
 
 ### Positive
 
@@ -71,5 +67,6 @@ Proposed
 
 - Use of http adds an overhead to the TCP connection.
 - Users will need to generate certificates to use TLS. (Added step)
+- Users will need to find a supported gRPC supported key management system
 
 ### Neutral
