@@ -30,7 +30,7 @@ var (
 	nodeDatabases         = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
 	nodeABCIProtocols     = uniformChoice{"unix", "tcp", "grpc", "builtin"}
 	nodePrivvalProtocols  = uniformChoice{"file", "unix", "tcp"}
-	nodeFastSyncs         = uniformChoice{"", "v0", "v1", "v2"}
+	nodeFastSyncs         = uniformChoice{"", "v0", "v2"}
 	nodeStateSyncs        = uniformChoice{false, true}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
