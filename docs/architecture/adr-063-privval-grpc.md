@@ -65,6 +65,8 @@ The [service definition](https://grpc.io/docs/what-is-grpc/core-concepts/#servic
 }
 ```
 
+> Note: Remote Singer errors are removed in favor of [grpc status error codes](https://grpc.io/docs/guides/error/).
+
 #### Keep Alive
 
 If you have worked on the private validator system you will see that we are removing the `PingRequest` and `PingResponse` messages. These messages were used to create functionality which kept the connection alive. With gRPC there is a [keep alive feature](https://github.com/grpc/grpc/blob/master/doc/keepalive.md) that will be added along side the integration to provide the same functionality. 
@@ -76,6 +78,8 @@ Remote signers are crucial to operating secure and consistently up Validators. I
 #### Security
 
 [TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security) is widely adopted with the use of gRPC. There are various forms of TLS (one-way & two-way). One way is the client identifying who the server is, while two way is both parties identifying the other. For Tendermint's use case having both parties identifying each other provides adds an extra layer of security. This requires users to generate both client and server certificates for a TLS connection. 
+
+An insecure option will be provided for users who do not wish to secure the connection.
 
 #### Upgrade Path
 
@@ -96,7 +100,6 @@ Proposed
 
 ### Negative
 
-- Use of http adds an overhead to the TCP connection.
 - Users will need to generate certificates to use TLS. (Added step)
 - Users will need to find a supported gRPC supported key management system
 
