@@ -27,10 +27,41 @@ With the recent integration of [Protobuf](https://developers.google.com/protocol
 The [service definition](https://grpc.io/docs/what-is-grpc/core-concepts/#service-definition) for gRPC will be defined as:
 
 ```proto
-service PrivValidatorAPI {
-  rpc GetPubKey(tendermint.proto.privval.PubKeyRequest) returns (tendermint.proto.privval.PubKeyResponse);
-  rpc SignVote(tendermint.proto.privval.SignVoteRequest) returns (tendermint.proto.privval.SignedVoteResponse);
-  rpc SignProposal(tendermint.proto.privval.SignProposalRequest) returns (tendermint.proto.privval.SignedProposalResponse);
+  service PrivValidatorAPI {
+    rpc GetPubKey(tendermint.proto.privval.PubKeyRequest) returns (tendermint.proto.privval.PubKeyResponse);
+    rpc SignVote(tendermint.proto.privval.SignVoteRequest) returns (tendermint.proto.privval.SignedVoteResponse);
+    rpc SignProposal(tendermint.proto.privval.SignProposalRequest) returns (tendermint.proto.privval.SignedProposalResponse);
+
+    message PubKeyRequest {
+    string chain_id = 1;
+  }
+
+  // PubKeyResponse is a response message containing the public key.
+  message PubKeyResponse {
+    tendermint.crypto.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
+  }
+
+  // SignVoteRequest is a request to sign a vote
+  message SignVoteRequest {
+    tendermint.types.Vote vote     = 1;
+    string                chain_id = 2;
+  }
+
+  // SignedVoteResponse is a response containing a signed vote or an error
+  message SignedVoteResponse {
+    tendermint.types.Vote vote  = 1 [(gogoproto.nullable) = false];
+  }
+
+  // SignProposalRequest is a request to sign a proposal
+  message SignProposalRequest {
+    tendermint.types.Proposal proposal = 1;
+    string                    chain_id = 2;
+  }
+
+  // SignedProposalResponse is response containing a signed proposal or an error
+  message SignedProposalResponse {
+    tendermint.types.Proposal proposal = 1 [(gogoproto.nullable) = false];
+  }
 }
 ```
 
