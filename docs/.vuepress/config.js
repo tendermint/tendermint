@@ -21,7 +21,24 @@ module.exports = {
       key: "59f0e2deb984aa9cdf2b3a5fd24ac501",
       index: "tendermint"
     },
-    versions: ['v0.32','v0.33','v0.34', 'master'],
+    versions: [
+      {
+        "label": "v0.32",
+        "key": "v0.32"
+      },
+      {
+        "label": "v0.33",
+        "key": "v0.33"
+      },
+      {
+        "label": "v0.34",
+        "key": "v0.34"
+      },
+      {
+        "label": "master",
+        "key": "master"
+      }
+    ],
     topbar: {
       banner: false,
     },
