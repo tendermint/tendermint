@@ -1,6 +1,7 @@
 package node
 
 import (
+	"math"
 	"context"
 	"fmt"
 	"net"
@@ -17,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -24,6 +26,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	p2pmock "github.com/tendermint/tendermint/p2p/mock"
 	"github.com/tendermint/tendermint/privval"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
@@ -314,7 +317,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestMaxProposalBlockSize(t *testing.T) {
+func TestMaxTxsProposalBlockSize(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
 	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
@@ -373,6 +376,79 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	// check that the part set does not exceed the maximum block size
 	partSet := block.MakePartSet(partSize)
 	assert.EqualValues(t, partSet.ByteSize(), int64(pb.Size()))
+}
+
+func TestMaxProposalBlockSize(t *testing.T) {
+	config := cfg.ResetTestRoot("node_create_proposal")
+	defer os.RemoveAll(config.RootDir)
+	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	proxyApp := proxy.NewAppConns(cc)
+	err := proxyApp.Start()
+	require.Nil(t, err)
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+
+	logger := log.TestingLogger()
+
+	state, stateDB, privVals := state(types.MaxVotesCount, int64(2))
+	stateStore := sm.NewStore(stateDB)
+	var maxBytes int64 = 1024 * 1024 * 4
+	partSize := types.BlockPartSizeBytes
+	state.ConsensusParams.Block.MaxBytes = maxBytes
+	proposerAddr, _ := state.Validators.GetByIndex(0)
+
+	// Make Mempool
+	memplMetrics := mempl.PrometheusMetrics("node_test_2")
+	mempool := mempl.NewCListMempool(
+		config.Mempool,
+		proxyApp.Mempool(),
+		state.LastBlockHeight,
+		mempl.WithMetrics(memplMetrics),
+		mempl.WithPreCheck(sm.TxPreCheck(state)),
+		mempl.WithPostCheck(sm.TxPostCheck(state)),
+	)
+	mempool.SetLogger(logger)
+
+	// fill the mempool with one txs just below the maximum size
+	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, types.MaxVotesCount))
+	tx := tmrand.Bytes(txLength - 4) // to account for the varint
+	err = mempool.CheckTx(tx, nil, mempl.TxInfo{})
+	assert.NoError(t, err)
+
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		logger,
+		proxyApp.Consensus(),
+		mempool,
+		sm.EmptyEvidencePool{},
+	)
+
+	blockID := types.BlockID{
+		Hash: tmhash.Sum([]byte("blockID_hash")),
+		PartSetHeader: types.PartSetHeader{
+			Total: math.MaxInt32,
+			Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
+		},
+	}
+
+	state.LastBlockID = blockID
+
+	voteSet := types.NewVoteSet("test-chain", 10, 1, tmproto.SignedMsgType(2), state.Validators)
+	commit, err := types.MakeCommit(blockID, 10, 1, voteSet, privVals, time.Now())
+	
+	block, _ := blockExec.CreateProposalBlock(
+		2,
+		state, commit,
+		proposerAddr,
+	)
+
+	pb, err := block.ToProto()
+	require.NoError(t, err)
+	assert.Less(t, int64(pb.Size()), maxBytes)
+
+	// check that the part set does not exceed the maximum block size
+	partSet := block.MakePartSet(partSize)
+	assert.EqualValues(t, partSet.ByteSize(), int64(pb.Size()))
+
 }
 
 func TestNodeNewNodeCustomReactors(t *testing.T) {
