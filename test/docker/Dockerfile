@@ -3,7 +3,7 @@ FROM golang:1.15
 # Grab deps (jq, hexdump, xxd, killall)
 RUN apt-get update && \
   apt-get install -y --no-install-recommends \
-  jq bsdmainutils vim-common psmisc netcat curl
+  jq bsdmainutils vim-common psmisc netcat curl sudo cmake libgmp-dev
 
 # Setup tendermint repo
 ENV REPO $GOPATH/src/github.com/dashevo/tenderdash
@@ -19,12 +19,12 @@ COPY . $REPO
 RUN make tools
 
 # install ABCI CLI
-RUN make install_abci
+RUN make install-bls install_abci
 
 # install Tendermint
 RUN make install
 
-RUN tendermint testnet \
+RUN tenderdash testnet \
   --config $REPO/test/docker/config-template.toml \
   --node-dir-prefix="mach" \
   --v=4 \

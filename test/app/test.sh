@@ -10,15 +10,15 @@ set -ex
 
 GOPATH=$(go env GOPATH)
 export PATH="$GOBIN:$PATH"
-export TMHOME=$HOME/.tendermint_app
+export TMHOME=$HOME/.tenderdash_app
 
 function kvstore_over_socket(){
     rm -rf $TMHOME
-    tendermint init
+    tenderdash init
     echo "Starting kvstore_over_socket"
     abci-cli kvstore > /dev/null &
     pid_kvstore=$!
-    tendermint node > tendermint.log &
+    tenderdash node > tenderdash.log &
     pid_tendermint=$!
     sleep 5
 
@@ -28,12 +28,12 @@ function kvstore_over_socket(){
     kill -9 $pid_kvstore $pid_tendermint
 }
 
-# start tendermint first
+# start tenderdash first
 function kvstore_over_socket_reorder(){
     rm -rf $TMHOME
-    tendermint init
-    echo "Starting kvstore_over_socket_reorder (ie. start tendermint first)"
-    tendermint node > tendermint.log &
+    tenderdash init
+    echo "Starting kvstore_over_socket_reorder (ie. start tenderdash first)"
+    tenderdash node > tenderdash.log &
     pid_tendermint=$!
     sleep 2
     abci-cli kvstore > /dev/null &
@@ -49,11 +49,11 @@ function kvstore_over_socket_reorder(){
 
 function counter_over_socket() {
     rm -rf $TMHOME
-    tendermint init
+    tenderdash init
     echo "Starting counter_over_socket"
     abci-cli counter --serial > /dev/null &
     pid_counter=$!
-    tendermint node > tendermint.log &
+    tenderdash node > tenderdash.log &
     pid_tendermint=$!
     sleep 5
 
@@ -65,11 +65,11 @@ function counter_over_socket() {
 
 function counter_over_grpc() {
     rm -rf $TMHOME
-    tendermint init
+    tenderdash init
     echo "Starting counter_over_grpc"
     abci-cli counter --serial --abci grpc > /dev/null &
     pid_counter=$!
-    tendermint node --abci grpc > tendermint.log &
+    tenderdash node --abci grpc > tenderdash.log &
     pid_tendermint=$!
     sleep 5
 
@@ -81,13 +81,13 @@ function counter_over_grpc() {
 
 function counter_over_grpc_grpc() {
     rm -rf $TMHOME
-    tendermint init
+    tenderdash init
     echo "Starting counter_over_grpc_grpc (ie. with grpc broadcast_tx)"
     abci-cli counter --serial --abci grpc > /dev/null &
     pid_counter=$!
     sleep 1
     GRPC_PORT=36656
-    tendermint node --abci grpc --rpc.grpc_laddr tcp://localhost:$GRPC_PORT > tendermint.log &
+    tenderdash node --abci grpc --rpc.grpc_laddr tcp://localhost:$GRPC_PORT > tenderdash.log &
     pid_tendermint=$!
     sleep 5
 

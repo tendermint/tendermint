@@ -1,3 +1,3 @@
-killall tendermint
+killall tenderdash
 killall abci-cli
-rm -rf ~/.tendermint_app
+rm -rf ~/.tenderdash_app
