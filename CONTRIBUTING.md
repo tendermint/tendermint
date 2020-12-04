@@ -298,42 +298,33 @@ If there were no release candidates, and you'd like to cut a major release direc
 5. Update the `CHANGELOG.md` file on master with the releases changelog.
 6. Delete any RC branches and tags for this release (if applicable)
 
-#### Minor Release
+#### Minor Release (Point Releases)
 
-Minor releases are done differently from major releases: They are built off of long-lived release candidate branches, rather than from master.
+Minor releases are done differently from major releases: They are built off of long-lived backport branches, rather than from master.
+Each release "line" (e.g. 0.34 or 0.33) has its own long-lived backport branch, and
+the backport branches have names like `v0.34.x` or `v0.33.x` (literally, `x`; it is not a placeholder in this case).
 
-1. Checkout the long-lived release candidate branch: `git checkout rcX/vX.X.X`
+As non-breaking changes land on `master`, they should also be backported (cherry-picked) to these backport branches.
+
+Minor releases don't have release candidates by default, although any tricky changes may merit a release candidate. 
+
+To create a minor release:
+
+1. Checkout the long-lived backport branch: `git checkout vX.X.x`
 2. Run integration tests: `make test_integrations`
-3. Prepare the release:
-   - copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
-   - run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
-   - run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
-   - reset the `CHANGELOG_PENDING.md`
-   - bump P2P and block protocol versions in  `version.go`, if necessary
-   - bump ABCI protocol version in `version.go`, if necessary
-   - make sure all significant breaking changes are covered in `UPGRADING.md`
+3. Check out a new branch and prepare the release:
+   - Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
+   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
+   - Run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
+   - Reset the `CHANGELOG_PENDING.md`
    - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
-4. Create a release branch `release/vX.X.x` off the release candidate branch:
-   - `git checkout -b release/vX.X.x`
-   - `git push -u origin release/vX.X.x`
-   - Note that all branches prefixed with `release` are protected once pushed. You will need admin help to make any changes to the branch.
-5. Once the release branch has been approved, make sure to pull it locally, then push a tag.
+4. Open a PR with these changes that will land them back on `vX.X.x`
+5. Once this change has landed on the backport branch, make sure to pull it locally, then push a tag.
    - `git tag -a vX.X.x -m 'Release vX.X.x'`
    - `git push origin vX.X.x`
 6. Create a pull request back to master with the CHANGELOG & version changes from the latest release.
    - Remove all `R:minor` labels from the pull requests that were included in the release.
-   - Do not merge the release branch into master.
-7. Delete the former long lived release candidate branch once the release has been made.
-8. Create a new release candidate branch to be used for the next release.
-
-#### Backport Release
-
-1. Start from the existing release branch you want to backport changes to (e.g. v0.30)
-   Branch to a release/vX.X.X branch locally (e.g. release/v0.30.7)
-2. Cherry pick the commit(s) that contain the changes you want to backport (usually these commits are from squash-merged PRs which were already reviewed)
-3. Follow steps 2 and 3 from [Major Release](#major-release)
-4. Push changes to release/vX.X.X branch
-5. Open a PR against the existing vX.X branch
+   - Do not merge the backport branch into master.
 
 #### Release Candidates
 
