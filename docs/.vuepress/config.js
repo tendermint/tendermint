@@ -57,17 +57,6 @@ module.exports = {
               path: 'https://docs.tendermint.com/master/rpc/',
               static: true
             },
-            // TODO: remove once https://github.com/cosmos/vuepress-theme-cosmos/issues/91 is closed
-            {
-              title: 'Version 0.32',
-              path: '/v0.32',
-              static: true
-            },
-            {
-              title: 'Version 0.33',
-              path: '/v0.33',
-              static: true
-            },
           ]
         }
       ]
