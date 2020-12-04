@@ -69,7 +69,7 @@ func (evR *Reactor) AddPeer(peer p2p.Peer) {
 func (evR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	evis, err := decodeMsg(msgBytes)
 	if err != nil {
-		evR.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err, "bytes", msgBytes)
+		evR.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
 		evR.Switch.StopPeerForError(src, err)
 		return
 	}
