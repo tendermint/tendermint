@@ -317,6 +317,9 @@ To create a minor release:
    - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
    - Run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
    - Reset the `CHANGELOG_PENDING.md`
+   - Bump the ABCI version number, if necessary. 
+     (Note that ABCI follows semver, and that ABCI versions are the only versions 
+     which can change during minor releases, and only field additions are valid minor changes.)
    - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
 4. Open a PR with these changes that will land them back on `vX.X.x`
 5. Once this change has landed on the backport branch, make sure to pull it locally, then push a tag.
