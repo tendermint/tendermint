@@ -73,7 +73,7 @@ perturb = ["kill", "pause", "disconnect", "restart"]
 [node.full01]
 start_at = 1010
 mode = "full"
-fast_sync = "v1"
+fast_sync = "v2"
 persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
 retain_blocks = 1
 perturb = ["restart"]
