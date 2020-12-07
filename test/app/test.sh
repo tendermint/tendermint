@@ -124,4 +124,3 @@ case "$1" in
     echo ""
     counter_over_grpc_grpc
 esac
-

@@ -1,0 +1,31 @@
+name: Lint
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "**.md"
+      - "**.yml"
+      - "**.yaml"
+  pull_request:
+    branches: [master]
+    paths:
+      - "**.md"
+
+jobs:
+  build:
+    name: Super linter
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+      - name: Lint Code Base
+        uses: docker://github/super-linter:v3
+        env:
+          LINTER_RULES_PATH: .
+          VALIDATE_ALL_CODEBASE: true
+          DEFAULT_BRANCH: master
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_MD: true
+          VALIDATE_OPAENAPI: true
+          VALIDATE_YAML: true
