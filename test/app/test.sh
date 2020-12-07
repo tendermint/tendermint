@@ -73,7 +73,7 @@ function counter_over_grpc() {
     sleep 5
 
     echo "running test"
-    bash test/app/counter_test.sh "Counter over Socket"
+    bash test/app/counter_test.sh "Counter over GRPC"
 
     kill -9 $pid_counter $pid_tendermint
 }
@@ -91,7 +91,7 @@ function counter_over_grpc_grpc() {
     sleep 5
 
     echo "running test"
-    GRPC_BROADCAST_TX=true bash counter_test.sh "Counter over GRPC via GRPC BroadcastTx"
+    GRPC_BROADCAST_TX=true bash test/app/counter_test.sh "Counter over GRPC via GRPC BroadcastTx"
 
     kill -9 $pid_counter $pid_tendermint
 }
