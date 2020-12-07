@@ -389,7 +389,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	logger := log.TestingLogger()
 
-	state, stateDB, _ := state(1, int64(1))
+	state, stateDB, _ := state(types.MaxVotesCount, int64(1))
 	stateStore := sm.NewStore(stateDB)
 	var maxBytes int64 = 1024 * 1024 * 2
 	state.ConsensusParams.Block.MaxBytes = maxBytes
@@ -409,7 +409,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	// fill the mempool with one txs just below the maximum size
 	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, types.MaxVotesCount))
-	tx := tmrand.Bytes(txLength - 4) // to account for the varint
+	tx := tmrand.Bytes(txLength - 6) // to account for the varint
 	err = mempool.CheckTx(tx, nil, mempl.TxInfo{})
 	assert.NoError(t, err)
 	// now produce more txs than what a normal block can hold with 10 smaller txs
@@ -485,10 +485,10 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	require.Equal(t, int64(pb.Header.Size()), types.MaxHeaderBytes)
 	require.Equal(t, int64(pb.LastCommit.Size()), types.MaxCommitBytes(types.MaxVotesCount))
 	// make sure that the block is less than the max possible size
-	assert.Less(t, int64(pb.Size()), maxBytes)
+	assert.Equal(t, int64(pb.Size()), maxBytes)
 	// because of the proto overhead we expect the part set bytes to be equal or
 	// less than the pb block size
-	assert.LessOrEqual(t, int64(pb.Size()), partSet.ByteSize())
+	assert.LessOrEqual(t, partSet.ByteSize(), int64(pb.Size()))
 
 }
 
