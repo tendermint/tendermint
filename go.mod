@@ -17,7 +17,7 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/gorilla/websocket v1.4.2
 	github.com/gtank/merlin v0.1.1
-	github.com/hdevalence/ed25519consensus v0.0.0-20200813231810-1694d75e712a
+	github.com/hdevalence/ed25519consensus v0.0.0-20201207055737-7fde80a9d5ff
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/minio/highwayhash v1.0.1
 	github.com/pkg/errors v0.9.1
@@ -32,5 +32,5 @@ require (
 	github.com/tendermint/tm-db v0.6.3
 	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9
 	golang.org/x/net v0.0.0-20200822124328-c89045814202
-	google.golang.org/grpc v1.33.2
+	google.golang.org/grpc v1.34.0
 )
