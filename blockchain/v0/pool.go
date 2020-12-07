@@ -60,6 +60,13 @@ var peerTimeout = 15 * time.Second // not const so we can override with tests
 	are not at peer limits, we can probably switch to consensus reactor
 */
 
+// BlockRequest stores a block request identified by the block Height and the
+// PeerID responsible for delivering the block.
+type BlockRequest struct {
+	Height int64
+	PeerID p2p.ID
+}
+
 // BlockPool keeps track of the fast sync peers, block requests and block responses.
 type BlockPool struct {
 	service.BaseService
@@ -136,6 +143,7 @@ func (pool *BlockPool) removeTimedoutPeers() {
 	defer pool.mtx.Unlock()
 
 	for _, peer := range pool.peers {
+		// check if peer timed out
 		if !peer.didTimeout && peer.numPending > 0 {
 			curRate := peer.recvMonitor.Status().CurRate
 			// curRate can be 0 on start
@@ -149,6 +157,7 @@ func (pool *BlockPool) removeTimedoutPeers() {
 				peer.didTimeout = true
 			}
 		}
+
 		if peer.didTimeout {
 			pool.removePeer(peer.id)
 		}
@@ -170,12 +179,12 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	defer pool.mtx.Unlock()
 
 	if time.Since(pool.lastAdvance) > syncTimeout {
-		pool.Logger.Debug(fmt.Sprintf("No progress since last advance: %v", pool.lastAdvance))
+		pool.Logger.Error(fmt.Sprintf("No progress since last advance: %v", pool.lastAdvance))
 		return true
 	}
 
+	// Need at least 1 peer to be considered caught up.
 	if len(pool.peers) == 0 {
-		pool.Logger.Debug("Need at least 1 peer to be considered caught up, but none connected")
 		return false
 	}
 	// NOTE: we use maxPeerHeight - 1 because to sync block H requires block H+1
@@ -207,11 +216,6 @@ func (pool *BlockPool) PopRequest() {
 	defer pool.mtx.Unlock()
 
 	if r := pool.requesters[pool.height]; r != nil {
-		/*  The block can disappear at any time, due to removePeer().
-		if r := pool.requesters[pool.height]; r == nil || r.block == nil {
-			PanicSanity("PopRequest() requires a valid block")
-		}
-		*/
 		if err := r.Stop(); err != nil {
 			pool.Logger.Error("Error stopping requester", "err", err)
 		}
@@ -247,14 +251,8 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 
 	requester := pool.requesters[block.Height]
 	if requester == nil {
-		pool.Logger.Info(
-			"peer sent us a block we didn't expect",
-			"peer",
-			peerID,
-			"curHeight",
-			pool.height,
-			"blockHeight",
-			block.Height)
+		pool.Logger.Error("peer sent us a block we didn't expect",
+			"peer", peerID, "curHeight", pool.height, "blockHeight", block.Height)
 		diff := pool.height - block.Height
 		if diff < 0 {
 			diff *= -1
@@ -272,8 +270,9 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 			peer.decrPending(blockSize)
 		}
 	} else {
-		pool.Logger.Info("invalid peer", "peer", peerID, "blockHeight", block.Height)
-		pool.sendError(errors.New("invalid peer"), peerID)
+		err := errors.New("requester is different or block already exists")
+		pool.Logger.Error(err.Error(), "peer", peerID, "requester", requester.getPeerID(), "blockHeight", block.Height)
+		pool.sendError(err, peerID)
 	}
 }
 
@@ -607,7 +606,6 @@ OUTER_LOOP:
 			}
 			peer = bpr.pool.pickIncrAvailablePeer(bpr.height)
 			if peer == nil {
-				// log.Info("No peers available", "height", height)
 				time.Sleep(requestIntervalMS * time.Millisecond)
 				continue PICK_PEER_LOOP
 			}
@@ -643,11 +641,4 @@ OUTER_LOOP:
 			}
 		}
 	}
-}
-
-// BlockRequest stores a block request identified by the block Height and the PeerID responsible for
-// delivering the block
-type BlockRequest struct {
-	Height int64
-	PeerID p2p.ID
 }
