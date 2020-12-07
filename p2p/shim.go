@@ -38,9 +38,6 @@ type (
 	ChannelShim struct {
 		Descriptor *ChannelDescriptor
 		Channel    *Channel
-		InCh       chan Envelope
-		OutCh      chan Envelope
-		PeerErrCh  chan PeerError
 	}
 
 	// ChannelDescriptorShim defines a shim wrapper around a legacy p2p channel
@@ -58,7 +55,7 @@ func NewReactorShim(name string, descriptors map[ChannelID]*ChannelDescriptorShi
 
 	for _, cds := range descriptors {
 		chShim := NewChannelShim(cds, 0)
-		channels[chShim.Channel.ID] = chShim
+		channels[chShim.Channel.id] = chShim
 	}
 
 	rs := &ReactorShim{
@@ -73,16 +70,15 @@ func NewReactorShim(name string, descriptors map[ChannelID]*ChannelDescriptorShi
 }
 
 func NewChannelShim(cds *ChannelDescriptorShim, buf uint) *ChannelShim {
-	inCh := make(chan Envelope, buf)
-	outCh := make(chan Envelope, buf)
-	peerErrCh := make(chan PeerError, buf)
-
 	return &ChannelShim{
 		Descriptor: cds.Descriptor,
-		Channel:    NewChannel(ChannelID(cds.Descriptor.ID), cds.MsgType, inCh, outCh, peerErrCh),
-		InCh:       inCh,
-		OutCh:      outCh,
-		PeerErrCh:  peerErrCh,
+		Channel: NewChannel(
+			ChannelID(cds.Descriptor.ID),
+			cds.MsgType,
+			make(chan Envelope, buf),
+			make(chan Envelope, buf),
+			make(chan PeerError, buf),
+		),
 	}
 }
 
@@ -93,7 +89,7 @@ func NewChannelShim(cds *ChannelDescriptorShim, buf uint) *ChannelShim {
 func (rs *ReactorShim) proxyPeerEnvelopes() {
 	for _, cs := range rs.Channels {
 		go func(cs *ChannelShim) {
-			for e := range cs.OutCh {
+			for e := range cs.Channel.outCh {
 				msg := proto.Clone(cs.Channel.messageType)
 				msg.Reset()
 
@@ -163,7 +159,7 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 func (rs *ReactorShim) handlePeerErrors() {
 	for _, cs := range rs.Channels {
 		go func(cs *ChannelShim) {
-			for pErr := range cs.PeerErrCh {
+			for pErr := range cs.Channel.errCh {
 				if !pErr.PeerID.Empty() {
 					peer := rs.Switch.peers.Get(ID(pErr.PeerID.String()))
 					if peer == nil {
@@ -318,10 +314,16 @@ func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 	}
 
 	select {
-	case channelShim.InCh <- Envelope{From: peerID, Message: msg}:
+	case channelShim.Channel.inCh <- Envelope{From: peerID, Message: msg}:
 		rs.Logger.Debug("proxied envelope", "reactor", rs.Name, "ch_id", cID, "peer", peerID.String())
 
 	case <-channelShim.Channel.Done():
-		close(channelShim.InCh)
+		// NOTE: We explicitly DO NOT close the p2p Channel's inbound go channel.
+		// This is because there may be numerous spawned goroutines that are
+		// attempting to send on the inbound channel and when the reactor stops we
+		// do not want to preemptively close the channel as that could result in
+		// panics sending on a closed channel. This also means that reactors MUST
+		// be certain there are NO listeners on the inbound channel when closing or
+		// stopping.
 	}
 }

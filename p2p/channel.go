@@ -24,7 +24,7 @@ type Channel struct {
 	closeOnce sync.Once
 
 	// ID contains the channel ID.
-	ID ChannelID
+	id ChannelID
 
 	// messageType specifies the type of messages exchanged via the channel, and
 	// is used e.g. for automatic unmarshaling.
@@ -32,15 +32,15 @@ type Channel struct {
 
 	// In is a channel for receiving inbound messages. Envelope.From is always
 	// set.
-	In <-chan Envelope
+	inCh chan Envelope
 
 	// Out is a channel for sending outbound messages. Envelope.To or Broadcast
 	// must be set, otherwise the message is discarded.
-	Out chan<- Envelope
+	outCh chan Envelope
 
 	// Error is a channel for reporting peer errors to the router, typically used
 	// when peers send an invalid or malignant message.
-	Error chan<- PeerError
+	errCh chan PeerError
 
 	// doneCh is used to signal that a Channel is closed. A Channel is bi-directional
 	// and should be closed by the reactor, where as the router is responsible
@@ -51,21 +51,39 @@ type Channel struct {
 // NewChannel returns a reference to a new p2p Channel. It is the reactor's
 // responsibility to close the Channel. After a channel is closed, the router may
 // safely and explicitly close the internal In channel.
-func NewChannel(
-	id ChannelID,
-	mType proto.Message,
-	in <-chan Envelope,
-	out chan<- Envelope,
-	err chan<- PeerError,
-) *Channel {
+func NewChannel(id ChannelID, mType proto.Message, in, out chan Envelope, err chan PeerError) *Channel {
 	return &Channel{
-		ID:          id,
+		id:          id,
 		messageType: mType,
-		In:          in,
-		Out:         out,
-		Error:       err,
+		inCh:        in,
+		outCh:       out,
+		errCh:       err,
 		doneCh:      make(chan struct{}),
 	}
+}
+
+// ID returns the Channel's ID.
+func (c *Channel) ID() ChannelID {
+	return c.id
+}
+
+// In returns a read-only inbound go channel. This go channel should be used by
+// reactors to consume Envelopes sent from peers.
+func (c *Channel) In() <-chan Envelope {
+	return c.inCh
+}
+
+// Out returns a write-only outbound go channel. This go channel should be used
+// by reactors to route Envelopes to other peers.
+func (c *Channel) Out() chan<- Envelope {
+	return c.outCh
+}
+
+// Error returns a write-only outbound go channel designated for peer errors only.
+// This go channel should be used by reactors to send peer errors when consuming
+// Envelopes sent from other peers.
+func (c *Channel) Error() chan<- PeerError {
+	return c.errCh
 }
 
 // Close closes the outbound channel and marks the Channel as done. Internally,
@@ -76,8 +94,8 @@ func NewChannel(
 func (c *Channel) Close() error {
 	c.closeOnce.Do(func() {
 		close(c.doneCh)
-		close(c.Out)
-		close(c.Error)
+		close(c.outCh)
+		close(c.errCh)
 	})
 
 	return nil

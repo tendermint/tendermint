@@ -93,7 +93,7 @@ func TestReactorShim_GetChannel(t *testing.T) {
 
 	p2pCh := rts.shim.GetChannel(p2p.ChannelID(channelID1))
 	require.NotNil(t, p2pCh)
-	require.Equal(t, p2pCh.ID, p2p.ChannelID(channelID1))
+	require.Equal(t, p2pCh.ID(), p2p.ChannelID(channelID1))
 
 	p2pCh = rts.shim.GetChannel(p2p.ChannelID(byte(0x03)))
 	require.Nil(t, p2pCh)
@@ -179,11 +179,11 @@ func TestReactorShim_Receive(t *testing.T) {
 	// Simulate receiving the envelope in some real reactor and replying back with
 	// the same envelope and then closing the Channel.
 	go func() {
-		e := <-p2pCh.InCh
+		e := <-p2pCh.Channel.In()
 		require.Equal(t, peerIDA, e.From)
 		require.NotNil(t, e.Message)
 
-		p2pCh.OutCh <- p2p.Envelope{To: e.From, Message: e.Message}
+		p2pCh.Channel.Out() <- p2p.Envelope{To: e.From, Message: e.Message}
 		p2pCh.Channel.Close()
 		wg.Done()
 	}()
@@ -201,7 +201,7 @@ func TestReactorShim_Receive(t *testing.T) {
 	// Since p2pCh was closed in the simulated reactor above, calling Receive
 	// should not block.
 	rts.shim.Receive(channelID1, peerA, bz)
-	require.Empty(t, p2pCh.InCh)
+	require.Empty(t, p2pCh.Channel.In())
 
 	peerA.AssertExpectations(t)
 }

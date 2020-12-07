@@ -154,7 +154,7 @@ func (r *Reactor) OnStop() {
 func (r *Reactor) processSnapshotCh() {
 	for {
 		select {
-		case envelope := <-r.snapshotCh.In:
+		case envelope := <-r.snapshotCh.In():
 			switch msg := envelope.Message.(type) {
 			case *ssproto.SnapshotsRequest:
 				snapshots, err := r.recentSnapshots(recentSnapshots)
@@ -170,7 +170,7 @@ func (r *Reactor) processSnapshotCh() {
 						"format", snapshot.Format,
 						"peer", envelope.From.String(),
 					)
-					r.snapshotCh.Out <- p2p.Envelope{
+					r.snapshotCh.Out() <- p2p.Envelope{
 						To: envelope.From,
 						Message: &ssproto.SnapshotsResponse{
 							Height:   snapshot.Height,
@@ -219,7 +219,7 @@ func (r *Reactor) processSnapshotCh() {
 
 			default:
 				r.Logger.Error("received unknown message", "msg", msg, "peer", envelope.From.String())
-				r.snapshotCh.Error <- p2p.PeerError{
+				r.snapshotCh.Error() <- p2p.PeerError{
 					PeerID:   envelope.From,
 					Err:      fmt.Errorf("received unknown message: %T", msg),
 					Severity: p2p.PeerErrorSeverityLow,
@@ -236,7 +236,7 @@ func (r *Reactor) processSnapshotCh() {
 func (r *Reactor) processChunkCh() {
 	for {
 		select {
-		case envelope := <-r.chunkCh.In:
+		case envelope := <-r.chunkCh.In():
 			switch msg := envelope.Message.(type) {
 			case *ssproto.ChunkRequest:
 				r.Logger.Debug(
@@ -270,7 +270,7 @@ func (r *Reactor) processChunkCh() {
 					"chunk", msg.Index,
 					"peer", envelope.From.String(),
 				)
-				r.chunkCh.Out <- p2p.Envelope{
+				r.chunkCh.Out() <- p2p.Envelope{
 					To: envelope.From,
 					Message: &ssproto.ChunkResponse{
 						Height:  msg.Height,
@@ -320,7 +320,7 @@ func (r *Reactor) processChunkCh() {
 
 			default:
 				r.Logger.Error("received unknown message", "msg", msg, "peer", envelope.From.String())
-				r.chunkCh.Error <- p2p.PeerError{
+				r.chunkCh.Error() <- p2p.PeerError{
 					PeerID:   envelope.From,
 					Err:      fmt.Errorf("received unknown message: %T", msg),
 					Severity: p2p.PeerErrorSeverityLow,
@@ -408,12 +408,12 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 		return sm.State{}, nil, errors.New("a state sync is already in progress")
 	}
 
-	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateProvider, r.snapshotCh.Out, r.chunkCh.Out, r.tempDir)
+	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateProvider, r.snapshotCh.Out(), r.chunkCh.Out(), r.tempDir)
 	r.mtx.Unlock()
 
 	// request snapshots from all currently connected peers
 	r.Logger.Debug("requesting snapshots from known peers")
-	r.snapshotCh.Out <- p2p.Envelope{
+	r.snapshotCh.Out() <- p2p.Envelope{
 		Broadcast: true,
 		Message:   &ssproto.SnapshotsRequest{},
 	}
