@@ -28,6 +28,9 @@ const (
 	statusUpdateIntervalSeconds = 10
 	// check if we should switch to consensus reactor
 	switchToConsensusIntervalSeconds = 1
+
+	// switch to consensus after this duration of inactivity
+	syncTimeout = 60 * time.Second
 )
 
 type consensusReactor interface {
@@ -323,31 +326,35 @@ FOR_LOOP:
 			var (
 				height, numPending, lenRequesters = bcR.pool.GetStatus()
 				outbound, inbound, _              = bcR.Switch.NumPeers()
+				lastAdvance                       = bcR.pool.LastAdvance()
 			)
 
 			bcR.Logger.Debug("Consensus ticker",
 				"numPending", numPending,
-				"total", lenRequesters,
-				"outbound", outbound,
-				"inbound", inbound)
+				"total", lenRequesters)
 
-			if bcR.pool.IsCaughtUp() {
+			switch {
+			case bcR.pool.IsCaughtUp():
 				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
-				if err := bcR.pool.Stop(); err != nil {
-					bcR.Logger.Error("Error stopping pool", "err", err)
-				}
-				conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
-				if ok {
-					conR.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)
-				}
-
-				break FOR_LOOP
-			} else {
+			case time.Since(lastAdvance) > syncTimeout:
+				bcR.Logger.Error(fmt.Sprintf("No progress since last advance: %v", lastAdvance))
+			default:
 				bcR.Logger.Info("Not caught up yet",
 					"height", height, "max_peer_height", bcR.pool.MaxPeerHeight(),
 					"num_peers", outbound+inbound,
-					"timeout_in", syncTimeout-time.Since(bcR.pool.LastAdvance()))
+					"timeout_in", syncTimeout-time.Since(lastAdvance))
+				continue
 			}
+
+			if err := bcR.pool.Stop(); err != nil {
+				bcR.Logger.Error("Error stopping pool", "err", err)
+			}
+			conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
+			if ok {
+				conR.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)
+			}
+
+			break FOR_LOOP
 
 		case <-trySyncTicker.C: // chan time
 			select {

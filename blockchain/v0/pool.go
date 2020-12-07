@@ -43,8 +43,6 @@ const (
 
 	// Maximum difference between current and new block's height.
 	maxDiffBetweenCurrentAndReceivedBlockHeight = 100
-
-	syncTimeout = 60 * time.Second
 )
 
 var peerTimeout = 15 * time.Second // not const so we can override with tests
@@ -178,11 +176,6 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	if time.Since(pool.lastAdvance) > syncTimeout {
-		pool.Logger.Error(fmt.Sprintf("No progress since last advance: %v", pool.lastAdvance))
-		return true
-	}
-
 	// Need at least 1 peer to be considered caught up.
 	if len(pool.peers) == 0 {
 		return false
@@ -283,7 +276,8 @@ func (pool *BlockPool) MaxPeerHeight() int64 {
 	return pool.maxPeerHeight
 }
 
-// LastAdvance returns the time at which the pool has started.
+// LastAdvance returns the time when the last block was processed (or start
+// time if no blocks were processed).
 func (pool *BlockPool) LastAdvance() time.Time {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
