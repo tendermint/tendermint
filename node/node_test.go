@@ -233,23 +233,22 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	logger := log.TestingLogger()
 
-	var height int64 = 1
+	const height int64 = 1
 	state, stateDB, privVals := state(1, height)
 	stateStore := sm.NewStore(stateDB)
 	maxBytes := 16384
-	var partSize uint32 = 256
+	const partSize uint32 = 256
 	maxEvidenceBytes := int64(maxBytes / 2)
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Evidence.MaxBytes = maxEvidenceBytes
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
-	memplMetrics := mempl.PrometheusMetrics("node_test_1")
 	mempool := mempl.NewCListMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
-		mempl.WithMetrics(memplMetrics),
+		mempl.WithMetrics(mempl.NopMetrics()),
 		mempl.WithPreCheck(sm.TxPreCheck(state)),
 		mempl.WithPostCheck(sm.TxPostCheck(state)),
 	)
@@ -328,21 +327,20 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 
 	logger := log.TestingLogger()
 
-	var height int64 = 1
+	const height int64 = 1
 	state, stateDB, _ := state(1, height)
 	stateStore := sm.NewStore(stateDB)
-	var maxBytes int64 = 16384
-	var partSize uint32 = 256
+	const maxBytes int64 = 16384
+	const partSize uint32 = 256
 	state.ConsensusParams.Block.MaxBytes = maxBytes
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
-	memplMetrics := mempl.PrometheusMetrics("node_test_2")
 	mempool := mempl.NewCListMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
-		mempl.WithMetrics(memplMetrics),
+		mempl.WithMetrics(mempl.NopMetrics()),
 		mempl.WithPreCheck(sm.TxPreCheck(state)),
 		mempl.WithPostCheck(sm.TxPostCheck(state)),
 	)
@@ -391,17 +389,16 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	state, stateDB, _ := state(types.MaxVotesCount, int64(1))
 	stateStore := sm.NewStore(stateDB)
-	var maxBytes int64 = 1024 * 1024 * 2
+	const maxBytes int64 = 1024 * 1024 * 2
 	state.ConsensusParams.Block.MaxBytes = maxBytes
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
-	memplMetrics := mempl.PrometheusMetrics("node_test_2")
 	mempool := mempl.NewCListMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
-		mempl.WithMetrics(memplMetrics),
+		mempl.WithMetrics(mempl.NopMetrics()),
 		mempl.WithPreCheck(sm.TxPreCheck(state)),
 		mempl.WithPostCheck(sm.TxPostCheck(state)),
 	)
