@@ -63,7 +63,7 @@ var peerTimeout = 15 * time.Second // not const so we can override with tests
 // BlockPool keeps track of the fast sync peers, block requests and block responses.
 type BlockPool struct {
 	service.BaseService
-	startTime time.Time
+	lastAdvance time.Time
 
 	mtx tmsync.Mutex
 	// block requests
@@ -100,8 +100,8 @@ func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- p
 // OnStart implements service.Service by spawning requesters routine and recording
 // pool's start time.
 func (pool *BlockPool) OnStart() error {
+	pool.lastAdvance = time.Now()
 	go pool.makeRequestersRoutine()
-	pool.startTime = time.Now()
 	return nil
 }
 
@@ -165,23 +165,22 @@ func (pool *BlockPool) GetStatus() (height int64, numPending int32, lenRequester
 }
 
 // IsCaughtUp returns true if this node is caught up, false - otherwise.
-// TODO: relax conditions, prevent abuse.
 func (pool *BlockPool) IsCaughtUp() bool {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	// Need at least 1 peer to be considered caught up.
-	if len(pool.peers) == 0 {
-		pool.Logger.Debug("Blockpool has no peers")
-		return false
+	if time.Since(pool.lastAdvance) > syncTimeout {
+		pool.Logger.Debug(fmt.Sprintf("No progress since last advance: %v", pool.lastAdvance))
+		return true
 	}
 
+	if len(pool.peers) == 0 {
+		pool.Logger.Debug("Need at least 1 peer to be considered caught up, but none connected")
+		return false
+	}
 	// NOTE: we use maxPeerHeight - 1 because to sync block H requires block H+1
 	// to verify the LastCommit.
-	receivedBlockOrTimedOut := pool.height > 0 || time.Since(pool.startTime) > syncTimeout
-	ourChainIsLongestAmongPeers := pool.maxPeerHeight == 0 || pool.height >= (pool.maxPeerHeight-1)
-	isCaughtUp := receivedBlockOrTimedOut && ourChainIsLongestAmongPeers
-	return isCaughtUp
+	return pool.height >= (pool.maxPeerHeight - 1)
 }
 
 // PeekTwoBlocks returns blocks at pool.height and pool.height+1.
@@ -218,6 +217,7 @@ func (pool *BlockPool) PopRequest() {
 		}
 		delete(pool.requesters, pool.height)
 		pool.height++
+		pool.lastAdvance = time.Now()
 	} else {
 		panic(fmt.Sprintf("Expected requester to pop, got nothing at height %v", pool.height))
 	}
@@ -284,11 +284,11 @@ func (pool *BlockPool) MaxPeerHeight() int64 {
 	return pool.maxPeerHeight
 }
 
-// StartTime returns the time at which the pool has started.
-func (pool *BlockPool) StartTime() time.Time {
+// LastAdvance returns the time at which the pool has started.
+func (pool *BlockPool) LastAdvance() time.Time {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
-	return pool.startTime
+	return pool.lastAdvance
 }
 
 // SetPeerRange sets the peer's alleged blockchain base and height.

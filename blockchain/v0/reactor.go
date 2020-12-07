@@ -342,7 +342,7 @@ FOR_LOOP:
 			} else {
 				bcR.Logger.Info("Not caught up yet",
 					"height", height, "max_peer_height", bcR.pool.MaxPeerHeight(),
-					"timeout_in", syncTimeout-time.Since(bcR.pool.StartTime()))
+					"timeout_in", syncTimeout-time.Since(bcR.pool.LastAdvance()))
 			}
 
 		case <-trySyncTicker.C: // chan time
