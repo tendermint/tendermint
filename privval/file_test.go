@@ -41,6 +41,22 @@ func TestGenLoadValidator(t *testing.T) {
 	assert.Equal(height, privVal.LastSignState.Height, "expected privval.LastHeight to have been saved")
 }
 
+func TestRecoverValidator(t *testing.T) {
+	assert := assert.New(t)
+
+	tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+	require.Nil(t, err)
+	tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+	require.Nil(t, err)
+
+	privKey := ed25519.GenPrivKeyFromSecret([]byte("it's a secret"))
+	privVal := RecoverFilePV(privKey, tempKeyFile.Name(), tempStateFile.Name())
+	privVal.Save()
+
+	recovered := RecoverFilePV(privKey, tempKeyFile.Name(), tempKeyFile.Name())
+	assert.Equal(privVal.GetAddress(), recovered.GetAddress(), "expected recovered addr to be the same")
+}
+
 func TestResetValidator(t *testing.T) {
 	tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
 	require.Nil(t, err)
