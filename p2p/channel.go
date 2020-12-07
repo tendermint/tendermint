@@ -71,7 +71,8 @@ func NewChannel(
 // Close closes the outbound channel and marks the Channel as done. Internally,
 // the outbound Out and peer error Error channels are closed. It is the reactor's
 // responsibility to invoke Close. After a channel is closed, the router may
-// safely and explicitly close the internal In channel.
+// safely and explicitly close the internal In channel. Any send on the Out or
+// Error channel will panic after the Channel is closed.
 func (c *Channel) Close() error {
 	c.closeOnce.Do(func() {
 		close(c.doneCh)
