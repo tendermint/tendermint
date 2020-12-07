@@ -52,8 +52,7 @@ var (
 )
 
 var (
-	oldPrivVal     = "priv_validator.json"
-	oldPrivValPath = filepath.Join(defaultConfigDir, oldPrivVal)
+	oldPrivVal = "priv_validator.json"
 )
 
 // Config defines the top level configuration for a Tendermint node
