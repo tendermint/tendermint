@@ -33,7 +33,7 @@ type reactorTestSuite struct {
 	chunkOutCh     chan p2p.Envelope
 	chunkPeerErrCh chan p2p.PeerError
 
-	peerUpdateCh chan p2p.PeerUpdate
+	peerUpdates *p2p.PeerUpdatesCh
 }
 
 func setup(
@@ -62,7 +62,7 @@ func setup(
 		chunkInCh:         make(chan p2p.Envelope, chBuf),
 		chunkOutCh:        make(chan p2p.Envelope, chBuf),
 		chunkPeerErrCh:    make(chan p2p.PeerError, chBuf),
-		peerUpdateCh:      make(chan p2p.PeerUpdate, chBuf),
+		peerUpdates:       p2p.NewPeerUpdates(),
 		conn:              conn,
 		connQuery:         connQuery,
 		stateProvider:     stateProvider,
@@ -90,7 +90,7 @@ func setup(
 		connQuery,
 		rts.snapshotChannel,
 		rts.chunkChannel,
-		rts.peerUpdateCh,
+		rts.peerUpdates,
 		"",
 	)
 
@@ -110,9 +110,6 @@ func setup(
 	t.Cleanup(func() {
 		require.NoError(t, rts.reactor.Stop())
 		require.False(t, rts.reactor.IsRunning())
-		close(rts.peerUpdateCh)
-		close(rts.chunkInCh)
-		close(rts.snapshotInCh)
 	})
 
 	return rts

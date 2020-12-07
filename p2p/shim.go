@@ -27,9 +27,9 @@ type (
 	ReactorShim struct {
 		BaseReactor
 
-		Name         string
-		PeerUpdateCh chan PeerUpdate
-		Channels     map[ChannelID]*ChannelShim
+		Name        string
+		PeerUpdates *PeerUpdatesCh
+		Channels    map[ChannelID]*ChannelShim
 	}
 
 	// ChannelShim defines a generic shim wrapper around a legacy p2p channel
@@ -59,9 +59,9 @@ func NewReactorShim(name string, descriptors map[ChannelID]*ChannelDescriptorShi
 	}
 
 	rs := &ReactorShim{
-		Name:         name,
-		PeerUpdateCh: make(chan PeerUpdate),
-		Channels:     channels,
+		Name:        name,
+		PeerUpdates: NewPeerUpdates(),
+		Channels:    channels,
 	}
 
 	rs.BaseReactor = *NewBaseReactor(name, rs)
@@ -189,15 +189,6 @@ func (rs *ReactorShim) OnStart() error {
 	return nil
 }
 
-// OnStop executes the reactor shim's OnStop hook where the PeerUpdateCh is
-// closed. The caller must be sure to also stop the real reactor so the shim's
-// proxyPeerEnvelopes can exit successfully. Note, the inbound InCh is explicitly
-// closed on Receive once the real reactor stops and closes all of its p2p
-// Channels.
-func (rs *ReactorShim) OnStop() {
-	close(rs.PeerUpdateCh)
-}
-
 // GetChannel returns a p2p Channel reference for a given ChannelID. If no
 // Channel exists, nil is returned.
 func (rs *ReactorShim) GetChannel(cID ChannelID) *Channel {
@@ -237,8 +228,19 @@ func (rs *ReactorShim) AddPeer(peer Peer) {
 		return
 	}
 
-	rs.PeerUpdateCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusUp}
-	rs.Logger.Debug("sent peer update", "reactor", rs.Name, "peer", peerID.String(), "status", PeerStatusUp)
+	select {
+	case rs.PeerUpdates.updateCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusUp}:
+		rs.Logger.Debug("sent peer update", "reactor", rs.Name, "peer", peerID.String(), "status", PeerStatusUp)
+
+	case <-rs.PeerUpdates.Done():
+		// NOTE: We explicitly DO NOT close the PeerUpdatesCh's updateCh go channel.
+		// This is because there may be numerous spawned goroutines that are
+		// attempting to send on the updateCh go channel and when the reactor stops
+		// we do not want to preemptively close the channel as that could result in
+		// panics sending on a closed channel. This also means that reactors MUST
+		// be certain there are NO listeners on the updateCh channel when closing or
+		// stopping.
+	}
 }
 
 // RemovePeer sends a PeerUpdate with status PeerStatusDown on the PeerUpdateCh.
@@ -251,14 +253,25 @@ func (rs *ReactorShim) RemovePeer(peer Peer, reason interface{}) {
 		return
 	}
 
-	rs.PeerUpdateCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusDown}
-	rs.Logger.Debug(
-		"sent peer update",
-		"reactor", rs.Name,
-		"peer", peerID.String(),
-		"reason", reason,
-		"status", PeerStatusDown,
-	)
+	select {
+	case rs.PeerUpdates.updateCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusDown}:
+		rs.Logger.Debug(
+			"sent peer update",
+			"reactor", rs.Name,
+			"peer", peerID.String(),
+			"reason", reason,
+			"status", PeerStatusDown,
+		)
+
+	case <-rs.PeerUpdates.Done():
+		// NOTE: We explicitly DO NOT close the PeerUpdatesCh's updateCh go channel.
+		// This is because there may be numerous spawned goroutines that are
+		// attempting to send on the updateCh go channel and when the reactor stops
+		// we do not want to preemptively close the channel as that could result in
+		// panics sending on a closed channel. This also means that reactors MUST
+		// be certain there are NO listeners on the updateCh channel when closing or
+		// stopping.
+	}
 }
 
 // Receive implements a generic wrapper around implementing the Receive method

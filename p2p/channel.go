@@ -86,22 +86,23 @@ func (c *Channel) Error() chan<- PeerError {
 }
 
 // Close closes the outbound channel and marks the Channel as done. Internally,
-// the outbound Out and peer error Error channels are closed. It is the reactor's
-// responsibility to invoke Close. After a channel is closed, the router may
-// safely and explicitly close the internal In channel. Any send on the Out or
-// Error channel will panic after the Channel is closed.
-func (c *Channel) Close() error {
+// the outbound outCh and peer error errCh channels are closed. It is the reactor's
+// responsibility to invoke Close. Any send on the Out or Error channel will
+// panic after the Channel is closed.
+//
+// NOTE: After a Channel is closed, the router may safely assume it can no longer
+// send on the internal inCh, however it should NEVER explicitly close it as
+// that could result in panics by sending on a closed channel.
+func (c *Channel) Close() {
 	c.closeOnce.Do(func() {
 		close(c.doneCh)
 		close(c.outCh)
 		close(c.errCh)
 	})
-
-	return nil
 }
 
 // Done returns the Channel's internal channel that should be used by a router
-// to signal when it is safe to explicitly close the internal In channel.
+// to signal when it is safe to send on the internal inCh go channel.
 func (c *Channel) Done() <-chan struct{} {
 	return c.doneCh
 }

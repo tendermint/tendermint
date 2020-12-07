@@ -73,7 +73,7 @@ type Reactor struct {
 	snapshotChDone  chan bool
 	chunkCh         *p2p.Channel
 	chunkChDone     chan bool
-	peerUpdates     p2p.PeerUpdates
+	peerUpdates     *p2p.PeerUpdatesCh
 	peerUpdatesDone chan bool
 
 	// This will only be set when a state sync is in progress. It is used to feed
@@ -91,7 +91,7 @@ func NewReactor(
 	conn proxy.AppConnSnapshot,
 	connQuery proxy.AppConnQuery,
 	snapshotCh, chunkCh *p2p.Channel,
-	peerUpdates p2p.PeerUpdates,
+	peerUpdates *p2p.PeerUpdatesCh,
 	tempDir string,
 ) *Reactor {
 	r := &Reactor{
@@ -143,12 +143,9 @@ func (r *Reactor) OnStop() {
 	r.chunkChDone <- true
 	r.peerUpdatesDone <- true
 
-	if err := r.snapshotCh.Close(); err != nil {
-		panic(fmt.Sprintf("failed to close snapshot channel: %s", err))
-	}
-	if err := r.chunkCh.Close(); err != nil {
-		panic(fmt.Sprintf("failed to close chunk channel: %s", err))
-	}
+	r.snapshotCh.Close()
+	r.chunkCh.Close()
+	r.peerUpdates.Close()
 }
 
 func (r *Reactor) processSnapshotCh() {
@@ -337,7 +334,7 @@ func (r *Reactor) processChunkCh() {
 func (r *Reactor) processPeerUpdates() {
 	for {
 		select {
-		case peerUpdate := <-r.peerUpdates:
+		case peerUpdate := <-r.peerUpdates.Updates():
 			r.Logger.Debug("peer update", "peer", peerUpdate.PeerID.String())
 			r.mtx.RLock()
 

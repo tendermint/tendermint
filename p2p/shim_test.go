@@ -69,7 +69,7 @@ func setup(t *testing.T, peers []p2p.Peer) *reactorShimTestSuite {
 		require.NoError(t, rts.shim.Stop())
 
 		for _, chs := range rts.shim.Channels {
-			require.NoError(t, chs.Channel.Close())
+			chs.Channel.Close()
 		}
 	})
 
@@ -117,7 +117,7 @@ func TestReactorShim_AddPeer(t *testing.T) {
 
 	var peerUpdate p2p.PeerUpdate
 	go func() {
-		peerUpdate = <-rts.shim.PeerUpdateCh
+		peerUpdate = <-rts.shim.PeerUpdates.Updates()
 		wg.Done()
 	}()
 
@@ -137,7 +137,7 @@ func TestReactorShim_RemovePeer(t *testing.T) {
 
 	var peerUpdate p2p.PeerUpdate
 	go func() {
-		peerUpdate = <-rts.shim.PeerUpdateCh
+		peerUpdate = <-rts.shim.PeerUpdates.Updates()
 		wg.Done()
 	}()
 

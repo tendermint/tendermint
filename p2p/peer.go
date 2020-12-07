@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/cmap"
@@ -81,8 +82,53 @@ const (
 	PeerErrorSeverityCritical PeerErrorSeverity = "critical" // Ban.
 )
 
-// PeerUpdates is a channel for receiving peer updates.
-type PeerUpdates <-chan PeerUpdate
+// PeerUpdatesCh defines a wrapper around a PeerUpdate go channel that allows
+// a reactor to listen for peer updates and safely close it when stopping.
+type PeerUpdatesCh struct {
+	closeOnce sync.Once
+
+	// updateCh defines the go channel in which the router sends peer updates to
+	// reactors. Each reactor will have its own PeerUpdatesCh to listen for updates
+	// from.
+	updateCh chan PeerUpdate
+
+	// doneCh is used to signal that a PeerUpdatesCh is closed. It is the
+	// reactor's responsibility to invoke Close.
+	doneCh chan struct{}
+}
+
+// NewPeerUpdates returns a reference to a new PeerUpdatesCh.
+func NewPeerUpdates() *PeerUpdatesCh {
+	return &PeerUpdatesCh{
+		updateCh: make(chan PeerUpdate),
+		doneCh:   make(chan struct{}),
+	}
+}
+
+// Updates returns a read-only go channel where a consuming reactor can listen
+// for peer updates sent from the router.
+func (puc *PeerUpdatesCh) Updates() <-chan PeerUpdate {
+	return puc.updateCh
+}
+
+// Close closes the PeerUpdatesCh channel. It should only be closed by the respective
+// reactor when stopping and ensure nothing is listening for updates.
+//
+// NOTE: After a PeerUpdatesCh is closed, the router may safely assume it can no
+// longer send on the internal updateCh, however it should NEVER explicitly close
+// it as that could result in panics by sending on a closed channel.
+func (puc *PeerUpdatesCh) Close() {
+	puc.closeOnce.Do(func() {
+		close(puc.doneCh)
+	})
+}
+
+// Done returns a read-only version of the PeerUpdatesCh's internal doneCh go
+// channel that should be used by a router to signal when it is safe to explicitly
+// not send any peer updates.
+func (puc *PeerUpdatesCh) Done() <-chan struct{} {
+	return puc.doneCh
+}
 
 // PeerUpdate is a peer status update for reactors.
 type PeerUpdate struct {

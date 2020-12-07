@@ -799,7 +799,7 @@ func NewNode(config *cfg.Config,
 		proxyApp.Query(),
 		stateSyncReactorShim.GetChannel(statesync.SnapshotChannel),
 		stateSyncReactorShim.GetChannel(statesync.ChunkChannel),
-		stateSyncReactorShim.PeerUpdateCh,
+		stateSyncReactorShim.PeerUpdates,
 		config.StateSync.TempDir,
 	)
 
