@@ -8,7 +8,7 @@ import (
 	"io"
 	"math/big"
 
-	"golang.org/x/crypto/ripemd160"
+	"golang.org/x/crypto/ripemd160" // nolint
 
 	secp256k1 "github.com/btcsuite/btcd/btcec"
 
