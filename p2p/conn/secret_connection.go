@@ -380,7 +380,7 @@ func deriveSecretAndChallenge(
 		copy(recvSecret[:], res[aeadKeySize:aeadKeySize*2])
 	}
 
-	return
+	return recvSecret, sendSecret, challenge
 }
 
 // computeDHSecret computes a Diffie-Hellman shared secret key
