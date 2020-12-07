@@ -44,7 +44,7 @@ const (
 	// Maximum difference between current and new block's height.
 	maxDiffBetweenCurrentAndReceivedBlockHeight = 100
 
-	syncTimeout = 5 * time.Second
+	syncTimeout = 60 * time.Second
 )
 
 var peerTimeout = 15 * time.Second // not const so we can override with tests
@@ -176,10 +176,7 @@ func (pool *BlockPool) IsCaughtUp() bool {
 		return false
 	}
 
-	// Some conditions to determine if we're caught up.
-	// Ensures we've either received a block or waited some amount of time,
-	// and that we're synced to the highest known height.
-	// Note we use maxPeerHeight - 1 because to sync block H requires block H+1
+	// NOTE: we use maxPeerHeight - 1 because to sync block H requires block H+1
 	// to verify the LastCommit.
 	receivedBlockOrTimedOut := pool.height > 0 || time.Since(pool.startTime) > syncTimeout
 	ourChainIsLongestAmongPeers := pool.maxPeerHeight == 0 || pool.height >= (pool.maxPeerHeight-1)
