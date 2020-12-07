@@ -1,9 +1,9 @@
 package node
 
 import (
-	"math"
 	"context"
 	"fmt"
+	"math"
 	"net"
 	"os"
 	"syscall"
@@ -17,6 +17,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/evidence"
@@ -26,7 +27,6 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	p2pmock "github.com/tendermint/tendermint/p2p/mock"
 	"github.com/tendermint/tendermint/privval"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
@@ -389,10 +389,9 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	logger := log.TestingLogger()
 
-	state, stateDB, privVals := state(types.MaxVotesCount, int64(2))
+	state, stateDB, _ := state(1, int64(1))
 	stateStore := sm.NewStore(stateDB)
-	var maxBytes int64 = 1024 * 1024 * 4
-	partSize := types.BlockPartSizeBytes
+	var maxBytes int64 = 1024 * 1024 * 2
 	state.ConsensusParams.Block.MaxBytes = maxBytes
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
@@ -413,6 +412,13 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	tx := tmrand.Bytes(txLength - 4) // to account for the varint
 	err = mempool.CheckTx(tx, nil, mempl.TxInfo{})
 	assert.NoError(t, err)
+	// now produce more txs than what a normal block can hold with 10 smaller txs
+	// At the end of the test, only the single big tx should be added
+	for i := 0; i < 10; i++ {
+		tx := tmrand.Bytes(10)
+		err = mempool.CheckTx(tx, nil, mempl.TxInfo{})
+		assert.NoError(t, err)
+	}
 
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
@@ -430,24 +436,59 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		},
 	}
 
+	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
+	// change state in order to produce the largest accepted header
 	state.LastBlockID = blockID
+	state.LastBlockHeight = math.MaxInt64 - 1
+	state.LastBlockTime = timestamp
+	state.LastResultsHash = tmhash.Sum([]byte("last_results_hash"))
+	state.AppHash = tmhash.Sum([]byte("app_hash"))
+	state.Version.Consensus.Block = math.MaxInt64
+	state.Version.Consensus.App = math.MaxInt64
+	maxChainID := ""
+	for i := 0; i < types.MaxChainIDLen; i++ {
+		maxChainID += "𠜎"
+	}
+	state.ChainID = maxChainID
 
-	voteSet := types.NewVoteSet("test-chain", 10, 1, tmproto.SignedMsgType(2), state.Validators)
-	commit, err := types.MakeCommit(blockID, 10, 1, voteSet, privVals, time.Now())
-	
-	block, _ := blockExec.CreateProposalBlock(
-		2,
+	cs := types.CommitSig{
+		BlockIDFlag:      types.BlockIDFlagNil,
+		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
+		Timestamp:        timestamp,
+		Signature:        crypto.CRandBytes(types.MaxSignatureSize),
+	}
+
+	commit := &types.Commit{
+		Height:  math.MaxInt64,
+		Round:   math.MaxInt32,
+		BlockID: blockID,
+	}
+
+	// add maximum amount of signatures to a single commit
+	for i := 0; i < types.MaxVotesCount; i++ {
+		commit.Signatures = append(commit.Signatures, cs)
+	}
+
+	block, partSet := blockExec.CreateProposalBlock(
+		math.MaxInt64,
 		state, commit,
 		proposerAddr,
 	)
 
+	// this ensures that the header is at max size
+	block.Header.Time = timestamp
+
 	pb, err := block.ToProto()
 	require.NoError(t, err)
-	assert.Less(t, int64(pb.Size()), maxBytes)
 
-	// check that the part set does not exceed the maximum block size
-	partSet := block.MakePartSet(partSize)
-	assert.EqualValues(t, partSet.ByteSize(), int64(pb.Size()))
+	// require that the header and commit be the max possible size
+	require.Equal(t, int64(pb.Header.Size()), types.MaxHeaderBytes)
+	require.Equal(t, int64(pb.LastCommit.Size()), types.MaxCommitBytes(types.MaxVotesCount))
+	// make sure that the block is less than the max possible size
+	assert.Less(t, int64(pb.Size()), maxBytes)
+	// because of the proto overhead we expect the part set bytes to be equal or
+	// less than the pb block size
+	assert.LessOrEqual(t, int64(pb.Size()), partSet.ByteSize())
 
 }
 
