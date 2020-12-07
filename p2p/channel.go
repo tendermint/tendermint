@@ -18,27 +18,26 @@ type Envelope struct {
 }
 
 // Channel is a bidirectional channel for Protobuf message exchange with peers.
-//
-// Channel is safe for concurrent use by multiple goroutines.
+// A Channel is safe for concurrent use by multiple goroutines.
 type Channel struct {
 	closeOnce sync.Once
 
-	// ID contains the channel ID.
+	// id defines the unique channel ID.
 	id ChannelID
 
 	// messageType specifies the type of messages exchanged via the channel, and
 	// is used e.g. for automatic unmarshaling.
 	messageType proto.Message
 
-	// In is a channel for receiving inbound messages. Envelope.From is always
+	// inCh is a channel for receiving inbound messages. Envelope.From is always
 	// set.
 	inCh chan Envelope
 
-	// Out is a channel for sending outbound messages. Envelope.To or Broadcast
+	// outCh is a channel for sending outbound messages. Envelope.To or Broadcast
 	// must be set, otherwise the message is discarded.
 	outCh chan Envelope
 
-	// Error is a channel for reporting peer errors to the router, typically used
+	// errCh is a channel for reporting peer errors to the router, typically used
 	// when peers send an invalid or malignant message.
 	errCh chan PeerError
 
@@ -51,13 +50,13 @@ type Channel struct {
 // NewChannel returns a reference to a new p2p Channel. It is the reactor's
 // responsibility to close the Channel. After a channel is closed, the router may
 // safely and explicitly close the internal In channel.
-func NewChannel(id ChannelID, mType proto.Message, in, out chan Envelope, err chan PeerError) *Channel {
+func NewChannel(id ChannelID, mType proto.Message, in, out chan Envelope, errCh chan PeerError) *Channel {
 	return &Channel{
 		id:          id,
 		messageType: mType,
 		inCh:        in,
 		outCh:       out,
-		errCh:       err,
+		errCh:       errCh,
 		doneCh:      make(chan struct{}),
 	}
 }
