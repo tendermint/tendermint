@@ -21,7 +21,7 @@ type Envelope struct {
 //
 // Channel is safe for concurrent use by multiple goroutines.
 type Channel struct {
-	once sync.Once
+	closeOnce sync.Once
 
 	// ID contains the channel ID.
 	ID ChannelID
@@ -73,7 +73,7 @@ func NewChannel(
 // responsibility to invoke Close. After a channel is closed, the router may
 // safely and explicitly close the internal In channel.
 func (c *Channel) Close() error {
-	c.once.Do(func() {
+	c.closeOnce.Do(func() {
 		close(c.doneCh)
 		close(c.Out)
 		close(c.Error)
