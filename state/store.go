@@ -27,9 +27,9 @@ const (
 //------------------------------------------------------------------------
 
 const (
-	keySuffixValidators = byte(0x01)
+	keySuffixValidators      = byte(0x01)
 	keySuffixConsensusParams = byte(0x02)
-	keySuffixABCIResponses = byte(0x03)
+	keySuffixABCIResponses   = byte(0x03)
 )
 
 func getHeightPrefix(height uint64) []byte {
@@ -279,7 +279,7 @@ func (store dbStore) PruneStates(height int64) error {
 		key := iter.Key()
 
 		// read the last byte to determine what type of state data is being iterated over,
-		switch key[len(key)-1] { 
+		switch key[len(key)-1] {
 		case keySuffixValidators:
 			if keepVals[h] {
 				v, err := loadValidatorsInfo(store.db, h)
@@ -311,7 +311,7 @@ func (store dbStore) PruneStates(height int64) error {
 					return err
 				}
 			}
-			
+
 		case keySuffixConsensusParams:
 			if keepParams[h] {
 				p, err := store.loadConsensusParamsInfo(h)

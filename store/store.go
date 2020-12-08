@@ -292,7 +292,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 
 	for ; iter.Valid(); iter.Next() {
 		key := iter.Key()
-		
+
 		if err := batch.Delete(key); err != nil {
 			return 0, err
 		}
@@ -302,7 +302,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 
 			// flush every 1000 blocks to avoid batches becoming too large
 			if pruned%1000 == 0 && pruned > 0 {
-				err := flush(batch, base + int64(pruned))
+				err := flush(batch, base+int64(pruned))
 				if err != nil {
 					return 0, err
 				}
@@ -314,7 +314,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 	if err = iter.Error(); err != nil {
 		return 0, err
 	}
-	
+
 	if err = flush(batch, height); err != nil {
 		return 0, err
 	}
@@ -330,7 +330,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 func (bs *BlockStore) pruneBlockHashHeightMap(retain_height int64) error {
 	iter, err := bs.db.Iterator(
 		[]byte{prefixKeyBlock}, // start of the blockhash-height map
-		nil, // to the end of the block kv strore
+		nil,                    // to the end of the block kv strore
 	)
 	if err != nil {
 		panic(err)
@@ -470,23 +470,21 @@ func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *types.Commit) err
 
 //-----------------------------------------------------------------------------
 
-
 // Keys are constructed based on height (big endian) first, then by a suffix byte that determines
 // the data type followed by 4 bytes to allow for the partIndex. Note that this dictates the ordering
-// of pruning. 
+// of pruning.
 const (
-	prefixKeyBlock = byte(0x00)
+	prefixKeyBlock     = byte(0x00)
 	prefixKeyBlockHash = byte(0x01)
 
-	suffixKeyBlockMeta = byte(0x00)
-	suffixKeyBlockPart = byte(0x01)
+	suffixKeyBlockMeta   = byte(0x00)
+	suffixKeyBlockPart   = byte(0x01)
 	suffixKeyBlockCommit = byte(0x02)
-	suffixKeySeenCommit = byte(0x03)
-
+	suffixKeySeenCommit  = byte(0x03)
 )
 
 func getBlockKey(height uint64) []byte {
-	buf := make([]byte, binary.MaxVarintLen64 + 2)
+	buf := make([]byte, binary.MaxVarintLen64+2)
 	buf[0] = prefixKeyBlock
 	varLen := binary.PutUvarint(buf[1:], height)
 	return buf[:varLen+1]
@@ -497,12 +495,12 @@ func calcBlockMetaKey(height int64) []byte {
 }
 
 func calcBlockPartKey(height int64, partIndex uint32) []byte {
-	buf := make([]byte, binary.MaxVarintLen64 + 6)
+	buf := make([]byte, binary.MaxVarintLen64+6)
 	buf[0] = prefixKeyBlock
 	varHeightLen := binary.PutUvarint(buf[1:], uint64(height))
-	buf[varHeightLen + 1] = suffixKeyBlockPart
-	varPartsLen := binary.PutUvarint(buf[varHeightLen+1:], uint64(partIndex)) 
-	return buf[:varHeightLen + varPartsLen + 2]
+	buf[varHeightLen+1] = suffixKeyBlockPart
+	varPartsLen := binary.PutUvarint(buf[varHeightLen+1:], uint64(partIndex))
+	return buf[:varHeightLen+varPartsLen+2]
 }
 
 func calcBlockCommitKey(height int64) []byte {
