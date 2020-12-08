@@ -66,15 +66,13 @@ const (
 type Reactor struct {
 	service.BaseService
 
-	conn            proxy.AppConnSnapshot
-	connQuery       proxy.AppConnQuery
-	tempDir         string
-	snapshotCh      *p2p.Channel
-	snapshotChDone  chan bool
-	chunkCh         *p2p.Channel
-	chunkChDone     chan bool
-	peerUpdates     *p2p.PeerUpdatesCh
-	peerUpdatesDone chan bool
+	conn        proxy.AppConnSnapshot
+	connQuery   proxy.AppConnQuery
+	tempDir     string
+	snapshotCh  *p2p.Channel
+	chunkCh     *p2p.Channel
+	peerUpdates *p2p.PeerUpdatesCh
+	closeCh     chan struct{}
 
 	// This will only be set when a state sync is in progress. It is used to feed
 	// received snapshots and chunks into the sync.
@@ -95,15 +93,13 @@ func NewReactor(
 	tempDir string,
 ) *Reactor {
 	r := &Reactor{
-		conn:            conn,
-		connQuery:       connQuery,
-		snapshotCh:      snapshotCh,
-		snapshotChDone:  make(chan bool),
-		chunkCh:         chunkCh,
-		chunkChDone:     make(chan bool),
-		peerUpdates:     peerUpdates,
-		peerUpdatesDone: make(chan bool),
-		tempDir:         tempDir,
+		conn:        conn,
+		connQuery:   connQuery,
+		snapshotCh:  snapshotCh,
+		chunkCh:     chunkCh,
+		peerUpdates: peerUpdates,
+		closeCh:     make(chan struct{}),
+		tempDir:     tempDir,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "StateSync", r)
@@ -133,22 +129,23 @@ func (r *Reactor) OnStart() error {
 }
 
 // OnStop stops the reactor by signaling to all spawned goroutines to exit and
-// blocking until they all exit. Finally, it will close the snapshot and chunk
-// p2p Channels respectively.
+// blocking until they all exit.
 func (r *Reactor) OnStop() {
-	// Wait for all goroutines to safely exit before proceeding to close all p2p
-	// Channels. After closing, the router can be signaled that it is safe to stop
-	// sending on the inbound In channel and close it.
-	r.snapshotChDone <- true
-	r.chunkChDone <- true
-	r.peerUpdatesDone <- true
+	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
+	// p2p Channels should execute Close().
+	close(r.closeCh)
 
-	r.snapshotCh.Close()
-	r.chunkCh.Close()
-	r.peerUpdates.Close()
+	// Wait for all p2p Channels to be closed before returning. This ensures we
+	// can easily reason about synchronization of all p2p Channels and ensure no
+	// panics will occur.
+	<-r.snapshotCh.Done()
+	<-r.chunkCh.Done()
+	<-r.peerUpdates.Done()
 }
 
 func (r *Reactor) processSnapshotCh() {
+	defer r.snapshotCh.Close()
+
 	for {
 		select {
 		case envelope := <-r.snapshotCh.In():
@@ -223,14 +220,16 @@ func (r *Reactor) processSnapshotCh() {
 				}
 			}
 
-		case <-r.snapshotChDone:
-			r.Logger.Debug("stopped listening on snapshot channel")
+		case <-r.closeCh:
+			r.Logger.Debug("stopped listening on snapshot channel; closing...")
 			return
 		}
 	}
 }
 
 func (r *Reactor) processChunkCh() {
+	defer r.chunkCh.Close()
+
 	for {
 		select {
 		case envelope := <-r.chunkCh.In():
@@ -324,14 +323,16 @@ func (r *Reactor) processChunkCh() {
 				}
 			}
 
-		case <-r.chunkChDone:
-			r.Logger.Debug("stopped listening on chunk channel")
+		case <-r.closeCh:
+			r.Logger.Debug("stopped listening on chunk channel; closing...")
 			return
 		}
 	}
 }
 
 func (r *Reactor) processPeerUpdates() {
+	defer r.peerUpdates.Close()
+
 	for {
 		select {
 		case peerUpdate := <-r.peerUpdates.Updates():
@@ -350,8 +351,8 @@ func (r *Reactor) processPeerUpdates() {
 
 			r.mtx.RUnlock()
 
-		case <-r.peerUpdatesDone:
-			r.Logger.Debug("stopped listening on peer updates channel")
+		case <-r.closeCh:
+			r.Logger.Debug("stopped listening on peer updates channel; closing...")
 			return
 		}
 	}
