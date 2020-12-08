@@ -1,6 +1,7 @@
 package store
 
 import (
+	"encoding/binary"
 	"fmt"
 	"strconv"
 
@@ -98,7 +99,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 
 	pbb := new(tmproto.Block)
 	buf := []byte{}
-	for i := 0; i < int(blockMeta.BlockID.PartSetHeader.Total); i++ {
+	for i := uint32(0); i < blockMeta.BlockID.PartSetHeader.Total; i++ {
 		part := bs.LoadBlockPart(height, i)
 		// If the part is missing (e.g. since it has been deleted after we
 		// loaded the block meta) we consider the whole block to be missing.
@@ -146,7 +147,7 @@ func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
 // LoadBlockPart returns the Part at the given index
 // from the block at the given height.
 // If no part is found for the given height and index, it returns nil.
-func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
+func (bs *BlockStore) LoadBlockPart(height int64, index uint32) *types.Part {
 	var pbpart = new(tmproto.Part)
 
 	bz, err := bs.db.Get(calcBlockPartKey(height, index))
@@ -261,6 +262,15 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 			height, base)
 	}
 
+	iter, err := bs.db.Iterator(
+		calcBlockMetaKey(base),
+		calcSeenCommitKey(height),
+	)
+	if err != nil {
+		panic(err)
+	}
+	defer iter.Close()
+
 	pruned := uint64(0)
 	batch := bs.db.NewBatch()
 	defer batch.Close()
@@ -280,46 +290,80 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 		return nil
 	}
 
-	for h := base; h < height; h++ {
-		meta := bs.LoadBlockMeta(h)
-		if meta == nil { // assume already deleted
-			continue
-		}
-		if err := batch.Delete(calcBlockMetaKey(h)); err != nil {
+	for ; iter.Valid(); iter.Next() {
+		key := iter.Key()
+		
+		if err := batch.Delete(key); err != nil {
 			return 0, err
 		}
-		if err := batch.Delete(calcBlockHashKey(meta.BlockID.Hash)); err != nil {
-			return 0, err
-		}
-		if err := batch.Delete(calcBlockCommitKey(h)); err != nil {
-			return 0, err
-		}
-		if err := batch.Delete(calcSeenCommitKey(h)); err != nil {
-			return 0, err
-		}
-		for p := 0; p < int(meta.BlockID.PartSetHeader.Total); p++ {
-			if err := batch.Delete(calcBlockPartKey(h, p)); err != nil {
-				return 0, err
-			}
-		}
-		pruned++
+		// check if we have looped through an entire block
+		if key[8] == suffixKeySeenCommit {
+			pruned++
 
-		// flush every 1000 blocks to avoid batches becoming too large
-		if pruned%1000 == 0 && pruned > 0 {
-			err := flush(batch, h)
-			if err != nil {
-				return 0, err
+			// flush every 1000 blocks to avoid batches becoming too large
+			if pruned%1000 == 0 && pruned > 0 {
+				err := flush(batch, base + int64(pruned))
+				if err != nil {
+					return 0, err
+				}
+				batch = bs.db.NewBatch()
+				defer batch.Close()
 			}
-			batch = bs.db.NewBatch()
-			defer batch.Close()
 		}
 	}
-
-	err := flush(batch, height)
-	if err != nil {
+	if err = iter.Error(); err != nil {
 		return 0, err
 	}
+	
+	if err = flush(batch, height); err != nil {
+		return 0, err
+	}
+
+	if err = bs.pruneBlockHashHeightMap(height); err != nil {
+		return 0, err
+	}
+
 	return pruned, nil
+}
+
+// pruneBlockHashHeightMap removes all hashes that correlate to a height below retain_height
+func (bs *BlockStore) pruneBlockHashHeightMap(retain_height int64) error {
+	iter, err := bs.db.Iterator(
+		[]byte{prefixKeyBlock}, // start of the blockhash-height map
+		nil, // to the end of the block kv strore
+	)
+	if err != nil {
+		panic(err)
+	}
+	defer iter.Close()
+
+	batch := bs.db.NewBatch()
+	defer batch.Close()
+
+	for ; iter.Valid(); iter.Next() {
+		bz := iter.Value()
+		s := string(bz)
+		height, err := strconv.ParseInt(s, 10, 64)
+
+		if err != nil {
+			panic(fmt.Sprintf("failed to extract height from %s: %v", s, err))
+		}
+		if height < retain_height {
+			if err := batch.Delete(iter.Key()); err != nil {
+				return err
+			}
+		}
+
+	}
+	if err := iter.Error(); err != nil {
+		return err
+	}
+
+	if err := batch.WriteSync(); err != nil {
+		return fmt.Errorf("failed to prune block hashes up to height %v: %w", retain_height, err)
+	}
+
+	return nil
 }
 
 // SaveBlock persists the given block, blockParts, and seenCommit to the underlying db.
@@ -347,8 +391,8 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	// typically load the block meta first as an indication that the block exists
 	// and then go on to load block parts - we must make sure the block is
 	// complete as soon as the block meta is written.
-	for i := 0; i < int(blockParts.Total()); i++ {
-		part := blockParts.GetPart(i)
+	for i := uint32(0); i < blockParts.Total(); i++ {
+		part := blockParts.GetPart(int(i))
 		bs.saveBlockPart(height, i, part)
 	}
 
@@ -393,7 +437,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	bs.saveState()
 }
 
-func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
+func (bs *BlockStore) saveBlockPart(height int64, index uint32, part *types.Part) {
 	pbp, err := part.ToProto()
 	if err != nil {
 		panic(fmt.Errorf("unable to make part into proto: %w", err))
@@ -426,24 +470,58 @@ func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *types.Commit) err
 
 //-----------------------------------------------------------------------------
 
+
+// Keys are constructed based on height (big endian) first, then by a suffix byte that determines
+// the data type followed by 4 bytes to allow for the partIndex. Note that this dictates the ordering
+// of pruning. 
+const (
+	prefixKeyBlock = byte(0x00)
+	prefixKeyBlockHash = byte(0x01)
+
+	suffixKeyBlockMeta = byte(0x00)
+	suffixKeyBlockPart = byte(0x01)
+	suffixKeyBlockCommit = byte(0x02)
+	suffixKeySeenCommit = byte(0x03)
+
+	keyLength = 10 // 1 for prefix + 8 for int64 height + 1 for suffix 
+)
+
 func calcBlockMetaKey(height int64) []byte {
-	return []byte(fmt.Sprintf("H:%v", height))
+	b := make([]byte, keyLength)
+	b[0] = prefixKeyBlock
+	binary.BigEndian.PutUint64(b[1:9], uint64(height))
+	b[9] = suffixKeyBlockMeta 
+	return b
 }
 
-func calcBlockPartKey(height int64, partIndex int) []byte {
-	return []byte(fmt.Sprintf("P:%v:%v", height, partIndex))
+func calcBlockPartKey(height int64, partIndex uint32) []byte {
+	b := make([]byte, keyLength + 4) // for uint32 part index
+	b[0] = prefixKeyBlock
+	binary.BigEndian.PutUint64(b[1:9], uint64(height))
+	b[9] = suffixKeyBlockPart
+	binary.BigEndian.PutUint32(b[9:], partIndex) 
+	return b
 }
 
 func calcBlockCommitKey(height int64) []byte {
-	return []byte(fmt.Sprintf("C:%v", height))
+	b := make([]byte, keyLength)
+	b[0] = prefixKeyBlock
+	binary.BigEndian.PutUint64(b[1:9], uint64(height)) 
+	b[9] = suffixKeyBlockCommit
+	return b
 }
 
 func calcSeenCommitKey(height int64) []byte {
-	return []byte(fmt.Sprintf("SC:%v", height))
+	b := make([]byte, keyLength)
+	b[0] = prefixKeyBlock
+	binary.BigEndian.PutUint64(b[1:9], uint64(height)) 
+	b[9] = suffixKeySeenCommit
+	return b
 }
 
+// block hash has a different prefix
 func calcBlockHashKey(hash []byte) []byte {
-	return []byte(fmt.Sprintf("BH:%x", hash))
+	return []byte(fmt.Sprintf("%b%x", prefixKeyBlockHash, hash))
 }
 
 //-----------------------------------------------------------------------------
