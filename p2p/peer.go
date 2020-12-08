@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"fmt"
-	"io"
 	"net"
 	"time"
 
@@ -158,17 +157,16 @@ func (p *peer) OnStart() error {
 	go func() {
 		for {
 			chID, msg, err := p.conn.ReceiveMessage()
-			if err == io.EOF {
+			if err != nil {
+				p.Logger.Error("receive error", "err", err.Error())
+				p.onPeerError(p, err)
 				return
-			} else if err != nil {
-				p.Logger.Error(err.Error())
-				continue
 			}
 			reactor, ok := p.reactors[chID]
 			if !ok {
 				p.Logger.Error("Received message for unknown channel", "channel", chID)
-				// FIXME Should drop peer
-				continue
+				p.onPeerError(p, fmt.Errorf("unknown channel %v", chID))
+				return
 			}
 			reactor.Receive(chID, p, msg)
 		}

@@ -342,6 +342,7 @@ type mConnConnection struct {
 	mConn       *tmconn.MConnection
 	nodeInfo    DefaultNodeInfo
 	chReceive   chan mConnMessage
+	chError     chan error
 	chClose     chan struct{}
 	chCloseOnce sync.Once
 }
@@ -379,6 +380,8 @@ func newMConnConnection(
 	conn = &mConnConnection{
 		transport: transport,
 		chReceive: make(chan mConnMessage),
+		chError:   make(chan error),
+		chClose:   make(chan struct{}),
 	}
 	conn.secretConn, err = tmconn.MakeSecretConnection(tcpConn, transport.privKey)
 	if err != nil {
@@ -505,24 +508,42 @@ func (c *mConnConnection) onReceive(channelID byte, payload []byte) {
 
 // onError is a callback for MConnection errors.
 func (c *mConnConnection) onError(err interface{}) {
-	// FIXME Probably need to do something better here
-	c.logger.Error("connection failure", "err", err)
-	_ = c.Close()
+	switch err := err.(type) {
+	case error:
+		c.chError <- err
+	default:
+		c.chError <- fmt.Errorf("%v", err)
+	}
 }
 
 // SendMessage implements Connection.
 func (c *mConnConnection) SendMessage(channelID byte, msg []byte) error {
-	c.mConn.Send(channelID, msg) // FIXME Check return value
-	return nil
+	select {
+	case err := <-c.chError:
+		return err
+	case <-c.chClose:
+		return io.EOF
+	default:
+		c.mConn.Send(channelID, msg) // FIXME Check return value
+	}
+
+	select {
+	case err := <-c.chError:
+		return err
+	default:
+		return nil
+	}
 }
 
 // ReceiveMessage implements Connection.
 func (c *mConnConnection) ReceiveMessage() (byte, []byte, error) {
 	select {
-	case msg := <-c.chReceive:
-		return msg.channelID, msg.payload, nil
+	case err := <-c.chError:
+		return 0, nil, err
 	case <-c.chClose:
 		return 0, nil, io.EOF
+	case msg := <-c.chReceive:
+		return msg.channelID, msg.payload, nil
 	}
 }
 
@@ -561,11 +582,17 @@ func (c *mConnConnection) RemoteEndpoint() Endpoint {
 // Close implements Connection.
 func (c *mConnConnection) Close() error {
 	c.transport.conns.RemoveAddr(c.secretConn.RemoteAddr())
-	err := c.mConn.Stop()
-	if e := c.secretConn.Close(); e != nil && err == nil {
-		err = e
-	}
-	c.chCloseOnce.Do(func() { close(c.chClose) })
+	var err error
+	c.chCloseOnce.Do(func() {
+		close(c.chClose)
+		if c.mConn.IsRunning() {
+			c.mConn.FlushStop() // FIXME This probably isn't always appropriate.
+		}
+		// FIXME Should guarantee connection gets closed
+		/*if e := c.secretConn.Close(); e != nil && err == nil {
+			err = e
+		}*/
+	})
 	return err
 }
 
