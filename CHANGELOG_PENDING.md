@@ -37,6 +37,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [mempool] \#5673 Cancel `CheckTx` requests if RPC client disconnects or times out (@melekes)
 - [abci] \#5706 Added `AbciVersion` to `RequestInfo` allowing applications to check ABCI version when connecting to Tendermint. (@marbar3778)
 - [blockchain/v1] \#5728 Remove in favor of v2 (@melekes)
+- [blockchain/v0] \#5741 Relax termination conditions and increase sync timeout (@melekes)
 
 ### BUG FIXES
 
