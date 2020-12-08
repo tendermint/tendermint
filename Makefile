@@ -4,7 +4,14 @@ PACKAGES=$(shell go list ./...)
 BUILDDIR ?= $(CURDIR)/build
 
 BUILD_TAGS?=tendermint
-VERSION := $(shell git describe --always)
+
+# If building a release, please checkout the version tag to get the correct version setting
+ifneq ($(shell git branch --show-current),)
+VERSION := unreleased-$(shell git branch --show-current)-$(shell git rev-parse HEAD)
+else
+VERSION := $(shell git describe)
+endif
+
 LD_FLAGS = -X github.com/tendermint/tendermint/version.TMCoreSemVer=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://github.com/tendermint/tendermint.git
@@ -202,25 +209,6 @@ build-docs:
 		cp ~/output/$${path_prefix}/index.html ~/output ; \
 	done < versions ;
 .PHONY: build-docs
-
-build-gh-docs:
-	@cd docs && \
-	while read -r branch path_prefix; do \
-		(git checkout $${branch} && npm install && VUEPRESS_BASE="/tendermint/$${path_prefix}/" npm run build) ; \
-		mkdir -p ~/output/$${path_prefix} ; \
-		cp -r .vuepress/dist/* ~/output/$${path_prefix}/ ; \
-		cp ~/output/$${path_prefix}/index.html ~/output ; \
-	done < versions ;
-.PHONY: build-docs
-
-# todo remove once tendermint.com DNS is solved
-sync-docs:
-	cd ~/output && \
-	echo "role_arn = ${DEPLOYMENT_ROLE_ARN}" >> /root/.aws/config ; \
-	echo "CI job = ${CIRCLE_BUILD_URL}" >> version.html ; \
-	aws s3 sync . s3://${WEBSITE_BUCKET} --profile terraform --delete ; \
-	aws cloudfront create-invalidation --distribution-id ${CF_DISTRIBUTION_ID} --profile terraform --path "/*" ;
-.PHONY: sync-docs
 
 ###############################################################################
 ###                            Docker image                                 ###

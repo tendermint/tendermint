@@ -21,6 +21,24 @@ module.exports = {
       key: "59f0e2deb984aa9cdf2b3a5fd24ac501",
       index: "tendermint"
     },
+    versions: [
+      {
+        "label": "v0.32",
+        "key": "v0.32"
+      },
+      {
+        "label": "v0.33",
+        "key": "v0.33"
+      },
+      {
+        "label": "v0.34",
+        "key": "v0.34"
+      },
+      {
+        "label": "master",
+        "key": "master"
+      }
+    ],
     topbar: {
       banner: false,
     },
@@ -37,17 +55,6 @@ module.exports = {
             {
               title: 'RPC',
               path: 'https://docs.tendermint.com/master/rpc/',
-              static: true
-            },
-            // TODO: remove once https://github.com/cosmos/vuepress-theme-cosmos/issues/91 is closed
-            {
-              title: 'Version 0.32',
-              path: '/v0.32',
-              static: true
-            },
-            {
-              title: 'Version 0.33',
-              path: '/v0.33',
               static: true
             },
           ]
