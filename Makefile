@@ -4,7 +4,14 @@ PACKAGES=$(shell go list ./...)
 BUILDDIR ?= $(CURDIR)/build
 
 BUILD_TAGS?=tendermint
-VERSION := $(shell git describe --always)
+
+# If building a release, please checkout the version tag to get the correct version setting
+ifneq ($(shell git branch --show-current),)
+VERSION := unreleased-$(shell git branch --show-current)-$(shell git rev-parse HEAD)
+else
+VERSION := $(shell git describe)
+endif
+
 LD_FLAGS = -X github.com/tendermint/tendermint/version.TMCoreSemVer=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://github.com/tendermint/tendermint.git

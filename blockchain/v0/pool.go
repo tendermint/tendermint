@@ -58,12 +58,19 @@ var peerTimeout = 15 * time.Second // not const so we can override with tests
 	are not at peer limits, we can probably switch to consensus reactor
 */
 
+// BlockRequest stores a block request identified by the block Height and the
+// PeerID responsible for delivering the block.
+type BlockRequest struct {
+	Height int64
+	PeerID p2p.ID
+}
+
 // BlockPool keeps track of the fast sync peers, block requests and block responses.
 type BlockPool struct {
 	service.BaseService
-	startTime time.Time
+	lastAdvance time.Time
 
-	mtx tmsync.Mutex
+	mtx tmsync.RWMutex
 	// block requests
 	requesters map[int64]*bpRequester
 	height     int64 // the lowest key in requesters.
@@ -98,8 +105,8 @@ func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- p
 // OnStart implements service.Service by spawning requesters routine and recording
 // pool's start time.
 func (pool *BlockPool) OnStart() error {
+	pool.lastAdvance = time.Now()
 	go pool.makeRequestersRoutine()
-	pool.startTime = time.Now()
 	return nil
 }
 
@@ -134,6 +141,7 @@ func (pool *BlockPool) removeTimedoutPeers() {
 	defer pool.mtx.Unlock()
 
 	for _, peer := range pool.peers {
+		// check if peer timed out
 		if !peer.didTimeout && peer.numPending > 0 {
 			curRate := peer.recvMonitor.Status().CurRate
 			// curRate can be 0 on start
@@ -147,6 +155,7 @@ func (pool *BlockPool) removeTimedoutPeers() {
 				peer.didTimeout = true
 			}
 		}
+
 		if peer.didTimeout {
 			pool.removePeer(peer.id)
 		}
@@ -156,33 +165,24 @@ func (pool *BlockPool) removeTimedoutPeers() {
 // GetStatus returns pool's height, numPending requests and the number of
 // requesters.
 func (pool *BlockPool) GetStatus() (height int64, numPending int32, lenRequesters int) {
-	pool.mtx.Lock()
-	defer pool.mtx.Unlock()
+	pool.mtx.RLock()
+	defer pool.mtx.RUnlock()
 
 	return pool.height, atomic.LoadInt32(&pool.numPending), len(pool.requesters)
 }
 
 // IsCaughtUp returns true if this node is caught up, false - otherwise.
-// TODO: relax conditions, prevent abuse.
 func (pool *BlockPool) IsCaughtUp() bool {
-	pool.mtx.Lock()
-	defer pool.mtx.Unlock()
+	pool.mtx.RLock()
+	defer pool.mtx.RUnlock()
 
 	// Need at least 1 peer to be considered caught up.
 	if len(pool.peers) == 0 {
-		pool.Logger.Debug("Blockpool has no peers")
 		return false
 	}
-
-	// Some conditions to determine if we're caught up.
-	// Ensures we've either received a block or waited some amount of time,
-	// and that we're synced to the highest known height.
-	// Note we use maxPeerHeight - 1 because to sync block H requires block H+1
+	// NOTE: we use maxPeerHeight - 1 because to sync block H requires block H+1
 	// to verify the LastCommit.
-	receivedBlockOrTimedOut := pool.height > 0 || time.Since(pool.startTime) > 5*time.Second
-	ourChainIsLongestAmongPeers := pool.maxPeerHeight == 0 || pool.height >= (pool.maxPeerHeight-1)
-	isCaughtUp := receivedBlockOrTimedOut && ourChainIsLongestAmongPeers
-	return isCaughtUp
+	return pool.height >= (pool.maxPeerHeight - 1)
 }
 
 // PeekTwoBlocks returns blocks at pool.height and pool.height+1.
@@ -190,8 +190,8 @@ func (pool *BlockPool) IsCaughtUp() bool {
 // So we peek two blocks at a time.
 // The caller will verify the commit.
 func (pool *BlockPool) PeekTwoBlocks() (first *types.Block, second *types.Block) {
-	pool.mtx.Lock()
-	defer pool.mtx.Unlock()
+	pool.mtx.RLock()
+	defer pool.mtx.RUnlock()
 
 	if r := pool.requesters[pool.height]; r != nil {
 		first = r.getBlock()
@@ -209,16 +209,12 @@ func (pool *BlockPool) PopRequest() {
 	defer pool.mtx.Unlock()
 
 	if r := pool.requesters[pool.height]; r != nil {
-		/*  The block can disappear at any time, due to removePeer().
-		if r := pool.requesters[pool.height]; r == nil || r.block == nil {
-			PanicSanity("PopRequest() requires a valid block")
-		}
-		*/
 		if err := r.Stop(); err != nil {
 			pool.Logger.Error("Error stopping requester", "err", err)
 		}
 		delete(pool.requesters, pool.height)
 		pool.height++
+		pool.lastAdvance = time.Now()
 	} else {
 		panic(fmt.Sprintf("Expected requester to pop, got nothing at height %v", pool.height))
 	}
@@ -248,14 +244,8 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 
 	requester := pool.requesters[block.Height]
 	if requester == nil {
-		pool.Logger.Info(
-			"peer sent us a block we didn't expect",
-			"peer",
-			peerID,
-			"curHeight",
-			pool.height,
-			"blockHeight",
-			block.Height)
+		pool.Logger.Error("peer sent us a block we didn't expect",
+			"peer", peerID, "curHeight", pool.height, "blockHeight", block.Height)
 		diff := pool.height - block.Height
 		if diff < 0 {
 			diff *= -1
@@ -273,16 +263,25 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 			peer.decrPending(blockSize)
 		}
 	} else {
-		pool.Logger.Info("invalid peer", "peer", peerID, "blockHeight", block.Height)
-		pool.sendError(errors.New("invalid peer"), peerID)
+		err := errors.New("requester is different or block already exists")
+		pool.Logger.Error(err.Error(), "peer", peerID, "requester", requester.getPeerID(), "blockHeight", block.Height)
+		pool.sendError(err, peerID)
 	}
 }
 
 // MaxPeerHeight returns the highest reported height.
 func (pool *BlockPool) MaxPeerHeight() int64 {
-	pool.mtx.Lock()
-	defer pool.mtx.Unlock()
+	pool.mtx.RLock()
+	defer pool.mtx.RUnlock()
 	return pool.maxPeerHeight
+}
+
+// LastAdvance returns the time when the last block was processed (or start
+// time if no blocks were processed).
+func (pool *BlockPool) LastAdvance() time.Time {
+	pool.mtx.RLock()
+	defer pool.mtx.RUnlock()
+	return pool.lastAdvance
 }
 
 // SetPeerRange sets the peer's alleged blockchain base and height.
@@ -601,7 +600,6 @@ OUTER_LOOP:
 			}
 			peer = bpr.pool.pickIncrAvailablePeer(bpr.height)
 			if peer == nil {
-				// log.Info("No peers available", "height", height)
 				time.Sleep(requestIntervalMS * time.Millisecond)
 				continue PICK_PEER_LOOP
 			}
@@ -637,11 +635,4 @@ OUTER_LOOP:
 			}
 		}
 	}
-}
-
-// BlockRequest stores a block request identified by the block Height and the PeerID responsible for
-// delivering the block
-type BlockRequest struct {
-	Height int64
-	PeerID p2p.ID
 }
