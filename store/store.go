@@ -483,40 +483,34 @@ const (
 	suffixKeyBlockCommit = byte(0x02)
 	suffixKeySeenCommit = byte(0x03)
 
-	keyLength = 10 // 1 for prefix + 8 for int64 height + 1 for suffix 
 )
 
+func getBlockKey(height uint64) []byte {
+	buf := make([]byte, binary.MaxVarintLen64 + 2)
+	buf[0] = prefixKeyBlock
+	varLen := binary.PutUvarint(buf[1:], height)
+	return buf[:varLen+1]
+}
+
 func calcBlockMetaKey(height int64) []byte {
-	b := make([]byte, keyLength)
-	b[0] = prefixKeyBlock
-	binary.BigEndian.PutUint64(b[1:9], uint64(height))
-	b[9] = suffixKeyBlockMeta 
-	return b
+	return append(getBlockKey(uint64(height)), suffixKeyBlockMeta)
 }
 
 func calcBlockPartKey(height int64, partIndex uint32) []byte {
-	b := make([]byte, keyLength + 4) // for uint32 part index
-	b[0] = prefixKeyBlock
-	binary.BigEndian.PutUint64(b[1:9], uint64(height))
-	b[9] = suffixKeyBlockPart
-	binary.BigEndian.PutUint32(b[9:], partIndex) 
-	return b
+	buf := make([]byte, binary.MaxVarintLen64 + 6)
+	buf[0] = prefixKeyBlock
+	varHeightLen := binary.PutUvarint(buf[1:], uint64(height))
+	buf[varHeightLen + 1] = suffixKeyBlockPart
+	varPartsLen := binary.PutUvarint(buf[varHeightLen+1:], uint64(partIndex)) 
+	return buf[:varHeightLen + varPartsLen + 2]
 }
 
 func calcBlockCommitKey(height int64) []byte {
-	b := make([]byte, keyLength)
-	b[0] = prefixKeyBlock
-	binary.BigEndian.PutUint64(b[1:9], uint64(height)) 
-	b[9] = suffixKeyBlockCommit
-	return b
+	return append(getBlockKey(uint64(height)), suffixKeyBlockCommit)
 }
 
 func calcSeenCommitKey(height int64) []byte {
-	b := make([]byte, keyLength)
-	b[0] = prefixKeyBlock
-	binary.BigEndian.PutUint64(b[1:9], uint64(height)) 
-	b[9] = suffixKeySeenCommit
-	return b
+	return append(getBlockKey(uint64(height)), suffixKeySeenCommit)
 }
 
 // block hash has a different prefix

@@ -1,6 +1,7 @@
 package state
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -25,16 +26,28 @@ const (
 
 //------------------------------------------------------------------------
 
+const (
+	keySuffixValidators = byte(0x01)
+	keySuffixConsensusParams = byte(0x02)
+	keySuffixABCIResponses = byte(0x03)
+)
+
+func getHeightPrefix(height uint64) []byte {
+	buf := make([]byte, binary.MaxVarintLen64)
+	len := binary.PutUvarint(buf, height)
+	return buf[:len]
+}
+
 func calcValidatorsKey(height int64) []byte {
-	return []byte(fmt.Sprintf("validatorsKey:%v", height))
+	return append(getHeightPrefix(uint64(height)), keySuffixValidators)
 }
 
 func calcConsensusParamsKey(height int64) []byte {
-	return []byte(fmt.Sprintf("consensusParamsKey:%v", height))
+	return append(getHeightPrefix(uint64(height)), keySuffixConsensusParams)
 }
 
 func calcABCIResponsesKey(height int64) []byte {
-	return []byte(fmt.Sprintf("abciResponsesKey:%v", height))
+	return append(getHeightPrefix(uint64(height)), keySuffixABCIResponses)
 }
 
 //----------------------
@@ -66,8 +79,8 @@ type Store interface {
 	SaveABCIResponses(int64, *tmstate.ABCIResponses) error
 	// Bootstrap is used for bootstrapping state when not starting from a initial height.
 	Bootstrap(State) error
-	// PruneStates takes the height from which to start prning and which height stop at
-	PruneStates(int64, int64) error
+	// PruneStates takes the height from which to finish pruning at (exclusive)
+	PruneStates(int64) error
 }
 
 // dbStore wraps a db (github.com/tendermint/tm-db)
@@ -212,7 +225,7 @@ func (store dbStore) Bootstrap(state State) error {
 	return store.db.SetSync(stateKey, state.Bytes())
 }
 
-// PruneStates deletes states between the given heights (including from, excluding to). It is not
+// PruneStates deletes states up to the height specified (exlusive). It is not
 // guaranteed to delete all states, since the last checkpointed state and states being pointed to by
 // e.g. `LastHeightChanged` must remain. The state at to must also exist.
 //
@@ -220,109 +233,131 @@ func (store dbStore) Bootstrap(state State) error {
 // encoding not preserving ordering: https://github.com/tendermint/tendermint/issues/4567
 // This will cause some old states to be left behind when doing incremental partial prunes,
 // specifically older checkpoints and LastHeightChanged targets.
-func (store dbStore) PruneStates(from int64, to int64) error {
-	if from <= 0 || to <= 0 {
-		return fmt.Errorf("from height %v and to height %v must be greater than 0", from, to)
+func (store dbStore) PruneStates(height int64) error {
+	if height <= 0 {
+		return fmt.Errorf("height %v must be greater than 0", height)
 	}
-	if from >= to {
-		return fmt.Errorf("from height %v must be lower than to height %v", from, to)
-	}
-	valInfo, err := loadValidatorsInfo(store.db, to)
+	valInfo, err := loadValidatorsInfo(store.db, height)
 	if err != nil {
-		return fmt.Errorf("validators at height %v not found: %w", to, err)
+		return fmt.Errorf("validators at height %v not found: %w", height, err)
 	}
-	paramsInfo, err := store.loadConsensusParamsInfo(to)
+	paramsInfo, err := store.loadConsensusParamsInfo(height)
 	if err != nil {
-		return fmt.Errorf("consensus params at height %v not found: %w", to, err)
+		return fmt.Errorf("consensus params at height %v not found: %w", height, err)
 	}
 
 	keepVals := make(map[int64]bool)
 	if valInfo.ValidatorSet == nil {
 		keepVals[valInfo.LastHeightChanged] = true
-		keepVals[lastStoredHeightFor(to, valInfo.LastHeightChanged)] = true // keep last checkpoint too
+		keepVals[lastStoredHeightFor(height, valInfo.LastHeightChanged)] = true // keep last checkpoint too
 	}
 	keepParams := make(map[int64]bool)
 	if paramsInfo.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
 		keepParams[paramsInfo.LastHeightChanged] = true
 	}
 
+	iter, err := store.db.ReverseIterator(
+		nil,
+		calcValidatorsKey(height),
+	)
+	if err != nil {
+		panic(err)
+	}
+	defer iter.Close()
+
 	batch := store.db.NewBatch()
 	defer batch.Close()
 	pruned := uint64(0)
 
+	h := height - 1
 	// We have to delete in reverse order, to avoid deleting previous heights that have validator
 	// sets and consensus params that we may need to retrieve.
-	for h := to - 1; h >= from; h-- {
+	for ; iter.Valid(); iter.Next() {
 		// For heights we keep, we must make sure they have the full validator set or consensus
 		// params, otherwise they will panic if they're retrieved directly (instead of
 		// indirectly via a LastHeightChanged pointer).
-		if keepVals[h] {
-			v, err := loadValidatorsInfo(store.db, h)
-			if err != nil || v.ValidatorSet == nil {
-				vip, err := store.LoadValidators(h)
-				if err != nil {
-					return err
-				}
+		key := iter.Key()
 
-				pvi, err := vip.ToProto()
-				if err != nil {
-					return err
-				}
+		// read the last byte to determine what type of state data is being iterated over,
+		switch key[len(key)-1] { 
+		case keySuffixValidators:
+			if keepVals[h] {
+				v, err := loadValidatorsInfo(store.db, h)
+				if err != nil || v.ValidatorSet == nil {
+					vip, err := store.LoadValidators(h)
+					if err != nil {
+						return err
+					}
 
-				v.ValidatorSet = pvi
-				v.LastHeightChanged = h
+					pvi, err := vip.ToProto()
+					if err != nil {
+						return err
+					}
 
-				bz, err := v.Marshal()
-				if err != nil {
-					return err
+					v.ValidatorSet = pvi
+					v.LastHeightChanged = h
+
+					bz, err := v.Marshal()
+					if err != nil {
+						return err
+					}
+					err = batch.Set(key, bz)
+					if err != nil {
+						return err
+					}
 				}
-				err = batch.Set(calcValidatorsKey(h), bz)
-				if err != nil {
+			} else {
+				if err = batch.Delete(key); err != nil {
 					return err
 				}
 			}
-		} else {
-			err = batch.Delete(calcValidatorsKey(h))
+			
+		case keySuffixConsensusParams:
+			if keepParams[h] {
+				p, err := store.loadConsensusParamsInfo(h)
+				if err != nil {
+					return err
+				}
+
+				if p.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
+					p.ConsensusParams, err = store.LoadConsensusParams(h)
+					if err != nil {
+						return err
+					}
+
+					p.LastHeightChanged = h
+					bz, err := p.Marshal()
+					if err != nil {
+						return err
+					}
+
+					err = batch.Set(key, bz)
+					if err != nil {
+						return err
+					}
+				}
+			} else {
+				if err = batch.Delete(key); err != nil {
+					return err
+				}
+			}
+
+		case keySuffixABCIResponses:
+			err = batch.Delete(key)
 			if err != nil {
 				return err
 			}
+
+			// the amount of abci responses, validator sets and consensus params may be different so this
+			// count could be incorrect but seeing that this one is the last key for every height and is never
+			// kept we will use it to keep track of the height and the number of state data pruned
+			pruned++
+			height--
+
+		default:
+			return fmt.Errorf("can't read suffix byte: %x", key[len(key)-1])
+
 		}
-
-		if keepParams[h] {
-			p, err := store.loadConsensusParamsInfo(h)
-			if err != nil {
-				return err
-			}
-
-			if p.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
-				p.ConsensusParams, err = store.LoadConsensusParams(h)
-				if err != nil {
-					return err
-				}
-
-				p.LastHeightChanged = h
-				bz, err := p.Marshal()
-				if err != nil {
-					return err
-				}
-
-				err = batch.Set(calcConsensusParamsKey(h), bz)
-				if err != nil {
-					return err
-				}
-			}
-		} else {
-			err = batch.Delete(calcConsensusParamsKey(h))
-			if err != nil {
-				return err
-			}
-		}
-
-		err = batch.Delete(calcABCIResponsesKey(h))
-		if err != nil {
-			return err
-		}
-		pruned++
 
 		// avoid batches growing too large by flushing to database regularly
 		if pruned%1000 == 0 && pruned > 0 {
@@ -334,6 +369,9 @@ func (store dbStore) PruneStates(from int64, to int64) error {
 			batch = store.db.NewBatch()
 			defer batch.Close()
 		}
+	}
+	if err := iter.Error(); err != nil {
+		return err
 	}
 
 	err = batch.WriteSync()
