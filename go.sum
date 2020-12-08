@@ -11,6 +11,8 @@ cloud.google.com/go/firestore v1.1.0/go.mod h1:ulACoGHTpvq5r8rxGJ4ddJZBZqakUQqCl
 cloud.google.com/go/pubsub v1.0.1/go.mod h1:R0Gpsv3s54REJCy4fxDixWD93lHJMoZTyQ2kNxGRt3I=
 cloud.google.com/go/storage v1.0.0/go.mod h1:IhtSnM/ZTZV8YYJWCY8RULGVqBDmpoyjwiyrjsg+URw=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
+filippo.io/edwards25519 v1.0.0-alpha.2 h1:EWbZLqGEPSIj2W69gx04KtNVkyPIfe3uj0DhDQJonbQ=
+filippo.io/edwards25519 v1.0.0-alpha.2/go.mod h1:X+pm78QAUPtFLi1z9PYIlS/bdDnvbCOGKtZ+ACWEf7o=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
@@ -280,6 +282,8 @@ github.com/hashicorp/memberlist v0.1.3/go.mod h1:ajVTdAv/9Im8oMAAj5G31PhhMCZJV2p
 github.com/hashicorp/serf v0.8.2/go.mod h1:6hOLApaqBFA1NXqRQAsxw9QxuDEvNxSQRwA/JwenrHc=
 github.com/hdevalence/ed25519consensus v0.0.0-20200813231810-1694d75e712a h1:H7I/CTwAupJEX4g8AesPYRKQY0wbGZxQBlg842dGK3k=
 github.com/hdevalence/ed25519consensus v0.0.0-20200813231810-1694d75e712a/go.mod h1:V0zo781scjlo5OzNQb2GI8wMt6CD4vs7y1beXtxZEhM=
+github.com/hdevalence/ed25519consensus v0.0.0-20201207055737-7fde80a9d5ff h1:LeVKjw8pcDQj7WVVnbFvbD7ovcv+r/l15ka1NH6Lswc=
+github.com/hdevalence/ed25519consensus v0.0.0-20201207055737-7fde80a9d5ff/go.mod h1:Feit0l8NcNO4g69XNjwvsR0LGcwMMfzI1TF253rOIlQ=
 github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/hudl/fargo v1.3.0/go.mod h1:y3CKSmjA+wD2gak7sUSXTAoopbhU08POFhmITJgmKTg=

@@ -47,11 +47,6 @@ type BlockchainReactor struct {
 	store    blockStore
 }
 
-//nolint:unused,deadcode
-type blockVerifier interface {
-	VerifyCommit(chainID string, blockID types.BlockID, height int64, commit *types.Commit) error
-}
-
 type blockApplier interface {
 	ApplyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, int64, error)
 }
@@ -458,39 +453,40 @@ func (r *BlockchainReactor) Stop() error {
 // XXX: do not call any methods that can block or incur heavy processing.
 // https://github.com/tendermint/tendermint/issues/2888
 func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
+	logger := r.logger.With("src", src.ID(), "chID", chID)
+
 	msg, err := bc.DecodeMsg(msgBytes)
 	if err != nil {
-		r.logger.Error("error decoding message",
-			"src", src.ID(), "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+		logger.Error("error decoding message", "err", err)
 		_ = r.reporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
 		return
 	}
 
 	if err = bc.ValidateMsg(msg); err != nil {
-		r.logger.Error("peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
+		logger.Error("peer sent us invalid msg", "msg", msg, "err", err)
 		_ = r.reporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
 		return
 	}
 
-	r.logger.Debug("Receive", "src", src.ID(), "chID", chID, "msg", msg)
+	r.logger.Debug("Receive", "msg", msg)
 
 	switch msg := msg.(type) {
 	case *bcproto.StatusRequest:
 		if err := r.io.sendStatusResponse(r.store.Base(), r.store.Height(), src.ID()); err != nil {
-			r.logger.Error("Could not send status message to peer", "src", src)
+			logger.Error("Could not send status message to src peer")
 		}
 
 	case *bcproto.BlockRequest:
 		block := r.store.LoadBlock(msg.Height)
 		if block != nil {
 			if err = r.io.sendBlockToPeer(block, src.ID()); err != nil {
-				r.logger.Error("Could not send block message to peer: ", err)
+				logger.Error("Could not send block message to src peer", "err", err)
 			}
 		} else {
-			r.logger.Info("peer asking for a block we don't have", "src", src, "height", msg.Height)
+			logger.Info("peer asking for a block we don't have", "height", msg.Height)
 			peerID := src.ID()
 			if err = r.io.sendBlockNotFound(msg.Height, peerID); err != nil {
-				r.logger.Error("Couldn't send block not found: ", err)
+				logger.Error("Couldn't send block not found msg", "err", err)
 			}
 		}
 
@@ -505,7 +501,7 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		r.mtx.RLock()
 		bi, err := types.BlockFromProto(msg.Block)
 		if err != nil {
-			r.logger.Error("error transitioning block from protobuf", "err", err)
+			logger.Error("error transitioning block from protobuf", "err", err)
 			_ = r.reporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
 			return
 		}

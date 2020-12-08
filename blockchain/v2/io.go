@@ -1,13 +1,18 @@
 package v2
 
 import (
-	"fmt"
+	"errors"
 
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/p2p"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+)
+
+var (
+	errPeerQueueFull = errors.New("peer queue full")
+	errNoPeer        = errors.New("peer not found")
 )
 
 type iIO interface {
@@ -45,7 +50,7 @@ type consensusReactor interface {
 func (sio *switchIO) sendBlockRequest(peerID p2p.ID, height int64) error {
 	peer := sio.sw.Peers().Get(peerID)
 	if peer == nil {
-		return fmt.Errorf("peer not found")
+		return errNoPeer
 	}
 	msgBytes, err := bc.EncodeMsg(&bcproto.BlockRequest{Height: height})
 	if err != nil {
@@ -54,7 +59,7 @@ func (sio *switchIO) sendBlockRequest(peerID p2p.ID, height int64) error {
 
 	queued := peer.TrySend(BlockchainChannel, msgBytes)
 	if !queued {
-		return fmt.Errorf("send queue full")
+		return errPeerQueueFull
 	}
 	return nil
 }
@@ -62,7 +67,7 @@ func (sio *switchIO) sendBlockRequest(peerID p2p.ID, height int64) error {
 func (sio *switchIO) sendStatusResponse(base int64, height int64, peerID p2p.ID) error {
 	peer := sio.sw.Peers().Get(peerID)
 	if peer == nil {
-		return fmt.Errorf("peer not found")
+		return errNoPeer
 	}
 
 	msgBytes, err := bc.EncodeMsg(&bcproto.StatusResponse{Height: height, Base: base})
@@ -71,7 +76,7 @@ func (sio *switchIO) sendStatusResponse(base int64, height int64, peerID p2p.ID)
 	}
 
 	if queued := peer.TrySend(BlockchainChannel, msgBytes); !queued {
-		return fmt.Errorf("peer queue full")
+		return errPeerQueueFull
 	}
 
 	return nil
@@ -80,7 +85,7 @@ func (sio *switchIO) sendStatusResponse(base int64, height int64, peerID p2p.ID)
 func (sio *switchIO) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
 	peer := sio.sw.Peers().Get(peerID)
 	if peer == nil {
-		return fmt.Errorf("peer not found")
+		return errNoPeer
 	}
 	if block == nil {
 		panic("trying to send nil block")
@@ -96,7 +101,7 @@ func (sio *switchIO) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
 		return err
 	}
 	if queued := peer.TrySend(BlockchainChannel, msgBytes); !queued {
-		return fmt.Errorf("peer queue full")
+		return errPeerQueueFull
 	}
 
 	return nil
@@ -105,7 +110,7 @@ func (sio *switchIO) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
 func (sio *switchIO) sendBlockNotFound(height int64, peerID p2p.ID) error {
 	peer := sio.sw.Peers().Get(peerID)
 	if peer == nil {
-		return fmt.Errorf("peer not found")
+		return errNoPeer
 	}
 	msgBytes, err := bc.EncodeMsg(&bcproto.NoBlockResponse{Height: height})
 	if err != nil {
@@ -113,7 +118,7 @@ func (sio *switchIO) sendBlockNotFound(height int64, peerID p2p.ID) error {
 	}
 
 	if queued := peer.TrySend(BlockchainChannel, msgBytes); !queued {
-		return fmt.Errorf("peer queue full")
+		return errPeerQueueFull
 	}
 
 	return nil
