@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
@@ -9,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
@@ -115,8 +117,9 @@ func main() {
 
 	privvalproto.RegisterPrivValidatorAPIServer(s, ss)
 
+	var httpSrv *http.Server
 	if *prometheusAddr != "" {
-		registerPrometheus(*prometheusAddr, s)
+		httpSrv = registerPrometheus(*prometheusAddr, s)
 	}
 
 	logger.Info("SignerServer: Starting grpc server")
@@ -127,6 +130,13 @@ func main() {
 	// Stop upon receiving SIGTERM or CTRL-C.
 	tmos.TrapSignal(logger, func() {
 		logger.Debug("SignerServer: calling Close")
+		if *prometheusAddr != "" {
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			defer cancel()
+			if err := httpSrv.Shutdown(ctx); err != nil {
+				panic(err)
+			}
+		}
 		s.GracefulStop()
 	})
 
@@ -134,7 +144,7 @@ func main() {
 	select {}
 }
 
-func registerPrometheus(addr string, s *grpc.Server) {
+func registerPrometheus(addr string, s *grpc.Server) *http.Server {
 	// Initialize all metrics.
 	grpcMetrics.InitializeMetrics(s)
 	// create http server to serve prometheus
@@ -146,4 +156,6 @@ func registerPrometheus(addr string, s *grpc.Server) {
 			os.Exit(1)
 		}
 	}()
+
+	return httpServer
 }

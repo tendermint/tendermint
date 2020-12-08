@@ -39,7 +39,6 @@ const (
 	ProtocolBuiltin Protocol = "builtin"
 	ProtocolFile    Protocol = "file"
 	ProtocolGRPC    Protocol = "grpc"
-	ProtocolRaw     Protocol = "raw"
 	ProtocolTCP     Protocol = "tcp"
 	ProtocolUNIX    Protocol = "unix"
 
@@ -176,9 +175,6 @@ func LoadTestnet(file string) (*Testnet, error) {
 		}
 		if nodeManifest.PrivvalProtocol != "" {
 			node.PrivvalProtocol = Protocol(nodeManifest.PrivvalProtocol)
-		}
-		if nodeManifest.PrivvalAddrType != "" {
-			node.PrivvalAddrType = Protocol(nodeManifest.PrivvalAddrType)
 		}
 		if nodeManifest.PersistInterval != nil {
 			node.PersistInterval = *nodeManifest.PersistInterval
@@ -327,13 +323,7 @@ func (n Node) Validate(testnet Testnet) error {
 		return fmt.Errorf("invalid ABCI protocol setting %q", n.ABCIProtocol)
 	}
 	switch n.PrivvalProtocol {
-	case ProtocolFile:
-	case ProtocolRaw, ProtocolGRPC:
-		switch n.PrivvalAddrType {
-		case ProtocolTCP, ProtocolUNIX:
-		default:
-			return fmt.Errorf("invalid privval address type %q", n.PrivvalAddrType)
-		}
+	case ProtocolFile, ProtocolTCP, ProtocolGRPC, ProtocolUNIX:
 	default:
 		return fmt.Errorf("invalid privval protocol setting %q", n.PrivvalProtocol)
 	}

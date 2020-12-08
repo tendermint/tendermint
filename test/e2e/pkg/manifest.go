@@ -78,13 +78,10 @@ type ManifestNode struct {
 	ABCIProtocol string `toml:"abci_protocol"`
 
 	// PrivvalProtocol specifies the protocol used to sign consensus messages:
-	// "file", "raw", or "grpc". Defaults to "file". For raw and grpc, the ABCI
+	// "file", "tcp", "unix", or "grpc". Defaults to "file". For raw and grpc, the ABCI
 	// application will launch a remote signer client in a separate goroutine.
 	// Only nodes with mode=validator will actually make use of this.
 	PrivvalProtocol string `toml:"privval_protocol"`
-
-	// PrivvalAddrType defines if tcp or unix sockets will be used to connect to the remote signer
-	PrivvalAddrType string `toml:"privval_addr_type"`
 
 	// StartAt specifies the block height at which the node will be started. The
 	// runner will wait for the network to reach at least this block height.

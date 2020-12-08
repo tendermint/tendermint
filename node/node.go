@@ -26,6 +26,7 @@ import (
 	"github.com/tendermint/tendermint/evidence"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/light"
@@ -33,7 +34,6 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/privval"
-	grpcprivval "github.com/tendermint/tendermint/privval/grpc"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
@@ -663,9 +663,10 @@ func NewNode(config *cfg.Config,
 	// If an address is provided, listen on the socket for a connection from an
 	// external signing process.
 	if config.PrivValidatorListenAddr != "" {
+		protocol, address := tmnet.ProtocolAndAddress(config.PrivValidatorListenAddr)
 		// FIXME: we should start services inside OnStart
-		if config.PrivValidatorProtocol == "grpc" {
-			privValidator, err = createAndStartPrivValidatorGRPCClient(config, genDoc.ChainID, logger)
+		if protocol == "grpc" {
+			privValidator, err = createAndStartPrivValidatorGRPCClient(config, address, genDoc.ChainID, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
 			}
@@ -1386,10 +1387,10 @@ func createAndStartPrivValidatorSocketClient(
 
 func createAndStartPrivValidatorGRPCClient(
 	config *cfg.Config,
+	address,
 	chainID string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
-	listenAddr := config.PrivValidatorListenAddr
 	var transportSecurity grpc.DialOption
 	if config.PrivValidatorClientCertificate != "" &&
 		config.PrivValidatorClientKey != "" &&
@@ -1406,11 +1407,11 @@ func createAndStartPrivValidatorGRPCClient(
 
 	ctx := context.Background()
 
-	conn, err := grpc.DialContext(ctx, listenAddr, dialOptions...)
+	conn, err := grpc.DialContext(ctx, address, dialOptions...)
 	if err != nil {
-		logger.Error("unable to connect to client.", "target", listenAddr, "err", err)
+		logger.Error("unable to connect to client.", "target", address, "err", err)
 	}
-	pvsc, err := grpcprivval.NewSignerClient(ctx, conn, chainID, logger)
+	pvsc, err := tmgrpc.NewSignerClient(conn, chainID, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}

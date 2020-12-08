@@ -136,12 +136,8 @@ priv_validator_state_file = "{{ js .BaseConfig.PrivValidatorState }}"
 
 # TCP or UNIX socket address for Tendermint to listen on for
 # connections from an external PrivValidator process
+# when the listenAddr is prefixed with grpc instead of tcp it will use the gRPC Client
 priv_validator_laddr = "{{ .BaseConfig.PrivValidatorListenAddr }}"
-
-# Defines which private validator protocol to use gRPC or raw
-# Raw represents a raw tcp of unix socket (no http)
-# Default is raw
-priv_validator_protocol = "{{ .BaseConfig.PrivValidatorProtocol }}"
 
 # If a remote validator address is provided but no certificate, the connection will be insecure
 priv_validator_client_certificate = "{{ js .BaseConfig.PrivValidatorClientCertificate }}"

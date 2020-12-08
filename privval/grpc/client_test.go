@@ -43,8 +43,6 @@ func dialer(pv types.PrivValidator, logger log.Logger) func(context.Context, str
 	}
 }
 
-// func setUp(t *testing.T)
-
 func TestSignerClient_GetPubKey(t *testing.T) {
 
 	ctx := context.Background()
@@ -57,7 +55,7 @@ func TestSignerClient_GetPubKey(t *testing.T) {
 	}
 	defer conn.Close()
 
-	client, err := tmgrpc.NewSignerClient(ctx, conn, chainID, logger)
+	client, err := tmgrpc.NewSignerClient(conn, chainID, logger)
 	require.NoError(t, err)
 
 	pk, err := client.GetPubKey()
@@ -77,7 +75,7 @@ func TestSignerClient_SignVote(t *testing.T) {
 	}
 	defer conn.Close()
 
-	client, err := tmgrpc.NewSignerClient(ctx, conn, chainID, logger)
+	client, err := tmgrpc.NewSignerClient(conn, chainID, logger)
 	require.NoError(t, err)
 
 	ts := time.Now()
@@ -128,7 +126,7 @@ func TestSignerClient_SignProposal(t *testing.T) {
 	}
 	defer conn.Close()
 
-	client, err := tmgrpc.NewSignerClient(ctx, conn, chainID, logger)
+	client, err := tmgrpc.NewSignerClient(conn, chainID, logger)
 	require.NoError(t, err)
 
 	ts := time.Now()

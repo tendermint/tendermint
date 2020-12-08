@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"time"
 
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/status"
@@ -18,7 +19,6 @@ import (
 // SignerClient implements PrivValidator.
 // Handles remote validator connections that provide signing services
 type SignerClient struct {
-	ctx    context.Context
 	logger log.Logger
 
 	client  privvalproto.PrivValidatorAPIClient
@@ -30,11 +30,10 @@ var _ types.PrivValidator = (*SignerClient)(nil)
 
 // NewSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func NewSignerClient(ctx context.Context, conn *grpc.ClientConn,
+func NewSignerClient(conn *grpc.ClientConn,
 	chainID string, log log.Logger) (*SignerClient, error) {
 
 	sc := &SignerClient{
-		ctx:     ctx,
 		logger:  log,
 		chainID: chainID,
 		client:  privvalproto.NewPrivValidatorAPIClient(conn), // Create the Private Validator Client
@@ -58,7 +57,9 @@ func (sc *SignerClient) Close() error {
 // GetPubKey retrieves a public key from a remote signer
 // returns an error if client is not able to provide the key
 func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
-	resp, err := sc.client.GetPubKey(sc.ctx, &privvalproto.PubKeyRequest{ChainId: sc.chainID})
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second) // Todo: should this be configurable?
+	defer cancel()
+	resp, err := sc.client.GetPubKey(ctx, &privvalproto.PubKeyRequest{ChainId: sc.chainID})
 	if err != nil {
 		errStatus, _ := status.FromError(err)
 		sc.logger.Error("SignerClient::GetPubKey", "err", errStatus.Message())
@@ -75,7 +76,9 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 
 // SignVote requests a remote signer to sign a vote
 func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
-	resp, err := sc.client.SignVote(sc.ctx, &privvalproto.SignVoteRequest{ChainId: sc.chainID, Vote: vote})
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	resp, err := sc.client.SignVote(ctx, &privvalproto.SignVoteRequest{ChainId: sc.chainID, Vote: vote})
 	if err != nil {
 		errStatus, _ := status.FromError(err)
 		sc.logger.Error("Client SignVote", "err", errStatus.Message())
@@ -89,8 +92,10 @@ func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
 
 // SignProposal requests a remote signer to sign a proposal
 func (sc *SignerClient) SignProposal(chainID string, proposal *tmproto.Proposal) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 	resp, err := sc.client.SignProposal(
-		sc.ctx, &privvalproto.SignProposalRequest{ChainId: chainID, Proposal: proposal})
+		ctx, &privvalproto.SignProposalRequest{ChainId: chainID, Proposal: proposal})
 
 	if err != nil {
 		errStatus, _ := status.FromError(err)

@@ -205,9 +205,6 @@ type BaseConfig struct { //nolint: maligned
 	PrivValidatorListenAddr string `mapstructure:"priv_validator_laddr"`
 
 	// Defines which private validator protocol to use gRPC or tcp, unix socket
-	PrivValidatorProtocol string `mapstructure:"priv_validator_protocol"`
-
-	// Defines which private validator protocol to use gRPC or tcp, unix socket
 	PrivValidatorClientCertificate string `mapstructure:"priv_validator_client_certificate"`
 
 	// Defines which private validator protocol to use gRPC or tcp, unix socket
@@ -230,20 +227,19 @@ type BaseConfig struct { //nolint: maligned
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
-		Genesis:               defaultGenesisJSONPath,
-		PrivValidatorKey:      defaultPrivValKeyPath,
-		PrivValidatorState:    defaultPrivValStatePath,
-		PrivValidatorProtocol: "raw",
-		NodeKey:               defaultNodeKeyPath,
-		Moniker:               defaultMoniker,
-		ProxyApp:              "tcp://127.0.0.1:26658",
-		ABCI:                  "socket",
-		LogLevel:              DefaultPackageLogLevels(),
-		LogFormat:             LogFormatPlain,
-		FastSyncMode:          true,
-		FilterPeers:           false,
-		DBBackend:             "goleveldb",
-		DBPath:                "data",
+		Genesis:            defaultGenesisJSONPath,
+		PrivValidatorKey:   defaultPrivValKeyPath,
+		PrivValidatorState: defaultPrivValStatePath,
+		NodeKey:            defaultNodeKeyPath,
+		Moniker:            defaultMoniker,
+		ProxyApp:           "tcp://127.0.0.1:26658",
+		ABCI:               "socket",
+		LogLevel:           DefaultPackageLogLevels(),
+		LogFormat:          LogFormatPlain,
+		FastSyncMode:       true,
+		FilterPeers:        false,
+		DBBackend:          "goleveldb",
+		DBPath:             "data",
 	}
 }
 
