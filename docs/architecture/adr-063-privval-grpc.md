@@ -67,6 +67,8 @@ The [service definition](https://grpc.io/docs/what-is-grpc/core-concepts/#servic
 
 > Note: Remote Singer errors are removed in favor of [grpc status error codes](https://grpc.io/docs/guides/error/).
 
+In previous versions of the remote signer, Tendermint acted as the server and the remote signer as the client. In this process the client established a long lived connection providing a way for the server to make requests to the client. In the new version it has been simplified. Tendermint is the client and the remote signer is the server. This follows client and server architecture and simplifies the previous protocol.
+
 #### Keep Alive
 
 If you have worked on the private validator system you will see that we are removing the `PingRequest` and `PingResponse` messages. These messages were used to create functionality which kept the connection alive. With gRPC there is a [keep alive feature](https://github.com/grpc/grpc/blob/master/doc/keepalive.md) that will be added along side the integration to provide the same functionality. 
