@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/url"
 
@@ -106,13 +105,19 @@ func (e Endpoint) NetAddress() *NetAddress {
 }
 
 // Connection represents an established connection between two endpoints.
+//
+// FIXME This is a temporary interface while we figure out whether we'll
+// be adopting QUIC or not. If we do, this should be a byte-oriented
+// multi-stream interface with one goroutine consuming each stream, and
+// the MConnection transport either needs protocol changes or a shim.
+// For details, see: https://github.com/tendermint/spec/pull/227
 type Connection interface {
-	// Stream creates a new logically distinct IO stream within the connection.
-	//
-	// FIXME We use a stream ID for now, to allow the MConnTransport to get the
-	// stream corresponding to a channel without protocol changes. We should
-	// change this to use a channel handshake instead.
-	Stream(id uint16) (Stream, error)
+	// ReceiveMessage returns the next message received on the connection,
+	// blocking until one is available. io.EOF is returned when closed.
+	ReceiveMessage() (chID byte, msg []byte, err error)
+
+	// SendMessage sends a message on the connection.
+	SendMessage(chID byte, msg []byte) error
 
 	// LocalEndpoint returns the local endpoint for the connection.
 	LocalEndpoint() Endpoint
@@ -129,11 +134,4 @@ type Connection interface {
 
 	// Close closes the connection.
 	Close() error
-}
-
-// Stream represents a single logical IO stream within a connection.
-type Stream interface {
-	io.Reader // Read([]byte) (int, error)
-	io.Writer // Write([]byte) (int, error)
-	io.Closer // Close() error
 }

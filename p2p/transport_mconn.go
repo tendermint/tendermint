@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net"
 	"sync"
 	"time"
@@ -337,12 +336,14 @@ func (m *mConnTransport) normalizeEndpoint(endpoint *Endpoint) error {
 // mConnConnection implements Connection for mConnTransport. It takes a base TCP
 // connection as input, and upgrades it to MConn with a handshake.
 type mConnConnection struct {
-	logger     log.Logger
-	transport  *mConnTransport
-	secretConn *tmconn.SecretConnection
-	mConn      *tmconn.MConnection
-	streams    map[byte]*mConnStream
-	nodeInfo   DefaultNodeInfo
+	logger      log.Logger
+	transport   *mConnTransport
+	secretConn  *tmconn.SecretConnection
+	mConn       *tmconn.MConnection
+	nodeInfo    DefaultNodeInfo
+	chReceive   chan mConnMessage
+	chClose     chan struct{}
+	chCloseOnce sync.Once
 }
 
 // newMConnConnection creates a new mConnConnection by handshaking
@@ -377,7 +378,7 @@ func newMConnConnection(
 
 	conn = &mConnConnection{
 		transport: transport,
-		streams:   make(map[byte]*mConnStream, len(transport.channelDescs)),
+		chReceive: make(chan mConnMessage),
 	}
 	conn.secretConn, err = tmconn.MakeSecretConnection(tcpConn, transport.privKey)
 	if err != nil {
@@ -461,17 +462,6 @@ func newMConnConnection(
 	}
 
 	// Set up the MConnection wrapper
-	for _, chDesc := range transport.channelDescs {
-		conn.streams[chDesc.ID], err = newMConnStream(conn, uint16(chDesc.ID))
-		if err != nil {
-			err = ErrRejected{
-				conn:          tcpConn,
-				err:           fmt.Errorf("mconn failed: %v", err),
-				isAuthFailure: true,
-			}
-			return
-		}
-	}
 	conn.mConn = tmconn.NewMConnectionWithConfig(
 		conn.secretConn,
 		transport.channelDescs,
@@ -506,12 +496,11 @@ func (c *mConnConnection) handshake() (DefaultNodeInfo, error) {
 }
 
 // onReceive is a callback for MConnection received messages.
-func (c *mConnConnection) onReceive(chID byte, bz []byte, eof bool) error {
-	stream, ok := c.streams[chID]
-	if !ok {
-		return fmt.Errorf("received message for unknown channel %v", chID)
+func (c *mConnConnection) onReceive(channelID byte, payload []byte) {
+	select {
+	case c.chReceive <- mConnMessage{channelID: channelID, payload: payload}:
+	case <-c.chClose:
 	}
-	return stream.receive(bz, eof)
 }
 
 // onError is a callback for MConnection errors.
@@ -519,6 +508,22 @@ func (c *mConnConnection) onError(err interface{}) {
 	// FIXME Probably need to do something better here
 	c.logger.Error("connection failure", "err", err)
 	_ = c.Close()
+}
+
+// SendMessage implements Connection.
+func (c *mConnConnection) SendMessage(channelID byte, msg []byte) error {
+	c.mConn.Send(channelID, msg) // FIXME Check return value
+	return nil
+}
+
+// ReceiveMessage implements Connection.
+func (c *mConnConnection) ReceiveMessage() (byte, []byte, error) {
+	select {
+	case msg := <-c.chReceive:
+		return msg.channelID, msg.payload, nil
+	case <-c.chClose:
+		return 0, nil, io.EOF
+	}
 }
 
 // NodeInfo implements Connection.
@@ -553,12 +558,6 @@ func (c *mConnConnection) RemoteEndpoint() Endpoint {
 	}
 }
 
-// Stream implements Connection.
-func (c *mConnConnection) Stream(id uint16) (Stream, error) {
-	// FIXME Check byte
-	return c.streams[byte(id)], nil
-}
-
 // Close implements Connection.
 func (c *mConnConnection) Close() error {
 	c.transport.conns.RemoveAddr(c.secretConn.RemoteAddr())
@@ -566,109 +565,13 @@ func (c *mConnConnection) Close() error {
 	if e := c.secretConn.Close(); e != nil && err == nil {
 		err = e
 	}
-	for _, stream := range c.streams {
-		if e := stream.Close(); e != nil && err == nil {
-			err = e
-		}
-	}
+	c.chCloseOnce.Do(func() { close(c.chClose) })
 	return err
 }
 
-// mConnStream implements Stream for mConnTransport.
-type mConnStream struct {
-	connection  *mConnConnection
-	id          byte
-	chReceive   chan []byte
-	chClose     chan struct{}
-	chCloseOnce sync.Once
-}
-
-// newMConnStream represents a stream in a connection. It corresponds
-// to a MConnection Channel.
-func newMConnStream(connection *mConnConnection, id uint16) (*mConnStream, error) {
-	if id > math.MaxUint8 {
-		return nil, fmt.Errorf("MConn only supports channel IDs up to 255")
-	}
-	return &mConnStream{
-		connection: connection,
-		id:         byte(id),
-		chReceive:  make(chan []byte),
-		chClose:    make(chan struct{}),
-	}, nil
-}
-
-// isClosed checks whether the stream has been closed.
-func (s *mConnStream) isClosed() bool {
-	select {
-	case <-s.chClose:
-		return true
-	default:
-		return false
-	}
-}
-
-// receive is used by the connection to provide data for the stream.
-func (s *mConnStream) receive(bz []byte, eof bool) error {
-	if len(bz) > 0 {
-		select {
-		case s.chReceive <- bz:
-		case <-s.chClose:
-			return fmt.Errorf("stream 0x%x has been closed", s.id)
-		}
-	}
-	if eof {
-		select {
-		case s.chReceive <- []byte{}: // marker for end of logical message
-			return nil
-		case <-s.chClose:
-			return fmt.Errorf("stream 0x%x has been closed", s.id)
-		}
-	}
-	return nil
-}
-
-// Read implements Stream.
-//
-// FIXME For backwards compatibility with the old MConnection protocol
-// (which uses EOF markers at the end of logical messages instead of
-// e.g. length-prefixed framing), Read() will read 0 bytes to mark the
-// end of a logical message.
-func (s *mConnStream) Read(target []byte) (int, error) {
-	select {
-	case bz := <-s.chReceive:
-		// FIXME We don't really have to error here, we could keep the partially
-		// used byte slice around in the stream and provide it on the next read.
-		// However, changing the mconn onRead semantics to actually read into a
-		// provided buffer should fix this, so we should do that instead.
-		if len(bz) > len(target) {
-			return 0, io.ErrShortBuffer
-		}
-		copy(target, bz)
-		return len(bz), nil
-	case <-s.chClose:
-		return 0, io.EOF
-	}
-}
-
-// Write implements Stream.
-//
-// FIXME For backwards compatibility with the old MConnection protocol (which
-// uses an EOF marker at the end of logical messages), a single Write() call has
-// to provide a single, complete logical message.
-func (s *mConnStream) Write(bz []byte) (int, error) {
-	if s.isClosed() {
-		return 0, fmt.Errorf("stream %v is closed", s.id)
-	}
-	if !s.connection.mConn.Send(s.id, bz) {
-		return 0, fmt.Errorf("MConn send failed for stream 0x%x", s.id)
-	}
-	return len(bz), nil
-}
-
-// Close implements Stream.
-func (s *mConnStream) Close() error {
-	s.chCloseOnce.Do(func() {
-		close(s.chClose)
-	})
-	return nil
+// mConnMessage is used to pass received MConnection messages
+// through internal channels.
+type mConnMessage struct {
+	channelID byte
+	payload   []byte
 }

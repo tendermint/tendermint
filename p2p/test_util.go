@@ -148,7 +148,6 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 		pc,
 		ni,
 		sw.reactorsByCh,
-		sw.chDescs,
 		sw.StopPeerForError,
 	)
 

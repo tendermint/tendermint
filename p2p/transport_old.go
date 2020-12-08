@@ -430,7 +430,6 @@ func (mt *MultiplexTransport) wrapPeer(
 		peerConn{},
 		ni,
 		cfg.reactorsByCh,
-		cfg.chDescs,
 		cfg.onPeerError,
 		PeerMetrics(cfg.metrics),
 	)

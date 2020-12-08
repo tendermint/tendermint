@@ -687,7 +687,6 @@ func (sw *Switch) acceptRoutine() {
 			newPeerConn(false, isPersistent, c),
 			peerNodeInfo,
 			sw.reactorsByCh,
-			sw.chDescs,
 			sw.StopPeerForError,
 			PeerMetrics(sw.metrics),
 		)
@@ -770,7 +769,6 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		newPeerConn(true, sw.IsPeerPersistent(c.RemoteEndpoint().NetAddress()), c),
 		c.NodeInfo(),
 		sw.reactorsByCh,
-		sw.chDescs,
 		sw.StopPeerForError,
 		PeerMetrics(sw.metrics),
 	)

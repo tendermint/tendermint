@@ -47,7 +47,7 @@ const (
 	defaultPongTimeout         = 45 * time.Second
 )
 
-type receiveCbFunc func(chID byte, msgBytes []byte, eof bool) error
+type receiveCbFunc func(chID byte, msgBytes []byte)
 type errorCbFunc func(interface{})
 
 /*
@@ -349,7 +349,6 @@ func (c *MConnection) stopForError(r interface{}) {
 // Queues a message to be sent to channel.
 func (c *MConnection) Send(chID byte, msgBytes []byte) bool {
 	if !c.IsRunning() {
-		c.Logger.Error(fmt.Sprintf("Connection not running for ch %x\n", chID))
 		return false
 	}
 
@@ -370,7 +369,7 @@ func (c *MConnection) Send(chID byte, msgBytes []byte) bool {
 		default:
 		}
 	} else {
-		c.Logger.Error("Send failed", "channel", chID, "conn", c, "msgBytes", fmt.Sprintf("%X", msgBytes))
+		c.Logger.Debug("Send failed", "channel", chID, "conn", c, "msgBytes", fmt.Sprintf("%X", msgBytes))
 	}
 	return success
 }
@@ -553,7 +552,7 @@ func (c *MConnection) sendPacketMsg() bool {
 	return false
 }
 
-// recvRoutine reads PacketMsgs and passes the data to onReceive().
+// recvRoutine reads PacketMsgs and reconstructs the message using the channels' "recving" buffer.
 // After a whole message has been assembled, it's pushed to onReceive().
 // Blocks depending on how the connection is throttled.
 // Otherwise, it never blocks.
@@ -632,14 +631,18 @@ FOR_LOOP:
 				break FOR_LOOP
 			}
 
-			c.Logger.Debug("Received bytes", "chID", pkt.PacketMsg.ChannelID,
-				"msgBytes", fmt.Sprintf("%X", pkt.PacketMsg.Data),
-				"eof", fmt.Sprintf("%v", pkt.PacketMsg.EOF))
-			err := c.onReceive(byte(pkt.PacketMsg.ChannelID), pkt.PacketMsg.Data, pkt.PacketMsg.EOF)
+			msgBytes, err := channel.recvPacketMsg(*pkt.PacketMsg)
 			if err != nil {
-				c.Logger.Debug("Connection failed @ onReceive", "conn", c, "err", err)
-				c.stopForError(err)
+				if c.IsRunning() {
+					c.Logger.Debug("Connection failed @ recvRoutine", "conn", c, "err", err)
+					c.stopForError(err)
+				}
 				break FOR_LOOP
+			}
+			if msgBytes != nil {
+				c.Logger.Debug("Received bytes", "chID", pkt.PacketMsg.ChannelID, "msgBytes", fmt.Sprintf("%X", msgBytes))
+				// NOTE: This means the reactor.Receive runs in the same thread as the p2p recv routine
+				c.onReceive(byte(pkt.PacketMsg.ChannelID), msgBytes)
 			}
 		default:
 			err := fmt.Errorf("unknown message type %v", reflect.TypeOf(packet))
@@ -741,6 +744,7 @@ type Channel struct {
 	desc          ChannelDescriptor
 	sendQueue     chan []byte
 	sendQueueSize int32 // atomic.
+	recving       []byte
 	sending       []byte
 	recentlySent  int64 // exponential moving average
 
@@ -758,6 +762,7 @@ func newChannel(conn *MConnection, desc ChannelDescriptor) *Channel {
 		conn:                    conn,
 		desc:                    desc,
 		sendQueue:               make(chan []byte, desc.SendQueueCapacity),
+		recving:                 make([]byte, 0, desc.RecvBufferCapacity),
 		maxPacketMsgPayloadSize: conn.config.MaxPacketMsgPayloadSize,
 	}
 }
@@ -840,6 +845,24 @@ func (ch *Channel) writePacketMsgTo(w io.Writer) (n int, err error) {
 	n, err = protoio.NewDelimitedWriter(w).WriteMsg(mustWrapPacket(&packet))
 	atomic.AddInt64(&ch.recentlySent, int64(n))
 	return
+}
+
+// Handles incoming PacketMsgs. It returns a message bytes if message is
+// complete, which is owned by the caller and will not be modified.
+// Not goroutine-safe
+func (ch *Channel) recvPacketMsg(packet tmp2p.PacketMsg) ([]byte, error) {
+	ch.Logger.Debug("Read PacketMsg", "conn", ch.conn, "packet", packet)
+	var recvCap, recvReceived = ch.desc.RecvMessageCapacity, len(ch.recving) + len(packet.Data)
+	if recvCap < recvReceived {
+		return nil, fmt.Errorf("received message exceeds available capacity: %v < %v", recvCap, recvReceived)
+	}
+	ch.recving = append(ch.recving, packet.Data...)
+	if packet.EOF {
+		msgBytes := ch.recving
+		ch.recving = make([]byte, 0, ch.desc.RecvBufferCapacity)
+		return msgBytes, nil
+	}
+	return nil, nil
 }
 
 // Call this periodically to update stats for throttling purposes.
