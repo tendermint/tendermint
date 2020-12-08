@@ -229,7 +229,7 @@ func (rs *ReactorShim) AddPeer(peer Peer) {
 	}
 
 	select {
-	case rs.PeerUpdates.updateCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusUp}:
+	case rs.PeerUpdates.updatesCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusUp}:
 		rs.Logger.Debug("sent peer update", "reactor", rs.Name, "peer", peerID.String(), "status", PeerStatusUp)
 
 	case <-rs.PeerUpdates.Done():
@@ -254,7 +254,7 @@ func (rs *ReactorShim) RemovePeer(peer Peer, reason interface{}) {
 	}
 
 	select {
-	case rs.PeerUpdates.updateCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusDown}:
+	case rs.PeerUpdates.updatesCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusDown}:
 		rs.Logger.Debug(
 			"sent peer update",
 			"reactor", rs.Name,

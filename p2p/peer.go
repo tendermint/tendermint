@@ -87,10 +87,10 @@ const (
 type PeerUpdatesCh struct {
 	closeOnce sync.Once
 
-	// updateCh defines the go channel in which the router sends peer updates to
+	// updatesCh defines the go channel in which the router sends peer updates to
 	// reactors. Each reactor will have its own PeerUpdatesCh to listen for updates
 	// from.
-	updateCh chan PeerUpdate
+	updatesCh chan PeerUpdate
 
 	// doneCh is used to signal that a PeerUpdatesCh is closed. It is the
 	// reactor's responsibility to invoke Close.
@@ -100,22 +100,22 @@ type PeerUpdatesCh struct {
 // NewPeerUpdates returns a reference to a new PeerUpdatesCh.
 func NewPeerUpdates() *PeerUpdatesCh {
 	return &PeerUpdatesCh{
-		updateCh: make(chan PeerUpdate),
-		doneCh:   make(chan struct{}),
+		updatesCh: make(chan PeerUpdate),
+		doneCh:    make(chan struct{}),
 	}
 }
 
 // Updates returns a read-only go channel where a consuming reactor can listen
 // for peer updates sent from the router.
 func (puc *PeerUpdatesCh) Updates() <-chan PeerUpdate {
-	return puc.updateCh
+	return puc.updatesCh
 }
 
 // Close closes the PeerUpdatesCh channel. It should only be closed by the respective
 // reactor when stopping and ensure nothing is listening for updates.
 //
 // NOTE: After a PeerUpdatesCh is closed, the router may safely assume it can no
-// longer send on the internal updateCh, however it should NEVER explicitly close
+// longer send on the internal updatesCh, however it should NEVER explicitly close
 // it as that could result in panics by sending on a closed channel.
 func (puc *PeerUpdatesCh) Close() {
 	puc.closeOnce.Do(func() {
