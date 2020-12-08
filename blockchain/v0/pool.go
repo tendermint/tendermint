@@ -70,7 +70,7 @@ type BlockPool struct {
 	service.BaseService
 	lastAdvance time.Time
 
-	mtx tmsync.Mutex
+	mtx tmsync.RWMutex
 	// block requests
 	requesters map[int64]*bpRequester
 	height     int64 // the lowest key in requesters.
@@ -165,16 +165,16 @@ func (pool *BlockPool) removeTimedoutPeers() {
 // GetStatus returns pool's height, numPending requests and the number of
 // requesters.
 func (pool *BlockPool) GetStatus() (height int64, numPending int32, lenRequesters int) {
-	pool.mtx.Lock()
-	defer pool.mtx.Unlock()
+	pool.mtx.RLock()
+	defer pool.mtx.RUnlock()
 
 	return pool.height, atomic.LoadInt32(&pool.numPending), len(pool.requesters)
 }
 
 // IsCaughtUp returns true if this node is caught up, false - otherwise.
 func (pool *BlockPool) IsCaughtUp() bool {
-	pool.mtx.Lock()
-	defer pool.mtx.Unlock()
+	pool.mtx.RLock()
+	defer pool.mtx.RUnlock()
 
 	// Need at least 1 peer to be considered caught up.
 	if len(pool.peers) == 0 {
@@ -190,8 +190,8 @@ func (pool *BlockPool) IsCaughtUp() bool {
 // So we peek two blocks at a time.
 // The caller will verify the commit.
 func (pool *BlockPool) PeekTwoBlocks() (first *types.Block, second *types.Block) {
-	pool.mtx.Lock()
-	defer pool.mtx.Unlock()
+	pool.mtx.RLock()
+	defer pool.mtx.RUnlock()
 
 	if r := pool.requesters[pool.height]; r != nil {
 		first = r.getBlock()
@@ -271,16 +271,16 @@ func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int
 
 // MaxPeerHeight returns the highest reported height.
 func (pool *BlockPool) MaxPeerHeight() int64 {
-	pool.mtx.Lock()
-	defer pool.mtx.Unlock()
+	pool.mtx.RLock()
+	defer pool.mtx.RUnlock()
 	return pool.maxPeerHeight
 }
 
 // LastAdvance returns the time when the last block was processed (or start
 // time if no blocks were processed).
 func (pool *BlockPool) LastAdvance() time.Time {
-	pool.mtx.Lock()
-	defer pool.mtx.Unlock()
+	pool.mtx.RLock()
+	defer pool.mtx.RUnlock()
 	return pool.lastAdvance
 }
 
