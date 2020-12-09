@@ -65,7 +65,7 @@ func TestWSClientReconnectsAfterReadFailure(t *testing.T) {
 	defer s.Close()
 
 	// https://github.com/golang/go/issues/19297#issuecomment-282651469
-	c := startClient(t, "//" + s.Listener.Addr().String())
+	c := startClient(t, "//"+s.Listener.Addr().String())
 	defer c.Stop()
 
 	wg.Add(1)
@@ -98,7 +98,7 @@ func TestWSClientReconnectsAfterWriteFailure(t *testing.T) {
 	s := httptest.NewServer(h)
 
 	// https://github.com/golang/go/issues/19297#issuecomment-282651469
-	c := startClient(t, "//" + s.Listener.Addr().String())
+	c := startClient(t, "//"+s.Listener.Addr().String())
 	defer c.Stop()
 
 	wg.Add(2)
@@ -127,7 +127,7 @@ func TestWSClientReconnectFailure(t *testing.T) {
 	s := httptest.NewServer(h)
 
 	// https://github.com/golang/go/issues/19297#issuecomment-282651469
-	c := startClient(t, "//" + s.Listener.Addr().String())
+	c := startClient(t, "//"+s.Listener.Addr().String())
 	defer c.Stop()
 
 	go func() {
@@ -176,7 +176,7 @@ func TestWSClientReconnectFailure(t *testing.T) {
 func TestNotBlockingOnStop(t *testing.T) {
 	timeout := 2 * time.Second
 	s := httptest.NewServer(&myHandler{})
-	c := startClient(t, "//" + s.Listener.Addr().String())
+	c := startClient(t, "//"+s.Listener.Addr().String())
 	c.Call(context.Background(), "a", make(map[string]interface{}))
 	// Let the readRoutine get around to blocking
 	time.Sleep(time.Second)

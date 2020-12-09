@@ -678,9 +678,9 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 
 	if cache.list.Len() >= cache.size {
 		popped := cache.list.Front()
-		poppedTxHash := popped.Value.([sha256.Size]byte)
-		delete(cache.map_, poppedTxHash)
 		if popped != nil {
+			poppedTxHash := popped.Value.([sha256.Size]byte)
+			delete(cache.map_, poppedTxHash)
 			cache.list.Remove(popped)
 		}
 	}

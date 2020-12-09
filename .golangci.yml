@@ -16,14 +16,14 @@ linters:
     - gofmt
     - goimports
     # - golint
-    - gosec
+    # - gosec
     - gosimple
     - govet
     - ineffassign
     - interfacer
     - lll
     - misspell
-    - maligned
+    # - maligned
     - nakedret
     - prealloc
     - scopelint
@@ -83,3 +83,5 @@ linters-settings:
 #     disabled-checks:
 #       - wrapperFunc
 #       - commentFormatting # https://github.com/go-critic/go-critic/issues/755
+service:
+  golangci-lint-version: 1.26.x
