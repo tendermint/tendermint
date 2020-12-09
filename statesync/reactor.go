@@ -20,6 +20,7 @@ import (
 
 var (
 	_ service.Service = (*Reactor)(nil)
+	_ p2p.Wrapper     = (*ssproto.Message)(nil)
 
 	// ChannelShims contains a map of ChannelDescriptorShim objects, where each
 	// object wraps a reference to a legacy p2p ChannelDescriptor and the corresponding
@@ -59,6 +60,12 @@ const (
 
 	// recentSnapshots is the number of recent snapshots to send and receive per peer.
 	recentSnapshots = 10
+
+	// snapshotMsgSize is the maximum size of a snapshotResponseMessage
+	snapshotMsgSize = int(4e6)
+
+	// chunkMsgSize is the maximum size of a chunkResponseMessage
+	chunkMsgSize = int(16e6)
 )
 
 // Reactor handles state sync, both restoring snapshots for the local node and serving snapshots
