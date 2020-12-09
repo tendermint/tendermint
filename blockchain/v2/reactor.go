@@ -311,6 +311,9 @@ func (r *BlockchainReactor) demux(events <-chan Event) {
 	defer doStatusTk.Stop()
 	doStatusCh <- struct{}{} // immediately broadcast to get status of existing peers
 
+	// Memoize the scSchedulerFail error to avoid printing it every scheduleFreq.
+	var scSchedulerFailErr error
+
 	// XXX: Extract timers to make testing atemporal
 	for {
 		select {
@@ -382,7 +385,10 @@ func (r *BlockchainReactor) demux(events <-chan Event) {
 				r.processor.send(event)
 				r.scheduler.stop()
 			case scSchedulerFail:
-				r.logger.Error("Scheduler failure", "err", event.reason.Error())
+				if scSchedulerFailErr != event.reason {
+					r.logger.Error("Scheduler failure", "err", event.reason.Error())
+					scSchedulerFailErr = event.reason
+				}
 			case scPeersPruned:
 				// Remove peers from the processor.
 				for _, peerID := range event.peers {
