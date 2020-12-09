@@ -78,8 +78,9 @@ type ManifestNode struct {
 	ABCIProtocol string `toml:"abci_protocol"`
 
 	// PrivvalProtocol specifies the protocol used to sign consensus messages:
-	// "file", "tcp", "unix", or "grpc". Defaults to "file". For raw and grpc, the ABCI
+	// "file", "unix", "tcp", or "grpc". Defaults to "file". For tcp and unix, the ABCI
 	// application will launch a remote signer client in a separate goroutine.
+	// For grpc the ABCI application will launch a remote signer server.
 	// Only nodes with mode=validator will actually make use of this.
 	PrivvalProtocol string `toml:"privval_protocol"`
 

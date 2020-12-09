@@ -77,7 +77,6 @@ type Node struct {
 	Database         string
 	ABCIProtocol     Protocol
 	PrivvalProtocol  Protocol
-	PrivvalAddrType  Protocol
 	PersistInterval  uint64
 	SnapshotInterval uint64
 	RetainBlocks     uint64

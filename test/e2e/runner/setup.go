@@ -344,9 +344,6 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		return nil, fmt.Errorf("unexpected ABCI protocol setting %q", node.ABCIProtocol)
 	}
 	if node.Mode == e2e.ModeValidator {
-		if node.PrivvalProtocol == e2e.ProtocolGRPC {
-			cfg["privval_server_protocol"] = e2e.ProtocolGRPC
-		}
 		switch node.PrivvalProtocol {
 		case e2e.ProtocolFile:
 		case e2e.ProtocolTCP:
