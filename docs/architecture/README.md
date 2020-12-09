@@ -83,3 +83,4 @@ Note the context/background should be written in the present tense.
 - [ADR-060-Go-API-Stability](./adr-060-go-api-stability.md)
 - [ADR-061-P2P-Refactor-Scope](./adr-061-p2p-refactor-scope.md)
 - [ADR-062-P2P-Architecture](./adr-062-p2p-architecture.md)
+- [ADR-063-Privval-gRPC](./adr-063-privval-grpc.md)
