@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
@@ -43,10 +42,7 @@ func TestNodeKeySaveAs(t *testing.T) {
 
 	assert.NoFileExists(t, filePath)
 
-	privKey := ed25519.GenPrivKey()
-	nodeKey := &NodeKey{
-		PrivKey: privKey,
-	}
+	nodeKey := GenNodeKey()
 	err := nodeKey.SaveAs(filePath)
 	assert.NoError(t, err)
 	assert.FileExists(t, filePath)
