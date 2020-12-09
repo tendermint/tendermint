@@ -528,8 +528,14 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 func (r *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	err := r.io.sendStatusResponse(r.store.Base(), r.store.Height(), peer.ID())
 	if err != nil {
-		r.logger.Error("Could not send status message to peer new", "src", peer.ID, "height", r.SyncHeight())
+		r.logger.Error("could not send our status to the new peer", "peer", peer.ID, "err", err)
 	}
+
+	err = r.io.sendStatusRequest(peer.ID())
+	if err != nil {
+		r.logger.Error("could not send status request to the new peer", "peer", peer.ID, "err", err)
+	}
+
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 	if r.events != nil {

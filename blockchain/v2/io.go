@@ -21,6 +21,7 @@ type iIO interface {
 	sendBlockNotFound(height int64, peerID p2p.ID) error
 	sendStatusResponse(base, height int64, peerID p2p.ID) error
 
+	sendStatusRequest(peerID p2p.ID) error
 	broadcastStatusRequest() error
 
 	trySwitchToConsensus(state state.State, skipWAL bool) bool
@@ -130,6 +131,24 @@ func (sio *switchIO) trySwitchToConsensus(state state.State, skipWAL bool) bool 
 		conR.SwitchToConsensus(state, skipWAL)
 	}
 	return ok
+}
+
+func (sio *switchIO) sendStatusRequest(peerID p2p.ID) error {
+	peer := sio.sw.Peers().Get(peerID)
+	if peer == nil {
+		return errNoPeer
+	}
+
+	msgBytes, err := bc.EncodeMsg(&bcproto.StatusRequest{})
+	if err != nil {
+		return err
+	}
+
+	if queued := peer.TrySend(BlockchainChannel, msgBytes); !queued {
+		return errPeerQueueFull
+	}
+
+	return nil
 }
 
 func (sio *switchIO) broadcastStatusRequest() error {

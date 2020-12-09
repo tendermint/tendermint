@@ -93,34 +93,35 @@ type mockSwitchIo struct {
 	numStatusResponse   int
 	numBlockResponse    int
 	numNoBlockResponse  int
+	numStatusRequest    int
 }
 
-func (sio *mockSwitchIo) sendBlockRequest(peerID p2p.ID, height int64) error {
+func (sio *mockSwitchIo) sendBlockRequest(_ p2p.ID, _ int64) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) sendStatusResponse(base, height int64, peerID p2p.ID) error {
+func (sio *mockSwitchIo) sendStatusResponse(_, _ int64, _ p2p.ID) error {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.numStatusResponse++
 	return nil
 }
 
-func (sio *mockSwitchIo) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
+func (sio *mockSwitchIo) sendBlockToPeer(_ *types.Block, _ p2p.ID) error {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.numBlockResponse++
 	return nil
 }
 
-func (sio *mockSwitchIo) sendBlockNotFound(height int64, peerID p2p.ID) error {
+func (sio *mockSwitchIo) sendBlockNotFound(_ int64, _ p2p.ID) error {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.numNoBlockResponse++
 	return nil
 }
 
-func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, skipWAL bool) bool {
+func (sio *mockSwitchIo) trySwitchToConsensus(_ sm.State, _ bool) bool {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.switchedToConsensus = true
@@ -128,6 +129,13 @@ func (sio *mockSwitchIo) trySwitchToConsensus(state sm.State, skipWAL bool) bool
 }
 
 func (sio *mockSwitchIo) broadcastStatusRequest() error {
+	return nil
+}
+
+func (sio *mockSwitchIo) sendStatusRequest(_ p2p.ID) error {
+	sio.mtx.Lock()
+	defer sio.mtx.Unlock()
+	sio.numStatusRequest++
 	return nil
 }
 
