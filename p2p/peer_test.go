@@ -69,7 +69,6 @@ func TestPeerSend(t *testing.T) {
 		}
 	})
 
-	assert.True(p.CanSend(testCh))
 	assert.True(p.Send(testCh, []byte("Asylum")))
 }
 

@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/p2p/conn"
 )
 
 // Transport is an arbitrary mechanism for exchanging bytes with a peer.
@@ -31,6 +32,10 @@ type Transport interface {
 	// Close stops listening, but does not close active connections -- these
 	// must be closed individually.
 	Close() error
+
+	// SetChannelDescriptors sets the channel descriptors for the transport.
+	// FIXME This is only here for compatibility with the current Switch code.
+	SetChannelDescriptors(chDescs []*conn.ChannelDescriptor)
 }
 
 // Protocol identifies a transport protocol.
@@ -117,7 +122,18 @@ type Connection interface {
 	ReceiveMessage() (chID byte, msg []byte, err error)
 
 	// SendMessage sends a message on the connection.
-	SendMessage(chID byte, msg []byte) error
+	// FIXME For compatibility with the current Peer, it returns an
+	// additional boolean false if the message timed out waiting to
+	// be accepted into the send buffer.
+	SendMessage(chID byte, msg []byte) (bool, error)
+
+	// TrySendMessage is a non-blocking version of SendMessage that
+	// returns immediately if the message buffer is full. It returns
+	// true if the message was accepted.
+	//
+	// FIXME This is here for backwards-compatibility with the current
+	// Peer code, and should be removed when possible.
+	TrySendMessage(chID byte, msg []byte) (bool, error)
 
 	// LocalEndpoint returns the local endpoint for the connection.
 	LocalEndpoint() Endpoint
@@ -129,9 +145,21 @@ type Connection interface {
 	PubKey() crypto.PubKey
 
 	// NodeInfo returns the remote peer's node info.
-	// FIXME We may want to do something else here.
+	// FIXME We may want to return something else here.
 	NodeInfo() DefaultNodeInfo
 
 	// Close closes the connection.
 	Close() error
+
+	// FlushClose flushes all pending sends and then closes the connection.
+	//
+	// FIXME This only exists for backwards-compatibility with the current
+	// MConnection implementation. There should really be a separate Flush()
+	// method, but there is no easy way to synchronously flush pending data
+	// with the current MConnection structure.
+	FlushClose() error
+
+	// Status returns the current connection status.
+	// FIXME Only here for compatibility with the current Peer code.
+	Status() conn.ConnectionStatus
 }

@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"time"
 
@@ -158,7 +159,6 @@ func (p *peer) OnStart() error {
 		for {
 			chID, msg, err := p.conn.ReceiveMessage()
 			if err != nil {
-				p.Logger.Error("receive error", "err", err.Error())
 				p.onPeerError(p, err)
 				return
 			}
@@ -182,8 +182,7 @@ func (p *peer) OnStart() error {
 func (p *peer) FlushStop() {
 	p.metricsTicker.Stop()
 	p.BaseService.OnStop()
-	// FIXME Flush and close connection.
-	if err := p.conn.Close(); err != nil {
+	if err := p.conn.FlushClose(); err != nil {
 		p.Logger.Debug("Error while stopping peer", "err", err)
 	}
 }
@@ -230,7 +229,7 @@ func (p *peer) SocketAddr() *NetAddress {
 
 // Status returns the peer's ConnectionStatus.
 func (p *peer) Status() tmconn.ConnectionStatus {
-	return p.conn.(*mConnConnection).mConn.Status()
+	return p.conn.Status()
 }
 
 // Send msg bytes to the channel identified by chID byte. Returns false if the
@@ -243,18 +242,22 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	err := p.conn.SendMessage(chID, msgBytes)
-	if err != nil {
+	res, err := p.conn.SendMessage(chID, msgBytes)
+	if err == io.EOF {
+		return false
+	} else if err != nil {
 		p.Logger.Error(fmt.Sprintf("Failed to send on channel 0x%x: %v", chID, err))
 		p.onPeerError(p, err)
 		return false
 	}
-	labels := []string{
-		"peer_id", string(p.ID()),
-		"chID", fmt.Sprintf("%#x", chID),
+	if res {
+		labels := []string{
+			"peer_id", string(p.ID()),
+			"chID", fmt.Sprintf("%#x", chID),
+		}
+		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
 	}
-	p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
-	return true
+	return res
 }
 
 // TrySend msg bytes to the channel identified by chID byte. Immediately returns
@@ -265,18 +268,22 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	err := p.conn.SendMessage(chID, msgBytes)
-	if err != nil {
+	res, err := p.conn.TrySendMessage(chID, msgBytes)
+	if err == io.EOF {
+		return false
+	} else if err != nil {
 		p.Logger.Error(fmt.Sprintf("Failed to send on channel 0x%x: %v", chID, err))
 		p.onPeerError(p, err)
 		return false
 	}
-	labels := []string{
-		"peer_id", string(p.ID()),
-		"chID", fmt.Sprintf("%#x", chID),
+	if res {
+		labels := []string{
+			"peer_id", string(p.ID()),
+			"chID", fmt.Sprintf("%#x", chID),
+		}
+		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
 	}
-	p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
-	return true
+	return res
 }
 
 // Get the data for a given key.
@@ -344,7 +351,7 @@ func (p *peer) metricsReporter() {
 	for {
 		select {
 		case <-p.metricsTicker.C:
-			status := p.conn.(*mConnConnection).mConn.Status()
+			status := p.conn.Status()
 			var sendQueueSize float64
 			for _, chStatus := range status.Channels {
 				sendQueueSize += float64(chStatus.SendQueueSize)

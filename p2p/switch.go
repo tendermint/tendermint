@@ -229,9 +229,7 @@ func (sw *Switch) OnStart() error {
 	// FIXME Temporary hack to pass channel descriptors to MConn transport,
 	// since they are not available when it is constructed. This will be
 	// fixed when we implement the new router abstraction.
-	if t, ok := sw.transport.(*mConnTransport); ok {
-		t.channelDescs = sw.chDescs
-	}
+	sw.transport.SetChannelDescriptors(sw.chDescs)
 
 	// Start reactors
 	for _, reactor := range sw.reactors {

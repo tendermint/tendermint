@@ -12,6 +12,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/protoio"
+	"github.com/tendermint/tendermint/p2p/conn"
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 
@@ -125,6 +126,11 @@ func NewMConnTransport(
 		opt(m)
 	}
 	return m
+}
+
+// SetChannelDescriptors implements Transport.
+func (m *mConnTransport) SetChannelDescriptors(chDescs []*conn.ChannelDescriptor) {
+	m.channelDescs = chDescs
 }
 
 // Listen asynchronously listens for inbound connections on the given endpoint.
@@ -356,7 +362,7 @@ func newMConnConnection(
 ) (conn *mConnConnection, err error) {
 	// FIXME Since the MConnection code panics, we need to recover here
 	// and turn it into an error. Be careful not to alias err, so we can
-	// update it from within this function.
+	// update it from within this function. We should remove panics instead.
 	defer func() {
 		if r := recover(); r != nil {
 			err = ErrRejected{
@@ -517,21 +523,42 @@ func (c *mConnConnection) onError(err interface{}) {
 }
 
 // SendMessage implements Connection.
-func (c *mConnConnection) SendMessage(channelID byte, msg []byte) error {
+func (c *mConnConnection) SendMessage(channelID byte, msg []byte) (bool, error) {
+	var sent bool
 	select {
 	case err := <-c.chError:
-		return err
+		return false, err
 	case <-c.chClose:
-		return io.EOF
+		return false, io.EOF
 	default:
-		c.mConn.Send(channelID, msg) // FIXME Check return value
+		sent = c.mConn.Send(channelID, msg)
 	}
 
 	select {
 	case err := <-c.chError:
-		return err
+		return false, err
 	default:
-		return nil
+		return sent, nil
+	}
+}
+
+// TrySendMessage implements Connection.
+func (c *mConnConnection) TrySendMessage(channelID byte, msg []byte) (bool, error) {
+	var sent bool
+	select {
+	case err := <-c.chError:
+		return false, err
+	case <-c.chClose:
+		return false, io.EOF
+	default:
+		sent = c.mConn.TrySend(channelID, msg)
+	}
+
+	select {
+	case err := <-c.chError:
+		return false, err
+	default:
+		return sent, nil
 	}
 }
 
@@ -579,19 +606,32 @@ func (c *mConnConnection) RemoteEndpoint() Endpoint {
 	}
 }
 
+// Status implements Connection.
+func (c *mConnConnection) Status() conn.ConnectionStatus {
+	return c.mConn.Status()
+}
+
 // Close implements Connection.
 func (c *mConnConnection) Close() error {
+	return c.close(false)
+}
+
+// FlushClose implements Connection.
+func (c *mConnConnection) FlushClose() error {
+	return c.close(true)
+}
+
+// close closes the connection, flushing pending data if requested.
+func (c *mConnConnection) close(flush bool) error {
 	c.transport.conns.RemoveAddr(c.secretConn.RemoteAddr())
 	var err error
 	c.chCloseOnce.Do(func() {
 		close(c.chClose)
-		if c.mConn.IsRunning() {
-			c.mConn.FlushStop() // FIXME This probably isn't always appropriate.
+		if flush {
+			c.mConn.FlushStop()
+		} else {
+			err = c.mConn.Stop()
 		}
-		// FIXME Should guarantee connection gets closed
-		/*if e := c.secretConn.Close(); e != nil && err == nil {
-			err = e
-		}*/
 	})
 	return err
 }
