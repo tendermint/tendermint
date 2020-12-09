@@ -3,12 +3,14 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
 	"time"
 
 	"github.com/spf13/viper"
+	"google.golang.org/grpc"
 
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/config"
@@ -19,6 +21,8 @@ import (
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
+	grpcprivval "github.com/tendermint/tendermint/privval/grpc"
+	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
 	maverick "github.com/tendermint/tendermint/test/maverick/node"
@@ -175,29 +179,42 @@ func startMaverick(cfg *Config) error {
 func startSigner(cfg *Config) error {
 	filePV := privval.LoadFilePV(cfg.PrivValKey, cfg.PrivValState)
 
-	switch cfg.Protocol {
-	case "raw":
-		protocol, address := tmnet.ProtocolAndAddress(cfg.PrivValServer)
-		var dialFn privval.SocketDialer
-		switch protocol {
-		case "tcp":
-			dialFn = privval.DialTCPFn(address, 3*time.Second, ed25519.GenPrivKey())
-		case "unix":
-			dialFn = privval.DialUnixFn(address)
-		default:
-			return fmt.Errorf("invalid privval protocol %q", protocol)
-		}
+	protocol, address := tmnet.ProtocolAndAddress(cfg.PrivValServer)
+	var dialFn privval.SocketDialer
+	switch protocol {
+	case "tcp":
+		dialFn = privval.DialTCPFn(address, 3*time.Second, ed25519.GenPrivKey())
+	case "unix":
+		dialFn = privval.DialUnixFn(address)
+	case "grpc":
 
-		endpoint := privval.NewSignerDialerEndpoint(logger, dialFn,
-			privval.SignerDialerEndpointRetryWaitInterval(1*time.Second),
-			privval.SignerDialerEndpointConnRetries(100))
-		err := privval.NewSignerServer(endpoint, cfg.ChainID, filePV).Start()
+		lis, err := net.Listen(protocol, address)
 		if err != nil {
 			return err
 		}
-	case "grpc":
+		ss := grpcprivval.NewSignerServer(cfg.ChainID, filePV, logger)
+
+		s := grpc.NewServer()
+
+		privvalproto.RegisterPrivValidatorAPIServer(s, ss)
+
+		go func() { // no need to clean up since we remove docker containers
+			if err := s.Serve(lis); err != nil {
+				panic(err)
+			}
+		}()
+
+		return nil
 	default:
-		return fmt.Errorf("unknown protocol %s", cfg.Protocol)
+		return fmt.Errorf("invalid privval protocol %q", protocol)
+	}
+
+	endpoint := privval.NewSignerDialerEndpoint(logger, dialFn,
+		privval.SignerDialerEndpointRetryWaitInterval(1*time.Second),
+		privval.SignerDialerEndpointConnRetries(100))
+	err := privval.NewSignerServer(endpoint, cfg.ChainID, filePV).Start()
+	if err != nil {
+		return err
 	}
 
 	logger.Info(fmt.Sprintf("Remote signer connecting to %v", cfg.PrivValServer))
