@@ -332,15 +332,6 @@ func (p *peer) RemoteAddr() net.Addr {
 	}
 }
 
-// CanSend returns true if the send queue is not full, false otherwise.
-func (p *peer) CanSend(chID byte) bool {
-	if !p.IsRunning() {
-		return false
-	}
-	return true
-	//return p.mconn.CanSend(chID) FIXME
-}
-
 //---------------------------------------------------
 
 func PeerMetrics(metrics *Metrics) PeerOption {
