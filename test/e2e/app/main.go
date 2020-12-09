@@ -187,12 +187,10 @@ func startSigner(cfg *Config) error {
 	case "unix":
 		dialFn = privval.DialUnixFn(address)
 	case "grpc":
-		fmt.Println(1)
 		lis, err := net.Listen("tcp", address)
 		if err != nil {
 			return err
 		}
-		fmt.Println(2)
 		ss := grpcprivval.NewSignerServer(cfg.ChainID, filePV, logger)
 
 		s := grpc.NewServer()

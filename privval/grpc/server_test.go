@@ -34,13 +34,9 @@ func TestGetPubKey(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			s := tmgrpc.SignerServer{
-				ChainID: ChainID,
-				PrivVal: tc.pv,
-				Logger:  log.TestingLogger(),
-			}
+			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.TestingLogger())
 
-			req := &privvalproto.PubKeyRequest{ChainId: s.ChainID}
+			req := &privvalproto.PubKeyRequest{ChainId: ChainID}
 			resp, err := s.GetPubKey(context.Background(), req)
 			if tc.err {
 				require.Error(t, err)
@@ -109,19 +105,16 @@ func TestSignVote(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			s := tmgrpc.SignerServer{
-				ChainID: ChainID,
-				PrivVal: tc.pv,
-				Logger:  log.TestingLogger(),
-			}
-			req := &privvalproto.SignVoteRequest{ChainId: s.ChainID, Vote: tc.have.ToProto()}
+			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.TestingLogger())
+
+			req := &privvalproto.SignVoteRequest{ChainId: ChainID, Vote: tc.have.ToProto()}
 			resp, err := s.SignVote(context.Background(), req)
 			if tc.err {
 				require.Error(t, err)
 			} else {
 				pbVote := tc.want.ToProto()
 
-				require.NoError(t, tc.pv.SignVote(s.ChainID, pbVote))
+				require.NoError(t, tc.pv.SignVote(ChainID, pbVote))
 				assert.Equal(t, pbVote.Signature, resp.Vote.Signature)
 			}
 		})
@@ -178,18 +171,15 @@ func TestSignProposal(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			s := tmgrpc.SignerServer{
-				ChainID: ChainID,
-				PrivVal: tc.pv,
-				Logger:  log.TestingLogger(),
-			}
-			req := &privvalproto.SignProposalRequest{ChainId: s.ChainID, Proposal: tc.have.ToProto()}
+			s := tmgrpc.NewSignerServer(ChainID, tc.pv, log.TestingLogger())
+
+			req := &privvalproto.SignProposalRequest{ChainId: ChainID, Proposal: tc.have.ToProto()}
 			resp, err := s.SignProposal(context.Background(), req)
 			if tc.err {
 				require.Error(t, err)
 			} else {
 				pbProposal := tc.want.ToProto()
-				require.NoError(t, tc.pv.SignProposal(s.ChainID, pbProposal))
+				require.NoError(t, tc.pv.SignProposal(ChainID, pbProposal))
 				assert.Equal(t, pbProposal.Signature, resp.Proposal.Signature)
 			}
 		})

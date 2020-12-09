@@ -665,12 +665,13 @@ func NewNode(config *cfg.Config,
 	if config.PrivValidatorListenAddr != "" {
 		protocol, address := tmnet.ProtocolAndAddress(config.PrivValidatorListenAddr)
 		// FIXME: we should start services inside OnStart
-		if protocol == "grpc" {
+		switch protocol {
+		case "grpc":
 			privValidator, err = createAndStartPrivValidatorGRPCClient(config, address, genDoc.ChainID, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
 			}
-		} else {
+		default:
 			privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, genDoc.ChainID, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator socket client: %w", err)

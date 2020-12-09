@@ -14,19 +14,19 @@ import (
 )
 
 type SignerServer struct {
-	Logger log.Logger
+	logger log.Logger
 
-	ChainID string
-	PrivVal types.PrivValidator
+	chainID string
+	privVal types.PrivValidator
 }
 
 func NewSignerServer(chainID string,
 	privVal types.PrivValidator, log log.Logger) *SignerServer {
 
 	return &SignerServer{
-		Logger:  log,
-		ChainID: chainID,
-		PrivVal: privVal,
+		logger:  log,
+		chainID: chainID,
+		privVal: privVal,
 	}
 }
 
@@ -38,7 +38,7 @@ func (ss *SignerServer) GetPubKey(ctx context.Context, req *privvalproto.PubKeyR
 	*privvalproto.PubKeyResponse, error) {
 	var pubKey crypto.PubKey
 
-	pubKey, err := ss.PrivVal.GetPubKey()
+	pubKey, err := ss.privVal.GetPubKey()
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "error getting pubkey: %v", err)
 	}
@@ -48,7 +48,7 @@ func (ss *SignerServer) GetPubKey(ctx context.Context, req *privvalproto.PubKeyR
 		return nil, status.Errorf(codes.Internal, "error transitioning pubkey to proto: %v", err)
 	}
 
-	ss.Logger.Info("SignerServer: GetPubKey Success")
+	ss.logger.Info("SignerServer: GetPubKey Success")
 
 	return &privvalproto.PubKeyResponse{PubKey: pk}, nil
 }
@@ -59,12 +59,12 @@ func (ss *SignerServer) SignVote(ctx context.Context, req *privvalproto.SignVote
 	*privvalproto.SignedVoteResponse, error) {
 	vote := req.Vote
 
-	err := ss.PrivVal.SignVote(req.ChainId, vote)
+	err := ss.privVal.SignVote(req.ChainId, vote)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "error signing vote: %v", err)
 	}
 
-	ss.Logger.Info("SignerServer: SignVote Success")
+	ss.logger.Info("SignerServer: SignVote Success")
 
 	return &privvalproto.SignedVoteResponse{Vote: *vote}, nil
 }
@@ -75,12 +75,12 @@ func (ss *SignerServer) SignProposal(ctx context.Context, req *privvalproto.Sign
 	*privvalproto.SignedProposalResponse, error) {
 	proposal := req.Proposal
 
-	err := ss.PrivVal.SignProposal(req.ChainId, proposal)
+	err := ss.privVal.SignProposal(req.ChainId, proposal)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "error signing proposal: %v", err)
 	}
 
-	ss.Logger.Info("SignerServer: SignProposal Success")
+	ss.logger.Info("SignerServer: SignProposal Success")
 
 	return &privvalproto.SignedProposalResponse{Proposal: *proposal}, nil
 }
