@@ -63,7 +63,7 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 	if err != nil {
 		errStatus, _ := status.FromError(err)
 		sc.logger.Error("SignerClient::GetPubKey", "err", errStatus.Message())
-		return nil, fmt.Errorf("send GetPubKey request: %w", errStatus.Err())
+		return nil, errStatus.Err()
 	}
 
 	pk, err := cryptoenc.PubKeyFromProto(resp.PubKey)
@@ -82,7 +82,7 @@ func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
 	if err != nil {
 		errStatus, _ := status.FromError(err)
 		sc.logger.Error("Client SignVote", "err", errStatus.Message())
-		return fmt.Errorf("send SignVote request: %w", errStatus.Err())
+		return errStatus.Err()
 	}
 
 	*vote = resp.Vote
@@ -100,7 +100,7 @@ func (sc *SignerClient) SignProposal(chainID string, proposal *tmproto.Proposal)
 	if err != nil {
 		errStatus, _ := status.FromError(err)
 		sc.logger.Error("SignerClient::SignProposal", "err", errStatus.Message())
-		return fmt.Errorf("send SignProposal request: %w", errStatus.Err())
+		return errStatus.Err()
 	}
 
 	*proposal = resp.Proposal

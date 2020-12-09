@@ -1399,7 +1399,7 @@ func createAndStartPrivValidatorGRPCClient(
 			config.PrivValidatorClientKeyFile(), config.PrivValidatorCertificateAuthorityFile())
 	} else {
 		transportSecurity = grpc.WithInsecure()
-		logger.Error("Using an insecure gRPC connection! Please provide a certificate and key to use a secure connection.")
+		logger.Info("Using an insecure gRPC connection!")
 	}
 	dialOptions := tmgrpc.DefaultDialOptions()
 
@@ -1409,7 +1409,7 @@ func createAndStartPrivValidatorGRPCClient(
 
 	conn, err := grpc.DialContext(ctx, address, dialOptions...)
 	if err != nil {
-		logger.Error("unable to connect to client.", "target", address, "err", err)
+		logger.Error("unable to connect to server", "target", address, "err", err)
 	}
 	pvsc, err := tmgrpc.NewSignerClient(conn, chainID, logger)
 	if err != nil {

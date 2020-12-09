@@ -41,10 +41,10 @@ func main() {
 		privValKeyPath   = flag.String("priv-key", "", "priv val key file path")
 		privValStatePath = flag.String("priv-state", "", "priv val state file path")
 		insecure         = flag.Bool("insecure", false, "allow server to run insecurely (no TLS)")
-		withCert         = flag.String("cert", "", "absolute path to server certificate")
-		withKey          = flag.String("key", "", "absolute path to server key")
-		rootCA           = flag.String("rootCA", "", "absolute path to root CA")
-		prometheusAddr   = flag.String("prometheusAddr", "", "address for prometheus endpoint (host:port)")
+		certFile         = flag.String("certfile", "", "absolute path to server certificate")
+		keyFile          = flag.String("keyfile", "", "absolute path to server key")
+		rootCA           = flag.String("rootcafile", "", "absolute path to root CA")
+		prometheusAddr   = flag.String("prometheus-addr", "", "address for prometheus endpoint (host:port)")
 
 		logger = log.NewTMLogger(
 			log.NewSyncWriter(os.Stdout),
@@ -97,7 +97,7 @@ func main() {
 		opts = append(opts, creds)
 		logger.Info("SignerServer: Creating security credentials")
 	} else {
-		logger.Error("SignerServer: You are using an insecure gRPC connection!")
+		logger.Info("SignerServer: You are using an insecure gRPC connection!")
 	}
 
 	// add prometheus metrics for unary RPC calls
