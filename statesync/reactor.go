@@ -3,10 +3,13 @@ package statesync
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
@@ -15,11 +18,45 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+var (
+	_ service.Service = (*Reactor)(nil)
+
+	// ChannelShims contains a map of ChannelDescriptorShim objects, where each
+	// object wraps a reference to a legacy p2p ChannelDescriptor and the corresponding
+	// p2p proto.Message the new p2p Channel is responsible for handling.
+	//
+	//
+	// TODO: Remove once p2p refactor is complete.
+	// ref: https://github.com/tendermint/tendermint/issues/5670
+	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
+		SnapshotChannel: {
+			MsgType: new(ssproto.Message),
+			Descriptor: &p2p.ChannelDescriptor{
+				ID:                  byte(SnapshotChannel),
+				Priority:            3,
+				SendQueueCapacity:   10,
+				RecvMessageCapacity: snapshotMsgSize,
+			},
+		},
+		ChunkChannel: {
+			MsgType: new(ssproto.Message),
+			Descriptor: &p2p.ChannelDescriptor{
+				ID:                  byte(ChunkChannel),
+				Priority:            1,
+				SendQueueCapacity:   4,
+				RecvMessageCapacity: chunkMsgSize,
+			},
+		},
+	}
+)
+
 const (
 	// SnapshotChannel exchanges snapshot metadata
-	SnapshotChannel = byte(0x60)
+	SnapshotChannel = p2p.ChannelID(0x60)
+
 	// ChunkChannel exchanges chunk contents
-	ChunkChannel = byte(0x61)
+	ChunkChannel = p2p.ChannelID(0x61)
+
 	// recentSnapshots is the number of recent snapshots to send and receive per peer.
 	recentSnapshots = 10
 )
@@ -27,189 +64,368 @@ const (
 // Reactor handles state sync, both restoring snapshots for the local node and serving snapshots
 // for other nodes.
 type Reactor struct {
-	p2p.BaseReactor
+	service.BaseService
 
-	conn      proxy.AppConnSnapshot
-	connQuery proxy.AppConnQuery
-	tempDir   string
+	conn        proxy.AppConnSnapshot
+	connQuery   proxy.AppConnQuery
+	tempDir     string
+	snapshotCh  *p2p.Channel
+	chunkCh     *p2p.Channel
+	peerUpdates *p2p.PeerUpdatesCh
+	closeCh     chan struct{}
 
-	// This will only be set when a state sync is in progress. It is used to feed received
-	// snapshots and chunks into the sync.
+	// This will only be set when a state sync is in progress. It is used to feed
+	// received snapshots and chunks into the sync.
 	mtx    tmsync.RWMutex
 	syncer *syncer
 }
 
-// NewReactor creates a new state sync reactor.
-func NewReactor(conn proxy.AppConnSnapshot, connQuery proxy.AppConnQuery, tempDir string) *Reactor {
+// NewReactor returns a reference to a new state sync reactor, which implements
+// the service.Service interface. It accepts a logger, connections for snapshots
+// and querying, references to p2p Channels and a channel to listen for peer
+// updates on. Note, the reactor will close all p2p Channels when stopping.
+func NewReactor(
+	logger log.Logger,
+	conn proxy.AppConnSnapshot,
+	connQuery proxy.AppConnQuery,
+	snapshotCh, chunkCh *p2p.Channel,
+	peerUpdates *p2p.PeerUpdatesCh,
+	tempDir string,
+) *Reactor {
 	r := &Reactor{
-		conn:      conn,
-		connQuery: connQuery,
+		conn:        conn,
+		connQuery:   connQuery,
+		snapshotCh:  snapshotCh,
+		chunkCh:     chunkCh,
+		peerUpdates: peerUpdates,
+		closeCh:     make(chan struct{}),
+		tempDir:     tempDir,
 	}
-	r.BaseReactor = *p2p.NewBaseReactor("StateSync", r)
+
+	r.BaseService = *service.NewBaseService(logger, "StateSync", r)
 	return r
 }
 
-// GetChannels implements p2p.Reactor.
-func (r *Reactor) GetChannels() []*p2p.ChannelDescriptor {
-	return []*p2p.ChannelDescriptor{
-		{
-			ID:                  SnapshotChannel,
-			Priority:            3,
-			SendQueueCapacity:   10,
-			RecvMessageCapacity: snapshotMsgSize,
-		},
-		{
-			ID:                  ChunkChannel,
-			Priority:            1,
-			SendQueueCapacity:   4,
-			RecvMessageCapacity: chunkMsgSize,
-		},
-	}
-}
-
-// OnStart implements p2p.Reactor.
+// OnStart starts separate go routines for each p2p Channel and listens for
+// envelopes on each. In addition, it also listens for peer updates and handles
+// messages on that p2p channel accordingly. The caller must be sure to execute
+// OnStop to ensure the outbound p2p Channels are closed. No error is returned.
 func (r *Reactor) OnStart() error {
+	// Listen for envelopes on the snapshot p2p Channel in a separate go-routine
+	// as to not block or cause IO contention with the chunk p2p Channel. Note,
+	// we do not launch a go-routine to handle individual envelopes as to not
+	// have to deal with bounding workers or pools.
+	go r.processSnapshotCh()
+
+	// Listen for envelopes on the chunk p2p Channel in a separate go-routine
+	// as to not block or cause IO contention with the snapshot p2p Channel. Note,
+	// we do not launch a go-routine to handle individual envelopes as to not
+	// have to deal with bounding workers or pools.
+	go r.processChunkCh()
+
+	go r.processPeerUpdates()
+
 	return nil
 }
 
-// AddPeer implements p2p.Reactor.
-func (r *Reactor) AddPeer(peer p2p.Peer) {
-	r.mtx.RLock()
-	defer r.mtx.RUnlock()
-	if r.syncer != nil {
-		r.syncer.AddPeer(peer)
-	}
+// OnStop stops the reactor by signaling to all spawned goroutines to exit and
+// blocking until they all exit.
+func (r *Reactor) OnStop() {
+	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
+	// p2p Channels should execute Close().
+	close(r.closeCh)
+
+	// Wait for all p2p Channels to be closed before returning. This ensures we
+	// can easily reason about synchronization of all p2p Channels and ensure no
+	// panics will occur.
+	<-r.snapshotCh.Done()
+	<-r.chunkCh.Done()
+	<-r.peerUpdates.Done()
 }
 
-// RemovePeer implements p2p.Reactor.
-func (r *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
-	r.mtx.RLock()
-	defer r.mtx.RUnlock()
-	if r.syncer != nil {
-		r.syncer.RemovePeer(peer)
-	}
-}
+// handleSnapshotMessage handles enevelopes sent from peers on the
+// SnapshotChannel. It returns an error only if the Envelope.Message is unknown
+// for this channel. This should never be called outside of handleMessage.
+func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
+	switch msg := envelope.Message.(type) {
+	case *ssproto.SnapshotsRequest:
+		snapshots, err := r.recentSnapshots(recentSnapshots)
+		if err != nil {
+			r.Logger.Error("failed to fetch snapshots", "err", err)
+			return nil
+		}
 
-// Receive implements p2p.Reactor.
-// XXX: do not call any methods that can block or incur heavy processing.
-// https://github.com/tendermint/tendermint/issues/2888
-func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	if !r.IsRunning() {
-		return
-	}
-
-	msg, err := decodeMsg(msgBytes)
-	if err != nil {
-		r.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
-		r.Switch.StopPeerForError(src, err)
-		return
-	}
-	err = validateMsg(msg)
-	if err != nil {
-		r.Logger.Error("Invalid message", "peer", src, "msg", msg, "err", err)
-		r.Switch.StopPeerForError(src, err)
-		return
-	}
-
-	switch chID {
-	case SnapshotChannel:
-		switch msg := msg.(type) {
-		case *ssproto.SnapshotsRequest:
-			snapshots, err := r.recentSnapshots(recentSnapshots)
-			if err != nil {
-				r.Logger.Error("Failed to fetch snapshots", "err", err)
-				return
-			}
-			for _, snapshot := range snapshots {
-				r.Logger.Debug("Advertising snapshot", "height", snapshot.Height,
-					"format", snapshot.Format, "peer", src.ID())
-				src.Send(chID, mustEncodeMsg(&ssproto.SnapshotsResponse{
+		for _, snapshot := range snapshots {
+			r.Logger.Debug(
+				"advertising snapshot",
+				"height", snapshot.Height,
+				"format", snapshot.Format,
+				"peer", envelope.From.String(),
+			)
+			r.snapshotCh.Out() <- p2p.Envelope{
+				To: envelope.From,
+				Message: &ssproto.SnapshotsResponse{
 					Height:   snapshot.Height,
 					Format:   snapshot.Format,
 					Chunks:   snapshot.Chunks,
 					Hash:     snapshot.Hash,
 					Metadata: snapshot.Metadata,
-				}))
+				},
 			}
-
-		case *ssproto.SnapshotsResponse:
-			r.mtx.RLock()
-			defer r.mtx.RUnlock()
-			if r.syncer == nil {
-				r.Logger.Debug("Received unexpected snapshot, no state sync in progress")
-				return
-			}
-			r.Logger.Debug("Received snapshot", "height", msg.Height, "format", msg.Format, "peer", src.ID())
-			_, err := r.syncer.AddSnapshot(src, &snapshot{
-				Height:   msg.Height,
-				Format:   msg.Format,
-				Chunks:   msg.Chunks,
-				Hash:     msg.Hash,
-				Metadata: msg.Metadata,
-			})
-			if err != nil {
-				r.Logger.Error("Failed to add snapshot", "height", msg.Height, "format", msg.Format,
-					"peer", src.ID(), "err", err)
-				return
-			}
-
-		default:
-			r.Logger.Error("Received unknown message %T", msg)
 		}
 
-	case ChunkChannel:
-		switch msg := msg.(type) {
-		case *ssproto.ChunkRequest:
-			r.Logger.Debug("Received chunk request", "height", msg.Height, "format", msg.Format,
-				"chunk", msg.Index, "peer", src.ID())
-			resp, err := r.conn.LoadSnapshotChunkSync(context.Background(), abci.RequestLoadSnapshotChunk{
-				Height: msg.Height,
-				Format: msg.Format,
-				Chunk:  msg.Index,
-			})
-			if err != nil {
-				r.Logger.Error("Failed to load chunk", "height", msg.Height, "format", msg.Format,
-					"chunk", msg.Index, "err", err)
-				return
-			}
-			r.Logger.Debug("Sending chunk", "height", msg.Height, "format", msg.Format,
-				"chunk", msg.Index, "peer", src.ID())
-			src.Send(ChunkChannel, mustEncodeMsg(&ssproto.ChunkResponse{
+	case *ssproto.SnapshotsResponse:
+		r.mtx.RLock()
+		defer r.mtx.RUnlock()
+
+		if r.syncer == nil {
+			r.Logger.Debug("received unexpected snapshot; no state sync in progress")
+			return nil
+		}
+
+		r.Logger.Debug(
+			"received snapshot",
+			"height", msg.Height,
+			"format", msg.Format,
+			"peer", envelope.From.String(),
+		)
+		_, err := r.syncer.AddSnapshot(envelope.From, &snapshot{
+			Height:   msg.Height,
+			Format:   msg.Format,
+			Chunks:   msg.Chunks,
+			Hash:     msg.Hash,
+			Metadata: msg.Metadata,
+		})
+		if err != nil {
+			r.Logger.Error(
+				"failed to add snapshot",
+				"height", msg.Height,
+				"format", msg.Format,
+				"err", err,
+				"channel", r.snapshotCh.ID,
+			)
+			return nil
+		}
+
+	default:
+		r.Logger.Error("received unknown message", "msg", msg, "peer", envelope.From.String())
+		return fmt.Errorf("received unknown message: %T", msg)
+	}
+
+	return nil
+}
+
+// handleChunkMessage handles enevelopes sent from peers on the ChunkChannel.
+// It returns an error only if the Envelope.Message is unknown for this channel.
+// This should never be called outside of handleMessage.
+func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
+	switch msg := envelope.Message.(type) {
+	case *ssproto.ChunkRequest:
+		r.Logger.Debug(
+			"received chunk request",
+			"height", msg.Height,
+			"format", msg.Format,
+			"chunk", msg.Index,
+			"peer", envelope.From.String(),
+		)
+		resp, err := r.conn.LoadSnapshotChunkSync(context.Background(), abci.RequestLoadSnapshotChunk{
+			Height: msg.Height,
+			Format: msg.Format,
+			Chunk:  msg.Index,
+		})
+		if err != nil {
+			r.Logger.Error(
+				"failed to load chunk",
+				"height", msg.Height,
+				"format", msg.Format,
+				"chunk", msg.Index,
+				"err", err,
+				"peer", envelope.From.String(),
+			)
+			return nil
+		}
+
+		r.Logger.Debug(
+			"sending chunk",
+			"height", msg.Height,
+			"format", msg.Format,
+			"chunk", msg.Index,
+			"peer", envelope.From.String(),
+		)
+		r.chunkCh.Out() <- p2p.Envelope{
+			To: envelope.From,
+			Message: &ssproto.ChunkResponse{
 				Height:  msg.Height,
 				Format:  msg.Format,
 				Index:   msg.Index,
 				Chunk:   resp.Chunk,
 				Missing: resp.Chunk == nil,
-			}))
+			},
+		}
 
-		case *ssproto.ChunkResponse:
-			r.mtx.RLock()
-			defer r.mtx.RUnlock()
-			if r.syncer == nil {
-				r.Logger.Debug("Received unexpected chunk, no state sync in progress", "peer", src.ID())
-				return
-			}
-			r.Logger.Debug("Received chunk, adding to sync", "height", msg.Height, "format", msg.Format,
-				"chunk", msg.Index, "peer", src.ID())
-			_, err := r.syncer.AddChunk(&chunk{
-				Height: msg.Height,
-				Format: msg.Format,
-				Index:  msg.Index,
-				Chunk:  msg.Chunk,
-				Sender: src.ID(),
-			})
-			if err != nil {
-				r.Logger.Error("Failed to add chunk", "height", msg.Height, "format", msg.Format,
-					"chunk", msg.Index, "err", err)
-				return
-			}
+	case *ssproto.ChunkResponse:
+		r.mtx.RLock()
+		defer r.mtx.RUnlock()
 
-		default:
-			r.Logger.Error("Received unknown message %T", msg)
+		if r.syncer == nil {
+			r.Logger.Debug("received unexpected chunk; no state sync in progress", "peer", envelope.From.String())
+			return nil
+		}
+
+		r.Logger.Debug(
+			"received chunk; adding to sync",
+			"height", msg.Height,
+			"format", msg.Format,
+			"chunk", msg.Index,
+			"peer", envelope.From.String(),
+		)
+		_, err := r.syncer.AddChunk(&chunk{
+			Height: msg.Height,
+			Format: msg.Format,
+			Index:  msg.Index,
+			Chunk:  msg.Chunk,
+			Sender: envelope.From,
+		})
+		if err != nil {
+			r.Logger.Error(
+				"failed to add chunk",
+				"height", msg.Height,
+				"format", msg.Format,
+				"chunk", msg.Index,
+				"err", err,
+				"peer", envelope.From.String(),
+			)
+			return nil
 		}
 
 	default:
-		r.Logger.Error("Received message on invalid channel %x", chID)
+		r.Logger.Error("received unknown message", "msg", msg, "peer", envelope.From.String())
+		return fmt.Errorf("received unknown message: %T", msg)
+	}
+
+	return nil
+}
+
+// handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
+// It will handle errors and any possible panics gracefully. A caller can handle
+// any error returned by sending a PeerError on the respective channel.
+func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			err = fmt.Errorf("panic in processing message: %v", e)
+			r.Logger.Error("recovering from processing message panic", "err", err)
+		}
+	}()
+
+	switch chID {
+	case SnapshotChannel:
+		err = r.handleSnapshotMessage(envelope)
+
+	case ChunkChannel:
+		err = r.handleChunkMessage(envelope)
+
+	default:
+		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
+	}
+
+	return err
+}
+
+// processSnapshotCh initiates a blocking process where we listen for and handle
+// envelopes on the SnapshotChannel. Any error encountered during message
+// execution will result in a PeerError being sent on the SnapshotChannel. When
+// the reactor is stopped, we will catch the singal and close the p2p Channel
+// gracefully.
+func (r *Reactor) processSnapshotCh() {
+	defer r.snapshotCh.Close()
+
+	for {
+		select {
+		case envelope := <-r.snapshotCh.In():
+			if err := r.handleMessage(r.snapshotCh.ID(), envelope); err != nil {
+				r.snapshotCh.Error() <- p2p.PeerError{
+					PeerID:   envelope.From,
+					Err:      err,
+					Severity: p2p.PeerErrorSeverityLow,
+				}
+			}
+
+		case <-r.closeCh:
+			r.Logger.Debug("stopped listening on snapshot channel; closing...")
+			return
+		}
+	}
+}
+
+// processChunkCh initiates a blocking process where we listen for and handle
+// envelopes on the ChunkChannel. Any error encountered during message
+// execution will result in a PeerError being sent on the ChunkChannel. When
+// the reactor is stopped, we will catch the singal and close the p2p Channel
+// gracefully.
+func (r *Reactor) processChunkCh() {
+	defer r.chunkCh.Close()
+
+	for {
+		select {
+		case envelope := <-r.chunkCh.In():
+			if err := r.handleMessage(r.chunkCh.ID(), envelope); err != nil {
+				r.chunkCh.Error() <- p2p.PeerError{
+					PeerID:   envelope.From,
+					Err:      err,
+					Severity: p2p.PeerErrorSeverityLow,
+				}
+			}
+
+		case <-r.closeCh:
+			r.Logger.Debug("stopped listening on chunk channel; closing...")
+			return
+		}
+	}
+}
+
+// processPeerUpdate processes a PeerUpdate, returning an error upon failing to
+// handle the PeerUpdate or if a panic is recovered.
+func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) (err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			err = fmt.Errorf("panic in processing peer update: %v", e)
+			r.Logger.Error("recovering from processing peer update panic", "err", err)
+		}
+	}()
+
+	r.Logger.Debug("received peer update", "peer", peerUpdate.PeerID.String(), "status", peerUpdate.Status)
+
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	if r.syncer != nil {
+		switch peerUpdate.Status {
+		case p2p.PeerStatusNew, p2p.PeerStatusUp:
+			r.syncer.AddPeer(peerUpdate.PeerID)
+
+		case p2p.PeerStatusDown, p2p.PeerStatusRemoved, p2p.PeerStatusBanned:
+			r.syncer.RemovePeer(peerUpdate.PeerID)
+		}
+	}
+
+	return err
+}
+
+// processPeerUpdates initiates a blocking process where we listen for and handle
+// PeerUpdate messages. When the reactor is stopped, we will catch the singal and
+// close the p2p PeerUpdatesCh gracefully.
+func (r *Reactor) processPeerUpdates() {
+	defer r.peerUpdates.Close()
+
+	for {
+		select {
+		case peerUpdate := <-r.peerUpdates.Updates():
+			_ = r.processPeerUpdate(peerUpdate)
+
+		case <-r.closeCh:
+			r.Logger.Debug("stopped listening on peer updates channel; closing...")
+			return
+		}
 	}
 }
 
@@ -219,9 +435,11 @@ func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	sort.Slice(resp.Snapshots, func(i, j int) bool {
 		a := resp.Snapshots[i]
 		b := resp.Snapshots[j]
+
 		switch {
 		case a.Height > b.Height:
 			return true
@@ -231,11 +449,13 @@ func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
 			return false
 		}
 	})
+
 	snapshots := make([]*snapshot, 0, n)
 	for i, s := range resp.Snapshots {
 		if i >= recentSnapshots {
 			break
 		}
+
 		snapshots = append(snapshots, &snapshot{
 			Height:   s.Height,
 			Format:   s.Format,
@@ -244,6 +464,7 @@ func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
 			Metadata: s.Metadata,
 		})
 	}
+
 	return snapshots, nil
 }
 
@@ -255,16 +476,22 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 		r.mtx.Unlock()
 		return sm.State{}, nil, errors.New("a state sync is already in progress")
 	}
-	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateProvider, r.tempDir)
+
+	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateProvider, r.snapshotCh.Out(), r.chunkCh.Out(), r.tempDir)
 	r.mtx.Unlock()
 
-	// Request snapshots from all currently connected peers
-	r.Logger.Debug("Requesting snapshots from known peers")
-	r.Switch.Broadcast(SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
+	// request snapshots from all currently connected peers
+	r.Logger.Debug("requesting snapshots from known peers")
+	r.snapshotCh.Out() <- p2p.Envelope{
+		Broadcast: true,
+		Message:   &ssproto.SnapshotsRequest{},
+	}
 
 	state, commit, err := r.syncer.SyncAny(discoveryTime)
+
 	r.mtx.Lock()
 	r.syncer = nil
 	r.mtx.Unlock()
+
 	return state, commit, err
 }
