@@ -76,7 +76,7 @@ type Switch struct {
 	dialing      *cmap.CMap
 	reconnecting *cmap.CMap
 	nodeInfo     NodeInfo // our node info
-	nodeKey      NodeKey // our node privkey
+	nodeKey      NodeKey  // our node privkey
 	addrBook     AddrBook
 	// peers addresses with whom we'll maintain constant connection
 	persistentPeersAddrs []*NetAddress
