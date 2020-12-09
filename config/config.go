@@ -204,13 +204,14 @@ type BaseConfig struct { //nolint: maligned
 	// connections from an external PrivValidator process
 	PrivValidatorListenAddr string `mapstructure:"priv_validator_laddr"`
 
-	// Defines which private validator protocol to use gRPC or tcp, unix socket
+	// Client certificate generated while creating needed files for secure connection.
+	// If a remote validator address is provided but no certificate, the connection will be insecure
 	PrivValidatorClientCertificate string `mapstructure:"priv_validator_client_certificate"`
 
-	// Defines which private validator protocol to use gRPC or tcp, unix socket
+	// Client key generated while creating certificates for secure connection
 	PrivValidatorClientKey string `mapstructure:"priv_validator_client_key"`
 
-	// Defines which private validator protocol to use gRPC or tcp, unix socket
+	// Path Root Certificate Authority used to sign both client and server certificates
 	PrivValidatorCertificateAuthority string `mapstructure:"priv_validator_certificate_authority"`
 
 	// A JSON file containing the private key to use for p2p authenticated encryption
@@ -262,17 +263,17 @@ func (cfg BaseConfig) GenesisFile() string {
 	return rootify(cfg.Genesis, cfg.RootDir)
 }
 
-// PrivValidatorKeyFile returns the full path to the priv_validator_key.json file
+// PrivValidatorClientKeyFile returns the full path to the priv_validator_key.json file
 func (cfg BaseConfig) PrivValidatorClientKeyFile() string {
 	return rootify(cfg.PrivValidatorClientKey, cfg.RootDir)
 }
 
-// PrivValidatorKeyFile returns the full path to the priv_validator_key.json file
+// PrivValidatorClientCertificateFile returns the full path to the priv_validator_key.json file
 func (cfg BaseConfig) PrivValidatorClientCertificateFile() string {
 	return rootify(cfg.PrivValidatorClientCertificate, cfg.RootDir)
 }
 
-// PrivValidatorKeyFile returns the full path to the priv_validator_key.json file
+// PrivValidatorCertificateAuthorityFile returns the full path to the priv_validator_key.json file
 func (cfg BaseConfig) PrivValidatorCertificateAuthorityFile() string {
 	return rootify(cfg.PrivValidatorCertificateAuthority, cfg.RootDir)
 }

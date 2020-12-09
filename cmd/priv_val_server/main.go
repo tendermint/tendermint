@@ -36,7 +36,7 @@ var (
 
 func main() {
 	var (
-		addr             = flag.String("addr", "127.0.0.1:26659", "Address of client to connect to (host:port)")
+		addr             = flag.String("addr", "127.0.0.1:26659", "Address to listen on (host:port)")
 		chainID          = flag.String("chain-id", "mychain", "chain id")
 		privValKeyPath   = flag.String("priv-key", "", "priv val key file path")
 		privValStatePath = flag.String("priv-state", "", "priv val state file path")
@@ -59,8 +59,8 @@ func main() {
 		"privKeyPath", *privValKeyPath,
 		"privStatePath", *privValStatePath,
 		"insecure", *insecure,
-		"withCert", *withCert,
-		"withKey", *withKey,
+		"certFile", *certFile,
+		"keyFile", *keyFile,
 		"rootCA", *rootCA,
 	)
 
@@ -68,7 +68,7 @@ func main() {
 
 	opts := []grpc.ServerOption{}
 	if !*insecure {
-		certificate, err := tls.LoadX509KeyPair(*withCert, *withKey)
+		certificate, err := tls.LoadX509KeyPair(*certFile, *keyFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to load X509 key pair: %v", err)
 			os.Exit(1)
@@ -124,7 +124,8 @@ func main() {
 
 	logger.Info("SignerServer: Starting grpc server")
 	if err := s.Serve(lis); err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "Unable to listen on port %s. %v", *addr, err)
+		os.Exit(1)
 	}
 
 	// Stop upon receiving SIGTERM or CTRL-C.
@@ -134,7 +135,8 @@ func main() {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 			if err := httpSrv.Shutdown(ctx); err != nil {
-				panic(err)
+				fmt.Fprintf(os.Stderr, "Unable to stop http server. %v", err)
+				os.Exit(1)
 			}
 		}
 		s.GracefulStop()

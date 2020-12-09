@@ -139,13 +139,14 @@ priv_validator_state_file = "{{ js .BaseConfig.PrivValidatorState }}"
 # when the listenAddr is prefixed with grpc instead of tcp it will use the gRPC Client
 priv_validator_laddr = "{{ .BaseConfig.PrivValidatorListenAddr }}"
 
+# Client certificate generated while creating needed files for secure connection.
 # If a remote validator address is provided but no certificate, the connection will be insecure
 priv_validator_client_certificate = "{{ js .BaseConfig.PrivValidatorClientCertificate }}"
 
-# If a remote validator address is provided but no key, the connection will be insecure
+# Client key generated while creating certificates for secure connection
 priv_validator_client_key = "{{ js .BaseConfig.PrivValidatorClientKey }}"
 
-# If a remote validator address is provided but no atuhority, the connection will be insecure
+# Path Root Certificate Authority used to sign both client and server certificates
 priv_validator_certificate_authority = "{{ js .BaseConfig.PrivValidatorCertificateAuthority }}"
 
 # Path to the JSON file containing the private key to use for node authentication in the p2p protocol

@@ -10,6 +10,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
@@ -36,6 +37,7 @@ func TestGetPubKey(t *testing.T) {
 			s := tmgrpc.SignerServer{
 				ChainID: ChainID,
 				PrivVal: tc.pv,
+				Logger:  log.TestingLogger(),
 			}
 
 			req := &privvalproto.PubKeyRequest{ChainId: s.ChainID}
@@ -110,6 +112,7 @@ func TestSignVote(t *testing.T) {
 			s := tmgrpc.SignerServer{
 				ChainID: ChainID,
 				PrivVal: tc.pv,
+				Logger:  log.TestingLogger(),
 			}
 			req := &privvalproto.SignVoteRequest{ChainId: s.ChainID, Vote: tc.have.ToProto()}
 			resp, err := s.SignVote(context.Background(), req)
@@ -178,6 +181,7 @@ func TestSignProposal(t *testing.T) {
 			s := tmgrpc.SignerServer{
 				ChainID: ChainID,
 				PrivVal: tc.pv,
+				Logger:  log.TestingLogger(),
 			}
 			req := &privvalproto.SignProposalRequest{ChainId: s.ChainID, Proposal: tc.have.ToProto()}
 			resp, err := s.SignProposal(context.Background(), req)

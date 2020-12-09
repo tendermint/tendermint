@@ -47,6 +47,7 @@ func (ss *SignerServer) GetPubKey(ctx context.Context, req *privvalproto.PubKeyR
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error transitioning pubkey to proto: %v", err)
 	}
+
 	ss.Logger.Info("SignerServer: GetPubKey Success")
 
 	return &privvalproto.PubKeyResponse{PubKey: pk}, nil
@@ -80,5 +81,6 @@ func (ss *SignerServer) SignProposal(ctx context.Context, req *privvalproto.Sign
 	}
 
 	ss.Logger.Info("SignerServer: SignProposal Success")
+
 	return &privvalproto.SignedProposalResponse{Proposal: *proposal}, nil
 }
