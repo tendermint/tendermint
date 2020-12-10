@@ -126,7 +126,7 @@ func startNode(cfg *Config) error {
 	}
 	n, err := node.NewNode(tmcfg,
 		pval,
-		nodeKey,
+		*nodeKey,
 		proxy.NewLocalClientCreator(app),
 		node.DefaultGenesisDocProviderFunc(tmcfg),
 		node.DefaultDBProvider,
@@ -160,7 +160,7 @@ func startMaverick(cfg *Config) error {
 
 	n, err := maverick.NewNode(tmcfg,
 		maverick.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
-		nodeKey,
+		*nodeKey,
 		proxy.NewLocalClientCreator(app),
 		maverick.DefaultGenesisDocProviderFunc(tmcfg),
 		maverick.DefaultDBProvider,
@@ -256,5 +256,5 @@ func setupNode() (*config.Config, log.Logger, *p2p.NodeKey, error) {
 		return nil, nil, nil, fmt.Errorf("failed to load or gen node key %s: %w", tmcfg.NodeKeyFile(), err)
 	}
 
-	return tmcfg, nodeLogger, nodeKey, nil
+	return tmcfg, nodeLogger, &nodeKey, nil
 }
