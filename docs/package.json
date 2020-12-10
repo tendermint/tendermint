@@ -4,7 +4,7 @@
   "description": "Tendermint Core Documentation",
   "main": "index.js",
   "dependencies": {
-    "vuepress-theme-cosmos": "^1.0.178"
+    "vuepress-theme-cosmos": "^1.0.179"
   },
   "devDependencies": {
     "watchpack": "^2.1.0"
