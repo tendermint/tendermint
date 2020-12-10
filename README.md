@@ -156,3 +156,12 @@ Additional tooling can be found in [/docs/tools](/docs/tools).
 - [Original Whitepaper: "Tendermint: Consensus Without Mining"](https://tendermint.com/static/docs/tendermint.pdf)
 - [Tendermint Core Blog](https://medium.com/tendermint/tagged/tendermint-core)
 - [Cosmos Blog](https://blog.cosmos.network/tendermint/home)
+
+## Join us!
+
+Tendermint Core is maintained by [Interchain GmbH](https://interchain.berlin).
+If you'd like to work full-time on Tendermint Core, [we're hiring](https://interchain-gmbh.breezy.hr/p/682fb7e8a6f601-software-engineer-tendermint-core)!
+
+Funding for Tendermint Core development comes primarily from the [Interchain Foundation](https://interchain.io),
+a Swiss non-profit. The Tendermint trademark is owned by [Tendermint Inc.](https://tendermint.com), the for-profit entity
+ that also maintains [tendermint.com](https://tendermint.com).
