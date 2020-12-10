@@ -668,8 +668,7 @@ func NewNode(config *cfg.Config,
 		// FIXME: we should start services inside OnStart
 		switch protocol {
 		case "grpc":
-			grpcMetrics := grpc_prometheus.DefaultClientMetrics
-			privValidator, err = createAndStartPrivValidatorGRPCClient(config, address, genDoc.ChainID, logger, grpcMetrics)
+			privValidator, err = createAndStartPrivValidatorGRPCClient(config, address, genDoc.ChainID, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
 			}
@@ -1412,7 +1411,6 @@ func createAndStartPrivValidatorGRPCClient(
 	address,
 	chainID string,
 	logger log.Logger,
-	prom *grpc_prometheus.ClientMetrics,
 ) (types.PrivValidator, error) {
 	var transportSecurity grpc.DialOption
 	if config.BaseConfig.ArePrivValidatorClientSecurityOptionsPresent() {
@@ -1424,7 +1422,8 @@ func createAndStartPrivValidatorGRPCClient(
 	}
 	dialOptions := tmgrpc.DefaultDialOptions()
 	if config.Instrumentation.Prometheus {
-		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(prom.UnaryClientInterceptor()))
+		grpcMetrics := grpc_prometheus.DefaultClientMetrics
+		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(grpcMetrics.UnaryClientInterceptor()))
 	}
 
 	dialOptions = append(dialOptions, transportSecurity)
