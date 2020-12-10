@@ -20,7 +20,6 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	bcv0 "github.com/tendermint/tendermint/blockchain/v0"
-	bcv1 "github.com/tendermint/tendermint/blockchain/v1"
 	bcv2 "github.com/tendermint/tendermint/blockchain/v2"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
@@ -157,7 +156,7 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 // Option sets a parameter for the node.
 type Option func(*Node)
 
-// Temporary interface for switching to fast sync, we should get rid of v0 and v1 reactors.
+// Temporary interface for switching to fast sync, we should get rid of v0.
 // See: https://github.com/tendermint/tendermint/issues/4595
 type fastSyncReactor interface {
 	SwitchToFastSync(sm.State) error
@@ -408,8 +407,6 @@ func createBlockchainReactor(config *cfg.Config,
 	switch config.FastSync.Version {
 	case "v0":
 		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
-	case "v1":
-		bcReactor = bcv1.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	case "v2":
 		bcReactor = bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	default:
@@ -482,7 +479,7 @@ func createTransport(
 			connFilters,
 			// ABCI query for address filtering.
 			func(_ p2p.ConnSet, c net.Conn, _ []net.IP) error {
-				res, err := proxyApp.Query().QuerySync(abci.RequestQuery{
+				res, err := proxyApp.Query().QuerySync(context.Background(), abci.RequestQuery{
 					Path: fmt.Sprintf("/p2p/filter/addr/%s", c.RemoteAddr().String()),
 				})
 				if err != nil {
@@ -500,7 +497,7 @@ func createTransport(
 			peerFilters,
 			// ABCI query for ID filtering.
 			func(_ p2p.IPeerSet, p p2p.Peer) error {
-				res, err := proxyApp.Query().QuerySync(abci.RequestQuery{
+				res, err := proxyApp.Query().QuerySync(context.Background(), abci.RequestQuery{
 					Path: fmt.Sprintf("/p2p/filter/id/%s", p.ID()),
 				})
 				if err != nil {
@@ -1280,8 +1277,6 @@ func makeNodeInfo(
 	switch config.FastSync.Version {
 	case "v0":
 		bcChannel = bcv0.BlockchainChannel
-	case "v1":
-		bcChannel = bcv1.BlockchainChannel
 	case "v2":
 		bcChannel = bcv2.BlockchainChannel
 	default:
