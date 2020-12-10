@@ -21,6 +21,6 @@ func showNodeID(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println(nodeKey.ID())
+	fmt.Println(nodeKey.ID)
 	return nil
 }
