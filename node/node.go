@@ -668,8 +668,7 @@ func NewNode(config *cfg.Config,
 		// FIXME: we should start services inside OnStart
 		switch protocol {
 		case "grpc":
-			grpcMetrics := grpc_prometheus.NewClientMetrics()
-			prometheus.MustRegister(grpcMetrics)
+			grpcMetrics := grpc_prometheus.DefaultClientMetrics
 			privValidator, err = createAndStartPrivValidatorGRPCClient(config, address, genDoc.ChainID, logger, grpcMetrics)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
