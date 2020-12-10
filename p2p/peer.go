@@ -264,6 +264,11 @@ func newPeer(
 	return p
 }
 
+// onError calls the peer error callback.
+func (p *peer) onError(err interface{}) {
+	p.onPeerError(p, err)
+}
+
 // String representation.
 func (p *peer) String() string {
 	if p.outbound {
@@ -298,7 +303,7 @@ func (p *peer) processMessages() {
 	defer func() {
 		if r := recover(); r != nil {
 			p.Logger.Error("Peer message processing panic", "err", r, "stack", string(debug.Stack()))
-			p.onPeerError(p, fmt.Errorf("panic during peer message processing: %v", r))
+			p.onError(fmt.Errorf("panic during peer message processing: %v", r))
 		}
 	}()
 
@@ -306,12 +311,12 @@ func (p *peer) processMessages() {
 		chID, msg, err := p.conn.ReceiveMessage()
 		if err != nil {
 			// FIXME May need to handle io.EOF here
-			p.onPeerError(p, err)
+			p.onError(err)
 			return
 		}
 		reactor, ok := p.reactors[chID]
 		if !ok {
-			p.onPeerError(p, fmt.Errorf("unknown channel %v", chID))
+			p.onError(fmt.Errorf("unknown channel %v", chID))
 			return
 		}
 		reactor.Receive(chID, p, msg)
@@ -389,7 +394,7 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 		return false
 	} else if err != nil {
 		p.Logger.Error(fmt.Sprintf("Failed to send on channel 0x%x: %v", chID, err))
-		p.onPeerError(p, err)
+		p.onError(err)
 		return false
 	}
 	if res {
@@ -415,7 +420,7 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 		return false
 	} else if err != nil {
 		p.Logger.Error(fmt.Sprintf("Failed to send on channel 0x%x: %v", chID, err))
-		p.onPeerError(p, err)
+		p.onError(err)
 		return false
 	}
 	if res {
