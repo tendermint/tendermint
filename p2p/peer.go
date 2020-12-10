@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -286,25 +287,35 @@ func (p *peer) OnStart() error {
 		return err
 	}
 
-	go func() {
-		for {
-			chID, msg, err := p.conn.ReceiveMessage()
-			if err != nil {
-				p.onPeerError(p, err)
-				return
-			}
-			reactor, ok := p.reactors[chID]
-			if !ok {
-				p.Logger.Error("Received message for unknown channel", "channel", chID)
-				p.onPeerError(p, fmt.Errorf("unknown channel %v", chID))
-				return
-			}
-			reactor.Receive(chID, p, msg)
+	go p.processMessages()
+	go p.metricsReporter()
+
+	return nil
+}
+
+// processMessages processes messages received from the connection.
+func (p *peer) processMessages() {
+	defer func() {
+		if r := recover(); r != nil {
+			p.Logger.Error("Peer message processing panic", "err", r, "stack", string(debug.Stack()))
+			p.onPeerError(p, fmt.Errorf("panic during peer message processing: %v", r))
 		}
 	}()
 
-	go p.metricsReporter()
-	return nil
+	for {
+		chID, msg, err := p.conn.ReceiveMessage()
+		if err != nil {
+			// FIXME May need to handle io.EOF here
+			p.onPeerError(p, err)
+			return
+		}
+		reactor, ok := p.reactors[chID]
+		if !ok {
+			p.onPeerError(p, fmt.Errorf("unknown channel %v", chID))
+			return
+		}
+		reactor.Receive(chID, p, msg)
+	}
 }
 
 // FlushStop mimics OnStop but additionally ensures that all successful
@@ -493,44 +504,4 @@ func (p *peer) metricsReporter() {
 			return
 		}
 	}
-}
-
-//------------------------------------------------------------------
-// helper funcs
-
-func createMConnection(
-	conn net.Conn,
-	p *peer,
-	reactorsByCh map[byte]Reactor,
-	chDescs []*tmconn.ChannelDescriptor,
-	onPeerError func(Peer, interface{}),
-	config tmconn.MConnConfig,
-) *tmconn.MConnection {
-
-	onReceive := func(chID byte, msgBytes []byte) {
-		reactor := reactorsByCh[chID]
-		if reactor == nil {
-			// Note that its ok to panic here as it's caught in the conn._recover,
-			// which does onPeerError.
-			panic(fmt.Sprintf("Unknown channel %X", chID))
-		}
-		labels := []string{
-			"peer_id", string(p.ID()),
-			"chID", fmt.Sprintf("%#x", chID),
-		}
-		p.metrics.PeerReceiveBytesTotal.With(labels...).Add(float64(len(msgBytes)))
-		reactor.Receive(chID, p, msgBytes)
-	}
-
-	onError := func(r interface{}) {
-		onPeerError(p, r)
-	}
-
-	return tmconn.NewMConnectionWithConfig(
-		conn,
-		chDescs,
-		onReceive,
-		onError,
-		config,
-	)
 }
