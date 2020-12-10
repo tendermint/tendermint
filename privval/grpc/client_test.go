@@ -23,7 +23,7 @@ import (
 
 const chainID = "chain-id"
 
-func dialer(pv types.PrivValidator, logger log.Logger) func(context.Context, string) (net.Conn, error) {
+func dialer(pv types.PrivValidator, logger log.Logger) (*grpc.Server, func(context.Context, string) (net.Conn, error)) {
 	listener := bufconn.Listen(1024 * 1024)
 
 	server := grpc.NewServer()
@@ -38,7 +38,7 @@ func dialer(pv types.PrivValidator, logger log.Logger) func(context.Context, str
 		}
 	}()
 
-	return func(context.Context, string) (net.Conn, error) {
+	return server, func(context.Context, string) (net.Conn, error) {
 		return listener.Dial()
 	}
 }
@@ -48,8 +48,10 @@ func TestSignerClient_GetPubKey(t *testing.T) {
 	ctx := context.Background()
 	mockPV := types.NewMockPV()
 	logger := log.TestingLogger()
+	srv, dialer := dialer(mockPV, logger)
+	defer srv.Stop()
 
-	conn, err := grpc.DialContext(ctx, "", grpc.WithInsecure(), grpc.WithContextDialer(dialer(mockPV, logger)))
+	conn, err := grpc.DialContext(ctx, "", grpc.WithInsecure(), grpc.WithContextDialer(dialer))
 	if err != nil {
 		panic(err)
 	}
@@ -68,8 +70,10 @@ func TestSignerClient_SignVote(t *testing.T) {
 	ctx := context.Background()
 	mockPV := types.NewMockPV()
 	logger := log.TestingLogger()
+	srv, dialer := dialer(mockPV, logger)
+	defer srv.Stop()
 
-	conn, err := grpc.DialContext(ctx, "", grpc.WithInsecure(), grpc.WithContextDialer(dialer(mockPV, logger)))
+	conn, err := grpc.DialContext(ctx, "", grpc.WithInsecure(), grpc.WithContextDialer(dialer))
 	if err != nil {
 		panic(err)
 	}
@@ -119,8 +123,10 @@ func TestSignerClient_SignProposal(t *testing.T) {
 	ctx := context.Background()
 	mockPV := types.NewMockPV()
 	logger := log.TestingLogger()
+	srv, dialer := dialer(mockPV, logger)
+	defer srv.Stop()
 
-	conn, err := grpc.DialContext(ctx, "", grpc.WithInsecure(), grpc.WithContextDialer(dialer(mockPV, logger)))
+	conn, err := grpc.DialContext(ctx, "", grpc.WithInsecure(), grpc.WithContextDialer(dialer))
 	if err != nil {
 		panic(err)
 	}
