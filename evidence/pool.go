@@ -118,37 +118,35 @@ func (evpool *Pool) Update(state sm.State, ev types.EvidenceList) {
 
 // AddEvidence checks the evidence is valid and adds it to the pool.
 func (evpool *Pool) AddEvidence(ev types.Evidence) error {
-	evpool.logger.Debug("Attempting to add evidence", "ev", ev)
+	evpool.logger.Debug("attempting to add evidence", "evidence", ev)
 
 	// We have already verified this piece of evidence - no need to do it again
 	if evpool.isPending(ev) {
-		evpool.logger.Info("Evidence already pending, ignoring this one", "ev", ev)
+		evpool.logger.Info("evidence already pending; ignoring", "evidence", ev)
 		return nil
 	}
 
 	// check that the evidence isn't already committed
 	if evpool.isCommitted(ev) {
-		// this can happen if the peer that sent us the evidence is behind so we shouldn't
-		// punish the peer.
-		evpool.logger.Debug("Evidence was already committed, ignoring this one", "ev", ev)
+		// This can happen if the peer that sent us the evidence is behind so we
+		// shouldn't punish the peer.
+		evpool.logger.Debug("evidence was already committed; ignoring", "evidence", ev)
 		return nil
 	}
 
 	// 1) Verify against state.
-	err := evpool.verify(ev)
-	if err != nil {
+	if err := evpool.verify(ev); err != nil {
 		return types.NewErrInvalidEvidence(ev, err)
 	}
 
 	// 2) Save to store.
 	if err := evpool.addPendingEvidence(ev); err != nil {
-		return fmt.Errorf("can't add evidence to pending list: %w", err)
+		return fmt.Errorf("failed to add evidence to pending list: %w", err)
 	}
 
 	// 3) Add evidence to clist.
 	evpool.evidenceList.PushBack(ev)
-
-	evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
+	evpool.logger.Info("verified new evidence of byzantine behavior", "evidence", ev)
 
 	return nil
 }

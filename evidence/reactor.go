@@ -142,10 +142,6 @@ func (r *Reactor) handleEvidenceMessage(envelope p2p.Envelope) error {
 
 				// If we're given invalid evidence by the peer, notify the router that
 				// we should remove this peer by returning an error.
-				//
-				// TODO:
-				// 1. Ensure ErrInvalidEvidence is only returned on invalid evidence and
-				// not for other superfluous reasons.
 				if _, ok := err.(*types.ErrInvalidEvidence); ok {
 					return err
 				}
@@ -210,6 +206,13 @@ func (r *Reactor) processEvidenceCh() {
 // will check if an evidence broadcasting goroutine needs to be started. For
 // down or removed peers, it will check if an evidence broadcasting goroutine
 // exists and signal that it should exit.
+//
+// FIXME: The peer may be behind in which case it would simply ignore the
+// evidence and treat it as invalid. This would cause the peer to disconnect.
+// The peer may also receive the same piece of evidence multiple times if it
+// connects/disconnects frequently from the broadcasting peer(s).
+//
+// REF: https://github.com/tendermint/tendermint/issues/4727
 func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
@@ -229,12 +232,6 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) (err error) {
 		// a new done channel so we can explicitly close the goroutine if the peer
 		// is later removed, we increment the waitgroup so the reactor can stop
 		// safely, and finally start the goroutine to broadcast evidence to that peer.
-		//
-		// NOTE: The peer may be behind in which case it would simply ignore the
-		// evidence. The peer may also receive the same piece of evidence multiple
-		// times if it connects/disconnects frequently from the broadcasting peer(s).
-		//
-		// REF: https://github.com/tendermint/tendermint/issues/4727
 		_, ok := r.peerRoutines[peerUpdate.PeerID.String()]
 		if !ok {
 			r.peerRoutines[peerUpdate.PeerID.String()] = make(chan struct{})
