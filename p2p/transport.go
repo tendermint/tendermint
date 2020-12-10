@@ -13,11 +13,6 @@ import (
 
 // Transport is an arbitrary mechanism for exchanging bytes with a peer.
 type Transport interface {
-	// Listen begins listening on the given endpoint.
-	// FIXME This is mostly here for compatibility with existing code, we
-	// should consider removing it when we rewrite the P2P code.
-	Listen(Endpoint) error
-
 	// Accept waits for the next inbound connection on a listening endpoint.
 	Accept(context.Context) (Connection, error)
 
@@ -29,8 +24,7 @@ type Transport interface {
 	// valid), as they should be preprocessed before being advertised.
 	Endpoints() []Endpoint
 
-	// Close stops listening, but does not close active connections -- these
-	// must be closed individually.
+	// Close stops accepting new connections, but does not close active connections.
 	Close() error
 
 	// SetChannelDescriptors sets the channel descriptors for the transport.

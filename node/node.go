@@ -180,7 +180,7 @@ type Node struct {
 	privValidator types.PrivValidator // local node's validator key
 
 	// network
-	transport   p2p.Transport
+	transport   *p2p.MConnTransport
 	sw          *p2p.Switch  // p2p connections
 	addrBook    pex.AddrBook // known peers
 	nodeInfo    p2p.NodeInfo
@@ -415,7 +415,7 @@ func createTransport(
 	nodeKey *p2p.NodeKey,
 	proxyApp proxy.AppConns,
 ) (
-	p2p.Transport,
+	*p2p.MConnTransport,
 	[]p2p.PeerFilterFunc,
 ) {
 	var (
@@ -467,15 +467,11 @@ func createTransport(
 		)
 	}
 
-	// Limit the number of incoming connections.
-	max := config.P2P.MaxNumInboundPeers + len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
-
-	logger = logger.With("module", "transport")
-
 	transport := p2p.NewMConnTransport(
 		logger, nodeInfo, nodeKey.PrivKey, p2p.MConnConfig(config.P2P),
 		p2p.MConnTransportConnFilters(connFilters...),
-		p2p.MConnTransportMaxIncomingConnections(max),
+		p2p.MConnTransportMaxIncomingConnections(config.P2P.MaxNumInboundPeers+
+			len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))),
 	)
 
 	return transport, peerFilters
@@ -889,13 +885,7 @@ func (n *Node) OnStart() error {
 	if err != nil {
 		return err
 	}
-	endpoint := p2p.Endpoint{ // FIXME Should construct this directly
-		PeerID:   addr.ID,
-		Protocol: p2p.MConnProtocol,
-		IP:       addr.IP,
-		Port:     addr.Port,
-	}
-	if err := n.transport.Listen(endpoint); err != nil {
+	if err := n.transport.Listen(addr.Endpoint()); err != nil {
 		return err
 	}
 
