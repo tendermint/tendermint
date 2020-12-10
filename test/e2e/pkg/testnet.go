@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
+	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -355,8 +356,24 @@ func (n Node) Validate(testnet Testnet) error {
 		return errors.New("must be using \"file\" privval protocol to implement misbehaviors")
 	}
 
-	if len(n.Misbehaviors) > 0 {
-		panic("no maverick")
+	for height, misbehavior := range n.Misbehaviors {
+		if height < n.StartAt {
+			return fmt.Errorf("misbehavior height %d is below node start height %d",
+				height, n.StartAt)
+		}
+		if height < testnet.InitialHeight {
+			return fmt.Errorf("misbehavior height %d is below network initial height %d",
+				height, testnet.InitialHeight)
+		}
+		exists := false
+		for possibleBehaviors := range mcs.MisbehaviorList {
+			if possibleBehaviors == misbehavior {
+				exists = true
+			}
+		}
+		if !exists {
+			return fmt.Errorf("misbehavior %s does not exist", misbehavior)
+		}
 	}
 
 	return nil
