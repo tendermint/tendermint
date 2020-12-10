@@ -16,6 +16,7 @@ var ShowValidatorCmd = &cobra.Command{
 	Aliases: []string{"show_validator"},
 	Short:   "Show this node's validator info",
 	RunE:    showValidator,
+	PreRun:  deprecateSnakeCase,
 }
 
 func showValidator(cmd *cobra.Command, args []string) error {
