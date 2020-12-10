@@ -8,11 +8,22 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 * Added `AbciVersion` to `RequestInfo`. Applications should check that the ABCI version they expect is being used in order to avoid unimplemented changes errors.
 
-* The method `SetOption` has been removed from the ABCI.Client interface. This feature was used in the early ABCI implementation's. 
+* The method `SetOption` has been removed from the ABCI.Client interface. This feature was used in the early ABCI implementation's.
 
 ### Config Changes
 
 * `fast_sync = "v1"` is no longer supported. Please use `v2` instead.
+
+### CLI Changes
+
+* If you had previously used `tendermint gen_node_key` to generate a new node
+  key, keep in mind that it no longer saves the output to a file. You can use
+  `tendermint init` or pipe the output of `tendermint gen_node_key` to
+  `$TMHOME/config/node_key.json`:
+
+  ```
+  $ tendermint gen_node_key > $TMHOME/config/node_key.json
+  ```
 
 ## v0.34.0
 
