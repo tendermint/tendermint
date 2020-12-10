@@ -341,7 +341,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 // processSnapshotCh initiates a blocking process where we listen for and handle
 // envelopes on the SnapshotChannel. Any error encountered during message
 // execution will result in a PeerError being sent on the SnapshotChannel. When
-// the reactor is stopped, we will catch the singal and close the p2p Channel
+// the reactor is stopped, we will catch the signal and close the p2p Channel
 // gracefully.
 func (r *Reactor) processSnapshotCh() {
 	defer r.snapshotCh.Close()
@@ -367,7 +367,7 @@ func (r *Reactor) processSnapshotCh() {
 // processChunkCh initiates a blocking process where we listen for and handle
 // envelopes on the ChunkChannel. Any error encountered during message
 // execution will result in a PeerError being sent on the ChunkChannel. When
-// the reactor is stopped, we will catch the singal and close the p2p Channel
+// the reactor is stopped, we will catch the signal and close the p2p Channel
 // gracefully.
 func (r *Reactor) processChunkCh() {
 	defer r.chunkCh.Close()
@@ -419,7 +419,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) (err error) {
 }
 
 // processPeerUpdates initiates a blocking process where we listen for and handle
-// PeerUpdate messages. When the reactor is stopped, we will catch the singal and
+// PeerUpdate messages. When the reactor is stopped, we will catch the signal and
 // close the p2p PeerUpdatesCh gracefully.
 func (r *Reactor) processPeerUpdates() {
 	defer r.peerUpdates.Close()
