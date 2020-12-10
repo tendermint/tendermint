@@ -10,6 +10,7 @@ import (
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
 	"time"
 
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
@@ -667,7 +668,9 @@ func NewNode(config *cfg.Config,
 		// FIXME: we should start services inside OnStart
 		switch protocol {
 		case "grpc":
-			privValidator, err = createAndStartPrivValidatorGRPCClient(config, address, genDoc.ChainID, logger)
+			grpcMetrics := grpc_prometheus.NewClientMetrics()
+			prometheus.MustRegister(grpcMetrics)
+			privValidator, err = createAndStartPrivValidatorGRPCClient(config, address, genDoc.ChainID, logger, grpcMetrics)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
 			}
@@ -1391,6 +1394,7 @@ func createAndStartPrivValidatorGRPCClient(
 	address,
 	chainID string,
 	logger log.Logger,
+	prom *grpc_prometheus.ClientMetrics,
 ) (types.PrivValidator, error) {
 	var transportSecurity grpc.DialOption
 	if config.PrivValidatorClientCertificate != "" &&
@@ -1403,6 +1407,9 @@ func createAndStartPrivValidatorGRPCClient(
 		logger.Info("Using an insecure gRPC connection!")
 	}
 	dialOptions := tmgrpc.DefaultDialOptions()
+	if config.Instrumentation.Prometheus {
+		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(prom.UnaryClientInterceptor()))
+	}
 
 	dialOptions = append(dialOptions, transportSecurity)
 

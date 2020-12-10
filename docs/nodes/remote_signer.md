@@ -58,14 +58,9 @@ There are two ways to generate certificates, [openssl](https://www.openssl.org/)
   - For generalization purposes we set the ip to `127.0.0.1`, but for your node please use the clients IP.
 - Sign the clients certificate with your certificate authority
 
-  ```sh
-
+```sh
 # generate client cerificate
-
  certstrap request-cert -cn client -ip 127.0.0.1
-
 # self-sign client cerificate with rootCA
-
  certstrap sign client --CA "<name_CA>" 127.0.0.1
-
 ```
