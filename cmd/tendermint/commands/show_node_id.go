@@ -14,6 +14,7 @@ var ShowNodeIDCmd = &cobra.Command{
 	Aliases: []string{"show_node_id"},
 	Short:   "Show this node's ID",
 	RunE:    showNodeID,
+	PreRun:  deprecateSnakeCase,
 }
 
 func showNodeID(cmd *cobra.Command, args []string) error {

@@ -18,6 +18,7 @@ var ResetAllCmd = &cobra.Command{
 	Aliases: []string{"unsafe_reset_all"},
 	Short:   "(unsafe) Remove all the data and WAL, reset this node's validator to genesis state",
 	Run:     resetAll,
+	PreRun:  deprecateSnakeCase,
 }
 
 var keepAddrBook bool
@@ -34,6 +35,7 @@ var ResetPrivValidatorCmd = &cobra.Command{
 	Aliases: []string{"unsafe_reset_priv_validator"},
 	Short:   "(unsafe) Reset this node's validator to genesis state",
 	Run:     resetPrivValidator,
+	PreRun:  deprecateSnakeCase,
 }
 
 // XXX: this is totally unsafe.
