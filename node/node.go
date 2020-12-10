@@ -1416,9 +1416,7 @@ func createAndStartPrivValidatorGRPCClient(
 	prom *grpc_prometheus.ClientMetrics,
 ) (types.PrivValidator, error) {
 	var transportSecurity grpc.DialOption
-	if config.PrivValidatorClientCertificate != "" &&
-		config.PrivValidatorClientKey != "" &&
-		config.PrivValidatorCertificateAuthority != "" {
+	if config.BaseConfig.ArePrivValidatorClientSecurityOptionsPresent() {
 		transportSecurity = tmgrpc.GenerateTLS(config.PrivValidatorClientCertificateFile(),
 			config.PrivValidatorClientKeyFile(), config.PrivValidatorCertificateAuthorityFile())
 	} else {

@@ -298,6 +298,19 @@ func (cfg BaseConfig) DBDir() string {
 	return rootify(cfg.DBPath, cfg.RootDir)
 }
 
+func (cfg *BaseConfig) ArePrivValidatorClientSecurityOptionsPresent() bool {
+	switch {
+	case cfg.PrivValidatorCertificateAuthority == "":
+		return false
+	case cfg.PrivValidatorClientKey == "":
+		return false
+	case cfg.PrivValidatorClientCertificate == "":
+		return false
+	default:
+		return true
+	}
+}
+
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg BaseConfig) ValidateBasic() error {
