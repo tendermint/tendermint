@@ -393,7 +393,6 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	if err == io.EOF {
 		return false
 	} else if err != nil {
-		p.Logger.Error(fmt.Sprintf("Failed to send on channel 0x%x: %v", chID, err))
 		p.onError(err)
 		return false
 	}
@@ -419,7 +418,6 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	if err == io.EOF {
 		return false
 	} else if err != nil {
-		p.Logger.Error(fmt.Sprintf("Failed to send on channel 0x%x: %v", chID, err))
 		p.onError(err)
 		return false
 	}
