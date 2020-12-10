@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -179,12 +178,10 @@ func MakeSwitch(
 	opts ...SwitchOption,
 ) *Switch {
 
-	nodeKey := NodeKey{
-		PrivKey: ed25519.GenPrivKey(),
-	}
-	nodeInfo := testNodeInfo(nodeKey.ID(), fmt.Sprintf("node%d", i))
+	nodeKey := GenNodeKey()
+	nodeInfo := testNodeInfo(nodeKey.ID, fmt.Sprintf("node%d", i))
 	addr, err := NewNetAddressString(
-		IDAddressString(nodeKey.ID(), nodeInfo.(DefaultNodeInfo).ListenAddr),
+		IDAddressString(nodeKey.ID, nodeInfo.(DefaultNodeInfo).ListenAddr),
 	)
 	if err != nil {
 		panic(err)
@@ -202,8 +199,8 @@ func MakeSwitch(
 
 	// TODO: let the config be passed in?
 	sw := initSwitch(i, NewSwitch(cfg, t, opts...))
-	sw.SetLogger(logger)
-	sw.SetNodeKey(&nodeKey)
+	sw.SetLogger(log.TestingLogger().With("switch", i))
+	sw.SetNodeKey(nodeKey)
 
 	if err := t.Listen(endpoint); err != nil {
 		panic(err)

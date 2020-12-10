@@ -6,8 +6,8 @@ BUILDDIR ?= $(CURDIR)/build
 BUILD_TAGS?=tendermint
 
 # If building a release, please checkout the version tag to get the correct version setting
-ifneq ($(shell git branch --show-current),)
-VERSION := unreleased-$(shell git branch --show-current)-$(shell git rev-parse HEAD)
+ifneq ($(shell git symbolic-ref -q --short HEAD),)
+VERSION := unreleased-$(shell git symbolic-ref -q --short HEAD)-$(shell git rev-parse HEAD)
 else
 VERSION := $(shell git describe)
 endif
