@@ -525,6 +525,14 @@ func (c *mConnConnection) onError(e interface{}) {
 	}
 }
 
+// String displays connection information.
+// FIXME This is here for backwards compatibility with existing code,
+// it should probably just return RemoteEndpoint().String(), if anything.
+func (c *mConnConnection) String() string {
+	endpoint := c.RemoteEndpoint()
+	return fmt.Sprintf("MConn{%v:%v}", endpoint.IP, endpoint.Port)
+}
+
 // SendMessage implements Connection.
 func (c *mConnConnection) SendMessage(channelID byte, msg []byte) (bool, error) {
 	// We don't check chError here, to preserve old MConnection behavior.
