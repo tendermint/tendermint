@@ -10,6 +10,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - CLI/RPC/Config
 
+  - [cli] \#5786 deprecate snake_case commands for hyphen-case (@cmwaters)
+
 - Apps
 
 - P2P Protocol
