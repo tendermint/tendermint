@@ -231,6 +231,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.P2P.AddrBookStrict = false
 	cfg.DBBackend = node.Database
 	cfg.StateSync.DiscoveryTime = 5 * time.Second
+	cfg.Mode = string(node.Mode)
 
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:

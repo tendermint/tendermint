@@ -1027,8 +1027,10 @@ func (n *Node) OnStart() error {
 	}
 
 	// Start the real state sync reactor separately since the switch uses the shim.
-	if err := n.stateSyncReactor.Start(); err != nil {
-		return err
+	if n.config.Mode != cfg.ModeSeedNode {
+		if err := n.stateSyncReactor.Start(); err != nil {
+			return err
+		}
 	}
 
 	// Always connect to persistent peers

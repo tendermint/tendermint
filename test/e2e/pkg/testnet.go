@@ -33,8 +33,8 @@ type Perturbation string
 
 const (
 	ModeValidator Mode = "validator"
-	ModeFull      Mode = "full"
-	ModeSeed      Mode = "seed"
+	ModeFull      Mode = "fullnode"
+	ModeSeed      Mode = "seednode"
 
 	ProtocolBuiltin Protocol = "builtin"
 	ProtocolFile    Protocol = "file"

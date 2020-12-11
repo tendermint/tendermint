@@ -54,7 +54,7 @@ type Manifest struct {
 
 // ManifestNode represents a node in a testnet manifest.
 type ManifestNode struct {
-	// Mode specifies the type of node: "validator", "full", or "seed". Defaults to
+	// Mode specifies the type of node: "validator", "fullnode", or "seednode". Defaults to
 	// "validator". Full nodes do not get a signing key (a dummy key is generated),
 	// and seed nodes run in seed mode with the PEX reactor enabled.
 	Mode string `toml:"mode"`
