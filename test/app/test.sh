@@ -17,7 +17,7 @@ function kvstore_over_socket(){
     echo "Starting kvstore_over_socket"
     abci-cli kvstore > /dev/null &
     pid_kvstore=$!
-    tendermint node > tendermint.log &
+    tendermint start > tendermint.log &
     pid_tendermint=$!
     sleep 5
 
@@ -32,7 +32,7 @@ function kvstore_over_socket_reorder(){
     rm -rf $TMHOME
     tendermint init
     echo "Starting kvstore_over_socket_reorder (ie. start tendermint first)"
-    tendermint node > tendermint.log &
+    tendermint start > tendermint.log &
     pid_tendermint=$!
     sleep 2
     abci-cli kvstore > /dev/null &
@@ -52,7 +52,7 @@ function counter_over_socket() {
     echo "Starting counter_over_socket"
     abci-cli counter --serial > /dev/null &
     pid_counter=$!
-    tendermint node > tendermint.log &
+    tendermint start > tendermint.log &
     pid_tendermint=$!
     sleep 5
 
@@ -68,7 +68,7 @@ function counter_over_grpc() {
     echo "Starting counter_over_grpc"
     abci-cli counter --serial --abci grpc > /dev/null &
     pid_counter=$!
-    tendermint node --abci grpc > tendermint.log &
+    tendermint start --abci grpc > tendermint.log &
     pid_tendermint=$!
     sleep 5
 
@@ -86,7 +86,7 @@ function counter_over_grpc_grpc() {
     pid_counter=$!
     sleep 1
     GRPC_PORT=36656
-    tendermint node --abci grpc --rpc.grpc_laddr tcp://localhost:$GRPC_PORT > tendermint.log &
+    tendermint start --abci grpc --rpc.grpc-laddr tcp://localhost:$GRPC_PORT > tendermint.log &
     pid_tendermint=$!
     sleep 5
 
