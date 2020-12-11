@@ -69,7 +69,7 @@ var ConnDuplicateIPFilter ConnFilterFunc = func(cs ConnSet, c net.Conn, ips []ne
 // MConnTransport is a Transport implementation using the current multiplexed
 // Tendermint protocol ("MConn"). It inherits lots of code and logic from the
 // previous implementation for parity with the current P2P stack (such as
-// connection filtering, peer verification, and panic handling), this should be
+// connection filtering, peer verification, and panic handling), which should be
 // moved out of the transport once the rest of the P2P stack is rewritten.
 type MConnTransport struct {
 	privKey      crypto.PrivKey
@@ -82,12 +82,13 @@ type MConnTransport struct {
 	handshakeTimeout       time.Duration
 	filterTimeout          time.Duration
 
-	logger      log.Logger
-	listener    net.Listener
-	chAccept    chan *mConnConnection
-	chError     chan error
-	chClose     chan struct{}
-	chCloseOnce sync.Once
+	logger   log.Logger
+	listener net.Listener
+
+	closeOnce sync.Once
+	chAccept  chan *mConnConnection
+	chError   chan error
+	chClose   chan struct{}
 
 	// FIXME This is a vestige from the old transport, and should be managed
 	// by the router once we rewrite the P2P core.
@@ -107,7 +108,7 @@ func NewMConnTransport(
 		privKey:      privKey,
 		nodeInfo:     nodeInfo.(DefaultNodeInfo),
 		mConnConfig:  mConnConfig,
-		channelDescs: []*ChannelDescriptor{}, // FIXME Set by switch, for code compatibility
+		channelDescs: []*ChannelDescriptor{},
 
 		dialTimeout:      defaultDialTimeout,
 		handshakeTimeout: defaultHandshakeTimeout,
@@ -262,16 +263,18 @@ func (m *MConnTransport) Endpoints() []Endpoint {
 
 // Close implements Transport.
 func (m *MConnTransport) Close() error {
-	m.chCloseOnce.Do(func() { close(m.chClose) })
-	if m.listener != nil {
-		return m.listener.Close()
-	}
-	return nil
+	var err error
+	m.closeOnce.Do(func() {
+		if m.listener != nil {
+			err = m.listener.Close()
+		}
+		close(m.chClose)
+	})
+	return err
 }
 
 // filterTCPConn filters a TCP connection, rejecting it if this function errors.
 func (m *MConnTransport) filterTCPConn(tcpConn net.Conn) error {
-
 	if m.conns.Has(tcpConn) {
 		return ErrRejected{conn: tcpConn, isDuplicate: true}
 	}
@@ -341,15 +344,23 @@ func (m *MConnTransport) normalizeEndpoint(endpoint *Endpoint) error {
 // mConnConnection implements Connection for MConnTransport. It takes a base TCP
 // connection as input, and upgrades it to MConn with a handshake.
 type mConnConnection struct {
-	logger      log.Logger
-	transport   *MConnTransport
-	secretConn  *conn.SecretConnection
-	mConn       *conn.MConnection
-	nodeInfo    DefaultNodeInfo
-	chReceive   chan mConnMessage
-	chError     chan error
-	chClose     chan struct{}
-	chCloseOnce sync.Once
+	logger     log.Logger
+	transport  *MConnTransport
+	secretConn *conn.SecretConnection
+	mConn      *conn.MConnection
+
+	nodeInfo DefaultNodeInfo
+
+	closeOnce sync.Once
+	chReceive chan mConnMessage
+	chError   chan error
+	chClose   chan struct{}
+}
+
+// mConnMessage passes MConnection messages through internal channels.
+type mConnMessage struct {
+	channelID byte
+	payload   []byte
 }
 
 // newMConnConnection creates a new mConnConnection by handshaking
@@ -372,32 +383,21 @@ func newMConnConnection(
 		}
 	}()
 
-	err = tcpConn.SetDeadline(time.Now().Add(transport.handshakeTimeout))
-	if err != nil {
-		err = ErrRejected{
-			conn:          tcpConn,
-			err:           fmt.Errorf("secret conn failed: %v", err),
-			isAuthFailure: true,
-		}
-		return
-	}
-
 	c = &mConnConnection{
 		transport: transport,
 		chReceive: make(chan mConnMessage),
 		chError:   make(chan error),
 		chClose:   make(chan struct{}),
 	}
-	c.secretConn, err = conn.MakeSecretConnection(tcpConn, transport.privKey)
+	c.secretConn, err = upgradeSecretConn(tcpConn, transport.handshakeTimeout, transport.privKey)
 	if err != nil {
 		err = ErrRejected{
 			conn:          tcpConn,
 			err:           fmt.Errorf("secret conn failed: %v", err),
 			isAuthFailure: true,
 		}
-		return
 	}
-	c.nodeInfo, err = c.handshake()
+	c.nodeInfo, err = handshake(tcpConn, transport.handshakeTimeout, transport.nodeInfo)
 	if err != nil {
 		err = ErrRejected{
 			conn:          tcpConn,
@@ -406,6 +406,10 @@ func newMConnConnection(
 		}
 		return
 	}
+
+	// Validate node info.
+	// FIXME All of the ID verification code below should be moved to the
+	// router once implemented.
 	err = c.nodeInfo.Validate()
 	if err != nil {
 		err = ErrRejected{
@@ -415,9 +419,6 @@ func newMConnConnection(
 		}
 		return
 	}
-
-	// FIXME All of the ID verification code below should be moved to the
-	// router, or whatever ends up managing peer lifecycles.
 
 	// For outgoing conns, ensure connection key matches dialed key.
 	if expectPeerID != "" {
@@ -459,16 +460,6 @@ func newMConnConnection(
 		return
 	}
 
-	err = tcpConn.SetDeadline(time.Time{})
-	if err != nil {
-		err = ErrRejected{
-			conn:          tcpConn,
-			err:           fmt.Errorf("secret conn failed: %v", err),
-			isAuthFailure: true,
-		}
-		return
-	}
-
 	// Set up the MConnection wrapper
 	c.mConn = conn.NewMConnectionWithConfig(
 		c.secretConn,
@@ -477,30 +468,72 @@ func newMConnConnection(
 		c.onError,
 		transport.mConnConfig,
 	)
-	c.logger = transport.logger.With("peer", c.RemoteEndpoint().String())
+	// FIXME Log format is set up for compatibility with existing peer code.
+	c.logger = transport.logger.With("peer", c.RemoteEndpoint().NetAddress())
 	c.mConn.SetLogger(c.logger)
 	err = c.mConn.Start()
 	return c, err
 }
 
-// handshake performs an MConn handshake, returning the peer's node info.
-func (c *mConnConnection) handshake() (DefaultNodeInfo, error) {
-	var pbNodeInfo p2pproto.DefaultNodeInfo
-	chErr := make(chan error, 2)
-	go func() {
-		_, err := protoio.NewDelimitedWriter(c.secretConn).WriteMsg(c.transport.nodeInfo.ToProto())
-		chErr <- err
-	}()
-	go func() {
-		chErr <- protoio.NewDelimitedReader(c.secretConn, MaxNodeInfoSize()).ReadMsg(&pbNodeInfo)
-	}()
-	for i := 0; i < cap(chErr); i++ {
-		if err := <-chErr; err != nil {
+// handshake handshakes with a peer, returning its node info.
+// FIXME This function should be absorbed by newMConnConnection,
+// but is left for compatibility with existing P2P test code.
+func handshake(c net.Conn, timeout time.Duration, nodeInfo NodeInfo) (DefaultNodeInfo, error) {
+	if err := c.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return DefaultNodeInfo{}, err
+	}
+
+	var (
+		errc = make(chan error, 2)
+
+		pbpeerNodeInfo p2pproto.DefaultNodeInfo
+		peerNodeInfo   DefaultNodeInfo
+		ourNodeInfo    = nodeInfo.(DefaultNodeInfo)
+	)
+
+	go func(errc chan<- error, c net.Conn) {
+		_, err := protoio.NewDelimitedWriter(c).WriteMsg(ourNodeInfo.ToProto())
+		errc <- err
+	}(errc, c)
+	go func(errc chan<- error, c net.Conn) {
+		protoReader := protoio.NewDelimitedReader(c, MaxNodeInfoSize())
+		err := protoReader.ReadMsg(&pbpeerNodeInfo)
+		errc <- err
+	}(errc, c)
+
+	for i := 0; i < cap(errc); i++ {
+		err := <-errc
+		if err != nil {
 			return DefaultNodeInfo{}, err
 		}
 	}
 
-	return DefaultNodeInfoFromProto(&pbNodeInfo)
+	peerNodeInfo, err := DefaultNodeInfoFromProto(&pbpeerNodeInfo)
+	if err != nil {
+		return DefaultNodeInfo{}, err
+	}
+
+	return peerNodeInfo, c.SetDeadline(time.Time{})
+}
+
+// upgradeSecretConn upgrades a connection to a SecretConnection.
+// FIXME This function should be absorbed by newMConnConnection, but
+// is left for compatibility with existing P2P test code.
+func upgradeSecretConn(
+	c net.Conn,
+	timeout time.Duration,
+	privKey crypto.PrivKey,
+) (*conn.SecretConnection, error) {
+	if err := c.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return nil, err
+	}
+
+	sc, err := conn.MakeSecretConnection(c, privKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return sc, sc.SetDeadline(time.Time{})
 }
 
 // onReceive is a callback for MConnection received messages.
@@ -606,32 +639,21 @@ func (c *mConnConnection) Status() conn.ConnectionStatus {
 
 // Close implements Connection.
 func (c *mConnConnection) Close() error {
-	return c.close(false)
-}
-
-// FlushClose implements Connection.
-func (c *mConnConnection) FlushClose() error {
-	return c.close(true)
-}
-
-// close closes the connection, flushing pending data if requested.
-func (c *mConnConnection) close(flush bool) error {
 	c.transport.conns.RemoveAddr(c.secretConn.RemoteAddr())
 	var err error
-	c.chCloseOnce.Do(func() {
-		if flush {
-			c.mConn.FlushStop()
-		} else {
-			err = c.mConn.Stop()
-		}
+	c.closeOnce.Do(func() {
+		err = c.mConn.Stop()
 		close(c.chClose)
 	})
 	return err
 }
 
-// mConnMessage is used to pass received MConnection messages
-// through internal channels.
-type mConnMessage struct {
-	channelID byte
-	payload   []byte
+// FlushClose implements Connection.
+func (c *mConnConnection) FlushClose() error {
+	c.transport.conns.RemoveAddr(c.secretConn.RemoteAddr())
+	c.closeOnce.Do(func() {
+		c.mConn.FlushStop()
+		close(c.chClose)
+	})
+	return nil
 }
