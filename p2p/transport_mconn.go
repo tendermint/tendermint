@@ -339,14 +339,14 @@ func (m *MConnTransport) normalizeEndpoint(endpoint *Endpoint) error {
 }
 
 // mConnConnection implements Connection for MConnTransport. It takes a base TCP
-// connection as input, and upgrades it to MConn with a handshake.
+// connection and upgrades it to MConnection over an encrypted SecretConnection.
 type mConnConnection struct {
 	logger     log.Logger
 	transport  *MConnTransport
 	secretConn *conn.SecretConnection
 	mConn      *conn.MConnection
 
-	nodeInfo DefaultNodeInfo
+	peerInfo DefaultNodeInfo
 
 	closeOnce sync.Once
 	chReceive chan mConnMessage
@@ -405,7 +405,7 @@ func newMConnConnection(
 		}
 		return
 	}
-	c.nodeInfo, err = c.handshake()
+	c.peerInfo, err = c.handshake()
 	if err != nil {
 		err = ErrRejected{
 			conn:          tcpConn,
@@ -418,7 +418,7 @@ func newMConnConnection(
 	// Validate node info.
 	// FIXME All of the ID verification code below should be moved to the
 	// router once implemented.
-	err = c.nodeInfo.Validate()
+	err = c.peerInfo.Validate()
 	if err != nil {
 		err = ErrRejected{
 			conn:              tcpConn,
@@ -447,22 +447,22 @@ func newMConnConnection(
 	}
 
 	// Reject self.
-	if transport.nodeInfo.ID() == c.nodeInfo.ID() {
+	if transport.nodeInfo.ID() == c.peerInfo.ID() {
 		err = ErrRejected{
-			addr:   *NewNetAddress(c.nodeInfo.ID(), c.secretConn.RemoteAddr()),
+			addr:   *NewNetAddress(c.peerInfo.ID(), c.secretConn.RemoteAddr()),
 			conn:   tcpConn,
-			id:     c.nodeInfo.ID(),
+			id:     c.peerInfo.ID(),
 			isSelf: true,
 		}
 		return
 	}
 
-	err = transport.nodeInfo.CompatibleWith(c.nodeInfo)
+	err = transport.nodeInfo.CompatibleWith(c.peerInfo)
 	if err != nil {
 		err = ErrRejected{
 			conn:           tcpConn,
 			err:            err,
-			id:             c.nodeInfo.ID(),
+			id:             c.peerInfo.ID(),
 			isIncompatible: true,
 		}
 		return
@@ -579,7 +579,7 @@ func (c *mConnConnection) ReceiveMessage() (byte, []byte, error) {
 
 // NodeInfo implements Connection.
 func (c *mConnConnection) NodeInfo() DefaultNodeInfo {
-	return c.nodeInfo
+	return c.peerInfo
 }
 
 // PubKey implements Connection.
@@ -589,7 +589,7 @@ func (c *mConnConnection) PubKey() crypto.PubKey {
 
 // LocalEndpoint implements Connection.
 func (c *mConnConnection) LocalEndpoint() Endpoint {
-	// FIXME For compatibility with existing P2P tests, we need to
+	// FIXME For compatibility with existing P2P tests we need to
 	// handle non-TCP connections. This should be removed.
 	endpoint := Endpoint{
 		Protocol: MConnProtocol,
@@ -604,11 +604,11 @@ func (c *mConnConnection) LocalEndpoint() Endpoint {
 
 // RemoteEndpoint implements Connection.
 func (c *mConnConnection) RemoteEndpoint() Endpoint {
-	// FIXME For compatibility with existing P2P tests, we need to
+	// FIXME For compatibility with existing P2P tests we need to
 	// handle non-TCP connections. This should be removed.
 	endpoint := Endpoint{
 		Protocol: MConnProtocol,
-		PeerID:   c.nodeInfo.ID(),
+		PeerID:   c.peerInfo.ID(),
 	}
 	if addr, ok := c.secretConn.RemoteAddr().(*net.TCPAddr); ok {
 		endpoint.IP = addr.IP

@@ -122,12 +122,12 @@ func createOutboundPeerAndPerformHandshake(
 	config *config.P2PConfig,
 	mConfig tmconn.MConnConfig,
 ) (*peer, error) {
-	pk := ed25519.GenPrivKey()
-	ourNodeInfo := testNodeInfo(PubKeyToID(pk.PubKey()), "host_peer")
-	transport := NewMConnTransport(log.TestingLogger(), ourNodeInfo, pk, mConfig)
 	chDescs := []*tmconn.ChannelDescriptor{
 		{ID: testCh, Priority: 1},
 	}
+	pk := ed25519.GenPrivKey()
+	ourNodeInfo := testNodeInfo(PubKeyToID(pk.PubKey()), "host_peer")
+	transport := NewMConnTransport(log.TestingLogger(), ourNodeInfo, pk, mConfig)
 	transport.SetChannelDescriptors(chDescs)
 	reactorsByCh := map[byte]Reactor{testCh: NewTestReactor(chDescs, true)}
 	pc, err := testOutboundPeerConn(transport, addr, config, false, pk)
