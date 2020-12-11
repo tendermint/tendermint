@@ -16,6 +16,7 @@ var GenNodeKeyCmd = &cobra.Command{
 	Aliases: []string{"gen_node_key"},
 	Short:   "Generate a node key for this node and print its ID",
 	RunE:    genNodeKey,
+	PreRun:  deprecateSnakeCase,
 }
 
 func genNodeKey(cmd *cobra.Command, args []string) error {

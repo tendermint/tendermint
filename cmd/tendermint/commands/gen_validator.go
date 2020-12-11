@@ -17,6 +17,7 @@ var GenValidatorCmd = &cobra.Command{
 	Aliases: []string{"gen_validator"},
 	Short:   "Generate new validator keypair",
 	Run:     genValidator,
+	PreRun:  deprecateSnakeCase,
 }
 
 func init() {
