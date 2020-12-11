@@ -141,7 +141,7 @@ func waitForEvidence(t *testing.T, evList types.EvidenceList, suites []*reactorT
 
 			// put the reaped evidence in a map so we can quickly check we got everything
 			evMap := make(map[string]types.Evidence)
-			for _, e := range evList {
+			for _, e := range localEvList {
 				evMap[string(e.Hash())] = e
 			}
 
@@ -185,10 +185,6 @@ func createEvidenceList(
 	return evList
 }
 
-// We have N evidence reactors connected to one another. The first reactor
-// receives a number of evidence at varying heights. We test that all
-// other reactors receive the evidence and add it to their own respective
-// evidence pools.
 func TestReactorBroadcastEvidence(t *testing.T) {
 	numSStores := 7
 
