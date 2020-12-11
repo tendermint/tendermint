@@ -23,7 +23,6 @@ import (
 
 var (
 	numEvidence = 10
-	timeout     = 120 * time.Second // ridiculously high because CircleCI is slow
 
 	rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
@@ -124,6 +123,8 @@ func createTestSuites(t *testing.T, stateStores []sm.Store, chBuf uint) []*react
 }
 
 func waitForEvidence(t *testing.T, evList types.EvidenceList, suites []*reactorTestSuite) {
+	t.Helper()
+
 	wg := new(sync.WaitGroup)
 
 	for _, suite := range suites {
@@ -185,28 +186,7 @@ func createEvidenceList(
 	return evList
 }
 
-func TestReactorBroadcastEvidence(t *testing.T) {
-	numSStores := 7
-
-	// create a stateDB for all test suites (nodes)
-	stateDBs := make([]sm.Store, numSStores)
-	val := types.NewMockPV()
-
-	// We need all validators saved for heights at least as high as we have
-	// evidence for.
-	height := int64(numEvidence) + 10
-	for i := 0; i < numSStores; i++ {
-		stateDBs[i] = initializeValidatorState(t, val, height)
-	}
-
-	// Create a series of test suites where each suite contains a reactor and
-	// evidence pool. In addition, we mark a primary suite and the rest are
-	// secondaries where each secondary is added as a peer via a PeerUpdate to the
-	// primary. As a result, the primary will gossip all evidence to each secondary.
-	testSuites := createTestSuites(t, stateDBs, 1)
-	primary := testSuites[0]
-	secondaries := testSuites[1:]
-
+func simulateRouter(testSuites []*reactorTestSuite) {
 	// create a mapping for efficient suite lookup by peer ID
 	suitesByPeerID := make(map[string]*reactorTestSuite)
 	for _, suite := range testSuites {
@@ -227,6 +207,36 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 			}
 		}(suite)
 	}
+}
+
+// TestReactorBroadcastEvidence creates an environment of multiple peers that
+// are all at the same height. One peer, designated as a primary, gossips all
+// evidence to the remaining peers.
+func TestReactorBroadcastEvidence(t *testing.T) {
+	numPeers := 7
+
+	// create a stateDB for all test suites (nodes)
+	stateDBs := make([]sm.Store, numPeers)
+	val := types.NewMockPV()
+
+	// We need all validators saved for heights at least as high as we have
+	// evidence for.
+	height := int64(numEvidence) + 10
+	for i := 0; i < numPeers; i++ {
+		stateDBs[i] = initializeValidatorState(t, val, height)
+	}
+
+	// Create a series of test suites where each suite contains a reactor and
+	// evidence pool. In addition, we mark a primary suite and the rest are
+	// secondaries where each secondary is added as a peer via a PeerUpdate to the
+	// primary. As a result, the primary will gossip all evidence to each secondary.
+	testSuites := createTestSuites(t, stateDBs, 1)
+	primary := testSuites[0]
+	secondaries := testSuites[1:]
+
+	// Simulate a router by listening for all outbound envelopes and proxying the
+	// envelope to the respective peer (suite).
+	simulateRouter(testSuites)
 
 	evList := createEvidenceList(t, primary.pool, val, numEvidence)
 
@@ -246,52 +256,78 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	for _, suite := range testSuites {
 		require.Equal(t, numEvidence, int(suite.pool.Size()))
 	}
+
+	// ensure all channels are drained
+	for _, suite := range testSuites {
+		require.Empty(t, suite.evidenceOutCh)
+	}
+}
+
+// TestReactorSelectiveBroadcast tests a context where we have two reactors
+// connected to one another but are at different heights. Reactor 1 which is
+// ahead receives a list of evidence.
+func TestReactorSelectiveBroadcast(t *testing.T) {
+	val := types.NewMockPV()
+	height1 := int64(numEvidence) + 10
+	height2 := int64(numEvidence) / 2
+
+	// stateDB1 is ahead of stateDB2
+	stateDB1 := initializeValidatorState(t, val, height1)
+	stateDB2 := initializeValidatorState(t, val, height2)
+
+	testSuites := createTestSuites(t, []sm.Store{stateDB1, stateDB2}, 1)
+	primary := testSuites[0]
+	secondaries := testSuites[1:]
+
+	// Simulate a router by listening for all outbound envelopes and proxying the
+	// envelope to the respective peer (suite).
+	simulateRouter(testSuites)
+
+	// Send a list valid evidence to the first reactor's, the one that is ahead,
+	// evidence pool.
+	evList := createEvidenceList(t, primary.pool, val, numEvidence)
+
+	// Add each secondary suite (node) as a peer to the primary suite (node). This
+	// will cause the primary to gossip all evidence to the secondaries.
+	for _, suite := range secondaries {
+		primary.peerUpdates.TestSend(p2p.PeerUpdate{
+			Status: p2p.PeerStatusNew,
+			PeerID: suite.peerID,
+		})
+	}
+
+	// All the secondaries should send a PeerError message on the evidence channel
+	// when receiving evidence they cannot add to their local pool, so we listen
+	// for all of these errors per secondary
+	var errWg sync.WaitGroup
+	errWg.Add(len(evList[numEvidence/2-1:]) * len(secondaries))
+
+	for _, suite := range secondaries {
+		go func(s *reactorTestSuite) {
+			for range s.evidencePeerErrCh {
+				errWg.Done()
+			}
+		}(suite)
+	}
+
+	// only ones less than the peers height should make it through
+	waitForEvidence(t, evList[:numEvidence/2-1], secondaries)
+
+	// wait till errors are received
+	errWg.Wait()
+
+	require.Equal(t, numEvidence, int(primary.pool.Size()))
+	require.Equal(t, len(evList[numEvidence/2-1:])+1, int(secondaries[0].pool.Size()))
+
+	// ensure all channels are drained
+	for _, suite := range testSuites {
+		require.Empty(t, suite.evidenceOutCh)
+	}
 }
 
 // ============================================================================
 // ============================================================================
 // ============================================================================
-
-// // We have two evidence reactors connected to one another but are at different heights.
-// // Reactor 1 which is ahead receives a number of evidence. It should only send the evidence
-// // that is below the height of the peer to that peer.
-// func TestReactorSelectiveBroadcast(t *testing.T) {
-// 	config := cfg.TestConfig()
-
-// 	val := types.NewMockPV()
-// 	height1 := int64(numEvidence) + 10
-// 	height2 := int64(numEvidence) / 2
-
-// 	// DB1 is ahead of DB2
-// 	stateDB1 := initializeValidatorState(val, height1)
-// 	stateDB2 := initializeValidatorState(val, height2)
-
-// 	// make reactors from statedb
-// 	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
-
-// 	// set the peer height on each reactor
-// 	for _, r := range reactors {
-// 		for _, peer := range r.Switch.Peers().List() {
-// 			ps := peerState{height1}
-// 			peer.Set(types.PeerStateKey, ps)
-// 		}
-// 	}
-
-// 	// update the first reactor peer's height to be very small
-// 	peer := reactors[0].Switch.Peers().List()[0]
-// 	ps := peerState{height2}
-// 	peer.Set(types.PeerStateKey, ps)
-
-// 	// send a bunch of valid evidence to the first reactor's evpool
-// 	evList := sendEvidence(t, pools[0], val, numEvidence)
-
-// 	// only ones less than the peers height should make it through
-// 	waitForEvidence(t, evList[:numEvidence/2-1], []*evidence.Pool{pools[1]})
-
-// 	// peers should still be connected
-// 	peers := reactors[1].Switch.Peers().List()
-// 	assert.Equal(t, 1, len(peers))
-// }
 
 // // This tests aims to ensure that reactors don't send evidence that they have committed or that ar
 // // not ready for the peer through three scenarios.
