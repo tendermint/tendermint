@@ -205,10 +205,9 @@ func (pc peerConn) ID() ID {
 
 // Return the IP from the connection RemoteAddr
 func (pc peerConn) RemoteIP() net.IP {
-	if pc.ip != nil {
-		return pc.ip
+	if pc.ip == nil {
+		pc.ip = pc.conn.RemoteEndpoint().IP
 	}
-	pc.ip = pc.conn.RemoteEndpoint().IP
 	return pc.ip
 }
 

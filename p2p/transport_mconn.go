@@ -13,7 +13,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/p2p/conn"
-	tmconn "github.com/tendermint/tendermint/p2p/conn"
 	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 
 	"golang.org/x/net/netutil"
@@ -76,7 +75,7 @@ type MConnTransport struct {
 	privKey      crypto.PrivKey
 	nodeInfo     DefaultNodeInfo
 	channelDescs []*ChannelDescriptor
-	mConnConfig  tmconn.MConnConfig
+	mConnConfig  conn.MConnConfig
 
 	maxIncomingConnections int
 	dialTimeout            time.Duration
@@ -101,7 +100,7 @@ func NewMConnTransport(
 	logger log.Logger,
 	nodeInfo NodeInfo, // FIXME should use DefaultNodeInfo, left for code compatibility
 	privKey crypto.PrivKey,
-	mConnConfig tmconn.MConnConfig,
+	mConnConfig conn.MConnConfig,
 	opts ...MConnTransportOption,
 ) *MConnTransport {
 	m := &MConnTransport{
@@ -344,8 +343,8 @@ func (m *MConnTransport) normalizeEndpoint(endpoint *Endpoint) error {
 type mConnConnection struct {
 	logger      log.Logger
 	transport   *MConnTransport
-	secretConn  *tmconn.SecretConnection
-	mConn       *tmconn.MConnection
+	secretConn  *conn.SecretConnection
+	mConn       *conn.MConnection
 	nodeInfo    DefaultNodeInfo
 	chReceive   chan mConnMessage
 	chError     chan error
@@ -359,7 +358,7 @@ func newMConnConnection(
 	transport *MConnTransport,
 	tcpConn net.Conn,
 	expectPeerID ID,
-) (conn *mConnConnection, err error) {
+) (c *mConnConnection, err error) {
 	// FIXME Since the MConnection code panics, we need to recover here
 	// and turn it into an error. Be careful not to alias err, so we can
 	// update it from within this function. We should remove panics instead.
@@ -383,13 +382,13 @@ func newMConnConnection(
 		return
 	}
 
-	conn = &mConnConnection{
+	c = &mConnConnection{
 		transport: transport,
 		chReceive: make(chan mConnMessage),
 		chError:   make(chan error),
 		chClose:   make(chan struct{}),
 	}
-	conn.secretConn, err = tmconn.MakeSecretConnection(tcpConn, transport.privKey)
+	c.secretConn, err = conn.MakeSecretConnection(tcpConn, transport.privKey)
 	if err != nil {
 		err = ErrRejected{
 			conn:          tcpConn,
@@ -398,7 +397,7 @@ func newMConnConnection(
 		}
 		return
 	}
-	conn.nodeInfo, err = conn.handshake()
+	c.nodeInfo, err = c.handshake()
 	if err != nil {
 		err = ErrRejected{
 			conn:          tcpConn,
@@ -407,7 +406,7 @@ func newMConnConnection(
 		}
 		return
 	}
-	err = conn.nodeInfo.Validate()
+	err = c.nodeInfo.Validate()
 	if err != nil {
 		err = ErrRejected{
 			conn:              tcpConn,
@@ -422,7 +421,7 @@ func newMConnConnection(
 
 	// For outgoing conns, ensure connection key matches dialed key.
 	if expectPeerID != "" {
-		peerID := PubKeyToID(conn.PubKey())
+		peerID := PubKeyToID(c.PubKey())
 		if expectPeerID != peerID {
 			err = ErrRejected{
 				conn: tcpConn,
@@ -439,22 +438,22 @@ func newMConnConnection(
 	}
 
 	// Reject self.
-	if transport.nodeInfo.ID() == conn.nodeInfo.ID() {
+	if transport.nodeInfo.ID() == c.nodeInfo.ID() {
 		err = ErrRejected{
-			addr:   *NewNetAddress(conn.nodeInfo.ID(), conn.secretConn.RemoteAddr()),
+			addr:   *NewNetAddress(c.nodeInfo.ID(), c.secretConn.RemoteAddr()),
 			conn:   tcpConn,
-			id:     conn.nodeInfo.ID(),
+			id:     c.nodeInfo.ID(),
 			isSelf: true,
 		}
 		return
 	}
 
-	err = transport.nodeInfo.CompatibleWith(conn.nodeInfo)
+	err = transport.nodeInfo.CompatibleWith(c.nodeInfo)
 	if err != nil {
 		err = ErrRejected{
 			conn:           tcpConn,
 			err:            err,
-			id:             conn.nodeInfo.ID(),
+			id:             c.nodeInfo.ID(),
 			isIncompatible: true,
 		}
 		return
@@ -471,17 +470,17 @@ func newMConnConnection(
 	}
 
 	// Set up the MConnection wrapper
-	conn.mConn = tmconn.NewMConnectionWithConfig(
-		conn.secretConn,
+	c.mConn = conn.NewMConnectionWithConfig(
+		c.secretConn,
 		transport.channelDescs,
-		conn.onReceive,
-		conn.onError,
+		c.onReceive,
+		c.onError,
 		transport.mConnConfig,
 	)
-	conn.logger = transport.logger.With("peer", conn.RemoteEndpoint().String())
-	conn.mConn.SetLogger(conn.logger)
-	err = conn.mConn.Start()
-	return
+	c.logger = transport.logger.With("peer", c.RemoteEndpoint().String())
+	c.mConn.SetLogger(c.logger)
+	err = c.mConn.Start()
+	return c, err
 }
 
 // handshake performs an MConn handshake, returning the peer's node info.
@@ -512,53 +511,39 @@ func (c *mConnConnection) onReceive(channelID byte, payload []byte) {
 	}
 }
 
-// onError is a callback for MConnection errors.
-func (c *mConnConnection) onError(err interface{}) {
-	switch err := err.(type) {
-	case error:
-		c.chError <- err
-	default:
-		c.chError <- fmt.Errorf("%v", err)
+// onError is a callback for MConnection errors. The error is passed to
+// chError, which is only consumed by ReceiveMessage() for parity with
+// the old MConnection behavior.
+func (c *mConnConnection) onError(e interface{}) {
+	err, ok := e.(error)
+	if !ok {
+		err = fmt.Errorf("%v", err)
+	}
+	select {
+	case c.chError <- err:
+	case <-c.chClose:
 	}
 }
 
 // SendMessage implements Connection.
 func (c *mConnConnection) SendMessage(channelID byte, msg []byte) (bool, error) {
-	var sent bool
+	// We don't check chError here, to preserve old MConnection behavior.
 	select {
-	case err := <-c.chError:
-		return false, err
 	case <-c.chClose:
 		return false, io.EOF
 	default:
-		sent = c.mConn.Send(channelID, msg)
-	}
-
-	select {
-	case err := <-c.chError:
-		return false, err
-	default:
-		return sent, nil
+		return c.mConn.Send(channelID, msg), nil
 	}
 }
 
 // TrySendMessage implements Connection.
 func (c *mConnConnection) TrySendMessage(channelID byte, msg []byte) (bool, error) {
-	var sent bool
+	// We don't check chError here, to preserve old MConnection behavior.
 	select {
-	case err := <-c.chError:
-		return false, err
 	case <-c.chClose:
 		return false, io.EOF
 	default:
-		sent = c.mConn.TrySend(channelID, msg)
-	}
-
-	select {
-	case err := <-c.chError:
-		return false, err
-	default:
-		return sent, nil
+		return c.mConn.TrySend(channelID, msg), nil
 	}
 }
 
