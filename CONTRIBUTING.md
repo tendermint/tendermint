@@ -106,12 +106,12 @@ specify exactly the dependency you want to update, eg.
 
 We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along with [gogoproto](https://github.com/gogo/protobuf) to generate code for use across Tendermint Core.
 
-For linting and checking breaking changes, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will need to have docker running locally. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
+For linting, checking breaking changes and generating proto stubs, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will need to have docker running locally. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
 
 There are two ways to generate your proto stubs.
 
 1. Use Docker, pull an image that will generate your proto stubs with no need to install anything. `make proto-gen-docker`
-2. Run `make proto-gen` after installing `protoc` and gogoproto, you can do this by running `make protobuf`.
+2. Run `make proto-gen` after installing `buf` and `gogoproto`, you can do this by running `make protobuf`.
 
 ### Installation Instructions
 
@@ -126,6 +126,21 @@ make install
 ```
 
 You should now be able to run `make proto-gen` from inside the root Tendermint directory to generate new files from proto files.
+
+### Visual Studio Code
+
+If you are a VS Code user, you may want to add the following to your `.vscode/settings.json`:  
+
+```json
+{	
+  "protoc": {	
+    "options": [	
+      "--proto_path=${workspaceRoot}/proto",	
+      "--proto_path=${workspaceRoot}/third_party/proto"	
+    ]	
+  }	
+}
+```
 
 ## Changelog
 
@@ -232,6 +247,36 @@ Each PR should have one commit once it lands on `master`; this can be accomplish
 
 #### Major Release
 
+This major release process assumes that this release was preceded by release candidates. 
+If there were no release candidates, and you'd like to cut a major release directly from master, see below. 
+
+1. Start on the latest RC branch (`RCx/vX.X.0`).
+2. Run integration tests.
+3. Branch off of the RC branch (`git checkout -b release-prep`) and prepare the release:
+   - "Squash" changes from the changelog entries for the RCs into a single entry, 
+      and add all changes included in `CHANGELOG_PENDING.md`. 
+      (Squashing includes both combining all entries, as well as removing or simplifying
+      any intra-RC changes. It may also help to alphabetize the entries by package name.)
+   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
+     all PRs 
+   - Ensure that UPGRADING.md is up-to-date and includes notes on any breaking changes
+      or other upgrading flows. 
+   - Bump P2P and block protocol versions in  `version.go`, if necessary
+   - Bump ABCI protocol version in `version.go`, if necessary
+   - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
+4. Open a PR with these changes against the RC branch (`RCx/vX.X.0`). 
+5. Once these changes are on the RC branch, branch off of the RC branch again to create a release branch:
+   - `git checkout RCx/vX.X.0`
+   - `git checkout -b release/vX.X.0` 
+6. Push a tag with prepared release details. This will trigger the actual release `vX.X.0`.
+   - `git tag -a vX.X.0 -m 'Release vX.X.0'`
+   - `git push origin vX.X.0`
+7. Make sure that `master` is updated with the latest `CHANGELOG.md`, `CHANGELOG_PENDING.md`, and `UPGRADING.md`. 
+8. Create the long-lived minor release branch `RC0/vX.X.1` for the next point release on this
+   new major release series. 
+
+##### Major Release (from `master`)
+
 1. Start on `master`
 2. Run integration tests (see `test_integrations` in Makefile)
 3. Prepare release in a pull request against `master` (to be squash merged):
@@ -250,45 +295,39 @@ Each PR should have one commit once it lands on `master`; this can be accomplish
 4. Push a tag with prepared release details (this will trigger the release `vX.X.0`)
    - `git tag -a vX.X.x -m 'Release vX.X.x'`
    - `git push origin vX.X.x`
-5. Update the changelog.md file on master with the releases changelog.
+5. Update the `CHANGELOG.md` file on master with the releases changelog.
 6. Delete any RC branches and tags for this release (if applicable)
 
-#### Minor Release
+#### Minor Release (Point Releases)
 
-Minor releases are done differently from major releases: They are built off of long-lived release candidate branches, rather than from master.
+Minor releases are done differently from major releases: They are built off of long-lived backport branches, rather than from master.
+Each release "line" (e.g. 0.34 or 0.33) has its own long-lived backport branch, and
+the backport branches have names like `v0.34.x` or `v0.33.x` (literally, `x`; it is not a placeholder in this case).
 
-1. Checkout the long-lived release candidate branch: `git checkout rcX/vX.X.X`
+As non-breaking changes land on `master`, they should also be backported (cherry-picked) to these backport branches.
+
+Minor releases don't have release candidates by default, although any tricky changes may merit a release candidate. 
+
+To create a minor release:
+
+1. Checkout the long-lived backport branch: `git checkout vX.X.x`
 2. Run integration tests: `make test_integrations`
-3. Prepare the release:
-   - copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
-   - run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
-   - run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
-   - reset the `CHANGELOG_PENDING.md`
-   - bump P2P and block protocol versions in  `version.go`, if necessary
-   - bump ABCI protocol version in `version.go`, if necessary
-   - make sure all significant breaking changes are covered in `UPGRADING.md`
+3. Check out a new branch and prepare the release:
+   - Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
+   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
+   - Run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
+   - Reset the `CHANGELOG_PENDING.md`
+   - Bump the ABCI version number, if necessary. 
+     (Note that ABCI follows semver, and that ABCI versions are the only versions 
+     which can change during minor releases, and only field additions are valid minor changes.)
    - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
-4. Create a release branch `release/vX.X.x` off the release candidate branch:
-   - `git checkout -b release/vX.X.x`
-   - `git push -u origin release/vX.X.x`
-   - Note that all branches prefixed with `release` are protected once pushed. You will need admin help to make any changes to the branch.
-5. Once the release branch has been approved, make sure to pull it locally, then push a tag.
+4. Open a PR with these changes that will land them back on `vX.X.x`
+5. Once this change has landed on the backport branch, make sure to pull it locally, then push a tag.
    - `git tag -a vX.X.x -m 'Release vX.X.x'`
    - `git push origin vX.X.x`
 6. Create a pull request back to master with the CHANGELOG & version changes from the latest release.
    - Remove all `R:minor` labels from the pull requests that were included in the release.
-   - Do not merge the release branch into master.
-7. Delete the former long lived release candidate branch once the release has been made.
-8. Create a new release candidate branch to be used for the next release.
-
-#### Backport Release
-
-1. Start from the existing release branch you want to backport changes to (e.g. v0.30)
-   Branch to a release/vX.X.X branch locally (e.g. release/v0.30.7)
-2. Cherry pick the commit(s) that contain the changes you want to backport (usually these commits are from squash-merged PRs which were already reviewed)
-3. Follow steps 2 and 3 from [Major Release](#major-release)
-4. Push changes to release/vX.X.X branch
-5. Open a PR against the existing vX.X branch
+   - Do not merge the backport branch into master.
 
 #### Release Candidates
 

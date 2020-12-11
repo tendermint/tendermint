@@ -10,8 +10,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
 func TestSIGHUP(t *testing.T) {
@@ -27,10 +25,9 @@ func TestSIGHUP(t *testing.T) {
 	dir, err := ioutil.TempDir("", "sighup_test")
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		os.RemoveAll(dir)
+		_ = os.RemoveAll(dir)
 	})
-	err = os.Chdir(dir)
-	require.NoError(t, err)
+	require.NoError(t, os.Chdir(dir))
 
 	// Create an AutoFile in the temporary directory
 	name := "sighup_test"
@@ -45,19 +42,16 @@ func TestSIGHUP(t *testing.T) {
 	require.NoError(t, err)
 
 	// Move the file over
-	err = os.Rename(name, name+"_old")
-	require.NoError(t, err)
+	require.NoError(t, os.Rename(name, name+"_old"))
 
 	// Move into a different temporary directory
 	otherDir, err := ioutil.TempDir("", "sighup_test_other")
 	require.NoError(t, err)
-	defer os.RemoveAll(otherDir)
-	err = os.Chdir(otherDir)
-	require.NoError(t, err)
+	t.Cleanup(func() { os.RemoveAll(otherDir) })
+	require.NoError(t, os.Chdir(otherDir))
 
 	// Send SIGHUP to self.
-	err = syscall.Kill(syscall.Getpid(), syscall.SIGHUP)
-	require.NoError(t, err)
+	require.NoError(t, syscall.Kill(syscall.Getpid(), syscall.SIGHUP))
 
 	// Wait a bit... signals are not handled synchronously.
 	time.Sleep(time.Millisecond * 10)
@@ -67,14 +61,13 @@ func TestSIGHUP(t *testing.T) {
 	require.NoError(t, err)
 	_, err = af.Write([]byte("Line 4\n"))
 	require.NoError(t, err)
-	err = af.Close()
-	require.NoError(t, err)
+	require.NoError(t, af.Close())
 
 	// Both files should exist
-	if body := tmos.MustReadFile(filepath.Join(dir, name+"_old")); string(body) != "Line 1\nLine 2\n" {
+	if body := mustReadFile(t, filepath.Join(dir, name+"_old")); string(body) != "Line 1\nLine 2\n" {
 		t.Errorf("unexpected body %s", body)
 	}
-	if body := tmos.MustReadFile(filepath.Join(dir, name)); string(body) != "Line 3\nLine 4\n" {
+	if body := mustReadFile(t, filepath.Join(dir, name)); string(body) != "Line 3\nLine 4\n" {
 		t.Errorf("unexpected body %s", body)
 	}
 
@@ -115,8 +108,7 @@ func TestAutoFileSize(t *testing.T) {
 	// First, create an AutoFile writing to a tempfile dir
 	f, err := ioutil.TempFile("", "sighup_test")
 	require.NoError(t, err)
-	err = f.Close()
-	require.NoError(t, err)
+	require.NoError(t, f.Close())
 
 	// Here is the actual AutoFile.
 	af, err := OpenAutoFile(f.Name())
@@ -136,14 +128,19 @@ func TestAutoFileSize(t *testing.T) {
 	require.NoError(t, err)
 
 	// 3. Not existing file
-	err = af.Close()
-	require.NoError(t, err)
-	err = os.Remove(f.Name())
-	require.NoError(t, err)
+	require.NoError(t, af.Close())
+	require.NoError(t, os.Remove(f.Name()))
 	size, err = af.Size()
 	require.EqualValues(t, 0, size, "Expected a new file to be empty")
 	require.NoError(t, err)
 
 	// Cleanup
-	_ = os.Remove(f.Name())
+	t.Cleanup(func() { os.Remove(f.Name()) })
+}
+
+func mustReadFile(t *testing.T, filePath string) []byte {
+	fileBytes, err := ioutil.ReadFile(filePath)
+	require.NoError(t, err)
+
+	return fileBytes
 }

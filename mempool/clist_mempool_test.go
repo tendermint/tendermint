@@ -1,6 +1,7 @@
 package mempool
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
@@ -313,11 +314,12 @@ func TestSerialReap(t *testing.T) {
 	}
 
 	commitRange := func(start, end int) {
+		ctx := context.Background()
 		// Deliver some txs.
 		for i := start; i < end; i++ {
 			txBytes := make([]byte, 8)
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
-			res, err := appConnCon.DeliverTxSync(abci.RequestDeliverTx{Tx: txBytes})
+			res, err := appConnCon.DeliverTxSync(ctx, abci.RequestDeliverTx{Tx: txBytes})
 			if err != nil {
 				t.Errorf("client error committing tx: %v", err)
 			}
@@ -326,7 +328,7 @@ func TestSerialReap(t *testing.T) {
 					res.Code, res.Data, res.Log)
 			}
 		}
-		res, err := appConnCon.CommitSync()
+		res, err := appConnCon.CommitSync(ctx)
 		if err != nil {
 			t.Errorf("client error committing: %v", err)
 		}
@@ -520,10 +522,11 @@ func TestMempoolTxsBytes(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	res, err := appConnCon.DeliverTxSync(abci.RequestDeliverTx{Tx: txBytes})
+	ctx := context.Background()
+	res, err := appConnCon.DeliverTxSync(ctx, abci.RequestDeliverTx{Tx: txBytes})
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Code)
-	res2, err := appConnCon.CommitSync()
+	res2, err := appConnCon.CommitSync(ctx)
 	require.NoError(t, err)
 	require.NotEmpty(t, res2.Data)
 

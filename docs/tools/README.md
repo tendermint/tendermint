@@ -1,7 +1,7 @@
 ---
 order: 1
 parent:
-  title: Tools
+  title: Tooling
   order: 6
 ---
 

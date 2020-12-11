@@ -48,6 +48,7 @@ message RequestInfo {
   string version       = 1;
   uint64 block_version = 2;
   uint64 p2p_version   = 3;
+  string abci_version = 4;
 }
 
 message RequestInitChain {
@@ -155,6 +156,7 @@ message ResponseFlush {}
 message ResponseInfo {
   string data = 1;
 
+  // this is the software version of the application. TODO: remove?
   string version     = 2;
   uint64 app_version = 3;
 

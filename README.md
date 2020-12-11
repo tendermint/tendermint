@@ -14,9 +14,9 @@ Or [Blockchain](<https://en.wikipedia.org/wiki/Blockchain_(database)>), for shor
 [![tendermint/tendermint](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
 [![Sourcegraph](https://sourcegraph.com/github.com/tendermint/tendermint/-/badge.svg)](https://sourcegraph.com/github.com/tendermint/tendermint?badge)
 
-| Branch | Tests                                                                                                                                                                                                                                                  | Coverage                                                                                                                             | Linting                                                                    |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| master | [![CircleCI](https://circleci.com/gh/tendermint/tendermint/tree/master.svg?style=shield)](https://circleci.com/gh/tendermint/tendermint/tree/master) </br> ![Tests](https://github.com/tendermint/tendermint/workflows/Tests/badge.svg?branch=master) | [![codecov](https://codecov.io/gh/tendermint/tendermint/branch/master/graph/badge.svg)](https://codecov.io/gh/tendermint/tendermint) | ![Lint](https://github.com/tendermint/tendermint/workflows/Lint/badge.svg) |
+| Branch | Tests                                                                                      | Coverage                                                                                                                             | Linting                                                                    |
+|--------|--------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
+| master | ![Tests](https://github.com/tendermint/tendermint/workflows/Tests/badge.svg?branch=master) | [![codecov](https://codecov.io/gh/tendermint/tendermint/branch/master/graph/badge.svg)](https://codecov.io/gh/tendermint/tendermint) | ![Lint](https://github.com/tendermint/tendermint/workflows/Lint/badge.svg) |
 
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine - written in any programming language -
 and securely replicates it on many machines.
@@ -42,12 +42,12 @@ contact us [over email](mailto:hello@interchain.berlin) or [join the chat](https
 
 To report a security vulnerability, see our [bug bounty
 program](https://hackerone.com/tendermint). 
-For examples of the kinds of bugs we're looking for, see [our security policy](SECURITY.md)
+For examples of the kinds of bugs we're looking for, see [our security policy](SECURITY.md).
 
 ## Minimum requirements
 
 | Requirement | Notes            |
-| ----------- | ---------------- |
+|-------------|------------------|
 | Go version  | Go1.15 or higher |
 
 ## Documentation
@@ -93,7 +93,6 @@ CHANGELOG even if they don't lead to MINOR version bumps:
 - crypto
 - config
 - libs
-    - bech32
     - bits
     - bytes
     - json
@@ -155,4 +154,14 @@ Additional tooling can be found in [/docs/tools](/docs/tools).
 - [The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)
 - [Master's Thesis on Tendermint](https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769)
 - [Original Whitepaper: "Tendermint: Consensus Without Mining"](https://tendermint.com/static/docs/tendermint.pdf)
-- [Blog](https://blog.cosmos.network/tendermint/home)
+- [Tendermint Core Blog](https://medium.com/tendermint/tagged/tendermint-core)
+- [Cosmos Blog](https://blog.cosmos.network/tendermint/home)
+
+## Join us!
+
+Tendermint Core is maintained by [Interchain GmbH](https://interchain.berlin).
+If you'd like to work full-time on Tendermint Core, [we're hiring](https://interchain-gmbh.breezy.hr/p/682fb7e8a6f601-software-engineer-tendermint-core)!
+
+Funding for Tendermint Core development comes primarily from the [Interchain Foundation](https://interchain.io),
+a Swiss non-profit. The Tendermint trademark is owned by [Tendermint Inc.](https://tendermint.com), the for-profit entity
+ that also maintains [tendermint.com](https://tendermint.com).

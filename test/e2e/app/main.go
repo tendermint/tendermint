@@ -12,6 +12,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
@@ -121,7 +122,7 @@ func startNode(cfg *Config) error {
 	}
 	n, err := node.NewNode(tmcfg,
 		pval,
-		nodeKey,
+		*nodeKey,
 		proxy.NewLocalClientCreator(app),
 		node.DefaultGenesisDocProviderFunc(tmcfg),
 		node.DefaultDBProvider,
@@ -155,7 +156,7 @@ func startMaverick(cfg *Config) error {
 
 	n, err := maverick.NewNode(tmcfg,
 		maverick.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
-		nodeKey,
+		*nodeKey,
 		proxy.NewLocalClientCreator(app),
 		maverick.DefaultGenesisDocProviderFunc(tmcfg),
 		maverick.DefaultDBProvider,
@@ -178,7 +179,7 @@ func startSigner(cfg *Config) error {
 	var dialFn privval.SocketDialer
 	switch protocol {
 	case "tcp":
-		dialFn = privval.DialTCPFn(address, 3*time.Second, filePV.Key.PrivKey)
+		dialFn = privval.DialTCPFn(address, 3*time.Second, ed25519.GenPrivKey())
 	case "unix":
 		dialFn = privval.DialUnixFn(address)
 	default:
@@ -232,5 +233,5 @@ func setupNode() (*config.Config, log.Logger, *p2p.NodeKey, error) {
 		return nil, nil, nil, fmt.Errorf("failed to load or gen node key %s: %w", tmcfg.NodeKeyFile(), err)
 	}
 
-	return tmcfg, nodeLogger, nodeKey, nil
+	return tmcfg, nodeLogger, &nodeKey, nil
 }

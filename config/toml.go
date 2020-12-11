@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -63,7 +64,7 @@ func WriteConfigFile(configFilePath string, config *Config) {
 		panic(err)
 	}
 
-	tmos.MustWriteFile(configFilePath, buffer.Bytes(), 0644)
+	mustWriteFile(configFilePath, buffer.Bytes(), 0644)
 }
 
 // Note: any changes to the comments/variables/mapstructure
@@ -386,7 +387,6 @@ temp_dir = "{{ .StateSync.TempDir }}"
 
 # Fast Sync version to use:
 #   1) "v0" (default) - the legacy fast sync implementation
-#   2) "v1" - refactor of v0 version for better testability
 #   2) "v2" - complete redesign of v0, optimized for testability & readability
 version = "{{ .FastSync.Version }}"
 
@@ -505,14 +505,20 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 			chainID = "tendermint_test"
 		}
 		testGenesis := fmt.Sprintf(testGenesisFmt, chainID)
-		tmos.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
+		mustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
 	}
 	// we always overwrite the priv val
-	tmos.MustWriteFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644)
-	tmos.MustWriteFile(privStateFilePath, []byte(testPrivValidatorState), 0644)
+	mustWriteFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644)
+	mustWriteFile(privStateFilePath, []byte(testPrivValidatorState), 0644)
 
 	config := TestConfig().SetRoot(rootDir)
 	return config
+}
+
+func mustWriteFile(filePath string, contents []byte, mode os.FileMode) {
+	if err := ioutil.WriteFile(filePath, contents, mode); err != nil {
+		tmos.Exit(fmt.Sprintf("failed to write file: %v", err))
+	}
 }
 
 var testGenesisFmt = `{

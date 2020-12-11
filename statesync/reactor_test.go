@@ -1,21 +1,136 @@
 package statesync
 
 import (
+	"context"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
-	p2pmocks "github.com/tendermint/tendermint/p2p/mocks"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	proxymocks "github.com/tendermint/tendermint/proxy/mocks"
+	"github.com/tendermint/tendermint/statesync/mocks"
 )
 
-func TestReactor_Receive_ChunkRequest(t *testing.T) {
+type reactorTestSuite struct {
+	reactor *Reactor
+	syncer  *syncer
+
+	conn          *proxymocks.AppConnSnapshot
+	connQuery     *proxymocks.AppConnQuery
+	stateProvider *mocks.StateProvider
+
+	snapshotChannel   *p2p.Channel
+	snapshotInCh      chan p2p.Envelope
+	snapshotOutCh     chan p2p.Envelope
+	snapshotPeerErrCh chan p2p.PeerError
+
+	chunkChannel   *p2p.Channel
+	chunkInCh      chan p2p.Envelope
+	chunkOutCh     chan p2p.Envelope
+	chunkPeerErrCh chan p2p.PeerError
+
+	peerUpdates *p2p.PeerUpdatesCh
+}
+
+func setup(
+	t *testing.T,
+	conn *proxymocks.AppConnSnapshot,
+	connQuery *proxymocks.AppConnQuery,
+	stateProvider *mocks.StateProvider,
+	chBuf uint,
+) *reactorTestSuite {
+	t.Helper()
+
+	if conn == nil {
+		conn = &proxymocks.AppConnSnapshot{}
+	}
+	if connQuery == nil {
+		connQuery = &proxymocks.AppConnQuery{}
+	}
+	if stateProvider == nil {
+		stateProvider = &mocks.StateProvider{}
+	}
+
+	rts := &reactorTestSuite{
+		snapshotInCh:      make(chan p2p.Envelope, chBuf),
+		snapshotOutCh:     make(chan p2p.Envelope, chBuf),
+		snapshotPeerErrCh: make(chan p2p.PeerError, chBuf),
+		chunkInCh:         make(chan p2p.Envelope, chBuf),
+		chunkOutCh:        make(chan p2p.Envelope, chBuf),
+		chunkPeerErrCh:    make(chan p2p.PeerError, chBuf),
+		peerUpdates:       p2p.NewPeerUpdates(),
+		conn:              conn,
+		connQuery:         connQuery,
+		stateProvider:     stateProvider,
+	}
+
+	rts.snapshotChannel = p2p.NewChannel(
+		SnapshotChannel,
+		new(ssproto.Message),
+		rts.snapshotInCh,
+		rts.snapshotOutCh,
+		rts.snapshotPeerErrCh,
+	)
+
+	rts.chunkChannel = p2p.NewChannel(
+		ChunkChannel,
+		new(ssproto.Message),
+		rts.chunkInCh,
+		rts.chunkOutCh,
+		rts.chunkPeerErrCh,
+	)
+
+	rts.reactor = NewReactor(
+		log.NewNopLogger(),
+		conn,
+		connQuery,
+		rts.snapshotChannel,
+		rts.chunkChannel,
+		rts.peerUpdates,
+		"",
+	)
+
+	rts.syncer = newSyncer(
+		log.NewNopLogger(),
+		conn,
+		connQuery,
+		stateProvider,
+		rts.snapshotOutCh,
+		rts.chunkOutCh,
+		"",
+	)
+
+	require.NoError(t, rts.reactor.Start())
+	require.True(t, rts.reactor.IsRunning())
+
+	t.Cleanup(func() {
+		require.NoError(t, rts.reactor.Stop())
+		require.False(t, rts.reactor.IsRunning())
+	})
+
+	return rts
+}
+
+func TestReactor_ChunkRequest_InvalidRequest(t *testing.T) {
+	rts := setup(t, nil, nil, nil, 2)
+
+	rts.chunkInCh <- p2p.Envelope{
+		From:    p2p.PeerID{0xAA},
+		Message: &ssproto.SnapshotsRequest{},
+	}
+
+	response := <-rts.chunkPeerErrCh
+	require.Error(t, response.Err)
+	require.Empty(t, rts.chunkOutCh)
+	require.Contains(t, response.Err.Error(), "received unknown message")
+	require.Equal(t, p2p.PeerID{0xAA}, response.PeerID)
+}
+
+func TestReactor_ChunkRequest(t *testing.T) {
 	testcases := map[string]struct {
 		request        *ssproto.ChunkRequest
 		chunk          []byte
@@ -24,12 +139,19 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 		"chunk is returned": {
 			&ssproto.ChunkRequest{Height: 1, Format: 1, Index: 1},
 			[]byte{1, 2, 3},
-			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Chunk: []byte{1, 2, 3}}},
-		"empty chunk is returned, as nil": {
+			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Chunk: []byte{1, 2, 3}},
+		},
+		"empty chunk is returned, as empty": {
 			&ssproto.ChunkRequest{Height: 1, Format: 1, Index: 1},
 			[]byte{},
-			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Chunk: nil}},
+			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Chunk: []byte{}},
+		},
 		"nil (missing) chunk is returned as missing": {
+			&ssproto.ChunkRequest{Height: 1, Format: 1, Index: 1},
+			nil,
+			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Missing: true},
+		},
+		"invalid request": {
 			&ssproto.ChunkRequest{Height: 1, Format: 1, Index: 1},
 			nil,
 			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Missing: true},
@@ -38,48 +160,48 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 
 	for name, tc := range testcases {
 		tc := tc
+
 		t.Run(name, func(t *testing.T) {
-			// Mock ABCI connection to return local snapshots
+			// mock ABCI connection to return local snapshots
 			conn := &proxymocks.AppConnSnapshot{}
-			conn.On("LoadSnapshotChunkSync", abci.RequestLoadSnapshotChunk{
+			conn.On("LoadSnapshotChunkSync", context.Background(), abci.RequestLoadSnapshotChunk{
 				Height: tc.request.Height,
 				Format: tc.request.Format,
 				Chunk:  tc.request.Index,
 			}).Return(&abci.ResponseLoadSnapshotChunk{Chunk: tc.chunk}, nil)
 
-			// Mock peer to store response, if found
-			peer := &p2pmocks.Peer{}
-			peer.On("ID").Return(p2p.ID("id"))
-			var response *ssproto.ChunkResponse
-			if tc.expectResponse != nil {
-				peer.On("Send", ChunkChannel, mock.Anything).Run(func(args mock.Arguments) {
-					msg, err := decodeMsg(args[1].([]byte))
-					require.NoError(t, err)
-					response = msg.(*ssproto.ChunkResponse)
-				}).Return(true)
+			rts := setup(t, conn, nil, nil, 2)
+
+			rts.chunkInCh <- p2p.Envelope{
+				From:    p2p.PeerID{0xAA},
+				Message: tc.request,
 			}
 
-			// Start a reactor and send a ssproto.ChunkRequest, then wait for and check response
-			r := NewReactor(conn, nil, "")
-			err := r.Start()
-			require.NoError(t, err)
-			t.Cleanup(func() {
-				if err := r.Stop(); err != nil {
-					t.Error(err)
-				}
-			})
-
-			r.Receive(ChunkChannel, peer, mustEncodeMsg(tc.request))
-			time.Sleep(100 * time.Millisecond)
-			assert.Equal(t, tc.expectResponse, response)
+			response := <-rts.chunkOutCh
+			require.Equal(t, tc.expectResponse, response.Message)
+			require.Empty(t, rts.chunkOutCh)
 
 			conn.AssertExpectations(t)
-			peer.AssertExpectations(t)
 		})
 	}
 }
 
-func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
+func TestReactor_SnapshotsRequest_InvalidRequest(t *testing.T) {
+	rts := setup(t, nil, nil, nil, 2)
+
+	rts.snapshotInCh <- p2p.Envelope{
+		From:    p2p.PeerID{0xAA},
+		Message: &ssproto.ChunkRequest{},
+	}
+
+	response := <-rts.snapshotPeerErrCh
+	require.Error(t, response.Err)
+	require.Empty(t, rts.snapshotOutCh)
+	require.Contains(t, response.Err.Error(), "received unknown message")
+	require.Equal(t, p2p.PeerID{0xAA}, response.PeerID)
+}
+
+func TestReactor_SnapshotsRequest(t *testing.T) {
 	testcases := map[string]struct {
 		snapshots       []*abci.Snapshot
 		expectResponses []*ssproto.SnapshotsResponse
@@ -117,41 +239,48 @@ func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 
 	for name, tc := range testcases {
 		tc := tc
+
 		t.Run(name, func(t *testing.T) {
-			// Mock ABCI connection to return local snapshots
+			// mock ABCI connection to return local snapshots
 			conn := &proxymocks.AppConnSnapshot{}
-			conn.On("ListSnapshotsSync", abci.RequestListSnapshots{}).Return(&abci.ResponseListSnapshots{
+			conn.On("ListSnapshotsSync", context.Background(), abci.RequestListSnapshots{}).Return(&abci.ResponseListSnapshots{
 				Snapshots: tc.snapshots,
 			}, nil)
 
-			// Mock peer to catch responses and store them in a slice
-			responses := []*ssproto.SnapshotsResponse{}
-			peer := &p2pmocks.Peer{}
-			if len(tc.expectResponses) > 0 {
-				peer.On("ID").Return(p2p.ID("id"))
-				peer.On("Send", SnapshotChannel, mock.Anything).Run(func(args mock.Arguments) {
-					msg, err := decodeMsg(args[1].([]byte))
-					require.NoError(t, err)
-					responses = append(responses, msg.(*ssproto.SnapshotsResponse))
-				}).Return(true)
+			rts := setup(t, conn, nil, nil, 100)
+
+			rts.snapshotInCh <- p2p.Envelope{
+				From:    p2p.PeerID{0xAA},
+				Message: &ssproto.SnapshotsRequest{},
 			}
 
-			// Start a reactor and send a SnapshotsRequestMessage, then wait for and check responses
-			r := NewReactor(conn, nil, "")
-			err := r.Start()
-			require.NoError(t, err)
-			t.Cleanup(func() {
-				if err := r.Stop(); err != nil {
-					t.Error(err)
-				}
-			})
+			if len(tc.expectResponses) > 0 {
+				retryUntil(t, func() bool { return len(rts.snapshotOutCh) == len(tc.expectResponses) }, time.Second)
+			}
 
-			r.Receive(SnapshotChannel, peer, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
-			time.Sleep(100 * time.Millisecond)
-			assert.Equal(t, tc.expectResponses, responses)
+			responses := make([]*ssproto.SnapshotsResponse, len(tc.expectResponses))
+			for i := 0; i < len(tc.expectResponses); i++ {
+				e := <-rts.snapshotOutCh
+				responses[i] = e.Message.(*ssproto.SnapshotsResponse)
+			}
 
-			conn.AssertExpectations(t)
-			peer.AssertExpectations(t)
+			require.Equal(t, tc.expectResponses, responses)
+			require.Empty(t, rts.snapshotOutCh)
 		})
+	}
+}
+
+// retryUntil will continue to evaluate fn and will return successfully when true
+// or fail when the timeout is reached.
+func retryUntil(t *testing.T, fn func() bool, timeout time.Duration) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	for {
+		if fn() {
+			return
+		}
+
+		require.NoError(t, ctx.Err())
 	}
 }
