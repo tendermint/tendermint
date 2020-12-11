@@ -7,6 +7,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	dbm "github.com/tendermint/tm-db"
+	"github.com/google/orderedcode"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -27,27 +28,30 @@ const (
 //------------------------------------------------------------------------
 
 const (
-	keySuffixValidators      = byte(0x01)
-	keySuffixConsensusParams = byte(0x02)
-	keySuffixABCIResponses   = byte(0x03)
+	prefixValidators      = byte(0x01)
+	prefixConsensusParams = byte(0x02)
+	prefixABCIResponses   = byte(0x03)
 )
 
-func getHeightPrefix(height uint64) []byte {
-	buf := make([]byte, binary.MaxVarintLen64)
-	len := binary.PutUvarint(buf, height)
-	return buf[:len]
+func encodeKey(buf []byte, height int64) []byte {
+	res, _ := orderedcode.Append(buf, height) 
+	return res
 }
 
-func calcValidatorsKey(height int64) []byte {
-	return append(getHeightPrefix(uint64(height)), keySuffixValidators)
+func decodeKey(key []byte) int64 {
+	return 0
 }
 
-func calcConsensusParamsKey(height int64) []byte {
-	return append(getHeightPrefix(uint64(height)), keySuffixConsensusParams)
+func validatorsKey(height int64) []byte {
+	return encodeKey([]byte{prefixValidators}, height)
 }
 
-func calcABCIResponsesKey(height int64) []byte {
-	return append(getHeightPrefix(uint64(height)), keySuffixABCIResponses)
+func consensusParamsKey(height int64) []byte {
+	return encodeKey([]byte{prefixValidators}, height)
+}
+
+func abciResponsesKey(height int64) []byte {
+	return encodeKey([]byte{prefixValidators}, height)
 }
 
 //----------------------
@@ -237,33 +241,29 @@ func (store dbStore) PruneStates(height int64) error {
 	if height <= 0 {
 		return fmt.Errorf("height %v must be greater than 0", height)
 	}
-	valInfo, err := loadValidatorsInfo(store.db, height)
-	if err != nil {
-		return fmt.Errorf("validators at height %v not found: %w", height, err)
-	}
+	
 	paramsInfo, err := store.loadConsensusParamsInfo(height)
 	if err != nil {
 		return fmt.Errorf("consensus params at height %v not found: %w", height, err)
 	}
 
-	keepVals := make(map[int64]bool)
-	if valInfo.ValidatorSet == nil {
-		keepVals[valInfo.LastHeightChanged] = true
-		keepVals[lastStoredHeightFor(height, valInfo.LastHeightChanged)] = true // keep last checkpoint too
-	}
+	
 	keepParams := make(map[int64]bool)
 	if paramsInfo.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
 		keepParams[paramsInfo.LastHeightChanged] = true
 	}
 
-	iter, err := store.db.ReverseIterator(
-		nil,
-		calcValidatorsKey(height),
+	// we set up three iterators for each of the state data structures
+	valIter, err := store.db.ReverseIterator(
+		validatorsKey(1),
+		validatorsKey(height),
 	)
 	if err != nil {
 		panic(err)
 	}
-	defer iter.Close()
+	defer valIter.Close()
+
+
 
 	batch := store.db.NewBatch()
 	defer batch.Close()
@@ -380,6 +380,92 @@ func (store dbStore) PruneStates(height int64) error {
 	}
 
 	return nil
+}
+
+func (store dbStore) pruneValidatorSets(height int64) error {
+	valInfo, err := loadValidatorsInfo(store.db, height)
+	if err != nil {
+		return fmt.Errorf("validators at height %v not found: %w", height, err)
+	}
+
+	var (
+		lastRecordedValSetHeight int64
+		lastRecordedValSet *tmstate.ValidatorsInfo
+	)
+
+	keepVals := make(map[int64]bool)
+	if valInfo.ValidatorSet == nil {
+		keepVals[valInfo.LastHeightChanged] = true
+		keepVals[lastStoredHeightFor(height, valInfo.LastHeightChanged)] = true // keep last checkpoint too
+	}
+
+	// We will prune up to the validator set at the given "height". As we don't save validator sets every 
+	// height but only when they change or at a check point, it is likey that the validator set at the height
+	// we prune to is empty and thus dependent on the validator set saved at a previous height. We must find
+	// that validator set and make sure it is not pruned by saving after we have finished pruning.
+	if valInfo.ValidatorSet == nil {
+		lastRecordedValSetHeight = lastStoredHeightFor(height, valInfo.LastHeightChanged)
+		lastRecordedValSet, err := loadValidatorsInfo(store.db, lastRecordedValSetHeight)
+		if err != nil || lastRecordedValSet.ValidatorSet == nil {
+			return fmt.Errorf("couldn't find validators at height %d (height %d was originally requested): %w",
+					lastStoredHeightFor(height, valInfo.LastHeightChanged),
+					height,
+					err,
+				)
+		}
+	}
+
+	// iterate from base height to retain height deleting all validator sets inbetween
+	iter, err := store.db.Iterator(
+		validatorsKey(1),
+		validatorsKey(height),
+	)
+	if err != nil {
+		panic(err)
+	}
+	defer iter.Close()
+
+	batch := store.db.NewBatch()
+	defer batch.Close()
+
+	pruned := 0
+	for ; iter.Valid(); iter.Next() {
+		if err = batch.Delete(iter.Key()); err != nil {
+			return err
+		}
+		pruned++
+
+		// avoid batches growing too large by flushing to database regularly
+		if pruned%1000 == 0 {
+			err := batch.Write()
+			if err != nil {
+				return err
+			}
+			batch.Close()
+			batch = store.db.NewBatch()
+			defer batch.Close()
+		}
+	}
+
+	// now we recover the last recorded validator set if it had been set earlier
+	if lastRecordedValSet != nil {
+		bz, err := lastRecordedValSet.Marshal()
+		if err != nil {
+			return err
+		}
+		batch.Set(validatorsKey(lastRecordedValSetHeight), bz)
+	}
+
+	return nil
+
+}
+
+func (store dbStore) pruneConsensusParams(height int64) error {
+
+}
+
+func (store dbStore) pruneABCIResponses(height int64) error {
+
 }
 
 //------------------------------------------------------------------------
@@ -522,6 +608,8 @@ func loadValidatorsInfo(db dbm.DB, height int64) (*tmstate.ValidatorsInfo, error
 }
 
 // saveValidatorsInfo persists the validator set.
+// 
+// We expect validator sets to change irregularly
 //
 // `height` is the effective height for which the validator is responsible for
 // signing. It should be called from s.Save(), right before the state itself is

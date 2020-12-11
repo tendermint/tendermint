@@ -15,6 +15,7 @@ require (
 	github.com/go-logfmt/logfmt v0.5.0
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.4.3
+	github.com/google/orderedcode v0.0.1
 	github.com/gorilla/websocket v1.4.2
 	github.com/gtank/merlin v0.1.1
 	github.com/hdevalence/ed25519consensus v0.0.0-20201207055737-7fde80a9d5ff
