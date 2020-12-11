@@ -130,6 +130,12 @@ func (puc *PeerUpdatesCh) Done() <-chan struct{} {
 	return puc.doneCh
 }
 
+// TestSend performs a blocking send of a PeerUpdate on the PeerUpdatesCh
+// updatesCh. Note, this should be used for testing purposes only.
+func (puc *PeerUpdatesCh) TestSend(pu PeerUpdate) {
+	puc.updatesCh <- pu
+}
+
 // PeerUpdate is a peer status update for reactors.
 type PeerUpdate struct {
 	PeerID PeerID

@@ -320,7 +320,6 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
-			r.Logger.Error("recovering from processing message panic", "err", err)
 		}
 	}()
 
@@ -350,6 +349,7 @@ func (r *Reactor) processSnapshotCh() {
 		select {
 		case envelope := <-r.snapshotCh.In():
 			if err := r.handleMessage(r.snapshotCh.ID(), envelope); err != nil {
+				r.Logger.Error("failed to process envelope", "ch_id", r.snapshotCh.ID(), "envelope", envelope, "err", err)
 				r.snapshotCh.Error() <- p2p.PeerError{
 					PeerID:   envelope.From,
 					Err:      err,
@@ -376,6 +376,7 @@ func (r *Reactor) processChunkCh() {
 		select {
 		case envelope := <-r.chunkCh.In():
 			if err := r.handleMessage(r.chunkCh.ID(), envelope); err != nil {
+				r.Logger.Error("failed to process envelope", "ch_id", r.chunkCh.ID(), "envelope", envelope, "err", err)
 				r.chunkCh.Error() <- p2p.PeerError{
 					PeerID:   envelope.From,
 					Err:      err,
@@ -396,7 +397,6 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing peer update: %v", e)
-			r.Logger.Error("recovering from processing peer update panic", "err", err)
 		}
 	}()
 
@@ -427,7 +427,14 @@ func (r *Reactor) processPeerUpdates() {
 	for {
 		select {
 		case peerUpdate := <-r.peerUpdates.Updates():
-			_ = r.processPeerUpdate(peerUpdate)
+			if err := r.processPeerUpdate(peerUpdate); err != nil {
+				r.Logger.Error(
+					"failed to process peer update",
+					"peer", peerUpdate.PeerID.String(),
+					"status", peerUpdate.Status,
+					"err", err,
+				)
+			}
 
 		case <-r.closeCh:
 			r.Logger.Debug("stopped listening on peer updates channel; closing...")
