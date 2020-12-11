@@ -87,7 +87,7 @@ func init() {
 		"specify the directory")
 	LightCmd.Flags().IntVar(
 		&maxOpenConnections,
-		"max-open-connections",
+		"max_open_connections",
 		900,
 		"maximum number of simultaneous connections (including WebSocket).")
 	LightCmd.Flags().DurationVar(&trustingPeriod, "trusting-period", 168*time.Hour,
