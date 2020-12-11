@@ -28,7 +28,7 @@ This guide provides instructions for upgrading to specific versions of Tendermin
   $ tendermint gen_node_key > $TMHOME/config/node_key.json
   ```
 
-* cli commands and flags are all now hyphen-case instead of snake_case. 
+* CLI commands and flags are all now hyphen-case instead of snake_case. 
   Make sure to adjust any scripts that calls a cli command with snake_casing
 ## v0.34.0
 
