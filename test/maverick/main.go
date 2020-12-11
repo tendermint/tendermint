@@ -100,7 +100,8 @@ func main() {
 	)
 
 	nodeCmd := &cobra.Command{
-		Use:   "node",
+		Use:   "start",
+		Aliases: []string{"node", "run"},
 		Short: "Run the maverick node",
 		RunE: func(command *cobra.Command, args []string) error {
 			return startNode(config, logger, misbehaviorFlag)
