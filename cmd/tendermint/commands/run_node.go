@@ -18,7 +18,7 @@ var (
 	genesisHash []byte
 )
 
-// AddNodeFlags exposes some common configuration options on the command line
+// AddNodeFlags exposes some common configuration options on the command-line
 // These are exposed for convenience of commands embedding a tendermint node
 func AddNodeFlags(cmd *cobra.Command) {
 	// bind flags
@@ -36,7 +36,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 		&genesisHash,
 		"genesis_hash",
 		[]byte{},
-		"optional SHA_256 hash of the genesis file")
+		"optional SHA-256 hash of the genesis file")
 	cmd.Flags().Int64("consensus.double_sign_check_height", config.Consensus.DoubleSignCheckHeight,
 		"how many blocks to look back to check existence of the node's "+
 			"consensus votes before joining consensus")
@@ -65,14 +65,14 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"p2p.laddr",
 		config.P2P.ListenAddress,
 		"node listen address. (0.0.0.0:0 means any interface, any port)")
-	cmd.Flags().String("p2p.seeds", config.P2P.Seeds, "comma_delimited ID@host:port seed nodes")
-	cmd.Flags().String("p2p.persistent_peers", config.P2P.PersistentPeers, "comma_delimited ID@host:port persistent peers")
+	cmd.Flags().String("p2p.seeds", config.P2P.Seeds, "comma-delimited ID@host:port seed nodes")
+	cmd.Flags().String("p2p.persistent_peers", config.P2P.PersistentPeers, "comma-delimited ID@host:port persistent peers")
 	cmd.Flags().String("p2p.unconditional_peer_ids",
-		config.P2P.UnconditionalPeerIDs, "comma_delimited IDs of unconditional peers")
+		config.P2P.UnconditionalPeerIDs, "comma-delimited IDs of unconditional peers")
 	cmd.Flags().Bool("p2p.upnp", config.P2P.UPNP, "enable/disable UPNP port forwarding")
-	cmd.Flags().Bool("p2p.pex", config.P2P.PexReactor, "enable/disable Peer_Exchange")
+	cmd.Flags().Bool("p2p.pex", config.P2P.PexReactor, "enable/disable Peer-Exchange")
 	cmd.Flags().Bool("p2p.seed_mode", config.P2P.SeedMode, "enable/disable seed mode")
-	cmd.Flags().String("p2p.private_peer_ids", config.P2P.PrivatePeerIDs, "comma_delimited private peer IDs")
+	cmd.Flags().String("p2p.private_peer_ids", config.P2P.PrivatePeerIDs, "comma-delimited private peer IDs")
 
 	// consensus flags
 	cmd.Flags().Bool(
@@ -96,7 +96,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 }
 
 // NewRunNodeCmd returns the command that allows the CLI to start a node.
-// It can be used with a custom PrivValidator and in_process ABCI application.
+// It can be used with a custom PrivValidator and in-process ABCI application.
 func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "start",
@@ -118,7 +118,7 @@ func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 
 			logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
 
-			// Stop upon receiving SIGTERM or CTRL_C.
+			// Stop upon receiving SIGTERM or CTRL-C.
 			tmos.TrapSignal(logger, func() {
 				if n.IsRunning() {
 					if err := n.Stop(); err != nil {
@@ -141,7 +141,7 @@ func checkGenesisHash(config *cfg.Config) error {
 		return nil
 	}
 
-	// Calculate SHA_256 hash of the genesis file.
+	// Calculate SHA-256 hash of the genesis file.
 	f, err := os.Open(config.GenesisFile())
 	if err != nil {
 		return fmt.Errorf("can't open genesis file: %w", err)

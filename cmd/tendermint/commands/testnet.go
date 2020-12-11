@@ -49,30 +49,30 @@ func init() {
 		"number of non-validators to initialize the testnet with")
 	TestnetFilesCmd.Flags().StringVar(&outputDir, "o", "./mytestnet",
 		"directory to store initialization data for the testnet")
-	TestnetFilesCmd.Flags().StringVar(&nodeDirPrefix, "node_dir_prefix", "node",
+	TestnetFilesCmd.Flags().StringVar(&nodeDirPrefix, "node-dir-prefix", "node",
 		"prefix the directory name for each node with (node results in node0, node1, ...)")
-	TestnetFilesCmd.Flags().Int64Var(&initialHeight, "initial_height", 0,
+	TestnetFilesCmd.Flags().Int64Var(&initialHeight, "initial-height", 0,
 		"initial height of the first block")
 
-	TestnetFilesCmd.Flags().BoolVar(&populatePersistentPeers, "populate_persistent_peers", true,
+	TestnetFilesCmd.Flags().BoolVar(&populatePersistentPeers, "populate-persistent-peers", true,
 		"update config of each node with the list of persistent peers build using either"+
-			" hostname_prefix or"+
-			" starting_ip_address")
-	TestnetFilesCmd.Flags().StringVar(&hostnamePrefix, "hostname_prefix", "node",
+			" hostname-prefix or"+
+			" starting-ip-address")
+	TestnetFilesCmd.Flags().StringVar(&hostnamePrefix, "hostname-prefix", "node",
 		"hostname prefix (\"node\" results in persistent peers list ID0@node0:26656, ID1@node1:26656, ...)")
-	TestnetFilesCmd.Flags().StringVar(&hostnameSuffix, "hostname_suffix", "",
+	TestnetFilesCmd.Flags().StringVar(&hostnameSuffix, "hostname-suffix", "",
 		"hostname suffix ("+
 			"\".xyz.com\""+
 			" results in persistent peers list ID0@node0.xyz.com:26656, ID1@node1.xyz.com:26656, ...)")
-	TestnetFilesCmd.Flags().StringVar(&startingIPAddress, "starting_ip_address", "",
+	TestnetFilesCmd.Flags().StringVar(&startingIPAddress, "starting-ip-address", "",
 		"starting IP address ("+
 			"\"192.168.0.1\""+
 			" results in persistent peers list ID0@192.168.0.1:26656, ID1@192.168.0.2:26656, ...)")
 	TestnetFilesCmd.Flags().StringArrayVar(&hostnames, "hostname", []string{},
-		"manually override all hostnames of validators and non_validators (use --hostname multiple times for multiple hosts)")
-	TestnetFilesCmd.Flags().IntVar(&p2pPort, "p2p_port", 26656,
+		"manually override all hostnames of validators and non-validators (use --hostname multiple times for multiple hosts)")
+	TestnetFilesCmd.Flags().IntVar(&p2pPort, "p2p-port", 26656,
 		"P2P Port")
-	TestnetFilesCmd.Flags().BoolVar(&randomMonikers, "random_monikers", false,
+	TestnetFilesCmd.Flags().BoolVar(&randomMonikers, "random-monikers", false,
 		"randomize the moniker for each generated node")
 }
 
@@ -85,11 +85,11 @@ necessary files (private validator, genesis, config, etc.).
 
 Note, strict routability for addresses is turned off in the config file.
 
-Optionally, it will fill in persistent_peers list in config file using either hostnames or IPs.
+Optionally, it will fill in persistent-peers list in config file using either hostnames or IPs.
 
 Example:
 
-	tendermint testnet --v 4 --o ./output --populate_persistent_peers --starting_ip_address 192.168.10.2
+	tendermint testnet --v 4 --o ./output --populate-persistent-peers --starting-ip-address 192.168.10.2
 	`,
 	RunE: testnetFiles,
 }
@@ -97,7 +97,7 @@ Example:
 func testnetFiles(cmd *cobra.Command, args []string) error {
 	if len(hostnames) > 0 && len(hostnames) != (nValidators+nNonValidators) {
 		return fmt.Errorf(
-			"testnet needs precisely %d hostnames (number of validators plus non_validators) if --hostname parameter is used",
+			"testnet needs precisely %d hostnames (number of validators plus non-validators) if --hostname parameter is used",
 			nValidators+nNonValidators,
 		)
 	}

@@ -51,12 +51,10 @@ var RootCmd = &cobra.Command{
 		if cmd.Name() == VersionCmd.Name() {
 			return nil
 		}
-		fmt.Println(config.ProxyApp)
 		config, err = ParseConfig()
 		if err != nil {
 			return err
 		}
-		fmt.Println(config.ProxyApp)
 		if config.LogFormat == cfg.LogFormatJSON {
 			logger = log.NewTMJSONLogger(log.NewSyncWriter(os.Stdout))
 		}
