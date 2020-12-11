@@ -380,21 +380,32 @@ func newMConnConnection(
 		}
 	}()
 
-	c = &mConnConnection{
-		transport: transport,
-		chReceive: make(chan mConnMessage),
-		chError:   make(chan error),
-		chClose:   make(chan struct{}),
-	}
-	c.secretConn, err = upgradeSecretConn(tcpConn, transport.handshakeTimeout, transport.privKey)
+	err = tcpConn.SetDeadline(time.Now().Add(transport.handshakeTimeout))
 	if err != nil {
 		err = ErrRejected{
 			conn:          tcpConn,
 			err:           fmt.Errorf("secret conn failed: %v", err),
 			isAuthFailure: true,
 		}
+		return
 	}
-	c.nodeInfo, err = handshake(tcpConn, transport.handshakeTimeout, transport.nodeInfo)
+
+	c = &mConnConnection{
+		transport: transport,
+		chReceive: make(chan mConnMessage),
+		chError:   make(chan error),
+		chClose:   make(chan struct{}),
+	}
+	c.secretConn, err = conn.MakeSecretConnection(tcpConn, transport.privKey)
+	if err != nil {
+		err = ErrRejected{
+			conn:          tcpConn,
+			err:           fmt.Errorf("secret conn failed: %v", err),
+			isAuthFailure: true,
+		}
+		return
+	}
+	c.nodeInfo, err = c.handshake()
 	if err != nil {
 		err = ErrRejected{
 			conn:          tcpConn,
@@ -457,6 +468,16 @@ func newMConnConnection(
 		return
 	}
 
+	err = tcpConn.SetDeadline(time.Time{})
+	if err != nil {
+		err = ErrRejected{
+			conn:          tcpConn,
+			err:           fmt.Errorf("secret conn failed: %v", err),
+			isAuthFailure: true,
+		}
+		return
+	}
+
 	// Set up the MConnection wrapper
 	c.mConn = conn.NewMConnectionWithConfig(
 		c.secretConn,
@@ -472,65 +493,24 @@ func newMConnConnection(
 	return c, err
 }
 
-// handshake handshakes with a peer, returning its node info.
-// FIXME This function should be absorbed by newMConnConnection,
-// but is left for compatibility with existing P2P test code.
-func handshake(c net.Conn, timeout time.Duration, nodeInfo NodeInfo) (DefaultNodeInfo, error) {
-	if err := c.SetDeadline(time.Now().Add(timeout)); err != nil {
-		return DefaultNodeInfo{}, err
-	}
-
-	var (
-		errc = make(chan error, 2)
-
-		pbpeerNodeInfo p2pproto.DefaultNodeInfo
-		peerNodeInfo   DefaultNodeInfo
-		ourNodeInfo    = nodeInfo.(DefaultNodeInfo)
-	)
-
-	go func(errc chan<- error, c net.Conn) {
-		_, err := protoio.NewDelimitedWriter(c).WriteMsg(ourNodeInfo.ToProto())
-		errc <- err
-	}(errc, c)
-	go func(errc chan<- error, c net.Conn) {
-		protoReader := protoio.NewDelimitedReader(c, MaxNodeInfoSize())
-		err := protoReader.ReadMsg(&pbpeerNodeInfo)
-		errc <- err
-	}(errc, c)
-
-	for i := 0; i < cap(errc); i++ {
-		err := <-errc
-		if err != nil {
+// handshake performs an MConn handshake, returning the peer's node info.
+func (c *mConnConnection) handshake() (DefaultNodeInfo, error) {
+	var pbNodeInfo p2pproto.DefaultNodeInfo
+	chErr := make(chan error, 2)
+	go func() {
+		_, err := protoio.NewDelimitedWriter(c.secretConn).WriteMsg(c.transport.nodeInfo.ToProto())
+		chErr <- err
+	}()
+	go func() {
+		chErr <- protoio.NewDelimitedReader(c.secretConn, MaxNodeInfoSize()).ReadMsg(&pbNodeInfo)
+	}()
+	for i := 0; i < cap(chErr); i++ {
+		if err := <-chErr; err != nil {
 			return DefaultNodeInfo{}, err
 		}
 	}
 
-	peerNodeInfo, err := DefaultNodeInfoFromProto(&pbpeerNodeInfo)
-	if err != nil {
-		return DefaultNodeInfo{}, err
-	}
-
-	return peerNodeInfo, c.SetDeadline(time.Time{})
-}
-
-// upgradeSecretConn upgrades a connection to a SecretConnection.
-// FIXME This function should be absorbed by newMConnConnection, but
-// is left for compatibility with existing P2P test code.
-func upgradeSecretConn(
-	c net.Conn,
-	timeout time.Duration,
-	privKey crypto.PrivKey,
-) (*conn.SecretConnection, error) {
-	if err := c.SetDeadline(time.Now().Add(timeout)); err != nil {
-		return nil, err
-	}
-
-	sc, err := conn.MakeSecretConnection(c, privKey)
-	if err != nil {
-		return nil, err
-	}
-
-	return sc, sc.SetDeadline(time.Time{})
+	return DefaultNodeInfoFromProto(&pbNodeInfo)
 }
 
 // onReceive is a callback for MConnection received messages.
