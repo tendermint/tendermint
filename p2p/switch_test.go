@@ -348,6 +348,13 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	}
 }
 
+func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) {
+	time.Sleep(timeout)
+	if sw.Peers().Size() != 0 {
+		t.Fatalf("Expected %v to not connect to some peers, got %d", sw, sw.Peers().Size())
+	}
+}
+
 func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
@@ -723,9 +730,7 @@ type mockReactor struct {
 }
 
 func (r *mockReactor) GetChannels() []*ChannelDescriptor {
-	return []*ChannelDescriptor{
-		{ID: testCh, Priority: 10},
-	}
+	return []*ChannelDescriptor{{ID: testCh, Priority: 10}}
 }
 
 func (r *mockReactor) RemovePeer(peer Peer, reason interface{}) {
@@ -838,11 +843,4 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 	}
 
 	b.Logf("success: %v, failure: %v", numSuccess, numFailure)
-}
-
-func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) {
-	time.Sleep(timeout)
-	if sw.Peers().Size() != 0 {
-		t.Fatalf("Expected %v to not connect to some peers, got %d", sw, sw.Peers().Size())
-	}
 }

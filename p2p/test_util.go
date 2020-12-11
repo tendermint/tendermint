@@ -171,15 +171,13 @@ func MakeSwitch(
 	if err != nil {
 		panic(err)
 	}
-	endpoint := Endpoint{
-		Protocol: MConnProtocol,
-		PeerID:   addr.ID,
-		IP:       addr.IP,
-		Port:     addr.Port,
-	}
 
 	logger := log.TestingLogger().With("switch", i)
 	t := NewMConnTransport(logger, nodeInfo, nodeKey.PrivKey, MConnConfig(cfg))
+
+	if err := t.Listen(addr.Endpoint()); err != nil {
+		panic(err)
+	}
 
 	// TODO: let the config be passed in?
 	sw := initSwitch(i, NewSwitch(cfg, t, opts...))
@@ -197,10 +195,6 @@ func MakeSwitch(
 	// populated and we don't have to do those awkward overrides and setters.
 	t.nodeInfo = nodeInfo.(DefaultNodeInfo)
 	sw.SetNodeInfo(nodeInfo)
-
-	if err := t.Listen(endpoint); err != nil {
-		panic(err)
-	}
 
 	return sw
 }
