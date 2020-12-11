@@ -36,7 +36,7 @@ var (
 	defaultConfigFileName  = "config.toml"
 	defaultGenesisJSONName = "genesis.json"
 
-	defaultPrivValKeyName   = "priv_validato_key.json"
+	defaultPrivValKeyName   = "priv_validator_key.json"
 	defaultPrivValStateName = "priv_validator_state.json"
 
 	defaultNodeKeyName  = "node_key.json"
