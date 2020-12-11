@@ -239,15 +239,15 @@ type PeerOption func(*peer)
 
 func newPeer(
 	pc peerConn,
-	nodeInfo NodeInfo,
 	reactorsByCh map[byte]Reactor,
 	onPeerError func(Peer, interface{}),
 	options ...PeerOption,
 ) *peer {
+	nodeInfo := pc.conn.NodeInfo()
 	p := &peer{
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
-		channels:      nodeInfo.(DefaultNodeInfo).Channels, // TODO
+		channels:      nodeInfo.Channels, // TODO
 		reactors:      reactorsByCh,
 		onPeerError:   onPeerError,
 		Data:          cmap.NewCMap(),

@@ -122,23 +122,20 @@ func createOutboundPeerAndPerformHandshake(
 	config *config.P2PConfig,
 	mConfig tmconn.MConnConfig,
 ) (*peer, error) {
+	pk := ed25519.GenPrivKey()
+	ourNodeInfo := testNodeInfo(PubKeyToID(pk.PubKey()), "host_peer")
+	transport := NewMConnTransport(log.TestingLogger(), ourNodeInfo, pk, mConfig)
 	chDescs := []*tmconn.ChannelDescriptor{
 		{ID: testCh, Priority: 1},
 	}
+	transport.SetChannelDescriptors(chDescs)
 	reactorsByCh := map[byte]Reactor{testCh: NewTestReactor(chDescs, true)}
-	pk := ed25519.GenPrivKey()
-	pc, err := testOutboundPeerConn(addr, config, false, pk)
-	if err != nil {
-		return nil, err
-	}
-	timeout := 1 * time.Second
-	ourNodeInfo := testNodeInfo(addr.ID, "host_peer")
-	peerNodeInfo, err := handshake(nil, timeout, ourNodeInfo)
+	pc, err := testOutboundPeerConn(transport, addr, config, false, pk)
 	if err != nil {
 		return nil, err
 	}
 
-	p := newPeer(pc, peerNodeInfo, reactorsByCh, func(p Peer, r interface{}) {})
+	p := newPeer(pc, reactorsByCh, func(p Peer, r interface{}) {})
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p, nil
 }
@@ -156,6 +153,7 @@ func testDial(addr *NetAddress, cfg *config.P2PConfig) (net.Conn, error) {
 }
 
 func testOutboundPeerConn(
+	transport *MConnTransport,
 	addr *NetAddress,
 	config *config.P2PConfig,
 	persistent bool,
@@ -168,7 +166,7 @@ func testOutboundPeerConn(
 		return pc, fmt.Errorf("error creating peer: %w", err)
 	}
 
-	pc, err = testPeerConn(conn, config, true, persistent, ourNodePrivKey, addr)
+	pc, err = testPeerConn(transport, conn, true, persistent)
 	if err != nil {
 		if cerr := conn.Close(); cerr != nil {
 			return pc, fmt.Errorf("%v: %w", cerr.Error(), err)
@@ -226,15 +224,12 @@ func (rp *remotePeer) Stop() {
 }
 
 func (rp *remotePeer) Dial(addr *NetAddress) (net.Conn, error) {
+	transport := NewMConnTransport(log.TestingLogger(), rp.nodeInfo(), rp.PrivKey, MConnConfig(rp.Config))
 	conn, err := addr.DialTimeout(1 * time.Second)
 	if err != nil {
 		return nil, err
 	}
-	/*pc, err := testInboundPeerConn(conn, rp.Config, rp.PrivKey)
-	if err != nil {
-		return nil, err
-	}*/
-	_, err = handshake(nil, time.Second, rp.nodeInfo())
+	_, err = testInboundPeerConn(transport, conn)
 	if err != nil {
 		return nil, err
 	}
@@ -242,6 +237,7 @@ func (rp *remotePeer) Dial(addr *NetAddress) (net.Conn, error) {
 }
 
 func (rp *remotePeer) accept() {
+	transport := NewMConnTransport(log.TestingLogger(), rp.nodeInfo(), rp.PrivKey, MConnConfig(rp.Config))
 	conns := []net.Conn{}
 
 	for {
@@ -254,14 +250,9 @@ func (rp *remotePeer) accept() {
 			return
 		}
 
-		/*pc, err := testInboundPeerConn(conn, rp.Config, rp.PrivKey)
+		_, err = testInboundPeerConn(transport, conn)
 		if err != nil {
-			golog.Fatalf("Failed to create a peer: %+v", err)
-		}*/
-
-		_, err = handshake(nil, time.Second, rp.nodeInfo())
-		if err != nil {
-			golog.Fatalf("Failed to perform handshake: %+v", err)
+			golog.Printf("Failed to create a peer: %+v", err)
 		}
 
 		conns = append(conns, conn)

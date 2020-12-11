@@ -714,6 +714,12 @@ type mockReactor struct {
 	initCalledBeforeRemoveFinished uint32
 }
 
+func (r *mockReactor) GetChannels() []*ChannelDescriptor {
+	return []*ChannelDescriptor{
+		{ID: testCh, Priority: 10},
+	}
+}
+
 func (r *mockReactor) RemovePeer(peer Peer, reason interface{}) {
 	atomic.StoreUint32(&r.removePeerInProgress, 1)
 	defer atomic.StoreUint32(&r.removePeerInProgress, 0)

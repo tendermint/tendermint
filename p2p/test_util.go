@@ -3,9 +3,7 @@ package p2p
 import (
 	"fmt"
 	"net"
-	"time"
 
-	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -34,13 +32,9 @@ func AddPeerToSwitchPeerSet(sw *Switch, peer Peer) {
 func CreateRandomPeer(outbound bool) Peer {
 	addr, netAddr := CreateRoutableAddr()
 	p := &peer{
-		peerConn: peerConn{
-			outbound: outbound,
-			//socketAddr: netAddr,
-		},
+		peerConn: peerConn{outbound: outbound},
 		nodeInfo: mockNodeInfo{netAddr},
-		//mconn:    &conn.MConnection{},
-		metrics: NopMetrics(),
+		metrics:  NopMetrics(),
 	}
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p
@@ -127,15 +121,7 @@ func Connect2Switches(switches []*Switch, i, j int) {
 }
 
 func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
-	pc, err := testInboundPeerConn(conn, sw.config, sw.nodeKey.PrivKey)
-	if err != nil {
-		if err := conn.Close(); err != nil {
-			sw.Logger.Error("Error closing connection", "err", err)
-		}
-		return err
-	}
-
-	ni, err := handshake(conn, time.Second, sw.nodeInfo)
+	pc, err := testInboundPeerConn(sw.transport.(*MConnTransport), conn)
 	if err != nil {
 		if err := conn.Close(); err != nil {
 			sw.Logger.Error("Error closing connection", "err", err)
@@ -145,7 +131,6 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 
 	p := newPeer(
 		pc,
-		ni,
 		sw.reactorsByCh,
 		sw.StopPeerForError,
 	)
@@ -194,7 +179,6 @@ func MakeSwitch(
 	}
 
 	logger := log.TestingLogger().With("switch", i)
-
 	t := NewMConnTransport(logger, nodeInfo, nodeKey.PrivKey, MConnConfig(cfg))
 
 	// TODO: let the config be passed in?
@@ -202,11 +186,8 @@ func MakeSwitch(
 	sw.SetLogger(log.TestingLogger().With("switch", i))
 	sw.SetNodeKey(nodeKey)
 
-	if err := t.Listen(endpoint); err != nil {
-		panic(err)
-	}
-
 	ni := nodeInfo.(DefaultNodeInfo)
+	ni.Channels = []byte{}
 	for ch := range sw.reactorsByCh {
 		ni.Channels = append(ni.Channels, ch)
 	}
@@ -217,34 +198,32 @@ func MakeSwitch(
 	t.nodeInfo = nodeInfo.(DefaultNodeInfo)
 	sw.SetNodeInfo(nodeInfo)
 
+	if err := t.Listen(endpoint); err != nil {
+		panic(err)
+	}
+
 	return sw
 }
 
 func testInboundPeerConn(
+	transport *MConnTransport,
 	conn net.Conn,
-	config *config.P2PConfig,
-	ourNodePrivKey crypto.PrivKey,
 ) (peerConn, error) {
-	return testPeerConn(conn, config, false, false, ourNodePrivKey, nil)
+	return testPeerConn(transport, conn, false, false)
 }
 
 func testPeerConn(
+	transport *MConnTransport,
 	rawConn net.Conn,
-	cfg *config.P2PConfig,
 	outbound, persistent bool,
-	ourNodePrivKey crypto.PrivKey,
-	socketAddr *NetAddress,
 ) (pc peerConn, err error) {
-	conn := rawConn
 
-	// Encrypt connection
-	conn, err = upgradeSecretConn(conn, cfg.HandshakeTimeout, ourNodePrivKey)
+	conn, err := newMConnConnection(transport, rawConn, "")
 	if err != nil {
 		return pc, fmt.Errorf("error creating peer: %w", err)
 	}
 
-	// Only the information we already have
-	return newPeerConn(outbound, persistent, nil), nil
+	return newPeerConn(outbound, persistent, conn), nil
 }
 
 //----------------------------------------------------------------

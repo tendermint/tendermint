@@ -140,9 +140,6 @@ func (m *MConnTransport) Listen(endpoint Endpoint) error {
 	if m.listener != nil {
 		return errors.New("MConn transport is already listening")
 	}
-	if len(m.channelDescs) == 0 {
-		return errors.New("no MConn channel descriptors")
-	}
 	err := m.normalizeEndpoint(&endpoint)
 	if err != nil {
 		return fmt.Errorf("invalid MConn listen endpoint %q: %w", endpoint, err)
@@ -612,24 +609,32 @@ func (c *mConnConnection) PubKey() crypto.PubKey {
 
 // LocalEndpoint implements Connection.
 func (c *mConnConnection) LocalEndpoint() Endpoint {
-	addr := c.secretConn.LocalAddr().(*net.TCPAddr)
-	return Endpoint{
+	// FIXME For compatibility with existing P2P tests, we need to
+	// handle non-TCP connections. This should be removed.
+	endpoint := Endpoint{
 		Protocol: MConnProtocol,
 		PeerID:   c.transport.nodeInfo.ID(),
-		IP:       addr.IP,
-		Port:     uint16(addr.Port),
 	}
+	if addr, ok := c.secretConn.LocalAddr().(*net.TCPAddr); ok {
+		endpoint.IP = addr.IP
+		endpoint.Port = uint16(addr.Port)
+	}
+	return endpoint
 }
 
 // RemoteEndpoint implements Connection.
 func (c *mConnConnection) RemoteEndpoint() Endpoint {
-	addr := c.secretConn.RemoteAddr().(*net.TCPAddr)
-	return Endpoint{
+	// FIXME For compatibility with existing P2P tests, we need to
+	// handle non-TCP connections. This should be removed.
+	endpoint := Endpoint{
 		Protocol: MConnProtocol,
 		PeerID:   c.nodeInfo.ID(),
-		IP:       addr.IP,
-		Port:     uint16(addr.Port),
 	}
+	if addr, ok := c.secretConn.RemoteAddr().(*net.TCPAddr); ok {
+		endpoint.IP = addr.IP
+		endpoint.Port = uint16(addr.Port)
+	}
+	return endpoint
 }
 
 // Status implements Connection.

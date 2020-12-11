@@ -256,7 +256,7 @@ func (sw *Switch) OnStop() {
 	sw.Logger.Debug("Switch: Stopping reactors")
 	for _, reactor := range sw.reactors {
 		if err := reactor.Stop(); err != nil {
-			sw.Logger.Error("error while stopped reactor", "reactor", reactor, "error", err)
+			sw.Logger.Error("error while stopping reactor", "reactor", reactor, "error", err)
 		}
 	}
 }
@@ -683,7 +683,6 @@ func (sw *Switch) acceptRoutine() {
 
 		p := newPeer(
 			newPeerConn(false, isPersistent, c),
-			peerNodeInfo,
 			sw.reactorsByCh,
 			sw.StopPeerForError,
 			PeerMetrics(sw.metrics),
@@ -765,7 +764,6 @@ func (sw *Switch) addOutboundPeerWithConfig(
 
 	p := newPeer(
 		newPeerConn(true, sw.IsPeerPersistent(c.RemoteEndpoint().NetAddress()), c),
-		c.NodeInfo(),
 		sw.reactorsByCh,
 		sw.StopPeerForError,
 		PeerMetrics(sw.metrics),
