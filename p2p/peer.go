@@ -309,7 +309,6 @@ func (p *peer) processMessages() {
 	for {
 		chID, msg, err := p.conn.ReceiveMessage()
 		if err != nil {
-			// FIXME May need to handle io.EOF here
 			p.onError(err)
 			return
 		}

@@ -619,12 +619,12 @@ func (c *mConnConnection) close(flush bool) error {
 	c.transport.conns.RemoveAddr(c.secretConn.RemoteAddr())
 	var err error
 	c.chCloseOnce.Do(func() {
-		close(c.chClose)
 		if flush {
 			c.mConn.FlushStop()
 		} else {
 			err = c.mConn.Stop()
 		}
+		close(c.chClose)
 	})
 	return err
 }
