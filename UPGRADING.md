@@ -14,6 +14,9 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 * `fast_sync = "v1"` is no longer supported. Please use `v2` instead.
 
+* All config parameters are now hyphen-case (also known as kebab-case) instead of snake_case. Before restarting the node make sure
+  you have updated all the variables in your `config.toml` file. 
+
 ### CLI Changes
 
 * If you had previously used `tendermint gen_node_key` to generate a new node
@@ -25,6 +28,8 @@ This guide provides instructions for upgrading to specific versions of Tendermin
   $ tendermint gen_node_key > $TMHOME/config/node_key.json
   ```
 
+* cli commands and flags are all now hyphen-case instead of snake_case. 
+  Make sure to adjust any scripts that calls a cli command with snake_casing
 ## v0.34.0
 
 **Upgrading to Tendermint 0.34 requires a blockchain restart.**
