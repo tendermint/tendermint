@@ -49,7 +49,6 @@ type Pool struct {
 // NewPool creates an evidence pool. If using an existing evidence store,
 // it will add all pending evidence to the concurrent list.
 func NewPool(evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool, error) {
-
 	state, err := stateDB.Load()
 	if err != nil {
 		return nil, fmt.Errorf("cannot load state: %w", err)
@@ -136,7 +135,7 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 
 	// 1) Verify against state.
 	if err := evpool.verify(ev); err != nil {
-		return types.NewErrInvalidEvidence(ev, err)
+		return err
 	}
 
 	// 2) Save to store.
@@ -146,29 +145,28 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 
 	// 3) Add evidence to clist.
 	evpool.evidenceList.PushBack(ev)
-	evpool.logger.Info("verified new evidence of byzantine behavior", "evidence", ev)
 
+	evpool.logger.Info("verified new evidence of byzantine behavior", "evidence", ev)
 	return nil
 }
 
-// AddEvidenceFromConsensus should be exposed only to the consensus reactor so it can add evidence
-// to the pool directly without the need for verification.
+// AddEvidenceFromConsensus should be exposed only to the consensus reactor so
+// it can add evidence to the pool directly without the need for verification.
 func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence) error {
-
 	// we already have this evidence, log this but don't return an error.
 	if evpool.isPending(ev) {
-		evpool.logger.Info("Evidence already pending, ignoring this one", "ev", ev)
+		evpool.logger.Info("evidence already pending; ignoring", "evidence", ev)
 		return nil
 	}
 
 	if err := evpool.addPendingEvidence(ev); err != nil {
-		return fmt.Errorf("can't add evidence to pending list: %w", err)
+		return fmt.Errorf("failed to add evidence to pending list: %w", err)
 	}
+
 	// add evidence to be gossiped with peers
 	evpool.evidenceList.PushBack(ev)
 
-	evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
-
+	evpool.logger.Info("verified new evidence of byzantine behavior", "evidence", ev)
 	return nil
 }
 
@@ -196,7 +194,7 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 			if err := evpool.addPendingEvidence(ev); err != nil {
 				// Something went wrong with adding the evidence but we already know it is valid
 				// hence we log an error and continue
-				evpool.logger.Error("Can't add evidence to pending list", "err", err, "ev", ev)
+				evpool.logger.Error("Can't add evidence to pending list", "err", err, "evidence", ev)
 			}
 
 			evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
