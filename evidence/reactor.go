@@ -80,6 +80,8 @@ func NewReactor(
 		peerRoutines: make(map[string]chan struct{}),
 	}
 
+	evpool.SetLogger(logger)
+
 	r.BaseService = *service.NewBaseService(logger, "Evidence", r)
 	return r
 }
