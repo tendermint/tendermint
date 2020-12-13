@@ -2106,7 +2106,7 @@ func (cs *State) voteTime() time.Time {
 	now := tmtime.Now()
 	minVoteTime := now
 	// Minimum time increment between blocks
-	timeIota := time.Duration(1) * time.Millisecond
+	timeIota := time.Millisecond
 	// TODO: We should remove next line in case we don't vote for v in case cs.ProposalBlock == nil,
 	// even if cs.LockedBlock != nil. See https://docs.tendermint.com/master/spec/.
 	if cs.LockedBlock != nil {
