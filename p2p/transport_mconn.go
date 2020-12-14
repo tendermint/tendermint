@@ -232,12 +232,14 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 
 	err = m.filterTCPConn(tcpConn)
 	if err != nil {
+		_ = tcpConn.Close()
 		return nil, err
 	}
 
 	conn, err := newMConnConnection(m, tcpConn, endpoint.PeerID)
 	if err != nil {
 		m.conns.Remove(tcpConn)
+		_ = tcpConn.Close()
 		return nil, err
 	}
 

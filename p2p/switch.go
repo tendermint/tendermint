@@ -93,7 +93,8 @@ type Switch struct {
 	metrics *Metrics
 }
 
-// NetAddress returns the address the switch is listening on.
+// NetAddress returns the first address the switch is listening on,
+// or nil if no addresses are found.
 func (sw *Switch) NetAddress() *NetAddress {
 	endpoints := sw.transport.Endpoints()
 	if len(endpoints) == 0 {
