@@ -1,17 +1,19 @@
 package evidence_test
 
 import (
+	"encoding/hex"
 	"math/rand"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/go-kit/kit/log/term"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/log"
@@ -83,27 +85,12 @@ func setup(t *testing.T, logger log.Logger, pool *evidence.Pool, chBuf uint) *re
 	return rts
 }
 
-// evidenceLogger creates a testing logger which uses a different colors for
-// each validator. The "validator" key must exist.
-func evidenceLogger() log.Logger {
-	return log.TestingLoggerWithColorFn(func(keyVals ...interface{}) term.FgBgColor {
-		for i := 0; i < len(keyVals)-1; i += 2 {
-			if keyVals[i] == "validator" {
-				return term.FgBgColor{Fg: term.Color(uint8(keyVals[i+1].(int) + 1))}
-			}
-		}
-
-		return term.FgBgColor{}
-	})
-}
-
 func createTestSuites(t *testing.T, stateStores []sm.Store, chBuf uint) []*reactorTestSuite {
 	t.Helper()
 
 	numSStores := len(stateStores)
-
 	testSuites := make([]*reactorTestSuite, numSStores)
-	logger := evidenceLogger()
+	logger := log.TestingLogger()
 	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	for i := 0; i < numSStores; i++ {
@@ -122,7 +109,7 @@ func createTestSuites(t *testing.T, stateStores []sm.Store, chBuf uint) []*react
 	return testSuites
 }
 
-func waitForEvidence(t *testing.T, evList types.EvidenceList, suites []*reactorTestSuite) {
+func waitForEvidence(t *testing.T, evList types.EvidenceList, suites ...*reactorTestSuite) {
 	t.Helper()
 
 	wg := new(sync.WaitGroup)
@@ -186,27 +173,35 @@ func createEvidenceList(
 	return evList
 }
 
-func simulateRouter(testSuites []*reactorTestSuite) {
+// simulateRouter will increment the provided WaitGroup and execute a simulated
+// router where, for each outbound p2p Envelope from the primary reactor, we
+// proxy (send) the Envelope the relevant peer reactor. Done is invoked on the
+// WaitGroup when numOut Envelopes are sent (i.e. read from the outbound channel).
+func simulateRouter(wg *sync.WaitGroup, primary *reactorTestSuite, suites []*reactorTestSuite, numOut int) {
+	wg.Add(1)
+
 	// create a mapping for efficient suite lookup by peer ID
 	suitesByPeerID := make(map[string]*reactorTestSuite)
-	for _, suite := range testSuites {
+	for _, suite := range suites {
 		suitesByPeerID[suite.peerID.String()] = suite
 	}
 
 	// Simulate a router by listening for all outbound envelopes and proxying the
 	// envelope to the respective peer (suite).
-	for _, suite := range testSuites {
-		go func(s *reactorTestSuite) {
-			for envelope := range s.evidenceOutCh {
-				other := suitesByPeerID[envelope.To.String()]
-				other.evidenceInCh <- p2p.Envelope{
-					From:    s.peerID,
-					To:      envelope.To,
-					Message: envelope.Message,
-				}
+	go func() {
+		for i := 0; i < numOut; i++ {
+			envelope := <-primary.evidenceOutCh
+			other := suitesByPeerID[envelope.To.String()]
+
+			other.evidenceInCh <- p2p.Envelope{
+				From:    primary.peerID,
+				To:      envelope.To,
+				Message: envelope.Message,
 			}
-		}(suite)
-	}
+		}
+
+		wg.Done()
+	}()
 }
 
 // TestReactorBroadcastEvidence creates an environment of multiple peers that
@@ -235,8 +230,9 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	secondaries := testSuites[1:]
 
 	// Simulate a router by listening for all outbound envelopes and proxying the
-	// envelope to the respective peer (suite).
-	simulateRouter(testSuites)
+	// envelopes to the respective peer (suite).
+	wg := new(sync.WaitGroup)
+	simulateRouter(wg, primary, testSuites, numEvidence*len(secondaries))
 
 	evList := createEvidenceList(t, primary.pool, val, numEvidence)
 
@@ -249,13 +245,15 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 		})
 	}
 
-	// Wait till all secondary suites (nodes) received all evidence from the
+	// Wait till all secondary suites (reactor) received all evidence from the
 	// primary suite (node).
-	waitForEvidence(t, evList, secondaries)
+	waitForEvidence(t, evList, secondaries...)
 
 	for _, suite := range testSuites {
 		require.Equal(t, numEvidence, int(suite.pool.Size()))
 	}
+
+	wg.Wait()
 
 	// ensure all channels are drained
 	for _, suite := range testSuites {
@@ -266,12 +264,13 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 // TestReactorSelectiveBroadcast tests a context where we have two reactors
 // connected to one another but are at different heights. Reactor 1 which is
 // ahead receives a list of evidence.
-func TestReactorSelectiveBroadcast(t *testing.T) {
+func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 	val := types.NewMockPV()
 	height1 := int64(numEvidence) + 10
 	height2 := int64(numEvidence) / 2
 
-	// stateDB1 is ahead of stateDB2
+	// stateDB1 is ahead of stateDB2, where stateDB1 has all heights (1-10) and
+	// stateDB2 only has heights 1-7.
 	stateDB1 := initializeValidatorState(t, val, height1)
 	stateDB2 := initializeValidatorState(t, val, height2)
 
@@ -281,9 +280,10 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 
 	// Simulate a router by listening for all outbound envelopes and proxying the
 	// envelope to the respective peer (suite).
-	simulateRouter(testSuites)
+	wg := new(sync.WaitGroup)
+	simulateRouter(wg, primary, testSuites, numEvidence*len(secondaries))
 
-	// Send a list valid evidence to the first reactor's, the one that is ahead,
+	// Send a list of valid evidence to the first reactor's, the one that is ahead,
 	// evidence pool.
 	evList := createEvidenceList(t, primary.pool, val, numEvidence)
 
@@ -296,28 +296,15 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 		})
 	}
 
-	// All the secondaries should send a PeerError message on the evidence channel
-	// when receiving evidence they cannot add to their local pool, so we listen
-	// for all of these errors per secondary
-	var errWg sync.WaitGroup
-	errWg.Add(len(evList[numEvidence/2-1:]) * len(secondaries))
-
-	for _, suite := range secondaries {
-		go func(s *reactorTestSuite) {
-			for range s.evidencePeerErrCh {
-				errWg.Done()
-			}
-		}(suite)
-	}
-
 	// only ones less than the peers height should make it through
-	waitForEvidence(t, evList[:numEvidence/2-1], secondaries)
-
-	// wait till errors are received
-	errWg.Wait()
+	waitForEvidence(t, evList[:height2+2], secondaries...)
 
 	require.Equal(t, numEvidence, int(primary.pool.Size()))
-	require.Equal(t, len(evList[numEvidence/2-1:])+1, int(secondaries[0].pool.Size()))
+	require.Equal(t, int(height2+2), int(secondaries[0].pool.Size()))
+
+	// The primary will continue to send the remaining evidence to the secondaries
+	// so we wait until it has sent all the envelopes.
+	wg.Wait()
 
 	// ensure all channels are drained
 	for _, suite := range testSuites {
@@ -325,164 +312,299 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	}
 }
 
-// ============================================================================
-// ============================================================================
-// ============================================================================
+func TestReactorBroadcastEvidence_Pending(t *testing.T) {
+	val := types.NewMockPV()
+	height := int64(10)
 
-// // This tests aims to ensure that reactors don't send evidence that they have committed or that ar
-// // not ready for the peer through three scenarios.
-// // First, committed evidence to a newly connected peer
-// // Second, evidence to a peer that is behind
-// // Third, evidence that was pending and became committed just before the peer caught up
-// func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
-// 	config := cfg.TestConfig()
+	stateDB1 := initializeValidatorState(t, val, height)
+	stateDB2 := initializeValidatorState(t, val, height)
 
-// 	val := types.NewMockPV()
-// 	var height int64 = 10
+	testSuites := createTestSuites(t, []sm.Store{stateDB1, stateDB2}, 1)
+	primary := testSuites[0]
+	secondary := testSuites[1]
 
-// 	// DB1 is ahead of DB2
-// 	stateDB1 := initializeValidatorState(val, height-1)
-// 	stateDB2 := initializeValidatorState(val, height-2)
-// 	state, err := stateDB1.Load()
-// 	require.NoError(t, err)
-// 	state.LastBlockHeight++
+	// Simulate a router by listening for all outbound envelopes and proxying the
+	// envelopes to the respective peer (suite).
+	wg := new(sync.WaitGroup)
+	simulateRouter(wg, primary, testSuites, numEvidence)
 
-// 	// make reactors from statedb
-// 	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
+	// add all evidence to the primary reactor
+	evList := createEvidenceList(t, primary.pool, val, numEvidence)
 
-// 	evList := sendEvidence(t, pools[0], val, 2)
-// 	pools[0].Update(state, evList)
-// 	require.EqualValues(t, uint32(0), pools[0].Size())
+	// Manually add half the evidence to the secondary which will mark them as
+	// pending.
+	for i := 0; i < numEvidence/2; i++ {
+		require.NoError(t, secondary.pool.AddEvidence(evList[i]))
+	}
 
-// 	time.Sleep(100 * time.Millisecond)
+	// the secondary should have half the evidence as pending
+	require.Equal(t, uint32(numEvidence/2), secondary.pool.Size())
 
-// 	peer := reactors[0].Switch.Peers().List()[0]
-// 	ps := peerState{height - 2}
-// 	peer.Set(types.PeerStateKey, ps)
+	// add the secondary reactor as a peer to the primary reactor
+	primary.peerUpdates.TestSend(p2p.PeerUpdate{
+		Status: p2p.PeerStatusNew,
+		PeerID: secondary.peerID,
+	})
 
-// 	peer = reactors[1].Switch.Peers().List()[0]
-// 	ps = peerState{height}
-// 	peer.Set(types.PeerStateKey, ps)
+	// The secondary reactor should have received all the evidence ignoring the
+	// already pending evidence.
+	waitForEvidence(t, evList, secondary)
 
-// 	// wait to see that no evidence comes through
-// 	time.Sleep(300 * time.Millisecond)
+	for _, suite := range testSuites {
+		require.Equal(t, numEvidence, int(suite.pool.Size()))
+	}
 
-// 	// the second pool should not have received any evidence because it has already been committed
-// 	assert.Equal(t, uint32(0), pools[1].Size(), "second reactor should not have received evidence")
+	wg.Wait()
 
-// 	// the first reactor receives three more evidence
-// 	evList = make([]types.Evidence, 3)
-// 	for i := 0; i < 3; i++ {
-// 		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height-3+int64(i),
-// 			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val, state.ChainID)
-// 		err := pools[0].AddEvidence(ev)
-// 		require.NoError(t, err)
-// 		evList[i] = ev
-// 	}
+	// ensure all channels are drained
+	for _, suite := range testSuites {
+		require.Empty(t, suite.evidenceOutCh)
+	}
+}
 
-// 	// wait to see that only one evidence is sent
-// 	time.Sleep(300 * time.Millisecond)
+func TestReactorBroadcastEvidence_Committed(t *testing.T) {
+	val := types.NewMockPV()
+	height := int64(10)
 
-// 	// the second pool should only have received the first evidence because it is behind
-// 	peerEv, _ := pools[1].PendingEvidence(10000)
-// 	assert.EqualValues(t, []types.Evidence{evList[0]}, peerEv)
+	stateDB1 := initializeValidatorState(t, val, height)
+	stateDB2 := initializeValidatorState(t, val, height)
 
-// 	// the last evidence is committed and the second reactor catches up in state to the first
-// 	// reactor. We therefore expect that the second reactor only receives one more evidence, the
-// 	// one that is still pending and not the evidence that has already been committed.
-// 	state.LastBlockHeight++
-// 	pools[0].Update(state, []types.Evidence{evList[2]})
-// 	// the first reactor should have the two remaining pending evidence
-// 	require.EqualValues(t, uint32(2), pools[0].Size())
+	testSuites := createTestSuites(t, []sm.Store{stateDB1, stateDB2}, 1)
+	primary := testSuites[0]
+	secondary := testSuites[1]
 
-// 	// now update the state of the second reactor
-// 	pools[1].Update(state, types.EvidenceList{})
-// 	peer = reactors[0].Switch.Peers().List()[0]
-// 	ps = peerState{height}
-// 	peer.Set(types.PeerStateKey, ps)
+	// add all evidence to the primary reactor
+	evList := createEvidenceList(t, primary.pool, val, numEvidence)
 
-// 	// wait to see that only two evidence is sent
-// 	time.Sleep(300 * time.Millisecond)
+	// Manually add half the evidence to the secondary which will mark them as
+	// pending.
+	for i := 0; i < numEvidence/2; i++ {
+		require.NoError(t, secondary.pool.AddEvidence(evList[i]))
+	}
 
-// 	peerEv, _ = pools[1].PendingEvidence(1000)
-// 	assert.EqualValues(t, []types.Evidence{evList[0], evList[1]}, peerEv)
-// }
+	// the secondary should have half the evidence as pending
+	require.Equal(t, uint32(numEvidence/2), secondary.pool.Size())
 
-// type peerState struct {
-// 	height int64
-// }
+	state, err := stateDB2.Load()
+	require.NoError(t, err)
 
-// func (ps peerState) GetHeight() int64 {
-// 	return ps.height
-// }
+	// update the secondary's pool such that all pending evidence is committed
+	state.LastBlockHeight++
+	secondary.pool.Update(state, evList[:numEvidence/2])
 
-// func exampleVote(t byte) *types.Vote {
-// 	var stamp, err = time.Parse(types.TimeFormat, "2017-12-25T03:00:01.234Z")
-// 	if err != nil {
-// 		panic(err)
-// 	}
+	// the secondary should have half the evidence as committed
+	require.Equal(t, uint32(0), secondary.pool.Size())
 
-// 	return &types.Vote{
-// 		Type:      tmproto.SignedMsgType(t),
-// 		Height:    3,
-// 		Round:     2,
-// 		Timestamp: stamp,
-// 		BlockID: types.BlockID{
-// 			Hash: tmhash.Sum([]byte("blockID_hash")),
-// 			PartSetHeader: types.PartSetHeader{
-// 				Total: 1000000,
-// 				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
-// 			},
-// 		},
-// 		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
-// 		ValidatorIndex:   56789,
-// 	}
-// }
+	// Simulate a router by listening for all outbound envelopes and proxying the
+	// envelopes to the respective peer (suite).
+	wg := new(sync.WaitGroup)
+	simulateRouter(wg, primary, testSuites, numEvidence)
 
-// // nolint:lll //ignore line length for tests
-// func TestEvidenceVectors(t *testing.T) {
+	// add the secondary reactor as a peer to the primary reactor
+	primary.peerUpdates.TestSend(p2p.PeerUpdate{
+		Status: p2p.PeerStatusNew,
+		PeerID: secondary.peerID,
+	})
 
-// 	val := &types.Validator{
-// 		Address:     crypto.AddressHash([]byte("validator_address")),
-// 		VotingPower: 10,
-// 	}
+	// The secondary reactor should have received all the evidence ignoring the
+	// already pending evidence.
+	waitForEvidence(t, evList[numEvidence/2:], secondary)
 
-// 	valSet := types.NewValidatorSet([]*types.Validator{val})
+	require.Equal(t, numEvidence, int(primary.pool.Size()))
+	require.Equal(t, numEvidence/2, int(secondary.pool.Size()))
 
-// 	dupl := types.NewDuplicateVoteEvidence(
-// 		exampleVote(1),
-// 		exampleVote(2),
-// 		defaultEvidenceTime,
-// 		valSet,
-// 	)
+	wg.Wait()
 
-// 	testCases := []struct {
-// 		testName     string
-// 		evidenceList []types.Evidence
-// 		expBytes     string
-// 	}{
-// 		{"DuplicateVoteEvidence", []types.Evidence{dupl}, "0a85020a82020a79080210031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb031279080110031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb03180a200a2a060880dbaae105"},
-// 	}
+	// ensure all channels are drained
+	for _, suite := range testSuites {
+		require.Empty(t, suite.evidenceOutCh)
+	}
+}
 
-// 	for _, tc := range testCases {
-// 		tc := tc
+func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
+	numPeers := 7
 
-// 		evi := make([]tmproto.Evidence, len(tc.evidenceList))
-// 		for i := 0; i < len(tc.evidenceList); i++ {
-// 			ev, err := types.EvidenceToProto(tc.evidenceList[i])
-// 			require.NoError(t, err, tc.testName)
-// 			evi[i] = *ev
-// 		}
+	// create a stateDB for all test suites (nodes)
+	stateDBs := make([]sm.Store, numPeers)
+	val := types.NewMockPV()
 
-// 		epl := tmproto.EvidenceList{
-// 			Evidence: evi,
-// 		}
+	// We need all validators saved for heights at least as high as we have
+	// evidence for.
+	height := int64(numEvidence) + 10
+	for i := 0; i < numPeers; i++ {
+		stateDBs[i] = initializeValidatorState(t, val, height)
+	}
 
-// 		bz, err := epl.Marshal()
-// 		require.NoError(t, err, tc.testName)
+	testSuites := createTestSuites(t, stateDBs, 1)
 
-// 		require.Equal(t, tc.expBytes, hex.EncodeToString(bz), tc.testName)
+	// Simulate a router by listening for all outbound envelopes and proxying the
+	// envelopes to the respective peer (suite).
+	wg := new(sync.WaitGroup)
+	for _, suite := range testSuites {
+		simulateRouter(wg, suite, testSuites, numEvidence*(len(testSuites)-1))
+	}
 
-// 	}
+	evList := createEvidenceList(t, testSuites[0].pool, val, numEvidence)
 
-// }
+	// every suite (reactor) connects to every other suite (reactor)
+	for _, suiteI := range testSuites {
+		for _, suiteJ := range testSuites {
+			if !suiteI.peerID.Equal(suiteJ.peerID) {
+				suiteI.peerUpdates.TestSend(p2p.PeerUpdate{
+					Status: p2p.PeerStatusNew,
+					PeerID: suiteJ.peerID,
+				})
+			}
+		}
+	}
+
+	// wait till all suites (reactors) received all evidence from other suites (reactors)
+	waitForEvidence(t, evList, testSuites...)
+
+	for _, suite := range testSuites {
+		require.Equal(t, numEvidence, int(suite.pool.Size()))
+
+		// commit state so we do not continue to repeat gossiping the same evidence
+		state := suite.pool.State()
+		state.LastBlockHeight++
+		suite.pool.Update(state, evList)
+
+		// There is no guarantee on when the reactor would start gossiping evidence
+		// from the front of the list again, so we flush the channel here just to be
+		// safe.
+		for len(suite.evidenceOutCh) > 0 {
+			<-suite.evidenceOutCh
+		}
+	}
+
+	wg.Wait()
+
+	// ensure all channels are drained
+	for _, suite := range testSuites {
+		require.Empty(t, suite.evidenceOutCh)
+	}
+}
+
+func TestReactorBroadcastEvidence_RemovePeer(t *testing.T) {
+	val := types.NewMockPV()
+	height := int64(10)
+
+	stateDB1 := initializeValidatorState(t, val, height)
+	stateDB2 := initializeValidatorState(t, val, height)
+
+	testSuites := createTestSuites(t, []sm.Store{stateDB1, stateDB2}, uint(numEvidence))
+	primary := testSuites[0]
+	secondary := testSuites[1]
+
+	// Simulate a router by listening for all outbound envelopes and proxying the
+	// envelopes to the respective peer (suite).
+	wg := new(sync.WaitGroup)
+	simulateRouter(wg, primary, testSuites, numEvidence/2)
+
+	// add all evidence to the primary reactor
+	evList := createEvidenceList(t, primary.pool, val, numEvidence)
+
+	// add the secondary reactor as a peer to the primary reactor
+	primary.peerUpdates.TestSend(p2p.PeerUpdate{
+		Status: p2p.PeerStatusNew,
+		PeerID: secondary.peerID,
+	})
+
+	// have the secondary reactor receive only half the evidence
+	waitForEvidence(t, evList[:numEvidence/2], secondary)
+
+	// disconnect the peer
+	primary.peerUpdates.TestSend(p2p.PeerUpdate{
+		Status: p2p.PeerStatusDown,
+		PeerID: secondary.peerID,
+	})
+
+	// Ensure the secondary only received half of the evidence before being
+	// disconnected.
+	require.Equal(t, numEvidence/2, int(secondary.pool.Size()))
+
+	wg.Wait()
+
+	// The primary reactor should still be attempting to send the remaining half.
+	//
+	// NOTE: The channel is buffered (size numEvidence) as to ensure the primary
+	// reactor will send all envelopes at once before receiving the signal to stop
+	// gossiping.
+	for i := 0; i < numEvidence/2; i++ {
+		<-primary.evidenceOutCh
+	}
+
+	// ensure all channels are drained
+	for _, suite := range testSuites {
+		require.Empty(t, suite.evidenceOutCh)
+	}
+}
+
+func TestEvidenceListSerialization(t *testing.T) {
+	exampleVote := func(msgType byte) *types.Vote {
+		var stamp, err = time.Parse(types.TimeFormat, "2017-12-25T03:00:01.234Z")
+		require.NoError(t, err)
+
+		return &types.Vote{
+			Type:      tmproto.SignedMsgType(msgType),
+			Height:    3,
+			Round:     2,
+			Timestamp: stamp,
+			BlockID: types.BlockID{
+				Hash: tmhash.Sum([]byte("blockID_hash")),
+				PartSetHeader: types.PartSetHeader{
+					Total: 1000000,
+					Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
+				},
+			},
+			ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
+			ValidatorIndex:   56789,
+		}
+	}
+
+	val := &types.Validator{
+		Address:     crypto.AddressHash([]byte("validator_address")),
+		VotingPower: 10,
+	}
+
+	valSet := types.NewValidatorSet([]*types.Validator{val})
+
+	dupl := types.NewDuplicateVoteEvidence(
+		exampleVote(1),
+		exampleVote(2),
+		defaultEvidenceTime,
+		valSet,
+	)
+
+	testCases := map[string]struct {
+		evidenceList []types.Evidence
+		expBytes     string
+	}{
+		"DuplicateVoteEvidence": {
+			[]types.Evidence{dupl},
+			"0a85020a82020a79080210031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb031279080110031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a2a0b08b1d381d20510809dca6f32146af1f4111082efb388211bc72c55bcd61e9ac3d538d5bb03180a200a2a060880dbaae105",
+		},
+	}
+
+	for name, tc := range testCases {
+		tc := tc
+
+		t.Run(name, func(t *testing.T) {
+			protoEv := make([]tmproto.Evidence, len(tc.evidenceList))
+			for i := 0; i < len(tc.evidenceList); i++ {
+				ev, err := types.EvidenceToProto(tc.evidenceList[i])
+				require.NoError(t, err)
+				protoEv[i] = *ev
+			}
+
+			epl := tmproto.EvidenceList{
+				Evidence: protoEv,
+			}
+
+			bz, err := epl.Marshal()
+			require.NoError(t, err)
+
+			require.Equal(t, tc.expBytes, hex.EncodeToString(bz))
+		})
+	}
+}
