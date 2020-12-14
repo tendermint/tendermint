@@ -41,6 +41,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [blockchain/v1] \#5728 Remove in favor of v2 (@melekes)
 - [blockchain/v0] \#5741 Relax termination conditions and increase sync timeout (@melekes)
 - [cli] \#5772 `gen_node_key` output now contains node ID (`id` field) (@melekes)
+- [blockchain/v2] \#5774 Send status request when new peer joins (@melekes)
 
 ### BUG FIXES
 
