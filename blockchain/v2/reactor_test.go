@@ -96,25 +96,27 @@ type mockSwitchIo struct {
 	numStatusRequest    int
 }
 
-func (sio *mockSwitchIo) sendBlockRequest(_ p2p.ID, _ int64) error {
+var _ iIO = (*mockSwitchIo)(nil)
+
+func (sio *mockSwitchIo) sendBlockRequest(_ p2p.Peer, _ int64) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) sendStatusResponse(_, _ int64, _ p2p.ID) error {
+func (sio *mockSwitchIo) sendStatusResponse(_, _ int64, _ p2p.Peer) error {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.numStatusResponse++
 	return nil
 }
 
-func (sio *mockSwitchIo) sendBlockToPeer(_ *types.Block, _ p2p.ID) error {
+func (sio *mockSwitchIo) sendBlockToPeer(_ *types.Block, _ p2p.Peer) error {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.numBlockResponse++
 	return nil
 }
 
-func (sio *mockSwitchIo) sendBlockNotFound(_ int64, _ p2p.ID) error {
+func (sio *mockSwitchIo) sendBlockNotFound(_ int64, _ p2p.Peer) error {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.numNoBlockResponse++
@@ -132,7 +134,7 @@ func (sio *mockSwitchIo) broadcastStatusRequest() error {
 	return nil
 }
 
-func (sio *mockSwitchIo) sendStatusRequest(_ p2p.ID) error {
+func (sio *mockSwitchIo) sendStatusRequest(_ p2p.Peer) error {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.numStatusRequest++

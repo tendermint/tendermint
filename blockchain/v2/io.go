@@ -12,16 +12,15 @@ import (
 
 var (
 	errPeerQueueFull = errors.New("peer queue full")
-	errNoPeer        = errors.New("peer not found")
 )
 
 type iIO interface {
-	sendBlockRequest(peerID p2p.ID, height int64) error
-	sendBlockToPeer(block *types.Block, peerID p2p.ID) error
-	sendBlockNotFound(height int64, peerID p2p.ID) error
-	sendStatusResponse(base, height int64, peerID p2p.ID) error
+	sendBlockRequest(peer p2p.Peer, height int64) error
+	sendBlockToPeer(block *types.Block, peer p2p.Peer) error
+	sendBlockNotFound(height int64, peer p2p.Peer) error
+	sendStatusResponse(base, height int64, peer p2p.Peer) error
 
-	sendStatusRequest(peerID p2p.ID) error
+	sendStatusRequest(peer p2p.Peer) error
 	broadcastStatusRequest() error
 
 	trySwitchToConsensus(state state.State, skipWAL bool) bool
@@ -48,11 +47,7 @@ type consensusReactor interface {
 	SwitchToConsensus(state state.State, skipWAL bool)
 }
 
-func (sio *switchIO) sendBlockRequest(peerID p2p.ID, height int64) error {
-	peer := sio.sw.Peers().Get(peerID)
-	if peer == nil {
-		return errNoPeer
-	}
+func (sio *switchIO) sendBlockRequest(peer p2p.Peer, height int64) error {
 	msgBytes, err := bc.EncodeMsg(&bcproto.BlockRequest{Height: height})
 	if err != nil {
 		return err
@@ -65,12 +60,7 @@ func (sio *switchIO) sendBlockRequest(peerID p2p.ID, height int64) error {
 	return nil
 }
 
-func (sio *switchIO) sendStatusResponse(base int64, height int64, peerID p2p.ID) error {
-	peer := sio.sw.Peers().Get(peerID)
-	if peer == nil {
-		return errNoPeer
-	}
-
+func (sio *switchIO) sendStatusResponse(base int64, height int64, peer p2p.Peer) error {
 	msgBytes, err := bc.EncodeMsg(&bcproto.StatusResponse{Height: height, Base: base})
 	if err != nil {
 		return err
@@ -83,11 +73,7 @@ func (sio *switchIO) sendStatusResponse(base int64, height int64, peerID p2p.ID)
 	return nil
 }
 
-func (sio *switchIO) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
-	peer := sio.sw.Peers().Get(peerID)
-	if peer == nil {
-		return errNoPeer
-	}
+func (sio *switchIO) sendBlockToPeer(block *types.Block, peer p2p.Peer) error {
 	if block == nil {
 		panic("trying to send nil block")
 	}
@@ -108,11 +94,7 @@ func (sio *switchIO) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
 	return nil
 }
 
-func (sio *switchIO) sendBlockNotFound(height int64, peerID p2p.ID) error {
-	peer := sio.sw.Peers().Get(peerID)
-	if peer == nil {
-		return errNoPeer
-	}
+func (sio *switchIO) sendBlockNotFound(height int64, peer p2p.Peer) error {
 	msgBytes, err := bc.EncodeMsg(&bcproto.NoBlockResponse{Height: height})
 	if err != nil {
 		return err
@@ -133,12 +115,7 @@ func (sio *switchIO) trySwitchToConsensus(state state.State, skipWAL bool) bool 
 	return ok
 }
 
-func (sio *switchIO) sendStatusRequest(peerID p2p.ID) error {
-	peer := sio.sw.Peers().Get(peerID)
-	if peer == nil {
-		return errNoPeer
-	}
-
+func (sio *switchIO) sendStatusRequest(peer p2p.Peer) error {
 	msgBytes, err := bc.EncodeMsg(&bcproto.StatusRequest{})
 	if err != nil {
 		return err
