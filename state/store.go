@@ -396,8 +396,6 @@ func (store dbStore) batchDelete(key func(int64) []byte, retainHeight int64) err
 		return err
 	}
 
-	panic("hello")
-
 	err = batch.WriteSync()
 	if err != nil {
 		return fmt.Errorf("pruning error at height %d: %w", decodeKey(iter.Key()), err)
