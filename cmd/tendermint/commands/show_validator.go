@@ -12,9 +12,11 @@ import (
 
 // ShowValidatorCmd adds capabilities for showing the validator info.
 var ShowValidatorCmd = &cobra.Command{
-	Use:   "show_validator",
-	Short: "Show this node's validator info",
-	RunE:  showValidator,
+	Use:     "show-validator",
+	Aliases: []string{"show_validator"},
+	Short:   "Show this node's validator info",
+	RunE:    showValidator,
+	PreRun:  deprecateSnakeCase,
 }
 
 func showValidator(cmd *cobra.Command, args []string) error {
