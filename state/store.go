@@ -274,7 +274,7 @@ func (store dbStore) pruneValidatorSets(height int64) error {
 	// that validator set and make sure it is not pruned by saving after we have finished pruning.
 	if valInfo.ValidatorSet == nil {
 		lastRecordedValSetHeight = lastStoredHeightFor(height, valInfo.LastHeightChanged)
-		lastRecordedValSet, err := loadValidatorsInfo(store.db, lastRecordedValSetHeight)
+		lastRecordedValSet, err = loadValidatorsInfo(store.db, lastRecordedValSetHeight)
 		if err != nil || lastRecordedValSet.ValidatorSet == nil {
 			return fmt.Errorf("couldn't find validators at height %d (height %d was originally requested): %w",
 					lastStoredHeightFor(height, valInfo.LastHeightChanged),
@@ -316,9 +316,9 @@ func (store dbStore) pruneConsensusParams(height int64) error {
 	// As we don't save the consensus params at every height, only when there is a consensus params change,
 	// we must not prune (or save) the last consensus params that the consensus params info at height
 	// is dependent on.  
-	var lastRecordedConsensusParams tmproto.ConsensusParams
+	var lastRecordedConsensusParams *tmstate.ConsensusParamsInfo
 	if paramsInfo.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
-		lastRecordedConsensusParams, err := store.loadConsensusParamsInfo(paramsInfo.LastHeightChanged)
+		lastRecordedConsensusParams, err = store.loadConsensusParamsInfo(paramsInfo.LastHeightChanged)
 		if err != nil ||  lastRecordedConsensusParams.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
 			return fmt.Errorf(
 				"couldn't find consensus params at height %d as last changed from height %d: %w",
@@ -336,8 +336,8 @@ func (store dbStore) pruneConsensusParams(height int64) error {
 
 	// check if we had a dependent consensus params info of an earlier height that we need to save.
 	// If so then we restore it now
-	if !lastRecordedConsensusParams.Equal(&tmproto.ConsensusParams{}) {
-		bz, err := paramsInfo.Marshal()
+	if !lastRecordedConsensusParams.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
+		bz, err := lastRecordedConsensusParams.Marshal()
 		if err != nil {
 			return err
 		}
@@ -346,7 +346,6 @@ func (store dbStore) pruneConsensusParams(height int64) error {
 			return err
 		}
 	}
-
 
 	return nil
 }
@@ -385,7 +384,10 @@ func (store dbStore) batchDelete(key func(int64) []byte, retainHeight int64) err
 			if err != nil {
 				return fmt.Errorf("pruning error at height %d: %w", decodeKey(iter.Key()), err)
 			}
-			batch.Close()
+			if err := batch.Close(); err != nil {
+				return err
+			}
+
 			batch = store.db.NewBatch()
 			defer batch.Close()
 		}
@@ -393,6 +395,8 @@ func (store dbStore) batchDelete(key func(int64) []byte, retainHeight int64) err
 	if err := iter.Error(); err != nil {
 		return err
 	}
+
+	panic("hello")
 
 	err = batch.WriteSync()
 	if err != nil {
@@ -474,6 +478,7 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 // LoadValidators loads the ValidatorSet for a given height.
 // Returns ErrNoValSetForHeight if the validator set can't be found for this height.
 func (store dbStore) LoadValidators(height int64) (*types.ValidatorSet, error) {
+
 	valInfo, err := loadValidatorsInfo(store.db, height)
 	if err != nil {
 		return nil, ErrNoValSetForHeight{height}
