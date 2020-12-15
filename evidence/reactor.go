@@ -335,12 +335,28 @@ func (r *Reactor) broadcastEvidenceLoop(peerID p2p.PeerID, doneCh <-chan struct{
 		// and thus would not be able to process the evidence correctly. Also, the
 		// peer may receive this piece of evidence multiple times if it added and
 		// removed frequently from the broadcasting peer.
-		r.Logger.Debug("gossiping evidence to peer", "evidence", ev, "peer", peerID)
-		r.evidenceCh.Out() <- p2p.Envelope{
+		envelope := p2p.Envelope{
 			To: peerID,
 			Message: &tmproto.EvidenceList{
 				Evidence: []tmproto.Evidence{*evProto},
 			},
+		}
+
+		select {
+		case r.evidenceCh.Out() <- envelope:
+			r.Logger.Debug("gossiped evidence to peer", "evidence", ev, "peer", peerID)
+
+		case <-doneCh:
+			// The peer is marked for removal via a PeerUpdate as the doneCh was
+			// explicitly closed to signal we should exit.
+			r.removePeerRoutine(peerID)
+			return
+
+		case <-r.closeCh:
+			// The reactor has signaled that we are stopped and thus we should
+			// implicitly exit this peer's goroutine.
+			r.removePeerRoutine(peerID)
+			return
 		}
 
 		select {
