@@ -9,6 +9,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	protomem "github.com/tendermint/tendermint/proto/tendermint/mempool"
@@ -134,7 +135,7 @@ func (memR *Reactor) OnStart() error {
 // GetChannels implements Reactor by returning the list of channels for this
 // reactor.
 func (memR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
-	maxMsgSize := memR.config.MaxBatchBytes
+	maxMsgSize := tmmath.MaxInt(memR.config.MaxBatchBytes, memR.config.MaxTxBytes)
 	return []*p2p.ChannelDescriptor{
 		{
 			ID:                  MempoolChannel,
@@ -247,7 +248,7 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 			if err != nil {
 				panic(err)
 			}
-			memR.Logger.Debug("Sending N txs to peer", "N", len(txs), "peer", peer)
+			memR.Logger.Info("Sending N txs to peer", "N", len(txs), "peer", peer)
 			success := peer.Send(MempoolChannel, bz)
 			if !success {
 				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
@@ -271,7 +272,7 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 // included.
 // WARNING: mutates next!
 func (memR *Reactor) txs(next *clist.CElement, peerID uint16, peerHeight int64) [][]byte {
-	batch := make([][]byte, 0)
+	batch := make([][]byte, 0, memR.config.MaxBatchBytes)
 
 	for {
 		memTx := next.Value.(*mempoolTx)
@@ -283,7 +284,7 @@ func (memR *Reactor) txs(next *clist.CElement, peerID uint16, peerHeight int64) 
 					Txs: &protomem.Txs{Txs: append(batch, memTx.tx)},
 				},
 			}
-			if batchMsg.Size() > memR.config.MaxBatchBytes {
+			if len(batch) > 0 && batchMsg.Size() > memR.config.MaxBatchBytes {
 				return batch
 			}
 

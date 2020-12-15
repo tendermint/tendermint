@@ -650,8 +650,8 @@ func DefaultMempoolConfig() *MempoolConfig {
 		Size:          5000,
 		MaxTxsBytes:   1024 * 1024 * 1024, // 1GB
 		CacheSize:     10000,
-		MaxTxBytes:    1024 * 1024,      // 1MB
-		MaxBatchBytes: 10 * 1024 * 1024, // 10MB
+		MaxTxBytes:    1024 * 1024, // 1MB
+		MaxBatchBytes: 4096,
 	}
 }
 
@@ -689,9 +689,6 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	}
 	if cfg.MaxBatchBytes < 0 {
 		return errors.New("max-batch-bytes can't be negative")
-	}
-	if cfg.MaxBatchBytes <= cfg.MaxTxBytes {
-		return errors.New("max-batch-bytes can't be less or equal to max-tx-bytes")
 	}
 	return nil
 }
