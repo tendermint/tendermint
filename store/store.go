@@ -150,7 +150,7 @@ func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
 func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	var pbpart = new(tmproto.Part)
 
-	bz, err := bs.db.Get(blockPartKey(height, uint32(index)))
+	bz, err := bs.db.Get(blockPartKey(height, uint64(index)))
 	if err != nil {
 		panic(err)
 	}
@@ -449,7 +449,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	// typically load the block meta first as an indication that the block exists
 	// and then go on to load block parts - we must make sure the block is
 	// complete as soon as the block meta is written.
-	for i := uint32(0); i < blockParts.Total(); i++ {
+	for i := 0; i < int(blockParts.Total()); i++ {
 		part := blockParts.GetPart(int(i))
 		bs.saveBlockPart(height, i, part)
 	}
@@ -495,13 +495,13 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	bs.saveState()
 }
 
-func (bs *BlockStore) saveBlockPart(height int64, index uint32, part *types.Part) {
+func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
 	pbp, err := part.ToProto()
 	if err != nil {
 		panic(fmt.Errorf("unable to make part into proto: %w", err))
 	}
 	partBytes := mustEncode(pbp)
-	if err := bs.db.Set(blockPartKey(height, index), partBytes); err != nil {
+	if err := bs.db.Set(blockPartKey(height, uint64(index)), partBytes); err != nil {
 		panic(err)
 	}
 }
@@ -554,7 +554,7 @@ func blockMetaKey(height int64) []byte {
 	return key
 }
 
-func blockPartKey(height int64, partIndex uint32) []byte {
+func blockPartKey(height int64, partIndex uint64) []byte {
 	key, err := orderedcode.Append([]byte{prefixBlockPart}, height, partIndex)
 	if err != nil {
 		panic(err)
@@ -564,7 +564,7 @@ func blockPartKey(height int64, partIndex uint32) []byte {
 
 // returns the last block part key of that height. Used in pruning
 func lastBlockPartKey(height int64) []byte {
-	return blockPartKey(height, ^uint32(0))
+	return blockPartKey(height, ^uint64(0))
 }
 
 func blockCommitKey(height int64) []byte {
