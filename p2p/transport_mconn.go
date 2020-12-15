@@ -161,15 +161,23 @@ func (m *MConnTransport) Listen(endpoint Endpoint) error {
 
 // accept accepts inbound connections in a loop, and asynchronously handshakes
 // with the peer to avoid head-of-line blocking. Established connections are
-// passed to Accept() via the channel m.chAccept.
+// passed to Accept() via chAccept.
 // See: https://github.com/tendermint/tendermint/issues/204
 func (m *MConnTransport) accept() {
 	for {
 		tcpConn, err := m.listener.Accept()
 		if err != nil {
+			// We have to check for closure first, since we don't want to
+			// propagate "use of closed network connection" errors.
 			select {
-			case m.chError <- err:
 			case <-m.chClose:
+			default:
+				// We also select on chClose here, in case the transport closes
+				// while we're blocked on error propagation.
+				select {
+				case m.chError <- err:
+				case <-m.chClose:
+				}
 			}
 			return
 		}
@@ -184,6 +192,7 @@ func (m *MConnTransport) accept() {
 				case m.chError <- err:
 				case <-m.chClose:
 				}
+				return
 			}
 
 			conn, err := newMConnConnection(m, tcpConn, "")
@@ -277,10 +286,12 @@ func (m *MConnTransport) Endpoints() []Endpoint {
 func (m *MConnTransport) Close() error {
 	var err error
 	m.closeOnce.Do(func() {
+		// We have to close chClose first, so that accept() will detect
+		// the closure and not propagate the error.
+		close(m.chClose)
 		if m.listener != nil {
 			err = m.listener.Close()
 		}
-		close(m.chClose)
 	})
 	return err
 }
