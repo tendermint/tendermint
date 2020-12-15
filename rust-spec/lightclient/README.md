@@ -10,12 +10,15 @@ with a trusted header and validator set. The light client
 protocol allows a client to then securely update its trusted state by requesting and
 verifying a minimal set of data from a network of full nodes (at least one of which is correct).
 
-The light client is decomposed into three components:
+The light client is decomposed into two main components:
 
-- Commit Verification - verify signed headers and associated validator
+- [Commit Verification](#Commit-Verification) - verify signed headers and associated validator
   set changes from a single full node, called primary
-- Fork Detection -  verify commits across multiple full nodes (called secondaries) and detect conflicts (ie. the existence of forks)
-- Fork Accountability - given a fork, which validators are responsible for it.
+- [Attack Detection](#Attack-Detection) -  verify commits across multiple full nodes (called secondaries) and detect conflicts (ie. the existence of a lightclient attack)
+
+In case a lightclient attack is detected, the lightclient submits evidence to a full node which is responsible for "accountability", that is, punishing attackers:
+
+- [Accountability](#Accountability) - given evidence for an attack, compute a set of validators that are responsible for it.
 
 ## Commit Verification
 
@@ -175,10 +178,23 @@ All lines in `results.csv` should report `Error`.
 
 The detailed experimental results are to be added soon.
 
-## Fork Accountability
+## Accountability
 
-There is no English specification yet. TODO: Jovan's work?
 
-TODO: there is a WIP [TLA+
-specification](https://github.com/informalsystems/verification/pull/13) in the
-verification repo that should be moved over here.
+The [English specification](attacks/isolate-attackers_002_reviewed.md) 
+defines the protocol that is executed on a full node upon receiving attack [evidence](detection/detection_003_reviewed.md#tmbc-lc-evidence-data1) from a lightclient. In particular, the protocol handles three types of attacks
+- lunatic
+- equivocation
+- amnesia
+
+As is discussed in the [last part](attacks/isolate-attackers_002_reviewed.md#Part-III---Completeness) of the English specification, computer-aided analysis of  [Tendermint Consensus in TLA+][tendermint-accountability] shows that these three types capture all possible attacks.
+
+
+The [TLA+ specification](attacks/Isolation_001_draft.tla)
+is a formal description of the
+protocol, including the safety property, which can be model checked with Apalache.
+
+Similar to the other specifications, [MC_5_3.tla](attacks/MC_5_3.tla) contains concrete parameters to run the model checker. The specification can be checked within seconds.
+
+[tendermint-accountability]:
+https://github.com/tendermint/spec/blob/master/rust-spec/tendermint-accountability/README.md
