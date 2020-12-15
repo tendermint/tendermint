@@ -227,7 +227,7 @@ func (sw *Switch) SetNodeKey(nodeKey NodeKey) {
 // OnStart implements BaseService. It starts all the reactors and peers.
 func (sw *Switch) OnStart() error {
 
-	// FIXME Temporary hack to pass channel descriptors to MConn transport,
+	// FIXME: Temporary hack to pass channel descriptors to MConn transport,
 	// since they are not available when it is constructed. This will be
 	// fixed when we implement the new router abstraction.
 	sw.transport.SetChannelDescriptors(sw.chDescs)

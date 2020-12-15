@@ -28,7 +28,7 @@ type Transport interface {
 	Close() error
 
 	// SetChannelDescriptors sets the channel descriptors for the transport.
-	// FIXME This is only here for compatibility with the current Switch code.
+	// FIXME: This is only here for compatibility with the current Switch code.
 	SetChannelDescriptors(chDescs []*conn.ChannelDescriptor)
 }
 
@@ -39,7 +39,7 @@ type Protocol string
 type Endpoint struct {
 	// PeerID specifies the peer ID of the endpoint.
 	//
-	// FIXME This is here for backwards-compatibility with the existing MConn
+	// FIXME: This is here for backwards-compatibility with the existing MConn
 	// protocol, we should consider moving this higher in the stack (i.e. to
 	// the router).
 	PeerID ID
@@ -94,7 +94,7 @@ func (e Endpoint) Validate() error {
 }
 
 // NetAddress returns a NetAddress for the endpoint.
-// FIXME This is temporary for compatibility with the old P2P stack.
+// FIXME: This is temporary for compatibility with the old P2P stack.
 func (e Endpoint) NetAddress() *NetAddress {
 	return &NetAddress{
 		ID:   e.PeerID,
@@ -105,13 +105,13 @@ func (e Endpoint) NetAddress() *NetAddress {
 
 // Connection represents an established connection between two endpoints.
 //
-// FIXME This is a temporary interface while we figure out whether we'll be
+// FIXME: This is a temporary interface while we figure out whether we'll be
 // adopting QUIC or not. If we do, this should be a byte-oriented multi-stream
 // interface with one goroutine consuming each stream, and the MConnection
 // transport either needs protocol changes or a shim. For details, see:
 // https://github.com/tendermint/spec/pull/227
 //
-// FIXME The interface is currently very broad in order to accommodate
+// FIXME: The interface is currently very broad in order to accommodate
 // MConnection behavior that the rest of the P2P stack relies on. This should be
 // removed once the P2P core is rewritten.
 type Connection interface {
@@ -120,7 +120,7 @@ type Connection interface {
 	ReceiveMessage() (chID byte, msg []byte, err error)
 
 	// SendMessage sends a message on the connection.
-	// FIXME For compatibility with the current Peer, it returns an additional
+	// FIXME: For compatibility with the current Peer, it returns an additional
 	// boolean false if the message timed out waiting to be accepted into the
 	// send buffer.
 	SendMessage(chID byte, msg []byte) (bool, error)
@@ -129,7 +129,7 @@ type Connection interface {
 	// immediately if the message buffer is full. It returns true if the message
 	// was accepted.
 	//
-	// FIXME This is here for backwards-compatibility with the current Peer
+	// FIXME: This is here for backwards-compatibility with the current Peer
 	// code, and should be removed when possible.
 	TrySendMessage(chID byte, msg []byte) (bool, error)
 
@@ -150,13 +150,13 @@ type Connection interface {
 
 	// FlushClose flushes all pending sends and then closes the connection.
 	//
-	// FIXME This only exists for backwards-compatibility with the current
+	// FIXME: This only exists for backwards-compatibility with the current
 	// MConnection implementation. There should really be a separate Flush()
 	// method, but there is no easy way to synchronously flush pending data with
 	// the current MConnection structure.
 	FlushClose() error
 
 	// Status returns the current connection status.
-	// FIXME Only here for compatibility with the current Peer code.
+	// FIXME: Only here for compatibility with the current Peer code.
 	Status() conn.ConnectionStatus
 }

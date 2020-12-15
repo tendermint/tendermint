@@ -90,7 +90,7 @@ type MConnTransport struct {
 	chError   chan error
 	chClose   chan struct{}
 
-	// FIXME This is a vestige from the old transport, and should be managed
+	// FIXME: This is a vestige from the old transport, and should be managed
 	// by the router once we rewrite the P2P core.
 	conns       ConnSet
 	connFilters []ConnFilterFunc
@@ -99,7 +99,7 @@ type MConnTransport struct {
 // NewMConnTransport sets up a new MConn transport.
 func NewMConnTransport(
 	logger log.Logger,
-	nodeInfo NodeInfo, // FIXME should use DefaultNodeInfo, left for code compatibility
+	nodeInfo NodeInfo, // FIXME: should use DefaultNodeInfo, left for code compatibility
 	privKey crypto.PrivKey,
 	mConnConfig conn.MConnConfig,
 	opts ...MConnTransportOption,
@@ -173,19 +173,25 @@ func (m *MConnTransport) accept() {
 			}
 			return
 		}
+
 		go func() {
 			err := m.filterTCPConn(tcpConn)
 			if err != nil {
-				_ = tcpConn.Close()
+				if err := tcpConn.Close(); err != nil {
+					m.logger.Debug("Failed to close TCP connection", "err", err)
+				}
 				select {
 				case m.chError <- err:
 				case <-m.chClose:
 				}
 			}
+
 			conn, err := newMConnConnection(m, tcpConn, "")
 			if err != nil {
 				m.conns.Remove(tcpConn)
-				_ = tcpConn.Close()
+				if err := tcpConn.Close(); err != nil {
+					m.logger.Debug("Failed to close TCP connection", "err", err)
+				}
 				select {
 				case m.chError <- err:
 				case <-m.chClose:
@@ -194,7 +200,9 @@ func (m *MConnTransport) accept() {
 				select {
 				case m.chAccept <- conn:
 				case <-m.chClose:
-					_ = conn.Close()
+					if err := tcpConn.Close(); err != nil {
+						m.logger.Debug("Failed to close TCP connection", "err", err)
+					}
 				}
 			}
 		}()
@@ -224,6 +232,7 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 
 	ctx, cancel := context.WithTimeout(ctx, m.dialTimeout)
 	defer cancel()
+
 	dialer := net.Dialer{}
 	tcpConn, err := dialer.DialContext(ctx, "tcp", fmt.Sprintf("%v:%v", endpoint.IP, endpoint.Port))
 	if err != nil {
@@ -232,14 +241,18 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 
 	err = m.filterTCPConn(tcpConn)
 	if err != nil {
-		_ = tcpConn.Close()
+		if err := tcpConn.Close(); err != nil {
+			m.logger.Debug("Failed to close TCP connection", "err", err)
+		}
 		return nil, err
 	}
 
 	conn, err := newMConnConnection(m, tcpConn, endpoint.PeerID)
 	if err != nil {
 		m.conns.Remove(tcpConn)
-		_ = tcpConn.Close()
+		if err := tcpConn.Close(); err != nil {
+			m.logger.Debug("Failed to close TCP connection", "err", err)
+		}
 		return nil, err
 	}
 
@@ -307,7 +320,7 @@ func (m *MConnTransport) filterTCPConn(tcpConn net.Conn) error {
 
 	}
 
-	// FIXME Doesn't really make sense to set this here, but we preserve the
+	// FIXME: Doesn't really make sense to set this here, but we preserve the
 	// behavior from the previous P2P transport implementation. This should
 	// be moved to the router.
 	m.conns.Set(tcpConn, []net.IP{ip})
@@ -369,7 +382,7 @@ func newMConnConnection(
 	tcpConn net.Conn,
 	expectPeerID ID,
 ) (c *mConnConnection, err error) {
-	// FIXME Since the MConnection code panics, we need to recover here
+	// FIXME: Since the MConnection code panics, we need to recover here
 	// and turn it into an error. Be careful not to alias err, so we can
 	// update it from within this function. We should remove panics instead.
 	defer func() {
@@ -418,7 +431,7 @@ func newMConnConnection(
 	}
 
 	// Validate node info.
-	// FIXME All of the ID verification code below should be moved to the
+	// FIXME: All of the ID verification code below should be moved to the
 	// router once implemented.
 	err = c.peerInfo.Validate()
 	if err != nil {
@@ -488,7 +501,7 @@ func newMConnConnection(
 		c.onError,
 		transport.mConnConfig,
 	)
-	// FIXME Log format is set up for compatibility with existing peer code.
+	// FIXME: Log format is set up for compatibility with existing peer code.
 	c.logger = transport.logger.With("peer", c.RemoteEndpoint().NetAddress())
 	c.mConn.SetLogger(c.logger)
 	err = c.mConn.Start()
@@ -538,7 +551,7 @@ func (c *mConnConnection) onError(e interface{}) {
 }
 
 // String displays connection information.
-// FIXME This is here for backwards compatibility with existing code,
+// FIXME: This is here for backwards compatibility with existing code,
 // it should probably just return RemoteEndpoint().String(), if anything.
 func (c *mConnConnection) String() string {
 	endpoint := c.RemoteEndpoint()
@@ -591,7 +604,7 @@ func (c *mConnConnection) PubKey() crypto.PubKey {
 
 // LocalEndpoint implements Connection.
 func (c *mConnConnection) LocalEndpoint() Endpoint {
-	// FIXME For compatibility with existing P2P tests we need to
+	// FIXME: For compatibility with existing P2P tests we need to
 	// handle non-TCP connections. This should be removed.
 	endpoint := Endpoint{
 		Protocol: MConnProtocol,
@@ -606,7 +619,7 @@ func (c *mConnConnection) LocalEndpoint() Endpoint {
 
 // RemoteEndpoint implements Connection.
 func (c *mConnConnection) RemoteEndpoint() Endpoint {
-	// FIXME For compatibility with existing P2P tests we need to
+	// FIXME: For compatibility with existing P2P tests we need to
 	// handle non-TCP connections. This should be removed.
 	endpoint := Endpoint{
 		Protocol: MConnProtocol,

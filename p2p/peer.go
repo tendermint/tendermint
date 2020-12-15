@@ -181,16 +181,10 @@ type peerConn struct {
 	outbound   bool
 	persistent bool
 	conn       Connection
-
-	// cached RemoteIP()
-	ip net.IP
+	ip         net.IP // cached RemoteIP()
 }
 
-func newPeerConn(
-	outbound, persistent bool,
-	conn Connection,
-) peerConn {
-
+func newPeerConn(outbound, persistent bool, conn Connection) peerConn {
 	return peerConn{
 		outbound:   outbound,
 		persistent: persistent,
