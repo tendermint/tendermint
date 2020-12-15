@@ -242,7 +242,8 @@ func makeRandomStateFromValidatorSet(valSet *types.ValidatorSet, height, lastHei
 	}
 }
 
-func makeRandomStateFromConsensusParams(consensusParams *tmproto.ConsensusParams, height, lastHeightConsensusParamsChanged int64) sm.State {
+func makeRandomStateFromConsensusParams(consensusParams *tmproto.ConsensusParams,
+	height, lastHeightConsensusParamsChanged int64) sm.State {
 	val, _ := types.RandValidator(true, 10)
 	valSet := types.NewValidatorSet([]*types.Validator{val})
 	return sm.State{

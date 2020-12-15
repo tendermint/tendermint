@@ -108,7 +108,6 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 		// If the part is missing (e.g. since it has been deleted after we
 		// loaded the block meta) we consider the whole block to be missing.
 		if part == nil {
-			panic(fmt.Sprintf("height: %d, index: %d", height, i))
 			return nil
 		}
 		buf = append(buf, part.Bytes...)
@@ -514,7 +513,7 @@ func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *types.Commit) err
 	return bs.db.Set(seenCommitKey(height), seenCommitBytes)
 }
 
-//-----------------------------------------------------------------------------
+//---------------------------------- KEY ENCODING -----------------------------------------
 
 // key prefixes
 const (
@@ -575,10 +574,6 @@ func seenCommitKey(height int64) []byte {
 func blockHashKey(hash []byte) []byte {
 	return append([]byte{prefixBlockHash}, hash...)
 }
-
-//-----------------------------------------------------------------------------
-
-var blockStoreKey = []byte("blockStore")
 
 // mustEncode proto encodes a proto.message and panics if fails
 func mustEncode(pb proto.Message) []byte {
