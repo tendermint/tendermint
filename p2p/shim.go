@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 // ============================================================================
@@ -50,7 +51,7 @@ type (
 	}
 )
 
-func NewReactorShim(name string, descriptors map[ChannelID]*ChannelDescriptorShim) *ReactorShim {
+func NewReactorShim(logger log.Logger, name string, descriptors map[ChannelID]*ChannelDescriptorShim) *ReactorShim {
 	channels := make(map[ChannelID]*ChannelShim)
 
 	for _, cds := range descriptors {
@@ -65,6 +66,7 @@ func NewReactorShim(name string, descriptors map[ChannelID]*ChannelDescriptorShi
 	}
 
 	rs.BaseReactor = *NewBaseReactor(name, rs)
+	rs.SetLogger(logger)
 
 	return rs
 }
