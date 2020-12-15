@@ -219,6 +219,11 @@ func (m *MConnTransport) accept() {
 }
 
 // Accept implements Transport.
+//
+// accept() runs a concurrent accept loop that accepts inbound connections
+// and then handshakes in a non-blocking fashion. The handshaked and validated
+// connections are returned via this call, picking them off of the chAccept
+// channel (or the handshake error, if any).
 func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 	select {
 	case conn := <-m.chAccept:
