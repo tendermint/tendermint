@@ -180,11 +180,11 @@ type Node struct {
 	privValidator types.PrivValidator // local node's validator key
 
 	// network
-	transport   *p2p.MultiplexTransport
+	transport   *p2p.MConnTransport
 	sw          *p2p.Switch  // p2p connections
 	addrBook    pex.AddrBook // known peers
 	nodeInfo    p2p.NodeInfo
-	nodeKey     *p2p.NodeKey // our node privkey
+	nodeKey     p2p.NodeKey // our node privkey
 	isListening bool
 
 	// services
@@ -422,23 +422,22 @@ func createConsensusReactor(config *cfg.Config,
 }
 
 func createTransport(
+	logger log.Logger,
 	config *cfg.Config,
 	nodeInfo p2p.NodeInfo,
-	nodeKey *p2p.NodeKey,
+	nodeKey p2p.NodeKey,
 	proxyApp proxy.AppConns,
 ) (
-	*p2p.MultiplexTransport,
+	*p2p.MConnTransport,
 	[]p2p.PeerFilterFunc,
 ) {
 	var (
-		mConnConfig = p2p.MConnConfig(config.P2P)
-		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey, mConnConfig)
 		connFilters = []p2p.ConnFilterFunc{}
 		peerFilters = []p2p.PeerFilterFunc{}
 	)
 
 	if !config.P2P.AllowDuplicateIP {
-		connFilters = append(connFilters, p2p.ConnDuplicateIPFilter())
+		connFilters = append(connFilters, p2p.ConnDuplicateIPFilter)
 	}
 
 	// Filter peers by addr or pubkey with an ABCI query.
@@ -481,11 +480,12 @@ func createTransport(
 		)
 	}
 
-	p2p.MultiplexTransportConnFilters(connFilters...)(transport)
-
-	// Limit the number of incoming connections.
-	max := config.P2P.MaxNumInboundPeers + len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
-	p2p.MultiplexTransportMaxIncomingConnections(max)(transport)
+	transport := p2p.NewMConnTransport(
+		logger, nodeInfo, nodeKey.PrivKey, p2p.MConnConfig(config.P2P),
+		p2p.MConnTransportConnFilters(connFilters...),
+		p2p.MConnTransportMaxIncomingConnections(config.P2P.MaxNumInboundPeers+
+			len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))),
+	)
 
 	return transport, peerFilters
 }
@@ -500,7 +500,7 @@ func createSwitch(config *cfg.Config,
 	consensusReactor *cs.Reactor,
 	evidenceReactor *p2p.ReactorShim,
 	nodeInfo p2p.NodeInfo,
-	nodeKey *p2p.NodeKey,
+	nodeKey p2p.NodeKey,
 	p2pLogger log.Logger) *p2p.Switch {
 
 	sw := p2p.NewSwitch(
@@ -519,26 +519,26 @@ func createSwitch(config *cfg.Config,
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
 
-	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", config.NodeKeyFile())
+	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID, "file", config.NodeKeyFile())
 	return sw
 }
 
 func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
-	p2pLogger log.Logger, nodeKey *p2p.NodeKey) (pex.AddrBook, error) {
+	p2pLogger log.Logger, nodeKey p2p.NodeKey) (pex.AddrBook, error) {
 
 	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 	addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
 
 	// Add ourselves to addrbook to prevent dialing ourselves
 	if config.P2P.ExternalAddress != "" {
-		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID(), config.P2P.ExternalAddress))
+		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID, config.P2P.ExternalAddress))
 		if err != nil {
 			return nil, fmt.Errorf("p2p.external_address is incorrect: %w", err)
 		}
 		addrBook.AddOurAddress(addr)
 	}
 	if config.P2P.ListenAddress != "" {
-		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID(), config.P2P.ListenAddress))
+		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.ID, config.P2P.ListenAddress))
 		if err != nil {
 			return nil, fmt.Errorf("p2p.laddr is incorrect: %w", err)
 		}
@@ -630,7 +630,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 // NewNode returns a new, ready to go, Tendermint Node.
 func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
-	nodeKey *p2p.NodeKey,
+	nodeKey p2p.NodeKey,
 	clientCreator proxy.ClientCreator,
 	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
@@ -776,11 +776,9 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	// Setup Transport.
-	transport, peerFilters := createTransport(config, nodeInfo, nodeKey, proxyApp)
-
-	// Setup Switch.
+	// Setup Transport and Switch.
 	p2pLogger := logger.With("module", "p2p")
+	transport, peerFilters := createTransport(p2pLogger, config, nodeInfo, nodeKey, proxyApp)
 	sw := createSwitch(
 		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
 		stateSyncReactorShim, consensusReactor, evReactorShim, nodeInfo, nodeKey, p2pLogger,
@@ -890,29 +888,30 @@ func (n *Node) OnStart() error {
 		n.prometheusSrv = n.startPrometheusServer(n.config.Instrumentation.PrometheusListenAddr)
 	}
 
-	// Start the transport.
-	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(n.nodeKey.ID(), n.config.P2P.ListenAddress))
-	if err != nil {
-		return err
-	}
-	if err := n.transport.Listen(*addr); err != nil {
-		return err
-	}
-
-	n.isListening = true
-
+	// Start the mempool.
 	if n.config.Mempool.WalEnabled() {
-		err = n.mempool.InitWAL()
+		err := n.mempool.InitWAL()
 		if err != nil {
 			return fmt.Errorf("init mempool WAL: %w", err)
 		}
 	}
 
 	// Start the switch (the P2P server).
-	err = n.sw.Start()
+	err := n.sw.Start()
 	if err != nil {
 		return err
 	}
+
+	// Start the transport.
+	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(n.nodeKey.ID, n.config.P2P.ListenAddress))
+	if err != nil {
+		return err
+	}
+	if err := n.transport.Listen(addr.Endpoint()); err != nil {
+		return err
+	}
+
+	n.isListening = true
 
 	// Start the real state sync reactor separately since the switch uses the shim.
 	if err := n.stateSyncReactor.Start(); err != nil {
@@ -1263,7 +1262,7 @@ func (n *Node) NodeInfo() p2p.NodeInfo {
 
 func makeNodeInfo(
 	config *cfg.Config,
-	nodeKey *p2p.NodeKey,
+	nodeKey p2p.NodeKey,
 	txIndexer txindex.TxIndexer,
 	genDoc *types.GenesisDoc,
 	state sm.State,
@@ -1289,7 +1288,7 @@ func makeNodeInfo(
 			state.Version.Consensus.Block,
 			state.Version.Consensus.App,
 		),
-		DefaultNodeID: nodeKey.ID(),
+		DefaultNodeID: nodeKey.ID,
 		Network:       genDoc.ChainID,
 		Version:       version.TMCoreSemVer,
 		Channels: []byte{

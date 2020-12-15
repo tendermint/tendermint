@@ -11,6 +11,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - CLI/RPC/Config
   - [config] \#5598 The `test_fuzz` and `test_fuzz_config` P2P settings have been removed. (@erikgrinaker)
   - [config] \#5728 `fast_sync = "v1"` is no longer supported (@melekes)
+  - [cli] \#5772 `gen_node_key` prints JSON-encoded `NodeKey` rather than ID and does not save it to `node_key.json` (@melekes)
+  - [cli] \#5777 use hypen-case instead of snake_case for all cli comamnds and config parameters
 
 - Apps
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
@@ -38,6 +40,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [abci] \#5706 Added `AbciVersion` to `RequestInfo` allowing applications to check ABCI version when connecting to Tendermint. (@marbar3778)
 - [blockchain/v1] \#5728 Remove in favor of v2 (@melekes)
 - [blockchain/v0] \#5741 Relax termination conditions and increase sync timeout (@melekes)
+- [cli] \#5772 `gen_node_key` output now contains node ID (`id` field) (@melekes)
+- [blockchain/v2] \#5774 Send status request when new peer joins (@melekes)
 
 ### BUG FIXES
 

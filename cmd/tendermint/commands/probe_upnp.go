@@ -11,9 +11,11 @@ import (
 
 // ProbeUpnpCmd adds capabilities to test the UPnP functionality.
 var ProbeUpnpCmd = &cobra.Command{
-	Use:   "probe_upnp",
-	Short: "Test UPnP functionality",
-	RunE:  probeUpnp,
+	Use:     "probe-upnp",
+	Aliases: []string{"probe_upnp"},
+	Short:   "Test UPnP functionality",
+	RunE:    probeUpnp,
+	PreRun:  deprecateSnakeCase,
 }
 
 func probeUpnp(cmd *cobra.Command, args []string) error {

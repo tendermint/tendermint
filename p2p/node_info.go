@@ -245,7 +245,7 @@ func (info DefaultNodeInfo) ToProto() *tmp2p.DefaultNodeInfo {
 	return dni
 }
 
-func DefaultNodeInfoFromToProto(pb *tmp2p.DefaultNodeInfo) (DefaultNodeInfo, error) {
+func DefaultNodeInfoFromProto(pb *tmp2p.DefaultNodeInfo) (DefaultNodeInfo, error) {
 	if pb == nil {
 		return DefaultNodeInfo{}, errors.New("nil node info")
 	}

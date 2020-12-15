@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -178,52 +180,28 @@ type Peer interface {
 type peerConn struct {
 	outbound   bool
 	persistent bool
-	conn       net.Conn // source connection
-
-	socketAddr *NetAddress
-
-	// cached RemoteIP()
-	ip net.IP
+	conn       Connection
+	ip         net.IP // cached RemoteIP()
 }
 
-func newPeerConn(
-	outbound, persistent bool,
-	conn net.Conn,
-	socketAddr *NetAddress,
-) peerConn {
-
+func newPeerConn(outbound, persistent bool, conn Connection) peerConn {
 	return peerConn{
 		outbound:   outbound,
 		persistent: persistent,
 		conn:       conn,
-		socketAddr: socketAddr,
 	}
 }
 
 // ID only exists for SecretConnection.
-// NOTE: Will panic if conn is not *SecretConnection.
 func (pc peerConn) ID() ID {
-	return PubKeyToID(pc.conn.(*tmconn.SecretConnection).RemotePubKey())
+	return PubKeyToID(pc.conn.PubKey())
 }
 
 // Return the IP from the connection RemoteAddr
 func (pc peerConn) RemoteIP() net.IP {
-	if pc.ip != nil {
-		return pc.ip
+	if pc.ip == nil {
+		pc.ip = pc.conn.RemoteEndpoint().IP
 	}
-
-	host, _, err := net.SplitHostPort(pc.conn.RemoteAddr().String())
-	if err != nil {
-		panic(err)
-	}
-
-	ips, err := net.LookupIP(host)
-	if err != nil {
-		panic(err)
-	}
-
-	pc.ip = ips[0]
-
 	return pc.ip
 }
 
@@ -235,13 +213,14 @@ type peer struct {
 
 	// raw peerConn and the multiplex connection
 	peerConn
-	mconn *tmconn.MConnection
 
 	// peer's node info and the channel it knows about
 	// channels = nodeInfo.Channels
 	// cached to avoid copying nodeInfo in hasChannel
-	nodeInfo NodeInfo
-	channels []byte
+	nodeInfo    NodeInfo
+	channels    []byte
+	reactors    map[byte]Reactor
+	onPeerError func(Peer, interface{})
 
 	// User data
 	Data *cmap.CMap
@@ -254,30 +233,22 @@ type PeerOption func(*peer)
 
 func newPeer(
 	pc peerConn,
-	mConfig tmconn.MConnConfig,
-	nodeInfo NodeInfo,
 	reactorsByCh map[byte]Reactor,
-	chDescs []*tmconn.ChannelDescriptor,
 	onPeerError func(Peer, interface{}),
 	options ...PeerOption,
 ) *peer {
+	nodeInfo := pc.conn.NodeInfo()
 	p := &peer{
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
-		channels:      nodeInfo.(DefaultNodeInfo).Channels, // TODO
+		channels:      nodeInfo.Channels, // TODO
+		reactors:      reactorsByCh,
+		onPeerError:   onPeerError,
 		Data:          cmap.NewCMap(),
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),
 	}
 
-	p.mconn = createMConnection(
-		pc.conn,
-		p,
-		reactorsByCh,
-		chDescs,
-		onPeerError,
-		mConfig,
-	)
 	p.BaseService = *service.NewBaseService(nil, "Peer", p)
 	for _, option := range options {
 		option(p)
@@ -286,13 +257,18 @@ func newPeer(
 	return p
 }
 
+// onError calls the peer error callback.
+func (p *peer) onError(err interface{}) {
+	p.onPeerError(p, err)
+}
+
 // String representation.
 func (p *peer) String() string {
 	if p.outbound {
-		return fmt.Sprintf("Peer{%v %v out}", p.mconn, p.ID())
+		return fmt.Sprintf("Peer{%v %v out}", p.conn, p.ID())
 	}
 
-	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.ID())
+	return fmt.Sprintf("Peer{%v %v in}", p.conn, p.ID())
 }
 
 //---------------------------------------------------
@@ -301,7 +277,6 @@ func (p *peer) String() string {
 // SetLogger implements BaseService.
 func (p *peer) SetLogger(l log.Logger) {
 	p.Logger = l
-	p.mconn.SetLogger(l)
 }
 
 // OnStart implements BaseService.
@@ -310,12 +285,34 @@ func (p *peer) OnStart() error {
 		return err
 	}
 
-	if err := p.mconn.Start(); err != nil {
-		return err
-	}
-
+	go p.processMessages()
 	go p.metricsReporter()
+
 	return nil
+}
+
+// processMessages processes messages received from the connection.
+func (p *peer) processMessages() {
+	defer func() {
+		if r := recover(); r != nil {
+			p.Logger.Error("peer message processing panic", "err", r, "stack", string(debug.Stack()))
+			p.onError(fmt.Errorf("panic during peer message processing: %v", r))
+		}
+	}()
+
+	for {
+		chID, msg, err := p.conn.ReceiveMessage()
+		if err != nil {
+			p.onError(err)
+			return
+		}
+		reactor, ok := p.reactors[chID]
+		if !ok {
+			p.onError(fmt.Errorf("unknown channel %v", chID))
+			return
+		}
+		reactor.Receive(chID, p, msg)
+	}
 }
 
 // FlushStop mimics OnStop but additionally ensures that all successful
@@ -324,15 +321,17 @@ func (p *peer) OnStart() error {
 func (p *peer) FlushStop() {
 	p.metricsTicker.Stop()
 	p.BaseService.OnStop()
-	p.mconn.FlushStop() // stop everything and close the conn
+	if err := p.conn.FlushClose(); err != nil {
+		p.Logger.Debug("error while stopping peer", "err", err)
+	}
 }
 
 // OnStop implements BaseService.
 func (p *peer) OnStop() {
 	p.metricsTicker.Stop()
 	p.BaseService.OnStop()
-	if err := p.mconn.Stop(); err != nil { // stop everything and close the conn
-		p.Logger.Debug("Error while stopping peer", "err", err)
+	if err := p.conn.Close(); err != nil {
+		p.Logger.Debug("error while stopping peer", "err", err)
 	}
 }
 
@@ -364,12 +363,12 @@ func (p *peer) NodeInfo() NodeInfo {
 // For inbound peers, it's the address returned by the underlying connection
 // (not what's reported in the peer's NodeInfo).
 func (p *peer) SocketAddr() *NetAddress {
-	return p.peerConn.socketAddr
+	return p.peerConn.conn.RemoteEndpoint().NetAddress()
 }
 
 // Status returns the peer's ConnectionStatus.
 func (p *peer) Status() tmconn.ConnectionStatus {
-	return p.mconn.Status()
+	return p.conn.Status()
 }
 
 // Send msg bytes to the channel identified by chID byte. Returns false if the
@@ -382,7 +381,13 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	res := p.mconn.Send(chID, msgBytes)
+	res, err := p.conn.SendMessage(chID, msgBytes)
+	if err == io.EOF {
+		return false
+	} else if err != nil {
+		p.onError(err)
+		return false
+	}
 	if res {
 		labels := []string{
 			"peer_id", string(p.ID()),
@@ -401,7 +406,13 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	res := p.mconn.TrySend(chID, msgBytes)
+	res, err := p.conn.TrySendMessage(chID, msgBytes)
+	if err == io.EOF {
+		return false
+	} else if err != nil {
+		p.onError(err)
+		return false
+	}
 	if res {
 		labels := []string{
 			"peer_id", string(p.ID()),
@@ -458,15 +469,11 @@ func (pc *peerConn) CloseConn() {
 
 // RemoteAddr returns peer's remote network address.
 func (p *peer) RemoteAddr() net.Addr {
-	return p.peerConn.conn.RemoteAddr()
-}
-
-// CanSend returns true if the send queue is not full, false otherwise.
-func (p *peer) CanSend(chID byte) bool {
-	if !p.IsRunning() {
-		return false
+	endpoint := p.conn.RemoteEndpoint()
+	return &net.TCPAddr{
+		IP:   endpoint.IP,
+		Port: int(endpoint.Port),
 	}
-	return p.mconn.CanSend(chID)
 }
 
 //---------------------------------------------------
@@ -481,7 +488,7 @@ func (p *peer) metricsReporter() {
 	for {
 		select {
 		case <-p.metricsTicker.C:
-			status := p.mconn.Status()
+			status := p.conn.Status()
 			var sendQueueSize float64
 			for _, chStatus := range status.Channels {
 				sendQueueSize += float64(chStatus.SendQueueSize)
@@ -492,44 +499,4 @@ func (p *peer) metricsReporter() {
 			return
 		}
 	}
-}
-
-//------------------------------------------------------------------
-// helper funcs
-
-func createMConnection(
-	conn net.Conn,
-	p *peer,
-	reactorsByCh map[byte]Reactor,
-	chDescs []*tmconn.ChannelDescriptor,
-	onPeerError func(Peer, interface{}),
-	config tmconn.MConnConfig,
-) *tmconn.MConnection {
-
-	onReceive := func(chID byte, msgBytes []byte) {
-		reactor := reactorsByCh[chID]
-		if reactor == nil {
-			// Note that its ok to panic here as it's caught in the conn._recover,
-			// which does onPeerError.
-			panic(fmt.Sprintf("Unknown channel %X", chID))
-		}
-		labels := []string{
-			"peer_id", string(p.ID()),
-			"chID", fmt.Sprintf("%#x", chID),
-		}
-		p.metrics.PeerReceiveBytesTotal.With(labels...).Add(float64(len(msgBytes)))
-		reactor.Receive(chID, p, msgBytes)
-	}
-
-	onError := func(r interface{}) {
-		onPeerError(p, r)
-	}
-
-	return tmconn.NewMConnectionWithConfig(
-		conn,
-		chDescs,
-		onReceive,
-		onError,
-		config,
-	)
 }
