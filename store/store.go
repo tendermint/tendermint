@@ -1,12 +1,12 @@
 package store
 
 import (
-	"encoding/binary"
 	"fmt"
 	"strconv"
 
 	"github.com/gogo/protobuf/proto"
 	dbm "github.com/tendermint/tm-db"
+	"github.com/google/orderedcode"
 
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	tmstore "github.com/tendermint/tendermint/proto/tendermint/store"
@@ -99,7 +99,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 
 	pbb := new(tmproto.Block)
 	buf := []byte{}
-	for i := uint32(0); i < blockMeta.BlockID.PartSetHeader.Total; i++ {
+	for i := 0; i < int(blockMeta.BlockID.PartSetHeader.Total); i++ {
 		part := bs.LoadBlockPart(height, i)
 		// If the part is missing (e.g. since it has been deleted after we
 		// loaded the block meta) we consider the whole block to be missing.
@@ -127,7 +127,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 // If no block is found for that hash, it returns nil.
 // Panics if it fails to parse height associated with the given hash.
 func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
-	bz, err := bs.db.Get(calcBlockHashKey(hash))
+	bz, err := bs.db.Get(blockHashKey(hash))
 	if err != nil {
 		panic(err)
 	}
@@ -147,10 +147,10 @@ func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
 // LoadBlockPart returns the Part at the given index
 // from the block at the given height.
 // If no part is found for the given height and index, it returns nil.
-func (bs *BlockStore) LoadBlockPart(height int64, index uint32) *types.Part {
+func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	var pbpart = new(tmproto.Part)
 
-	bz, err := bs.db.Get(calcBlockPartKey(height, index))
+	bz, err := bs.db.Get(blockPartKey(height, uint32(index)))
 	if err != nil {
 		panic(err)
 	}
@@ -174,7 +174,7 @@ func (bs *BlockStore) LoadBlockPart(height int64, index uint32) *types.Part {
 // If no block is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	var pbbm = new(tmproto.BlockMeta)
-	bz, err := bs.db.Get(calcBlockMetaKey(height))
+	bz, err := bs.db.Get(blockMetaKey(height))
 
 	if err != nil {
 		panic(err)
@@ -203,7 +203,7 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 // If no commit is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	var pbc = new(tmproto.Commit)
-	bz, err := bs.db.Get(calcBlockCommitKey(height))
+	bz, err := bs.db.Get(blockCommitKey(height))
 	if err != nil {
 		panic(err)
 	}
@@ -226,7 +226,7 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 // a new block at `height + 1` that includes this commit in its block.LastCommit.
 func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	var pbc = new(tmproto.Commit)
-	bz, err := bs.db.Get(calcSeenCommitKey(height))
+	bz, err := bs.db.Get(seenCommitKey(height))
 	if err != nil {
 		panic(err)
 	}
@@ -245,92 +245,40 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	return commit
 }
 
-// PruneBlocks removes block up to (but not including) a height. It returns number of blocks pruned.
+// PruneBlocks removes block up to (but not including) a height. It returns the number of blocks pruned.
 func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 	if height <= 0 {
 		return 0, fmt.Errorf("height must be greater than 0")
 	}
-	bs.mtx.RLock()
-	if height > bs.height {
-		bs.mtx.RUnlock()
-		return 0, fmt.Errorf("cannot prune beyond the latest height %v", bs.height)
-	}
-	base := bs.base
-	bs.mtx.RUnlock()
-	if height < base {
-		return 0, fmt.Errorf("cannot prune to height %v, it is lower than base height %v",
-			height, base)
-	}
 
-	iter, err := bs.db.Iterator(
-		calcBlockMetaKey(base),
-		calcSeenCommitKey(height),
-	)
+	// remove block meta first as this is used to indicate whether the block exists.
+	// For this reason, we also use ony block meta as a measure of the amount of blocks pruned
+	pruned, err := bs.pruneBlockMetaAndHashes(height)
 	if err != nil {
-		panic(err)
-	}
-	defer iter.Close()
-
-	pruned := uint64(0)
-	batch := bs.db.NewBatch()
-	defer batch.Close()
-	flush := func(batch dbm.Batch, base int64) error {
-		// We can't trust batches to be atomic, so update base first to make sure noone
-		// tries to access missing blocks.
-		bs.mtx.Lock()
-		bs.base = base
-		bs.mtx.Unlock()
-		bs.saveState()
-
-		err := batch.WriteSync()
-		if err != nil {
-			return fmt.Errorf("failed to prune up to height %v: %w", base, err)
-		}
-		batch.Close()
-		return nil
+		return pruned, err
 	}
 
-	for ; iter.Valid(); iter.Next() {
-		key := iter.Key()
-
-		if err := batch.Delete(key); err != nil {
-			return 0, err
-		}
-		// check if we have looped through an entire block
-		if key[8] == suffixKeySeenCommit {
-			pruned++
-
-			// flush every 1000 blocks to avoid batches becoming too large
-			if pruned%1000 == 0 && pruned > 0 {
-				err := flush(batch, base+int64(pruned))
-				if err != nil {
-					return 0, err
-				}
-				batch = bs.db.NewBatch()
-				defer batch.Close()
-			}
-		}
-	}
-	if err = iter.Error(); err != nil {
-		return 0, err
+	if err := bs.batchDelete(lastBlockPartKey, height); err != nil {
+		return pruned, err
 	}
 
-	if err = flush(batch, height); err != nil {
-		return 0, err
+	if err := bs.batchDelete(blockCommitKey, height); err != nil {
+		return pruned, err
 	}
 
-	if err = bs.pruneBlockHashHeightMap(height); err != nil {
-		return 0, err
+	if err := bs.batchDelete(seenCommitKey, height); err != nil {
+		return pruned, err
 	}
 
 	return pruned, nil
 }
 
-// pruneBlockHashHeightMap removes all hashes that correlate to a height below retain_height
-func (bs *BlockStore) pruneBlockHashHeightMap(retain_height int64) error {
+// pruneBlockMetaAndHashes prunes all block metas from the base height to the retainHeight
+// but before each, loads the hash from the block meta to also prune from the block hash table
+func (bs *BlockStore) pruneBlockMetaAndHashes(retainHeight int64) (uint64, error) {
 	iter, err := bs.db.Iterator(
-		[]byte{prefixKeyBlock}, // start of the blockhash-height map
-		nil,                    // to the end of the block kv strore
+		blockMetaKey(1),
+		blockMetaKey(retainHeight),
 	)
 	if err != nil {
 		panic(err)
@@ -340,27 +288,137 @@ func (bs *BlockStore) pruneBlockHashHeightMap(retain_height int64) error {
 	batch := bs.db.NewBatch()
 	defer batch.Close()
 
-	for ; iter.Valid(); iter.Next() {
-		bz := iter.Value()
-		s := string(bz)
-		height, err := strconv.ParseInt(s, 10, 64)
-
-		if err != nil {
-			panic(fmt.Sprintf("failed to extract height from %s: %v", s, err))
+	pruned := uint64(0)
+	for ; iter.Valid(); {
+		// delete the block meta
+		if err := batch.Delete(iter.Key()); err != nil {
+			return 0, fmt.Errorf("pruning error at height %d: %w", decodeHeightFromKey(iter.Key()), err)
 		}
-		if height < retain_height {
-			if err := batch.Delete(iter.Key()); err != nil {
+
+		// load the block meta so we can also remove the block hash from the db
+		var pbbm = new(tmproto.BlockMeta)
+		bz := iter.Value()
+	
+		err = proto.Unmarshal(bz, pbbm)
+		if err != nil {
+			panic(fmt.Errorf("unmarshal to tmproto.BlockMeta: %w", err))
+		}
+	
+		blockMeta, err := types.BlockMetaFromProto(pbbm)
+		if err != nil {
+			panic(fmt.Errorf("error from proto blockMeta: %w", err))
+		}
+
+		if err := batch.Delete(blockHashKey(blockMeta.BlockID.Hash)); err != nil {
+			return 0, fmt.Errorf("pruning error at height %d: %w", decodeHeightFromKey(iter.Key()), err)
+		}
+
+		pruned++
+		// avoid batches growing too large by flushing to database regularly
+		if pruned%1000 == 0 {
+			if err := iter.Error(); err != nil {
+				return pruned, err
+			}
+			if err := iter.Close(); err != nil {
+				return pruned, err
+			}
+
+			err := batch.Write()
+			if err != nil {
+				return pruned, fmt.Errorf("pruning error at height %d: %w", decodeHeightFromKey(iter.Key()), err)
+			}
+			if err := batch.Close(); err != nil {
+				return pruned, err
+			}
+
+			iter, err = bs.db.Iterator(
+				blockMetaKey(1),
+				blockMetaKey(retainHeight),
+			)
+			if err != nil {
+				panic(err)
+			}
+			defer iter.Close()
+
+			batch = bs.db.NewBatch()
+			defer batch.Close()
+		} else {
+			iter.Next()
+		}
+	}
+	if err := iter.Error(); err != nil {
+		return pruned, err
+	}
+
+	err = batch.WriteSync()
+	if err != nil {
+		return pruned, fmt.Errorf("pruning error at height %d: %w", decodeHeightFromKey(iter.Key()), err)
+	}
+
+	return pruned, nil
+}
+
+// batchDelete is a generic function for deleting a range of values based on the lowest
+// height up to but excluding retainHeight
+func (bs *BlockStore) batchDelete(key func(int64) []byte, retainHeight int64) error {
+	iter, err := bs.db.Iterator(
+		key(1),
+		key(retainHeight),
+	)
+	if err != nil {
+		panic(err)
+	}
+	defer iter.Close()
+
+	batch := bs.db.NewBatch()
+	defer batch.Close()
+
+	pruned := uint64(0)
+	for ; iter.Valid(); {
+		if err := batch.Delete(iter.Key()); err != nil {
+			return fmt.Errorf("pruning error at height %d: %w", decodeHeightFromKey(iter.Key()), err)
+		}
+
+		pruned++
+		// avoid batches growing too large by flushing to database regularly
+		if pruned%1000 == 0 {
+			if err := iter.Error(); err != nil {
 				return err
 			}
-		}
+			if err := iter.Close(); err != nil {
+				return err
+			}
 
+			err := batch.Write()
+			if err != nil {
+				return fmt.Errorf("pruning error at height %d: %w", decodeHeightFromKey(iter.Key()), err)
+			}
+			if err := batch.Close(); err != nil {
+				return err
+			}
+
+			iter, err = bs.db.Iterator(
+				key(1),
+				key(retainHeight),
+			)
+			if err != nil {
+				panic(err)
+			}
+			defer iter.Close()
+
+			batch = bs.db.NewBatch()
+			defer batch.Close()
+		} else {
+			iter.Next()
+		}
 	}
 	if err := iter.Error(); err != nil {
 		return err
 	}
 
-	if err := batch.WriteSync(); err != nil {
-		return fmt.Errorf("failed to prune block hashes up to height %v: %w", retain_height, err)
+	err = batch.WriteSync()
+	if err != nil {
+		return fmt.Errorf("pruning error at height %d: %w", decodeHeightFromKey(iter.Key()), err)
 	}
 
 	return nil
@@ -403,17 +461,17 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 		panic("nil blockmeta")
 	}
 	metaBytes := mustEncode(pbm)
-	if err := bs.db.Set(calcBlockMetaKey(height), metaBytes); err != nil {
+	if err := bs.db.Set(blockMetaKey(height), metaBytes); err != nil {
 		panic(err)
 	}
-	if err := bs.db.Set(calcBlockHashKey(hash), []byte(fmt.Sprintf("%d", height))); err != nil {
+	if err := bs.db.Set(blockHashKey(hash), []byte(fmt.Sprintf("%d", height))); err != nil {
 		panic(err)
 	}
 
 	// Save block commit (duplicate and separate from the Block)
 	pbc := block.LastCommit.ToProto()
 	blockCommitBytes := mustEncode(pbc)
-	if err := bs.db.Set(calcBlockCommitKey(height-1), blockCommitBytes); err != nil {
+	if err := bs.db.Set(blockCommitKey(height-1), blockCommitBytes); err != nil {
 		panic(err)
 	}
 
@@ -421,7 +479,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	// NOTE: we can delete this at a later height
 	pbsc := seenCommit.ToProto()
 	seenCommitBytes := mustEncode(pbsc)
-	if err := bs.db.Set(calcSeenCommitKey(height), seenCommitBytes); err != nil {
+	if err := bs.db.Set(seenCommitKey(height), seenCommitBytes); err != nil {
 		panic(err)
 	}
 
@@ -443,7 +501,7 @@ func (bs *BlockStore) saveBlockPart(height int64, index uint32, part *types.Part
 		panic(fmt.Errorf("unable to make part into proto: %w", err))
 	}
 	partBytes := mustEncode(pbp)
-	if err := bs.db.Set(calcBlockPartKey(height, index), partBytes); err != nil {
+	if err := bs.db.Set(blockPartKey(height, index), partBytes); err != nil {
 		panic(err)
 	}
 }
@@ -465,55 +523,69 @@ func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *types.Commit) err
 	if err != nil {
 		return fmt.Errorf("unable to marshal commit: %w", err)
 	}
-	return bs.db.Set(calcSeenCommitKey(height), seenCommitBytes)
+	return bs.db.Set(seenCommitKey(height), seenCommitBytes)
 }
 
 //-----------------------------------------------------------------------------
 
-// Keys are constructed based on height (big endian) first, then by a suffix byte that determines
-// the data type followed by 4 bytes to allow for the partIndex. Note that this dictates the ordering
-// of pruning.
+// key prefixes
 const (
-	prefixKeyBlock     = byte(0x00)
-	prefixKeyBlockHash = byte(0x01)
-
-	suffixKeyBlockMeta   = byte(0x00)
-	suffixKeyBlockPart   = byte(0x01)
-	suffixKeyBlockCommit = byte(0x02)
-	suffixKeySeenCommit  = byte(0x03)
+	prefixBlockMeta   = byte(0x00)
+	prefixBlockPart   = byte(0x01)
+	prefixBlockCommit = byte(0x02)
+	prefixSeenCommit  = byte(0x03)
+	prefixBlockHash 	= byte(0x04)
 )
 
-func getBlockKey(height uint64) []byte {
-	buf := make([]byte, binary.MaxVarintLen64+2)
-	buf[0] = prefixKeyBlock
-	varLen := binary.PutUvarint(buf[1:], height)
-	return buf[:varLen+1]
+func decodeHeightFromKey(key []byte) int64 {
+	var height int64
+	_, err := orderedcode.Parse(string(key[1:]), &height)
+	if err != nil {
+		panic(err)
+	}
+	return height
 }
 
-func calcBlockMetaKey(height int64) []byte {
-	return append(getBlockKey(uint64(height)), suffixKeyBlockMeta)
+func blockMetaKey(height int64) []byte {
+	key, err := orderedcode.Append([]byte{prefixBlockMeta}, height)
+	if err != nil {
+		panic(err)
+	}
+	return key
 }
 
-func calcBlockPartKey(height int64, partIndex uint32) []byte {
-	buf := make([]byte, binary.MaxVarintLen64+6)
-	buf[0] = prefixKeyBlock
-	varHeightLen := binary.PutUvarint(buf[1:], uint64(height))
-	buf[varHeightLen+1] = suffixKeyBlockPart
-	varPartsLen := binary.PutUvarint(buf[varHeightLen+1:], uint64(partIndex))
-	return buf[:varHeightLen+varPartsLen+2]
+func blockPartKey(height int64, partIndex uint32) []byte {
+	key, err := orderedcode.Append([]byte{prefixBlockPart}, height, partIndex)
+	if err != nil {
+		panic(err)
+	}
+	return key
 }
 
-func calcBlockCommitKey(height int64) []byte {
-	return append(getBlockKey(uint64(height)), suffixKeyBlockCommit)
+// returns the last block part key of that height. Used in pruning
+func lastBlockPartKey(height int64) []byte {
+	return blockPartKey(height, ^uint32(0))
 }
 
-func calcSeenCommitKey(height int64) []byte {
-	return append(getBlockKey(uint64(height)), suffixKeySeenCommit)
+func blockCommitKey(height int64) []byte {
+	key, err := orderedcode.Append([]byte{prefixBlockMeta}, height)
+	if err != nil {
+		panic(err)
+	}
+	return key
+}
+
+func seenCommitKey(height int64) []byte {
+	key, err := orderedcode.Append([]byte{prefixBlockMeta}, height)
+	if err != nil {
+		panic(err)
+	}
+	return key
 }
 
 // block hash has a different prefix
-func calcBlockHashKey(hash []byte) []byte {
-	return []byte(fmt.Sprintf("%b%x", prefixKeyBlockHash, hash))
+func blockHashKey(hash []byte) []byte {
+	return append([]byte{prefixBlockHash}, hash...)
 }
 
 //-----------------------------------------------------------------------------
