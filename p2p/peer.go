@@ -98,9 +98,9 @@ type PeerUpdatesCh struct {
 }
 
 // NewPeerUpdates returns a reference to a new PeerUpdatesCh.
-func NewPeerUpdates() *PeerUpdatesCh {
+func NewPeerUpdates(updatesCh chan PeerUpdate) *PeerUpdatesCh {
 	return &PeerUpdatesCh{
-		updatesCh: make(chan PeerUpdate),
+		updatesCh: updatesCh,
 		doneCh:    make(chan struct{}),
 	}
 }
@@ -128,12 +128,6 @@ func (puc *PeerUpdatesCh) Close() {
 // not send any peer updates.
 func (puc *PeerUpdatesCh) Done() <-chan struct{} {
 	return puc.doneCh
-}
-
-// TestSend performs a blocking send of a PeerUpdate on the PeerUpdatesCh
-// updatesCh. Note, this should be used for testing purposes only.
-func (puc *PeerUpdatesCh) TestSend(pu PeerUpdate) {
-	puc.updatesCh <- pu
 }
 
 // PeerUpdate is a peer status update for reactors.

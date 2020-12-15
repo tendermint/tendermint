@@ -61,7 +61,7 @@ func NewReactorShim(logger log.Logger, name string, descriptors map[ChannelID]*C
 
 	rs := &ReactorShim{
 		Name:        name,
-		PeerUpdates: NewPeerUpdates(),
+		PeerUpdates: NewPeerUpdates(make(chan PeerUpdate)),
 		Channels:    channels,
 	}
 

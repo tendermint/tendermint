@@ -40,7 +40,8 @@ type reactorTestSuite struct {
 	evidenceOutCh     chan p2p.Envelope
 	evidencePeerErrCh chan p2p.PeerError
 
-	peerUpdates *p2p.PeerUpdatesCh
+	peerUpdatesCh chan p2p.PeerUpdate
+	peerUpdates   *p2p.PeerUpdatesCh
 }
 
 func setup(t *testing.T, logger log.Logger, pool *evidence.Pool, chBuf uint) *reactorTestSuite {
@@ -50,12 +51,15 @@ func setup(t *testing.T, logger log.Logger, pool *evidence.Pool, chBuf uint) *re
 	_, err := rng.Read(pID)
 	require.NoError(t, err)
 
+	peerUpdatesCh := make(chan p2p.PeerUpdate)
+
 	rts := &reactorTestSuite{
 		pool:              pool,
 		evidenceInCh:      make(chan p2p.Envelope, chBuf),
 		evidenceOutCh:     make(chan p2p.Envelope, chBuf),
 		evidencePeerErrCh: make(chan p2p.PeerError, chBuf),
-		peerUpdates:       p2p.NewPeerUpdates(),
+		peerUpdatesCh:     peerUpdatesCh,
+		peerUpdates:       p2p.NewPeerUpdates(peerUpdatesCh),
 		peerID:            pID,
 	}
 
@@ -225,7 +229,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	// evidence pool. In addition, we mark a primary suite and the rest are
 	// secondaries where each secondary is added as a peer via a PeerUpdate to the
 	// primary. As a result, the primary will gossip all evidence to each secondary.
-	testSuites := createTestSuites(t, stateDBs, 1)
+	testSuites := createTestSuites(t, stateDBs, 0)
 	primary := testSuites[0]
 	secondaries := testSuites[1:]
 
@@ -239,10 +243,10 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	// Add each secondary suite (node) as a peer to the primary suite (node). This
 	// will cause the primary to gossip all evidence to the secondaries.
 	for _, suite := range secondaries {
-		primary.peerUpdates.TestSend(p2p.PeerUpdate{
+		primary.peerUpdatesCh <- p2p.PeerUpdate{
 			Status: p2p.PeerStatusNew,
 			PeerID: suite.peerID,
-		})
+		}
 	}
 
 	// Wait till all secondary suites (reactor) received all evidence from the
@@ -274,7 +278,7 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 	stateDB1 := initializeValidatorState(t, val, height1)
 	stateDB2 := initializeValidatorState(t, val, height2)
 
-	testSuites := createTestSuites(t, []sm.Store{stateDB1, stateDB2}, 1)
+	testSuites := createTestSuites(t, []sm.Store{stateDB1, stateDB2}, 0)
 	primary := testSuites[0]
 	secondaries := testSuites[1:]
 
@@ -290,10 +294,10 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 	// Add each secondary suite (node) as a peer to the primary suite (node). This
 	// will cause the primary to gossip all evidence to the secondaries.
 	for _, suite := range secondaries {
-		primary.peerUpdates.TestSend(p2p.PeerUpdate{
+		primary.peerUpdatesCh <- p2p.PeerUpdate{
 			Status: p2p.PeerStatusNew,
 			PeerID: suite.peerID,
-		})
+		}
 	}
 
 	// only ones less than the peers height should make it through
@@ -319,7 +323,7 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	stateDB1 := initializeValidatorState(t, val, height)
 	stateDB2 := initializeValidatorState(t, val, height)
 
-	testSuites := createTestSuites(t, []sm.Store{stateDB1, stateDB2}, 1)
+	testSuites := createTestSuites(t, []sm.Store{stateDB1, stateDB2}, 0)
 	primary := testSuites[0]
 	secondary := testSuites[1]
 
@@ -341,10 +345,10 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	require.Equal(t, uint32(numEvidence/2), secondary.pool.Size())
 
 	// add the secondary reactor as a peer to the primary reactor
-	primary.peerUpdates.TestSend(p2p.PeerUpdate{
+	primary.peerUpdatesCh <- p2p.PeerUpdate{
 		Status: p2p.PeerStatusNew,
 		PeerID: secondary.peerID,
-	})
+	}
 
 	// The secondary reactor should have received all the evidence ignoring the
 	// already pending evidence.
@@ -369,7 +373,7 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	stateDB1 := initializeValidatorState(t, val, height)
 	stateDB2 := initializeValidatorState(t, val, height)
 
-	testSuites := createTestSuites(t, []sm.Store{stateDB1, stateDB2}, 1)
+	testSuites := createTestSuites(t, []sm.Store{stateDB1, stateDB2}, 0)
 	primary := testSuites[0]
 	secondary := testSuites[1]
 
@@ -401,10 +405,10 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	simulateRouter(wg, primary, testSuites, numEvidence)
 
 	// add the secondary reactor as a peer to the primary reactor
-	primary.peerUpdates.TestSend(p2p.PeerUpdate{
+	primary.peerUpdatesCh <- p2p.PeerUpdate{
 		Status: p2p.PeerStatusNew,
 		PeerID: secondary.peerID,
-	})
+	}
 
 	// The secondary reactor should have received all the evidence ignoring the
 	// already pending evidence.
@@ -435,7 +439,7 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 		stateDBs[i] = initializeValidatorState(t, val, height)
 	}
 
-	testSuites := createTestSuites(t, stateDBs, 1)
+	testSuites := createTestSuites(t, stateDBs, 0)
 
 	// Simulate a router by listening for all outbound envelopes and proxying the
 	// envelopes to the respective peer (suite).
@@ -450,10 +454,10 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 	for _, suiteI := range testSuites {
 		for _, suiteJ := range testSuites {
 			if !suiteI.peerID.Equal(suiteJ.peerID) {
-				suiteI.peerUpdates.TestSend(p2p.PeerUpdate{
+				suiteI.peerUpdatesCh <- p2p.PeerUpdate{
 					Status: p2p.PeerStatusNew,
 					PeerID: suiteJ.peerID,
-				})
+				}
 			}
 		}
 	}
@@ -468,21 +472,9 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 		state := suite.pool.State()
 		state.LastBlockHeight++
 		suite.pool.Update(state, evList)
-
-		// There is no guarantee on when the reactor would start gossiping evidence
-		// from the front of the list again, so we flush the channel here just to be
-		// safe.
-		for len(suite.evidenceOutCh) > 0 {
-			<-suite.evidenceOutCh
-		}
 	}
 
 	wg.Wait()
-
-	// ensure all channels are drained
-	for _, suite := range testSuites {
-		require.Empty(t, suite.evidenceOutCh)
-	}
 }
 
 func TestReactorBroadcastEvidence_RemovePeer(t *testing.T) {
@@ -505,19 +497,19 @@ func TestReactorBroadcastEvidence_RemovePeer(t *testing.T) {
 	evList := createEvidenceList(t, primary.pool, val, numEvidence)
 
 	// add the secondary reactor as a peer to the primary reactor
-	primary.peerUpdates.TestSend(p2p.PeerUpdate{
+	primary.peerUpdatesCh <- p2p.PeerUpdate{
 		Status: p2p.PeerStatusNew,
 		PeerID: secondary.peerID,
-	})
+	}
 
 	// have the secondary reactor receive only half the evidence
 	waitForEvidence(t, evList[:numEvidence/2], secondary)
 
 	// disconnect the peer
-	primary.peerUpdates.TestSend(p2p.PeerUpdate{
+	primary.peerUpdatesCh <- p2p.PeerUpdate{
 		Status: p2p.PeerStatusDown,
 		PeerID: secondary.peerID,
-	})
+	}
 
 	// Ensure the secondary only received half of the evidence before being
 	// disconnected.
