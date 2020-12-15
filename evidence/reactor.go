@@ -132,8 +132,8 @@ func (r *Reactor) handleEvidenceMessage(envelope p2p.Envelope) error {
 		// TODO: Refactor the Evidence type to not contain a list since we only ever
 		// send and receive one piece of evidence at a time. Or potentially consider
 		// batching evidence.
-		for _, protoEv := range msg.Evidence {
-			ev, err := types.EvidenceFromProto(&protoEv)
+		for i := 0; i < len(msg.Evidence); i++ {
+			ev, err := types.EvidenceFromProto(&msg.Evidence[i])
 			if err != nil {
 				r.Logger.Error("failed to convert evidence", "peer", envelope.From.String(), "err", err)
 				continue

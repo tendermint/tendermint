@@ -532,6 +532,7 @@ func TestReactorBroadcastEvidence_RemovePeer(t *testing.T) {
 	}
 }
 
+// nolint:lll
 func TestEvidenceListSerialization(t *testing.T) {
 	exampleVote := func(msgType byte) *types.Vote {
 		var stamp, err = time.Parse(types.TimeFormat, "2017-12-25T03:00:01.234Z")

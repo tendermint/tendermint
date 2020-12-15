@@ -148,15 +148,17 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 				return types.NewErrInvalidEvidence(
 					evidence,
 					fmt.Errorf(
-						"evidence contained a different byzantine validator address to the one we were expecting; expected: %v, got: %v",
+						"evidence contained an unexpected byzantine validator address; expected: %v, got: %v",
 						val.Address, ev.ByzantineValidators[idx].Address,
 					),
 				)
 			}
+
 			if ev.ByzantineValidators[idx].VotingPower != val.VotingPower {
 				return types.NewErrInvalidEvidence(
 					evidence,
-					fmt.Errorf("evidence contained a byzantine validator with a different power to the one we were expecting; expected %d, got %d",
+					fmt.Errorf(
+						"evidence contained unexpected byzantine validator power; expected %d, got %d",
 						val.VotingPower, ev.ByzantineValidators[idx].VotingPower,
 					),
 				)
