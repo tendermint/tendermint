@@ -151,7 +151,8 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 
 func TestReactor_MaxBatchBytes(t *testing.T) {
 	config := cfg.TestConfig()
-	config.Mempool.MaxBatchBytes = 1024
+	config.Mempool.MaxBatchBytes = 4096
+	config.Mempool.MaxTxBytes = 1024
 
 	const N = 2
 	reactors := makeAndConnectReactors(config, N)
@@ -177,16 +178,6 @@ func TestReactor_MaxBatchBytes(t *testing.T) {
 
 	reactors[0].mempool.Flush()
 	reactors[1].mempool.Flush()
-
-	// Broadcast a tx, which is beyond the max size
-	// => ensure it's not sent
-	tx2 := tmrand.Bytes(1020)
-	err = reactors[0].mempool.CheckTx(tx2, nil, TxInfo{SenderID: UnknownPeerID})
-	require.NoError(t, err)
-	ensureNoTxs(t, reactors[1], 100*time.Millisecond)
-	// => ensure the second reactor did not disconnect from us
-	out, in, _ := reactors[1].Switch.NumPeers()
-	assert.Equal(t, 1, out+in)
 }
 
 func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
