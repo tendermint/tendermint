@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"
-	dbm "github.com/tendermint/tm-db"
 	"github.com/google/orderedcode"
+	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -33,7 +33,7 @@ const (
 )
 
 func encodeKey(buf []byte, height int64) []byte {
-	res, _ := orderedcode.Append(buf, height) 
+	res, _ := orderedcode.Append(buf, height)
 	return res
 }
 
@@ -241,7 +241,7 @@ func (store dbStore) PruneStates(retainHeight int64) error {
 	if retainHeight <= 0 {
 		return fmt.Errorf("height %v must be greater than 0", retainHeight)
 	}
-	
+
 	if err := store.pruneValidatorSets(retainHeight); err != nil {
 		return err
 	}
@@ -265,10 +265,10 @@ func (store dbStore) pruneValidatorSets(height int64) error {
 
 	var (
 		lastRecordedValSetHeight int64
-		lastRecordedValSet *tmstate.ValidatorsInfo
+		lastRecordedValSet       *tmstate.ValidatorsInfo
 	)
 
-	// We will prune up to the validator set at the given "height". As we don't save validator sets every 
+	// We will prune up to the validator set at the given "height". As we don't save validator sets every
 	// height but only when they change or at a check point, it is likely that the validator set at the height
 	// we prune to is empty and thus dependent on the validator set saved at a previous height. We must find
 	// that validator set and make sure it is not pruned by saving after we have finished pruning.
@@ -277,10 +277,10 @@ func (store dbStore) pruneValidatorSets(height int64) error {
 		lastRecordedValSet, err = loadValidatorsInfo(store.db, lastRecordedValSetHeight)
 		if err != nil || lastRecordedValSet.ValidatorSet == nil {
 			return fmt.Errorf("couldn't find validators at height %d (height %d was originally requested): %w",
-					lastStoredHeightFor(height, valInfo.LastHeightChanged),
-					height,
-					err,
-				)
+				lastStoredHeightFor(height, valInfo.LastHeightChanged),
+				height,
+				err,
+			)
 		}
 	}
 
@@ -303,9 +303,9 @@ func (store dbStore) pruneValidatorSets(height int64) error {
 	return nil
 }
 
-// pruneConsensusParams calls an iterator from base height to retain height batch deleting 
+// pruneConsensusParams calls an iterator from base height to retain height batch deleting
 // all consensus params in between. If the consensus params at the new base height is dependent
-// on a prior height then this will keep that lower height to. 
+// on a prior height then this will keep that lower height to.
 func (store dbStore) pruneConsensusParams(height int64) error {
 	paramsInfo, err := store.loadConsensusParamsInfo(height)
 	if err != nil {
@@ -314,11 +314,11 @@ func (store dbStore) pruneConsensusParams(height int64) error {
 
 	// As we don't save the consensus params at every height, only when there is a consensus params change,
 	// we must not prune (or save) the last consensus params that the consensus params info at height
-	// is dependent on.  
+	// is dependent on.
 	var lastRecordedConsensusParams *tmstate.ConsensusParamsInfo
 	if paramsInfo.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
 		lastRecordedConsensusParams, err = store.loadConsensusParamsInfo(paramsInfo.LastHeightChanged)
-		if err != nil ||  lastRecordedConsensusParams.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
+		if err != nil || lastRecordedConsensusParams.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
 			return fmt.Errorf(
 				"couldn't find consensus params at height %d as last changed from height %d: %w",
 				paramsInfo.LastHeightChanged,
@@ -349,7 +349,7 @@ func (store dbStore) pruneConsensusParams(height int64) error {
 	return nil
 }
 
-// pruneABCIResponses calls an iterator from base height to retain height batch deleting 
+// pruneABCIResponses calls an iterator from base height to retain height batch deleting
 // all abci responses in between
 func (store dbStore) pruneABCIResponses(height int64) error {
 	return store.batchDelete(abciResponsesKey, height)
@@ -371,7 +371,7 @@ func (store dbStore) batchDelete(key func(int64) []byte, retainHeight int64) err
 	defer batch.Close()
 
 	pruned := 0
-	for ; iter.Valid(); {
+	for iter.Valid() {
 		if err := batch.Delete(iter.Key()); err != nil {
 			return fmt.Errorf("pruning error at height %d: %w", decodeKey(iter.Key()), err)
 		}
@@ -562,7 +562,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) (*tmstate.ValidatorsInfo, error
 }
 
 // saveValidatorsInfo persists the validator set.
-// 
+//
 // We expect validator sets to change irregularly
 //
 // `height` is the effective height for which the validator is responsible for

@@ -5,8 +5,8 @@ import (
 	"strconv"
 
 	"github.com/gogo/protobuf/proto"
-	dbm "github.com/tendermint/tm-db"
 	"github.com/google/orderedcode"
+	dbm "github.com/tendermint/tm-db"
 
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -77,7 +77,11 @@ func (bs *BlockStore) Height() int64 {
 
 // Size returns the number of blocks in the block store.
 func (bs *BlockStore) Size() int64 {
-	return bs.Height() - bs.Base()
+	height := bs.Height()
+	if height == 0 {
+		return 0
+	}
+	return height + 1 - bs.Base()
 }
 
 // LoadBase atomically loads the base block meta, or returns nil if no base is found.
@@ -104,6 +108,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 		// If the part is missing (e.g. since it has been deleted after we
 		// loaded the block meta) we consider the whole block to be missing.
 		if part == nil {
+			panic(fmt.Sprintf("height: %d, index: %d", height, i))
 			return nil
 		}
 		buf = append(buf, part.Bytes...)
@@ -251,6 +256,10 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 		return 0, fmt.Errorf("height must be greater than 0")
 	}
 
+	if height > bs.Height() {
+		return 0, fmt.Errorf("height must be equal to or less than the latest height %d", bs.Height())
+	}
+
 	// remove block meta first as this is used to indicate whether the block exists.
 	// For this reason, we also use ony block meta as a measure of the amount of blocks pruned
 	pruned, err := bs.pruneBlockMetaAndHashes(height)
@@ -258,7 +267,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 		return pruned, err
 	}
 
-	if err := bs.batchDelete(lastBlockPartKey, height); err != nil {
+	if err := bs.batchDelete(firstBlockPartKey, height); err != nil {
 		return pruned, err
 	}
 
@@ -298,12 +307,12 @@ func (bs *BlockStore) pruneBlockMetaAndHashes(retainHeight int64) (uint64, error
 		// load the block meta so we can also remove the block hash from the db
 		var pbbm = new(tmproto.BlockMeta)
 		bz := iter.Value()
-	
+
 		err = proto.Unmarshal(bz, pbbm)
 		if err != nil {
 			panic(fmt.Errorf("unmarshal to tmproto.BlockMeta: %w", err))
 		}
-	
+
 		blockMeta, err := types.BlockMetaFromProto(pbbm)
 		if err != nil {
 			panic(fmt.Errorf("error from proto blockMeta: %w", err))
@@ -513,7 +522,7 @@ const (
 	prefixBlockPart   = byte(0x01)
 	prefixBlockCommit = byte(0x02)
 	prefixSeenCommit  = byte(0x03)
-	prefixBlockHash 	= byte(0x04)
+	prefixBlockHash   = byte(0x04)
 )
 
 func decodeHeightFromKey(key []byte) int64 {
@@ -541,9 +550,9 @@ func blockPartKey(height int64, partIndex uint64) []byte {
 	return key
 }
 
-// returns the last block part key of that height. Used in pruning
-func lastBlockPartKey(height int64) []byte {
-	return blockPartKey(height, ^uint64(0))
+// returns the first block part key of that height. Used in pruning
+func firstBlockPartKey(height int64) []byte {
+	return blockPartKey(height, 0)
 }
 
 func blockCommitKey(height int64) []byte {

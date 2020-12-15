@@ -94,7 +94,6 @@ func TestMain(m *testing.M) {
 }
 
 // TODO: This test should be simplified ...
-
 func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	state, bs, cleanup := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
 	defer cleanup()
@@ -131,7 +130,6 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	}
 
 	// End of setup, test data
-
 	commitAtH10 := makeTestCommit(10, tmtime.Now())
 	tuples := []struct {
 		block      *types.Block
@@ -372,10 +370,6 @@ func TestPruneBlocks(t *testing.T) {
 	assert.EqualValues(t, 0, bs.Height())
 	assert.EqualValues(t, 0, bs.Size())
 
-	// pruning an empty store should error, even when pruning to 0
-	_, err = bs.PruneBlocks(1)
-	require.Error(t, err)
-
 	_, err = bs.PruneBlocks(0)
 	require.Error(t, err)
 
@@ -414,10 +408,6 @@ func TestPruneBlocks(t *testing.T) {
 	for i := int64(1200); i <= 1500; i++ {
 		require.NotNil(t, bs.LoadBlock(i))
 	}
-
-	// Pruning below the current base should error
-	_, err = bs.PruneBlocks(1199)
-	require.Error(t, err)
 
 	// Pruning to the current base should work
 	pruned, err = bs.PruneBlocks(1200)

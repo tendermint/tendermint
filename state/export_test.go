@@ -35,4 +35,3 @@ func UpdateState(
 func ValidateValidatorUpdates(abciUpdates []abci.ValidatorUpdate, params tmproto.ValidatorParams) error {
 	return validateValidatorUpdates(abciUpdates, params)
 }
-

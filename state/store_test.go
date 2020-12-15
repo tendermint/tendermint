@@ -79,11 +79,11 @@ func TestStoreLoadValidators(t *testing.T) {
 	// check that a request will go back to the last checkpoint
 	_, err = stateStore.LoadValidators(valSetCheckpointInterval + 1)
 	require.Error(t, err)
-	require.Equal(t, fmt.Sprintf("couldn't find validators at height %d (height %d was originally requested): value retrieved from db is empty", 
-		valSetCheckpointInterval, valSetCheckpointInterval + 1), err.Error())
+	require.Equal(t, fmt.Sprintf("couldn't find validators at height %d (height %d was originally requested): value retrieved from db is empty",
+		valSetCheckpointInterval, valSetCheckpointInterval+1), err.Error())
 
 	// now save a validator set at that checkpoint
-	err = stateStore.Save(makeRandomStateFromValidatorSet(vals, valSetCheckpointInterval - 1, 1))
+	err = stateStore.Save(makeRandomStateFromValidatorSet(vals, valSetCheckpointInterval-1, 1))
 	require.NoError(t, err)
 
 	loadedVals, err = stateStore.LoadValidators(valSetCheckpointInterval)
@@ -91,13 +91,13 @@ func TestStoreLoadValidators(t *testing.T) {
 	// validator set gets updated with the one given hence we expect it to equal next validators (with an increment of one)
 	// as opposed to being equal to an increment of 100000 - 1 (if we didn't save at the checkpoint)
 	require.Equal(t, vals.CopyIncrementProposerPriority(1), loadedVals)
-	require.NotEqual(t, vals.CopyIncrementProposerPriority(valSetCheckpointInterval - 1), loadedVals)
+	require.NotEqual(t, vals.CopyIncrementProposerPriority(valSetCheckpointInterval-1), loadedVals)
 }
 
 // This benchmarks the speed of loading validators from different heights if there is no validator set change.
 // NOTE: This isn't too indicative of validator retrieval speed as the db is always (regardless of height) only
 // performing two operations: 1) retrieve validator info at height x, which has a last validator set change of 1
-// and 2) retrieve the validator set at the aforementioned height 1. 
+// and 2) retrieve the validator set at the aforementioned height 1.
 func BenchmarkLoadValidators(b *testing.B) {
 	const valSetSize = 100
 
@@ -119,8 +119,8 @@ func BenchmarkLoadValidators(b *testing.B) {
 
 	for i := 10; i < 10000000000; i *= 10 { // 10, 100, 1000, ...
 		i := i
-		err = stateStore.Save(makeRandomStateFromValidatorSet(state.NextValidators, 
-			int64(i) - 1, state.LastHeightValidatorsChanged))
+		err = stateStore.Save(makeRandomStateFromValidatorSet(state.NextValidators,
+			int64(i)-1, state.LastHeightValidatorsChanged))
 		if err != nil {
 			b.Fatalf("error saving store: %v", err)
 		}
@@ -166,10 +166,10 @@ func TestPruneStates(t *testing.T) {
 		expectParams []int64
 		expectABCI   []int64
 	}{
-		"error when prune height is 0": {100, 0, true, nil, nil, nil},
-		"error when prune height is negative": {100, -10, true, nil, nil, nil},
+		"error when prune height is 0":           {100, 0, true, nil, nil, nil},
+		"error when prune height is negative":    {100, -10, true, nil, nil, nil},
 		"error when prune height does not exist": {100, 101, true, nil, nil, nil},
-		"prune all":                    {100, 100, false, []int64{93, 100}, []int64{95, 100}, []int64{100}},
+		"prune all":                              {100, 100, false, []int64{93, 100}, []int64{95, 100}, []int64{100}},
 		"prune some": {10, 8, false, []int64{3, 8, 9, 10},
 			[]int64{5, 8, 9, 10}, []int64{8, 9, 10}},
 		"prune across checkpoint": {100002, 100002, false, []int64{100000, 100002},
