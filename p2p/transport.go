@@ -143,7 +143,7 @@ type Connection interface {
 	PubKey() crypto.PubKey
 
 	// NodeInfo returns the remote peer's node info.
-	NodeInfo() DefaultNodeInfo
+	NodeInfo() NodeInfo
 
 	// Close closes the connection.
 	Close() error

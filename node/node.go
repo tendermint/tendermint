@@ -1256,10 +1256,10 @@ func makeNodeInfo(
 	case "v2":
 		bcChannel = bcv2.BlockchainChannel
 	default:
-		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+		return p2p.NodeInfo{}, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
 
-	nodeInfo := p2p.DefaultNodeInfo{
+	nodeInfo := p2p.NodeInfo{
 		ProtocolVersion: p2p.NewProtocolVersion(
 			version.P2PProtocol, // global
 			state.Version.Consensus.Block,
@@ -1276,7 +1276,7 @@ func makeNodeInfo(
 			byte(statesync.SnapshotChannel), byte(statesync.ChunkChannel),
 		},
 		Moniker: config.Moniker,
-		Other: p2p.DefaultNodeInfoOther{
+		Other: p2p.NodeInfoOther{
 			TxIndex:    txIndexerStatus,
 			RPCAddress: config.RPC.ListenAddress,
 		},

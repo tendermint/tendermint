@@ -73,7 +73,7 @@ var ConnDuplicateIPFilter ConnFilterFunc = func(cs ConnSet, c net.Conn, ips []ne
 // moved out of the transport once the rest of the P2P stack is rewritten.
 type MConnTransport struct {
 	privKey      crypto.PrivKey
-	nodeInfo     DefaultNodeInfo
+	nodeInfo     NodeInfo
 	channelDescs []*ChannelDescriptor
 	mConnConfig  conn.MConnConfig
 
@@ -99,14 +99,14 @@ type MConnTransport struct {
 // NewMConnTransport sets up a new MConn transport.
 func NewMConnTransport(
 	logger log.Logger,
-	nodeInfo NodeInfo, // FIXME: should use DefaultNodeInfo, left for code compatibility
+	nodeInfo NodeInfo,
 	privKey crypto.PrivKey,
 	mConnConfig conn.MConnConfig,
 	opts ...MConnTransportOption,
 ) *MConnTransport {
 	m := &MConnTransport{
 		privKey:      privKey,
-		nodeInfo:     nodeInfo.(DefaultNodeInfo),
+		nodeInfo:     nodeInfo,
 		mConnConfig:  mConnConfig,
 		channelDescs: []*ChannelDescriptor{},
 
@@ -377,7 +377,7 @@ type mConnConnection struct {
 	secretConn *conn.SecretConnection
 	mConn      *conn.MConnection
 
-	peerInfo DefaultNodeInfo
+	peerInfo NodeInfo
 
 	closeOnce sync.Once
 	chReceive chan mConnMessage
@@ -525,8 +525,8 @@ func newMConnConnection(
 }
 
 // handshake performs an MConn handshake, returning the peer's node info.
-func (c *mConnConnection) handshake() (DefaultNodeInfo, error) {
-	var pbNodeInfo p2pproto.DefaultNodeInfo
+func (c *mConnConnection) handshake() (NodeInfo, error) {
+	var pbNodeInfo p2pproto.NodeInfo
 	chErr := make(chan error, 2)
 	go func() {
 		_, err := protoio.NewDelimitedWriter(c.secretConn).WriteMsg(c.transport.nodeInfo.ToProto())
@@ -537,11 +537,11 @@ func (c *mConnConnection) handshake() (DefaultNodeInfo, error) {
 	}()
 	for i := 0; i < cap(chErr); i++ {
 		if err := <-chErr; err != nil {
-			return DefaultNodeInfo{}, err
+			return NodeInfo{}, err
 		}
 	}
 
-	return DefaultNodeInfoFromProto(&pbNodeInfo)
+	return NodeInfoFromProto(&pbNodeInfo)
 }
 
 // onReceive is a callback for MConnection received messages.
@@ -609,7 +609,7 @@ func (c *mConnConnection) ReceiveMessage() (byte, []byte, error) {
 }
 
 // NodeInfo implements Connection.
-func (c *mConnConnection) NodeInfo() DefaultNodeInfo {
+func (c *mConnConnection) NodeInfo() NodeInfo {
 	return c.peerInfo
 }
 
