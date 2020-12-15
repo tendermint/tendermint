@@ -126,7 +126,9 @@ func TestPEXReactorReceive(t *testing.T) {
 	r.RequestAddrs(peer)
 
 	size := book.Size()
-	msg := mustEncode(&tmp2p.PexAddrs{Addrs: []tmp2p.NetAddress{peer.SocketAddr().ToProto()}})
+	na, err := peer.NodeInfo().NetAddress()
+	require.NoError(t, err)
+	msg := mustEncode(&tmp2p.PexAddrs{Addrs: []tmp2p.NetAddress{na.ToProto()}})
 	r.Receive(PexChannel, peer, msg)
 	assert.Equal(t, size+1, book.Size())
 
@@ -327,7 +329,7 @@ func TestPEXReactorDoesNotDisconnectFromPersistentPeerInSeedMode(t *testing.T) {
 
 	assert.Zero(t, sw.Peers().Size())
 
-	peerSwitch := testCreateDefaultPeer(dir, 1)
+	peerSwitch := testCreatePeerWithConfig(dir, 1, pexRConfig)
 	require.NoError(t, peerSwitch.Start())
 	t.Cleanup(func() { _ = peerSwitch.Stop() })
 
@@ -452,7 +454,9 @@ func TestPEXReactorDoesNotAddPrivatePeersToAddrBook(t *testing.T) {
 	pexR.RequestAddrs(peer)
 
 	size := book.Size()
-	msg := mustEncode(&tmp2p.PexAddrs{Addrs: []tmp2p.NetAddress{peer.SocketAddr().ToProto()}})
+	na, err := peer.NodeInfo().NetAddress()
+	require.NoError(t, err)
+	msg := mustEncode(&tmp2p.PexAddrs{Addrs: []tmp2p.NetAddress{na.ToProto()}})
 	pexR.Receive(PexChannel, peer, msg)
 	assert.Equal(t, size, book.Size())
 
@@ -619,12 +623,13 @@ func createReactor(t *testing.T, conf *ReactorConfig) (r *Reactor, book AddrBook
 }
 
 func createSwitchAndAddReactors(reactors ...p2p.Reactor) *p2p.Switch {
-	sw := p2p.MakeSwitch(cfg, 0, "127.0.0.1", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch { return sw })
+	sw := p2p.MakeSwitch(cfg, 0, "127.0.0.1", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
+		for _, r := range reactors {
+			sw.AddReactor(r.String(), r)
+		}
+		return sw
+	})
 	sw.SetLogger(log.TestingLogger())
-	for _, r := range reactors {
-		sw.AddReactor(r.String(), r)
-		r.SetSwitch(sw)
-	}
 	return sw
 }
 

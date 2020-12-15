@@ -19,6 +19,51 @@ import (
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
+func TestPeerIDFromString(t *testing.T) {
+	testCases := map[string]struct {
+		input      string
+		expectedID PeerID
+		expectErr  bool
+	}{
+		"empty peer ID string":   {"", PeerID{}, false},
+		"invalid peer ID string": {"foo", nil, true},
+		"valid peer ID string":   {"ff", PeerID{0xFF}, false},
+	}
+
+	for name, tc := range testCases {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			pID, err := PeerIDFromString(tc.input)
+			require.Equal(t, tc.expectErr, err != nil, err)
+			require.Equal(t, tc.expectedID, pID)
+		})
+	}
+}
+
+func TestPeerID_String(t *testing.T) {
+	require.Equal(t, "", PeerID{}.String())
+	require.Equal(t, "ff", PeerID{0xFF}.String())
+}
+
+func TestPeerID_Equal(t *testing.T) {
+	testCases := map[string]struct {
+		idA   PeerID
+		idB   PeerID
+		equal bool
+	}{
+		"empty IDs": {PeerID{}, PeerID{}, true},
+		"not equal": {PeerID{0xFF}, PeerID{0xAA}, false},
+		"equal":     {PeerID{0xFF}, PeerID{0xFF}, true},
+	}
+
+	for name, tc := range testCases {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			require.Equal(t, tc.equal, tc.idA.Equal(tc.idB))
+		})
+	}
+}
+
 func TestPeerBasic(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
@@ -69,7 +114,6 @@ func TestPeerSend(t *testing.T) {
 		}
 	})
 
-	assert.True(p.CanSend(testCh))
 	assert.True(p.Send(testCh, []byte("Asylum")))
 }
 
@@ -81,20 +125,17 @@ func createOutboundPeerAndPerformHandshake(
 	chDescs := []*tmconn.ChannelDescriptor{
 		{ID: testCh, Priority: 1},
 	}
-	reactorsByCh := map[byte]Reactor{testCh: NewTestReactor(chDescs, true)}
 	pk := ed25519.GenPrivKey()
-	pc, err := testOutboundPeerConn(addr, config, false, pk)
-	if err != nil {
-		return nil, err
-	}
-	timeout := 1 * time.Second
-	ourNodeInfo := testNodeInfo(addr.ID, "host_peer")
-	peerNodeInfo, err := handshake(pc.conn, timeout, ourNodeInfo)
+	ourNodeInfo := testNodeInfo(PubKeyToID(pk.PubKey()), "host_peer")
+	transport := NewMConnTransport(log.TestingLogger(), ourNodeInfo, pk, mConfig)
+	transport.SetChannelDescriptors(chDescs)
+	reactorsByCh := map[byte]Reactor{testCh: NewTestReactor(chDescs, true)}
+	pc, err := testOutboundPeerConn(transport, addr, config, false, pk)
 	if err != nil {
 		return nil, err
 	}
 
-	p := newPeer(pc, mConfig, peerNodeInfo, reactorsByCh, chDescs, func(p Peer, r interface{}) {})
+	p := newPeer(pc, reactorsByCh, func(p Peer, r interface{}) {})
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p, nil
 }
@@ -112,6 +153,7 @@ func testDial(addr *NetAddress, cfg *config.P2PConfig) (net.Conn, error) {
 }
 
 func testOutboundPeerConn(
+	transport *MConnTransport,
 	addr *NetAddress,
 	config *config.P2PConfig,
 	persistent bool,
@@ -124,7 +166,7 @@ func testOutboundPeerConn(
 		return pc, fmt.Errorf("error creating peer: %w", err)
 	}
 
-	pc, err = testPeerConn(conn, config, true, persistent, ourNodePrivKey, addr)
+	pc, err = testPeerConn(transport, conn, true, persistent)
 	if err != nil {
 		if cerr := conn.Close(); cerr != nil {
 			return pc, fmt.Errorf("%v: %w", cerr.Error(), err)
@@ -182,15 +224,12 @@ func (rp *remotePeer) Stop() {
 }
 
 func (rp *remotePeer) Dial(addr *NetAddress) (net.Conn, error) {
+	transport := NewMConnTransport(log.TestingLogger(), rp.nodeInfo(), rp.PrivKey, MConnConfig(rp.Config))
 	conn, err := addr.DialTimeout(1 * time.Second)
 	if err != nil {
 		return nil, err
 	}
-	pc, err := testInboundPeerConn(conn, rp.Config, rp.PrivKey)
-	if err != nil {
-		return nil, err
-	}
-	_, err = handshake(pc.conn, time.Second, rp.nodeInfo())
+	_, err = testInboundPeerConn(transport, conn)
 	if err != nil {
 		return nil, err
 	}
@@ -198,6 +237,7 @@ func (rp *remotePeer) Dial(addr *NetAddress) (net.Conn, error) {
 }
 
 func (rp *remotePeer) accept() {
+	transport := NewMConnTransport(log.TestingLogger(), rp.nodeInfo(), rp.PrivKey, MConnConfig(rp.Config))
 	conns := []net.Conn{}
 
 	for {
@@ -210,14 +250,9 @@ func (rp *remotePeer) accept() {
 			return
 		}
 
-		pc, err := testInboundPeerConn(conn, rp.Config, rp.PrivKey)
+		_, err = testInboundPeerConn(transport, conn)
 		if err != nil {
-			golog.Fatalf("Failed to create a peer: %+v", err)
-		}
-
-		_, err = handshake(pc.conn, time.Second, rp.nodeInfo())
-		if err != nil {
-			golog.Fatalf("Failed to perform handshake: %+v", err)
+			golog.Printf("Failed to create a peer: %+v", err)
 		}
 
 		conns = append(conns, conn)

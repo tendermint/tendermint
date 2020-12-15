@@ -281,6 +281,16 @@ func (na *NetAddress) HasID() bool {
 	return string(na.ID) != ""
 }
 
+// Endpoint converts the address to an MConnection endpoint.
+func (na *NetAddress) Endpoint() Endpoint {
+	return Endpoint{
+		Protocol: MConnProtocol,
+		PeerID:   na.ID,
+		IP:       na.IP,
+		Port:     na.Port,
+	}
+}
+
 // Local returns true if it is a local address.
 func (na *NetAddress) Local() bool {
 	return na.IP.IsLoopback() || zero4.Contains(na.IP)

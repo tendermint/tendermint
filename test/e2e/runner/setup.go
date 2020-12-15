@@ -159,7 +159,7 @@ services:
     entrypoint: /usr/bin/entrypoint-builtin
 {{- else if .Misbehaviors }}
     entrypoint: /usr/bin/entrypoint-maverick
-    command: ["node", "--misbehaviors", "{{ misbehaviorsToString .Misbehaviors }}"]
+    command: ["start", "--misbehaviors", "{{ misbehaviorsToString .Misbehaviors }}"]
 {{- end }}
     init: true
     ports:
@@ -392,7 +392,7 @@ func UpdateConfigStateSync(node *e2e.Node, height int64, hash []byte) error {
 	if err != nil {
 		return err
 	}
-	bz = regexp.MustCompile(`(?m)^trust_height =.*`).ReplaceAll(bz, []byte(fmt.Sprintf(`trust_height = %v`, height)))
-	bz = regexp.MustCompile(`(?m)^trust_hash =.*`).ReplaceAll(bz, []byte(fmt.Sprintf(`trust_hash = "%X"`, hash)))
+	bz = regexp.MustCompile(`(?m)^trust-height =.*`).ReplaceAll(bz, []byte(fmt.Sprintf(`trust-height = %v`, height)))
+	bz = regexp.MustCompile(`(?m)^trust-hash =.*`).ReplaceAll(bz, []byte(fmt.Sprintf(`trust-hash = "%X"`, hash)))
 	return ioutil.WriteFile(cfgPath, bz, 0644)
 }

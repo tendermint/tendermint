@@ -1,8 +1,14 @@
 package p2p
 
 import (
+	"bytes"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"net"
+	"runtime/debug"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/cmap"
@@ -11,6 +17,133 @@ import (
 
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
+
+// PeerID is a unique peer ID, generally expressed in hex form.
+type PeerID []byte
+
+// String implements the fmt.Stringer interface for the PeerID type.
+func (pid PeerID) String() string {
+	return strings.ToLower(hex.EncodeToString(pid))
+}
+
+// Empty returns true if the PeerID is considered empty.
+func (pid PeerID) Empty() bool {
+	return len(pid) == 0
+}
+
+// PeerIDFromString returns a PeerID from an encoded string or an error upon
+// decode failure.
+func PeerIDFromString(s string) (PeerID, error) {
+	bz, err := hex.DecodeString(s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode PeerID (%s): %w", s, err)
+	}
+
+	return PeerID(bz), nil
+}
+
+// Equal reports whether two PeerID are equal.
+func (pid PeerID) Equal(other PeerID) bool {
+	return bytes.Equal(pid, other)
+}
+
+// PeerStatus specifies peer statuses.
+type PeerStatus string
+
+const (
+	PeerStatusNew     = PeerStatus("new")     // New peer which we haven't tried to contact yet.
+	PeerStatusUp      = PeerStatus("up")      // Peer which we have an active connection to.
+	PeerStatusDown    = PeerStatus("down")    // Peer which we're temporarily disconnected from.
+	PeerStatusRemoved = PeerStatus("removed") // Peer which has been removed.
+	PeerStatusBanned  = PeerStatus("banned")  // Peer which is banned for misbehavior.
+)
+
+// PeerPriority specifies peer priorities.
+type PeerPriority int
+
+const (
+	PeerPriorityNormal PeerPriority = iota + 1
+	PeerPriorityValidator
+	PeerPriorityPersistent
+)
+
+// PeerError is a peer error reported by a reactor via the Error channel. The
+// severity may cause the peer to be disconnected or banned depending on policy.
+type PeerError struct {
+	PeerID   PeerID
+	Err      error
+	Severity PeerErrorSeverity
+}
+
+// PeerErrorSeverity determines the severity of a peer error.
+type PeerErrorSeverity string
+
+const (
+	PeerErrorSeverityLow      PeerErrorSeverity = "low"      // Mostly ignored.
+	PeerErrorSeverityHigh     PeerErrorSeverity = "high"     // May disconnect.
+	PeerErrorSeverityCritical PeerErrorSeverity = "critical" // Ban.
+)
+
+// PeerUpdatesCh defines a wrapper around a PeerUpdate go channel that allows
+// a reactor to listen for peer updates and safely close it when stopping.
+type PeerUpdatesCh struct {
+	closeOnce sync.Once
+
+	// updatesCh defines the go channel in which the router sends peer updates to
+	// reactors. Each reactor will have its own PeerUpdatesCh to listen for updates
+	// from.
+	updatesCh chan PeerUpdate
+
+	// doneCh is used to signal that a PeerUpdatesCh is closed. It is the
+	// reactor's responsibility to invoke Close.
+	doneCh chan struct{}
+}
+
+// NewPeerUpdates returns a reference to a new PeerUpdatesCh.
+func NewPeerUpdates() *PeerUpdatesCh {
+	return &PeerUpdatesCh{
+		updatesCh: make(chan PeerUpdate),
+		doneCh:    make(chan struct{}),
+	}
+}
+
+// Updates returns a read-only go channel where a consuming reactor can listen
+// for peer updates sent from the router.
+func (puc *PeerUpdatesCh) Updates() <-chan PeerUpdate {
+	return puc.updatesCh
+}
+
+// Close closes the PeerUpdatesCh channel. It should only be closed by the respective
+// reactor when stopping and ensure nothing is listening for updates.
+//
+// NOTE: After a PeerUpdatesCh is closed, the router may safely assume it can no
+// longer send on the internal updatesCh, however it should NEVER explicitly close
+// it as that could result in panics by sending on a closed channel.
+func (puc *PeerUpdatesCh) Close() {
+	puc.closeOnce.Do(func() {
+		close(puc.doneCh)
+	})
+}
+
+// Done returns a read-only version of the PeerUpdatesCh's internal doneCh go
+// channel that should be used by a router to signal when it is safe to explicitly
+// not send any peer updates.
+func (puc *PeerUpdatesCh) Done() <-chan struct{} {
+	return puc.doneCh
+}
+
+// PeerUpdate is a peer status update for reactors.
+type PeerUpdate struct {
+	PeerID PeerID
+	Status PeerStatus
+}
+
+// ============================================================================
+// Types and business logic below may be deprecated.
+//
+// TODO: Rename once legacy p2p types are removed.
+// ref: https://github.com/tendermint/tendermint/issues/5670
+// ============================================================================
 
 //go:generate mockery --case underscore --name Peer
 
@@ -47,52 +180,28 @@ type Peer interface {
 type peerConn struct {
 	outbound   bool
 	persistent bool
-	conn       net.Conn // source connection
-
-	socketAddr *NetAddress
-
-	// cached RemoteIP()
-	ip net.IP
+	conn       Connection
+	ip         net.IP // cached RemoteIP()
 }
 
-func newPeerConn(
-	outbound, persistent bool,
-	conn net.Conn,
-	socketAddr *NetAddress,
-) peerConn {
-
+func newPeerConn(outbound, persistent bool, conn Connection) peerConn {
 	return peerConn{
 		outbound:   outbound,
 		persistent: persistent,
 		conn:       conn,
-		socketAddr: socketAddr,
 	}
 }
 
 // ID only exists for SecretConnection.
-// NOTE: Will panic if conn is not *SecretConnection.
 func (pc peerConn) ID() ID {
-	return PubKeyToID(pc.conn.(*tmconn.SecretConnection).RemotePubKey())
+	return PubKeyToID(pc.conn.PubKey())
 }
 
 // Return the IP from the connection RemoteAddr
 func (pc peerConn) RemoteIP() net.IP {
-	if pc.ip != nil {
-		return pc.ip
+	if pc.ip == nil {
+		pc.ip = pc.conn.RemoteEndpoint().IP
 	}
-
-	host, _, err := net.SplitHostPort(pc.conn.RemoteAddr().String())
-	if err != nil {
-		panic(err)
-	}
-
-	ips, err := net.LookupIP(host)
-	if err != nil {
-		panic(err)
-	}
-
-	pc.ip = ips[0]
-
 	return pc.ip
 }
 
@@ -104,13 +213,14 @@ type peer struct {
 
 	// raw peerConn and the multiplex connection
 	peerConn
-	mconn *tmconn.MConnection
 
 	// peer's node info and the channel it knows about
 	// channels = nodeInfo.Channels
 	// cached to avoid copying nodeInfo in hasChannel
-	nodeInfo NodeInfo
-	channels []byte
+	nodeInfo    NodeInfo
+	channels    []byte
+	reactors    map[byte]Reactor
+	onPeerError func(Peer, interface{})
 
 	// User data
 	Data *cmap.CMap
@@ -123,30 +233,22 @@ type PeerOption func(*peer)
 
 func newPeer(
 	pc peerConn,
-	mConfig tmconn.MConnConfig,
-	nodeInfo NodeInfo,
 	reactorsByCh map[byte]Reactor,
-	chDescs []*tmconn.ChannelDescriptor,
 	onPeerError func(Peer, interface{}),
 	options ...PeerOption,
 ) *peer {
+	nodeInfo := pc.conn.NodeInfo()
 	p := &peer{
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
-		channels:      nodeInfo.(DefaultNodeInfo).Channels, // TODO
+		channels:      nodeInfo.Channels, // TODO
+		reactors:      reactorsByCh,
+		onPeerError:   onPeerError,
 		Data:          cmap.NewCMap(),
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),
 	}
 
-	p.mconn = createMConnection(
-		pc.conn,
-		p,
-		reactorsByCh,
-		chDescs,
-		onPeerError,
-		mConfig,
-	)
 	p.BaseService = *service.NewBaseService(nil, "Peer", p)
 	for _, option := range options {
 		option(p)
@@ -155,13 +257,18 @@ func newPeer(
 	return p
 }
 
+// onError calls the peer error callback.
+func (p *peer) onError(err interface{}) {
+	p.onPeerError(p, err)
+}
+
 // String representation.
 func (p *peer) String() string {
 	if p.outbound {
-		return fmt.Sprintf("Peer{%v %v out}", p.mconn, p.ID())
+		return fmt.Sprintf("Peer{%v %v out}", p.conn, p.ID())
 	}
 
-	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.ID())
+	return fmt.Sprintf("Peer{%v %v in}", p.conn, p.ID())
 }
 
 //---------------------------------------------------
@@ -170,7 +277,6 @@ func (p *peer) String() string {
 // SetLogger implements BaseService.
 func (p *peer) SetLogger(l log.Logger) {
 	p.Logger = l
-	p.mconn.SetLogger(l)
 }
 
 // OnStart implements BaseService.
@@ -179,12 +285,34 @@ func (p *peer) OnStart() error {
 		return err
 	}
 
-	if err := p.mconn.Start(); err != nil {
-		return err
-	}
-
+	go p.processMessages()
 	go p.metricsReporter()
+
 	return nil
+}
+
+// processMessages processes messages received from the connection.
+func (p *peer) processMessages() {
+	defer func() {
+		if r := recover(); r != nil {
+			p.Logger.Error("peer message processing panic", "err", r, "stack", string(debug.Stack()))
+			p.onError(fmt.Errorf("panic during peer message processing: %v", r))
+		}
+	}()
+
+	for {
+		chID, msg, err := p.conn.ReceiveMessage()
+		if err != nil {
+			p.onError(err)
+			return
+		}
+		reactor, ok := p.reactors[chID]
+		if !ok {
+			p.onError(fmt.Errorf("unknown channel %v", chID))
+			return
+		}
+		reactor.Receive(chID, p, msg)
+	}
 }
 
 // FlushStop mimics OnStop but additionally ensures that all successful
@@ -193,15 +321,17 @@ func (p *peer) OnStart() error {
 func (p *peer) FlushStop() {
 	p.metricsTicker.Stop()
 	p.BaseService.OnStop()
-	p.mconn.FlushStop() // stop everything and close the conn
+	if err := p.conn.FlushClose(); err != nil {
+		p.Logger.Debug("error while stopping peer", "err", err)
+	}
 }
 
 // OnStop implements BaseService.
 func (p *peer) OnStop() {
 	p.metricsTicker.Stop()
 	p.BaseService.OnStop()
-	if err := p.mconn.Stop(); err != nil { // stop everything and close the conn
-		p.Logger.Debug("Error while stopping peer", "err", err)
+	if err := p.conn.Close(); err != nil {
+		p.Logger.Debug("error while stopping peer", "err", err)
 	}
 }
 
@@ -233,12 +363,12 @@ func (p *peer) NodeInfo() NodeInfo {
 // For inbound peers, it's the address returned by the underlying connection
 // (not what's reported in the peer's NodeInfo).
 func (p *peer) SocketAddr() *NetAddress {
-	return p.peerConn.socketAddr
+	return p.peerConn.conn.RemoteEndpoint().NetAddress()
 }
 
 // Status returns the peer's ConnectionStatus.
 func (p *peer) Status() tmconn.ConnectionStatus {
-	return p.mconn.Status()
+	return p.conn.Status()
 }
 
 // Send msg bytes to the channel identified by chID byte. Returns false if the
@@ -251,7 +381,13 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	res := p.mconn.Send(chID, msgBytes)
+	res, err := p.conn.SendMessage(chID, msgBytes)
+	if err == io.EOF {
+		return false
+	} else if err != nil {
+		p.onError(err)
+		return false
+	}
 	if res {
 		labels := []string{
 			"peer_id", string(p.ID()),
@@ -270,7 +406,13 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	res := p.mconn.TrySend(chID, msgBytes)
+	res, err := p.conn.TrySendMessage(chID, msgBytes)
+	if err == io.EOF {
+		return false
+	} else if err != nil {
+		p.onError(err)
+		return false
+	}
 	if res {
 		labels := []string{
 			"peer_id", string(p.ID()),
@@ -327,15 +469,11 @@ func (pc *peerConn) CloseConn() {
 
 // RemoteAddr returns peer's remote network address.
 func (p *peer) RemoteAddr() net.Addr {
-	return p.peerConn.conn.RemoteAddr()
-}
-
-// CanSend returns true if the send queue is not full, false otherwise.
-func (p *peer) CanSend(chID byte) bool {
-	if !p.IsRunning() {
-		return false
+	endpoint := p.conn.RemoteEndpoint()
+	return &net.TCPAddr{
+		IP:   endpoint.IP,
+		Port: int(endpoint.Port),
 	}
-	return p.mconn.CanSend(chID)
 }
 
 //---------------------------------------------------
@@ -350,7 +488,7 @@ func (p *peer) metricsReporter() {
 	for {
 		select {
 		case <-p.metricsTicker.C:
-			status := p.mconn.Status()
+			status := p.conn.Status()
 			var sendQueueSize float64
 			for _, chStatus := range status.Channels {
 				sendQueueSize += float64(chStatus.SendQueueSize)
@@ -361,44 +499,4 @@ func (p *peer) metricsReporter() {
 			return
 		}
 	}
-}
-
-//------------------------------------------------------------------
-// helper funcs
-
-func createMConnection(
-	conn net.Conn,
-	p *peer,
-	reactorsByCh map[byte]Reactor,
-	chDescs []*tmconn.ChannelDescriptor,
-	onPeerError func(Peer, interface{}),
-	config tmconn.MConnConfig,
-) *tmconn.MConnection {
-
-	onReceive := func(chID byte, msgBytes []byte) {
-		reactor := reactorsByCh[chID]
-		if reactor == nil {
-			// Note that its ok to panic here as it's caught in the conn._recover,
-			// which does onPeerError.
-			panic(fmt.Sprintf("Unknown channel %X", chID))
-		}
-		labels := []string{
-			"peer_id", string(p.ID()),
-			"chID", fmt.Sprintf("%#x", chID),
-		}
-		p.metrics.PeerReceiveBytesTotal.With(labels...).Add(float64(len(msgBytes)))
-		reactor.Receive(chID, p, msgBytes)
-	}
-
-	onError := func(r interface{}) {
-		onPeerError(p, r)
-	}
-
-	return tmconn.NewMConnectionWithConfig(
-		conn,
-		chDescs,
-		onReceive,
-		onError,
-		config,
-	)
 }

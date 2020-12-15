@@ -9,7 +9,7 @@ Or [Blockchain](<https://en.wikipedia.org/wiki/Blockchain_(database)>), for shor
 [![version](https://img.shields.io/github/tag/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/releases/latest)
 [![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667)](https://pkg.go.dev/github.com/tendermint/tendermint)
 [![Go version](https://img.shields.io/badge/go-1.15-blue.svg)](https://github.com/moovweb/gvm)
-[![Discord chat](https://img.shields.io/discord/669268347736686612.svg)](https://discord.gg/AzefAFd)
+[![Discord chat](https://img.shields.io/discord/669268347736686612.svg)](https://discord.gg/vcExX9T)
 [![license](https://img.shields.io/github/license/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/blob/master/LICENSE)
 [![tendermint/tendermint](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
 [![Sourcegraph](https://sourcegraph.com/github.com/tendermint/tendermint/-/badge.svg)](https://sourcegraph.com/github.com/tendermint/tendermint?badge)
@@ -36,7 +36,7 @@ However, we are still making breaking changes to the protocol and the APIs and h
 See below for more details about [versioning](#versioning).
 
 In any case, if you intend to run Tendermint in production, we're happy to help. You can
-contact us [over email](mailto:hello@interchain.berlin) or [join the chat](https://discord.gg/AzefAFd).
+contact us [over email](mailto:hello@interchain.berlin) or [join the chat](https://discord.gg/vcExX9T).
 
 ## Security
 
@@ -156,3 +156,12 @@ Additional tooling can be found in [/docs/tools](/docs/tools).
 - [Original Whitepaper: "Tendermint: Consensus Without Mining"](https://tendermint.com/static/docs/tendermint.pdf)
 - [Tendermint Core Blog](https://medium.com/tendermint/tagged/tendermint-core)
 - [Cosmos Blog](https://blog.cosmos.network/tendermint/home)
+
+## Join us!
+
+Tendermint Core is maintained by [Interchain GmbH](https://interchain.berlin).
+If you'd like to work full-time on Tendermint Core, [we're hiring](https://interchain-gmbh.breezy.hr/p/682fb7e8a6f601-software-engineer-tendermint-core)!
+
+Funding for Tendermint Core development comes primarily from the [Interchain Foundation](https://interchain.io),
+a Swiss non-profit. The Tendermint trademark is owned by [Tendermint Inc.](https://tendermint.com), the for-profit entity
+ that also maintains [tendermint.com](https://tendermint.com).

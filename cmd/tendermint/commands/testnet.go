@@ -88,7 +88,7 @@ necessary files (private validator, genesis, config, etc.).
 
 Note, strict routability for addresses is turned off in the config file.
 
-Optionally, it will fill in persistent_peers list in config file using either hostnames or IPs.
+Optionally, it will fill in persistent-peers list in config file using either hostnames or IPs.
 
 Example:
 
@@ -263,7 +263,7 @@ func persistentPeersString(config *cfg.Config) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		persistentPeers[i] = p2p.IDAddressString(nodeKey.ID(), fmt.Sprintf("%s:%d", hostnameOrIP(i), p2pPort))
+		persistentPeers[i] = p2p.IDAddressString(nodeKey.ID, fmt.Sprintf("%s:%d", hostnameOrIP(i), p2pPort))
 	}
 	return strings.Join(persistentPeers, ","), nil
 }

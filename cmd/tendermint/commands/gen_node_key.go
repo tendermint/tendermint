@@ -5,28 +5,30 @@ import (
 
 	"github.com/spf13/cobra"
 
-	tmos "github.com/tendermint/tendermint/libs/os"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/p2p"
 )
 
-// GenNodeKeyCmd allows the generation of a node key. It prints node's ID to
-// the standard output.
+// GenNodeKeyCmd allows the generation of a node key. It prints JSON-encoded
+// NodeKey to the standard output.
 var GenNodeKeyCmd = &cobra.Command{
-	Use:   "gen_node_key",
-	Short: "Generate a node key for this node and print its ID",
-	RunE:  genNodeKey,
+	Use:     "gen-node-key",
+	Aliases: []string{"gen_node_key"},
+	Short:   "Generate a new node key",
+	RunE:    genNodeKey,
+	PreRun:  deprecateSnakeCase,
 }
 
 func genNodeKey(cmd *cobra.Command, args []string) error {
-	nodeKeyFile := config.NodeKeyFile()
-	if tmos.FileExists(nodeKeyFile) {
-		return fmt.Errorf("node key at %s already exists", nodeKeyFile)
+	nodeKey := p2p.GenNodeKey()
+
+	bz, err := tmjson.Marshal(nodeKey)
+	if err != nil {
+		return fmt.Errorf("nodeKey -> json: %w", err)
 	}
 
-	nodeKey, err := p2p.LoadOrGenNodeKey(nodeKeyFile)
-	if err != nil {
-		return err
-	}
-	fmt.Println(nodeKey.ID())
+	fmt.Printf(`%v
+`, string(bz))
+
 	return nil
 }
