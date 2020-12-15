@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	dbm "github.com/tendermint/tm-db"
 	"github.com/google/orderedcode"
+	dbm "github.com/tendermint/tm-db"
 
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/light/store"
@@ -61,7 +61,7 @@ func (s *dbs) SaveLightBlock(lb *types.LightBlock) error {
 
 	b := s.db.NewBatch()
 	defer b.Close()
-	
+
 	if err = b.Set(s.lbKey(lb.Height), lbBz); err != nil {
 		return err
 	}
