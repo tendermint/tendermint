@@ -224,18 +224,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	ticker.SetLogger(css[0].Logger)
 	css[0].SetTimeoutTicker(ticker)
 
-	switches := make([]*p2p.Switch, N)
 	p2pLogger := logger.With("module", "p2p")
-	for i := 0; i < N; i++ {
-		switches[i] = p2p.MakeSwitch(
-			config.P2P,
-			i,
-			"foo", "1.0.0",
-			func(i int, sw *p2p.Switch) *p2p.Switch {
-				return sw
-			})
-		switches[i].SetLogger(p2pLogger.With("validator", i))
-	}
 
 	blocksSubs := make([]types.Subscription, N)
 	reactors := make([]p2p.Reactor, N)
@@ -243,20 +232,6 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 
 		// enable txs so we can create different proposals
 		assertMempool(css[i].txNotifier).EnableTxsAvailable()
-		// make first val byzantine
-		if i == 0 {
-			// NOTE: Now, test validators are MockPV, which by default doesn't
-			// do any safety checks.
-			css[i].privValidator.(types.MockPV).DisableChecks()
-			css[i].decideProposal = func(j int32) func(int64, int32) {
-				return func(height int64, round int32) {
-					byzantineDecideProposalFunc(t, height, round, css[j], switches[j])
-				}
-			}(int32(i))
-			// We are setting the prevote function to do nothing because the prevoting
-			// and precommitting are done alongside the proposal.
-			css[i].doPrevote = func(height int64, round int32) {}
-		}
 
 		eventBus := css[i].eventBus
 		eventBus.SetLogger(logger.With("module", "events", "validator", i))
@@ -281,22 +256,10 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	defer func() {
-		for _, r := range reactors {
-			if rr, ok := r.(*ByzantineReactor); ok {
-				err := rr.reactor.Switch.Stop()
-				require.NoError(t, err)
-			} else {
-				err := r.(*Reactor).Switch.Stop()
-				require.NoError(t, err)
-			}
-		}
-	}()
-
-	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
-		// ignore new switch s, we already made ours
-		switches[i].AddReactor("CONSENSUS", reactors[i])
-		return switches[i]
+	switches := p2p.MakeConnectedSwitches(config.P2P, N, func(i int, sw *p2p.Switch) *p2p.Switch {
+		sw.SetLogger(p2pLogger.With("validator", i))
+		sw.AddReactor("CONSENSUS", reactors[i])
+		return sw
 	}, func(sws []*p2p.Switch, i, j int) {
 		// the network starts partitioned with globally active adversary
 		if i != 0 {
@@ -304,6 +267,26 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 		}
 		p2p.Connect2Switches(sws, i, j)
 	})
+
+	// make first val byzantine
+	// NOTE: Now, test validators are MockPV, which by default doesn't
+	// do any safety checks.
+	css[0].privValidator.(types.MockPV).DisableChecks()
+	css[0].decideProposal = func(j int32) func(int64, int32) {
+		return func(height int64, round int32) {
+			byzantineDecideProposalFunc(t, height, round, css[j], switches[j])
+		}
+	}(int32(0))
+	// We are setting the prevote function to do nothing because the prevoting
+	// and precommitting are done alongside the proposal.
+	css[0].doPrevote = func(height int64, round int32) {}
+
+	defer func() {
+		for _, sw := range switches {
+			err := sw.Stop()
+			require.NoError(t, err)
+		}
+	}()
 
 	// start the non-byz state machines.
 	// note these must be started before the byz
