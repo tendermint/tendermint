@@ -186,7 +186,7 @@ func (m *MConnTransport) accept() {
 			err := m.filterTCPConn(tcpConn)
 			if err != nil {
 				if err := tcpConn.Close(); err != nil {
-					m.logger.Debug("Failed to close TCP connection", "err", err)
+					m.logger.Debug("failed to close TCP connection", "err", err)
 				}
 				select {
 				case m.chError <- err:
@@ -199,7 +199,7 @@ func (m *MConnTransport) accept() {
 			if err != nil {
 				m.conns.Remove(tcpConn)
 				if err := tcpConn.Close(); err != nil {
-					m.logger.Debug("Failed to close TCP connection", "err", err)
+					m.logger.Debug("failed to close TCP connection", "err", err)
 				}
 				select {
 				case m.chError <- err:
@@ -210,7 +210,7 @@ func (m *MConnTransport) accept() {
 				case m.chAccept <- conn:
 				case <-m.chClose:
 					if err := tcpConn.Close(); err != nil {
-						m.logger.Debug("Failed to close TCP connection", "err", err)
+						m.logger.Debug("failed to close TCP connection", "err", err)
 					}
 				}
 			}
@@ -256,7 +256,7 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 	err = m.filterTCPConn(tcpConn)
 	if err != nil {
 		if err := tcpConn.Close(); err != nil {
-			m.logger.Debug("Failed to close TCP connection", "err", err)
+			m.logger.Debug("failed to close TCP connection", "err", err)
 		}
 		return nil, err
 	}
@@ -265,7 +265,7 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 	if err != nil {
 		m.conns.Remove(tcpConn)
 		if err := tcpConn.Close(); err != nil {
-			m.logger.Debug("Failed to close TCP connection", "err", err)
+			m.logger.Debug("failed to close TCP connection", "err", err)
 		}
 		return nil, err
 	}

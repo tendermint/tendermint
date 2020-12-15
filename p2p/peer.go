@@ -295,7 +295,7 @@ func (p *peer) OnStart() error {
 func (p *peer) processMessages() {
 	defer func() {
 		if r := recover(); r != nil {
-			p.Logger.Error("Peer message processing panic", "err", r, "stack", string(debug.Stack()))
+			p.Logger.Error("peer message processing panic", "err", r, "stack", string(debug.Stack()))
 			p.onError(fmt.Errorf("panic during peer message processing: %v", r))
 		}
 	}()
@@ -322,7 +322,7 @@ func (p *peer) FlushStop() {
 	p.metricsTicker.Stop()
 	p.BaseService.OnStop()
 	if err := p.conn.FlushClose(); err != nil {
-		p.Logger.Debug("Error while stopping peer", "err", err)
+		p.Logger.Debug("error while stopping peer", "err", err)
 	}
 }
 
@@ -331,7 +331,7 @@ func (p *peer) OnStop() {
 	p.metricsTicker.Stop()
 	p.BaseService.OnStop()
 	if err := p.conn.Close(); err != nil {
-		p.Logger.Debug("Error while stopping peer", "err", err)
+		p.Logger.Debug("error while stopping peer", "err", err)
 	}
 }
 
