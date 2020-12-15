@@ -372,33 +372,51 @@ func (store dbStore) batchDelete(key func(int64) []byte, retainHeight int64) err
 	defer batch.Close()
 
 	pruned := 0
-	// to avoid batches growing too large, we flush after every 1000 pruned items
-	for ; iter.Valid() && pruned < 1000 ; iter.Next() {
+	for ; iter.Valid(); {
 		if err := batch.Delete(iter.Key()); err != nil {
 			return fmt.Errorf("pruning error at height %d: %w", decodeKey(iter.Key()), err)
 		}
+
 		pruned++
+		// avoid batches growing too large by flushing to database regularly
+		if pruned%1000 == 0 {
+			if err := iter.Error(); err != nil {
+				return err
+			}
+			if err := iter.Close(); err != nil {
+				return err
+			}
+
+			err := batch.Write()
+			if err != nil {
+				return fmt.Errorf("pruning error at height %d: %w", decodeKey(iter.Key()), err)
+			}
+			if err := batch.Close(); err != nil {
+				return err
+			}
+
+			iter, err = store.db.Iterator(
+				key(1),
+				key(retainHeight),
+			)
+			if err != nil {
+				panic(err)
+			}
+			defer iter.Close()
+
+			batch = store.db.NewBatch()
+			defer batch.Close()
+		} else {
+			iter.Next()
+		}
 	}
 	if err := iter.Error(); err != nil {
 		return err
 	}
-	// we must close the iterator before deleting
-	if err := iter.Close(); err != nil {
-		return err
-	}
 
-	err = batch.Write()
+	err = batch.WriteSync()
 	if err != nil {
 		return fmt.Errorf("pruning error at height %d: %w", decodeKey(iter.Key()), err)
-	}
-
-	// if we still have more to prune then recurse
-	if pruned == 1000 {
-		if err := batch.Close(); err != nil {
-			return err
-		}
-
-		return store.batchDelete(key, retainHeight)
 	}
 
 	return nil
