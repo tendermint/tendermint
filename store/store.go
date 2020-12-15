@@ -8,8 +8,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 	"github.com/google/orderedcode"
 
-	tmsync "github.com/tendermint/tendermint/libs/sync"
-	tmstore "github.com/tendermint/tendermint/proto/tendermint/store"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -33,60 +31,62 @@ The store can be assumed to contain all contiguous blocks between base and heigh
 */
 type BlockStore struct {
 	db dbm.DB
-
-	// mtx guards access to the struct fields listed below it. We rely on the database to enforce
-	// fine-grained concurrency control for its data, and thus this mutex does not apply to
-	// database contents. The only reason for keeping these fields in the struct is that the data
-	// can't efficiently be queried from the database since the key encoding we use is not
-	// lexicographically ordered (see https://github.com/tendermint/tendermint/issues/4567).
-	mtx    tmsync.RWMutex
-	base   int64
-	height int64
 }
 
 // NewBlockStore returns a new BlockStore with the given DB,
 // initialized to the last height that was committed to the DB.
 func NewBlockStore(db dbm.DB) *BlockStore {
-	bs := LoadBlockStoreState(db)
-	return &BlockStore{
-		base:   bs.Base,
-		height: bs.Height,
-		db:     db,
-	}
+	return &BlockStore{db}
 }
 
 // Base returns the first known contiguous block height, or 0 for empty block stores.
 func (bs *BlockStore) Base() int64 {
-	bs.mtx.RLock()
-	defer bs.mtx.RUnlock()
-	return bs.base
+	iter, err := bs.db.Iterator(
+		blockMetaKey(1),
+		blockMetaKey(1<<63-1),
+	)
+	if err != nil {
+		return 0
+	}
+	defer iter.Close()
+
+	for iter.Valid() {
+		return decodeHeightFromKey(iter.Key())
+	}
+
+	return 0
 }
 
 // Height returns the last known contiguous block height, or 0 for empty block stores.
 func (bs *BlockStore) Height() int64 {
-	bs.mtx.RLock()
-	defer bs.mtx.RUnlock()
-	return bs.height
+	iter, err := bs.db.ReverseIterator(
+		blockMetaKey(1),
+		blockMetaKey(1<<63-1),
+	)
+	if err != nil {
+		return 0
+	}
+	defer iter.Close()
+
+	for iter.Valid() {
+		return decodeHeightFromKey(iter.Key())
+	}
+
+	return 0
 }
 
 // Size returns the number of blocks in the block store.
 func (bs *BlockStore) Size() int64 {
-	bs.mtx.RLock()
-	defer bs.mtx.RUnlock()
-	if bs.height == 0 {
-		return 0
-	}
-	return bs.height - bs.base + 1
+	return bs.Height() - bs.Base()
 }
 
 // LoadBase atomically loads the base block meta, or returns nil if no base is found.
 func (bs *BlockStore) LoadBaseMeta() *types.BlockMeta {
-	bs.mtx.RLock()
-	defer bs.mtx.RUnlock()
-	if bs.base == 0 {
+	base := bs.Base()
+	if base == 0 {
 		return nil
 	}
-	return bs.LoadBlockMeta(bs.base)
+	return bs.LoadBlockMeta(base)
 }
 
 // LoadBlock returns the block with the given height.
@@ -289,7 +289,7 @@ func (bs *BlockStore) pruneBlockMetaAndHashes(retainHeight int64) (uint64, error
 	defer batch.Close()
 
 	pruned := uint64(0)
-	for ; iter.Valid(); {
+	for iter.Valid() {
 		// delete the block meta
 		if err := batch.Delete(iter.Key()); err != nil {
 			return 0, fmt.Errorf("pruning error at height %d: %w", decodeHeightFromKey(iter.Key()), err)
@@ -374,7 +374,7 @@ func (bs *BlockStore) batchDelete(key func(int64) []byte, retainHeight int64) er
 	defer batch.Close()
 
 	pruned := uint64(0)
-	for ; iter.Valid(); {
+	for iter.Valid() {
 		if err := batch.Delete(iter.Key()); err != nil {
 			return fmt.Errorf("pruning error at height %d: %w", decodeHeightFromKey(iter.Key()), err)
 		}
@@ -450,7 +450,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	// and then go on to load block parts - we must make sure the block is
 	// complete as soon as the block meta is written.
 	for i := 0; i < int(blockParts.Total()); i++ {
-		part := blockParts.GetPart(int(i))
+		part := blockParts.GetPart(i)
 		bs.saveBlockPart(height, i, part)
 	}
 
@@ -482,17 +482,6 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	if err := bs.db.Set(seenCommitKey(height), seenCommitBytes); err != nil {
 		panic(err)
 	}
-
-	// Done!
-	bs.mtx.Lock()
-	bs.height = height
-	if bs.base == 0 {
-		bs.base = height
-	}
-	bs.mtx.Unlock()
-
-	// Save new BlockStoreState descriptor. This also flushes the database.
-	bs.saveState()
 }
 
 func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
@@ -504,16 +493,6 @@ func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
 	if err := bs.db.Set(blockPartKey(height, uint64(index)), partBytes); err != nil {
 		panic(err)
 	}
-}
-
-func (bs *BlockStore) saveState() {
-	bs.mtx.RLock()
-	bss := tmstore.BlockStoreState{
-		Base:   bs.base,
-		Height: bs.height,
-	}
-	bs.mtx.RUnlock()
-	SaveBlockStoreState(&bss, bs.db)
 }
 
 // SaveSeenCommit saves a seen commit, used by e.g. the state sync reactor when bootstrapping node.
@@ -568,7 +547,7 @@ func lastBlockPartKey(height int64) []byte {
 }
 
 func blockCommitKey(height int64) []byte {
-	key, err := orderedcode.Append([]byte{prefixBlockMeta}, height)
+	key, err := orderedcode.Append([]byte{prefixBlockCommit}, height)
 	if err != nil {
 		panic(err)
 	}
@@ -576,7 +555,7 @@ func blockCommitKey(height int64) []byte {
 }
 
 func seenCommitKey(height int64) []byte {
-	key, err := orderedcode.Append([]byte{prefixBlockMeta}, height)
+	key, err := orderedcode.Append([]byte{prefixSeenCommit}, height)
 	if err != nil {
 		panic(err)
 	}
@@ -591,44 +570,6 @@ func blockHashKey(hash []byte) []byte {
 //-----------------------------------------------------------------------------
 
 var blockStoreKey = []byte("blockStore")
-
-// SaveBlockStoreState persists the blockStore state to the database.
-func SaveBlockStoreState(bsj *tmstore.BlockStoreState, db dbm.DB) {
-	bytes, err := proto.Marshal(bsj)
-	if err != nil {
-		panic(fmt.Sprintf("Could not marshal state bytes: %v", err))
-	}
-	if err := db.SetSync(blockStoreKey, bytes); err != nil {
-		panic(err)
-	}
-}
-
-// LoadBlockStoreState returns the BlockStoreState as loaded from disk.
-// If no BlockStoreState was previously persisted, it returns the zero value.
-func LoadBlockStoreState(db dbm.DB) tmstore.BlockStoreState {
-	bytes, err := db.Get(blockStoreKey)
-	if err != nil {
-		panic(err)
-	}
-
-	if len(bytes) == 0 {
-		return tmstore.BlockStoreState{
-			Base:   0,
-			Height: 0,
-		}
-	}
-
-	var bsj tmstore.BlockStoreState
-	if err := proto.Unmarshal(bytes, &bsj); err != nil {
-		panic(fmt.Sprintf("Could not unmarshal bytes: %X", bytes))
-	}
-
-	// Backwards compatibility with persisted data from before Base existed.
-	if bsj.Height > 0 && bsj.Base == 0 {
-		bsj.Base = 1
-	}
-	return bsj
-}
 
 // mustEncode proto encodes a proto.message and panics if fails
 func mustEncode(pb proto.Message) []byte {

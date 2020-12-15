@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
@@ -18,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	tmstore "github.com/tendermint/tendermint/proto/tendermint/store"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -66,66 +64,6 @@ func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFu
 		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
 	return state, NewBlockStore(blockDB), func() { os.RemoveAll(config.RootDir) }
-}
-
-func TestLoadBlockStoreState(t *testing.T) {
-
-	type blockStoreTest struct {
-		testName string
-		bss      *tmstore.BlockStoreState
-		want     tmstore.BlockStoreState
-	}
-
-	testCases := []blockStoreTest{
-		{"success", &tmstore.BlockStoreState{Base: 100, Height: 1000},
-			tmstore.BlockStoreState{Base: 100, Height: 1000}},
-		{"empty", &tmstore.BlockStoreState{}, tmstore.BlockStoreState{}},
-		{"no base", &tmstore.BlockStoreState{Height: 1000}, tmstore.BlockStoreState{Base: 1, Height: 1000}},
-	}
-
-	for _, tc := range testCases {
-		db := dbm.NewMemDB()
-		SaveBlockStoreState(tc.bss, db)
-		retrBSJ := LoadBlockStoreState(db)
-		assert.Equal(t, tc.want, retrBSJ, "expected the retrieved DBs to match: %s", tc.testName)
-	}
-}
-
-func TestNewBlockStore(t *testing.T) {
-	db := dbm.NewMemDB()
-	bss := tmstore.BlockStoreState{Base: 100, Height: 10000}
-	bz, _ := proto.Marshal(&bss)
-	err := db.Set(blockStoreKey, bz)
-	require.NoError(t, err)
-	bs := NewBlockStore(db)
-	require.Equal(t, int64(100), bs.Base(), "failed to properly parse blockstore")
-	require.Equal(t, int64(10000), bs.Height(), "failed to properly parse blockstore")
-
-	panicCausers := []struct {
-		data    []byte
-		wantErr string
-	}{
-		{[]byte("artful-doger"), "not unmarshal bytes"},
-		{[]byte(" "), "unmarshal bytes"},
-	}
-
-	for i, tt := range panicCausers {
-		tt := tt
-		// Expecting a panic here on trying to parse an invalid blockStore
-		_, _, panicErr := doFn(func() (interface{}, error) {
-			err := db.Set(blockStoreKey, tt.data)
-			require.NoError(t, err)
-			_ = NewBlockStore(db)
-			return nil, nil
-		})
-		require.NotNil(t, panicErr, "#%d panicCauser: %q expected a panic", i, tt.data)
-		assert.Contains(t, fmt.Sprintf("%#v", panicErr), tt.wantErr, "#%d data: %q", i, tt.data)
-	}
-
-	err = db.Set(blockStoreKey, []byte{})
-	require.NoError(t, err)
-	bs = NewBlockStore(db)
-	assert.Equal(t, bs.Height(), int64(0), "expecting empty bytes to be unmarshaled alright")
 }
 
 func freshBlockStore() (*BlockStore, dbm.DB) {
@@ -462,10 +400,6 @@ func TestPruneBlocks(t *testing.T) {
 	assert.EqualValues(t, 1200, bs.Base())
 	assert.EqualValues(t, 1500, bs.Height())
 	assert.EqualValues(t, 301, bs.Size())
-	assert.EqualValues(t, tmstore.BlockStoreState{
-		Base:   1200,
-		Height: 1500,
-	}, LoadBlockStoreState(db))
 
 	require.NotNil(t, bs.LoadBlock(1200))
 	require.Nil(t, bs.LoadBlock(1199))
