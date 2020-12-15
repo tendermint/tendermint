@@ -12,6 +12,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	gogotypes "github.com/gogo/protobuf/types"
 	dbm "github.com/tendermint/tm-db"
+	"github.com/google/orderedcode"
 
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
@@ -21,8 +22,8 @@ import (
 )
 
 const (
-	baseKeyCommitted = byte(0x00)
-	baseKeyPending   = byte(0x01)
+	prefixCommitted = byte(0x00)
+	prefixPending   = byte(0x01)
 )
 
 // Pool maintains a pool of valid evidence to be broadcasted and committed
@@ -67,7 +68,7 @@ func NewPool(evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool,
 	// if pending evidence already in db, in event of prior failure, then check for expiration,
 	// update the size and load it back to the evidenceList
 	pool.pruningHeight, pool.pruningTime = pool.removeExpiredPendingEvidence()
-	evList, _, err := pool.listEvidence(baseKeyPending, -1)
+	evList, _, err := pool.listEvidence(prefixPending, -1)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +85,7 @@ func (evpool *Pool) PendingEvidence(maxBytes int64) ([]types.Evidence, int64) {
 	if evpool.Size() == 0 {
 		return []types.Evidence{}, 0
 	}
-	evidence, size, err := evpool.listEvidence(baseKeyPending, maxBytes)
+	evidence, size, err := evpool.listEvidence(prefixPending, maxBytes)
 	if err != nil {
 		evpool.logger.Error("Unable to retrieve pending evidence", "err", err)
 	}
@@ -415,6 +416,7 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxBytes int64) ([]types.Eviden
 		return nil, totalSize, fmt.Errorf("database error: %v", err)
 	}
 	defer iter.Close()
+	
 	for ; iter.Valid(); iter.Next() {
 		var evpb tmproto.Evidence
 		err := evpb.Unmarshal(iter.Value())
@@ -446,12 +448,13 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxBytes int64) ([]types.Eviden
 }
 
 func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
-	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{baseKeyPending})
+	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{prefixPending})
 	if err != nil {
 		evpool.logger.Error("Unable to iterate over pending evidence", "err", err)
 		return evpool.State().LastBlockHeight, evpool.State().LastBlockTime
 	}
 	defer iter.Close()
+
 	blockEvidenceMap := make(map[string]struct{})
 	for ; iter.Valid(); iter.Next() {
 		ev, err := bytesToEv(iter.Value())
@@ -471,6 +474,7 @@ func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
 		evpool.removePendingEvidence(ev)
 		blockEvidenceMap[evMapKey(ev)] = struct{}{}
 	}
+
 	// We either have no pending evidence or all evidence has expired
 	if len(blockEvidenceMap) != 0 {
 		evpool.removeEvidenceFromList(blockEvidenceMap)
@@ -511,19 +515,19 @@ func evMapKey(ev types.Evidence) string {
 	return string(ev.Hash())
 }
 
-// big endian padded hex
-func bE(h int64) string {
-	return fmt.Sprintf("%0.16X", h)
-}
-
 func keyCommitted(evidence types.Evidence) []byte {
-	return append([]byte{baseKeyCommitted}, keySuffix(evidence)...)
+	key, err := orderedcode.Append([]byte{prefixCommitted}, evidence.Height(), string(evidence.Hash()))
+	if err != nil {
+		panic(err)
+	}
+	return key
 }
 
 func keyPending(evidence types.Evidence) []byte {
-	return append([]byte{baseKeyPending}, keySuffix(evidence)...)
+	key, err := orderedcode.Append([]byte{prefixPending}, evidence.Height(), string(evidence.Hash()))
+	if err != nil {
+		panic(err)
+	}
+	return key
 }
 
-func keySuffix(evidence types.Evidence) []byte {
-	return []byte(fmt.Sprintf("%s/%X", bE(evidence.Height()), evidence.Hash()))
-}
