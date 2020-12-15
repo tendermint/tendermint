@@ -50,7 +50,7 @@ func (bs *BlockStore) Base() int64 {
 	}
 	defer iter.Close()
 
-	for iter.Valid() {
+	if iter.Valid() {
 		return decodeHeightFromKey(iter.Key())
 	}
 
@@ -68,7 +68,7 @@ func (bs *BlockStore) Height() int64 {
 	}
 	defer iter.Close()
 
-	for iter.Valid() {
+	if iter.Valid() {
 		return decodeHeightFromKey(iter.Key())
 	}
 

@@ -3,10 +3,9 @@ package db
 import (
 	"encoding/binary"
 	"fmt"
-	"regexp"
-	"strconv"
 
 	dbm "github.com/tendermint/tm-db"
+	"github.com/google/orderedcode"
 
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/light/store"
@@ -62,6 +61,7 @@ func (s *dbs) SaveLightBlock(lb *types.LightBlock) error {
 
 	b := s.db.NewBatch()
 	defer b.Close()
+	
 	if err = b.Set(s.lbKey(lb.Height), lbBz); err != nil {
 		return err
 	}
@@ -147,13 +147,8 @@ func (s *dbs) LastLightBlockHeight() (int64, error) {
 	}
 	defer itr.Close()
 
-	for itr.Valid() {
-		key := itr.Key()
-		_, height, ok := parseLbKey(key)
-		if ok {
-			return height, nil
-		}
-		itr.Next()
+	if itr.Valid() {
+		return parseHeightFromKey(itr.Key()), nil
 	}
 
 	return -1, itr.Error()
@@ -172,13 +167,8 @@ func (s *dbs) FirstLightBlockHeight() (int64, error) {
 	}
 	defer itr.Close()
 
-	for itr.Valid() {
-		key := itr.Key()
-		_, height, ok := parseLbKey(key)
-		if ok {
-			return height, nil
-		}
-		itr.Next()
+	if itr.Valid() {
+		return parseHeightFromKey(itr.Key()), nil
 	}
 
 	return -1, itr.Error()
@@ -202,13 +192,18 @@ func (s *dbs) LightBlockBefore(height int64) (*types.LightBlock, error) {
 	}
 	defer itr.Close()
 
-	for itr.Valid() {
-		key := itr.Key()
-		_, existingHeight, ok := parseLbKey(key)
-		if ok {
-			return s.LightBlock(existingHeight)
+	if itr.Valid() {
+		var lbpb tmproto.LightBlock
+		err = lbpb.Unmarshal(itr.Value())
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal error: %w", err)
 		}
-		itr.Next()
+
+		lightBlock, err := types.LightBlockFromProto(&lbpb)
+		if err != nil {
+			return nil, fmt.Errorf("proto conversion error: %w", err)
+		}
+		return lightBlock, nil
 	}
 	if err = itr.Error(); err != nil {
 		return nil, err
@@ -245,18 +240,12 @@ func (s *dbs) Prune(size uint16) error {
 	b := s.db.NewBatch()
 	defer b.Close()
 
-	pruned := 0
 	for itr.Valid() && numToPrune > 0 {
-		key := itr.Key()
-		_, height, ok := parseLbKey(key)
-		if ok {
-			if err = b.Delete(s.lbKey(height)); err != nil {
-				return err
-			}
+		if err = b.Delete(itr.Key()); err != nil {
+			return err
 		}
 		itr.Next()
 		numToPrune--
-		pruned++
 	}
 	if err = itr.Error(); err != nil {
 		return err
@@ -271,9 +260,8 @@ func (s *dbs) Prune(size uint16) error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
-	s.size -= uint16(pruned)
-
-	if wErr := s.db.SetSync(sizeKey, marshalSize(s.size)); wErr != nil {
+	s.size = size
+	if wErr := s.db.SetSync(sizeKey, marshalSize(size)); wErr != nil {
 		return fmt.Errorf("failed to persist size: %w", wErr)
 	}
 
@@ -290,31 +278,19 @@ func (s *dbs) Size() uint16 {
 }
 
 func (s *dbs) lbKey(height int64) []byte {
-	return []byte(fmt.Sprintf("lb/%s/%020d", s.prefix, height))
-}
-
-var keyPattern = regexp.MustCompile(`^(lb)/([^/]*)/([0-9]+)$`)
-
-func parseKey(key []byte) (part string, prefix string, height int64, ok bool) {
-	submatch := keyPattern.FindSubmatch(key)
-	if submatch == nil {
-		return "", "", 0, false
-	}
-	part = string(submatch[1])
-	prefix = string(submatch[2])
-	height, err := strconv.ParseInt(string(submatch[3]), 10, 64)
+	buf := make([]byte, 0)
+	key, err := orderedcode.Append(buf, s.prefix, height)
 	if err != nil {
-		return "", "", 0, false
+		panic(err)
 	}
-	ok = true // good!
-	return
+	return key
 }
 
-func parseLbKey(key []byte) (prefix string, height int64, ok bool) {
-	var part string
-	part, prefix, height, ok = parseKey(key)
-	if part != "lb" {
-		return "", 0, false
+func parseHeightFromKey(key []byte) (height int64) {
+	var prefix string
+	_, err := orderedcode.Parse(string(key), &prefix, &height)
+	if err != nil {
+		panic(err)
 	}
 	return
 }
