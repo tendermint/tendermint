@@ -26,6 +26,32 @@ const (
 	valSetCheckpointInterval = 100000
 )
 
+func TestStoreBootstrap(t *testing.T) {
+	stateDB := dbm.NewMemDB()
+	stateStore := sm.NewStore(stateDB)
+	val, _ := types.RandValidator(true, 10)
+	val2, _ := types.RandValidator(true, 10)
+	val3, _ := types.RandValidator(true, 10)
+	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
+	bootstrapState := makeRandomStateFromValidatorSet(vals, 100, 100)
+	err := stateStore.Bootstrap(bootstrapState)
+	require.NoError(t, err)
+
+	// bootstrap should also save the previous validator
+	_, err = stateStore.LoadValidators(99)
+	require.NoError(t, err)
+
+	_, err = stateStore.LoadValidators(100)
+	require.NoError(t, err)
+
+	_, err = stateStore.LoadValidators(101)
+	require.NoError(t, err)
+
+	state, err := stateStore.Load()
+	require.NoError(t, err)
+	require.Equal(t, bootstrapState, state)
+}
+
 func TestStoreLoadValidators(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)

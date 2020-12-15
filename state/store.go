@@ -301,7 +301,6 @@ func (store dbStore) pruneValidatorSets(height int64) error {
 	}
 
 	return nil
-
 }
 
 // pruneConsensusParams calls an iterator from base height to retain height batch deleting 
