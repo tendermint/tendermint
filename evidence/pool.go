@@ -11,8 +11,8 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	gogotypes "github.com/gogo/protobuf/types"
-	dbm "github.com/tendermint/tm-db"
 	"github.com/google/orderedcode"
+	dbm "github.com/tendermint/tm-db"
 
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
@@ -416,7 +416,7 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxBytes int64) ([]types.Eviden
 		return nil, totalSize, fmt.Errorf("database error: %v", err)
 	}
 	defer iter.Close()
-	
+
 	for ; iter.Valid(); iter.Next() {
 		var evpb tmproto.Evidence
 		err := evpb.Unmarshal(iter.Value())
@@ -530,4 +530,3 @@ func keyPending(evidence types.Evidence) []byte {
 	}
 	return key
 }
-
