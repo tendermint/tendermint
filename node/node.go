@@ -201,9 +201,10 @@ type Node struct {
 	consensusState    *cs.State               // latest consensus state
 	consensusReactor  *cs.Reactor             // for participating in the consensus
 	pexReactor        *pex.Reactor            // for exchanging peer addresses
-	evidencePool      *evidence.Pool          // tracking evidence
-	proxyApp          proxy.AppConns          // connection to the application
-	rpcListeners      []net.Listener          // rpc servers
+	evidenceReactor   *evidence.Reactor
+	evidencePool      *evidence.Pool // tracking evidence
+	proxyApp          proxy.AppConns // connection to the application
+	rpcListeners      []net.Listener // rpc servers
 	txIndexer         txindex.TxIndexer
 	indexerService    *txindex.IndexerService
 	prometheusSrv     *http.Server
@@ -338,21 +339,33 @@ func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
 	return mempoolReactor, mempool
 }
 
-func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
-	stateDB dbm.DB, blockStore *store.BlockStore, logger log.Logger) (*evidence.Reactor, *evidence.Pool, error) {
-
+func createEvidenceReactor(
+	config *cfg.Config,
+	dbProvider DBProvider,
+	stateDB dbm.DB,
+	blockStore *store.BlockStore,
+	logger log.Logger,
+) (*p2p.ReactorShim, *evidence.Reactor, *evidence.Pool, error) {
 	evidenceDB, err := dbProvider(&DBContext{"evidence", config})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	evidenceLogger := logger.With("module", "evidence")
+
 	evidencePool, err := evidence.NewPool(evidenceDB, sm.NewStore(stateDB), blockStore)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	evidenceReactor := evidence.NewReactor(evidencePool)
-	evidenceReactor.SetLogger(evidenceLogger)
-	return evidenceReactor, evidencePool, nil
+
+	logger = logger.With("module", "evidence")
+	evidenceReactorShim := p2p.NewReactorShim(logger, "EvidenceShim", evidence.ChannelShims)
+	evidenceReactor := evidence.NewReactor(
+		logger,
+		evidenceReactorShim.GetChannel(evidence.EvidenceChannel),
+		evidenceReactorShim.PeerUpdates,
+		evidencePool,
+	)
+
+	return evidenceReactorShim, evidenceReactor, evidencePool, nil
 }
 
 func createBlockchainReactor(config *cfg.Config,
@@ -485,7 +498,7 @@ func createSwitch(config *cfg.Config,
 	bcReactor p2p.Reactor,
 	stateSyncReactor *p2p.ReactorShim,
 	consensusReactor *cs.Reactor,
-	evidenceReactor *evidence.Reactor,
+	evidenceReactor *p2p.ReactorShim,
 	nodeInfo p2p.NodeInfo,
 	nodeKey *p2p.NodeKey,
 	p2pLogger log.Logger) *p2p.Switch {
@@ -708,8 +721,7 @@ func NewNode(config *cfg.Config,
 	// Make MempoolReactor
 	mempoolReactor, mempool := createMempoolAndMempoolReactor(config, proxyApp, state, memplMetrics, logger)
 
-	// Make Evidence Reactor
-	evidenceReactor, evidencePool, err := createEvidenceReactor(config, dbProvider, stateDB, blockStore, logger)
+	evReactorShim, evReactor, evPool, err := createEvidenceReactor(config, dbProvider, stateDB, blockStore, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -720,7 +732,7 @@ func NewNode(config *cfg.Config,
 		logger.With("module", "state"),
 		proxyApp.Consensus(),
 		mempool,
-		evidencePool,
+		evPool,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 
@@ -737,8 +749,9 @@ func NewNode(config *cfg.Config,
 	} else if fastSync {
 		csMetrics.FastSyncing.Set(1)
 	}
+
 	consensusReactor, consensusState := createConsensusReactor(
-		config, state, blockExec, blockStore, mempool, evidencePool,
+		config, state, blockExec, blockStore, mempool, evPool,
 		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger,
 	)
 
@@ -746,8 +759,7 @@ func NewNode(config *cfg.Config,
 	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
-	stateSyncReactorShim := p2p.NewReactorShim("StateSyncShim", statesync.ChannelShims)
-	stateSyncReactorShim.SetLogger(logger.With("module", "statesync"))
+	stateSyncReactorShim := p2p.NewReactorShim(logger.With("module", "statesync"), "StateSyncShim", statesync.ChannelShims)
 
 	stateSyncReactor := statesync.NewReactor(
 		stateSyncReactorShim.Logger,
@@ -771,7 +783,7 @@ func NewNode(config *cfg.Config,
 	p2pLogger := logger.With("module", "p2p")
 	sw := createSwitch(
 		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
-		stateSyncReactorShim, consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
+		stateSyncReactorShim, consensusReactor, evReactorShim, nodeInfo, nodeKey, p2pLogger,
 	)
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
@@ -835,7 +847,8 @@ func NewNode(config *cfg.Config,
 		stateSync:        stateSync,
 		stateSyncGenesis: state, // Shouldn't be necessary, but need a way to pass the genesis state
 		pexReactor:       pexReactor,
-		evidencePool:     evidencePool,
+		evidenceReactor:  evReactor,
+		evidencePool:     evPool,
 		proxyApp:         proxyApp,
 		txIndexer:        txIndexer,
 		indexerService:   indexerService,
@@ -906,6 +919,11 @@ func (n *Node) OnStart() error {
 		return err
 	}
 
+	// Start the real evidence reactor separately since the switch uses the shim.
+	if err := n.evidenceReactor.Start(); err != nil {
+		return err
+	}
+
 	// Always connect to persistent peers
 	err = n.sw.DialPeersAsync(splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
@@ -949,7 +967,12 @@ func (n *Node) OnStop() {
 
 	// Stop the real state sync reactor separately since the switch uses the shim.
 	if err := n.stateSyncReactor.Stop(); err != nil {
-		n.Logger.Error("failed to stop state sync service", "err", err)
+		n.Logger.Error("failed to stop the state sync reactor", "err", err)
+	}
+
+	// Stop the real evidence reactor separately since the switch uses the shim.
+	if err := n.evidenceReactor.Stop(); err != nil {
+		n.Logger.Error("failed to stop the evidence reactor", "err", err)
 	}
 
 	// stop mempool WAL
@@ -1271,10 +1294,14 @@ func makeNodeInfo(
 		Version:       version.TMCoreSemVer,
 		Channels: []byte{
 			bcChannel,
-			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,
+			cs.StateChannel,
+			cs.DataChannel,
+			cs.VoteChannel,
+			cs.VoteSetBitsChannel,
 			mempl.MempoolChannel,
-			evidence.EvidenceChannel,
-			byte(statesync.SnapshotChannel), byte(statesync.ChunkChannel),
+			byte(evidence.EvidenceChannel),
+			byte(statesync.SnapshotChannel),
+			byte(statesync.ChunkChannel),
 		},
 		Moniker: config.Moniker,
 		Other: p2p.DefaultNodeInfoOther{
