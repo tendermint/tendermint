@@ -120,15 +120,15 @@ whenever the node is syncing or not, what height it is on, etc.
 curl http(s)://{ip}:{rpcPort}/status
 ```
 
-`/dump-consensus-state` will give you a detailed overview of the consensus
+`/dump_consensus_state` will give you a detailed overview of the consensus
 state (proposer, latest validators, peers states). From it, you should be able
 to figure out why, for example, the network had halted.
 
 ```bash
-curl http(s)://{ip}:{rpcPort}/dump-consensus-state
+curl http(s)://{ip}:{rpcPort}/dump_consensus_state
 ```
 
-There is a reduced version of this endpoint - `/consensus-state`, which returns
+There is a reduced version of this endpoint - `/consensus_state`, which returns
 just the votes seen at the current height.
 
 If, after consulting with the logs and above endpoints, you still have no idea
