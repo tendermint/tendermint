@@ -123,9 +123,11 @@ func (r *Reactor) OnStop() {
 // or if the given evidence is invalid. This should never be called outside of
 // handleMessage.
 func (r *Reactor) handleEvidenceMessage(envelope p2p.Envelope) error {
+	logger := r.Logger.With("peer", envelope.From.String())
+
 	switch msg := envelope.Message.(type) {
 	case *tmproto.EvidenceList:
-		r.Logger.Debug("received evidence list", "num_evidence", len(msg.Evidence), "peer", envelope.From.String())
+		logger.Debug("received evidence list", "num_evidence", len(msg.Evidence))
 
 		// TODO: Refactor the Evidence type to not contain a list since we only ever
 		// send and receive one piece of evidence at a time. Or potentially consider
@@ -133,13 +135,11 @@ func (r *Reactor) handleEvidenceMessage(envelope p2p.Envelope) error {
 		for i := 0; i < len(msg.Evidence); i++ {
 			ev, err := types.EvidenceFromProto(&msg.Evidence[i])
 			if err != nil {
-				r.Logger.Error("failed to convert evidence", "peer", envelope.From.String(), "err", err)
+				logger.Error("failed to convert evidence", "err", err)
 				continue
 			}
 
 			if err := r.evpool.AddEvidence(ev); err != nil {
-				r.Logger.Error("failed to add evidence", "peer", envelope.From.String(), "err", err)
-
 				// If we're given invalid evidence by the peer, notify the router that
 				// we should remove this peer by returning an error.
 				if _, ok := err.(*types.ErrInvalidEvidence); ok {
@@ -149,7 +149,6 @@ func (r *Reactor) handleEvidenceMessage(envelope p2p.Envelope) error {
 		}
 
 	default:
-		r.Logger.Error("received unknown message", "msg", msg, "peer", envelope.From.String())
 		return fmt.Errorf("received unknown message: %T", msg)
 	}
 
