@@ -86,7 +86,7 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 	case *types.LightClientAttackEvidence:
 		commonHeader, err := getSignedHeader(evpool.blockStore, evidence.Height())
 		if err != nil {
-			return types.NewErrInvalidEvidence(evidence, err)
+			return err
 		}
 
 		commonVals, err := evpool.stateDB.LoadValidators(evidence.Height())
@@ -100,7 +100,7 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 		if evidence.Height() != ev.ConflictingBlock.Height {
 			trustedHeader, err = getSignedHeader(evpool.blockStore, ev.ConflictingBlock.Height)
 			if err != nil {
-				return types.NewErrInvalidEvidence(evidence, err)
+				return err
 			}
 		}
 
