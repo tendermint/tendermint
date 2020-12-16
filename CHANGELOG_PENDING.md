@@ -4,6 +4,12 @@
 
 Special thanks to external contributors on this release:
 
+@p4u from vocdoni.io reported that the mempool might behave incorrectly under a
+high load. The consequences can range from pauses between blocks to the peers
+disconnecting from this node. As a temporary remedy (until the mempool package
+is refactored), it's recommended to decrease `max-batch-bytes` to a much lower
+value than 10MB (e.g., 4096 bytes).
+
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES
@@ -50,3 +56,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
 - [crypto] \#5707 Fix infinite recursion in string formatting of Secp256k1 keys (@erikgrinaker)
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)
+- [mempool] \#5800 Decrease `max-batch-bytes` to 4kB (@melekes)
