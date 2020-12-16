@@ -1,11 +1,9 @@
 package mempool
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"math"
-	math_bits "math/bits"
 	"time"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -137,9 +135,15 @@ func (memR *Reactor) OnStart() error {
 // GetChannels implements Reactor by returning the list of channels for this
 // reactor.
 func (memR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
+	largestTx := make([]byte, memR.config.MaxTxBytes)
+	batchMsg := protomem.Message{
+		Sum: &protomem.Message_Txs{
+			Txs: &protomem.Txs{Txs: [][]byte{largestTx}},
+		},
+	}
 	maxMsgSize := tmmath.MaxInt(
-		memR.config.MaxBatchBytes-emptyBatchSize(),
-		memR.config.MaxTxBytes+emptyBatchSize())
+		memR.config.MaxBatchBytes,
+		batchMsg.Size())
 
 	return []*p2p.ChannelDescriptor{
 		{
@@ -278,22 +282,23 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 // WARNING: mutates next!
 func (memR *Reactor) txs(next *clist.CElement, peerID uint16, peerHeight int64) [][]byte {
 	batch := make([][]byte, 0, memR.config.MaxBatchBytes)
-	// see proto/tendermint/mempool/types.pb.go Message_Txs#Size func
-	batchSize := emptyBatchSize()
 
 	for {
 		memTx := next.Value.(*mempoolTx)
 
 		if _, ok := memTx.senders.Load(peerID); !ok {
 			// If current batch + this tx size is greater than max => return.
-			// see proto/tendermint/mempool/types.pb.go Txs#Size func
-			txSize := 1 + len(memTx.tx) + (math_bits.Len64(uint64(len(memTx.tx))|1)+6)/7
-			if len(batch) > 0 && batchSize+txSize > memR.config.MaxBatchBytes {
+			// XXX: this is expensive on large slices
+			batchMsg := protomem.Message{
+				Sum: &protomem.Message_Txs{
+					Txs: &protomem.Txs{Txs: append(batch, memTx.tx)},
+				},
+			}
+			if len(batch) > 0 && batchMsg.Size() > memR.config.MaxBatchBytes {
 				return batch
 			}
 
 			batch = append(batch, memTx.tx)
-			batchSize += txSize
 		}
 
 		n := next.Next()
@@ -334,10 +339,6 @@ func (memR *Reactor) decodeMsg(bz []byte) (TxsMessage, error) {
 		return message, nil
 	}
 	return message, fmt.Errorf("msg type: %T is not supported", msg)
-}
-
-func emptyBatchSize() int {
-	return 1 + binary.MaxVarintLen64
 }
 
 //-------------------------------------
