@@ -2099,7 +2099,7 @@ func (cs *State) signVote(
 }
 
 // voteTime ensures monotonicity of the time a validator votes on.
-// It ensures that if there is the prior block has BFT-timestamp T,
+// It ensures that for a prior block with a BFT-timestamp of T,
 // any vote from this validator will have time at least time T + 1ms.
 // This is needed, as monotonicity of time is a guarantee that BFT time provides.
 func (cs *State) voteTime() time.Time {
