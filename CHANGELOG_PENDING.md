@@ -30,6 +30,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [abci/client, proxy] \#5673 `Async` funcs return an error, `Sync` and `Async` funcs accept `context.Context` (@melekes)
   - [p2p] Removed unused function `MakePoWTarget`. (@erikgrinaker)
   - [libs/bits] \#5720 Validate `BitArray` in `FromProto`, which now returns an error (@melekes)
+  - [proto/p2p] Renamed `DefaultNodeInfo` and `DefaultNodeInfoOther` to `NodeInfo` and `NodeInfoOther` (@erikgrinaker)
 
 - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
 

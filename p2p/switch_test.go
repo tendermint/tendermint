@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -28,6 +29,7 @@ import (
 
 var (
 	cfg *config.P2PConfig
+	ctx = context.Background()
 )
 
 func init() {
@@ -240,15 +242,15 @@ func TestSwitchPeerFilter(t *testing.T) {
 	rp.Start()
 	t.Cleanup(rp.Stop)
 
-	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
-		chDescs:      sw.chDescs,
-		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.IsPeerPersistent,
-		reactorsByCh: sw.reactorsByCh,
-	})
+	c, err := sw.transport.Dial(ctx, rp.Addr().Endpoint())
 	if err != nil {
 		t.Fatal(err)
 	}
+	p := newPeer(
+		newPeerConn(true, false, c),
+		sw.reactorsByCh,
+		sw.StopPeerForError,
+	)
 
 	err = sw.addPeer(p)
 	if err, ok := err.(ErrRejected); ok {
@@ -291,15 +293,15 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
-		chDescs:      sw.chDescs,
-		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.IsPeerPersistent,
-		reactorsByCh: sw.reactorsByCh,
-	})
+	c, err := sw.transport.Dial(ctx, rp.Addr().Endpoint())
 	if err != nil {
 		t.Fatal(err)
 	}
+	p := newPeer(
+		newPeerConn(true, false, c),
+		sw.reactorsByCh,
+		sw.StopPeerForError,
+	)
 
 	err = sw.addPeer(p)
 	if _, ok := err.(ErrFilterTimeout); !ok {
@@ -322,15 +324,15 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
-		chDescs:      sw.chDescs,
-		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.IsPeerPersistent,
-		reactorsByCh: sw.reactorsByCh,
-	})
+	c, err := sw.transport.Dial(ctx, rp.Addr().Endpoint())
 	if err != nil {
 		t.Fatal(err)
 	}
+	p := newPeer(
+		newPeerConn(true, false, c),
+		sw.reactorsByCh,
+		sw.StopPeerForError,
+	)
 
 	if err := sw.addPeer(p); err != nil {
 		t.Fatal(err)
@@ -372,13 +374,15 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	p, err := sw.transport.Dial(*rp.Addr(), peerConfig{
-		chDescs:      sw.chDescs,
-		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.IsPeerPersistent,
-		reactorsByCh: sw.reactorsByCh,
-	})
-	require.Nil(err)
+	c, err := sw.transport.Dial(ctx, rp.Addr().Endpoint())
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := newPeer(
+		newPeerConn(true, false, c),
+		sw.reactorsByCh,
+		sw.StopPeerForError,
+	)
 
 	err = sw.addPeer(p)
 	require.Nil(err)
@@ -386,7 +390,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	require.NotNil(sw.Peers().Get(rp.ID()))
 
 	// simulate failure by closing connection
-	err = p.(*peer).CloseConn()
+	err = p.CloseConn()
 	require.NoError(err)
 
 	assertNoPeersAfterTimeout(t, sw, 100*time.Millisecond)
@@ -677,19 +681,16 @@ type errorTransport struct {
 	acceptErr error
 }
 
-func (et errorTransport) NetAddress() NetAddress {
-	panic("not implemented")
-}
-
-func (et errorTransport) Accept(c peerConfig) (Peer, error) {
+func (et errorTransport) Accept(context.Context) (Connection, error) {
 	return nil, et.acceptErr
 }
-func (errorTransport) Dial(NetAddress, peerConfig) (Peer, error) {
+func (errorTransport) Dial(context.Context, Endpoint) (Connection, error) {
 	panic("not implemented")
 }
-func (errorTransport) Cleanup(Peer) {
-	panic("not implemented")
-}
+func (errorTransport) Close() error                               { panic("not implemented") }
+func (errorTransport) FlushClose() error                          { panic("not implemented") }
+func (errorTransport) Endpoints() []Endpoint                      { panic("not implemented") }
+func (errorTransport) SetChannelDescriptors([]*ChannelDescriptor) {}
 
 func TestSwitchAcceptRoutineErrorCases(t *testing.T) {
 	sw := NewSwitch(cfg, errorTransport{ErrFilterTimeout{}})
@@ -726,6 +727,10 @@ type mockReactor struct {
 	// atomic
 	removePeerInProgress           uint32
 	initCalledBeforeRemoveFinished uint32
+}
+
+func (r *mockReactor) GetChannels() []*ChannelDescriptor {
+	return []*ChannelDescriptor{{ID: testCh, Priority: 10}}
 }
 
 func (r *mockReactor) RemovePeer(peer Peer, reason interface{}) {
