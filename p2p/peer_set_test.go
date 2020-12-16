@@ -20,7 +20,7 @@ type mockPeer struct {
 func (mp *mockPeer) FlushStop()                              { mp.Stop() } //nolint:errcheck // ignore error
 func (mp *mockPeer) TrySend(chID byte, msgBytes []byte) bool { return true }
 func (mp *mockPeer) Send(chID byte, msgBytes []byte) bool    { return true }
-func (mp *mockPeer) NodeInfo() NodeInfo                      { return DefaultNodeInfo{} }
+func (mp *mockPeer) NodeInfo() NodeInfo                      { return NodeInfo{} }
 func (mp *mockPeer) Status() ConnectionStatus                { return ConnectionStatus{} }
 func (mp *mockPeer) ID() ID                                  { return mp.id }
 func (mp *mockPeer) IsOutbound() bool                        { return false }
