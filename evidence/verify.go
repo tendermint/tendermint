@@ -18,7 +18,7 @@ import (
 // - it is internally consistent with state
 // - it was properly signed by the alleged equivocator and meets the individual evidence verification requirements
 //
-// NOTE: Evidence may be provided that we do not have the block for validator
+// NOTE: Evidence may be provided that we do not have the block or validator
 // set for. In these cases, we do not return a ErrInvalidEvidence as not to have
 // the sending peer disconnect. All other errors are treated as invalid evidence
 // (i.e. ErrInvalidEvidence).
