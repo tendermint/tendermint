@@ -187,7 +187,9 @@ defines the protocol that is executed on a full node upon receiving attack [evid
 - equivocation
 - amnesia
 
-As is discussed in the [last part](attacks/isolate-attackers_002_reviewed.md#Part-III---Completeness) of the English specification, computer-aided analysis of  [Tendermint Consensus in TLA+][tendermint-accountability] shows that these three types capture all possible attacks.
+We discussed in the [last part](attacks/isolate-attackers_002_reviewed.md#Part-III---Completeness) of the English specification
+that the non-lunatic cases are defined by having the same validator set in the conflicting blocks. For these cases,
+computer-aided analysis of  [Tendermint Consensus in TLA+][tendermint-accountability] shows that equivocation and amnesia capture all non-lunatic attacks.
 
 
 The [TLA+ specification](attacks/Isolation_001_draft.tla)
