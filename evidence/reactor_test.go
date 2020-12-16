@@ -94,20 +94,20 @@ func createTestSuites(t *testing.T, stateStores []sm.Store, chBuf uint) []*react
 
 	numSStores := len(stateStores)
 	testSuites := make([]*reactorTestSuite, numSStores)
-	logger := log.TestingLogger()
 	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	for i := 0; i < numSStores; i++ {
+		logger := log.TestingLogger().With("validator", i)
 		evidenceDB := dbm.NewMemDB()
 		blockStore := &mocks.BlockStore{}
 		blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
 			&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
 		)
 
-		pool, err := evidence.NewPool(evidenceDB, stateStores[i], blockStore)
+		pool, err := evidence.NewPool(logger, evidenceDB, stateStores[i], blockStore)
 		require.NoError(t, err)
 
-		testSuites[i] = setup(t, logger.With("validator", i), pool, chBuf)
+		testSuites[i] = setup(t, logger, pool, chBuf)
 	}
 
 	return testSuites

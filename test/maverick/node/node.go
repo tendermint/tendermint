@@ -393,12 +393,13 @@ func createEvidenceReactor(
 		return nil, nil, nil, err
 	}
 
-	evidencePool, err := evidence.NewPool(evidenceDB, sm.NewStore(stateDB), blockStore)
+	logger = logger.With("module", "evidence")
+
+	evidencePool, err := evidence.NewPool(logger, evidenceDB, sm.NewStore(stateDB), blockStore)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	logger = logger.With("module", "evidence")
 	evidenceReactorShim := p2p.NewReactorShim(logger, "EvidenceShim", evidence.ChannelShims)
 	evidenceReactor := evidence.NewReactor(
 		logger,

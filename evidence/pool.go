@@ -48,7 +48,7 @@ type Pool struct {
 
 // NewPool creates an evidence pool. If using an existing evidence store,
 // it will add all pending evidence to the concurrent list.
-func NewPool(evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool, error) {
+func NewPool(logger log.Logger, evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool, error) {
 	state, err := stateDB.Load()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load state: %w", err)
@@ -230,11 +230,6 @@ func (evpool *Pool) EvidenceFront() *clist.CElement {
 // is there. i.e Front is not nil.
 func (evpool *Pool) EvidenceWaitChan() <-chan struct{} {
 	return evpool.evidenceList.WaitChan()
-}
-
-// SetLogger sets the Logger.
-func (evpool *Pool) SetLogger(l log.Logger) {
-	evpool.logger = l
 }
 
 // Size returns the number of evidence in the pool.

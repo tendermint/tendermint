@@ -52,15 +52,15 @@ const (
 type Reactor struct {
 	service.BaseService
 
-	evpool       *Pool
-	eventBus     *types.EventBus
-	evidenceCh   *p2p.Channel
-	peerUpdates  *p2p.PeerUpdatesCh
-	closeCh      chan struct{}
-	peerRoutines map[string]chan struct{}
+	evpool      *Pool
+	eventBus    *types.EventBus
+	evidenceCh  *p2p.Channel
+	peerUpdates *p2p.PeerUpdatesCh
+	closeCh     chan struct{}
 
-	mtx    tmsync.RWMutex
-	peerWG sync.WaitGroup
+	mtx          tmsync.RWMutex
+	peerWG       sync.WaitGroup
+	peerRoutines map[string]chan struct{}
 }
 
 // NewReactor returns a reference to a new evidence reactor, which implements the
@@ -79,8 +79,6 @@ func NewReactor(
 		closeCh:      make(chan struct{}),
 		peerRoutines: make(map[string]chan struct{}),
 	}
-
-	evpool.SetLogger(logger)
 
 	r.BaseService = *service.NewBaseService(logger, "Evidence", r)
 	return r
@@ -188,7 +186,7 @@ func (r *Reactor) processEvidenceCh() {
 		select {
 		case envelope := <-r.evidenceCh.In():
 			if err := r.handleMessage(r.evidenceCh.ID(), envelope); err != nil {
-				r.Logger.Error("failed to process envelope", "ch_id", r.evidenceCh.ID(), "envelope", envelope, "err", err)
+				r.Logger.Error("failed to process message", "ch_id", r.evidenceCh.ID(), "envelope", envelope, "err", err)
 				r.evidenceCh.Error() <- p2p.PeerError{
 					PeerID:   envelope.From,
 					Err:      err,
@@ -228,7 +226,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) (err error) {
 	defer r.mtx.Unlock()
 
 	switch peerUpdate.Status {
-	case p2p.PeerStatusNew, p2p.PeerStatusUp:
+	case p2p.PeerStatusUp:
 		// Check if we've already started a goroutine for this peer, if not we create
 		// a new done channel so we can explicitly close the goroutine if the peer
 		// is later removed, we increment the waitgroup so the reactor can stop
@@ -294,9 +292,10 @@ func (r *Reactor) broadcastEvidenceLoop(peerID p2p.PeerID, doneCh <-chan struct{
 	var next *clist.CElement
 
 	defer func() {
+		r.removePeerRoutine(peerID)
+
 		if e := recover(); e != nil {
 			r.Logger.Error("recovering from processing peer update panic", "err", e)
-			r.removePeerRoutine(peerID)
 		}
 	}()
 
@@ -314,13 +313,11 @@ func (r *Reactor) broadcastEvidenceLoop(peerID p2p.PeerID, doneCh <-chan struct{
 			case <-doneCh:
 				// The peer is marked for removal via a PeerUpdate as the doneCh was
 				// explicitly closed to signal we should exit.
-				r.removePeerRoutine(peerID)
 				return
 
 			case <-r.closeCh:
 				// The reactor has signaled that we are stopped and thus we should
 				// implicitly exit this peer's goroutine.
-				r.removePeerRoutine(peerID)
 				return
 			}
 		}
@@ -349,13 +346,11 @@ func (r *Reactor) broadcastEvidenceLoop(peerID p2p.PeerID, doneCh <-chan struct{
 		case <-doneCh:
 			// The peer is marked for removal via a PeerUpdate as the doneCh was
 			// explicitly closed to signal we should exit.
-			r.removePeerRoutine(peerID)
 			return
 
 		case <-r.closeCh:
 			// The reactor has signaled that we are stopped and thus we should
 			// implicitly exit this peer's goroutine.
-			r.removePeerRoutine(peerID)
 			return
 		}
 
@@ -370,13 +365,11 @@ func (r *Reactor) broadcastEvidenceLoop(peerID p2p.PeerID, doneCh <-chan struct{
 		case <-doneCh:
 			// The peer is marked for removal via a PeerUpdate as the doneCh was
 			// explicitly closed to signal we should exit.
-			r.removePeerRoutine(peerID)
 			return
 
 		case <-r.closeCh:
 			// The reactor has signaled that we are stopped and thus we should
 			// implicitly exit this peer's goroutine.
-			r.removePeerRoutine(peerID)
 			return
 		}
 	}

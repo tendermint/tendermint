@@ -51,9 +51,8 @@ func TestEvidencePoolBasic(t *testing.T) {
 	stateStore.On("LoadValidators", mock.AnythingOfType("int64")).Return(valSet, nil)
 	stateStore.On("Load").Return(createState(height+1, valSet), nil)
 
-	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
+	pool, err := evidence.NewPool(log.TestingLogger(), evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
-	pool.SetLogger(log.TestingLogger())
 
 	// evidence not seen yet:
 	evs, size := pool.PendingEvidence(defaultEvidenceMaxBytes)
@@ -111,7 +110,7 @@ func TestAddExpiredEvidence(t *testing.T) {
 		return &types.BlockMeta{Header: types.Header{Time: expiredEvidenceTime}}
 	})
 
-	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
+	pool, err := evidence.NewPool(log.TestingLogger(), evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -304,10 +303,8 @@ func TestCheckEvidenceWithLightClientAttack(t *testing.T) {
 	blockStore.On("LoadBlockMeta", height).Return(&types.BlockMeta{Header: *trustedHeader})
 	blockStore.On("LoadBlockCommit", height).Return(trustedCommit)
 
-	pool, err := evidence.NewPool(dbm.NewMemDB(), stateStore, blockStore)
+	pool, err := evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, blockStore)
 	require.NoError(t, err)
-
-	pool.SetLogger(log.TestingLogger())
 
 	require.NoError(t, pool.AddEvidence(ev))
 	require.NoError(t, pool.CheckEvidence(types.EvidenceList{ev}))
@@ -333,10 +330,8 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	blockStore := initializeBlockStore(dbm.NewMemDB(), state, valAddress)
 
 	// create previous pool and populate it
-	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
+	pool, err := evidence.NewPool(log.TestingLogger(), evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
-
-	pool.SetLogger(log.TestingLogger())
 
 	goodEvidence := types.NewMockDuplicateVoteEvidenceWithValidator(
 		height,
@@ -372,7 +367,7 @@ func TestRecoverPendingEvidence(t *testing.T) {
 		},
 	}, nil)
 
-	newPool, err := evidence.NewPool(evidenceDB, newStateStore, blockStore)
+	newPool, err := evidence.NewPool(log.TestingLogger(), evidenceDB, newStateStore, blockStore)
 	require.NoError(t, err)
 
 	evList, _ := newPool.PendingEvidence(defaultEvidenceMaxBytes)
@@ -469,10 +464,9 @@ func defaultTestPool(t *testing.T, height int64) (*evidence.Pool, types.MockPV) 
 	state, _ := stateStore.Load()
 	blockStore := initializeBlockStore(dbm.NewMemDB(), state, valAddress)
 
-	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
+	pool, err := evidence.NewPool(log.TestingLogger(), evidenceDB, stateStore, blockStore)
 	require.NoError(t, err, "test evidence pool could not be created")
 
-	pool.SetLogger(log.TestingLogger())
 	return pool, val
 }
 
