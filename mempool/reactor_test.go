@@ -149,9 +149,8 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	ensureNoTxs(t, reactors[peerID], 100*time.Millisecond)
 }
 
-func TestReactor_MaxBatchBytes(t *testing.T) {
+func TestReactor_MaxTxBytes(t *testing.T) {
 	config := cfg.TestConfig()
-	config.Mempool.MaxBatchBytes = 30
 
 	const N = 2
 	reactors := makeAndConnectReactors(config, N)
@@ -183,24 +182,6 @@ func TestReactor_MaxBatchBytes(t *testing.T) {
 	tx2 := tmrand.Bytes(config.Mempool.MaxTxBytes + 1)
 	err = reactors[0].mempool.CheckTx(tx2, nil, TxInfo{SenderID: UnknownPeerID})
 	require.Error(t, err)
-
-	reactors[0].mempool.Flush()
-	reactors[1].mempool.Flush()
-
-	// Broadcast two smaller transactions, which both fit into a batch
-	// => ensure they're received by the second reactor.
-	tx3 := tmrand.Bytes(10)
-	err = reactors[0].mempool.CheckTx(tx3, nil, TxInfo{SenderID: UnknownPeerID})
-	require.NoError(t, err)
-	tx4 := tmrand.Bytes(10)
-	err = reactors[0].mempool.CheckTx(tx4, nil, TxInfo{SenderID: UnknownPeerID})
-	require.NoError(t, err)
-	tx5 := tmrand.Bytes(10)
-	err = reactors[0].mempool.CheckTx(tx5, nil, TxInfo{SenderID: UnknownPeerID})
-	require.NoError(t, err)
-	// => tx5 must be sent in a separate batch because the max batch size is 30 -
-	// proto encoding
-	waitForTxsOnReactors(t, []types.Tx{tx3, tx4}, reactors)
 }
 
 func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {

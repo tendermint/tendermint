@@ -636,6 +636,7 @@ type MempoolConfig struct {
 	MaxTxBytes int `mapstructure:"max-tx-bytes"`
 	// Maximum size of a batch of transactions to send to a peer
 	// Including space needed by encoding (one varint per transaction).
+	// XXX: Unused due to https://github.com/tendermint/tendermint/issues/5796
 	MaxBatchBytes int `mapstructure:"max-batch-bytes"`
 }
 
@@ -651,7 +652,6 @@ func DefaultMempoolConfig() *MempoolConfig {
 		MaxTxsBytes:   1024 * 1024 * 1024, // 1GB
 		CacheSize:     10000,
 		MaxTxBytes:    1024 * 1024, // 1MB
-		MaxBatchBytes: 4096,
 	}
 }
 
@@ -686,9 +686,6 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	}
 	if cfg.MaxTxBytes < 0 {
 		return errors.New("max-tx-bytes can't be negative")
-	}
-	if cfg.MaxBatchBytes < 0 {
-		return errors.New("max-batch-bytes can't be negative")
 	}
 	return nil
 }
