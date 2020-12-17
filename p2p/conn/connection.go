@@ -25,7 +25,8 @@ import (
 )
 
 const (
-	defaultMaxPacketMsgPayloadSize = 1024
+	// mirrors MaxPacketMsgPayloadSize from config/config.go
+	defaultMaxPacketMsgPayloadSize = 1400
 
 	numBatchPacketMsgs = 10
 	minReadBufferSize  = 1024
