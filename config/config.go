@@ -561,15 +561,20 @@ func DefaultP2PConfig() *P2PConfig {
 		MaxNumOutboundPeers:          10,
 		PersistentPeersMaxDialPeriod: 0 * time.Second,
 		FlushThrottleTimeout:         100 * time.Millisecond,
-		MaxPacketMsgPayloadSize:      1024,    // 1 kB
-		SendRate:                     5120000, // 5 mB/s
-		RecvRate:                     5120000, // 5 mB/s
-		PexReactor:                   true,
-		SeedMode:                     false,
-		AllowDuplicateIP:             false,
-		HandshakeTimeout:             20 * time.Second,
-		DialTimeout:                  3 * time.Second,
-		TestDialFail:                 false,
+		// The MTU (Maximum Transmission Unit) for Ethernet is 1500 bytes.
+		// The IP header and the TCP header take up 20 bytes each at least (unless
+		// optional header fields are used) and thus the max for (non-Jumbo frame)
+		// Ethernet is 1500 - 20 -20 = 1460
+		// Source: https://stackoverflow.com/a/3074427/820520
+		MaxPacketMsgPayloadSize: 1400,
+		SendRate:                5120000, // 5 mB/s
+		RecvRate:                5120000, // 5 mB/s
+		PexReactor:              true,
+		SeedMode:                false,
+		AllowDuplicateIP:        false,
+		HandshakeTimeout:        20 * time.Second,
+		DialTimeout:             3 * time.Second,
+		TestDialFail:            false,
 	}
 }
 
