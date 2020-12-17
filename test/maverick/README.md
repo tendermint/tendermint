@@ -45,7 +45,7 @@ go build
 Use `maverick init` to initialize a single node and `maverick node` to run it. This will run it normally unless you use the misbehaviors flag as follows:
 
 ```bash
-maverick node --proxy_app persistent_kvstore --misbehaviors double-vote,10
+maverick node --proxy-app persistent_kvstore --misbehaviors double-vote,10
 ```
 
 This would cause the node to vote twice in every round at height 10. To add more misbehaviors at different heights, append the next misbehavior and height after the first (with comma separation).
