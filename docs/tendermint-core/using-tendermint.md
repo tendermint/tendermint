@@ -53,7 +53,7 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
     - `block`
         - `max_bytes`: Max block size, in bytes.
         - `max_gas`: Max gas per block.
-        - `time_iota_ms`: Unused.
+        - `time_iota_ms`: Unused. This has been deprecated and will be removed in a future version.
     - `evidence`
         - `max_age_num_blocks`: Max age of evidence, in blocks. The basic formula
       for calculating this is: MaxAgeDuration / {average block time}.
