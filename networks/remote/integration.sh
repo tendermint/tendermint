@@ -113,7 +113,7 @@ id3=$(strip $id3)
 old_ansible_file=$GOPATH/src/github.com/tendermint/tendermint/networks/remote/ansible/roles/install/templates/systemd.service.j2
 rm $old_ansible_file
 
-# need to populate the `--p2p.persistent_peers` flag
+# need to populate the `--p2p.persistent-peers` flag
 echo "[Unit]
 Description={{service}}
 Requires=network-online.target
@@ -124,7 +124,7 @@ Restart=on-failure
 User={{service}}
 Group={{service}}
 PermissionsStartOnly=true
-ExecStart=/usr/bin/tendermint node --proxy_app=kvstore --p2p.persistent_peers=$id0@$ip0:26656,$id1@$ip1:26656,$id2@$ip2:26656,$id3@$ip3:26656
+ExecStart=/usr/bin/tendermint node --proxy-app=kvstore --p2p.persistent-peers=$id0@$ip0:26656,$id1@$ip1:26656,$id2@$ip2:26656,$id3@$ip3:26656
 ExecReload=/bin/kill -HUP \$MAINPID
 KillSignal=SIGTERM
 

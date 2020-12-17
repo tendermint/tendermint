@@ -163,7 +163,7 @@ Override the [command](https://github.com/tendermint/tendermint/blob/master/netw
       - LOG=$${LOG:-tendermint.log}
     volumes:
       - ./build:/tendermint:Z
-    command: node --proxy_app=tcp://abci0:26658
+    command: node --proxy-app=tcp://abci0:26658
     networks:
       localnet:
         ipv4_address: 192.167.10.2
