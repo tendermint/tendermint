@@ -46,7 +46,7 @@ To ease the burden of collecting different pieces of data Tendermint Core (since
 tendermint debug kill <pid> </path/to/out.zip> — home=</path/to/app.d>
 ```
 
-Here’s the official documentation page — <https://docs.tendermint.com/master/tools/debugging.html>
+Here’s the official documentation page — <https://docs.tendermint.com/master/tools/debugging>
 
 If you’re using a process supervisor, like systemd, it will restart the Tendermint automatically. We strongly advise you to have one in production. If not, you will need to restart the node by hand.
 

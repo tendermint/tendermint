@@ -1889,7 +1889,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 			// 2) not a bad peer? this can also err sometimes with "Unexpected step" OR
 			// 3) tmkms use with multiple validators connecting to a single tmkms instance
 			// 		(https://github.com/tendermint/tendermint/issues/3839).
-			cs.Logger.Info("Error attempting to add vote", "err", err)
+			cs.Logger.Error("Error attempting to add vote", "err", err)
 			return added, ErrAddingVote
 		}
 	}

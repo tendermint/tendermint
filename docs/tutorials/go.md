@@ -491,7 +491,7 @@ Then we need to start Tendermint Core and point it to our application. Staying
 within the application directory execute:
 
 ```bash
-TMHOME="/tmp/example" tendermint node --proxy_app=unix://example.sock
+TMHOME="/tmp/example" tendermint node --proxy-app=unix://example.sock
 
 I[2019-07-16|18:26:20.362] Version info                                 module=main software=0.32.1 block=10 p2p=7
 I[2019-07-16|18:26:20.383] Starting Node                                module=main impl=Node
