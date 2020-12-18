@@ -51,7 +51,7 @@ It goes as follows:
     - get 64 bytes of output from hkdf-sha256
     - if we had the smaller ephemeral pubkey, use the first 32 bytes for the key for receiving, the second 32 bytes for sending; else the opposite.
 - use a separate nonce for receiving and sending. Both nonces start at 0, and should support the full 96 bit nonce range
-- all communications from now on are encrypted in 1024 byte frames,
+- all communications from now on are encrypted in 1400 byte frames (plus encoding overhead),
   using the respective secret and nonce. Each nonce is incremented by one after each use.
 - we now have an encrypted channel, but still need to authenticate
 - extract a 32 bytes challenge from merlin transcript with the label "SECRET_CONNECTION_MAC"
