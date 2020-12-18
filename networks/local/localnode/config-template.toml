@@ -4,4 +4,3 @@ pprof-laddr = ":6060"
 
 [instrumentation]
 prometheus = true
-prometheus-listen-addr = ":9090"
