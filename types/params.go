@@ -36,7 +36,7 @@ func DefaultBlockParams() tmproto.BlockParams {
 	return tmproto.BlockParams{
 		MaxBytes:   22020096, // 21MB
 		MaxGas:     -1,
-		TimeIotaMs: 1000, // 1s
+		TimeIotaMs: 1, // 1s, parameter is now unused
 	}
 }
 
