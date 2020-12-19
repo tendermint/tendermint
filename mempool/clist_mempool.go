@@ -293,7 +293,9 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 
 	reqRes, err := mem.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{Tx: tx})
 	if err != nil {
-		mem.cache.Remove(tx)
+		if !mem.config.CacheKeepCheckTxInvalid {
+			mem.cache.Remove(tx)
+		}
 		return err
 	}
 	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderP2PID, cb))
@@ -424,8 +426,10 @@ func (mem *CListMempool) resCbFirstTime(
 			// Check mempool isn't full again to reduce the chance of exceeding the
 			// limits.
 			if err := mem.isFull(len(tx)); err != nil {
-				// remove from cache (mempool might have a space later)
-				mem.cache.Remove(tx)
+				if !mem.config.CacheKeepCheckTxInvalid {
+					// remove from cache (mempool might have a space later)
+					mem.cache.Remove(tx)
+				}
 				mem.logger.Error(err.Error())
 				return
 			}
@@ -449,8 +453,10 @@ func (mem *CListMempool) resCbFirstTime(
 			mem.logger.Info("Rejected bad transaction",
 				"tx", txID(tx), "peerID", peerP2PID, "res", r, "err", postCheckErr)
 			mem.metrics.FailedTxs.Add(1)
-			// remove from cache (it might be good later)
-			mem.cache.Remove(tx)
+			if !mem.config.CacheKeepCheckTxInvalid {
+				// remove from cache (it might be good later)
+				mem.cache.Remove(tx)
+			}
 		}
 	default:
 		// ignore other messages
@@ -481,8 +487,8 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 		} else {
 			// Tx became invalidated due to newly committed block.
 			mem.logger.Info("Tx is no longer valid", "tx", txID(tx), "res", r, "err", postCheckErr)
-			// NOTE: we remove tx from the cache because it might be good later
-			mem.removeTx(tx, mem.recheckCursor, true)
+			// NOTE: we remove tx from the cache because it might be good later if CacheKeepCheckTxInvalid set to false
+			mem.removeTx(tx, mem.recheckCursor, !mem.config.CacheKeepCheckTxInvalid)
 		}
 		if mem.recheckCursor == mem.recheckEnd {
 			mem.recheckCursor = nil
@@ -597,8 +603,10 @@ func (mem *CListMempool) Update(
 			// Add valid committed tx to the cache (if missing).
 			_ = mem.cache.Push(tx)
 		} else {
-			// Allow invalid transactions to be resubmitted.
-			mem.cache.Remove(tx)
+			if !mem.config.CacheKeepCheckTxInvalid {
+				// Allow invalid transactions to be resubmitted.
+				mem.cache.Remove(tx)
+			}
 		}
 
 		// Remove committed tx from the mempool.

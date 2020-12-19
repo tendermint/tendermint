@@ -636,6 +636,8 @@ type MempoolConfig struct {
 	MaxTxsBytes int64 `mapstructure:"max-txs-bytes"`
 	// Size of the cache (used to filter transactions we saw earlier) in transactions
 	CacheSize int `mapstructure:"cache-size"`
+	// Do not remove checkTx invalid transactions from cache
+	CacheKeepCheckTxInvalid bool `mapstructure:"cache-keep-checktx-invalid"`
 	// Maximum size of a single transaction
 	// NOTE: the max size of a tx transmitted over the network is {max-tx-bytes}.
 	MaxTxBytes int `mapstructure:"max-tx-bytes"`
