@@ -59,7 +59,7 @@ Configuring a cluster is covered further below.
 Start Tendermint with a simple in-process application:
 
 ```sh
-tendermint node --proxy-app=kvstore
+tendermint node --proxy_app=kvstore
 ```
 
 > Note: `kvstore` is a non persistent app, if you would like to run an application with persistence run `--proxy-app=persistent_kvstore`
