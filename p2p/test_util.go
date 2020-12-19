@@ -169,14 +169,14 @@ func MakeSwitch(
 	logger := log.TestingLogger().With("switch", i)
 	t := NewMConnTransport(logger, nodeInfo, nodeKey.PrivKey, MConnConfig(cfg))
 
-	if err := t.Listen(addr.Endpoint()); err != nil {
-		panic(err)
-	}
-
 	// TODO: let the config be passed in?
 	sw := initSwitch(i, NewSwitch(cfg, t, opts...))
 	sw.SetLogger(log.TestingLogger().With("switch", i))
 	sw.SetNodeKey(nodeKey)
+
+	if err := t.Listen(addr.Endpoint()); err != nil {
+		panic(err)
+	}
 
 	ni := nodeInfo
 	ni.Channels = []byte{}
