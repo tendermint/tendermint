@@ -27,7 +27,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         with:
           version: latest
-          args: release --rm-dist --skip-publish
+          args: build
 
       # - name: Run GoReleaser
       #   uses: goreleaser/goreleaser-action@v2
