@@ -23,6 +23,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - Apps
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
   - [ABCI] \#5447 Reset `Oneof` indexes for  `Request` and `Response`.
+  - [ABCI] \#5818 Use protoio for msg length delimitation. Migrates from int64 to uint64 length delimiters.
 
 - P2P Protocol
 
