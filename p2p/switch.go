@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"sync"
@@ -92,10 +93,14 @@ type Switch struct {
 	metrics *Metrics
 }
 
-// NetAddress returns the address the switch is listening on.
+// NetAddress returns the first address the switch is listening on,
+// or nil if no addresses are found.
 func (sw *Switch) NetAddress() *NetAddress {
-	addr := sw.transport.NetAddress()
-	return &addr
+	endpoints := sw.transport.Endpoints()
+	if len(endpoints) == 0 {
+		return nil
+	}
+	return endpoints[0].NetAddress()
 }
 
 // SwitchOption sets an optional parameter on the Switch.
@@ -221,6 +226,12 @@ func (sw *Switch) SetNodeKey(nodeKey NodeKey) {
 
 // OnStart implements BaseService. It starts all the reactors and peers.
 func (sw *Switch) OnStart() error {
+
+	// FIXME: Temporary hack to pass channel descriptors to MConn transport,
+	// since they are not available when it is constructed. This will be
+	// fixed when we implement the new router abstraction.
+	sw.transport.SetChannelDescriptors(sw.chDescs)
+
 	// Start reactors
 	for _, reactor := range sw.reactors {
 		err := reactor.Start()
@@ -246,7 +257,7 @@ func (sw *Switch) OnStop() {
 	sw.Logger.Debug("Switch: Stopping reactors")
 	for _, reactor := range sw.reactors {
 		if err := reactor.Stop(); err != nil {
-			sw.Logger.Error("error while stopped reactor", "reactor", reactor, "error", err)
+			sw.Logger.Error("error while stopping reactor", "reactor", reactor, "error", err)
 		}
 	}
 }
@@ -261,7 +272,7 @@ func (sw *Switch) OnStop() {
 //
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
 func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
-	sw.Logger.Debug("Broadcast", "channel", chID, "msgBytes", fmt.Sprintf("%X", msgBytes))
+	sw.Logger.Debug("Broadcast", "channel", chID, "msgBytes", msgBytes)
 
 	peers := sw.peers.List()
 	var wg sync.WaitGroup
@@ -354,7 +365,6 @@ func (sw *Switch) StopPeerGracefully(peer Peer) {
 }
 
 func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
-	sw.transport.Cleanup(peer)
 	if err := peer.Stop(); err != nil {
 		sw.Logger.Error("error while stopping peer", "error", err) // TODO: should return error to be handled accordingly
 	}
@@ -617,13 +627,7 @@ func (sw *Switch) IsPeerPersistent(na *NetAddress) bool {
 
 func (sw *Switch) acceptRoutine() {
 	for {
-		p, err := sw.transport.Accept(peerConfig{
-			chDescs:      sw.chDescs,
-			onPeerError:  sw.StopPeerForError,
-			reactorsByCh: sw.reactorsByCh,
-			metrics:      sw.metrics,
-			isPersistent: sw.IsPeerPersistent,
-		})
+		c, err := sw.transport.Accept(context.Background())
 		if err != nil {
 			switch err := err.(type) {
 			case ErrRejected:
@@ -671,6 +675,20 @@ func (sw *Switch) acceptRoutine() {
 			break
 		}
 
+		peerNodeInfo := c.NodeInfo()
+		isPersistent := false
+		addr, err := peerNodeInfo.NetAddress()
+		if err == nil {
+			isPersistent = sw.IsPeerPersistent(addr)
+		}
+
+		p := newPeer(
+			newPeerConn(false, isPersistent, c),
+			sw.reactorsByCh,
+			sw.StopPeerForError,
+			PeerMetrics(sw.metrics),
+		)
+
 		if !sw.IsPeerUnconditional(p.NodeInfo().ID()) {
 			// Ignore connection if we already have enough peers.
 			_, in, _ := sw.NumPeers()
@@ -681,16 +699,14 @@ func (sw *Switch) acceptRoutine() {
 					"have", in,
 					"max", sw.config.MaxNumInboundPeers,
 				)
-
-				sw.transport.Cleanup(p)
-
+				_ = p.CloseConn()
 				continue
 			}
 
 		}
 
 		if err := sw.addPeer(p); err != nil {
-			sw.transport.Cleanup(p)
+			_ = p.CloseConn()
 			if p.IsRunning() {
 				_ = p.Stop()
 			}
@@ -720,12 +736,11 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		return fmt.Errorf("dial err (peerConfig.DialFail == true)")
 	}
 
-	p, err := sw.transport.Dial(*addr, peerConfig{
-		chDescs:      sw.chDescs,
-		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.IsPeerPersistent,
-		reactorsByCh: sw.reactorsByCh,
-		metrics:      sw.metrics,
+	c, err := sw.transport.Dial(context.Background(), Endpoint{
+		Protocol: MConnProtocol,
+		PeerID:   addr.ID,
+		IP:       addr.IP,
+		Port:     addr.Port,
 	})
 	if err != nil {
 		if e, ok := err.(ErrRejected); ok {
@@ -748,8 +763,15 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		return err
 	}
 
+	p := newPeer(
+		newPeerConn(true, sw.IsPeerPersistent(c.RemoteEndpoint().NetAddress()), c),
+		sw.reactorsByCh,
+		sw.StopPeerForError,
+		PeerMetrics(sw.metrics),
+	)
+
 	if err := sw.addPeer(p); err != nil {
-		sw.transport.Cleanup(p)
+		_ = p.CloseConn()
 		if p.IsRunning() {
 			_ = p.Stop()
 		}

@@ -183,7 +183,7 @@ type Node struct {
 	privValidator types.PrivValidator // local node's validator key
 
 	// network
-	transport   *p2p.MultiplexTransport
+	transport   *p2p.MConnTransport
 	sw          *p2p.Switch  // p2p connections
 	addrBook    pex.AddrBook // known peers
 	nodeInfo    p2p.NodeInfo
@@ -412,23 +412,22 @@ func createConsensusReactor(config *cfg.Config,
 }
 
 func createTransport(
+	logger log.Logger,
 	config *cfg.Config,
 	nodeInfo p2p.NodeInfo,
 	nodeKey p2p.NodeKey,
 	proxyApp proxy.AppConns,
 ) (
-	*p2p.MultiplexTransport,
+	*p2p.MConnTransport,
 	[]p2p.PeerFilterFunc,
 ) {
 	var (
-		mConnConfig = p2p.MConnConfig(config.P2P)
-		transport   = p2p.NewMultiplexTransport(nodeInfo, nodeKey, mConnConfig)
 		connFilters = []p2p.ConnFilterFunc{}
 		peerFilters = []p2p.PeerFilterFunc{}
 	)
 
 	if !config.P2P.AllowDuplicateIP {
-		connFilters = append(connFilters, p2p.ConnDuplicateIPFilter())
+		connFilters = append(connFilters, p2p.ConnDuplicateIPFilter)
 	}
 
 	// Filter peers by addr or pubkey with an ABCI query.
@@ -471,11 +470,12 @@ func createTransport(
 		)
 	}
 
-	p2p.MultiplexTransportConnFilters(connFilters...)(transport)
-
-	// Limit the number of incoming connections.
-	max := config.P2P.MaxNumInboundPeers + len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
-	p2p.MultiplexTransportMaxIncomingConnections(max)(transport)
+	transport := p2p.NewMConnTransport(
+		logger, nodeInfo, nodeKey.PrivKey, p2p.MConnConfig(config.P2P),
+		p2p.MConnTransportConnFilters(connFilters...),
+		p2p.MConnTransportMaxIncomingConnections(config.P2P.MaxNumInboundPeers+
+			len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))),
+	)
 
 	return transport, peerFilters
 }
@@ -776,11 +776,9 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	// Setup Transport.
-	transport, peerFilters := createTransport(config, nodeInfo, nodeKey, proxyApp)
-
-	// Setup Switch.
+	// Setup Transport and Switch.
 	p2pLogger := logger.With("module", "p2p")
+	transport, peerFilters := createTransport(p2pLogger, config, nodeInfo, nodeKey, proxyApp)
 	sw := createSwitch(
 		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
 		stateSyncReactorShim, consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
@@ -788,7 +786,7 @@ func NewNode(config *cfg.Config,
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
-		return nil, fmt.Errorf("could not add peers from persistent_peers field: %w", err)
+		return nil, fmt.Errorf("could not add peers from persistent-peers field: %w", err)
 	}
 
 	err = sw.AddUnconditionalPeerIDs(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
@@ -889,29 +887,30 @@ func (n *Node) OnStart() error {
 		n.prometheusSrv = n.startPrometheusServer(n.config.Instrumentation.PrometheusListenAddr)
 	}
 
-	// Start the transport.
-	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(n.nodeKey.ID, n.config.P2P.ListenAddress))
-	if err != nil {
-		return err
-	}
-	if err := n.transport.Listen(*addr); err != nil {
-		return err
-	}
-
-	n.isListening = true
-
+	// Start the mempool.
 	if n.config.Mempool.WalEnabled() {
-		err = n.mempool.InitWAL()
+		err := n.mempool.InitWAL()
 		if err != nil {
 			return fmt.Errorf("init mempool WAL: %w", err)
 		}
 	}
 
 	// Start the switch (the P2P server).
-	err = n.sw.Start()
+	err := n.sw.Start()
 	if err != nil {
 		return err
 	}
+
+	// Start the transport.
+	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(n.nodeKey.ID, n.config.P2P.ListenAddress))
+	if err != nil {
+		return err
+	}
+	if err := n.transport.Listen(addr.Endpoint()); err != nil {
+		return err
+	}
+
+	n.isListening = true
 
 	// Start the real state sync reactor separately since the switch uses the shim.
 	if err := n.stateSyncReactor.Start(); err != nil {
@@ -921,7 +920,7 @@ func (n *Node) OnStart() error {
 	// Always connect to persistent peers
 	err = n.sw.DialPeersAsync(splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
-		return fmt.Errorf("could not dial peers from persistent_peers field: %w", err)
+		return fmt.Errorf("could not dial peers from persistent-peers field: %w", err)
 	}
 
 	// Run state sync
@@ -1269,10 +1268,10 @@ func makeNodeInfo(
 	case "v2":
 		bcChannel = bcv2.BlockchainChannel
 	default:
-		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+		return p2p.NodeInfo{}, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
 
-	nodeInfo := p2p.DefaultNodeInfo{
+	nodeInfo := p2p.NodeInfo{
 		ProtocolVersion: p2p.NewProtocolVersion(
 			version.P2PProtocol, // global
 			state.Version.Consensus.Block,
@@ -1289,7 +1288,7 @@ func makeNodeInfo(
 			byte(statesync.SnapshotChannel), byte(statesync.ChunkChannel),
 		},
 		Moniker: config.Moniker,
-		Other: p2p.DefaultNodeInfoOther{
+		Other: p2p.NodeInfoOther{
 			TxIndex:    txIndexerStatus,
 			RPCAddress: config.RPC.ListenAddress,
 		},

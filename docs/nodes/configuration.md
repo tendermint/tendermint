@@ -31,7 +31,7 @@ like the file below, however, double check by inspecting the
 
 # TCP or UNIX socket address of the ABCI application,
 # or the name of an ABCI application compiled in with the Tendermint binary
-proxy_app = "tcp://127.0.0.1:26658"
+proxy-app = "tcp://127.0.0.1:26658"
 
 # A custom human readable name for this node
 moniker = "anonymous"
@@ -39,7 +39,7 @@ moniker = "anonymous"
 # If this node is many blocks behind the tip of the chain, FastSync
 # allows them to catchup quickly by downloading blocks in parallel
 # and verifying their commits
-fast_sync = true
+fast-sync = true
 
 # Database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -60,41 +60,41 @@ fast_sync = true
 # * badgerdb (uses github.com/dgraph-io/badger)
 #   - EXPERIMENTAL
 #   - use badgerdb build tag (go build -tags badgerdb)
-db_backend = "goleveldb"
+db-backend = "goleveldb"
 
 # Database directory
-db_dir = "data"
+db-dir = "data"
 
 # Output level for logging, including package level options
-log_level = "main:info,state:info,statesync:info,*:error"
+log-level = "main:info,state:info,statesync:info,*:error"
 
 # Output format: 'plain' (colored text) or 'json'
-log_format = "plain"
+log-format = "plain"
 
 ##### additional base config options #####
 
 # Path to the JSON file containing the initial validator set and other meta data
-genesis_file = "config/genesis.json"
+genesis-file = "config/genesis.json"
 
 # Path to the JSON file containing the private key to use as a validator in the consensus protocol
-priv_validator_key_file = "config/priv_validator_key.json"
+priv-validator-key-file = "config/priv_validator_key.json"
 
 # Path to the JSON file containing the last sign state of a validator
-priv_validator_state_file = "data/priv_validator_state.json"
+priv-validator-state-file = "data/priv_validator_state.json"
 
 # TCP or UNIX socket address for Tendermint to listen on for
 # connections from an external PrivValidator process
-priv_validator_laddr = ""
+priv-validator-laddr = ""
 
 # Path to the JSON file containing the private key to use for node authentication in the p2p protocol
-node_key_file = "config/node_key.json"
+node-key-file = "config/node_key.json"
 
 # Mechanism to connect to the ABCI application: socket | grpc
 abci = "socket"
 
 # If true, query the ABCI app on connecting to a new peer
 # so the app can decide if we should keep the connection or not
-filter_peers = false
+filter-peers = false
 
 
 #######################################################################
@@ -112,78 +112,78 @@ laddr = "tcp://127.0.0.1:26657"
 # A list of origins a cross-domain request can be executed from
 # Default value '[]' disables cors support
 # Use '["*"]' to allow any origin
-cors_allowed_origins = []
+cors-allowed-origins = []
 
 # A list of methods the client is allowed to use with cross-domain requests
-cors_allowed_methods = ["HEAD", "GET", "POST", ]
+cors-allowed-methods = ["HEAD", "GET", "POST", ]
 
 # A list of non simple headers the client is allowed to use with cross-domain requests
-cors_allowed_headers = ["Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time", ]
+cors-allowed-headers = ["Origin", "Accept", "Content-Type", "X-Requested-With", "X-Server-Time", ]
 
 # TCP or UNIX socket address for the gRPC server to listen on
 # NOTE: This server only supports /broadcast_tx_commit
-grpc_laddr = ""
+grpc-laddr = ""
 
 # Maximum number of simultaneous connections.
-# Does not include RPC (HTTP&WebSocket) connections. See max_open_connections
+# Does not include RPC (HTTP&WebSocket) connections. See max-open-connections
 # If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
 # 1024 - 40 - 10 - 50 = 924 = ~900
-grpc_max_open_connections = 900
+grpc-max-open-connections = 900
 
 # Activate unsafe RPC commands like /dial_seeds and /unsafe_flush_mempool
 unsafe = false
 
 # Maximum number of simultaneous connections (including WebSocket).
-# Does not include gRPC connections. See grpc_max_open_connections
+# Does not include gRPC connections. See grpc-max-open-connections
 # If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
 # 1024 - 40 - 10 - 50 = 924 = ~900
-max_open_connections = 900
+max-open-connections = 900
 
 # Maximum number of unique clientIDs that can /subscribe
 # If you're using /broadcast_tx_commit, set to the estimated maximum number
 # of broadcast_tx_commit calls per block.
-max_subscription_clients = 100
+max-subscription-clients = 100
 
 # Maximum number of unique queries a given client can /subscribe to
 # If you're using GRPC (or Local RPC client) and /broadcast_tx_commit, set to
 # the estimated # maximum number of broadcast_tx_commit calls per block.
-max_subscriptions_per_client = 5
+max-subscriptions-per-client = 5
 
 # How long to wait for a tx to be committed during /broadcast_tx_commit.
 # WARNING: Using a value larger than 10s will result in increasing the
 # global HTTP write timeout, which applies to all connections and endpoints.
 # See https://github.com/tendermint/tendermint/issues/3435
-timeout_broadcast_tx_commit = "10s"
+timeout-broadcast-tx-commit = "10s"
 
 # Maximum size of request body, in bytes
-max_body_bytes = 1000000
+max-body-bytes = 1000000
 
 # Maximum size of request header, in bytes
-max_header_bytes = 1048576
+max-header-bytes = 1048576
 
 # The path to a file containing certificate that is used to create the HTTPS server.
 # Migth be either absolute path or path related to tendermint's config directory.
 # If the certificate is signed by a certificate authority,
 # the certFile should be the concatenation of the server's certificate, any intermediates,
 # and the CA's certificate.
-# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+# NOTE: both tls-cert-file and tls-key-file must be present for Tendermint to create HTTPS server.
 # Otherwise, HTTP server is run.
-tls_cert_file = ""
+tls-cert-file = ""
 
 # The path to a file containing matching private key that is used to create the HTTPS server.
 # Migth be either absolute path or path related to tendermint's config directory.
-# NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
+# NOTE: both tls-cert-file and tls-key-file must be present for Tendermint to create HTTPS server.
 # Otherwise, HTTP server is run.
-tls_key_file = ""
+tls-key-file = ""
 
 # pprof listen address (https://golang.org/pkg/net/http/pprof)
-pprof_laddr = ""
+pprof-laddr = ""
 
 #######################################################
 ###           P2P Configuration Options             ###
@@ -197,47 +197,47 @@ laddr = "tcp://0.0.0.0:26656"
 # If empty, will use the same port as the laddr,
 # and will introspect on the listener or use UPnP
 # to figure out the address.
-external_address = ""
+external-address = ""
 
 # Comma separated list of seed nodes to connect to
 seeds = ""
 
 # Comma separated list of nodes to keep persistent connections to
-persistent_peers = ""
+persistent-peers = ""
 
 # UPNP port forwarding
 upnp = false
 
 # Path to address book
-addr_book_file = "config/addrbook.json"
+addr-book-file = "config/addrbook.json"
 
 # Set true for strict address routability rules
 # Set false for private or local networks
-addr_book_strict = true
+addr-book-strict = true
 
 # Maximum number of inbound peers
-max_num_inbound_peers = 40
+max-num-inbound-peers = 40
 
 # Maximum number of outbound peers to connect to, excluding persistent peers
-max_num_outbound_peers = 10
+max-num-outbound-peers = 10
 
 # List of node IDs, to which a connection will be (re)established ignoring any existing limits
-unconditional_peer_ids = ""
+unconditional-peer-ids = ""
 
 # Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
-persistent_peers_max_dial_period = "0s"
+persistent-peers-max-dial-period = "0s"
 
 # Time to wait before flushing messages out on the connection
-flush_throttle_timeout = "100ms"
+flush-throttle-timeout = "100ms"
 
 # Maximum size of a message packet payload, in bytes
-max_packet_msg_payload_size = 1024
+max-packet-msg-payload-size = 1024
 
 # Rate at which packets can be sent, in bytes/second
-send_rate = 5120000
+send-rate = 5120000
 
 # Rate at which packets can be received, in bytes/second
-recv_rate = 5120000
+recv-rate = 5120000
 
 # Set true to enable the peer-exchange reactor
 pex = true
@@ -246,17 +246,17 @@ pex = true
 # peers. If another node asks it for addresses, it responds and disconnects.
 #
 # Does not work if the peer-exchange reactor is disabled.
-seed_mode = false
+seed-mode = false
 
 # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
-private_peer_ids = ""
+private-peer-ids = ""
 
 # Toggle to disable guard against peers connecting from the same ip.
-allow_duplicate_ip = false
+allow-duplicate-ip = false
 
 # Peer connection configuration.
-handshake_timeout = "20s"
-dial_timeout = "3s"
+handshake-timeout = "20s"
+dial-timeout = "3s"
 
 #######################################################
 ###          Mempool Configurattion Option          ###
@@ -265,26 +265,31 @@ dial_timeout = "3s"
 
 recheck = true
 broadcast = true
-wal_dir = ""
+wal-dir = ""
 
 # Maximum number of transactions in the mempool
 size = 5000
 
 # Limit the total size of all txs in the mempool.
 # This only accounts for raw transactions (e.g. given 1MB transactions and
-# max_txs_bytes=5MB, mempool will only accept 5 transactions).
-max_txs_bytes = 1073741824
+# max-txs-bytes=5MB, mempool will only accept 5 transactions).
+max-txs-bytes = 1073741824
 
 # Size of the cache (used to filter transactions we saw earlier) in transactions
-cache_size = 10000
+cache-size = 10000
+
+# Do not remove invalid transactions from the cache (default: false)
+# Set to true if it's not possible for any invalid transaction to become valid
+# again in the future.
+keep-invalid-txs-in-cache = false
 
 # Maximum size of a single transaction.
-# NOTE: the max size of a tx transmitted over the network is {max_tx_bytes}.
-max_tx_bytes = 1048576
+# NOTE: the max size of a tx transmitted over the network is {max-tx-bytes}.
+max-tx-bytes = 1048576
 
 # Maximum size of a batch of transactions to send to a peer
 # Including space needed by encoding (one varint per transaction).
-max_batch_bytes = 10485760
+max-batch-bytes = 10485760
 
 #######################################################
 ###         State Sync Configuration Options        ###
@@ -301,19 +306,19 @@ enable = false
 # retrieval of state data for node bootstrapping. Also needs a trusted height and corresponding
 # header hash obtained from a trusted source, and a period during which validators can be trusted.
 #
-# For Cosmos SDK-based chains, trust_period should usually be about 2/3 of the unbonding time (~2
+# For Cosmos SDK-based chains, trust-period should usually be about 2/3 of the unbonding time (~2
 # weeks) during which they can be financially punished (slashed) for misbehavior.
-rpc_servers = ""
-trust_height = 0
-trust_hash = ""
-trust_period = "168h0m0s"
+rpc-servers = ""
+trust-height = 0
+trust-hash = ""
+trust-period = "168h0m0s"
 
 # Time to spend discovering snapshots before initiating a restore.
-discovery_time = "15s"
+discovery-time = "15s"
 
 # Temporary directory for state sync snapshot chunks, defaults to the OS tempdir (typically /tmp).
 # Will create a new, randomly named directory within, and remove it when done.
-temp_dir = ""
+temp-dir = ""
 
 #######################################################
 ###       Fast Sync Configuration Connections       ###
@@ -330,46 +335,46 @@ version = "v0"
 #######################################################
 [consensus]
 
-wal_file = "data/cs.wal/wal"
+wal-file = "data/cs.wal/wal"
 
 # How long we wait for a proposal block before prevoting nil
-timeout_propose = "3s"
-# How much timeout_propose increases with each round
-timeout_propose_delta = "500ms"
+timeout-propose = "3s"
+# How much timeout-propose increases with each round
+timeout-propose-delta = "500ms"
 # How long we wait after receiving +2/3 prevotes for “anything” (ie. not a single block or nil)
-timeout_prevote = "1s"
-# How much the timeout_prevote increases with each round
-timeout_prevote_delta = "500ms"
+timeout-prevote = "1s"
+# How much the timeout-prevote increases with each round
+timeout-prevote-delta = "500ms"
 # How long we wait after receiving +2/3 precommits for “anything” (ie. not a single block or nil)
-timeout_precommit = "1s"
-# How much the timeout_precommit increases with each round
-timeout_precommit_delta = "500ms"
+timeout-precommit = "1s"
+# How much the timeout-precommit increases with each round
+timeout-precommit-delta = "500ms"
 # How long we wait after committing a block, before starting on the new
 # height (this gives us a chance to receive some more precommits, even
 # though we already have +2/3).
-timeout_commit = "1s"
+timeout-commit = "1s"
 
 # How many blocks to look back to check existence of the node's consensus votes before joining consensus
 # When non-zero, the node will panic upon restart
-# if the same consensus key was used to sign {double_sign_check_height} last blocks.
+# if the same consensus key was used to sign {double-sign-check-height} last blocks.
 # So, validators should stop the state machine, wait for some blocks, and then restart the state machine to avoid panic.
-double_sign_check_height = 0
+double-sign-check-height = 0
 
 # Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
-skip_timeout_commit = false
+skip-timeout-commit = false
 
 # EmptyBlocks mode and possible interval between empty blocks
-create_empty_blocks = true
-create_empty_blocks_interval = "0s"
+create-empty-blocks = true
+create-empty-blocks-interval = "0s"
 
 # Reactor sleep duration parameters
-peer_gossip_sleep_duration = "100ms"
-peer_query_maj23_sleep_duration = "2s"
+peer-gossip-sleep-duration = "100ms"
+peer-query-maj23-sleep-duration = "2s"
 
 #######################################################
 ###   Transaction Indexer Configuration Options     ###
 #######################################################
-[tx_index]
+[tx-index]
 
 # What indexer to use for transactions
 #
@@ -393,13 +398,13 @@ indexer = "kv"
 prometheus = false
 
 # Address to listen for Prometheus collector(s) connections
-prometheus_listen_addr = ":26660"
+prometheus-listen-addr = ":26660"
 
 # Maximum number of simultaneous connections.
 # If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
-max_open_connections = 3
+max-open-connections = 3
 
 # Instrumentation namespace
 namespace = "tendermint"
@@ -408,13 +413,13 @@ namespace = "tendermint"
 
 ## Empty blocks VS no empty blocks
 
-### create_empty_blocks = true
+### create-empty-blocks = true
 
-If `create_empty_blocks` is set to `true` in your config, blocks will be
+If `create-empty-blocks` is set to `true` in your config, blocks will be
 created ~ every second (with default consensus parameters). You can regulate
-the delay between blocks by changing the `timeout_commit`. E.g. `timeout_commit = "10s"` should result in ~ 10 second blocks.
+the delay between blocks by changing the `timeout-commit`. E.g. `timeout-commit = "10s"` should result in ~ 10 second blocks.
 
-### create_empty_blocks = false
+### create-empty-blocks = false
 
 In this setting, blocks are created when transactions received.
 
@@ -428,17 +433,17 @@ block has the new application hash for the state X. That's why we make a new
 (empty) block if the application hash changes. Otherwise, you won't be able to
 make a proof for the new state.
 
-Plus, if you set `create_empty_blocks_interval` to something other than the
+Plus, if you set `create-empty-blocks-interval` to something other than the
 default (`0`), Tendermint will be creating empty blocks even in the absence of
-transactions every `create_empty_blocks_interval`. For instance, with
-`create_empty_blocks = false` and `create_empty_blocks_interval = "30s"`,
+transactions every `create-empty-blocks-interval`. For instance, with
+`create-empty-blocks = false` and `create-empty-blocks-interval = "30s"`,
 Tendermint will only create blocks if there are transactions, or after waiting
 30 seconds without receiving any transactions.
 
 ## Consensus timeouts explained
 
 There's a variety of information about timeouts in [Running in
-production](./running-in-production.md)
+production](../tendermint-core/running-in-production.md)
 
 You can also find more detailed technical explanation in the spec: [The latest
 gossip on BFT consensus](https://arxiv.org/abs/1807.04938).
@@ -447,45 +452,45 @@ gossip on BFT consensus](https://arxiv.org/abs/1807.04938).
 [consensus]
 ...
 
-timeout_propose = "3s"
-timeout_propose_delta = "500ms"
-timeout_prevote = "1s"
-timeout_prevote_delta = "500ms"
-timeout_precommit = "1s"
-timeout_precommit_delta = "500ms"
-timeout_commit = "1s"
+timeout-propose = "3s"
+timeout-propose-delta = "500ms"
+timeout-prevote = "1s"
+timeout-prevote-delta = "500ms"
+timeout-precommit = "1s"
+timeout-precommit-delta = "500ms"
+timeout-commit = "1s"
 ```
 
 Note that in a successful round, the only timeout that we absolutely wait no
-matter what is `timeout_commit`.
+matter what is `timeout-commit`.
 
 Here's a brief summary of the timeouts:
 
-- `timeout_propose` = how long we wait for a proposal block before prevoting
+- `timeout-propose` = how long we wait for a proposal block before prevoting
   nil
-- `timeout_propose_delta` = how much timeout_propose increases with each round
-- `timeout_prevote` = how long we wait after receiving +2/3 prevotes for
+- `timeout-propose-delta` = how much timeout-propose increases with each round
+- `timeout-prevote` = how long we wait after receiving +2/3 prevotes for
   anything (ie. not a single block or nil)
-- `timeout_prevote_delta` = how much the timeout_prevote increases with each
+- `timeout-prevote-delta` = how much the timeout-prevote increases with each
   round
-- `timeout_precommit` = how long we wait after receiving +2/3 precommits for
+- `timeout-precommit` = how long we wait after receiving +2/3 precommits for
   anything (ie. not a single block or nil)
-- `timeout_precommit_delta` = how much the timeout_precommit increases with
+- `timeout-precommit-delta` = how much the timeout-precommit increases with
   each round
-- `timeout_commit` = how long we wait after committing a block, before starting
+- `timeout-commit` = how long we wait after committing a block, before starting
   on the new height (this gives us a chance to receive some more precommits,
   even though we already have +2/3)
 
-## P2P settings 
+## P2P settings
 
-This section will cover settings within the p2p section of the `config.toml`. 
+This section will cover settings within the p2p section of the `config.toml`.
 
-- `external_address` = is the address that will be advertised for other nodes to use. We recommend setting this field with your public IP and p2p port. 
+- `external-address` = is the address that will be advertised for other nodes to use. We recommend setting this field with your public IP and p2p port.
 - `seeds` = is a list of comma separated seed nodes that you will connect upon a start and ask for peers. A seed node is a node that does not participate in consensus but only helps propagate peers to nodes in the networks
-- `persistent_peers` = is a list of comma separated peers that you will always want to be connected to. If you're already connected to the maximum number of peers, persistent peers will not be added. 
-- `max_num_inbound_peers` = is the maximum number of peers you will accept inbound connections from at one time (where they dial your address and initiate the connection).
-- `max_num_outbound_peers` = is the maximum number of peers you will initiate outbound connects to at one time (where you dial their address and initiate the connection).
-- `unconditional_peer_ids` = is similar to `persistent_peers` except that these peers will be connected to even if you are already connected to the maximum number of peers. This can be a validator node ID on your sentry node.
+- `persistent-peers` = is a list of comma separated peers that you will always want to be connected to. If you're already connected to the maximum number of peers, persistent peers will not be added.
+- `max-num-inbound-peers` = is the maximum number of peers you will accept inbound connections from at one time (where they dial your address and initiate the connection).
+- `max-num-outbound-peers` = is the maximum number of peers you will initiate outbound connects to at one time (where you dial their address and initiate the connection).
+- `unconditional-peer-ids` = is similar to `persistent-peers` except that these peers will be connected to even if you are already connected to the maximum number of peers. This can be a validator node ID on your sentry node.
 - `pex` = turns the peer exchange reactor on or off. Validator node will want the `pex` turned off so it would not begin gossiping to unknown peers on the network. PeX can also be turned off for statically configured networks with fixed network connectivity. For full nodes on open, dynamic networks, it should be turned on.
-- `seed_mode` = is used for when node operators want to run their node as a seed node. Seed node's run a variation of the PeX protocol that disconnects from peers after sending them a list of peers to connect to. To minimize the servers usage, it is recommended to set the mempool's size to 0.
--  `private_peer_ids` = is a comma separated list of node ids that you would not like exposed to other peers (ie. you will not tell other peers about the private_peer_ids). This can be filled with a validators node id. 
+- `seed-mode` = is used for when node operators want to run their node as a seed node. Seed node's run a variation of the PeX protocol that disconnects from peers after sending them a list of peers to connect to. To minimize the servers usage, it is recommended to set the mempool's size to 0.
+-  `private-peer-ids` = is a comma separated list of node ids that you would not like exposed to other peers (ie. you will not tell other peers about the private-peer-ids). This can be filled with a validators node id.

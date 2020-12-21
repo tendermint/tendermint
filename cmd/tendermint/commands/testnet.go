@@ -88,7 +88,7 @@ necessary files (private validator, genesis, config, etc.).
 
 Note, strict routability for addresses is turned off in the config file.
 
-Optionally, it will fill in persistent_peers list in config file using either hostnames or IPs.
+Optionally, it will fill in persistent-peers list in config file using either hostnames or IPs.
 
 Example:
 

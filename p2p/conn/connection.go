@@ -25,7 +25,8 @@ import (
 )
 
 const (
-	defaultMaxPacketMsgPayloadSize = 1024
+	// mirrors MaxPacketMsgPayloadSize from config/config.go
+	defaultMaxPacketMsgPayloadSize = 1400
 
 	numBatchPacketMsgs = 10
 	minReadBufferSize  = 1024
@@ -352,7 +353,7 @@ func (c *MConnection) Send(chID byte, msgBytes []byte) bool {
 		return false
 	}
 
-	c.Logger.Debug("Send", "channel", chID, "conn", c, "msgBytes", fmt.Sprintf("%X", msgBytes))
+	c.Logger.Debug("Send", "channel", chID, "conn", c, "msgBytes", msgBytes)
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
@@ -369,7 +370,7 @@ func (c *MConnection) Send(chID byte, msgBytes []byte) bool {
 		default:
 		}
 	} else {
-		c.Logger.Debug("Send failed", "channel", chID, "conn", c, "msgBytes", fmt.Sprintf("%X", msgBytes))
+		c.Logger.Debug("Send failed", "channel", chID, "conn", c, "msgBytes", msgBytes)
 	}
 	return success
 }
@@ -381,7 +382,7 @@ func (c *MConnection) TrySend(chID byte, msgBytes []byte) bool {
 		return false
 	}
 
-	c.Logger.Debug("TrySend", "channel", chID, "conn", c, "msgBytes", fmt.Sprintf("%X", msgBytes))
+	c.Logger.Debug("TrySend", "channel", chID, "conn", c, "msgBytes", msgBytes)
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
@@ -640,7 +641,7 @@ FOR_LOOP:
 				break FOR_LOOP
 			}
 			if msgBytes != nil {
-				c.Logger.Debug("Received bytes", "chID", pkt.PacketMsg.ChannelID, "msgBytes", fmt.Sprintf("%X", msgBytes))
+				c.Logger.Debug("Received bytes", "chID", pkt.PacketMsg.ChannelID, "msgBytes", msgBytes)
 				// NOTE: This means the reactor.Receive runs in the same thread as the p2p recv routine
 				c.onReceive(byte(pkt.PacketMsg.ChannelID), msgBytes)
 			}
@@ -848,7 +849,7 @@ func (ch *Channel) writePacketMsgTo(w io.Writer) (n int, err error) {
 }
 
 // Handles incoming PacketMsgs. It returns a message bytes if message is
-// complete. NOTE message bytes may change on next call to recvPacketMsg.
+// complete, which is owned by the caller and will not be modified.
 // Not goroutine-safe
 func (ch *Channel) recvPacketMsg(packet tmp2p.PacketMsg) ([]byte, error) {
 	ch.Logger.Debug("Read PacketMsg", "conn", ch.conn, "packet", packet)
@@ -859,12 +860,7 @@ func (ch *Channel) recvPacketMsg(packet tmp2p.PacketMsg) ([]byte, error) {
 	ch.recving = append(ch.recving, packet.Data...)
 	if packet.EOF {
 		msgBytes := ch.recving
-
-		// clear the slice without re-allocating.
-		// http://stackoverflow.com/questions/16971741/how-do-you-clear-a-slice-in-go
-		//   suggests this could be a memory leak, but we might as well keep the memory for the channel until it closes,
-		//	at which point the recving slice stops being used and should be garbage collected
-		ch.recving = ch.recving[:0] // make([]byte, 0, ch.desc.RecvBufferCapacity)
+		ch.recving = make([]byte, 0, ch.desc.RecvBufferCapacity)
 		return msgBytes, nil
 	}
 	return nil, nil

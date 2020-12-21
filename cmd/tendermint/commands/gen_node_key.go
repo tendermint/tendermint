@@ -12,9 +12,11 @@ import (
 // GenNodeKeyCmd allows the generation of a node key. It prints JSON-encoded
 // NodeKey to the standard output.
 var GenNodeKeyCmd = &cobra.Command{
-	Use:   "gen_node_key",
-	Short: "Generate new node key",
-	RunE:  genNodeKey,
+	Use:     "gen-node-key",
+	Aliases: []string{"gen_node_key"},
+	Short:   "Generate a new node key",
+	RunE:    genNodeKey,
+	PreRun:  deprecateSnakeCase,
 }
 
 func genNodeKey(cmd *cobra.Command, args []string) error {

@@ -311,6 +311,9 @@ func (r *BlockchainReactor) demux(events <-chan Event) {
 	defer doStatusTk.Stop()
 	doStatusCh <- struct{}{} // immediately broadcast to get status of existing peers
 
+	// Memoize the scSchedulerFail error to avoid printing it every scheduleFreq.
+	var scSchedulerFailErr error
+
 	// XXX: Extract timers to make testing atemporal
 	for {
 		select {
@@ -375,14 +378,22 @@ func (r *BlockchainReactor) demux(events <-chan Event) {
 					r.logger.Error("Error reporting peer", "err", err)
 				}
 			case scBlockRequest:
-				if err := r.io.sendBlockRequest(event.peerID, event.height); err != nil {
+				peer := r.Switch.Peers().Get(event.peerID)
+				if peer == nil {
+					r.logger.Error("Wanted to send block request, but no such peer", "peerID", event.peerID)
+					continue
+				}
+				if err := r.io.sendBlockRequest(peer, event.height); err != nil {
 					r.logger.Error("Error sending block request", "err", err)
 				}
 			case scFinishedEv:
 				r.processor.send(event)
 				r.scheduler.stop()
 			case scSchedulerFail:
-				r.logger.Error("Scheduler failure", "err", event.reason.Error())
+				if scSchedulerFailErr != event.reason {
+					r.logger.Error("Scheduler failure", "err", event.reason.Error())
+					scSchedulerFailErr = event.reason
+				}
 			case scPeersPruned:
 				// Remove peers from the processor.
 				for _, peerID := range event.peers {
@@ -472,20 +483,19 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *bcproto.StatusRequest:
-		if err := r.io.sendStatusResponse(r.store.Base(), r.store.Height(), src.ID()); err != nil {
+		if err := r.io.sendStatusResponse(r.store.Base(), r.store.Height(), src); err != nil {
 			logger.Error("Could not send status message to src peer")
 		}
 
 	case *bcproto.BlockRequest:
 		block := r.store.LoadBlock(msg.Height)
 		if block != nil {
-			if err = r.io.sendBlockToPeer(block, src.ID()); err != nil {
+			if err = r.io.sendBlockToPeer(block, src); err != nil {
 				logger.Error("Could not send block message to src peer", "err", err)
 			}
 		} else {
 			logger.Info("peer asking for a block we don't have", "height", msg.Height)
-			peerID := src.ID()
-			if err = r.io.sendBlockNotFound(msg.Height, peerID); err != nil {
+			if err = r.io.sendBlockNotFound(msg.Height, src); err != nil {
 				logger.Error("Couldn't send block not found msg", "err", err)
 			}
 		}
@@ -526,10 +536,16 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 // AddPeer implements Reactor interface
 func (r *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	err := r.io.sendStatusResponse(r.store.Base(), r.store.Height(), peer.ID())
+	err := r.io.sendStatusResponse(r.store.Base(), r.store.Height(), peer)
 	if err != nil {
-		r.logger.Error("Could not send status message to peer new", "src", peer.ID, "height", r.SyncHeight())
+		r.logger.Error("could not send our status to the new peer", "peer", peer.ID, "err", err)
 	}
+
+	err = r.io.sendStatusRequest(peer)
+	if err != nil {
+		r.logger.Error("could not send status request to the new peer", "peer", peer.ID, "err", err)
+	}
+
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 	if r.events != nil {
