@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/tendermint/tendermint/libs/protoio"
 )
 
 const (
@@ -14,11 +15,13 @@ const (
 
 // WriteMessage writes a varint length-delimited protobuf message.
 func WriteMessage(msg proto.Message, w io.Writer) error {
-	bz, err := proto.Marshal(msg)
+	protoWriter := protoio.NewDelimitedWriter(w)
+	_, err := protoWriter.WriteMsg(msg)
 	if err != nil {
 		return err
 	}
-	return encodeByteSlice(w, bz)
+
+	return nil
 }
 
 // ReadMessage reads a varint length-delimited protobuf message.
@@ -45,26 +48,6 @@ func readProtoMsg(r io.Reader, msg proto.Message, maxSize int) error {
 		return err
 	}
 	return proto.Unmarshal(buf, msg)
-}
-
-//-----------------------------------------------------------------------
-// NOTE: we copied wire.EncodeByteSlice from go-wire rather than keep
-// go-wire as a dep
-
-func encodeByteSlice(w io.Writer, bz []byte) (err error) {
-	err = encodeVarint(w, int64(len(bz)))
-	if err != nil {
-		return
-	}
-	_, err = w.Write(bz)
-	return
-}
-
-func encodeVarint(w io.Writer, i int64) (err error) {
-	var buf [10]byte
-	n := binary.PutVarint(buf[:], i)
-	_, err = w.Write(buf[0:n])
-	return
 }
 
 //----------------------------------------
