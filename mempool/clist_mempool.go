@@ -602,11 +602,9 @@ func (mem *CListMempool) Update(
 		if deliverTxResponses[i].Code == abci.CodeTypeOK {
 			// Add valid committed tx to the cache (if missing).
 			_ = mem.cache.Push(tx)
-		} else {
-			if !mem.config.CacheKeepCheckTxInvalid {
-				// Allow invalid transactions to be resubmitted.
-				mem.cache.Remove(tx)
-			}
+		} else if !mem.config.CacheKeepCheckTxInvalid {
+			// Allow invalid transactions to be resubmitted.
+			mem.cache.Remove(tx)
 		}
 
 		// Remove committed tx from the mempool.
