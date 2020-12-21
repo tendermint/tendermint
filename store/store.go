@@ -517,6 +517,7 @@ func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *types.Commit) err
 
 // key prefixes
 const (
+	// prefixes are unique across all tm db's
 	prefixBlockMeta   = byte(0x00)
 	prefixBlockPart   = byte(0x01)
 	prefixBlockCommit = byte(0x02)

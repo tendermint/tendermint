@@ -27,9 +27,10 @@ const (
 //------------------------------------------------------------------------
 
 const (
-	prefixValidators      = byte(0x01)
-	prefixConsensusParams = byte(0x02)
-	prefixABCIResponses   = byte(0x03)
+	// prefixes are unique across all tm db's
+	prefixValidators      = byte(0x05)
+	prefixConsensusParams = byte(0x06)
+	prefixABCIResponses   = byte(0x07)
 )
 
 func encodeKey(buf []byte, height int64) []byte {

@@ -13,10 +13,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var (
-	sizeKey = []byte("size")
-)
-
 type dbs struct {
 	db     dbm.DB
 	prefix string
@@ -29,13 +25,17 @@ type dbs struct {
 // want to use one DB with many light clients).
 func New(db dbm.DB, prefix string) store.Store {
 
+	lightStore := &dbs{db: db, prefix: prefix}
+
+	// retrieve the size of the db
 	size := uint16(0)
-	bz, err := db.Get(sizeKey)
+	bz, err := lightStore.db.Get(lightStore.sizeKey())
 	if err == nil && len(bz) > 0 {
 		size = unmarshalSize(bz)
 	}
+	lightStore.size = size
 
-	return &dbs{db: db, prefix: prefix, size: size}
+	return lightStore
 }
 
 // SaveLightBlock persists LightBlock to the db.
@@ -65,7 +65,7 @@ func (s *dbs) SaveLightBlock(lb *types.LightBlock) error {
 	if err = b.Set(s.lbKey(lb.Height), lbBz); err != nil {
 		return err
 	}
-	if err = b.Set(sizeKey, marshalSize(s.size+1)); err != nil {
+	if err = b.Set(s.sizeKey(), marshalSize(s.size+1)); err != nil {
 		return err
 	}
 	if err = b.WriteSync(); err != nil {
@@ -93,7 +93,7 @@ func (s *dbs) DeleteLightBlock(height int64) error {
 	if err := b.Delete(s.lbKey(height)); err != nil {
 		return err
 	}
-	if err := b.Set(sizeKey, marshalSize(s.size-1)); err != nil {
+	if err := b.Set(s.sizeKey(), marshalSize(s.size-1)); err != nil {
 		return err
 	}
 	if err := b.WriteSync(); err != nil {
@@ -261,7 +261,7 @@ func (s *dbs) Prune(size uint16) error {
 	defer s.mtx.Unlock()
 
 	s.size = size
-	if wErr := s.db.SetSync(sizeKey, marshalSize(size)); wErr != nil {
+	if wErr := s.db.SetSync(s.sizeKey(), marshalSize(size)); wErr != nil {
 		return fmt.Errorf("failed to persist size: %w", wErr)
 	}
 
@@ -275,6 +275,14 @@ func (s *dbs) Size() uint16 {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
 	return s.size
+}
+
+func (s *dbs) sizeKey() []byte {
+	// heights always starts from 1. Hence in order to avoid
+	// key collisions we reserve size to be the key at height 0.
+	// note this already will contain the specific light client
+	// prefix.
+	return s.lbKey(0)
 }
 
 func (s *dbs) lbKey(height int64) []byte {
