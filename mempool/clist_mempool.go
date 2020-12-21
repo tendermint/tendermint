@@ -293,9 +293,7 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 
 	reqRes, err := mem.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{Tx: tx})
 	if err != nil {
-		if !mem.config.KeepInvalidTxsInCache {
-			mem.cache.Remove(tx)
-		}
+		mem.cache.Remove(tx)
 		return err
 	}
 	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderP2PID, cb))
@@ -426,10 +424,8 @@ func (mem *CListMempool) resCbFirstTime(
 			// Check mempool isn't full again to reduce the chance of exceeding the
 			// limits.
 			if err := mem.isFull(len(tx)); err != nil {
-				if !mem.config.KeepInvalidTxsInCache {
-					// remove from cache (mempool might have a space later)
-					mem.cache.Remove(tx)
-				}
+				// remove from cache (mempool might have a space later)
+				mem.cache.Remove(tx)
 				mem.logger.Error(err.Error())
 				return
 			}
@@ -487,7 +483,7 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 		} else {
 			// Tx became invalidated due to newly committed block.
 			mem.logger.Info("Tx is no longer valid", "tx", txID(tx), "res", r, "err", postCheckErr)
-			// NOTE: we remove tx from the cache because it might be good later if KeepInvalidTxsInCache set to false
+			// NOTE: we remove tx from the cache because it might be good later
 			mem.removeTx(tx, mem.recheckCursor, !mem.config.KeepInvalidTxsInCache)
 		}
 		if mem.recheckCursor == mem.recheckEnd {
