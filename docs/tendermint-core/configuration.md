@@ -278,6 +278,11 @@ max_txs_bytes = 1073741824
 # Size of the cache (used to filter transactions we saw earlier) in transactions
 cache_size = 10000
 
+# Do not remove invalid transactions from the cache (default: false)
+# Set to true if it's not possible for any invalid transaction to become valid
+# again in the future.
+keep-invalid-txs-in-cache = false
+
 # Maximum size of a single transaction.
 # NOTE: the max size of a tx transmitted over the network is {max_tx_bytes}.
 max_tx_bytes = 1048576
