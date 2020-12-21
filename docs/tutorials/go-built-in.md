@@ -586,10 +586,27 @@ dependency management.
 
 ```bash
 go mod init github.com/me/example
-go build
+go get github.com/tendermint/tendermint/@v0.34.0
 ```
 
-This should build the binary.
+After running the above commands you will see two generated files, go.mod and go.sum. The go.mod file should look similar to:
+
+```go
+module github.com/me/example
+
+go 1.15
+
+require (
+	github.com/dgraph-io/badger v1.6.2
+	github.com/tendermint/tendermint v0.34.0
+)
+```
+
+Finally, we will build our binary:
+
+```sh
+go build
+```
 
 To create a default configuration, nodeKey and private validator files, let's
 execute `tendermint init`. But before we do that, we will need to install
