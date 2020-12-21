@@ -22,9 +22,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES
 
-
-
 ### IMPROVEMENTS
+
+- [mempool] \#5813 Add `keep-invalid-txs-in-cache` config option. When set to true, mempool will keep invalid transactions in the cache (@p4u)
 
 ### BUG FIXES
 
