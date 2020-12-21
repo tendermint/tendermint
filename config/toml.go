@@ -330,8 +330,10 @@ max-txs-bytes = {{ .Mempool.MaxTxsBytes }}
 # Size of the cache (used to filter transactions we saw earlier) in transactions
 cache-size = {{ .Mempool.CacheSize }}
 
-# Keep transactions in cache if checkTx result is invalid (helps protecting against spam)
-cache-keep-checktx-invalid = {{ .Mempool.CacheKeepCheckTxInvalid }}
+# Do not remove invalid transactions from the cache (default: false)
+# Set to true if it's not possible for any invalid transaction to become valid
+# again in the future.
+keep-invalid-txs-in-cache = {{ .Mempool.KeepInvalidTxsInCache }}
 
 # Maximum size of a single transaction.
 # NOTE: the max size of a tx transmitted over the network is {max-tx-bytes}.
