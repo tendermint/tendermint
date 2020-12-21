@@ -289,7 +289,8 @@ max-tx-bytes = 1048576
 
 # Maximum size of a batch of transactions to send to a peer
 # Including space needed by encoding (one varint per transaction).
-max-batch-bytes = 10485760
+# XXX: Unused due to https://github.com/tendermint/tendermint/issues/5796
+max-batch-bytes = 0
 
 #######################################################
 ###         State Sync Configuration Options        ###
