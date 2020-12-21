@@ -134,12 +134,18 @@ func (memR *Reactor) OnStart() error {
 // GetChannels implements Reactor by returning the list of channels for this
 // reactor.
 func (memR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
-	maxMsgSize := memR.config.MaxBatchBytes
+	largestTx := make([]byte, memR.config.MaxTxBytes)
+	batchMsg := protomem.Message{
+		Sum: &protomem.Message_Txs{
+			Txs: &protomem.Txs{Txs: [][]byte{largestTx}},
+		},
+	}
+
 	return []*p2p.ChannelDescriptor{
 		{
 			ID:                  MempoolChannel,
 			Priority:            5,
-			RecvMessageCapacity: maxMsgSize,
+			RecvMessageCapacity: batchMsg.Size(),
 		},
 	}
 }
@@ -232,20 +238,19 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 			continue
 		}
 
-		txs := memR.txs(next, peerID, peerState.GetHeight()) // WARNING: mutates next!
+		// NOTE: Transaction batching was disabled due to
+		// https://github.com/tendermint/tendermint/issues/5796
 
-		// send txs
-		if len(txs) > 0 {
+		if _, ok := memTx.senders.Load(peerID); !ok {
 			msg := protomem.Message{
 				Sum: &protomem.Message_Txs{
-					Txs: &protomem.Txs{Txs: txs},
+					Txs: &protomem.Txs{Txs: [][]byte{memTx.tx}},
 				},
 			}
 			bz, err := msg.Marshal()
 			if err != nil {
 				panic(err)
 			}
-			memR.Logger.Debug("Sending N txs to peer", "N", len(txs), "peer", peer)
 			success := peer.Send(MempoolChannel, bz)
 			if !success {
 				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
@@ -262,37 +267,6 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		case <-memR.Quit():
 			return
 		}
-	}
-}
-
-// txs iterates over the transaction list and builds a batch of txs. next is
-// included.
-// WARNING: mutates next!
-func (memR *Reactor) txs(next *clist.CElement, peerID uint16, peerHeight int64) [][]byte {
-	batch := make([][]byte, 0)
-
-	for {
-		memTx := next.Value.(*mempoolTx)
-
-		if _, ok := memTx.senders.Load(peerID); !ok {
-			// If current batch + this tx size is greater than max => return.
-			batchMsg := protomem.Message{
-				Sum: &protomem.Message_Txs{
-					Txs: &protomem.Txs{Txs: append(batch, memTx.tx)},
-				},
-			}
-			if batchMsg.Size() > memR.config.MaxBatchBytes {
-				return batch
-			}
-
-			batch = append(batch, memTx.tx)
-		}
-
-		n := next.Next()
-		if n == nil {
-			return batch
-		}
-		next = n
 	}
 }
 
