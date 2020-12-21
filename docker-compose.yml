@@ -7,7 +7,7 @@ services:
     ports:
       - "26656-26657:26656-26657"
       - "6060:6060"
-      - "26665:26660"
+      - "27000:26660"
     environment:
       - ID=0
       - LOG=${LOG:-tendermint.log}
