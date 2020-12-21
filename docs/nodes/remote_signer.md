@@ -6,13 +6,15 @@ order: 7
 
 Tendermint provides a remote signer option for validators. A remote signer enables the operator to store the validator key on a different machine minimizing the attack surface if a server were to be compromised.
 
-The remote signer protocol implements a [client and server architecture](https://en.wikipedia.org/wiki/Client%E2%80%93server_model). The node is the client and the remote signer is the server. When Tendermint requires the public key or signature for a proposal or vote it requests it from the server.
+The remote signer protocol implements a [client and server architecture](https://en.wikipedia.org/wiki/Client%E2%80%93server_model). When Tendermint requires the public key or signature for a proposal or vote it requests it from the remote signer.
 
-There are two different configurations that can be used: raw or gRPC.
+To run a secure validator and remote signer system it is recommended to use a VPC (virtual private cloud) or a private connection. 
+
+There are two different configurations that can be used: Raw or gRPC.
 
 ## Raw
 
-While both options use tcp or unix sockets the raw option uses tcp or unix sockets without http. Raw is the old protocol for remote signers.
+While both options use tcp or unix sockets the raw option uses tcp or unix sockets without http. The raw protocol sets up Tendermint as the server and the remote signer as the client. This aids in not exposing the remote signer to public network. 
 
 > Warning: Raw will be deprecated in a future major release, we recommend implementing your key management server against the gRPC configuration.
 
@@ -21,6 +23,8 @@ While both options use tcp or unix sockets the raw option uses tcp or unix socke
 [gRPC](https://grpc.io/) is an RPC framework built with [HTTP/2](https://en.wikipedia.org/wiki/HTTP/2), uses [Protocol Buffers](https://developers.google.com/protocol-buffers) to define services and has been standardized within the cloud infrastructure community. gRPC provides a language agnostic way to implement services. This aids developers in the writing key management servers in various different languages.
 
 GRPC utilizes [TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security), another widely standardized protocol, to secure connections. There are two forms of TLS to secure a connection, one-way and two-way. One way is when the client identifies the server but the server allows anyone to connect to it. Two-way is when the client identifies the server and the server identifies the client, prohibiting connections from unknown parties.
+
+When using gRPC Tendermint is setup as the client. Tendermint will make calls to the remote signer. We recommend not exposing the remote signer to the public network with the use of virtual private cloud.
 
 Securing your remote signers connection is highly recommended, but we provide the option to run it with a insecure connection.
 
