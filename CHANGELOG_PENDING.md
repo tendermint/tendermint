@@ -49,6 +49,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [blockchain/v0] \#5741 Relax termination conditions and increase sync timeout (@melekes)
 - [cli] \#5772 `gen_node_key` output now contains node ID (`id` field) (@melekes)
 - [blockchain/v2] \#5774 Send status request when new peer joins (@melekes)
+- [consensus] \#5792 Deprecates the `time_iota_ms` consensus parameter, to reduce the bug surface. The parameter is no longer used. (@valardragon)
+- [mempool] \#5813 Add `keep-invalid-txs-in-cache` config option. When set to true, mempool will keep invalid transactions in the cache (@p4u)
 
 ### BUG FIXES
 

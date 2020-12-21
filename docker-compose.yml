@@ -6,6 +6,8 @@ services:
     image: "tendermint/localnode"
     ports:
       - "26656-26657:26656-26657"
+      - "6060:6060"
+      - "9090:9090"
     environment:
       - ID=0
       - LOG=${LOG:-tendermint.log}

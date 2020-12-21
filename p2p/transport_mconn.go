@@ -129,6 +129,11 @@ func NewMConnTransport(
 }
 
 // SetChannelDescriptors implements Transport.
+//
+// This is not concurrency-safe, and must be called before listening.
+//
+// FIXME: This is here for compatibility with existing switch code,
+// it should be passed via the constructor instead.
 func (m *MConnTransport) SetChannelDescriptors(chDescs []*conn.ChannelDescriptor) {
 	m.channelDescs = chDescs
 }

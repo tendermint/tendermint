@@ -71,7 +71,7 @@ func checkConfig(configFile string) bool {
 	var elems = []string{
 		"moniker",
 		"seeds",
-		"proxy_app",
+		"proxy-app",
 		"fast_sync",
 		"create_empty_blocks",
 		"peer",

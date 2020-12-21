@@ -26,7 +26,7 @@ Validators have a cryptographic key-pair and an associated amount of
 
 There are two ways to become validator.
 
-1. They can be pre-established in the [genesis state](./using-tendermint.md#genesis)
+1. They can be pre-established in the [genesis state](../tendermint-core/using-tendermint.md#genesis)
 2. The ABCI app responds to the EndBlock message with changes to the
    existing validator set.
 
@@ -56,23 +56,23 @@ The validator will only talk to the sentry that are provided, the sentry nodes w
 
 When initializing nodes there are five parameters in the `config.toml` that may need to be altered.
 
-- `pex:` boolean. This turns the peer exchange reactor on or off for a node. When `pex=false`, only the `persistent_peers` list is available for connection.
-- `persistent_peers:` a comma separated list of `nodeID@ip:port` values that define a list of peers that are expected to be online at all times. This is necessary at first startup because by setting `pex=false` the node will not be able to join the network.
-- `unconditional_peer_ids:` comma separated list of nodeID's. These nodes will be connected to no matter the limits of inbound and outbound peers. This is useful for when sentry nodes have full address books.
-- `private_peer_ids:` comma separated list of nodeID's. These nodes will not be gossiped to the network. This is an important field as you do not want your validator IP gossiped to the network.
-- `addr_book_strict:` boolean. By default nodes with a routable address will be considered for connection. If this setting is turned off (false), non-routable IP addresses, like addresses in a private network can be added to the address book.
-- `double_sign_check_height` int64 height.  How many blocks to look back to check existence of the node's consensus votes before joining consensus When non-zero, the node will panic upon restart if the same consensus key was used to sign {double_sign_check_height} last blocks. So, validators should stop the state machine, wait for some blocks, and then restart the state machine to avoid panic.
+- `pex:` boolean. This turns the peer exchange reactor on or off for a node. When `pex=false`, only the `persistent-peers` list is available for connection.
+- `persistent-peers:` a comma separated list of `nodeID@ip:port` values that define a list of peers that are expected to be online at all times. This is necessary at first startup because by setting `pex=false` the node will not be able to join the network.
+- `unconditional-peer-ids:` comma separated list of nodeID's. These nodes will be connected to no matter the limits of inbound and outbound peers. This is useful for when sentry nodes have full address books.
+- `private-peer-ids:` comma separated list of nodeID's. These nodes will not be gossiped to the network. This is an important field as you do not want your validator IP gossiped to the network.
+- `addr-book-strict:` boolean. By default nodes with a routable address will be considered for connection. If this setting is turned off (false), non-routable IP addresses, like addresses in a private network can be added to the address book.
+- `double-sign-check-height` int64 height.  How many blocks to look back to check existence of the node's consensus votes before joining consensus When non-zero, the node will panic upon restart if the same consensus key was used to sign {double_sign_check_height} last blocks. So, validators should stop the state machine, wait for some blocks, and then restart the state machine to avoid panic.
 
 #### Validator Node Configuration
 
 | Config Option            | Setting                    |
 | ------------------------ | -------------------------- |
 | pex                      | false                      |
-| persistent_peers         | list of sentry nodes       |
-| private_peer_ids         | none                       |
-| unconditional_peer_ids   | optionally sentry node IDs |
-| addr_book_strict         | false                      |
-| double_sign_check_height | 10                         |
+| persistent-peers         | list of sentry nodes       |
+| private-peer-ids         | none                       |
+| unconditional-peer-ids   | optionally sentry node IDs |
+| addr-book-strict         | false                      |
+| double-sign-check-height | 10                         |
 
 The validator node should have `pex=false` so it does not gossip to the entire network. The persistent peers will be your sentry nodes. Private peers can be left empty as the validator is not trying to hide who it is communicating with. Setting unconditional peers is optional for a validator because they will not have a full address books.
 
@@ -81,10 +81,10 @@ The validator node should have `pex=false` so it does not gossip to the entire n
 | Config Option          | Setting                                       |
 | ---------------------- | --------------------------------------------- |
 | pex                    | true                                          |
-| persistent_peers       | validator node, optionally other sentry nodes |
-| private_peer_ids       | validator node ID                             |
-| unconditional_peer_ids | validator node ID, optionally sentry node IDs |
-| addr_book_strict       | false                                         |
+| persistent-peers       | validator node, optionally other sentry nodes |
+| private-peer-ids       | validator node ID                             |
+| unconditional-peer-ids | validator node ID, optionally sentry node IDs |
+| addr-book-strict       | false                                         |
 
 The sentry nodes should be able to talk to the entire network hence why `pex=true`. The persistent peers of a sentry node will be the validator, and optionally other sentry nodes. The sentry nodes should make sure that they do not gossip the validator's ip, to do this you must put the validators nodeID as a private peer. The unconditional peer IDs will be the validator ID and optionally other sentry nodes.
 
