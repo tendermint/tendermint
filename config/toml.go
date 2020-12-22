@@ -141,13 +141,13 @@ priv-validator-laddr = "{{ .BaseConfig.PrivValidatorListenAddr }}"
 
 # Client certificate generated while creating needed files for secure connection.
 # If a remote validator address is provided but no certificate, the connection will be insecure
-priv_validator_client_certificate = "{{ js .BaseConfig.PrivValidatorClientCertificate }}"
+priv-validator-client-certificate-file = "{{ js .BaseConfig.PrivValidatorClientCertificate }}"
 
 # Client key generated while creating certificates for secure connection
-priv_validator_client_key = "{{ js .BaseConfig.PrivValidatorClientKey }}"
+priv-validator-client-key-file = "{{ js .BaseConfig.PrivValidatorClientKey }}"
 
 # Path Root Certificate Authority used to sign both client and server certificates
-priv_validator_certificate_authority = "{{ js .BaseConfig.PrivValidatorCertificateAuthority }}"
+priv-validator-certificate-authority = "{{ js .BaseConfig.PrivValidatorRootCA }}"
 
 # Path to the JSON file containing the private key to use for node authentication in the p2p protocol
 node-key-file = "{{ js .BaseConfig.NodeKey }}"

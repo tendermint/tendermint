@@ -206,13 +206,13 @@ type BaseConfig struct { //nolint: maligned
 
 	// Client certificate generated while creating needed files for secure connection.
 	// If a remote validator address is provided but no certificate, the connection will be insecure
-	PrivValidatorClientCertificate string `mapstructure:"priv_validator_client_certificate"`
+	PrivValidatorClientCertificate string `mapstructure:"priv-validator-client-certificate-file"`
 
 	// Client key generated while creating certificates for secure connection
-	PrivValidatorClientKey string `mapstructure:"priv_validator_client_key"`
+	PrivValidatorClientKey string `mapstructure:"priv-validator-client-key-file"`
 
 	// Path Root Certificate Authority used to sign both client and server certificates
-	PrivValidatorCertificateAuthority string `mapstructure:"priv_validator_certificate_authority"`
+	PrivValidatorRootCA string `mapstructure:"priv-validator-root-ca-file"`
 
 	// A JSON file containing the private key to use for p2p authenticated encryption
 	NodeKey string `mapstructure:"node-key-file"`
@@ -274,8 +274,8 @@ func (cfg BaseConfig) PrivValidatorClientCertificateFile() string {
 }
 
 // PrivValidatorCertificateAuthorityFile returns the full path to the priv_validator_key.json file
-func (cfg BaseConfig) PrivValidatorCertificateAuthorityFile() string {
-	return rootify(cfg.PrivValidatorCertificateAuthority, cfg.RootDir)
+func (cfg BaseConfig) PrivValidatorRootCAFile() string {
+	return rootify(cfg.PrivValidatorRootCA, cfg.RootDir)
 }
 
 // PrivValidatorKeyFile returns the full path to the priv_validator_key.json file
@@ -300,7 +300,7 @@ func (cfg BaseConfig) DBDir() string {
 
 func (cfg *BaseConfig) ArePrivValidatorClientSecurityOptionsPresent() bool {
 	switch {
-	case cfg.PrivValidatorCertificateAuthority == "":
+	case cfg.PrivValidatorRootCA == "":
 		return false
 	case cfg.PrivValidatorClientKey == "":
 		return false

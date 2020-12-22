@@ -4,10 +4,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
-	"log"
+	"os"
 	"time"
 
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
+	"github.com/tendermint/tendermint/libs/log"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
@@ -48,24 +49,27 @@ func DefaultDialOptions(
 	return dialOpts
 }
 
-func GenerateTLS(certPath, keyPath, ca string) grpc.DialOption {
+func GenerateTLS(certPath, keyPath, ca string, log log.Logger) grpc.DialOption {
 	certificate, err := tls.LoadX509KeyPair(
 		certPath,
 		keyPath,
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Error("error", err)
+		os.Exit(1)
 	}
 
 	certPool := x509.NewCertPool()
 	bs, err := ioutil.ReadFile(ca)
 	if err != nil {
-		log.Fatalf("failed to read ca cert: %s", err)
+		log.Error("failed to read ca cert:", "error", err)
+		os.Exit(1)
 	}
 
 	ok := certPool.AppendCertsFromPEM(bs)
 	if !ok {
-		log.Fatal("failed to append certs")
+		log.Error("failed to append certs")
+		os.Exit(1)
 	}
 
 	transportCreds := credentials.NewTLS(&tls.Config{

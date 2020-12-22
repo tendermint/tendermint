@@ -1414,7 +1414,7 @@ func createAndStartPrivValidatorGRPCClient(
 	var transportSecurity grpc.DialOption
 	if config.BaseConfig.ArePrivValidatorClientSecurityOptionsPresent() {
 		transportSecurity = tmgrpc.GenerateTLS(config.PrivValidatorClientCertificateFile(),
-			config.PrivValidatorClientKeyFile(), config.PrivValidatorCertificateAuthorityFile())
+			config.PrivValidatorClientKeyFile(), config.PrivValidatorRootCAFile(), logger)
 	} else {
 		transportSecurity = grpc.WithInsecure()
 		logger.Info("Using an insecure gRPC connection!")

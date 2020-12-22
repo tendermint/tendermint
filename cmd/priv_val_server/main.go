@@ -124,7 +124,7 @@ func main() {
 
 	logger.Info("SignerServer: Starting grpc server")
 	if err := s.Serve(lis); err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to listen on port %s. %v", *addr, err)
+		fmt.Fprintf(os.Stderr, "Unable to listen on port %s: %v", *addr, err)
 		os.Exit(1)
 	}
 
@@ -135,7 +135,7 @@ func main() {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 			if err := httpSrv.Shutdown(ctx); err != nil {
-				fmt.Fprintf(os.Stderr, "Unable to stop http server. %v", err)
+				fmt.Fprintf(os.Stderr, "Unable to stop http server: %v", err)
 				os.Exit(1)
 			}
 		}
@@ -154,7 +154,7 @@ func registerPrometheus(addr string, s *grpc.Server) *http.Server {
 
 	go func() {
 		if err := httpServer.ListenAndServe(); err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to start a http server. %v", err)
+			fmt.Fprintf(os.Stderr, "Unable to start a http server: %v", err)
 			os.Exit(1)
 		}
 	}()
