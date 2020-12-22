@@ -28,7 +28,7 @@ release:
   name_template: "{{.Version}} (WARNING: BETA SOFTWARE)"
 
 archives:
-  files:
+  - files:
     - LICENSE
     - README.md
     - UPGRADING.md
