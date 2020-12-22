@@ -13,9 +13,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// SignerServer implements PrivValidatorAPIServer 9generated via protobuf services)
+// Handles remote validator connections that provide signing services
 type SignerServer struct {
-	logger log.Logger
-
+	logger  log.Logger
 	chainID string
 	privVal types.PrivValidator
 }
