@@ -636,11 +636,16 @@ type MempoolConfig struct {
 	MaxTxsBytes int64 `mapstructure:"max-txs-bytes"`
 	// Size of the cache (used to filter transactions we saw earlier) in transactions
 	CacheSize int `mapstructure:"cache-size"`
+	// Do not remove invalid transactions from the cache (default: false)
+	// Set to true if it's not possible for any invalid transaction to become
+	// valid again in the future.
+	KeepInvalidTxsInCache bool `mapstructure:"keep-invalid-txs-in-cache"`
 	// Maximum size of a single transaction
 	// NOTE: the max size of a tx transmitted over the network is {max-tx-bytes}.
 	MaxTxBytes int `mapstructure:"max-tx-bytes"`
 	// Maximum size of a batch of transactions to send to a peer
 	// Including space needed by encoding (one varint per transaction).
+	// XXX: Unused due to https://github.com/tendermint/tendermint/issues/5796
 	MaxBatchBytes int `mapstructure:"max-batch-bytes"`
 }
 
@@ -652,11 +657,10 @@ func DefaultMempoolConfig() *MempoolConfig {
 		WalPath:   "",
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
-		Size:          5000,
-		MaxTxsBytes:   1024 * 1024 * 1024, // 1GB
-		CacheSize:     10000,
-		MaxTxBytes:    1024 * 1024,      // 1MB
-		MaxBatchBytes: 10 * 1024 * 1024, // 10MB
+		Size:        5000,
+		MaxTxsBytes: 1024 * 1024 * 1024, // 1GB
+		CacheSize:   10000,
+		MaxTxBytes:  1024 * 1024, // 1MB
 	}
 }
 
@@ -691,12 +695,6 @@ func (cfg *MempoolConfig) ValidateBasic() error {
 	}
 	if cfg.MaxTxBytes < 0 {
 		return errors.New("max-tx-bytes can't be negative")
-	}
-	if cfg.MaxBatchBytes < 0 {
-		return errors.New("max-batch-bytes can't be negative")
-	}
-	if cfg.MaxBatchBytes <= cfg.MaxTxBytes {
-		return errors.New("max-batch-bytes can't be less or equal to max-tx-bytes")
 	}
 	return nil
 }
