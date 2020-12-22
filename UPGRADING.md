@@ -10,6 +10,8 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 * The method `SetOption` has been removed from the ABCI.Client interface. This feature was used in the early ABCI implementation's.
 
+* Messages are written to a byte stream using uin64 length delimiters instead of int64.
+
 ### Config Changes
 
 * `fast_sync = "v1"` is no longer supported. Please use `v2` instead.
