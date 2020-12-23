@@ -1,19 +1,128 @@
 package p2p
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
+	"net/url"
 	"runtime/debug"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/cmap"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
+
+// PeerAddress is a peer address URL.
+type PeerAddress struct {
+	*url.URL
+}
+
+// ParsePeerAddress parses a peer address URL into a PeerAddress.
+func ParsePeerAddress(address string) (PeerAddress, error) {
+	u, err := url.Parse(address)
+	if err != nil || u == nil {
+		return PeerAddress{}, fmt.Errorf("unable to parse peer address %q: %w", address, err)
+	}
+	if u.Scheme == "" {
+		u.Scheme = string(defaultProtocol)
+	}
+	pa := PeerAddress{URL: u}
+	if err = pa.Validate(); err != nil {
+		return PeerAddress{}, err
+	}
+	return pa, nil
+}
+
+// NodeID returns the address node ID.
+func (a PeerAddress) NodeID() NodeID {
+	return NodeID(a.User.Username())
+}
+
+// Resolve resolves a PeerAddress into a set of Endpoints, by expanding
+// out a DNS name in Host to its IP addresses. Field mapping:
+//
+//   Scheme → Endpoint.Protocol
+//   Host   → Endpoint.IP
+//   User   → Endpoint.PeerID
+//   Port   → Endpoint.Port
+//   Path+Query+Fragment,Opaque → Endpoint.Path
+//
+func (a PeerAddress) Resolve(ctx context.Context) ([]Endpoint, error) {
+	ips, err := net.DefaultResolver.LookupIP(ctx, "ip", a.Host)
+	if err != nil {
+		return nil, err
+	}
+	port, err := a.parsePort()
+	if err != nil {
+		return nil, err
+	}
+
+	path := a.Path
+	if a.RawPath != "" {
+		path = a.RawPath
+	}
+	if a.Opaque != "" { // used for e.g. "about:blank" style URLs
+		path = a.Opaque
+	}
+	if a.RawQuery != "" {
+		path += "?" + a.RawQuery
+	}
+	if a.RawFragment != "" {
+		path += "#" + a.RawFragment
+	}
+
+	endpoints := make([]Endpoint, 0, len(ips))
+	for _, ip := range ips {
+		endpoint := Endpoint{
+			PeerID:   NodeID(a.User.Username()),
+			Protocol: Protocol(a.Scheme),
+			IP:       ip,
+			Port:     port,
+			Path:     path,
+		}
+		endpoints = append(endpoints, endpoint)
+	}
+	return endpoints, nil
+}
+
+// Validates validates a PeerAddress.
+func (a PeerAddress) Validate() error {
+	if a.Scheme == "" {
+		return errors.New("no protocol")
+	}
+	if id := a.User.Username(); id == "" {
+		return errors.New("no peer ID")
+	} else if err := NodeID(id).Validate(); err != nil {
+		return fmt.Errorf("invalid peer ID: %w", err)
+	}
+	if a.Hostname() == "" && len(a.Query()) == 0 && a.Opaque == "" {
+		return errors.New("no host or path given")
+	}
+	if port, err := a.parsePort(); err != nil {
+		return err
+	} else if port > 0 && a.Hostname() == "" {
+		return errors.New("cannot specify port without host")
+	}
+	return nil
+}
+
+// parsePort returns the port number as a uint16.
+func (a PeerAddress) parsePort() (uint16, error) {
+	if portString := a.Port(); portString != "" {
+		port64, err := strconv.ParseUint(portString, 10, 16)
+		if err != nil {
+			return 0, fmt.Errorf("invalid port %q: %w", portString, err)
+		}
+		return uint16(port64), nil
+	}
+	return 0, nil
+}
 
 // PeerStatus specifies peer statuses.
 type PeerStatus string
@@ -70,7 +179,7 @@ type PeerUpdatesCh struct {
 // NewPeerUpdates returns a reference to a new PeerUpdatesCh.
 func NewPeerUpdates() *PeerUpdatesCh {
 	return &PeerUpdatesCh{
-		updatesCh: make(chan PeerUpdate),
+		updatesCh: make(chan PeerUpdate, 1),
 		doneCh:    make(chan struct{}),
 	}
 }
@@ -104,6 +213,126 @@ func (puc *PeerUpdatesCh) Done() <-chan struct{} {
 type PeerUpdate struct {
 	PeerID NodeID
 	Status PeerStatus
+}
+
+// peerStore manages information about peers. It is currently a bare-bones
+// in-memory store of peer addresses, and will be fleshed out later.
+//
+// The main function of peerStore is currently to dispense peers to connect to
+// (via peerStore.Dispense), giving the caller exclusive "ownership" of that
+// peer until the peer is returned (via peerStore.Return). This is used to
+// schedule and synchronize peer dialing and accepting in the Router, e.g.
+// making sure we only have a single connection (in either direction) to peers.
+type peerStore struct {
+	mtx     sync.Mutex
+	peers   map[NodeID]*storePeer
+	claimed map[NodeID]bool
+}
+
+// newPeerStore creates a new peer store.
+func newPeerStore() *peerStore {
+	return &peerStore{
+		peers:   map[NodeID]*storePeer{},
+		claimed: map[NodeID]bool{},
+	}
+}
+
+// Add adds a peer to the store, given as an address.
+func (s *peerStore) Add(address PeerAddress) error {
+	if err := address.Validate(); err != nil {
+		return err
+	}
+	peerID := address.NodeID()
+
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
+	peer, ok := s.peers[peerID]
+	if !ok {
+		peer = newStorePeer(peerID)
+		s.peers[peerID] = peer
+	} else if s.claimed[peerID] {
+		// FIXME: We need to handle modifications of claimed peers somehow.
+		return fmt.Errorf("peer %q is claimed", peerID)
+	}
+	peer.AddAddress(address)
+	return nil
+}
+
+// Claim claims a peer. The caller has exclusive ownership of the peer, and must
+// return it by calling Return(). Returns nil if the peer could not be claimed.
+// If the peer is not known to the store, it is registered and claimed.
+func (s *peerStore) Claim(id NodeID) *storePeer {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+	if s.claimed[id] {
+		return nil
+	}
+	peer, ok := s.peers[id]
+	if !ok {
+		peer = newStorePeer(id)
+		s.peers[id] = peer
+	}
+	s.claimed[id] = true
+	return peer
+}
+
+// Dispense finds an appropriate peer to contact and claims it. The caller has
+// exclusive ownership of the peer, and must return it by calling Return(). The
+// peer will not be dispensed again until returned.
+//
+// Returns nil if no appropriate peers are available.
+func (s *peerStore) Dispense() *storePeer {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+	for key, peer := range s.peers {
+		switch {
+		case len(peer.Addresses) == 0:
+		case s.claimed[key]:
+		default:
+			s.claimed[key] = true
+			return peer
+		}
+	}
+	return nil
+}
+
+// Return returns a claimed peer, making it available for other
+// callers to claim.
+func (s *peerStore) Return(id NodeID) {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+	delete(s.claimed, id)
+}
+
+// storePeer is a peer stored in the peerStore.
+//
+// FIXME: This should be renamed peer or something else once the old peer is
+// removed.
+type storePeer struct {
+	ID        NodeID
+	Addresses []PeerAddress
+}
+
+// newStorePeer creates a new storePeer.
+func newStorePeer(id NodeID) *storePeer {
+	return &storePeer{
+		ID:        id,
+		Addresses: []PeerAddress{},
+	}
+}
+
+// AddAddress adds an address to a peer, unless it already exists. It does not
+// validate the address.
+func (p *storePeer) AddAddress(address PeerAddress) {
+	// We just do a linear search for now.
+	addressString := address.String()
+	for _, a := range p.Addresses {
+		if a.String() == addressString {
+			return
+		}
+	}
+	p.Addresses = append(p.Addresses, address)
 }
 
 // ============================================================================
