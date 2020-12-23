@@ -402,7 +402,7 @@ func TestLoadBlockPart(t *testing.T) {
 	require.Nil(t, res, "a non-existent block part should return nil")
 
 	// 2. Next save a corrupted block then try to load it
-	err := db.Set(blockPartKey(height, uint64(index)), []byte("Tendermint"))
+	err := db.Set(blockPartKey(height, index), []byte("Tendermint"))
 	require.NoError(t, err)
 	res, _, panicErr = doFn(loadPart)
 	require.NotNil(t, panicErr, "expecting a non-nil panic")
@@ -411,7 +411,7 @@ func TestLoadBlockPart(t *testing.T) {
 	// 3. A good block serialized and saved to the DB should be retrievable
 	pb1, err := part1.ToProto()
 	require.NoError(t, err)
-	err = db.Set(blockPartKey(height, uint64(index)), mustEncode(pb1))
+	err = db.Set(blockPartKey(height, index), mustEncode(pb1))
 	require.NoError(t, err)
 	gotPart, _, panicErr := doFn(loadPart)
 	require.Nil(t, panicErr, "an existent and proper block should not panic")

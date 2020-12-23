@@ -146,13 +146,8 @@ func (s *dbs) LastLightBlockHeight() (int64, error) {
 	}
 	defer itr.Close()
 
-	for itr.Valid() {
-		key := itr.Key()
-		_, height, ok := parseLbKey(key)
-		if ok {
-			return height, nil
-		}
-		itr.Next()
+	if itr.Valid() {
+		return s.parseHeightFromKey(itr.Key())
 	}
 
 	return -1, itr.Error()
@@ -171,13 +166,8 @@ func (s *dbs) FirstLightBlockHeight() (int64, error) {
 	}
 	defer itr.Close()
 
-	for itr.Valid() {
-		key := itr.Key()
-		_, height, ok := parseLbKey(key)
-		if ok {
-			return height, nil
-		}
-		itr.Next()
+	if itr.Valid() {
+		return s.parseHeightFromKey(itr.Key())
 	}
 
 	return -1, itr.Error()
@@ -201,13 +191,13 @@ func (s *dbs) LightBlockBefore(height int64) (*types.LightBlock, error) {
 	}
 	defer itr.Close()
 
-	for itr.Valid() {
-		key := itr.Key()
-		_, existingHeight, ok := parseLbKey(key)
-		if ok {
+	if itr.Valid() {
+		existingHeight, err := s.parseHeightFromKey(itr.Key())
+		if err != nil {
+			return nil, err
+		} else {
 			return s.LightBlock(existingHeight)
 		}
-		itr.Next()
 	}
 	if err = itr.Error(); err != nil {
 		return nil, err
@@ -247,11 +237,12 @@ func (s *dbs) Prune(size uint16) error {
 	pruned := 0
 	for itr.Valid() && numToPrune > 0 {
 		key := itr.Key()
-		_, height, ok := parseLbKey(key)
-		if ok {
-			if err = b.Delete(s.lbKey(height)); err != nil {
-				return err
-			}
+		height, err := s.parseHeightFromKey(key)
+		if err != nil {
+			return err
+		}
+		if err = b.Delete(s.lbKey(height)); err != nil {
+			return err
 		}
 		itr.Next()
 		numToPrune--
@@ -305,11 +296,17 @@ func (s *dbs) lbKey(height int64) []byte {
 	return key
 }
 
-func parseHeightFromKey(key []byte) (height int64) {
+func (s *dbs) parseHeightFromKey(key []byte) (height int64, err error) {
 	var prefix string
-	_, err := orderedcode.Parse(string(key), &prefix, &height)
+	remaining, err := orderedcode.Parse(string(key), &prefix, &height)
 	if err != nil {
-		panic(err)
+		err = fmt.Errorf("failed to parse light block key: %w", err)
+	}
+	if len(remaining) != 0 {
+		err = fmt.Errorf("expected no remainder when parsing light block key but got: %s", remaining)
+	}
+	if prefix != s.prefix {
+		err = fmt.Errorf("parsed key has a different prefix. Expected: %s, got: %s", s.prefix, prefix)
 	}
 	return
 }

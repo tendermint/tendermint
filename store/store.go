@@ -127,7 +127,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 // If no block is found for that hash, it returns nil.
 // Panics if it fails to parse height associated with the given hash.
 func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
-	bz, err := bs.db.Get(calcBlockHashKey(hash))
+	bz, err := bs.db.Get(blockHashKey(hash))
 	if err != nil {
 		panic(err)
 	}
@@ -150,7 +150,7 @@ func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
 func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	var pbpart = new(tmproto.Part)
 
-	bz, err := bs.db.Get(calcBlockPartKey(height, index))
+	bz, err := bs.db.Get(blockPartKey(height, index))
 	if err != nil {
 		panic(err)
 	}
@@ -174,7 +174,7 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 // If no block is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	var pbbm = new(tmproto.BlockMeta)
-	bz, err := bs.db.Get(calcBlockMetaKey(height))
+	bz, err := bs.db.Get(blockMetaKey(height))
 
 	if err != nil {
 		panic(err)
@@ -203,7 +203,7 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 // If no commit is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	var pbc = new(tmproto.Commit)
-	bz, err := bs.db.Get(calcBlockCommitKey(height))
+	bz, err := bs.db.Get(blockCommitKey(height))
 	if err != nil {
 		panic(err)
 	}
@@ -226,7 +226,7 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 // a new block at `height + 1` that includes this commit in its block.LastCommit.
 func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	var pbc = new(tmproto.Commit)
-	bz, err := bs.db.Get(calcSeenCommitKey(height))
+	bz, err := bs.db.Get(seenCommitKey(height))
 	if err != nil {
 		panic(err)
 	}
@@ -286,20 +286,20 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 		if meta == nil { // assume already deleted
 			continue
 		}
-		if err := batch.Delete(calcBlockMetaKey(h)); err != nil {
+		if err := batch.Delete(blockMetaKey(h)); err != nil {
 			return 0, err
 		}
-		if err := batch.Delete(calcBlockHashKey(meta.BlockID.Hash)); err != nil {
+		if err := batch.Delete(blockHashKey(meta.BlockID.Hash)); err != nil {
 			return 0, err
 		}
-		if err := batch.Delete(calcBlockCommitKey(h)); err != nil {
+		if err := batch.Delete(blockCommitKey(h)); err != nil {
 			return 0, err
 		}
-		if err := batch.Delete(calcSeenCommitKey(h)); err != nil {
+		if err := batch.Delete(seenCommitKey(h)); err != nil {
 			return 0, err
 		}
 		for p := 0; p < int(meta.BlockID.PartSetHeader.Total); p++ {
-			if err := batch.Delete(calcBlockPartKey(h, p)); err != nil {
+			if err := batch.Delete(blockPartKey(h, p)); err != nil {
 				return 0, err
 			}
 		}
@@ -360,17 +360,17 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 		panic("nil blockmeta")
 	}
 	metaBytes := mustEncode(pbm)
-	if err := bs.db.Set(calcBlockMetaKey(height), metaBytes); err != nil {
+	if err := bs.db.Set(blockMetaKey(height), metaBytes); err != nil {
 		panic(err)
 	}
-	if err := bs.db.Set(calcBlockHashKey(hash), []byte(fmt.Sprintf("%d", height))); err != nil {
+	if err := bs.db.Set(blockHashKey(hash), []byte(fmt.Sprintf("%d", height))); err != nil {
 		panic(err)
 	}
 
 	// Save block commit (duplicate and separate from the Block)
 	pbc := block.LastCommit.ToProto()
 	blockCommitBytes := mustEncode(pbc)
-	if err := bs.db.Set(calcBlockCommitKey(height-1), blockCommitBytes); err != nil {
+	if err := bs.db.Set(blockCommitKey(height-1), blockCommitBytes); err != nil {
 		panic(err)
 	}
 
@@ -378,7 +378,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	// NOTE: we can delete this at a later height
 	pbsc := seenCommit.ToProto()
 	seenCommitBytes := mustEncode(pbsc)
-	if err := bs.db.Set(calcSeenCommitKey(height), seenCommitBytes); err != nil {
+	if err := bs.db.Set(seenCommitKey(height), seenCommitBytes); err != nil {
 		panic(err)
 	}
 
@@ -400,7 +400,7 @@ func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
 		panic(fmt.Errorf("unable to make part into proto: %w", err))
 	}
 	partBytes := mustEncode(pbp)
-	if err := bs.db.Set(calcBlockPartKey(height, index), partBytes); err != nil {
+	if err := bs.db.Set(blockPartKey(height, index), partBytes); err != nil {
 		panic(err)
 	}
 }
@@ -422,7 +422,7 @@ func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *types.Commit) err
 	if err != nil {
 		return fmt.Errorf("unable to marshal commit: %w", err)
 	}
-	return bs.db.Set(calcSeenCommitKey(height), seenCommitBytes)
+	return bs.db.Set(seenCommitKey(height), seenCommitBytes)
 }
 
 //---------------------------------- KEY ENCODING -----------------------------------------
@@ -454,8 +454,8 @@ func blockMetaKey(height int64) []byte {
 	return key
 }
 
-func blockPartKey(height int64, partIndex uint64) []byte {
-	key, err := orderedcode.Append([]byte{prefixBlockPart}, height, partIndex)
+func blockPartKey(height int64, partIndex int) []byte {
+	key, err := orderedcode.Append([]byte{prefixBlockPart}, height, uint64(partIndex))
 	if err != nil {
 		panic(err)
 	}
