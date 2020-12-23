@@ -228,36 +228,6 @@ func randomGenesisDoc() *types.GenesisDoc {
 	}
 }
 
-// used for testing by state store
-func makeRandomStateFromValidatorSet(valSet *types.ValidatorSet, height, lastHeightValidatorsChanged int64) sm.State {
-	return sm.State{
-		LastBlockHeight:                  height - 1,
-		NextValidators:                   valSet.CopyIncrementProposerPriority(1),
-		Validators:                       valSet.Copy(),
-		LastValidators:                   valSet.Copy(),
-		LastHeightConsensusParamsChanged: height,
-		ConsensusParams:                  *types.DefaultConsensusParams(),
-		LastHeightValidatorsChanged:      lastHeightValidatorsChanged,
-		InitialHeight:                    1,
-	}
-}
-
-func makeRandomStateFromConsensusParams(consensusParams *tmproto.ConsensusParams,
-	height, lastHeightConsensusParamsChanged int64) sm.State {
-	val, _ := types.RandValidator(true, 10)
-	valSet := types.NewValidatorSet([]*types.Validator{val})
-	return sm.State{
-		LastBlockHeight:                  height - 1,
-		ConsensusParams:                  *consensusParams,
-		LastHeightConsensusParamsChanged: lastHeightConsensusParamsChanged,
-		NextValidators:                   valSet.CopyIncrementProposerPriority(1),
-		Validators:                       valSet.Copy(),
-		LastValidators:                   valSet.Copy(),
-		LastHeightValidatorsChanged:      height,
-		InitialHeight:                    1,
-	}
-}
-
 //----------------------------------------------------------------------------
 
 type testApp struct {

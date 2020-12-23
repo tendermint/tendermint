@@ -389,7 +389,7 @@ func newStateWithConfigAndBlockStore(
 	evpool := sm.EmptyEvidencePool{}
 
 	// Make State
-	stateDB := dbm.NewMemDB()
+	stateDB := blockDB
 	stateStore := sm.NewStore(stateDB)
 	if err := stateStore.Save(state); err != nil { // for save height 1's validators info
 		panic(err)

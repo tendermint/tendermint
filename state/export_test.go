@@ -1,6 +1,8 @@
 package state
 
 import (
+	dbm "github.com/tendermint/tm-db"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -18,6 +20,8 @@ import (
 // easily testable from outside of the package.
 //
 
+const ValSetCheckpointInterval = valSetCheckpointInterval
+
 // UpdateState is an alias for updateState exported from execution.go,
 // exclusively and explicitly for testing.
 func UpdateState(
@@ -34,4 +38,11 @@ func UpdateState(
 // from execution.go, exclusively and explicitly for testing.
 func ValidateValidatorUpdates(abciUpdates []abci.ValidatorUpdate, params tmproto.ValidatorParams) error {
 	return validateValidatorUpdates(abciUpdates, params)
+}
+
+// SaveValidatorsInfo is an alias for the private saveValidatorsInfo method in
+// store.go, exported exclusively and explicitly for testing.
+func SaveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *types.ValidatorSet) error {
+	stateStore := dbStore{db}
+	return stateStore.saveValidatorsInfo(height, lastHeightChanged, valSet)
 }

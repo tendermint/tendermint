@@ -455,7 +455,6 @@ func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
 		return evpool.State().LastBlockHeight, evpool.State().LastBlockTime
 	}
 	defer iter.Close()
-
 	blockEvidenceMap := make(map[string]struct{})
 	for ; iter.Valid(); iter.Next() {
 		ev, err := bytesToEv(iter.Value())
@@ -475,7 +474,6 @@ func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
 		evpool.removePendingEvidence(ev)
 		blockEvidenceMap[evMapKey(ev)] = struct{}{}
 	}
-
 	// We either have no pending evidence or all evidence has expired
 	if len(blockEvidenceMap) != 0 {
 		evpool.removeEvidenceFromList(blockEvidenceMap)

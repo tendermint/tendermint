@@ -61,7 +61,6 @@ func (s *dbs) SaveLightBlock(lb *types.LightBlock) error {
 
 	b := s.db.NewBatch()
 	defer b.Close()
-
 	if err = b.Set(s.lbKey(lb.Height), lbBz); err != nil {
 		return err
 	}
@@ -147,8 +146,13 @@ func (s *dbs) LastLightBlockHeight() (int64, error) {
 	}
 	defer itr.Close()
 
-	if itr.Valid() {
-		return parseHeightFromKey(itr.Key()), nil
+	for itr.Valid() {
+		key := itr.Key()
+		_, height, ok := parseLbKey(key)
+		if ok {
+			return height, nil
+		}
+		itr.Next()
 	}
 
 	return -1, itr.Error()
@@ -167,8 +171,13 @@ func (s *dbs) FirstLightBlockHeight() (int64, error) {
 	}
 	defer itr.Close()
 
-	if itr.Valid() {
-		return parseHeightFromKey(itr.Key()), nil
+	for itr.Valid() {
+		key := itr.Key()
+		_, height, ok := parseLbKey(key)
+		if ok {
+			return height, nil
+		}
+		itr.Next()
 	}
 
 	return -1, itr.Error()
@@ -192,18 +201,13 @@ func (s *dbs) LightBlockBefore(height int64) (*types.LightBlock, error) {
 	}
 	defer itr.Close()
 
-	if itr.Valid() {
-		var lbpb tmproto.LightBlock
-		err = lbpb.Unmarshal(itr.Value())
-		if err != nil {
-			return nil, fmt.Errorf("unmarshal error: %w", err)
+	for itr.Valid() {
+		key := itr.Key()
+		_, existingHeight, ok := parseLbKey(key)
+		if ok {
+			return s.LightBlock(existingHeight)
 		}
-
-		lightBlock, err := types.LightBlockFromProto(&lbpb)
-		if err != nil {
-			return nil, fmt.Errorf("proto conversion error: %w", err)
-		}
-		return lightBlock, nil
+		itr.Next()
 	}
 	if err = itr.Error(); err != nil {
 		return nil, err
@@ -240,12 +244,18 @@ func (s *dbs) Prune(size uint16) error {
 	b := s.db.NewBatch()
 	defer b.Close()
 
+	pruned := 0
 	for itr.Valid() && numToPrune > 0 {
-		if err = b.Delete(itr.Key()); err != nil {
-			return err
+		key := itr.Key()
+		_, height, ok := parseLbKey(key)
+		if ok {
+			if err = b.Delete(s.lbKey(height)); err != nil {
+				return err
+			}
 		}
 		itr.Next()
 		numToPrune--
+		pruned++
 	}
 	if err = itr.Error(); err != nil {
 		return err
@@ -260,7 +270,8 @@ func (s *dbs) Prune(size uint16) error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
-	s.size = size
+	s.size -= uint16(pruned)
+
 	if wErr := s.db.SetSync(s.sizeKey(), marshalSize(size)); wErr != nil {
 		return fmt.Errorf("failed to persist size: %w", wErr)
 	}

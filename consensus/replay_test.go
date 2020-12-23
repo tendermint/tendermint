@@ -158,7 +158,7 @@ LOOP:
 		// create consensus state from a clean slate
 		logger := log.NewNopLogger()
 		blockDB := dbm.NewMemDB()
-		stateDB := dbm.NewMemDB()
+		stateDB := blockDB
 		stateStore := sm.NewStore(stateDB)
 		state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 		require.NoError(t, err)
