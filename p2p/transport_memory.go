@@ -45,7 +45,7 @@ func (n *MemoryNetwork) CreateTransport(
 	nodeInfo NodeInfo,
 	privKey crypto.PrivKey,
 ) (*MemoryTransport, error) {
-	nodeID := nodeInfo.DefaultNodeID
+	nodeID := nodeInfo.NodeID
 	if nodeID == "" {
 		return nil, errors.New("no node ID")
 	}
@@ -67,8 +67,8 @@ func (n *MemoryNetwork) GenerateTransport() *MemoryTransport {
 	privKey := ed25519.GenPrivKey()
 	nodeID := PubKeyToID(privKey.PubKey())
 	nodeInfo := NodeInfo{
-		DefaultNodeID: nodeID,
-		ListenAddr:    fmt.Sprintf("%v:%v", MemoryProtocol, nodeID),
+		NodeID:     nodeID,
+		ListenAddr: fmt.Sprintf("%v:%v", MemoryProtocol, nodeID),
 	}
 	t, err := n.CreateTransport(nodeInfo, privKey)
 	if err != nil {
@@ -128,7 +128,7 @@ func newMemoryTransport(
 		nodeInfo: nodeInfo,
 		privKey:  privKey,
 		logger: network.logger.With("local",
-			fmt.Sprintf("%v:%v", MemoryProtocol, nodeInfo.DefaultNodeID)),
+			fmt.Sprintf("%v:%v", MemoryProtocol, nodeInfo.NodeID)),
 
 		acceptCh: make(chan *MemoryConnection),
 		closeCh:  make(chan struct{}),
@@ -199,7 +199,7 @@ func (t *MemoryTransport) DialAccept(
 ) (Connection, Connection, error) {
 	endpoints := peer.Endpoints()
 	if len(endpoints) == 0 {
-		return nil, nil, fmt.Errorf("peer %q not listening on any endpoints", peer.nodeInfo.DefaultNodeID)
+		return nil, nil, fmt.Errorf("peer %q not listening on any endpoints", peer.nodeInfo.NodeID)
 	}
 
 	acceptCh := make(chan Connection, 1)
@@ -224,7 +224,7 @@ func (t *MemoryTransport) DialAccept(
 
 // Close implements Transport.
 func (t *MemoryTransport) Close() error {
-	err := t.network.RemoveTransport(t.nodeInfo.DefaultNodeID)
+	err := t.network.RemoveTransport(t.nodeInfo.NodeID)
 	t.closeOnce.Do(func() {
 		close(t.closeCh)
 	})
@@ -240,8 +240,8 @@ func (t *MemoryTransport) Endpoints() []Endpoint {
 	default:
 		return []Endpoint{{
 			Protocol: MemoryProtocol,
-			PeerID:   t.nodeInfo.DefaultNodeID,
-			Path:     string(t.nodeInfo.DefaultNodeID),
+			PeerID:   t.nodeInfo.NodeID,
+			Path:     string(t.nodeInfo.NodeID),
 		}}
 	}
 }
@@ -363,18 +363,18 @@ func (c *MemoryConnection) FlushClose() error {
 // LocalEndpoint returns the local endpoint for the connection.
 func (c *MemoryConnection) LocalEndpoint() Endpoint {
 	return Endpoint{
-		PeerID:   c.local.nodeInfo.DefaultNodeID,
+		PeerID:   c.local.nodeInfo.NodeID,
 		Protocol: MemoryProtocol,
-		Path:     string(c.local.nodeInfo.DefaultNodeID),
+		Path:     string(c.local.nodeInfo.NodeID),
 	}
 }
 
 // RemoteEndpoint returns the remote endpoint for the connection.
 func (c *MemoryConnection) RemoteEndpoint() Endpoint {
 	return Endpoint{
-		PeerID:   c.remote.nodeInfo.DefaultNodeID,
+		PeerID:   c.remote.nodeInfo.NodeID,
 		Protocol: MemoryProtocol,
-		Path:     string(c.remote.nodeInfo.DefaultNodeID),
+		Path:     string(c.remote.nodeInfo.NodeID),
 	}
 }
 

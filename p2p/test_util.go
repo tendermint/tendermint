@@ -25,8 +25,8 @@ func CreateRandomPeer(outbound bool) Peer {
 	p := &peer{
 		peerConn: peerConn{outbound: outbound},
 		nodeInfo: NodeInfo{
-			DefaultNodeID: netAddr.ID,
-			ListenAddr:    netAddr.DialString(),
+			NodeID:     netAddr.ID,
+			ListenAddr: netAddr.DialString(),
 		},
 		metrics: NopMetrics(),
 	}
@@ -224,7 +224,7 @@ func testNodeInfo(id NodeID, name string) NodeInfo {
 func testNodeInfoWithNetwork(id NodeID, name, network string) NodeInfo {
 	return NodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
-		DefaultNodeID:   id,
+		NodeID:          id,
 		ListenAddr:      fmt.Sprintf("127.0.0.1:%d", getFreePort()),
 		Network:         network,
 		Version:         "1.2.3-rc0-deadbeef",
