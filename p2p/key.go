@@ -21,6 +21,12 @@ type NodeID string
 // FIXME: support other length addresses?
 const NodeIDByteLength = crypto.AddressSize
 
+// NodeIDFromPubKey returns the noe ID corresponding to the given PubKey. It's
+// the hex-encoding of the pubKey.Address().
+func NodeIDFromPubKey(pubKey crypto.PubKey) NodeID {
+	return NodeID(hex.EncodeToString(pubKey.Address()))
+}
+
 // Bytes converts the node ID to it's binary byte representation.
 func (id NodeID) Bytes() ([]byte, error) {
 	bz, err := hex.DecodeString(string(id))
@@ -76,12 +82,6 @@ func (nodeKey NodeKey) SaveAs(filePath string) error {
 	return nil
 }
 
-// PubKeyToID returns the ID corresponding to the given PubKey.
-// It's the hex-encoding of the pubKey.Address().
-func PubKeyToID(pubKey crypto.PubKey) NodeID {
-	return NodeID(hex.EncodeToString(pubKey.Address()))
-}
-
 // LoadOrGenNodeKey attempts to load the NodeKey from the given filePath. If
 // the file does not exist, it generates and saves a new NodeKey.
 func LoadOrGenNodeKey(filePath string) (NodeKey, error) {
@@ -106,7 +106,7 @@ func LoadOrGenNodeKey(filePath string) (NodeKey, error) {
 func GenNodeKey() NodeKey {
 	privKey := ed25519.GenPrivKey()
 	return NodeKey{
-		ID:      PubKeyToID(privKey.PubKey()),
+		ID:      NodeIDFromPubKey(privKey.PubKey()),
 		PrivKey: privKey,
 	}
 }
@@ -122,6 +122,6 @@ func LoadNodeKey(filePath string) (NodeKey, error) {
 	if err != nil {
 		return NodeKey{}, err
 	}
-	nodeKey.ID = PubKeyToID(nodeKey.PubKey())
+	nodeKey.ID = NodeIDFromPubKey(nodeKey.PubKey())
 	return nodeKey, nil
 }

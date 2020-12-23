@@ -65,7 +65,7 @@ func (n *MemoryNetwork) CreateTransport(
 // Transport.Endpoints().
 func (n *MemoryNetwork) GenerateTransport() *MemoryTransport {
 	privKey := ed25519.GenPrivKey()
-	nodeID := PubKeyToID(privKey.PubKey())
+	nodeID := NodeIDFromPubKey(privKey.PubKey())
 	nodeInfo := NodeInfo{
 		NodeID:     nodeID,
 		ListenAddr: fmt.Sprintf("%v:%v", MemoryProtocol, nodeID),

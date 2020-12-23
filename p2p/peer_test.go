@@ -81,7 +81,7 @@ func createOutboundPeerAndPerformHandshake(
 		{ID: testCh, Priority: 1},
 	}
 	pk := ed25519.GenPrivKey()
-	ourNodeInfo := testNodeInfo(PubKeyToID(pk.PubKey()), "host_peer")
+	ourNodeInfo := testNodeInfo(NodeIDFromPubKey(pk.PubKey()), "host_peer")
 	transport := NewMConnTransport(log.TestingLogger(), ourNodeInfo, pk, mConfig)
 	transport.SetChannelDescriptors(chDescs)
 	reactorsByCh := map[byte]Reactor{testCh: NewTestReactor(chDescs, true)}
@@ -154,7 +154,7 @@ func (rp *remotePeer) Addr() *NetAddress {
 }
 
 func (rp *remotePeer) ID() NodeID {
-	return PubKeyToID(rp.PrivKey.PubKey())
+	return NodeIDFromPubKey(rp.PrivKey.PubKey())
 }
 
 func (rp *remotePeer) Start() {
@@ -167,7 +167,7 @@ func (rp *remotePeer) Start() {
 		golog.Fatalf("net.Listen tcp :0: %+v", e)
 	}
 	rp.listener = l
-	rp.addr = NewNetAddress(PubKeyToID(rp.PrivKey.PubKey()), l.Addr())
+	rp.addr = NewNetAddress(NodeIDFromPubKey(rp.PrivKey.PubKey()), l.Addr())
 	if rp.channels == nil {
 		rp.channels = []byte{testCh}
 	}
