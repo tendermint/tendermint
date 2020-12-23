@@ -167,7 +167,7 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 				"advertising snapshot",
 				"height", snapshot.Height,
 				"format", snapshot.Format,
-				"peer", envelope.From.String(),
+				"peer", envelope.From,
 			)
 			r.snapshotCh.Out() <- p2p.Envelope{
 				To: envelope.From,
@@ -194,7 +194,7 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 			"received snapshot",
 			"height", msg.Height,
 			"format", msg.Format,
-			"peer", envelope.From.String(),
+			"peer", envelope.From,
 		)
 		_, err := r.syncer.AddSnapshot(envelope.From, &snapshot{
 			Height:   msg.Height,
@@ -215,7 +215,7 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 		}
 
 	default:
-		r.Logger.Error("received unknown message", "msg", msg, "peer", envelope.From.String())
+		r.Logger.Error("received unknown message", "msg", msg, "peer", envelope.From)
 		return fmt.Errorf("received unknown message: %T", msg)
 	}
 
@@ -233,7 +233,7 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 			"height", msg.Height,
 			"format", msg.Format,
 			"chunk", msg.Index,
-			"peer", envelope.From.String(),
+			"peer", envelope.From,
 		)
 		resp, err := r.conn.LoadSnapshotChunkSync(context.Background(), abci.RequestLoadSnapshotChunk{
 			Height: msg.Height,
@@ -247,7 +247,7 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 				"format", msg.Format,
 				"chunk", msg.Index,
 				"err", err,
-				"peer", envelope.From.String(),
+				"peer", envelope.From,
 			)
 			return nil
 		}
@@ -257,7 +257,7 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 			"height", msg.Height,
 			"format", msg.Format,
 			"chunk", msg.Index,
-			"peer", envelope.From.String(),
+			"peer", envelope.From,
 		)
 		r.chunkCh.Out() <- p2p.Envelope{
 			To: envelope.From,
@@ -275,7 +275,7 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 		defer r.mtx.RUnlock()
 
 		if r.syncer == nil {
-			r.Logger.Debug("received unexpected chunk; no state sync in progress", "peer", envelope.From.String())
+			r.Logger.Debug("received unexpected chunk; no state sync in progress", "peer", envelope.From)
 			return nil
 		}
 
@@ -284,7 +284,7 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 			"height", msg.Height,
 			"format", msg.Format,
 			"chunk", msg.Index,
-			"peer", envelope.From.String(),
+			"peer", envelope.From,
 		)
 		_, err := r.syncer.AddChunk(&chunk{
 			Height: msg.Height,
@@ -300,13 +300,13 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 				"format", msg.Format,
 				"chunk", msg.Index,
 				"err", err,
-				"peer", envelope.From.String(),
+				"peer", envelope.From,
 			)
 			return nil
 		}
 
 	default:
-		r.Logger.Error("received unknown message", "msg", msg, "peer", envelope.From.String())
+		r.Logger.Error("received unknown message", "msg", msg, "peer", envelope.From)
 		return fmt.Errorf("received unknown message: %T", msg)
 	}
 
@@ -400,7 +400,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) (err error) {
 		}
 	}()
 
-	r.Logger.Debug("received peer update", "peer", peerUpdate.PeerID.String(), "status", peerUpdate.Status)
+	r.Logger.Debug("received peer update", "peer", peerUpdate.PeerID, "status", peerUpdate.Status)
 
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()

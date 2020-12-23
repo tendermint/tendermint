@@ -76,16 +76,14 @@ func setup(t *testing.T, peers []p2p.Peer) *reactorShimTestSuite {
 	return rts
 }
 
-func simplePeer(t *testing.T, id string) (*p2pmocks.Peer, p2p.PeerID) {
+func simplePeer(t *testing.T, id string) (*p2pmocks.Peer, p2p.NodeID) {
 	t.Helper()
 
+	peerID := p2p.NodeID(id)
 	peer := &p2pmocks.Peer{}
-	peer.On("ID").Return(p2p.NodeID(id))
+	peer.On("ID").Return(peerID)
 
-	pID, err := p2p.PeerIDFromString(string(peer.ID()))
-	require.NoError(t, err)
-
-	return peer, pID
+	return peer, peerID
 }
 
 func TestReactorShim_GetChannel(t *testing.T) {

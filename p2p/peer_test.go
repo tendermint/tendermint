@@ -19,51 +19,6 @@ import (
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
-func TestPeerIDFromString(t *testing.T) {
-	testCases := map[string]struct {
-		input      string
-		expectedID PeerID
-		expectErr  bool
-	}{
-		"empty peer ID string":   {"", PeerID{}, false},
-		"invalid peer ID string": {"foo", nil, true},
-		"valid peer ID string":   {"ff", PeerID{0xFF}, false},
-	}
-
-	for name, tc := range testCases {
-		tc := tc
-		t.Run(name, func(t *testing.T) {
-			pID, err := PeerIDFromString(tc.input)
-			require.Equal(t, tc.expectErr, err != nil, err)
-			require.Equal(t, tc.expectedID, pID)
-		})
-	}
-}
-
-func TestPeerID_String(t *testing.T) {
-	require.Equal(t, "", PeerID{}.String())
-	require.Equal(t, "ff", PeerID{0xFF}.String())
-}
-
-func TestPeerID_Equal(t *testing.T) {
-	testCases := map[string]struct {
-		idA   PeerID
-		idB   PeerID
-		equal bool
-	}{
-		"empty IDs": {PeerID{}, PeerID{}, true},
-		"not equal": {PeerID{0xFF}, PeerID{0xAA}, false},
-		"equal":     {PeerID{0xFF}, PeerID{0xFF}, true},
-	}
-
-	for name, tc := range testCases {
-		tc := tc
-		t.Run(name, func(t *testing.T) {
-			require.Equal(t, tc.equal, tc.idA.Equal(tc.idB))
-		})
-	}
-}
-
 func TestPeerBasic(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 

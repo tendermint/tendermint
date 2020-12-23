@@ -1,13 +1,10 @@
 package p2p
 
 import (
-	"bytes"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"net"
 	"runtime/debug"
-	"strings"
 	"sync"
 	"time"
 
@@ -17,35 +14,6 @@ import (
 
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
-
-// PeerID is a unique peer ID, generally expressed in hex form.
-type PeerID []byte
-
-// String implements the fmt.Stringer interface for the PeerID type.
-func (pid PeerID) String() string {
-	return strings.ToLower(hex.EncodeToString(pid))
-}
-
-// Empty returns true if the PeerID is considered empty.
-func (pid PeerID) Empty() bool {
-	return len(pid) == 0
-}
-
-// PeerIDFromString returns a PeerID from an encoded string or an error upon
-// decode failure.
-func PeerIDFromString(s string) (PeerID, error) {
-	bz, err := hex.DecodeString(s)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode PeerID (%s): %w", s, err)
-	}
-
-	return PeerID(bz), nil
-}
-
-// Equal reports whether two PeerID are equal.
-func (pid PeerID) Equal(other PeerID) bool {
-	return bytes.Equal(pid, other)
-}
 
 // PeerStatus specifies peer statuses.
 type PeerStatus string
@@ -70,7 +38,7 @@ const (
 // PeerError is a peer error reported by a reactor via the Error channel. The
 // severity may cause the peer to be disconnected or banned depending on policy.
 type PeerError struct {
-	PeerID   PeerID
+	PeerID   NodeID
 	Err      error
 	Severity PeerErrorSeverity
 }
@@ -134,7 +102,7 @@ func (puc *PeerUpdatesCh) Done() <-chan struct{} {
 
 // PeerUpdate is a peer status update for reactors.
 type PeerUpdate struct {
-	PeerID PeerID
+	PeerID NodeID
 	Status PeerStatus
 }
 
