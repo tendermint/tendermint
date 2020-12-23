@@ -123,14 +123,14 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 				case e.Broadcast:
 					rs.Switch.Broadcast(cs.Descriptor.ID, bz)
 
-				case !e.To.Empty():
-					src := rs.Switch.peers.Get(NodeID(e.To.String()))
+				case e.To != "":
+					src := rs.Switch.peers.Get(e.To)
 					if src == nil {
 						rs.Logger.Error(
 							"failed to proxy envelope; failed to find peer",
 							"ch_id", cs.Descriptor.ID,
 							"msg", e.Message,
-							"peer", e.To.String(),
+							"peer", e.To,
 						)
 						continue
 					}
@@ -140,7 +140,7 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 							"failed to proxy message to peer",
 							"ch_id", cs.Descriptor.ID,
 							"msg", e.Message,
-							"peer", e.To.String(),
+							"peer", e.To,
 						)
 					}
 
@@ -160,10 +160,10 @@ func (rs *ReactorShim) handlePeerErrors() {
 	for _, cs := range rs.Channels {
 		go func(cs *ChannelShim) {
 			for pErr := range cs.Channel.errCh {
-				if !pErr.PeerID.Empty() {
-					peer := rs.Switch.peers.Get(NodeID(pErr.PeerID.String()))
+				if pErr.PeerID != "" {
+					peer := rs.Switch.peers.Get(pErr.PeerID)
 					if peer == nil {
-						rs.Logger.Error("failed to handle peer error; failed to find peer", "peer", pErr.PeerID.String())
+						rs.Logger.Error("failed to handle peer error; failed to find peer", "peer", pErr.PeerID)
 						continue
 					}
 
@@ -222,15 +222,9 @@ func (rs *ReactorShim) GetChannels() []*ChannelDescriptor {
 // The embedding reactor must be sure to listen for messages on this channel to
 // handle adding a peer.
 func (rs *ReactorShim) AddPeer(peer Peer) {
-	peerID, err := PeerIDFromString(string(peer.ID()))
-	if err != nil {
-		rs.Logger.Error("failed to add peer", "peer", peer.ID(), "err", err)
-		return
-	}
-
 	select {
-	case rs.PeerUpdates.updatesCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusUp}:
-		rs.Logger.Debug("sent peer update", "reactor", rs.Name, "peer", peerID.String(), "status", PeerStatusUp)
+	case rs.PeerUpdates.updatesCh <- PeerUpdate{PeerID: peer.ID(), Status: PeerStatusUp}:
+		rs.Logger.Debug("sent peer update", "reactor", rs.Name, "peer", peer.ID(), "status", PeerStatusUp)
 
 	case <-rs.PeerUpdates.Done():
 		// NOTE: We explicitly DO NOT close the PeerUpdatesCh's updateCh go channel.
@@ -247,18 +241,12 @@ func (rs *ReactorShim) AddPeer(peer Peer) {
 // The embedding reactor must be sure to listen for messages on this channel to
 // handle removing a peer.
 func (rs *ReactorShim) RemovePeer(peer Peer, reason interface{}) {
-	peerID, err := PeerIDFromString(string(peer.ID()))
-	if err != nil {
-		rs.Logger.Error("failed to remove peer", "peer", peer.ID(), "err", err)
-		return
-	}
-
 	select {
-	case rs.PeerUpdates.updatesCh <- PeerUpdate{PeerID: peerID, Status: PeerStatusDown}:
+	case rs.PeerUpdates.updatesCh <- PeerUpdate{PeerID: peer.ID(), Status: PeerStatusDown}:
 		rs.Logger.Debug(
 			"sent peer update",
 			"reactor", rs.Name,
-			"peer", peerID.String(),
+			"peer", peer.ID(),
 			"reason", reason,
 			"status", PeerStatusDown,
 		)
@@ -288,12 +276,6 @@ func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 	channelShim, ok := rs.Channels[cID]
 	if !ok {
 		rs.Logger.Error("unexpected channel", "peer", src, "ch_id", chID)
-		return
-	}
-
-	peerID, err := PeerIDFromString(string(src.ID()))
-	if err != nil {
-		rs.Logger.Error("failed to convert peer ID", "peer", src, "ch_id", chID, "err", err)
 		return
 	}
 
@@ -327,8 +309,8 @@ func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 	}
 
 	select {
-	case channelShim.Channel.inCh <- Envelope{From: peerID, Message: msg}:
-		rs.Logger.Debug("proxied envelope", "reactor", rs.Name, "ch_id", cID, "peer", peerID.String())
+	case channelShim.Channel.inCh <- Envelope{From: src.ID(), Message: msg}:
+		rs.Logger.Debug("proxied envelope", "reactor", rs.Name, "ch_id", cID, "peer", src.ID())
 
 	case <-channelShim.Channel.Done():
 		// NOTE: We explicitly DO NOT close the p2p Channel's inbound go channel.
