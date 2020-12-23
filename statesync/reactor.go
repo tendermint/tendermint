@@ -34,7 +34,7 @@ var (
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(SnapshotChannel),
-				Priority:            2,
+				Priority:            5,
 				SendQueueCapacity:   10,
 				RecvMessageCapacity: snapshotMsgSize,
 			},
@@ -43,7 +43,7 @@ var (
 			MsgType: new(ssproto.Message),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(ChunkChannel),
-				Priority:            5,
+				Priority:            1,
 				SendQueueCapacity:   4,
 				RecvMessageCapacity: chunkMsgSize,
 			},
