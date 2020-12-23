@@ -54,14 +54,14 @@ func (_m *Peer) Get(_a0 string) interface{} {
 }
 
 // ID provides a mock function with given fields:
-func (_m *Peer) ID() p2p.ID {
+func (_m *Peer) ID() p2p.NodeID {
 	ret := _m.Called()
 
-	var r0 p2p.ID
-	if rf, ok := ret.Get(0).(func() p2p.ID); ok {
+	var r0 p2p.NodeID
+	if rf, ok := ret.Get(0).(func() p2p.NodeID); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(p2p.ID)
+		r0 = ret.Get(0).(p2p.NodeID)
 	}
 
 	return r0

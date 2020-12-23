@@ -98,7 +98,7 @@ type TxInfo struct {
 	// sender, storing 2 bytes with each tx instead of 20 bytes for the p2p.ID.
 	SenderID uint16
 	// SenderP2PID is the actual p2p.ID of the sender, used e.g. for logging.
-	SenderP2PID p2p.ID
+	SenderP2PID p2p.NodeID
 	// Context is the optional context to cancel CheckTx
 	Context context.Context
 }

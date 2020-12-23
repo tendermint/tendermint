@@ -97,7 +97,7 @@ type Reactor struct {
 	attemptsToDial sync.Map // address (string) -> {number of attempts (int), last time dialed (time.Time)}
 
 	// seed/crawled mode fields
-	crawlPeerInfos map[p2p.ID]crawlPeerInfo
+	crawlPeerInfos map[p2p.NodeID]crawlPeerInfo
 }
 
 func (r *Reactor) minReceiveRequestInterval() time.Duration {
@@ -137,7 +137,7 @@ func NewReactor(b AddrBook, config *ReactorConfig) *Reactor {
 		ensurePeersPeriod:    defaultEnsurePeersPeriod,
 		requestsSent:         cmap.NewCMap(),
 		lastReceivedRequests: cmap.NewCMap(),
-		crawlPeerInfos:       make(map[p2p.ID]crawlPeerInfo),
+		crawlPeerInfos:       make(map[p2p.NodeID]crawlPeerInfo),
 	}
 	r.BaseReactor = *p2p.NewBaseReactor("PEX", r)
 	return r
@@ -475,7 +475,7 @@ func (r *Reactor) ensurePeers() {
 	// NOTE: range here is [10, 90]. Too high ?
 	newBias := tmmath.MinInt(out, 8)*10 + 10
 
-	toDial := make(map[p2p.ID]*p2p.NetAddress)
+	toDial := make(map[p2p.NodeID]*p2p.NetAddress)
 	// Try maxAttempts times to pick numToDial addresses to dial
 	maxAttempts := numToDial * 3
 

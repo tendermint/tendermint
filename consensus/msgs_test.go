@@ -249,7 +249,7 @@ func TestWALMsgProto(t *testing.T) {
 				Round:  1,
 				Part:   &parts,
 			},
-			PeerID: p2p.ID("string"),
+			PeerID: p2p.NodeID("string"),
 		}, &tmcons.WALMessage{
 			Sum: &tmcons.WALMessage_MsgInfo{
 				MsgInfo: &tmcons.MsgInfo{

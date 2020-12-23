@@ -124,7 +124,7 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 					rs.Switch.Broadcast(cs.Descriptor.ID, bz)
 
 				case !e.To.Empty():
-					src := rs.Switch.peers.Get(ID(e.To.String()))
+					src := rs.Switch.peers.Get(NodeID(e.To.String()))
 					if src == nil {
 						rs.Logger.Error(
 							"failed to proxy envelope; failed to find peer",
@@ -161,7 +161,7 @@ func (rs *ReactorShim) handlePeerErrors() {
 		go func(cs *ChannelShim) {
 			for pErr := range cs.Channel.errCh {
 				if !pErr.PeerID.Empty() {
-					peer := rs.Switch.peers.Get(ID(pErr.PeerID.String()))
+					peer := rs.Switch.peers.Get(NodeID(pErr.PeerID.String()))
 					if peer == nil {
 						rs.Logger.Error("failed to handle peer error; failed to find peer", "peer", pErr.PeerID.String())
 						continue

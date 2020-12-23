@@ -53,7 +53,7 @@ type NodeInfo struct {
 
 	// Authenticate
 	// TODO: replace with NetAddress
-	DefaultNodeID ID     `json:"id"`          // authenticated identifier
+	DefaultNodeID NodeID `json:"id"`          // authenticated identifier
 	ListenAddr    string `json:"listen_addr"` // accepting incoming
 
 	// Check compatibility.
@@ -74,7 +74,7 @@ type NodeInfoOther struct {
 }
 
 // ID returns the node's peer ID.
-func (info NodeInfo) ID() ID {
+func (info NodeInfo) ID() NodeID {
 	return info.DefaultNodeID
 }
 
@@ -223,7 +223,7 @@ func NodeInfoFromProto(pb *tmp2p.NodeInfo) (NodeInfo, error) {
 			Block: pb.ProtocolVersion.Block,
 			App:   pb.ProtocolVersion.App,
 		},
-		DefaultNodeID: ID(pb.DefaultNodeID),
+		DefaultNodeID: NodeID(pb.DefaultNodeID),
 		ListenAddr:    pb.ListenAddr,
 		Network:       pb.Network,
 		Version:       pb.Version,

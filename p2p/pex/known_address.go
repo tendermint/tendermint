@@ -30,7 +30,7 @@ func newKnownAddress(addr *p2p.NetAddress, src *p2p.NetAddress) *knownAddress {
 	}
 }
 
-func (ka *knownAddress) ID() p2p.ID {
+func (ka *knownAddress) ID() p2p.NodeID {
 	return ka.Addr.ID
 }
 

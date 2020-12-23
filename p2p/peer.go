@@ -154,7 +154,7 @@ type Peer interface {
 	service.Service
 	FlushStop()
 
-	ID() ID               // peer's cryptographic ID
+	ID() NodeID           // peer's cryptographic ID
 	RemoteIP() net.IP     // remote IP of the connection
 	RemoteAddr() net.Addr // remote address of the connection
 
@@ -193,7 +193,7 @@ func newPeerConn(outbound, persistent bool, conn Connection) peerConn {
 }
 
 // ID only exists for SecretConnection.
-func (pc peerConn) ID() ID {
+func (pc peerConn) ID() NodeID {
 	return PubKeyToID(pc.conn.PubKey())
 }
 
@@ -339,7 +339,7 @@ func (p *peer) OnStop() {
 // Implements Peer
 
 // ID returns the peer's ID - the hex encoded hash of its pubkey.
-func (p *peer) ID() ID {
+func (p *peer) ID() NodeID {
 	return p.nodeInfo.ID()
 }
 

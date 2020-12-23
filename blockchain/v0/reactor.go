@@ -41,7 +41,7 @@ type consensusReactor interface {
 
 type peerError struct {
 	err    error
-	peerID p2p.ID
+	peerID p2p.NodeID
 }
 
 func (e peerError) Error() string {
