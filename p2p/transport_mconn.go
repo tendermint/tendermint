@@ -466,7 +466,7 @@ func newMConnConnection(
 
 	// For outgoing conns, ensure connection key matches dialed key.
 	if expectPeerID != "" {
-		peerID := PubKeyToID(c.PubKey())
+		peerID := NodeIDFromPubKey(c.PubKey())
 		if expectPeerID != peerID {
 			err = ErrRejected{
 				conn: tcpConn,
