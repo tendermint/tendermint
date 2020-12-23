@@ -217,7 +217,7 @@ func (rp *remotePeer) accept() {
 func (rp *remotePeer) nodeInfo() NodeInfo {
 	return NodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
-		DefaultNodeID:   rp.Addr().ID,
+		NodeID:          rp.Addr().ID,
 		ListenAddr:      rp.listener.Addr().String(),
 		Network:         "testing",
 		Version:         "1.2.3-rc0-deadbeef",

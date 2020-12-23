@@ -53,8 +53,8 @@ type NodeInfo struct {
 
 	// Authenticate
 	// TODO: replace with NetAddress
-	DefaultNodeID NodeID `json:"id"`          // authenticated identifier
-	ListenAddr    string `json:"listen_addr"` // accepting incoming
+	NodeID     NodeID `json:"id"`          // authenticated identifier
+	ListenAddr string `json:"listen_addr"` // accepting incoming
 
 	// Check compatibility.
 	// Channels are HexBytes so easier to read as JSON
@@ -75,7 +75,7 @@ type NodeInfoOther struct {
 
 // ID returns the node's peer ID.
 func (info NodeInfo) ID() NodeID {
-	return info.DefaultNodeID
+	return info.NodeID
 }
 
 // Validate checks the self-reported NodeInfo is safe.
@@ -199,7 +199,7 @@ func (info NodeInfo) ToProto() *tmp2p.NodeInfo {
 		App:   info.ProtocolVersion.App,
 	}
 
-	dni.DefaultNodeID = string(info.DefaultNodeID)
+	dni.NodeID = string(info.NodeID)
 	dni.ListenAddr = info.ListenAddr
 	dni.Network = info.Network
 	dni.Version = info.Version
@@ -223,12 +223,12 @@ func NodeInfoFromProto(pb *tmp2p.NodeInfo) (NodeInfo, error) {
 			Block: pb.ProtocolVersion.Block,
 			App:   pb.ProtocolVersion.App,
 		},
-		DefaultNodeID: NodeID(pb.DefaultNodeID),
-		ListenAddr:    pb.ListenAddr,
-		Network:       pb.Network,
-		Version:       pb.Version,
-		Channels:      pb.Channels,
-		Moniker:       pb.Moniker,
+		NodeID:     NodeID(pb.NodeID),
+		ListenAddr: pb.ListenAddr,
+		Network:    pb.Network,
+		Version:    pb.Version,
+		Channels:   pb.Channels,
+		Moniker:    pb.Moniker,
 		Other: NodeInfoOther{
 			TxIndex:    pb.Other.TxIndex,
 			RPCAddress: pb.Other.RPCAddress,
