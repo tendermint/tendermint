@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.34.1-rc1
+
+*December 23, 2020*
+
+Special thanks to external contributors on this release:
+
+@p4u from vocdoni.io reported that the mempool might behave incorrectly under a
+high load. The consequences can range from pauses between blocks to the peers
+disconnecting from this node. As a temporary remedy (until the mempool package
+is refactored), the `max-batch-bytes` was disabled. Transactions will be sent
+one by one without batching.
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+  - [cli] [\#5786](https://github.com/tendermint/tendermint/issues/5786) deprecate snake_case commands for hyphen-case (@cmwaters)
+
+### IMPROVEMENTS
+
+- [mempool] [\#5813](https://github.com/tendermint/tendermint/issues/5813) Add `keep-invalid-txs-in-cache` config option. When set to true, mempool will keep invalid transactions in the cache (@p4u)
+
+### BUG FIXES
+
+- [crypto] [\#5707](https://github.com/tendermint/tendermint/issues/5707) Fix infinite recursion in string formatting of Secp256k1 keys (@erikgrinaker)
+- [mempool] [\#5800](https://github.com/tendermint/tendermint/issues/5800) Disable `max-batch-bytes` (@melekes)
+
 ## v0.34.0
 
 *November 19, 2020*
@@ -38,14 +66,14 @@ And as always, friendly reminder, that we have a [bug bounty program](https://ha
   - [blockchain] [\#4637](https://github.com/tendermint/tendermint/pull/4637) Migrate blockchain reactor(s) to Protobuf encoding (@marbar3778)
   - [evidence] [\#4949](https://github.com/tendermint/tendermint/pull/4949) Migrate evidence reactor to Protobuf encoding (@marbar3778)
   - [mempool] [\#4940](https://github.com/tendermint/tendermint/pull/4940) Migrate mempool from to Protobuf encoding (@marbar3778)
-  - [mempool] [\#5321](https://github.com/tendermint/tendermint/pull/5321) Batch transactions when broadcasting them to peers (@melekes) 
+  - [mempool] [\#5321](https://github.com/tendermint/tendermint/pull/5321) Batch transactions when broadcasting them to peers (@melekes)
      - `MaxBatchBytes` new config setting defines the max size of one batch.
   - [p2p/pex] [\#4973](https://github.com/tendermint/tendermint/pull/4973) Migrate `p2p/pex` reactor to Protobuf encoding (@marbar3778)
   - [statesync] [\#4943](https://github.com/tendermint/tendermint/pull/4943) Migrate state sync reactor to Protobuf encoding (@marbar3778)
 
 - Blockchain Protocol
 
-  - [evidence] [\#4725](https://github.com/tendermint/tendermint/pull/4725) Remove `Pubkey` from `DuplicateVoteEvidence` (@marbar3778) 
+  - [evidence] [\#4725](https://github.com/tendermint/tendermint/pull/4725) Remove `Pubkey` from `DuplicateVoteEvidence` (@marbar3778)
   - [evidence] [\#5499](https://github.com/tendermint/tendermint/pull/5449) Cap evidence to a maximum number of bytes (supercedes [\#4780](https://github.com/tendermint/tendermint/pull/4780)) (@cmwaters)
   - [merkle] [\#5193](https://github.com/tendermint/tendermint/pull/5193) Header hashes are no longer empty for empty inputs, notably `DataHash`, `EvidenceHash`, and `LastResultsHash` (@erikgrinaker)
   - [state] [\#4845](https://github.com/tendermint/tendermint/pull/4845) Include `GasWanted` and `GasUsed` into `LastResultsHash` (@melekes)
@@ -104,7 +132,7 @@ And as always, friendly reminder, that we have a [bug bounty program](https://ha
   - [types] [\#4852](https://github.com/tendermint/tendermint/pull/4852) Vote & Proposal `SignBytes` is now func `VoteSignBytes` & `ProposalSignBytes` (@marbar3778)
   - [types] [\#4798](https://github.com/tendermint/tendermint/pull/4798) Simplify `VerifyCommitTrusting` func + remove extra validation (@melekes)
   - [types] [\#4845](https://github.com/tendermint/tendermint/pull/4845) Remove `ABCIResult` (@melekes)
-  - [types] [\#5029](https://github.com/tendermint/tendermint/pull/5029) Rename all values from `PartsHeader` to `PartSetHeader` to have consistency (@marbar3778) 
+  - [types] [\#5029](https://github.com/tendermint/tendermint/pull/5029) Rename all values from `PartsHeader` to `PartSetHeader` to have consistency (@marbar3778)
   - [types] [\#4939](https://github.com/tendermint/tendermint/pull/4939) `Total` in `Parts` & `PartSetHeader` has been changed from a `int` to a `uint32` (@marbar3778)
   - [types] [\#4939](https://github.com/tendermint/tendermint/pull/4939) Vote: `ValidatorIndex` & `Round` are now `int32` (@marbar3778)
   - [types] [\#4939](https://github.com/tendermint/tendermint/pull/4939) Proposal: `POLRound` & `Round` are now `int32` (@marbar3778)
@@ -142,7 +170,7 @@ And as always, friendly reminder, that we have a [bug bounty program](https://ha
 - [evidence] [\#4722](https://github.com/tendermint/tendermint/pull/4722) Consolidate evidence store and pool types to improve evidence DB (@cmwaters)
 - [evidence] [\#4839](https://github.com/tendermint/tendermint/pull/4839) Reject duplicate evidence from being proposed (@cmwaters)
 - [evidence] [\#5219](https://github.com/tendermint/tendermint/pull/5219) Change the source of evidence time to block time (@cmwaters)
-- [libs] [\#5126](https://github.com/tendermint/tendermint/pull/5126) Add a sync package which wraps sync.(RW)Mutex & deadlock.(RW)Mutex and use a build flag (deadlock) in order to enable deadlock checking (@marbar3778) 
+- [libs] [\#5126](https://github.com/tendermint/tendermint/pull/5126) Add a sync package which wraps sync.(RW)Mutex & deadlock.(RW)Mutex and use a build flag (deadlock) in order to enable deadlock checking (@marbar3778)
 - [light] [\#4935](https://github.com/tendermint/tendermint/pull/4935) Fetch and compare a new header with witnesses in parallel (@melekes)
 - [light] [\#4929](https://github.com/tendermint/tendermint/pull/4929) Compare header with witnesses only when doing bisection (@melekes)
 - [light] [\#4916](https://github.com/tendermint/tendermint/pull/4916) Validate basic for inbound validator sets and headers before further processing them (@cmwaters)
