@@ -20,7 +20,7 @@ func TestMemoryTransport(t *testing.T) {
 	// Dialing a missing endpoint should fail.
 	_, err := a.Dial(ctx, p2p.Endpoint{
 		Protocol: p2p.MemoryProtocol,
-		PeerID:   p2p.ID("foo"),
+		PeerID:   p2p.NodeID("foo"),
 		Path:     "foo",
 	})
 	require.Error(t, err)

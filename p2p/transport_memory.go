@@ -24,14 +24,14 @@ type MemoryNetwork struct {
 	logger log.Logger
 
 	mtx        sync.RWMutex
-	transports map[ID]*MemoryTransport
+	transports map[NodeID]*MemoryTransport
 }
 
 // NewMemoryNetwork creates a new in-memory network.
 func NewMemoryNetwork(logger log.Logger) *MemoryNetwork {
 	return &MemoryNetwork{
 		logger:     logger,
-		transports: map[ID]*MemoryTransport{},
+		transports: map[NodeID]*MemoryTransport{},
 	}
 }
 
@@ -80,14 +80,14 @@ func (n *MemoryNetwork) GenerateTransport() *MemoryTransport {
 }
 
 // GetTransport looks up a transport in the network, returning nil if not found.
-func (n *MemoryNetwork) GetTransport(id ID) *MemoryTransport {
+func (n *MemoryNetwork) GetTransport(id NodeID) *MemoryTransport {
 	n.mtx.RLock()
 	defer n.mtx.RUnlock()
 	return n.transports[id]
 }
 
 // RemoveTransport removes a transport from the network and closes it.
-func (n *MemoryNetwork) RemoveTransport(id ID) error {
+func (n *MemoryNetwork) RemoveTransport(id NodeID) error {
 	n.mtx.Lock()
 	t, ok := n.transports[id]
 	delete(n.transports, id)
@@ -161,7 +161,7 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 	}
 	t.logger.Info("dialing peer", "remote", endpoint)
 
-	peerTransport := t.network.GetTransport(ID(endpoint.Path))
+	peerTransport := t.network.GetTransport(NodeID(endpoint.Path))
 	if peerTransport == nil {
 		return nil, fmt.Errorf("unknown peer %q", endpoint.Path)
 	}

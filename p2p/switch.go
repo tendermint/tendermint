@@ -50,7 +50,7 @@ type AddrBook interface {
 	AddPrivateIDs([]string)
 	AddOurAddress(*NetAddress)
 	OurAddress(*NetAddress) bool
-	MarkGood(ID)
+	MarkGood(NodeID)
 	RemoveAddress(*NetAddress)
 	HasAddress(*NetAddress) bool
 	Save()
@@ -81,7 +81,7 @@ type Switch struct {
 	addrBook     AddrBook
 	// peers addresses with whom we'll maintain constant connection
 	persistentPeersAddrs []*NetAddress
-	unconditionalPeerIDs map[ID]struct{}
+	unconditionalPeerIDs map[NodeID]struct{}
 
 	transport Transport
 
@@ -124,7 +124,7 @@ func NewSwitch(
 		transport:            transport,
 		filterTimeout:        defaultFilterTimeout,
 		persistentPeersAddrs: make([]*NetAddress, 0),
-		unconditionalPeerIDs: make(map[ID]struct{}),
+		unconditionalPeerIDs: make(map[NodeID]struct{}),
 	}
 
 	// Ensure we have a completely undeterministic PRNG.
@@ -314,7 +314,7 @@ func (sw *Switch) NumPeers() (outbound, inbound, dialing int) {
 	return
 }
 
-func (sw *Switch) IsPeerUnconditional(id ID) bool {
+func (sw *Switch) IsPeerUnconditional(id NodeID) bool {
 	_, ok := sw.unconditionalPeerIDs[id]
 	return ok
 }
@@ -592,11 +592,11 @@ func (sw *Switch) AddPersistentPeers(addrs []string) error {
 func (sw *Switch) AddUnconditionalPeerIDs(ids []string) error {
 	sw.Logger.Info("Adding unconditional peer ids", "ids", ids)
 	for i, id := range ids {
-		err := validateID(ID(id))
+		err := validateID(NodeID(id))
 		if err != nil {
 			return fmt.Errorf("wrong ID #%d: %w", i, err)
 		}
-		sw.unconditionalPeerIDs[ID(id)] = struct{}{}
+		sw.unconditionalPeerIDs[NodeID(id)] = struct{}{}
 	}
 	return nil
 }
@@ -604,7 +604,7 @@ func (sw *Switch) AddUnconditionalPeerIDs(ids []string) error {
 func (sw *Switch) AddPrivatePeerIDs(ids []string) error {
 	validIDs := make([]string, 0, len(ids))
 	for i, id := range ids {
-		err := validateID(ID(id))
+		err := validateID(NodeID(id))
 		if err != nil {
 			return fmt.Errorf("wrong ID #%d: %w", i, err)
 		}

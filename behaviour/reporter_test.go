@@ -11,7 +11,7 @@ import (
 // TestMockReporter tests the MockReporter's ability to store reported
 // peer behaviour in memory indexed by the peerID.
 func TestMockReporter(t *testing.T) {
-	var peerID p2p.ID = "MockPeer"
+	var peerID p2p.NodeID = "MockPeer"
 	pr := bh.NewMockReporter()
 
 	behaviours := pr.GetBehaviours(peerID)
@@ -34,7 +34,7 @@ func TestMockReporter(t *testing.T) {
 }
 
 type scriptItem struct {
-	peerID    p2p.ID
+	peerID    p2p.NodeID
 	behaviour bh.PeerBehaviour
 }
 
@@ -76,10 +76,10 @@ func equalBehaviours(a []bh.PeerBehaviour, b []bh.PeerBehaviour) bool {
 // freequencies that those behaviours occur.
 func TestEqualPeerBehaviours(t *testing.T) {
 	var (
-		peerID        p2p.ID = "MockPeer"
-		consensusVote        = bh.ConsensusVote(peerID, "voted")
-		blockPart            = bh.BlockPart(peerID, "blocked")
-		equals               = []struct {
+		peerID        p2p.NodeID = "MockPeer"
+		consensusVote            = bh.ConsensusVote(peerID, "voted")
+		blockPart                = bh.BlockPart(peerID, "blocked")
+		equals                   = []struct {
 			left  []bh.PeerBehaviour
 			right []bh.PeerBehaviour
 		}{
@@ -128,7 +128,7 @@ func TestEqualPeerBehaviours(t *testing.T) {
 func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 	var (
 		behaviourScript = []struct {
-			peerID     p2p.ID
+			peerID     p2p.NodeID
 			behaviours []bh.PeerBehaviour
 		}{
 			{"1", []bh.PeerBehaviour{bh.ConsensusVote("1", "")}},

@@ -80,7 +80,7 @@ func simplePeer(t *testing.T, id string) (*p2pmocks.Peer, p2p.PeerID) {
 	t.Helper()
 
 	peer := &p2pmocks.Peer{}
-	peer.On("ID").Return(p2p.ID(id))
+	peer.On("ID").Return(p2p.NodeID(id))
 
 	pID, err := p2p.PeerIDFromString(string(peer.ID()))
 	require.NoError(t, err)

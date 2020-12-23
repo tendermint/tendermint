@@ -32,11 +32,11 @@ import (
 
 type mockPeer struct {
 	service.Service
-	id p2p.ID
+	id p2p.NodeID
 }
 
 func (mp mockPeer) FlushStop()           {}
-func (mp mockPeer) ID() p2p.ID           { return mp.id }
+func (mp mockPeer) ID() p2p.NodeID       { return mp.id }
 func (mp mockPeer) RemoteIP() net.IP     { return net.IP{} }
 func (mp mockPeer) RemoteAddr() net.Addr { return &net.TCPAddr{IP: mp.RemoteIP(), Port: 8800} }
 
@@ -411,21 +411,21 @@ func TestReactorHelperMode(t *testing.T) {
 					old := mockSwitch.numStatusResponse
 					msg, err := bc.EncodeMsg(&ev)
 					assert.NoError(t, err)
-					reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
+					reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msg)
 					assert.Equal(t, old+1, mockSwitch.numStatusResponse)
 				case bcproto.BlockRequest:
 					if ev.Height > params.startHeight {
 						old := mockSwitch.numNoBlockResponse
 						msg, err := bc.EncodeMsg(&ev)
 						assert.NoError(t, err)
-						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
+						reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msg)
 						assert.Equal(t, old+1, mockSwitch.numNoBlockResponse)
 					} else {
 						old := mockSwitch.numBlockResponse
 						msg, err := bc.EncodeMsg(&ev)
 						assert.NoError(t, err)
 						assert.NoError(t, err)
-						reactor.Receive(channelID, mockPeer{id: p2p.ID(step.peer)}, msg)
+						reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msg)
 						assert.Equal(t, old+1, mockSwitch.numBlockResponse)
 					}
 				}

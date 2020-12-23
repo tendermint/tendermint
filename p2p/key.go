@@ -10,12 +10,12 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
-// ID is a hex-encoded crypto.Address
-type ID string
+// NodeID is a hex-encoded crypto.Address.
+type NodeID string
 
-// IDByteLength is the length of a crypto.Address. Currently only 20.
-// TODO: support other length addresses ?
-const IDByteLength = crypto.AddressSize
+// NodeIDByteLength is the length of a crypto.Address. Currently only 20.
+// TODO: support other length addresses?
+const NodeIDByteLength = crypto.AddressSize
 
 //------------------------------------------------------------------------------
 // Persistent peer ID
@@ -25,7 +25,7 @@ const IDByteLength = crypto.AddressSize
 // It contains the nodes private key for authentication.
 type NodeKey struct {
 	// Canonical ID - hex-encoded pubkey's address (IDByteLength bytes)
-	ID ID `json:"id"`
+	ID NodeID `json:"id"`
 	// Private key
 	PrivKey crypto.PrivKey `json:"priv_key"`
 }
@@ -50,8 +50,8 @@ func (nodeKey NodeKey) SaveAs(filePath string) error {
 
 // PubKeyToID returns the ID corresponding to the given PubKey.
 // It's the hex-encoding of the pubKey.Address().
-func PubKeyToID(pubKey crypto.PubKey) ID {
-	return ID(hex.EncodeToString(pubKey.Address()))
+func PubKeyToID(pubKey crypto.PubKey) NodeID {
+	return NodeID(hex.EncodeToString(pubKey.Address()))
 }
 
 // LoadOrGenNodeKey attempts to load the NodeKey from the given filePath. If
