@@ -2,6 +2,8 @@ package p2p
 
 import (
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"io/ioutil"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -11,11 +13,37 @@ import (
 )
 
 // NodeID is a hex-encoded crypto.Address.
+// FIXME: We should either ensure this is always lowercased, or add an Equal()
+// for comparison that decodes to the binary byte slice first.
 type NodeID string
 
 // NodeIDByteLength is the length of a crypto.Address. Currently only 20.
-// TODO: support other length addresses?
+// FIXME: support other length addresses?
 const NodeIDByteLength = crypto.AddressSize
+
+// Bytes converts the node ID to it's binary byte representation.
+func (id NodeID) Bytes() ([]byte, error) {
+	bz, err := hex.DecodeString(string(id))
+	if err != nil {
+		return nil, fmt.Errorf("invalid node ID encoding: %w", err)
+	}
+	return bz, nil
+}
+
+// Validate validates the NodeID.
+func (id NodeID) Validate() error {
+	if len(id) == 0 {
+		return errors.New("no ID")
+	}
+	bz, err := id.Bytes()
+	if err != nil {
+		return err
+	}
+	if len(bz) != NodeIDByteLength {
+		return fmt.Errorf("invalid ID length - got %d, expected %d", len(bz), NodeIDByteLength)
+	}
+	return nil
+}
 
 //------------------------------------------------------------------------------
 // Persistent peer ID
