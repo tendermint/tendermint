@@ -29,7 +29,7 @@ var (
 			MsgType: new(tmproto.EvidenceList),
 			Descriptor: &p2p.ChannelDescriptor{
 				ID:                  byte(EvidenceChannel),
-				Priority:            5,
+				Priority:            6,
 				RecvMessageCapacity: maxMsgSize,
 			},
 		},
