@@ -16,15 +16,6 @@ const testCh = 0x01
 
 //------------------------------------------------
 
-type mockNodeInfo struct {
-	addr *NetAddress
-}
-
-func (ni mockNodeInfo) ID() ID                              { return ni.addr.ID }
-func (ni mockNodeInfo) NetAddress() (*NetAddress, error)    { return ni.addr, nil }
-func (ni mockNodeInfo) Validate() error                     { return nil }
-func (ni mockNodeInfo) CompatibleWith(other NodeInfo) error { return nil }
-
 func AddPeerToSwitchPeerSet(sw *Switch, peer Peer) {
 	sw.peers.Add(peer) //nolint:errcheck // ignore error
 }
@@ -33,8 +24,11 @@ func CreateRandomPeer(outbound bool) Peer {
 	addr, netAddr := CreateRoutableAddr()
 	p := &peer{
 		peerConn: peerConn{outbound: outbound},
-		nodeInfo: mockNodeInfo{netAddr},
-		metrics:  NopMetrics(),
+		nodeInfo: NodeInfo{
+			DefaultNodeID: netAddr.ID,
+			ListenAddr:    netAddr.DialString(),
+		},
+		metrics: NopMetrics(),
 	}
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p
@@ -166,7 +160,7 @@ func MakeSwitch(
 	nodeKey := GenNodeKey()
 	nodeInfo := testNodeInfo(nodeKey.ID, fmt.Sprintf("node%d", i))
 	addr, err := NewNetAddressString(
-		IDAddressString(nodeKey.ID, nodeInfo.(DefaultNodeInfo).ListenAddr),
+		IDAddressString(nodeKey.ID, nodeInfo.ListenAddr),
 	)
 	if err != nil {
 		panic(err)
@@ -175,16 +169,16 @@ func MakeSwitch(
 	logger := log.TestingLogger().With("switch", i)
 	t := NewMConnTransport(logger, nodeInfo, nodeKey.PrivKey, MConnConfig(cfg))
 
-	if err := t.Listen(addr.Endpoint()); err != nil {
-		panic(err)
-	}
-
 	// TODO: let the config be passed in?
 	sw := initSwitch(i, NewSwitch(cfg, t, opts...))
 	sw.SetLogger(log.TestingLogger().With("switch", i))
 	sw.SetNodeKey(nodeKey)
 
-	ni := nodeInfo.(DefaultNodeInfo)
+	if err := t.Listen(addr.Endpoint()); err != nil {
+		panic(err)
+	}
+
+	ni := nodeInfo
 	ni.Channels = []byte{}
 	for ch := range sw.reactorsByCh {
 		ni.Channels = append(ni.Channels, ch)
@@ -193,7 +187,7 @@ func MakeSwitch(
 
 	// TODO: We need to setup reactors ahead of time so the NodeInfo is properly
 	// populated and we don't have to do those awkward overrides and setters.
-	t.nodeInfo = nodeInfo.(DefaultNodeInfo)
+	t.nodeInfo = nodeInfo
 	sw.SetNodeInfo(nodeInfo)
 
 	return sw
@@ -228,7 +222,7 @@ func testNodeInfo(id ID, name string) NodeInfo {
 }
 
 func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
-	return DefaultNodeInfo{
+	return NodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
 		DefaultNodeID:   id,
 		ListenAddr:      fmt.Sprintf("127.0.0.1:%d", getFreePort()),
@@ -236,7 +230,7 @@ func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
 		Version:         "1.2.3-rc0-deadbeef",
 		Channels:        []byte{testCh},
 		Moniker:         name,
-		Other: DefaultNodeInfoOther{
+		Other: NodeInfoOther{
 			TxIndex:    "on",
 			RPCAddress: fmt.Sprintf("127.0.0.1:%d", getFreePort()),
 		},

@@ -63,7 +63,7 @@ To start a one-node blockchain with a simple in-process application:
 
 ```sh
 tendermint init
-tendermint node --proxy_app=kvstore
+tendermint node --proxy-app=kvstore
 ```
 
 ## Reinstall

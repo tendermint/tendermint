@@ -45,7 +45,7 @@ func (mp mockPeer) IsPersistent() bool { return true }
 func (mp mockPeer) CloseConn() error   { return nil }
 
 func (mp mockPeer) NodeInfo() p2p.NodeInfo {
-	return p2p.DefaultNodeInfo{
+	return p2p.NodeInfo{
 		DefaultNodeID: "",
 		ListenAddr:    "",
 	}

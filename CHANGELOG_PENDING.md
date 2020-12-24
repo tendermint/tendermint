@@ -4,6 +4,12 @@
 
 Special thanks to external contributors on this release:
 
+@p4u from vocdoni.io reported that the mempool might behave incorrectly under a
+high load. The consequences can range from pauses between blocks to the peers
+disconnecting from this node. As a temporary remedy (until the mempool package
+is refactored), the `max-batch-bytes` was disabled. Transactions will be sent
+one by one without batching.
+
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES
@@ -17,6 +23,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - Apps
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
   - [ABCI] \#5447 Reset `Oneof` indexes for  `Request` and `Response`.
+  - [ABCI] \#5818 Use protoio for msg length delimitation. Migrates from int64 to uint64 length delimiters.
 
 - P2P Protocol
 
@@ -24,6 +31,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [abci/client, proxy] \#5673 `Async` funcs return an error, `Sync` and `Async` funcs accept `context.Context` (@melekes)
   - [p2p] Removed unused function `MakePoWTarget`. (@erikgrinaker)
   - [libs/bits] \#5720 Validate `BitArray` in `FromProto`, which now returns an error (@melekes)
+  - [proto/p2p] Renamed `DefaultNodeInfo` and `DefaultNodeInfoOther` to `NodeInfo` and `NodeInfoOther` (@erikgrinaker)
 
 - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
 
@@ -42,6 +50,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [blockchain/v0] \#5741 Relax termination conditions and increase sync timeout (@melekes)
 - [cli] \#5772 `gen_node_key` output now contains node ID (`id` field) (@melekes)
 - [blockchain/v2] \#5774 Send status request when new peer joins (@melekes)
+- [consensus] \#5792 Deprecates the `time_iota_ms` consensus parameter, to reduce the bug surface. The parameter is no longer used. (@valardragon)
+- [mempool] \#5813 Add `keep-invalid-txs-in-cache` config option. When set to true, mempool will keep invalid transactions in the cache (@p4u)
 
 ### BUG FIXES
 
@@ -50,3 +60,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
 - [crypto] \#5707 Fix infinite recursion in string formatting of Secp256k1 keys (@erikgrinaker)
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)
+- [mempool] \#5800 Disable `max-batch-bytes` (@melekes)

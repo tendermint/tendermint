@@ -131,7 +131,7 @@ func TestNodeSetAppVersion(t *testing.T) {
 	assert.Equal(t, state.Version.Consensus.App, appVersion)
 
 	// check version is set in node info
-	assert.Equal(t, n.nodeInfo.(p2p.DefaultNodeInfo).ProtocolVersion.App, appVersion)
+	assert.Equal(t, n.nodeInfo.ProtocolVersion.App, appVersion)
 }
 
 func TestNodeSetPrivValTCP(t *testing.T) {

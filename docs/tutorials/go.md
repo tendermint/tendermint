@@ -43,7 +43,7 @@ Verify that you have the latest version of Go installed:
 
 ```bash
 $ go version
-go version go1.15.1 darwin/amd64
+go version go1.15.x darwin/amd64
 ```
 
 ## 1.2 Creating a new Go project
@@ -435,7 +435,13 @@ go mod init github.com/me/example
 ```
 
 This should create a `go.mod` file. The current tutorial only works with
-tendermint > v0.34, so let's make sure we're using the latest version:
+the master branch of Tendermint, so let's make sure we're using the latest version:
+
+```sh
+go get github.com/tendermint/tendermint@master
+```
+
+This will populate the `go.mod` with a release number followed by a hash for Tendermint.
 
 ```go
 module github.com/me/example
@@ -444,7 +450,7 @@ go 1.15
 
 require (
 	github.com/dgraph-io/badger v1.6.2
-	github.com/tendermint/tendermint v0.34.0-rc4
+	github.com/tendermint/tendermint <vX>
 )
 ```
 
@@ -491,7 +497,7 @@ Then we need to start Tendermint Core and point it to our application. Staying
 within the application directory execute:
 
 ```bash
-TMHOME="/tmp/example" tendermint node --proxy_app=unix://example.sock
+TMHOME="/tmp/example" tendermint node --proxy-app=unix://example.sock
 
 I[2019-07-16|18:26:20.362] Version info                                 module=main software=0.32.1 block=10 p2p=7
 I[2019-07-16|18:26:20.383] Starting Node                                module=main impl=Node

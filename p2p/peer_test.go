@@ -260,7 +260,7 @@ func (rp *remotePeer) accept() {
 }
 
 func (rp *remotePeer) nodeInfo() NodeInfo {
-	return DefaultNodeInfo{
+	return NodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
 		DefaultNodeID:   rp.Addr().ID,
 		ListenAddr:      rp.listener.Addr().String(),
