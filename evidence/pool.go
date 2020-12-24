@@ -58,7 +58,7 @@ func NewPool(logger log.Logger, evidenceDB dbm.DB, stateDB sm.Store, blockStore 
 		stateDB:       stateDB,
 		blockStore:    blockStore,
 		state:         state,
-		logger:        log.NewNopLogger(),
+		logger:        logger,
 		evidenceStore: evidenceDB,
 		evidenceList:  clist.New(),
 	}
