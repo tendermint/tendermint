@@ -447,7 +447,7 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	}
 
 	// The secondary reactor should have received all the evidence ignoring the
-	// already pending evidence.
+	// already committed evidence.
 	waitForEvidence(t, evList[numEvidence/2:], secondary)
 
 	require.Equal(t, numEvidence, int(primary.pool.Size()))
