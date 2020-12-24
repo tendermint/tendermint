@@ -1,7 +1,6 @@
 package evidence_test
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -22,11 +21,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
-
-func TestMain(m *testing.M) {
-	code := m.Run()
-	os.Exit(code)
-}
 
 const evidenceChainID = "test_chain"
 

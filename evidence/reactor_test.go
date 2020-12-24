@@ -208,6 +208,42 @@ func simulateRouter(wg *sync.WaitGroup, primary *reactorTestSuite, suites []*rea
 	}()
 }
 
+func TestReactorMultiDisconnect(t *testing.T) {
+	val := types.NewMockPV()
+	height := int64(numEvidence) + 10
+
+	stateDB1 := initializeValidatorState(t, val, height)
+	stateDB2 := initializeValidatorState(t, val, height)
+
+	testSuites := createTestSuites(t, []sm.Store{stateDB1, stateDB2}, 0)
+	primary := testSuites[0]
+	secondary := testSuites[1]
+
+	// simulate a no-op router
+	go func() {
+		for range primary.evidenceOutCh {
+		}
+	}()
+
+	_ = createEvidenceList(t, primary.pool, val, numEvidence)
+
+	primary.peerUpdatesCh <- p2p.PeerUpdate{
+		Status: p2p.PeerStatusUp,
+		PeerID: secondary.peerID,
+	}
+
+	// Ensure "disconnecting" the secondary peer from the primary more than once
+	// is handled gracefully.
+	primary.peerUpdatesCh <- p2p.PeerUpdate{
+		Status: p2p.PeerStatusDown,
+		PeerID: secondary.peerID,
+	}
+	primary.peerUpdatesCh <- p2p.PeerUpdate{
+		Status: p2p.PeerStatusDown,
+		PeerID: secondary.peerID,
+	}
+}
+
 // TestReactorBroadcastEvidence creates an environment of multiple peers that
 // are all at the same height. One peer, designated as a primary, gossips all
 // evidence to the remaining peers.
@@ -244,7 +280,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	// will cause the primary to gossip all evidence to the secondaries.
 	for _, suite := range secondaries {
 		primary.peerUpdatesCh <- p2p.PeerUpdate{
-			Status: p2p.PeerStatusNew,
+			Status: p2p.PeerStatusUp,
 			PeerID: suite.peerID,
 		}
 	}
@@ -295,7 +331,7 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 	// will cause the primary to gossip all evidence to the secondaries.
 	for _, suite := range secondaries {
 		primary.peerUpdatesCh <- p2p.PeerUpdate{
-			Status: p2p.PeerStatusNew,
+			Status: p2p.PeerStatusUp,
 			PeerID: suite.peerID,
 		}
 	}
@@ -346,7 +382,7 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 
 	// add the secondary reactor as a peer to the primary reactor
 	primary.peerUpdatesCh <- p2p.PeerUpdate{
-		Status: p2p.PeerStatusNew,
+		Status: p2p.PeerStatusUp,
 		PeerID: secondary.peerID,
 	}
 
@@ -406,7 +442,7 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 
 	// add the secondary reactor as a peer to the primary reactor
 	primary.peerUpdatesCh <- p2p.PeerUpdate{
-		Status: p2p.PeerStatusNew,
+		Status: p2p.PeerStatusUp,
 		PeerID: secondary.peerID,
 	}
 
@@ -455,7 +491,7 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 		for _, suiteJ := range testSuites {
 			if !suiteI.peerID.Equal(suiteJ.peerID) {
 				suiteI.peerUpdatesCh <- p2p.PeerUpdate{
-					Status: p2p.PeerStatusNew,
+					Status: p2p.PeerStatusUp,
 					PeerID: suiteJ.peerID,
 				}
 			}
@@ -498,7 +534,7 @@ func TestReactorBroadcastEvidence_RemovePeer(t *testing.T) {
 
 	// add the secondary reactor as a peer to the primary reactor
 	primary.peerUpdatesCh <- p2p.PeerUpdate{
-		Status: p2p.PeerStatusNew,
+		Status: p2p.PeerStatusUp,
 		PeerID: secondary.peerID,
 	}
 

@@ -48,6 +48,21 @@ const (
 	broadcastEvidenceIntervalS = 10
 )
 
+type closer struct {
+	closeOnce sync.Once
+	doneCh    chan struct{}
+}
+
+func newCloser() *closer {
+	return &closer{doneCh: make(chan struct{})}
+}
+
+func (c *closer) close() {
+	c.closeOnce.Do(func() {
+		close(c.doneCh)
+	})
+}
+
 // Reactor handles evpool evidence broadcasting amongst peers.
 type Reactor struct {
 	service.BaseService
@@ -60,7 +75,7 @@ type Reactor struct {
 
 	mtx          tmsync.RWMutex
 	peerWG       sync.WaitGroup
-	peerRoutines map[string]chan struct{}
+	peerRoutines map[string]*closer
 }
 
 // NewReactor returns a reference to a new evidence reactor, which implements the
@@ -77,7 +92,7 @@ func NewReactor(
 		evidenceCh:   evidenceCh,
 		peerUpdates:  peerUpdates,
 		closeCh:      make(chan struct{}),
-		peerRoutines: make(map[string]chan struct{}),
+		peerRoutines: make(map[string]*closer),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Evidence", r)
@@ -103,13 +118,13 @@ func (r *Reactor) OnStart() error {
 // OnStop stops the reactor by signaling to all spawned goroutines to exit and
 // blocking until they all exit.
 func (r *Reactor) OnStop() {
-	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
-	// p2p Channels should execute Close().
-	close(r.closeCh)
-
 	// Wait for all spawned peer evidence broadcasting goroutines to gracefully
 	// exit.
 	r.peerWG.Wait()
+
+	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
+	// p2p Channels should execute Close().
+	close(r.closeCh)
 
 	// Wait for all p2p Channels to be closed before returning. This ensures we
 	// can easily reason about synchronization of all p2p Channels and ensure no
@@ -132,6 +147,8 @@ func (r *Reactor) handleEvidenceMessage(envelope p2p.Envelope) error {
 		// TODO: Refactor the Evidence type to not contain a list since we only ever
 		// send and receive one piece of evidence at a time. Or potentially consider
 		// batching evidence.
+		//
+		// see: https://github.com/tendermint/tendermint/issues/4729
 		for i := 0; i < len(msg.Evidence); i++ {
 			ev, err := types.EvidenceFromProto(&msg.Evidence[i])
 			if err != nil {
@@ -232,9 +249,11 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) (err error) {
 		// safely, and finally start the goroutine to broadcast evidence to that peer.
 		_, ok := r.peerRoutines[peerUpdate.PeerID.String()]
 		if !ok {
-			r.peerRoutines[peerUpdate.PeerID.String()] = make(chan struct{})
+			closer := newCloser()
+
+			r.peerRoutines[peerUpdate.PeerID.String()] = closer
 			r.peerWG.Add(1)
-			go r.broadcastEvidenceLoop(peerUpdate.PeerID, r.peerRoutines[peerUpdate.PeerID.String()])
+			go r.broadcastEvidenceLoop(peerUpdate.PeerID, closer)
 		}
 
 	case p2p.PeerStatusDown, p2p.PeerStatusRemoved, p2p.PeerStatusBanned:
@@ -242,9 +261,9 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) (err error) {
 		// If we have, we signal to terminate the goroutine via the channel's closure.
 		// This will internally decrement the peer waitgroup and remove the peer
 		// from the map of peer evidence broadcasting goroutines.
-		doneCh, ok := r.peerRoutines[peerUpdate.PeerID.String()]
+		closer, ok := r.peerRoutines[peerUpdate.PeerID.String()]
 		if ok {
-			close(doneCh)
+			closer.close()
 		}
 	}
 
@@ -287,14 +306,14 @@ func (r *Reactor) processPeerUpdates() {
 // that the peer has already received or may not be ready for.
 //
 // REF: https://github.com/tendermint/tendermint/issues/4727
-func (r *Reactor) broadcastEvidenceLoop(peerID p2p.PeerID, doneCh <-chan struct{}) {
+func (r *Reactor) broadcastEvidenceLoop(peerID p2p.PeerID, closer *closer) {
 	var next *clist.CElement
 
 	defer func() {
 		r.removePeerRoutine(peerID)
 
 		if e := recover(); e != nil {
-			r.Logger.Error("recovering from processing peer update panic", "err", e)
+			r.Logger.Error("recovering from broadcasting evidence loop", "err", e)
 		}
 	}()
 
@@ -309,7 +328,7 @@ func (r *Reactor) broadcastEvidenceLoop(peerID p2p.PeerID, doneCh <-chan struct{
 					continue
 				}
 
-			case <-doneCh:
+			case <-closer.doneCh:
 				// The peer is marked for removal via a PeerUpdate as the doneCh was
 				// explicitly closed to signal we should exit.
 				return
@@ -342,7 +361,7 @@ func (r *Reactor) broadcastEvidenceLoop(peerID p2p.PeerID, doneCh <-chan struct{
 		case r.evidenceCh.Out() <- envelope:
 			r.Logger.Debug("gossiped evidence to peer", "evidence", ev, "peer", peerID)
 
-		case <-doneCh:
+		case <-closer.doneCh:
 			// The peer is marked for removal via a PeerUpdate as the doneCh was
 			// explicitly closed to signal we should exit.
 			return
@@ -361,7 +380,7 @@ func (r *Reactor) broadcastEvidenceLoop(peerID p2p.PeerID, doneCh <-chan struct{
 		case <-next.NextWaitChan():
 			next = next.Next()
 
-		case <-doneCh:
+		case <-closer.doneCh:
 			// The peer is marked for removal via a PeerUpdate as the doneCh was
 			// explicitly closed to signal we should exit.
 			return
