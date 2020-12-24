@@ -349,6 +349,230 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	}
 }
 
+const BYZ_INDEX = 0
+const VICTIM_PEER_INDEX = 1
+
+func TestByzantinePrecommit(t *testing.T) {
+	N := 4
+
+	logger := consensusLogger().With("test", "byzantine")
+	app := newCounter
+	css, cleanup := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), app)
+	defer cleanup()
+
+	// give the byzantine validator a normal ticker
+	ticker := NewTimeoutTicker()
+	ticker.SetLogger(css[BYZ_INDEX].Logger)
+	css[BYZ_INDEX].SetTimeoutTicker(ticker)
+
+	p2pLogger := logger.With("module", "p2p")
+
+	blocksSubs := make([]types.Subscription, N)
+	reactors := make([]p2p.Reactor, N)
+	for i := 0; i < N; i++ {
+
+		// enable txs so we can create different proposals
+		assertMempool(css[i].txNotifier).EnableTxsAvailable()
+
+		eventBus := css[i].eventBus
+		eventBus.SetLogger(logger.With("module", "events", "validator", i))
+
+		var err error
+		blocksSubs[i], err = eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
+		require.NoError(t, err)
+
+		conR := NewReactor(css[i], true) // so we don't start the consensus states
+		conR.SetLogger(logger.With("validator", i))
+		conR.SetEventBus(eventBus)
+
+		var conRI p2p.Reactor = conR
+
+		// make first val byzantine
+		if i == BYZ_INDEX {
+			conRI = NewByzantineReactor(conR)
+		}
+
+		reactors[i] = conRI
+		err = css[i].blockExec.Store().Save(css[i].state) // for save height 1's validators info
+		require.NoError(t, err)
+	}
+
+	switches := p2p.MakeConnectedSwitches(config.P2P, N, func(i int, sw *p2p.Switch) *p2p.Switch {
+		sw.SetLogger(p2pLogger.With("validator", i))
+		sw.AddReactor("CONSENSUS", reactors[i])
+		return sw
+	}, func(sws []*p2p.Switch, i, j int) {
+		// the network starts partitioned with globally active adversary
+		if i != BYZ_INDEX {
+			return
+		}
+		p2p.Connect2Switches(sws, i, j)
+	})
+
+	// ----------------------------------------------------------------------
+	// Forking tendermint
+
+	css[BYZ_INDEX].privValidator.(types.MockPV).DisableChecks()
+	css[BYZ_INDEX].doPrevote = func(height int64, round int32) {
+		sw := switches[BYZ_INDEX]
+		cs := css[BYZ_INDEX]
+
+		peers := sw.Peers().List()
+
+		if height == 1 && round == 0 {
+			block1, blockParts1 := cs.createProposalBlock()
+			polRound, propBlockID := cs.ValidRound, types.BlockID{Hash: block1.Hash(), PartSetHeader: blockParts1.Header()}
+			proposal1 := types.NewProposal(height, round, polRound, propBlockID)
+			p1 := proposal1.ToProto()
+			if err := cs.privValidator.SignProposal(cs.state.ChainID, p1); err != nil {
+				t.Error(err)
+			}
+			proposal1.Signature = p1.Signature
+
+			// votes
+			prevote, _ := cs.signVote(tmproto.PrevoteType, block1.Hash(), blockParts1.Header())
+			precommit, _ := cs.signVote(tmproto.PrecommitType, block1.Hash(), blockParts1.Header())
+			precommitNil, _ := cs.signVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
+
+			for i, peer := range peers {
+				// proposal
+				msg := &ProposalMessage{Proposal: proposal1}
+				peer.Send(DataChannel, MustEncode(msg))
+
+				// parts
+				for i := 0; i < int(blockParts1.Total()); i++ {
+					part := blockParts1.GetPart(i)
+					msg := &BlockPartMessage{
+						Height: height,
+						Round:  round,
+						Part:   part,
+					}
+					peer.Send(DataChannel, MustEncode(msg))
+				}
+
+				if i == VICTIM_PEER_INDEX {
+					peer.Send(VoteChannel, MustEncode(&VoteMessage{prevote}))
+					peer.Send(VoteChannel, MustEncode(&VoteMessage{precommit}))
+				} else {
+					peer.Send(VoteChannel, MustEncode(&VoteMessage{prevote}))
+					peer.Send(VoteChannel, MustEncode(&VoteMessage{precommitNil}))
+				}
+			}
+		} else if height == 1 && round == 1 {
+			// We sign anything our friends need!
+			prevote, _ := cs.signVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+			precommit, _ := cs.signVote(tmproto.PrecommitType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+
+			for i, peer := range peers {
+				if i != VICTIM_PEER_INDEX {
+					peer.Send(VoteChannel, MustEncode(&VoteMessage{prevote}))
+					peer.Send(VoteChannel, MustEncode(&VoteMessage{precommit}))
+				}
+			}
+		}
+	}
+
+	css[BYZ_INDEX].decideProposal = func(height int64, round int32) {}
+	css[BYZ_INDEX].setProposal = func(proposal *types.Proposal) error {
+		if proposal.Height == 1 && proposal.Round == 0 {
+			// this is us. Let's fork the tendermint
+		} else if proposal.Height == 1 && proposal.Round == 1 {
+			// Lets help friends to make a fork
+			return css[BYZ_INDEX].defaultSetProposal(proposal)
+		} else if proposal.Height == 2 && proposal.Round == 0 {
+			// Already forked!
+		}
+		return nil
+	}
+	// ----------------------------------------------------------------------
+
+	defer func() {
+		for _, sw := range switches {
+			err := sw.Stop()
+			require.NoError(t, err)
+		}
+	}()
+
+	// start the non-byz state machines.
+	// note these must be started before the byz
+	for i := 0; i < N; i++ {
+		if i != BYZ_INDEX {
+			cr := reactors[i].(*Reactor)
+			cr.SwitchToConsensus(cr.conS.GetState(), false)
+		}
+	}
+
+	// start the byzantine state machine
+	byzR := reactors[BYZ_INDEX].(*ByzantineReactor)
+	s := byzR.reactor.conS.GetState()
+	byzR.reactor.SwitchToConsensus(s, false)
+
+	// byz proposer sends one block to peers[0]
+	// and the other block to peers[1] and peers[2].
+	// note peers and switches order don't match.
+	peers := switches[BYZ_INDEX].Peers().List()
+
+	// partition A
+	ind0 := getSwitchIndex(switches, peers[VICTIM_PEER_INDEX])
+
+	// partition B
+	ind1 := getSwitchIndex(switches, peers[0])
+	ind2 := getSwitchIndex(switches, peers[2])
+	p2p.Connect2Switches(switches, ind1, ind2)
+
+	m := 0
+	for {
+		for i := 0; i < N; i++ {
+			v := css[BYZ_INDEX].Votes.Precommits(0).GetByIndex(int32(i))
+			if v != nil {
+				if v.BlockID.Hash != nil {
+					peers[VICTIM_PEER_INDEX].Send(VoteChannel, MustEncode(&VoteMessage{v}))
+					m |= (0x1 << i)
+				}
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+		if m == 0x6 {
+			break
+		}
+	}
+
+	// wait for someone in the big partition (B) to make a block
+	<-blocksSubs[ind2].Out()
+
+	t.Log("A block has been committed. Healing partition")
+	p2p.Connect2Switches(switches, ind0, ind1)
+	p2p.Connect2Switches(switches, ind0, ind2)
+
+	// wait till everyone makes the first new block
+	// (one of them already has)
+	wg := new(sync.WaitGroup)
+	wg.Add(2)
+	for i := 1; i < N-1; i++ {
+		go func(j int) {
+			<-blocksSubs[j].Out()
+			wg.Done()
+		}(i)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	tick := time.NewTicker(time.Second * 10)
+	select {
+	case <-done:
+	case <-tick.C:
+		for i, reactor := range reactors {
+			t.Log(fmt.Sprintf("Consensus Reactor %v", i))
+			t.Log(fmt.Sprintf("%v", reactor))
+		}
+		t.Fatalf("Timed out waiting for all validators to commit first block")
+	}
+}
+
 //-------------------------------
 // byzantine consensus functions
 

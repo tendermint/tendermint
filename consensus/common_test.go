@@ -847,6 +847,10 @@ func (m *mockTicker) ScheduleTimeout(ti timeoutInfo) {
 		m.c <- ti
 		m.fired = true
 	}
+	if ti.Step == cstypes.RoundStepPrecommitWait {
+		m.c <- ti
+		m.fired = true
+	}
 }
 
 func (m *mockTicker) Chan() <-chan timeoutInfo {
