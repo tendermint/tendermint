@@ -703,11 +703,16 @@ func NewNode(config *cfg.Config,
 
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
-	// Make MempoolReactor
+	// Make Mempool Reactor
 	mempoolReactor, mempool := createMempoolAndMempoolReactor(config, proxyApp, state, memplMetrics, logger)
 
 	// Make Evidence Reactor
 	evidenceReactor, evidencePool, err := createEvidenceReactor(config, dbProvider, stateDB, blockStore, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	nextCoreChainLock, err := types.CoreChainLockFromProto(genDoc.InitialProposalCoreChainLock)
 	if err != nil {
 		return nil, err
 	}
@@ -720,6 +725,7 @@ func NewNode(config *cfg.Config,
 		proxyApp.Query(),
 		mempool,
 		evidencePool,
+		nextCoreChainLock,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 

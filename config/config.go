@@ -887,12 +887,12 @@ func DefaultConsensusConfig() *ConsensusConfig {
 // TestConsensusConfig returns a configuration for testing the consensus service
 func TestConsensusConfig() *ConsensusConfig {
 	cfg := DefaultConsensusConfig()
-	cfg.TimeoutPropose = 40 * time.Millisecond
-	cfg.TimeoutProposeDelta = 1 * time.Millisecond
-	cfg.TimeoutPrevote = 10 * time.Millisecond
-	cfg.TimeoutPrevoteDelta = 1 * time.Millisecond
-	cfg.TimeoutPrecommit = 10 * time.Millisecond
-	cfg.TimeoutPrecommitDelta = 1 * time.Millisecond
+	cfg.TimeoutPropose = 400 * time.Millisecond
+	cfg.TimeoutProposeDelta = 10 * time.Millisecond
+	cfg.TimeoutPrevote = 100 * time.Millisecond
+	cfg.TimeoutPrevoteDelta = 10 * time.Millisecond
+	cfg.TimeoutPrecommit = 100 * time.Millisecond
+	cfg.TimeoutPrecommitDelta = 10 * time.Millisecond
 	// NOTE: when modifying, make sure to update time_iota_ms (testGenesisFmt) in toml.go
 	cfg.TimeoutCommit = 10 * time.Millisecond
 	cfg.SkipTimeoutCommit = true

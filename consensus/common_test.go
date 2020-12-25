@@ -399,7 +399,7 @@ func newStateWithConfigAndBlockStore(
 		panic(err)
 	}
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry, mempool, evpool)
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry, mempool, evpool, nil)
 
 	cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
@@ -957,15 +957,16 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	}
 	sort.Sort(types.PrivValidatorsByProTxHash(privValidators))
 
-	coreChainLock := types.NewMockChainLock(1)
+	coreChainLock := types.NewMockChainLock(2)
 
 	return &types.GenesisDoc{
-		GenesisTime:          tmtime.Now(),
-		InitialHeight:        1,
-		ChainID:              config.ChainID(),
-		Validators:           validators,
-		GenesisCoreChainLock: coreChainLock.ToProto(),
-		ThresholdPublicKey:   thresholdPublicKey,
+		GenesisTime:                  tmtime.Now(),
+		InitialHeight:                1,
+		ChainID:                      config.ChainID(),
+		Validators:                   validators,
+		InitialCoreChainLockedHeight: 1,
+		InitialProposalCoreChainLock: coreChainLock.ToProto(),
+		ThresholdPublicKey:           thresholdPublicKey,
 	}, privValidators
 }
 

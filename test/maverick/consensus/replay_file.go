@@ -328,7 +328,11 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	}
 
 	mempool, evpool := emptyMempool{}, sm.EmptyEvidencePool{}
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(), mempool, evpool)
+	nextCoreChainLock, err := types.CoreChainLockFromProto(gdoc.InitialProposalCoreChainLock)
+	if err != nil {
+		tmos.Exit(fmt.Sprintf("Failed to convert chain lock: %v", err))
+	}
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(), mempool, evpool, nextCoreChainLock)
 
 	consensusState := NewState(csConfig, state.Copy(), blockExec,
 		blockStore, mempool, evpool, map[int64]Misbehavior{})

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/proxy"
@@ -154,9 +153,9 @@ func validateBlock(proxyAppQueryConn proxy.AppConnQuery, state State, block *typ
 		}
 
 		//We also need to make sure that the new height is superior to the old height
-		if block.Header.CoreChainLockedHeight <= state.LastCoreChainLock.CoreBlockHeight {
+		if block.Header.CoreChainLockedHeight <= state.LastCoreChainLockedBlockHeight {
 			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight. Previous CoreChainLockedHeight %d, got %d",
-				state.LastCoreChainLock.CoreBlockHeight,
+				state.LastCoreChainLockedBlockHeight,
 				block.Header.CoreChainLockedHeight,
 			)
 		}
@@ -183,9 +182,9 @@ func validateBlock(proxyAppQueryConn proxy.AppConnQuery, state State, block *typ
 		}
 	} else {
 		//If there is no new Chain Lock we need to make sure the height has stayed the same
-		if block.Header.CoreChainLockedHeight != state.LastCoreChainLock.CoreBlockHeight {
+		if block.Header.CoreChainLockedHeight != state.LastCoreChainLockedBlockHeight {
 			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight when no new Chain Lock. Previous CoreChainLockedHeight %d, got %d",
-				state.LastCoreChainLock.CoreBlockHeight,
+				state.LastCoreChainLockedBlockHeight,
 				block.Header.CoreChainLockedHeight,
 			)
 		}

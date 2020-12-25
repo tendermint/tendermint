@@ -768,6 +768,7 @@ func NewNode(config *cfg.Config,
 		proxyApp.Query(),
 		mempool,
 		evidencePool,
+		nil,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 

@@ -959,8 +959,7 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID, sta
 		// Validate block signature.
 		voteBlockSignBytes := commit.VoteBlockSignBytes(chainID, int32(idx))
 		if !val.PubKey.VerifySignature(voteBlockSignBytes, commitSig.BlockSignature) {
-			commit.VoteBlockSignBytes(chainID, int32(idx))
-			return fmt.Errorf("wrong block signature (#%d): %X", idx, commitSig.BlockSignature)
+			return fmt.Errorf("wrong block signature for light (#%d/proTxHash:%X/pubKey:%X) | voteBlockSignBytes : %X | signature : %X | commitBID: %s | vote :%v | commit sig %v\n", idx, val.ProTxHash, val.PubKey.Bytes(), voteBlockSignBytes, commitSig.BlockSignature, commit.BlockID.String(), commit.GetVote(int32(idx)), commit.Signatures[idx])
 		}
 
 		// Validate block signature.
@@ -1027,13 +1026,13 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 			// Validate block signature.
 			voteBlockSignBytes := commit.VoteBlockSignBytes(chainID, int32(idx))
 			if !val.PubKey.VerifySignature(voteBlockSignBytes, commitSig.BlockSignature) {
-				return fmt.Errorf("wrong block signature (#%d): %X", idx, commitSig.BlockSignature)
+				return fmt.Errorf("wrong block signature for light trusting (#%d/proTxHash:%X/pubKey:%X) | voteBlockSignBytes : %X | signature : %X | commitBID: %s | vote :%v | commit sig %v\n", idx, val.ProTxHash, val.PubKey.Bytes(), voteBlockSignBytes, commitSig.BlockSignature, commit.BlockID.String(), commit.GetVote(int32(idx)), commit.Signatures[idx])
 			}
 
 			// Validate block signature.
 			voteStateSignBytes := commit.VoteStateSignBytes(chainID, int32(idx))
 			if !val.PubKey.VerifySignature(voteStateSignBytes, commitSig.StateSignature) {
-				return fmt.Errorf("wrong state signature (#%d): %X", idx, commitSig.StateSignature)
+				return fmt.Errorf("wrong state signature for light trusting (#%d): %X", idx, commitSig.StateSignature)
 			}
 
 			talliedVotingPower += val.VotingPower

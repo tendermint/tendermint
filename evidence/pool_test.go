@@ -232,19 +232,9 @@ func TestEvidencePoolUpdate(t *testing.T) {
 		val, evidenceChainID)
 	lastCommit := makeCommit(height, val.ProTxHash)
 
-	var coreChainLock *types.CoreChainLock = nil
-	if state.NextCoreChainLock.CoreBlockHeight > state.LastCoreChainLock.CoreBlockHeight {
-		coreChainLock = &state.NextCoreChainLock
-	}
+	coreChainLockHeight := state.LastCoreChainLockedBlockHeight
 
-	var coreChainLockHeight uint32
-	if coreChainLock == nil {
-		coreChainLockHeight = state.LastCoreChainLock.CoreBlockHeight
-	} else {
-		coreChainLockHeight = coreChainLock.CoreBlockHeight
-	}
-
-	block := types.MakeBlock(height+1, coreChainLockHeight, coreChainLock, []types.Tx{}, lastCommit, []types.Evidence{ev})
+	block := types.MakeBlock(height+1, coreChainLockHeight, nil, []types.Tx{}, lastCommit, []types.Evidence{ev})
 	// update state (partially)
 	state.LastBlockHeight = height + 1
 	state.LastBlockTime = defaultEvidenceTime.Add(22 * time.Minute)
@@ -476,7 +466,7 @@ func initializeBlockStore(db dbm.DB, state sm.State, valProTxHash []byte) *store
 
 	for i := int64(1); i <= state.LastBlockHeight; i++ {
 		lastCommit := makeCommit(i-1, valProTxHash)
-		block, _ := state.MakeBlock(i, []types.Tx{}, lastCommit, nil,
+		block, _ := state.MakeBlock(i, nil, []types.Tx{}, lastCommit, nil,
 			state.Validators.GetProposer().ProTxHash)
 		block.Header.Time = defaultEvidenceTime.Add(time.Duration(i) * time.Minute)
 		block.Header.Version = tmversion.Consensus{Block: version.BlockProtocol, App: 1}

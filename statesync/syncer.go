@@ -280,6 +280,7 @@ func (s *syncer) offerSnapshot(snapshot *snapshot) error {
 	resp, err := s.conn.OfferSnapshotSync(abci.RequestOfferSnapshot{
 		Snapshot: &abci.Snapshot{
 			Height:   snapshot.Height,
+			CoreChainLockedHeight: snapshot.CoreChainLockedHeight,
 			Format:   snapshot.Format,
 			Chunks:   snapshot.Chunks,
 			Hash:     snapshot.Hash,
@@ -435,6 +436,12 @@ func (s *syncer) verifyApp(snapshot *snapshot) (uint64, error) {
 	if uint64(resp.LastBlockHeight) != snapshot.Height {
 		s.logger.Error("ABCI app reported unexpected last block height",
 			"expected", snapshot.Height, "actual", resp.LastBlockHeight)
+		return 0, errVerifyFailed
+	}
+	if snapshot.CoreChainLockedHeight != resp.LastCoreChainLockedHeight {
+		s.logger.Error("last core chain locked height verification failed",
+			"expected", fmt.Sprintf("%d", snapshot.CoreChainLockedHeight),
+			"actual", fmt.Sprintf("%d", resp.LastCoreChainLockedHeight))
 		return 0, errVerifyFailed
 	}
 	s.logger.Info("Verified ABCI app", "height", snapshot.Height,

@@ -251,9 +251,11 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		return fmt.Errorf("got a negative last block height (%d) from the app", blockHeight)
 	}
 	appHash := res.LastBlockAppHash
+	coreChainLockedHeight := res.LastCoreChainLockedHeight
 
 	h.logger.Info("ABCI Handshake App Info",
 		"height", blockHeight,
+		"core height", coreChainLockedHeight,
 		"hash", fmt.Sprintf("%X", appHash),
 		"software-version", res.Version,
 		"protocol-version", res.AppVersion,
@@ -269,6 +271,9 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	if err != nil {
 		return fmt.Errorf("error on replay: %v", err)
 	}
+
+	// Set the initial state last core chain locked block height
+	h.initialState.LastCoreChainLockedBlockHeight = coreChainLockedHeight
 
 	h.logger.Info("Completed ABCI Handshake - Tendermint and App are synced",
 		"appHeight", blockHeight, "appHash", fmt.Sprintf("%X", appHash))
@@ -289,7 +294,9 @@ func (h *Handshaker) ReplayBlocks(
 ) ([]byte, error) {
 	storeBlockBase := h.store.Base()
 	storeBlockHeight := h.store.Height()
+	storeCoreChainLockedHeight := h.store.CoreChainLockedHeight()
 	stateBlockHeight := state.LastBlockHeight
+	stateCoreChainLockedHeight := state.LastCoreChainLockedBlockHeight
 	h.logger.Info(
 		"ABCI Replay Blocks",
 		"appHeight",
@@ -297,7 +304,11 @@ func (h *Handshaker) ReplayBlocks(
 		"storeHeight",
 		storeBlockHeight,
 		"stateHeight",
-		stateBlockHeight)
+		stateBlockHeight,
+		"storeCoreChainLockedHeight",
+		storeCoreChainLockedHeight,
+		"stateCoreChainLockedHeight",
+		stateCoreChainLockedHeight)
 
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain.
 	if appBlockHeight == 0 {
@@ -506,7 +517,7 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	// Use stubs for both mempool and evidence pool since no transactions nor
 	// evidence are needed here - block already exists.
 
-	blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, proxyApp, proxyAppQuery, emptyMempool{}, sm.EmptyEvidencePool{})
+	blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, proxyApp, proxyAppQuery, emptyMempool{}, sm.EmptyEvidencePool{}, nil)
 	blockExec.SetEventBus(h.eventBus)
 
 	var err error

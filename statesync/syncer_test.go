@@ -123,6 +123,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: &abci.Snapshot{
 			Height: 2,
+			CoreChainLockedHeight: 5,
 			Format: 2,
 			Chunks: 3,
 			Hash:   []byte{1},
@@ -132,6 +133,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 		Snapshot: &abci.Snapshot{
 			Height:   s.Height,
+			CoreChainLockedHeight: s.CoreChainLockedHeight,
 			Format:   s.Format,
 			Chunks:   s.Chunks,
 			Hash:     s.Hash,
@@ -218,7 +220,7 @@ func TestSyncer_SyncAny_noSnapshots(t *testing.T) {
 func TestSyncer_SyncAny_abort(t *testing.T) {
 	syncer, connSnapshot := setupOfferSyncer(t)
 
-	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
+	s := &snapshot{Height: 1, CoreChainLockedHeight: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 	_, err := syncer.AddSnapshot(simplePeer("id"), s)
 	require.NoError(t, err)
 	connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
@@ -364,7 +366,7 @@ func TestSyncer_offerSnapshot(t *testing.T) {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			syncer, connSnapshot := setupOfferSyncer(t)
-			s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}, trustedAppHash: []byte("app_hash")}
+			s := &snapshot{Height: 1, CoreChainLockedHeight: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}, trustedAppHash: []byte("app_hash")}
 			connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 				Snapshot: toABCI(s),
 				AppHash:  []byte("app_hash"),
@@ -605,7 +607,7 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 
 func TestSyncer_verifyApp(t *testing.T) {
 	boom := errors.New("boom")
-	s := &snapshot{Height: 3, Format: 1, Chunks: 5, Hash: []byte{1, 2, 3}, trustedAppHash: []byte("app_hash")}
+	s := &snapshot{Height: 3, CoreChainLockedHeight: 10, Format: 1, Chunks: 5, Hash: []byte{1, 2, 3}, trustedAppHash: []byte("app_hash")}
 
 	testcases := map[string]struct {
 		response  *abci.ResponseInfo
@@ -614,6 +616,7 @@ func TestSyncer_verifyApp(t *testing.T) {
 	}{
 		"verified": {&abci.ResponseInfo{
 			LastBlockHeight:  3,
+			LastCoreChainLockedHeight: 10,
 			LastBlockAppHash: []byte("app_hash"),
 			AppVersion:       9,
 		}, nil, nil},
@@ -654,6 +657,7 @@ func TestSyncer_verifyApp(t *testing.T) {
 func toABCI(s *snapshot) *abci.Snapshot {
 	return &abci.Snapshot{
 		Height:   s.Height,
+		CoreChainLockedHeight: s.CoreChainLockedHeight,
 		Format:   s.Format,
 		Chunks:   s.Chunks,
 		Hash:     s.Hash,

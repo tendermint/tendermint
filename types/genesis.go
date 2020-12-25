@@ -39,15 +39,16 @@ type GenesisValidator struct {
 
 // GenesisDoc defines the initial conditions for a tendermint blockchain, in particular its validator set.
 type GenesisDoc struct {
-	GenesisTime          time.Time                `json:"genesis_time"`
-	ChainID              string                   `json:"chain_id"`
-	InitialHeight        int64                    `json:"initial_height"`
-	GenesisCoreChainLock *tmproto.CoreChainLock   `json:"genesis_core_chain_lock"`
-	ConsensusParams      *tmproto.ConsensusParams `json:"consensus_params,omitempty"`
-	Validators           []GenesisValidator       `json:"validators,omitempty"`
-	ThresholdPublicKey   crypto.PubKey            `json:"threshold_public_key"`
-	AppHash              tmbytes.HexBytes         `json:"app_hash"`
-	AppState             json.RawMessage          `json:"app_state,omitempty"`
+	GenesisTime                  time.Time                `json:"genesis_time"`
+	ChainID                      string                   `json:"chain_id"`
+	InitialHeight                int64                    `json:"initial_height"`
+	InitialCoreChainLockedHeight uint32                   `json:"initial_core_chain_locked_height"`
+	InitialProposalCoreChainLock *tmproto.CoreChainLock   `json:"initial_proposal_core_chain_lock"`
+	ConsensusParams              *tmproto.ConsensusParams `json:"consensus_params,omitempty"`
+	Validators                   []GenesisValidator       `json:"validators,omitempty"`
+	ThresholdPublicKey           crypto.PubKey            `json:"threshold_public_key"`
+	AppHash                      tmbytes.HexBytes         `json:"app_hash"`
+	AppState                     json.RawMessage          `json:"app_state,omitempty"`
 }
 
 // SaveAs is a utility method for saving GenensisDoc as a JSON file.
@@ -85,6 +86,11 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		genDoc.InitialHeight = 1
 	}
 
+	if genDoc.InitialProposalCoreChainLock != nil && genDoc.InitialProposalCoreChainLock.CoreBlockHeight <= genDoc.InitialCoreChainLockedHeight {
+		return fmt.Errorf("if set the initial proposal core chain locked block height %d must be superior to the initial core chain locked height %d",
+			genDoc.InitialProposalCoreChainLock.CoreBlockHeight, genDoc.InitialCoreChainLockedHeight)
+	}
+
 	if genDoc.ConsensusParams == nil {
 		genDoc.ConsensusParams = DefaultConsensusParams()
 	} else if err := ValidateConsensusParams(*genDoc.ConsensusParams); err != nil {
@@ -101,7 +107,7 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		if len(v.Address) == 0 {
 			genDoc.Validators[i].Address = v.PubKey.Address()
 		}
-		if len(v.ProTxHash) != 32 {
+		if len(v.ProTxHash) != crypto.ProTxHashSize {
 			return fmt.Errorf("validators must all contain a pro_tx_hash of size 32")
 		}
 	}

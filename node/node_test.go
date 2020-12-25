@@ -292,14 +292,11 @@ func TestCreateProposalBlock(t *testing.T) {
 		proxyApp.Query(),
 		mempool,
 		evidencePool,
+		nil,
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
-	block, _ := blockExec.CreateProposalBlock(
-		height,
-		state, commit,
-		proposerProTxHash,
-	)
+	block, _ := blockExec.CreateProposalBlock(height, state, commit, proposerProTxHash)
 
 	// check that the part set does not exceed the maximum block size
 	partSet := block.MakePartSet(partSize)
@@ -360,15 +357,13 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		proxyApp.Consensus(),
 		proxyApp.Query(),
 		mempool,
+
 		sm.EmptyEvidencePool{},
+		nil,
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
-	block, _ := blockExec.CreateProposalBlock(
-		height,
-		state, commit,
-		proposerProTxHash,
-	)
+	block, _ := blockExec.CreateProposalBlock(height,  state, commit, proposerProTxHash)
 
 	pb, err := block.ToProto()
 	require.NoError(t, err)

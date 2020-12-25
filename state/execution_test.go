@@ -45,7 +45,7 @@ func TestApplyBlock(t *testing.T) {
 	stateStore := sm.NewStore(stateDB)
 
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(),
-		mmock.Mempool{}, sm.EmptyEvidencePool{})
+		mmock.Mempool{}, sm.EmptyEvidencePool{}, nil)
 
 	block := makeBlock(state, 1)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
@@ -101,7 +101,7 @@ func TestBeginBlockValidators(t *testing.T) {
 		lastCommit := types.NewCommit(1, 0, prevBlockID, prevStateID, tc.lastCommitSigs, nil, nil)
 
 		// block for height 2
-		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().ProTxHash)
+		block, _ := state.MakeBlock(2, nil, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().ProTxHash)
 
 		_, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1)
 		require.Nil(t, err, tc.desc)
@@ -204,7 +204,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
 
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(),
-		mmock.Mempool{}, evpool)
+		mmock.Mempool{}, evpool, nil)
 
 	block := makeBlock(state, 1)
 	block.Evidence = types.EvidenceData{Evidence: ev}
@@ -387,6 +387,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 		proxyApp.Query(),
 		mmock.Mempool{},
 		sm.EmptyEvidencePool{},
+		nil,
 	)
 
 	eventBus := types.NewEventBus()
@@ -465,6 +466,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		proxyApp.Query(),
 		mmock.Mempool{},
 		sm.EmptyEvidencePool{},
+		nil,
 	)
 
 	block := makeBlock(state, 1)

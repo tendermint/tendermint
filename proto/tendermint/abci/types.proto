@@ -169,6 +169,7 @@ message ResponseInfo {
 
   int64 last_block_height   = 4;
   bytes last_block_app_hash = 5;
+  uint32 last_core_chain_locked_height   = 100;
 }
 
 // nondeterministic
@@ -184,6 +185,7 @@ message ResponseInitChain {
   //repeated ValidatorUpdate    validators           = 2 [(gogoproto.nullable) = false];
   bytes                       app_hash             = 3;
   ValidatorSetUpdate          validator_set_update = 100 [(gogoproto.nullable) = false];
+  tendermint.types.CoreChainLock  next_core_chain_lock_update  = 101;
 }
 
 message ResponseQuery {
@@ -392,11 +394,12 @@ message Evidence {
 // State Sync Types
 
 message Snapshot {
-  uint64 height   = 1;  // The height at which the snapshot was taken
-  uint32 format   = 2;  // The application-specific snapshot format
-  uint32 chunks   = 3;  // Number of chunks in the snapshot
-  bytes  hash     = 4;  // Arbitrary snapshot hash, equal only if identical
-  bytes  metadata = 5;  // Arbitrary application metadata
+  uint64 height                   = 1;  // The height at which the snapshot was taken
+  uint32 format                   = 2;  // The application-specific snapshot format
+  uint32 chunks                   = 3;  // Number of chunks in the snapshot
+  bytes  hash                     = 4;  // Arbitrary snapshot hash, equal only if identical
+  bytes  metadata                 = 5;  // Arbitrary application metadata
+  uint32 core_chain_locked_height = 100; // The core chain locked height
 }
 
 //----------------------------------------

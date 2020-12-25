@@ -70,23 +70,29 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		InitialState:              opt["initialState"].(map[string]string),
 		Validators:                &map[string]int64{},
 		ValidatorUpdates:          map[string]map[string]int64{},
+		ChainLockUpdates:          map[string]int64{},
 		Nodes:                     map[string]*e2e.ManifestNode{},
 	}
 
-	var numSeeds, numValidators, numFulls int
+	var numSeeds, numValidators, numFulls, numChainLocks int
 	switch opt["topology"].(string) {
 	case "single":
 		numValidators = 1
+		numChainLocks = 5
 	case "quad":
 		numValidators = 4
+		numChainLocks = r.Intn(10)
 	case "large":
 		// FIXME Networks are kept small since large ones use too much CPU.
 		numSeeds = r.Intn(4)
 		numValidators = 4 + r.Intn(7)
 		numFulls = r.Intn(5)
+		numChainLocks = r.Intn(10)
 	default:
 		return manifest, fmt.Errorf("unknown topology %q", opt["topology"])
 	}
+
+
 
 	// First we generate seed nodes, starting at the initial height.
 	for i := 1; i <= numSeeds; i++ {
@@ -137,6 +143,15 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		}
 		manifest.Nodes[fmt.Sprintf("full%02d", i)] = generateNode(
 			r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
+	}
+
+	// Finally, we generate random chain locks.
+	startAtChainLocks := r.Intn(5)
+	startAtChainLocksHeight := 3000 + r.Intn(5)
+	for i := 1; i <= numChainLocks; i++ {
+		startAtChainLocks += r.Intn(5)
+		startAtChainLocksHeight += r.Intn(5)
+		manifest.ChainLockUpdates[fmt.Sprintf("%d", startAtChainLocks)] = int64(startAtChainLocksHeight)
 	}
 
 	// We now set up peer discovery for nodes. Seed nodes are fully meshed with

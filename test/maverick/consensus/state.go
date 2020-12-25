@@ -55,6 +55,8 @@ type State struct {
 	// when it's detected
 	evpool evidencePool
 
+	nextCoreChainLock *types.CoreChainLock
+
 	// internal state
 	mtx sync.RWMutex
 	cstypes.RoundState
@@ -1209,10 +1211,14 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	if err := cs.wal.FlushAndSync(); err != nil {
 		cs.Logger.Error("Error flushing to disk")
 	}
+	proposedChainLockHeight := cs.state.LastCoreChainLockedBlockHeight
+	if cs.blockExec.NextCoreChainLock != nil && cs.blockExec.NextCoreChainLock.CoreBlockHeight > proposedChainLockHeight {
+		proposedChainLockHeight = cs.blockExec.NextCoreChainLock.CoreBlockHeight
+	}
 
 	// Make proposal
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-	proposal := types.NewProposal(height, cs.state.NextCoreChainLock.CoreBlockHeight, round, cs.ValidRound, propBlockID)
+	proposal := types.NewProposal(height, proposedChainLockHeight, round, cs.ValidRound, propBlockID)
 	p := proposal.ToProto()
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, p); err == nil {
 		proposal.Signature = p.Signature

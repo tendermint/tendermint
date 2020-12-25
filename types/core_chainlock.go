@@ -37,6 +37,7 @@ func (cl CoreChainLock) Copy() CoreChainLock {
 	}
 }
 
+
 func (cl *CoreChainLock) PopulateFromProto(clp *tmproto.CoreChainLock) error {
 
 	if clp == nil {

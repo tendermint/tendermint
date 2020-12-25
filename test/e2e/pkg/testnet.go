@@ -56,9 +56,11 @@ type Testnet struct {
 	Dir                       string
 	IP                        *net.IPNet
 	InitialHeight             int64
+	InitialCoreHeight         uint32
 	InitialState              map[string]string
 	Validators                map[*Node]crypto.PubKey
 	ValidatorUpdates          map[int64]map[*Node]crypto.PubKey
+	ChainLockUpdates          map[int64]int64
 	Nodes                     []*Node
 	KeyType                   string
 	ThresholdPublicKey        crypto.PubKey
@@ -98,7 +100,9 @@ type Node struct {
 // separately by the runner and the test cases. For this reason, testnets use a
 // random seed to generate e.g. keys.
 func LoadTestnet(file string) (*Testnet, error) {
+	fmt.Printf("loading manifest")
 	manifest, err := LoadManifest(file)
+	fmt.Printf("loaded manifest")
 	if err != nil {
 		return nil, err
 	}
@@ -161,15 +165,20 @@ func LoadTestnet(file string) (*Testnet, error) {
 		Dir:                dir,
 		IP:                 ipGen.Network(),
 		InitialHeight:      1,
+		InitialCoreHeight:  1,
 		InitialState:       manifest.InitialState,
 		Validators:         map[*Node]crypto.PubKey{},
 		ValidatorUpdates:   map[int64]map[*Node]crypto.PubKey{},
+		ChainLockUpdates:   map[int64]int64{},
 		Nodes:              []*Node{},
 		ThresholdPublicKey: thresholdPublicKey,
 		ThresholdPublicKeyUpdates: map[int64]crypto.PubKey{},
 	}
 	if manifest.InitialHeight > 0 {
 		testnet.InitialHeight = manifest.InitialHeight
+	}
+	if manifest.InitialCoreChainLockedHeight > 0 {
+		testnet.InitialCoreHeight = manifest.InitialCoreChainLockedHeight
 	}
 
 	for _, name := range nodeNames {
@@ -344,6 +353,28 @@ func LoadTestnet(file string) (*Testnet, error) {
 
 		testnet.ValidatorUpdates[int64(height)] = valUpdate
 		testnet.ThresholdPublicKeyUpdates[int64(height)] = thresholdPublicKey
+	}
+
+	chainLockSetHeights := make([]int, len(manifest.ChainLockUpdates))
+	i = 0
+	// We need to do validator updates in order, as we use the previous validator set as the basis of current proTxHashes
+	for heightStr, _ := range manifest.ChainLockUpdates {
+		height, err := strconv.Atoi(heightStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid validator update height %q: %w", height, err)
+		}
+		chainLockSetHeights[i] = height
+		i++
+	}
+
+	sort.Ints(chainLockSetHeights)
+
+	// Set up validator updates.
+	for _, height := range chainLockSetHeights {
+		heightStr := strconv.FormatInt(int64(height), 10)
+		chainLockHeight := manifest.ChainLockUpdates[heightStr]
+		testnet.ChainLockUpdates[int64(height)] = chainLockHeight
+		fmt.Printf("Set chainlock at height %d / core height is %d\n", height, chainLockHeight)
 	}
 
 	return testnet, testnet.Validate()

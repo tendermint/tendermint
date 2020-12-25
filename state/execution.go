@@ -39,6 +39,8 @@ type BlockExecutor struct {
 	// and update both with block results after commit.
 	mempool mempl.Mempool
 	evpool  EvidencePool
+	// the next core chain lock that we can propose
+	NextCoreChainLock *types.CoreChainLock
 
 	logger log.Logger
 
@@ -62,17 +64,19 @@ func NewBlockExecutor(
 	queryApp proxy.AppConnQuery,
 	mempool mempl.Mempool,
 	evpool EvidencePool,
+	nextCoreChainLock *types.CoreChainLock,
 	options ...BlockExecutorOption,
 ) *BlockExecutor {
 	res := &BlockExecutor{
-		store:    stateStore,
-		proxyApp: proxyApp,
-		queryApp: queryApp,
-		eventBus: types.NopEventBus{},
-		mempool:  mempool,
-		evpool:   evpool,
-		logger:   logger,
-		metrics:  NopMetrics(),
+		store:             stateStore,
+		proxyApp:          proxyApp,
+		queryApp:          queryApp,
+		eventBus:          types.NopEventBus{},
+		mempool:           mempool,
+		evpool:            evpool,
+		NextCoreChainLock: nextCoreChainLock,
+		logger:            logger,
+		metrics:           NopMetrics(),
 	}
 
 	for _, option := range options {
@@ -112,7 +116,13 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
-	return state.MakeBlock(height, txs, commit, evidence, proposerProTxHash)
+	nextCoreChainLock := blockExec.NextCoreChainLock
+
+	if nextCoreChainLock != nil && nextCoreChainLock.CoreBlockHeight <= state.LastCoreChainLockedBlockHeight {
+		nextCoreChainLock = nil
+	}
+
+	return state.MakeBlock(height, nextCoreChainLock, txs, commit, evidence, proposerProTxHash)
 }
 
 // ValidateBlock validates the given block against the given state.
@@ -180,7 +190,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update the state with the block and responses.
-	state, err = updateState(state, blockID, &block.Header, block.CoreChainLock, nextCoreChainLock, abciResponses, validatorUpdates, thresholdPublicKeyUpdate)
+	state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates, thresholdPublicKeyUpdate)
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
@@ -193,6 +203,9 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// Update evpool with the latest state.
 	blockExec.evpool.Update(state, block.Evidence.Evidence)
+
+	// Update the next core chain lock that we can propose
+	blockExec.NextCoreChainLock = nextCoreChainLock
 
 	fail.Fail() // XXX
 
@@ -444,8 +457,6 @@ func updateState(
 	state State,
 	blockID types.BlockID,
 	header *types.Header,
-	lastCoreChainLock *types.CoreChainLock,
-	nextCoreChainLock *types.CoreChainLock,
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 	newThresholdPublicKey crypto.PubKey,
@@ -488,18 +499,6 @@ func updateState(
 
 	nextVersion := state.Version
 
-	if lastCoreChainLock == nil {
-		lastCoreChainLock = &state.LastCoreChainLock
-	}
-
-	if nextCoreChainLock == nil {
-		nextCoreChainLock = &state.NextCoreChainLock
-	}
-
-	if nextCoreChainLock.CoreBlockHeight < lastCoreChainLock.CoreBlockHeight {
-		nextCoreChainLock = lastCoreChainLock
-	}
-
 	// NOTE: the AppHash has not been populated.
 	// It will be filled on state.Save.
 	return State{
@@ -510,8 +509,7 @@ func updateState(
 		LastBlockID:                      blockID,
 		LastStateID:                      types.StateID{LastAppHash: state.AppHash},
 		LastBlockTime:                    header.Time,
-		LastCoreChainLock:                *lastCoreChainLock,
-		NextCoreChainLock:                *nextCoreChainLock,
+		LastCoreChainLockedBlockHeight:   header.CoreChainLockedHeight,
 		NextValidators:                   nValSet,
 		Validators:                       state.NextValidators.Copy(),
 		LastValidators:                   state.Validators.Copy(),

@@ -1775,8 +1775,10 @@ components:
                 - "genesis_time"
                 - "chain_id"
                 - "initial_height"
+                - "initial_core_chain_locked_height"
                 - "consensus_params"
                 - "validators"
+                - "threshold_public_key"
                 - "app_hash"
               properties:
                 genesis_time:

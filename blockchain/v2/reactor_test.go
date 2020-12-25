@@ -66,6 +66,20 @@ func (ml *mockBlockStore) Height() int64 {
 	return int64(len(ml.blocks))
 }
 
+func (ml *mockBlockStore) CoreChainLockedHeight() uint32 {
+	latestHeight := int64(0)
+	for k := range ml.blocks {
+		if latestHeight > k {
+			latestHeight = k
+		}
+	}
+	if latestHeight > 0 {
+		return ml.blocks[latestHeight].CoreChainLockedHeight
+	} else {
+		return 0
+	}
+}
+
 func (ml *mockBlockStore) LoadBlock(height int64) *types.Block {
 	return ml.blocks[height]
 }
@@ -155,7 +169,7 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 		}
 		db := dbm.NewMemDB()
 		stateStore := sm.NewStore(db)
-		appl = sm.NewBlockExecutor(stateStore, p.logger, proxyApp.Consensus(), proxyApp.Query(), mock.Mempool{}, sm.EmptyEvidencePool{})
+		appl = sm.NewBlockExecutor(stateStore, p.logger, proxyApp.Consensus(), proxyApp.Query(), mock.Mempool{}, sm.EmptyEvidencePool{}, nil)
 		if err = stateStore.Save(state); err != nil {
 			panic(err)
 		}
@@ -450,8 +464,8 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().ProTxHash)
+func makeBlock(height int64, coreChainLock *types.CoreChainLock, state sm.State, lastCommit *types.Commit) *types.Block {
+	block, _ := state.MakeBlock(height, coreChainLock, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().ProTxHash)
 	return block
 }
 
@@ -498,7 +512,7 @@ func newReactorStore(
 	db := dbm.NewMemDB()
 	stateStore = sm.NewStore(db)
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(),
-		mock.Mempool{}, sm.EmptyEvidencePool{})
+		mock.Mempool{}, sm.EmptyEvidencePool{}, nil)
 	if err = stateStore.Save(state); err != nil {
 		panic(err)
 	}
@@ -526,7 +540,7 @@ func newReactorStore(
 				lastBlockMeta.BlockID, lastBlockMeta.StateID, []types.CommitSig{commitSig}, commitSig.BlockSignature, commitSig.StateSignature)
 		}
 
-		thisBlock := makeBlock(blockHeight, state, lastCommit)
+		thisBlock := makeBlock(blockHeight, nil, state, lastCommit)
 
 		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}

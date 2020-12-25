@@ -9,12 +9,14 @@ import (
 	"github.com/tendermint/tendermint/types"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
+	types1 "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/version"
 )
@@ -57,6 +59,7 @@ func (app *Application) Info(req abci.RequestInfo) abci.ResponseInfo {
 		AppVersion:       1,
 		LastBlockHeight:  int64(app.state.Height),
 		LastBlockAppHash: app.state.Hash,
+		LastCoreChainLockedHeight: app.state.CoreHeight,
 	}
 }
 
@@ -78,6 +81,10 @@ func (app *Application) InitChain(req abci.RequestInitChain) abci.ResponseInitCh
 		panic(err)
 	}
 	resp.ValidatorSetUpdate = *validatorSetUpdate
+
+	if resp.NextCoreChainLockUpdate, err = app.chainLockUpdate(0); err != nil {
+		panic(err)
+	}
 	return resp
 }
 
@@ -108,6 +115,9 @@ func (app *Application) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock
 	var err error
 	resp := abci.ResponseEndBlock{}
 	if resp.ValidatorSetUpdate, err = app.validatorSetUpdates(uint64(req.Height)); err != nil {
+		panic(err)
+	}
+	if resp.NextCoreChainLockUpdate, err = app.chainLockUpdate(uint64(req.Height)); err != nil {
 		panic(err)
 	}
 	return resp
@@ -233,6 +243,25 @@ func (app *Application) validatorSetUpdates(height uint64) (*abci.ValidatorSetUp
 	valSetUpdates.ValidatorUpdates = valUpdates
 	valSetUpdates.ThresholdPublicKey = abciThresholdPublicKeyUpdate
 	return &valSetUpdates, nil
+}
+
+// validatorUpdates generates a validator set update.
+func (app *Application) chainLockUpdate(height uint64) (*types1.CoreChainLock, error) {
+	updates := app.cfg.ChainLockUpdates[fmt.Sprintf("%v", height)]
+	if len(updates) == 0 {
+		return nil, nil
+	}
+
+	chainLockUpdateString := app.cfg.ChainLockUpdates[fmt.Sprintf("%v", height)]
+	if len(chainLockUpdateString) == 0 {
+		return nil, fmt.Errorf("chainlockUpdate must be set")
+	}
+	chainlockUpdateHeight, err := strconv.Atoi(chainLockUpdateString)
+	if err != nil {
+		return nil, fmt.Errorf("invalid number chainlockUpdate value %q: %w", chainLockUpdateString, err)
+	}
+	chainLock := types.NewMockChainLock(uint32(chainlockUpdateHeight))
+	return chainLock.ToProto(), nil
 }
 
 // parseTx parses a tx in 'key=value' format into a key and value.

@@ -60,10 +60,8 @@ type State struct {
 	// The Last StateID is actually the previous App Hash
 	LastStateID types.StateID
 
-	// Last Chain Lock is the last known chain lock in consensus, and does not go to nil if a block had no chain lock
-	// Next Chain Lock is a chain lock being proposed by the abci application
-	LastCoreChainLock types.CoreChainLock
-	NextCoreChainLock types.CoreChainLock
+	// Last Chain Lock is the last known chain locked height in consensus, and does not go to nil if a block had no chain lock
+	LastCoreChainLockedBlockHeight uint32
 
 	// LastValidators is used to validate block.LastCommit.
 	// Validators are persisted to the database separately every time they change,
@@ -102,8 +100,7 @@ func (state State) Copy() State {
 
 		LastStateID: state.LastStateID,
 
-		LastCoreChainLock: state.LastCoreChainLock,
-		NextCoreChainLock: state.NextCoreChainLock,
+		LastCoreChainLockedBlockHeight: state.LastCoreChainLockedBlockHeight,
 
 		NextValidators:              state.NextValidators.Copy(),
 		Validators:                  state.Validators.Copy(),
@@ -157,8 +154,7 @@ func (state *State) ToProto() (*tmstate.State, error) {
 	sm.InitialHeight = state.InitialHeight
 	sm.LastBlockHeight = state.LastBlockHeight
 
-	sm.LastCoreChainLock = tmproto.CoreChainLock(state.LastCoreChainLock)
-	sm.NextCoreChainLock = tmproto.CoreChainLock(state.NextCoreChainLock)
+	sm.LastCoreChainLockedBlockHeight = state.LastCoreChainLockedBlockHeight
 
 	sm.LastBlockID = state.LastBlockID.ToProto()
 	sm.LastBlockTime = state.LastBlockTime
@@ -220,8 +216,7 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 
 	state.LastStateID = *si
 
-	state.LastCoreChainLock = types.CoreChainLock(pb.LastCoreChainLock)
-	state.NextCoreChainLock = types.CoreChainLock(pb.NextCoreChainLock)
+	state.LastCoreChainLockedBlockHeight = pb.LastCoreChainLockedBlockHeight
 
 	vals, err := types.ValidatorSetFromProto(pb.Validators)
 	if err != nil {
@@ -262,20 +257,16 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 // track rounds, and hence does not know the correct proposer. TODO: fix this!
 func (state State) MakeBlock(
 	height int64,
+	coreChainLock *types.CoreChainLock,
 	txs []types.Tx,
 	commit *types.Commit,
 	evidence []types.Evidence,
 	proposerProTxHash types.ProTxHash,
 ) (*types.Block, *types.PartSet) {
 
-	var coreChainLock *types.CoreChainLock = nil
-	if state.NextCoreChainLock.CoreBlockHeight > state.LastCoreChainLock.CoreBlockHeight {
-		coreChainLock = &state.NextCoreChainLock
-	}
-
 	var coreChainLockHeight uint32
 	if coreChainLock == nil {
-		coreChainLockHeight = state.LastCoreChainLock.CoreBlockHeight
+		coreChainLockHeight = state.LastCoreChainLockedBlockHeight
 	} else {
 		coreChainLockHeight = coreChainLock.CoreBlockHeight
 	}
@@ -351,10 +342,6 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		nextValidatorSet = types.NewValidatorSet(validators, genDoc.ThresholdPublicKey).CopyIncrementProposerPriority(1)
 	}
 
-	var initialChainLock types.CoreChainLock
-
-	initialChainLock.PopulateFromProto(genDoc.GenesisCoreChainLock)
-
 	return State{
 		Version:       InitStateVersion,
 		ChainID:       genDoc.ChainID,
@@ -365,7 +352,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		LastStateID:     types.StateID{},
 		LastBlockTime:   genDoc.GenesisTime,
 
-		NextCoreChainLock: initialChainLock,
+		LastCoreChainLockedBlockHeight: genDoc.InitialCoreChainLockedHeight,
 
 		NextValidators:              nextValidatorSet,
 		Validators:                  validatorSet,

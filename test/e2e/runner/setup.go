@@ -381,6 +381,13 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		}
 		cfg["threshold_public_key_update"] = thresholdPublicKeyUpdates
 	}
+	if len(node.Testnet.ChainLockUpdates) > 0 {
+		chainLockUpdates := map[string]string{}
+		for height, coreHeight := range node.Testnet.ChainLockUpdates {
+			chainLockUpdates[fmt.Sprintf("%v", height)] = fmt.Sprintf("%v", coreHeight)
+		}
+		cfg["chainlock_updates"] = chainLockUpdates
+	}
 
 	var buf bytes.Buffer
 	err := toml.NewEncoder(&buf).Encode(cfg)

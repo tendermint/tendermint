@@ -16,6 +16,7 @@ import (
 type State struct {
 	sync.RWMutex
 	Height uint64
+	CoreHeight uint32
 	Values map[string]string
 	Hash   []byte
 
@@ -23,6 +24,7 @@ type State struct {
 	file            string
 	persistInterval uint64
 	initialHeight   uint64
+	initialCoreHeight uint32
 }
 
 // NewState creates a new state.

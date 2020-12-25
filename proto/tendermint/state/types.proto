@@ -53,8 +53,8 @@ message State {
   google.protobuf.Timestamp last_block_time = 5
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 
-  tendermint.types.CoreChainLock last_core_chain_lock = 100 [(gogoproto.nullable) = false];
-  tendermint.types.CoreChainLock next_core_chain_lock = 101 [(gogoproto.nullable) = false];
+  uint32 last_core_chain_locked_block_height = 100;
+  tendermint.types.CoreChainLock next_core_chain_lock = 101 [(gogoproto.nullable) = true];
 
   // LastValidators is used to validate block.LastCommit.
   // Validators are persisted to the database separately every time they change,

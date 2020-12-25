@@ -124,7 +124,8 @@ func invalidProposeCoreChainLockFunc(t *testing.T, height int64, round int32, cs
 
 	// Make proposal
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-	proposal := types.NewProposal(height, cs.state.NextCoreChainLock.CoreBlockHeight-1, round, cs.ValidRound, propBlockID)
+	// It is byzantine because it is not updating the LastCoreChainLockedBlockHeight
+	proposal := types.NewProposal(height, cs.state.LastCoreChainLockedBlockHeight, round, cs.ValidRound, propBlockID)
 	p := proposal.ToProto()
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, p); err == nil {
 		proposal.Signature = p.Signature
