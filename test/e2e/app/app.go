@@ -6,18 +6,19 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/types"
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"github.com/tendermint/tendermint/types"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
-	types1 "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/libs/log"
+	types1 "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -55,10 +56,10 @@ func NewApplication(cfg *Config) (*Application, error) {
 // Info implements ABCI.
 func (app *Application) Info(req abci.RequestInfo) abci.ResponseInfo {
 	return abci.ResponseInfo{
-		Version:          version.ABCIVersion,
-		AppVersion:       1,
-		LastBlockHeight:  int64(app.state.Height),
-		LastBlockAppHash: app.state.Hash,
+		Version:                   version.ABCIVersion,
+		AppVersion:                1,
+		LastBlockHeight:           int64(app.state.Height),
+		LastBlockAppHash:          app.state.Hash,
 		LastCoreChainLockedHeight: app.state.CoreHeight,
 	}
 }

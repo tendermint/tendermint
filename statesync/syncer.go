@@ -279,11 +279,11 @@ func (s *syncer) offerSnapshot(snapshot *snapshot) error {
 		"format", snapshot.Format, "hash", fmt.Sprintf("%X", snapshot.Hash))
 	resp, err := s.conn.OfferSnapshotSync(abci.RequestOfferSnapshot{
 		Snapshot: &abci.Snapshot{
-			Height:   snapshot.Height,
-			Format:   snapshot.Format,
-			Chunks:   snapshot.Chunks,
-			Hash:     snapshot.Hash,
-			Metadata: snapshot.Metadata,
+			Height:                snapshot.Height,
+			Format:                snapshot.Format,
+			Chunks:                snapshot.Chunks,
+			Hash:                  snapshot.Hash,
+			Metadata:              snapshot.Metadata,
 			CoreChainLockedHeight: snapshot.CoreChainLockedHeight,
 		},
 		AppHash: snapshot.trustedAppHash,

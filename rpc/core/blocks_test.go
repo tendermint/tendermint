@@ -116,7 +116,7 @@ func TestBlockResults(t *testing.T) {
 }
 
 type mockBlockStore struct {
-	height int64
+	height                int64
 	coreChainLockedHeight uint32
 }
 

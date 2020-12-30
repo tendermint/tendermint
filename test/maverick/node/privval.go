@@ -3,6 +3,8 @@ package node
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -11,7 +13,6 @@ import (
 	"github.com/tendermint/tendermint/libs/tempfile"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
-	"io/ioutil"
 )
 
 // *******************************************************************************************************************
@@ -169,13 +170,13 @@ func NewFilePV(privKey crypto.PrivKey, proTxHash []byte, nextPrivKeys []crypto.P
 
 	return &FilePV{
 		Key: FilePVKey{
-			Address:   privKey.PubKey().Address(),
-			PubKey:    privKey.PubKey(),
-			PrivKey:   privKey,
-			NextPrivKeys: nextPrivKeys,
+			Address:            privKey.PubKey().Address(),
+			PubKey:             privKey.PubKey(),
+			PrivKey:            privKey,
+			NextPrivKeys:       nextPrivKeys,
 			NextPrivKeyHeights: nextPrivHeights,
-			ProTxHash: proTxHash,
-			filePath:  keyFilePath,
+			ProTxHash:          proTxHash,
+			filePath:           keyFilePath,
 		},
 		LastSignState: FilePVLastSignState{
 			Step:     stepNone,

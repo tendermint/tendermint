@@ -172,13 +172,13 @@ func NewFilePV(privKey crypto.PrivKey, proTxHash []byte, nextPrivKeys []crypto.P
 
 	return &FilePV{
 		Key: FilePVKey{
-			Address:   privKey.PubKey().Address(),
-			PubKey:    privKey.PubKey(),
-			PrivKey:   privKey,
-			NextPrivKeys: nextPrivKeys,
+			Address:            privKey.PubKey().Address(),
+			PubKey:             privKey.PubKey(),
+			PrivKey:            privKey,
+			NextPrivKeys:       nextPrivKeys,
 			NextPrivKeyHeights: nextPrivHeights,
-			ProTxHash: proTxHash,
-			filePath:  keyFilePath,
+			ProTxHash:          proTxHash,
+			filePath:           keyFilePath,
 		},
 		LastSignState: FilePVLastSignState{
 			Step:     stepNone,

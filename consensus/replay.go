@@ -321,7 +321,7 @@ func (h *Handshaker) ReplayBlocks(
 			}
 		}
 		validatorSet := types.NewValidatorSet(validators, h.genDoc.ThresholdPublicKey)
-		err :=  validatorSet.ValidateBasic()
+		err := validatorSet.ValidateBasic()
 		if err != nil {
 			return nil, fmt.Errorf("replay blocks error when validating validatorSet: %s", err)
 		}
@@ -339,7 +339,7 @@ func (h *Handshaker) ReplayBlocks(
 		if err != nil {
 			return nil, err
 		}
-	    // fmt.Printf("res %s\n", res.String())
+		// fmt.Printf("res %s\n", res.String())
 		appHash = res.AppHash
 
 		if stateBlockHeight == 0 { // we only update state when we are in initial state

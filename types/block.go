@@ -774,8 +774,7 @@ func (cs CommitSig) ValidateBasic() error {
 		return fmt.Errorf("unknown BlockIDFlag: %v", cs.BlockIDFlag)
 	}
 
-
-return nil
+	return nil
 }
 
 // ToProto converts CommitSig to protobuf

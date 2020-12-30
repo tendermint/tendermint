@@ -24,7 +24,7 @@ type snapshot struct {
 	Hash                  []byte
 	Metadata              []byte
 
-	trustedAppHash        []byte // populated by light client
+	trustedAppHash []byte // populated by light client
 }
 
 // Key generates a snapshot key, used for lookups. It takes into account not only the height and
@@ -34,8 +34,8 @@ func (s *snapshot) Key() snapshotKey {
 	// Hash.Write() never returns an error.
 	hasher := sha256.New()
 	hasher.Write([]byte(fmt.Sprintf("%v:%v:%v:%v", s.Height, s.CoreChainLockedHeight, s.Format, s.Chunks))) //nolint:errcheck // ignore error
-	hasher.Write(s.Hash)                                                        //nolint:errcheck // ignore error
-	hasher.Write(s.Metadata)                                                    //nolint:errcheck // ignore error
+	hasher.Write(s.Hash)                                                                                    //nolint:errcheck // ignore error
+	hasher.Write(s.Metadata)                                                                                //nolint:errcheck // ignore error
 	var key snapshotKey
 	copy(key[:], hasher.Sum(nil))
 	return key

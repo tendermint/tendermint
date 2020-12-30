@@ -104,7 +104,6 @@ type State struct {
 	// when it's detected
 	evpool evidencePool
 
-
 	// internal state
 	mtx tmsync.RWMutex
 	cstypes.RoundState

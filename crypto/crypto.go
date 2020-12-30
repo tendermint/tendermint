@@ -11,7 +11,7 @@ const (
 	// AddressSize is the size of a pubkey address.
 	AddressSize     = tmhash.TruncatedSize
 	DefaultHashSize = 32
-	ProTxHashSize = DefaultHashSize
+	ProTxHashSize   = DefaultHashSize
 )
 
 type KeyType int

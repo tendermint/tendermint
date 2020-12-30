@@ -150,7 +150,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 
 	proTxHashes := make([]crypto.ProTxHash, validatorCount)
 
-	for i := 0; i< validatorCount; i++ {
+	for i := 0; i < validatorCount; i++ {
 		proTxHashes[i] = proTxHashGen.Generate()
 		if proTxHashes[i] == nil || len(proTxHashes[i]) != crypto.ProTxHashSize {
 			panic("the proTxHash must be 32 bytes")
@@ -160,18 +160,18 @@ func LoadTestnet(file string) (*Testnet, error) {
 	privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThresholdUsingSeedSource(proTxHashes, randomSeed)
 
 	testnet := &Testnet{
-		Name:               filepath.Base(dir),
-		File:               file,
-		Dir:                dir,
-		IP:                 ipGen.Network(),
-		InitialHeight:      1,
-		InitialCoreHeight:  1,
-		InitialState:       manifest.InitialState,
-		Validators:         map[*Node]crypto.PubKey{},
-		ValidatorUpdates:   map[int64]map[*Node]crypto.PubKey{},
-		ChainLockUpdates:   map[int64]int64{},
-		Nodes:              []*Node{},
-		ThresholdPublicKey: thresholdPublicKey,
+		Name:                      filepath.Base(dir),
+		File:                      file,
+		Dir:                       dir,
+		IP:                        ipGen.Network(),
+		InitialHeight:             1,
+		InitialCoreHeight:         1,
+		InitialState:              manifest.InitialState,
+		Validators:                map[*Node]crypto.PubKey{},
+		ValidatorUpdates:          map[int64]map[*Node]crypto.PubKey{},
+		ChainLockUpdates:          map[int64]int64{},
+		Nodes:                     []*Node{},
+		ThresholdPublicKey:        thresholdPublicKey,
 		ThresholdPublicKeyUpdates: map[int64]crypto.PubKey{},
 	}
 	if manifest.InitialHeight > 0 {
@@ -272,7 +272,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 	// Set up genesis validators. If not specified explicitly, use all validator nodes.
 	if manifest.Validators != nil {
 		var i = 0
-		for validatorName, _ := range *manifest.Validators {
+		for validatorName := range *manifest.Validators {
 			validator := testnet.LookupNode(validatorName)
 			if validator == nil {
 				return nil, fmt.Errorf("unknown validator %q", validatorName)
@@ -299,7 +299,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 	heights := make([]int, len(manifest.ValidatorUpdates))
 	i := 0
 	// We need to do validator updates in order, as we use the previous validator set as the basis of current proTxHashes
-	for heightStr, _ := range manifest.ValidatorUpdates {
+	for heightStr := range manifest.ValidatorUpdates {
 		height, err := strconv.Atoi(heightStr)
 		if err != nil {
 			return nil, fmt.Errorf("invalid validator update height %q: %w", height, err)
@@ -317,7 +317,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 		valUpdate := map[*Node]crypto.PubKey{}
 		proTxHashesInUpdate := make([]crypto.ProTxHash, len(validators))
 		i := 0
-		for name, _ := range validators {
+		for name := range validators {
 			node := testnet.LookupNode(name)
 			if node == nil {
 				return nil, fmt.Errorf("unknown validator %q for update at height %v", name, height)
@@ -333,7 +333,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 
 		sort.Sort(crypto.SortProTxHash(proTxHashes))
 
-		privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThresholdUsingSeedSource(proTxHashes, randomSeed + int64(height))
+		privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThresholdUsingSeedSource(proTxHashes, randomSeed+int64(height))
 
 		for i, proTxHash := range proTxHashes {
 			node := testnet.LookupNodeByProTxHash(proTxHash)
@@ -347,7 +347,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			} else {
 				fmt.Printf("Set validator %s/%X (at height %d (+ 2)) pubkey to %X\n", node.Name, node.ProTxHash, height, privateKeys[i].PubKey().Bytes())
 				node.NextPrivvalKeys = append(node.NextPrivvalKeys, privateKeys[i])
-				node.NextPrivvalHeights = append(node.NextPrivvalHeights, int64(height + 2)) //the keys will change at the following height
+				node.NextPrivvalHeights = append(node.NextPrivvalHeights, int64(height+2)) //the keys will change at the following height
 			}
 		}
 
@@ -358,7 +358,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 	chainLockSetHeights := make([]int, len(manifest.ChainLockUpdates))
 	i = 0
 	// We need to do validator updates in order, as we use the previous validator set as the basis of current proTxHashes
-	for heightStr, _ := range manifest.ChainLockUpdates {
+	for heightStr := range manifest.ChainLockUpdates {
 		height, err := strconv.Atoi(heightStr)
 		if err != nil {
 			return nil, fmt.Errorf("invalid validator update height %q: %w", height, err)

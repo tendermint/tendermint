@@ -1,9 +1,10 @@
 package state_test
 
 import (
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"testing"
 	"time"
+
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -32,8 +33,8 @@ func TestValidateBlockHeader(t *testing.T) {
 	stateStore := sm.NewStore(stateDB)
 	nextChainLock := &types.CoreChainLock{
 		CoreBlockHeight: 100,
-		CoreBlockHash: tmrand.Bytes(32),
-		Signature: tmrand.Bytes(96),
+		CoreBlockHash:   tmrand.Bytes(32),
+		Signature:       tmrand.Bytes(96),
 	}
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
@@ -112,8 +113,8 @@ func TestValidateBlockCommit(t *testing.T) {
 
 	nextChainLock := &types.CoreChainLock{
 		CoreBlockHeight: 100,
-		CoreBlockHash: tmrand.Bytes(32),
-		Signature: tmrand.Bytes(96),
+		CoreBlockHash:   tmrand.Bytes(32),
+		Signature:       tmrand.Bytes(96),
 	}
 
 	blockExec := sm.NewBlockExecutor(

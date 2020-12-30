@@ -214,7 +214,6 @@ func CreatePrivLLMQDataOnProTxHashesUsingSeed(proTxHashes []crypto.ProTxHash, th
 	testPubKey := make([]crypto.PubKey, members)
 	testProTxHashes := make([][]byte, members)
 
-
 	for i := 0; i < threshold; i++ {
 		createdSeed := make([]byte, SeedSize)
 		_, err := io.ReadFull(reader, createdSeed)
