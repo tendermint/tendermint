@@ -82,7 +82,7 @@ func TestGenesisGood(t *testing.T) {
 			"genesis_time": "0001-01-01T00:00:00Z",
 			"chain_id": "test-chain-QDKdJr",
 			"initial_height": "1000",
-            "initial_core_chain_locked_height": "3000",
+            "initial_core_chain_locked_height": 3000,
 			"consensus_params": null,
 			"validators": [{
 				"pub_key":{"type": "tendermint/PubKeyBLS12381","value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"},

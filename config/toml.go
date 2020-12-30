@@ -506,7 +506,7 @@ var testGenesisFmt = `{
   "genesis_time": "2018-10-10T08:20:13.695936996Z",
   "chain_id": "%s",
   "initial_height": "1",
-  "initial_core_chain_locked_height": "1",
+  "initial_core_chain_locked_height": 1,
 	"consensus_params": {
 		"block": {
 			"max_bytes": "22020096",

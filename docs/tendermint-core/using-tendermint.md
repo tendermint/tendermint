@@ -92,7 +92,7 @@ definition](https://github.com/tenderdash/tenderdash/blob/master/types/genesis.g
   "genesis_time": "2020-04-21T11:17:42.341227868Z",
   "chain_id": "test-chain-ROp9KF",
   "initial_height": "0",
-  "initial_core_chain_locked_height": "1",
+  "initial_core_chain_locked_height": 1,
   "consensus_params": {
     "block": {
       "max_bytes": "22020096",

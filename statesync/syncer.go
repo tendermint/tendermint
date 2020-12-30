@@ -280,11 +280,11 @@ func (s *syncer) offerSnapshot(snapshot *snapshot) error {
 	resp, err := s.conn.OfferSnapshotSync(abci.RequestOfferSnapshot{
 		Snapshot: &abci.Snapshot{
 			Height:   snapshot.Height,
-			CoreChainLockedHeight: snapshot.CoreChainLockedHeight,
 			Format:   snapshot.Format,
 			Chunks:   snapshot.Chunks,
 			Hash:     snapshot.Hash,
 			Metadata: snapshot.Metadata,
+			CoreChainLockedHeight: snapshot.CoreChainLockedHeight,
 		},
 		AppHash: snapshot.trustedAppHash,
 	})
