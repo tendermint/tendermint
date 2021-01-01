@@ -21,10 +21,9 @@ type State struct {
 	Hash       []byte
 
 	// private fields aren't marshalled to disk.
-	file              string
-	persistInterval   uint64
-	initialHeight     uint64
-	initialCoreHeight uint32
+	file            string
+	persistInterval uint64
+	initialHeight   uint64
 }
 
 // NewState creates a new state.

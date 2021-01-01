@@ -60,7 +60,8 @@ type State struct {
 	// The Last StateID is actually the previous App Hash
 	LastStateID types.StateID
 
-	// Last Chain Lock is the last known chain locked height in consensus, and does not go to nil if a block had no chain lock
+	// Last Chain Lock is the last known chain locked height in consensus
+	// It does not go to 0 if a block had no chain lock and should stay the same as the previous block
 	LastCoreChainLockedBlockHeight uint32
 
 	// LastValidators is used to validate block.LastCommit.

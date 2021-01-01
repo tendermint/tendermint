@@ -64,7 +64,8 @@ func TestValidateBlockHeader(t *testing.T) {
 		{"ChainID wrong", func(block *types.Block) { block.ChainID = "not-the-real-one" }},
 		{"Height wrong", func(block *types.Block) { block.Height += 10 }},
 		{"Core Height does not match chain lock", func(block *types.Block) {
-			block.CoreChainLockedHeight -= 10 }},
+			block.CoreChainLockedHeight -= 10
+		}},
 		{"Time wrong", func(block *types.Block) { block.Time = block.Time.Add(-time.Second * 1) }},
 
 		{"LastBlockID wrong", func(block *types.Block) { block.LastBlockID.PartSetHeader.Total += 10 }},
@@ -130,9 +131,9 @@ func TestValidateBlockCommit(t *testing.T) {
 		nextChainLock,
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil,
-	nil, nil)
+		nil, nil)
 	wrongSigsCommit := types.NewCommit(1, 0, types.BlockID{}, types.StateID{}, nil,
-	nil, nil)
+		nil, nil)
 	badPrivVal := types.NewMockPV()
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {

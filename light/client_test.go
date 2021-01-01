@@ -23,14 +23,12 @@ const (
 	chainID = "test"
 )
 
-
-
 var (
 	vals, privVals = types.GenerateMockValidatorSet(4)
-	keys     = exposeMockPVKeys(privVals)
-	ctx      = context.Background()
-	bTime, _ = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
-	h1       = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
+	keys           = exposeMockPVKeys(privVals)
+	ctx            = context.Background()
+	bTime, _       = time.Parse(time.RFC3339, "2006-01-02T15:04:05Z")
+	h1             = keys.GenSignedHeader(chainID, 1, bTime, nil, vals, vals,
 		hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys))
 	// 3/3 signed
 	h2 = keys.GenSignedHeaderLastBlockID(chainID, 2, bTime.Add(30*time.Minute), nil, vals, vals,
@@ -64,7 +62,7 @@ var (
 		headerSet,
 		valSet,
 	)
-	deadNode      = mockp.NewDeadMock(chainID)
+	deadNode = mockp.NewDeadMock(chainID)
 	// largeFullNode = mockp.New(genMockNode(chainID, 10, 3, 0, bTime))
 )
 

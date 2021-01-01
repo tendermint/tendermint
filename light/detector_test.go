@@ -1,6 +1,7 @@
 package light_test
 
-// func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
+//-------------
+//  // func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 //	// primary performs a lunatic attack
 //	var (
 //		latestHeight      = int64(10)

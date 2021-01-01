@@ -89,7 +89,7 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 
 	if genDoc.InitialProposalCoreChainLock != nil &&
 		genDoc.InitialProposalCoreChainLock.CoreBlockHeight <= genDoc.InitialCoreChainLockedHeight {
-		return fmt.Errorf("if set the initial proposal core chain locked block height %d" +
+		return fmt.Errorf("if set the initial proposal core chain locked block height %d"+
 			" must be superior to the initial core chain locked height %d",
 			genDoc.InitialProposalCoreChainLock.CoreBlockHeight, genDoc.InitialCoreChainLockedHeight)
 	}

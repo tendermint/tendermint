@@ -3,6 +3,9 @@ package http_test
 import (
 	"context"
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -12,8 +15,6 @@ import (
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
-	"os"
-	"testing"
 )
 
 func TestNewProvider(t *testing.T) {

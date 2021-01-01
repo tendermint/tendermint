@@ -79,7 +79,7 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 	// let's add some blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
 		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, types.StateID{LastAppHash: nil},
-		nil, nil, nil)
+			nil, nil, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)

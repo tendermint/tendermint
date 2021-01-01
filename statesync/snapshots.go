@@ -35,8 +35,8 @@ func (s *snapshot) Key() snapshotKey {
 	hasher := sha256.New()
 	hasher.Write([]byte(fmt.Sprintf("%v:%v:%v:%v", s.Height, s.CoreChainLockedHeight, //nolint:errcheck // ignore error
 		s.Format, s.Chunks))) //nolint:errcheck // ignore error
-	hasher.Write(s.Hash)      //nolint:errcheck // ignore error
-	hasher.Write(s.Metadata)  //nolint:errcheck // ignore error
+	hasher.Write(s.Hash)     //nolint:errcheck // ignore error
+	hasher.Write(s.Metadata) //nolint:errcheck // ignore error
 	var key snapshotKey
 	copy(key[:], hasher.Sum(nil))
 	return key

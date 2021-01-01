@@ -321,7 +321,7 @@ func (c *Client) checkTrustedHeaderUsingOptions(ctx context.Context, options Tru
 			"h1", hash2str(c.latestTrustedBlock.Hash()), "h2", hash2str(primaryHash))
 
 		action := fmt.Sprintf(
-			"Prev. trusted header's hash %X doesn't match hash %X from primary provider." +
+			"Prev. trusted header's hash %X doesn't match hash %X from primary provider."+
 				" Remove all the stored light blocks?",
 			c.latestTrustedBlock.Hash(), primaryHash)
 		if c.confirmationFn(action) {
@@ -1026,7 +1026,7 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 		case nil:
 			continue
 		case errConflictingHeaders:
-			c.logger.Error(fmt.Sprintf("Witness #%d has a different header. Please check primary is correct and" +
+			c.logger.Error(fmt.Sprintf("Witness #%d has a different header. Please check primary is correct and"+
 				" remove witness. Otherwise, use the different primary", e.WitnessIndex), "witness",
 				c.witnesses[e.WitnessIndex])
 			return err

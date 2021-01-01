@@ -520,7 +520,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 		[]CommitSig{vote.CommitSig()},
 		vote.BlockSignature,
 		vote.StateSignature,
-		)
+	)
 
 	vote2 := *vote
 	blockSig2, err := privKey.Sign(VoteBlockSignBytes("EpsilonEridani", v))
@@ -797,7 +797,6 @@ func addValidatorsToValidatorSet(vals *ValidatorSet, testValList []testVal) ([]*
 		return rValidators, rVals.ThresholdPublicKey
 	}
 	return removedVals, nil
-
 
 }
 
@@ -1165,13 +1164,11 @@ func TestValSetApplyUpdatesTestsExecute(t *testing.T) {
 }
 
 type testVSetCfg struct {
-	name         string
 	startVals    []testVal
 	deletedVals  []testVal
 	updatedVals  []testVal
 	addedVals    []testVal
 	expectedVals []testVal
-	expErr       error
 }
 
 func randTestVSetCfg(t *testing.T, nBase, nAddMax int) testVSetCfg {
@@ -1179,7 +1176,6 @@ func randTestVSetCfg(t *testing.T, nBase, nAddMax int) testVSetCfg {
 		panic(fmt.Sprintf("bad parameters %v %v", nBase, nAddMax))
 	}
 
-	const maxPower = 1000
 	var nOld, nDel, nChanged, nAdd int
 
 	nOld = int(tmrand.Uint()%uint(nBase)) + 1

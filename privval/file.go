@@ -396,7 +396,7 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 	// The vote should not have a state ID set if the block ID is set to nil
 
 	if vote.BlockID.Hash == nil && vote.StateID.LastAppHash != nil {
-		return fmt.Errorf("error : vote should not have a state ID set if the" +
+		return fmt.Errorf("error : vote should not have a state ID set if the"+
 			" block ID for the round (%d/%d) is not set", vote.Height, vote.Round)
 	}
 
