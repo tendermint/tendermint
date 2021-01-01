@@ -169,6 +169,6 @@ func (sc *SignerClient) SignProposal(chainID string, proposal *tmproto.Proposal)
 }
 
 func (sc *SignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, height int64) error {
-	//the private key is dealt with on the abci client
+	// the private key is dealt with on the abci client
 	return nil
 }

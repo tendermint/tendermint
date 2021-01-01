@@ -40,7 +40,8 @@ type BlockchainReactorPair struct {
 	app     proxy.AppConns
 }
 
-func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals []types.PrivValidator, maxBlockHeight int64) BlockchainReactorPair {
+func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals []types.PrivValidator,
+	maxBlockHeight int64) BlockchainReactorPair {
 	if len(privVals) != 1 {
 		panic("only support one validator")
 	}
@@ -77,7 +78,8 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 
 	// let's add some blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, types.StateID{LastAppHash: nil}, nil, nil, nil)
+		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, types.StateID{LastAppHash: nil},
+		nil, nil, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
@@ -94,9 +96,10 @@ func newBlockchainReactor(logger log.Logger, genDoc *types.GenesisDoc, privVals 
 				panic(err)
 			}
 			commitSig := vote.CommitSig()
-			//since there is only 1 vote, use it as threshold
+			// since there is only 1 vote, use it as threshold
 			lastCommit = types.NewCommit(vote.Height, vote.Round,
-				lastBlockMeta.BlockID, lastBlockMeta.StateID, []types.CommitSig{commitSig}, commitSig.BlockSignature, commitSig.StateSignature)
+				lastBlockMeta.BlockID, lastBlockMeta.StateID, []types.CommitSig{commitSig}, commitSig.BlockSignature,
+				commitSig.StateSignature)
 		}
 
 		thisBlock := makeBlock(blockHeight, nil, state, lastCommit)
@@ -275,8 +278,10 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func makeBlock(height int64, coreChainLock *types.CoreChainLock, state sm.State, lastCommit *types.Commit) *types.Block {
-	block, _ := state.MakeBlock(height, coreChainLock, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().ProTxHash)
+func makeBlock(height int64, coreChainLock *types.CoreChainLock, state sm.State,
+	lastCommit *types.Commit) *types.Block {
+	block, _ := state.MakeBlock(height, coreChainLock, makeTxs(height), lastCommit,
+		nil, state.Validators.GetProposer().ProTxHash)
 	return block
 }
 

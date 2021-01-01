@@ -132,6 +132,6 @@ func (sc *RetrySignerClient) SignProposal(chainID string, proposal *tmproto.Prop
 }
 
 func (sc *RetrySignerClient) UpdatePrivateKey(privateKey crypto.PrivKey, height int64) error {
-	//the private key is dealt with on the abci client
+	// the private key is dealt with on the abci client
 	return nil
 }

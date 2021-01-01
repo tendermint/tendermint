@@ -46,7 +46,7 @@ func TestValidProposalChainLocks(t *testing.T) {
 		timeoutWaitGroup(t, N, func(j int) {
 			msg := <-blocksSubs[j].Out()
 			block := msg.Data().(types.EventDataNewBlock).Block
-			//this is true just because of this test where each new height has a new chain lock that is incremented by 1
+			// this is true just because of this test where each new height has a new chain lock that is incremented by 1
 			assert.EqualValues(t, block.Header.Height, block.Header.CoreChainLockedHeight)
 		}, css)
 	}
@@ -70,14 +70,11 @@ func TestReactorInvalidProposalHeightForChainLocks(t *testing.T) {
 	byzProposerID := 0
 	byzProposer := css[byzProposerID]
 
-	//hitIt := false
-
 	// update the decide proposal to propose the incorrect height
 	byzProposer.mtx.Lock()
 
 	byzProposer.decideProposal = func(j int32) func(int64, int32) {
 		return func(height int64, round int32) {
-			//hitIt = true
 			invalidProposeCoreChainLockFunc(t, height, round, css[j])
 		}
 	}(int32(0))
@@ -89,7 +86,7 @@ func TestReactorInvalidProposalHeightForChainLocks(t *testing.T) {
 		timeoutWaitGroup(t, N, func(j int) {
 			msg := <-blocksSubs[j].Out()
 			block := msg.Data().(types.EventDataNewBlock).Block
-			//this is true just because of this test where each new height has a new chain lock that is incremented by 1
+			// this is true just because of this test where each new height has a new chain lock that is incremented by 1
 			assert.EqualValues(t, block.Header.Height, block.Header.CoreChainLockedHeight)
 		}, css)
 	}
@@ -145,7 +142,8 @@ func invalidProposeCoreChainLockFunc(t *testing.T, height int64, round int32, cs
 
 func TestReactorInvalidBlockChainLock(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_chainlocks_test", newMockTickerFunc(true), newCounterWithBackwardsCoreChainLocks)
+	css, cleanup := randConsensusNet(N, "consensus_chainlocks_test",
+		newMockTickerFunc(true), newCounterWithBackwardsCoreChainLocks)
 	defer cleanup()
 
 	for i := 0; i < 4; i++ {
@@ -162,12 +160,12 @@ func TestReactorInvalidBlockChainLock(t *testing.T) {
 		timeoutWaitGroup(t, N, func(j int) {
 			msg := <-blocksSubs[j].Out()
 			block := msg.Data().(types.EventDataNewBlock).Block
-			//this is true just because of this test where each new height has a new chain lock that is incremented by 1
+			// this is true just because of this test where each new height has a new chain lock that is incremented by 1
 			if block.Header.Height == 1 {
 				assert.EqualValues(t, 1, block.Header.CoreChainLockedHeight)
 			} else {
-				//We started at 1 then 99, then try 98, 97, 96...
-				//The chain lock should stay on 99
+				// We started at 1 then 99, then try 98, 97, 96...
+				// The chain lock should stay on 99
 				assert.EqualValues(t, 99, block.Header.CoreChainLockedHeight)
 			}
 

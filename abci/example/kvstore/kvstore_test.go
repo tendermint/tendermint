@@ -143,7 +143,7 @@ func TestValUpdates(t *testing.T) {
 	txs := make([][]byte, 16)
 	removalUpdates := make([]types.ValidatorUpdate, 5)
 	for i, val := range initVals.ValidatorUpdates {
-		//remove old validators
+		// remove old validators
 		txs[i] = MakeValSetChangeTx(val.ProTxHash, val.PubKey, 0)
 		removalUpdates[i] = initVals.ValidatorUpdates[i]
 		removalUpdates[i].Power = 0
@@ -153,7 +153,8 @@ func TestValUpdates(t *testing.T) {
 	}
 	txs[15] = MakeThresholdPublicKeyChangeTx(fullVals.ThresholdPublicKey)
 	valUpdates := fullVals
-	valUpdates.ValidatorUpdates = append(removalUpdates, fullVals.ValidatorUpdates...)
+	removalUpdates = append(removalUpdates, fullVals.ValidatorUpdates...)
+	valUpdates.ValidatorUpdates = removalUpdates
 
 	makeApplyBlock(t, kvstore, 1, valUpdates, txs...)
 
@@ -206,7 +207,8 @@ func valsEqualTest(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
 func valSetEqualTest(t *testing.T, vals1, vals2 types.ValidatorSetUpdate) {
 	valsEqualTest(t, vals1.ValidatorUpdates, vals2.ValidatorUpdates)
 	if !vals1.ThresholdPublicKey.Equal(vals2.ThresholdPublicKey) {
-		t.Fatalf("val set threshold public key did not match. got %X, expected %X", vals1.ThresholdPublicKey, vals2.ThresholdPublicKey)
+		t.Fatalf("val set threshold public key did not match. got %X, expected %X",
+			vals1.ThresholdPublicKey, vals2.ThresholdPublicKey)
 	}
 }
 

@@ -109,7 +109,13 @@ func (pkz privKeys) signHeader(header *types.Header, valSet *types.ValidatorSet,
 
 	// Fill in the votes we want.
 	for i := first; i < last && i < len(pkz); i++ {
-		vote := makeVote(header, valSet, valSet.GetProTxHashes()[i], pkz[i], blockID, stateID)
+		// Verify that the private key matches the validator proTxHash
+		privateKey := pkz[i]
+		proTxHash, val := valSet.GetByIndex(int32(i))
+		if !privateKey.PubKey().Equals(val.PubKey) {
+			panic("light client keys do not match")
+		}
+		vote := makeVote(header, valSet, proTxHash, pkz[i], blockID, stateID)
 		commitSigs[vote.ValidatorIndex] = vote.CommitSig()
 		blockSigs = append(blockSigs, vote.BlockSignature)
 		stateSigs = append(stateSigs, vote.StateSignature)
@@ -235,27 +241,24 @@ func genMockNodeWithKeys(
 
 	valVariationInt = int(totalVariation)
 	totalVariation = -float32(valVariationInt)
-	valset1, privVals1 := types.GenerateMockValidatorSetUsingProTxHashes(valset0.GetProTxHashes())
-	newKeys = exposeMockPVKeys(privVals1)
+	nextValSet, nextPrivVals := types.GenerateMockValidatorSetUsingProTxHashes(valset0.GetProTxHashes())
+	newKeys = exposeMockPVKeys(nextPrivVals)
 	keymap[1] = keys
 	keymap[2] = newKeys
 
 	// genesis header and vals
 	lastHeader := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Minute), nil,
-		valset0, valset1, hash("app_hash"), hash("cons_hash"),
+		valset0, nextValSet, hash("app_hash"), hash("cons_hash"),
 		hash("results_hash"), 0, len(keys))
 	currentHeader := lastHeader
 	headers[1] = currentHeader
 	valsets[1] = valset0
 	keys = newKeys
-	currentValset := valset0
-	nextValSet := valset1
+	currentValset := nextValSet
 
 	for height := int64(2); height <= blockSize; height++ {
-		totalVariation += valVariation
-		valVariationInt = int(totalVariation)
-		totalVariation = -float32(valVariationInt)
-		newKeys = keys.ChangeKeys(valVariationInt)
+		nextValSet, nextPrivVals := types.GenerateMockValidatorSetUsingProTxHashes(valset0.GetProTxHashes())
+		newKeys = exposeMockPVKeys(nextPrivVals)
 		currentHeader = keys.GenSignedHeaderLastBlockID(chainID, height, bTime.Add(time.Duration(height)*time.Minute),
 			nil,
 			currentValset, nextValSet, hash("app_hash"), hash("cons_hash"),
@@ -264,6 +267,7 @@ func genMockNodeWithKeys(
 		valsets[height] = currentValset
 		lastHeader = currentHeader
 		keys = newKeys
+		currentValset = nextValSet
 		keymap[height+1] = keys
 	}
 

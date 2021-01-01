@@ -51,7 +51,7 @@ func (cl *CoreChainLock) PopulateFromProto(clp *tmproto.CoreChainLock) error {
 }
 
 func (cl CoreChainLock) RequestID() []byte {
-	s := []byte{0x05, 0x63, 0x6c, 0x73, 0x69, 0x67} //5 clsig
+	s := []byte{0x05, 0x63, 0x6c, 0x73, 0x69, 0x67} // "5 clsig"
 
 	var coreBlockHeightBytes [4]byte
 	binary.LittleEndian.PutUint32(coreBlockHeightBytes[:], cl.CoreBlockHeight)

@@ -46,12 +46,14 @@ func ValidateHash(h []byte) error {
 // ValidateSignature returns an error if the signature is not empty, but its
 // size != tmhash.Size.
 func ValidateSignatureSize(keyType crypto.KeyType, h []byte) error {
-	var signatureSize = int(64) //default
+	var signatureSize int // default
 	switch keyType {
 	case crypto.Ed25519:
 		signatureSize = ed25519.SignatureSize
 	case crypto.BLS12381:
 		signatureSize = bls12381.SignatureSize
+	default:
+		panic("key type unknown")
 	}
 	if len(h) > 0 && len(h) != signatureSize {
 		return fmt.Errorf("expected size to be %d bytes, got %d bytes",

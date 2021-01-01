@@ -120,7 +120,6 @@ func (app *Application) EndBlock(reqEndBlock types.RequestEndBlock) types.Respon
 		return types.ResponseEndBlock{
 			NextCoreChainLockUpdate: coreChainLock.ToProto(),
 		}
-	} else {
-		return types.ResponseEndBlock{}
 	}
+	return types.ResponseEndBlock{}
 }

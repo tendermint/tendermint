@@ -1,3 +1,4 @@
+//nolint:lll
 package consensus
 
 import (
@@ -362,7 +363,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	incrementHeight(vss...)
 	updateTransactions := make([][]byte, len(updatedValidators)+1)
 	for i := 0; i < len(updatedValidators); i++ {
-		//start by adding all validator transactions
+		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators[i].PubKey)
 		require.NoError(t, err)
 		updateTransactions[i] = kvstore.MakeValSetChangeTx(updatedValidators[i].ProTxHash, abciPubKey, testMinPower)
@@ -378,7 +379,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	propBlock, _ := css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
 	propBlockParts := propBlock.MakePartSet(partSize)
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
-	//stateID := types.StateID{LastAppHash: css[0].state.AppHash}
+	// stateID := types.StateID{LastAppHash: css[0].state.AppHash}
 
 	proposal := types.NewProposal(vss[1].Height, 1, round, -1, blockID)
 	p := proposal.ToProto()
@@ -429,7 +430,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	incrementHeight(vss...)
 	updateTransactions2 := make([][]byte, len(updatedValidators)+1)
 	for i := 0; i < len(updatedValidators); i++ {
-		//start by adding all validator transactions
+		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators[i].PubKey)
 		require.NoError(t, err)
 		updateTransactions2[i] = kvstore.MakeValSetChangeTx(updatedValidators[i].ProTxHash, abciPubKey, testMinPower)
@@ -478,8 +479,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	selfIndex := valIndexFn(0)
 
-	//A new validator should come in
-	rs = css[0].GetRoundState()
+	// A new validator should come in
 	for i := 0; i < nVals+1; i++ {
 		if i == selfIndex {
 			continue
@@ -547,13 +547,13 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	height++
 	updateTransactions3 := make([][]byte, len(updatedValidators)+len(removedValidators)+1)
 	for i := 0; i < len(updatedValidators); i++ {
-		//start by adding all validator transactions
+		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators[i].PubKey)
 		require.NoError(t, err)
 		updateTransactions3[i] = kvstore.MakeValSetChangeTx(updatedValidators[i].ProTxHash, abciPubKey, testMinPower)
 	}
 	for i := 0; i < len(removedValidators); i++ {
-		//start by adding all validator transactions
+		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(removedValidators[i].PubKey)
 		require.NoError(t, err)
 		updateTransactions3[len(updatedValidators)+i] = kvstore.MakeValSetChangeTx(removedValidators[i].ProTxHash, abciPubKey, 0)
@@ -602,7 +602,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	selfIndex = valIndexFn(0)
 
-	//All validators should be in now
+	// All validators should be in now
 	rs = css[0].GetRoundState()
 	for i := 0; i < nVals+3; i++ {
 		if i == selfIndex {
@@ -643,7 +643,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	ensureNewProposal(proposalCh, height, round)
 	rs = css[0].GetRoundState()
 
-	//Still have 7 validators
+	// Still have 7 validators
 	for i := 0; i < nVals+3; i++ {
 		if i == selfIndex {
 			continue
@@ -667,13 +667,13 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	updateTransactions4 := make([][]byte, len(updatedValidators)+len(removedValidators)+1)
 	for i := 0; i < len(updatedValidators); i++ {
-		//start by adding all validator transactions
+		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators[i].PubKey)
 		require.NoError(t, err)
 		updateTransactions4[i] = kvstore.MakeValSetChangeTx(updatedValidators[i].ProTxHash, abciPubKey, testMinPower)
 	}
 	for i := 0; i < len(removedValidators); i++ {
-		//start by adding all validator transactions
+		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(removedValidators[i].PubKey)
 		require.NoError(t, err)
 		updateTransactions4[len(updatedValidators)+i] = kvstore.MakeValSetChangeTx(removedValidators[i].ProTxHash, abciPubKey, 0)
@@ -968,7 +968,8 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 
 func applyBlock(stateStore sm.Store, st sm.State, blk *types.Block, proxyApp proxy.AppConns) sm.State {
 	testPartSize := types.BlockPartSizeBytes
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), proxyApp.Query(), mempool, evpool, nil)
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
+		proxyApp.Query(), mempool, evpool, nil)
 
 	blkID := types.BlockID{Hash: blk.Hash(), PartSetHeader: blk.MakePartSet(testPartSize).Header()}
 	newState, _, err := blockExec.ApplyBlock(st, blkID, blk)
@@ -1177,7 +1178,7 @@ func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.Bloc
 			state.Validators,
 			privVal,
 			lastBlock.Header.ChainID)
-		//since there is only 1 vote, use it as threshold
+		// since there is only 1 vote, use it as threshold
 		commitSig := vote.CommitSig()
 		lastCommit = types.NewCommit(vote.Height, vote.Round,
 			lastBlockMeta.BlockID, lastBlockMeta.StateID, []types.CommitSig{commitSig}, commitSig.BlockSignature, commitSig.StateSignature)

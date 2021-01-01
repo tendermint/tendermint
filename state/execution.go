@@ -181,7 +181,8 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, 0, fmt.Errorf("error in chain lock from proto: %v", err)
 	}
 
-	validatorUpdates, thresholdPublicKeyUpdate, err := types.PB2TM.ValidatorUpdatesFromValidatorSet(abciValidatorSetUpdates)
+	validatorUpdates, thresholdPublicKeyUpdate, err :=
+		types.PB2TM.ValidatorUpdatesFromValidatorSet(abciValidatorSetUpdates)
 	if err != nil {
 		return state, 0, err
 	}
@@ -407,7 +408,7 @@ func getBeginBlockValidatorInfo(block *types.Block, store Store,
 }
 
 func validateValidatorSetUpdate(abciValidatorSetUpdate *abci.ValidatorSetUpdate, params tmproto.ValidatorParams) error {
-	//if there was no update return no error
+	// if there was no update return no error
 	if abciValidatorSetUpdate == nil {
 		return nil
 	}

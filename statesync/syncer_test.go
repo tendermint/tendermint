@@ -114,7 +114,8 @@ func TestSyncer_SyncAny(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, new)
 
-	new, err = syncer.AddSnapshot(peerB, &snapshot{Height: 2, CoreChainLockedHeight: 5, Format: 2, Chunks: 3, Hash: []byte{1}})
+	new, err = syncer.AddSnapshot(peerB, &snapshot{Height: 2, CoreChainLockedHeight: 5,
+		Format: 2, Chunks: 3, Hash: []byte{1}})
 	require.NoError(t, err)
 	assert.True(t, new)
 
@@ -367,7 +368,8 @@ func TestSyncer_offerSnapshot(t *testing.T) {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			syncer, connSnapshot := setupOfferSyncer(t)
-			s := &snapshot{Height: 1, CoreChainLockedHeight: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}, trustedAppHash: []byte("app_hash")}
+			s := &snapshot{Height: 1, CoreChainLockedHeight: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3},
+				trustedAppHash: []byte("app_hash")}
 			connSnapshot.On("OfferSnapshotSync", abci.RequestOfferSnapshot{
 				Snapshot: toABCI(s),
 				AppHash:  []byte("app_hash"),
@@ -608,7 +610,8 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 
 func TestSyncer_verifyApp(t *testing.T) {
 	boom := errors.New("boom")
-	s := &snapshot{Height: 3, CoreChainLockedHeight: 10, Format: 1, Chunks: 5, Hash: []byte{1, 2, 3}, trustedAppHash: []byte("app_hash")}
+	s := &snapshot{Height: 3, CoreChainLockedHeight: 10, Format: 1, Chunks: 5, Hash: []byte{1, 2, 3},
+		trustedAppHash: []byte("app_hash")}
 
 	testcases := map[string]struct {
 		response  *abci.ResponseInfo

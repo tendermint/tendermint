@@ -1,4 +1,4 @@
-//nolint: gosec
+//nolint:gosec
 package e2e
 
 import (
@@ -157,7 +157,8 @@ func LoadTestnet(file string) (*Testnet, error) {
 		}
 	}
 
-	privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThresholdUsingSeedSource(proTxHashes, randomSeed)
+	privateKeys, thresholdPublicKey :=
+		bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThresholdUsingSeedSource(proTxHashes, randomSeed)
 
 	testnet := &Testnet{
 		Name:                      filepath.Base(dir),
@@ -280,7 +281,8 @@ func LoadTestnet(file string) (*Testnet, error) {
 			testnet.Validators[validator] = privateKeys[i].PubKey()
 			validator.ProTxHash = proTxHashes[i]
 			validator.PrivvalKey = privateKeys[i]
-			fmt.Printf("Set validator %s/%X (at file genesis) pubkey to %X\n", validatorName, validator.ProTxHash, validator.PrivvalKey.PubKey().Bytes())
+			fmt.Printf("Set validator %s/%X (at file genesis) pubkey to %X\n", validatorName,
+				validator.ProTxHash, validator.PrivvalKey.PubKey().Bytes())
 			i++
 		}
 	} else {
@@ -333,7 +335,8 @@ func LoadTestnet(file string) (*Testnet, error) {
 
 		sort.Sort(crypto.SortProTxHash(proTxHashes))
 
-		privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThresholdUsingSeedSource(proTxHashes, randomSeed+int64(height))
+		privateKeys, thresholdPublicKey :=
+			bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThresholdUsingSeedSource(proTxHashes, randomSeed+int64(height))
 
 		for i, proTxHash := range proTxHashes {
 			node := testnet.LookupNodeByProTxHash(proTxHash)
@@ -343,11 +346,14 @@ func LoadTestnet(file string) (*Testnet, error) {
 			}
 			if height == 0 {
 				node.PrivvalKey = privateKeys[i]
-				fmt.Printf("Set validator %s/%X (at genesis) pubkey to %X\n", node.Name, node.ProTxHash, node.PrivvalKey.PubKey().Bytes())
+				fmt.Printf("Set validator %s/%X (at genesis) pubkey to %X\n", node.Name,
+					node.ProTxHash, node.PrivvalKey.PubKey().Bytes())
 			} else {
-				fmt.Printf("Set validator %s/%X (at height %d (+ 2)) pubkey to %X\n", node.Name, node.ProTxHash, height, privateKeys[i].PubKey().Bytes())
+				fmt.Printf("Set validator %s/%X (at height %d (+ 2)) pubkey to %X\n", node.Name,
+					node.ProTxHash, height, privateKeys[i].PubKey().Bytes())
 				node.NextPrivvalKeys = append(node.NextPrivvalKeys, privateKeys[i])
-				node.NextPrivvalHeights = append(node.NextPrivvalHeights, int64(height+2)) //the keys will change at the following height
+				// the keys will change at the following height
+				node.NextPrivvalHeights = append(node.NextPrivvalHeights, int64(height+2))
 			}
 		}
 

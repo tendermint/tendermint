@@ -335,7 +335,8 @@ func (app *PersistentKVStoreApplication) updateValidatorSet(v types.ValidatorUpd
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
 }
 
-func (app *PersistentKVStoreApplication) updateThresholdPublicKey(thresholdPublicKeyUpdate types.ThresholdPublicKeyUpdate) types.ResponseDeliverTx {
+func (app *PersistentKVStoreApplication) updateThresholdPublicKey(
+	thresholdPublicKeyUpdate types.ThresholdPublicKeyUpdate) types.ResponseDeliverTx {
 	_, err := cryptoenc.PubKeyFromProto(thresholdPublicKeyUpdate.ThresholdPublicKey)
 	if err != nil {
 		panic(fmt.Errorf("can't decode threshold public key: %w", err))

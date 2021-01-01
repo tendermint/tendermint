@@ -391,7 +391,7 @@ func defaultReceiveProposal(cs *State, proposal *types.Proposal) error {
 	proposalBlockSignBytes := types.ProposalBlockSignBytes(cs.state.ChainID, p)
 	// Verify signature
 	if !proposer.PubKey.VerifySignature(proposalBlockSignBytes, proposal.Signature) {
-		return fmt.Errorf("error proposer %X verifying proposal signature %X at height %d with key %X blockSignBytes %X\n",
+		return fmt.Errorf("error proposer %X verifying proposal signature %X at height %d with key %X blockSignBytes %X",
 			proposer.ProTxHash, proposal.Signature, proposal.Height, proposer.PubKey.Bytes(), proposalBlockSignBytes)
 	}
 

@@ -75,9 +75,8 @@ func (ml *mockBlockStore) CoreChainLockedHeight() uint32 {
 	}
 	if latestHeight > 0 {
 		return ml.blocks[latestHeight].CoreChainLockedHeight
-	} else {
-		return 0
 	}
+	return 0
 }
 
 func (ml *mockBlockStore) LoadBlock(height int64) *types.Block {
@@ -169,7 +168,8 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 		}
 		db := dbm.NewMemDB()
 		stateStore := sm.NewStore(db)
-		appl = sm.NewBlockExecutor(stateStore, p.logger, proxyApp.Consensus(), proxyApp.Query(), mock.Mempool{}, sm.EmptyEvidencePool{}, nil)
+		appl = sm.NewBlockExecutor(stateStore, p.logger, proxyApp.Consensus(), proxyApp.Query(),
+			mock.Mempool{}, sm.EmptyEvidencePool{}, nil)
 		if err = stateStore.Save(state); err != nil {
 			panic(err)
 		}
@@ -464,8 +464,10 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func makeBlock(height int64, coreChainLock *types.CoreChainLock, state sm.State, lastCommit *types.Commit) *types.Block {
-	block, _ := state.MakeBlock(height, coreChainLock, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().ProTxHash)
+func makeBlock(height int64, coreChainLock *types.CoreChainLock, state sm.State,
+	lastCommit *types.Commit) *types.Block {
+	block, _ := state.MakeBlock(height, coreChainLock, makeTxs(height), lastCommit,
+		nil, state.Validators.GetProposer().ProTxHash)
 	return block
 }
 
@@ -534,10 +536,11 @@ func newReactorStore(
 			if err != nil {
 				panic(err)
 			}
-			//since there is only 1 vote, use it as threshold
+			// since there is only 1 vote, use it as threshold
 			commitSig := vote.CommitSig()
 			lastCommit = types.NewCommit(vote.Height, vote.Round,
-				lastBlockMeta.BlockID, lastBlockMeta.StateID, []types.CommitSig{commitSig}, commitSig.BlockSignature, commitSig.StateSignature)
+				lastBlockMeta.BlockID, lastBlockMeta.StateID, []types.CommitSig{commitSig},
+				commitSig.BlockSignature, commitSig.StateSignature)
 		}
 
 		thisBlock := makeBlock(blockHeight, nil, state, lastCommit)

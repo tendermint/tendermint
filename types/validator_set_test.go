@@ -1,3 +1,4 @@
+//nolint: lll
 package types
 
 import (
@@ -512,7 +513,14 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 	vote.BlockSignature = blockSig
 	vote.StateSignature = stateSig
 
-	commit := NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{vote.CommitSig()}, vote.BlockSignature, vote.StateSignature)
+	commit := NewCommit(vote.Height,
+		vote.Round,
+		vote.BlockID,
+		vote.StateID,
+		[]CommitSig{vote.CommitSig()},
+		vote.BlockSignature,
+		vote.StateSignature,
+		)
 
 	vote2 := *vote
 	blockSig2, err := privKey.Sign(VoteBlockSignBytes("EpsilonEridani", v))
@@ -533,7 +541,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 	}{
 		{"good", chainID, vote.BlockID, vote.StateID, vote.Height, commit, false},
 
-		{"incorrect threshold block signature", "EpsilonEridani", vote.BlockID, vote.StateID, vote.Height, commit, true},
+		{"wrong block signature", "EpsilonEridani", vote.BlockID, vote.StateID, vote.Height, commit, true},
 		{"wrong block ID", chainID, makeBlockIDRandom(), vote.StateID, vote.Height, commit, true},
 		{"wrong height", chainID, vote.BlockID, vote.StateID, vote.Height - 1, commit, true},
 
@@ -547,7 +555,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 		{"insufficient voting power: got 0, needed more than 66", chainID, vote.BlockID, vote.StateID, vote.Height,
 			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{{BlockIDFlag: BlockIDFlagAbsent}}, vote.BlockSignature, vote.StateSignature), true},
 
-		{"incorrect threshold block signature", chainID, vote.BlockID, vote.StateID, vote.Height,
+		{"wrong block signature", chainID, vote.BlockID, vote.StateID, vote.Height,
 			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{vote2.CommitSig()}, vote2.BlockSignature, vote2.StateSignature), true},
 	}
 
@@ -787,9 +795,9 @@ func addValidatorsToValidatorSet(vals *ValidatorSet, testValList []testVal) ([]*
 		rVals, _ := GenerateTestValidatorSetWithAddressesDefaultPower(combinedAddresses)
 		rValidators := append(rVals.Validators, removedVals...)
 		return rValidators, rVals.ThresholdPublicKey
-	} else {
-		return removedVals, nil
 	}
+	return removedVals, nil
+
 
 }
 
@@ -1477,8 +1485,8 @@ func (tvals testValsByVotingPower) Len() int {
 	return len(tvals)
 }
 
-//Here we need to sort by the pro_tx_hash and not the name if the power is equal, in the test the pro_tx_hash is derived
-// from the name by applying a single SHA256
+// Here we need to sort by the pro_tx_hash and not the name if the power is equal, in the test the pro_tx_hash is derived
+//  from the name by applying a single SHA256
 func (tvals testValsByVotingPower) Less(i, j int) bool {
 	if tvals[i].power == tvals[j].power {
 		return bytes.Compare(crypto.Sha256([]byte(tvals[i].name)), crypto.Sha256([]byte(tvals[j].name))) == -1

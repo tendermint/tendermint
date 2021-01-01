@@ -451,7 +451,8 @@ func (c *Client) TxSearch(ctx context.Context, query string, prove bool, page, p
 }
 
 // Validators fetches and verifies validators.
-func (c *Client) Validators(ctx context.Context, height *int64, pagePtr, perPagePtr *int, requestThresholdPublicKey *bool) (*ctypes.ResultValidators,
+func (c *Client) Validators(ctx context.Context, height *int64, pagePtr, perPagePtr *int,
+	requestThresholdPublicKey *bool) (*ctypes.ResultValidators,
 	error) {
 	// Update the light client if we're behind and retrieve the light block at the requested height.
 	l, err := c.updateLightClientIfNeededTo(ctx, *height)

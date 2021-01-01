@@ -201,7 +201,7 @@ func TestSignVote(t *testing.T) {
 	cases := []*types.Vote{
 		newVote(privVal.Key.ProTxHash, 0, height, round-1, voteType, block1, state),   // round regression
 		newVote(privVal.Key.ProTxHash, 0, height-1, round, voteType, block1, state),   // height regression
-		newVote(privVal.Key.ProTxHash, 0, height-2, round+4, voteType, block1, state), // height regression and different round
+		newVote(privVal.Key.ProTxHash, 0, height-2, round+4, voteType, block1, state), // height reg and diff round
 		newVote(privVal.Key.ProTxHash, 0, height, round, voteType, block2, state),     // different block
 	}
 

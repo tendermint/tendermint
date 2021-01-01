@@ -169,7 +169,8 @@ func (c *Local) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit
 	return core.Commit(c.ctx, height)
 }
 
-func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *int, requestThresholdPublicKey *bool) (*ctypes.ResultValidators, error) {
+func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *int,
+	requestThresholdPublicKey *bool) (*ctypes.ResultValidators, error) {
 	return core.Validators(c.ctx, height, page, perPage, requestThresholdPublicKey)
 }
 
@@ -238,7 +239,8 @@ func (c *Local) eventsRoutine(
 				select {
 				case outc <- result:
 				default:
-					c.Logger.Error("wanted to publish ResultEvent, but out channel is full", "result", result, "query", result.Query)
+					c.Logger.Error("wanted to publish ResultEvent, but out channel is full",
+						"result", result, "query", result.Query)
 				}
 			}
 		case <-sub.Cancelled():

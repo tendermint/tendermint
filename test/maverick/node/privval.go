@@ -163,7 +163,8 @@ type FilePV struct {
 }
 
 // NewFilePV generates a new validator from the given key and paths.
-func NewFilePV(privKey crypto.PrivKey, proTxHash []byte, nextPrivKeys []crypto.PrivKey, nextPrivHeights []int64, keyFilePath, stateFilePath string) *FilePV {
+func NewFilePV(privKey crypto.PrivKey, proTxHash []byte, nextPrivKeys []crypto.PrivKey,
+	nextPrivHeights []int64, keyFilePath, stateFilePath string) *FilePV {
 	if len(proTxHash) != crypto.ProTxHashSize {
 		panic("maverick error setting incorrect proTxHash size in NewFilePV")
 	}
@@ -337,8 +338,10 @@ func (pv *FilePV) UpdatePrivateKey(privateKey crypto.PrivKey, height int64) erro
 }
 
 func (pv *FilePV) updateKeyIfNeeded(height int64) {
-	if pv.Key.NextPrivKeys != nil && len(pv.Key.NextPrivKeys) > 0 && pv.Key.NextPrivKeyHeights != nil && len(pv.Key.NextPrivKeyHeights) > 0 && height >= pv.Key.NextPrivKeyHeights[0] {
-		// fmt.Printf("privval node %X at height %d updating key %X with new key %X\n", pv.Key.ProTxHash, height, pv.Key.PrivKey.PubKey().Bytes(), pv.Key.NextPrivKeys[0].PubKey().Bytes())
+	if pv.Key.NextPrivKeys != nil && len(pv.Key.NextPrivKeys) > 0 && pv.Key.NextPrivKeyHeights != nil &&
+		len(pv.Key.NextPrivKeyHeights) > 0 && height >= pv.Key.NextPrivKeyHeights[0] {
+		// fmt.Printf("privval node %X at height %d updating key %X with new key %X\n",
+		//  pv.Key.ProTxHash, height, pv.Key.PrivKey.PubKey().Bytes(), pv.Key.NextPrivKeys[0].PubKey().Bytes())
 		pv.Key.PrivKey = pv.Key.NextPrivKeys[0]
 		if len(pv.Key.NextPrivKeys) > 1 {
 			pv.Key.NextPrivKeys = pv.Key.NextPrivKeys[1:]
@@ -349,7 +352,8 @@ func (pv *FilePV) updateKeyIfNeeded(height int64) {
 		}
 	}
 	// else {
-	// fmt.Printf("privval node %X at height %d did not update key %X with next keys %v\n", pv.Key.ProTxHash, height, pv.Key.PrivKey.PubKey().Bytes(), pv.Key.NextPrivKeyHeights)
+	// fmt.Printf("privval node %X at height %d did not update key %X with next keys %v\n",
+	//  pv.Key.ProTxHash, height, pv.Key.PrivKey.PubKey().Bytes(), pv.Key.NextPrivKeyHeights)
 	// }
 }
 
@@ -389,7 +393,8 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 	// The vote should not have a state ID set if the block ID is set to nil
 
 	if vote.BlockID.Hash == nil && vote.StateID.LastAppHash != nil {
-		return fmt.Errorf("error : vote should not have a state ID set if the block ID for the round (%d/%d) is not set", vote.Height, vote.Round)
+		return fmt.Errorf("error : vote should not have a state ID set if the block ID for the round (%d/%d) is not set",
+			vote.Height, vote.Round)
 	}
 
 	_, err := lss.CheckHRS(height, round, step)

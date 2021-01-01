@@ -1,3 +1,4 @@
+//nolint: lll
 package evidence_test
 
 import (
@@ -85,7 +86,7 @@ func TestEvidencePoolSingleValidator(t *testing.T) {
 	const evidenceBytes int64 = 712 // bls is 64 more than edwards
 	evs, size = pool.PendingEvidence(evidenceBytes)
 	assert.Equal(t, 1, len(evs))
-	assert.Equal(t, int64(evidenceBytes), size) // check that the size of the single evidence in bytes is correct, bls is 64 more than edwards
+	assert.Equal(t, evidenceBytes, size) // check that the size of the single evidence in bytes is correct, bls is 64 more than edwards
 
 	// shouldn't be able to add evidence twice
 	assert.NoError(t, pool.AddEvidence(ev))
@@ -143,7 +144,7 @@ func TestEvidencePoolQuorum(t *testing.T) {
 	const evidenceBytes int64 = 713 // bls is 64 more than edwards
 	evs, size = pool.PendingEvidence(evidenceBytes)
 	assert.Equal(t, 1, len(evs))
-	assert.Equal(t, int64(evidenceBytes), size) // check that the size of the single evidence in bytes is correct, bls is 64 more than edwards
+	assert.Equal(t, evidenceBytes, size) // check that the size of the single evidence in bytes is correct, bls is 64 more than edwards
 
 	// shouldn't be able to add evidence twice
 	assert.NoError(t, pool.AddEvidence(ev))

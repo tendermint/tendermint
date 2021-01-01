@@ -510,14 +510,16 @@ func (h *Handshaker) replayBlocks(
 }
 
 // ApplyBlock on the proxyApp with the last block.
-func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.AppConnConsensus, proxyAppQuery proxy.AppConnQuery) (sm.State, error) {
+func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.AppConnConsensus,
+		proxyAppQuery proxy.AppConnQuery) (sm.State, error) {
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 
 	// Use stubs for both mempool and evidence pool since no transactions nor
 	// evidence are needed here - block already exists.
 
-	blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, proxyApp, proxyAppQuery, emptyMempool{}, sm.EmptyEvidencePool{}, nil)
+	blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, proxyApp, proxyAppQuery,
+		emptyMempool{}, sm.EmptyEvidencePool{}, nil)
 	blockExec.SetEventBus(h.eventBus)
 
 	var err error

@@ -1,15 +1,11 @@
 package light_test
 
-import (
-	"time"
-)
-
-const (
-	maxClockDrift = 10 * time.Second
-)
+// const (
+// 	maxClockDrift = 10 * time.Second
+// )
 
 //
-//func TestVerifyAdjacentHeaders(t *testing.T) {
+// func TestVerifyAdjacentHeaders(t *testing.T) {
 //	const (
 //		chainID    = "TestVerifyAdjacentHeaders"
 //		lastHeight = 1
@@ -115,7 +111,8 @@ const (
 //		},
 //		// vals does not match with what we have -> error
 //		8: {
-//			keys.GenSignedHeader(chainID, nextHeight, bTime.Add(1*time.Hour), nil, keys.ToValidators(vals.ThresholdPublicKey), vals,
+//			keys.GenSignedHeader(chainID, nextHeight, bTime.Add(1*time.Hour), nil,
+//	     		keys.ToValidators(vals.ThresholdPublicKey), vals,
 //				hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(keys)),
 //			keys.ToValidators(vals.ThresholdPublicKey),
 //			3 * time.Hour,
@@ -160,9 +157,9 @@ const (
 //		})
 //	}
 //
-//}
+// }
 //
-//func TestVerifyNonAdjacentHeaders(t *testing.T) {
+// func TestVerifyNonAdjacentHeaders(t *testing.T) {
 //	const (
 //		chainID    = "TestVerifyNonAdjacentHeaders"
 //		lastHeight = 1
@@ -248,7 +245,8 @@ const (
 //		},
 //		// 3/3 new vals signed, less than 1/3 old vals present -> error
 //		5: {
-//			lessThanOneThird.GenSignedHeader(chainID, 5, bTime.Add(1*time.Hour), nil, lessThanOneThirdVals, lessThanOneThirdVals,
+//			lessThanOneThird.GenSignedHeader(chainID, 5, bTime.Add(1*time.Hour), nil,
+//	    		lessThanOneThirdVals, lessThanOneThirdVals,
 //				hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(lessThanOneThird)),
 //			lessThanOneThirdVals,
 //			3 * time.Hour,
@@ -275,9 +273,9 @@ const (
 //			}
 //		})
 //	}
-//}
+// }
 //
-//func TestVerifyReturnsErrorIfTrustLevelIsInvalid(t *testing.T) {
+// func TestVerifyReturnsErrorIfTrustLevelIsInvalid(t *testing.T) {
 //	const (
 //		chainID    = "TestVerifyReturnsErrorIfTrustLevelIsInvalid"
 //		lastHeight = 1
@@ -295,9 +293,9 @@ const (
 //	err := light.Verify(header, vals, header, vals, 2*time.Hour, time.Now(), maxClockDrift,
 //		tmmath.Fraction{Numerator: 2, Denominator: 1})
 //	assert.Error(t, err)
-//}
+// }
 //
-//func TestValidateTrustLevel(t *testing.T) {
+// func TestValidateTrustLevel(t *testing.T) {
 //	testCases := []struct {
 //		lvl   tmmath.Fraction
 //		valid bool
@@ -324,4 +322,4 @@ const (
 //			assert.NoError(t, err)
 //		}
 //	}
-//}
+// }

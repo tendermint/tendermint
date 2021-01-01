@@ -68,7 +68,7 @@ type ProTxHash = crypto.ProTxHash
 type Vote struct {
 	Type               tmproto.SignedMsgType `json:"type"`
 	Height             int64                 `json:"height"`
-	Round              int32                 `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
+	Round              int32                 `json:"round"`    // assume there will not be greater than 2^32 rounds
 	BlockID            BlockID               `json:"block_id"` // zero if vote is nil.
 	StateID            StateID               `json:"state_id"`
 	ValidatorProTxHash ProTxHash             `json:"validator_pro_tx_hash"`

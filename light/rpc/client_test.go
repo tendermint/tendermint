@@ -1,8 +1,8 @@
 package rpc
 
 //
-//// TestABCIQuery tests ABCIQuery requests and verifies proofs. HAPPY PATH 😀
-//func TestABCIQuery(t *testing.T) {
+// // TestABCIQuery tests ABCIQuery requests and verifies proofs. HAPPY PATH 😀
+// func TestABCIQuery(t *testing.T) {
 //	tree, err := iavl.NewMutableTree(dbm.NewMemDB(), 100)
 //	require.NoError(t, err)
 //
@@ -62,21 +62,21 @@ package rpc
 //	require.NoError(t, err)
 //
 //	assert.NotNil(t, res)
-//}
+// }
 //
-//type testOp struct {
+// type testOp struct {
 //	Spec  *ics23.ProofSpec
 //	Key   []byte
 //	Proof *ics23.CommitmentProof
-//}
+// }
 //
-//var _ merkle.ProofOperator = testOp{}
+// var _ merkle.ProofOperator = testOp{}
 //
-//func (op testOp) GetKey() []byte {
+// func (op testOp) GetKey() []byte {
 //	return op.Key
-//}
+// }
 //
-//func (op testOp) ProofOp() tmcrypto.ProofOp {
+// func (op testOp) ProofOp() tmcrypto.ProofOp {
 //	bz, err := op.Proof.Marshal()
 //	if err != nil {
 //		panic(err.Error())
@@ -86,9 +86,9 @@ package rpc
 //		Key:  op.Key,
 //		Data: bz,
 //	}
-//}
+// }
 //
-//func (op testOp) Run(args [][]byte) ([][]byte, error) {
+// func (op testOp) Run(args [][]byte) ([][]byte, error) {
 //	// calculate root from proof
 //	root, err := op.Proof.Calculate()
 //	if err != nil {
@@ -112,9 +112,9 @@ package rpc
 //	}
 //
 //	return [][]byte{root}, nil
-//}
+// }
 //
-//func testOpDecoder(pop tmcrypto.ProofOp) (merkle.ProofOperator, error) {
+// func testOpDecoder(pop tmcrypto.ProofOp) (merkle.ProofOperator, error) {
 //	proof := &ics23.CommitmentProof{}
 //	err := proof.Unmarshal(pop.Data)
 //	if err != nil {
@@ -127,4 +127,4 @@ package rpc
 //		Proof: proof,
 //	}
 //	return op, nil
-//}
+// }

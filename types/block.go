@@ -800,7 +800,7 @@ func (cs *CommitSig) FromProto(csp tmproto.CommitSig) error {
 	cs.BlockSignature = csp.BlockSignature
 	cs.StateSignature = csp.StateSignature
 
-	//lets assume if there is no state signature that the commit is for the genesis block
+	// lets assume if there is no state signature that the commit is for the genesis block
 	return cs.ValidateBasic()
 }
 
@@ -829,7 +829,8 @@ type Commit struct {
 }
 
 // NewCommit returns a new Commit.
-func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, commitSigs []CommitSig, thresholdBlockSignature []byte, thresholdStateSignature []byte) *Commit {
+func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, commitSigs []CommitSig,
+	thresholdBlockSignature []byte, thresholdStateSignature []byte) *Commit {
 	return &Commit{
 		Height:                  height,
 		Round:                   round,
@@ -913,7 +914,7 @@ func (commit *Commit) CanonicalVoteVerifySignBytes(chainID string) []byte {
 // See VoteSignBytes
 func (commit *Commit) VoteStateSignBytes(chainID string, valIdx int32) []byte {
 	v := commit.GetCanonicalVote()
-	//if the block id is absent or nil the state id should be empty
+	// if the block id is absent or nil the state id should be empty
 	commitSig := commit.Signatures[valIdx]
 	v.StateID = commitSig.StateID(commit.StateID)
 	return VoteStateSignBytes(chainID, v.ToProto())

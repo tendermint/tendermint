@@ -1762,7 +1762,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	proposer := cs.Validators.GetProposer()
 
 	if !proposer.PubKey.VerifySignature(proposalBlockSignBytes, proposal.Signature) {
-		return fmt.Errorf("error proposer %X verifying proposal signature %X at height %d with key %X blockSignBytes %X\n",
+		return fmt.Errorf("error proposer %X verifying proposal signature %X at height %d with key %X blockSignBytes %X",
 			proposer.ProTxHash, proposal.Signature, proposal.Height, proposer.PubKey.Bytes(), proposalBlockSignBytes)
 	}
 	// } else if proposal.Height == 9 {
@@ -1828,13 +1828,16 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 			return added, err
 		}
 
-		if cs.RoundState.Proposal != nil && block.Header.CoreChainLockedHeight != cs.RoundState.Proposal.CoreChainLockedHeight {
-			return added, fmt.Errorf("core chain lock height of block %d does not match proposal %d", block.Header.CoreChainLockedHeight, cs.RoundState.Proposal.CoreChainLockedHeight)
+		if cs.RoundState.Proposal != nil &&
+			block.Header.CoreChainLockedHeight != cs.RoundState.Proposal.CoreChainLockedHeight {
+			return added, fmt.Errorf("core chain lock height of block %d does not match proposal %d",
+				block.Header.CoreChainLockedHeight, cs.RoundState.Proposal.CoreChainLockedHeight)
 		}
 
 		cs.ProposalBlock = block
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
-		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
+		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height,
+			"hash", cs.ProposalBlock.Hash())
 		if err := cs.eventBus.PublishEventCompleteProposal(cs.CompleteProposalEvent()); err != nil {
 			cs.Logger.Error("Error publishing event complete proposal", "err", err)
 		}
@@ -1980,14 +1983,16 @@ func (cs *State) addVote(
 	// Not necessarily a bad peer, but not favourable behaviour.
 	if vote.Height != cs.Height {
 		added = false
-		cs.Logger.Info("Vote ignored and not added", "voteHeight", vote.Height, "csHeight", cs.Height, "peerID", peerID)
+		cs.Logger.Info("Vote ignored and not added", "voteHeight", vote.Height,
+			"csHeight", cs.Height, "peerID", peerID)
 		return
 	}
 
 	if vote.BlockID.Hash != nil && !bytes.Equal(vote.StateID.LastAppHash, cs.state.AppHash) {
 		added = false
 		err = errors.New("vote state last app hash does not match the known state app hash")
-		cs.Logger.Info("Vote ignored because sending wrong app hash", "voteHeight", vote.Height, "csHeight", cs.Height, "peerID", peerID)
+		cs.Logger.Info("Vote ignored because sending wrong app hash", "voteHeight", vote.Height,
+			"csHeight", cs.Height, "peerID", peerID)
 		return
 	}
 
@@ -2022,7 +2027,8 @@ func (cs *State) addVote(
 				(vote.Round <= cs.Round) &&
 				!cs.LockedBlock.HashesTo(blockID.Hash) {
 
-				cs.Logger.Info("Unlocking because of POL.", "lockedRound", cs.LockedRound, "POLRound", vote.Round)
+				cs.Logger.Info("Unlocking because of POL.", "lockedRound", cs.LockedRound,
+					"POLRound", vote.Round)
 				cs.LockedRound = -1
 				cs.LockedBlock = nil
 				cs.LockedBlockParts = nil
@@ -2037,7 +2043,8 @@ func (cs *State) addVote(
 
 				if cs.ProposalBlock.HashesTo(blockID.Hash) {
 					cs.Logger.Info(
-						"Updating ValidBlock because of POL.", "validRound", cs.ValidRound, "POLRound", vote.Round)
+						"Updating ValidBlock because of POL.", "validRound", cs.ValidRound,
+						"POLRound", vote.Round)
 					cs.ValidRound = vote.Round
 					cs.ValidBlock = cs.ProposalBlock
 					cs.ValidBlockParts = cs.ProposalBlockParts
@@ -2124,7 +2131,7 @@ func (cs *State) signVote(
 	proTxHash := cs.privValidatorProTxHash
 	valIdx, _ := cs.Validators.GetByProTxHash(proTxHash)
 
-	//Since the block has already been validated the block.lastAppHash must be the state.AppHash
+	// Since the block has already been validated the block.lastAppHash must be the state.AppHash
 
 	var lastAppHash = cs.state.AppHash
 
@@ -2138,7 +2145,7 @@ func (cs *State) signVote(
 		StateID:            types.StateID{LastAppHash: lastAppHash},
 	}
 
-	//if hash is nil no need to send the state id
+	// if hash is nil no need to send the state id
 	if hash == nil {
 		vote.StateID.LastAppHash = nil
 	}
@@ -2192,11 +2199,13 @@ func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header 
 	vote, err := cs.signVote(msgType, hash, header)
 	if err == nil {
 		cs.sendInternalMessage(msgInfo{&VoteMessage{vote}, ""})
-		cs.Logger.Info("Signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)
+		cs.Logger.Info("Signed and pushed vote", "height", cs.Height, "round",
+			cs.Round, "vote", vote, "err", err)
 		return vote
 	}
 	// if !cs.replayMode {
-	cs.Logger.Error("Error signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)
+	cs.Logger.Error("Error signing vote", "height", cs.Height, "round", cs.Round,
+		"vote", vote, "err", err)
 	// }
 	return nil
 }
@@ -2249,7 +2258,8 @@ func (cs *State) checkDoubleSigningRisk(height int64) error {
 			if lastCommit != nil {
 				for sigIdx, s := range lastCommit.Signatures {
 					if s.BlockIDFlag == types.BlockIDFlagCommit && bytes.Equal(s.ValidatorProTxHash, valProTxHash) {
-						cs.Logger.Info("Found signature from the same key", "sig", s, "idx", sigIdx, "height", height-i)
+						cs.Logger.Info("Found signature from the same key", "sig", s,
+							"idx", sigIdx, "height", height-i)
 						return ErrSignatureFoundInPastBlocks
 					}
 				}

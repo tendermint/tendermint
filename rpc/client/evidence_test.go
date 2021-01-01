@@ -157,7 +157,8 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		require.NoError(t, err)
 
 		require.EqualValues(t, rawpub, pk, "Stored PubKey not equal with expected, value %v", string(qres.Value))
-		require.Equal(t, types.DefaultDashVotingPower, v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
+		require.Equal(t, types.DefaultDashVotingPower, v.Power,
+			"Stored Power not equal with expected, value %v", string(qres.Value))
 
 		for _, fake := range fakes {
 			_, err := c.BroadcastEvidence(context.Background(), fake)

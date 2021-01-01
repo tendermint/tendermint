@@ -1,3 +1,4 @@
+//nolint: gosec
 package bls12381
 
 import (
@@ -164,7 +165,8 @@ func CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes []crypto.ProTxH
 	return CreatePrivLLMQDataOnProTxHashes(proTxHashes, len(proTxHashes)*2/3+1)
 }
 
-func CreatePrivLLMQDataOnProTxHashesDefaultThresholdUsingSeedSource(proTxHashes []crypto.ProTxHash, seedSource int64) ([]crypto.PrivKey, crypto.PubKey) {
+func CreatePrivLLMQDataOnProTxHashesDefaultThresholdUsingSeedSource(proTxHashes []crypto.ProTxHash,
+	seedSource int64) ([]crypto.PrivKey, crypto.PubKey) {
 	return CreatePrivLLMQDataOnProTxHashesUsingSeed(proTxHashes, len(proTxHashes)*2/3+1, seedSource)
 }
 
@@ -172,7 +174,8 @@ func CreatePrivLLMQDataOnProTxHashes(proTxHashes []crypto.ProTxHash, threshold i
 	return CreatePrivLLMQDataOnProTxHashesUsingSeed(proTxHashes, threshold, 0)
 }
 
-func CreatePrivLLMQDataOnProTxHashesUsingSeed(proTxHashes []crypto.ProTxHash, threshold int, seedSource int64) ([]crypto.PrivKey, crypto.PubKey) {
+func CreatePrivLLMQDataOnProTxHashesUsingSeed(proTxHashes []crypto.ProTxHash, threshold int,
+	seedSource int64) ([]crypto.PrivKey, crypto.PubKey) {
 	members := len(proTxHashes)
 	if members < threshold {
 		panic("members must be bigger than threshold")
@@ -205,7 +208,7 @@ func CreatePrivLLMQDataOnProTxHashesUsingSeed(proTxHashes []crypto.ProTxHash, th
 		return []crypto.PrivKey{privKey}, privKey.PubKey()
 	}
 
-	//sorting makes this easier
+	// sorting makes this easier
 	sort.Sort(crypto.SortProTxHash(proTxHashes))
 
 	ids := make([]bls.Hash, members)
@@ -240,7 +243,7 @@ func CreatePrivLLMQDataOnProTxHashesUsingSeed(proTxHashes []crypto.ProTxHash, th
 		testProTxHashes[i] = proTxHashes[i].Bytes()
 	}
 
-	//as this is not used in production, we can add this test
+	// as this is not used in production, we can add this test
 	testKey, err := RecoverThresholdPublicKeyFromPublicKeys(testPubKey, testProTxHashes)
 	if err != nil {
 		panic(err)
@@ -255,7 +258,7 @@ func RecoverThresholdPublicKeyFromPublicKeys(publicKeys []crypto.PubKey, blsIds 
 	if len(publicKeys) != len(blsIds) {
 		return nil, errors.New("the length of the public keys must match the length of the blsIds")
 	}
-	//if there is only 1 key use it
+	// if there is only 1 key use it
 	if len(publicKeys) == 1 {
 		return publicKeys[0], nil
 	}
@@ -265,17 +268,18 @@ func RecoverThresholdPublicKeyFromPublicKeys(publicKeys []crypto.PubKey, blsIds 
 	for i, publicKey := range publicKeys {
 		publicKeyShare, error := bls.PublicKeyFromBytes(publicKey.Bytes())
 		if error != nil {
-			return nil, fmt.Errorf("error recovering public key share from bytes %X (size %d - proTxHash %X): %w", publicKey.Bytes(), len(publicKey.Bytes()), blsIds[i], error)
+			return nil, fmt.Errorf("error recovering public key share from bytes %X (size %d - proTxHash %X): %w",
+				publicKey.Bytes(), len(publicKey.Bytes()), blsIds[i], error)
 		}
 		publicKeyShares[i] = publicKeyShare
 	}
 
-	for i, blsId := range blsIds {
-		if len(blsId) != tmhash.Size {
-			return nil, fmt.Errorf("blsId incorrect size in public key recovery, expected 32 bytes (got %d)", len(blsId))
+	for i, blsID := range blsIds {
+		if len(blsID) != tmhash.Size {
+			return nil, fmt.Errorf("blsID incorrect size in public key recovery, expected 32 bytes (got %d)", len(blsID))
 		}
 		var hash bls.Hash
-		copy(hash[:], blsId)
+		copy(hash[:], blsID)
 		hashes[i] = hash
 	}
 
@@ -286,14 +290,14 @@ func RecoverThresholdPublicKeyFromPublicKeys(publicKeys []crypto.PubKey, blsIds 
 	return PubKey(thresholdPublicKey.Serialize()), nil
 }
 
-//BLS Ids are the Pro_tx_hashes from validators
+// BLS Ids are the Pro_tx_hashes from validators
 func RecoverThresholdSignatureFromShares(sigSharesData [][]byte, blsIds [][]byte) ([]byte, error) {
 	sigShares := make([]*bls.InsecureSignature, len(sigSharesData))
 	hashes := make([]bls.Hash, len(sigSharesData))
 	if len(sigSharesData) != len(blsIds) {
 		return nil, errors.New("the length of the signature shares must match the length of the blsIds")
 	}
-	//if there is only 1 share use it
+	// if there is only 1 share use it
 	if len(sigSharesData) == 1 {
 		return sigSharesData[0], nil
 	}
@@ -306,12 +310,12 @@ func RecoverThresholdSignatureFromShares(sigSharesData [][]byte, blsIds [][]byte
 		sigShares[i] = sigShare
 	}
 
-	for i, blsId := range blsIds {
-		if len(blsId) != tmhash.Size {
-			return nil, fmt.Errorf("blsId incorrect size in signature recovery, expected 32 bytes (got %d)", len(blsId))
+	for i, blsID := range blsIds {
+		if len(blsID) != tmhash.Size {
+			return nil, fmt.Errorf("blsID incorrect size in signature recovery, expected 32 bytes (got %d)", len(blsID))
 		}
 		var hash bls.Hash
-		copy(hash[:], blsId)
+		copy(hash[:], blsID)
 		hashes[i] = hash
 	}
 

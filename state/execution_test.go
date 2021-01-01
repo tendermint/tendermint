@@ -287,10 +287,11 @@ func TestUpdateValidators(t *testing.T) {
 	combinedValidatorSet, _ := types.GenerateValidatorSetUsingProTxHashes(combinedProTxHashes)
 	regeneratedValidatorSet, _ := types.GenerateValidatorSetUsingProTxHashes(combinedProTxHashes)
 	abciRegeneratedValidatorUpdates := regeneratedValidatorSet.ABCIEquivalentValidatorUpdates()
-	removedProTxHashes := combinedValidatorSet.GetProTxHashes()[0 : len(combinedProTxHashes)-2] //these are sorted
-	removedValidatorSet, _ := types.GenerateValidatorSetUsingProTxHashes(removedProTxHashes)    //size 6
+	removedProTxHashes := combinedValidatorSet.GetProTxHashes()[0 : len(combinedProTxHashes)-2] // these are sorted
+	removedValidatorSet, _ := types.GenerateValidatorSetUsingProTxHashes(removedProTxHashes)    // size 6
 	abciRemovalValidatorUpdates := removedValidatorSet.ABCIEquivalentValidatorUpdates()
-	abciRemovalValidatorUpdates.ValidatorUpdates = append(abciRemovalValidatorUpdates.ValidatorUpdates, abciRegeneratedValidatorUpdates.ValidatorUpdates[6:]...)
+	abciRemovalValidatorUpdates.ValidatorUpdates = append(abciRemovalValidatorUpdates.ValidatorUpdates,
+		abciRegeneratedValidatorUpdates.ValidatorUpdates[6:]...)
 	abciRemovalValidatorUpdates.ValidatorUpdates[6].Power = 0
 	abciRemovalValidatorUpdates.ValidatorUpdates[7].Power = 0
 

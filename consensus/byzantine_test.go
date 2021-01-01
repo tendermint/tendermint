@@ -78,7 +78,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		evpool.SetLogger(logger.With("module", "evidence"))
 
 		// Make State
-		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry, mempool, evpool, nil)
+		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry,
+			mempool, evpool, nil)
 		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 		cs.SetLogger(cs.Logger)
 		// set private validator
@@ -207,11 +208,11 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	}
 }
 
-//4 validators. 1 is byzantine. The other three are partitioned into A (1 val) and B (2 vals).
-//byzantine validator sends conflicting proposals into A and B,
-//and prevotes/precommits on both of them.
-//B sees a commit, A doesn't.
-//Heal partition and ensure A sees the commit
+// 4 validators. 1 is byzantine. The other three are partitioned into A (1 val) and B (2 vals).
+// byzantine validator sends conflicting proposals into A and B,
+// and prevotes/precommits on both of them.
+// B sees a commit, A doesn't.
+// Heal partition and ensure A sees the commit
 func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	N := 4
 	logger := consensusLogger().With("test", "byzantine")

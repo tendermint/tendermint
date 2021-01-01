@@ -1,3 +1,4 @@
+//nolint: lll
 package state_test
 
 import (
@@ -105,7 +106,7 @@ func makeTxs(height int64) (txs []types.Tx) {
 func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValidator) {
 	privValsByProTxHash := make(map[string]types.PrivValidator, nVals)
 	vals, privVals, thresholdPublicKey := types.GenerateMockGenesisValidators(nVals)
-	//vals and privals are sorted
+	// vals and privals are sorted
 	for i := 0; i < nVals; i++ {
 		vals[i].Name = fmt.Sprintf("test%d", i)
 		proTxHash := vals[i].ProTxHash
@@ -164,10 +165,10 @@ func makeHeaderPartsResponsesValKeysRegenerate(state sm.State, regenerate bool) 
 	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
 }
 
-//func makeHeaderPartsResponsesValPowerChange(
+// func makeHeaderPartsResponsesValPowerChange(
 //	state sm.State,
 //	power int64,
-//) (types.Header, *types.ChainLock, types.BlockID, *tmstate.ABCIResponses) {
+// ) (types.Header, *types.ChainLock, types.BlockID, *tmstate.ABCIResponses) {
 //
 //	block := makeBlock(state, state.LastBlockHeight+1)
 //	abciResponses := &tmstate.ABCIResponses{
@@ -186,7 +187,7 @@ func makeHeaderPartsResponsesValKeysRegenerate(state sm.State, regenerate bool) 
 //	}
 //
 //	return block.Header, block.ChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
-//}
+// }
 
 func makeHeaderPartsResponsesParams(
 	state sm.State,

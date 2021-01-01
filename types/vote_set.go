@@ -199,7 +199,8 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 
 	// If we already know of this vote, return false.
 	if existing, ok := voteSet.getVote(valIndex, blockKey); ok {
-		if bytes.Equal(existing.BlockSignature, vote.BlockSignature) && bytes.Equal(existing.StateSignature, vote.StateSignature) {
+		if bytes.Equal(existing.BlockSignature, vote.BlockSignature) &&
+			bytes.Equal(existing.StateSignature, vote.StateSignature) {
 			return false, nil // duplicate
 		}
 		return false, fmt.Errorf("existing vote: %v; new vote: %v: %w", existing, vote, ErrVoteNonDeterministicSignature)
@@ -207,7 +208,8 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 
 	// Check signature.
 	if err := vote.Verify(voteSet.chainID, val.PubKey, val.ProTxHash); err != nil {
-		return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s ProTxHash %s: %w", voteSet.chainID, val.PubKey, val.ProTxHash, err)
+		return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s ProTxHash %s: %w",
+			voteSet.chainID, val.PubKey, val.ProTxHash, err)
 	}
 
 	// Add vote and get conflicting vote if any.
@@ -295,11 +297,15 @@ func (voteSet *VoteSet) addVerifiedVote(
 		if voteSet.maj23 == nil {
 			maj23BlockID := vote.BlockID
 			stateMaj23StateID := vote.StateID
-			// fmt.Printf("vote majority reached at height %d (%d/%d) quorum size %d\n", voteSet.height, voteSet.round, voteSet.signedMsgType, quorum)
+			// fmt.Printf("vote majority reached at height %d (%d/%d) quorum size %d\n",
+			//  voteSet.height, voteSet.round, voteSet.signedMsgType, quorum)
 			voteSet.maj23 = &maj23BlockID
 			voteSet.stateMaj23 = &stateMaj23StateID
 			if len(votesByBlock.votes) > 1 {
-				voteSet.recoverThresholdSigs(votesByBlock)
+				err := voteSet.recoverThresholdSigs(votesByBlock)
+				if err != nil {
+					panic("error recovering threshold signature")
+				}
 			} else {
 				// there is only 1 validator
 				voteSet.thresholdBlockSig = vote.BlockSignature
@@ -653,7 +659,8 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 		commitSigs[i] = commitSig
 	}
 
-	return NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, *voteSet.stateMaj23, commitSigs, voteSet.thresholdBlockSig, voteSet.thresholdStateSig)
+	return NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, *voteSet.stateMaj23,
+		commitSigs, voteSet.thresholdBlockSig, voteSet.thresholdStateSig)
 }
 
 //--------------------------------------------------------------------------------

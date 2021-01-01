@@ -158,7 +158,8 @@ func (pb2tm) ValidatorUpdates(vals []abci.ValidatorUpdate) ([]*Validator, error)
 	return tmVals, nil
 }
 
-func (pb2tm) ValidatorUpdatesFromValidatorSet(valSetUpdate *abci.ValidatorSetUpdate) ([]*Validator, crypto.PubKey, error) {
+func (pb2tm) ValidatorUpdatesFromValidatorSet(valSetUpdate *abci.ValidatorSetUpdate) ([]*Validator,
+	crypto.PubKey, error) {
 	if valSetUpdate == nil {
 		return nil, nil, nil
 	}

@@ -165,7 +165,8 @@ type FilePV struct {
 }
 
 // NewFilePV generates a new validator from the given key and paths.
-func NewFilePV(privKey crypto.PrivKey, proTxHash []byte, nextPrivKeys []crypto.PrivKey, nextPrivHeights []int64, keyFilePath, stateFilePath string) *FilePV {
+func NewFilePV(privKey crypto.PrivKey, proTxHash []byte, nextPrivKeys []crypto.PrivKey, nextPrivHeights []int64,
+	keyFilePath, stateFilePath string) *FilePV {
 	if len(proTxHash) != crypto.ProTxHashSize {
 		panic("error setting incorrect proTxHash size in NewFilePV")
 	}
@@ -190,7 +191,8 @@ func NewFilePV(privKey crypto.PrivKey, proTxHash []byte, nextPrivKeys []crypto.P
 // GenFilePV generates a new validator with randomly generated private key
 // and sets the filePaths, but does not call Save().
 func GenFilePV(keyFilePath, stateFilePath string) *FilePV {
-	return NewFilePV(bls12381.GenPrivKey(), crypto.RandProTxHash(), nil, nil, keyFilePath, stateFilePath)
+	return NewFilePV(bls12381.GenPrivKey(), crypto.RandProTxHash(), nil, nil,
+		keyFilePath, stateFilePath)
 }
 
 // LoadFilePV loads a FilePV from the filePaths.  The FilePV handles double
@@ -361,8 +363,10 @@ func (pv *FilePV) UpdatePrivateKey(privateKey crypto.PrivKey, height int64) erro
 }
 
 func (pv *FilePV) updateKeyIfNeeded(height int64) {
-	if pv.Key.NextPrivKeys != nil && len(pv.Key.NextPrivKeys) > 0 && pv.Key.NextPrivKeyHeights != nil && len(pv.Key.NextPrivKeyHeights) > 0 && height >= pv.Key.NextPrivKeyHeights[0] {
-		// fmt.Printf("privval file node %X at height %d updating key %X with new key %X\n", pv.Key.ProTxHash, height, pv.Key.PrivKey.PubKey().Bytes(), pv.Key.NextPrivKeys[0].PubKey().Bytes())
+	if pv.Key.NextPrivKeys != nil && len(pv.Key.NextPrivKeys) > 0 && pv.Key.NextPrivKeyHeights != nil &&
+		len(pv.Key.NextPrivKeyHeights) > 0 && height >= pv.Key.NextPrivKeyHeights[0] {
+		// fmt.Printf("privval file node %X at height %d updating key %X with new key %X\n", pv.Key.ProTxHash, height,
+		//  pv.Key.PrivKey.PubKey().Bytes(), pv.Key.NextPrivKeys[0].PubKey().Bytes())
 		pv.Key.PrivKey = pv.Key.NextPrivKeys[0]
 		if len(pv.Key.NextPrivKeys) > 1 {
 			pv.Key.NextPrivKeys = pv.Key.NextPrivKeys[1:]
@@ -373,7 +377,8 @@ func (pv *FilePV) updateKeyIfNeeded(height int64) {
 		}
 	}
 	// else {
-	// fmt.Printf("privval file node %X at height %d did not update key %X with next keys %v\n", pv.Key.ProTxHash, height, pv.Key.PrivKey.PubKey().Bytes(), pv.Key.NextPrivKeyHeights)
+	// fmt.Printf("privval file node %X at height %d did not update key %X with next keys %v\n", pv.Key.ProTxHash,
+	//  height, pv.Key.PrivKey.PubKey().Bytes(), pv.Key.NextPrivKeyHeights)
 	// }
 }
 
@@ -391,7 +396,8 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 	// The vote should not have a state ID set if the block ID is set to nil
 
 	if vote.BlockID.Hash == nil && vote.StateID.LastAppHash != nil {
-		return fmt.Errorf("error : vote should not have a state ID set if the block ID for the round (%d/%d) is not set", vote.Height, vote.Round)
+		return fmt.Errorf("error : vote should not have a state ID set if the" +
+			" block ID for the round (%d/%d) is not set", vote.Height, vote.Round)
 	}
 
 	sameHRS, err := lss.CheckHRS(height, round, step)
@@ -432,9 +438,11 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 	}
 
 	//  if vote.BlockID.Hash == nil {
-	//	  fmt.Printf("***********we are signing NIL (%d/%d) %X signed (file) for vote %v blockSignBytes %X\n", vote.Height, vote.Round, sigBlock, vote, blockSignBytes)
+	//	  fmt.Printf("***********we are signing NIL (%d/%d) %X signed (file) for vote %v blockSignBytes %X\n",
+	//	    vote.Height, vote.Round, sigBlock, vote, blockSignBytes)
 	//  } else {
-	//	  fmt.Printf("==block signature (%d/%d) %X signed (file) for vote %v\n", vote.Height, vote.Round, sigBlock, vote)
+	//	  fmt.Printf("==block signature (%d/%d) %X signed (file) for vote %v\n", vote.Height, vote.Round,
+	//	   sigBlock, vote)
 	//  }
 
 	pv.saveSigned(height, round, step, blockSignBytes, sigBlock, stateSignBytes, sigState)
@@ -483,7 +491,8 @@ func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error
 	if err != nil {
 		return err
 	}
-	// fmt.Printf("proposer %X signing proposal at height %d with key %X proposalSignBytes %X\n", pv.Key.ProTxHash, proposal.Height, pv.Key.PrivKey.PubKey().Bytes(), blockSig)
+	// fmt.Printf("proposer %X signing proposal at height %d with key %X proposalSignBytes %X\n", pv.Key.ProTxHash,
+	//  proposal.Height, pv.Key.PrivKey.PubKey().Bytes(), blockSig)
 
 	pv.saveSigned(height, round, step, blockSignBytes, blockSig, nil, nil)
 	proposal.Signature = blockSig

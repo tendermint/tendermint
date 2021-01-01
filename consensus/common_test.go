@@ -1,3 +1,4 @@
+//nolint: lll
 package consensus
 
 import (
@@ -734,9 +735,9 @@ func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount 
 	}
 	validatorProTxHashes = append(validatorProTxHashes, newValidatorProTxHashes...)
 	sort.Sort(crypto.SortProTxHash(validatorProTxHashes))
-	//now that we have the list of all the protxhashes we need to regenerate the keys and the threshold public key
+	// now that we have the list of all the protxhashes we need to regenerate the keys and the threshold public key
 	privKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(validatorProTxHashes)
-	//privKeys are returned in order
+	// privKeys are returned in order
 
 	var privVal types.PrivValidator
 	updatedValidators := make([]*types.Validator, len(validatorProTxHashes))
@@ -750,7 +751,10 @@ func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount 
 		}
 		for j, proTxHash := range validatorProTxHashes {
 			if bytes.Equal(privValProTxHash.Bytes(), proTxHash.Bytes()) {
-				privVal.UpdatePrivateKey(privKeys[j], height+3)
+				err := privVal.UpdatePrivateKey(privKeys[j], height+3)
+				if err != nil {
+					panic(err)
+				}
 				updatedValidators[j] = privVal.ExtractIntoValidator(height + 3)
 				publicKeys[j] = privKeys[j].PubKey()
 				if !bytes.Equal(updatedValidators[j].PubKey.Bytes(), publicKeys[j].Bytes()) {
@@ -825,9 +829,9 @@ func updateConsensusNetRemoveValidatorsWithProTxHashes(css []*State, height int6
 	}
 	validatorProTxHashes = newValidatorProTxHashes
 	sort.Sort(crypto.SortProTxHash(validatorProTxHashes))
-	//now that we have the list of all the protxhashes we need to regenerate the keys and the threshold public key
+	// now that we have the list of all the protxhashes we need to regenerate the keys and the threshold public key
 	privKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(validatorProTxHashes)
-	//privKeys are returned in order
+	// privKeys are returned in order
 
 	var privVal types.PrivValidator
 	updatedValidators := make([]*types.Validator, len(validatorProTxHashes))
@@ -841,9 +845,12 @@ func updateConsensusNetRemoveValidatorsWithProTxHashes(css []*State, height int6
 				panic(err)
 			}
 			if bytes.Equal(stateProTxHash.Bytes(), proTxHash.Bytes()) {
-				//we found the prival
+				// we found the prival
 				privVal = state.privValidator
-				privVal.UpdatePrivateKey(privKeys[i], height+3)
+				err := privVal.UpdatePrivateKey(privKeys[i], height+3)
+				if err != nil {
+					panic(err)
+				}
 				updatedValidators[i] = privVal.ExtractIntoValidator(height + 3)
 				publicKeys[i] = privKeys[i].PubKey()
 				if !bytes.Equal(updatedValidators[i].PubKey.Bytes(), publicKeys[i].Bytes()) {
@@ -1030,13 +1037,13 @@ func newCounter() abci.Application {
 	return counter.NewApplication(true)
 }
 
-func newPersistentKVStore() abci.Application {
-	dir, err := ioutil.TempDir("", "persistent-kvstore")
-	if err != nil {
-		panic(err)
-	}
-	return kvstore.NewPersistentKVStoreApplication(dir)
-}
+// func newPersistentKVStore() abci.Application {
+//	 dir, err := ioutil.TempDir("", "persistent-kvstore")
+//	 if err != nil {
+//	 	 panic(err)
+//	 }
+//	 return kvstore.NewPersistentKVStoreApplication(dir)
+// }
 
 func newPersistentKVStoreWithPath(dbDir string) abci.Application {
 	return kvstore.NewPersistentKVStoreApplication(dbDir)

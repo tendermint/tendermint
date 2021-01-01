@@ -53,13 +53,16 @@ func TestValidator_Sets(t *testing.T) {
 					break
 				}
 			}
-			// fmt.Printf("node %s(%X) validator set for height %d is %v\n", node.Name, node.ProTxHash, h, valSchedule.Set)
+			// fmt.Printf("node %s(%X) validator set for height %d is %v\n",
+			//	node.Name, node.ProTxHash, h, valSchedule.Set)
 			for i, valScheduleValidator := range valSchedule.Set.Validators {
 				validator := validators[i]
 				require.Equal(t, valScheduleValidator.ProTxHash, validator.ProTxHash,
-					"mismatching validator proTxHashes at height %v (%X <=> %X", h, valScheduleValidator.ProTxHash, validator.ProTxHash)
+					"mismatching validator proTxHashes at height %v (%X <=> %X", h,
+					valScheduleValidator.ProTxHash, validator.ProTxHash)
 				require.Equal(t, valScheduleValidator.PubKey.Bytes(), validator.PubKey.Bytes(),
-					"mismatching validator %X publicKey at height %v (%X <=> %X", valScheduleValidator.ProTxHash, h, valScheduleValidator.PubKey.Bytes(), validator.PubKey.Bytes())
+					"mismatching validator %X publicKey at height %v (%X <=> %X",
+					valScheduleValidator.ProTxHash, h, valScheduleValidator.PubKey.Bytes(), validator.PubKey.Bytes())
 			}
 			require.Equal(t, valSchedule.Set.Validators, validators,
 				"incorrect validator set at height %v", h)

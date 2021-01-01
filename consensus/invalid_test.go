@@ -71,7 +71,7 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, sw
 		// precommit a random block
 		blockHash := bytes.HexBytes(tmrand.Bytes(32))
 		lastAppHash := bytes.HexBytes(tmrand.Bytes(32))
-		//we want to see both errors, so send the correct state id half the time
+		// we want to see both errors, so send the correct state id half the time
 		if tmrand.Bool() == true {
 			lastAppHash = cs.state.AppHash
 		}

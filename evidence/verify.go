@@ -137,7 +137,8 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, t
 				" block to be correctly derived yet it wasn't")
 		}
 		// ensure that 2/3 of the validator set did vote for this block
-		if err := e.ConflictingBlock.ValidatorSet.VerifyCommitLight(trustedHeader.ChainID, e.ConflictingBlock.Commit.BlockID, e.ConflictingBlock.Commit.StateID,
+		if err := e.ConflictingBlock.ValidatorSet.VerifyCommitLight(trustedHeader.ChainID,
+			e.ConflictingBlock.Commit.BlockID, e.ConflictingBlock.Commit.StateID,
 			e.ConflictingBlock.Height, e.ConflictingBlock.Commit); err != nil {
 			return fmt.Errorf("invalid commit from conflicting block: %w", err)
 		}

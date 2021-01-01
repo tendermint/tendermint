@@ -72,9 +72,8 @@ func (bs *BlockStore) CoreChainLockedHeight() uint32 {
 	block := bs.LoadBlock(bs.Height())
 	if block != nil {
 		return block.CoreChainLockedHeight
-	} else {
-		return 0
 	}
+	return 0
 }
 
 // Size returns the number of blocks in the block store.

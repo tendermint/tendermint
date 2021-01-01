@@ -142,7 +142,8 @@ func (vals *ValidatorSet) ThresholdPublicKeyValid() error {
 			return errors.New("incorrect threshold public key")
 		}
 	} else if len(vals.Validators) > 1 {
-		recoveredThresholdPublicKey, err := bls12381.RecoverThresholdPublicKeyFromPublicKeys(vals.GetPublicKeys(), vals.GetProTxHashesAsByteArrays())
+		recoveredThresholdPublicKey, err := bls12381.RecoverThresholdPublicKeyFromPublicKeys(vals.GetPublicKeys(),
+			vals.GetProTxHashesAsByteArrays())
 		if err != nil {
 			return err
 		} else if !recoveredThresholdPublicKey.Equals(vals.ThresholdPublicKey) {
@@ -745,7 +746,8 @@ func (vals *ValidatorSet) applyRemovals(deletes []*Validator) {
 // If 'allowDeletes' is false then delete operations (identified by validators with voting power 0)
 // are not allowed and will trigger an error if present in 'changes'.
 // The 'allowDeletes' flag is set to false by NewValidatorSet() and to true by UpdateWithChangeSet().
-func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes bool, newThresholdPublicKey crypto.PubKey) error {
+func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes bool,
+		newThresholdPublicKey crypto.PubKey) error {
 	if len(changes) == 0 {
 		return nil
 	}
@@ -847,17 +849,6 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 			stateID, commit.StateID)
 	}
 
-	//to do, check commit threshold
-	canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
-	if !vals.ThresholdPublicKey.VerifySignature(canonicalVoteBlockSignBytes, commit.ThresholdBlockSignature) {
-		return fmt.Errorf("incorrect threshold block signature %X %X", canonicalVoteBlockSignBytes, commit.ThresholdBlockSignature)
-	}
-
-	canonicalVoteStateSignBytes := commit.CanonicalVoteStateSignBytes(chainID)
-	if !vals.ThresholdPublicKey.VerifySignature(canonicalVoteStateSignBytes, commit.ThresholdStateSignature) {
-		return fmt.Errorf("incorrect threshold state signature %X %X", canonicalVoteStateSignBytes, commit.ThresholdStateSignature)
-	}
-
 	talliedVotingPower := int64(0)
 
 	votingPowerNeedMoreThan := vals.TotalVotingPower() * 2 / 3
@@ -873,10 +864,16 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 		// Validate block signature.
 		voteBlockSignBytes := commit.VoteBlockSignBytes(chainID, int32(idx))
 		if !val.PubKey.VerifySignature(voteBlockSignBytes, commitSig.BlockSignature) {
-			return fmt.Errorf("wrong block signature (#%d/proTxHash:%X/pubKey:%X) | voteBlockSignBytes : %X | signature : %X | commitBID: %s | vote :%v | commit sig %v\n", idx, val.ProTxHash, val.PubKey.Bytes(), voteBlockSignBytes, commitSig.BlockSignature, commit.BlockID.String(), commit.GetVote(int32(idx)), commit.Signatures[idx])
+			return fmt.Errorf("wrong block signature (#%d/proTxHash:%X/pubKey:%X) | voteBlockSignBytes : %X |" +
+				" signature : %X | commitBID: %s | vote :%v | commit sig %v", idx, val.ProTxHash, val.PubKey.Bytes(),
+				voteBlockSignBytes, commitSig.BlockSignature, commit.BlockID.String(), commit.GetVote(int32(idx)),
+				commit.Signatures[idx])
 		}
 		// else {
-		//	fmt.Printf("correct block signature  (#%d/proTxHash:%X/pubKey:%X) | voteBlockSignBytes : %X | signature : %X | commitBID: %s | vote :%v | commit sig %v\n", idx, val.ProTxHash, val.PubKey.Bytes(), voteBlockSignBytes, commitSig.BlockSignature, commit.BlockID.String(), commit.GetVote(int32(idx)), commit.Signatures[idx])
+		//	fmt.Printf("correct block signature  (#%d/proTxHash:%X/pubKey:%X) | voteBlockSignBytes : %X |" +
+		//  	" signature : %X | commitBID: %s | vote :%v | commit sig %v\n", idx, val.ProTxHash, val.PubKey.Bytes(),
+		// 	voteBlockSignBytes, commitSig.BlockSignature, commit.BlockID.String(), commit.GetVote(int32(idx)),
+		//	commit.Signatures[idx])
 		// }
 
 		// Validate state signature.
@@ -884,7 +881,9 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 			// Only verify signatures that voted to commit the block
 			voteStateSignBytes := commit.VoteStateSignBytes(chainID, int32(idx))
 			if !val.PubKey.VerifySignature(voteStateSignBytes, commitSig.StateSignature) {
-				return fmt.Errorf("wrong state signature (#%d/proTxHash:%X/pubKey:%X) | voteStateSignBytes : %X | signature : %X", idx, val.ProTxHash, val.PubKey.Bytes(), voteStateSignBytes, commitSig.StateSignature)
+				return fmt.Errorf("wrong state signature (#%d/proTxHash:%X/pubKey:%X) |" +
+					" voteStateSignBytes : %X | signature : %X", idx, val.ProTxHash, val.PubKey.Bytes(),
+					voteStateSignBytes, commitSig.StateSignature)
 			}
 		}
 
@@ -896,6 +895,18 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 		// It's OK. We include stray signatures (~votes for nil) to measure
 		// validator availability.
 		// }
+	}
+
+	canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
+	if !vals.ThresholdPublicKey.VerifySignature(canonicalVoteBlockSignBytes, commit.ThresholdBlockSignature) {
+		return fmt.Errorf("incorrect threshold block signature %X %X", canonicalVoteBlockSignBytes,
+			commit.ThresholdBlockSignature)
+	}
+
+	canonicalVoteStateSignBytes := commit.CanonicalVoteStateSignBytes(chainID)
+	if !vals.ThresholdPublicKey.VerifySignature(canonicalVoteStateSignBytes, commit.ThresholdStateSignature) {
+		return fmt.Errorf("incorrect threshold state signature %X %X", canonicalVoteStateSignBytes,
+			commit.ThresholdStateSignature)
 	}
 
 	if got, needed := talliedVotingPower, votingPowerNeedMoreThan; got <= needed {
@@ -934,17 +945,6 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID, sta
 
 	talliedVotingPower := int64(0)
 
-	//to do, check commit threshold
-	canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
-	if !vals.ThresholdPublicKey.VerifySignature(canonicalVoteBlockSignBytes, commit.ThresholdBlockSignature) {
-		return fmt.Errorf("incorrect threshold block signature %X %X", canonicalVoteBlockSignBytes, commit.ThresholdBlockSignature)
-	}
-
-	canonicalVoteStateSignBytes := commit.CanonicalVoteStateSignBytes(chainID)
-	if !vals.ThresholdPublicKey.VerifySignature(canonicalVoteStateSignBytes, commit.ThresholdStateSignature) {
-		return fmt.Errorf("incorrect threshold state signature %X %X", canonicalVoteStateSignBytes, commit.ThresholdStateSignature)
-	}
-
 	votingPowerNeeded := vals.TotalVotingPower() * 2 / 3
 	for idx, commitSig := range commit.Signatures {
 		// No need to verify absent or nil votes.
@@ -959,7 +959,10 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID, sta
 		// Validate block signature.
 		voteBlockSignBytes := commit.VoteBlockSignBytes(chainID, int32(idx))
 		if !val.PubKey.VerifySignature(voteBlockSignBytes, commitSig.BlockSignature) {
-			return fmt.Errorf("wrong block signature for light (#%d/proTxHash:%X/pubKey:%X) | voteBlockSignBytes : %X | signature : %X | commitBID: %s | vote :%v | commit sig %v\n", idx, val.ProTxHash, val.PubKey.Bytes(), voteBlockSignBytes, commitSig.BlockSignature, commit.BlockID.String(), commit.GetVote(int32(idx)), commit.Signatures[idx])
+			return fmt.Errorf("wrong block signature for light (#%d/proTxHash:%X/pubKey:%X) |" +
+				" voteBlockSignBytes : %X | signature : %X | commitBID: %s | vote :%v | commit sig %v", idx,
+				val.ProTxHash, val.PubKey.Bytes(), voteBlockSignBytes, commitSig.BlockSignature,
+				commit.BlockID.String(), commit.GetVote(int32(idx)), commit.Signatures[idx])
 		}
 
 		// Validate block signature.
@@ -972,6 +975,18 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID, sta
 
 		// return as soon as +2/3 of the signatures are verified
 		if talliedVotingPower > votingPowerNeeded {
+			canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
+			if !vals.ThresholdPublicKey.VerifySignature(canonicalVoteBlockSignBytes, commit.ThresholdBlockSignature) {
+				return fmt.Errorf("incorrect threshold block signature %X %X", canonicalVoteBlockSignBytes,
+					commit.ThresholdBlockSignature)
+			}
+
+			canonicalVoteStateSignBytes := commit.CanonicalVoteStateSignBytes(chainID)
+			if !vals.ThresholdPublicKey.VerifySignature(canonicalVoteStateSignBytes, commit.ThresholdStateSignature) {
+				return fmt.Errorf("incorrect threshold state signature %X %X", canonicalVoteStateSignBytes,
+					commit.ThresholdStateSignature)
+			}
+
 			return nil
 		}
 	}
@@ -1001,7 +1016,8 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 	// Safely calculate voting power needed.
 	totalVotingPowerMulByNumerator, overflow := safeMul(vals.TotalVotingPower(), int64(trustLevel.Numerator))
 	if overflow {
-		return errors.New("int64 overflow while calculating voting power needed. please provide smaller trustLevel numerator")
+		return errors.New("int64 overflow while calculating voting power needed. please provide" +
+			" smaller trustLevel numerator")
 	}
 	votingPowerNeeded := totalVotingPowerMulByNumerator / int64(trustLevel.Denominator)
 
@@ -1026,18 +1042,33 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 			// Validate block signature.
 			voteBlockSignBytes := commit.VoteBlockSignBytes(chainID, int32(idx))
 			if !val.PubKey.VerifySignature(voteBlockSignBytes, commitSig.BlockSignature) {
-				return fmt.Errorf("wrong block signature for light trusting (#%d/proTxHash:%X/pubKey:%X) | voteBlockSignBytes : %X | signature : %X | commitBID: %s | vote :%v | commit sig %v\n", idx, val.ProTxHash, val.PubKey.Bytes(), voteBlockSignBytes, commitSig.BlockSignature, commit.BlockID.String(), commit.GetVote(int32(idx)), commit.Signatures[idx])
+				return fmt.Errorf("wrong block signature for light trusting (#%d/proTxHash:%X/pubKey:%X) |" +
+					" voteBlockSignBytes : %X | signature : %X | commitBID: %s | vote :%v | commit sig %v", idx,
+					val.ProTxHash, val.PubKey.Bytes(), voteBlockSignBytes, commitSig.BlockSignature,
+					commit.BlockID.String(), commit.GetVote(int32(idx)), commit.Signatures[idx])
 			}
 
 			// Validate block signature.
 			voteStateSignBytes := commit.VoteStateSignBytes(chainID, int32(idx))
 			if !val.PubKey.VerifySignature(voteStateSignBytes, commitSig.StateSignature) {
-				return fmt.Errorf("wrong state signature for light trusting (#%d): %X", idx, commitSig.StateSignature)
+				return fmt.Errorf("wrong state signature for light trusting (#%d): %X", idx,
+					commitSig.StateSignature)
 			}
 
 			talliedVotingPower += val.VotingPower
 
 			if talliedVotingPower > votingPowerNeeded {
+				canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
+				if !vals.ThresholdPublicKey.VerifySignature(canonicalVoteBlockSignBytes, commit.ThresholdBlockSignature) {
+					return fmt.Errorf("incorrect threshold block signature %X %X", canonicalVoteBlockSignBytes,
+						commit.ThresholdBlockSignature)
+				}
+
+				canonicalVoteStateSignBytes := commit.CanonicalVoteStateSignBytes(chainID)
+				if !vals.ThresholdPublicKey.VerifySignature(canonicalVoteStateSignBytes, commit.ThresholdStateSignature) {
+					return fmt.Errorf("incorrect threshold state signature %X %X", canonicalVoteStateSignBytes,
+						commit.ThresholdStateSignature)
+				}
 				return nil
 			}
 		}
@@ -1086,7 +1117,8 @@ func (e ErrNotEnoughVotingPowerSigned) Error() string {
 func (vals *ValidatorSet) ABCIEquivalentValidatorUpdates() *abci.ValidatorSetUpdate {
 	var valUpdates []abci.ValidatorUpdate
 	for i := 0; i < len(vals.Validators); i++ {
-		valUpdate := TM2PB.NewValidatorUpdate(vals.Validators[i].PubKey, DefaultDashVotingPower, vals.Validators[i].ProTxHash)
+		valUpdate := TM2PB.NewValidatorUpdate(vals.Validators[i].PubKey, DefaultDashVotingPower,
+			vals.Validators[i].ProTxHash)
 		valUpdates = append(valUpdates, valUpdate)
 	}
 	abciThresholdPublicKey, err := cryptoenc.PubKeyToProto(vals.ThresholdPublicKey)
@@ -1208,7 +1240,8 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 // is invalid
 func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 	if vp == nil {
-		return nil, errors.New("nil validator set") // validator set should never be nil, bigger issues are at play if empty
+		return nil, errors.New("nil validator set") // validator set should never be nil
+		// bigger issues are at play if empty
 	}
 	vals := new(ValidatorSet)
 
@@ -1304,7 +1337,8 @@ func GenerateTestValidatorSetWithAddresses(addresses []crypto.Address, power []i
 	privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false, false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false,
+			false)
 		valz[i] = NewValidator(privateKeys[i].PubKey(), originalPowerMap[string(proTxHashes[i])], proTxHashes[i])
 		valz[i].Address = originalAddressMap[string(proTxHashes[i])]
 	}
@@ -1331,7 +1365,8 @@ func GenerateTestValidatorSetWithAddressesDefaultPower(addresses []crypto.Addres
 	privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false, false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false,
+			false)
 		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), proTxHashes[i])
 		valz[i].Address = originalAddressMap[string(proTxHashes[i])]
 	}
@@ -1350,7 +1385,8 @@ func GenerateMockValidatorSet(numValidators int) (*ValidatorSet, []*MockPV) {
 	privateKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQData(numValidators, threshold)
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false, false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false,
+			false)
 		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), proTxHashes[i])
 	}
 
@@ -1367,7 +1403,8 @@ func GenerateGenesisValidators(numValidators int) ([]GenesisValidator, []PrivVal
 	privateKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQDataDefaultThreshold(numValidators)
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false, false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false,
+			false)
 		genesisValidators[i] = GenesisValidator{
 			PubKey:    privateKeys[i].PubKey(),
 			Power:     DefaultDashVotingPower,
@@ -1389,7 +1426,8 @@ func GenerateMockGenesisValidators(numValidators int) ([]GenesisValidator, []*Mo
 	privateKeys, proTxHashes, thresholdPublicKey := bls12381.CreatePrivLLMQDataDefaultThreshold(numValidators)
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false, false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false,
+			false)
 		genesisValidators[i] = GenesisValidator{
 			PubKey:    privateKeys[i].PubKey(),
 			Power:     DefaultDashVotingPower,
@@ -1415,7 +1453,8 @@ func GenerateValidatorSetUsingProTxHashes(proTxHashes []crypto.ProTxHash) (*Vali
 	privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false, false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false,
+			false)
 		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), proTxHashes[i])
 	}
 
@@ -1436,7 +1475,8 @@ func GenerateMockValidatorSetUsingProTxHashes(proTxHashes []crypto.ProTxHash) (*
 	privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
 
 	for i := 0; i < numValidators; i++ {
-		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false, false)
+		privValidators[i] = NewMockPVWithParams(privateKeys[i], proTxHashes[i], false,
+			false)
 		valz[i] = NewValidatorDefaultVotingPower(privateKeys[i].PubKey(), proTxHashes[i])
 	}
 

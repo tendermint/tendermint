@@ -121,9 +121,10 @@ func newBlockchainReactor(
 			lastBlock := blockStore.LoadBlock(blockHeight - 1)
 
 			vote := makeVote(t, &lastBlock.Header, lastBlockMeta.BlockID, lastBlockMeta.StateID, state.Validators, privVals[0])
-			//since there is only 1 vote, use it as threshold
+			// since there is only 1 vote, use it as threshold
 			commitSig := vote.CommitSig()
-			lastCommit = types.NewCommit(vote.Height, vote.Round, lastBlockMeta.BlockID, lastBlockMeta.StateID, []types.CommitSig{commitSig}, commitSig.BlockSignature, commitSig.StateSignature)
+			lastCommit = types.NewCommit(vote.Height, vote.Round, lastBlockMeta.BlockID, lastBlockMeta.StateID,
+				[]types.CommitSig{commitSig}, commitSig.BlockSignature, commitSig.StateSignature)
 		}
 
 		thisBlock := makeBlock(blockHeight, nil, state, lastCommit)
@@ -348,8 +349,10 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func makeBlock(height int64, coreChainLock *types.CoreChainLock, state sm.State, lastCommit *types.Commit) *types.Block {
-	block, _ := state.MakeBlock(height, coreChainLock, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().ProTxHash)
+func makeBlock(height int64, coreChainLock *types.CoreChainLock, state sm.State,
+		lastCommit *types.Commit) *types.Block {
+	block, _ := state.MakeBlock(height, coreChainLock, makeTxs(height), lastCommit,
+		nil, state.Validators.GetProposer().ProTxHash)
 	return block
 }
 

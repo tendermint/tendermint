@@ -56,8 +56,6 @@ type State struct {
 	// when it's detected
 	evpool evidencePool
 
-	nextCoreChainLock *types.CoreChainLock
-
 	// internal state
 	mtx sync.RWMutex
 	cstypes.RoundState
@@ -1846,7 +1844,7 @@ func (cs *State) signVote(
 		StateID:            types.StateID{LastAppHash: cs.state.AppHash},
 	}
 
-	//if hash is nil no need to send the state id
+	// if hash is nil no need to send the state id
 	if hash == nil {
 		vote.StateID.LastAppHash = nil
 	}
@@ -1859,24 +1857,24 @@ func (cs *State) signVote(
 	return vote, err
 }
 
-func (cs *State) voteTime() time.Time {
-	now := tmtime.Now()
-	minVoteTime := now
-	// TODO: We should remove next line in case we don't vote for v in case cs.ProposalBlock == nil,
-	// even if cs.LockedBlock != nil. See https://docs.tendermint.com/master/spec/.
-	timeIota := time.Duration(cs.state.ConsensusParams.Block.TimeIotaMs) * time.Millisecond
-	if cs.LockedBlock != nil {
-		// See the BFT time spec https://docs.tendermint.com/master/spec/consensus/bft-time.html
-		minVoteTime = cs.LockedBlock.Time.Add(timeIota)
-	} else if cs.ProposalBlock != nil {
-		minVoteTime = cs.ProposalBlock.Time.Add(timeIota)
-	}
-
-	if now.After(minVoteTime) {
-		return now
-	}
-	return minVoteTime
-}
+// func (cs *State) voteTime() time.Time {
+//	now := tmtime.Now()
+//	minVoteTime := now
+//	// TODO: We should remove next line in case we don't vote for v in case cs.ProposalBlock == nil,
+//	// even if cs.LockedBlock != nil. See https://docs.tendermint.com/master/spec/.
+//	timeIota := time.Duration(cs.state.ConsensusParams.Block.TimeIotaMs) * time.Millisecond
+//	if cs.LockedBlock != nil {
+//		// See the BFT time spec https://docs.tendermint.com/master/spec/consensus/bft-time.html
+//		minVoteTime = cs.LockedBlock.Time.Add(timeIota)
+//	} else if cs.ProposalBlock != nil {
+//		minVoteTime = cs.ProposalBlock.Time.Add(timeIota)
+//	}
+//
+//	if now.After(minVoteTime) {
+//		return now
+//	}
+//	return minVoteTime
+// }
 
 // sign the vote and publish on internalMsgQueue
 func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {

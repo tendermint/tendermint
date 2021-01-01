@@ -223,8 +223,8 @@ func TestMockEvidenceValidateBasic(t *testing.T) {
 	assert.Nil(t, goodEvidence.ValidateBasic())
 }
 
-func makeVote(
-	t *testing.T, val PrivValidator, chainID string, valIndex int32, height int64, round int32, step int, blockID BlockID, stateID StateID) *Vote {
+func makeVote(t *testing.T, val PrivValidator, chainID string, valIndex int32, height int64, round int32,
+	step int, blockID BlockID, stateID StateID) *Vote {
 	proTxHash, err := val.GetProTxHash()
 	require.NoError(t, err)
 	v := &Vote{

@@ -1,3 +1,4 @@
+//nolint: lll
 package state_test
 
 import (
@@ -296,8 +297,8 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 	}
 }
 
-//todo maybe?
-//func TestProposerFrequency(t *testing.T) {
+// ToDo maybe?
+// func TestProposerFrequency(t *testing.T) {
 //	// some explicit test cases
 //	testCases := []struct {
 //		powers []int64
@@ -368,10 +369,10 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 //		valSet.RescalePriorities(totalVotePower)
 //		testProposerFreq(t, i, valSet)
 //	}
-//}
+// }
 //
-//// new val set with given powers and random initial priorities
-//func types.GenerateValidatorSetWithPowers(powers []int64) *types.ValidatorSet {
+// // new val set with given powers and random initial priorities
+// func types.GenerateValidatorSetWithPowers(powers []int64) *types.ValidatorSet {
 //	size := len(powers)
 //	vals := make([]*types.Validator, size)
 //	totalVotePower := int64(0)
@@ -387,8 +388,8 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 //	return valSet
 //}
 
-//// test a proposer appears as frequently as expected
-//func testProposerFreq(t *testing.T, caseNum int, valSet *types.ValidatorSet) {
+// // test a proposer appears as frequently as expected
+// func testProposerFreq(t *testing.T, caseNum int, valSet *types.ValidatorSet) {
 //	N := valSet.Size()
 //	totalPower := valSet.TotalVotingPower()
 //
@@ -421,7 +422,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 //			fmt.Sprintf("Case %d val %d (%d): got %d, expected %d", caseNum, i, N, gotFreq, expectFreq),
 //		)
 //	}
-//}
+// }
 
 // TestProposerPriorityDoesNotGetResetToZero assert that we preserve accum when calling updateState
 // see https://github.com/tendermint/tendermint/issues/2718
@@ -450,7 +451,8 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 		BeginBlock: &abci.ResponseBeginBlock{},
 		EndBlock:   &abci.ResponseEndBlock{ValidatorSetUpdate: nil},
 	}
-	validatorUpdates, thresholdPublicKeyUpdate, err := types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
+	validatorUpdates, thresholdPublicKeyUpdate, err :=
+		types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
 	require.NoError(t, err)
 	updatedState, err := sm.UpdateState(state, blockID, &block.Header, abciResponses, validatorUpdates, thresholdPublicKeyUpdate)
 	assert.NoError(t, err)
@@ -523,7 +525,7 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 	// new totalPower
 	totalPower := updatedVal1.VotingPower + updatedVal2.VotingPower
 	dist := wantVal2Prio - wantVal1Prio
-	if dist < 0 { //get the absolute distance
+	if dist < 0 { // get the absolute distance
 		dist *= -1
 	}
 	// ratio := (dist + 2*totalPower - 1) / 2*totalPower = 224/200 = 1
@@ -576,7 +578,8 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 		BeginBlock: &abci.ResponseBeginBlock{},
 		EndBlock:   &abci.ResponseEndBlock{ValidatorSetUpdate: nil},
 	}
-	validatorUpdates, thresholdPublicKeyUpdate, err := types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
+	validatorUpdates, thresholdPublicKeyUpdate, err :=
+		types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
 	require.NoError(t, err)
 
 	updatedState, err := sm.UpdateState(state, blockID, &block.Header, abciResponses, validatorUpdates, thresholdPublicKeyUpdate)
@@ -755,7 +758,8 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 			BeginBlock: &abci.ResponseBeginBlock{},
 			EndBlock:   &abci.ResponseEndBlock{ValidatorSetUpdate: nil},
 		}
-		validatorUpdates, thresholdPublicKeyUpdate, err := types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
+		validatorUpdates, thresholdPublicKeyUpdate, err :=
+			types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
 		require.NoError(t, err)
 
 		block := makeBlock(oldState, oldState.LastBlockHeight+1)
@@ -964,7 +968,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	require.NoError(t, err)
 
 	_, val0 := state.Validators.GetByIndex(0)
-	proTxHash := val0.ProTxHash //this is not really old, as it stays the same
+	proTxHash := val0.ProTxHash // this is not really old, as it stays the same
 	oldPubkey := val0.PubKey
 
 	// Swap the first validator with a new one (validator set size stays the same).
@@ -972,7 +976,8 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 
 	// Save state etc.
 	var validatorUpdates []*types.Validator
-	validatorUpdates, thresholdPublicKeyUpdate, err := types.PB2TM.ValidatorUpdatesFromValidatorSet(responses.EndBlock.ValidatorSetUpdate)
+	validatorUpdates, thresholdPublicKeyUpdate, err :=
+		types.PB2TM.ValidatorUpdatesFromValidatorSet(responses.EndBlock.ValidatorSetUpdate)
 	require.NoError(t, err)
 	state, err = sm.UpdateState(state, blockID, &header, responses, validatorUpdates, thresholdPublicKeyUpdate)
 	require.Nil(t, err)

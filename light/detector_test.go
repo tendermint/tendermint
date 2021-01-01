@@ -1,6 +1,6 @@
 package light_test
 
-//func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
+// func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 //	// primary performs a lunatic attack
 //	var (
 //		latestHeight      = int64(10)
@@ -70,9 +70,9 @@ package light_test
 //		CommonHeight: 4,
 //	}
 //	assert.True(t, primary.HasEvidence(evAgainstWitness))
-//}
+// }
 //
-//func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
+// func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 //	verificationOptions := map[string]light.Option{
 //		"sequential": light.SequentialVerification(),
 //		"skipping":   light.SkippingVerification(light.DefaultTrustLevel),
@@ -153,12 +153,12 @@ package light_test
 //		}
 //		assert.True(t, primary.HasEvidence(evAgainstWitness))
 //	}
-//}
+// }
 //
 //// 1. Different nodes therefore a divergent header is produced.
 //// => light client returns an error upon creation because primary and witness
 //// have a different view.
-//func TestClientDivergentTraces1(t *testing.T) {
+// func TestClientDivergentTraces1(t *testing.T) {
 //	primary := mockp.New(genMockNode(chainID, 10, 5, 2, bTime))
 //	firstBlock, err := primary.LightBlock(ctx, 1)
 //	require.NoError(t, err)
@@ -180,11 +180,11 @@ package light_test
 //	)
 //	require.Error(t, err)
 //	assert.Contains(t, err.Error(), "does not match primary")
-//}
+// }
 //
 //// 2. Two out of three nodes don't respond but the third has a header that matches
 //// => verification should be successful and all the witnesses should remain
-//func TestClientDivergentTraces2(t *testing.T) {
+// func TestClientDivergentTraces2(t *testing.T) {
 //	primary := mockp.New(genMockNode(chainID, 10, 5, 2, bTime))
 //	firstBlock, err := primary.LightBlock(ctx, 1)
 //	require.NoError(t, err)
@@ -207,11 +207,11 @@ package light_test
 //	_, err = c.VerifyLightBlockAtHeight(ctx, 10, bTime.Add(1*time.Hour))
 //	assert.NoError(t, err)
 //	assert.Equal(t, 3, len(c.Witnesses()))
-//}
+// }
 //
 //// 3. witness has the same first header, but different second header
 //// => creation should succeed, but the verification should fail
-//func TestClientDivergentTraces3(t *testing.T) {
+// func TestClientDivergentTraces3(t *testing.T) {
 //	_, primaryHeaders, primaryVals := genMockNode(chainID, 10, 5, 2, bTime)
 //	primary := mockp.New(chainID, primaryHeaders, primaryVals)
 //
@@ -242,4 +242,4 @@ package light_test
 //	_, err = c.VerifyLightBlockAtHeight(ctx, 10, bTime.Add(1*time.Hour))
 //	assert.Error(t, err)
 //	assert.Equal(t, 0, len(c.Witnesses()))
-//}
+// }

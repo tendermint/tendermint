@@ -321,7 +321,8 @@ func (c *Client) checkTrustedHeaderUsingOptions(ctx context.Context, options Tru
 			"h1", hash2str(c.latestTrustedBlock.Hash()), "h2", hash2str(primaryHash))
 
 		action := fmt.Sprintf(
-			"Prev. trusted header's hash %X doesn't match hash %X from primary provider. Remove all the stored light blocks?",
+			"Prev. trusted header's hash %X doesn't match hash %X from primary provider." +
+				" Remove all the stored light blocks?",
 			c.latestTrustedBlock.Hash(), primaryHash)
 		if c.confirmationFn(action) {
 			err := c.Cleanup()
@@ -433,7 +434,8 @@ func (c *Client) Update(ctx context.Context, now time.Time) (*types.LightBlock, 
 		if err != nil {
 			return nil, err
 		}
-		c.logger.Info("Advanced to new state", "height", latestBlock.Height, "hash", hash2str(latestBlock.Hash()))
+		c.logger.Info("Advanced to new state", "height", latestBlock.Height, "hash",
+			hash2str(latestBlock.Hash()))
 		return latestBlock, nil
 	}
 
@@ -710,7 +712,8 @@ func (c *Client) verifySkipping(
 			"newHeight", blockCache[depth].Height,
 			"newHash", hash2str(blockCache[depth].Hash()))
 
-		// fmt.Printf("verifying light skipping with validator set %v using verified block %v", verifiedBlock.ValidatorSet, verifiedBlock)
+		// fmt.Printf("verifying light skipping with validator set %v using verified block %v",
+		//  verifiedBlock.ValidatorSet, verifiedBlock)
 
 		err := Verify(verifiedBlock.SignedHeader, verifiedBlock.ValidatorSet, blockCache[depth].SignedHeader,
 			blockCache[depth].ValidatorSet, c.trustingPeriod, now, c.maxClockDrift, c.trustLevel)
@@ -1023,15 +1026,17 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 		case nil:
 			continue
 		case errConflictingHeaders:
-			c.logger.Error(fmt.Sprintf(`Witness #%d has a different header. Please check primary is correct
-and remove witness. Otherwise, use the different primary`, e.WitnessIndex), "witness", c.witnesses[e.WitnessIndex])
+			c.logger.Error(fmt.Sprintf("Witness #%d has a different header. Please check primary is correct and" +
+				" remove witness. Otherwise, use the different primary", e.WitnessIndex), "witness",
+				c.witnesses[e.WitnessIndex])
 			return err
 		case errBadWitness:
 			// If witness sent us an invalid header, then remove it. If it didn't
 			// respond or couldn't find the block, then we ignore it and move on to
 			// the next witness.
 			if _, ok := e.Reason.(provider.ErrBadLightBlock); ok {
-				c.logger.Info("Witness sent us invalid header / vals -> removing it", "witness", c.witnesses[e.WitnessIndex])
+				c.logger.Info("Witness sent us invalid header / vals -> removing it", "witness",
+					c.witnesses[e.WitnessIndex])
 				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 			}
 		}
