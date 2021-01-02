@@ -304,7 +304,8 @@ func (voteSet *VoteSet) addVerifiedVote(
 			if len(votesByBlock.votes) > 1 {
 				err := voteSet.recoverThresholdSigs(votesByBlock)
 				if err != nil {
-					panic("error recovering threshold signature")
+					fmt.Printf("error %v when recovering threshold signature with voteSet %v", err, voteSet)
+					panic(err)
 				}
 			} else {
 				// there is only 1 validator
