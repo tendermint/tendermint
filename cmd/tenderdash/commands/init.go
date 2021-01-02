@@ -61,14 +61,21 @@ func initFilesWithConfig(config *cfg.Config) error {
 			GenesisTime:     tmtime.Now(),
 			ConsensusParams: types.DefaultConsensusParams(),
 		}
+
 		pubKey, err := pv.GetPubKey()
 		if err != nil {
 			return fmt.Errorf("can't get pubkey: %w", err)
 		}
+		proTxHash, err := pv.GetProTxHash()
+		if err != nil {
+			return fmt.Errorf("can't get proTxHash: %w", err)
+		}
+		logger.Info("Found proTxHash", "proTxHash", proTxHash)
 		genDoc.Validators = []types.GenesisValidator{{
 			Address: pubKey.Address(),
 			PubKey:  pubKey,
-			Power:   10,
+			ProTxHash: proTxHash,
+			Power:   types.DefaultDashVotingPower,
 		}}
 
 		if err := genDoc.SaveAs(genFile); err != nil {
