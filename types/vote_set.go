@@ -304,7 +304,10 @@ func (voteSet *VoteSet) addVerifiedVote(
 			if len(votesByBlock.votes) > 1 {
 				err := voteSet.recoverThresholdSigs(votesByBlock)
 				if err != nil {
-					fmt.Printf("error %v when recovering threshold signature with voteSet %v", err, voteSet)
+					// fmt.Printf("error %v quorum %d\n", err, quorum)
+					// for i, vote := range votesByBlock.votes {
+					// 	fmt.Printf("vote %d %v\n", i, vote)
+					// }
 					panic(err)
 				}
 			} else {
@@ -340,14 +343,16 @@ func (voteSet *VoteSet) recoverThresholdSigs(blockVotes *blockVotes) error {
 	}
 	thresholdBlockSig, err := bls12381.RecoverThresholdSignatureFromShares(blockSigs, blsIDs)
 	if err != nil {
-		return err
+		return fmt.Errorf("error recovering threshold block sig: %v", err)
 	}
 	voteSet.thresholdBlockSig = thresholdBlockSig
-	thresholdStateSig, err := bls12381.RecoverThresholdSignatureFromShares(stateSigs, blsIDs)
-	if err != nil {
-		return err
+	if voteSet.stateMaj23 != nil && voteSet.stateMaj23.LastAppHash != nil {
+		thresholdStateSig, err := bls12381.RecoverThresholdSignatureFromShares(stateSigs, blsIDs)
+		if err != nil {
+			return fmt.Errorf("error recovering threshold state sig: %v", err)
+		}
+		voteSet.thresholdStateSig = thresholdStateSig
 	}
-	voteSet.thresholdStateSig = thresholdStateSig
 	return nil
 }
 
