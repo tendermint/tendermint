@@ -130,11 +130,35 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 // Validation does not mutate state, but does require historical information from the stateDB,
 // ie. to verify evidence from a validator at an old height.
 func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) error {
-	err := validateBlock(blockExec.queryApp, state, block)
+	err := validateBlock(state, block)
 	if err != nil {
 		return err
 	}
 	return blockExec.evpool.CheckEvidence(block.Evidence.Evidence)
+}
+
+// ValidateBlockChainLock validates the given block chain lock against the given state.
+// If the block is invalid, it returns an error.
+// Validation does not mutate state, but does require historical information from the stateDB,
+// ie. to verify evidence from a validator at an old height.
+func (blockExec *BlockExecutor) ValidateBlockChainLock(state State, block *types.Block) error {
+	err := validateBlockChainLock(blockExec.queryApp, state, block)
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+// ValidateBlockTime validates the given block time against the given state.
+// If the block is invalid, it returns an error.
+// Validation does not mutate state, but does require historical information from the stateDB,
+// ie. to verify evidence from a validator at an old height.
+func (blockExec *BlockExecutor) ValidateBlockTime(state State, block *types.Block) error {
+	err := validateBlockTime(state, block)
+	if err != nil {
+		return err
+	}
+	return err
 }
 
 // ApplyBlock validates the block against the state, executes it against the app,
@@ -147,7 +171,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	state State, blockID types.BlockID, block *types.Block,
 ) (State, int64, error) {
 
-	if err := validateBlock(blockExec.queryApp, state, block); err != nil {
+	if err := validateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
 	}
 

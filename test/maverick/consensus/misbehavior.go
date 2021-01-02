@@ -73,6 +73,15 @@ func DoublePrevoteMisbehavior() Misbehavior {
 			return
 		}
 
+		// Validate proposal block
+		err = cs.blockExec.ValidateBlockChainLock(cs.state, cs.ProposalBlock)
+		if err != nil {
+			// ProposalBlock is invalid, prevote nil.
+			cs.Logger.Error("enterPrevote: ProposalBlock chain lock is invalid", "err", err)
+			cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+			return
+		}
+
 		if cs.sw == nil {
 			cs.Logger.Error("nil switch")
 			return
@@ -179,6 +188,24 @@ func defaultEnterPrevote(cs *State, height int64, round int32) {
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
 		logger.Error("enterPrevote: ProposalBlock is invalid", "err", err)
+		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+		return
+	}
+
+	// Validate proposal block
+	err = cs.blockExec.ValidateBlockTime(cs.state, cs.ProposalBlock)
+	if err != nil {
+		// ProposalBlock is invalid, prevote nil.
+		logger.Error("enterPrevote: ProposalBlock time is invalid", "err", err)
+		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+		return
+	}
+
+	// Validate proposal block
+	err = cs.blockExec.ValidateBlockChainLock(cs.state, cs.ProposalBlock)
+	if err != nil {
+		// ProposalBlock is invalid, prevote nil.
+		logger.Error("enterPrevote: ProposalBlock chain lock is invalid", "err", err)
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}

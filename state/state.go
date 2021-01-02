@@ -280,7 +280,13 @@ func (state State) MakeBlock(
 	if height == state.InitialHeight {
 		timestamp = state.LastBlockTime // genesis time
 	} else {
-		timestamp = tmtime.Now() // proposer proposes time
+		currentTime := tmtime.Now()
+		if currentTime.Before(state.LastBlockTime) {
+			// this is weird, propose last block time
+			timestamp = state.LastBlockTime
+		} else {
+			timestamp = currentTime
+		}
 	}
 
 	// Fill rest of header with state data.

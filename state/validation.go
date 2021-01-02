@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
@@ -14,7 +17,7 @@ import (
 //-----------------------------------------------------
 // Validate block
 
-func validateBlock(proxyAppQueryConn proxy.AppConnQuery, state State, block *types.Block) error {
+func validateBlock(state State, block *types.Block) error {
 	// Validate internal consistency.
 	if err := block.ValidateBasic(); err != nil {
 		return err
@@ -121,7 +124,7 @@ func validateBlock(proxyAppQueryConn proxy.AppConnQuery, state State, block *typ
 		)
 	}
 
-	// Validate block Time
+	// Validate block Time is after previous block
 	switch {
 	case block.Height > state.InitialHeight:
 		if !block.Time.After(state.LastBlockTime) {
@@ -162,6 +165,58 @@ func validateBlock(proxyAppQueryConn proxy.AppConnQuery, state State, block *typ
 			)
 		}
 
+		// If there is no new Chain Lock we need to make sure the height has stayed the same
+	} else if block.Header.CoreChainLockedHeight != state.LastCoreChainLockedBlockHeight {
+		return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight when no new Chain Lock. "+
+			"Previous CoreChainLockedHeight %d, got %d",
+			state.LastCoreChainLockedBlockHeight, block.Header.CoreChainLockedHeight)
+	}
+
+	// Check evidence doesn't exceed the limit amount of bytes.
+	if max, got := state.ConsensusParams.Evidence.MaxBytes, block.Evidence.ByteSize(); got > max {
+		return types.NewErrEvidenceOverflow(max, got)
+	}
+
+	return nil
+}
+
+func validateBlockTime(state State, block *types.Block) error {
+	if block.Height == state.InitialHeight {
+		afterLast := state.LastBlockTime.Add(5 * time.Second)
+		beforeLast := state.LastBlockTime.Add(-5 * time.Second)
+		if block.Time.After(afterLast) || block.Time.Before(beforeLast) {
+			return fmt.Errorf("block time %v is out of window [%v, %v]",
+				block.Time, afterLast, beforeLast)
+		}
+	} else {
+		// Validate block Time is within a range of current time
+		after := tmtime.Now().Add(20 * time.Second)
+		before := tmtime.Now().Add(-20 * time.Second)
+		if block.Time.After(after) || block.Time.Before(before) {
+			return fmt.Errorf("block time %v is out of window [%v, %v]",
+				block.Time, before, after)
+		}
+	}
+	return nil
+}
+
+func validateBlockChainLock(proxyAppQueryConn proxy.AppConnQuery, state State, block *types.Block) error {
+	if block.CoreChainLock != nil {
+		// If there is a new Chain Lock we need to make sure the height in the header is the same as the chain lock
+		if block.Header.CoreChainLockedHeight != block.CoreChainLock.CoreBlockHeight {
+			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight. CoreChainLock CoreBlockHeight %d, got %d",
+				block.CoreChainLock.CoreBlockHeight,
+				block.Header.CoreChainLockedHeight,
+			)
+		}
+
+		// We also need to make sure that the new height is superior to the old height
+		if block.Header.CoreChainLockedHeight <= state.LastCoreChainLockedBlockHeight {
+			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight. Previous CoreChainLockedHeight %d, got %d",
+				state.LastCoreChainLockedBlockHeight,
+				block.Header.CoreChainLockedHeight,
+			)
+		}
 		coreChainLocksBytes, err := block.CoreChainLock.ToProto().Marshal()
 		if err != nil {
 			panic(err)
@@ -188,11 +243,6 @@ func validateBlock(proxyAppQueryConn proxy.AppConnQuery, state State, block *typ
 		return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight when no new Chain Lock. "+
 			"Previous CoreChainLockedHeight %d, got %d",
 			state.LastCoreChainLockedBlockHeight, block.Header.CoreChainLockedHeight)
-	}
-
-	// Check evidence doesn't exceed the limit amount of bytes.
-	if max, got := state.ConsensusParams.Evidence.MaxBytes, block.Evidence.ByteSize(); got > max {
-		return types.NewErrEvidenceOverflow(max, got)
 	}
 
 	return nil
