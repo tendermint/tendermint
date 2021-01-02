@@ -346,7 +346,8 @@ func (voteSet *VoteSet) recoverThresholdSigs(blockVotes *blockVotes) error {
 		return fmt.Errorf("error recovering threshold block sig: %v", err)
 	}
 	voteSet.thresholdBlockSig = thresholdBlockSig
-	if voteSet.stateMaj23 != nil && voteSet.stateMaj23.LastAppHash != nil {
+	if voteSet.maj23 != nil && voteSet.maj23.Hash != nil {
+		// if the vote is voting for nil, then we do not care to recover the state signature
 		thresholdStateSig, err := bls12381.RecoverThresholdSignatureFromShares(stateSigs, blsIDs)
 		if err != nil {
 			return fmt.Errorf("error recovering threshold state sig: %v", err)
