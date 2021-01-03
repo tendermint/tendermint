@@ -211,10 +211,10 @@ func initFilesWithConfig(config *cfg.Config) error {
 			return fmt.Errorf("can't get proTxHash: %w", err)
 		}
 		genDoc.Validators = []types.GenesisValidator{{
-			Address: pubKey.Address(),
-			PubKey:  pubKey,
+			Address:   pubKey.Address(),
+			PubKey:    pubKey,
 			ProTxHash: proTxHash,
-			Power:   types.DefaultDashVotingPower,
+			Power:     types.DefaultDashVotingPower,
 		}}
 
 		if err := genDoc.SaveAs(genFile); err != nil {
