@@ -3,6 +3,7 @@ module github.com/tendermint/tendermint
 go 1.15
 
 require (
+	filippo.io/edwards25519 v1.0.0-beta.2
 	github.com/BurntSushi/toml v0.3.1
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200405005733-88cbf1b4c40d
 	github.com/Workiva/go-datastructures v1.0.52

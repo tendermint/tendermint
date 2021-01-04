@@ -3,10 +3,13 @@ package ed25519
 import (
 	"bytes"
 	"crypto/ed25519"
+	"crypto/sha512"
 	"crypto/subtle"
 	"fmt"
 	"io"
+	"strconv"
 
+	"filippo.io/edwards25519"
 	"github.com/hdevalence/ed25519consensus"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -55,9 +58,41 @@ func (privKey PrivKey) Bytes() []byte {
 // The latter 32 bytes should be the compressed public key.
 // If these conditions aren't met, Sign will panic or produce an
 // incorrect signature.
+//todo: Once https://go-review.googlesource.com/c/go/+/276272 is accepted and released replace with standard lib ed25519
 func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
-	signatureBytes := ed25519.Sign(ed25519.PrivateKey(privKey), msg)
-	return signatureBytes, nil
+	signature := make([]byte, SignatureSize)
+	privKey.sign(signature, msg)
+	return signature, nil
+}
+
+func (privKey PrivKey) sign(signature, message []byte) {
+	if l := len(privKey); l != PrivateKeySize {
+		panic("ed25519: bad private key length: " + strconv.Itoa(l))
+	}
+	seed, publicKey := privKey[:SeedSize], privKey[SeedSize:]
+	h := sha512.Sum512(seed)
+	s := edwards25519.NewScalar().SetBytesWithClamping(h[:32])
+	prefix := h[32:]
+	mh := sha512.New()
+	mh.Write(prefix)
+	mh.Write(message)
+
+	messageDigest := make([]byte, 0, sha512.Size)
+	messageDigest = mh.Sum(messageDigest)
+	r := edwards25519.NewScalar().SetUniformBytes(messageDigest)
+	R := (&edwards25519.Point{}).ScalarBaseMult(r)
+	kh := sha512.New()
+	kh.Write(R.Bytes())
+	kh.Write(publicKey)
+	kh.Write(message)
+
+	hramDigest := make([]byte, 0, sha512.Size)
+	hramDigest = kh.Sum(hramDigest)
+	k := edwards25519.NewScalar().SetUniformBytes(hramDigest)
+	S := edwards25519.NewScalar().MultiplyAdd(k, s, r)
+
+	copy(signature[:32], R.Bytes())
+	copy(signature[32:], S.Bytes())
 }
 
 // PubKey gets the corresponding public key from the private key.
