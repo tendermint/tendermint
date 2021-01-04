@@ -11,7 +11,7 @@ import (
 type Peer struct {
 	*service.BaseService
 	ip                   net.IP
-	id                   p2p.ID
+	id                   p2p.NodeID
 	addr                 *p2p.NetAddress
 	kv                   map[string]interface{}
 	Outbound, Persistent bool
@@ -46,12 +46,12 @@ func (mp *Peer) TrySend(chID byte, msgBytes []byte) bool { return true }
 func (mp *Peer) Send(chID byte, msgBytes []byte) bool    { return true }
 func (mp *Peer) NodeInfo() p2p.NodeInfo {
 	return p2p.NodeInfo{
-		DefaultNodeID: mp.addr.ID,
-		ListenAddr:    mp.addr.DialString(),
+		NodeID:     mp.addr.ID,
+		ListenAddr: mp.addr.DialString(),
 	}
 }
 func (mp *Peer) Status() conn.ConnectionStatus { return conn.ConnectionStatus{} }
-func (mp *Peer) ID() p2p.ID                    { return mp.id }
+func (mp *Peer) ID() p2p.NodeID                { return mp.id }
 func (mp *Peer) IsOutbound() bool              { return mp.Outbound }
 func (mp *Peer) IsPersistent() bool            { return mp.Persistent }
 func (mp *Peer) Get(key string) interface{} {

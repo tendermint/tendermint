@@ -105,10 +105,7 @@ type BlockParams struct {
 	// Max gas per block.
 	// Note: must be greater or equal to -1
 	MaxGas int64 `protobuf:"varint,2,opt,name=max_gas,json=maxGas,proto3" json:"max_gas,omitempty"`
-	// Minimum time increment between consecutive blocks (in milliseconds) If the
-	// block header timestamp is ahead of the system clock, decrease this value.
-	//
-	// Not exposed to the application.
+	// This parameter is unused.
 	TimeIotaMs int64 `protobuf:"varint,3,opt,name=time_iota_ms,json=timeIotaMs,proto3" json:"time_iota_ms,omitempty"`
 }
 

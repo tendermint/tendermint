@@ -42,7 +42,7 @@ func TestSnapshotPool_Add(t *testing.T) {
 	stateProvider := &mocks.StateProvider{}
 	stateProvider.On("AppHash", mock.Anything, uint64(1)).Return([]byte("app_hash"), nil)
 
-	peerID := p2p.PeerID{0xAA}
+	peerID := p2p.NodeID("aa")
 
 	// Adding to the pool should work
 	pool := newSnapshotPool(stateProvider)
@@ -56,8 +56,8 @@ func TestSnapshotPool_Add(t *testing.T) {
 	require.True(t, added)
 
 	// Adding again from a different peer should return false
-	otherPeerID := p2p.PeerID{0xBB}
-	added, err = pool.Add(otherPeerID, &snapshot{
+	otherNodeID := p2p.NodeID("bb")
+	added, err = pool.Add(otherNodeID, &snapshot{
 		Height: 1,
 		Format: 1,
 		Chunks: 1,
@@ -81,8 +81,8 @@ func TestSnapshotPool_GetPeer(t *testing.T) {
 
 	s := &snapshot{Height: 1, Format: 1, Chunks: 1, Hash: []byte{1}}
 
-	peerAID := p2p.PeerID{0xAA}
-	peerBID := p2p.PeerID{0xBB}
+	peerAID := p2p.NodeID("aa")
+	peerBID := p2p.NodeID("bb")
 
 	_, err := pool.Add(peerAID, s)
 	require.NoError(t, err)
@@ -98,17 +98,17 @@ func TestSnapshotPool_GetPeer(t *testing.T) {
 	seenB := false
 	for !seenA || !seenB {
 		peer := pool.GetPeer(s)
-		if peer.Equal(peerAID) {
+		if peer == peerAID {
 			seenA = true
 		}
-		if peer.Equal(peerBID) {
+		if peer == peerBID {
 			seenB = true
 		}
 	}
 
-	// GetPeer should return nil for an unknown snapshot
+	// GetPeer should return empty for an unknown snapshot
 	peer := pool.GetPeer(&snapshot{Height: 9, Format: 9})
-	require.Nil(t, peer)
+	require.EqualValues(t, "", peer)
 }
 
 func TestSnapshotPool_GetPeers(t *testing.T) {
@@ -118,8 +118,8 @@ func TestSnapshotPool_GetPeers(t *testing.T) {
 
 	s := &snapshot{Height: 1, Format: 1, Chunks: 1, Hash: []byte{1}}
 
-	peerAID := p2p.PeerID{0xAA}
-	peerBID := p2p.PeerID{0xBB}
+	peerAID := p2p.NodeID("aa")
+	peerBID := p2p.NodeID("bb")
 
 	_, err := pool.Add(peerAID, s)
 	require.NoError(t, err)
@@ -146,22 +146,19 @@ func TestSnapshotPool_Ranked_Best(t *testing.T) {
 	// tie-breaker.
 	expectSnapshots := []struct {
 		snapshot *snapshot
-		peers    []string
+		peers    []p2p.NodeID
 	}{
-		{&snapshot{Height: 2, Format: 2, Chunks: 4, Hash: []byte{1, 3}}, []string{"AA", "BB", "CC"}},
-		{&snapshot{Height: 2, Format: 2, Chunks: 5, Hash: []byte{1, 2}}, []string{"AA"}},
-		{&snapshot{Height: 2, Format: 1, Chunks: 3, Hash: []byte{1, 2}}, []string{"AA", "BB"}},
-		{&snapshot{Height: 1, Format: 2, Chunks: 5, Hash: []byte{1, 2}}, []string{"AA", "BB"}},
-		{&snapshot{Height: 1, Format: 1, Chunks: 4, Hash: []byte{1, 2}}, []string{"AA", "BB", "CC"}},
+		{&snapshot{Height: 2, Format: 2, Chunks: 4, Hash: []byte{1, 3}}, []p2p.NodeID{"AA", "BB", "CC"}},
+		{&snapshot{Height: 2, Format: 2, Chunks: 5, Hash: []byte{1, 2}}, []p2p.NodeID{"AA"}},
+		{&snapshot{Height: 2, Format: 1, Chunks: 3, Hash: []byte{1, 2}}, []p2p.NodeID{"AA", "BB"}},
+		{&snapshot{Height: 1, Format: 2, Chunks: 5, Hash: []byte{1, 2}}, []p2p.NodeID{"AA", "BB"}},
+		{&snapshot{Height: 1, Format: 1, Chunks: 4, Hash: []byte{1, 2}}, []p2p.NodeID{"AA", "BB", "CC"}},
 	}
 
 	// Add snapshots in reverse order, to make sure the pool enforces some order.
 	for i := len(expectSnapshots) - 1; i >= 0; i-- {
-		for _, peerIDStr := range expectSnapshots[i].peers {
-			peerID, err := p2p.PeerIDFromString(peerIDStr)
-			require.NoError(t, err)
-
-			_, err = pool.Add(peerID, expectSnapshots[i].snapshot)
+		for _, peerID := range expectSnapshots[i].peers {
+			_, err := pool.Add(peerID, expectSnapshots[i].snapshot)
 			require.NoError(t, err)
 		}
 	}
@@ -189,7 +186,7 @@ func TestSnapshotPool_Reject(t *testing.T) {
 	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 	pool := newSnapshotPool(stateProvider)
 
-	peerID := p2p.PeerID{0xAA}
+	peerID := p2p.NodeID("aa")
 
 	snapshots := []*snapshot{
 		{Height: 2, Format: 2, Chunks: 1, Hash: []byte{1, 2}},
@@ -219,7 +216,7 @@ func TestSnapshotPool_RejectFormat(t *testing.T) {
 	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 	pool := newSnapshotPool(stateProvider)
 
-	peerID := p2p.PeerID{0xAA}
+	peerID := p2p.NodeID("aa")
 
 	snapshots := []*snapshot{
 		{Height: 2, Format: 2, Chunks: 1, Hash: []byte{1, 2}},
@@ -250,8 +247,8 @@ func TestSnapshotPool_RejectPeer(t *testing.T) {
 	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 	pool := newSnapshotPool(stateProvider)
 
-	peerAID := p2p.PeerID{0xAA}
-	peerBID := p2p.PeerID{0xBB}
+	peerAID := p2p.NodeID("aa")
+	peerBID := p2p.NodeID("bb")
 
 	s1 := &snapshot{Height: 1, Format: 1, Chunks: 1, Hash: []byte{1}}
 	s2 := &snapshot{Height: 2, Format: 1, Chunks: 1, Hash: []byte{2}}
@@ -292,8 +289,8 @@ func TestSnapshotPool_RemovePeer(t *testing.T) {
 	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
 	pool := newSnapshotPool(stateProvider)
 
-	peerAID := p2p.PeerID{0xAA}
-	peerBID := p2p.PeerID{0xBB}
+	peerAID := p2p.NodeID("aa")
+	peerBID := p2p.NodeID("bb")
 
 	s1 := &snapshot{Height: 1, Format: 1, Chunks: 1, Hash: []byte{1}}
 	s2 := &snapshot{Height: 2, Format: 1, Chunks: 1, Hash: []byte{2}}

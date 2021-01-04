@@ -42,7 +42,7 @@ type Endpoint struct {
 	// FIXME: This is here for backwards-compatibility with the existing MConn
 	// protocol, we should consider moving this higher in the stack (i.e. to
 	// the router).
-	PeerID ID
+	PeerID NodeID
 
 	// Protocol specifies the transport protocol, used by the router to pick a
 	// transport for an endpoint.

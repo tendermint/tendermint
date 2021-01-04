@@ -401,7 +401,7 @@ type mConnMessage struct {
 func newMConnConnection(
 	transport *MConnTransport,
 	tcpConn net.Conn,
-	expectPeerID ID,
+	expectPeerID NodeID,
 ) (c *mConnConnection, err error) {
 	// FIXME: Since the MConnection code panics, we need to recover here
 	// and turn it into an error. Be careful not to alias err, so we can
@@ -466,7 +466,7 @@ func newMConnConnection(
 
 	// For outgoing conns, ensure connection key matches dialed key.
 	if expectPeerID != "" {
-		peerID := PubKeyToID(c.PubKey())
+		peerID := NodeIDFromPubKey(c.PubKey())
 		if expectPeerID != peerID {
 			err = ErrRejected{
 				conn: tcpConn,
