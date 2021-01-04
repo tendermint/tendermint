@@ -374,6 +374,7 @@ func newTestHarnessListener(logger log.Logger, cfg TestHarnessConfig) (*privval.
 		logger.Info("Resolved TCP address for listener", "addr", tcpLn.Addr())
 		svln = tcpLn
 	default:
+		_ = ln.Close()
 		logger.Error("Unsupported protocol (must be unix:// or tcp://)", "proto", proto)
 		return nil, newTestHarnessError(ErrInvalidParameters, nil, fmt.Sprintf("Unsupported protocol: %s", proto))
 	}
