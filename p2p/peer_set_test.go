@@ -14,7 +14,7 @@ import (
 type mockPeer struct {
 	service.BaseService
 	ip net.IP
-	id ID
+	id NodeID
 }
 
 func (mp *mockPeer) FlushStop()                              { mp.Stop() } //nolint:errcheck // ignore error
@@ -22,7 +22,7 @@ func (mp *mockPeer) TrySend(chID byte, msgBytes []byte) bool { return true }
 func (mp *mockPeer) Send(chID byte, msgBytes []byte) bool    { return true }
 func (mp *mockPeer) NodeInfo() NodeInfo                      { return NodeInfo{} }
 func (mp *mockPeer) Status() ConnectionStatus                { return ConnectionStatus{} }
-func (mp *mockPeer) ID() ID                                  { return mp.id }
+func (mp *mockPeer) ID() NodeID                              { return mp.id }
 func (mp *mockPeer) IsOutbound() bool                        { return false }
 func (mp *mockPeer) IsPersistent() bool                      { return true }
 func (mp *mockPeer) Get(s string) interface{}                { return s }

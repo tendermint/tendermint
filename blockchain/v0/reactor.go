@@ -41,7 +41,7 @@ type consensusReactor interface {
 
 type peerError struct {
 	err    error
-	peerID p2p.ID
+	peerID p2p.NodeID
 }
 
 func (e peerError) Error() string {
@@ -143,7 +143,7 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		{
 			ID:                  BlockchainChannel,
-			Priority:            10,
+			Priority:            5,
 			SendQueueCapacity:   1000,
 			RecvBufferCapacity:  50 * 4096,
 			RecvMessageCapacity: bc.MaxMsgSize,

@@ -60,7 +60,7 @@ type AddrBook interface {
 	PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress
 
 	// Mark address
-	MarkGood(p2p.ID)
+	MarkGood(p2p.NodeID)
 	MarkAttempt(*p2p.NetAddress)
 	MarkBad(*p2p.NetAddress, time.Duration) // Move peer to bad peers list
 	// Add bad peers back to addrBook
@@ -91,9 +91,9 @@ type addrBook struct {
 	mtx        tmsync.Mutex
 	rand       *tmrand.Rand
 	ourAddrs   map[string]struct{}
-	privateIDs map[p2p.ID]struct{}
-	addrLookup map[p2p.ID]*knownAddress // new & old
-	badPeers   map[p2p.ID]*knownAddress // blacklisted peers
+	privateIDs map[p2p.NodeID]struct{}
+	addrLookup map[p2p.NodeID]*knownAddress // new & old
+	badPeers   map[p2p.NodeID]*knownAddress // blacklisted peers
 	bucketsOld []map[string]*knownAddress
 	bucketsNew []map[string]*knownAddress
 	nOld       int
@@ -120,9 +120,9 @@ func NewAddrBook(filePath string, routabilityStrict bool) AddrBook {
 	am := &addrBook{
 		rand:              tmrand.NewRand(),
 		ourAddrs:          make(map[string]struct{}),
-		privateIDs:        make(map[p2p.ID]struct{}),
-		addrLookup:        make(map[p2p.ID]*knownAddress),
-		badPeers:          make(map[p2p.ID]*knownAddress),
+		privateIDs:        make(map[p2p.NodeID]struct{}),
+		addrLookup:        make(map[p2p.NodeID]*knownAddress),
+		badPeers:          make(map[p2p.NodeID]*knownAddress),
 		filePath:          filePath,
 		routabilityStrict: routabilityStrict,
 		hashKey:           newHashKey(),
@@ -201,7 +201,7 @@ func (a *addrBook) AddPrivateIDs(ids []string) {
 	defer a.mtx.Unlock()
 
 	for _, id := range ids {
-		a.privateIDs[p2p.ID(id)] = struct{}{}
+		a.privateIDs[p2p.NodeID(id)] = struct{}{}
 	}
 }
 
@@ -318,7 +318,7 @@ func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
 
 // MarkGood implements AddrBook - it marks the peer as good and
 // moves it into an "old" bucket.
-func (a *addrBook) MarkGood(id p2p.ID) {
+func (a *addrBook) MarkGood(id p2p.NodeID) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 

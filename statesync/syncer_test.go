@@ -66,8 +66,8 @@ func TestSyncer_SyncAny(t *testing.T) {
 	connSnapshot := &proxymocks.AppConnSnapshot{}
 	connQuery := &proxymocks.AppConnQuery{}
 
-	peerAID := p2p.PeerID{0xAA}
-	peerBID := p2p.PeerID{0xBB}
+	peerAID := p2p.NodeID("aa")
+	peerBID := p2p.NodeID("bb")
 
 	rts := setup(t, connSnapshot, connQuery, stateProvider, 3)
 
@@ -207,7 +207,7 @@ func TestSyncer_SyncAny_abort(t *testing.T) {
 	rts := setup(t, nil, nil, stateProvider, 2)
 
 	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
-	peerID := p2p.PeerID{0xAA}
+	peerID := p2p.NodeID("aa")
 
 	_, err := rts.syncer.AddSnapshot(peerID, s)
 	require.NoError(t, err)
@@ -232,7 +232,7 @@ func TestSyncer_SyncAny_reject(t *testing.T) {
 	s12 := &snapshot{Height: 1, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
 	s11 := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 
-	peerID := p2p.PeerID{0xAA}
+	peerID := p2p.NodeID("aa")
 
 	_, err := rts.syncer.AddSnapshot(peerID, s22)
 	require.NoError(t, err)
@@ -271,7 +271,7 @@ func TestSyncer_SyncAny_reject_format(t *testing.T) {
 	s12 := &snapshot{Height: 1, Format: 2, Chunks: 3, Hash: []byte{1, 2, 3}}
 	s11 := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 
-	peerID := p2p.PeerID{0xAA}
+	peerID := p2p.NodeID("aa")
 
 	_, err := rts.syncer.AddSnapshot(peerID, s22)
 	require.NoError(t, err)
@@ -301,9 +301,9 @@ func TestSyncer_SyncAny_reject_sender(t *testing.T) {
 
 	rts := setup(t, nil, nil, stateProvider, 2)
 
-	peerAID := p2p.PeerID{0xAA}
-	peerBID := p2p.PeerID{0xBB}
-	peerCID := p2p.PeerID{0xCC}
+	peerAID := p2p.NodeID("aa")
+	peerBID := p2p.NodeID("bb")
+	peerCID := p2p.NodeID("cc")
 
 	// sbc will be offered first, which will be rejected with reject_sender, causing all snapshots
 	// submitted by both b and c (i.e. sb, sc, sbc) to be rejected. Finally, sa will reject and
@@ -350,7 +350,7 @@ func TestSyncer_SyncAny_abciError(t *testing.T) {
 	errBoom := errors.New("boom")
 	s := &snapshot{Height: 1, Format: 1, Chunks: 3, Hash: []byte{1, 2, 3}}
 
-	peerID := p2p.PeerID{0xAA}
+	peerID := p2p.NodeID("aa")
 
 	_, err := rts.syncer.AddSnapshot(peerID, s)
 	require.NoError(t, err)
@@ -551,9 +551,9 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 
 			// Set up three peers across two snapshots, and ask for one of them to be banned.
 			// It should be banned from all snapshots.
-			peerAID := p2p.PeerID{0xAA}
-			peerBID := p2p.PeerID{0xBB}
-			peerCID := p2p.PeerID{0xCC}
+			peerAID := p2p.NodeID("aa")
+			peerBID := p2p.NodeID("bb")
+			peerCID := p2p.NodeID("cc")
 
 			s1 := &snapshot{Height: 1, Format: 1, Chunks: 3}
 			s2 := &snapshot{Height: 2, Format: 1, Chunks: 3}
@@ -602,7 +602,7 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 				Index: 2, Chunk: []byte{2}, Sender: "cc",
 			}).Once().Return(&abci.ResponseApplySnapshotChunk{
 				Result:        tc.result,
-				RejectSenders: []string{peerBID.String()},
+				RejectSenders: []string{string(peerBID)},
 			}, nil)
 
 			// On retry, the last chunk will be tried again, so we just accept it then.
@@ -623,13 +623,13 @@ func TestSyncer_applyChunks_RejectSenders(t *testing.T) {
 
 			s1peers := rts.syncer.snapshots.GetPeers(s1)
 			require.Len(t, s1peers, 2)
-			require.EqualValues(t, "aa", s1peers[0].String())
-			require.EqualValues(t, "cc", s1peers[1].String())
+			require.EqualValues(t, "aa", s1peers[0])
+			require.EqualValues(t, "cc", s1peers[1])
 
 			rts.syncer.snapshots.GetPeers(s1)
 			require.Len(t, s1peers, 2)
-			require.EqualValues(t, "aa", s1peers[0].String())
-			require.EqualValues(t, "cc", s1peers[1].String())
+			require.EqualValues(t, "aa", s1peers[0])
+			require.EqualValues(t, "cc", s1peers[1])
 
 			require.NoError(t, chunks.Close())
 		})
