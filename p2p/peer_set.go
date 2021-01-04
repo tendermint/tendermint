@@ -8,9 +8,9 @@ import (
 
 // IPeerSet has a (immutable) subset of the methods of PeerSet.
 type IPeerSet interface {
-	Has(key ID) bool
+	Has(key NodeID) bool
 	HasIP(ip net.IP) bool
-	Get(key ID) Peer
+	Get(key NodeID) Peer
 	List() []Peer
 	Size() int
 }
@@ -21,7 +21,7 @@ type IPeerSet interface {
 // Iteration over the peers is super fast and thread-safe.
 type PeerSet struct {
 	mtx    tmsync.Mutex
-	lookup map[ID]*peerSetItem
+	lookup map[NodeID]*peerSetItem
 	list   []Peer
 }
 
@@ -33,7 +33,7 @@ type peerSetItem struct {
 // NewPeerSet creates a new peerSet with a list of initial capacity of 256 items.
 func NewPeerSet() *PeerSet {
 	return &PeerSet{
-		lookup: make(map[ID]*peerSetItem),
+		lookup: make(map[NodeID]*peerSetItem),
 		list:   make([]Peer, 0, 256),
 	}
 }
@@ -58,7 +58,7 @@ func (ps *PeerSet) Add(peer Peer) error {
 
 // Has returns true if the set contains the peer referred to by this
 // peerKey, otherwise false.
-func (ps *PeerSet) Has(peerKey ID) bool {
+func (ps *PeerSet) Has(peerKey NodeID) bool {
 	ps.mtx.Lock()
 	_, ok := ps.lookup[peerKey]
 	ps.mtx.Unlock()
@@ -88,7 +88,7 @@ func (ps *PeerSet) hasIP(peerIP net.IP) bool {
 
 // Get looks up a peer by the provided peerKey. Returns nil if peer is not
 // found.
-func (ps *PeerSet) Get(peerKey ID) Peer {
+func (ps *PeerSet) Get(peerKey NodeID) Peer {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	item, ok := ps.lookup[peerKey]

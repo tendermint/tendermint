@@ -359,7 +359,7 @@ func WALFromProto(msg *tmcons.WALMessage) (WALMessage, error) {
 		}
 		pb = msgInfo{
 			Msg:    walMsg,
-			PeerID: p2p.ID(msg.MsgInfo.PeerID),
+			PeerID: p2p.NodeID(msg.MsgInfo.PeerID),
 		}
 
 	case *tmcons.WALMessage_TimeoutInfo:
