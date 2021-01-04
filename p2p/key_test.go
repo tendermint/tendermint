@@ -57,6 +57,8 @@ func TestNodeID_Equal(t *testing.T) {
 	}
 
 	for name, tc := range testCases {
+		tc := tc
+
 		t.Run(name, func(t *testing.T) {
 			require.Equal(t, tc.result, tc.inputA.Equal(tc.inputB))
 		})
