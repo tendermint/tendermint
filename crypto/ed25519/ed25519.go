@@ -65,6 +65,7 @@ func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 	return signature, nil
 }
 
+//nolint:errcheck // ignoring errcheck for sha512.Write
 func (privKey PrivKey) sign(signature, message []byte) {
 	if l := len(privKey); l != PrivateKeySize {
 		panic("ed25519: bad private key length: " + strconv.Itoa(l))
