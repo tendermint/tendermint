@@ -15,6 +15,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - P2P Protocol
 
 - Go API
+  - [libs/os] `EnsureDir` now propagates IO errors and checks the file type (@erikgrinaker)
 
 - Blockchain Protocol
 
