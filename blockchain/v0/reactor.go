@@ -357,23 +357,23 @@ func (r *Reactor) BroadcastStatusRequest() {
 	}
 }
 
-// ============================================================================
-// ============================================================================
-// ============================================================================
-
 // SwitchToFastSync is called by the state sync reactor when switching to fast sync.
-func (bcR *BlockchainReactor) SwitchToFastSync(state sm.State) error {
-	bcR.fastSync = true
-	bcR.initialState = state
+func (r *Reactor) SwitchToFastSync(state sm.State) error {
+	r.fastSync = true
+	r.initialState = state
+	r.pool.height = state.LastBlockHeight + 1
 
-	bcR.pool.height = state.LastBlockHeight + 1
-	err := bcR.pool.Start()
-	if err != nil {
+	if err := r.pool.Start(); err != nil {
 		return err
 	}
-	go bcR.poolRoutine(true)
+
+	go r.poolRoutine(true)
 	return nil
 }
+
+// ============================================================================
+// ============================================================================
+// ============================================================================
 
 // Handle messages from the poolReactor telling the reactor what to do.
 // NOTE: Don't sleep in the FOR_LOOP or otherwise slow it down!
