@@ -437,15 +437,6 @@ const (
 	prefixBlockHash   = byte(0x04)
 )
 
-func decodeHeightFromKey(key []byte) int64 {
-	var height int64
-	_, err := orderedcode.Parse(string(key[1:]), &height)
-	if err != nil {
-		panic(err)
-	}
-	return height
-}
-
 func blockMetaKey(height int64) []byte {
 	key, err := orderedcode.Append([]byte{prefixBlockMeta}, height)
 	if err != nil {
@@ -460,11 +451,6 @@ func blockPartKey(height int64, partIndex int) []byte {
 		panic(err)
 	}
 	return key
-}
-
-// returns the first block part key of that height. Used in pruning
-func firstBlockPartKey(height int64) []byte {
-	return blockPartKey(height, 0)
 }
 
 func blockCommitKey(height int64) []byte {

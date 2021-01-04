@@ -13,6 +13,11 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+const (
+	prefixLightBlock = byte(0x0a)
+	prefixSize = byte(0x0b)
+)
+
 type dbs struct {
 	db     dbm.DB
 	prefix string
@@ -280,11 +285,12 @@ func (s *dbs) Size() uint16 {
 }
 
 func (s *dbs) sizeKey() []byte {
-	// heights always starts from 1. Hence in order to avoid
-	// key collisions we reserve size to be the key at height 0.
-	// note this already will contain the specific light client
-	// prefix.
-	return s.lbKey(0)
+	buf := make([]byte, 0)
+	key, err := orderedcode.Append(buf, s.prefix, )
+	if err != nil {
+		panic(err)
+	}
+	return key
 }
 
 func (s *dbs) lbKey(height int64) []byte {
