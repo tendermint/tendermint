@@ -3,9 +3,11 @@ package statesync
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -125,22 +127,27 @@ func TestSyncer_SyncAny(t *testing.T) {
 	chunkRequests := make(map[uint32]int)
 	chunkRequestsMtx := tmsync.Mutex{}
 
+	var wg sync.WaitGroup
+	wg.Add(4)
+
 	go func() {
 		for e := range rts.chunkOutCh {
 			msg, ok := e.Message.(*ssproto.ChunkRequest)
-			require.True(t, ok)
+			assert.True(t, ok)
 
-			require.EqualValues(t, 1, msg.Height)
-			require.EqualValues(t, 1, msg.Format)
-			require.LessOrEqual(t, msg.Index, uint32(len(chunks)))
+			assert.EqualValues(t, 1, msg.Height)
+			assert.EqualValues(t, 1, msg.Format)
+			assert.LessOrEqual(t, msg.Index, uint32(len(chunks)))
 
 			added, err := rts.syncer.AddChunk(chunks[msg.Index])
-			require.NoError(t, err)
-			require.True(t, added)
+			assert.NoError(t, err)
+			assert.True(t, added)
 
 			chunkRequestsMtx.Lock()
 			chunkRequests[msg.Index]++
 			chunkRequestsMtx.Unlock()
+
+			wg.Done()
 		}
 	}()
 
@@ -173,7 +180,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 	newState, lastCommit, err := rts.syncer.SyncAny(0)
 	require.NoError(t, err)
 
-	time.Sleep(50 * time.Millisecond) // wait for peers to receive requests
+	wg.Wait()
 
 	chunkRequestsMtx.Lock()
 	require.Equal(t, map[uint32]int{0: 1, 1: 2, 2: 1}, chunkRequests)
