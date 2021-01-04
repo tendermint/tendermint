@@ -2,6 +2,7 @@ package evidence_test
 
 import (
 	"encoding/hex"
+	"fmt"
 	"math/rand"
 	"sync"
 	"testing"
@@ -33,7 +34,7 @@ type reactorTestSuite struct {
 	reactor *evidence.Reactor
 	pool    *evidence.Pool
 
-	peerID p2p.PeerID
+	peerID p2p.NodeID
 
 	evidenceChannel   *p2p.Channel
 	evidenceInCh      chan p2p.Envelope
@@ -60,7 +61,7 @@ func setup(t *testing.T, logger log.Logger, pool *evidence.Pool, chBuf uint) *re
 		evidencePeerErrCh: make(chan p2p.PeerError, chBuf),
 		peerUpdatesCh:     peerUpdatesCh,
 		peerUpdates:       p2p.NewPeerUpdates(peerUpdatesCh),
-		peerID:            pID,
+		peerID:            p2p.NodeID(fmt.Sprintf("%x", pID)),
 	}
 
 	rts.evidenceChannel = p2p.NewChannel(
@@ -185,9 +186,9 @@ func simulateRouter(wg *sync.WaitGroup, primary *reactorTestSuite, suites []*rea
 	wg.Add(1)
 
 	// create a mapping for efficient suite lookup by peer ID
-	suitesByPeerID := make(map[string]*reactorTestSuite)
+	suitesByPeerID := make(map[p2p.NodeID]*reactorTestSuite)
 	for _, suite := range suites {
-		suitesByPeerID[suite.peerID.String()] = suite
+		suitesByPeerID[suite.peerID] = suite
 	}
 
 	// Simulate a router by listening for all outbound envelopes and proxying the
@@ -195,7 +196,7 @@ func simulateRouter(wg *sync.WaitGroup, primary *reactorTestSuite, suites []*rea
 	go func() {
 		for i := 0; i < numOut; i++ {
 			envelope := <-primary.evidenceOutCh
-			other := suitesByPeerID[envelope.To.String()]
+			other := suitesByPeerID[envelope.To]
 
 			other.evidenceInCh <- p2p.Envelope{
 				From:    primary.peerID,

@@ -430,7 +430,7 @@ func (r *Reactor) processPeerUpdates() {
 			if err := r.processPeerUpdate(peerUpdate); err != nil {
 				r.Logger.Error(
 					"failed to process peer update",
-					"peer", peerUpdate.PeerID.String(),
+					"peer", peerUpdate.PeerID,
 					"status", peerUpdate.Status,
 					"err", err,
 				)

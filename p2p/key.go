@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -13,8 +14,6 @@ import (
 )
 
 // NodeID is a hex-encoded crypto.Address.
-// FIXME: We should either ensure this is always lowercased, or add an Equal()
-// for comparison that decodes to the binary byte slice first.
 type NodeID string
 
 // NodeIDByteLength is the length of a crypto.Address. Currently only 20.
@@ -34,6 +33,21 @@ func (id NodeID) Bytes() ([]byte, error) {
 		return nil, fmt.Errorf("invalid node ID encoding: %w", err)
 	}
 	return bz, nil
+}
+
+// Equal returns true if two NodeIDs are equal.
+func (id NodeID) Equal(other NodeID) bool {
+	bzA, err := id.Bytes()
+	if err != nil {
+		return false
+	}
+
+	bzB, err := other.Bytes()
+	if err != nil {
+		return false
+	}
+
+	return bytes.Equal(bzA, bzB)
 }
 
 // Validate validates the NodeID.
