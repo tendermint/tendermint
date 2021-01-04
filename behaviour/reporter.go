@@ -51,14 +51,14 @@ func (spbr *SwitchReporter) Report(behaviour PeerBehaviour) error {
 // behaviour in manufactured scenarios.
 type MockReporter struct {
 	mtx tmsync.RWMutex
-	pb  map[p2p.ID][]PeerBehaviour
+	pb  map[p2p.NodeID][]PeerBehaviour
 }
 
 // NewMockReporter returns a Reporter which records all reported
 // behaviours in memory.
 func NewMockReporter() *MockReporter {
 	return &MockReporter{
-		pb: map[p2p.ID][]PeerBehaviour{},
+		pb: map[p2p.NodeID][]PeerBehaviour{},
 	}
 }
 
@@ -72,7 +72,7 @@ func (mpbr *MockReporter) Report(behaviour PeerBehaviour) error {
 }
 
 // GetBehaviours returns all behaviours reported on the peer identified by peerID.
-func (mpbr *MockReporter) GetBehaviours(peerID p2p.ID) []PeerBehaviour {
+func (mpbr *MockReporter) GetBehaviours(peerID p2p.NodeID) []PeerBehaviour {
 	mpbr.mtx.RLock()
 	defer mpbr.mtx.RUnlock()
 	if items, ok := mpbr.pb[peerID]; ok {

@@ -39,7 +39,7 @@ type Reactor struct {
 
 type mempoolIDs struct {
 	mtx       tmsync.RWMutex
-	peerMap   map[p2p.ID]uint16
+	peerMap   map[p2p.NodeID]uint16
 	nextID    uint16              // assumes that a node will never have over 65536 active peers
 	activeIDs map[uint16]struct{} // used to check if a given peerID key is used, the value doesn't matter
 }
@@ -94,7 +94,7 @@ func (ids *mempoolIDs) GetForPeer(peer p2p.Peer) uint16 {
 
 func newMempoolIDs() *mempoolIDs {
 	return &mempoolIDs{
-		peerMap:   make(map[p2p.ID]uint16),
+		peerMap:   make(map[p2p.NodeID]uint16),
 		activeIDs: map[uint16]struct{}{0: {}},
 		nextID:    1, // reserve unknownPeerID(0) for mempoolReactor.BroadcastTx
 	}

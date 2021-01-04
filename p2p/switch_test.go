@@ -39,7 +39,7 @@ func init() {
 }
 
 type PeerMessage struct {
-	PeerID  ID
+	PeerID  NodeID
 	Bytes   []byte
 	Counter int
 }

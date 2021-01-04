@@ -119,7 +119,7 @@ func TestReactor_ChunkRequest_InvalidRequest(t *testing.T) {
 	rts := setup(t, nil, nil, nil, 2)
 
 	rts.chunkInCh <- p2p.Envelope{
-		From:    p2p.PeerID{0xAA},
+		From:    p2p.NodeID("aa"),
 		Message: &ssproto.SnapshotsRequest{},
 	}
 
@@ -127,7 +127,7 @@ func TestReactor_ChunkRequest_InvalidRequest(t *testing.T) {
 	require.Error(t, response.Err)
 	require.Empty(t, rts.chunkOutCh)
 	require.Contains(t, response.Err.Error(), "received unknown message")
-	require.Equal(t, p2p.PeerID{0xAA}, response.PeerID)
+	require.Equal(t, p2p.NodeID("aa"), response.PeerID)
 }
 
 func TestReactor_ChunkRequest(t *testing.T) {
@@ -173,7 +173,7 @@ func TestReactor_ChunkRequest(t *testing.T) {
 			rts := setup(t, conn, nil, nil, 2)
 
 			rts.chunkInCh <- p2p.Envelope{
-				From:    p2p.PeerID{0xAA},
+				From:    p2p.NodeID("aa"),
 				Message: tc.request,
 			}
 
@@ -190,7 +190,7 @@ func TestReactor_SnapshotsRequest_InvalidRequest(t *testing.T) {
 	rts := setup(t, nil, nil, nil, 2)
 
 	rts.snapshotInCh <- p2p.Envelope{
-		From:    p2p.PeerID{0xAA},
+		From:    p2p.NodeID("aa"),
 		Message: &ssproto.ChunkRequest{},
 	}
 
@@ -198,7 +198,7 @@ func TestReactor_SnapshotsRequest_InvalidRequest(t *testing.T) {
 	require.Error(t, response.Err)
 	require.Empty(t, rts.snapshotOutCh)
 	require.Contains(t, response.Err.Error(), "received unknown message")
-	require.Equal(t, p2p.PeerID{0xAA}, response.PeerID)
+	require.Equal(t, p2p.NodeID("aa"), response.PeerID)
 }
 
 func TestReactor_SnapshotsRequest(t *testing.T) {
@@ -250,7 +250,7 @@ func TestReactor_SnapshotsRequest(t *testing.T) {
 			rts := setup(t, conn, nil, nil, 100)
 
 			rts.snapshotInCh <- p2p.Envelope{
-				From:    p2p.PeerID{0xAA},
+				From:    p2p.NodeID("aa"),
 				Message: &ssproto.SnapshotsRequest{},
 			}
 

@@ -19,51 +19,6 @@ import (
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
-func TestPeerIDFromString(t *testing.T) {
-	testCases := map[string]struct {
-		input      string
-		expectedID PeerID
-		expectErr  bool
-	}{
-		"empty peer ID string":   {"", PeerID{}, false},
-		"invalid peer ID string": {"foo", nil, true},
-		"valid peer ID string":   {"ff", PeerID{0xFF}, false},
-	}
-
-	for name, tc := range testCases {
-		tc := tc
-		t.Run(name, func(t *testing.T) {
-			pID, err := PeerIDFromString(tc.input)
-			require.Equal(t, tc.expectErr, err != nil, err)
-			require.Equal(t, tc.expectedID, pID)
-		})
-	}
-}
-
-func TestPeerID_String(t *testing.T) {
-	require.Equal(t, "", PeerID{}.String())
-	require.Equal(t, "ff", PeerID{0xFF}.String())
-}
-
-func TestPeerID_Equal(t *testing.T) {
-	testCases := map[string]struct {
-		idA   PeerID
-		idB   PeerID
-		equal bool
-	}{
-		"empty IDs": {PeerID{}, PeerID{}, true},
-		"not equal": {PeerID{0xFF}, PeerID{0xAA}, false},
-		"equal":     {PeerID{0xFF}, PeerID{0xFF}, true},
-	}
-
-	for name, tc := range testCases {
-		tc := tc
-		t.Run(name, func(t *testing.T) {
-			require.Equal(t, tc.equal, tc.idA.Equal(tc.idB))
-		})
-	}
-}
-
 func TestPeerBasic(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
@@ -126,7 +81,7 @@ func createOutboundPeerAndPerformHandshake(
 		{ID: testCh, Priority: 1},
 	}
 	pk := ed25519.GenPrivKey()
-	ourNodeInfo := testNodeInfo(PubKeyToID(pk.PubKey()), "host_peer")
+	ourNodeInfo := testNodeInfo(NodeIDFromPubKey(pk.PubKey()), "host_peer")
 	transport := NewMConnTransport(log.TestingLogger(), ourNodeInfo, pk, mConfig)
 	transport.SetChannelDescriptors(chDescs)
 	reactorsByCh := map[byte]Reactor{testCh: NewTestReactor(chDescs, true)}
@@ -198,8 +153,8 @@ func (rp *remotePeer) Addr() *NetAddress {
 	return rp.addr
 }
 
-func (rp *remotePeer) ID() ID {
-	return PubKeyToID(rp.PrivKey.PubKey())
+func (rp *remotePeer) ID() NodeID {
+	return NodeIDFromPubKey(rp.PrivKey.PubKey())
 }
 
 func (rp *remotePeer) Start() {
@@ -212,7 +167,7 @@ func (rp *remotePeer) Start() {
 		golog.Fatalf("net.Listen tcp :0: %+v", e)
 	}
 	rp.listener = l
-	rp.addr = NewNetAddress(PubKeyToID(rp.PrivKey.PubKey()), l.Addr())
+	rp.addr = NewNetAddress(NodeIDFromPubKey(rp.PrivKey.PubKey()), l.Addr())
 	if rp.channels == nil {
 		rp.channels = []byte{testCh}
 	}
@@ -262,7 +217,7 @@ func (rp *remotePeer) accept() {
 func (rp *remotePeer) nodeInfo() NodeInfo {
 	return NodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
-		DefaultNodeID:   rp.Addr().ID,
+		NodeID:          rp.Addr().ID,
 		ListenAddr:      rp.listener.Addr().String(),
 		Network:         "testing",
 		Version:         "1.2.3-rc0-deadbeef",

@@ -22,7 +22,7 @@ type chunk struct {
 	Format uint32
 	Index  uint32
 	Chunk  []byte
-	Sender p2p.PeerID
+	Sender p2p.NodeID
 }
 
 // chunkQueue manages chunks for a state sync process, ordering them if requested. It acts as an
@@ -33,7 +33,7 @@ type chunkQueue struct {
 	snapshot       *snapshot                  // if this is nil, the queue has been closed
 	dir            string                     // temp dir for on-disk chunk storage
 	chunkFiles     map[uint32]string          // path to temporary chunk file
-	chunkSenders   map[uint32]p2p.PeerID      // the peer who sent the given chunk
+	chunkSenders   map[uint32]p2p.NodeID      // the peer who sent the given chunk
 	chunkAllocated map[uint32]bool            // chunks that have been allocated via Allocate()
 	chunkReturned  map[uint32]bool            // chunks returned via Next()
 	waiters        map[uint32][]chan<- uint32 // signals WaitFor() waiters about chunk arrival
@@ -54,7 +54,7 @@ func newChunkQueue(snapshot *snapshot, tempDir string) (*chunkQueue, error) {
 		snapshot:       snapshot,
 		dir:            dir,
 		chunkFiles:     make(map[uint32]string, snapshot.Chunks),
-		chunkSenders:   make(map[uint32]p2p.PeerID, snapshot.Chunks),
+		chunkSenders:   make(map[uint32]p2p.NodeID, snapshot.Chunks),
 		chunkAllocated: make(map[uint32]bool, snapshot.Chunks),
 		chunkReturned:  make(map[uint32]bool, snapshot.Chunks),
 		waiters:        make(map[uint32][]chan<- uint32),
@@ -188,12 +188,12 @@ func (q *chunkQueue) discard(index uint32) error {
 
 // DiscardSender discards all *unreturned* chunks from a given sender. If the caller wants to
 // discard already returned chunks, this can be done via Discard().
-func (q *chunkQueue) DiscardSender(peerID p2p.PeerID) error {
+func (q *chunkQueue) DiscardSender(peerID p2p.NodeID) error {
 	q.Lock()
 	defer q.Unlock()
 
 	for index, sender := range q.chunkSenders {
-		if sender.Equal(peerID) && !q.chunkReturned[index] {
+		if sender == peerID && !q.chunkReturned[index] {
 			err := q.discard(index)
 			if err != nil {
 				return err
@@ -208,7 +208,7 @@ func (q *chunkQueue) DiscardSender(peerID p2p.PeerID) error {
 
 // GetSender returns the sender of the chunk with the given index, or empty if
 // not found.
-func (q *chunkQueue) GetSender(index uint32) p2p.PeerID {
+func (q *chunkQueue) GetSender(index uint32) p2p.NodeID {
 	q.Lock()
 	defer q.Unlock()
 	return q.chunkSenders[index]
