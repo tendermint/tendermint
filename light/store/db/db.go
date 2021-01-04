@@ -15,7 +15,7 @@ import (
 
 const (
 	prefixLightBlock = byte(0x0a)
-	prefixSize = byte(0x0b)
+	prefixSize       = byte(0x0b)
 )
 
 type dbs struct {
@@ -200,9 +200,8 @@ func (s *dbs) LightBlockBefore(height int64) (*types.LightBlock, error) {
 		existingHeight, err := s.parseHeightFromKey(itr.Key())
 		if err != nil {
 			return nil, err
-		} else {
-			return s.LightBlock(existingHeight)
 		}
+		return s.LightBlock(existingHeight)
 	}
 	if err = itr.Error(); err != nil {
 		return nil, err
@@ -286,7 +285,7 @@ func (s *dbs) Size() uint16 {
 
 func (s *dbs) sizeKey() []byte {
 	buf := make([]byte, 0)
-	key, err := orderedcode.Append(buf, s.prefix, )
+	key, err := orderedcode.Append(buf, s.prefix, string(prefixSize))
 	if err != nil {
 		panic(err)
 	}
@@ -295,7 +294,7 @@ func (s *dbs) sizeKey() []byte {
 
 func (s *dbs) lbKey(height int64) []byte {
 	buf := make([]byte, 0)
-	key, err := orderedcode.Append(buf, s.prefix, height)
+	key, err := orderedcode.Append(buf, s.prefix, string(prefixLightBlock), height)
 	if err != nil {
 		panic(err)
 	}
@@ -303,16 +302,20 @@ func (s *dbs) lbKey(height int64) []byte {
 }
 
 func (s *dbs) parseHeightFromKey(key []byte) (height int64, err error) {
-	var prefix string
-	remaining, err := orderedcode.Parse(string(key), &prefix, &height)
+	var dbPrefix string
+	var lightBlockPrefix string
+	remaining, err := orderedcode.Parse(string(key), &dbPrefix, &lightBlockPrefix, &height)
 	if err != nil {
 		err = fmt.Errorf("failed to parse light block key: %w", err)
 	}
 	if len(remaining) != 0 {
 		err = fmt.Errorf("expected no remainder when parsing light block key but got: %s", remaining)
 	}
-	if prefix != s.prefix {
-		err = fmt.Errorf("parsed key has a different prefix. Expected: %s, got: %s", s.prefix, prefix)
+	if lightBlockPrefix != string(prefixLightBlock) {
+		err = fmt.Errorf("expected light block prefix but got: %s", lightBlockPrefix)
+	}
+	if dbPrefix != s.prefix {
+		err = fmt.Errorf("parsed key has a different prefix. Expected: %s, got: %s", s.prefix, dbPrefix)
 	}
 	return
 }

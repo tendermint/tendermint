@@ -34,17 +34,11 @@ const (
 )
 
 func encodeKey(buf []byte, height int64) []byte {
-	res, _ := orderedcode.Append(buf, height)
-	return res
-}
-
-func decodeKey(key []byte) int64 {
-	var height int64
-	_, err := orderedcode.Parse(string(key[1:]), &height)
+	res, err := orderedcode.Append(buf, height)
 	if err != nil {
 		panic(err)
 	}
-	return height
+	return res
 }
 
 func validatorsKey(height int64) []byte {
