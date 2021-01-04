@@ -349,6 +349,14 @@ func (r *Reactor) processPeerUpdates() {
 	}
 }
 
+// BroadcastStatusRequest broadcasts a StatusRequest envelope.
+func (r *Reactor) BroadcastStatusRequest() {
+	r.blockchainCh.Out() <- p2p.Envelope{
+		Broadcast: true,
+		Message:   &bcproto.StatusRequest{},
+	}
+}
+
 // ============================================================================
 // ============================================================================
 // ============================================================================
@@ -551,16 +559,4 @@ FOR_LOOP:
 			break FOR_LOOP
 		}
 	}
-}
-
-// BroadcastStatusRequest broadcasts `BlockStore` base and height.
-func (bcR *BlockchainReactor) BroadcastStatusRequest() {
-	bm, err := bc.EncodeMsg(&bcproto.StatusRequest{})
-	if err != nil {
-		bcR.Logger.Error("could not convert StatusRequest to proto", "err", err)
-		return
-	}
-
-	// We don't care about whenever broadcast is successful or not.
-	_ = bcR.Switch.Broadcast(BlockchainChannel, bm)
 }
