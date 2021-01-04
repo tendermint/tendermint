@@ -49,7 +49,8 @@ perturb = ["restart"]
 [node.validator03]
 seeds = ["seed01"]
 database = "badgerdb"
-abci_protocol = "grpc"
+# FIXME: should be grpc, disabled due to https://github.com/tendermint/tendermint/issues/5439
+#abci_protocol = "grpc"
 privval_protocol = "unix"
 persist_interval = 3
 retain_blocks = 3
@@ -66,15 +67,15 @@ start_at = 1005 # Becomes part of the validator set at 1010
 seeds = ["seed02"]
 database = "cleveldb"
 fast_sync = "v0"
-abci_protocol = "grpc"
+# FIXME: should be grpc, disabled due to https://github.com/tendermint/tendermint/issues/5439
+#abci_protocol = "grpc"
 privval_protocol = "tcp"
 perturb = ["kill", "pause", "disconnect", "restart"]
 
 [node.full01]
 start_at = 1010
 mode = "full"
-# FIXME Should use v1, but it won't catch up since some nodes don't have all blocks
-# https://github.com/tendermint/tendermint/issues/5444
+# FIXME: should be v2, disabled due to flake
 fast_sync = "v0"
 persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
 retain_blocks = 1
@@ -83,9 +84,7 @@ perturb = ["restart"]
 [node.full02]
 start_at = 1015
 mode = "full"
-# FIXME Should use v2, but it has concurrency bugs causing panics or halts
-# https://github.com/tendermint/tendermint/issues/5513
-# https://github.com/tendermint/tendermint/issues/5541
+# FIXME: should be v2, disabled due to flake
 fast_sync = "v0"
 state_sync = true
 seeds = ["seed01"]
