@@ -21,31 +21,84 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+const (
+	// make sure this is the same as in state/store.go
+	valSetCheckpointInterval = 100000
+)
+
+func TestStoreBootstrap(t *testing.T) {
+	stateDB := dbm.NewMemDB()
+	stateStore := sm.NewStore(stateDB)
+	val, _ := types.RandValidator(true, 10)
+	val2, _ := types.RandValidator(true, 10)
+	val3, _ := types.RandValidator(true, 10)
+	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
+	bootstrapState := makeRandomStateFromValidatorSet(vals, 100, 100)
+	err := stateStore.Bootstrap(bootstrapState)
+	require.NoError(t, err)
+
+	// bootstrap should also save the previous validator
+	_, err = stateStore.LoadValidators(99)
+	require.NoError(t, err)
+
+	_, err = stateStore.LoadValidators(100)
+	require.NoError(t, err)
+
+	_, err = stateStore.LoadValidators(101)
+	require.NoError(t, err)
+
+	state, err := stateStore.Load()
+	require.NoError(t, err)
+	require.Equal(t, bootstrapState, state)
+}
+
 func TestStoreLoadValidators(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
 	val, _ := types.RandValidator(true, 10)
-	vals := types.NewValidatorSet([]*types.Validator{val})
+	val2, _ := types.RandValidator(true, 10)
+	val3, _ := types.RandValidator(true, 10)
+	vals := types.NewValidatorSet([]*types.Validator{val, val2, val3})
 
 	// 1) LoadValidators loads validators using a height where they were last changed
-	err := sm.SaveValidatorsInfo(stateDB, 1, 1, vals)
+	// Note that only the next validators at height h + 1 are saved
+	err := stateStore.Save(makeRandomStateFromValidatorSet(vals, 1, 1))
 	require.NoError(t, err)
-	err = sm.SaveValidatorsInfo(stateDB, 2, 1, vals)
+	err = stateStore.Save(makeRandomStateFromValidatorSet(vals.CopyIncrementProposerPriority(1), 2, 1))
 	require.NoError(t, err)
-	loadedVals, err := stateStore.LoadValidators(2)
+	loadedVals, err := stateStore.LoadValidators(3)
 	require.NoError(t, err)
-	assert.NotZero(t, loadedVals.Size())
+	require.Equal(t, vals.CopyIncrementProposerPriority(2), loadedVals)
 
 	// 2) LoadValidators loads validators using a checkpoint height
 
-	err = sm.SaveValidatorsInfo(stateDB, sm.ValSetCheckpointInterval, 1, vals)
+	// add a validator set at the checkpoint
+	err = stateStore.Save(makeRandomStateFromValidatorSet(vals, valSetCheckpointInterval, 1))
 	require.NoError(t, err)
 
-	loadedVals, err = stateStore.LoadValidators(sm.ValSetCheckpointInterval)
+	// check that a request will go back to the last checkpoint
+	_, err = stateStore.LoadValidators(valSetCheckpointInterval + 1)
+	require.Error(t, err)
+	require.Equal(t, fmt.Sprintf("couldn't find validators at height %d (height %d was originally requested): "+
+		"value retrieved from db is empty",
+		valSetCheckpointInterval, valSetCheckpointInterval+1), err.Error())
+
+	// now save a validator set at that checkpoint
+	err = stateStore.Save(makeRandomStateFromValidatorSet(vals, valSetCheckpointInterval-1, 1))
 	require.NoError(t, err)
-	assert.NotZero(t, loadedVals.Size())
+
+	loadedVals, err = stateStore.LoadValidators(valSetCheckpointInterval)
+	require.NoError(t, err)
+	// validator set gets updated with the one given hence we expect it to equal next validators (with an increment of one)
+	// as opposed to being equal to an increment of 100000 - 1 (if we didn't save at the checkpoint)
+	require.Equal(t, vals.CopyIncrementProposerPriority(1), loadedVals)
+	require.NotEqual(t, vals.CopyIncrementProposerPriority(valSetCheckpointInterval-1), loadedVals)
 }
 
+// This benchmarks the speed of loading validators from different heights if there is no validator set change.
+// NOTE: This isn't too indicative of validator retrieval speed as the db is always (regardless of height) only
+// performing two operations: 1) retrieve validator info at height x, which has a last validator set change of 1
+// and 2) retrieve the validator set at the aforementioned height 1.
 func BenchmarkLoadValidators(b *testing.B) {
 	const valSetSize = 100
 
@@ -67,9 +120,10 @@ func BenchmarkLoadValidators(b *testing.B) {
 
 	for i := 10; i < 10000000000; i *= 10 { // 10, 100, 1000, ...
 		i := i
-		if err := sm.SaveValidatorsInfo(stateDB,
-			int64(i), state.LastHeightValidatorsChanged, state.NextValidators); err != nil {
-			b.Fatal(err)
+		err = stateStore.Save(makeRandomStateFromValidatorSet(state.NextValidators,
+			int64(i)-1, state.LastHeightValidatorsChanged))
+		if err != nil {
+			b.Fatalf("error saving store: %v", err)
 		}
 
 		b.Run(fmt.Sprintf("height=%d", i), func(b *testing.B) {
@@ -83,25 +137,44 @@ func BenchmarkLoadValidators(b *testing.B) {
 	}
 }
 
+func TestStoreLoadConsensusParams(t *testing.T) {
+	stateDB := dbm.NewMemDB()
+	stateStore := sm.NewStore(stateDB)
+	err := stateStore.Save(makeRandomStateFromConsensusParams(types.DefaultConsensusParams(), 1, 1))
+	require.NoError(t, err)
+	params, err := stateStore.LoadConsensusParams(1)
+	require.NoError(t, err)
+	require.Equal(t, types.DefaultConsensusParams(), &params)
+
+	// we give the state store different params but say that the height hasn't changed, hence
+	// it should save a pointer to the params at height 1
+	differentParams := types.DefaultConsensusParams()
+	differentParams.Block.MaxBytes = 20000
+	err = stateStore.Save(makeRandomStateFromConsensusParams(differentParams, 10, 1))
+	require.NoError(t, err)
+	res, err := stateStore.LoadConsensusParams(10)
+	require.NoError(t, err)
+	require.Equal(t, res, params)
+	require.NotEqual(t, res, differentParams)
+}
+
 func TestPruneStates(t *testing.T) {
 	testcases := map[string]struct {
 		makeHeights  int64
-		pruneFrom    int64
-		pruneTo      int64
+		pruneHeight  int64
 		expectErr    bool
 		expectVals   []int64
 		expectParams []int64
 		expectABCI   []int64
 	}{
-		"error on pruning from 0":      {100, 0, 5, true, nil, nil, nil},
-		"error when from > to":         {100, 3, 2, true, nil, nil, nil},
-		"error when from == to":        {100, 3, 3, true, nil, nil, nil},
-		"error when to does not exist": {100, 1, 101, true, nil, nil, nil},
-		"prune all":                    {100, 1, 100, false, []int64{93, 100}, []int64{95, 100}, []int64{100}},
-		"prune some": {10, 2, 8, false, []int64{1, 3, 8, 9, 10},
-			[]int64{1, 5, 8, 9, 10}, []int64{1, 8, 9, 10}},
-		"prune across checkpoint": {100001, 1, 100001, false, []int64{99993, 100000, 100001},
-			[]int64{99995, 100001}, []int64{100001}},
+		"error when prune height is 0":           {100, 0, true, nil, nil, nil},
+		"error when prune height is negative":    {100, -10, true, nil, nil, nil},
+		"error when prune height does not exist": {100, 101, true, nil, nil, nil},
+		"prune all":                              {100, 100, false, []int64{93, 100}, []int64{95, 100}, []int64{100}},
+		"prune some": {10, 8, false, []int64{3, 8, 9, 10},
+			[]int64{5, 8, 9, 10}, []int64{8, 9, 10}},
+		"prune across checkpoint": {100002, 100002, false, []int64{100000, 100002},
+			[]int64{99995, 100002}, []int64{100002}},
 	}
 	for name, tc := range testcases {
 		tc := tc
@@ -158,7 +231,7 @@ func TestPruneStates(t *testing.T) {
 			}
 
 			// Test assertions
-			err := stateStore.PruneStates(tc.pruneFrom, tc.pruneTo)
+			err := stateStore.PruneStates(tc.pruneHeight)
 			if tc.expectErr {
 				require.Error(t, err)
 				return
@@ -182,7 +255,7 @@ func TestPruneStates(t *testing.T) {
 				params, err := stateStore.LoadConsensusParams(h)
 				if expectParams[h] {
 					require.NoError(t, err, "params height %v", h)
-					require.False(t, params.Equal(&tmproto.ConsensusParams{}))
+					require.False(t, params.Equal(&tmproto.ConsensusParams{}), "params should not be empty")
 				} else {
 					require.Error(t, err, "params height %v", h)
 				}
