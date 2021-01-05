@@ -19,8 +19,7 @@ const (
 )
 
 type dbs struct {
-	db     dbm.DB
-	prefix string
+	db *dbm.PrefixDB
 
 	mtx  tmsync.RWMutex
 	size uint16
@@ -30,7 +29,7 @@ type dbs struct {
 // want to use one DB with many light clients).
 func New(db dbm.DB, prefix string) store.Store {
 
-	lightStore := &dbs{db: db, prefix: prefix}
+	lightStore := &dbs{db: dbm.NewPrefixDB(db, []byte(prefix))}
 
 	// retrieve the size of the db
 	size := uint16(0)
@@ -220,7 +219,7 @@ func (s *dbs) LightBlockBefore(height int64) (*types.LightBlock, error) {
 // left.
 //
 // Safe for concurrent use by multiple goroutines.
-func (s *dbs) Prune(size uint16) error {
+func (s *dbs) Prune(size uint16) (err error) {
 	// 1) Check how many we need to prune.
 	s.mtx.RLock()
 	sSize := s.size
@@ -232,16 +231,17 @@ func (s *dbs) Prune(size uint16) error {
 	numToPrune := sSize - size
 
 	// update size before returning
-	defer func() error {
+	defer func() {
 		s.mtx.Lock()
 		s.size = size + numToPrune
 		s.mtx.Unlock()
 
 		if wErr := s.db.SetSync(s.sizeKey(), marshalSize(size)); wErr != nil {
-			return fmt.Errorf("failed to persist size: %w", wErr)
+			if err != nil {
+				err = fmt.Errorf("failed to persist size: %s. Original error: %w", wErr.Error(), err)
+			}
+			err = fmt.Errorf("failed to persist size: %w", wErr)
 		}
-
-		return nil
 	}()
 
 	// 2) Iterate over headers and perform a batch operation.
@@ -259,18 +259,19 @@ func (s *dbs) Prune(size uint16) error {
 
 	for itr.Valid() && numToPrune > 0 {
 		if err = b.Delete(itr.Key()); err != nil {
-			return err
+			return
 		}
 		itr.Next()
 		numToPrune--
 	}
 	if err = itr.Error(); err != nil {
-		return err
+		return
 	}
 
+	// 3) write batch deletion to disk
 	err = b.WriteSync()
 	if err != nil {
-		return err
+		return
 	}
 
 	return nil
@@ -286,7 +287,7 @@ func (s *dbs) Size() uint16 {
 }
 
 func (s *dbs) sizeKey() []byte {
-	key, err := orderedcode.Append(nil, s.prefix, prefixSize)
+	key, err := orderedcode.Append(nil, prefixSize)
 	if err != nil {
 		panic(err)
 	}
@@ -294,7 +295,7 @@ func (s *dbs) sizeKey() []byte {
 }
 
 func (s *dbs) lbKey(height int64) []byte {
-	key, err := orderedcode.Append(nil, s.prefix, prefixLightBlock, height)
+	key, err := orderedcode.Append(nil, prefixLightBlock, height)
 	if err != nil {
 		panic(err)
 	}
@@ -302,11 +303,8 @@ func (s *dbs) lbKey(height int64) []byte {
 }
 
 func (s *dbs) decodeLbKey(key []byte) (height int64, err error) {
-	var (
-		dbPrefix         string
-		lightBlockPrefix int64
-	)
-	remaining, err := orderedcode.Parse(string(key), &dbPrefix, &lightBlockPrefix, &height)
+	var lightBlockPrefix int64
+	remaining, err := orderedcode.Parse(string(key), &lightBlockPrefix, &height)
 	if err != nil {
 		err = fmt.Errorf("failed to parse light block key: %w", err)
 	}
@@ -315,9 +313,6 @@ func (s *dbs) decodeLbKey(key []byte) (height int64, err error) {
 	}
 	if lightBlockPrefix != prefixLightBlock {
 		err = fmt.Errorf("expected light block prefix but got: %d", lightBlockPrefix)
-	}
-	if dbPrefix != s.prefix {
-		err = fmt.Errorf("parsed key has a different prefix. Expected: %s, got: %s", s.prefix, dbPrefix)
 	}
 	return
 }
