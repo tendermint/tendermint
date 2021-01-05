@@ -166,14 +166,14 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	evidenceFromEachValidator := make([]types.Evidence, nValidators)
 
 	wg := new(sync.WaitGroup)
-	wg.Add(4)
 	for i := 0; i < nValidators; i++ {
+		wg.Add(1)
 		go func(i int) {
+			defer wg.Done()
 			for msg := range blocksSubs[i].Out() {
 				block := msg.Data().(types.EventDataNewBlock).Block
 				if len(block.Evidence.Evidence) != 0 {
 					evidenceFromEachValidator[i] = block.Evidence.Evidence[0]
-					wg.Done()
 					return
 				}
 			}
@@ -340,8 +340,8 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	// wait till everyone makes the first new block
 	// (one of them already has)
 	wg := new(sync.WaitGroup)
-	wg.Add(2)
 	for i := 1; i < N-1; i++ {
+		wg.Add(1)
 		go func(j int) {
 			<-blocksSubs[j].Out()
 			wg.Done()
