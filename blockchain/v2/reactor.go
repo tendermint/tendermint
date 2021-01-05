@@ -508,13 +508,13 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		r.mtx.RUnlock()
 
 	case *bcproto.BlockResponse:
-		r.mtx.RLock()
 		bi, err := types.BlockFromProto(msg.Block)
 		if err != nil {
 			logger.Error("error transitioning block from protobuf", "err", err)
 			_ = r.reporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
 			return
 		}
+		r.mtx.RLock()
 		if r.events != nil {
 			r.events <- bcBlockResponse{
 				peerID: src.ID(),
