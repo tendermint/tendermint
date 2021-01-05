@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -57,13 +58,14 @@ type MockPV struct {
 	NextPrivKeys         []crypto.PrivKey
 	NextPrivKeyHeights   []int64
 	ProTxHash            crypto.ProTxHash
+	mtx                  tmsync.RWMutex
 	breakProposalSigning bool
 	breakVoteSigning     bool
 }
 
 func NewMockPV() *MockPV {
-	return &MockPV{bls12381.GenPrivKey(), nil, nil,
-		crypto.RandProTxHash(), false, false}
+	return &MockPV{PrivKey: bls12381.GenPrivKey(), NextPrivKeys: nil, NextPrivKeyHeights: nil,
+		ProTxHash: crypto.RandProTxHash(), breakProposalSigning: false, breakVoteSigning: false}
 }
 
 // NewMockPVWithParams allows one to create a MockPV instance, but with finer
@@ -71,8 +73,8 @@ func NewMockPV() *MockPV {
 // mocking test failures.
 func NewMockPVWithParams(privKey crypto.PrivKey, proTxHash []byte, breakProposalSigning,
 	breakVoteSigning bool) *MockPV {
-	return &MockPV{privKey, nil, nil, proTxHash,
-		breakProposalSigning, breakVoteSigning}
+	return &MockPV{PrivKey: privKey, NextPrivKeys: nil, NextPrivKeyHeights: nil, ProTxHash: proTxHash,
+		breakProposalSigning: breakProposalSigning, breakVoteSigning: breakVoteSigning}
 }
 
 // Implements PrivValidator.
@@ -143,12 +145,15 @@ func (pv *MockPV) SignProposal(chainID string, proposal *tmproto.Proposal) error
 func (pv *MockPV) UpdatePrivateKey(privateKey crypto.PrivKey, height int64) error {
 	// fmt.Printf("mockpv node %X setting a new key %X at height %d\n", pv.ProTxHash,
 	//  privateKey.PubKey().Bytes(), height)
+	pv.mtx.RLock()
 	pv.NextPrivKeys = append(pv.NextPrivKeys, privateKey)
 	pv.NextPrivKeyHeights = append(pv.NextPrivKeyHeights, height)
+	pv.mtx.RUnlock()
 	return nil
 }
 
 func (pv *MockPV) updateKeyIfNeeded(height int64) {
+	pv.mtx.RLock()
 	if pv.NextPrivKeys != nil && len(pv.NextPrivKeys) > 0 && pv.NextPrivKeyHeights != nil &&
 		len(pv.NextPrivKeyHeights) > 0 && height >= pv.NextPrivKeyHeights[0] {
 		// fmt.Printf("mockpv node %X at height %d updating key %X with new key %X\n", pv.ProTxHash,
@@ -166,6 +171,7 @@ func (pv *MockPV) updateKeyIfNeeded(height int64) {
 	//	fmt.Printf("mockpv node %X at height %d did not update key %X with next keys %v\n", pv.ProTxHash,
 	//  	height, pv.PrivKey.PubKey().Bytes(), pv.NextPrivKeyHeights)
 	// }
+	pv.mtx.RUnlock()
 }
 
 func (pv *MockPV) ExtractIntoValidator(height int64) *Validator {
@@ -221,8 +227,8 @@ func (pv *ErroringMockPV) SignProposal(chainID string, proposal *tmproto.Proposa
 // NewErroringMockPV returns a MockPV that fails on each signing request. Again, for testing only.
 
 func NewErroringMockPV() *ErroringMockPV {
-	return &ErroringMockPV{MockPV{bls12381.GenPrivKey(), nil, nil,
-		crypto.RandProTxHash(), false, false}}
+	return &ErroringMockPV{MockPV{PrivKey: bls12381.GenPrivKey(), NextPrivKeys: nil, NextPrivKeyHeights: nil,
+		ProTxHash: crypto.RandProTxHash(), breakProposalSigning: false, breakVoteSigning: false}}
 }
 
 type MockPrivValidatorsByProTxHash []*MockPV

@@ -70,8 +70,14 @@ test_verbose:
 
 test_race:
 	@echo "--> Running go test --race"
+	@go test -p 1 -race $(PACKAGES)
+.PHONY: test_race
+
+test_race_verbose:
+	@echo "--> Running go test --race"
 	@go test -p 1 -v -race $(PACKAGES)
 .PHONY: test_race
+
 
 test_deadlock:
 	@echo "--> Running go test --deadlock"

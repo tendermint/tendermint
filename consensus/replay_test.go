@@ -1,4 +1,5 @@
 //nolint:lll
+
 package consensus
 
 import (

@@ -710,15 +710,19 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 }
 
 func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount int, validate bool) ([]*types.Validator, []crypto.ProTxHash, crypto.PubKey) {
-	currentValidatorCount := len(css[0].Validators.Validators)
-	currentValidators := css[0].Validators
+	currentHeight, currentValidators := css[0].GetValidatorSet()
+	currentValidatorCount := len(currentValidators.Validators)
 
 	if validate {
 		for _, cssi := range css {
-			if len(cssi.Validators.Validators) != currentValidatorCount {
+			height, validators := cssi.GetValidatorSet()
+			if height != currentHeight {
+				panic("they should all have the same heights")
+			}
+			if len(validators.Validators) != currentValidatorCount {
 				panic("they should all have the same initial validator count")
 			}
-			if !currentValidators.Equals(cssi.Validators) {
+			if !currentValidators.Equals(validators) {
 				panic("all validators should be the same")
 			}
 		}
@@ -777,18 +781,23 @@ func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount 
 }
 
 func updateConsensusNetRemoveValidators(css []*State, height int64, removeValCount int, validate bool) ([]*types.Validator, []*types.Validator, crypto.PubKey) {
-	currentValidatorCount := len(css[0].Validators.Validators)
-	currentValidators := css[0].Validators
+
+	currentHeight, currentValidators := css[0].GetValidatorSet()
+	currentValidatorCount := len(currentValidators.Validators)
 
 	if removeValCount >= currentValidatorCount {
 		panic("you can not remove all validators")
 	}
 	if validate {
 		for _, cssi := range css {
-			if len(cssi.Validators.Validators) != currentValidatorCount {
+			height, validators := cssi.GetValidatorSet()
+			if height != currentHeight {
+				panic("they should all have the same heights")
+			}
+			if len(validators.Validators) != currentValidatorCount {
 				panic("they should all have the same initial validator count")
 			}
-			if !currentValidators.Equals(cssi.Validators) {
+			if !currentValidators.Equals(validators) {
 				panic("all validators should be the same")
 			}
 		}
