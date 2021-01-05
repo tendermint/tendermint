@@ -230,20 +230,6 @@ func (s *dbs) Prune(size uint16) (err error) {
 	}
 	numToPrune := sSize - size
 
-	// update size before returning
-	defer func() {
-		s.mtx.Lock()
-		s.size = size + numToPrune
-		s.mtx.Unlock()
-
-		if wErr := s.db.SetSync(s.sizeKey(), marshalSize(size)); wErr != nil {
-			if err != nil {
-				err = fmt.Errorf("failed to persist size: %s. Original error: %w", wErr.Error(), err)
-			}
-			err = fmt.Errorf("failed to persist size: %w", wErr)
-		}
-	}()
-
 	// 2) Iterate over headers and perform a batch operation.
 	itr, err := s.db.Iterator(
 		s.lbKey(1),
@@ -268,7 +254,16 @@ func (s *dbs) Prune(size uint16) (err error) {
 		return
 	}
 
-	// 3) write batch deletion to disk
+	// 3) // update size
+	s.mtx.Lock()
+	s.size = size
+	s.mtx.Unlock()
+
+	if wErr := b.Set(s.sizeKey(), marshalSize(size)); wErr != nil {
+		err = fmt.Errorf("failed to persist size: %w", wErr)
+	}
+
+	// 4) write batch deletion to disk
 	err = b.WriteSync()
 	if err != nil {
 		return
