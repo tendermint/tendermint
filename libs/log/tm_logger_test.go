@@ -26,7 +26,7 @@ func TestInfo(t *testing.T) {
 	l := log.NewTMLogger(&bufInfo)
 	l.Info("Client initialized with old header (trusted is more recent)",
 		"old", 42,
-		"trustedHeight", "fourty two",
+		"trustedHeight", "forty two",
 		"trustedHash", []byte("test message"))
 
 	msg := strings.TrimSpace(bufInfo.String())
@@ -35,7 +35,7 @@ func TestInfo(t *testing.T) {
 	// us to test against the expected message.
 	receivedmsg := strings.Split(msg, "] ")[1]
 
-	expectedmsg := `Client initialized with old header (trusted is more recent) old=42 trustedHeight="fourty two" trustedHash="TEST MESSAGE"`
+	const expectedmsg = `Client initialized with old header (trusted is more recent) old=42 trustedHeight="forty two" trustedHash="TEST MESSAGE"`
 	if receivedmsg != expectedmsg {
 		t.Errorf("received %s, expected %s", receivedmsg, expectedmsg)
 		t.FailNow()
@@ -49,7 +49,7 @@ func TestDebug(t *testing.T) {
 	ld := log.NewTMLogger(&bufDebug)
 	ld.Debug("Client initialized with old header (trusted is more recent)",
 		"old", 42,
-		"trustedHeight", "fourty two",
+		"trustedHeight", "forty two",
 		"trustedHash", []byte("test message"))
 
 	msg := strings.TrimSpace(bufDebug.String())
@@ -58,7 +58,7 @@ func TestDebug(t *testing.T) {
 	// us to test against the expected message.
 	receivedmsg := strings.Split(msg, "] ")[1]
 
-	expectedmsg := `Client initialized with old header (trusted is more recent) old=42 trustedHeight="fourty two" trustedHash="TEST MESSAGE"`
+	const expectedmsg = `Client initialized with old header (trusted is more recent) old=42 trustedHeight="forty two" trustedHash="TEST MESSAGE"`
 	if receivedmsg != expectedmsg {
 		t.Errorf("received %s, expected %s", receivedmsg, expectedmsg)
 		t.FailNow()
@@ -72,7 +72,7 @@ func TestError(t *testing.T) {
 	le := log.NewTMLogger(&bufErr)
 	le.Error("Client initialized with old header (trusted is more recent)",
 		"old", 42,
-		"trustedHeight", "fourty two",
+		"trustedHeight", "forty two",
 		"trustedHash", []byte("test message"))
 
 	msg := strings.TrimSpace(bufErr.String())
@@ -81,7 +81,7 @@ func TestError(t *testing.T) {
 	// us to test against the expected message.
 	receivedmsg := strings.Split(msg, "] ")[1]
 
-	expectedmsg := `Client initialized with old header (trusted is more recent) old=42 trustedHeight="fourty two" trustedHash="TEST MESSAGE"`
+	const expectedmsg = `Client initialized with old header (trusted is more recent) old=42 trustedHeight="forty two" trustedHash="TEST MESSAGE"`
 	if receivedmsg != expectedmsg {
 		t.Errorf("received %s, expected %s", receivedmsg, expectedmsg)
 		t.FailNow()
