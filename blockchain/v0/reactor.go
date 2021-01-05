@@ -277,6 +277,9 @@ func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
 
 		didProcessCh = make(chan struct{}, 1)
 	)
+	defer trySyncTicker.Stop()
+	defer statusUpdateTicker.Stop()
+	defer switchToConsensusTicker.Stop()
 
 	go func() {
 		for {
