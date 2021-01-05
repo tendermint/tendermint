@@ -216,15 +216,9 @@ func TestReactorMultiDisconnect(t *testing.T) {
 	stateDB1 := initializeValidatorState(t, val, height)
 	stateDB2 := initializeValidatorState(t, val, height)
 
-	testSuites := createTestSuites(t, []sm.Store{stateDB1, stateDB2}, 0)
+	testSuites := createTestSuites(t, []sm.Store{stateDB1, stateDB2}, 20)
 	primary := testSuites[0]
 	secondary := testSuites[1]
-
-	// simulate a no-op router
-	go func() {
-		for range primary.evidenceOutCh {
-		}
-	}()
 
 	_ = createEvidenceList(t, primary.pool, val, numEvidence)
 
@@ -490,7 +484,7 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 	// every suite (reactor) connects to every other suite (reactor)
 	for _, suiteI := range testSuites {
 		for _, suiteJ := range testSuites {
-			if !suiteI.peerID.Equal(suiteJ.peerID) {
+			if suiteI.peerID != suiteJ.peerID {
 				suiteI.peerUpdatesCh <- p2p.PeerUpdate{
 					Status: p2p.PeerStatusUp,
 					PeerID: suiteJ.peerID,

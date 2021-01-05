@@ -244,6 +244,14 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
+		// Do not allow starting new evidence broadcast loops after reactor shutdown
+		// has been initiated. This can happen after we've manually closed all
+		// peer broadcast loops and closed r.closeCh, but the router still sends
+		// in-flight peer updates.
+		if !r.IsRunning() {
+			return
+		}
+
 		// Check if we've already started a goroutine for this peer, if not we create
 		// a new done channel so we can explicitly close the goroutine if the peer
 		// is later removed, we increment the waitgroup so the reactor can stop
