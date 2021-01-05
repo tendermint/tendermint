@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -18,9 +19,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-const (
-	tagKeySeparator = "/"
-)
+const tagKeySeparator = "\x00\x01"
 
 var _ txindex.TxIndexer = (*TxIndex)(nil)
 
@@ -461,9 +460,6 @@ func (txi *TxIndex) match(
 		defer it.Close()
 
 		for ; it.Valid(); it.Next() {
-			if !isTagKey(it.Key()) {
-				continue
-			}
 
 			if strings.Contains(extractValueFromKey(it.Key()), c.Operand.(string)) {
 				tmpHashes[string(it.Value())] = it.Value()
@@ -542,9 +538,6 @@ func (txi *TxIndex) matchRange(
 
 LOOP:
 	for ; it.Valid(); it.Next() {
-		if !isTagKey(it.Key()) {
-			continue
-		}
 
 		if _, ok := r.AnyBound().(int64); ok {
 			v, err := strconv.ParseInt(extractValueFromKey(it.Key()), 10, 64)
@@ -615,31 +608,38 @@ LOOP:
 
 // Keys
 
-func isTagKey(key []byte) bool {
-	return strings.Count(string(key), tagKeySeparator) == 3
-}
-
-func extractValueFromKey(key []byte) string {
-	parts := strings.SplitN(string(key), tagKeySeparator, 3)
-	return parts[1]
+func extractValueFromKey(key []byte) (value string) {
+	var prefix string
+	_, _ = orderedcode.Parse(string(key), &prefix, &value)
+	return
 }
 
 func keyForEvent(key string, value []byte, result *abci.TxResult) []byte {
-	return []byte(fmt.Sprintf("%s/%s/%d/%d",
+	encodedKey, err := orderedcode.Append(
+		nil,
 		key,
-		value,
+		string(value),
 		result.Height,
-		result.Index,
-	))
+		int64(result.Index),
+	)
+	if err != nil {
+		panic(err)
+	}
+	return encodedKey
 }
 
 func keyForHeight(result *abci.TxResult) []byte {
-	return []byte(fmt.Sprintf("%s/%d/%d/%d",
+	key, err := orderedcode.Append(
+		nil,
 		types.TxHeightKey,
 		result.Height,
 		result.Height,
-		result.Index,
-	))
+		int64(result.Index),
+	)
+	if err != nil {
+		panic(err)
+	}
+	return key
 }
 
 func startKeyForCondition(c query.Condition, height int64) []byte {
