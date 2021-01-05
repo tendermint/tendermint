@@ -544,7 +544,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	// HEIGHT 6
 	//
-	updatedValidators, removedValidators, newThresholdPublicKey := updateConsensusNetRemoveValidators(css, height, 1, false)
+	updatedValidators, removedValidators, newThresholdPublicKey := updateConsensusNetRemoveValidators(css, height,
+		1, false)
 	height++
 	updateTransactions3 := make([][]byte, len(updatedValidators)+len(removedValidators)+1)
 	for i := 0; i < len(updatedValidators); i++ {
@@ -557,11 +558,13 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(removedValidators[i].PubKey)
 		require.NoError(t, err)
-		updateTransactions3[len(updatedValidators)+i] = kvstore.MakeValSetChangeTx(removedValidators[i].ProTxHash, abciPubKey, 0)
+		updateTransactions3[len(updatedValidators)+i] = kvstore.MakeValSetChangeTx(removedValidators[i].ProTxHash,
+			abciPubKey, 0)
 	}
 	abciThresholdPubKey, err = cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
-	updateTransactions3[len(updatedValidators)+len(removedValidators)] = kvstore.MakeThresholdPublicKeyChangeTx(abciThresholdPubKey)
+	updateTransactions3[len(updatedValidators)+len(removedValidators)] =
+		kvstore.MakeThresholdPublicKeyChangeTx(abciThresholdPubKey)
 
 	for _, updateTransaction := range updateTransactions3 {
 		err = assertMempool(css[0].txNotifier).CheckTx(updateTransaction, nil, mempl.TxInfo{})
@@ -662,7 +665,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	// HEIGHT 8
 
 	proTxHashToRemove := updatedValidators[len(updatedValidators)-1].ProTxHash
-	updatedValidators, removedValidators, newThresholdPublicKey = updateConsensusNetRemoveValidatorsWithProTxHashes(css, height, []crypto.ProTxHash{proTxHashToRemove}, false)
+	updatedValidators, removedValidators, newThresholdPublicKey = updateConsensusNetRemoveValidatorsWithProTxHashes(css,
+		height, []crypto.ProTxHash{proTxHashToRemove}, false)
 	height++
 	incrementHeight(vss...)
 
@@ -677,11 +681,13 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(removedValidators[i].PubKey)
 		require.NoError(t, err)
-		updateTransactions4[len(updatedValidators)+i] = kvstore.MakeValSetChangeTx(removedValidators[i].ProTxHash, abciPubKey, 0)
+		updateTransactions4[len(updatedValidators)+i] = kvstore.MakeValSetChangeTx(removedValidators[i].ProTxHash,
+			abciPubKey, 0)
 	}
 	abciThresholdPubKey, err = cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
-	updateTransactions4[len(updatedValidators)+len(removedValidators)] = kvstore.MakeThresholdPublicKeyChangeTx(abciThresholdPubKey)
+	updateTransactions4[len(updatedValidators)+len(removedValidators)] =
+		kvstore.MakeThresholdPublicKeyChangeTx(abciThresholdPubKey)
 
 	for _, updateTransaction := range updateTransactions4 {
 		err = assertMempool(css[0].txNotifier).CheckTx(updateTransaction, nil, mempl.TxInfo{})
@@ -1159,7 +1165,8 @@ func makeBlocks(n int, state *sm.State, privVal types.PrivValidator) []*types.Bl
 		prevBlockMeta = types.NewBlockMeta(block, parts)
 
 		// update state
-		state.AppHash = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, appHeight}
+		state.AppHash = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, appHeight}
 		appHeight++
 		state.LastBlockHeight = height
 	}
@@ -1170,7 +1177,8 @@ func makeBlocks(n int, state *sm.State, privVal types.PrivValidator) []*types.Bl
 func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.BlockMeta,
 	privVal types.PrivValidator, height int64) (*types.Block, *types.PartSet) {
 
-	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
+	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil,
+		nil, nil)
 	if height > 1 {
 		vote, _ := types.MakeVote(
 			lastBlock.Header.Height,
@@ -1182,7 +1190,8 @@ func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.Bloc
 		// since there is only 1 vote, use it as threshold
 		commitSig := vote.CommitSig()
 		lastCommit = types.NewCommit(vote.Height, vote.Round,
-			lastBlockMeta.BlockID, lastBlockMeta.StateID, []types.CommitSig{commitSig}, commitSig.BlockSignature, commitSig.StateSignature)
+			lastBlockMeta.BlockID, lastBlockMeta.StateID, []types.CommitSig{commitSig},
+			commitSig.BlockSignature, commitSig.StateSignature)
 	}
 
 	return state.MakeBlock(height, nil, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().ProTxHash)
@@ -1202,7 +1211,8 @@ func (app *badApp) Commit() abci.ResponseCommit {
 		if app.height == app.numBlocks {
 			return abci.ResponseCommit{Data: tmrand.Bytes(32)}
 		}
-		return abci.ResponseCommit{Data: []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, app.height}}
+		return abci.ResponseCommit{Data: []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, app.height}}
 	} else if app.allHashesAreWrong {
 		return abci.ResponseCommit{Data: tmrand.Bytes(32)}
 	}

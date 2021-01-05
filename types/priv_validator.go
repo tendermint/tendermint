@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 
 	"github.com/tendermint/tendermint/crypto"
