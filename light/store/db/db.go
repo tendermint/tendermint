@@ -197,11 +197,17 @@ func (s *dbs) LightBlockBefore(height int64) (*types.LightBlock, error) {
 	defer itr.Close()
 
 	if itr.Valid() {
-		existingHeight, err := s.decodeLbKey(itr.Key())
+		var lbpb tmproto.LightBlock
+		err = lbpb.Unmarshal(itr.Value())
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unmarshal error: %w", err)
 		}
-		return s.LightBlock(existingHeight)
+
+		lightBlock, err := types.LightBlockFromProto(&lbpb)
+		if err != nil {
+			return nil, fmt.Errorf("proto conversion error: %w", err)
+		}
+		return lightBlock, nil
 	}
 	if err = itr.Error(); err != nil {
 		return nil, err
@@ -225,6 +231,19 @@ func (s *dbs) Prune(size uint16) error {
 	}
 	numToPrune := sSize - size
 
+	// update size before returning
+	defer func() error {
+		s.mtx.Lock()
+		s.size = size + numToPrune
+		s.mtx.Unlock()
+
+		if wErr := s.db.SetSync(s.sizeKey(), marshalSize(size)); wErr != nil {
+			return fmt.Errorf("failed to persist size: %w", wErr)
+		}
+
+		return nil
+	}()
+
 	// 2) Iterate over headers and perform a batch operation.
 	itr, err := s.db.Iterator(
 		s.lbKey(1),
@@ -238,19 +257,12 @@ func (s *dbs) Prune(size uint16) error {
 	b := s.db.NewBatch()
 	defer b.Close()
 
-	pruned := 0
 	for itr.Valid() && numToPrune > 0 {
-		key := itr.Key()
-		height, err := s.decodeLbKey(key)
-		if err != nil {
-			return err
-		}
-		if err = b.Delete(s.lbKey(height)); err != nil {
+		if err = b.Delete(itr.Key()); err != nil {
 			return err
 		}
 		itr.Next()
 		numToPrune--
-		pruned++
 	}
 	if err = itr.Error(); err != nil {
 		return err
@@ -259,16 +271,6 @@ func (s *dbs) Prune(size uint16) error {
 	err = b.WriteSync()
 	if err != nil {
 		return err
-	}
-
-	// 3) Update size.
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-
-	s.size -= uint16(pruned)
-
-	if wErr := s.db.SetSync(s.sizeKey(), marshalSize(size)); wErr != nil {
-		return fmt.Errorf("failed to persist size: %w", wErr)
 	}
 
 	return nil
