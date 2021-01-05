@@ -285,7 +285,7 @@ func (s *dbs) Size() uint16 {
 
 func (s *dbs) sizeKey() []byte {
 	buf := make([]byte, 0)
-	key, err := orderedcode.Append(buf, s.prefix, string(prefixSize))
+	key, err := orderedcode.Append(buf, s.prefix, prefixSize)
 	if err != nil {
 		panic(err)
 	}
@@ -293,7 +293,7 @@ func (s *dbs) sizeKey() []byte {
 }
 
 func (s *dbs) lbKey(height int64) []byte {
-	key, err := orderedcode.Append(nil, s.prefix, string(prefixLightBlock), height)
+	key, err := orderedcode.Append(nil, s.prefix, prefixLightBlock, height)
 	if err != nil {
 		panic(err)
 	}
@@ -301,7 +301,10 @@ func (s *dbs) lbKey(height int64) []byte {
 }
 
 func (s *dbs) decodeLbKey(key []byte) (height int64, err error) {
-	var dbPrefix, lightBlockPrefix string
+	var (
+		dbPrefix         string
+		lightBlockPrefix int64
+	)
 	remaining, err := orderedcode.Parse(string(key), &dbPrefix, &lightBlockPrefix, &height)
 	if err != nil {
 		err = fmt.Errorf("failed to parse light block key: %w", err)
@@ -309,8 +312,8 @@ func (s *dbs) decodeLbKey(key []byte) (height int64, err error) {
 	if len(remaining) != 0 {
 		err = fmt.Errorf("expected no remainder when parsing light block key but got: %s", remaining)
 	}
-	if lightBlockPrefix != string(prefixLightBlock) {
-		err = fmt.Errorf("expected light block prefix but got: %s", lightBlockPrefix)
+	if lightBlockPrefix != prefixLightBlock {
+		err = fmt.Errorf("expected light block prefix but got: %d", lightBlockPrefix)
 	}
 	if dbPrefix != s.prefix {
 		err = fmt.Errorf("parsed key has a different prefix. Expected: %s, got: %s", s.prefix, dbPrefix)
