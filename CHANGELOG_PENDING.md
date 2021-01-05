@@ -37,6 +37,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
 
 - Blockchain Protocol
+
+- Data Storage
   - [store/state/evidence/light] \#5771 Use an order-preserving varint key encoding (@cmwaters)
 
 ### FEATURES
