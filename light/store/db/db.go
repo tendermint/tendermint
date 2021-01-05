@@ -284,8 +284,7 @@ func (s *dbs) Size() uint16 {
 }
 
 func (s *dbs) sizeKey() []byte {
-	buf := make([]byte, 0)
-	key, err := orderedcode.Append(buf, s.prefix, prefixSize)
+	key, err := orderedcode.Append(nil, s.prefix, prefixSize)
 	if err != nil {
 		panic(err)
 	}
