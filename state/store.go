@@ -28,13 +28,13 @@ const (
 
 const (
 	// prefixes are unique across all tm db's
-	prefixValidators      = byte(0x05)
-	prefixConsensusParams = byte(0x06)
-	prefixABCIResponses   = byte(0x07)
+	prefixValidators      = int64(5)
+	prefixConsensusParams = int64(6)
+	prefixABCIResponses   = int64(7)
 )
 
-func encodeKey(buf []byte, height int64) []byte {
-	res, err := orderedcode.Append(buf, height)
+func encodeKey(prefix int64, height int64) []byte {
+	res, err := orderedcode.Append(nil, prefix, height)
 	if err != nil {
 		panic(err)
 	}
@@ -42,15 +42,15 @@ func encodeKey(buf []byte, height int64) []byte {
 }
 
 func validatorsKey(height int64) []byte {
-	return encodeKey([]byte{prefixValidators}, height)
+	return encodeKey(prefixValidators, height)
 }
 
 func consensusParamsKey(height int64) []byte {
-	return encodeKey([]byte{prefixConsensusParams}, height)
+	return encodeKey(prefixConsensusParams, height)
 }
 
 func abciResponsesKey(height int64) []byte {
-	return encodeKey([]byte{prefixABCIResponses}, height)
+	return encodeKey(prefixABCIResponses, height)
 }
 
 //----------------------

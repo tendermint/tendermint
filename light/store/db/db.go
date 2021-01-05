@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	prefixLightBlock = byte(0x0a)
-	prefixSize       = byte(0x0b)
+	prefixLightBlock = int64(0x0a)
+	prefixSize       = int64(0x0b)
 )
 
 type dbs struct {
@@ -152,7 +152,7 @@ func (s *dbs) LastLightBlockHeight() (int64, error) {
 	defer itr.Close()
 
 	if itr.Valid() {
-		return s.parseHeightFromKey(itr.Key())
+		return s.decodeLbKey(itr.Key())
 	}
 
 	return -1, itr.Error()
@@ -172,7 +172,7 @@ func (s *dbs) FirstLightBlockHeight() (int64, error) {
 	defer itr.Close()
 
 	if itr.Valid() {
-		return s.parseHeightFromKey(itr.Key())
+		return s.decodeLbKey(itr.Key())
 	}
 
 	return -1, itr.Error()
@@ -197,7 +197,7 @@ func (s *dbs) LightBlockBefore(height int64) (*types.LightBlock, error) {
 	defer itr.Close()
 
 	if itr.Valid() {
-		existingHeight, err := s.parseHeightFromKey(itr.Key())
+		existingHeight, err := s.decodeLbKey(itr.Key())
 		if err != nil {
 			return nil, err
 		}
@@ -241,7 +241,7 @@ func (s *dbs) Prune(size uint16) error {
 	pruned := 0
 	for itr.Valid() && numToPrune > 0 {
 		key := itr.Key()
-		height, err := s.parseHeightFromKey(key)
+		height, err := s.decodeLbKey(key)
 		if err != nil {
 			return err
 		}
@@ -293,17 +293,15 @@ func (s *dbs) sizeKey() []byte {
 }
 
 func (s *dbs) lbKey(height int64) []byte {
-	buf := make([]byte, 0)
-	key, err := orderedcode.Append(buf, s.prefix, string(prefixLightBlock), height)
+	key, err := orderedcode.Append(nil, s.prefix, string(prefixLightBlock), height)
 	if err != nil {
 		panic(err)
 	}
 	return key
 }
 
-func (s *dbs) parseHeightFromKey(key []byte) (height int64, err error) {
-	var dbPrefix string
-	var lightBlockPrefix string
+func (s *dbs) decodeLbKey(key []byte) (height int64, err error) {
+	var dbPrefix, lightBlockPrefix string
 	remaining, err := orderedcode.Parse(string(key), &dbPrefix, &lightBlockPrefix, &height)
 	if err != nil {
 		err = fmt.Errorf("failed to parse light block key: %w", err)

@@ -430,15 +430,15 @@ func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *types.Commit) err
 // key prefixes
 const (
 	// prefixes are unique across all tm db's
-	prefixBlockMeta   = byte(0x00)
-	prefixBlockPart   = byte(0x01)
-	prefixBlockCommit = byte(0x02)
-	prefixSeenCommit  = byte(0x03)
-	prefixBlockHash   = byte(0x04)
+	prefixBlockMeta   = int64(0)
+	prefixBlockPart   = int64(1)
+	prefixBlockCommit = int64(2)
+	prefixSeenCommit  = int64(3)
+	prefixBlockHash   = int64(4)
 )
 
 func blockMetaKey(height int64) []byte {
-	key, err := orderedcode.Append([]byte{prefixBlockMeta}, height)
+	key, err := orderedcode.Append(nil, prefixBlockMeta, height)
 	if err != nil {
 		panic(err)
 	}
@@ -446,7 +446,7 @@ func blockMetaKey(height int64) []byte {
 }
 
 func blockPartKey(height int64, partIndex int) []byte {
-	key, err := orderedcode.Append([]byte{prefixBlockPart}, height, uint64(partIndex))
+	key, err := orderedcode.Append(nil, prefixBlockPart, height, int64(partIndex))
 	if err != nil {
 		panic(err)
 	}
@@ -454,7 +454,7 @@ func blockPartKey(height int64, partIndex int) []byte {
 }
 
 func blockCommitKey(height int64) []byte {
-	key, err := orderedcode.Append([]byte{prefixBlockCommit}, height)
+	key, err := orderedcode.Append(nil, prefixBlockCommit, height)
 	if err != nil {
 		panic(err)
 	}
@@ -462,16 +462,19 @@ func blockCommitKey(height int64) []byte {
 }
 
 func seenCommitKey(height int64) []byte {
-	key, err := orderedcode.Append([]byte{prefixSeenCommit}, height)
+	key, err := orderedcode.Append(nil, prefixSeenCommit, height)
 	if err != nil {
 		panic(err)
 	}
 	return key
 }
 
-// block hash has a different prefix
 func blockHashKey(hash []byte) []byte {
-	return append([]byte{prefixBlockHash}, hash...)
+	key, err := orderedcode.Append(nil, prefixBlockHash, string(hash))
+	if err != nil {
+		panic(err)
+	}
+	return key
 }
 
 //-----------------------------------------------------------------------------

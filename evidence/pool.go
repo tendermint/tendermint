@@ -23,8 +23,8 @@ import (
 
 const (
 	// prefixes are unique across all tm db's
-	prefixCommitted = byte(0x08)
-	prefixPending   = byte(0x09)
+	prefixCommitted = int64(8)
+	prefixPending   = int64(9)
 )
 
 // Pool maintains a pool of valid evidence to be broadcasted and committed
@@ -404,7 +404,7 @@ func (evpool *Pool) markEvidenceAsCommitted(evidence types.EvidenceList) {
 
 // listEvidence retrieves lists evidence from oldest to newest within maxBytes.
 // If maxBytes is -1, there's no cap on the size of returned evidence.
-func (evpool *Pool) listEvidence(prefixKey byte, maxBytes int64) ([]types.Evidence, int64, error) {
+func (evpool *Pool) listEvidence(prefixKey int64, maxBytes int64) ([]types.Evidence, int64, error) {
 	var (
 		evSize    int64
 		totalSize int64
@@ -412,7 +412,7 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxBytes int64) ([]types.Eviden
 		evList    tmproto.EvidenceList // used for calculating the bytes size
 	)
 
-	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{prefixKey})
+	iter, err := dbm.IteratePrefix(evpool.evidenceStore, prefixToBytes(prefixKey))
 	if err != nil {
 		return nil, totalSize, fmt.Errorf("database error: %v", err)
 	}
@@ -449,7 +449,7 @@ func (evpool *Pool) listEvidence(prefixKey byte, maxBytes int64) ([]types.Eviden
 }
 
 func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
-	iter, err := dbm.IteratePrefix(evpool.evidenceStore, []byte{prefixPending})
+	iter, err := dbm.IteratePrefix(evpool.evidenceStore, prefixToBytes(prefixPending))
 	if err != nil {
 		evpool.logger.Error("Unable to iterate over pending evidence", "err", err)
 		return evpool.State().LastBlockHeight, evpool.State().LastBlockTime
@@ -514,8 +514,16 @@ func evMapKey(ev types.Evidence) string {
 	return string(ev.Hash())
 }
 
+func prefixToBytes(prefix int64) []byte {
+	key, err := orderedcode.Append(nil, prefix)
+	if err != nil {
+		panic(err)
+	}
+	return key
+}
+
 func keyCommitted(evidence types.Evidence) []byte {
-	key, err := orderedcode.Append([]byte{prefixCommitted}, evidence.Height(), string(evidence.Hash()))
+	key, err := orderedcode.Append(nil, prefixCommitted, evidence.Height(), string(evidence.Hash()))
 	if err != nil {
 		panic(err)
 	}
@@ -523,7 +531,7 @@ func keyCommitted(evidence types.Evidence) []byte {
 }
 
 func keyPending(evidence types.Evidence) []byte {
-	key, err := orderedcode.Append([]byte{prefixPending}, evidence.Height(), string(evidence.Hash()))
+	key, err := orderedcode.Append(nil, prefixPending, evidence.Height(), string(evidence.Hash()))
 	if err != nil {
 		panic(err)
 	}
