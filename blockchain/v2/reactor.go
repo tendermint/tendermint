@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	proto "github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/behaviour"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
@@ -466,20 +468,28 @@ func (r *BlockchainReactor) Stop() error {
 func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	logger := r.logger.With("src", src.ID(), "chID", chID)
 
-	msg, err := bc.DecodeMsg(msgBytes)
-	if err != nil {
+	msgProto := new(bcproto.Message)
+
+	if err := proto.Unmarshal(msgBytes, msgProto); err != nil {
 		logger.Error("error decoding message", "err", err)
 		_ = r.reporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
 		return
 	}
 
-	if err = bc.ValidateMsg(msg); err != nil {
-		logger.Error("peer sent us invalid msg", "msg", msg, "err", err)
+	if err := msgProto.Validate(); err != nil {
+		logger.Error("peer sent us an invalid msg", "msg", msgProto, "err", err)
 		_ = r.reporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
 		return
 	}
 
-	r.logger.Debug("Receive", "msg", msg)
+	msg, err := msgProto.Unwrap()
+	if err != nil {
+		logger.Error("peer sent us an invalid msg", "msg", msgProto, "err", err)
+		_ = r.reporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
+		return
+	}
+
+	r.logger.Debug("received", "msg", msg)
 
 	switch msg := msg.(type) {
 	case *bcproto.StatusRequest:
