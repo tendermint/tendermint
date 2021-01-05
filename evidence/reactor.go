@@ -73,8 +73,9 @@ type Reactor struct {
 	peerUpdates *p2p.PeerUpdatesCh
 	closeCh     chan struct{}
 
-	mtx          tmsync.RWMutex
-	peerWG       sync.WaitGroup
+	peerWG sync.WaitGroup
+
+	mtx          tmsync.Mutex
 	peerRoutines map[p2p.NodeID]*closer
 }
 
@@ -235,13 +236,7 @@ func (r *Reactor) processEvidenceCh() {
 // connects/disconnects frequently from the broadcasting peer(s).
 //
 // REF: https://github.com/tendermint/tendermint/issues/4727
-func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) (err error) {
-	defer func() {
-		if e := recover(); e != nil {
-			err = fmt.Errorf("panic in processing peer update: %v", e)
-		}
-	}()
-
+func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	r.Logger.Debug("received peer update", "peer", peerUpdate.PeerID, "status", peerUpdate.Status)
 
 	r.mtx.Lock()
@@ -272,8 +267,6 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) (err error) {
 			closer.close()
 		}
 	}
-
-	return err
 }
 
 // processPeerUpdates initiates a blocking process where we listen for and handle
@@ -285,14 +278,7 @@ func (r *Reactor) processPeerUpdates() {
 	for {
 		select {
 		case peerUpdate := <-r.peerUpdates.Updates():
-			if err := r.processPeerUpdate(peerUpdate); err != nil {
-				r.Logger.Error(
-					"failed to process peer update",
-					"peer", peerUpdate.PeerID,
-					"status", peerUpdate.Status,
-					"err", err,
-				)
-			}
+			r.processPeerUpdate(peerUpdate)
 
 		case <-r.closeCh:
 			r.Logger.Debug("stopped listening on peer updates channel; closing...")
@@ -316,7 +302,11 @@ func (r *Reactor) broadcastEvidenceLoop(peerID p2p.NodeID, closer *closer) {
 	var next *clist.CElement
 
 	defer func() {
-		r.removePeerRoutine(peerID)
+		r.mtx.Lock()
+		delete(r.peerRoutines, peerID)
+		r.mtx.Unlock()
+
+		r.peerWG.Done()
 
 		if e := recover(); e != nil {
 			r.Logger.Error("recovering from broadcasting evidence loop", "err", e)
@@ -356,27 +346,13 @@ func (r *Reactor) broadcastEvidenceLoop(peerID p2p.NodeID, closer *closer) {
 		// and thus would not be able to process the evidence correctly. Also, the
 		// peer may receive this piece of evidence multiple times if it added and
 		// removed frequently from the broadcasting peer.
-		envelope := p2p.Envelope{
+		r.evidenceCh.Out() <- p2p.Envelope{
 			To: peerID,
 			Message: &tmproto.EvidenceList{
 				Evidence: []tmproto.Evidence{*evProto},
 			},
 		}
-
-		select {
-		case r.evidenceCh.Out() <- envelope:
-			r.Logger.Debug("gossiped evidence to peer", "evidence", ev, "peer", peerID)
-
-		case <-closer.doneCh:
-			// The peer is marked for removal via a PeerUpdate as the doneCh was
-			// explicitly closed to signal we should exit.
-			return
-
-		case <-r.closeCh:
-			// The reactor has signaled that we are stopped and thus we should
-			// implicitly exit this peer's goroutine.
-			return
-		}
+		r.Logger.Debug("gossiped evidence to peer", "evidence", ev, "peer", peerID)
 
 		select {
 		case <-time.After(time.Second * broadcastEvidenceIntervalS):
@@ -397,12 +373,4 @@ func (r *Reactor) broadcastEvidenceLoop(peerID p2p.NodeID, closer *closer) {
 			return
 		}
 	}
-}
-
-func (r *Reactor) removePeerRoutine(peerID p2p.NodeID) {
-	r.mtx.Lock()
-	delete(r.peerRoutines, peerID)
-	r.mtx.Unlock()
-
-	r.peerWG.Done()
 }

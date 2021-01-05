@@ -43,24 +43,3 @@ func TestNodeKeySaveAs(t *testing.T) {
 	require.NoError(t, nodeKey.SaveAs(filePath))
 	require.FileExists(t, filePath)
 }
-
-func TestNodeID_Equal(t *testing.T) {
-	testCases := map[string]struct {
-		inputA NodeID
-		inputB NodeID
-		result bool
-	}{
-		"empty node IDs":                         {"", "", true},
-		"single empty node ID":                   {"", "869152802e11af56b774", false},
-		"non-equal and non-empty empty node IDs": {"f84a7b9f4ae1e61a760f", "869152802e11af56b774", false},
-		"equal node IDs":                         {"f84a7b9f4ae1e61a760f", "f84a7b9f4ae1e61a760f", true},
-	}
-
-	for name, tc := range testCases {
-		tc := tc
-
-		t.Run(name, func(t *testing.T) {
-			require.Equal(t, tc.result, tc.inputA.Equal(tc.inputB))
-		})
-	}
-}

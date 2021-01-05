@@ -1,11 +1,11 @@
 package p2p
 
 import (
-	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -15,6 +15,11 @@ import (
 
 // NodeID is a hex-encoded crypto.Address.
 type NodeID string
+
+// NewNodeID returns a lowercased (normalized) NodeID.
+func NewNodeID(nodeID string) NodeID {
+	return NodeID(strings.ToLower(nodeID))
+}
 
 // NodeIDByteLength is the length of a crypto.Address. Currently only 20.
 // FIXME: support other length addresses?
@@ -33,21 +38,6 @@ func (id NodeID) Bytes() ([]byte, error) {
 		return nil, fmt.Errorf("invalid node ID encoding: %w", err)
 	}
 	return bz, nil
-}
-
-// Equal returns true if two NodeIDs are equal.
-func (id NodeID) Equal(other NodeID) bool {
-	bzA, err := id.Bytes()
-	if err != nil {
-		return false
-	}
-
-	bzB, err := other.Bytes()
-	if err != nil {
-		return false
-	}
-
-	return bytes.Equal(bzA, bzB)
 }
 
 // Validate validates the NodeID.
