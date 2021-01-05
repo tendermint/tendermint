@@ -69,7 +69,7 @@ func (e Endpoint) String() string {
 	if len(e.IP) > 0 {
 		u.Host = e.IP.String()
 		if e.Port > 0 {
-			u.Host += fmt.Sprintf(":%v", e.Port)
+			u.Host = net.JoinHostPort(u.Host, fmt.Sprintf("%v", e.Port))
 		}
 	} else if e.Path != "" {
 		u.Opaque = e.Path
