@@ -256,8 +256,13 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
 
 	trySyncTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
+	defer trySyncTicker.Stop()
+
 	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
+	defer statusUpdateTicker.Stop()
+
 	switchToConsensusTicker := time.NewTicker(switchToConsensusIntervalSeconds * time.Second)
+	defer switchToConsensusTicker.Stop()
 
 	blocksSynced := uint64(0)
 
