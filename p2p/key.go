@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -12,14 +13,21 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
-// NodeID is a hex-encoded crypto.Address.
-// FIXME: We should either ensure this is always lowercased, or add an Equal()
-// for comparison that decodes to the binary byte slice first.
-type NodeID string
-
 // NodeIDByteLength is the length of a crypto.Address. Currently only 20.
 // FIXME: support other length addresses?
 const NodeIDByteLength = crypto.AddressSize
+
+// NodeID is a hex-encoded crypto.Address.
+type NodeID string
+
+// NewNodeID returns a lowercased (normalized) NodeID.
+func NewNodeID(nodeID string) (NodeID, error) {
+	if _, err := NodeID(nodeID).Bytes(); err != nil {
+		return NodeID(""), err
+	}
+
+	return NodeID(strings.ToLower(nodeID)), nil
+}
 
 // NodeIDFromPubKey returns the noe ID corresponding to the given PubKey. It's
 // the hex-encoding of the pubKey.Address().
@@ -39,15 +47,23 @@ func (id NodeID) Bytes() ([]byte, error) {
 // Validate validates the NodeID.
 func (id NodeID) Validate() error {
 	if len(id) == 0 {
-		return errors.New("no ID")
+		return errors.New("empty node ID")
 	}
+
 	bz, err := id.Bytes()
 	if err != nil {
 		return err
 	}
+
 	if len(bz) != NodeIDByteLength {
-		return fmt.Errorf("invalid ID length - got %d, expected %d", len(bz), NodeIDByteLength)
+		return fmt.Errorf("invalid node ID length; got %d, expected %d", len(bz), NodeIDByteLength)
 	}
+
+	idStr := string(id)
+	if strings.ToLower(idStr) != idStr {
+		return fmt.Errorf("invalid node ID; must be lowercased")
+	}
+
 	return nil
 }
 

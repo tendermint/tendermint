@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	p2pmocks "github.com/tendermint/tendermint/p2p/mocks"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
@@ -50,7 +51,7 @@ func setup(t *testing.T, peers []p2p.Peer) *reactorShimTestSuite {
 	t.Helper()
 
 	rts := &reactorShimTestSuite{
-		shim: p2p.NewReactorShim("TestShim", testChannelShims),
+		shim: p2p.NewReactorShim(log.TestingLogger(), "TestShim", testChannelShims),
 	}
 
 	rts.sw = p2p.MakeSwitch(p2pCfg, 1, "testing", "123.123.123", func(_ int, sw *p2p.Switch) *p2p.Switch {
