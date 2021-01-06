@@ -345,14 +345,6 @@ func (r *Reactor) processPeerUpdates() {
 	}
 }
 
-// BroadcastStatusRequest broadcasts a StatusRequest envelope.
-func (r *Reactor) BroadcastStatusRequest() {
-	r.blockchainCh.Out() <- p2p.Envelope{
-		Broadcast: true,
-		Message:   &bcproto.StatusRequest{},
-	}
-}
-
 // SwitchToFastSync is called by the state sync reactor when switching to fast
 // sync.
 func (r *Reactor) SwitchToFastSync(state sm.State) error {
@@ -418,7 +410,12 @@ func (r *Reactor) poolRoutine(stateSynced bool) {
 
 			case <-statusUpdateTicker.C:
 				// ask for status updates
-				go r.BroadcastStatusRequest()
+				go func() {
+					r.blockchainCh.Out() <- p2p.Envelope{
+						Broadcast: true,
+						Message:   &bcproto.StatusRequest{},
+					}
+				}()
 			}
 		}
 	}()
