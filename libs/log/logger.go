@@ -17,7 +17,7 @@ type Logger interface {
 }
 
 // Hexadecimal is intended to convert a []byte
-// type to a value that is hexidecimal (uppercase).
+// type to a value that is hexadecimal (uppercase).
 type Hexadecimal struct {
 	b []byte
 }
