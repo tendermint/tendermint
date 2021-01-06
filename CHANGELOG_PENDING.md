@@ -25,4 +25,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### BUG FIXES
 
-- [p2p] \#5868 Fix inbound traffic statistics and rate limiting in `MConnection` (@erikgrinaker)
+

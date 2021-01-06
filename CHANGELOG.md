@@ -1,8 +1,8 @@
 # Changelog
 
-## v0.34.1-rc1
+## v0.34.1
 
-*December 23, 2020*
+*January 6, 2021*
 
 Special thanks to external contributors on this release:
 
@@ -27,6 +27,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [crypto] [\#5707](https://github.com/tendermint/tendermint/issues/5707) Fix infinite recursion in string formatting of Secp256k1 keys (@erikgrinaker)
 - [mempool] [\#5800](https://github.com/tendermint/tendermint/issues/5800) Disable `max-batch-bytes` (@melekes)
+- [p2p] [\#5868](https://github.com/tendermint/tendermint/issues/5868) Fix inbound traffic statistics and rate limiting in `MConnection` (@erikgrinaker)
 
 ## v0.34.0
 
