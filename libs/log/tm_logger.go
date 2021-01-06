@@ -1,7 +1,6 @@
 package log
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 
@@ -54,10 +53,17 @@ func NewTMLoggerWithColorFn(w io.Writer, colorFn func(keyvals ...interface{}) te
 func (l *tmLogger) Info(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Info(l.srcLogger)
 
-	// Encode all []byte types as base-16 (uppercase).
+	// This value will be marshalled accordingly to the
+	// String() implementation after passing log level
+	// check, and avoids the overhead of hex-encoding
+	// when the message won't get logged.
 	for i, val := range keyvals {
 		if b, ok := val.([]byte); ok {
-			keyvals[i] = bytes.ToUpper(b)
+			s := Hexadecimal{
+				b: b,
+			}
+
+			keyvals[i] = s
 		}
 	}
 
@@ -65,16 +71,24 @@ func (l *tmLogger) Info(msg string, keyvals ...interface{}) {
 		errLogger := kitlevel.Error(l.srcLogger)
 		kitlog.With(errLogger, msgKey, msg).Log("err", err) //nolint:errcheck // no need to check error again
 	}
+
 }
 
 // Debug logs a message at level Debug.
 func (l *tmLogger) Debug(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Debug(l.srcLogger)
 
-	// Encode all []byte types as base-16 (uppercase).
+	// This value will be marshalled accordingly to the
+	// String() implementation after passing log level
+	// check, and avoids the overhead of hex-encoding
+	// when the message won't get logged.
 	for i, val := range keyvals {
 		if b, ok := val.([]byte); ok {
-			keyvals[i] = bytes.ToUpper(b)
+			s := Hexadecimal{
+				b: b,
+			}
+
+			keyvals[i] = s
 		}
 	}
 
@@ -88,10 +102,17 @@ func (l *tmLogger) Debug(msg string, keyvals ...interface{}) {
 func (l *tmLogger) Error(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Error(l.srcLogger)
 
-	// Encode all []byte types as base-16 (uppercase).
+	// This value will be marshalled accordingly to the
+	// String() implementation after passing log level
+	// check, and avoids the overhead of hex-encoding
+	// when the message won't get logged.
 	for i, val := range keyvals {
 		if b, ok := val.([]byte); ok {
-			keyvals[i] = bytes.ToUpper(b)
+			s := Hexadecimal{
+				b: b,
+			}
+
+			keyvals[i] = s
 		}
 	}
 
