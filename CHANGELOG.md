@@ -20,7 +20,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [cli] [\#5786](https://github.com/tendermint/tendermint/issues/5786) deprecate snake_case commands for hyphen-case (@cmwaters)
 
 - Go API
-  - [libs/protoio] [\#5868](https://github.com/tendermint/tendermint/issues/5868) Return number of bytes read in `Reader.ReadMsg()` (@erikgrinaker
+  - [libs/protoio] [\#5868](https://github.com/tendermint/tendermint/issues/5868) Return number of bytes read in `Reader.ReadMsg()` (@erikgrinaker)
 
 ### IMPROVEMENTS
 
