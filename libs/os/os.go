@@ -46,14 +46,7 @@ func Exit(s string) {
 // EnsureDir ensures the given directory exists, creating it if necessary.
 // Errors if the path already exists as a non-directory.
 func EnsureDir(dir string, mode os.FileMode) error {
-	info, err := os.Stat(dir)
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to stat %q: %w", dir, err)
-	}
-	if info != nil && !info.IsDir() {
-		return fmt.Errorf("path %q already exists as a non-directory", dir)
-	}
-	err = os.MkdirAll(dir, mode)
+	err := os.MkdirAll(dir, mode)
 	if err != nil {
 		return fmt.Errorf("could not create directory %q: %w", dir, err)
 	}
