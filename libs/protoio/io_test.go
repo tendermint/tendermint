@@ -78,7 +78,7 @@ func iotest(writer protoio.WriteCloser, reader protoio.ReadCloser) error {
 	i := 0
 	for {
 		msg := &test.NinOptNative{}
-		if err := reader.ReadMsg(msg); err != nil {
+		if _, err := reader.ReadMsg(msg); err != nil {
 			if err == io.EOF {
 				break
 			}
@@ -150,7 +150,7 @@ func TestVarintError(t *testing.T) {
 	buf.Write([]byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f})
 	reader := protoio.NewDelimitedReader(buf, 1024*1024)
 	msg := &test.NinOptNative{}
-	err := reader.ReadMsg(msg)
+	_, err := reader.ReadMsg(msg)
 	if err == nil {
 		t.Fatalf("Expected error")
 	}
