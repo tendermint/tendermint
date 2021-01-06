@@ -393,13 +393,7 @@ func (r *Reactor) processChunkCh() {
 
 // processPeerUpdate processes a PeerUpdate, returning an error upon failing to
 // handle the PeerUpdate or if a panic is recovered.
-func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) (err error) {
-	defer func() {
-		if e := recover(); e != nil {
-			err = fmt.Errorf("panic in processing peer update: %v", e)
-		}
-	}()
-
+func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	r.Logger.Debug("received peer update", "peer", peerUpdate.PeerID, "status", peerUpdate.Status)
 
 	r.mtx.RLock()
@@ -414,8 +408,6 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) (err error) {
 			r.syncer.RemovePeer(peerUpdate.PeerID)
 		}
 	}
-
-	return err
 }
 
 // processPeerUpdates initiates a blocking process where we listen for and handle
@@ -427,14 +419,7 @@ func (r *Reactor) processPeerUpdates() {
 	for {
 		select {
 		case peerUpdate := <-r.peerUpdates.Updates():
-			if err := r.processPeerUpdate(peerUpdate); err != nil {
-				r.Logger.Error(
-					"failed to process peer update",
-					"peer", peerUpdate.PeerID,
-					"status", peerUpdate.Status,
-					"err", err,
-				)
-			}
+			r.processPeerUpdate(peerUpdate)
 
 		case <-r.closeCh:
 			r.Logger.Debug("stopped listening on peer updates channel; closing...")
