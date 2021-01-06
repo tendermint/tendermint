@@ -15,7 +15,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - P2P Protocol
 
 - Go API
-  - [libs/protoio] Return number of bytes read in `Reader.ReadMsg()` (@erikgrinaker)
 
 - Blockchain Protocol
 

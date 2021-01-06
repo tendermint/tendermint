@@ -19,6 +19,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - CLI/RPC/Config
   - [cli] [\#5786](https://github.com/tendermint/tendermint/issues/5786) deprecate snake_case commands for hyphen-case (@cmwaters)
 
+- Go API
+  - [libs/protoio] [\#5868](https://github.com/tendermint/tendermint/issues/5868) Return number of bytes read in `Reader.ReadMsg()` (@erikgrinaker
+
 ### IMPROVEMENTS
 
 - [mempool] [\#5813](https://github.com/tendermint/tendermint/issues/5813) Add `keep-invalid-txs-in-cache` config option. When set to true, mempool will keep invalid transactions in the cache (@p4u)
