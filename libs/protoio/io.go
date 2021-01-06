@@ -46,7 +46,7 @@ type WriteCloser interface {
 }
 
 type Reader interface {
-	ReadMsg(msg proto.Message) error
+	ReadMsg(msg proto.Message) (int, error)
 }
 
 type ReadCloser interface {
@@ -72,25 +72,28 @@ func getSize(v interface{}) (int, bool) {
 	}
 }
 
-// byteReader wraps an io.Reader and implements io.ByteReader. Reading one byte at a
-// time is extremely slow, but this is what Amino did already, and the caller can
-// wrap the reader in bufio.Reader if appropriate.
+// byteReader wraps an io.Reader and implements io.ByteReader, required by
+// binary.ReadUvarint(). Reading one byte at a time is extremely slow, but this
+// is what Amino did previously anyway, and the caller can wrap the underlying
+// reader in a bufio.Reader if appropriate.
 type byteReader struct {
-	io.Reader
-	bytes []byte
+	reader    io.Reader
+	buf       []byte
+	bytesRead int // keeps track of bytes read via ReadByte()
 }
 
 func newByteReader(r io.Reader) *byteReader {
 	return &byteReader{
-		Reader: r,
-		bytes:  make([]byte, 1),
+		reader: r,
+		buf:    make([]byte, 1),
 	}
 }
 
 func (r *byteReader) ReadByte() (byte, error) {
-	_, err := r.Read(r.bytes)
+	n, err := r.reader.Read(r.buf)
+	r.bytesRead += n
 	if err != nil {
-		return 0, err
+		return 0x00, err
 	}
-	return r.bytes[0], nil
+	return r.buf[0], nil
 }
