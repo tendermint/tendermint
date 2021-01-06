@@ -253,7 +253,8 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 	defer cancel()
 
 	dialer := net.Dialer{}
-	tcpConn, err := dialer.DialContext(ctx, "tcp", fmt.Sprintf("%v:%v", endpoint.IP, endpoint.Port))
+	tcpConn, err := dialer.DialContext(ctx, "tcp",
+		net.JoinHostPort(endpoint.IP.String(), fmt.Sprintf("%v", endpoint.Port)))
 	if err != nil {
 		return nil, err
 	}
@@ -538,7 +539,8 @@ func (c *mConnConnection) handshake() (NodeInfo, error) {
 		chErr <- err
 	}()
 	go func() {
-		chErr <- protoio.NewDelimitedReader(c.secretConn, MaxNodeInfoSize()).ReadMsg(&pbNodeInfo)
+		_, err := protoio.NewDelimitedReader(c.secretConn, MaxNodeInfoSize()).ReadMsg(&pbNodeInfo)
+		chErr <- err
 	}()
 	for i := 0; i < cap(chErr); i++ {
 		if err := <-chErr; err != nil {

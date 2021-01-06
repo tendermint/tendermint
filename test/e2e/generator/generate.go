@@ -27,10 +27,12 @@ var (
 	}
 
 	// The following specify randomly chosen values for testnet nodes.
-	nodeDatabases         = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
-	nodeABCIProtocols     = uniformChoice{"unix", "tcp", "grpc", "builtin"}
-	nodePrivvalProtocols  = uniformChoice{"file", "grpc", "tcp", "unix"}
-	nodeFastSyncs         = uniformChoice{"", "v0", "v2"}
+	nodeDatabases = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
+	// FIXME: grpc disabled due to https://github.com/tendermint/tendermint/issues/5439
+	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "builtin"} // "grpc"
+	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp", "grpc"}
+	// FIXME: v2 disabled due to flake
+	nodeFastSyncs         = uniformChoice{"", "v0"} // "v2"
 	nodeStateSyncs        = uniformChoice{false, true}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
@@ -42,7 +44,7 @@ var (
 		"restart":    0.1,
 	}
 	nodeMisbehaviors = weightedChoice{
-		// FIXME evidence disabled due to node panicing when not
+		// FIXME: evidence disabled due to node panicing when not
 		// having sufficient block history to process evidence.
 		// https://github.com/tendermint/tendermint/issues/5617
 		// misbehaviorOption{"double-prevote"}: 1,
