@@ -180,6 +180,7 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	if len(pool.peers) == 0 {
 		return false
 	}
+
 	// NOTE: we use maxPeerHeight - 1 because to sync block H requires block H+1
 	// to verify the LastCommit.
 	return pool.height >= (pool.maxPeerHeight - 1)

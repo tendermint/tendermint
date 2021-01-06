@@ -364,6 +364,9 @@ func (r *Reactor) SwitchToFastSync(state sm.State) error {
 // do.
 //
 // NOTE: Don't sleep in the FOR_LOOP or otherwise slow it down!
+//
+// TODO: Ensure this works nicely with stopping reactor and that no race
+// conditions or deadlocks exist.
 func (r *Reactor) poolRoutine(stateSynced bool) {
 	var (
 		trySyncTicker           = time.NewTicker(trySyncIntervalMS * time.Millisecond)
@@ -380,9 +383,6 @@ func (r *Reactor) poolRoutine(stateSynced bool) {
 
 		didProcessCh = make(chan struct{}, 1)
 	)
-	defer trySyncTicker.Stop()
-	defer statusUpdateTicker.Stop()
-	defer switchToConsensusTicker.Stop()
 
 	defer trySyncTicker.Stop()
 	defer statusUpdateTicker.Stop()
@@ -412,7 +412,6 @@ func (r *Reactor) poolRoutine(stateSynced bool) {
 				}
 
 			case <-statusUpdateTicker.C:
-				// ask for status updates
 				go func() {
 					r.blockchainCh.Out() <- p2p.Envelope{
 						Broadcast: true,
@@ -455,7 +454,9 @@ FOR_LOOP:
 				r.Logger.Error("failed to stop pool", "err", err)
 			}
 
-			r.consReactor.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)
+			if r.consReactor != nil {
+				r.consReactor.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)
+			}
 
 			break FOR_LOOP
 
