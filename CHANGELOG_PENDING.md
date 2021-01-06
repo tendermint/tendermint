@@ -35,7 +35,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [proto/p2p] Rename `NodeInfo.default_node_id` to `node_id` (@erikgrinaker)
   - [libs/os] `EnsureDir` now propagates IO errors and checks the file type (@erikgrinaker)
   - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
-  - [libs/protoio] Return number of bytes read in `Reader.ReadMsg()` (@erikgrinaker)
 
 - Blockchain Protocol
 
@@ -56,14 +55,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [cli] \#5772 `gen_node_key` output now contains node ID (`id` field) (@melekes)
 - [blockchain/v2] \#5774 Send status request when new peer joins (@melekes)
 - [consensus] \#5792 Deprecates the `time_iota_ms` consensus parameter, to reduce the bug surface. The parameter is no longer used. (@valardragon)
-- [mempool] \#5813 Add `keep-invalid-txs-in-cache` config option. When set to true, mempool will keep invalid transactions in the cache (@p4u)
 
 ### BUG FIXES
 
-- [p2p] \#5868 Fix inbound traffic statistics and rate limiting in `MConnection` (@erikgrinaker)
 - [types] \#5523 Change json naming of `PartSetHeader` within `BlockID` from `parts` to `part_set_header` (@marbar3778)
 - [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
 - [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
-- [crypto] \#5707 Fix infinite recursion in string formatting of Secp256k1 keys (@erikgrinaker)
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)
-- [mempool] \#5800 Disable `max-batch-bytes` (@melekes)
