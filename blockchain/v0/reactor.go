@@ -268,6 +268,8 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 		}
 	}()
 
+	r.Logger.Debug("received message", "message", envelope.Message, "peer", envelope.From)
+
 	switch chID {
 	case BlockchainChannel:
 		err = r.handleBlockchainMessage(envelope)
