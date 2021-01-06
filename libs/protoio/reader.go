@@ -85,10 +85,12 @@ func (r *varintReader) ReadMsg(msg proto.Message) (int, error) {
 		r.buf = make([]byte, length)
 	}
 	buf := r.buf[:length]
-	if nr, err := io.ReadFull(r.r, buf); err != nil {
-		return n + nr, err
+	nr, err := io.ReadFull(r.r, buf)
+	n += nr
+	if err != nil {
+		return n, err
 	}
-	return n + length, proto.Unmarshal(buf, msg)
+	return n, proto.Unmarshal(buf, msg)
 }
 
 func (r *varintReader) Close() error {
