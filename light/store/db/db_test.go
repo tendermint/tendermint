@@ -89,6 +89,9 @@ func Test_LightBlockBefore(t *testing.T) {
 	if assert.NotNil(t, h) {
 		assert.EqualValues(t, 2, h.Height)
 	}
+
+	_, err = dbStore.LightBlockBefore(2)
+	require.Error(t, err)
 }
 
 func Test_Prune(t *testing.T) {

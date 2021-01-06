@@ -73,12 +73,16 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 		return nil, ErrNetAddressNoID{addr}
 	}
 
-	// get ID
-	if err := NodeID(spl[0]).Validate(); err != nil {
+	id, err := NewNodeID(spl[0])
+	if err != nil {
 		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
 	}
-	var id NodeID
-	id, addrWithoutProtocol = NodeID(spl[0]), spl[1]
+
+	if err := id.Validate(); err != nil {
+		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
+	}
+
+	addrWithoutProtocol = spl[1]
 
 	// get host and port
 	host, portStr, err := net.SplitHostPort(addrWithoutProtocol)

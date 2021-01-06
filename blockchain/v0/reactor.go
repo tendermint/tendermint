@@ -380,6 +380,9 @@ func (r *Reactor) poolRoutine(stateSynced bool) {
 
 		didProcessCh = make(chan struct{}, 1)
 	)
+	defer trySyncTicker.Stop()
+	defer statusUpdateTicker.Stop()
+	defer switchToConsensusTicker.Stop()
 
 	defer trySyncTicker.Stop()
 	defer statusUpdateTicker.Stop()

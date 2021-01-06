@@ -68,9 +68,9 @@ type PeerUpdatesCh struct {
 }
 
 // NewPeerUpdates returns a reference to a new PeerUpdatesCh.
-func NewPeerUpdates() *PeerUpdatesCh {
+func NewPeerUpdates(updatesCh chan PeerUpdate) *PeerUpdatesCh {
 	return &PeerUpdatesCh{
-		updatesCh: make(chan PeerUpdate),
+		updatesCh: updatesCh,
 		doneCh:    make(chan struct{}),
 	}
 }
