@@ -539,7 +539,8 @@ func (c *mConnConnection) handshake() (NodeInfo, error) {
 		chErr <- err
 	}()
 	go func() {
-		chErr <- protoio.NewDelimitedReader(c.secretConn, MaxNodeInfoSize()).ReadMsg(&pbNodeInfo)
+		_, err := protoio.NewDelimitedReader(c.secretConn, MaxNodeInfoSize()).ReadMsg(&pbNodeInfo)
+		chErr <- err
 	}()
 	for i := 0; i < cap(chErr); i++ {
 		if err := <-chErr; err != nil {
