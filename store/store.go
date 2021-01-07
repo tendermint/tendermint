@@ -56,6 +56,9 @@ func (bs *BlockStore) Base() int64 {
 			return height
 		}
 	}
+	if err := iter.Error(); err != nil {
+		panic(err)
+	}
 
 	return 0
 }
@@ -76,6 +79,9 @@ func (bs *BlockStore) Height() int64 {
 		if err == nil {
 			return height
 		}
+	}
+	if err := iter.Error(); err != nil {
+		panic(err)
 	}
 
 	return 0
@@ -309,7 +315,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 
 	// remove block meta first as this is used to indicate whether the block exists.
 	// For this reason, we also use ony block meta as a measure of the amount of blocks pruned
-	pruned, err := bs.batchDelete(blockPartKey(0, 0), blockPartKey(height, 0), blockHashClause)
+	pruned, err := bs.batchDelete(blockMetaKey(0), blockMetaKey(height), blockHashClause)
 	if err != nil {
 		return pruned, err
 	}
@@ -390,6 +396,7 @@ func (bs *BlockStore) batchDelete(
 			iter.Next()
 		}
 	}
+	flushed = pruned
 	if err := iter.Error(); err != nil {
 		return flushed, err
 	}
