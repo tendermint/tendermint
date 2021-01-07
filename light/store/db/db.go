@@ -19,17 +19,17 @@ const (
 )
 
 type dbs struct {
-	db *dbm.PrefixDB
+	db dbm.DB
 
 	mtx  tmsync.RWMutex
 	size uint16
 }
 
-// New returns a Store that wraps any DB (with an optional prefix in case you
-// want to use one DB with many light clients).
-func New(db dbm.DB, prefix string) store.Store {
+// New returns a Store that wraps any DB
+// If you want to share one DB across many light clients consider using PrefixDB
+func New(db dbm.DB) store.Store {
 
-	lightStore := &dbs{db: dbm.NewPrefixDB(db, []byte(prefix))}
+	lightStore := &dbs{db: db}
 
 	// retrieve the size of the db
 	size := uint16(0)
@@ -219,7 +219,7 @@ func (s *dbs) LightBlockBefore(height int64) (*types.LightBlock, error) {
 // left.
 //
 // Safe for concurrent use by multiple goroutines.
-func (s *dbs) Prune(size uint16) (err error) {
+func (s *dbs) Prune(size uint16) error {
 	// 1) Check how many we need to prune.
 	s.mtx.RLock()
 	sSize := s.size
@@ -245,13 +245,13 @@ func (s *dbs) Prune(size uint16) (err error) {
 
 	for itr.Valid() && numToPrune > 0 {
 		if err = b.Delete(itr.Key()); err != nil {
-			return
+			return err
 		}
 		itr.Next()
 		numToPrune--
 	}
 	if err = itr.Error(); err != nil {
-		return
+		return err
 	}
 
 	// 3) // update size
@@ -260,13 +260,13 @@ func (s *dbs) Prune(size uint16) (err error) {
 	s.mtx.Unlock()
 
 	if wErr := b.Set(s.sizeKey(), marshalSize(size)); wErr != nil {
-		err = fmt.Errorf("failed to persist size: %w", wErr)
+		return fmt.Errorf("failed to persist size: %w", wErr)
 	}
 
 	// 4) write batch deletion to disk
 	err = b.WriteSync()
 	if err != nil {
-		return
+		return err
 	}
 
 	return nil

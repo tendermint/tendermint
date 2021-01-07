@@ -285,108 +285,48 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 		return 0, fmt.Errorf("height must be equal to or less than the latest height %d", bs.Height())
 	}
 
-	// remove block meta first as this is used to indicate whether the block exists.
-	// For this reason, we also use ony block meta as a measure of the amount of blocks pruned
-	pruned, err := bs.pruneBlockMetaAndHashes(height)
-	if err != nil {
-		return pruned, err
-	}
-
-	if err := bs.batchDelete(blockPartKey(1, 0), blockPartKey(height, 0)); err != nil {
-		return pruned, err
-	}
-
-	if err := bs.batchDelete(blockCommitKey(1), blockCommitKey(height)); err != nil {
-		return pruned, err
-	}
-
-	if err := bs.batchDelete(seenCommitKey(1), seenCommitKey(height)); err != nil {
-		return pruned, err
-	}
-
-	return pruned, nil
-}
-
-// pruneBlockMetaAndHashes prunes all block metas from the base height to the retainHeight
-// but before each, loads the hash from the block meta to also prune from the block hash table
-func (bs *BlockStore) pruneBlockMetaAndHashes(retainHeight int64) (uint64, error) {
-	iter, err := bs.db.Iterator(
-		blockMetaKey(1),
-		blockMetaKey(retainHeight),
-	)
-	if err != nil {
-		panic(err)
-	}
-	defer iter.Close()
-
-	batch := bs.db.NewBatch()
-	defer batch.Close()
-
-	pruned := uint64(0)
-	for iter.Valid() {
-		// delete the block meta
-		if err := batch.Delete(iter.Key()); err != nil {
-			return 0, fmt.Errorf("pruning error at key %X: %w", iter.Key(), err)
-		}
-
-		// load the block meta so we can also remove the block hash from the db
+	// when removing the block meta, use the hash to remove the hash key at the same time
+	blockHashClause := func(key, value []byte, batch dbm.Batch) error {
+		// unmarshal block meta
 		var pbbm = new(tmproto.BlockMeta)
-		bz := iter.Value()
-
-		err = proto.Unmarshal(bz, pbbm)
+		err := proto.Unmarshal(value, pbbm)
 		if err != nil {
-			panic(fmt.Errorf("unmarshal to tmproto.BlockMeta: %w", err))
+			return fmt.Errorf("unmarshal to tmproto.BlockMeta: %w", err)
 		}
 
 		blockMeta, err := types.BlockMetaFromProto(pbbm)
 		if err != nil {
-			panic(fmt.Errorf("error from proto blockMeta: %w", err))
+			return fmt.Errorf("error from proto blockMeta: %w", err)
 		}
 
+		// delete the hash key corresponding to the block meta's hash
 		if err := batch.Delete(blockHashKey(blockMeta.BlockID.Hash)); err != nil {
-			return 0, fmt.Errorf("pruning error at key %X: %w", iter.Key(), err)
+			return fmt.Errorf("failed to delete hash key: %X: %w", blockHashKey(blockMeta.BlockID.Hash), err)
 		}
 
-		pruned++
-		// avoid batches growing too large by flushing to database regularly
-		if pruned%1000 == 0 {
-			if err := iter.Error(); err != nil {
-				return pruned, err
-			}
-			if err := iter.Close(); err != nil {
-				return pruned, err
-			}
-
-			err := batch.Write()
-			if err != nil {
-				return pruned, fmt.Errorf("pruning error at key %X: %w", iter.Key(), err)
-			}
-			if err := batch.Close(); err != nil {
-				return pruned, err
-			}
-
-			iter, err = bs.db.Iterator(
-				blockMetaKey(1),
-				blockMetaKey(retainHeight),
-			)
-			if err != nil {
-				panic(err)
-			}
-			defer iter.Close()
-
-			batch = bs.db.NewBatch()
-			defer batch.Close()
-		} else {
-			iter.Next()
-		}
+		return nil
 	}
-	if err := iter.Error(); err != nil {
+
+	// remove block meta first as this is used to indicate whether the block exists.
+	// For this reason, we also use ony block meta as a measure of the amount of blocks pruned
+	pruned, err := bs.batchDelete(blockPartKey(0, 0), blockPartKey(height, 0), blockHashClause)
+	if err != nil {
 		return pruned, err
 	}
 
-	err = batch.WriteSync()
-	if err != nil {
-		return pruned, fmt.Errorf("pruning error at key %X: %w", iter.Key(), err)
+	// for the rest of the block data we just want to remove it
+	emptyClause := func(key, value []byte, batch dbm.Batch) error { return nil }
+
+	if _, err := bs.batchDelete(blockPartKey(0, 0), blockPartKey(height, 0), emptyClause); err != nil {
+		return pruned, err
+	}
+
+	if _, err := bs.batchDelete(blockCommitKey(0), blockCommitKey(height), emptyClause); err != nil {
+		return pruned, err
+	}
+
+	if _, err := bs.batchDelete(seenCommitKey(0), seenCommitKey(height), emptyClause); err != nil {
+		return pruned, err
 	}
 
 	return pruned, nil
@@ -394,7 +334,10 @@ func (bs *BlockStore) pruneBlockMetaAndHashes(retainHeight int64) (uint64, error
 
 // batchDelete is a generic function for deleting a range of values based on the lowest
 // height up to but excluding retainHeight
-func (bs *BlockStore) batchDelete(start []byte, end []byte) error {
+func (bs *BlockStore) batchDelete(
+	start []byte,
+	end []byte,
+	clause func(key, value []byte, batch dbm.Batch) error) (uint64, error) {
 	iter, err := bs.db.Iterator(start, end)
 	if err != nil {
 		panic(err)
@@ -405,28 +348,35 @@ func (bs *BlockStore) batchDelete(start []byte, end []byte) error {
 	defer batch.Close()
 
 	pruned := uint64(0)
+	flushed := pruned
 	for iter.Valid() {
-		if err := batch.Delete(iter.Key()); err != nil {
-			return fmt.Errorf("pruning error at key %X: %w", iter.Key(), err)
+		key := iter.Key()
+		if err := clause(key, iter.Value(), batch); err != nil {
+			return flushed, err
+		}
+
+		if err := batch.Delete(key); err != nil {
+			return flushed, fmt.Errorf("pruning error at key %X: %w", iter.Key(), err)
 		}
 
 		pruned++
 		// avoid batches growing too large by flushing to database regularly
 		if pruned%1000 == 0 {
 			if err := iter.Error(); err != nil {
-				return err
+				return flushed, err
 			}
 			if err := iter.Close(); err != nil {
-				return err
+				return flushed, err
 			}
 
 			err := batch.Write()
 			if err != nil {
-				return fmt.Errorf("pruning error at key %X: %w", iter.Key(), err)
+				return flushed, fmt.Errorf("pruning error at key %X: %w", iter.Key(), err)
 			}
 			if err := batch.Close(); err != nil {
-				return err
+				return flushed, err
 			}
+			flushed = pruned
 
 			iter, err = bs.db.Iterator(start, end)
 			if err != nil {
@@ -441,15 +391,15 @@ func (bs *BlockStore) batchDelete(start []byte, end []byte) error {
 		}
 	}
 	if err := iter.Error(); err != nil {
-		return err
+		return flushed, err
 	}
 
 	err = batch.WriteSync()
 	if err != nil {
-		return fmt.Errorf("pruning error at key %X: %w", iter.Key(), err)
+		return flushed, fmt.Errorf("pruning error at key %X: %w", iter.Key(), err)
 	}
 
-	return nil
+	return flushed, nil
 }
 
 // SaveBlock persists the given block, blockParts, and seenCommit to the underlying db.
@@ -507,7 +457,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	// NOTE: we can delete this at a later height
 	pbsc := seenCommit.ToProto()
 	seenCommitBytes := mustEncode(pbsc)
-	if err := bs.db.Set(seenCommitKey(height), seenCommitBytes); err != nil {
+	if err := bs.db.SetSync(seenCommitKey(height), seenCommitBytes); err != nil {
 		panic(err)
 	}
 
