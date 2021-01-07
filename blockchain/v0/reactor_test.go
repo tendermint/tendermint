@@ -246,7 +246,7 @@ func simulateRouter(primary *reactorTestSuite, suites []*reactorTestSuite) {
 			if envelope.Broadcast {
 				for _, s := range suites {
 					// broadcast to everyone except source
-					if s.peerID != envelope.From {
+					if s.peerID != primary.peerID {
 						s.blockchainInCh <- p2p.Envelope{
 							From:    primary.peerID,
 							To:      s.peerID,
@@ -267,8 +267,8 @@ func simulateRouter(primary *reactorTestSuite, suites []*reactorTestSuite) {
 	}()
 
 	go func() {
-		for range primary.blockchainPeerErrCh {
-			// drop peer errors
+		for pErr := range primary.blockchainPeerErrCh {
+			primary.reactor.Logger.Debug("dropped peer error", "err", pErr.Err)
 		}
 	}()
 }
