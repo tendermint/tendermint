@@ -20,7 +20,10 @@ import (
 
 var _ txindex.TxIndexer = (*TxIndex)(nil)
 
-// TxIndex is the simplest possible indexer, backed by key-value storage (levelDB).
+// TxIndex is the simplest possible indexer
+// It is backed by two kv stores:
+// 		1. txhash - result  (primary key)
+//    2. event - txhash   (secondary key)
 type TxIndex struct {
 	store dbm.DB
 }
@@ -39,7 +42,7 @@ func (txi *TxIndex) Get(hash []byte) (*abci.TxResult, error) {
 		return nil, txindex.ErrorEmptyHash
 	}
 
-	rawBytes, err := txi.store.Get(hash)
+	rawBytes, err := txi.store.Get(primaryKey(hash))
 	if err != nil {
 		panic(err)
 	}
@@ -84,7 +87,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 			return err
 		}
 		// index by hash (always)
-		err = storeBatch.Set(hash, rawBytes)
+		err = storeBatch.Set(primaryKey(hash), rawBytes)
 		if err != nil {
 			return err
 		}
@@ -120,7 +123,7 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 		return err
 	}
 	// index by hash (always)
-	err = b.Set(hash, rawBytes)
+	err = b.Set(primaryKey(hash), rawBytes)
 	if err != nil {
 		return err
 	}
@@ -142,6 +145,10 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Ba
 
 			// index if `index: true` is set
 			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
+			// ensure event does not conflict with a reserved prefix key
+			if compositeTag == types.TxHashKey || compositeTag == types.TxHeightKey {
+				continue
+			}
 			if attr.GetIndex() {
 				err := store.Set(keyFromEvent(compositeTag, attr.Value, result), hash)
 				if err != nil {
@@ -612,8 +619,8 @@ LOOP:
 // ##########################  Keys  #############################
 //
 // The indexer has two types of kv stores:
-// 		1. txhash - result
-//    2. event - txhash
+// 		1. txhash - result  (primary key)
+//    2. event - txhash   (secondary key)
 //
 // The event key can be decomposed into 4 parts.
 //    1. A composite key which can be any string.
@@ -623,8 +630,21 @@ LOOP:
 //    3. The height of the Tx that aligns with the key and value.
 //    4. The index of the Tx that aligns with the key and value
 
-// The event key
-func key(compositeKey, value string, height int64, index uint32) []byte {
+// the hash/primary key
+func primaryKey(hash []byte) []byte {
+	key, err := orderedcode.Append(
+		nil,
+		types.TxHashKey,
+		string(hash),
+	)
+	if err != nil {
+		panic(err)
+	}
+	return key
+}
+
+// The event/secondary key
+func secondaryKey(compositeKey, value string, height int64, index uint32) []byte {
 	key, err := orderedcode.Append(
 		nil,
 		compositeKey,
@@ -657,11 +677,11 @@ func parseValueFromKey(key []byte) (string, error) {
 }
 
 func keyFromEvent(compositeKey string, value []byte, result *abci.TxResult) []byte {
-	return key(compositeKey, string(value), result.Height, result.Index)
+	return secondaryKey(compositeKey, string(value), result.Height, result.Index)
 }
 
 func keyFromHeight(result *abci.TxResult) []byte {
-	return key(types.TxHeightKey, fmt.Sprintf("%d", result.Height), result.Height, result.Index)
+	return secondaryKey(types.TxHeightKey, fmt.Sprintf("%d", result.Height), result.Height, result.Index)
 }
 
 // Prefixes: these represent an initial part of the key and are used by iterators to iterate over a small
