@@ -46,7 +46,7 @@ func (bs *BlockStore) Base() int64 {
 		blockMetaKey(1<<63-1),
 	)
 	if err != nil {
-		return 0
+		panic(err)
 	}
 	defer iter.Close()
 
@@ -70,7 +70,7 @@ func (bs *BlockStore) Height() int64 {
 		blockMetaKey(1<<63-1),
 	)
 	if err != nil {
-		return 0
+		panic(err)
 	}
 	defer iter.Close()
 
