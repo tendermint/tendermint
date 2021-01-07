@@ -232,7 +232,7 @@ func (store dbStore) Bootstrap(state State) error {
 // PruneStates deletes states up to the height specified (exclusive). It is not
 // guaranteed to delete all states, since the last checkpointed state and states being pointed to by
 // e.g. `LastHeightChanged` must remain. The state at retain height must also exist.
-// Pruning is done in ascending order.
+// Pruning is done in descending order.
 func (store dbStore) PruneStates(retainHeight int64) error {
 	if retainHeight <= 0 {
 		return fmt.Errorf("height %v must be greater than 0", retainHeight)
@@ -335,7 +335,7 @@ func (store dbStore) pruneABCIResponses(height int64) error {
 func (store dbStore) batchDelete(start []byte, end []byte, exception []byte) error {
 	iter, err := store.db.ReverseIterator(start, end)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("iterator error: %w", err)
 	}
 	defer iter.Close()
 
@@ -385,7 +385,7 @@ func (store dbStore) batchDelete(start []byte, end []byte, exception []byte) err
 		}
 	}
 	if err := iter.Error(); err != nil {
-		return err
+		return fmt.Errorf("iterator error: %w", err)
 	}
 
 	err = batch.WriteSync()
