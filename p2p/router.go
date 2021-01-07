@@ -110,7 +110,7 @@ func NewRouter(logger log.Logger, transports map[Protocol]Transport, peers []Pee
 		channelQueues:   map[ChannelID]queue{},
 		channelMessages: map[ChannelID]proto.Message{},
 		peerQueues:      map[NodeID]queue{},
-		peerUpdatesCh:   make(chan PeerUpdate, 1),
+		peerUpdatesCh:   make(chan PeerUpdate),
 		peerUpdatesSubs: map[*PeerUpdatesCh]*PeerUpdatesCh{},
 	}
 	router.BaseService = service.NewBaseService(logger, "router", router)
@@ -136,7 +136,7 @@ func (r *Router) OpenChannel(id ChannelID, messageType proto.Message) (*Channel,
 	defer r.channelMtx.Unlock()
 
 	if _, ok := r.channelQueues[id]; ok {
-		return nil, fmt.Errorf("channel %v already exist", id)
+		return nil, fmt.Errorf("channel %v already exists", id)
 	}
 	r.channelQueues[id] = queue
 	r.channelMessages[id] = messageType
@@ -176,7 +176,7 @@ func (r *Router) routeChannel(channel *Channel) {
 				}
 				envelope.Message = wrapper
 			}
-			envelope.channel = channel.id
+			envelope.channelID = channel.id
 
 			if envelope.Broadcast {
 				r.peerMtx.RLock()
@@ -203,14 +203,16 @@ func (r *Router) routeChannel(channel *Channel) {
 				peerQueue, ok := r.peerQueues[envelope.To]
 				r.peerMtx.RUnlock()
 				if !ok {
-					r.logger.Error("dropping message for non-connected peer", "peer", envelope.To)
+					r.logger.Error("dropping message for non-connected peer",
+						"peer", envelope.To, "channel", channel.id)
 					continue
 				}
 
 				select {
 				case peerQueue.enqueue() <- envelope:
 				case <-peerQueue.closed():
-					r.logger.Error("dropping message for non-connected peer", "peer", envelope.To)
+					r.logger.Error("dropping message for non-connected peer",
+						"peer", envelope.To, "channel", channel.id)
 				case <-r.stopCh:
 					return
 				}
@@ -250,11 +252,11 @@ func (r *Router) acceptPeers(transport Transport) {
 		switch err {
 		case nil:
 		case ErrTransportClosed{}, io.EOF:
-			r.logger.Info("transport closed, stopping accept routine", "transport", transport)
+			r.logger.Info("transport closed; stopping accept routine", "transport", transport)
 			return
 		default:
 			r.logger.Error("failed to accept connection", "transport", transport, "err", err)
-			return
+			continue
 		}
 
 		peerID := conn.NodeInfo().NodeID
@@ -331,7 +333,7 @@ func (r *Router) dialPeers() {
 }
 
 // dialPeer attempts to connect to a peer.
-func (r *Router) dialPeer(peer *storePeer) (Connection, error) {
+func (r *Router) dialPeer(peer *peerInfo) (Connection, error) {
 	ctx := context.Background()
 
 	for _, address := range peer.Addresses {
@@ -367,7 +369,8 @@ func (r *Router) dialPeer(peer *storePeer) (Connection, error) {
 // routePeer routes inbound messages from a peer to channels, and also sends
 // outbound queued messages to the peer. It will close the connection and send
 // queue, using this as a signal to coordinate the internal receivePeer() and
-// sendPeer() goroutines.
+// sendPeer() goroutines. It blocks until the peer is done, e.g. when the
+// connection or queue is closed.
 func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
 	// FIXME: Peer updates should probably be handled by the peer store.
 	r.peerUpdatesCh <- PeerUpdate{
@@ -393,6 +396,8 @@ func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
 	_ = conn.Close()
 	sendQueue.close()
 	if e := <-resultsCh; err == nil {
+		// The first err was nil, so we update it with the second result,
+		// which may or may not be nil.
 		err = e
 	}
 	switch err {
@@ -436,7 +441,7 @@ func (r *Router) receivePeer(peerID NodeID, conn Connection) error {
 
 		select {
 		// FIXME: ReceiveMessage() should return ChannelID.
-		case queue.enqueue() <- Envelope{channel: ChannelID(chID), From: peerID, Message: msg}:
+		case queue.enqueue() <- Envelope{channelID: ChannelID(chID), From: peerID, Message: msg}:
 			r.logger.Debug("received message", "peer", peerID, "message", msg)
 		case <-queue.closed():
 			r.logger.Error("channel closed, dropping message", "peer", peerID, "channel", chID)
@@ -458,7 +463,7 @@ func (r *Router) sendPeer(peerID NodeID, conn Connection, queue queue) error {
 			}
 
 			// FIXME: SendMessage() should take ChannelID.
-			_, err = conn.SendMessage(byte(envelope.channel), bz)
+			_, err = conn.SendMessage(byte(envelope.channelID), bz)
 			if err != nil {
 				return err
 			}
@@ -534,7 +539,6 @@ func (r *Router) OnStart() error {
 
 // OnStop implements service.Service.
 func (r *Router) OnStop() {
-
 	// Collect all active queues, so we can wait for them to close.
 	queues := []queue{}
 	r.channelMtx.RLock()

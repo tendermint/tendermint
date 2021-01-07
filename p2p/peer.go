@@ -77,16 +77,15 @@ func (a PeerAddress) Resolve(ctx context.Context) ([]Endpoint, error) {
 		path += "#" + a.RawFragment
 	}
 
-	endpoints := make([]Endpoint, 0, len(ips))
-	for _, ip := range ips {
-		endpoint := Endpoint{
-			PeerID:   NodeID(a.User.Username()),
+	endpoints := make([]Endpoint, len(ips))
+	for i, ip := range ips {
+		endpoints[i] = Endpoint{
+			PeerID:   a.NodeID(),
 			Protocol: Protocol(a.Scheme),
 			IP:       ip,
 			Port:     port,
 			Path:     path,
 		}
-		endpoints = append(endpoints, endpoint)
 	}
 	return endpoints, nil
 }
@@ -225,14 +224,14 @@ type PeerUpdate struct {
 // making sure we only have a single connection (in either direction) to peers.
 type peerStore struct {
 	mtx     sync.Mutex
-	peers   map[NodeID]*storePeer
+	peers   map[NodeID]*peerInfo
 	claimed map[NodeID]bool
 }
 
 // newPeerStore creates a new peer store.
 func newPeerStore() *peerStore {
 	return &peerStore{
-		peers:   map[NodeID]*storePeer{},
+		peers:   map[NodeID]*peerInfo{},
 		claimed: map[NodeID]bool{},
 	}
 }
@@ -262,7 +261,7 @@ func (s *peerStore) Add(address PeerAddress) error {
 // Claim claims a peer. The caller has exclusive ownership of the peer, and must
 // return it by calling Return(). Returns nil if the peer could not be claimed.
 // If the peer is not known to the store, it is registered and claimed.
-func (s *peerStore) Claim(id NodeID) *storePeer {
+func (s *peerStore) Claim(id NodeID) *peerInfo {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	if s.claimed[id] {
@@ -282,7 +281,7 @@ func (s *peerStore) Claim(id NodeID) *storePeer {
 // peer will not be dispensed again until returned.
 //
 // Returns nil if no appropriate peers are available.
-func (s *peerStore) Dispense() *storePeer {
+func (s *peerStore) Dispense() *peerInfo {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	for key, peer := range s.peers {
@@ -305,18 +304,18 @@ func (s *peerStore) Return(id NodeID) {
 	delete(s.claimed, id)
 }
 
-// storePeer is a peer stored in the peerStore.
+// peerInfo is a peer stored in the peerStore.
 //
 // FIXME: This should be renamed peer or something else once the old peer is
 // removed.
-type storePeer struct {
+type peerInfo struct {
 	ID        NodeID
 	Addresses []PeerAddress
 }
 
 // newStorePeer creates a new storePeer.
-func newStorePeer(id NodeID) *storePeer {
-	return &storePeer{
+func newStorePeer(id NodeID) *peerInfo {
+	return &peerInfo{
 		ID:        id,
 		Addresses: []PeerAddress{},
 	}
@@ -324,7 +323,7 @@ func newStorePeer(id NodeID) *storePeer {
 
 // AddAddress adds an address to a peer, unless it already exists. It does not
 // validate the address.
-func (p *storePeer) AddAddress(address PeerAddress) {
+func (p *peerInfo) AddAddress(address PeerAddress) {
 	// We just do a linear search for now.
 	addressString := address.String()
 	for _, a := range p.Addresses {

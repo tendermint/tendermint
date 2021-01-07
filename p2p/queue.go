@@ -31,6 +31,8 @@ type fifoQueue struct {
 	closeOnce sync.Once
 }
 
+var _ queue = (*fifoQueue)(nil)
+
 func newFIFOQueue() *fifoQueue {
 	return &fifoQueue{
 		queueCh: make(chan Envelope),

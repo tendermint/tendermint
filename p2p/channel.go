@@ -17,13 +17,13 @@ type Envelope struct {
 	Message   proto.Message // Payload.
 
 	// For internal use in the Router.
-	channel ChannelID
+	channelID ChannelID
 }
 
 // Strip strips internal information from the envelope. Primarily used for
 // testing, such that returned envelopes can be compared with literals.
 func (e Envelope) Strip() Envelope {
-	e.channel = 0
+	e.channelID = 0
 	return e
 }
 

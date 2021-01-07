@@ -17,7 +17,9 @@ const (
 
 // Transport is an arbitrary mechanism for exchanging bytes with a peer.
 type Transport interface {
-	// Accept waits for the next inbound connection on a listening endpoint.
+	// Accept waits for the next inbound connection on a listening endpoint. If
+	// this returns io.EOF or ErrTransportClosed the transport should be
+	// considered closed and further Accept() calls are futile.
 	Accept(context.Context) (Connection, error)
 
 	// Dial creates an outbound connection to an endpoint.
