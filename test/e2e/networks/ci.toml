@@ -51,7 +51,7 @@ seeds = ["seed01"]
 database = "badgerdb"
 # FIXME: should be grpc, disabled due to https://github.com/tendermint/tendermint/issues/5439
 #abci_protocol = "grpc"
-privval_protocol = "unix"
+privval_protocol = "grpc"
 persist_interval = 3
 retain_blocks = 3
 perturb = ["kill"]

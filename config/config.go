@@ -204,6 +204,16 @@ type BaseConfig struct { //nolint: maligned
 	// connections from an external PrivValidator process
 	PrivValidatorListenAddr string `mapstructure:"priv-validator-laddr"`
 
+	// Client certificate generated while creating needed files for secure connection.
+	// If a remote validator address is provided but no certificate, the connection will be insecure
+	PrivValidatorClientCertificate string `mapstructure:"priv-validator-client-certificate-file"`
+
+	// Client key generated while creating certificates for secure connection
+	PrivValidatorClientKey string `mapstructure:"priv-validator-client-key-file"`
+
+	// Path Root Certificate Authority used to sign both client and server certificates
+	PrivValidatorRootCA string `mapstructure:"priv-validator-root-ca-file"`
+
 	// A JSON file containing the private key to use for p2p authenticated encryption
 	NodeKey string `mapstructure:"node-key-file"`
 
@@ -253,6 +263,21 @@ func (cfg BaseConfig) GenesisFile() string {
 	return rootify(cfg.Genesis, cfg.RootDir)
 }
 
+// PrivValidatorClientKeyFile returns the full path to the priv_validator_key.json file
+func (cfg BaseConfig) PrivValidatorClientKeyFile() string {
+	return rootify(cfg.PrivValidatorClientKey, cfg.RootDir)
+}
+
+// PrivValidatorClientCertificateFile returns the full path to the priv_validator_key.json file
+func (cfg BaseConfig) PrivValidatorClientCertificateFile() string {
+	return rootify(cfg.PrivValidatorClientCertificate, cfg.RootDir)
+}
+
+// PrivValidatorCertificateAuthorityFile returns the full path to the priv_validator_key.json file
+func (cfg BaseConfig) PrivValidatorRootCAFile() string {
+	return rootify(cfg.PrivValidatorRootCA, cfg.RootDir)
+}
+
 // PrivValidatorKeyFile returns the full path to the priv_validator_key.json file
 func (cfg BaseConfig) PrivValidatorKeyFile() string {
 	return rootify(cfg.PrivValidatorKey, cfg.RootDir)
@@ -271,6 +296,19 @@ func (cfg BaseConfig) NodeKeyFile() string {
 // DBDir returns the full path to the database directory
 func (cfg BaseConfig) DBDir() string {
 	return rootify(cfg.DBPath, cfg.RootDir)
+}
+
+func (cfg *BaseConfig) ArePrivValidatorClientSecurityOptionsPresent() bool {
+	switch {
+	case cfg.PrivValidatorRootCA == "":
+		return false
+	case cfg.PrivValidatorClientKey == "":
+		return false
+	case cfg.PrivValidatorClientCertificate == "":
+		return false
+	default:
+		return true
+	}
 }
 
 // ValidateBasic performs basic validation (checking param bounds, etc.) and

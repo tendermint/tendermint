@@ -19,6 +19,11 @@ func TestProtocolAndAddress(t *testing.T) {
 			"mydomain:80",
 		},
 		{
+			"grpc://mydomain:80",
+			"grpc",
+			"mydomain:80",
+		},
+		{
 			"mydomain:80",
 			"tcp",
 			"mydomain:80",

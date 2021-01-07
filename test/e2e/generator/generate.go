@@ -30,7 +30,7 @@ var (
 	nodeDatabases = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
 	// FIXME: grpc disabled due to https://github.com/tendermint/tendermint/issues/5439
 	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "builtin"} // "grpc"
-	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp"}
+	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp", "grpc"}
 	// FIXME: v2 disabled due to flake
 	nodeFastSyncs         = uniformChoice{"", "v0"} // "v2"
 	nodeStateSyncs        = uniformChoice{false, true}
