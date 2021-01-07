@@ -688,24 +688,30 @@ func keyFromHeight(result *abci.TxResult) []byte {
 // section of the kv store during searches.
 
 func prefixFromCompositeKey(compositeKey string) []byte {
-	key, _ := orderedcode.Append(nil, compositeKey)
+	key, err := orderedcode.Append(nil, compositeKey)
+	if err != nil {
+		panic(err)
+	}
 	return key
 }
 
 func prefixFromCompositeKeyAndValue(compositeKey, value string) []byte {
-	key, _ := orderedcode.Append(nil, compositeKey, value)
-	return key
-}
-
-func prefixFromCompositeKeyValueAndHeight(compositeKey, value string, height int64) []byte {
-	key, _ := orderedcode.Append(nil, compositeKey, value, height)
+	key, err := orderedcode.Append(nil, compositeKey, value)
+	if err != nil {
+		panic(err)
+	}
 	return key
 }
 
 // a small utility function for getting a keys prefix based on a condition and a height
 func prefixForCondition(c query.Condition, height int64) []byte {
+	key := prefixFromCompositeKeyAndValue(c.CompositeKey, fmt.Sprintf("%v", c.Operand))
 	if height > 0 {
-		return prefixFromCompositeKeyValueAndHeight(c.CompositeKey, fmt.Sprintf("%v", c.Operand), height)
+		var err error
+		key, err = orderedcode.Append(key, height)
+		if err != nil {
+			panic(err)
+		}
 	}
-	return prefixFromCompositeKeyAndValue(c.CompositeKey, fmt.Sprintf("%v", c.Operand))
+	return key
 }
