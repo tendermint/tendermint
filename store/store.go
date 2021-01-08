@@ -292,7 +292,7 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 	}
 
 	// when removing the block meta, use the hash to remove the hash key at the same time
-	blockHashClause := func(key, value []byte, batch dbm.Batch) error {
+	removeBlockHash := func(key, value []byte, batch dbm.Batch) error {
 		// unmarshal block meta
 		var pbbm = new(tmproto.BlockMeta)
 		err := proto.Unmarshal(value, pbbm)
@@ -315,23 +315,20 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 
 	// remove block meta first as this is used to indicate whether the block exists.
 	// For this reason, we also use ony block meta as a measure of the amount of blocks pruned
-	pruned, err := bs.batchDelete(blockMetaKey(0), blockMetaKey(height), blockHashClause)
+	pruned, err := bs.batchDelete(blockMetaKey(0), blockMetaKey(height), removeBlockHash)
 	if err != nil {
 		return pruned, err
 	}
 
-	// for the rest of the block data we just want to remove it
-	emptyClause := func(key, value []byte, batch dbm.Batch) error { return nil }
-
-	if _, err := bs.batchDelete(blockPartKey(0, 0), blockPartKey(height, 0), emptyClause); err != nil {
+	if _, err := bs.batchDelete(blockPartKey(0, 0), blockPartKey(height, 0), nil); err != nil {
 		return pruned, err
 	}
 
-	if _, err := bs.batchDelete(blockCommitKey(0), blockCommitKey(height), emptyClause); err != nil {
+	if _, err := bs.batchDelete(blockCommitKey(0), blockCommitKey(height), nil); err != nil {
 		return pruned, err
 	}
 
-	if _, err := bs.batchDelete(seenCommitKey(0), seenCommitKey(height), emptyClause); err != nil {
+	if _, err := bs.batchDelete(seenCommitKey(0), seenCommitKey(height), nil); err != nil {
 		return pruned, err
 	}
 
@@ -339,11 +336,13 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 }
 
 // batchDelete is a generic function for deleting a range of values based on the lowest
-// height up to but excluding retainHeight
+// height up to but excluding retainHeight. For each key/value pair, an optional hook can be
+// executed before the deletion itself is made
 func (bs *BlockStore) batchDelete(
 	start []byte,
 	end []byte,
-	clause func(key, value []byte, batch dbm.Batch) error) (uint64, error) {
+	preDeletionHook func(key, value []byte, batch dbm.Batch) error,
+) (uint64, error) {
 	iter, err := bs.db.Iterator(start, end)
 	if err != nil {
 		panic(err)
@@ -357,8 +356,10 @@ func (bs *BlockStore) batchDelete(
 	flushed := pruned
 	for iter.Valid() {
 		key := iter.Key()
-		if err := clause(key, iter.Value(), batch); err != nil {
-			return flushed, err
+		if preDeletionHook != nil {
+			if err := preDeletionHook(key, iter.Value(), batch); err != nil {
+				return flushed, err
+			}
 		}
 
 		if err := batch.Delete(key); err != nil {
