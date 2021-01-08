@@ -295,8 +295,19 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 
 	require.Equal(t, maxBlockHeight, testSuites[0].reactor.store.Height())
 
-	simulateRouter(testSuites[0], testSuites, true)
-	simulateRouter(testSuites[1], testSuites, true)
+	for _, s := range testSuites {
+		simulateRouter(s, testSuites, true)
+
+		// connect reactor to every other reactor
+		for _, ss := range testSuites {
+			if s.peerID != ss.peerID {
+				s.peerUpdatesCh <- p2p.PeerUpdate{
+					Status: p2p.PeerStatusUp,
+					PeerID: ss.peerID,
+				}
+			}
+		}
+	}
 
 	testCases := []struct {
 		height   int64
@@ -309,14 +320,13 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 	}
 
 	secondaryPool := testSuites[1].reactor.pool
-
-	for {
-		if secondaryPool.MaxPeerHeight() > 0 && secondaryPool.IsCaughtUp() {
-			break
-		}
-
-		time.Sleep(10 * time.Millisecond)
-	}
+	require.Eventually(
+		t,
+		func() bool { return secondaryPool.MaxPeerHeight() > 0 && secondaryPool.IsCaughtUp() },
+		10*time.Second,
+		10*time.Millisecond,
+		"expected node to be fully synced",
+	)
 
 	for _, tc := range testCases {
 		block := testSuites[1].reactor.store.LoadBlock(tc.height)
@@ -332,7 +342,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 
-	maxBlockHeight := int64(50) // int64(148)
+	maxBlockHeight := int64(148)
 	genDoc, privVals := randGenesisDoc(config, 1, false, 30)
 
 	testSuites := []*reactorTestSuite{
@@ -359,20 +369,22 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 		}
 	}
 
-	for {
-		caughtUp := true
-		for _, s := range testSuites[1 : len(testSuites)-1] {
-			if s.reactor.pool.MaxPeerHeight() == 0 || !s.reactor.pool.IsCaughtUp() {
-				caughtUp = false
+	require.Eventually(
+		t,
+		func() bool {
+			caughtUp := true
+			for _, s := range testSuites[1 : len(testSuites)-1] {
+				if s.reactor.pool.MaxPeerHeight() == 0 || !s.reactor.pool.IsCaughtUp() {
+					caughtUp = false
+				}
 			}
-		}
 
-		if caughtUp {
-			break
-		}
-
-		time.Sleep(10 * time.Millisecond)
-	}
+			return caughtUp
+		},
+		10*time.Second,
+		10*time.Millisecond,
+		"expected all nodes to be fully synced",
+	)
 
 	for _, s := range testSuites[:len(testSuites)-1] {
 		require.Len(t, s.reactor.pool.peers, 3)
@@ -397,16 +409,19 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	}
 
 	// wait for the new peer to catch up and become fully synced
-	for {
-		if newSuite.reactor.pool.MaxPeerHeight() > 0 && newSuite.reactor.pool.IsCaughtUp() {
-			break
-		}
+	require.Eventually(
+		t,
+		func() bool { return newSuite.reactor.pool.MaxPeerHeight() > 0 && newSuite.reactor.pool.IsCaughtUp() },
+		10*time.Second,
+		10*time.Millisecond,
+		"expected new node to be fully synced",
+	)
 
-		time.Sleep(10 * time.Millisecond)
-	}
-
-	time.Sleep(5 * time.Second)
-
-	// ensure two peers were removed that provided conflicting commits
-	require.Len(t, newSuite.reactor.pool.peers, len(testSuites)-3)
+	require.Eventually(
+		t,
+		func() bool { return len(newSuite.reactor.pool.peers) == len(testSuites)-3 },
+		time.Second,
+		10*time.Millisecond,
+		"invalid number of peers",
+	)
 }
