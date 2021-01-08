@@ -433,7 +433,12 @@ FOR_LOOP:
 				lastAdvance                       = r.pool.LastAdvance()
 			)
 
-			r.Logger.Debug("consensus ticker", "num_pending", numPending, "total", lenRequesters)
+			r.Logger.Debug(
+				"consensus ticker",
+				"num_pending", numPending,
+				"total", lenRequesters,
+				"height", height,
+			)
 
 			switch {
 			case r.pool.IsCaughtUp():
@@ -462,7 +467,7 @@ FOR_LOOP:
 
 			break FOR_LOOP
 
-		case <-trySyncTicker.C: // chan time
+		case <-trySyncTicker.C:
 			select {
 			case didProcessCh <- struct{}{}:
 			default:
@@ -476,7 +481,7 @@ FOR_LOOP:
 			// better to split these routines rather than coupling them as it is
 			// written here.
 			//
-			// TODO: uncouple from request routine.
+			// TODO: Uncouple from request routine.
 
 			// see if there are any blocks to sync
 			first, second := r.pool.PeekTwoBlocks()
@@ -534,10 +539,10 @@ FOR_LOOP:
 				// TODO: batch saves so we do not persist to disk every block
 				r.store.SaveBlock(first, firstParts, second.LastCommit)
 
-				// TODO: Same thing for app - but we would need a way to get the hash
-				// without persisting the state.
 				var err error
 
+				// TODO: Same thing for app - but we would need a way to get the hash
+				// without persisting the state.
 				state, _, err = r.blockExec.ApplyBlock(state, firstID, first)
 				if err != nil {
 					// TODO: This is bad, are we zombie?
