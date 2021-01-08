@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// The main purpose of HexBytes is to enable HEX-encoding for json/encoding.
+// HexBytes enables HEX-encoding for json/encoding.
 type HexBytes []byte
 
 var (
