@@ -253,6 +253,9 @@ func (store dbStore) PruneStates(retainHeight int64) error {
 	return nil
 }
 
+// pruneValidatorSets calls a reverse iterator from base height to retain height (exclusive), deleting
+// all validator sets in between. Due to the fact that most validator sets stored reference an earlier
+// validator set, it is likely that there will remain one validator set left after pruning.
 func (store dbStore) pruneValidatorSets(height int64) error {
 	valInfo, err := loadValidatorsInfo(store.db, height)
 	if err != nil {
@@ -262,7 +265,7 @@ func (store dbStore) pruneValidatorSets(height int64) error {
 	// We will prune up to the validator set at the given "height". As we don't save validator sets every
 	// height but only when they change or at a check point, it is likely that the validator set at the height
 	// we prune to is empty and thus dependent on the validator set saved at a previous height. We must find
-	// that validator set and make sure it is not pruned by saving after we have finished pruning.
+	// that validator set and make sure it is not pruned.
 	lastRecordedValSetHeight := lastStoredHeightFor(height, valInfo.LastHeightChanged)
 	lastRecordedValSet, err := loadValidatorsInfo(store.db, lastRecordedValSetHeight)
 	if err != nil || lastRecordedValSet.ValidatorSet == nil {
@@ -274,14 +277,11 @@ func (store dbStore) pruneValidatorSets(height int64) error {
 	}
 
 	// batch delete all the validators sets up to height
-	if err := store.batchDelete(
+	return store.batchDelete(
 		validatorsKey(1),
 		validatorsKey(height),
-		validatorsKey(lastRecordedValSetHeight)); err != nil {
-		return err
-	}
-
-	return nil
+		validatorsKey(lastRecordedValSetHeight),
+	)
 }
 
 // pruneConsensusParams calls a reverse iterator from base height to retain height batch deleting
@@ -296,7 +296,6 @@ func (store dbStore) pruneConsensusParams(retainHeight int64) error {
 	// As we don't save the consensus params at every height, only when there is a consensus params change,
 	// we must not prune (or save) the last consensus params that the consensus params info at height
 	// is dependent on.
-
 	if paramsInfo.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
 		lastRecordedConsensusParams, err := store.loadConsensusParamsInfo(paramsInfo.LastHeightChanged)
 		if err != nil || lastRecordedConsensusParams.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
@@ -310,24 +309,17 @@ func (store dbStore) pruneConsensusParams(retainHeight int64) error {
 	}
 
 	// batch delete all the consensus params up to the retain height
-	if err := store.batchDelete(
+	return store.batchDelete(
 		consensusParamsKey(1),
 		consensusParamsKey(retainHeight),
-		// As we don't save the consensus params at every height, instead only when there is a consensus params change,
-		// we must not prune the last consensus params that the consensus params info at height: retainHeight) is
-		// dependent on. If, however, it is a height that consensus params changed then this height will be the last
-		// key which by definition is not pruned.
-		consensusParamsKey(paramsInfo.LastHeightChanged)); err != nil {
-		return err
-	}
-
-	return nil
+		consensusParamsKey(paramsInfo.LastHeightChanged),
+	)
 }
 
 // pruneABCIResponses calls a reverse iterator from base height to retain height batch deleting
 // all abci responses in between
 func (store dbStore) pruneABCIResponses(height int64) error {
-	return store.batchDelete(abciResponsesKey(1), abciResponsesKey(height), []byte{})
+	return store.batchDelete(abciResponsesKey(1), abciResponsesKey(height), nil)
 }
 
 // batchDelete is a generic function for deleting a range of keys in reverse order. It will
@@ -345,7 +337,7 @@ func (store dbStore) batchDelete(start []byte, end []byte, exception []byte) err
 	pruned := 0
 	for iter.Valid() {
 		key := iter.Key()
-		if len(exception) != 0 && bytes.Equal(key, exception) {
+		if exception != nil && bytes.Equal(key, exception) {
 			iter.Next()
 			continue
 		}
@@ -366,15 +358,15 @@ func (store dbStore) batchDelete(start []byte, end []byte, exception []byte) err
 
 			err := batch.Write()
 			if err != nil {
-				return fmt.Errorf("pruning error at key %X: %w", iter.Key(), err)
+				return fmt.Errorf("pruning error at key %X: %w", key, err)
 			}
 			if err := batch.Close(); err != nil {
 				return err
 			}
 
-			iter, err = store.db.Iterator(start, end)
+			iter, err = store.db.ReverseIterator(start, end)
 			if err != nil {
-				panic(err)
+				return fmt.Errorf("iterator error: %w", err)
 			}
 			defer iter.Close()
 
@@ -390,7 +382,7 @@ func (store dbStore) batchDelete(start []byte, end []byte, exception []byte) err
 
 	err = batch.WriteSync()
 	if err != nil {
-		return fmt.Errorf("pruning error at key %X: %w", iter.Key(), err)
+		return err
 	}
 
 	return nil

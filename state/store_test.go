@@ -68,7 +68,7 @@ func TestStoreLoadValidators(t *testing.T) {
 	require.NoError(t, err)
 	loadedVals, err := stateStore.LoadValidators(3)
 	require.NoError(t, err)
-	require.Equal(t, vals.CopyIncrementProposerPriority(2), loadedVals)
+	require.Equal(t, vals.CopyIncrementProposerPriority(3), loadedVals)
 
 	// 2) LoadValidators loads validators using a checkpoint height
 
@@ -91,8 +91,8 @@ func TestStoreLoadValidators(t *testing.T) {
 	require.NoError(t, err)
 	// validator set gets updated with the one given hence we expect it to equal next validators (with an increment of one)
 	// as opposed to being equal to an increment of 100000 - 1 (if we didn't save at the checkpoint)
-	require.Equal(t, vals.CopyIncrementProposerPriority(1), loadedVals)
-	require.NotEqual(t, vals.CopyIncrementProposerPriority(valSetCheckpointInterval-1), loadedVals)
+	require.Equal(t, vals.CopyIncrementProposerPriority(2), loadedVals)
+	require.NotEqual(t, vals.CopyIncrementProposerPriority(valSetCheckpointInterval), loadedVals)
 }
 
 // This benchmarks the speed of loading validators from different heights if there is no validator set change.

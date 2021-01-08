@@ -229,12 +229,15 @@ func randomGenesisDoc() *types.GenesisDoc {
 }
 
 // used for testing by state store
-func makeRandomStateFromValidatorSet(valSet *types.ValidatorSet, height, lastHeightValidatorsChanged int64) sm.State {
+func makeRandomStateFromValidatorSet(
+	lastValSet *types.ValidatorSet,
+	height, lastHeightValidatorsChanged int64,
+) sm.State {
 	return sm.State{
 		LastBlockHeight:                  height - 1,
-		NextValidators:                   valSet.CopyIncrementProposerPriority(1),
-		Validators:                       valSet.Copy(),
-		LastValidators:                   valSet.Copy(),
+		NextValidators:                   lastValSet.CopyIncrementProposerPriority(2),
+		Validators:                       lastValSet.CopyIncrementProposerPriority(1),
+		LastValidators:                   lastValSet.Copy(),
 		LastHeightConsensusParamsChanged: height,
 		ConsensusParams:                  *types.DefaultConsensusParams(),
 		LastHeightValidatorsChanged:      lastHeightValidatorsChanged,
@@ -250,8 +253,8 @@ func makeRandomStateFromConsensusParams(consensusParams *tmproto.ConsensusParams
 		LastBlockHeight:                  height - 1,
 		ConsensusParams:                  *consensusParams,
 		LastHeightConsensusParamsChanged: lastHeightConsensusParamsChanged,
-		NextValidators:                   valSet.CopyIncrementProposerPriority(1),
-		Validators:                       valSet.Copy(),
+		NextValidators:                   valSet.CopyIncrementProposerPriority(2),
+		Validators:                       valSet.CopyIncrementProposerPriority(1),
 		LastValidators:                   valSet.Copy(),
 		LastHeightValidatorsChanged:      height,
 		InitialHeight:                    1,
