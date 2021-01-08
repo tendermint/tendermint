@@ -4,15 +4,11 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"sort"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
-	dbm "github.com/tendermint/tm-db"
-
-	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mempool/mock"
@@ -22,7 +18,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
-	tmtime "github.com/tendermint/tendermint/types/time"
+	dbm "github.com/tendermint/tm-db"
 )
 
 var rng = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -162,80 +158,6 @@ func setup(
 	return rts
 }
 
-func randGenesisDoc(
-	config *cfg.Config,
-	numValidators int,
-	randPower bool,
-	minPower int64,
-) (*types.GenesisDoc, []types.PrivValidator) {
-	validators := make([]types.GenesisValidator, numValidators)
-	privValidators := make([]types.PrivValidator, numValidators)
-
-	for i := 0; i < numValidators; i++ {
-		val, privVal := types.RandValidator(randPower, minPower)
-		validators[i] = types.GenesisValidator{
-			PubKey: val.PubKey,
-			Power:  val.VotingPower,
-		}
-
-		privValidators[i] = privVal
-	}
-
-	sort.Sort(types.PrivValidatorsByAddress(privValidators))
-
-	return &types.GenesisDoc{
-		GenesisTime: tmtime.Now(),
-		ChainID:     config.ChainID(),
-		Validators:  validators,
-	}, privValidators
-}
-
-func makeTxs(height int64) (txs []types.Tx) {
-	for i := 0; i < 10; i++ {
-		txs = append(txs, types.Tx([]byte{byte(height), byte(i)}))
-	}
-	return txs
-}
-
-func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
-	return block
-}
-
-type testApp struct {
-	abci.BaseApplication
-}
-
-var _ abci.Application = (*testApp)(nil)
-
-func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
-	return abci.ResponseInfo{}
-}
-
-func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
-	return abci.ResponseBeginBlock{}
-}
-
-func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
-	return abci.ResponseEndBlock{}
-}
-
-func (app *testApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	return abci.ResponseDeliverTx{Events: []abci.Event{}}
-}
-
-func (app *testApp) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
-	return abci.ResponseCheckTx{}
-}
-
-func (app *testApp) Commit() abci.ResponseCommit {
-	return abci.ResponseCommit{}
-}
-
-func (app *testApp) Query(reqQuery abci.RequestQuery) (resQuery abci.ResponseQuery) {
-	return
-}
-
 func simulateRouter(primary *reactorTestSuite, suites []*reactorTestSuite, dropChErr bool) {
 	// create a mapping for efficient suite lookup by peer ID
 	suitesByPeerID := make(map[p2p.NodeID]*reactorTestSuite)
@@ -280,6 +202,53 @@ func simulateRouter(primary *reactorTestSuite, suites []*reactorTestSuite, dropC
 			}
 		}
 	}()
+}
+
+func TestReactor_AbruptDisconnect(t *testing.T) {
+	config := cfg.ResetTestRoot("blockchain_reactor_test")
+	defer os.RemoveAll(config.RootDir)
+
+	genDoc, privVals := randGenesisDoc(config, 1, false, 30)
+	maxBlockHeight := int64(64)
+	testSuites := []*reactorTestSuite{
+		setup(t, genDoc, privVals, maxBlockHeight, 0),
+		setup(t, genDoc, privVals, 0, 0),
+	}
+
+	require.Equal(t, maxBlockHeight, testSuites[0].reactor.store.Height())
+
+	for _, s := range testSuites {
+		simulateRouter(s, testSuites, true)
+
+		// connect reactor to every other reactor
+		for _, ss := range testSuites {
+			if s.peerID != ss.peerID {
+				s.peerUpdatesCh <- p2p.PeerUpdate{
+					Status: p2p.PeerStatusUp,
+					PeerID: ss.peerID,
+				}
+			}
+		}
+	}
+
+	secondaryPool := testSuites[1].reactor.pool
+	require.Eventually(
+		t,
+		func() bool {
+			height, _, _ := secondaryPool.GetStatus()
+			return secondaryPool.MaxPeerHeight() > 0 && height > 0 && height < 10
+		},
+		10*time.Second,
+		10*time.Millisecond,
+		"expected node to be partially synced",
+	)
+
+	// Remove synced node from the syncing node which should not result in any
+	// deadlocks or race conditions within the context of poolRoutine.
+	testSuites[1].peerUpdatesCh <- p2p.PeerUpdate{
+		Status: p2p.PeerStatusDown,
+		PeerID: testSuites[0].peerID,
+	}
 }
 
 func TestReactor_NoBlockResponse(t *testing.T) {
