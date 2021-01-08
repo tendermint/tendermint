@@ -83,7 +83,7 @@ type Store interface {
 	SaveABCIResponses(int64, *tmstate.ABCIResponses) error
 	// Bootstrap is used for bootstrapping state when not starting from a initial height.
 	Bootstrap(State) error
-	// PruneStates takes the height from which to finish pruning at (exclusive)
+	// PruneStates takes the height from which to prune up to (exclusive)
 	PruneStates(int64) error
 }
 
@@ -337,7 +337,7 @@ func (store dbStore) batchDelete(start []byte, end []byte, exception []byte) err
 	pruned := 0
 	for iter.Valid() {
 		key := iter.Key()
-		if exception != nil && bytes.Equal(key, exception) {
+		if bytes.Equal(key, exception) {
 			iter.Next()
 			continue
 		}
@@ -347,7 +347,7 @@ func (store dbStore) batchDelete(start []byte, end []byte, exception []byte) err
 		}
 
 		pruned++
-		// avoid batches growing too large by flushing to database regularly
+		// avoid batches growing too large by flushing to disk regularly
 		if pruned%1000 == 0 {
 			if err := iter.Error(); err != nil {
 				return err
@@ -356,8 +356,7 @@ func (store dbStore) batchDelete(start []byte, end []byte, exception []byte) err
 				return err
 			}
 
-			err := batch.Write()
-			if err != nil {
+			if err := batch.Write(); err != nil {
 				return fmt.Errorf("pruning error at key %X: %w", key, err)
 			}
 			if err := batch.Close(); err != nil {
@@ -376,12 +375,12 @@ func (store dbStore) batchDelete(start []byte, end []byte, exception []byte) err
 			iter.Next()
 		}
 	}
+
 	if err := iter.Error(); err != nil {
 		return fmt.Errorf("iterator error: %w", err)
 	}
 
-	err = batch.WriteSync()
-	if err != nil {
+	if err := batch.WriteSync(); err != nil {
 		return err
 	}
 
