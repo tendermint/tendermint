@@ -214,30 +214,27 @@ type PeerUpdate struct {
 	Status PeerStatus
 }
 
-// peerStore manages information about peers. It is currently a bare-bones
-// in-memory store of peer addresses, and will be fleshed out later.
-//
-// The main function of peerStore is currently to dispense peers to connect to
-// (via peerStore.Dispense), giving the caller exclusive "ownership" of that
-// peer until the peer is returned (via peerStore.Return). This is used to
-// schedule and synchronize peer dialing and accepting in the Router, e.g.
-// making sure we only have a single connection (in either direction) to peers.
-type peerStore struct {
+// peerManager manages peer information, using a peerStore for underlying
+// storage. Its primary purpose is to make sure only a single Router goroutine
+// exists for each peer (e.g. that we don't accept inbound connections from a
+// peer if we've already dialed it), and to determine which peers to dial next.
+type peerManager struct {
 	mtx     sync.Mutex
-	peers   map[NodeID]*peerInfo
+	store   *peerStore
 	claimed map[NodeID]bool
 }
 
-// newPeerStore creates a new peer store.
-func newPeerStore() *peerStore {
-	return &peerStore{
-		peers:   map[NodeID]*peerInfo{},
+// newPeerManager creates a new peer manager.
+func newPeerManager(store *peerStore) *peerManager {
+	return &peerManager{
+		store:   store,
 		claimed: map[NodeID]bool{},
 	}
 }
 
-// Add adds a peer to the store, given as an address.
-func (s *peerStore) Add(address PeerAddress) error {
+// Add adds a peer to the store, given as an address. If the peer already
+// exists, the address is added to it.
+func (s *peerManager) Add(address PeerAddress) error {
 	if err := address.Validate(); err != nil {
 		return err
 	}
@@ -245,66 +242,115 @@ func (s *peerStore) Add(address PeerAddress) error {
 
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
-
-	peer, ok := s.peers[peerID]
-	if !ok {
-		peer = newStorePeer(peerID)
-		s.peers[peerID] = peer
-	} else if s.claimed[peerID] {
-		// FIXME: We need to handle modifications of claimed peers somehow.
-		return fmt.Errorf("peer %q is claimed", peerID)
+	peer, err := s.store.Get(peerID)
+	if err != nil {
+		return err
 	}
-	peer.AddAddress(address)
+	if peer == nil {
+		peer = newPeerInfo(peerID)
+	}
+	if peer.AddAddress(address) {
+		return s.store.Set(peer)
+	}
 	return nil
 }
 
-// Claim claims a peer. The caller has exclusive ownership of the peer, and must
-// return it by calling Return(). Returns nil if the peer could not be claimed.
-// If the peer is not known to the store, it is registered and claimed.
-func (s *peerStore) Claim(id NodeID) *peerInfo {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	if s.claimed[id] {
-		return nil
+// Claim claims a peer. The caller can assume "ownership" of the peer, and must
+// return it by calling Return(). Returns false if the peer could not be claimed.
+// If the peer is unknown, it is added to the manager and claimed.
+func (m *peerManager) Claim(id NodeID) (bool, error) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	if m.claimed[id] {
+		return false, nil
 	}
-	peer, ok := s.peers[id]
-	if !ok {
-		peer = newStorePeer(id)
-		s.peers[id] = peer
+	if peer, err := m.store.Get(id); err != nil {
+		return false, err
+	} else if peer == nil {
+		if err = m.store.Set(newPeerInfo(id)); err != nil {
+			return false, err
+		}
 	}
-	s.claimed[id] = true
-	return peer
+	m.claimed[id] = true
+	return true, nil
 }
 
 // Dispense finds an appropriate peer to contact and claims it. The caller has
 // exclusive ownership of the peer, and must return it by calling Return(). The
 // peer will not be dispensed again until returned.
 //
-// Returns nil if no appropriate peers are available.
-func (s *peerStore) Dispense() *peerInfo {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	for key, peer := range s.peers {
+// Returns an empty ID if no appropriate peers are available.
+func (m *peerManager) Dispense() (NodeID, []PeerAddress, error) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	peers, err := m.store.List()
+	if err != nil {
+		return "", nil, err
+	}
+	for _, peer := range peers {
 		switch {
 		case len(peer.Addresses) == 0:
-		case s.claimed[key]:
+		case m.claimed[peer.ID]:
 		default:
-			s.claimed[key] = true
-			return peer
+			m.claimed[peer.ID] = true
+			return peer.ID, peer.Addresses, nil
 		}
 	}
-	return nil
+	return "", nil, nil
 }
 
 // Return returns a claimed peer, making it available for other
 // callers to claim.
-func (s *peerStore) Return(id NodeID) {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	delete(s.claimed, id)
+func (m *peerManager) Return(id NodeID) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	delete(m.claimed, id)
 }
 
-// peerInfo is a peer stored in the peerStore.
+// peerStore stores information about peers. It is currently a bare-bones
+// in-memory store, and will be fleshed out later.
+//
+// peerStore is not thread-safe, since it assumes it is only used by peerManager
+// which handles concurrency control.
+type peerStore struct {
+	peers map[NodeID]peerInfo
+}
+
+// newPeerStore creates a new peer store.
+func newPeerStore() *peerStore {
+	return &peerStore{
+		peers: map[NodeID]peerInfo{},
+	}
+}
+
+// Get fetches a peer, returning nil if not found.
+func (s *peerStore) Get(id NodeID) (*peerInfo, error) {
+	peer, ok := s.peers[id]
+	if !ok {
+		return nil, nil
+	}
+	return &peer, nil
+}
+
+// Set stores peer data.
+func (s *peerStore) Set(peer *peerInfo) error {
+	if peer == nil {
+		return errors.New("peer cannot be nil")
+	}
+	s.peers[peer.ID] = *peer
+	return nil
+}
+
+// List retrieves all peers.
+func (s *peerStore) List() ([]*peerInfo, error) {
+	peers := []*peerInfo{}
+	for _, peer := range s.peers {
+		peers = append(peers, &peer)
+	}
+	return peers, nil
+}
+
+// peerInfo contains peer information stored in a peerStore.
 //
 // FIXME: This should be renamed peer or something else once the old peer is
 // removed.
@@ -313,8 +359,8 @@ type peerInfo struct {
 	Addresses []PeerAddress
 }
 
-// newStorePeer creates a new storePeer.
-func newStorePeer(id NodeID) *peerInfo {
+// newPeerInfo creates a new peerInfo.
+func newPeerInfo(id NodeID) *peerInfo {
 	return &peerInfo{
 		ID:        id,
 		Addresses: []PeerAddress{},
@@ -322,16 +368,17 @@ func newStorePeer(id NodeID) *peerInfo {
 }
 
 // AddAddress adds an address to a peer, unless it already exists. It does not
-// validate the address.
-func (p *peerInfo) AddAddress(address PeerAddress) {
+// validate the address. Returns true if the address was new.
+func (p *peerInfo) AddAddress(address PeerAddress) bool {
 	// We just do a linear search for now.
 	addressString := address.String()
 	for _, a := range p.Addresses {
 		if a.String() == addressString {
-			return
+			return false
 		}
 	}
 	p.Addresses = append(p.Addresses, address)
+	return true
 }
 
 // ============================================================================

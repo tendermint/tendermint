@@ -73,9 +73,9 @@ import (
 // forever on a channel that has no consumer.
 type Router struct {
 	*service.BaseService
-	logger     log.Logger
-	transports map[Protocol]Transport
-	store      *peerStore
+	logger      log.Logger
+	transports  map[Protocol]Transport
+	peerManager *peerManager
 
 	// FIXME: Consider using sync.Map.
 	peerMtx    sync.RWMutex
@@ -105,7 +105,7 @@ func NewRouter(logger log.Logger, transports map[Protocol]Transport, peers []Pee
 	router := &Router{
 		logger:          logger,
 		transports:      transports,
-		store:           newPeerStore(),
+		peerManager:     newPeerManager(newPeerStore()),
 		stopCh:          make(chan struct{}),
 		channelQueues:   map[ChannelID]queue{},
 		channelMessages: map[ChannelID]proto.Message{},
@@ -116,7 +116,7 @@ func NewRouter(logger log.Logger, transports map[Protocol]Transport, peers []Pee
 	router.BaseService = service.NewBaseService(logger, "router", router)
 
 	for _, address := range peers {
-		if err := router.store.Add(address); err != nil {
+		if err := router.peerManager.Add(address); err != nil {
 			logger.Error("failed to add peer", "address", address, "err", err)
 		}
 	}
@@ -260,7 +260,11 @@ func (r *Router) acceptPeers(transport Transport) {
 		}
 
 		peerID := conn.NodeInfo().NodeID
-		if r.store.Claim(peerID) == nil {
+		if ok, err := r.peerManager.Claim(peerID); err != nil {
+			r.logger.Error("failed to claim peer", "peer", peerID, "err", err)
+			_ = conn.Close()
+			continue
+		} else if !ok {
 			r.logger.Error("already connected to peer, rejecting connection", "peer", peerID)
 			_ = conn.Close()
 			continue
@@ -278,7 +282,7 @@ func (r *Router) acceptPeers(transport Transport) {
 				r.peerMtx.Unlock()
 				queue.close()
 				_ = conn.Close()
-				r.store.Return(peerID)
+				r.peerManager.Return(peerID)
 			}()
 
 			r.routePeer(peerID, conn, queue)
@@ -295,8 +299,11 @@ func (r *Router) dialPeers() {
 		default:
 		}
 
-		peer := r.store.Dispense()
-		if peer == nil {
+		id, addresses, err := r.peerManager.Dispense()
+		if err != nil {
+			r.logger.Error("failed to dispense peer", "err", err)
+			return
+		} else if id == "" {
 			r.logger.Debug("no eligible peers, sleeping")
 			select {
 			case <-time.After(time.Second):
@@ -307,10 +314,10 @@ func (r *Router) dialPeers() {
 		}
 
 		go func() {
-			defer r.store.Return(peer.ID)
-			conn, err := r.dialPeer(peer)
+			defer r.peerManager.Return(id)
+			conn, err := r.dialPeer(addresses)
 			if err != nil {
-				r.logger.Error("failed to dial peer, will retry", "peer", peer.ID)
+				r.logger.Error("failed to dial peer, will retry", "peer", id)
 				return
 			}
 			defer conn.Close()
@@ -318,28 +325,28 @@ func (r *Router) dialPeers() {
 			queue := newFIFOQueue()
 			defer queue.close()
 			r.peerMtx.Lock()
-			r.peerQueues[peer.ID] = queue
+			r.peerQueues[id] = queue
 			r.peerMtx.Unlock()
 
 			defer func() {
 				r.peerMtx.Lock()
-				delete(r.peerQueues, peer.ID)
+				delete(r.peerQueues, id)
 				r.peerMtx.Unlock()
 			}()
 
-			r.routePeer(peer.ID, conn, queue)
+			r.routePeer(id, conn, queue)
 		}()
 	}
 }
 
 // dialPeer attempts to connect to a peer.
-func (r *Router) dialPeer(peer *peerInfo) (Connection, error) {
+func (r *Router) dialPeer(addresses []PeerAddress) (Connection, error) {
 	ctx := context.Background()
 
-	for _, address := range peer.Addresses {
+	for _, address := range addresses {
 		resolveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
-		r.logger.Info("resolving peer address", "peer", peer.ID, "address", address)
+		r.logger.Info("resolving peer address", "address", address)
 		endpoints, err := address.Resolve(resolveCtx)
 		if err != nil {
 			r.logger.Error("failed to resolve address", "address", address, "err", err)
@@ -358,7 +365,7 @@ func (r *Router) dialPeer(peer *peerInfo) (Connection, error) {
 			if err != nil {
 				r.logger.Error("failed to dial endpoint", "endpoint", endpoint)
 			} else {
-				r.logger.Info("connected to peer", "peer", peer.ID, "endpoint", endpoint)
+				r.logger.Info("connected to peer", "peer", address.NodeID(), "endpoint", endpoint)
 				return conn, nil
 			}
 		}
