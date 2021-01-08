@@ -322,7 +322,7 @@ func (n Node) Validate(testnet Testnet) error {
 		return fmt.Errorf("invalid ABCI protocol setting %q", n.ABCIProtocol)
 	}
 	switch n.PrivvalProtocol {
-	case ProtocolFile, ProtocolUNIX, ProtocolTCP:
+	case ProtocolFile, ProtocolTCP, ProtocolGRPC, ProtocolUNIX:
 	default:
 		return fmt.Errorf("invalid privval protocol setting %q", n.PrivvalProtocol)
 	}

@@ -482,7 +482,14 @@ func (r *Router) sendPeer(peerID NodeID, conn Connection, queue queue) error {
 // consume the peer updates in a timely fashion, since delivery is guaranteed and
 // will block peer connection/disconnection otherwise.
 func (r *Router) SubscribePeerUpdates() (*PeerUpdatesCh, error) {
-	peerUpdates := NewPeerUpdates()
+	// FIXME: We may want to use a size 1 buffer here. When the router
+	// broadcasts a peer update it has to loop over all of the
+	// subscriptions, and we want to avoid blocking and waiting for a
+	// context switch before continuing to the next subscription. This also
+	// prevents tail latencies from compounding across updates. We also want
+	// to make sure the subscribers are reasonably in sync, so it should be
+	// kept at 1. However, this should be benchmarked first.
+	peerUpdates := NewPeerUpdates(make(chan PeerUpdate))
 	r.peerUpdatesMtx.Lock()
 	r.peerUpdatesSubs[peerUpdates] = peerUpdates
 	r.peerUpdatesMtx.Unlock()

@@ -176,16 +176,9 @@ type PeerUpdatesCh struct {
 }
 
 // NewPeerUpdates returns a reference to a new PeerUpdatesCh.
-func NewPeerUpdates() *PeerUpdatesCh {
+func NewPeerUpdates(updatesCh chan PeerUpdate) *PeerUpdatesCh {
 	return &PeerUpdatesCh{
-		// FIXME: We may want to use a size 1 buffer here. When the router
-		// broadcasts a peer update it has to loop over all of the
-		// subscriptions, and we want to avoid blocking and waiting for a
-		// context switch before continuing to the next subscription. This also
-		// prevents tail latencies from compounding across updates. We also want
-		// to make sure the subscribers are reasonably in sync, so it should be
-		// kept at 1. However, this should be benchmarked first.
-		updatesCh: make(chan PeerUpdate),
+		updatesCh: updatesCh,
 		doneCh:    make(chan struct{}),
 	}
 }

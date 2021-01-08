@@ -32,6 +32,7 @@ const (
 	AppAddressUNIX = "unix:///var/run/app.sock"
 
 	PrivvalAddressTCP     = "tcp://0.0.0.0:27559"
+	PrivvalAddressGRPC    = "grpc://0.0.0.0:27559"
 	PrivvalAddressUNIX    = "unix:///var/run/privval.sock"
 	PrivvalKeyFile        = "config/priv_validator_key.json"
 	PrivvalStateFile      = "data/priv_validator_state.json"
@@ -265,6 +266,8 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 			cfg.PrivValidatorListenAddr = PrivvalAddressUNIX
 		case e2e.ProtocolTCP:
 			cfg.PrivValidatorListenAddr = PrivvalAddressTCP
+		case e2e.ProtocolGRPC:
+			cfg.PrivValidatorListenAddr = PrivvalAddressGRPC
 		default:
 			return nil, fmt.Errorf("invalid privval protocol setting %q", node.PrivvalProtocol)
 		}
@@ -349,6 +352,10 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 			cfg["privval_state"] = PrivvalStateFile
 		case e2e.ProtocolUNIX:
 			cfg["privval_server"] = PrivvalAddressUNIX
+			cfg["privval_key"] = PrivvalKeyFile
+			cfg["privval_state"] = PrivvalStateFile
+		case e2e.ProtocolGRPC:
+			cfg["privval_server"] = PrivvalAddressGRPC
 			cfg["privval_key"] = PrivvalKeyFile
 			cfg["privval_state"] = PrivvalStateFile
 		default:

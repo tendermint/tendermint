@@ -1,5 +1,37 @@
 # Changelog
 
+## v0.34.1
+
+*January 6, 2021*
+
+Special thanks to external contributors on this release:
+
+@p4u from vocdoni.io reported that the mempool might behave incorrectly under a
+high load. The consequences can range from pauses between blocks to the peers
+disconnecting from this node. As a temporary remedy (until the mempool package
+is refactored), the `max-batch-bytes` was disabled. Transactions will be sent
+one by one without batching.
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+  - [cli] [\#5786](https://github.com/tendermint/tendermint/issues/5786) deprecate snake_case commands for hyphen-case (@cmwaters)
+
+- Go API
+  - [libs/protoio] [\#5868](https://github.com/tendermint/tendermint/issues/5868) Return number of bytes read in `Reader.ReadMsg()` (@erikgrinaker)
+
+### IMPROVEMENTS
+
+- [mempool] [\#5813](https://github.com/tendermint/tendermint/issues/5813) Add `keep-invalid-txs-in-cache` config option. When set to true, mempool will keep invalid transactions in the cache (@p4u)
+
+### BUG FIXES
+
+- [crypto] [\#5707](https://github.com/tendermint/tendermint/issues/5707) Fix infinite recursion in string formatting of Secp256k1 keys (@erikgrinaker)
+- [mempool] [\#5800](https://github.com/tendermint/tendermint/issues/5800) Disable `max-batch-bytes` (@melekes)
+- [p2p] [\#5868](https://github.com/tendermint/tendermint/issues/5868) Fix inbound traffic statistics and rate limiting in `MConnection` (@erikgrinaker)
+
 ## v0.34.0
 
 *November 19, 2020*
