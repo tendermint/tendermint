@@ -7,6 +7,7 @@ import (
 	kitlog "github.com/go-kit/kit/log"
 	kitlevel "github.com/go-kit/kit/log/level"
 	"github.com/go-kit/kit/log/term"
+	"github.com/tendermint/tendermint/libs/bytes"
 )
 
 const (
@@ -54,16 +55,12 @@ func (l *tmLogger) Info(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Info(l.srcLogger)
 
 	// This value will be marshalled accordingly to the
-	// String() implementation after passing log level
-	// check, and avoids the overhead of hex-encoding
-	// when the message won't get logged.
+	// String() implementation of HexBytes after passing
+	// log level check, and avoids the overhead of
+	// hex-encoding when the message won't get logged.
 	for i, val := range keyvals {
 		if b, ok := val.([]byte); ok {
-			s := Hexadecimal{
-				b: b,
-			}
-
-			keyvals[i] = s
+			keyvals[i] = bytes.HexBytes(b).String()
 		}
 	}
 
@@ -79,16 +76,12 @@ func (l *tmLogger) Debug(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Debug(l.srcLogger)
 
 	// This value will be marshalled accordingly to the
-	// String() implementation after passing log level
-	// check, and avoids the overhead of hex-encoding
-	// when the message won't get logged.
+	// String() implementation of HexBytes after passing
+	// log level check, and avoids the overhead of
+	// hex-encoding when the message won't get logged.
 	for i, val := range keyvals {
 		if b, ok := val.([]byte); ok {
-			s := Hexadecimal{
-				b: b,
-			}
-
-			keyvals[i] = s
+			keyvals[i] = bytes.HexBytes(b)
 		}
 	}
 
@@ -103,16 +96,12 @@ func (l *tmLogger) Error(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Error(l.srcLogger)
 
 	// This value will be marshalled accordingly to the
-	// String() implementation after passing log level
-	// check, and avoids the overhead of hex-encoding
-	// when the message won't get logged.
+	// String() implementation of HexBytes after passing
+	// log level check, and avoids the overhead of
+	// hex-encoding when the message won't get logged.
 	for i, val := range keyvals {
 		if b, ok := val.([]byte); ok {
-			s := Hexadecimal{
-				b: b,
-			}
-
-			keyvals[i] = s
+			keyvals[i] = bytes.HexBytes(b)
 		}
 	}
 

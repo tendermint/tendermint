@@ -1,7 +1,6 @@
 package log
 
 import (
-	"fmt"
 	"io"
 
 	kitlog "github.com/go-kit/kit/log"
@@ -14,18 +13,6 @@ type Logger interface {
 	Error(msg string, keyvals ...interface{})
 
 	With(keyvals ...interface{}) Logger
-}
-
-// Hexadecimal is intended to convert a []byte
-// type to a value that is hexadecimal (uppercase).
-type Hexadecimal struct {
-	b []byte
-}
-
-// String fulfills the Stringer interface within the
-// fmt package.
-func (s Hexadecimal) String() string {
-	return fmt.Sprintf("%X", s.b)
 }
 
 // NewSyncWriter returns a new writer that is safe for concurrent use by
