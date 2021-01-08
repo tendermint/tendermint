@@ -219,7 +219,7 @@ func (s *dbs) LightBlockBefore(height int64) (*types.LightBlock, error) {
 // left.
 //
 // Safe for concurrent use by multiple goroutines.
-func (s *dbs) Prune(size uint16) (err error) {
+func (s *dbs) Prune(size uint16) error {
 	// 1) Check how many we need to prune.
 	s.mtx.RLock()
 	sSize := s.size
@@ -251,7 +251,7 @@ func (s *dbs) Prune(size uint16) (err error) {
 		numToPrune--
 	}
 	if err = itr.Error(); err != nil {
-		return
+		return err
 	}
 
 	// 3) // update size

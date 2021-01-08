@@ -360,28 +360,6 @@ func (bs *BlockStore) batchDelete(
 			if err := preDeletionHook(key, iter.Value(), batch); err != nil {
 				return flushed, err
 			}
-
-			err := batch.Write()
-			if err != nil {
-				return pruned, fmt.Errorf("pruning error at key %X: %w", iter.Key(), err)
-			}
-			if err := batch.Close(); err != nil {
-				return pruned, err
-			}
-
-			iter, err = bs.db.Iterator(
-				blockMetaKey(1),
-				blockMetaKey(retainHeight),
-			)
-			if err != nil {
-				panic(err)
-			}
-			defer iter.Close()
-
-			batch = bs.db.NewBatch()
-			defer batch.Close()
-		} else {
-			iter.Next()
 		}
 
 		if err := batch.Delete(key); err != nil {
