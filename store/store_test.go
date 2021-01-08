@@ -317,8 +317,9 @@ func TestLoadBaseMeta(t *testing.T) {
 		bs.SaveBlock(block, partSet, seenCommit)
 	}
 
-	_, err = bs.PruneBlocks(4)
+	pruned, err := bs.PruneBlocks(4)
 	require.NoError(t, err)
+	assert.EqualValues(t, 3, pruned)
 
 	baseBlock := bs.LoadBaseMeta()
 	assert.EqualValues(t, 4, baseBlock.Header.Height)
