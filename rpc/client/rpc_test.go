@@ -121,9 +121,9 @@ func TestInfo(t *testing.T) {
 func TestNetInfo(t *testing.T) {
 	for i, c := range GetClients() {
 		nc, ok := c.(client.NetworkClient)
-		require.True(t, ok, "%d", i)
+		require.Truef(t, ok, "%d", i)
 		netinfo, err := nc.NetInfo(context.Background())
-		require.Nil(t, err, "%d: %+v", i, err)
+		require.Nilf(t, err, "%d: %+v", i, err)
 		assert.True(t, netinfo.Listening)
 		assert.Equal(t, 0, len(netinfo.Peers))
 	}
@@ -133,7 +133,7 @@ func TestDumpConsensusState(t *testing.T) {
 	for i, c := range GetClients() {
 		// FIXME: fix server so it doesn't panic on invalid input
 		nc, ok := c.(client.NetworkClient)
-		require.True(t, ok, "%d", i)
+		require.Truef(t, ok, "%d", i)
 		cons, err := nc.DumpConsensusState(context.Background())
 		require.Nil(t, err, "%d: %+v", i, err)
 		assert.NotEmpty(t, cons.RoundState)
@@ -145,7 +145,7 @@ func TestConsensusState(t *testing.T) {
 	for i, c := range GetClients() {
 		// FIXME: fix server so it doesn't panic on invalid input
 		nc, ok := c.(client.NetworkClient)
-		require.True(t, ok, "%d", i)
+		require.Truef(t, ok, "%d", i)
 		cons, err := nc.ConsensusState(context.Background())
 		require.Nil(t, err, "%d: %+v", i, err)
 		assert.NotEmpty(t, cons.RoundState)
@@ -155,7 +155,7 @@ func TestConsensusState(t *testing.T) {
 func TestHealth(t *testing.T) {
 	for i, c := range GetClients() {
 		nc, ok := c.(client.NetworkClient)
-		require.True(t, ok, "%d", i)
+		require.Truef(t, ok, "%d", i)
 		_, err := nc.Health(context.Background())
 		require.Nil(t, err, "%d: %+v", i, err)
 	}
@@ -416,7 +416,7 @@ func TestNumUnconfirmedTxs(t *testing.T) {
 	mempoolSize := mempool.Size()
 	for i, c := range GetClients() {
 		mc, ok := c.(client.MempoolClient)
-		require.True(t, ok, "%d", i)
+		require.Truef(t, ok, "%d", i)
 		res, err := mc.NumUnconfirmedTxs(context.Background())
 		require.Nil(t, err, "%d: %+v", i, err)
 
@@ -621,9 +621,9 @@ func TestTxSearch(t *testing.T) {
 			}
 			require.Equal(t, txCount, result.TotalCount)
 			for _, tx := range result.Txs {
-				require.False(t, seen[tx.Height],
+				require.Falsef(t, seen[tx.Height],
 					"Found duplicate height %v in page %v", tx.Height, page)
-				require.Greater(t, tx.Height, maxHeight,
+				require.Greaterf(t, tx.Height, maxHeight,
 					"Found decreasing height %v (max seen %v) in page %v", tx.Height, maxHeight, page)
 				seen[tx.Height] = true
 				maxHeight = tx.Height

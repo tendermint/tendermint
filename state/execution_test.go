@@ -402,7 +402,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	select {
 	case msg := <-updatesSub.Out():
 		event, ok := msg.Data().(types.EventDataValidatorSetUpdates)
-		require.True(t, ok, "Expected event of type EventDataValidatorSetUpdates, got %T", msg.Data())
+		require.Truef(t, ok, "Expected event of type EventDataValidatorSetUpdates, got %T", msg.Data())
 		if assert.NotEmpty(t, event.ValidatorUpdates) {
 			assert.Equal(t, pubkey, event.ValidatorUpdates[0].PubKey)
 			assert.EqualValues(t, 10, event.ValidatorUpdates[0].VotingPower)

@@ -40,7 +40,7 @@ func TestNet_Peers(t *testing.T) {
 		}
 
 		for name := range seen {
-			require.True(t, seen[name], "node %v not peered with %v", node.Name, name)
+			require.Truef(t, seen[name], "node %v not peered with %v", node.Name, name)
 		}
 	})
 }

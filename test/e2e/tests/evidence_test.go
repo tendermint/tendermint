@@ -35,7 +35,7 @@ func TestEvidence_Misbehavior(t *testing.T) {
 
 			// Check that evidence was as expected
 			misbehavior, ok := node.Misbehaviors[nodeEvidence.Height()]
-			require.True(t, ok, "found unexpected evidence %v in height %v",
+			require.Truef(t, ok, "found unexpected evidence %v in height %v",
 				nodeEvidence, block.Height)
 
 			switch misbehavior {
@@ -50,7 +50,7 @@ func TestEvidence_Misbehavior(t *testing.T) {
 		// see if there is any evidence that we were expecting but didn't see
 		for height, misbehavior := range node.Misbehaviors {
 			_, ok := seenEvidence[height]
-			require.True(t, ok, "expected evidence for %v misbehavior at height %v by node but was never found",
+			require.Truef(t, ok, "expected evidence for %v misbehavior at height %v by node but was never found",
 				misbehavior, height)
 		}
 	})

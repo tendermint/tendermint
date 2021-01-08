@@ -156,7 +156,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			block, _ := state.MakeBlock(height, makeTxs(height), wrongHeightCommit, nil, proposerAddr)
 			err = blockExec.ValidateBlock(state, block)
 			_, isErrInvalidCommitHeight := err.(types.ErrInvalidCommitHeight)
-			require.True(t, isErrInvalidCommitHeight, "expected ErrInvalidCommitHeight at height %d but got: %v", height, err)
+			require.Truef(t, isErrInvalidCommitHeight, "expected ErrInvalidCommitHeight at height %d but got: %v", height, err)
 
 			/*
 				#2589: test len(block.LastCommit.Signatures) == state.LastValidators.Size()
@@ -164,7 +164,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			block, _ = state.MakeBlock(height, makeTxs(height), wrongSigsCommit, nil, proposerAddr)
 			err = blockExec.ValidateBlock(state, block)
 			_, isErrInvalidCommitSignatures := err.(types.ErrInvalidCommitSignatures)
-			require.True(t, isErrInvalidCommitSignatures,
+			require.Truef(t, isErrInvalidCommitSignatures,
 				"expected ErrInvalidCommitSignatures at height %d, but got: %v",
 				height,
 				err,
@@ -272,7 +272,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 			err := blockExec.ValidateBlock(state, block)
 			if assert.Error(t, err) {
 				_, ok := err.(*types.ErrEvidenceOverflow)
-				require.True(t, ok, "expected error to be of type ErrEvidenceOverflow at height %d but got %v", height, err)
+				require.Truef(t, ok, "expected error to be of type ErrEvidenceOverflow at height %d but got %v", height, err)
 			}
 		}
 

@@ -75,9 +75,9 @@ func TestValidator_Propose(t *testing.T) {
 			valSchedule.Increment(1)
 		}
 
-		require.False(t, proposeCount == 0 && expectCount > 0,
+		require.Falsef(t, proposeCount == 0 && expectCount > 0,
 			"node did not propose any blocks (expected %v)", expectCount)
-		require.Less(t, expectCount-proposeCount, 5,
+		require.Lessf(t, expectCount-proposeCount, 5,
 			"validator missed proposing too many blocks (proposed %v out of %v)", proposeCount, expectCount)
 	})
 }
@@ -109,14 +109,14 @@ func TestValidator_Sign(t *testing.T) {
 					signCount++
 				}
 			} else {
-				require.False(t, signed, "unexpected signature for block %v", block.LastCommit.Height)
+				require.Falsef(t, signed, "unexpected signature for block %v", block.LastCommit.Height)
 			}
 			valSchedule.Increment(1)
 		}
 
-		require.False(t, signCount == 0 && expectCount > 0,
+		require.Falsef(t, signCount == 0 && expectCount > 0,
 			"node did not sign any blocks (expected %v)", expectCount)
-		require.Less(t, float64(expectCount-signCount)/float64(expectCount), 0.5,
+		require.Lessf(t, float64(expectCount-signCount)/float64(expectCount), 0.5,
 			"validator missed signing too many blocks (signed %v out of %v)", signCount, expectCount)
 	})
 }

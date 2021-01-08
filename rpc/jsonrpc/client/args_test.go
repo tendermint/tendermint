@@ -33,7 +33,7 @@ func TestArgToJSON(t *testing.T) {
 		require.Nil(err, "%d: %+v", i, err)
 		require.Equal(1, len(args), "%d", i)
 		data, ok := args["data"].(string)
-		require.True(ok, "%d: %#v", i, args["data"])
-		assert.Equal(tc.expected, data, "%d", i)
+		require.Truef(ok, "%d: %#v", i, args["data"])
+		assert.Equalf(tc.expected, data, "%d", i)
 	}
 }
