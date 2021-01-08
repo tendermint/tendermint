@@ -282,7 +282,7 @@ func simulateRouter(primary *reactorTestSuite, suites []*reactorTestSuite, dropC
 	}()
 }
 
-func TestNoBlockResponse(t *testing.T) {
+func TestReactor_NoBlockResponse(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 
@@ -328,7 +328,7 @@ func TestNoBlockResponse(t *testing.T) {
 	}
 }
 
-func TestBadBlockStopsPeer(t *testing.T) {
+func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 
