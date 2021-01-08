@@ -122,10 +122,12 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		witnessesAddrs = strings.Split(witnessAddrsJoined, ",")
 	}
 
-	db, err := dbm.NewGoLevelDB("light-client-db", dir)
+	lightDB, err := dbm.NewGoLevelDB("light-client-db", dir)
 	if err != nil {
 		return fmt.Errorf("can't create a db: %w", err)
 	}
+	// create a prefixed db on the chainID
+	db := dbm.NewPrefixDB(lightDB, []byte(chainID))
 
 	if primaryAddr == "" { // check to see if we can start from an existing state
 		var err error
@@ -187,7 +189,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 			},
 			primaryAddr,
 			witnessesAddrs,
-			dbs.New(db, chainID),
+			dbs.New(db),
 			options...,
 		)
 	} else { // continue from latest state
@@ -196,7 +198,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 			trustingPeriod,
 			primaryAddr,
 			witnessesAddrs,
-			dbs.New(db, chainID),
+			dbs.New(db),
 			options...,
 		)
 	}
