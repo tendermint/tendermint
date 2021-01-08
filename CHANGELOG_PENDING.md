@@ -36,6 +36,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [libs/os] `EnsureDir` now propagates IO errors and checks the file type (@erikgrinaker)
   - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
   - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)
+  - [state] \#5864 Use an iterator when pruning state (@cmwaters)
 
 - Blockchain Protocol
 
