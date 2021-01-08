@@ -386,11 +386,13 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 		"expected new node to be fully synced",
 	)
 
-	require.Eventually(
+	require.Eventuallyf(
 		t,
 		func() bool { return len(newSuite.reactor.pool.peers) == len(testSuites)-3 },
-		time.Second,
+		10*time.Second,
 		10*time.Millisecond,
-		"invalid number of peers",
+		"invalid number of peers; expected: %d, got: %d",
+		len(testSuites)-3,
+		len(newSuite.reactor.pool.peers),
 	)
 }
