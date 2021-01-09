@@ -408,7 +408,9 @@ func (m *peerManager) Accepted(peerID NodeID) error {
 // peer must already be marked as connected. This is separate from Dialed() and
 // Accepted() to allow the router to set up its internal queues before reactors
 // start sending messages (holding the Router.peerMtx mutex while calling
-// Accepted or Dialed will halt all message routing while peers are set up).
+// Accepted or Dialed will halt all message routing while peers are set up, which
+// is too expensive and also causes difficulties in tests where we may want to
+// consume peer updates and send messages sequentially).
 //
 // FIXME: This possibly indicates an architectural problem. Should the peerManager
 // handle actual network connections to/from peers as well? Or should all of this
