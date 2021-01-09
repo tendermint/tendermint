@@ -259,7 +259,6 @@ func (r *Router) acceptPeers(transport Transport) {
 
 			peerID := conn.NodeInfo().NodeID
 			if err := r.peerManager.Accepted(peerID); err != nil {
-				r.peerMtx.Unlock()
 				r.logger.Error("failed to accept connection", "peer", peerID, "err", err)
 				return
 			}
@@ -320,7 +319,6 @@ func (r *Router) dialPeers() {
 			defer conn.Close()
 
 			if err = r.peerManager.Dialed(peerID, address); err != nil {
-				r.peerMtx.Unlock()
 				r.logger.Error("failed to dial peer", "peer", peerID, "err", err)
 				return
 			}
