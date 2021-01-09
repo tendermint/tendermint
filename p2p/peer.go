@@ -224,11 +224,13 @@ type PeerUpdate struct {
 // - DialFailed: reports a dail failure, unmarking the peer as dialing.
 // - Dialed: successfully dialed, unmarking as dialing and marking as connected
 //   (or erroring if already connected).
+// - Ready: routing is up, broadcasts a PeerStatusUp peer update to subscribers.
 // - Disconnected: peer disconnects, unmarking as connected.
 //
 // For an inbound connection, the flow is as follows:
 // - Accepted: successfully accepted connection, marking as connected (or erroring
 //   if already connected).
+// - Ready: routing is up, broadcasts a PeerStatusUp peer update to subscribers.
 // - Disconnected: peer disconnects, unmarking as connected.
 //
 // We track dialing and connected states independently. This allows us to accept
