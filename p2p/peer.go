@@ -215,34 +215,55 @@ type PeerUpdate struct {
 }
 
 // peerManager manages peer information, using a peerStore for underlying
-// storage. Its primary purpose is to make sure only a single Router goroutine
-// exists for each peer (e.g. that we don't accept inbound connections from a
-// peer if we've already dialed it), and to determine which peers to dial next.
+// storage. Its primary purpose is to determine which peers to connect to next,
+// make sure a peer only has a single active connection (either inbound or outbound),
+// and to avoid dialing the same peer in parallel goroutines.
+//
+// For an outbound connection, the flow is as follows:
+// - DialNext: returns a peer address to dial, marking the peer as dialing.
+// - DialFailed: reports a dail failure, unmarking the peer as dialing.
+// - Dialed: successfully dialed, unmarking as dialing and marking as connected
+//   (or erroring if already connected).
+// - Disconnected: peer disconnects, unmarking as connected.
+//
+// For an inbound connection, the flow is as follows:
+// - Accepted: successfully accepted connection, marking as connected (or erroring
+//   if already connected).
+// - Disconnected: peer disconnects, unmarking as connected.
+//
+// We track dialing and connected states independently. This allows us to accept
+// an inbound connection while the router is also dialing an outbound
+// connection, which will cause the dialer to eventually error (when attempting
+// to mark the peer as connected). This also avoids race conditions where
+// multiple goroutines may end up dialing a peer if an incoming connection was
+// briefly accepted and disconnected while we were also dialing.
 type peerManager struct {
-	mtx     sync.Mutex
-	store   *peerStore
-	claimed map[NodeID]bool
+	mtx       sync.Mutex
+	store     *peerStore
+	dialing   map[NodeID]bool
+	connected map[NodeID]bool
 }
 
 // newPeerManager creates a new peer manager.
 func newPeerManager(store *peerStore) *peerManager {
 	return &peerManager{
-		store:   store,
-		claimed: map[NodeID]bool{},
+		store:     store,
+		dialing:   map[NodeID]bool{},
+		connected: map[NodeID]bool{},
 	}
 }
 
-// Add adds a peer to the store, given as an address. If the peer already
+// Add adds a peer to the manager, given as an address. If the peer already
 // exists, the address is added to it.
-func (s *peerManager) Add(address PeerAddress) error {
+func (m *peerManager) Add(address PeerAddress) error {
 	if err := address.Validate(); err != nil {
 		return err
 	}
 	peerID := address.NodeID()
 
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	peer, err := s.store.Get(peerID)
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	peer, err := m.store.Get(peerID)
 	if err != nil {
 		return err
 	}
@@ -250,68 +271,110 @@ func (s *peerManager) Add(address PeerAddress) error {
 		peer = newPeerInfo(peerID)
 	}
 	if peer.AddAddress(address) {
-		return s.store.Set(peer)
+		return m.store.Set(peer)
 	}
 	return nil
 }
 
-// Claim claims a peer. The caller can assume "ownership" of the peer, and must
-// return it by calling Return(). Returns false if the peer could not be claimed.
-// If the peer is unknown, it is added to the manager and claimed.
-func (m *peerManager) Claim(id NodeID) (bool, error) {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-	if m.claimed[id] {
-		return false, nil
-	}
-	if peer, err := m.store.Get(id); err != nil {
-		return false, err
-	} else if peer == nil {
-		if err = m.store.Set(newPeerInfo(id)); err != nil {
-			return false, err
-		}
-	}
-	m.claimed[id] = true
-	return true, nil
-}
-
-// Dispense finds an appropriate peer to contact and claims it. The caller has
-// exclusive ownership of the peer, and must return it by calling Return(). The
-// peer will not be dispensed again until returned.
+// DialNext finds an appropriate peer address to dial, and marks it as dialing.
+// The peer will not be returned again until Dialed() or DialFailed() is called
+// for the peer and it is no longer connected.
 //
 // Returns an empty ID if no appropriate peers are available.
-func (m *peerManager) Dispense() (NodeID, []PeerAddress, error) {
+func (m *peerManager) DialNext() (NodeID, PeerAddress, error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 	peers, err := m.store.List()
 	if err != nil {
-		return "", nil, err
+		return "", PeerAddress{}, err
 	}
 	for _, peer := range peers {
 		switch {
 		case len(peer.Addresses) == 0:
-		case m.claimed[peer.ID]:
+		case m.dialing[peer.ID]:
+		case m.connected[peer.ID]:
 		default:
-			m.claimed[peer.ID] = true
-			return peer.ID, peer.Addresses, nil
+			// FIXME: We currently only dial the first address, but we should
+			// track connection statistics for each address and return the most
+			// appropriate one.
+			m.dialing[peer.ID] = true
+			return peer.ID, peer.Addresses[0], nil
 		}
 	}
-	return "", nil, nil
+	return "", PeerAddress{}, nil
 }
 
-// Return returns a claimed peer, making it available for other
-// callers to claim.
-func (m *peerManager) Return(id NodeID) {
+// DialFailed reports a failed dial attempt. This will make the peer available
+// for dialing again when appropriate.
+func (m *peerManager) DialFailed(peerID NodeID, address PeerAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
-	delete(m.claimed, id)
+	delete(m.dialing, peerID)
+	// FIXME: We need to track address quality statistics and exponential backoff.
+	return nil
+}
+
+// Dialed marks a peer as successfully dialed. Any further incoming connections
+// will be rejected, and once disconnected the peer may be dialed again.
+func (m *peerManager) Dialed(peerID NodeID, address PeerAddress) error {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	peer, err := m.store.Get(peerID)
+	if err != nil {
+		return err
+	} else if peer == nil {
+		return fmt.Errorf("unknown peer %q", peerID)
+	}
+
+	if m.connected[peerID] {
+		return fmt.Errorf("peer %v is already connected", peerID)
+	}
+	delete(m.dialing, peerID)
+	m.connected[peerID] = true
+	return nil
+}
+
+// Accepted marks an incoming peer connection successfully accepted. If the peer
+// is already connected this will return an error.
+//
+// NOTE: We can't take an address here, since e.g. TCP uses a different port
+// number for outbound traffic than inbound traffic, so the peer's endpoint
+// wouldn't necessarily be an appropriate address to dial.
+func (m *peerManager) Accepted(peerID NodeID) error {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	peer, err := m.store.Get(peerID)
+	if err != nil {
+		return err
+	} else if peer == nil {
+		peer = newPeerInfo(peerID)
+		if err = m.store.Set(peer); err != nil {
+			return err
+		}
+	}
+	if m.connected[peerID] {
+		return fmt.Errorf("peer %q is already connected", peerID)
+	}
+	m.connected[peerID] = true
+	return nil
+}
+
+// Disconnected unmarks a peer as connected, allowing new connections to be
+// established.
+func (m *peerManager) Disconnected(peerID NodeID) error {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	delete(m.connected, peerID)
+	return nil
 }
 
 // peerStore stores information about peers. It is currently a bare-bones
 // in-memory store, and will be fleshed out later.
 //
 // peerStore is not thread-safe, since it assumes it is only used by peerManager
-// which handles concurrency control.
+// which handles concurrency control. This allows multiple operations to be
+// executed atomically, since the peerManager will hold a mutex while executing.
 type peerStore struct {
 	peers map[NodeID]peerInfo
 }
@@ -345,6 +408,7 @@ func (s *peerStore) Set(peer *peerInfo) error {
 func (s *peerStore) List() ([]*peerInfo, error) {
 	peers := []*peerInfo{}
 	for _, peer := range s.peers {
+		peer := peer
 		peers = append(peers, &peer)
 	}
 	return peers, nil

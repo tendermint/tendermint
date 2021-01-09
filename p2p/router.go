@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -260,12 +259,8 @@ func (r *Router) acceptPeers(transport Transport) {
 		}
 
 		peerID := conn.NodeInfo().NodeID
-		if ok, err := r.peerManager.Claim(peerID); err != nil {
-			r.logger.Error("failed to claim peer", "peer", peerID, "err", err)
-			_ = conn.Close()
-			continue
-		} else if !ok {
-			r.logger.Error("already connected to peer, rejecting connection", "peer", peerID)
+		if err := r.peerManager.Accepted(peerID); err != nil {
+			r.logger.Error("failed to accept connection", "peer", peerID, "err", err)
 			_ = conn.Close()
 			continue
 		}
@@ -282,7 +277,7 @@ func (r *Router) acceptPeers(transport Transport) {
 				r.peerMtx.Unlock()
 				queue.close()
 				_ = conn.Close()
-				r.peerManager.Return(peerID)
+				_ = r.peerManager.Disconnected(peerID)
 			}()
 
 			r.routePeer(peerID, conn, queue)
@@ -299,9 +294,9 @@ func (r *Router) dialPeers() {
 		default:
 		}
 
-		id, addresses, err := r.peerManager.Dispense()
+		id, address, err := r.peerManager.DialNext()
 		if err != nil {
-			r.logger.Error("failed to dispense peer", "err", err)
+			r.logger.Error("failed to find next peer to dial", "err", err)
 			return
 		} else if id == "" {
 			r.logger.Debug("no eligible peers, sleeping")
@@ -314,13 +309,21 @@ func (r *Router) dialPeers() {
 		}
 
 		go func() {
-			defer r.peerManager.Return(id)
-			conn, err := r.dialPeer(addresses)
+			conn, err := r.dialPeer(address)
 			if err != nil {
 				r.logger.Error("failed to dial peer, will retry", "peer", id)
+				if err = r.peerManager.DialFailed(id, address); err != nil {
+					r.logger.Error("failed to report dial failure", "peer", id, "err", err)
+				}
 				return
 			}
 			defer conn.Close()
+
+			if err = r.peerManager.Dialed(id, address); err != nil {
+				r.logger.Error("failed to dial peer", "peer", id, "err", err)
+				return
+			}
+			defer r.peerManager.Disconnected(id)
 
 			queue := newFIFOQueue()
 			defer queue.close()
@@ -340,37 +343,34 @@ func (r *Router) dialPeers() {
 }
 
 // dialPeer attempts to connect to a peer.
-func (r *Router) dialPeer(addresses []PeerAddress) (Connection, error) {
+func (r *Router) dialPeer(address PeerAddress) (Connection, error) {
 	ctx := context.Background()
 
-	for _, address := range addresses {
-		resolveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
-		r.logger.Info("resolving peer address", "address", address)
-		endpoints, err := address.Resolve(resolveCtx)
-		if err != nil {
-			r.logger.Error("failed to resolve address", "address", address, "err", err)
+	resolveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	r.logger.Info("resolving peer address", "address", address)
+	endpoints, err := address.Resolve(resolveCtx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve address %q: %w", address, err)
+	}
+
+	for _, endpoint := range endpoints {
+		t, ok := r.transports[endpoint.Protocol]
+		if !ok {
+			r.logger.Error("no transport found for protocol", "protocol", endpoint.Protocol)
 			continue
 		}
-
-		for _, endpoint := range endpoints {
-			t, ok := r.transports[endpoint.Protocol]
-			if !ok {
-				r.logger.Error("no transport found for protocol", "protocol", endpoint.Protocol)
-				continue
-			}
-			dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-			defer cancel()
-			conn, err := t.Dial(dialCtx, endpoint)
-			if err != nil {
-				r.logger.Error("failed to dial endpoint", "endpoint", endpoint)
-			} else {
-				r.logger.Info("connected to peer", "peer", address.NodeID(), "endpoint", endpoint)
-				return conn, nil
-			}
+		dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		conn, err := t.Dial(dialCtx, endpoint)
+		if err != nil {
+			r.logger.Error("failed to dial endpoint", "endpoint", endpoint)
+		} else {
+			r.logger.Info("connected to peer", "peer", address.NodeID(), "endpoint", endpoint)
+			return conn, nil
 		}
 	}
-	return nil, errors.New("failed to connect to peer")
+	return nil, fmt.Errorf("failed to connect to peer via %q", address)
 }
 
 // routePeer routes inbound messages from a peer to channels, and also sends
