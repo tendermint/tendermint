@@ -87,10 +87,6 @@ type Router struct {
 	channelQueues   map[ChannelID]queue
 	channelMessages map[ChannelID]proto.Message
 
-	peerUpdatesCh   chan PeerUpdate
-	peerUpdatesMtx  sync.RWMutex
-	peerUpdatesSubs map[*PeerUpdatesCh]*PeerUpdatesCh // keyed by struct identity (address)
-
 	// stopCh is used to signal router shutdown, by closing the channel.
 	stopCh chan struct{}
 }
@@ -109,8 +105,6 @@ func NewRouter(logger log.Logger, transports map[Protocol]Transport, peers []Pee
 		channelQueues:   map[ChannelID]queue{},
 		channelMessages: map[ChannelID]proto.Message{},
 		peerQueues:      map[NodeID]queue{},
-		peerUpdatesCh:   make(chan PeerUpdate),
-		peerUpdatesSubs: map[*PeerUpdatesCh]*PeerUpdatesCh{},
 	}
 	router.BaseService = service.NewBaseService(logger, "router", router)
 
@@ -258,26 +252,32 @@ func (r *Router) acceptPeers(transport Transport) {
 			continue
 		}
 
-		peerID := conn.NodeInfo().NodeID
-		if err := r.peerManager.Accepted(peerID); err != nil {
-			r.logger.Error("failed to accept connection", "peer", peerID, "err", err)
-			_ = conn.Close()
-			continue
-		}
-
-		queue := newFIFOQueue()
-		r.peerMtx.Lock()
-		r.peerQueues[peerID] = queue
-		r.peerMtx.Unlock()
-
 		go func() {
+			defer func() {
+				_ = conn.Close()
+			}()
+
+			peerID := conn.NodeInfo().NodeID
+			if err := r.peerManager.Accepted(peerID); err != nil {
+				r.peerMtx.Unlock()
+				r.logger.Error("failed to accept connection", "peer", peerID, "err", err)
+				return
+			}
+
+			queue := newFIFOQueue()
+			r.peerMtx.Lock()
+			r.peerQueues[peerID] = queue
+			r.peerMtx.Unlock()
+			r.peerManager.Ready(peerID)
+
 			defer func() {
 				r.peerMtx.Lock()
 				delete(r.peerQueues, peerID)
 				r.peerMtx.Unlock()
 				queue.close()
-				_ = conn.Close()
-				_ = r.peerManager.Disconnected(peerID)
+				if err := r.peerManager.Disconnected(peerID); err != nil {
+					r.logger.Error("failed to disconnect peer", "peer", peerID, "err", err)
+				}
 			}()
 
 			r.routePeer(peerID, conn, queue)
@@ -294,11 +294,11 @@ func (r *Router) dialPeers() {
 		default:
 		}
 
-		id, address, err := r.peerManager.DialNext()
+		peerID, address, err := r.peerManager.DialNext()
 		if err != nil {
 			r.logger.Error("failed to find next peer to dial", "err", err)
 			return
-		} else if id == "" {
+		} else if peerID == "" {
 			r.logger.Debug("no eligible peers, sleeping")
 			select {
 			case <-time.After(time.Second):
@@ -311,33 +311,37 @@ func (r *Router) dialPeers() {
 		go func() {
 			conn, err := r.dialPeer(address)
 			if err != nil {
-				r.logger.Error("failed to dial peer, will retry", "peer", id)
-				if err = r.peerManager.DialFailed(id, address); err != nil {
-					r.logger.Error("failed to report dial failure", "peer", id, "err", err)
+				r.logger.Error("failed to dial peer, will retry", "peer", peerID)
+				if err = r.peerManager.DialFailed(peerID, address); err != nil {
+					r.logger.Error("failed to report dial failure", "peer", peerID, "err", err)
 				}
 				return
 			}
 			defer conn.Close()
 
-			if err = r.peerManager.Dialed(id, address); err != nil {
-				r.logger.Error("failed to dial peer", "peer", id, "err", err)
+			if err = r.peerManager.Dialed(peerID, address); err != nil {
+				r.peerMtx.Unlock()
+				r.logger.Error("failed to dial peer", "peer", peerID, "err", err)
 				return
 			}
-			defer r.peerManager.Disconnected(id)
 
 			queue := newFIFOQueue()
-			defer queue.close()
 			r.peerMtx.Lock()
-			r.peerQueues[id] = queue
+			r.peerQueues[peerID] = queue
 			r.peerMtx.Unlock()
+			r.peerManager.Ready(peerID)
 
 			defer func() {
 				r.peerMtx.Lock()
-				delete(r.peerQueues, id)
+				delete(r.peerQueues, peerID)
 				r.peerMtx.Unlock()
+				queue.close()
+				if err := r.peerManager.Disconnected(peerID); err != nil {
+					r.logger.Error("failed to disconnect peer", "peer", peerID, "err", err)
+				}
 			}()
 
-			r.routePeer(id, conn, queue)
+			r.routePeer(peerID, conn, queue)
 		}()
 	}
 }
@@ -379,18 +383,7 @@ func (r *Router) dialPeer(address PeerAddress) (Connection, error) {
 // sendPeer() goroutines. It blocks until the peer is done, e.g. when the
 // connection or queue is closed.
 func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
-	// FIXME: Peer updates should probably be handled by the peer store.
-	r.peerUpdatesCh <- PeerUpdate{
-		PeerID: peerID,
-		Status: PeerStatusUp,
-	}
-	defer func() {
-		r.peerUpdatesCh <- PeerUpdate{
-			PeerID: peerID,
-			Status: PeerStatusDown,
-		}
-	}()
-
+	r.logger.Info("routing peer", "peer", peerID)
 	resultsCh := make(chan error, 2)
 	go func() {
 		resultsCh <- r.receivePeer(peerID, conn)
@@ -486,64 +479,19 @@ func (r *Router) sendPeer(peerID NodeID, conn Connection, queue queue) error {
 }
 
 // SubscribePeerUpdates creates a new peer updates subscription. The caller must
-// consume the peer updates in a timely fashion, since delivery is guaranteed and
-// will block peer connection/disconnection otherwise.
-func (r *Router) SubscribePeerUpdates() (*PeerUpdatesCh, error) {
-	// FIXME: We may want to use a size 1 buffer here. When the router
-	// broadcasts a peer update it has to loop over all of the
-	// subscriptions, and we want to avoid blocking and waiting for a
-	// context switch before continuing to the next subscription. This also
-	// prevents tail latencies from compounding across updates. We also want
-	// to make sure the subscribers are reasonably in sync, so it should be
-	// kept at 1. However, this should be benchmarked first.
-	peerUpdates := NewPeerUpdates(make(chan PeerUpdate))
-	r.peerUpdatesMtx.Lock()
-	r.peerUpdatesSubs[peerUpdates] = peerUpdates
-	r.peerUpdatesMtx.Unlock()
-
-	go func() {
-		select {
-		case <-peerUpdates.Done():
-			r.peerUpdatesMtx.Lock()
-			delete(r.peerUpdatesSubs, peerUpdates)
-			r.peerUpdatesMtx.Unlock()
-		case <-r.stopCh:
-		}
-	}()
-	return peerUpdates, nil
-}
-
-// broadcastPeerUpdates broadcasts peer updates received from the router
-// to all subscriptions.
-func (r *Router) broadcastPeerUpdates() {
-	for {
-		select {
-		case peerUpdate := <-r.peerUpdatesCh:
-			subs := []*PeerUpdatesCh{}
-			r.peerUpdatesMtx.RLock()
-			for _, sub := range r.peerUpdatesSubs {
-				subs = append(subs, sub)
-			}
-			r.peerUpdatesMtx.RUnlock()
-
-			for _, sub := range subs {
-				select {
-				case sub.updatesCh <- peerUpdate:
-				case <-sub.doneCh:
-				case <-r.stopCh:
-					return
-				}
-			}
-
-		case <-r.stopCh:
-			return
-		}
-	}
+// consume the peer updates in a timely fashion and close the subscription when
+// done, since delivery is guaranteed and will block peer
+// connection/disconnection otherwise.
+//
+// FIXME: Consider having callers just use peerManager.Subscribe() directly, if
+// we export peerManager and make it an injected dependency (which we probably
+// should).
+func (r *Router) SubscribePeerUpdates() *PeerUpdatesCh {
+	return r.peerManager.Subscribe()
 }
 
 // OnStart implements service.Service.
 func (r *Router) OnStart() error {
-	go r.broadcastPeerUpdates()
 	go r.dialPeers()
 	for _, transport := range r.transports {
 		go r.acceptPeers(transport)

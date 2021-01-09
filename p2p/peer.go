@@ -238,18 +238,20 @@ type PeerUpdate struct {
 // multiple goroutines may end up dialing a peer if an incoming connection was
 // briefly accepted and disconnected while we were also dialing.
 type peerManager struct {
-	mtx       sync.Mutex
-	store     *peerStore
-	dialing   map[NodeID]bool
-	connected map[NodeID]bool
+	mtx           sync.Mutex
+	store         *peerStore
+	dialing       map[NodeID]bool
+	connected     map[NodeID]bool
+	subscriptions map[*PeerUpdatesCh]*PeerUpdatesCh // keyed by struct identity (address)
 }
 
 // newPeerManager creates a new peer manager.
 func newPeerManager(store *peerStore) *peerManager {
 	return &peerManager{
-		store:     store,
-		dialing:   map[NodeID]bool{},
-		connected: map[NodeID]bool{},
+		store:         store,
+		dialing:       map[NodeID]bool{},
+		connected:     map[NodeID]bool{},
+		subscriptions: map[*PeerUpdatesCh]*PeerUpdatesCh{},
 	}
 }
 
@@ -274,6 +276,48 @@ func (m *peerManager) Add(address PeerAddress) error {
 		return m.store.Set(peer)
 	}
 	return nil
+}
+
+// Subscribe subscribes to peer updates. The caller must consume the peer
+// updates in a timely fashion and close the subscription when done, since
+// delivery is guaranteed and will block peer connection/disconnection
+// otherwise.
+func (m *peerManager) Subscribe() *PeerUpdatesCh {
+	// FIXME: We may want to use a size 1 buffer here. When the router
+	// broadcasts a peer update it has to loop over all of the
+	// subscriptions, and we want to avoid blocking and waiting for a
+	// context switch before continuing to the next subscription. This also
+	// prevents tail latencies from compounding across updates. We also want
+	// to make sure the subscribers are reasonably in sync, so it should be
+	// kept at 1. However, this should be benchmarked first.
+	peerUpdates := NewPeerUpdates(make(chan PeerUpdate))
+	m.mtx.Lock()
+	m.subscriptions[peerUpdates] = peerUpdates
+	m.mtx.Unlock()
+
+	go func() {
+		<-peerUpdates.Done()
+		m.mtx.Lock()
+		delete(m.subscriptions, peerUpdates)
+		m.mtx.Unlock()
+	}()
+	return peerUpdates
+}
+
+// broadcast broadcasts a peer update to all subscriptions. The caller must
+// already hold the mutex lock. This means the mutex is held for the duration
+// of the broadcast, which we want to make sure all subscriptions receive all
+// updates in the same order.
+//
+// FIXME: Consider using more fine-grained mutexes here, and/or a channel to
+// enforce ordering of updates.
+func (m *peerManager) broadcast(peerUpdate PeerUpdate) {
+	for _, sub := range m.subscriptions {
+		select {
+		case sub.updatesCh <- peerUpdate:
+		case <-sub.doneCh:
+		}
+	}
 }
 
 // DialNext finds an appropriate peer address to dial, and marks it as dialing.
@@ -360,12 +404,37 @@ func (m *peerManager) Accepted(peerID NodeID) error {
 	return nil
 }
 
+// Ready marks a peer as ready, broadcasting status updates to subscribers. The
+// peer must already be marked as connected. This is separate from Dialed() and
+// Accepted() to allow the router to set up its internal queues before reactors
+// start sending messages (holding the Router.peerMtx mutex while calling
+// Accepted or Dialed will halt all message routing while peers are set up).
+//
+// FIXME: This possibly indicates an architectural problem. Should the peerManager
+// handle actual network connections to/from peers as well? Or should all of this
+// be done by the router?
+func (m *peerManager) Ready(peerID NodeID) {
+	m.mtx.Lock()
+	connected := m.connected[peerID]
+	m.mtx.Unlock()
+	if connected {
+		m.broadcast(PeerUpdate{
+			PeerID: peerID,
+			Status: PeerStatusUp,
+		})
+	}
+}
+
 // Disconnected unmarks a peer as connected, allowing new connections to be
 // established.
 func (m *peerManager) Disconnected(peerID NodeID) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 	delete(m.connected, peerID)
+	m.broadcast(PeerUpdate{
+		PeerID: peerID,
+		Status: PeerStatusDown,
+	})
 	return nil
 }
 
