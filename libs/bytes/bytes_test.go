@@ -25,7 +25,6 @@ func TestMarshal(t *testing.T) {
 
 // Test that the hex encoding works.
 func TestJSONMarshal(t *testing.T) {
-
 	type TestStruct struct {
 		B1 []byte
 		B2 HexBytes
@@ -67,7 +66,6 @@ func TestJSONMarshal(t *testing.T) {
 }
 
 func TestToHexString(t *testing.T) {
-
 	hs := HexBytes([]byte("test me"))
 	if _, err := strconv.ParseInt(hs.String(), 16, 64); nil != err {
 		t.FailNow()

@@ -66,7 +66,6 @@ func TestDebug(t *testing.T) {
 }
 
 func TestError(t *testing.T) {
-
 	var bufErr bytes.Buffer
 
 	le := log.NewTMLogger(&bufErr)
