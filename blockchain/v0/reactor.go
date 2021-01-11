@@ -372,22 +372,12 @@ func (r *Reactor) SwitchToFastSync(state sm.State) error {
 }
 
 func (r *Reactor) broadcastStatusRequest() {
-	envelope := p2p.Envelope{
-		Broadcast: true,
-		Message:   &bcproto.StatusRequest{},
-	}
-
 	r.poolWG.Add(1)
 	defer r.poolWG.Done()
 
-	select {
-	case <-r.Quit():
-		return
-
-	case <-r.pool.Quit():
-		return
-
-	case r.blockchainCh.Out() <- envelope:
+	r.blockchainCh.Out() <- p2p.Envelope{
+		Broadcast: true,
+		Message:   &bcproto.StatusRequest{},
 	}
 }
 
