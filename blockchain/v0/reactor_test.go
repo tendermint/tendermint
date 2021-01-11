@@ -350,7 +350,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 
 			return caughtUp
 		},
-		time.Minute,
+		10*time.Minute,
 		10*time.Millisecond,
 		"expected all nodes to be fully synced",
 	)
@@ -381,7 +381,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	require.Eventually(
 		t,
 		func() bool { return newSuite.reactor.pool.MaxPeerHeight() > 0 && newSuite.reactor.pool.IsCaughtUp() },
-		time.Minute,
+		10*time.Minute,
 		10*time.Millisecond,
 		"expected new node to be fully synced",
 	)
@@ -389,7 +389,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	require.Eventuallyf(
 		t,
 		func() bool { return len(newSuite.reactor.pool.peers) == len(testSuites)-3 },
-		time.Minute,
+		10*time.Minute,
 		10*time.Millisecond,
 		"invalid number of peers; expected: %d, got: %d",
 		len(testSuites)-3,
