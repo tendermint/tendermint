@@ -956,6 +956,13 @@ func (n *Node) OnStart() error {
 
 	n.isListening = true
 
+	if n.config.FastSync.Version == "v0" {
+		// Start the real blockchain reactor separately since the switch uses the shim.
+		if err := n.bcReactor.Start(); err != nil {
+			return err
+		}
+	}
+
 	// Start the real state sync reactor separately since the switch uses the shim.
 	if err := n.stateSyncReactor.Start(); err != nil {
 		return err
@@ -1005,6 +1012,13 @@ func (n *Node) OnStop() {
 	// now stop the reactors
 	if err := n.sw.Stop(); err != nil {
 		n.Logger.Error("Error closing switch", "err", err)
+	}
+
+	if n.config.FastSync.Version == "v0" {
+		// Stop the real blockchain reactor separately since the switch uses the shim.
+		if err := n.bcReactor.Stop(); err != nil {
+			n.Logger.Error("failed to stop the blockchain reactor", "err", err)
+		}
 	}
 
 	// Stop the real state sync reactor separately since the switch uses the shim.
