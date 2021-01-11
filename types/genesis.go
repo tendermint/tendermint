@@ -137,6 +137,7 @@ func GenesisDocFromFile(genDocFile string) (*GenesisDoc, error) {
 	return genDoc, nil
 }
 
+// LoadGenesisDoc loads the genesis file from a specified filepath
 func LoadGenesisDoc(filePath string) (*GenesisDoc, error) {
 	JSONBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
