@@ -1,13 +1,15 @@
 ---
 order: 1
 parent:
-  title: Tendermint Core
+  title: Core
   order: 4
 ---
 
 # Overview
 
 This section dives into the internals of Go-Tendermint.
+
+
 
 - [Using Tendermint](./using-tendermint.md)
 - [Running in Production](./running-in-production.md)
@@ -18,3 +20,4 @@ This section dives into the internals of Go-Tendermint.
 - [State Sync](./state-sync.md)
 - [Mempool](./mempool.md)
 - [Light Client](./light-client.md)
+- [Reactors](./reactors/README.md)
