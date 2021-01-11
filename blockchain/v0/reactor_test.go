@@ -311,7 +311,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 
-	maxBlockHeight := int64(64)
+	maxBlockHeight := int64(48)
 	genDoc, privVals := randGenesisDoc(config, 1, false, 30)
 
 	testSuites := []*reactorTestSuite{
