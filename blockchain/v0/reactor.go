@@ -371,16 +371,6 @@ func (r *Reactor) SwitchToFastSync(state sm.State) error {
 	return nil
 }
 
-func (r *Reactor) broadcastStatusRequest() {
-	r.poolWG.Add(1)
-	defer r.poolWG.Done()
-
-	r.blockchainCh.Out() <- p2p.Envelope{
-		Broadcast: true,
-		Message:   &bcproto.StatusRequest{},
-	}
-}
-
 func (r *Reactor) requestRoutine() {
 	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
 	defer statusUpdateTicker.Stop()
@@ -410,7 +400,15 @@ func (r *Reactor) requestRoutine() {
 			}
 
 		case <-statusUpdateTicker.C:
-			go r.broadcastStatusRequest()
+			go func() {
+				r.poolWG.Add(1)
+				defer r.poolWG.Done()
+
+				r.blockchainCh.Out() <- p2p.Envelope{
+					Broadcast: true,
+					Message:   &bcproto.StatusRequest{},
+				}
+			}()
 		}
 	}
 }
