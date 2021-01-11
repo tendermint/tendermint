@@ -22,8 +22,8 @@ var _ txindex.TxIndexer = (*TxIndex)(nil)
 
 // TxIndex is the simplest possible indexer
 // It is backed by two kv stores:
-// 		1. txhash - result  (primary key)
-//    2. event - txhash   (secondary key)
+// 1. txhash - result  (primary key)
+// 2. event - txhash   (secondary key)
 type TxIndex struct {
 	store dbm.DB
 }
@@ -147,7 +147,7 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Ba
 			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
 			// ensure event does not conflict with a reserved prefix key
 			if compositeTag == types.TxHashKey || compositeTag == types.TxHeightKey {
-				continue
+				return fmt.Errorf("event type and attribute key \"%s\" is reserved. Please use a different key", compositeTag)
 			}
 			if attr.GetIndex() {
 				err := store.Set(keyFromEvent(compositeTag, attr.Value, result), hash)
@@ -619,16 +619,16 @@ LOOP:
 // ##########################  Keys  #############################
 //
 // The indexer has two types of kv stores:
-// 		1. txhash - result  (primary key)
-//    2. event - txhash   (secondary key)
+// 1. txhash - result  (primary key)
+// 2. event - txhash   (secondary key)
 //
 // The event key can be decomposed into 4 parts.
-//    1. A composite key which can be any string.
-//       Usually something like "tx.height" or "account.owner"
-//    2. A value. That corresponds to the key. In the above
-//       example the value could be "5" or "Ivan"
-//    3. The height of the Tx that aligns with the key and value.
-//    4. The index of the Tx that aligns with the key and value
+// 1. A composite key which can be any string.
+// Usually something like "tx.height" or "account.owner"
+// 2. A value. That corresponds to the key. In the above
+// example the value could be "5" or "Ivan"
+// 3. The height of the Tx that aligns with the key and value.
+// 4. The index of the Tx that aligns with the key and value
 
 // the hash/primary key
 func primaryKey(hash []byte) []byte {
