@@ -425,16 +425,10 @@ func createBlockchainReactor(
 
 	switch config.FastSync.Version {
 	case "v0":
-		reactorShim := p2p.NewReactorShim(logger, "BlokchainShim", bcv0.ChannelShims)
+		reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", bcv0.ChannelShims)
 		reactor := bcv0.NewReactor(
-			logger,
-			state.Copy(),
-			blockExec,
-			blockStore,
-			csReactor,
-			reactorShim.GetChannel(bcv0.BlockchainChannel),
-			reactorShim.PeerUpdates,
-			fastSync,
+			logger, state.Copy(), blockExec, blockStore, csReactor,
+			reactorShim.GetChannel(bcv0.BlockchainChannel), reactorShim.PeerUpdates, fastSync,
 		)
 
 		return reactorShim, reactor, nil
