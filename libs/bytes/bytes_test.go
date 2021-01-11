@@ -70,5 +70,4 @@ func TestToHexString(t *testing.T) {
 	if _, err := strconv.ParseInt(hs.String(), 16, 64); err != nil {
 		t.FailNow()
 	}
-
 }
