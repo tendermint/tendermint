@@ -388,11 +388,11 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 
 	require.Eventuallyf(
 		t,
-		func() bool { return len(newSuite.reactor.pool.peers) == len(testSuites)-3 },
+		func() bool { return len(newSuite.reactor.pool.peers) < len(testSuites)-1 },
 		10*time.Minute,
 		10*time.Millisecond,
-		"invalid number of peers; expected: %d, got: %d",
-		len(testSuites)-3,
+		"invalid number of peers; expected < %d, got: %d",
+		len(testSuites)-1,
 		len(newSuite.reactor.pool.peers),
 	)
 }
