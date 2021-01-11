@@ -67,7 +67,7 @@ func TestJSONMarshal(t *testing.T) {
 
 func TestToHexString(t *testing.T) {
 	hs := HexBytes([]byte("test me"))
-	if _, err := strconv.ParseInt(hs.String(), 16, 64); nil != err {
+	if _, err := strconv.ParseInt(hs.String(), 16, 64); err != nil {
 		t.FailNow()
 	}
 
