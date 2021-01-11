@@ -1,5 +1,8 @@
 ---
-order: false
+order: 1
+parent:
+  title: Blockchain
+  order: false
 ---
 
 # Blockchain

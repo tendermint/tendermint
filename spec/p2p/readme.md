@@ -1,5 +1,6 @@
 ---
-cards: true
+order: 1
+parent:
+  title: P2P
+  order: 6
 ---
-
-# P2P

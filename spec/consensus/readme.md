@@ -1,5 +1,8 @@
 ---
-cards: true
+order: 1
+parent:
+  title: Consensus
+  order: 4
 ---
 
 # Consensus

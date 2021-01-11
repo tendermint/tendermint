@@ -1,4 +1,9 @@
-# Core
+---
+order: 1
+parent:
+  title: Core
+  order: 3
+---
 
 This section describes the core types and functionality of the Tendermint protocol implementation.
 

@@ -1,4 +1,9 @@
-# Light Client Protocol
+---
+order: 1
+parent:
+  title: Light Client
+  order: 5
+---
 
 NOTE: This specification is under heavy development and is not yet complete nor
 accurate.

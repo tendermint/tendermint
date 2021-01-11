@@ -2,7 +2,7 @@
 order: 1
 title: Overview
 parent:
-  title: Tendermint Spec
+  title: Spec
   order: 7
 ---
 
