@@ -85,7 +85,10 @@ func (m *Message) Validate() error {
 			return errors.New("negative Height")
 		}
 		if m.GetStatusResponse().Base > m.GetStatusResponse().Height {
-			return fmt.Errorf("base %v cannot be greater than height %v", m.GetStatusResponse().Base, m.GetStatusResponse().Height)
+			return fmt.Errorf(
+				"base %v cannot be greater than height %v",
+				m.GetStatusResponse().Base, m.GetStatusResponse().Height,
+			)
 		}
 
 	case *Message_StatusRequest:
