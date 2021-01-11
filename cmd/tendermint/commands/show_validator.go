@@ -11,12 +11,11 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
-	"github.com/tendermint/tendermint/types"
 )
 
 // ShowValidatorCmd adds capabilities for showing the validator info.
 var ShowValidatorCmd = &cobra.Command{
-	Use:     "show-validator [chainID]",
+	Use:     "show-validator",
 	Aliases: []string{"show_validator"},
 	Short:   "Show this node's validator info",
 	RunE:    showValidator,
@@ -33,15 +32,7 @@ func showValidator(cmd *cobra.Command, args []string) error {
 	protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidatorListenAddr)
 	switch protocol {
 	case "grpc":
-		genFile := config.GenesisFile()
-		if !tmos.FileExists(genFile) {
-			return fmt.Errorf("unable to find genesis file")
-		}
-		genDoc, err := types.LoadGenesisDoc(genFile)
-		if err != nil {
-			return fmt.Errorf("unable to load genesis file %w", err)
-		}
-		pvsc, err := tmgrpc.DialRemoteSigner(config, genDoc.ChainID, logger)
+		pvsc, err := tmgrpc.DialRemoteSigner(config, config.ChainID(), logger)
 		if err != nil {
 			return fmt.Errorf("can't connect to remote validator %w", err)
 		}

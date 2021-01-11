@@ -136,18 +136,3 @@ func GenesisDocFromFile(genDocFile string) (*GenesisDoc, error) {
 	}
 	return genDoc, nil
 }
-
-// LoadGenesisDoc loads the genesis file from a specified filepath
-func LoadGenesisDoc(filePath string) (*GenesisDoc, error) {
-	JSONBytes, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		return nil, err
-	}
-	genDoc := GenesisDoc{}
-	err = tmjson.Unmarshal(JSONBytes, &genDoc)
-	if err != nil {
-		return nil, err
-	}
-
-	return &genDoc, nil
-}
