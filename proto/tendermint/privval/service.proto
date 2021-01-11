@@ -1,0 +1,14 @@
+syntax = "proto3";
+package tendermint.privval;
+option  go_package = "github.com/tendermint/tendermint/proto/tendermint/privval";
+
+import "tendermint/privval/types.proto";
+
+//----------------------------------------
+// Service Definition
+
+service PrivValidatorAPI {
+  rpc GetPubKey(PubKeyRequest) returns (PubKeyResponse);
+  rpc SignVote(SignVoteRequest) returns (SignedVoteResponse);
+  rpc SignProposal(SignProposalRequest) returns (SignedProposalResponse);
+}

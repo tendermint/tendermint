@@ -115,8 +115,8 @@ func TestValidator_Sign(t *testing.T) {
 		}
 
 		require.False(t, signCount == 0 && expectCount > 0,
-			"node did not sign any blocks (expected %v)", expectCount)
-		require.Less(t, float64(expectCount-signCount)/float64(expectCount), 0.5,
+			"validator did not sign any blocks (expected %v)", expectCount)
+		require.Less(t, float64(expectCount-signCount)/float64(expectCount), 0.33,
 			"validator missed signing too many blocks (signed %v out of %v)", signCount, expectCount)
 	})
 }

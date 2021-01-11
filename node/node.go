@@ -8,12 +8,13 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
-	"strings"
 	"time"
 
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
+	"google.golang.org/grpc"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/tendermint/tendermint/evidence"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/light"
@@ -33,6 +35,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/privval"
+	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
@@ -694,10 +697,19 @@ func NewNode(config *cfg.Config,
 	// If an address is provided, listen on the socket for a connection from an
 	// external signing process.
 	if config.PrivValidatorListenAddr != "" {
+		protocol, address := tmnet.ProtocolAndAddress(config.PrivValidatorListenAddr)
 		// FIXME: we should start services inside OnStart
-		privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, genDoc.ChainID, logger)
-		if err != nil {
-			return nil, fmt.Errorf("error with private validator socket client: %w", err)
+		switch protocol {
+		case "grpc":
+			privValidator, err = createAndStartPrivValidatorGRPCClient(config, address, genDoc.ChainID, logger)
+			if err != nil {
+				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
+			}
+		default:
+			privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, genDoc.ChainID, logger)
+			if err != nil {
+				return nil, fmt.Errorf("error with private validator socket client: %w", err)
+			}
 		}
 	}
 
@@ -1427,6 +1439,7 @@ func createAndStartPrivValidatorSocketClient(
 	chainID string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
+
 	pve, err := privval.NewSignerListener(listenAddr, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
@@ -1452,23 +1465,44 @@ func createAndStartPrivValidatorSocketClient(
 	return pvscWithRetries, nil
 }
 
-// splitAndTrimEmpty slices s into all subslices separated by sep and returns a
-// slice of the string s with all leading and trailing Unicode code points
-// contained in cutset removed. If sep is empty, SplitAndTrim splits after each
-// UTF-8 sequence. First part is equivalent to strings.SplitN with a count of
-// -1.  also filter out empty strings, only return non-empty strings.
-func splitAndTrimEmpty(s, sep, cutset string) []string {
-	if s == "" {
-		return []string{}
+func createAndStartPrivValidatorGRPCClient(
+	config *cfg.Config,
+	address,
+	chainID string,
+	logger log.Logger,
+) (types.PrivValidator, error) {
+	var transportSecurity grpc.DialOption
+	if config.BaseConfig.ArePrivValidatorClientSecurityOptionsPresent() {
+		transportSecurity = tmgrpc.GenerateTLS(config.PrivValidatorClientCertificateFile(),
+			config.PrivValidatorClientKeyFile(), config.PrivValidatorRootCAFile(), logger)
+	} else {
+		transportSecurity = grpc.WithInsecure()
+		logger.Info("Using an insecure gRPC connection!")
+	}
+	dialOptions := tmgrpc.DefaultDialOptions()
+	if config.Instrumentation.Prometheus {
+		grpcMetrics := grpc_prometheus.DefaultClientMetrics
+		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(grpcMetrics.UnaryClientInterceptor()))
 	}
 
-	spl := strings.Split(s, sep)
-	nonEmptyStrings := make([]string, 0, len(spl))
-	for i := 0; i < len(spl); i++ {
-		element := strings.Trim(spl[i], cutset)
-		if element != "" {
-			nonEmptyStrings = append(nonEmptyStrings, element)
-		}
+	dialOptions = append(dialOptions, transportSecurity)
+
+	ctx := context.Background()
+
+	conn, err := grpc.DialContext(ctx, address, dialOptions...)
+	if err != nil {
+		logger.Error("unable to connect to server", "target", address, "err", err)
 	}
-	return nonEmptyStrings
+	pvsc, err := tmgrpc.NewSignerClient(conn, chainID, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start private validator: %w", err)
+	}
+
+	// try to get a pubkey from private validate first time
+	_, err = pvsc.GetPubKey()
+	if err != nil {
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
+	}
+
+	return pvsc, nil
 }

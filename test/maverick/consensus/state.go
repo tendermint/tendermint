@@ -1559,7 +1559,8 @@ func (cs *State) pruneBlocks(retainHeight int64) (uint64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed to prune block store: %w", err)
 	}
-	err = cs.blockExec.Store().PruneStates(base, retainHeight)
+
+	err = cs.blockExec.Store().PruneStates(retainHeight)
 	if err != nil {
 		return 0, fmt.Errorf("failed to prune state database: %w", err)
 	}

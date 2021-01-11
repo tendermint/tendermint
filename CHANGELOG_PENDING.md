@@ -18,7 +18,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [config] \#5598 The `test_fuzz` and `test_fuzz_config` P2P settings have been removed. (@erikgrinaker)
   - [config] \#5728 `fast_sync = "v1"` is no longer supported (@melekes)
   - [cli] \#5772 `gen_node_key` prints JSON-encoded `NodeKey` rather than ID and does not save it to `node_key.json` (@melekes)
-  - [cli] \#5777 use hypen-case instead of snake_case for all cli comamnds and config parameters
+  - [cli] \#5777 use hyphen-case instead of snake_case for all cli commands and config parameters (@cmwaters)
 
 - Apps
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
@@ -35,6 +35,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [proto/p2p] Rename `NodeInfo.default_node_id` to `node_id` (@erikgrinaker)
   - [libs/os] `EnsureDir` now propagates IO errors and checks the file type (@erikgrinaker)
   - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
+  - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)
+  - [state] \#5864 Use an iterator when pruning state (@cmwaters)
 
 - Blockchain Protocol
 
@@ -47,6 +49,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
 - [privval] \#5603 Add `--key` to `init`, `gen_validator`, `testnet` & `unsafe_reset_priv_validator` for use in generating `secp256k1` keys.
+- [privval] \#5725 add gRPC support to private validator. 
 - [abci/client] \#5673 `Async` requests return an error if queue is full (@melekes)
 - [mempool] \#5673 Cancel `CheckTx` requests if RPC client disconnects or times out (@melekes)
 - [abci] \#5706 Added `AbciVersion` to `RequestInfo` allowing applications to check ABCI version when connecting to Tendermint. (@marbar3778)
