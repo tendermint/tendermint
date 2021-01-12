@@ -46,6 +46,8 @@ type Pool struct {
 
 	pruningHeight int64
 	pruningTime   time.Time
+
+	consensusBuffer []types.Evidence
 }
 
 // NewPool creates an evidence pool. If using an existing evidence store,
@@ -57,12 +59,13 @@ func NewPool(logger log.Logger, evidenceDB dbm.DB, stateDB sm.Store, blockStore 
 	}
 
 	pool := &Pool{
-		stateDB:       stateDB,
-		blockStore:    blockStore,
-		state:         state,
-		logger:        logger,
-		evidenceStore: evidenceDB,
-		evidenceList:  clist.New(),
+		stateDB:         stateDB,
+		blockStore:      blockStore,
+		state:           state,
+		logger:          logger,
+		evidenceStore:   evidenceDB,
+		evidenceList:    clist.New(),
+		consensusBuffer: make([]types.Evidence, 0),
 	}
 
 	// If pending evidence already in db, in event of prior failure, then check
@@ -108,6 +111,9 @@ func (evpool *Pool) Update(state sm.State, ev types.EvidenceList) {
 			evpool.state.LastBlockHeight,
 		))
 	}
+
+	// flush awaiting evidence from consensus into pool
+	evpool.flushConsensusBuffer()
 
 	evpool.logger.Info(
 		"updating evidence pool",
@@ -170,14 +176,12 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence) error {
 		return nil
 	}
 
-	if err := evpool.addPendingEvidence(ev); err != nil {
-		return fmt.Errorf("failed to add evidence to pending list: %w", err)
-	}
+	// add evidence to a buffer which will pass the evidence to the pool at the following height.
+	// This avoids the issue of some nodes verifying and proposing evidence at a height where the
+	// block hasn't been committed on cause others to potentially fail.
+	evpool.consensusBuffer = append(evpool.consensusBuffer, ev)
 
-	// add evidence to be gossiped with peers
-	evpool.evidenceList.PushBack(ev)
-
-	evpool.logger.Info("verified new evidence of byzantine behavior", "evidence", ev)
+	evpool.logger.Info("received new evidence of byzantine behavior from consensus", "evidence", ev)
 	return nil
 }
 
@@ -518,6 +522,20 @@ func (evpool *Pool) removeEvidenceFromList(
 			e.DetachPrev()
 		}
 	}
+}
+
+// flushConsensusBuffer moves the evidence produced from consensus into the evidence pool
+// and list so that it can be broadcasted and proposed
+func (evpool *Pool) flushConsensusBuffer() {
+	for _, ev := range evpool.consensusBuffer {
+		if err := evpool.addPendingEvidence(ev); err != nil {
+			evpool.logger.Error("failed to flush evidence from consensus buffer to pending list: %w", err)
+		}
+
+		evpool.evidenceList.PushBack(ev)
+	}
+	// reset consensus buffer
+	evpool.consensusBuffer = make([]types.Evidence, 0)
 }
 
 func (evpool *Pool) updateState(state sm.State) {
