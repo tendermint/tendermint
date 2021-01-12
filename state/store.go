@@ -222,7 +222,7 @@ func (store dbStore) Bootstrap(state State) error {
 		return err
 	}
 
-	if err := store.saveConsensusParamsInfo(height, height, state.ConsensusParams); err != nil {
+	if err := store.saveConsensusParamsInfo(height, state.LastHeightConsensusParamsChanged, state.ConsensusParams); err != nil {
 		return err
 	}
 
