@@ -43,11 +43,13 @@ type Pool struct {
 	mtx sync.Mutex
 	// latest state
 	state sm.State
+	// evidence from consensus if buffered to this slice, awaiting until the next height
+	// before being flushed to the pool. This prevents broadcasting and proposing of
+	// evidence before the height with which the evidence happened is finished.
+	consensusBuffer []types.Evidence
 
 	pruningHeight int64
 	pruningTime   time.Time
-
-	consensusBuffer []types.Evidence
 }
 
 // NewPool creates an evidence pool. If using an existing evidence store,
@@ -112,16 +114,20 @@ func (evpool *Pool) Update(state sm.State, ev types.EvidenceList) {
 		))
 	}
 
-	// flush awaiting evidence from consensus into pool
-	evpool.flushConsensusBuffer()
-
 	evpool.logger.Info(
 		"updating evidence pool",
 		"last_block_height", state.LastBlockHeight,
 		"last_block_time", state.LastBlockTime,
 	)
 
-	evpool.updateState(state)
+	evpool.mtx.Lock()
+	// flush awaiting evidence from consensus into pool
+	evpool.flushConsensusBuffer()
+	// update state
+	evpool.state = state
+	evpool.mtx.Unlock()
+
+	// move committed evidence out from the pending pool and into the committed pool
 	evpool.markEvidenceAsCommitted(ev)
 
 	// Prune pending evidence when it has expired. This also updates when the next
@@ -179,9 +185,11 @@ func (evpool *Pool) AddEvidenceFromConsensus(ev types.Evidence) error {
 	// add evidence to a buffer which will pass the evidence to the pool at the following height.
 	// This avoids the issue of some nodes verifying and proposing evidence at a height where the
 	// block hasn't been committed on cause others to potentially fail.
+	evpool.mtx.Lock()
+	defer evpool.mtx.Unlock()
 	evpool.consensusBuffer = append(evpool.consensusBuffer, ev)
-
 	evpool.logger.Info("received new evidence of byzantine behavior from consensus", "evidence", ev)
+
 	return nil
 }
 
@@ -530,18 +538,13 @@ func (evpool *Pool) flushConsensusBuffer() {
 	for _, ev := range evpool.consensusBuffer {
 		if err := evpool.addPendingEvidence(ev); err != nil {
 			evpool.logger.Error("failed to flush evidence from consensus buffer to pending list: %w", err)
+			continue
 		}
 
 		evpool.evidenceList.PushBack(ev)
 	}
 	// reset consensus buffer
 	evpool.consensusBuffer = make([]types.Evidence, 0)
-}
-
-func (evpool *Pool) updateState(state sm.State) {
-	evpool.mtx.Lock()
-	defer evpool.mtx.Unlock()
-	evpool.state = state
 }
 
 func bytesToEv(evBytes []byte) (types.Evidence, error) {
