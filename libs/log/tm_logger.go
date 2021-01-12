@@ -60,7 +60,7 @@ func (l *tmLogger) Info(msg string, keyvals ...interface{}) {
 	// hex-encoding when the message won't get logged.
 	for i, val := range keyvals {
 		if b, ok := val.([]byte); ok {
-			keyvals[i] = bytes.HexBytes(b).String()
+			keyvals[i] = bytes.HexBytes(b)
 		}
 	}
 
