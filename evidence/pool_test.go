@@ -148,16 +148,33 @@ func TestAddEvidenceFromConsensus(t *testing.T) {
 	var height int64 = 10
 	pool, val := defaultTestPool(height)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
-	err := pool.AddEvidenceFromConsensus(ev)
-	assert.NoError(t, err)
+
+	require.NoError(t, pool.AddEvidenceFromConsensus(ev))
+
+	// evidence from consensus should not be added immediately but reside in the consensus buffer
+	evList, evSize := pool.PendingEvidence(defaultEvidenceMaxBytes)
+	require.Empty(t, evList)
+	require.Zero(t, evSize)
+
 	next := pool.EvidenceFront()
-	assert.Equal(t, ev, next.Value.(types.Evidence))
+	require.Nil(t, next)
+
+	// move to next height and update state and evidence pool
+	state := pool.State()
+	state.LastBlockHeight++
+	pool.Update(state, []types.Evidence{})
+
+	// should be able to retrieve evidence from pool
+	evList, _ = pool.PendingEvidence(defaultEvidenceMaxBytes)
+	require.Equal(t, []types.Evidence{ev}, evList)
 
 	// shouldn't be able to submit the same evidence twice
-	err = pool.AddEvidenceFromConsensus(ev)
-	assert.NoError(t, err)
-	evs, _ := pool.PendingEvidence(defaultEvidenceMaxBytes)
-	assert.Equal(t, 1, len(evs))
+	require.NoError(t, pool.AddEvidenceFromConsensus(ev))
+	state = pool.State()
+	state.LastBlockHeight++
+	pool.Update(state, []types.Evidence{})
+	evList2, _ := pool.PendingEvidence(defaultEvidenceMaxBytes)
+	require.Equal(t, evList, evList2)
 }
 
 func TestEvidencePoolUpdate(t *testing.T) {
