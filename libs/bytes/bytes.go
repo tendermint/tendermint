@@ -70,7 +70,7 @@ func (bz HexBytes) String() string {
 
 // Format writes either address of 0th element in a
 // slice in base 16 notation, with leading 0x (%p),
-// or casts HexBytes to bytes and writes as hexidecimal
+// or casts HexBytes to bytes and writes as hexadecimal
 // string to s.
 func (bz HexBytes) Format(s fmt.State, verb rune) {
 	switch verb {
