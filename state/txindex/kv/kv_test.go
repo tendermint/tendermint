@@ -120,6 +120,12 @@ func TestTxSearch(t *testing.T) {
 		{"account.number EXISTS", 1},
 		// search using EXISTS for non existing key
 		{"account.date EXISTS", 0},
+		// search using height
+		{"account.number = 1 AND tx.height = 1", 1},
+		// search using incorrect height
+		{"account.number = 1 AND tx.height = 3", 0},
+		// search using height only
+		{"tx.height = 1", 1},
 	}
 
 	ctx := context.Background()
@@ -189,7 +195,7 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 
 	err = b.Set(depKey, hash2)
 	require.NoError(t, err)
-	err = b.Set(keyForHeight(txResult2), hash2)
+	err = b.Set(keyFromHeight(txResult2), hash2)
 	require.NoError(t, err)
 	err = b.Set(hash2, rawBytes)
 	require.NoError(t, err)
