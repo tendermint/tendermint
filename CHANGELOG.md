@@ -17,7 +17,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### BUG FIXES
 
-- [evidence] [\#5890](https://github.com/tendermint/tendermint/issues/5890) Add a buffer to evidence from consensus to avoid broadcasting and proposing evidence before the
+- [evidence] [\#5890](https://github.com/tendermint/tendermint/pull/5890) Add a buffer to evidence from consensus to avoid broadcasting and proposing evidence before the
   height of such an evidence has finished (@cmwaters)
 - [statesync] [\#5889](https://github.com/tendermint/tendermint/issues/5889) Set `LastHeightConsensusParamsChanged` when bootstrapping Tendermint state (@cmwaters)
 
