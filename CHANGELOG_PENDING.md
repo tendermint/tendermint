@@ -18,7 +18,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [config] \#5598 The `test_fuzz` and `test_fuzz_config` P2P settings have been removed. (@erikgrinaker)
   - [config] \#5728 `fast_sync = "v1"` is no longer supported (@melekes)
   - [cli] \#5772 `gen_node_key` prints JSON-encoded `NodeKey` rather than ID and does not save it to `node_key.json` (@melekes)
-  - [cli] \#5777 use hypen-case instead of snake_case for all cli comamnds and config parameters
+  - [cli] \#5777 use hyphen-case instead of snake_case for all cli commands and config parameters (@cmwaters)
 
 - Apps
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
@@ -35,6 +35,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [proto/p2p] Rename `NodeInfo.default_node_id` to `node_id` (@erikgrinaker)
   - [libs/os] `EnsureDir` now propagates IO errors and checks the file type (@erikgrinaker)
   - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
+  - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)
+  - [state] \#5864 Use an iterator when pruning state (@cmwaters)
 
 - Blockchain Protocol
 
