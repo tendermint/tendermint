@@ -1,6 +1,6 @@
 # Unreleased Changes
 
-## v0.34.2
+## v0.34.3
 
 Special thanks to external contributors on this release:
 
@@ -15,7 +15,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - P2P Protocol
 
 - Go API
-  - [libs/os] `EnsureDir` now propagates IO errors and checks the file type (@erikgrinaker)
 
 - Blockchain Protocol
 
@@ -24,7 +23,3 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS
 
 ### BUG FIXES
-
-- [evidence] \#5890 Add a buffer to evidence from consensus to avoid broadcasting and proposing evidence before the
-height of such an evidence has finished (@cmwaters)
-- [statesync] \#5889 Set `LastHeightConsensusParamsChanged` when bootstrapping Tendermint state (@cmwaters)
