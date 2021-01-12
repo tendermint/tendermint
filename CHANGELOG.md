@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.34.2
+
+*January 12, 2021*
+
+This release fixes a substantial bug in evidence handling where evidence could
+sometimes be broadcast before the block containing that evidence was fully committed,
+resulting in some nodes panicking when trying to verify said evidence.
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES
+
+- Go API
+  - [libs/os] [\#5871](https://github.com/tendermint/tendermint/issues/5871) `EnsureDir` now propagates IO errors and checks the file type (@erikgrinaker)
+
+### BUG FIXES
+
+- [evidence] [\#5890](https://github.com/tendermint/tendermint/pull/5890) Add a buffer to evidence from consensus to avoid broadcasting and proposing evidence before the
+  height of such an evidence has finished (@cmwaters)
+- [statesync] [\#5889](https://github.com/tendermint/tendermint/issues/5889) Set `LastHeightConsensusParamsChanged` when bootstrapping Tendermint state (@cmwaters)
+
 ## v0.34.1
 
 *January 6, 2021*
