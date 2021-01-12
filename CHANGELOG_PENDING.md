@@ -27,3 +27,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [evidence] \#5890 Add a buffer to evidence from consensus to avoid broadcasting and proposing evidence before the
 height of such an evidence has finished (@cmwaters)
+- [statesync] \#5889 Set `LastHeightConsensusParamsChanged` when bootstrapping Tendermint state (@cmwaters)
