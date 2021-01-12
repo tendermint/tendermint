@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
@@ -8,7 +9,11 @@ import (
 	"time"
 
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
@@ -79,4 +84,37 @@ func GenerateTLS(certPath, keyPath, ca string, log log.Logger) grpc.DialOption {
 	})
 
 	return grpc.WithTransportCredentials(transportCreds)
+}
+
+// DialRemoteSigner is  a generalized function to dial the gRPC server.
+func DialRemoteSigner(
+	config *cfg.Config,
+	chainID string,
+	logger log.Logger,
+) (*SignerClient, error) {
+	var transportSecurity grpc.DialOption
+	if config.BaseConfig.ArePrivValidatorClientSecurityOptionsPresent() {
+		transportSecurity = GenerateTLS(config.PrivValidatorClientCertificateFile(),
+			config.PrivValidatorClientKeyFile(), config.PrivValidatorRootCAFile(), logger)
+	} else {
+		transportSecurity = grpc.WithInsecure()
+		logger.Info("Using an insecure gRPC connection!")
+	}
+
+	dialOptions := DefaultDialOptions()
+	if config.Instrumentation.Prometheus {
+		grpcMetrics := grpc_prometheus.DefaultClientMetrics
+		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(grpcMetrics.UnaryClientInterceptor()))
+	}
+
+	dialOptions = append(dialOptions, transportSecurity)
+
+	ctx := context.Background()
+	_, address := tmnet.ProtocolAndAddress(config.PrivValidatorListenAddr)
+	conn, err := grpc.DialContext(ctx, address, dialOptions...)
+	if err != nil {
+		logger.Error("unable to connect to server", "target", address, "err", err)
+	}
+
+	return NewSignerClient(conn, chainID, logger)
 }
