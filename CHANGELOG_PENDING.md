@@ -65,3 +65,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
 - [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)
+- [evidence] \#5890 Add a buffer to evidence from consensus to avoid broadcasting and proposing evidence before the
+height of such an evidence has finished (@cmwaters)
