@@ -404,8 +404,9 @@ func (r *Reactor) requestRoutine() {
 			}
 
 		case <-statusUpdateTicker.C:
+			r.poolWG.Add(1)
+
 			go func() {
-				r.poolWG.Add(1)
 				defer r.poolWG.Done()
 
 				r.blockchainCh.Out() <- p2p.Envelope{
