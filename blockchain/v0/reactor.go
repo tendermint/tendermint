@@ -322,6 +322,10 @@ func (r *Reactor) processBlockchainCh() {
 func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	r.Logger.Debug("received peer update", "peer", peerUpdate.PeerID, "status", peerUpdate.Status)
 
+	if len(peerUpdate.PeerID) == 0 {
+		return
+	}
+
 	switch peerUpdate.Status {
 	case p2p.PeerStatusNew, p2p.PeerStatusUp:
 		// send a status update the newly added peer
