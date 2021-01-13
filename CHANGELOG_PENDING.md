@@ -4,12 +4,6 @@
 
 Special thanks to external contributors on this release:
 
-@p4u from vocdoni.io reported that the mempool might behave incorrectly under a
-high load. The consequences can range from pauses between blocks to the peers
-disconnecting from this node. As a temporary remedy (until the mempool package
-is refactored), the `max-batch-bytes` was disabled. Transactions will be sent
-one by one without batching.
-
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES
@@ -33,7 +27,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [libs/bits] \#5720 Validate `BitArray` in `FromProto`, which now returns an error (@melekes)
   - [proto/p2p] Renamed `DefaultNodeInfo` and `DefaultNodeInfoOther` to `NodeInfo` and `NodeInfoOther` (@erikgrinaker)
   - [proto/p2p] Rename `NodeInfo.default_node_id` to `node_id` (@erikgrinaker)
-  - [libs/os] `EnsureDir` now propagates IO errors and checks the file type (@erikgrinaker)
   - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
   - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)
   - [state] \#5864 Use an iterator when pruning state (@cmwaters)
@@ -66,6 +59,3 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
 - [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)
-- [evidence] \#5890 Add a buffer to evidence from consensus to avoid broadcasting and proposing evidence before the
-height of such an evidence has finished (@cmwaters)
-- [statesync] \#5889 Set `LastHeightConsensusParamsChanged` when bootstrapping Tendermint state (@cmwaters)
