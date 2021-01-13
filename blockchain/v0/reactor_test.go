@@ -116,7 +116,7 @@ func setup(
 	_, err = rng.Read(pID)
 	require.NoError(t, err)
 
-	peerUpdatesCh := make(chan p2p.PeerUpdate)
+	peerUpdatesCh := make(chan p2p.PeerUpdate, chBuf)
 
 	rts := &reactorTestSuite{
 		app:                 proxyApp,
@@ -316,11 +316,11 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	genDoc, privVals := randGenesisDoc(config, 1, false, 30)
 
 	testSuites := []*reactorTestSuite{
-		setup(t, genDoc, privVals, maxBlockHeight, 0), // fully synced node
-		setup(t, genDoc, privVals, 0, 0),
-		setup(t, genDoc, privVals, 0, 0),
-		setup(t, genDoc, privVals, 0, 0),
-		setup(t, genDoc, privVals, 0, 0), // new node
+		setup(t, genDoc, privVals, maxBlockHeight, 1000), // fully synced node
+		setup(t, genDoc, privVals, 0, 1000),
+		setup(t, genDoc, privVals, 0, 1000),
+		setup(t, genDoc, privVals, 0, 1000),
+		setup(t, genDoc, privVals, 0, 1000), // new node
 	}
 
 	require.Equal(t, maxBlockHeight, testSuites[0].reactor.store.Height())
@@ -365,6 +365,9 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	otherGenDoc, otherPrivVals := randGenesisDoc(config, 1, false, 30)
 	otherSuite := setup(t, otherGenDoc, otherPrivVals, maxBlockHeight, 0)
 	testSuites[3].reactor.store = otherSuite.reactor.store
+
+	// add a fake peer just so we do not wait for the consensus ticker to timeout
+	otherSuite.reactor.pool.SetPeerRange("00ff", 10, 10)
 
 	// start the new peer's faux router
 	newSuite := testSuites[len(testSuites)-1]
