@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mempool/mock"
@@ -49,7 +50,7 @@ func setup(
 
 	require.Len(t, privVals, 1, "only one validator can be supported")
 
-	app := &testApp{}
+	app := &abci.BaseApplication{}
 	cc := proxy.NewLocalClientCreator(app)
 
 	proxyApp := proxy.NewAppConns(cc)
