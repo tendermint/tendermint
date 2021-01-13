@@ -302,7 +302,7 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 		if tc.existent {
 			require.True(t, block != nil)
 		} else {
-			require.True(t, block == nil, block)
+			require.Nil(t, block)
 		}
 	}
 }
