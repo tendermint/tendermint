@@ -367,7 +367,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	testSuites[3].reactor.store = otherSuite.reactor.store
 
 	// add a fake peer just so we do not wait for the consensus ticker to timeout
-	otherSuite.reactor.pool.SetPeerRange("00ff", maxBlockHeight, maxBlockHeight)
+	otherSuite.reactor.pool.SetPeerRange("00ff", 10, 10)
 
 	// start the new peer's faux router
 	newSuite := testSuites[len(testSuites)-1]
