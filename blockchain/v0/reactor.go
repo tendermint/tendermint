@@ -322,6 +322,7 @@ func (r *Reactor) processBlockchainCh() {
 func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	r.Logger.Debug("received peer update", "peer", peerUpdate.PeerID, "status", peerUpdate.Status)
 
+	// XXX: Pool#RedoRequest can sometimes give us an empty peer
 	if len(peerUpdate.PeerID) == 0 {
 		return
 	}
