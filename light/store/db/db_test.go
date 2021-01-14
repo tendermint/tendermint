@@ -148,6 +148,13 @@ func Test_Concurrency(t *testing.T) {
 				t.Log(err)
 			}
 
+			if i > 2 {
+				_, err = dbStore.LightBlockBefore(i - 1)
+				if err != nil {
+					t.Log(err)
+				}
+			}
+
 			_, err = dbStore.LastLightBlockHeight()
 			if err != nil {
 				t.Log(err)
@@ -157,16 +164,19 @@ func Test_Concurrency(t *testing.T) {
 				t.Log(err)
 			}
 
-			err = dbStore.Prune(2)
+			err = dbStore.Prune(3)
 			if err != nil {
 				t.Log(err)
 			}
 			_ = dbStore.Size()
 
-			err = dbStore.DeleteLightBlock(1)
-			if err != nil {
-				t.Log(err)
+			if i > 2 && i%2 == 0 {
+				err = dbStore.DeleteLightBlock(i - 1)
+				if err != nil {
+					t.Log(err)
+				}
 			}
+
 		}(int64(i))
 	}
 
