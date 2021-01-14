@@ -242,14 +242,12 @@ func (s *dbs) Prune(size uint16) error {
 	b := s.db.NewBatch()
 	defer b.Close()
 
-	var pruned uint16 = 0
 	for itr.Valid() && currentSize > size {
 		if err = b.Delete(itr.Key()); err != nil {
 			return err
 		}
 		itr.Next()
 		currentSize--
-		pruned++
 	}
 	if err = itr.Error(); err != nil {
 		return err
