@@ -4,12 +4,6 @@
 
 Special thanks to external contributors on this release:
 
-@p4u from vocdoni.io reported that the mempool might behave incorrectly under a
-high load. The consequences can range from pauses between blocks to the peers
-disconnecting from this node. As a temporary remedy (until the mempool package
-is refactored), the `max-batch-bytes` was disabled. Transactions will be sent
-one by one without batching.
-
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES
@@ -33,7 +27,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [libs/bits] \#5720 Validate `BitArray` in `FromProto`, which now returns an error (@melekes)
   - [proto/p2p] Renamed `DefaultNodeInfo` and `DefaultNodeInfoOther` to `NodeInfo` and `NodeInfoOther` (@erikgrinaker)
   - [proto/p2p] Rename `NodeInfo.default_node_id` to `node_id` (@erikgrinaker)
-  - [libs/os] `EnsureDir` now propagates IO errors and checks the file type (@erikgrinaker)
   - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
   - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)
   - [state] \#5864 Use an iterator when pruning state (@cmwaters)
@@ -49,7 +42,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
 - [privval] \#5603 Add `--key` to `init`, `gen_validator`, `testnet` & `unsafe_reset_priv_validator` for use in generating `secp256k1` keys.
-- [privval] \#5725 add gRPC support to private validator. 
+- [privval] \#5725 Add gRPC support to private validator. 
+- [privval] \#5876 `tendermint show-validator` will query the remote signer if gRPC is being used (@marbar3778)
 - [abci/client] \#5673 `Async` requests return an error if queue is full (@melekes)
 - [mempool] \#5673 Cancel `CheckTx` requests if RPC client disconnects or times out (@melekes)
 - [abci] \#5706 Added `AbciVersion` to `RequestInfo` allowing applications to check ABCI version when connecting to Tendermint. (@marbar3778)
