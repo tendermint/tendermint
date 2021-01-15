@@ -584,6 +584,7 @@ func VerifyAndDetect (lightStore LightStore, targetHeight Height)
             }
             else {
                 // there is an attack, we exit
+		submitEvidence(Evidences);
                 return(lightStore, ErrorAttack);
             }
         }
