@@ -10,7 +10,6 @@
 *       @alexanderbez @ebuchman @erikgrinaker @melekes @tessr 
 
 # Overrides for tooling packages
-.circleci/ @marbar3778  @alexanderbez @ebuchman @erikgrinaker @melekes @tessr 
 .github/ @marbar3778 @alexanderbez @ebuchman @erikgrinaker @melekes @tessr 
 DOCKER/ @marbar3778 @alexanderbez @ebuchman @erikgrinaker @melekes @tessr 
 
@@ -22,6 +21,5 @@ light/ @cmwaters @melekes @ebuchman @tessr
 # Overrides for docs
 *.md @marbar3778 @alexanderbez @ebuchman @erikgrinaker @melekes @tessr  
 docs/ @marbar3778 @alexanderbez @ebuchman @erikgrinaker @melekes @tessr 
-
 
 
