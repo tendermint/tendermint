@@ -243,12 +243,14 @@ func (s *dbs) Prune(size uint16) error {
 	b := s.db.NewBatch()
 	defer b.Close()
 
+	var pruned uint16 = 0
 	for itr.Valid() && numToPrune > 0 {
 		if err = b.Delete(itr.Key()); err != nil {
 			return err
 		}
 		itr.Next()
 		numToPrune--
+		pruned++
 	}
 	if err = itr.Error(); err != nil {
 		return err
@@ -256,11 +258,12 @@ func (s *dbs) Prune(size uint16) error {
 
 	// 3) // update size
 	s.mtx.Lock()
-	s.size = size
+	s.size -= pruned
+	newSize := s.size
 	s.mtx.Unlock()
 
-	if wErr := b.Set(s.sizeKey(), marshalSize(size)); wErr != nil {
-		return fmt.Errorf("failed to persist size: %w", wErr)
+	if err := b.Set(s.sizeKey(), marshalSize(newSize)); err != nil {
+		return fmt.Errorf("failed to persist size: %w", err)
 	}
 
 	// 4) write batch deletion to disk
