@@ -221,9 +221,9 @@ func (s *dbs) LightBlockBefore(height int64) (*types.LightBlock, error) {
 // Safe for concurrent use by multiple goroutines.
 func (s *dbs) Prune(size uint16) error {
 	// 1) Check how many we need to prune.
-	s.mtx.RLock()
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
 	sSize := s.size
-	s.mtx.RUnlock()
 
 	if sSize <= size { // nothing to prune
 		return nil
@@ -243,26 +243,20 @@ func (s *dbs) Prune(size uint16) error {
 	b := s.db.NewBatch()
 	defer b.Close()
 
-	var pruned uint16 = 0
 	for itr.Valid() && numToPrune > 0 {
 		if err = b.Delete(itr.Key()); err != nil {
 			return err
 		}
 		itr.Next()
 		numToPrune--
-		pruned++
 	}
 	if err = itr.Error(); err != nil {
 		return err
 	}
 
 	// 3) // update size
-	s.mtx.Lock()
-	s.size -= pruned
-	newSize := s.size
-	s.mtx.Unlock()
-
-	if err := b.Set(s.sizeKey(), marshalSize(newSize)); err != nil {
+	s.size = size
+	if err := b.Set(s.sizeKey(), marshalSize(size)); err != nil {
 		return fmt.Errorf("failed to persist size: %w", err)
 	}
 
