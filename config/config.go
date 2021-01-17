@@ -363,7 +363,7 @@ type RPCConfig struct {
 	MaxHeaderBytes int `mapstructure:"max_header_bytes"`
 
 	// The path to a file containing certificate that is used to create the HTTPS server.
-	// Migth be either absolute path or path related to tendermint's config directory.
+	// Might be either absolute path or path related to Tendermint's config directory.
 	//
 	// If the certificate is signed by a certificate authority,
 	// the certFile should be the concatenation of the server's certificate, any intermediates,
@@ -374,7 +374,7 @@ type RPCConfig struct {
 	TLSCertFile string `mapstructure:"tls_cert_file"`
 
 	// The path to a file containing matching private key that is used to create the HTTPS server.
-	// Migth be either absolute path or path related to tendermint's config directory.
+	// Might be either absolute path or path related to tendermint's config directory.
 	//
 	// NOTE: both tls_cert_file and tls_key_file must be present for Tendermint to create HTTPS server.
 	// Otherwise, HTTP server is run.
