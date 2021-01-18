@@ -422,8 +422,8 @@ func (m *peerManager) Accepted(peerID NodeID) error {
 // be done by the router?
 func (m *peerManager) Ready(peerID NodeID) {
 	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	connected := m.connected[peerID]
-	m.mtx.Unlock()
 	if connected {
 		m.broadcast(PeerUpdate{
 			PeerID: peerID,
