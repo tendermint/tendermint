@@ -10,11 +10,9 @@ import (
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
 	"time"
 
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
-	"google.golang.org/grpc"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -678,11 +676,11 @@ func NewNode(config *cfg.Config,
 	// If an address is provided, listen on the socket for a connection from an
 	// external signing process.
 	if config.PrivValidatorListenAddr != "" {
-		protocol, address := tmnet.ProtocolAndAddress(config.PrivValidatorListenAddr)
+		protocol, _ := tmnet.ProtocolAndAddress(config.PrivValidatorListenAddr)
 		// FIXME: we should start services inside OnStart
 		switch protocol {
 		case "grpc":
-			privValidator, err = createAndStartPrivValidatorGRPCClient(config, address, genDoc.ChainID, logger)
+			privValidator, err = createAndStartPrivValidatorGRPCClient(config, genDoc.ChainID, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
 			}
@@ -1435,33 +1433,10 @@ func createAndStartPrivValidatorSocketClient(
 
 func createAndStartPrivValidatorGRPCClient(
 	config *cfg.Config,
-	address,
 	chainID string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
-	var transportSecurity grpc.DialOption
-	if config.BaseConfig.ArePrivValidatorClientSecurityOptionsPresent() {
-		transportSecurity = tmgrpc.GenerateTLS(config.PrivValidatorClientCertificateFile(),
-			config.PrivValidatorClientKeyFile(), config.PrivValidatorRootCAFile(), logger)
-	} else {
-		transportSecurity = grpc.WithInsecure()
-		logger.Info("Using an insecure gRPC connection!")
-	}
-	dialOptions := tmgrpc.DefaultDialOptions()
-	if config.Instrumentation.Prometheus {
-		grpcMetrics := grpc_prometheus.DefaultClientMetrics
-		dialOptions = append(dialOptions, grpc.WithUnaryInterceptor(grpcMetrics.UnaryClientInterceptor()))
-	}
-
-	dialOptions = append(dialOptions, transportSecurity)
-
-	ctx := context.Background()
-
-	conn, err := grpc.DialContext(ctx, address, dialOptions...)
-	if err != nil {
-		logger.Error("unable to connect to server", "target", address, "err", err)
-	}
-	pvsc, err := tmgrpc.NewSignerClient(conn, chainID, logger)
+	pvsc, err := tmgrpc.DialRemoteSigner(config, chainID, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
