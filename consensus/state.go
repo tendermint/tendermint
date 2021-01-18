@@ -1429,7 +1429,7 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 	// Move them over to ProposalBlock if they match the commit hash,
 	// otherwise they'll be cleared in updateToState.
 	if cs.LockedBlock.HashesTo(blockID.Hash) {
-		logger.Info("Commit is for locked block. Set ProposalBlock=LockedBlock", "blockHash", blockID.Hash)
+		logger.Debug("commit is for a locked block; set ProposalBlock=LockedBlock", "blockHash", blockID.Hash)
 		cs.ProposalBlock = cs.LockedBlock
 		cs.ProposalBlockParts = cs.LockedBlockParts
 	}
@@ -1437,8 +1437,8 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 	// If we don't have the block being committed, set up to get it.
 	if !cs.ProposalBlock.HashesTo(blockID.Hash) {
 		if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
-			logger.Info(
-				"Commit is for a block we don't know about. Set ProposalBlock=nil",
+			logger.Debug(
+				"commit is for a block we do not know about; set ProposalBlock=nil",
 				"proposal",
 				cs.ProposalBlock.Hash(),
 				"commit",
@@ -1474,8 +1474,8 @@ func (cs *State) tryFinalizeCommit(height int64) {
 	if !cs.ProposalBlock.HashesTo(blockID.Hash) {
 		// TODO: this happens every time if we're not a validator (ugly logs)
 		// TODO: ^^ wait, why does it matter that we're a validator?
-		logger.Info(
-			"Attempt to finalize failed. We don't have the commit block.",
+		logger.Debug(
+			"attempt to finalize failed; we do not have the commit block",
 			"proposal-block",
 			cs.ProposalBlock.Hash(),
 			"commit-block",
