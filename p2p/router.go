@@ -350,7 +350,9 @@ func (r *Router) dialPeer(address PeerAddress) (Connection, error) {
 
 	resolveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+
 	r.logger.Info("resolving peer address", "address", address)
+
 	endpoints, err := address.Resolve(resolveCtx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve address %q: %w", address, err)
@@ -362,8 +364,10 @@ func (r *Router) dialPeer(address PeerAddress) (Connection, error) {
 			r.logger.Error("no transport found for protocol", "protocol", endpoint.Protocol)
 			continue
 		}
+
 		dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
+
 		conn, err := t.Dial(dialCtx, endpoint)
 		if err != nil {
 			r.logger.Error("failed to dial endpoint", "endpoint", endpoint)

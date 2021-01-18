@@ -221,24 +221,27 @@ type PeerUpdate struct {
 //
 // For an outbound connection, the flow is as follows:
 // - DialNext: returns a peer address to dial, marking the peer as dialing.
-// - DialFailed: reports a dail failure, unmarking the peer as dialing.
+// - DialFailed: reports a dial failure, unmarking the peer as dialing.
 // - Dialed: successfully dialed, unmarking as dialing and marking as connected
 //   (or erroring if already connected).
 // - Ready: routing is up, broadcasts a PeerStatusUp peer update to subscribers.
-// - Disconnected: peer disconnects, unmarking as connected.
+// - Disconnected: peer disconnects, unmarking as connected and broadcasts a
+//   PeerStatusDown peer update.
 //
 // For an inbound connection, the flow is as follows:
 // - Accepted: successfully accepted connection, marking as connected (or erroring
 //   if already connected).
 // - Ready: routing is up, broadcasts a PeerStatusUp peer update to subscribers.
-// - Disconnected: peer disconnects, unmarking as connected.
+// - Disconnected: peer disconnects, unmarking as connected and broadcasts a
+//   PeerStatusDown peer update.
 //
 // We track dialing and connected states independently. This allows us to accept
-// an inbound connection while the router is also dialing an outbound
-// connection, which will cause the dialer to eventually error (when attempting
-// to mark the peer as connected). This also avoids race conditions where
-// multiple goroutines may end up dialing a peer if an incoming connection was
-// briefly accepted and disconnected while we were also dialing.
+// an inbound connection from a peer while the router is also dialing an
+// outbound connection to that same peer, which will cause the dialer to
+// eventually error (when attempting to mark the peer as connected). This also
+// avoids race conditions where multiple goroutines may end up dialing a peer if
+// an incoming connection was briefly accepted and disconnected while we were
+// also dialing.
 type peerManager struct {
 	mtx           sync.Mutex
 	store         *peerStore
