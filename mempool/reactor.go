@@ -9,16 +9,23 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	protomem "github.com/tendermint/tendermint/proto/tendermint/mempool"
 	"github.com/tendermint/tendermint/types"
 )
 
-const (
-	MempoolChannel = byte(0x30)
+var (
+	_ service.Service = (*Reactor)(nil)
+	// _ p2p.Wrapper     = (*protomem.Message)(nil)
+)
 
-	peerCatchupSleepIntervalMS = 100 // If peer is behind, sleep this amount
+const (
+	MempoolChannel = p2p.ChannelID(0x30)
+
+	// peerCatchupSleepIntervalMS defines how much time to sleep if a peer is behind
+	peerCatchupSleepIntervalMS = 100
 
 	// UnknownPeerID is the peer ID to use when running CheckTx when there is
 	// no peer (e.g. RPC)
@@ -27,22 +34,52 @@ const (
 	maxActiveIDs = math.MaxUint16
 )
 
-// Reactor handles mempool tx broadcasting amongst peers.
-// It maintains a map from peer ID to counter, to prevent gossiping txs to the
-// peers you received it from.
-type Reactor struct {
-	p2p.BaseReactor
-	config  *cfg.MempoolConfig
-	mempool *CListMempool
-	ids     *mempoolIDs
-}
-
 type mempoolIDs struct {
 	mtx       tmsync.RWMutex
 	peerMap   map[p2p.NodeID]uint16
 	nextID    uint16              // assumes that a node will never have over 65536 active peers
 	activeIDs map[uint16]struct{} // used to check if a given peerID key is used, the value doesn't matter
 }
+
+// Reactor implements a service that contains mempool of txs that are broadcasted
+// amongst peers. It maintains a map from peer ID to counter, to prevent gossiping
+// txs to the peers you received it from.
+type Reactor struct {
+	service.BaseService
+
+	config  *cfg.MempoolConfig
+	mempool *CListMempool
+	ids     *mempoolIDs
+}
+
+// GetChannelShims returns a map of ChannelDescriptorShim objects, where each
+// object wraps a reference to a legacy p2p ChannelDescriptor and the corresponding
+// p2p proto.Message the new p2p Channel is responsible for handling.
+//
+//
+// TODO: Remove once p2p refactor is complete.
+// ref: https://github.com/tendermint/tendermint/issues/5670
+func (r *Reactor) GetChannelShims() map[p2p.ChannelID]*p2p.ChannelDescriptorShim {
+	largestTx := make([]byte, r.config.MaxTxBytes)
+	batchMsg := protomem.Message{
+		Sum: &protomem.Message_Txs{
+			Txs: &protomem.Txs{Txs: [][]byte{largestTx}},
+		},
+	}
+
+	return map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
+		MempoolChannel: {
+			MsgType: new(protomem.Message),
+			Descriptor: &p2p.ChannelDescriptor{
+				ID:                  byte(MempoolChannel),
+				Priority:            5,
+				RecvMessageCapacity: batchMsg.Size(),
+			},
+		},
+	}
+}
+
+// ============================================================================
 
 // Reserve searches for the next unused ID and assigns it to the
 // peer.
@@ -129,25 +166,6 @@ func (memR *Reactor) OnStart() error {
 		memR.Logger.Info("Tx broadcasting is disabled")
 	}
 	return nil
-}
-
-// GetChannels implements Reactor by returning the list of channels for this
-// reactor.
-func (memR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
-	largestTx := make([]byte, memR.config.MaxTxBytes)
-	batchMsg := protomem.Message{
-		Sum: &protomem.Message_Txs{
-			Txs: &protomem.Txs{Txs: [][]byte{largestTx}},
-		},
-	}
-
-	return []*p2p.ChannelDescriptor{
-		{
-			ID:                  MempoolChannel,
-			Priority:            5,
-			RecvMessageCapacity: batchMsg.Size(),
-		},
-	}
 }
 
 // AddPeer implements Reactor.
