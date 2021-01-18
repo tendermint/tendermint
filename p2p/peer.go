@@ -214,97 +214,283 @@ type PeerUpdate struct {
 	Status PeerStatus
 }
 
-// peerStore manages information about peers. It is currently a bare-bones
-// in-memory store of peer addresses, and will be fleshed out later.
+// peerManager manages peer information, using a peerStore for underlying
+// storage. Its primary purpose is to determine which peers to connect to next,
+// make sure a peer only has a single active connection (either inbound or outbound),
+// and to avoid dialing the same peer in parallel goroutines.
 //
-// The main function of peerStore is currently to dispense peers to connect to
-// (via peerStore.Dispense), giving the caller exclusive "ownership" of that
-// peer until the peer is returned (via peerStore.Return). This is used to
-// schedule and synchronize peer dialing and accepting in the Router, e.g.
-// making sure we only have a single connection (in either direction) to peers.
-type peerStore struct {
-	mtx     sync.Mutex
-	peers   map[NodeID]*peerInfo
-	claimed map[NodeID]bool
+// For an outbound connection, the flow is as follows:
+// - DialNext: returns a peer address to dial, marking the peer as dialing.
+// - DialFailed: reports a dial failure, unmarking the peer as dialing.
+// - Dialed: successfully dialed, unmarking as dialing and marking as connected
+//   (or erroring if already connected).
+// - Ready: routing is up, broadcasts a PeerStatusUp peer update to subscribers.
+// - Disconnected: peer disconnects, unmarking as connected and broadcasts a
+//   PeerStatusDown peer update.
+//
+// For an inbound connection, the flow is as follows:
+// - Accepted: successfully accepted connection, marking as connected (or erroring
+//   if already connected).
+// - Ready: routing is up, broadcasts a PeerStatusUp peer update to subscribers.
+// - Disconnected: peer disconnects, unmarking as connected and broadcasts a
+//   PeerStatusDown peer update.
+//
+// We track dialing and connected states independently. This allows us to accept
+// an inbound connection from a peer while the router is also dialing an
+// outbound connection to that same peer, which will cause the dialer to
+// eventually error (when attempting to mark the peer as connected). This also
+// avoids race conditions where multiple goroutines may end up dialing a peer if
+// an incoming connection was briefly accepted and disconnected while we were
+// also dialing.
+type peerManager struct {
+	mtx           sync.Mutex
+	store         *peerStore
+	dialing       map[NodeID]bool
+	connected     map[NodeID]bool
+	subscriptions map[*PeerUpdatesCh]*PeerUpdatesCh // keyed by struct identity (address)
 }
 
-// newPeerStore creates a new peer store.
-func newPeerStore() *peerStore {
-	return &peerStore{
-		peers:   map[NodeID]*peerInfo{},
-		claimed: map[NodeID]bool{},
+// newPeerManager creates a new peer manager.
+func newPeerManager(store *peerStore) *peerManager {
+	return &peerManager{
+		store:         store,
+		dialing:       map[NodeID]bool{},
+		connected:     map[NodeID]bool{},
+		subscriptions: map[*PeerUpdatesCh]*PeerUpdatesCh{},
 	}
 }
 
-// Add adds a peer to the store, given as an address.
-func (s *peerStore) Add(address PeerAddress) error {
+// Add adds a peer to the manager, given as an address. If the peer already
+// exists, the address is added to it.
+func (m *peerManager) Add(address PeerAddress) error {
 	if err := address.Validate(); err != nil {
 		return err
 	}
 	peerID := address.NodeID()
 
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-
-	peer, ok := s.peers[peerID]
-	if !ok {
-		peer = newStorePeer(peerID)
-		s.peers[peerID] = peer
-	} else if s.claimed[peerID] {
-		// FIXME: We need to handle modifications of claimed peers somehow.
-		return fmt.Errorf("peer %q is claimed", peerID)
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	peer, err := m.store.Get(peerID)
+	if err != nil {
+		return err
 	}
-	peer.AddAddress(address)
+	if peer == nil {
+		peer = newPeerInfo(peerID)
+	}
+	if peer.AddAddress(address) {
+		return m.store.Set(peer)
+	}
 	return nil
 }
 
-// Claim claims a peer. The caller has exclusive ownership of the peer, and must
-// return it by calling Return(). Returns nil if the peer could not be claimed.
-// If the peer is not known to the store, it is registered and claimed.
-func (s *peerStore) Claim(id NodeID) *peerInfo {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	if s.claimed[id] {
-		return nil
-	}
-	peer, ok := s.peers[id]
-	if !ok {
-		peer = newStorePeer(id)
-		s.peers[id] = peer
-	}
-	s.claimed[id] = true
-	return peer
+// Subscribe subscribes to peer updates. The caller must consume the peer
+// updates in a timely fashion and close the subscription when done, since
+// delivery is guaranteed and will block peer connection/disconnection
+// otherwise.
+func (m *peerManager) Subscribe() *PeerUpdatesCh {
+	// FIXME: We may want to use a size 1 buffer here. When the router
+	// broadcasts a peer update it has to loop over all of the
+	// subscriptions, and we want to avoid blocking and waiting for a
+	// context switch before continuing to the next subscription. This also
+	// prevents tail latencies from compounding across updates. We also want
+	// to make sure the subscribers are reasonably in sync, so it should be
+	// kept at 1. However, this should be benchmarked first.
+	peerUpdates := NewPeerUpdates(make(chan PeerUpdate))
+	m.mtx.Lock()
+	m.subscriptions[peerUpdates] = peerUpdates
+	m.mtx.Unlock()
+
+	go func() {
+		<-peerUpdates.Done()
+		m.mtx.Lock()
+		delete(m.subscriptions, peerUpdates)
+		m.mtx.Unlock()
+	}()
+	return peerUpdates
 }
 
-// Dispense finds an appropriate peer to contact and claims it. The caller has
-// exclusive ownership of the peer, and must return it by calling Return(). The
-// peer will not be dispensed again until returned.
+// broadcast broadcasts a peer update to all subscriptions. The caller must
+// already hold the mutex lock. This means the mutex is held for the duration
+// of the broadcast, which we want to make sure all subscriptions receive all
+// updates in the same order.
 //
-// Returns nil if no appropriate peers are available.
-func (s *peerStore) Dispense() *peerInfo {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	for key, peer := range s.peers {
-		switch {
-		case len(peer.Addresses) == 0:
-		case s.claimed[key]:
-		default:
-			s.claimed[key] = true
-			return peer
+// FIXME: Consider using more fine-grained mutexes here, and/or a channel to
+// enforce ordering of updates.
+func (m *peerManager) broadcast(peerUpdate PeerUpdate) {
+	for _, sub := range m.subscriptions {
+		select {
+		case sub.updatesCh <- peerUpdate:
+		case <-sub.doneCh:
 		}
 	}
+}
+
+// DialNext finds an appropriate peer address to dial, and marks it as dialing.
+// The peer will not be returned again until Dialed() or DialFailed() is called
+// for the peer and it is no longer connected.
+//
+// Returns an empty ID if no appropriate peers are available.
+func (m *peerManager) DialNext() (NodeID, PeerAddress, error) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	peers, err := m.store.List()
+	if err != nil {
+		return "", PeerAddress{}, err
+	}
+	for _, peer := range peers {
+		switch {
+		case len(peer.Addresses) == 0:
+		case m.dialing[peer.ID]:
+		case m.connected[peer.ID]:
+		default:
+			// FIXME: We currently only dial the first address, but we should
+			// track connection statistics for each address and return the most
+			// appropriate one.
+			m.dialing[peer.ID] = true
+			return peer.ID, peer.Addresses[0], nil
+		}
+	}
+	return "", PeerAddress{}, nil
+}
+
+// DialFailed reports a failed dial attempt. This will make the peer available
+// for dialing again when appropriate.
+func (m *peerManager) DialFailed(peerID NodeID, address PeerAddress) error {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	delete(m.dialing, peerID)
+	// FIXME: We need to track address quality statistics and exponential backoff.
 	return nil
 }
 
-// Return returns a claimed peer, making it available for other
-// callers to claim.
-func (s *peerStore) Return(id NodeID) {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-	delete(s.claimed, id)
+// Dialed marks a peer as successfully dialed. Any further incoming connections
+// will be rejected, and once disconnected the peer may be dialed again.
+func (m *peerManager) Dialed(peerID NodeID, address PeerAddress) error {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	peer, err := m.store.Get(peerID)
+	if err != nil {
+		return err
+	} else if peer == nil {
+		return fmt.Errorf("unknown peer %q", peerID)
+	}
+
+	if m.connected[peerID] {
+		return fmt.Errorf("peer %v is already connected", peerID)
+	}
+	delete(m.dialing, peerID)
+	m.connected[peerID] = true
+	return nil
 }
 
-// peerInfo is a peer stored in the peerStore.
+// Accepted marks an incoming peer connection successfully accepted. If the peer
+// is already connected this will return an error.
+//
+// NOTE: We can't take an address here, since e.g. TCP uses a different port
+// number for outbound traffic than inbound traffic, so the peer's endpoint
+// wouldn't necessarily be an appropriate address to dial.
+func (m *peerManager) Accepted(peerID NodeID) error {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	peer, err := m.store.Get(peerID)
+	if err != nil {
+		return err
+	} else if peer == nil {
+		peer = newPeerInfo(peerID)
+		if err = m.store.Set(peer); err != nil {
+			return err
+		}
+	}
+	if m.connected[peerID] {
+		return fmt.Errorf("peer %q is already connected", peerID)
+	}
+	m.connected[peerID] = true
+	return nil
+}
+
+// Ready marks a peer as ready, broadcasting status updates to subscribers. The
+// peer must already be marked as connected. This is separate from Dialed() and
+// Accepted() to allow the router to set up its internal queues before reactors
+// start sending messages (holding the Router.peerMtx mutex while calling
+// Accepted or Dialed will halt all message routing while peers are set up, which
+// is too expensive and also causes difficulties in tests where we may want to
+// consume peer updates and send messages sequentially).
+//
+// FIXME: This possibly indicates an architectural problem. Should the peerManager
+// handle actual network connections to/from peers as well? Or should all of this
+// be done by the router?
+func (m *peerManager) Ready(peerID NodeID) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	connected := m.connected[peerID]
+	if connected {
+		m.broadcast(PeerUpdate{
+			PeerID: peerID,
+			Status: PeerStatusUp,
+		})
+	}
+}
+
+// Disconnected unmarks a peer as connected, allowing new connections to be
+// established.
+func (m *peerManager) Disconnected(peerID NodeID) error {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	delete(m.connected, peerID)
+	m.broadcast(PeerUpdate{
+		PeerID: peerID,
+		Status: PeerStatusDown,
+	})
+	return nil
+}
+
+// peerStore stores information about peers. It is currently a bare-bones
+// in-memory store, and will be fleshed out later.
+//
+// peerStore is not thread-safe, since it assumes it is only used by peerManager
+// which handles concurrency control. This allows multiple operations to be
+// executed atomically, since the peerManager will hold a mutex while executing.
+type peerStore struct {
+	peers map[NodeID]peerInfo
+}
+
+// newPeerStore creates a new peer store.
+func newPeerStore() *peerStore {
+	return &peerStore{
+		peers: map[NodeID]peerInfo{},
+	}
+}
+
+// Get fetches a peer, returning nil if not found.
+func (s *peerStore) Get(id NodeID) (*peerInfo, error) {
+	peer, ok := s.peers[id]
+	if !ok {
+		return nil, nil
+	}
+	return &peer, nil
+}
+
+// Set stores peer data.
+func (s *peerStore) Set(peer *peerInfo) error {
+	if peer == nil {
+		return errors.New("peer cannot be nil")
+	}
+	s.peers[peer.ID] = *peer
+	return nil
+}
+
+// List retrieves all peers.
+func (s *peerStore) List() ([]*peerInfo, error) {
+	peers := []*peerInfo{}
+	for _, peer := range s.peers {
+		peer := peer
+		peers = append(peers, &peer)
+	}
+	return peers, nil
+}
+
+// peerInfo contains peer information stored in a peerStore.
 //
 // FIXME: This should be renamed peer or something else once the old peer is
 // removed.
@@ -313,8 +499,8 @@ type peerInfo struct {
 	Addresses []PeerAddress
 }
 
-// newStorePeer creates a new storePeer.
-func newStorePeer(id NodeID) *peerInfo {
+// newPeerInfo creates a new peerInfo.
+func newPeerInfo(id NodeID) *peerInfo {
 	return &peerInfo{
 		ID:        id,
 		Addresses: []PeerAddress{},
@@ -322,16 +508,17 @@ func newStorePeer(id NodeID) *peerInfo {
 }
 
 // AddAddress adds an address to a peer, unless it already exists. It does not
-// validate the address.
-func (p *peerInfo) AddAddress(address PeerAddress) {
+// validate the address. Returns true if the address was new.
+func (p *peerInfo) AddAddress(address PeerAddress) bool {
 	// We just do a linear search for now.
 	addressString := address.String()
 	for _, a := range p.Addresses {
 		if a.String() == addressString {
-			return
+			return false
 		}
 	}
 	p.Addresses = append(p.Addresses, address)
+	return true
 }
 
 // ============================================================================

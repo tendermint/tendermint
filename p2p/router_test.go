@@ -60,8 +60,7 @@ func TestRouter(t *testing.T) {
 	}, peers)
 	channel, err := router.OpenChannel(chID, &TestMessage{})
 	require.NoError(t, err)
-	peerUpdates, err := router.SubscribePeerUpdates()
-	require.NoError(t, err)
+	peerUpdates := router.SubscribePeerUpdates()
 
 	err = router.Start()
 	require.NoError(t, err)

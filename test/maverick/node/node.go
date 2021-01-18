@@ -233,7 +233,7 @@ type Node struct {
 	eventBus          *types.EventBus // pub/sub for services
 	stateStore        sm.Store
 	blockStore        *store.BlockStore // store the blockchain to disk
-	bcReactor         p2p.Reactor       // for fast-syncing
+	bcReactor         service.Service   // for fast-syncing
 	mempoolReactor    *mempl.Reactor    // for gossipping transactions
 	mempool           mempl.Mempool
 	stateSync         bool                    // whether the node should state sync on startup
@@ -411,24 +411,41 @@ func createEvidenceReactor(
 	return evidenceReactorShim, evidenceReactor, evidencePool, nil
 }
 
-func createBlockchainReactor(config *cfg.Config,
+func createBlockchainReactor(
+	logger log.Logger,
+	config *cfg.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore *store.BlockStore,
+	csReactor *cs.Reactor,
 	fastSync bool,
-	logger log.Logger) (bcReactor p2p.Reactor, err error) {
+) (*p2p.ReactorShim, service.Service, error) {
+
+	logger = logger.With("module", "blockchain")
 
 	switch config.FastSync.Version {
 	case "v0":
-		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
-	case "v2":
-		bcReactor = bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
-	default:
-		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
-	}
+		reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", bcv0.ChannelShims)
 
-	bcReactor.SetLogger(logger.With("module", "blockchain"))
-	return bcReactor, nil
+		reactor, err := bcv0.NewReactor(
+			logger, state.Copy(), blockExec, blockStore, csReactor,
+			reactorShim.GetChannel(bcv0.BlockchainChannel), reactorShim.PeerUpdates, fastSync,
+		)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return reactorShim, reactor, nil
+
+	case "v2":
+		reactor := bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+		reactor.SetLogger(logger)
+
+		return nil, reactor, nil
+
+	default:
+		return nil, nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+	}
 }
 
 func createConsensusReactor(config *cfg.Config,
@@ -780,10 +797,27 @@ func NewNode(config *cfg.Config,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 
-	// Make BlockchainReactor. Don't start fast sync if we're doing a state sync first.
-	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, fastSync && !stateSync, logger)
+	logger.Info("Setting up maverick consensus reactor", "Misbehaviors", misbehaviors)
+	csReactor, csState := createConsensusReactor(
+		config, state, blockExec, blockStore, mempool, evPool,
+		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger, misbehaviors,
+	)
+
+	// Create the blockchain reactor. Note, we do not start fast sync if we're
+	// doing a state sync first.
+	bcReactorShim, bcReactor, err := createBlockchainReactor(
+		logger, config, state, blockExec, blockStore, csReactor, fastSync && !stateSync,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
+	}
+
+	// TODO: Remove this once the switch is removed.
+	var bcReactorForSwitch p2p.Reactor
+	if bcReactorShim != nil {
+		bcReactorForSwitch = bcReactorShim
+	} else {
+		bcReactorForSwitch = bcReactor.(p2p.Reactor)
 	}
 
 	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or fast sync first.
@@ -793,11 +827,6 @@ func NewNode(config *cfg.Config,
 	} else if fastSync {
 		csMetrics.FastSyncing.Set(1)
 	}
-
-	logger.Info("Setting up maverick consensus reactor", "Misbehaviors", misbehaviors)
-	consensusReactor, consensusState := createConsensusReactor(
-		config, state, blockExec, blockStore, mempool, evPool,
-		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger, misbehaviors)
 
 	// Set up state sync reactor, and schedule a sync if requested.
 	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,
@@ -824,8 +853,8 @@ func NewNode(config *cfg.Config,
 	p2pLogger := logger.With("module", "p2p")
 	transport, peerFilters := createTransport(p2pLogger, config, nodeInfo, nodeKey, proxyApp)
 	sw := createSwitch(
-		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
-		stateSyncReactorShim, consensusReactor, evReactorShim, nodeInfo, nodeKey, p2pLogger,
+		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactorForSwitch,
+		stateSyncReactorShim, csReactor, evReactorShim, nodeInfo, nodeKey, p2pLogger,
 	)
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
@@ -883,8 +912,8 @@ func NewNode(config *cfg.Config,
 		bcReactor:        bcReactor,
 		mempoolReactor:   mempoolReactor,
 		mempool:          mempool,
-		consensusState:   consensusState,
-		consensusReactor: consensusReactor,
+		consensusState:   csState,
+		consensusReactor: csReactor,
 		stateSyncReactor: stateSyncReactor,
 		stateSync:        stateSync,
 		stateSyncGenesis: state, // Shouldn't be necessary, but need a way to pass the genesis state
@@ -957,6 +986,13 @@ func (n *Node) OnStart() error {
 
 	n.isListening = true
 
+	if n.config.FastSync.Version == "v0" {
+		// Start the real blockchain reactor separately since the switch uses the shim.
+		if err := n.bcReactor.Start(); err != nil {
+			return err
+		}
+	}
+
 	// Start the real state sync reactor separately since the switch uses the shim.
 	if err := n.stateSyncReactor.Start(); err != nil {
 		return err
@@ -1006,6 +1042,13 @@ func (n *Node) OnStop() {
 	// now stop the reactors
 	if err := n.sw.Stop(); err != nil {
 		n.Logger.Error("Error closing switch", "err", err)
+	}
+
+	if n.config.FastSync.Version == "v0" {
+		// Stop the real blockchain reactor separately since the switch uses the shim.
+		if err := n.bcReactor.Stop(); err != nil {
+			n.Logger.Error("failed to stop the blockchain reactor", "err", err)
+		}
 	}
 
 	// Stop the real state sync reactor separately since the switch uses the shim.
@@ -1317,9 +1360,11 @@ func makeNodeInfo(
 	var bcChannel byte
 	switch config.FastSync.Version {
 	case "v0":
-		bcChannel = bcv0.BlockchainChannel
+		bcChannel = byte(bcv0.BlockchainChannel)
+
 	case "v2":
 		bcChannel = bcv2.BlockchainChannel
+
 	default:
 		return p2p.NodeInfo{}, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
