@@ -10,7 +10,6 @@ import (
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	protomem "github.com/tendermint/tendermint/proto/tendermint/mempool"
 	"github.com/tendermint/tendermint/types"
@@ -33,13 +32,6 @@ const (
 
 	maxActiveIDs = math.MaxUint16
 )
-
-type mempoolIDs struct {
-	mtx       tmsync.RWMutex
-	peerMap   map[p2p.NodeID]uint16
-	nextID    uint16              // assumes that a node will never have over 65536 active peers
-	activeIDs map[uint16]struct{} // used to check if a given peerID key is used, the value doesn't matter
-}
 
 // Reactor implements a service that contains mempool of txs that are broadcasted
 // amongst peers. It maintains a map from peer ID to counter, to prevent gossiping
@@ -80,62 +72,6 @@ func (r *Reactor) GetChannelShims() map[p2p.ChannelID]*p2p.ChannelDescriptorShim
 }
 
 // ============================================================================
-
-// Reserve searches for the next unused ID and assigns it to the
-// peer.
-func (ids *mempoolIDs) ReserveForPeer(peer p2p.Peer) {
-	ids.mtx.Lock()
-	defer ids.mtx.Unlock()
-
-	curID := ids.nextPeerID()
-	ids.peerMap[peer.ID()] = curID
-	ids.activeIDs[curID] = struct{}{}
-}
-
-// nextPeerID returns the next unused peer ID to use.
-// This assumes that ids's mutex is already locked.
-func (ids *mempoolIDs) nextPeerID() uint16 {
-	if len(ids.activeIDs) == maxActiveIDs {
-		panic(fmt.Sprintf("node has maximum %d active IDs and wanted to get one more", maxActiveIDs))
-	}
-
-	_, idExists := ids.activeIDs[ids.nextID]
-	for idExists {
-		ids.nextID++
-		_, idExists = ids.activeIDs[ids.nextID]
-	}
-	curID := ids.nextID
-	ids.nextID++
-	return curID
-}
-
-// Reclaim returns the ID reserved for the peer back to unused pool.
-func (ids *mempoolIDs) Reclaim(peer p2p.Peer) {
-	ids.mtx.Lock()
-	defer ids.mtx.Unlock()
-
-	removedID, ok := ids.peerMap[peer.ID()]
-	if ok {
-		delete(ids.activeIDs, removedID)
-		delete(ids.peerMap, peer.ID())
-	}
-}
-
-// GetForPeer returns an ID reserved for the peer.
-func (ids *mempoolIDs) GetForPeer(peer p2p.Peer) uint16 {
-	ids.mtx.RLock()
-	defer ids.mtx.RUnlock()
-
-	return ids.peerMap[peer.ID()]
-}
-
-func newMempoolIDs() *mempoolIDs {
-	return &mempoolIDs{
-		peerMap:   make(map[p2p.NodeID]uint16),
-		activeIDs: map[uint16]struct{}{0: {}},
-		nextID:    1, // reserve unknownPeerID(0) for mempoolReactor.BroadcastTx
-	}
-}
 
 // NewReactor returns a new Reactor with the given config and mempool.
 func NewReactor(config *cfg.MempoolConfig, mempool *CListMempool) *Reactor {
