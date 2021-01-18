@@ -1,3 +1,6 @@
+---
+order: 2
+---
 # Fastsync
 
 Fastsync is a protocol that is used by a node to catch-up to the

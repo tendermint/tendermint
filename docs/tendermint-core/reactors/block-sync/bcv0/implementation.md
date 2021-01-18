@@ -1,4 +1,8 @@
-# Blockchain Reactor v0 Module
+---
+order: 3
+---
+
+# Implementation
 
 ## Blockchain Reactor
 
