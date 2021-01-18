@@ -7,6 +7,11 @@ import (
 	proto "github.com/gogo/protobuf/proto"
 )
 
+const (
+	BlockResponseMessagePrefixSize   = 4
+	BlockResponseMessageFieldKeySize = 1
+)
+
 // Wrap implements the p2p Wrapper interface and wraps a blockchain messages.
 func (m *Message) Wrap(pb proto.Message) error {
 	switch msg := pb.(type) {

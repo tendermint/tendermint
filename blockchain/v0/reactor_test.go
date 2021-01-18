@@ -136,7 +136,7 @@ func setup(
 		rts.blockchainPeerErrCh,
 	)
 
-	rts.reactor = NewReactor(
+	reactor, err := NewReactor(
 		log.TestingLogger().With("module", "blockchain", "node", rts.peerID),
 		state.Copy(),
 		blockExec,
@@ -146,6 +146,9 @@ func setup(
 		rts.peerUpdates,
 		fastSync,
 	)
+
+	require.NoError(t, err)
+	rts.reactor = reactor
 
 	require.NoError(t, rts.reactor.Start())
 	require.True(t, rts.reactor.IsRunning())

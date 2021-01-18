@@ -107,9 +107,9 @@ func NewReactor(
 	blockchainCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdatesCh,
 	fastSync bool,
-) *Reactor {
+) (*Reactor, error) {
 	if state.LastBlockHeight != store.Height() {
-		panic(fmt.Sprintf("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height()))
+		return nil, fmt.Errorf("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height())
 	}
 
 	startHeight := store.Height() + 1
@@ -135,7 +135,7 @@ func NewReactor(
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Blockchain", r)
-	return r
+	return r, nil
 }
 
 // OnStart starts separate go routines for each p2p Channel and listens for
@@ -385,7 +385,7 @@ func (r *Reactor) requestRoutine() {
 
 	for {
 		select {
-		case <-r.Quit():
+		case <-r.closeCh:
 			return
 
 		case <-r.pool.Quit():
@@ -589,7 +589,7 @@ FOR_LOOP:
 
 			continue FOR_LOOP
 
-		case <-r.Quit():
+		case <-r.closeCh:
 			break FOR_LOOP
 		}
 	}
