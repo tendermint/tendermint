@@ -1,19 +1,18 @@
-package blockchain
+package blockchain_test
 
 import (
 	"encoding/hex"
-	"math"
+	math "math"
 	"testing"
 
-	"github.com/gogo/protobuf/proto"
-	"github.com/stretchr/testify/assert"
+	proto "github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
 	"github.com/tendermint/tendermint/types"
 )
 
-func TestBcBlockRequestMessageValidateBasic(t *testing.T) {
+func TestBlockRequest_Validate(t *testing.T) {
 	testCases := []struct {
 		testName      string
 		requestHeight int64
@@ -27,13 +26,15 @@ func TestBcBlockRequestMessageValidateBasic(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			request := bcproto.BlockRequest{Height: tc.requestHeight}
-			assert.Equal(t, tc.expectErr, ValidateMsg(&request) != nil, "Validate Basic had an unexpected result")
+			msg := &bcproto.Message{}
+			require.NoError(t, msg.Wrap(&bcproto.BlockRequest{Height: tc.requestHeight}))
+
+			require.Equal(t, tc.expectErr, msg.Validate() != nil)
 		})
 	}
 }
 
-func TestBcNoBlockResponseMessageValidateBasic(t *testing.T) {
+func TestNoBlockResponse_Validate(t *testing.T) {
 	testCases := []struct {
 		testName          string
 		nonResponseHeight int64
@@ -47,18 +48,21 @@ func TestBcNoBlockResponseMessageValidateBasic(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			nonResponse := bcproto.NoBlockResponse{Height: tc.nonResponseHeight}
-			assert.Equal(t, tc.expectErr, ValidateMsg(&nonResponse) != nil, "Validate Basic had an unexpected result")
+			msg := &bcproto.Message{}
+			require.NoError(t, msg.Wrap(&bcproto.NoBlockResponse{Height: tc.nonResponseHeight}))
+
+			require.Equal(t, tc.expectErr, msg.Validate() != nil)
 		})
 	}
 }
 
-func TestBcStatusRequestMessageValidateBasic(t *testing.T) {
-	request := bcproto.StatusRequest{}
-	assert.NoError(t, ValidateMsg(&request))
+func TestStatusRequest_Validate(t *testing.T) {
+	msg := &bcproto.Message{}
+	require.NoError(t, msg.Wrap(&bcproto.StatusRequest{}))
+	require.NoError(t, msg.Validate())
 }
 
-func TestBcStatusResponseMessageValidateBasic(t *testing.T) {
+func TestStatusResponse_Validate(t *testing.T) {
 	testCases := []struct {
 		testName       string
 		responseHeight int64
@@ -72,13 +76,15 @@ func TestBcStatusResponseMessageValidateBasic(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			response := bcproto.StatusResponse{Height: tc.responseHeight}
-			assert.Equal(t, tc.expectErr, ValidateMsg(&response) != nil, "Validate Basic had an unexpected result")
+			msg := &bcproto.Message{}
+			require.NoError(t, msg.Wrap(&bcproto.StatusResponse{Height: tc.responseHeight}))
+
+			require.Equal(t, tc.expectErr, msg.Validate() != nil)
 		})
 	}
 }
 
-// nolint:lll // ignore line length in tests
+// nolint:lll
 func TestBlockchainMessageVectors(t *testing.T) {
 	block := types.MakeBlock(int64(3), []types.Tx{types.Tx("Hello World")}, nil, nil)
 	block.Version.Block = 11 // overwrite updated protocol version
@@ -117,8 +123,8 @@ func TestBlockchainMessageVectors(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			bz, _ := proto.Marshal(tc.bmsg)
-
+			bz, err := proto.Marshal(tc.bmsg)
+			require.NoError(t, err)
 			require.Equal(t, tc.expBytes, hex.EncodeToString(bz))
 		})
 	}

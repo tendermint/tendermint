@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/behaviour"
-	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -409,23 +409,37 @@ func TestReactorHelperMode(t *testing.T) {
 				switch ev := step.event.(type) {
 				case bcproto.StatusRequest:
 					old := mockSwitch.numStatusResponse
-					msg, err := bc.EncodeMsg(&ev)
-					assert.NoError(t, err)
-					reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msg)
+
+					msgProto := new(bcproto.Message)
+					require.NoError(t, msgProto.Wrap(&ev))
+
+					msgBz, err := proto.Marshal(msgProto)
+					require.NoError(t, err)
+
+					reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msgBz)
 					assert.Equal(t, old+1, mockSwitch.numStatusResponse)
 				case bcproto.BlockRequest:
 					if ev.Height > params.startHeight {
 						old := mockSwitch.numNoBlockResponse
-						msg, err := bc.EncodeMsg(&ev)
-						assert.NoError(t, err)
-						reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msg)
+
+						msgProto := new(bcproto.Message)
+						require.NoError(t, msgProto.Wrap(&ev))
+
+						msgBz, err := proto.Marshal(msgProto)
+						require.NoError(t, err)
+
+						reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msgBz)
 						assert.Equal(t, old+1, mockSwitch.numNoBlockResponse)
 					} else {
 						old := mockSwitch.numBlockResponse
-						msg, err := bc.EncodeMsg(&ev)
-						assert.NoError(t, err)
-						assert.NoError(t, err)
-						reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msg)
+
+						msgProto := new(bcproto.Message)
+						require.NoError(t, msgProto.Wrap(&ev))
+
+						msgBz, err := proto.Marshal(msgProto)
+						require.NoError(t, err)
+
+						reactor.Receive(channelID, mockPeer{id: p2p.NodeID(step.peer)}, msgBz)
 						assert.Equal(t, old+1, mockSwitch.numBlockResponse)
 					}
 				}
