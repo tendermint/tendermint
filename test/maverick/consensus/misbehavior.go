@@ -393,6 +393,7 @@ func defaultReceiveProposal(cs *State, proposal *types.Proposal) error {
 	if cs.ProposalBlockParts == nil {
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
 	}
-	cs.Logger.Info("Received proposal", "proposal", proposal)
+
+	cs.Logger.Debug("received proposal", "proposal", proposal)
 	return nil
 }
