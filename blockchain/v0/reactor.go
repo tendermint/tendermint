@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -224,19 +223,7 @@ func (r *Reactor) handleBlockchainMessage(envelope p2p.Envelope) error {
 			return err
 		}
 
-		protoMsg := new(bcproto.Message)
-		if err := protoMsg.Wrap(msg); err != nil {
-			r.Logger.Error("failed to wrap proto message", "err", err)
-			return nil
-		}
-
-		bz, err := proto.Marshal(protoMsg)
-		if err != nil {
-			r.Logger.Error("failed to proto encode message", "err", err)
-			return nil
-		}
-
-		r.pool.AddBlock(envelope.From, block, len(bz))
+		r.pool.AddBlock(envelope.From, block, block.Size())
 
 	case *bcproto.StatusRequest:
 		r.blockchainCh.Out() <- p2p.Envelope{
