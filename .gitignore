@@ -41,3 +41,6 @@ test/logs
 test/maverick/maverick
 test/p2p/data/
 vendor
+test/fuzz/**/corpus
+test/fuzz/**/crashers
+test/fuzz/**/suppressions
