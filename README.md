@@ -44,6 +44,9 @@ To report a security vulnerability, see our [bug bounty
 program](https://hackerone.com/tendermint). 
 For examples of the kinds of bugs we're looking for, see [our security policy](SECURITY.md)
 
+We also maintain a dedicated mailing list for security updates. We will only ever use this mailing list
+to notify you of vulnerabilities and fixes in Tendermint Core. You can subscribe [here](http://eepurl.com/gZ5hQD).
+
 ## Minimum requirements
 
 | Requirement | Notes            |
