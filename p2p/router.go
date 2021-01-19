@@ -74,7 +74,7 @@ type Router struct {
 	*service.BaseService
 	logger      log.Logger
 	transports  map[Protocol]Transport
-	peerManager *peerManager
+	peerManager *PeerManager
 
 	// FIXME: Consider using sync.Map.
 	peerMtx    sync.RWMutex

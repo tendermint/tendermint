@@ -216,7 +216,7 @@ type PeerUpdate struct {
 	Status PeerStatus
 }
 
-// peerManager manages peer information, using a peerStore for underlying
+// PeerManager manages peer information, using a peerStore for underlying
 // storage. Its primary purpose is to determine which peers to connect to next,
 // make sure a peer only has a single active connection (either inbound or outbound),
 // and to avoid dialing the same peer in parallel goroutines.
@@ -244,7 +244,7 @@ type PeerUpdate struct {
 // avoids race conditions where multiple goroutines may end up dialing a peer if
 // an incoming connection was briefly accepted and disconnected while we were
 // also dialing.
-type peerManager struct {
+type PeerManager struct {
 	mtx           sync.Mutex
 	store         *peerStore
 	dialing       map[NodeID]bool
@@ -253,8 +253,8 @@ type peerManager struct {
 }
 
 // newPeerManager creates a new peer manager.
-func newPeerManager(store *peerStore) *peerManager {
-	return &peerManager{
+func newPeerManager(store *peerStore) *PeerManager {
+	return &PeerManager{
 		store:         store,
 		dialing:       map[NodeID]bool{},
 		connected:     map[NodeID]bool{},
@@ -264,7 +264,7 @@ func newPeerManager(store *peerStore) *peerManager {
 
 // Add adds a peer to the manager, given as an address. If the peer already
 // exists, the address is added to it.
-func (m *peerManager) Add(address PeerAddress) error {
+func (m *PeerManager) Add(address PeerAddress) error {
 	if err := address.Validate(); err != nil {
 		return err
 	}
@@ -285,7 +285,7 @@ func (m *peerManager) Add(address PeerAddress) error {
 // updates in a timely fashion and close the subscription when done, since
 // delivery is guaranteed and will block peer connection/disconnection
 // otherwise.
-func (m *peerManager) Subscribe() *PeerUpdatesCh {
+func (m *PeerManager) Subscribe() *PeerUpdatesCh {
 	// FIXME: We may want to use a size 1 buffer here. When the router
 	// broadcasts a peer update it has to loop over all of the
 	// subscriptions, and we want to avoid blocking and waiting for a
@@ -314,7 +314,7 @@ func (m *peerManager) Subscribe() *PeerUpdatesCh {
 //
 // FIXME: Consider using more fine-grained mutexes here, and/or a channel to
 // enforce ordering of updates.
-func (m *peerManager) broadcast(peerUpdate PeerUpdate) {
+func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
 	for _, sub := range m.subscriptions {
 		select {
 		case sub.updatesCh <- peerUpdate:
@@ -328,7 +328,7 @@ func (m *peerManager) broadcast(peerUpdate PeerUpdate) {
 // for the peer and it is no longer connected.
 //
 // Returns an empty ID if no appropriate peers are available.
-func (m *peerManager) DialNext() (NodeID, PeerAddress, error) {
+func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -356,9 +356,9 @@ func (m *peerManager) DialNext() (NodeID, PeerAddress, error) {
 
 // retryDelay calculates a dial retry delay using exponential backoff, with an
 // additional random period to avoid thundering herds.
-func (m *peerManager) retryDelay(failures uint32) time.Duration {
+func (m *PeerManager) retryDelay(failures uint32) time.Duration {
 	// FIXME: For now, we use constant settings, but these should be configurable
-	// via peerManager fields (especially for tests).
+	// via PeerManager fields (especially for tests).
 	const (
 		backoffBase = 100 * time.Millisecond
 		backoffMax  = 1 * time.Hour
@@ -379,7 +379,7 @@ func (m *peerManager) retryDelay(failures uint32) time.Duration {
 // for dialing again when appropriate.
 //
 // FIXME: This should probably evict bad addresses after some time.
-func (m *peerManager) DialFailed(peerID NodeID, address PeerAddress) error {
+func (m *PeerManager) DialFailed(peerID NodeID, address PeerAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -399,7 +399,7 @@ func (m *peerManager) DialFailed(peerID NodeID, address PeerAddress) error {
 
 // Dialed marks a peer as successfully dialed. Any further incoming connections
 // will be rejected, and once disconnected the peer may be dialed again.
-func (m *peerManager) Dialed(peerID NodeID, address PeerAddress) error {
+func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -428,7 +428,7 @@ func (m *peerManager) Dialed(peerID NodeID, address PeerAddress) error {
 // NOTE: We can't take an address here, since e.g. TCP uses a different port
 // number for outbound traffic than inbound traffic, so the peer's endpoint
 // wouldn't necessarily be an appropriate address to dial.
-func (m *peerManager) Accepted(peerID NodeID) error {
+func (m *PeerManager) Accepted(peerID NodeID) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -448,15 +448,8 @@ func (m *peerManager) Accepted(peerID NodeID) error {
 // Ready marks a peer as ready, broadcasting status updates to subscribers. The
 // peer must already be marked as connected. This is separate from Dialed() and
 // Accepted() to allow the router to set up its internal queues before reactors
-// start sending messages (holding the Router.peerMtx mutex while calling
-// Accepted or Dialed will halt all message routing while peers are set up, which
-// is too expensive and also causes difficulties in tests where we may want to
-// consume peer updates and send messages sequentially).
-//
-// FIXME: This possibly indicates an architectural problem. Should the peerManager
-// handle actual network connections to/from peers as well? Or should all of this
-// be done by the router?
-func (m *peerManager) Ready(peerID NodeID) {
+// start sending messages.
+func (m *PeerManager) Ready(peerID NodeID) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 	connected := m.connected[peerID]
@@ -470,7 +463,7 @@ func (m *peerManager) Ready(peerID NodeID) {
 
 // Disconnected unmarks a peer as connected, allowing new connections to be
 // established.
-func (m *peerManager) Disconnected(peerID NodeID) error {
+func (m *PeerManager) Disconnected(peerID NodeID) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 	delete(m.connected, peerID)
