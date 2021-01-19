@@ -23,15 +23,18 @@ import (
 // either the channel is closed by the caller or the router is stopped, at which
 // point the input message queue is closed and removed.
 //
-// On startup, the router spawns off two primary goroutines that maintain
+// On startup, the router spawns off three primary goroutines that maintain
 // connections to peers and run for the lifetime of the router:
 //
-//   Router.dialPeers(): in a loop, asks the peerStore to dispense an
-//   eligible peer to connect to, and attempts to resolve and dial each
-//   address until successful.
+//   Router.dialPeers(): in a loop, asks the PeerManager for the next peer
+//   address to contact, resolves it into endpoints, and attempts to dial
+//   each one.
 //
 //   Router.acceptPeers(): in a loop, waits for the next inbound connection
-//   from a peer, and attempts to claim it in the peerStore.
+//   from a peer, and checks with the PeerManager if it should be accepted.
+//
+//   Router.evictPeers(): in a loop, asks the PeerManager for any connected
+//   peers to evict, and disconnects them.
 //
 // Once either an inbound or outbound connection has been made, an outbound
 // message queue is registered in Router.peerQueues and a goroutine is spawned

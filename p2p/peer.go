@@ -216,10 +216,12 @@ type PeerUpdate struct {
 	Status PeerStatus
 }
 
-// PeerManager manages peer lifecycle information, using a peerStore for underlying
-// storage. Its primary purpose is to determine which peers to connect to next,
-// make sure a peer only has a single active connection (either inbound or outbound),
-// and to avoid dialing the same peer in parallel goroutines.
+// PeerManager manages peer lifecycle information, using a peerStore for
+// underlying storage. Its primary purpose is to determine which peers to
+// connect to next, make sure a peer only has a single active connection (either
+// inbound or outbound), and evict peers to make room for higher-priority peers.
+// It does not manage actual connections (this is handled by the Router),
+// only the peer lifecycle state.
 //
 // For an outbound connection, the flow is as follows:
 // - DialNext: returns a peer address to dial, marking the peer as dialing.
@@ -389,7 +391,7 @@ func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
 
 // retryDelay calculates a dial retry delay using exponential backoff, based on
 // retry settings in PeerManagerOptions. If MinRetryTime is 0, this returns
-// MaxInt64 (i.e. an infinite retry delay).
+// MaxInt64 (i.e. an infinite retry delay, effectively disabling retries).
 func (m *PeerManager) retryDelay(failures uint32) time.Duration {
 	if failures == 0 {
 		return 0
@@ -408,7 +410,7 @@ func (m *PeerManager) retryDelay(failures uint32) time.Duration {
 // DialFailed reports a failed dial attempt. This will make the peer available
 // for dialing again when appropriate.
 //
-// FIXME: This should probably evict bad addresses after some time.
+// FIXME: This should probably delete bad addresses after some time.
 func (m *PeerManager) DialFailed(peerID NodeID, address PeerAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
