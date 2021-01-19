@@ -1,3 +1,6 @@
+---
+order: 2
+---
 # Creating a proposal
 
 A block consists of a header, transactions, votes (the commit),

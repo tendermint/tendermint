@@ -17,7 +17,7 @@ The Tendermint blockchains consists of a short list of data types:
 - [`Vote`](#vote)
 - [`CanonicalVote`](#canonicalvote)
 - [`SignedMsgType`](#signedmsgtype)
-- [`EvidenceData`](#evidence_data)
+- [`EvidenceList`](#evidence_list)
 - [`Evidence`](#evidence)
 - [`DuplicateVoteEvidence`](#duplicatevoteevidence)
 - [`LightClientAttackEvidence`](#lightclientattackevidence)
@@ -40,7 +40,7 @@ and a list of evidence of malfeasance (ie. signing conflicting votes).
 |--------|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|
 | Header | [Header](#header) | Header corresponding to the block. This field contains information used throughout consensus and other areas of the protocol. To find out what it contains, visit [header] (#header) | Must adhere to the validation rules of [header](#header) |
 | Data       | [Data](#data)                  | Data contains a list of transactions. The contents of the transaction is unknown to Tendermint.                                                                                      | This field can be empty or populated, but no validation is performed. Applications can perform validation on individual transactions prior to block creation using [checkTx](../abci/abci.md#checktx).
-| Evidence   | [EvidenceData](#evidence_data) | Evidence contains a list of infractions committed by validators.                                                                                                                     | Can be empty, but when populated the validations rules from [evidenceData](#evidence_data) apply |
+| Evidence   | [EvidenceList](#evidence_list) | Evidence contains a list of infractions committed by validators.                                                                                                                     | Can be empty, but when populated the validations rules from [evidenceList](#evidence_list) apply |
 | LastCommit | [Commit](#commit)              | `LastCommit` includes one vote for every validator.  All votes must either be for the previous block, nil or absent. If a vote is for the previous block it must have a valid signature from the corresponding validator. The sum of the voting power of the validators that voted must be greater than 2/3 of the total voting power of the complete validator set. The number of votes in a commit is limited to 10000 (see `types.MaxVotesCount`).                                                                                             | Must be empty for the initial height and must adhere to the validation rules of [commit](#commit).  |
 
 ## Execution
@@ -150,6 +150,16 @@ See [MerkleRoot](./encoding.md#MerkleRoot) for details.
 | Total | int32                     | Total amount of parts for a block | Must be > 0          |
 | Hash  | slice of bytes (`[]byte`) | MerkleRoot of a serialized block  | Must be of length 32 |
 
+## Part
+
+Part defines a part of a block. In Tendermint blocks are broken into `parts` for gossip.
+
+| Name  | Type            | Description                       | Validation           |
+|-------|-----------------|-----------------------------------|----------------------|
+| index | int32           | Total amount of parts for a block | Must be > 0          |
+| bytes | bytes           | MerkleRoot of a serialized block  | Must be of length 32 |
+| proof | [Proof](#proof) | MerkleRoot of a serialized block  | Must be of length 32 |
+
 ## Time
 
 Tendermint uses the [Google.Protobuf.WellKnownTypes.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/timestamp)
@@ -255,6 +265,23 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 }
 ```
 
+### Proposal
+
+Proposal contains height and round for which this proposal is made, BlockID as a unique identifier
+of proposed block, timestamp, and POLRound (a so-called Proof-of-Lock (POL) round) that is needed for
+termination of the consensus. If POLRound >= 0, then BlockID corresponds to the block that
+is locked in POLRound. The message is signed by the validator private key.
+
+| Name      | Type                            | Description                                                                           | Validation                                              |
+|-----------|---------------------------------|---------------------------------------------------------------------------------------|---------------------------------------------------------|
+| Type      | [SignedMsgType](#signedmsgtype) | Represents a Proposal [SignedMsgType](#signedmsgtype)                                 | Must be `ProposalType`  [signedMsgType](#signedmsgtype) |
+| Height    | int64                           | Height for which this vote was created for                                            | Must be > 0                                             |
+| Round     | int32                           | Round that the commit corresponds to.                                                 | Must be > 0                                             |
+| POLRound  | int64                           | Proof of lock                                                                         | Must be > 0                                             |
+| BlockID   | [BlockID](#blockid)             | The blockID of the corresponding block.                                               | [BlockID](#blockid)                                     |
+| Timestamp | [Time](#Time)                   | Timestamp represents the time at which a validator signed.                            | [Time](#time)                                           |
+| Signature | slice of bytes (`[]byte`)       | Signature by the validator if they participated in consensus for the associated bock. | Length of signature must be > 0 and < 64                |
+
 ## SignedMsgType
 
 Signed message type represents a signed messages in consensus.
@@ -278,9 +305,9 @@ Signatures in Tendermint are raw bytes representing the underlying signature.
 
 See the [signature spec](./encoding.md#key-types) for more.
 
-## EvidenceData
+## EvidenceList
 
-EvidenceData is a simple wrapper for a list of evidence:
+EvidenceList is a simple wrapper for a list of evidence:
 
 | Name     | Type                           | Description                            | Validation                                                      |
 |----------|--------------------------------|----------------------------------------|-----------------------------------------------------------------|
@@ -439,3 +466,12 @@ func SumTruncated(bz []byte) []byte {
 | Name        | Type   | Description                   | Field Number |
 |-------------|--------|-------------------------------|--------------|
 | app_version | uint64 | The ABCI application version. | 1            |
+
+### Proof
+
+| Name      | Type           | Description                                   | Field Number |
+|-----------|----------------|-----------------------------------------------|--------------|
+| total     | int64          | Total number of items.                        | 1            |
+| index     | int64          | Index item to prove.                          | 2            |
+| leaf_hash | bytes          | Hash of item value.                           | 3            |
+| aunts     | repeated bytes | Hashes from leaf's sibling to a root's child. | 4            |

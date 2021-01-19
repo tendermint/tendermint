@@ -1,3 +1,6 @@
+---
+order: 2
+---
 # BFT Time
 
 Tendermint provides a deterministic, Byzantine fault-tolerant, source of time.

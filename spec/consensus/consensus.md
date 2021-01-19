@@ -1,3 +1,6 @@
+---
+order: 1
+---
 # Byzantine Consensus Algorithm
 
 ## Terms
