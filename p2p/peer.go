@@ -266,16 +266,12 @@ func (m *peerManager) Add(address PeerAddress) error {
 	if err := address.Validate(); err != nil {
 		return err
 	}
-	peerID := address.NodeID()
-
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
-	peer, err := m.store.Get(peerID)
+
+	peer, err := m.store.Ensure(address.NodeID())
 	if err != nil {
 		return err
-	}
-	if peer == nil {
-		peer = newPeerInfo(peerID)
 	}
 	if peer.AddAddress(address) {
 		return m.store.Set(peer)
@@ -393,14 +389,9 @@ func (m *peerManager) Dialed(peerID NodeID, address PeerAddress) error {
 func (m *peerManager) Accepted(peerID NodeID) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
-	peer, err := m.store.Get(peerID)
+	_, err := m.store.Ensure(peerID)
 	if err != nil {
 		return err
-	} else if peer == nil {
-		peer = newPeerInfo(peerID)
-		if err = m.store.Set(peer); err != nil {
-			return err
-		}
 	}
 	if m.connected[peerID] {
 		return fmt.Errorf("peer %q is already connected", peerID)
@@ -460,6 +451,21 @@ func newPeerStore() *peerStore {
 	return &peerStore{
 		peers: map[NodeID]peerInfo{},
 	}
+}
+
+// Ensure fetches a peer, creating it if it does not already exist.
+func (s *peerStore) Ensure(id NodeID) (*peerInfo, error) {
+	peer, err := s.Get(id)
+	if err != nil {
+		return nil, err
+	}
+	if peer == nil {
+		peer = newPeerInfo(id)
+		if err = s.Set(peer); err != nil {
+			return nil, err
+		}
+	}
+	return peer, nil
 }
 
 // Get fetches a peer, returning nil if not found.
