@@ -48,21 +48,6 @@ const (
 	broadcastEvidenceIntervalS = 10
 )
 
-type closer struct {
-	closeOnce sync.Once
-	doneCh    chan struct{}
-}
-
-func newCloser() *closer {
-	return &closer{doneCh: make(chan struct{})}
-}
-
-func (c *closer) close() {
-	c.closeOnce.Do(func() {
-		close(c.doneCh)
-	})
-}
-
 // Reactor handles evpool evidence broadcasting amongst peers.
 type Reactor struct {
 	service.BaseService
@@ -76,7 +61,7 @@ type Reactor struct {
 	peerWG sync.WaitGroup
 
 	mtx          tmsync.Mutex
-	peerRoutines map[p2p.NodeID]*closer
+	peerRoutines map[p2p.NodeID]*tmsync.Closer
 }
 
 // NewReactor returns a reference to a new evidence reactor, which implements the
@@ -93,7 +78,7 @@ func NewReactor(
 		evidenceCh:   evidenceCh,
 		peerUpdates:  peerUpdates,
 		closeCh:      make(chan struct{}),
-		peerRoutines: make(map[p2p.NodeID]*closer),
+		peerRoutines: make(map[p2p.NodeID]*tmsync.Closer),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Evidence", r)
@@ -121,7 +106,7 @@ func (r *Reactor) OnStart() error {
 func (r *Reactor) OnStop() {
 	r.mtx.Lock()
 	for _, c := range r.peerRoutines {
-		c.close()
+		c.Close()
 	}
 	r.mtx.Unlock()
 
@@ -149,8 +134,6 @@ func (r *Reactor) handleEvidenceMessage(envelope p2p.Envelope) error {
 
 	switch msg := envelope.Message.(type) {
 	case *tmproto.EvidenceList:
-		logger.Debug("received evidence list", "num_evidence", len(msg.Evidence))
-
 		// TODO: Refactor the Evidence type to not contain a list since we only ever
 		// send and receive one piece of evidence at a time. Or potentially consider
 		// batching evidence.
@@ -189,6 +172,8 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 		}
 	}()
 
+	r.Logger.Debug("received message", "message", envelope.Message, "peer", envelope.From)
+
 	switch chID {
 	case EvidenceChannel:
 		err = r.handleEvidenceMessage(envelope)
@@ -224,10 +209,9 @@ func (r *Reactor) processEvidenceCh() {
 	}
 }
 
-// processPeerUpdate processes a PeerUpdate, returning an error upon failing to
-// handle the PeerUpdate or if a panic is recovered. For new or live peers it
-// will check if an evidence broadcasting goroutine needs to be started. For
-// down or removed peers, it will check if an evidence broadcasting goroutine
+// processPeerUpdate processes a PeerUpdate. For new or live peers it will check
+// if an evidence broadcasting goroutine needs to be started. For down or
+// removed peers, it will check if an evidence broadcasting goroutine
 // exists and signal that it should exit.
 //
 // FIXME: The peer may be behind in which case it would simply ignore the
@@ -258,7 +242,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 		// safely, and finally start the goroutine to broadcast evidence to that peer.
 		_, ok := r.peerRoutines[peerUpdate.PeerID]
 		if !ok {
-			closer := newCloser()
+			closer := tmsync.NewCloser()
 
 			r.peerRoutines[peerUpdate.PeerID] = closer
 			r.peerWG.Add(1)
@@ -272,7 +256,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 		// from the map of peer evidence broadcasting goroutines.
 		closer, ok := r.peerRoutines[peerUpdate.PeerID]
 		if ok {
-			closer.close()
+			closer.Close()
 		}
 	}
 }
@@ -306,7 +290,7 @@ func (r *Reactor) processPeerUpdates() {
 // that the peer has already received or may not be ready for.
 //
 // REF: https://github.com/tendermint/tendermint/issues/4727
-func (r *Reactor) broadcastEvidenceLoop(peerID p2p.NodeID, closer *closer) {
+func (r *Reactor) broadcastEvidenceLoop(peerID p2p.NodeID, closer *tmsync.Closer) {
 	var next *clist.CElement
 
 	defer func() {
@@ -332,7 +316,7 @@ func (r *Reactor) broadcastEvidenceLoop(peerID p2p.NodeID, closer *closer) {
 					continue
 				}
 
-			case <-closer.doneCh:
+			case <-closer.Done():
 				// The peer is marked for removal via a PeerUpdate as the doneCh was
 				// explicitly closed to signal we should exit.
 				return
@@ -370,7 +354,7 @@ func (r *Reactor) broadcastEvidenceLoop(peerID p2p.NodeID, closer *closer) {
 		case <-next.NextWaitChan():
 			next = next.Next()
 
-		case <-closer.doneCh:
+		case <-closer.Done():
 			// The peer is marked for removal via a PeerUpdate as the doneCh was
 			// explicitly closed to signal we should exit.
 			return

@@ -212,6 +212,8 @@ func (r *Reactor) respondToPeer(msg *bcproto.BlockRequest, peerID p2p.NodeID) {
 // BlockchainChannel. It returns an error only if the Envelope.Message is unknown
 // for this channel. This should never be called outside of handleMessage.
 func (r *Reactor) handleBlockchainMessage(envelope p2p.Envelope) error {
+	logger := r.Logger.With("peer", envelope.From)
+
 	switch msg := envelope.Message.(type) {
 	case *bcproto.BlockRequest:
 		r.respondToPeer(msg, envelope.From)
@@ -219,7 +221,7 @@ func (r *Reactor) handleBlockchainMessage(envelope p2p.Envelope) error {
 	case *bcproto.BlockResponse:
 		block, err := types.BlockFromProto(msg.Block)
 		if err != nil {
-			r.Logger.Error("failed to convert block from proto", "err", err)
+			logger.Error("failed to convert block from proto", "err", err)
 			return err
 		}
 
@@ -238,16 +240,10 @@ func (r *Reactor) handleBlockchainMessage(envelope p2p.Envelope) error {
 		r.pool.SetPeerRange(envelope.From, msg.Base, msg.Height)
 
 	case *bcproto.NoBlockResponse:
-		r.Logger.Debug(
-			"peer does not have the requested block",
-			"height", msg.Height,
-			"peer", envelope.From,
-		)
+		logger.Debug("peer does not have the requested block", "height", msg.Height)
 
 	default:
-		r.Logger.Error("received unknown message", "msg", msg, "peer", envelope.From)
 		return fmt.Errorf("received unknown message: %T", msg)
-
 	}
 
 	return nil
@@ -304,12 +300,11 @@ func (r *Reactor) processBlockchainCh() {
 	}
 }
 
-// processPeerUpdate processes a PeerUpdate, returning an error upon failing to
-// handle the PeerUpdate or if a panic is recovered.
+// processPeerUpdate processes a PeerUpdate.
 func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	r.Logger.Debug("received peer update", "peer", peerUpdate.PeerID, "status", peerUpdate.Status)
 
-	// XXX: Pool#RedoRequest can sometimes give us an empty peer
+	// XXX: Pool#RedoRequest can sometimes give us an empty peer.
 	if len(peerUpdate.PeerID) == 0 {
 		return
 	}
