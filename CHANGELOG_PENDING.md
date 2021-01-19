@@ -1,6 +1,6 @@
 # Unreleased Changes
 
-## v0.34.3
+## v0.34.4
 
 Special thanks to external contributors on this release:
 

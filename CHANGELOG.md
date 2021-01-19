@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.34.3 
+
+*January 19, 2021*
+
+This release includes a fix for a high-severity security vulnerability. 
+More information on this vulnerability will be released on January 26, 2021
+and this changelog will be updated. 
+
+It also updates GoGo Protobuf to 1.3.2 in order to pick up the fix for
+https://nvd.nist.gov/vuln/detail/CVE-2021-3121. 
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BUG FIXES
+
+- [evidence] [N/A] Use correct source of evidence time (@cmwaters)
+- [proto] [\#5886](https://github.com/tendermint/tendermint/pull/5889) Bump gogoproto to 1.3.2 (@marbar3778)
+
 ## v0.34.2
 
 *January 12, 2021*
