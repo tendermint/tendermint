@@ -125,7 +125,7 @@ func (r *Reactor) OnStop() {
 	<-r.peerUpdates.Done()
 }
 
-// handleEvidenceMessage handles enevelopes sent from peers on the EvidenceChannel.
+// handleEvidenceMessage handles envelopes sent from peers on the EvidenceChannel.
 // It returns an error only if the Envelope.Message is unknown for this channel
 // or if the given evidence is invalid. This should never be called outside of
 // handleMessage.

@@ -208,7 +208,7 @@ func (r *Reactor) respondToPeer(msg *bcproto.BlockRequest, peerID p2p.NodeID) {
 	}
 }
 
-// handleBlockchainMessage handles enevelopes sent from peers on the
+// handleBlockchainMessage handles envelopes sent from peers on the
 // BlockchainChannel. It returns an error only if the Envelope.Message is unknown
 // for this channel. This should never be called outside of handleMessage.
 func (r *Reactor) handleBlockchainMessage(envelope p2p.Envelope) error {

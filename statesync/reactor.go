@@ -150,7 +150,7 @@ func (r *Reactor) OnStop() {
 	<-r.peerUpdates.Done()
 }
 
-// handleSnapshotMessage handles enevelopes sent from peers on the
+// handleSnapshotMessage handles envelopes sent from peers on the
 // SnapshotChannel. It returns an error only if the Envelope.Message is unknown
 // for this channel. This should never be called outside of handleMessage.
 func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
@@ -217,7 +217,7 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 	return nil
 }
 
-// handleChunkMessage handles enevelopes sent from peers on the ChunkChannel.
+// handleChunkMessage handles envelopes sent from peers on the ChunkChannel.
 // It returns an error only if the Envelope.Message is unknown for this channel.
 // This should never be called outside of handleMessage.
 func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {

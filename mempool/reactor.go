@@ -153,6 +153,10 @@ func (r *Reactor) OnStop() {
 	<-r.peerUpdates.Done()
 }
 
+// handleMempoolMessage handles envelopes sent from peers on the MempoolChannel.
+// For every tx in the message, we execute CheckTx. It returns an error if an
+// empty set of txs are sent in an envelope or if we receive an unexpected
+// message type.
 func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
 	logger := r.Logger.With("peer", envelope.From)
 
