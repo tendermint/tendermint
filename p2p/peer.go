@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
+	"math/rand"
 	"net"
 	"net/url"
 	"runtime/debug"
@@ -329,33 +331,69 @@ func (m *peerManager) broadcast(peerUpdate PeerUpdate) {
 func (m *peerManager) DialNext() (NodeID, PeerAddress, error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
+
 	peers, err := m.store.List()
 	if err != nil {
 		return "", PeerAddress{}, err
 	}
 	for _, peer := range peers {
 		switch {
-		case len(peer.Addresses) == 0:
 		case m.dialing[peer.ID]:
 		case m.connected[peer.ID]:
 		default:
-			// FIXME: We currently only dial the first address, but we should
-			// track connection statistics for each address and return the most
-			// appropriate one.
-			m.dialing[peer.ID] = true
-			return peer.ID, peer.Addresses[0], nil
+			for _, addressInfo := range peer.AddressInfo {
+				switch {
+				case time.Since(addressInfo.LastDialFailure) < m.retryDelay(addressInfo.DialFailures):
+				default:
+					m.dialing[peer.ID] = true
+					return peer.ID, addressInfo.Address, nil
+				}
+			}
 		}
 	}
 	return "", PeerAddress{}, nil
 }
 
+// retryDelay calculates a dial retry delay using exponential backoff, with an
+// additional random period to avoid thundering herds.
+func (m *peerManager) retryDelay(failures uint32) time.Duration {
+	// FIXME: For now, we use constant settings, but these should be configurable
+	// via peerManager fields (especially for tests).
+	const (
+		backoffBase = 100 * time.Millisecond
+		backoffMax  = 1 * time.Hour
+		randomDelay = 3 * time.Second
+	)
+	if failures == 0 {
+		return 0
+	}
+	delay := backoffBase * time.Duration(math.Pow(2, float64(failures)))
+	if delay > backoffMax {
+		delay = backoffMax
+	}
+	delay += time.Duration(rand.Int63n(int64(randomDelay))) // nolint:gosec
+	return delay
+}
+
 // DialFailed reports a failed dial attempt. This will make the peer available
 // for dialing again when appropriate.
+//
+// FIXME: This should probably evict bad addresses after some time.
 func (m *peerManager) DialFailed(peerID NodeID, address PeerAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
+
 	delete(m.dialing, peerID)
-	// FIXME: We need to track address quality statistics and exponential backoff.
+
+	peer, err := m.store.Ensure(peerID)
+	if err != nil {
+		return err
+	}
+	if addressInfo := peer.LookupAddressInfo(address); addressInfo != nil {
+		addressInfo.LastDialFailure = time.Now().UTC()
+		addressInfo.DialFailures++
+		return m.store.Set(peer)
+	}
 	return nil
 }
 
@@ -365,19 +403,23 @@ func (m *peerManager) Dialed(peerID NodeID, address PeerAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	peer, err := m.store.Get(peerID)
-	if err != nil {
-		return err
-	} else if peer == nil {
-		return fmt.Errorf("unknown peer %q", peerID)
-	}
-
 	if m.connected[peerID] {
 		return fmt.Errorf("peer %v is already connected", peerID)
 	}
+	peer, err := m.store.Ensure(peerID)
+	if err != nil {
+		return err
+	}
 	delete(m.dialing, peerID)
 	m.connected[peerID] = true
-	return nil
+
+	now := time.Now().UTC()
+	peer.LastConnected = now
+	if addressInfo := peer.LookupAddressInfo(address); addressInfo != nil {
+		addressInfo.DialFailures = 0
+		addressInfo.LastDialSuccess = now
+	}
+	return m.store.Set(peer)
 }
 
 // Accepted marks an incoming peer connection successfully accepted. If the peer
@@ -389,15 +431,18 @@ func (m *peerManager) Dialed(peerID NodeID, address PeerAddress) error {
 func (m *peerManager) Accepted(peerID NodeID) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
-	_, err := m.store.Ensure(peerID)
-	if err != nil {
-		return err
-	}
+
 	if m.connected[peerID] {
 		return fmt.Errorf("peer %q is already connected", peerID)
 	}
+	peer, err := m.store.Ensure(peerID)
+	if err != nil {
+		return err
+	}
 	m.connected[peerID] = true
-	return nil
+
+	peer.LastConnected = time.Now().UTC()
+	return m.store.Set(peer)
 }
 
 // Ready marks a peer as ready, broadcasting status updates to subscribers. The
@@ -501,30 +546,47 @@ func (s *peerStore) List() ([]*peerInfo, error) {
 // FIXME: This should be renamed peer or something else once the old peer is
 // removed.
 type peerInfo struct {
-	ID        NodeID
-	Addresses []PeerAddress
+	ID            NodeID
+	AddressInfo   []*addressInfo
+	LastConnected time.Time
 }
 
 // newPeerInfo creates a new peerInfo.
 func newPeerInfo(id NodeID) *peerInfo {
 	return &peerInfo{
-		ID:        id,
-		Addresses: []PeerAddress{},
+		ID:          id,
+		AddressInfo: []*addressInfo{},
 	}
 }
 
 // AddAddress adds an address to a peer, unless it already exists. It does not
 // validate the address. Returns true if the address was new.
 func (p *peerInfo) AddAddress(address PeerAddress) bool {
+	if p.LookupAddressInfo(address) != nil {
+		return false
+	}
+	p.AddressInfo = append(p.AddressInfo, &addressInfo{Address: address})
+	return true
+}
+
+// LookupAddressInfo returns address info for an address, or nil if unknown.
+func (p *peerInfo) LookupAddressInfo(address PeerAddress) *addressInfo {
 	// We just do a linear search for now.
 	addressString := address.String()
-	for _, a := range p.Addresses {
-		if a.String() == addressString {
-			return false
+	for _, info := range p.AddressInfo {
+		if info.Address.String() == addressString {
+			return info
 		}
 	}
-	p.Addresses = append(p.Addresses, address)
-	return true
+	return nil
+}
+
+// addressInfo contains information and statistics about an address.
+type addressInfo struct {
+	Address         PeerAddress
+	LastDialSuccess time.Time
+	LastDialFailure time.Time
+	DialFailures    uint32 // since last successful dial
 }
 
 // ============================================================================
