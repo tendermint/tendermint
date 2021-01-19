@@ -245,6 +245,8 @@ type PeerUpdate struct {
 // an incoming connection was briefly accepted and disconnected while we were
 // also dialing.
 type PeerManager struct {
+	options PeerManagerOptions
+
 	mtx           sync.Mutex
 	store         *peerStore
 	dialing       map[NodeID]bool
@@ -252,9 +254,17 @@ type PeerManager struct {
 	subscriptions map[*PeerUpdatesCh]*PeerUpdatesCh // keyed by struct identity (address)
 }
 
+// PeerManagerOptions specifies options for a PeerManager.
+type PeerManagerOptions struct {
+	// MaxConnected is the maximum number of connected peers (inbound and
+	// outbound). 0 means no limit.
+	MaxConnected uint32
+}
+
 // NewPeerManager creates a new peer manager.
-func NewPeerManager() *PeerManager {
+func NewPeerManager(options PeerManagerOptions) *PeerManager {
 	return &PeerManager{
+		options:       options,
 		store:         newPeerStore(),
 		dialing:       map[NodeID]bool{},
 		connected:     map[NodeID]bool{},
@@ -332,6 +342,10 @@ func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
+	if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
+		return "", PeerAddress{}, nil
+	}
+
 	peers, err := m.store.List()
 	if err != nil {
 		return "", PeerAddress{}, err
@@ -406,6 +420,10 @@ func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 	if m.connected[peerID] {
 		return fmt.Errorf("peer %v is already connected", peerID)
 	}
+	if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
+		return fmt.Errorf("already connected to maximum number of peers")
+	}
+
 	peer, err := m.store.Ensure(peerID)
 	if err != nil {
 		return err
@@ -435,6 +453,10 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 	if m.connected[peerID] {
 		return fmt.Errorf("peer %q is already connected", peerID)
 	}
+	if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
+		return fmt.Errorf("already connected to maximum number of peers")
+	}
+
 	peer, err := m.store.Ensure(peerID)
 	if err != nil {
 		return err

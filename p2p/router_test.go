@@ -41,7 +41,7 @@ func TestRouter(t *testing.T) {
 		peerTransport := network.GenerateTransport()
 		peerRouter := p2p.NewRouter(
 			logger.With("peerID", i),
-			p2p.NewPeerManager(),
+			p2p.NewPeerManager(p2p.PeerManagerOptions{}),
 			map[p2p.Protocol]p2p.Transport{
 				p2p.MemoryProtocol: peerTransport,
 			},
@@ -59,7 +59,7 @@ func TestRouter(t *testing.T) {
 	}
 
 	// Start the main router and connect it to the peers above.
-	peerManager := p2p.NewPeerManager()
+	peerManager := p2p.NewPeerManager(p2p.PeerManagerOptions{})
 	for _, address := range peers {
 		err := peerManager.Add(address)
 		require.NoError(t, err)
