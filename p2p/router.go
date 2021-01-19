@@ -473,12 +473,45 @@ func (r *Router) sendPeer(peerID NodeID, conn Connection, queue queue) error {
 	}
 }
 
+// evictPeers evicts connected peers as requested by the peer manager.
+func (r *Router) evictPeers() {
+	for {
+		select {
+		case <-r.stopCh:
+			return
+		default:
+		}
+
+		peerID, err := r.peerManager.EvictNext()
+		if err != nil {
+			r.logger.Error("failed to find next peer to evict", "err", err)
+			return
+		} else if peerID == "" {
+			r.logger.Debug("no evictable peers, sleeping")
+			select {
+			case <-time.After(time.Second):
+				continue
+			case <-r.stopCh:
+				return
+			}
+		}
+
+		r.logger.Info("evicting peer", "peer", peerID)
+		r.peerMtx.RLock()
+		if queue, ok := r.peerQueues[peerID]; ok {
+			queue.close()
+		}
+		r.peerMtx.RUnlock()
+	}
+}
+
 // OnStart implements service.Service.
 func (r *Router) OnStart() error {
 	go r.dialPeers()
 	for _, transport := range r.transports {
 		go r.acceptPeers(transport)
 	}
+	go r.evictPeers()
 	return nil
 }
 

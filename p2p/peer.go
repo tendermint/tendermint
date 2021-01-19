@@ -237,6 +237,12 @@ type PeerUpdate struct {
 // - Disconnected: peer disconnects, unmarking as connected and broadcasts a
 //   PeerStatusDown peer update.
 //
+// If we need to evict a peer, e.g. because we have connected to too many peers
+// or because we need to make room for higher-priority peers, the flow is as follows:
+// - EvictNext: returns a peer ID to evict, marking peer as evicting.
+// - Disconnected: peer was disconnected, unmarking as connected and evicting,
+//   and broadcasts a PeerStatusDown peer update.
+//
 // We track dialing and connected states independently. This allows us to accept
 // an inbound connection from a peer while the router is also dialing an
 // outbound connection to that same peer, which will cause the dialer to
@@ -251,6 +257,7 @@ type PeerManager struct {
 	store         *peerStore
 	dialing       map[NodeID]bool
 	connected     map[NodeID]bool
+	evicting      map[NodeID]bool
 	subscriptions map[*PeerUpdatesCh]*PeerUpdatesCh // keyed by struct identity (address)
 }
 
@@ -489,11 +496,32 @@ func (m *PeerManager) Disconnected(peerID NodeID) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 	delete(m.connected, peerID)
+	delete(m.evicting, peerID)
 	m.broadcast(PeerUpdate{
 		PeerID: peerID,
 		Status: PeerStatusDown,
 	})
 	return nil
+}
+
+// EvictNext returns the next peer to evict (i.e. disconnect), or an empty
+// ID if no peers should be evicted.
+func (m *PeerManager) EvictNext() (NodeID, error) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	switch {
+	case m.options.MaxConnected == 0:
+	case len(m.connected) <= int(m.options.MaxConnected):
+	default:
+		// FIXME: For now, just pick a random peer to evict.
+		for peerID := range m.connected {
+			if !m.evicting[peerID] {
+				m.evicting[peerID] = true
+				return peerID, nil
+			}
+		}
+	}
+	return "", nil
 }
 
 // peerStore stores information about peers. It is currently a bare-bones
