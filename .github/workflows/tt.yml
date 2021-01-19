@@ -26,15 +26,16 @@ jobs:
           ref: 'v0.34.x'
 
       - name: Build
-        working-directory: test/e2e
-        # Run make jobs in parallel, since we can't run steps in parallel.
-        run: make -j2 docker generator runner
+        run: git branch
+      #   working-directory: test/e2e
+      #   # Run make jobs in parallel, since we can't run steps in parallel.
+      #   run: make -j2 docker generator runner
 
-      - name: Generate testnets
-        working-directory: test/e2e
-        # When changing -g, also change the matrix groups above
-        run: ./build/generator -g 4 -d networks/nightly
+      # - name: Generate testnets
+      #   working-directory: test/e2e
+      #   # When changing -g, also change the matrix groups above
+      #   run: ./build/generator -g 4 -d networks/nightly
 
-      - name: Run testnets in group ${{ matrix.group }}
-        working-directory: test/e2e
-        run: ./run-multiple.sh networks/nightly/*-group${{ matrix.group }}-*.toml
+      # - name: Run testnets in group ${{ matrix.group }}
+      #   working-directory: test/e2e
+      #   run: ./run-multiple.sh networks/nightly/*-group${{ matrix.group }}-*.toml
