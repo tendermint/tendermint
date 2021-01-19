@@ -216,7 +216,7 @@ type PeerUpdate struct {
 	Status PeerStatus
 }
 
-// PeerManager manages peer information, using a peerStore for underlying
+// PeerManager manages peer lifecycle information, using a peerStore for underlying
 // storage. Its primary purpose is to determine which peers to connect to next,
 // make sure a peer only has a single active connection (either inbound or outbound),
 // and to avoid dialing the same peer in parallel goroutines.
@@ -266,6 +266,18 @@ type PeerManagerOptions struct {
 	// MaxConnected is the maximum number of connected peers (inbound and
 	// outbound). 0 means no limit.
 	MaxConnected uint32
+
+	// MinRetryTime is the minimum time to wait between retries. Retry times
+	// double for each retry, up to MaxRetryTime. 0 disables retries.
+	MinRetryTime time.Duration
+
+	// MaxRetryTime is the maximum time to wait between retries. 0 means
+	// no maximum, in which case the retry time will keep doubling.
+	MaxRetryTime time.Duration
+
+	// FuzzRetryTime is the upper bound of a random interval added to
+	// retry times, to avoid thundering herds. 0 disables fuzzing.
+	FuzzRetryTime time.Duration
 }
 
 // NewPeerManager creates a new peer manager.
@@ -375,24 +387,21 @@ func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
 	return "", PeerAddress{}, nil
 }
 
-// retryDelay calculates a dial retry delay using exponential backoff, with an
-// additional random period to avoid thundering herds.
+// retryDelay calculates a dial retry delay using exponential backoff, based on
+// retry settings in PeerManagerOptions. If MinRetryTime is 0, this returns
+// MaxInt64 (i.e. an infinite retry delay).
 func (m *PeerManager) retryDelay(failures uint32) time.Duration {
-	// FIXME: For now, we use constant settings, but these should be configurable
-	// via PeerManager fields (especially for tests).
-	const (
-		backoffBase = 100 * time.Millisecond
-		backoffMax  = 1 * time.Hour
-		randomDelay = 3 * time.Second
-	)
 	if failures == 0 {
 		return 0
 	}
-	delay := backoffBase * time.Duration(math.Pow(2, float64(failures)))
-	if delay > backoffMax {
-		delay = backoffMax
+	if m.options.MinRetryTime == 0 {
+		return time.Duration(math.MaxInt64)
 	}
-	delay += time.Duration(rand.Int63n(int64(randomDelay))) // nolint:gosec
+	delay := m.options.MinRetryTime * time.Duration(math.Pow(2, float64(failures)))
+	if m.options.MaxRetryTime > 0 && delay > m.options.MaxRetryTime {
+		delay = m.options.MaxRetryTime
+	}
+	delay += time.Duration(rand.Int63n(int64(m.options.FuzzRetryTime))) // nolint:gosec
 	return delay
 }
 
@@ -585,9 +594,6 @@ func (s *peerStore) List() ([]*peerInfo, error) {
 }
 
 // peerInfo contains peer information stored in a peerStore.
-//
-// FIXME: This should be renamed peer or something else once the old peer is
-// removed.
 type peerInfo struct {
 	ID            NodeID
 	AddressInfo   []*addressInfo
