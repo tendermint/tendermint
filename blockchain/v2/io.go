@@ -3,7 +3,7 @@ package v2
 import (
 	"errors"
 
-	bc "github.com/tendermint/tendermint/blockchain"
+	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/p2p"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
 	"github.com/tendermint/tendermint/state"
@@ -48,7 +48,15 @@ type consensusReactor interface {
 }
 
 func (sio *switchIO) sendBlockRequest(peer p2p.Peer, height int64) error {
-	msgBytes, err := bc.EncodeMsg(&bcproto.BlockRequest{Height: height})
+	msgProto := &bcproto.Message{
+		Sum: &bcproto.Message_BlockRequest{
+			BlockRequest: &bcproto.BlockRequest{
+				Height: height,
+			},
+		},
+	}
+
+	msgBytes, err := proto.Marshal(msgProto)
 	if err != nil {
 		return err
 	}
@@ -61,7 +69,16 @@ func (sio *switchIO) sendBlockRequest(peer p2p.Peer, height int64) error {
 }
 
 func (sio *switchIO) sendStatusResponse(base int64, height int64, peer p2p.Peer) error {
-	msgBytes, err := bc.EncodeMsg(&bcproto.StatusResponse{Height: height, Base: base})
+	msgProto := &bcproto.Message{
+		Sum: &bcproto.Message_StatusResponse{
+			StatusResponse: &bcproto.StatusResponse{
+				Height: height,
+				Base:   base,
+			},
+		},
+	}
+
+	msgBytes, err := proto.Marshal(msgProto)
 	if err != nil {
 		return err
 	}
@@ -83,10 +100,19 @@ func (sio *switchIO) sendBlockToPeer(block *types.Block, peer p2p.Peer) error {
 		return err
 	}
 
-	msgBytes, err := bc.EncodeMsg(&bcproto.BlockResponse{Block: bpb})
+	msgProto := &bcproto.Message{
+		Sum: &bcproto.Message_BlockResponse{
+			BlockResponse: &bcproto.BlockResponse{
+				Block: bpb,
+			},
+		},
+	}
+
+	msgBytes, err := proto.Marshal(msgProto)
 	if err != nil {
 		return err
 	}
+
 	if queued := peer.TrySend(BlockchainChannel, msgBytes); !queued {
 		return errPeerQueueFull
 	}
@@ -95,7 +121,15 @@ func (sio *switchIO) sendBlockToPeer(block *types.Block, peer p2p.Peer) error {
 }
 
 func (sio *switchIO) sendBlockNotFound(height int64, peer p2p.Peer) error {
-	msgBytes, err := bc.EncodeMsg(&bcproto.NoBlockResponse{Height: height})
+	msgProto := &bcproto.Message{
+		Sum: &bcproto.Message_NoBlockResponse{
+			NoBlockResponse: &bcproto.NoBlockResponse{
+				Height: height,
+			},
+		},
+	}
+
+	msgBytes, err := proto.Marshal(msgProto)
 	if err != nil {
 		return err
 	}
@@ -116,7 +150,13 @@ func (sio *switchIO) trySwitchToConsensus(state state.State, skipWAL bool) bool 
 }
 
 func (sio *switchIO) sendStatusRequest(peer p2p.Peer) error {
-	msgBytes, err := bc.EncodeMsg(&bcproto.StatusRequest{})
+	msgProto := &bcproto.Message{
+		Sum: &bcproto.Message_StatusRequest{
+			StatusRequest: &bcproto.StatusRequest{},
+		},
+	}
+
+	msgBytes, err := proto.Marshal(msgProto)
 	if err != nil {
 		return err
 	}
@@ -129,7 +169,13 @@ func (sio *switchIO) sendStatusRequest(peer p2p.Peer) error {
 }
 
 func (sio *switchIO) broadcastStatusRequest() error {
-	msgBytes, err := bc.EncodeMsg(&bcproto.StatusRequest{})
+	msgProto := &bcproto.Message{
+		Sum: &bcproto.Message_StatusRequest{
+			StatusRequest: &bcproto.StatusRequest{},
+		},
+	}
+
+	msgBytes, err := proto.Marshal(msgProto)
 	if err != nil {
 		return err
 	}
