@@ -252,10 +252,10 @@ type PeerManager struct {
 	subscriptions map[*PeerUpdatesCh]*PeerUpdatesCh // keyed by struct identity (address)
 }
 
-// newPeerManager creates a new peer manager.
-func newPeerManager(store *peerStore) *PeerManager {
+// NewPeerManager creates a new peer manager.
+func NewPeerManager() *PeerManager {
 	return &PeerManager{
-		store:         store,
+		store:         newPeerStore(),
 		dialing:       map[NodeID]bool{},
 		connected:     map[NodeID]bool{},
 		subscriptions: map[*PeerUpdatesCh]*PeerUpdatesCh{},
@@ -477,9 +477,9 @@ func (m *PeerManager) Disconnected(peerID NodeID) error {
 // peerStore stores information about peers. It is currently a bare-bones
 // in-memory store, and will be fleshed out later.
 //
-// peerStore is not thread-safe, since it assumes it is only used by peerManager
-// which handles concurrency control. This allows multiple operations to be
-// executed atomically, since the peerManager will hold a mutex while executing.
+// peerStore is not thread-safe, since it assumes it is only used by PeerManager
+// which handles concurrency control. This allows the manager to execute multiple
+// operations atomically while it holds the mutex.
 type peerStore struct {
 	peers map[NodeID]peerInfo
 }

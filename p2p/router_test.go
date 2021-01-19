@@ -39,9 +39,13 @@ func TestRouter(t *testing.T) {
 	peers := []p2p.PeerAddress{}
 	for i := 0; i < 3; i++ {
 		peerTransport := network.GenerateTransport()
-		peerRouter := p2p.NewRouter(logger.With("peerID", i), map[p2p.Protocol]p2p.Transport{
-			p2p.MemoryProtocol: peerTransport,
-		}, nil)
+		peerRouter := p2p.NewRouter(
+			logger.With("peerID", i),
+			p2p.NewPeerManager(),
+			map[p2p.Protocol]p2p.Transport{
+				p2p.MemoryProtocol: peerTransport,
+			},
+		)
 		peers = append(peers, peerTransport.Endpoints()[0].PeerAddress())
 
 		channel, err := peerRouter.OpenChannel(chID, &TestMessage{})
@@ -55,18 +59,23 @@ func TestRouter(t *testing.T) {
 	}
 
 	// Start the main router and connect it to the peers above.
-	router := p2p.NewRouter(logger, map[p2p.Protocol]p2p.Transport{
+	peerManager := p2p.NewPeerManager()
+	for _, address := range peers {
+		err := peerManager.Add(address)
+		require.NoError(t, err)
+	}
+	peerUpdates := peerManager.Subscribe()
+	defer peerUpdates.Close()
+
+	router := p2p.NewRouter(logger, peerManager, map[p2p.Protocol]p2p.Transport{
 		p2p.MemoryProtocol: transport,
-	}, peers)
+	})
 	channel, err := router.OpenChannel(chID, &TestMessage{})
 	require.NoError(t, err)
-	peerUpdates := router.SubscribePeerUpdates()
-
 	err = router.Start()
 	require.NoError(t, err)
 	defer func() {
 		channel.Close()
-		peerUpdates.Close()
 		require.NoError(t, router.Stop())
 	}()
 

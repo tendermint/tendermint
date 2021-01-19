@@ -96,24 +96,17 @@ type Router struct {
 // FIXME: providing protocol/transport maps is cumbersome in tests, we should
 // consider adding Protocols() to the Transport interface instead and register
 // protocol/transport mappings automatically on a first-come basis.
-func NewRouter(logger log.Logger, transports map[Protocol]Transport, peers []PeerAddress) *Router {
+func NewRouter(logger log.Logger, peerManager *PeerManager, transports map[Protocol]Transport) *Router {
 	router := &Router{
 		logger:          logger,
 		transports:      transports,
-		peerManager:     newPeerManager(newPeerStore()),
+		peerManager:     peerManager,
 		stopCh:          make(chan struct{}),
 		channelQueues:   map[ChannelID]queue{},
 		channelMessages: map[ChannelID]proto.Message{},
 		peerQueues:      map[NodeID]queue{},
 	}
 	router.BaseService = service.NewBaseService(logger, "router", router)
-
-	for _, address := range peers {
-		if err := router.peerManager.Add(address); err != nil {
-			logger.Error("failed to add peer", "address", address, "err", err)
-		}
-	}
-
 	return router
 }
 
@@ -478,18 +471,6 @@ func (r *Router) sendPeer(peerID NodeID, conn Connection, queue queue) error {
 			return nil
 		}
 	}
-}
-
-// SubscribePeerUpdates creates a new peer updates subscription. The caller must
-// consume the peer updates in a timely fashion and close the subscription when
-// done, since delivery is guaranteed and will block peer
-// connection/disconnection otherwise.
-//
-// FIXME: Consider having callers just use peerManager.Subscribe() directly, if
-// we export peerManager and make it an injected dependency (which we probably
-// should).
-func (r *Router) SubscribePeerUpdates() *PeerUpdatesCh {
-	return r.peerManager.Subscribe()
 }
 
 // OnStart implements service.Service.
