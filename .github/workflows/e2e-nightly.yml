@@ -13,6 +13,8 @@ jobs:
       fail-fast: false
       matrix:
         group: ['00', '01', '02', '03']
+          # todo: expand to multiple versions after 0.35 release
+        branch: ['master', 'v0.34.x']
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -21,6 +23,8 @@ jobs:
           go-version: '^1.15.4'
 
       - uses: actions/checkout@v2
+        with:
+          ref: ${{ matrix.branch}}
 
       - name: Build
         working-directory: test/e2e
