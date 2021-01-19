@@ -26,33 +26,33 @@ func newMempoolIDs() *mempoolIDs {
 
 // ReserveForPeer searches for the next unused ID and assigns it to the provided
 // peer.
-func (ids *mempoolIDs) ReserveForPeer(peer p2p.Peer) {
+func (ids *mempoolIDs) ReserveForPeer(peerID p2p.NodeID) {
 	ids.mtx.Lock()
 	defer ids.mtx.Unlock()
 
 	curID := ids.nextPeerID()
-	ids.peerMap[peer.ID()] = curID
+	ids.peerMap[peerID] = curID
 	ids.activeIDs[curID] = struct{}{}
 }
 
 // Reclaim returns the ID reserved for the peer back to unused pool.
-func (ids *mempoolIDs) Reclaim(peer p2p.Peer) {
+func (ids *mempoolIDs) Reclaim(peerID p2p.NodeID) {
 	ids.mtx.Lock()
 	defer ids.mtx.Unlock()
 
-	removedID, ok := ids.peerMap[peer.ID()]
+	removedID, ok := ids.peerMap[peerID]
 	if ok {
 		delete(ids.activeIDs, removedID)
-		delete(ids.peerMap, peer.ID())
+		delete(ids.peerMap, peerID)
 	}
 }
 
 // GetForPeer returns an ID reserved for the peer.
-func (ids *mempoolIDs) GetForPeer(peer p2p.Peer) uint16 {
+func (ids *mempoolIDs) GetForPeer(peerID p2p.NodeID) uint16 {
 	ids.mtx.RLock()
 	defer ids.mtx.RUnlock()
 
-	return ids.peerMap[peer.ID()]
+	return ids.peerMap[peerID]
 }
 
 // nextPeerID returns the next unused peer ID to use. We assume that the mutex
