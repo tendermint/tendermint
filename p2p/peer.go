@@ -418,10 +418,8 @@ func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
 	if err != nil {
 		return "", PeerAddress{}, err
 	}
-	betterActivePeers := 0
 	for _, peer := range ranked {
 		if m.dialing[peer.ID] || m.connected[peer.ID] {
-			betterActivePeers++
 			continue
 		}
 
@@ -431,10 +429,10 @@ func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
 			}
 
 			// At this point we have an eligible address to dial. If we're full
-			// but have upgrade capacity (as checked above), we need to make
-			// sure there exists an evictable peer of a lower score that we can
-			// replace. If so, we can go ahead and dial it, and EvictNext() will
-			// evict it later.
+			// but have peer upgrade capacity (as checked above), we need to
+			// make sure there exists an evictable peer of a lower score that we
+			// can replace. If so, we can go ahead and dial this peer, and
+			// EvictNext() will evict a lower-scored one later.
 			//
 			// If we don't find one, there is no point in trying additional
 			// peers, since they will all have the same or lower score than this
