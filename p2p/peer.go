@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/url"
 	"runtime/debug"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -267,7 +268,17 @@ type PeerManager struct {
 type PeerManagerOptions struct {
 	// MaxConnected is the maximum number of connected peers (inbound and
 	// outbound). 0 means no limit.
-	MaxConnected uint32
+	MaxConnected uint16
+
+	// MaxConnectedSurge is the maximum number of additional peer connections to
+	// use for upgrading to better-ranked peers. 0 disables peer upgrading.
+	//
+	// For example, if we are already connected to MaxConnected peers, but we
+	// know or learn about better-ranked peers (e.g. configured persistent
+	// peers) that we are not connected too, then we can probe these peers by
+	// using up to MaxConnectedSurge connections, and once connected evict the
+	// lowest-ranked connected peers.
+	MaxConnectedSurge uint16
 
 	// MinRetryTime is the minimum time to wait between retries. Retry times
 	// double for each retry, up to MaxRetryTime. 0 disables retries.
@@ -356,34 +367,47 @@ func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
 
 // DialNext finds an appropriate peer address to dial, and marks it as dialing.
 // The peer will not be returned again until Dialed() or DialFailed() is called
-// for the peer and it is no longer connected.
+// for the peer and it is no longer connected. Returns an empty ID if no
+// appropriate peers are available.
 //
-// Returns an empty ID if no appropriate peers are available.
+// We allow dialing MaxConnected+MaxConnectedSurge peers. Including
+// MaxConnectedSurge allows us to dial additional peers beyond MaxConnected if
+// they are of higher rank that any other connected or dialing peer. If we
+// are successful in dialing, and thus have more than MaxConnected connected
+// peers, the lower-ranked peer will be evicted via EvictNext().
 func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
+	if m.options.MaxConnected > 0 &&
+		len(m.connected)+len(m.dialing) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedSurge) {
 		return "", PeerAddress{}, nil
 	}
 
-	peers, err := m.store.List()
+	ranked, err := m.rankedPeers()
 	if err != nil {
 		return "", PeerAddress{}, err
 	}
-	for _, peer := range peers {
-		switch {
-		case m.dialing[peer.ID]:
-		case m.connected[peer.ID]:
-		default:
-			for _, addressInfo := range peer.AddressInfo {
-				switch {
-				case time.Since(addressInfo.LastDialFailure) < m.retryDelay(addressInfo.DialFailures):
-				default:
-					m.dialing[peer.ID] = true
-					return peer.ID, addressInfo.Address, nil
-				}
+	betterActivePeers := 0
+	for _, peer := range ranked {
+		// If we are already connected to or dialing MaxConnected +
+		// MaxConnectedSurge peers, and all of these are of a better rank, then
+		// no further (lower-ranked) peers can be dialed and we just abort.
+		if m.options.MaxConnected > 0 &&
+			betterActivePeers >= int(m.options.MaxConnected)+int(m.options.MaxConnectedSurge) {
+			break
+		}
+		if m.dialing[peer.ID] || m.connected[peer.ID] {
+			betterActivePeers++
+			continue
+		}
+
+		for _, addressInfo := range peer.AddressInfo {
+			if time.Since(addressInfo.LastDialFailure) < m.retryDelay(addressInfo.DialFailures) {
+				continue
 			}
+			m.dialing[peer.ID] = true
+			return peer.ID, addressInfo.Address, nil
 		}
 	}
 	return "", PeerAddress{}, nil
@@ -410,7 +434,7 @@ func (m *PeerManager) retryDelay(failures uint32) time.Duration {
 // DialFailed reports a failed dial attempt. This will make the peer available
 // for dialing again when appropriate.
 //
-// FIXME: This should probably delete bad addresses after some time.
+// FIXME: This should probably delete or mark bad addresses/peers after some time.
 func (m *PeerManager) DialFailed(peerID NodeID, address PeerAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
@@ -438,7 +462,8 @@ func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 	if m.connected[peerID] {
 		return fmt.Errorf("peer %v is already connected", peerID)
 	}
-	if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
+	if m.options.MaxConnected > 0 &&
+		len(m.connected) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedSurge) {
 		return fmt.Errorf("already connected to maximum number of peers")
 	}
 
@@ -459,7 +484,13 @@ func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 }
 
 // Accepted marks an incoming peer connection successfully accepted. If the peer
-// is already connected this will return an error.
+// is already connected or we don't allow additional connections then this will
+// return an error.
+//
+// If MaxConnectedSurge is non-zero, the accepted peer is better-ranked than any
+// other connected peer, and the number of connections does not exceed
+// MaxConnected + MaxConnectedSurge then we accept the connection and rely on
+// EvictNext() to evict lower-ranked peers.
 //
 // NOTE: We can't take an address here, since e.g. TCP uses a different port
 // number for outbound traffic than inbound traffic, so the peer's endpoint
@@ -472,7 +503,23 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 		return fmt.Errorf("peer %q is already connected", peerID)
 	}
 	if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
-		return fmt.Errorf("already connected to maximum number of peers")
+		if m.options.MaxConnectedSurge == 0 {
+			return fmt.Errorf("already connected to maximum number of peers")
+		}
+		ranked, err := m.rankedPeers()
+		if err != nil {
+			return err
+		}
+		betterActivePeers := 0
+		for _, peer := range ranked {
+			if m.connected[peer.ID] {
+				betterActivePeers++
+				continue
+			}
+			if betterActivePeers > int(m.options.MaxConnected+m.options.MaxConnectedSurge) {
+				return fmt.Errorf("already connected to maximum number of peers")
+			}
+		}
 	}
 
 	peer, err := m.store.Ensure(peerID)
@@ -492,6 +539,7 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 func (m *PeerManager) Ready(peerID NodeID) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
+
 	connected := m.connected[peerID]
 	if connected {
 		m.broadcast(PeerUpdate{
@@ -506,6 +554,7 @@ func (m *PeerManager) Ready(peerID NodeID) {
 func (m *PeerManager) Disconnected(peerID NodeID) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
+
 	delete(m.connected, peerID)
 	delete(m.evicting, peerID)
 	m.broadcast(PeerUpdate{
@@ -515,24 +564,83 @@ func (m *PeerManager) Disconnected(peerID NodeID) error {
 	return nil
 }
 
-// EvictNext returns the next peer to evict (i.e. disconnect), or an empty
-// ID if no peers should be evicted.
+// EvictNext returns the next peer to evict (i.e. disconnect), or an empty ID if
+// no peers should be evicted. The evicted peer will be the lowest-ranked peer
+// that is currently connected and not already being evicted.
 func (m *PeerManager) EvictNext() (NodeID, error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
+
 	switch {
 	case m.options.MaxConnected == 0:
 	case len(m.connected) <= int(m.options.MaxConnected):
 	default:
-		// FIXME: For now, just pick a random peer to evict.
-		for peerID := range m.connected {
-			if !m.evicting[peerID] {
-				m.evicting[peerID] = true
-				return peerID, nil
+		ranked, err := m.rankedPeers()
+		if err != nil {
+			return "", err
+		}
+		for i := len(ranked) - 1; i >= 0; i-- {
+			peer := ranked[i]
+			switch {
+			case !m.connected[peer.ID]:
+			case m.evicting[peer.ID]:
+			default:
+				m.evicting[peer.ID] = true
+				return peer.ID, nil
 			}
 		}
 	}
 	return "", nil
+}
+
+// RankedPeers returns a list of peers ordered by priority (better peers first).
+//
+// This is the public version of rankedPeers(), which grabs the mutex lock and
+// only returns the ranked node IDs rather than the internal peerInfo data.
+func (m *PeerManager) RankedPeers() ([]NodeID, error) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	peers, err := m.rankedPeers()
+	if err != nil {
+		return nil, err
+	}
+	peerIDs := make([]NodeID, len(peers))
+	for i, peerInfo := range peers {
+		peerIDs[i] = peerInfo.ID
+	}
+	return peerIDs, nil
+}
+
+// rankedPeers returns a list of peers ordered by priority (better peers first).
+// This is used to determine which peers to connect to, and which peers to evict
+// in order to make room for better peers. The caller must hold the mutex lock.
+//
+// The order must be total (a peer at index i is always considered better than
+// one at index i+1) and stable (if no data changes, the same order must be
+// returned on each call).
+//
+// FIXME: For now, we simply generate the list on every call, but this can get
+// expensive since it's called fairly frequently. We should either cache this,
+// or store peers in a data structure that maintains the order (e.g. a heap).
+func (m *PeerManager) rankedPeers() ([]*peerInfo, error) {
+	peers, err := m.store.List()
+	if err != nil {
+		return nil, err
+	}
+	sort.SliceStable(peers, func(i, j int) bool {
+		// NOTE: We sort the ranked slice (node IDs), but use peers slice as criteria.
+		a, b := peers[i], peers[j]
+
+		switch {
+		// FIXME: For now, simply order by ID.
+		case a.ID < b.ID:
+			return true
+		default:
+			return false
+		}
+	})
+	return peers, nil
 }
 
 // peerStore stores information about peers. It is currently a bare-bones

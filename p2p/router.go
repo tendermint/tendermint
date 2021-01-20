@@ -237,6 +237,9 @@ func (r *Router) acceptPeers(transport Transport) {
 		default:
 		}
 
+		// FIXME: We may need transports to enforce some sort of rate limiting
+		// here (e.g. by IP address), or alternatively have PeerManager.Accepted()
+		// do it for us.
 		conn, err := transport.Accept(context.Background())
 		switch err {
 		case nil:
@@ -501,10 +504,11 @@ func (r *Router) evictPeers() {
 
 		r.logger.Info("evicting peer", "peer", peerID)
 		r.peerMtx.RLock()
-		if queue, ok := r.peerQueues[peerID]; ok {
+		queue, ok := r.peerQueues[peerID]
+		r.peerMtx.RUnlock()
+		if ok {
 			queue.close()
 		}
-		r.peerMtx.RUnlock()
 	}
 }
 
