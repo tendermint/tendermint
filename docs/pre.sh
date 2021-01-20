@@ -6,16 +6,16 @@ git clone https://github.com/tendermint/spec.git specRepo && cp -r specRepo/spec
 # copy all tendermint docs realted info into a master folder
 mkdir master
 
-cp -r introduction master
-cp -r app-dev master
-cp -r imgs master
-cp -r networks master
-cp -r tools master
-cp -r tendermint-core master
-cp -r tutorials master
-cp -r nodes master
-cp -r rfc master
-cp -r README.md master
+mv introduction master
+mv app-dev master
+mv imgs master
+mv networks master
+mv tools master
+mv tendermint-core master
+mv tutorials master
+mv nodes master
+mv rfc master
+mv README.md master
 
 # # clone tendermint for use of multiple versions
 # todo: merge the two versions below when 0.35 is released
