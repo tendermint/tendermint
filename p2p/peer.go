@@ -219,7 +219,7 @@ const (
 // PeerManager manages peer lifecycle information, using a peerStore for
 // underlying storage. Its primary purpose is to determine which peers to
 // connect to next, make sure a peer only has a single active connection (either
-// inbound or outbound), and evict peers to make room for higher-ranked peers.
+// inbound or outbound), and evict peers to make room for higher-scored peers.
 // It does not manage actual connections (this is handled by the Router),
 // only the peer lifecycle state.
 //
@@ -239,8 +239,8 @@ const (
 // - Disconnected: peer disconnects, unmarking as connected and broadcasts a
 //   PeerStatusDown peer update.
 //
-// If we need to evict a peer, e.g. because we have connected to too many peers
-// or because we need to make room for higher-ranked peers, the flow is as follows:
+// If we need to evict a peer, typically because we have connected to additional
+// higher-scored peers and need to shed lower-scored ones,, the flow is as follows:
 // - EvictNext: returns a peer ID to evict, marking peer as evicting.
 // - Disconnected: peer was disconnected, unmarking as connected and evicting,
 //   and broadcasts a PeerStatusDown peer update.
@@ -266,8 +266,8 @@ type PeerManager struct {
 // PeerManagerOptions specifies options for a PeerManager.
 type PeerManagerOptions struct {
 	// PersistentPeers are peers that we want to maintain persistent connections
-	// to. These will be ranked higher than other peers, and if
-	// MaxConnectedUpgrade is non-zero any lower-ranked peers will be evicted if
+	// to. These will be scored higher than other peers, and if
+	// MaxConnectedUpgrade is non-zero any lower-scored peers will be evicted if
 	// necessary to make room for these.
 	PersistentPeers []NodeID
 
