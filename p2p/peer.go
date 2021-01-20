@@ -267,7 +267,7 @@ type PeerManager struct {
 type PeerManagerOptions struct {
 	// PersistentPeers are peers that we want to maintain persistent connections
 	// to. These will be ranked higher than other peers, and if
-	// MaxConnectedSurge is non-zero any lower-ranked peers will be evicted if
+	// MaxConnectedUpgrade is non-zero any lower-ranked peers will be evicted if
 	// necessary to make room for these.
 	PersistentPeers []NodeID
 
@@ -275,17 +275,17 @@ type PeerManagerOptions struct {
 	// outbound). 0 means no limit.
 	MaxConnected uint16
 
-	// MaxConnectedSurge is the maximum number of additional peer connections to
+	// MaxConnectedUpgrade is the maximum number of additional peer connections to
 	// use for upgrading to better-scored peers. 0 disables peer upgrading.
 	//
 	// For example, if we are already connected to MaxConnected peers, but we
 	// know or learn about better-scored peers (e.g. configured persistent
 	// peers) that we are not connected too, then we can probe these peers by
-	// using up to MaxConnectedSurge connections, and once connected evict the
+	// using up to MaxConnectedUpgrade connections, and once connected evict the
 	// lowest-scored connected peers. This also works for inbound connections,
 	// i.e. if a higher-scored peer attempts to connect to us, we can accept
 	// the connection and evict a lower-scored peer.
-	MaxConnectedSurge uint16
+	MaxConnectedUpgrade uint16
 
 	// MinRetryTime is the minimum time to wait between retries. Retry times
 	// double for each retry, up to MaxRetryTime. 0 disables retries.
@@ -400,8 +400,8 @@ func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
 // for the peer and it is no longer connected. Returns an empty ID if no
 // appropriate peers are available.
 //
-// We allow dialing MaxConnected+MaxConnectedSurge peers. Including
-// MaxConnectedSurge allows us to dial additional peers beyond MaxConnected if
+// We allow dialing MaxConnected+MaxConnectedUpgrade peers. Including
+// MaxConnectedUpgrade allows us to dial additional peers beyond MaxConnected if
 // they have a higher score that any other connected or dialing peer. If we
 // are successful in dialing, and thus have more than MaxConnected connected
 // peers, the lower-scored peer will be evicted via EvictNext().
@@ -410,7 +410,7 @@ func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
 	defer m.mtx.Unlock()
 
 	if m.options.MaxConnected > 0 &&
-		len(m.connected)+len(m.dialing) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedSurge) {
+		len(m.connected)+len(m.dialing) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
 		return "", PeerAddress{}, nil
 	}
 
@@ -431,28 +431,17 @@ func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
 			}
 
 			// At this point we have an eligible address to dial. If we're full
-			// but have surge capacity, we need to make sure there exists an
-			// evictable peer of a lower score that we can replace. We have already
-			// checked above that we have available surge capacity.
+			// but have upgrade capacity (as checked above), we need to make
+			// sure there exists an evictable peer of a lower score that we can
+			// replace.
 			//
 			// If we don't find one, there is no point in trying additional
 			// peers, since they will all have the same or lower score than this
 			// peer (since they're ordered by score via peerStore.Ranked).
-			if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
-				canEvict := false
-				for i := len(ranked) - 1; i >= 0; i-- {
-					candidate := ranked[i]
-					if candidate.Score() >= peer.Score() {
-						break
-					}
-					if m.connected[candidate.ID] && !m.evicting[candidate.ID] {
-						canEvict = true
-						break
-					}
-				}
-				if !canEvict {
-					return "", PeerAddress{}, nil
-				}
+			if m.options.MaxConnected > 0 &&
+				len(m.connected) >= int(m.options.MaxConnected) &&
+				!m.peerIsUpgrade(peer, ranked) {
+				return "", PeerAddress{}, nil
 			}
 
 			m.dialing[peer.ID] = true
@@ -520,7 +509,7 @@ func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 		return fmt.Errorf("peer %v is already connected", peerID)
 	}
 	if m.options.MaxConnected > 0 &&
-		len(m.connected) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedSurge) {
+		len(m.connected) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
 		return fmt.Errorf("already connected to maximum number of peers")
 	}
 
@@ -545,9 +534,9 @@ func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 // is already connected or we don't allow additional connections then this will
 // return an error.
 //
-// If MaxConnectedSurge is non-zero, the accepted peer is better-scored than any
+// If MaxConnectedUpgrade is non-zero, the accepted peer is better-scored than any
 // other connected peer, and the number of connections does not exceed
-// MaxConnected + MaxConnectedSurge then we accept the connection and rely on
+// MaxConnected + MaxConnectedUpgrade then we accept the connection and rely on
 // EvictNext() to evict lower-scored peers.
 //
 // NOTE: We can't take an address here, since e.g. TCP uses a different port
@@ -561,7 +550,7 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 		return fmt.Errorf("peer %q is already connected", peerID)
 	}
 	if m.options.MaxConnected > 0 &&
-		len(m.connected) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedSurge) {
+		len(m.connected) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
 		return fmt.Errorf("already connected to maximum number of peers")
 	}
 
@@ -576,28 +565,16 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 		}
 	}
 
-	// If we're already full (i.e. at MaxConnected), but we allow surges (and we
-	// know from the check above that we have surge capacity), then we can look
+	// If we're already full (i.e. at MaxConnected), but we allow upgrades (and we
+	// know from the check above that we have upgrade capacity), then we can look
 	// for a lower-scored evictable peer, and if found we can accept this connection
-	// anyway and let EvictNext() evict it the lower-scored peer for us.
+	// anyway and let EvictNext() evict the lower-scored peer for us.
 	if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
 		ranked, err := m.store.Ranked()
 		if err != nil {
 			return err
 		}
-
-		canEvict := false
-		for i := len(ranked) - 1; i >= 0; i-- {
-			candidate := ranked[i]
-			if candidate.Score() >= peer.Score() {
-				break
-			}
-			if m.connected[candidate.ID] && !m.evicting[candidate.ID] {
-				canEvict = true
-				break
-			}
-		}
-		if !canEvict {
+		if !m.peerIsUpgrade(peer, ranked) {
 			return fmt.Errorf("already connected to maximum number of peers")
 		}
 	}
@@ -663,6 +640,23 @@ func (m *PeerManager) EvictNext() (NodeID, error) {
 		}
 	}
 	return "", nil
+}
+
+// peerIsUpgrade checks whether connecting to a given peer would be an
+// upgrade, i.e. that there exists a lower-scored peer that is already
+// connected and not scheduled for eviction, such that connecting to
+// the peer would cause a lower-scored peer to be evicted if we're full.
+func (m *PeerManager) peerIsUpgrade(peer *peerInfo, ranked []*peerInfo) bool {
+	for i := len(ranked) - 1; i >= 0; i-- {
+		candidate := ranked[i]
+		if candidate.Score() >= peer.Score() {
+			return false
+		}
+		if m.connected[candidate.ID] && !m.evicting[candidate.ID] {
+			return true
+		}
+	}
+	return false
 }
 
 // peerStore stores information about peers. It is currently a bare-bones
