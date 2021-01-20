@@ -247,31 +247,41 @@ func TestReactorConcurrency(t *testing.T) {
 	wg.Wait()
 }
 
+func TestReactorNoBroadcastToSender(t *testing.T) {
+	numTxs := 1000
+	numNodes := 2
+	config := cfg.TestConfig()
+
+	testSuites := make([]*reactorTestSuite, numNodes)
+	for i := 0; i < len(testSuites); i++ {
+		logger := log.TestingLogger().With("node", i)
+		testSuites[i] = setup(t, config.Mempool, logger, uint(numTxs))
+	}
+
+	primary := testSuites[0]
+	secondary := testSuites[1]
+
+	peerID := uint16(1)
+	_ = checkTxs(t, primary.reactor.mempool, numTxs, peerID)
+
+	primary.peerUpdatesCh <- p2p.PeerUpdate{
+		Status: p2p.PeerStatusUp,
+		PeerID: secondary.peerID,
+	}
+
+	time.Sleep(100 * time.Millisecond)
+
+	require.Eventually(t, func() bool {
+		return secondary.reactor.mempool.Size() == 0
+	}, time.Minute, 100*time.Millisecond)
+
+	// ensure all channels are drained
+	for _, suite := range testSuites {
+		require.Empty(t, suite.mempoolOutCh)
+	}
+}
+
 // ============================================================================
-
-// // Send a bunch of txs to the first reactor's mempool, claiming it came from peer
-// // ensure peer gets no txs.
-// func TestReactorNoBroadcastToSender(t *testing.T) {
-// 	config := cfg.TestConfig()
-// 	const N = 2
-// 	reactors := makeAndConnectReactors(config, N)
-// 	defer func() {
-// 		for _, r := range reactors {
-// 			if err := r.Stop(); err != nil {
-// 				assert.NoError(t, err)
-// 			}
-// 		}
-// 	}()
-// 	for _, r := range reactors {
-// 		for _, peer := range r.Switch.Peers().List() {
-// 			peer.Set(types.PeerStateKey, peerState{1})
-// 		}
-// 	}
-
-// 	const peerID = 1
-// 	checkTxs(t, reactors[0].mempool, numTxs, peerID)
-// 	ensureNoTxs(t, reactors[peerID], 100*time.Millisecond)
-// }
 
 // func TestReactor_MaxTxBytes(t *testing.T) {
 // 	config := cfg.TestConfig()
