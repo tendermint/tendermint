@@ -106,15 +106,6 @@ func (r *Reactor) GetChannelShims() map[p2p.ChannelID]*p2p.ChannelDescriptorShim
 	}
 }
 
-// InitPeer implements Reactor by creating a state for the peer.
-//
-// TODO: Remove once p2p refactor is complete.
-// ref: https://github.com/tendermint/tendermint/issues/5670
-func (r *Reactor) InitPeer(peerID p2p.NodeID) p2p.Peer {
-	r.ids.ReserveForPeer(peerID)
-	return nil
-}
-
 // OnStart starts separate go routines for each p2p Channel and listens for
 // envelopes on each. In addition, it also listens for peer updates and handles
 // messages on that p2p channel accordingly. The caller must be sure to execute
@@ -167,19 +158,14 @@ func (r *Reactor) handleMempoolMessage(envelope p2p.Envelope) error {
 			return errors.New("empty txs received from peer")
 		}
 
-		txs := make([]types.Tx, len(protoTxs))
-		for i, tx := range txs {
-			txs[i] = types.Tx(tx)
-		}
-
 		txInfo := TxInfo{SenderID: r.ids.GetForPeer(envelope.From)}
 		if len(envelope.From) != 0 {
 			txInfo.SenderP2PID = envelope.From
 		}
 
-		for _, tx := range txs {
-			if err := r.mempool.CheckTx(tx, nil, txInfo); err != nil {
-				logger.Info("checktx failed for tx", "tx", txID(tx), "err", err)
+		for _, tx := range protoTxs {
+			if err := r.mempool.CheckTx(types.Tx(tx), nil, txInfo); err != nil {
+				logger.Error("checktx failed for tx", "tx", txID(tx), "err", err)
 			}
 		}
 
@@ -200,7 +186,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 		}
 	}()
 
-	r.Logger.Debug("received message", "message", envelope.Message, "peer", envelope.From)
+	r.Logger.Debug("received message", "peer", envelope.From)
 
 	switch chID {
 	case MempoolChannel:
@@ -269,6 +255,8 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 
 				r.peerRoutines[peerUpdate.PeerID] = closer
 				r.peerWG.Add(1)
+
+				r.ids.ReserveForPeer(peerUpdate.PeerID)
 
 				// start a broadcast routine ensuring all txs are forwarded to the peer
 				go r.broadcastTxRoutine(peerUpdate.PeerID, closer)
@@ -381,13 +369,11 @@ func (r *Reactor) broadcastTxRoutine(peerID p2p.NodeID, closer *tmsync.Closer) {
 			// behind and thus would not be able to process the mempool tx correctly.
 			r.mempoolCh.Out() <- p2p.Envelope{
 				To: peerID,
-				Message: &protomem.Message{
-					Sum: &protomem.Message_Txs{
-						Txs: &protomem.Txs{Txs: [][]byte{memTx.tx}},
-					},
+				Message: &protomem.Txs{
+					Txs: [][]byte{memTx.tx},
 				},
 			}
-			r.Logger.Debug("gossiped tx to peer", "tx", memTx, "peer", peerID)
+			r.Logger.Debug("gossiped tx to peer", "tx", txID(memTx.tx), "peer", peerID)
 		}
 
 		select {
