@@ -220,7 +220,7 @@ type PeerUpdate struct {
 // PeerManager manages peer lifecycle information, using a peerStore for
 // underlying storage. Its primary purpose is to determine which peers to
 // connect to next, make sure a peer only has a single active connection (either
-// inbound or outbound), and evict peers to make room for higher-priority peers.
+// inbound or outbound), and evict peers to make room for higher-ranked peers.
 // It does not manage actual connections (this is handled by the Router),
 // only the peer lifecycle state.
 //
@@ -241,7 +241,7 @@ type PeerUpdate struct {
 //   PeerStatusDown peer update.
 //
 // If we need to evict a peer, e.g. because we have connected to too many peers
-// or because we need to make room for higher-priority peers, the flow is as follows:
+// or because we need to make room for higher-ranked peers, the flow is as follows:
 // - EvictNext: returns a peer ID to evict, marking peer as evicting.
 // - Disconnected: peer was disconnected, unmarking as connected and evicting,
 //   and broadcasts a PeerStatusDown peer update.
@@ -266,6 +266,12 @@ type PeerManager struct {
 
 // PeerManagerOptions specifies options for a PeerManager.
 type PeerManagerOptions struct {
+	// PersistentPeers are peers that we want to maintain persistent connections
+	// to. These will be ranked higher than other peers, and if
+	// MaxConnectedSurge is non-zero any lower-ranked peers will be evicted if
+	// necessary to make room for these.
+	PersistentPeers []NodeID
+
 	// MaxConnected is the maximum number of connected peers (inbound and
 	// outbound). 0 means no limit.
 	MaxConnected uint16
@@ -287,6 +293,10 @@ type PeerManagerOptions struct {
 	// MaxRetryTime is the maximum time to wait between retries. 0 means
 	// no maximum, in which case the retry time will keep doubling.
 	MaxRetryTime time.Duration
+
+	// MaxRetryTimePersistent is the maximum time to wait between retries for
+	// peers listed in PersistentPeers. 0 uses MaxRetryTime instead.
+	MaxRetryTimePersistent time.Duration
 
 	// FuzzRetryTime is the upper bound of a random interval added to
 	// retry times, to avoid thundering herds. 0 disables fuzzing.
@@ -403,7 +413,7 @@ func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
 		}
 
 		for _, addressInfo := range peer.AddressInfo {
-			if time.Since(addressInfo.LastDialFailure) < m.retryDelay(addressInfo.DialFailures) {
+			if time.Since(addressInfo.LastDialFailure) < m.retryDelay(peer.ID, addressInfo.DialFailures) {
 				continue
 			}
 			m.dialing[peer.ID] = true
@@ -416,15 +426,30 @@ func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
 // retryDelay calculates a dial retry delay using exponential backoff, based on
 // retry settings in PeerManagerOptions. If MinRetryTime is 0, this returns
 // MaxInt64 (i.e. an infinite retry delay, effectively disabling retries).
-func (m *PeerManager) retryDelay(failures uint32) time.Duration {
+func (m *PeerManager) retryDelay(peerID NodeID, failures uint32) time.Duration {
 	if failures == 0 {
 		return 0
 	}
 	if m.options.MinRetryTime == 0 {
 		return time.Duration(math.MaxInt64)
 	}
+	// FIXME: This should probably be memoized or something, but a linear search
+	// is fine for now since the list is expected to be small.
+	isPersistent := false
+	for _, persistentID := range m.options.PersistentPeers {
+		if peerID == persistentID {
+			isPersistent = true
+			break
+		}
+	}
 	delay := m.options.MinRetryTime * time.Duration(math.Pow(2, float64(failures)))
-	if m.options.MaxRetryTime > 0 && delay > m.options.MaxRetryTime {
+	if isPersistent && m.options.MaxRetryTimePersistent > 0 {
+		// We have to check this separately, since we don't want to fall back to
+		// MaxRetryTime in cases where it is smaller than MaxRetryTimePersistent.
+		if delay > m.options.MaxRetryTimePersistent {
+			delay = m.options.MaxRetryTimePersistent
+		}
+	} else if m.options.MaxRetryTime > 0 && delay > m.options.MaxRetryTime {
 		delay = m.options.MaxRetryTime
 	}
 	delay += time.Duration(rand.Int63n(int64(m.options.FuzzRetryTime))) // nolint:gosec
@@ -624,6 +649,11 @@ func (m *PeerManager) RankedPeers() ([]NodeID, error) {
 // expensive since it's called fairly frequently. We should either cache this,
 // or store peers in a data structure that maintains the order (e.g. a heap).
 func (m *PeerManager) rankedPeers() ([]*peerInfo, error) {
+	persistent := make(map[NodeID]bool)
+	for _, peerID := range m.options.PersistentPeers {
+		persistent[peerID] = true
+	}
+
 	peers, err := m.store.List()
 	if err != nil {
 		return nil, err
@@ -632,12 +662,22 @@ func (m *PeerManager) rankedPeers() ([]*peerInfo, error) {
 		// NOTE: We sort the ranked slice (node IDs), but use peers slice as criteria.
 		a, b := peers[i], peers[j]
 
+		// FIXME: For now, simply prefer persistent peers and then order by ID.
+		// This should be improved.
 		switch {
-		// FIXME: For now, simply order by ID.
-		case a.ID < b.ID:
-			return true
+		case persistent[a.ID] != persistent[b.ID]:
+			return persistent[b.ID]
 		default:
-			return false
+			// FIXME: This isn't going to work, since all nodes in a network
+			// will prefer the same peers. We need a _stable_ tiebreaker here
+			// that will vary across nodes but remain the same on a single node
+			// for the duration of the process lifetime. Possibly some sort of
+			// internal ID in the peer store, or maybe a random seed that's
+			// generated when the peer manager is instantiated. Alternatively,
+			// remove the requirement that rankedPeers must be stable, which
+			// requires a rework of the whole peer eviction and
+			// MaxConnectedSurge logic.
+			return a.ID < b.ID
 		}
 	})
 	return peers, nil
