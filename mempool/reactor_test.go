@@ -344,6 +344,34 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	}
 }
 
+func TestDontExhaustMaxActiveIDs(t *testing.T) {
+	config := cfg.TestConfig()
+	reactor := setup(t, config.Mempool, log.TestingLogger().With("node", 0), 0)
+
+	go func() {
+		for range reactor.mempoolOutCh {
+		}
+	}()
+
+	peerID := p2p.NodeID("00FFAA")
+
+	// ensure the reactor does not panic (i.e. exhaust active IDs)
+	for i := 0; i < maxActiveIDs+1; i++ {
+		reactor.peerUpdatesCh <- p2p.PeerUpdate{
+			Status: p2p.PeerStatusUp,
+			PeerID: peerID,
+		}
+		reactor.mempoolOutCh <- p2p.Envelope{
+			To: peerID,
+			Message: &protomem.Txs{
+				Txs: [][]byte{},
+			},
+		}
+	}
+
+	require.Empty(t, reactor.mempoolOutCh)
+}
+
 // ============================================================================
 
 // func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
@@ -409,24 +437,4 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 // 		peer := mock.NewPeer(net.IP{127, 0, 0, 1})
 // 		ids.ReserveForPeer(peer)
 // 	})
-// }
-
-// func TestDontExhaustMaxActiveIDs(t *testing.T) {
-// 	config := cfg.TestConfig()
-// 	const N = 1
-// 	reactors := makeAndConnectReactors(config, N)
-// 	defer func() {
-// 		for _, r := range reactors {
-// 			if err := r.Stop(); err != nil {
-// 				assert.NoError(t, err)
-// 			}
-// 		}
-// 	}()
-// 	reactor := reactors[0]
-
-// 	for i := 0; i < maxActiveIDs+1; i++ {
-// 		peer := mock.NewPeer(nil)
-// 		reactor.Receive(MempoolChannel, peer, []byte{0x1, 0x2, 0x3})
-// 		reactor.AddPeer(peer)
-// 	}
 // }
