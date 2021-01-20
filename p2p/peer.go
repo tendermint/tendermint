@@ -212,6 +212,7 @@ type PeerUpdate struct {
 type PeerScore uint16
 
 const (
+	// PeerScorePersistent is added for persistent peers.
 	PeerScorePersistent PeerScore = 100
 )
 
@@ -275,13 +276,15 @@ type PeerManagerOptions struct {
 	MaxConnected uint16
 
 	// MaxConnectedSurge is the maximum number of additional peer connections to
-	// use for upgrading to better-ranked peers. 0 disables peer upgrading.
+	// use for upgrading to better-scored peers. 0 disables peer upgrading.
 	//
 	// For example, if we are already connected to MaxConnected peers, but we
-	// know or learn about better-ranked peers (e.g. configured persistent
+	// know or learn about better-scored peers (e.g. configured persistent
 	// peers) that we are not connected too, then we can probe these peers by
 	// using up to MaxConnectedSurge connections, and once connected evict the
-	// lowest-ranked connected peers.
+	// lowest-scored connected peers. This also works for inbound connections,
+	// i.e. if a higher-scored peer attempts to connect to us, we can accept
+	// the connection and evict a lower-scored peer.
 	MaxConnectedSurge uint16
 
 	// MinRetryTime is the minimum time to wait between retries. Retry times
@@ -301,13 +304,25 @@ type PeerManagerOptions struct {
 	FuzzRetryTime time.Duration
 }
 
+// isPersistent is a convenience function that checks if the given peer ID
+// is contained in PersistentPeers. It just uses a linear search, since
+// PersistentPeers is expected to be small.
+func (o PeerManagerOptions) isPersistent(id NodeID) bool {
+	for _, p := range o.PersistentPeers {
+		if id == p {
+			return true
+		}
+	}
+	return false
+}
+
 // NewPeerManager creates a new peer manager.
 func NewPeerManager(options PeerManagerOptions) *PeerManager {
 	return &PeerManager{
 		options: options,
-		// FIXME: Once this persists data, we need to rescore all peers since the
-		// score can't be persisted (it's influenced by runtime data, e.g.
-		// PersistentPeers configuration).
+		// FIXME: Once the store persists data, we need to update existing
+		// peers in the store with any new information, e.g. changes to
+		// PersistentPeers configuration.
 		store:         newPeerStore(),
 		dialing:       map[NodeID]bool{},
 		connected:     map[NodeID]bool{},
@@ -329,8 +344,10 @@ func (m *PeerManager) Add(address PeerAddress) error {
 		return err
 	}
 	if peer == nil {
-		peer = &peerInfo{ID: address.NodeID()}
-		peer.Score = m.score(peer)
+		peer = &peerInfo{
+			ID:         address.NodeID(),
+			Persistent: m.options.isPersistent(address.NodeID()),
+		}
 	}
 	peer.AddAddress(address)
 	return m.store.Set(peer)
@@ -409,7 +426,7 @@ func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
 		}
 
 		for _, addressInfo := range peer.AddressInfo {
-			if time.Since(addressInfo.LastDialFailure) < m.retryDelay(peer.ID, addressInfo.DialFailures) {
+			if time.Since(addressInfo.LastDialFailure) < m.retryDelay(peer, addressInfo.DialFailures) {
 				continue
 			}
 
@@ -425,7 +442,7 @@ func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
 				canEvict := false
 				for i := len(ranked) - 1; i >= 0; i-- {
 					candidate := ranked[i]
-					if candidate.Score >= peer.Score {
+					if candidate.Score() >= peer.Score() {
 						break
 					}
 					if m.connected[candidate.ID] && !m.evicting[candidate.ID] {
@@ -448,24 +465,15 @@ func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
 // retryDelay calculates a dial retry delay using exponential backoff, based on
 // retry settings in PeerManagerOptions. If MinRetryTime is 0, this returns
 // MaxInt64 (i.e. an infinite retry delay, effectively disabling retries).
-func (m *PeerManager) retryDelay(peerID NodeID, failures uint32) time.Duration {
+func (m *PeerManager) retryDelay(peer *peerInfo, failures uint32) time.Duration {
 	if failures == 0 {
 		return 0
 	}
 	if m.options.MinRetryTime == 0 {
 		return time.Duration(math.MaxInt64)
 	}
-	// FIXME: This should probably be memoized or something, but a linear search
-	// is fine for now since the list is expected to be small.
-	isPersistent := false
-	for _, persistentID := range m.options.PersistentPeers {
-		if peerID == persistentID {
-			isPersistent = true
-			break
-		}
-	}
 	delay := m.options.MinRetryTime * time.Duration(math.Pow(2, float64(failures)))
-	if isPersistent && m.options.MaxRetryTimePersistent > 0 {
+	if peer.Persistent && m.options.MaxRetryTimePersistent > 0 {
 		// We have to check this separately, since we don't want to fall back to
 		// MaxRetryTime in cases where it is smaller than MaxRetryTimePersistent.
 		if delay > m.options.MaxRetryTimePersistent {
@@ -562,8 +570,10 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 		return err
 	}
 	if peer == nil {
-		peer = &peerInfo{ID: peerID}
-		peer.Score = m.score(peer)
+		peer = &peerInfo{
+			ID:         peerID,
+			Persistent: m.options.isPersistent(peerID),
+		}
 	}
 
 	// If we're already full (i.e. at MaxConnected), but we allow surges (and we
@@ -579,7 +589,7 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 		canEvict := false
 		for i := len(ranked) - 1; i >= 0; i-- {
 			candidate := ranked[i]
-			if candidate.Score >= peer.Score {
+			if candidate.Score() >= peer.Score() {
 				break
 			}
 			if m.connected[candidate.ID] && !m.evicting[candidate.ID] {
@@ -655,23 +665,6 @@ func (m *PeerManager) EvictNext() (NodeID, error) {
 	return "", nil
 }
 
-// score calculates a score for a peer. The caller must hold the mutex lock.
-// This is used to generate peerInfo.Score, and must not rely on this field.
-func (m *PeerManager) score(peer *peerInfo) PeerScore {
-	var score PeerScore
-
-	// We just do a linear search for now, which should be sufficient since
-	// PersistentPeers is generally small.
-	for _, p := range m.options.PersistentPeers {
-		if p == peer.ID {
-			score += PeerScorePersistent
-			break
-		}
-	}
-
-	return score
-}
-
 // peerStore stores information about peers. It is currently a bare-bones
 // in-memory store, and will be fleshed out later.
 //
@@ -733,7 +726,9 @@ func (s *peerStore) Ranked() ([]*peerInfo, error) {
 		return nil, err
 	}
 	sort.Slice(peers, func(i, j int) bool {
-		return peers[i].Score < peers[j].Score
+		// FIXME: If necessary, consider precomputing scores before sorting,
+		// to reduce the number of Score() calls.
+		return peers[i].Score() < peers[j].Score()
 	})
 	return peers, nil
 }
@@ -742,7 +737,7 @@ func (s *peerStore) Ranked() ([]*peerInfo, error) {
 type peerInfo struct {
 	ID            NodeID
 	AddressInfo   []*addressInfo
-	Score         PeerScore
+	Persistent    bool
 	LastConnected time.Time
 }
 
@@ -766,6 +761,16 @@ func (p *peerInfo) LookupAddressInfo(address PeerAddress) *addressInfo {
 		}
 	}
 	return nil
+}
+
+// Score calculates a score for the peer. Higher-scored peers will be
+// preferred over lower scores.
+func (p *peerInfo) Score() PeerScore {
+	var score PeerScore
+	if p.Persistent {
+		score += PeerScorePersistent
+	}
+	return score
 }
 
 // addressInfo contains information and statistics about an address.
