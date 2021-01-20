@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -188,94 +189,65 @@ func TestReactorBroadcastTxs(t *testing.T) {
 	}
 }
 
+// regression test for https://github.com/tendermint/tendermint/issues/5408
+func TestReactorConcurrency(t *testing.T) {
+	numTxs := 5
+	numNodes := 2
+	config := cfg.TestConfig()
+
+	testSuites := make([]*reactorTestSuite, numNodes)
+	for i := 0; i < len(testSuites); i++ {
+		logger := log.TestingLogger().With("node", i)
+		testSuites[i] = setup(t, config.Mempool, logger, 0)
+	}
+
+	primary := testSuites[0]
+	secondary := testSuites[1]
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < 1000; i++ {
+		wg.Add(2)
+
+		// 1. submit a bunch of txs
+		// 2. update the whole mempool
+		txs := checkTxs(t, primary.reactor.mempool, numTxs, UnknownPeerID)
+		go func() {
+			defer wg.Done()
+
+			primary.reactor.mempool.Lock()
+			defer primary.reactor.mempool.Unlock()
+
+			deliverTxResponses := make([]*abci.ResponseDeliverTx, len(txs))
+			for i := range txs {
+				deliverTxResponses[i] = &abci.ResponseDeliverTx{Code: 0}
+			}
+
+			err := primary.reactor.mempool.Update(1, txs, deliverTxResponses, nil, nil)
+			require.NoError(t, err)
+		}()
+
+		// 1. submit a bunch of txs
+		// 2. update none
+		_ = checkTxs(t, secondary.reactor.mempool, numTxs, UnknownPeerID)
+		go func() {
+			defer wg.Done()
+
+			secondary.reactor.mempool.Lock()
+			defer secondary.reactor.mempool.Unlock()
+
+			err := secondary.reactor.mempool.Update(1, []types.Tx{}, make([]*abci.ResponseDeliverTx, 0), nil, nil)
+			require.NoError(t, err)
+		}()
+
+		// flush the mempool
+		secondary.reactor.mempool.Flush()
+	}
+
+	wg.Wait()
+}
+
 // ============================================================================
-
-// // Send a bunch of txs to the first reactor's mempool and wait for them all to
-// // be received in the others.
-// func TestReactorBroadcastTxsMessage(t *testing.T) {
-// 	config := cfg.TestConfig()
-// 	// if there were more than two reactors, the order of transactions could not be
-// 	// asserted in waitForTxsOnReactors (due to transactions gossiping). If we
-// 	// replace Connect2Switches (full mesh) with a func, which connects first
-// 	// reactor to others and nothing else, this test should also pass with >2 reactors.
-// 	const N = 2
-// 	reactors := makeAndConnectReactors(config, N)
-// 	defer func() {
-// 		for _, r := range reactors {
-// 			if err := r.Stop(); err != nil {
-// 				assert.NoError(t, err)
-// 			}
-// 		}
-// 	}()
-// 	for _, r := range reactors {
-// 		for _, peer := range r.Switch.Peers().List() {
-// 			peer.Set(types.PeerStateKey, peerState{1})
-// 		}
-// 	}
-
-// 	txs := checkTxs(t, reactors[0].mempool, numTxs, UnknownPeerID)
-// 	waitForTxsOnReactors(t, txs, reactors)
-// }
-
-// // regression test for https://github.com/tendermint/tendermint/issues/5408
-// func TestReactorConcurrency(t *testing.T) {
-// 	config := cfg.TestConfig()
-// 	const N = 2
-// 	reactors := makeAndConnectReactors(config, N)
-// 	defer func() {
-// 		for _, r := range reactors {
-// 			if err := r.Stop(); err != nil {
-// 				assert.NoError(t, err)
-// 			}
-// 		}
-// 	}()
-// 	for _, r := range reactors {
-// 		for _, peer := range r.Switch.Peers().List() {
-// 			peer.Set(types.PeerStateKey, peerState{1})
-// 		}
-// 	}
-// 	var wg sync.WaitGroup
-
-// 	const numTxs = 5
-
-// 	for i := 0; i < 1000; i++ {
-// 		wg.Add(2)
-
-// 		// 1. submit a bunch of txs
-// 		// 2. update the whole mempool
-// 		txs := checkTxs(t, reactors[0].mempool, numTxs, UnknownPeerID)
-// 		go func() {
-// 			defer wg.Done()
-
-// 			reactors[0].mempool.Lock()
-// 			defer reactors[0].mempool.Unlock()
-
-// 			deliverTxResponses := make([]*abci.ResponseDeliverTx, len(txs))
-// 			for i := range txs {
-// 				deliverTxResponses[i] = &abci.ResponseDeliverTx{Code: 0}
-// 			}
-// 			err := reactors[0].mempool.Update(1, txs, deliverTxResponses, nil, nil)
-// 			assert.NoError(t, err)
-// 		}()
-
-// 		// 1. submit a bunch of txs
-// 		// 2. update none
-// 		_ = checkTxs(t, reactors[1].mempool, numTxs, UnknownPeerID)
-// 		go func() {
-// 			defer wg.Done()
-
-// 			reactors[1].mempool.Lock()
-// 			defer reactors[1].mempool.Unlock()
-// 			err := reactors[1].mempool.Update(1, []types.Tx{}, make([]*abci.ResponseDeliverTx, 0), nil, nil)
-// 			assert.NoError(t, err)
-// 		}()
-
-// 		// 1. flush the mempool
-// 		reactors[1].mempool.Flush()
-// 	}
-
-// 	wg.Wait()
-// }
 
 // // Send a bunch of txs to the first reactor's mempool, claiming it came from peer
 // // ensure peer gets no txs.
