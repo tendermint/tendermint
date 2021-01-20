@@ -281,6 +281,19 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	}
 }
 
+func TestMempoolIDsBasic(t *testing.T) {
+	ids := newMempoolIDs()
+	peerID := p2p.NodeID("00FFAA")
+
+	ids.ReserveForPeer(peerID)
+	require.EqualValues(t, 1, ids.GetForPeer(peerID))
+	ids.Reclaim(peerID)
+
+	ids.ReserveForPeer(peerID)
+	require.EqualValues(t, 2, ids.GetForPeer(peerID))
+	ids.Reclaim(peerID)
+}
+
 // ============================================================================
 
 // func TestReactor_MaxTxBytes(t *testing.T) {
@@ -364,20 +377,6 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 // 	leaktest.CheckTimeout(t, 10*time.Second)()
 // }
 
-// func TestMempoolIDsBasic(t *testing.T) {
-// 	ids := newMempoolIDs()
-
-// 	peer := mock.NewPeer(net.IP{127, 0, 0, 1})
-
-// 	ids.ReserveForPeer(peer)
-// 	assert.EqualValues(t, 1, ids.GetForPeer(peer))
-// 	ids.Reclaim(peer)
-
-// 	ids.ReserveForPeer(peer)
-// 	assert.EqualValues(t, 2, ids.GetForPeer(peer))
-// 	ids.Reclaim(peer)
-// }
-
 // func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
 // 	if testing.Short() {
 // 		return
@@ -415,83 +414,4 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 // 		reactor.Receive(MempoolChannel, peer, []byte{0x1, 0x2, 0x3})
 // 		reactor.AddPeer(peer)
 // 	}
-// }
-
-// // mempoolLogger is a TestingLogger which uses a different
-// // color for each validator ("validator" key must exist).
-// func mempoolLogger() log.Logger {
-// 	return log.TestingLoggerWithColorFn(func(keyvals ...interface{}) term.FgBgColor {
-// 		for i := 0; i < len(keyvals)-1; i += 2 {
-// 			if keyvals[i] == "validator" {
-// 				return term.FgBgColor{Fg: term.Color(uint8(keyvals[i+1].(int) + 1))}
-// 			}
-// 		}
-// 		return term.FgBgColor{}
-// 	})
-// }
-
-// // connect N mempool reactors through N switches
-// func makeAndConnectReactors(config *cfg.Config, n int) []*Reactor {
-// 	reactors := make([]*Reactor, n)
-// 	logger := mempoolLogger()
-// 	for i := 0; i < n; i++ {
-// 		app := kvstore.NewApplication()
-// 		cc := proxy.NewLocalClientCreator(app)
-// 		mempool, cleanup := newMempoolWithApp(cc)
-// 		defer cleanup()
-
-// 		reactors[i] = NewReactor(config.Mempool, mempool) // so we dont start the consensus states
-// 		reactors[i].SetLogger(logger.With("validator", i))
-// 	}
-
-// 	p2p.MakeConnectedSwitches(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
-// 		s.AddReactor("MEMPOOL", reactors[i])
-// 		return s
-
-// 	}, p2p.Connect2Switches)
-// 	return reactors
-// }
-
-// func waitForTxsOnReactors(t *testing.T, txs types.Txs, reactors []*Reactor) {
-// 	// wait for the txs in all mempools
-// 	wg := new(sync.WaitGroup)
-// 	for i, reactor := range reactors {
-// 		wg.Add(1)
-// 		go func(r *Reactor, reactorIndex int) {
-// 			defer wg.Done()
-// 			waitForTxsOnReactor(t, txs, r, reactorIndex)
-// 		}(reactor, i)
-// 	}
-
-// 	done := make(chan struct{})
-// 	go func() {
-// 		wg.Wait()
-// 		close(done)
-// 	}()
-
-// 	timer := time.After(timeout)
-// 	select {
-// 	case <-timer:
-// 		t.Fatal("Timed out waiting for txs")
-// 	case <-done:
-// 	}
-// }
-
-// func waitForTxsOnReactor(t *testing.T, txs types.Txs, reactor *Reactor, reactorIndex int) {
-// 	mempool := reactor.mempool
-// 	for mempool.Size() < len(txs) {
-// 		time.Sleep(time.Millisecond * 100)
-// 	}
-
-// 	reapedTxs := mempool.ReapMaxTxs(len(txs))
-// 	for i, tx := range txs {
-// 		assert.Equalf(t, tx, reapedTxs[i],
-// 			"txs at index %d on reactor %d don't match: %v vs %v", i, reactorIndex, tx, reapedTxs[i])
-// 	}
-// }
-
-// // ensure no txs on reactor after some timeout
-// func ensureNoTxs(t *testing.T, reactor *Reactor, timeout time.Duration) {
-// 	time.Sleep(timeout) // wait for the txs in all mempools
-// 	assert.Zero(t, reactor.mempool.Size())
 // }
