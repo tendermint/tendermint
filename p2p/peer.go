@@ -660,6 +660,51 @@ func (m *PeerManager) peerIsUpgrade(peer *peerInfo, ranked []*peerInfo) bool {
 	return false
 }
 
+// GetHeight returns a peer's height, as reported via SetHeight. If the peer
+// or height is unknown, this returns 0.
+//
+// FIXME: This is a temporary workaround for the peer state stored via the
+// legacy Peer.Set() and Peer.Get() APIs, used to share height state between the
+// consensus and mempool reactors. These dependencies should be removed from the
+// reactors, and instead query this information independently via new P2P
+// protocol additions.
+func (m *PeerManager) GetHeight(peerID NodeID) (int64, error) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	peer, err := m.store.Get(peerID)
+	if err != nil || peer == nil {
+		return 0, err
+	}
+	return peer.Height, nil
+}
+
+// SetHeight stores a peer's height, making it available via GetHeight. If the
+// peer is unknown, it is created.
+//
+// FIXME: This is a temporary workaround for the peer state stored via the
+// legacy Peer.Set() and Peer.Get() APIs, used to share height state between the
+// consensus and mempool reactors. These dependencies should be removed from the
+// reactors, and instead query this information independently via new P2P
+// protocol additions.
+func (m *PeerManager) SetHeight(peerID NodeID, height int64) error {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	peer, err := m.store.Get(peerID)
+	if err != nil {
+		return err
+	}
+	if peer == nil {
+		peer = &peerInfo{
+			ID:         peerID,
+			Persistent: m.options.isPersistent(peerID),
+		}
+	}
+	peer.Height = height
+	return m.store.Set(peer)
+}
+
 // peerStore stores information about peers. It is currently a bare-bones
 // in-memory store, and will be fleshed out later.
 //
@@ -733,6 +778,7 @@ type peerInfo struct {
 	ID            NodeID
 	AddressInfo   []*addressInfo
 	Persistent    bool
+	Height        int64
 	LastConnected time.Time
 }
 
