@@ -1,7 +1,4 @@
-#!/bin/bash
-
-cp -a ../rpc/openapi/ .vuepress/public/rpc/
-git clone https://github.com/tendermint/spec.git specRepo && cp -r specRepo/spec . && rm -rf specRepo
+#!/usr/bin/env bash
 
 # copy all tendermint docs realted info into a master folder
 mkdir master
@@ -17,7 +14,7 @@ cp -r nodes master
 cp -r rfc master
 cp -r README.md master
 
-# # clone tendermint for use of multiple versions
+# # clone tendermint
 # todo: merge the two versions below when 0.35 is released
 git clone https://github.com/tendermint/tendermint.git doc-versions
 
