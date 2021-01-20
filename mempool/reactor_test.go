@@ -13,6 +13,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 	protomem "github.com/tendermint/tendermint/proto/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
@@ -294,42 +295,56 @@ func TestMempoolIDsBasic(t *testing.T) {
 	ids.Reclaim(peerID)
 }
 
+func TestReactor_MaxTxBytes(t *testing.T) {
+	numNodes := 2
+	config := cfg.TestConfig()
+
+	testSuites := make([]*reactorTestSuite, numNodes)
+	for i := 0; i < len(testSuites); i++ {
+		logger := log.TestingLogger().With("node", i)
+		testSuites[i] = setup(t, config.Mempool, logger, 0)
+	}
+
+	primary := testSuites[0]
+	secondary := testSuites[1]
+
+	// Simulate a router by listening for all outbound envelopes and proxying the
+	// envelopes to the respective peer (suite).
+	wg := new(sync.WaitGroup)
+	simulateRouter(wg, primary, testSuites, 1)
+
+	// Broadcast a tx, which has the max size and ensure it's received by the
+	// second reactor.
+	tx1 := tmrand.Bytes(config.Mempool.MaxTxBytes)
+	err := primary.reactor.mempool.CheckTx(tx1, nil, TxInfo{SenderID: UnknownPeerID})
+	require.NoError(t, err)
+
+	primary.peerUpdatesCh <- p2p.PeerUpdate{
+		Status: p2p.PeerStatusUp,
+		PeerID: secondary.peerID,
+	}
+
+	// Wait till all secondary suites (reactor) received all mempool txs from the
+	// primary suite (node).
+	waitForTxs(t, []types.Tx{tx1}, secondary)
+
+	primary.reactor.mempool.Flush()
+	secondary.reactor.mempool.Flush()
+
+	// broadcast a tx, which is beyond the max size and ensure it's not sent
+	tx2 := tmrand.Bytes(config.Mempool.MaxTxBytes + 1)
+	err = primary.reactor.mempool.CheckTx(tx2, nil, TxInfo{SenderID: UnknownPeerID})
+	require.Error(t, err)
+
+	wg.Wait()
+
+	// ensure all channels are drained
+	for _, suite := range testSuites {
+		require.Empty(t, suite.mempoolOutCh)
+	}
+}
+
 // ============================================================================
-
-// func TestReactor_MaxTxBytes(t *testing.T) {
-// 	config := cfg.TestConfig()
-
-// 	const N = 2
-// 	reactors := makeAndConnectReactors(config, N)
-// 	defer func() {
-// 		for _, r := range reactors {
-// 			if err := r.Stop(); err != nil {
-// 				assert.NoError(t, err)
-// 			}
-// 		}
-// 	}()
-// 	for _, r := range reactors {
-// 		for _, peer := range r.Switch.Peers().List() {
-// 			peer.Set(types.PeerStateKey, peerState{1})
-// 		}
-// 	}
-
-// 	// Broadcast a tx, which has the max size
-// 	// => ensure it's received by the second reactor.
-// 	tx1 := tmrand.Bytes(config.Mempool.MaxTxBytes)
-// 	err := reactors[0].mempool.CheckTx(tx1, nil, TxInfo{SenderID: UnknownPeerID})
-// 	require.NoError(t, err)
-// 	waitForTxsOnReactors(t, []types.Tx{tx1}, reactors)
-
-// 	reactors[0].mempool.Flush()
-// 	reactors[1].mempool.Flush()
-
-// 	// Broadcast a tx, which is beyond the max size
-// 	// => ensure it's not sent
-// 	tx2 := tmrand.Bytes(config.Mempool.MaxTxBytes + 1)
-// 	err = reactors[0].mempool.CheckTx(tx2, nil, TxInfo{SenderID: UnknownPeerID})
-// 	require.Error(t, err)
-// }
 
 // func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 // 	if testing.Short() {
