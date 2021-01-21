@@ -43,6 +43,9 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, logger log.Logger, chBuf uint) 
 	_, err := rng.Read(pID)
 	require.NoError(t, err)
 
+	peerID, err := p2p.NewNodeID(fmt.Sprintf("%x", pID))
+	require.NoError(t, err)
+
 	peerUpdatesCh := make(chan p2p.PeerUpdate, chBuf)
 
 	rts := &reactorTestSuite{
@@ -51,7 +54,7 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, logger log.Logger, chBuf uint) 
 		mempoolPeerErrCh: make(chan p2p.PeerError, chBuf),
 		peerUpdatesCh:    peerUpdatesCh,
 		peerUpdates:      p2p.NewPeerUpdates(peerUpdatesCh),
-		peerID:           p2p.NodeID(fmt.Sprintf("%x", pID)),
+		peerID:           peerID,
 	}
 
 	rts.mempoolChannel = p2p.NewChannel(
@@ -284,7 +287,9 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 
 func TestMempoolIDsBasic(t *testing.T) {
 	ids := newMempoolIDs()
-	peerID := p2p.NodeID("00FFAA")
+
+	peerID, err := p2p.NewNodeID("00ffaa")
+	require.NoError(t, err)
 
 	ids.ReserveForPeer(peerID)
 	require.EqualValues(t, 1, ids.GetForPeer(peerID))
@@ -353,7 +358,8 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 		}
 	}()
 
-	peerID := p2p.NodeID("00FFAA")
+	peerID, err := p2p.NewNodeID("00ffaa")
+	require.NoError(t, err)
 
 	// ensure the reactor does not panic (i.e. exhaust active IDs)
 	for i := 0; i < maxActiveIDs+1; i++ {
@@ -370,6 +376,26 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	}
 
 	require.Empty(t, reactor.mempoolOutCh)
+}
+
+func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
+	if testing.Short() {
+		return
+	}
+
+	// 0 is already reserved for UnknownPeerID
+	ids := newMempoolIDs()
+
+	peerID, err := p2p.NewNodeID("00ffaa")
+	require.NoError(t, err)
+
+	for i := 0; i < maxActiveIDs-1; i++ {
+		ids.ReserveForPeer(peerID)
+	}
+
+	require.Panics(t, func() {
+		ids.ReserveForPeer(peerID)
+	})
 }
 
 // ============================================================================
@@ -418,23 +444,4 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 // 	// check that we are not leaking any go-routines
 // 	// i.e. broadcastTxRoutine finishes when reactor is stopped
 // 	leaktest.CheckTimeout(t, 10*time.Second)()
-// }
-
-// func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
-// 	if testing.Short() {
-// 		return
-// 	}
-
-// 	// 0 is already reserved for UnknownPeerID
-// 	ids := newMempoolIDs()
-
-// 	for i := 0; i < maxActiveIDs-1; i++ {
-// 		peer := mock.NewPeer(net.IP{127, 0, 0, 1})
-// 		ids.ReserveForPeer(peer)
-// 	}
-
-// 	assert.Panics(t, func() {
-// 		peer := mock.NewPeer(net.IP{127, 0, 0, 1})
-// 		ids.ReserveForPeer(peer)
-// 	})
 // }
