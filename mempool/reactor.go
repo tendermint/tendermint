@@ -24,8 +24,10 @@ var (
 const (
 	MempoolChannel = p2p.ChannelID(0x30)
 
+	// TODO: Use the PeerManager to get the height when ready.
+	//
 	// peerCatchupSleepIntervalMS defines how much time to sleep if a peer is behind
-	peerCatchupSleepIntervalMS = 100
+	// peerCatchupSleepIntervalMS = 100
 
 	// UnknownPeerID is the peer ID to use when running CheckTx when there is
 	// no peer (e.g. RPC)
