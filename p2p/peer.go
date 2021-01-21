@@ -327,6 +327,7 @@ func NewPeerManager(options PeerManagerOptions) *PeerManager {
 		store:         newPeerStore(),
 		dialing:       map[NodeID]bool{},
 		connected:     map[NodeID]bool{},
+		evicting:      map[NodeID]bool{},
 		subscriptions: map[*PeerUpdatesCh]*PeerUpdatesCh{},
 	}
 }
