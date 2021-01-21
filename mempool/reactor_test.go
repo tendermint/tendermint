@@ -75,6 +75,7 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, logger log.Logger, chBuf uint) 
 	rts.reactor = NewReactor(
 		logger,
 		cfg,
+		nil,
 		mempool,
 		rts.mempoolChannel,
 		rts.peerUpdates,

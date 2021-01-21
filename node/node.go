@@ -324,6 +324,7 @@ func createMempoolReactor(
 	proxyApp proxy.AppConns,
 	state sm.State,
 	memplMetrics *mempl.Metrics,
+	peerMgr *p2p.PeerManager,
 	logger log.Logger,
 ) (*p2p.ReactorShim, *mempl.Reactor, *mempl.CListMempool) {
 
@@ -343,6 +344,7 @@ func createMempoolReactor(
 	reactor := mempl.NewReactor(
 		logger,
 		config.Mempool,
+		peerMgr,
 		mempool,
 		reactorShim.GetChannel(mempl.MempoolChannel),
 		reactorShim.PeerUpdates,
@@ -759,9 +761,11 @@ func NewNode(config *cfg.Config,
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 
-	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
+	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
+	peerMgr := p2p.NewPeerManager(p2p.PeerManagerOptions{})
 
-	mpReactorShim, mpReactor, mempool := createMempoolReactor(config, proxyApp, state, memplMetrics, logger)
+	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
+	mpReactorShim, mpReactor, mempool := createMempoolReactor(config, proxyApp, state, memplMetrics, peerMgr, logger)
 
 	evReactorShim, evReactor, evPool, err := createEvidenceReactor(config, dbProvider, stateDB, blockStore, logger)
 	if err != nil {

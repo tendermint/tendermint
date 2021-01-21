@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"time"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
@@ -24,10 +25,8 @@ var (
 const (
 	MempoolChannel = p2p.ChannelID(0x30)
 
-	// TODO: Use the PeerManager to get the height when ready.
-	//
 	// peerCatchupSleepIntervalMS defines how much time to sleep if a peer is behind
-	// peerCatchupSleepIntervalMS = 100
+	peerCatchupSleepIntervalMS = 100
 
 	// UnknownPeerID is the peer ID to use when running CheckTx when there is
 	// no peer (e.g. RPC)
@@ -35,6 +34,13 @@ const (
 
 	maxActiveIDs = math.MaxUint16
 )
+
+// PeerManager defines the interface contract required for getting necessary
+// peer information. This should eventually be replaced with a message-oriented
+// approach utilizing the p2p stack.
+type PeerManager interface {
+	GetHeight(p2p.NodeID) (int64, error)
+}
 
 // Reactor implements a service that contains mempool of txs that are broadcasted
 // amongst peers. It maintains a map from peer ID to counter, to prevent gossiping
@@ -45,6 +51,11 @@ type Reactor struct {
 	config  *cfg.MempoolConfig
 	mempool *CListMempool
 	ids     *mempoolIDs
+
+	// XXX: Currently, this is the only way to get information about a peer. Ideally,
+	// we rely on message-oriented communication to get necessary peer data.
+	// ref: https://github.com/tendermint/tendermint/issues/5670
+	peerMgr PeerManager
 
 	mempoolCh   *p2p.Channel
 	peerUpdates *p2p.PeerUpdatesCh
@@ -62,6 +73,7 @@ type Reactor struct {
 func NewReactor(
 	logger log.Logger,
 	config *cfg.MempoolConfig,
+	peerMgr PeerManager,
 	mempool *CListMempool,
 	mempoolCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdatesCh,
@@ -69,6 +81,7 @@ func NewReactor(
 
 	r := &Reactor{
 		config:       config,
+		peerMgr:      peerMgr,
 		mempool:      mempool,
 		ids:          newMempoolIDs(),
 		mempoolCh:    mempoolCh,
@@ -343,25 +356,16 @@ func (r *Reactor) broadcastTxRoutine(peerID p2p.NodeID, closer *tmsync.Closer) {
 
 		memTx := next.Value.(*mempoolTx)
 
-		// TODO: Use the PeerManager to get the height when ready.
-		//
-		// ensure the peer is up to date and able to process the tx
-		// peerState, ok := peer.Get(types.PeerStateKey).(PeerState)
-		// if !ok {
-		// 	// Peer does not have a state yet. We set it in the consensus reactor, but
-		// 	// when we add peer in Switch, the order we call reactors#AddPeer is
-		// 	// different every time due to us using a map. Sometimes other reactors
-		// 	// will be initialized before the consensus reactor. We should wait a few
-		// 	// milliseconds and retry.
-		// 	time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
-		// 	continue
-		// }
-
-		// Allow for a lag of 1 block.
-		// if peerState.GetHeight() < memTx.Height()-1 {
-		// 	time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
-		// 	continue
-		// }
+		if r.peerMgr != nil {
+			height, err := r.peerMgr.GetHeight(peerID)
+			if err != nil {
+				r.Logger.Error("failed to get peer height", "err", err)
+			} else if height < memTx.Height()-1 {
+				// allow for a lag of one block
+				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+				continue
+			}
+		}
 
 		// NOTE: Transaction batching was disabled due to:
 		// https://github.com/tendermint/tendermint/issues/5796
