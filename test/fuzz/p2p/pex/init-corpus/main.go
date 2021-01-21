@@ -36,6 +36,8 @@ func initCorpus(rootDir string) {
 
 	for _, n := range sizes {
 		var addrs []*p2p.NetAddress
+
+		// IPv4 addresses
 		for i := 0; i < n; i++ {
 			privKey := ed25519.GenPrivKey()
 			addr := fmt.Sprintf(
@@ -49,6 +51,16 @@ func initCorpus(rootDir string) {
 			netAddr, _ := p2p.NewNetAddressString(addr)
 			addrs = append(addrs, netAddr)
 		}
+
+		// IPv6 addresses
+		privKey := ed25519.GenPrivKey()
+		ipv6a, err := p2p.NewNetAddressString(
+			fmt.Sprintf("%s@[ff02::1:114]:26656", p2p.NodeIDFromPubKey(privKey.PubKey())))
+		if err != nil {
+			log.Fatalf("can't create a new netaddress: %v", err)
+		}
+		addrs = append(addrs, ipv6a)
+
 		msg := tmp2p.Message{
 			Sum: &tmp2p.Message_PexAddrs{
 				PexAddrs: &tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(addrs)},
