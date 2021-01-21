@@ -1,8 +1,10 @@
+// nolint: gosec
 package main
 
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -68,17 +70,13 @@ func initCorpus(rootDir string) {
 		if err != nil {
 			log.Fatalf("unable to marshal: %v", err)
 		}
-		name := filepath.Join(rootDir, "corpus", fmt.Sprintf("%d", n))
-		f, err := os.Create(name)
-		if err == nil {
-			f.Write(bz)
-			if err := f.Close(); err == nil {
-				log.Printf("Successfully generated corpus file: %q", name)
-			} else {
-				log.Printf("Failed to generate corpus file: %q err: %v", name, err)
-			}
-		} else {
-			log.Printf("%q err: %v\n", name, err)
+
+		filename := filepath.Join(rootDir, "corpus", fmt.Sprintf("%d", n))
+
+		if err := ioutil.WriteFile(filename, bz, 0644); err != nil {
+			log.Fatalf("can't write %X to %q: %v", bz, filename, err)
 		}
+
+		log.Printf("wrote %q", filename)
 	}
 }

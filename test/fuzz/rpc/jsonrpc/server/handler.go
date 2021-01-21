@@ -33,6 +33,9 @@ func Fuzz(data []byte) int {
 	if err != nil {
 		panic(err)
 	}
+	if err := res.Body.Close(); err != nil {
+		panic(err)
+	}
 	recv := new(types.RPCResponse)
 	if err := json.Unmarshal(blob, recv); err != nil {
 		panic(err)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -40,19 +41,17 @@ func initCorpus(baseDir string) {
 	}
 
 	for i, addr := range addrs {
-		outPath := filepath.Join(corpusDir, fmt.Sprintf("%d.json", i))
-		f, err := os.Create(outPath)
-		if err != nil {
-			log.Printf("#%d: can't create %q: %v", i, outPath, err)
-			continue
-		}
-		defer f.Close()
+		filename := filepath.Join(corpusDir, fmt.Sprintf("%d.json", i))
 
-		err = json.NewEncoder(f).Encode(addr)
-		if err == nil {
-			log.Printf("Successfully wrote %q", outPath)
-		} else {
-			log.Printf("#%d: can't encode %v: %v", i, addr, err)
+		bz, err := json.Marshal(addr)
+		if err != nil {
+			log.Fatalf("can't marshal %v: %v", addr, err)
 		}
+
+		if err := ioutil.WriteFile(filename, bz, 0644); err != nil {
+			log.Fatalf("can't write %v to %q: %v", addr, filename, err)
+		}
+
+		log.Printf("wrote %q", filename)
 	}
 }
