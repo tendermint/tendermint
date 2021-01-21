@@ -275,8 +275,9 @@ type PeerManagerOptions struct {
 	// outbound). 0 means no limit.
 	MaxConnected uint16
 
-	// MaxConnectedUpgrade is the maximum number of additional peer connections to
-	// use for upgrading to better-scored peers. 0 disables peer upgrading.
+	// MaxConnectedUpgrade is the maximum number of additional connections to
+	// use for probing any better-scored peers to upgrade to when all connection
+	// slots are full. 0 disables peer upgrading.
 	//
 	// For example, if we are already connected to MaxConnected peers, but we
 	// know or learn about better-scored peers (e.g. configured persistent
@@ -299,9 +300,9 @@ type PeerManagerOptions struct {
 	// peers listed in PersistentPeers. 0 uses MaxRetryTime instead.
 	MaxRetryTimePersistent time.Duration
 
-	// FuzzRetryTime is the upper bound of a random interval added to
-	// retry times, to avoid thundering herds. 0 disables fuzzing.
-	FuzzRetryTime time.Duration
+	// RetryTimeJitter is the upper bound of a random interval added to
+	// retry times, to avoid thundering herds. 0 disables jutter.
+	RetryTimeJitter time.Duration
 }
 
 // isPersistent is a convenience function that checks if the given peer ID
@@ -398,13 +399,13 @@ func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
 // DialNext finds an appropriate peer address to dial, and marks it as dialing.
 // The peer will not be returned again until Dialed() or DialFailed() is called
 // for the peer and it is no longer connected. Returns an empty ID if no
-// appropriate peers are available.
+// appropriate peers are available, or if all connection slots are full.
 //
 // We allow dialing MaxConnected+MaxConnectedUpgrade peers. Including
 // MaxConnectedUpgrade allows us to dial additional peers beyond MaxConnected if
-// they have a higher score that any other connected or dialing peer. If we
-// are successful in dialing, and thus have more than MaxConnected connected
-// peers, the lower-scored peer will be evicted via EvictNext().
+// they have a higher score than any other connected or dialing peer. If we are
+// successful in dialing, and thus have more than MaxConnected connected peers,
+// the lower-scored peer will be evicted via EvictNext().
 func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
@@ -467,17 +468,17 @@ func (m *PeerManager) retryDelay(peer *peerInfo, failures uint32) time.Duration 
 	if m.options.MinRetryTime == 0 {
 		return time.Duration(math.MaxInt64)
 	}
-	delay := m.options.MinRetryTime * time.Duration(math.Pow(2, float64(failures)))
+	maxDelay := m.options.MaxRetryTime
 	if peer.Persistent && m.options.MaxRetryTimePersistent > 0 {
-		// We have to check this separately, since we don't want to fall back to
-		// MaxRetryTime in cases where it is smaller than MaxRetryTimePersistent.
-		if delay > m.options.MaxRetryTimePersistent {
-			delay = m.options.MaxRetryTimePersistent
-		}
-	} else if m.options.MaxRetryTime > 0 && delay > m.options.MaxRetryTime {
-		delay = m.options.MaxRetryTime
+		maxDelay = m.options.MaxRetryTimePersistent
 	}
-	delay += time.Duration(rand.Int63n(int64(m.options.FuzzRetryTime))) // nolint:gosec
+
+	delay := m.options.MinRetryTime * time.Duration(math.Pow(2, float64(failures)))
+	if maxDelay > 0 && delay > maxDelay {
+		delay = maxDelay
+	}
+	// FIXME: This should use a PeerManager-scoped RNG.
+	delay += time.Duration(rand.Int63n(int64(m.options.RetryTimeJitter))) // nolint:gosec
 	return delay
 }
 
