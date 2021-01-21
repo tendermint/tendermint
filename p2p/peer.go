@@ -766,7 +766,7 @@ func (s *peerStore) Ranked() ([]*peerInfo, error) {
 	sort.Slice(peers, func(i, j int) bool {
 		// FIXME: If necessary, consider precomputing scores before sorting,
 		// to reduce the number of Score() calls.
-		return peers[i].Score() < peers[j].Score()
+		return peers[i].Score() > peers[j].Score()
 	})
 	return peers, nil
 }
