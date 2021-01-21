@@ -23,15 +23,18 @@ import (
 // either the channel is closed by the caller or the router is stopped, at which
 // point the input message queue is closed and removed.
 //
-// On startup, the router spawns off two primary goroutines that maintain
+// On startup, the router spawns off three primary goroutines that maintain
 // connections to peers and run for the lifetime of the router:
 //
-//   Router.dialPeers(): in a loop, asks the peerStore to dispense an
-//   eligible peer to connect to, and attempts to resolve and dial each
-//   address until successful.
+//   Router.dialPeers(): in a loop, asks the PeerManager for the next peer
+//   address to contact, resolves it into endpoints, and attempts to dial
+//   each one.
 //
 //   Router.acceptPeers(): in a loop, waits for the next inbound connection
-//   from a peer, and attempts to claim it in the peerStore.
+//   from a peer, and checks with the PeerManager if it should be accepted.
+//
+//   Router.evictPeers(): in a loop, asks the PeerManager for any connected
+//   peers to evict, and disconnects them.
 //
 // Once either an inbound or outbound connection has been made, an outbound
 // message queue is registered in Router.peerQueues and a goroutine is spawned
@@ -74,7 +77,7 @@ type Router struct {
 	*service.BaseService
 	logger      log.Logger
 	transports  map[Protocol]Transport
-	peerManager *peerManager
+	peerManager *PeerManager
 
 	// FIXME: Consider using sync.Map.
 	peerMtx    sync.RWMutex
@@ -96,24 +99,17 @@ type Router struct {
 // FIXME: providing protocol/transport maps is cumbersome in tests, we should
 // consider adding Protocols() to the Transport interface instead and register
 // protocol/transport mappings automatically on a first-come basis.
-func NewRouter(logger log.Logger, transports map[Protocol]Transport, peers []PeerAddress) *Router {
+func NewRouter(logger log.Logger, peerManager *PeerManager, transports map[Protocol]Transport) *Router {
 	router := &Router{
 		logger:          logger,
 		transports:      transports,
-		peerManager:     newPeerManager(newPeerStore()),
+		peerManager:     peerManager,
 		stopCh:          make(chan struct{}),
 		channelQueues:   map[ChannelID]queue{},
 		channelMessages: map[ChannelID]proto.Message{},
 		peerQueues:      map[NodeID]queue{},
 	}
 	router.BaseService = service.NewBaseService(logger, "router", router)
-
-	for _, address := range peers {
-		if err := router.peerManager.Add(address); err != nil {
-			logger.Error("failed to add peer", "address", address, "err", err)
-		}
-	}
-
 	return router
 }
 
@@ -241,6 +237,9 @@ func (r *Router) acceptPeers(transport Transport) {
 		default:
 		}
 
+		// FIXME: We may need transports to enforce some sort of rate limiting
+		// here (e.g. by IP address), or alternatively have PeerManager.Accepted()
+		// do it for us.
 		conn, err := transport.Accept(context.Background())
 		switch err {
 		case nil:
@@ -480,16 +479,37 @@ func (r *Router) sendPeer(peerID NodeID, conn Connection, queue queue) error {
 	}
 }
 
-// SubscribePeerUpdates creates a new peer updates subscription. The caller must
-// consume the peer updates in a timely fashion and close the subscription when
-// done, since delivery is guaranteed and will block peer
-// connection/disconnection otherwise.
-//
-// FIXME: Consider having callers just use peerManager.Subscribe() directly, if
-// we export peerManager and make it an injected dependency (which we probably
-// should).
-func (r *Router) SubscribePeerUpdates() *PeerUpdatesCh {
-	return r.peerManager.Subscribe()
+// evictPeers evicts connected peers as requested by the peer manager.
+func (r *Router) evictPeers() {
+	for {
+		select {
+		case <-r.stopCh:
+			return
+		default:
+		}
+
+		peerID, err := r.peerManager.EvictNext()
+		if err != nil {
+			r.logger.Error("failed to find next peer to evict", "err", err)
+			return
+		} else if peerID == "" {
+			r.logger.Debug("no evictable peers, sleeping")
+			select {
+			case <-time.After(time.Second):
+				continue
+			case <-r.stopCh:
+				return
+			}
+		}
+
+		r.logger.Info("evicting peer", "peer", peerID)
+		r.peerMtx.RLock()
+		queue, ok := r.peerQueues[peerID]
+		r.peerMtx.RUnlock()
+		if ok {
+			queue.close()
+		}
+	}
 }
 
 // OnStart implements service.Service.
@@ -498,6 +518,7 @@ func (r *Router) OnStart() error {
 	for _, transport := range r.transports {
 		go r.acceptPeers(transport)
 	}
+	go r.evictPeers()
 	return nil
 }
 
