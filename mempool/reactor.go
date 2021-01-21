@@ -86,8 +86,8 @@ func NewReactor(
 //
 // TODO: Remove once p2p refactor is complete.
 // ref: https://github.com/tendermint/tendermint/issues/5670
-func (r *Reactor) GetChannelShims() map[p2p.ChannelID]*p2p.ChannelDescriptorShim {
-	largestTx := make([]byte, r.config.MaxTxBytes)
+func GetChannelShims(config *cfg.MempoolConfig) map[p2p.ChannelID]*p2p.ChannelDescriptorShim {
+	largestTx := make([]byte, config.MaxTxBytes)
 	batchMsg := protomem.Message{
 		Sum: &protomem.Message_Txs{
 			Txs: &protomem.Txs{Txs: [][]byte{largestTx}},
