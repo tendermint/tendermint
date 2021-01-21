@@ -240,7 +240,7 @@ const (
 //   PeerStatusDown peer update.
 //
 // If we need to evict a peer, typically because we have connected to additional
-// higher-scored peers and need to shed lower-scored ones,, the flow is as follows:
+// higher-scored peers and need to shed lower-scored ones, the flow is as follows:
 // - EvictNext: returns a peer ID to evict, marking peer as evicting.
 // - Disconnected: peer was disconnected, unmarking as connected and evicting,
 //   and broadcasts a PeerStatusDown peer update.
@@ -437,6 +437,13 @@ func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
 			// If we don't find one, there is no point in trying additional
 			// peers, since they will all have the same or lower score than this
 			// peer (since they're ordered by score via peerStore.Ranked).
+			//
+			// FIXME: There is a race condition here where, if there exists a
+			// single lower-scored peer, we may end up dialing multiple
+			// higher-scored new peers that all expect the same lower-scored
+			// peer to be evicted, causing us to take on too many peers. We may
+			// need to reserve the eviction for this specific peer such that
+			// others can't claim it.
 			if m.options.MaxConnected > 0 &&
 				len(m.connected) >= int(m.options.MaxConnected) &&
 				!m.peerIsUpgrade(peer, ranked) {
@@ -568,6 +575,12 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 	// know from the check above that we have upgrade capacity), then we can look
 	// for a lower-scored evictable peer, and if found we can accept this connection
 	// anyway and let EvictNext() evict the lower-scored peer for us.
+	//
+	// FIXME: There is a race condition here where, if there exists a single
+	// lower-scored peer, we may end up accepting multiple higher-scored new
+	// peers that all expect the same lower-scored peer to be evicted, causing
+	// us to take on too many peers. We may need to reserve the eviction for
+	// this specific peer such that others can't claim it.
 	if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
 		ranked, err := m.store.Ranked()
 		if err != nil {
