@@ -1,12 +1,5 @@
 #!/usr/bin/make -f
 
-.PHONY: fuzz-blockchain
-fuzz-blockchain:
-	cd blockchain && \
-		go run ./init-corpus/main.go && \
-		go-fuzz-build	&& \
-		go-fuzz
-
 .PHONY: fuzz-mempool
 fuzz-mempool:
 	cd mempool && \

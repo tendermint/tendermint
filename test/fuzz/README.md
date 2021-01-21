@@ -5,7 +5,6 @@ Fuzzing for various packages in Tendermint using [go-fuzz](https://github.com/dv
 Inputs:
 
 - mempool `CheckTx` (using kvstore in-process ABCI app)
-- blockchain `EncodeMsg` / `DecodeMsg`
 - p2p `Addrbook#AddAddress`
 - p2p `pex.Reactor#Receive`
 - p2p `SecretConnection#Read` and `SecretConnection#Write`
@@ -14,7 +13,6 @@ Inputs:
 ## Running
 
 ```sh
-make fuzz-blockchain
 make fuzz-mempool
 make fuzz-p2p-addrbook
 make fuzz-p2p-pex

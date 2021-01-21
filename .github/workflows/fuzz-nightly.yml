@@ -19,10 +19,6 @@ jobs:
         working-directory: test/fuzz
         run: go get -u github.com/dvyukov/go-fuzz/go-fuzz github.com/dvyukov/go-fuzz/go-fuzz-build
 
-      - name: Fuzz blockchain
-        working-directory: test/fuzz
-        run: timeout 10m make fuzz-blockchain
-
       - name: Fuzz mempool
         working-directory: test/fuzz
         run: timeout 10m make fuzz-mempool
