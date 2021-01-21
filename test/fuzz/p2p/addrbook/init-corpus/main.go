@@ -14,10 +14,10 @@ import (
 )
 
 func main() {
-	root := flag.String("root", ".", `where the "corpus" directory will live`)
+	baseDir := flag.String("base", ".", `where the "corpus" directory will live`)
 	flag.Parse()
 
-	initCorpus(*root)
+	initCorpus(*baseDir)
 }
 
 func initCorpus(baseDir string) {

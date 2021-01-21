@@ -14,17 +14,15 @@ import (
 )
 
 func main() {
-	rootDirVar := flag.String("root", ".", `the directory in which the "corpus", "testdata" directories are`)
+	baseDir := flag.String("base", ".", `where the "corpus" directory will live`)
 	flag.Parse()
-	rootDir := *rootDirVar
-	if rootDir == "" {
-		rootDir = "."
-	}
-	initCorpus(rootDir)
+
+	initCorpus(*baseDir)
 }
 
 func initCorpus(rootDir string) {
 	log.SetFlags(0)
+
 	corpusDir := filepath.Join(rootDir, "corpus")
 	if err := os.MkdirAll(corpusDir, 0755); err != nil {
 		log.Fatalf("Creating %q err: %v", corpusDir, err)

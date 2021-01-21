@@ -9,14 +9,15 @@ import (
 )
 
 func main() {
-	baseDir := flag.String("base", ".", "the base directory in which the corpus directory resides")
+	baseDir := flag.String("base", ".", `where the "corpus" directory will live`)
 	flag.Parse()
 
-	log.SetFlags(0)
-	InitCorpus(*baseDir)
+	initCorpus(*baseDir)
 }
 
-func InitCorpus(baseDir string) {
+func initCorpus(baseDir string) {
+	log.SetFlags(0)
+
 	corpusDir := filepath.Join(baseDir, "corpus")
 	if err := os.MkdirAll(corpusDir, 0755); err != nil {
 		log.Fatal(err)
