@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -380,7 +381,7 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 
 func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
 	if testing.Short() {
-		return
+		t.Skip("skipping test in short mode")
 	}
 
 	// 0 is already reserved for UnknownPeerID
@@ -398,50 +399,29 @@ func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
 	})
 }
 
-// ============================================================================
+func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
 
-// func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
-// 	if testing.Short() {
-// 		t.Skip("skipping test in short mode.")
-// 	}
+	config := cfg.TestConfig()
 
-// 	config := cfg.TestConfig()
-// 	const N = 2
-// 	reactors := makeAndConnectReactors(config, N)
-// 	defer func() {
-// 		for _, r := range reactors {
-// 			if err := r.Stop(); err != nil {
-// 				assert.NoError(t, err)
-// 			}
-// 		}
-// 	}()
+	primary := setup(t, config.Mempool, log.TestingLogger().With("node", 0), 0)
+	secondary := setup(t, config.Mempool, log.TestingLogger().With("node", 1), 0)
 
-// 	// stop peer
-// 	sw := reactors[1].Switch
-// 	sw.StopPeerForError(sw.Peers().List()[0], errors.New("some reason"))
+	// connect peer
+	primary.peerUpdatesCh <- p2p.PeerUpdate{
+		Status: p2p.PeerStatusUp,
+		PeerID: secondary.peerID,
+	}
 
-// 	// check that we are not leaking any go-routines
-// 	// i.e. broadcastTxRoutine finishes when peer is stopped
-// 	leaktest.CheckTimeout(t, 10*time.Second)()
-// }
+	// disconnect peer
+	primary.peerUpdatesCh <- p2p.PeerUpdate{
+		Status: p2p.PeerStatusDown,
+		PeerID: secondary.peerID,
+	}
 
-// func TestBroadcastTxForPeerStopsWhenReactorStops(t *testing.T) {
-// 	if testing.Short() {
-// 		t.Skip("skipping test in short mode.")
-// 	}
-
-// 	config := cfg.TestConfig()
-// 	const N = 2
-// 	reactors := makeAndConnectReactors(config, N)
-
-// 	// stop reactors
-// 	for _, r := range reactors {
-// 		if err := r.Stop(); err != nil {
-// 			assert.NoError(t, err)
-// 		}
-// 	}
-
-// 	// check that we are not leaking any go-routines
-// 	// i.e. broadcastTxRoutine finishes when reactor is stopped
-// 	leaktest.CheckTimeout(t, 10*time.Second)()
-// }
+	// check that we are not leaking any go-routines
+	// i.e. broadcastTxRoutine finishes when peer is stopped
+	leaktest.CheckTimeout(t, 10*time.Second)()
+}
