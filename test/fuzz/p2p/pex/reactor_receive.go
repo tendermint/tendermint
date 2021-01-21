@@ -3,23 +3,41 @@ package pex
 import (
 	"net"
 
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/version"
 )
 
-var addrB = pex.NewAddrBook("./testdata/addrbook1", false)
+var (
+	pexR *pex.Reactor
+	peer p2p.Peer
+)
 
-func Fuzz(data []byte) int {
+func init() {
+	addrB := pex.NewAddrBook("./testdata/addrbook1", false)
 	pexR := pex.NewReactor(addrB, &pex.ReactorConfig{SeedMode: false})
 	if pexR == nil {
-		panic("nil Reactor")
+		panic("NewReactor returned nil")
 	}
-
+	pexR.SetLogger(log.NewNopLogger())
 	peer := newFuzzPeer()
 	pexR.AddPeer(peer)
+
+}
+
+func Fuzz(data []byte) int {
+	// MakeSwitch uses log.TestingLogger which can't be executed in init()
+	cfg := config.DefaultP2PConfig()
+	cfg.PexReactor = true
+	sw := p2p.MakeSwitch(cfg, 0, "127.0.0.1", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
+		return sw
+	})
+	pexR.SetSwitch(sw)
+
 	pexR.Receive(pex.PexChannel, peer, data)
 	return 1
 }
