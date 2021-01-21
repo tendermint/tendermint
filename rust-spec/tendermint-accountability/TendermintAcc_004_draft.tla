@@ -332,7 +332,7 @@ OnQuorumOfNilPrevotes(p) ==
     /\ Cardinality(PV) >= THRESHOLD2 \* line 36
     /\ evidence' = PV \union evidence
     /\ BroadcastPrecommit(p, round[p], Id(NilValue))
-    /\ step' = [step EXCEPT ![p] = "PREVOTE"]
+    /\ step' = [step EXCEPT ![p] = "PRECOMMIT"]
     /\ UNCHANGED <<round, lockedValue, lockedRound, validValue,
                   validRound, decision, msgsPropose, msgsPrevote>>
     /\ action' = "OnQuorumOfNilPrevotes"
