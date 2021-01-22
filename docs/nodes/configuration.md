@@ -66,7 +66,7 @@ db-backend = "goleveldb"
 db-dir = "data"
 
 # Output level for logging, including package level options
-log-level = "main:info,state:info,statesync:info,*:error"
+log-level = "info"
 
 # Output format: 'plain' (colored text) or 'json'
 log-format = "plain"
