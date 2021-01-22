@@ -274,11 +274,11 @@ const (
 // - EvictNext: return an evictable peer (not necessarily the one we marked
 //   for upgrading above).
 type PeerManager struct {
-	options      PeerManagerOptions
-	maybeDialCh  chan struct{} // wakes up DialNext() on relevant peer changes
-	maybeEvictCh chan struct{} // wakes up EvictNext() on relevant peer changes
-	closeCh      chan struct{} // signal channel for Close()
-	closeOnce    sync.Once
+	options     PeerManagerOptions
+	wakeDialCh  chan struct{} // wakes up DialNext() on relevant peer changes
+	wakeEvictCh chan struct{} // wakes up EvictNext() on relevant peer changes
+	closeCh     chan struct{} // signal channel for Close()
+	closeOnce   sync.Once
 
 	mtx           sync.Mutex
 	store         *peerStore
@@ -350,13 +350,13 @@ func NewPeerManager(options PeerManagerOptions) *PeerManager {
 		closeCh: make(chan struct{}),
 
 		// We use a buffer of size 1 for these trigger channels, with
-		// non-blocking sends. This ensures that if e.g. maybeDial() is called
+		// non-blocking sends. This ensures that if e.g. wakeDial() is called
 		// multiple times before the initial trigger is picked up we only
 		// process the trigger once.
 		//
 		// FIXME: This should maybe be a libs/sync type.
-		maybeDialCh:  make(chan struct{}, 1),
-		maybeEvictCh: make(chan struct{}, 1),
+		wakeDialCh:  make(chan struct{}, 1),
+		wakeEvictCh: make(chan struct{}, 1),
 
 		// FIXME: Once the store persists data, we need to update existing
 		// peers in the store with any new information, e.g. changes to
@@ -402,7 +402,7 @@ func (m *PeerManager) Add(address PeerAddress) error {
 	if err != nil {
 		return err
 	}
-	m.maybeDial()
+	m.wakeDial()
 	return nil
 }
 
@@ -459,7 +459,7 @@ func (m *PeerManager) DialNext(ctx context.Context) (NodeID, PeerAddress, error)
 			return id, address, err
 		}
 		select {
-		case <-m.maybeDialCh:
+		case <-m.wakeDialCh:
 		case <-ctx.Done():
 			return "", PeerAddress{}, ctx.Err()
 		}
@@ -522,27 +522,27 @@ func (m *PeerManager) TryDialNext() (NodeID, PeerAddress, error) {
 	return "", PeerAddress{}, nil
 }
 
-// maybeDial is used to notify DialNext about changes that *may* cause new
+// wakeDial is used to notify DialNext about changes that *may* cause new
 // peers to become eligible for dialing, such as peer disconnections and
 // retry timeouts.
-func (m *PeerManager) maybeDial() {
+func (m *PeerManager) wakeDial() {
 	// The channel has a buffer-size of 1. A non-blocking send ensures
 	// that we only queue up a maximum of 1 trigger between each
 	// DialNext() invocation.
 	select {
-	case m.maybeDialCh <- struct{}{}:
+	case m.wakeDialCh <- struct{}{}:
 	default:
 	}
 }
 
-// maybeEvict is used to notify EvictNext about changes that *may* cause
+// wakeEvict is used to notify EvictNext about changes that *may* cause
 // peers to become eligible for eviction, such as peer upgrades.
-func (m *PeerManager) maybeEvict() {
+func (m *PeerManager) wakeEvict() {
 	// The channel has a buffer-size of 1. A non-blocking send ensures
 	// that we only queue up a maximum of 1 trigger between each
 	// DialNext() invocation.
 	select {
-	case m.maybeEvictCh <- struct{}{}:
+	case m.wakeEvictCh <- struct{}{}:
 	default:
 	}
 }
@@ -615,13 +615,13 @@ func (m *PeerManager) DialFailed(peerID NodeID, address PeerAddress) error {
 			defer timer.Stop()
 			select {
 			case <-timer.C:
-				m.maybeDial()
+				m.wakeDial()
 			case <-m.closeCh:
 			}
 		}()
 	}
 
-	m.maybeDial()
+	m.wakeDial()
 	return nil
 }
 
@@ -670,7 +670,7 @@ func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 	}
 
 	m.connected[peerID] = true
-	m.maybeEvict()
+	m.wakeEvict()
 
 	return nil
 }
@@ -731,7 +731,7 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 	}
 
 	m.connected[peerID] = true
-	m.maybeEvict()
+	m.wakeEvict()
 	return nil
 }
 
@@ -764,7 +764,7 @@ func (m *PeerManager) Disconnected(peerID NodeID) error {
 		PeerID: peerID,
 		Status: PeerStatusDown,
 	})
-	m.maybeDial()
+	m.wakeDial()
 	return nil
 }
 
@@ -778,7 +778,7 @@ func (m *PeerManager) EvictNext(ctx context.Context) (NodeID, error) {
 			return id, err
 		}
 		select {
-		case <-m.maybeEvictCh:
+		case <-m.wakeEvictCh:
 		case <-ctx.Done():
 			return "", ctx.Err()
 		}
