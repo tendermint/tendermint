@@ -330,7 +330,7 @@ func DefaultLogLevel() string {
 // DefaultPackageLogLevels returns a default log level setting so all packages
 // log at "error", while the `state` and `main` packages log at "info"
 func DefaultPackageLogLevels() string {
-	return "info"
+	return fmt.Sprintf("main:info,state:info,statesync:info,*:%s", DefaultLogLevel())
 }
 
 //-----------------------------------------------------------------------------

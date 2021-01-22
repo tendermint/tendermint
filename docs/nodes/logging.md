@@ -13,20 +13,24 @@ There are three log levels, `info`, `debug` and `error`. These can be configured
 
 ```toml
 # Output level for logging, including package level options
-log-level = "info"
+log-level = "main:info,state:info,statesync:info,*:error"
 ```
 
-The default setting is a global `info` level. If you would like to set specific modules level log levels it can be done in the following format. 
+The default setting is a global `main:info,state:info,statesync:info,*:error` level. If you would like to set the log level for a specific module, it can be done in the following format: 
+
+Below we are setting all modules to log level `info` and the mempool to `error`. This will log all errors within the mempool module. 
+
+Within the `config.toml`:
 
 ```toml
 # Output level for logging, including package level options
-log-level = "info,mempool:error"
+log-level = "*:info,mempool:error"
 ```
 
-or
+Via the command line:
 
 ```sh
-tendermint start --log-level "info,mempool:error"
+tendermint start --log-level "*:info,mempool:error"
 ```
 
 Here we are setting the mempool log level to `error`, but still retain the global info level. 
