@@ -253,16 +253,17 @@ const (
 // an incoming connection was briefly accepted and disconnected while we were
 // also dialing.
 type PeerManager struct {
-	options     PeerManagerOptions
-	maybeDialCh chan struct{} // wakes up DialNext() on relevant peer changes
-	closeCh     chan struct{} // signal channel for Close()
-	closeOnce   sync.Once
+	options      PeerManagerOptions
+	maybeDialCh  chan struct{} // wakes up DialNext() on relevant peer changes
+	maybeEvictCh chan struct{} // wakes up EvictNext() on relevant peer changes
+	closeCh      chan struct{} // signal channel for Close()
+	closeOnce    sync.Once
 
 	mtx           sync.Mutex
 	store         *peerStore
-	dialing       map[NodeID]bool
-	connected     map[NodeID]bool
-	evicting      map[NodeID]bool
+	dialing       map[NodeID]bool                   // peers being dialed (DialNext -> Dialed/DialFail)
+	connected     map[NodeID]bool                   // connected peers (Dialed/Accepted -> Disconnected)
+	evicting      map[NodeID]bool                   // peers being evicted (EvictNext -> Disconnected)
 	subscriptions map[*PeerUpdatesCh]*PeerUpdatesCh // keyed by struct identity (address)
 }
 
@@ -331,7 +332,8 @@ func NewPeerManager(options PeerManagerOptions) *PeerManager {
 		// process the trigger once.
 		//
 		// FIXME: This should maybe be a libs/sync type.
-		maybeDialCh: make(chan struct{}, 1),
+		maybeDialCh:  make(chan struct{}, 1),
+		maybeEvictCh: make(chan struct{}, 1),
 
 		// FIXME: Once the store persists data, we need to update existing
 		// peers in the store with any new information, e.g. changes to
@@ -433,9 +435,9 @@ func (m *PeerManager) DialNext(ctx context.Context) (NodeID, PeerAddress, error)
 			return id, address, err
 		}
 		select {
+		case <-m.maybeDialCh:
 		case <-ctx.Done():
 			return "", PeerAddress{}, ctx.Err()
-		case <-m.maybeDialCh:
 		}
 	}
 }
@@ -507,6 +509,18 @@ func (m *PeerManager) maybeDial() {
 	// DialNext() invocation.
 	select {
 	case m.maybeDialCh <- struct{}{}:
+	default:
+	}
+}
+
+// maybeEvict is used to notify EvictNext about changes that *may* cause
+// peers to become eligible for eviction, such as peer upgrades.
+func (m *PeerManager) maybeEvict() {
+	// The channel has a buffer-size of 1. A non-blocking send ensures
+	// that we only queue up a maximum of 1 trigger between each
+	// DialNext() invocation.
+	select {
+	case m.maybeEvictCh <- struct{}{}:
 	default:
 	}
 }
@@ -604,7 +618,6 @@ func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 	} else if peer == nil {
 		return fmt.Errorf("peer %q was removed while dialing", peerID)
 	}
-	m.connected[peerID] = true
 
 	now := time.Now().UTC()
 	peer.LastConnected = now
@@ -612,7 +625,14 @@ func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 		addressInfo.DialFailures = 0
 		addressInfo.LastDialSuccess = now
 	}
-	return m.store.Set(peer)
+	if err = m.store.Set(peer); err != nil {
+		return err
+	}
+
+	m.connected[peerID] = true
+	m.maybeEvict()
+
+	return nil
 }
 
 // Accepted marks an incoming peer connection successfully accepted. If the peer
@@ -670,9 +690,14 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 		}
 	}
 
-	m.connected[peerID] = true
 	peer.LastConnected = time.Now().UTC()
-	return m.store.Set(peer)
+	if err = m.store.Set(peer); err != nil {
+		return err
+	}
+
+	m.connected[peerID] = true
+	m.maybeEvict()
+	return nil
 }
 
 // Ready marks a peer as ready, broadcasting status updates to subscribers. The
@@ -707,10 +732,26 @@ func (m *PeerManager) Disconnected(peerID NodeID) error {
 	return nil
 }
 
-// EvictNext returns the next peer to evict (i.e. disconnect), or an empty ID if
-// no peers should be evicted. The evicted peer will be a lowest-scored peer
-// that is currently connected and not already being evicted.
-func (m *PeerManager) EvictNext() (NodeID, error) {
+// EvictNext returns the next peer to evict (i.e. disconnect). If no evictable
+// peers are found, the call will block until one becomes available or the
+// context is cancelled.
+func (m *PeerManager) EvictNext(ctx context.Context) (NodeID, error) {
+	for {
+		id, err := m.TryEvictNext()
+		if err != nil || id != "" {
+			return id, err
+		}
+		select {
+		case <-m.maybeEvictCh:
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
+	}
+}
+
+// TryEvictNext is equivalent to EvictNext, but immediately returns an empty
+// node ID if no evictable peers are found.
+func (m *PeerManager) TryEvictNext() (NodeID, error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 

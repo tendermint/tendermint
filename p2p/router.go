@@ -230,23 +230,16 @@ func (r *Router) routeChannel(channel *Channel) {
 
 // acceptPeers accepts inbound connections from peers on the given transport.
 func (r *Router) acceptPeers(transport Transport) {
+	ctx := r.stopCtx()
 	for {
-		select {
-		case <-r.stopCh:
-			return
-		default:
-		}
-
 		// FIXME: We may need transports to enforce some sort of rate limiting
 		// here (e.g. by IP address), or alternatively have PeerManager.Accepted()
 		// do it for us.
-		//
-		// FIXME: We should cancel the context when r.stopCh is closed.
-		conn, err := transport.Accept(context.Background())
+		conn, err := transport.Accept(ctx)
 		switch err {
 		case nil:
-		case ErrTransportClosed{}, io.EOF:
-			r.logger.Info("transport closed; stopping accept routine", "transport", transport)
+		case ErrTransportClosed{}, io.EOF, context.Canceled:
+			r.logger.Info("stopping accept routine", "transport", transport)
 			return
 		default:
 			r.logger.Error("failed to accept connection", "transport", transport, "err", err)
@@ -287,16 +280,7 @@ func (r *Router) acceptPeers(transport Transport) {
 
 // dialPeers maintains outbound connections to peers.
 func (r *Router) dialPeers() {
-	// Cancel PeerManager.DialNext() calls when router is stopped.
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		select {
-		case <-r.stopCh:
-			cancel()
-		case <-ctx.Done():
-		}
-	}()
-
+	ctx := r.stopCtx()
 	for {
 		peerID, address, err := r.peerManager.DialNext(ctx)
 		switch err {
@@ -483,34 +467,24 @@ func (r *Router) sendPeer(peerID NodeID, conn Connection, queue queue) error {
 
 // evictPeers evicts connected peers as requested by the peer manager.
 func (r *Router) evictPeers() {
+	ctx := r.stopCtx()
 	for {
-		select {
-		case <-r.stopCh:
+		peerID, err := r.peerManager.EvictNext(ctx)
+		switch err {
+		case nil:
+		case context.Canceled:
 			return
 		default:
-		}
-
-		peerID, err := r.peerManager.EvictNext()
-		if err != nil {
 			r.logger.Error("failed to find next peer to evict", "err", err)
 			return
-		} else if peerID == "" {
-			r.logger.Debug("no evictable peers, sleeping")
-			select {
-			case <-time.After(time.Second):
-				continue
-			case <-r.stopCh:
-				return
-			}
 		}
 
 		r.logger.Info("evicting peer", "peer", peerID)
 		r.peerMtx.RLock()
-		queue, ok := r.peerQueues[peerID]
-		r.peerMtx.RUnlock()
-		if ok {
+		if queue, ok := r.peerQueues[peerID]; ok {
 			queue.close()
 		}
+		r.peerMtx.RUnlock()
 	}
 }
 
@@ -545,4 +519,17 @@ func (r *Router) OnStop() {
 	for _, q := range queues {
 		<-q.closed()
 	}
+}
+
+// stopCtx returns a context that is cancelled when the router stops.
+func (r *Router) stopCtx() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		select {
+		case <-r.stopCh:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+	return ctx
 }
