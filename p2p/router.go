@@ -239,7 +239,7 @@ func (r *Router) acceptPeers(transport Transport) {
 		switch err {
 		case nil:
 		case ErrTransportClosed{}, io.EOF, context.Canceled:
-			r.logger.Info("stopping accept routine", "transport", transport)
+			r.logger.Debug("stopping accept routine", "transport", transport)
 			return
 		default:
 			r.logger.Error("failed to accept connection", "transport", transport, "err", err)
@@ -286,6 +286,7 @@ func (r *Router) dialPeers() {
 		switch err {
 		case nil:
 		case context.Canceled:
+			r.logger.Debug("stopping dial routine")
 			return
 		default:
 			r.logger.Error("failed to find next peer to dial", "err", err)
@@ -473,6 +474,7 @@ func (r *Router) evictPeers() {
 		switch err {
 		case nil:
 		case context.Canceled:
+			r.logger.Debug("stopping evict routine")
 			return
 		default:
 			r.logger.Error("failed to find next peer to evict", "err", err)
