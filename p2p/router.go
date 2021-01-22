@@ -240,6 +240,8 @@ func (r *Router) acceptPeers(transport Transport) {
 		// FIXME: We may need transports to enforce some sort of rate limiting
 		// here (e.g. by IP address), or alternatively have PeerManager.Accepted()
 		// do it for us.
+		//
+		// FIXME: We should cancel the context when r.stopCh is closed.
 		conn, err := transport.Accept(context.Background())
 		switch err {
 		case nil:
@@ -285,25 +287,25 @@ func (r *Router) acceptPeers(transport Transport) {
 
 // dialPeers maintains outbound connections to peers.
 func (r *Router) dialPeers() {
-	for {
+	// Cancel PeerManager.DialNext() calls when router is stopped.
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
 		select {
 		case <-r.stopCh:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+
+	for {
+		peerID, address, err := r.peerManager.DialNext(ctx)
+		switch err {
+		case nil:
+		case context.Canceled:
 			return
 		default:
-		}
-
-		peerID, address, err := r.peerManager.DialNext()
-		if err != nil {
 			r.logger.Error("failed to find next peer to dial", "err", err)
 			return
-		} else if peerID == "" {
-			r.logger.Debug("no eligible peers, sleeping")
-			select {
-			case <-time.After(time.Second):
-				continue
-			case <-r.stopCh:
-				return
-			}
 		}
 
 		go func() {

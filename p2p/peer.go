@@ -253,7 +253,10 @@ const (
 // an incoming connection was briefly accepted and disconnected while we were
 // also dialing.
 type PeerManager struct {
-	options PeerManagerOptions
+	options     PeerManagerOptions
+	maybeDialCh chan struct{} // wakes up DialNext() on relevant peer changes
+	closeCh     chan struct{} // signal channel for Close()
+	closeOnce   sync.Once
 
 	mtx           sync.Mutex
 	store         *peerStore
@@ -321,6 +324,15 @@ func (o PeerManagerOptions) isPersistent(id NodeID) bool {
 func NewPeerManager(options PeerManagerOptions) *PeerManager {
 	return &PeerManager{
 		options: options,
+
+		// We use a buffer of size 1 for these trigger channels, with
+		// non-blocking sends. This ensures that if e.g. maybeDial() is called
+		// multiple times before the initial trigger is picked up we only
+		// process the trigger once.
+		//
+		// FIXME: This should maybe be a libs/sync type.
+		maybeDialCh: make(chan struct{}, 1),
+
 		// FIXME: Once the store persists data, we need to update existing
 		// peers in the store with any new information, e.g. changes to
 		// PersistentPeers configuration.
@@ -330,6 +342,14 @@ func NewPeerManager(options PeerManagerOptions) *PeerManager {
 		evicting:      map[NodeID]bool{},
 		subscriptions: map[*PeerUpdatesCh]*PeerUpdatesCh{},
 	}
+}
+
+// Close closes the peer manager, releasing resources allocated with it
+// (specifically any running goroutines).
+func (m *PeerManager) Close() {
+	m.closeOnce.Do(func() {
+		close(m.closeCh)
+	})
 }
 
 // Add adds a peer to the manager, given as an address. If the peer already
@@ -352,7 +372,12 @@ func (m *PeerManager) Add(address PeerAddress) error {
 		}
 	}
 	peer.AddAddress(address)
-	return m.store.Set(peer)
+	err = m.store.Set(peer)
+	if err != nil {
+		return err
+	}
+	m.maybeDial()
+	return nil
 }
 
 // Subscribe subscribes to peer updates. The caller must consume the peer
@@ -398,19 +423,33 @@ func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
 }
 
 // DialNext finds an appropriate peer address to dial, and marks it as dialing.
-// The peer will not be returned again until Dialed() or DialFailed() is called
-// for the peer and it is no longer connected. Returns an empty ID if no
-// appropriate peers are available, or if all connection slots are full.
-//
-// We allow dialing MaxConnected+MaxConnectedUpgrade peers. Including
-// MaxConnectedUpgrade allows us to dial additional peers beyond MaxConnected if
-// they have a higher score than any other connected or dialing peer. If we are
-// successful in dialing, and thus have more than MaxConnected connected peers,
-// the lower-scored peer will be evicted via EvictNext().
-func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
+// If no peer is found, or all connection slots are full, it blocks until one
+// becomes available. The caller must call Dialed() or DialFailed() for the
+// returned peer. The context can be used to cancel the call.
+func (m *PeerManager) DialNext(ctx context.Context) (NodeID, PeerAddress, error) {
+	for {
+		id, address, err := m.TryDialNext()
+		if err != nil || id != "" {
+			return id, address, err
+		}
+		select {
+		case <-ctx.Done():
+			return "", PeerAddress{}, ctx.Err()
+		case <-m.maybeDialCh:
+		}
+	}
+}
+
+// TryDialNext is equivalent to DialNext(), but immediately returns an empty
+// peer ID if no peers or connection slots are available.
+func (m *PeerManager) TryDialNext() (NodeID, PeerAddress, error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
+	// We allow dialing MaxConnected+MaxConnectedUpgrade peers. Including
+	// MaxConnectedUpgrade allows us to probe additional peers that have a
+	// higher score than a connected peer, and if successful evict the
+	// lower-scored peer via EvictNext().
 	if m.options.MaxConnected > 0 &&
 		len(m.connected)+len(m.dialing) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
 		return "", PeerAddress{}, nil
@@ -459,6 +498,19 @@ func (m *PeerManager) DialNext() (NodeID, PeerAddress, error) {
 	return "", PeerAddress{}, nil
 }
 
+// maybeDial is used to notify DialNext about changes that *may* cause new
+// peers to become eligible for dialing, such as peer disconnections and
+// retry timeouts.
+func (m *PeerManager) maybeDial() {
+	// The channel has a buffer-size of 1. A non-blocking send ensures
+	// that we only queue up a maximum of 1 trigger between each
+	// DialNext() invocation.
+	select {
+	case m.maybeDialCh <- struct{}{}:
+	default:
+	}
+}
+
 // retryDelay calculates a dial retry delay using exponential backoff, based on
 // retry settings in PeerManagerOptions. If MinRetryTime is 0, this returns
 // MaxInt64 (i.e. an infinite retry delay, effectively disabling retries).
@@ -497,11 +549,36 @@ func (m *PeerManager) DialFailed(peerID NodeID, address PeerAddress) error {
 	if err != nil || peer == nil { // Peer may have been removed while dialing, ignore.
 		return err
 	}
-	if addressInfo := peer.LookupAddressInfo(address); addressInfo != nil {
-		addressInfo.LastDialFailure = time.Now().UTC()
-		addressInfo.DialFailures++
-		return m.store.Set(peer)
+	addressInfo := peer.LookupAddressInfo(address)
+	if addressInfo == nil {
+		return nil // Assume the address has been removed, ignore.
 	}
+	addressInfo.LastDialFailure = time.Now().UTC()
+	addressInfo.DialFailures++
+	if err = m.store.Set(peer); err != nil {
+		return err
+	}
+
+	// We spawn a goroutine that notifies DialNext() again when the retry
+	// timeout has elapsed, so that we can consider dialing it again.
+	//
+	// FIXME: We need to calculate the retry delay outside of the goroutine,
+	// since the arguments are currently pointers to structs shared in the
+	// peerStore. The peerStore should probably return struct copies instead,
+	// to avoid these sorts of issues.
+	if retryDelay := m.retryDelay(peer, addressInfo.DialFailures); retryDelay != time.Duration(math.MaxInt64) {
+		go func() {
+			timer := time.NewTimer(retryDelay)
+			defer timer.Stop()
+			select {
+			case <-timer.C:
+				m.maybeDial()
+			case <-m.closeCh:
+			}
+		}()
+	}
+
+	m.maybeDial()
 	return nil
 }
 
@@ -606,8 +683,7 @@ func (m *PeerManager) Ready(peerID NodeID) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	connected := m.connected[peerID]
-	if connected {
+	if m.connected[peerID] {
 		m.broadcast(PeerUpdate{
 			PeerID: peerID,
 			Status: PeerStatusUp,
@@ -627,6 +703,7 @@ func (m *PeerManager) Disconnected(peerID NodeID) error {
 		PeerID: peerID,
 		Status: PeerStatusDown,
 	})
+	m.maybeDial()
 	return nil
 }
 
