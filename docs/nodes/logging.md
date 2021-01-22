@@ -11,6 +11,10 @@ Structured logging adds detail to logs and allows the node operator to better id
 
 There are three log levels, `info`, `debug` and `error`. These can be configured either through the command line via  `tendermint start --log-level ""` or within the `config.toml` file.
 
+- `info` Info represents an informational message. It is used to show that modules have started, stopped and how they are functioning.
+- `debug` Debug is used to trace where a problem is coming from.
+- `error` Error represents something that has gone wrong. An error log can represent a potential problem that can lead to a node halt. 
+
 ```toml
 # Output level for logging, including package level options
 log-level = "main:info,state:info,statesync:info,*:error"
