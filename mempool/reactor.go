@@ -360,7 +360,7 @@ func (r *Reactor) broadcastTxRoutine(peerID p2p.NodeID, closer *tmsync.Closer) {
 			height, err := r.peerMgr.GetHeight(peerID)
 			if err != nil {
 				r.Logger.Error("failed to get peer height", "err", err)
-			} else if height < memTx.Height()-1 {
+			} else if height > 0 && height < memTx.Height()-1 {
 				// allow for a lag of one block
 				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 				continue
