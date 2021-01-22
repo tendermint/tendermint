@@ -14,8 +14,47 @@ module.exports = {
     docsRepo: "tendermint/tendermint",
     editLinks: true,
     docsDir: "docs",
-    logo: "/logo.svg",
     label: "core",
+    topbar: {
+      banner: false
+    },
+    versions: [
+      {
+        "label": "v0.32",
+        "key": "v0.32"
+      },
+      {
+        "label": "v0.33",
+        "key": "v0.33"
+      },
+      {
+        "label": "v0.34",
+        "key": "v0.34"
+      },
+      {
+        "label": "master",
+        "key": "master"
+      }
+    ],
+    sidebar: {
+      auto: true,
+      nav: [
+        {
+          title: 'Resources',
+          children: [
+            {
+              title: 'Developer Sessions',
+              path: '/DEV_SESSIONS.html'
+            },
+            {
+              title: 'RPC',
+              path: 'https://docs.tendermint.com/master/rpc/',
+              static: true
+            },
+          ]
+        }
+      ]
+    },
     gutter: {
       title: "Help & Support",
       editLink: true,
@@ -32,7 +71,9 @@ module.exports = {
       }
     },
     footer: {
-      questionsText: "Chat with Cosmos developers in [Discord](https://discordapp.com/channels/669268347736686612) or reach out on the [SDK Developer Forum](https://forum.cosmos.network/c/tendermint) to learn more.",
+      question: {
+        text: 'Chat with Tendermint developers in <a href=\'https://discord.gg/W8trcGV\' target=\'_blank\'>Discord</a> or reach out on the <a href=\'https://forum.cosmos.network/c/tendermint\' target=\'_blank\'>Tendermint Forum</a> to learn more.'
+      },
       logo: "/logo-bw.svg",
       textLink: {
         text: "tendermint.com",
@@ -112,22 +153,6 @@ module.exports = {
         }
       ]
     },
-    sidebar: [
-      {
-        title: "Resources",
-        children: [
-          {
-            title: "Developer Sessions",
-            path: "/DEV_SESSIONS.html"
-          },
-          {
-            title: "RPC",
-            path: "/master/rpc/",
-            static: true
-          }
-        ]
-      }
-    ]
   },
   plugins: [
     [
