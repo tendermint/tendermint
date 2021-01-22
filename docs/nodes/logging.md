@@ -4,7 +4,7 @@ order: 7
 
 ## Logging
 
-Structured logging adds detail to logs and allows the node operator to better identify what they are looking for. Tendermint supports log levels on a global and per module basis. This allows the node operator to see only the information they need and the developer to hone in on specific changes they are working on. 
+Structured logging adds detail to logs and allows the node operator to better identify what they are looking for. Tendermint supports log levels on a global and per-module basis. This allows the node operator to see only the information they need and the developer to hone in on specific changes they are working on. 
 
 ## Configuring Log Levels
 
