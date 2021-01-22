@@ -85,7 +85,7 @@ When, `time.Now() > PotentialAmnesiaEvidence.timestamp + AmnesiaTrialPeriod`, ho
 *NOTE: Even before the evidence is proposed and committed, the off-chain process of gossiping valid evidence could be
  enough for honest nodes to recognize the fork and halt.*
 
-Other validators will vote <nil> if:
+Other validators will vote <nil\> if:
 
 - The Amnesia Evidence is not valid
 - The Amensia Evidence is not within the validators trial period i.e. too soon.
