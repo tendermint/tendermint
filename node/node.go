@@ -319,9 +319,16 @@ func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
 	return bytes.Equal(pubKey.Address(), addr)
 }
 
-func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
-	state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (*mempl.Reactor, *mempl.CListMempool) {
+func createMempoolReactor(
+	config *cfg.Config,
+	proxyApp proxy.AppConns,
+	state sm.State,
+	memplMetrics *mempl.Metrics,
+	peerMgr *p2p.PeerManager,
+	logger log.Logger,
+) (*p2p.ReactorShim, *mempl.Reactor, *mempl.CListMempool) {
 
+	logger = logger.With("module", "mempool")
 	mempool := mempl.NewCListMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
@@ -330,14 +337,24 @@ func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
 		mempl.WithPreCheck(sm.TxPreCheck(state)),
 		mempl.WithPostCheck(sm.TxPostCheck(state)),
 	)
-	mempoolLogger := logger.With("module", "mempool")
-	mempoolReactor := mempl.NewReactor(config.Mempool, mempool)
-	mempoolReactor.SetLogger(mempoolLogger)
+
+	mempool.SetLogger(logger)
+
+	reactorShim := p2p.NewReactorShim(logger, "MempoolShim", mempl.GetChannelShims(config.Mempool))
+	reactor := mempl.NewReactor(
+		logger,
+		config.Mempool,
+		peerMgr,
+		mempool,
+		reactorShim.GetChannel(mempl.MempoolChannel),
+		reactorShim.PeerUpdates,
+	)
 
 	if config.Consensus.WaitForTxs() {
 		mempool.EnableTxsAvailable()
 	}
-	return mempoolReactor, mempool
+
+	return reactorShim, reactor, mempool
 }
 
 func createEvidenceReactor(
@@ -513,7 +530,7 @@ func createSwitch(config *cfg.Config,
 	transport p2p.Transport,
 	p2pMetrics *p2p.Metrics,
 	peerFilters []p2p.PeerFilterFunc,
-	mempoolReactor *mempl.Reactor,
+	mempoolReactor *p2p.ReactorShim,
 	bcReactor p2p.Reactor,
 	stateSyncReactor *p2p.ReactorShim,
 	consensusReactor *cs.Reactor,
@@ -744,10 +761,11 @@ func NewNode(config *cfg.Config,
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 
-	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
+	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
+	peerMgr := p2p.NewPeerManager(p2p.PeerManagerOptions{})
 
-	// Make MempoolReactor
-	mempoolReactor, mempool := createMempoolAndMempoolReactor(config, proxyApp, state, memplMetrics, logger)
+	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
+	mpReactorShim, mpReactor, mempool := createMempoolReactor(config, proxyApp, state, memplMetrics, peerMgr, logger)
 
 	evReactorShim, evReactor, evPool, err := createEvidenceReactor(config, dbProvider, stateDB, blockStore, logger)
 	if err != nil {
@@ -819,7 +837,7 @@ func NewNode(config *cfg.Config,
 	p2pLogger := logger.With("module", "p2p")
 	transport, peerFilters := createTransport(p2pLogger, config, nodeInfo, nodeKey, proxyApp)
 	sw := createSwitch(
-		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactorForSwitch,
+		config, transport, p2pMetrics, peerFilters, mpReactorShim, bcReactorForSwitch,
 		stateSyncReactorShim, csReactor, evReactorShim, nodeInfo, nodeKey, p2pLogger,
 	)
 
@@ -876,7 +894,7 @@ func NewNode(config *cfg.Config,
 		stateStore:       stateStore,
 		blockStore:       blockStore,
 		bcReactor:        bcReactor,
-		mempoolReactor:   mempoolReactor,
+		mempoolReactor:   mpReactor,
 		mempool:          mempool,
 		consensusState:   csState,
 		consensusReactor: csReactor,
@@ -964,6 +982,11 @@ func (n *Node) OnStart() error {
 		return err
 	}
 
+	// Start the real mempool reactor separately since the switch uses the shim.
+	if err := n.mempoolReactor.Start(); err != nil {
+		return err
+	}
+
 	// Start the real evidence reactor separately since the switch uses the shim.
 	if err := n.evidenceReactor.Start(); err != nil {
 		return err
@@ -1020,6 +1043,11 @@ func (n *Node) OnStop() {
 	// Stop the real state sync reactor separately since the switch uses the shim.
 	if err := n.stateSyncReactor.Stop(); err != nil {
 		n.Logger.Error("failed to stop the state sync reactor", "err", err)
+	}
+
+	// Stop the real mempool reactor separately since the switch uses the shim.
+	if err := n.mempoolReactor.Stop(); err != nil {
+		n.Logger.Error("failed to stop the mempool reactor", "err", err)
 	}
 
 	// Stop the real evidence reactor separately since the switch uses the shim.
@@ -1352,7 +1380,7 @@ func makeNodeInfo(
 			cs.DataChannel,
 			cs.VoteChannel,
 			cs.VoteSetBitsChannel,
-			mempl.MempoolChannel,
+			byte(mempl.MempoolChannel),
 			byte(evidence.EvidenceChannel),
 			byte(statesync.SnapshotChannel),
 			byte(statesync.ChunkChannel),
