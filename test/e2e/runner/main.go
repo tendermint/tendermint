@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
@@ -24,6 +25,7 @@ type CLI struct {
 	root     *cobra.Command
 	testnet  *e2e.Testnet
 	preserve bool
+	logLevel string
 }
 
 // NewCLI sets up the CLI.
@@ -48,6 +50,12 @@ func NewCLI() *CLI {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			logLevel, err := cmd.Flags().GetString("log-level")
+			if err != nil {
+				return err
+			}
+			cli.testnet.LogLevel(logLevel)
+
 			if err := Cleanup(cli.testnet); err != nil {
 				return err
 			}
@@ -116,13 +124,25 @@ func NewCLI() *CLI {
 	cli.root.Flags().BoolVarP(&cli.preserve, "preserve", "p", false,
 		"Preserves the running of the test net after tests are completed")
 
-	cli.root.AddCommand(&cobra.Command{
+	cli.root.Flags().StringVarP(&cli.logLevel, "log-level", "l", config.DefaultPackageLogLevels(), "Sets the log level of the test net")
+
+	setupCmd := &cobra.Command{
 		Use:   "setup",
 		Short: "Generates the testnet directory and configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			logLevel, err := cmd.Flags().GetString("log-level")
+			if err != nil {
+				return err
+			}
+			cli.testnet.LogLevel(logLevel)
 			return Setup(cli.testnet)
 		},
-	})
+	}
+
+	// add log level flag to setupCmd
+	setupCmd.Flags().AddFlag(cli.root.Flags().Lookup("log-level"))
+
+	cli.root.AddCommand(setupCmd)
 
 	cli.root.AddCommand(&cobra.Command{
 		Use:   "start",
@@ -136,7 +156,7 @@ func NewCLI() *CLI {
 				return err
 			}
 			return Start(cli.testnet)
-		},
+		}, 
 	})
 
 	cli.root.AddCommand(&cobra.Command{

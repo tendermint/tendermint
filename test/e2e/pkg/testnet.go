@@ -84,6 +84,7 @@ type Node struct {
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
 	Misbehaviors     map[int64]string
+	LogLevel         string
 }
 
 // LoadTestnet loads a testnet from a manifest file, using the filename to
@@ -408,6 +409,15 @@ func (t Testnet) RandomNode() *Node {
 		node := t.Nodes[rand.Intn(len(t.Nodes))]
 		if node.Mode != ModeSeed {
 			return node
+		}
+	}
+}
+
+// LogLevel sets the log level of any nodes that aren't already set
+func (t Testnet) LogLevel(logLevel string) {
+	for _, node := range t.Nodes {
+		if node.LogLevel == "" {
+			node.LogLevel = logLevel
 		}
 	}
 }

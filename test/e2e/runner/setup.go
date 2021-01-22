@@ -122,17 +122,24 @@ func Setup(testnet *e2e.Testnet) error {
 func MakeDockerCompose(testnet *e2e.Testnet) ([]byte, error) {
 	// Must use version 2 Docker Compose format, to support IPv6.
 	tmpl, err := template.New("docker-compose").Funcs(template.FuncMap{
-		"misbehaviorsToString": func(misbehaviors map[int64]string) string {
-			str := ""
+		"startCommands": func(misbehaviors map[int64]string, logLevel string) []string {
+			command := []string{"start"}
+			misbehaviorString := ""
 			for height, misbehavior := range misbehaviors {
 				// after the first behavior set, a comma must be prepended
-				if str != "" {
-					str += ","
+				if misbehaviorString != "" {
+					misbehaviorString += ","
 				}
 				heightString := strconv.Itoa(int(height))
-				str += misbehavior + "," + heightString
+				misbehaviorString += misbehavior + "," + heightString
 			}
-			return str
+			if misbehaviorString != "" {
+				command = append(command, "--misbehaviors", misbehaviorString)
+			}
+			if (logLevel != "") {
+				command = append(command, "--log-level", logLevel)
+			}	
+			return command
 		},
 	}).Parse(`version: '2.4'
 
@@ -160,8 +167,8 @@ services:
     entrypoint: /usr/bin/entrypoint-builtin
 {{- else if .Misbehaviors }}
     entrypoint: /usr/bin/entrypoint-maverick
-    command: ["start", "--misbehaviors", "{{ misbehaviorsToString .Misbehaviors }}"]
 {{- end }}
+	command: {{ startCommands .Misbehaviors .LogLevel }}
     init: true
     ports:
     - 26656

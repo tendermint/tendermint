@@ -130,6 +130,11 @@ type ManifestNode struct {
 	// For more information, look at the readme in the maverick folder.
 	// A list of all behaviors can be found in ../maverick/consensus/behavior.go
 	Misbehaviors map[string]string `toml:"misbehaviors"`
+
+	// Log level sets the log level of the specific node i.e. "consensus:info,*:error".
+	// This is helpful when debugging a specific problem. Note that setting this
+	// will override any log level flag.
+	LogLevel string `toml:"log_level"`
 }
 
 // Save saves the testnet manifest to a file.
