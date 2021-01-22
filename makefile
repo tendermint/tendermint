@@ -51,8 +51,8 @@ gen_certs: clean_certs
 	certstrap init --common-name "tendermint.com" --passphrase ""
 	certstrap request-cert --common-name "remotedb" -ip "127.0.0.1" --passphrase ""
 	certstrap sign "remotedb" --CA "tendermint.com" --passphrase ""
-	mv out/remotedb.crt db/remotedb/test.crt
-	mv out/remotedb.key db/remotedb/test.key
+	mv out/remotedb.crt remotedb/test.crt
+	mv out/remotedb.key remotedb/test.key
 	rm -rf out
 
 clean_certs:
