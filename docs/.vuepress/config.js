@@ -1,5 +1,6 @@
 module.exports = {
-  theme: "cosmos",
+  theme: 'cosmos',
+  title: 'Tendermint Core',
   // locales: {
   //   "/": {
   //     lang: "en-US"
@@ -10,136 +11,161 @@ module.exports = {
   // },
   base: process.env.VUEPRESS_BASE,
   themeConfig: {
-    docsRepo: "tendermint/tendermint",
+    repo: 'tendermint/tendermint',
+    docsRepo: 'tendermint/tendermint',
+    docsDir: 'docs',
     editLinks: true,
-    docsDir: "docs",
-    logo: "/logo.svg",
-    label: "core",
-    gutter: {
-      title: "Help & Support",
-      editLink: true,
-      chat: {
-        title: "Riot Chat",
-        text: "Chat with Tendermint developers on Riot Chat.",
-        url: "https://riot.im/app/#/room/#tendermint:matrix.org",
-        bg: "#222"
-      },
-      forum: {
-        title: "Tendermint Forum",
-        text: "Join the Tendermint forum to learn more",
-        url: "https://forum.cosmos.network/c/tendermint",
-        bg: "#0B7E0B",
-        logo: "tendermint"
-      },
-      github: {
-        title: "Found an Issue?",
-        text: "Help us improve this page by suggesting edits on GitHub."
-      }
+    label: 'core',
+    algolia: {
+      id: "BH4D9OD16A",
+      key: "59f0e2deb984aa9cdf2b3a5fd24ac501",
+      index: "tendermint"
     },
-    footer: {
-      logo: "/logo-bw.svg",
-      textLink: {
-        text: "tendermint.com",
-        url: "https://tendermint.com"
+    versions: [
+      {
+        "label": "v0.32",
+        "key": "v0.32"
       },
-      services: [
+      {
+        "label": "v0.33",
+        "key": "v0.33"
+      },
+      {
+        "label": "v0.34",
+        "key": "v0.34"
+      },
+      {
+        "label": "master",
+        "key": "master"
+      }
+    ],
+    topbar: {
+      banner: false,
+    },
+    sidebar: {
+      auto: true,
+      nav: [
         {
-          service: "medium",
-          url: "https://medium.com/@tendermint"
-        },
-        {
-          service: "twitter",
-          url: "https://twitter.com/tendermint_team"
-        },
-        {
-          service: "linkedin",
-          url: "https://www.linkedin.com/company/tendermint/"
-        },
-        {
-          service: "reddit",
-          url: "https://reddit.com/r/cosmosnetwork"
-        },
-        {
-          service: "telegram",
-          url: "https://t.me/cosmosproject"
-        },
-        {
-          service: "youtube",
-          url: "https://www.youtube.com/c/CosmosProject"
-        }
-      ],
-      smallprint:
-        "The development of the Tendermint project is led primarily by Tendermint Inc., the for-profit entity which also maintains this website. Funding for this development comes primarily from the Interchain Foundation, a Swiss non-profit.",
-      links: [
-        {
-          title: "Documentation",
+          title: 'Resources',
           children: [
             {
-              title: "Cosmos SDK",
-              url: "https://cosmos.network/docs"
+              title: 'Developer Sessions',
+              path: '/DEV_SESSIONS.html'
             },
             {
-              title: "Cosmos Hub",
-              url: "https://hub.cosmos.network/"
-            }
-          ]
-        },
-        {
-          title: "Community",
-          children: [
-            {
-              title: "Tendermint blog",
-              url: "https://medium.com/@tendermint"
+              title: 'RPC',
+              path: 'https://docs.tendermint.com/master/rpc/',
+              static: true
             },
-            {
-              title: "Forum",
-              url: "https://forum.cosmos.network/c/tendermint"
-            },
-            {
-              title: "Chat",
-              url: "https://riot.im/app/#/room/#tendermint:matrix.org"
-            }
-          ]
-        },
-        {
-          title: "Contributing",
-          children: [
-            {
-              title: "Contributing to the docs",
-              url: "https://github.com/tendermint/tendermint"
-            },
-            {
-              title: "Source code on GitHub",
-              url: "https://github.com/tendermint/tendermint"
-            },
-            {
-              title: "Careers at Tendermint",
-              url: "https://tendermint.com/careers"
-            }
           ]
         }
       ]
     },
-    sidebar: [
+    gutter: {
+      title: 'Help & Support',
+      editLink: true,
+      forum: {
+        title: 'Tendermint Forum',
+        text: 'Join the Tendermint forum to learn more',
+        url: 'https://forum.cosmos.network/c/tendermint',
+        bg: '#0B7E0B',
+        logo: 'tendermint'
+      },
+      github: {
+        title: 'Found an Issue?',
+        text: 'Help us improve this page by suggesting edits on GitHub.'
+      }
+    },
+    footer: {
+      question: {
+        text: 'Chat with Tendermint developers in <a href=\'https://discord.gg/vcExX9T\' target=\'_blank\'>Discord</a> or reach out on the <a href=\'https://forum.cosmos.network/c/tendermint\' target=\'_blank\'>Tendermint Forum</a> to learn more.'
+      },
+      logo: '/logo-bw.svg',
+      textLink: {
+        text: 'tendermint.com',
+        url: 'https://tendermint.com'
+      },
+      services: [
+        {
+          service: 'medium',
+          url: 'https://medium.com/@tendermint'
+        },
+        {
+          service: 'twitter',
+          url: 'https://twitter.com/tendermint_team'
+        },
+        {
+          service: 'linkedin',
+          url: 'https://www.linkedin.com/company/tendermint/'
+        },
+        {
+          service: 'reddit',
+          url: 'https://reddit.com/r/cosmosnetwork'
+        },
+        {
+          service: 'telegram',
+          url: 'https://t.me/cosmosproject'
+        },
+        {
+          service: 'youtube',
+          url: 'https://www.youtube.com/c/CosmosProject'
+        }
+      ],
+      smallprint:
+        'The development of Tendermint Core is led primarily by [Interchain GmbH](https://interchain.berlin/). Funding for this development comes primarily from the Interchain Foundation, a Swiss non-profit. The Tendermint trademark is owned by Tendermint Inc, the for-profit entity that also maintains this website.',
+      links: [
+        {
+          title: 'Documentation',
+          children: [
+            {
+              title: 'Cosmos SDK',
+              url: 'https://docs.cosmos.network'
+            },
+            {
+              title: 'Cosmos Hub',
+              url: 'https://hub.cosmos.network'
+            }
+          ]
+        },
+        {
+          title: 'Community',
+          children: [
+            {
+              title: 'Tendermint blog',
+              url: 'https://medium.com/@tendermint'
+            },
+            {
+              title: 'Forum',
+              url: 'https://forum.cosmos.network/c/tendermint'
+            }
+          ]
+        },
+        {
+          title: 'Contributing',
+          children: [
+            {
+              title: 'Contributing to the docs',
+              url: 'https://github.com/tendermint/tendermint'
+            },
+            {
+              title: 'Source code on GitHub',
+              url: 'https://github.com/tendermint/tendermint'
+            },
+            {
+              title: 'Careers at Tendermint',
+              url: 'https://tendermint.com/careers'
+            }
+          ]
+        }
+      ]
+    }
+  },
+  plugins: [
+    [
+      '@vuepress/google-analytics',
       {
-        title: "Resources",
-        children: [
-          {
-            title: "Developer Sessions",
-            path: "/DEV_SESSIONS.html"
-          },
-          {
-            title: "RPC",
-            path: "/rpc/",
-            static: true
-          }
-        ]
+        ga: 'UA-51029217-11'
       }
     ]
-  },
-  markdown: {
-    anchor: {
-      permalinkSymbol: ""
-    }
-  }
+  ]
 };
