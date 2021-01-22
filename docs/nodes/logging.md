@@ -2,9 +2,72 @@
 order: 7
 ---
 
-# How to read logs
+## Logging
 
-## Walkabout example
+Structured logging adds detail to logs and allows the node operator to better identify what they are looking for. Tendermint supports log levels on a global and per module basis. This allows the node operator to see only the information they need and the developer to hone in on specific changes they are working on. 
+
+## Configuring Log Levels
+
+
+There are three log levels, `info`, `debug` and `error`. These can be configured either through the command line via  `tendermint start --log-level ""` or within the `config.toml` file.
+
+```toml
+# Output level for logging, including package level options
+log-level = "info"
+```
+
+The default setting is a global `info` level. If you would like to set specific modules level log levels it can be done in the following format. 
+
+```toml
+# Output level for logging, including package level options
+log-level = "info,mempool:error"
+```
+
+or
+
+```sh
+tendermint start --log-level "info,mempool:error"
+```
+
+Here we are setting the mempool log level to `error`, but still retain the global info level. 
+
+## List of modules
+
+Here is the list of modules you may encounter in Tendermint's log and a
+little overview what they do.
+
+- `abci-client` As mentioned in [Application Development Guide](../app-dev/app-development.md), Tendermint acts as an ABCI
+  client with respect to the application and maintains 3 connections:
+  mempool, consensus and query. The code used by Tendermint Core can
+  be found [here](https://github.com/tendermint/tendermint/tree/master/abci/client).
+- `blockchain` Provides storage, pool (a group of peers), and reactor
+  for both storing and exchanging blocks between peers.
+- `consensus` The heart of Tendermint core, which is the
+  implementation of the consensus algorithm. Includes two
+  "submodules": `wal` (write-ahead logging) for ensuring data
+  integrity and `replay` to replay blocks and messages on recovery
+  from a crash.
+- `events` Simple event notification system. The list of events can be
+  found
+  [here](https://github.com/tendermint/tendermint/blob/master/types/events.go).
+  You can subscribe to them by calling `subscribe` RPC method. Refer
+  to [RPC docs](./rpc.md) for additional information.
+- `mempool` Mempool module handles all incoming transactions, whenever
+  they are coming from peers or the application.
+- `p2p` Provides an abstraction around peer-to-peer communication. For
+  more details, please check out the
+  [README](https://github.com/tendermint/tendermint/blob/master/p2p/README.md).
+- `rpc` [Tendermint's RPC](./rpc.md).
+- `rpc-server` RPC server. For implementation details, please read the
+  [doc.go](https://github.com/tendermint/tendermint/blob/master/rpc/jsonrpc/doc.go).
+- `state` Represents the latest state and execution submodule, which
+  executes blocks against the application.
+- `statesync` Provides a way to quickly sync a node with pruned history.
+- `types` A collection of the publicly exposed types and methods to
+  work with them.
+
+
+### Walkabout example
 
 We first create three connections (mempool, consensus and query) to the
 application (running `kvstore` locally in this case).
@@ -109,69 +172,3 @@ I[10-04|13:54:30.408] Executed block                               module=state 
 I[10-04|13:54:30.410] Committed state                              module=state height=91 txs=0 hash=E0FBAFBF6FCED8B9786DDFEB1A0D4FA2501BADAD
 I[10-04|13:54:30.410] Recheck txs                                  module=mempool numtxs=0 height=91
 ```
-
-## List of modules
-
-Here is the list of modules you may encounter in Tendermint's log and a
-little overview what they do.
-
-- `abci-client` As mentioned in [Application Development Guide](../app-dev/app-development.md), Tendermint acts as an ABCI
-  client with respect to the application and maintains 3 connections:
-  mempool, consensus and query. The code used by Tendermint Core can
-  be found [here](https://github.com/tendermint/tendermint/tree/master/abci/client).
-- `blockchain` Provides storage, pool (a group of peers), and reactor
-  for both storing and exchanging blocks between peers.
-- `consensus` The heart of Tendermint core, which is the
-  implementation of the consensus algorithm. Includes two
-  "submodules": `wal` (write-ahead logging) for ensuring data
-  integrity and `replay` to replay blocks and messages on recovery
-  from a crash.
-- `events` Simple event notification system. The list of events can be
-  found
-  [here](https://github.com/tendermint/tendermint/blob/master/types/events.go).
-  You can subscribe to them by calling `subscribe` RPC method. Refer
-  to [RPC docs](./rpc.md) for additional information.
-- `mempool` Mempool module handles all incoming transactions, whenever
-  they are coming from peers or the application.
-- `p2p` Provides an abstraction around peer-to-peer communication. For
-  more details, please check out the
-  [README](https://github.com/tendermint/tendermint/blob/master/p2p/README.md).
-- `rpc` [Tendermint's RPC](./rpc.md).
-- `rpc-server` RPC server. For implementation details, please read the
-  [doc.go](https://github.com/tendermint/tendermint/blob/master/rpc/jsonrpc/doc.go).
-- `state` Represents the latest state and execution submodule, which
-  executes blocks against the application.
-- `types` A collection of the publicly exposed types and methods to
-  work with them.
-
-## Configuring Log Levels
-
-Structured logging adds detail to logs and allows the node operator to better identify what they are looking for. Tendermint supports log levels on a global and per module basis. This allows the node operator to see only the information they need and the developer to hone in on specific changes they are working on. 
-
-There are three log levels, `info`, `debug` and `error`. These can be configured either through the command line via the `tendermint start` or within the `config.toml` file.
-
-```toml
-# Output level for logging, including package level options
-log-level = "info"
-```
-
-The default setting is a global `info` level. If you would like to set specific modules level log levels it can be done in the following format. 
-
-```toml
-# Output level for logging, including package level options
-log-level = "info,mempool:error"
-```
-Here we are setting the mempool log level to `error`, but still retain the global info level. 
-
-The various modules that can be defined are. 
-
-- blockchain
-- statesync
-- consensus
-- p2p
-- mempool
-- evidence
-- state
-- rpc
-
-<!-- todo: see what else is possible -->
