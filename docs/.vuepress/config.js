@@ -18,6 +18,24 @@ module.exports = {
     topbar: {
       banner: false
     },
+    versions: [
+      {
+        "label": "v0.32",
+        "key": "v0.32"
+      },
+      {
+        "label": "v0.33",
+        "key": "v0.33"
+      },
+      {
+        "label": "v0.34",
+        "key": "v0.34"
+      },
+      {
+        "label": "master",
+        "key": "master"
+      }
+    ],
     sidebar: {
       auto: true,
       nav: [
