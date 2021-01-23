@@ -394,10 +394,7 @@ func (m *PeerManager) Add(address PeerAddress) error {
 
 	peer, ok := m.store.Get(address.NodeID())
 	if !ok {
-		peer = peerInfo{
-			ID:         address.NodeID(),
-			Persistent: m.options.isPersistent(address.NodeID()),
-		}
+		peer = m.makePeerInfo(address.NodeID())
 	}
 	peer.AddAddress(address)
 	if err := m.store.Set(peer); err != nil {
@@ -405,6 +402,14 @@ func (m *PeerManager) Add(address PeerAddress) error {
 	}
 	m.wakeDial()
 	return nil
+}
+
+// makePeerInfo creates a peerInfo for a new peer.
+func (m *PeerManager) makePeerInfo(id NodeID) peerInfo {
+	return peerInfo{
+		ID:         id,
+		Persistent: m.options.isPersistent(id),
+	}
 }
 
 // Subscribe subscribes to peer updates. The caller must consume the peer
@@ -682,10 +687,7 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 
 	peer, ok := m.store.Get(peerID)
 	if !ok {
-		peer = peerInfo{
-			ID:         peerID,
-			Persistent: m.options.isPersistent(peerID),
-		}
+		peer = m.makePeerInfo(peerID)
 	}
 
 	// If we're already full (i.e. at MaxConnected), but we allow upgrades (and
@@ -894,10 +896,7 @@ func (m *PeerManager) SetHeight(peerID NodeID, height int64) error {
 
 	peer, ok := m.store.Get(peerID)
 	if !ok {
-		peer = peerInfo{
-			ID:         peerID,
-			Persistent: m.options.isPersistent(peerID),
-		}
+		peer = m.makePeerInfo(peerID)
 	}
 	peer.Height = height
 	return m.store.Set(peer)
