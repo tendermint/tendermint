@@ -350,7 +350,7 @@ func NewPeerManager(peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, er
 	if err != nil {
 		return nil, err
 	}
-	return &PeerManager{
+	peerManager := &PeerManager{
 		options: options,
 		closeCh: make(chan struct{}),
 
@@ -363,16 +363,33 @@ func NewPeerManager(peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, er
 		wakeDialCh:  make(chan struct{}, 1),
 		wakeEvictCh: make(chan struct{}, 1),
 
-		// FIXME: Once the store persists data, we need to update existing
-		// peers in the store with any new information, e.g. changes to
-		// PersistentPeers configuration.
 		store:         store,
 		dialing:       map[NodeID]bool{},
 		connected:     map[NodeID]bool{},
 		upgrading:     map[NodeID]NodeID{},
 		evicting:      map[NodeID]bool{},
 		subscriptions: map[*PeerUpdatesCh]*PeerUpdatesCh{},
-	}, nil
+	}
+	err = peerManager.configurePeers()
+	if err != nil {
+		return nil, err
+	}
+	return peerManager, nil
+}
+
+// configurePeers configures peers in the peer store with ephemeral runtime
+// configuration, e.g. setting peerInfo.Persistent based on
+// PeerManagerOptions.PersistentPeers.
+func (m *PeerManager) configurePeers() error {
+	for _, peerID := range m.options.PersistentPeers {
+		if peer, ok := m.store.Get(peerID); ok {
+			peer.Persistent = true
+			if err := m.store.Set(peer); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // Close closes the peer manager, releasing resources allocated with it
