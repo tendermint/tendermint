@@ -256,23 +256,19 @@ const (
 //
 // If all connection slots are full (at MaxConnections), we can use up to
 // MaxConnectionsUpgrade additional connections to probe any higher-scored
-// unconnected peers, and if we reach them we allow the connection and evict
-// lower-scored peers. We mark the lower-scored peer as upgrading[from]=to
-// only to make sure no other higher-scored peers can claim the same one
-// for an upgrade, but the lower-scored peer will not necessarily be the
-// one that is finally evicted (we don't really care specifically who
-// is evicted, and the peer set may have changed in the meanwhile anyway).
-// The flow is as follows:
-// - Accepted: if upgrade slots are available, mark as connected and rely on
-//   EvictNext to evict any lower-scored peer. If the connection is from a
-//   peer that we are also trying to upgrade via dialing, we allow it anyway
-//   and unmark upgrading[from]=to, letting Dialed error.
+// unconnected peers, and if we reach them (or they reach us) we allow the
+// connection and evict lower-scored peers. We mark the lower-scored peer as
+// upgrading[from]=to to make sure no other higher-scored peers can claim the
+// same one for an upgrade. The flow is as follows:
+// - Accepted: if upgrade is possible, mark upgrading[from]=to and connected.
 // - DialNext: if upgrade is possible, mark upgrading[from]=to and dialing.
 // - DialFailed: unmark upgrading[from]=to and dialing.
-// - Dialed: unmark dialing and upgrading[from]=to (but don't evict), mark
-//   as connected.
-// - EvictNext: return an evictable peer (not necessarily the one we marked
-//   for upgrading above).
+// - Dialed: unmark dialing, mark as connected.
+// - EvictNext: unmark upgrading[from]=to, then if over MaxConnections
+//   either the upgraded peer or an even lower-scored one (if found)
+//   is marked as evicting and returned.
+// - Disconnected: unmark connected and evicting, also upgrading[from]=to
+//   both from and to (in case either disconnected before eviction).
 type PeerManager struct {
 	options     PeerManagerOptions
 	wakeDialCh  chan struct{} // wakes up DialNext() on relevant peer changes
@@ -499,10 +495,7 @@ func (m *PeerManager) TryDialNext() (NodeID, PeerAddress, error) {
 			// but have peer upgrade capacity (as checked above), we need to
 			// make sure there exists an evictable peer of a lower score that we
 			// can replace. If so, we mark the lower-scored peer as upgrading so
-			// noone else can claim it. EvictNext() will evict a lower-scored
-			// peer later, but not necessarily the one we marked (we don't
-			// actually care who gets evicted in the end, and the peer set
-			// may change in the meanwhile).
+			// noone else can claim it, and EvictNext() will evict it later.
 			//
 			// If we don't find one, there is no point in trying additional
 			// peers, since they will all have the same or lower score than this
@@ -526,9 +519,8 @@ func (m *PeerManager) TryDialNext() (NodeID, PeerAddress, error) {
 // peers to become eligible for dialing, such as peer disconnections and
 // retry timeouts.
 func (m *PeerManager) wakeDial() {
-	// The channel has a buffer-size of 1. A non-blocking send ensures
-	// that we only queue up a maximum of 1 trigger between each
-	// DialNext() invocation.
+	// The channel has a 1-size buffer. A non-blocking send ensures
+	// we only queue up at most 1 trigger between each DialNext().
 	select {
 	case m.wakeDialCh <- struct{}{}:
 	default:
@@ -538,9 +530,8 @@ func (m *PeerManager) wakeDial() {
 // wakeEvict is used to notify EvictNext about changes that *may* cause
 // peers to become eligible for eviction, such as peer upgrades.
 func (m *PeerManager) wakeEvict() {
-	// The channel has a buffer-size of 1. A non-blocking send ensures
-	// that we only queue up a maximum of 1 trigger between each
-	// DialNext() invocation.
+	// The channel has a 1-size buffer. A non-blocking send ensures
+	// we only queue up at most 1 trigger between each EvictNext().
 	select {
 	case m.wakeEvictCh <- struct{}{}:
 	default:
@@ -582,8 +573,7 @@ func (m *PeerManager) DialFailed(peerID NodeID, address PeerAddress) error {
 	delete(m.dialing, peerID)
 	for from, to := range m.upgrading {
 		if to == peerID {
-			// If the failed peer was an attempted upgrade for a lower-scored
-			// peer, unmark the peer as upgrading.
+			// Unmark failed upgrade attempt.
 			delete(m.upgrading, from)
 		}
 	}
@@ -632,17 +622,6 @@ func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 	defer m.mtx.Unlock()
 
 	delete(m.dialing, peerID)
-	for from, to := range m.upgrading {
-		if to == peerID {
-			// If the dialed peer was an upgrade for a lower-scored peer, unmark
-			// the peer as upgrading. Note that we don't actually tell
-			// EvictNext() to evict this peer specifically, any lower-scored
-			// peer is fine to evict (and there may have been changes in the
-			// peer set in the meanwhile). The upgrading mark is just to prevent
-			// multiple peers claiming the same lower-scored peer for upgrading.
-			delete(m.upgrading, from)
-		}
-	}
 
 	if m.connected[peerID] {
 		return fmt.Errorf("peer %v is already connected", peerID)
@@ -713,16 +692,17 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 	// If we're already full (i.e. at MaxConnected), but we allow upgrades (and
 	// we know from the check above that we have upgrade capacity), then we can
 	// look for any lower-scored evictable peer, and if found we can accept this
-	// connection anyway and let EvictNext() evict a lower-scored peer for us
-	// (not necessarily the one we found).
+	// connection anyway and let EvictNext() evict a lower-scored peer for us.
 	if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
 		ranked, err := m.store.Ranked()
 		if err != nil {
 			return err
 		}
-		if m.findUpgradeCandidate(peer, ranked) == "" {
+		upgradePeer := m.findUpgradeCandidate(peer, ranked)
+		if upgradePeer == "" {
 			return fmt.Errorf("already connected to maximum number of peers")
 		}
+		m.upgrading[upgradePeer] = peerID
 	}
 
 	peer.LastConnected = time.Now().UTC()
@@ -756,6 +736,15 @@ func (m *PeerManager) Ready(peerID NodeID) {
 func (m *PeerManager) Disconnected(peerID NodeID) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
+
+	// After upgrading to a peer, it's possible for that peer to disconnect
+	// before EvictNext() gets around to evicting the lower-scored peer. To
+	// avoid stale upgrade markers, we remove it here.
+	for from, to := range m.upgrading {
+		if to == peerID {
+			delete(m.upgrading, from)
+		}
+	}
 
 	delete(m.connected, peerID)
 	delete(m.upgrading, peerID)
@@ -791,6 +780,22 @@ func (m *PeerManager) TryEvictNext() (NodeID, error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
+	// We first prune the upgrade list. All connection slots were full when the
+	// upgrades began, but we may have disconnected other peers in the meanwhile
+	// and thus don't have to evict the upgraded peers after all.
+	for from, to := range m.upgrading {
+		// Stop pruning when the upgrade slots are only for connections
+		// exceeding MaxConnected.
+		if m.options.MaxConnected == 0 ||
+			len(m.upgrading) <= len(m.connected)-len(m.evicting)-int(m.options.MaxConnected) {
+			break
+		}
+		if m.connected[to] {
+			delete(m.upgrading, from)
+		}
+	}
+
+	// If we're below capacity, we don't need to evict anything.
 	if m.options.MaxConnected == 0 ||
 		len(m.connected)-len(m.evicting) <= int(m.options.MaxConnected) {
 		return "", nil
@@ -800,6 +805,30 @@ func (m *PeerManager) TryEvictNext() (NodeID, error) {
 	if err != nil {
 		return "", err
 	}
+
+	// Look for any upgraded peers that we can evict.
+	for from, to := range m.upgrading {
+		if m.connected[to] {
+			delete(m.upgrading, from)
+			// We may have connected to even lower-scored peers that we can
+			// evict since we started upgrading this one, in which case we can
+			// evict one of those.
+			fromPeer, err := m.store.Get(from)
+			if err != nil {
+				return "", err
+			} else if fromPeer == nil {
+				continue
+			} else if evictPeer := m.findUpgradeCandidate(fromPeer, ranked); evictPeer != "" {
+				m.evicting[evictPeer] = true
+				return evictPeer, nil
+			} else {
+				m.evicting[from] = true
+				return from, nil
+			}
+		}
+	}
+
+	// If we didn't find any upgraded peers to evict, we just pick a low-ranked one.
 	for i := len(ranked) - 1; i >= 0; i-- {
 		peer := ranked[i]
 		if m.connected[peer.ID] && !m.evicting[peer.ID] {
@@ -807,6 +836,7 @@ func (m *PeerManager) TryEvictNext() (NodeID, error) {
 			return peer.ID, nil
 		}
 	}
+
 	return "", nil
 }
 
