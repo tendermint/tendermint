@@ -973,7 +973,7 @@ func (s *peerStore) Ranked() ([]*peerInfo, error) {
 // peerInfo contains peer information stored in a peerStore.
 type peerInfo struct {
 	ID            NodeID
-	AddressInfo   []*addressInfo
+	AddressInfo   []*peerAddressInfo
 	Persistent    bool
 	Height        int64
 	LastConnected time.Time
@@ -995,7 +995,7 @@ func (p *peerInfo) AddAddress(address PeerAddress) bool {
 	if p.LookupAddressInfo(address) != nil {
 		return false
 	}
-	p.AddressInfo = append(p.AddressInfo, &addressInfo{Address: address})
+	p.AddressInfo = append(p.AddressInfo, &peerAddressInfo{Address: address})
 	return true
 }
 
@@ -1003,7 +1003,7 @@ func (p *peerInfo) AddAddress(address PeerAddress) bool {
 //
 // FIXME: This could just be a map, as long as PeerAddress is normalized
 // on construction.
-func (p *peerInfo) LookupAddressInfo(address PeerAddress) *addressInfo {
+func (p *peerInfo) LookupAddressInfo(address PeerAddress) *peerAddressInfo {
 	// We just do a linear search for now.
 	addressString := address.String()
 	for _, info := range p.AddressInfo {
@@ -1024,8 +1024,8 @@ func (p *peerInfo) Score() PeerScore {
 	return score
 }
 
-// addressInfo contains information and statistics about an address.
-type addressInfo struct {
+// peerAddressInfo contains information and statistics about a peer address.
+type peerAddressInfo struct {
 	Address         PeerAddress
 	LastDialSuccess time.Time
 	LastDialFailure time.Time
@@ -1033,7 +1033,7 @@ type addressInfo struct {
 }
 
 // Copy returns a copy of the address info.
-func (a *addressInfo) Copy() addressInfo {
+func (a *peerAddressInfo) Copy() peerAddressInfo {
 	return *a
 }
 
