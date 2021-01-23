@@ -153,17 +153,14 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 	if endpoint.Protocol != MemoryProtocol {
 		return nil, fmt.Errorf("invalid protocol %q", endpoint.Protocol)
 	}
-	if endpoint.Path == "" {
-		return nil, errors.New("no path")
-	}
 	if endpoint.PeerID == "" {
 		return nil, errors.New("no peer ID")
 	}
 	t.logger.Info("dialing peer", "remote", endpoint)
 
-	peerTransport := t.network.GetTransport(NodeID(endpoint.Path))
+	peerTransport := t.network.GetTransport(NodeID(endpoint.PeerID))
 	if peerTransport == nil {
-		return nil, fmt.Errorf("unknown peer %q", endpoint.Path)
+		return nil, fmt.Errorf("unknown peer %q", endpoint.PeerID)
 	}
 	inCh := make(chan memoryMessage, 1)
 	outCh := make(chan memoryMessage, 1)
@@ -241,7 +238,6 @@ func (t *MemoryTransport) Endpoints() []Endpoint {
 		return []Endpoint{{
 			Protocol: MemoryProtocol,
 			PeerID:   t.nodeInfo.NodeID,
-			Path:     string(t.nodeInfo.NodeID),
 		}}
 	}
 }
@@ -365,7 +361,6 @@ func (c *MemoryConnection) LocalEndpoint() Endpoint {
 	return Endpoint{
 		PeerID:   c.local.nodeInfo.NodeID,
 		Protocol: MemoryProtocol,
-		Path:     string(c.local.nodeInfo.NodeID),
 	}
 }
 
@@ -374,7 +369,6 @@ func (c *MemoryConnection) RemoteEndpoint() Endpoint {
 	return Endpoint{
 		PeerID:   c.remote.nodeInfo.NodeID,
 		Protocol: MemoryProtocol,
-		Path:     string(c.remote.nodeInfo.NodeID),
 	}
 }
 
