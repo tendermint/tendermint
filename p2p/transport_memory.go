@@ -158,7 +158,7 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 	}
 	t.logger.Info("dialing peer", "remote", endpoint)
 
-	peerTransport := t.network.GetTransport(NodeID(endpoint.PeerID))
+	peerTransport := t.network.GetTransport(endpoint.PeerID)
 	if peerTransport == nil {
 		return nil, fmt.Errorf("unknown peer %q", endpoint.PeerID)
 	}
