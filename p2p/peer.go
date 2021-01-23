@@ -15,12 +15,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/cmap"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
+	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
 // PeerAddress is a peer address URL.
@@ -912,12 +915,46 @@ type peerStore struct {
 	peers map[NodeID]*peerInfo
 }
 
-// newPeerStore creates a new peer store.
+// newPeerStore creates a new peer store, loading all persisted peers from the
+// database into memory.
 func newPeerStore(db dbm.DB) (*peerStore, error) {
-	return &peerStore{
-		db:    db,
-		peers: map[NodeID]*peerInfo{},
-	}, nil
+	store := &peerStore{
+		db: db,
+	}
+	if err := store.loadPeers(); err != nil {
+		return nil, err
+	}
+	return store, nil
+}
+
+// loadPeers loads all peers from the database into memory.
+func (s *peerStore) loadPeers() error {
+	peers := make(map[NodeID]*peerInfo)
+
+	start, end := keyPeerInfoRange()
+	iter, err := s.db.Iterator(start, end)
+	if err != nil {
+		return err
+	}
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		// FIXME: We may want to tolerate failures here, by simply logging
+		// the errors and ignoring the faulty peer entries.
+		msg := new(p2pproto.PeerInfo)
+		if err := proto.Unmarshal(iter.Value(), msg); err != nil {
+			return fmt.Errorf("invalid peer Protobuf data: %w", err)
+		}
+		peer, err := peerInfoFromProto(msg)
+		if err != nil {
+			return fmt.Errorf("invalid peer data: %w", err)
+		}
+		peers[peer.ID] = peer
+	}
+	if iter.Error() != nil {
+		return iter.Error()
+	}
+	s.peers = peers
+	return nil
 }
 
 // Get fetches a peer. The boolean indicates whether the peer existed or not.
@@ -930,12 +967,25 @@ func (s *peerStore) Get(id NodeID) (peerInfo, bool) {
 // Set stores peer data. The input data will be copied, and can safely be reused
 // by the caller.
 func (s *peerStore) Set(peer peerInfo) error {
-	if peer.ID == "" {
-		return errors.New("Peer ID not set")
+	if err := peer.Validate(); err != nil {
+		return err
 	}
 	peer = peer.Copy()
 	s.peers[peer.ID] = &peer
-	return nil
+
+	// FIXME: We may want to optimize this by avoiding saving to the database
+	// if there haven't been any changes to persisted fields.
+	bz, err := peer.ToProto().Marshal()
+	if err != nil {
+		return err
+	}
+	return s.db.Set(keyPeerInfo(peer.ID), bz)
+}
+
+// Delete deletes a peer, or does nothing if it does not exist.
+func (s *peerStore) Delete(id NodeID) error {
+	delete(s.peers, id)
+	return s.db.Delete(keyPeerInfo(id))
 }
 
 // List retrieves all peers in an arbitrary order. The returned data is a copy,
@@ -974,13 +1024,49 @@ func (s *peerStore) Ranked() ([]*peerInfo, error) {
 type peerInfo struct {
 	ID            NodeID
 	AddressInfo   []*peerAddressInfo
-	Persistent    bool
-	Height        int64
 	LastConnected time.Time
+
+	// These fields are ephemeral, i.e. not persisted to the database.
+	Persistent bool
+	Height     int64
+}
+
+// peerInfoFromProto converts a Protobuf PeerInfo message to a peerInfo,
+// erroring if the data is invalid.
+func peerInfoFromProto(msg *p2pproto.PeerInfo) (*peerInfo, error) {
+	p := &peerInfo{
+		ID:          NodeID(msg.ID),
+		AddressInfo: make([]*peerAddressInfo, 0, len(msg.AddressInfo)),
+	}
+	if msg.LastConnected != nil {
+		p.LastConnected = *msg.LastConnected
+	}
+	return p, p.Validate()
+}
+
+// ToProto converts the peerInfo to p2pproto.PeerInfo for database storage. The
+// Protobuf type only contains persisted fields, while ephemeral fields are
+// discarded. The returned message may contain pointers to original data, since
+// it is expected to be serialized immediately.
+func (p *peerInfo) ToProto() *p2pproto.PeerInfo {
+	msg := &p2pproto.PeerInfo{
+		ID:            string(p.ID),
+		LastConnected: &p.LastConnected,
+	}
+	for _, addressInfo := range p.AddressInfo {
+		msg.AddressInfo = append(msg.AddressInfo, addressInfo.ToProto())
+	}
+	if msg.LastConnected.IsZero() {
+		msg.LastConnected = nil
+	}
+	return msg
 }
 
 // Copy returns a deep copy of the peer info.
 func (p *peerInfo) Copy() peerInfo {
+	if p == nil {
+		return peerInfo{}
+	}
 	c := *p
 	for i, addressInfo := range c.AddressInfo {
 		addressInfoCopy := addressInfo.Copy()
@@ -1024,6 +1110,14 @@ func (p *peerInfo) Score() PeerScore {
 	return score
 }
 
+// Validate validates the peer info.
+func (p *peerInfo) Validate() error {
+	if p.ID == "" {
+		return errors.New("no peer ID")
+	}
+	return nil
+}
+
 // peerAddressInfo contains information and statistics about a peer address.
 type peerAddressInfo struct {
 	Address         PeerAddress
@@ -1032,9 +1126,53 @@ type peerAddressInfo struct {
 	DialFailures    uint32 // since last successful dial
 }
 
+// ToProto converts the address into to a Protobuf message for serialization.
+func (a *peerAddressInfo) ToProto() *p2pproto.PeerAddressInfo {
+	msg := &p2pproto.PeerAddressInfo{
+		Address:         a.Address.String(),
+		LastDialSuccess: &a.LastDialSuccess,
+		LastDialFailure: &a.LastDialFailure,
+		DialFailures:    a.DialFailures,
+	}
+	if msg.LastDialSuccess.IsZero() {
+		msg.LastDialSuccess = nil
+	}
+	if msg.LastDialFailure.IsZero() {
+		msg.LastDialFailure = nil
+	}
+	return msg
+}
+
 // Copy returns a copy of the address info.
 func (a *peerAddressInfo) Copy() peerAddressInfo {
 	return *a
+}
+
+// These are database key prefixes.
+const (
+	prefixPeerInfo int64 = 1
+)
+
+// keyPeerInfo generates a peerInfo database key.
+func keyPeerInfo(id NodeID) []byte {
+	key, err := orderedcode.Append(nil, prefixPeerInfo, string(id))
+	if err != nil {
+		panic(err)
+	}
+	return key
+}
+
+// keyPeerInfoPrefix generates start/end keys for the entire peerInfo key range.
+func keyPeerInfoRange() ([]byte, []byte) {
+	start, err := orderedcode.Append(nil, prefixPeerInfo, "")
+	if err != nil {
+		panic(err)
+	}
+	end, err := orderedcode.Append(nil, prefixPeerInfo, orderedcode.Infinity)
+	if err != nil {
+		panic(err)
+	}
+	return start, end
 }
 
 // ============================================================================
