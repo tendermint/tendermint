@@ -15,6 +15,8 @@ import (
 	"sync"
 	"time"
 
+	dbm "github.com/tendermint/tm-db"
+
 	"github.com/tendermint/tendermint/libs/cmap"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -340,7 +342,11 @@ func (o PeerManagerOptions) isPersistent(id NodeID) bool {
 }
 
 // NewPeerManager creates a new peer manager.
-func NewPeerManager(options PeerManagerOptions) *PeerManager {
+func NewPeerManager(peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, error) {
+	store, err := newPeerStore(peerDB)
+	if err != nil {
+		return nil, err
+	}
 	return &PeerManager{
 		options: options,
 		closeCh: make(chan struct{}),
@@ -357,13 +363,13 @@ func NewPeerManager(options PeerManagerOptions) *PeerManager {
 		// FIXME: Once the store persists data, we need to update existing
 		// peers in the store with any new information, e.g. changes to
 		// PersistentPeers configuration.
-		store:         newPeerStore(),
+		store:         store,
 		dialing:       map[NodeID]bool{},
 		connected:     map[NodeID]bool{},
 		upgrading:     map[NodeID]NodeID{},
 		evicting:      map[NodeID]bool{},
 		subscriptions: map[*PeerUpdatesCh]*PeerUpdatesCh{},
-	}
+	}, nil
 }
 
 // Close closes the peer manager, releasing resources allocated with it
@@ -915,21 +921,24 @@ func (m *PeerManager) SetHeight(peerID NodeID, height int64) error {
 	return m.store.Set(peer)
 }
 
-// peerStore stores information about peers. It is currently a bare-bones
-// in-memory store, and will be fleshed out later.
+// peerStore stores information about peers. It is not thread-safe, assuming
+// it is used only by PeerManager which handles concurrency control, allowing
+// it to execute multiple operations atomically via its own mutex.
 //
-// peerStore is not thread-safe, since it assumes it is only used by PeerManager
-// which handles concurrency control. This allows the manager to execute multiple
-// operations atomically while it holds the mutex.
+// The entire set of peers is kept in memory, for performance. It is loaded
+// from disk on initialization, and any changes are written back to disk
+// (without fsync, since we can afford to lose recent writes).
 type peerStore struct {
+	db    dbm.DB
 	peers map[NodeID]peerInfo
 }
 
 // newPeerStore creates a new peer store.
-func newPeerStore() *peerStore {
+func newPeerStore(db dbm.DB) (*peerStore, error) {
 	return &peerStore{
+		db:    db,
 		peers: map[NodeID]peerInfo{},
-	}
+	}, nil
 }
 
 // Get fetches a peer, returning nil if not found.

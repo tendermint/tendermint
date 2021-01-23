@@ -8,6 +8,7 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -42,10 +43,12 @@ func TestRouter(t *testing.T) {
 	peers := []p2p.PeerAddress{}
 	for i := 0; i < 3; i++ {
 		i := i
+		peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+		require.NoError(t, err)
 		peerTransport := network.GenerateTransport()
 		peerRouter := p2p.NewRouter(
 			logger.With("peerID", i),
-			p2p.NewPeerManager(p2p.PeerManagerOptions{}),
+			peerManager,
 			map[p2p.Protocol]p2p.Transport{
 				p2p.MemoryProtocol: peerTransport,
 			},
@@ -63,7 +66,8 @@ func TestRouter(t *testing.T) {
 	}
 
 	// Start the main router and connect it to the peers above.
-	peerManager := p2p.NewPeerManager(p2p.PeerManagerOptions{})
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
 	defer peerManager.Close()
 	for _, address := range peers {
 		err := peerManager.Add(address)
