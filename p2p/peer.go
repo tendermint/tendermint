@@ -444,7 +444,9 @@ func (m *PeerManager) Add(address PeerAddress) error {
 	if !ok {
 		peer = m.makePeerInfo(address.ID)
 	}
-	peer.AddAddress(address)
+	if _, ok := peer.AddressInfo[address.String()]; !ok {
+		peer.AddressInfo[address.String()] = &peerAddressInfo{Address: address}
+	}
 	if err := m.store.Set(peer); err != nil {
 		return err
 	}
@@ -462,8 +464,9 @@ func (m *PeerManager) makePeerInfo(id NodeID) peerInfo {
 		}
 	}
 	return peerInfo{
-		ID:         id,
-		Persistent: isPersistent,
+		ID:          id,
+		Persistent:  isPersistent,
+		AddressInfo: map[string]*peerAddressInfo{},
 	}
 }
 
@@ -643,8 +646,8 @@ func (m *PeerManager) DialFailed(peerID NodeID, address PeerAddress) error {
 	if !ok { // Peer may have been removed while dialing, ignore.
 		return nil
 	}
-	addressInfo := peer.LookupAddressInfo(address)
-	if addressInfo == nil {
+	addressInfo, ok := peer.AddressInfo[address.String()]
+	if !ok {
 		return nil // Assume the address has been removed, ignore.
 	}
 	addressInfo.LastDialFailure = time.Now().UTC()
@@ -698,9 +701,10 @@ func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 
 	now := time.Now().UTC()
 	peer.LastConnected = now
-	if addressInfo := peer.LookupAddressInfo(address); addressInfo != nil {
+	if addressInfo, ok := peer.AddressInfo[address.String()]; ok {
 		addressInfo.DialFailures = 0
 		addressInfo.LastDialSuccess = now
+		// If not found, assume address has been removed.
 	}
 	if err := m.store.Set(peer); err != nil {
 		return err
@@ -1083,7 +1087,7 @@ func (s *peerStore) Ranked() []*peerInfo {
 // peerInfo contains peer information stored in a peerStore.
 type peerInfo struct {
 	ID            NodeID
-	AddressInfo   []*peerAddressInfo
+	AddressInfo   map[string]*peerAddressInfo
 	LastConnected time.Time
 
 	// These fields are ephemeral, i.e. not persisted to the database.
@@ -1096,10 +1100,17 @@ type peerInfo struct {
 func peerInfoFromProto(msg *p2pproto.PeerInfo) (*peerInfo, error) {
 	p := &peerInfo{
 		ID:          NodeID(msg.ID),
-		AddressInfo: make([]*peerAddressInfo, 0, len(msg.AddressInfo)),
+		AddressInfo: map[string]*peerAddressInfo{},
 	}
 	if msg.LastConnected != nil {
 		p.LastConnected = *msg.LastConnected
+	}
+	for _, addr := range msg.AddressInfo {
+		addressInfo, err := peerAddressInfoFromProto(addr)
+		if err != nil {
+			return nil, err
+		}
+		p.AddressInfo[addressInfo.Address.String()] = addressInfo
 	}
 	return p, p.Validate()
 }
@@ -1135,31 +1146,6 @@ func (p *peerInfo) Copy() peerInfo {
 	return c
 }
 
-// AddAddress adds an address to a peer, unless it already exists. It does not
-// validate the address. Returns true if the address was new.
-func (p *peerInfo) AddAddress(address PeerAddress) bool {
-	if p.LookupAddressInfo(address) != nil {
-		return false
-	}
-	p.AddressInfo = append(p.AddressInfo, &peerAddressInfo{Address: address})
-	return true
-}
-
-// LookupAddressInfo finds and returns a pointer to the matching addressInfo.
-//
-// FIXME: This could just be a map, as long as PeerAddress is normalized
-// on construction.
-func (p *peerInfo) LookupAddressInfo(address PeerAddress) *peerAddressInfo {
-	// We just do a linear search for now.
-	addressString := address.String()
-	for _, info := range p.AddressInfo {
-		if info.Address.String() == addressString {
-			return info
-		}
-	}
-	return nil
-}
-
 // Score calculates a score for the peer. Higher-scored peers will be
 // preferred over lower scores.
 func (p *peerInfo) Score() PeerScore {
@@ -1186,6 +1172,26 @@ type peerAddressInfo struct {
 	DialFailures    uint32 // since last successful dial
 }
 
+// peerAddressInfoFromProto converts a Protobuf PeerAddressInfo message
+// to a peerAddressInfo.
+func peerAddressInfoFromProto(msg *p2pproto.PeerAddressInfo) (*peerAddressInfo, error) {
+	address, err := ParsePeerAddress(msg.Address)
+	if err != nil {
+		return nil, fmt.Errorf("invalid address %q: %w", address, err)
+	}
+	addressInfo := &peerAddressInfo{
+		Address:      address,
+		DialFailures: msg.DialFailures,
+	}
+	if msg.LastDialSuccess != nil {
+		addressInfo.LastDialSuccess = *msg.LastDialSuccess
+	}
+	if msg.LastDialFailure != nil {
+		addressInfo.LastDialFailure = *msg.LastDialFailure
+	}
+	return addressInfo, addressInfo.Validate()
+}
+
 // ToProto converts the address into to a Protobuf message for serialization.
 func (a *peerAddressInfo) ToProto() *p2pproto.PeerAddressInfo {
 	msg := &p2pproto.PeerAddressInfo{
@@ -1206,6 +1212,11 @@ func (a *peerAddressInfo) ToProto() *p2pproto.PeerAddressInfo {
 // Copy returns a copy of the address info.
 func (a *peerAddressInfo) Copy() peerAddressInfo {
 	return *a
+}
+
+// Validate validates the address info.
+func (a *peerAddressInfo) Validate() error {
+	return a.Address.Validate()
 }
 
 // These are database key prefixes.
