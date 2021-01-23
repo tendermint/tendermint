@@ -332,18 +332,6 @@ type PeerManagerOptions struct {
 	RetryTimeJitter time.Duration
 }
 
-// isPersistent is a convenience function that checks if the given peer ID
-// is contained in PersistentPeers. It just uses a linear search, since
-// PersistentPeers is expected to be small.
-func (o PeerManagerOptions) isPersistent(id NodeID) bool {
-	for _, p := range o.PersistentPeers {
-		if id == p {
-			return true
-		}
-	}
-	return false
-}
-
 // NewPeerManager creates a new peer manager.
 func NewPeerManager(peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, error) {
 	store, err := newPeerStore(peerDB)
@@ -423,9 +411,16 @@ func (m *PeerManager) Add(address PeerAddress) error {
 
 // makePeerInfo creates a peerInfo for a new peer.
 func (m *PeerManager) makePeerInfo(id NodeID) peerInfo {
+	isPersistent := false
+	for _, p := range m.options.PersistentPeers {
+		if id == p {
+			isPersistent = true
+			break
+		}
+	}
 	return peerInfo{
 		ID:         id,
-		Persistent: m.options.isPersistent(id),
+		Persistent: isPersistent,
 	}
 }
 
@@ -504,11 +499,7 @@ func (m *PeerManager) TryDialNext() (NodeID, PeerAddress, error) {
 		return "", PeerAddress{}, nil
 	}
 
-	ranked, err := m.store.Ranked()
-	if err != nil {
-		return "", PeerAddress{}, err
-	}
-	for _, peer := range ranked {
+	for _, peer := range m.store.Ranked() {
 		if m.dialing[peer.ID] || m.connected[peer.ID] {
 			continue
 		}
@@ -528,7 +519,7 @@ func (m *PeerManager) TryDialNext() (NodeID, PeerAddress, error) {
 			// peers, since they will all have the same or lower score than this
 			// peer (since they're ordered by score via peerStore.Ranked).
 			if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
-				upgradePeer := m.findUpgradeCandidate(peer.ID, peer.Score(), ranked)
+				upgradePeer := m.findUpgradeCandidate(peer.ID, peer.Score())
 				if upgradePeer == "" {
 					return "", PeerAddress{}, nil
 				}
@@ -712,11 +703,7 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 	// look for any lower-scored evictable peer, and if found we can accept this
 	// connection anyway and let EvictNext() evict a lower-scored peer for us.
 	if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
-		ranked, err := m.store.Ranked()
-		if err != nil {
-			return err
-		}
-		upgradePeer := m.findUpgradeCandidate(peer.ID, peer.Score(), ranked)
+		upgradePeer := m.findUpgradeCandidate(peer.ID, peer.Score())
 		if upgradePeer == "" {
 			return fmt.Errorf("already connected to maximum number of peers")
 		}
@@ -819,11 +806,6 @@ func (m *PeerManager) TryEvictNext() (NodeID, error) {
 		return "", nil
 	}
 
-	ranked, err := m.store.Ranked()
-	if err != nil {
-		return "", err
-	}
-
 	// Look for any upgraded peers that we can evict.
 	for from, to := range m.upgrading {
 		if m.connected[to] {
@@ -833,7 +815,7 @@ func (m *PeerManager) TryEvictNext() (NodeID, error) {
 			// evict one of those.
 			if fromPeer, ok := m.store.Get(from); !ok {
 				continue
-			} else if evictPeer := m.findUpgradeCandidate(fromPeer.ID, fromPeer.Score(), ranked); evictPeer != "" {
+			} else if evictPeer := m.findUpgradeCandidate(fromPeer.ID, fromPeer.Score()); evictPeer != "" {
 				m.evicting[evictPeer] = true
 				return evictPeer, nil
 			} else {
@@ -844,6 +826,7 @@ func (m *PeerManager) TryEvictNext() (NodeID, error) {
 	}
 
 	// If we didn't find any upgraded peers to evict, we just pick a low-ranked one.
+	ranked := m.store.Ranked()
 	for i := len(ranked) - 1; i >= 0; i-- {
 		peer := ranked[i]
 		if m.connected[peer.ID] && !m.evicting[peer.ID] {
@@ -858,7 +841,7 @@ func (m *PeerManager) TryEvictNext() (NodeID, error) {
 // findUpgradeCandidate looks for a lower-scored peer that we could evict
 // to make room for the given peer. Returns an empty ID if none is found.
 // The caller must hold the mutex lock.
-func (m *PeerManager) findUpgradeCandidate(id NodeID, score PeerScore, ranked []*peerInfo) NodeID {
+func (m *PeerManager) findUpgradeCandidate(id NodeID, score PeerScore) NodeID {
 	// Check for any existing upgrade claims to this peer. It is important that
 	// we return this, since we can get an inbound connection from a peer that
 	// we're concurrently trying to dial for an upgrade, and we want the inbound
@@ -868,6 +851,7 @@ func (m *PeerManager) findUpgradeCandidate(id NodeID, score PeerScore, ranked []
 			return from
 		}
 	}
+	ranked := m.store.Ranked()
 	for i := len(ranked) - 1; i >= 0; i-- {
 		candidate := ranked[i]
 		switch {
@@ -927,8 +911,9 @@ func (m *PeerManager) SetHeight(peerID NodeID, height int64) error {
 // from disk on initialization, and any changes are written back to disk
 // (without fsync, since we can afford to lose recent writes).
 type peerStore struct {
-	db    dbm.DB
-	peers map[NodeID]*peerInfo
+	db     dbm.DB
+	peers  map[NodeID]*peerInfo
+	ranked []*peerInfo // cache for Ranked(), nil invalidates cache
 }
 
 // newPeerStore creates a new peer store, loading all persisted peers from the
@@ -987,7 +972,17 @@ func (s *peerStore) Set(peer peerInfo) error {
 		return err
 	}
 	peer = peer.Copy()
-	s.peers[peer.ID] = &peer
+
+	if current, ok := s.peers[peer.ID]; !ok || current.Score() != peer.Score() {
+		// If the peer is new, or its score changes, we invalidate the Ranked() cache.
+		s.peers[peer.ID] = &peer
+		s.ranked = nil
+	} else {
+		// Otherwise, since s.ranked contains pointers to the old data and we
+		// want those pointers to remain valid with the new data, we have to
+		// update the existing pointer address.
+		*current = peer
+	}
 
 	// FIXME: We may want to optimize this by avoiding saving to the database
 	// if there haven't been any changes to persisted fields.
@@ -1001,6 +996,7 @@ func (s *peerStore) Set(peer peerInfo) error {
 // Delete deletes a peer, or does nothing if it does not exist.
 func (s *peerStore) Delete(id NodeID) error {
 	delete(s.peers, id)
+	s.ranked = nil
 	return s.db.Delete(keyPeerInfo(id))
 }
 
@@ -1015,25 +1011,27 @@ func (s *peerStore) List() []peerInfo {
 }
 
 // Ranked returns a list of peers ordered by score (better peers first). Peers
-// with equal scores are returned in an arbitrary order. The returned list
-// must not be mutated by the caller, since it returns pointers to internal
-// peerStore data for performance.
+// with equal scores are returned in an arbitrary order. The returned list must
+// not be mutated or accessed concurrently by the caller, since it returns
+// pointers to internal peerStore data for performance.
 //
-// FIXME: For now, we simply generate the list on every call, but this can get
-// expensive since it's called fairly frequently. We may want to either cache
-// this, or store peers in a data structure that maintains order (e.g. a heap or
-// ordered map).
-func (s *peerStore) Ranked() ([]*peerInfo, error) {
-	peers := make([]*peerInfo, 0, len(s.peers))
-	for _, peer := range s.peers {
-		peers = append(peers, peer)
+// FIXME: For now, we simply maintain a cache in s.ranked which is invalidated
+// by setting it to nil, but if necessary we should use a better data structure
+// for this (e.g. a heap or ordered map).
+func (s *peerStore) Ranked() []*peerInfo {
+	if s.ranked != nil {
+		return s.ranked
 	}
-	sort.Slice(peers, func(i, j int) bool {
+	s.ranked = make([]*peerInfo, 0, len(s.peers))
+	for _, peer := range s.peers {
+		s.ranked = append(s.ranked, peer)
+	}
+	sort.Slice(s.ranked, func(i, j int) bool {
 		// FIXME: If necessary, consider precomputing scores before sorting,
 		// to reduce the number of Score() calls.
-		return peers[i].Score() > peers[j].Score()
+		return s.ranked[i].Score() > s.ranked[j].Score()
 	})
-	return peers, nil
+	return s.ranked
 }
 
 // peerInfo contains peer information stored in a peerStore.
