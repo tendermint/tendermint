@@ -1038,6 +1038,9 @@ func (s *peerStore) Set(peer peerInfo) error {
 
 // Delete deletes a peer, or does nothing if it does not exist.
 func (s *peerStore) Delete(id NodeID) error {
+	if _, ok := s.peers[id]; !ok {
+		return nil
+	}
 	delete(s.peers, id)
 	s.ranked = nil
 	return s.db.Delete(keyPeerInfo(id))
