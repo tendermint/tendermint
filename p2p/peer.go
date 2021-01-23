@@ -389,19 +389,15 @@ func (m *PeerManager) Add(address PeerAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	peer, err := m.store.Get(address.NodeID())
-	if err != nil {
-		return err
-	}
-	if peer == nil {
-		peer = &peerInfo{
+	peer, ok := m.store.Get(address.NodeID())
+	if !ok {
+		peer = peerInfo{
 			ID:         address.NodeID(),
 			Persistent: m.options.isPersistent(address.NodeID()),
 		}
 	}
 	peer.AddAddress(address)
-	err = m.store.Set(peer)
-	if err != nil {
+	if err := m.store.Set(peer); err != nil {
 		return err
 	}
 	m.wakeDial()
@@ -493,7 +489,7 @@ func (m *PeerManager) TryDialNext() (NodeID, PeerAddress, error) {
 		}
 
 		for _, addressInfo := range peer.AddressInfo {
-			if time.Since(addressInfo.LastDialFailure) < m.retryDelay(peer, addressInfo.DialFailures) {
+			if time.Since(addressInfo.LastDialFailure) < m.retryDelay(addressInfo.DialFailures, peer.Persistent) {
 				continue
 			}
 
@@ -507,7 +503,7 @@ func (m *PeerManager) TryDialNext() (NodeID, PeerAddress, error) {
 			// peers, since they will all have the same or lower score than this
 			// peer (since they're ordered by score via peerStore.Ranked).
 			if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
-				upgradePeer := m.findUpgradeCandidate(peer, ranked)
+				upgradePeer := m.findUpgradeCandidate(peer.ID, peer.Score(), ranked)
 				if upgradePeer == "" {
 					return "", PeerAddress{}, nil
 				}
@@ -547,7 +543,7 @@ func (m *PeerManager) wakeEvict() {
 // retryDelay calculates a dial retry delay using exponential backoff, based on
 // retry settings in PeerManagerOptions. If MinRetryTime is 0, this returns
 // MaxInt64 (i.e. an infinite retry delay, effectively disabling retries).
-func (m *PeerManager) retryDelay(peer *peerInfo, failures uint32) time.Duration {
+func (m *PeerManager) retryDelay(failures uint32, persistent bool) time.Duration {
 	if failures == 0 {
 		return 0
 	}
@@ -555,7 +551,7 @@ func (m *PeerManager) retryDelay(peer *peerInfo, failures uint32) time.Duration 
 		return time.Duration(math.MaxInt64)
 	}
 	maxDelay := m.options.MaxRetryTime
-	if peer.Persistent && m.options.MaxRetryTimePersistent > 0 {
+	if persistent && m.options.MaxRetryTimePersistent > 0 {
 		maxDelay = m.options.MaxRetryTimePersistent
 	}
 
@@ -584,9 +580,9 @@ func (m *PeerManager) DialFailed(peerID NodeID, address PeerAddress) error {
 		}
 	}
 
-	peer, err := m.store.Get(peerID)
-	if err != nil || peer == nil { // Peer may have been removed while dialing, ignore.
-		return err
+	peer, ok := m.store.Get(peerID)
+	if !ok { // Peer may have been removed while dialing, ignore.
+		return nil
 	}
 	addressInfo := peer.LookupAddressInfo(address)
 	if addressInfo == nil {
@@ -594,30 +590,27 @@ func (m *PeerManager) DialFailed(peerID NodeID, address PeerAddress) error {
 	}
 	addressInfo.LastDialFailure = time.Now().UTC()
 	addressInfo.DialFailures++
-	if err = m.store.Set(peer); err != nil {
+	if err := m.store.Set(peer); err != nil {
 		return err
 	}
 
 	// We spawn a goroutine that notifies DialNext() again when the retry
 	// timeout has elapsed, so that we can consider dialing it again.
-	//
-	// FIXME: We need to calculate the retry delay outside of the goroutine,
-	// since the arguments are currently pointers to structs shared in the
-	// peerStore. The peerStore should probably return struct copies instead,
-	// to avoid these sorts of issues.
-	if retryDelay := m.retryDelay(peer, addressInfo.DialFailures); retryDelay != time.Duration(math.MaxInt64) {
-		go func() {
-			// Use an explicit timer with deferred cleanup instead of
-			// time.After(), to avoid leaking goroutines on PeerManager.Close().
-			timer := time.NewTimer(retryDelay)
-			defer timer.Stop()
-			select {
-			case <-timer.C:
-				m.wakeDial()
-			case <-m.closeCh:
-			}
-		}()
-	}
+	go func() {
+		retryDelay := m.retryDelay(addressInfo.DialFailures, peer.Persistent)
+		if retryDelay == time.Duration(math.MaxInt64) {
+			return
+		}
+		// Use an explicit timer with deferred cleanup instead of
+		// time.After(), to avoid leaking goroutines on PeerManager.Close().
+		timer := time.NewTimer(retryDelay)
+		defer timer.Stop()
+		select {
+		case <-timer.C:
+			m.wakeDial()
+		case <-m.closeCh:
+		}
+	}()
 
 	m.wakeDial()
 	return nil
@@ -639,10 +632,8 @@ func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 		return fmt.Errorf("already connected to maximum number of peers")
 	}
 
-	peer, err := m.store.Get(peerID)
-	if err != nil {
-		return err
-	} else if peer == nil {
+	peer, ok := m.store.Get(peerID)
+	if !ok {
 		return fmt.Errorf("peer %q was removed while dialing", peerID)
 	}
 
@@ -652,7 +643,7 @@ func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 		addressInfo.DialFailures = 0
 		addressInfo.LastDialSuccess = now
 	}
-	if err = m.store.Set(peer); err != nil {
+	if err := m.store.Set(peer); err != nil {
 		return err
 	}
 
@@ -686,12 +677,9 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 		return fmt.Errorf("already connected to maximum number of peers")
 	}
 
-	peer, err := m.store.Get(peerID)
-	if err != nil {
-		return err
-	}
-	if peer == nil {
-		peer = &peerInfo{
+	peer, ok := m.store.Get(peerID)
+	if !ok {
+		peer = peerInfo{
 			ID:         peerID,
 			Persistent: m.options.isPersistent(peerID),
 		}
@@ -706,7 +694,7 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 		if err != nil {
 			return err
 		}
-		upgradePeer := m.findUpgradeCandidate(peer, ranked)
+		upgradePeer := m.findUpgradeCandidate(peer.ID, peer.Score(), ranked)
 		if upgradePeer == "" {
 			return fmt.Errorf("already connected to maximum number of peers")
 		}
@@ -714,7 +702,7 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 	}
 
 	peer.LastConnected = time.Now().UTC()
-	if err = m.store.Set(peer); err != nil {
+	if err := m.store.Set(peer); err != nil {
 		return err
 	}
 
@@ -821,12 +809,9 @@ func (m *PeerManager) TryEvictNext() (NodeID, error) {
 			// We may have connected to even lower-scored peers that we can
 			// evict since we started upgrading this one, in which case we can
 			// evict one of those.
-			fromPeer, err := m.store.Get(from)
-			if err != nil {
-				return "", err
-			} else if fromPeer == nil {
+			if fromPeer, ok := m.store.Get(from); !ok {
 				continue
-			} else if evictPeer := m.findUpgradeCandidate(fromPeer, ranked); evictPeer != "" {
+			} else if evictPeer := m.findUpgradeCandidate(fromPeer.ID, fromPeer.Score(), ranked); evictPeer != "" {
 				m.evicting[evictPeer] = true
 				return evictPeer, nil
 			} else {
@@ -851,20 +836,20 @@ func (m *PeerManager) TryEvictNext() (NodeID, error) {
 // findUpgradeCandidate looks for a lower-scored peer that we could evict
 // to make room for the given peer. Returns an empty ID if none is found.
 // The caller must hold the mutex lock.
-func (m *PeerManager) findUpgradeCandidate(peer *peerInfo, ranked []*peerInfo) NodeID {
+func (m *PeerManager) findUpgradeCandidate(id NodeID, score PeerScore, ranked []*peerInfo) NodeID {
 	// Check for any existing upgrade claims to this peer. It is important that
 	// we return this, since we can get an inbound connection from a peer that
 	// we're concurrently trying to dial for an upgrade, and we want the inbound
 	// connection to be accepted in this case.
 	for from, to := range m.upgrading {
-		if to == peer.ID {
+		if to == id {
 			return from
 		}
 	}
 	for i := len(ranked) - 1; i >= 0; i-- {
 		candidate := ranked[i]
 		switch {
-		case candidate.Score() >= peer.Score():
+		case candidate.Score() >= score:
 			return "" // no further peers can be scored lower, due to sorting
 		case !m.connected[candidate.ID]:
 		case m.evicting[candidate.ID]:
@@ -884,15 +869,12 @@ func (m *PeerManager) findUpgradeCandidate(peer *peerInfo, ranked []*peerInfo) N
 // consensus and mempool reactors. These dependencies should be removed from the
 // reactors, and instead query this information independently via new P2P
 // protocol additions.
-func (m *PeerManager) GetHeight(peerID NodeID) (int64, error) {
+func (m *PeerManager) GetHeight(peerID NodeID) int64 {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	peer, err := m.store.Get(peerID)
-	if err != nil || peer == nil {
-		return 0, err
-	}
-	return peer.Height, nil
+	peer, _ := m.store.Get(peerID)
+	return peer.Height
 }
 
 // SetHeight stores a peer's height, making it available via GetHeight. If the
@@ -907,12 +889,9 @@ func (m *PeerManager) SetHeight(peerID NodeID, height int64) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	peer, err := m.store.Get(peerID)
-	if err != nil {
-		return err
-	}
-	if peer == nil {
-		peer = &peerInfo{
+	peer, ok := m.store.Get(peerID)
+	if !ok {
+		peer = peerInfo{
 			ID:         peerID,
 			Persistent: m.options.isPersistent(peerID),
 		}
@@ -930,59 +909,58 @@ func (m *PeerManager) SetHeight(peerID NodeID, height int64) error {
 // (without fsync, since we can afford to lose recent writes).
 type peerStore struct {
 	db    dbm.DB
-	peers map[NodeID]peerInfo
+	peers map[NodeID]*peerInfo
 }
 
 // newPeerStore creates a new peer store.
 func newPeerStore(db dbm.DB) (*peerStore, error) {
 	return &peerStore{
 		db:    db,
-		peers: map[NodeID]peerInfo{},
+		peers: map[NodeID]*peerInfo{},
 	}, nil
 }
 
-// Get fetches a peer, returning nil if not found.
-func (s *peerStore) Get(id NodeID) (*peerInfo, error) {
+// Get fetches a peer. The boolean indicates whether the peer existed or not.
+// The returned peer info is a copy, and can be mutated at will.
+func (s *peerStore) Get(id NodeID) (peerInfo, bool) {
 	peer, ok := s.peers[id]
-	if !ok {
-		return nil, nil
-	}
-	return &peer, nil
+	return peer.Copy(), ok
 }
 
-// Set stores peer data.
-func (s *peerStore) Set(peer *peerInfo) error {
-	if peer == nil {
-		return errors.New("peer cannot be nil")
+// Set stores peer data. The input data will be copied, and can safely be reused
+// by the caller.
+func (s *peerStore) Set(peer peerInfo) error {
+	if peer.ID == "" {
+		return errors.New("Peer ID not set")
 	}
-	s.peers[peer.ID] = *peer
+	peer = peer.Copy()
+	s.peers[peer.ID] = &peer
 	return nil
 }
 
-// List retrieves all peers.
-func (s *peerStore) List() ([]*peerInfo, error) {
-	peers := []*peerInfo{}
+// List retrieves all peers in an arbitrary order. The returned data is a copy,
+// and can be mutated at will.
+func (s *peerStore) List() []peerInfo {
+	peers := make([]peerInfo, 0, len(s.peers))
 	for _, peer := range s.peers {
-		peer := peer
-		peers = append(peers, &peer)
+		peers = append(peers, peer.Copy())
 	}
-	return peers, nil
+	return peers
 }
 
-// Ranked returns a list of peers ordered by score (better peers first).
-// Peers with equal scores are returned in an arbitrary order.
-//
-// This is used to determine which peers to connect to and which peers to evict
-// in order to make room for better peers.
+// Ranked returns a list of peers ordered by score (better peers first). Peers
+// with equal scores are returned in an arbitrary order. The returned list
+// must not be mutated by the caller, since it returns pointers to internal
+// peerStore data for performance.
 //
 // FIXME: For now, we simply generate the list on every call, but this can get
 // expensive since it's called fairly frequently. We may want to either cache
 // this, or store peers in a data structure that maintains order (e.g. a heap or
 // ordered map).
 func (s *peerStore) Ranked() ([]*peerInfo, error) {
-	peers, err := s.List()
-	if err != nil {
-		return nil, err
+	peers := make([]*peerInfo, 0, len(s.peers))
+	for _, peer := range s.peers {
+		peers = append(peers, peer)
 	}
 	sort.Slice(peers, func(i, j int) bool {
 		// FIXME: If necessary, consider precomputing scores before sorting,
@@ -1001,6 +979,16 @@ type peerInfo struct {
 	LastConnected time.Time
 }
 
+// Copy returns a deep copy of the peer info.
+func (p *peerInfo) Copy() peerInfo {
+	c := *p
+	for i, addressInfo := range c.AddressInfo {
+		addressInfoCopy := addressInfo.Copy()
+		c.AddressInfo[i] = &addressInfoCopy
+	}
+	return c
+}
+
 // AddAddress adds an address to a peer, unless it already exists. It does not
 // validate the address. Returns true if the address was new.
 func (p *peerInfo) AddAddress(address PeerAddress) bool {
@@ -1011,7 +999,10 @@ func (p *peerInfo) AddAddress(address PeerAddress) bool {
 	return true
 }
 
-// LookupAddressInfo returns address info for an address, or nil if unknown.
+// LookupAddressInfo finds and returns a pointer to the matching addressInfo.
+//
+// FIXME: This could just be a map, as long as PeerAddress is normalized
+// on construction.
 func (p *peerInfo) LookupAddressInfo(address PeerAddress) *addressInfo {
 	// We just do a linear search for now.
 	addressString := address.String()
@@ -1039,6 +1030,11 @@ type addressInfo struct {
 	LastDialSuccess time.Time
 	LastDialFailure time.Time
 	DialFailures    uint32 // since last successful dial
+}
+
+// Copy returns a copy of the address info.
+func (a *addressInfo) Copy() addressInfo {
+	return *a
 }
 
 // ============================================================================
