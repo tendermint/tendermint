@@ -27,12 +27,13 @@ import (
 	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
-// PeerAddress is a peer address URL. If the URL is opaque, i.e. of the form
-// "scheme:<opaque>", then the opaque part has to contain either the node ID
-// or a node ID and path in the form "scheme:<nodeid>@<path>".
+// PeerAddress is a peer address URL. It differs from Endpoint in that the
+// address hostname may be expanded into multiple IP addresses (thus multiple
+// endpoints).
 //
-// PeerAddress differs from Endpoint in that the address hostname may be
-// expanded into multiple IP addresses (thus multiple endpoints).
+// If the URL is opaque, i.e. of the form "scheme:<opaque>", then the opaque
+// part has to contain either the node ID or a node ID and path in the form
+// "scheme:<nodeid>@<path>".
 type PeerAddress struct {
 	ID       NodeID
 	Protocol Protocol
