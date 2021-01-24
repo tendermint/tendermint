@@ -1,5 +1,76 @@
 # Changelog
 
+## v0.34.3 
+
+*January 19, 2021*
+
+This release includes a fix for a high-severity security vulnerability. 
+More information on this vulnerability will be released on January 26, 2021
+and this changelog will be updated. 
+
+It also updates GoGo Protobuf to 1.3.2 in order to pick up the fix for
+https://nvd.nist.gov/vuln/detail/CVE-2021-3121. 
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BUG FIXES
+
+- [evidence] [N/A] Use correct source of evidence time (@cmwaters)
+- [proto] [\#5886](https://github.com/tendermint/tendermint/pull/5889) Bump gogoproto to 1.3.2 (@marbar3778)
+
+## v0.34.2
+
+*January 12, 2021*
+
+This release fixes a substantial bug in evidence handling where evidence could
+sometimes be broadcast before the block containing that evidence was fully committed,
+resulting in some nodes panicking when trying to verify said evidence.
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES
+
+- Go API
+  - [libs/os] [\#5871](https://github.com/tendermint/tendermint/issues/5871) `EnsureDir` now propagates IO errors and checks the file type (@erikgrinaker)
+
+### BUG FIXES
+
+- [evidence] [\#5890](https://github.com/tendermint/tendermint/pull/5890) Add a buffer to evidence from consensus to avoid broadcasting and proposing evidence before the
+  height of such an evidence has finished (@cmwaters)
+- [statesync] [\#5889](https://github.com/tendermint/tendermint/issues/5889) Set `LastHeightConsensusParamsChanged` when bootstrapping Tendermint state (@cmwaters)
+
+## v0.34.1
+
+*January 6, 2021*
+
+Special thanks to external contributors on this release:
+
+@p4u from vocdoni.io reported that the mempool might behave incorrectly under a
+high load. The consequences can range from pauses between blocks to the peers
+disconnecting from this node. As a temporary remedy (until the mempool package
+is refactored), the `max-batch-bytes` was disabled. Transactions will be sent
+one by one without batching.
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+  - [cli] [\#5786](https://github.com/tendermint/tendermint/issues/5786) deprecate snake_case commands for hyphen-case (@cmwaters)
+
+- Go API
+  - [libs/protoio] [\#5868](https://github.com/tendermint/tendermint/issues/5868) Return number of bytes read in `Reader.ReadMsg()` (@erikgrinaker)
+
+### IMPROVEMENTS
+
+- [mempool] [\#5813](https://github.com/tendermint/tendermint/issues/5813) Add `keep-invalid-txs-in-cache` config option. When set to true, mempool will keep invalid transactions in the cache (@p4u)
+
+### BUG FIXES
+
+- [crypto] [\#5707](https://github.com/tendermint/tendermint/issues/5707) Fix infinite recursion in string formatting of Secp256k1 keys (@erikgrinaker)
+- [mempool] [\#5800](https://github.com/tendermint/tendermint/issues/5800) Disable `max-batch-bytes` (@melekes)
+- [p2p] [\#5868](https://github.com/tendermint/tendermint/issues/5868) Fix inbound traffic statistics and rate limiting in `MConnection` (@erikgrinaker)
+
 ## v0.34.0
 
 *November 19, 2020*

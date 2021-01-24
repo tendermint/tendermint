@@ -17,6 +17,11 @@ import (
 // - it is from a key who was a validator at the given height
 // - it is internally consistent with state
 // - it was properly signed by the alleged equivocator and meets the individual evidence verification requirements
+//
+// NOTE: Evidence may be provided that we do not have the block or validator
+// set for. In these cases, we do not return a ErrInvalidEvidence as not to have
+// the sending peer disconnect. All other errors are treated as invalid evidence
+// (i.e. ErrInvalidEvidence).
 func (evpool *Pool) verify(evidence types.Evidence) error {
 	var (
 		state          = evpool.State()
@@ -25,26 +30,42 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 		ageNumBlocks   = height - evidence.Height()
 	)
 
-	// verify the time of the evidence
+	// ensure we have the block for the evidence height
+	//
+	// NOTE: It is currently possible for a peer to send us evidence we're not
+	// able to process because we're too far behind (e.g. syncing), so we DO NOT
+	// return an invalid evidence error because we do not want the peer to
+	// disconnect or signal an error in this particular case.
 	blockMeta := evpool.blockStore.LoadBlockMeta(evidence.Height())
 	if blockMeta == nil {
-		return fmt.Errorf("don't have header #%d", evidence.Height())
+		return fmt.Errorf("failed to verify evidence; missing block for height %d", evidence.Height())
 	}
+
+	// verify the time of the evidence
 	evTime := blockMeta.Header.Time
 	if evidence.Time() != evTime {
-		return fmt.Errorf("evidence has a different time to the block it is associated with (%v != %v)",
-			evidence.Time(), evTime)
+		return types.NewErrInvalidEvidence(
+			evidence,
+			fmt.Errorf(
+				"evidence has a different time to the block it is associated with (%v != %v)",
+				evidence.Time(), evTime,
+			),
+		)
 	}
+
 	ageDuration := state.LastBlockTime.Sub(evTime)
 
 	// check that the evidence hasn't expired
 	if ageDuration > evidenceParams.MaxAgeDuration && ageNumBlocks > evidenceParams.MaxAgeNumBlocks {
-		return fmt.Errorf(
-			"evidence from height %d (created at: %v) is too old; min height is %d and evidence can not be older than %v",
-			evidence.Height(),
-			evTime,
-			height-evidenceParams.MaxAgeNumBlocks,
-			state.LastBlockTime.Add(evidenceParams.MaxAgeDuration),
+		return types.NewErrInvalidEvidence(
+			evidence,
+			fmt.Errorf(
+				"evidence from height %d (created at: %v) is too old; min height is %d and evidence can not be older than %v",
+				evidence.Height(),
+				evTime,
+				height-evidenceParams.MaxAgeNumBlocks,
+				state.LastBlockTime.Add(evidenceParams.MaxAgeDuration),
+			),
 		)
 	}
 
@@ -55,18 +76,26 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 		if err != nil {
 			return err
 		}
-		return VerifyDuplicateVote(ev, state.ChainID, valSet)
+
+		if err := VerifyDuplicateVote(ev, state.ChainID, valSet); err != nil {
+			return types.NewErrInvalidEvidence(evidence, err)
+		}
+
+		return nil
 
 	case *types.LightClientAttackEvidence:
 		commonHeader, err := getSignedHeader(evpool.blockStore, evidence.Height())
 		if err != nil {
 			return err
 		}
+
 		commonVals, err := evpool.stateDB.LoadValidators(evidence.Height())
 		if err != nil {
 			return err
 		}
+
 		trustedHeader := commonHeader
+
 		// in the case of lunatic the trusted header is different to the common header
 		if evidence.Height() != ev.ConflictingBlock.Height {
 			trustedHeader, err = getSignedHeader(evpool.blockStore, ev.ConflictingBlock.Height)
@@ -75,23 +104,40 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 			}
 		}
 
-		err = VerifyLightClientAttack(ev, commonHeader, trustedHeader, commonVals, state.LastBlockTime,
-			state.ConsensusParams.Evidence.MaxAgeDuration)
+		err = VerifyLightClientAttack(
+			ev,
+			commonHeader,
+			trustedHeader,
+			commonVals,
+			state.LastBlockTime,
+			state.ConsensusParams.Evidence.MaxAgeDuration,
+		)
 		if err != nil {
-			return err
+			return types.NewErrInvalidEvidence(evidence, err)
 		}
-		// find out what type of attack this was and thus extract the malicious validators. Note in the case of an
-		// Amnesia attack we don't have any malicious validators.
+
+		// Find out what type of attack this was and thus extract the malicious
+		// validators. Note, in the case of an Amnesia attack we don't have any
+		// malicious validators.
 		validators := ev.GetByzantineValidators(commonVals, trustedHeader)
-		// ensure this matches the validators that are listed in the evidence. They should be ordered based on power.
+
+		// Ensure this matches the validators that are listed in the evidence. They
+		// should be ordered based on power.
 		if validators == nil && ev.ByzantineValidators != nil {
-			return fmt.Errorf("expected nil validators from an amnesia light client attack but got %d",
-				len(ev.ByzantineValidators))
+			return types.NewErrInvalidEvidence(
+				evidence,
+				fmt.Errorf(
+					"expected nil validators from an amnesia light client attack but got %d",
+					len(ev.ByzantineValidators),
+				),
+			)
 		}
 
 		if exp, got := len(validators), len(ev.ByzantineValidators); exp != got {
-			return fmt.Errorf("expected %d byzantine validators from evidence but got %d",
-				exp, got)
+			return types.NewErrInvalidEvidence(
+				evidence,
+				fmt.Errorf("expected %d byzantine validators from evidence but got %d", exp, got),
+			)
 		}
 
 		// ensure that both validator arrays are in the same order
@@ -99,20 +145,31 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 
 		for idx, val := range validators {
 			if !bytes.Equal(ev.ByzantineValidators[idx].Address, val.Address) {
-				return fmt.Errorf("evidence contained a different byzantine validator address to the one we were expecting."+
-					"Expected %v, got %v", val.Address, ev.ByzantineValidators[idx].Address)
+				return types.NewErrInvalidEvidence(
+					evidence,
+					fmt.Errorf(
+						"evidence contained an unexpected byzantine validator address; expected: %v, got: %v",
+						val.Address, ev.ByzantineValidators[idx].Address,
+					),
+				)
 			}
+
 			if ev.ByzantineValidators[idx].VotingPower != val.VotingPower {
-				return fmt.Errorf("evidence contained a byzantine validator with a different power to the one we were expecting."+
-					"Expected %d, got %d", val.VotingPower, ev.ByzantineValidators[idx].VotingPower)
+				return types.NewErrInvalidEvidence(
+					evidence,
+					fmt.Errorf(
+						"evidence contained unexpected byzantine validator power; expected %d, got %d",
+						val.VotingPower, ev.ByzantineValidators[idx].VotingPower,
+					),
+				)
 			}
 		}
 
 		return nil
-	default:
-		return fmt.Errorf("unrecognized evidence type: %T", evidence)
-	}
 
+	default:
+		return types.NewErrInvalidEvidence(evidence, fmt.Errorf("unrecognized evidence type: %T", evidence))
+	}
 }
 
 // VerifyLightClientAttack verifies LightClientAttackEvidence against the state of the full node. This involves

@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
@@ -18,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	tmstore "github.com/tendermint/tendermint/proto/tendermint/store"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -68,66 +66,6 @@ func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFu
 	return state, NewBlockStore(blockDB), func() { os.RemoveAll(config.RootDir) }
 }
 
-func TestLoadBlockStoreState(t *testing.T) {
-
-	type blockStoreTest struct {
-		testName string
-		bss      *tmstore.BlockStoreState
-		want     tmstore.BlockStoreState
-	}
-
-	testCases := []blockStoreTest{
-		{"success", &tmstore.BlockStoreState{Base: 100, Height: 1000},
-			tmstore.BlockStoreState{Base: 100, Height: 1000}},
-		{"empty", &tmstore.BlockStoreState{}, tmstore.BlockStoreState{}},
-		{"no base", &tmstore.BlockStoreState{Height: 1000}, tmstore.BlockStoreState{Base: 1, Height: 1000}},
-	}
-
-	for _, tc := range testCases {
-		db := dbm.NewMemDB()
-		SaveBlockStoreState(tc.bss, db)
-		retrBSJ := LoadBlockStoreState(db)
-		assert.Equal(t, tc.want, retrBSJ, "expected the retrieved DBs to match: %s", tc.testName)
-	}
-}
-
-func TestNewBlockStore(t *testing.T) {
-	db := dbm.NewMemDB()
-	bss := tmstore.BlockStoreState{Base: 100, Height: 10000}
-	bz, _ := proto.Marshal(&bss)
-	err := db.Set(blockStoreKey, bz)
-	require.NoError(t, err)
-	bs := NewBlockStore(db)
-	require.Equal(t, int64(100), bs.Base(), "failed to properly parse blockstore")
-	require.Equal(t, int64(10000), bs.Height(), "failed to properly parse blockstore")
-
-	panicCausers := []struct {
-		data    []byte
-		wantErr string
-	}{
-		{[]byte("artful-doger"), "not unmarshal bytes"},
-		{[]byte(" "), "unmarshal bytes"},
-	}
-
-	for i, tt := range panicCausers {
-		tt := tt
-		// Expecting a panic here on trying to parse an invalid blockStore
-		_, _, panicErr := doFn(func() (interface{}, error) {
-			err := db.Set(blockStoreKey, tt.data)
-			require.NoError(t, err)
-			_ = NewBlockStore(db)
-			return nil, nil
-		})
-		require.NotNil(t, panicErr, "#%d panicCauser: %q expected a panic", i, tt.data)
-		assert.Contains(t, fmt.Sprintf("%#v", panicErr), tt.wantErr, "#%d data: %q", i, tt.data)
-	}
-
-	err = db.Set(blockStoreKey, []byte{})
-	require.NoError(t, err)
-	bs = NewBlockStore(db)
-	assert.Equal(t, bs.Height(), int64(0), "expecting empty bytes to be unmarshaled alright")
-}
-
 func freshBlockStore() (*BlockStore, dbm.DB) {
 	db := dbm.NewMemDB()
 	return NewBlockStore(db), db
@@ -156,7 +94,6 @@ func TestMain(m *testing.M) {
 }
 
 // TODO: This test should be simplified ...
-
 func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	state, bs, cleanup := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
 	defer cleanup()
@@ -193,7 +130,6 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	}
 
 	// End of setup, test data
-
 	commitAtH10 := makeTestCommit(10, tmtime.Now())
 	tuples := []struct {
 		block      *types.Block
@@ -302,29 +238,29 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 			}
 
 			if tuple.corruptBlockInDB {
-				err := db.Set(calcBlockMetaKey(tuple.block.Height), []byte("block-bogus"))
+				err := db.Set(blockMetaKey(tuple.block.Height), []byte("block-bogus"))
 				require.NoError(t, err)
 			}
 			bBlock := bs.LoadBlock(tuple.block.Height)
 			bBlockMeta := bs.LoadBlockMeta(tuple.block.Height)
 
 			if tuple.eraseSeenCommitInDB {
-				err := db.Delete(calcSeenCommitKey(tuple.block.Height))
+				err := db.Delete(seenCommitKey(tuple.block.Height))
 				require.NoError(t, err)
 			}
 			if tuple.corruptSeenCommitInDB {
-				err := db.Set(calcSeenCommitKey(tuple.block.Height), []byte("bogus-seen-commit"))
+				err := db.Set(seenCommitKey(tuple.block.Height), []byte("bogus-seen-commit"))
 				require.NoError(t, err)
 			}
 			bSeenCommit := bs.LoadSeenCommit(tuple.block.Height)
 
 			commitHeight := tuple.block.Height - 1
 			if tuple.eraseCommitInDB {
-				err := db.Delete(calcBlockCommitKey(commitHeight))
+				err := db.Delete(blockCommitKey(commitHeight))
 				require.NoError(t, err)
 			}
 			if tuple.corruptCommitInDB {
-				err := db.Set(calcBlockCommitKey(commitHeight), []byte("foo-bogus"))
+				err := db.Set(blockCommitKey(commitHeight), []byte("foo-bogus"))
 				require.NoError(t, err)
 			}
 			bCommit := bs.LoadBlockCommit(commitHeight)
@@ -381,8 +317,9 @@ func TestLoadBaseMeta(t *testing.T) {
 		bs.SaveBlock(block, partSet, seenCommit)
 	}
 
-	_, err = bs.PruneBlocks(4)
+	pruned, err := bs.PruneBlocks(4)
 	require.NoError(t, err)
+	assert.EqualValues(t, 3, pruned)
 
 	baseBlock := bs.LoadBaseMeta()
 	assert.EqualValues(t, 4, baseBlock.Header.Height)
@@ -404,7 +341,7 @@ func TestLoadBlockPart(t *testing.T) {
 	require.Nil(t, res, "a non-existent block part should return nil")
 
 	// 2. Next save a corrupted block then try to load it
-	err := db.Set(calcBlockPartKey(height, index), []byte("Tendermint"))
+	err := db.Set(blockPartKey(height, index), []byte("Tendermint"))
 	require.NoError(t, err)
 	res, _, panicErr = doFn(loadPart)
 	require.NotNil(t, panicErr, "expecting a non-nil panic")
@@ -413,7 +350,7 @@ func TestLoadBlockPart(t *testing.T) {
 	// 3. A good block serialized and saved to the DB should be retrievable
 	pb1, err := part1.ToProto()
 	require.NoError(t, err)
-	err = db.Set(calcBlockPartKey(height, index), mustEncode(pb1))
+	err = db.Set(blockPartKey(height, index), mustEncode(pb1))
 	require.NoError(t, err)
 	gotPart, _, panicErr := doFn(loadPart)
 	require.Nil(t, panicErr, "an existent and proper block should not panic")
@@ -433,10 +370,6 @@ func TestPruneBlocks(t *testing.T) {
 	assert.EqualValues(t, 0, bs.Base())
 	assert.EqualValues(t, 0, bs.Height())
 	assert.EqualValues(t, 0, bs.Size())
-
-	// pruning an empty store should error, even when pruning to 0
-	_, err = bs.PruneBlocks(1)
-	require.Error(t, err)
 
 	_, err = bs.PruneBlocks(0)
 	require.Error(t, err)
@@ -462,10 +395,6 @@ func TestPruneBlocks(t *testing.T) {
 	assert.EqualValues(t, 1200, bs.Base())
 	assert.EqualValues(t, 1500, bs.Height())
 	assert.EqualValues(t, 301, bs.Size())
-	assert.EqualValues(t, tmstore.BlockStoreState{
-		Base:   1200,
-		Height: 1500,
-	}, LoadBlockStoreState(db))
 
 	require.NotNil(t, bs.LoadBlock(1200))
 	require.Nil(t, bs.LoadBlock(1199))
@@ -481,9 +410,9 @@ func TestPruneBlocks(t *testing.T) {
 		require.NotNil(t, bs.LoadBlock(i))
 	}
 
-	// Pruning below the current base should error
+	// Pruning below the current base should not error
 	_, err = bs.PruneBlocks(1199)
-	require.Error(t, err)
+	require.NoError(t, err)
 
 	// Pruning to the current base should work
 	pruned, err = bs.PruneBlocks(1200)
@@ -524,7 +453,7 @@ func TestLoadBlockMeta(t *testing.T) {
 	require.Nil(t, res, "a non-existent blockMeta should return nil")
 
 	// 2. Next save a corrupted blockMeta then try to load it
-	err := db.Set(calcBlockMetaKey(height), []byte("Tendermint-Meta"))
+	err := db.Set(blockMetaKey(height), []byte("Tendermint-Meta"))
 	require.NoError(t, err)
 	res, _, panicErr = doFn(loadMeta)
 	require.NotNil(t, panicErr, "expecting a non-nil panic")
@@ -535,7 +464,7 @@ func TestLoadBlockMeta(t *testing.T) {
 		Version: tmversion.Consensus{
 			Block: version.BlockProtocol, App: 0}, Height: 1, ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}
 	pbm := meta.ToProto()
-	err = db.Set(calcBlockMetaKey(height), mustEncode(pbm))
+	err = db.Set(blockMetaKey(height), mustEncode(pbm))
 	require.NoError(t, err)
 	gotMeta, _, panicErr := doFn(loadMeta)
 	require.Nil(t, panicErr, "an existent and proper block should not panic")

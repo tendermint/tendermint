@@ -233,7 +233,7 @@ type Node struct {
 	eventBus          *types.EventBus // pub/sub for services
 	stateStore        sm.Store
 	blockStore        *store.BlockStore // store the blockchain to disk
-	bcReactor         p2p.Reactor       // for fast-syncing
+	bcReactor         service.Service   // for fast-syncing
 	mempoolReactor    *mempl.Reactor    // for gossipping transactions
 	mempool           mempl.Mempool
 	stateSync         bool                    // whether the node should state sync on startup
@@ -243,9 +243,10 @@ type Node struct {
 	consensusState    *cs.State               // latest consensus state
 	consensusReactor  *cs.Reactor             // for participating in the consensus
 	pexReactor        *pex.Reactor            // for exchanging peer addresses
-	evidencePool      *evidence.Pool          // tracking evidence
-	proxyApp          proxy.AppConns          // connection to the application
-	rpcListeners      []net.Listener          // rpc servers
+	evidenceReactor   *evidence.Reactor
+	evidencePool      *evidence.Pool // tracking evidence
+	proxyApp          proxy.AppConns // connection to the application
+	rpcListeners      []net.Listener // rpc servers
 	txIndexer         txindex.TxIndexer
 	indexerService    *txindex.IndexerService
 	prometheusSrv     *http.Server
@@ -359,9 +360,16 @@ func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
 	return bytes.Equal(pubKey.Address(), addr)
 }
 
-func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
-	state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (*mempl.Reactor, *mempl.CListMempool) {
+func createMempoolReactor(
+	config *cfg.Config,
+	proxyApp proxy.AppConns,
+	state sm.State,
+	memplMetrics *mempl.Metrics,
+	peerMgr *p2p.PeerManager,
+	logger log.Logger,
+) (*p2p.ReactorShim, *mempl.Reactor, *mempl.CListMempool) {
 
+	logger = logger.With("module", "mempool")
 	mempool := mempl.NewCListMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
@@ -370,51 +378,91 @@ func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
 		mempl.WithPreCheck(sm.TxPreCheck(state)),
 		mempl.WithPostCheck(sm.TxPostCheck(state)),
 	)
-	mempoolLogger := logger.With("module", "mempool")
-	mempoolReactor := mempl.NewReactor(config.Mempool, mempool)
-	mempoolReactor.SetLogger(mempoolLogger)
+
+	mempool.SetLogger(logger)
+
+	reactorShim := p2p.NewReactorShim(logger, "MempoolShim", mempl.GetChannelShims(config.Mempool))
+	reactor := mempl.NewReactor(
+		logger,
+		config.Mempool,
+		peerMgr,
+		mempool,
+		reactorShim.GetChannel(mempl.MempoolChannel),
+		reactorShim.PeerUpdates,
+	)
 
 	if config.Consensus.WaitForTxs() {
 		mempool.EnableTxsAvailable()
 	}
-	return mempoolReactor, mempool
+
+	return reactorShim, reactor, mempool
 }
 
-func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
-	stateDB dbm.DB, blockStore *store.BlockStore, logger log.Logger) (*evidence.Reactor, *evidence.Pool, error) {
-
+func createEvidenceReactor(
+	config *cfg.Config,
+	dbProvider DBProvider,
+	stateDB dbm.DB,
+	blockStore *store.BlockStore,
+	logger log.Logger,
+) (*p2p.ReactorShim, *evidence.Reactor, *evidence.Pool, error) {
 	evidenceDB, err := dbProvider(&DBContext{"evidence", config})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	evidenceLogger := logger.With("module", "evidence")
-	evidencePool, err := evidence.NewPool(evidenceDB, sm.NewStore(stateDB), blockStore)
+
+	logger = logger.With("module", "evidence")
+
+	evidencePool, err := evidence.NewPool(logger, evidenceDB, sm.NewStore(stateDB), blockStore)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	evidenceReactor := evidence.NewReactor(evidencePool)
-	evidenceReactor.SetLogger(evidenceLogger)
-	return evidenceReactor, evidencePool, nil
+
+	evidenceReactorShim := p2p.NewReactorShim(logger, "EvidenceShim", evidence.ChannelShims)
+	evidenceReactor := evidence.NewReactor(
+		logger,
+		evidenceReactorShim.GetChannel(evidence.EvidenceChannel),
+		evidenceReactorShim.PeerUpdates,
+		evidencePool,
+	)
+
+	return evidenceReactorShim, evidenceReactor, evidencePool, nil
 }
 
-func createBlockchainReactor(config *cfg.Config,
+func createBlockchainReactor(
+	logger log.Logger,
+	config *cfg.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore *store.BlockStore,
+	csReactor *cs.Reactor,
 	fastSync bool,
-	logger log.Logger) (bcReactor p2p.Reactor, err error) {
+) (*p2p.ReactorShim, service.Service, error) {
+
+	logger = logger.With("module", "blockchain")
 
 	switch config.FastSync.Version {
 	case "v0":
-		bcReactor = bcv0.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
-	case "v2":
-		bcReactor = bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
-	default:
-		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
-	}
+		reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", bcv0.ChannelShims)
 
-	bcReactor.SetLogger(logger.With("module", "blockchain"))
-	return bcReactor, nil
+		reactor, err := bcv0.NewReactor(
+			logger, state.Copy(), blockExec, blockStore, csReactor,
+			reactorShim.GetChannel(bcv0.BlockchainChannel), reactorShim.PeerUpdates, fastSync,
+		)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return reactorShim, reactor, nil
+
+	case "v2":
+		reactor := bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+		reactor.SetLogger(logger)
+
+		return nil, reactor, nil
+
+	default:
+		return nil, nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+	}
 }
 
 func createConsensusReactor(config *cfg.Config,
@@ -525,11 +573,11 @@ func createSwitch(config *cfg.Config,
 	transport p2p.Transport,
 	p2pMetrics *p2p.Metrics,
 	peerFilters []p2p.PeerFilterFunc,
-	mempoolReactor *mempl.Reactor,
+	mempoolReactor *p2p.ReactorShim,
 	bcReactor p2p.Reactor,
 	stateSyncReactor *p2p.ReactorShim,
 	consensusReactor *cs.Reactor,
-	evidenceReactor *evidence.Reactor,
+	evidenceReactor *p2p.ReactorShim,
 	nodeInfo p2p.NodeInfo,
 	nodeKey p2p.NodeKey,
 	p2pLogger log.Logger) *p2p.Switch {
@@ -746,13 +794,13 @@ func NewNode(config *cfg.Config,
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 
+	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
+	peerMgr := p2p.NewPeerManager(p2p.PeerManagerOptions{})
+
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
+	mpReactorShim, mpReactor, mempool := createMempoolReactor(config, proxyApp, state, memplMetrics, peerMgr, logger)
 
-	// Make MempoolReactor
-	mempoolReactor, mempool := createMempoolAndMempoolReactor(config, proxyApp, state, memplMetrics, logger)
-
-	// Make Evidence Reactor
-	evidenceReactor, evidencePool, err := createEvidenceReactor(config, dbProvider, stateDB, blockStore, logger)
+	evReactorShim, evReactor, evPool, err := createEvidenceReactor(config, dbProvider, stateDB, blockStore, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -763,14 +811,31 @@ func NewNode(config *cfg.Config,
 		logger.With("module", "state"),
 		proxyApp.Consensus(),
 		mempool,
-		evidencePool,
+		evPool,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 
-	// Make BlockchainReactor. Don't start fast sync if we're doing a state sync first.
-	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, fastSync && !stateSync, logger)
+	logger.Info("Setting up maverick consensus reactor", "Misbehaviors", misbehaviors)
+	csReactor, csState := createConsensusReactor(
+		config, state, blockExec, blockStore, mempool, evPool,
+		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger, misbehaviors,
+	)
+
+	// Create the blockchain reactor. Note, we do not start fast sync if we're
+	// doing a state sync first.
+	bcReactorShim, bcReactor, err := createBlockchainReactor(
+		logger, config, state, blockExec, blockStore, csReactor, fastSync && !stateSync,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
+	}
+
+	// TODO: Remove this once the switch is removed.
+	var bcReactorForSwitch p2p.Reactor
+	if bcReactorShim != nil {
+		bcReactorForSwitch = bcReactorShim
+	} else {
+		bcReactorForSwitch = bcReactor.(p2p.Reactor)
 	}
 
 	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or fast sync first.
@@ -781,17 +846,11 @@ func NewNode(config *cfg.Config,
 		csMetrics.FastSyncing.Set(1)
 	}
 
-	logger.Info("Setting up maverick consensus reactor", "Misbehaviors", misbehaviors)
-	consensusReactor, consensusState := createConsensusReactor(
-		config, state, blockExec, blockStore, mempool, evidencePool,
-		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger, misbehaviors)
-
 	// Set up state sync reactor, and schedule a sync if requested.
 	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
-	stateSyncReactorShim := p2p.NewReactorShim("StateSyncShim", statesync.ChannelShims)
-	stateSyncReactorShim.SetLogger(logger.With("module", "statesync"))
+	stateSyncReactorShim := p2p.NewReactorShim(logger.With("module", "statesync"), "StateSyncShim", statesync.ChannelShims)
 
 	stateSyncReactor := statesync.NewReactor(
 		stateSyncReactorShim.Logger,
@@ -812,8 +871,8 @@ func NewNode(config *cfg.Config,
 	p2pLogger := logger.With("module", "p2p")
 	transport, peerFilters := createTransport(p2pLogger, config, nodeInfo, nodeKey, proxyApp)
 	sw := createSwitch(
-		config, transport, p2pMetrics, peerFilters, mempoolReactor, bcReactor,
-		stateSyncReactorShim, consensusReactor, evidenceReactor, nodeInfo, nodeKey, p2pLogger,
+		config, transport, p2pMetrics, peerFilters, mpReactorShim, bcReactorForSwitch,
+		stateSyncReactorShim, csReactor, evReactorShim, nodeInfo, nodeKey, p2pLogger,
 	)
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
@@ -869,15 +928,16 @@ func NewNode(config *cfg.Config,
 		stateStore:       stateStore,
 		blockStore:       blockStore,
 		bcReactor:        bcReactor,
-		mempoolReactor:   mempoolReactor,
+		mempoolReactor:   mpReactor,
 		mempool:          mempool,
-		consensusState:   consensusState,
-		consensusReactor: consensusReactor,
+		consensusState:   csState,
+		consensusReactor: csReactor,
 		stateSyncReactor: stateSyncReactor,
 		stateSync:        stateSync,
 		stateSyncGenesis: state, // Shouldn't be necessary, but need a way to pass the genesis state
 		pexReactor:       pexReactor,
-		evidencePool:     evidencePool,
+		evidenceReactor:  evReactor,
+		evidencePool:     evPool,
 		proxyApp:         proxyApp,
 		txIndexer:        txIndexer,
 		indexerService:   indexerService,
@@ -944,8 +1004,25 @@ func (n *Node) OnStart() error {
 
 	n.isListening = true
 
+	if n.config.FastSync.Version == "v0" {
+		// Start the real blockchain reactor separately since the switch uses the shim.
+		if err := n.bcReactor.Start(); err != nil {
+			return err
+		}
+	}
+
 	// Start the real state sync reactor separately since the switch uses the shim.
 	if err := n.stateSyncReactor.Start(); err != nil {
+		return err
+	}
+
+	// Start the real mempool reactor separately since the switch uses the shim.
+	if err := n.mempoolReactor.Start(); err != nil {
+		return err
+	}
+
+	// Start the real evidence reactor separately since the switch uses the shim.
+	if err := n.evidenceReactor.Start(); err != nil {
 		return err
 	}
 
@@ -990,9 +1067,26 @@ func (n *Node) OnStop() {
 		n.Logger.Error("Error closing switch", "err", err)
 	}
 
+	if n.config.FastSync.Version == "v0" {
+		// Stop the real blockchain reactor separately since the switch uses the shim.
+		if err := n.bcReactor.Stop(); err != nil {
+			n.Logger.Error("failed to stop the blockchain reactor", "err", err)
+		}
+	}
+
 	// Stop the real state sync reactor separately since the switch uses the shim.
 	if err := n.stateSyncReactor.Stop(); err != nil {
-		n.Logger.Error("failed to stop state sync service", "err", err)
+		n.Logger.Error("failed to stop the state sync reactor", "err", err)
+	}
+
+	// Stop the real mempool reactor separately since the switch uses the shim.
+	if err := n.mempoolReactor.Stop(); err != nil {
+		n.Logger.Error("failed to stop the mempool reactor", "err", err)
+	}
+
+	// Stop the real evidence reactor separately since the switch uses the shim.
+	if err := n.evidenceReactor.Stop(); err != nil {
+		n.Logger.Error("failed to stop the evidence reactor", "err", err)
 	}
 
 	// stop mempool WAL
@@ -1294,9 +1388,11 @@ func makeNodeInfo(
 	var bcChannel byte
 	switch config.FastSync.Version {
 	case "v0":
-		bcChannel = bcv0.BlockchainChannel
+		bcChannel = byte(bcv0.BlockchainChannel)
+
 	case "v2":
 		bcChannel = bcv2.BlockchainChannel
+
 	default:
 		return p2p.NodeInfo{}, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
@@ -1307,15 +1403,19 @@ func makeNodeInfo(
 			state.Version.Consensus.Block,
 			state.Version.Consensus.App,
 		),
-		DefaultNodeID: nodeKey.ID,
-		Network:       genDoc.ChainID,
-		Version:       version.TMCoreSemVer,
+		NodeID:  nodeKey.ID,
+		Network: genDoc.ChainID,
+		Version: version.TMCoreSemVer,
 		Channels: []byte{
 			bcChannel,
-			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,
-			mempl.MempoolChannel,
-			evidence.EvidenceChannel,
-			byte(statesync.SnapshotChannel), byte(statesync.ChunkChannel),
+			cs.StateChannel,
+			cs.DataChannel,
+			cs.VoteChannel,
+			cs.VoteSetBitsChannel,
+			byte(mempl.MempoolChannel),
+			byte(evidence.EvidenceChannel),
+			byte(statesync.SnapshotChannel),
+			byte(statesync.ChunkChannel),
 		},
 		Moniker: config.Moniker,
 		Other: p2p.NodeInfoOther{

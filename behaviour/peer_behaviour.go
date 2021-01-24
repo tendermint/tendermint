@@ -8,7 +8,7 @@ import (
 // `peerID` identifies the peer and reason characterizes the specific
 // behaviour performed by the peer.
 type PeerBehaviour struct {
-	peerID p2p.ID
+	peerID p2p.NodeID
 	reason interface{}
 }
 
@@ -17,7 +17,7 @@ type badMessage struct {
 }
 
 // BadMessage returns a badMessage PeerBehaviour.
-func BadMessage(peerID p2p.ID, explanation string) PeerBehaviour {
+func BadMessage(peerID p2p.NodeID, explanation string) PeerBehaviour {
 	return PeerBehaviour{peerID: peerID, reason: badMessage{explanation}}
 }
 
@@ -26,7 +26,7 @@ type messageOutOfOrder struct {
 }
 
 // MessageOutOfOrder returns a messagOutOfOrder PeerBehaviour.
-func MessageOutOfOrder(peerID p2p.ID, explanation string) PeerBehaviour {
+func MessageOutOfOrder(peerID p2p.NodeID, explanation string) PeerBehaviour {
 	return PeerBehaviour{peerID: peerID, reason: messageOutOfOrder{explanation}}
 }
 
@@ -35,7 +35,7 @@ type consensusVote struct {
 }
 
 // ConsensusVote returns a consensusVote PeerBehaviour.
-func ConsensusVote(peerID p2p.ID, explanation string) PeerBehaviour {
+func ConsensusVote(peerID p2p.NodeID, explanation string) PeerBehaviour {
 	return PeerBehaviour{peerID: peerID, reason: consensusVote{explanation}}
 }
 
@@ -44,6 +44,6 @@ type blockPart struct {
 }
 
 // BlockPart returns blockPart PeerBehaviour.
-func BlockPart(peerID p2p.ID, explanation string) PeerBehaviour {
+func BlockPart(peerID p2p.NodeID, explanation string) PeerBehaviour {
 	return PeerBehaviour{peerID: peerID, reason: blockPart{explanation}}
 }

@@ -40,7 +40,7 @@ func makeState(p *params) *pcState {
 	state := newPcState(context)
 
 	for _, item := range p.items {
-		state.enqueue(p2p.ID(item.pid), makePcBlock(item.height), item.height)
+		state.enqueue(p2p.NodeID(item.pid), makePcBlock(item.height), item.height)
 	}
 
 	state.blocksSynced = p.blocksSynced
@@ -48,7 +48,7 @@ func makeState(p *params) *pcState {
 	return state
 }
 
-func mBlockResponse(peerID p2p.ID, height int64) scBlockReceived {
+func mBlockResponse(peerID p2p.NodeID, height int64) scBlockReceived {
 	return scBlockReceived{
 		peerID: peerID,
 		block:  makePcBlock(height),

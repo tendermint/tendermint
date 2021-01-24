@@ -334,7 +334,7 @@ func (mem *CListMempool) globalCb(req *abci.Request, res *abci.Response) {
 func (mem *CListMempool) reqResCb(
 	tx []byte,
 	peerID uint16,
-	peerP2PID p2p.ID,
+	peerP2PID p2p.NodeID,
 	externalCb func(*abci.Response),
 ) func(res *abci.Response) {
 	return func(res *abci.Response) {
@@ -411,7 +411,7 @@ func (mem *CListMempool) isFull(txSize int) error {
 func (mem *CListMempool) resCbFirstTime(
 	tx []byte,
 	peerID uint16,
-	peerP2PID p2p.ID,
+	peerP2PID p2p.NodeID,
 	res *abci.Response,
 ) {
 	switch r := res.Value.(type) {

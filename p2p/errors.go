@@ -18,7 +18,7 @@ type ErrRejected struct {
 	addr              NetAddress
 	conn              net.Conn
 	err               error
-	id                ID
+	id                NodeID
 	isAuthFailure     bool
 	isDuplicate       bool
 	isFiltered        bool
@@ -99,7 +99,7 @@ func (e ErrRejected) IsSelf() bool { return e.isSelf }
 // ErrSwitchDuplicatePeerID to be raised when a peer is connecting with a known
 // ID.
 type ErrSwitchDuplicatePeerID struct {
-	ID ID
+	ID NodeID
 }
 
 func (e ErrSwitchDuplicatePeerID) Error() string {
@@ -127,7 +127,7 @@ func (e ErrSwitchConnectToSelf) Error() string {
 
 type ErrSwitchAuthenticationFailure struct {
 	Dialed *NetAddress
-	Got    ID
+	Got    NodeID
 }
 
 func (e ErrSwitchAuthenticationFailure) Error() string {

@@ -50,8 +50,8 @@ var (
 
 // msgs from the reactor which may update the state
 type msgInfo struct {
-	Msg    Message `json:"msg"`
-	PeerID p2p.ID  `json:"peer_key"`
+	Msg    Message    `json:"msg"`
+	PeerID p2p.NodeID `json:"peer_key"`
 }
 
 // internally generated messages which may update the state
@@ -73,9 +73,8 @@ type txNotifier interface {
 
 // interface to the evidence pool
 type evidencePool interface {
-	// Adds consensus based evidence to the evidence pool. This function differs to
-	// AddEvidence by bypassing verification and adding it immediately to the pool
-	AddEvidenceFromConsensus(types.Evidence) error
+	// reports conflicting votes to the evidence pool to be processed into evidence
+	ReportConflictingVotes(voteA, voteB *types.Vote)
 }
 
 // State handles execution of the consensus algorithm.
@@ -449,7 +448,7 @@ func (cs *State) OpenWAL(walFile string) (WAL, error) {
 // TODO: should these return anything or let callers just use events?
 
 // AddVote inputs a vote.
-func (cs *State) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, err error) {
+func (cs *State) AddVote(vote *types.Vote, peerID p2p.NodeID) (added bool, err error) {
 	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&VoteMessage{vote}, ""}
 	} else {
@@ -461,7 +460,7 @@ func (cs *State) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 }
 
 // SetProposal inputs a proposal.
-func (cs *State) SetProposal(proposal *types.Proposal, peerID p2p.ID) error {
+func (cs *State) SetProposal(proposal *types.Proposal, peerID p2p.NodeID) error {
 
 	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&ProposalMessage{proposal}, ""}
@@ -474,7 +473,7 @@ func (cs *State) SetProposal(proposal *types.Proposal, peerID p2p.ID) error {
 }
 
 // AddProposalBlockPart inputs a part of the proposal block.
-func (cs *State) AddProposalBlockPart(height int64, round int32, part *types.Part, peerID p2p.ID) error {
+func (cs *State) AddProposalBlockPart(height int64, round int32, part *types.Part, peerID p2p.NodeID) error {
 
 	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, ""}
@@ -491,7 +490,7 @@ func (cs *State) SetProposalAndBlock(
 	proposal *types.Proposal,
 	block *types.Block,
 	parts *types.PartSet,
-	peerID p2p.ID,
+	peerID p2p.NodeID,
 ) error {
 	if err := cs.SetProposal(proposal, peerID); err != nil {
 		return err
@@ -1619,9 +1618,10 @@ func (cs *State) pruneBlocks(retainHeight int64) (uint64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed to prune block store: %w", err)
 	}
-	err = cs.blockExec.Store().PruneStates(base, retainHeight)
+
+	err = cs.blockExec.Store().PruneStates(retainHeight)
 	if err != nil {
-		return 0, fmt.Errorf("failed to prune state database: %w", err)
+		return 0, fmt.Errorf("failed to prune state store: %w", err)
 	}
 	return pruned, nil
 }
@@ -1757,7 +1757,7 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 // NOTE: block is not necessarily valid.
 // Asynchronously triggers either enterPrevote (before we timeout of propose) or tryFinalizeCommit,
 // once we have the full block.
-func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (added bool, err error) {
+func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.NodeID) (added bool, err error) {
 	height, round, part := msg.Height, msg.Round, msg.Part
 
 	// Blocks might be reused, so round mismatch is OK
@@ -1842,7 +1842,7 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 }
 
 // Attempt to add the vote. if its a duplicate signature, dupeout the validator
-func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
+func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.NodeID) (bool, error) {
 	added, err := cs.addVote(vote, peerID)
 	if err != nil {
 		// If the vote height is off, we'll just ignore it,
@@ -1865,21 +1865,12 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 					vote.Type)
 				return added, err
 			}
-			var timestamp time.Time
-			if voteErr.VoteA.Height == cs.state.InitialHeight {
-				timestamp = cs.state.LastBlockTime // genesis time
-			} else {
-				timestamp = sm.MedianTime(cs.LastCommit.MakeCommit(), cs.LastValidators)
-			}
-			// form duplicate vote evidence from the conflicting votes and send it across to the
-			// evidence pool
-			ev := types.NewDuplicateVoteEvidence(voteErr.VoteA, voteErr.VoteB, timestamp, cs.Validators)
-			evidenceErr := cs.evpool.AddEvidenceFromConsensus(ev)
-			if evidenceErr != nil {
-				cs.Logger.Error("Failed to add evidence to the evidence pool", "err", evidenceErr)
-			} else {
-				cs.Logger.Debug("Added evidence to the evidence pool", "ev", ev)
-			}
+			// report conflicting votes to the evidence pool
+			cs.evpool.ReportConflictingVotes(voteErr.VoteA, voteErr.VoteB)
+			cs.Logger.Info("Found and sent conflicting votes to the evidence pool",
+				"VoteA", voteErr.VoteA,
+				"VoteB", voteErr.VoteB,
+			)
 			return added, err
 		} else if err == types.ErrVoteNonDeterministicSignature {
 			cs.Logger.Debug("Vote has non-deterministic signature", "err", err)
@@ -1900,7 +1891,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 
 func (cs *State) addVote(
 	vote *types.Vote,
-	peerID p2p.ID) (added bool, err error) {
+	peerID p2p.NodeID) (added bool, err error) {
 	cs.Logger.Debug(
 		"addVote",
 		"voteHeight",

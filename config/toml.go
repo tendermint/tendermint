@@ -136,7 +136,18 @@ priv-validator-state-file = "{{ js .BaseConfig.PrivValidatorState }}"
 
 # TCP or UNIX socket address for Tendermint to listen on for
 # connections from an external PrivValidator process
+# when the listenAddr is prefixed with grpc instead of tcp it will use the gRPC Client
 priv-validator-laddr = "{{ .BaseConfig.PrivValidatorListenAddr }}"
+
+# Client certificate generated while creating needed files for secure connection.
+# If a remote validator address is provided but no certificate, the connection will be insecure
+priv-validator-client-certificate-file = "{{ js .BaseConfig.PrivValidatorClientCertificate }}"
+
+# Client key generated while creating certificates for secure connection
+priv-validator-client-key-file = "{{ js .BaseConfig.PrivValidatorClientKey }}"
+
+# Path Root Certificate Authority used to sign both client and server certificates
+priv-validator-certificate-authority = "{{ js .BaseConfig.PrivValidatorRootCA }}"
 
 # Path to the JSON file containing the private key to use for node authentication in the p2p protocol
 node-key-file = "{{ js .BaseConfig.NodeKey }}"
@@ -220,7 +231,7 @@ max-body-bytes = {{ .RPC.MaxBodyBytes }}
 max-header-bytes = {{ .RPC.MaxHeaderBytes }}
 
 # The path to a file containing certificate that is used to create the HTTPS server.
-# Migth be either absolute path or path related to tendermint's config directory.
+# Might be either absolute path or path related to Tendermint's config directory.
 # If the certificate is signed by a certificate authority,
 # the certFile should be the concatenation of the server's certificate, any intermediates,
 # and the CA's certificate.
@@ -229,7 +240,7 @@ max-header-bytes = {{ .RPC.MaxHeaderBytes }}
 tls-cert-file = "{{ .RPC.TLSCertFile }}"
 
 # The path to a file containing matching private key that is used to create the HTTPS server.
-# Migth be either absolute path or path related to tendermint's config directory.
+# Might be either absolute path or path related to Tendermint's config directory.
 # NOTE: both tls-cert-file and tls-key-file must be present for Tendermint to create HTTPS server.
 # Otherwise, HTTP server is run.
 tls-key-file = "{{ .RPC.TLSKeyFile }}"
@@ -311,7 +322,7 @@ handshake-timeout = "{{ .P2P.HandshakeTimeout }}"
 dial-timeout = "{{ .P2P.DialTimeout }}"
 
 #######################################################
-###          Mempool Configurattion Option          ###
+###          Mempool Configuration Option          ###
 #######################################################
 [mempool]
 

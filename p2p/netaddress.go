@@ -5,7 +5,6 @@
 package p2p
 
 import (
-	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -23,14 +22,14 @@ const EmptyNetAddress = "<nil-NetAddress>"
 // NetAddress defines information about a peer on the network
 // including its ID, IP address, and port.
 type NetAddress struct {
-	ID   ID     `json:"id"`
+	ID   NodeID `json:"id"`
 	IP   net.IP `json:"ip"`
 	Port uint16 `json:"port"`
 }
 
 // IDAddressString returns id@hostPort. It strips the leading
 // protocol from protocolHostPort if it exists.
-func IDAddressString(id ID, protocolHostPort string) string {
+func IDAddressString(id NodeID, protocolHostPort string) string {
 	hostPort := removeProtocolIfDefined(protocolHostPort)
 	return fmt.Sprintf("%s@%s", id, hostPort)
 }
@@ -40,7 +39,7 @@ func IDAddressString(id ID, protocolHostPort string) string {
 // using 0.0.0.0:0. When normal run, other net.Addr (except TCP) will
 // panic. Panics if ID is invalid.
 // TODO: socks proxies?
-func NewNetAddress(id ID, addr net.Addr) *NetAddress {
+func NewNetAddress(id NodeID, addr net.Addr) *NetAddress {
 	tcpAddr, ok := addr.(*net.TCPAddr)
 	if !ok {
 		if flag.Lookup("test.v") == nil { // normal run
@@ -52,7 +51,7 @@ func NewNetAddress(id ID, addr net.Addr) *NetAddress {
 		}
 	}
 
-	if err := validateID(id); err != nil {
+	if err := id.Validate(); err != nil {
 		panic(fmt.Sprintf("Invalid ID %v: %v (addr: %v)", id, err, addr))
 	}
 
@@ -74,12 +73,16 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 		return nil, ErrNetAddressNoID{addr}
 	}
 
-	// get ID
-	if err := validateID(ID(spl[0])); err != nil {
+	id, err := NewNodeID(spl[0])
+	if err != nil {
 		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
 	}
-	var id ID
-	id, addrWithoutProtocol = ID(spl[0]), spl[1]
+
+	if err := id.Validate(); err != nil {
+		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
+	}
+
+	addrWithoutProtocol = spl[1]
 
 	// get host and port
 	host, portStr, err := net.SplitHostPort(addrWithoutProtocol)
@@ -146,7 +149,7 @@ func NetAddressFromProto(pb tmp2p.NetAddress) (*NetAddress, error) {
 		return nil, fmt.Errorf("invalid port number %v", pb.Port)
 	}
 	return &NetAddress{
-		ID:   ID(pb.ID),
+		ID:   NodeID(pb.ID),
 		IP:   ip,
 		Port: uint16(pb.Port),
 	}, nil
@@ -262,7 +265,7 @@ func (na *NetAddress) Routable() bool {
 // For IPv4 these are either a 0 or all bits set address. For IPv6 a zero
 // address or one that matches the RFC3849 documentation address format.
 func (na *NetAddress) Valid() error {
-	if err := validateID(na.ID); err != nil {
+	if err := na.ID.Validate(); err != nil {
 		return fmt.Errorf("invalid ID: %w", err)
 	}
 
@@ -413,18 +416,4 @@ func removeProtocolIfDefined(addr string) string {
 	}
 	return addr
 
-}
-
-func validateID(id ID) error {
-	if len(id) == 0 {
-		return errors.New("no ID")
-	}
-	idBytes, err := hex.DecodeString(string(id))
-	if err != nil {
-		return err
-	}
-	if len(idBytes) != IDByteLength {
-		return fmt.Errorf("invalid hex length - got %d, expected %d", len(idBytes), IDByteLength)
-	}
-	return nil
 }

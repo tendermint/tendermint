@@ -19,7 +19,7 @@ import (
 )
 
 func TestLast_FirstLightBlockHeight(t *testing.T) {
-	dbStore := New(dbm.NewMemDB(), "TestLast_FirstLightBlockHeight")
+	dbStore := New(dbm.NewMemDB())
 
 	// Empty store
 	height, err := dbStore.LastLightBlockHeight()
@@ -44,7 +44,7 @@ func TestLast_FirstLightBlockHeight(t *testing.T) {
 }
 
 func Test_SaveLightBlock(t *testing.T) {
-	dbStore := New(dbm.NewMemDB(), "Test_SaveLightBlockAndValidatorSet")
+	dbStore := New(dbm.NewMemDB())
 
 	// Empty store
 	h, err := dbStore.LightBlock(1)
@@ -74,7 +74,7 @@ func Test_SaveLightBlock(t *testing.T) {
 }
 
 func Test_LightBlockBefore(t *testing.T) {
-	dbStore := New(dbm.NewMemDB(), "Test_LightBlockBefore")
+	dbStore := New(dbm.NewMemDB())
 
 	assert.Panics(t, func() {
 		_, _ = dbStore.LightBlockBefore(0)
@@ -89,10 +89,13 @@ func Test_LightBlockBefore(t *testing.T) {
 	if assert.NotNil(t, h) {
 		assert.EqualValues(t, 2, h.Height)
 	}
+
+	_, err = dbStore.LightBlockBefore(2)
+	require.Error(t, err)
 }
 
 func Test_Prune(t *testing.T) {
-	dbStore := New(dbm.NewMemDB(), "Test_Prune")
+	dbStore := New(dbm.NewMemDB())
 
 	// Empty store
 	assert.EqualValues(t, 0, dbStore.Size())
@@ -129,7 +132,7 @@ func Test_Prune(t *testing.T) {
 }
 
 func Test_Concurrency(t *testing.T) {
-	dbStore := New(dbm.NewMemDB(), "Test_Prune")
+	dbStore := New(dbm.NewMemDB())
 
 	var wg sync.WaitGroup
 	for i := 1; i <= 100; i++ {
@@ -145,6 +148,13 @@ func Test_Concurrency(t *testing.T) {
 				t.Log(err)
 			}
 
+			if i > 2 {
+				_, err = dbStore.LightBlockBefore(i - 1)
+				if err != nil {
+					t.Log(err)
+				}
+			}
+
 			_, err = dbStore.LastLightBlockHeight()
 			if err != nil {
 				t.Log(err)
@@ -154,16 +164,19 @@ func Test_Concurrency(t *testing.T) {
 				t.Log(err)
 			}
 
-			err = dbStore.Prune(2)
+			err = dbStore.Prune(3)
 			if err != nil {
 				t.Log(err)
 			}
 			_ = dbStore.Size()
 
-			err = dbStore.DeleteLightBlock(1)
-			if err != nil {
-				t.Log(err)
+			if i > 2 && i%2 == 0 {
+				err = dbStore.DeleteLightBlock(i - 1)
+				if err != nil {
+					t.Log(err)
+				}
 			}
+
 		}(int64(i))
 	}
 

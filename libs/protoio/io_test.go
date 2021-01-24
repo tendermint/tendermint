@@ -39,6 +39,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/test"
+	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/libs/protoio"
 )
@@ -47,6 +48,7 @@ func iotest(writer protoio.WriteCloser, reader protoio.ReadCloser) error {
 	varint := make([]byte, binary.MaxVarintLen64)
 	size := 1000
 	msgs := make([]*test.NinOptNative, size)
+	lens := make([]int, size)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := range msgs {
 		msgs[i] = test.NewPopulatedNinOptNative(r, true)
@@ -71,6 +73,7 @@ func iotest(writer protoio.WriteCloser, reader protoio.ReadCloser) error {
 		if n != len(bz)+visize {
 			return fmt.Errorf("WriteMsg() wrote %v bytes, expected %v", n, len(bz)+visize) // nolint
 		}
+		lens[i] = n
 	}
 	if err := writer.Close(); err != nil {
 		return err
@@ -78,11 +81,13 @@ func iotest(writer protoio.WriteCloser, reader protoio.ReadCloser) error {
 	i := 0
 	for {
 		msg := &test.NinOptNative{}
-		if err := reader.ReadMsg(msg); err != nil {
+		if n, err := reader.ReadMsg(msg); err != nil {
 			if err == io.EOF {
 				break
 			}
 			return err
+		} else if n != lens[i] {
+			return fmt.Errorf("read %v bytes, expected %v", n, lens[i])
 		}
 		if err := msg.VerboseEqual(msgs[i]); err != nil {
 			return err
@@ -116,21 +121,17 @@ func TestVarintNormal(t *testing.T) {
 	buf := newBuffer()
 	writer := protoio.NewDelimitedWriter(buf)
 	reader := protoio.NewDelimitedReader(buf, 1024*1024)
-	if err := iotest(writer, reader); err != nil {
-		t.Error(err)
-	}
-	if !buf.closed {
-		t.Fatalf("did not close buffer")
-	}
+	err := iotest(writer, reader)
+	require.NoError(t, err)
+	require.True(t, buf.closed, "did not close buffer")
 }
 
 func TestVarintNoClose(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 	writer := protoio.NewDelimitedWriter(buf)
 	reader := protoio.NewDelimitedReader(buf, 1024*1024)
-	if err := iotest(writer, reader); err != nil {
-		t.Error(err)
-	}
+	err := iotest(writer, reader)
+	require.NoError(t, err)
 }
 
 // issue 32
@@ -138,11 +139,8 @@ func TestVarintMaxSize(t *testing.T) {
 	buf := newBuffer()
 	writer := protoio.NewDelimitedWriter(buf)
 	reader := protoio.NewDelimitedReader(buf, 20)
-	if err := iotest(writer, reader); err == nil {
-		t.Error(err)
-	} else {
-		t.Logf("%s", err)
-	}
+	err := iotest(writer, reader)
+	require.Error(t, err)
 }
 
 func TestVarintError(t *testing.T) {
@@ -150,8 +148,37 @@ func TestVarintError(t *testing.T) {
 	buf.Write([]byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f})
 	reader := protoio.NewDelimitedReader(buf, 1024*1024)
 	msg := &test.NinOptNative{}
-	err := reader.ReadMsg(msg)
-	if err == nil {
-		t.Fatalf("Expected error")
-	}
+	n, err := reader.ReadMsg(msg)
+	require.Error(t, err)
+	require.Equal(t, 10, n)
+}
+
+func TestVarintTruncated(t *testing.T) {
+	buf := newBuffer()
+	buf.Write([]byte{0xff, 0xff})
+	reader := protoio.NewDelimitedReader(buf, 1024*1024)
+	msg := &test.NinOptNative{}
+	n, err := reader.ReadMsg(msg)
+	require.Error(t, err)
+	require.Equal(t, 2, n)
+}
+
+func TestShort(t *testing.T) {
+	buf := newBuffer()
+
+	varintBuf := make([]byte, binary.MaxVarintLen64)
+	varintLen := binary.PutUvarint(varintBuf, 100)
+	_, err := buf.Write(varintBuf[:varintLen])
+	require.NoError(t, err)
+
+	bz, err := proto.Marshal(&test.NinOptNative{Field15: []byte{0x01, 0x02, 0x03}})
+	require.NoError(t, err)
+	buf.Write(bz)
+
+	reader := protoio.NewDelimitedReader(buf, 1024*1024)
+	require.NoError(t, err)
+	msg := &test.NinOptNative{}
+	n, err := reader.ReadMsg(msg)
+	require.Error(t, err)
+	require.Equal(t, varintLen+len(bz), n)
 }

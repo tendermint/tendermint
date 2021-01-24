@@ -46,7 +46,7 @@ type HeightVoteSet struct {
 	mtx               sync.Mutex
 	round             int32                  // max tracked round
 	roundVoteSets     map[int32]RoundVoteSet // keys: [0...round]
-	peerCatchupRounds map[p2p.ID][]int32     // keys: peer.ID; values: at most 2 rounds
+	peerCatchupRounds map[p2p.NodeID][]int32 // keys: peer.ID; values: at most 2 rounds
 }
 
 func NewHeightVoteSet(chainID string, height int64, valSet *types.ValidatorSet) *HeightVoteSet {
@@ -64,7 +64,7 @@ func (hvs *HeightVoteSet) Reset(height int64, valSet *types.ValidatorSet) {
 	hvs.height = height
 	hvs.valSet = valSet
 	hvs.roundVoteSets = make(map[int32]RoundVoteSet)
-	hvs.peerCatchupRounds = make(map[p2p.ID][]int32)
+	hvs.peerCatchupRounds = make(map[p2p.NodeID][]int32)
 
 	hvs.addRound(0)
 	hvs.round = 0
@@ -114,7 +114,7 @@ func (hvs *HeightVoteSet) addRound(round int32) {
 
 // Duplicate votes return added=false, err=nil.
 // By convention, peerID is "" if origin is self.
-func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, err error) {
+func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerID p2p.NodeID) (added bool, err error) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	if !types.IsVoteTypeValid(vote.Type) {
@@ -185,7 +185,7 @@ func (hvs *HeightVoteSet) getVoteSet(round int32, voteType tmproto.SignedMsgType
 func (hvs *HeightVoteSet) SetPeerMaj23(
 	round int32,
 	voteType tmproto.SignedMsgType,
-	peerID p2p.ID,
+	peerID p2p.NodeID,
 	blockID types.BlockID) error {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()

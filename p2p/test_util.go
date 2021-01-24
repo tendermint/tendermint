@@ -25,8 +25,8 @@ func CreateRandomPeer(outbound bool) Peer {
 	p := &peer{
 		peerConn: peerConn{outbound: outbound},
 		nodeInfo: NodeInfo{
-			DefaultNodeID: netAddr.ID,
-			ListenAddr:    netAddr.DialString(),
+			NodeID:     netAddr.ID,
+			ListenAddr: netAddr.DialString(),
 		},
 		metrics: NopMetrics(),
 	}
@@ -217,14 +217,14 @@ func testPeerConn(
 //----------------------------------------------------------------
 // rand node info
 
-func testNodeInfo(id ID, name string) NodeInfo {
+func testNodeInfo(id NodeID, name string) NodeInfo {
 	return testNodeInfoWithNetwork(id, name, "testing")
 }
 
-func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
+func testNodeInfoWithNetwork(id NodeID, name, network string) NodeInfo {
 	return NodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
-		DefaultNodeID:   id,
+		NodeID:          id,
 		ListenAddr:      fmt.Sprintf("127.0.0.1:%d", getFreePort()),
 		Network:         network,
 		Version:         "1.2.3-rc0-deadbeef",
@@ -262,7 +262,7 @@ func (book *AddrBookMock) OurAddress(addr *NetAddress) bool {
 	_, ok := book.OurAddrs[addr.String()]
 	return ok
 }
-func (book *AddrBookMock) MarkGood(ID) {}
+func (book *AddrBookMock) MarkGood(NodeID) {}
 func (book *AddrBookMock) HasAddress(addr *NetAddress) bool {
 	_, ok := book.Addrs[addr.String()]
 	return ok

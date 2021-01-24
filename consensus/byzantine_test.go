@@ -72,9 +72,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 		// Make a full instance of the evidence pool
 		evidenceDB := dbm.NewMemDB()
-		evpool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
+		evpool, err := evidence.NewPool(logger.With("module", "evidence"), evidenceDB, stateStore, blockStore)
 		require.NoError(t, err)
-		evpool.SetLogger(logger.With("module", "evidence"))
 
 		// Make State
 		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
@@ -154,6 +153,72 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		}
 	}
 
+	// introducing a lazy proposer means that the time of the block committed is different to the
+	// timestamp that the other nodes have. This tests to ensure that the evidence that finally gets
+	// proposed will have a valid timestamp
+	lazyProposer := css[1]
+
+	lazyProposer.decideProposal = func(height int64, round int32) {
+		lazyProposer.Logger.Info("Lazy Proposer proposing condensed commit")
+		if lazyProposer.privValidator == nil {
+			panic("entered createProposalBlock with privValidator being nil")
+		}
+
+		var commit *types.Commit
+		switch {
+		case lazyProposer.Height == lazyProposer.state.InitialHeight:
+			// We're creating a proposal for the first block.
+			// The commit is empty, but not nil.
+			commit = types.NewCommit(0, 0, types.BlockID{}, nil)
+		case lazyProposer.LastCommit.HasTwoThirdsMajority():
+			// Make the commit from LastCommit
+			commit = lazyProposer.LastCommit.MakeCommit()
+		default: // This shouldn't happen.
+			lazyProposer.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
+			return
+		}
+
+		// omit the last signature in the commit
+		commit.Signatures[len(commit.Signatures)-1] = types.NewCommitSigAbsent()
+
+		if lazyProposer.privValidatorPubKey == nil {
+			// If this node is a validator & proposer in the current round, it will
+			// miss the opportunity to create a block.
+			lazyProposer.Logger.Error(fmt.Sprintf("enterPropose: %v", errPubKeyIsNotSet))
+			return
+		}
+		proposerAddr := lazyProposer.privValidatorPubKey.Address()
+
+		block, blockParts := lazyProposer.blockExec.CreateProposalBlock(
+			lazyProposer.Height, lazyProposer.state, commit, proposerAddr,
+		)
+
+		// Flush the WAL. Otherwise, we may not recompute the same proposal to sign,
+		// and the privValidator will refuse to sign anything.
+		if err := lazyProposer.wal.FlushAndSync(); err != nil {
+			lazyProposer.Logger.Error("Error flushing to disk")
+		}
+
+		// Make proposal
+		propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
+		proposal := types.NewProposal(height, round, lazyProposer.ValidRound, propBlockID)
+		p := proposal.ToProto()
+		if err := lazyProposer.privValidator.SignProposal(lazyProposer.state.ChainID, p); err == nil {
+			proposal.Signature = p.Signature
+
+			// send proposal and block parts on internal msg queue
+			lazyProposer.sendInternalMessage(msgInfo{&ProposalMessage{proposal}, ""})
+			for i := 0; i < int(blockParts.Total()); i++ {
+				part := blockParts.GetPart(i)
+				lazyProposer.sendInternalMessage(msgInfo{&BlockPartMessage{lazyProposer.Height, lazyProposer.Round, part}, ""})
+			}
+			lazyProposer.Logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
+			lazyProposer.Logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
+		} else if !lazyProposer.replayMode {
+			lazyProposer.Logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
+		}
+	}
+
 	// start the consensus reactors
 	for i := 0; i < nValidators; i++ {
 		s := reactors[i].conS.GetState()
@@ -166,14 +231,14 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	evidenceFromEachValidator := make([]types.Evidence, nValidators)
 
 	wg := new(sync.WaitGroup)
-	wg.Add(4)
 	for i := 0; i < nValidators; i++ {
+		wg.Add(1)
 		go func(i int) {
+			defer wg.Done()
 			for msg := range blocksSubs[i].Out() {
 				block := msg.Data().(types.EventDataNewBlock).Block
 				if len(block.Evidence.Evidence) != 0 {
 					evidenceFromEachValidator[i] = block.Evidence.Evidence[0]
-					wg.Done()
 					return
 				}
 			}
@@ -323,8 +388,8 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	// wait till everyone makes the first new block
 	// (one of them already has)
 	wg := new(sync.WaitGroup)
-	wg.Add(2)
 	for i := 1; i < N-1; i++ {
+		wg.Add(1)
 		go func(j int) {
 			<-blocksSubs[j].Out()
 			wg.Done()

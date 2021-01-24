@@ -11,10 +11,20 @@ type ChannelID uint16
 
 // Envelope specifies the message receiver and sender.
 type Envelope struct {
-	From      PeerID        // Message sender, or empty for outbound messages.
-	To        PeerID        // Message receiver, or empty for inbound messages.
+	From      NodeID        // Message sender, or empty for outbound messages.
+	To        NodeID        // Message receiver, or empty for inbound messages.
 	Broadcast bool          // Send message to all connected peers, ignoring To.
 	Message   proto.Message // Payload.
+
+	// For internal use in the Router.
+	channelID ChannelID
+}
+
+// Strip strips internal information from the envelope. Primarily used for
+// testing, such that returned envelopes can be compared with literals.
+func (e Envelope) Strip() Envelope {
+	e.channelID = 0
+	return e
 }
 
 // Channel is a bidirectional channel for Protobuf message exchange with peers.
