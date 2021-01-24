@@ -601,6 +601,8 @@ func (m *PeerManager) DialFailed(peerID NodeID, address PeerAddress) error {
 	// to avoid these sorts of issues.
 	if retryDelay := m.retryDelay(peer, addressInfo.DialFailures); retryDelay != time.Duration(math.MaxInt64) {
 		go func() {
+			// Use an explicit timer with deferred cleanup instead of
+			// time.After(), to avoid leaking goroutines on PeerManager.Close().
 			timer := time.NewTimer(retryDelay)
 			defer timer.Stop()
 			select {

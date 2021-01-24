@@ -527,11 +527,8 @@ func (r *Router) OnStop() {
 func (r *Router) stopCtx() context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		select {
-		case <-r.stopCh:
-			cancel()
-		case <-ctx.Done():
-		}
+		<-r.stopCh
+		cancel()
 	}()
 	return ctx
 }
