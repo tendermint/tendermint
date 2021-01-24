@@ -64,7 +64,7 @@ func ParsePeerAddress(urlString string) (PeerAddress, error) {
 			return PeerAddress{}, fmt.Errorf("invalid peer ID %q: %w", parts[0], err)
 		}
 		if len(parts) == 2 {
-			address.Path = parts[2]
+			address.Path = parts[1]
 		}
 		return address, nil
 	}
