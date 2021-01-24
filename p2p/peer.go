@@ -342,6 +342,10 @@ type PeerManagerOptions struct {
 	// necessary to make room for these.
 	PersistentPeers []NodeID
 
+	// MaxPeers is the maximum number of peers to track. When this is exceeded,
+	// the lowest-scored unconnected peers will get removed. 0 means no limit.
+	MaxPeers uint16
+
 	// MaxConnected is the maximum number of connected peers (inbound and
 	// outbound). 0 means no limit.
 	MaxConnected uint16
@@ -402,8 +406,10 @@ func NewPeerManager(peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, er
 		evicting:      map[NodeID]bool{},
 		subscriptions: map[*PeerUpdatesCh]*PeerUpdatesCh{},
 	}
-	err = peerManager.configurePeers()
-	if err != nil {
+	if err = peerManager.configurePeers(); err != nil {
+		return nil, err
+	}
+	if err = peerManager.prunePeers(); err != nil {
 		return nil, err
 	}
 	return peerManager, nil
@@ -417,6 +423,33 @@ func (m *PeerManager) configurePeers() error {
 		if peer, ok := m.store.Get(peerID); ok {
 			peer.Persistent = true
 			if err := m.store.Set(peer); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// prunePeers removes peers from the peer store if it contains more than
+// MaxPeers peers. The lowest-scored non-connected peers are removed.
+func (m *PeerManager) prunePeers() error {
+	if m.options.MaxPeers == 0 {
+		return nil
+	}
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	ranked := m.store.Ranked()
+	for i := len(ranked) - 1; i >= 0; i-- {
+		peerID := ranked[i].ID
+		switch {
+		case m.store.Size() <= int(m.options.MaxPeers):
+			break
+		case m.dialing[peerID]:
+		case m.connected[peerID]:
+		case m.evicting[peerID]:
+		default:
+			if err := m.store.Delete(peerID); err != nil {
 				return err
 			}
 		}
@@ -452,6 +485,9 @@ func (m *PeerManager) Add(address PeerAddress) error {
 		return err
 	}
 	m.wakeDial()
+	if err := m.prunePeers(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1066,9 +1102,14 @@ func (s *peerStore) List() []peerInfo {
 // not be mutated or accessed concurrently by the caller, since it returns
 // pointers to internal peerStore data for performance.
 //
+// Ranked is used to determine both which peers to dial, which ones to evict,
+// and which ones to delete completely.
+//
 // FIXME: For now, we simply maintain a cache in s.ranked which is invalidated
 // by setting it to nil, but if necessary we should use a better data structure
 // for this (e.g. a heap or ordered map).
+//
+// FIXME: The scoring logic is currently very naïve, see peerInfo.Score().
 func (s *peerStore) Ranked() []*peerInfo {
 	if s.ranked != nil {
 		return s.ranked
@@ -1083,6 +1124,11 @@ func (s *peerStore) Ranked() []*peerInfo {
 		return s.ranked[i].Score() > s.ranked[j].Score()
 	})
 	return s.ranked
+}
+
+// Size returns the number of peers in the peer store.
+func (s *peerStore) Size() int {
+	return len(s.peers)
 }
 
 // peerInfo contains peer information stored in a peerStore.
