@@ -1039,6 +1039,7 @@ func (s *peerStore) loadPeers() error {
 		return iter.Error()
 	}
 	s.peers = peers
+	s.ranked = nil // invalidate cache if populated
 	return nil
 }
 
