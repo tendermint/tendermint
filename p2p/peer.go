@@ -417,7 +417,7 @@ func NewPeerManager(peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, er
 
 // configurePeers configures peers in the peer store with ephemeral runtime
 // configuration, e.g. setting peerInfo.Persistent based on
-// PeerManagerOptions.PersistentPeers.
+// PeerManagerOptions.PersistentPeers. The caller must hold the mutex lock.
 func (m *PeerManager) configurePeers() error {
 	for _, peerID := range m.options.PersistentPeers {
 		if peer, ok := m.store.Get(peerID); ok {
@@ -432,8 +432,9 @@ func (m *PeerManager) configurePeers() error {
 
 // prunePeers removes peers from the peer store if it contains more than
 // MaxPeers peers. The lowest-scored non-connected peers are removed.
+// The caller must hold the mutex lock.
 func (m *PeerManager) prunePeers() error {
-	if m.options.MaxPeers == 0 {
+	if m.options.MaxPeers == 0 || m.store.Size() <= int(m.options.MaxPeers) {
 		return nil
 	}
 	m.mtx.Lock()
@@ -484,10 +485,10 @@ func (m *PeerManager) Add(address PeerAddress) error {
 	if err := m.store.Set(peer); err != nil {
 		return err
 	}
-	m.wakeDial()
 	if err := m.prunePeers(); err != nil {
 		return err
 	}
+	m.wakeDial()
 	return nil
 }
 
