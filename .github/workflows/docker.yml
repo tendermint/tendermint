@@ -14,9 +14,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+<<<<<<< HEAD
       - uses: actions/setup-go@v2
         with:
           go-version: "^1.15.4"
+=======
+>>>>>>> cd3ebe875... docker: release Linux/ARM64 image (#5925)
       - uses: actions/checkout@master
       - name: Prepare
         id: prep
@@ -37,6 +40,11 @@ jobs:
           fi
           echo ::set-output name=tags::${TAGS}
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@master
+        with:
+          platforms: all
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
@@ -46,14 +54,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build Tendermint
-        run: |
-          make build-linux && cp build/tendermint DOCKER/tendermint
-
       - name: Publish to Docker Hub
         uses: docker/build-push-action@v2
         with:
-          context: ./DOCKER
+          context: .
           file: ./DOCKER/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.prep.outputs.tags }}
