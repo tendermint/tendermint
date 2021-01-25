@@ -10,6 +10,8 @@ import (
 	kitlog "github.com/go-kit/kit/log"
 	kitlevel "github.com/go-kit/kit/log/level"
 	"github.com/go-logfmt/logfmt"
+
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 )
 
 type tmfmtEncoder struct {
@@ -79,6 +81,11 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 		case moduleKey:
 			excludeIndexes = append(excludeIndexes, i)
 			module = keyvals[i+1].(string)
+		}
+
+		// Format []byte as base 16 (see bytes.HexBytes)
+		if b, ok := keyvals[i+1].([]byte); ok {
+			keyvals[i+1] = tmbytes.HexBytes(b)
 		}
 	}
 

@@ -39,10 +39,8 @@ func TestInfo(t *testing.T) {
 	(trusted is more recent) old=42 trustedHeight="forty two"
 	trustedHash=74657374206D65`
 	if strings.EqualFold(receivedmsg, expectedmsg) {
-		t.Errorf("received %s, expected %s", receivedmsg, expectedmsg)
-		t.FailNow()
+		t.Fatalf("received %s, expected %s", receivedmsg, expectedmsg)
 	}
-
 }
 
 func TestDebug(t *testing.T) {
@@ -64,8 +62,7 @@ func TestDebug(t *testing.T) {
 	(trusted is more recent) old=42 trustedHeight="forty two"
 	trustedHash=74657374206D65`
 	if strings.EqualFold(receivedmsg, expectedmsg) {
-		t.Errorf("received %s, expected %s", receivedmsg, expectedmsg)
-		t.FailNow()
+		t.Fatalf("received %s, expected %s", receivedmsg, expectedmsg)
 	}
 }
 
@@ -88,8 +85,7 @@ func TestError(t *testing.T) {
 	(trusted is more recent) old=42 trustedHeight="forty two"
 	trustedHash=74657374206D65`
 	if strings.EqualFold(receivedmsg, expectedmsg) {
-		t.Errorf("received %s, expected %s", receivedmsg, expectedmsg)
-		t.FailNow()
+		t.Fatalf("received %s, expected %s", receivedmsg, expectedmsg)
 	}
 }
 

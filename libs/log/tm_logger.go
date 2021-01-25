@@ -7,7 +7,6 @@ import (
 	kitlog "github.com/go-kit/kit/log"
 	kitlevel "github.com/go-kit/kit/log/level"
 	"github.com/go-kit/kit/log/term"
-	"github.com/tendermint/tendermint/libs/bytes"
 )
 
 const (
@@ -54,36 +53,15 @@ func NewTMLoggerWithColorFn(w io.Writer, colorFn func(keyvals ...interface{}) te
 func (l *tmLogger) Info(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Info(l.srcLogger)
 
-	// This value will be marshalled accordingly to the
-	// String() implementation of HexBytes after passing
-	// log level check, and avoids the overhead of
-	// hex-encoding when the message won't get logged.
-	for i, val := range keyvals {
-		if b, ok := val.([]byte); ok {
-			keyvals[i] = bytes.HexBytes(b)
-		}
-	}
-
 	if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
 		errLogger := kitlevel.Error(l.srcLogger)
 		kitlog.With(errLogger, msgKey, msg).Log("err", err) //nolint:errcheck // no need to check error again
 	}
-
 }
 
 // Debug logs a message at level Debug.
 func (l *tmLogger) Debug(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Debug(l.srcLogger)
-
-	// This value will be marshalled accordingly to the
-	// String() implementation of HexBytes after passing
-	// log level check, and avoids the overhead of
-	// hex-encoding when the message won't get logged.
-	for i, val := range keyvals {
-		if b, ok := val.([]byte); ok {
-			keyvals[i] = bytes.HexBytes(b)
-		}
-	}
 
 	if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
 		errLogger := kitlevel.Error(l.srcLogger)
@@ -94,16 +72,6 @@ func (l *tmLogger) Debug(msg string, keyvals ...interface{}) {
 // Error logs a message at level Error.
 func (l *tmLogger) Error(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Error(l.srcLogger)
-
-	// This value will be marshalled accordingly to the
-	// String() implementation of HexBytes after passing
-	// log level check, and avoids the overhead of
-	// hex-encoding when the message won't get logged.
-	for i, val := range keyvals {
-		if b, ok := val.([]byte); ok {
-			keyvals[i] = bytes.HexBytes(b)
-		}
-	}
 
 	lWithMsg := kitlog.With(lWithLevel, msgKey, msg)
 	if err := lWithMsg.Log(keyvals...); err != nil {
