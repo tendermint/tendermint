@@ -93,7 +93,14 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, logger log.Logger, chBuf uint) 
 	return rts
 }
 
-func simulateRouter(wg *sync.WaitGroup, primary *reactorTestSuite, suites []*reactorTestSuite, numOut int) {
+func simulateRouter(
+	wg *sync.WaitGroup,
+	primary *reactorTestSuite,
+	suites []*reactorTestSuite,
+	numOut int,
+	dropChErr bool,
+) {
+
 	wg.Add(1)
 
 	// create a mapping for efficient suite lookup by peer ID
@@ -117,6 +124,19 @@ func simulateRouter(wg *sync.WaitGroup, primary *reactorTestSuite, suites []*rea
 		}
 
 		wg.Done()
+	}()
+
+	go func() {
+		for pErr := range primary.mempoolPeerErrCh {
+			if dropChErr {
+				primary.reactor.Logger.Debug("dropped peer error", "err", pErr.Err)
+			} else {
+				primary.peerUpdatesCh <- p2p.PeerUpdate{
+					PeerID: pErr.PeerID,
+					Status: p2p.PeerStatusRemoved,
+				}
+			}
+		}
 	}()
 }
 
@@ -166,7 +186,7 @@ func TestReactorBroadcastTxs(t *testing.T) {
 	// Simulate a router by listening for all outbound envelopes and proxying the
 	// envelopes to the respective peer (suite).
 	wg := new(sync.WaitGroup)
-	simulateRouter(wg, primary, testSuites, numTxs*len(secondaries))
+	simulateRouter(wg, primary, testSuites, numTxs*len(secondaries), true)
 
 	txs := checkTxs(t, primary.reactor.mempool, numTxs, UnknownPeerID)
 
@@ -318,7 +338,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	// Simulate a router by listening for all outbound envelopes and proxying the
 	// envelopes to the respective peer (suite).
 	wg := new(sync.WaitGroup)
-	simulateRouter(wg, primary, testSuites, 1)
+	simulateRouter(wg, primary, testSuites, 1, true)
 
 	// Broadcast a tx, which has the max size and ensure it's received by the
 	// second reactor.
