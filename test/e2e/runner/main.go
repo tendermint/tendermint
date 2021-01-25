@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
@@ -50,12 +49,6 @@ func NewCLI() *CLI {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			logLevel, err := cmd.Flags().GetString("log-level")
-			if err != nil {
-				return err
-			}
-			cli.testnet.LogLevel(logLevel)
-
 			if err := Cleanup(cli.testnet); err != nil {
 				return err
 			}
@@ -124,26 +117,18 @@ func NewCLI() *CLI {
 	cli.root.Flags().BoolVarP(&cli.preserve, "preserve", "p", false,
 		"Preserves the running of the test net after tests are completed")
 
-	cli.root.Flags().StringVarP(&cli.logLevel, "log-level", "l", config.DefaultPackageLogLevels(),
-		"Sets the log level of the test net")
+	cli.root.SetHelpCommand(&cobra.Command{
+		Use:    "no-help",
+		Hidden: true,
+	})
 
-	setupCmd := &cobra.Command{
+	cli.root.AddCommand(&cobra.Command{
 		Use:   "setup",
 		Short: "Generates the testnet directory and configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			logLevel, err := cmd.Flags().GetString("log-level")
-			if err != nil {
-				return err
-			}
-			cli.testnet.LogLevel(logLevel)
 			return Setup(cli.testnet)
 		},
-	}
-
-	// add log level flag to setupCmd
-	setupCmd.Flags().AddFlag(cli.root.Flags().Lookup("log-level"))
-
-	cli.root.AddCommand(setupCmd)
+	})
 
 	cli.root.AddCommand(&cobra.Command{
 		Use:   "start",
@@ -210,9 +195,10 @@ func NewCLI() *CLI {
 	})
 
 	cli.root.AddCommand(&cobra.Command{
-		Use:     "logs [node (optional)]",
+		Use:     "logs [node]",
 		Short:   "Shows the testnet or a specefic node's logs",
 		Example: "runner logs valiator03",
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
 				return execComposeVerbose(cli.testnet.Dir, "logs", args[0])
@@ -222,8 +208,9 @@ func NewCLI() *CLI {
 	})
 
 	cli.root.AddCommand(&cobra.Command{
-		Use:   "tail [node (optional)]",
+		Use:   "tail [node]",
 		Short: "Tails the testnet logs",
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
 				return execComposeVerbose(cli.testnet.Dir, "logs", "--follow", args[0])
