@@ -52,7 +52,7 @@ type Manifest struct {
 	KeyType string `toml:"key_type"`
 
 	// LogLevel sets the log level of the entire testnet. This is overwritten
-	// either when the corresponding flag is set or an individual log level is set
+	// either when the corresponding flag is set or an individual log level is set.
 	LogLevel string `toml:"log_level"`
 }
 
