@@ -376,11 +376,13 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	reactor := setup(t, config.Mempool, log.TestingLogger().With("node", 0), 0)
 
 	go func() {
+		// drop all messages on the mempool channel
 		for range reactor.mempoolOutCh {
 		}
 	}()
 
 	go func() {
+		// drop all errors on the mempool channel
 		for range reactor.mempoolPeerErrCh {
 		}
 	}()
@@ -436,6 +438,7 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 	secondary := setup(t, config.Mempool, log.TestingLogger().With("node", 1), 0)
 
 	go func() {
+		// drop all errors on the mempool channel
 		for range primary.mempoolPeerErrCh {
 		}
 	}()
