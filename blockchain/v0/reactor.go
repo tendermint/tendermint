@@ -150,6 +150,7 @@ func (r *Reactor) OnStart() error {
 			return err
 		}
 
+		r.poolWG.Add(1)
 		go r.poolRoutine(false)
 	}
 
@@ -354,7 +355,9 @@ func (r *Reactor) SwitchToFastSync(state sm.State) error {
 		return err
 	}
 
+	r.poolWG.Add(1)
 	go r.poolRoutine(true)
+
 	return nil
 }
 
@@ -426,7 +429,6 @@ func (r *Reactor) poolRoutine(stateSynced bool) {
 
 	go r.requestRoutine()
 
-	r.poolWG.Add(1)
 	defer r.poolWG.Done()
 
 FOR_LOOP:
