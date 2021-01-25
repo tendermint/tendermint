@@ -150,24 +150,25 @@ func (r *Reactor) OnStop() {
 	<-r.peerUpdates.Done()
 }
 
-// handleSnapshotMessage handles enevelopes sent from peers on the
+// handleSnapshotMessage handles envelopes sent from peers on the
 // SnapshotChannel. It returns an error only if the Envelope.Message is unknown
 // for this channel. This should never be called outside of handleMessage.
 func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
+	logger := r.Logger.With("peer", envelope.From)
+
 	switch msg := envelope.Message.(type) {
 	case *ssproto.SnapshotsRequest:
 		snapshots, err := r.recentSnapshots(recentSnapshots)
 		if err != nil {
-			r.Logger.Error("failed to fetch snapshots", "err", err)
+			logger.Error("failed to fetch snapshots", "err", err)
 			return nil
 		}
 
 		for _, snapshot := range snapshots {
-			r.Logger.Debug(
+			logger.Debug(
 				"advertising snapshot",
 				"height", snapshot.Height,
 				"format", snapshot.Format,
-				"peer", envelope.From,
 			)
 			r.snapshotCh.Out() <- p2p.Envelope{
 				To: envelope.From,
@@ -186,16 +187,11 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 		defer r.mtx.RUnlock()
 
 		if r.syncer == nil {
-			r.Logger.Debug("received unexpected snapshot; no state sync in progress")
+			logger.Debug("received unexpected snapshot; no state sync in progress")
 			return nil
 		}
 
-		r.Logger.Debug(
-			"received snapshot",
-			"height", msg.Height,
-			"format", msg.Format,
-			"peer", envelope.From,
-		)
+		logger.Debug("received snapshot", "height", msg.Height, "format", msg.Format)
 		_, err := r.syncer.AddSnapshot(envelope.From, &snapshot{
 			Height:   msg.Height,
 			Format:   msg.Format,
@@ -204,7 +200,7 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 			Metadata: msg.Metadata,
 		})
 		if err != nil {
-			r.Logger.Error(
+			logger.Error(
 				"failed to add snapshot",
 				"height", msg.Height,
 				"format", msg.Format,
@@ -215,14 +211,13 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 		}
 
 	default:
-		r.Logger.Error("received unknown message", "msg", msg, "peer", envelope.From)
 		return fmt.Errorf("received unknown message: %T", msg)
 	}
 
 	return nil
 }
 
-// handleChunkMessage handles enevelopes sent from peers on the ChunkChannel.
+// handleChunkMessage handles envelopes sent from peers on the ChunkChannel.
 // It returns an error only if the Envelope.Message is unknown for this channel.
 // This should never be called outside of handleMessage.
 func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
@@ -306,7 +301,6 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 		}
 
 	default:
-		r.Logger.Error("received unknown message", "msg", msg, "peer", envelope.From)
 		return fmt.Errorf("received unknown message: %T", msg)
 	}
 
@@ -322,6 +316,8 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 			err = fmt.Errorf("panic in processing message: %v", e)
 		}
 	}()
+
+	r.Logger.Debug("received message", "message", envelope.Message, "peer", envelope.From)
 
 	switch chID {
 	case SnapshotChannel:

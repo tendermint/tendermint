@@ -1,0 +1,63 @@
+# Runs fuzzing nightly.
+name: fuzz-nightly
+on:
+  workflow_dispatch: # allow running workflow manually
+  schedule:
+    - cron: '0 3 * * *'
+
+jobs:
+  fuzz-nightly-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.15'
+
+      - uses: actions/checkout@v2
+
+      - name: Install go-fuzz
+        working-directory: test/fuzz
+        run: go get -u github.com/dvyukov/go-fuzz/go-fuzz github.com/dvyukov/go-fuzz/go-fuzz-build
+
+      - name: Fuzz mempool
+        working-directory: test/fuzz
+        run: timeout 10m make fuzz-mempool
+
+      - name: Fuzz p2p-addrbook
+        working-directory: test/fuzz
+        run: timeout 10m make fuzz-p2p-addrbook
+
+      - name: Fuzz p2p-pex
+        working-directory: test/fuzz
+        run: timeout 10m make fuzz-p2p-pex
+
+      - name: Fuzz p2p-sc
+        working-directory: test/fuzz
+        run: timeout 10m make fuzz-p2p-sc
+
+      - name: Fuzz p2p-rpc-server
+        working-directory: test/fuzz
+        run: timeout 10m make fuzz-rpc-server
+
+      - name: Set crashers count
+        working-directory: test/fuzz
+        run: echo "::set-output name=crashers-count::$(find . -type d -name "crashers" | xargs -I % sh -c 'ls % | wc -l' | awk '{total += $1} END {print total}')"
+        id: set-crashers-count
+        outputs:
+          crashers_count: ${{ steps.set-crashers-count.outputs.crashers-count }}
+
+  fuzz-nightly-fail:
+    needs: fuzz-nightly-test
+    if: ${{ needs.set-crashers-count.outputs.crashers-count != 0 }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack if any crashers
+        uses: rtCamp/action-slack-notify@ae4223259071871559b6e9d08b24a63d71b3f0c0
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: tendermint-internal
+          SLACK_USERNAME: Nightly Fuzz Tests
+          SLACK_ICON_EMOJI: ':skull:'
+          SLACK_COLOR: danger
+          SLACK_MESSAGE: Crashers found in Nightly Fuzz tests
+          SLACK_FOOTER: ''

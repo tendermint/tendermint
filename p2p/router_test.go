@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/fortytw2/leaktest"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,6 +30,8 @@ func echoReactor(channel *p2p.Channel) {
 }
 
 func TestRouter(t *testing.T) {
+	defer leaktest.Check(t)()
+
 	logger := log.TestingLogger()
 	network := p2p.NewMemoryNetwork(logger)
 	transport := network.GenerateTransport()
@@ -38,6 +41,7 @@ func TestRouter(t *testing.T) {
 	// a simple echo reactor that returns received messages.
 	peers := []p2p.PeerAddress{}
 	for i := 0; i < 3; i++ {
+		i := i
 		peerTransport := network.GenerateTransport()
 		peerRouter := p2p.NewRouter(
 			logger.With("peerID", i),
@@ -60,6 +64,7 @@ func TestRouter(t *testing.T) {
 
 	// Start the main router and connect it to the peers above.
 	peerManager := p2p.NewPeerManager(p2p.PeerManagerOptions{})
+	defer peerManager.Close()
 	for _, address := range peers {
 		err := peerManager.Add(address)
 		require.NoError(t, err)
@@ -70,11 +75,18 @@ func TestRouter(t *testing.T) {
 	router := p2p.NewRouter(logger, peerManager, map[p2p.Protocol]p2p.Transport{
 		p2p.MemoryProtocol: transport,
 	})
+
 	channel, err := router.OpenChannel(chID, &TestMessage{})
 	require.NoError(t, err)
+	defer channel.Close()
+
 	err = router.Start()
 	require.NoError(t, err)
 	defer func() {
+		// Since earlier defers are closed after this, and we have to make sure
+		// we close channels and subscriptions before the router, we explicitly
+		// close them here to.
+		peerUpdates.Close()
 		channel.Close()
 		require.NoError(t, router.Stop())
 	}()
