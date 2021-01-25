@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/url"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -66,27 +65,23 @@ type Endpoint struct {
 	Port uint16
 }
 
-// PeerAddress converts the endpoint into a peer address URL.
+// PeerAddress converts the endpoint into a peer address.
 func (e Endpoint) PeerAddress() PeerAddress {
-	u := &url.URL{
-		Scheme: string(e.Protocol),
-		User:   url.User(string(e.PeerID)),
+	address := PeerAddress{
+		ID:       e.PeerID,
+		Protocol: e.Protocol,
+		Path:     e.Path,
 	}
 	if e.IP != nil {
-		u.Host = e.IP.String()
-		if e.Port > 0 {
-			u.Host = net.JoinHostPort(u.Host, fmt.Sprintf("%v", e.Port))
-		}
-		u.Path = e.Path
-	} else {
-		u.Opaque = e.Path
+		address.Hostname = e.IP.String()
+		address.Port = e.Port
 	}
-	return PeerAddress{URL: u}
+	return address
 }
 
 // String formats an endpoint as a URL string.
 func (e Endpoint) String() string {
-	return e.PeerAddress().URL.String()
+	return e.PeerAddress().String()
 }
 
 // Validate validates an endpoint.
@@ -96,8 +91,6 @@ func (e Endpoint) Validate() error {
 		return errors.New("endpoint has no peer ID")
 	case e.Protocol == "":
 		return errors.New("endpoint has no protocol")
-	case len(e.IP) == 0 && len(e.Path) == 0:
-		return errors.New("endpoint must have either IP or path")
 	case e.Port > 0 && len(e.IP) == 0:
 		return fmt.Errorf("endpoint has port %v but no IP", e.Port)
 	default:

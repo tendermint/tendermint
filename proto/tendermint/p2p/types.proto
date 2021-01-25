@@ -4,6 +4,7 @@ package tendermint.p2p;
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/p2p";
 
 import "gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
 
 message NetAddress {
   string id   = 1 [(gogoproto.customname) = "ID"];
@@ -31,4 +32,17 @@ message NodeInfo {
 message NodeInfoOther {
   string tx_index    = 1;
   string rpc_address = 2 [(gogoproto.customname) = "RPCAddress"];
+}
+
+message PeerInfo {
+  string                    id             = 1 [(gogoproto.customname) = "ID"];
+  repeated PeerAddressInfo  address_info   = 2;
+  google.protobuf.Timestamp last_connected = 3 [(gogoproto.stdtime) = true];
+}
+
+message PeerAddressInfo {
+  string                    address           = 1;
+  google.protobuf.Timestamp last_dial_success = 2 [(gogoproto.stdtime) = true];
+  google.protobuf.Timestamp last_dial_failure = 3 [(gogoproto.stdtime) = true];
+  uint32                    dial_failures     = 4;
 }
