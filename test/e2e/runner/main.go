@@ -156,7 +156,7 @@ func NewCLI() *CLI {
 				return err
 			}
 			return Start(cli.testnet)
-		}, 
+		},
 	})
 
 	cli.root.AddCommand(&cobra.Command{
@@ -209,17 +209,24 @@ func NewCLI() *CLI {
 	})
 
 	cli.root.AddCommand(&cobra.Command{
-		Use:   "logs",
-		Short: "Shows the testnet logs",
+		Use:     "logs [node (optional)]",
+		Short:   "Shows the testnet or a specefic node's logs",
+		Example: "runner logs valiator03",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 1 {
+				return execComposeVerbose(cli.testnet.Dir, "logs", args[0])
+			}
 			return execComposeVerbose(cli.testnet.Dir, "logs")
 		},
 	})
 
 	cli.root.AddCommand(&cobra.Command{
-		Use:   "tail",
+		Use:   "tail [node (optional)]",
 		Short: "Tails the testnet logs",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 1 {
+				return execComposeVerbose(cli.testnet.Dir, "logs", args[0], "--follow")
+			}
 			return execComposeVerbose(cli.testnet.Dir, "logs", "--follow")
 		},
 	})

@@ -160,6 +160,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			RetainBlocks:     nodeManifest.RetainBlocks,
 			Perturbations:    []Perturbation{},
 			Misbehaviors:     make(map[int64]string),
+			LogLevel:         nodeManifest.LogLevel,
 		}
 		if node.StartAt == testnet.InitialHeight {
 			node.StartAt = 0 // normalize to 0 for initial nodes, since code expects this

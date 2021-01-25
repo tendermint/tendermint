@@ -61,6 +61,7 @@ persistent_peers = ["validator01"]
 database = "rocksdb"
 abci_protocol = "builtin"
 perturb = ["pause"]
+log_level = "info"
 
 [node.validator05]
 start_at = 1005 # Becomes part of the validator set at 1010
