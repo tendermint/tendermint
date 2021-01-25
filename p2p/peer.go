@@ -753,11 +753,18 @@ func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 		return err
 	}
 
-	m.connected[peerID] = true
 	if upgradePeer != "" && m.options.MaxConnected > 0 &&
-		len(m.connected) > int(m.options.MaxConnected) {
+		len(m.connected) >= int(m.options.MaxConnected) {
+		// Look for an even lower-scored peer that may have appeared
+		// since we started the upgrade.
+		if p, ok := m.store.Get(upgradePeer); ok {
+			if u := m.findUpgradeCandidate(p.ID, p.Score()); u != "" {
+				upgradePeer = u
+			}
+		}
 		m.evict[upgradePeer] = true
 	}
+	m.connected[peerID] = true
 	m.wakeEvict()
 
 	return nil
