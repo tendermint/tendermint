@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
-
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -269,19 +267,19 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 	return pb, nil
 }
 
-// MustEncode takes the reactors msg, makes it proto and marshals it
-// this mimics `MustMarshalBinaryBare` in that is panics on error
-func MustEncode(msg Message) []byte {
-	pb, err := MsgToProto(msg)
-	if err != nil {
-		panic(err)
-	}
-	enc, err := proto.Marshal(pb)
-	if err != nil {
-		panic(err)
-	}
-	return enc
-}
+// // MustEncode takes the reactors msg, makes it proto and marshals it
+// // this mimics `MustMarshalBinaryBare` in that is panics on error
+// func MustEncode(msg Message) []byte {
+// 	pb, err := MsgToProto(msg)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	enc, err := proto.Marshal(pb)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	return enc
+// }
 
 // WALToProto takes a WAL message and return a proto walMessage and error
 func WALToProto(msg WALMessage) (*tmcons.WALMessage, error) {

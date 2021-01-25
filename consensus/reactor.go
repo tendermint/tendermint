@@ -25,7 +25,7 @@ import (
 
 var (
 	_ service.Service = (*Reactor)(nil)
-	// _ p2p.Wrapper     = (*tmcons.Message)(nil)
+	_ p2p.Wrapper     = (*tmcons.Message)(nil)
 
 	// ChannelShims contains a map of ChannelDescriptorShim objects, where each
 	// object wraps a reference to a legacy p2p ChannelDescriptor and the corresponding
@@ -246,6 +246,29 @@ func (r *Reactor) subscribeToBroadcastEvents() {
 	)
 	if err != nil {
 		r.Logger.Error("failed to add listener for events", "err", err)
+	}
+}
+
+func (r *Reactor) unsubscribeFromBroadcastEvents() {
+	r.conS.evsw.RemoveListener(listenerIDConsensus)
+}
+
+func makeRoundStepMessage(rs *cstypes.RoundState) *tmcons.NewRoundStep {
+	return &tmcons.NewRoundStep{
+		Height:                rs.Height,
+		Round:                 rs.Round,
+		Step:                  uint32(rs.Step),
+		SecondsSinceStartTime: int64(time.Since(rs.StartTime).Seconds()),
+		LastCommitRound:       rs.LastCommit.GetRound(),
+	}
+}
+
+func (r *Reactor) sendNewRoundStepMessage(peerID p2p.NodeID) {
+	rs := r.conS.GetRoundState()
+	msg := makeRoundStepMessage(rs)
+	r.stateCh.Out() <- p2p.Envelope{
+		To:      peerID,
+		Message: msg,
 	}
 }
 
@@ -666,11 +689,6 @@ func (r *Reactor) WaitSync() bool {
 
 //--------------------------------------
 
-func (r *Reactor) unsubscribeFromBroadcastEvents() {
-	const subscriber = "consensus-reactor"
-	r.conS.evsw.RemoveListener(subscriber)
-}
-
 func (r *Reactor) broadcastNewRoundStepMessage(rs *cstypes.RoundState) {
 	nrsMsg := makeRoundStepMessage(rs)
 	r.Switch.Broadcast(StateChannel, MustEncode(nrsMsg))
@@ -714,23 +732,6 @@ func (r *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 			}
 		}
 	*/
-}
-
-func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage) {
-	nrsMsg = &NewRoundStepMessage{
-		Height:                rs.Height,
-		Round:                 rs.Round,
-		Step:                  rs.Step,
-		SecondsSinceStartTime: int64(time.Since(rs.StartTime).Seconds()),
-		LastCommitRound:       rs.LastCommit.GetRound(),
-	}
-	return
-}
-
-func (r *Reactor) sendNewRoundStepMessage(peer p2p.Peer) {
-	rs := r.conS.GetRoundState()
-	nrsMsg := makeRoundStepMessage(rs)
-	peer.Send(StateChannel, MustEncode(nrsMsg))
 }
 
 func (r *Reactor) gossipDataRoutine(peer p2p.Peer, ps *PeerState) {
