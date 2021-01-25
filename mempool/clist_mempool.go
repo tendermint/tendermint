@@ -757,7 +757,7 @@ func TxKey(tx types.Tx) [TxKeySize]byte {
 	return sha256.Sum256(tx)
 }
 
-// txID is the hex encoded hash of the bytes as a types.Tx.
-func txID(tx []byte) string {
-	return fmt.Sprintf("%X", types.Tx(tx).Hash())
+// txID is a hash of the Tx.
+func txID(tx []byte) []byte {
+	return types.Tx(tx).Hash()
 }
