@@ -225,7 +225,7 @@ func NewCLI() *CLI {
 		Short: "Tails the testnet logs",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
-				return execComposeVerbose(cli.testnet.Dir, "logs", args[0], "--follow")
+				return execComposeVerbose(cli.testnet.Dir, "logs", "--follow", args[0])
 			}
 			return execComposeVerbose(cli.testnet.Dir, "logs", "--follow")
 		},
