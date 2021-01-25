@@ -236,9 +236,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg := config.DefaultConfig()
 	cfg.Moniker = node.Name
 	cfg.ProxyApp = AppAddressTCP
-	if node.LogLevel == "" {
-		cfg.LogLevel = config.DefaultPackageLogLevels()
-	} else {
+	if node.LogLevel != "" {
 		cfg.LogLevel = node.LogLevel
 	}
 	cfg.RPC.ListenAddress = "tcp://0.0.0.0:26657"
