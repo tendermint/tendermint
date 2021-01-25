@@ -342,8 +342,9 @@ type PeerManagerOptions struct {
 	// necessary to make room for these.
 	PersistentPeers []NodeID
 
-	// MaxPeers is the maximum number of peers to track. When this is exceeded,
-	// the lowest-scored unconnected peers will get removed. 0 means no limit.
+	// MaxPeers is the maximum number of peers to track information about, i.e.
+	// store in the peer store. When exceeded, the lowest-scored unconnected peers
+	// will be deleted. 0 means no limit.
 	MaxPeers uint16
 
 	// MaxConnected is the maximum number of connected peers (inbound and
@@ -1059,6 +1060,16 @@ func (s *peerStore) Set(peer peerInfo) error {
 	}
 	peer = peer.Copy()
 
+	// FIXME: We may want to optimize this by avoiding saving to the database
+	// if there haven't been any changes to persisted fields.
+	bz, err := peer.ToProto().Marshal()
+	if err != nil {
+		return err
+	}
+	if err = s.db.Set(keyPeerInfo(peer.ID), bz); err != nil {
+		return err
+	}
+
 	if current, ok := s.peers[peer.ID]; !ok || current.Score() != peer.Score() {
 		// If the peer is new, or its score changes, we invalidate the Ranked() cache.
 		s.peers[peer.ID] = &peer
@@ -1070,13 +1081,7 @@ func (s *peerStore) Set(peer peerInfo) error {
 		*current = peer
 	}
 
-	// FIXME: We may want to optimize this by avoiding saving to the database
-	// if there haven't been any changes to persisted fields.
-	bz, err := peer.ToProto().Marshal()
-	if err != nil {
-		return err
-	}
-	return s.db.Set(keyPeerInfo(peer.ID), bz)
+	return nil
 }
 
 // Delete deletes a peer, or does nothing if it does not exist.
@@ -1084,9 +1089,12 @@ func (s *peerStore) Delete(id NodeID) error {
 	if _, ok := s.peers[id]; !ok {
 		return nil
 	}
+	if err := s.db.Delete(keyPeerInfo(id)); err != nil {
+		return err
+	}
 	delete(s.peers, id)
 	s.ranked = nil
-	return s.db.Delete(keyPeerInfo(id))
+	return nil
 }
 
 // List retrieves all peers in an arbitrary order. The returned data is a copy,
