@@ -50,6 +50,10 @@ type Manifest struct {
 	// KeyType sets the curve that will be used by validators.
 	// Options are ed25519 & secp256k1
 	KeyType string `toml:"key_type"`
+
+	// LogLevel sets the log level of the entire testnet. This can be overridden
+	// by individual nodes.
+	LogLevel string `toml:"log_level"`
 }
 
 // ManifestNode represents a node in a testnet manifest.
@@ -129,6 +133,11 @@ type ManifestNode struct {
 	// For more information, look at the readme in the maverick folder.
 	// A list of all behaviors can be found in ../maverick/consensus/behavior.go
 	Misbehaviors map[string]string `toml:"misbehaviors"`
+
+	// Log level sets the log level of the specific node i.e. "consensus:info,*:error".
+	// This is helpful when debugging a specific problem. This overrides the network
+	// level.
+	LogLevel string `toml:"log_level"`
 }
 
 // Save saves the testnet manifest to a file.
