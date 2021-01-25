@@ -50,6 +50,10 @@ type Manifest struct {
 	// KeyType sets the curve that will be used by validators.
 	// Options are ed25519 & secp256k1
 	KeyType string `toml:"key_type"`
+
+	// LogLevel sets the log level of the entire testnet. This is overwritten
+	// either when the corresponding flag is set or an individual log level is set
+	LogLevel string `toml:"log_level"`
 }
 
 // ManifestNode represents a node in a testnet manifest.
