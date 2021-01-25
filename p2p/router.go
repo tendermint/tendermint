@@ -296,7 +296,7 @@ func (r *Router) dialPeers() {
 		go func() {
 			conn, err := r.dialPeer(address)
 			if err != nil {
-				r.logger.Error("failed to dial peer, will retry", "peer", peerID)
+				r.logger.Error("failed to dial peer", "peer", peerID)
 				if err = r.peerManager.DialFailed(peerID, address); err != nil {
 					r.logger.Error("failed to report dial failure", "peer", peerID, "err", err)
 				}
@@ -356,9 +356,9 @@ func (r *Router) dialPeer(address PeerAddress) (Connection, error) {
 
 		conn, err := t.Dial(dialCtx, endpoint)
 		if err != nil {
-			r.logger.Error("failed to dial endpoint", "endpoint", endpoint)
+			r.logger.Error("failed to dial endpoint", "endpoint", endpoint, "err", err)
 		} else {
-			r.logger.Info("connected to peer", "peer", address.NodeID(), "endpoint", endpoint)
+			r.logger.Info("connected to peer", "peer", address.ID, "endpoint", endpoint)
 			return conn, nil
 		}
 	}
