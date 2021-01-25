@@ -774,10 +774,9 @@ func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 // is already connected or we don't allow additional connections then this will
 // return an error.
 //
-// If MaxConnectedUpgrade is non-zero, the accepted peer is better-scored than any
-// other connected peer, and the number of connections does not exceed
-// MaxConnected + MaxConnectedUpgrade then we accept the connection and rely on
-// EvictNext() to evict lower-scored peers.
+// If full but MaxConnectedUpgrade is non-zero and the incoming peer is
+// better-scored than any existing peers, then we accept it and evict a
+// lower-scored peer.
 //
 // NOTE: We can't take an address here, since e.g. TCP uses a different port
 // number for outbound traffic than inbound traffic, so the peer's endpoint
