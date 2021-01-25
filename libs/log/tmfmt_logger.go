@@ -2,16 +2,16 @@ package log
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
 	kitlog "github.com/go-kit/kit/log"
 	kitlevel "github.com/go-kit/kit/log/level"
 	"github.com/go-logfmt/logfmt"
-
-	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 )
 
 type tmfmtEncoder struct {
@@ -83,9 +83,9 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 			module = keyvals[i+1].(string)
 		}
 
-		// Format []byte as base 16 (see bytes.HexBytes)
+		// Print []byte as a hexadecimal string (uppercased)
 		if b, ok := keyvals[i+1].([]byte); ok {
-			keyvals[i+1] = tmbytes.HexBytes(b)
+			keyvals[i+1] = strings.ToUpper(hex.EncodeToString(b))
 		}
 	}
 
