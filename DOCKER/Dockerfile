@@ -1,4 +1,14 @@
-FROM alpine:3.9
+# stage 1 Generate Tendermint Binary
+FROM golang:1.15-alpine as builder
+RUN apk update && \
+    apk upgrade && \
+    apk --no-cache add make
+COPY / /tendermint
+WORKDIR /tendermint
+RUN make build-linux
+
+# stage 2
+FROM golang:1.15-alpine
 LABEL maintainer="hello@tendermint.com"
 
 # Tendermint will be looking for the genesis file in /tendermint/config/genesis.json
@@ -29,15 +39,14 @@ EXPOSE 26656 26657 26660
 
 STOPSIGNAL SIGTERM
 
-ARG BINARY=tendermint
-COPY $BINARY /usr/bin/tendermint
+COPY --from=builder /tendermint/build/tendermint /usr/bin/tendermint
 
 # You can overwrite these before the first run to influence
 # config.json and genesis.json. Additionally, you can override
 # CMD to add parameters to `tendermint node`.
 ENV PROXY_APP=kvstore MONIKER=dockernode CHAIN_ID=dockerchain
 
-COPY ./docker-entrypoint.sh /usr/local/bin/
+COPY ./DOCKER/docker-entrypoint.sh /usr/local/bin/
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node"]
