@@ -354,6 +354,13 @@ func (r *Router) dialPeer(address PeerAddress) (Connection, error) {
 		dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 
+		// FIXME: When we dial and handshake the peer, we should pass it
+		// appropriate address(es) it can use to dial us back. It can't use our
+		// remote endpoint, since TCP uses different port numbers for outbound
+		// connections than it does for inbound. Also, we may need to vary this
+		// by the peer's endpoint, since e.g. a peer on 192.168.0.0 can reach us
+		// on a private address on this endpoint, but a peer on the public
+		// Internet can't and needs a different public address.
 		conn, err := t.Dial(dialCtx, endpoint)
 		if err != nil {
 			r.logger.Error("failed to dial endpoint", "endpoint", endpoint, "err", err)

@@ -493,6 +493,34 @@ func (m *PeerManager) Add(address PeerAddress) error {
 	return nil
 }
 
+// Advertise returns a list of peer addresses to advertise to a peer.
+//
+// FIXME: We currently just pass all addresses we have, which is very naïve. We
+// should e.g. only send addresses that the peer can actually reach (by
+// resolving the addresses into endpoints and making sure any private IP
+// addresses are on the same network as the remote peer endpoint). However, this
+// would require resolving endpoints either here (too slow) or generally in the
+// peer manager -- maybe it should keep track of endpoints internally instead of
+// leaving that to the router when dialing?
+func (m *PeerManager) Advertise(peerID NodeID, limit uint16) []PeerAddress {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	addresses := []PeerAddress{}
+	for _, peer := range m.store.Ranked() {
+		switch {
+		case len(addresses) >= int(limit):
+			break
+		case peer.ID == peerID:
+		default:
+			for _, addressInfo := range peer.AddressInfo {
+				addresses = append(addresses, addressInfo.Address)
+			}
+		}
+	}
+	return addresses
+}
+
 // makePeerInfo creates a peerInfo for a new peer.
 func (m *PeerManager) makePeerInfo(id NodeID) peerInfo {
 	isPersistent := false
@@ -782,6 +810,12 @@ func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 // NOTE: We can't take an address here, since e.g. TCP uses a different port
 // number for outbound traffic than inbound traffic, so the peer's endpoint
 // wouldn't necessarily be an appropriate address to dial.
+//
+// FIXME: When we accept a connection from a peer, we should register that
+// peer's address in the peer store so that we can dial it later. In order to do
+// that, we'll need to get the remote address after all, but as noted above that
+// can't be the remote endpoint since that will usually have the wrong port
+// number.
 func (m *PeerManager) Accepted(peerID NodeID) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
