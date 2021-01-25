@@ -40,7 +40,7 @@ Default logging level (`log-level = "main:info,state:info,statesync:info,*:error
 normal operation mode. Read [this
 post](https://blog.cosmos.network/one-of-the-exciting-new-features-in-0-10-0-release-is-smart-log-level-flag-e2506b4ab756)
 for details on how to configure `log-level` config variable. Some of the
-modules can be found [here](./how-to-read-logs.md#list-of-modules). If
+modules can be found [here](../nodes/logging#list-of-modules). If
 you're trying to debug Tendermint or asked to provide logs with debug
 logging level, you can do so by running Tendermint with
 `--log-level="*:debug"`.
@@ -109,7 +109,7 @@ to achieve the same things.
 ## Debugging Tendermint
 
 If you ever have to debug Tendermint, the first thing you should probably do is
-check out the logs. See [How to read logs](./how-to-read-logs.md), where we
+check out the logs. See [Logging](../nodes/logging.md), where we
 explain what certain log statements mean.
 
 If, after skimming through the logs, things are not clear still, the next thing
@@ -307,7 +307,6 @@ flush throttle timeout and increase other params.
 
 ```toml
 [p2p]
-
 send-rate=20000000 # 2MB/s
 recv-rate=20000000 # 2MB/s
 flush-throttle-timeout=10
