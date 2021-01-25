@@ -43,8 +43,9 @@ jobs:
         working-directory: test/fuzz
         run: echo "::set-output name=crashers-count::$(find . -type d -name "crashers" | xargs -I % sh -c 'ls % | wc -l' | awk '{total += $1} END {print total}')"
         id: set-crashers-count
-        outputs:
-          crashers_count: ${{ steps.set-crashers-count.outputs.crashers-count }}
+
+    outputs:
+      crashers_count: ${{ steps.set-crashers-count.outputs.crashers-count }}
 
   fuzz-nightly-fail:
     needs: fuzz-nightly-test
@@ -57,7 +58,7 @@ jobs:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SLACK_CHANNEL: tendermint-internal
           SLACK_USERNAME: Nightly Fuzz Tests
-          SLACK_ICON_EMOJI: ':skull:'
+          SLACK_ICON_EMOJI: ':firecracker:'
           SLACK_COLOR: danger
           SLACK_MESSAGE: Crashers found in Nightly Fuzz tests
           SLACK_FOOTER: ''
