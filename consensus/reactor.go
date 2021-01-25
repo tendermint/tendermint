@@ -14,6 +14,7 @@ import (
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
@@ -23,51 +24,135 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-const (
-	StateChannel       = byte(0x20)
-	DataChannel        = byte(0x21)
-	VoteChannel        = byte(0x22)
-	VoteSetBitsChannel = byte(0x23)
+var (
+	_ service.Service = (*Reactor)(nil)
+	// _ p2p.Wrapper     = (*tmcons.Message)(nil)
 
-	maxMsgSize = 1048576 // 1MB; NOTE/TODO: keep in sync with types.PartSet sizes.
+	// ChannelShims contains a map of ChannelDescriptorShim objects, where each
+	// object wraps a reference to a legacy p2p ChannelDescriptor and the corresponding
+	// p2p proto.Message the new p2p Channel is responsible for handling.
+	//
+	//
+	// TODO: Remove once p2p refactor is complete.
+	// ref: https://github.com/tendermint/tendermint/issues/5670
+	ChannelShims = map[p2p.ChannelID]*p2p.ChannelDescriptorShim{
+		StateChannel: {
+			MsgType: new(tmcons.Message),
+			Descriptor: &p2p.ChannelDescriptor{
+				ID:                  byte(StateChannel),
+				Priority:            6,
+				SendQueueCapacity:   100,
+				RecvMessageCapacity: maxMsgSize,
+			},
+		},
+		DataChannel: {
+			MsgType: new(tmcons.Message),
+			Descriptor: &p2p.ChannelDescriptor{
+				// TODO: Consider a split between gossiping current block and catchup
+				// stuff. Once we gossip the whole block there is nothing left to send
+				// until next height or round.
+				ID:                  byte(DataChannel),
+				Priority:            10,
+				SendQueueCapacity:   100,
+				RecvBufferCapacity:  50 * 4096,
+				RecvMessageCapacity: maxMsgSize,
+			},
+		},
+		VoteChannel: {
+			MsgType: new(tmcons.Message),
+			Descriptor: &p2p.ChannelDescriptor{
+				ID:                  byte(VoteChannel),
+				Priority:            7,
+				SendQueueCapacity:   100,
+				RecvBufferCapacity:  100 * 100,
+				RecvMessageCapacity: maxMsgSize,
+			},
+		},
+		VoteSetBitsChannel: {
+			MsgType: new(tmcons.Message),
+			Descriptor: &p2p.ChannelDescriptor{
+				ID:                  byte(VoteSetBitsChannel),
+				Priority:            1,
+				SendQueueCapacity:   2,
+				RecvBufferCapacity:  1024,
+				RecvMessageCapacity: maxMsgSize,
+			},
+		},
+	}
+)
+
+const (
+	StateChannel       = p2p.ChannelID(0x20)
+	DataChannel        = p2p.ChannelID(0x21)
+	VoteChannel        = p2p.ChannelID(0x22)
+	VoteSetBitsChannel = p2p.ChannelID(0x23)
+
+	maxMsgSize = 1048576 // 1MB; NOTE: keep in sync with types.PartSet sizes.
 
 	blocksToContributeToBecomeGoodPeer = 10000
 	votesToContributeToBecomeGoodPeer  = 10000
 )
 
-//-----------------------------------------------------------------------------
+type ReactorOption func(*Reactor)
 
 // Reactor defines a reactor for the consensus service.
 type Reactor struct {
-	p2p.BaseReactor // BaseService + p2p.Switch
+	service.BaseService
 
-	conS *State
+	conS     *State
+	eventBus *types.EventBus
+	Metrics  *Metrics
 
 	mtx      tmsync.RWMutex
 	waitSync bool
-	eventBus *types.EventBus
 
-	Metrics *Metrics
+	stateCh       *p2p.Channel
+	dataCh        *p2p.Channel
+	voteCh        *p2p.Channel
+	voteSetBitsCh *p2p.Channel
+	peerUpdates   *p2p.PeerUpdatesCh
+	closeCh       chan struct{}
 }
 
-type ReactorOption func(*Reactor)
+// NewReactor returns a reference to a new consensus reactor, which implements
+// the service.Service interface. It accepts a logger, consensus state, references
+// to relevant p2p Channels and a channel to listen for peer updates on. The
+// reactor will close all p2p Channels when stopping.
+func NewReactor(
+	logger log.Logger,
+	cs *State,
+	stateCh *p2p.Channel,
+	dataCh *p2p.Channel,
+	voteCh *p2p.Channel,
+	voteSetBitsCh *p2p.Channel,
+	peerUpdates *p2p.PeerUpdatesCh,
+	waitSync bool,
+	options ...ReactorOption,
+) *Reactor {
 
-// NewReactor returns a new Reactor with the given
-// consensusState.
-func NewReactor(consensusState *State, waitSync bool, options ...ReactorOption) *Reactor {
-	conR := &Reactor{
-		conS:     consensusState,
-		waitSync: waitSync,
-		Metrics:  NopMetrics(),
+	r := &Reactor{
+		conS:          cs,
+		waitSync:      waitSync,
+		Metrics:       NopMetrics(),
+		stateCh:       stateCh,
+		dataCh:        dataCh,
+		voteCh:        voteCh,
+		voteSetBitsCh: voteSetBitsCh,
+		peerUpdates:   peerUpdates,
+		closeCh:       make(chan struct{}),
 	}
-	conR.BaseReactor = *p2p.NewBaseReactor("Consensus", conR)
+	r.BaseService = *service.NewBaseService(logger, "Consensus", r)
 
-	for _, option := range options {
-		option(conR)
+	for _, opt := range options {
+		opt(r)
 	}
 
-	return conR
+	return r
 }
+
+// ############################################################################
+// ############################################################################
+// ############################################################################
 
 // OnStart implements BaseService by subscribing to events, which later will be
 // broadcasted to other peers and starting state if we're not in fast sync.
@@ -133,41 +218,6 @@ conS:
 
 conR:
 %+v`, err, conR.conS, conR))
-	}
-}
-
-// GetChannels implements Reactor
-func (conR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
-	// TODO optimize
-	return []*p2p.ChannelDescriptor{
-		{
-			ID:                  StateChannel,
-			Priority:            6,
-			SendQueueCapacity:   100,
-			RecvMessageCapacity: maxMsgSize,
-		},
-		{
-			ID: DataChannel, // maybe split between gossiping current block and catchup stuff
-			// once we gossip the whole block there's nothing left to send until next height or round
-			Priority:            10,
-			SendQueueCapacity:   100,
-			RecvBufferCapacity:  50 * 4096,
-			RecvMessageCapacity: maxMsgSize,
-		},
-		{
-			ID:                  VoteChannel,
-			Priority:            7,
-			SendQueueCapacity:   100,
-			RecvBufferCapacity:  100 * 100,
-			RecvMessageCapacity: maxMsgSize,
-		},
-		{
-			ID:                  VoteSetBitsChannel,
-			Priority:            1,
-			SendQueueCapacity:   2,
-			RecvBufferCapacity:  1024,
-			RecvMessageCapacity: maxMsgSize,
-		},
 	}
 }
 
