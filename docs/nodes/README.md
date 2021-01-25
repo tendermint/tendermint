@@ -15,6 +15,7 @@ This section will focus on how to operate full nodes, validators and light clien
 - [Light Client guides](./light-client.md)
   - [How to sync a light client](./light-client.md#)
 - [Metrics](./metrics.md)
+- [Logging](./logging.md)
 
 ## Node Types
 
