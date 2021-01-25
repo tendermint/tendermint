@@ -24,7 +24,6 @@ type CLI struct {
 	root     *cobra.Command
 	testnet  *e2e.Testnet
 	preserve bool
-	logLevel string
 }
 
 // NewCLI sets up the CLI.
@@ -198,7 +197,7 @@ func NewCLI() *CLI {
 		Use:     "logs [node]",
 		Short:   "Shows the testnet or a specefic node's logs",
 		Example: "runner logs valiator03",
-		Args: cobra.MaximumNArgs(1),
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
 				return execComposeVerbose(cli.testnet.Dir, "logs", args[0])
@@ -210,7 +209,7 @@ func NewCLI() *CLI {
 	cli.root.AddCommand(&cobra.Command{
 		Use:   "tail [node]",
 		Short: "Tails the testnet logs",
-		Args: cobra.MaximumNArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
 				return execComposeVerbose(cli.testnet.Dir, "logs", "--follow", args[0])
