@@ -255,7 +255,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 	h.logger.Info("ABCI Handshake App Info",
 		"height", blockHeight,
-		"hash", fmt.Sprintf("%X", appHash),
+		"hash", appHash,
 		"software-version", res.Version,
 		"protocol-version", res.AppVersion,
 	)
@@ -272,7 +272,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	}
 
 	h.logger.Info("Completed ABCI Handshake - Tendermint and App are synced",
-		"appHeight", blockHeight, "appHash", fmt.Sprintf("%X", appHash))
+		"appHeight", blockHeight, "appHash", appHash)
 
 	// TODO: (on restart) replay mempool
 
