@@ -84,7 +84,7 @@ jobs:
           go-version: 1.15
       - name: test & coverage report creation
         run: |
-          cat pkgs.txt.part.${{ matrix.part }} | xargs go test -mod=readonly -timeout 8m -race -coverprofile=${{ matrix.part }}profile.out -covermode=atomic -tags deadlock
+          cat pkgs.txt.part.${{ matrix.part }} | xargs go test -mod=readonly -timeout 8m -race -coverprofile=${{ matrix.part }}profile.out -covermode=atomic
         if: env.GIT_DIFF
       - uses: actions/upload-artifact@v2
         with:
