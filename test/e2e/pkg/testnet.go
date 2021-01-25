@@ -100,8 +100,6 @@ func LoadTestnet(file string) (*Testnet, error) {
 	}
 	dir := strings.TrimSuffix(file, filepath.Ext(file))
 
-	fmt.Printf("Log level: %s\n", manifest.LogLevel)
-
 	// Set up resource generators. These must be deterministic.
 	netAddress := networkIPv4
 	if manifest.IPv6 {

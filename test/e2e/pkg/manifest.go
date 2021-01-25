@@ -51,8 +51,8 @@ type Manifest struct {
 	// Options are ed25519 & secp256k1
 	KeyType string `toml:"key_type"`
 
-	// LogLevel sets the log level of the entire testnet. This is overwritten
-	// either when the corresponding flag is set or an individual log level is set.
+	// LogLevel sets the log level of the entire testnet. This can be overridden
+	// by individual nodes.
 	LogLevel string `toml:"log_level"`
 }
 
@@ -136,8 +136,8 @@ type ManifestNode struct {
 	Misbehaviors map[string]string `toml:"misbehaviors"`
 
 	// Log level sets the log level of the specific node i.e. "consensus:info,*:error".
-	// This is helpful when debugging a specific problem. Note that setting this
-	// will override any log level flag.
+	// This is helpful when debugging a specific problem. This overrides the network
+	// level.
 	LogLevel string `toml:"log_level"`
 }
 
