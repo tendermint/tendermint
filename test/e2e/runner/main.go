@@ -124,7 +124,8 @@ func NewCLI() *CLI {
 	cli.root.Flags().BoolVarP(&cli.preserve, "preserve", "p", false,
 		"Preserves the running of the test net after tests are completed")
 
-	cli.root.Flags().StringVarP(&cli.logLevel, "log-level", "l", config.DefaultPackageLogLevels(), "Sets the log level of the test net")
+	cli.root.Flags().StringVarP(&cli.logLevel, "log-level", "l", config.DefaultPackageLogLevels(),
+		"Sets the log level of the test net")
 
 	setupCmd := &cobra.Command{
 		Use:   "setup",
