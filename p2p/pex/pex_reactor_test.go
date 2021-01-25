@@ -94,6 +94,11 @@ func TestPEXReactorRunning(t *testing.T) {
 		})
 	}
 
+	for _, sw := range switches {
+		err := sw.Start() // start switch and reactors
+		require.Nil(t, err)
+	}
+
 	addOtherNodeAddrToAddrBook := func(switchIndex, otherSwitchIndex int) {
 		addr := switches[otherSwitchIndex].NetAddress()
 		err := books[switchIndex].AddAddress(addr, addr)
@@ -103,11 +108,6 @@ func TestPEXReactorRunning(t *testing.T) {
 	addOtherNodeAddrToAddrBook(0, 1)
 	addOtherNodeAddrToAddrBook(1, 0)
 	addOtherNodeAddrToAddrBook(2, 1)
-
-	for _, sw := range switches {
-		err := sw.Start() // start switch and reactors
-		require.Nil(t, err)
-	}
 
 	assertPeersWithTimeout(t, switches, 10*time.Millisecond, 10*time.Second, N-1)
 
