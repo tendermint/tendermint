@@ -420,16 +420,12 @@ func (r *Reactor) processPeerUpdates() {
 	}
 }
 
-// ############################################################################
-// ############################################################################
-// ############################################################################
-
-// SwitchToConsensus switches from fast_sync mode to consensus mode.
-// It resets the state, turns off fast_sync, and starts the consensus state-machine
+// SwitchToConsensus switches from fast-sync mode to consensus mode. It resets
+// the state, turns off fast-sync, and starts the consensus state-machine.
 func (r *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
-	r.Logger.Info("SwitchToConsensus")
+	r.Logger.Info("switching to consensus")
 
-	// We have no votes, so reconstruct LastCommit from SeenCommit.
+	// we have no votes, so reconstruct LastCommit from SeenCommit
 	if state.LastBlockHeight > 0 {
 		r.conS.reconstructLastCommit(state)
 	}
@@ -441,15 +437,16 @@ func (r *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 	r.mtx.Lock()
 	r.waitSync = false
 	r.mtx.Unlock()
+
 	r.Metrics.FastSyncing.Set(0)
 	r.Metrics.StateSyncing.Set(0)
 
 	if skipWAL {
 		r.conS.doWALCatchup = false
 	}
-	err := r.conS.Start()
-	if err != nil {
-		panic(fmt.Sprintf(`Failed to start consensus state: %v
+
+	if err := r.conS.Start(); err != nil {
+		panic(fmt.Sprintf(`failed to start consensus state: %v
 
 conS:
 %+v
@@ -458,6 +455,10 @@ conR:
 %+v`, err, r.conS, r))
 	}
 }
+
+// ############################################################################
+// ############################################################################
+// ############################################################################
 
 // InitPeer implements Reactor by creating a state for the peer.
 func (r *Reactor) InitPeer(peer p2p.Peer) p2p.Peer {
