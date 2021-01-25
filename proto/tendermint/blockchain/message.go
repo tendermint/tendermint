@@ -12,7 +12,7 @@ const (
 	BlockResponseMessageFieldKeySize = 1
 )
 
-// Wrap implements the p2p Wrapper interface and wraps a blockchain messages.
+// Wrap implements the p2p Wrapper interface and wraps a blockchain message.
 func (m *Message) Wrap(pb proto.Message) error {
 	switch msg := pb.(type) {
 	case *BlockRequest:
