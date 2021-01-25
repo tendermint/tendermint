@@ -189,7 +189,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		ConsensusParams: types.DefaultConsensusParams(),
 	}
 	if keyType == "secp256k1" {
-		genDoc.ConsensusParams.Validator = tmproto.ValidatorParams{
+		genDoc.ConsensusParams.Validator = &tmproto.ValidatorParams{
 			PubKeyTypes: []string{types.ABCIPubKeyTypeSecp256k1},
 		}
 	}

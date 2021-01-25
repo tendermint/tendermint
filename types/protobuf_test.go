@@ -54,8 +54,7 @@ func TestABCIValidators(t *testing.T) {
 
 func TestABCIConsensusParams(t *testing.T) {
 	cp := DefaultConsensusParams()
-	abciCP := TM2PB.ConsensusParams(cp)
-	cp2 := UpdateConsensusParams(*cp, abciCP)
+	cp2 := UpdateConsensusParams(*cp, cp)
 
 	assert.Equal(t, *cp, cp2)
 }
