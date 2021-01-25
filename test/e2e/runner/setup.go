@@ -122,17 +122,24 @@ func Setup(testnet *e2e.Testnet) error {
 func MakeDockerCompose(testnet *e2e.Testnet) ([]byte, error) {
 	// Must use version 2 Docker Compose format, to support IPv6.
 	tmpl, err := template.New("docker-compose").Funcs(template.FuncMap{
-		"misbehaviorsToString": func(misbehaviors map[int64]string) string {
-			str := ""
+		"startCommands": func(misbehaviors map[int64]string, logLevel string) string {
+			command := "start"
+			misbehaviorString := ""
 			for height, misbehavior := range misbehaviors {
 				// after the first behavior set, a comma must be prepended
-				if str != "" {
-					str += ","
+				if misbehaviorString != "" {
+					misbehaviorString += ","
 				}
 				heightString := strconv.Itoa(int(height))
-				str += misbehavior + "," + heightString
+				misbehaviorString += misbehavior + "," + heightString
 			}
-			return str
+			if misbehaviorString != "" {
+				command += " --misbehaviors " + misbehaviorString
+			}
+			if logLevel != "" && logLevel != config.DefaultPackageLogLevels() {
+				command += " --log-level " + logLevel
+			}
+			return command
 		},
 	}).Parse(`version: '2.4'
 
@@ -160,7 +167,9 @@ services:
     entrypoint: /usr/bin/entrypoint-builtin
 {{- else if .Misbehaviors }}
     entrypoint: /usr/bin/entrypoint-maverick
-    command: ["start", "--misbehaviors", "{{ misbehaviorsToString .Misbehaviors }}"]
+{{- end }}
+{{- if ne .ABCIProtocol "builtin"}}
+    command: {{ startCommands .Misbehaviors .LogLevel }}
 {{- end }}
     init: true
     ports:
@@ -227,6 +236,9 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg := config.DefaultConfig()
 	cfg.Moniker = node.Name
 	cfg.ProxyApp = AppAddressTCP
+	if node.LogLevel != "" {
+		cfg.LogLevel = node.LogLevel
+	}
 	cfg.RPC.ListenAddress = "tcp://0.0.0.0:26657"
 	cfg.P2P.ExternalAddress = fmt.Sprintf("tcp://%v", node.AddressP2P(false))
 	cfg.P2P.AddrBookStrict = false
