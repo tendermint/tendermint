@@ -160,7 +160,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			RetainBlocks:     nodeManifest.RetainBlocks,
 			Perturbations:    []Perturbation{},
 			Misbehaviors:     make(map[int64]string),
-			LogLevel:         nodeManifest.LogLevel,
+			LogLevel:         manifest.LogLevel,
 		}
 		if node.StartAt == testnet.InitialHeight {
 			node.StartAt = 0 // normalize to 0 for initial nodes, since code expects this
@@ -189,6 +189,9 @@ func LoadTestnet(file string) (*Testnet, error) {
 				return nil, fmt.Errorf("unable to parse height %s to int64: %w", heightString, err)
 			}
 			node.Misbehaviors[height] = misbehavior
+		}
+		if nodeManifest.LogLevel != "" {
+			node.LogLevel = nodeManifest.LogLevel
 		}
 		testnet.Nodes = append(testnet.Nodes, node)
 	}
@@ -410,15 +413,6 @@ func (t Testnet) RandomNode() *Node {
 		node := t.Nodes[rand.Intn(len(t.Nodes))]
 		if node.Mode != ModeSeed {
 			return node
-		}
-	}
-}
-
-// LogLevel sets the log level of any nodes that aren't already set
-func (t Testnet) LogLevel(logLevel string) {
-	for _, node := range t.Nodes {
-		if node.LogLevel == "" {
-			node.LogLevel = logLevel
 		}
 	}
 }
