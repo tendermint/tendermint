@@ -380,6 +380,11 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 		}
 	}()
 
+	go func() {
+		for range reactor.mempoolPeerErrCh {
+		}
+	}()
+
 	peerID, err := p2p.NewNodeID("00ffaa")
 	require.NoError(t, err)
 
@@ -429,6 +434,11 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 
 	primary := setup(t, config.Mempool, log.TestingLogger().With("node", 0), 0)
 	secondary := setup(t, config.Mempool, log.TestingLogger().With("node", 1), 0)
+
+	go func() {
+		for range primary.mempoolPeerErrCh {
+		}
+	}()
 
 	// connect peer
 	primary.peerUpdatesCh <- p2p.PeerUpdate{
