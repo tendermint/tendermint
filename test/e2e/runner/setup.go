@@ -136,7 +136,7 @@ func MakeDockerCompose(testnet *e2e.Testnet) ([]byte, error) {
 			if misbehaviorString != "" {
 				command += " --misbehaviors " + misbehaviorString
 			}
-			if logLevel != "" {
+			if logLevel != "" && logLevel != config.DefaultPackageLogLevels() {
 				command += " --log-level " + logLevel
 			}
 			return command
@@ -168,7 +168,9 @@ services:
 {{- else if .Misbehaviors }}
     entrypoint: /usr/bin/entrypoint-maverick
 {{- end }}
+{{- if ne .ABCIProtocol "builtin"}}
     command: {{ startCommands .Misbehaviors .LogLevel }}
+{{- end }}
     init: true
     ports:
     - 26656
@@ -234,6 +236,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg := config.DefaultConfig()
 	cfg.Moniker = node.Name
 	cfg.ProxyApp = AppAddressTCP
+	cfg.LogLevel = node.LogLevel
 	cfg.RPC.ListenAddress = "tcp://0.0.0.0:26657"
 	cfg.P2P.ExternalAddress = fmt.Sprintf("tcp://%v", node.AddressP2P(false))
 	cfg.P2P.AddrBookStrict = false
