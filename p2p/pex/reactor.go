@@ -151,7 +151,7 @@ func (r *ReactorV2) processPexCh() {
 			}
 
 		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on mempool channel; closing...")
+			r.Logger.Debug("stopped listening on PEX channel; closing...")
 			return
 		}
 	}
