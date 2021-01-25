@@ -2,8 +2,10 @@ package log
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -79,6 +81,11 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 		case moduleKey:
 			excludeIndexes = append(excludeIndexes, i)
 			module = keyvals[i+1].(string)
+		}
+
+		// Print []byte as a hexadecimal string (uppercased)
+		if b, ok := keyvals[i+1].([]byte); ok {
+			keyvals[i+1] = strings.ToUpper(hex.EncodeToString(b))
 		}
 	}
 

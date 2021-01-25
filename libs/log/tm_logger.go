@@ -21,7 +21,7 @@ type tmLogger struct {
 // Interface assertions
 var _ Logger = (*tmLogger)(nil)
 
-// NewTMTermLogger returns a logger that encodes msg and keyvals to the Writer
+// NewTMLogger returns a logger that encodes msg and keyvals to the Writer
 // using go-kit's log as an underlying logger and our custom formatter. Note
 // that underlying logger could be swapped with something else.
 func NewTMLogger(w io.Writer) Logger {
@@ -52,6 +52,7 @@ func NewTMLoggerWithColorFn(w io.Writer, colorFn func(keyvals ...interface{}) te
 // Info logs a message at level Info.
 func (l *tmLogger) Info(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Info(l.srcLogger)
+
 	if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
 		errLogger := kitlevel.Error(l.srcLogger)
 		kitlog.With(errLogger, msgKey, msg).Log("err", err) //nolint:errcheck // no need to check error again
@@ -61,6 +62,7 @@ func (l *tmLogger) Info(msg string, keyvals ...interface{}) {
 // Debug logs a message at level Debug.
 func (l *tmLogger) Debug(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Debug(l.srcLogger)
+
 	if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
 		errLogger := kitlevel.Error(l.srcLogger)
 		kitlog.With(errLogger, msgKey, msg).Log("err", err) //nolint:errcheck // no need to check error again
@@ -70,6 +72,7 @@ func (l *tmLogger) Debug(msg string, keyvals ...interface{}) {
 // Error logs a message at level Error.
 func (l *tmLogger) Error(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Error(l.srcLogger)
+
 	lWithMsg := kitlog.With(lWithLevel, msgKey, msg)
 	if err := lWithMsg.Log(keyvals...); err != nil {
 		lWithMsg.Log("err", err) //nolint:errcheck // no need to check error again
