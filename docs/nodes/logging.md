@@ -55,8 +55,6 @@ little overview what they do.
   "submodules": `wal` (write-ahead logging) for ensuring data
   integrity and `replay` to replay blocks and messages on recovery
   from a crash.
-- `events` Simple event notification system. The list of events can be
-  found
   [here](https://github.com/tendermint/tendermint/blob/master/types/events.go).
   You can subscribe to them by calling `subscribe` RPC method. Refer
   to [RPC docs](./rpc.md) for additional information.
@@ -65,14 +63,11 @@ little overview what they do.
 - `p2p` Provides an abstraction around peer-to-peer communication. For
   more details, please check out the
   [README](https://github.com/tendermint/tendermint/blob/master/p2p/README.md).
-- `rpc` [Tendermint's RPC](./rpc.md).
 - `rpc-server` RPC server. For implementation details, please read the
   [doc.go](https://github.com/tendermint/tendermint/blob/master/rpc/jsonrpc/doc.go).
 - `state` Represents the latest state and execution submodule, which
   executes blocks against the application.
 - `statesync` Provides a way to quickly sync a node with pruned history.
-- `types` A collection of the publicly exposed types and methods to
-  work with them.
 
 
 ### Walkabout example
