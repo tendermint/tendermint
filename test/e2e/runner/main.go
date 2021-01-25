@@ -208,7 +208,7 @@ func NewCLI() *CLI {
 
 	cli.root.AddCommand(&cobra.Command{
 		Use:   "tail [node]",
-		Short: "Tails the testnet logs",
+		Short: "Tails the testnet or a specific node's logs",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {

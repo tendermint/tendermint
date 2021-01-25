@@ -60,6 +60,7 @@ type Testnet struct {
 	ValidatorUpdates map[int64]map[*Node]int64
 	Nodes            []*Node
 	KeyType          string
+	LogLevel         string
 }
 
 // Node represents a Tendermint node in a testnet.
@@ -99,6 +100,8 @@ func LoadTestnet(file string) (*Testnet, error) {
 	}
 	dir := strings.TrimSuffix(file, filepath.Ext(file))
 
+	fmt.Printf("Log level: %s\n", manifest.LogLevel)
+
 	// Set up resource generators. These must be deterministic.
 	netAddress := networkIPv4
 	if manifest.IPv6 {
@@ -124,6 +127,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 		ValidatorUpdates: map[int64]map[*Node]int64{},
 		Nodes:            []*Node{},
 		KeyType:          "ed25519",
+		LogLevel:         manifest.LogLevel,
 	}
 	if len(manifest.KeyType) != 0 {
 		testnet.KeyType = manifest.KeyType
