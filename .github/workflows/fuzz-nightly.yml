@@ -77,7 +77,7 @@ jobs:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SLACK_CHANNEL: tendermint-internal
           SLACK_USERNAME: Nightly Fuzz Tests
-          SLACK_ICON_EMOJI: ':skull:'
+          SLACK_ICON_EMOJI: ':firecracker:'
           SLACK_COLOR: danger
           SLACK_MESSAGE: Crashers found in Nightly Fuzz tests
           SLACK_FOOTER: ''
