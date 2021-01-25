@@ -309,10 +309,11 @@ const (
 // connection and evict a lower-scored peer. We mark the lower-scored peer as
 // upgrading[from]=to to make sure no other higher-scored peers can claim the
 // same one for an upgrade. The flow is as follows:
-// - Accepted: if upgrade is possible, mark connected and add to evict.
+// - Accepted: if upgrade is possible, mark connected and add lower-scored to evict.
 // - DialNext: if upgrade is possible, mark upgrading[from]=to and dialing.
 // - DialFailed: unmark upgrading[from]=to and dialing.
-// - Dialed: unmark upgrading[from]=to and dialing, mark as connected, add to evict.
+// - Dialed: unmark upgrading[from]=to and dialing, mark as connected, add
+//   lower-scored to evict.
 // - EvictNext: pick peer from evict, mark as evicting.
 // - Disconnected: unmark connected, upgrading[from]=to, evict, evicting.
 type PeerManager struct {
@@ -600,11 +601,11 @@ func (m *PeerManager) TryDialNext() (NodeID, PeerAddress, error) {
 			// peers, since they will all have the same or lower score than this
 			// peer (since they're ordered by score via peerStore.Ranked).
 			if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
-				upgradePeer := m.findUpgradeCandidate(peer.ID, peer.Score())
-				if upgradePeer == "" {
+				upgradeFromPeer := m.findUpgradeCandidate(peer.ID, peer.Score())
+				if upgradeFromPeer == "" {
 					return "", PeerAddress{}, nil
 				}
-				m.upgrading[upgradePeer] = peer.ID
+				m.upgrading[upgradeFromPeer] = peer.ID
 			}
 
 			m.dialing[peer.ID] = true
@@ -720,11 +721,11 @@ func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 
 	delete(m.dialing, peerID)
 
-	var upgradePeer NodeID
+	var upgradeFromPeer NodeID
 	for from, to := range m.upgrading {
 		if to == peerID {
 			delete(m.upgrading, from)
-			upgradePeer = from
+			upgradeFromPeer = from
 			// Don't break, just in case this peer was marked as upgrading for
 			// multiple lower-scored peers (shouldn't really happen).
 		}
@@ -753,16 +754,16 @@ func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
 		return err
 	}
 
-	if upgradePeer != "" && m.options.MaxConnected > 0 &&
+	if upgradeFromPeer != "" && m.options.MaxConnected > 0 &&
 		len(m.connected) >= int(m.options.MaxConnected) {
 		// Look for an even lower-scored peer that may have appeared
 		// since we started the upgrade.
-		if p, ok := m.store.Get(upgradePeer); ok {
+		if p, ok := m.store.Get(upgradeFromPeer); ok {
 			if u := m.findUpgradeCandidate(p.ID, p.Score()); u != "" {
-				upgradePeer = u
+				upgradeFromPeer = u
 			}
 		}
-		m.evict[upgradePeer] = true
+		m.evict[upgradeFromPeer] = true
 	}
 	m.connected[peerID] = true
 	m.wakeEvict()
@@ -801,10 +802,10 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 	// If all connections slots are full, but we allow upgrades (and we checked
 	// above that we have upgrade capacity), then we can look for a lower-scored
 	// peer to replace and if found accept the connection anyway and evict it.
-	var upgradePeer NodeID
+	var upgradeFromPeer NodeID
 	if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
-		upgradePeer = m.findUpgradeCandidate(peer.ID, peer.Score())
-		if upgradePeer == "" {
+		upgradeFromPeer = m.findUpgradeCandidate(peer.ID, peer.Score())
+		if upgradeFromPeer == "" {
 			return fmt.Errorf("already connected to maximum number of peers")
 		}
 	}
@@ -815,8 +816,8 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 	}
 
 	m.connected[peerID] = true
-	if upgradePeer != "" {
-		m.evict[upgradePeer] = true
+	if upgradeFromPeer != "" {
+		m.evict[upgradeFromPeer] = true
 	}
 	m.wakeEvict()
 	return nil
