@@ -795,8 +795,11 @@ func NewNode(config *cfg.Config,
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 
 	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
-	peerMgr := p2p.NewPeerManager(p2p.PeerManagerOptions{})
-
+	// TODO: Use a persistent peer database.
+	peerMgr, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	if err != nil {
+		return nil, err
+	}
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 	mpReactorShim, mpReactor, mempool := createMempoolReactor(config, proxyApp, state, memplMetrics, peerMgr, logger)
 
