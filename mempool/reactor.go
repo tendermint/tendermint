@@ -224,16 +224,11 @@ func (r *Reactor) processMempoolCh() {
 		case envelope := <-r.mempoolCh.In():
 			if err := r.handleMessage(r.mempoolCh.ID(), envelope); err != nil {
 				r.Logger.Error("failed to process message", "ch_id", r.mempoolCh.ID(), "envelope", envelope, "err", err)
-
-				fmt.Println("MESSAGE HANDLER ERROR:", err)
-
 				r.mempoolCh.Error() <- p2p.PeerError{
 					PeerID:   envelope.From,
 					Err:      err,
 					Severity: p2p.PeerErrorSeverityLow,
 				}
-
-				fmt.Println("SENT PEER ERROR ON CHANNEL")
 			}
 
 		case <-r.closeCh:
