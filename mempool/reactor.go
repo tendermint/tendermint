@@ -232,6 +232,8 @@ func (r *Reactor) processMempoolCh() {
 					Err:      err,
 					Severity: p2p.PeerErrorSeverityLow,
 				}
+
+				fmt.Println("SENT PEER ERROR ON CHANNEL")
 			}
 
 		case <-r.closeCh:
