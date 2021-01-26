@@ -11,7 +11,7 @@ import (
 
 var (
 	_ service.Service = (*ReactorV2)(nil)
-	_ p2p.Wrapper     = (*protop2p.Message)(nil)
+	_ p2p.Wrapper     = (*protop2p.PexMessage)(nil)
 )
 
 const (
@@ -82,15 +82,15 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 	switch msg := envelope.Message.(type) {
 	case *protop2p.PexRequest:
 		endpoints := r.peerManager.Advertise(envelope.From, maxAddresses)
-		resp := &protop2p.PexAddrs{Addrs: make([]protop2p.NetAddress, 0, len(endpoints))}
+		resp := &protop2p.PexResponse{Addresses: make([]protop2p.PexAddress, 0, len(endpoints))}
 		for _, endpoint := range endpoints {
 			// FIXME: This shouldn't rely on NetAddress.
-			resp.Addrs = append(resp.Addrs, endpoint.NetAddress().ToProto())
+			resp.Addresses = append(resp.Addresses, endpoint.NetAddress().ToProto())
 		}
 		r.pexCh.Out() <- p2p.Envelope{To: envelope.From, Message: resp}
 
-	case *protop2p.PexAddrs:
-		for _, pbAddr := range msg.Addrs {
+	case *protop2p.PexResponse:
+		for _, pbAddr := range msg.Addresses {
 			// FIXME: This shouldn't rely on NetAddress.
 			netaddr, err := p2p.NetAddressFromProto(pbAddr)
 			if err != nil {
