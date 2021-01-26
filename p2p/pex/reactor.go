@@ -1,7 +1,9 @@
 package pex
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -15,7 +17,8 @@ var (
 )
 
 const (
-	maxAddresses uint16 = 100
+	maxAddresses   uint16 = 100
+	resolveTimeout        = 3 * time.Second
 )
 
 // ReactorV2 is a PEX reactor for the new P2P stack. The legacy reactor
@@ -81,25 +84,22 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 	// only processing addresses we actually requested.
 	switch msg := envelope.Message.(type) {
 	case *protop2p.PexRequest:
-		endpoints := r.peerManager.Advertise(envelope.From, maxAddresses)
-		resp := &protop2p.PexResponse{Addresses: make([]protop2p.PexAddress, 0, len(endpoints))}
-		for _, endpoint := range endpoints {
-			// FIXME: This shouldn't rely on NetAddress.
-			resp.Addresses = append(resp.Addresses, endpoint.NetAddress().ToProto())
+		pexAddresses := r.resolve(r.peerManager.Advertise(envelope.From, maxAddresses), maxAddresses)
+		r.pexCh.Out() <- p2p.Envelope{
+			To:      envelope.From,
+			Message: &protop2p.PexResponse{Addresses: pexAddresses},
 		}
-		r.pexCh.Out() <- p2p.Envelope{To: envelope.From, Message: resp}
 
 	case *protop2p.PexResponse:
-		for _, pbAddr := range msg.Addresses {
-			// FIXME: This shouldn't rely on NetAddress.
-			netaddr, err := p2p.NetAddressFromProto(pbAddr)
+		for _, pexAddress := range msg.Addresses {
+			peerAddress, err := p2p.ParsePeerAddress(
+				fmt.Sprintf("%s@%s:%d", pexAddress.ID, pexAddress.IP, pexAddress.Port))
 			if err != nil {
-				logger.Debug("received invalid PEX address", "addr", netaddr, "err", err)
+				logger.Debug("invalid PEX address", "address", pexAddress, "err", err)
 				continue
 			}
-			if err = r.peerManager.Add(netaddr.Endpoint().PeerAddress()); err != nil {
-				logger.Debug("received invalid PEX address", "addr", netaddr, "err", err)
-				continue
+			if err = r.peerManager.Add(peerAddress); err != nil {
+				logger.Debug("failed to register PEX address", "address", peerAddress, "err", err)
 			}
 		}
 
@@ -108,6 +108,43 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 	}
 
 	return nil
+}
+
+// resolve resolves a set of peer addresses into PEX addresses.
+//
+// FIXME: This is necessary because the current PEX protocol only supports
+// IP/port pairs, while the P2P stack uses PeerAddress URLs. The PEX protocol
+// should really use URLs too, to exchange DNS names instead of IPs and allow
+// different transport protocols (e.g. QUIC and MemoryTransport).
+//
+// FIXME: We may want to cache and parallelize this, but for now we'll just rely
+// on the operating system to cache it for us.
+func (r *ReactorV2) resolve(addresses []p2p.PeerAddress, limit uint16) []protop2p.PexAddress {
+	pexAddresses := make([]protop2p.PexAddress, 0, len(addresses))
+	for _, address := range addresses {
+		ctx, cancel := context.WithTimeout(context.Background(), resolveTimeout)
+		endpoints, err := address.Resolve(ctx)
+		cancel()
+		if err != nil {
+			r.Logger.Debug("failed to resolve address", "address", address, "err", err)
+			continue
+		}
+		for _, endpoint := range endpoints {
+			if len(pexAddresses) >= int(limit) {
+				return pexAddresses
+
+			} else if endpoint.IP != nil {
+				// PEX currently only supports IP-networked transports (as
+				// opposed to e.g. p2p.MemoryTransport).
+				pexAddresses = append(pexAddresses, protop2p.PexAddress{
+					ID:   string(endpoint.PeerID),
+					IP:   endpoint.IP.String(),
+					Port: uint32(endpoint.Port),
+				})
+			}
+		}
+	}
+	return pexAddresses
 }
 
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
