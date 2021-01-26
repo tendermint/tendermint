@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -460,8 +459,4 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 		Status: p2p.PeerStatusDown,
 		PeerID: secondary.peerID,
 	}
-
-	// check that we are not leaking any go-routines
-	// i.e. broadcastTxRoutine finishes when peer is stopped
-	leaktest.CheckTimeout(t, 10*time.Second)()
 }
