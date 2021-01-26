@@ -28,7 +28,7 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 	// verify the time of the evidence
 	blockMeta := evpool.blockStore.LoadBlockMeta(evidence.Height())
 	if blockMeta == nil {
-		return fmt.Errorf("don't have header #%d", evidence.Height())
+		return fmt.Errorf("don't have header #%d %v", evidence.Height(), evpool.blockStore)
 	}
 	evTime := blockMeta.Header.Time
 	if evidence.Time() != evTime {

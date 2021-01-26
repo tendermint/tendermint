@@ -84,12 +84,14 @@ func testCounter() {
 	deliverTx(client, []byte("abc"), code.CodeTypeBadNonce, nil)
 	commit(client, nil)
 	deliverTx(client, []byte{0x00}, types.CodeTypeOK, nil)
-	commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 1})
+	commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1})
 	deliverTx(client, []byte{0x00}, code.CodeTypeBadNonce, nil)
 	deliverTx(client, []byte{0x01}, types.CodeTypeOK, nil)
 	deliverTx(client, []byte{0x00, 0x02}, types.CodeTypeOK, nil)
 	deliverTx(client, []byte{0x00, 0x03}, types.CodeTypeOK, nil)
 	deliverTx(client, []byte{0x00, 0x00, 0x04}, types.CodeTypeOK, nil)
 	deliverTx(client, []byte{0x00, 0x00, 0x06}, code.CodeTypeBadNonce, nil)
-	commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 5})
+	commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5})
 }
