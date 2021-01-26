@@ -36,16 +36,17 @@ func TestRouter(t *testing.T) {
 	logger := log.TestingLogger()
 	network := p2p.NewMemoryNetwork(logger)
 	transport := network.GenerateTransport()
+	defer transport.Close()
 	chID := p2p.ChannelID(1)
 
 	// Start some other in-memory network nodes to communicate with, running
 	// a simple echo reactor that returns received messages.
 	peers := []p2p.PeerAddress{}
 	for i := 0; i < 3; i++ {
-		i := i
 		peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
 		require.NoError(t, err)
 		peerTransport := network.GenerateTransport()
+		defer peerTransport.Close()
 		peerRouter := p2p.NewRouter(
 			logger.With("peerID", i),
 			peerManager,
