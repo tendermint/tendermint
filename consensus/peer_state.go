@@ -10,6 +10,7 @@ import (
 	"github.com/tendermint/tendermint/libs/bits"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -40,9 +41,13 @@ type PeerState struct {
 	logger log.Logger
 
 	// NOTE: Modify below using setters, never directly.
-	mtx   sync.Mutex
-	PRS   cstypes.PeerRoundState `json:"round_state"`
-	Stats *peerStateStats        `json:"stats"`
+	mtx     tmsync.RWMutex
+	running bool
+	closer  *tmsync.Closer
+	PRS     cstypes.PeerRoundState `json:"round_state"`
+	Stats   *peerStateStats        `json:"stats"`
+
+	broadcastWG sync.WaitGroup
 }
 
 // NewPeerState returns a new PeerState for the given node ID.
@@ -58,6 +63,32 @@ func NewPeerState(logger log.Logger, peerID p2p.NodeID) *PeerState {
 		},
 		Stats: &peerStateStats{},
 	}
+}
+
+// SetCloser sets a closer for the peer that is used to coordinate closure of
+// all spawned broadcasting goroutines.
+func (ps *PeerState) SetCloser(closer *tmsync.Closer) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	ps.closer = closer
+}
+
+// SetRunning sets the running state of the peer.
+func (ps *PeerState) SetRunning(v bool) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	ps.running = v
+}
+
+// IsRunning returns true if a PeerState is considered running where multiple
+// broadcasting goroutines exist for the peer.
+func (ps *PeerState) IsRunning() bool {
+	ps.mtx.RLock()
+	defer ps.mtx.RUnlock()
+
+	return ps.running
 }
 
 // GetRoundState returns an shallow copy of the PeerRoundState. There's no point

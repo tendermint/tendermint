@@ -275,9 +275,17 @@ func (r *Reactor) sendNewRoundStepMessage(peerID p2p.NodeID) {
 func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	r.Logger.Debug("received peer update", "peer", peerUpdate.PeerID, "status", peerUpdate.Status)
 
+	psKey := string(peerUpdate.PeerID)
+
 	switch peerUpdate.Status {
 	case p2p.PeerStatusNew, p2p.PeerStatusUp:
-		psKey := string(peerUpdate.PeerID)
+		// Do not allow starting new broadcasting goroutines after reactor shutdown
+		// has been initiated. This can happen after we've manually closed all
+		// peer goroutines and closed r.closeCh, but the router still sends in-flight
+		// peer updates.
+		if !r.IsRunning() {
+			return
+		}
 
 		// save the peer if the ID is non-empty and we haven't seen this peer before
 		if psKey != "" && !r.peers.Has(psKey) {
@@ -290,23 +298,42 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 			panic(fmt.Sprintf("peer %v has no state", peerState.peerID))
 		}
 
-		// begin routines for this peer
-		//
-		// TODO: Evaluate if we need this to be synchronized via WaitGroup as to not
-		// leak the goroutine when stopping the reactor.
-		go r.gossipDataRoutine(peerState)
-		go r.gossipVotesRoutine(peerState)
-		go r.queryMaj23Routine(peerState)
+		if !peerState.IsRunning() {
+			closer := tmsync.NewCloser()
 
-		// Send our state to the peer. If we're fast-syncing, broadcast a
-		// RoundStepMessage later upon SwitchToConsensus().
-		if !r.WaitSync() {
-			r.sendNewRoundStepMessage(peerState.peerID)
+			// Set the peer state's closer to signal to all spawned goroutines to exit
+			// when the peer is removed. We also set the running state to ensure we
+			// do not spawn multiple instances of the same goroutines and finally we
+			// set the waitgroup counter so we know when all goroutines have exited.
+			peerState.SetCloser(closer)
+			peerState.broadcastWG.Add(3)
+			peerState.SetRunning(true)
+
+			// start goroutines for this peer
+			go r.gossipDataRoutine(peerState)
+			go r.gossipVotesRoutine(peerState)
+			go r.queryMaj23Routine(peerState)
+
+			// Send our state to the peer. If we're fast-syncing, broadcast a
+			// RoundStepMessage later upon SwitchToConsensus().
+			if !r.WaitSync() {
+				r.sendNewRoundStepMessage(peerState.peerID)
+			}
 		}
 
 	case p2p.PeerStatusDown, p2p.PeerStatusRemoved, p2p.PeerStatusBanned:
-		// TODO: Handle update. The original reactor performed a no-op here, but we
-		// may need to do some cleanup.
+		peerState, ok := r.peers.Get(psKey).(*PeerState)
+		if ok && peerState.IsRunning() {
+			// Close the closer to signal to all spawned goroutines to gracefully exit
+			// and we wait for them to all exit before marking the peer state as no
+			// longer running.
+			//
+			// TODO: It is possible that we can briefly wait here for all goroutines.
+			// Is this problematic?
+			peerState.closer.Close()
+			peerState.broadcastWG.Wait()
+			peerState.SetRunning(false)
+		}
 	}
 }
 
