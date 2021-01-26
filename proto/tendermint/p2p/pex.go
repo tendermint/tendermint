@@ -24,9 +24,9 @@ func (m *Message) Wrap(pb proto.Message) error {
 func (m *Message) Unwrap() (proto.Message, error) {
 	switch msg := m.Sum.(type) {
 	case *Message_PexRequest:
-		return m.GetPexRequest(), nil
+		return msg.PexRequest, nil
 	case *Message_PexAddrs:
-		return m.GetPexAddrs(), nil
+		return msg.PexAddrs, nil
 	default:
 		return nil, fmt.Errorf("unknown message: %T", msg)
 	}
