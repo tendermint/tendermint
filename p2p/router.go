@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -230,21 +231,16 @@ func (r *Router) routeChannel(channel *Channel) {
 
 // acceptPeers accepts inbound connections from peers on the given transport.
 func (r *Router) acceptPeers(transport Transport) {
+	ctx := r.stopCtx()
 	for {
-		select {
-		case <-r.stopCh:
-			return
-		default:
-		}
-
 		// FIXME: We may need transports to enforce some sort of rate limiting
 		// here (e.g. by IP address), or alternatively have PeerManager.Accepted()
 		// do it for us.
-		conn, err := transport.Accept(context.Background())
+		conn, err := transport.Accept(ctx)
 		switch err {
 		case nil:
-		case ErrTransportClosed{}, io.EOF:
-			r.logger.Info("transport closed; stopping accept routine", "transport", transport)
+		case ErrTransportClosed{}, io.EOF, context.Canceled:
+			r.logger.Debug("stopping accept routine", "transport", transport)
 			return
 		default:
 			r.logger.Error("failed to accept connection", "transport", transport, "err", err)
@@ -285,31 +281,25 @@ func (r *Router) acceptPeers(transport Transport) {
 
 // dialPeers maintains outbound connections to peers.
 func (r *Router) dialPeers() {
+	ctx := r.stopCtx()
 	for {
-		select {
-		case <-r.stopCh:
+		peerID, address, err := r.peerManager.DialNext(ctx)
+		switch err {
+		case nil:
+		case context.Canceled:
+			r.logger.Debug("stopping dial routine")
 			return
 		default:
-		}
-
-		peerID, address, err := r.peerManager.DialNext()
-		if err != nil {
 			r.logger.Error("failed to find next peer to dial", "err", err)
 			return
-		} else if peerID == "" {
-			r.logger.Debug("no eligible peers, sleeping")
-			select {
-			case <-time.After(time.Second):
-				continue
-			case <-r.stopCh:
-				return
-			}
 		}
 
 		go func() {
-			conn, err := r.dialPeer(address)
-			if err != nil {
-				r.logger.Error("failed to dial peer, will retry", "peer", peerID)
+			conn, err := r.dialPeer(ctx, address)
+			if errors.Is(err, context.Canceled) {
+				return
+			} else if err != nil {
+				r.logger.Error("failed to dial peer", "peer", peerID)
 				if err = r.peerManager.DialFailed(peerID, address); err != nil {
 					r.logger.Error("failed to report dial failure", "peer", peerID, "err", err)
 				}
@@ -344,9 +334,7 @@ func (r *Router) dialPeers() {
 }
 
 // dialPeer attempts to connect to a peer.
-func (r *Router) dialPeer(address PeerAddress) (Connection, error) {
-	ctx := context.Background()
-
+func (r *Router) dialPeer(ctx context.Context, address PeerAddress) (Connection, error) {
 	resolveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -367,11 +355,18 @@ func (r *Router) dialPeer(address PeerAddress) (Connection, error) {
 		dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 
+		// FIXME: When we dial and handshake the peer, we should pass it
+		// appropriate address(es) it can use to dial us back. It can't use our
+		// remote endpoint, since TCP uses different port numbers for outbound
+		// connections than it does for inbound. Also, we may need to vary this
+		// by the peer's endpoint, since e.g. a peer on 192.168.0.0 can reach us
+		// on a private address on this endpoint, but a peer on the public
+		// Internet can't and needs a different public address.
 		conn, err := t.Dial(dialCtx, endpoint)
 		if err != nil {
-			r.logger.Error("failed to dial endpoint", "endpoint", endpoint)
+			r.logger.Error("failed to dial endpoint", "endpoint", endpoint, "err", err)
 		} else {
-			r.logger.Info("connected to peer", "peer", address.NodeID(), "endpoint", endpoint)
+			r.logger.Info("connected to peer", "peer", address.ID, "endpoint", endpoint)
 			return conn, nil
 		}
 	}
@@ -481,34 +476,25 @@ func (r *Router) sendPeer(peerID NodeID, conn Connection, queue queue) error {
 
 // evictPeers evicts connected peers as requested by the peer manager.
 func (r *Router) evictPeers() {
+	ctx := r.stopCtx()
 	for {
-		select {
-		case <-r.stopCh:
+		peerID, err := r.peerManager.EvictNext(ctx)
+		switch err {
+		case nil:
+		case context.Canceled:
+			r.logger.Debug("stopping evict routine")
 			return
 		default:
-		}
-
-		peerID, err := r.peerManager.EvictNext()
-		if err != nil {
 			r.logger.Error("failed to find next peer to evict", "err", err)
 			return
-		} else if peerID == "" {
-			r.logger.Debug("no evictable peers, sleeping")
-			select {
-			case <-time.After(time.Second):
-				continue
-			case <-r.stopCh:
-				return
-			}
 		}
 
 		r.logger.Info("evicting peer", "peer", peerID)
 		r.peerMtx.RLock()
-		queue, ok := r.peerQueues[peerID]
-		r.peerMtx.RUnlock()
-		if ok {
+		if queue, ok := r.peerQueues[peerID]; ok {
 			queue.close()
 		}
+		r.peerMtx.RUnlock()
 	}
 }
 
@@ -543,4 +529,14 @@ func (r *Router) OnStop() {
 	for _, q := range queues {
 		<-q.closed()
 	}
+}
+
+// stopCtx returns a context that is cancelled when the router stops.
+func (r *Router) stopCtx() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-r.stopCh
+		cancel()
+	}()
+	return ctx
 }

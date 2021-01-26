@@ -7,81 +7,25 @@ import (
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	_ "github.com/gogo/protobuf/types"
+	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
 	io "io"
 	math "math"
 	math_bits "math/bits"
+	time "time"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
+var _ = time.Kitchen
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
-
-type NetAddress struct {
-	ID   string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	IP   string `protobuf:"bytes,2,opt,name=ip,proto3" json:"ip,omitempty"`
-	Port uint32 `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
-}
-
-func (m *NetAddress) Reset()         { *m = NetAddress{} }
-func (m *NetAddress) String() string { return proto.CompactTextString(m) }
-func (*NetAddress) ProtoMessage()    {}
-func (*NetAddress) Descriptor() ([]byte, []int) {
-	return fileDescriptor_c8a29e659aeca578, []int{0}
-}
-func (m *NetAddress) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *NetAddress) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_NetAddress.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *NetAddress) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_NetAddress.Merge(m, src)
-}
-func (m *NetAddress) XXX_Size() int {
-	return m.Size()
-}
-func (m *NetAddress) XXX_DiscardUnknown() {
-	xxx_messageInfo_NetAddress.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_NetAddress proto.InternalMessageInfo
-
-func (m *NetAddress) GetID() string {
-	if m != nil {
-		return m.ID
-	}
-	return ""
-}
-
-func (m *NetAddress) GetIP() string {
-	if m != nil {
-		return m.IP
-	}
-	return ""
-}
-
-func (m *NetAddress) GetPort() uint32 {
-	if m != nil {
-		return m.Port
-	}
-	return 0
-}
 
 type ProtocolVersion struct {
 	P2P   uint64 `protobuf:"varint,1,opt,name=p2p,proto3" json:"p2p,omitempty"`
@@ -93,7 +37,7 @@ func (m *ProtocolVersion) Reset()         { *m = ProtocolVersion{} }
 func (m *ProtocolVersion) String() string { return proto.CompactTextString(m) }
 func (*ProtocolVersion) ProtoMessage()    {}
 func (*ProtocolVersion) Descriptor() ([]byte, []int) {
-	return fileDescriptor_c8a29e659aeca578, []int{1}
+	return fileDescriptor_c8a29e659aeca578, []int{0}
 }
 func (m *ProtocolVersion) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -158,7 +102,7 @@ func (m *NodeInfo) Reset()         { *m = NodeInfo{} }
 func (m *NodeInfo) String() string { return proto.CompactTextString(m) }
 func (*NodeInfo) ProtoMessage()    {}
 func (*NodeInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_c8a29e659aeca578, []int{2}
+	return fileDescriptor_c8a29e659aeca578, []int{1}
 }
 func (m *NodeInfo) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -252,7 +196,7 @@ func (m *NodeInfoOther) Reset()         { *m = NodeInfoOther{} }
 func (m *NodeInfoOther) String() string { return proto.CompactTextString(m) }
 func (*NodeInfoOther) ProtoMessage()    {}
 func (*NodeInfoOther) Descriptor() ([]byte, []int) {
-	return fileDescriptor_c8a29e659aeca578, []int{3}
+	return fileDescriptor_c8a29e659aeca578, []int{2}
 }
 func (m *NodeInfoOther) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -295,89 +239,185 @@ func (m *NodeInfoOther) GetRPCAddress() string {
 	return ""
 }
 
+type PeerInfo struct {
+	ID            string             `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	AddressInfo   []*PeerAddressInfo `protobuf:"bytes,2,rep,name=address_info,json=addressInfo,proto3" json:"address_info,omitempty"`
+	LastConnected *time.Time         `protobuf:"bytes,3,opt,name=last_connected,json=lastConnected,proto3,stdtime" json:"last_connected,omitempty"`
+}
+
+func (m *PeerInfo) Reset()         { *m = PeerInfo{} }
+func (m *PeerInfo) String() string { return proto.CompactTextString(m) }
+func (*PeerInfo) ProtoMessage()    {}
+func (*PeerInfo) Descriptor() ([]byte, []int) {
+	return fileDescriptor_c8a29e659aeca578, []int{3}
+}
+func (m *PeerInfo) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *PeerInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_PeerInfo.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *PeerInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PeerInfo.Merge(m, src)
+}
+func (m *PeerInfo) XXX_Size() int {
+	return m.Size()
+}
+func (m *PeerInfo) XXX_DiscardUnknown() {
+	xxx_messageInfo_PeerInfo.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_PeerInfo proto.InternalMessageInfo
+
+func (m *PeerInfo) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+func (m *PeerInfo) GetAddressInfo() []*PeerAddressInfo {
+	if m != nil {
+		return m.AddressInfo
+	}
+	return nil
+}
+
+func (m *PeerInfo) GetLastConnected() *time.Time {
+	if m != nil {
+		return m.LastConnected
+	}
+	return nil
+}
+
+type PeerAddressInfo struct {
+	Address         string     `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
+	LastDialSuccess *time.Time `protobuf:"bytes,2,opt,name=last_dial_success,json=lastDialSuccess,proto3,stdtime" json:"last_dial_success,omitempty"`
+	LastDialFailure *time.Time `protobuf:"bytes,3,opt,name=last_dial_failure,json=lastDialFailure,proto3,stdtime" json:"last_dial_failure,omitempty"`
+	DialFailures    uint32     `protobuf:"varint,4,opt,name=dial_failures,json=dialFailures,proto3" json:"dial_failures,omitempty"`
+}
+
+func (m *PeerAddressInfo) Reset()         { *m = PeerAddressInfo{} }
+func (m *PeerAddressInfo) String() string { return proto.CompactTextString(m) }
+func (*PeerAddressInfo) ProtoMessage()    {}
+func (*PeerAddressInfo) Descriptor() ([]byte, []int) {
+	return fileDescriptor_c8a29e659aeca578, []int{4}
+}
+func (m *PeerAddressInfo) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *PeerAddressInfo) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_PeerAddressInfo.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *PeerAddressInfo) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PeerAddressInfo.Merge(m, src)
+}
+func (m *PeerAddressInfo) XXX_Size() int {
+	return m.Size()
+}
+func (m *PeerAddressInfo) XXX_DiscardUnknown() {
+	xxx_messageInfo_PeerAddressInfo.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_PeerAddressInfo proto.InternalMessageInfo
+
+func (m *PeerAddressInfo) GetAddress() string {
+	if m != nil {
+		return m.Address
+	}
+	return ""
+}
+
+func (m *PeerAddressInfo) GetLastDialSuccess() *time.Time {
+	if m != nil {
+		return m.LastDialSuccess
+	}
+	return nil
+}
+
+func (m *PeerAddressInfo) GetLastDialFailure() *time.Time {
+	if m != nil {
+		return m.LastDialFailure
+	}
+	return nil
+}
+
+func (m *PeerAddressInfo) GetDialFailures() uint32 {
+	if m != nil {
+		return m.DialFailures
+	}
+	return 0
+}
+
 func init() {
-	proto.RegisterType((*NetAddress)(nil), "tendermint.p2p.NetAddress")
 	proto.RegisterType((*ProtocolVersion)(nil), "tendermint.p2p.ProtocolVersion")
 	proto.RegisterType((*NodeInfo)(nil), "tendermint.p2p.NodeInfo")
 	proto.RegisterType((*NodeInfoOther)(nil), "tendermint.p2p.NodeInfoOther")
+	proto.RegisterType((*PeerInfo)(nil), "tendermint.p2p.PeerInfo")
+	proto.RegisterType((*PeerAddressInfo)(nil), "tendermint.p2p.PeerAddressInfo")
 }
 
 func init() { proto.RegisterFile("tendermint/p2p/types.proto", fileDescriptor_c8a29e659aeca578) }
 
 var fileDescriptor_c8a29e659aeca578 = []byte{
-	// 468 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x5c, 0x52, 0xcd, 0x8e, 0xda, 0x3c,
-	0x14, 0x25, 0x21, 0x10, 0xe6, 0xf2, 0xcd, 0x8f, 0xac, 0xd1, 0xa7, 0x0c, 0x52, 0x13, 0x44, 0x37,
-	0xac, 0x12, 0x29, 0x55, 0x17, 0x5d, 0x96, 0xce, 0x86, 0xcd, 0x4c, 0x64, 0x55, 0x5d, 0xb4, 0x0b,
-	0x04, 0xb1, 0x0b, 0x16, 0x60, 0x5b, 0x8e, 0xdb, 0xd2, 0xb7, 0xe8, 0x5b, 0x75, 0x96, 0xb3, 0xec,
-	0x2a, 0xaa, 0xc2, 0x8b, 0x54, 0x76, 0x42, 0x0b, 0xec, 0xee, 0xb9, 0xc7, 0xf7, 0xe7, 0x5c, 0x1f,
-	0x18, 0x68, 0xca, 0x09, 0x55, 0x5b, 0xc6, 0x75, 0x22, 0x53, 0x99, 0xe8, 0xef, 0x92, 0x16, 0xb1,
-	0x54, 0x42, 0x0b, 0x74, 0xf5, 0x8f, 0x8b, 0x65, 0x2a, 0x07, 0xb7, 0x4b, 0xb1, 0x14, 0x96, 0x4a,
-	0x4c, 0x54, 0xbf, 0x1a, 0x65, 0x00, 0x0f, 0x54, 0xbf, 0x25, 0x44, 0xd1, 0xa2, 0x40, 0xff, 0x83,
-	0xcb, 0x48, 0xe0, 0x0c, 0x9d, 0xf1, 0xc5, 0xa4, 0x5b, 0x95, 0x91, 0x3b, 0xbd, 0xc7, 0x2e, 0x23,
-	0x36, 0x2f, 0x03, 0xf7, 0x28, 0x9f, 0x61, 0x97, 0x49, 0x84, 0xc0, 0x93, 0x42, 0xe9, 0xa0, 0x3d,
-	0x74, 0xc6, 0x97, 0xd8, 0xc6, 0xa3, 0xf7, 0x70, 0x9d, 0x99, 0xd6, 0xb9, 0xd8, 0x7c, 0xa0, 0xaa,
-	0x60, 0x82, 0xa3, 0x3b, 0x68, 0xcb, 0x54, 0xda, 0xbe, 0xde, 0xc4, 0xaf, 0xca, 0xa8, 0x9d, 0xa5,
-	0x19, 0x36, 0x39, 0x74, 0x0b, 0x9d, 0xc5, 0x46, 0xe4, 0x6b, 0xdb, 0xdc, 0xc3, 0x35, 0x40, 0x37,
-	0xd0, 0x9e, 0x4b, 0x69, 0xdb, 0x7a, 0xd8, 0x84, 0xa3, 0x9f, 0x2e, 0xf4, 0x1e, 0x04, 0xa1, 0x53,
-	0xfe, 0x59, 0xa0, 0x0c, 0x6e, 0x64, 0x33, 0x62, 0xf6, 0xb5, 0x9e, 0x61, 0x9b, 0xf7, 0xd3, 0x28,
-	0x3e, 0x55, 0x1d, 0x9f, 0xad, 0x32, 0xf1, 0x9e, 0xca, 0xa8, 0x85, 0xaf, 0xe5, 0xd9, 0x86, 0x2f,
-	0xc1, 0xe7, 0x82, 0xd0, 0x19, 0x23, 0x8d, 0x4a, 0xa8, 0xca, 0xa8, 0x6b, 0x07, 0xde, 0xe3, 0xae,
-	0xa1, 0xa6, 0x04, 0x45, 0xd0, 0xdf, 0xb0, 0x42, 0x53, 0x3e, 0x9b, 0x13, 0xa2, 0xec, 0x76, 0x17,
-	0x18, 0xea, 0x94, 0xb9, 0x20, 0x0a, 0xc0, 0xe7, 0x54, 0x7f, 0x13, 0x6a, 0x1d, 0x78, 0x96, 0x3c,
-	0x40, 0xc3, 0x1c, 0x16, 0xed, 0xd4, 0x4c, 0x03, 0xd1, 0x00, 0x7a, 0xf9, 0x6a, 0xce, 0x39, 0xdd,
-	0x14, 0x41, 0x77, 0xe8, 0x8c, 0xff, 0xc3, 0x7f, 0xb1, 0xa9, 0xda, 0x0a, 0xce, 0xd6, 0x54, 0x05,
-	0x7e, 0x5d, 0xd5, 0x40, 0xf4, 0x06, 0x3a, 0x42, 0xaf, 0xa8, 0x0a, 0x7a, 0x56, 0xf6, 0x8b, 0x73,
-	0xd9, 0x87, 0x53, 0x3d, 0x9a, 0x47, 0x8d, 0xe8, 0xba, 0x62, 0xf4, 0x09, 0x2e, 0x4f, 0x58, 0x74,
-	0x07, 0x3d, 0xbd, 0x9b, 0x31, 0x4e, 0xe8, 0xae, 0xfe, 0x7a, 0xec, 0xeb, 0xdd, 0xd4, 0x40, 0x94,
-	0x40, 0x5f, 0xc9, 0xdc, 0xca, 0xa5, 0x45, 0xd1, 0x9c, 0xe6, 0xaa, 0x2a, 0x23, 0xc0, 0xd9, 0xbb,
-	0xc6, 0x34, 0x18, 0x94, 0xcc, 0x9b, 0x78, 0xf2, 0xf8, 0x54, 0x85, 0xce, 0x73, 0x15, 0x3a, 0xbf,
-	0xab, 0xd0, 0xf9, 0xb1, 0x0f, 0x5b, 0xcf, 0xfb, 0xb0, 0xf5, 0x6b, 0x1f, 0xb6, 0x3e, 0xbe, 0x5e,
-	0x32, 0xbd, 0xfa, 0xb2, 0x88, 0x73, 0xb1, 0x4d, 0x8e, 0x5c, 0x7b, 0x6c, 0x60, 0xeb, 0xcd, 0x53,
-	0x47, 0x2f, 0xba, 0x36, 0xfb, 0xea, 0x4f, 0x00, 0x00, 0x00, 0xff, 0xff, 0x63, 0x32, 0x6b, 0x65,
-	0xea, 0x02, 0x00, 0x00,
-}
-
-func (m *NetAddress) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *NetAddress) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *NetAddress) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Port != 0 {
-		i = encodeVarintTypes(dAtA, i, uint64(m.Port))
-		i--
-		dAtA[i] = 0x18
-	}
-	if len(m.IP) > 0 {
-		i -= len(m.IP)
-		copy(dAtA[i:], m.IP)
-		i = encodeVarintTypes(dAtA, i, uint64(len(m.IP)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.ID) > 0 {
-		i -= len(m.ID)
-		copy(dAtA[i:], m.ID)
-		i = encodeVarintTypes(dAtA, i, uint64(len(m.ID)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
+	// 610 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x54, 0xcd, 0x4e, 0x1b, 0x3d,
+	0x14, 0xcd, 0x24, 0x21, 0x09, 0x37, 0x84, 0xf0, 0x59, 0xe8, 0xd3, 0x10, 0xa9, 0x19, 0x14, 0x36,
+	0xac, 0x26, 0x52, 0xaa, 0x2e, 0xba, 0x64, 0x40, 0xad, 0x22, 0x55, 0x25, 0x9a, 0xa2, 0x2e, 0xda,
+	0xc5, 0x68, 0x32, 0x76, 0x82, 0xc5, 0xc4, 0xb6, 0x3c, 0x4e, 0x4b, 0xdf, 0x82, 0x37, 0xe9, 0x63,
+	0x94, 0x25, 0xcb, 0xae, 0xd2, 0x6a, 0xd8, 0xf6, 0x21, 0x2a, 0xdb, 0x33, 0x40, 0xa2, 0x2e, 0xd8,
+	0xf9, 0xdc, 0xe3, 0x73, 0xee, 0x8f, 0xad, 0x0b, 0x3d, 0x45, 0x18, 0x26, 0x72, 0x41, 0x99, 0x1a,
+	0x8a, 0x91, 0x18, 0xaa, 0x6f, 0x82, 0x64, 0xbe, 0x90, 0x5c, 0x71, 0xb4, 0xfb, 0xc8, 0xf9, 0x62,
+	0x24, 0x7a, 0xfb, 0x73, 0x3e, 0xe7, 0x86, 0x1a, 0xea, 0x93, 0xbd, 0xd5, 0xf3, 0xe6, 0x9c, 0xcf,
+	0x53, 0x32, 0x34, 0x68, 0xba, 0x9c, 0x0d, 0x15, 0x5d, 0x90, 0x4c, 0xc5, 0x0b, 0x61, 0x2f, 0x0c,
+	0x2e, 0xa0, 0x3b, 0xd1, 0x87, 0x84, 0xa7, 0x1f, 0x89, 0xcc, 0x28, 0x67, 0xe8, 0x00, 0x6a, 0x62,
+	0x24, 0x5c, 0xe7, 0xd0, 0x39, 0xae, 0x07, 0xcd, 0x7c, 0xe5, 0xd5, 0x26, 0xa3, 0x49, 0xa8, 0x63,
+	0x68, 0x1f, 0xb6, 0xa6, 0x29, 0x4f, 0xae, 0xdc, 0xaa, 0x26, 0x43, 0x0b, 0xd0, 0x1e, 0xd4, 0x62,
+	0x21, 0xdc, 0x9a, 0x89, 0xe9, 0xe3, 0xe0, 0x47, 0x15, 0x5a, 0xef, 0x39, 0x26, 0x63, 0x36, 0xe3,
+	0x68, 0x02, 0x7b, 0xa2, 0x48, 0x11, 0x7d, 0xb1, 0x39, 0x8c, 0x79, 0x7b, 0xe4, 0xf9, 0xeb, 0x4d,
+	0xf8, 0x1b, 0xa5, 0x04, 0xf5, 0xdb, 0x95, 0x57, 0x09, 0xbb, 0x62, 0xa3, 0xc2, 0x23, 0x68, 0x32,
+	0x8e, 0x49, 0x44, 0xb1, 0x29, 0x64, 0x3b, 0x80, 0x7c, 0xe5, 0x35, 0x4c, 0xc2, 0xb3, 0xb0, 0xa1,
+	0xa9, 0x31, 0x46, 0x1e, 0xb4, 0x53, 0x9a, 0x29, 0xc2, 0xa2, 0x18, 0x63, 0x69, 0xaa, 0xdb, 0x0e,
+	0xc1, 0x86, 0x4e, 0x30, 0x96, 0xc8, 0x85, 0x26, 0x23, 0xea, 0x2b, 0x97, 0x57, 0x6e, 0xdd, 0x90,
+	0x25, 0xd4, 0x4c, 0x59, 0xe8, 0x96, 0x65, 0x0a, 0x88, 0x7a, 0xd0, 0x4a, 0x2e, 0x63, 0xc6, 0x48,
+	0x9a, 0xb9, 0x8d, 0x43, 0xe7, 0x78, 0x27, 0x7c, 0xc0, 0x5a, 0xb5, 0xe0, 0x8c, 0x5e, 0x11, 0xe9,
+	0x36, 0xad, 0xaa, 0x80, 0xe8, 0x35, 0x6c, 0x71, 0x75, 0x49, 0xa4, 0xdb, 0x32, 0x6d, 0xbf, 0xd8,
+	0x6c, 0xbb, 0x1c, 0xd5, 0xb9, 0xbe, 0x54, 0x34, 0x6d, 0x15, 0x83, 0xcf, 0xd0, 0x59, 0x63, 0xd1,
+	0x01, 0xb4, 0xd4, 0x75, 0x44, 0x19, 0x26, 0xd7, 0x66, 0x8a, 0xdb, 0x61, 0x53, 0x5d, 0x8f, 0x35,
+	0x44, 0x43, 0x68, 0x4b, 0x91, 0x98, 0x76, 0x49, 0x96, 0x15, 0xa3, 0xd9, 0xcd, 0x57, 0x1e, 0x84,
+	0x93, 0xd3, 0x13, 0x1b, 0x0d, 0x41, 0x8a, 0xa4, 0x38, 0x0f, 0xbe, 0x3b, 0xd0, 0x9a, 0x10, 0x22,
+	0xcd, 0x33, 0xfd, 0x0f, 0x55, 0x8a, 0xad, 0x65, 0xd0, 0xc8, 0x57, 0x5e, 0x75, 0x7c, 0x16, 0x56,
+	0x29, 0x46, 0x01, 0xec, 0x14, 0x8e, 0x11, 0x65, 0x33, 0xee, 0x56, 0x0f, 0x6b, 0xff, 0x7c, 0x3a,
+	0x42, 0x64, 0xe1, 0xab, 0xed, 0xc2, 0x76, 0xfc, 0x08, 0xd0, 0x5b, 0xd8, 0x4d, 0xe3, 0x4c, 0x45,
+	0x09, 0x67, 0x8c, 0x24, 0x8a, 0x60, 0xf3, 0x1c, 0xed, 0x51, 0xcf, 0xb7, 0xff, 0xd3, 0x2f, 0xff,
+	0xa7, 0x7f, 0x51, 0xfe, 0xcf, 0xa0, 0x7e, 0xf3, 0xcb, 0x73, 0xc2, 0x8e, 0xd6, 0x9d, 0x96, 0xb2,
+	0xc1, 0x1f, 0x07, 0xba, 0x1b, 0x99, 0xf4, 0xdc, 0xcb, 0x96, 0x8b, 0x81, 0x14, 0x10, 0xbd, 0x83,
+	0xff, 0x4c, 0x5a, 0x4c, 0xe3, 0x34, 0xca, 0x96, 0x49, 0x52, 0x8e, 0xe5, 0x39, 0x99, 0xbb, 0x5a,
+	0x7a, 0x46, 0xe3, 0xf4, 0x83, 0x15, 0xae, 0xbb, 0xcd, 0x62, 0x9a, 0x2e, 0x25, 0x79, 0x76, 0x1f,
+	0x0f, 0x6e, 0x6f, 0xac, 0x10, 0x1d, 0x41, 0xe7, 0xa9, 0x51, 0x66, 0xfe, 0x60, 0x27, 0xdc, 0xc1,
+	0x8f, 0x77, 0xb2, 0xe0, 0xfc, 0x36, 0xef, 0x3b, 0x77, 0x79, 0xdf, 0xf9, 0x9d, 0xf7, 0x9d, 0x9b,
+	0xfb, 0x7e, 0xe5, 0xee, 0xbe, 0x5f, 0xf9, 0x79, 0xdf, 0xaf, 0x7c, 0x7a, 0x35, 0xa7, 0xea, 0x72,
+	0x39, 0xf5, 0x13, 0xbe, 0x18, 0x3e, 0xd9, 0x12, 0x4f, 0x17, 0x86, 0xd9, 0x05, 0xeb, 0x1b, 0x64,
+	0xda, 0x30, 0xd1, 0x97, 0x7f, 0x03, 0x00, 0x00, 0xff, 0xff, 0x0b, 0xe9, 0x56, 0xd3, 0x5a, 0x04,
+	0x00, 0x00,
 }
 
 func (m *ProtocolVersion) Marshal() (dAtA []byte, err error) {
@@ -540,6 +580,115 @@ func (m *NodeInfoOther) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *PeerInfo) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *PeerInfo) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *PeerInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.LastConnected != nil {
+		n3, err3 := github_com_gogo_protobuf_types.StdTimeMarshalTo(*m.LastConnected, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(*m.LastConnected):])
+		if err3 != nil {
+			return 0, err3
+		}
+		i -= n3
+		i = encodeVarintTypes(dAtA, i, uint64(n3))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.AddressInfo) > 0 {
+		for iNdEx := len(m.AddressInfo) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.AddressInfo[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintTypes(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if len(m.ID) > 0 {
+		i -= len(m.ID)
+		copy(dAtA[i:], m.ID)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.ID)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *PeerAddressInfo) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *PeerAddressInfo) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *PeerAddressInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.DialFailures != 0 {
+		i = encodeVarintTypes(dAtA, i, uint64(m.DialFailures))
+		i--
+		dAtA[i] = 0x20
+	}
+	if m.LastDialFailure != nil {
+		n4, err4 := github_com_gogo_protobuf_types.StdTimeMarshalTo(*m.LastDialFailure, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(*m.LastDialFailure):])
+		if err4 != nil {
+			return 0, err4
+		}
+		i -= n4
+		i = encodeVarintTypes(dAtA, i, uint64(n4))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if m.LastDialSuccess != nil {
+		n5, err5 := github_com_gogo_protobuf_types.StdTimeMarshalTo(*m.LastDialSuccess, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(*m.LastDialSuccess):])
+		if err5 != nil {
+			return 0, err5
+		}
+		i -= n5
+		i = encodeVarintTypes(dAtA, i, uint64(n5))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Address) > 0 {
+		i -= len(m.Address)
+		copy(dAtA[i:], m.Address)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.Address)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintTypes(dAtA []byte, offset int, v uint64) int {
 	offset -= sovTypes(v)
 	base := offset
@@ -551,26 +700,6 @@ func encodeVarintTypes(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-func (m *NetAddress) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.ID)
-	if l > 0 {
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	l = len(m.IP)
-	if l > 0 {
-		n += 1 + l + sovTypes(uint64(l))
-	}
-	if m.Port != 0 {
-		n += 1 + sovTypes(uint64(m.Port))
-	}
-	return n
-}
-
 func (m *ProtocolVersion) Size() (n int) {
 	if m == nil {
 		return 0
@@ -643,144 +772,58 @@ func (m *NodeInfoOther) Size() (n int) {
 	return n
 }
 
+func (m *PeerInfo) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.ID)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if len(m.AddressInfo) > 0 {
+		for _, e := range m.AddressInfo {
+			l = e.Size()
+			n += 1 + l + sovTypes(uint64(l))
+		}
+	}
+	if m.LastConnected != nil {
+		l = github_com_gogo_protobuf_types.SizeOfStdTime(*m.LastConnected)
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+
+func (m *PeerAddressInfo) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Address)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.LastDialSuccess != nil {
+		l = github_com_gogo_protobuf_types.SizeOfStdTime(*m.LastDialSuccess)
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.LastDialFailure != nil {
+		l = github_com_gogo_protobuf_types.SizeOfStdTime(*m.LastDialFailure)
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.DialFailures != 0 {
+		n += 1 + sovTypes(uint64(m.DialFailures))
+	}
+	return n
+}
+
 func sovTypes(x uint64) (n int) {
 	return (math_bits.Len64(x|1) + 6) / 7
 }
 func sozTypes(x uint64) (n int) {
 	return sovTypes(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (m *NetAddress) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowTypes
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: NetAddress: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: NetAddress: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ID = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field IP", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthTypes
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.IP = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Port", wireType)
-			}
-			m.Port = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTypes
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Port |= uint32(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		default:
-			iNdEx = preIndex
-			skippy, err := skipTypes(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthTypes
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
 }
 func (m *ProtocolVersion) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
@@ -1292,6 +1335,331 @@ func (m *NodeInfoOther) Unmarshal(dAtA []byte) error {
 			}
 			m.RPCAddress = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *PeerInfo) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: PeerInfo: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: PeerInfo: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ID = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AddressInfo", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.AddressInfo = append(m.AddressInfo, &PeerAddressInfo{})
+			if err := m.AddressInfo[len(m.AddressInfo)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastConnected", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.LastConnected == nil {
+				m.LastConnected = new(time.Time)
+			}
+			if err := github_com_gogo_protobuf_types.StdTimeUnmarshal(m.LastConnected, dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *PeerAddressInfo) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: PeerAddressInfo: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: PeerAddressInfo: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Address", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Address = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastDialSuccess", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.LastDialSuccess == nil {
+				m.LastDialSuccess = new(time.Time)
+			}
+			if err := github_com_gogo_protobuf_types.StdTimeUnmarshal(m.LastDialSuccess, dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastDialFailure", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.LastDialFailure == nil {
+				m.LastDialFailure = new(time.Time)
+			}
+			if err := github_com_gogo_protobuf_types.StdTimeUnmarshal(m.LastDialFailure, dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DialFailures", wireType)
+			}
+			m.DialFailures = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.DialFailures |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTypes(dAtA[iNdEx:])

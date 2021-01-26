@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -93,7 +92,13 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, logger log.Logger, chBuf uint) 
 	return rts
 }
 
-func simulateRouter(wg *sync.WaitGroup, primary *reactorTestSuite, suites []*reactorTestSuite, numOut int) {
+func simulateRouter(
+	wg *sync.WaitGroup,
+	primary *reactorTestSuite,
+	suites []*reactorTestSuite,
+	numOut int,
+) {
+
 	wg.Add(1)
 
 	// create a mapping for efficient suite lookup by peer ID
@@ -158,6 +163,15 @@ func TestReactorBroadcastTxs(t *testing.T) {
 	for i := 0; i < len(testSuites); i++ {
 		logger := log.TestingLogger().With("node", i)
 		testSuites[i] = setup(t, config.Mempool, logger, 0)
+	}
+
+	// ignore all peer errors
+	for _, suite := range testSuites {
+		go func(s *reactorTestSuite) {
+			// drop all errors on the mempool channel
+			for range s.mempoolPeerErrCh {
+			}
+		}(suite)
 	}
 
 	primary := testSuites[0]
@@ -267,6 +281,15 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	primary := testSuites[0]
 	secondary := testSuites[1]
 
+	// ignore all peer errors
+	for _, suite := range testSuites {
+		go func(s *reactorTestSuite) {
+			// drop all errors on the mempool channel
+			for range s.mempoolPeerErrCh {
+			}
+		}(suite)
+	}
+
 	peerID := uint16(1)
 	_ = checkTxs(t, primary.reactor.mempool, numTxs, peerID)
 
@@ -310,6 +333,15 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	for i := 0; i < len(testSuites); i++ {
 		logger := log.TestingLogger().With("node", i)
 		testSuites[i] = setup(t, config.Mempool, logger, 0)
+	}
+
+	// ignore all peer errors
+	for _, suite := range testSuites {
+		go func(s *reactorTestSuite) {
+			// drop all errors on the mempool channel
+			for range s.mempoolPeerErrCh {
+			}
+		}(suite)
 	}
 
 	primary := testSuites[0]
@@ -356,7 +388,14 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	reactor := setup(t, config.Mempool, log.TestingLogger().With("node", 0), 0)
 
 	go func() {
+		// drop all messages on the mempool channel
 		for range reactor.mempoolOutCh {
+		}
+	}()
+
+	go func() {
+		// drop all errors on the mempool channel
+		for range reactor.mempoolPeerErrCh {
 		}
 	}()
 
@@ -407,8 +446,22 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 
 	config := cfg.TestConfig()
 
-	primary := setup(t, config.Mempool, log.TestingLogger().With("node", 0), 0)
-	secondary := setup(t, config.Mempool, log.TestingLogger().With("node", 1), 0)
+	testSuites := []*reactorTestSuite{
+		setup(t, config.Mempool, log.TestingLogger().With("node", 0), 0),
+		setup(t, config.Mempool, log.TestingLogger().With("node", 1), 0),
+	}
+
+	primary := testSuites[0]
+	secondary := testSuites[1]
+
+	// ignore all peer errors
+	for _, suite := range testSuites {
+		go func(s *reactorTestSuite) {
+			// drop all errors on the mempool channel
+			for range s.mempoolPeerErrCh {
+			}
+		}(suite)
+	}
 
 	// connect peer
 	primary.peerUpdatesCh <- p2p.PeerUpdate{
@@ -421,8 +474,4 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 		Status: p2p.PeerStatusDown,
 		PeerID: secondary.peerID,
 	}
-
-	// check that we are not leaking any go-routines
-	// i.e. broadcastTxRoutine finishes when peer is stopped
-	leaktest.CheckTimeout(t, 10*time.Second)()
 }

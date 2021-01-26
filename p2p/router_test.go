@@ -4,9 +4,11 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/fortytw2/leaktest"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -29,19 +31,25 @@ func echoReactor(channel *p2p.Channel) {
 }
 
 func TestRouter(t *testing.T) {
+	defer leaktest.Check(t)()
+
 	logger := log.TestingLogger()
 	network := p2p.NewMemoryNetwork(logger)
 	transport := network.GenerateTransport()
+	defer transport.Close()
 	chID := p2p.ChannelID(1)
 
 	// Start some other in-memory network nodes to communicate with, running
 	// a simple echo reactor that returns received messages.
 	peers := []p2p.PeerAddress{}
 	for i := 0; i < 3; i++ {
+		peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+		require.NoError(t, err)
 		peerTransport := network.GenerateTransport()
+		defer peerTransport.Close()
 		peerRouter := p2p.NewRouter(
 			logger.With("peerID", i),
-			p2p.NewPeerManager(p2p.PeerManagerOptions{}),
+			peerManager,
 			map[p2p.Protocol]p2p.Transport{
 				p2p.MemoryProtocol: peerTransport,
 			},
@@ -59,7 +67,9 @@ func TestRouter(t *testing.T) {
 	}
 
 	// Start the main router and connect it to the peers above.
-	peerManager := p2p.NewPeerManager(p2p.PeerManagerOptions{})
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+	defer peerManager.Close()
 	for _, address := range peers {
 		err := peerManager.Add(address)
 		require.NoError(t, err)
@@ -70,11 +80,18 @@ func TestRouter(t *testing.T) {
 	router := p2p.NewRouter(logger, peerManager, map[p2p.Protocol]p2p.Transport{
 		p2p.MemoryProtocol: transport,
 	})
+
 	channel, err := router.OpenChannel(chID, &TestMessage{})
 	require.NoError(t, err)
+	defer channel.Close()
+
 	err = router.Start()
 	require.NoError(t, err)
 	defer func() {
+		// Since earlier defers are closed after this, and we have to make sure
+		// we close channels and subscriptions before the router, we explicitly
+		// close them here to.
+		peerUpdates.Close()
 		channel.Close()
 		require.NoError(t, router.Stop())
 	}()
@@ -97,13 +114,13 @@ func TestRouter(t *testing.T) {
 
 	// We then submit an error for a peer, and watch it get disconnected.
 	channel.Error() <- p2p.PeerError{
-		PeerID:   peers[0].NodeID(),
+		PeerID:   peers[0].ID,
 		Err:      errors.New("test error"),
 		Severity: p2p.PeerErrorSeverityCritical,
 	}
 	peerUpdate := <-peerUpdates.Updates()
 	require.Equal(t, p2p.PeerUpdate{
-		PeerID: peers[0].NodeID(),
+		PeerID: peers[0].ID,
 		Status: p2p.PeerStatusDown,
 	}, peerUpdate)
 
@@ -114,7 +131,7 @@ func TestRouter(t *testing.T) {
 	}
 	for i := 0; i < len(peers)-1; i++ {
 		envelope := <-channel.In()
-		require.NotEqual(t, peers[0].NodeID(), envelope.From)
+		require.NotEqual(t, peers[0].ID, envelope.From)
 		require.Equal(t, &TestMessage{Value: "broadcast"}, envelope.Message)
 	}
 	select {
