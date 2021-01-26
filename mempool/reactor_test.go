@@ -167,11 +167,11 @@ func TestReactorBroadcastTxs(t *testing.T) {
 
 	// ignore all peer errors
 	for _, suite := range testSuites {
-		go func() {
+		go func(s *reactorTestSuite) {
 			// drop all errors on the mempool channel
-			for range suite.mempoolPeerErrCh {
+			for range s.mempoolPeerErrCh {
 			}
-		}()
+		}(suite)
 	}
 
 	primary := testSuites[0]
@@ -283,11 +283,11 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 
 	// ignore all peer errors
 	for _, suite := range testSuites {
-		go func() {
+		go func(s *reactorTestSuite) {
 			// drop all errors on the mempool channel
-			for range suite.mempoolPeerErrCh {
+			for range s.mempoolPeerErrCh {
 			}
-		}()
+		}(suite)
 	}
 
 	peerID := uint16(1)
@@ -337,11 +337,11 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 
 	// ignore all peer errors
 	for _, suite := range testSuites {
-		go func() {
+		go func(s *reactorTestSuite) {
 			// drop all errors on the mempool channel
-			for range suite.mempoolPeerErrCh {
+			for range s.mempoolPeerErrCh {
 			}
-		}()
+		}(suite)
 	}
 
 	primary := testSuites[0]
@@ -350,7 +350,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	// Simulate a router by listening for all outbound envelopes and proxying the
 	// envelopes to the respective peer (suite).
 	wg := new(sync.WaitGroup)
-	simulateRouter(wg, primary, testSuites, 1, true)
+	simulateRouter(wg, primary, testSuites, 1)
 
 	// Broadcast a tx, which has the max size and ensure it's received by the
 	// second reactor.
@@ -456,11 +456,11 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 
 	// ignore all peer errors
 	for _, suite := range testSuites {
-		go func() {
+		go func(s *reactorTestSuite) {
 			// drop all errors on the mempool channel
-			for range suite.mempoolPeerErrCh {
+			for range s.mempoolPeerErrCh {
 			}
-		}()
+		}(suite)
 	}
 
 	// connect peer
