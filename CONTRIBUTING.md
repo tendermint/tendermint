@@ -429,5 +429,8 @@ make build-linux build-contract-tests-hooks
 make contract-tests
 ```
 
+**WARNING: these are currently broken due to https://github.com/apiaryio/dredd
+not supporting complete OpenAPI 3**.
+
 This command will popup a network and check every endpoint against what has
 been documented.
