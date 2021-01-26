@@ -139,8 +139,8 @@ func NewNetAddressIPPort(ip net.IP, port uint16) *NetAddress {
 	}
 }
 
-// NetAddressFromProto converts a Protobuf NetAddress into a native struct.
-func NetAddressFromProto(pb tmp2p.NetAddress) (*NetAddress, error) {
+// NetAddressFromProto converts a Protobuf PexAddress into a native struct.
+func NetAddressFromProto(pb tmp2p.PexAddress) (*NetAddress, error) {
 	ip := net.ParseIP(pb.IP)
 	if ip == nil {
 		return nil, fmt.Errorf("invalid IP address %v", pb.IP)
@@ -155,8 +155,8 @@ func NetAddressFromProto(pb tmp2p.NetAddress) (*NetAddress, error) {
 	}, nil
 }
 
-// NetAddressesFromProto converts a slice of Protobuf NetAddresses into a native slice.
-func NetAddressesFromProto(pbs []tmp2p.NetAddress) ([]*NetAddress, error) {
+// NetAddressesFromProto converts a slice of Protobuf PexAddresses into a native slice.
+func NetAddressesFromProto(pbs []tmp2p.PexAddress) ([]*NetAddress, error) {
 	nas := make([]*NetAddress, 0, len(pbs))
 	for _, pb := range pbs {
 		na, err := NetAddressFromProto(pb)
@@ -168,9 +168,9 @@ func NetAddressesFromProto(pbs []tmp2p.NetAddress) ([]*NetAddress, error) {
 	return nas, nil
 }
 
-// NetAddressesToProto converts a slice of NetAddresses into a Protobuf slice.
-func NetAddressesToProto(nas []*NetAddress) []tmp2p.NetAddress {
-	pbs := make([]tmp2p.NetAddress, 0, len(nas))
+// NetAddressesToProto converts a slice of NetAddresses into a Protobuf PexAddress slice.
+func NetAddressesToProto(nas []*NetAddress) []tmp2p.PexAddress {
+	pbs := make([]tmp2p.PexAddress, 0, len(nas))
 	for _, na := range nas {
 		if na != nil {
 			pbs = append(pbs, na.ToProto())
@@ -179,9 +179,9 @@ func NetAddressesToProto(nas []*NetAddress) []tmp2p.NetAddress {
 	return pbs
 }
 
-// ToProto converts a NetAddress to Protobuf.
-func (na *NetAddress) ToProto() tmp2p.NetAddress {
-	return tmp2p.NetAddress{
+// ToProto converts a NetAddress to a Protobuf PexAddress.
+func (na *NetAddress) ToProto() tmp2p.PexAddress {
+	return tmp2p.PexAddress{
 		ID:   string(na.ID),
 		IP:   na.IP.String(),
 		Port: uint32(na.Port),

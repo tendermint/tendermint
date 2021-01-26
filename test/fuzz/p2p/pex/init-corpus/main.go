@@ -61,9 +61,9 @@ func initCorpus(rootDir string) {
 		}
 		addrs = append(addrs, ipv6a)
 
-		msg := tmp2p.Message{
-			Sum: &tmp2p.Message_PexAddrs{
-				PexAddrs: &tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(addrs)},
+		msg := tmp2p.PexMessage{
+			Sum: &tmp2p.PexMessage_PexResponse{
+				PexResponse: &tmp2p.PexResponse{Addresses: p2p.NetAddressesToProto(addrs)},
 			},
 		}
 		bz, err := msg.Marshal()
