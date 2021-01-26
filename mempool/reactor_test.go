@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -287,6 +286,12 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	primary := testSuites[0]
 	secondary := testSuites[1]
 
+	go func() {
+		// drop all errors on the mempool channel
+		for range primary.mempoolPeerErrCh {
+		}
+	}()
+
 	peerID := uint16(1)
 	_ = checkTxs(t, primary.reactor.mempool, numTxs, peerID)
 
@@ -454,8 +459,4 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 		Status: p2p.PeerStatusDown,
 		PeerID: secondary.peerID,
 	}
-
-	// check that we are not leaking any go-routines
-	// i.e. broadcastTxRoutine finishes when peer is stopped
-	leaktest.CheckTimeout(t, 10*time.Second)()
 }
