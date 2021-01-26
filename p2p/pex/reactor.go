@@ -130,7 +130,7 @@ func (r *ReactorV2) resolve(addresses []p2p.PeerAddress, limit uint16) []protop2
 			continue
 		}
 		for _, endpoint := range endpoints {
-			if len(endpoints) >= int(limit) {
+			if len(pexAddresses) >= int(limit) {
 				return pexAddresses
 
 			} else if endpoint.IP != nil {
