@@ -287,6 +287,12 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	primary := testSuites[0]
 	secondary := testSuites[1]
 
+	go func() {
+		// drop all errors on the mempool channel
+		for range primary.mempoolPeerErrCh {
+		}
+	}()
+
 	peerID := uint16(1)
 	_ = checkTxs(t, primary.reactor.mempool, numTxs, peerID)
 
