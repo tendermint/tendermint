@@ -140,6 +140,7 @@ func NewNetAddressIPPort(ip net.IP, port uint16) *NetAddress {
 }
 
 // NetAddressFromProto converts a Protobuf PexAddress into a native struct.
+// FIXME: Remove this when legacy PEX reactor is removed.
 func NetAddressFromProto(pb tmp2p.PexAddress) (*NetAddress, error) {
 	ip := net.ParseIP(pb.IP)
 	if ip == nil {
@@ -156,6 +157,7 @@ func NetAddressFromProto(pb tmp2p.PexAddress) (*NetAddress, error) {
 }
 
 // NetAddressesFromProto converts a slice of Protobuf PexAddresses into a native slice.
+// FIXME: Remove this when legacy PEX reactor is removed.
 func NetAddressesFromProto(pbs []tmp2p.PexAddress) ([]*NetAddress, error) {
 	nas := make([]*NetAddress, 0, len(pbs))
 	for _, pb := range pbs {
@@ -169,6 +171,7 @@ func NetAddressesFromProto(pbs []tmp2p.PexAddress) ([]*NetAddress, error) {
 }
 
 // NetAddressesToProto converts a slice of NetAddresses into a Protobuf PexAddress slice.
+// FIXME: Remove this when legacy PEX reactor is removed.
 func NetAddressesToProto(nas []*NetAddress) []tmp2p.PexAddress {
 	pbs := make([]tmp2p.PexAddress, 0, len(nas))
 	for _, na := range nas {
@@ -180,6 +183,7 @@ func NetAddressesToProto(nas []*NetAddress) []tmp2p.PexAddress {
 }
 
 // ToProto converts a NetAddress to a Protobuf PexAddress.
+// FIXME: Remove this when legacy PEX reactor is removed.
 func (na *NetAddress) ToProto() tmp2p.PexAddress {
 	return tmp2p.PexAddress{
 		ID:   string(na.ID),
