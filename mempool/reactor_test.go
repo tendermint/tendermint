@@ -97,7 +97,6 @@ func simulateRouter(
 	primary *reactorTestSuite,
 	suites []*reactorTestSuite,
 	numOut int,
-	dropChErr bool,
 ) {
 
 	wg.Add(1)
@@ -123,19 +122,6 @@ func simulateRouter(
 		}
 
 		wg.Done()
-	}()
-
-	go func() {
-		for pErr := range primary.mempoolPeerErrCh {
-			if dropChErr {
-				primary.reactor.Logger.Debug("dropped peer error", "err", pErr.Err)
-			} else {
-				primary.peerUpdatesCh <- p2p.PeerUpdate{
-					PeerID: pErr.PeerID,
-					Status: p2p.PeerStatusRemoved,
-				}
-			}
-		}
 	}()
 }
 
@@ -179,13 +165,22 @@ func TestReactorBroadcastTxs(t *testing.T) {
 		testSuites[i] = setup(t, config.Mempool, logger, 0)
 	}
 
+	// ignore all peer errors
+	for _, suite := range testSuites {
+		go func(s *reactorTestSuite) {
+			// drop all errors on the mempool channel
+			for range s.mempoolPeerErrCh {
+			}
+		}(suite)
+	}
+
 	primary := testSuites[0]
 	secondaries := testSuites[1:]
 
 	// Simulate a router by listening for all outbound envelopes and proxying the
 	// envelopes to the respective peer (suite).
 	wg := new(sync.WaitGroup)
-	simulateRouter(wg, primary, testSuites, numTxs*len(secondaries), true)
+	simulateRouter(wg, primary, testSuites, numTxs*len(secondaries))
 
 	txs := checkTxs(t, primary.reactor.mempool, numTxs, UnknownPeerID)
 
@@ -286,11 +281,14 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	primary := testSuites[0]
 	secondary := testSuites[1]
 
-	go func() {
-		// drop all errors on the mempool channel
-		for range primary.mempoolPeerErrCh {
-		}
-	}()
+	// ignore all peer errors
+	for _, suite := range testSuites {
+		go func(s *reactorTestSuite) {
+			// drop all errors on the mempool channel
+			for range s.mempoolPeerErrCh {
+			}
+		}(suite)
+	}
 
 	peerID := uint16(1)
 	_ = checkTxs(t, primary.reactor.mempool, numTxs, peerID)
@@ -337,13 +335,22 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 		testSuites[i] = setup(t, config.Mempool, logger, 0)
 	}
 
+	// ignore all peer errors
+	for _, suite := range testSuites {
+		go func(s *reactorTestSuite) {
+			// drop all errors on the mempool channel
+			for range s.mempoolPeerErrCh {
+			}
+		}(suite)
+	}
+
 	primary := testSuites[0]
 	secondary := testSuites[1]
 
 	// Simulate a router by listening for all outbound envelopes and proxying the
 	// envelopes to the respective peer (suite).
 	wg := new(sync.WaitGroup)
-	simulateRouter(wg, primary, testSuites, 1, true)
+	simulateRouter(wg, primary, testSuites, 1)
 
 	// Broadcast a tx, which has the max size and ensure it's received by the
 	// second reactor.
@@ -439,14 +446,22 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 
 	config := cfg.TestConfig()
 
-	primary := setup(t, config.Mempool, log.TestingLogger().With("node", 0), 0)
-	secondary := setup(t, config.Mempool, log.TestingLogger().With("node", 1), 0)
+	testSuites := []*reactorTestSuite{
+		setup(t, config.Mempool, log.TestingLogger().With("node", 0), 0),
+		setup(t, config.Mempool, log.TestingLogger().With("node", 1), 0),
+	}
 
-	go func() {
-		// drop all errors on the mempool channel
-		for range primary.mempoolPeerErrCh {
-		}
-	}()
+	primary := testSuites[0]
+	secondary := testSuites[1]
+
+	// ignore all peer errors
+	for _, suite := range testSuites {
+		go func(s *reactorTestSuite) {
+			// drop all errors on the mempool channel
+			for range s.mempoolPeerErrCh {
+			}
+		}(suite)
+	}
 
 	// connect peer
 	primary.peerUpdatesCh <- p2p.PeerUpdate{
