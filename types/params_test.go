@@ -68,7 +68,7 @@ func makeParams(
 		Validator: &tmproto.ValidatorParams{
 			PubKeyTypes: pubkeyTypes,
 		},
-		Version: &tmproto.VersionParams{ //Needs to be set on creation
+		Version: &tmproto.VersionParams{ // Needs to be set on creation
 			AppVersion: 0,
 		},
 	}
