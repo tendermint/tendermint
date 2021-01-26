@@ -493,32 +493,43 @@ func (m *PeerManager) Add(address PeerAddress) error {
 	return nil
 }
 
-// Advertise returns a list of peer addresses to advertise to a peer.
+// Advertise returns a list of peer endpoints to advertise to a peer.
 //
-// FIXME: We currently just pass all addresses we have, which is very naïve. We
-// should e.g. only send addresses that the peer can actually reach (by
-// resolving the addresses into endpoints and making sure any private IP
-// addresses are on the same network as the remote peer endpoint). However, this
-// would require resolving endpoints either here (too slow) or generally in the
-// peer manager -- maybe it should keep track of endpoints internally instead of
-// leaving that to the router when dialing?
-func (m *PeerManager) Advertise(peerID NodeID, limit uint16) []PeerAddress {
+// FIXME: The current PEX protocol only supports IP/port endpoints, so we
+// returns endpoints here. The PEX protocol should exchange addresses (URLs)
+// instead, so it can support multiple protocols and allow operators to
+// change their IP addresses.
+//
+// FIXME: We currently just resolve and pass all addresses we have, which is
+// very naïve. We should e.g. only send addresses that the peer can actually
+// reach, by making sure any private IP addresses are on the same network as the
+// remote peer endpoint. We should also resolve endpoints when addresses are
+// added to the peer manager, and periodically as appropriate.
+func (m *PeerManager) Advertise(peerID NodeID, limit uint16) []Endpoint {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	addresses := []PeerAddress{}
+	endpoints := make([]Endpoint, 0, limit)
 	for _, peer := range m.store.Ranked() {
-		switch {
-		case len(addresses) >= int(limit):
-			break
-		case peer.ID == peerID:
-		default:
-			for _, addressInfo := range peer.AddressInfo {
-				addresses = append(addresses, addressInfo.Address)
+		if peer.ID == peerID {
+			continue
+		}
+		for _, addressInfo := range peer.AddressInfo {
+			addressEndpoints, err := addressInfo.Address.Resolve(context.Background())
+			if err != nil {
+				continue
+			}
+			for _, endpoint := range addressEndpoints {
+				if len(endpoints) >= int(limit) {
+					return endpoints
+				}
+				if endpoint.IP != nil {
+					endpoints = append(endpoints, endpoint)
+				}
 			}
 		}
 	}
-	return addresses
+	return endpoints
 }
 
 // makePeerInfo creates a peerInfo for a new peer.
