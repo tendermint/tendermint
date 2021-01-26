@@ -334,10 +334,16 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		nextValidatorSet = types.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
 	}
 
+	initialHeight := genDoc.InitialHeight
+	if initialHeight == 0 {
+		// Per RFC-002, treat initialHeight of 0 identically to 1: https://github.com/tendermint/spec/blob/master/rfc/002-nonzero-genesis.md
+		initialHeight = 1
+	}
+
 	return State{
 		Version:       InitStateVersion,
 		ChainID:       genDoc.ChainID,
-		InitialHeight: genDoc.InitialHeight,
+		InitialHeight: initialHeight,
 
 		LastBlockHeight: 0,
 		LastBlockID:     types.BlockID{},
@@ -346,10 +352,10 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		NextValidators:              nextValidatorSet,
 		Validators:                  validatorSet,
 		LastValidators:              types.NewValidatorSet(nil),
-		LastHeightValidatorsChanged: genDoc.InitialHeight,
+		LastHeightValidatorsChanged: initialHeight,
 
 		ConsensusParams:                  *genDoc.ConsensusParams,
-		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
+		LastHeightConsensusParamsChanged: initialHeight,
 
 		AppHash: genDoc.AppHash,
 	}, nil
