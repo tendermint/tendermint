@@ -142,8 +142,9 @@ func TestStoreLoadConsensusParams(t *testing.T) {
 	stateStore := sm.NewStore(stateDB)
 	err := stateStore.Save(makeRandomStateFromConsensusParams(types.DefaultConsensusParams(), 1, 1))
 	require.NoError(t, err)
-	params, err := stateStore.LoadConsensusParams(1)
+	pbParams, err := stateStore.LoadConsensusParams(1)
 	require.NoError(t, err)
+	params := types.ConsensusParamsFromProto(pbParams)
 	require.Equal(t, types.DefaultConsensusParams(), &params)
 
 	// we give the state store different params but say that the height hasn't changed, hence
@@ -152,7 +153,8 @@ func TestStoreLoadConsensusParams(t *testing.T) {
 	differentParams.Block.MaxBytes = 20000
 	err = stateStore.Save(makeRandomStateFromConsensusParams(differentParams, 10, 1))
 	require.NoError(t, err)
-	res, err := stateStore.LoadConsensusParams(10)
+	pbRes, err := stateStore.LoadConsensusParams(10)
+	res := types.ConsensusParamsFromProto(pbRes)
 	require.NoError(t, err)
 	require.Equal(t, res, params)
 	require.NotEqual(t, res, differentParams)
@@ -206,8 +208,8 @@ func TestPruneStates(t *testing.T) {
 					LastBlockHeight: h - 1,
 					Validators:      validatorSet,
 					NextValidators:  validatorSet,
-					ConsensusParams: tmproto.ConsensusParams{
-						Block: &tmproto.BlockParams{MaxBytes: 10e6},
+					ConsensusParams: types.ConsensusParams{
+						Block: types.BlockParams{MaxBytes: 10e6},
 					},
 					LastHeightValidatorsChanged:      valsChanged,
 					LastHeightConsensusParamsChanged: paramsChanged,

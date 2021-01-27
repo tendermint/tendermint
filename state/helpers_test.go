@@ -21,7 +21,7 @@ import (
 
 type paramsChangeTestCase struct {
 	height int64
-	params tmproto.ConsensusParams
+	params types.ConsensusParams
 }
 
 func newTestApp() proxy.AppConns {
@@ -200,13 +200,14 @@ func makeHeaderPartsResponsesValPowerChange(
 
 func makeHeaderPartsResponsesParams(
 	state sm.State,
-	params tmproto.ConsensusParams,
+	params *types.ConsensusParams,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)
+	pbParams := params.ToProto()
 	abciResponses := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
-		EndBlock:   &abci.ResponseEndBlock{ConsensusParamUpdates: &params},
+		EndBlock:   &abci.ResponseEndBlock{ConsensusParamUpdates: &pbParams},
 	}
 	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
 }
@@ -245,7 +246,7 @@ func makeRandomStateFromValidatorSet(
 	}
 }
 
-func makeRandomStateFromConsensusParams(consensusParams *tmproto.ConsensusParams,
+func makeRandomStateFromConsensusParams(consensusParams *types.ConsensusParams,
 	height, lastHeightConsensusParamsChanged int64) sm.State {
 	val, _ := types.RandValidator(true, 10)
 	valSet := types.NewValidatorSet([]*types.Validator{val})

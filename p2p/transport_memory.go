@@ -135,6 +135,16 @@ func newMemoryTransport(
 	}
 }
 
+// String displays the transport.
+//
+// FIXME: The Transport interface should either have Name() or embed
+// fmt.Stringer. This is necessary since we log the transport (to know which one
+// it is), and if it doesn't implement fmt.Stringer then it inspects all struct
+// contents via reflect, which triggers the race detector.
+func (t *MemoryTransport) String() string {
+	return "memory"
+}
+
 // Accept implements Transport.
 func (t *MemoryTransport) Accept(ctx context.Context) (Connection, error) {
 	select {
