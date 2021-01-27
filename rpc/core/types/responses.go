@@ -8,7 +8,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/p2p"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -134,8 +133,8 @@ type ResultValidators struct {
 
 // ConsensusParams for given height
 type ResultConsensusParams struct {
-	BlockHeight     int64                   `json:"block_height"`
-	ConsensusParams tmproto.ConsensusParams `json:"consensus_params"`
+	BlockHeight     int64                 `json:"block_height"`
+	ConsensusParams types.ConsensusParams `json:"consensus_params"`
 }
 
 // Info about the consensus state.
