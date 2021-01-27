@@ -141,9 +141,4 @@ func TestRouter(t *testing.T) {
 		envelope := <-channel.In()
 		require.Equal(t, &TestMessage{Value: "broadcast"}, envelope.Message)
 	}
-	select {
-	case envelope := <-channel.In():
-		t.Errorf("unexpected message: %v", envelope)
-	default:
-	}
 }
