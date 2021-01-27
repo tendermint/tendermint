@@ -21,23 +21,28 @@ jobs:
 
       - name: Fuzz mempool
         working-directory: test/fuzz
-        run: timeout 10m make fuzz-mempool
+        run: timeout -s SIGINT --preserve-status 10m make fuzz-mempool
+        continue-on-error: true
 
       - name: Fuzz p2p-addrbook
         working-directory: test/fuzz
-        run: timeout 10m make fuzz-p2p-addrbook
+        run: timeout -s SIGINT --preserve-status 10m make fuzz-p2p-addrbook
+        continue-on-error: true
 
       - name: Fuzz p2p-pex
         working-directory: test/fuzz
-        run: timeout 10m make fuzz-p2p-pex
+        run: timeout -s SIGINT --preserve-status 10m make fuzz-p2p-pex
+        continue-on-error: true
 
       - name: Fuzz p2p-sc
         working-directory: test/fuzz
-        run: timeout 10m make fuzz-p2p-sc
+        run: timeout -s SIGINT --preserve-status 10m make fuzz-p2p-sc
+        continue-on-error: true
 
       - name: Fuzz p2p-rpc-server
         working-directory: test/fuzz
-        run: timeout 10m make fuzz-rpc-server
+        run: timeout -s SIGINT --preserve-status 10m make fuzz-rpc-server
+        continue-on-error: true
 
       - name: Archive crashers
         uses: actions/upload-artifact@v2
