@@ -1,18 +1,13 @@
 package consensus
 
 import (
-	"errors"
 	"fmt"
-	"reflect"
 	"time"
-
-	"github.com/gogo/protobuf/proto"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
 	"github.com/tendermint/tendermint/libs/cmap"
 	tmevents "github.com/tendermint/tendermint/libs/events"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
@@ -209,6 +204,39 @@ func (r *Reactor) OnStop() {
 	<-r.voteCh.Done()
 	<-r.voteSetBitsCh.Done()
 	<-r.peerUpdates.Done()
+}
+
+func (r *Reactor) broadcastNewRoundStepMessage(rs *cstypes.RoundState) {
+	r.stateCh.Out() <- p2p.Envelope{
+		Broadcast: true,
+		Message:   makeRoundStepMessage(rs),
+	}
+}
+
+func (r *Reactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
+	psHeader := rs.ProposalBlockParts.Header()
+	r.stateCh.Out() <- p2p.Envelope{
+		Broadcast: true,
+		Message: &tmcons.NewValidBlock{
+			Height:             rs.Height,
+			Round:              rs.Round,
+			BlockPartSetHeader: psHeader.ToProto(),
+			BlockParts:         rs.ProposalBlockParts.BitArray().ToProto(),
+			IsCommit:           rs.Step == cstypes.RoundStepCommit,
+		},
+	}
+}
+
+func (r *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
+	r.stateCh.Out() <- p2p.Envelope{
+		Broadcast: true,
+		Message: &tmcons.HasVote{
+			Height: vote.Height,
+			Round:  vote.Round,
+			Type:   vote.Type,
+			Index:  vote.ValidatorIndex,
+		},
+	}
 }
 
 // subscribeToBroadcastEvents subscribes for new round steps and votes using the
@@ -744,7 +772,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 
 		peerState, ok := r.peers.Get(psKey).(*PeerState)
 		if !ok {
-			panic(fmt.Sprintf("peer %v has no state", peerState.peerID))
+			panic(fmt.Sprintf("peer %v has no state", psKey))
 		}
 
 		if !peerState.IsRunning() {
@@ -786,9 +814,225 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	}
 }
 
+// handleStateMessage handles envelopes sent from peers on the StateChannel.
+// An error is returned if the message is unrecognized or if validation fails.
+func (r *Reactor) handleStateMessage(envelope p2p.Envelope, msgI Message) error {
+	ps, ok := r.peers.Get(string(envelope.From)).(*PeerState)
+	if !ok {
+		panic(fmt.Sprintf("peer %v has no state", envelope.From))
+	}
+
+	switch msg := envelope.Message.(type) {
+	case *tmcons.NewRoundStep:
+		r.conS.mtx.Lock()
+		initialHeight := r.conS.state.InitialHeight
+		r.conS.mtx.Unlock()
+
+		if err := msgI.(*NewRoundStepMessage).ValidateHeight(initialHeight); err != nil {
+			r.Logger.Error("peer sent us an invalid msg", "msg", msg, "err", err)
+			return err
+		}
+
+		ps.ApplyNewRoundStepMessage(msgI.(*NewRoundStepMessage))
+
+	case *tmcons.NewValidBlock:
+		ps.ApplyNewValidBlockMessage(msgI.(*NewValidBlockMessage))
+
+	case *tmcons.HasVote:
+		ps.ApplyHasVoteMessage(msgI.(*HasVoteMessage))
+
+	case *tmcons.VoteSetMaj23:
+		cs := r.conS
+
+		cs.mtx.Lock()
+		height, votes := cs.Height, cs.Votes
+		cs.mtx.Unlock()
+
+		if height != msg.Height {
+			return nil
+		}
+
+		vsmMsg := msgI.(*VoteSetMaj23Message)
+
+		// peer claims to have a maj23 for some BlockID at H,R,S,
+		err := votes.SetPeerMaj23(msg.Round, msg.Type, ps.peerID, vsmMsg.BlockID)
+		if err != nil {
+			return err
+		}
+
+		// Respond with a VoteSetBitsMessage showing which votes we have and
+		// consequently shows which we don't have.
+		var ourVotes *bits.BitArray
+		switch msg.Type {
+		case tmproto.PrevoteType:
+			ourVotes = votes.Prevotes(msg.Round).BitArrayByBlockID(vsmMsg.BlockID)
+
+		case tmproto.PrecommitType:
+			ourVotes = votes.Precommits(msg.Round).BitArrayByBlockID(vsmMsg.BlockID)
+
+		default:
+			panic("bad VoteSetBitsMessage field type; forgot to add a check in ValidateBasic?")
+		}
+
+		eMsg := &tmcons.VoteSetBits{
+			Height:  msg.Height,
+			Round:   msg.Round,
+			Type:    msg.Type,
+			BlockID: msg.BlockID,
+		}
+
+		if votesProto := ourVotes.ToProto(); votesProto != nil {
+			eMsg.Votes = *votesProto
+		}
+
+		r.voteSetBitsCh.Out() <- p2p.Envelope{
+			To:      envelope.From,
+			Message: eMsg,
+		}
+
+	default:
+		return fmt.Errorf("received unknown message: %T", msg)
+	}
+
+	return nil
+}
+
+// handleDataMessage handles envelopes sent from peers on the DataChannel.
+func (r *Reactor) handleDataMessage(envelope p2p.Envelope, msgI Message) error {
+	logger := r.Logger.With("peer", envelope.From)
+
+	if r.WaitSync() {
+		logger.Info("ignoring message received during sync", "msg", msgI)
+		return nil
+	}
+
+	ps, ok := r.peers.Get(string(envelope.From)).(*PeerState)
+	if !ok {
+		panic(fmt.Sprintf("peer %v has no state", envelope.From))
+	}
+
+	switch msg := envelope.Message.(type) {
+	case *tmcons.Proposal:
+		pMsg := msgI.(*ProposalMessage)
+
+		ps.SetHasProposal(pMsg.Proposal)
+		r.conS.peerMsgQueue <- msgInfo{pMsg, envelope.From}
+
+	case *tmcons.ProposalPOL:
+		ps.ApplyProposalPOLMessage(msgI.(*ProposalPOLMessage))
+
+	case *tmcons.BlockPart:
+		bpMsg := msgI.(*BlockPartMessage)
+
+		ps.SetHasProposalBlockPart(bpMsg.Height, bpMsg.Round, int(bpMsg.Part.Index))
+		r.Metrics.BlockParts.With("peer_id", string(envelope.From)).Add(1)
+		r.conS.peerMsgQueue <- msgInfo{bpMsg, envelope.From}
+
+	default:
+		return fmt.Errorf("received unknown message: %T", msg)
+	}
+
+	return nil
+}
+
+// handleVoteMessage handles envelopes sent from peers on the VoteChannel.
+func (r *Reactor) handleVoteMessage(envelope p2p.Envelope, msgI Message) error {
+	logger := r.Logger.With("peer", envelope.From)
+
+	if r.WaitSync() {
+		logger.Info("ignoring message received during sync", "msg", msgI)
+		return nil
+	}
+
+	ps, ok := r.peers.Get(string(envelope.From)).(*PeerState)
+	if !ok {
+		panic(fmt.Sprintf("peer %v has no state", envelope.From))
+	}
+
+	switch msg := envelope.Message.(type) {
+	case *tmcons.Vote:
+		cs := r.conS
+
+		cs.mtx.RLock()
+		height, valSize, lastCommitSize := cs.Height, cs.Validators.Size(), cs.LastCommit.Size()
+		cs.mtx.RUnlock()
+
+		vMsg := msgI.(*VoteMessage)
+
+		ps.EnsureVoteBitArrays(height, valSize)
+		ps.EnsureVoteBitArrays(height-1, lastCommitSize)
+		ps.SetHasVote(vMsg.Vote)
+
+		cs.peerMsgQueue <- msgInfo{vMsg, envelope.From}
+
+	default:
+		return fmt.Errorf("received unknown message: %T", msg)
+	}
+
+	return nil
+}
+
+// handleVoteSetBitsMessage handles envelopes sent from peers on the
+// VoteSetBitsChannel.
+func (r *Reactor) handleVoteSetBitsMessage(envelope p2p.Envelope, msgI Message) error {
+	logger := r.Logger.With("peer", envelope.From)
+
+	if r.WaitSync() {
+		logger.Info("ignoring message received during sync", "msg", msgI)
+		return nil
+	}
+
+	ps, ok := r.peers.Get(string(envelope.From)).(*PeerState)
+	if !ok {
+		panic(fmt.Sprintf("peer %v has no state", envelope.From))
+	}
+
+	switch msg := envelope.Message.(type) {
+	case *tmcons.VoteSetBits:
+		cs := r.conS
+
+		cs.mtx.Lock()
+		height, votes := cs.Height, cs.Votes
+		cs.mtx.Unlock()
+
+		vsbMsg := msgI.(*VoteSetBitsMessage)
+
+		if height == msg.Height {
+			var ourVotes *bits.BitArray
+
+			switch msg.Type {
+			case tmproto.PrevoteType:
+				ourVotes = votes.Prevotes(msg.Round).BitArrayByBlockID(vsbMsg.BlockID)
+
+			case tmproto.PrecommitType:
+				ourVotes = votes.Precommits(msg.Round).BitArrayByBlockID(vsbMsg.BlockID)
+
+			default:
+				panic("bad VoteSetBitsMessage field type; forgot to add a check in ValidateBasic?")
+			}
+
+			ps.ApplyVoteSetBitsMessage(vsbMsg, ourVotes)
+		} else {
+			ps.ApplyVoteSetBitsMessage(vsbMsg, nil)
+		}
+
+	default:
+		return fmt.Errorf("received unknown message: %T", msg)
+	}
+
+	return nil
+}
+
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
+//
+// NOTE: We process these messages even when we're fast_syncing. Messages affect
+// either a peer state or the consensus state. Peer state updates can happen in
+// parallel, but processing of proposals, block parts, and votes are ordered by
+// the p2p channel.
+//
+// NOTE: We block on consensus state for proposals, block parts, and votes.
 func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
@@ -797,20 +1041,35 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 		}
 	}()
 
+	// We wrap the envelope's message in a Proto wire type so we can convert back
+	// the domain type that individual channel message handlers can work with. We
+	// do this here once to avoid having to do it for each individual message type.
+	// and because a large part of the core business logic depends on these
+	// domain types opposed to simply working with the Proto types.
+	protoMsg := new(tmcons.Message)
+	if err := protoMsg.Wrap(envelope.Message); err != nil {
+		return err
+	}
+
+	msgI, err := MsgFromProto(protoMsg)
+	if err != nil {
+		return err
+	}
+
 	r.Logger.Debug("received message", "message", envelope.Message, "peer", envelope.From)
 
 	switch chID {
 	case StateChannel:
-		// TODO: Handle message
+		err = r.handleStateMessage(envelope, msgI)
 
 	case DataChannel:
-		// TODO: Handle message
+		err = r.handleDataMessage(envelope, msgI)
 
 	case VoteChannel:
-		// TODO: Handle message
+		err = r.handleVoteMessage(envelope, msgI)
 
 	case VoteSetBitsChannel:
-		// TODO: Handle message
+		err = r.handleVoteSetBitsMessage(envelope, msgI)
 
 	default:
 		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
@@ -1028,216 +1287,6 @@ func ReactorMetrics(metrics *Metrics) ReactorOption {
 // ############################################################################
 // ############################################################################
 
-// Receive implements Reactor
-// NOTE: We process these messages even when we're fast_syncing.
-// Messages affect either a peer state or the consensus state.
-// Peer state updates can happen in parallel, but processing of
-// proposals, block parts, and votes are ordered by the receiveRoutine
-// NOTE: blocks on consensus state for proposals, block parts, and votes
-// XXX: do not call any methods that can block or incur heavy processing.
-// https://github.com/tendermint/tendermint/issues/2888
-func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	if !r.IsRunning() {
-		r.Logger.Debug("Receive", "src", src, "chId", chID, "bytes", msgBytes)
-		return
-	}
-
-	msg, err := decodeMsg(msgBytes)
-	if err != nil {
-		r.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
-		r.Switch.StopPeerForError(src, err)
-		return
-	}
-
-	if err = msg.ValidateBasic(); err != nil {
-		r.Logger.Error("Peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
-		r.Switch.StopPeerForError(src, err)
-		return
-	}
-
-	r.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
-
-	// Get peer states
-	ps, ok := src.Get(types.PeerStateKey).(*PeerState)
-	if !ok {
-		panic(fmt.Sprintf("Peer %v has no state", src))
-	}
-
-	switch chID {
-	case StateChannel:
-		switch msg := msg.(type) {
-		case *NewRoundStepMessage:
-			r.conS.mtx.Lock()
-			initialHeight := r.conS.state.InitialHeight
-			r.conS.mtx.Unlock()
-			if err = msg.ValidateHeight(initialHeight); err != nil {
-				r.Logger.Error("Peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
-				r.Switch.StopPeerForError(src, err)
-				return
-			}
-			ps.ApplyNewRoundStepMessage(msg)
-		case *NewValidBlockMessage:
-			ps.ApplyNewValidBlockMessage(msg)
-		case *HasVoteMessage:
-			ps.ApplyHasVoteMessage(msg)
-		case *VoteSetMaj23Message:
-			cs := r.conS
-			cs.mtx.Lock()
-			height, votes := cs.Height, cs.Votes
-			cs.mtx.Unlock()
-			if height != msg.Height {
-				return
-			}
-			// Peer claims to have a maj23 for some BlockID at H,R,S,
-			err := votes.SetPeerMaj23(msg.Round, msg.Type, ps.peer.ID(), msg.BlockID)
-			if err != nil {
-				r.Switch.StopPeerForError(src, err)
-				return
-			}
-			// Respond with a VoteSetBitsMessage showing which votes we have.
-			// (and consequently shows which we don't have)
-			var ourVotes *bits.BitArray
-			switch msg.Type {
-			case tmproto.PrevoteType:
-				ourVotes = votes.Prevotes(msg.Round).BitArrayByBlockID(msg.BlockID)
-			case tmproto.PrecommitType:
-				ourVotes = votes.Precommits(msg.Round).BitArrayByBlockID(msg.BlockID)
-			default:
-				panic("Bad VoteSetBitsMessage field Type. Forgot to add a check in ValidateBasic?")
-			}
-			src.TrySend(VoteSetBitsChannel, MustEncode(&VoteSetBitsMessage{
-				Height:  msg.Height,
-				Round:   msg.Round,
-				Type:    msg.Type,
-				BlockID: msg.BlockID,
-				Votes:   ourVotes,
-			}))
-		default:
-			r.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
-		}
-
-	case DataChannel:
-		if r.WaitSync() {
-			r.Logger.Info("Ignoring message received during sync", "msg", msg)
-			return
-		}
-		switch msg := msg.(type) {
-		case *ProposalMessage:
-			ps.SetHasProposal(msg.Proposal)
-			r.conS.peerMsgQueue <- msgInfo{msg, src.ID()}
-		case *ProposalPOLMessage:
-			ps.ApplyProposalPOLMessage(msg)
-		case *BlockPartMessage:
-			ps.SetHasProposalBlockPart(msg.Height, msg.Round, int(msg.Part.Index))
-			r.Metrics.BlockParts.With("peer_id", string(src.ID())).Add(1)
-			r.conS.peerMsgQueue <- msgInfo{msg, src.ID()}
-		default:
-			r.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
-		}
-
-	case VoteChannel:
-		if r.WaitSync() {
-			r.Logger.Info("Ignoring message received during sync", "msg", msg)
-			return
-		}
-		switch msg := msg.(type) {
-		case *VoteMessage:
-			cs := r.conS
-			cs.mtx.RLock()
-			height, valSize, lastCommitSize := cs.Height, cs.Validators.Size(), cs.LastCommit.Size()
-			cs.mtx.RUnlock()
-			ps.EnsureVoteBitArrays(height, valSize)
-			ps.EnsureVoteBitArrays(height-1, lastCommitSize)
-			ps.SetHasVote(msg.Vote)
-
-			cs.peerMsgQueue <- msgInfo{msg, src.ID()}
-
-		default:
-			// don't punish (leave room for soft upgrades)
-			r.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
-		}
-
-	case VoteSetBitsChannel:
-		if r.WaitSync() {
-			r.Logger.Info("Ignoring message received during sync", "msg", msg)
-			return
-		}
-		switch msg := msg.(type) {
-		case *VoteSetBitsMessage:
-			cs := r.conS
-			cs.mtx.Lock()
-			height, votes := cs.Height, cs.Votes
-			cs.mtx.Unlock()
-
-			if height == msg.Height {
-				var ourVotes *bits.BitArray
-				switch msg.Type {
-				case tmproto.PrevoteType:
-					ourVotes = votes.Prevotes(msg.Round).BitArrayByBlockID(msg.BlockID)
-				case tmproto.PrecommitType:
-					ourVotes = votes.Precommits(msg.Round).BitArrayByBlockID(msg.BlockID)
-				default:
-					panic("Bad VoteSetBitsMessage field Type. Forgot to add a check in ValidateBasic?")
-				}
-				ps.ApplyVoteSetBitsMessage(msg, ourVotes)
-			} else {
-				ps.ApplyVoteSetBitsMessage(msg, nil)
-			}
-		default:
-			// don't punish (leave room for soft upgrades)
-			r.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
-		}
-
-	default:
-		r.Logger.Error(fmt.Sprintf("Unknown chId %X", chID))
-	}
-}
-
-func (r *Reactor) broadcastNewRoundStepMessage(rs *cstypes.RoundState) {
-	nrsMsg := makeRoundStepMessage(rs)
-	r.Switch.Broadcast(StateChannel, MustEncode(nrsMsg))
-}
-
-func (r *Reactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
-	csMsg := &NewValidBlockMessage{
-		Height:             rs.Height,
-		Round:              rs.Round,
-		BlockPartSetHeader: rs.ProposalBlockParts.Header(),
-		BlockParts:         rs.ProposalBlockParts.BitArray(),
-		IsCommit:           rs.Step == cstypes.RoundStepCommit,
-	}
-	r.Switch.Broadcast(StateChannel, MustEncode(csMsg))
-}
-
-// Broadcasts HasVoteMessage to peers that care.
-func (r *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
-	msg := &HasVoteMessage{
-		Height: vote.Height,
-		Round:  vote.Round,
-		Type:   vote.Type,
-		Index:  vote.ValidatorIndex,
-	}
-	r.Switch.Broadcast(StateChannel, MustEncode(msg))
-	/*
-		// TODO: Make this broadcast more selective.
-		for _, peer := range r.Switch.Peers().List() {
-			ps, ok := peer.Get(PeerStateKey).(*PeerState)
-			if !ok {
-				panic(fmt.Sprintf("Peer %v has no state", peer))
-			}
-			prs := ps.GetRoundState()
-			if prs.Height == vote.Height {
-				// TODO: Also filter on round?
-				peer.TrySend(StateChannel, struct{ ConsensusMessage }{msg})
-			} else {
-				// Height doesn't match
-				// TODO: check a field, maybe CatchupCommitRound?
-				// TODO: But that requires changing the struct field comment.
-			}
-		}
-	*/
-}
-
 func (r *Reactor) peerStatsRoutine() {
 	for {
 		if !r.IsRunning() {
@@ -1276,327 +1325,4 @@ func (r *Reactor) peerStatsRoutine() {
 			return
 		}
 	}
-}
-
-//-----------------------------------------------------------------------------
-// Messages
-
-// Message is a message that can be sent and received on the Reactor
-type Message interface {
-	ValidateBasic() error
-}
-
-func init() {
-	tmjson.RegisterType(&NewRoundStepMessage{}, "tendermint/NewRoundStepMessage")
-	tmjson.RegisterType(&NewValidBlockMessage{}, "tendermint/NewValidBlockMessage")
-	tmjson.RegisterType(&ProposalMessage{}, "tendermint/Proposal")
-	tmjson.RegisterType(&ProposalPOLMessage{}, "tendermint/ProposalPOL")
-	tmjson.RegisterType(&BlockPartMessage{}, "tendermint/BlockPart")
-	tmjson.RegisterType(&VoteMessage{}, "tendermint/Vote")
-	tmjson.RegisterType(&HasVoteMessage{}, "tendermint/HasVote")
-	tmjson.RegisterType(&VoteSetMaj23Message{}, "tendermint/VoteSetMaj23")
-	tmjson.RegisterType(&VoteSetBitsMessage{}, "tendermint/VoteSetBits")
-}
-
-func decodeMsg(bz []byte) (msg Message, err error) {
-	pb := &tmcons.Message{}
-	if err = proto.Unmarshal(bz, pb); err != nil {
-		return msg, err
-	}
-
-	return MsgFromProto(pb)
-}
-
-//-------------------------------------
-
-// NewRoundStepMessage is sent for every step taken in the ConsensusState.
-// For every height/round/step transition
-type NewRoundStepMessage struct {
-	Height                int64
-	Round                 int32
-	Step                  cstypes.RoundStepType
-	SecondsSinceStartTime int64
-	LastCommitRound       int32
-}
-
-// ValidateBasic performs basic validation.
-func (m *NewRoundStepMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.Round < 0 {
-		return errors.New("negative Round")
-	}
-	if !m.Step.IsValid() {
-		return errors.New("invalid Step")
-	}
-
-	// NOTE: SecondsSinceStartTime may be negative
-
-	// LastCommitRound will be -1 for the initial height, but we don't know what height this is
-	// since it can be specified in genesis. The reactor will have to validate this via
-	// ValidateHeight().
-	if m.LastCommitRound < -1 {
-		return errors.New("invalid LastCommitRound (cannot be < -1)")
-	}
-
-	return nil
-}
-
-// ValidateHeight validates the height given the chain's initial height.
-func (m *NewRoundStepMessage) ValidateHeight(initialHeight int64) error {
-	if m.Height < initialHeight {
-		return fmt.Errorf("invalid Height %v (lower than initial height %v)",
-			m.Height, initialHeight)
-	}
-	if m.Height == initialHeight && m.LastCommitRound != -1 {
-		return fmt.Errorf("invalid LastCommitRound %v (must be -1 for initial height %v)",
-			m.LastCommitRound, initialHeight)
-	}
-	if m.Height > initialHeight && m.LastCommitRound < 0 {
-		return fmt.Errorf("LastCommitRound can only be negative for initial height %v", // nolint
-			initialHeight)
-	}
-	return nil
-}
-
-// String returns a string representation.
-func (m *NewRoundStepMessage) String() string {
-	return fmt.Sprintf("[NewRoundStep H:%v R:%v S:%v LCR:%v]",
-		m.Height, m.Round, m.Step, m.LastCommitRound)
-}
-
-//-------------------------------------
-
-// NewValidBlockMessage is sent when a validator observes a valid block B in some round r,
-// i.e., there is a Proposal for block B and 2/3+ prevotes for the block B in the round r.
-// In case the block is also committed, then IsCommit flag is set to true.
-type NewValidBlockMessage struct {
-	Height             int64
-	Round              int32
-	BlockPartSetHeader types.PartSetHeader
-	BlockParts         *bits.BitArray
-	IsCommit           bool
-}
-
-// ValidateBasic performs basic validation.
-func (m *NewValidBlockMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.Round < 0 {
-		return errors.New("negative Round")
-	}
-	if err := m.BlockPartSetHeader.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong BlockPartSetHeader: %v", err)
-	}
-	if m.BlockParts.Size() == 0 {
-		return errors.New("empty blockParts")
-	}
-	if m.BlockParts.Size() != int(m.BlockPartSetHeader.Total) {
-		return fmt.Errorf("blockParts bit array size %d not equal to BlockPartSetHeader.Total %d",
-			m.BlockParts.Size(),
-			m.BlockPartSetHeader.Total)
-	}
-	if m.BlockParts.Size() > int(types.MaxBlockPartsCount) {
-		return fmt.Errorf("blockParts bit array is too big: %d, max: %d", m.BlockParts.Size(), types.MaxBlockPartsCount)
-	}
-	return nil
-}
-
-// String returns a string representation.
-func (m *NewValidBlockMessage) String() string {
-	return fmt.Sprintf("[ValidBlockMessage H:%v R:%v BP:%v BA:%v IsCommit:%v]",
-		m.Height, m.Round, m.BlockPartSetHeader, m.BlockParts, m.IsCommit)
-}
-
-//-------------------------------------
-
-// ProposalMessage is sent when a new block is proposed.
-type ProposalMessage struct {
-	Proposal *types.Proposal
-}
-
-// ValidateBasic performs basic validation.
-func (m *ProposalMessage) ValidateBasic() error {
-	return m.Proposal.ValidateBasic()
-}
-
-// String returns a string representation.
-func (m *ProposalMessage) String() string {
-	return fmt.Sprintf("[Proposal %v]", m.Proposal)
-}
-
-//-------------------------------------
-
-// ProposalPOLMessage is sent when a previous proposal is re-proposed.
-type ProposalPOLMessage struct {
-	Height           int64
-	ProposalPOLRound int32
-	ProposalPOL      *bits.BitArray
-}
-
-// ValidateBasic performs basic validation.
-func (m *ProposalPOLMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.ProposalPOLRound < 0 {
-		return errors.New("negative ProposalPOLRound")
-	}
-	if m.ProposalPOL.Size() == 0 {
-		return errors.New("empty ProposalPOL bit array")
-	}
-	if m.ProposalPOL.Size() > types.MaxVotesCount {
-		return fmt.Errorf("proposalPOL bit array is too big: %d, max: %d", m.ProposalPOL.Size(), types.MaxVotesCount)
-	}
-	return nil
-}
-
-// String returns a string representation.
-func (m *ProposalPOLMessage) String() string {
-	return fmt.Sprintf("[ProposalPOL H:%v POLR:%v POL:%v]", m.Height, m.ProposalPOLRound, m.ProposalPOL)
-}
-
-//-------------------------------------
-
-// BlockPartMessage is sent when gossipping a piece of the proposed block.
-type BlockPartMessage struct {
-	Height int64
-	Round  int32
-	Part   *types.Part
-}
-
-// ValidateBasic performs basic validation.
-func (m *BlockPartMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.Round < 0 {
-		return errors.New("negative Round")
-	}
-	if err := m.Part.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong Part: %v", err)
-	}
-	return nil
-}
-
-// String returns a string representation.
-func (m *BlockPartMessage) String() string {
-	return fmt.Sprintf("[BlockPart H:%v R:%v P:%v]", m.Height, m.Round, m.Part)
-}
-
-//-------------------------------------
-
-// VoteMessage is sent when voting for a proposal (or lack thereof).
-type VoteMessage struct {
-	Vote *types.Vote
-}
-
-// ValidateBasic performs basic validation.
-func (m *VoteMessage) ValidateBasic() error {
-	return m.Vote.ValidateBasic()
-}
-
-// String returns a string representation.
-func (m *VoteMessage) String() string {
-	return fmt.Sprintf("[Vote %v]", m.Vote)
-}
-
-//-------------------------------------
-
-// HasVoteMessage is sent to indicate that a particular vote has been received.
-type HasVoteMessage struct {
-	Height int64
-	Round  int32
-	Type   tmproto.SignedMsgType
-	Index  int32
-}
-
-// ValidateBasic performs basic validation.
-func (m *HasVoteMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.Round < 0 {
-		return errors.New("negative Round")
-	}
-	if !types.IsVoteTypeValid(m.Type) {
-		return errors.New("invalid Type")
-	}
-	if m.Index < 0 {
-		return errors.New("negative Index")
-	}
-	return nil
-}
-
-// String returns a string representation.
-func (m *HasVoteMessage) String() string {
-	return fmt.Sprintf("[HasVote VI:%v V:{%v/%02d/%v}]", m.Index, m.Height, m.Round, m.Type)
-}
-
-//-------------------------------------
-
-// VoteSetMaj23Message is sent to indicate that a given BlockID has seen +2/3 votes.
-type VoteSetMaj23Message struct {
-	Height  int64
-	Round   int32
-	Type    tmproto.SignedMsgType
-	BlockID types.BlockID
-}
-
-// ValidateBasic performs basic validation.
-func (m *VoteSetMaj23Message) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.Round < 0 {
-		return errors.New("negative Round")
-	}
-	if !types.IsVoteTypeValid(m.Type) {
-		return errors.New("invalid Type")
-	}
-	if err := m.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong BlockID: %v", err)
-	}
-	return nil
-}
-
-// String returns a string representation.
-func (m *VoteSetMaj23Message) String() string {
-	return fmt.Sprintf("[VSM23 %v/%02d/%v %v]", m.Height, m.Round, m.Type, m.BlockID)
-}
-
-//-------------------------------------
-
-// VoteSetBitsMessage is sent to communicate the bit-array of votes seen for the BlockID.
-type VoteSetBitsMessage struct {
-	Height  int64
-	Round   int32
-	Type    tmproto.SignedMsgType
-	BlockID types.BlockID
-	Votes   *bits.BitArray
-}
-
-// ValidateBasic performs basic validation.
-func (m *VoteSetBitsMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if !types.IsVoteTypeValid(m.Type) {
-		return errors.New("invalid Type")
-	}
-	if err := m.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong BlockID: %v", err)
-	}
-	// NOTE: Votes.Size() can be zero if the node does not have any
-	if m.Votes.Size() > types.MaxVotesCount {
-		return fmt.Errorf("votes bit array is too big: %d, max: %d", m.Votes.Size(), types.MaxVotesCount)
-	}
-	return nil
-}
-
-// String returns a string representation.
-func (m *VoteSetBitsMessage) String() string {
-	return fmt.Sprintf("[VSB %v/%02d/%v %v %v]", m.Height, m.Round, m.Type, m.BlockID, m.Votes)
 }
