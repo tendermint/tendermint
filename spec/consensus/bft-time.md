@@ -45,12 +45,11 @@ rs.Proposal.Timestamp == rs.ProposalBlock.Header.Time`.
 - Furthermore, when creating the `vote` message, the following rules for determining `vote.Time` field should hold:
 
     - if `rs.LockedBlock` is defined then
-    `vote.Time = max(rs.LockedBlock.Timestamp + config.BlockTimeIota, time.Now())`, where `time.Now()`
-        denotes local Unix time in milliseconds, and `config.BlockTimeIota` is a configuration parameter that corresponds
-        to the minimum timestamp increment of the next block.
+    `vote.Time = max(rs.LockedBlock.Timestamp + time.Millisecond, time.Now())`, where `time.Now()`
+        denotes local Unix time in milliseconds
 
     - else if `rs.Proposal` is defined then
-    `vote.Time = max(rs.Proposal.Timestamp + config.BlockTimeIota, time.Now())`,
+    `vote.Time = max(rs.Proposal.Timestamp + time.Millisecond,, time.Now())`,
 
     - otherwise, `vote.Time = time.Now())`. In this case vote is for `nil` so it is not taken into account for
     the timestamp of the next block.

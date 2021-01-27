@@ -445,7 +445,6 @@ func SumTruncated(bz []byte) []byte {
 |--------------|-------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|
 | max_bytes    | int64 | Max size of a block, in bytes.                                                                                                                                                                              | 1            |
 | max_gas      | int64 | Max sum of `GasWanted` in a proposed block. NOTE: blocks that violate this may be committed if there are Byzantine proposers. It's the application's responsibility to handle this when processing a block! | 2            |
-| time_iota_ms | int64 | (**Deprecated**) Unused Param                                                                                                                                                                               | 3            |
 
 ### EvidenceParams
 

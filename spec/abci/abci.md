@@ -674,21 +674,10 @@ The data types not listed below are the same as the [core data structures](../co
 
     | Name      | Type                                                          | Description                                                                  | Field Number |
     |-----------|---------------------------------------------------------------|------------------------------------------------------------------------------|--------------|
-    | block     | [BlockParams](#blockparams)                                   | Parameters limiting the size of a block and time between consecutive blocks. | 1            |
+    | block     | [BlockParams](../core/data_structures.md#blockparams)                                   | Parameters limiting the size of a block and time between consecutive blocks. | 1            |
     | evidence  | [EvidenceParams](../core/data_structures.md#evidenceparams)   | Parameters limiting the validity of evidence of byzantine behaviour.         | 2            |
     | validator | [ValidatorParams](../core/data_structures.md#validatorparams) | Parameters limiting the types of public keys validators can use.             | 3            |
-    | version   | [BlockParams](../core/data_structures.md#versionparams)       | The ABCI application version.                                                | 4            |
-
-### BlockParams
-
-- **Fields**:
-
-    | Name      | Type  | Description                                                                                                                                                                                                 | Field Number |
-    |-----------|-------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|
-    | max_bytes | int64 | Max size of a block, in bytes.                                                                                                                                                                              | 1            |
-    | max_gas   | int64 | Max sum of `GasWanted` in a proposed block. NOTE: blocks that violate this may be committed if there are Byzantine proposers. It's the application's responsibility to handle this when processing a block! | 2            |
-
-> Note: time_iota_ms is removed from this data structure.
+    | version   | [VersionsParams](../core/data_structures.md#versionparams)       | The ABCI application version.                                                | 4            |
 
 ### ProofOps
 
