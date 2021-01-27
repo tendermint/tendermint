@@ -39,9 +39,23 @@ jobs:
         working-directory: test/fuzz
         run: timeout 10m make fuzz-rpc-server
 
+      - name: Archive crashers
+        uses: actions/upload-artifact@v2
+        with:
+          name: crashers
+          path: test/fuzz/**/crashers
+          retention-days: 1
+
+      - name: Archive suppressions
+        uses: actions/upload-artifact@v2
+        with:
+          name: suppressions
+          path: test/fuzz/**/suppressions
+          retention-days: 1
+
       - name: Set crashers count
         working-directory: test/fuzz
-        run: echo "::set-output name=crashers-count::$(find . -type d -name "crashers" | xargs -I % sh -c 'ls % | wc -l' | awk '{total += $1} END {print total}')"
+        run: echo "::set-output name=crashers-count::$(find . -type d -name 'crashers' | xargs -I % sh -c 'ls % | wc -l' | awk '{total += $1} END {print total}')"
         id: set-crashers-count
 
     outputs:
