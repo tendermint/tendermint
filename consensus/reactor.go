@@ -777,7 +777,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 			// and we wait for them to all exit before marking the peer state as no
 			// longer running.
 			//
-			// TODO: It is possible that we can briefly wait here for all goroutines.
+			// XXX/TODO: It is possible that we can briefly wait here for all goroutines.
 			// Is this problematic?
 			peerState.closer.Close()
 			peerState.broadcastWG.Wait()
@@ -981,6 +981,49 @@ conR:
 	}
 }
 
+// SetEventBus sets the reactor's event bus.
+func (r *Reactor) SetEventBus(b *types.EventBus) {
+	r.eventBus = b
+	r.conS.SetEventBus(b)
+}
+
+// WaitSync returns whether the consensus reactor is waiting for state/fast sync.
+func (r *Reactor) WaitSync() bool {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	return r.waitSync
+}
+
+// String returns a string representation of the Reactor.
+//
+// NOTE: For now, it is just a hard-coded string to avoid accessing unprotected
+// shared variables.
+//
+// TODO: improve!
+func (r *Reactor) String() string {
+	return "ConsensusReactor"
+}
+
+// StringIndented returns an indented string representation of the Reactor.
+func (r *Reactor) StringIndented(indent string) string {
+	s := "ConsensusReactor{\n"
+	s += indent + "  " + r.conS.StringIndented(indent+"  ") + "\n"
+
+	for _, v := range r.peers.Values() {
+		ps := v.(*PeerState)
+		s += indent + "  " + ps.StringIndented(indent+"  ") + "\n"
+	}
+
+	s += indent + "}"
+	return s
+}
+
+// ReactorMetrics sets the metrics
+func ReactorMetrics(metrics *Metrics) ReactorOption {
+	return func(r *Reactor) { r.Metrics = metrics }
+}
+
 // ############################################################################
 // ############################################################################
 // ############################################################################
@@ -1150,21 +1193,6 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	}
 }
 
-// SetEventBus sets event bus.
-func (r *Reactor) SetEventBus(b *types.EventBus) {
-	r.eventBus = b
-	r.conS.SetEventBus(b)
-}
-
-// WaitSync returns whether the consensus reactor is waiting for state/fast sync.
-func (r *Reactor) WaitSync() bool {
-	r.mtx.RLock()
-	defer r.mtx.RUnlock()
-	return r.waitSync
-}
-
-//--------------------------------------
-
 func (r *Reactor) broadcastNewRoundStepMessage(rs *cstypes.RoundState) {
 	nrsMsg := makeRoundStepMessage(rs)
 	r.Switch.Broadcast(StateChannel, MustEncode(nrsMsg))
@@ -1248,34 +1276,6 @@ func (r *Reactor) peerStatsRoutine() {
 			return
 		}
 	}
-}
-
-// String returns a string representation of the Reactor.
-// NOTE: For now, it is just a hard-coded string to avoid accessing unprotected shared variables.
-// TODO: improve!
-func (r *Reactor) String() string {
-	// better not to access shared variables
-	return "ConsensusReactor" // r.StringIndented("")
-}
-
-// StringIndented returns an indented string representation of the Reactor
-func (r *Reactor) StringIndented(indent string) string {
-	s := "ConsensusReactor{\n"
-	s += indent + "  " + r.conS.StringIndented(indent+"  ") + "\n"
-	for _, peer := range r.Switch.Peers().List() {
-		ps, ok := peer.Get(types.PeerStateKey).(*PeerState)
-		if !ok {
-			panic(fmt.Sprintf("Peer %v has no state", peer))
-		}
-		s += indent + "  " + ps.StringIndented(indent+"  ") + "\n"
-	}
-	s += indent + "}"
-	return s
-}
-
-// ReactorMetrics sets the metrics
-func ReactorMetrics(metrics *Metrics) ReactorOption {
-	return func(r *Reactor) { r.Metrics = metrics }
 }
 
 //-----------------------------------------------------------------------------
@@ -1600,5 +1600,3 @@ func (m *VoteSetBitsMessage) ValidateBasic() error {
 func (m *VoteSetBitsMessage) String() string {
 	return fmt.Sprintf("[VSB %v/%02d/%v %v %v]", m.Height, m.Round, m.Type, m.BlockID, m.Votes)
 }
-
-//-------------------------------------
