@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -294,8 +295,10 @@ func (r *Router) dialPeers() {
 		}
 
 		go func() {
-			conn, err := r.dialPeer(address)
-			if err != nil {
+			conn, err := r.dialPeer(ctx, address)
+			if errors.Is(err, context.Canceled) {
+				return
+			} else if err != nil {
 				r.logger.Error("failed to dial peer", "peer", peerID)
 				if err = r.peerManager.DialFailed(peerID, address); err != nil {
 					r.logger.Error("failed to report dial failure", "peer", peerID, "err", err)
@@ -331,9 +334,7 @@ func (r *Router) dialPeers() {
 }
 
 // dialPeer attempts to connect to a peer.
-func (r *Router) dialPeer(address PeerAddress) (Connection, error) {
-	ctx := context.Background()
-
+func (r *Router) dialPeer(ctx context.Context, address PeerAddress) (Connection, error) {
 	resolveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
