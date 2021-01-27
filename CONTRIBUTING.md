@@ -357,17 +357,29 @@ Unit tests are located in `_test.go` files as directed by [the Go testing
 package](https://golang.org/pkg/testing/). If you're adding or removing a
 function, please check there's a `TestType_Method` test for it.
 
+Run: `make test`
+
 ### Integration tests
 
 Integration tests are also located in `_test.go` files. What differentiates
 them is a more complicated setup, which usually involves setting up two or more
 components.
 
+Run: `make test_integrations`
+
 ### End-to-end tests
 
 End-to-end tests are used to verify a fully integrated Tendermint network.
 
 See (README)[./test/e2e/README.md] for details.
+
+Run:
+
+```sh
+cd test/e2e && \
+  make && \
+  ./build/runner -f networks/ci.toml
+```
 
 ### Maverick
 
@@ -397,6 +409,8 @@ this video](https://www.youtube.com/watch?v=aveoIMphzW8) by Andrey Kupriyanov
 At the moment, we have model-based tests for the light client, located in the
 `./light/mbt` directory.
 
+Run: `cd light/mbt && go test`
+
 ### Fuzz tests (ADVANCED)
 
 *NOTE: if you're just submitting your first PR, you won't need to touch these
@@ -404,6 +418,8 @@ most probably (99.9%)*.
 
 [Fuzz tests](https://en.wikipedia.org/wiki/Fuzzing) can be found inside the
 `./test/fuzz` directory. See [README.md](./test/fuzz/README.md) for details.
+
+Run: `cd test/fuzz && make fuzz-{PACKAGE-COMPONENT}`
 
 ### Jepsen tests (ADVANCED)
 
