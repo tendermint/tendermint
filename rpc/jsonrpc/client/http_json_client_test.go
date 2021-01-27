@@ -11,14 +11,13 @@ import (
 )
 
 func TestHTTPClientMakeHTTPDialer(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("Hi!\n"))
-	}))
+	})
+	ts := httptest.NewServer(handler)
 	defer ts.Close()
 
-	tsTLS := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("Hi!\n"))
-	}))
+	tsTLS := httptest.NewTLSServer(handler)
 	defer tsTLS.Close()
 	// This silences a TLS handshake error, caused by the dialer just immediately
 	// disconnecting, which we can just ignore.
