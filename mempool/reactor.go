@@ -39,7 +39,7 @@ const (
 // peer information. This should eventually be replaced with a message-oriented
 // approach utilizing the p2p stack.
 type PeerManager interface {
-	GetHeight(p2p.NodeID) (int64, error)
+	GetHeight(p2p.NodeID) int64
 }
 
 // Reactor implements a service that contains mempool of txs that are broadcasted
@@ -357,10 +357,8 @@ func (r *Reactor) broadcastTxRoutine(peerID p2p.NodeID, closer *tmsync.Closer) {
 		memTx := next.Value.(*mempoolTx)
 
 		if r.peerMgr != nil {
-			height, err := r.peerMgr.GetHeight(peerID)
-			if err != nil {
-				r.Logger.Error("failed to get peer height", "err", err)
-			} else if height > 0 && height < memTx.Height()-1 {
+			height := r.peerMgr.GetHeight(peerID)
+			if height > 0 && height < memTx.Height()-1 {
 				// allow for a lag of one block
 				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 				continue

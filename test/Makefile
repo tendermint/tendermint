@@ -62,8 +62,3 @@ test_race:
 	@echo "--> Running go test --race"
 	@go test -p 1 -v -race $(PACKAGES)
 .PHONY: test_race
-
-test_deadlock:
-	@echo "--> Running go test --deadlock"
-	@go test -p 1 -v  $(PACKAGES) -tags deadlock
-.PHONY: test_race
