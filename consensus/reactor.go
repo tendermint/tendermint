@@ -273,13 +273,13 @@ func (r *Reactor) sendNewRoundStepMessage(peerID p2p.NodeID) {
 }
 
 func (r *Reactor) gossipDataForCatchup(rs *cstypes.RoundState, prs *cstypes.PeerRoundState, ps *PeerState) {
-	heightLogger := r.Logger.With("height", prs.Height)
+	logger := r.Logger.With("height", prs.Height).With("peer", ps.peerID)
 
 	if index, ok := prs.ProposalBlockParts.Not().PickRandom(); ok {
 		// ensure that the peer's PartSetHeader is correct
 		blockMeta := r.conS.blockStore.LoadBlockMeta(prs.Height)
 		if blockMeta == nil {
-			heightLogger.Error(
+			logger.Error(
 				"failed to load block meta",
 				"our_height", rs.Height,
 				"blockstore_base", r.conS.blockStore.Base(),
@@ -289,7 +289,7 @@ func (r *Reactor) gossipDataForCatchup(rs *cstypes.RoundState, prs *cstypes.Peer
 			time.Sleep(r.conS.config.PeerGossipSleepDuration)
 			return
 		} else if !blockMeta.BlockID.PartSetHeader.Equals(prs.ProposalBlockPartSetHeader) {
-			heightLogger.Info(
+			logger.Info(
 				"peer ProposalBlockPartSetHeader mismatch; sleeping",
 				"block_part_set_header", blockMeta.BlockID.PartSetHeader,
 				"peer_block_part_set_header", prs.ProposalBlockPartSetHeader,
@@ -301,7 +301,7 @@ func (r *Reactor) gossipDataForCatchup(rs *cstypes.RoundState, prs *cstypes.Peer
 
 		part := r.conS.blockStore.LoadBlockPart(prs.Height, index)
 		if part == nil {
-			heightLogger.Error(
+			logger.Error(
 				"failed to load block part",
 				"index", index,
 				"block_part_set_header", blockMeta.BlockID.PartSetHeader,
@@ -314,13 +314,13 @@ func (r *Reactor) gossipDataForCatchup(rs *cstypes.RoundState, prs *cstypes.Peer
 
 		partProto, err := part.ToProto()
 		if err != nil {
-			heightLogger.Error("failed to convert block part to proto", "err", err)
+			logger.Error("failed to convert block part to proto", "err", err)
 
 			time.Sleep(r.conS.config.PeerGossipSleepDuration)
 			return
 		}
 
-		heightLogger.Debug("sending block part for catchup", "round", prs.Round, "index", index)
+		logger.Debug("sending block part for catchup", "round", prs.Round, "index", index)
 		r.dataCh.Out() <- p2p.Envelope{
 			To: ps.peerID,
 			Message: &tmcons.BlockPart{
@@ -468,6 +468,255 @@ OUTER_LOOP:
 
 		// nothing to do -- sleep
 		time.Sleep(r.conS.config.PeerGossipSleepDuration)
+		continue OUTER_LOOP
+	}
+}
+
+func (r *Reactor) gossipVotesForHeight(rs *cstypes.RoundState, prs *cstypes.PeerRoundState, ps *PeerState) bool {
+	logger := r.Logger.With("height", prs.Height).With("peer", ps.peerID)
+
+	// if there are lastCommits to send...
+	if prs.Step == cstypes.RoundStepNewHeight {
+		if ps.PickSendVote(rs.LastCommit) {
+			logger.Debug("picked rs.LastCommit to send")
+			return true
+		}
+	}
+
+	// if there are POL prevotes to send...
+	if prs.Step <= cstypes.RoundStepPropose && prs.Round != -1 && prs.Round <= rs.Round && prs.ProposalPOLRound != -1 {
+		if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
+			if ps.PickSendVote(polPrevotes) {
+				logger.Debug("picked rs.Prevotes(prs.ProposalPOLRound) to send", "round", prs.ProposalPOLRound)
+				return true
+			}
+		}
+	}
+
+	// if there are prevotes to send...
+	if prs.Step <= cstypes.RoundStepPrevoteWait && prs.Round != -1 && prs.Round <= rs.Round {
+		if ps.PickSendVote(rs.Votes.Prevotes(prs.Round)) {
+			logger.Debug("picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
+			return true
+		}
+	}
+
+	// if there are precommits to send...
+	if prs.Step <= cstypes.RoundStepPrecommitWait && prs.Round != -1 && prs.Round <= rs.Round {
+		if ps.PickSendVote(rs.Votes.Precommits(prs.Round)) {
+			logger.Debug("picked rs.Precommits(prs.Round) to send", "round", prs.Round)
+			return true
+		}
+	}
+
+	// if there are prevotes to send...(which are needed because of validBlock mechanism)
+	if prs.Round != -1 && prs.Round <= rs.Round {
+		if ps.PickSendVote(rs.Votes.Prevotes(prs.Round)) {
+			logger.Debug("picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
+			return true
+		}
+	}
+
+	// if there are POLPrevotes to send...
+	if prs.ProposalPOLRound != -1 {
+		if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
+			if ps.PickSendVote(polPrevotes) {
+				logger.Debug("picked rs.Prevotes(prs.ProposalPOLRound) to send", "round", prs.ProposalPOLRound)
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func (r *Reactor) gossipVotesRoutine(ps *PeerState) {
+	logger := r.Logger.With("peer", ps.peerID)
+
+	defer ps.broadcastWG.Done()
+
+	// XXX: simple hack to throttle logs upon sleep
+	logThrottle := 0
+
+OUTER_LOOP:
+	for {
+		if !r.IsRunning() {
+			return
+		}
+
+		select {
+		case <-ps.closer.Done():
+			// The peer is marked for removal via a PeerUpdate as the doneCh was
+			// explicitly closed to signal we should exit.
+			return
+
+		default:
+		}
+
+		rs := r.conS.GetRoundState()
+		prs := ps.GetRoundState()
+
+		switch logThrottle {
+		case 1: // first sleep
+			logThrottle = 2
+		case 2: // no more sleep
+			logThrottle = 0
+		}
+
+		// if height matches, then send LastCommit, Prevotes, and Precommits
+		if rs.Height == prs.Height {
+			if r.gossipVotesForHeight(rs, prs, ps) {
+				continue OUTER_LOOP
+			}
+		}
+
+		// special catchup logic -- if peer is lagging by height 1, send LastCommit
+		if prs.Height != 0 && rs.Height == prs.Height+1 {
+			if ps.PickSendVote(rs.LastCommit) {
+				logger.Debug("picked rs.LastCommit to send", "height", prs.Height)
+				continue OUTER_LOOP
+			}
+		}
+
+		// catchup logic -- if peer is lagging by more than 1, send Commit
+		if prs.Height != 0 && rs.Height >= prs.Height+2 && prs.Height >= r.conS.blockStore.Base() {
+			// Load the block commit for prs.Height, which contains precommit
+			// signatures for prs.Height.
+			if commit := r.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
+				if ps.PickSendVote(commit) {
+					logger.Debug("picked Catchup commit to send", "height", prs.Height)
+					continue OUTER_LOOP
+				}
+			}
+		}
+
+		if logThrottle == 0 {
+			// we sent nothing -- sleep
+			logThrottle = 1
+			logger.Debug(
+				"no votes to send; sleeping",
+				"rs.Height", rs.Height,
+				"prs.Height", prs.Height,
+				"localPV", rs.Votes.Prevotes(rs.Round).BitArray(), "peerPV", prs.Prevotes,
+				"localPC", rs.Votes.Precommits(rs.Round).BitArray(), "peerPC", prs.Precommits,
+			)
+		} else if logThrottle == 2 {
+			logThrottle = 1
+		}
+
+		time.Sleep(r.conS.config.PeerGossipSleepDuration)
+		continue OUTER_LOOP
+	}
+}
+
+// NOTE: `queryMaj23Routine` has a simple crude design since it only comes
+// into play for liveness when there's a signature DDoS attack happening.
+func (r *Reactor) queryMaj23Routine(ps *PeerState) {
+	defer ps.broadcastWG.Done()
+
+OUTER_LOOP:
+	for {
+		if !r.IsRunning() {
+			return
+		}
+
+		select {
+		case <-ps.closer.Done():
+			// The peer is marked for removal via a PeerUpdate as the doneCh was
+			// explicitly closed to signal we should exit.
+			return
+
+		default:
+		}
+
+		// maybe send Height/Round/Prevotes
+		{
+			rs := r.conS.GetRoundState()
+			prs := ps.GetRoundState()
+			if rs.Height == prs.Height {
+				if maj23, ok := rs.Votes.Prevotes(prs.Round).TwoThirdsMajority(); ok {
+					r.stateCh.Out() <- p2p.Envelope{
+						To: ps.peerID,
+						Message: &tmcons.VoteSetMaj23{
+							Height:  prs.Height,
+							Round:   prs.Round,
+							Type:    tmproto.PrevoteType,
+							BlockID: maj23.ToProto(),
+						},
+					}
+
+					time.Sleep(r.conS.config.PeerQueryMaj23SleepDuration)
+				}
+			}
+		}
+
+		// maybe send Height/Round/Precommits
+		{
+			rs := r.conS.GetRoundState()
+			prs := ps.GetRoundState()
+			if rs.Height == prs.Height {
+				if maj23, ok := rs.Votes.Precommits(prs.Round).TwoThirdsMajority(); ok {
+					r.stateCh.Out() <- p2p.Envelope{
+						To: ps.peerID,
+						Message: &tmcons.VoteSetMaj23{
+							Height:  prs.Height,
+							Round:   prs.Round,
+							Type:    tmproto.PrecommitType,
+							BlockID: maj23.ToProto(),
+						},
+					}
+
+					time.Sleep(r.conS.config.PeerQueryMaj23SleepDuration)
+				}
+			}
+		}
+
+		// maybe send Height/Round/ProposalPOL
+		{
+			rs := r.conS.GetRoundState()
+			prs := ps.GetRoundState()
+			if rs.Height == prs.Height && prs.ProposalPOLRound >= 0 {
+				if maj23, ok := rs.Votes.Prevotes(prs.ProposalPOLRound).TwoThirdsMajority(); ok {
+					r.stateCh.Out() <- p2p.Envelope{
+						To: ps.peerID,
+						Message: &tmcons.VoteSetMaj23{
+							Height:  prs.Height,
+							Round:   prs.ProposalPOLRound,
+							Type:    tmproto.PrevoteType,
+							BlockID: maj23.ToProto(),
+						},
+					}
+
+					time.Sleep(r.conS.config.PeerQueryMaj23SleepDuration)
+				}
+			}
+		}
+
+		// Little point sending LastCommitRound/LastCommit, these are fleeting and
+		// non-blocking.
+
+		// maybe send Height/CatchupCommitRound/CatchupCommit
+		{
+			prs := ps.GetRoundState()
+			if prs.CatchupCommitRound != -1 && prs.Height > 0 && prs.Height <= r.conS.blockStore.Height() &&
+				prs.Height >= r.conS.blockStore.Base() {
+				if commit := r.conS.LoadCommit(prs.Height); commit != nil {
+					r.stateCh.Out() <- p2p.Envelope{
+						To: ps.peerID,
+						Message: &tmcons.VoteSetMaj23{
+							Height:  prs.Height,
+							Round:   commit.Round,
+							Type:    tmproto.PrecommitType,
+							BlockID: commit.BlockID.ToProto(),
+						},
+					}
+
+					time.Sleep(r.conS.config.PeerQueryMaj23SleepDuration)
+				}
+			}
+		}
+
+		time.Sleep(r.conS.config.PeerQueryMaj23SleepDuration)
 		continue OUTER_LOOP
 	}
 }
@@ -959,227 +1208,6 @@ func (r *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 			}
 		}
 	*/
-}
-
-func (r *Reactor) gossipVotesRoutine(peer p2p.Peer, ps *PeerState) {
-	logger := r.Logger.With("peer", peer)
-
-	// Simple hack to throttle logs upon sleep.
-	var sleeping = 0
-
-OUTER_LOOP:
-	for {
-		// Manage disconnects from self or peer.
-		if !peer.IsRunning() || !r.IsRunning() {
-			logger.Info("Stopping gossipVotesRoutine for peer")
-			return
-		}
-		rs := r.conS.GetRoundState()
-		prs := ps.GetRoundState()
-
-		switch sleeping {
-		case 1: // First sleep
-			sleeping = 2
-		case 2: // No more sleep
-			sleeping = 0
-		}
-
-		// logger.Debug("gossipVotesRoutine", "rsHeight", rs.Height, "rsRound", rs.Round,
-		// "prsHeight", prs.Height, "prsRound", prs.Round, "prsStep", prs.Step)
-
-		// If height matches, then send LastCommit, Prevotes, Precommits.
-		if rs.Height == prs.Height {
-			heightLogger := logger.With("height", prs.Height)
-			if r.gossipVotesForHeight(heightLogger, rs, prs, ps) {
-				continue OUTER_LOOP
-			}
-		}
-
-		// Special catchup logic.
-		// If peer is lagging by height 1, send LastCommit.
-		if prs.Height != 0 && rs.Height == prs.Height+1 {
-			if ps.PickSendVote(rs.LastCommit) {
-				logger.Debug("Picked rs.LastCommit to send", "height", prs.Height)
-				continue OUTER_LOOP
-			}
-		}
-
-		// Catchup logic
-		// If peer is lagging by more than 1, send Commit.
-		if prs.Height != 0 && rs.Height >= prs.Height+2 && prs.Height >= r.conS.blockStore.Base() {
-			// Load the block commit for prs.Height,
-			// which contains precommit signatures for prs.Height.
-			if commit := r.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
-				if ps.PickSendVote(commit) {
-					logger.Debug("Picked Catchup commit to send", "height", prs.Height)
-					continue OUTER_LOOP
-				}
-			}
-		}
-
-		if sleeping == 0 {
-			// We sent nothing. Sleep...
-			sleeping = 1
-			logger.Debug("No votes to send, sleeping", "rs.Height", rs.Height, "prs.Height", prs.Height,
-				"localPV", rs.Votes.Prevotes(rs.Round).BitArray(), "peerPV", prs.Prevotes,
-				"localPC", rs.Votes.Precommits(rs.Round).BitArray(), "peerPC", prs.Precommits)
-		} else if sleeping == 2 {
-			// Continued sleep...
-			sleeping = 1
-		}
-
-		time.Sleep(r.conS.config.PeerGossipSleepDuration)
-		continue OUTER_LOOP
-	}
-}
-
-func (r *Reactor) gossipVotesForHeight(
-	logger log.Logger,
-	rs *cstypes.RoundState,
-	prs *cstypes.PeerRoundState,
-	ps *PeerState,
-) bool {
-
-	// If there are lastCommits to send...
-	if prs.Step == cstypes.RoundStepNewHeight {
-		if ps.PickSendVote(rs.LastCommit) {
-			logger.Debug("Picked rs.LastCommit to send")
-			return true
-		}
-	}
-	// If there are POL prevotes to send...
-	if prs.Step <= cstypes.RoundStepPropose && prs.Round != -1 && prs.Round <= rs.Round && prs.ProposalPOLRound != -1 {
-		if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
-			if ps.PickSendVote(polPrevotes) {
-				logger.Debug("Picked rs.Prevotes(prs.ProposalPOLRound) to send",
-					"round", prs.ProposalPOLRound)
-				return true
-			}
-		}
-	}
-	// If there are prevotes to send...
-	if prs.Step <= cstypes.RoundStepPrevoteWait && prs.Round != -1 && prs.Round <= rs.Round {
-		if ps.PickSendVote(rs.Votes.Prevotes(prs.Round)) {
-			logger.Debug("Picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
-			return true
-		}
-	}
-	// If there are precommits to send...
-	if prs.Step <= cstypes.RoundStepPrecommitWait && prs.Round != -1 && prs.Round <= rs.Round {
-		if ps.PickSendVote(rs.Votes.Precommits(prs.Round)) {
-			logger.Debug("Picked rs.Precommits(prs.Round) to send", "round", prs.Round)
-			return true
-		}
-	}
-	// If there are prevotes to send...Needed because of validBlock mechanism
-	if prs.Round != -1 && prs.Round <= rs.Round {
-		if ps.PickSendVote(rs.Votes.Prevotes(prs.Round)) {
-			logger.Debug("Picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
-			return true
-		}
-	}
-	// If there are POLPrevotes to send...
-	if prs.ProposalPOLRound != -1 {
-		if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
-			if ps.PickSendVote(polPrevotes) {
-				logger.Debug("Picked rs.Prevotes(prs.ProposalPOLRound) to send",
-					"round", prs.ProposalPOLRound)
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-// NOTE: `queryMaj23Routine` has a simple crude design since it only comes
-// into play for liveness when there's a signature DDoS attack happening.
-func (r *Reactor) queryMaj23Routine(peer p2p.Peer, ps *PeerState) {
-	logger := r.Logger.With("peer", peer)
-
-OUTER_LOOP:
-	for {
-		// Manage disconnects from self or peer.
-		if !peer.IsRunning() || !r.IsRunning() {
-			logger.Info("Stopping queryMaj23Routine for peer")
-			return
-		}
-
-		// Maybe send Height/Round/Prevotes
-		{
-			rs := r.conS.GetRoundState()
-			prs := ps.GetRoundState()
-			if rs.Height == prs.Height {
-				if maj23, ok := rs.Votes.Prevotes(prs.Round).TwoThirdsMajority(); ok {
-					peer.TrySend(StateChannel, MustEncode(&VoteSetMaj23Message{
-						Height:  prs.Height,
-						Round:   prs.Round,
-						Type:    tmproto.PrevoteType,
-						BlockID: maj23,
-					}))
-					time.Sleep(r.conS.config.PeerQueryMaj23SleepDuration)
-				}
-			}
-		}
-
-		// Maybe send Height/Round/Precommits
-		{
-			rs := r.conS.GetRoundState()
-			prs := ps.GetRoundState()
-			if rs.Height == prs.Height {
-				if maj23, ok := rs.Votes.Precommits(prs.Round).TwoThirdsMajority(); ok {
-					peer.TrySend(StateChannel, MustEncode(&VoteSetMaj23Message{
-						Height:  prs.Height,
-						Round:   prs.Round,
-						Type:    tmproto.PrecommitType,
-						BlockID: maj23,
-					}))
-					time.Sleep(r.conS.config.PeerQueryMaj23SleepDuration)
-				}
-			}
-		}
-
-		// Maybe send Height/Round/ProposalPOL
-		{
-			rs := r.conS.GetRoundState()
-			prs := ps.GetRoundState()
-			if rs.Height == prs.Height && prs.ProposalPOLRound >= 0 {
-				if maj23, ok := rs.Votes.Prevotes(prs.ProposalPOLRound).TwoThirdsMajority(); ok {
-					peer.TrySend(StateChannel, MustEncode(&VoteSetMaj23Message{
-						Height:  prs.Height,
-						Round:   prs.ProposalPOLRound,
-						Type:    tmproto.PrevoteType,
-						BlockID: maj23,
-					}))
-					time.Sleep(r.conS.config.PeerQueryMaj23SleepDuration)
-				}
-			}
-		}
-
-		// Little point sending LastCommitRound/LastCommit,
-		// These are fleeting and non-blocking.
-
-		// Maybe send Height/CatchupCommitRound/CatchupCommit.
-		{
-			prs := ps.GetRoundState()
-			if prs.CatchupCommitRound != -1 && prs.Height > 0 && prs.Height <= r.conS.blockStore.Height() &&
-				prs.Height >= r.conS.blockStore.Base() {
-				if commit := r.conS.LoadCommit(prs.Height); commit != nil {
-					peer.TrySend(StateChannel, MustEncode(&VoteSetMaj23Message{
-						Height:  prs.Height,
-						Round:   commit.Round,
-						Type:    tmproto.PrecommitType,
-						BlockID: commit.BlockID,
-					}))
-					time.Sleep(r.conS.config.PeerQueryMaj23SleepDuration)
-				}
-			}
-		}
-
-		time.Sleep(r.conS.config.PeerQueryMaj23SleepDuration)
-
-		continue OUTER_LOOP
-	}
 }
 
 func (r *Reactor) peerStatsRoutine() {
