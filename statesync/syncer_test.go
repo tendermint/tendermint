@@ -14,9 +14,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/proxy"
 	proxymocks "github.com/tendermint/tendermint/proxy/mocks"
 	sm "github.com/tendermint/tendermint/state"
@@ -30,8 +28,8 @@ var ctx = context.Background()
 func TestSyncer_SyncAny(t *testing.T) {
 	state := sm.State{
 		ChainID: "chain",
-		Version: tmstate.Version{
-			Consensus: tmversion.Consensus{
+		Version: sm.Version{
+			Consensus: version.Consensus{
 				Block: version.BlockProtocol,
 				App:   0,
 			},

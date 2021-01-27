@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	sm "github.com/tendermint/tendermint/state"
 	smmocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/store"
@@ -444,7 +443,7 @@ func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) *store.Bloc
 		block, _ := state.MakeBlock(i, []types.Tx{}, lastCommit, nil,
 			state.Validators.GetProposer().Address)
 		block.Header.Time = defaultEvidenceTime.Add(time.Duration(i) * time.Minute)
-		block.Header.Version = tmversion.Consensus{Block: version.BlockProtocol, App: 1}
+		block.Header.Version = version.Consensus{Block: version.BlockProtocol, App: 1}
 		const parts = 1
 		partSet := block.MakePartSet(parts)
 

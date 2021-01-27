@@ -23,16 +23,41 @@ var (
 
 //-----------------------------------------------------------------------------
 
+type Version struct {
+	Consensus version.Consensus ` json:"consensus"`
+	Software  string            ` json:"software"`
+}
+
 // InitStateVersion sets the Consensus.Block and Software versions,
 // but leaves the Consensus.App version blank.
 // The Consensus.App version will be set during the Handshake, once
 // we hear from the app what protocol version it is running.
-var InitStateVersion = tmstate.Version{
-	Consensus: tmversion.Consensus{
+var InitStateVersion = Version{
+	Consensus: version.Consensus{
 		Block: version.BlockProtocol,
 		App:   0,
 	},
 	Software: version.TMCoreSemVer,
+}
+
+func (v *Version) ToProto() tmstate.Version {
+	return tmstate.Version{
+		Consensus: tmversion.Consensus{
+			Block: v.Consensus.Block,
+			App:   v.Consensus.App,
+		},
+		Software: v.Software,
+	}
+}
+
+func VersionFromProto(v tmstate.Version) Version {
+	return Version{
+		Consensus: version.Consensus{
+			Block: v.Consensus.Block,
+			App:   v.Consensus.App,
+		},
+		Software: v.Software,
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -45,7 +70,7 @@ var InitStateVersion = tmstate.Version{
 // Instead, use state.Copy() or state.NextState(...).
 // NOTE: not goroutine-safe.
 type State struct {
-	Version tmstate.Version
+	Version Version
 
 	// immutable
 	ChainID       string
@@ -138,7 +163,7 @@ func (state *State) ToProto() (*tmstate.State, error) {
 
 	sm := new(tmstate.State)
 
-	sm.Version = state.Version
+	sm.Version = state.Version.ToProto()
 	sm.ChainID = state.ChainID
 	sm.InitialHeight = state.InitialHeight
 	sm.LastBlockHeight = state.LastBlockHeight
@@ -182,7 +207,7 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 
 	state := new(State)
 
-	state.Version = pb.Version
+	state.Version = VersionFromProto(pb.Version)
 	state.ChainID = pb.ChainID
 	state.InitialHeight = pb.InitialHeight
 
