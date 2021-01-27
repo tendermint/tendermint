@@ -376,6 +376,7 @@ func TestPEXReactorDialsPeerUpToMaxAttemptsInSeedMode(t *testing.T) {
 // with FlushStop. Before a fix, this non-deterministically reproduced
 // https://github.com/tendermint/tendermint/issues/3231.
 func TestPEXReactorSeedModeFlushStop(t *testing.T) {
+	t.Skip("flaky test, will be replaced by new P2P stack")
 	N := 2
 	switches := make([]*p2p.Switch, N)
 
