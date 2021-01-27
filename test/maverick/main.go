@@ -35,7 +35,7 @@ func init() {
 }
 
 func registerFlagsRootCmd(command *cobra.Command) {
-	command.PersistentFlags().String("log_level", config.LogLevel, "Log level")
+	command.PersistentFlags().String("log-level", config.LogLevel, "Log level")
 }
 
 func ParseConfig() (*cfg.Config, error) {

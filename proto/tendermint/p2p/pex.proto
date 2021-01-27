@@ -3,18 +3,23 @@ package tendermint.p2p;
 
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/p2p";
 
-import "tendermint/p2p/types.proto";
 import "gogoproto/gogo.proto";
+
+message PexAddress {
+  string id   = 1 [(gogoproto.customname) = "ID"];
+  string ip   = 2 [(gogoproto.customname) = "IP"];
+  uint32 port = 3;
+}
 
 message PexRequest {}
 
-message PexAddrs {
-  repeated NetAddress addrs = 1 [(gogoproto.nullable) = false];
+message PexResponse {
+  repeated PexAddress addresses = 1 [(gogoproto.nullable) = false];
 }
 
-message Message {
+message PexMessage {
   oneof sum {
-    PexRequest pex_request = 1;
-    PexAddrs   pex_addrs   = 2;
+    PexRequest  pex_request  = 1;
+    PexResponse pex_response = 2;
   }
 }

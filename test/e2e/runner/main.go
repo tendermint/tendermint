@@ -116,6 +116,11 @@ func NewCLI() *CLI {
 	cli.root.Flags().BoolVarP(&cli.preserve, "preserve", "p", false,
 		"Preserves the running of the test net after tests are completed")
 
+	cli.root.SetHelpCommand(&cobra.Command{
+		Use:    "no-help",
+		Hidden: true,
+	})
+
 	cli.root.AddCommand(&cobra.Command{
 		Use:   "setup",
 		Short: "Generates the testnet directory and configuration",
@@ -189,17 +194,26 @@ func NewCLI() *CLI {
 	})
 
 	cli.root.AddCommand(&cobra.Command{
-		Use:   "logs",
-		Short: "Shows the testnet logs",
+		Use:     "logs [node]",
+		Short:   "Shows the testnet or a specefic node's logs",
+		Example: "runner logs valiator03",
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 1 {
+				return execComposeVerbose(cli.testnet.Dir, "logs", args[0])
+			}
 			return execComposeVerbose(cli.testnet.Dir, "logs")
 		},
 	})
 
 	cli.root.AddCommand(&cobra.Command{
-		Use:   "tail",
-		Short: "Tails the testnet logs",
+		Use:   "tail [node]",
+		Short: "Tails the testnet or a specific node's logs",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 1 {
+				return execComposeVerbose(cli.testnet.Dir, "logs", "--follow", args[0])
+			}
 			return execComposeVerbose(cli.testnet.Dir, "logs", "--follow")
 		},
 	})

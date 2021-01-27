@@ -60,6 +60,7 @@ type Testnet struct {
 	ValidatorUpdates map[int64]map[*Node]int64
 	Nodes            []*Node
 	KeyType          string
+	LogLevel         string
 }
 
 // Node represents a Tendermint node in a testnet.
@@ -84,6 +85,7 @@ type Node struct {
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
 	Misbehaviors     map[int64]string
+	LogLevel         string
 }
 
 // LoadTestnet loads a testnet from a manifest file, using the filename to
@@ -123,6 +125,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 		ValidatorUpdates: map[int64]map[*Node]int64{},
 		Nodes:            []*Node{},
 		KeyType:          "ed25519",
+		LogLevel:         manifest.LogLevel,
 	}
 	if len(manifest.KeyType) != 0 {
 		testnet.KeyType = manifest.KeyType
@@ -159,6 +162,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			RetainBlocks:     nodeManifest.RetainBlocks,
 			Perturbations:    []Perturbation{},
 			Misbehaviors:     make(map[int64]string),
+			LogLevel:         manifest.LogLevel,
 		}
 		if node.StartAt == testnet.InitialHeight {
 			node.StartAt = 0 // normalize to 0 for initial nodes, since code expects this
@@ -187,6 +191,9 @@ func LoadTestnet(file string) (*Testnet, error) {
 				return nil, fmt.Errorf("unable to parse height %s to int64: %w", heightString, err)
 			}
 			node.Misbehaviors[height] = misbehavior
+		}
+		if nodeManifest.LogLevel != "" {
+			node.LogLevel = nodeManifest.LogLevel
 		}
 		testnet.Nodes = append(testnet.Nodes, node)
 	}
