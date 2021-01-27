@@ -32,6 +32,7 @@ const (
 	prefixValidators      = int64(5)
 	prefixConsensusParams = int64(6)
 	prefixABCIResponses   = int64(7)
+	prefixState           = int64(8)
 )
 
 func encodeKey(prefix int64, height int64) []byte {
@@ -52,6 +53,14 @@ func consensusParamsKey(height int64) []byte {
 
 func abciResponsesKey(height int64) []byte {
 	return encodeKey(prefixABCIResponses, height)
+}
+
+func stateKey() []byte {
+	res, err := orderedcode.Append(nil, prefixState)
+	if err != nil {
+		panic(err)
+	}
+	return res
 }
 
 //----------------------
@@ -90,13 +99,15 @@ type Store interface {
 // dbStore wraps a db (github.com/tendermint/tm-db)
 type dbStore struct {
 	db dbm.DB
+
+	stateKey []byte
 }
 
 var _ Store = (*dbStore)(nil)
 
 // NewStore creates the dbStore of the state pkg.
 func NewStore(db dbm.DB) Store {
-	return dbStore{db}
+	return dbStore{db, stateKey()}
 }
 
 // LoadStateFromDBOrGenesisFile loads the most recent state from the database,
@@ -138,7 +149,7 @@ func (store dbStore) LoadFromDBOrGenesisDoc(genesisDoc *types.GenesisDoc) (State
 
 // LoadState loads the State from the database.
 func (store dbStore) Load() (State, error) {
-	return store.loadState(stateKey)
+	return store.loadState(store.stateKey)
 }
 
 func (store dbStore) loadState(key []byte) (state State, err error) {
@@ -170,7 +181,7 @@ func (store dbStore) loadState(key []byte) (state State, err error) {
 // Save persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
 // This flushes the writes (e.g. calls SetSync).
 func (store dbStore) Save(state State) error {
-	return store.save(state, stateKey)
+	return store.save(state, store.stateKey)
 }
 
 func (store dbStore) save(state State, key []byte) error {
@@ -227,7 +238,7 @@ func (store dbStore) Bootstrap(state State) error {
 		return err
 	}
 
-	return store.db.SetSync(stateKey, state.Bytes())
+	return store.db.SetSync(store.stateKey, state.Bytes())
 }
 
 // PruneStates deletes states up to the height specified (exclusive). It is not
@@ -330,7 +341,6 @@ func (store dbStore) batchDelete(start []byte, end []byte, exception []byte) err
 	if err != nil {
 		return fmt.Errorf("iterator error: %w", err)
 	}
-	defer iter.Close()
 
 	batch := store.db.NewBatch()
 	defer batch.Close()
@@ -351,10 +361,10 @@ func (store dbStore) batchDelete(start []byte, end []byte, exception []byte) err
 		// avoid batches growing too large by flushing to disk regularly
 		if pruned%1000 == 0 {
 			if err := iter.Error(); err != nil {
-				return err
+				return fmt.Errorf("iterator error: %w", err)
 			}
 			if err := iter.Close(); err != nil {
-				return err
+				return fmt.Errorf("iterator error: %w", err)
 			}
 
 			if err := batch.Write(); err != nil {
@@ -368,7 +378,6 @@ func (store dbStore) batchDelete(start []byte, end []byte, exception []byte) err
 			if err != nil {
 				return fmt.Errorf("iterator error: %w", err)
 			}
-			defer iter.Close()
 
 			batch = store.db.NewBatch()
 			defer batch.Close()
@@ -378,6 +387,10 @@ func (store dbStore) batchDelete(start []byte, end []byte, exception []byte) err
 	}
 
 	if err := iter.Error(); err != nil {
+		return fmt.Errorf("iterator error: %w", err)
+	}
+
+	if err := iter.Close(); err != nil {
 		return fmt.Errorf("iterator error: %w", err)
 	}
 

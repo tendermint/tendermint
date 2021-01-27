@@ -17,11 +17,6 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-// database keys
-var (
-	stateKey = []byte("stateKey")
-)
-
 //-----------------------------------------------------------------------------
 
 // InitStateVersion sets the Consensus.Block and Software versions,
