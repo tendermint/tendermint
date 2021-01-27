@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"path"
 	"runtime"
@@ -21,16 +22,13 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
-	cstypes "github.com/tendermint/tendermint/consensus/types"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
-	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/libs/bits"
-	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	p2pmock "github.com/tendermint/tendermint/p2p/mock"
+	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	statemocks "github.com/tendermint/tendermint/state/mocks"
@@ -38,74 +36,191 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-//----------------------------------------------
-// in-process testnets
+var (
+	rng             = rand.New(rand.NewSource(time.Now().UnixNano()))
+	defaultTestTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+)
 
-var defaultTestTime = time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+type reactorTestSuite struct {
+	reactor *Reactor
+	peerID  p2p.NodeID
+	sub     types.Subscription
 
-func startConsensusNet(t *testing.T, css []*State, n int) (
-	[]*Reactor,
-	[]types.Subscription,
-	[]*types.EventBus,
-) {
-	reactors := make([]*Reactor, n)
-	blocksSubs := make([]types.Subscription, 0)
-	eventBuses := make([]*types.EventBus, n)
-	for i := 0; i < n; i++ {
-		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
-		if err != nil {	t.Fatal(err)}*/
-		reactors[i] = NewReactor(css[i], true) // so we dont start the consensus states
-		reactors[i].SetLogger(css[i].Logger)
+	stateInCh      chan p2p.Envelope
+	stateOutCh     chan p2p.Envelope
+	statePeerErrCh chan p2p.PeerError
 
-		// eventBus is already started with the cs
-		eventBuses[i] = css[i].eventBus
-		reactors[i].SetEventBus(eventBuses[i])
+	dataInCh      chan p2p.Envelope
+	dataOutCh     chan p2p.Envelope
+	dataPeerErrCh chan p2p.PeerError
 
-		blocksSub, err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
-		require.NoError(t, err)
-		blocksSubs = append(blocksSubs, blocksSub)
+	voteInCh      chan p2p.Envelope
+	voteOutCh     chan p2p.Envelope
+	votePeerErrCh chan p2p.PeerError
 
-		if css[i].state.LastBlockHeight == 0 { // simulate handle initChain in handshake
-			if err := css[i].blockExec.Store().Save(css[i].state); err != nil {
-				t.Error(err)
-			}
+	voteSetBitsInCh      chan p2p.Envelope
+	voteSetBitsOutCh     chan p2p.Envelope
+	voteSetBitsPeerErrCh chan p2p.PeerError
 
-		}
-	}
-	// make connected switches and start all reactors
-	p2p.MakeConnectedSwitches(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
-		s.AddReactor("CONSENSUS", reactors[i])
-		s.SetLogger(reactors[i].conS.Logger.With("module", "p2p"))
-		return s
-	}, p2p.Connect2Switches)
-
-	// now that everyone is connected,  start the state machines
-	// If we started the state machines before everyone was connected,
-	// we'd block when the cs fires NewBlockEvent and the peers are trying to start their reactors
-	// TODO: is this still true with new pubsub?
-	for i := 0; i < n; i++ {
-		s := reactors[i].conS.GetState()
-		reactors[i].SwitchToConsensus(s, false)
-	}
-	return reactors, blocksSubs, eventBuses
+	peerUpdatesCh chan p2p.PeerUpdate
+	peerUpdates   *p2p.PeerUpdatesCh
 }
 
-func stopConsensusNet(logger log.Logger, reactors []*Reactor, eventBuses []*types.EventBus) {
-	logger.Info("stopConsensusNet", "n", len(reactors))
-	for i, r := range reactors {
-		logger.Info("stopConsensusNet: Stopping Reactor", "i", i)
-		if err := r.Switch.Stop(); err != nil {
-			logger.Error("error trying to stop switch", "error", err)
-		}
+func setup(t *testing.T, logger log.Logger, cs *State, chBuf uint) *reactorTestSuite {
+	t.Helper()
+
+	pID := make([]byte, 16)
+	_, err := rng.Read(pID)
+	require.NoError(t, err)
+
+	peerID, err := p2p.NewNodeID(fmt.Sprintf("%x", pID))
+	require.NoError(t, err)
+
+	peerUpdatesCh := make(chan p2p.PeerUpdate, chBuf)
+
+	rts := &reactorTestSuite{
+		stateInCh:            make(chan p2p.Envelope, chBuf),
+		stateOutCh:           make(chan p2p.Envelope, chBuf),
+		statePeerErrCh:       make(chan p2p.PeerError, chBuf),
+		dataInCh:             make(chan p2p.Envelope, chBuf),
+		dataOutCh:            make(chan p2p.Envelope, chBuf),
+		dataPeerErrCh:        make(chan p2p.PeerError, chBuf),
+		voteInCh:             make(chan p2p.Envelope, chBuf),
+		voteOutCh:            make(chan p2p.Envelope, chBuf),
+		votePeerErrCh:        make(chan p2p.PeerError, chBuf),
+		voteSetBitsInCh:      make(chan p2p.Envelope, chBuf),
+		voteSetBitsOutCh:     make(chan p2p.Envelope, chBuf),
+		voteSetBitsPeerErrCh: make(chan p2p.PeerError, chBuf),
+		peerUpdatesCh:        peerUpdatesCh,
+		peerUpdates:          p2p.NewPeerUpdates(peerUpdatesCh),
+		peerID:               peerID,
 	}
-	for i, b := range eventBuses {
-		logger.Info("stopConsensusNet: Stopping eventBus", "i", i)
-		if err := b.Stop(); err != nil {
-			logger.Error("error trying to stop eventbus", "error", err)
-		}
+
+	stateCh := p2p.NewChannel(
+		StateChannel,
+		new(tmcons.Message),
+		rts.stateInCh,
+		rts.stateOutCh,
+		rts.statePeerErrCh,
+	)
+
+	dataCh := p2p.NewChannel(
+		DataChannel,
+		new(tmcons.Message),
+		rts.dataInCh,
+		rts.dataOutCh,
+		rts.dataPeerErrCh,
+	)
+
+	voteCh := p2p.NewChannel(
+		VoteChannel,
+		new(tmcons.Message),
+		rts.voteInCh,
+		rts.voteOutCh,
+		rts.votePeerErrCh,
+	)
+
+	voteSetBitsCh := p2p.NewChannel(
+		VoteSetBitsChannel,
+		new(tmcons.Message),
+		rts.voteSetBitsInCh,
+		rts.voteSetBitsOutCh,
+		rts.voteSetBitsPeerErrCh,
+	)
+
+	rts.reactor = NewReactor(
+		logger, cs, stateCh, dataCh, voteCh, voteSetBitsCh, rts.peerUpdates, true,
+	)
+
+	rts.reactor.SetEventBus(cs.eventBus)
+
+	blocksSub, err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
+	require.NoError(t, err)
+	rts.sub = blocksSub
+
+	// simulate handle initChain in handshake
+	if cs.state.LastBlockHeight == 0 {
+		require.NoError(t, cs.blockExec.Store().Save(cs.state))
 	}
-	logger.Info("stopConsensusNet: DONE", "n", len(reactors))
+
+	require.NoError(t, rts.reactor.Start())
+	require.True(t, rts.reactor.IsRunning())
+
+	t.Cleanup(func() {
+		require.NoError(t, cs.eventBus.Stop())
+		require.NoError(t, rts.reactor.Stop())
+		require.False(t, rts.reactor.IsRunning())
+	})
+
+	return rts
 }
+
+// ============================================================================
+// ============================================================================
+// ============================================================================
+
+// func startConsensusNet(t *testing.T, css []*State, n int) (
+// 	[]*Reactor,
+// 	[]types.Subscription,
+// 	[]*types.EventBus,
+// ) {
+// 	reactors := make([]*Reactor, n)
+// 	blocksSubs := make([]types.Subscription, 0)
+// 	eventBuses := make([]*types.EventBus, n)
+// 	for i := 0; i < n; i++ {
+// 		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
+// 		if err != nil {	t.Fatal(err)}*/
+// 		reactors[i] = NewReactor(css[i], true) // so we dont start the consensus states
+// 		reactors[i].SetLogger(css[i].Logger)
+
+// 		// eventBus is already started with the cs
+// 		eventBuses[i] = css[i].eventBus
+// 		reactors[i].SetEventBus(eventBuses[i])
+
+// 		blocksSub, err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
+// 		require.NoError(t, err)
+// 		blocksSubs = append(blocksSubs, blocksSub)
+
+// 		if css[i].state.LastBlockHeight == 0 { // simulate handle initChain in handshake
+// 			if err := css[i].blockExec.Store().Save(css[i].state); err != nil {
+// 				t.Error(err)
+// 			}
+// 		}
+// 	}
+// 	// make connected switches and start all reactors
+// 	p2p.MakeConnectedSwitches(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
+// 		s.AddReactor("CONSENSUS", reactors[i])
+// 		s.SetLogger(reactors[i].conS.Logger.With("module", "p2p"))
+// 		return s
+// 	}, p2p.Connect2Switches)
+
+// 	// now that everyone is connected,  start the state machines
+// 	// If we started the state machines before everyone was connected,
+// 	// we'd block when the cs fires NewBlockEvent and the peers are trying to start their reactors
+// 	// TODO: is this still true with new pubsub?
+// 	for i := 0; i < n; i++ {
+// 		s := reactors[i].conS.GetState()
+// 		reactors[i].SwitchToConsensus(s, false)
+// 	}
+// 	return reactors, blocksSubs, eventBuses
+// }
+
+// func stopConsensusNet(logger log.Logger, reactors []*Reactor, eventBuses []*types.EventBus) {
+// 	logger.Info("stopConsensusNet", "n", len(reactors))
+// 	for i, r := range reactors {
+// 		logger.Info("stopConsensusNet: Stopping Reactor", "i", i)
+// 		if err := r.Switch.Stop(); err != nil {
+// 			logger.Error("error trying to stop switch", "error", err)
+// 		}
+// 	}
+// 	for i, b := range eventBuses {
+// 		logger.Info("stopConsensusNet: Stopping eventBus", "i", i)
+// 		if err := b.Stop(); err != nil {
+// 			logger.Error("error trying to stop eventbus", "error", err)
+// 		}
+// 	}
+// 	logger.Info("stopConsensusNet: DONE", "n", len(reactors))
+// }
 
 // Ensure a testnet makes blocks
 func TestReactorBasic(t *testing.T) {
@@ -662,313 +777,4 @@ func capture() {
 	trace := make([]byte, 10240000)
 	count := runtime.Stack(trace, true)
 	fmt.Printf("Stack of %d bytes: %s\n", count, trace)
-}
-
-//-------------------------------------------------------------
-// Ensure basic validation of structs is functioning
-
-func TestNewRoundStepMessageValidateBasic(t *testing.T) {
-	testCases := []struct { // nolint: maligned
-		expectErr              bool
-		messageRound           int32
-		messageLastCommitRound int32
-		messageHeight          int64
-		testName               string
-		messageStep            cstypes.RoundStepType
-	}{
-		{false, 0, 0, 0, "Valid Message", cstypes.RoundStepNewHeight},
-		{true, -1, 0, 0, "Negative round", cstypes.RoundStepNewHeight},
-		{true, 0, 0, -1, "Negative height", cstypes.RoundStepNewHeight},
-		{true, 0, 0, 0, "Invalid Step", cstypes.RoundStepCommit + 1},
-		// The following cases will be handled by ValidateHeight
-		{false, 0, 0, 1, "H == 1 but LCR != -1 ", cstypes.RoundStepNewHeight},
-		{false, 0, -1, 2, "H > 1 but LCR < 0", cstypes.RoundStepNewHeight},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			message := NewRoundStepMessage{
-				Height:          tc.messageHeight,
-				Round:           tc.messageRound,
-				Step:            tc.messageStep,
-				LastCommitRound: tc.messageLastCommitRound,
-			}
-
-			err := message.ValidateBasic()
-			if tc.expectErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-		})
-	}
-}
-
-func TestNewRoundStepMessageValidateHeight(t *testing.T) {
-	initialHeight := int64(10)
-	testCases := []struct { // nolint: maligned
-		expectErr              bool
-		messageLastCommitRound int32
-		messageHeight          int64
-		testName               string
-	}{
-		{false, 0, 11, "Valid Message"},
-		{true, 0, -1, "Negative height"},
-		{true, 0, 0, "Zero height"},
-		{true, 0, 10, "Initial height but LCR != -1 "},
-		{true, -1, 11, "Normal height but LCR < 0"},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			message := NewRoundStepMessage{
-				Height:          tc.messageHeight,
-				Round:           0,
-				Step:            cstypes.RoundStepNewHeight,
-				LastCommitRound: tc.messageLastCommitRound,
-			}
-
-			err := message.ValidateHeight(initialHeight)
-			if tc.expectErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-		})
-	}
-}
-
-func TestNewValidBlockMessageValidateBasic(t *testing.T) {
-	testCases := []struct {
-		malleateFn func(*NewValidBlockMessage)
-		expErr     string
-	}{
-		{func(msg *NewValidBlockMessage) {}, ""},
-		{func(msg *NewValidBlockMessage) { msg.Height = -1 }, "negative Height"},
-		{func(msg *NewValidBlockMessage) { msg.Round = -1 }, "negative Round"},
-		{
-			func(msg *NewValidBlockMessage) { msg.BlockPartSetHeader.Total = 2 },
-			"blockParts bit array size 1 not equal to BlockPartSetHeader.Total 2",
-		},
-		{
-			func(msg *NewValidBlockMessage) {
-				msg.BlockPartSetHeader.Total = 0
-				msg.BlockParts = bits.NewBitArray(0)
-			},
-			"empty blockParts",
-		},
-		{
-			func(msg *NewValidBlockMessage) { msg.BlockParts = bits.NewBitArray(int(types.MaxBlockPartsCount) + 1) },
-			"blockParts bit array size 1602 not equal to BlockPartSetHeader.Total 1",
-		},
-	}
-
-	for i, tc := range testCases {
-		tc := tc
-		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
-			msg := &NewValidBlockMessage{
-				Height: 1,
-				Round:  0,
-				BlockPartSetHeader: types.PartSetHeader{
-					Total: 1,
-				},
-				BlockParts: bits.NewBitArray(1),
-			}
-
-			tc.malleateFn(msg)
-			err := msg.ValidateBasic()
-			if tc.expErr != "" && assert.Error(t, err) {
-				assert.Contains(t, err.Error(), tc.expErr)
-			}
-		})
-	}
-}
-
-func TestProposalPOLMessageValidateBasic(t *testing.T) {
-	testCases := []struct {
-		malleateFn func(*ProposalPOLMessage)
-		expErr     string
-	}{
-		{func(msg *ProposalPOLMessage) {}, ""},
-		{func(msg *ProposalPOLMessage) { msg.Height = -1 }, "negative Height"},
-		{func(msg *ProposalPOLMessage) { msg.ProposalPOLRound = -1 }, "negative ProposalPOLRound"},
-		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(0) }, "empty ProposalPOL bit array"},
-		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(types.MaxVotesCount + 1) },
-			"proposalPOL bit array is too big: 10001, max: 10000"},
-	}
-
-	for i, tc := range testCases {
-		tc := tc
-		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
-			msg := &ProposalPOLMessage{
-				Height:           1,
-				ProposalPOLRound: 1,
-				ProposalPOL:      bits.NewBitArray(1),
-			}
-
-			tc.malleateFn(msg)
-			err := msg.ValidateBasic()
-			if tc.expErr != "" && assert.Error(t, err) {
-				assert.Contains(t, err.Error(), tc.expErr)
-			}
-		})
-	}
-}
-
-func TestBlockPartMessageValidateBasic(t *testing.T) {
-	testPart := new(types.Part)
-	testPart.Proof.LeafHash = tmhash.Sum([]byte("leaf"))
-	testCases := []struct {
-		testName      string
-		messageHeight int64
-		messageRound  int32
-		messagePart   *types.Part
-		expectErr     bool
-	}{
-		{"Valid Message", 0, 0, testPart, false},
-		{"Invalid Message", -1, 0, testPart, true},
-		{"Invalid Message", 0, -1, testPart, true},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			message := BlockPartMessage{
-				Height: tc.messageHeight,
-				Round:  tc.messageRound,
-				Part:   tc.messagePart,
-			}
-
-			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
-		})
-	}
-
-	message := BlockPartMessage{Height: 0, Round: 0, Part: new(types.Part)}
-	message.Part.Index = 1
-
-	assert.Equal(t, true, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
-}
-
-func TestHasVoteMessageValidateBasic(t *testing.T) {
-	const (
-		validSignedMsgType   tmproto.SignedMsgType = 0x01
-		invalidSignedMsgType tmproto.SignedMsgType = 0x03
-	)
-
-	testCases := []struct { // nolint: maligned
-		expectErr     bool
-		messageRound  int32
-		messageIndex  int32
-		messageHeight int64
-		testName      string
-		messageType   tmproto.SignedMsgType
-	}{
-		{false, 0, 0, 0, "Valid Message", validSignedMsgType},
-		{true, -1, 0, 0, "Invalid Message", validSignedMsgType},
-		{true, 0, -1, 0, "Invalid Message", validSignedMsgType},
-		{true, 0, 0, 0, "Invalid Message", invalidSignedMsgType},
-		{true, 0, 0, -1, "Invalid Message", validSignedMsgType},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			message := HasVoteMessage{
-				Height: tc.messageHeight,
-				Round:  tc.messageRound,
-				Type:   tc.messageType,
-				Index:  tc.messageIndex,
-			}
-
-			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
-		})
-	}
-}
-
-func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
-	const (
-		validSignedMsgType   tmproto.SignedMsgType = 0x01
-		invalidSignedMsgType tmproto.SignedMsgType = 0x03
-	)
-
-	validBlockID := types.BlockID{}
-	invalidBlockID := types.BlockID{
-		Hash: bytes.HexBytes{},
-		PartSetHeader: types.PartSetHeader{
-			Total: 1,
-			Hash:  []byte{0},
-		},
-	}
-
-	testCases := []struct { // nolint: maligned
-		expectErr      bool
-		messageRound   int32
-		messageHeight  int64
-		testName       string
-		messageType    tmproto.SignedMsgType
-		messageBlockID types.BlockID
-	}{
-		{false, 0, 0, "Valid Message", validSignedMsgType, validBlockID},
-		{true, -1, 0, "Invalid Message", validSignedMsgType, validBlockID},
-		{true, 0, -1, "Invalid Message", validSignedMsgType, validBlockID},
-		{true, 0, 0, "Invalid Message", invalidSignedMsgType, validBlockID},
-		{true, 0, 0, "Invalid Message", validSignedMsgType, invalidBlockID},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.testName, func(t *testing.T) {
-			message := VoteSetMaj23Message{
-				Height:  tc.messageHeight,
-				Round:   tc.messageRound,
-				Type:    tc.messageType,
-				BlockID: tc.messageBlockID,
-			}
-
-			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
-		})
-	}
-}
-
-func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
-	testCases := []struct {
-		malleateFn func(*VoteSetBitsMessage)
-		expErr     string
-	}{
-		{func(msg *VoteSetBitsMessage) {}, ""},
-		{func(msg *VoteSetBitsMessage) { msg.Height = -1 }, "negative Height"},
-		{func(msg *VoteSetBitsMessage) { msg.Type = 0x03 }, "invalid Type"},
-		{func(msg *VoteSetBitsMessage) {
-			msg.BlockID = types.BlockID{
-				Hash: bytes.HexBytes{},
-				PartSetHeader: types.PartSetHeader{
-					Total: 1,
-					Hash:  []byte{0},
-				},
-			}
-		}, "wrong BlockID: wrong PartSetHeader: wrong Hash:"},
-		{func(msg *VoteSetBitsMessage) { msg.Votes = bits.NewBitArray(types.MaxVotesCount + 1) },
-			"votes bit array is too big: 10001, max: 10000"},
-	}
-
-	for i, tc := range testCases {
-		tc := tc
-		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
-			msg := &VoteSetBitsMessage{
-				Height:  1,
-				Round:   0,
-				Type:    0x01,
-				Votes:   bits.NewBitArray(1),
-				BlockID: types.BlockID{},
-			}
-
-			tc.malleateFn(msg)
-			err := msg.ValidateBasic()
-			if tc.expErr != "" && assert.Error(t, err) {
-				assert.Contains(t, err.Error(), tc.expErr)
-			}
-		})
-	}
 }
