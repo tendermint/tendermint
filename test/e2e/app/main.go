@@ -200,28 +200,35 @@ func setupNode() (*config.Config, log.Logger, *p2p.NodeKey, error) {
 	if home == "" {
 		return nil, nil, nil, errors.New("TMHOME not set")
 	}
+
 	viper.AddConfigPath(filepath.Join(home, "config"))
 	viper.SetConfigName("config")
-	err := viper.ReadInConfig()
-	if err != nil {
+
+	if err := viper.ReadInConfig(); err != nil {
 		return nil, nil, nil, err
 	}
+
 	tmcfg = config.DefaultConfig()
-	err = viper.Unmarshal(tmcfg)
-	if err != nil {
+
+	if err := viper.Unmarshal(tmcfg); err != nil {
 		return nil, nil, nil, err
 	}
+
 	tmcfg.SetRoot(home)
-	if err = tmcfg.ValidateBasic(); err != nil {
+
+	if err := tmcfg.ValidateBasic(); err != nil {
 		return nil, nil, nil, fmt.Errorf("error in config file: %w", err)
 	}
+
 	if tmcfg.LogFormat == config.LogFormatJSON {
 		logger = log.NewTMJSONLogger(log.NewSyncWriter(os.Stdout))
 	}
-	nodeLogger, err := tmflags.ParseLogLevel(tmcfg.LogLevel, logger, config.DefaultLogLevel())
+
+	nodeLogger, err := tmflags.ParseLogLevel(tmcfg.LogLevel, logger, config.DefaultLogLevel)
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
 	nodeLogger = nodeLogger.With("module", "main")
 
 	nodeKey, err := p2p.LoadOrGenNodeKey(tmcfg.NodeKeyFile())

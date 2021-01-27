@@ -295,7 +295,7 @@ func (cs *State) enterPrevote(height int64, round int32) {
 		cs.newStep()
 	}()
 
-	cs.Logger.Info(fmt.Sprintf("enterPrevote(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+	cs.Logger.Debug(fmt.Sprintf("enterPrevote(%v/%v); current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	// Sign and broadcast vote as necessary
 	if b, ok := cs.misbehaviors[cs.Height]; ok {
@@ -389,7 +389,7 @@ func (cs *State) addVote(
 	// Height mismatch is ignored.
 	// Not necessarily a bad peer, but not favourable behaviour.
 	if vote.Height != cs.Height {
-		cs.Logger.Info("Vote ignored and not added", "voteHeight", vote.Height, "csHeight", cs.Height, "peerID", peerID)
+		cs.Logger.Debug("vote ignored and not added", "voteHeight", vote.Height, "csHeight", cs.Height, "peerID", peerID)
 		return
 	}
 
@@ -1114,7 +1114,7 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	}
 
 	if now := tmtime.Now(); cs.StartTime.After(now) {
-		logger.Info("Need to set a buffer and log message here for sanity.", "startTime", cs.StartTime, "now", now)
+		logger.Debug("need to set a buffer and log message here for sanity", "startTime", cs.StartTime, "now", now)
 	}
 
 	logger.Info(fmt.Sprintf("enterNewRound(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
@@ -1293,7 +1293,8 @@ func (cs *State) enterPrevoteWait(height int64, round int32) {
 	if !cs.Votes.Prevotes(round).HasTwoThirdsAny() {
 		panic(fmt.Sprintf("enterPrevoteWait(%v/%v), but Prevotes does not have any +2/3 votes", height, round))
 	}
-	logger.Info(fmt.Sprintf("enterPrevoteWait(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+
+	logger.Debug(fmt.Sprintf("enterPrevoteWait(%v/%v); current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	defer func() {
 		// Done enterPrevoteWait:
@@ -1378,11 +1379,11 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 	if !cs.ProposalBlock.HashesTo(blockID.Hash) {
 		if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
 			logger.Info(
-				"Commit is for a block we don't know about. Set ProposalBlock=nil",
-				"proposal",
-				cs.ProposalBlock.Hash(),
-				"commit",
-				blockID.Hash)
+				"commit is for a block we do not know about; set ProposalBlock=nil",
+				"proposal", cs.ProposalBlock.Hash(),
+				"commit", blockID.Hash,
+			)
+
 			// We're getting the wrong block.
 			// Set up ProposalBlockParts and keep waiting.
 			cs.ProposalBlock = nil
@@ -1414,12 +1415,11 @@ func (cs *State) tryFinalizeCommit(height int64) {
 	if !cs.ProposalBlock.HashesTo(blockID.Hash) {
 		// TODO: this happens every time if we're not a validator (ugly logs)
 		// TODO: ^^ wait, why does it matter that we're a validator?
-		logger.Info(
-			"Attempt to finalize failed. We don't have the commit block.",
-			"proposal-block",
-			cs.ProposalBlock.Hash(),
-			"commit-block",
-			blockID.Hash)
+		logger.Debug(
+			"attempt to finalize failed; we do not have the commit block",
+			"proposal-block", cs.ProposalBlock.Hash(),
+			"commit-block", blockID.Hash,
+		)
 		return
 	}
 
@@ -1455,12 +1455,13 @@ func (cs *State) finalizeCommit(height int64) {
 		panic(fmt.Errorf("+2/3 committed an invalid block: %w", err))
 	}
 
-	cs.Logger.Info("Finalizing commit of block with N txs",
+	cs.Logger.Info("finalizing commit of block with N txs",
 		"height", block.Height,
 		"hash", block.Hash(),
 		"root", block.AppHash,
-		"N", len(block.Txs))
-	cs.Logger.Info(fmt.Sprintf("%v", block))
+		"N", len(block.Txs),
+	)
+	cs.Logger.Debug(fmt.Sprintf("%v", block))
 
 	fail.Fail() // XXX
 
@@ -1473,7 +1474,7 @@ func (cs *State) finalizeCommit(height int64) {
 		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
 	} else {
 		// Happens during replay if we already saved the block but didn't commit
-		cs.Logger.Info("Calling finalizeCommit on already stored block", "height", block.Height)
+		cs.Logger.Debug("calling finalizeCommit on already stored block", "height", block.Height)
 	}
 
 	fail.Fail() // XXX

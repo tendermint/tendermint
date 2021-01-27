@@ -60,20 +60,25 @@ var RootCmd = &cobra.Command{
 		"through a flag. See maverick node --help for how the misbehavior flag is constructured",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
 		fmt.Printf("use: %v, args: %v", cmd.Use, cmd.Args)
+
 		config, err = ParseConfig()
 		if err != nil {
 			return err
 		}
+
 		if config.LogFormat == cfg.LogFormatJSON {
 			logger = log.NewTMJSONLogger(log.NewSyncWriter(os.Stdout))
 		}
-		logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
+
+		logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel)
 		if err != nil {
 			return err
 		}
+
 		if viper.GetBool(cli.TraceFlag) {
 			logger = log.NewTracingLogger(logger)
 		}
+
 		logger = logger.With("module", "main")
 		return nil
 	},
