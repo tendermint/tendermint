@@ -371,7 +371,7 @@ Run: `make test_integrations`
 
 End-to-end tests are used to verify a fully integrated Tendermint network.
 
-See (README)[./test/e2e/README.md] for details.
+See [README](./test/e2e/README.md) for details.
 
 Run:
 
@@ -388,7 +388,7 @@ replicate all the changes in `./test/maverick/consensus`**. Maverick is a
 byzantine node used to assert that the validator gets punished for malicious
 behavior.
 
-See (README)[./test/maverick/README.md] for details.
+See [README](./test/maverick/README.md) for details.
 
 ### Model-based tests (ADVANCED)
 
