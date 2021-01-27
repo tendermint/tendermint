@@ -136,7 +136,7 @@ func MakeDockerCompose(testnet *e2e.Testnet) ([]byte, error) {
 			if misbehaviorString != "" {
 				command += " --misbehaviors " + misbehaviorString
 			}
-			if logLevel != "" && logLevel != config.DefaultPackageLogLevels() {
+			if logLevel != "" && logLevel != config.DefaultLogLevel {
 				command += " --log-level " + logLevel
 			}
 			return command

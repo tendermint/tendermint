@@ -20,6 +20,9 @@ const (
 	LogFormatPlain = "plain"
 	// LogFormatJSON is a format for json output
 	LogFormatJSON = "json"
+
+	// DefaultLogLevel defines a default log level as INFO.
+	DefaultLogLevel = "info"
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -235,7 +238,7 @@ func DefaultBaseConfig() BaseConfig {
 		Moniker:            defaultMoniker,
 		ProxyApp:           "tcp://127.0.0.1:26658",
 		ABCI:               "socket",
-		LogLevel:           DefaultPackageLogLevels(),
+		LogLevel:           DefaultLogLevel,
 		LogFormat:          LogFormatPlain,
 		FastSyncMode:       true,
 		FilterPeers:        false,
@@ -320,17 +323,6 @@ func (cfg BaseConfig) ValidateBasic() error {
 		return errors.New("unknown log format (must be 'plain' or 'json')")
 	}
 	return nil
-}
-
-// DefaultLogLevel returns a default log level of "error"
-func DefaultLogLevel() string {
-	return "error"
-}
-
-// DefaultPackageLogLevels returns a default log level setting so all packages
-// log at "error", while the `state` and `main` packages log at "info"
-func DefaultPackageLogLevels() string {
-	return fmt.Sprintf("main:info,state:info,statesync:info,*:%s", DefaultLogLevel())
 }
 
 //-----------------------------------------------------------------------------
