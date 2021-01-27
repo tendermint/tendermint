@@ -64,7 +64,7 @@ jobs:
         id: set-crashers-count
 
     outputs:
-      crashers_count: ${{ steps.set-crashers-count.outputs.crashers-count }}
+      crashers-count: ${{ steps.set-crashers-count.outputs.crashers-count }}
 
   fuzz-nightly-fail:
     needs: fuzz-nightly-test
