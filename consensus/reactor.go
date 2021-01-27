@@ -206,6 +206,85 @@ func (r *Reactor) OnStop() {
 	<-r.peerUpdates.Done()
 }
 
+// SetEventBus sets the reactor's event bus.
+func (r *Reactor) SetEventBus(b *types.EventBus) {
+	r.eventBus = b
+	r.conS.SetEventBus(b)
+}
+
+// WaitSync returns whether the consensus reactor is waiting for state/fast sync.
+func (r *Reactor) WaitSync() bool {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	return r.waitSync
+}
+
+// ReactorMetrics sets the reactor's metrics as an option function.
+func ReactorMetrics(metrics *Metrics) ReactorOption {
+	return func(r *Reactor) { r.Metrics = metrics }
+}
+
+// SwitchToConsensus switches from fast-sync mode to consensus mode. It resets
+// the state, turns off fast-sync, and starts the consensus state-machine.
+func (r *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
+	r.Logger.Info("switching to consensus")
+
+	// we have no votes, so reconstruct LastCommit from SeenCommit
+	if state.LastBlockHeight > 0 {
+		r.conS.reconstructLastCommit(state)
+	}
+
+	// NOTE: The line below causes broadcastNewRoundStepRoutine() to broadcast a
+	// NewRoundStepMessage.
+	r.conS.updateToState(state)
+
+	r.mtx.Lock()
+	r.waitSync = false
+	r.mtx.Unlock()
+
+	r.Metrics.FastSyncing.Set(0)
+	r.Metrics.StateSyncing.Set(0)
+
+	if skipWAL {
+		r.conS.doWALCatchup = false
+	}
+
+	if err := r.conS.Start(); err != nil {
+		panic(fmt.Sprintf(`failed to start consensus state: %v
+
+conS:
+%+v
+
+conR:
+%+v`, err, r.conS, r))
+	}
+}
+
+// String returns a string representation of the Reactor.
+//
+// NOTE: For now, it is just a hard-coded string to avoid accessing unprotected
+// shared variables.
+//
+// TODO: improve!
+func (r *Reactor) String() string {
+	return "ConsensusReactor"
+}
+
+// StringIndented returns an indented string representation of the Reactor.
+func (r *Reactor) StringIndented(indent string) string {
+	s := "ConsensusReactor{\n"
+	s += indent + "  " + r.conS.StringIndented(indent+"  ") + "\n"
+
+	for _, v := range r.peers.Values() {
+		ps := v.(*PeerState)
+		s += indent + "  " + ps.StringIndented(indent+"  ") + "\n"
+	}
+
+	s += indent + "}"
+	return s
+}
+
 func (r *Reactor) broadcastNewRoundStepMessage(rs *cstypes.RoundState) {
 	r.stateCh.Out() <- p2p.Envelope{
 		Broadcast: true,
@@ -1204,124 +1283,41 @@ func (r *Reactor) processPeerUpdates() {
 	}
 }
 
-// SwitchToConsensus switches from fast-sync mode to consensus mode. It resets
-// the state, turns off fast-sync, and starts the consensus state-machine.
-func (r *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
-	r.Logger.Info("switching to consensus")
-
-	// we have no votes, so reconstruct LastCommit from SeenCommit
-	if state.LastBlockHeight > 0 {
-		r.conS.reconstructLastCommit(state)
-	}
-
-	// NOTE: The line below causes broadcastNewRoundStepRoutine() to broadcast a
-	// NewRoundStepMessage.
-	r.conS.updateToState(state)
-
-	r.mtx.Lock()
-	r.waitSync = false
-	r.mtx.Unlock()
-
-	r.Metrics.FastSyncing.Set(0)
-	r.Metrics.StateSyncing.Set(0)
-
-	if skipWAL {
-		r.conS.doWALCatchup = false
-	}
-
-	if err := r.conS.Start(); err != nil {
-		panic(fmt.Sprintf(`failed to start consensus state: %v
-
-conS:
-%+v
-
-conR:
-%+v`, err, r.conS, r))
-	}
-}
-
-// SetEventBus sets the reactor's event bus.
-func (r *Reactor) SetEventBus(b *types.EventBus) {
-	r.eventBus = b
-	r.conS.SetEventBus(b)
-}
-
-// WaitSync returns whether the consensus reactor is waiting for state/fast sync.
-func (r *Reactor) WaitSync() bool {
-	r.mtx.RLock()
-	defer r.mtx.RUnlock()
-
-	return r.waitSync
-}
-
-// String returns a string representation of the Reactor.
-//
-// NOTE: For now, it is just a hard-coded string to avoid accessing unprotected
-// shared variables.
-//
-// TODO: improve!
-func (r *Reactor) String() string {
-	return "ConsensusReactor"
-}
-
-// StringIndented returns an indented string representation of the Reactor.
-func (r *Reactor) StringIndented(indent string) string {
-	s := "ConsensusReactor{\n"
-	s += indent + "  " + r.conS.StringIndented(indent+"  ") + "\n"
-
-	for _, v := range r.peers.Values() {
-		ps := v.(*PeerState)
-		s += indent + "  " + ps.StringIndented(indent+"  ") + "\n"
-	}
-
-	s += indent + "}"
-	return s
-}
-
-// ReactorMetrics sets the metrics
-func ReactorMetrics(metrics *Metrics) ReactorOption {
-	return func(r *Reactor) { r.Metrics = metrics }
-}
-
-// ############################################################################
-// ############################################################################
-// ############################################################################
-
 func (r *Reactor) peerStatsRoutine() {
 	for {
 		if !r.IsRunning() {
-			r.Logger.Info("Stopping peerStatsRoutine")
+			r.Logger.Info("stopping peerStatsRoutine")
 			return
 		}
 
 		select {
 		case msg := <-r.conS.statsMsgQueue:
-			// Get peer
-			peer := r.Switch.Peers().Get(msg.PeerID)
+			psKey := string(msg.PeerID)
+
+			peer := r.peers.Get(psKey)
 			if peer == nil {
-				r.Logger.Debug("Attempt to update stats for non-existent peer",
-					"peer", msg.PeerID)
+				r.Logger.Debug("attempt to update stats for non-existent peer", "peer", msg.PeerID)
 				continue
 			}
-			// Get peer state
-			ps, ok := peer.Get(types.PeerStateKey).(*PeerState)
+
+			ps, ok := r.peers.Get(psKey).(*PeerState)
 			if !ok {
-				panic(fmt.Sprintf("Peer %v has no state", peer))
+				panic(fmt.Sprintf("peer %v has no state", psKey))
 			}
+
 			switch msg.Msg.(type) {
 			case *VoteMessage:
 				if numVotes := ps.RecordVote(); numVotes%votesToContributeToBecomeGoodPeer == 0 {
-					r.Switch.MarkPeerAsGood(peer)
+					// r.Switch.MarkPeerAsGood(peer)
 				}
+
 			case *BlockPartMessage:
 				if numParts := ps.RecordBlockPart(); numParts%blocksToContributeToBecomeGoodPeer == 0 {
-					r.Switch.MarkPeerAsGood(peer)
+					// r.Switch.MarkPeerAsGood(peer)
 				}
 			}
-		case <-r.conS.Quit():
-			return
 
-		case <-r.Quit():
+		case <-r.closeCh:
 			return
 		}
 	}
