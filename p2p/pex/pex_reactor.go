@@ -285,9 +285,9 @@ func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 			r.SendAddrs(src, r.book.GetSelection())
 		}
 
-	case *tmp2p.PexAddrs:
+	case *tmp2p.PexResponse:
 		// If we asked for addresses, add them to the book
-		addrs, err := p2p.NetAddressesFromProto(msg.Addrs)
+		addrs, err := p2p.NetAddressesFromProto(msg.Addresses)
 		if err != nil {
 			r.Switch.StopPeerForError(src, err)
 			r.book.MarkBad(src.SocketAddr(), defaultBanTime)
@@ -409,7 +409,7 @@ func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 // SendAddrs sends addrs to the peer.
 func (r *Reactor) SendAddrs(p Peer, netAddrs []*p2p.NetAddress) {
-	p.Send(PexChannel, mustEncode(&tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(netAddrs)}))
+	p.Send(PexChannel, mustEncode(&tmp2p.PexResponse{Addresses: p2p.NetAddressesToProto(netAddrs)}))
 }
 
 // SetEnsurePeersPeriod sets period to ensure peers connected.
@@ -773,12 +773,12 @@ func markAddrInBookBasedOnErr(addr *p2p.NetAddress, book AddrBook, err error) {
 
 // mustEncode proto encodes a tmp2p.Message
 func mustEncode(pb proto.Message) []byte {
-	msg := tmp2p.Message{}
+	msg := tmp2p.PexMessage{}
 	switch pb := pb.(type) {
 	case *tmp2p.PexRequest:
-		msg.Sum = &tmp2p.Message_PexRequest{PexRequest: pb}
-	case *tmp2p.PexAddrs:
-		msg.Sum = &tmp2p.Message_PexAddrs{PexAddrs: pb}
+		msg.Sum = &tmp2p.PexMessage_PexRequest{PexRequest: pb}
+	case *tmp2p.PexResponse:
+		msg.Sum = &tmp2p.PexMessage_PexResponse{PexResponse: pb}
 	default:
 		panic(fmt.Sprintf("Unknown message type %T", pb))
 	}
@@ -791,7 +791,7 @@ func mustEncode(pb proto.Message) []byte {
 }
 
 func decodeMsg(bz []byte) (proto.Message, error) {
-	pb := &tmp2p.Message{}
+	pb := &tmp2p.PexMessage{}
 
 	err := pb.Unmarshal(bz)
 	if err != nil {
@@ -799,10 +799,10 @@ func decodeMsg(bz []byte) (proto.Message, error) {
 	}
 
 	switch msg := pb.Sum.(type) {
-	case *tmp2p.Message_PexRequest:
+	case *tmp2p.PexMessage_PexRequest:
 		return msg.PexRequest, nil
-	case *tmp2p.Message_PexAddrs:
-		return msg.PexAddrs, nil
+	case *tmp2p.PexMessage_PexResponse:
+		return msg.PexResponse, nil
 	default:
 		return nil, fmt.Errorf("unknown message: %T", msg)
 	}

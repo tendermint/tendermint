@@ -495,27 +495,22 @@ func (m *PeerManager) Add(address PeerAddress) error {
 
 // Advertise returns a list of peer addresses to advertise to a peer.
 //
-// FIXME: We currently just pass all addresses we have, which is very naïve. We
-// should e.g. only send addresses that the peer can actually reach (by
-// resolving the addresses into endpoints and making sure any private IP
-// addresses are on the same network as the remote peer endpoint). However, this
-// would require resolving endpoints either here (too slow) or generally in the
-// peer manager -- maybe it should keep track of endpoints internally instead of
-// leaving that to the router when dialing?
+// FIXME: This is fairly naïve and only returns the addresses of the
+// highest-ranked peers.
 func (m *PeerManager) Advertise(peerID NodeID, limit uint16) []PeerAddress {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	addresses := []PeerAddress{}
+	addresses := make([]PeerAddress, 0, limit)
 	for _, peer := range m.store.Ranked() {
-		switch {
-		case len(addresses) >= int(limit):
-			break
-		case peer.ID == peerID:
-		default:
-			for _, addressInfo := range peer.AddressInfo {
-				addresses = append(addresses, addressInfo.Address)
+		if peer.ID == peerID {
+			continue
+		}
+		for _, addressInfo := range peer.AddressInfo {
+			if len(addresses) >= int(limit) {
+				return addresses
 			}
+			addresses = append(addresses, addressInfo.Address)
 		}
 	}
 	return addresses
