@@ -17,7 +17,6 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	cs "github.com/tendermint/tendermint/test/maverick/consensus"
 	nd "github.com/tendermint/tendermint/test/maverick/node"
 	"github.com/tendermint/tendermint/types"
@@ -217,7 +216,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 			ConsensusParams: types.DefaultConsensusParams(),
 		}
 		if keyType == "secp256k1" {
-			genDoc.ConsensusParams.Validator = tmproto.ValidatorParams{
+			genDoc.ConsensusParams.Validator = types.ValidatorParams{
 				PubKeyTypes: []string{types.ABCIPubKeyTypeSecp256k1},
 			}
 		}

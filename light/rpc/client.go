@@ -205,7 +205,7 @@ func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*ctypes.Re
 	}
 
 	// Validate res.
-	if err := types.ValidateConsensusParams(res.ConsensusParams); err != nil {
+	if err := res.ConsensusParams.ValidateConsensusParams(); err != nil {
 		return nil, err
 	}
 	if res.BlockHeight <= 0 {
@@ -219,7 +219,7 @@ func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*ctypes.Re
 	}
 
 	// Verify hash.
-	if cH, tH := types.HashConsensusParams(res.ConsensusParams), l.ConsensusHash; !bytes.Equal(cH, tH) {
+	if cH, tH := res.ConsensusParams.HashConsensusParams(), l.ConsensusHash; !bytes.Equal(cH, tH) {
 		return nil, fmt.Errorf("params hash %X does not match trusted hash %X",
 			cH, tH)
 	}

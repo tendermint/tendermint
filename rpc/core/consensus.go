@@ -102,7 +102,8 @@ func ConsensusParams(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCon
 	if err != nil {
 		return nil, err
 	}
+	params := types.ConsensusParamsFromProto(consensusParams)
 	return &ctypes.ResultConsensusParams{
 		BlockHeight:     height,
-		ConsensusParams: consensusParams}, nil
+		ConsensusParams: params}, nil
 }
