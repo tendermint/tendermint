@@ -50,9 +50,7 @@ func TestRouter(t *testing.T) {
 		peerRouter := p2p.NewRouter(
 			logger.With("peerID", i),
 			peerManager,
-			map[p2p.Protocol]p2p.Transport{
-				p2p.MemoryProtocol: peerTransport,
-			},
+			[]p2p.Transport{peerTransport},
 		)
 		peers = append(peers, peerTransport.Endpoints()[0].PeerAddress())
 
@@ -77,10 +75,7 @@ func TestRouter(t *testing.T) {
 	peerUpdates := peerManager.Subscribe()
 	defer peerUpdates.Close()
 
-	router := p2p.NewRouter(logger, peerManager, map[p2p.Protocol]p2p.Transport{
-		p2p.MemoryProtocol: transport,
-	})
-
+	router := p2p.NewRouter(logger, peerManager, []p2p.Transport{transport})
 	channel, err := router.OpenChannel(chID, &TestMessage{})
 	require.NoError(t, err)
 	defer channel.Close()

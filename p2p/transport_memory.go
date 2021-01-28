@@ -136,7 +136,14 @@ func newMemoryTransport(
 }
 
 // String displays the transport.
-func (t *MemoryTransport) String() string { return "memory" }
+func (t *MemoryTransport) String() string {
+	return "memory"
+}
+
+// Protocols implements Transport.
+func (t *MemoryTransport) Protocols() []Protocol {
+	return []Protocol{MemoryProtocol}
+}
 
 // Accept implements Transport.
 func (t *MemoryTransport) Accept(ctx context.Context) (Connection, error) {

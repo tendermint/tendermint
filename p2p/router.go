@@ -96,14 +96,10 @@ type Router struct {
 }
 
 // NewRouter creates a new Router, dialing the given peers.
-//
-// FIXME: providing protocol/transport maps is cumbersome in tests, we should
-// consider adding Protocols() to the Transport interface instead and register
-// protocol/transport mappings automatically on a first-come basis.
-func NewRouter(logger log.Logger, peerManager *PeerManager, transports map[Protocol]Transport) *Router {
+func NewRouter(logger log.Logger, peerManager *PeerManager, transports []Transport) *Router {
 	router := &Router{
 		logger:          logger,
-		transports:      transports,
+		transports:      map[Protocol]Transport{},
 		peerManager:     peerManager,
 		stopCh:          make(chan struct{}),
 		channelQueues:   map[ChannelID]queue{},
@@ -111,6 +107,15 @@ func NewRouter(logger log.Logger, peerManager *PeerManager, transports map[Proto
 		peerQueues:      map[NodeID]queue{},
 	}
 	router.BaseService = service.NewBaseService(logger, "router", router)
+
+	for _, transport := range transports {
+		for _, protocol := range transport.Protocols() {
+			if _, ok := router.transports[protocol]; !ok {
+				router.transports[protocol] = transport
+			}
+		}
+	}
+
 	return router
 }
 

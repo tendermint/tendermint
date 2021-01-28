@@ -682,6 +682,10 @@ func (et errorTransport) String() string {
 	return "error"
 }
 
+func (et errorTransport) Protocols() []Protocol {
+	return []Protocol{"error"}
+}
+
 func (et errorTransport) Accept(context.Context) (Connection, error) {
 	return nil, et.acceptErr
 }

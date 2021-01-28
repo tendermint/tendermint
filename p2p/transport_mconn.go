@@ -24,8 +24,10 @@ const (
 	defaultHandshakeTimeout = 3 * time.Second
 )
 
-// MConnProtocol is the MConn protocol identifier.
-const MConnProtocol Protocol = "mconn"
+const (
+	MConnProtocol Protocol = "mconn"
+	TCPProtocol   Protocol = "tcp"
+)
 
 // MConnTransportOption sets an option for MConnTransport.
 type MConnTransportOption func(*MConnTransport)
@@ -130,8 +132,15 @@ func NewMConnTransport(
 	return m
 }
 
-// String displays the transport.
-func (m *MConnTransport) String() string { return "mconn" }
+// String implements Transport.
+func (m *MConnTransport) String() string {
+	return string(MConnProtocol)
+}
+
+// Protocols implements Transport. We support tcp for backwards-compatibility.
+func (m *MConnTransport) Protocols() []Protocol {
+	return []Protocol{MConnProtocol, TCPProtocol}
+}
 
 // SetChannelDescriptors implements Transport.
 //
@@ -362,10 +371,7 @@ func (m *MConnTransport) normalizeEndpoint(endpoint *Endpoint) error {
 	if err := endpoint.Validate(); err != nil {
 		return err
 	}
-	if endpoint.Protocol == "" {
-		endpoint.Protocol = MConnProtocol
-	}
-	if endpoint.Protocol != MConnProtocol {
+	if endpoint.Protocol != MConnProtocol && endpoint.Protocol != TCPProtocol {
 		return fmt.Errorf("unsupported protocol %q", endpoint.Protocol)
 	}
 	if len(endpoint.IP) == 0 {

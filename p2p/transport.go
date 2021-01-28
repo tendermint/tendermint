@@ -19,6 +19,11 @@ type Transport interface {
 	// Stringer is used to display the transport, e.g. in logs.
 	fmt.Stringer
 
+	// Protocols returns the protocols the transport supports. The router will
+	// use this when mapping PeerAddress.Protocol (i.e. the URL scheme) to the
+	// appropriate transport.
+	Protocols() []Protocol
+
 	// Accept waits for the next inbound connection on a listening endpoint. If
 	// this returns io.EOF or ErrTransportClosed the transport should be
 	// considered closed and further Accept() calls are futile.
