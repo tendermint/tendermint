@@ -972,7 +972,7 @@ func (r *Reactor) handleStateMessage(envelope p2p.Envelope, msgI Message) error 
 
 		vsmMsg := msgI.(*VoteSetMaj23Message)
 
-		// peer claims to have a maj23 for some BlockID at H,R,S,
+		// peer claims to have a maj23 for some BlockID at <H,R,S>
 		err := votes.SetPeerMaj23(msg.Round, msg.Type, ps.peerID, vsmMsg.BlockID)
 		if err != nil {
 			return err
@@ -981,7 +981,7 @@ func (r *Reactor) handleStateMessage(envelope p2p.Envelope, msgI Message) error 
 		// Respond with a VoteSetBitsMessage showing which votes we have and
 		// consequently shows which we don't have.
 		var ourVotes *bits.BitArray
-		switch msg.Type {
+		switch vsmMsg.Type {
 		case tmproto.PrevoteType:
 			ourVotes = votes.Prevotes(msg.Round).BitArrayByBlockID(vsmMsg.BlockID)
 
