@@ -579,10 +579,10 @@ OUTER_LOOP:
 	}
 }
 
-// pickSendVote picks a vote and sends it to the peer.
-func (r *Reactor) pickSendVote(ps *PeerState, votes types.VoteSetReader) {
+// pickSendVote picks a vote and sends it to the peer. It will return true if
+// there is a vote to send and false otherwise.
+func (r *Reactor) pickSendVote(ps *PeerState, votes types.VoteSetReader) bool {
 	if vote, ok := ps.PickVoteToSend(votes); ok {
-
 		r.Logger.Debug("sending vote message", "ps", ps, "vote", vote)
 		r.voteCh.Out() <- p2p.Envelope{
 			To: ps.peerID,
@@ -592,7 +592,10 @@ func (r *Reactor) pickSendVote(ps *PeerState, votes types.VoteSetReader) {
 		}
 
 		ps.SetHasVote(vote)
+		return true
 	}
+
+	return false
 }
 
 func (r *Reactor) gossipVotesForHeight(rs *cstypes.RoundState, prs *cstypes.PeerRoundState, ps *PeerState) bool {
@@ -600,47 +603,53 @@ func (r *Reactor) gossipVotesForHeight(rs *cstypes.RoundState, prs *cstypes.Peer
 
 	// if there are lastCommits to send...
 	if prs.Step == cstypes.RoundStepNewHeight {
-		r.pickSendVote(ps, rs.LastCommit)
-		logger.Debug("picked rs.LastCommit to send")
-		return true
+		if r.pickSendVote(ps, rs.LastCommit) {
+			logger.Debug("picked rs.LastCommit to send")
+			return true
+		}
 	}
 
 	// if there are POL prevotes to send...
 	if prs.Step <= cstypes.RoundStepPropose && prs.Round != -1 && prs.Round <= rs.Round && prs.ProposalPOLRound != -1 {
 		if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
-			r.pickSendVote(ps, polPrevotes)
-			logger.Debug("picked rs.Prevotes(prs.ProposalPOLRound) to send", "round", prs.ProposalPOLRound)
-			return true
+			if r.pickSendVote(ps, polPrevotes) {
+				logger.Debug("picked rs.Prevotes(prs.ProposalPOLRound) to send", "round", prs.ProposalPOLRound)
+				return true
+			}
 		}
 	}
 
 	// if there are prevotes to send...
 	if prs.Step <= cstypes.RoundStepPrevoteWait && prs.Round != -1 && prs.Round <= rs.Round {
-		r.pickSendVote(ps, rs.Votes.Prevotes(prs.Round))
-		logger.Debug("picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
-		return true
+		if r.pickSendVote(ps, rs.Votes.Prevotes(prs.Round)) {
+			logger.Debug("picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
+			return true
+		}
 	}
 
 	// if there are precommits to send...
 	if prs.Step <= cstypes.RoundStepPrecommitWait && prs.Round != -1 && prs.Round <= rs.Round {
-		r.pickSendVote(ps, rs.Votes.Precommits(prs.Round))
-		logger.Debug("picked rs.Precommits(prs.Round) to send", "round", prs.Round)
-		return true
+		if r.pickSendVote(ps, rs.Votes.Precommits(prs.Round)) {
+			logger.Debug("picked rs.Precommits(prs.Round) to send", "round", prs.Round)
+			return true
+		}
 	}
 
 	// if there are prevotes to send...(which are needed because of validBlock mechanism)
 	if prs.Round != -1 && prs.Round <= rs.Round {
-		r.pickSendVote(ps, rs.Votes.Prevotes(prs.Round))
-		logger.Debug("picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
-		return true
+		if r.pickSendVote(ps, rs.Votes.Prevotes(prs.Round)) {
+			logger.Debug("picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
+			return true
+		}
 	}
 
 	// if there are POLPrevotes to send...
 	if prs.ProposalPOLRound != -1 {
 		if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
-			r.pickSendVote(ps, polPrevotes)
-			logger.Debug("picked rs.Prevotes(prs.ProposalPOLRound) to send", "round", prs.ProposalPOLRound)
-			return true
+			if r.pickSendVote(ps, polPrevotes) {
+				logger.Debug("picked rs.Prevotes(prs.ProposalPOLRound) to send", "round", prs.ProposalPOLRound)
+				return true
+			}
 		}
 	}
 
@@ -689,9 +698,10 @@ OUTER_LOOP:
 
 		// special catchup logic -- if peer is lagging by height 1, send LastCommit
 		if prs.Height != 0 && rs.Height == prs.Height+1 {
-			r.pickSendVote(ps, rs.LastCommit)
-			logger.Debug("picked rs.LastCommit to send", "height", prs.Height)
-			continue OUTER_LOOP
+			if r.pickSendVote(ps, rs.LastCommit) {
+				logger.Debug("picked rs.LastCommit to send", "height", prs.Height)
+				continue OUTER_LOOP
+			}
 		}
 
 		// catchup logic -- if peer is lagging by more than 1, send Commit
@@ -699,9 +709,10 @@ OUTER_LOOP:
 			// Load the block commit for prs.Height, which contains precommit
 			// signatures for prs.Height.
 			if commit := r.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
-				r.pickSendVote(ps, commit)
-				logger.Debug("picked Catchup commit to send", "height", prs.Height)
-				continue OUTER_LOOP
+				if r.pickSendVote(ps, commit) {
+					logger.Debug("picked Catchup commit to send", "height", prs.Height)
+					continue OUTER_LOOP
+				}
 			}
 		}
 
@@ -978,7 +989,7 @@ func (r *Reactor) handleStateMessage(envelope p2p.Envelope, msgI Message) error 
 		}
 
 	default:
-		return fmt.Errorf("received unknown message: %T", msg)
+		return fmt.Errorf("received unknown message on StateChannel: %T", msg)
 	}
 
 	return nil
@@ -1016,7 +1027,7 @@ func (r *Reactor) handleDataMessage(envelope p2p.Envelope, msgI Message) error {
 		r.conS.peerMsgQueue <- msgInfo{bpMsg, envelope.From}
 
 	default:
-		return fmt.Errorf("received unknown message: %T", msg)
+		return fmt.Errorf("received unknown message on DataChannel: %T", msg)
 	}
 
 	return nil
@@ -1053,7 +1064,7 @@ func (r *Reactor) handleVoteMessage(envelope p2p.Envelope, msgI Message) error {
 		cs.peerMsgQueue <- msgInfo{vMsg, envelope.From}
 
 	default:
-		return fmt.Errorf("received unknown message: %T", msg)
+		return fmt.Errorf("received unknown message on VoteChannel: %T", msg)
 	}
 
 	return nil
@@ -1104,7 +1115,7 @@ func (r *Reactor) handleVoteSetBitsMessage(envelope p2p.Envelope, msgI Message) 
 		}
 
 	default:
-		return fmt.Errorf("received unknown message: %T", msg)
+		return fmt.Errorf("received unknown message on VoteSetBitsChannel: %T", msg)
 	}
 
 	return nil
