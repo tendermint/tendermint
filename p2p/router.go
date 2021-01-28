@@ -252,6 +252,19 @@ func (r *Router) acceptPeers(transport Transport) {
 				_ = conn.Close()
 			}()
 
+			// FIXME: Because we do the handshake in each transport, rather than
+			// here in the Router, the remote peer will think they've
+			// successfully connected and start sending us messages, although we
+			// can end up rejecting the connection here. This can e.g. cause
+			// problems in tests, where because of race conditions a
+			// disconnection can cause the local node to immediately redial,
+			// while the remote node may not have completed the disconnection
+			// registration yet and reject the accept below.
+			//
+			// The Router should do the handshake, and we should check with the
+			// peer manager before completing the handshake -- this probably
+			// requires protocol changes to send an additional message when the
+			// handshake is accepted.
 			peerID := conn.NodeInfo().NodeID
 			if err := r.peerManager.Accepted(peerID); err != nil {
 				r.logger.Error("failed to accept connection", "peer", peerID, "err", err)
