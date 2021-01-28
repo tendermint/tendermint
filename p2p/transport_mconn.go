@@ -96,7 +96,9 @@ type MConnTransport struct {
 	connFilters []ConnFilterFunc
 }
 
-// NewMConnTransport sets up a new MConn transport.
+// NewMConnTransport sets up a new MConnection transport. This uses the
+// proprietary Tendermint MConnection protocol, which is implemented as
+// conn.MConnection.
 func NewMConnTransport(
 	logger log.Logger,
 	nodeInfo NodeInfo,
@@ -127,6 +129,9 @@ func NewMConnTransport(
 	}
 	return m
 }
+
+// String displays the transport.
+func (m *MConnTransport) String() string { return "mconn" }
 
 // SetChannelDescriptors implements Transport.
 //

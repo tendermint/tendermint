@@ -16,6 +16,9 @@ const (
 
 // Transport is an arbitrary mechanism for exchanging bytes with a peer.
 type Transport interface {
+	// Stringer is used to display the transport, e.g. in logs.
+	fmt.Stringer
+
 	// Accept waits for the next inbound connection on a listening endpoint. If
 	// this returns io.EOF or ErrTransportClosed the transport should be
 	// considered closed and further Accept() calls are futile.
