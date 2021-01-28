@@ -483,7 +483,6 @@ OUTER_LOOP:
 				}
 
 				logger.Debug("sending block part", "height", prs.Height, "round", prs.Round)
-
 				r.dataCh.Out() <- p2p.Envelope{
 					To: ps.peerID,
 					Message: &tmcons.BlockPart{
@@ -494,7 +493,6 @@ OUTER_LOOP:
 				}
 
 				ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
-
 				continue OUTER_LOOP
 			}
 		}
@@ -765,6 +763,7 @@ OUTER_LOOP:
 		{
 			rs := r.conS.GetRoundState()
 			prs := ps.GetRoundState()
+
 			if rs.Height == prs.Height {
 				if maj23, ok := rs.Votes.Prevotes(prs.Round).TwoThirdsMajority(); ok {
 					r.stateCh.Out() <- p2p.Envelope{
@@ -786,6 +785,7 @@ OUTER_LOOP:
 		{
 			rs := r.conS.GetRoundState()
 			prs := ps.GetRoundState()
+
 			if rs.Height == prs.Height {
 				if maj23, ok := rs.Votes.Precommits(prs.Round).TwoThirdsMajority(); ok {
 					r.stateCh.Out() <- p2p.Envelope{
@@ -807,6 +807,7 @@ OUTER_LOOP:
 		{
 			rs := r.conS.GetRoundState()
 			prs := ps.GetRoundState()
+
 			if rs.Height == prs.Height && prs.ProposalPOLRound >= 0 {
 				if maj23, ok := rs.Votes.Prevotes(prs.ProposalPOLRound).TwoThirdsMajority(); ok {
 					r.stateCh.Out() <- p2p.Envelope{
@@ -830,6 +831,7 @@ OUTER_LOOP:
 		// maybe send Height/CatchupCommitRound/CatchupCommit
 		{
 			prs := ps.GetRoundState()
+
 			if prs.CatchupCommitRound != -1 && prs.Height > 0 && prs.Height <= r.conS.blockStore.Height() &&
 				prs.Height >= r.conS.blockStore.Base() {
 				if commit := r.conS.LoadCommit(prs.Height); commit != nil {
@@ -943,9 +945,9 @@ func (r *Reactor) handleStateMessage(envelope p2p.Envelope, msgI Message) error 
 
 	switch msg := envelope.Message.(type) {
 	case *tmcons.NewRoundStep:
-		r.conS.mtx.Lock()
+		r.conS.mtx.RLock()
 		initialHeight := r.conS.state.InitialHeight
-		r.conS.mtx.Unlock()
+		r.conS.mtx.RUnlock()
 
 		if err := msgI.(*NewRoundStepMessage).ValidateHeight(initialHeight); err != nil {
 			r.Logger.Error("peer sent us an invalid msg", "msg", msg, "err", err)
@@ -961,11 +963,9 @@ func (r *Reactor) handleStateMessage(envelope p2p.Envelope, msgI Message) error 
 		ps.ApplyHasVoteMessage(msgI.(*HasVoteMessage))
 
 	case *tmcons.VoteSetMaj23:
-		cs := r.conS
-
-		cs.mtx.Lock()
-		height, votes := cs.Height, cs.Votes
-		cs.mtx.Unlock()
+		r.conS.mtx.RLock()
+		height, votes := r.conS.Height, r.conS.Votes
+		r.conS.mtx.RUnlock()
 
 		if height != msg.Height {
 			return nil
@@ -1084,11 +1084,9 @@ func (r *Reactor) handleVoteMessage(envelope p2p.Envelope, msgI Message) error {
 
 	switch msg := envelope.Message.(type) {
 	case *tmcons.Vote:
-		cs := r.conS
-
-		cs.mtx.RLock()
-		height, valSize, lastCommitSize := cs.Height, cs.Validators.Size(), cs.LastCommit.Size()
-		cs.mtx.RUnlock()
+		r.conS.mtx.RLock()
+		height, valSize, lastCommitSize := r.conS.Height, r.conS.Validators.Size(), r.conS.LastCommit.Size()
+		r.conS.mtx.RUnlock()
 
 		vMsg := msgI.(*VoteMessage)
 
@@ -1096,7 +1094,7 @@ func (r *Reactor) handleVoteMessage(envelope p2p.Envelope, msgI Message) error {
 		ps.EnsureVoteBitArrays(height-1, lastCommitSize)
 		ps.SetHasVote(vMsg.Vote)
 
-		cs.peerMsgQueue <- msgInfo{vMsg, envelope.From}
+		r.conS.peerMsgQueue <- msgInfo{vMsg, envelope.From}
 
 	default:
 		return fmt.Errorf("received unknown message on VoteChannel: %T", msg)
@@ -1128,11 +1126,9 @@ func (r *Reactor) handleVoteSetBitsMessage(envelope p2p.Envelope, msgI Message) 
 
 	switch msg := envelope.Message.(type) {
 	case *tmcons.VoteSetBits:
-		cs := r.conS
-
-		cs.mtx.Lock()
-		height, votes := cs.Height, cs.Votes
-		cs.mtx.Unlock()
+		r.conS.mtx.RLock()
+		height, votes := r.conS.Height, r.conS.Votes
+		r.conS.mtx.RUnlock()
 
 		vsbMsg := msgI.(*VoteSetBitsMessage)
 
@@ -1195,7 +1191,7 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 		return err
 	}
 
-	r.Logger.Debug("received message", "message", envelope.Message, "peer", envelope.From)
+	r.Logger.Debug("received message", "ch_id", chID, "message", msgI, "peer", envelope.From)
 
 	switch chID {
 	case StateChannel:
@@ -1352,9 +1348,9 @@ func (r *Reactor) peerStatsRoutine() {
 
 		select {
 		case msg := <-r.conS.statsMsgQueue:
-			r.mtx.Lock()
+			r.mtx.RLock()
 			ps, ok := r.peers[msg.PeerID]
-			r.mtx.Unlock()
+			r.mtx.RUnlock()
 
 			if !ok || ps == nil {
 				r.Logger.Debug("attempt to update stats for non-existent peer", "peer", msg.PeerID)
