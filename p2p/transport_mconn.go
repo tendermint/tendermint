@@ -19,9 +19,7 @@ import (
 )
 
 const (
-	defaultDialTimeout      = time.Second
-	defaultFilterTimeout    = 5 * time.Second
-	defaultHandshakeTimeout = 3 * time.Second
+	defaultFilterTimeout = 5 * time.Second
 )
 
 const (
@@ -80,9 +78,6 @@ type MConnTransport struct {
 	mConnConfig  conn.MConnConfig
 
 	maxIncomingConnections int
-	dialTimeout            time.Duration
-	handshakeTimeout       time.Duration
-	filterTimeout          time.Duration
 
 	logger   log.Logger
 	listener net.Listener
@@ -94,8 +89,9 @@ type MConnTransport struct {
 
 	// FIXME: This is a vestige from the old transport, and should be managed
 	// by the router once we rewrite the P2P core.
-	conns       ConnSet
-	connFilters []ConnFilterFunc
+	conns         ConnSet
+	connFilters   []ConnFilterFunc
+	filterTimeout time.Duration
 }
 
 // NewMConnTransport sets up a new MConnection transport. This uses the
@@ -114,17 +110,14 @@ func NewMConnTransport(
 		mConnConfig:  mConnConfig,
 		channelDescs: []*ChannelDescriptor{},
 
-		dialTimeout:      defaultDialTimeout,
-		handshakeTimeout: defaultHandshakeTimeout,
-		filterTimeout:    defaultFilterTimeout,
-
 		logger:   logger,
 		chAccept: make(chan *mConnConnection),
 		chError:  make(chan error),
 		chClose:  make(chan struct{}),
 
-		conns:       NewConnSet(),
-		connFilters: []ConnFilterFunc{},
+		conns:         NewConnSet(),
+		connFilters:   []ConnFilterFunc{},
+		filterTimeout: defaultFilterTimeout,
 	}
 	for _, opt := range opts {
 		opt(m)
@@ -214,7 +207,11 @@ func (m *MConnTransport) accept() {
 				return
 			}
 
-			conn, err := newMConnConnection(m, tcpConn, "")
+			// FIXME: For now, we just hardcode a timeout. The handshake should
+			// be done by the Router, which can control the context.
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			conn, err := newMConnConnection(ctx, m, tcpConn, "")
+			cancel()
 			if err != nil {
 				m.conns.Remove(tcpConn)
 				if err := tcpConn.Close(); err != nil {
@@ -263,9 +260,6 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, m.dialTimeout)
-	defer cancel()
-
 	dialer := net.Dialer{}
 	tcpConn, err := dialer.DialContext(ctx, "tcp",
 		net.JoinHostPort(endpoint.IP.String(), fmt.Sprintf("%v", endpoint.Port)))
@@ -281,7 +275,7 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 		return nil, err
 	}
 
-	conn, err := newMConnConnection(m, tcpConn, endpoint.PeerID)
+	conn, err := newMConnConnection(ctx, m, tcpConn, endpoint.PeerID)
 	if err != nil {
 		m.conns.Remove(tcpConn)
 		if err := tcpConn.Close(); err != nil {
@@ -322,6 +316,10 @@ func (m *MConnTransport) Close() error {
 }
 
 // filterTCPConn filters a TCP connection, rejecting it if this function errors.
+//
+// FIXME: This is only here for compatibility with the current Switch code. In
+// the new P2P stack, peer/connection filtering should be moved into the Router
+// or PeerManager and removed from here.
 func (m *MConnTransport) filterTCPConn(tcpConn net.Conn) error {
 	if m.conns.Has(tcpConn) {
 		return ErrRejected{conn: tcpConn, isDuplicate: true}
@@ -411,6 +409,7 @@ type mConnMessage struct {
 // newMConnConnection creates a new mConnConnection by handshaking
 // with a peer.
 func newMConnConnection(
+	ctx context.Context,
 	transport *MConnTransport,
 	tcpConn net.Conn,
 	expectPeerID NodeID,
@@ -428,14 +427,16 @@ func newMConnConnection(
 		}
 	}()
 
-	err = tcpConn.SetDeadline(time.Now().Add(transport.handshakeTimeout))
-	if err != nil {
-		err = ErrRejected{
-			conn:          tcpConn,
-			err:           fmt.Errorf("secret conn failed: %v", err),
-			isAuthFailure: true,
+	if deadline, ok := ctx.Deadline(); ok {
+		err = tcpConn.SetDeadline(deadline)
+		if err != nil {
+			err = ErrRejected{
+				conn:          tcpConn,
+				err:           fmt.Errorf("secret conn failed: %v", err),
+				isAuthFailure: true,
+			}
+			return
 		}
-		return
 	}
 
 	c = &mConnConnection{

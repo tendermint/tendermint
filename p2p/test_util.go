@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"context"
 	"fmt"
 	"net"
 
@@ -206,7 +207,7 @@ func testPeerConn(
 	outbound, persistent bool,
 ) (pc peerConn, err error) {
 
-	conn, err := newMConnConnection(transport, rawConn, "")
+	conn, err := newMConnConnection(context.Background(), transport, rawConn, "")
 	if err != nil {
 		return pc, fmt.Errorf("error creating peer: %w", err)
 	}

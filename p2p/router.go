@@ -13,6 +13,26 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 )
 
+// RouterOptions specifies options for a Router.
+type RouterOptions struct {
+	// ResolveTimeout is the timeout for resolving a PeerAddress URLs.
+	// 0 means no timeout.
+	ResolveTimeout time.Duration
+
+	// DialTimeout is the timeout for dialing a peer. 0 means no timeout.
+	DialTimeout time.Duration
+
+	// HandshakeTimeout is the timeout for handshaking with a peer. 0 means
+	// no timeout.
+	// FIXME: Implement this along with Connection.Handshake().
+	HandshakeTimeout time.Duration
+}
+
+// Validate validates the options.
+func (o *RouterOptions) Validate() error {
+	return nil
+}
+
 // Router manages peer connections and routes messages between peers and reactor
 // channels. This is an early prototype.
 //
@@ -76,9 +96,11 @@ import (
 // forever on a channel that has no consumer.
 type Router struct {
 	*service.BaseService
+
 	logger      log.Logger
 	transports  map[Protocol]Transport
 	peerManager *PeerManager
+	options     RouterOptions
 
 	// FIXME: Consider using sync.Map.
 	peerMtx    sync.RWMutex
@@ -95,12 +117,22 @@ type Router struct {
 	stopCh chan struct{}
 }
 
-// NewRouter creates a new Router, dialing the given peers.
-func NewRouter(logger log.Logger, peerManager *PeerManager, transports []Transport) *Router {
+// NewRouter creates a new Router.
+func NewRouter(
+	logger log.Logger,
+	peerManager *PeerManager,
+	transports []Transport,
+	options RouterOptions,
+) (*Router, error) {
+	if err := options.Validate(); err != nil {
+		return nil, err
+	}
+
 	router := &Router{
 		logger:          logger,
 		transports:      map[Protocol]Transport{},
 		peerManager:     peerManager,
+		options:         options,
 		stopCh:          make(chan struct{}),
 		channelQueues:   map[ChannelID]queue{},
 		channelMessages: map[ChannelID]proto.Message{},
@@ -116,7 +148,7 @@ func NewRouter(logger log.Logger, peerManager *PeerManager, transports []Transpo
 		}
 	}
 
-	return router
+	return router, nil
 }
 
 // OpenChannel opens a new channel for the given message type. The caller must
@@ -351,27 +383,33 @@ func (r *Router) dialPeers() {
 	}
 }
 
-// dialPeer attempts to connect to a peer.
+// dialPeer connects to a peer by dialing it.
 func (r *Router) dialPeer(ctx context.Context, address PeerAddress) (Connection, error) {
-	resolveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
 	r.logger.Info("resolving peer address", "address", address)
-
+	resolveCtx := ctx
+	if r.options.ResolveTimeout > 0 {
+		var cancel context.CancelFunc
+		resolveCtx, cancel = context.WithTimeout(resolveCtx, r.options.ResolveTimeout)
+		defer cancel()
+	}
 	endpoints, err := address.Resolve(resolveCtx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve address %q: %w", address, err)
 	}
 
 	for _, endpoint := range endpoints {
-		t, ok := r.transports[endpoint.Protocol]
+		transport, ok := r.transports[endpoint.Protocol]
 		if !ok {
-			r.logger.Error("no transport found for protocol", "protocol", endpoint.Protocol)
+			r.logger.Error("no transport found for endpoint protocol", "endpoint", endpoint)
 			continue
 		}
 
-		dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
+		dialCtx := ctx
+		if r.options.DialTimeout > 0 {
+			var cancel context.CancelFunc
+			dialCtx, cancel = context.WithTimeout(dialCtx, r.options.DialTimeout)
+			defer cancel()
+		}
 
 		// FIXME: When we dial and handshake the peer, we should pass it
 		// appropriate address(es) it can use to dial us back. It can't use our
@@ -380,7 +418,7 @@ func (r *Router) dialPeer(ctx context.Context, address PeerAddress) (Connection,
 		// by the peer's endpoint, since e.g. a peer on 192.168.0.0 can reach us
 		// on a private address on this endpoint, but a peer on the public
 		// Internet can't and needs a different public address.
-		conn, err := t.Dial(dialCtx, endpoint)
+		conn, err := transport.Dial(dialCtx, endpoint)
 		if err != nil {
 			r.logger.Error("failed to dial endpoint", "endpoint", endpoint, "err", err)
 		} else {

@@ -736,7 +736,11 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		return fmt.Errorf("dial err (peerConfig.DialFail == true)")
 	}
 
-	c, err := sw.transport.Dial(context.Background(), Endpoint{
+	// Hardcoded timeout moved from MConn transport during refactoring.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	c, err := sw.transport.Dial(ctx, Endpoint{
 		Protocol: MConnProtocol,
 		PeerID:   addr.ID,
 		IP:       addr.IP,
