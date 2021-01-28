@@ -897,6 +897,9 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 			peerState.closer.Close()
 			peerState.broadcastWG.Wait()
 			peerState.SetRunning(false)
+
+			// remove peer from the peer store to prevent unbounded growth
+			r.peers.Delete(psKey)
 		}
 	}
 }
