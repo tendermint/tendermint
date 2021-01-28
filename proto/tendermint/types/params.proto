@@ -52,17 +52,11 @@ message EvidenceParams {
 // ValidatorParams restrict the public key types validators can use.
 // NOTE: uses ABCI pubkey naming, not Amino names.
 message ValidatorParams {
-  option (gogoproto.populate) = true;
-  option (gogoproto.equal)    = true;
-
   repeated string pub_key_types = 1;
 }
 
 // VersionParams contains the ABCI application version.
 message VersionParams {
-  option (gogoproto.populate) = true;
-  option (gogoproto.equal)    = true;
-
   uint64 app_version = 1;
 }
 
