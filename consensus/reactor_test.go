@@ -211,7 +211,7 @@ func TestReactorBasic(t *testing.T) {
 
 	testSuites := make([]*reactorTestSuite, n)
 	for i := range testSuites {
-		testSuites[i] = setup(t, css[i], 1000)
+		testSuites[i] = setup(t, css[i], 0)
 	}
 
 	for _, ts := range testSuites {

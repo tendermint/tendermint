@@ -920,10 +920,14 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 
 // handleStateMessage handles envelopes sent from peers on the StateChannel.
 // An error is returned if the message is unrecognized or if validation fails.
+// If we fail to find the peer state for the envelope sender, we perform a no-op
+// and return. This can happen when we process the envelope after the peer is
+// removed.
 func (r *Reactor) handleStateMessage(envelope p2p.Envelope, msgI Message) error {
 	ps, ok := r.peers.Get(string(envelope.From)).(*PeerState)
 	if !ok {
-		panic(fmt.Sprintf("peer %v has no state", envelope.From))
+		r.Logger.Debug("failed to find peer state", "peer", envelope.From)
+		return nil
 	}
 
 	switch msg := envelope.Message.(type) {
@@ -1001,18 +1005,22 @@ func (r *Reactor) handleStateMessage(envelope p2p.Envelope, msgI Message) error 
 	return nil
 }
 
-// handleDataMessage handles envelopes sent from peers on the DataChannel.
+// handleDataMessage handles envelopes sent from peers on the DataChannel. If we
+// fail to find the peer state for the envelope sender, we perform a no-op and
+// return. This can happen when we process the envelope after the peer is
+// removed.
 func (r *Reactor) handleDataMessage(envelope p2p.Envelope, msgI Message) error {
 	logger := r.Logger.With("peer", envelope.From)
+
+	ps, ok := r.peers.Get(string(envelope.From)).(*PeerState)
+	if !ok {
+		r.Logger.Debug("failed to find peer state")
+		return nil
+	}
 
 	if r.WaitSync() {
 		logger.Info("ignoring message received during sync", "msg", msgI)
 		return nil
-	}
-
-	ps, ok := r.peers.Get(string(envelope.From)).(*PeerState)
-	if !ok {
-		panic(fmt.Sprintf("peer %v has no state", envelope.From))
 	}
 
 	switch msg := envelope.Message.(type) {
@@ -1039,18 +1047,22 @@ func (r *Reactor) handleDataMessage(envelope p2p.Envelope, msgI Message) error {
 	return nil
 }
 
-// handleVoteMessage handles envelopes sent from peers on the VoteChannel.
+// handleVoteMessage handles envelopes sent from peers on the VoteChannel. If we
+// fail to find the peer state for the envelope sender, we perform a no-op and
+// return. This can happen when we process the envelope after the peer is
+// removed.
 func (r *Reactor) handleVoteMessage(envelope p2p.Envelope, msgI Message) error {
 	logger := r.Logger.With("peer", envelope.From)
+
+	ps, ok := r.peers.Get(string(envelope.From)).(*PeerState)
+	if !ok {
+		r.Logger.Debug("failed to find peer state")
+		return nil
+	}
 
 	if r.WaitSync() {
 		logger.Info("ignoring message received during sync", "msg", msgI)
 		return nil
-	}
-
-	ps, ok := r.peers.Get(string(envelope.From)).(*PeerState)
-	if !ok {
-		panic(fmt.Sprintf("peer %v has no state", envelope.From))
 	}
 
 	switch msg := envelope.Message.(type) {
@@ -1077,18 +1089,21 @@ func (r *Reactor) handleVoteMessage(envelope p2p.Envelope, msgI Message) error {
 }
 
 // handleVoteSetBitsMessage handles envelopes sent from peers on the
-// VoteSetBitsChannel.
+// VoteSetBitsChannel. If we fail to find the peer state for the envelope sender,
+// we perform a no-op and return. This can happen when we process the envelope
+// after the peer is removed.
 func (r *Reactor) handleVoteSetBitsMessage(envelope p2p.Envelope, msgI Message) error {
 	logger := r.Logger.With("peer", envelope.From)
+
+	ps, ok := r.peers.Get(string(envelope.From)).(*PeerState)
+	if !ok {
+		r.Logger.Debug("failed to find peer state")
+		return nil
+	}
 
 	if r.WaitSync() {
 		logger.Info("ignoring message received during sync", "msg", msgI)
 		return nil
-	}
-
-	ps, ok := r.peers.Get(string(envelope.From)).(*PeerState)
-	if !ok {
-		panic(fmt.Sprintf("peer %v has no state", envelope.From))
 	}
 
 	switch msg := envelope.Message.(type) {
