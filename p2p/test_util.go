@@ -207,8 +207,8 @@ func testPeerConn(
 	outbound, persistent bool,
 ) (pc peerConn, err error) {
 
-	conn := newMConnConnection(context.Background(), transport, rawConn)
-	if _, _, err := conn.Handshake(context.Background(), transport.nodeInfo, transport.privKey, ""); err != nil {
+	conn := newMConnConnection(transport, rawConn)
+	if _, _, err := conn.Handshake(context.Background(), transport.nodeInfo, transport.privKey); err != nil {
 		return pc, fmt.Errorf("error creating peer: %w", err)
 	}
 

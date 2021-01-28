@@ -308,7 +308,7 @@ func (r *Router) acceptPeers(transport Transport) {
 			// peer manager before completing the handshake -- this probably
 			// requires protocol changes to send an additional message when the
 			// handshake is accepted.
-			peerInfo, _, err := r.handshakePeer(ctx, "", conn)
+			peerInfo, _, err := r.handshakePeer(ctx, conn, "")
 			if err == context.Canceled {
 				return
 			} else if err != nil {
@@ -369,7 +369,7 @@ func (r *Router) dialPeers() {
 			}
 			defer conn.Close()
 
-			_, _, err = r.handshakePeer(ctx, peerID, conn)
+			_, _, err = r.handshakePeer(ctx, conn, peerID)
 			if errors.Is(err, context.Canceled) {
 				return
 			} else if err != nil {
@@ -452,14 +452,33 @@ func (r *Router) dialPeer(ctx context.Context, address PeerAddress) (Connection,
 	return nil, fmt.Errorf("failed to connect to peer via %q", address)
 }
 
-// handshakePeer handshakes with a peer, validating the peer's information.
-func (r *Router) handshakePeer(ctx context.Context, peerID NodeID, conn Connection) (NodeInfo, crypto.PubKey, error) {
+// handshakePeer handshakes with a peer, validating the peer's information. If
+// expectID is given, we check that the peer's public key matches it.
+func (r *Router) handshakePeer(ctx context.Context, conn Connection, expectID NodeID) (NodeInfo, crypto.PubKey, error) {
 	if r.options.HandshakeTimeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, r.options.HandshakeTimeout)
 		defer cancel()
 	}
-	return conn.Handshake(ctx, r.nodeInfo, r.privKey, peerID)
+	peerInfo, peerKey, err := conn.Handshake(ctx, r.nodeInfo, r.privKey)
+	if err != nil {
+		return peerInfo, peerKey, err
+	}
+	if err = peerInfo.Validate(); err != nil {
+		return peerInfo, peerKey, fmt.Errorf("invalid handshake NodeInfo: %w", err)
+	}
+	if expectID != "" && expectID != peerInfo.NodeID {
+		return peerInfo, peerKey, fmt.Errorf("expected to connect with peer %q, got %q",
+			expectID, peerInfo.NodeID)
+	}
+	if NodeIDFromPubKey(peerKey) != peerInfo.NodeID {
+		return peerInfo, peerKey, fmt.Errorf("peer's public key did not match its node ID %q (expected %q)",
+			peerInfo.NodeID, NodeIDFromPubKey(peerKey))
+	}
+	if peerInfo.NodeID == r.nodeInfo.NodeID {
+		return peerInfo, peerKey, errors.New("rejecting handshake with self")
+	}
+	return peerInfo, peerKey, nil
 }
 
 // routePeer routes inbound messages from a peer to channels, and also sends

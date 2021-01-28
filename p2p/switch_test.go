@@ -327,7 +327,7 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, err = c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey, rp.ID())
+	_, _, err = c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -381,7 +381,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, err = c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey, rp.ID())
+	_, _, err = c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
 	if err != nil {
 		t.Fatal(err)
 	}

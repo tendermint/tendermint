@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/cmap"
 	"github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
@@ -630,7 +631,11 @@ func (sw *Switch) acceptRoutine() {
 		ctx := context.Background()
 		c, err := sw.transport.Accept(ctx)
 		if err == nil {
-			_, _, err = c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey, "")
+			// NOTE: The legacy MConn transport did handshaking in Accept(),
+			// which was asynchronous and avoided head-of-line-blocking.
+			// However, as handshakes are being migrated out from the transport,
+			// we just do it synchronously here for now.
+			_, _, err = sw.handshakePeer(c, "")
 		}
 		if err != nil {
 			switch err := err.(type) {
@@ -751,7 +756,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		Port:     addr.Port,
 	})
 	if err == nil {
-		_, _, err = c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey, addr.ID)
+		_, _, err = sw.handshakePeer(c, addr.ID)
 	}
 	if err != nil {
 		if e, ok := err.(ErrRejected); ok {
@@ -790,6 +795,62 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	}
 
 	return nil
+}
+
+func (sw *Switch) handshakePeer(c Connection, expectPeerID NodeID) (NodeInfo, crypto.PubKey, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	peerInfo, peerKey, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		return peerInfo, peerKey, ErrRejected{
+			conn:          c.(*mConnConnection).conn,
+			err:           fmt.Errorf("handshake failed: %v", err),
+			isAuthFailure: true,
+		}
+	}
+	if err = peerInfo.Validate(); err != nil {
+		return peerInfo, peerKey, ErrRejected{
+			conn:              c.(*mConnConnection).conn,
+			err:               err,
+			isNodeInfoInvalid: true,
+		}
+	}
+	// For outgoing conns, ensure connection key matches dialed key.
+	if expectPeerID != "" {
+		peerID := NodeIDFromPubKey(peerKey)
+		if expectPeerID != peerID {
+			return peerInfo, peerKey, ErrRejected{
+				conn: c.(*mConnConnection).conn,
+				id:   peerID,
+				err: fmt.Errorf(
+					"conn.ID (%v) dialed ID (%v) mismatch",
+					peerID,
+					expectPeerID,
+				),
+				isAuthFailure: true,
+			}
+		}
+	}
+
+	if sw.nodeInfo.ID() == peerInfo.ID() {
+		return peerInfo, peerKey, ErrRejected{
+			addr:   *NewNetAddress(peerInfo.ID(), c.(*mConnConnection).conn.RemoteAddr()),
+			conn:   c.(*mConnConnection).conn,
+			id:     peerInfo.ID(),
+			isSelf: true,
+		}
+	}
+
+	if err = sw.nodeInfo.CompatibleWith(peerInfo); err != nil {
+		return peerInfo, peerKey, ErrRejected{
+			conn:           c.(*mConnConnection).conn,
+			err:            err,
+			id:             peerInfo.ID(),
+			isIncompatible: true,
+		}
+	}
+
+	return peerInfo, peerKey, nil
 }
 
 func (sw *Switch) filterPeer(p Peer) error {

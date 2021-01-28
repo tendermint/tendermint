@@ -304,7 +304,6 @@ func (c *MemoryConnection) Handshake(
 	ctx context.Context,
 	nodeInfo NodeInfo,
 	privKey crypto.PrivKey,
-	expectPeerID NodeID,
 ) (NodeInfo, crypto.PubKey, error) {
 	return c.remote.nodeInfo, c.remote.privKey.PubKey(), nil
 }

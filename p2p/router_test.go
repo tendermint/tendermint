@@ -2,7 +2,6 @@ package p2p_test
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/fortytw2/leaktest"
@@ -23,8 +22,10 @@ func generateNode() (p2p.NodeInfo, crypto.PrivKey) {
 	privKey := ed25519.GenPrivKey()
 	nodeID := p2p.NodeIDFromPubKey(privKey.PubKey())
 	nodeInfo := p2p.NodeInfo{
-		NodeID:     nodeID,
-		ListenAddr: fmt.Sprintf("%v:%v", p2p.MemoryProtocol, nodeID),
+		NodeID: nodeID,
+		// FIXME: We have to fake a ListenAddr for now.
+		ListenAddr: "127.0.0.1:1234",
+		Moniker:    "foo",
 	}
 	return nodeInfo, privKey
 }

@@ -207,11 +207,7 @@ func (m *MConnTransport) accept() {
 				return
 			}
 
-			// FIXME: For now, we just hardcode a timeout. The handshake should
-			// be done by the Router, which can control the context.
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-			conn := newMConnConnection(ctx, m, tcpConn)
-			cancel()
+			conn := newMConnConnection(m, tcpConn)
 			select {
 			case m.chAccept <- conn:
 			case <-m.chClose:
@@ -264,7 +260,7 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 		return nil, err
 	}
 
-	return newMConnConnection(ctx, m, tcpConn), nil
+	return newMConnConnection(m, tcpConn), nil
 }
 
 // Endpoints implements Transport.
@@ -390,7 +386,6 @@ type mConnMessage struct {
 // newMConnConnection creates a new mConnConnection by handshaking
 // with a peer.
 func newMConnConnection(
-	ctx context.Context,
 	transport *MConnTransport,
 	tcpConn net.Conn,
 ) *mConnConnection {
@@ -408,114 +403,33 @@ func (c *mConnConnection) Handshake(
 	ctx context.Context,
 	nodeInfo NodeInfo,
 	privKey crypto.PrivKey,
-	expectPeerID NodeID,
 ) (peerInfo NodeInfo, peerKey crypto.PubKey, err error) {
-	// FIXME: Since the MConnection code panics, we need to recover here
-	// and turn it into an error. Be careful not to alias err, so we can
-	// update it from within this function. We should remove panics instead.
+	// FIXME: Since the MConnection code panics, we need to recover here and
+	// turn it into an error. Be careful not to alias err, so we can update it
+	// from within this function. We should remove panics instead.
 	defer func() {
 		if r := recover(); r != nil {
-			err = ErrRejected{
-				conn:          c.conn,
-				err:           fmt.Errorf("recovered from panic: %v", r),
-				isAuthFailure: true,
-			}
+			err = fmt.Errorf("recovered from panic: %v", r)
 		}
 	}()
 
 	if deadline, ok := ctx.Deadline(); ok {
-		err = c.conn.SetDeadline(deadline)
-		if err != nil {
-			err = ErrRejected{
-				conn:          c.conn,
-				err:           fmt.Errorf("secret conn failed: %v", err),
-				isAuthFailure: true,
-			}
+		if err = c.conn.SetDeadline(deadline); err != nil {
 			return
 		}
 	}
 
-	c.secretConn, err = conn.MakeSecretConnection(c.conn, privKey)
-	if err != nil {
-		err = ErrRejected{
-			conn:          c.conn,
-			err:           fmt.Errorf("secret conn failed: %v", err),
-			isAuthFailure: true,
-		}
+	if c.secretConn, err = conn.MakeSecretConnection(c.conn, privKey); err != nil {
 		return
 	}
 	peerKey = c.secretConn.RemotePubKey()
-	c.peerInfo, err = c.handshake()
-	if err != nil {
-		err = ErrRejected{
-			conn:          c.conn,
-			err:           fmt.Errorf("handshake failed: %v", err),
-			isAuthFailure: true,
-		}
+
+	if c.peerInfo, err = c.handshake(); err != nil {
 		return
 	}
 	peerInfo = c.peerInfo
 
-	// Validate node info.
-	// FIXME: All of the ID verification code below should be moved to the
-	// router once implemented.
-	err = c.peerInfo.Validate()
-	if err != nil {
-		err = ErrRejected{
-			conn:              c.conn,
-			err:               err,
-			isNodeInfoInvalid: true,
-		}
-		return
-	}
-
-	// For outgoing conns, ensure connection key matches dialed key.
-	if expectPeerID != "" {
-		peerID := NodeIDFromPubKey(c.PubKey())
-		if expectPeerID != peerID {
-			err = ErrRejected{
-				conn: c.conn,
-				id:   peerID,
-				err: fmt.Errorf(
-					"conn.ID (%v) dialed ID (%v) mismatch",
-					peerID,
-					expectPeerID,
-				),
-				isAuthFailure: true,
-			}
-			return
-		}
-	}
-
-	// Reject self.
-	if nodeInfo.ID() == c.peerInfo.ID() {
-		err = ErrRejected{
-			addr:   *NewNetAddress(c.peerInfo.ID(), c.secretConn.RemoteAddr()),
-			conn:   c.conn,
-			id:     c.peerInfo.ID(),
-			isSelf: true,
-		}
-		return
-	}
-
-	err = nodeInfo.CompatibleWith(c.peerInfo)
-	if err != nil {
-		err = ErrRejected{
-			conn:           c.conn,
-			err:            err,
-			id:             c.peerInfo.ID(),
-			isIncompatible: true,
-		}
-		return
-	}
-
-	err = c.conn.SetDeadline(time.Time{})
-	if err != nil {
-		err = ErrRejected{
-			conn:          c.conn,
-			err:           fmt.Errorf("secret conn failed: %v", err),
-			isAuthFailure: true,
-		}
+	if err = c.conn.SetDeadline(time.Time{}); err != nil {
 		return
 	}
 

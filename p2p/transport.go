@@ -137,7 +137,7 @@ type Connection interface {
 	// message-oriented (see comment above).
 	//
 	// FIXME: NodeID should be removed and router should check handshake.
-	Handshake(context.Context, NodeInfo, crypto.PrivKey, NodeID) (NodeInfo, crypto.PubKey, error)
+	Handshake(context.Context, NodeInfo, crypto.PrivKey) (NodeInfo, crypto.PubKey, error)
 
 	// ReceiveMessage returns the next message received on the connection,
 	// blocking until one is available. io.EOF is returned when closed.
