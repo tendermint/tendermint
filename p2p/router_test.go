@@ -112,6 +112,16 @@ func TestRouter(t *testing.T) {
 		}, (<-channel.In()).Strip())
 	}
 
+	// We now send a broadcast, which we should return back from all peers.
+	channel.Out() <- p2p.Envelope{
+		Broadcast: true,
+		Message:   &TestMessage{Value: "broadcast"},
+	}
+	for i := 0; i < len(peers); i++ {
+		envelope := <-channel.In()
+		require.Equal(t, &TestMessage{Value: "broadcast"}, envelope.Message)
+	}
+
 	// We then submit an error for a peer, and watch it get disconnected.
 	channel.Error() <- p2p.PeerError{
 		PeerID:   peers[0].ID,
@@ -131,14 +141,4 @@ func TestRouter(t *testing.T) {
 		PeerID: peers[0].ID,
 		Status: p2p.PeerStatusUp,
 	}, peerUpdate)
-
-	// We now send a broadcast, which we should return back from all peers.
-	channel.Out() <- p2p.Envelope{
-		Broadcast: true,
-		Message:   &TestMessage{Value: "broadcast"},
-	}
-	for i := 0; i < len(peers); i++ {
-		envelope := <-channel.In()
-		require.Equal(t, &TestMessage{Value: "broadcast"}, envelope.Message)
-	}
 }
