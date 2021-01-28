@@ -165,6 +165,7 @@ services:
     ports:
     - 26656
     - {{ if .ProxyPort }}{{ .ProxyPort }}:{{ end }}26657
+    - 6060
     volumes:
     - ./{{ .Name }}:/tendermint
     networks:
@@ -220,6 +221,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.Moniker = node.Name
 	cfg.ProxyApp = AppAddressTCP
 	cfg.RPC.ListenAddress = "tcp://0.0.0.0:26657"
+	cfg.RPC.PprofListenAddress = ":6060"
 	cfg.P2P.ExternalAddress = fmt.Sprintf("tcp://%v", node.AddressP2P(false))
 	cfg.P2P.AddrBookStrict = false
 	cfg.DBBackend = node.Database

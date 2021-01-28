@@ -27,7 +27,7 @@ WORKDIR /tendermint
 VOLUME /tendermint
 ENV TMHOME=/tendermint
 
-EXPOSE 26656 26657 26660
+EXPOSE 26656 26657 26660 6060
 ENTRYPOINT ["/usr/bin/entrypoint"]
 CMD ["node"]
 STOPSIGNAL SIGTERM
