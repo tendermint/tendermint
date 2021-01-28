@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -43,9 +43,6 @@ type HashedParams struct {
 type BlockParams struct {
 	MaxBytes int64 `json:"max_bytes"`
 	MaxGas   int64 `json:"max_gas"`
-	// Minimum time increment between consecutive blocks (in milliseconds)
-	// Not exposed to the application.
-	TimeIotaMs int64 `json:"time_iota_ms"`
 }
 
 // EvidenceParams determine how we handle evidence of malfeasance.
@@ -78,9 +75,8 @@ func DefaultConsensusParams() *ConsensusParams {
 // DefaultBlockParams returns a default BlockParams.
 func DefaultBlockParams() BlockParams {
 	return BlockParams{
-		MaxBytes:   22020096, // 21MB
-		MaxGas:     -1,
-		TimeIotaMs: 1, // 1s, parameter is now unused
+		MaxBytes: 22020096, // 21MB
+		MaxGas:   -1,
 	}
 }
 
@@ -131,11 +127,6 @@ func (params ConsensusParams) ValidateConsensusParams() error {
 	if params.Block.MaxGas < -1 {
 		return fmt.Errorf("block.MaxGas must be greater or equal to -1. Got %d",
 			params.Block.MaxGas)
-	}
-
-	if params.Block.TimeIotaMs <= 0 {
-		return fmt.Errorf("block.TimeIotaMs must be greater than 0. Got %v",
-			params.Block.TimeIotaMs)
 	}
 
 	if params.Evidence.MaxAgeNumBlocks <= 0 {
@@ -198,9 +189,15 @@ func (params ConsensusParams) HashConsensusParams() []byte {
 	return hasher.Sum(nil)
 }
 
+func (params *ConsensusParams) Equals(params2 *ConsensusParams) bool {
+	return params.Block == params2.Block &&
+		params.Evidence == params2.Evidence &&
+		tmstrings.StringSliceEqual(params.Validator.PubKeyTypes, params2.Validator.PubKeyTypes)
+}
+
 // Update returns a copy of the params with updates from the non-zero fields of p2.
 // NOTE: note: must not modify the original
-func (params ConsensusParams) UpdateConsensusParams(params2 *abci.ConsensusParams) ConsensusParams {
+func (params ConsensusParams) UpdateConsensusParams(params2 *tmproto.ConsensusParams) ConsensusParams {
 	res := params // explicit copy
 
 	if params2 == nil {
@@ -228,22 +225,21 @@ func (params ConsensusParams) UpdateConsensusParams(params2 *abci.ConsensusParam
 	return res
 }
 
-func (params ConsensusParams) ToProto() tmproto.ConsensusParams {
+func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 	return tmproto.ConsensusParams{
-		Block: tmproto.BlockParams{
-			MaxBytes:   params.Block.MaxBytes,
-			MaxGas:     params.Block.MaxGas,
-			TimeIotaMs: params.Block.TimeIotaMs,
+		Block: &tmproto.BlockParams{
+			MaxBytes: params.Block.MaxBytes,
+			MaxGas:   params.Block.MaxGas,
 		},
-		Evidence: tmproto.EvidenceParams{
+		Evidence: &tmproto.EvidenceParams{
 			MaxAgeNumBlocks: params.Evidence.MaxAgeNumBlocks,
 			MaxAgeDuration:  params.Evidence.MaxAgeDuration,
 			MaxBytes:        params.Evidence.MaxBytes,
 		},
-		Validator: tmproto.ValidatorParams{
+		Validator: &tmproto.ValidatorParams{
 			PubKeyTypes: params.Validator.PubKeyTypes,
 		},
-		Version: tmproto.VersionParams{
+		Version: &tmproto.VersionParams{
 			AppVersion: params.Version.AppVersion,
 		},
 	}
@@ -252,9 +248,8 @@ func (params ConsensusParams) ToProto() tmproto.ConsensusParams {
 func ConsensusParamsFromProto(pbParams tmproto.ConsensusParams) ConsensusParams {
 	return ConsensusParams{
 		Block: BlockParams{
-			MaxBytes:   pbParams.Block.MaxBytes,
-			MaxGas:     pbParams.Block.MaxGas,
-			TimeIotaMs: pbParams.Block.TimeIotaMs,
+			MaxBytes: pbParams.Block.MaxBytes,
+			MaxGas:   pbParams.Block.MaxGas,
 		},
 		Evidence: EvidenceParams{
 			MaxAgeNumBlocks: pbParams.Evidence.MaxAgeNumBlocks,

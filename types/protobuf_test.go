@@ -52,14 +52,6 @@ func TestABCIValidators(t *testing.T) {
 	assert.Equal(t, tmValExpected, tmVals[0])
 }
 
-func TestABCIConsensusParams(t *testing.T) {
-	cp := DefaultConsensusParams()
-	abciCP := TM2PB.ConsensusParams(cp)
-	cp2 := cp.UpdateConsensusParams(abciCP)
-
-	assert.Equal(t, *cp, cp2)
-}
-
 type pubKeyEddie struct{}
 
 func (pubKeyEddie) Address() Address                            { return []byte{} }
