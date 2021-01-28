@@ -23,8 +23,8 @@ import (
 
 const (
 	// prefixes are unique across all tm db's
-	prefixCommitted = int64(8)
-	prefixPending   = int64(9)
+	prefixCommitted = int64(9)
+	prefixPending   = int64(10)
 )
 
 // Pool maintains a pool of valid evidence to be broadcasted and committed
