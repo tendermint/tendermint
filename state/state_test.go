@@ -1042,8 +1042,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		pbParams, err := stateStore.LoadConsensusParams(testCase.height)
-		p := types.ConsensusParamsFromProto(pbParams)
+		p, err := stateStore.LoadConsensusParams(testCase.height)
 
 		assert.Nil(t, err, fmt.Sprintf("expected no err at height %d", testCase.height))
 		assert.EqualValues(t, testCase.params, p, fmt.Sprintf(`unexpected consensus params at

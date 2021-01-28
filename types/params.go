@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -186,6 +187,12 @@ func (params ConsensusParams) HashConsensusParams() []byte {
 		panic(err)
 	}
 	return hasher.Sum(nil)
+}
+
+func (params *ConsensusParams) Equals(params2 *ConsensusParams) bool {
+	return params.Block == params2.Block &&
+		params.Evidence == params2.Evidence &&
+		tmstrings.StringSliceEqual(params.Validator.PubKeyTypes, params2.Validator.PubKeyTypes)
 }
 
 // Update returns a copy of the params with updates from the non-zero fields of p2.

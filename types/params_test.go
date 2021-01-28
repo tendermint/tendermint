@@ -68,9 +68,6 @@ func makeParams(
 		Validator: ValidatorParams{
 			PubKeyTypes: pubkeyTypes,
 		},
-		Version: VersionParams{ // Needs to be set on creation
-			AppVersion: 0,
-		},
 	}
 }
 

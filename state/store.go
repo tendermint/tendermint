@@ -76,7 +76,7 @@ type Store interface {
 	// LoadABCIResponses loads the abciResponse for a given height
 	LoadABCIResponses(int64) (*tmstate.ABCIResponses, error)
 	// LoadConsensusParams loads the consensus params for a given height
-	LoadConsensusParams(int64) (tmproto.ConsensusParams, error)
+	LoadConsensusParams(int64) (types.ConsensusParams, error)
 	// Save overwrites the previous state with the updated one
 	Save(State) error
 	// SaveABCIResponses saves ABCIResponses for a given height
@@ -567,16 +567,20 @@ func (store dbStore) saveValidatorsInfo(height, lastHeightChanged int64, valSet 
 
 // ConsensusParamsInfo represents the latest consensus params, or the last height it changed
 
-// LoadConsensusParams loads the ConsensusParams for a given height.
-func (store dbStore) LoadConsensusParams(height int64) (tmproto.ConsensusParams, error) {
-	empty := tmproto.ConsensusParams{}
+// Allocate empty Consensus params at compile time to avoid multiple allocations during runtime
+var (
+	empty   = types.ConsensusParams{}
+	emptypb = tmproto.ConsensusParams{}
+)
 
+// LoadConsensusParams loads the ConsensusParams for a given height.
+func (store dbStore) LoadConsensusParams(height int64) (types.ConsensusParams, error) {
 	paramsInfo, err := store.loadConsensusParamsInfo(height)
 	if err != nil {
 		return empty, fmt.Errorf("could not find consensus params for height #%d: %w", height, err)
 	}
 
-	if paramsInfo.ConsensusParams.Equal(&empty) {
+	if paramsInfo.ConsensusParams.Equal(&emptypb) {
 		paramsInfo2, err := store.loadConsensusParamsInfo(paramsInfo.LastHeightChanged)
 		if err != nil {
 			return empty, fmt.Errorf(
@@ -590,7 +594,7 @@ func (store dbStore) LoadConsensusParams(height int64) (tmproto.ConsensusParams,
 		paramsInfo = paramsInfo2
 	}
 
-	return paramsInfo.ConsensusParams, nil
+	return types.ConsensusParamsFromProto(paramsInfo.ConsensusParams), nil
 }
 
 func (store dbStore) loadConsensusParamsInfo(height int64) (*tmstate.ConsensusParamsInfo, error) {
