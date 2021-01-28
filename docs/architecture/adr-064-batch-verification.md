@@ -19,6 +19,8 @@ Adopt Batch Verification.
 
 ## Detailed Design
 
+A new interface will be introduced. This interface will have three methods `NewBatchVerifier`, `Add` and `VerifyBatch`.
+
 ```go
 type BatchVerification interface {
   NewBatchVerifier() BatchVerification // NewBatchVerifier create a new verifier where keys, signatures and messages can be added as entries
@@ -27,49 +29,37 @@ type BatchVerification interface {
 }
 ```
 
-> This section does not need to be filled in at the start of the ADR, but must be completed prior to the merging of the implementation.
->
-> Here are some common questions that get answered as part of the detailed design:
->
-> - What are the user requirements?
->
-> - What systems will be affected?
->
-> - What new data structures are needed, what data structures will be changed?
->
-> - What new APIs will be needed, what APIs will be changed?
->
-> - What are the efficiency considerations (time/space)?
->
-> - What are the expected access patterns (load/throughput)?
->
-> - Are there any logging, monitoring or observability needs?
->
-> - Are there any security considerations?
->
-> - Are there any privacy considerations?
->
-> - How will the changes be tested?
->
-> - If the change is large, how will the changes be broken up for ease of review?
->
-> - Will these changes require a breaking (major) release?
->
-> - Does this change require coordination with the SDK or other?
+- `NewBatchVerifier` creates a new verifier. This verifier will be populated with entries to be verified. 
+- `Add` adds an entry to the Verifier. Add accepts a public key and two slice of bytes (signature and message). 
+- `VerifyBatch` verifies all the entires. At the end of VerifyBatch if the underlying API does not reset the Verifier to its initial state (empty), it should be done here. This prevents accidentally reusing the verifier with entries from a previous verification.
+
+The main reason this approach is being taken is to prevent simple mistakes. Some APIs allow the user to create three slices and pass them to the `VerifyBatch` function but this relies on the user to safely generate all the slices. We would like to minimize the possibility of making a mistake.
+
+```go
+func VerifyBatch(keys []crypto.Pubkey, signatures, messages[][]byte) bool
+```
+
+This change will not require will not effect any users in anyway other than faster verification times.
+
+This new api will be used for verification in both consensus and block syncing. Within the current Verify functions there will be a check to see if the key types supports the BatchVerification API. If it does it will execute batch verification, if not single signature verification will be used. 
+
+If batch verifications fails for any reason, it will not be known which entry caused the failure. Verification will need to revert to single signature verification.
 
 ## Status
 
-> A decision may be "proposed" if it hasn't been agreed upon yet, or "accepted" once it is agreed upon. Once the ADR has been implemented mark the ADR as "implemented". If a later ADR changes or reverses a decision, it may be marked as "deprecated" or "superseded" with a reference to its replacement.
-
-{Deprecated|Proposed|Accepted|Declined}
-
+Proposed
 ## Consequences
 
-> This section describes the consequences, after applying the decision. All consequences should be summarized here, not just the "positive" ones.
+- If verification fails it could make verification slower than single signature verification.
 
 ### Positive
 
+- Faster verification times, if the curve supports it
+
 ### Negative
+
+- No way to see which key failed verification
+  - A failure means reverting back to single signature verification.
 
 ### Neutral
 
