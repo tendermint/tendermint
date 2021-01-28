@@ -901,7 +901,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 			// Send our state to the peer. If we're fast-syncing, broadcast a
 			// RoundStepMessage later upon SwitchToConsensus().
 			if !r.waitSync {
-				r.sendNewRoundStepMessage(ps.peerID)
+				go r.sendNewRoundStepMessage(ps.peerID)
 			}
 		}
 
