@@ -43,8 +43,9 @@ jobs:
         working-directory: test/fuzz
         run: echo "::set-output name=crashers-count::$(find . -type d -name "crashers" | xargs -I % sh -c 'ls % | wc -l' | awk '{total += $1} END {print total}')"
         id: set-crashers-count
-        outputs:
-          crashers_count: ${{ steps.set-crashers-count.outputs.crashers-count }}
+
+    outputs:
+      crashers-count: ${{ steps.set-crashers-count.outputs.crashers-count }}
 
   fuzz-nightly-fail:
     needs: fuzz-nightly-test
