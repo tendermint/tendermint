@@ -204,9 +204,10 @@ func makeHeaderPartsResponsesParams(
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)
+	pbParams := params.ToProto()
 	abciResponses := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
-		EndBlock:   &abci.ResponseEndBlock{ConsensusParamUpdates: types.TM2PB.ConsensusParams(params)},
+		EndBlock:   &abci.ResponseEndBlock{ConsensusParamUpdates: &pbParams},
 	}
 	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
 }
@@ -286,7 +287,7 @@ func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlo
 func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
 	return abci.ResponseEndBlock{
 		ValidatorUpdates: app.ValidatorUpdates,
-		ConsensusParamUpdates: &abci.ConsensusParams{
+		ConsensusParamUpdates: &tmproto.ConsensusParams{
 			Version: &tmproto.VersionParams{
 				AppVersion: 1}}}
 }
