@@ -43,11 +43,11 @@ type PeerState struct {
 	// NOTE: Modify below using setters, never directly.
 	mtx     tmsync.RWMutex
 	running bool
-	closer  *tmsync.Closer
 	PRS     cstypes.PeerRoundState `json:"round_state"`
 	Stats   *peerStateStats        `json:"stats"`
 
 	broadcastWG sync.WaitGroup
+	closer      *tmsync.Closer
 }
 
 // NewPeerState returns a new PeerState for the given node ID.
@@ -55,6 +55,7 @@ func NewPeerState(logger log.Logger, peerID p2p.NodeID) *PeerState {
 	return &PeerState{
 		peerID: peerID,
 		logger: logger,
+		closer: tmsync.NewCloser(),
 		PRS: cstypes.PeerRoundState{
 			Round:              -1,
 			ProposalPOLRound:   -1,
@@ -63,15 +64,6 @@ func NewPeerState(logger log.Logger, peerID p2p.NodeID) *PeerState {
 		},
 		Stats: &peerStateStats{},
 	}
-}
-
-// SetCloser sets a closer for the peer that is used to coordinate closure of
-// all spawned broadcasting goroutines.
-func (ps *PeerState) SetCloser(closer *tmsync.Closer) {
-	ps.mtx.Lock()
-	defer ps.mtx.Unlock()
-
-	ps.closer = closer
 }
 
 // SetRunning sets the running state of the peer.

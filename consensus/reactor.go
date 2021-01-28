@@ -863,13 +863,10 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 		}
 
 		if !peerState.IsRunning() {
-			closer := tmsync.NewCloser()
-
 			// Set the peer state's closer to signal to all spawned goroutines to exit
 			// when the peer is removed. We also set the running state to ensure we
 			// do not spawn multiple instances of the same goroutines and finally we
 			// set the waitgroup counter so we know when all goroutines have exited.
-			peerState.SetCloser(closer)
 			peerState.broadcastWG.Add(3)
 			peerState.SetRunning(true)
 
