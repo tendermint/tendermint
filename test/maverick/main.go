@@ -17,7 +17,6 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	cs "github.com/tendermint/tendermint/test/maverick/consensus"
 	nd "github.com/tendermint/tendermint/test/maverick/node"
 	"github.com/tendermint/tendermint/types"
@@ -61,20 +60,25 @@ var RootCmd = &cobra.Command{
 		"through a flag. See maverick node --help for how the misbehavior flag is constructured",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
 		fmt.Printf("use: %v, args: %v", cmd.Use, cmd.Args)
+
 		config, err = ParseConfig()
 		if err != nil {
 			return err
 		}
+
 		if config.LogFormat == cfg.LogFormatJSON {
 			logger = log.NewTMJSONLogger(log.NewSyncWriter(os.Stdout))
 		}
-		logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
+
+		logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel)
 		if err != nil {
 			return err
 		}
+
 		if viper.GetBool(cli.TraceFlag) {
 			logger = log.NewTracingLogger(logger)
 		}
+
 		logger = logger.With("module", "main")
 		return nil
 	},
@@ -212,7 +216,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 			ConsensusParams: types.DefaultConsensusParams(),
 		}
 		if keyType == "secp256k1" {
-			genDoc.ConsensusParams.Validator = tmproto.ValidatorParams{
+			genDoc.ConsensusParams.Validator = types.ValidatorParams{
 				PubKeyTypes: []string{types.ABCIPubKeyTypeSecp256k1},
 			}
 		}

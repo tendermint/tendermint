@@ -124,19 +124,21 @@ func TestRouter(t *testing.T) {
 		Status: p2p.PeerStatusDown,
 	}, peerUpdate)
 
-	// We now broadcast a message, which we should receive back from only two peers.
+	// The peer manager will automatically reconnect the peer, so we wait
+	// for that to happen.
+	peerUpdate = <-peerUpdates.Updates()
+	require.Equal(t, p2p.PeerUpdate{
+		PeerID: peers[0].ID,
+		Status: p2p.PeerStatusUp,
+	}, peerUpdate)
+
+	// We now send a broadcast, which we should return back from all peers.
 	channel.Out() <- p2p.Envelope{
 		Broadcast: true,
 		Message:   &TestMessage{Value: "broadcast"},
 	}
-	for i := 0; i < len(peers)-1; i++ {
+	for i := 0; i < len(peers); i++ {
 		envelope := <-channel.In()
-		require.NotEqual(t, peers[0].ID, envelope.From)
 		require.Equal(t, &TestMessage{Value: "broadcast"}, envelope.Message)
-	}
-	select {
-	case envelope := <-channel.In():
-		t.Errorf("unexpected message: %v", envelope)
-	default:
 	}
 }
