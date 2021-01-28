@@ -55,6 +55,24 @@ var (
 	ensureTimeout         = time.Millisecond * 200
 )
 
+func configSetup(t *testing.T) {
+	t.Helper()
+
+	config = ResetConfig("consensus_reactor_test")
+	consensusReplayConfig = ResetConfig("consensus_replay_test")
+	configStateTest := ResetConfig("consensus_state_test")
+	configMempoolTest := ResetConfig("consensus_mempool_test")
+	configByzantineTest := ResetConfig("consensus_byzantine_test")
+
+	t.Cleanup(func() {
+		os.RemoveAll(config.RootDir)
+		os.RemoveAll(consensusReplayConfig.RootDir)
+		os.RemoveAll(configStateTest.RootDir)
+		os.RemoveAll(configMempoolTest.RootDir)
+		os.RemoveAll(configByzantineTest.RootDir)
+	})
+}
+
 func ensureDir(dir string, mode os.FileMode) {
 	if err := tmos.EnsureDir(dir, mode); err != nil {
 		panic(err)
@@ -675,11 +693,18 @@ func consensusLogger() log.Logger {
 	}).With("module", "consensus")
 }
 
-func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker,
-	appFunc func() abci.Application, configOpts ...func(*cfg.Config)) ([]*State, cleanupFunc) {
+func randConsensusState(
+	nValidators int,
+	testName string,
+	tickerFunc func() TimeoutTicker,
+	appFunc func() abci.Application,
+	configOpts ...func(*cfg.Config),
+) ([]*State, cleanupFunc) {
+
 	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
+
 	configRootDirs := make([]string, 0, nValidators)
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
@@ -687,10 +712,13 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
+
 		for _, opt := range configOpts {
 			opt(thisConfig)
 		}
+
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
@@ -699,6 +727,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		css[i].SetTimeoutTicker(tickerFunc())
 		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
+
 	return css, func() {
 		for _, dir := range configRootDirs {
 			os.RemoveAll(dir)

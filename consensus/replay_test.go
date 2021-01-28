@@ -34,21 +34,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func TestMain(m *testing.M) {
-	config = ResetConfig("consensus_reactor_test")
-	consensusReplayConfig = ResetConfig("consensus_replay_test")
-	configStateTest := ResetConfig("consensus_state_test")
-	configMempoolTest := ResetConfig("consensus_mempool_test")
-	configByzantineTest := ResetConfig("consensus_byzantine_test")
-	code := m.Run()
-	os.RemoveAll(config.RootDir)
-	os.RemoveAll(consensusReplayConfig.RootDir)
-	os.RemoveAll(configStateTest.RootDir)
-	os.RemoveAll(configMempoolTest.RootDir)
-	os.RemoveAll(configByzantineTest.RootDir)
-	os.Exit(code)
-}
-
 // These tests ensure we can always recover from failure at any part of the consensus process.
 // There are two general failure scenarios: failure during consensus, and failure while applying the block.
 // Only the latter interacts with the app and store,

@@ -192,6 +192,12 @@ func (r *Reactor) OnStop() {
 		r.conS.Wait()
 	}
 
+	// wait for all spawned peer goroutines to gracefully exit
+	for _, v := range r.peers.Values() {
+		ps := v.(*PeerState)
+		ps.broadcastWG.Wait()
+	}
+
 	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
 	// p2p Channels should execute Close().
 	close(r.closeCh)
