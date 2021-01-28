@@ -6,7 +6,6 @@ import (
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
-	"github.com/tendermint/tendermint/libs/cmap"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -96,11 +95,11 @@ type Reactor struct {
 	service.BaseService
 
 	conS     *State
-	peers    *cmap.CMap
 	eventBus *types.EventBus
 	Metrics  *Metrics
 
 	mtx      tmsync.RWMutex
+	peers    map[p2p.NodeID]*PeerState
 	waitSync bool
 
 	stateCh       *p2p.Channel
@@ -130,7 +129,7 @@ func NewReactor(
 	r := &Reactor{
 		conS:          cs,
 		waitSync:      waitSync,
-		peers:         cmap.NewCMap(),
+		peers:         make(map[p2p.NodeID]*PeerState),
 		Metrics:       NopMetrics(),
 		stateCh:       stateCh,
 		dataCh:        dataCh,
@@ -193,10 +192,12 @@ func (r *Reactor) OnStop() {
 	}
 
 	// wait for all spawned peer goroutines to gracefully exit
-	for _, v := range r.peers.Values() {
-		ps := v.(*PeerState)
+	r.mtx.Lock()
+	for _, ps := range r.peers {
+		ps.closer.Close()
 		ps.broadcastWG.Wait()
 	}
+	r.mtx.Unlock()
 
 	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
 	// p2p Channels should execute Close().
@@ -282,8 +283,7 @@ func (r *Reactor) StringIndented(indent string) string {
 	s := "ConsensusReactor{\n"
 	s += indent + "  " + r.conS.StringIndented(indent+"  ") + "\n"
 
-	for _, v := range r.peers.Values() {
-		ps := v.(*PeerState)
+	for _, ps := range r.peers {
 		s += indent + "  " + ps.StringIndented(indent+"  ") + "\n"
 	}
 
@@ -853,10 +853,16 @@ OUTER_LOOP:
 	}
 }
 
+// processPeerUpdate process a peer update message. For new or reconnected peers,
+// we create a peer state if one does not exist for the peer, which should always
+// be the case, and we spawn all the relevant goroutine to broadcast messages to
+// the peer. During peer removal, we remove the peer for our set of peers and
+// signal to all spawned goroutines to gracefully exit in a non-blocking manner.
 func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	r.Logger.Debug("received peer update", "peer", peerUpdate.PeerID, "status", peerUpdate.Status)
 
-	psKey := string(peerUpdate.PeerID)
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
 
 	switch peerUpdate.Status {
 	case p2p.PeerStatusNew, p2p.PeerStatusUp:
@@ -868,52 +874,53 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 			return
 		}
 
-		// save the peer if the ID is non-empty and we haven't seen this peer before
-		if psKey != "" && !r.peers.Has(psKey) {
-			peerState := NewPeerState(r.Logger, peerUpdate.PeerID)
-			r.peers.Set(psKey, peerState)
-		}
+		var (
+			ps *PeerState
+			ok bool
+		)
 
-		peerState, ok := r.peers.Get(psKey).(*PeerState)
+		ps, ok = r.peers[peerUpdate.PeerID]
 		if !ok {
-			panic(fmt.Sprintf("peer %v has no state", psKey))
+			ps = NewPeerState(r.Logger, peerUpdate.PeerID)
+			r.peers[peerUpdate.PeerID] = ps
 		}
 
-		if !peerState.IsRunning() {
+		if !ps.IsRunning() {
 			// Set the peer state's closer to signal to all spawned goroutines to exit
 			// when the peer is removed. We also set the running state to ensure we
 			// do not spawn multiple instances of the same goroutines and finally we
 			// set the waitgroup counter so we know when all goroutines have exited.
-			peerState.broadcastWG.Add(3)
-			peerState.SetRunning(true)
+			ps.broadcastWG.Add(3)
+			ps.SetRunning(true)
 
 			// start goroutines for this peer
-			go r.gossipDataRoutine(peerState)
-			go r.gossipVotesRoutine(peerState)
-			go r.queryMaj23Routine(peerState)
+			go r.gossipDataRoutine(ps)
+			go r.gossipVotesRoutine(ps)
+			go r.queryMaj23Routine(ps)
 
 			// Send our state to the peer. If we're fast-syncing, broadcast a
 			// RoundStepMessage later upon SwitchToConsensus().
-			if !r.WaitSync() {
-				r.sendNewRoundStepMessage(peerState.peerID)
+			if !r.waitSync {
+				r.sendNewRoundStepMessage(ps.peerID)
 			}
 		}
 
 	case p2p.PeerStatusDown, p2p.PeerStatusRemoved, p2p.PeerStatusBanned:
-		peerState, ok := r.peers.Get(psKey).(*PeerState)
-		if ok && peerState.IsRunning() {
-			// Close the closer to signal to all spawned goroutines to gracefully exit
-			// and we wait for them to all exit before marking the peer state as no
-			// longer running.
-			//
-			// XXX/TODO: It is possible that we can briefly wait here for all goroutines.
-			// Is this problematic?
-			peerState.closer.Close()
-			peerState.broadcastWG.Wait()
-			peerState.SetRunning(false)
+		ps, ok := r.peers[peerUpdate.PeerID]
+		if ok && ps.IsRunning() {
+			// signal to all spawned goroutines for the peer to gracefully exit
+			ps.closer.Close()
 
-			// remove peer from the peer store to prevent unbounded growth
-			r.peers.Delete(psKey)
+			go func() {
+				// Wait for all spawned broadcast goroutines to exit before marking the
+				// peer state as no longer running and removal from the peers map.
+				ps.broadcastWG.Wait()
+				ps.SetRunning(false)
+
+				r.mtx.Lock()
+				delete(r.peers, peerUpdate.PeerID)
+				r.mtx.Unlock()
+			}()
 		}
 	}
 }
@@ -924,9 +931,12 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 // and return. This can happen when we process the envelope after the peer is
 // removed.
 func (r *Reactor) handleStateMessage(envelope p2p.Envelope, msgI Message) error {
-	ps, ok := r.peers.Get(string(envelope.From)).(*PeerState)
-	if !ok {
-		r.Logger.Debug("failed to find peer state", "peer", envelope.From)
+	r.mtx.Lock()
+	ps, ok := r.peers[envelope.From]
+	r.mtx.Unlock()
+
+	if !ok || ps == nil {
+		r.Logger.Debug("failed to find peer state", "peer", envelope.From, "ch_id", "StateChannel")
 		return nil
 	}
 
@@ -1010,10 +1020,13 @@ func (r *Reactor) handleStateMessage(envelope p2p.Envelope, msgI Message) error 
 // return. This can happen when we process the envelope after the peer is
 // removed.
 func (r *Reactor) handleDataMessage(envelope p2p.Envelope, msgI Message) error {
-	logger := r.Logger.With("peer", envelope.From)
+	logger := r.Logger.With("peer", envelope.From, "ch_id", "DataChannel")
 
-	ps, ok := r.peers.Get(string(envelope.From)).(*PeerState)
-	if !ok {
+	r.mtx.Lock()
+	ps, ok := r.peers[envelope.From]
+	r.mtx.Unlock()
+
+	if !ok || ps == nil {
 		r.Logger.Debug("failed to find peer state")
 		return nil
 	}
@@ -1052,10 +1065,13 @@ func (r *Reactor) handleDataMessage(envelope p2p.Envelope, msgI Message) error {
 // return. This can happen when we process the envelope after the peer is
 // removed.
 func (r *Reactor) handleVoteMessage(envelope p2p.Envelope, msgI Message) error {
-	logger := r.Logger.With("peer", envelope.From)
+	logger := r.Logger.With("peer", envelope.From, "ch_id", "VoteChannel")
 
-	ps, ok := r.peers.Get(string(envelope.From)).(*PeerState)
-	if !ok {
+	r.mtx.Lock()
+	ps, ok := r.peers[envelope.From]
+	r.mtx.Unlock()
+
+	if !ok || ps == nil {
 		r.Logger.Debug("failed to find peer state")
 		return nil
 	}
@@ -1093,10 +1109,13 @@ func (r *Reactor) handleVoteMessage(envelope p2p.Envelope, msgI Message) error {
 // we perform a no-op and return. This can happen when we process the envelope
 // after the peer is removed.
 func (r *Reactor) handleVoteSetBitsMessage(envelope p2p.Envelope, msgI Message) error {
-	logger := r.Logger.With("peer", envelope.From)
+	logger := r.Logger.With("peer", envelope.From, "ch_id", "VoteSetBitsChannel")
 
-	ps, ok := r.peers.Get(string(envelope.From)).(*PeerState)
-	if !ok {
+	r.mtx.Lock()
+	ps, ok := r.peers[envelope.From]
+	r.mtx.Unlock()
+
+	if !ok || ps == nil {
 		r.Logger.Debug("failed to find peer state")
 		return nil
 	}
@@ -1332,27 +1351,25 @@ func (r *Reactor) peerStatsRoutine() {
 
 		select {
 		case msg := <-r.conS.statsMsgQueue:
-			psKey := string(msg.PeerID)
+			r.mtx.Lock()
+			ps, ok := r.peers[msg.PeerID]
+			r.mtx.Unlock()
 
-			peer := r.peers.Get(psKey)
-			if peer == nil {
+			if !ok || ps == nil {
 				r.Logger.Debug("attempt to update stats for non-existent peer", "peer", msg.PeerID)
 				continue
-			}
-
-			ps, ok := r.peers.Get(psKey).(*PeerState)
-			if !ok {
-				panic(fmt.Sprintf("peer %v has no state", psKey))
 			}
 
 			switch msg.Msg.(type) {
 			case *VoteMessage:
 				if numVotes := ps.RecordVote(); numVotes%votesToContributeToBecomeGoodPeer == 0 {
+					// TODO: Handle peer quality via the peer manager.
 					// r.Switch.MarkPeerAsGood(peer)
 				}
 
 			case *BlockPartMessage:
 				if numParts := ps.RecordBlockPart(); numParts%blocksToContributeToBecomeGoodPeer == 0 {
+					// TODO: Handle peer quality via the peer manager.
 					// r.Switch.MarkPeerAsGood(peer)
 				}
 			}
