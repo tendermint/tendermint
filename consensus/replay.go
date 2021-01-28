@@ -308,12 +308,12 @@ func (h *Handshaker) ReplayBlocks(
 		}
 		validatorSet := types.NewValidatorSet(validators)
 		nextVals := types.TM2PB.ValidatorUpdates(validatorSet)
-		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
+		pbParams := h.genDoc.ConsensusParams.ToProto()
 		req := abci.RequestInitChain{
 			Time:            h.genDoc.GenesisTime,
 			ChainId:         h.genDoc.ChainID,
 			InitialHeight:   h.genDoc.InitialHeight,
-			ConsensusParams: csParams,
+			ConsensusParams: &pbParams,
 			Validators:      nextVals,
 			AppStateBytes:   h.genDoc.AppState,
 		}
