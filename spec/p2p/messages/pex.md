@@ -20,17 +20,17 @@ PexRequest is an empty message requesting a list of peers.
 
 > EmptyRequest
 
-### PexAddrs
+### PexResponse
 
-PexAddrs is an list of net addresses provided to a peer to dial.
+PexResponse is an list of net addresses provided to a peer to dial.
 
 | Name  | Type                               | Description                              | Field Number |
 |-------|------------------------------------|------------------------------------------|--------------|
-| addrs | repeated [NetAddress](#netaddress) | List of peer addresses available to dial | 1            |
+| addresses | repeated [PexAddress](#Pexaddress) | List of peer addresses available to dial | 1            |
 
-### NetAddress
+### PexAddress
 
-NetAddress provides needed information for a node to dial a peer.
+PexAddress provides needed information for a node to dial a peer.
 
 | Name | Type   | Description      | Field Number |
 |------|--------|------------------|--------------|
@@ -42,7 +42,7 @@ NetAddress provides needed information for a node to dial a peer.
 
 Message is a [`oneof` protobuf type](https://developers.google.com/protocol-buffers/docs/proto#oneof). The one of consists of two messages.
 
-| Name        | Type                      | Description                                          | Field Number |
-|-------------|---------------------------|------------------------------------------------------|--------------|
-| pex_request | [PexRequest](#pexrequest) | Empty request asking for a list of addresses to dial | 1            |
-| pex_addrs   | [PexAddrs]                | List of addresses to dial                            | 2            |
+| Name         | Type                      | Description                                          | Field Number |
+|--------------|---------------------------|------------------------------------------------------|--------------|
+| pex_request  | [PexRequest](#pexrequest) | Empty request asking for a list of addresses to dial | 1            |
+| pex_response | [PexResponse]                | List of addresses to dial                            | 2            |

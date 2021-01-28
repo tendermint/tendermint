@@ -1,0 +1,16 @@
+syntax = "proto3";
+package tendermint.mempool;
+
+option go_package = "github.com/tendermint/tendermint/proto/tendermint/mempool";
+
+// Txs list of transactions.
+// Note because they are sent over the wire does not mean they are valid transactions
+message Txs {
+  repeated bytes txs = 1;
+}
+
+message Message {
+  oneof sum {
+    Txs txs = 1;
+  }
+}

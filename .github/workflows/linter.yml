@@ -26,3 +26,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_MD: true
           MARKDOWN_CONFIG_FILE: .markdownlint.yml
+          VALIDATE_PROTOBUF: false
+          VALIDATE_JSCPD: false
