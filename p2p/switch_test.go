@@ -327,6 +327,10 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_, _, err = c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey, rp.ID())
+	if err != nil {
+		t.Fatal(err)
+	}
 	p := newPeer(
 		newPeerConn(true, false, c),
 		sw.reactorsByCh,
@@ -374,6 +378,10 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	defer rp.Stop()
 
 	c, err := sw.transport.Dial(ctx, rp.Addr().Endpoint())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey, rp.ID())
 	if err != nil {
 		t.Fatal(err)
 	}

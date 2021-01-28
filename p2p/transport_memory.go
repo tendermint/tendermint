@@ -63,6 +63,8 @@ func (n *MemoryNetwork) CreateTransport(
 // GenerateTransport generates a new transport endpoint by generating a random
 // private key and node info. The endpoint address can be obtained via
 // Transport.Endpoints().
+//
+// FIXME: This should be removed.
 func (n *MemoryNetwork) GenerateTransport() *MemoryTransport {
 	privKey := ed25519.GenPrivKey()
 	nodeID := NodeIDFromPubKey(privKey.PubKey())
@@ -295,6 +297,16 @@ func newMemoryConnection(
 	}
 	c.logger = c.local.logger.With("remote", c.RemoteEndpoint())
 	return c
+}
+
+// Handshake implements Connection.
+func (c *MemoryConnection) Handshake(
+	ctx context.Context,
+	nodeInfo NodeInfo,
+	privKey crypto.PrivKey,
+	expectPeerID NodeID,
+) (NodeInfo, crypto.PubKey, error) {
+	return c.remote.nodeInfo, c.remote.privKey.PubKey(), nil
 }
 
 // ReceiveMessage implements Connection.

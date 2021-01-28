@@ -627,7 +627,11 @@ func (sw *Switch) IsPeerPersistent(na *NetAddress) bool {
 
 func (sw *Switch) acceptRoutine() {
 	for {
-		c, err := sw.transport.Accept(context.Background())
+		ctx := context.Background()
+		c, err := sw.transport.Accept(ctx)
+		if err == nil {
+			_, _, err = c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey, "")
+		}
 		if err != nil {
 			switch err := err.(type) {
 			case ErrRejected:
@@ -746,6 +750,9 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		IP:       addr.IP,
 		Port:     addr.Port,
 	})
+	if err == nil {
+		_, _, err = c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey, addr.ID)
+	}
 	if err != nil {
 		if e, ok := err.(ErrRejected); ok {
 			if e.IsSelf() {

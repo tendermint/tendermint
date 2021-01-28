@@ -2,6 +2,7 @@ package p2p_test
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/fortytw2/leaktest"
@@ -10,11 +11,23 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 )
 
 type TestMessage = gogotypes.StringValue
+
+func generateNode() (p2p.NodeInfo, crypto.PrivKey) {
+	privKey := ed25519.GenPrivKey()
+	nodeID := p2p.NodeIDFromPubKey(privKey.PubKey())
+	nodeInfo := p2p.NodeInfo{
+		NodeID:     nodeID,
+		ListenAddr: fmt.Sprintf("%v:%v", p2p.MemoryProtocol, nodeID),
+	}
+	return nodeInfo, privKey
+}
 
 func echoReactor(channel *p2p.Channel) {
 	for {
@@ -35,7 +48,9 @@ func TestRouter(t *testing.T) {
 
 	logger := log.TestingLogger()
 	network := p2p.NewMemoryNetwork(logger)
-	transport := network.GenerateTransport()
+	nodeInfo, privKey := generateNode()
+	transport, err := network.CreateTransport(nodeInfo, privKey)
+	require.NoError(t, err)
 	defer transport.Close()
 	chID := p2p.ChannelID(1)
 
@@ -45,10 +60,14 @@ func TestRouter(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
 		require.NoError(t, err)
-		peerTransport := network.GenerateTransport()
+		peerInfo, peerKey := generateNode()
+		peerTransport, err := network.CreateTransport(peerInfo, peerKey)
+		require.NoError(t, err)
 		defer peerTransport.Close()
 		peerRouter, err := p2p.NewRouter(
 			logger.With("peerID", i),
+			peerInfo,
+			peerKey,
 			peerManager,
 			[]p2p.Transport{peerTransport},
 			p2p.RouterOptions{},
@@ -77,7 +96,7 @@ func TestRouter(t *testing.T) {
 	peerUpdates := peerManager.Subscribe()
 	defer peerUpdates.Close()
 
-	router, err := p2p.NewRouter(logger, peerManager, []p2p.Transport{transport}, p2p.RouterOptions{})
+	router, err := p2p.NewRouter(logger, nodeInfo, privKey, peerManager, []p2p.Transport{transport}, p2p.RouterOptions{})
 	require.NoError(t, err)
 	channel, err := router.OpenChannel(chID, &TestMessage{})
 	require.NoError(t, err)

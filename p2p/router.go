@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
@@ -24,7 +25,6 @@ type RouterOptions struct {
 
 	// HandshakeTimeout is the timeout for handshaking with a peer. 0 means
 	// no timeout.
-	// FIXME: Implement this along with Connection.Handshake().
 	HandshakeTimeout time.Duration
 }
 
@@ -98,6 +98,8 @@ type Router struct {
 	*service.BaseService
 
 	logger      log.Logger
+	nodeInfo    NodeInfo
+	privKey     crypto.PrivKey
 	transports  map[Protocol]Transport
 	peerManager *PeerManager
 	options     RouterOptions
@@ -120,6 +122,8 @@ type Router struct {
 // NewRouter creates a new Router.
 func NewRouter(
 	logger log.Logger,
+	nodeInfo NodeInfo,
+	privKey crypto.PrivKey,
 	peerManager *PeerManager,
 	transports []Transport,
 	options RouterOptions,
@@ -130,6 +134,8 @@ func NewRouter(
 
 	router := &Router{
 		logger:          logger,
+		nodeInfo:        nodeInfo,
+		privKey:         privKey,
 		transports:      map[Protocol]Transport{},
 		peerManager:     peerManager,
 		options:         options,
@@ -302,29 +308,35 @@ func (r *Router) acceptPeers(transport Transport) {
 			// peer manager before completing the handshake -- this probably
 			// requires protocol changes to send an additional message when the
 			// handshake is accepted.
-			peerID := conn.NodeInfo().NodeID
-			if err := r.peerManager.Accepted(peerID); err != nil {
-				r.logger.Error("failed to accept connection", "peer", peerID, "err", err)
+			peerInfo, _, err := r.handshakePeer(ctx, "", conn)
+			if err == context.Canceled {
+				return
+			} else if err != nil {
+				r.logger.Error("failed to handshake with peer", "err", err)
+				return
+			}
+			if err := r.peerManager.Accepted(peerInfo.NodeID); err != nil {
+				r.logger.Error("failed to accept connection", "peer", peerInfo.NodeID, "err", err)
 				return
 			}
 
 			queue := newFIFOQueue()
 			r.peerMtx.Lock()
-			r.peerQueues[peerID] = queue
+			r.peerQueues[peerInfo.NodeID] = queue
 			r.peerMtx.Unlock()
-			r.peerManager.Ready(peerID)
+			r.peerManager.Ready(peerInfo.NodeID)
 
 			defer func() {
 				r.peerMtx.Lock()
-				delete(r.peerQueues, peerID)
+				delete(r.peerQueues, peerInfo.NodeID)
 				r.peerMtx.Unlock()
 				queue.close()
-				if err := r.peerManager.Disconnected(peerID); err != nil {
-					r.logger.Error("failed to disconnect peer", "peer", peerID, "err", err)
+				if err := r.peerManager.Disconnected(peerInfo.NodeID); err != nil {
+					r.logger.Error("failed to disconnect peer", "peer", peerInfo.NodeID, "err", err)
 				}
 			}()
 
-			r.routePeer(peerID, conn, queue)
+			r.routePeer(peerInfo.NodeID, conn, queue)
 		}()
 	}
 }
@@ -349,13 +361,24 @@ func (r *Router) dialPeers() {
 			if errors.Is(err, context.Canceled) {
 				return
 			} else if err != nil {
-				r.logger.Error("failed to dial peer", "peer", peerID)
+				r.logger.Error("failed to dial peer", "peer", peerID, "err", err)
 				if err = r.peerManager.DialFailed(peerID, address); err != nil {
 					r.logger.Error("failed to report dial failure", "peer", peerID, "err", err)
 				}
 				return
 			}
 			defer conn.Close()
+
+			_, _, err = r.handshakePeer(ctx, peerID, conn)
+			if errors.Is(err, context.Canceled) {
+				return
+			} else if err != nil {
+				r.logger.Error("failed to handshake with peer", "peer", peerID, "err", err)
+				if err = r.peerManager.DialFailed(peerID, address); err != nil {
+					r.logger.Error("failed to report dial failure", "peer", peerID, "err", err)
+				}
+				return
+			}
 
 			if err = r.peerManager.Dialed(peerID, address); err != nil {
 				r.logger.Error("failed to dial peer", "peer", peerID, "err", err)
@@ -427,6 +450,16 @@ func (r *Router) dialPeer(ctx context.Context, address PeerAddress) (Connection,
 		}
 	}
 	return nil, fmt.Errorf("failed to connect to peer via %q", address)
+}
+
+// handshakePeer handshakes with a peer, validating the peer's information.
+func (r *Router) handshakePeer(ctx context.Context, peerID NodeID, conn Connection) (NodeInfo, crypto.PubKey, error) {
+	if r.options.HandshakeTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, r.options.HandshakeTimeout)
+		defer cancel()
+	}
+	return conn.Handshake(ctx, r.nodeInfo, r.privKey, peerID)
 }
 
 // routePeer routes inbound messages from a peer to channels, and also sends

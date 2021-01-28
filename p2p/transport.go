@@ -128,6 +128,17 @@ func (e Endpoint) NetAddress() *NetAddress {
 // MConnection behavior that the rest of the P2P stack relies on. This should be
 // removed once the P2P core is rewritten.
 type Connection interface {
+	// Handshake handshakes with the remote peer. It must be called immediately
+	// after the connection is established, and returns the remote peer's node
+	// info and public key.
+	//
+	// FIXME: The handshaking should really be the Router's responsibility, but
+	// that requires the connection interface to be byte-oriented rather than
+	// message-oriented (see comment above).
+	//
+	// FIXME: NodeID should be removed and router should check handshake.
+	Handshake(context.Context, NodeInfo, crypto.PrivKey, NodeID) (NodeInfo, crypto.PubKey, error)
+
 	// ReceiveMessage returns the next message received on the connection,
 	// blocking until one is available. io.EOF is returned when closed.
 	ReceiveMessage() (chID byte, msg []byte, err error)

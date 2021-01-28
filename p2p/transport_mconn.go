@@ -210,24 +210,13 @@ func (m *MConnTransport) accept() {
 			// FIXME: For now, we just hardcode a timeout. The handshake should
 			// be done by the Router, which can control the context.
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-			conn, err := newMConnConnection(ctx, m, tcpConn, "")
+			conn := newMConnConnection(ctx, m, tcpConn)
 			cancel()
-			if err != nil {
-				m.conns.Remove(tcpConn)
+			select {
+			case m.chAccept <- conn:
+			case <-m.chClose:
 				if err := tcpConn.Close(); err != nil {
 					m.logger.Debug("failed to close TCP connection", "err", err)
-				}
-				select {
-				case m.chError <- err:
-				case <-m.chClose:
-				}
-			} else {
-				select {
-				case m.chAccept <- conn:
-				case <-m.chClose:
-					if err := tcpConn.Close(); err != nil {
-						m.logger.Debug("failed to close TCP connection", "err", err)
-					}
 				}
 			}
 		}()
@@ -275,16 +264,7 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 		return nil, err
 	}
 
-	conn, err := newMConnConnection(ctx, m, tcpConn, endpoint.PeerID)
-	if err != nil {
-		m.conns.Remove(tcpConn)
-		if err := tcpConn.Close(); err != nil {
-			m.logger.Debug("failed to close TCP connection", "err", err)
-		}
-		return nil, err
-	}
-
-	return conn, nil
+	return newMConnConnection(ctx, m, tcpConn), nil
 }
 
 // Endpoints implements Transport.
@@ -389,6 +369,7 @@ func (m *MConnTransport) normalizeEndpoint(endpoint *Endpoint) error {
 type mConnConnection struct {
 	logger     log.Logger
 	transport  *MConnTransport
+	conn       net.Conn
 	secretConn *conn.SecretConnection
 	mConn      *conn.MConnection
 
@@ -412,15 +393,30 @@ func newMConnConnection(
 	ctx context.Context,
 	transport *MConnTransport,
 	tcpConn net.Conn,
+) *mConnConnection {
+	return &mConnConnection{
+		transport: transport,
+		conn:      tcpConn,
+		chReceive: make(chan mConnMessage),
+		chError:   make(chan error),
+		chClose:   make(chan struct{}),
+	}
+}
+
+// Handshake implements Transport.
+func (c *mConnConnection) Handshake(
+	ctx context.Context,
+	nodeInfo NodeInfo,
+	privKey crypto.PrivKey,
 	expectPeerID NodeID,
-) (c *mConnConnection, err error) {
+) (peerInfo NodeInfo, peerKey crypto.PubKey, err error) {
 	// FIXME: Since the MConnection code panics, we need to recover here
 	// and turn it into an error. Be careful not to alias err, so we can
 	// update it from within this function. We should remove panics instead.
 	defer func() {
 		if r := recover(); r != nil {
 			err = ErrRejected{
-				conn:          tcpConn,
+				conn:          c.conn,
 				err:           fmt.Errorf("recovered from panic: %v", r),
 				isAuthFailure: true,
 			}
@@ -428,10 +424,10 @@ func newMConnConnection(
 	}()
 
 	if deadline, ok := ctx.Deadline(); ok {
-		err = tcpConn.SetDeadline(deadline)
+		err = c.conn.SetDeadline(deadline)
 		if err != nil {
 			err = ErrRejected{
-				conn:          tcpConn,
+				conn:          c.conn,
 				err:           fmt.Errorf("secret conn failed: %v", err),
 				isAuthFailure: true,
 			}
@@ -439,30 +435,26 @@ func newMConnConnection(
 		}
 	}
 
-	c = &mConnConnection{
-		transport: transport,
-		chReceive: make(chan mConnMessage),
-		chError:   make(chan error),
-		chClose:   make(chan struct{}),
-	}
-	c.secretConn, err = conn.MakeSecretConnection(tcpConn, transport.privKey)
+	c.secretConn, err = conn.MakeSecretConnection(c.conn, privKey)
 	if err != nil {
 		err = ErrRejected{
-			conn:          tcpConn,
+			conn:          c.conn,
 			err:           fmt.Errorf("secret conn failed: %v", err),
 			isAuthFailure: true,
 		}
 		return
 	}
+	peerKey = c.secretConn.RemotePubKey()
 	c.peerInfo, err = c.handshake()
 	if err != nil {
 		err = ErrRejected{
-			conn:          tcpConn,
+			conn:          c.conn,
 			err:           fmt.Errorf("handshake failed: %v", err),
 			isAuthFailure: true,
 		}
 		return
 	}
+	peerInfo = c.peerInfo
 
 	// Validate node info.
 	// FIXME: All of the ID verification code below should be moved to the
@@ -470,7 +462,7 @@ func newMConnConnection(
 	err = c.peerInfo.Validate()
 	if err != nil {
 		err = ErrRejected{
-			conn:              tcpConn,
+			conn:              c.conn,
 			err:               err,
 			isNodeInfoInvalid: true,
 		}
@@ -482,7 +474,7 @@ func newMConnConnection(
 		peerID := NodeIDFromPubKey(c.PubKey())
 		if expectPeerID != peerID {
 			err = ErrRejected{
-				conn: tcpConn,
+				conn: c.conn,
 				id:   peerID,
 				err: fmt.Errorf(
 					"conn.ID (%v) dialed ID (%v) mismatch",
@@ -496,20 +488,20 @@ func newMConnConnection(
 	}
 
 	// Reject self.
-	if transport.nodeInfo.ID() == c.peerInfo.ID() {
+	if nodeInfo.ID() == c.peerInfo.ID() {
 		err = ErrRejected{
 			addr:   *NewNetAddress(c.peerInfo.ID(), c.secretConn.RemoteAddr()),
-			conn:   tcpConn,
+			conn:   c.conn,
 			id:     c.peerInfo.ID(),
 			isSelf: true,
 		}
 		return
 	}
 
-	err = transport.nodeInfo.CompatibleWith(c.peerInfo)
+	err = nodeInfo.CompatibleWith(c.peerInfo)
 	if err != nil {
 		err = ErrRejected{
-			conn:           tcpConn,
+			conn:           c.conn,
 			err:            err,
 			id:             c.peerInfo.ID(),
 			isIncompatible: true,
@@ -517,10 +509,10 @@ func newMConnConnection(
 		return
 	}
 
-	err = tcpConn.SetDeadline(time.Time{})
+	err = c.conn.SetDeadline(time.Time{})
 	if err != nil {
 		err = ErrRejected{
-			conn:          tcpConn,
+			conn:          c.conn,
 			err:           fmt.Errorf("secret conn failed: %v", err),
 			isAuthFailure: true,
 		}
@@ -530,16 +522,16 @@ func newMConnConnection(
 	// Set up the MConnection wrapper
 	c.mConn = conn.NewMConnectionWithConfig(
 		c.secretConn,
-		transport.channelDescs,
+		c.transport.channelDescs,
 		c.onReceive,
 		c.onError,
-		transport.mConnConfig,
+		c.transport.mConnConfig,
 	)
 	// FIXME: Log format is set up for compatibility with existing peer code.
-	c.logger = transport.logger.With("peer", c.RemoteEndpoint().NetAddress())
+	c.logger = c.transport.logger.With("peer", c.RemoteEndpoint().NetAddress())
 	c.mConn.SetLogger(c.logger)
 	err = c.mConn.Start()
-	return c, err
+	return
 }
 
 // handshake performs an MConn handshake, returning the peer's node info.
