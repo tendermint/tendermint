@@ -915,11 +915,12 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 				// Wait for all spawned broadcast goroutines to exit before marking the
 				// peer state as no longer running and removal from the peers map.
 				ps.broadcastWG.Wait()
-				ps.SetRunning(false)
 
 				r.mtx.Lock()
 				delete(r.peers, peerUpdate.PeerID)
 				r.mtx.Unlock()
+
+				ps.SetRunning(false)
 			}()
 		}
 	}
