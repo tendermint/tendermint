@@ -50,7 +50,7 @@ func TestRouter(t *testing.T) {
 	logger := log.TestingLogger()
 	network := p2p.NewMemoryNetwork(logger)
 	nodeInfo, privKey := generateNode()
-	transport, err := network.CreateTransport(nodeInfo, privKey)
+	transport, err := network.CreateTransport(nodeInfo.NodeID)
 	require.NoError(t, err)
 	defer transport.Close()
 	chID := p2p.ChannelID(1)
@@ -62,7 +62,7 @@ func TestRouter(t *testing.T) {
 		peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
 		require.NoError(t, err)
 		peerInfo, peerKey := generateNode()
-		peerTransport, err := network.CreateTransport(peerInfo, peerKey)
+		peerTransport, err := network.CreateTransport(peerInfo.NodeID)
 		require.NoError(t, err)
 		defer peerTransport.Close()
 		peerRouter, err := p2p.NewRouter(

@@ -13,12 +13,15 @@ import (
 func TestMemoryTransport(t *testing.T) {
 	ctx := context.Background()
 	network := p2p.NewMemoryNetwork(log.TestingLogger())
-	a := network.GenerateTransport()
-	b := network.GenerateTransport()
-	c := network.GenerateTransport()
+	a, err := network.CreateTransport("0a")
+	require.NoError(t, err)
+	b, err := network.CreateTransport("0b")
+	require.NoError(t, err)
+	c, err := network.CreateTransport("0c")
+	require.NoError(t, err)
 
 	// Dialing a missing endpoint should fail.
-	_, err := a.Dial(ctx, p2p.Endpoint{
+	_, err = a.Dial(ctx, p2p.Endpoint{
 		Protocol: p2p.MemoryProtocol,
 		PeerID:   p2p.NodeID("foo"),
 		Path:     "foo",

@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
@@ -35,21 +35,11 @@ func NewMemoryNetwork(logger log.Logger) *MemoryNetwork {
 	}
 }
 
-// CreateTransport creates a new memory transport and endpoint for the given
-// NodeInfo and private key. Use GenerateTransport() to autogenerate a random
-// key and node info.
-//
-// The transport immediately begins listening on the endpoint "memory:<id>", and
+// CreateTransport creates a new memory transport and endpoint with the given
+// node ID. It immediately begins listening on the endpoint "memory:<id>", and
 // can be accessed by other transports in the same memory network.
-func (n *MemoryNetwork) CreateTransport(
-	nodeInfo NodeInfo,
-	privKey crypto.PrivKey,
-) (*MemoryTransport, error) {
-	nodeID := nodeInfo.NodeID
-	if nodeID == "" {
-		return nil, errors.New("no node ID")
-	}
-	t := newMemoryTransport(n, nodeInfo, privKey)
+func (n *MemoryNetwork) CreateTransport(nodeID NodeID) (*MemoryTransport, error) {
+	t := newMemoryTransport(n, nodeID)
 
 	n.mtx.Lock()
 	defer n.mtx.Unlock()
@@ -58,27 +48,6 @@ func (n *MemoryNetwork) CreateTransport(
 	}
 	n.transports[nodeID] = t
 	return t, nil
-}
-
-// GenerateTransport generates a new transport endpoint by generating a random
-// private key and node info. The endpoint address can be obtained via
-// Transport.Endpoints().
-//
-// FIXME: This should be removed.
-func (n *MemoryNetwork) GenerateTransport() *MemoryTransport {
-	privKey := ed25519.GenPrivKey()
-	nodeID := NodeIDFromPubKey(privKey.PubKey())
-	nodeInfo := NodeInfo{
-		NodeID:     nodeID,
-		ListenAddr: fmt.Sprintf("%v:%v", MemoryProtocol, nodeID),
-	}
-	t, err := n.CreateTransport(nodeInfo, privKey)
-	if err != nil {
-		// GenerateTransport is only used for testing, and the likelihood of
-		// generating a duplicate node ID is very low, so we'll panic.
-		panic(err)
-	}
-	return t
 }
 
 // GetTransport looks up a transport in the network, returning nil if not found.
@@ -107,10 +76,9 @@ func (n *MemoryNetwork) RemoveTransport(id NodeID) error {
 // It communicates between endpoints using Go channels. To dial a different
 // endpoint, both endpoints/transports must be in the same MemoryNetwork.
 type MemoryTransport struct {
-	network  *MemoryNetwork
-	nodeInfo NodeInfo
-	privKey  crypto.PrivKey
-	logger   log.Logger
+	network *MemoryNetwork
+	nodeID  NodeID
+	logger  log.Logger
 
 	acceptCh  chan *MemoryConnection
 	closeCh   chan struct{}
@@ -120,17 +88,11 @@ type MemoryTransport struct {
 // newMemoryTransport creates a new in-memory transport in the given network.
 // Callers should use MemoryNetwork.CreateTransport() or GenerateTransport()
 // to create transports, this is for internal use by MemoryNetwork.
-func newMemoryTransport(
-	network *MemoryNetwork,
-	nodeInfo NodeInfo,
-	privKey crypto.PrivKey,
-) *MemoryTransport {
+func newMemoryTransport(network *MemoryNetwork, nodeID NodeID) *MemoryTransport {
 	return &MemoryTransport{
-		network:  network,
-		nodeInfo: nodeInfo,
-		privKey:  privKey,
-		logger: network.logger.With("local",
-			fmt.Sprintf("%v:%v", MemoryProtocol, nodeInfo.NodeID)),
+		network: network,
+		nodeID:  nodeID,
+		logger:  network.logger.With("local", fmt.Sprintf("%v:%v", MemoryProtocol, nodeID)),
 
 		acceptCh: make(chan *MemoryConnection),
 		closeCh:  make(chan struct{}),
@@ -139,7 +101,7 @@ func newMemoryTransport(
 
 // String displays the transport.
 func (t *MemoryTransport) String() string {
-	return "memory"
+	return string(MemoryProtocol)
 }
 
 // Protocols implements Transport.
@@ -154,7 +116,7 @@ func (t *MemoryTransport) Accept(ctx context.Context) (Connection, error) {
 		t.logger.Info("accepted connection from peer", "remote", conn.RemoteEndpoint())
 		return conn, nil
 	case <-t.closeCh:
-		return nil, ErrTransportClosed{}
+		return nil, io.EOF
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
@@ -176,19 +138,10 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 	}
 	inCh := make(chan memoryMessage, 1)
 	outCh := make(chan memoryMessage, 1)
-	closeCh := make(chan struct{})
-	closeOnce := sync.Once{}
-	closer := func() bool {
-		closed := false
-		closeOnce.Do(func() {
-			close(closeCh)
-			closed = true
-		})
-		return closed
-	}
+	closer := tmsync.NewCloser()
 
-	outConn := newMemoryConnection(t, peerTransport, inCh, outCh, closeCh, closer)
-	inConn := newMemoryConnection(peerTransport, t, outCh, inCh, closeCh, closer)
+	outConn := newMemoryConnection(t, peerTransport, inCh, outCh, closer)
+	inConn := newMemoryConnection(peerTransport, t, outCh, inCh, closer)
 
 	select {
 	case peerTransport.acceptCh <- inConn:
@@ -208,7 +161,7 @@ func (t *MemoryTransport) DialAccept(
 ) (Connection, Connection, error) {
 	endpoints := peer.Endpoints()
 	if len(endpoints) == 0 {
-		return nil, nil, fmt.Errorf("peer %q not listening on any endpoints", peer.nodeInfo.NodeID)
+		return nil, nil, fmt.Errorf("peer %q not listening on any endpoints", peer.nodeID)
 	}
 
 	acceptCh := make(chan Connection, 1)
@@ -233,7 +186,7 @@ func (t *MemoryTransport) DialAccept(
 
 // Close implements Transport.
 func (t *MemoryTransport) Close() error {
-	err := t.network.RemoveTransport(t.nodeInfo.NodeID)
+	err := t.network.RemoveTransport(t.nodeID)
 	t.closeOnce.Do(func() {
 		close(t.closeCh)
 	})
@@ -249,7 +202,7 @@ func (t *MemoryTransport) Endpoints() []Endpoint {
 	default:
 		return []Endpoint{{
 			Protocol: MemoryProtocol,
-			PeerID:   t.nodeInfo.NodeID,
+			PeerID:   t.nodeID,
 		}}
 	}
 }
@@ -262,14 +215,18 @@ type MemoryConnection struct {
 
 	receiveCh <-chan memoryMessage
 	sendCh    chan<- memoryMessage
-	closeCh   <-chan struct{}
-	close     func() bool
+	closer    *tmsync.Closer
 }
 
 // memoryMessage is used to pass messages internally in the connection.
+// For handshakes, nodeInfo and pubKey are set instead of channel and message.
 type memoryMessage struct {
 	channel byte
 	message []byte
+
+	// For handshakes.
+	nodeInfo NodeInfo
+	pubKey   crypto.PubKey
 }
 
 // newMemoryConnection creates a new MemoryConnection. It takes all channels
@@ -280,16 +237,14 @@ func newMemoryConnection(
 	remote *MemoryTransport,
 	receiveCh <-chan memoryMessage,
 	sendCh chan<- memoryMessage,
-	closeCh <-chan struct{},
-	close func() bool,
+	closer *tmsync.Closer,
 ) *MemoryConnection {
 	c := &MemoryConnection{
 		local:     local,
 		remote:    remote,
 		receiveCh: receiveCh,
 		sendCh:    sendCh,
-		closeCh:   closeCh,
-		close:     close,
+		closer:    closer,
 	}
 	c.logger = c.local.logger.With("remote", c.RemoteEndpoint())
 	return c
@@ -301,14 +256,29 @@ func (c *MemoryConnection) Handshake(
 	nodeInfo NodeInfo,
 	privKey crypto.PrivKey,
 ) (NodeInfo, crypto.PubKey, error) {
-	return c.remote.nodeInfo, c.remote.privKey.PubKey(), nil
+	select {
+	case c.sendCh <- memoryMessage{nodeInfo: nodeInfo, pubKey: privKey.PubKey()}:
+	case <-ctx.Done():
+		return NodeInfo{}, nil, ctx.Err()
+	case <-c.closer.Done():
+		return NodeInfo{}, nil, io.EOF
+	}
+
+	select {
+	case msg := <-c.receiveCh:
+		return msg.nodeInfo, msg.pubKey, nil
+	case <-ctx.Done():
+		return NodeInfo{}, nil, ctx.Err()
+	case <-c.closer.Done():
+		return NodeInfo{}, nil, io.EOF
+	}
 }
 
 // ReceiveMessage implements Connection.
 func (c *MemoryConnection) ReceiveMessage() (chID byte, msg []byte, err error) {
 	// check close first, since channels are buffered
 	select {
-	case <-c.closeCh:
+	case <-c.closer.Done():
 		return 0, nil, io.EOF
 	default:
 	}
@@ -317,7 +287,7 @@ func (c *MemoryConnection) ReceiveMessage() (chID byte, msg []byte, err error) {
 	case msg := <-c.receiveCh:
 		c.logger.Debug("received message", "channel", msg.channel, "message", msg.message)
 		return msg.channel, msg.message, nil
-	case <-c.closeCh:
+	case <-c.closer.Done():
 		return 0, nil, io.EOF
 	}
 }
@@ -326,7 +296,7 @@ func (c *MemoryConnection) ReceiveMessage() (chID byte, msg []byte, err error) {
 func (c *MemoryConnection) SendMessage(chID byte, msg []byte) (bool, error) {
 	// check close first, since channels are buffered
 	select {
-	case <-c.closeCh:
+	case <-c.closer.Done():
 		return false, io.EOF
 	default:
 	}
@@ -335,7 +305,7 @@ func (c *MemoryConnection) SendMessage(chID byte, msg []byte) (bool, error) {
 	case c.sendCh <- memoryMessage{channel: chID, message: msg}:
 		c.logger.Debug("sent message", "channel", chID, "message", msg)
 		return true, nil
-	case <-c.closeCh:
+	case <-c.closer.Done():
 		return false, io.EOF
 	}
 }
@@ -344,7 +314,7 @@ func (c *MemoryConnection) SendMessage(chID byte, msg []byte) (bool, error) {
 func (c *MemoryConnection) TrySendMessage(chID byte, msg []byte) (bool, error) {
 	// check close first, since channels are buffered
 	select {
-	case <-c.closeCh:
+	case <-c.closer.Done():
 		return false, io.EOF
 	default:
 	}
@@ -353,7 +323,7 @@ func (c *MemoryConnection) TrySendMessage(chID byte, msg []byte) (bool, error) {
 	case c.sendCh <- memoryMessage{channel: chID, message: msg}:
 		c.logger.Debug("sent message", "channel", chID, "message", msg)
 		return true, nil
-	case <-c.closeCh:
+	case <-c.closer.Done():
 		return false, io.EOF
 	default:
 		return false, nil
@@ -362,9 +332,8 @@ func (c *MemoryConnection) TrySendMessage(chID byte, msg []byte) (bool, error) {
 
 // Close closes the connection.
 func (c *MemoryConnection) Close() error {
-	if c.close() {
-		c.logger.Info("closed connection")
-	}
+	c.closer.Close()
+	c.logger.Info("closed connection")
 	return nil
 }
 
@@ -376,7 +345,7 @@ func (c *MemoryConnection) FlushClose() error {
 // LocalEndpoint returns the local endpoint for the connection.
 func (c *MemoryConnection) LocalEndpoint() Endpoint {
 	return Endpoint{
-		PeerID:   c.local.nodeInfo.NodeID,
+		PeerID:   c.local.nodeID,
 		Protocol: MemoryProtocol,
 	}
 }
@@ -384,7 +353,7 @@ func (c *MemoryConnection) LocalEndpoint() Endpoint {
 // RemoteEndpoint returns the remote endpoint for the connection.
 func (c *MemoryConnection) RemoteEndpoint() Endpoint {
 	return Endpoint{
-		PeerID:   c.remote.nodeInfo.NodeID,
+		PeerID:   c.remote.nodeID,
 		Protocol: MemoryProtocol,
 	}
 }
