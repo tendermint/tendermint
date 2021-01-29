@@ -238,7 +238,6 @@ func (s *dbs) Prune(size uint16) error {
 		return err
 	}
 
-
 	// 3) // update size
 	s.mtx.Lock()
 	s.size = size

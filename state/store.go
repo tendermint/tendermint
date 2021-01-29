@@ -250,11 +250,16 @@ func (store dbStore) PruneStates(retainHeight int64) error {
 		return fmt.Errorf("height %v must be greater than 0", retainHeight)
 	}
 
-	if err := store.pruneValidatorSets(retainHeight); err != nil {
+	// NOTE: We need to prune consensus params first because the validator
+	// sets have always one extra height. If validator sets were pruned first
+	// we could get a situation where we prune up to the last validator set
+	// yet don't have the respective consensus params at that height and thus
+	// return an error
+	if err := store.pruneConsensusParams(retainHeight); err != nil {
 		return err
 	}
 
-	if err := store.pruneConsensusParams(retainHeight); err != nil {
+	if err := store.pruneValidatorSets(retainHeight); err != nil {
 		return err
 	}
 
@@ -288,7 +293,8 @@ func (store dbStore) pruneValidatorSets(retainHeight int64) error {
 		)
 	}
 
-	// if this is not the retain height, prune from the last saved validator set to the retain height
+	// if this is not equal to the retain height, prune from the retain height to the height above
+	// the last saved validator set. This way we can skip over the dependent validator set.
 	if lastRecordedValSetHeight < retainHeight {
 		err := store.pruneRange(
 			validatorsKey(lastRecordedValSetHeight+1),
@@ -323,7 +329,7 @@ func (store dbStore) pruneConsensusParams(retainHeight int64) error {
 		lastRecordedConsensusParams, err := store.loadConsensusParamsInfo(paramsInfo.LastHeightChanged)
 		if err != nil || lastRecordedConsensusParams.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
 			return fmt.Errorf(
-				"couldn't find consensus params at height %d as last changed from height %d: %w",
+				"couldn't find consensus params at height %d (height %d was originally requested): %w",
 				paramsInfo.LastHeightChanged,
 				retainHeight,
 				err,
@@ -361,7 +367,8 @@ func (store dbStore) pruneRange(start []byte, end []byte) error {
 	defer batch.Close()
 
 	// we keep filling up batches of at most 1000 keys, perform a deletion and continue until
-	// we have gone through all of keys in the range
+	// we have gone through all of keys in the range. This avoids doing any writes whilst
+	// iterating.
 	for {
 		end, err = store.reverseBatchDelete(batch, start, end)
 		if err != nil {
@@ -373,6 +380,7 @@ func (store dbStore) pruneRange(start []byte, end []byte) error {
 			return batch.WriteSync()
 		}
 
+		// if not the last batch, then write, close and perform another batch
 		if err := batch.Write(); err != nil {
 			return err
 		}
@@ -602,7 +610,7 @@ func (store dbStore) LoadConsensusParams(height int64) (tmproto.ConsensusParams,
 		paramsInfo2, err := store.loadConsensusParamsInfo(paramsInfo.LastHeightChanged)
 		if err != nil {
 			return empty, fmt.Errorf(
-				"couldn't find consensus params at height %d as last changed from height %d: %w",
+				"couldn't find consensus params at height %d (height %d was originally requested): %w",
 				paramsInfo.LastHeightChanged,
 				height,
 				err,
