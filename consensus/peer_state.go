@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	ErrPeerStateHeightRegression = errors.New("error peer state height regression")
+	ErrPeerStateHeightRegression = errors.New("peer state height regression")
 	ErrPeerStateInvalidStartTime = errors.New("peer state invalid startTime")
 )
 
