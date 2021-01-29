@@ -984,12 +984,6 @@ func (n *Node) OnStart() error {
 		}
 	}
 
-	// Start the switch (the P2P server).
-	err := n.sw.Start()
-	if err != nil {
-		return err
-	}
-
 	// Start the transport.
 	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(n.nodeKey.ID, n.config.P2P.ListenAddress))
 	if err != nil {
@@ -1000,6 +994,12 @@ func (n *Node) OnStart() error {
 	}
 
 	n.isListening = true
+
+	// Start the switch (the P2P server).
+	err = n.sw.Start()
+	if err != nil {
+		return err
+	}
 
 	if n.config.FastSync.Version == "v0" {
 		// Start the real blockchain reactor separately since the switch uses the shim.

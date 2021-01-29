@@ -38,20 +38,17 @@ func MConnTransportMaxIncomingConnections(max int) MConnTransportOption {
 // connection filtering, peer verification, and panic handling), which should be
 // moved out of the transport once the rest of the P2P stack is rewritten.
 type MConnTransport struct {
-	privKey      crypto.PrivKey
-	nodeInfo     NodeInfo
-	channelDescs []*ChannelDescriptor
-	mConnConfig  conn.MConnConfig
+	logger      log.Logger
+	privKey     crypto.PrivKey
+	nodeInfo    NodeInfo
+	mConnConfig conn.MConnConfig
+	closeCh     chan struct{}
+	closeOnce   sync.Once
 
 	maxIncomingConnections int
 
-	logger   log.Logger
-	listener net.Listener
-
-	acceptCh  chan *mConnConnection
-	errorCh   chan error
-	closeCh   chan struct{}
-	closeOnce sync.Once
+	listener     net.Listener
+	channelDescs []*ChannelDescriptor
 }
 
 // NewMConnTransport sets up a new MConnection transport. This uses the
@@ -65,15 +62,12 @@ func NewMConnTransport(
 	opts ...MConnTransportOption,
 ) *MConnTransport {
 	m := &MConnTransport{
+		logger:       logger,
 		privKey:      privKey,
 		nodeInfo:     nodeInfo,
 		mConnConfig:  mConnConfig,
 		channelDescs: []*ChannelDescriptor{},
-
-		logger:   logger,
-		acceptCh: make(chan *mConnConnection),
-		errorCh:  make(chan error),
-		closeCh:  make(chan struct{}),
+		closeCh:      make(chan struct{}),
 	}
 	for _, opt := range opts {
 		opt(m)
@@ -106,7 +100,7 @@ func (m *MConnTransport) SetChannelDescriptors(chDescs []*conn.ChannelDescriptor
 // call Close() to shut down the listener.
 func (m *MConnTransport) Listen(endpoint Endpoint) error {
 	if m.listener != nil {
-		return errors.New("MConn transport is already listening")
+		return errors.New("transport is already listening")
 	}
 	err := m.normalizeEndpoint(&endpoint)
 	if err != nil {
@@ -120,66 +114,38 @@ func (m *MConnTransport) Listen(endpoint Endpoint) error {
 	if m.maxIncomingConnections > 0 {
 		m.listener = netutil.LimitListener(m.listener, m.maxIncomingConnections)
 	}
-
-	// Spawn a goroutine to accept inbound connections asynchronously.
-	go m.accept()
-
 	return nil
 }
 
-// accept accepts inbound connections in a loop, and asynchronously handshakes
-// with the peer to avoid head-of-line blocking. Established connections are
-// passed to Accept() via chAccept.
-// See: https://github.com/tendermint/tendermint/issues/204
-func (m *MConnTransport) accept() {
-	for {
-		tcpConn, err := m.listener.Accept()
-		if err != nil {
-			// We have to check for closure first, since we don't want to
-			// propagate "use of closed network connection" errors.
-			select {
-			case <-m.closeCh:
-			default:
-				// We also select on chClose here, in case the transport closes
-				// while we're blocked on error propagation.
-				select {
-				case m.errorCh <- err:
-				case <-m.closeCh:
-				}
-			}
-			return
-		}
-
-		go func() {
-			conn := newMConnConnection(m, tcpConn)
-			select {
-			case m.acceptCh <- conn:
-			case <-m.closeCh:
-				if err := tcpConn.Close(); err != nil {
-					m.logger.Debug("failed to close TCP connection", "err", err)
-				}
-			}
-		}()
-	}
-}
-
 // Accept implements Transport.
-//
-// accept() runs a concurrent accept loop that accepts inbound connections
-// and then handshakes in a non-blocking fashion. The handshaked and validated
-// connections are returned via this call, picking them off of the chAccept
-// channel (or the handshake error, if any).
 func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
-	select {
-	case conn := <-m.acceptCh:
-		return conn, nil
-	case err := <-m.errorCh:
-		return nil, err
-	case <-m.closeCh:
-		return nil, ErrTransportClosed{}
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	if m.listener == nil {
+		return nil, errors.New("transport is not listening")
 	}
+
+	if deadline, ok := ctx.Deadline(); ok {
+		if tcpListener, ok := m.listener.(*net.TCPListener); ok {
+			// FIXME: This probably needs to have a goroutine that overrides the
+			// deadline on context cancellation as well.
+			if err := tcpListener.SetDeadline(deadline); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	tcpConn, err := m.listener.Accept()
+	if err != nil {
+		select {
+		case <-m.closeCh:
+			return nil, io.EOF
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+			return nil, err
+		}
+	}
+
+	return newMConnConnection(m, tcpConn), nil
 }
 
 // Dial implements Transport.
@@ -217,9 +183,7 @@ func (m *MConnTransport) Endpoints() []Endpoint {
 func (m *MConnTransport) Close() error {
 	var err error
 	m.closeOnce.Do(func() {
-		// We have to close chClose first, so that accept() will detect
-		// the closure and not propagate the error.
-		close(m.closeCh)
+		close(m.closeCh) // must be closed first, to handle error in Accept()
 		if m.listener != nil {
 			err = m.listener.Close()
 		}
@@ -383,9 +347,9 @@ func (c *mConnConnection) onReceive(channelID byte, payload []byte) {
 	}
 }
 
-// onError is a callback for MConnection errors. The error is passed to
-// errorCh, which is only consumed by ReceiveMessage() for parity with
-// the old MConnection behavior.
+// onError is a callback for MConnection errors. The error is passed to errorCh,
+// which is only consumed by ReceiveMessage() for parity with the old
+// MConnection behavior.
 func (c *mConnConnection) onError(e interface{}) {
 	err, ok := e.(error)
 	if !ok {
@@ -441,8 +405,6 @@ func (c *mConnConnection) ReceiveMessage() (byte, []byte, error) {
 
 // LocalEndpoint implements Connection.
 func (c *mConnConnection) LocalEndpoint() Endpoint {
-	// FIXME: For compatibility with existing P2P tests we need to
-	// handle non-TCP connections. This should be removed.
 	endpoint := Endpoint{
 		Protocol: MConnProtocol,
 		PeerID:   c.transport.nodeInfo.NodeID,
@@ -456,8 +418,6 @@ func (c *mConnConnection) LocalEndpoint() Endpoint {
 
 // RemoteEndpoint implements Connection.
 func (c *mConnConnection) RemoteEndpoint() Endpoint {
-	// FIXME: For compatibility with existing P2P tests we need to
-	// handle non-TCP connections. This should be removed.
 	endpoint := Endpoint{
 		Protocol: MConnProtocol,
 		PeerID:   c.peerInfo.ID(),

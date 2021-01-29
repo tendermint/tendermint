@@ -3,6 +3,7 @@ package p2p
 import (
 	"context"
 	"fmt"
+	"io"
 	"math"
 	"net"
 	"sync"
@@ -677,6 +678,9 @@ func (sw *Switch) acceptRoutine() {
 		if err != nil {
 			if c != nil {
 				_ = c.Close()
+			}
+			if err == io.EOF {
+				err = ErrTransportClosed{}
 			}
 			switch err := err.(type) {
 			case ErrRejected:

@@ -25,8 +25,8 @@ type Transport interface {
 	Protocols() []Protocol
 
 	// Accept waits for the next inbound connection on a listening endpoint. If
-	// this returns io.EOF or ErrTransportClosed the transport should be
-	// considered closed and further Accept() calls are futile.
+	// this returns io.EOF the transport is closed and further Accept() calls
+	// are futile.
 	Accept(context.Context) (Connection, error)
 
 	// Dial creates an outbound connection to an endpoint.
