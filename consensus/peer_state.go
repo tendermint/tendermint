@@ -83,7 +83,7 @@ func (ps *PeerState) IsRunning() bool {
 	return ps.running
 }
 
-// GetRoundState returns an shallow copy of the PeerRoundState. There's no point
+// GetRoundState returns a shallow copy of the PeerRoundState. There's no point
 // in mutating it since it won't change PeerState.
 func (ps *PeerState) GetRoundState() *cstypes.PeerRoundState {
 	ps.mtx.Lock()
