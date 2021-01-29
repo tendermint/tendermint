@@ -15,6 +15,7 @@ import (
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -363,74 +364,61 @@ func TestReactorWithEvidence(t *testing.T) {
 	wg.Wait()
 }
 
+func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
+	configSetup(t)
+
+	n := 4
+	css, cleanup := randConsensusState(n, "consensus_reactor_test", newMockTickerFunc(true), newCounter,
+		func(c *cfg.Config) {
+			c.Consensus.CreateEmptyBlocks = false
+		})
+
+	t.Cleanup(func() {
+		cleanup()
+	})
+
+	testSuites := make([]*reactorTestSuite, n)
+	for i := range testSuites {
+		testSuites[i] = setup(t, css[i], 100) // buffer must be large enough to not deadlock
+	}
+
+	for _, ts := range testSuites {
+		simulateRouter(ts, testSuites, true)
+
+		// connect reactor to every other reactor
+		for _, tss := range testSuites {
+			if ts.peerID != tss.peerID {
+				ts.peerUpdatesCh <- p2p.PeerUpdate{
+					Status: p2p.PeerStatusUp,
+					PeerID: tss.peerID,
+				}
+			}
+		}
+
+		state := ts.reactor.conS.GetState()
+		ts.reactor.SwitchToConsensus(state, false)
+	}
+
+	// send a tx
+	require.NoError(t, assertMempool(css[3].txNotifier).CheckTx([]byte{1, 2, 3}, nil, mempl.TxInfo{}))
+
+	var wg sync.WaitGroup
+	for _, ts := range testSuites {
+		wg.Add(1)
+
+		// wait till everyone makes the first new block
+		go func(rts *reactorTestSuite) {
+			<-rts.sub.Out()
+			wg.Done()
+		}(ts)
+	}
+
+	wg.Wait()
+}
+
 // ============================================================================
 // ============================================================================
 // ============================================================================
-
-// func startConsensusNet(t *testing.T, css []*State, n int) (
-// 	[]*Reactor,
-// 	[]types.Subscription,
-// 	[]*types.EventBus,
-// ) {
-// 	reactors := make([]*Reactor, n)
-// 	blocksSubs := make([]types.Subscription, 0)
-// 	eventBuses := make([]*types.EventBus, n)
-// 	for i := 0; i < n; i++ {
-// 		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
-// 		if err != nil {	t.Fatal(err)}*/
-// 		reactors[i] = NewReactor(css[i], true) // so we dont start the consensus states
-// 		reactors[i].SetLogger(css[i].Logger)
-
-// 		// eventBus is already started with the cs
-// 		eventBuses[i] = css[i].eventBus
-// 		reactors[i].SetEventBus(eventBuses[i])
-
-// 		blocksSub, err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
-// 		require.NoError(t, err)
-// 		blocksSubs = append(blocksSubs, blocksSub)
-
-// 		if css[i].state.LastBlockHeight == 0 { // simulate handle initChain in handshake
-// 			if err := css[i].blockExec.Store().Save(css[i].state); err != nil {
-// 				t.Error(err)
-// 			}
-// 		}
-// 	}
-// 	// make connected switches and start all reactors
-// 	p2p.MakeConnectedSwitches(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
-// 		s.AddReactor("CONSENSUS", reactors[i])
-// 		s.SetLogger(reactors[i].conS.Logger.With("module", "p2p"))
-// 		return s
-// 	}, p2p.Connect2Switches)
-
-// 	// now that everyone is connected,  start the state machines
-// 	// If we started the state machines before everyone was connected,
-// 	// we'd block when the cs fires NewBlockEvent and the peers are trying to start their reactors
-// 	// TODO: is this still true with new pubsub?
-// 	for i := 0; i < n; i++ {
-// 		s := reactors[i].conS.GetState()
-// 		reactors[i].SwitchToConsensus(s, false)
-// 	}
-// 	return reactors, blocksSubs, eventBuses
-// }
-
-// func stopConsensusNet(logger log.Logger, reactors []*Reactor, eventBuses []*types.EventBus) {
-// 	logger.Info("stopConsensusNet", "n", len(reactors))
-// 	for i, r := range reactors {
-// 		logger.Info("stopConsensusNet: Stopping Reactor", "i", i)
-// 		if err := r.Switch.Stop(); err != nil {
-// 			logger.Error("error trying to stop switch", "error", err)
-// 		}
-// 	}
-// 	for i, b := range eventBuses {
-// 		logger.Info("stopConsensusNet: Stopping eventBus", "i", i)
-// 		if err := b.Stop(); err != nil {
-// 			logger.Error("error trying to stop eventbus", "error", err)
-// 		}
-// 	}
-// 	logger.Info("stopConsensusNet: DONE", "n", len(reactors))
-// }
-
-// //------------------------------------
 
 // // Ensure a testnet makes blocks when there are txs
 // func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
