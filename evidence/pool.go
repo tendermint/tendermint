@@ -395,7 +395,9 @@ func (evpool *Pool) markEvidenceAsCommitted(evidence types.EvidenceList, height 
 
 	for _, ev := range evidence {
 		if evpool.isPending(ev) {
-			batch.Delete(keyPending(ev))
+			if err := batch.Delete(keyPending(ev)); err != nil {
+				evpool.logger.Error("failed to batch pending evidence", "err", err)
+			}
 			blockEvidenceMap[evMapKey(ev)] = struct{}{}
 		}
 
