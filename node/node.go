@@ -465,6 +465,7 @@ func createTransport(
 ) *p2p.MConnTransport {
 	return p2p.NewMConnTransport(
 		logger, nodeInfo, nodeKey.PrivKey, p2p.MConnConfig(config.P2P),
+		[]*p2p.ChannelDescriptor{},
 		p2p.MConnTransportOptions{
 			MaxAcceptedConnections: uint32(config.P2P.MaxNumInboundPeers +
 				len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " ")),

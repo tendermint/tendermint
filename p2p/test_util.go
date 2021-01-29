@@ -176,7 +176,8 @@ func MakeSwitch(
 	}
 
 	logger := log.TestingLogger().With("switch", i)
-	t := NewMConnTransport(logger, nodeInfo, nodeKey.PrivKey, MConnConfig(cfg), MConnTransportOptions{})
+	t := NewMConnTransport(logger, nodeInfo, nodeKey.PrivKey, MConnConfig(cfg),
+		[]*ChannelDescriptor{}, MConnTransportOptions{})
 
 	// TODO: let the config be passed in?
 	sw := initSwitch(i, NewSwitch(cfg, t, opts...))

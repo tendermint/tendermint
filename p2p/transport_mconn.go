@@ -31,25 +31,23 @@ type MConnTransportOptions struct {
 	//
 	// FIXME: We may want to replace this with connection accounting in the
 	// Router, since it will need to do e.g. rate limiting and such as well.
+	// But it might also make sense to have per-transport limits.
 	MaxAcceptedConnections uint32
 }
 
 // MConnTransport is a Transport implementation using the current multiplexed
-// Tendermint protocol ("MConn"). It inherits lots of code and logic from the
-// previous implementation for parity with the current P2P stack (such as
-// connection filtering, peer verification, and panic handling), which should be
-// moved out of the transport once the rest of the P2P stack is rewritten.
+// Tendermint protocol ("MConn").
 type MConnTransport struct {
-	logger      log.Logger
-	nodeInfo    NodeInfo
-	privKey     crypto.PrivKey
-	options     MConnTransportOptions
-	mConnConfig conn.MConnConfig
-	closeCh     chan struct{}
-	closeOnce   sync.Once
-
-	listener     net.Listener
+	logger       log.Logger
+	nodeInfo     NodeInfo
+	privKey      crypto.PrivKey
+	options      MConnTransportOptions
+	mConnConfig  conn.MConnConfig
 	channelDescs []*ChannelDescriptor
+	closeCh      chan struct{}
+	closeOnce    sync.Once
+
+	listener net.Listener
 }
 
 // NewMConnTransport sets up a new MConnection transport. This uses the
@@ -60,6 +58,7 @@ func NewMConnTransport(
 	nodeInfo NodeInfo,
 	privKey crypto.PrivKey,
 	mConnConfig conn.MConnConfig,
+	channelDescs []*ChannelDescriptor,
 	options MConnTransportOptions,
 ) *MConnTransport {
 	return &MConnTransport{
@@ -69,7 +68,7 @@ func NewMConnTransport(
 		options:      options,
 		mConnConfig:  mConnConfig,
 		closeCh:      make(chan struct{}),
-		channelDescs: []*ChannelDescriptor{},
+		channelDescs: channelDescs,
 	}
 }
 
@@ -81,16 +80,6 @@ func (m *MConnTransport) String() string {
 // Protocols implements Transport. We support tcp for backwards-compatibility.
 func (m *MConnTransport) Protocols() []Protocol {
 	return []Protocol{MConnProtocol, TCPProtocol}
-}
-
-// SetChannelDescriptors implements Transport.
-//
-// This is not concurrency-safe, and must be called before listening.
-//
-// FIXME: This is here for compatibility with existing switch code,
-// it should be passed via the constructor instead.
-func (m *MConnTransport) SetChannelDescriptors(chDescs []*conn.ChannelDescriptor) {
-	m.channelDescs = chDescs
 }
 
 // Listen asynchronously listens for inbound connections on the given endpoint.

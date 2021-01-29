@@ -254,10 +254,6 @@ func (t *MemoryTransport) Endpoints() []Endpoint {
 	}
 }
 
-// SetChannelDescriptors implements Transport.
-func (t *MemoryTransport) SetChannelDescriptors(chDescs []*conn.ChannelDescriptor) {
-}
-
 // MemoryConnection is an in-memory connection between two transports (nodes).
 type MemoryConnection struct {
 	logger log.Logger

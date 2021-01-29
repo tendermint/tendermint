@@ -19,30 +19,22 @@ type Transport interface {
 	// Stringer is used to display the transport, e.g. in logs.
 	fmt.Stringer
 
-	// Protocols returns the protocols the transport supports. The router will
-	// use this when mapping PeerAddress.Protocol (i.e. the URL scheme) to the
-	// appropriate transport.
+	// Protocols returns the protocols the transport supports, which the
+	// router uses to pick a transport for a PeerAddress.
 	Protocols() []Protocol
 
-	// Accept waits for the next inbound connection on a listening endpoint. If
-	// this returns io.EOF the transport is closed and further Accept() calls
-	// are futile.
+	// Accept waits for the next inbound connection on a listening endpoint, or
+	// returns io.EOF if the transport is closed.
 	Accept(context.Context) (Connection, error)
 
 	// Dial creates an outbound connection to an endpoint.
 	Dial(context.Context, Endpoint) (Connection, error)
 
-	// Endpoints lists endpoints the transport is listening on. Any endpoint IP
-	// addresses do not need to be normalized in any way (e.g. 0.0.0.0 is
-	// valid), as they should be preprocessed before being advertised.
+	// Endpoints lists endpoints the transport is listening on.
 	Endpoints() []Endpoint
 
 	// Close stops accepting new connections, but does not close active connections.
 	Close() error
-
-	// SetChannelDescriptors sets the channel descriptors for the transport.
-	// FIXME: This is only here for compatibility with the current Switch code.
-	SetChannelDescriptors(chDescs []*conn.ChannelDescriptor)
 }
 
 // Protocol identifies a transport protocol.

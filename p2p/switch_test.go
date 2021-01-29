@@ -712,10 +712,9 @@ func (et errorTransport) Accept(context.Context) (Connection, error) {
 func (errorTransport) Dial(context.Context, Endpoint) (Connection, error) {
 	panic("not implemented")
 }
-func (errorTransport) Close() error                               { panic("not implemented") }
-func (errorTransport) FlushClose() error                          { panic("not implemented") }
-func (errorTransport) Endpoints() []Endpoint                      { panic("not implemented") }
-func (errorTransport) SetChannelDescriptors([]*ChannelDescriptor) {}
+func (errorTransport) Close() error          { panic("not implemented") }
+func (errorTransport) FlushClose() error     { panic("not implemented") }
+func (errorTransport) Endpoints() []Endpoint { panic("not implemented") }
 
 func TestSwitchAcceptRoutineErrorCases(t *testing.T) {
 	sw := NewSwitch(cfg, errorTransport{ErrFilterTimeout{}})
