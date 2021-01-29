@@ -9,13 +9,13 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/net/netutil"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/p2p/conn"
 	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
-
-	"golang.org/x/net/netutil"
 )
 
 const (
@@ -39,8 +39,7 @@ type MConnTransportOptions struct {
 // Tendermint protocol ("MConn").
 type MConnTransport struct {
 	logger       log.Logger
-	nodeInfo     NodeInfo
-	privKey      crypto.PrivKey
+	nodeID       NodeID
 	options      MConnTransportOptions
 	mConnConfig  conn.MConnConfig
 	channelDescs []*ChannelDescriptor
@@ -55,16 +54,14 @@ type MConnTransport struct {
 // conn.MConnection.
 func NewMConnTransport(
 	logger log.Logger,
-	nodeInfo NodeInfo,
-	privKey crypto.PrivKey,
+	nodeID NodeID,
 	mConnConfig conn.MConnConfig,
 	channelDescs []*ChannelDescriptor,
 	options MConnTransportOptions,
 ) *MConnTransport {
 	return &MConnTransport{
 		logger:       logger,
-		nodeInfo:     nodeInfo,
-		privKey:      privKey,
+		nodeID:       nodeID,
 		options:      options,
 		mConnConfig:  mConnConfig,
 		closeCh:      make(chan struct{}),
@@ -89,7 +86,7 @@ func (m *MConnTransport) Listen(endpoint Endpoint) error {
 	if m.listener != nil {
 		return errors.New("transport is already listening")
 	}
-	err := m.normalizeEndpoint(&endpoint)
+	endpoint, err := m.normalizeEndpoint(endpoint)
 	if err != nil {
 		return fmt.Errorf("invalid MConn listen endpoint %q: %w", endpoint, err)
 	}
@@ -132,12 +129,12 @@ func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 		}
 	}
 
-	return newMConnConnection(m, tcpConn), nil
+	return newMConnConnection(m.logger, tcpConn, m.mConnConfig, m.channelDescs), nil
 }
 
 // Dial implements Transport.
 func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connection, error) {
-	err := m.normalizeEndpoint(&endpoint)
+	endpoint, err := m.normalizeEndpoint(endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +146,7 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 		return nil, err
 	}
 
-	return newMConnConnection(m, tcpConn), nil
+	return newMConnConnection(m.logger, tcpConn, m.mConnConfig, m.channelDescs), nil
 }
 
 // Endpoints implements Transport.
@@ -157,13 +154,15 @@ func (m *MConnTransport) Endpoints() []Endpoint {
 	if m.listener == nil {
 		return []Endpoint{}
 	}
-	addr := m.listener.Addr().(*net.TCPAddr)
-	return []Endpoint{{
+	endpoint := Endpoint{
+		PeerID:   m.nodeID,
 		Protocol: MConnProtocol,
-		PeerID:   m.nodeInfo.ID(),
-		IP:       addr.IP,
-		Port:     uint16(addr.Port),
-	}}
+	}
+	if addr, ok := m.listener.Addr().(*net.TCPAddr); ok {
+		endpoint.IP = addr.IP
+		endpoint.Port = uint16(addr.Port)
+	}
+	return []Endpoint{endpoint}
 }
 
 // Close implements Transport.
@@ -179,42 +178,40 @@ func (m *MConnTransport) Close() error {
 }
 
 // normalizeEndpoint normalizes and validates an endpoint.
-func (m *MConnTransport) normalizeEndpoint(endpoint *Endpoint) error {
-	if endpoint == nil {
-		return errors.New("nil endpoint")
-	}
+func (m *MConnTransport) normalizeEndpoint(endpoint Endpoint) (Endpoint, error) {
 	if err := endpoint.Validate(); err != nil {
-		return err
+		return Endpoint{}, err
 	}
 	if endpoint.Protocol != MConnProtocol && endpoint.Protocol != TCPProtocol {
-		return fmt.Errorf("unsupported protocol %q", endpoint.Protocol)
+		return Endpoint{}, fmt.Errorf("unsupported protocol %q", endpoint.Protocol)
 	}
 	if len(endpoint.IP) == 0 {
-		return errors.New("endpoint must have an IP address")
+		return Endpoint{}, errors.New("endpoint must have an IP address")
 	}
 	if endpoint.Path != "" {
-		return fmt.Errorf("endpoint cannot have path (got %q)", endpoint.Path)
+		return Endpoint{}, fmt.Errorf("endpoint cannot have path (got %q)", endpoint.Path)
 	}
 	if endpoint.Port == 0 {
 		endpoint.Port = 26657
 	}
-	return nil
+	return endpoint, nil
 }
 
-// mConnConnection implements Connection for MConnTransport. It takes a base TCP
-// connection and upgrades it to MConnection over an encrypted SecretConnection.
+// mConnConnection implements Connection for MConnTransport.
 type mConnConnection struct {
-	logger    log.Logger
-	transport *MConnTransport
-	conn      net.Conn
-	mconn     *conn.MConnection
+	logger       log.Logger
+	conn         net.Conn
+	mConnConfig  conn.MConnConfig
+	channelDescs []*ChannelDescriptor
+	receiveCh    chan mConnMessage
+	errorCh      chan error
+	closeCh      chan struct{}
+	closeOnce    sync.Once
 
-	peerInfo NodeInfo
-
-	receiveCh chan mConnMessage
-	errorCh   chan error
-	closeCh   chan struct{}
-	closeOnce sync.Once
+	// These are set during Handshake()
+	mconn    *conn.MConnection
+	localID  NodeID
+	remoteID NodeID
 }
 
 // mConnMessage passes MConnection messages through internal channels.
@@ -225,16 +222,19 @@ type mConnMessage struct {
 
 // newMConnConnection creates a new mConnConnection.
 func newMConnConnection(
-	transport *MConnTransport,
+	logger log.Logger,
 	conn net.Conn,
+	mConnConfig conn.MConnConfig,
+	channelDescs []*ChannelDescriptor,
 ) *mConnConnection {
 	return &mConnConnection{
-		logger:    transport.logger,
-		transport: transport,
-		conn:      conn,
-		receiveCh: make(chan mConnMessage),
-		errorCh:   make(chan error),
-		closeCh:   make(chan struct{}),
+		logger:       logger,
+		conn:         conn,
+		mConnConfig:  mConnConfig,
+		channelDescs: channelDescs,
+		receiveCh:    make(chan mConnMessage),
+		errorCh:      make(chan error),
+		closeCh:      make(chan struct{}),
 	}
 }
 
@@ -305,23 +305,24 @@ func (c *mConnConnection) handshake(
 		return NodeInfo{}, nil, err
 	}
 
+	c.localID = nodeInfo.NodeID
+	c.remoteID = peerInfo.NodeID
+	// FIXME: Uses NetAddress for backwards compatibility, should probably
+	// just use Endpoint.String().
+	c.logger = c.logger.With("peer", c.RemoteEndpoint().NetAddress().String())
+
 	mconn := conn.NewMConnectionWithConfig(
 		secretConn,
-		c.transport.channelDescs,
+		c.channelDescs,
 		c.onReceive,
 		c.onError,
-		c.transport.mConnConfig,
+		c.mConnConfig,
 	)
-	// FIXME: Log format is set up for compatibility with existing peer code.
-	logger := c.logger.With("peer", c.RemoteEndpoint().NetAddress())
-	mconn.SetLogger(logger)
+	mconn.SetLogger(c.logger)
 	if err = mconn.Start(); err != nil {
 		return NodeInfo{}, nil, err
 	}
-
 	c.mconn = mconn
-	c.logger = logger
-	c.peerInfo = peerInfo
 
 	return peerInfo, secretConn.RemotePubKey(), nil
 }
@@ -349,7 +350,7 @@ func (c *mConnConnection) onError(e interface{}) {
 }
 
 // String displays connection information.
-// FIXME: This is here for backwards compatibility with existing code,
+// FIXME: This is here for backwards compatibility with existing logging,
 // it should probably just return RemoteEndpoint().String(), if anything.
 func (c *mConnConnection) String() string {
 	endpoint := c.RemoteEndpoint()
@@ -394,7 +395,7 @@ func (c *mConnConnection) ReceiveMessage() (byte, []byte, error) {
 func (c *mConnConnection) LocalEndpoint() Endpoint {
 	endpoint := Endpoint{
 		Protocol: MConnProtocol,
-		PeerID:   c.transport.nodeInfo.NodeID,
+		PeerID:   c.localID,
 	}
 	if addr, ok := c.conn.LocalAddr().(*net.TCPAddr); ok {
 		endpoint.IP = addr.IP
@@ -407,7 +408,7 @@ func (c *mConnConnection) LocalEndpoint() Endpoint {
 func (c *mConnConnection) RemoteEndpoint() Endpoint {
 	endpoint := Endpoint{
 		Protocol: MConnProtocol,
-		PeerID:   c.peerInfo.ID(),
+		PeerID:   c.remoteID,
 	}
 	if addr, ok := c.conn.RemoteAddr().(*net.TCPAddr); ok {
 		endpoint.IP = addr.IP
@@ -418,6 +419,9 @@ func (c *mConnConnection) RemoteEndpoint() Endpoint {
 
 // Status implements Connection.
 func (c *mConnConnection) Status() conn.ConnectionStatus {
+	if c.mconn == nil {
+		return conn.ConnectionStatus{}
+	}
 	return c.mconn.Status()
 }
 

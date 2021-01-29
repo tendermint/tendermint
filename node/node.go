@@ -461,11 +461,9 @@ func createTransport(
 	logger log.Logger,
 	config *cfg.Config,
 	nodeInfo p2p.NodeInfo,
-	nodeKey p2p.NodeKey,
 ) *p2p.MConnTransport {
 	return p2p.NewMConnTransport(
-		logger, nodeInfo, nodeKey.PrivKey, p2p.MConnConfig(config.P2P),
-		[]*p2p.ChannelDescriptor{},
+		logger, nodeInfo.NodeID, p2p.MConnConfig(config.P2P), []*p2p.ChannelDescriptor{},
 		p2p.MConnTransportOptions{
 			MaxAcceptedConnections: uint32(config.P2P.MaxNumInboundPeers +
 				len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " ")),
@@ -837,7 +835,7 @@ func NewNode(config *cfg.Config,
 
 	// Setup Transport and Switch.
 	p2pLogger := logger.With("module", "p2p")
-	transport := createTransport(p2pLogger, config, nodeInfo, nodeKey)
+	transport := createTransport(p2pLogger, config, nodeInfo)
 	sw := createSwitch(
 		config, transport, p2pMetrics, mpReactorShim, bcReactorForSwitch,
 		stateSyncReactorShim, csReactor, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,

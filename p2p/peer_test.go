@@ -83,7 +83,7 @@ func createOutboundPeerAndPerformHandshake(
 	}
 	pk := ed25519.GenPrivKey()
 	ourNodeInfo := testNodeInfo(NodeIDFromPubKey(pk.PubKey()), "host_peer")
-	transport := NewMConnTransport(log.TestingLogger(), ourNodeInfo, pk, mConfig, chDescs, MConnTransportOptions{})
+	transport := NewMConnTransport(log.TestingLogger(), ourNodeInfo.NodeID, mConfig, chDescs, MConnTransportOptions{})
 	reactorsByCh := map[byte]Reactor{testCh: NewTestReactor(chDescs, true)}
 	pc, err := testOutboundPeerConn(transport, addr, config, false, pk)
 	if err != nil {
@@ -175,8 +175,8 @@ func (rp *remotePeer) Stop() {
 }
 
 func (rp *remotePeer) Dial(addr *NetAddress) (net.Conn, error) {
-	transport := NewMConnTransport(log.TestingLogger(), rp.nodeInfo(), rp.PrivKey,
-		MConnConfig(rp.Config), []*ChannelDescriptor{}, MConnTransportOptions{})
+	transport := NewMConnTransport(log.TestingLogger(), rp.ID(), MConnConfig(rp.Config),
+		[]*ChannelDescriptor{}, MConnTransportOptions{})
 	conn, err := addr.DialTimeout(1 * time.Second)
 	if err != nil {
 		return nil, err
@@ -193,8 +193,8 @@ func (rp *remotePeer) Dial(addr *NetAddress) (net.Conn, error) {
 }
 
 func (rp *remotePeer) accept() {
-	transport := NewMConnTransport(log.TestingLogger(), rp.nodeInfo(), rp.PrivKey,
-		MConnConfig(rp.Config), []*ChannelDescriptor{}, MConnTransportOptions{})
+	transport := NewMConnTransport(log.TestingLogger(), rp.ID(), MConnConfig(rp.Config),
+		[]*ChannelDescriptor{}, MConnTransportOptions{})
 	conns := []net.Conn{}
 
 	for {

@@ -176,7 +176,7 @@ func MakeSwitch(
 	}
 
 	logger := log.TestingLogger().With("switch", i)
-	t := NewMConnTransport(logger, nodeInfo, nodeKey.PrivKey, MConnConfig(cfg),
+	t := NewMConnTransport(logger, nodeInfo.NodeID, MConnConfig(cfg),
 		[]*ChannelDescriptor{}, MConnTransportOptions{})
 
 	// TODO: let the config be passed in?
@@ -197,7 +197,6 @@ func MakeSwitch(
 
 	// TODO: We need to setup reactors ahead of time so the NodeInfo is properly
 	// populated and we don't have to do those awkward overrides and setters.
-	t.nodeInfo = nodeInfo
 	sw.SetNodeInfo(nodeInfo)
 
 	return sw
@@ -216,7 +215,7 @@ func testPeerConn(
 	outbound, persistent bool,
 ) (pc peerConn, err error) {
 
-	conn := newMConnConnection(transport, rawConn)
+	conn := newMConnConnection(transport.logger, rawConn, transport.mConnConfig, transport.channelDescs)
 
 	return newPeerConn(outbound, persistent, conn), nil
 }
