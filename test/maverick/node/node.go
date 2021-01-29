@@ -505,11 +505,27 @@ func createTransport(
 	config *cfg.Config,
 	nodeInfo p2p.NodeInfo,
 	nodeKey p2p.NodeKey,
+) *p2p.MConnTransport {
+	return p2p.NewMConnTransport(
+		logger, nodeInfo, nodeKey.PrivKey, p2p.MConnConfig(config.P2P),
+		p2p.MConnTransportMaxIncomingConnections(config.P2P.MaxNumInboundPeers+
+			len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))),
+	)
+}
+
+func createSwitch(config *cfg.Config,
+	transport p2p.Transport,
+	p2pMetrics *p2p.Metrics,
+	mempoolReactor *p2p.ReactorShim,
+	bcReactor p2p.Reactor,
+	stateSyncReactor *p2p.ReactorShim,
+	consensusReactor *cs.Reactor,
+	evidenceReactor *p2p.ReactorShim,
 	proxyApp proxy.AppConns,
-) (
-	*p2p.MConnTransport,
-	[]p2p.PeerFilterFunc,
-) {
+	nodeInfo p2p.NodeInfo,
+	nodeKey p2p.NodeKey,
+	p2pLogger log.Logger) *p2p.Switch {
+
 	var (
 		connFilters = []p2p.ConnFilterFunc{}
 		peerFilters = []p2p.PeerFilterFunc{}
@@ -559,34 +575,12 @@ func createTransport(
 		)
 	}
 
-	transport := p2p.NewMConnTransport(
-		logger, nodeInfo, nodeKey.PrivKey, p2p.MConnConfig(config.P2P),
-		p2p.MConnTransportConnFilters(connFilters...),
-		p2p.MConnTransportMaxIncomingConnections(config.P2P.MaxNumInboundPeers+
-			len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))),
-	)
-
-	return transport, peerFilters
-}
-
-func createSwitch(config *cfg.Config,
-	transport p2p.Transport,
-	p2pMetrics *p2p.Metrics,
-	peerFilters []p2p.PeerFilterFunc,
-	mempoolReactor *p2p.ReactorShim,
-	bcReactor p2p.Reactor,
-	stateSyncReactor *p2p.ReactorShim,
-	consensusReactor *cs.Reactor,
-	evidenceReactor *p2p.ReactorShim,
-	nodeInfo p2p.NodeInfo,
-	nodeKey p2p.NodeKey,
-	p2pLogger log.Logger) *p2p.Switch {
-
 	sw := p2p.NewSwitch(
 		config.P2P,
 		transport,
 		p2p.WithMetrics(p2pMetrics),
 		p2p.SwitchPeerFilters(peerFilters...),
+		p2p.SwitchConnFilters(connFilters...),
 	)
 	sw.SetLogger(p2pLogger)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
@@ -872,10 +866,10 @@ func NewNode(config *cfg.Config,
 
 	// Setup Transport and Switch.
 	p2pLogger := logger.With("module", "p2p")
-	transport, peerFilters := createTransport(p2pLogger, config, nodeInfo, nodeKey, proxyApp)
+	transport := createTransport(p2pLogger, config, nodeInfo, nodeKey)
 	sw := createSwitch(
-		config, transport, p2pMetrics, peerFilters, mpReactorShim, bcReactorForSwitch,
-		stateSyncReactorShim, csReactor, evReactorShim, nodeInfo, nodeKey, p2pLogger,
+		config, transport, p2pMetrics, mpReactorShim, bcReactorForSwitch,
+		stateSyncReactorShim, csReactor, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
 	)
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))

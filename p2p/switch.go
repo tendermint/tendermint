@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"net"
 	"sync"
 	"time"
 
@@ -29,6 +30,8 @@ const (
 	// ie. 3**10 = 16hrs
 	reconnectBackOffAttempts    = 10
 	reconnectBackOffBaseSeconds = 3
+
+	defaultFilterTimeout = 5 * time.Second
 )
 
 // MConnConfig returns an MConnConfig with fields updated
@@ -57,9 +60,29 @@ type AddrBook interface {
 	Save()
 }
 
+// ConnFilterFunc is a callback for connection filtering. If it returns an
+// error, the connection is rejected. The set of existing connections is passed
+// along with the new connection and all resolved IPs.
+type ConnFilterFunc func(ConnSet, net.Conn, []net.IP) error
+
 // PeerFilterFunc to be implemented by filter hooks after a new Peer has been
 // fully setup.
 type PeerFilterFunc func(IPeerSet, Peer) error
+
+// ConnDuplicateIPFilter resolves and keeps all ips for an incoming connection
+// and refuses new ones if they come from a known ip.
+var ConnDuplicateIPFilter ConnFilterFunc = func(cs ConnSet, c net.Conn, ips []net.IP) error {
+	for _, ip := range ips {
+		if cs.HasIP(ip) {
+			return ErrRejected{
+				conn:        c,
+				err:         fmt.Errorf("ip<%v> already connected", ip),
+				isDuplicate: true,
+			}
+		}
+	}
+	return nil
+}
 
 //-----------------------------------------------------------------------------
 
@@ -88,6 +111,8 @@ type Switch struct {
 
 	filterTimeout time.Duration
 	peerFilters   []PeerFilterFunc
+	connFilters   []ConnFilterFunc
+	conns         ConnSet
 
 	rng *rand.Rand // seed for randomizing dial times and orders
 
@@ -123,9 +148,10 @@ func NewSwitch(
 		reconnecting:         cmap.NewCMap(),
 		metrics:              NopMetrics(),
 		transport:            transport,
-		filterTimeout:        defaultFilterTimeout,
 		persistentPeersAddrs: make([]*NetAddress, 0),
 		unconditionalPeerIDs: make(map[NodeID]struct{}),
+		filterTimeout:        defaultFilterTimeout,
+		conns:                NewConnSet(),
 	}
 
 	// Ensure we have a completely undeterministic PRNG.
@@ -148,6 +174,11 @@ func SwitchFilterTimeout(timeout time.Duration) SwitchOption {
 // SwitchPeerFilters sets the filters for rejection of new peers.
 func SwitchPeerFilters(filters ...PeerFilterFunc) SwitchOption {
 	return func(sw *Switch) { sw.peerFilters = filters }
+}
+
+// SwitchConnFilters sets the filters for rejection of connections.
+func SwitchConnFilters(filters ...ConnFilterFunc) SwitchOption {
+	return func(sw *Switch) { sw.connFilters = filters }
 }
 
 // WithMetrics sets the metrics.
@@ -381,6 +412,8 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 	if sw.peers.Remove(peer) {
 		sw.metrics.Peers.Add(float64(-1))
 	}
+
+	sw.conns.RemoveAddr(peer.RemoteAddr())
 }
 
 // reconnectToPeer tries to reconnect to the addr, first repeatedly
@@ -638,7 +671,13 @@ func (sw *Switch) acceptRoutine() {
 			// we just do it synchronously here for now.
 			peerNodeInfo, _, err = sw.handshakePeer(c, "")
 		}
+		if err == nil {
+			err = sw.filterConn(c.(*mConnConnection).conn)
+		}
 		if err != nil {
+			if c != nil {
+				_ = c.Close()
+			}
 			switch err := err.(type) {
 			case ErrRejected:
 				if err.IsSelf() {
@@ -720,6 +759,7 @@ func (sw *Switch) acceptRoutine() {
 			if p.IsRunning() {
 				_ = p.Stop()
 			}
+			sw.conns.RemoveAddr(p.RemoteAddr())
 			sw.Logger.Info(
 				"Ignoring inbound connection: error while adding peer",
 				"err", err,
@@ -760,7 +800,13 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	if err == nil {
 		peerNodeInfo, _, err = sw.handshakePeer(c, addr.ID)
 	}
+	if err == nil {
+		err = sw.filterConn(c.(*mConnConnection).conn)
+	}
 	if err != nil {
+		if c != nil {
+			_ = c.Close()
+		}
 		if e, ok := err.(ErrRejected); ok {
 			if e.IsSelf() {
 				// Remove the given address from the address book and add to our addresses
@@ -794,6 +840,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		if p.IsRunning() {
 			_ = p.Stop()
 		}
+		sw.conns.RemoveAddr(p.RemoteAddr())
 		return err
 	}
 
@@ -885,6 +932,51 @@ func (sw *Switch) filterPeer(p Peer) error {
 		}
 	}
 
+	return nil
+}
+
+// filterConn filters a connection, rejecting it if this function errors.
+//
+// FIXME: This is only here for compatibility with the current Switch code. In
+// the new P2P stack, peer/connection filtering should be moved into the Router
+// or PeerManager and removed from here.
+func (sw *Switch) filterConn(conn net.Conn) error {
+	if sw.conns.Has(conn) {
+		return ErrRejected{conn: conn, isDuplicate: true}
+	}
+
+	host, _, err := net.SplitHostPort(conn.RemoteAddr().String())
+	if err != nil {
+		return err
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return fmt.Errorf("connection address has invalid IP address %q", host)
+	}
+
+	// Apply filter callbacks.
+	chErr := make(chan error, len(sw.connFilters))
+	for _, connFilter := range sw.connFilters {
+		go func(connFilter ConnFilterFunc) {
+			chErr <- connFilter(sw.conns, conn, []net.IP{ip})
+		}(connFilter)
+	}
+
+	for i := 0; i < cap(chErr); i++ {
+		select {
+		case err := <-chErr:
+			if err != nil {
+				return ErrRejected{conn: conn, err: err, isFiltered: true}
+			}
+		case <-time.After(sw.filterTimeout):
+			return ErrFilterTimeout{}
+		}
+
+	}
+
+	// FIXME: Doesn't really make sense to set this here, but we preserve the
+	// behavior from the previous P2P transport implementation.
+	sw.conns.Set(conn, []net.IP{ip})
 	return nil
 }
 

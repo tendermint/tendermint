@@ -130,7 +130,7 @@ func (e Endpoint) NetAddress() *NetAddress {
 type Connection interface {
 	// Handshake handshakes with the remote peer. It must be called immediately
 	// after the connection is established, and returns the remote peer's node
-	// info and public key.
+	// info and public key. The caller is responsible for validation.
 	//
 	// FIXME: The handshaking should really be the Router's responsibility, but
 	// that requires the connection interface to be byte-oriented rather than

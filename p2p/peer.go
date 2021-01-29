@@ -316,6 +316,11 @@ const (
 //   lower-scored to evict.
 // - EvictNext: pick peer from evict, mark as evicting.
 // - Disconnected: unmark connected, upgrading[from]=to, evict, evicting.
+//
+// FIXME: The old stack supports ABCI-based peer ID filtering via
+// /p2p/filter/id/<ID> queries, we should implement this here as well by taking
+// a peer ID filtering callback in PeerManagerOptions and configuring it during
+// Node setup.
 type PeerManager struct {
 	options     PeerManagerOptions
 	wakeDialCh  chan struct{} // wakes up DialNext() on relevant peer changes

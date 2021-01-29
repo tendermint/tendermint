@@ -19,10 +19,6 @@ import (
 )
 
 const (
-	defaultFilterTimeout = 5 * time.Second
-)
-
-const (
 	MConnProtocol Protocol = "mconn"
 	TCPProtocol   Protocol = "tcp"
 )
@@ -34,36 +30,6 @@ type MConnTransportOption func(*MConnTransport)
 // simultaneous incoming connections. Default: 0 (unlimited)
 func MConnTransportMaxIncomingConnections(max int) MConnTransportOption {
 	return func(mt *MConnTransport) { mt.maxIncomingConnections = max }
-}
-
-// MConnTransportFilterTimeout sets the timeout for filter callbacks.
-func MConnTransportFilterTimeout(timeout time.Duration) MConnTransportOption {
-	return func(mt *MConnTransport) { mt.filterTimeout = timeout }
-}
-
-// MConnTransportConnFilters sets connection filters.
-func MConnTransportConnFilters(filters ...ConnFilterFunc) MConnTransportOption {
-	return func(mt *MConnTransport) { mt.connFilters = filters }
-}
-
-// ConnFilterFunc is a callback for connection filtering. If it returns an
-// error, the connection is rejected. The set of existing connections is passed
-// along with the new connection and all resolved IPs.
-type ConnFilterFunc func(ConnSet, net.Conn, []net.IP) error
-
-// ConnDuplicateIPFilter resolves and keeps all ips for an incoming connection
-// and refuses new ones if they come from a known ip.
-var ConnDuplicateIPFilter ConnFilterFunc = func(cs ConnSet, c net.Conn, ips []net.IP) error {
-	for _, ip := range ips {
-		if cs.HasIP(ip) {
-			return ErrRejected{
-				conn:        c,
-				err:         fmt.Errorf("ip<%v> already connected", ip),
-				isDuplicate: true,
-			}
-		}
-	}
-	return nil
 }
 
 // MConnTransport is a Transport implementation using the current multiplexed
@@ -86,12 +52,6 @@ type MConnTransport struct {
 	errorCh   chan error
 	closeCh   chan struct{}
 	closeOnce sync.Once
-
-	// FIXME: This is a vestige from the old transport, and should be managed
-	// by the router once we rewrite the P2P core.
-	conns         ConnSet
-	connFilters   []ConnFilterFunc
-	filterTimeout time.Duration
 }
 
 // NewMConnTransport sets up a new MConnection transport. This uses the
@@ -114,10 +74,6 @@ func NewMConnTransport(
 		acceptCh: make(chan *mConnConnection),
 		errorCh:  make(chan error),
 		closeCh:  make(chan struct{}),
-
-		conns:         NewConnSet(),
-		connFilters:   []ConnFilterFunc{},
-		filterTimeout: defaultFilterTimeout,
 	}
 	for _, opt := range opts {
 		opt(m)
@@ -195,18 +151,6 @@ func (m *MConnTransport) accept() {
 		}
 
 		go func() {
-			err := m.filterTCPConn(tcpConn)
-			if err != nil {
-				if err := tcpConn.Close(); err != nil {
-					m.logger.Debug("failed to close TCP connection", "err", err)
-				}
-				select {
-				case m.errorCh <- err:
-				case <-m.closeCh:
-				}
-				return
-			}
-
 			conn := newMConnConnection(m, tcpConn)
 			select {
 			case m.acceptCh <- conn:
@@ -252,14 +196,6 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 		return nil, err
 	}
 
-	err = m.filterTCPConn(tcpConn)
-	if err != nil {
-		if err := tcpConn.Close(); err != nil {
-			m.logger.Debug("failed to close TCP connection", "err", err)
-		}
-		return nil, err
-	}
-
 	return newMConnConnection(m, tcpConn), nil
 }
 
@@ -289,52 +225,6 @@ func (m *MConnTransport) Close() error {
 		}
 	})
 	return err
-}
-
-// filterTCPConn filters a TCP connection, rejecting it if this function errors.
-//
-// FIXME: This is only here for compatibility with the current Switch code. In
-// the new P2P stack, peer/connection filtering should be moved into the Router
-// or PeerManager and removed from here.
-func (m *MConnTransport) filterTCPConn(tcpConn net.Conn) error {
-	if m.conns.Has(tcpConn) {
-		return ErrRejected{conn: tcpConn, isDuplicate: true}
-	}
-
-	host, _, err := net.SplitHostPort(tcpConn.RemoteAddr().String())
-	if err != nil {
-		return err
-	}
-	ip := net.ParseIP(host)
-	if ip == nil {
-		return fmt.Errorf("connection address has invalid IP address %q", host)
-	}
-
-	// Apply filter callbacks.
-	chErr := make(chan error, len(m.connFilters))
-	for _, connFilter := range m.connFilters {
-		go func(connFilter ConnFilterFunc) {
-			chErr <- connFilter(m.conns, tcpConn, []net.IP{ip})
-		}(connFilter)
-	}
-
-	for i := 0; i < cap(chErr); i++ {
-		select {
-		case err := <-chErr:
-			if err != nil {
-				return ErrRejected{conn: tcpConn, err: err, isFiltered: true}
-			}
-		case <-time.After(m.filterTimeout):
-			return ErrFilterTimeout{}
-		}
-
-	}
-
-	// FIXME: Doesn't really make sense to set this here, but we preserve the
-	// behavior from the previous P2P transport implementation. This should
-	// be moved to the router.
-	m.conns.Set(tcpConn, []net.IP{ip})
-	return nil
 }
 
 // normalizeEndpoint normalizes and validates an endpoint.
@@ -586,10 +476,13 @@ func (c *mConnConnection) Status() conn.ConnectionStatus {
 
 // Close implements Connection.
 func (c *mConnConnection) Close() error {
-	c.transport.conns.RemoveAddr(c.conn.RemoteAddr())
 	var err error
 	c.closeOnce.Do(func() {
-		err = c.mconn.Stop()
+		if c.mconn != nil {
+			err = c.mconn.Stop()
+		} else {
+			err = c.conn.Close()
+		}
 		close(c.closeCh)
 	})
 	return err
@@ -597,10 +490,14 @@ func (c *mConnConnection) Close() error {
 
 // FlushClose implements Connection.
 func (c *mConnConnection) FlushClose() error {
-	c.transport.conns.RemoveAddr(c.conn.RemoteAddr())
+	var err error
 	c.closeOnce.Do(func() {
-		c.mconn.FlushStop()
+		if c.mconn != nil {
+			c.mconn.FlushStop()
+		} else {
+			err = c.conn.Close()
+		}
 		close(c.closeCh)
 	})
-	return nil
+	return err
 }

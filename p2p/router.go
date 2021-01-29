@@ -279,6 +279,20 @@ func (r *Router) acceptPeers(transport Transport) {
 		// FIXME: We may need transports to enforce some sort of rate limiting
 		// here (e.g. by IP address), or alternatively have PeerManager.Accepted()
 		// do it for us.
+		//
+		// FIXME: Even though PeerManager enforces MaxConnected, we may want to
+		// limit the maximum number of active connections here too, since e.g.
+		// an adversary can open a ton of connections and then just hang during
+		// the handshake, taking up TCP socket descriptors.
+		//
+		// FIXME: The old P2P stack rejected multiple connections for the same IP
+		// unless P2PConfig.AllowDuplicateIP is true -- it's better to limit this
+		// by peer ID rather than IP address, so this hasn't been implemented and
+		// probably shouldn't (?).
+		//
+		// FIXME: The old P2P stack supported ABCI-based IP address filtering via
+		// /p2p/filter/addr/<ip> queries, do we want to implement this here as well?
+		// Filtering by node ID is probably better.
 		conn, err := transport.Accept(ctx)
 		switch err {
 		case nil:
