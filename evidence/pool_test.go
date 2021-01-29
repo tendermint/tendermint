@@ -207,14 +207,14 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	state.LastBlockTime = defaultEvidenceTime.Add(22 * time.Minute)
 
 	evList, _ := pool.PendingEvidence(2 * defaultEvidenceMaxBytes)
-	require.Equal(t, 2,  len(evList))
+	require.Equal(t, 2, len(evList))
 
 	require.Equal(t, uint32(2), pool.Size())
 
 	require.NoError(t, pool.CheckEvidence(types.EvidenceList{ev}))
 
 	evList, _ = pool.PendingEvidence(3 * defaultEvidenceMaxBytes)
-	require.Equal(t, 3,  len(evList))
+	require.Equal(t, 3, len(evList))
 
 	require.Equal(t, uint32(3), pool.Size())
 

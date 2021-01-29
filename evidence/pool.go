@@ -417,7 +417,7 @@ func (evpool *Pool) markEvidenceAsCommitted(evidence types.EvidenceList, height 
 
 	// check if we need to remove any pending evidence
 	if len(blockEvidenceMap) == 0 {
-		return 
+		return
 	}
 
 	// remove committed evidence from the clist
@@ -430,11 +430,11 @@ func (evpool *Pool) markEvidenceAsCommitted(evidence types.EvidenceList, height 
 	}
 
 	// update the evidence size
-	atomic.AddUint32(&evpool.evidenceSize, ^uint32(len(blockEvidenceMap) - 1))
+	atomic.AddUint32(&evpool.evidenceSize, ^uint32(len(blockEvidenceMap)-1))
 
 	if err := batch.Close(); err != nil {
 		evpool.logger.Error("failed to close batch deletion", "err", err)
-	} 
+	}
 }
 
 // listEvidence retrieves lists evidence from oldest to newest within maxBytes.
@@ -498,8 +498,8 @@ func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
 		return height, time
 	}
 
-	evpool.logger.Debug("removing expired evidence", 
-		"height", evpool.State().LastBlockHeight, 
+	evpool.logger.Debug("removing expired evidence",
+		"height", evpool.State().LastBlockHeight,
 		"time", evpool.State().LastBlockTime,
 		"expired evidence", len(blockEvidenceMap),
 	)
@@ -514,7 +514,7 @@ func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
 	}
 
 	// update the evidence size
-	atomic.AddUint32(&evpool.evidenceSize, ^uint32(len(blockEvidenceMap) - 1))
+	atomic.AddUint32(&evpool.evidenceSize, ^uint32(len(blockEvidenceMap)-1))
 
 	if err := batch.Close(); err != nil {
 		evpool.logger.Error("failed to close batch deletion", "err", err)
