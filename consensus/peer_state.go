@@ -19,7 +19,7 @@ import (
 
 var (
 	ErrPeerStateHeightRegression = errors.New("error peer state height regression")
-	ErrPeerStateInvalidStartTime = errors.New("error peer state invalid startTime")
+	ErrPeerStateInvalidStartTime = errors.New("peer state invalid startTime")
 )
 
 // peerStateStats holds internal statistics for a peer.
