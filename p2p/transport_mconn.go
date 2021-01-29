@@ -23,13 +23,15 @@ const (
 	TCPProtocol   Protocol = "tcp"
 )
 
-// MConnTransportOption sets an option for MConnTransport.
-type MConnTransportOption func(*MConnTransport)
-
-// MConnTransportMaxIncomingConnections sets the maximum number of
-// simultaneous incoming connections. Default: 0 (unlimited)
-func MConnTransportMaxIncomingConnections(max int) MConnTransportOption {
-	return func(mt *MConnTransport) { mt.maxIncomingConnections = max }
+// MConnTransportOptions sets options for MConnTransport.
+type MConnTransportOptions struct {
+	// MaxAcceptedConnections is the maximum number of simultaneous accepted
+	// (incoming) connections. Beyond this, new connections will block until
+	// a slot is free. 0 means unlimited.
+	//
+	// FIXME: We may want to replace this with connection accounting in the
+	// Router, since it will need to do e.g. rate limiting and such as well.
+	MaxAcceptedConnections uint32
 }
 
 // MConnTransport is a Transport implementation using the current multiplexed
@@ -39,13 +41,12 @@ func MConnTransportMaxIncomingConnections(max int) MConnTransportOption {
 // moved out of the transport once the rest of the P2P stack is rewritten.
 type MConnTransport struct {
 	logger      log.Logger
-	privKey     crypto.PrivKey
 	nodeInfo    NodeInfo
+	privKey     crypto.PrivKey
+	options     MConnTransportOptions
 	mConnConfig conn.MConnConfig
 	closeCh     chan struct{}
 	closeOnce   sync.Once
-
-	maxIncomingConnections int
 
 	listener     net.Listener
 	channelDescs []*ChannelDescriptor
@@ -59,20 +60,17 @@ func NewMConnTransport(
 	nodeInfo NodeInfo,
 	privKey crypto.PrivKey,
 	mConnConfig conn.MConnConfig,
-	opts ...MConnTransportOption,
+	options MConnTransportOptions,
 ) *MConnTransport {
-	m := &MConnTransport{
+	return &MConnTransport{
 		logger:       logger,
-		privKey:      privKey,
 		nodeInfo:     nodeInfo,
+		privKey:      privKey,
+		options:      options,
 		mConnConfig:  mConnConfig,
-		channelDescs: []*ChannelDescriptor{},
 		closeCh:      make(chan struct{}),
+		channelDescs: []*ChannelDescriptor{},
 	}
-	for _, opt := range opts {
-		opt(m)
-	}
-	return m
 }
 
 // String implements Transport.
@@ -111,8 +109,8 @@ func (m *MConnTransport) Listen(endpoint Endpoint) error {
 	if err != nil {
 		return err
 	}
-	if m.maxIncomingConnections > 0 {
-		m.listener = netutil.LimitListener(m.listener, m.maxIncomingConnections)
+	if m.options.MaxAcceptedConnections > 0 {
+		m.listener = netutil.LimitListener(m.listener, int(m.options.MaxAcceptedConnections))
 	}
 	return nil
 }
