@@ -20,6 +20,9 @@ const (
 	LogFormatPlain = "plain"
 	// LogFormatJSON is a format for json output
 	LogFormatJSON = "json"
+
+	// DefaultLogLevel defines a default log level as INFO.
+	DefaultLogLevel = "info"
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -235,7 +238,7 @@ func DefaultBaseConfig() BaseConfig {
 		Moniker:            defaultMoniker,
 		ProxyApp:           "tcp://127.0.0.1:26658",
 		ABCI:               "socket",
-		LogLevel:           DefaultPackageLogLevels(),
+		LogLevel:           DefaultLogLevel,
 		LogFormat:          LogFormatPlain,
 		FastSyncMode:       true,
 		FilterPeers:        false,
@@ -322,17 +325,6 @@ func (cfg BaseConfig) ValidateBasic() error {
 	return nil
 }
 
-// DefaultLogLevel returns a default log level of "error"
-func DefaultLogLevel() string {
-	return "error"
-}
-
-// DefaultPackageLogLevels returns a default log level setting so all packages
-// log at "error", while the `state` and `main` packages log at "info"
-func DefaultPackageLogLevels() string {
-	return fmt.Sprintf("main:info,state:info,statesync:info,*:%s", DefaultLogLevel())
-}
-
 //-----------------------------------------------------------------------------
 // RPCConfig
 
@@ -401,7 +393,7 @@ type RPCConfig struct {
 	MaxHeaderBytes int `mapstructure:"max-header-bytes"`
 
 	// The path to a file containing certificate that is used to create the HTTPS server.
-	// Migth be either absolute path or path related to tendermint's config directory.
+	// Might be either absolute path or path related to Tendermint's config directory.
 	//
 	// If the certificate is signed by a certificate authority,
 	// the certFile should be the concatenation of the server's certificate, any intermediates,
@@ -412,7 +404,7 @@ type RPCConfig struct {
 	TLSCertFile string `mapstructure:"tls-cert-file"`
 
 	// The path to a file containing matching private key that is used to create the HTTPS server.
-	// Migth be either absolute path or path related to tendermint's config directory.
+	// Might be either absolute path or path related to tendermint's config directory.
 	//
 	// NOTE: both tls-cert-file and tls-key-file must be present for Tendermint to create HTTPS server.
 	// Otherwise, HTTP server is run.

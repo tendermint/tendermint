@@ -34,7 +34,7 @@ type tm2pb struct{}
 
 func (tm2pb) Header(header *Header) tmproto.Header {
 	return tmproto.Header{
-		Version: header.Version,
+		Version: header.Version.ToProto(),
 		ChainID: header.ChainID,
 		Height:  header.Height,
 		Time:    header.Time,
@@ -95,17 +95,6 @@ func (tm2pb) ValidatorUpdates(vals *ValidatorSet) []abci.ValidatorUpdate {
 		validators[i] = TM2PB.ValidatorUpdate(val)
 	}
 	return validators
-}
-
-func (tm2pb) ConsensusParams(params *tmproto.ConsensusParams) *abci.ConsensusParams {
-	return &abci.ConsensusParams{
-		Block: &abci.BlockParams{
-			MaxBytes: params.Block.MaxBytes,
-			MaxGas:   params.Block.MaxGas,
-		},
-		Evidence:  &params.Evidence,
-		Validator: &params.Validator,
-	}
 }
 
 // XXX: panics on nil or unknown pubkey type

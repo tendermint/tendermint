@@ -238,7 +238,7 @@ func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 	case <-m.chClose:
 		return nil, ErrTransportClosed{}
 	case <-ctx.Done():
-		return nil, nil
+		return nil, ctx.Err()
 	}
 }
 

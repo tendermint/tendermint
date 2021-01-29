@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	sm "github.com/tendermint/tendermint/state"
 	smmocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/store"
@@ -136,13 +135,17 @@ func TestAddExpiredEvidence(t *testing.T) {
 	}
 }
 
-func TestAddEvidenceFromConsensus(t *testing.T) {
+func TestReportConflictingVotes(t *testing.T) {
 	var height int64 = 10
 
-	pool, val := defaultTestPool(t, height)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
+	pool, pv := defaultTestPool(t, height)
+	val := types.NewValidator(pv.PrivKey.PubKey(), 10)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height+1, defaultEvidenceTime, pv, evidenceChainID)
 
-	require.NoError(t, pool.AddEvidenceFromConsensus(ev))
+	pool.ReportConflictingVotes(ev.VoteA, ev.VoteB)
+
+	// shouldn't be able to submit the same evidence twice
+	pool.ReportConflictingVotes(ev.VoteA, ev.VoteB)
 
 	// evidence from consensus should not be added immediately but reside in the consensus buffer
 	evList, evSize := pool.PendingEvidence(defaultEvidenceMaxBytes)
@@ -155,19 +158,13 @@ func TestAddEvidenceFromConsensus(t *testing.T) {
 	// move to next height and update state and evidence pool
 	state := pool.State()
 	state.LastBlockHeight++
+	state.LastBlockTime = ev.Time()
+	state.LastValidators = types.NewValidatorSet([]*types.Validator{val})
 	pool.Update(state, []types.Evidence{})
 
 	// should be able to retrieve evidence from pool
 	evList, _ = pool.PendingEvidence(defaultEvidenceMaxBytes)
 	require.Equal(t, []types.Evidence{ev}, evList)
-
-	// shouldn't be able to submit the same evidence twice
-	require.NoError(t, pool.AddEvidenceFromConsensus(ev))
-	state = pool.State()
-	state.LastBlockHeight++
-	pool.Update(state, []types.Evidence{})
-	evList2, _ := pool.PendingEvidence(defaultEvidenceMaxBytes)
-	require.Equal(t, evList, evList2)
 }
 
 func TestEvidencePoolUpdate(t *testing.T) {
@@ -383,12 +380,12 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	newStateStore.On("Load").Return(sm.State{
 		LastBlockTime:   defaultEvidenceTime.Add(25 * time.Minute),
 		LastBlockHeight: height + 15,
-		ConsensusParams: tmproto.ConsensusParams{
-			Block: tmproto.BlockParams{
+		ConsensusParams: types.ConsensusParams{
+			Block: types.BlockParams{
 				MaxBytes: 22020096,
 				MaxGas:   -1,
 			},
-			Evidence: tmproto.EvidenceParams{
+			Evidence: types.EvidenceParams{
 				MaxAgeNumBlocks: 20,
 				MaxAgeDuration:  20 * time.Minute,
 				MaxBytes:        1000,
@@ -418,12 +415,12 @@ func initializeStateFromValidatorSet(t *testing.T, valSet *types.ValidatorSet, h
 		NextValidators:              valSet.CopyIncrementProposerPriority(1),
 		LastValidators:              valSet,
 		LastHeightValidatorsChanged: 1,
-		ConsensusParams: tmproto.ConsensusParams{
-			Block: tmproto.BlockParams{
+		ConsensusParams: types.ConsensusParams{
+			Block: types.BlockParams{
 				MaxBytes: 22020096,
 				MaxGas:   -1,
 			},
-			Evidence: tmproto.EvidenceParams{
+			Evidence: types.EvidenceParams{
 				MaxAgeNumBlocks: 20,
 				MaxAgeDuration:  20 * time.Minute,
 				MaxBytes:        1000,
@@ -463,7 +460,7 @@ func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) *store.Bloc
 		block, _ := state.MakeBlock(i, []types.Tx{}, lastCommit, nil,
 			state.Validators.GetProposer().Address)
 		block.Header.Time = defaultEvidenceTime.Add(time.Duration(i) * time.Minute)
-		block.Header.Version = tmversion.Consensus{Block: version.BlockProtocol, App: 1}
+		block.Header.Version = version.Consensus{Block: version.BlockProtocol, App: 1}
 		const parts = 1
 		partSet := block.MakePartSet(parts)
 

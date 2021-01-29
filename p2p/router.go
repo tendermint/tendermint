@@ -24,15 +24,18 @@ import (
 // either the channel is closed by the caller or the router is stopped, at which
 // point the input message queue is closed and removed.
 //
-// On startup, the router spawns off two primary goroutines that maintain
+// On startup, the router spawns off three primary goroutines that maintain
 // connections to peers and run for the lifetime of the router:
 //
-//   Router.dialPeers(): in a loop, asks the peerStore to dispense an
-//   eligible peer to connect to, and attempts to resolve and dial each
-//   address until successful.
+//   Router.dialPeers(): in a loop, asks the PeerManager for the next peer
+//   address to contact, resolves it into endpoints, and attempts to dial
+//   each one.
 //
 //   Router.acceptPeers(): in a loop, waits for the next inbound connection
-//   from a peer, and attempts to claim it in the peerStore.
+//   from a peer, and checks with the PeerManager if it should be accepted.
+//
+//   Router.evictPeers(): in a loop, asks the PeerManager for any connected
+//   peers to evict, and disconnects them.
 //
 // Once either an inbound or outbound connection has been made, an outbound
 // message queue is registered in Router.peerQueues and a goroutine is spawned
@@ -73,9 +76,9 @@ import (
 // forever on a channel that has no consumer.
 type Router struct {
 	*service.BaseService
-	logger     log.Logger
-	transports map[Protocol]Transport
-	store      *peerStore
+	logger      log.Logger
+	transports  map[Protocol]Transport
+	peerManager *PeerManager
 
 	// FIXME: Consider using sync.Map.
 	peerMtx    sync.RWMutex
@@ -88,10 +91,6 @@ type Router struct {
 	channelQueues   map[ChannelID]queue
 	channelMessages map[ChannelID]proto.Message
 
-	peerUpdatesCh   chan PeerUpdate
-	peerUpdatesMtx  sync.RWMutex
-	peerUpdatesSubs map[*PeerUpdatesCh]*PeerUpdatesCh // keyed by struct identity (address)
-
 	// stopCh is used to signal router shutdown, by closing the channel.
 	stopCh chan struct{}
 }
@@ -101,26 +100,17 @@ type Router struct {
 // FIXME: providing protocol/transport maps is cumbersome in tests, we should
 // consider adding Protocols() to the Transport interface instead and register
 // protocol/transport mappings automatically on a first-come basis.
-func NewRouter(logger log.Logger, transports map[Protocol]Transport, peers []PeerAddress) *Router {
+func NewRouter(logger log.Logger, peerManager *PeerManager, transports map[Protocol]Transport) *Router {
 	router := &Router{
 		logger:          logger,
 		transports:      transports,
-		store:           newPeerStore(),
+		peerManager:     peerManager,
 		stopCh:          make(chan struct{}),
 		channelQueues:   map[ChannelID]queue{},
 		channelMessages: map[ChannelID]proto.Message{},
 		peerQueues:      map[NodeID]queue{},
-		peerUpdatesCh:   make(chan PeerUpdate),
-		peerUpdatesSubs: map[*PeerUpdatesCh]*PeerUpdatesCh{},
 	}
 	router.BaseService = service.NewBaseService(logger, "router", router)
-
-	for _, address := range peers {
-		if err := router.store.Add(address); err != nil {
-			logger.Error("failed to add peer", "address", address, "err", err)
-		}
-	}
-
 	return router
 }
 
@@ -241,44 +231,60 @@ func (r *Router) routeChannel(channel *Channel) {
 
 // acceptPeers accepts inbound connections from peers on the given transport.
 func (r *Router) acceptPeers(transport Transport) {
+	ctx := r.stopCtx()
 	for {
-		select {
-		case <-r.stopCh:
-			return
-		default:
-		}
-
-		conn, err := transport.Accept(context.Background())
+		// FIXME: We may need transports to enforce some sort of rate limiting
+		// here (e.g. by IP address), or alternatively have PeerManager.Accepted()
+		// do it for us.
+		conn, err := transport.Accept(ctx)
 		switch err {
 		case nil:
-		case ErrTransportClosed{}, io.EOF:
-			r.logger.Info("transport closed; stopping accept routine", "transport", transport)
+		case ErrTransportClosed{}, io.EOF, context.Canceled:
+			r.logger.Debug("stopping accept routine", "transport", transport)
 			return
 		default:
 			r.logger.Error("failed to accept connection", "transport", transport, "err", err)
 			continue
 		}
 
-		peerID := conn.NodeInfo().NodeID
-		if r.store.Claim(peerID) == nil {
-			r.logger.Error("already connected to peer, rejecting connection", "peer", peerID)
-			_ = conn.Close()
-			continue
-		}
-
-		queue := newFIFOQueue()
-		r.peerMtx.Lock()
-		r.peerQueues[peerID] = queue
-		r.peerMtx.Unlock()
-
 		go func() {
+			defer func() {
+				_ = conn.Close()
+			}()
+
+			// FIXME: Because we do the handshake in each transport, rather than
+			// here in the Router, the remote peer will think they've
+			// successfully connected and start sending us messages, although we
+			// can end up rejecting the connection here. This can e.g. cause
+			// problems in tests, where because of race conditions a
+			// disconnection can cause the local node to immediately redial,
+			// while the remote node may not have completed the disconnection
+			// registration yet and reject the accept below.
+			//
+			// The Router should do the handshake, and we should check with the
+			// peer manager before completing the handshake -- this probably
+			// requires protocol changes to send an additional message when the
+			// handshake is accepted.
+			peerID := conn.NodeInfo().NodeID
+			if err := r.peerManager.Accepted(peerID); err != nil {
+				r.logger.Error("failed to accept connection", "peer", peerID, "err", err)
+				return
+			}
+
+			queue := newFIFOQueue()
+			r.peerMtx.Lock()
+			r.peerQueues[peerID] = queue
+			r.peerMtx.Unlock()
+			r.peerManager.Ready(peerID)
+
 			defer func() {
 				r.peerMtx.Lock()
 				delete(r.peerQueues, peerID)
 				r.peerMtx.Unlock()
 				queue.close()
-				_ = conn.Close()
-				r.store.Return(peerID)
+				if err := r.peerManager.Disconnected(peerID); err != nil {
+					r.logger.Error("failed to disconnect peer", "peer", peerID, "err", err)
+				}
 			}()
 
 			r.routePeer(peerID, conn, queue)
@@ -288,82 +294,96 @@ func (r *Router) acceptPeers(transport Transport) {
 
 // dialPeers maintains outbound connections to peers.
 func (r *Router) dialPeers() {
+	ctx := r.stopCtx()
 	for {
-		select {
-		case <-r.stopCh:
+		peerID, address, err := r.peerManager.DialNext(ctx)
+		switch err {
+		case nil:
+		case context.Canceled:
+			r.logger.Debug("stopping dial routine")
 			return
 		default:
-		}
-
-		peer := r.store.Dispense()
-		if peer == nil {
-			r.logger.Debug("no eligible peers, sleeping")
-			select {
-			case <-time.After(time.Second):
-				continue
-			case <-r.stopCh:
-				return
-			}
+			r.logger.Error("failed to find next peer to dial", "err", err)
+			return
 		}
 
 		go func() {
-			defer r.store.Return(peer.ID)
-			conn, err := r.dialPeer(peer)
-			if err != nil {
-				r.logger.Error("failed to dial peer, will retry", "peer", peer.ID)
+			conn, err := r.dialPeer(ctx, address)
+			if errors.Is(err, context.Canceled) {
+				return
+			} else if err != nil {
+				r.logger.Error("failed to dial peer", "peer", peerID)
+				if err = r.peerManager.DialFailed(peerID, address); err != nil {
+					r.logger.Error("failed to report dial failure", "peer", peerID, "err", err)
+				}
 				return
 			}
 			defer conn.Close()
 
+			if err = r.peerManager.Dialed(peerID, address); err != nil {
+				r.logger.Error("failed to dial peer", "peer", peerID, "err", err)
+				return
+			}
+
 			queue := newFIFOQueue()
-			defer queue.close()
 			r.peerMtx.Lock()
-			r.peerQueues[peer.ID] = queue
+			r.peerQueues[peerID] = queue
 			r.peerMtx.Unlock()
+			r.peerManager.Ready(peerID)
 
 			defer func() {
 				r.peerMtx.Lock()
-				delete(r.peerQueues, peer.ID)
+				delete(r.peerQueues, peerID)
 				r.peerMtx.Unlock()
+				queue.close()
+				if err := r.peerManager.Disconnected(peerID); err != nil {
+					r.logger.Error("failed to disconnect peer", "peer", peerID, "err", err)
+				}
 			}()
 
-			r.routePeer(peer.ID, conn, queue)
+			r.routePeer(peerID, conn, queue)
 		}()
 	}
 }
 
 // dialPeer attempts to connect to a peer.
-func (r *Router) dialPeer(peer *peerInfo) (Connection, error) {
-	ctx := context.Background()
+func (r *Router) dialPeer(ctx context.Context, address PeerAddress) (Connection, error) {
+	resolveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
-	for _, address := range peer.Addresses {
-		resolveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
-		r.logger.Info("resolving peer address", "peer", peer.ID, "address", address)
-		endpoints, err := address.Resolve(resolveCtx)
-		if err != nil {
-			r.logger.Error("failed to resolve address", "address", address, "err", err)
+	r.logger.Info("resolving peer address", "address", address)
+
+	endpoints, err := address.Resolve(resolveCtx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve address %q: %w", address, err)
+	}
+
+	for _, endpoint := range endpoints {
+		t, ok := r.transports[endpoint.Protocol]
+		if !ok {
+			r.logger.Error("no transport found for protocol", "protocol", endpoint.Protocol)
 			continue
 		}
 
-		for _, endpoint := range endpoints {
-			t, ok := r.transports[endpoint.Protocol]
-			if !ok {
-				r.logger.Error("no transport found for protocol", "protocol", endpoint.Protocol)
-				continue
-			}
-			dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-			defer cancel()
-			conn, err := t.Dial(dialCtx, endpoint)
-			if err != nil {
-				r.logger.Error("failed to dial endpoint", "endpoint", endpoint)
-			} else {
-				r.logger.Info("connected to peer", "peer", peer.ID, "endpoint", endpoint)
-				return conn, nil
-			}
+		dialCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+
+		// FIXME: When we dial and handshake the peer, we should pass it
+		// appropriate address(es) it can use to dial us back. It can't use our
+		// remote endpoint, since TCP uses different port numbers for outbound
+		// connections than it does for inbound. Also, we may need to vary this
+		// by the peer's endpoint, since e.g. a peer on 192.168.0.0 can reach us
+		// on a private address on this endpoint, but a peer on the public
+		// Internet can't and needs a different public address.
+		conn, err := t.Dial(dialCtx, endpoint)
+		if err != nil {
+			r.logger.Error("failed to dial endpoint", "endpoint", endpoint, "err", err)
+		} else {
+			r.logger.Info("connected to peer", "peer", address.ID, "endpoint", endpoint)
+			return conn, nil
 		}
 	}
-	return nil, errors.New("failed to connect to peer")
+	return nil, fmt.Errorf("failed to connect to peer via %q", address)
 }
 
 // routePeer routes inbound messages from a peer to channels, and also sends
@@ -372,18 +392,7 @@ func (r *Router) dialPeer(peer *peerInfo) (Connection, error) {
 // sendPeer() goroutines. It blocks until the peer is done, e.g. when the
 // connection or queue is closed.
 func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
-	// FIXME: Peer updates should probably be handled by the peer store.
-	r.peerUpdatesCh <- PeerUpdate{
-		PeerID: peerID,
-		Status: PeerStatusUp,
-	}
-	defer func() {
-		r.peerUpdatesCh <- PeerUpdate{
-			PeerID: peerID,
-			Status: PeerStatusDown,
-		}
-	}()
-
+	r.logger.Info("routing peer", "peer", peerID)
 	resultsCh := make(chan error, 2)
 	go func() {
 		resultsCh <- r.receivePeer(peerID, conn)
@@ -478,69 +487,37 @@ func (r *Router) sendPeer(peerID NodeID, conn Connection, queue queue) error {
 	}
 }
 
-// SubscribePeerUpdates creates a new peer updates subscription. The caller must
-// consume the peer updates in a timely fashion, since delivery is guaranteed and
-// will block peer connection/disconnection otherwise.
-func (r *Router) SubscribePeerUpdates() (*PeerUpdatesCh, error) {
-	// FIXME: We may want to use a size 1 buffer here. When the router
-	// broadcasts a peer update it has to loop over all of the
-	// subscriptions, and we want to avoid blocking and waiting for a
-	// context switch before continuing to the next subscription. This also
-	// prevents tail latencies from compounding across updates. We also want
-	// to make sure the subscribers are reasonably in sync, so it should be
-	// kept at 1. However, this should be benchmarked first.
-	peerUpdates := NewPeerUpdates(make(chan PeerUpdate))
-	r.peerUpdatesMtx.Lock()
-	r.peerUpdatesSubs[peerUpdates] = peerUpdates
-	r.peerUpdatesMtx.Unlock()
-
-	go func() {
-		select {
-		case <-peerUpdates.Done():
-			r.peerUpdatesMtx.Lock()
-			delete(r.peerUpdatesSubs, peerUpdates)
-			r.peerUpdatesMtx.Unlock()
-		case <-r.stopCh:
-		}
-	}()
-	return peerUpdates, nil
-}
-
-// broadcastPeerUpdates broadcasts peer updates received from the router
-// to all subscriptions.
-func (r *Router) broadcastPeerUpdates() {
+// evictPeers evicts connected peers as requested by the peer manager.
+func (r *Router) evictPeers() {
+	ctx := r.stopCtx()
 	for {
-		select {
-		case peerUpdate := <-r.peerUpdatesCh:
-			subs := []*PeerUpdatesCh{}
-			r.peerUpdatesMtx.RLock()
-			for _, sub := range r.peerUpdatesSubs {
-				subs = append(subs, sub)
-			}
-			r.peerUpdatesMtx.RUnlock()
-
-			for _, sub := range subs {
-				select {
-				case sub.updatesCh <- peerUpdate:
-				case <-sub.doneCh:
-				case <-r.stopCh:
-					return
-				}
-			}
-
-		case <-r.stopCh:
+		peerID, err := r.peerManager.EvictNext(ctx)
+		switch err {
+		case nil:
+		case context.Canceled:
+			r.logger.Debug("stopping evict routine")
+			return
+		default:
+			r.logger.Error("failed to find next peer to evict", "err", err)
 			return
 		}
+
+		r.logger.Info("evicting peer", "peer", peerID)
+		r.peerMtx.RLock()
+		if queue, ok := r.peerQueues[peerID]; ok {
+			queue.close()
+		}
+		r.peerMtx.RUnlock()
 	}
 }
 
 // OnStart implements service.Service.
 func (r *Router) OnStart() error {
-	go r.broadcastPeerUpdates()
 	go r.dialPeers()
 	for _, transport := range r.transports {
 		go r.acceptPeers(transport)
 	}
+	go r.evictPeers()
 	return nil
 }
 
@@ -565,4 +542,14 @@ func (r *Router) OnStop() {
 	for _, q := range queues {
 		<-q.closed()
 	}
+}
+
+// stopCtx returns a context that is cancelled when the router stops.
+func (r *Router) stopCtx() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-r.stopCh
+		cancel()
+	}()
+	return ctx
 }

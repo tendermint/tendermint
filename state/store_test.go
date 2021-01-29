@@ -16,7 +16,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -167,15 +166,15 @@ func TestPruneStates(t *testing.T) {
 		remainingValSetHeight int64
 		remainingParamsHeight int64
 	}{
-		// "error when prune height is 0":           {1, 100, 0, true, 0, 0},
-		// "error when prune height is negative":    {1, 100, -10, true, 0, 0},
-		// "error when prune height does not exist": {1, 100, 101, true, 0, 0},
-		// "prune all":                              {1, 100, 100, false, 93, 95},
-		// "prune from non 1 height":                {10, 50, 40, false, 33, 35},
-		// "prune some":                             {1, 10, 8, false, 3, 5},
+		"error when prune height is 0":           {1, 100, 0, true, 0, 0},
+		"error when prune height is negative":    {1, 100, -10, true, 0, 0},
+		"error when prune height does not exist": {1, 100, 101, true, 0, 0},
+		"prune all":                              {1, 100, 100, false, 93, 95},
+		"prune from non 1 height":                {10, 50, 40, false, 33, 35},
+		"prune some":                             {1, 10, 8, false, 3, 5},
 		// we test this because we flush to disk every 1000 "states"
 		"prune more than 1000 state": {1, 1010, 1010, false, 1003, 1005},
-		// "prune across checkpoint":    {99900, 100002, 100002, false, 100000, 99995},
+		"prune across checkpoint":    {99900, 100002, 100002, false, 100000, 99995},
 	}
 	for name, tc := range testcases {
 		tc := tc
@@ -208,8 +207,8 @@ func TestPruneStates(t *testing.T) {
 					LastBlockHeight: h - 1,
 					Validators:      validatorSet,
 					NextValidators:  validatorSet,
-					ConsensusParams: tmproto.ConsensusParams{
-						Block: tmproto.BlockParams{MaxBytes: 10e6},
+					ConsensusParams: types.ConsensusParams{
+						Block: types.BlockParams{MaxBytes: 10e6},
 					},
 					LastHeightValidatorsChanged:      valsChanged,
 					LastHeightConsensusParamsChanged: paramsChanged,
@@ -254,7 +253,7 @@ func TestPruneStates(t *testing.T) {
 				require.NotNil(t, abci, h)
 			}
 
-			emptyParams := tmproto.ConsensusParams{}
+			emptyParams := types.ConsensusParams{}
 
 			for h := tc.startHeight; h < tc.pruneHeight; h++ {
 				vals, err := stateStore.LoadValidators(h)
@@ -268,8 +267,8 @@ func TestPruneStates(t *testing.T) {
 
 				params, err := stateStore.LoadConsensusParams(h)
 				if h == tc.remainingParamsHeight {
-					require.NoError(t, err)
-					require.NotEqual(t, emptyParams, params)
+					require.NoError(t, err, h)
+					require.NotEqual(t, emptyParams, params, h)
 				} else {
 					require.Error(t, err, h)
 					require.Equal(t, emptyParams, params, h)
