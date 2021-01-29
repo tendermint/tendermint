@@ -155,7 +155,7 @@ func (m *MConnTransport) Endpoints() []Endpoint {
 		return []Endpoint{}
 	}
 	endpoint := Endpoint{
-		PeerID:   m.nodeID,
+		NodeID:   m.nodeID,
 		Protocol: MConnProtocol,
 	}
 	if addr, ok := m.listener.Addr().(*net.TCPAddr); ok {
@@ -395,7 +395,7 @@ func (c *mConnConnection) ReceiveMessage() (byte, []byte, error) {
 func (c *mConnConnection) LocalEndpoint() Endpoint {
 	endpoint := Endpoint{
 		Protocol: MConnProtocol,
-		PeerID:   c.localID,
+		NodeID:   c.localID,
 	}
 	if addr, ok := c.conn.LocalAddr().(*net.TCPAddr); ok {
 		endpoint.IP = addr.IP
@@ -408,7 +408,7 @@ func (c *mConnConnection) LocalEndpoint() Endpoint {
 func (c *mConnConnection) RemoteEndpoint() Endpoint {
 	endpoint := Endpoint{
 		Protocol: MConnProtocol,
-		PeerID:   c.remoteID,
+		NodeID:   c.remoteID,
 	}
 	if addr, ok := c.conn.RemoteAddr().(*net.TCPAddr); ok {
 		endpoint.IP = addr.IP

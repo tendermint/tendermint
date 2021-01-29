@@ -35,7 +35,7 @@ import (
 // part has to contain either the node ID or a node ID and path in the form
 // "scheme:<nodeid>@<path>".
 type PeerAddress struct {
-	ID       NodeID
+	NodeID   NodeID
 	Protocol Protocol
 	Hostname string
 	Port     uint16
@@ -60,7 +60,7 @@ func ParsePeerAddress(urlString string) (PeerAddress, error) {
 		if len(parts) > 2 {
 			return PeerAddress{}, fmt.Errorf("invalid address format %q, unexpected @", urlString)
 		}
-		address.ID, err = NewNodeID(parts[0])
+		address.NodeID, err = NewNodeID(parts[0])
 		if err != nil {
 			return PeerAddress{}, fmt.Errorf("invalid peer ID %q: %w", parts[0], err)
 		}
@@ -71,7 +71,7 @@ func ParsePeerAddress(urlString string) (PeerAddress, error) {
 	}
 
 	// Otherwise, just parse a normal networked URL.
-	address.ID, err = NewNodeID(url.User.Username())
+	address.NodeID, err = NewNodeID(url.User.Username())
 	if err != nil {
 		return PeerAddress{}, fmt.Errorf("invalid peer ID %q: %w", url.User.Username(), err)
 	}
@@ -117,7 +117,7 @@ func (a PeerAddress) Resolve(ctx context.Context) ([]Endpoint, error) {
 	// "scheme:<opaque>".
 	if a.Hostname == "" {
 		return []Endpoint{{
-			PeerID:   a.ID,
+			NodeID:   a.NodeID,
 			Protocol: a.Protocol,
 			Path:     a.Path,
 		}}, nil
@@ -130,7 +130,7 @@ func (a PeerAddress) Resolve(ctx context.Context) ([]Endpoint, error) {
 	endpoints := make([]Endpoint, len(ips))
 	for i, ip := range ips {
 		endpoints[i] = Endpoint{
-			PeerID:   a.ID,
+			NodeID:   a.NodeID,
 			Protocol: a.Protocol,
 			IP:       ip,
 			Port:     a.Port,
@@ -145,9 +145,9 @@ func (a PeerAddress) Validate() error {
 	if a.Protocol == "" {
 		return errors.New("no protocol")
 	}
-	if a.ID == "" {
+	if a.NodeID == "" {
 		return errors.New("no peer ID")
-	} else if err := a.ID.Validate(); err != nil {
+	} else if err := a.NodeID.Validate(); err != nil {
 		return fmt.Errorf("invalid peer ID: %w", err)
 	}
 	if a.Port > 0 && a.Hostname == "" {
@@ -160,14 +160,14 @@ func (a PeerAddress) Validate() error {
 func (a PeerAddress) String() string {
 	// Handle opaque URLs.
 	if a.Hostname == "" {
-		s := fmt.Sprintf("%s:%s", a.Protocol, a.ID)
+		s := fmt.Sprintf("%s:%s", a.Protocol, a.NodeID)
 		if a.Path != "" {
 			s += "@" + a.Path
 		}
 		return s
 	}
 
-	s := fmt.Sprintf("%s://%s@%s", a.Protocol, a.ID, a.Hostname)
+	s := fmt.Sprintf("%s://%s@%s", a.Protocol, a.NodeID, a.Hostname)
 	if a.Port > 0 {
 		s += ":" + strconv.Itoa(int(a.Port))
 	}
@@ -481,9 +481,9 @@ func (m *PeerManager) Add(address PeerAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	peer, ok := m.store.Get(address.ID)
+	peer, ok := m.store.Get(address.NodeID)
 	if !ok {
-		peer = m.makePeerInfo(address.ID)
+		peer = m.makePeerInfo(address.NodeID)
 	}
 	if _, ok := peer.AddressInfo[address.String()]; !ok {
 		peer.AddressInfo[address.String()] = &peerAddressInfo{Address: address}

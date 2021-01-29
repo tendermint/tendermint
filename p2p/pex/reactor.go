@@ -137,7 +137,7 @@ func (r *ReactorV2) resolve(addresses []p2p.PeerAddress, limit uint16) []protop2
 				// PEX currently only supports IP-networked transports (as
 				// opposed to e.g. p2p.MemoryTransport).
 				pexAddresses = append(pexAddresses, protop2p.PexAddress{
-					ID:   string(endpoint.PeerID),
+					ID:   string(endpoint.NodeID),
 					IP:   endpoint.IP.String(),
 					Port: uint32(endpoint.Port),
 				})

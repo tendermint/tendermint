@@ -142,13 +142,13 @@ func TestRouter(t *testing.T) {
 
 	// We then submit an error for a peer, and watch it get disconnected.
 	channel.Error() <- p2p.PeerError{
-		PeerID:   peers[0].ID,
+		PeerID:   peers[0].NodeID,
 		Err:      errors.New("test error"),
 		Severity: p2p.PeerErrorSeverityCritical,
 	}
 	peerUpdate := <-peerUpdates.Updates()
 	require.Equal(t, p2p.PeerUpdate{
-		PeerID: peers[0].ID,
+		PeerID: peers[0].NodeID,
 		Status: p2p.PeerStatusDown,
 	}, peerUpdate)
 
@@ -156,7 +156,7 @@ func TestRouter(t *testing.T) {
 	// for that to happen.
 	peerUpdate = <-peerUpdates.Updates()
 	require.Equal(t, p2p.PeerUpdate{
-		PeerID: peers[0].ID,
+		PeerID: peers[0].NodeID,
 		Status: p2p.PeerStatusUp,
 	}, peerUpdate)
 }

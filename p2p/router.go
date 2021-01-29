@@ -459,7 +459,7 @@ func (r *Router) dialPeer(ctx context.Context, address PeerAddress) (Connection,
 		if err != nil {
 			r.logger.Error("failed to dial endpoint", "endpoint", endpoint, "err", err)
 		} else {
-			r.logger.Info("connected to peer", "peer", address.ID, "endpoint", endpoint)
+			r.logger.Info("connected to peer", "peer", address.NodeID, "endpoint", endpoint)
 			return conn, nil
 		}
 	}

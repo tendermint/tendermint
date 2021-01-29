@@ -799,7 +799,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	var peerNodeInfo NodeInfo
 	c, err := sw.transport.Dial(ctx, Endpoint{
 		Protocol: MConnProtocol,
-		PeerID:   addr.ID,
+		NodeID:   addr.ID,
 		IP:       addr.IP,
 		Port:     addr.Port,
 	})

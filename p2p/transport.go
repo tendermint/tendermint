@@ -105,12 +105,12 @@ type Connection interface {
 
 // Endpoint represents a transport connection endpoint, either local or remote.
 type Endpoint struct {
-	// PeerID specifies the peer ID of the endpoint.
+	// NodeID specifies the peer ID of the endpoint.
 	//
-	// FIXME: This is here for backwards-compatibility with the existing MConn
-	// protocol, we should consider moving this higher in the stack (i.e. to
-	// the router).
-	PeerID NodeID
+	// FIXME: This is here for backwards-compatibility with existing code, and
+	// can most likely be removed later. Transports should not care who they
+	// talk to, that's a higher-level concern.
+	NodeID NodeID
 
 	// Protocol specifies the transport protocol, used by the router to pick a
 	// transport for an endpoint.
@@ -131,7 +131,7 @@ type Endpoint struct {
 // PeerAddress converts the endpoint into a peer address.
 func (e Endpoint) PeerAddress() PeerAddress {
 	address := PeerAddress{
-		ID:       e.PeerID,
+		NodeID:   e.NodeID,
 		Protocol: e.Protocol,
 		Path:     e.Path,
 	}
@@ -150,7 +150,7 @@ func (e Endpoint) String() string {
 // Validate validates an endpoint.
 func (e Endpoint) Validate() error {
 	switch {
-	case e.PeerID == "":
+	case e.NodeID == "":
 		return errors.New("endpoint has no peer ID")
 	case e.Protocol == "":
 		return errors.New("endpoint has no protocol")
@@ -165,7 +165,7 @@ func (e Endpoint) Validate() error {
 // FIXME: This is temporary for compatibility with the old P2P stack.
 func (e Endpoint) NetAddress() *NetAddress {
 	return &NetAddress{
-		ID:   e.PeerID,
+		ID:   e.NodeID,
 		IP:   e.IP,
 		Port: e.Port,
 	}
