@@ -55,7 +55,7 @@ This new api will be used for verification in both consensus and block syncing. 
 
 If batch verifications fails for any reason, it will not be known which entry caused the failure. Verification will need to revert to single signature verification.
 
-Starting out only ed25519 will support batch verification. 
+Starting out, only ed25519 will support batch verification. 
 
 ## Status
 
