@@ -312,6 +312,11 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 }
 
 func TestReactor_BadBlockStopsPeer(t *testing.T) {
+	// Ultimately, this should be refactored to be less integration test oriented
+	// and more unit test oriented by simply testing channel sends and receives.
+	// See: https://github.com/tendermint/tendermint/issues/6005
+	t.SkipNow()
+
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 
@@ -365,6 +370,9 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 
 	// Mark testSuites[3] as an invalid peer which will cause newSuite to disconnect
 	// from this peer.
+	//
+	// XXX: This causes a potential race condition.
+	// See: https://github.com/tendermint/tendermint/issues/6005
 	otherGenDoc, otherPrivVals := randGenesisDoc(config, 1, false, 30)
 	otherSuite := setup(t, otherGenDoc, otherPrivVals, maxBlockHeight, 0)
 	testSuites[3].reactor.store = otherSuite.reactor.store
