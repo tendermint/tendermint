@@ -29,6 +29,10 @@ type BatchVerification interface {
 }
 ```
 
+- `NewBatchVerifier` creates a new verifier. This verifier will be populated with entries to be verified. 
+- `Add` adds an entry to the Verifier. Add accepts a public key and two slice of bytes (signature and message). 
+- `VerifyBatch` verifies all the entires. At the end of VerifyBatch if the underlying API does not reset the Verifier to its initial state (empty), it should be done here. This prevents accidentally reusing the verifier with entries from a previous verification.
+
 Above there is mention of an entry. An entry can be constructed in many ways depending on the needs of the underlying curve. A simple approach would be:
 
 ```go
@@ -38,11 +42,6 @@ type entry struct {
   message []byte
 }
 ```
-
-- `NewBatchVerifier` creates a new verifier. This verifier will be populated with entries to be verified. 
-- `Add` adds an entry to the Verifier. Add accepts a public key and two slice of bytes (signature and message). 
-- `VerifyBatch` verifies all the entires. At the end of VerifyBatch if the underlying API does not reset the Verifier to its initial state (empty), it should be done here. This prevents accidentally reusing the verifier with entries from a previous verification.
-
 
 The main reason this approach is being taken is to prevent simple mistakes. Some APIs allow the user to create three slices and pass them to the `VerifyBatch` function but this relies on the user to safely generate all the slices (see example below). We would like to minimize the possibility of making a mistake.
 

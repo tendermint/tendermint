@@ -1002,7 +1002,6 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	for i := 1; i < N+1; i++ {
 		params[i] = *types.DefaultConsensusParams()
 		params[i].Block.MaxBytes += int64(i)
-		params[i].Block.TimeIotaMs = 10
 	}
 
 	// Build the params history by running updateState
@@ -1044,6 +1043,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 
 	for _, testCase := range testCases {
 		p, err := stateStore.LoadConsensusParams(testCase.height)
+
 		assert.Nil(t, err, fmt.Sprintf("expected no err at height %d", testCase.height))
 		assert.EqualValues(t, testCase.params, p, fmt.Sprintf(`unexpected consensus params at
                 height %d`, testCase.height))

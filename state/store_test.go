@@ -16,7 +16,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -142,9 +141,8 @@ func TestStoreLoadConsensusParams(t *testing.T) {
 	stateStore := sm.NewStore(stateDB)
 	err := stateStore.Save(makeRandomStateFromConsensusParams(types.DefaultConsensusParams(), 1, 1))
 	require.NoError(t, err)
-	pbParams, err := stateStore.LoadConsensusParams(1)
+	params, err := stateStore.LoadConsensusParams(1)
 	require.NoError(t, err)
-	params := types.ConsensusParamsFromProto(pbParams)
 	require.Equal(t, types.DefaultConsensusParams(), &params)
 
 	// we give the state store different params but say that the height hasn't changed, hence
@@ -153,8 +151,7 @@ func TestStoreLoadConsensusParams(t *testing.T) {
 	differentParams.Block.MaxBytes = 20000
 	err = stateStore.Save(makeRandomStateFromConsensusParams(differentParams, 10, 1))
 	require.NoError(t, err)
-	pbRes, err := stateStore.LoadConsensusParams(10)
-	res := types.ConsensusParamsFromProto(pbRes)
+	res, err := stateStore.LoadConsensusParams(10)
 	require.NoError(t, err)
 	require.Equal(t, res, params)
 	require.NotEqual(t, res, differentParams)
@@ -257,7 +254,7 @@ func TestPruneStates(t *testing.T) {
 				params, err := stateStore.LoadConsensusParams(h)
 				if expectParams[h] {
 					require.NoError(t, err, "params height %v", h)
-					require.False(t, params.Equal(&tmproto.ConsensusParams{}), "params should not be empty")
+					require.False(t, params.Equals(&types.ConsensusParams{}), "params should not be empty")
 				} else {
 					require.Error(t, err, "params height %v", h)
 				}
