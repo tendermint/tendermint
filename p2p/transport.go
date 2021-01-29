@@ -163,9 +163,6 @@ type Connection interface {
 	// RemoteEndpoint returns the remote endpoint for the connection.
 	RemoteEndpoint() Endpoint
 
-	// PubKey returns the remote peer's public key.
-	PubKey() crypto.PubKey
-
 	// NodeInfo returns the remote peer's node info.
 	NodeInfo() NodeInfo
 

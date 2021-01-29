@@ -538,11 +538,6 @@ func (c *mConnConnection) NodeInfo() NodeInfo {
 	return c.peerInfo
 }
 
-// PubKey implements Connection.
-func (c *mConnConnection) PubKey() crypto.PubKey {
-	return c.secretConn.RemotePubKey()
-}
-
 // LocalEndpoint implements Connection.
 func (c *mConnConnection) LocalEndpoint() Endpoint {
 	// FIXME: For compatibility with existing P2P tests we need to

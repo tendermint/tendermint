@@ -1363,11 +1363,6 @@ func newPeerConn(outbound, persistent bool, conn Connection) peerConn {
 	}
 }
 
-// ID only exists for SecretConnection.
-func (pc peerConn) ID() NodeID {
-	return NodeIDFromPubKey(pc.conn.PubKey())
-}
-
 // Return the IP from the connection RemoteAddr
 func (pc peerConn) RemoteIP() net.IP {
 	if pc.ip == nil {

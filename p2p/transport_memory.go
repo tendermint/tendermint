@@ -393,11 +393,6 @@ func (c *MemoryConnection) RemoteEndpoint() Endpoint {
 	}
 }
 
-// PubKey returns the remote peer's public key.
-func (c *MemoryConnection) PubKey() crypto.PubKey {
-	return c.remote.privKey.PubKey()
-}
-
 // NodeInfo returns the remote peer's node info.
 func (c *MemoryConnection) NodeInfo() NodeInfo {
 	return c.remote.nodeInfo

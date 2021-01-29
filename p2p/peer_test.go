@@ -129,14 +129,6 @@ func testOutboundPeerConn(
 		return pc, err
 	}
 
-	// ensure dialed ID matches connection ID
-	if addr.ID != pc.ID() {
-		if cerr := conn.Close(); cerr != nil {
-			return pc, fmt.Errorf("%v: %w", cerr.Error(), err)
-		}
-		return pc, ErrSwitchAuthenticationFailure{addr, pc.ID()}
-	}
-
 	return pc, nil
 }
 
