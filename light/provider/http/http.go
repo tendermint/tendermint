@@ -17,6 +17,7 @@ import (
 // This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
 var (
 	regexpMissingHeight = regexp.MustCompile(`height \d+ (must be less than or equal to|is not available)`)
+	regexpOverHeight    = regexp.MustCompile(`page should be within \[1, \d+\] range, given \d+`)
 	maxRetryAttempts    = 10
 )
 
@@ -106,6 +107,13 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 				// TODO: standardize errors on the RPC side
 				if regexpMissingHeight.MatchString(err.Error()) {
 					return nil, provider.ErrLightBlockNotFound
+				}
+				if regexpOverHeight.MatchString(err.Error()) {
+					valSet, err := types.ValidatorSetFromExistingValidators(vals)
+					if err != nil {
+						return nil, provider.ErrBadLightBlock{Reason: err}
+					}
+					return valSet, nil
 				}
 				// if we have exceeded retry attempts then return no response error
 				if attempt == maxRetryAttempts {
