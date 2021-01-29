@@ -284,6 +284,9 @@ func (r *Reactor) String() string {
 
 // StringIndented returns an indented string representation of the Reactor.
 func (r *Reactor) StringIndented(indent string) string {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
 	s := "ConsensusReactor{\n"
 	s += indent + "  " + r.conS.StringIndented(indent+"  ") + "\n"
 

@@ -166,7 +166,7 @@ func (ps *PeerState) SetHasProposalBlockPart(height int64, round int32, index in
 // vote was picked.
 //
 // NOTE: `votes` must be the correct Size() for the Height().
-func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote, ok bool) {
+func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (*types.Vote, bool) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -390,27 +390,31 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 		return
 	}
 
-	// Just remember these values.
-	psHeight := ps.PRS.Height
-	psRound := ps.PRS.Round
-	psCatchupCommitRound := ps.PRS.CatchupCommitRound
-	psCatchupCommit := ps.PRS.CatchupCommit
+	var (
+		psHeight             = ps.PRS.Height
+		psRound              = ps.PRS.Round
+		psCatchupCommitRound = ps.PRS.CatchupCommitRound
+		psCatchupCommit      = ps.PRS.CatchupCommit
+		startTime            = tmtime.Now().Add(-1 * time.Duration(msg.SecondsSinceStartTime) * time.Second)
+	)
 
-	startTime := tmtime.Now().Add(-1 * time.Duration(msg.SecondsSinceStartTime) * time.Second)
 	ps.PRS.Height = msg.Height
 	ps.PRS.Round = msg.Round
 	ps.PRS.Step = msg.Step
 	ps.PRS.StartTime = startTime
+
 	if psHeight != msg.Height || psRound != msg.Round {
 		ps.PRS.Proposal = false
 		ps.PRS.ProposalBlockPartSetHeader = types.PartSetHeader{}
 		ps.PRS.ProposalBlockParts = nil
 		ps.PRS.ProposalPOLRound = -1
 		ps.PRS.ProposalPOL = nil
-		// We'll update the BitArray capacity later.
+
+		// we'll update the BitArray capacity later
 		ps.PRS.Prevotes = nil
 		ps.PRS.Precommits = nil
 	}
+
 	if psHeight == msg.Height && psRound != msg.Round && msg.Round == psCatchupCommitRound {
 		// Peer caught up to CatchupCommitRound.
 		// Preserve psCatchupCommit!
@@ -418,8 +422,9 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 		// pr.Round matches pr.CatchupCommitRound.
 		ps.PRS.Precommits = psCatchupCommit
 	}
+
 	if psHeight != msg.Height {
-		// Shift Precommits to LastCommit.
+		// shift Precommits to LastCommit
 		if psHeight+1 == msg.Height && psRound == msg.LastCommitRound {
 			ps.PRS.LastCommitRound = msg.LastCommitRound
 			ps.PRS.LastCommit = ps.PRS.Precommits
@@ -427,7 +432,8 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 			ps.PRS.LastCommitRound = msg.LastCommitRound
 			ps.PRS.LastCommit = nil
 		}
-		// We'll update the BitArray capacity later.
+
+		// we'll update the BitArray capacity later
 		ps.PRS.CatchupCommitRound = -1
 		ps.PRS.CatchupCommit = nil
 	}
