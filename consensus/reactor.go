@@ -107,7 +107,13 @@ type Reactor struct {
 	voteCh        *p2p.Channel
 	voteSetBitsCh *p2p.Channel
 	peerUpdates   *p2p.PeerUpdatesCh
-	closeCh       chan struct{}
+
+	// NOTE: We need a dedicated stateCloseCh channel for signaling closure of
+	// the StateChannel due to the fact that the StateChannel message handler
+	// performs a send on the VoteSetBitsChannel. This is an antipattern, so having
+	// this dedicated channel,stateCloseCh, is necessary in order to avoid data races.
+	stateCloseCh chan struct{}
+	closeCh      chan struct{}
 }
 
 // NewReactor returns a reference to a new consensus reactor, which implements
@@ -136,6 +142,7 @@ func NewReactor(
 		voteCh:        voteCh,
 		voteSetBitsCh: voteSetBitsCh,
 		peerUpdates:   peerUpdates,
+		stateCloseCh:  make(chan struct{}),
 		closeCh:       make(chan struct{}),
 	}
 	r.BaseService = *service.NewBaseService(logger, "Consensus", r)
@@ -203,6 +210,11 @@ func (r *Reactor) OnStop() {
 		ps.broadcastWG.Wait()
 	}
 
+	// Close the StateChannel goroutine separately since it uses its own channel
+	// to signal closure.
+	close(r.stateCloseCh)
+	<-r.stateCh.Done()
+
 	// Close closeCh to signal to all spawned goroutines to gracefully exit. All
 	// p2p Channels should execute Close().
 	close(r.closeCh)
@@ -210,10 +222,9 @@ func (r *Reactor) OnStop() {
 	// Wait for all p2p Channels to be closed before returning. This ensures we
 	// can easily reason about synchronization of all p2p Channels and ensure no
 	// panics will occur.
-	<-r.stateCh.Done()
+	<-r.voteSetBitsCh.Done()
 	<-r.dataCh.Done()
 	<-r.voteCh.Done()
-	<-r.voteSetBitsCh.Done()
 	<-r.peerUpdates.Done()
 }
 
@@ -1237,7 +1248,7 @@ func (r *Reactor) processStateCh() {
 				}
 			}
 
-		case <-r.closeCh:
+		case <-r.stateCloseCh:
 			r.Logger.Debug("stopped listening on StateChannel; closing...")
 			return
 		}

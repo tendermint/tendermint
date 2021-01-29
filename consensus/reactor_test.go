@@ -416,98 +416,66 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	wg.Wait()
 }
 
+func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
+	configSetup(t)
+
+	n := 4
+	css, cleanup := randConsensusState(n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+
+	t.Cleanup(func() {
+		cleanup()
+	})
+
+	testSuites := make([]*reactorTestSuite, n)
+	for i := range testSuites {
+		testSuites[i] = setup(t, css[i], 100) // buffer must be large enough to not deadlock
+	}
+
+	for _, ts := range testSuites {
+		simulateRouter(ts, testSuites, true)
+
+		// connect reactor to every other reactor
+		for _, tss := range testSuites {
+			if ts.peerID != tss.peerID {
+				ts.peerUpdatesCh <- p2p.PeerUpdate{
+					Status: p2p.PeerStatusUp,
+					PeerID: tss.peerID,
+				}
+			}
+		}
+
+		state := ts.reactor.conS.GetState()
+		ts.reactor.SwitchToConsensus(state, false)
+	}
+
+	var wg sync.WaitGroup
+	for _, ts := range testSuites {
+		wg.Add(1)
+
+		// wait till everyone makes the first new block
+		go func(rts *reactorTestSuite) {
+			<-rts.sub.Out()
+			wg.Done()
+		}(ts)
+	}
+
+	wg.Wait()
+
+	var ps *PeerState
+
+	require.Eventually(t, func() bool {
+		var ok bool
+		ps, ok = testSuites[1].reactor.GetPeerState(testSuites[0].peerID)
+		return ok
+	}, time.Second, 10*time.Millisecond)
+
+	require.Equal(t, true, ps.VotesSent() > 0, "number of votes sent should have increased")
+	require.Equal(t, true, ps.BlockPartsSent() > 0, "number of votes sent should have increased")
+}
+
 // ============================================================================
 // ============================================================================
 // ============================================================================
-
-// // Ensure a testnet makes blocks when there are txs
-// func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
-// 	N := 4
-// 	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter,
-// 		func(c *cfg.Config) {
-// 			c.Consensus.CreateEmptyBlocks = false
-// 		})
-// 	defer cleanup()
-// 	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, N)
-// 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
-
-// 	// send a tx
-// 	if err := assertMempool(css[3].txNotifier).CheckTx([]byte{1, 2, 3}, nil, mempl.TxInfo{}); err != nil {
-// 		t.Error(err)
-// 	}
-
-// 	// wait till everyone makes the first new block
-// 	timeoutWaitGroup(t, N, func(j int) {
-// 		<-blocksSubs[j].Out()
-// 	}, css)
-// }
-
-// func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
-// 	N := 1
-// 	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
-// 	defer cleanup()
-// 	reactors, _, eventBuses := startConsensusNet(t, css, N)
-// 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
-
-// 	var (
-// 		reactor = reactors[0]
-// 		peer    = p2pmock.NewPeer(nil)
-// 		msg     = MustEncode(&HasVoteMessage{Height: 1,
-// 			Round: 1, Index: 1, Type: tmproto.PrevoteType})
-// 	)
-
-// 	reactor.InitPeer(peer)
-
-// 	// simulate switch calling Receive before AddPeer
-// 	assert.NotPanics(t, func() {
-// 		reactor.Receive(StateChannel, peer, msg)
-// 		reactor.AddPeer(peer)
-// 	})
-// }
-
-// func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
-// 	N := 1
-// 	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
-// 	defer cleanup()
-// 	reactors, _, eventBuses := startConsensusNet(t, css, N)
-// 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
-
-// 	var (
-// 		reactor = reactors[0]
-// 		peer    = p2pmock.NewPeer(nil)
-// 		msg     = MustEncode(&HasVoteMessage{Height: 1,
-// 			Round: 1, Index: 1, Type: tmproto.PrevoteType})
-// 	)
-
-// 	// we should call InitPeer here
-
-// 	// simulate switch calling Receive before AddPeer
-// 	assert.Panics(t, func() {
-// 		reactor.Receive(StateChannel, peer, msg)
-// 	})
-// }
-
-// // Test we record stats about votes and block parts from other peers.
-// func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
-// 	N := 4
-// 	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
-// 	defer cleanup()
-// 	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, N)
-// 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
-
-// 	// wait till everyone makes the first new block
-// 	timeoutWaitGroup(t, N, func(j int) {
-// 		<-blocksSubs[j].Out()
-// 	}, css)
-
-// 	// Get peer
-// 	peer := reactors[1].Switch.Peers().List()[0]
-// 	// Get peer state
-// 	ps := peer.Get(types.PeerStateKey).(*PeerState)
-
-// 	assert.Equal(t, true, ps.VotesSent() > 0, "number of votes sent should have increased")
-// 	assert.Equal(t, true, ps.BlockPartsSent() > 0, "number of votes sent should have increased")
-// }
 
 // //-------------------------------------------------------------
 // // ensure we can make blocks despite cycling a validator set
