@@ -298,6 +298,15 @@ func (r *Reactor) StringIndented(indent string) string {
 	return s
 }
 
+// GetPeerState returns PeerState for a given NodeID.
+func (r *Reactor) GetPeerState(peerID p2p.NodeID) (*PeerState, bool) {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	ps, ok := r.peers[peerID]
+	return ps, ok
+}
+
 func (r *Reactor) broadcastNewRoundStepMessage(rs *cstypes.RoundState) {
 	r.stateCh.Out() <- p2p.Envelope{
 		Broadcast: true,
@@ -941,10 +950,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 // and return. This can happen when we process the envelope after the peer is
 // removed.
 func (r *Reactor) handleStateMessage(envelope p2p.Envelope, msgI Message) error {
-	r.mtx.Lock()
-	ps, ok := r.peers[envelope.From]
-	r.mtx.Unlock()
-
+	ps, ok := r.GetPeerState(envelope.From)
 	if !ok || ps == nil {
 		r.Logger.Debug("failed to find peer state", "peer", envelope.From, "ch_id", "StateChannel")
 		return nil
@@ -1030,10 +1036,7 @@ func (r *Reactor) handleStateMessage(envelope p2p.Envelope, msgI Message) error 
 func (r *Reactor) handleDataMessage(envelope p2p.Envelope, msgI Message) error {
 	logger := r.Logger.With("peer", envelope.From, "ch_id", "DataChannel")
 
-	r.mtx.Lock()
-	ps, ok := r.peers[envelope.From]
-	r.mtx.Unlock()
-
+	ps, ok := r.GetPeerState(envelope.From)
 	if !ok || ps == nil {
 		r.Logger.Debug("failed to find peer state")
 		return nil
@@ -1075,10 +1078,7 @@ func (r *Reactor) handleDataMessage(envelope p2p.Envelope, msgI Message) error {
 func (r *Reactor) handleVoteMessage(envelope p2p.Envelope, msgI Message) error {
 	logger := r.Logger.With("peer", envelope.From, "ch_id", "VoteChannel")
 
-	r.mtx.Lock()
-	ps, ok := r.peers[envelope.From]
-	r.mtx.Unlock()
-
+	ps, ok := r.GetPeerState(envelope.From)
 	if !ok || ps == nil {
 		r.Logger.Debug("failed to find peer state")
 		return nil
@@ -1117,10 +1117,7 @@ func (r *Reactor) handleVoteMessage(envelope p2p.Envelope, msgI Message) error {
 func (r *Reactor) handleVoteSetBitsMessage(envelope p2p.Envelope, msgI Message) error {
 	logger := r.Logger.With("peer", envelope.From, "ch_id", "VoteSetBitsChannel")
 
-	r.mtx.Lock()
-	ps, ok := r.peers[envelope.From]
-	r.mtx.Unlock()
-
+	ps, ok := r.GetPeerState(envelope.From)
 	if !ok || ps == nil {
 		r.Logger.Debug("failed to find peer state")
 		return nil
@@ -1355,10 +1352,7 @@ func (r *Reactor) peerStatsRoutine() {
 
 		select {
 		case msg := <-r.conS.statsMsgQueue:
-			r.mtx.RLock()
-			ps, ok := r.peers[msg.PeerID]
-			r.mtx.RUnlock()
-
+			ps, ok := r.GetPeerState(msg.PeerID)
 			if !ok || ps == nil {
 				r.Logger.Debug("attempt to update stats for non-existent peer", "peer", msg.PeerID)
 				continue
