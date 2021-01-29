@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"context"
 	"fmt"
 	golog "log"
 	"net"
@@ -89,8 +90,12 @@ func createOutboundPeerAndPerformHandshake(
 	if err != nil {
 		return nil, err
 	}
+	peerInfo, _, err := pc.conn.Handshake(context.Background(), ourNodeInfo, pk)
+	if err != nil {
+		return nil, err
+	}
 
-	p := newPeer(pc, reactorsByCh, func(p Peer, r interface{}) {})
+	p := newPeer(peerInfo, pc, reactorsByCh, func(p Peer, r interface{}) {})
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p, nil
 }
@@ -176,7 +181,11 @@ func (rp *remotePeer) Dial(addr *NetAddress) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = testInboundPeerConn(transport, conn)
+	pc, err := testInboundPeerConn(transport, conn)
+	if err != nil {
+		return nil, err
+	}
+	_, _, err = pc.conn.Handshake(context.Background(), rp.nodeInfo(), rp.PrivKey)
 	if err != nil {
 		return nil, err
 	}
@@ -197,9 +206,13 @@ func (rp *remotePeer) accept() {
 			return
 		}
 
-		_, err = testInboundPeerConn(transport, conn)
+		pc, err := testInboundPeerConn(transport, conn)
 		if err != nil {
 			golog.Printf("Failed to create a peer: %+v", err)
+		}
+		_, _, err = pc.conn.Handshake(context.Background(), rp.nodeInfo(), rp.PrivKey)
+		if err != nil {
+			golog.Printf("Failed to handshake a peer: %+v", err)
 		}
 
 		conns = append(conns, conn)

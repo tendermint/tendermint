@@ -393,11 +393,6 @@ func (c *MemoryConnection) RemoteEndpoint() Endpoint {
 	}
 }
 
-// NodeInfo returns the remote peer's node info.
-func (c *MemoryConnection) NodeInfo() NodeInfo {
-	return c.remote.nodeInfo
-}
-
 // Status returns the current connection status.
 func (c *MemoryConnection) Status() conn.ConnectionStatus {
 	return conn.ConnectionStatus{}

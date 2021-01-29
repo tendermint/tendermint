@@ -245,7 +245,12 @@ func TestSwitchPeerFilter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	peerInfo, _, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	p := newPeer(
+		peerInfo,
 		newPeerConn(true, false, c),
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -296,7 +301,12 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	peerInfo, _, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	p := newPeer(
+		peerInfo,
 		newPeerConn(true, false, c),
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -327,11 +337,12 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, err = c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	peerInfo, _, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
 	if err != nil {
 		t.Fatal(err)
 	}
 	p := newPeer(
+		peerInfo,
 		newPeerConn(true, false, c),
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -381,11 +392,12 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, err = c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	peerInfo, _, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
 	if err != nil {
 		t.Fatal(err)
 	}
 	p := newPeer(
+		peerInfo,
 		newPeerConn(true, false, c),
 		sw.reactorsByCh,
 		sw.StopPeerForError,

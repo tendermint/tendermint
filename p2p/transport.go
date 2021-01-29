@@ -163,9 +163,6 @@ type Connection interface {
 	// RemoteEndpoint returns the remote endpoint for the connection.
 	RemoteEndpoint() Endpoint
 
-	// NodeInfo returns the remote peer's node info.
-	NodeInfo() NodeInfo
-
 	// Close closes the connection.
 	Close() error
 

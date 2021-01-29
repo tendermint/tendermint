@@ -533,11 +533,6 @@ func (c *mConnConnection) ReceiveMessage() (byte, []byte, error) {
 	}
 }
 
-// NodeInfo implements Connection.
-func (c *mConnConnection) NodeInfo() NodeInfo {
-	return c.peerInfo
-}
-
 // LocalEndpoint implements Connection.
 func (c *mConnConnection) LocalEndpoint() Endpoint {
 	// FIXME: For compatibility with existing P2P tests we need to

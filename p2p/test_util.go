@@ -123,8 +123,16 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 		}
 		return err
 	}
+	peerNodeInfo, _, err := pc.conn.Handshake(context.Background(), sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		if err := conn.Close(); err != nil {
+			sw.Logger.Error("Error closing connection", "err", err)
+		}
+		return err
+	}
 
 	p := newPeer(
+		peerNodeInfo,
 		pc,
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -208,9 +216,6 @@ func testPeerConn(
 ) (pc peerConn, err error) {
 
 	conn := newMConnConnection(transport, rawConn)
-	if _, _, err := conn.Handshake(context.Background(), transport.nodeInfo, transport.privKey); err != nil {
-		return pc, fmt.Errorf("error creating peer: %w", err)
-	}
 
 	return newPeerConn(outbound, persistent, conn), nil
 }

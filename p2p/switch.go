@@ -628,6 +628,7 @@ func (sw *Switch) IsPeerPersistent(na *NetAddress) bool {
 
 func (sw *Switch) acceptRoutine() {
 	for {
+		var peerNodeInfo NodeInfo
 		ctx := context.Background()
 		c, err := sw.transport.Accept(ctx)
 		if err == nil {
@@ -635,7 +636,7 @@ func (sw *Switch) acceptRoutine() {
 			// which was asynchronous and avoided head-of-line-blocking.
 			// However, as handshakes are being migrated out from the transport,
 			// we just do it synchronously here for now.
-			_, _, err = sw.handshakePeer(c, "")
+			peerNodeInfo, _, err = sw.handshakePeer(c, "")
 		}
 		if err != nil {
 			switch err := err.(type) {
@@ -684,7 +685,6 @@ func (sw *Switch) acceptRoutine() {
 			break
 		}
 
-		peerNodeInfo := c.NodeInfo()
 		isPersistent := false
 		addr, err := peerNodeInfo.NetAddress()
 		if err == nil {
@@ -692,6 +692,7 @@ func (sw *Switch) acceptRoutine() {
 		}
 
 		p := newPeer(
+			peerNodeInfo,
 			newPeerConn(false, isPersistent, c),
 			sw.reactorsByCh,
 			sw.StopPeerForError,
@@ -749,6 +750,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	var peerNodeInfo NodeInfo
 	c, err := sw.transport.Dial(ctx, Endpoint{
 		Protocol: MConnProtocol,
 		PeerID:   addr.ID,
@@ -756,7 +758,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		Port:     addr.Port,
 	})
 	if err == nil {
-		_, _, err = sw.handshakePeer(c, addr.ID)
+		peerNodeInfo, _, err = sw.handshakePeer(c, addr.ID)
 	}
 	if err != nil {
 		if e, ok := err.(ErrRejected); ok {
@@ -780,6 +782,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	}
 
 	p := newPeer(
+		peerNodeInfo,
 		newPeerConn(true, sw.IsPeerPersistent(c.RemoteEndpoint().NetAddress()), c),
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -798,8 +801,10 @@ func (sw *Switch) addOutboundPeerWithConfig(
 }
 
 func (sw *Switch) handshakePeer(c Connection, expectPeerID NodeID) (NodeInfo, crypto.PubKey, error) {
+	// Moved from transport and hardcoded until legacy P2P stack removal.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
 	peerInfo, peerKey, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
 	if err != nil {
 		return peerInfo, peerKey, ErrRejected{
@@ -808,6 +813,7 @@ func (sw *Switch) handshakePeer(c Connection, expectPeerID NodeID) (NodeInfo, cr
 			isAuthFailure: true,
 		}
 	}
+
 	if err = peerInfo.Validate(); err != nil {
 		return peerInfo, peerKey, ErrRejected{
 			conn:              c.(*mConnConnection).conn,
@@ -815,6 +821,7 @@ func (sw *Switch) handshakePeer(c Connection, expectPeerID NodeID) (NodeInfo, cr
 			isNodeInfoInvalid: true,
 		}
 	}
+
 	// For outgoing conns, ensure connection key matches dialed key.
 	if expectPeerID != "" {
 		peerID := NodeIDFromPubKey(peerKey)
