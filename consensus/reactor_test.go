@@ -4,16 +4,12 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"os"
-	"runtime"
-	"runtime/pprof"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	"github.com/tendermint/tendermint/types"
@@ -112,7 +108,7 @@ func setup(t *testing.T, cs *State, chBuf uint) *reactorTestSuite {
 	)
 
 	rts.reactor = NewReactor(
-		log.TestingLogger().With("module", "consensus", "node", rts.peerID),
+		cs.Logger.With("node", rts.peerID),
 		cs, stateCh, dataCh, voteCh, voteSetBitsCh, rts.peerUpdates, true,
 	)
 
@@ -211,7 +207,7 @@ func TestReactorBasic(t *testing.T) {
 
 	testSuites := make([]*reactorTestSuite, n)
 	for i := range testSuites {
-		testSuites[i] = setup(t, css[i], 0)
+		testSuites[i] = setup(t, css[i], 100) // buffer must be large enough to not deadlock
 	}
 
 	for _, ts := range testSuites {
@@ -242,14 +238,6 @@ func TestReactorBasic(t *testing.T) {
 	}
 
 	wg.Wait()
-
-	// reactors, blocksSubs, eventBuses := startConsensusNet(t, css, N)
-	// defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
-
-	// wait till everyone makes the first new block
-	// timeoutWaitGroup(t, N, func(j int) {
-	// 	<-blocksSubs[j].Out()
-	// }, css)
 }
 
 // ============================================================================
@@ -819,46 +807,3 @@ func TestReactorBasic(t *testing.T) {
 // 	}
 // 	return nil
 // }
-
-func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*State) {
-	wg := new(sync.WaitGroup)
-	wg.Add(n)
-	for i := 0; i < n; i++ {
-		go func(j int) {
-			f(j)
-			wg.Done()
-		}(i)
-	}
-
-	done := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
-
-	// we're running many nodes in-process, possibly in in a virtual machine,
-	// and spewing debug messages - making a block could take a while,
-	timeout := time.Second * 120
-
-	select {
-	case <-done:
-	case <-time.After(timeout):
-		for i, cs := range css {
-			t.Log("#################")
-			t.Log("Validator", i)
-			t.Log(cs.GetRoundState())
-			t.Log("")
-		}
-		os.Stdout.Write([]byte("pprof.Lookup('goroutine'):\n"))
-		err := pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
-		require.NoError(t, err)
-		capture()
-		panic("Timed out waiting for all validators to commit a block")
-	}
-}
-
-func capture() {
-	trace := make([]byte, 10240000)
-	count := runtime.Stack(trace, true)
-	fmt.Printf("Stack of %d bytes: %s\n", count, trace)
-}
