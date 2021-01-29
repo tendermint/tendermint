@@ -52,6 +52,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [cli] \#5772 `gen_node_key` output now contains node ID (`id` field) (@melekes)
 - [blockchain/v2] \#5774 Send status request when new peer joins (@melekes)
 - [consensus] \#5792 Deprecates the `time_iota_ms` consensus parameter, to reduce the bug surface. The parameter is no longer used. (@valardragon)
+- [store] \#5888 store.SaveBlock saves using batches instead of transactions for now to improve ACID properties. A short term fix.
 
 ### BUG FIXES
 

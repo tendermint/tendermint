@@ -421,6 +421,8 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 		panic("BlockStore can only save a non-nil block")
 	}
 
+	batch := bs.db.NewBatch()
+
 	height := block.Height
 	hash := block.Hash()
 
@@ -437,27 +439,27 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	// complete as soon as the block meta is written.
 	for i := 0; i < int(blockParts.Total()); i++ {
 		part := blockParts.GetPart(i)
-		bs.saveBlockPart(height, i, part)
+		bs.saveBlockPart(height, i, part, batch)
 	}
 
-	// Save block meta
 	blockMeta := types.NewBlockMeta(block, blockParts)
 	pbm := blockMeta.ToProto()
 	if pbm == nil {
 		panic("nil blockmeta")
 	}
+
 	metaBytes := mustEncode(pbm)
-	if err := bs.db.Set(blockMetaKey(height), metaBytes); err != nil {
-		panic(err)
-	}
-	if err := bs.db.Set(blockHashKey(hash), []byte(fmt.Sprintf("%d", height))); err != nil {
+	if err := batch.Set(blockMetaKey(height), metaBytes); err != nil {
 		panic(err)
 	}
 
-	// Save block commit (duplicate and separate from the Block)
+	if err := batch.Set(blockHashKey(hash), []byte(fmt.Sprintf("%d", height))); err != nil {
+		panic(err)
+	}
+
 	pbc := block.LastCommit.ToProto()
 	blockCommitBytes := mustEncode(pbc)
-	if err := bs.db.Set(blockCommitKey(height-1), blockCommitBytes); err != nil {
+	if err := batch.Set(blockCommitKey(height-1), blockCommitBytes); err != nil {
 		panic(err)
 	}
 
@@ -465,19 +467,26 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	// NOTE: we can delete this at a later height
 	pbsc := seenCommit.ToProto()
 	seenCommitBytes := mustEncode(pbsc)
-	if err := bs.db.SetSync(seenCommitKey(height), seenCommitBytes); err != nil {
+	if err := batch.Set(seenCommitKey(height), seenCommitBytes); err != nil {
 		panic(err)
 	}
 
+	if err := batch.WriteSync(); err != nil {
+		panic(err)
+	}
+
+	if err := batch.Close(); err != nil {
+		panic(err)
+	}
 }
 
-func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
+func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part, batch dbm.Batch) {
 	pbp, err := part.ToProto()
 	if err != nil {
 		panic(fmt.Errorf("unable to make part into proto: %w", err))
 	}
 	partBytes := mustEncode(pbp)
-	if err := bs.db.Set(blockPartKey(height, index), partBytes); err != nil {
+	if err := batch.Set(blockPartKey(height, index), partBytes); err != nil {
 		panic(err)
 	}
 }
