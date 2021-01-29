@@ -4,15 +4,27 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
+	"path"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	abcicli "github.com/tendermint/tendermint/abci/client"
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
+	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
+	sm "github.com/tendermint/tendermint/state"
+	statemocks "github.com/tendermint/tendermint/state/mocks"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 var (
@@ -231,8 +243,119 @@ func TestReactorBasic(t *testing.T) {
 	for _, ts := range testSuites {
 		wg.Add(1)
 
+		// wait till everyone makes the first new block
 		go func(rts *reactorTestSuite) {
 			<-rts.sub.Out()
+			wg.Done()
+		}(ts)
+	}
+
+	wg.Wait()
+}
+
+func TestReactorWithEvidence(t *testing.T) {
+	configSetup(t)
+
+	nValidators := 4
+	testName := "consensus_reactor_test"
+	tickerFunc := newMockTickerFunc(true)
+	appFunc := newCounter
+
+	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
+	css := make([]*State, nValidators)
+	logger := consensusLogger()
+
+	for i := 0; i < nValidators; i++ {
+		stateDB := dbm.NewMemDB() // each state needs its own db
+		stateStore := sm.NewStore(stateDB)
+		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
+		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+
+		defer os.RemoveAll(thisConfig.RootDir)
+
+		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+		app := appFunc()
+		vals := types.TM2PB.ValidatorUpdates(state.Validators)
+		app.InitChain(abci.RequestInitChain{Validators: vals})
+
+		pv := privVals[i]
+		blockDB := dbm.NewMemDB()
+		blockStore := store.NewBlockStore(blockDB)
+
+		// one for mempool, one for consensus
+		mtx := new(tmsync.Mutex)
+		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
+		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+
+		mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
+		mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+		if thisConfig.Consensus.WaitForTxs() {
+			mempool.EnableTxsAvailable()
+		}
+
+		// mock the evidence pool
+		// everyone includes evidence of another double signing
+		vIdx := (i + 1) % nValidators
+
+		ev := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], config.ChainID())
+		evpool := &statemocks.EvidencePool{}
+		evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
+		evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]types.Evidence{
+			ev}, int64(len(ev.Bytes())))
+		evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
+
+		evpool2 := sm.EmptyEvidencePool{}
+
+		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool2)
+		cs.SetLogger(log.TestingLogger().With("module", "consensus"))
+		cs.SetPrivValidator(pv)
+
+		eventBus := types.NewEventBus()
+		eventBus.SetLogger(log.TestingLogger().With("module", "events"))
+		err := eventBus.Start()
+		require.NoError(t, err)
+		cs.SetEventBus(eventBus)
+
+		cs.SetTimeoutTicker(tickerFunc())
+		cs.SetLogger(logger.With("validator", i, "module", "consensus"))
+
+		css[i] = cs
+	}
+
+	testSuites := make([]*reactorTestSuite, nValidators)
+	for i := range testSuites {
+		testSuites[i] = setup(t, css[i], 100) // buffer must be large enough to not deadlock
+	}
+
+	for _, ts := range testSuites {
+		simulateRouter(ts, testSuites, true)
+
+		// connect reactor to every other reactor
+		for _, tss := range testSuites {
+			if ts.peerID != tss.peerID {
+				ts.peerUpdatesCh <- p2p.PeerUpdate{
+					Status: p2p.PeerStatusUp,
+					PeerID: tss.peerID,
+				}
+			}
+		}
+
+		state := ts.reactor.conS.GetState()
+		ts.reactor.SwitchToConsensus(state, false)
+	}
+
+	var wg sync.WaitGroup
+	for _, ts := range testSuites {
+		wg.Add(1)
+
+		// We expect for each validator that is the proposer to propose one piece of
+		// evidence.
+		go func(rts *reactorTestSuite) {
+			msg := <-rts.sub.Out()
+			block := msg.Data().(types.EventDataNewBlock).Block
+
+			require.Len(t, block.Evidence.Evidence, 1)
 			wg.Done()
 		}(ts)
 	}
@@ -305,93 +428,6 @@ func TestReactorBasic(t *testing.T) {
 // 		}
 // 	}
 // 	logger.Info("stopConsensusNet: DONE", "n", len(reactors))
-// }
-
-// Ensure we can process blocks with evidence
-// func TestReactorWithEvidence(t *testing.T) {
-// 	nValidators := 4
-// 	testName := "consensus_reactor_test"
-// 	tickerFunc := newMockTickerFunc(true)
-// 	appFunc := newCounter
-
-// 	// heed the advice from https://www.sandimetz.com/blog/2016/1/20/the-wrong-abstraction
-// 	// to unroll unwieldy abstractions. Here we duplicate the code from:
-// 	// css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
-
-// 	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
-// 	css := make([]*State, nValidators)
-// 	logger := consensusLogger()
-// 	for i := 0; i < nValidators; i++ {
-// 		stateDB := dbm.NewMemDB() // each state needs its own db
-// 		stateStore := sm.NewStore(stateDB)
-// 		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
-// 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
-// 		defer os.RemoveAll(thisConfig.RootDir)
-// 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
-// 		app := appFunc()
-// 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-// 		app.InitChain(abci.RequestInitChain{Validators: vals})
-
-// 		pv := privVals[i]
-// 		// duplicate code from:
-// 		// css[i] = newStateWithConfig(thisConfig, state, privVals[i], app)
-
-// 		blockDB := dbm.NewMemDB()
-// 		blockStore := store.NewBlockStore(blockDB)
-
-// 		// one for mempool, one for consensus
-// 		mtx := new(tmsync.Mutex)
-// 		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
-// 		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
-
-// 		// Make Mempool
-// 		mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
-// 		mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
-// 		if thisConfig.Consensus.WaitForTxs() {
-// 			mempool.EnableTxsAvailable()
-// 		}
-
-// 		// mock the evidence pool
-// 		// everyone includes evidence of another double signing
-// 		vIdx := (i + 1) % nValidators
-// 		ev := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], config.ChainID())
-// 		evpool := &statemocks.EvidencePool{}
-// 		evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
-// 		evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]types.Evidence{
-// 			ev}, int64(len(ev.Bytes())))
-// 		evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
-
-// 		evpool2 := sm.EmptyEvidencePool{}
-
-// 		// Make State
-// 		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
-// 		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool2)
-// 		cs.SetLogger(log.TestingLogger().With("module", "consensus"))
-// 		cs.SetPrivValidator(pv)
-
-// 		eventBus := types.NewEventBus()
-// 		eventBus.SetLogger(log.TestingLogger().With("module", "events"))
-// 		err := eventBus.Start()
-// 		require.NoError(t, err)
-// 		cs.SetEventBus(eventBus)
-
-// 		cs.SetTimeoutTicker(tickerFunc())
-// 		cs.SetLogger(logger.With("validator", i, "module", "consensus"))
-
-// 		css[i] = cs
-// 	}
-
-// 	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, nValidators)
-// 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
-
-// 	// we expect for each validator that is the proposer to propose one piece of evidence.
-// 	for i := 0; i < nValidators; i++ {
-// 		timeoutWaitGroup(t, nValidators, func(j int) {
-// 			msg := <-blocksSubs[j].Out()
-// 			block := msg.Data().(types.EventDataNewBlock).Block
-// 			assert.Len(t, block.Evidence.Evidence, 1)
-// 		}, css)
-// 	}
 // }
 
 // //------------------------------------
