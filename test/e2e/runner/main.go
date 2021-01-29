@@ -196,7 +196,7 @@ func NewCLI() *CLI {
 	cli.root.AddCommand(&cobra.Command{
 		Use:     "logs [node]",
 		Short:   "Shows the testnet or a specefic node's logs",
-		Example: "runner logs valiator03",
+		Example: "runner logs validator03",
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
