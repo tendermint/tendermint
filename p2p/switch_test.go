@@ -245,7 +245,12 @@ func TestSwitchPeerFilter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	peerInfo, _, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	p := newPeer(
+		peerInfo,
 		newPeerConn(true, false, c),
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -296,7 +301,12 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	peerInfo, _, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	p := newPeer(
+		peerInfo,
 		newPeerConn(true, false, c),
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -327,7 +337,12 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	peerInfo, _, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	p := newPeer(
+		peerInfo,
 		newPeerConn(true, false, c),
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -377,7 +392,12 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	peerInfo, _, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	p := newPeer(
+		peerInfo,
 		newPeerConn(true, false, c),
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -678,16 +698,23 @@ type errorTransport struct {
 	acceptErr error
 }
 
+func (et errorTransport) String() string {
+	return "error"
+}
+
+func (et errorTransport) Protocols() []Protocol {
+	return []Protocol{"error"}
+}
+
 func (et errorTransport) Accept(context.Context) (Connection, error) {
 	return nil, et.acceptErr
 }
 func (errorTransport) Dial(context.Context, Endpoint) (Connection, error) {
 	panic("not implemented")
 }
-func (errorTransport) Close() error                               { panic("not implemented") }
-func (errorTransport) FlushClose() error                          { panic("not implemented") }
-func (errorTransport) Endpoints() []Endpoint                      { panic("not implemented") }
-func (errorTransport) SetChannelDescriptors([]*ChannelDescriptor) {}
+func (errorTransport) Close() error          { panic("not implemented") }
+func (errorTransport) FlushClose() error     { panic("not implemented") }
+func (errorTransport) Endpoints() []Endpoint { panic("not implemented") }
 
 func TestSwitchAcceptRoutineErrorCases(t *testing.T) {
 	sw := NewSwitch(cfg, errorTransport{ErrFilterTimeout{}})

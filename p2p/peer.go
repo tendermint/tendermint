@@ -29,13 +29,13 @@ import (
 
 // PeerAddress is a peer address URL. It differs from Endpoint in that the
 // address hostname may be expanded into multiple IP addresses (thus multiple
-// endpoints).
+// endpoints), and that it knows the node's ID.
 //
 // If the URL is opaque, i.e. of the form "scheme:<opaque>", then the opaque
 // part has to contain either the node ID or a node ID and path in the form
 // "scheme:<nodeid>@<path>".
 type PeerAddress struct {
-	ID       NodeID
+	NodeID   NodeID
 	Protocol Protocol
 	Hostname string
 	Port     uint16
@@ -60,7 +60,7 @@ func ParsePeerAddress(urlString string) (PeerAddress, error) {
 		if len(parts) > 2 {
 			return PeerAddress{}, fmt.Errorf("invalid address format %q, unexpected @", urlString)
 		}
-		address.ID, err = NewNodeID(parts[0])
+		address.NodeID, err = NewNodeID(parts[0])
 		if err != nil {
 			return PeerAddress{}, fmt.Errorf("invalid peer ID %q: %w", parts[0], err)
 		}
@@ -71,7 +71,7 @@ func ParsePeerAddress(urlString string) (PeerAddress, error) {
 	}
 
 	// Otherwise, just parse a normal networked URL.
-	address.ID, err = NewNodeID(url.User.Username())
+	address.NodeID, err = NewNodeID(url.User.Username())
 	if err != nil {
 		return PeerAddress{}, fmt.Errorf("invalid peer ID %q: %w", url.User.Username(), err)
 	}
@@ -117,7 +117,6 @@ func (a PeerAddress) Resolve(ctx context.Context) ([]Endpoint, error) {
 	// "scheme:<opaque>".
 	if a.Hostname == "" {
 		return []Endpoint{{
-			PeerID:   a.ID,
 			Protocol: a.Protocol,
 			Path:     a.Path,
 		}}, nil
@@ -130,7 +129,6 @@ func (a PeerAddress) Resolve(ctx context.Context) ([]Endpoint, error) {
 	endpoints := make([]Endpoint, len(ips))
 	for i, ip := range ips {
 		endpoints[i] = Endpoint{
-			PeerID:   a.ID,
 			Protocol: a.Protocol,
 			IP:       ip,
 			Port:     a.Port,
@@ -145,9 +143,9 @@ func (a PeerAddress) Validate() error {
 	if a.Protocol == "" {
 		return errors.New("no protocol")
 	}
-	if a.ID == "" {
+	if a.NodeID == "" {
 		return errors.New("no peer ID")
-	} else if err := a.ID.Validate(); err != nil {
+	} else if err := a.NodeID.Validate(); err != nil {
 		return fmt.Errorf("invalid peer ID: %w", err)
 	}
 	if a.Port > 0 && a.Hostname == "" {
@@ -160,14 +158,14 @@ func (a PeerAddress) Validate() error {
 func (a PeerAddress) String() string {
 	// Handle opaque URLs.
 	if a.Hostname == "" {
-		s := fmt.Sprintf("%s:%s", a.Protocol, a.ID)
+		s := fmt.Sprintf("%s:%s", a.Protocol, a.NodeID)
 		if a.Path != "" {
 			s += "@" + a.Path
 		}
 		return s
 	}
 
-	s := fmt.Sprintf("%s://%s@%s", a.Protocol, a.ID, a.Hostname)
+	s := fmt.Sprintf("%s://%s@%s", a.Protocol, a.NodeID, a.Hostname)
 	if a.Port > 0 {
 		s += ":" + strconv.Itoa(int(a.Port))
 	}
@@ -316,6 +314,11 @@ const (
 //   lower-scored to evict.
 // - EvictNext: pick peer from evict, mark as evicting.
 // - Disconnected: unmark connected, upgrading[from]=to, evict, evicting.
+//
+// FIXME: The old stack supports ABCI-based peer ID filtering via
+// /p2p/filter/id/<ID> queries, we should implement this here as well by taking
+// a peer ID filtering callback in PeerManagerOptions and configuring it during
+// Node setup.
 type PeerManager struct {
 	options     PeerManagerOptions
 	wakeDialCh  chan struct{} // wakes up DialNext() on relevant peer changes
@@ -476,9 +479,9 @@ func (m *PeerManager) Add(address PeerAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	peer, ok := m.store.Get(address.ID)
+	peer, ok := m.store.Get(address.NodeID)
 	if !ok {
-		peer = m.makePeerInfo(address.ID)
+		peer = m.makePeerInfo(address.NodeID)
 	}
 	if _, ok := peer.AddressInfo[address.String()]; !ok {
 		peer.AddressInfo[address.String()] = &peerAddressInfo{Address: address}
@@ -1363,11 +1366,6 @@ func newPeerConn(outbound, persistent bool, conn Connection) peerConn {
 	}
 }
 
-// ID only exists for SecretConnection.
-func (pc peerConn) ID() NodeID {
-	return NodeIDFromPubKey(pc.conn.PubKey())
-}
-
 // Return the IP from the connection RemoteAddr
 func (pc peerConn) RemoteIP() net.IP {
 	if pc.ip == nil {
@@ -1403,12 +1401,12 @@ type peer struct {
 type PeerOption func(*peer)
 
 func newPeer(
+	nodeInfo NodeInfo,
 	pc peerConn,
 	reactorsByCh map[byte]Reactor,
 	onPeerError func(Peer, interface{}),
 	options ...PeerOption,
 ) *peer {
-	nodeInfo := pc.conn.NodeInfo()
 	p := &peer{
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
@@ -1534,7 +1532,12 @@ func (p *peer) NodeInfo() NodeInfo {
 // For inbound peers, it's the address returned by the underlying connection
 // (not what's reported in the peer's NodeInfo).
 func (p *peer) SocketAddr() *NetAddress {
-	return p.peerConn.conn.RemoteEndpoint().NetAddress()
+	endpoint := p.peerConn.conn.RemoteEndpoint()
+	return &NetAddress{
+		ID:   p.ID(),
+		IP:   endpoint.IP,
+		Port: endpoint.Port,
+	}
 }
 
 // Status returns the peer's ConnectionStatus.

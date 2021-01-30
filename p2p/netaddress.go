@@ -292,7 +292,6 @@ func (na *NetAddress) HasID() bool {
 func (na *NetAddress) Endpoint() Endpoint {
 	return Endpoint{
 		Protocol: MConnProtocol,
-		PeerID:   na.ID,
 		IP:       na.IP,
 		Port:     na.Port,
 	}
