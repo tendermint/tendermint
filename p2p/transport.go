@@ -25,15 +25,18 @@ type Transport interface {
 	// uses this to pick a transport for an Endpoint.
 	Protocols() []Protocol
 
-	// Accept waits for the next inbound connection on a listening endpoint. If
-	// the transport is closed, io.EOF is returned.
+	// Endpoints returns the local endpoints the transport is listening on, if any.
+	//
+	// How to listen is transport-dependent, e.g. MConnTransport uses Listen() while
+	// MemoryTransport starts listening via MemoryNetwork.CreateTransport().
+	Endpoints() []Endpoint
+
+	// Accept waits for the next inbound connection on a listening endpoint. Returns
+	// io.EOF if the transport is closed.
 	Accept(context.Context) (Connection, error)
 
 	// Dial creates an outbound connection to an endpoint.
 	Dial(context.Context, Endpoint) (Connection, error)
-
-	// Endpoints returns the local endpoints the transport is listening on, if any.
-	Endpoints() []Endpoint
 
 	// Close stops accepting new connections, but does not close active connections.
 	Close() error

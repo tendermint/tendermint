@@ -15,11 +15,16 @@ import (
 
 const (
 	MemoryProtocol Protocol = "memory"
+
+	// bufferSize is the channel buffer size of MemoryConnection.
+	bufferSize = 1
 )
 
-// MemoryNetwork is an in-memory "network" that uses Go channels to communicate
-// between endpoints. Transport endpoints are created with CreateTransport. It
-// is primarily used for testing.
+// MemoryNetwork is an in-memory "network" that uses buffered Go channels to
+// communicate between endpoints. It is primarily meant for testing.
+//
+// Network endpoints are allocated via CreateTransport(), which takes a node ID,
+// and the endpoint is then immediately accessible via the URL "memory:<nodeID>".
 type MemoryNetwork struct {
 	logger log.Logger
 
@@ -35,19 +40,19 @@ func NewMemoryNetwork(logger log.Logger) *MemoryNetwork {
 	}
 }
 
-// CreateTransport creates a new memory transport and endpoint with the given
-// node ID. It immediately begins listening on the endpoint "memory:<id>", and
-// can be accessed by other transports in the same memory network.
-func (n *MemoryNetwork) CreateTransport(nodeID NodeID) (*MemoryTransport, error) {
+// CreateTransport creates a new memory transport endpoint with the given node
+// ID and immediately begins listening on the address "memory:<id>". It panics
+// if the node ID is already in use (which is fine, since this is for tests).
+func (n *MemoryNetwork) CreateTransport(nodeID NodeID) *MemoryTransport {
 	t := newMemoryTransport(n, nodeID)
 
 	n.mtx.Lock()
 	defer n.mtx.Unlock()
 	if _, ok := n.transports[nodeID]; ok {
-		return nil, fmt.Errorf("transport with node ID %q already exists", nodeID)
+		panic(fmt.Sprintf("memory transport with node ID %q already exists", nodeID))
 	}
 	n.transports[nodeID] = t
-	return t, nil
+	return t
 }
 
 // GetTransport looks up a transport in the network, returning nil if not found.
@@ -58,7 +63,7 @@ func (n *MemoryNetwork) GetTransport(id NodeID) *MemoryTransport {
 }
 
 // RemoveTransport removes a transport from the network and closes it.
-func (n *MemoryNetwork) RemoveTransport(id NodeID) error {
+func (n *MemoryNetwork) RemoveTransport(id NodeID) {
 	n.mtx.Lock()
 	t, ok := n.transports[id]
 	delete(n.transports, id)
@@ -67,39 +72,41 @@ func (n *MemoryNetwork) RemoveTransport(id NodeID) error {
 	if ok {
 		// Close may recursively call RemoveTransport() again, but this is safe
 		// because we've already removed the transport from the map above.
-		return t.Close()
+		if err := t.Close(); err != nil {
+			n.logger.Error("failed to close memory transport", "id", id, "err", err)
+		}
 	}
-	return nil
 }
 
-// MemoryTransport is an in-memory transport that's primarily meant for testing.
-// It communicates between endpoints using Go channels. To dial a different
-// endpoint, both endpoints/transports must be in the same MemoryNetwork.
+// MemoryTransport is an in-memory transport that uses buffered Go channels to
+// communicate between endpoints. It is primarily meant for testing.
+//
+// New transports are allocated with MemoryNetwork.CreateTransport(). To contact
+// a different endpoint, both transports must be in the same MemoryNetwork.
 type MemoryTransport struct {
+	logger  log.Logger
 	network *MemoryNetwork
 	nodeID  NodeID
-	logger  log.Logger
 
 	acceptCh  chan *MemoryConnection
 	closeCh   chan struct{}
 	closeOnce sync.Once
 }
 
-// newMemoryTransport creates a new in-memory transport in the given network.
-// Callers should use MemoryNetwork.CreateTransport() or GenerateTransport()
-// to create transports, this is for internal use by MemoryNetwork.
+// newMemoryTransport creates a new MemoryTransport. This is for internal use by
+// MemoryNetwork, use MemoryNetwork.CreateTransport() instead.
 func newMemoryTransport(network *MemoryNetwork, nodeID NodeID) *MemoryTransport {
 	return &MemoryTransport{
+		logger:  network.logger.With("local", nodeID),
 		network: network,
 		nodeID:  nodeID,
-		logger:  network.logger.With("local", fmt.Sprintf("%v:%v", MemoryProtocol, nodeID)),
 
 		acceptCh: make(chan *MemoryConnection),
 		closeCh:  make(chan struct{}),
 	}
 }
 
-// String displays the transport.
+// String implements Transport.
 func (t *MemoryTransport) String() string {
 	return string(MemoryProtocol)
 }
@@ -109,11 +116,24 @@ func (t *MemoryTransport) Protocols() []Protocol {
 	return []Protocol{MemoryProtocol}
 }
 
+// Endpoints implements Transport.
+func (t *MemoryTransport) Endpoints() []Endpoint {
+	select {
+	case <-t.closeCh:
+		return []Endpoint{}
+	default:
+		return []Endpoint{{
+			Protocol: MemoryProtocol,
+			Path:     string(t.nodeID),
+		}}
+	}
+}
+
 // Accept implements Transport.
 func (t *MemoryTransport) Accept(ctx context.Context) (Connection, error) {
 	select {
 	case conn := <-t.acceptCh:
-		t.logger.Info("accepted connection from peer", "remote", conn.RemoteEndpoint())
+		t.logger.Info("accepted connection", "remote", conn.RemoteEndpoint().Path)
 		return conn, nil
 	case <-t.closeCh:
 		return nil, io.EOF
@@ -134,24 +154,25 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 	if err != nil {
 		return nil, err
 	}
-	t.logger.Info("dialing peer", "remote", endpoint)
 
-	peerTransport := t.network.GetTransport(nodeID)
-	if peerTransport == nil {
+	t.logger.Info("dialing peer", "remote", nodeID)
+	peer := t.network.GetTransport(nodeID)
+	if peer == nil {
 		return nil, fmt.Errorf("unknown peer %q", nodeID)
 	}
-	inCh := make(chan memoryMessage, 1)
-	outCh := make(chan memoryMessage, 1)
+
+	inCh := make(chan memoryMessage, bufferSize)
+	outCh := make(chan memoryMessage, bufferSize)
 	closer := tmsync.NewCloser()
 
-	outConn := newMemoryConnection(t, peerTransport, inCh, outCh, closer)
-	inConn := newMemoryConnection(peerTransport, t, outCh, inCh, closer)
+	outConn := newMemoryConnection(t.logger, t.nodeID, peer.nodeID, inCh, outCh, closer)
+	inConn := newMemoryConnection(peer.logger, peer.nodeID, t.nodeID, outCh, inCh, closer)
 
 	select {
-	case peerTransport.acceptCh <- inConn:
+	case peer.acceptCh <- inConn:
 		return outConn, nil
-	case <-peerTransport.closeCh:
-		return nil, ErrTransportClosed{}
+	case <-peer.closeCh:
+		return nil, io.EOF
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
@@ -180,78 +201,83 @@ func (t *MemoryTransport) DialAccept(
 	if err != nil {
 		return nil, nil, err
 	}
-	if err = <-errCh; err != nil {
+	inConn, err := <-acceptCh, <-errCh
+	if err != nil {
 		return nil, nil, err
 	}
-	inConn := <-acceptCh
 
 	return outConn, inConn, nil
 }
 
 // Close implements Transport.
 func (t *MemoryTransport) Close() error {
-	err := t.network.RemoveTransport(t.nodeID)
+	t.network.RemoveTransport(t.nodeID)
 	t.closeOnce.Do(func() {
 		close(t.closeCh)
 	})
-	t.logger.Info("stopped accepting connections")
-	return err
+	t.logger.Info("closed transport")
+	return nil
 }
 
-// Endpoints implements Transport.
-func (t *MemoryTransport) Endpoints() []Endpoint {
-	select {
-	case <-t.closeCh:
-		return []Endpoint{}
-	default:
-		return []Endpoint{{
-			Protocol: MemoryProtocol,
-			Path:     string(t.nodeID),
-		}}
-	}
-}
-
-// MemoryConnection is an in-memory connection between two transports (nodes).
+// MemoryConnection is an in-memory connection between two transport endpoints.
 type MemoryConnection struct {
-	logger log.Logger
-	local  *MemoryTransport
-	remote *MemoryTransport
+	logger   log.Logger
+	localID  NodeID
+	remoteID NodeID
 
 	receiveCh <-chan memoryMessage
 	sendCh    chan<- memoryMessage
 	closer    *tmsync.Closer
 }
 
-// memoryMessage is used to pass messages internally in the connection.
-// For handshakes, nodeInfo and pubKey are set instead of channel and message.
+// memoryMessage is passed internally, containing either a message or handshake.
 type memoryMessage struct {
 	channelID ChannelID
 	message   []byte
 
 	// For handshakes.
-	nodeInfo NodeInfo
+	nodeInfo *NodeInfo
 	pubKey   crypto.PubKey
 }
 
-// newMemoryConnection creates a new MemoryConnection. It takes all channels
-// (including the closeCh signal channel) on construction, such that they can be
-// shared between both ends of the connection.
+// newMemoryConnection creates a new MemoryConnection.
 func newMemoryConnection(
-	local *MemoryTransport,
-	remote *MemoryTransport,
+	logger log.Logger,
+	localID NodeID,
+	remoteID NodeID,
 	receiveCh <-chan memoryMessage,
 	sendCh chan<- memoryMessage,
 	closer *tmsync.Closer,
 ) *MemoryConnection {
-	c := &MemoryConnection{
-		local:     local,
-		remote:    remote,
+	return &MemoryConnection{
+		logger:    logger.With("remote", remoteID),
+		localID:   localID,
+		remoteID:  remoteID,
 		receiveCh: receiveCh,
 		sendCh:    sendCh,
 		closer:    closer,
 	}
-	c.logger = c.local.logger.With("remote", c.RemoteEndpoint())
-	return c
+}
+
+// LocalEndpoint implements Connection.
+func (c *MemoryConnection) LocalEndpoint() Endpoint {
+	return Endpoint{
+		Protocol: MemoryProtocol,
+		Path:     string(c.localID),
+	}
+}
+
+// RemoteEndpoint implements Connection.
+func (c *MemoryConnection) RemoteEndpoint() Endpoint {
+	return Endpoint{
+		Protocol: MemoryProtocol,
+		Path:     string(c.remoteID),
+	}
+}
+
+// Status implements Connection.
+func (c *MemoryConnection) Status() conn.ConnectionStatus {
+	return conn.ConnectionStatus{}
 }
 
 // Handshake implements Connection.
@@ -261,27 +287,31 @@ func (c *MemoryConnection) Handshake(
 	privKey crypto.PrivKey,
 ) (NodeInfo, crypto.PubKey, error) {
 	select {
-	case c.sendCh <- memoryMessage{nodeInfo: nodeInfo, pubKey: privKey.PubKey()}:
-	case <-ctx.Done():
-		return NodeInfo{}, nil, ctx.Err()
+	case c.sendCh <- memoryMessage{nodeInfo: &nodeInfo, pubKey: privKey.PubKey()}:
+		c.logger.Debug("sent handshake", "nodeInfo", nodeInfo)
 	case <-c.closer.Done():
 		return NodeInfo{}, nil, io.EOF
+	case <-ctx.Done():
+		return NodeInfo{}, nil, ctx.Err()
 	}
 
 	select {
 	case msg := <-c.receiveCh:
-		c.logger.Debug("handshake complete")
-		return msg.nodeInfo, msg.pubKey, nil
-	case <-ctx.Done():
-		return NodeInfo{}, nil, ctx.Err()
+		if msg.nodeInfo == nil {
+			return NodeInfo{}, nil, errors.New("no NodeInfo in handshake")
+		}
+		c.logger.Debug("received handshake", "peerInfo", msg.nodeInfo)
+		return *msg.nodeInfo, msg.pubKey, nil
 	case <-c.closer.Done():
 		return NodeInfo{}, nil, io.EOF
+	case <-ctx.Done():
+		return NodeInfo{}, nil, ctx.Err()
 	}
 }
 
 // ReceiveMessage implements Connection.
 func (c *MemoryConnection) ReceiveMessage() (ChannelID, []byte, error) {
-	// check close first, since channels are buffered
+	// Check close first, since channels are buffered.
 	select {
 	case <-c.closer.Done():
 		return 0, nil, io.EOF
@@ -290,7 +320,7 @@ func (c *MemoryConnection) ReceiveMessage() (ChannelID, []byte, error) {
 
 	select {
 	case msg := <-c.receiveCh:
-		c.logger.Debug("received message", "channel", msg.channelID, "message", msg.message)
+		c.logger.Debug("received message", "chID", msg.channelID, "msg", msg.message)
 		return msg.channelID, msg.message, nil
 	case <-c.closer.Done():
 		return 0, nil, io.EOF
@@ -299,7 +329,7 @@ func (c *MemoryConnection) ReceiveMessage() (ChannelID, []byte, error) {
 
 // SendMessage implements Connection.
 func (c *MemoryConnection) SendMessage(chID ChannelID, msg []byte) (bool, error) {
-	// check close first, since channels are buffered
+	// Check close first, since channels are buffered.
 	select {
 	case <-c.closer.Done():
 		return false, io.EOF
@@ -308,7 +338,7 @@ func (c *MemoryConnection) SendMessage(chID ChannelID, msg []byte) (bool, error)
 
 	select {
 	case c.sendCh <- memoryMessage{channelID: chID, message: msg}:
-		c.logger.Debug("sent message", "channel", chID, "message", msg)
+		c.logger.Debug("sent message", "chID", chID, "msg", msg)
 		return true, nil
 	case <-c.closer.Done():
 		return false, io.EOF
@@ -317,7 +347,7 @@ func (c *MemoryConnection) SendMessage(chID ChannelID, msg []byte) (bool, error)
 
 // TrySendMessage implements Connection.
 func (c *MemoryConnection) TrySendMessage(chID ChannelID, msg []byte) (bool, error) {
-	// check close first, since channels are buffered
+	// Check close first, since channels are buffered.
 	select {
 	case <-c.closer.Done():
 		return false, io.EOF
@@ -326,7 +356,7 @@ func (c *MemoryConnection) TrySendMessage(chID ChannelID, msg []byte) (bool, err
 
 	select {
 	case c.sendCh <- memoryMessage{channelID: chID, message: msg}:
-		c.logger.Debug("sent message", "channel", chID, "message", msg)
+		c.logger.Debug("sent message", "chID", chID, "msg", msg)
 		return true, nil
 	case <-c.closer.Done():
 		return false, io.EOF
@@ -335,35 +365,14 @@ func (c *MemoryConnection) TrySendMessage(chID ChannelID, msg []byte) (bool, err
 	}
 }
 
-// Close closes the connection.
+// Close implements Connection.
 func (c *MemoryConnection) Close() error {
 	c.closer.Close()
 	c.logger.Info("closed connection")
 	return nil
 }
 
-// FlushClose flushes all pending sends and then closes the connection.
+// FlushClose implements Connection.
 func (c *MemoryConnection) FlushClose() error {
 	return c.Close()
-}
-
-// LocalEndpoint returns the local endpoint for the connection.
-func (c *MemoryConnection) LocalEndpoint() Endpoint {
-	return Endpoint{
-		Protocol: MemoryProtocol,
-		Path:     string(c.local.nodeID),
-	}
-}
-
-// RemoteEndpoint returns the remote endpoint for the connection.
-func (c *MemoryConnection) RemoteEndpoint() Endpoint {
-	return Endpoint{
-		Protocol: MemoryProtocol,
-		Path:     string(c.remote.nodeID),
-	}
-}
-
-// Status returns the current connection status.
-func (c *MemoryConnection) Status() conn.ConnectionStatus {
-	return conn.ConnectionStatus{}
 }
