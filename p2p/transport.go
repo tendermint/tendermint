@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strconv"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -149,15 +148,7 @@ func (e Endpoint) PeerAddress(nodeID NodeID) PeerAddress {
 
 // String formats the endpoint as a URL string.
 func (e Endpoint) String() string {
-	if e.IP == nil {
-		return fmt.Sprintf("%s:%s", e.Protocol, e.Path)
-	}
-	s := fmt.Sprintf("%s://%s", e.Protocol, e.IP)
-	if e.Port > 0 {
-		s += strconv.Itoa(int(e.Port))
-	}
-	s += e.Path
-	return s
+	return e.PeerAddress("").String()
 }
 
 // Validate validates the endpoint.
@@ -165,10 +156,16 @@ func (e Endpoint) Validate() error {
 	switch {
 	case e.Protocol == "":
 		return errors.New("endpoint has no protocol")
+
+	case len(e.IP) > 0 && e.IP.To16() == nil:
+		return fmt.Errorf("invalid IP address %v", e.IP)
+
 	case e.Port > 0 && len(e.IP) == 0:
 		return fmt.Errorf("endpoint has port %v but no IP", e.Port)
+
 	case len(e.IP) == 0 && e.Path == "":
 		return errors.New("endpoint has neither path nor IP")
+
 	default:
 		return nil
 	}
