@@ -2,6 +2,7 @@ package coretypes
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -10,6 +11,15 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
+)
+
+// List of standardized errors used across RPC
+var (
+	ErrZeroOrNegativePerPage = errors.New("zero or negative perPage")
+	ErrPageOutOfRange        = errors.New("page should be within range")
+	ErrNegativeHeight        = errors.New("height must be greater than zero")
+	ErrInvalidHeight         = errors.New("height must be less than or equal to the current blockchain height")
+	ErrHeightNotAvailable    = errors.New("height is not available")
 )
 
 // List of blocks

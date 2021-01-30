@@ -3,11 +3,11 @@ package rpc
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
@@ -562,7 +562,7 @@ const (
 
 func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	if perPage < 1 {
-		panic(fmt.Sprintf("zero or negative perPage: %d", perPage))
+		panic(errors.Wrapf(ctypes.ErrZeroOrNegativePerPage, "%d", perPage))
 	}
 
 	if pagePtr == nil { // no page parameter
@@ -575,7 +575,7 @@ func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	}
 	page := *pagePtr
 	if page <= 0 || page > pages {
-		return 1, fmt.Errorf("page should be within [1, %d] range, given %d", pages, page)
+		return 1, errors.Wrapf(ctypes.ErrPageOutOfRange, "expected range: [1, %d], given %d", pages, page)
 	}
 
 	return page, nil

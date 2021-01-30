@@ -8,8 +8,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pkg/errors"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -41,7 +43,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		if err != nil {
 			WriteRPCResponseHTTPError(
 				w,
-				http.StatusInternalServerError,
+				http.StatusBadRequest,
 				types.RPCInvalidParamsError(
 					dummyID,
 					fmt.Errorf("error converting http params to arguments: %w", err),
@@ -56,8 +58,18 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		logger.Debug("HTTPRestRPC", "method", r.URL.Path, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
 		if err != nil {
-			WriteRPCResponseHTTPError(w, http.StatusInternalServerError,
-				types.RPCInternalError(dummyID, err))
+			switch errors.Cause(err) {
+			case ctypes.ErrNegativeHeight, ctypes.ErrZeroOrNegativePerPage, ctypes.ErrInvalidHeight:
+				WriteRPCResponseHTTPError(w, http.StatusBadRequest,
+					types.RPCInvalidRequestError(dummyID, err))
+			case ctypes.ErrHeightNotAvailable, ctypes.ErrPageOutOfRange:
+				WriteRPCResponseHTTPError(w, http.StatusNotFound,
+					types.RPCInvalidParamsError(dummyID, err))
+			default:
+				WriteRPCResponseHTTPError(w, http.StatusInternalServerError,
+					types.RPCInternalError(dummyID, err))
+			}
+
 			return
 		}
 		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(dummyID, result))

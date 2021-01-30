@@ -4,20 +4,20 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"regexp"
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/light/provider"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 
 // This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
 var (
-	regexpMissingHeight = regexp.MustCompile(`height \d+ (must be less than or equal to|is not available)`)
-	maxRetryAttempts    = 10
+	maxRetryAttempts = 10
 )
 
 // http provider uses an RPC client to obtain the necessary information.
@@ -103,8 +103,7 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 		for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
 			res, err := p.client.Validators(ctx, height, &page, &maxPerPage)
 			if err != nil {
-				// TODO: standardize errors on the RPC side
-				if regexpMissingHeight.MatchString(err.Error()) {
+				if err = errors.Cause(err); err == ctypes.ErrHeightNotAvailable || err == ctypes.ErrInvalidHeight {
 					return nil, provider.ErrLightBlockNotFound
 				}
 				// if we have exceeded retry attempts then return no response error
@@ -138,8 +137,7 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 	for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
 		commit, err := p.client.Commit(ctx, height)
 		if err != nil {
-			// TODO: standardize errors on the RPC side
-			if regexpMissingHeight.MatchString(err.Error()) {
+			if err = errors.Cause(err); err == ctypes.ErrHeightNotAvailable || err == ctypes.ErrInvalidHeight {
 				return nil, provider.ErrLightBlockNotFound
 			}
 			// we wait and try again with exponential backoff

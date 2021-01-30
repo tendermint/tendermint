@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -11,9 +10,11 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -369,7 +370,7 @@ func (wsc *wsConnection) readRoutine() {
 				fnArgs, err := jsonParamsToArgs(rpcFunc, request.Params)
 				if err != nil {
 					if err := wsc.WriteRPCResponse(writeCtx,
-						types.RPCInternalError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
+						types.RPCInvalidParamsError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
 					); err != nil {
 						wsc.Logger.Error("Error writing RPC response", "err", err)
 					}
@@ -385,7 +386,16 @@ func (wsc *wsConnection) readRoutine() {
 
 			result, err := unreflectResult(returns)
 			if err != nil {
-				if err := wsc.WriteRPCResponse(writeCtx, types.RPCInternalError(request.ID, err)); err != nil {
+				var resp types.RPCResponse
+				switch errors.Cause(err) {
+				case ctypes.ErrNegativeHeight, ctypes.ErrZeroOrNegativePerPage, ctypes.ErrInvalidHeight:
+					resp = types.RPCInvalidRequestError(request.ID, err)
+				case ctypes.ErrHeightNotAvailable, ctypes.ErrPageOutOfRange:
+					resp = types.RPCInvalidParamsError(request.ID, err)
+				default:
+					resp = types.RPCInternalError(request.ID, err)
+				}
+				if err := wsc.WriteRPCResponse(writeCtx, resp); err != nil {
 					wsc.Logger.Error("Error writing RPC response", "err", err)
 				}
 				continue

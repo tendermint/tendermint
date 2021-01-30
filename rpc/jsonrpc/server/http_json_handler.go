@@ -9,8 +9,11 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/pkg/errors"
+
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -101,7 +104,16 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
 			result, err := unreflectResult(returns)
 			if err != nil {
-				responses = append(responses, types.RPCInternalError(request.ID, err))
+				var response types.RPCResponse
+				switch errors.Cause(err) {
+				case ctypes.ErrNegativeHeight, ctypes.ErrZeroOrNegativePerPage, ctypes.ErrInvalidHeight:
+					response = types.RPCInvalidRequestError(request.ID, err)
+				case ctypes.ErrHeightNotAvailable, ctypes.ErrPageOutOfRange:
+					response = types.RPCInvalidParamsError(request.ID, err)
+				default:
+					response = types.RPCInternalError(request.ID, err)
+				}
+				responses = append(responses, response)
 				continue
 			}
 			responses = append(responses, types.NewRPCSuccessResponse(request.ID, result))
