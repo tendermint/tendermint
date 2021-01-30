@@ -18,7 +18,7 @@ func init() {
 		transport := p2p.NewMConnTransport(
 			log.TestingLogger(),
 			conn.DefaultMConnConfig(),
-			[]*p2p.ChannelDescriptor{},
+			[]*p2p.ChannelDescriptor{{ID: byte(chID), Priority: 1}},
 			p2p.MConnTransportOptions{},
 		)
 		err := transport.Listen(p2p.Endpoint{

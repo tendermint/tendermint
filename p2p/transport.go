@@ -33,6 +33,8 @@ type Transport interface {
 
 	// Accept waits for the next inbound connection on a listening endpoint. Returns
 	// io.EOF if the transport is closed.
+	//
+	// FIXME: This can't take a context, since net.Listener doesn't.
 	Accept(context.Context) (Connection, error)
 
 	// Dial creates an outbound connection to an endpoint.

@@ -629,6 +629,8 @@ func (r *Router) OnStart() error {
 }
 
 // OnStop implements service.Service.
+//
+// FIXME: This needs to close transports as well.
 func (r *Router) OnStop() {
 	// Collect all active queues, so we can wait for them to close.
 	queues := []queue{}

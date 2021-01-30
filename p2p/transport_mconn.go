@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 
@@ -105,16 +106,6 @@ func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 		return nil, errors.New("transport is not listening")
 	}
 
-	if deadline, ok := ctx.Deadline(); ok {
-		if tcpListener, ok := m.listener.(*net.TCPListener); ok {
-			// FIXME: This probably needs to have a goroutine that overrides the
-			// deadline on context cancellation as well.
-			if err := tcpListener.SetDeadline(deadline); err != nil {
-				return nil, err
-			}
-		}
-	}
-
 	tcpConn, err := m.listener.Accept()
 	if err != nil {
 		select {
@@ -139,7 +130,7 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 
 	dialer := net.Dialer{}
 	tcpConn, err := dialer.DialContext(ctx, "tcp",
-		net.JoinHostPort(endpoint.IP.String(), fmt.Sprintf("%v", endpoint.Port)))
+		net.JoinHostPort(endpoint.IP.String(), strconv.Itoa(int(endpoint.Port))))
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +220,7 @@ func newMConnConnection(
 		mConnConfig:  mConnConfig,
 		channelDescs: channelDescs,
 		receiveCh:    make(chan mConnMessage),
-		errorCh:      make(chan error),
+		errorCh:      make(chan error, 1), // buffered to avoid onError leak
 		closeCh:      make(chan struct{}),
 	}
 }
@@ -246,6 +237,8 @@ func (c *mConnConnection) Handshake(
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("recovered from panic: %v", r)
+		} else if e := ctx.Err(); e != nil {
+			err = e
 		}
 	}()
 
@@ -266,10 +259,12 @@ func (c *mConnConnection) handshake(
 		return NodeInfo{}, nil, errors.New("connection is already handshaked")
 	}
 
-	if deadline, ok := ctx.Deadline(); ok {
-		if err := c.conn.SetDeadline(deadline); err != nil {
-			return NodeInfo{}, nil, err
-		}
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		deadline = time.Time{}
+	}
+	if err := c.conn.SetDeadline(deadline); err != nil {
+		return NodeInfo{}, nil, err
 	}
 
 	secretConn, err := conn.MakeSecretConnection(c.conn, privKey)
@@ -334,6 +329,9 @@ func (c *mConnConnection) onError(e interface{}) {
 	if !ok {
 		err = fmt.Errorf("%v", err)
 	}
+	// We have to close the connection here, since MConnection will have stopped
+	// the service on any errors.
+	_ = c.Close()
 	select {
 	case c.errorCh <- err:
 	case <-c.closeCh:
@@ -354,8 +352,9 @@ func (c *mConnConnection) SendMessage(chID ChannelID, msg []byte) (bool, error) 
 	if chID > math.MaxUint8 {
 		return false, fmt.Errorf("MConnection only supports 1-byte channel IDs (got %v)", chID)
 	}
-	// We don't check errorCh here, to preserve old MConnection behavior.
 	select {
+	case err := <-c.errorCh:
+		return false, err
 	case <-c.closeCh:
 		return false, io.EOF
 	default:
@@ -368,8 +367,9 @@ func (c *mConnConnection) TrySendMessage(chID ChannelID, msg []byte) (bool, erro
 	if chID > math.MaxUint8 {
 		return false, fmt.Errorf("MConnection only supports 1-byte channel IDs (got %v)", chID)
 	}
-	// We don't check errorCh here, to preserve old MConnection behavior.
 	select {
+	case err := <-c.errorCh:
+		return false, err
 	case <-c.closeCh:
 		return false, io.EOF
 	default:
@@ -425,7 +425,7 @@ func (c *mConnConnection) Status() conn.ConnectionStatus {
 func (c *mConnConnection) Close() error {
 	var err error
 	c.closeOnce.Do(func() {
-		if c.mconn != nil {
+		if c.mconn != nil && c.mconn.IsRunning() {
 			err = c.mconn.Stop()
 		} else {
 			err = c.conn.Close()
@@ -439,8 +439,8 @@ func (c *mConnConnection) Close() error {
 func (c *mConnConnection) FlushClose() error {
 	var err error
 	c.closeOnce.Do(func() {
-		if c.mconn != nil {
-			c.mconn.FlushStop()
+		if c.mconn != nil && c.mconn.IsRunning() {
+			err = c.mconn.Stop()
 		} else {
 			err = c.conn.Close()
 		}
