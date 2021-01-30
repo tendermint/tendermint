@@ -33,7 +33,7 @@ func testTransports(t *testing.T, tester func(*testing.T, transportFactory)) {
 	for name, transportFactory := range transportFactories {
 		transportFactory := transportFactory
 		t.Run(name, func(t *testing.T) {
-			defer leaktest.Check(t)
+			t.Cleanup(leaktest.Check(t))
 			tester(t, transportFactory)
 		})
 	}
@@ -61,14 +61,18 @@ func dialAccept(t *testing.T, a, b p2p.Transport) (p2p.Connection, p2p.Connectio
 	acceptConn := <-acceptCh
 	require.NoError(t, <-errCh)
 
+	t.Cleanup(func() {
+		require.NoError(t, dialConn.Close())
+		require.NoError(t, acceptConn.Close())
+	})
+
 	return dialConn, acceptConn
 }
 
 func TestTransport_DialAcceptHandshake(t *testing.T) {
-	testTransports(t, func(t *testing.T, newTransport transportFactory) {
-		a := newTransport(t)
-		b := newTransport(t)
-
+	testTransports(t, func(t *testing.T, makeTransport transportFactory) {
+		a := makeTransport(t)
+		b := makeTransport(t)
 		ab, ba := dialAccept(t, a, b)
 
 		// Both ends should have corresponding endpoints.
