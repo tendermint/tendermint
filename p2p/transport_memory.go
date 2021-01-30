@@ -214,8 +214,8 @@ func (t *MemoryTransport) Close() error {
 	t.network.RemoveTransport(t.nodeID)
 	t.closeOnce.Do(func() {
 		close(t.closeCh)
+		t.logger.Info("closed transport")
 	})
-	t.logger.Info("closed transport")
 	return nil
 }
 
@@ -367,8 +367,13 @@ func (c *MemoryConnection) TrySendMessage(chID ChannelID, msg []byte) (bool, err
 
 // Close implements Connection.
 func (c *MemoryConnection) Close() error {
-	c.closer.Close()
-	c.logger.Info("closed connection")
+	select {
+	case <-c.closer.Done():
+		return nil
+	default:
+		c.closer.Close()
+		c.logger.Info("closed connection")
+	}
 	return nil
 }
 

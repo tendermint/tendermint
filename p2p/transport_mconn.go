@@ -84,7 +84,7 @@ func (m *MConnTransport) Listen(endpoint Endpoint) error {
 	if m.listener != nil {
 		return errors.New("transport is already listening")
 	}
-	endpoint, err := m.normalizeEndpoint(endpoint)
+	endpoint, err := m.normalizeEndpoint(endpoint, false)
 	if err != nil {
 		return fmt.Errorf("invalid MConn listen endpoint %q: %w", endpoint, err)
 	}
@@ -132,7 +132,7 @@ func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 
 // Dial implements Transport.
 func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connection, error) {
-	endpoint, err := m.normalizeEndpoint(endpoint)
+	endpoint, err := m.normalizeEndpoint(endpoint, true)
 	if err != nil {
 		return nil, err
 	}
@@ -174,8 +174,10 @@ func (m *MConnTransport) Close() error {
 	return err
 }
 
-// normalizeEndpoint normalizes and validates an endpoint.
-func (m *MConnTransport) normalizeEndpoint(endpoint Endpoint) (Endpoint, error) {
+// normalizeEndpoint normalizes and validates an endpoint. If setPort is true,
+// the port will be normalized to 26657 if 0 (port 0 is useful to listen on
+// random ports).
+func (m *MConnTransport) normalizeEndpoint(endpoint Endpoint, setPort bool) (Endpoint, error) {
 	if err := endpoint.Validate(); err != nil {
 		return Endpoint{}, err
 	}
@@ -188,7 +190,7 @@ func (m *MConnTransport) normalizeEndpoint(endpoint Endpoint) (Endpoint, error) 
 	if endpoint.Path != "" {
 		return Endpoint{}, fmt.Errorf("endpoint cannot have path (got %q)", endpoint.Path)
 	}
-	if endpoint.Port == 0 {
+	if endpoint.Port == 0 && setPort {
 		endpoint.Port = 26657
 	}
 	return endpoint, nil
