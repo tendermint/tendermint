@@ -12,6 +12,8 @@ import (
 )
 
 const (
+	// defaultProtocol is the default protocol used for PeerAddress when
+	// a protocol isn't explicitly given as a URL scheme.
 	defaultProtocol Protocol = MConnProtocol
 )
 
@@ -20,18 +22,18 @@ type Protocol string
 
 // Transport is a connection-oriented mechanism for exchanging data with a peer.
 type Transport interface {
-	// Protocols returns the protocols the transport supports, which the
-	// router uses to pick a transport for a PeerAddress.
+	// Protocols returns the protocols supported by the transport. The Router
+	// uses this to pick a transport for an Endpoint.
 	Protocols() []Protocol
 
-	// Accept waits for the next inbound connection on a listening endpoint, or
-	// returns io.EOF if the transport is closed.
+	// Accept waits for the next inbound connection on a listening endpoint. If
+	// the transport is closed, io.EOF is returned.
 	Accept(context.Context) (Connection, error)
 
 	// Dial creates an outbound connection to an endpoint.
 	Dial(context.Context, Endpoint) (Connection, error)
 
-	// Endpoints lists endpoints the transport is listening on.
+	// Endpoints returns the local endpoints the transport is listening on, if any.
 	Endpoints() []Endpoint
 
 	// Close stops accepting new connections, but does not close active connections.
@@ -40,48 +42,52 @@ type Transport interface {
 	// Stringer is used to display the transport, e.g. in logs.
 	//
 	// Without this, the logger may use reflection to access and display
-	// internal fields -- these are written concurrently, which can trigger the
-	// race detector or even cause a panic.
+	// internal fields. These can be written to concurrently, which can trigger
+	// the race detector or even cause a panic.
 	fmt.Stringer
 }
 
 // Connection represents an established connection between two endpoints.
 //
-// FIXME: This is a temporary interface while we figure out whether we'll be
-// adopting QUIC or not. If we do, this should be a byte-oriented multi-stream
-// interface with one goroutine consuming each stream, and the MConnection
-// transport either needs protocol changes or a shim. For details, see:
+// FIXME: This is a temporary interface for backwards-compatibility with the
+// current MConnection-protocol, which is message-oriented. It should be
+// migrated to a byte-oriented multi-stream interface instead, which would allow
+// e.g. adopting QUIC and making message framing, traffic scheduling, and node
+// handshakes a Router concern shared across all transports. However, this
+// requires MConnection protocol changes or a shim. For details, see:
 // https://github.com/tendermint/spec/pull/227
 //
 // FIXME: The interface is currently very broad in order to accommodate
-// MConnection behavior that the rest of the P2P stack relies on. This should be
-// removed once the P2P core is rewritten.
+// MConnection behavior that the legacy P2P stack relies on. It should be
+// cleaned up when the legacy stack is removed.
 type Connection interface {
-	// Handshake handshakes with the remote peer. It must be called immediately
-	// after the connection is established, and returns the remote peer's node
-	// info and public key. The caller is responsible for validation.
+	// Handshake executes a node handshake with the remote peer. It must be
+	// called immediately after the connection is established, and returns the
+	// remote peer's node info and public key. The caller is responsible for
+	// validation.
 	//
-	// FIXME: The handshaking should really be the Router's responsibility, but
+	// FIXME: The handshake should really be the Router's responsibility, but
 	// that requires the connection interface to be byte-oriented rather than
 	// message-oriented (see comment above).
 	Handshake(context.Context, NodeInfo, crypto.PrivKey) (NodeInfo, crypto.PubKey, error)
 
 	// ReceiveMessage returns the next message received on the connection,
-	// blocking until one is available. io.EOF is returned when closed.
+	// blocking until one is available. Returns io.EOF if closed.
 	ReceiveMessage() (chID byte, msg []byte, err error)
 
-	// SendMessage sends a message on the connection.
-	// FIXME: For compatibility with the current Peer, it returns an additional
-	// boolean false if the message timed out waiting to be accepted into the
-	// send buffer.
+	// SendMessage sends a message on the connection. Returns io.EOF if closed.
+	//
+	// FIXME: For compatibility with the legacy P2P stack, it returns an
+	// additional boolean false if the message timed out waiting to be accepted
+	// into the send buffer. This should be removed.
 	SendMessage(chID byte, msg []byte) (bool, error)
 
 	// TrySendMessage is a non-blocking version of SendMessage that returns
 	// immediately if the message buffer is full. It returns true if the message
 	// was accepted.
 	//
-	// FIXME: This is here for backwards-compatibility with the current Peer
-	// code, and should be removed when possible.
+	// FIXME: This method is here for backwards-compatibility with the legacy
+	// P2P stack and should be removed.
 	TrySendMessage(chID byte, msg []byte) (bool, error)
 
 	// LocalEndpoint returns the local endpoint for the connection.
@@ -107,38 +113,41 @@ type Connection interface {
 }
 
 // Endpoint represents a transport connection endpoint, either local or remote.
+//
+// Endpoints are not necessarily networked (see e.g. MemoryTransport which uses
+// in-memory communication), but all networked endpoints must use IP as the
+// underlying transport protocol to allow e.g. IP address filtering.
 type Endpoint struct {
-	// Protocol specifies the transport protocol, used by the router to pick a
-	// transport for an endpoint.
+	// Protocol specifies the transport protocol.
 	Protocol Protocol
-
-	// Path is an optional, arbitrary transport-specific path or identifier.
-	Path string
 
 	// IP is an IP address (v4 or v6) to connect to. If set, this defines the
 	// endpoint as a networked endpoint.
 	IP net.IP
 
-	// Port is a network port (either TCP or UDP). If not set, a default port
-	// may be used depending on the protocol.
+	// Port is a network port (either TCP or UDP). If 0, a default port may be
+	// used depending on the protocol.
 	Port uint16
+
+	// Path is an optional transport-specific path or identifier.
+	Path string
 }
 
-// PeerAddress converts the endpoint into a peer address for a given node ID.
+// PeerAddress converts the endpoint into a PeerAddress for the given node ID.
 func (e Endpoint) PeerAddress(nodeID NodeID) PeerAddress {
 	address := PeerAddress{
 		NodeID:   nodeID,
 		Protocol: e.Protocol,
 		Path:     e.Path,
 	}
-	if e.IP != nil {
+	if len(e.IP) > 0 {
 		address.Hostname = e.IP.String()
 		address.Port = e.Port
 	}
 	return address
 }
 
-// String formats an endpoint as a URL string.
+// String formats the endpoint as a URL string.
 func (e Endpoint) String() string {
 	if e.IP == nil {
 		return fmt.Sprintf("%s:%s", e.Protocol, e.Path)
@@ -151,7 +160,7 @@ func (e Endpoint) String() string {
 	return s
 }
 
-// Validate validates an endpoint.
+// Validate validates the endpoint.
 func (e Endpoint) Validate() error {
 	switch {
 	case e.Protocol == "":
