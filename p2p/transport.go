@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -105,13 +106,6 @@ type Connection interface {
 
 // Endpoint represents a transport connection endpoint, either local or remote.
 type Endpoint struct {
-	// NodeID specifies the peer ID of the endpoint.
-	//
-	// FIXME: This is here for backwards-compatibility with existing code, and
-	// can most likely be removed later. Transports should not care who they
-	// talk to, that's a higher-level concern.
-	NodeID NodeID
-
 	// Protocol specifies the transport protocol, used by the router to pick a
 	// transport for an endpoint.
 	Protocol Protocol
@@ -128,10 +122,10 @@ type Endpoint struct {
 	Port uint16
 }
 
-// PeerAddress converts the endpoint into a peer address.
-func (e Endpoint) PeerAddress() PeerAddress {
+// PeerAddress converts the endpoint into a peer address for a given node ID.
+func (e Endpoint) PeerAddress(nodeID NodeID) PeerAddress {
 	address := PeerAddress{
-		NodeID:   e.NodeID,
+		NodeID:   nodeID,
 		Protocol: e.Protocol,
 		Path:     e.Path,
 	}
@@ -144,18 +138,26 @@ func (e Endpoint) PeerAddress() PeerAddress {
 
 // String formats an endpoint as a URL string.
 func (e Endpoint) String() string {
-	return e.PeerAddress().String()
+	if e.IP == nil {
+		return fmt.Sprintf("%s:%s", e.Protocol, e.Path)
+	}
+	s := fmt.Sprintf("%s://%s", e.Protocol, e.IP)
+	if e.Port > 0 {
+		s += strconv.Itoa(int(e.Port))
+	}
+	s += e.Path
+	return s
 }
 
 // Validate validates an endpoint.
 func (e Endpoint) Validate() error {
 	switch {
-	case e.NodeID == "":
-		return errors.New("endpoint has no peer ID")
 	case e.Protocol == "":
 		return errors.New("endpoint has no protocol")
 	case e.Port > 0 && len(e.IP) == 0:
 		return fmt.Errorf("endpoint has port %v but no IP", e.Port)
+	case len(e.IP) == 0 && e.Path == "":
+		return errors.New("endpoint has neither path nor IP")
 	default:
 		return nil
 	}
@@ -163,9 +165,9 @@ func (e Endpoint) Validate() error {
 
 // NetAddress returns a NetAddress for the endpoint.
 // FIXME: This is temporary for compatibility with the old P2P stack.
-func (e Endpoint) NetAddress() *NetAddress {
+func (e Endpoint) NetAddress(nodeID NodeID) *NetAddress {
 	return &NetAddress{
-		ID:   e.NodeID,
+		ID:   nodeID,
 		IP:   e.IP,
 		Port: e.Port,
 	}

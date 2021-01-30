@@ -29,7 +29,7 @@ import (
 
 // PeerAddress is a peer address URL. It differs from Endpoint in that the
 // address hostname may be expanded into multiple IP addresses (thus multiple
-// endpoints).
+// endpoints), and that it knows the node's ID.
 //
 // If the URL is opaque, i.e. of the form "scheme:<opaque>", then the opaque
 // part has to contain either the node ID or a node ID and path in the form
@@ -117,7 +117,6 @@ func (a PeerAddress) Resolve(ctx context.Context) ([]Endpoint, error) {
 	// "scheme:<opaque>".
 	if a.Hostname == "" {
 		return []Endpoint{{
-			NodeID:   a.NodeID,
 			Protocol: a.Protocol,
 			Path:     a.Path,
 		}}, nil
@@ -130,7 +129,6 @@ func (a PeerAddress) Resolve(ctx context.Context) ([]Endpoint, error) {
 	endpoints := make([]Endpoint, len(ips))
 	for i, ip := range ips {
 		endpoints[i] = Endpoint{
-			NodeID:   a.NodeID,
 			Protocol: a.Protocol,
 			IP:       ip,
 			Port:     a.Port,
@@ -1534,7 +1532,7 @@ func (p *peer) NodeInfo() NodeInfo {
 // For inbound peers, it's the address returned by the underlying connection
 // (not what's reported in the peer's NodeInfo).
 func (p *peer) SocketAddr() *NetAddress {
-	return p.peerConn.conn.RemoteEndpoint().NetAddress()
+	return p.peerConn.conn.RemoteEndpoint().NetAddress(p.ID())
 }
 
 // Status returns the peer's ConnectionStatus.

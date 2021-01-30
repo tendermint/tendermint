@@ -127,14 +127,18 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 	if endpoint.Protocol != MemoryProtocol {
 		return nil, fmt.Errorf("invalid protocol %q", endpoint.Protocol)
 	}
-	if endpoint.NodeID == "" {
-		return nil, errors.New("no peer ID")
+	if endpoint.Path == "" {
+		return nil, errors.New("no path")
+	}
+	nodeID, err := NewNodeID(endpoint.Path)
+	if err != nil {
+		return nil, err
 	}
 	t.logger.Info("dialing peer", "remote", endpoint)
 
-	peerTransport := t.network.GetTransport(endpoint.NodeID)
+	peerTransport := t.network.GetTransport(nodeID)
 	if peerTransport == nil {
-		return nil, fmt.Errorf("unknown peer %q", endpoint.NodeID)
+		return nil, fmt.Errorf("unknown peer %q", nodeID)
 	}
 	inCh := make(chan memoryMessage, 1)
 	outCh := make(chan memoryMessage, 1)
@@ -202,7 +206,7 @@ func (t *MemoryTransport) Endpoints() []Endpoint {
 	default:
 		return []Endpoint{{
 			Protocol: MemoryProtocol,
-			NodeID:   t.nodeID,
+			Path:     string(t.nodeID),
 		}}
 	}
 }
@@ -266,6 +270,7 @@ func (c *MemoryConnection) Handshake(
 
 	select {
 	case msg := <-c.receiveCh:
+		c.logger.Debug("handshake complete")
 		return msg.nodeInfo, msg.pubKey, nil
 	case <-ctx.Done():
 		return NodeInfo{}, nil, ctx.Err()
@@ -345,16 +350,16 @@ func (c *MemoryConnection) FlushClose() error {
 // LocalEndpoint returns the local endpoint for the connection.
 func (c *MemoryConnection) LocalEndpoint() Endpoint {
 	return Endpoint{
-		NodeID:   c.local.nodeID,
 		Protocol: MemoryProtocol,
+		Path:     string(c.local.nodeID),
 	}
 }
 
 // RemoteEndpoint returns the remote endpoint for the connection.
 func (c *MemoryConnection) RemoteEndpoint() Endpoint {
 	return Endpoint{
-		NodeID:   c.remote.nodeID,
 		Protocol: MemoryProtocol,
+		Path:     string(c.remote.nodeID),
 	}
 }
 

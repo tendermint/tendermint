@@ -74,7 +74,7 @@ func TestRouter(t *testing.T) {
 			p2p.RouterOptions{},
 		)
 		require.NoError(t, err)
-		peers = append(peers, peerTransport.Endpoints()[0].PeerAddress())
+		peers = append(peers, peerTransport.Endpoints()[0].PeerAddress(peerInfo.NodeID))
 
 		channel, err := peerRouter.OpenChannel(chID, &TestMessage{})
 		require.NoError(t, err)

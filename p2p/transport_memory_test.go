@@ -23,7 +23,6 @@ func TestMemoryTransport(t *testing.T) {
 	// Dialing a missing endpoint should fail.
 	_, err = a.Dial(ctx, p2p.Endpoint{
 		Protocol: p2p.MemoryProtocol,
-		NodeID:   p2p.NodeID("foo"),
 		Path:     "foo",
 	})
 	require.Error(t, err)
@@ -40,68 +39,68 @@ func TestMemoryTransport(t *testing.T) {
 	defer cToA.Close()
 
 	// Send and receive a message both ways a→b and b→a
-	sent, err := aToB.SendMessage(1, []byte("hi!"))
+	sent, err := aToB.SendMessage(1, []byte{0x01})
 	require.NoError(t, err)
 	require.True(t, sent)
 
 	ch, msg, err := bToA.ReceiveMessage()
 	require.NoError(t, err)
 	require.EqualValues(t, 1, ch)
-	require.EqualValues(t, "hi!", msg)
+	require.EqualValues(t, []byte{0x01}, msg)
 
-	sent, err = bToA.SendMessage(1, []byte("hello"))
+	sent, err = bToA.SendMessage(1, []byte{0x02})
 	require.NoError(t, err)
 	require.True(t, sent)
 
 	ch, msg, err = aToB.ReceiveMessage()
 	require.NoError(t, err)
 	require.EqualValues(t, 1, ch)
-	require.EqualValues(t, "hello", msg)
+	require.EqualValues(t, []byte{0x02}, msg)
 
 	// Send and receive a message both ways a→c and c→a
-	sent, err = aToC.SendMessage(1, []byte("foo"))
+	sent, err = aToC.SendMessage(1, []byte{0x03})
 	require.NoError(t, err)
 	require.True(t, sent)
 
 	ch, msg, err = cToA.ReceiveMessage()
 	require.NoError(t, err)
 	require.EqualValues(t, 1, ch)
-	require.EqualValues(t, "foo", msg)
+	require.EqualValues(t, []byte{0x03}, msg)
 
-	sent, err = cToA.SendMessage(1, []byte("bar"))
+	sent, err = cToA.SendMessage(1, []byte{0x04})
 	require.NoError(t, err)
 	require.True(t, sent)
 
 	ch, msg, err = aToC.ReceiveMessage()
 	require.NoError(t, err)
 	require.EqualValues(t, 1, ch)
-	require.EqualValues(t, "bar", msg)
+	require.EqualValues(t, []byte{0x04}, msg)
 
 	// If we close aToB, sending and receiving on either end will error.
 	err = aToB.Close()
 	require.NoError(t, err)
 
-	_, err = aToB.SendMessage(1, []byte("foo"))
+	_, err = aToB.SendMessage(1, []byte{0x05})
 	require.Equal(t, io.EOF, err)
 
 	_, _, err = aToB.ReceiveMessage()
 	require.Equal(t, io.EOF, err)
 
-	_, err = bToA.SendMessage(1, []byte("foo"))
+	_, err = bToA.SendMessage(1, []byte{0x06})
 	require.Equal(t, io.EOF, err)
 
 	_, _, err = bToA.ReceiveMessage()
 	require.Equal(t, io.EOF, err)
 
 	// We can still send aToC.
-	sent, err = aToC.SendMessage(1, []byte("foo"))
+	sent, err = aToC.SendMessage(1, []byte{0x07})
 	require.NoError(t, err)
 	require.True(t, sent)
 
 	ch, msg, err = cToA.ReceiveMessage()
 	require.NoError(t, err)
 	require.EqualValues(t, 1, ch)
-	require.EqualValues(t, "foo", msg)
+	require.EqualValues(t, []byte{0x07}, msg)
 
 	// If we close the c transport, it will no longer accept connections,
 	// but we can still use the open connection.
@@ -113,12 +112,12 @@ func TestMemoryTransport(t *testing.T) {
 	_, err = a.Dial(ctx, endpoint)
 	require.Error(t, err)
 
-	sent, err = aToC.SendMessage(1, []byte("bar"))
+	sent, err = aToC.SendMessage(1, []byte{0x08})
 	require.NoError(t, err)
 	require.True(t, sent)
 
 	ch, msg, err = cToA.ReceiveMessage()
 	require.NoError(t, err)
 	require.EqualValues(t, 1, ch)
-	require.EqualValues(t, "bar", msg)
+	require.EqualValues(t, []byte{0x08}, msg)
 }

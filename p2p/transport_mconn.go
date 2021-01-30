@@ -39,7 +39,6 @@ type MConnTransportOptions struct {
 // Tendermint protocol ("MConn").
 type MConnTransport struct {
 	logger       log.Logger
-	nodeID       NodeID
 	options      MConnTransportOptions
 	mConnConfig  conn.MConnConfig
 	channelDescs []*ChannelDescriptor
@@ -54,14 +53,12 @@ type MConnTransport struct {
 // conn.MConnection.
 func NewMConnTransport(
 	logger log.Logger,
-	nodeID NodeID,
 	mConnConfig conn.MConnConfig,
 	channelDescs []*ChannelDescriptor,
 	options MConnTransportOptions,
 ) *MConnTransport {
 	return &MConnTransport{
 		logger:       logger,
-		nodeID:       nodeID,
 		options:      options,
 		mConnConfig:  mConnConfig,
 		closeCh:      make(chan struct{}),
@@ -155,7 +152,6 @@ func (m *MConnTransport) Endpoints() []Endpoint {
 		return []Endpoint{}
 	}
 	endpoint := Endpoint{
-		NodeID:   m.nodeID,
 		Protocol: MConnProtocol,
 	}
 	if addr, ok := m.listener.Addr().(*net.TCPAddr); ok {
@@ -208,10 +204,7 @@ type mConnConnection struct {
 	closeCh      chan struct{}
 	closeOnce    sync.Once
 
-	// These are set during Handshake()
-	mconn    *conn.MConnection
-	localID  NodeID
-	remoteID NodeID
+	mconn *conn.MConnection // set during Handshake()
 }
 
 // mConnMessage passes MConnection messages through internal channels.
@@ -238,7 +231,7 @@ func newMConnConnection(
 	}
 }
 
-// Handshake implements Transport.
+// Handshake implements Connection.
 //
 // FIXME: Since the MConnection code panics, we need to recover it and turn it
 // into an error. We should remove panics instead.
@@ -305,11 +298,9 @@ func (c *mConnConnection) handshake(
 		return NodeInfo{}, nil, err
 	}
 
-	c.localID = nodeInfo.NodeID
-	c.remoteID = peerInfo.NodeID
 	// FIXME: Uses NetAddress for backwards compatibility, should probably
 	// just use Endpoint.String().
-	c.logger = c.logger.With("peer", c.RemoteEndpoint().NetAddress().String())
+	c.logger = c.logger.With("peer", c.RemoteEndpoint().NetAddress(peerInfo.NodeID).String())
 
 	mconn := conn.NewMConnectionWithConfig(
 		secretConn,
@@ -395,7 +386,6 @@ func (c *mConnConnection) ReceiveMessage() (byte, []byte, error) {
 func (c *mConnConnection) LocalEndpoint() Endpoint {
 	endpoint := Endpoint{
 		Protocol: MConnProtocol,
-		NodeID:   c.localID,
 	}
 	if addr, ok := c.conn.LocalAddr().(*net.TCPAddr); ok {
 		endpoint.IP = addr.IP
@@ -408,7 +398,6 @@ func (c *mConnConnection) LocalEndpoint() Endpoint {
 func (c *mConnConnection) RemoteEndpoint() Endpoint {
 	endpoint := Endpoint{
 		Protocol: MConnProtocol,
-		NodeID:   c.remoteID,
 	}
 	if addr, ok := c.conn.RemoteAddr().(*net.TCPAddr); ok {
 		endpoint.IP = addr.IP
