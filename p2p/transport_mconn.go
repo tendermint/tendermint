@@ -298,9 +298,7 @@ func (c *mConnConnection) handshake(
 		return NodeInfo{}, nil, err
 	}
 
-	// FIXME: Uses NetAddress for backwards compatibility, should probably
-	// just use Endpoint.String().
-	c.logger = c.logger.With("peer", c.RemoteEndpoint().NetAddress(peerInfo.NodeID).String())
+	c.logger = c.logger.With("peer", c.RemoteEndpoint().PeerAddress(peerInfo.NodeID))
 
 	mconn := conn.NewMConnectionWithConfig(
 		secretConn,

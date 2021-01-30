@@ -20,9 +20,6 @@ type Protocol string
 
 // Transport is a connection-oriented mechanism for exchanging data with a peer.
 type Transport interface {
-	// Stringer is used to display the transport, e.g. in logs.
-	fmt.Stringer
-
 	// Protocols returns the protocols the transport supports, which the
 	// router uses to pick a transport for a PeerAddress.
 	Protocols() []Protocol
@@ -39,6 +36,13 @@ type Transport interface {
 
 	// Close stops accepting new connections, but does not close active connections.
 	Close() error
+
+	// Stringer is used to display the transport, e.g. in logs.
+	//
+	// Without this, the logger may use reflection to access and display
+	// internal fields -- these are written concurrently, which can trigger the
+	// race detector or even cause a panic.
+	fmt.Stringer
 }
 
 // Connection represents an established connection between two endpoints.
@@ -60,8 +64,6 @@ type Connection interface {
 	// FIXME: The handshaking should really be the Router's responsibility, but
 	// that requires the connection interface to be byte-oriented rather than
 	// message-oriented (see comment above).
-	//
-	// FIXME: NodeID should be removed and router should check handshake.
 	Handshake(context.Context, NodeInfo, crypto.PrivKey) (NodeInfo, crypto.PubKey, error)
 
 	// ReceiveMessage returns the next message received on the connection,
@@ -160,15 +162,5 @@ func (e Endpoint) Validate() error {
 		return errors.New("endpoint has neither path nor IP")
 	default:
 		return nil
-	}
-}
-
-// NetAddress returns a NetAddress for the endpoint.
-// FIXME: This is temporary for compatibility with the old P2P stack.
-func (e Endpoint) NetAddress(nodeID NodeID) *NetAddress {
-	return &NetAddress{
-		ID:   nodeID,
-		IP:   e.IP,
-		Port: e.Port,
 	}
 }

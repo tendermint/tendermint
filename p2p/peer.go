@@ -1532,7 +1532,12 @@ func (p *peer) NodeInfo() NodeInfo {
 // For inbound peers, it's the address returned by the underlying connection
 // (not what's reported in the peer's NodeInfo).
 func (p *peer) SocketAddr() *NetAddress {
-	return p.peerConn.conn.RemoteEndpoint().NetAddress(p.ID())
+	endpoint := p.peerConn.conn.RemoteEndpoint()
+	return &NetAddress{
+		ID:   p.ID(),
+		IP:   endpoint.IP,
+		Port: endpoint.Port,
+	}
 }
 
 // Status returns the peer's ConnectionStatus.
