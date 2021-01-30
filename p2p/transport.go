@@ -73,14 +73,14 @@ type Connection interface {
 
 	// ReceiveMessage returns the next message received on the connection,
 	// blocking until one is available. Returns io.EOF if closed.
-	ReceiveMessage() (chID byte, msg []byte, err error)
+	ReceiveMessage() (ChannelID, []byte, error)
 
 	// SendMessage sends a message on the connection. Returns io.EOF if closed.
 	//
 	// FIXME: For compatibility with the legacy P2P stack, it returns an
 	// additional boolean false if the message timed out waiting to be accepted
 	// into the send buffer. This should be removed.
-	SendMessage(chID byte, msg []byte) (bool, error)
+	SendMessage(ChannelID, []byte) (bool, error)
 
 	// TrySendMessage is a non-blocking version of SendMessage that returns
 	// immediately if the message buffer is full. It returns true if the message
@@ -88,7 +88,7 @@ type Connection interface {
 	//
 	// FIXME: This method is here for backwards-compatibility with the legacy
 	// P2P stack and should be removed.
-	TrySendMessage(chID byte, msg []byte) (bool, error)
+	TrySendMessage(ChannelID, []byte) (bool, error)
 
 	// LocalEndpoint returns the local endpoint for the connection.
 	LocalEndpoint() Endpoint
@@ -104,7 +104,7 @@ type Connection interface {
 	// FIXME: This only exists for backwards-compatibility with the current
 	// MConnection implementation. There should really be a separate Flush()
 	// method, but there is no easy way to synchronously flush pending data with
-	// the current MConnection structure.
+	// the current MConnection code.
 	FlushClose() error
 
 	// Status returns the current connection status.
@@ -114,9 +114,9 @@ type Connection interface {
 
 // Endpoint represents a transport connection endpoint, either local or remote.
 //
-// Endpoints are not necessarily networked (see e.g. MemoryTransport which uses
-// in-memory communication), but all networked endpoints must use IP as the
-// underlying transport protocol to allow e.g. IP address filtering.
+// Endpoints are not necessarily networked (see e.g. MemoryTransport) but all
+// networked endpoints must use IP as the underlying transport protocol to allow
+// e.g. IP address filtering. Either IP or Path (or both) must be set.
 type Endpoint struct {
 	// Protocol specifies the transport protocol.
 	Protocol Protocol

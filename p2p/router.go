@@ -536,8 +536,8 @@ func (r *Router) receivePeer(peerID NodeID, conn Connection) error {
 		}
 
 		r.channelMtx.RLock()
-		queue, ok := r.channelQueues[ChannelID(chID)]
-		messageType := r.channelMessages[ChannelID(chID)]
+		queue, ok := r.channelQueues[chID]
+		messageType := r.channelMessages[chID]
 		r.channelMtx.RUnlock()
 		if !ok {
 			r.logger.Error("dropping message for unknown channel", "peer", peerID, "channel", chID)
@@ -558,8 +558,7 @@ func (r *Router) receivePeer(peerID NodeID, conn Connection) error {
 		}
 
 		select {
-		// FIXME: ReceiveMessage() should return ChannelID.
-		case queue.enqueue() <- Envelope{channelID: ChannelID(chID), From: peerID, Message: msg}:
+		case queue.enqueue() <- Envelope{channelID: chID, From: peerID, Message: msg}:
 			r.logger.Debug("received message", "peer", peerID, "message", msg)
 		case <-queue.closed():
 			r.logger.Error("channel closed, dropping message", "peer", peerID, "channel", chID)
@@ -580,8 +579,7 @@ func (r *Router) sendPeer(peerID NodeID, conn Connection, queue queue) error {
 				continue
 			}
 
-			// FIXME: SendMessage() should take ChannelID.
-			_, err = conn.SendMessage(byte(envelope.channelID), bz)
+			_, err = conn.SendMessage(envelope.channelID, bz)
 			if err != nil {
 				return err
 			}

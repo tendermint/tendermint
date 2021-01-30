@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"sync"
 	"time"
@@ -209,7 +210,7 @@ type mConnConnection struct {
 
 // mConnMessage passes MConnection messages through internal channels.
 type mConnMessage struct {
-	channelID byte
+	channelID ChannelID
 	payload   []byte
 }
 
@@ -317,16 +318,15 @@ func (c *mConnConnection) handshake(
 }
 
 // onReceive is a callback for MConnection received messages.
-func (c *mConnConnection) onReceive(channelID byte, payload []byte) {
+func (c *mConnConnection) onReceive(chID byte, payload []byte) {
 	select {
-	case c.receiveCh <- mConnMessage{channelID: channelID, payload: payload}:
+	case c.receiveCh <- mConnMessage{channelID: ChannelID(chID), payload: payload}:
 	case <-c.closeCh:
 	}
 }
 
-// onError is a callback for MConnection errors. The error is passed to errorCh,
-// which is only consumed by ReceiveMessage() for parity with the old
-// MConnection behavior.
+// onError is a callback for MConnection errors. The error is passed via errorCh
+// to ReceiveMessage (but not SendMessage, for legacy P2P stack behavior).
 func (c *mConnConnection) onError(e interface{}) {
 	err, ok := e.(error)
 	if !ok {
@@ -339,6 +339,7 @@ func (c *mConnConnection) onError(e interface{}) {
 }
 
 // String displays connection information.
+//
 // FIXME: This is here for backwards compatibility with existing logging,
 // it should probably just return RemoteEndpoint().String(), if anything.
 func (c *mConnConnection) String() string {
@@ -347,29 +348,35 @@ func (c *mConnConnection) String() string {
 }
 
 // SendMessage implements Connection.
-func (c *mConnConnection) SendMessage(channelID byte, msg []byte) (bool, error) {
+func (c *mConnConnection) SendMessage(chID ChannelID, msg []byte) (bool, error) {
+	if chID > math.MaxUint8 {
+		return false, fmt.Errorf("MConnection only supports 1-byte channel IDs (got %v)", chID)
+	}
 	// We don't check errorCh here, to preserve old MConnection behavior.
 	select {
 	case <-c.closeCh:
 		return false, io.EOF
 	default:
-		return c.mconn.Send(channelID, msg), nil
+		return c.mconn.Send(byte(chID), msg), nil
 	}
 }
 
 // TrySendMessage implements Connection.
-func (c *mConnConnection) TrySendMessage(channelID byte, msg []byte) (bool, error) {
+func (c *mConnConnection) TrySendMessage(chID ChannelID, msg []byte) (bool, error) {
+	if chID > math.MaxUint8 {
+		return false, fmt.Errorf("MConnection only supports 1-byte channel IDs (got %v)", chID)
+	}
 	// We don't check errorCh here, to preserve old MConnection behavior.
 	select {
 	case <-c.closeCh:
 		return false, io.EOF
 	default:
-		return c.mconn.TrySend(channelID, msg), nil
+		return c.mconn.TrySend(byte(chID), msg), nil
 	}
 }
 
 // ReceiveMessage implements Connection.
-func (c *mConnConnection) ReceiveMessage() (byte, []byte, error) {
+func (c *mConnConnection) ReceiveMessage() (ChannelID, []byte, error) {
 	select {
 	case err := <-c.errorCh:
 		return 0, nil, err

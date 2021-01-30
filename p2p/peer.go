@@ -1475,12 +1475,12 @@ func (p *peer) processMessages() {
 			p.onError(err)
 			return
 		}
-		reactor, ok := p.reactors[chID]
+		reactor, ok := p.reactors[byte(chID)]
 		if !ok {
 			p.onError(fmt.Errorf("unknown channel %v", chID))
 			return
 		}
-		reactor.Receive(chID, p, msg)
+		reactor.Receive(byte(chID), p, msg)
 	}
 }
 
@@ -1555,7 +1555,7 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	res, err := p.conn.SendMessage(chID, msgBytes)
+	res, err := p.conn.SendMessage(ChannelID(chID), msgBytes)
 	if err == io.EOF {
 		return false
 	} else if err != nil {
@@ -1580,7 +1580,7 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	res, err := p.conn.TrySendMessage(chID, msgBytes)
+	res, err := p.conn.TrySendMessage(ChannelID(chID), msgBytes)
 	if err == io.EOF {
 		return false
 	} else if err != nil {

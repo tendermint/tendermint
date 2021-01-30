@@ -225,8 +225,8 @@ type MemoryConnection struct {
 // memoryMessage is used to pass messages internally in the connection.
 // For handshakes, nodeInfo and pubKey are set instead of channel and message.
 type memoryMessage struct {
-	channel byte
-	message []byte
+	channelID ChannelID
+	message   []byte
 
 	// For handshakes.
 	nodeInfo NodeInfo
@@ -280,7 +280,7 @@ func (c *MemoryConnection) Handshake(
 }
 
 // ReceiveMessage implements Connection.
-func (c *MemoryConnection) ReceiveMessage() (chID byte, msg []byte, err error) {
+func (c *MemoryConnection) ReceiveMessage() (ChannelID, []byte, error) {
 	// check close first, since channels are buffered
 	select {
 	case <-c.closer.Done():
@@ -290,15 +290,15 @@ func (c *MemoryConnection) ReceiveMessage() (chID byte, msg []byte, err error) {
 
 	select {
 	case msg := <-c.receiveCh:
-		c.logger.Debug("received message", "channel", msg.channel, "message", msg.message)
-		return msg.channel, msg.message, nil
+		c.logger.Debug("received message", "channel", msg.channelID, "message", msg.message)
+		return msg.channelID, msg.message, nil
 	case <-c.closer.Done():
 		return 0, nil, io.EOF
 	}
 }
 
 // SendMessage implements Connection.
-func (c *MemoryConnection) SendMessage(chID byte, msg []byte) (bool, error) {
+func (c *MemoryConnection) SendMessage(chID ChannelID, msg []byte) (bool, error) {
 	// check close first, since channels are buffered
 	select {
 	case <-c.closer.Done():
@@ -307,7 +307,7 @@ func (c *MemoryConnection) SendMessage(chID byte, msg []byte) (bool, error) {
 	}
 
 	select {
-	case c.sendCh <- memoryMessage{channel: chID, message: msg}:
+	case c.sendCh <- memoryMessage{channelID: chID, message: msg}:
 		c.logger.Debug("sent message", "channel", chID, "message", msg)
 		return true, nil
 	case <-c.closer.Done():
@@ -316,7 +316,7 @@ func (c *MemoryConnection) SendMessage(chID byte, msg []byte) (bool, error) {
 }
 
 // TrySendMessage implements Connection.
-func (c *MemoryConnection) TrySendMessage(chID byte, msg []byte) (bool, error) {
+func (c *MemoryConnection) TrySendMessage(chID ChannelID, msg []byte) (bool, error) {
 	// check close first, since channels are buffered
 	select {
 	case <-c.closer.Done():
@@ -325,7 +325,7 @@ func (c *MemoryConnection) TrySendMessage(chID byte, msg []byte) (bool, error) {
 	}
 
 	select {
-	case c.sendCh <- memoryMessage{channel: chID, message: msg}:
+	case c.sendCh <- memoryMessage{channelID: chID, message: msg}:
 		c.logger.Debug("sent message", "channel", chID, "message", msg)
 		return true, nil
 	case <-c.closer.Done():
