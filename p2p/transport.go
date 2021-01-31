@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	// defaultProtocol is the default protocol used for PeerAddress when
+	// defaultProtocol is the default protocol used for NodeAddress when
 	// a protocol isn't explicitly given as a URL scheme.
 	defaultProtocol Protocol = MConnProtocol
 )

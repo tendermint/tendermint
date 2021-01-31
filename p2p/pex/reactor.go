@@ -113,7 +113,7 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 // resolve resolves a set of peer addresses into PEX addresses.
 //
 // FIXME: This is necessary because the current PEX protocol only supports
-// IP/port pairs, while the P2P stack uses PeerAddress URLs. The PEX protocol
+// IP/port pairs, while the P2P stack uses NodeAddress URLs. The PEX protocol
 // should really use URLs too, to exchange DNS names instead of IPs and allow
 // different transport protocols (e.g. QUIC and MemoryTransport).
 //

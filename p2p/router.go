@@ -16,7 +16,7 @@ import (
 
 // RouterOptions specifies options for a Router.
 type RouterOptions struct {
-	// ResolveTimeout is the timeout for resolving a PeerAddress URLs.
+	// ResolveTimeout is the timeout for resolving NodeAddress URLs.
 	// 0 means no timeout.
 	ResolveTimeout time.Duration
 

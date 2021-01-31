@@ -435,7 +435,7 @@ func TestConnection_String(t *testing.T) {
 	})
 }
 
-func TestEndpoint_PeerAddress(t *testing.T) {
+func TestEndpoint_NodeAddress(t *testing.T) {
 	var (
 		ip4    = []byte{1, 2, 3, 4}
 		ip4in6 = net.IPv4(1, 2, 3, 4)
