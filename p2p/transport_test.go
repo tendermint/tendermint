@@ -110,6 +110,12 @@ func TestTransport_DialEndpoints(t *testing.T) {
 		_, err = a.Dial(ctx, noProtocol)
 		require.Error(t, err)
 
+		// Dialing with invalid protocol should error.
+		fooProtocol := endpoint
+		fooProtocol.Protocol = "foo"
+		_, err = a.Dial(ctx, fooProtocol)
+		require.Error(t, err)
+
 		// Tests for networked endpoints (with IP).
 		if len(endpoint.IP) > 0 {
 			for _, tc := range ipTestCases {

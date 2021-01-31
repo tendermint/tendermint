@@ -118,6 +118,11 @@ func (m *MConnTransport) Listen(endpoint Endpoint) error {
 		return err
 	}
 	if m.options.MaxAcceptedConnections > 0 {
+		// FIXME: This will establish the inbound connection but simply hang it
+		// until another connection is released. It would probably be better to
+		// return an error to the remote peer or close the connection. This is
+		// also a DoS vector since the connection will take up kernel resources.
+		// This was just carried over from the legacy P2P stack.
 		listener = netutil.LimitListener(listener, int(m.options.MaxAcceptedConnections))
 	}
 	m.listener = listener
