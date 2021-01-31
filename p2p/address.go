@@ -23,6 +23,13 @@ const (
 var (
 	// reNodeID is a regexp for valid node IDs.
 	reNodeID = regexp.MustCompile(`^[0-9a-f]{40}$`)
+
+	// reHasScheme tries to detect URLs with schemes. It looks for a : before a / (if any).
+	reHasScheme = regexp.MustCompile(`^[^/]+:`)
+
+	// reSchemeIsHost tries to detect URLs where the scheme part is instead a
+	// hostname, i.e. of the form "host:80/path" where host: is a hostname.
+	reSchemeIsHost = regexp.MustCompile(`^[^/:]+:\d+(/|$)`)
 )
 
 // NodeID is a hex-encoded crypto.Address. It must be lowercased
@@ -68,11 +75,11 @@ func (id NodeID) Validate() error {
 }
 
 // NodeAddress is a node address URL. It differs from a transport Endpoint in
-// that it contains the node's ID and the address hostname may be expanded into
-// multiple IP addresses (thus multiple endpoints).
+// that it contains the node's ID, and that the address hostname may be expanded
+// into multiple IP addresses (and thus multiple endpoints).
 //
 // If the URL is opaque, i.e. of the form "scheme:opaque", then the opaque part
-// is assumed to be the node ID and used both for NodeID and Path.
+// is expected to contain a node ID.
 type NodeAddress struct {
 	NodeID   NodeID
 	Protocol Protocol
@@ -84,41 +91,30 @@ type NodeAddress struct {
 // ParseNodeAddress parses a node address URL into a NodeAddress, normalizing
 // and validating it.
 func ParseNodeAddress(urlString string) (NodeAddress, error) {
+	// url.Parse requires a scheme, so if it fails to parse a scheme-less URL
+	// we try to apply a default scheme.
 	url, err := url.Parse(urlString)
+	if (err != nil || url.Scheme == "") && (!reHasScheme.MatchString(urlString) || reSchemeIsHost.MatchString(urlString)) {
+		url, err = url.Parse(string(defaultProtocol) + "://" + urlString)
+	}
 	if err != nil || url == nil {
 		return NodeAddress{}, fmt.Errorf("invalid node address %q: %w", urlString, err)
 	}
 
-	address := NodeAddress{}
+	address := NodeAddress{
+		Protocol: Protocol(strings.ToLower(url.Scheme)),
+	}
 
-	// If the URL is opaque, i.e. in the form "scheme:<opaque>", we specify the
-	// opaque bit to be either a node ID or a node ID and path in the form
-	// "scheme:<nodeid>@<path>".
+	// Opaque URLs are expected to contain only a node ID, also used as path.
 	if url.Opaque != "" {
-		parts := strings.Split(url.Opaque, "@")
-		if len(parts) > 2 {
-			return NodeAddress{}, fmt.Errorf("invalid address format %q, unexpected @", urlString)
-		}
-		address.NodeID, err = NewNodeID(parts[0])
-		if err != nil {
-			return NodeAddress{}, fmt.Errorf("invalid node ID %q: %w", parts[0], err)
-		}
-		if len(parts) == 2 {
-			address.Path = parts[1]
-		}
-		return address, nil
+		address.NodeID = NodeID(url.Opaque)
+		address.Path = url.Opaque
+		return address, address.Validate()
 	}
 
 	// Otherwise, just parse a normal networked URL.
-	address.NodeID, err = NewNodeID(url.User.Username())
-	if err != nil {
-		return NodeAddress{}, fmt.Errorf("invalid node ID %q: %w", url.User.Username(), err)
-	}
-
-	if url.Scheme != "" {
-		address.Protocol = Protocol(strings.ToLower(url.Scheme))
-	} else {
-		address.Protocol = defaultProtocol
+	if url.User != nil {
+		address.NodeID = NodeID(url.User.Username())
 	}
 
 	address.Hostname = strings.ToLower(url.Hostname())
@@ -131,19 +127,19 @@ func ParseNodeAddress(urlString string) (NodeAddress, error) {
 		address.Port = uint16(port64)
 	}
 
-	// NOTE: URL paths are case-sensitive, so we don't lowercase them.
 	address.Path = url.Path
-	if url.RawPath != "" {
-		address.Path = url.RawPath
-	}
 	if url.RawQuery != "" {
 		address.Path += "?" + url.RawQuery
 	}
-	if url.RawFragment != "" {
-		address.Path += "#" + url.RawFragment
+	if url.Fragment != "" {
+		address.Path += "#" + url.Fragment
 	}
-	if address.Path != "" && address.Path[0] != '/' && address.Path[0] != '#' {
-		address.Path = "/" + address.Path
+	if address.Path != "" {
+		switch address.Path[0] {
+		case '/', '#', '?':
+		default:
+			address.Path = "/" + address.Path
+		}
 	}
 
 	return address, address.Validate()
@@ -153,11 +149,12 @@ func ParseNodeAddress(urlString string) (NodeAddress, error) {
 // out a DNS hostname to IP addresses.
 func (a NodeAddress) Resolve(ctx context.Context) ([]Endpoint, error) {
 	// If there is no hostname, this is an opaque URL in the form
-	// "scheme:<opaque>".
+	// "scheme:opaque", and the opaque part is assumed to be the node ID and
+	// used as Path.
 	if a.Hostname == "" {
 		return []Endpoint{{
 			Protocol: a.Protocol,
-			Path:     a.Path,
+			Path:     string(a.NodeID),
 		}}, nil
 	}
 
