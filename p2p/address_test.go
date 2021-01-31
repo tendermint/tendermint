@@ -112,7 +112,7 @@ func TestParseNodeAddress(t *testing.T) {
 			true,
 		},
 		{
-			"TCP://" + strings.ToUpper(user) + "@hostname.DOMAIN:8080/Path/%F0%9F%91%8B#Anchor",
+			"TCP://" + strings.ToUpper(user) + "@hostname.DOMAIN:8080/Path/%f0%9f%91%8B#Anchor",
 			p2p.NodeAddress{Protocol: "tcp", NodeID: id, Hostname: "hostname.domain", Port: 8080, Path: "/Path/👋#Anchor"},
 			true,
 		},
