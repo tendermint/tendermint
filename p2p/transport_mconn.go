@@ -285,13 +285,16 @@ func (c *mConnConnection) Handshake(
 		}
 		c.mconn = mconn
 		c.logger = mconn.Logger
+		if err = c.mconn.Start(); err != nil {
+			return NodeInfo{}, nil, err
+		}
 		return peerInfo, peerKey, nil
 	}
 }
 
 // handshake is a helper for Handshake, simplifying error handling so we can
-// keep context handling and panic recovery in Handshake. It returns the
-// handshaked MConnection and does not modify the mConnConnection.
+// keep context handling and panic recovery in Handshake. It returns an
+// unstarted but handshaked MConnection, to avoid concurrent field writes.
 func (c *mConnConnection) handshake(
 	ctx context.Context,
 	nodeInfo NodeInfo,
@@ -334,9 +337,6 @@ func (c *mConnConnection) handshake(
 		c.mConnConfig,
 	)
 	mconn.SetLogger(c.logger.With("peer", c.RemoteEndpoint().PeerAddress(peerInfo.NodeID)))
-	if err = mconn.Start(); err != nil {
-		return nil, NodeInfo{}, nil, err
-	}
 
 	return mconn, peerInfo, secretConn.RemotePubKey(), nil
 }
