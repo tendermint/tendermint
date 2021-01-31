@@ -78,6 +78,26 @@ func (m *MConnTransport) Protocols() []Protocol {
 	return []Protocol{MConnProtocol, TCPProtocol}
 }
 
+// Endpoints implements Transport.
+func (m *MConnTransport) Endpoints() []Endpoint {
+	if m.listener == nil {
+		return []Endpoint{}
+	}
+	select {
+	case <-m.closeCh:
+		return []Endpoint{}
+	default:
+	}
+	endpoint := Endpoint{
+		Protocol: MConnProtocol,
+	}
+	if addr, ok := m.listener.Addr().(*net.TCPAddr); ok {
+		endpoint.IP = addr.IP
+		endpoint.Port = uint16(addr.Port)
+	}
+	return []Endpoint{endpoint}
+}
+
 // Listen asynchronously listens for inbound connections on the given endpoint.
 // It must be called exactly once before calling Accept(), and the caller must
 // call Close() to shut down the listener.
@@ -138,21 +158,6 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 	return newMConnConnection(m.logger, tcpConn, m.mConnConfig, m.channelDescs), nil
 }
 
-// Endpoints implements Transport.
-func (m *MConnTransport) Endpoints() []Endpoint {
-	if m.listener == nil {
-		return []Endpoint{}
-	}
-	endpoint := Endpoint{
-		Protocol: MConnProtocol,
-	}
-	if addr, ok := m.listener.Addr().(*net.TCPAddr); ok {
-		endpoint.IP = addr.IP
-		endpoint.Port = uint16(addr.Port)
-	}
-	return []Endpoint{endpoint}
-}
-
 // Close implements Transport.
 func (m *MConnTransport) Close() error {
 	var err error
@@ -166,8 +171,8 @@ func (m *MConnTransport) Close() error {
 }
 
 // normalizeEndpoint normalizes and validates an endpoint. If setPort is true,
-// the port will be normalized to 26657 if 0 (port 0 is useful to listen on
-// random ports).
+// the port will be normalized to 26657 if it is 0 (port 0 is useful to listen
+// on random ports).
 func (m *MConnTransport) normalizeEndpoint(endpoint Endpoint, setPort bool) (Endpoint, error) {
 	if err := endpoint.Validate(); err != nil {
 		return Endpoint{}, err

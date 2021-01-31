@@ -178,37 +178,6 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 	}
 }
 
-// DialAccept is a convenience function that dials a peer MemoryTransport and
-// returns both ends of the connection (A to B and B to A).
-func (t *MemoryTransport) DialAccept(
-	ctx context.Context,
-	peer *MemoryTransport,
-) (Connection, Connection, error) {
-	endpoints := peer.Endpoints()
-	if len(endpoints) == 0 {
-		return nil, nil, fmt.Errorf("peer %q not listening on any endpoints", peer.nodeID)
-	}
-
-	acceptCh := make(chan Connection, 1)
-	errCh := make(chan error, 1)
-	go func() {
-		conn, err := peer.Accept(ctx)
-		errCh <- err
-		acceptCh <- conn
-	}()
-
-	outConn, err := t.Dial(ctx, endpoints[0])
-	if err != nil {
-		return nil, nil, err
-	}
-	inConn, err := <-acceptCh, <-errCh
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return outConn, inConn, nil
-}
-
 // Close implements Transport.
 func (t *MemoryTransport) Close() error {
 	t.network.RemoveTransport(t.nodeID)

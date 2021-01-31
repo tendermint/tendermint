@@ -14,7 +14,7 @@ import (
 // Most tests are done via the test suite in transport_test.go, we register a
 // transport factory here to get tested by the suite.
 func init() {
-	transportFactories["mconn"] = func(t *testing.T) p2p.Transport {
+	testTransports["mconn"] = func(t *testing.T) p2p.Transport {
 		transport := p2p.NewMConnTransport(
 			log.TestingLogger(),
 			conn.DefaultMConnConfig(),
