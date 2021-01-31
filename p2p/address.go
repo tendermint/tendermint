@@ -75,7 +75,7 @@ func (id NodeID) Validate() error {
 }
 
 // NodeAddress is a node address URL. It differs from a transport Endpoint in
-// that it contains the node's ID, and that the address hostname may be expanded
+// that it contains the node's ID, and that the address hostname may be resolved
 // into multiple IP addresses (and thus multiple endpoints).
 //
 // If the URL is opaque, i.e. of the form "scheme:opaque", then the opaque part
@@ -94,7 +94,8 @@ func ParseNodeAddress(urlString string) (NodeAddress, error) {
 	// url.Parse requires a scheme, so if it fails to parse a scheme-less URL
 	// we try to apply a default scheme.
 	url, err := url.Parse(urlString)
-	if (err != nil || url.Scheme == "") && (!reHasScheme.MatchString(urlString) || reSchemeIsHost.MatchString(urlString)) {
+	if (err != nil || url.Scheme == "") &&
+		(!reHasScheme.MatchString(urlString) || reSchemeIsHost.MatchString(urlString)) {
 		url, err = url.Parse(string(defaultProtocol) + "://" + urlString)
 	}
 	if err != nil || url == nil {
@@ -148,10 +149,17 @@ func ParseNodeAddress(urlString string) (NodeAddress, error) {
 // Resolve resolves a NodeAddress into a set of Endpoints, by expanding
 // out a DNS hostname to IP addresses.
 func (a NodeAddress) Resolve(ctx context.Context) ([]Endpoint, error) {
+	if a.Protocol == "" {
+		return nil, errors.New("address has no protocol")
+	}
+
 	// If there is no hostname, this is an opaque URL in the form
-	// "scheme:opaque", and the opaque part is assumed to be the node ID and
-	// used as Path.
+	// "scheme:opaque", and the opaque part is assumed to be node ID used as
+	// Path.
 	if a.Hostname == "" {
+		if a.NodeID == "" {
+			return nil, errors.New("local address has no node ID")
+		}
 		return []Endpoint{{
 			Protocol: a.Protocol,
 			Path:     string(a.NodeID),
@@ -174,22 +182,6 @@ func (a NodeAddress) Resolve(ctx context.Context) ([]Endpoint, error) {
 	return endpoints, nil
 }
 
-// Validates validates a NodeAddress.
-func (a NodeAddress) Validate() error {
-	if a.Protocol == "" {
-		return errors.New("no protocol")
-	}
-	if a.NodeID == "" {
-		return errors.New("no peer ID")
-	} else if err := a.NodeID.Validate(); err != nil {
-		return fmt.Errorf("invalid peer ID: %w", err)
-	}
-	if a.Port > 0 && a.Hostname == "" {
-		return errors.New("cannot specify port without hostname")
-	}
-	return nil
-}
-
 // String formats the address as a URL string.
 func (a NodeAddress) String() string {
 	u := url.URL{Scheme: string(a.Protocol)}
@@ -204,12 +196,32 @@ func (a NodeAddress) String() string {
 			u.Host = a.Hostname
 		}
 		u.Path = a.Path
-	case a.Protocol != "":
-		u.Opaque = a.Path // e.g. memory:foo
+
+	case a.Protocol != "" && (a.Path == "" || a.Path == string(a.NodeID)):
+		u.User = nil
+		u.Opaque = string(a.NodeID) // e.g. memory:id
+
 	case a.Path != "" && a.Path[0] != '/':
 		u.Path = "/" + a.Path // e.g. some/path
+
 	default:
 		u.Path = a.Path // e.g. /some/path
 	}
 	return strings.TrimPrefix(u.String(), "//")
+}
+
+// Validate validates a NodeAddress.
+func (a NodeAddress) Validate() error {
+	if a.Protocol == "" {
+		return errors.New("no protocol")
+	}
+	if a.NodeID == "" {
+		return errors.New("no peer ID")
+	} else if err := a.NodeID.Validate(); err != nil {
+		return fmt.Errorf("invalid peer ID: %w", err)
+	}
+	if a.Port > 0 && a.Hostname == "" {
+		return errors.New("cannot specify port without hostname")
+	}
+	return nil
 }

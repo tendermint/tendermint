@@ -159,6 +159,14 @@ func (e Endpoint) NodeAddress(nodeID NodeID) NodeAddress {
 
 // String formats the endpoint as a URL string.
 func (e Endpoint) String() string {
+	// If this is a non-networked endpoint with a valid node ID as a path,
+	// assume that path is a node ID (to handle opaque URLs of the form
+	// scheme:id).
+	if e.IP == nil {
+		if nodeID, err := NewNodeID(e.Path); err == nil {
+			return e.NodeAddress(nodeID).String()
+		}
+	}
 	return e.NodeAddress("").String()
 }
 
