@@ -9,7 +9,6 @@ import (
 	"net"
 	"strconv"
 	"sync"
-	"time"
 
 	"golang.org/x/net/netutil"
 
@@ -101,22 +100,28 @@ func (m *MConnTransport) Endpoints() []Endpoint {
 // Listen asynchronously listens for inbound connections on the given endpoint.
 // It must be called exactly once before calling Accept(), and the caller must
 // call Close() to shut down the listener.
+//
+// FIXME: Listen currently only supports listening on a single endpoint, it
+// might be useful to support listening on multiple addresses (e.g. IPv4 and
+// IPv6, or a private and public address) via multiple Listen() calls.
 func (m *MConnTransport) Listen(endpoint Endpoint) error {
 	if m.listener != nil {
 		return errors.New("transport is already listening")
 	}
-	endpoint, err := m.normalizeEndpoint(endpoint, false)
-	if err != nil {
-		return fmt.Errorf("invalid MConn listen endpoint %q: %w", endpoint, err)
+	if err := m.validateEndpoint(endpoint); err != nil {
+		return err
 	}
 
-	m.listener, err = net.Listen("tcp", fmt.Sprintf("%v:%v", endpoint.IP, endpoint.Port))
+	listener, err := net.Listen("tcp", net.JoinHostPort(
+		endpoint.IP.String(), strconv.Itoa(int(endpoint.Port))))
 	if err != nil {
 		return err
 	}
 	if m.options.MaxAcceptedConnections > 0 {
-		m.listener = netutil.LimitListener(m.listener, int(m.options.MaxAcceptedConnections))
+		listener = netutil.LimitListener(m.listener, int(m.options.MaxAcceptedConnections))
 	}
+	m.listener = listener
+
 	return nil
 }
 
@@ -143,16 +148,29 @@ func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 
 // Dial implements Transport.
 func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connection, error) {
-	endpoint, err := m.normalizeEndpoint(endpoint, true)
-	if err != nil {
+	select {
+	case <-m.closeCh:
+		return nil, errors.New("transport is closed")
+	default:
+	}
+
+	if err := m.validateEndpoint(endpoint); err != nil {
 		return nil, err
+	}
+	if endpoint.Port == 0 {
+		endpoint.Port = 26657
 	}
 
 	dialer := net.Dialer{}
-	tcpConn, err := dialer.DialContext(ctx, "tcp",
-		net.JoinHostPort(endpoint.IP.String(), strconv.Itoa(int(endpoint.Port))))
+	tcpConn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(
+		endpoint.IP.String(), strconv.Itoa(int(endpoint.Port))))
 	if err != nil {
-		return nil, err
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+			return nil, err
+		}
 	}
 
 	return newMConnConnection(m.logger, tcpConn, m.mConnConfig, m.channelDescs), nil
@@ -170,26 +188,21 @@ func (m *MConnTransport) Close() error {
 	return err
 }
 
-// normalizeEndpoint normalizes and validates an endpoint. If setPort is true,
-// the port will be normalized to 26657 if it is 0 (port 0 is useful to listen
-// on random ports).
-func (m *MConnTransport) normalizeEndpoint(endpoint Endpoint, setPort bool) (Endpoint, error) {
+// validateEndpoint validates an endpoint.
+func (m *MConnTransport) validateEndpoint(endpoint Endpoint) error {
 	if err := endpoint.Validate(); err != nil {
-		return Endpoint{}, err
+		return err
 	}
 	if endpoint.Protocol != MConnProtocol && endpoint.Protocol != TCPProtocol {
-		return Endpoint{}, fmt.Errorf("unsupported protocol %q", endpoint.Protocol)
+		return fmt.Errorf("unsupported protocol %q", endpoint.Protocol)
 	}
 	if len(endpoint.IP) == 0 {
-		return Endpoint{}, errors.New("endpoint must have an IP address")
+		return errors.New("endpoint has no IP address")
 	}
 	if endpoint.Path != "" {
-		return Endpoint{}, fmt.Errorf("endpoint cannot have path (got %q)", endpoint.Path)
+		return fmt.Errorf("endpoints with path not supported (got %q)", endpoint.Path)
 	}
-	if endpoint.Port == 0 && setPort {
-		endpoint.Port = 26657
-	}
-	return endpoint, nil
+	return nil
 }
 
 // mConnConnection implements Connection for MConnTransport.
@@ -231,50 +244,63 @@ func newMConnConnection(
 }
 
 // Handshake implements Connection.
-//
-// FIXME: Since the MConnection code panics, we need to recover it and turn it
-// into an error. We should remove panics instead.
 func (c *mConnConnection) Handshake(
 	ctx context.Context,
 	nodeInfo NodeInfo,
 	privKey crypto.PrivKey,
-) (peerInfo NodeInfo, peerKey crypto.PubKey, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("recovered from panic: %v", r)
-		} else if e := ctx.Err(); e != nil {
-			err = e
-		}
+) (NodeInfo, crypto.PubKey, error) {
+	var (
+		mconn    *conn.MConnection
+		peerInfo NodeInfo
+		peerKey  crypto.PubKey
+		errCh    = make(chan error, 1)
+	)
+	// To handle context cancellation, we need to do the handshake in a
+	// goroutine and abort the blocking network calls by closing the connection
+	// when the context is cancelled.
+	go func() {
+		// FIXME: Since the MConnection code panics, we need to recover it and turn it
+		// into an error. We should remove panics instead.
+		defer func() {
+			if r := recover(); r != nil {
+				errCh <- fmt.Errorf("recovered from panic: %v", r)
+			}
+		}()
+		var err error
+		mconn, peerInfo, peerKey, err = c.handshake(ctx, nodeInfo, privKey)
+		errCh <- err
 	}()
 
-	peerInfo, peerKey, err = c.handshake(ctx, nodeInfo, privKey)
-	return
+	select {
+	case <-ctx.Done():
+		_ = c.Close()
+		return NodeInfo{}, nil, ctx.Err()
+
+	case err := <-errCh:
+		if err != nil {
+			return NodeInfo{}, nil, err
+		}
+		c.mconn = mconn
+		c.logger = mconn.Logger
+		return peerInfo, peerKey, nil
+	}
 }
 
 // handshake is a helper for Handshake, simplifying error handling so we can
-// keep panic recovery in Handshake. It sets c.mconn.
-//
-// FIXME: Move this into Handshake() when MConnection no longer panics.
+// keep context handling and panic recovery in Handshake. It returns the
+// handshaked MConnection and does not modify the mConnConnection.
 func (c *mConnConnection) handshake(
 	ctx context.Context,
 	nodeInfo NodeInfo,
 	privKey crypto.PrivKey,
-) (NodeInfo, crypto.PubKey, error) {
+) (*conn.MConnection, NodeInfo, crypto.PubKey, error) {
 	if c.mconn != nil {
-		return NodeInfo{}, nil, errors.New("connection is already handshaked")
-	}
-
-	deadline, ok := ctx.Deadline()
-	if !ok {
-		deadline = time.Time{}
-	}
-	if err := c.conn.SetDeadline(deadline); err != nil {
-		return NodeInfo{}, nil, err
+		return nil, NodeInfo{}, nil, errors.New("connection is already handshaked")
 	}
 
 	secretConn, err := conn.MakeSecretConnection(c.conn, privKey)
 	if err != nil {
-		return NodeInfo{}, nil, err
+		return nil, NodeInfo{}, nil, err
 	}
 
 	var pbPeerInfo p2pproto.NodeInfo
@@ -289,19 +315,13 @@ func (c *mConnConnection) handshake(
 	}()
 	for i := 0; i < cap(errCh); i++ {
 		if err = <-errCh; err != nil {
-			return NodeInfo{}, nil, err
+			return nil, NodeInfo{}, nil, err
 		}
 	}
 	peerInfo, err := NodeInfoFromProto(&pbPeerInfo)
 	if err != nil {
-		return NodeInfo{}, nil, err
+		return nil, NodeInfo{}, nil, err
 	}
-
-	if err = c.conn.SetDeadline(time.Time{}); err != nil {
-		return NodeInfo{}, nil, err
-	}
-
-	c.logger = c.logger.With("peer", c.RemoteEndpoint().PeerAddress(peerInfo.NodeID))
 
 	mconn := conn.NewMConnectionWithConfig(
 		secretConn,
@@ -310,13 +330,12 @@ func (c *mConnConnection) handshake(
 		c.onError,
 		c.mConnConfig,
 	)
-	mconn.SetLogger(c.logger)
+	mconn.SetLogger(c.logger.With("peer", c.RemoteEndpoint().PeerAddress(peerInfo.NodeID)))
 	if err = mconn.Start(); err != nil {
-		return NodeInfo{}, nil, err
+		return nil, NodeInfo{}, nil, err
 	}
-	c.mconn = mconn
 
-	return peerInfo, secretConn.RemotePubKey(), nil
+	return mconn, peerInfo, secretConn.RemotePubKey(), nil
 }
 
 // onReceive is a callback for MConnection received messages.
@@ -344,12 +363,8 @@ func (c *mConnConnection) onError(e interface{}) {
 }
 
 // String displays connection information.
-//
-// FIXME: This is here for backwards compatibility with existing logging,
-// it should probably just return RemoteEndpoint().String(), if anything.
 func (c *mConnConnection) String() string {
-	endpoint := c.RemoteEndpoint()
-	return fmt.Sprintf("MConn{%v:%v}", endpoint.IP, endpoint.Port)
+	return c.RemoteEndpoint().String()
 }
 
 // SendMessage implements Connection.
@@ -445,7 +460,7 @@ func (c *mConnConnection) FlushClose() error {
 	var err error
 	c.closeOnce.Do(func() {
 		if c.mconn != nil && c.mconn.IsRunning() {
-			err = c.mconn.Stop()
+			c.mconn.FlushStop()
 		} else {
 			err = c.conn.Close()
 		}

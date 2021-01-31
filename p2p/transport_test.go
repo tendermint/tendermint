@@ -44,7 +44,7 @@ func TestTransport_AcceptClose(t *testing.T) {
 	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 
-		// Accept should unblock on/after close.
+		// In-progress Accept should error on concurrent close.
 		errCh := make(chan error, 1)
 		go func() {
 			time.Sleep(200 * time.Millisecond)
@@ -56,9 +56,92 @@ func TestTransport_AcceptClose(t *testing.T) {
 		require.Equal(t, io.EOF, err)
 		require.NoError(t, <-errCh)
 
+		// Closed transport should return error immediately.
 		_, err = a.Accept(ctx)
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
+	})
+}
+
+func TestTransport_DialEndpoints(t *testing.T) {
+	ipTestCases := []struct {
+		ip net.IP
+		ok bool
+	}{
+		{net.IPv4zero, true},
+		{net.IPv6zero, true},
+
+		{nil, false},
+		{net.IPv4bcast, false},
+		{net.IPv4allsys, false},
+		{[]byte{1, 2, 3}, false},
+		{[]byte{1, 2, 3, 4, 5}, false},
+	}
+
+	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+		a := makeTransport(t)
+		endpoints := a.Endpoints()
+		require.NotEmpty(t, endpoints)
+		endpoint := endpoints[0]
+
+		// Spawn a goroutine to simply accept any connections until closed.
+		go func() {
+			for {
+				conn, err := a.Accept(ctx)
+				if err != nil {
+					return
+				}
+				_ = conn.Close()
+			}
+		}()
+
+		// Dialing self should work.
+		conn, err := a.Dial(ctx, endpoint)
+		require.NoError(t, err)
+		require.NoError(t, conn.Close())
+
+		// Dialing empty endpoint should error.
+		_, err = a.Dial(ctx, p2p.Endpoint{})
+		require.Error(t, err)
+
+		// Dialing without protocol should error.
+		noProtocol := endpoint
+		noProtocol.Protocol = ""
+		_, err = a.Dial(ctx, noProtocol)
+		require.Error(t, err)
+
+		// Tests for networked endpoints (with IP).
+		if len(endpoint.IP) > 0 {
+			for _, tc := range ipTestCases {
+				tc := tc
+				t.Run(tc.ip.String(), func(t *testing.T) {
+					e := endpoint
+					e.IP = tc.ip
+					conn, err := a.Dial(ctx, e)
+					if tc.ok {
+						require.NoError(t, conn.Close())
+						require.NoError(t, err)
+					} else {
+						require.Error(t, err)
+					}
+				})
+			}
+
+			// Non-networked endpoints should error.
+			noIP := endpoint
+			noIP.IP = nil
+			noIP.Port = 0
+			noIP.Path = "foo"
+			_, err := a.Dial(ctx, noIP)
+			require.Error(t, err)
+
+		} else {
+			// Tests for non-networked endpoints (no IP).
+			noPath := endpoint
+			noPath.Path = ""
+			_, err = a.Dial(ctx, noPath)
+			require.Error(t, err)
+		}
 	})
 }
 
@@ -68,25 +151,77 @@ func TestTransport_DialFailure(t *testing.T) {
 		a := makeTransport(t)
 		b := makeTransport(t)
 
-		endpoints := b.Endpoints()
-		require.NotEmpty(t, endpoints)
-		endpoint := endpoints[0]
+		require.NotEmpty(t, a.Endpoints())
+		require.NotEmpty(t, b.Endpoints())
+		aEndpoint := a.Endpoints()[0]
+		bEndpoint := b.Endpoints()[0]
 
-		// Context cancellation should error.
+		// Context cancellation should error. We can't test timeouts since we'd
+		// need a non-responsive endpoint.
 		cancelCtx, cancel := context.WithCancel(ctx)
 		cancel()
-		_, err := a.Dial(cancelCtx, endpoint)
+		_, err := a.Dial(cancelCtx, bEndpoint)
 		require.Error(t, err)
+		require.Equal(t, err, context.Canceled)
 
 		// Unavailable endpoint should error.
 		err = b.Close()
 		require.NoError(t, err)
-		_, err = a.Dial(ctx, endpoint)
+		_, err = a.Dial(ctx, bEndpoint)
+		require.Error(t, err)
+
+		// Dialing from a closed transport should error.
+		_, err = b.Dial(ctx, aEndpoint)
 		require.Error(t, err)
 	})
 }
 
-func TestTransport_Handshake(t *testing.T) {
+func TestTransport_Endpoints(t *testing.T) {
+	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+		a := makeTransport(t)
+		b := makeTransport(t)
+
+		// Both transports return valid and different endpoints.
+		aEndpoints := a.Endpoints()
+		bEndpoints := b.Endpoints()
+		require.NotEmpty(t, aEndpoints)
+		require.NotEmpty(t, bEndpoints)
+		require.NotEqual(t, aEndpoints, bEndpoints)
+		for _, endpoint := range append(aEndpoints, bEndpoints...) {
+			err := endpoint.Validate()
+			require.NoError(t, err, "invalid endpoint %q", endpoint)
+		}
+
+		// When closed, the transport should no longer return any endpoints.
+		err := a.Close()
+		require.NoError(t, err)
+		require.Empty(t, a.Endpoints())
+		require.NotEmpty(t, b.Endpoints())
+	})
+}
+
+func TestTransport_Protocols(t *testing.T) {
+	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+		a := makeTransport(t)
+		protocols := a.Protocols()
+		endpoints := a.Endpoints()
+		require.NotEmpty(t, protocols)
+		require.NotEmpty(t, endpoints)
+
+		for _, endpoint := range endpoints {
+			require.Contains(t, protocols, endpoint.Protocol)
+		}
+	})
+}
+
+func TestTransport_String(t *testing.T) {
+	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+		a := makeTransport(t)
+		require.NotEmpty(t, a.String())
+	})
+}
+
+func TestConnection_Handshake(t *testing.T) {
 	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
@@ -131,63 +266,73 @@ func TestTransport_Handshake(t *testing.T) {
 	})
 }
 
-func TestTransport_HandshakeCancel(t *testing.T) {
+func TestConnection_HandshakeCancel(t *testing.T) {
 	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
 
 		// Handshake should error on context cancellation.
-		// FIXME: This doesn't actually work, since we rely on socket deadlines.
-		/*ab, _ := dialAccept(t, a, b)
+		ab, ba := dialAccept(t, a, b)
 		timeoutCtx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 		cancel()
 		_, _, err := ab.Handshake(timeoutCtx, p2p.NodeInfo{}, ed25519.GenPrivKey())
 		require.Error(t, err)
 		require.Equal(t, context.Canceled, err)
-		_ = ab.Close()*/
+		_ = ab.Close()
+		_ = ba.Close()
 
 		// Handshake should error on context timeout.
-		ab, _ := dialAccept(t, a, b)
-		timeoutCtx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+		ab, ba = dialAccept(t, a, b)
+		timeoutCtx, cancel = context.WithTimeout(ctx, 200*time.Millisecond)
 		defer cancel()
-		_, _, err := ab.Handshake(timeoutCtx, p2p.NodeInfo{}, ed25519.GenPrivKey())
+		_, _, err = ab.Handshake(timeoutCtx, p2p.NodeInfo{}, ed25519.GenPrivKey())
 		require.Error(t, err)
 		require.Equal(t, context.DeadlineExceeded, err)
+		_ = ab.Close()
+		_ = ba.Close()
 	})
 }
 
-func TestTransport_Endpoints(t *testing.T) {
+func TestConnection_FlushClose(t *testing.T) {
 	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
+		ab, _ := dialAcceptHandshake(t, a, b)
 
-		// Both transports return valid and different endpoints.
-		aEndpoints := a.Endpoints()
-		bEndpoints := b.Endpoints()
-		require.NotEmpty(t, aEndpoints)
-		require.NotEmpty(t, bEndpoints)
-		require.NotEqual(t, aEndpoints, bEndpoints)
-		for _, endpoint := range append(aEndpoints, bEndpoints...) {
-			err := endpoint.Validate()
-			require.NoError(t, err, "invalid endpoint %q", endpoint)
-		}
+		// FIXME: FlushClose should be removed (and replaced by separate Flush
+		// and Close calls if necessary). We can't reliably test it, so we just
+		// make sure it closes both ends and that it's idempotent.
+		err := ab.FlushClose()
+		require.NoError(t, err)
+
+		_, _, err = ab.ReceiveMessage()
+		require.Error(t, err)
+		require.Equal(t, io.EOF, err)
+
+		_, err = ab.SendMessage(chID, []byte("closed"))
+		require.Error(t, err)
+		require.Equal(t, io.EOF, err)
+
+		err = ab.FlushClose()
+		require.NoError(t, err)
+	})
+}
+
+func TestConnection_LocalRemoteEndpoint(t *testing.T) {
+	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+		a := makeTransport(t)
+		b := makeTransport(t)
+		ab, ba := dialAcceptHandshake(t, a, b)
 
 		// Local and remote connection endpoints correspond to each other.
-		ab, ba := dialAcceptHandshake(t, a, b)
 		require.NotEmpty(t, ab.LocalEndpoint())
 		require.NotEmpty(t, ba.LocalEndpoint())
 		require.Equal(t, ab.LocalEndpoint(), ba.RemoteEndpoint())
 		require.Equal(t, ab.RemoteEndpoint(), ba.LocalEndpoint())
-
-		// When closed, the transport should no longer return any endpoints.
-		err := a.Close()
-		require.NoError(t, err)
-		require.Empty(t, a.Endpoints())
-		require.NotEmpty(t, b.Endpoints())
 	})
 }
 
-func TestTransport_SendReceive(t *testing.T) {
+func TestConnection_SendReceive(t *testing.T) {
 	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
@@ -210,6 +355,16 @@ func TestTransport_SendReceive(t *testing.T) {
 		_, msg, err = ab.ReceiveMessage()
 		require.NoError(t, err)
 		require.Equal(t, []byte("bar"), msg)
+
+		// TrySendMessage also works.
+		ok, err = ba.TrySendMessage(chID, []byte("try"))
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		ch, msg, err = ab.ReceiveMessage()
+		require.NoError(t, err)
+		require.Equal(t, []byte("try"), msg)
+		require.Equal(t, chID, ch)
 
 		// Connections should still be active after closing the transports.
 		err = a.Close()
@@ -242,6 +397,27 @@ func TestTransport_SendReceive(t *testing.T) {
 		_, err = ba.SendMessage(chID, []byte("closed"))
 		require.Error(t, err)
 		require.Equal(t, io.EOF, err)
+	})
+}
+
+func TestConnection_Status(t *testing.T) {
+	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+		a := makeTransport(t)
+		b := makeTransport(t)
+		ab, _ := dialAcceptHandshake(t, a, b)
+
+		// FIXME: This isn't implemented in all transports, so for now we just
+		// check that it doesn't panic, which isn't really much of a test.
+		ab.Status()
+	})
+}
+
+func TestConnection_String(t *testing.T) {
+	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
+		a := makeTransport(t)
+		b := makeTransport(t)
+		ab, _ := dialAccept(t, a, b)
+		require.NotEmpty(t, ab.String())
 	})
 }
 
@@ -361,6 +537,7 @@ func TestEndpoint_Validate(t *testing.T) {
 		// Invalid endpoints.
 		{p2p.Endpoint{}, false},
 		{p2p.Endpoint{IP: ip4}, false},
+		{p2p.Endpoint{Protocol: "tcp"}, false},
 		{p2p.Endpoint{Protocol: "tcp", IP: []byte{1, 2, 3}}, false},
 		{p2p.Endpoint{Protocol: "tcp", Port: 8080, Path: "path"}, false},
 	}
@@ -410,8 +587,8 @@ func dialAccept(t *testing.T, a, b p2p.Transport) (p2p.Connection, p2p.Connectio
 	return dialConn, acceptConn
 }
 
-// dialAcceptHandshake is a helper that dials and handshakes b from a and returns
-// both sides of the connection.
+// dialAcceptHandshake is a helper that dials and handshakes b from a and
+// returns both sides of the connection.
 func dialAcceptHandshake(t *testing.T, a, b p2p.Transport) (p2p.Connection, p2p.Connection) {
 	t.Helper()
 

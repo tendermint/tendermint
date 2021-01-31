@@ -171,6 +171,8 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 	select {
 	case peer.acceptCh <- inConn:
 		return outConn, nil
+	case <-t.closeCh:
+		return nil, io.EOF
 	case <-peer.closeCh:
 		return nil, io.EOF
 	case <-ctx.Done():
@@ -228,6 +230,11 @@ func newMemoryConnection(
 	}
 }
 
+// String implements Connection.
+func (c *MemoryConnection) String() string {
+	return c.RemoteEndpoint().String()
+}
+
 // LocalEndpoint implements Connection.
 func (c *MemoryConnection) LocalEndpoint() Endpoint {
 	return Endpoint{
@@ -280,7 +287,8 @@ func (c *MemoryConnection) Handshake(
 
 // ReceiveMessage implements Connection.
 func (c *MemoryConnection) ReceiveMessage() (ChannelID, []byte, error) {
-	// Check close first, since channels are buffered.
+	// Check close first, since channels are buffered. Otherwise, below select
+	// may non-deterministically return non-error even when closed.
 	select {
 	case <-c.closer.Done():
 		return 0, nil, io.EOF
@@ -298,7 +306,8 @@ func (c *MemoryConnection) ReceiveMessage() (ChannelID, []byte, error) {
 
 // SendMessage implements Connection.
 func (c *MemoryConnection) SendMessage(chID ChannelID, msg []byte) (bool, error) {
-	// Check close first, since channels are buffered.
+	// Check close first, since channels are buffered. Otherwise, below select
+	// may non-deterministically return non-error even when closed.
 	select {
 	case <-c.closer.Done():
 		return false, io.EOF
@@ -316,7 +325,8 @@ func (c *MemoryConnection) SendMessage(chID ChannelID, msg []byte) (bool, error)
 
 // TrySendMessage implements Connection.
 func (c *MemoryConnection) TrySendMessage(chID ChannelID, msg []byte) (bool, error) {
-	// Check close first, since channels are buffered.
+	// Check close first, since channels are buffered. Otherwise, below select
+	// may non-deterministically return non-error even when closed.
 	select {
 	case <-c.closer.Done():
 		return false, io.EOF

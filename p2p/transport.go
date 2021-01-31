@@ -114,6 +114,13 @@ type Connection interface {
 	// Status returns the current connection status.
 	// FIXME: Only here for compatibility with the current Peer code.
 	Status() conn.ConnectionStatus
+
+	// Stringer is used to display the connection, e.g. in logs.
+	//
+	// Without this, the logger may use reflection to access and display
+	// internal fields. These can be written to concurrently, which can trigger
+	// the race detector or even cause a panic.
+	fmt.Stringer
 }
 
 // Endpoint represents a transport connection endpoint, either local or remote.
