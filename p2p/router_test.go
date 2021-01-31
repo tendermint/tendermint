@@ -56,7 +56,7 @@ func TestRouter(t *testing.T) {
 
 	// Start some other in-memory network nodes to communicate with, running
 	// a simple echo reactor that returns received messages.
-	peers := []p2p.PeerAddress{}
+	peers := []p2p.NodeAddress{}
 	for i := 0; i < 3; i++ {
 		peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
 		require.NoError(t, err)

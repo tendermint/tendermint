@@ -14,12 +14,16 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 )
 
-// NodeIDByteLength is the length of a crypto.Address. Currently only 20.
-// FIXME: support other length addresses?
-const NodeIDByteLength = crypto.AddressSize
+const (
+	// NodeIDByteLength is the length of a crypto.Address. Currently only 20.
+	// FIXME: support other length addresses?
+	NodeIDByteLength = crypto.AddressSize
+)
 
-// reNodeID is a regexp for valid node IDs.
-var reNodeID = regexp.MustCompile(`^[0-9a-f]{40}$`)
+var (
+	// reNodeID is a regexp for valid node IDs.
+	reNodeID = regexp.MustCompile(`^[0-9a-f]{40}$`)
+)
 
 // NodeID is a hex-encoded crypto.Address. It must be lowercased
 // (for uniqueness) and of length 2*NodeIDByteLength.
@@ -63,14 +67,13 @@ func (id NodeID) Validate() error {
 	}
 }
 
-// PeerAddress is a peer address URL. It differs from Endpoint in that the
-// address hostname may be expanded into multiple IP addresses (thus multiple
-// endpoints), and that it knows the node's ID.
+// NodeAddress is a node address URL. It differs from a transport Endpoint in
+// that it contains the node's ID and the address hostname may be expanded into
+// multiple IP addresses (thus multiple endpoints).
 //
-// If the URL is opaque, i.e. of the form "scheme:<opaque>", then the opaque
-// part has to contain either the node ID or a node ID and path in the form
-// "scheme:<nodeid>@<path>".
-type PeerAddress struct {
+// If the URL is opaque, i.e. of the form "scheme:opaque", then the opaque part
+// is assumed to be the node ID and used both for NodeID and Path.
+type NodeAddress struct {
 	NodeID   NodeID
 	Protocol Protocol
 	Hostname string
@@ -78,15 +81,15 @@ type PeerAddress struct {
 	Path     string
 }
 
-// ParsePeerAddress parses a peer address URL into a PeerAddress,
-// normalizing and validating it.
-func ParsePeerAddress(urlString string) (PeerAddress, error) {
+// ParseNodeAddress parses a node address URL into a NodeAddress, normalizing
+// and validating it.
+func ParseNodeAddress(urlString string) (NodeAddress, error) {
 	url, err := url.Parse(urlString)
 	if err != nil || url == nil {
-		return PeerAddress{}, fmt.Errorf("invalid peer address %q: %w", urlString, err)
+		return NodeAddress{}, fmt.Errorf("invalid node address %q: %w", urlString, err)
 	}
 
-	address := PeerAddress{}
+	address := NodeAddress{}
 
 	// If the URL is opaque, i.e. in the form "scheme:<opaque>", we specify the
 	// opaque bit to be either a node ID or a node ID and path in the form
@@ -94,11 +97,11 @@ func ParsePeerAddress(urlString string) (PeerAddress, error) {
 	if url.Opaque != "" {
 		parts := strings.Split(url.Opaque, "@")
 		if len(parts) > 2 {
-			return PeerAddress{}, fmt.Errorf("invalid address format %q, unexpected @", urlString)
+			return NodeAddress{}, fmt.Errorf("invalid address format %q, unexpected @", urlString)
 		}
 		address.NodeID, err = NewNodeID(parts[0])
 		if err != nil {
-			return PeerAddress{}, fmt.Errorf("invalid peer ID %q: %w", parts[0], err)
+			return NodeAddress{}, fmt.Errorf("invalid node ID %q: %w", parts[0], err)
 		}
 		if len(parts) == 2 {
 			address.Path = parts[1]
@@ -109,7 +112,7 @@ func ParsePeerAddress(urlString string) (PeerAddress, error) {
 	// Otherwise, just parse a normal networked URL.
 	address.NodeID, err = NewNodeID(url.User.Username())
 	if err != nil {
-		return PeerAddress{}, fmt.Errorf("invalid peer ID %q: %w", url.User.Username(), err)
+		return NodeAddress{}, fmt.Errorf("invalid node ID %q: %w", url.User.Username(), err)
 	}
 
 	if url.Scheme != "" {
@@ -123,7 +126,7 @@ func ParsePeerAddress(urlString string) (PeerAddress, error) {
 	if portString := url.Port(); portString != "" {
 		port64, err := strconv.ParseUint(portString, 10, 16)
 		if err != nil {
-			return PeerAddress{}, fmt.Errorf("invalid port %q: %w", portString, err)
+			return NodeAddress{}, fmt.Errorf("invalid port %q: %w", portString, err)
 		}
 		address.Port = uint16(port64)
 	}
@@ -146,9 +149,9 @@ func ParsePeerAddress(urlString string) (PeerAddress, error) {
 	return address, address.Validate()
 }
 
-// Resolve resolves a PeerAddress into a set of Endpoints, by expanding
+// Resolve resolves a NodeAddress into a set of Endpoints, by expanding
 // out a DNS hostname to IP addresses.
-func (a PeerAddress) Resolve(ctx context.Context) ([]Endpoint, error) {
+func (a NodeAddress) Resolve(ctx context.Context) ([]Endpoint, error) {
 	// If there is no hostname, this is an opaque URL in the form
 	// "scheme:<opaque>".
 	if a.Hostname == "" {
@@ -174,8 +177,8 @@ func (a PeerAddress) Resolve(ctx context.Context) ([]Endpoint, error) {
 	return endpoints, nil
 }
 
-// Validates validates a PeerAddress.
-func (a PeerAddress) Validate() error {
+// Validates validates a NodeAddress.
+func (a NodeAddress) Validate() error {
 	if a.Protocol == "" {
 		return errors.New("no protocol")
 	}
@@ -191,7 +194,7 @@ func (a PeerAddress) Validate() error {
 }
 
 // String formats the address as a URL string.
-func (a PeerAddress) String() string {
+func (a NodeAddress) String() string {
 	u := url.URL{Scheme: string(a.Protocol)}
 	if a.NodeID != "" {
 		u.User = url.User(string(a.NodeID))

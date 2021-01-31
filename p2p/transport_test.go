@@ -444,32 +444,32 @@ func TestEndpoint_PeerAddress(t *testing.T) {
 
 	testcases := []struct {
 		endpoint p2p.Endpoint
-		expect   p2p.PeerAddress
+		expect   p2p.NodeAddress
 	}{
 		// Valid endpoints.
 		{
 			p2p.Endpoint{Protocol: "tcp", IP: ip4, Port: 8080, Path: "path"},
-			p2p.PeerAddress{Protocol: "tcp", Hostname: "1.2.3.4", Port: 8080, Path: "path"},
+			p2p.NodeAddress{Protocol: "tcp", Hostname: "1.2.3.4", Port: 8080, Path: "path"},
 		},
 		{
 			p2p.Endpoint{Protocol: "tcp", IP: ip4in6, Port: 8080, Path: "path"},
-			p2p.PeerAddress{Protocol: "tcp", Hostname: "1.2.3.4", Port: 8080, Path: "path"},
+			p2p.NodeAddress{Protocol: "tcp", Hostname: "1.2.3.4", Port: 8080, Path: "path"},
 		},
 		{
 			p2p.Endpoint{Protocol: "tcp", IP: ip6, Port: 8080, Path: "path"},
-			p2p.PeerAddress{Protocol: "tcp", Hostname: "b10c::1", Port: 8080, Path: "path"},
+			p2p.NodeAddress{Protocol: "tcp", Hostname: "b10c::1", Port: 8080, Path: "path"},
 		},
 		{
 			p2p.Endpoint{Protocol: "memory", Path: "foo"},
-			p2p.PeerAddress{Protocol: "memory", Path: "foo"},
+			p2p.NodeAddress{Protocol: "memory", Path: "foo"},
 		},
 
 		// Partial (invalid) endpoints.
-		{p2p.Endpoint{}, p2p.PeerAddress{}},
-		{p2p.Endpoint{Protocol: "tcp"}, p2p.PeerAddress{Protocol: "tcp"}},
-		{p2p.Endpoint{IP: net.IPv4(1, 2, 3, 4)}, p2p.PeerAddress{Hostname: "1.2.3.4"}},
-		{p2p.Endpoint{Port: 8080}, p2p.PeerAddress{}},
-		{p2p.Endpoint{Path: "path"}, p2p.PeerAddress{Path: "path"}},
+		{p2p.Endpoint{}, p2p.NodeAddress{}},
+		{p2p.Endpoint{Protocol: "tcp"}, p2p.NodeAddress{Protocol: "tcp"}},
+		{p2p.Endpoint{IP: net.IPv4(1, 2, 3, 4)}, p2p.NodeAddress{Hostname: "1.2.3.4"}},
+		{p2p.Endpoint{Port: 8080}, p2p.NodeAddress{}},
+		{p2p.Endpoint{Path: "path"}, p2p.NodeAddress{Path: "path"}},
 	}
 	for _, tc := range testcases {
 		tc := tc

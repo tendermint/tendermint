@@ -316,7 +316,7 @@ func (m *PeerManager) Close() {
 
 // Add adds a peer to the manager, given as an address. If the peer already
 // exists, the address is added to it.
-func (m *PeerManager) Add(address PeerAddress) error {
+func (m *PeerManager) Add(address NodeAddress) error {
 	if err := address.Validate(); err != nil {
 		return err
 	}
@@ -344,11 +344,11 @@ func (m *PeerManager) Add(address PeerAddress) error {
 //
 // FIXME: This is fairly naïve and only returns the addresses of the
 // highest-ranked peers.
-func (m *PeerManager) Advertise(peerID NodeID, limit uint16) []PeerAddress {
+func (m *PeerManager) Advertise(peerID NodeID, limit uint16) []NodeAddress {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	addresses := make([]PeerAddress, 0, limit)
+	addresses := make([]NodeAddress, 0, limit)
 	for _, peer := range m.store.Ranked() {
 		if peer.ID == peerID {
 			continue
@@ -425,7 +425,7 @@ func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
 // If no peer is found, or all connection slots are full, it blocks until one
 // becomes available. The caller must call Dialed() or DialFailed() for the
 // returned peer. The context can be used to cancel the call.
-func (m *PeerManager) DialNext(ctx context.Context) (NodeID, PeerAddress, error) {
+func (m *PeerManager) DialNext(ctx context.Context) (NodeID, NodeAddress, error) {
 	for {
 		id, address, err := m.TryDialNext()
 		if err != nil || id != "" {
@@ -434,14 +434,14 @@ func (m *PeerManager) DialNext(ctx context.Context) (NodeID, PeerAddress, error)
 		select {
 		case <-m.wakeDialCh:
 		case <-ctx.Done():
-			return "", PeerAddress{}, ctx.Err()
+			return "", NodeAddress{}, ctx.Err()
 		}
 	}
 }
 
 // TryDialNext is equivalent to DialNext(), but immediately returns an empty
 // peer ID if no peers or connection slots are available.
-func (m *PeerManager) TryDialNext() (NodeID, PeerAddress, error) {
+func (m *PeerManager) TryDialNext() (NodeID, NodeAddress, error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -450,7 +450,7 @@ func (m *PeerManager) TryDialNext() (NodeID, PeerAddress, error) {
 	// higher score than any other peers, and if successful evict it.
 	if m.options.MaxConnected > 0 &&
 		len(m.connected)+len(m.dialing) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
-		return "", PeerAddress{}, nil
+		return "", NodeAddress{}, nil
 	}
 
 	for _, peer := range m.store.Ranked() {
@@ -473,7 +473,7 @@ func (m *PeerManager) TryDialNext() (NodeID, PeerAddress, error) {
 			if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
 				upgradeFromPeer := m.findUpgradeCandidate(peer.ID, peer.Score())
 				if upgradeFromPeer == "" {
-					return "", PeerAddress{}, nil
+					return "", NodeAddress{}, nil
 				}
 				m.upgrading[upgradeFromPeer] = peer.ID
 			}
@@ -482,7 +482,7 @@ func (m *PeerManager) TryDialNext() (NodeID, PeerAddress, error) {
 			return peer.ID, addressInfo.Address, nil
 		}
 	}
-	return "", PeerAddress{}, nil
+	return "", NodeAddress{}, nil
 }
 
 // wakeDial is used to notify DialNext about changes that *may* cause new
@@ -536,7 +536,7 @@ func (m *PeerManager) retryDelay(failures uint32, persistent bool) time.Duration
 // for dialing again when appropriate.
 //
 // FIXME: This should probably delete or mark bad addresses/peers after some time.
-func (m *PeerManager) DialFailed(peerID NodeID, address PeerAddress) error {
+func (m *PeerManager) DialFailed(peerID NodeID, address NodeAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -585,7 +585,7 @@ func (m *PeerManager) DialFailed(peerID NodeID, address PeerAddress) error {
 
 // Dialed marks a peer as successfully dialed. Any further incoming connections
 // will be rejected, and once disconnected the peer may be dialed again.
-func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
+func (m *PeerManager) Dialed(peerID NodeID, address NodeAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -1076,7 +1076,7 @@ func (p *peerInfo) Validate() error {
 
 // peerAddressInfo contains information and statistics about a peer address.
 type peerAddressInfo struct {
-	Address         PeerAddress
+	Address         NodeAddress
 	LastDialSuccess time.Time
 	LastDialFailure time.Time
 	DialFailures    uint32 // since last successful dial
@@ -1085,7 +1085,7 @@ type peerAddressInfo struct {
 // peerAddressInfoFromProto converts a Protobuf PeerAddressInfo message
 // to a peerAddressInfo.
 func peerAddressInfoFromProto(msg *p2pproto.PeerAddressInfo) (*peerAddressInfo, error) {
-	address, err := ParsePeerAddress(msg.Address)
+	address, err := ParseNodeAddress(msg.Address)
 	if err != nil {
 		return nil, fmt.Errorf("invalid address %q: %w", address, err)
 	}

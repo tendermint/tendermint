@@ -421,7 +421,7 @@ func (r *Router) dialPeers() {
 }
 
 // dialPeer connects to a peer by dialing it.
-func (r *Router) dialPeer(ctx context.Context, address PeerAddress) (Connection, error) {
+func (r *Router) dialPeer(ctx context.Context, address NodeAddress) (Connection, error) {
 	r.logger.Info("resolving peer address", "address", address)
 	resolveCtx := ctx
 	if r.options.ResolveTimeout > 0 {

@@ -144,8 +144,8 @@ type Endpoint struct {
 }
 
 // PeerAddress converts the endpoint into a PeerAddress for the given node ID.
-func (e Endpoint) PeerAddress(nodeID NodeID) PeerAddress {
-	address := PeerAddress{
+func (e Endpoint) PeerAddress(nodeID NodeID) NodeAddress {
+	address := NodeAddress{
 		NodeID:   nodeID,
 		Protocol: e.Protocol,
 		Path:     e.Path,
