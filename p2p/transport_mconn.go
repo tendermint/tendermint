@@ -118,7 +118,7 @@ func (m *MConnTransport) Listen(endpoint Endpoint) error {
 		return err
 	}
 	if m.options.MaxAcceptedConnections > 0 {
-		listener = netutil.LimitListener(m.listener, int(m.options.MaxAcceptedConnections))
+		listener = netutil.LimitListener(listener, int(m.options.MaxAcceptedConnections))
 	}
 	m.listener = listener
 
