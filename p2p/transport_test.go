@@ -250,19 +250,23 @@ func TestConnection_Handshake(t *testing.T) {
 		bKey := ed25519.GenPrivKey()
 		bInfo := p2p.NodeInfo{NodeID: p2p.NodeIDFromPubKey(bKey.PubKey())}
 
+		errCh := make(chan error, 1)
 		go func() {
 			// Must use assert due to goroutine.
 			peerInfo, peerKey, err := ba.Handshake(ctx, bInfo, bKey)
-			if assert.NoError(t, err) {
+			if err == nil {
 				assert.Equal(t, aInfo, peerInfo)
 				assert.Equal(t, aKey.PubKey(), peerKey)
 			}
+			errCh <- err
 		}()
 
 		peerInfo, peerKey, err := ab.Handshake(ctx, aInfo, aKey)
 		require.NoError(t, err)
 		require.Equal(t, bInfo, peerInfo)
 		require.Equal(t, bKey.PubKey(), peerKey)
+
+		require.NoError(t, <-errCh)
 	})
 }
 
