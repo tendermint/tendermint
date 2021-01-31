@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"regexp"
 	"strings"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -17,22 +18,26 @@ import (
 // FIXME: support other length addresses?
 const NodeIDByteLength = crypto.AddressSize
 
-// NodeID is a hex-encoded crypto.Address.
+// reNodeID is a regexp for valid node IDs.
+var reNodeID = regexp.MustCompile(`^[0-9a-f]{40}$`)
+
+// NodeID is a hex-encoded crypto.Address. It must be lowercased
+// (for uniqueness) and of length 2*NodeIDByteLength.
 type NodeID string
 
-// NewNodeID returns a lowercased (normalized) NodeID.
+// NewNodeID returns a lowercased (normalized) NodeID, or errors if the
+// node ID is invalid.
 func NewNodeID(nodeID string) (NodeID, error) {
 	n := NodeID(strings.ToLower(nodeID))
 	return n, n.Validate()
 }
 
-// NodeIDFromPubKey returns the noe ID corresponding to the given PubKey. It's
-// the hex-encoding of the pubKey.Address().
+// NodeIDFromPubKey creates a node ID from a given PubKey address.
 func NodeIDFromPubKey(pubKey crypto.PubKey) NodeID {
 	return NodeID(hex.EncodeToString(pubKey.Address()))
 }
 
-// Bytes converts the node ID to it's binary byte representation.
+// Bytes converts the node ID to its binary byte representation.
 func (id NodeID) Bytes() ([]byte, error) {
 	bz, err := hex.DecodeString(string(id))
 	if err != nil {
@@ -43,25 +48,19 @@ func (id NodeID) Bytes() ([]byte, error) {
 
 // Validate validates the NodeID.
 func (id NodeID) Validate() error {
-	if len(id) == 0 {
+	switch {
+	case len(id) == 0:
 		return errors.New("empty node ID")
-	}
 
-	bz, err := id.Bytes()
-	if err != nil {
-		return err
-	}
+	case len(id) != 2*NodeIDByteLength:
+		return fmt.Errorf("invalid node ID length %d, expected %d", len(id), 2*NodeIDByteLength)
 
-	if len(bz) != NodeIDByteLength {
-		return fmt.Errorf("invalid node ID length; got %d, expected %d", len(bz), NodeIDByteLength)
-	}
+	case !reNodeID.MatchString(string(id)):
+		return fmt.Errorf("node ID can only contain lowercased hex digits")
 
-	idStr := string(id)
-	if strings.ToLower(idStr) != idStr {
-		return fmt.Errorf("invalid node ID; must be lowercased")
+	default:
+		return nil
 	}
-
-	return nil
 }
 
 //------------------------------------------------------------------------------
