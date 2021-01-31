@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"net"
-	"sync"
 	"testing"
 	"time"
 
@@ -251,10 +250,7 @@ func TestConnection_Handshake(t *testing.T) {
 		bKey := ed25519.GenPrivKey()
 		bInfo := p2p.NodeInfo{NodeID: p2p.NodeIDFromPubKey(bKey.PubKey())}
 
-		var wg sync.WaitGroup
-		wg.Add(1)
 		go func() {
-			defer wg.Done()
 			// Must use assert due to goroutine.
 			peerInfo, peerKey, err := ba.Handshake(ctx, bInfo, bKey)
 			if assert.NoError(t, err) {
@@ -267,8 +263,6 @@ func TestConnection_Handshake(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, bInfo, peerInfo)
 		require.Equal(t, bKey.PubKey(), peerKey)
-
-		wg.Wait()
 	})
 }
 
