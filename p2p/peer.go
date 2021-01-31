@@ -1163,6 +1163,13 @@ func keyPeerInfoRange() ([]byte, []byte) {
 	return start, end
 }
 
+// ============================================================================
+// Types and business logic below may be deprecated.
+//
+// TODO: Rename once legacy p2p types are removed.
+// ref: https://github.com/tendermint/tendermint/issues/5670
+// ============================================================================
+
 //go:generate mockery --case underscore --name Peer
 
 const metricsTickerDuration = 10 * time.Second
