@@ -143,8 +143,8 @@ type Endpoint struct {
 	Path string
 }
 
-// PeerAddress converts the endpoint into a PeerAddress for the given node ID.
-func (e Endpoint) PeerAddress(nodeID NodeID) NodeAddress {
+// NodeAddress converts the endpoint into a NodeAddress for the given node ID.
+func (e Endpoint) NodeAddress(nodeID NodeID) NodeAddress {
 	address := NodeAddress{
 		NodeID:   nodeID,
 		Protocol: e.Protocol,
@@ -159,7 +159,7 @@ func (e Endpoint) PeerAddress(nodeID NodeID) NodeAddress {
 
 // String formats the endpoint as a URL string.
 func (e Endpoint) String() string {
-	return e.PeerAddress("").String()
+	return e.NodeAddress("").String()
 }
 
 // Validate validates the endpoint.

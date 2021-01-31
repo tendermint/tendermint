@@ -330,7 +330,7 @@ func (c *mConnConnection) handshake(
 		c.onError,
 		c.mConnConfig,
 	)
-	mconn.SetLogger(c.logger.With("peer", c.RemoteEndpoint().PeerAddress(peerInfo.NodeID)))
+	mconn.SetLogger(c.logger.With("peer", c.RemoteEndpoint().NodeAddress(peerInfo.NodeID)))
 
 	return mconn, peerInfo, secretConn.RemotePubKey(), nil
 }

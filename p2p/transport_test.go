@@ -476,11 +476,11 @@ func TestEndpoint_PeerAddress(t *testing.T) {
 		t.Run(tc.endpoint.String(), func(t *testing.T) {
 			// Without NodeID.
 			expect := tc.expect
-			require.Equal(t, expect, tc.endpoint.PeerAddress(""))
+			require.Equal(t, expect, tc.endpoint.NodeAddress(""))
 
 			// With NodeID.
 			expect.NodeID = p2p.NodeID("b10c")
-			require.Equal(t, expect, tc.endpoint.PeerAddress(expect.NodeID))
+			require.Equal(t, expect, tc.endpoint.NodeAddress(expect.NodeID))
 		})
 	}
 }
