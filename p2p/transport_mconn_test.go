@@ -14,8 +14,8 @@ import (
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
-// Most tests are done via the test suite in transport_test.go, we register a
-// transport factory here to get tested by the suite.
+// Transports are mainly tested by common tests in transport_test.go, we
+// register a transport factory here to get included in those tests.
 func init() {
 	testTransports["mconn"] = func(t *testing.T) p2p.Transport {
 		transport := p2p.NewMConnTransport(

@@ -78,6 +78,11 @@ func (n *MemoryNetwork) RemoveTransport(id NodeID) {
 	}
 }
 
+// Size returns the number of transports in the network.
+func (n *MemoryNetwork) Size() int {
+	return len(n.transports)
+}
+
 // MemoryTransport is an in-memory transport that uses buffered Go channels to
 // communicate between endpoints. It is primarily meant for testing.
 //
