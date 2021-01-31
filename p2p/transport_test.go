@@ -150,8 +150,8 @@ func TestTransport_DialEndpoints(t *testing.T) {
 	})
 }
 
-func TestTransport_DialFailure(t *testing.T) {
-	// Just test dial failures, happy path is tested widely elsewhere.
+func TestTransport_Dial(t *testing.T) {
+	// Most just tests dial failures, happy path is tested widely elsewhere.
 	withTransports(t, func(t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
@@ -175,9 +175,19 @@ func TestTransport_DialFailure(t *testing.T) {
 		_, err = a.Dial(ctx, bEndpoint)
 		require.Error(t, err)
 
-		// Dialing from a closed transport should error.
-		_, err = b.Dial(ctx, aEndpoint)
-		require.Error(t, err)
+		// Dialing from a closed transport should still work.
+		errCh := make(chan error, 1)
+		go func() {
+			conn, err := a.Accept()
+			if err == nil {
+				_ = conn.Close()
+			}
+			errCh <- err
+		}()
+		conn, err := b.Dial(ctx, aEndpoint)
+		require.NoError(t, err)
+		require.NoError(t, conn.Close())
+		require.NoError(t, <-errCh)
 	})
 }
 

@@ -174,8 +174,6 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 	select {
 	case peer.acceptCh <- inConn:
 		return outConn, nil
-	case <-t.closeCh:
-		return nil, io.EOF
 	case <-peer.closeCh:
 		return nil, io.EOF
 	case <-ctx.Done():

@@ -151,12 +151,6 @@ func (m *MConnTransport) Accept() (Connection, error) {
 
 // Dial implements Transport.
 func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connection, error) {
-	select {
-	case <-m.closeCh:
-		return nil, errors.New("transport is closed")
-	default:
-	}
-
 	if err := m.validateEndpoint(endpoint); err != nil {
 		return nil, err
 	}
