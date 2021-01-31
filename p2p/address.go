@@ -115,7 +115,7 @@ func ParseNodeAddress(urlString string) (NodeAddress, error) {
 
 	// Otherwise, just parse a normal networked URL.
 	if url.User != nil {
-		address.NodeID = NodeID(url.User.Username())
+		address.NodeID = NodeID(strings.ToLower(url.User.Username()))
 	}
 
 	address.Hostname = strings.ToLower(url.Hostname())
