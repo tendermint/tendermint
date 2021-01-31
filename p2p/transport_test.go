@@ -580,8 +580,8 @@ func dialAccept(t *testing.T, a, b p2p.Transport) (p2p.Connection, p2p.Connectio
 	require.NoError(t, <-errCh)
 
 	t.Cleanup(func() {
-		require.NoError(t, dialConn.Close())
-		require.NoError(t, acceptConn.Close())
+		_ = dialConn.Close()
+		_ = acceptConn.Close()
 	})
 
 	return dialConn, acceptConn
