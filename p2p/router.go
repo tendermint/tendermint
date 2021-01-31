@@ -293,10 +293,10 @@ func (r *Router) acceptPeers(transport Transport) {
 		// FIXME: The old P2P stack supported ABCI-based IP address filtering via
 		// /p2p/filter/addr/<ip> queries, do we want to implement this here as well?
 		// Filtering by node ID is probably better.
-		conn, err := transport.Accept(ctx)
+		conn, err := transport.Accept()
 		switch err {
 		case nil:
-		case ErrTransportClosed{}, io.EOF, context.Canceled:
+		case io.EOF:
 			r.logger.Debug("stopping accept routine", "transport", transport)
 			return
 		default:

@@ -31,11 +31,10 @@ type Transport interface {
 	// MemoryTransport starts listening via MemoryNetwork.CreateTransport().
 	Endpoints() []Endpoint
 
-	// Accept waits for the next inbound connection on a listening endpoint. Returns
-	// io.EOF if the transport is closed.
-	//
-	// FIXME: This can't take a context, since net.Listener doesn't.
-	Accept(context.Context) (Connection, error)
+	// Accept waits for the next inbound connection on a listening endpoint, blocking
+	// until either a connection is available or the transport is closed. On closure,
+	// io.EOF is returned and further Accept calls are futile.
+	Accept() (Connection, error)
 
 	// Dial creates an outbound connection to an endpoint.
 	Dial(context.Context, Endpoint) (Connection, error)

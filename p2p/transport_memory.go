@@ -130,15 +130,13 @@ func (t *MemoryTransport) Endpoints() []Endpoint {
 }
 
 // Accept implements Transport.
-func (t *MemoryTransport) Accept(ctx context.Context) (Connection, error) {
+func (t *MemoryTransport) Accept() (Connection, error) {
 	select {
 	case conn := <-t.acceptCh:
 		t.logger.Info("accepted connection", "remote", conn.RemoteEndpoint().Path)
 		return conn, nil
 	case <-t.closeCh:
 		return nil, io.EOF
-	case <-ctx.Done():
-		return nil, ctx.Err()
 	}
 }
 

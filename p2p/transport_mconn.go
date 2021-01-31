@@ -126,7 +126,7 @@ func (m *MConnTransport) Listen(endpoint Endpoint) error {
 }
 
 // Accept implements Transport.
-func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
+func (m *MConnTransport) Accept() (Connection, error) {
 	if m.listener == nil {
 		return nil, errors.New("transport is not listening")
 	}
@@ -136,8 +136,6 @@ func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 		select {
 		case <-m.closeCh:
 			return nil, io.EOF
-		case <-ctx.Done():
-			return nil, ctx.Err()
 		default:
 			return nil, err
 		}

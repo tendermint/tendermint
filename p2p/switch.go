@@ -669,8 +669,7 @@ func (sw *Switch) IsPeerPersistent(na *NetAddress) bool {
 func (sw *Switch) acceptRoutine() {
 	for {
 		var peerNodeInfo NodeInfo
-		ctx := context.Background()
-		c, err := sw.transport.Accept(ctx)
+		c, err := sw.transport.Accept()
 		if err == nil {
 			// NOTE: The legacy MConn transport did handshaking in Accept(),
 			// which was asynchronous and avoided head-of-line-blocking.
