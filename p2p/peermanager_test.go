@@ -1,10 +1,13 @@
 package p2p_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	dbm "github.com/tendermint/tm-db"
+
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -93,4 +96,80 @@ func TestPeerManagerOptions_Validate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewPeerManager(t *testing.T) {
+
+	// Invalid options should error.
+	_, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{
+		PersistentPeers: []p2p.NodeID{"foo"},
+	})
+	require.Error(t, err)
+
+	// Invalid database should error.
+	_, err = p2p.NewPeerManager(nil, p2p.PeerManagerOptions{})
+	require.Error(t, err)
+
+	// Zero options should be valid.
+	_, err = p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+}
+
+func TestNewPeerManager_Persistence(t *testing.T) {
+	aID := p2p.NodeID(strings.Repeat("a", 40))
+	aAddresses := []p2p.NodeAddress{
+		mustParseNodeAddress("tcp://" + string(aID) + "@127.0.0.1:26657/path"),
+		mustParseNodeAddress("memory:" + string(aID)),
+	}
+
+	bID := p2p.NodeID(strings.Repeat("b", 40))
+	bAddresses := []p2p.NodeAddress{
+		mustParseNodeAddress("tcp://" + string(bID) + "@[b10c::1]:26657/path"),
+		mustParseNodeAddress("memory:" + string(bID)),
+	}
+
+	// Create an initial peer manager and add the peers.
+	db := dbm.NewMemDB()
+	peerManager, err := p2p.NewPeerManager(db, p2p.PeerManagerOptions{
+		PersistentPeers: []p2p.NodeID{aID},
+	})
+	require.NoError(t, err)
+	defer peerManager.Close()
+
+	for _, addr := range append(aAddresses, bAddresses...) {
+		require.NoError(t, peerManager.Add(addr))
+	}
+
+	require.ElementsMatch(t, aAddresses, peerManager.Addresses(aID))
+	require.ElementsMatch(t, bAddresses, peerManager.Addresses(bID))
+	require.Equal(t, map[p2p.NodeID]p2p.PeerScore{
+		aID: p2p.PeerScorePersistent,
+		bID: 0,
+	}, peerManager.Scores())
+
+	peerManager.Close()
+
+	// Creating a new peer manager with the same database should retain the
+	// peers, but they should have updated scores from the new PersistentPeers
+	// configuration.
+	peerManager, err = p2p.NewPeerManager(db, p2p.PeerManagerOptions{
+		PersistentPeers: []p2p.NodeID{bID},
+	})
+	require.NoError(t, err)
+	defer peerManager.Close()
+
+	require.ElementsMatch(t, aAddresses, peerManager.Addresses(aID))
+	require.ElementsMatch(t, bAddresses, peerManager.Addresses(bID))
+	require.Equal(t, map[p2p.NodeID]p2p.PeerScore{
+		aID: 0,
+		bID: p2p.PeerScorePersistent,
+	}, peerManager.Scores())
+}
+
+func mustParseNodeAddress(url string) p2p.NodeAddress {
+	address, err := p2p.ParseNodeAddress(url)
+	if err != nil {
+		panic(err)
+	}
+	return address
 }

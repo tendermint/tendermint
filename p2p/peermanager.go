@@ -786,6 +786,33 @@ func (m *PeerManager) Close() {
 	})
 }
 
+// Addresses returns all known addresses for a peer, primarily for testing.
+// The order is arbitrary.
+func (m *PeerManager) Addresses(peerID NodeID) []NodeAddress {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	addresses := []NodeAddress{}
+	if peer, ok := m.store.Get(peerID); ok {
+		for _, addressInfo := range peer.AddressInfo {
+			addresses = append(addresses, addressInfo.Address)
+		}
+	}
+	return addresses
+}
+
+// Scores returns the peer scores for all known peers, primarily for testing.
+func (m *PeerManager) Scores() map[NodeID]PeerScore {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	scores := map[NodeID]PeerScore{}
+	for _, peer := range m.store.Ranked() {
+		scores[peer.ID] = peer.Score()
+	}
+	return scores
+}
+
 // findUpgradeCandidate looks for a lower-scored peer that we could evict
 // to make room for the given peer. Returns an empty ID if none is found.
 // The caller must hold the mutex lock.
@@ -880,6 +907,9 @@ type peerStore struct {
 // newPeerStore creates a new peer store, loading all persisted peers from the
 // database into memory.
 func newPeerStore(db dbm.DB) (*peerStore, error) {
+	if db == nil {
+		return nil, errors.New("no database provided")
+	}
 	store := &peerStore{db: db}
 	if err := store.loadPeers(); err != nil {
 		return nil, err
