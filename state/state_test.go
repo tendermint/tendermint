@@ -108,11 +108,11 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 
 	abciResponses.DeliverTxs[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Events: nil}
 	abciResponses.DeliverTxs[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Events: nil}
-	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{
-		types.TM2PB.NewValidatorUpdate(ed25519.GenPrivKey().PubKey(), 10),
-	}}
+	pbpk, err := cryptoenc.PubKeyToProto(ed25519.GenPrivKey().PubKey())
+	require.NoError(t, err)
+	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{{PubKey: pbpk, Power: 10}}}
 
-	err := stateStore.SaveABCIResponses(block.Height, abciResponses)
+	err = stateStore.SaveABCIResponses(block.Height, abciResponses)
 	require.NoError(t, err)
 	loadedABCIResponses, err := stateStore.LoadABCIResponses(block.Height)
 	assert.Nil(err)
