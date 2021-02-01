@@ -362,26 +362,22 @@ func (store dbStore) pruneABCIResponses(height int64) error {
 }
 
 // pruneRange is a generic function for deleting a range of keys in reverse order.
+// we keep filling up batches of at most 1000 keys, perform a deletion and continue until
+// we have gone through all of keys in the range. This avoids doing any writes whilst
+// iterating.
 func (store dbStore) pruneRange(start []byte, end []byte) error {
 	var err error
 	batch := store.db.NewBatch()
 	defer batch.Close()
 
-	// we keep filling up batches of at most 1000 keys, perform a deletion and continue until
-	// we have gone through all of keys in the range. This avoids doing any writes whilst
-	// iterating.
-	for {
-		end, err = store.reverseBatchDelete(batch, start, end)
-		if err != nil {
-			return err
-		}
+	end, err = store.reverseBatchDelete(batch, start, end)
+	if err != nil {
+		return err
+	}
 
-		// check if we've iterated through all the keys and that this is the final batch
-		if bytes.Equal(start, end) {
-			break
-		}
-
-		// if not the last batch, then write, close and perform another batch
+	// iterate until the last batch of the pruning range in which case we will perform a
+	// write sync
+	for !bytes.Equal(start, end) {
 		if err := batch.Write(); err != nil {
 			return err
 		}
@@ -391,6 +387,12 @@ func (store dbStore) pruneRange(start []byte, end []byte) error {
 		}
 
 		batch = store.db.NewBatch()
+
+		// fill a new batch of keys for deletion over the remainding range
+		end, err = store.reverseBatchDelete(batch, start, end)
+		if err != nil {
+			return err
+		}
 	}
 
 	return batch.WriteSync()

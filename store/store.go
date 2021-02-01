@@ -338,7 +338,8 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 
 // pruneRange is a generic function for deleting a range of values based on the lowest
 // height up to but excluding retainHeight. For each key/value pair, an optional hook can be
-// executed before the deletion itself is made
+// executed before the deletion itself is made. pruneRange will use batch delete to delete
+// keys in batches of at most 1000 keys.
 func (bs *BlockStore) pruneRange(
 	start []byte,
 	end []byte,
@@ -353,21 +354,14 @@ func (bs *BlockStore) pruneRange(
 	batch := bs.db.NewBatch()
 	defer batch.Close()
 
-	// we keep filling up batches of at most 1000 keys, perform a deletion and continue until
-	// we have processed all the keys in the range. This avoids doing any writes whilst iterating.
-	for {
-		pruned, start, err = bs.batchDelete(batch, start, end, preDeletionHook)
-		if err != nil {
-			return totalPruned, err
-		}
+	pruned, start, err = bs.batchDelete(batch, start, end, preDeletionHook)
+	if err != nil {
+		return totalPruned, err
+	}
 
-		// once start is equal to end we have iterated through all the keys and can
-		// finally write to disk before returning the total items pruned
-		if bytes.Equal(start, end) {
-			break
-		}
-
-		// if not the last batch, then write close and perform another batch
+	// loop until we have finished iterating over all the keys by writing, opening a new batch
+	// and incrementing through the next range of keys.
+	for !bytes.Equal(start, end) {
 		if err := batch.Write(); err != nil {
 			return totalPruned, err
 		}
@@ -379,8 +373,14 @@ func (bs *BlockStore) pruneRange(
 		}
 
 		batch = bs.db.NewBatch()
+
+		pruned, start, err = bs.batchDelete(batch, start, end, preDeletionHook)
+		if err != nil {
+			return totalPruned, err
+		}
 	}
 
+	// once we looped over all keys we do a final flush to disk
 	if err := batch.WriteSync(); err != nil {
 		return totalPruned, err
 	}
