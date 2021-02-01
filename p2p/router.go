@@ -354,7 +354,7 @@ func (r *Router) acceptPeers(transport Transport) {
 func (r *Router) dialPeers() {
 	ctx := r.stopCtx()
 	for {
-		peerID, address, err := r.peerManager.DialNext(ctx)
+		address, err := r.peerManager.DialNext(ctx)
 		switch err {
 		case nil:
 		case context.Canceled:
@@ -366,12 +366,13 @@ func (r *Router) dialPeers() {
 		}
 
 		go func() {
+			peerID := address.NodeID
 			conn, err := r.dialPeer(ctx, address)
 			if errors.Is(err, context.Canceled) {
 				return
 			} else if err != nil {
 				r.logger.Error("failed to dial peer", "peer", peerID, "err", err)
-				if err = r.peerManager.DialFailed(peerID, address); err != nil {
+				if err = r.peerManager.DialFailed(address); err != nil {
 					r.logger.Error("failed to report dial failure", "peer", peerID, "err", err)
 				}
 				return
@@ -383,7 +384,7 @@ func (r *Router) dialPeers() {
 				return
 			} else if err != nil {
 				r.logger.Error("failed to handshake with peer", "peer", peerID, "err", err)
-				if err = r.peerManager.DialFailed(peerID, address); err != nil {
+				if err = r.peerManager.DialFailed(address); err != nil {
 					r.logger.Error("failed to report dial failure", "peer", peerID, "err", err)
 				}
 				return

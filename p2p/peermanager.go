@@ -384,23 +384,23 @@ func (m *PeerManager) Add(address NodeAddress) error {
 // If no peer is found, or all connection slots are full, it blocks until one
 // becomes available. The caller must call Dialed() or DialFailed() for the
 // returned peer.
-func (m *PeerManager) DialNext(ctx context.Context) (NodeID, NodeAddress, error) {
+func (m *PeerManager) DialNext(ctx context.Context) (NodeAddress, error) {
 	for {
-		id, address, err := m.TryDialNext()
-		if err != nil || id != "" {
-			return id, address, err
+		address, err := m.TryDialNext()
+		if err != nil || (address != NodeAddress{}) {
+			return address, err
 		}
 		select {
 		case <-m.dialWaker.Sleep():
 		case <-ctx.Done():
-			return "", NodeAddress{}, ctx.Err()
+			return NodeAddress{}, ctx.Err()
 		}
 	}
 }
 
 // TryDialNext is equivalent to DialNext(), but immediately returns an empty
-// peer ID if no peers or connection slots are available.
-func (m *PeerManager) TryDialNext() (NodeID, NodeAddress, error) {
+// address if no peers or connection slots are available.
+func (m *PeerManager) TryDialNext() (NodeAddress, error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -409,7 +409,7 @@ func (m *PeerManager) TryDialNext() (NodeID, NodeAddress, error) {
 	// higher score than any other peers, and if successful evict it.
 	if m.options.MaxConnected > 0 &&
 		len(m.connected)+len(m.dialing) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
-		return "", NodeAddress{}, nil
+		return NodeAddress{}, nil
 	}
 
 	for _, peer := range m.store.Ranked() {
@@ -432,34 +432,34 @@ func (m *PeerManager) TryDialNext() (NodeID, NodeAddress, error) {
 			if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
 				upgradeFromPeer := m.findUpgradeCandidate(peer.ID, peer.Score())
 				if upgradeFromPeer == "" {
-					return "", NodeAddress{}, nil
+					return NodeAddress{}, nil
 				}
 				m.upgrading[upgradeFromPeer] = peer.ID
 			}
 
 			m.dialing[peer.ID] = true
-			return peer.ID, addressInfo.Address, nil
+			return addressInfo.Address, nil
 		}
 	}
-	return "", NodeAddress{}, nil
+	return NodeAddress{}, nil
 }
 
 // DialFailed reports a failed dial attempt. This will make the peer available
 // for dialing again when appropriate (possibly after a retry timeout).
 //
 // FIXME: This should probably delete or mark bad addresses/peers after some time.
-func (m *PeerManager) DialFailed(peerID NodeID, address NodeAddress) error {
+func (m *PeerManager) DialFailed(address NodeAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	delete(m.dialing, peerID)
+	delete(m.dialing, address.NodeID)
 	for from, to := range m.upgrading {
-		if to == peerID {
+		if to == address.NodeID {
 			delete(m.upgrading, from) // Unmark failed upgrade attempt.
 		}
 	}
 
-	peer, ok := m.store.Get(peerID)
+	peer, ok := m.store.Get(address.NodeID)
 	if !ok { // Peer may have been removed while dialing, ignore.
 		return nil
 	}
@@ -862,7 +862,7 @@ func (m *PeerManager) retryDelay(failures uint32, persistent bool) time.Duration
 		maxDelay = m.options.MaxRetryTimePersistent
 	}
 
-	delay := m.options.MinRetryTime * time.Duration(math.Pow(2, float64(failures)))
+	delay := m.options.MinRetryTime * time.Duration(math.Pow(2, float64(failures-1)))
 	if maxDelay > 0 && delay > maxDelay {
 		delay = maxDelay
 	}

@@ -1,6 +1,7 @@
 package p2p_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -211,3 +212,216 @@ func TestPeerManager_Add(t *testing.T) {
 	err = peerManager.Add(p2p.NodeAddress{Path: "foo"})
 	require.Error(t, err)
 }
+
+func TestPeerManager_DialNext(t *testing.T) {
+	aID := p2p.NodeID(strings.Repeat("a", 40))
+	aAddress := p2p.NodeAddress{Protocol: "memory", NodeID: aID}
+
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+
+	// Add an address. DialNext should return it.
+	err = peerManager.Add(aAddress)
+	require.NoError(t, err)
+
+	address, err := peerManager.DialNext(ctx)
+	require.NoError(t, err)
+	require.Equal(t, aAddress, address)
+
+	// Since there are no more undialed peers, the next call should block
+	// until it times out.
+	timeoutCtx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	defer cancel()
+	_, err = peerManager.DialNext(timeoutCtx)
+	require.Error(t, err)
+	require.Equal(t, context.DeadlineExceeded, err)
+}
+
+func TestPeerManager_DialNext_WakeOnAdd(t *testing.T) {
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+
+	// Spawn a goroutine to add a peer after a delay.
+	address := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		err = peerManager.Add(address)
+		require.NoError(t, err)
+	}()
+
+	// This will block until peer is added above.
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	a, err := peerManager.DialNext(ctx)
+	require.NoError(t, err)
+	require.Equal(t, address, a)
+}
+
+func TestPeerManager_DialNext_WakeOnDialFailed(t *testing.T) {
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{
+		MaxConnected: 1,
+	})
+	require.NoError(t, err)
+
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+	b := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("b", 40))}
+
+	// Add and dial a.
+	err = peerManager.Add(a)
+	require.NoError(t, err)
+	dialAddress, err := peerManager.TryDialNext()
+	require.NoError(t, err)
+	require.Equal(t, a, dialAddress)
+
+	// Add b. We shouldn't be able to dial it, due to MaxConnected.
+	err = peerManager.Add(b)
+	require.NoError(t, err)
+	dialAddress, err = peerManager.TryDialNext()
+	require.NoError(t, err)
+	require.Zero(t, dialAddress)
+
+	// Spawn a goroutine to fail a's dial attempt.
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		err = peerManager.DialFailed(a)
+		require.NoError(t, err)
+	}()
+
+	// This should make b available for dialing (not a, retries are disabled).
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	dialAddress, err = peerManager.DialNext(ctx)
+	require.NoError(t, err)
+	require.Equal(t, b, dialAddress)
+}
+
+func TestPeerManager_DialNext_WakeOnDialFailedRetry(t *testing.T) {
+	options := p2p.PeerManagerOptions{MinRetryTime: 200 * time.Millisecond}
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), options)
+	require.NoError(t, err)
+
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+
+	// Add a, dial it, and mark it a failure. This will start a retry timer.
+	err = peerManager.Add(a)
+	require.NoError(t, err)
+	dialAddress, err := peerManager.TryDialNext()
+	require.NoError(t, err)
+	require.Equal(t, a, dialAddress)
+	err = peerManager.DialFailed(dialAddress)
+	require.NoError(t, err)
+	failed := time.Now()
+
+	// The retry timer should unblock DialNext and make a available again after
+	// the retry time passes.
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	dialAddress, err = peerManager.DialNext(ctx)
+	require.NoError(t, err)
+	require.Equal(t, a, dialAddress)
+	require.GreaterOrEqual(t, time.Since(failed), options.MinRetryTime)
+}
+
+func TestPeerManager_DialNext_WakeOnDisconnected(t *testing.T) {
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+
+	address := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+	err = peerManager.Add(address)
+	require.NoError(t, err)
+	err = peerManager.Accepted(address.NodeID)
+	require.NoError(t, err)
+
+	a, err := peerManager.TryDialNext()
+	require.NoError(t, err)
+	require.Zero(t, a)
+
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		err = peerManager.Disconnected(address.NodeID)
+		require.NoError(t, err)
+	}()
+
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	a, err = peerManager.DialNext(ctx)
+	require.NoError(t, err)
+	require.Equal(t, address, a)
+}
+
+/*func TestPeerManager_DialNext_Wake(t *testing.T) {
+	addID := p2p.NodeID(strings.Repeat("a", 40))
+	addAddress := p2p.NodeAddress{Protocol: "memory", NodeID: addID}
+	connectedID := p2p.NodeID(strings.Repeat("c", 40))
+	connectedAddress := p2p.NodeAddress{Protocol: "memory", NodeID: connectedID}
+	dialingID := p2p.NodeID(strings.Repeat("d", 40))
+	dialingAddress := p2p.NodeAddress{Protocol: "memory", NodeID: dialingID}
+
+	// Set up an initial state for test cases.
+	setup := func(t *testing.T) *p2p.PeerManager {
+		peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{
+			MinRetryTime: 1 * time.Millisecond,
+		})
+		require.NoError(t, err)
+
+		// Add and mark a peer as connected.
+		err = peerManager.Add(connectedAddress)
+		require.NoError(t, err)
+		address, err := peerManager.TryDialNext()
+		require.NoError(t, err)
+		require.Equal(t, connectedAddress, address)
+		err = peerManager.Dialed(connectedID, connectedAddress)
+		require.NoError(t, err)
+
+		// Add and mark an outbound peer as dialing.
+		err = peerManager.Add(dialingAddress)
+		require.NoError(t, err)
+		address, err = peerManager.TryDialNext()
+		require.NoError(t, err)
+		require.Equal(t, dialingAddress, address)
+
+		return peerManager
+	}
+
+	// These are events that should cause a blocked DialNext call to wake.
+	// They return the NodeID expected to be returned.
+	testcases := map[string]func(*testing.T, *p2p.PeerManager) p2p.NodeID{
+		"Add": func(t *testing.T, pm *p2p.PeerManager) p2p.NodeID {
+			err := pm.Add(addAddress)
+			require.NoError(t, err)
+			return addID
+		},
+
+		"DialFail": func(t *testing.T, pm *p2p.PeerManager) p2p.NodeID {
+			err := pm.DialFailed()
+			require.NoError(t, err)
+			return addID
+		},
+	}
+	for name, tc := range testcases {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			peerManager := setup(t)
+			address, err := peerManager.TryDialNext()
+			require.NoError(t, err)
+			require.Zero(t, address)
+
+			// Spawn off a goroutine that will trigger the testcase event which
+			// should unblock the DialNext call.
+			expectIDCh := make(chan p2p.NodeID, 1)
+			go func() {
+				time.Sleep(200 * time.Millisecond)
+				expectIDCh <- tc(t, peerManager)
+			}()
+
+			// Blocking DialNext() call which should be unblocked eventually.
+			ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+			defer cancel()
+			address, err = peerManager.DialNext(ctx)
+			require.NoError(t, err)
+			require.NotZero(t, address)
+			require.Equal(t, address.NodeID, <-expectIDCh)
+		})
+	}
+}
+*/
