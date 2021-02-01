@@ -324,7 +324,7 @@ func (m *PeerManager) configurePeer(peer peerInfo) peerInfo {
 func (m *PeerManager) newPeerInfo(id NodeID) peerInfo {
 	peerInfo := peerInfo{
 		ID:          id,
-		AddressInfo: map[string]*peerAddressInfo{},
+		AddressInfo: map[NodeAddress]*peerAddressInfo{},
 	}
 	return m.configurePeer(peerInfo)
 }
@@ -367,8 +367,8 @@ func (m *PeerManager) Add(address NodeAddress) error {
 	if !ok {
 		peer = m.newPeerInfo(address.NodeID)
 	}
-	if _, ok := peer.AddressInfo[address.String()]; !ok {
-		peer.AddressInfo[address.String()] = &peerAddressInfo{Address: address}
+	if _, ok := peer.AddressInfo[address]; !ok {
+		peer.AddressInfo[address] = &peerAddressInfo{Address: address}
 	}
 	if err := m.store.Set(peer); err != nil {
 		return err
@@ -463,7 +463,7 @@ func (m *PeerManager) DialFailed(peerID NodeID, address NodeAddress) error {
 	if !ok { // Peer may have been removed while dialing, ignore.
 		return nil
 	}
-	addressInfo, ok := peer.AddressInfo[address.String()]
+	addressInfo, ok := peer.AddressInfo[address]
 	if !ok {
 		return nil // Assume the address has been removed, ignore.
 	}
@@ -527,7 +527,7 @@ func (m *PeerManager) Dialed(peerID NodeID, address NodeAddress) error {
 	}
 	now := time.Now().UTC()
 	peer.LastConnected = now
-	if addressInfo, ok := peer.AddressInfo[address.String()]; ok {
+	if addressInfo, ok := peer.AddressInfo[address]; ok {
 		addressInfo.DialFailures = 0
 		addressInfo.LastDialSuccess = now
 		// If not found, assume address has been removed.
@@ -880,9 +880,7 @@ type peerStore struct {
 // newPeerStore creates a new peer store, loading all persisted peers from the
 // database into memory.
 func newPeerStore(db dbm.DB) (*peerStore, error) {
-	store := &peerStore{
-		db: db,
-	}
+	store := &peerStore{db: db}
 	if err := store.loadPeers(); err != nil {
 		return nil, err
 	}
@@ -891,7 +889,7 @@ func newPeerStore(db dbm.DB) (*peerStore, error) {
 
 // loadPeers loads all peers from the database into memory.
 func (s *peerStore) loadPeers() error {
-	peers := make(map[NodeID]*peerInfo)
+	peers := map[NodeID]*peerInfo{}
 
 	start, end := keyPeerInfoRange()
 	iter, err := s.db.Iterator(start, end)
@@ -1019,7 +1017,7 @@ func (s *peerStore) Size() int {
 // peerInfo contains peer information stored in a peerStore.
 type peerInfo struct {
 	ID            NodeID
-	AddressInfo   map[string]*peerAddressInfo
+	AddressInfo   map[NodeAddress]*peerAddressInfo
 	LastConnected time.Time
 
 	// These fields are ephemeral, i.e. not persisted to the database.
@@ -1032,17 +1030,17 @@ type peerInfo struct {
 func peerInfoFromProto(msg *p2pproto.PeerInfo) (*peerInfo, error) {
 	p := &peerInfo{
 		ID:          NodeID(msg.ID),
-		AddressInfo: map[string]*peerAddressInfo{},
+		AddressInfo: map[NodeAddress]*peerAddressInfo{},
 	}
 	if msg.LastConnected != nil {
 		p.LastConnected = *msg.LastConnected
 	}
-	for _, addr := range msg.AddressInfo {
-		addressInfo, err := peerAddressInfoFromProto(addr)
+	for _, a := range msg.AddressInfo {
+		addressInfo, err := peerAddressInfoFromProto(a)
 		if err != nil {
 			return nil, err
 		}
-		p.AddressInfo[addressInfo.Address.String()] = addressInfo
+		p.AddressInfo[addressInfo.Address] = addressInfo
 	}
 	return p, p.Validate()
 }
@@ -1151,7 +1149,7 @@ func (a *peerAddressInfo) Validate() error {
 	return a.Address.Validate()
 }
 
-// These are database key prefixes.
+// Database key prefixes.
 const (
 	prefixPeerInfo int64 = 1
 )
@@ -1165,7 +1163,7 @@ func keyPeerInfo(id NodeID) []byte {
 	return key
 }
 
-// keyPeerInfoPrefix generates start/end keys for the entire peerInfo key range.
+// keyPeerInfoRange generates start/end keys for the entire peerInfo key range.
 func keyPeerInfoRange() ([]byte, []byte) {
 	start, err := orderedcode.Append(nil, prefixPeerInfo, "")
 	if err != nil {
