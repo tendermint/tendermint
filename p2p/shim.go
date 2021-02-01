@@ -29,7 +29,7 @@ type (
 		BaseReactor
 
 		Name        string
-		PeerUpdates *PeerUpdatesCh
+		PeerUpdates *PeerUpdates
 		Channels    map[ChannelID]*ChannelShim
 	}
 
@@ -225,7 +225,7 @@ func (rs *ReactorShim) GetChannels() []*ChannelDescriptor {
 // handle adding a peer.
 func (rs *ReactorShim) AddPeer(peer Peer) {
 	select {
-	case rs.PeerUpdates.updatesCh <- PeerUpdate{PeerID: peer.ID(), Status: PeerStatusUp}:
+	case rs.PeerUpdates.updatesCh <- PeerUpdate{NodeID: peer.ID(), Status: PeerStatusUp}:
 		rs.Logger.Debug("sent peer update", "reactor", rs.Name, "peer", peer.ID(), "status", PeerStatusUp)
 
 	case <-rs.PeerUpdates.Done():
@@ -244,7 +244,7 @@ func (rs *ReactorShim) AddPeer(peer Peer) {
 // handle removing a peer.
 func (rs *ReactorShim) RemovePeer(peer Peer, reason interface{}) {
 	select {
-	case rs.PeerUpdates.updatesCh <- PeerUpdate{PeerID: peer.ID(), Status: PeerStatusDown}:
+	case rs.PeerUpdates.updatesCh <- PeerUpdate{NodeID: peer.ID(), Status: PeerStatusDown}:
 		rs.Logger.Debug(
 			"sent peer update",
 			"reactor", rs.Name,

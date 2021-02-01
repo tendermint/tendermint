@@ -55,7 +55,7 @@ type Reactor struct {
 	evpool      *Pool
 	eventBus    *types.EventBus
 	evidenceCh  *p2p.Channel
-	peerUpdates *p2p.PeerUpdatesCh
+	peerUpdates *p2p.PeerUpdates
 	closeCh     chan struct{}
 
 	peerWG sync.WaitGroup
@@ -70,7 +70,7 @@ type Reactor struct {
 func NewReactor(
 	logger log.Logger,
 	evidenceCh *p2p.Channel,
-	peerUpdates *p2p.PeerUpdatesCh,
+	peerUpdates *p2p.PeerUpdates,
 	evpool *Pool,
 ) *Reactor {
 	r := &Reactor{
@@ -220,7 +220,7 @@ func (r *Reactor) processEvidenceCh() {
 //
 // REF: https://github.com/tendermint/tendermint/issues/4727
 func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
-	r.Logger.Debug("received peer update", "peer", peerUpdate.PeerID, "status", peerUpdate.Status)
+	r.Logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
@@ -239,13 +239,13 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 		// a new done channel so we can explicitly close the goroutine if the peer
 		// is later removed, we increment the waitgroup so the reactor can stop
 		// safely, and finally start the goroutine to broadcast evidence to that peer.
-		_, ok := r.peerRoutines[peerUpdate.PeerID]
+		_, ok := r.peerRoutines[peerUpdate.NodeID]
 		if !ok {
 			closer := tmsync.NewCloser()
 
-			r.peerRoutines[peerUpdate.PeerID] = closer
+			r.peerRoutines[peerUpdate.NodeID] = closer
 			r.peerWG.Add(1)
-			go r.broadcastEvidenceLoop(peerUpdate.PeerID, closer)
+			go r.broadcastEvidenceLoop(peerUpdate.NodeID, closer)
 		}
 
 	case p2p.PeerStatusDown:
@@ -253,7 +253,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 		// If we have, we signal to terminate the goroutine via the channel's closure.
 		// This will internally decrement the peer waitgroup and remove the peer
 		// from the map of peer evidence broadcasting goroutines.
-		closer, ok := r.peerRoutines[peerUpdate.PeerID]
+		closer, ok := r.peerRoutines[peerUpdate.NodeID]
 		if ok {
 			closer.Close()
 		}

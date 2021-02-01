@@ -29,82 +29,56 @@ const (
 	PeerStatusDown = PeerStatus("down") // disconnected
 )
 
-// PeerError is a peer error reported by a reactor via the Error channel.
-//
-// FIXME: This currently just disconnects the peer, which is too simplistic.
-// For example, some errors should be logged, some should cause disconnects,
-// and some should ban the peer.
-//
-// FIXME: This should probably be replaced by a more general PeerBehavior
-// concept that can mark good and bad behavior and contributes to peer scoring.
-// It should possibly also allow reactors to request explicit actions, e.g.
-// disconnection or banning, in addition to doing this based on aggregates.
-type PeerError struct {
-	NodeID NodeID
-	Err    error
-}
-
-// PeerUpdatesCh defines a wrapper around a PeerUpdate go channel that allows
-// a reactor to listen for peer updates and safely close it when stopping.
-type PeerUpdatesCh struct {
-	closeOnce sync.Once
-
-	// updatesCh defines the go channel in which the router sends peer updates to
-	// reactors. Each reactor will have its own PeerUpdatesCh to listen for updates
-	// from.
-	updatesCh chan PeerUpdate
-
-	// doneCh is used to signal that a PeerUpdatesCh is closed. It is the
-	// reactor's responsibility to invoke Close.
-	doneCh chan struct{}
-}
-
-// NewPeerUpdates returns a reference to a new PeerUpdatesCh.
-func NewPeerUpdates(updatesCh chan PeerUpdate) *PeerUpdatesCh {
-	return &PeerUpdatesCh{
-		updatesCh: updatesCh,
-		doneCh:    make(chan struct{}),
-	}
-}
-
-// Updates returns a read-only go channel where a consuming reactor can listen
-// for peer updates sent from the router.
-func (puc *PeerUpdatesCh) Updates() <-chan PeerUpdate {
-	return puc.updatesCh
-}
-
-// Close closes the PeerUpdatesCh channel. It should only be closed by the respective
-// reactor when stopping and ensure nothing is listening for updates.
-//
-// NOTE: After a PeerUpdatesCh is closed, the router may safely assume it can no
-// longer send on the internal updatesCh, however it should NEVER explicitly close
-// it as that could result in panics by sending on a closed channel.
-func (puc *PeerUpdatesCh) Close() {
-	puc.closeOnce.Do(func() {
-		close(puc.doneCh)
-	})
-}
-
-// Done returns a read-only version of the PeerUpdatesCh's internal doneCh go
-// channel that should be used by a router to signal when it is safe to explicitly
-// not send any peer updates.
-func (puc *PeerUpdatesCh) Done() <-chan struct{} {
-	return puc.doneCh
-}
-
-// PeerUpdate is a peer status update for reactors.
-type PeerUpdate struct {
-	PeerID NodeID
-	Status PeerStatus
-}
-
 // PeerScore is a numeric score assigned to a peer (higher is better).
 type PeerScore uint16
 
 const (
-	// PeerScorePersistent is added for persistent peers.
-	PeerScorePersistent PeerScore = 100
+	PeerScorePersistent PeerScore = 100 // persistent peers
 )
+
+// PeerUpdate is a peer update event sent via PeerUpdates.
+type PeerUpdate struct {
+	NodeID NodeID
+	Status PeerStatus
+}
+
+// PeerUpdates is a peer update subscription with notifications about peer
+// events (currently just status changes).
+type PeerUpdates struct {
+	updatesCh chan PeerUpdate
+	closeCh   chan struct{}
+	closeOnce sync.Once
+}
+
+// NewPeerUpdates creates a new PeerUpdates subscription. It is primarily for
+// internal use, callers should typically use PeerManager.Subscribe(). The
+// subscriber must call Close() when done.
+func NewPeerUpdates(updatesCh chan PeerUpdate) *PeerUpdates {
+	return &PeerUpdates{
+		updatesCh: updatesCh,
+		closeCh:   make(chan struct{}),
+	}
+}
+
+// Updates returns a channel for consuming peer updates.
+func (pu *PeerUpdates) Updates() <-chan PeerUpdate {
+	return pu.updatesCh
+}
+
+// Close closes the peer updates subscription.
+func (pu *PeerUpdates) Close() {
+	pu.closeOnce.Do(func() {
+		// NOTE: We don't close updatesCh since multiple goroutines may be
+		// sending on it. The PeerManager senders will select on closeCh as well
+		// to avoid blocking on a closed subscription.
+		close(pu.closeCh)
+	})
+}
+
+// Done returns a channel that is closed when the subscription is closed.
+func (pu *PeerUpdates) Done() <-chan struct{} {
+	return pu.closeCh
+}
 
 // PeerManager manages peer lifecycle information, using a peerStore for
 // underlying storage. Its primary purpose is to determine which peers to
@@ -171,12 +145,12 @@ type PeerManager struct {
 
 	mtx           sync.Mutex
 	store         *peerStore
-	dialing       map[NodeID]bool                   // peers being dialed (DialNext -> Dialed/DialFail)
-	upgrading     map[NodeID]NodeID                 // peers claimed for upgrade (DialNext -> Dialed/DialFail)
-	connected     map[NodeID]bool                   // connected peers (Dialed/Accepted -> Disconnected)
-	evict         map[NodeID]bool                   // peers scheduled for eviction (Connected -> EvictNext)
-	evicting      map[NodeID]bool                   // peers being evicted (EvictNext -> Disconnected)
-	subscriptions map[*PeerUpdatesCh]*PeerUpdatesCh // keyed by struct identity (address)
+	dialing       map[NodeID]bool               // peers being dialed (DialNext -> Dialed/DialFail)
+	upgrading     map[NodeID]NodeID             // peers claimed for upgrade (DialNext -> Dialed/DialFail)
+	connected     map[NodeID]bool               // connected peers (Dialed/Accepted -> Disconnected)
+	evict         map[NodeID]bool               // peers scheduled for eviction (Connected -> EvictNext)
+	evicting      map[NodeID]bool               // peers being evicted (EvictNext -> Disconnected)
+	subscriptions map[*PeerUpdates]*PeerUpdates // keyed by struct identity (address)
 }
 
 // PeerManagerOptions specifies options for a PeerManager.
@@ -251,7 +225,7 @@ func NewPeerManager(peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, er
 		connected:     map[NodeID]bool{},
 		evict:         map[NodeID]bool{},
 		evicting:      map[NodeID]bool{},
-		subscriptions: map[*PeerUpdatesCh]*PeerUpdatesCh{},
+		subscriptions: map[*PeerUpdates]*PeerUpdates{},
 	}
 	if err = peerManager.configurePeers(); err != nil {
 		return nil, err
@@ -382,7 +356,7 @@ func (m *PeerManager) makePeerInfo(id NodeID) peerInfo {
 // updates in a timely fashion and close the subscription when done, since
 // delivery is guaranteed and will block peer connection/disconnection
 // otherwise.
-func (m *PeerManager) Subscribe() *PeerUpdatesCh {
+func (m *PeerManager) Subscribe() *PeerUpdates {
 	// FIXME: We may want to use a size 1 buffer here. When the router
 	// broadcasts a peer update it has to loop over all of the
 	// subscriptions, and we want to avoid blocking and waiting for a
@@ -415,7 +389,7 @@ func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
 	for _, sub := range m.subscriptions {
 		select {
 		case sub.updatesCh <- peerUpdate:
-		case <-sub.doneCh:
+		case <-sub.closeCh:
 		}
 	}
 }
@@ -708,7 +682,7 @@ func (m *PeerManager) Ready(peerID NodeID) {
 
 	if m.connected[peerID] {
 		m.broadcast(PeerUpdate{
-			PeerID: peerID,
+			NodeID: peerID,
 			Status: PeerStatusUp,
 		})
 	}
@@ -725,7 +699,7 @@ func (m *PeerManager) Disconnected(peerID NodeID) error {
 	delete(m.evict, peerID)
 	delete(m.evicting, peerID)
 	m.broadcast(PeerUpdate{
-		PeerID: peerID,
+		NodeID: peerID,
 		Status: PeerStatusDown,
 	})
 	m.wakeDial()

@@ -84,7 +84,7 @@ type Reactor struct {
 	fastSync    bool
 
 	blockchainCh *p2p.Channel
-	peerUpdates  *p2p.PeerUpdatesCh
+	peerUpdates  *p2p.PeerUpdates
 	closeCh      chan struct{}
 
 	requestsCh <-chan BlockRequest
@@ -104,7 +104,7 @@ func NewReactor(
 	store *store.BlockStore,
 	consReactor consensusReactor,
 	blockchainCh *p2p.Channel,
-	peerUpdates *p2p.PeerUpdatesCh,
+	peerUpdates *p2p.PeerUpdates,
 	fastSync bool,
 ) (*Reactor, error) {
 	if state.LastBlockHeight != store.Height() {
@@ -302,10 +302,10 @@ func (r *Reactor) processBlockchainCh() {
 
 // processPeerUpdate processes a PeerUpdate.
 func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
-	r.Logger.Debug("received peer update", "peer", peerUpdate.PeerID, "status", peerUpdate.Status)
+	r.Logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	// XXX: Pool#RedoRequest can sometimes give us an empty peer.
-	if len(peerUpdate.PeerID) == 0 {
+	if len(peerUpdate.NodeID) == 0 {
 		return
 	}
 
@@ -313,7 +313,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	case p2p.PeerStatusUp:
 		// send a status update the newly added peer
 		r.blockchainCh.Out() <- p2p.Envelope{
-			To: peerUpdate.PeerID,
+			To: peerUpdate.NodeID,
 			Message: &bcproto.StatusResponse{
 				Base:   r.store.Base(),
 				Height: r.store.Height(),
@@ -321,7 +321,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 		}
 
 	case p2p.PeerStatusDown:
-		r.pool.RemovePeer(peerUpdate.PeerID)
+		r.pool.RemovePeer(peerUpdate.NodeID)
 	}
 }
 

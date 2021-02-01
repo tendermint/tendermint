@@ -27,6 +27,21 @@ func (e Envelope) Strip() Envelope {
 	return e
 }
 
+// PeerError is a peer error reported via the Error channel.
+//
+// FIXME: This currently just disconnects the peer, which is too simplistic.
+// For example, some errors should be logged, some should cause disconnects,
+// and some should ban the peer.
+//
+// FIXME: This should probably be replaced by a more general PeerBehavior
+// concept that can mark good and bad behavior and contributes to peer scoring.
+// It should possibly also allow reactors to request explicit actions, e.g.
+// disconnection or banning, in addition to doing this based on aggregates.
+type PeerError struct {
+	NodeID NodeID
+	Err    error
+}
+
 // Channel is a bidirectional channel for Protobuf message exchange with peers.
 // A Channel is safe for concurrent use by multiple goroutines.
 type Channel struct {

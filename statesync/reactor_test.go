@@ -33,7 +33,7 @@ type reactorTestSuite struct {
 	chunkOutCh     chan p2p.Envelope
 	chunkPeerErrCh chan p2p.PeerError
 
-	peerUpdates *p2p.PeerUpdatesCh
+	peerUpdates *p2p.PeerUpdates
 }
 
 func setup(

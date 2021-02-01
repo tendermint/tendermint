@@ -36,7 +36,7 @@ type reactorTestSuite struct {
 	blockchainPeerErrCh chan p2p.PeerError
 
 	peerUpdatesCh chan p2p.PeerUpdate
-	peerUpdates   *p2p.PeerUpdatesCh
+	peerUpdates   *p2p.PeerUpdates
 }
 
 func setup(
@@ -200,7 +200,7 @@ func simulateRouter(primary *reactorTestSuite, suites []*reactorTestSuite, dropC
 				primary.reactor.Logger.Debug("dropped peer error", "err", pErr.Err)
 			} else {
 				primary.peerUpdatesCh <- p2p.PeerUpdate{
-					PeerID: pErr.NodeID,
+					NodeID: pErr.NodeID,
 					Status: p2p.PeerStatusDown,
 				}
 			}
@@ -229,7 +229,7 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 			if s.peerID != ss.peerID {
 				s.peerUpdatesCh <- p2p.PeerUpdate{
 					Status: p2p.PeerStatusUp,
-					PeerID: ss.peerID,
+					NodeID: ss.peerID,
 				}
 			}
 		}
@@ -251,7 +251,7 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 	// deadlocks or race conditions within the context of poolRoutine.
 	testSuites[1].peerUpdatesCh <- p2p.PeerUpdate{
 		Status: p2p.PeerStatusDown,
-		PeerID: testSuites[0].peerID,
+		NodeID: testSuites[0].peerID,
 	}
 }
 
@@ -276,7 +276,7 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 			if s.peerID != ss.peerID {
 				s.peerUpdatesCh <- p2p.PeerUpdate{
 					Status: p2p.PeerStatusUp,
-					PeerID: ss.peerID,
+					NodeID: ss.peerID,
 				}
 			}
 		}
@@ -341,7 +341,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 			if s.peerID != ss.peerID {
 				s.peerUpdatesCh <- p2p.PeerUpdate{
 					Status: p2p.PeerStatusUp,
-					PeerID: ss.peerID,
+					NodeID: ss.peerID,
 				}
 			}
 		}
@@ -388,7 +388,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	for _, s := range testSuites[:len(testSuites)-1] {
 		newSuite.peerUpdatesCh <- p2p.PeerUpdate{
 			Status: p2p.PeerStatusUp,
-			PeerID: s.peerID,
+			NodeID: s.peerID,
 		}
 	}
 

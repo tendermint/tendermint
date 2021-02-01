@@ -78,7 +78,7 @@ type Reactor struct {
 	tempDir     string
 	snapshotCh  *p2p.Channel
 	chunkCh     *p2p.Channel
-	peerUpdates *p2p.PeerUpdatesCh
+	peerUpdates *p2p.PeerUpdates
 	closeCh     chan struct{}
 
 	// This will only be set when a state sync is in progress. It is used to feed
@@ -96,7 +96,7 @@ func NewReactor(
 	conn proxy.AppConnSnapshot,
 	connQuery proxy.AppConnQuery,
 	snapshotCh, chunkCh *p2p.Channel,
-	peerUpdates *p2p.PeerUpdatesCh,
+	peerUpdates *p2p.PeerUpdates,
 	tempDir string,
 ) *Reactor {
 	r := &Reactor{
@@ -388,7 +388,7 @@ func (r *Reactor) processChunkCh() {
 // processPeerUpdate processes a PeerUpdate, returning an error upon failing to
 // handle the PeerUpdate or if a panic is recovered.
 func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
-	r.Logger.Debug("received peer update", "peer", peerUpdate.PeerID, "status", peerUpdate.Status)
+	r.Logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
@@ -396,10 +396,10 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	if r.syncer != nil {
 		switch peerUpdate.Status {
 		case p2p.PeerStatusUp:
-			r.syncer.AddPeer(peerUpdate.PeerID)
+			r.syncer.AddPeer(peerUpdate.NodeID)
 
 		case p2p.PeerStatusDown:
-			r.syncer.RemovePeer(peerUpdate.PeerID)
+			r.syncer.RemovePeer(peerUpdate.NodeID)
 		}
 	}
 }

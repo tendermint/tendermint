@@ -30,7 +30,7 @@ type ReactorV2 struct {
 
 	peerManager *p2p.PeerManager
 	pexCh       *p2p.Channel
-	peerUpdates *p2p.PeerUpdatesCh
+	peerUpdates *p2p.PeerUpdates
 	closeCh     chan struct{}
 }
 
@@ -39,7 +39,7 @@ func NewReactorV2(
 	logger log.Logger,
 	peerManager *p2p.PeerManager,
 	pexCh *p2p.Channel,
-	peerUpdates *p2p.PeerUpdatesCh,
+	peerUpdates *p2p.PeerUpdates,
 ) *ReactorV2 {
 	r := &ReactorV2{
 		peerManager: peerManager,
@@ -196,11 +196,11 @@ func (r *ReactorV2) processPexCh() {
 // processPeerUpdate processes a PeerUpdate. For added peers, PeerStatusUp, we
 // send a request for addresses.
 func (r *ReactorV2) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
-	r.Logger.Debug("received peer update", "peer", peerUpdate.PeerID, "status", peerUpdate.Status)
+	r.Logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	if peerUpdate.Status == p2p.PeerStatusUp {
 		r.pexCh.Out() <- p2p.Envelope{
-			To:      peerUpdate.PeerID,
+			To:      peerUpdate.NodeID,
 			Message: &protop2p.PexRequest{},
 		}
 	}
