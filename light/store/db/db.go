@@ -263,7 +263,7 @@ func (s *dbs) batchDelete(batch dbm.Batch, numToPrune uint16) error {
 		append(s.lbKey(1<<63-1), byte(0x00)),
 	)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer itr.Close()
 

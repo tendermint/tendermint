@@ -364,11 +364,7 @@ func (bs *BlockStore) pruneRange(
 		// once start is equal to end we have iterated through all the keys and can
 		// finally write to disk before returning the total items pruned
 		if bytes.Equal(start, end) {
-			if err := batch.WriteSync(); err != nil {
-				return totalPruned, err
-			}
-			totalPruned += pruned
-			return totalPruned, nil
+			break
 		}
 
 		// if not the last batch, then write close and perform another batch
@@ -384,6 +380,12 @@ func (bs *BlockStore) pruneRange(
 
 		batch = bs.db.NewBatch()
 	}
+
+	if err := batch.WriteSync(); err != nil {
+		return totalPruned, err
+	}
+	totalPruned += pruned
+	return totalPruned, nil
 }
 
 // batchDelete runs an iterator over a set of keys, first preforming a pre deletion hook before adding it to the batch.

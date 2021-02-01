@@ -55,12 +55,15 @@ func abciResponsesKey(height int64) []byte {
 	return encodeKey(prefixABCIResponses, height)
 }
 
-func stateKey() []byte {
-	res, err := orderedcode.Append(nil, prefixState)
+// stateKey should never change after being set in init()
+var stateKey []byte
+
+func init() {
+	var err error
+	stateKey, err = orderedcode.Append(nil, prefixState)
 	if err != nil {
 		panic(err)
 	}
-	return res
 }
 
 //----------------------
@@ -99,15 +102,13 @@ type Store interface {
 // dbStore wraps a db (github.com/tendermint/tm-db)
 type dbStore struct {
 	db dbm.DB
-
-	stateKey []byte
 }
 
 var _ Store = (*dbStore)(nil)
 
 // NewStore creates the dbStore of the state pkg.
 func NewStore(db dbm.DB) Store {
-	return dbStore{db, stateKey()}
+	return dbStore{db}
 }
 
 // LoadStateFromDBOrGenesisFile loads the most recent state from the database,
@@ -149,7 +150,7 @@ func (store dbStore) LoadFromDBOrGenesisDoc(genesisDoc *types.GenesisDoc) (State
 
 // LoadState loads the State from the database.
 func (store dbStore) Load() (State, error) {
-	return store.loadState(store.stateKey)
+	return store.loadState(stateKey)
 }
 
 func (store dbStore) loadState(key []byte) (state State, err error) {
@@ -181,7 +182,7 @@ func (store dbStore) loadState(key []byte) (state State, err error) {
 // Save persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
 // This flushes the writes (e.g. calls SetSync).
 func (store dbStore) Save(state State) error {
-	return store.save(state, store.stateKey)
+	return store.save(state, stateKey)
 }
 
 func (store dbStore) save(state State, key []byte) error {
@@ -238,7 +239,7 @@ func (store dbStore) Bootstrap(state State) error {
 		return err
 	}
 
-	return store.db.SetSync(store.stateKey, state.Bytes())
+	return store.db.SetSync(stateKey, state.Bytes())
 }
 
 // PruneStates deletes states up to the height specified (exclusive). It is not
@@ -377,7 +378,7 @@ func (store dbStore) pruneRange(start []byte, end []byte) error {
 
 		// check if we've iterated through all the keys and that this is the final batch
 		if bytes.Equal(start, end) {
-			return batch.WriteSync()
+			break
 		}
 
 		// if not the last batch, then write, close and perform another batch
@@ -391,6 +392,8 @@ func (store dbStore) pruneRange(start []byte, end []byte) error {
 
 		batch = store.db.NewBatch()
 	}
+
+	return batch.WriteSync()
 }
 
 // reverseBatchDelete runs a reverse iterator (from end to start) filling up a batch until either
