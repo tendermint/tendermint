@@ -216,6 +216,7 @@ func NewPeerManager(peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, er
 		dialing:       map[NodeID]bool{},
 		upgrading:     map[NodeID]NodeID{},
 		connected:     map[NodeID]bool{},
+		ready:         map[NodeID]bool{},
 		evict:         map[NodeID]bool{},
 		evicting:      map[NodeID]bool{},
 		subscriptions: map[*PeerUpdates]*PeerUpdates{},
@@ -343,6 +344,21 @@ func (m *PeerManager) makePeerInfo(id NodeID) peerInfo {
 		Persistent:  isPersistent,
 		AddressInfo: map[string]*peerAddressInfo{},
 	}
+}
+
+// Error reports a peer error, causing the peer to be evicted.
+//
+// FIXME: This should probably be replaced with a peer behavior API, see
+// PeerError comments for more details.
+//
+// FIXME: This will cause the peer manager to immediately try to reconnect to
+// the peer, which is probably not always what we want.
+func (m *PeerManager) Error(peerID NodeID, err error) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	m.evict[peerID] = true
+	m.wakeEvict()
 }
 
 // Subscribe subscribes to peer updates. The caller must consume the peer

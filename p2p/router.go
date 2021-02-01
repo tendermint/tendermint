@@ -255,14 +255,9 @@ func (r *Router) routeChannel(channel *Channel) {
 			if !ok {
 				return
 			}
-			// FIXME: We just disconnect the peer for now
-			r.logger.Error("peer error, disconnecting", "peer", peerError.NodeID, "err", peerError.Err)
-			r.peerMtx.RLock()
-			peerQueue, ok := r.peerQueues[peerError.NodeID]
-			r.peerMtx.RUnlock()
-			if ok {
-				peerQueue.close()
-			}
+			// FIXME: We just evict the peer for now.
+			r.logger.Error("peer error, evicting", "peer", peerError.NodeID, "err", peerError.Err)
+			r.peerManager.Error(peerError.NodeID, peerError.Err)
 
 		case <-channel.Done():
 			return
