@@ -173,17 +173,13 @@ func (o *PeerManagerOptions) Validate() error {
 	return nil
 }
 
-// isPersistentPeer checks if a peer is in PersistentPeers.
+// isPersistentPeer checks if a peer is in PersistentPeers. It will panic
+// if called before optimize().
 func (o *PeerManagerOptions) isPersistent(id NodeID) bool {
-	if o.persistentPeers != nil {
-		return o.persistentPeers[id]
+	if o.persistentPeers == nil {
+		panic("isPersistentPeer() called before optimize()")
 	}
-	for _, p := range o.PersistentPeers {
-		if p == id {
-			return true
-		}
-	}
-	return false
+	return o.persistentPeers[id]
 }
 
 // optimize optimizes operations by pregenerating lookup structures. It's a
