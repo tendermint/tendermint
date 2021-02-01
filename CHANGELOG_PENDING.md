@@ -32,6 +32,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [state] \#5864 Use an iterator when pruning state (@cmwaters)
   - [types] \#6023 Remove `tm2pb.Header`, `tm2pb.BlockID`, `tm2pb.PartSetHeader` and `tm2pb.NewValidatorUpdate`.
     - Each of the above types has a `ToProto` and `FromProto` method or function which replaced this logic.
+  - [rpc/client/http] \#6022 Change `timeout` type to `time.Duration` in `NewWithTimeout`
 
 - Blockchain Protocol
 
@@ -64,3 +65,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
 - [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)
+- [light] \#6022 Fix a bug when the number of validators equals 100 (@melekes)
