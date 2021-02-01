@@ -81,35 +81,27 @@ func (pu *PeerUpdates) Done() <-chan struct{} {
 }
 
 // PeerManager manages peer lifecycle information, using a peerStore for
-// underlying storage. Its primary purpose is to determine which peers to
-// connect to next, make sure a peer only has a single active connection (either
-// inbound or outbound), and evict peers to make room for higher-scored peers.
-// It does not manage actual connections (this is handled by the Router),
-// only the peer lifecycle state.
-//
-// We track dialing and connected states independently. This allows us to accept
-// an inbound connection from a peer while the router is also dialing an
-// outbound connection to that same peer, which will cause the dialer to
-// eventually error when attempting to mark the peer as connected. This also
-// avoids race conditions where multiple goroutines may end up dialing a peer if
-// an incoming connection was briefly accepted and disconnected while we were
-// also dialing.
+// underlying storage. Its primary purpose is to determine which peer to connect
+// to next (including retry timers), make sure a peer only has a single active
+// connection (either inbound or outbound), and evict peers to make room for
+// higher-scored peers. It does not manage actual connections (this is handled
+// by the Router), only the peer lifecycle state.
 //
 // For an outbound connection, the flow is as follows:
-// - DialNext: returns a peer address to dial, marking the peer as dialing.
-// - DialFailed: reports a dial failure, unmarking the peer as dialing.
-// - Dialed: successfully dialed, unmarking as dialing and marking as connected
-//   (or erroring if already connected).
-// - Ready: routing is up, broadcasts a PeerStatusUp peer update to subscribers.
-// - Disconnected: peer disconnects, unmarking as connected and broadcasts a
-//   PeerStatusDown peer update.
+// - DialNext: return a peer address to dial, mark peer as dialing.
+// - DialFailed: report a dial failure, unmark as dialing.
+// - Dialed: report a dial success, unmark as dialing and mark as connected
+//   (errors if already connected, e.g. by Accepted).
+// - Ready: report routing is ready, mark as ready and broadcast PeerStatusUp.
+// - Disconnected: report peer disconnect, unmark as connected and broadcasts
+//   PeerStatusDown.
 //
 // For an inbound connection, the flow is as follows:
-// - Accepted: successfully accepted connection, marking as connected (or erroring
-//   if already connected).
-// - Ready: routing is up, broadcasts a PeerStatusUp peer update to subscribers.
-// - Disconnected: peer disconnects, unmarking as connected and broadcasts a
-//   PeerStatusDown peer update.
+// - Accepted: report inbound connection success, mark as connected (errors if
+//   already connected, e.g. by Dialed).
+// - Ready: report routing is ready, mark as ready and broadcast PeerStatusUp.
+// - Disconnected: report peer disconnect, unmark as connected and broadcasts
+//   PeerStatusDown.
 //
 // When evicting peers, either because peers are explicitly scheduled for
 // eviction or we are connected to too many peers, the flow is as follows:
@@ -145,11 +137,12 @@ type PeerManager struct {
 
 	mtx           sync.Mutex
 	store         *peerStore
-	dialing       map[NodeID]bool               // peers being dialed (DialNext -> Dialed/DialFail)
-	upgrading     map[NodeID]NodeID             // peers claimed for upgrade (DialNext -> Dialed/DialFail)
-	connected     map[NodeID]bool               // connected peers (Dialed/Accepted -> Disconnected)
-	evict         map[NodeID]bool               // peers scheduled for eviction (Connected -> EvictNext)
-	evicting      map[NodeID]bool               // peers being evicted (EvictNext -> Disconnected)
+	dialing       map[NodeID]bool               // peers being dialed (DialNext → Dialed/DialFail)
+	upgrading     map[NodeID]NodeID             // peers claimed for upgrade (DialNext → Dialed/DialFail)
+	connected     map[NodeID]bool               // connected peers (Dialed/Accepted → Disconnected)
+	ready         map[NodeID]bool               // ready peers (Ready → Disconnected)
+	evict         map[NodeID]bool               // peers scheduled for eviction (Connected → EvictNext)
+	evicting      map[NodeID]bool               // peers being evicted (EvictNext → Disconnected)
 	subscriptions map[*PeerUpdates]*PeerUpdates // keyed by struct identity (address)
 }
 
@@ -681,6 +674,7 @@ func (m *PeerManager) Ready(peerID NodeID) {
 	defer m.mtx.Unlock()
 
 	if m.connected[peerID] {
+		m.ready[peerID] = true
 		m.broadcast(PeerUpdate{
 			NodeID: peerID,
 			Status: PeerStatusUp,
@@ -695,6 +689,7 @@ func (m *PeerManager) Disconnected(peerID NodeID) error {
 	defer m.mtx.Unlock()
 
 	delete(m.connected, peerID)
+	delete(m.ready, peerID)
 	delete(m.upgrading, peerID)
 	delete(m.evict, peerID)
 	delete(m.evicting, peerID)
