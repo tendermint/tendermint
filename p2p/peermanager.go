@@ -761,14 +761,12 @@ func (m *PeerManager) findUpgradeCandidate(id NodeID, score PeerScore) NodeID {
 	return ""
 }
 
-// GetHeight returns a peer's height, as reported via SetHeight. If the peer
-// or height is unknown, this returns 0.
+// GetHeight returns a peer's height, as reported via SetHeight, or 0 if the
+// peer or height is unknown.
 //
-// FIXME: This is a temporary workaround for the peer state stored via the
-// legacy Peer.Set() and Peer.Get() APIs, used to share height state between the
-// consensus and mempool reactors. These dependencies should be removed from the
-// reactors, and instead query this information independently via new P2P
-// protocol additions.
+// FIXME: This is a temporary workaround to share state between the consensus
+// and mempool reactors, carried over from the legacy P2P stack. Reactors should
+// not have dependencies on each other, instead tracking this themselves.
 func (m *PeerManager) GetHeight(peerID NodeID) int64 {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
@@ -777,14 +775,11 @@ func (m *PeerManager) GetHeight(peerID NodeID) int64 {
 	return peer.Height
 }
 
-// SetHeight stores a peer's height, making it available via GetHeight. If the
-// peer is unknown, it is created.
+// SetHeight stores a peer's height, making it available via GetHeight.
 //
-// FIXME: This is a temporary workaround for the peer state stored via the
-// legacy Peer.Set() and Peer.Get() APIs, used to share height state between the
-// consensus and mempool reactors. These dependencies should be removed from the
-// reactors, and instead query this information independently via new P2P
-// protocol additions.
+// FIXME: This is a temporary workaround to share state between the consensus
+// and mempool reactors, carried over from the legacy P2P stack. Reactors should
+// not have dependencies on each other, instead tracking this themselves.
 func (m *PeerManager) SetHeight(peerID NodeID, height int64) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
