@@ -8,11 +8,8 @@ import (
 	"math"
 	"math/rand"
 	"net"
-	"net/url"
 	"runtime/debug"
 	"sort"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -26,154 +23,6 @@ import (
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
-
-// PeerAddress is a peer address URL. It differs from Endpoint in that the
-// address hostname may be expanded into multiple IP addresses (thus multiple
-// endpoints).
-//
-// If the URL is opaque, i.e. of the form "scheme:<opaque>", then the opaque
-// part has to contain either the node ID or a node ID and path in the form
-// "scheme:<nodeid>@<path>".
-type PeerAddress struct {
-	ID       NodeID
-	Protocol Protocol
-	Hostname string
-	Port     uint16
-	Path     string
-}
-
-// ParsePeerAddress parses a peer address URL into a PeerAddress,
-// normalizing and validating it.
-func ParsePeerAddress(urlString string) (PeerAddress, error) {
-	url, err := url.Parse(urlString)
-	if err != nil || url == nil {
-		return PeerAddress{}, fmt.Errorf("invalid peer address %q: %w", urlString, err)
-	}
-
-	address := PeerAddress{}
-
-	// If the URL is opaque, i.e. in the form "scheme:<opaque>", we specify the
-	// opaque bit to be either a node ID or a node ID and path in the form
-	// "scheme:<nodeid>@<path>".
-	if url.Opaque != "" {
-		parts := strings.Split(url.Opaque, "@")
-		if len(parts) > 2 {
-			return PeerAddress{}, fmt.Errorf("invalid address format %q, unexpected @", urlString)
-		}
-		address.ID, err = NewNodeID(parts[0])
-		if err != nil {
-			return PeerAddress{}, fmt.Errorf("invalid peer ID %q: %w", parts[0], err)
-		}
-		if len(parts) == 2 {
-			address.Path = parts[1]
-		}
-		return address, nil
-	}
-
-	// Otherwise, just parse a normal networked URL.
-	address.ID, err = NewNodeID(url.User.Username())
-	if err != nil {
-		return PeerAddress{}, fmt.Errorf("invalid peer ID %q: %w", url.User.Username(), err)
-	}
-
-	if url.Scheme != "" {
-		address.Protocol = Protocol(strings.ToLower(url.Scheme))
-	} else {
-		address.Protocol = defaultProtocol
-	}
-
-	address.Hostname = strings.ToLower(url.Hostname())
-
-	if portString := url.Port(); portString != "" {
-		port64, err := strconv.ParseUint(portString, 10, 16)
-		if err != nil {
-			return PeerAddress{}, fmt.Errorf("invalid port %q: %w", portString, err)
-		}
-		address.Port = uint16(port64)
-	}
-
-	// NOTE: URL paths are case-sensitive, so we don't lowercase them.
-	address.Path = url.Path
-	if url.RawPath != "" {
-		address.Path = url.RawPath
-	}
-	if url.RawQuery != "" {
-		address.Path += "?" + url.RawQuery
-	}
-	if url.RawFragment != "" {
-		address.Path += "#" + url.RawFragment
-	}
-	if address.Path != "" && address.Path[0] != '/' && address.Path[0] != '#' {
-		address.Path = "/" + address.Path
-	}
-
-	return address, address.Validate()
-}
-
-// Resolve resolves a PeerAddress into a set of Endpoints, by expanding
-// out a DNS hostname to IP addresses.
-func (a PeerAddress) Resolve(ctx context.Context) ([]Endpoint, error) {
-	// If there is no hostname, this is an opaque URL in the form
-	// "scheme:<opaque>".
-	if a.Hostname == "" {
-		return []Endpoint{{
-			PeerID:   a.ID,
-			Protocol: a.Protocol,
-			Path:     a.Path,
-		}}, nil
-	}
-
-	ips, err := net.DefaultResolver.LookupIP(ctx, "ip", a.Hostname)
-	if err != nil {
-		return nil, err
-	}
-	endpoints := make([]Endpoint, len(ips))
-	for i, ip := range ips {
-		endpoints[i] = Endpoint{
-			PeerID:   a.ID,
-			Protocol: a.Protocol,
-			IP:       ip,
-			Port:     a.Port,
-			Path:     a.Path,
-		}
-	}
-	return endpoints, nil
-}
-
-// Validates validates a PeerAddress.
-func (a PeerAddress) Validate() error {
-	if a.Protocol == "" {
-		return errors.New("no protocol")
-	}
-	if a.ID == "" {
-		return errors.New("no peer ID")
-	} else if err := a.ID.Validate(); err != nil {
-		return fmt.Errorf("invalid peer ID: %w", err)
-	}
-	if a.Port > 0 && a.Hostname == "" {
-		return errors.New("cannot specify port without hostname")
-	}
-	return nil
-}
-
-// String formats the address as a URL string.
-func (a PeerAddress) String() string {
-	// Handle opaque URLs.
-	if a.Hostname == "" {
-		s := fmt.Sprintf("%s:%s", a.Protocol, a.ID)
-		if a.Path != "" {
-			s += "@" + a.Path
-		}
-		return s
-	}
-
-	s := fmt.Sprintf("%s://%s@%s", a.Protocol, a.ID, a.Hostname)
-	if a.Port > 0 {
-		s += ":" + strconv.Itoa(int(a.Port))
-	}
-	s += a.Path // We've already normalized the path with appropriate prefix in ParsePeerAddress()
-	return s
-}
 
 // PeerStatus specifies peer statuses.
 type PeerStatus string
@@ -316,6 +165,11 @@ const (
 //   lower-scored to evict.
 // - EvictNext: pick peer from evict, mark as evicting.
 // - Disconnected: unmark connected, upgrading[from]=to, evict, evicting.
+//
+// FIXME: The old stack supports ABCI-based peer ID filtering via
+// /p2p/filter/id/<ID> queries, we should implement this here as well by taking
+// a peer ID filtering callback in PeerManagerOptions and configuring it during
+// Node setup.
 type PeerManager struct {
 	options     PeerManagerOptions
 	wakeDialCh  chan struct{} // wakes up DialNext() on relevant peer changes
@@ -469,16 +323,16 @@ func (m *PeerManager) Close() {
 
 // Add adds a peer to the manager, given as an address. If the peer already
 // exists, the address is added to it.
-func (m *PeerManager) Add(address PeerAddress) error {
+func (m *PeerManager) Add(address NodeAddress) error {
 	if err := address.Validate(); err != nil {
 		return err
 	}
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	peer, ok := m.store.Get(address.ID)
+	peer, ok := m.store.Get(address.NodeID)
 	if !ok {
-		peer = m.makePeerInfo(address.ID)
+		peer = m.makePeerInfo(address.NodeID)
 	}
 	if _, ok := peer.AddressInfo[address.String()]; !ok {
 		peer.AddressInfo[address.String()] = &peerAddressInfo{Address: address}
@@ -497,11 +351,11 @@ func (m *PeerManager) Add(address PeerAddress) error {
 //
 // FIXME: This is fairly naïve and only returns the addresses of the
 // highest-ranked peers.
-func (m *PeerManager) Advertise(peerID NodeID, limit uint16) []PeerAddress {
+func (m *PeerManager) Advertise(peerID NodeID, limit uint16) []NodeAddress {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	addresses := make([]PeerAddress, 0, limit)
+	addresses := make([]NodeAddress, 0, limit)
 	for _, peer := range m.store.Ranked() {
 		if peer.ID == peerID {
 			continue
@@ -578,7 +432,7 @@ func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
 // If no peer is found, or all connection slots are full, it blocks until one
 // becomes available. The caller must call Dialed() or DialFailed() for the
 // returned peer. The context can be used to cancel the call.
-func (m *PeerManager) DialNext(ctx context.Context) (NodeID, PeerAddress, error) {
+func (m *PeerManager) DialNext(ctx context.Context) (NodeID, NodeAddress, error) {
 	for {
 		id, address, err := m.TryDialNext()
 		if err != nil || id != "" {
@@ -587,14 +441,14 @@ func (m *PeerManager) DialNext(ctx context.Context) (NodeID, PeerAddress, error)
 		select {
 		case <-m.wakeDialCh:
 		case <-ctx.Done():
-			return "", PeerAddress{}, ctx.Err()
+			return "", NodeAddress{}, ctx.Err()
 		}
 	}
 }
 
 // TryDialNext is equivalent to DialNext(), but immediately returns an empty
 // peer ID if no peers or connection slots are available.
-func (m *PeerManager) TryDialNext() (NodeID, PeerAddress, error) {
+func (m *PeerManager) TryDialNext() (NodeID, NodeAddress, error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -603,7 +457,7 @@ func (m *PeerManager) TryDialNext() (NodeID, PeerAddress, error) {
 	// higher score than any other peers, and if successful evict it.
 	if m.options.MaxConnected > 0 &&
 		len(m.connected)+len(m.dialing) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
-		return "", PeerAddress{}, nil
+		return "", NodeAddress{}, nil
 	}
 
 	for _, peer := range m.store.Ranked() {
@@ -626,7 +480,7 @@ func (m *PeerManager) TryDialNext() (NodeID, PeerAddress, error) {
 			if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
 				upgradeFromPeer := m.findUpgradeCandidate(peer.ID, peer.Score())
 				if upgradeFromPeer == "" {
-					return "", PeerAddress{}, nil
+					return "", NodeAddress{}, nil
 				}
 				m.upgrading[upgradeFromPeer] = peer.ID
 			}
@@ -635,7 +489,7 @@ func (m *PeerManager) TryDialNext() (NodeID, PeerAddress, error) {
 			return peer.ID, addressInfo.Address, nil
 		}
 	}
-	return "", PeerAddress{}, nil
+	return "", NodeAddress{}, nil
 }
 
 // wakeDial is used to notify DialNext about changes that *may* cause new
@@ -689,7 +543,7 @@ func (m *PeerManager) retryDelay(failures uint32, persistent bool) time.Duration
 // for dialing again when appropriate.
 //
 // FIXME: This should probably delete or mark bad addresses/peers after some time.
-func (m *PeerManager) DialFailed(peerID NodeID, address PeerAddress) error {
+func (m *PeerManager) DialFailed(peerID NodeID, address NodeAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -738,7 +592,7 @@ func (m *PeerManager) DialFailed(peerID NodeID, address PeerAddress) error {
 
 // Dialed marks a peer as successfully dialed. Any further incoming connections
 // will be rejected, and once disconnected the peer may be dialed again.
-func (m *PeerManager) Dialed(peerID NodeID, address PeerAddress) error {
+func (m *PeerManager) Dialed(peerID NodeID, address NodeAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -1229,7 +1083,7 @@ func (p *peerInfo) Validate() error {
 
 // peerAddressInfo contains information and statistics about a peer address.
 type peerAddressInfo struct {
-	Address         PeerAddress
+	Address         NodeAddress
 	LastDialSuccess time.Time
 	LastDialFailure time.Time
 	DialFailures    uint32 // since last successful dial
@@ -1238,7 +1092,7 @@ type peerAddressInfo struct {
 // peerAddressInfoFromProto converts a Protobuf PeerAddressInfo message
 // to a peerAddressInfo.
 func peerAddressInfoFromProto(msg *p2pproto.PeerAddressInfo) (*peerAddressInfo, error) {
-	address, err := ParsePeerAddress(msg.Address)
+	address, err := ParseNodeAddress(msg.Address)
 	if err != nil {
 		return nil, fmt.Errorf("invalid address %q: %w", address, err)
 	}
@@ -1363,11 +1217,6 @@ func newPeerConn(outbound, persistent bool, conn Connection) peerConn {
 	}
 }
 
-// ID only exists for SecretConnection.
-func (pc peerConn) ID() NodeID {
-	return NodeIDFromPubKey(pc.conn.PubKey())
-}
-
 // Return the IP from the connection RemoteAddr
 func (pc peerConn) RemoteIP() net.IP {
 	if pc.ip == nil {
@@ -1403,12 +1252,12 @@ type peer struct {
 type PeerOption func(*peer)
 
 func newPeer(
+	nodeInfo NodeInfo,
 	pc peerConn,
 	reactorsByCh map[byte]Reactor,
 	onPeerError func(Peer, interface{}),
 	options ...PeerOption,
 ) *peer {
-	nodeInfo := pc.conn.NodeInfo()
 	p := &peer{
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
@@ -1477,12 +1326,12 @@ func (p *peer) processMessages() {
 			p.onError(err)
 			return
 		}
-		reactor, ok := p.reactors[chID]
+		reactor, ok := p.reactors[byte(chID)]
 		if !ok {
 			p.onError(fmt.Errorf("unknown channel %v", chID))
 			return
 		}
-		reactor.Receive(chID, p, msg)
+		reactor.Receive(byte(chID), p, msg)
 	}
 }
 
@@ -1534,7 +1383,12 @@ func (p *peer) NodeInfo() NodeInfo {
 // For inbound peers, it's the address returned by the underlying connection
 // (not what's reported in the peer's NodeInfo).
 func (p *peer) SocketAddr() *NetAddress {
-	return p.peerConn.conn.RemoteEndpoint().NetAddress()
+	endpoint := p.peerConn.conn.RemoteEndpoint()
+	return &NetAddress{
+		ID:   p.ID(),
+		IP:   endpoint.IP,
+		Port: endpoint.Port,
+	}
 }
 
 // Status returns the peer's ConnectionStatus.
@@ -1552,7 +1406,7 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	res, err := p.conn.SendMessage(chID, msgBytes)
+	res, err := p.conn.SendMessage(ChannelID(chID), msgBytes)
 	if err == io.EOF {
 		return false
 	} else if err != nil {
@@ -1577,7 +1431,7 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	res, err := p.conn.TrySendMessage(chID, msgBytes)
+	res, err := p.conn.TrySendMessage(ChannelID(chID), msgBytes)
 	if err == io.EOF {
 		return false
 	} else if err != nil {
