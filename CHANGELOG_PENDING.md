@@ -23,3 +23,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS
 
 ### BUG FIXES
+
+- [light] \#6022 Fix a bug when the number of validators equals 100 (@melekes)
