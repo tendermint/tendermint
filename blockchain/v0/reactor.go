@@ -311,7 +311,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	}
 
 	switch peerUpdate.Status {
-	case p2p.PeerStatusNew, p2p.PeerStatusUp:
+	case p2p.PeerStatusUp:
 		// send a status update the newly added peer
 		r.blockchainCh.Out() <- p2p.Envelope{
 			To: peerUpdate.PeerID,
@@ -321,7 +321,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 			},
 		}
 
-	case p2p.PeerStatusDown, p2p.PeerStatusRemoved, p2p.PeerStatusBanned:
+	case p2p.PeerStatusDown:
 		r.pool.RemovePeer(peerUpdate.PeerID)
 	}
 }

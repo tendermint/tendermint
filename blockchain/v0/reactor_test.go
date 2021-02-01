@@ -201,7 +201,7 @@ func simulateRouter(primary *reactorTestSuite, suites []*reactorTestSuite, dropC
 			} else {
 				primary.peerUpdatesCh <- p2p.PeerUpdate{
 					PeerID: pErr.PeerID,
-					Status: p2p.PeerStatusRemoved,
+					Status: p2p.PeerStatusDown,
 				}
 			}
 		}

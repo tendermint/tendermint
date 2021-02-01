@@ -249,7 +249,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 			go r.broadcastEvidenceLoop(peerUpdate.PeerID, closer)
 		}
 
-	case p2p.PeerStatusDown, p2p.PeerStatusRemoved, p2p.PeerStatusBanned:
+	case p2p.PeerStatusDown:
 		// Check if we've started an evidence broadcasting goroutine for this peer.
 		// If we have, we signal to terminate the goroutine via the channel's closure.
 		// This will internally decrement the peer waitgroup and remove the peer

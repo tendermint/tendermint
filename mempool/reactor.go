@@ -278,7 +278,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 			}
 		}
 
-	case p2p.PeerStatusDown, p2p.PeerStatusRemoved, p2p.PeerStatusBanned:
+	case p2p.PeerStatusDown:
 		r.ids.Reclaim(peerUpdate.PeerID)
 
 		// Check if we've started a tx broadcasting goroutine for this peer.

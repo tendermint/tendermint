@@ -397,10 +397,10 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 
 	if r.syncer != nil {
 		switch peerUpdate.Status {
-		case p2p.PeerStatusNew, p2p.PeerStatusUp:
+		case p2p.PeerStatusUp:
 			r.syncer.AddPeer(peerUpdate.PeerID)
 
-		case p2p.PeerStatusDown, p2p.PeerStatusRemoved, p2p.PeerStatusBanned:
+		case p2p.PeerStatusDown:
 			r.syncer.RemovePeer(peerUpdate.PeerID)
 		}
 	}

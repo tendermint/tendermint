@@ -17,15 +17,16 @@ import (
 	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
-// PeerStatus specifies peer statuses.
+// PeerStatus is a peer status.
+//
+// The peer manager has many more internal states for a peer (e.g. dialing,
+// connected, evicting, and so on), which are tracked separately. PeerStatus is
+// for external use outside of the peer manager.
 type PeerStatus string
 
 const (
-	PeerStatusNew     = PeerStatus("new")     // New peer which we haven't tried to contact yet.
-	PeerStatusUp      = PeerStatus("up")      // Peer which we have an active connection to.
-	PeerStatusDown    = PeerStatus("down")    // Peer which we're temporarily disconnected from.
-	PeerStatusRemoved = PeerStatus("removed") // Peer which has been removed.
-	PeerStatusBanned  = PeerStatus("banned")  // Peer which is banned for misbehavior.
+	PeerStatusUp   = PeerStatus("up")   // connected and ready
+	PeerStatusDown = PeerStatus("down") // disconnected
 )
 
 // PeerError is a peer error reported by a reactor via the Error channel. The
