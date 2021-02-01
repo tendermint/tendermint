@@ -390,7 +390,7 @@ func (r *Router) dialPeers() {
 				return
 			}
 
-			if err = r.peerManager.Dialed(peerID, address); err != nil {
+			if err = r.peerManager.Dialed(address); err != nil {
 				r.logger.Error("failed to dial peer", "peer", peerID, "err", err)
 				return
 			}

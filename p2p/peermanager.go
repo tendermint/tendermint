@@ -407,8 +407,8 @@ func (m *PeerManager) TryDialNext() (NodeAddress, error) {
 	// We allow dialing MaxConnected+MaxConnectedUpgrade peers. Including
 	// MaxConnectedUpgrade allows us to probe additional peers that have a
 	// higher score than any other peers, and if successful evict it.
-	if m.options.MaxConnected > 0 &&
-		len(m.connected)+len(m.dialing) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
+	if m.options.MaxConnected > 0 && len(m.connected)+len(m.dialing) >=
+		int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
 		return NodeAddress{}, nil
 	}
 
@@ -497,15 +497,15 @@ func (m *PeerManager) DialFailed(address NodeAddress) error {
 
 // Dialed marks a peer as successfully dialed. Any further connections will be
 // rejected, and once disconnected the peer may be dialed again.
-func (m *PeerManager) Dialed(peerID NodeID, address NodeAddress) error {
+func (m *PeerManager) Dialed(address NodeAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	delete(m.dialing, peerID)
+	delete(m.dialing, address.NodeID)
 
 	var upgradeFromPeer NodeID
 	for from, to := range m.upgrading {
-		if to == peerID {
+		if to == address.NodeID {
 			delete(m.upgrading, from)
 			upgradeFromPeer = from
 			// Don't break, just in case this peer was marked as upgrading for
@@ -513,17 +513,17 @@ func (m *PeerManager) Dialed(peerID NodeID, address NodeAddress) error {
 		}
 	}
 
-	if m.connected[peerID] {
-		return fmt.Errorf("peer %v is already connected", peerID)
+	if m.connected[address.NodeID] {
+		return fmt.Errorf("peer %v is already connected", address.NodeID)
 	}
 	if m.options.MaxConnected > 0 &&
 		len(m.connected) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
 		return fmt.Errorf("already connected to maximum number of peers")
 	}
 
-	peer, ok := m.store.Get(peerID)
+	peer, ok := m.store.Get(address.NodeID)
 	if !ok {
-		return fmt.Errorf("peer %q was removed while dialing", peerID)
+		return fmt.Errorf("peer %q was removed while dialing", address.NodeID)
 	}
 	now := time.Now().UTC()
 	peer.LastConnected = now
@@ -547,7 +547,7 @@ func (m *PeerManager) Dialed(peerID NodeID, address NodeAddress) error {
 		}
 		m.evict[upgradeFromPeer] = true
 	}
-	m.connected[peerID] = true
+	m.connected[peer.ID] = true
 	m.evictWaker.Wake()
 
 	return nil
