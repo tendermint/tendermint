@@ -18,6 +18,11 @@ import (
 	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
+const (
+	// retryNever is returned by retryDelay() when retries are disabled.
+	retryNever time.Duration = math.MaxInt64
+)
+
 // PeerStatus is a peer status.
 //
 // The peer manager has many more internal states for a peer (e.g. dialing,
@@ -242,6 +247,7 @@ func (o *PeerManagerOptions) optimize() {
 // Node setup.
 type PeerManager struct {
 	options    PeerManagerOptions
+	rand       *rand.Rand
 	dialWaker  *tmsync.Waker // wakes up DialNext() on relevant peer changes
 	evictWaker *tmsync.Waker // wakes up EvictNext() on relevant peer changes
 	closeCh    chan struct{} // signal channel for Close()
@@ -271,6 +277,7 @@ func NewPeerManager(peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, er
 
 	peerManager := &PeerManager{
 		options:    options,
+		rand:       rand.New(rand.NewSource(time.Now().UnixNano())), // nolint:gosec
 		dialWaker:  tmsync.NewWaker(),
 		evictWaker: tmsync.NewWaker(),
 		closeCh:    make(chan struct{}),
@@ -467,22 +474,22 @@ func (m *PeerManager) DialFailed(peerID NodeID, address NodeAddress) error {
 	}
 
 	// We spawn a goroutine that notifies DialNext() again when the retry
-	// timeout has elapsed, so that we can consider dialing it again.
-	go func() {
-		retryDelay := m.retryDelay(addressInfo.DialFailures, peer.Persistent)
-		if retryDelay == time.Duration(math.MaxInt64) {
-			return
-		}
-		// Use an explicit timer with deferred cleanup instead of
-		// time.After(), to avoid leaking goroutines on PeerManager.Close().
-		timer := time.NewTimer(retryDelay)
-		defer timer.Stop()
-		select {
-		case <-timer.C:
-			m.dialWaker.Wake()
-		case <-m.closeCh:
-		}
-	}()
+	// timeout has elapsed, so that we can consider dialing it again. We
+	// calculate the retry delay outside the goroutine, since it must hold
+	// the mutex lock.
+	if d := m.retryDelay(addressInfo.DialFailures, peer.Persistent); d != retryNever {
+		go func() {
+			// Use an explicit timer with deferred cleanup instead of
+			// time.After(), to avoid leaking goroutines on PeerManager.Close().
+			timer := time.NewTimer(d)
+			defer timer.Stop()
+			select {
+			case <-timer.C:
+				m.dialWaker.Wake()
+			case <-m.closeCh:
+			}
+		}()
+	}
 
 	m.dialWaker.Wake()
 	return nil
@@ -793,14 +800,15 @@ func (m *PeerManager) findUpgradeCandidate(id NodeID, score PeerScore) NodeID {
 }
 
 // retryDelay calculates a dial retry delay using exponential backoff, based on
-// retry settings in PeerManagerOptions. If MinRetryTime is 0, this returns
-// MaxInt64 (i.e. an infinite retry delay, effectively disabling retries).
+// retry settings in PeerManagerOptions. If retries are disabled (i.e.
+// MinRetryTime is 0), this returns retryNever (i.e. an infinite retry delay).
+// The caller must hold the mutex lock (for m.rand which is not thread-safe).
 func (m *PeerManager) retryDelay(failures uint32, persistent bool) time.Duration {
 	if failures == 0 {
 		return 0
 	}
 	if m.options.MinRetryTime == 0 {
-		return time.Duration(math.MaxInt64)
+		return retryNever
 	}
 	maxDelay := m.options.MaxRetryTime
 	if persistent && m.options.MaxRetryTimePersistent > 0 {
@@ -811,8 +819,7 @@ func (m *PeerManager) retryDelay(failures uint32, persistent bool) time.Duration
 	if maxDelay > 0 && delay > maxDelay {
 		delay = maxDelay
 	}
-	// FIXME: This should use a PeerManager-scoped RNG.
-	delay += time.Duration(rand.Int63n(int64(m.options.RetryTimeJitter))) // nolint:gosec
+	delay += time.Duration(m.rand.Int63n(int64(m.options.RetryTimeJitter)))
 	return delay
 }
 
