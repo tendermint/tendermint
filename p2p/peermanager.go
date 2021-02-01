@@ -264,10 +264,10 @@ func NewPeerManager(peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, er
 	if err != nil {
 		return nil, err
 	}
-	options.optimize()
 	if err = options.Validate(); err != nil {
 		return nil, err
 	}
+	options.optimize()
 
 	peerManager := &PeerManager{
 		options:    options,
