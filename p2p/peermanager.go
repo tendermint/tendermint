@@ -801,6 +801,18 @@ func (m *PeerManager) Addresses(peerID NodeID) []NodeAddress {
 	return addresses
 }
 
+// Peers returns all known peers, primarily for testing. The order is arbitrary.
+func (m *PeerManager) Peers() []NodeID {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	peers := []NodeID{}
+	for _, peer := range m.store.Ranked() {
+		peers = append(peers, peer.ID)
+	}
+	return peers
+}
+
 // Scores returns the peer scores for all known peers, primarily for testing.
 func (m *PeerManager) Scores() map[NodeID]PeerScore {
 	m.mtx.Lock()
