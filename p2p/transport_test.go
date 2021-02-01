@@ -435,52 +435,57 @@ func TestConnection_String(t *testing.T) {
 	})
 }
 
-func TestEndpoint_PeerAddress(t *testing.T) {
+func TestEndpoint_NodeAddress(t *testing.T) {
 	var (
 		ip4    = []byte{1, 2, 3, 4}
 		ip4in6 = net.IPv4(1, 2, 3, 4)
 		ip6    = []byte{0xb1, 0x0c, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01}
+		id     = p2p.NodeID("00112233445566778899aabbccddeeff00112233")
 	)
 
 	testcases := []struct {
 		endpoint p2p.Endpoint
-		expect   p2p.PeerAddress
+		expect   p2p.NodeAddress
 	}{
 		// Valid endpoints.
 		{
 			p2p.Endpoint{Protocol: "tcp", IP: ip4, Port: 8080, Path: "path"},
-			p2p.PeerAddress{Protocol: "tcp", Hostname: "1.2.3.4", Port: 8080, Path: "path"},
+			p2p.NodeAddress{Protocol: "tcp", Hostname: "1.2.3.4", Port: 8080, Path: "path"},
 		},
 		{
 			p2p.Endpoint{Protocol: "tcp", IP: ip4in6, Port: 8080, Path: "path"},
-			p2p.PeerAddress{Protocol: "tcp", Hostname: "1.2.3.4", Port: 8080, Path: "path"},
+			p2p.NodeAddress{Protocol: "tcp", Hostname: "1.2.3.4", Port: 8080, Path: "path"},
 		},
 		{
 			p2p.Endpoint{Protocol: "tcp", IP: ip6, Port: 8080, Path: "path"},
-			p2p.PeerAddress{Protocol: "tcp", Hostname: "b10c::1", Port: 8080, Path: "path"},
+			p2p.NodeAddress{Protocol: "tcp", Hostname: "b10c::1", Port: 8080, Path: "path"},
 		},
 		{
 			p2p.Endpoint{Protocol: "memory", Path: "foo"},
-			p2p.PeerAddress{Protocol: "memory", Path: "foo"},
+			p2p.NodeAddress{Protocol: "memory", Path: "foo"},
+		},
+		{
+			p2p.Endpoint{Protocol: "memory", Path: string(id)},
+			p2p.NodeAddress{Protocol: "memory", Path: string(id)},
 		},
 
 		// Partial (invalid) endpoints.
-		{p2p.Endpoint{}, p2p.PeerAddress{}},
-		{p2p.Endpoint{Protocol: "tcp"}, p2p.PeerAddress{Protocol: "tcp"}},
-		{p2p.Endpoint{IP: net.IPv4(1, 2, 3, 4)}, p2p.PeerAddress{Hostname: "1.2.3.4"}},
-		{p2p.Endpoint{Port: 8080}, p2p.PeerAddress{}},
-		{p2p.Endpoint{Path: "path"}, p2p.PeerAddress{Path: "path"}},
+		{p2p.Endpoint{}, p2p.NodeAddress{}},
+		{p2p.Endpoint{Protocol: "tcp"}, p2p.NodeAddress{Protocol: "tcp"}},
+		{p2p.Endpoint{IP: net.IPv4(1, 2, 3, 4)}, p2p.NodeAddress{Hostname: "1.2.3.4"}},
+		{p2p.Endpoint{Port: 8080}, p2p.NodeAddress{}},
+		{p2p.Endpoint{Path: "path"}, p2p.NodeAddress{Path: "path"}},
 	}
 	for _, tc := range testcases {
 		tc := tc
 		t.Run(tc.endpoint.String(), func(t *testing.T) {
 			// Without NodeID.
 			expect := tc.expect
-			require.Equal(t, expect, tc.endpoint.PeerAddress(""))
+			require.Equal(t, expect, tc.endpoint.NodeAddress(""))
 
 			// With NodeID.
-			expect.NodeID = p2p.NodeID("b10c")
-			require.Equal(t, expect, tc.endpoint.PeerAddress(expect.NodeID))
+			expect.NodeID = id
+			require.Equal(t, expect, tc.endpoint.NodeAddress(expect.NodeID))
 		})
 	}
 }
@@ -490,6 +495,7 @@ func TestEndpoint_String(t *testing.T) {
 		ip4    = []byte{1, 2, 3, 4}
 		ip4in6 = net.IPv4(1, 2, 3, 4)
 		ip6    = []byte{0xb1, 0x0c, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01}
+		nodeID = p2p.NodeID("00112233445566778899aabbccddeeff00112233")
 	)
 
 	testcases := []struct {
@@ -497,8 +503,9 @@ func TestEndpoint_String(t *testing.T) {
 		expect   string
 	}{
 		// Non-networked endpoints.
-		{p2p.Endpoint{Protocol: "memory", Path: "foo"}, "memory:foo"},
-		{p2p.Endpoint{Protocol: "memory", Path: "👋"}, "memory:👋"},
+		{p2p.Endpoint{Protocol: "memory", Path: string(nodeID)}, "memory:" + string(nodeID)},
+		{p2p.Endpoint{Protocol: "file", Path: "foo"}, "file:///foo"},
+		{p2p.Endpoint{Protocol: "file", Path: "👋"}, "file:///%F0%9F%91%8B"},
 
 		// IPv4 endpoints.
 		{p2p.Endpoint{Protocol: "tcp", IP: ip4}, "tcp://1.2.3.4"},

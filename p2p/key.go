@@ -1,68 +1,13 @@
 package p2p
 
 import (
-	"encoding/hex"
-	"errors"
-	"fmt"
 	"io/ioutil"
-	"strings"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmos "github.com/tendermint/tendermint/libs/os"
 )
-
-// NodeIDByteLength is the length of a crypto.Address. Currently only 20.
-// FIXME: support other length addresses?
-const NodeIDByteLength = crypto.AddressSize
-
-// NodeID is a hex-encoded crypto.Address.
-type NodeID string
-
-// NewNodeID returns a lowercased (normalized) NodeID.
-func NewNodeID(nodeID string) (NodeID, error) {
-	n := NodeID(strings.ToLower(nodeID))
-	return n, n.Validate()
-}
-
-// NodeIDFromPubKey returns the noe ID corresponding to the given PubKey. It's
-// the hex-encoding of the pubKey.Address().
-func NodeIDFromPubKey(pubKey crypto.PubKey) NodeID {
-	return NodeID(hex.EncodeToString(pubKey.Address()))
-}
-
-// Bytes converts the node ID to it's binary byte representation.
-func (id NodeID) Bytes() ([]byte, error) {
-	bz, err := hex.DecodeString(string(id))
-	if err != nil {
-		return nil, fmt.Errorf("invalid node ID encoding: %w", err)
-	}
-	return bz, nil
-}
-
-// Validate validates the NodeID.
-func (id NodeID) Validate() error {
-	if len(id) == 0 {
-		return errors.New("empty node ID")
-	}
-
-	bz, err := id.Bytes()
-	if err != nil {
-		return err
-	}
-
-	if len(bz) != NodeIDByteLength {
-		return fmt.Errorf("invalid node ID length; got %d, expected %d", len(bz), NodeIDByteLength)
-	}
-
-	idStr := string(id)
-	if strings.ToLower(idStr) != idStr {
-		return fmt.Errorf("invalid node ID; must be lowercased")
-	}
-
-	return nil
-}
 
 //------------------------------------------------------------------------------
 // Persistent peer ID

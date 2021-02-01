@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	// defaultProtocol is the default protocol used for PeerAddress when
+	// defaultProtocol is the default protocol used for NodeAddress when
 	// a protocol isn't explicitly given as a URL scheme.
 	defaultProtocol Protocol = MConnProtocol
 )
@@ -143,9 +143,9 @@ type Endpoint struct {
 	Path string
 }
 
-// PeerAddress converts the endpoint into a PeerAddress for the given node ID.
-func (e Endpoint) PeerAddress(nodeID NodeID) PeerAddress {
-	address := PeerAddress{
+// NodeAddress converts the endpoint into a NodeAddress for the given node ID.
+func (e Endpoint) NodeAddress(nodeID NodeID) NodeAddress {
+	address := NodeAddress{
 		NodeID:   nodeID,
 		Protocol: e.Protocol,
 		Path:     e.Path,
@@ -159,7 +159,15 @@ func (e Endpoint) PeerAddress(nodeID NodeID) PeerAddress {
 
 // String formats the endpoint as a URL string.
 func (e Endpoint) String() string {
-	return e.PeerAddress("").String()
+	// If this is a non-networked endpoint with a valid node ID as a path,
+	// assume that path is a node ID (to handle opaque URLs of the form
+	// scheme:id).
+	if e.IP == nil {
+		if nodeID, err := NewNodeID(e.Path); err == nil {
+			return e.NodeAddress(nodeID).String()
+		}
+	}
+	return e.NodeAddress("").String()
 }
 
 // Validate validates the endpoint.

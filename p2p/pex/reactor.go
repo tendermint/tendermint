@@ -92,7 +92,7 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 
 	case *protop2p.PexResponse:
 		for _, pexAddress := range msg.Addresses {
-			peerAddress, err := p2p.ParsePeerAddress(
+			peerAddress, err := p2p.ParseNodeAddress(
 				fmt.Sprintf("%s@%s:%d", pexAddress.ID, pexAddress.IP, pexAddress.Port))
 			if err != nil {
 				logger.Debug("invalid PEX address", "address", pexAddress, "err", err)
@@ -113,13 +113,13 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 // resolve resolves a set of peer addresses into PEX addresses.
 //
 // FIXME: This is necessary because the current PEX protocol only supports
-// IP/port pairs, while the P2P stack uses PeerAddress URLs. The PEX protocol
+// IP/port pairs, while the P2P stack uses NodeAddress URLs. The PEX protocol
 // should really use URLs too, to exchange DNS names instead of IPs and allow
 // different transport protocols (e.g. QUIC and MemoryTransport).
 //
 // FIXME: We may want to cache and parallelize this, but for now we'll just rely
 // on the operating system to cache it for us.
-func (r *ReactorV2) resolve(addresses []p2p.PeerAddress, limit uint16) []protop2p.PexAddress {
+func (r *ReactorV2) resolve(addresses []p2p.NodeAddress, limit uint16) []protop2p.PexAddress {
 	pexAddresses := make([]protop2p.PexAddress, 0, len(addresses))
 	for _, address := range addresses {
 		ctx, cancel := context.WithTimeout(context.Background(), resolveTimeout)
