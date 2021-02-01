@@ -827,7 +827,9 @@ func (m *PeerManager) retryDelay(failures uint32, persistent bool) time.Duration
 	if maxDelay > 0 && delay > maxDelay {
 		delay = maxDelay
 	}
-	delay += time.Duration(m.rand.Int63n(int64(m.options.RetryTimeJitter)))
+	if m.options.RetryTimeJitter > 0 {
+		delay += time.Duration(m.rand.Int63n(int64(m.options.RetryTimeJitter)))
+	}
 	return delay
 }
 
