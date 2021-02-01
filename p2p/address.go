@@ -98,7 +98,7 @@ func ParseNodeAddress(urlString string) (NodeAddress, error) {
 		(!reHasScheme.MatchString(urlString) || reSchemeIsHost.MatchString(urlString)) {
 		url, err = url.Parse(string(defaultProtocol) + "://" + urlString)
 	}
-	if err != nil || url == nil {
+	if err != nil {
 		return NodeAddress{}, fmt.Errorf("invalid node address %q: %w", urlString, err)
 	}
 
