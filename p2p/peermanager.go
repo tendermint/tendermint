@@ -81,6 +81,82 @@ func (pu *PeerUpdates) Done() <-chan struct{} {
 	return pu.closeCh
 }
 
+// PeerManagerOptions specifies options for a PeerManager.
+type PeerManagerOptions struct {
+	// PersistentPeers are peers that we want to maintain persistent connections
+	// to. These will be scored higher than other peers, and if
+	// MaxConnectedUpgrade is non-zero any lower-scored peers will be evicted if
+	// necessary to make room for these.
+	PersistentPeers []NodeID
+
+	// MaxPeers is the maximum number of peers to track information about, i.e.
+	// store in the peer store. When exceeded, the lowest-scored unconnected peers
+	// will be deleted. 0 means no limit.
+	MaxPeers uint16
+
+	// MaxConnected is the maximum number of connected peers (inbound and
+	// outbound). 0 means no limit.
+	MaxConnected uint16
+
+	// MaxConnectedUpgrade is the maximum number of additional connections to
+	// use for probing any better-scored peers to upgrade to when all connection
+	// slots are full. 0 disables peer upgrading.
+	//
+	// For example, if we are already connected to MaxConnected peers, but we
+	// know or learn about better-scored peers (e.g. configured persistent
+	// peers) that we are not connected too, then we can probe these peers by
+	// using up to MaxConnectedUpgrade connections, and once connected evict the
+	// lowest-scored connected peers. This also works for inbound connections,
+	// i.e. if a higher-scored peer attempts to connect to us, we can accept
+	// the connection and evict a lower-scored peer.
+	MaxConnectedUpgrade uint16
+
+	// MinRetryTime is the minimum time to wait between retries. Retry times
+	// double for each retry, up to MaxRetryTime. 0 disables retries.
+	MinRetryTime time.Duration
+
+	// MaxRetryTime is the maximum time to wait between retries. 0 means
+	// no maximum, in which case the retry time will keep doubling.
+	MaxRetryTime time.Duration
+
+	// MaxRetryTimePersistent is the maximum time to wait between retries for
+	// peers listed in PersistentPeers. 0 uses MaxRetryTime instead.
+	MaxRetryTimePersistent time.Duration
+
+	// RetryTimeJitter is the upper bound of a random interval added to
+	// retry times, to avoid thundering herds. 0 disables jutter.
+	RetryTimeJitter time.Duration
+
+	// persistentPeers provides fast PersistentPeers lookups. It is built
+	// by optimize().
+	persistentPeers map[NodeID]bool
+}
+
+// isPersistentPeer checks if a peer is in PersistentPeers.
+func (o *PeerManagerOptions) isPersistent(id NodeID) bool {
+	if o.persistentPeers != nil {
+		return o.persistentPeers[id]
+	}
+	for _, p := range o.PersistentPeers {
+		if p == id {
+			return true
+		}
+	}
+	return false
+}
+
+// optimize optimizes operations by pregenerating lookup structures. It's a
+// separate method instead of memoizing during calls to avoid dealing with
+// concurrency and mutex overhead.
+func (o *PeerManagerOptions) optimize() {
+	o.persistentPeers = make(map[NodeID]bool, len(o.PersistentPeers))
+	for _, p := range o.PersistentPeers {
+		o.persistentPeers[p] = true
+	}
+}
+
+// FIXME: Validate
+
 // PeerManager manages peer lifecycle information, using a peerStore for
 // underlying storage. Its primary purpose is to determine which peer to connect
 // to next (including retry timers), make sure a peer only has a single active
@@ -147,59 +223,13 @@ type PeerManager struct {
 	evicting      map[NodeID]bool               // peers being evicted (EvictNext → Disconnected)
 }
 
-// PeerManagerOptions specifies options for a PeerManager.
-type PeerManagerOptions struct {
-	// PersistentPeers are peers that we want to maintain persistent connections
-	// to. These will be scored higher than other peers, and if
-	// MaxConnectedUpgrade is non-zero any lower-scored peers will be evicted if
-	// necessary to make room for these.
-	PersistentPeers []NodeID
-
-	// MaxPeers is the maximum number of peers to track information about, i.e.
-	// store in the peer store. When exceeded, the lowest-scored unconnected peers
-	// will be deleted. 0 means no limit.
-	MaxPeers uint16
-
-	// MaxConnected is the maximum number of connected peers (inbound and
-	// outbound). 0 means no limit.
-	MaxConnected uint16
-
-	// MaxConnectedUpgrade is the maximum number of additional connections to
-	// use for probing any better-scored peers to upgrade to when all connection
-	// slots are full. 0 disables peer upgrading.
-	//
-	// For example, if we are already connected to MaxConnected peers, but we
-	// know or learn about better-scored peers (e.g. configured persistent
-	// peers) that we are not connected too, then we can probe these peers by
-	// using up to MaxConnectedUpgrade connections, and once connected evict the
-	// lowest-scored connected peers. This also works for inbound connections,
-	// i.e. if a higher-scored peer attempts to connect to us, we can accept
-	// the connection and evict a lower-scored peer.
-	MaxConnectedUpgrade uint16
-
-	// MinRetryTime is the minimum time to wait between retries. Retry times
-	// double for each retry, up to MaxRetryTime. 0 disables retries.
-	MinRetryTime time.Duration
-
-	// MaxRetryTime is the maximum time to wait between retries. 0 means
-	// no maximum, in which case the retry time will keep doubling.
-	MaxRetryTime time.Duration
-
-	// MaxRetryTimePersistent is the maximum time to wait between retries for
-	// peers listed in PersistentPeers. 0 uses MaxRetryTime instead.
-	MaxRetryTimePersistent time.Duration
-
-	// RetryTimeJitter is the upper bound of a random interval added to
-	// retry times, to avoid thundering herds. 0 disables jutter.
-	RetryTimeJitter time.Duration
-}
-
 // NewPeerManager creates a new peer manager.
 func NewPeerManager(peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, error) {
 	store, err := newPeerStore(peerDB)
 	if err != nil {
 		return nil, err
 	}
+	options.optimize()
 	peerManager := &PeerManager{
 		options:    options,
 		dialWaker:  tmsync.NewWaker(),
@@ -225,13 +255,12 @@ func NewPeerManager(peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, er
 }
 
 // configurePeers configures peers in the peer store with ephemeral runtime
-// configuration, e.g. setting peerInfo.Persistent based on
-// PeerManagerOptions.PersistentPeers. The caller must hold the mutex lock.
+// configuration, e.g. PersistentPeers. The caller must hold the mutex lock.
 func (m *PeerManager) configurePeers() error {
+	// We only configure peers in PersistentPeers for now.
 	for _, peerID := range m.options.PersistentPeers {
 		if peer, ok := m.store.Get(peerID); ok {
-			peer.Persistent = true
-			if err := m.store.Set(peer); err != nil {
+			if err := m.store.Set(m.configurePeer(peer)); err != nil {
 				return err
 			}
 		}
@@ -239,9 +268,23 @@ func (m *PeerManager) configurePeers() error {
 	return nil
 }
 
-// prunePeers removes peers from the peer store if it contains more than
-// MaxPeers peers. The lowest-scored non-connected peers are removed.
-// The caller must hold the mutex lock.
+// configurePeer configures a peer with ephemeral runtime configuration.
+func (m *PeerManager) configurePeer(peer peerInfo) peerInfo {
+	peer.Persistent = m.options.isPersistent(peer.ID)
+	return peer
+}
+
+// newPeerInfo creates a peerInfo for a new peer.
+func (m *PeerManager) newPeerInfo(id NodeID) peerInfo {
+	peerInfo := peerInfo{
+		ID:          id,
+		AddressInfo: map[string]*peerAddressInfo{},
+	}
+	return m.configurePeer(peerInfo)
+}
+
+// prunePeers removes low-scored peers from the peer store if it contains more
+// than MaxPeers peers. The caller must hold the mutex lock.
 func (m *PeerManager) prunePeers() error {
 	if m.options.MaxPeers == 0 || m.store.Size() <= int(m.options.MaxPeers) {
 		return nil
@@ -255,7 +298,6 @@ func (m *PeerManager) prunePeers() error {
 			break
 		case m.dialing[peerID]:
 		case m.connected[peerID]:
-		case m.evicting[peerID]:
 		default:
 			if err := m.store.Delete(peerID); err != nil {
 				return err
@@ -265,26 +307,19 @@ func (m *PeerManager) prunePeers() error {
 	return nil
 }
 
-// Close closes the peer manager, releasing resources allocated with it
-// (specifically any running goroutines).
-func (m *PeerManager) Close() {
-	m.closeOnce.Do(func() {
-		close(m.closeCh)
-	})
-}
-
 // Add adds a peer to the manager, given as an address. If the peer already
-// exists, the address is added to it.
+// exists, the address is added to it if not already present.
 func (m *PeerManager) Add(address NodeAddress) error {
 	if err := address.Validate(); err != nil {
 		return err
 	}
+
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
 	peer, ok := m.store.Get(address.NodeID)
 	if !ok {
-		peer = m.makePeerInfo(address.NodeID)
+		peer = m.newPeerInfo(address.NodeID)
 	}
 	if _, ok := peer.AddressInfo[address.String()]; !ok {
 		peer.AddressInfo[address.String()] = &peerAddressInfo{Address: address}
@@ -299,106 +334,10 @@ func (m *PeerManager) Add(address NodeAddress) error {
 	return nil
 }
 
-// Advertise returns a list of peer addresses to advertise to a peer.
-//
-// FIXME: This is fairly naïve and only returns the addresses of the
-// highest-ranked peers.
-func (m *PeerManager) Advertise(peerID NodeID, limit uint16) []NodeAddress {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-
-	addresses := make([]NodeAddress, 0, limit)
-	for _, peer := range m.store.Ranked() {
-		if peer.ID == peerID {
-			continue
-		}
-		for _, addressInfo := range peer.AddressInfo {
-			if len(addresses) >= int(limit) {
-				return addresses
-			}
-			addresses = append(addresses, addressInfo.Address)
-		}
-	}
-	return addresses
-}
-
-// makePeerInfo creates a peerInfo for a new peer.
-func (m *PeerManager) makePeerInfo(id NodeID) peerInfo {
-	isPersistent := false
-	for _, p := range m.options.PersistentPeers {
-		if id == p {
-			isPersistent = true
-			break
-		}
-	}
-	return peerInfo{
-		ID:          id,
-		Persistent:  isPersistent,
-		AddressInfo: map[string]*peerAddressInfo{},
-	}
-}
-
-// Error reports a peer error, causing the peer to be evicted.
-//
-// FIXME: This should probably be replaced with a peer behavior API, see
-// PeerError comments for more details.
-//
-// FIXME: This will cause the peer manager to immediately try to reconnect to
-// the peer, which is probably not always what we want.
-func (m *PeerManager) Error(peerID NodeID, err error) {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-
-	m.evict[peerID] = true
-	m.evictWaker.Wake()
-}
-
-// Subscribe subscribes to peer updates. The caller must consume the peer
-// updates in a timely fashion and close the subscription when done, since
-// delivery is guaranteed and will block peer connection/disconnection
-// otherwise.
-func (m *PeerManager) Subscribe() *PeerUpdates {
-	// FIXME: We may want to use a size 1 buffer here. When the router
-	// broadcasts a peer update it has to loop over all of the
-	// subscriptions, and we want to avoid blocking and waiting for a
-	// context switch before continuing to the next subscription. This also
-	// prevents tail latencies from compounding across updates. We also want
-	// to make sure the subscribers are reasonably in sync, so it should be
-	// kept at 1. However, this should be benchmarked first.
-	peerUpdates := NewPeerUpdates(make(chan PeerUpdate))
-	m.mtx.Lock()
-	m.subscriptions[peerUpdates] = peerUpdates
-	m.mtx.Unlock()
-
-	go func() {
-		<-peerUpdates.Done()
-		m.mtx.Lock()
-		delete(m.subscriptions, peerUpdates)
-		m.mtx.Unlock()
-	}()
-	return peerUpdates
-}
-
-// broadcast broadcasts a peer update to all subscriptions. The caller must
-// already hold the mutex lock. This means the mutex is held for the duration
-// of the broadcast, which we want to make sure all subscriptions receive all
-// updates in the same order.
-//
-// FIXME: Consider using more fine-grained mutexes here, and/or a channel to
-// enforce ordering of updates.
-func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
-	for _, sub := range m.subscriptions {
-		select {
-		case sub.updatesCh <- peerUpdate:
-		case <-sub.closeCh:
-		}
-	}
-}
-
 // DialNext finds an appropriate peer address to dial, and marks it as dialing.
 // If no peer is found, or all connection slots are full, it blocks until one
 // becomes available. The caller must call Dialed() or DialFailed() for the
-// returned peer. The context can be used to cancel the call.
+// returned peer.
 func (m *PeerManager) DialNext(ctx context.Context) (NodeID, NodeAddress, error) {
 	for {
 		id, address, err := m.TryDialNext()
@@ -459,32 +398,8 @@ func (m *PeerManager) TryDialNext() (NodeID, NodeAddress, error) {
 	return "", NodeAddress{}, nil
 }
 
-// retryDelay calculates a dial retry delay using exponential backoff, based on
-// retry settings in PeerManagerOptions. If MinRetryTime is 0, this returns
-// MaxInt64 (i.e. an infinite retry delay, effectively disabling retries).
-func (m *PeerManager) retryDelay(failures uint32, persistent bool) time.Duration {
-	if failures == 0 {
-		return 0
-	}
-	if m.options.MinRetryTime == 0 {
-		return time.Duration(math.MaxInt64)
-	}
-	maxDelay := m.options.MaxRetryTime
-	if persistent && m.options.MaxRetryTimePersistent > 0 {
-		maxDelay = m.options.MaxRetryTimePersistent
-	}
-
-	delay := m.options.MinRetryTime * time.Duration(math.Pow(2, float64(failures)))
-	if maxDelay > 0 && delay > maxDelay {
-		delay = maxDelay
-	}
-	// FIXME: This should use a PeerManager-scoped RNG.
-	delay += time.Duration(rand.Int63n(int64(m.options.RetryTimeJitter))) // nolint:gosec
-	return delay
-}
-
 // DialFailed reports a failed dial attempt. This will make the peer available
-// for dialing again when appropriate.
+// for dialing again when appropriate (possibly after a retry timeout).
 //
 // FIXME: This should probably delete or mark bad addresses/peers after some time.
 func (m *PeerManager) DialFailed(peerID NodeID, address NodeAddress) error {
@@ -534,8 +449,8 @@ func (m *PeerManager) DialFailed(peerID NodeID, address NodeAddress) error {
 	return nil
 }
 
-// Dialed marks a peer as successfully dialed. Any further incoming connections
-// will be rejected, and once disconnected the peer may be dialed again.
+// Dialed marks a peer as successfully dialed. Any further connections will be
+// rejected, and once disconnected the peer may be dialed again.
 func (m *PeerManager) Dialed(peerID NodeID, address NodeAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
@@ -623,7 +538,7 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 
 	peer, ok := m.store.Get(peerID)
 	if !ok {
-		peer = m.makePeerInfo(peerID)
+		peer = m.newPeerInfo(peerID)
 	}
 
 	// If all connections slots are full, but we allow upgrades (and we checked
@@ -667,28 +582,8 @@ func (m *PeerManager) Ready(peerID NodeID) {
 	}
 }
 
-// Disconnected unmarks a peer as connected, allowing new connections to be
-// established.
-func (m *PeerManager) Disconnected(peerID NodeID) error {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-
-	delete(m.connected, peerID)
-	delete(m.ready, peerID)
-	delete(m.upgrading, peerID)
-	delete(m.evict, peerID)
-	delete(m.evicting, peerID)
-	m.broadcast(PeerUpdate{
-		NodeID: peerID,
-		Status: PeerStatusDown,
-	})
-	m.dialWaker.Wake()
-	return nil
-}
-
 // EvictNext returns the next peer to evict (i.e. disconnect). If no evictable
-// peers are found, the call will block until one becomes available or the
-// context is cancelled.
+// peers are found, the call will block until one becomes available.
 func (m *PeerManager) EvictNext(ctx context.Context) (NodeID, error) {
 	for {
 		id, err := m.TryEvictNext()
@@ -738,6 +633,105 @@ func (m *PeerManager) TryEvictNext() (NodeID, error) {
 	return "", nil
 }
 
+// Disconnected unmarks a peer as connected, allowing it to be dialed or
+// accepted again as appropriate.
+func (m *PeerManager) Disconnected(peerID NodeID) error {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	delete(m.connected, peerID)
+	delete(m.ready, peerID)
+	delete(m.upgrading, peerID)
+	delete(m.evict, peerID)
+	delete(m.evicting, peerID)
+	m.broadcast(PeerUpdate{
+		NodeID: peerID,
+		Status: PeerStatusDown,
+	})
+	m.dialWaker.Wake()
+	return nil
+}
+
+// Error reports a peer error, causing the peer to be evicted.
+//
+// FIXME: This should probably be replaced with a peer behavior API, see
+// PeerError comments for more details.
+//
+// FIXME: This will cause the peer manager to immediately try to reconnect to
+// the peer, which is probably not always what we want.
+func (m *PeerManager) Error(peerID NodeID, err error) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	m.evict[peerID] = true
+	m.evictWaker.Wake()
+}
+
+// Advertise returns a list of peer addresses to advertise to a peer.
+//
+// FIXME: This is fairly naïve and only returns the addresses of the
+// highest-ranked peers.
+func (m *PeerManager) Advertise(peerID NodeID, limit uint16) []NodeAddress {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	addresses := make([]NodeAddress, 0, limit)
+	for _, peer := range m.store.Ranked() {
+		if peer.ID == peerID {
+			continue
+		}
+		for _, addressInfo := range peer.AddressInfo {
+			if len(addresses) >= int(limit) {
+				return addresses
+			}
+			addresses = append(addresses, addressInfo.Address)
+		}
+	}
+	return addresses
+}
+
+// Subscribe subscribes to peer updates. The caller must consume the peer
+// updates in a timely fashion and close the subscription when done, since
+// delivery is guaranteed and will block peer connection/disconnection
+// otherwise.
+func (m *PeerManager) Subscribe() *PeerUpdates {
+	// FIXME: We may want to use a size 1 buffer here. When the router
+	// broadcasts a peer update it has to loop over all of the
+	// subscriptions, and we want to avoid blocking and waiting for a
+	// context switch before continuing to the next subscription. This also
+	// prevents tail latencies from compounding across updates. We also want
+	// to make sure the subscribers are reasonably in sync, so it should be
+	// kept at 1. However, this should be benchmarked first.
+	peerUpdates := NewPeerUpdates(make(chan PeerUpdate))
+	m.mtx.Lock()
+	m.subscriptions[peerUpdates] = peerUpdates
+	m.mtx.Unlock()
+
+	go func() {
+		<-peerUpdates.Done()
+		m.mtx.Lock()
+		delete(m.subscriptions, peerUpdates)
+		m.mtx.Unlock()
+	}()
+	return peerUpdates
+}
+
+// broadcast broadcasts a peer update to all subscriptions. The caller must
+// already hold the mutex lock. This means the mutex is held for the duration
+// of the broadcast, which we want to make sure all subscriptions receive all
+// updates in the same order.
+//
+// FIXME: Consider using more fine-grained mutexes here, and/or a channel to
+// enforce ordering of updates.
+func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
+	for _, sub := range m.subscriptions {
+		select {
+		case sub.updatesCh <- peerUpdate:
+		case <-sub.closeCh:
+		}
+	}
+}
+
 // findUpgradeCandidate looks for a lower-scored peer that we could evict
 // to make room for the given peer. Returns an empty ID if none is found.
 // The caller must hold the mutex lock.
@@ -757,6 +751,30 @@ func (m *PeerManager) findUpgradeCandidate(id NodeID, score PeerScore) NodeID {
 		}
 	}
 	return ""
+}
+
+// retryDelay calculates a dial retry delay using exponential backoff, based on
+// retry settings in PeerManagerOptions. If MinRetryTime is 0, this returns
+// MaxInt64 (i.e. an infinite retry delay, effectively disabling retries).
+func (m *PeerManager) retryDelay(failures uint32, persistent bool) time.Duration {
+	if failures == 0 {
+		return 0
+	}
+	if m.options.MinRetryTime == 0 {
+		return time.Duration(math.MaxInt64)
+	}
+	maxDelay := m.options.MaxRetryTime
+	if persistent && m.options.MaxRetryTimePersistent > 0 {
+		maxDelay = m.options.MaxRetryTimePersistent
+	}
+
+	delay := m.options.MinRetryTime * time.Duration(math.Pow(2, float64(failures)))
+	if maxDelay > 0 && delay > maxDelay {
+		delay = maxDelay
+	}
+	// FIXME: This should use a PeerManager-scoped RNG.
+	delay += time.Duration(rand.Int63n(int64(m.options.RetryTimeJitter))) // nolint:gosec
+	return delay
 }
 
 // GetHeight returns a peer's height, as reported via SetHeight, or 0 if the
@@ -784,15 +802,22 @@ func (m *PeerManager) SetHeight(peerID NodeID, height int64) error {
 
 	peer, ok := m.store.Get(peerID)
 	if !ok {
-		peer = m.makePeerInfo(peerID)
+		peer = m.newPeerInfo(peerID)
 	}
 	peer.Height = height
 	return m.store.Set(peer)
 }
 
-// peerStore stores information about peers. It is not thread-safe, assuming
-// it is used only by PeerManager which handles concurrency control, allowing
-// it to execute multiple operations atomically via its own mutex.
+// Close closes the peer manager, releasing resources (i.e. goroutines).
+func (m *PeerManager) Close() {
+	m.closeOnce.Do(func() {
+		close(m.closeCh)
+	})
+}
+
+// peerStore stores information about peers. It is not thread-safe, assuming it
+// is only used by PeerManager which handles concurrency control. This allows
+// the manager to execute multiple operations atomically via its own mutex.
 //
 // The entire set of peers is kept in memory, for performance. It is loaded
 // from disk on initialization, and any changes are written back to disk
