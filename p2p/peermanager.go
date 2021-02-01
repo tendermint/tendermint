@@ -138,13 +138,13 @@ type PeerManager struct {
 
 	mtx           sync.Mutex
 	store         *peerStore
+	subscriptions map[*PeerUpdates]*PeerUpdates // keyed by struct identity (address)
 	dialing       map[NodeID]bool               // peers being dialed (DialNext → Dialed/DialFail)
 	upgrading     map[NodeID]NodeID             // peers claimed for upgrade (DialNext → Dialed/DialFail)
 	connected     map[NodeID]bool               // connected peers (Dialed/Accepted → Disconnected)
 	ready         map[NodeID]bool               // ready peers (Ready → Disconnected)
 	evict         map[NodeID]bool               // peers scheduled for eviction (Connected → EvictNext)
 	evicting      map[NodeID]bool               // peers being evicted (EvictNext → Disconnected)
-	subscriptions map[*PeerUpdates]*PeerUpdates // keyed by struct identity (address)
 }
 
 // PeerManagerOptions specifies options for a PeerManager.
@@ -246,8 +246,6 @@ func (m *PeerManager) prunePeers() error {
 	if m.options.MaxPeers == 0 || m.store.Size() <= int(m.options.MaxPeers) {
 		return nil
 	}
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
 
 	ranked := m.store.Ranked()
 	for i := len(ranked) - 1; i >= 0; i-- {
