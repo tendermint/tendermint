@@ -22,7 +22,7 @@ Adopt Batch Verification.
 A new interface will be introduced. This interface will have three methods `NewBatchVerifier`, `Add` and `VerifyBatch`.
 
 ```go
-type BatchVerification interface {
+type BatchVerifier interface {
   NewBatchVerifier() BatchVerification // NewBatchVerifier create a new verifier where keys, signatures and messages can be added as entries
   Add(key crypto.Pubkey, signature, message []byte) bool // Add appends an entry into the BatchVerifier.
   VerifyBatch() bool // VerifyBatch verifies all the entries in the BatchVerifier. If the verification fails it is unknown which entry failed and each entry will need to be verified individually.
