@@ -181,9 +181,8 @@ func (r *ReactorV2) processPexCh() {
 			if err := r.handleMessage(r.pexCh.ID(), envelope); err != nil {
 				r.Logger.Error("failed to process message", "ch_id", r.pexCh.ID(), "envelope", envelope, "err", err)
 				r.pexCh.Error() <- p2p.PeerError{
-					PeerID:   envelope.From,
-					Err:      err,
-					Severity: p2p.PeerErrorSeverityLow,
+					NodeID: envelope.From,
+					Err:    err,
 				}
 			}
 

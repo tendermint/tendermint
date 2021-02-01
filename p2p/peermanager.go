@@ -29,22 +29,20 @@ const (
 	PeerStatusDown = PeerStatus("down") // disconnected
 )
 
-// PeerError is a peer error reported by a reactor via the Error channel. The
-// severity may cause the peer to be disconnected or banned depending on policy.
+// PeerError is a peer error reported by a reactor via the Error channel.
+//
+// FIXME: This currently just disconnects the peer, which is too simplistic.
+// For example, some errors should be logged, some should cause disconnects,
+// and some should ban the peer.
+//
+// FIXME: This should probably be replaced by a more general PeerBehavior
+// concept that can mark good and bad behavior and contributes to peer scoring.
+// It should possibly also allow reactors to request explicit actions, e.g.
+// disconnection or banning, in addition to doing this based on aggregates.
 type PeerError struct {
-	PeerID   NodeID
-	Err      error
-	Severity PeerErrorSeverity
+	NodeID NodeID
+	Err    error
 }
-
-// PeerErrorSeverity determines the severity of a peer error.
-type PeerErrorSeverity string
-
-const (
-	PeerErrorSeverityLow      PeerErrorSeverity = "low"      // Mostly ignored.
-	PeerErrorSeverityHigh     PeerErrorSeverity = "high"     // May disconnect.
-	PeerErrorSeverityCritical PeerErrorSeverity = "critical" // Ban.
-)
 
 // PeerUpdatesCh defines a wrapper around a PeerUpdate go channel that allows
 // a reactor to listen for peer updates and safely close it when stopping.

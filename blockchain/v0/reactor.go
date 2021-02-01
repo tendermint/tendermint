@@ -288,9 +288,8 @@ func (r *Reactor) processBlockchainCh() {
 			if err := r.handleMessage(r.blockchainCh.ID(), envelope); err != nil {
 				r.Logger.Error("failed to process message", "ch_id", r.blockchainCh.ID(), "envelope", envelope, "err", err)
 				r.blockchainCh.Error() <- p2p.PeerError{
-					PeerID:   envelope.From,
-					Err:      err,
-					Severity: p2p.PeerErrorSeverityLow,
+					NodeID: envelope.From,
+					Err:    err,
 				}
 			}
 
@@ -384,9 +383,8 @@ func (r *Reactor) requestRoutine() {
 
 		case pErr := <-r.errorsCh:
 			r.blockchainCh.Error() <- p2p.PeerError{
-				PeerID:   pErr.peerID,
-				Err:      pErr.err,
-				Severity: p2p.PeerErrorSeverityLow,
+				NodeID: pErr.peerID,
+				Err:    pErr.err,
 			}
 
 		case <-statusUpdateTicker.C:
@@ -525,17 +523,15 @@ FOR_LOOP:
 				// to clean up the rest.
 				peerID := r.pool.RedoRequest(first.Height)
 				r.blockchainCh.Error() <- p2p.PeerError{
-					PeerID:   peerID,
-					Err:      err,
-					Severity: p2p.PeerErrorSeverityLow,
+					NodeID: peerID,
+					Err:    err,
 				}
 
 				peerID2 := r.pool.RedoRequest(second.Height)
 				if peerID2 != peerID {
 					r.blockchainCh.Error() <- p2p.PeerError{
-						PeerID:   peerID2,
-						Err:      err,
-						Severity: p2p.PeerErrorSeverityLow,
+						NodeID: peerID2,
+						Err:    err,
 					}
 				}
 

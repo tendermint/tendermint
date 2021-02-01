@@ -127,7 +127,7 @@ func TestReactor_ChunkRequest_InvalidRequest(t *testing.T) {
 	require.Error(t, response.Err)
 	require.Empty(t, rts.chunkOutCh)
 	require.Contains(t, response.Err.Error(), "received unknown message")
-	require.Equal(t, p2p.NodeID("aa"), response.PeerID)
+	require.Equal(t, p2p.NodeID("aa"), response.NodeID)
 }
 
 func TestReactor_ChunkRequest(t *testing.T) {
@@ -198,7 +198,7 @@ func TestReactor_SnapshotsRequest_InvalidRequest(t *testing.T) {
 	require.Error(t, response.Err)
 	require.Empty(t, rts.snapshotOutCh)
 	require.Contains(t, response.Err.Error(), "received unknown message")
-	require.Equal(t, p2p.NodeID("aa"), response.PeerID)
+	require.Equal(t, p2p.NodeID("aa"), response.NodeID)
 }
 
 func TestReactor_SnapshotsRequest(t *testing.T) {

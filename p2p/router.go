@@ -256,9 +256,9 @@ func (r *Router) routeChannel(channel *Channel) {
 				return
 			}
 			// FIXME: We just disconnect the peer for now
-			r.logger.Error("peer error, disconnecting", "peer", peerError.PeerID, "err", peerError.Err)
+			r.logger.Error("peer error, disconnecting", "peer", peerError.NodeID, "err", peerError.Err)
 			r.peerMtx.RLock()
-			peerQueue, ok := r.peerQueues[peerError.PeerID]
+			peerQueue, ok := r.peerQueues[peerError.NodeID]
 			r.peerMtx.RUnlock()
 			if ok {
 				peerQueue.close()

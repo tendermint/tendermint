@@ -347,9 +347,8 @@ func (r *Reactor) processSnapshotCh() {
 			if err := r.handleMessage(r.snapshotCh.ID(), envelope); err != nil {
 				r.Logger.Error("failed to process message", "ch_id", r.snapshotCh.ID(), "envelope", envelope, "err", err)
 				r.snapshotCh.Error() <- p2p.PeerError{
-					PeerID:   envelope.From,
-					Err:      err,
-					Severity: p2p.PeerErrorSeverityLow,
+					NodeID: envelope.From,
+					Err:    err,
 				}
 			}
 
@@ -374,9 +373,8 @@ func (r *Reactor) processChunkCh() {
 			if err := r.handleMessage(r.chunkCh.ID(), envelope); err != nil {
 				r.Logger.Error("failed to process message", "ch_id", r.chunkCh.ID(), "envelope", envelope, "err", err)
 				r.chunkCh.Error() <- p2p.PeerError{
-					PeerID:   envelope.From,
-					Err:      err,
-					Severity: p2p.PeerErrorSeverityLow,
+					NodeID: envelope.From,
+					Err:    err,
 				}
 			}
 

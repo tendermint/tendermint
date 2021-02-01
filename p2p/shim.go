@@ -162,10 +162,10 @@ func (rs *ReactorShim) handlePeerErrors() {
 	for _, cs := range rs.Channels {
 		go func(cs *ChannelShim) {
 			for pErr := range cs.Channel.errCh {
-				if pErr.PeerID != "" {
-					peer := rs.Switch.peers.Get(pErr.PeerID)
+				if pErr.NodeID != "" {
+					peer := rs.Switch.peers.Get(pErr.NodeID)
 					if peer == nil {
-						rs.Logger.Error("failed to handle peer error; failed to find peer", "peer", pErr.PeerID)
+						rs.Logger.Error("failed to handle peer error; failed to find peer", "peer", pErr.NodeID)
 						continue
 					}
 
