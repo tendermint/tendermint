@@ -737,38 +737,39 @@ func (m *PeerManager) Advertise(peerID NodeID, limit uint16) []NodeAddress {
 }
 
 // Subscribe subscribes to peer updates. The caller must consume the peer
-// updates in a timely fashion and close the subscription when done, since
-// delivery is guaranteed and will block peer connection/disconnection
-// otherwise.
+// updates in a timely fashion and close the subscription when done, otherwise
+// the PeerManager will halt.
 func (m *PeerManager) Subscribe() *PeerUpdates {
-	// FIXME: We may want to use a size 1 buffer here. When the router
-	// broadcasts a peer update it has to loop over all of the
-	// subscriptions, and we want to avoid blocking and waiting for a
-	// context switch before continuing to the next subscription. This also
-	// prevents tail latencies from compounding across updates. We also want
-	// to make sure the subscribers are reasonably in sync, so it should be
-	// kept at 1. However, this should be benchmarked first.
-	peerUpdates := NewPeerUpdates(make(chan PeerUpdate))
+	// FIXME: We use a size 1 buffer here. When we broadcast a peer update
+	// we have to loop over all of the subscriptions, and we want to avoid
+	// having to block and wait for a context switch before continuing on
+	// to the next subscriptions. This also prevents tail latencies from
+	// compounding. Limiting it to 1 means that the subscribers are still
+	// reasonably in sync. However, this should probably be benchmarked.
+	peerUpdates := NewPeerUpdates(make(chan PeerUpdate, 1))
 	m.mtx.Lock()
 	m.subscriptions[peerUpdates] = peerUpdates
 	m.mtx.Unlock()
 
 	go func() {
-		<-peerUpdates.Done()
-		m.mtx.Lock()
-		delete(m.subscriptions, peerUpdates)
-		m.mtx.Unlock()
+		select {
+		case <-peerUpdates.Done():
+			m.mtx.Lock()
+			delete(m.subscriptions, peerUpdates)
+			m.mtx.Unlock()
+		case <-m.closeCh:
+		}
 	}()
 	return peerUpdates
 }
 
 // broadcast broadcasts a peer update to all subscriptions. The caller must
-// already hold the mutex lock. This means the mutex is held for the duration
-// of the broadcast, which we want to make sure all subscriptions receive all
-// updates in the same order.
+// already hold the mutex lock, to make sure updates are sent in the same order
+// as the PeerManager processes them, but this means subscribers must be
+// responsive at all times or the entire PeerManager will halt.
 //
-// FIXME: Consider using more fine-grained mutexes here, and/or a channel to
-// enforce ordering of updates.
+// FIXME: Consider using an internal channel to buffer updates while also
+// maintaining order if this is a problem.
 func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
 	for _, sub := range m.subscriptions {
 		select {
@@ -776,6 +777,13 @@ func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
 		case <-sub.closeCh:
 		}
 	}
+}
+
+// Close closes the peer manager, releasing resources (i.e. goroutines).
+func (m *PeerManager) Close() {
+	m.closeOnce.Do(func() {
+		close(m.closeCh)
+	})
 }
 
 // findUpgradeCandidate looks for a lower-scored peer that we could evict
@@ -852,13 +860,6 @@ func (m *PeerManager) SetHeight(peerID NodeID, height int64) error {
 	}
 	peer.Height = height
 	return m.store.Set(peer)
-}
-
-// Close closes the peer manager, releasing resources (i.e. goroutines).
-func (m *PeerManager) Close() {
-	m.closeOnce.Do(func() {
-		close(m.closeCh)
-	})
 }
 
 // peerStore stores information about peers. It is not thread-safe, assuming it
