@@ -124,12 +124,53 @@ type PeerManagerOptions struct {
 	MaxRetryTimePersistent time.Duration
 
 	// RetryTimeJitter is the upper bound of a random interval added to
-	// retry times, to avoid thundering herds. 0 disables jutter.
+	// retry times, to avoid thundering herds. 0 disables jitter.
 	RetryTimeJitter time.Duration
 
 	// persistentPeers provides fast PersistentPeers lookups. It is built
 	// by optimize().
 	persistentPeers map[NodeID]bool
+}
+
+// Validate validates the options.
+func (o *PeerManagerOptions) Validate() error {
+	for _, id := range o.PersistentPeers {
+		if err := id.Validate(); err != nil {
+			return fmt.Errorf("invalid PersistentPeer ID %q: %w", id, err)
+		}
+	}
+	if o.MaxConnected > 0 && len(o.PersistentPeers) > int(o.MaxConnected) {
+		return fmt.Errorf("number of persistent peers %v can't exceed MaxConnected %v",
+			len(o.PersistentPeers), o.MaxConnected)
+	}
+
+	if o.MaxPeers > 0 {
+		if o.MaxConnected == 0 || o.MaxConnected+o.MaxConnectedUpgrade > o.MaxPeers {
+			return fmt.Errorf("MaxConnected %v and MaxConnectedUpgrade %v can't exceed MaxPeers %v", // nolint
+				o.MaxConnected, o.MaxConnectedUpgrade, o.MaxPeers)
+		}
+	}
+
+	if o.MaxRetryTime > 0 {
+		if o.MinRetryTime == 0 {
+			return errors.New("can't set MaxRetryTime without MinRetryTime")
+		}
+		if o.MinRetryTime > o.MaxRetryTime {
+			return fmt.Errorf("MinRetryTime %v is greater than MaxRetryTime %v", // nolint
+				o.MinRetryTime, o.MaxRetryTime)
+		}
+	}
+	if o.MaxRetryTimePersistent > 0 {
+		if o.MinRetryTime == 0 {
+			return errors.New("can't set MaxRetryTimePersistent without MinRetryTime")
+		}
+		if o.MinRetryTime > o.MaxRetryTimePersistent {
+			return fmt.Errorf("MinRetryTime %v is greater than MaxRetryTimePersistent %v", // nolint
+				o.MinRetryTime, o.MaxRetryTimePersistent)
+		}
+	}
+
+	return nil
 }
 
 // isPersistentPeer checks if a peer is in PersistentPeers.
@@ -154,8 +195,6 @@ func (o *PeerManagerOptions) optimize() {
 		o.persistentPeers[p] = true
 	}
 }
-
-// FIXME: Validate
 
 // PeerManager manages peer lifecycle information, using a peerStore for
 // underlying storage. Its primary purpose is to determine which peer to connect
@@ -230,6 +269,10 @@ func NewPeerManager(peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, er
 		return nil, err
 	}
 	options.optimize()
+	if err = options.Validate(); err != nil {
+		return nil, err
+	}
+
 	peerManager := &PeerManager{
 		options:    options,
 		dialWaker:  tmsync.NewWaker(),
