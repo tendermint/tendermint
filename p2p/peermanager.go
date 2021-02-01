@@ -14,6 +14,7 @@ import (
 	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
 
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
@@ -129,11 +130,11 @@ func (pu *PeerUpdates) Done() <-chan struct{} {
 // a peer ID filtering callback in PeerManagerOptions and configuring it during
 // Node setup.
 type PeerManager struct {
-	options     PeerManagerOptions
-	wakeDialCh  chan struct{} // wakes up DialNext() on relevant peer changes
-	wakeEvictCh chan struct{} // wakes up EvictNext() on relevant peer changes
-	closeCh     chan struct{} // signal channel for Close()
-	closeOnce   sync.Once
+	options    PeerManagerOptions
+	dialWaker  *tmsync.Waker // wakes up DialNext() on relevant peer changes
+	evictWaker *tmsync.Waker // wakes up EvictNext() on relevant peer changes
+	closeCh    chan struct{} // signal channel for Close()
+	closeOnce  sync.Once
 
 	mtx           sync.Mutex
 	store         *peerStore
@@ -200,17 +201,10 @@ func NewPeerManager(peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, er
 		return nil, err
 	}
 	peerManager := &PeerManager{
-		options: options,
-		closeCh: make(chan struct{}),
-
-		// We use a buffer of size 1 for these trigger channels, with
-		// non-blocking sends. This ensures that if e.g. wakeDial() is called
-		// multiple times before the initial trigger is picked up we only
-		// process the trigger once.
-		//
-		// FIXME: This should maybe be a libs/sync type.
-		wakeDialCh:  make(chan struct{}, 1),
-		wakeEvictCh: make(chan struct{}, 1),
+		options:    options,
+		dialWaker:  tmsync.NewWaker(),
+		evictWaker: tmsync.NewWaker(),
+		closeCh:    make(chan struct{}),
 
 		store:         store,
 		dialing:       map[NodeID]bool{},
@@ -303,7 +297,7 @@ func (m *PeerManager) Add(address NodeAddress) error {
 	if err := m.prunePeers(); err != nil {
 		return err
 	}
-	m.wakeDial()
+	m.dialWaker.Wake()
 	return nil
 }
 
@@ -358,7 +352,7 @@ func (m *PeerManager) Error(peerID NodeID, err error) {
 	defer m.mtx.Unlock()
 
 	m.evict[peerID] = true
-	m.wakeEvict()
+	m.evictWaker.Wake()
 }
 
 // Subscribe subscribes to peer updates. The caller must consume the peer
@@ -414,7 +408,7 @@ func (m *PeerManager) DialNext(ctx context.Context) (NodeID, NodeAddress, error)
 			return id, address, err
 		}
 		select {
-		case <-m.wakeDialCh:
+		case <-m.dialWaker.Sleep():
 		case <-ctx.Done():
 			return "", NodeAddress{}, ctx.Err()
 		}
@@ -465,29 +459,6 @@ func (m *PeerManager) TryDialNext() (NodeID, NodeAddress, error) {
 		}
 	}
 	return "", NodeAddress{}, nil
-}
-
-// wakeDial is used to notify DialNext about changes that *may* cause new
-// peers to become eligible for dialing, such as peer disconnections and
-// retry timeouts.
-func (m *PeerManager) wakeDial() {
-	// The channel has a 1-size buffer. A non-blocking send ensures
-	// we only queue up at most 1 trigger between each DialNext().
-	select {
-	case m.wakeDialCh <- struct{}{}:
-	default:
-	}
-}
-
-// wakeEvict is used to notify EvictNext about changes that *may* cause
-// peers to become eligible for eviction, such as peer upgrades.
-func (m *PeerManager) wakeEvict() {
-	// The channel has a 1-size buffer. A non-blocking send ensures
-	// we only queue up at most 1 trigger between each EvictNext().
-	select {
-	case m.wakeEvictCh <- struct{}{}:
-	default:
-	}
 }
 
 // retryDelay calculates a dial retry delay using exponential backoff, based on
@@ -556,12 +527,12 @@ func (m *PeerManager) DialFailed(peerID NodeID, address NodeAddress) error {
 		defer timer.Stop()
 		select {
 		case <-timer.C:
-			m.wakeDial()
+			m.dialWaker.Wake()
 		case <-m.closeCh:
 		}
 	}()
 
-	m.wakeDial()
+	m.dialWaker.Wake()
 	return nil
 }
 
@@ -618,7 +589,7 @@ func (m *PeerManager) Dialed(peerID NodeID, address NodeAddress) error {
 		m.evict[upgradeFromPeer] = true
 	}
 	m.connected[peerID] = true
-	m.wakeEvict()
+	m.evictWaker.Wake()
 
 	return nil
 }
@@ -677,7 +648,7 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 	if upgradeFromPeer != "" {
 		m.evict[upgradeFromPeer] = true
 	}
-	m.wakeEvict()
+	m.evictWaker.Wake()
 	return nil
 }
 
@@ -713,7 +684,7 @@ func (m *PeerManager) Disconnected(peerID NodeID) error {
 		NodeID: peerID,
 		Status: PeerStatusDown,
 	})
-	m.wakeDial()
+	m.dialWaker.Wake()
 	return nil
 }
 
@@ -727,7 +698,7 @@ func (m *PeerManager) EvictNext(ctx context.Context) (NodeID, error) {
 			return id, err
 		}
 		select {
-		case <-m.wakeEvictCh:
+		case <-m.evictWaker.Sleep():
 		case <-ctx.Done():
 			return "", ctx.Err()
 		}
