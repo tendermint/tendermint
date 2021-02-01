@@ -39,7 +39,7 @@ type reactorTestSuite struct {
 func setup(t *testing.T, cfg *cfg.MempoolConfig, logger log.Logger, chBuf uint) *reactorTestSuite {
 	t.Helper()
 
-	pID := make([]byte, 16)
+	pID := make([]byte, 20)
 	_, err := rng.Read(pID)
 	require.NoError(t, err)
 
@@ -313,7 +313,7 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 func TestMempoolIDsBasic(t *testing.T) {
 	ids := newMempoolIDs()
 
-	peerID, err := p2p.NewNodeID("00ffaa")
+	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
 	ids.ReserveForPeer(peerID)
@@ -399,7 +399,7 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 		}
 	}()
 
-	peerID, err := p2p.NewNodeID("00ffaa")
+	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
 	// ensure the reactor does not panic (i.e. exhaust active IDs)
@@ -427,7 +427,7 @@ func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
 	// 0 is already reserved for UnknownPeerID
 	ids := newMempoolIDs()
 
-	peerID, err := p2p.NewNodeID("00ffaa")
+	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
 	for i := 0; i < maxActiveIDs-1; i++ {

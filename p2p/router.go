@@ -293,10 +293,10 @@ func (r *Router) acceptPeers(transport Transport) {
 		// FIXME: The old P2P stack supported ABCI-based IP address filtering via
 		// /p2p/filter/addr/<ip> queries, do we want to implement this here as well?
 		// Filtering by node ID is probably better.
-		conn, err := transport.Accept(ctx)
+		conn, err := transport.Accept()
 		switch err {
 		case nil:
-		case ErrTransportClosed{}, io.EOF, context.Canceled:
+		case io.EOF:
 			r.logger.Debug("stopping accept routine", "transport", transport)
 			return
 		default:
@@ -536,8 +536,8 @@ func (r *Router) receivePeer(peerID NodeID, conn Connection) error {
 		}
 
 		r.channelMtx.RLock()
-		queue, ok := r.channelQueues[ChannelID(chID)]
-		messageType := r.channelMessages[ChannelID(chID)]
+		queue, ok := r.channelQueues[chID]
+		messageType := r.channelMessages[chID]
 		r.channelMtx.RUnlock()
 		if !ok {
 			r.logger.Error("dropping message for unknown channel", "peer", peerID, "channel", chID)
@@ -558,8 +558,7 @@ func (r *Router) receivePeer(peerID NodeID, conn Connection) error {
 		}
 
 		select {
-		// FIXME: ReceiveMessage() should return ChannelID.
-		case queue.enqueue() <- Envelope{channelID: ChannelID(chID), From: peerID, Message: msg}:
+		case queue.enqueue() <- Envelope{channelID: chID, From: peerID, Message: msg}:
 			r.logger.Debug("received message", "peer", peerID, "message", msg)
 		case <-queue.closed():
 			r.logger.Error("channel closed, dropping message", "peer", peerID, "channel", chID)
@@ -580,8 +579,7 @@ func (r *Router) sendPeer(peerID NodeID, conn Connection, queue queue) error {
 				continue
 			}
 
-			// FIXME: SendMessage() should take ChannelID.
-			_, err = conn.SendMessage(byte(envelope.channelID), bz)
+			_, err = conn.SendMessage(envelope.channelID, bz)
 			if err != nil {
 				return err
 			}
@@ -631,6 +629,8 @@ func (r *Router) OnStart() error {
 }
 
 // OnStop implements service.Service.
+//
+// FIXME: This needs to close transports as well.
 func (r *Router) OnStop() {
 	// Collect all active queues, so we can wait for them to close.
 	queues := []queue{}

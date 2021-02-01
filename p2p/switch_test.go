@@ -706,7 +706,7 @@ func (et errorTransport) Protocols() []Protocol {
 	return []Protocol{"error"}
 }
 
-func (et errorTransport) Accept(context.Context) (Connection, error) {
+func (et errorTransport) Accept() (Connection, error) {
 	return nil, et.acceptErr
 }
 func (errorTransport) Dial(context.Context, Endpoint) (Connection, error) {

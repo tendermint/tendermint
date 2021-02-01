@@ -156,21 +156,26 @@ func (a PeerAddress) Validate() error {
 
 // String formats the address as a URL string.
 func (a PeerAddress) String() string {
-	// Handle opaque URLs.
-	if a.Hostname == "" {
-		s := fmt.Sprintf("%s:%s", a.Protocol, a.NodeID)
-		if a.Path != "" {
-			s += "@" + a.Path
+	u := url.URL{Scheme: string(a.Protocol)}
+	if a.NodeID != "" {
+		u.User = url.User(string(a.NodeID))
+	}
+	switch {
+	case a.Hostname != "":
+		if a.Port > 0 {
+			u.Host = net.JoinHostPort(a.Hostname, strconv.Itoa(int(a.Port)))
+		} else {
+			u.Host = a.Hostname
 		}
-		return s
+		u.Path = a.Path
+	case a.Protocol != "":
+		u.Opaque = a.Path // e.g. memory:foo
+	case a.Path != "" && a.Path[0] != '/':
+		u.Path = "/" + a.Path // e.g. some/path
+	default:
+		u.Path = a.Path // e.g. /some/path
 	}
-
-	s := fmt.Sprintf("%s://%s@%s", a.Protocol, a.NodeID, a.Hostname)
-	if a.Port > 0 {
-		s += ":" + strconv.Itoa(int(a.Port))
-	}
-	s += a.Path // We've already normalized the path with appropriate prefix in ParsePeerAddress()
-	return s
+	return strings.TrimPrefix(u.String(), "//")
 }
 
 // PeerStatus specifies peer statuses.
@@ -1475,12 +1480,12 @@ func (p *peer) processMessages() {
 			p.onError(err)
 			return
 		}
-		reactor, ok := p.reactors[chID]
+		reactor, ok := p.reactors[byte(chID)]
 		if !ok {
 			p.onError(fmt.Errorf("unknown channel %v", chID))
 			return
 		}
-		reactor.Receive(chID, p, msg)
+		reactor.Receive(byte(chID), p, msg)
 	}
 }
 
@@ -1555,7 +1560,7 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	res, err := p.conn.SendMessage(chID, msgBytes)
+	res, err := p.conn.SendMessage(ChannelID(chID), msgBytes)
 	if err == io.EOF {
 		return false
 	} else if err != nil {
@@ -1580,7 +1585,7 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	res, err := p.conn.TrySendMessage(chID, msgBytes)
+	res, err := p.conn.TrySendMessage(ChannelID(chID), msgBytes)
 	if err == io.EOF {
 		return false
 	} else if err != nil {

@@ -22,11 +22,8 @@ type NodeID string
 
 // NewNodeID returns a lowercased (normalized) NodeID.
 func NewNodeID(nodeID string) (NodeID, error) {
-	if _, err := NodeID(nodeID).Bytes(); err != nil {
-		return NodeID(""), err
-	}
-
-	return NodeID(strings.ToLower(nodeID)), nil
+	n := NodeID(strings.ToLower(nodeID))
+	return n, n.Validate()
 }
 
 // NodeIDFromPubKey returns the noe ID corresponding to the given PubKey. It's
