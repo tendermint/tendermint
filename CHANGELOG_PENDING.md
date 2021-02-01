@@ -30,6 +30,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
   - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)
   - [state] \#5864 Use an iterator when pruning state (@cmwaters)
+  - [rpc/client/http] \#6022 Change `timeout` type to `time.Duration` in `NewWithTimeout`
 
 - Blockchain Protocol
 
@@ -42,7 +43,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
 - [privval] \#5603 Add `--key` to `init`, `gen_validator`, `testnet` & `unsafe_reset_priv_validator` for use in generating `secp256k1` keys.
-- [privval] \#5725 Add gRPC support to private validator. 
+- [privval] \#5725 Add gRPC support to private validator.
 - [privval] \#5876 `tendermint show-validator` will query the remote signer if gRPC is being used (@marbar3778)
 - [abci/client] \#5673 `Async` requests return an error if queue is full (@melekes)
 - [mempool] \#5673 Cancel `CheckTx` requests if RPC client disconnects or times out (@melekes)
@@ -62,3 +63,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
 - [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)
+- [light] \#6022 Fix a bug when the number of validators equals 100 (@melekes)
