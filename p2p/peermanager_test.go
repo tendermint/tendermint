@@ -431,6 +431,7 @@ func TestPeerManager_TryDialNext_MaxConnectedUpgrade(t *testing.T) {
 	b := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("b", 40))}
 	c := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("c", 40))}
 	d := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("d", 40))}
+	e := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("e", 40))}
 
 	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{
 		PersistentPeers:     []p2p.NodeID{c.NodeID, d.NodeID},
@@ -463,7 +464,7 @@ func TestPeerManager_TryDialNext_MaxConnectedUpgrade(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, c, dial)
 
-	// However, since we're using all upgrade slots too, we can't add and dial
+	// However, since we're using all upgrade slots now, we can't add and dial
 	// d, even though it's a persistent peer.
 	err = peerManager.Add(d)
 	require.NoError(t, err)
@@ -471,6 +472,37 @@ func TestPeerManager_TryDialNext_MaxConnectedUpgrade(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, dial)
 
+	// We go through with b and c's connections.
+	err = peerManager.Dialed(b)
+	require.NoError(t, err)
+	err = peerManager.Dialed(c)
+	require.NoError(t, err)
+
+	// Still can't dial d.
+	dial, err = peerManager.TryDialNext()
+	require.NoError(t, err)
+	require.Zero(t, dial)
+
+	// Now, if we disconnect a, we should be allowed to dial d because we have a
+	// free upgrade slot.
+	err = peerManager.Disconnected(a.NodeID)
+	require.NoError(t, err)
+	dial, err = peerManager.TryDialNext()
+	require.NoError(t, err)
+	require.Equal(t, d, dial)
+	err = peerManager.Dialed(d)
+	require.NoError(t, err)
+
+	// However, if we disconnect b (such that only c and d are connected), we
+	// should not be allowed to dial e even though there are upgrade slots,
+	// because there are no lower-scored nodes that can be upgraded.
+	err = peerManager.Disconnected(b.NodeID)
+	require.NoError(t, err)
+	err = peerManager.Add(e)
+	require.NoError(t, err)
+	dial, err = peerManager.TryDialNext()
+	require.NoError(t, err)
+	require.Zero(t, dial)
 }
 
 func TestPeerManager_TryDialNext_DialingConnected(t *testing.T) {
