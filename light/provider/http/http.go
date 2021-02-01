@@ -18,8 +18,8 @@ var (
 	// This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
 	regexpMissingHeight = regexp.MustCompile(`height \d+ (must be less than or equal to|is not available)`)
 
-	maxRetryAttempts = 10
-	timeout          = 5 // sec.
+	maxRetryAttempts      = 10
+	timeout          uint = 5 // sec.
 )
 
 // http provider uses an RPC client to obtain the necessary information.
