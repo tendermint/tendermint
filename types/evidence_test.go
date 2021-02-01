@@ -41,7 +41,7 @@ func randomDuplicateVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
 }
 
 func TestDuplicateVoteEvidence(t *testing.T) {
-	const height = int64(13)
+	const height = uint64(13)
 	ev := NewMockDuplicateVoteEvidence(height, time.Now(), "mock-chain-id")
 	assert.Equal(t, ev.Hash(), tmhash.Sum(ev.Bytes()))
 	assert.NotNil(t, ev.String())
@@ -89,7 +89,7 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 }
 
 func TestLightClientAttackEvidence(t *testing.T) {
-	height := int64(5)
+	height := uint64(5)
 	voteSet, valSet, privVals := randVoteSet(height, 1, tmproto.PrecommitType, 10, 1)
 	header := makeHeaderRandom()
 	header.Height = height
@@ -152,7 +152,7 @@ func TestLightClientAttackEvidence(t *testing.T) {
 }
 
 func TestLightClientAttackEvidenceValidation(t *testing.T) {
-	height := int64(5)
+	height := uint64(5)
 	voteSet, valSet, privVals := randVoteSet(height, 1, tmproto.PrecommitType, 10, 1)
 	header := makeHeaderRandom()
 	header.Height = height
@@ -178,7 +178,6 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 		expectErr        bool
 	}{
 		{"Good DuplicateVoteEvidence", func(ev *LightClientAttackEvidence) {}, false},
-		{"Negative height", func(ev *LightClientAttackEvidence) { ev.CommonHeight = -10 }, true},
 		{"Height is greater than divergent block", func(ev *LightClientAttackEvidence) {
 			ev.CommonHeight = height + 1
 		}, true},
@@ -213,12 +212,12 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 }
 
 func TestMockEvidenceValidateBasic(t *testing.T) {
-	goodEvidence := NewMockDuplicateVoteEvidence(int64(1), time.Now(), "mock-chain-id")
+	goodEvidence := NewMockDuplicateVoteEvidence(uint64(1), time.Now(), "mock-chain-id")
 	assert.Nil(t, goodEvidence.ValidateBasic())
 }
 
 func makeVote(
-	t *testing.T, val PrivValidator, chainID string, valIndex int32, height int64, round int32, step int, blockID BlockID,
+	t *testing.T, val PrivValidator, chainID string, valIndex int32, height uint64, round int32, step int, blockID BlockID,
 	time time.Time) *Vote {
 	pubKey, err := val.GetPubKey()
 	require.NoError(t, err)
@@ -245,7 +244,7 @@ func makeHeaderRandom() *Header {
 	return &Header{
 		Version:            version.Consensus{Block: version.BlockProtocol, App: 1},
 		ChainID:            tmrand.Str(12),
-		Height:             int64(tmrand.Uint16()) + 1,
+		Height:             uint64(tmrand.Uint16()) + 1,
 		Time:               time.Now(),
 		LastBlockID:        makeBlockIDRandom(),
 		LastCommitHash:     crypto.CRandBytes(tmhash.Size),
@@ -270,7 +269,7 @@ func TestEvidenceProto(t *testing.T) {
 	v2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, blockID2, defaultVoteTime)
 
 	// -------- SignedHeaders --------
-	const height int64 = 37
+	const height uint64 = 37
 
 	var (
 		header1 = makeHeaderRandom()

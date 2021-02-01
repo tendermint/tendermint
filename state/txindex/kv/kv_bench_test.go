@@ -44,7 +44,7 @@ func BenchmarkTxSearch(b *testing.B) {
 		}
 
 		txResult := &abci.TxResult{
-			Height: int64(i),
+			Height: uint64(i),
 			Index:  0,
 			Tx:     types.Tx(string(txBz)),
 			Result: abci.ResponseDeliverTx{

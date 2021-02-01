@@ -62,7 +62,7 @@ var peerTimeout = 15 * time.Second // not const so we can override with tests
 // BlockRequest stores a block request identified by the block Height and the
 // PeerID responsible for delivering the block.
 type BlockRequest struct {
-	Height int64
+	Height uint64
 	PeerID p2p.NodeID
 }
 
@@ -73,11 +73,11 @@ type BlockPool struct {
 
 	mtx tmsync.RWMutex
 	// block requests
-	requesters map[int64]*bpRequester
-	height     int64 // the lowest key in requesters.
+	requesters map[uint64]*bpRequester
+	height     uint64 // the lowest key in requesters.
 	// peers
 	peers         map[p2p.NodeID]*bpPeer
-	maxPeerHeight int64 // the biggest reported height
+	maxPeerHeight uint64 // the biggest reported height
 
 	// atomic
 	numPending int32 // number of requests pending assignment or block response
@@ -88,11 +88,11 @@ type BlockPool struct {
 
 // NewBlockPool returns a new BlockPool with the height equal to start. Block
 // requests and errors will be sent to requestsCh and errorsCh accordingly.
-func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- peerError) *BlockPool {
+func NewBlockPool(start uint64, requestsCh chan<- BlockRequest, errorsCh chan<- peerError) *BlockPool {
 	bp := &BlockPool{
 		peers: make(map[p2p.NodeID]*bpPeer),
 
-		requesters: make(map[int64]*bpRequester),
+		requesters: make(map[uint64]*bpRequester),
 		height:     start,
 		numPending: 0,
 
@@ -165,7 +165,7 @@ func (pool *BlockPool) removeTimedoutPeers() {
 
 // GetStatus returns pool's height, numPending requests and the number of
 // requesters.
-func (pool *BlockPool) GetStatus() (height int64, numPending int32, lenRequesters int) {
+func (pool *BlockPool) GetStatus() (height uint64, numPending int32, lenRequesters int) {
 	pool.mtx.RLock()
 	defer pool.mtx.RUnlock()
 
@@ -225,7 +225,7 @@ func (pool *BlockPool) PopRequest() {
 // RedoRequest invalidates the block at pool.height,
 // Remove the peer and redo request from others.
 // Returns the ID of the removed peer.
-func (pool *BlockPool) RedoRequest(height int64) p2p.NodeID {
+func (pool *BlockPool) RedoRequest(height uint64) p2p.NodeID {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
@@ -250,7 +250,7 @@ func (pool *BlockPool) AddBlock(peerID p2p.NodeID, block *types.Block, blockSize
 			"peer", peerID, "curHeight", pool.height, "blockHeight", block.Height)
 		diff := pool.height - block.Height
 		if diff < 0 {
-			diff *= -1
+			// diff *= -1 //todo: what?
 		}
 		if diff > maxDiffBetweenCurrentAndReceivedBlockHeight {
 			pool.sendError(errors.New("peer sent us a block we didn't expect with a height too far ahead/behind"), peerID)
@@ -272,7 +272,7 @@ func (pool *BlockPool) AddBlock(peerID p2p.NodeID, block *types.Block, blockSize
 }
 
 // MaxPeerHeight returns the highest reported height.
-func (pool *BlockPool) MaxPeerHeight() int64 {
+func (pool *BlockPool) MaxPeerHeight() uint64 {
 	pool.mtx.RLock()
 	defer pool.mtx.RUnlock()
 	return pool.maxPeerHeight
@@ -287,7 +287,7 @@ func (pool *BlockPool) LastAdvance() time.Time {
 }
 
 // SetPeerRange sets the peer's alleged blockchain base and height.
-func (pool *BlockPool) SetPeerRange(peerID p2p.NodeID, base int64, height int64) {
+func (pool *BlockPool) SetPeerRange(peerID p2p.NodeID, base, height uint64) {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
@@ -340,7 +340,7 @@ func (pool *BlockPool) removePeer(peerID p2p.NodeID) {
 
 // If no peers are left, maxPeerHeight is set to 0.
 func (pool *BlockPool) updateMaxPeerHeight() {
-	var max int64
+	var max uint64
 	for _, peer := range pool.peers {
 		if peer.height > max {
 			max = peer.height
@@ -351,7 +351,7 @@ func (pool *BlockPool) updateMaxPeerHeight() {
 
 // Pick an available peer with the given height available.
 // If no peers are available, returns nil.
-func (pool *BlockPool) pickIncrAvailablePeer(height int64) *bpPeer {
+func (pool *BlockPool) pickIncrAvailablePeer(height uint64) *bpPeer {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
@@ -392,11 +392,11 @@ func (pool *BlockPool) makeNextRequester() {
 	}
 }
 
-func (pool *BlockPool) requestersLen() int64 {
-	return int64(len(pool.requesters))
+func (pool *BlockPool) requestersLen() uint64 {
+	return uint64(len(pool.requesters))
 }
 
-func (pool *BlockPool) sendRequest(height int64, peerID p2p.NodeID) {
+func (pool *BlockPool) sendRequest(height uint64, peerID p2p.NodeID) {
 	if !pool.IsRunning() {
 		return
 	}
@@ -434,8 +434,8 @@ func (pool *BlockPool) debug() string {
 type bpPeer struct {
 	didTimeout  bool
 	numPending  int32
-	height      int64
-	base        int64
+	height      uint64
+	base        uint64
 	pool        *BlockPool
 	id          p2p.NodeID
 	recvMonitor *flow.Monitor
@@ -445,7 +445,7 @@ type bpPeer struct {
 	logger log.Logger
 }
 
-func newBPPeer(pool *BlockPool, peerID p2p.NodeID, base int64, height int64) *bpPeer {
+func newBPPeer(pool *BlockPool, peerID p2p.NodeID, base, height uint64) *bpPeer {
 	peer := &bpPeer{
 		pool:       pool,
 		id:         peerID,
@@ -508,7 +508,7 @@ func (peer *bpPeer) onTimeout() {
 type bpRequester struct {
 	service.BaseService
 	pool       *BlockPool
-	height     int64
+	height     uint64
 	gotBlockCh chan struct{}
 	redoCh     chan p2p.NodeID // redo may send multitime, add peerId to identify repeat
 
@@ -517,7 +517,7 @@ type bpRequester struct {
 	block  *types.Block
 }
 
-func newBPRequester(pool *BlockPool, height int64) *bpRequester {
+func newBPRequester(pool *BlockPool, height uint64) *bpRequester {
 	bpr := &bpRequester{
 		pool:       pool,
 		height:     height,

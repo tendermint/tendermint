@@ -14,7 +14,7 @@ import (
 // More: https://docs.tendermint.com/master/rpc/#/Info/status
 func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 	var (
-		earliestBlockHeight   int64
+		earliestBlockHeight   uint64
 		earliestBlockHash     tmbytes.HexBytes
 		earliestAppHash       tmbytes.HexBytes
 		earliestBlockTimeNano int64

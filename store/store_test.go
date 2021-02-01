@@ -28,7 +28,7 @@ import (
 type cleanupFunc func()
 
 // make a Commit with a single vote containing just the height and a timestamp
-func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
+func makeTestCommit(height uint64, timestamp time.Time) *types.Commit {
 	commitSigs := []types.CommitSig{{
 		BlockIDFlag:      types.BlockIDFlagCommit,
 		ValidatorAddress: tmrand.Bytes(crypto.AddressSize),
@@ -39,14 +39,14 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 		types.BlockID{Hash: []byte(""), PartSetHeader: types.PartSetHeader{Hash: []byte(""), Total: 2}}, commitSigs)
 }
 
-func makeTxs(height int64) (txs []types.Tx) {
+func makeTxs(height uint64) (txs []types.Tx) {
 	for i := 0; i < 10; i++ {
 		txs = append(txs, types.Tx([]byte{byte(height), byte(i)}))
 	}
 	return txs
 }
 
-func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
+func makeBlock(height uint64, state sm.State, lastCommit *types.Commit) *types.Block {
 	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
 	return block
 }
@@ -100,7 +100,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
 
 	// check there are no blocks at various heights
-	noBlockHeights := []int64{0, -1, 100, 1000, 2}
+	noBlockHeights := []uint64{0, 100, 1000, 2}
 	for i, height := range noBlockHeights {
 		if g := bs.LoadBlock(height); g != nil {
 			t.Errorf("#%d: height(%d) got a block; want nil", i, height)
@@ -309,7 +309,7 @@ func TestLoadBaseMeta(t *testing.T) {
 	require.NoError(t, err)
 	bs := NewBlockStore(dbm.NewMemDB())
 
-	for h := int64(1); h <= 10; h++ {
+	for h := uint64(1); h <= 10; h++ {
 		block := makeBlock(h, state, new(types.Commit))
 		partSet := block.MakePartSet(2)
 		seenCommit := makeTestCommit(h, tmtime.Now())
@@ -327,7 +327,7 @@ func TestLoadBaseMeta(t *testing.T) {
 
 func TestLoadBlockPart(t *testing.T) {
 	bs, db := freshBlockStore()
-	height, index := int64(10), 1
+	height, index := uint64(10), 1
 	loadPart := func() (interface{}, error) {
 		part := bs.LoadBlockPart(height, index)
 		return part, nil
@@ -374,7 +374,7 @@ func TestPruneBlocks(t *testing.T) {
 	require.Error(t, err)
 
 	// make more than 1000 blocks, to test batch deletions
-	for h := int64(1); h <= 1500; h++ {
+	for h := uint64(1); h <= 1500; h++ {
 		block := makeBlock(h, state, new(types.Commit))
 		partSet := block.MakePartSet(2)
 		seenCommit := makeTestCommit(h, tmtime.Now())
@@ -402,10 +402,10 @@ func TestPruneBlocks(t *testing.T) {
 	require.Nil(t, bs.LoadBlockMeta(1199))
 	require.Nil(t, bs.LoadBlockPart(1199, 1))
 
-	for i := int64(1); i < 1200; i++ {
+	for i := uint64(1); i < 1200; i++ {
 		require.Nil(t, bs.LoadBlock(i))
 	}
-	for i := int64(1200); i <= 1500; i++ {
+	for i := uint64(1200); i <= 1500; i++ {
 		require.NotNil(t, bs.LoadBlock(i))
 	}
 
@@ -439,7 +439,7 @@ func TestPruneBlocks(t *testing.T) {
 
 func TestLoadBlockMeta(t *testing.T) {
 	bs, db := freshBlockStore()
-	height := int64(10)
+	height := uint64(10)
 	loadMeta := func() (interface{}, error) {
 		meta := bs.LoadBlockMeta(height)
 		return meta, nil

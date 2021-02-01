@@ -138,7 +138,7 @@ func validateSkipCount(page, perPage int) int {
 }
 
 // latestHeight can be either latest committed or uncommitted (+1) height.
-func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
+func getHeight(latestHeight uint64, heightPtr *uint64) (uint64, error) {
 	if heightPtr != nil {
 		height := *heightPtr
 		if height <= 0 {
@@ -158,7 +158,7 @@ func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
 	return latestHeight, nil
 }
 
-func latestUncommittedHeight() int64 {
+func latestUncommittedHeight() uint64 {
 	nodeIsSyncing := env.ConsensusReactor.WaitSync()
 	if nodeIsSyncing {
 		return env.BlockStore.Height()

@@ -7,27 +7,27 @@ type (
 	ErrProxyAppConn error
 
 	ErrUnknownBlock struct {
-		Height int64
+		Height uint64
 	}
 
 	ErrBlockHashMismatch struct {
 		CoreHash []byte
 		AppHash  []byte
-		Height   int64
+		Height   uint64
 	}
 
 	ErrAppBlockHeightTooHigh struct {
-		CoreHeight int64
-		AppHeight  int64
+		CoreHeight uint64
+		AppHeight  uint64
 	}
 
 	ErrAppBlockHeightTooLow struct {
-		AppHeight int64
-		StoreBase int64
+		AppHeight uint64
+		StoreBase uint64
 	}
 
 	ErrLastStateMismatch struct {
-		Height int64
+		Height uint64
 		Core   []byte
 		App    []byte
 	}
@@ -38,7 +38,7 @@ type (
 	}
 
 	ErrNoValSetForHeight struct {
-		Height int64
+		Height uint64
 	}
 
 	ErrNoConsensusParamsForHeight struct {
@@ -46,7 +46,7 @@ type (
 	}
 
 	ErrNoABCIResponsesForHeight struct {
-		Height int64
+		Height uint64
 	}
 )
 

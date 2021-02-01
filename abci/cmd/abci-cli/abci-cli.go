@@ -103,7 +103,7 @@ type response struct {
 type queryResponse struct {
 	Key      []byte
 	Value    []byte
-	Height   int64
+	Height   uint64
 	ProofOps *crypto.ProofOps
 }
 

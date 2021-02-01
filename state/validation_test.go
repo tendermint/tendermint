@@ -20,7 +20,7 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-const validationTestsStopHeight int64 = 10
+const validationTestsStopHeight uint64 = 10
 
 func TestValidateBlockHeader(t *testing.T) {
 	proxyApp := newTestApp()
@@ -78,7 +78,7 @@ func TestValidateBlockHeader(t *testing.T) {
 	}
 
 	// Build up state for multiple heights
-	for height := int64(1); height < validationTestsStopHeight; height++ {
+	for height := uint64(1); height < validationTestsStopHeight; height++ {
 		proposerAddr := state.Validators.GetProposer().Address
 		/*
 			Invalid blocks don't pass
@@ -131,7 +131,7 @@ func TestValidateBlockCommit(t *testing.T) {
 	wrongSigsCommit := types.NewCommit(1, 0, types.BlockID{}, nil)
 	badPrivVal := types.NewMockPV()
 
-	for height := int64(1); height < validationTestsStopHeight; height++ {
+	for height := uint64(1); height < validationTestsStopHeight; height++ {
 		proposerAddr := state.Validators.GetProposer().Address
 		if height > 1 {
 			/*
@@ -252,7 +252,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	)
 	lastCommit := types.NewCommit(0, 0, types.BlockID{}, nil)
 
-	for height := int64(1); height < validationTestsStopHeight; height++ {
+	for height := uint64(1); height < validationTestsStopHeight; height++ {
 		proposerAddr := state.Validators.GetProposer().Address
 		maxBytesEvidence := state.ConsensusParams.Evidence.MaxBytes
 		if height > 1 {

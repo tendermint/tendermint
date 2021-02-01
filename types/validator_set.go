@@ -660,7 +660,7 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
 // includes which validators signed. For instance, Gaia incentivizes proposers
 // with a bonus for including more than +2/3 of the signatures.
 func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
-	height int64, commit *Commit) error {
+	height uint64, commit *Commit) error {
 	if commit == nil {
 		return errors.New("nil commit")
 	}
@@ -718,7 +718,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 // This method is primarily used by the light client and does not check all the
 // signatures.
 func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID,
-	height int64, commit *Commit) error {
+	height uint64, commit *Commit) error {
 	if commit == nil {
 		return errors.New("nil commit")
 	}

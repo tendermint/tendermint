@@ -6,8 +6,8 @@ type (
 	// ErrInvalidCommitHeight is returned when we encounter a commit with an
 	// unexpected height.
 	ErrInvalidCommitHeight struct {
-		Expected int64
-		Actual   int64
+		Expected uint64
+		Actual   uint64
 	}
 
 	// ErrInvalidCommitSignatures is returned when we encounter a commit where
@@ -18,7 +18,7 @@ type (
 	}
 )
 
-func NewErrInvalidCommitHeight(expected, actual int64) ErrInvalidCommitHeight {
+func NewErrInvalidCommitHeight(expected, actual uint64) ErrInvalidCommitHeight {
 	return ErrInvalidCommitHeight{
 		Expected: expected,
 		Actual:   actual,

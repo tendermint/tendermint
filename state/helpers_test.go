@@ -20,7 +20,7 @@ import (
 )
 
 type paramsChangeTestCase struct {
-	height int64
+	height uint64
 	params types.ConsensusParams
 }
 
@@ -32,7 +32,7 @@ func newTestApp() proxy.AppConns {
 
 func makeAndCommitGoodBlock(
 	state sm.State,
-	height int64,
+	height uint64,
 	lastCommit *types.Commit,
 	proposerAddr []byte,
 	blockExec *sm.BlockExecutor,
@@ -52,7 +52,7 @@ func makeAndCommitGoodBlock(
 	return state, blockID, commit, nil
 }
 
-func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commit, proposerAddr []byte,
+func makeAndApplyGoodBlock(state sm.State, height uint64, lastCommit *types.Commit, proposerAddr []byte,
 	blockExec *sm.BlockExecutor, evidence []types.Evidence) (sm.State, types.BlockID, error) {
 	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, evidence, proposerAddr)
 	if err := blockExec.ValidateBlock(state, block); err != nil {
@@ -68,7 +68,7 @@ func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commi
 }
 
 func makeValidCommit(
-	height int64,
+	height uint64,
 	blockID types.BlockID,
 	vals *types.ValidatorSet,
 	privVals map[string]types.PrivValidator,
@@ -86,7 +86,7 @@ func makeValidCommit(
 }
 
 // make some bogus txs
-func makeTxs(height int64) (txs []types.Tx) {
+func makeTxs(height uint64) (txs []types.Tx) {
 	for i := 0; i < nTxsPerBlock; i++ {
 		txs = append(txs, types.Tx([]byte{byte(height), byte(i)}))
 	}
@@ -131,7 +131,7 @@ func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValida
 	return s, stateDB, privVals
 }
 
-func makeBlock(state sm.State, height int64) *types.Block {
+func makeBlock(state sm.State, height uint64) *types.Block {
 	block, _ := state.MakeBlock(
 		height,
 		makeTxs(state.LastBlockHeight),
@@ -232,7 +232,7 @@ func randomGenesisDoc() *types.GenesisDoc {
 // used for testing by state store
 func makeRandomStateFromValidatorSet(
 	lastValSet *types.ValidatorSet,
-	height, lastHeightValidatorsChanged int64,
+	height, lastHeightValidatorsChanged uint64,
 ) sm.State {
 	return sm.State{
 		LastBlockHeight:                  height - 1,
@@ -247,7 +247,7 @@ func makeRandomStateFromValidatorSet(
 }
 
 func makeRandomStateFromConsensusParams(consensusParams *types.ConsensusParams,
-	height, lastHeightConsensusParamsChanged int64) sm.State {
+	height, lastHeightConsensusParamsChanged uint64) sm.State {
 	val, _ := types.RandValidator(true, 10)
 	valSet := types.NewValidatorSet([]*types.Validator{val})
 	return sm.State{

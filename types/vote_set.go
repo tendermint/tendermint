@@ -60,7 +60,7 @@ type P2PID string
 */
 type VoteSet struct {
 	chainID       string
-	height        int64
+	height        uint64
 	round         int32
 	signedMsgType tmproto.SignedMsgType
 	valSet        *ValidatorSet
@@ -75,7 +75,7 @@ type VoteSet struct {
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
-func NewVoteSet(chainID string, height int64, round int32,
+func NewVoteSet(chainID string, height uint64, round int32,
 	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
@@ -100,7 +100,7 @@ func (voteSet *VoteSet) ChainID() string {
 }
 
 // Implements VoteSetReader.
-func (voteSet *VoteSet) GetHeight() int64 {
+func (voteSet *VoteSet) GetHeight() uint64 {
 	if voteSet == nil {
 		return 0
 	}

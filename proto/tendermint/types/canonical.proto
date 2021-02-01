@@ -19,7 +19,7 @@ message CanonicalPartSetHeader {
 
 message CanonicalProposal {
   SignedMsgType             type      = 1;  // type alias for byte
-  sfixed64                  height    = 2;  // canonicalization requires fixed size encoding here
+  fixed64                   height    = 2;  // canonicalization requires fixed size encoding here
   sfixed64                  round     = 3;  // canonicalization requires fixed size encoding here
   int64                     pol_round = 4 [(gogoproto.customname) = "POLRound"];
   CanonicalBlockID          block_id  = 5 [(gogoproto.customname) = "BlockID"];
@@ -29,7 +29,7 @@ message CanonicalProposal {
 
 message CanonicalVote {
   SignedMsgType             type      = 1;  // type alias for byte
-  sfixed64                  height    = 2;  // canonicalization requires fixed size encoding here
+  fixed64                   height    = 2;  // canonicalization requires fixed size encoding here
   sfixed64                  round     = 3;  // canonicalization requires fixed size encoding here
   CanonicalBlockID          block_id  = 4 [(gogoproto.customname) = "BlockID"];
   google.protobuf.Timestamp timestamp = 5 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];

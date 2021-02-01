@@ -7,7 +7,7 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
-func MakeCommit(blockID BlockID, height int64, round int32,
+func MakeCommit(blockID BlockID, height uint64, round int32,
 	voteSet *VoteSet, validators []PrivValidator, now time.Time) (*Commit, error) {
 
 	// all sign
@@ -46,7 +46,7 @@ func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bo
 }
 
 func MakeVote(
-	height int64,
+	height uint64,
 	blockID BlockID,
 	valSet *ValidatorSet,
 	privVal PrivValidator,

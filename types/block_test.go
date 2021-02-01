@@ -35,7 +35,7 @@ func TestMain(m *testing.M) {
 func TestBlockAddEvidence(t *testing.T) {
 	txs := []Tx{Tx("foo"), Tx("bar")}
 	lastID := makeBlockIDRandom()
-	h := int64(3)
+	h := uint64(3)
 
 	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
@@ -55,7 +55,7 @@ func TestBlockValidateBasic(t *testing.T) {
 
 	txs := []Tx{Tx("foo"), Tx("bar")}
 	lastID := makeBlockIDRandom()
-	h := int64(3)
+	h := uint64(3)
 
 	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
@@ -71,7 +71,6 @@ func TestBlockValidateBasic(t *testing.T) {
 	}{
 		{"Make Block", func(blk *Block) {}, false},
 		{"Make Block w/ proposer Addr", func(blk *Block) { blk.ProposerAddress = valSet.GetProposer().Address }, false},
-		{"Negative Height", func(blk *Block) { blk.Height = -1 }, true},
 		{"Remove 1/2 the commits", func(blk *Block) {
 			blk.LastCommit.Signatures = commit.Signatures[:commit.Size()/2]
 			blk.LastCommit.hash = nil // clear hash or change wont be noticed
@@ -92,9 +91,6 @@ func TestBlockValidateBasic(t *testing.T) {
 		}, true},
 		{"Missing LastCommit", func(blk *Block) {
 			blk.LastCommit = nil
-		}, true},
-		{"Invalid LastCommit", func(blk *Block) {
-			blk.LastCommit = NewCommit(-1, 0, *voteSet.maj23, nil)
 		}, true},
 		{"Invalid Evidence", func(blk *Block) {
 			emptyEv := &DuplicateVoteEvidence{}
@@ -117,13 +113,13 @@ func TestBlockValidateBasic(t *testing.T) {
 
 func TestBlockHash(t *testing.T) {
 	assert.Nil(t, (*Block)(nil).Hash())
-	assert.Nil(t, MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).Hash())
+	assert.Nil(t, MakeBlock(uint64(3), []Tx{Tx("Hello World")}, nil, nil).Hash())
 }
 
 func TestBlockMakePartSet(t *testing.T) {
 	assert.Nil(t, (*Block)(nil).MakePartSet(2))
 
-	partSet := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).MakePartSet(1024)
+	partSet := MakeBlock(uint64(3), []Tx{Tx("Hello World")}, nil, nil).MakePartSet(1024)
 	assert.NotNil(t, partSet)
 	assert.EqualValues(t, 1, partSet.Total())
 }
@@ -132,7 +128,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	assert.Nil(t, (*Block)(nil).MakePartSet(2))
 
 	lastID := makeBlockIDRandom()
-	h := int64(3)
+	h := uint64(3)
 
 	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
@@ -150,7 +146,7 @@ func TestBlockHashesTo(t *testing.T) {
 	assert.False(t, (*Block)(nil).HashesTo(nil))
 
 	lastID := makeBlockIDRandom()
-	h := int64(3)
+	h := uint64(3)
 	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
@@ -166,7 +162,7 @@ func TestBlockHashesTo(t *testing.T) {
 }
 
 func TestBlockSize(t *testing.T) {
-	size := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).Size()
+	size := MakeBlock(uint64(3), []Tx{Tx("Hello World")}, nil, nil).Size()
 	if size <= 0 {
 		t.Fatal("Size of the block is zero or negative")
 	}
@@ -177,7 +173,7 @@ func TestBlockString(t *testing.T) {
 	assert.Equal(t, "nil-Block", (*Block)(nil).StringIndented(""))
 	assert.Equal(t, "nil-Block", (*Block)(nil).StringShort())
 
-	block := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil)
+	block := MakeBlock(uint64(3), []Tx{Tx("Hello World")}, nil, nil)
 	assert.NotEqual(t, "nil-Block", block.String())
 	assert.NotEqual(t, "nil-Block", block.StringIndented(""))
 	assert.NotEqual(t, "nil-Block", block.StringShort())
@@ -228,7 +224,7 @@ func TestNilDataHashDoesntCrash(t *testing.T) {
 
 func TestCommit(t *testing.T) {
 	lastID := makeBlockIDRandom()
-	h := int64(3)
+	h := uint64(3)
 	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
@@ -255,7 +251,6 @@ func TestCommitValidateBasic(t *testing.T) {
 	}{
 		{"Random Commit", func(com *Commit) {}, false},
 		{"Incorrect signature", func(com *Commit) { com.Signatures[0].Signature = []byte{0} }, false},
-		{"Incorrect height", func(com *Commit) { com.Height = int64(-100) }, true},
 		{"Incorrect round", func(com *Commit) { com.Round = -100 }, true},
 	}
 	for _, tc := range testCases {
@@ -440,7 +435,7 @@ func TestMaxHeaderBytes(t *testing.T) {
 
 func randCommit(now time.Time) *Commit {
 	lastID := makeBlockIDRandom()
-	h := int64(3)
+	h := uint64(3)
 	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, now)
 	if err != nil {
@@ -520,7 +515,7 @@ func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 
 func TestCommitToVoteSet(t *testing.T) {
 	lastID := makeBlockIDRandom()
-	h := int64(3)
+	h := uint64(3)
 
 	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
@@ -549,7 +544,7 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 
 	const (
-		height = int64(3)
+		height = uint64(3)
 		round  = 0
 	)
 
@@ -642,7 +637,7 @@ func TestBlockIDValidateBasic(t *testing.T) {
 }
 
 func TestBlockProtoBuf(t *testing.T) {
-	h := tmrand.Int63()
+	h := uint64(tmrand.Int63())
 	c1 := randCommit(time.Now())
 	b1 := MakeBlock(h, []Tx{Tx([]byte{1})}, &Commit{Signatures: []CommitSig{}}, []Evidence{})
 	b1.ProposerAddress = tmrand.Bytes(crypto.AddressSize)
@@ -750,7 +745,7 @@ func TestEvidenceDataProtoBuf(t *testing.T) {
 func makeRandHeader() Header {
 	chainID := "test"
 	t := time.Now()
-	height := tmrand.Int63()
+	height := uint64(tmrand.Int63())
 	randBytes := tmrand.Bytes(tmhash.Size)
 	randAddress := tmrand.Bytes(crypto.AddressSize)
 	h := Header{
@@ -970,15 +965,6 @@ func TestHeader_ValidateBasic(t *testing.T) {
 				ChainID: string(make([]byte, MaxChainIDLen+1)),
 			},
 			true, "chainID is too long",
-		},
-		{
-			"invalid height (negative)",
-			Header{
-				Version: version.Consensus{Block: version.BlockProtocol},
-				ChainID: string(make([]byte, MaxChainIDLen)),
-				Height:  -1,
-			},
-			true, "negative Height",
 		},
 		{
 			"invalid height (zero)",
@@ -1219,11 +1205,6 @@ func TestCommit_ValidateBasic(t *testing.T) {
 		expectErr bool
 		errString string
 	}{
-		{
-			"invalid height",
-			&Commit{Height: -1},
-			true, "negative Height",
-		},
 		{
 			"invalid round",
 			&Commit{Height: 1, Round: -1},

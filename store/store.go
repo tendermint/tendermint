@@ -40,7 +40,7 @@ func NewBlockStore(db dbm.DB) *BlockStore {
 }
 
 // Base returns the first known contiguous block height, or 0 for empty block stores.
-func (bs *BlockStore) Base() int64 {
+func (bs *BlockStore) Base() uint64 {
 	iter, err := bs.db.Iterator(
 		blockMetaKey(1),
 		blockMetaKey(1<<63-1),
@@ -64,7 +64,7 @@ func (bs *BlockStore) Base() int64 {
 }
 
 // Height returns the last known contiguous block height, or 0 for empty block stores.
-func (bs *BlockStore) Height() int64 {
+func (bs *BlockStore) Height() uint64 {
 	iter, err := bs.db.ReverseIterator(
 		blockMetaKey(1),
 		blockMetaKey(1<<63-1),
@@ -88,7 +88,7 @@ func (bs *BlockStore) Height() int64 {
 }
 
 // Size returns the number of blocks in the block store.
-func (bs *BlockStore) Size() int64 {
+func (bs *BlockStore) Size() uint64 {
 	height := bs.Height()
 	if height == 0 {
 		return 0
@@ -127,7 +127,7 @@ func (bs *BlockStore) LoadBaseMeta() *types.BlockMeta {
 
 // LoadBlock returns the block with the given height.
 // If no block is found for that height, it returns nil.
-func (bs *BlockStore) LoadBlock(height int64) *types.Block {
+func (bs *BlockStore) LoadBlock(height uint64) *types.Block {
 	var blockMeta = bs.LoadBlockMeta(height)
 	if blockMeta == nil {
 		return nil
@@ -172,7 +172,7 @@ func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
 	}
 
 	s := string(bz)
-	height, err := strconv.ParseInt(s, 10, 64)
+	height, err := strconv.ParseUint(s, 10, 64)
 
 	if err != nil {
 		panic(fmt.Sprintf("failed to extract height from %s: %v", s, err))
@@ -183,7 +183,7 @@ func (bs *BlockStore) LoadBlockByHash(hash []byte) *types.Block {
 // LoadBlockPart returns the Part at the given index
 // from the block at the given height.
 // If no part is found for the given height and index, it returns nil.
-func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
+func (bs *BlockStore) LoadBlockPart(height uint64, index int) *types.Part {
 	var pbpart = new(tmproto.Part)
 
 	bz, err := bs.db.Get(blockPartKey(height, index))
@@ -208,7 +208,7 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 
 // LoadBlockMeta returns the BlockMeta for the given height.
 // If no block is found for the given height, it returns nil.
-func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
+func (bs *BlockStore) LoadBlockMeta(height uint64) *types.BlockMeta {
 	var pbbm = new(tmproto.BlockMeta)
 	bz, err := bs.db.Get(blockMetaKey(height))
 
@@ -237,7 +237,7 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 // This commit consists of the +2/3 and other Precommit-votes for block at `height`,
 // and it comes from the block.LastCommit for `height+1`.
 // If no commit is found for the given height, it returns nil.
-func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
+func (bs *BlockStore) LoadBlockCommit(height uint64) *types.Commit {
 	var pbc = new(tmproto.Commit)
 	bz, err := bs.db.Get(blockCommitKey(height))
 	if err != nil {
@@ -260,7 +260,7 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 // LoadSeenCommit returns the locally seen Commit for the given height.
 // This is useful when we've seen a commit, but there has not yet been
 // a new block at `height + 1` that includes this commit in its block.LastCommit.
-func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
+func (bs *BlockStore) LoadSeenCommit(height uint64) *types.Commit {
 	var pbc = new(tmproto.Commit)
 	bz, err := bs.db.Get(seenCommitKey(height))
 	if err != nil {
@@ -282,7 +282,7 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 }
 
 // PruneBlocks removes block up to (but not including) a height. It returns the number of blocks pruned.
-func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
+func (bs *BlockStore) PruneBlocks(height uint64) (uint64, error) {
 	if height <= 0 {
 		return 0, fmt.Errorf("height must be greater than 0")
 	}
@@ -471,7 +471,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 
 }
 
-func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
+func (bs *BlockStore) saveBlockPart(height uint64, index int, part *types.Part) {
 	pbp, err := part.ToProto()
 	if err != nil {
 		panic(fmt.Errorf("unable to make part into proto: %w", err))
@@ -483,7 +483,7 @@ func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
 }
 
 // SaveSeenCommit saves a seen commit, used by e.g. the state sync reactor when bootstrapping node.
-func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *types.Commit) error {
+func (bs *BlockStore) SaveSeenCommit(height uint64, seenCommit *types.Commit) error {
 	pbc := seenCommit.ToProto()
 	seenCommitBytes, err := proto.Marshal(pbc)
 	if err != nil {
@@ -504,7 +504,7 @@ const (
 	prefixBlockHash   = int64(4)
 )
 
-func blockMetaKey(height int64) []byte {
+func blockMetaKey(height uint64) []byte {
 	key, err := orderedcode.Append(nil, prefixBlockMeta, height)
 	if err != nil {
 		panic(err)
@@ -512,22 +512,22 @@ func blockMetaKey(height int64) []byte {
 	return key
 }
 
-func decodeBlockMetaKey(key []byte) (height int64, err error) {
+func decodeBlockMetaKey(key []byte) (height uint64, err error) {
 	var prefix int64
 	remaining, err := orderedcode.Parse(string(key), &prefix, &height)
 	if err != nil {
 		return
 	}
 	if len(remaining) != 0 {
-		return -1, fmt.Errorf("expected complete key but got remainder: %s", remaining)
+		return 0, fmt.Errorf("expected complete key but got remainder: %s", remaining)
 	}
 	if prefix != prefixBlockMeta {
-		return -1, fmt.Errorf("incorrect prefix. Expected %v, got %v", prefixBlockMeta, prefix)
+		return 0, fmt.Errorf("incorrect prefix. Expected %v, got %v", prefixBlockMeta, prefix)
 	}
 	return
 }
 
-func blockPartKey(height int64, partIndex int) []byte {
+func blockPartKey(height uint64, partIndex int) []byte {
 	key, err := orderedcode.Append(nil, prefixBlockPart, height, int64(partIndex))
 	if err != nil {
 		panic(err)
@@ -535,7 +535,7 @@ func blockPartKey(height int64, partIndex int) []byte {
 	return key
 }
 
-func blockCommitKey(height int64) []byte {
+func blockCommitKey(height uint64) []byte {
 	key, err := orderedcode.Append(nil, prefixBlockCommit, height)
 	if err != nil {
 		panic(err)
@@ -543,7 +543,7 @@ func blockCommitKey(height int64) []byte {
 	return key
 }
 
-func seenCommitKey(height int64) []byte {
+func seenCommitKey(height uint64) []byte {
 	key, err := orderedcode.Append(nil, prefixSeenCommit, height)
 	if err != nil {
 		panic(err)

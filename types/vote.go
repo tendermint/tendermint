@@ -49,7 +49,7 @@ type Address = crypto.Address
 // consensus.
 type Vote struct {
 	Type             tmproto.SignedMsgType `json:"type"`
-	Height           int64                 `json:"height"`
+	Height           uint64                `json:"height"`
 	Round            int32                 `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
 	BlockID          BlockID               `json:"block_id"` // zero if vote is nil.
 	Timestamp        time.Time             `json:"timestamp"`
@@ -159,10 +159,6 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 func (vote *Vote) ValidateBasic() error {
 	if !IsVoteTypeValid(vote.Type) {
 		return errors.New("invalid Type")
-	}
-
-	if vote.Height < 0 {
-		return errors.New("negative Height")
 	}
 
 	if vote.Round < 0 {

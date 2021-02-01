@@ -198,7 +198,7 @@ func (c *Client) ConsensusState(ctx context.Context) (*ctypes.ResultConsensusSta
 	return c.next.ConsensusState(ctx)
 }
 
-func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*ctypes.ResultConsensusParams, error) {
+func (c *Client) ConsensusParams(ctx context.Context, height *uint64) (*ctypes.ResultConsensusParams, error) {
 	res, err := c.next.ConsensusParams(ctx, height)
 	if err != nil {
 		return nil, err

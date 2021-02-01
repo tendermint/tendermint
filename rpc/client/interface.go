@@ -91,7 +91,7 @@ type NetworkClient interface {
 	NetInfo(context.Context) (*ctypes.ResultNetInfo, error)
 	DumpConsensusState(context.Context) (*ctypes.ResultDumpConsensusState, error)
 	ConsensusState(context.Context) (*ctypes.ResultConsensusState, error)
-	ConsensusParams(ctx context.Context, height *int64) (*ctypes.ResultConsensusParams, error)
+	ConsensusParams(ctx context.Context, height *uint64) (*ctypes.ResultConsensusParams, error)
 	Health(context.Context) (*ctypes.ResultHealth, error)
 }
 

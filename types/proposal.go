@@ -24,7 +24,7 @@ var (
 // If POLRound >= 0, then BlockID corresponds to the block that is locked in POLRound.
 type Proposal struct {
 	Type      tmproto.SignedMsgType
-	Height    int64     `json:"height"`
+	Height    uint64    `json:"height"`
 	Round     int32     `json:"round"`     // there can not be greater than 2_147_483_647 rounds
 	POLRound  int32     `json:"pol_round"` // -1 if null.
 	BlockID   BlockID   `json:"block_id"`
@@ -34,7 +34,7 @@ type Proposal struct {
 
 // NewProposal returns a new Proposal.
 // If there is no POLRound, polRound should be -1.
-func NewProposal(height int64, round int32, polRound int32, blockID BlockID) *Proposal {
+func NewProposal(height uint64, round int32, polRound int32, blockID BlockID) *Proposal {
 	return &Proposal{
 		Type:      tmproto.ProposalType,
 		Height:    height,

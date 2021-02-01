@@ -19,9 +19,9 @@ import (
 
 func TestBlockchainInfo(t *testing.T) {
 	cases := []struct {
-		min, max     int64
-		base, height int64
-		limit        int64
+		min, max     uint64
+		base, height uint64
+		limit        uint64
 		resultLength int64
 		wantErr      bool
 	}{
@@ -35,9 +35,6 @@ func TestBlockchainInfo(t *testing.T) {
 
 		// negative
 		{1, 10, 0, 14, 10, 10, false}, // control
-		{-1, 10, 0, 14, 10, 0, true},
-		{1, -10, 0, 14, 10, 0, true},
-		{-9223372036854775808, -9223372036854775788, 0, 100, 20, 0, true},
 
 		// check base
 		{1, 1, 1, 1, 1, 1, false},
@@ -87,11 +84,10 @@ func TestBlockResults(t *testing.T) {
 	env.BlockStore = mockBlockStore{height: 100}
 
 	testCases := []struct {
-		height  int64
+		height  uint64
 		wantErr bool
 		wantRes *ctypes.ResultBlockResults
 	}{
-		{-1, true, nil},
 		{0, true, nil},
 		{101, true, nil},
 		{100, false, &ctypes.ResultBlockResults{
@@ -116,19 +112,19 @@ func TestBlockResults(t *testing.T) {
 }
 
 type mockBlockStore struct {
-	height int64
+	height uint64
 }
 
-func (mockBlockStore) Base() int64                                       { return 1 }
-func (store mockBlockStore) Height() int64                               { return store.height }
-func (store mockBlockStore) Size() int64                                 { return store.height }
-func (mockBlockStore) LoadBaseMeta() *types.BlockMeta                    { return nil }
-func (mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta       { return nil }
-func (mockBlockStore) LoadBlock(height int64) *types.Block               { return nil }
-func (mockBlockStore) LoadBlockByHash(hash []byte) *types.Block          { return nil }
-func (mockBlockStore) LoadBlockPart(height int64, index int) *types.Part { return nil }
-func (mockBlockStore) LoadBlockCommit(height int64) *types.Commit        { return nil }
-func (mockBlockStore) LoadSeenCommit(height int64) *types.Commit         { return nil }
-func (mockBlockStore) PruneBlocks(height int64) (uint64, error)          { return 0, nil }
+func (mockBlockStore) Base() uint64                                       { return 1 }
+func (store mockBlockStore) Height() uint64                               { return store.height }
+func (store mockBlockStore) Size() int64                                  { return int64(store.height) }
+func (mockBlockStore) LoadBaseMeta() *types.BlockMeta                     { return nil }
+func (mockBlockStore) LoadBlockMeta(height uint64) *types.BlockMeta       { return nil }
+func (mockBlockStore) LoadBlock(height uint64) *types.Block               { return nil }
+func (mockBlockStore) LoadBlockByHash(hash []byte) *types.Block           { return nil }
+func (mockBlockStore) LoadBlockPart(height uint64, index int) *types.Part { return nil }
+func (mockBlockStore) LoadBlockCommit(height uint64) *types.Commit        { return nil }
+func (mockBlockStore) LoadSeenCommit(height uint64) *types.Commit         { return nil }
+func (mockBlockStore) PruneBlocks(height uint64) (uint64, error)          { return 0, nil }
 func (mockBlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
 }

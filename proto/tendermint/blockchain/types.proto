@@ -7,12 +7,12 @@ import "tendermint/types/block.proto";
 
 // BlockRequest requests a block for a specific height
 message BlockRequest {
-  int64 height = 1;
+  uint64 height = 1;
 }
 
 // NoBlockResponse informs the node that the peer does not have block at the requested height
 message NoBlockResponse {
-  int64 height = 1;
+  uint64 height = 1;
 }
 
 // BlockResponse returns block to the requested
@@ -26,8 +26,8 @@ message StatusRequest {
 
 // StatusResponse is a peer response to inform their status.
 message StatusResponse {
-  int64 height = 1;
-  int64 base   = 2;
+  uint64 height = 1;
+  uint64 base   = 2;
 }
 
 message Message {

@@ -348,7 +348,7 @@ func (c *baseRPCClient) ConsensusState(ctx context.Context) (*ctypes.ResultConse
 
 func (c *baseRPCClient) ConsensusParams(
 	ctx context.Context,
-	height *int64,
+	height *uint64,
 ) (*ctypes.ResultConsensusParams, error) {
 	result := new(ctypes.ResultConsensusParams)
 	params := make(map[string]interface{})

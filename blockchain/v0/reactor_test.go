@@ -43,7 +43,7 @@ func setup(
 	t *testing.T,
 	genDoc *types.GenesisDoc,
 	privVals []types.PrivValidator,
-	maxBlockHeight int64,
+	maxBlockHeight uint64,
 	chBuf uint,
 ) *reactorTestSuite {
 	t.Helper()
@@ -77,7 +77,7 @@ func setup(
 	)
 	require.NoError(t, stateStore.Save(state))
 
-	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
+	for blockHeight := uint64(1); blockHeight <= maxBlockHeight; blockHeight++ {
 		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil)
 
 		if blockHeight > 1 {

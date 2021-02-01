@@ -34,7 +34,7 @@ const (
 	prefixABCIResponses   = int64(7)
 )
 
-func encodeKey(prefix int64, height int64) []byte {
+func encodeKey(prefix int64, height uint64) []byte {
 	res, err := orderedcode.Append(nil, prefix, height)
 	if err != nil {
 		panic(err)
@@ -42,15 +42,15 @@ func encodeKey(prefix int64, height int64) []byte {
 	return res
 }
 
-func validatorsKey(height int64) []byte {
+func validatorsKey(height uint64) []byte {
 	return encodeKey(prefixValidators, height)
 }
 
-func consensusParamsKey(height int64) []byte {
+func consensusParamsKey(height uint64) []byte {
 	return encodeKey(prefixConsensusParams, height)
 }
 
-func abciResponsesKey(height int64) []byte {
+func abciResponsesKey(height uint64) []byte {
 	return encodeKey(prefixABCIResponses, height)
 }
 
@@ -72,19 +72,19 @@ type Store interface {
 	// Load loads the current state of the blockchain
 	Load() (State, error)
 	// LoadValidators loads the validator set at a given height
-	LoadValidators(int64) (*types.ValidatorSet, error)
+	LoadValidators(uint64) (*types.ValidatorSet, error)
 	// LoadABCIResponses loads the abciResponse for a given height
-	LoadABCIResponses(int64) (*tmstate.ABCIResponses, error)
+	LoadABCIResponses(uint64) (*tmstate.ABCIResponses, error)
 	// LoadConsensusParams loads the consensus params for a given height
-	LoadConsensusParams(int64) (types.ConsensusParams, error)
+	LoadConsensusParams(uint64) (types.ConsensusParams, error)
 	// Save overwrites the previous state with the updated one
 	Save(State) error
 	// SaveABCIResponses saves ABCIResponses for a given height
-	SaveABCIResponses(int64, *tmstate.ABCIResponses) error
+	SaveABCIResponses(uint64, *tmstate.ABCIResponses) error
 	// Bootstrap is used for bootstrapping state when not starting from a initial height.
 	Bootstrap(State) error
 	// PruneStates takes the height from which to prune up to (exclusive)
-	PruneStates(int64) error
+	PruneStates(uint64) error
 }
 
 // dbStore wraps a db (github.com/tendermint/tm-db)
@@ -234,7 +234,7 @@ func (store dbStore) Bootstrap(state State) error {
 // guaranteed to delete all states, since the last checkpointed state and states being pointed to by
 // e.g. `LastHeightChanged` must remain. The state at retain height must also exist.
 // Pruning is done in descending order.
-func (store dbStore) PruneStates(retainHeight int64) error {
+func (store dbStore) PruneStates(retainHeight uint64) error {
 	if retainHeight <= 0 {
 		return fmt.Errorf("height %v must be greater than 0", retainHeight)
 	}
@@ -257,7 +257,7 @@ func (store dbStore) PruneStates(retainHeight int64) error {
 // pruneValidatorSets calls a reverse iterator from base height to retain height (exclusive), deleting
 // all validator sets in between. Due to the fact that most validator sets stored reference an earlier
 // validator set, it is likely that there will remain one validator set left after pruning.
-func (store dbStore) pruneValidatorSets(height int64) error {
+func (store dbStore) pruneValidatorSets(height uint64) error {
 	valInfo, err := loadValidatorsInfo(store.db, height)
 	if err != nil {
 		return fmt.Errorf("validators at height %v not found: %w", height, err)
@@ -288,7 +288,7 @@ func (store dbStore) pruneValidatorSets(height int64) error {
 // pruneConsensusParams calls a reverse iterator from base height to retain height batch deleting
 // all consensus params in between. If the consensus params at the new base height is dependent
 // on a prior height then this will keep that lower height to.
-func (store dbStore) pruneConsensusParams(retainHeight int64) error {
+func (store dbStore) pruneConsensusParams(retainHeight uint64) error {
 	paramsInfo, err := store.loadConsensusParamsInfo(retainHeight)
 	if err != nil {
 		return fmt.Errorf("consensus params at height %v not found: %w", retainHeight, err)
@@ -319,7 +319,7 @@ func (store dbStore) pruneConsensusParams(retainHeight int64) error {
 
 // pruneABCIResponses calls a reverse iterator from base height to retain height batch deleting
 // all abci responses in between
-func (store dbStore) pruneABCIResponses(height int64) error {
+func (store dbStore) pruneABCIResponses(height uint64) error {
 	return store.batchDelete(abciResponsesKey(1), abciResponsesKey(height), nil)
 }
 
@@ -404,7 +404,7 @@ func ABCIResponsesResultsHash(ar *tmstate.ABCIResponses) []byte {
 // This is useful for recovering from crashes where we called app.Commit and
 // before we called s.Save(). It can also be used to produce Merkle proofs of
 // the result of txs.
-func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, error) {
+func (store dbStore) LoadABCIResponses(height uint64) (*tmstate.ABCIResponses, error) {
 	buf, err := store.db.Get(abciResponsesKey(height))
 	if err != nil {
 		return nil, err
@@ -432,7 +432,7 @@ func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, er
 // Merkle proofs.
 //
 // Exposed for testing.
-func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) error {
+func (store dbStore) SaveABCIResponses(height uint64, abciResponses *tmstate.ABCIResponses) error {
 	var dtxs []*abci.ResponseDeliverTx
 	// strip nil values,
 	for _, tx := range abciResponses.DeliverTxs {
@@ -458,8 +458,8 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 //-----------------------------------------------------------------------------
 
 // LoadValidators loads the ValidatorSet for a given height.
-// Returns ErrNoValSetForHeight if the validator set can't be found for this height.
-func (store dbStore) LoadValidators(height int64) (*types.ValidatorSet, error) {
+// Returns ErrNoValSetForHeight if the validatoxwr set can't be found for this height.
+func (store dbStore) LoadValidators(height uint64) (*types.ValidatorSet, error) {
 
 	valInfo, err := loadValidatorsInfo(store.db, height)
 	if err != nil {
@@ -500,13 +500,13 @@ func (store dbStore) LoadValidators(height int64) (*types.ValidatorSet, error) {
 	return vip, nil
 }
 
-func lastStoredHeightFor(height, lastHeightChanged int64) int64 {
+func lastStoredHeightFor(height, lastHeightChanged uint64) uint64 {
 	checkpointHeight := height - height%valSetCheckpointInterval
-	return tmmath.MaxInt64(checkpointHeight, lastHeightChanged)
+	return tmmath.MaxUint64(checkpointHeight, lastHeightChanged)
 }
 
 // CONTRACT: Returned ValidatorsInfo can be mutated.
-func loadValidatorsInfo(db dbm.DB, height int64) (*tmstate.ValidatorsInfo, error) {
+func loadValidatorsInfo(db dbm.DB, height uint64) (*tmstate.ValidatorsInfo, error) {
 	buf, err := db.Get(validatorsKey(height))
 	if err != nil {
 		return nil, err
@@ -533,7 +533,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) (*tmstate.ValidatorsInfo, error
 // `height` is the effective height for which the validator is responsible for
 // signing. It should be called from s.Save(), right before the state itself is
 // persisted.
-func (store dbStore) saveValidatorsInfo(height, lastHeightChanged int64, valSet *types.ValidatorSet) error {
+func (store dbStore) saveValidatorsInfo(height, lastHeightChanged uint64, valSet *types.ValidatorSet) error {
 	if lastHeightChanged > height {
 		return errors.New("lastHeightChanged cannot be greater than ValidatorsInfo height")
 	}
@@ -574,7 +574,7 @@ var (
 )
 
 // LoadConsensusParams loads the ConsensusParams for a given height.
-func (store dbStore) LoadConsensusParams(height int64) (types.ConsensusParams, error) {
+func (store dbStore) LoadConsensusParams(height uint64) (types.ConsensusParams, error) {
 	paramsInfo, err := store.loadConsensusParamsInfo(height)
 	if err != nil {
 		return empty, fmt.Errorf("could not find consensus params for height #%d: %w", height, err)
@@ -597,7 +597,7 @@ func (store dbStore) LoadConsensusParams(height int64) (types.ConsensusParams, e
 	return types.ConsensusParamsFromProto(paramsInfo.ConsensusParams), nil
 }
 
-func (store dbStore) loadConsensusParamsInfo(height int64) (*tmstate.ConsensusParamsInfo, error) {
+func (store dbStore) loadConsensusParamsInfo(height uint64) (*tmstate.ConsensusParamsInfo, error) {
 	buf, err := store.db.Get(consensusParamsKey(height))
 	if err != nil {
 		return nil, err
@@ -621,7 +621,7 @@ func (store dbStore) loadConsensusParamsInfo(height int64) (*tmstate.ConsensusPa
 // It should be called from s.Save(), right before the state itself is persisted.
 // If the consensus params did not change after processing the latest block,
 // only the last height for which they changed is persisted.
-func (store dbStore) saveConsensusParamsInfo(nextHeight, changeHeight int64, params types.ConsensusParams) error {
+func (store dbStore) saveConsensusParamsInfo(nextHeight, changeHeight uint64, params types.ConsensusParams) error {
 	paramsInfo := &tmstate.ConsensusParamsInfo{
 		LastHeightChanged: changeHeight,
 	}

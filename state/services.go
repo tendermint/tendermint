@@ -14,23 +14,23 @@ import (
 
 // BlockStore defines the interface used by the ConsensusState.
 type BlockStore interface {
-	Base() int64
-	Height() int64
+	Base() uint64
+	Height() uint64
 	Size() int64
 
 	LoadBaseMeta() *types.BlockMeta
-	LoadBlockMeta(height int64) *types.BlockMeta
-	LoadBlock(height int64) *types.Block
+	LoadBlockMeta(height uint64) *types.BlockMeta
+	LoadBlock(height uint64) *types.Block
 
 	SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
 
-	PruneBlocks(height int64) (uint64, error)
+	PruneBlocks(height uint64) (uint64, error)
 
 	LoadBlockByHash(hash []byte) *types.Block
-	LoadBlockPart(height int64, index int) *types.Part
+	LoadBlockPart(height uint64, index int) *types.Part
 
-	LoadBlockCommit(height int64) *types.Commit
-	LoadSeenCommit(height int64) *types.Commit
+	LoadBlockCommit(height uint64) *types.Commit
+	LoadSeenCommit(height uint64) *types.Commit
 }
 
 //-----------------------------------------------------------------------------

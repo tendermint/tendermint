@@ -15,12 +15,11 @@ import (
 func TestBlockRequest_Validate(t *testing.T) {
 	testCases := []struct {
 		testName      string
-		requestHeight int64
+		requestHeight uint64
 		expectErr     bool
 	}{
 		{"Valid Request Message", 0, false},
 		{"Valid Request Message", 1, false},
-		{"Invalid Request Message", -1, true},
 	}
 
 	for _, tc := range testCases {
@@ -37,12 +36,11 @@ func TestBlockRequest_Validate(t *testing.T) {
 func TestNoBlockResponse_Validate(t *testing.T) {
 	testCases := []struct {
 		testName          string
-		nonResponseHeight int64
+		nonResponseHeight uint64
 		expectErr         bool
 	}{
 		{"Valid Non-Response Message", 0, false},
 		{"Valid Non-Response Message", 1, false},
-		{"Invalid Non-Response Message", -1, true},
 	}
 
 	for _, tc := range testCases {
@@ -65,12 +63,11 @@ func TestStatusRequest_Validate(t *testing.T) {
 func TestStatusResponse_Validate(t *testing.T) {
 	testCases := []struct {
 		testName       string
-		responseHeight int64
+		responseHeight uint64
 		expectErr      bool
 	}{
 		{"Valid Response Message", 0, false},
 		{"Valid Response Message", 1, false},
-		{"Invalid Response Message", -1, true},
 	}
 
 	for _, tc := range testCases {
@@ -86,7 +83,7 @@ func TestStatusResponse_Validate(t *testing.T) {
 
 // nolint:lll
 func TestBlockchainMessageVectors(t *testing.T) {
-	block := types.MakeBlock(int64(3), []types.Tx{types.Tx("Hello World")}, nil, nil)
+	block := types.MakeBlock(uint64(3), []types.Tx{types.Tx("Hello World")}, nil, nil)
 	block.Version.Block = 11 // overwrite updated protocol version
 
 	bpb, err := block.ToProto()

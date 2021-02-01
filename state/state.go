@@ -74,10 +74,10 @@ type State struct {
 
 	// immutable
 	ChainID       string
-	InitialHeight int64 // should be 1, not 0, when starting from height 1
+	InitialHeight uint64 // should be 1, not 0, when starting from height 1
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
-	LastBlockHeight int64
+	LastBlockHeight uint64
 	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
 
@@ -90,12 +90,12 @@ type State struct {
 	NextValidators              *types.ValidatorSet
 	Validators                  *types.ValidatorSet
 	LastValidators              *types.ValidatorSet
-	LastHeightValidatorsChanged int64
+	LastHeightValidatorsChanged uint64
 
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.
 	ConsensusParams                  types.ConsensusParams
-	LastHeightConsensusParamsChanged int64
+	LastHeightConsensusParamsChanged uint64
 
 	// Merkle root of the results from executing prev block
 	LastResultsHash []byte
@@ -257,7 +257,7 @@ func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 // and evidence. Note it also takes a proposerAddress because the state does not
 // track rounds, and hence does not know the correct proposer. TODO: fix this!
 func (state State) MakeBlock(
-	height int64,
+	height uint64,
 	txs []types.Tx,
 	commit *types.Commit,
 	evidence []types.Evidence,

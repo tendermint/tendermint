@@ -644,7 +644,7 @@ func primaryKey(hash []byte) []byte {
 }
 
 // The event/secondary key
-func secondaryKey(compositeKey, value string, height int64, index uint32) []byte {
+func secondaryKey(compositeKey, value string, height uint64, index uint32) []byte {
 	key, err := orderedcode.Append(
 		nil,
 		compositeKey,

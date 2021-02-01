@@ -31,7 +31,7 @@ func TestGenLoadValidator(t *testing.T) {
 	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
 	require.NoError(t, err)
 
-	height := int64(100)
+	height := uint64(100)
 	privVal.LastSignState.Height = height
 	privVal.Save()
 	addr := privVal.GetAddress()
@@ -55,7 +55,7 @@ func TestResetValidator(t *testing.T) {
 	assert.Equal(t, privVal.LastSignState, emptyState)
 
 	// test vote
-	height, round := int64(10), int32(1)
+	height, round := uint64(10), int32(1)
 	voteType := tmproto.PrevoteType
 	randBytes := tmrand.Bytes(tmhash.Size)
 	blockID := types.BlockID{Hash: randBytes, PartSetHeader: types.PartSetHeader{}}
@@ -179,7 +179,7 @@ func TestSignVote(t *testing.T) {
 	block2 := types.BlockID{Hash: randbytes2,
 		PartSetHeader: types.PartSetHeader{Total: 10, Hash: randbytes2}}
 
-	height, round := int64(10), int32(1)
+	height, round := uint64(10), int32(1)
 	voteType := tmproto.PrevoteType
 
 	// sign a vote for first time
@@ -232,7 +232,7 @@ func TestSignProposal(t *testing.T) {
 		PartSetHeader: types.PartSetHeader{Total: 5, Hash: randbytes}}
 	block2 := types.BlockID{Hash: randbytes2,
 		PartSetHeader: types.PartSetHeader{Total: 10, Hash: randbytes2}}
-	height, round := int64(10), int32(1)
+	height, round := uint64(10), int32(1)
 
 	// sign a proposal for first time
 	proposal := newProposal(height, round, block1)
@@ -275,7 +275,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	require.NoError(t, err)
 	randbytes := tmrand.Bytes(tmhash.Size)
 	block1 := types.BlockID{Hash: randbytes, PartSetHeader: types.PartSetHeader{Total: 5, Hash: randbytes}}
-	height, round := int64(10), int32(1)
+	height, round := uint64(10), int32(1)
 	chainID := "mychainid"
 
 	// test proposal
@@ -327,7 +327,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	}
 }
 
-func newVote(addr types.Address, idx int32, height int64, round int32,
+func newVote(addr types.Address, idx int32, height uint64, round int32,
 	typ tmproto.SignedMsgType, blockID types.BlockID) *types.Vote {
 	return &types.Vote{
 		ValidatorAddress: addr,
@@ -340,7 +340,7 @@ func newVote(addr types.Address, idx int32, height int64, round int32,
 	}
 }
 
-func newProposal(height int64, round int32, blockID types.BlockID) *types.Proposal {
+func newProposal(height uint64, round int32, blockID types.BlockID) *types.Proposal {
 	return &types.Proposal{
 		Height:    height,
 		Round:     round,

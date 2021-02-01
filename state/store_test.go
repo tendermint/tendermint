@@ -120,14 +120,14 @@ func BenchmarkLoadValidators(b *testing.B) {
 	for i := 10; i < 10000000000; i *= 10 { // 10, 100, 1000, ...
 		i := i
 		err = stateStore.Save(makeRandomStateFromValidatorSet(state.NextValidators,
-			int64(i)-1, state.LastHeightValidatorsChanged))
+			uint64(i)-1, state.LastHeightValidatorsChanged))
 		if err != nil {
 			b.Fatalf("error saving store: %v", err)
 		}
 
 		b.Run(fmt.Sprintf("height=%d", i), func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
-				_, err := stateStore.LoadValidators(int64(i))
+				_, err := stateStore.LoadValidators(uint64(i))
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -159,15 +159,14 @@ func TestStoreLoadConsensusParams(t *testing.T) {
 
 func TestPruneStates(t *testing.T) {
 	testcases := map[string]struct {
-		makeHeights  int64
-		pruneHeight  int64
+		makeHeights  uint64
+		pruneHeight  uint64
 		expectErr    bool
 		expectVals   []int64
 		expectParams []int64
 		expectABCI   []int64
 	}{
 		"error when prune height is 0":           {100, 0, true, nil, nil, nil},
-		"error when prune height is negative":    {100, -10, true, nil, nil, nil},
 		"error when prune height does not exist": {100, 101, true, nil, nil, nil},
 		"prune all":                              {100, 100, false, []int64{93, 100}, []int64{95, 100}, []int64{100}},
 		"prune some": {10, 8, false, []int64{3, 8, 9, 10},
@@ -189,10 +188,10 @@ func TestPruneStates(t *testing.T) {
 				Validators: []*types.Validator{validator},
 				Proposer:   validator,
 			}
-			valsChanged := int64(0)
-			paramsChanged := int64(0)
+			valsChanged := uint64(0)
+			paramsChanged := uint64(0)
 
-			for h := int64(1); h <= tc.makeHeights; h++ {
+			for h := uint64(1); h <= tc.makeHeights; h++ {
 				if valsChanged == 0 || h%10 == 2 {
 					valsChanged = h + 1 // Have to add 1, since NextValidators is what's stored
 				}
@@ -241,9 +240,9 @@ func TestPruneStates(t *testing.T) {
 			expectParams := sliceToMap(tc.expectParams)
 			expectABCI := sliceToMap(tc.expectABCI)
 
-			for h := int64(1); h <= tc.makeHeights; h++ {
+			for h := uint64(1); h <= tc.makeHeights; h++ {
 				vals, err := stateStore.LoadValidators(h)
-				if expectVals[h] {
+				if expectVals[int64(h)] {
 					require.NoError(t, err, "validators height %v", h)
 					require.NotNil(t, vals)
 				} else {
@@ -252,7 +251,7 @@ func TestPruneStates(t *testing.T) {
 				}
 
 				params, err := stateStore.LoadConsensusParams(h)
-				if expectParams[h] {
+				if expectParams[int64(h)] {
 					require.NoError(t, err, "params height %v", h)
 					require.False(t, params.Equals(&types.ConsensusParams{}), "params should not be empty")
 				} else {
@@ -260,7 +259,7 @@ func TestPruneStates(t *testing.T) {
 				}
 
 				abci, err := stateStore.LoadABCIResponses(h)
-				if expectABCI[h] {
+				if expectABCI[int64(h)] {
 					require.NoError(t, err, "abci height %v", h)
 					require.NotNil(t, abci)
 				} else {

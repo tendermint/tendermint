@@ -79,7 +79,7 @@ type EventDataNewBlockHeader struct {
 type EventDataNewEvidence struct {
 	Evidence Evidence `json:"evidence"`
 
-	Height int64 `json:"height"`
+	Height uint64 `json:"height"`
 }
 
 // All txs fire EventDataTx

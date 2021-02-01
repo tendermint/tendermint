@@ -20,8 +20,8 @@ func init() {
 
 type testPeer struct {
 	id        p2p.NodeID
-	base      int64
-	height    int64
+	base      uint64
+	height    uint64
 	inputChan chan inputData // make sure each peer's data is sequential
 }
 
@@ -72,14 +72,14 @@ func makePeers(numPeers int, minHeight, maxHeight int64) testPeers {
 		if base > height {
 			base = height
 		}
-		peers[peerID] = testPeer{peerID, base, height, make(chan inputData, 10)}
+		peers[peerID] = testPeer{peerID, uint64(base), uint64(height), make(chan inputData, 10)}
 	}
 	return peers
 }
 
 func TestBlockPoolBasic(t *testing.T) {
-	start := int64(42)
-	peers := makePeers(10, start+1, 1000)
+	start := uint64(42)
+	peers := makePeers(10, int64(start+1), 1000)
 	errorsCh := make(chan peerError, 1000)
 	requestsCh := make(chan BlockRequest, 1000)
 	pool := NewBlockPool(start, requestsCh, errorsCh)
@@ -138,8 +138,8 @@ func TestBlockPoolBasic(t *testing.T) {
 }
 
 func TestBlockPoolTimeout(t *testing.T) {
-	start := int64(42)
-	peers := makePeers(10, start+1, 1000)
+	start := uint64(42)
+	peers := makePeers(10, int64(start+1), 1000)
 	errorsCh := make(chan peerError, 1000)
 	requestsCh := make(chan BlockRequest, 1000)
 	pool := NewBlockPool(start, requestsCh, errorsCh)
@@ -204,7 +204,7 @@ func TestBlockPoolRemovePeer(t *testing.T) {
 	peers := make(testPeers, 10)
 	for i := 0; i < 10; i++ {
 		peerID := p2p.NodeID(fmt.Sprintf("%d", i+1))
-		height := int64(i + 1)
+		height := uint64(i + 1)
 		peers[peerID] = testPeer{peerID, 0, height, make(chan inputData)}
 	}
 	requestsCh := make(chan BlockRequest)

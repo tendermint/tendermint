@@ -14,7 +14,7 @@ import (
 )
 
 func TestVoteSet_AddVote_Good(t *testing.T) {
-	height, round := int64(1), int32(0)
+	height, round := uint64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(height, round, tmproto.PrevoteType, 10, 1)
 	val0 := privValidators[0]
 
@@ -46,7 +46,7 @@ func TestVoteSet_AddVote_Good(t *testing.T) {
 }
 
 func TestVoteSet_AddVote_Bad(t *testing.T) {
-	height, round := int64(1), int32(0)
+	height, round := uint64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(height, round, tmproto.PrevoteType, 10, 1)
 
 	voteProto := &Vote{
@@ -121,7 +121,7 @@ func TestVoteSet_AddVote_Bad(t *testing.T) {
 }
 
 func TestVoteSet_2_3Majority(t *testing.T) {
-	height, round := int64(1), int32(0)
+	height, round := uint64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(height, round, tmproto.PrevoteType, 10, 1)
 
 	voteProto := &Vote{
@@ -171,7 +171,7 @@ func TestVoteSet_2_3Majority(t *testing.T) {
 }
 
 func TestVoteSet_2_3MajorityRedux(t *testing.T) {
-	height, round := int64(1), int32(0)
+	height, round := uint64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(height, round, tmproto.PrevoteType, 100, 1)
 
 	blockHash := crypto.CRandBytes(32)
@@ -270,7 +270,7 @@ func TestVoteSet_2_3MajorityRedux(t *testing.T) {
 }
 
 func TestVoteSet_Conflicts(t *testing.T) {
-	height, round := int64(1), int32(0)
+	height, round := uint64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(height, round, tmproto.PrevoteType, 4, 1)
 	blockHash1 := tmrand.Bytes(32)
 	blockHash2 := tmrand.Bytes(32)
@@ -399,7 +399,7 @@ func TestVoteSet_Conflicts(t *testing.T) {
 }
 
 func TestVoteSet_MakeCommit(t *testing.T) {
-	height, round := int64(1), int32(0)
+	height, round := uint64(1), int32(0)
 	voteSet, _, privValidators := randVoteSet(height, round, tmproto.PrecommitType, 10, 1)
 	blockHash, blockPartSetHeader := crypto.CRandBytes(32), PartSetHeader{123, crypto.CRandBytes(32)}
 
@@ -476,7 +476,7 @@ func TestVoteSet_MakeCommit(t *testing.T) {
 
 // NOTE: privValidators are in order
 func randVoteSet(
-	height int64,
+	height uint64,
 	round int32,
 	signedMsgType tmproto.SignedMsgType,
 	numValidators int,
@@ -495,7 +495,7 @@ func withValidator(vote *Vote, addr []byte, idx int32) *Vote {
 }
 
 // Convenience: Return new vote with different height
-func withHeight(vote *Vote, height int64) *Vote {
+func withHeight(vote *Vote, height uint64) *Vote {
 	vote = vote.Copy()
 	vote.Height = height
 	return vote

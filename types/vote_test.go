@@ -240,7 +240,6 @@ func TestVoteValidateBasic(t *testing.T) {
 		expectErr    bool
 	}{
 		{"Good Vote", func(v *Vote) {}, false},
-		{"Negative Height", func(v *Vote) { v.Height = -1 }, true},
 		{"Negative Round", func(v *Vote) { v.Round = -1 }, true},
 		{"Invalid BlockID", func(v *Vote) {
 			v.BlockID = BlockID{[]byte{1, 2, 3}, PartSetHeader{111, []byte("blockparts")}}

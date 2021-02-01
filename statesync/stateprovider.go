@@ -38,7 +38,7 @@ type lightClientStateProvider struct {
 	tmsync.Mutex  // light.Client is not concurrency-safe
 	lc            *light.Client
 	version       sm.Version
-	initialHeight int64
+	initialHeight uint64
 	providers     map[lightprovider.Provider]string
 }
 
@@ -47,7 +47,7 @@ func NewLightClientStateProvider(
 	ctx context.Context,
 	chainID string,
 	version sm.Version,
-	initialHeight int64,
+	initialHeight uint64,
 	servers []string,
 	trustOptions light.TrustOptions,
 	logger log.Logger,

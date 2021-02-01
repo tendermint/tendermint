@@ -14,7 +14,7 @@ import (
 
 // List of blocks
 type ResultBlockchainInfo struct {
-	LastHeight int64              `json:"last_height"`
+	LastHeight uint64             `json:"last_height"`
 	BlockMetas []*types.BlockMeta `json:"block_metas"`
 }
 
@@ -37,7 +37,7 @@ type ResultCommit struct {
 
 // ABCI results from a block
 type ResultBlockResults struct {
-	Height                int64                     `json:"height"`
+	Height                uint64                    `json:"height"`
 	TxsResults            []*abci.ResponseDeliverTx `json:"txs_results"`
 	BeginBlockEvents      []abci.Event              `json:"begin_block_events"`
 	EndBlockEvents        []abci.Event              `json:"end_block_events"`
@@ -63,12 +63,12 @@ func NewResultCommit(header *types.Header, commit *types.Commit,
 type SyncInfo struct {
 	LatestBlockHash   bytes.HexBytes `json:"latest_block_hash"`
 	LatestAppHash     bytes.HexBytes `json:"latest_app_hash"`
-	LatestBlockHeight int64          `json:"latest_block_height"`
+	LatestBlockHeight uint64         `json:"latest_block_height"`
 	LatestBlockTime   time.Time      `json:"latest_block_time"`
 
 	EarliestBlockHash   bytes.HexBytes `json:"earliest_block_hash"`
 	EarliestAppHash     bytes.HexBytes `json:"earliest_app_hash"`
-	EarliestBlockHeight int64          `json:"earliest_block_height"`
+	EarliestBlockHeight uint64         `json:"earliest_block_height"`
 	EarliestBlockTime   time.Time      `json:"earliest_block_time"`
 
 	CatchingUp bool `json:"catching_up"`
@@ -124,7 +124,7 @@ type Peer struct {
 
 // Validators for a height.
 type ResultValidators struct {
-	BlockHeight int64              `json:"block_height"`
+	BlockHeight uint64             `json:"block_height"`
 	Validators  []*types.Validator `json:"validators"`
 	// Count of actual validators in this result
 	Count int `json:"count"`
@@ -134,7 +134,7 @@ type ResultValidators struct {
 
 // ConsensusParams for given height
 type ResultConsensusParams struct {
-	BlockHeight     int64                 `json:"block_height"`
+	BlockHeight     uint64                `json:"block_height"`
 	ConsensusParams types.ConsensusParams `json:"consensus_params"`
 }
 
@@ -171,7 +171,7 @@ type ResultBroadcastTxCommit struct {
 	CheckTx   abci.ResponseCheckTx   `json:"check_tx"`
 	DeliverTx abci.ResponseDeliverTx `json:"deliver_tx"`
 	Hash      bytes.HexBytes         `json:"hash"`
-	Height    int64                  `json:"height"`
+	Height    uint64                 `json:"height"`
 }
 
 // ResultCheckTx wraps abci.ResponseCheckTx.
@@ -182,7 +182,7 @@ type ResultCheckTx struct {
 // Result of querying for a tx
 type ResultTx struct {
 	Hash     bytes.HexBytes         `json:"hash"`
-	Height   int64                  `json:"height"`
+	Height   uint64                 `json:"height"`
 	Index    uint32                 `json:"index"`
 	TxResult abci.ResponseDeliverTx `json:"tx_result"`
 	Tx       types.Tx               `json:"tx"`

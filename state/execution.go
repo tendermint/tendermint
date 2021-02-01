@@ -92,7 +92,7 @@ func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) 
 // Up to 1/10th of the block space is allcoated for maximum sized evidence.
 // The rest is given to txs, up to the max gas.
 func (blockExec *BlockExecutor) CreateProposalBlock(
-	height int64,
+	height uint64,
 	state State, commit *types.Commit,
 	proposerAddr []byte,
 ) (*types.Block, *types.PartSet) {
@@ -130,7 +130,7 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 // It takes a blockID to avoid recomputing the parts hash.
 func (blockExec *BlockExecutor) ApplyBlock(
 	state State, blockID types.BlockID, block *types.Block,
-) (State, int64, error) {
+) (State, uint64, error) {
 
 	if err := validateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
@@ -210,7 +210,7 @@ func (blockExec *BlockExecutor) Commit(
 	state State,
 	block *types.Block,
 	deliverTxResponses []*abci.ResponseDeliverTx,
-) ([]byte, int64, error) {
+) ([]byte, uint64, error) {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
 
@@ -262,7 +262,7 @@ func execBlockOnProxyApp(
 	proxyAppConn proxy.AppConnConsensus,
 	block *types.Block,
 	store Store,
-	initialHeight int64,
+	initialHeight uint64,
 ) (*tmstate.ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
@@ -339,7 +339,7 @@ func execBlockOnProxyApp(
 }
 
 func getBeginBlockValidatorInfo(block *types.Block, store Store,
-	initialHeight int64) abci.LastCommitInfo {
+	initialHeight uint64) abci.LastCommitInfo {
 	voteInfos := make([]abci.VoteInfo, block.LastCommit.Size())
 	// Initial block -> LastCommitInfo.Votes are empty.
 	// Remember that the first LastCommit is intentionally empty, so it makes
@@ -533,7 +533,7 @@ func ExecCommitBlock(
 	block *types.Block,
 	logger log.Logger,
 	store Store,
-	initialHeight int64,
+	initialHeight uint64,
 ) ([]byte, error) {
 	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
 	if err != nil {

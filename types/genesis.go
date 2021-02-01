@@ -37,7 +37,7 @@ type GenesisValidator struct {
 type GenesisDoc struct {
 	GenesisTime     time.Time          `json:"genesis_time"`
 	ChainID         string             `json:"chain_id"`
-	InitialHeight   int64              `json:"initial_height"`
+	InitialHeight   uint64             `json:"initial_height"`
 	ConsensusParams *ConsensusParams   `json:"consensus_params,omitempty"`
 	Validators      []GenesisValidator `json:"validators,omitempty"`
 	AppHash         tmbytes.HexBytes   `json:"app_hash"`

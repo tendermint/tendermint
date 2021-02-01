@@ -19,8 +19,8 @@ import (
 // order (highest first).
 //
 // More: https://docs.tendermint.com/master/rpc/#/Info/blockchain
-func BlockchainInfo(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
-	const limit int64 = 20
+func BlockchainInfo(ctx *rpctypes.Context, minHeight, maxHeight uint64) (*ctypes.ResultBlockchainInfo, error) {
+	const limit uint64 = 20
 
 	var err error
 	minHeight, maxHeight, err = filterMinMax(
@@ -50,7 +50,7 @@ func BlockchainInfo(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.
 // error if either min or max are negative or min > max
 // if 0, use blockstore base for min, latest block height for max
 // enforce limit.
-func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
+func filterMinMax(base, height, min, max, limit uint64) (uint64, uint64, error) {
 	// filter negatives
 	if min < 0 || max < 0 {
 		return min, max, fmt.Errorf("heights must be non-negative")
@@ -65,14 +65,14 @@ func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
 	}
 
 	// limit max to the height
-	max = tmmath.MinInt64(height, max)
+	max = tmmath.MinUint64(height, max)
 
 	// limit min to the base
-	min = tmmath.MaxInt64(base, min)
+	min = tmmath.MaxUint64(base, min)
 
 	// limit min to within `limit` of max
 	// so the total number of blocks returned will be `limit`
-	min = tmmath.MaxInt64(min, max-limit+1)
+	min = tmmath.MaxUint64(min, max-limit+1)
 
 	if min > max {
 		return min, max, fmt.Errorf("min height %d can't be greater than max height %d", min, max)
@@ -83,7 +83,7 @@ func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
 // Block gets block at a given height.
 // If no height is provided, it will fetch the latest block.
 // More: https://docs.tendermint.com/master/rpc/#/Info/block
-func Block(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlock, error) {
+func Block(ctx *rpctypes.Context, heightPtr *uint64) (*ctypes.ResultBlock, error) {
 	height, err := getHeight(env.BlockStore.Height(), heightPtr)
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func BlockByHash(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultBlock, error
 // Commit gets block commit at a given height.
 // If no height is provided, it will fetch the commit for the latest block.
 // More: https://docs.tendermint.com/master/rpc/#/Info/commit
-func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, error) {
+func Commit(ctx *rpctypes.Context, heightPtr *uint64) (*ctypes.ResultCommit, error) {
 	height, err := getHeight(env.BlockStore.Height(), heightPtr)
 	if err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, erro
 // Thus response.results.deliver_tx[5] is the results of executing
 // getBlock(h).Txs[5]
 // More: https://docs.tendermint.com/master/rpc/#/Info/block_results
-func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockResults, error) {
+func BlockResults(ctx *rpctypes.Context, heightPtr *uint64) (*ctypes.ResultBlockResults, error) {
 	height, err := getHeight(env.BlockStore.Height(), heightPtr)
 	if err != nil {
 		return nil, err

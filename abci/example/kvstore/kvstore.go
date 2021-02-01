@@ -23,7 +23,7 @@ var (
 type State struct {
 	db      dbm.DB
 	Size    int64  `json:"size"`
-	Height  int64  `json:"height"`
+	Height  uint64 `json:"height"`
 	AppHash []byte `json:"app_hash"`
 }
 
@@ -67,7 +67,7 @@ type Application struct {
 	types.BaseApplication
 
 	state        State
-	RetainBlocks int64 // blocks to retain after commit (via ResponseCommit.RetainHeight)
+	RetainBlocks uint64 // blocks to retain after commit (via ResponseCommit.RetainHeight)
 }
 
 func NewApplication() *Application {

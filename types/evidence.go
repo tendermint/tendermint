@@ -23,7 +23,7 @@ type Evidence interface {
 	ABCI() []abci.Evidence // forms individual evidence to be sent to the application
 	Bytes() []byte         // bytes which comprise the evidence
 	Hash() []byte          // hash of the evidence
-	Height() int64         // height of the infraction
+	Height() uint64        // height of the infraction
 	String() string        // string format of the evidence
 	Time() time.Time       // time of the infraction
 	ValidateBasic() error  // basic consistency check
@@ -103,7 +103,7 @@ func (dve *DuplicateVoteEvidence) Hash() []byte {
 }
 
 // Height returns the height of the infraction
-func (dve *DuplicateVoteEvidence) Height() int64 {
+func (dve *DuplicateVoteEvidence) Height() uint64 {
 	return dve.VoteA.Height
 }
 
@@ -189,7 +189,7 @@ func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*Duplica
 // tendermint/docs/architecture/adr-047-handling-evidence-from-light-client.md
 type LightClientAttackEvidence struct {
 	ConflictingBlock *LightBlock
-	CommonHeight     int64
+	CommonHeight     uint64
 
 	// abci specific information
 	ByzantineValidators []*Validator // validators in the validator set that misbehaved in creating the conflicting block
@@ -298,7 +298,7 @@ func (l *LightClientAttackEvidence) ConflictingHeaderIsInvalid(trustedHeader *He
 // most commit signatures (captures the most byzantine validators) but anything greater than 1/3 is sufficient.
 func (l *LightClientAttackEvidence) Hash() []byte {
 	buf := make([]byte, binary.MaxVarintLen64)
-	n := binary.PutVarint(buf, l.CommonHeight)
+	n := binary.PutUvarint(buf, l.CommonHeight)
 	bz := make([]byte, tmhash.Size+n)
 	copy(bz[:tmhash.Size-1], l.ConflictingBlock.Hash().Bytes())
 	copy(bz[tmhash.Size:], buf)
@@ -308,7 +308,7 @@ func (l *LightClientAttackEvidence) Hash() []byte {
 // Height returns the last height at which the primary provider and witness provider had the same header.
 // We use this as the height of the infraction rather than the actual conflicting header because we know
 // that the malicious validators were bonded at this height which is important for evidence expiry
-func (l *LightClientAttackEvidence) Height() int64 {
+func (l *LightClientAttackEvidence) Height() uint64 {
 	return l.CommonHeight
 }
 
@@ -539,13 +539,13 @@ func (err *ErrEvidenceOverflow) Error() string {
 // unstable - use only for testing
 
 // assumes the round to be 0 and the validator index to be 0
-func NewMockDuplicateVoteEvidence(height int64, time time.Time, chainID string) *DuplicateVoteEvidence {
+func NewMockDuplicateVoteEvidence(height uint64, time time.Time, chainID string) *DuplicateVoteEvidence {
 	val := NewMockPV()
 	return NewMockDuplicateVoteEvidenceWithValidator(height, time, val, chainID)
 }
 
 // assumes voting power to be 10 and validator to be the only one in the set
-func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
+func NewMockDuplicateVoteEvidenceWithValidator(height uint64, time time.Time,
 	pv PrivValidator, chainID string) *DuplicateVoteEvidence {
 	pubKey, _ := pv.GetPubKey()
 	val := NewValidator(pubKey, 10)
@@ -560,7 +560,7 @@ func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
 	return NewDuplicateVoteEvidence(voteA, voteB, time, NewValidatorSet([]*Validator{val}))
 }
 
-func makeMockVote(height int64, round, index int32, addr Address,
+func makeMockVote(height uint64, round, index int32, addr Address,
 	blockID BlockID, time time.Time) *Vote {
 	return &Vote{
 		Type:             tmproto.SignedMsgType(2),

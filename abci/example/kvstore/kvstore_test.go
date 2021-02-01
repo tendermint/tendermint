@@ -96,7 +96,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	}
 	kvstore := NewPersistentKVStoreApplication(dir)
 	InitKVStore(kvstore)
-	height := int64(0)
+	height := uint64(0)
 
 	resInfo := kvstore.Info(types.RequestInfo{})
 	if resInfo.LastBlockHeight != height {
@@ -104,7 +104,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	}
 
 	// make and apply block
-	height = int64(1)
+	height = uint64(1)
 	hash := []byte("foo")
 	header := tmproto.Header{
 		Height: height,
@@ -194,7 +194,7 @@ func makeApplyBlock(
 	diff []types.ValidatorUpdate,
 	txs ...[]byte) {
 	// make and apply block
-	height := int64(heightInt)
+	height := uint64(heightInt)
 	hash := []byte("foo")
 	header := tmproto.Header{
 		Height: height,

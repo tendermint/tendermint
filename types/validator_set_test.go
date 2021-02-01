@@ -693,7 +693,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 		description string
 		chainID     string
 		blockID     BlockID
-		height      int64
+		height      uint64
 		commit      *Commit
 		expErr      bool
 	}{
@@ -744,7 +744,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 func TestValidatorSet_VerifyCommit_CheckAllSignatures(t *testing.T) {
 	var (
 		chainID = "test_chain_id"
-		h       = int64(3)
+		h       = uint64(3)
 		blockID = makeBlockIDRandom()
 	)
 
@@ -769,7 +769,7 @@ func TestValidatorSet_VerifyCommit_CheckAllSignatures(t *testing.T) {
 func TestValidatorSet_VerifyCommitLight_ReturnsAsSoonAsMajorityOfVotingPowerSigned(t *testing.T) {
 	var (
 		chainID = "test_chain_id"
-		h       = int64(3)
+		h       = uint64(3)
 		blockID = makeBlockIDRandom()
 	)
 
@@ -792,7 +792,7 @@ func TestValidatorSet_VerifyCommitLight_ReturnsAsSoonAsMajorityOfVotingPowerSign
 func TestValidatorSet_VerifyCommitLightTrusting_ReturnsAsSoonAsTrustLevelOfVotingPowerSigned(t *testing.T) {
 	var (
 		chainID = "test_chain_id"
-		h       = int64(3)
+		h       = uint64(3)
 		blockID = makeBlockIDRandom()
 	)
 

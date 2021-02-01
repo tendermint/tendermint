@@ -176,14 +176,14 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 
 	// Query all before, this should return error.
 	for i := range cases {
-		h := int64(i + 1)
+		h := uint64(i + 1)
 		res, err := stateStore.LoadABCIResponses(h)
 		assert.Error(err, "%d: %#v", i, res)
 	}
 
 	// Add all cases.
 	for i, tc := range cases {
-		h := int64(i + 1) // last block height, one below what we save
+		h := uint64(i + 1) // last block height, one below what we save
 		responses := &tmstate.ABCIResponses{
 			BeginBlock: &abci.ResponseBeginBlock{},
 			DeliverTxs: tc.added,
@@ -195,7 +195,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 
 	// Query all before, should return expected value.
 	for i, tc := range cases {
-		h := int64(i + 1)
+		h := uint64(i + 1)
 		res, err := stateStore.LoadABCIResponses(h)
 		if assert.NoError(err, "%d", i) {
 			t.Log(res)
@@ -292,7 +292,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 	}
 
 	for i, power := range testCases {
-		v, err := stateStore.LoadValidators(int64(i + 1 + 1)) // +1 because vset changes delayed by 1 block.
+		v, err := stateStore.LoadValidators(uint64(i + 1 + 1)) // +1 because vset changes delayed by 1 block.
 		assert.Nil(t, err, fmt.Sprintf("expected no err at height %d", i))
 		assert.Equal(t, v.Size(), 1, "validator set size is greater than 1: %d", v.Size())
 		_, val := v.GetByIndex(0)
@@ -992,7 +992,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	stateStore := sm.NewStore(stateDB)
 
 	// Change vals at these heights.
-	changeHeights := []int64{1, 2, 4, 5, 10, 15, 16, 17, 20}
+	changeHeights := []uint64{1, 2, 4, 5, 10, 15, 16, 17, 20}
 	N := len(changeHeights)
 
 	// Each valset is just one validator.
@@ -1011,7 +1011,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	cp := params[changeIndex]
 	var err error
 	var validatorUpdates []*types.Validator
-	for i := int64(1); i < highestHeight; i++ {
+	for i := uint64(1); i < highestHeight; i++ {
 		// When we get to a change height, use the next params.
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
 			changeIndex++
@@ -1031,7 +1031,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	testCases := make([]paramsChangeTestCase, highestHeight)
 	changeIndex = 0
 	cp = params[changeIndex]
-	for i := int64(1); i < highestHeight+1; i++ {
+	for i := uint64(1); i < highestHeight+1; i++ {
 		// We get to the height after a change height use the next pubkey (note
 		// our counter starts at 0 this time).
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex]+1 {

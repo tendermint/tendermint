@@ -307,7 +307,7 @@ func MaxDataBytesNoEvidence(maxBytes int64, valsCount int) int64 {
 // MakeBlock returns a new block with an empty header, except what can be
 // computed from itself.
 // It populates the same set of fields validated by ValidateBasic.
-func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) *Block {
+func MakeBlock(height uint64, txs []Tx, lastCommit *Commit, evidence []Evidence) *Block {
 	block := &Block{
 		Header: Header{
 			Version: version.Consensus{Block: version.BlockProtocol, App: 0},
@@ -334,7 +334,7 @@ type Header struct {
 	// basic block info
 	Version version.Consensus `json:"version"`
 	ChainID string            `json:"chain_id"`
-	Height  int64             `json:"height"`
+	Height  uint64            `json:"height"`
 	Time    time.Time         `json:"time"`
 
 	// prev block info
@@ -747,7 +747,7 @@ type Commit struct {
 	// ValidatorSet order.
 	// Any peer with a block can gossip signatures by index with a peer without
 	// recalculating the active ValidatorSet.
-	Height     int64       `json:"height"`
+	Height     uint64      `json:"height"`
 	Round      int32       `json:"round"`
 	BlockID    BlockID     `json:"block_id"`
 	Signatures []CommitSig `json:"signatures"`
@@ -760,7 +760,7 @@ type Commit struct {
 }
 
 // NewCommit returns a new Commit.
-func NewCommit(height int64, round int32, blockID BlockID, commitSigs []CommitSig) *Commit {
+func NewCommit(height uint64, round int32, blockID BlockID, commitSigs []CommitSig) *Commit {
 	return &Commit{
 		Height:     height,
 		Round:      round,
@@ -825,7 +825,7 @@ func (commit *Commit) Type() byte {
 
 // GetHeight returns height of the commit.
 // Implements VoteSetReader.
-func (commit *Commit) GetHeight() int64 {
+func (commit *Commit) GetHeight() uint64 {
 	return commit.Height
 }
 
