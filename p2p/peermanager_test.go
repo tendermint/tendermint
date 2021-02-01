@@ -118,14 +118,14 @@ func TestNewPeerManager(t *testing.T) {
 func TestNewPeerManager_Persistence(t *testing.T) {
 	aID := p2p.NodeID(strings.Repeat("a", 40))
 	aAddresses := []p2p.NodeAddress{
-		mustParseNodeAddress("tcp://" + string(aID) + "@127.0.0.1:26657/path"),
-		mustParseNodeAddress("memory:" + string(aID)),
+		{Protocol: "tcp", NodeID: aID, Hostname: "127.0.0.1", Port: 26657, Path: "/path"},
+		{Protocol: "memory", NodeID: aID},
 	}
 
 	bID := p2p.NodeID(strings.Repeat("b", 40))
 	bAddresses := []p2p.NodeAddress{
-		mustParseNodeAddress("tcp://" + string(bID) + "@[b10c::1]:26657/path"),
-		mustParseNodeAddress("memory:" + string(bID)),
+		{Protocol: "tcp", NodeID: bID, Hostname: "b10c::1", Port: 26657, Path: "/path"},
+		{Protocol: "memory", NodeID: bID},
 	}
 
 	// Create an initial peer manager and add the peers.
@@ -179,47 +179,35 @@ func TestPeerManager_Add(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding a couple of addresses should work.
-	tcpAddress := mustParseNodeAddress("tcp://" + string(aID) + "@localhost")
-	memAddress := mustParseNodeAddress("memory:" + string(aID))
-	err = peerManager.Add(tcpAddress)
-	require.NoError(t, err)
-	err = peerManager.Add(memAddress)
-	require.NoError(t, err)
-	require.ElementsMatch(t, peerManager.Addresses(aID), []p2p.NodeAddress{
-		tcpAddress, memAddress,
-	})
+	aAddresses := []p2p.NodeAddress{
+		{Protocol: "tcp", NodeID: aID, Hostname: "localhost"},
+		{Protocol: "memory", NodeID: aID},
+	}
+	for _, addr := range aAddresses {
+		err = peerManager.Add(addr)
+		require.NoError(t, err)
+	}
+	require.ElementsMatch(t, aAddresses, peerManager.Addresses(aID))
 
 	// Adding a different peer should be fine.
-	bAddress := mustParseNodeAddress("tcp://" + string(bID) + "@localhost")
+	bAddress := p2p.NodeAddress{Protocol: "tcp", NodeID: bID, Hostname: "localhost"}
 	err = peerManager.Add(bAddress)
 	require.NoError(t, err)
 	require.Equal(t, []p2p.NodeAddress{bAddress}, peerManager.Addresses(bID))
-	require.ElementsMatch(t, peerManager.Addresses(aID), []p2p.NodeAddress{
-		tcpAddress, memAddress,
-	})
+	require.ElementsMatch(t, aAddresses, peerManager.Addresses(aID))
 
 	// Adding an existing address again should be a noop.
-	err = peerManager.Add(tcpAddress)
+	err = peerManager.Add(aAddresses[0])
 	require.NoError(t, err)
-	require.ElementsMatch(t, peerManager.Addresses(aID), []p2p.NodeAddress{
-		tcpAddress, memAddress,
-	})
+	require.ElementsMatch(t, aAddresses, peerManager.Addresses(aID))
 
-	// Adding a third peer with MaxPeers=2 should cause the lowest-scored
-	// (not in PersistentPeers) to be removed.
-	err = peerManager.Add(mustParseNodeAddress("tcp://" + string(cID) + "@localhost"))
+	// Adding a third peer with MaxPeers=2 should cause bID, which is
+	// the lowest-scored peer (not in PersistentPeers), to be removed.
+	err = peerManager.Add(p2p.NodeAddress{Protocol: "tcp", NodeID: cID, Hostname: "localhost"})
 	require.NoError(t, err)
-	require.ElementsMatch(t, peerManager.Peers(), []p2p.NodeID{aID, cID})
+	require.ElementsMatch(t, []p2p.NodeID{aID, cID}, peerManager.Peers())
 
-	// Adding an invalid address errors.
+	// Adding an invalid address should error.
 	err = peerManager.Add(p2p.NodeAddress{Path: "foo"})
 	require.Error(t, err)
-}
-
-func mustParseNodeAddress(url string) p2p.NodeAddress {
-	address, err := p2p.ParseNodeAddress(url)
-	if err != nil {
-		panic(err)
-	}
-	return address
 }
