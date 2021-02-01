@@ -23,15 +23,15 @@ A new interface will be introduced. This interface will have three methods `NewB
 
 ```go
 type BatchVerifier interface {
-  NewBatchVerifier() BatchVerification // NewBatchVerifier create a new verifier where keys, signatures and messages can be added as entries
+  NewBatchVerifier() BatchVerifier // NewBatchVerifier create a new verifier where keys, signatures and messages can be added as entries
   Add(key crypto.Pubkey, signature, message []byte) bool // Add appends an entry into the BatchVerifier.
-  VerifyBatch() bool // VerifyBatch verifies all the entries in the BatchVerifier. If the verification fails it is unknown which entry failed and each entry will need to be verified individually.
+  Verify() bool // Verify verifies all the entries in the BatchVerifier. If the verification fails it is unknown which entry failed and each entry will need to be verified individually.
 }
 ```
 
 - `NewBatchVerifier` creates a new verifier. This verifier will be populated with entries to be verified. 
 - `Add` adds an entry to the Verifier. Add accepts a public key and two slice of bytes (signature and message). 
-- `VerifyBatch` verifies all the entires. At the end of VerifyBatch if the underlying API does not reset the Verifier to its initial state (empty), it should be done here. This prevents accidentally reusing the verifier with entries from a previous verification.
+- `Verify` verifies all the entires. At the end of Verify if the underlying API does not reset the Verifier to its initial state (empty), it should be done here. This prevents accidentally reusing the verifier with entries from a previous verification.
 
 Above there is mention of an entry. An entry can be constructed in many ways depending on the needs of the underlying curve. A simple approach would be:
 
@@ -46,7 +46,7 @@ type entry struct {
 The main reason this approach is being taken is to prevent simple mistakes. Some APIs allow the user to create three slices and pass them to the `VerifyBatch` function but this relies on the user to safely generate all the slices (see example below). We would like to minimize the possibility of making a mistake.
 
 ```go
-func VerifyBatch(keys []crypto.Pubkey, signatures, messages[][]byte) bool
+func Verify(keys []crypto.Pubkey, signatures, messages[][]byte) bool
 ```
 
 This change will not require will not effect any users in anyway other than faster verification times.
