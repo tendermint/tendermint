@@ -66,7 +66,7 @@ var (
 
 	sequential     bool
 	trustingPeriod time.Duration
-	trustedHeight  int64
+	trustedHeight  uint64
 	trustedHash    []byte
 	trustLevelStr  string
 
@@ -92,7 +92,7 @@ func init() {
 		"maximum number of simultaneous connections (including WebSocket).")
 	LightCmd.Flags().DurationVar(&trustingPeriod, "trusting-period", 168*time.Hour,
 		"trusting period that headers can be verified within. Should be significantly less than the unbonding period")
-	LightCmd.Flags().Int64Var(&trustedHeight, "height", 1, "Trusted header's height")
+	LightCmd.Flags().Uint64Var(&trustedHeight, "height", 1, "Trusted header's height")
 	LightCmd.Flags().BytesHexVar(&trustedHash, "hash", []byte{}, "Trusted header's hash")
 	LightCmd.Flags().BoolVar(&verbose, "verbose", false, "Verbose output")
 	LightCmd.Flags().StringVar(&trustLevelStr, "trust-level", "1/3",

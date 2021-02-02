@@ -83,7 +83,7 @@ func (s *dbs) SaveLightBlock(lb *types.LightBlock) error {
 // the db.
 //
 // Safe for concurrent use by multiple goroutines.
-func (s *dbs) DeleteLightBlock(height int64) error {
+func (s *dbs) DeleteLightBlock(height uint64) error {
 	if height <= 0 {
 		panic("negative or zero height")
 	}
@@ -110,7 +110,7 @@ func (s *dbs) DeleteLightBlock(height int64) error {
 // LightBlock retrieves the LightBlock at the given height.
 //
 // Safe for concurrent use by multiple goroutines.
-func (s *dbs) LightBlock(height int64) (*types.LightBlock, error) {
+func (s *dbs) LightBlock(height uint64) (*types.LightBlock, error) {
 	if height <= 0 {
 		panic("negative or zero height")
 	}
@@ -140,7 +140,7 @@ func (s *dbs) LightBlock(height int64) (*types.LightBlock, error) {
 // LastLightBlockHeight returns the last LightBlock height stored.
 //
 // Safe for concurrent use by multiple goroutines.
-func (s *dbs) LastLightBlockHeight() (int64, error) {
+func (s *dbs) LastLightBlockHeight() (uint64, error) {
 	itr, err := s.db.ReverseIterator(
 		s.lbKey(1),
 		append(s.lbKey(1<<63-1), byte(0x00)),
@@ -154,13 +154,13 @@ func (s *dbs) LastLightBlockHeight() (int64, error) {
 		return s.decodeLbKey(itr.Key())
 	}
 
-	return -1, itr.Error()
+	return 0, itr.Error()
 }
 
 // FirstLightBlockHeight returns the first LightBlock height stored.
 //
 // Safe for concurrent use by multiple goroutines.
-func (s *dbs) FirstLightBlockHeight() (int64, error) {
+func (s *dbs) FirstLightBlockHeight() (uint64, error) {
 	itr, err := s.db.Iterator(
 		s.lbKey(1),
 		append(s.lbKey(1<<63-1), byte(0x00)),
@@ -174,14 +174,14 @@ func (s *dbs) FirstLightBlockHeight() (int64, error) {
 		return s.decodeLbKey(itr.Key())
 	}
 
-	return -1, itr.Error()
+	return 0, itr.Error()
 }
 
 // LightBlockBefore iterates over light blocks until it finds a block before
 // the given height. It returns ErrLightBlockNotFound if no such block exists.
 //
 // Safe for concurrent use by multiple goroutines.
-func (s *dbs) LightBlockBefore(height int64) (*types.LightBlock, error) {
+func (s *dbs) LightBlockBefore(height uint64) (*types.LightBlock, error) {
 	if height <= 0 {
 		panic("negative or zero height")
 	}
@@ -286,7 +286,7 @@ func (s *dbs) sizeKey() []byte {
 	return key
 }
 
-func (s *dbs) lbKey(height int64) []byte {
+func (s *dbs) lbKey(height uint64) []byte {
 	key, err := orderedcode.Append(nil, prefixLightBlock, height)
 	if err != nil {
 		panic(err)
@@ -294,7 +294,7 @@ func (s *dbs) lbKey(height int64) []byte {
 	return key
 }
 
-func (s *dbs) decodeLbKey(key []byte) (height int64, err error) {
+func (s *dbs) decodeLbKey(key []byte) (height uint64, err error) {
 	var lightBlockPrefix int64
 	remaining, err := orderedcode.Parse(string(key), &lightBlockPrefix, &height)
 	if err != nil {

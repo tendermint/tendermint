@@ -58,13 +58,13 @@ message RequestInitChain {
   tendermint.types.ConsensusParams consensus_params = 3;
   repeated ValidatorUpdate         validators       = 4 [(gogoproto.nullable) = false];
   bytes                            app_state_bytes  = 5;
-  int64                            initial_height   = 6;
+  uint64                           initial_height   = 6;
 }
 
 message RequestQuery {
   bytes  data   = 1;
   string path   = 2;
-  int64  height = 3;
+  uint64 height = 3;
   bool   prove  = 4;
 }
 

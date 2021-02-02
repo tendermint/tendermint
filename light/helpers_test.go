@@ -141,7 +141,7 @@ func genHeader(chainID string, height uint64, bTime time.Time, txs types.Txs,
 }
 
 // GenSignedHeader calls genHeader and signHeader and combines them into a SignedHeader.
-func (pkz privKeys) GenSignedHeader(chainID string, height int64, bTime time.Time, txs types.Txs,
+func (pkz privKeys) GenSignedHeader(chainID string, height uint64, bTime time.Time, txs types.Txs,
 	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int) *types.SignedHeader {
 
 	header := genHeader(chainID, height, bTime, txs, valset, nextValset, appHash, consHash, resHash)
@@ -152,7 +152,7 @@ func (pkz privKeys) GenSignedHeader(chainID string, height int64, bTime time.Tim
 }
 
 // GenSignedHeaderLastBlockID calls genHeader and signHeader and combines them into a SignedHeader.
-func (pkz privKeys) GenSignedHeaderLastBlockID(chainID string, height int64, bTime time.Time, txs types.Txs,
+func (pkz privKeys) GenSignedHeaderLastBlockID(chainID string, height uint64, bTime time.Time, txs types.Txs,
 	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int,
 	lastBlockID types.BlockID) *types.SignedHeader {
 
@@ -212,7 +212,7 @@ func genMockNodeWithKeys(
 		valVariationInt = int(totalVariation)
 		totalVariation = -float32(valVariationInt)
 		newKeys = keys.ChangeKeys(valVariationInt)
-		currentHeader = keys.GenSignedHeaderLastBlockID(chainID, height, bTime.Add(time.Duration(height)*time.Minute),
+		currentHeader = keys.GenSignedHeaderLastBlockID(chainID, uint64(height), bTime.Add(time.Duration(height)*time.Minute),
 			nil,
 			keys.ToValidators(2, 0), newKeys.ToValidators(2, 0), hash("app_hash"), hash("cons_hash"),
 			hash("results_hash"), 0, len(keys), types.BlockID{Hash: lastHeader.Hash()})

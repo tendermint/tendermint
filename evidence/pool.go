@@ -48,7 +48,7 @@ type Pool struct {
 	// evidence before the height with which the evidence happened is finished.
 	consensusBuffer []duplicateVoteSet
 
-	pruningHeight int64
+	pruningHeight uint64
 	pruningTime   time.Time
 }
 

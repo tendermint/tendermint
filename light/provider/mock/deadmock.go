@@ -24,7 +24,7 @@ func (p *deadMock) String() string {
 	return fmt.Sprintf("DeadMock-%s", p.id)
 }
 
-func (p *deadMock) LightBlock(_ context.Context, height int64) (*types.LightBlock, error) {
+func (p *deadMock) LightBlock(_ context.Context, height uint64) (*types.LightBlock, error) {
 	return nil, errNoResp
 }
 

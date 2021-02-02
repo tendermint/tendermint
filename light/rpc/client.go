@@ -28,8 +28,8 @@ type KeyPathFunc func(path string, key []byte) (merkle.KeyPath, error)
 // LightClient is an interface that contains functionality needed by Client from the light client.
 type LightClient interface {
 	ChainID() string
-	VerifyLightBlockAtHeight(ctx context.Context, height int64, now time.Time) (*types.LightBlock, error)
-	TrustedLightBlock(height int64) (*types.LightBlock, error)
+	VerifyLightBlockAtHeight(ctx context.Context, height uint64, now time.Time) (*types.LightBlock, error)
+	TrustedLightBlock(height uint64) (*types.LightBlock, error)
 }
 
 // Client is an RPC client, which uses light#Client to verify data (if it can
@@ -233,7 +233,7 @@ func (c *Client) Health(ctx context.Context) (*ctypes.ResultHealth, error) {
 
 // BlockchainInfo calls rpcclient#BlockchainInfo and then verifies every header
 // returned.
-func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
+func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight uint64) (*ctypes.ResultBlockchainInfo, error) {
 	res, err := c.next.BlockchainInfo(ctx, minHeight, maxHeight)
 	if err != nil {
 		return nil, err
@@ -277,7 +277,7 @@ func (c *Client) Genesis(ctx context.Context) (*ctypes.ResultGenesis, error) {
 }
 
 // Block calls rpcclient#Block and then verifies the result.
-func (c *Client) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock, error) {
+func (c *Client) Block(ctx context.Context, height *uint64) (*ctypes.ResultBlock, error) {
 	res, err := c.next.Block(ctx, height)
 	if err != nil {
 		return nil, err
@@ -346,8 +346,8 @@ func (c *Client) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBl
 
 // BlockResults returns the block results for the given height. If no height is
 // provided, the results of the block preceding the latest are returned.
-func (c *Client) BlockResults(ctx context.Context, height *int64) (*ctypes.ResultBlockResults, error) {
-	var h int64
+func (c *Client) BlockResults(ctx context.Context, height *uint64) (*ctypes.ResultBlockResults, error) {
+	var h uint64
 	if height == nil {
 		res, err := c.next.Status(ctx)
 		if err != nil {
@@ -407,7 +407,7 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*ctypes.Resul
 	return res, nil
 }
 
-func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit, error) {
+func (c *Client) Commit(ctx context.Context, height *uint64) (*ctypes.ResultCommit, error) {
 	// Update the light client if we're behind and retrieve the light block at the requested height
 	l, err := c.updateLightClientIfNeededTo(ctx, *height)
 	if err != nil {
@@ -449,7 +449,7 @@ func (c *Client) TxSearch(ctx context.Context, query string, prove bool, page, p
 }
 
 // Validators fetches and verifies validators.
-func (c *Client) Validators(ctx context.Context, height *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators,
+func (c *Client) Validators(ctx context.Context, height *uint64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators,
 	error) {
 	// Update the light client if we're behind and retrieve the light block at the requested height.
 	l, err := c.updateLightClientIfNeededTo(ctx, *height)
@@ -492,7 +492,7 @@ func (c *Client) UnsubscribeAll(ctx context.Context, subscriber string) error {
 	return c.next.UnsubscribeAll(ctx, subscriber)
 }
 
-func (c *Client) updateLightClientIfNeededTo(ctx context.Context, height int64) (*types.LightBlock, error) {
+func (c *Client) updateLightClientIfNeededTo(ctx context.Context, height uint64) (*types.LightBlock, error) {
 	l, err := c.lc.VerifyLightBlockAtHeight(ctx, height, time.Now())
 	if err != nil {
 		return nil, fmt.Errorf("failed to update light client to %d: %w", height, err)

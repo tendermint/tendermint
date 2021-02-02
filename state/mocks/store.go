@@ -52,11 +52,11 @@ func (_m *Store) Load() (state.State, error) {
 }
 
 // LoadABCIResponses provides a mock function with given fields: _a0
-func (_m *Store) LoadABCIResponses(_a0 int64) (*tendermintstate.ABCIResponses, error) {
+func (_m *Store) LoadABCIResponses(_a0 uint64) (*tendermintstate.ABCIResponses, error) {
 	ret := _m.Called(_a0)
 
 	var r0 *tendermintstate.ABCIResponses
-	if rf, ok := ret.Get(0).(func(int64) *tendermintstate.ABCIResponses); ok {
+	if rf, ok := ret.Get(0).(func(uint64) *tendermintstate.ABCIResponses); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
@@ -65,7 +65,7 @@ func (_m *Store) LoadABCIResponses(_a0 int64) (*tendermintstate.ABCIResponses, e
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(int64) error); ok {
+	if rf, ok := ret.Get(1).(func(uint64) error); ok {
 		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
@@ -75,18 +75,18 @@ func (_m *Store) LoadABCIResponses(_a0 int64) (*tendermintstate.ABCIResponses, e
 }
 
 // LoadConsensusParams provides a mock function with given fields: _a0
-func (_m *Store) LoadConsensusParams(_a0 int64) (types.ConsensusParams, error) {
+func (_m *Store) LoadConsensusParams(_a0 uint64) (types.ConsensusParams, error) {
 	ret := _m.Called(_a0)
 
 	var r0 types.ConsensusParams
-	if rf, ok := ret.Get(0).(func(int64) types.ConsensusParams); ok {
+	if rf, ok := ret.Get(0).(func(uint64) types.ConsensusParams); ok {
 		r0 = rf(_a0)
 	} else {
 		r0 = ret.Get(0).(types.ConsensusParams)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(int64) error); ok {
+	if rf, ok := ret.Get(1).(func(uint64) error); ok {
 		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
@@ -138,11 +138,11 @@ func (_m *Store) LoadFromDBOrGenesisFile(_a0 string) (state.State, error) {
 }
 
 // LoadValidators provides a mock function with given fields: _a0
-func (_m *Store) LoadValidators(_a0 int64) (*types.ValidatorSet, error) {
+func (_m *Store) LoadValidators(_a0 uint64) (*types.ValidatorSet, error) {
 	ret := _m.Called(_a0)
 
 	var r0 *types.ValidatorSet
-	if rf, ok := ret.Get(0).(func(int64) *types.ValidatorSet); ok {
+	if rf, ok := ret.Get(0).(func(uint64) *types.ValidatorSet); ok {
 		r0 = rf(_a0)
 	} else {
 		if ret.Get(0) != nil {
@@ -151,7 +151,7 @@ func (_m *Store) LoadValidators(_a0 int64) (*types.ValidatorSet, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(int64) error); ok {
+	if rf, ok := ret.Get(1).(func(uint64) error); ok {
 		r1 = rf(_a0)
 	} else {
 		r1 = ret.Error(1)
@@ -161,11 +161,11 @@ func (_m *Store) LoadValidators(_a0 int64) (*types.ValidatorSet, error) {
 }
 
 // PruneStates provides a mock function with given fields: _a0
-func (_m *Store) PruneStates(_a0 int64) error {
+func (_m *Store) PruneStates(_a0 uint64) error {
 	ret := _m.Called(_a0)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64) error); ok {
+	if rf, ok := ret.Get(0).(func(uint64) error); ok {
 		r0 = rf(_a0)
 	} else {
 		r0 = ret.Error(0)
@@ -189,11 +189,11 @@ func (_m *Store) Save(_a0 state.State) error {
 }
 
 // SaveABCIResponses provides a mock function with given fields: _a0, _a1
-func (_m *Store) SaveABCIResponses(_a0 int64, _a1 *tendermintstate.ABCIResponses) error {
+func (_m *Store) SaveABCIResponses(_a0 uint64, _a1 *tendermintstate.ABCIResponses) error {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64, *tendermintstate.ABCIResponses) error); ok {
+	if rf, ok := ret.Get(0).(func(uint64, *tendermintstate.ABCIResponses) error); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Error(0)

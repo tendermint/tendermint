@@ -14,7 +14,7 @@ func ABCIQuery(
 	ctx *rpctypes.Context,
 	path string,
 	data bytes.HexBytes,
-	height int64,
+	height uint64,
 	prove bool,
 ) (*ctypes.ResultABCIQuery, error) {
 	resQuery, err := env.ProxyAppQuery.QuerySync(ctx.Context(), abci.RequestQuery{

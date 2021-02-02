@@ -3,7 +3,7 @@ package client
 // ABCIQueryOptions can be used to provide options for ABCIQuery call other
 // than the DefaultABCIQueryOptions.
 type ABCIQueryOptions struct {
-	Height int64
+	Height uint64
 	Prove  bool
 }
 

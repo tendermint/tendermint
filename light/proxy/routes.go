@@ -166,10 +166,10 @@ func makeConsensusStateFunc(c *lrpc.Client) rpcConsensusStateFunc {
 	}
 }
 
-type rpcConsensusParamsFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultConsensusParams, error)
+type rpcConsensusParamsFunc func(ctx *rpctypes.Context, height *uint64) (*ctypes.ResultConsensusParams, error)
 
 func makeConsensusParamsFunc(c *lrpc.Client) rpcConsensusParamsFunc {
-	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultConsensusParams, error) {
+	return func(ctx *rpctypes.Context, height *uint64) (*ctypes.ResultConsensusParams, error) {
 		return c.ConsensusParams(ctx.Context(), height)
 	}
 }
@@ -215,11 +215,11 @@ func makeBroadcastTxAsyncFunc(c *lrpc.Client) rpcBroadcastTxAsyncFunc {
 }
 
 type rpcABCIQueryFunc func(ctx *rpctypes.Context, path string,
-	data bytes.HexBytes, height int64, prove bool) (*ctypes.ResultABCIQuery, error)
+	data bytes.HexBytes, height uint64, prove bool) (*ctypes.ResultABCIQuery, error)
 
 func makeABCIQueryFunc(c *lrpc.Client) rpcABCIQueryFunc {
 	return func(ctx *rpctypes.Context, path string, data bytes.HexBytes,
-		height int64, prove bool) (*ctypes.ResultABCIQuery, error) {
+		height uint64, prove bool) (*ctypes.ResultABCIQuery, error) {
 
 		return c.ABCIQueryWithOptions(ctx.Context(), path, data, rpcclient.ABCIQueryOptions{
 			Height: height,

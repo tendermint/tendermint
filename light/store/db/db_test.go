@@ -30,7 +30,7 @@ func TestLast_FirstLightBlockHeight(t *testing.T) {
 	assert.EqualValues(t, -1, height)
 
 	// 1 key
-	err = dbStore.SaveLightBlock(randLightBlock(int64(1)))
+	err = dbStore.SaveLightBlock(randLightBlock(uint64(1)))
 	require.NoError(t, err)
 
 	height, err = dbStore.LastLightBlockHeight()
@@ -80,7 +80,7 @@ func Test_LightBlockBefore(t *testing.T) {
 		_, _ = dbStore.LightBlockBefore(100)
 	})
 
-	err := dbStore.SaveLightBlock(randLightBlock(int64(2)))
+	err := dbStore.SaveLightBlock(randLightBlock(uint64(2)))
 	require.NoError(t, err)
 
 	h, err := dbStore.LightBlockBefore(3)
@@ -117,7 +117,7 @@ func Test_Prune(t *testing.T) {
 
 	// Multiple headers
 	for i := 1; i <= 10; i++ {
-		err = dbStore.SaveLightBlock(randLightBlock(int64(i)))
+		err = dbStore.SaveLightBlock(randLightBlock(uint64(i)))
 		require.NoError(t, err)
 	}
 
@@ -134,9 +134,9 @@ func Test_Concurrency(t *testing.T) {
 	dbStore := New(dbm.NewMemDB())
 
 	var wg sync.WaitGroup
-	for i := 1; i <= 100; i++ {
+	for i := uint64(1); i <= 100; i++ {
 		wg.Add(1)
-		go func(i int64) {
+		go func(i uint64) {
 			defer wg.Done()
 
 			err := dbStore.SaveLightBlock(randLightBlock(i))
@@ -176,13 +176,13 @@ func Test_Concurrency(t *testing.T) {
 				}
 			}
 
-		}(int64(i))
+		}(i)
 	}
 
 	wg.Wait()
 }
 
-func randLightBlock(height int64) *types.LightBlock {
+func randLightBlock(height uint64) *types.LightBlock {
 	vals, _ := types.RandValidatorSet(2, 1)
 	return &types.LightBlock{
 		SignedHeader: &types.SignedHeader{

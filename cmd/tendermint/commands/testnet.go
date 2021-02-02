@@ -22,7 +22,7 @@ import (
 var (
 	nValidators    int
 	nNonValidators int
-	initialHeight  int64
+	initialHeight  uint64
 	configFile     string
 	outputDir      string
 	nodeDirPrefix  string
@@ -51,7 +51,7 @@ func init() {
 		"directory to store initialization data for the testnet")
 	TestnetFilesCmd.Flags().StringVar(&nodeDirPrefix, "node-dir-prefix", "node",
 		"prefix the directory name for each node with (node results in node0, node1, ...)")
-	TestnetFilesCmd.Flags().Int64Var(&initialHeight, "initial-height", 0,
+	TestnetFilesCmd.Flags().Uint64Var(&initialHeight, "initial-height", 0,
 		"initial height of the first block")
 
 	TestnetFilesCmd.Flags().BoolVar(&populatePersistentPeers, "populate-persistent-peers", true,

@@ -738,7 +738,7 @@ type StateSyncConfig struct {
 	TempDir       string        `mapstructure:"temp-dir"`
 	RPCServers    []string      `mapstructure:"rpc-servers"`
 	TrustPeriod   time.Duration `mapstructure:"trust-period"`
-	TrustHeight   int64         `mapstructure:"trust-height"`
+	TrustHeight   uint64        `mapstructure:"trust-height"`
 	TrustHash     string        `mapstructure:"trust-hash"`
 	DiscoveryTime time.Duration `mapstructure:"discovery-time"`
 }

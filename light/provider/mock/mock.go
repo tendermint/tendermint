@@ -44,7 +44,7 @@ func (p *Mock) String() string {
 	return fmt.Sprintf("Mock{id: %s, headers: %s, vals: %v}", p.id, headers.String(), vals.String())
 }
 
-func (p *Mock) LightBlock(_ context.Context, height int64) (*types.LightBlock, error) {
+func (p *Mock) LightBlock(_ context.Context, height uint64) (*types.LightBlock, error) {
 	var lb *types.LightBlock
 	if height == 0 && len(p.headers) > 0 {
 		sh := p.headers[int64(len(p.headers))]
@@ -55,9 +55,9 @@ func (p *Mock) LightBlock(_ context.Context, height int64) (*types.LightBlock, e
 		}
 
 	}
-	if _, ok := p.headers[height]; ok {
-		sh := p.headers[height]
-		vals := p.vals[height]
+	if _, ok := p.headers[int64(height)]; ok {
+		sh := p.headers[int64(height)]
+		vals := p.vals[int64(height)]
 		lb = &types.LightBlock{
 			SignedHeader: sh,
 			ValidatorSet: vals,

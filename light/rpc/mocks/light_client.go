@@ -32,7 +32,7 @@ func (_m *LightClient) ChainID() string {
 }
 
 // TrustedLightBlock provides a mock function with given fields: height
-func (_m *LightClient) TrustedLightBlock(height int64) (*types.LightBlock, error) {
+func (_m *LightClient) TrustedLightBlock(height uint64) (*types.LightBlock, error) {
 	ret := _m.Called(height)
 
 	var r0 *types.LightBlock

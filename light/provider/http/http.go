@@ -59,7 +59,7 @@ func (p *http) String() string {
 
 // LightBlock fetches a LightBlock at the given height and checks the
 // chainID matches.
-func (p *http) LightBlock(ctx context.Context, height int64) (*types.LightBlock, error) {
+func (p *http) LightBlock(ctx context.Context, height uint64) (*types.LightBlock, error) {
 	h, err := validateHeight(height)
 	if err != nil {
 		return nil, provider.ErrBadLightBlock{Reason: err}
@@ -94,7 +94,7 @@ func (p *http) ReportEvidence(ctx context.Context, ev types.Evidence) error {
 	return err
 }
 
-func (p *http) validatorSet(ctx context.Context, height *int64) (*types.ValidatorSet, error) {
+func (p *http) validatorSet(ctx context.Context, height *uint64) (*types.ValidatorSet, error) {
 	// Since the malicious node could report a massive number of pages, making us
 	// spend a considerable time iterating, we restrict the number of pages here.
 	// => 10000 validators max
@@ -152,7 +152,7 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 	return valSet, nil
 }
 
-func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHeader, error) {
+func (p *http) signedHeader(ctx context.Context, height *uint64) (*types.SignedHeader, error) {
 	for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
 		commit, err := p.client.Commit(ctx, height)
 		if err != nil {
@@ -169,7 +169,7 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 	return nil, provider.ErrNoResponse
 }
 
-func validateHeight(height int64) (*int64, error) {
+func validateHeight(height uint64) (*uint64, error) {
 	if height < 0 {
 		return nil, fmt.Errorf("expected height >= 0, got height %d", height)
 	}

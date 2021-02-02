@@ -172,7 +172,7 @@ func TestGenesisAndValidators(t *testing.T) {
 		gval := gen.Genesis.Validators[0]
 
 		// get the current validators
-		h := int64(1)
+		h := uint64(1)
 		vals, err := c.Validators(context.Background(), &h, nil, nil)
 		require.Nil(t, err, "%d: %+v", i, err)
 		require.Equal(t, 1, len(vals.Validators))
@@ -604,8 +604,8 @@ func TestTxSearch(t *testing.T) {
 		// check pagination
 		perPage = 3
 		var (
-			seen      = map[int64]bool{}
-			maxHeight int64
+			seen      = map[uint64]bool{}
+			maxHeight uint64
 			pages     = int(math.Ceil(float64(txCount) / float64(perPage)))
 		)
 
@@ -658,7 +658,7 @@ func testBatchedJSONRPCCalls(t *testing.T, c *rpchttp.HTTP) {
 	bresult2, ok := bresults[1].(*ctypes.ResultBroadcastTxCommit)
 	require.True(t, ok)
 	require.Equal(t, *bresult2, *r2)
-	apph := tmmath.MaxInt64(bresult1.Height, bresult2.Height) + 1
+	apph := tmmath.MaxUint64(bresult1.Height, bresult2.Height) + 1
 
 	err = client.WaitForHeight(c, apph, nil)
 	require.NoError(t, err)

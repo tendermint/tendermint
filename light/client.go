@@ -385,7 +385,7 @@ func (c *Client) compareWithLatestHeight(height uint64) (uint64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("can't get last trusted height: %w", err)
 	}
-	if latestHeight == -1 {
+	if latestHeight == -1 { // todo standardize errors
 		return 0, errors.New("no headers exist")
 	}
 
@@ -442,7 +442,7 @@ func (c *Client) Update(ctx context.Context, now time.Time) (*types.LightBlock, 
 // primary.
 //
 // It will replace the primary provider if an error from a request to the provider occurs
-func (c *Client) VerifyLightBlockAtHeight(ctx context.Context, height int64, now time.Time) (*types.LightBlock, error) {
+func (c *Client) VerifyLightBlockAtHeight(ctx context.Context, height uint64, now time.Time) (*types.LightBlock, error) {
 	if height <= 0 {
 		return nil, errors.New("negative or zero height")
 	}
