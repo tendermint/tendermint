@@ -798,6 +798,13 @@ func (m *PeerManager) Subscribe() *PeerUpdates {
 // maintaining order if this is a problem.
 func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
 	for _, sub := range m.subscriptions {
+		// We have to check closeCh separately first, otherwise there's a 50%
+		// chance the second select will send on a closed subscription.
+		select {
+		case <-sub.closeCh:
+			continue
+		default:
+		}
 		select {
 		case sub.updatesCh <- peerUpdate:
 		case <-sub.closeCh:

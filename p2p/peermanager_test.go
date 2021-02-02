@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -1339,4 +1340,127 @@ func TestPeerManager_Errored(t *testing.T) {
 	evict, err = peerManager.TryEvictNext()
 	require.NoError(t, err)
 	require.Equal(t, a.NodeID, evict)
+}
+
+func TestPeerManager_Subscribe(t *testing.T) {
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+
+	// This tests all subscription events for full peer lifecycles.
+	sub := peerManager.Subscribe()
+	defer sub.Close()
+
+	require.NoError(t, peerManager.Add(a))
+	require.Empty(t, sub.Updates())
+
+	// Inbound connection.
+	require.NoError(t, peerManager.Accepted(a.NodeID))
+	require.Empty(t, sub.Updates())
+
+	require.NoError(t, peerManager.Ready(a.NodeID))
+	require.NotEmpty(t, sub.Updates())
+	require.Equal(t, p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusUp}, <-sub.Updates())
+
+	require.NoError(t, peerManager.Disconnected(a.NodeID))
+	require.NotEmpty(t, sub.Updates())
+	require.Equal(t, p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusDown}, <-sub.Updates())
+
+	// Outbound connection with peer error and eviction.
+	dial, err := peerManager.TryDialNext()
+	require.NoError(t, err)
+	require.Equal(t, a, dial)
+	require.Empty(t, sub.Updates())
+
+	require.NoError(t, peerManager.Dialed(a))
+	require.Empty(t, sub.Updates())
+
+	require.NoError(t, peerManager.Ready(a.NodeID))
+	require.NotEmpty(t, sub.Updates())
+	require.Equal(t, p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusUp}, <-sub.Updates())
+
+	require.NoError(t, peerManager.Errored(a.NodeID, errors.New("foo")))
+	require.Empty(t, sub.Updates())
+
+	evict, err := peerManager.TryEvictNext()
+	require.NoError(t, err)
+	require.Equal(t, a.NodeID, evict)
+
+	require.NoError(t, peerManager.Disconnected(a.NodeID))
+	require.NotEmpty(t, sub.Updates())
+	require.Equal(t, p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusDown}, <-sub.Updates())
+
+	// Outbound connection with dial failure.
+	dial, err = peerManager.TryDialNext()
+	require.NoError(t, err)
+	require.Equal(t, a, dial)
+	require.Empty(t, sub.Updates())
+
+	require.NoError(t, peerManager.DialFailed(a))
+	require.Empty(t, sub.Updates())
+}
+
+func TestPeerManager_Subscribe_Close(t *testing.T) {
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+
+	sub := peerManager.Subscribe()
+	defer sub.Close()
+
+	require.NoError(t, peerManager.Add(a))
+	require.NoError(t, peerManager.Accepted(a.NodeID))
+	require.Empty(t, sub.Updates())
+
+	require.NoError(t, peerManager.Ready(a.NodeID))
+	require.NotEmpty(t, sub.Updates())
+	require.Equal(t, p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusUp}, <-sub.Updates())
+
+	// Closing the subscription should not send us the disconnected update.
+	sub.Close()
+	require.NoError(t, peerManager.Disconnected(a.NodeID))
+	require.Empty(t, sub.Updates())
+}
+
+func TestPeerManager_Subscribe_Broadcast(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+
+	s1 := peerManager.Subscribe()
+	defer s1.Close()
+	s2 := peerManager.Subscribe()
+	defer s2.Close()
+	s3 := peerManager.Subscribe()
+	defer s3.Close()
+
+	// Connecting to a peer should send updates on all subscriptions.
+	require.NoError(t, peerManager.Add(a))
+	require.NoError(t, peerManager.Accepted(a.NodeID))
+	require.NoError(t, peerManager.Ready(a.NodeID))
+
+	expectUp := p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusUp}
+	require.NotEmpty(t, s1)
+	require.Equal(t, expectUp, <-s1.Updates())
+	require.NotEmpty(t, s2)
+	require.Equal(t, expectUp, <-s2.Updates())
+	require.NotEmpty(t, s3)
+	require.Equal(t, expectUp, <-s3.Updates())
+
+	// We now close s2. Disconnecting the peer should only send updates
+	// on s1 and s3.
+	s2.Close()
+	require.NoError(t, peerManager.Disconnected(a.NodeID))
+
+	expectDown := p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusDown}
+	require.NotEmpty(t, s1)
+	require.Equal(t, expectDown, <-s1.Updates())
+	require.Empty(t, s2.Updates())
+	require.NotEmpty(t, s3)
+	require.Equal(t, expectDown, <-s3.Updates())
 }
