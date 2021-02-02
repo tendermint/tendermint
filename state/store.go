@@ -32,6 +32,7 @@ const (
 	prefixValidators      = int64(5)
 	prefixConsensusParams = int64(6)
 	prefixABCIResponses   = int64(7)
+	prefixState           = int64(8)
 )
 
 func encodeKey(prefix int64, height int64) []byte {
@@ -52,6 +53,17 @@ func consensusParamsKey(height int64) []byte {
 
 func abciResponsesKey(height int64) []byte {
 	return encodeKey(prefixABCIResponses, height)
+}
+
+// stateKey should never change after being set in init()
+var stateKey []byte
+
+func init() {
+	var err error
+	stateKey, err = orderedcode.Append(nil, prefixState)
+	if err != nil {
+		panic(err)
+	}
 }
 
 //----------------------
@@ -239,11 +251,16 @@ func (store dbStore) PruneStates(retainHeight int64) error {
 		return fmt.Errorf("height %v must be greater than 0", retainHeight)
 	}
 
-	if err := store.pruneValidatorSets(retainHeight); err != nil {
+	// NOTE: We need to prune consensus params first because the validator
+	// sets have always one extra height. If validator sets were pruned first
+	// we could get a situation where we prune up to the last validator set
+	// yet don't have the respective consensus params at that height and thus
+	// return an error
+	if err := store.pruneConsensusParams(retainHeight); err != nil {
 		return err
 	}
 
-	if err := store.pruneConsensusParams(retainHeight); err != nil {
+	if err := store.pruneValidatorSets(retainHeight); err != nil {
 		return err
 	}
 
@@ -257,37 +274,48 @@ func (store dbStore) PruneStates(retainHeight int64) error {
 // pruneValidatorSets calls a reverse iterator from base height to retain height (exclusive), deleting
 // all validator sets in between. Due to the fact that most validator sets stored reference an earlier
 // validator set, it is likely that there will remain one validator set left after pruning.
-func (store dbStore) pruneValidatorSets(height int64) error {
-	valInfo, err := loadValidatorsInfo(store.db, height)
+func (store dbStore) pruneValidatorSets(retainHeight int64) error {
+	valInfo, err := loadValidatorsInfo(store.db, retainHeight)
 	if err != nil {
-		return fmt.Errorf("validators at height %v not found: %w", height, err)
+		return fmt.Errorf("validators at height %v not found: %w", retainHeight, err)
 	}
 
 	// We will prune up to the validator set at the given "height". As we don't save validator sets every
 	// height but only when they change or at a check point, it is likely that the validator set at the height
 	// we prune to is empty and thus dependent on the validator set saved at a previous height. We must find
 	// that validator set and make sure it is not pruned.
-	lastRecordedValSetHeight := lastStoredHeightFor(height, valInfo.LastHeightChanged)
+	lastRecordedValSetHeight := lastStoredHeightFor(retainHeight, valInfo.LastHeightChanged)
 	lastRecordedValSet, err := loadValidatorsInfo(store.db, lastRecordedValSetHeight)
 	if err != nil || lastRecordedValSet.ValidatorSet == nil {
 		return fmt.Errorf("couldn't find validators at height %d (height %d was originally requested): %w",
-			lastStoredHeightFor(height, valInfo.LastHeightChanged),
-			height,
+			lastStoredHeightFor(retainHeight, valInfo.LastHeightChanged),
+			retainHeight,
 			err,
 		)
 	}
 
-	// batch delete all the validators sets up to height
-	return store.batchDelete(
+	// if this is not equal to the retain height, prune from the retain height to the height above
+	// the last saved validator set. This way we can skip over the dependent validator set.
+	if lastRecordedValSetHeight < retainHeight {
+		err := store.pruneRange(
+			validatorsKey(lastRecordedValSetHeight+1),
+			validatorsKey(retainHeight),
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	// prune all the validators sets up to last saved validator set
+	return store.pruneRange(
 		validatorsKey(1),
-		validatorsKey(height),
 		validatorsKey(lastRecordedValSetHeight),
 	)
 }
 
 // pruneConsensusParams calls a reverse iterator from base height to retain height batch deleting
 // all consensus params in between. If the consensus params at the new base height is dependent
-// on a prior height then this will keep that lower height to.
+// on a prior height then this will keep that lower height too.
 func (store dbStore) pruneConsensusParams(retainHeight int64) error {
 	paramsInfo, err := store.loadConsensusParamsInfo(retainHeight)
 	if err != nil {
@@ -298,21 +326,31 @@ func (store dbStore) pruneConsensusParams(retainHeight int64) error {
 	// we must not prune (or save) the last consensus params that the consensus params info at height
 	// is dependent on.
 	if paramsInfo.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
+		// sanity check that the consensus params at the last height it was changed is there
 		lastRecordedConsensusParams, err := store.loadConsensusParamsInfo(paramsInfo.LastHeightChanged)
 		if err != nil || lastRecordedConsensusParams.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
 			return fmt.Errorf(
-				"couldn't find consensus params at height %d as last changed from height %d: %w",
+				"couldn't find consensus params at height %d (height %d was originally requested): %w",
 				paramsInfo.LastHeightChanged,
 				retainHeight,
 				err,
 			)
 		}
+
+		// prune the params above the height with which it last changed and below the retain height.
+		err = store.pruneRange(
+			consensusParamsKey(paramsInfo.LastHeightChanged+1),
+			consensusParamsKey(retainHeight),
+		)
+		if err != nil {
+			return err
+		}
 	}
 
-	// batch delete all the consensus params up to the retain height
-	return store.batchDelete(
+	// prune all the consensus params up to either the last height the params changed or if the params
+	// last changed at the retain height, then up to the retain height.
+	return store.pruneRange(
 		consensusParamsKey(1),
-		consensusParamsKey(retainHeight),
 		consensusParamsKey(paramsInfo.LastHeightChanged),
 	)
 }
@@ -320,72 +358,69 @@ func (store dbStore) pruneConsensusParams(retainHeight int64) error {
 // pruneABCIResponses calls a reverse iterator from base height to retain height batch deleting
 // all abci responses in between
 func (store dbStore) pruneABCIResponses(height int64) error {
-	return store.batchDelete(abciResponsesKey(1), abciResponsesKey(height), nil)
+	return store.pruneRange(abciResponsesKey(1), abciResponsesKey(height))
 }
 
-// batchDelete is a generic function for deleting a range of keys in reverse order. It will
-// skip keys that have been
-func (store dbStore) batchDelete(start []byte, end []byte, exception []byte) error {
-	iter, err := store.db.ReverseIterator(start, end)
-	if err != nil {
-		return fmt.Errorf("iterator error: %w", err)
-	}
-	defer iter.Close()
-
+// pruneRange is a generic function for deleting a range of keys in reverse order.
+// we keep filling up batches of at most 1000 keys, perform a deletion and continue until
+// we have gone through all of keys in the range. This avoids doing any writes whilst
+// iterating.
+func (store dbStore) pruneRange(start []byte, end []byte) error {
+	var err error
 	batch := store.db.NewBatch()
 	defer batch.Close()
 
-	pruned := 0
-	for iter.Valid() {
-		key := iter.Key()
-		if bytes.Equal(key, exception) {
-			iter.Next()
-			continue
-		}
-
-		if err := batch.Delete(key); err != nil {
-			return fmt.Errorf("pruning error at key %X: %w", key, err)
-		}
-
-		pruned++
-		// avoid batches growing too large by flushing to disk regularly
-		if pruned%1000 == 0 {
-			if err := iter.Error(); err != nil {
-				return err
-			}
-			if err := iter.Close(); err != nil {
-				return err
-			}
-
-			if err := batch.Write(); err != nil {
-				return fmt.Errorf("pruning error at key %X: %w", key, err)
-			}
-			if err := batch.Close(); err != nil {
-				return err
-			}
-
-			iter, err = store.db.ReverseIterator(start, end)
-			if err != nil {
-				return fmt.Errorf("iterator error: %w", err)
-			}
-			defer iter.Close()
-
-			batch = store.db.NewBatch()
-			defer batch.Close()
-		} else {
-			iter.Next()
-		}
-	}
-
-	if err := iter.Error(); err != nil {
-		return fmt.Errorf("iterator error: %w", err)
-	}
-
-	if err := batch.WriteSync(); err != nil {
+	end, err = store.reverseBatchDelete(batch, start, end)
+	if err != nil {
 		return err
 	}
 
-	return nil
+	// iterate until the last batch of the pruning range in which case we will perform a
+	// write sync
+	for !bytes.Equal(start, end) {
+		if err := batch.Write(); err != nil {
+			return err
+		}
+
+		if err := batch.Close(); err != nil {
+			return err
+		}
+
+		batch = store.db.NewBatch()
+
+		// fill a new batch of keys for deletion over the remainding range
+		end, err = store.reverseBatchDelete(batch, start, end)
+		if err != nil {
+			return err
+		}
+	}
+
+	return batch.WriteSync()
+}
+
+// reverseBatchDelete runs a reverse iterator (from end to start) filling up a batch until either
+// (a) the iterator reaches the start or (b) the iterator has added a 1000 keys (this avoids the
+// batch from growing too large)
+func (store dbStore) reverseBatchDelete(batch dbm.Batch, start, end []byte) ([]byte, error) {
+	iter, err := store.db.ReverseIterator(start, end)
+	if err != nil {
+		return end, fmt.Errorf("iterator error: %w", err)
+	}
+	defer iter.Close()
+
+	size := 0
+	for ; iter.Valid(); iter.Next() {
+		if err := batch.Delete(iter.Key()); err != nil {
+			return end, fmt.Errorf("pruning error at key %X: %w", iter.Key(), err)
+		}
+
+		// avoid batches growing too large by capping them
+		size++
+		if size == 1000 {
+			return iter.Key(), iter.Error()
+		}
+	}
+	return start, iter.Error()
 }
 
 //------------------------------------------------------------------------
@@ -584,7 +619,7 @@ func (store dbStore) LoadConsensusParams(height int64) (types.ConsensusParams, e
 		paramsInfo2, err := store.loadConsensusParamsInfo(paramsInfo.LastHeightChanged)
 		if err != nil {
 			return empty, fmt.Errorf(
-				"couldn't find consensus params at height %d as last changed from height %d: %w",
+				"couldn't find consensus params at height %d (height %d was originally requested): %w",
 				paramsInfo.LastHeightChanged,
 				height,
 				err,

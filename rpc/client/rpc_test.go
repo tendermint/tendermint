@@ -40,7 +40,7 @@ func getHTTPClient() *rpchttp.HTTP {
 	return c
 }
 
-func getHTTPClientWithTimeout(timeout uint) *rpchttp.HTTP {
+func getHTTPClientWithTimeout(timeout time.Duration) *rpchttp.HTTP {
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
 	c, err := rpchttp.NewWithTimeout(rpcAddr, "/websocket", timeout)
 	if err != nil {
@@ -497,8 +497,7 @@ func TestTx(t *testing.T) {
 }
 
 func TestTxSearchWithTimeout(t *testing.T) {
-	// Get a client with a time-out of 10 secs.
-	timeoutClient := getHTTPClientWithTimeout(10)
+	timeoutClient := getHTTPClientWithTimeout(10 * time.Second)
 
 	_, _, tx := MakeTxKV()
 	_, err := timeoutClient.BroadcastTxCommit(context.Background(), tx)
