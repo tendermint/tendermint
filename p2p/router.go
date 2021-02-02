@@ -277,7 +277,10 @@ func NewRouter(
 }
 
 // OpenChannel opens a new channel for the given message type. The caller must
-// close the channel when done, and this must happen before the router stops.
+// close the channel when done, before stopping the Router. messageType is the
+// type of message passed through the channel (binary network data is decoded
+// into a clone of this message type), and can implement Wrapper to
+// automatically (un)wrap multiple message types in a wrapper message.
 func (r *Router) OpenChannel(id ChannelID, messageType proto.Message) (*Channel, error) {
 	// FIXME: NewChannel should take directional channels so we can pass
 	// queue.dequeue() instead of reaching inside for queue.queueCh.
