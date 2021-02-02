@@ -35,7 +35,7 @@ type Envelope struct {
 	channelID ChannelID
 }
 
-// PeerError is a peer error reported via the Error channel.
+// PeerError is a peer error reported via Channel.Error.
 //
 // FIXME: This currently just disconnects the peer, which is too simplistic.
 // For example, some errors should be logged, some should cause disconnects,
@@ -82,9 +82,9 @@ func NewChannel(
 	}
 }
 
-// Close closes the channel. Future sends on Out() and Error() will panic. The
-// In() channel remains open to avoid having to synchronize Router senders,
-// callers should use Done() to detect channel closure.
+// Close closes the channel. Future sends on Out and Error will panic. The In
+// channel remains open to avoid having to synchronize Router senders, which
+// should use Done() to detect channel closure instead.
 func (c *Channel) Close() {
 	c.closeOnce.Do(func() {
 		close(c.closeCh)
