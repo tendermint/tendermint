@@ -77,8 +77,12 @@ func TestValidator_Propose(t *testing.T) {
 
 		require.False(t, proposeCount == 0 && expectCount > 0,
 			"node did not propose any blocks (expected %v)", expectCount)
-		require.Less(t, expectCount-proposeCount, 5,
-			"validator missed proposing too many blocks (proposed %v out of %v)", proposeCount, expectCount)
+		if expectCount > 3 {
+			require.GreaterOrEqual(t, proposeCount, 3, "validator didn't propose even 3 blocks")
+		} else {
+			require.Equal(t, proposeCount, expectCount, "validator missed proposing blocks (proposed %v, expected %v)",
+				proposeCount, expectCount)
+		}
 	})
 }
 
@@ -115,9 +119,13 @@ func TestValidator_Sign(t *testing.T) {
 		}
 
 		require.False(t, signCount == 0 && expectCount > 0,
-			"node did not sign any blocks (expected %v)", expectCount)
-		require.Less(t, float64(expectCount-signCount)/float64(expectCount), 0.5,
-			"validator missed signing too many blocks (signed %v out of %v)", signCount, expectCount)
+			"validator did not sign any blocks (expected %v)", expectCount)
+		if expectCount > 3 {
+			require.GreaterOrEqual(t, signCount, 3, "validator didn't sign even 3 blocks")
+		} else {
+			require.Equal(t, signCount, expectCount, "validator missed signing blocks (signed %v, expected %v)",
+				signCount, expectCount)
+		}
 	})
 }
 
