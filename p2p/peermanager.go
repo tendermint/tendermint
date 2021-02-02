@@ -31,8 +31,8 @@ const (
 type PeerStatus string
 
 const (
-	PeerStatusUp   = PeerStatus("up")   // connected and ready
-	PeerStatusDown = PeerStatus("down") // disconnected
+	PeerStatusUp   PeerStatus = "up"   // connected and ready
+	PeerStatusDown PeerStatus = "down" // disconnected
 )
 
 // PeerScore is a numeric score assigned to a peer (higher is better).
