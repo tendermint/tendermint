@@ -152,6 +152,7 @@ type Node struct {
 	PrivKey     crypto.PrivKey
 	Router      *p2p.Router
 	PeerManager *p2p.PeerManager
+	Transport   *p2p.MemoryTransport
 }
 
 // NewNode creates a new TestNode.
@@ -192,5 +193,6 @@ func MakeNode(t *testing.T, network *Network) *Node {
 		PrivKey:     privKey,
 		Router:      router,
 		PeerManager: peerManager,
+		Transport:   transport,
 	}
 }
