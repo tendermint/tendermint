@@ -405,7 +405,6 @@ func (r *Router) dialPeers() {
 			r.peerMtx.Lock()
 			r.peerQueues[peerID] = queue
 			r.peerMtx.Unlock()
-			r.peerManager.Ready(peerID)
 
 			defer func() {
 				r.peerMtx.Lock()
@@ -416,6 +415,11 @@ func (r *Router) dialPeers() {
 					r.logger.Error("failed to disconnect peer", "peer", peerID, "err", err)
 				}
 			}()
+
+			if err := r.peerManager.Ready(peerID); err != nil {
+				r.logger.Error("failed to mark peer as ready", "peer", peerID, "err", err)
+				return
+			}
 
 			r.routePeer(peerID, conn, queue)
 		}()
