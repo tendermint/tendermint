@@ -53,7 +53,7 @@ jobs:
           SLACK_MESSAGE: Nightly E2E (copy) tests failed
           SLACK_FOOTER: ''
 
-   e2e-nightly-success:
+  e2e-nightly-success:
     needs: e2e-nightly-test-2
     if: ${{ success() }}
     runs-on: ubuntu-latest
