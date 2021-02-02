@@ -758,7 +758,7 @@ func NewNode(config *cfg.Config,
 
 	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
 	// TODO: Use a persistent peer database.
-	peerMgr, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	peerMgr, err := p2p.NewPeerManager(nodeKey.ID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	if err != nil {
 		return nil, err
 	}

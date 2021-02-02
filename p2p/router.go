@@ -594,7 +594,7 @@ func (r *Router) dialPeer(ctx context.Context, address NodeAddress) (Connection,
 }
 
 // handshakePeer handshakes with a peer, validating the peer's information. If
-// expectID is given, we check that the peer's public key matches it.
+// expectID is given, we check that the peer's info matches it.
 func (r *Router) handshakePeer(ctx context.Context, conn Connection, expectID NodeID) (NodeInfo, crypto.PubKey, error) {
 	if r.options.HandshakeTimeout > 0 {
 		var cancel context.CancelFunc
@@ -609,18 +609,13 @@ func (r *Router) handshakePeer(ctx context.Context, conn Connection, expectID No
 	if err = peerInfo.Validate(); err != nil {
 		return peerInfo, peerKey, fmt.Errorf("invalid handshake NodeInfo: %w", err)
 	}
-	if expectID != "" && expectID != peerInfo.NodeID {
-		return peerInfo, peerKey, fmt.Errorf("expected to connect with peer %q, got %q",
-			expectID, peerInfo.NodeID)
-	}
 	if NodeIDFromPubKey(peerKey) != peerInfo.NodeID {
 		return peerInfo, peerKey, fmt.Errorf("peer's public key did not match its node ID %q (expected %q)",
 			peerInfo.NodeID, NodeIDFromPubKey(peerKey))
 	}
-	// FIXME: This should be handled by the PeerManager, and it should avoid
-	// dialing self as well.
-	if peerInfo.NodeID == r.nodeInfo.NodeID {
-		return peerInfo, peerKey, errors.New("rejecting handshake with self")
+	if expectID != "" && expectID != peerInfo.NodeID {
+		return peerInfo, peerKey, fmt.Errorf("expected to connect with peer %q, got %q",
+			expectID, peerInfo.NodeID)
 	}
 	return peerInfo, peerKey, nil
 }
