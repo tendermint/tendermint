@@ -392,8 +392,7 @@ func TestPeerManager_DialNext_WakeOnDisconnected(t *testing.T) {
 
 	go func() {
 		time.Sleep(200 * time.Millisecond)
-		err = peerManager.Disconnected(a.NodeID)
-		require.NoError(t, err)
+		require.NoError(t, peerManager.Disconnected(a.NodeID))
 	}()
 
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
