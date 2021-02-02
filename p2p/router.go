@@ -333,7 +333,6 @@ func (r *Router) acceptPeers(transport Transport) {
 			r.peerMtx.Lock()
 			r.peerQueues[peerInfo.NodeID] = queue
 			r.peerMtx.Unlock()
-			r.peerManager.Ready(peerInfo.NodeID)
 
 			defer func() {
 				r.peerMtx.Lock()
@@ -344,6 +343,11 @@ func (r *Router) acceptPeers(transport Transport) {
 					r.logger.Error("failed to disconnect peer", "peer", peerInfo.NodeID, "err", err)
 				}
 			}()
+
+			if err := r.peerManager.Ready(peerInfo.NodeID); err != nil {
+				r.logger.Error("failed to mark peer as ready", "peer", peerInfo.NodeID, "err", err)
+				return
+			}
 
 			r.routePeer(peerInfo.NodeID, conn, queue)
 		}()

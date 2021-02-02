@@ -1069,3 +1069,34 @@ func TestPeerManager_Accepted_UpgradeDialing(t *testing.T) {
 	require.Equal(t, a.NodeID, evict)
 	require.Error(t, peerManager.Dialed(b))
 }
+
+func TestPeerManager_Ready(t *testing.T) {
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+	b := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("b", 40))}
+
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+
+	sub := peerManager.Subscribe()
+	defer sub.Close()
+
+	// Connecting to a should still have it as status down.
+	require.NoError(t, peerManager.Add(a))
+	require.NoError(t, peerManager.Accepted(a.NodeID))
+	require.Equal(t, p2p.PeerStatusDown, peerManager.Status(a.NodeID))
+
+	// Marking a as ready should transition it to PeerStatusUp and send an update.
+	require.NoError(t, peerManager.Ready(a.NodeID))
+	require.Equal(t, p2p.PeerStatusUp, peerManager.Status(a.NodeID))
+	require.Equal(t, p2p.PeerUpdate{
+		NodeID: a.NodeID,
+		Status: p2p.PeerStatusUp,
+	}, <-sub.Updates())
+
+	// Marking an unconnected peer as ready should do nothing.
+	require.NoError(t, peerManager.Add(b))
+	require.Equal(t, p2p.PeerStatusDown, peerManager.Status(b.NodeID))
+	require.NoError(t, peerManager.Ready(b.NodeID))
+	require.Equal(t, p2p.PeerStatusDown, peerManager.Status(b.NodeID))
+	require.Empty(t, sub.Updates())
+}

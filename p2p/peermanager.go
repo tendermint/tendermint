@@ -628,7 +628,7 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 // peer must already be marked as connected. This is separate from Dialed() and
 // Accepted() to allow the router to set up its internal queues before reactors
 // start sending messages.
-func (m *PeerManager) Ready(peerID NodeID) {
+func (m *PeerManager) Ready(peerID NodeID) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -639,6 +639,7 @@ func (m *PeerManager) Ready(peerID NodeID) {
 			Status: PeerStatusUp,
 		})
 	}
+	return nil
 }
 
 // EvictNext returns the next peer to evict (i.e. disconnect). If no evictable
