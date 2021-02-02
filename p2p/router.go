@@ -54,10 +54,10 @@ type PeerError struct {
 // wrapped in Envelope to specify routing info (i.e. sender/receiver).
 type Channel struct {
 	id          ChannelID
-	messageType proto.Message  // the channel's message type, used for unmarshalling
-	inCh        chan Envelope  // inbound messages (peers to reactors)
-	outCh       chan Envelope  // outbound messages (reactors to peers)
-	errCh       chan PeerError // peer error reporting
+	messageType proto.Message    // the channel's message type, used for unmarshalling
+	inCh        <-chan Envelope  // inbound messages (peers to reactors)
+	outCh       chan<- Envelope  // outbound messages (reactors to peers)
+	errCh       chan<- PeerError // peer error reporting
 	closeCh     chan struct{}
 	closeOnce   sync.Once
 }
@@ -67,8 +67,9 @@ type Channel struct {
 func NewChannel(
 	id ChannelID,
 	messageType proto.Message,
-	inCh, outCh chan Envelope,
-	errCh chan PeerError,
+	inCh <-chan Envelope,
+	outCh chan<- Envelope,
+	errCh chan<- PeerError,
 ) *Channel {
 	return &Channel{
 		id:          id,
@@ -122,6 +123,8 @@ func (c *Channel) Done() <-chan struct{} {
 // Router will automatically wrap outbound messages and unwrap inbound messages,
 // such that reactors do not have to do this themselves.
 type Wrapper interface {
+	proto.Message
+
 	// Wrap will take a message and wrap it in this one if possible.
 	Wrap(proto.Message) error
 
@@ -282,10 +285,15 @@ func NewRouter(
 // into a clone of this message type), and can implement Wrapper to
 // automatically (un)wrap multiple message types in a wrapper message.
 func (r *Router) OpenChannel(id ChannelID, messageType proto.Message) (*Channel, error) {
-	// FIXME: NewChannel should take directional channels so we can pass
-	// queue.dequeue() instead of reaching inside for queue.queueCh.
 	queue := newFIFOQueue()
-	channel := NewChannel(id, messageType, queue.queueCh, make(chan Envelope), make(chan PeerError))
+	outCh := make(chan Envelope)
+	errCh := make(chan PeerError)
+	channel := NewChannel(id, messageType, queue.dequeue(), outCh, errCh)
+
+	var wrapper Wrapper
+	if w, ok := messageType.(Wrapper); ok {
+		wrapper = w
+	}
 
 	r.channelMtx.Lock()
 	defer r.channelMtx.Unlock()
@@ -304,32 +312,40 @@ func (r *Router) OpenChannel(id ChannelID, messageType proto.Message) (*Channel,
 			r.channelMtx.Unlock()
 			queue.close()
 		}()
-		r.routeChannel(channel)
+
+		r.routeChannel(id, outCh, errCh, wrapper)
 	}()
 
 	return channel, nil
 }
 
-// routeChannel receives outbound messages and errors from a channel and routes
-// them to the appropriate peer. It returns when either the channel is closed or
-// the router is shutting down.
-func (r *Router) routeChannel(channel *Channel) {
+// routeChannel receives outbound channel messages and routes them to the
+// appropriate peer. It also receives peer errors and reports them to the peer
+// manager. It returns when either the outbound channel or error channel is
+// closed, or the Router is stopped. wrapper is an optional message wrapper
+// for messages, see Wrapper for details.
+func (r *Router) routeChannel(
+	chID ChannelID,
+	outCh <-chan Envelope,
+	errCh <-chan PeerError,
+	wrapper Wrapper,
+) {
 	for {
 		select {
-		case envelope, ok := <-channel.outCh:
+		case envelope, ok := <-outCh:
 			if !ok {
 				return
 			}
 
-			if _, ok := channel.messageType.(Wrapper); ok {
-				wrapper := proto.Clone(channel.messageType)
-				if err := wrapper.(Wrapper).Wrap(envelope.Message); err != nil {
-					r.Logger.Error("failed to wrap message", "err", err)
+			if wrapper != nil {
+				msg := proto.Clone(wrapper)
+				if err := msg.(Wrapper).Wrap(envelope.Message); err != nil {
+					r.Logger.Error("failed to wrap message", "channel", chID, "err", err)
 					continue
 				}
 				envelope.Message = wrapper
 			}
-			envelope.channelID = channel.id
+			envelope.channelID = chID
 
 			if envelope.Broadcast {
 				r.peerMtx.RLock()
@@ -357,7 +373,7 @@ func (r *Router) routeChannel(channel *Channel) {
 				r.peerMtx.RUnlock()
 				if !ok {
 					r.logger.Error("dropping message for non-connected peer",
-						"peer", envelope.To, "channel", channel.id)
+						"peer", envelope.To, "channel", chID)
 					continue
 				}
 
@@ -365,24 +381,22 @@ func (r *Router) routeChannel(channel *Channel) {
 				case peerQueue.enqueue() <- envelope:
 				case <-peerQueue.closed():
 					r.logger.Error("dropping message for non-connected peer",
-						"peer", envelope.To, "channel", channel.id)
+						"peer", envelope.To, "channel", chID)
 				case <-r.stopCh:
 					return
 				}
 			}
 
-		case peerError, ok := <-channel.errCh:
+		case peerError, ok := <-errCh:
 			if !ok {
 				return
 			}
-			// FIXME: We just evict the peer for now.
+
 			r.logger.Error("peer error, evicting", "peer", peerError.NodeID, "err", peerError.Err)
 			if err := r.peerManager.Errored(peerError.NodeID, peerError.Err); err != nil {
 				r.logger.Error("failed to report peer error", "peer", peerError.NodeID, "err", err)
 			}
 
-		case <-channel.Done():
-			return
 		case <-r.stopCh:
 			return
 		}
