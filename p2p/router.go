@@ -64,7 +64,7 @@ type Channel struct {
 }
 
 // NewChannel creates a new channel. It is primarily for internal and test
-// use, reactors should use Router.OpenChannel.
+// use, reactors should use Router.OpenChannel().
 func NewChannel(
 	id ChannelID,
 	messageType proto.Message,
@@ -317,6 +317,11 @@ func (r *Router) routeChannel(
 				return
 			}
 
+			// Mark the envelope with the channel ID to allow sendPeer() to pass
+			// it on to Transport.SendMessage().
+			envelope.channelID = chID
+
+			// Wrap the message in a wrapper message, if requested.
 			if wrapper != nil {
 				msg := proto.Clone(wrapper)
 				if err := msg.(Wrapper).Wrap(envelope.Message); err != nil {
@@ -325,42 +330,34 @@ func (r *Router) routeChannel(
 				}
 				envelope.Message = wrapper
 			}
-			envelope.channelID = chID
 
+			// Collect peer queues to pass the message via.
+			var queues []queue
 			if envelope.Broadcast {
 				r.peerMtx.RLock()
-				peerQueues := make(map[NodeID]queue, len(r.peerQueues))
-				for peerID, peerQueue := range r.peerQueues {
-					peerQueues[peerID] = peerQueue
+				queues = make([]queue, 0, len(r.peerQueues))
+				for _, q := range r.peerQueues {
+					queues = append(queues, q)
 				}
 				r.peerMtx.RUnlock()
-
-				for peerID, peerQueue := range peerQueues {
-					e := envelope
-					e.Broadcast = false
-					e.To = peerID
-					select {
-					case peerQueue.enqueue() <- e:
-					case <-peerQueue.closed():
-					case <-r.stopCh:
-						return
-					}
-				}
-
 			} else {
 				r.peerMtx.RLock()
-				peerQueue, ok := r.peerQueues[envelope.To]
+				q, ok := r.peerQueues[envelope.To]
 				r.peerMtx.RUnlock()
 				if !ok {
-					r.logger.Error("dropping message for non-connected peer",
+					r.logger.Debug("dropping message for unconnected peer",
 						"peer", envelope.To, "channel", chID)
 					continue
 				}
+				queues = []queue{q}
+			}
 
+			// Send message to peers.
+			for _, q := range queues {
 				select {
-				case peerQueue.enqueue() <- envelope:
-				case <-peerQueue.closed():
-					r.logger.Error("dropping message for non-connected peer",
+				case q.enqueue() <- envelope:
+				case <-q.closed():
+					r.logger.Debug("dropping message for unconnected peer",
 						"peer", envelope.To, "channel", chID)
 				case <-r.stopCh:
 					return
