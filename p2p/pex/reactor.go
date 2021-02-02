@@ -85,7 +85,7 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 	switch msg := envelope.Message.(type) {
 	case *protop2p.PexRequest:
 		pexAddresses := r.resolve(r.peerManager.Advertise(envelope.From, maxAddresses), maxAddresses)
-		r.pexCh.Out() <- p2p.Envelope{
+		r.pexCh.Out <- p2p.Envelope{
 			To:      envelope.From,
 			Message: &protop2p.PexResponse{Addresses: pexAddresses},
 		}
@@ -177,10 +177,10 @@ func (r *ReactorV2) processPexCh() {
 
 	for {
 		select {
-		case envelope := <-r.pexCh.In():
-			if err := r.handleMessage(r.pexCh.ID(), envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.pexCh.ID(), "envelope", envelope, "err", err)
-				r.pexCh.Error() <- p2p.PeerError{
+		case envelope := <-r.pexCh.In:
+			if err := r.handleMessage(r.pexCh.ID, envelope); err != nil {
+				r.Logger.Error("failed to process message", "ch_id", r.pexCh.ID, "envelope", envelope, "err", err)
+				r.pexCh.Error <- p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
 				}
@@ -199,7 +199,7 @@ func (r *ReactorV2) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	r.Logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	if peerUpdate.Status == p2p.PeerStatusUp {
-		r.pexCh.Out() <- p2p.Envelope{
+		r.pexCh.Out <- p2p.Envelope{
 			To:      peerUpdate.NodeID,
 			Message: &protop2p.PexRequest{},
 		}

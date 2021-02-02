@@ -59,7 +59,7 @@ func NewReactorShim(logger log.Logger, name string, descriptors map[ChannelID]*C
 
 	for _, cds := range descriptors {
 		chShim := NewChannelShim(cds, 0)
-		channels[chShim.Channel.id] = chShim
+		channels[chShim.Channel.ID] = chShim
 	}
 
 	rs := &ReactorShim{

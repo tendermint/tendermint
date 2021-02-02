@@ -53,11 +53,12 @@ type PeerError struct {
 // Channel is a bidirectional channel to exchange Protobuf messages with peers,
 // wrapped in Envelope to specify routing info (i.e. sender/receiver).
 type Channel struct {
-	id          ChannelID
-	messageType proto.Message    // the channel's message type, used for unmarshalling
-	inCh        <-chan Envelope  // inbound messages (peers to reactors)
-	outCh       chan<- Envelope  // outbound messages (reactors to peers)
-	errCh       chan<- PeerError // peer error reporting
+	ID    ChannelID
+	In    <-chan Envelope  // inbound messages (peers to reactors)
+	Out   chan<- Envelope  // outbound messages (reactors to peers)
+	Error chan<- PeerError // peer error reporting
+
+	messageType proto.Message // the channel's message type, used for unmarshalling
 	closeCh     chan struct{}
 	closeOnce   sync.Once
 }
@@ -72,34 +73,13 @@ func NewChannel(
 	errCh chan<- PeerError,
 ) *Channel {
 	return &Channel{
-		id:          id,
+		ID:          id,
 		messageType: messageType,
-		inCh:        inCh,
-		outCh:       outCh,
-		errCh:       errCh,
+		In:          inCh,
+		Out:         outCh,
+		Error:       errCh,
 		closeCh:     make(chan struct{}),
 	}
-}
-
-// ID returns the channel's ID.
-func (c *Channel) ID() ChannelID {
-	return c.id
-}
-
-// In returns a channel for inbound messages.
-func (c *Channel) In() <-chan Envelope {
-	return c.inCh
-}
-
-// Out returns a channel for outbound messages.
-func (c *Channel) Out() chan<- Envelope {
-	return c.outCh
-}
-
-// Error returns a channel for reporting peer errors. Errors currently
-// cause peers to be disconnected.
-func (c *Channel) Error() chan<- PeerError {
-	return c.errCh
 }
 
 // Close closes the channel. Future sends on Out() and Error() will panic. The
@@ -108,8 +88,8 @@ func (c *Channel) Error() chan<- PeerError {
 func (c *Channel) Close() {
 	c.closeOnce.Do(func() {
 		close(c.closeCh)
-		close(c.outCh)
-		close(c.errCh)
+		close(c.Out)
+		close(c.Error)
 	})
 }
 

@@ -33,8 +33,8 @@ func generateNode() (p2p.NodeInfo, crypto.PrivKey) {
 func echoReactor(channel *p2p.Channel) {
 	for {
 		select {
-		case envelope := <-channel.In():
-			channel.Out() <- p2p.Envelope{
+		case envelope := <-channel.In:
+			channel.Out <- p2p.Envelope{
 				To:      envelope.From,
 				Message: &TestMessage{Value: envelope.Message.(*TestMessage).Value},
 			}
@@ -121,25 +121,25 @@ func TestRouter(t *testing.T) {
 			Status: p2p.PeerStatusUp,
 		}, peerUpdate)
 
-		channel.Out() <- p2p.Envelope{To: peerID, Message: &TestMessage{Value: "hi!"}}
+		channel.Out <- p2p.Envelope{To: peerID, Message: &TestMessage{Value: "hi!"}}
 		assert.Equal(t, p2p.Envelope{
 			From:    peerID,
 			Message: &TestMessage{Value: "hi!"},
-		}, <-channel.In())
+		}, <-channel.In)
 	}
 
 	// We now send a broadcast, which we should return back from all peers.
-	channel.Out() <- p2p.Envelope{
+	channel.Out <- p2p.Envelope{
 		Broadcast: true,
 		Message:   &TestMessage{Value: "broadcast"},
 	}
 	for i := 0; i < len(peers); i++ {
-		envelope := <-channel.In()
+		envelope := <-channel.In
 		require.Equal(t, &TestMessage{Value: "broadcast"}, envelope.Message)
 	}
 
 	// We then submit an error for a peer, and watch it get disconnected.
-	channel.Error() <- p2p.PeerError{
+	channel.Error <- p2p.PeerError{
 		NodeID: peers[0].NodeID,
 		Err:    errors.New("test error"),
 	}
