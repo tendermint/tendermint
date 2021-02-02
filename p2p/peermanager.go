@@ -852,8 +852,15 @@ func (m *PeerManager) Status(id NodeID) PeerStatus {
 
 // findUpgradeCandidate looks for a lower-scored peer that we could evict
 // to make room for the given peer. Returns an empty ID if none is found.
+// If the peer is already being upgraded to, we return that same upgrade.
 // The caller must hold the mutex lock.
 func (m *PeerManager) findUpgradeCandidate(id NodeID, score PeerScore) NodeID {
+	for from, to := range m.upgrading {
+		if to == id {
+			return from
+		}
+	}
+
 	ranked := m.store.Ranked()
 	for i := len(ranked) - 1; i >= 0; i-- {
 		candidate := ranked[i]

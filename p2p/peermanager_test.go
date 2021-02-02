@@ -894,3 +894,178 @@ func TestPeerManager_Dialed_UpgradeNoEvict(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, evict)
 }
+
+func TestPeerManager_Accepted(t *testing.T) {
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+	b := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("b", 40))}
+	c := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("c", 40))}
+	d := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("d", 40))}
+
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+
+	// Accepting a connection from a known peer should work.
+	require.NoError(t, peerManager.Add(a))
+	require.NoError(t, peerManager.Accepted(a.NodeID))
+
+	// Accepting a connection from an already accepted peer should error.
+	require.Error(t, peerManager.Accepted(a.NodeID))
+
+	// Accepting a connection from an unknown peer should work and register it.
+	require.NoError(t, peerManager.Accepted(b.NodeID))
+	require.ElementsMatch(t, []p2p.NodeID{a.NodeID, b.NodeID}, peerManager.Peers())
+
+	// Accepting a connection from a peer that's being dialed should work, and
+	// should cause the dial to fail.
+	require.NoError(t, peerManager.Add(c))
+	dial, err := peerManager.TryDialNext()
+	require.NoError(t, err)
+	require.Equal(t, c, dial)
+	require.NoError(t, peerManager.Accepted(c.NodeID))
+	require.Error(t, peerManager.Dialed(c))
+
+	// Accepting a connection from a peer that's been dialed should fail.
+	require.NoError(t, peerManager.Add(d))
+	dial, err = peerManager.TryDialNext()
+	require.NoError(t, err)
+	require.Equal(t, d, dial)
+	require.NoError(t, peerManager.Dialed(d))
+	require.Error(t, peerManager.Accepted(d.NodeID))
+}
+
+func TestPeerManager_Accepted_MaxConnected(t *testing.T) {
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+	b := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("b", 40))}
+	c := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("c", 40))}
+
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{
+		MaxConnected: 2,
+	})
+	require.NoError(t, err)
+
+	// Connect to a and b.
+	require.NoError(t, peerManager.Add(a))
+	require.NoError(t, peerManager.Dialed(a))
+
+	require.NoError(t, peerManager.Add(b))
+	require.NoError(t, peerManager.Accepted(b.NodeID))
+
+	// Accepting c should now fail.
+	require.NoError(t, peerManager.Add(c))
+	require.Error(t, peerManager.Accepted(c.NodeID))
+}
+
+func TestPeerManager_Accepted_MaxConnectedUpgrade(t *testing.T) {
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+	b := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("b", 40))}
+	c := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("c", 40))}
+	d := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("d", 40))}
+
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{
+		PeerScores: map[p2p.NodeID]p2p.PeerScore{
+			c.NodeID: 1,
+			d.NodeID: 2,
+		},
+		MaxConnected:        1,
+		MaxConnectedUpgrade: 1,
+	})
+	require.NoError(t, err)
+
+	// Dial a.
+	require.NoError(t, peerManager.Add(a))
+	require.NoError(t, peerManager.Dialed(a))
+
+	// Accepting b should fail, since it's not an upgrade over a.
+	require.NoError(t, peerManager.Add(b))
+	require.Error(t, peerManager.Accepted(b.NodeID))
+
+	// Accepting c should work, since it upgrades a.
+	require.NoError(t, peerManager.Add(c))
+	require.NoError(t, peerManager.Accepted(c.NodeID))
+
+	// a still hasn't been evicted, so accepting b should still fail.
+	require.NoError(t, peerManager.Add(b))
+	require.Error(t, peerManager.Accepted(b.NodeID))
+
+	// Also, accepting d should fail, since all upgrade slots are full.
+	require.NoError(t, peerManager.Add(d))
+	require.Error(t, peerManager.Accepted(d.NodeID))
+}
+
+func TestPeerManager_Accepted_Upgrade(t *testing.T) {
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+	b := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("b", 40))}
+	c := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("c", 40))}
+
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{
+		PeerScores: map[p2p.NodeID]p2p.PeerScore{
+			b.NodeID: 1,
+			c.NodeID: 1,
+		},
+		MaxConnected:        1,
+		MaxConnectedUpgrade: 2,
+	})
+	require.NoError(t, err)
+
+	// Accept a.
+	require.NoError(t, peerManager.Add(a))
+	require.NoError(t, peerManager.Accepted(a.NodeID))
+
+	// Accepting b should work, since it upgrades a.
+	require.NoError(t, peerManager.Add(b))
+	require.NoError(t, peerManager.Accepted(b.NodeID))
+
+	// c cannot get accepted, since a has been upgraded by b.
+	require.NoError(t, peerManager.Add(c))
+	require.Error(t, peerManager.Accepted(c.NodeID))
+
+	// This should cause a to get evicted.
+	evict, err := peerManager.TryEvictNext()
+	require.NoError(t, err)
+	require.Equal(t, a.NodeID, evict)
+	require.NoError(t, peerManager.Disconnected(a.NodeID))
+
+	// c still cannot get accepted, since it's not scored above b.
+	require.Error(t, peerManager.Accepted(c.NodeID))
+}
+
+func TestPeerManager_Accepted_UpgradeDialing(t *testing.T) {
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+	b := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("b", 40))}
+	c := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("c", 40))}
+
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{
+		PeerScores: map[p2p.NodeID]p2p.PeerScore{
+			b.NodeID: 1,
+			c.NodeID: 1,
+		},
+		MaxConnected:        1,
+		MaxConnectedUpgrade: 2,
+	})
+	require.NoError(t, err)
+
+	// Accept a.
+	require.NoError(t, peerManager.Add(a))
+	require.NoError(t, peerManager.Accepted(a.NodeID))
+
+	// Start dial upgrade from a to b.
+	require.NoError(t, peerManager.Add(b))
+	dial, err := peerManager.TryDialNext()
+	require.NoError(t, err)
+	require.Equal(t, b, dial)
+
+	// a has already been claimed as an upgrade of a, so accepting
+	// c should fail since there's noone else to upgrade.
+	require.NoError(t, peerManager.Add(c))
+	require.Error(t, peerManager.Accepted(c.NodeID))
+
+	// However, if b connects to us while we're also trying to upgrade to it via
+	// dialing, then we accept the incoming connection as an upgrade.
+	require.NoError(t, peerManager.Accepted(b.NodeID))
+
+	// This should cause a to get evicted, and the dial upgrade to fail.
+	evict, err := peerManager.TryEvictNext()
+	require.NoError(t, err)
+	require.Equal(t, a.NodeID, evict)
+	require.Error(t, peerManager.Dialed(b))
+}
