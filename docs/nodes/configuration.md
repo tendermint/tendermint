@@ -385,7 +385,7 @@ peer-query-maj23-sleep-duration = "2s"
 # Options:
 #   1) "null"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
-# 		- When "kv" is chosen "tx.height" and "tx.hash" will always be indexed.
+#   - When "kv" is chosen "tx.height" and "tx.hash" will always be indexed.
 indexer = "kv"
 
 #######################################################
@@ -487,6 +487,7 @@ Here's a brief summary of the timeouts:
 This section will cover settings within the p2p section of the `config.toml`.
 
 - `external-address` = is the address that will be advertised for other nodes to use. We recommend setting this field with your public IP and p2p port.
+  - > We recommend setting external address. There is an open issue with Tendermint not advertising the correct address. There is an ongoing effort to refactor the P2P layer where this will be fixed.
 - `seeds` = is a list of comma separated seed nodes that you will connect upon a start and ask for peers. A seed node is a node that does not participate in consensus but only helps propagate peers to nodes in the networks
 - `persistent-peers` = is a list of comma separated peers that you will always want to be connected to. If you're already connected to the maximum number of peers, persistent peers will not be added.
 - `max-num-inbound-peers` = is the maximum number of peers you will accept inbound connections from at one time (where they dial your address and initiate the connection).
@@ -494,4 +495,4 @@ This section will cover settings within the p2p section of the `config.toml`.
 - `unconditional-peer-ids` = is similar to `persistent-peers` except that these peers will be connected to even if you are already connected to the maximum number of peers. This can be a validator node ID on your sentry node.
 - `pex` = turns the peer exchange reactor on or off. Validator node will want the `pex` turned off so it would not begin gossiping to unknown peers on the network. PeX can also be turned off for statically configured networks with fixed network connectivity. For full nodes on open, dynamic networks, it should be turned on.
 - `seed-mode` = is used for when node operators want to run their node as a seed node. Seed node's run a variation of the PeX protocol that disconnects from peers after sending them a list of peers to connect to. To minimize the servers usage, it is recommended to set the mempool's size to 0.
--  `private-peer-ids` = is a comma separated list of node ids that you would not like exposed to other peers (ie. you will not tell other peers about the private-peer-ids). This can be filled with a validators node id.
+- `private-peer-ids` = is a comma separated list of node ids that you would not like exposed to other peers (ie. you will not tell other peers about the private-peer-ids). This can be filled with a validators node id.
