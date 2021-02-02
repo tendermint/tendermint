@@ -215,14 +215,15 @@ func (o *RouterOptions) Validate() error {
 type Router struct {
 	*service.BaseService
 
-	logger      log.Logger
-	nodeInfo    NodeInfo
-	privKey     crypto.PrivKey
-	transports  map[Protocol]Transport
-	peerManager *PeerManager
-	options     RouterOptions
+	logger             log.Logger
+	options            RouterOptions
+	nodeInfo           NodeInfo
+	privKey            crypto.PrivKey
+	peerManager        *PeerManager
+	transports         []Transport
+	protocolTransports map[Protocol]Transport
+	stopCh             chan struct{} // signals Router shutdown
 
-	// FIXME: Consider using sync.Map.
 	peerMtx    sync.RWMutex
 	peerQueues map[NodeID]queue
 
@@ -232,12 +233,11 @@ type Router struct {
 	channelMtx      sync.RWMutex
 	channelQueues   map[ChannelID]queue
 	channelMessages map[ChannelID]proto.Message
-
-	// stopCh is used to signal router shutdown, by closing the channel.
-	stopCh chan struct{}
 }
 
-// NewRouter creates a new Router.
+// NewRouter creates a new Router. The given Transports must already be
+// listening on appropriate interfaces, and will be closed by the Router when it
+// stops.
 func NewRouter(
 	logger log.Logger,
 	nodeInfo NodeInfo,
@@ -251,23 +251,24 @@ func NewRouter(
 	}
 
 	router := &Router{
-		logger:          logger,
-		nodeInfo:        nodeInfo,
-		privKey:         privKey,
-		transports:      map[Protocol]Transport{},
-		peerManager:     peerManager,
-		options:         options,
-		stopCh:          make(chan struct{}),
-		channelQueues:   map[ChannelID]queue{},
-		channelMessages: map[ChannelID]proto.Message{},
-		peerQueues:      map[NodeID]queue{},
+		logger:             logger,
+		nodeInfo:           nodeInfo,
+		privKey:            privKey,
+		transports:         transports,
+		protocolTransports: map[Protocol]Transport{},
+		peerManager:        peerManager,
+		options:            options,
+		stopCh:             make(chan struct{}),
+		channelQueues:      map[ChannelID]queue{},
+		channelMessages:    map[ChannelID]proto.Message{},
+		peerQueues:         map[NodeID]queue{},
 	}
 	router.BaseService = service.NewBaseService(logger, "router", router)
 
 	for _, transport := range transports {
 		for _, protocol := range transport.Protocols() {
-			if _, ok := router.transports[protocol]; !ok {
-				router.transports[protocol] = transport
+			if _, ok := router.protocolTransports[protocol]; !ok {
+				router.protocolTransports[protocol] = transport
 			}
 		}
 	}
@@ -557,7 +558,7 @@ func (r *Router) dialPeer(ctx context.Context, address NodeAddress) (Connection,
 	}
 
 	for _, endpoint := range endpoints {
-		transport, ok := r.transports[endpoint.Protocol]
+		transport, ok := r.protocolTransports[endpoint.Protocol]
 		if !ok {
 			r.logger.Error("no transport found for endpoint protocol", "endpoint", endpoint)
 			continue
@@ -743,18 +744,26 @@ func (r *Router) evictPeers() {
 // OnStart implements service.Service.
 func (r *Router) OnStart() error {
 	go r.dialPeers()
+	go r.evictPeers()
 	for _, transport := range r.transports {
 		go r.acceptPeers(transport)
 	}
-	go r.evictPeers()
 	return nil
 }
 
 // OnStop implements service.Service.
-//
-// FIXME: This needs to close transports as well.
 func (r *Router) OnStop() {
-	// Collect all active queues, so we can wait for them to close.
+	// Signal router shutdown.
+	close(r.stopCh)
+
+	// Close transports for inbound connections (unblocks Accept calls).
+	for _, transport := range r.transports {
+		if err := transport.Close(); err != nil {
+			r.logger.Error("failed to close transport", "transport", transport, "err", err)
+		}
+	}
+
+	// Collect all remaining queues, and wait for them to close.
 	queues := []queue{}
 	r.channelMtx.RLock()
 	for _, q := range r.channelQueues {
@@ -766,16 +775,12 @@ func (r *Router) OnStop() {
 		queues = append(queues, q)
 	}
 	r.peerMtx.RUnlock()
-
-	// Signal router shutdown, and wait for queues (and thus goroutines)
-	// to complete.
-	close(r.stopCh)
 	for _, q := range queues {
 		<-q.closed()
 	}
 }
 
-// stopCtx returns a context that is cancelled when the router stops.
+// stopCtx returns a new context that is cancelled when the router stops.
 func (r *Router) stopCtx() context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
