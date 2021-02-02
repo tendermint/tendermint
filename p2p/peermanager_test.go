@@ -14,6 +14,12 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
+// FIXME: We should probably have some randomized property-based tests for the
+// PeerManager too, which runs a bunch of random operations with random peers
+// and ensures certain invariants always hold. The logic can be complex, with
+// many interactions, and it's hard to cover all scenarios with handwritten
+// tests.
+
 func TestPeerManagerOptions_Validate(t *testing.T) {
 	nodeID := p2p.NodeID("00112233445566778899aabbccddeeff00112233")
 
