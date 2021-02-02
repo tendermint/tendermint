@@ -727,6 +727,11 @@ func (r *Router) OnStart() error {
 }
 
 // OnStop implements service.Service.
+//
+// All channels must be closed by OpenChannel() callers before stopping the
+// router, to prevent blocked channel sends in reactors. Channels are not closed
+// here, since that would cause any reactor senders to panic, so it is the
+// sender's responsibility.
 func (r *Router) OnStop() {
 	// Signal router shutdown.
 	close(r.stopCh)
