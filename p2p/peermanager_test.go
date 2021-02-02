@@ -1465,6 +1465,33 @@ func TestPeerManager_Subscribe_Broadcast(t *testing.T) {
 	require.Equal(t, expectDown, <-s3.Updates())
 }
 
+func TestPeerManager_Close(t *testing.T) {
+	// leaktest will check that spawned goroutines are closed.
+	t.Cleanup(leaktest.CheckTimeout(t, 1*time.Second))
+
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{
+		MinRetryTime: 10 * time.Second,
+	})
+	require.NoError(t, err)
+
+	// This subscription isn't closed, but PeerManager.Close()
+	// should reap the spawned goroutine.
+	_ = peerManager.Subscribe()
+
+	// This dial failure will start a retry timer for 10 seconds, which
+	// should be reaped.
+	require.NoError(t, peerManager.Add(a))
+	dial, err := peerManager.TryDialNext()
+	require.NoError(t, err)
+	require.Equal(t, a, dial)
+	require.NoError(t, peerManager.DialFailed(a))
+
+	// This should clean up the goroutines.
+	peerManager.Close()
+}
+
 func TestPeerManager_Advertise(t *testing.T) {
 	aID := p2p.NodeID(strings.Repeat("a", 40))
 	aTCP := p2p.NodeAddress{Protocol: "tcp", NodeID: aID, Hostname: "127.0.0.1", Port: 26657, Path: "/path"}
