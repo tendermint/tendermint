@@ -122,7 +122,7 @@ func (c *Channel) Done() <-chan struct{} {
 // Router will automatically wrap outbound messages and unwrap inbound messages,
 // such that reactors do not have to do this themselves.
 type Wrapper interface {
-	// Wrap will take a message and wrap it in this one.
+	// Wrap will take a message and wrap it in this one if possible.
 	Wrap(proto.Message) error
 
 	// Unwrap will unwrap the inner message contained in this message.
@@ -317,8 +317,6 @@ func (r *Router) routeChannel(channel *Channel) {
 				return
 			}
 
-			// FIXME: This is a bit unergonomic, maybe it'd be better for Wrap()
-			// to return a wrapped copy.
 			if _, ok := channel.messageType.(Wrapper); ok {
 				wrapper := proto.Clone(channel.messageType)
 				if err := wrapper.(Wrapper).Wrap(envelope.Message); err != nil {
