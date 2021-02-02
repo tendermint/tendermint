@@ -133,68 +133,43 @@ func (o *RouterOptions) Validate() error {
 
 // Router manages peer connections and routes messages between peers and reactor
 // channels. It takes a PeerManager for peer lifecycle management (e.g. which
-// peers to dial and when) and a set of Transports for connecting to and
-// communicating with peers. Transports should be set up to listen on any
-// desired interfaces before handing them to the Router, and the Router will
-// take care of closing them when shutting down.
+// peers to dial and when) and a set of Transports for connecting and
+// communicating with peers.
 //
-// message queue for the channel in channelQueues and spawn off a goroutine for
-// Router.routeChannel(). This goroutine reads off outbound messages and puts
-// them in the appropriate peer message queue, and processes peer errors which
-// will close (and thus disconnect) the appriate peer queue. It runs until
-// either the channel is closed by the caller or the router is stopped, at which
-// point the input message queue is closed and removed.
+// On startup, three main goroutines are spawned to maintain peer connections:
 //
-// On startup, the router spawns off three primary goroutines that maintain
-// connections to peers and run for the lifetime of the router:
+//   dialPeers(): in a loop, calls PeerManager.DialNext() to get the next peer
+//   address to dial and spawns a goroutine that dials the peer, handshakes
+//   with it, and begins to route messages if successful.
 //
-//   Router.dialPeers(): in a loop, asks the PeerManager for the next peer
-//   address to contact, resolves it into endpoints, and attempts to dial
-//   each one.
+//   acceptPeers(): in a loop, waits for an inbound connection via
+//   Transport.Accept() and spawns a goroutine that handshakes with it and
+//   begins to route messages if successful.
 //
-//   Router.acceptPeers(): in a loop, waits for the next inbound connection
-//   from a peer, and checks with the PeerManager if it should be accepted.
+//   evictPeers(): in a loop, calls PeerManager.EvictNext() to get the next
+//   peer to evict, and disconnects it by closing its message queue.
 //
-//   Router.evictPeers(): in a loop, asks the PeerManager for any connected
-//   peers to evict, and disconnects them.
+// When a peer is connected, an outbound peer message queue is registered in
+// peerQueues, and routePeer() is called to spawn off two additional goroutines:
 //
-// Once either an inbound or outbound connection has been made, an outbound
-// message queue is registered in Router.peerQueues and a goroutine is spawned
-// off for Router.routePeer() which will spawn off additional goroutines for
-// Router.sendPeer() that sends outbound messages from the peer queue over the
-// connection and for Router.receivePeer() that reads inbound messages from
-// the connection and places them in the appropriate channel queue. When either
-// goroutine exits, the connection and peer queue is closed, which will cause
-// the other goroutines to close as well.
+//   sendPeer(): waits for an outbound message from the peerQueues queue,
+//   marshals it, and passes it to the peer transport which delivers it.
 //
-// The peerStore is used to coordinate peer connections, by only allowing a peer
-// to be claimed (owned) by a single caller at a time (both for outbound and
-// inbound connections). This is done either via peerStore.Dispense() which
-// dispenses and claims an eligible peer to dial, or via peerStore.Claim() which
-// attempts to claim a given peer for an inbound connection. Peers must be
-// returned to the peerStore with peerStore.Return() to release the claim. Over
-// time, the peerStore will also do peer scheduling and prioritization, e.g.
-// ensuring we do exponential backoff on dial failures and connecting to
-// more important peers first (such as persistent peers and validators).
+//   receivePeer(): waits for an inbound message from the peer transport,
+//   unmarshals it, and passes it to the appropriate inbound channel queue
+//   in channelQueues.
 //
-// An additional goroutine Router.broadcastPeerUpdates() is also spawned off
-// on startup, which consumes peer updates from Router.peerUpdatesCh (currently
-// only connections and disconnections), and broadcasts them to all peer update
-// subscriptions registered via SubscribePeerUpdates().
+// When a reactor opens a channel via OpenChannel, an inbound channel message
+// queue is registered in channelQueues, and a channel goroutine is spawned:
 //
-// On router shutdown, we close Router.stopCh which will signal to all
-// goroutines to terminate. This in turn will cause all pending channel/peer
-// queues to close, and we wait for this as a signal that goroutines have ended.
+//   routeChannel(): waits for an outbound message from the channel, looks
+//   up the recipient peer's outbound message queue in peerQueues, and submits
+//   the message to it.
 //
-// All message scheduling should be limited to the queue implementations used
-// for channel queues and peer queues. All message sending throughout the router
-// is blocking, and if any messages should be dropped or buffered this is the
-// sole responsibility of the queue, such that we can limit this logic to a
-// single place. There is currently only a FIFO queue implementation that always
-// blocks and never drops messages, but this must be improved with other
-// implementations. The only exception is that all message sending must also
-// select on appropriate channel/queue/router closure signals, to avoid blocking
-// forever on a channel that has no consumer.
+// All channel sends in the router are blocking. It is the responsibility of the
+// queue interface in peerQueues and channelQueues to prioritize and drop
+// messages as appropriate during contention to prevent stalls and ensure good
+// quality of service.
 type Router struct {
 	*service.BaseService
 
