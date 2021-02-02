@@ -487,7 +487,7 @@ Here's a brief summary of the timeouts:
 This section will cover settings within the p2p section of the `config.toml`.
 
 - `external-address` = is the address that will be advertised for other nodes to use. We recommend setting this field with your public IP and p2p port.
-  - > We recommend setting external address. There is an open issue with Tendermint not advertising the correct address. There is an ongoing effort to refactor the P2P layer where this will be fixed.
+  - > We recommend setting external address. There is an open issue with Tendermint not advertising the public address, if being used within a private network. There is an ongoing effort to refactor the P2P layer where this will be fixed.
 - `seeds` = is a list of comma separated seed nodes that you will connect upon a start and ask for peers. A seed node is a node that does not participate in consensus but only helps propagate peers to nodes in the networks
 - `persistent-peers` = is a list of comma separated peers that you will always want to be connected to. If you're already connected to the maximum number of peers, persistent peers will not be added.
 - `max-num-inbound-peers` = is the maximum number of peers you will accept inbound connections from at one time (where they dial your address and initiate the connection).
