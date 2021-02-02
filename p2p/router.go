@@ -50,100 +50,77 @@ type PeerError struct {
 	Err    error
 }
 
-// Channel is a bidirectional channel for Protobuf message exchange with peers.
-// A Channel is safe for concurrent use by multiple goroutines.
+// Channel is a bidirectional channel to exchange Protobuf messages with peers,
+// wrapped in Envelope to specify routing info (i.e. sender/receiver).
 type Channel struct {
-	closeOnce sync.Once
-
-	// id defines the unique channel ID.
-	id ChannelID
-
-	// messageType specifies the type of messages exchanged via the channel, and
-	// is used e.g. for automatic unmarshaling.
-	messageType proto.Message
-
-	// inCh is a channel for receiving inbound messages. Envelope.From is always
-	// set.
-	inCh chan Envelope
-
-	// outCh is a channel for sending outbound messages. Envelope.To or Broadcast
-	// must be set, otherwise the message is discarded.
-	outCh chan Envelope
-
-	// errCh is a channel for reporting peer errors to the router, typically used
-	// when peers send an invalid or malignant message.
-	errCh chan PeerError
-
-	// doneCh is used to signal that a Channel is closed. A Channel is bi-directional
-	// and should be closed by the reactor, where as the router is responsible
-	// for explicitly closing the internal In channel.
-	doneCh chan struct{}
+	id          ChannelID
+	messageType proto.Message  // the channel's message type, used for unmarshalling
+	inCh        chan Envelope  // inbound messages (peers to reactors)
+	outCh       chan Envelope  // outbound messages (reactors to peers)
+	errCh       chan PeerError // peer error reporting
+	closeCh     chan struct{}
+	closeOnce   sync.Once
 }
 
-// NewChannel returns a reference to a new p2p Channel. It is the reactor's
-// responsibility to close the Channel. After a channel is closed, the router may
-// safely and explicitly close the internal In channel.
-func NewChannel(id ChannelID, mType proto.Message, in, out chan Envelope, errCh chan PeerError) *Channel {
+// NewChannel creates a new channel. It is primarily for internal and test
+// use, reactors should use Router.OpenChannel.
+func NewChannel(
+	id ChannelID,
+	messageType proto.Message,
+	inCh, outCh chan Envelope,
+	errCh chan PeerError,
+) *Channel {
 	return &Channel{
 		id:          id,
-		messageType: mType,
-		inCh:        in,
-		outCh:       out,
+		messageType: messageType,
+		inCh:        inCh,
+		outCh:       outCh,
 		errCh:       errCh,
-		doneCh:      make(chan struct{}),
+		closeCh:     make(chan struct{}),
 	}
 }
 
-// ID returns the Channel's ID.
+// ID returns the channel's ID.
 func (c *Channel) ID() ChannelID {
 	return c.id
 }
 
-// In returns a read-only inbound go channel. This go channel should be used by
-// reactors to consume Envelopes sent from peers.
+// In returns a channel for inbound messages.
 func (c *Channel) In() <-chan Envelope {
 	return c.inCh
 }
 
-// Out returns a write-only outbound go channel. This go channel should be used
-// by reactors to route Envelopes to other peers.
+// Out returns a channel for outbound messages.
 func (c *Channel) Out() chan<- Envelope {
 	return c.outCh
 }
 
-// Error returns a write-only outbound go channel designated for peer errors only.
-// This go channel should be used by reactors to send peer errors when consuming
-// Envelopes sent from other peers.
+// Error returns a channel for reporting peer errors. Errors currently
+// cause peers to be disconnected.
 func (c *Channel) Error() chan<- PeerError {
 	return c.errCh
 }
 
-// Close closes the outbound channel and marks the Channel as done. Internally,
-// the outbound outCh and peer error errCh channels are closed. It is the reactor's
-// responsibility to invoke Close. Any send on the Out or Error channel will
-// panic after the Channel is closed.
-//
-// NOTE: After a Channel is closed, the router may safely assume it can no longer
-// send on the internal inCh, however it should NEVER explicitly close it as
-// that could result in panics by sending on a closed channel.
+// Close closes the channel. Future sends on Out() and Error() will panic. The
+// In() channel remains open to avoid having to synchronize Router senders,
+// callers should use Done() to detect channel closure.
 func (c *Channel) Close() {
 	c.closeOnce.Do(func() {
-		close(c.doneCh)
+		close(c.closeCh)
 		close(c.outCh)
 		close(c.errCh)
 	})
 }
 
-// Done returns the Channel's internal channel that should be used by a router
-// to signal when it is safe to send on the internal inCh go channel.
+// Done returns a channel that's closed when Channel.Close() is called.
 func (c *Channel) Done() <-chan struct{} {
-	return c.doneCh
+	return c.closeCh
 }
 
-// Wrapper is a Protobuf message that can contain a variety of inner messages.
-// If a Channel's message type implements Wrapper, the channel will
-// automatically (un)wrap passed messages using the container type, such that
-// the channel can transparently support multiple message types.
+// Wrapper is a Protobuf message that can contain a variety of inner messages
+// (e.g. via oneof fields). If a Channel's message type implements Wrapper, the
+// Router will automatically wrap outbound messages and unwrap inbound messages,
+// such that reactors do not have to do this themselves.
 type Wrapper interface {
 	// Wrap will take a message and wrap it in this one.
 	Wrap(proto.Message) error
@@ -166,7 +143,7 @@ type RouterOptions struct {
 	HandshakeTimeout time.Duration
 }
 
-// Validate validates the options.
+// Validate validates router options.
 func (o *RouterOptions) Validate() error {
 	return nil
 }
