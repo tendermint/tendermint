@@ -1337,7 +1337,6 @@ func TestPeerManager_Errored(t *testing.T) {
 
 	// However, erroring once connected will evict it.
 	require.NoError(t, peerManager.Errored(a.NodeID, errors.New("foo")))
-	require.Empty(t, peerManager.Peers())
 	evict, err = peerManager.TryEvictNext()
 	require.NoError(t, err)
 	require.Equal(t, a.NodeID, evict)
