@@ -125,7 +125,7 @@ func TestRouter(t *testing.T) {
 		assert.Equal(t, p2p.Envelope{
 			From:    peerID,
 			Message: &TestMessage{Value: "hi!"},
-		}, (<-channel.In()).Strip())
+		}, <-channel.In())
 	}
 
 	// We now send a broadcast, which we should return back from all peers.

@@ -18,22 +18,21 @@ import (
 // ChannelID is an arbitrary channel ID.
 type ChannelID uint16
 
-// Envelope specifies the message receiver and sender.
+// Envelope contains a message with sender/receiver routing info.
 type Envelope struct {
-	From      NodeID        // Message sender, or empty for outbound messages.
-	To        NodeID        // Message receiver, or empty for inbound messages.
-	Broadcast bool          // Send message to all connected peers, ignoring To.
-	Message   proto.Message // Payload.
+	From      NodeID        // sender (empty if outbound)
+	To        NodeID        // receiver (empty if inbound)
+	Broadcast bool          // send to all connected peers (ignores To)
+	Message   proto.Message // message payload
 
-	// For internal use in the Router.
+	// channelID is for internal Router use, set on outbound messages to inform
+	// the sendPeer() goroutine which transport channel to use.
+	//
+	// FIXME: If we migrate the Transport API to a byte-oriented multi-stream
+	// API, this will no longer be necessary since each channel will be mapped
+	// onto a stream during channel/peer setup. See:
+	// https://github.com/tendermint/spec/pull/227
 	channelID ChannelID
-}
-
-// Strip strips internal information from the envelope. Primarily used for
-// testing, such that returned envelopes can be compared with literals.
-func (e Envelope) Strip() Envelope {
-	e.channelID = 0
-	return e
 }
 
 // PeerError is a peer error reported via the Error channel.
@@ -706,7 +705,7 @@ func (r *Router) receivePeer(peerID NodeID, conn Connection) error {
 		}
 
 		select {
-		case queue.enqueue() <- Envelope{channelID: chID, From: peerID, Message: msg}:
+		case queue.enqueue() <- Envelope{From: peerID, Message: msg}:
 			r.logger.Debug("received message", "peer", peerID, "message", msg)
 		case <-queue.closed():
 			r.logger.Error("channel closed, dropping message", "peer", peerID, "channel", chID)
