@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -19,7 +21,15 @@ const (
 
 	// MaxBlockPartsCount is the maximum number of block parts.
 	MaxBlockPartsCount = (MaxBlockSizeBytes / BlockPartSizeBytes) + 1
+
+	ABCIPubKeyTypeEd25519   = ed25519.KeyType
+	ABCIPubKeyTypeSecp256k1 = secp256k1.KeyType
 )
+
+var ABCIPubKeyTypesToNames = map[string]string{
+	ABCIPubKeyTypeEd25519:   ed25519.PubKeyName,
+	ABCIPubKeyTypeSecp256k1: secp256k1.PubKeyName,
+}
 
 // ConsensusParams contains consensus critical parameters that determine the
 // validity of blocks.
