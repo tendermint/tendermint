@@ -1465,6 +1465,54 @@ func TestPeerManager_Subscribe_Broadcast(t *testing.T) {
 	require.Equal(t, expectDown, <-s3.Updates())
 }
 
+func TestPeerManager_Advertise(t *testing.T) {
+	aID := p2p.NodeID(strings.Repeat("a", 40))
+	aTCP := p2p.NodeAddress{Protocol: "tcp", NodeID: aID, Hostname: "127.0.0.1", Port: 26657, Path: "/path"}
+	aMem := p2p.NodeAddress{Protocol: "memory", NodeID: aID}
+
+	bID := p2p.NodeID(strings.Repeat("b", 40))
+	bTCP := p2p.NodeAddress{Protocol: "tcp", NodeID: bID, Hostname: "b10c::1", Port: 26657, Path: "/path"}
+	bMem := p2p.NodeAddress{Protocol: "memory", NodeID: bID}
+
+	cID := p2p.NodeID(strings.Repeat("c", 40))
+	cTCP := p2p.NodeAddress{Protocol: "tcp", NodeID: cID, Hostname: "host.domain", Port: 80}
+	cMem := p2p.NodeAddress{Protocol: "memory", NodeID: cID}
+
+	dID := p2p.NodeID(strings.Repeat("d", 40))
+
+	// Create an initial peer manager and add the peers.
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{
+		PeerScores: map[p2p.NodeID]p2p.PeerScore{aID: 3, bID: 2, cID: 1},
+	})
+	require.NoError(t, err)
+	defer peerManager.Close()
+
+	require.NoError(t, peerManager.Add(aTCP))
+	require.NoError(t, peerManager.Add(aMem))
+	require.NoError(t, peerManager.Add(bTCP))
+	require.NoError(t, peerManager.Add(bMem))
+	require.NoError(t, peerManager.Add(cTCP))
+	require.NoError(t, peerManager.Add(cMem))
+
+	// d should get all addresses.
+	require.ElementsMatch(t, []p2p.NodeAddress{
+		aTCP, aMem, bTCP, bMem, cTCP, cMem,
+	}, peerManager.Advertise(dID, 100))
+
+	// a should not get its own addresses.
+	require.ElementsMatch(t, []p2p.NodeAddress{
+		bTCP, bMem, cTCP, cMem,
+	}, peerManager.Advertise(aID, 100))
+
+	// Asking for 0 addresses should return, well, 0.
+	require.Empty(t, peerManager.Advertise(aID, 0))
+
+	// Asking for 2 addresses should get the highest-rated ones, i.e. a.
+	require.ElementsMatch(t, []p2p.NodeAddress{
+		aTCP, aMem,
+	}, peerManager.Advertise(dID, 2))
+}
+
 func TestPeerManager_SetHeight_GetHeight(t *testing.T) {
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
 	b := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("b", 40))}
