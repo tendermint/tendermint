@@ -267,19 +267,20 @@ func TestPeerManager_DialNext_Retry(t *testing.T) {
 		dial, err := peerManager.DialNext(ctx)
 		require.NoError(t, err)
 		require.Equal(t, a, dial)
+		elapsed := time.Since(start).Round(time.Millisecond)
 
 		switch i {
 		case 0:
-			require.LessOrEqual(t, time.Since(start), options.MinRetryTime)
+			require.LessOrEqual(t, elapsed, options.MinRetryTime)
 		case 1:
-			require.GreaterOrEqual(t, time.Since(start), options.MinRetryTime)
+			require.GreaterOrEqual(t, elapsed, options.MinRetryTime)
 		case 2:
-			require.GreaterOrEqual(t, time.Since(start), 2*options.MinRetryTime)
+			require.GreaterOrEqual(t, elapsed, 2*options.MinRetryTime)
 		case 3:
-			require.GreaterOrEqual(t, time.Since(start), 4*options.MinRetryTime)
+			require.GreaterOrEqual(t, elapsed, 4*options.MinRetryTime)
 		case 4, 5:
-			require.GreaterOrEqual(t, time.Since(start), options.MaxRetryTime)
-			require.LessOrEqual(t, time.Since(start), 8*options.MinRetryTime)
+			require.GreaterOrEqual(t, elapsed, options.MaxRetryTime)
+			require.LessOrEqual(t, elapsed, 8*options.MinRetryTime)
 		default:
 			require.Fail(t, "unexpected retry")
 		}
