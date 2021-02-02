@@ -36,7 +36,7 @@ const (
 )
 
 // PeerScore is a numeric score assigned to a peer (higher is better).
-type PeerScore uint16
+type PeerScore uint8
 
 const (
 	PeerScorePersistent PeerScore = 100 // persistent peers
@@ -131,6 +131,10 @@ type PeerManagerOptions struct {
 	// RetryTimeJitter is the upper bound of a random interval added to
 	// retry times, to avoid thundering herds. 0 disables jitter.
 	RetryTimeJitter time.Duration
+
+	// PeerScores sets fixed scores for specific peers. It is mainly used
+	// for testing. A score of 0 is ignored.
+	PeerScores map[NodeID]PeerScore
 
 	// persistentPeers provides fast PersistentPeers lookups. It is built
 	// by optimize().
@@ -303,9 +307,15 @@ func NewPeerManager(peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, er
 // configurePeers configures peers in the peer store with ephemeral runtime
 // configuration, e.g. PersistentPeers. The caller must hold the mutex lock.
 func (m *PeerManager) configurePeers() error {
-	// We only configure peers in PersistentPeers for now.
-	for _, peerID := range m.options.PersistentPeers {
-		if peer, ok := m.store.Get(peerID); ok {
+	configure := map[NodeID]bool{}
+	for _, id := range m.options.PersistentPeers {
+		configure[id] = true
+	}
+	for id := range m.options.PeerScores {
+		configure[id] = true
+	}
+	for id := range configure {
+		if peer, ok := m.store.Get(id); ok {
 			if err := m.store.Set(m.configurePeer(peer)); err != nil {
 				return err
 			}
@@ -317,6 +327,7 @@ func (m *PeerManager) configurePeers() error {
 // configurePeer configures a peer with ephemeral runtime configuration.
 func (m *PeerManager) configurePeer(peer peerInfo) peerInfo {
 	peer.Persistent = m.options.isPersistent(peer.ID)
+	peer.FixedScore = m.options.PeerScores[peer.ID]
 	return peer
 }
 
@@ -1065,6 +1076,7 @@ type peerInfo struct {
 	// These fields are ephemeral, i.e. not persisted to the database.
 	Persistent bool
 	Height     int64
+	FixedScore PeerScore // mainly for tests
 }
 
 // peerInfoFromProto converts a Protobuf PeerInfo message to a peerInfo,
@@ -1122,6 +1134,9 @@ func (p *peerInfo) Copy() peerInfo {
 // preferred over lower scores.
 func (p *peerInfo) Score() PeerScore {
 	var score PeerScore
+	if p.FixedScore > 0 {
+		return p.FixedScore
+	}
 	if p.Persistent {
 		score += PeerScorePersistent
 	}
