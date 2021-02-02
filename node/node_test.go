@@ -233,7 +233,7 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	logger := log.TestingLogger()
 
-	const height int64 = 1
+	const height uint64 = 1
 	state, stateDB, privVals := state(1, height)
 	stateStore := sm.NewStore(stateDB)
 	maxBytes := 16384
@@ -325,7 +325,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 
 	logger := log.TestingLogger()
 
-	const height int64 = 1
+	const height uint64 = 1
 	state, stateDB, _ := state(1, height)
 	stateStore := sm.NewStore(stateDB)
 	const maxBytes int64 = 16384
@@ -385,7 +385,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	logger := log.TestingLogger()
 
-	state, stateDB, _ := state(types.MaxVotesCount, int64(1))
+	state, stateDB, _ := state(types.MaxVotesCount, uint64(1))
 	stateStore := sm.NewStore(stateDB)
 	const maxBytes int64 = 1024 * 1024 * 2
 	state.ConsensusParams.Block.MaxBytes = maxBytes
@@ -522,7 +522,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 	assert.Equal(t, customBlockchainReactor, n.Switch().Reactor("BLOCKCHAIN"))
 }
 
-func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
+func state(nVals int, height uint64) (sm.State, dbm.DB, []types.PrivValidator) {
 	privVals := make([]types.PrivValidator, nVals)
 	vals := make([]types.GenesisValidator, nVals)
 	for i := 0; i < nVals; i++ {

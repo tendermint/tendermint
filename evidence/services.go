@@ -7,6 +7,6 @@ import (
 //go:generate mockery --case underscore --name BlockStore
 
 type BlockStore interface {
-	LoadBlockMeta(height int64) *types.BlockMeta
-	LoadBlockCommit(height int64) *types.Commit
+	LoadBlockMeta(height uint64) *types.BlockMeta
+	LoadBlockCommit(height uint64) *types.Commit
 }

@@ -31,7 +31,7 @@ type TrustOptions struct {
 
 	// Header's Height and Hash must both be provided to force the trusting of a
 	// particular header.
-	Height int64
+	Height uint64
 	Hash   []byte
 }
 

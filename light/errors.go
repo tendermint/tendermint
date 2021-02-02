@@ -50,8 +50,8 @@ var ErrFailedHeaderCrossReferencing = errors.New(
 // ErrVerificationFailed means either sequential or skipping verification has
 // failed to verify from header #1 to header #2 due to some reason.
 type ErrVerificationFailed struct {
-	From   int64
-	To     int64
+	From   uint64
+	To     uint64
 	Reason error
 }
 

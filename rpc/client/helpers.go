@@ -10,11 +10,11 @@ import (
 )
 
 // Waiter is informed of current height, decided whether to quit early
-type Waiter func(delta int64) (abort error)
+type Waiter func(delta uint64) (abort error)
 
 // DefaultWaitStrategy is the standard backoff algorithm,
 // but you can plug in another one
-func DefaultWaitStrategy(delta int64) (abort error) {
+func DefaultWaitStrategy(delta uint64) (abort error) {
 	if delta > 10 {
 		return fmt.Errorf("waiting for %d blocks... aborting", delta)
 	} else if delta > 0 {
@@ -32,11 +32,11 @@ func DefaultWaitStrategy(delta int64) (abort error) {
 //
 // If waiter is nil, we use DefaultWaitStrategy, but you can also
 // provide your own implementation
-func WaitForHeight(c StatusClient, h int64, waiter Waiter) error {
+func WaitForHeight(c StatusClient, h uint64, waiter Waiter) error {
 	if waiter == nil {
 		waiter = DefaultWaitStrategy
 	}
-	delta := int64(1)
+	delta := uint64(1)
 	for delta > 0 {
 		s, err := c.Status(context.Background())
 		if err != nil {

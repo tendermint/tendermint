@@ -20,9 +20,9 @@ import (
 func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 	// primary performs a lunatic attack
 	var (
-		latestHeight      = int64(10)
+		latestHeight      = uint64(10)
 		valSize           = 5
-		divergenceHeight  = int64(6)
+		divergenceHeight  = uint64(6)
 		primaryHeaders    = make(map[int64]*types.SignedHeader, latestHeight)
 		primaryValidators = make(map[int64]*types.ValidatorSet, latestHeight)
 	)

@@ -821,7 +821,7 @@ func (m *PeerManager) findUpgradeCandidate(id NodeID, score PeerScore) NodeID {
 // consensus and mempool reactors. These dependencies should be removed from the
 // reactors, and instead query this information independently via new P2P
 // protocol additions.
-func (m *PeerManager) GetHeight(peerID NodeID) int64 {
+func (m *PeerManager) GetHeight(peerID NodeID) uint64 {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -837,7 +837,7 @@ func (m *PeerManager) GetHeight(peerID NodeID) int64 {
 // consensus and mempool reactors. These dependencies should be removed from the
 // reactors, and instead query this information independently via new P2P
 // protocol additions.
-func (m *PeerManager) SetHeight(peerID NodeID, height int64) error {
+func (m *PeerManager) SetHeight(peerID NodeID, height uint64) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -1009,7 +1009,7 @@ type peerInfo struct {
 
 	// These fields are ephemeral, i.e. not persisted to the database.
 	Persistent bool
-	Height     int64
+	Height     uint64
 }
 
 // peerInfoFromProto converts a Protobuf PeerInfo message to a peerInfo,

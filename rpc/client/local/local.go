@@ -123,7 +123,7 @@ func (c *Local) ConsensusState(ctx context.Context) (*ctypes.ResultConsensusStat
 	return core.ConsensusState(c.ctx)
 }
 
-func (c *Local) ConsensusParams(ctx context.Context, height *int64) (*ctypes.ResultConsensusParams, error) {
+func (c *Local) ConsensusParams(ctx context.Context, height *uint64) (*ctypes.ResultConsensusParams, error) {
 	return core.ConsensusParams(c.ctx, height)
 }
 
@@ -145,7 +145,7 @@ func (c *Local) DialPeers(
 	return core.UnsafeDialPeers(c.ctx, peers, persistent, unconditional, private)
 }
 
-func (c *Local) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
+func (c *Local) BlockchainInfo(ctx context.Context, minHeight, maxHeight uint64) (*ctypes.ResultBlockchainInfo, error) {
 	return core.BlockchainInfo(c.ctx, minHeight, maxHeight)
 }
 
@@ -153,7 +153,7 @@ func (c *Local) Genesis(ctx context.Context) (*ctypes.ResultGenesis, error) {
 	return core.Genesis(c.ctx)
 }
 
-func (c *Local) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock, error) {
+func (c *Local) Block(ctx context.Context, height *uint64) (*ctypes.ResultBlock, error) {
 	return core.Block(c.ctx, height)
 }
 
@@ -161,15 +161,15 @@ func (c *Local) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBlo
 	return core.BlockByHash(c.ctx, hash)
 }
 
-func (c *Local) BlockResults(ctx context.Context, height *int64) (*ctypes.ResultBlockResults, error) {
+func (c *Local) BlockResults(ctx context.Context, height *uint64) (*ctypes.ResultBlockResults, error) {
 	return core.BlockResults(c.ctx, height)
 }
 
-func (c *Local) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit, error) {
+func (c *Local) Commit(ctx context.Context, height *uint64) (*ctypes.ResultCommit, error) {
 	return core.Commit(c.ctx, height)
 }
 
-func (c *Local) Validators(ctx context.Context, height *int64, page, perPage *int) (*ctypes.ResultValidators, error) {
+func (c *Local) Validators(ctx context.Context, height *uint64, page, perPage *int) (*ctypes.ResultValidators, error) {
 	return core.Validators(c.ctx, height, page, perPage)
 }
 

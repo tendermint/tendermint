@@ -374,7 +374,7 @@ func (c *baseRPCClient) Health(ctx context.Context) (*ctypes.ResultHealth, error
 func (c *baseRPCClient) BlockchainInfo(
 	ctx context.Context,
 	minHeight,
-	maxHeight int64,
+	maxHeight uint64,
 ) (*ctypes.ResultBlockchainInfo, error) {
 	result := new(ctypes.ResultBlockchainInfo)
 	_, err := c.caller.Call(ctx, "blockchain",
@@ -395,7 +395,7 @@ func (c *baseRPCClient) Genesis(ctx context.Context) (*ctypes.ResultGenesis, err
 	return result, nil
 }
 
-func (c *baseRPCClient) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock, error) {
+func (c *baseRPCClient) Block(ctx context.Context, height *uint64) (*ctypes.ResultBlock, error) {
 	result := new(ctypes.ResultBlock)
 	params := make(map[string]interface{})
 	if height != nil {
@@ -422,7 +422,7 @@ func (c *baseRPCClient) BlockByHash(ctx context.Context, hash []byte) (*ctypes.R
 
 func (c *baseRPCClient) BlockResults(
 	ctx context.Context,
-	height *int64,
+	height *uint64,
 ) (*ctypes.ResultBlockResults, error) {
 	result := new(ctypes.ResultBlockResults)
 	params := make(map[string]interface{})
@@ -436,7 +436,7 @@ func (c *baseRPCClient) BlockResults(
 	return result, nil
 }
 
-func (c *baseRPCClient) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit, error) {
+func (c *baseRPCClient) Commit(ctx context.Context, height *uint64) (*ctypes.ResultCommit, error) {
 	result := new(ctypes.ResultCommit)
 	params := make(map[string]interface{})
 	if height != nil {
@@ -492,7 +492,7 @@ func (c *baseRPCClient) TxSearch(
 
 func (c *baseRPCClient) Validators(
 	ctx context.Context,
-	height *int64,
+	height *uint64,
 	page,
 	perPage *int,
 ) (*ctypes.ResultValidators, error) {

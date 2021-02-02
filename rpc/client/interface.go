@@ -64,11 +64,11 @@ type ABCIClient interface {
 // SignClient groups together the functionality needed to get valid signatures
 // and prove anything about the chain.
 type SignClient interface {
-	Block(ctx context.Context, height *int64) (*ctypes.ResultBlock, error)
+	Block(ctx context.Context, height *uint64) (*ctypes.ResultBlock, error)
 	BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBlock, error)
-	BlockResults(ctx context.Context, height *int64) (*ctypes.ResultBlockResults, error)
-	Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit, error)
-	Validators(ctx context.Context, height *int64, page, perPage *int) (*ctypes.ResultValidators, error)
+	BlockResults(ctx context.Context, height *uint64) (*ctypes.ResultBlockResults, error)
+	Commit(ctx context.Context, height *uint64) (*ctypes.ResultCommit, error)
+	Validators(ctx context.Context, height *uint64, page, perPage *int) (*ctypes.ResultValidators, error)
 	Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.ResultTx, error)
 	TxSearch(ctx context.Context, query string, prove bool, page, perPage *int,
 		orderBy string) (*ctypes.ResultTxSearch, error)
@@ -77,7 +77,7 @@ type SignClient interface {
 // HistoryClient provides access to data from genesis to now in large chunks.
 type HistoryClient interface {
 	Genesis(context.Context) (*ctypes.ResultGenesis, error)
-	BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error)
+	BlockchainInfo(ctx context.Context, minHeight, maxHeight uint64) (*ctypes.ResultBlockchainInfo, error)
 }
 
 // StatusClient provides access to general chain info.

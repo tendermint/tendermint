@@ -39,7 +39,7 @@ const (
 // peer information. This should eventually be replaced with a message-oriented
 // approach utilizing the p2p stack.
 type PeerManager interface {
-	GetHeight(p2p.NodeID) int64
+	GetHeight(p2p.NodeID) uint64
 }
 
 // Reactor implements a service that contains mempool of txs that are broadcasted

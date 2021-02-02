@@ -19,7 +19,7 @@ type Provider interface {
 	// issues, an error will be returned.
 	// If there's no LightBlock for the given height, ErrLightBlockNotFound
 	// error is returned.
-	LightBlock(ctx context.Context, height int64) (*types.LightBlock, error)
+	LightBlock(ctx context.Context, height uint64) (*types.LightBlock, error)
 
 	// ReportEvidence reports an evidence of misbehavior.
 	ReportEvidence(context.Context, types.Evidence) error

@@ -80,8 +80,8 @@ func TestBlockEvents(t *testing.T) {
 				}
 			})
 
-			var firstBlockHeight int64
-			for i := int64(0); i < 3; i++ {
+			var firstBlockHeight uint64
+			for i := uint64(0); i < 3; i++ {
 				event := <-eventCh
 				blockEvent, ok := event.Data.(types.EventDataNewBlock)
 				require.True(t, ok)

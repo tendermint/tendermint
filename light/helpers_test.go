@@ -120,7 +120,7 @@ func makeVote(header *types.Header, valset *types.ValidatorSet,
 	return vote
 }
 
-func genHeader(chainID string, height int64, bTime time.Time, txs types.Txs,
+func genHeader(chainID string, height uint64, bTime time.Time, txs types.Txs,
 	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte) *types.Header {
 
 	return &types.Header{

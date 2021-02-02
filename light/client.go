@@ -372,7 +372,7 @@ func (c *Client) initializeWithTrustOptions(ctx context.Context, options TrustOp
 //  - header has not been verified yet and is therefore not in the store
 //
 // Safe for concurrent use by multiple goroutines.
-func (c *Client) TrustedLightBlock(height int64) (*types.LightBlock, error) {
+func (c *Client) TrustedLightBlock(height uint64) (*types.LightBlock, error) {
 	height, err := c.compareWithLatestHeight(height)
 	if err != nil {
 		return nil, err
@@ -380,7 +380,7 @@ func (c *Client) TrustedLightBlock(height int64) (*types.LightBlock, error) {
 	return c.trustedStore.LightBlock(height)
 }
 
-func (c *Client) compareWithLatestHeight(height int64) (int64, error) {
+func (c *Client) compareWithLatestHeight(height uint64) (uint64, error) {
 	latestHeight, err := c.LastTrustedHeight()
 	if err != nil {
 		return 0, fmt.Errorf("can't get last trusted height: %w", err)
@@ -805,7 +805,7 @@ func (c *Client) verifySkippingAgainstPrimary(
 // there are no trusted headers.
 //
 // Safe for concurrent use by multiple goroutines.
-func (c *Client) LastTrustedHeight() (int64, error) {
+func (c *Client) LastTrustedHeight() (uint64, error) {
 	return c.trustedStore.LastLightBlockHeight()
 }
 
@@ -813,7 +813,7 @@ func (c *Client) LastTrustedHeight() (int64, error) {
 // there are no trusted headers.
 //
 // Safe for concurrent use by multiple goroutines.
-func (c *Client) FirstTrustedHeight() (int64, error) {
+func (c *Client) FirstTrustedHeight() (uint64, error) {
 	return c.trustedStore.FirstLightBlockHeight()
 }
 
@@ -852,7 +852,7 @@ func (c *Client) Cleanup() error {
 
 // cleanupAfter deletes all headers & validator sets after +height+. It also
 // resets latestTrustedBlock to the latest header.
-func (c *Client) cleanupAfter(height int64) error {
+func (c *Client) cleanupAfter(height uint64) error {
 	prevHeight := c.latestTrustedBlock.Height
 
 	for {
@@ -972,7 +972,7 @@ func (c *Client) replacePrimaryProvider() error {
 // lightBlockFromPrimary retrieves the lightBlock from the primary provider
 // at the specified height. Handles dropout by the primary provider by swapping
 // with an alternative provider.
-func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*types.LightBlock, error) {
+func (c *Client) lightBlockFromPrimary(ctx context.Context, height uint64) (*types.LightBlock, error) {
 	c.providerMutex.Lock()
 	l, err := c.primary.LightBlock(ctx, height)
 	c.providerMutex.Unlock()

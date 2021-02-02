@@ -157,11 +157,11 @@ func newScPeer(peerID p2p.NodeID) *scPeer {
 // scheduler will attempt to schedule new block requests with `trySchedule`
 // events and remove slow peers with `tryPrune` events.
 type scheduler struct {
-	initHeight int64
+	initHeight uint64
 
 	// next block that needs to be processed. All blocks with smaller height are
 	// in Processed state.
-	height int64
+	height uint64
 
 	// lastAdvance tracks the last time a block execution happened.
 	// syncTimeout is the maximum time the scheduler waits to advance in the fast sync process before finishing.
@@ -197,7 +197,7 @@ func (sc scheduler) String() string {
 		sc.initHeight, sc.blockStates, sc.peers, sc.pendingBlocks, sc.pendingTime, sc.receivedBlocks)
 }
 
-func newScheduler(initHeight int64, startTime time.Time) *scheduler {
+func newScheduler(initHeight uint64, startTime time.Time) *scheduler {
 	sc := scheduler{
 		initHeight:     initHeight,
 		lastAdvance:    startTime,

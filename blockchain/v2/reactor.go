@@ -23,10 +23,10 @@ const (
 )
 
 type blockStore interface {
-	LoadBlock(height int64) *types.Block
+	LoadBlock(height uint64) *types.Block
 	SaveBlock(*types.Block, *types.PartSet, *types.Commit)
-	Base() int64
-	Height() int64
+	Base() uint64
+	Height() uint64
 }
 
 // BlockchainReactor handles fast sync protocol.
@@ -40,8 +40,8 @@ type BlockchainReactor struct {
 	logger      log.Logger
 
 	mtx           tmsync.RWMutex
-	maxPeerHeight int64
-	syncHeight    int64
+	maxPeerHeight uint64
+	syncHeight    uint64
 	events        chan Event // non-nil during a fast sync
 
 	reporter behaviour.Reporter
@@ -50,7 +50,7 @@ type BlockchainReactor struct {
 }
 
 type blockApplier interface {
-	ApplyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, int64, error)
+	ApplyBlock(state state.State, blockID types.BlockID, block *types.Block) (state.State, uint64, error)
 }
 
 // XXX: unify naming in this package around tmState
