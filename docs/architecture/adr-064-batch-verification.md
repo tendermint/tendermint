@@ -11,7 +11,7 @@ Tendermint uses public private key cryptography for validator signing. When a bl
 ## Alternative Approaches
 
 - Signature aggregation
-  - Signature aggregation is an alternative to batch verification. Signature aggregation leads to fast verification and smaller block sizes. At the time of writing this ADR there is on going work to enable signature aggregation in Tendermint. The reason why we have opted to not introduce it at this time is because it will slow down verification times. One of the two benefits can be done, aggregation, but verification would suffer because the software would need to verify each signature individually due to their uniqueness, then aggregate them. For example if we were to implement signature aggregation with BLS, there could be a potential slow down of 10x-100x in verification speeds.
+  - Signature aggregation is an alternative to batch verification. Signature aggregation leads to fast verification and smaller block sizes. At the time of writing this ADR there is on going work to enable signature aggregation in Tendermint. The reason why we have opted to not introduce it at this time is because every validator signs a unique message. One of the two benefits can be done, aggregation, but verification would suffer because the software would need to verify each signature individually due to their uniqueness. For example if we were to implement signature aggregation with BLS, there could be a potential slow down of 10x-100x in verification speeds.
 
 ## Decision
 
@@ -24,7 +24,7 @@ A new interface will be introduced. This interface will have three methods `NewB
 ```go
 type BatchVerifier interface {
   NewBatchVerifier() BatchVerifier // NewBatchVerifier create a new verifier where keys, signatures and messages can be added as entries
-  Add(key crypto.Pubkey, signature, message []byte) bool // Add appends an entry into the BatchVerifier.
+  Add(key crypto.Pubkey, signature, message []byte) error // Add appends an entry into the BatchVerifier.
   Verify() bool // Verify verifies all the entries in the BatchVerifier. If the verification fails it is unknown which entry failed and each entry will need to be verified individually.
 }
 ```
@@ -60,9 +60,6 @@ Starting out, only ed25519 will support batch verification.
 ## Status
 
 Proposed
-## Consequences
-
-- If verification fails it could make verification slower than single signature verification.
 
 ### Positive
 
