@@ -2,6 +2,7 @@ package p2p_test
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -287,23 +288,23 @@ func TestPeerManager_DialNext_Retry(t *testing.T) {
 }
 
 func TestPeerManager_DialNext_WakeOnAdd(t *testing.T) {
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+
 	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 
 	// Spawn a goroutine to add a peer after a delay.
-	address := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
 	go func() {
 		time.Sleep(200 * time.Millisecond)
-		err = peerManager.Add(address)
-		require.NoError(t, err)
+		require.NoError(t, peerManager.Add(a))
 	}()
 
 	// This will block until peer is added above.
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	a, err := peerManager.DialNext(ctx)
+	dial, err := peerManager.DialNext(ctx)
 	require.NoError(t, err)
-	require.Equal(t, address, a)
+	require.Equal(t, a, dial)
 }
 
 func TestPeerManager_DialNext_WakeOnDialFailed(t *testing.T) {
@@ -1099,4 +1100,172 @@ func TestPeerManager_Ready(t *testing.T) {
 	require.NoError(t, peerManager.Ready(b.NodeID))
 	require.Equal(t, p2p.PeerStatusDown, peerManager.Status(b.NodeID))
 	require.Empty(t, sub.Updates())
+}
+
+// See TryEvictNext for most tests, this just tests blocking behavior.
+func TestPeerManager_EvictNext(t *testing.T) {
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+
+	require.NoError(t, peerManager.Add(a))
+	require.NoError(t, peerManager.Accepted(a.NodeID))
+	require.NoError(t, peerManager.Ready(a.NodeID))
+
+	// Since there are no peers to evict, EvictNext should block until timeout.
+	timeoutCtx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	defer cancel()
+	_, err = peerManager.EvictNext(timeoutCtx)
+	require.Error(t, err)
+	require.Equal(t, context.DeadlineExceeded, err)
+
+	// Erroring the peer will return it from EvictNext().
+	require.NoError(t, peerManager.Error(a.NodeID, errors.New("foo")))
+	evict, err := peerManager.EvictNext(timeoutCtx)
+	require.NoError(t, err)
+	require.Equal(t, a.NodeID, evict)
+
+	// Since there are no more peers to evict, the next call should block.
+	timeoutCtx, cancel = context.WithTimeout(ctx, 100*time.Millisecond)
+	defer cancel()
+	_, err = peerManager.EvictNext(timeoutCtx)
+	require.Error(t, err)
+	require.Equal(t, context.DeadlineExceeded, err)
+}
+
+func TestPeerManager_EvictNext_WakeOnError(t *testing.T) {
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+
+	require.NoError(t, peerManager.Add(a))
+	require.NoError(t, peerManager.Accepted(a.NodeID))
+	require.NoError(t, peerManager.Ready(a.NodeID))
+
+	// Spawn a goroutine to error a peer after a delay.
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		require.NoError(t, peerManager.Error(a.NodeID, errors.New("foo")))
+	}()
+
+	// This will block until peer errors above.
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	evict, err := peerManager.EvictNext(ctx)
+	require.NoError(t, err)
+	require.Equal(t, a.NodeID, evict)
+}
+
+func TestPeerManager_EvictNext_WakeOnUpgradeDialed(t *testing.T) {
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+	b := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("b", 40))}
+
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{
+		MaxConnected:        1,
+		MaxConnectedUpgrade: 1,
+		PeerScores:          map[p2p.NodeID]p2p.PeerScore{b.NodeID: 1},
+	})
+	require.NoError(t, err)
+
+	// Connect a.
+	require.NoError(t, peerManager.Add(a))
+	require.NoError(t, peerManager.Accepted(a.NodeID))
+	require.NoError(t, peerManager.Ready(a.NodeID))
+
+	// Spawn a goroutine to upgrade to b with a delay.
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		require.NoError(t, peerManager.Add(b))
+		dial, err := peerManager.TryDialNext()
+		require.NoError(t, err)
+		require.Equal(t, b, dial)
+		require.NoError(t, peerManager.Dialed(b))
+	}()
+
+	// This will block until peer is upgraded above.
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	evict, err := peerManager.EvictNext(ctx)
+	require.NoError(t, err)
+	require.Equal(t, a.NodeID, evict)
+}
+
+func TestPeerManager_EvictNext_WakeOnUpgradeAccepted(t *testing.T) {
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+	b := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("b", 40))}
+
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{
+		MaxConnected:        1,
+		MaxConnectedUpgrade: 1,
+		PeerScores:          map[p2p.NodeID]p2p.PeerScore{b.NodeID: 1},
+	})
+	require.NoError(t, err)
+
+	// Connect a.
+	require.NoError(t, peerManager.Add(a))
+	require.NoError(t, peerManager.Accepted(a.NodeID))
+	require.NoError(t, peerManager.Ready(a.NodeID))
+
+	// Spawn a goroutine to upgrade b with a delay.
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		require.NoError(t, peerManager.Accepted(b.NodeID))
+	}()
+
+	// This will block until peer is upgraded above.
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	evict, err := peerManager.EvictNext(ctx)
+	require.NoError(t, err)
+	require.Equal(t, a.NodeID, evict)
+}
+func TestPeerManager_TryEvictNext(t *testing.T) {
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+	b := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("b", 40))}
+
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+
+	require.NoError(t, peerManager.Add(a))
+	require.NoError(t, peerManager.Add(b))
+
+	// Nothing is evicted with no peers connected.
+	evict, err := peerManager.TryEvictNext()
+	require.NoError(t, err)
+	require.Zero(t, evict)
+
+	// Connecting to b won't evict anything either.
+	require.NoError(t, peerManager.Accepted(b.NodeID))
+	require.NoError(t, peerManager.Ready(b.NodeID))
+
+	// If a errors but isn't connected, it's not evicted.
+	require.NoError(t, peerManager.Error(a.NodeID, errors.New("foo")))
+	evict, err = peerManager.TryEvictNext()
+	require.NoError(t, err)
+	require.Zero(t, evict)
+
+	// If we connect a it shouldn't be evicted for the previous error.
+	require.NoError(t, peerManager.Accepted(a.NodeID))
+	require.NoError(t, peerManager.Ready(a.NodeID))
+	evict, err = peerManager.TryEvictNext()
+	require.NoError(t, err)
+	require.Zero(t, evict)
+
+	// But if it errors while connected it should be evicted.
+	require.NoError(t, peerManager.Error(a.NodeID, errors.New("foo")))
+	evict, err = peerManager.TryEvictNext()
+	require.NoError(t, err)
+	require.Equal(t, a.NodeID, evict)
+
+	// While a is being evicted (before disconnect), it shouldn't get evicted again.
+	evict, err = peerManager.TryEvictNext()
+	require.NoError(t, err)
+	require.Zero(t, evict)
+
+	require.NoError(t, peerManager.Error(a.NodeID, errors.New("foo")))
+	evict, err = peerManager.TryEvictNext()
+	require.NoError(t, err)
+	require.Zero(t, evict)
 }

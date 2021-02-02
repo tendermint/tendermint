@@ -680,7 +680,8 @@ func (m *PeerManager) TryEvictNext() (NodeID, error) {
 		return "", nil
 	}
 
-	// If we're above capacity, just pick the lowest-ranked peer to evict.
+	// If we're above capacity (shouldn't really happen), just pick the
+	// lowest-ranked peer to evict.
 	ranked := m.store.Ranked()
 	for i := len(ranked) - 1; i >= 0; i-- {
 		peer := ranked[i]
@@ -719,12 +720,13 @@ func (m *PeerManager) Disconnected(peerID NodeID) error {
 //
 // FIXME: This will cause the peer manager to immediately try to reconnect to
 // the peer, which is probably not always what we want.
-func (m *PeerManager) Error(peerID NodeID, err error) {
+func (m *PeerManager) Error(peerID NodeID, err error) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
 	m.evict[peerID] = true
 	m.evictWaker.Wake()
+	return nil
 }
 
 // Advertise returns a list of peer addresses to advertise to a peer.
