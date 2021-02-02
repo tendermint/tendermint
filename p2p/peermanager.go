@@ -700,20 +700,26 @@ func (m *PeerManager) Disconnected(peerID NodeID) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
+	ready := m.ready[peerID]
+
 	delete(m.connected, peerID)
-	delete(m.ready, peerID)
 	delete(m.upgrading, peerID)
 	delete(m.evict, peerID)
 	delete(m.evicting, peerID)
-	m.broadcast(PeerUpdate{
-		NodeID: peerID,
-		Status: PeerStatusDown,
-	})
+	delete(m.ready, peerID)
+
+	if ready {
+		m.broadcast(PeerUpdate{
+			NodeID: peerID,
+			Status: PeerStatusDown,
+		})
+	}
+
 	m.dialWaker.Wake()
 	return nil
 }
 
-// Error reports a peer error, causing the peer to be evicted if it's
+// Errored reports a peer error, causing the peer to be evicted if it's
 // currently connected.
 //
 // FIXME: This should probably be replaced with a peer behavior API, see
@@ -721,7 +727,7 @@ func (m *PeerManager) Disconnected(peerID NodeID) error {
 //
 // FIXME: This will cause the peer manager to immediately try to reconnect to
 // the peer, which is probably not always what we want.
-func (m *PeerManager) Error(peerID NodeID, err error) error {
+func (m *PeerManager) Errored(peerID NodeID, err error) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 

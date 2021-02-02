@@ -257,7 +257,7 @@ func (r *Router) routeChannel(channel *Channel) {
 			}
 			// FIXME: We just evict the peer for now.
 			r.logger.Error("peer error, evicting", "peer", peerError.NodeID, "err", peerError.Err)
-			if err := r.peerManager.Error(peerError.NodeID, peerError.Err); err != nil {
+			if err := r.peerManager.Errored(peerError.NodeID, peerError.Err); err != nil {
 				r.logger.Error("failed to report peer error", "peer", peerError.NodeID, "err", err)
 			}
 
