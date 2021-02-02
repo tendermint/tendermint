@@ -1223,37 +1223,22 @@ func TestPeerManager_EvictNext_WakeOnUpgradeAccepted(t *testing.T) {
 }
 func TestPeerManager_TryEvictNext(t *testing.T) {
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
-	b := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("b", 40))}
 
 	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 
 	require.NoError(t, peerManager.Add(a))
-	require.NoError(t, peerManager.Add(b))
 
 	// Nothing is evicted with no peers connected.
 	evict, err := peerManager.TryEvictNext()
 	require.NoError(t, err)
 	require.Zero(t, evict)
 
-	// Connecting to b won't evict anything either.
-	require.NoError(t, peerManager.Accepted(b.NodeID))
-	require.NoError(t, peerManager.Ready(b.NodeID))
-
-	// If a errors but isn't connected, it's not evicted.
-	require.NoError(t, peerManager.Error(a.NodeID, errors.New("foo")))
-	evict, err = peerManager.TryEvictNext()
-	require.NoError(t, err)
-	require.Zero(t, evict)
-
-	// If we connect a it shouldn't be evicted for the previous error.
+	// Connecting to a won't evict anything either.
 	require.NoError(t, peerManager.Accepted(a.NodeID))
 	require.NoError(t, peerManager.Ready(a.NodeID))
-	evict, err = peerManager.TryEvictNext()
-	require.NoError(t, err)
-	require.Zero(t, evict)
 
-	// But if it errors while connected it should be evicted.
+	// But if a errors it should be evicted.
 	require.NoError(t, peerManager.Error(a.NodeID, errors.New("foo")))
 	evict, err = peerManager.TryEvictNext()
 	require.NoError(t, err)
@@ -1268,4 +1253,39 @@ func TestPeerManager_TryEvictNext(t *testing.T) {
 	evict, err = peerManager.TryEvictNext()
 	require.NoError(t, err)
 	require.Zero(t, evict)
+}
+
+func TestPeerManager_Error(t *testing.T) {
+	a := p2p.NodeAddress{Protocol: "memory", NodeID: p2p.NodeID(strings.Repeat("a", 40))}
+
+	peerManager, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+
+	// Erroring an unknown peer does nothing.
+	require.NoError(t, peerManager.Error(a.NodeID, errors.New("foo")))
+	require.Empty(t, peerManager.Peers())
+	evict, err := peerManager.TryEvictNext()
+	require.NoError(t, err)
+	require.Zero(t, evict)
+
+	// Erroring a known peer does nothing, and won't evict it later,
+	// even when it connects.
+	require.NoError(t, peerManager.Add(a))
+	require.NoError(t, peerManager.Error(a.NodeID, errors.New("foo")))
+	evict, err = peerManager.TryEvictNext()
+	require.NoError(t, err)
+	require.Zero(t, evict)
+
+	require.NoError(t, peerManager.Accepted(a.NodeID))
+	require.NoError(t, peerManager.Ready(a.NodeID))
+	evict, err = peerManager.TryEvictNext()
+	require.NoError(t, err)
+	require.Zero(t, evict)
+
+	// However, erroring once connected will evict it.
+	require.NoError(t, peerManager.Error(a.NodeID, errors.New("foo")))
+	require.Empty(t, peerManager.Peers())
+	evict, err = peerManager.TryEvictNext()
+	require.NoError(t, err)
+	require.Equal(t, a.NodeID, evict)
 }

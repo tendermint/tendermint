@@ -713,7 +713,8 @@ func (m *PeerManager) Disconnected(peerID NodeID) error {
 	return nil
 }
 
-// Error reports a peer error, causing the peer to be evicted.
+// Error reports a peer error, causing the peer to be evicted if it's
+// currently connected.
 //
 // FIXME: This should probably be replaced with a peer behavior API, see
 // PeerError comments for more details.
@@ -724,7 +725,10 @@ func (m *PeerManager) Error(peerID NodeID, err error) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	m.evict[peerID] = true
+	if m.connected[peerID] {
+		m.evict[peerID] = true
+	}
+
 	m.evictWaker.Wake()
 	return nil
 }
