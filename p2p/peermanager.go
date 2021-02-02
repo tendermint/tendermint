@@ -527,9 +527,11 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 	if m.connected[address.NodeID] {
 		return fmt.Errorf("peer %v is already connected", address.NodeID)
 	}
-	if m.options.MaxConnected > 0 &&
-		len(m.connected) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
-		return fmt.Errorf("already connected to maximum number of peers")
+	if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
+		if upgradeFromPeer == "" || len(m.connected) >=
+			int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
+			return fmt.Errorf("already connected to maximum number of peers")
+		}
 	}
 
 	peer, ok := m.store.Get(address.NodeID)
@@ -549,8 +551,8 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 
 	if upgradeFromPeer != "" && m.options.MaxConnected > 0 &&
 		len(m.connected) >= int(m.options.MaxConnected) {
-		// Look for an even lower-scored peer that may have appeared
-		// since we started the upgrade.
+		// Look for an even lower-scored peer that may have appeared since we
+		// started the upgrade.
 		if p, ok := m.store.Get(upgradeFromPeer); ok {
 			if u := m.findUpgradeCandidate(p.ID, p.Score()); u != "" {
 				upgradeFromPeer = u
@@ -834,6 +836,18 @@ func (m *PeerManager) Scores() map[NodeID]PeerScore {
 		scores[peer.ID] = peer.Score()
 	}
 	return scores
+}
+
+// Status returns the status for a peer, primarily for testing.
+func (m *PeerManager) Status(id NodeID) PeerStatus {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	switch {
+	case m.ready[id]:
+		return PeerStatusUp
+	default:
+		return PeerStatusDown
+	}
 }
 
 // findUpgradeCandidate looks for a lower-scored peer that we could evict
