@@ -446,6 +446,7 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 		return len(acceptCh) == 3
 	}, time.Second, 10*time.Millisecond)
 	close(closeCh)
+	time.Sleep(100 * time.Millisecond)
 
 	require.NoError(t, router.Stop())
 	mockTransport.AssertExpectations(t)
@@ -579,6 +580,7 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 		return len(dialCh) == 3
 	}, time.Second, 10*time.Millisecond)
 	close(closeCh)
+	time.Sleep(100 * time.Millisecond)
 
 	require.NoError(t, router.Stop())
 	mockTransport.AssertExpectations(t)
