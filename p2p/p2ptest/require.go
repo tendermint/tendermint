@@ -35,7 +35,7 @@ func RequireReceive(t *testing.T, channel *p2p.Channel, expect p2p.Envelope) {
 		require.Fail(t, "channel %v is closed", channel.ID)
 
 	case <-timer.C:
-		require.Fail(t, "timed out waiting for envelope %v on channel %v", expect, channel.ID)
+		require.Fail(t, "timed out waiting for message", "%v on channel %v", expect, channel.ID)
 	}
 }
 
@@ -74,7 +74,7 @@ func RequireSend(t *testing.T, channel *p2p.Channel, envelope p2p.Envelope) {
 	select {
 	case channel.Out <- envelope:
 	case <-timer.C:
-		require.Fail(t, "timed out sending envelope %v on channel %v", envelope, channel.ID)
+		require.Fail(t, "timed out sending message", "%v on channel %v", envelope, channel.ID)
 	}
 }
 
@@ -95,7 +95,7 @@ func RequireSendReceive(
 func RequireNoUpdates(t *testing.T, peerUpdates *p2p.PeerUpdates) {
 	select {
 	case update := <-peerUpdates.Updates():
-		require.Fail(t, "expected no peer updates, got %v", update)
+		require.Fail(t, "unexpected peer updates", "got %v", update)
 	default:
 	}
 }
@@ -113,7 +113,7 @@ func RequireUpdate(t *testing.T, peerUpdates *p2p.PeerUpdates, expect p2p.PeerUp
 		require.Fail(t, "peer updates subscription is closed")
 
 	case <-timer.C:
-		require.Fail(t, "timed out waiting for peer update %v", expect)
+		require.Fail(t, "timed out waiting for peer update", "expected %v", expect)
 	}
 }
 

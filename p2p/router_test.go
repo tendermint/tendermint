@@ -150,6 +150,10 @@ func TestRouter_Channel_SendReceive(t *testing.T) {
 	p2ptest.RequireReceive(t, b, p2p.Envelope{From: aID, Message: &p2ptest.Message{Value: "foo"}})
 	p2ptest.RequireEmpty(t, a, b, c)
 
+	// Sending a nil message a->c should be dropped.
+	p2ptest.RequireSend(t, a, p2p.Envelope{To: bID, Message: nil})
+	p2ptest.RequireEmpty(t, a, b, c)
+
 	// Sending a different message type should be dropped.
 	p2ptest.RequireSend(t, a, p2p.Envelope{To: bID, Message: &gogotypes.BoolValue{Value: true}})
 	p2ptest.RequireEmpty(t, a, b, c)

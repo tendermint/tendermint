@@ -71,7 +71,8 @@ func MakeNetwork(t *testing.T, nodes int) *Network {
 					Status: p2p.PeerStatusUp,
 				}, peerUpdate)
 			case <-time.After(time.Second):
-				require.Fail(t, "timed out waiting for %v to dial %v", sourceNode.NodeID, targetNode.NodeID)
+				require.Fail(t, "timed out waiting for peer", "%v dialing %v",
+					sourceNode.NodeID, targetNode.NodeID)
 			}
 
 			select {
@@ -81,7 +82,8 @@ func MakeNetwork(t *testing.T, nodes int) *Network {
 					Status: p2p.PeerStatusUp,
 				}, peerUpdate)
 			case <-time.After(time.Second):
-				require.Fail(t, "timed out waiting for %v to accept %v", targetNode.NodeID, sourceNode.NodeID)
+				require.Fail(t, "timed out waiting for peer", "%v accepting %v",
+					targetNode.NodeID, sourceNode.NodeID)
 			}
 
 			// Add the address to the target as well, so it's able to dial the

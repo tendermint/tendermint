@@ -671,6 +671,10 @@ func (r *Router) sendPeer(peerID NodeID, conn Connection, queue queue) error {
 	for {
 		select {
 		case envelope := <-queue.dequeue():
+			if envelope.Message == nil {
+				r.logger.Error("dropping nil message", "peer", peerID)
+				continue
+			}
 			bz, err := proto.Marshal(envelope.Message)
 			if err != nil {
 				r.logger.Error("failed to marshal message", "peer", peerID, "err", err)
