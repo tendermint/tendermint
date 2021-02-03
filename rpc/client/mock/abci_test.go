@@ -22,7 +22,7 @@ func TestABCIMock(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	key, value := []byte("foo"), []byte("bar")
-	height := int64(10)
+	height := uint64(10)
 	goodTx := types.Tx{0x01, 0xff}
 	badTx := types.Tx{0x12, 0x21}
 
@@ -180,7 +180,7 @@ func TestABCIApp(t *testing.T) {
 
 	// commit
 	// TODO: This may not be necessary in the future
-	if res.Height == -1 {
+	if res.Height == 0 {
 		m.App.Commit()
 	}
 

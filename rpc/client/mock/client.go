@@ -128,7 +128,7 @@ func (c Client) DumpConsensusState(ctx context.Context) (*ctypes.ResultDumpConse
 	return core.DumpConsensusState(&rpctypes.Context{})
 }
 
-func (c Client) ConsensusParams(ctx context.Context, height *int64) (*ctypes.ResultConsensusParams, error) {
+func (c Client) ConsensusParams(ctx context.Context, height *uint64) (*ctypes.ResultConsensusParams, error) {
 	return core.ConsensusParams(&rpctypes.Context{}, height)
 }
 
@@ -150,7 +150,7 @@ func (c Client) DialPeers(
 	return core.UnsafeDialPeers(&rpctypes.Context{}, peers, persistent, unconditional, private)
 }
 
-func (c Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
+func (c Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight uint64) (*ctypes.ResultBlockchainInfo, error) {
 	return core.BlockchainInfo(&rpctypes.Context{}, minHeight, maxHeight)
 }
 
@@ -158,7 +158,7 @@ func (c Client) Genesis(ctx context.Context) (*ctypes.ResultGenesis, error) {
 	return core.Genesis(&rpctypes.Context{})
 }
 
-func (c Client) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock, error) {
+func (c Client) Block(ctx context.Context, height *uint64) (*ctypes.ResultBlock, error) {
 	return core.Block(&rpctypes.Context{}, height)
 }
 
@@ -166,11 +166,11 @@ func (c Client) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBlo
 	return core.BlockByHash(&rpctypes.Context{}, hash)
 }
 
-func (c Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit, error) {
+func (c Client) Commit(ctx context.Context, height *uint64) (*ctypes.ResultCommit, error) {
 	return core.Commit(&rpctypes.Context{}, height)
 }
 
-func (c Client) Validators(ctx context.Context, height *int64, page, perPage *int) (*ctypes.ResultValidators, error) {
+func (c Client) Validators(ctx context.Context, height *uint64, page, perPage *int) (*ctypes.ResultValidators, error) {
 	return core.Validators(&rpctypes.Context{}, height, page, perPage)
 }
 

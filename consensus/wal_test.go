@@ -61,7 +61,7 @@ func TestWALTruncate(t *testing.T) {
 		t.Error(err)
 	}
 
-	h := int64(50)
+	h := uint64(50)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
 	assert.NoError(t, err, "expected not to err on height %d", h)
 	assert.True(t, found, "expected to find end height for %d", h)
@@ -154,7 +154,7 @@ func TestWALSearchForEndHeight(t *testing.T) {
 	require.NoError(t, err)
 	wal.SetLogger(log.TestingLogger())
 
-	h := int64(3)
+	h := uint64(3)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
 	assert.NoError(t, err, "expected not to err on height %d", h)
 	assert.True(t, found, "expected to find end height for %d", h)
@@ -199,7 +199,7 @@ func TestWALPeriodicSync(t *testing.T) {
 	// The data should have been flushed by the periodic sync
 	assert.Zero(t, wal.Group().Buffered())
 
-	h := int64(4)
+	h := uint64(4)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
 	assert.NoError(t, err, "expected not to err on height %d", h)
 	assert.True(t, found, "expected to find end height for %d", h)

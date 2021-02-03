@@ -165,7 +165,7 @@ func createEvidenceList(
 	evList := make([]types.Evidence, numEvidence)
 	for i := 0; i < numEvidence; i++ {
 		ev := types.NewMockDuplicateVoteEvidenceWithValidator(
-			int64(i+1),
+			uint64(i+1),
 			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC),
 			val,
 			evidenceChainID,
@@ -211,7 +211,7 @@ func simulateRouter(wg *sync.WaitGroup, primary *reactorTestSuite, suites []*rea
 
 func TestReactorMultiDisconnect(t *testing.T) {
 	val := types.NewMockPV()
-	height := int64(numEvidence) + 10
+	height := uint64(numEvidence) + 10
 
 	stateDB1 := initializeValidatorState(t, val, height)
 	stateDB2 := initializeValidatorState(t, val, height)
@@ -251,7 +251,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 
 	// We need all validators saved for heights at least as high as we have
 	// evidence for.
-	height := int64(numEvidence) + 10
+	height := uint64(numEvidence) + 10
 	for i := 0; i < numPeers; i++ {
 		stateDBs[i] = initializeValidatorState(t, val, height)
 	}
@@ -301,8 +301,8 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 // ahead receives a list of evidence.
 func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 	val := types.NewMockPV()
-	height1 := int64(numEvidence) + 10
-	height2 := int64(numEvidence) / 2
+	height1 := uint64(numEvidence) + 10
+	height2 := uint64(numEvidence) / 2
 
 	// stateDB1 is ahead of stateDB2, where stateDB1 has all heights (1-10) and
 	// stateDB2 only has heights 1-7.
@@ -349,7 +349,7 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 
 func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	val := types.NewMockPV()
-	height := int64(10)
+	height := uint64(10)
 
 	stateDB1 := initializeValidatorState(t, val, height)
 	stateDB2 := initializeValidatorState(t, val, height)
@@ -399,7 +399,7 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 
 func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	val := types.NewMockPV()
-	height := int64(10)
+	height := uint64(10)
 
 	stateDB1 := initializeValidatorState(t, val, height)
 	stateDB2 := initializeValidatorState(t, val, height)
@@ -465,7 +465,7 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 
 	// We need all validators saved for heights at least as high as we have
 	// evidence for.
-	height := int64(numEvidence) + 10
+	height := uint64(numEvidence) + 10
 	for i := 0; i < numPeers; i++ {
 		stateDBs[i] = initializeValidatorState(t, val, height)
 	}
@@ -510,7 +510,7 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 
 func TestReactorBroadcastEvidence_RemovePeer(t *testing.T) {
 	val := types.NewMockPV()
-	height := int64(10)
+	height := uint64(10)
 
 	stateDB1 := initializeValidatorState(t, val, height)
 	stateDB2 := initializeValidatorState(t, val, height)

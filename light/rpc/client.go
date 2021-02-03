@@ -26,6 +26,7 @@ var errNegOrZeroHeight = errors.New("negative or zero height")
 type KeyPathFunc func(path string, key []byte) (merkle.KeyPath, error)
 
 // LightClient is an interface that contains functionality needed by Client from the light client.
+//go:generate mockery --case underscore --name LightClient
 type LightClient interface {
 	ChainID() string
 	VerifyLightBlockAtHeight(ctx context.Context, height uint64, now time.Time) (*types.LightBlock, error)

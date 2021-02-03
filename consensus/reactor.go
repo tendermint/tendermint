@@ -1584,7 +1584,7 @@ func (m *ProposalPOLMessage) String() string {
 
 // BlockPartMessage is sent when gossipping a piece of the proposed block.
 type BlockPartMessage struct {
-	Height int64
+	Height uint64
 	Round  int32
 	Part   *types.Part
 }
@@ -1693,7 +1693,7 @@ func (m *VoteSetMaj23Message) String() string {
 
 // VoteSetBitsMessage is sent to communicate the bit-array of votes seen for the BlockID.
 type VoteSetBitsMessage struct {
-	Height  int64
+	Height  uint64
 	Round   int32
 	Type    tmproto.SignedMsgType
 	BlockID types.BlockID

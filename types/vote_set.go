@@ -645,7 +645,7 @@ func (vs *blockVotes) getByIndex(index int32) *Vote {
 
 // Common interface between *consensus.VoteSet and types.Commit
 type VoteSetReader interface {
-	GetHeight() int64
+	GetHeight() uint64
 	GetRound() int32
 	Type() byte
 	Size() int

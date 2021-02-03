@@ -4,7 +4,7 @@ package tendermint.types;
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/types";
 
 message EventDataRoundState {
-  int64  height = 1;
+  uint64 height = 1;
   int32  round  = 2;
   string step   = 3;
 }

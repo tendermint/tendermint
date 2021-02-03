@@ -866,7 +866,7 @@ type ConsensusConfig struct {
 	PeerGossipSleepDuration     time.Duration `mapstructure:"peer-gossip-sleep-duration"`
 	PeerQueryMaj23SleepDuration time.Duration `mapstructure:"peer-query-maj23-sleep-duration"`
 
-	DoubleSignCheckHeight int64 `mapstructure:"double-sign-check-height"`
+	DoubleSignCheckHeight uint64 `mapstructure:"double-sign-check-height"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
@@ -885,7 +885,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		CreateEmptyBlocksInterval:   0 * time.Second,
 		PeerGossipSleepDuration:     100 * time.Millisecond,
 		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
-		DoubleSignCheckHeight:       int64(0),
+		DoubleSignCheckHeight:       uint64(0),
 	}
 }
 
@@ -902,7 +902,7 @@ func TestConsensusConfig() *ConsensusConfig {
 	cfg.SkipTimeoutCommit = true
 	cfg.PeerGossipSleepDuration = 5 * time.Millisecond
 	cfg.PeerQueryMaj23SleepDuration = 250 * time.Millisecond
-	cfg.DoubleSignCheckHeight = int64(0)
+	cfg.DoubleSignCheckHeight = uint64(0)
 	return cfg
 }
 

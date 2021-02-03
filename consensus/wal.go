@@ -40,7 +40,7 @@ type TimedWALMessage struct {
 // EndHeightMessage marks the end of the given height inside WAL.
 // @internal used by scripts/wal2json util.
 type EndHeightMessage struct {
-	Height int64 `json:"height"`
+	Height uint64 `json:"height"`
 }
 
 type WALMessage interface{}
@@ -60,7 +60,7 @@ type WAL interface {
 	WriteSync(WALMessage) error
 	FlushAndSync() error
 
-	SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error)
+	SearchForEndHeight(height uint64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error)
 
 	// service methods
 	Start() error
@@ -229,13 +229,13 @@ type WALSearchOptions struct {
 //
 // CONTRACT: caller must close group reader.
 func (wal *BaseWAL) SearchForEndHeight(
-	height int64,
+	height uint64,
 	options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	var (
 		msg *TimedWALMessage
 		gr  *auto.GroupReader
 	)
-	lastHeightFound := int64(-1)
+	lastHeightFound := uint64(0) // todo: check this is not breaking, previously -1
 
 	// NOTE: starting from the last file in the group because we're usually
 	// searching for the last height. See replay.go
@@ -425,7 +425,7 @@ var _ WAL = nilWAL{}
 func (nilWAL) Write(m WALMessage) error     { return nil }
 func (nilWAL) WriteSync(m WALMessage) error { return nil }
 func (nilWAL) FlushAndSync() error          { return nil }
-func (nilWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
+func (nilWAL) SearchForEndHeight(height uint64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	return nil, false, nil
 }
 func (nilWAL) Start() error { return nil }

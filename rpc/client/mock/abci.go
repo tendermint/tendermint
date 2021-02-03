@@ -56,7 +56,7 @@ func (a ABCIApp) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 		return &res, nil
 	}
 	res.DeliverTx = a.App.DeliverTx(abci.RequestDeliverTx{Tx: tx})
-	res.Height = -1 // TODO
+	res.Height = 0 // TODO: see if 0 affects logic
 	return &res, nil
 }
 
@@ -166,7 +166,7 @@ func NewABCIRecorder(client client.ABCIClient) *ABCIRecorder {
 type QueryArgs struct {
 	Path   string
 	Data   bytes.HexBytes
-	Height int64
+	Height uint64
 	Prove  bool
 }
 

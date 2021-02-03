@@ -27,20 +27,20 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 		primaryValidators = make(map[int64]*types.ValidatorSet, latestHeight)
 	)
 
-	witnessHeaders, witnessValidators, chainKeys := genMockNodeWithKeys(chainID, latestHeight, valSize, 2, bTime)
+	witnessHeaders, witnessValidators, chainKeys := genMockNodeWithKeys(chainID, int64(latestHeight), valSize, 2, bTime)
 	witness := mockp.New(chainID, witnessHeaders, witnessValidators)
-	forgedKeys := chainKeys[divergenceHeight-1].ChangeKeys(3) // we change 3 out of the 5 validators (still 2/5 remain)
+	forgedKeys := chainKeys[int64(divergenceHeight)-1].ChangeKeys(3) // we change 3 out of the 5 validators (still 2/5 remain)
 	forgedVals := forgedKeys.ToValidators(2, 0)
 
-	for height := int64(1); height <= latestHeight; height++ {
+	for height := uint64(1); height <= latestHeight; height++ {
 		if height < divergenceHeight {
-			primaryHeaders[height] = witnessHeaders[height]
-			primaryValidators[height] = witnessValidators[height]
+			primaryHeaders[int64(height)] = witnessHeaders[int64(height)]
+			primaryValidators[int64(height)] = witnessValidators[int64(height)]
 			continue
 		}
-		primaryHeaders[height] = forgedKeys.GenSignedHeader(chainID, height, bTime.Add(time.Duration(height)*time.Minute),
+		primaryHeaders[int64(height)] = forgedKeys.GenSignedHeader(chainID, height, bTime.Add(time.Duration(height)*time.Minute),
 			nil, forgedVals, forgedVals, hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(forgedKeys))
-		primaryValidators[height] = forgedVals
+		primaryValidators[int64(height)] = forgedVals
 	}
 	primary := mockp.New(chainID, primaryHeaders, primaryValidators)
 
@@ -118,7 +118,7 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 			}
 			// we don't have a network partition so we will make 4/5 (greater than 2/3) malicious and vote again for
 			// a different block (which we do by adding txs)
-			primaryHeaders[height] = chainKeys[height].GenSignedHeader(chainID, height,
+			primaryHeaders[height] = chainKeys[height].GenSignedHeader(chainID, uint64(height),
 				bTime.Add(time.Duration(height)*time.Minute), []types.Tx{[]byte("abcd")},
 				witnessValidators[height], witnessValidators[height+1], hash("app_hash"),
 				hash("cons_hash"), hash("results_hash"), 0, len(chainKeys[height])-1)
@@ -157,7 +157,7 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 				SignedHeader: primaryHeaders[divergenceHeight],
 				ValidatorSet: primaryValidators[divergenceHeight],
 			},
-			CommonHeight: divergenceHeight,
+			CommonHeight: uint64(divergenceHeight),
 		}
 		assert.True(t, witness.HasEvidence(evAgainstPrimary))
 
@@ -166,7 +166,7 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 				SignedHeader: witnessHeaders[divergenceHeight],
 				ValidatorSet: witnessValidators[divergenceHeight],
 			},
-			CommonHeight: divergenceHeight,
+			CommonHeight: uint64(divergenceHeight),
 		}
 		assert.True(t, primary.HasEvidence(evAgainstWitness))
 	}

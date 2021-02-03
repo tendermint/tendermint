@@ -89,7 +89,7 @@ type EventDataTx struct {
 
 // NOTE: This goes into the replay WAL
 type EventDataRoundState struct {
-	Height int64  `json:"height"`
+	Height uint64 `json:"height"`
 	Round  int32  `json:"round"`
 	Step   string `json:"step"`
 }
@@ -100,7 +100,7 @@ type ValidatorInfo struct {
 }
 
 type EventDataNewRound struct {
-	Height int64  `json:"height"`
+	Height uint64 `json:"height"`
 	Round  int32  `json:"round"`
 	Step   string `json:"step"`
 
@@ -108,7 +108,7 @@ type EventDataNewRound struct {
 }
 
 type EventDataCompleteProposal struct {
-	Height int64  `json:"height"`
+	Height uint64 `json:"height"`
 	Round  int32  `json:"round"`
 	Step   string `json:"step"`
 

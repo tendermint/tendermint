@@ -56,14 +56,14 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 	ageDuration := state.LastBlockTime.Sub(evTime)
 
 	// check that the evidence hasn't expired
-	if ageDuration > evidenceParams.MaxAgeDuration && ageNumBlocks > evidenceParams.MaxAgeNumBlocks {
+	if ageDuration > evidenceParams.MaxAgeDuration && int64(ageNumBlocks) > evidenceParams.MaxAgeNumBlocks {
 		return types.NewErrInvalidEvidence(
 			evidence,
 			fmt.Errorf(
 				"evidence from height %d (created at: %v) is too old; min height is %d and evidence can not be older than %v",
 				evidence.Height(),
 				evTime,
-				height-evidenceParams.MaxAgeNumBlocks,
+				height-uint64(evidenceParams.MaxAgeNumBlocks),
 				state.LastBlockTime.Add(evidenceParams.MaxAgeDuration),
 			),
 		)
@@ -281,7 +281,7 @@ func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet 
 	return nil
 }
 
-func getSignedHeader(blockStore BlockStore, height int64) (*types.SignedHeader, error) {
+func getSignedHeader(blockStore BlockStore, height uint64) (*types.SignedHeader, error) {
 	blockMeta := blockStore.LoadBlockMeta(height)
 	if blockMeta == nil {
 		return nil, fmt.Errorf("don't have header at height #%d", height)

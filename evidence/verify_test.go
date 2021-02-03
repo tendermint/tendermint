@@ -384,7 +384,7 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 }
 
 func makeVote(
-	t *testing.T, val types.PrivValidator, chainID string, valIndex int32, height int64,
+	t *testing.T, val types.PrivValidator, chainID string, valIndex int32, height uint64,
 	round int32, step int, blockID types.BlockID, time time.Time) *types.Vote {
 	pubKey, err := val.GetPubKey()
 	require.NoError(t, err)
@@ -407,7 +407,7 @@ func makeVote(
 	return v
 }
 
-func makeHeaderRandom(height int64) *types.Header {
+func makeHeaderRandom(height uint64) *types.Header {
 	return &types.Header{
 		Version:            version.Consensus{Block: version.BlockProtocol, App: 1},
 		ChainID:            evidenceChainID,

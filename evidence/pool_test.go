@@ -30,7 +30,7 @@ var (
 
 func TestEvidencePoolBasic(t *testing.T) {
 	var (
-		height     = int64(1)
+		height     = uint64(1)
 		stateStore = &smmocks.Store{}
 		evidenceDB = dbm.NewMemDB()
 		blockStore = &mocks.BlockStore{}
@@ -88,15 +88,15 @@ func TestEvidencePoolBasic(t *testing.T) {
 func TestAddExpiredEvidence(t *testing.T) {
 	var (
 		val                 = types.NewMockPV()
-		height              = int64(30)
+		height              = uint64(30)
 		stateStore          = initializeValidatorState(t, val, height)
 		evidenceDB          = dbm.NewMemDB()
 		blockStore          = &mocks.BlockStore{}
 		expiredEvidenceTime = time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC)
-		expiredHeight       = int64(2)
+		expiredHeight       = uint64(2)
 	)
 
-	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(func(h int64) *types.BlockMeta {
+	blockStore.On("LoadBlockMeta", mock.AnythingOfType("uint64")).Return(func(h uint64) *types.BlockMeta {
 		if h == height || h == expiredHeight {
 			return &types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}}
 		}
@@ -107,7 +107,7 @@ func TestAddExpiredEvidence(t *testing.T) {
 	require.NoError(t, err)
 
 	testCases := []struct {
-		evHeight      int64
+		evHeight      uint64
 		evTime        time.Time
 		expErr        bool
 		evDescription string
@@ -136,7 +136,7 @@ func TestAddExpiredEvidence(t *testing.T) {
 }
 
 func TestReportConflictingVotes(t *testing.T) {
-	var height int64 = 10
+	var height uint64 = 10
 
 	pool, pv := defaultTestPool(t, height)
 	val := types.NewValidator(pv.PrivKey.PubKey(), 10)
@@ -168,7 +168,7 @@ func TestReportConflictingVotes(t *testing.T) {
 }
 
 func TestEvidencePoolUpdate(t *testing.T) {
-	height := int64(21)
+	height := uint64(21)
 	pool, val := defaultTestPool(t, height)
 	state := pool.State()
 
@@ -212,7 +212,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 }
 
 func TestVerifyPendingEvidencePasses(t *testing.T) {
-	var height int64 = 1
+	var height uint64 = 1
 
 	pool, val := defaultTestPool(t, height)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(
@@ -227,7 +227,7 @@ func TestVerifyPendingEvidencePasses(t *testing.T) {
 }
 
 func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
-	var height int64 = 1
+	var height uint64 = 1
 	pool, val := defaultTestPool(t, height)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(
 		height,
@@ -246,9 +246,9 @@ func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 // evidence pool
 func TestCheckEvidenceWithLightClientAttack(t *testing.T) {
 	var (
-		nValidators          = 5
-		validatorPower int64 = 10
-		height         int64 = 10
+		nValidators           = 5
+		validatorPower int64  = 10
+		height         uint64 = 10
 	)
 
 	conflictingVals, conflictingPrivVals := types.RandValidatorSet(nValidators, validatorPower)
@@ -327,7 +327,7 @@ func TestCheckEvidenceWithLightClientAttack(t *testing.T) {
 // Tests that restarting the evidence pool after a potential failure will recover the
 // pending evidence and continue to gossip it
 func TestRecoverPendingEvidence(t *testing.T) {
-	height := int64(10)
+	height := uint64(10)
 	val := types.NewMockPV()
 	valAddress := val.PrivKey.PubKey().Address()
 	evidenceDB := dbm.NewMemDB()
@@ -349,7 +349,7 @@ func TestRecoverPendingEvidence(t *testing.T) {
 		evidenceChainID,
 	)
 	expiredEvidence := types.NewMockDuplicateVoteEvidenceWithValidator(
-		int64(1),
+		uint64(1),
 		defaultEvidenceTime.Add(1*time.Minute),
 		val,
 		evidenceChainID,
@@ -386,7 +386,7 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	require.Equal(t, goodEvidence, next.Value.(types.Evidence))
 }
 
-func initializeStateFromValidatorSet(t *testing.T, valSet *types.ValidatorSet, height int64) sm.Store {
+func initializeStateFromValidatorSet(t *testing.T, valSet *types.ValidatorSet, height uint64) sm.Store {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
 	state := sm.State{
@@ -412,7 +412,7 @@ func initializeStateFromValidatorSet(t *testing.T, valSet *types.ValidatorSet, h
 	}
 
 	// save all states up to height
-	for i := int64(0); i <= height; i++ {
+	for i := uint64(0); i <= height; i++ {
 		state.LastBlockHeight = i
 		require.NoError(t, stateStore.Save(state))
 	}
@@ -420,7 +420,7 @@ func initializeStateFromValidatorSet(t *testing.T, valSet *types.ValidatorSet, h
 	return stateStore
 }
 
-func initializeValidatorState(t *testing.T, privVal types.PrivValidator, height int64) sm.Store {
+func initializeValidatorState(t *testing.T, privVal types.PrivValidator, height uint64) sm.Store {
 	pubKey, _ := privVal.GetPubKey()
 	validator := &types.Validator{Address: pubKey.Address(), VotingPower: 10, PubKey: pubKey}
 
@@ -438,7 +438,7 @@ func initializeValidatorState(t *testing.T, privVal types.PrivValidator, height 
 func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) *store.BlockStore {
 	blockStore := store.NewBlockStore(db)
 
-	for i := int64(1); i <= state.LastBlockHeight; i++ {
+	for i := uint64(1); i <= state.LastBlockHeight; i++ {
 		lastCommit := makeCommit(i-1, valAddr)
 		block, _ := state.MakeBlock(i, []types.Tx{}, lastCommit, nil,
 			state.Validators.GetProposer().Address)
@@ -454,7 +454,7 @@ func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) *store.Bloc
 	return blockStore
 }
 
-func makeCommit(height int64, valAddr []byte) *types.Commit {
+func makeCommit(height uint64, valAddr []byte) *types.Commit {
 	commitSigs := []types.CommitSig{{
 		BlockIDFlag:      types.BlockIDFlagCommit,
 		ValidatorAddress: valAddr,
@@ -465,7 +465,7 @@ func makeCommit(height int64, valAddr []byte) *types.Commit {
 	return types.NewCommit(height, 0, types.BlockID{}, commitSigs)
 }
 
-func defaultTestPool(t *testing.T, height int64) (*evidence.Pool, types.MockPV) {
+func defaultTestPool(t *testing.T, height uint64) (*evidence.Pool, types.MockPV) {
 	val := types.NewMockPV()
 	valAddress := val.PrivKey.PubKey().Address()
 	evidenceDB := dbm.NewMemDB()
@@ -479,7 +479,7 @@ func defaultTestPool(t *testing.T, height int64) (*evidence.Pool, types.MockPV) 
 	return pool, val
 }
 
-func createState(height int64, valSet *types.ValidatorSet) sm.State {
+func createState(height uint64, valSet *types.ValidatorSet) sm.State {
 	return sm.State{
 		ChainID:         evidenceChainID,
 		LastBlockHeight: height,

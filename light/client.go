@@ -385,7 +385,7 @@ func (c *Client) compareWithLatestHeight(height uint64) (uint64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("can't get last trusted height: %w", err)
 	}
-	if latestHeight == -1 { // todo standardize errors
+	if latestHeight == 0 { // todo: should we standardize errors to avoid 0 checks
 		return 0, errors.New("no headers exist")
 	}
 
@@ -410,7 +410,7 @@ func (c *Client) Update(ctx context.Context, now time.Time) (*types.LightBlock, 
 		return nil, fmt.Errorf("can't get last trusted height: %w", err)
 	}
 
-	if lastTrustedHeight == -1 {
+	if lastTrustedHeight == 0 {
 		// no light blocks yet => wait
 		return nil, nil
 	}

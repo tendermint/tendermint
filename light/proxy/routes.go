@@ -75,10 +75,10 @@ func makeNetInfoFunc(c *lrpc.Client) rpcNetInfoFunc {
 	}
 }
 
-type rpcBlockchainInfoFunc func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error)
+type rpcBlockchainInfoFunc func(ctx *rpctypes.Context, minHeight, maxHeight uint64) (*ctypes.ResultBlockchainInfo, error)
 
 func makeBlockchainInfoFunc(c *lrpc.Client) rpcBlockchainInfoFunc {
-	return func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
+	return func(ctx *rpctypes.Context, minHeight, maxHeight uint64) (*ctypes.ResultBlockchainInfo, error) {
 		return c.BlockchainInfo(ctx.Context(), minHeight, maxHeight)
 	}
 }
@@ -91,10 +91,10 @@ func makeGenesisFunc(c *lrpc.Client) rpcGenesisFunc {
 	}
 }
 
-type rpcBlockFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlock, error)
+type rpcBlockFunc func(ctx *rpctypes.Context, height *uint64) (*ctypes.ResultBlock, error)
 
 func makeBlockFunc(c *lrpc.Client) rpcBlockFunc {
-	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlock, error) {
+	return func(ctx *rpctypes.Context, height *uint64) (*ctypes.ResultBlock, error) {
 		return c.Block(ctx.Context(), height)
 	}
 }
@@ -107,18 +107,18 @@ func makeBlockByHashFunc(c *lrpc.Client) rpcBlockByHashFunc {
 	}
 }
 
-type rpcBlockResultsFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlockResults, error)
+type rpcBlockResultsFunc func(ctx *rpctypes.Context, height *uint64) (*ctypes.ResultBlockResults, error)
 
 func makeBlockResultsFunc(c *lrpc.Client) rpcBlockResultsFunc {
-	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlockResults, error) {
+	return func(ctx *rpctypes.Context, height *uint64) (*ctypes.ResultBlockResults, error) {
 		return c.BlockResults(ctx.Context(), height)
 	}
 }
 
-type rpcCommitFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultCommit, error)
+type rpcCommitFunc func(ctx *rpctypes.Context, height *uint64) (*ctypes.ResultCommit, error)
 
 func makeCommitFunc(c *lrpc.Client) rpcCommitFunc {
-	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultCommit, error) {
+	return func(ctx *rpctypes.Context, height *uint64) (*ctypes.ResultCommit, error) {
 		return c.Commit(ctx.Context(), height)
 	}
 }
@@ -141,11 +141,11 @@ func makeTxSearchFunc(c *lrpc.Client) rpcTxSearchFunc {
 	}
 }
 
-type rpcValidatorsFunc func(ctx *rpctypes.Context, height *int64,
+type rpcValidatorsFunc func(ctx *rpctypes.Context, height *uint64,
 	page, perPage *int) (*ctypes.ResultValidators, error)
 
 func makeValidatorsFunc(c *lrpc.Client) rpcValidatorsFunc {
-	return func(ctx *rpctypes.Context, height *int64, page, perPage *int) (*ctypes.ResultValidators, error) {
+	return func(ctx *rpctypes.Context, height *uint64, page, perPage *int) (*ctypes.ResultValidators, error) {
 		return c.Validators(ctx.Context(), height, page, perPage)
 	}
 }

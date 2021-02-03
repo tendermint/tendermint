@@ -334,13 +334,13 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 
 // IsExpired checks whether evidence or a polc is expired by checking whether a height and time is older
 // than set by the evidence consensus parameters
-func (evpool *Pool) isExpired(height int64, time time.Time) bool {
+func (evpool *Pool) isExpired(height uint64, time time.Time) bool {
 	var (
 		params       = evpool.State().ConsensusParams.Evidence
 		ageDuration  = evpool.State().LastBlockTime.Sub(time)
 		ageNumBlocks = evpool.State().LastBlockHeight - height
 	)
-	return ageNumBlocks > params.MaxAgeNumBlocks &&
+	return ageNumBlocks > uint64(params.MaxAgeNumBlocks) &&
 		ageDuration > params.MaxAgeDuration
 }
 
@@ -410,7 +410,7 @@ func (evpool *Pool) markEvidenceAsCommitted(evidence types.EvidenceList) {
 		// we only need to record the height that it was saved at.
 		key := keyCommitted(ev)
 
-		h := gogotypes.Int64Value{Value: ev.Height()}
+		h := gogotypes.UInt64Value{Value: ev.Height()}
 		evBytes, err := proto.Marshal(&h)
 		if err != nil {
 			evpool.logger.Error("failed to marshal committed evidence", "key(height/hash)", key, "err", err)
@@ -480,7 +480,7 @@ func (evpool *Pool) listEvidence(prefixKey int64, maxBytes int64) ([]types.Evide
 	return evidence, totalSize, nil
 }
 
-func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
+func (evpool *Pool) removeExpiredPendingEvidence() (uint64, time.Time) {
 	iter, err := dbm.IteratePrefix(evpool.evidenceStore, prefixToBytes(prefixPending))
 	if err != nil {
 		evpool.logger.Error("failed to iterate over pending evidence", "err", err)
@@ -505,7 +505,7 @@ func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
 
 			// Return the height and time with which this evidence will have expired
 			// so we know when to prune next.
-			return ev.Height() + evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks + 1,
+			return ev.Height() + uint64(evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks+1),
 				ev.Time().Add(evpool.State().ConsensusParams.Evidence.MaxAgeDuration).Add(time.Second)
 		}
 
@@ -643,7 +643,7 @@ func prefixToBytes(prefix int64) []byte {
 }
 
 func keyCommitted(evidence types.Evidence) []byte {
-	var height int64 = evidence.Height()
+	var height uint64 = evidence.Height()
 	key, err := orderedcode.Append(nil, prefixCommitted, height, string(evidence.Hash()))
 	if err != nil {
 		panic(err)
@@ -652,7 +652,7 @@ func keyCommitted(evidence types.Evidence) []byte {
 }
 
 func keyPending(evidence types.Evidence) []byte {
-	var height int64 = evidence.Height()
+	var height uint64 = evidence.Height()
 	key, err := orderedcode.Append(nil, prefixPending, height, string(evidence.Hash()))
 	if err != nil {
 		panic(err)

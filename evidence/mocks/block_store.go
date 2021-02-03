@@ -13,11 +13,11 @@ type BlockStore struct {
 }
 
 // LoadBlockCommit provides a mock function with given fields: height
-func (_m *BlockStore) LoadBlockCommit(height int64) *types.Commit {
+func (_m *BlockStore) LoadBlockCommit(height uint64) *types.Commit {
 	ret := _m.Called(height)
 
 	var r0 *types.Commit
-	if rf, ok := ret.Get(0).(func(int64) *types.Commit); ok {
+	if rf, ok := ret.Get(0).(func(uint64) *types.Commit); ok {
 		r0 = rf(height)
 	} else {
 		if ret.Get(0) != nil {
@@ -29,11 +29,11 @@ func (_m *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 }
 
 // LoadBlockMeta provides a mock function with given fields: height
-func (_m *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
+func (_m *BlockStore) LoadBlockMeta(height uint64) *types.BlockMeta {
 	ret := _m.Called(height)
 
 	var r0 *types.BlockMeta
-	if rf, ok := ret.Get(0).(func(int64) *types.BlockMeta); ok {
+	if rf, ok := ret.Get(0).(func(uint64) *types.BlockMeta); ok {
 		r0 = rf(height)
 	} else {
 		if ret.Get(0) != nil {
