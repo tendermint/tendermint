@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -16,7 +15,9 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/mocks"
 	"github.com/tendermint/tendermint/p2p/p2ptest"
@@ -42,7 +43,7 @@ func TestRouter_Network(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	// Create a test network and open a channel where all peers run echoReactor.
-	network := p2ptest.MakeNetwork(t, 4)
+	network := p2ptest.MakeNetwork(t, 8)
 	local := network.RandomNode()
 	peers := network.Peers(local.NodeID)
 	channels := network.MakeChannels(t, 1, &p2ptest.Message{})
@@ -52,7 +53,7 @@ func TestRouter_Network(t *testing.T) {
 		go echoReactor(channels[peer.NodeID])
 	}
 
-	// Sending a message to each peer should return the same message.
+	// Sending a message to each peer should work.
 	for _, peer := range peers {
 		p2ptest.RequireSendReceive(t, channel, peer.NodeID,
 			&p2ptest.Message{Value: "foo"},
@@ -292,32 +293,15 @@ func TestRouter_Channel_Error(t *testing.T) {
 	sub.Close()
 }
 
-// FIXME: Remove this.
-func TestRouter_Channel_SendMock(t *testing.T) {
+func TestRouter_AcceptPeers_Error(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
-	// Set up a mock transport with a single mock peer.
-	closeCh := make(chan time.Time)
-	closeOnce := sync.Once{}
-	mockCh := make(chan []byte, 1)
-
-	mockConnection := &mocks.Connection{}
-	mockConnection.On("String").Return("mock")
-	mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
-		Return(peerInfo, peerKey.PubKey(), nil)
-	mockConnection.On("ReceiveMessage").WaitUntil(closeCh).Return(chID, nil, io.EOF)
-	mockConnection.On("SendMessage", chID, mock.Anything).Run(func(args mock.Arguments) {
-		mockCh <- args.Get(1).([]byte)
-	}).Return(true, nil)
-	mockConnection.On("Close").Run(func(_ mock.Arguments) {
-		closeOnce.Do(func() { close(closeCh) })
-	}).Return(nil)
-
+	// Set up a mock transport that returns an error, which should prevent
+	// the router from calling Accept again.
 	mockTransport := &mocks.Transport{}
 	mockTransport.On("String").Return("mock")
 	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
-	mockTransport.On("Accept").Once().Return(mockConnection, nil)
-	mockTransport.On("Accept").WaitUntil(closeCh).Return(nil, io.EOF)
+	mockTransport.On("Accept").Once().Return(nil, errors.New("boom"))
 	mockTransport.On("Close").Return(nil)
 
 	// Set up and start the router.
@@ -328,26 +312,139 @@ func TestRouter_Channel_SendMock(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, router.Start())
-	t.Cleanup(func() {
-		require.NoError(t, router.Stop())
-	})
+	time.Sleep(time.Second)
+	require.NoError(t, router.Stop())
 
-	// Wait for the peer to come online.
-	sub := peerManager.Subscribe()
-	defer sub.Close()
-	p2ptest.RequireUpdate(t, sub, p2p.PeerUpdate{
-		NodeID: peerID,
-		Status: p2p.PeerStatusUp,
-	})
-	sub.Close()
+	mockTransport.AssertExpectations(t)
+}
 
-	// Sending a message to the mock peer should work.
-	channel, err := router.OpenChannel(chID, &p2ptest.Message{})
+func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
+	// Set up a mock transport that returns io.EOF once, which should prevent
+	// the router from calling Accept again.
+	mockTransport := &mocks.Transport{}
+	mockTransport.On("String").Return("mock")
+	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
+	mockTransport.On("Accept").Once().Return(nil, io.EOF)
+	mockTransport.On("Close").Return(nil)
+
+	// Set up and start the router.
+	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+	router, err := p2p.NewRouter(log.TestingLogger(), selfInfo, selfKey, peerManager,
+		[]p2p.Transport{mockTransport}, p2p.RouterOptions{})
 	require.NoError(t, err)
 
-	p2ptest.RequireSend(t, channel, p2p.Envelope{
-		To:      peerID,
-		Message: &p2ptest.Message{Value: "foo"},
-	})
-	//require.Equal(t, []byte{}, <-mockCh)
+	require.NoError(t, router.Start())
+	time.Sleep(time.Second)
+	require.NoError(t, router.Stop())
+
+	mockTransport.AssertExpectations(t)
+}
+
+func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
+
+	// Set up a mock transport that returns a connection that blocks during the
+	// handshake. It should be able to accept several of these in parallel, i.e.
+	// a single connection can't halt other connections being accepted.
+	acceptCh := make(chan bool, 3)
+	closeCh := make(chan time.Time)
+
+	mockConnection := &mocks.Connection{}
+	mockConnection.On("String").Return("mock")
+	mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
+		WaitUntil(closeCh).Return(p2p.NodeInfo{}, nil, io.EOF)
+	mockConnection.On("Close").Return(nil)
+
+	mockTransport := &mocks.Transport{}
+	mockTransport.On("String").Return("mock")
+	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
+	mockTransport.On("Close").Return(nil)
+	mockTransport.On("Accept").Times(3).Run(func(_ mock.Arguments) {
+		acceptCh <- true
+	}).Return(mockConnection, nil)
+	mockTransport.On("Accept").Once().Return(nil, io.EOF)
+
+	// Set up and start the router.
+	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+	router, err := p2p.NewRouter(log.TestingLogger(), selfInfo, selfKey, peerManager,
+		[]p2p.Transport{mockTransport}, p2p.RouterOptions{})
+	require.NoError(t, err)
+	require.NoError(t, router.Start())
+
+	require.Eventually(t, func() bool {
+		return len(acceptCh) == 3
+	}, time.Second, 10*time.Millisecond)
+	close(closeCh)
+
+	require.NoError(t, router.Stop())
+	mockTransport.AssertExpectations(t)
+}
+
+func TestRouter_AcceptPeers_Handshake(t *testing.T) {
+	testcases := map[string]struct {
+		peerInfo p2p.NodeInfo
+		peerKey  crypto.PubKey
+		ok       bool
+	}{
+		"valid handshake": {peerInfo, peerKey.PubKey(), true},
+		"empty handshake": {p2p.NodeInfo{}, nil, false},
+		"invalid key":     {peerInfo, selfKey.PubKey(), false},
+		"self handshake":  {selfInfo, selfKey.PubKey(), false},
+	}
+	for name, tc := range testcases {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Cleanup(leaktest.Check(t))
+
+			// Set up a mock transport that handshakes.
+			closer := tmsync.NewCloser()
+			mockConnection := &mocks.Connection{}
+			mockConnection.On("String").Return("mock")
+			mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
+				Return(tc.peerInfo, tc.peerKey, nil)
+			mockConnection.On("Close").Run(func(_ mock.Arguments) { closer.Close() }).Return(nil)
+			if tc.ok {
+				mockConnection.On("ReceiveMessage").Return(chID, nil, io.EOF)
+			}
+
+			mockTransport := &mocks.Transport{}
+			mockTransport.On("String").Return("mock")
+			mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
+			mockTransport.On("Close").Return(nil)
+			mockTransport.On("Accept").Once().Return(mockConnection, nil)
+			mockTransport.On("Accept").Once().Return(nil, io.EOF)
+
+			// Set up and start the router.
+			peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+			require.NoError(t, err)
+			sub := peerManager.Subscribe()
+			defer sub.Close()
+
+			router, err := p2p.NewRouter(log.TestingLogger(), selfInfo, selfKey, peerManager,
+				[]p2p.Transport{mockTransport}, p2p.RouterOptions{})
+			require.NoError(t, err)
+			require.NoError(t, router.Start())
+
+			if tc.ok {
+				p2ptest.RequireUpdate(t, sub, p2p.PeerUpdate{
+					NodeID: tc.peerInfo.NodeID,
+					Status: p2p.PeerStatusUp,
+				})
+				sub.Close()
+			} else {
+				select {
+				case <-closer.Done():
+				case <-time.After(100 * time.Millisecond):
+					require.Fail(t, "connection not closed")
+				}
+			}
+
+			require.NoError(t, router.Stop())
+			mockTransport.AssertExpectations(t)
+		})
+	}
 }

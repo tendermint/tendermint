@@ -357,6 +357,7 @@ func (r *Router) routeChannel(
 // acceptPeers accepts inbound connections from peers on the given transport,
 // and spawns goroutines that route messages to/from them.
 func (r *Router) acceptPeers(transport Transport) {
+	r.logger.Debug("starting accept routine", "transport", transport)
 	ctx := r.stopCtx()
 	for {
 		// FIXME: We may need transports to enforce some sort of rate limiting
