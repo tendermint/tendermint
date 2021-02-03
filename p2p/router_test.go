@@ -492,9 +492,12 @@ func TestRouter_DialPeers(t *testing.T) {
 			mockTransport.On("String").Maybe().Return("mock")
 			mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 			mockTransport.On("Close").Return(nil)
-			mockTransport.On("Accept").Once().Return(nil, io.EOF)
+			mockTransport.On("Accept").Maybe().Return(nil, io.EOF)
 			if tc.dialErr == nil {
 				mockTransport.On("Dial", mock.Anything, endpoint).Once().Return(mockConnection, nil)
+				// This handles the retry when a dialed connection gets closed after ReceiveMessage
+				// returns io.EOF above.
+				mockTransport.On("Dial", mock.Anything, endpoint).Maybe().Return(nil, io.EOF)
 			} else {
 				mockTransport.On("Dial", mock.Anything, endpoint).Once().
 					Run(func(_ mock.Arguments) { closer.Close() }).
