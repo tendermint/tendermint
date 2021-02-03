@@ -20,8 +20,6 @@ import (
 // many interactions, and it's hard to cover all scenarios with handwritten
 // tests.
 
-const selfID = p2p.NodeID("0000000000000000000000000000000000000000")
-
 func TestPeerManagerOptions_Validate(t *testing.T) {
 	nodeID := p2p.NodeID("00112233445566778899aabbccddeeff00112233")
 

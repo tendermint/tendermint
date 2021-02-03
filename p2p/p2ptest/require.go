@@ -11,11 +11,13 @@ import (
 )
 
 // RequireEmpty requires that the given channel is empty.
-func RequireEmpty(t *testing.T, channel *p2p.Channel) {
-	select {
-	case e := <-channel.In:
-		require.Fail(t, "expected channel %v to be empty, got %v", channel.ID, e)
-	default:
+func RequireEmpty(t *testing.T, channels ...*p2p.Channel) {
+	for _, channel := range channels {
+		select {
+		case e := <-channel.In:
+			require.Fail(t, "unexpected message", "channel %v should be empty, got %v", channel.ID, e)
+		case <-time.After(10 * time.Millisecond):
+		}
 	}
 }
 

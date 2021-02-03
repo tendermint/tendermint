@@ -93,6 +93,15 @@ func MakeNetwork(t *testing.T, nodes int) *Network {
 	return network
 }
 
+// NodeIDs returns the network's node IDs.
+func (n *Network) NodeIDs() []p2p.NodeID {
+	ids := []p2p.NodeID{}
+	for id := range n.Nodes {
+		ids = append(ids, id)
+	}
+	return ids
+}
+
 // MakeChannels makes a channel on all nodes and returns them, automatically
 // doing error checks and cleanups.
 func (n *Network) MakeChannels(
@@ -125,6 +134,34 @@ func (n *Network) Peers(id p2p.NodeID) []*Node {
 		}
 	}
 	return peers
+}
+
+// Remove removes a node from the network, stopping it and waiting for all other
+// nodes to pick up the disconnection.
+func (n *Network) Remove(t *testing.T, id p2p.NodeID) {
+	require.Contains(t, n.Nodes, id)
+	node := n.Nodes[id]
+	delete(n.Nodes, id)
+
+	subs := []*p2p.PeerUpdates{}
+	for _, peer := range n.Nodes {
+		sub := peer.PeerManager.Subscribe()
+		defer sub.Close()
+		subs = append(subs, sub)
+	}
+
+	require.NoError(t, node.Transport.Close())
+	if node.Router.IsRunning() {
+		require.NoError(t, node.Router.Stop())
+	}
+	node.PeerManager.Close()
+
+	for _, sub := range subs {
+		RequireUpdate(t, sub, p2p.PeerUpdate{
+			NodeID: node.NodeID,
+			Status: p2p.PeerStatusDown,
+		})
+	}
 }
 
 // Node is a node in a Network, with a Router and a PeerManager.
