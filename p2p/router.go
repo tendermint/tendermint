@@ -412,7 +412,7 @@ func (r *Router) acceptPeers(transport Transport) {
 			case errors.Is(err, context.Canceled):
 				return
 			case err != nil:
-				r.logger.Error("peer handshake failed", "endpoint", conn.RemoteEndpoint(), "err", err)
+				r.logger.Error("peer handshake failed", "endpoint", conn, "err", err)
 				return
 			}
 
@@ -601,7 +601,7 @@ func (r *Router) handshakePeer(ctx context.Context, conn Connection, expectID No
 // channels. It will close the given connection and send queue when done, or if
 // they are closed elsewhere it will cause this method to shut down and return.
 func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
-	r.logger.Info("peer connected", "peer", peerID, "endpoint", conn.RemoteEndpoint())
+	r.logger.Info("peer connected", "peer", peerID, "endpoint", conn)
 	errCh := make(chan error, 2)
 	go func() {
 		errCh <- r.receivePeer(peerID, conn)
@@ -620,9 +620,9 @@ func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
 	}
 	switch err {
 	case nil, io.EOF:
-		r.logger.Info("peer disconnected", "peer", peerID, "endpoint", conn.RemoteEndpoint())
+		r.logger.Info("peer disconnected", "peer", peerID, "endpoint", conn)
 	default:
-		r.logger.Error("peer failure", "peer", peerID, "endpoint", conn.RemoteEndpoint(), "err", err)
+		r.logger.Error("peer failure", "peer", peerID, "endpoint", conn, "err", err)
 	}
 }
 
