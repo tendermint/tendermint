@@ -255,13 +255,10 @@ func (r *Router) routeChannel(channel *Channel) {
 			if !ok {
 				return
 			}
-			// FIXME: We just disconnect the peer for now
-			r.logger.Error("peer error, disconnecting", "peer", peerError.PeerID, "err", peerError.Err)
-			r.peerMtx.RLock()
-			peerQueue, ok := r.peerQueues[peerError.PeerID]
-			r.peerMtx.RUnlock()
-			if ok {
-				peerQueue.close()
+			// FIXME: We just evict the peer for now.
+			r.logger.Error("peer error, evicting", "peer", peerError.NodeID, "err", peerError.Err)
+			if err := r.peerManager.Errored(peerError.NodeID, peerError.Err); err != nil {
+				r.logger.Error("failed to report peer error", "peer", peerError.NodeID, "err", err)
 			}
 
 		case <-channel.Done():
@@ -338,7 +335,6 @@ func (r *Router) acceptPeers(transport Transport) {
 			r.peerMtx.Lock()
 			r.peerQueues[peerInfo.NodeID] = queue
 			r.peerMtx.Unlock()
-			r.peerManager.Ready(peerInfo.NodeID)
 
 			defer func() {
 				r.peerMtx.Lock()
@@ -350,6 +346,11 @@ func (r *Router) acceptPeers(transport Transport) {
 				}
 			}()
 
+			if err := r.peerManager.Ready(peerInfo.NodeID); err != nil {
+				r.logger.Error("failed to mark peer as ready", "peer", peerInfo.NodeID, "err", err)
+				return
+			}
+
 			r.routePeer(peerInfo.NodeID, conn, queue)
 		}()
 	}
@@ -359,7 +360,7 @@ func (r *Router) acceptPeers(transport Transport) {
 func (r *Router) dialPeers() {
 	ctx := r.stopCtx()
 	for {
-		peerID, address, err := r.peerManager.DialNext(ctx)
+		address, err := r.peerManager.DialNext(ctx)
 		switch err {
 		case nil:
 		case context.Canceled:
@@ -371,12 +372,13 @@ func (r *Router) dialPeers() {
 		}
 
 		go func() {
+			peerID := address.NodeID
 			conn, err := r.dialPeer(ctx, address)
 			if errors.Is(err, context.Canceled) {
 				return
 			} else if err != nil {
 				r.logger.Error("failed to dial peer", "peer", peerID, "err", err)
-				if err = r.peerManager.DialFailed(peerID, address); err != nil {
+				if err = r.peerManager.DialFailed(address); err != nil {
 					r.logger.Error("failed to report dial failure", "peer", peerID, "err", err)
 				}
 				return
@@ -388,13 +390,13 @@ func (r *Router) dialPeers() {
 				return
 			} else if err != nil {
 				r.logger.Error("failed to handshake with peer", "peer", peerID, "err", err)
-				if err = r.peerManager.DialFailed(peerID, address); err != nil {
+				if err = r.peerManager.DialFailed(address); err != nil {
 					r.logger.Error("failed to report dial failure", "peer", peerID, "err", err)
 				}
 				return
 			}
 
-			if err = r.peerManager.Dialed(peerID, address); err != nil {
+			if err = r.peerManager.Dialed(address); err != nil {
 				r.logger.Error("failed to dial peer", "peer", peerID, "err", err)
 				return
 			}
@@ -403,7 +405,6 @@ func (r *Router) dialPeers() {
 			r.peerMtx.Lock()
 			r.peerQueues[peerID] = queue
 			r.peerMtx.Unlock()
-			r.peerManager.Ready(peerID)
 
 			defer func() {
 				r.peerMtx.Lock()
@@ -414,6 +415,11 @@ func (r *Router) dialPeers() {
 					r.logger.Error("failed to disconnect peer", "peer", peerID, "err", err)
 				}
 			}()
+
+			if err := r.peerManager.Ready(peerID); err != nil {
+				r.logger.Error("failed to mark peer as ready", "peer", peerID, "err", err)
+				return
+			}
 
 			r.routePeer(peerID, conn, queue)
 		}()

@@ -29,7 +29,7 @@ type (
 		BaseReactor
 
 		Name        string
-		PeerUpdates *PeerUpdatesCh
+		PeerUpdates *PeerUpdates
 		Channels    map[ChannelID]*ChannelShim
 	}
 
@@ -162,10 +162,10 @@ func (rs *ReactorShim) handlePeerErrors() {
 	for _, cs := range rs.Channels {
 		go func(cs *ChannelShim) {
 			for pErr := range cs.Channel.errCh {
-				if pErr.PeerID != "" {
-					peer := rs.Switch.peers.Get(pErr.PeerID)
+				if pErr.NodeID != "" {
+					peer := rs.Switch.peers.Get(pErr.NodeID)
 					if peer == nil {
-						rs.Logger.Error("failed to handle peer error; failed to find peer", "peer", pErr.PeerID)
+						rs.Logger.Error("failed to handle peer error; failed to find peer", "peer", pErr.NodeID)
 						continue
 					}
 
@@ -225,7 +225,7 @@ func (rs *ReactorShim) GetChannels() []*ChannelDescriptor {
 // handle adding a peer.
 func (rs *ReactorShim) AddPeer(peer Peer) {
 	select {
-	case rs.PeerUpdates.updatesCh <- PeerUpdate{PeerID: peer.ID(), Status: PeerStatusUp}:
+	case rs.PeerUpdates.updatesCh <- PeerUpdate{NodeID: peer.ID(), Status: PeerStatusUp}:
 		rs.Logger.Debug("sent peer update", "reactor", rs.Name, "peer", peer.ID(), "status", PeerStatusUp)
 
 	case <-rs.PeerUpdates.Done():
@@ -244,7 +244,7 @@ func (rs *ReactorShim) AddPeer(peer Peer) {
 // handle removing a peer.
 func (rs *ReactorShim) RemovePeer(peer Peer, reason interface{}) {
 	select {
-	case rs.PeerUpdates.updatesCh <- PeerUpdate{PeerID: peer.ID(), Status: PeerStatusDown}:
+	case rs.PeerUpdates.updatesCh <- PeerUpdate{NodeID: peer.ID(), Status: PeerStatusDown}:
 		rs.Logger.Debug(
 			"sent peer update",
 			"reactor", rs.Name,

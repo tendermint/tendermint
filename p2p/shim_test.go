@@ -123,7 +123,7 @@ func TestReactorShim_AddPeer(t *testing.T) {
 	rts.shim.AddPeer(peerA)
 	wg.Wait()
 
-	require.Equal(t, peerIDA, peerUpdate.PeerID)
+	require.Equal(t, peerIDA, peerUpdate.NodeID)
 	require.Equal(t, p2p.PeerStatusUp, peerUpdate.Status)
 }
 
@@ -143,7 +143,7 @@ func TestReactorShim_RemovePeer(t *testing.T) {
 	rts.shim.RemovePeer(peerA, "test reason")
 	wg.Wait()
 
-	require.Equal(t, peerIDA, peerUpdate.PeerID)
+	require.Equal(t, peerIDA, peerUpdate.NodeID)
 	require.Equal(t, p2p.PeerStatusDown, peerUpdate.Status)
 }
 

@@ -158,7 +158,7 @@ func TestParseNodeAddress(t *testing.T) {
 		},
 		{
 			"memory:" + user,
-			p2p.NodeAddress{Protocol: "memory", NodeID: id, Path: user},
+			p2p.NodeAddress{Protocol: "memory", NodeID: id},
 			true,
 		},
 

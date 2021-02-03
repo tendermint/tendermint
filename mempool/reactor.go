@@ -58,7 +58,7 @@ type Reactor struct {
 	peerMgr PeerManager
 
 	mempoolCh   *p2p.Channel
-	peerUpdates *p2p.PeerUpdatesCh
+	peerUpdates *p2p.PeerUpdates
 	closeCh     chan struct{}
 
 	// peerWG is used to coordinate graceful termination of all peer broadcasting
@@ -76,7 +76,7 @@ func NewReactor(
 	peerMgr PeerManager,
 	mempool *CListMempool,
 	mempoolCh *p2p.Channel,
-	peerUpdates *p2p.PeerUpdatesCh,
+	peerUpdates *p2p.PeerUpdates,
 ) *Reactor {
 
 	r := &Reactor{
@@ -225,9 +225,8 @@ func (r *Reactor) processMempoolCh() {
 			if err := r.handleMessage(r.mempoolCh.ID(), envelope); err != nil {
 				r.Logger.Error("failed to process message", "ch_id", r.mempoolCh.ID(), "envelope", envelope, "err", err)
 				r.mempoolCh.Error() <- p2p.PeerError{
-					PeerID:   envelope.From,
-					Err:      err,
-					Severity: p2p.PeerErrorSeverityLow,
+					NodeID: envelope.From,
+					Err:    err,
 				}
 			}
 
@@ -244,7 +243,7 @@ func (r *Reactor) processMempoolCh() {
 // removed peers, we remove the peer from the mempool peer ID set and signal to
 // stop the tx broadcasting goroutine.
 func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
-	r.Logger.Debug("received peer update", "peer", peerUpdate.PeerID, "status", peerUpdate.Status)
+	r.Logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
@@ -264,28 +263,28 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 			// a new done channel so we can explicitly close the goroutine if the peer
 			// is later removed, we increment the waitgroup so the reactor can stop
 			// safely, and finally start the goroutine to broadcast txs to that peer.
-			_, ok := r.peerRoutines[peerUpdate.PeerID]
+			_, ok := r.peerRoutines[peerUpdate.NodeID]
 			if !ok {
 				closer := tmsync.NewCloser()
 
-				r.peerRoutines[peerUpdate.PeerID] = closer
+				r.peerRoutines[peerUpdate.NodeID] = closer
 				r.peerWG.Add(1)
 
-				r.ids.ReserveForPeer(peerUpdate.PeerID)
+				r.ids.ReserveForPeer(peerUpdate.NodeID)
 
 				// start a broadcast routine ensuring all txs are forwarded to the peer
-				go r.broadcastTxRoutine(peerUpdate.PeerID, closer)
+				go r.broadcastTxRoutine(peerUpdate.NodeID, closer)
 			}
 		}
 
-	case p2p.PeerStatusDown, p2p.PeerStatusRemoved, p2p.PeerStatusBanned:
-		r.ids.Reclaim(peerUpdate.PeerID)
+	case p2p.PeerStatusDown:
+		r.ids.Reclaim(peerUpdate.NodeID)
 
 		// Check if we've started a tx broadcasting goroutine for this peer.
 		// If we have, we signal to terminate the goroutine via the channel's closure.
 		// This will internally decrement the peer waitgroup and remove the peer
 		// from the map of peer tx broadcasting goroutines.
-		closer, ok := r.peerRoutines[peerUpdate.PeerID]
+		closer, ok := r.peerRoutines[peerUpdate.NodeID]
 		if ok {
 			closer.Close()
 		}
