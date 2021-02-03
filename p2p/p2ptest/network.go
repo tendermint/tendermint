@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -15,9 +14,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 )
-
-// Message is a simple message containing a string-typed Value field.
-type Message = gogotypes.StringValue
 
 // Network sets up an in-memory network that can be used for high-level P2P
 // testing. It creates an arbitrary number of nodes that are connected to each

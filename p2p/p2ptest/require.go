@@ -100,6 +100,17 @@ func RequireNoUpdates(t *testing.T, peerUpdates *p2p.PeerUpdates) {
 	}
 }
 
+// RequireError requires that the given peer error is submitted for a peer.
+func RequireError(t *testing.T, channel *p2p.Channel, peerError p2p.PeerError) {
+	timer := time.NewTimer(time.Second) // not time.After due to goroutine leaks
+	defer timer.Stop()
+	select {
+	case channel.Error <- peerError:
+	case <-timer.C:
+		require.Fail(t, "timed out reporting error", "%v on %v", peerError, channel.ID)
+	}
+}
+
 // RequireUpdate requires that a PeerUpdates subscription yields the given update.
 func RequireUpdate(t *testing.T, peerUpdates *p2p.PeerUpdates, expect p2p.PeerUpdate) {
 	timer := time.NewTimer(time.Second) // not time.After due to goroutine leaks

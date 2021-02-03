@@ -303,7 +303,7 @@ func (r *Router) routeChannel(
 					r.Logger.Error("failed to wrap message", "channel", chID, "err", err)
 					continue
 				}
-				envelope.Message = wrapper
+				envelope.Message = msg
 			}
 
 			// Collect peer queues to pass the message via.
