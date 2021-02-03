@@ -68,5 +68,5 @@ jobs:
           SLACK_USERNAME: Nightly E2E Tests
           SLACK_ICON_EMOJI: ':white_check_mark:'
           SLACK_COLOR: good
-          SLACK_MESSAGE: Nightly E2E (copy) tests passed on master on v0.34.x
+          SLACK_MESSAGE: Nightly E2E tests passed on v0.34.x
           SLACK_FOOTER: ''
