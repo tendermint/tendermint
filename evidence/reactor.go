@@ -192,10 +192,10 @@ func (r *Reactor) processEvidenceCh() {
 
 	for {
 		select {
-		case envelope := <-r.evidenceCh.In():
-			if err := r.handleMessage(r.evidenceCh.ID(), envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.evidenceCh.ID(), "envelope", envelope, "err", err)
-				r.evidenceCh.Error() <- p2p.PeerError{
+		case envelope := <-r.evidenceCh.In:
+			if err := r.handleMessage(r.evidenceCh.ID, envelope); err != nil {
+				r.Logger.Error("failed to process message", "ch_id", r.evidenceCh.ID, "envelope", envelope, "err", err)
+				r.evidenceCh.Error <- p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
 				}
@@ -337,7 +337,7 @@ func (r *Reactor) broadcastEvidenceLoop(peerID p2p.NodeID, closer *tmsync.Closer
 		// and thus would not be able to process the evidence correctly. Also, the
 		// peer may receive this piece of evidence multiple times if it added and
 		// removed frequently from the broadcasting peer.
-		r.evidenceCh.Out() <- p2p.Envelope{
+		r.evidenceCh.Out <- p2p.Envelope{
 			To: peerID,
 			Message: &tmproto.EvidenceList{
 				Evidence: []tmproto.Evidence{*evProto},

@@ -250,6 +250,7 @@ func (o *PeerManagerOptions) optimize() {
 // a peer ID filtering callback in PeerManagerOptions and configuring it during
 // Node setup.
 type PeerManager struct {
+	selfID     NodeID
 	options    PeerManagerOptions
 	rand       *rand.Rand
 	dialWaker  *tmsync.Waker // wakes up DialNext() on relevant peer changes
@@ -269,17 +270,22 @@ type PeerManager struct {
 }
 
 // NewPeerManager creates a new peer manager.
-func NewPeerManager(peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, error) {
-	store, err := newPeerStore(peerDB)
-	if err != nil {
-		return nil, err
+func NewPeerManager(selfID NodeID, peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, error) {
+	if selfID == "" {
+		return nil, errors.New("self ID not given")
 	}
-	if err = options.Validate(); err != nil {
+	if err := options.Validate(); err != nil {
 		return nil, err
 	}
 	options.optimize()
 
+	store, err := newPeerStore(peerDB)
+	if err != nil {
+		return nil, err
+	}
+
 	peerManager := &PeerManager{
+		selfID:     selfID,
 		options:    options,
 		rand:       rand.New(rand.NewSource(time.Now().UnixNano())), // nolint:gosec
 		dialWaker:  tmsync.NewWaker(),
@@ -305,8 +311,13 @@ func NewPeerManager(peerDB dbm.DB, options PeerManagerOptions) (*PeerManager, er
 }
 
 // configurePeers configures peers in the peer store with ephemeral runtime
-// configuration, e.g. PersistentPeers. The caller must hold the mutex lock.
+// configuration, e.g. PersistentPeers. It also removes ourself, if we're in the
+// peer store. The caller must hold the mutex lock.
 func (m *PeerManager) configurePeers() error {
+	if err := m.store.Delete(m.selfID); err != nil {
+		return err
+	}
+
 	configure := map[NodeID]bool{}
 	for _, id := range m.options.PersistentPeers {
 		configure[id] = true
@@ -369,6 +380,9 @@ func (m *PeerManager) prunePeers() error {
 func (m *PeerManager) Add(address NodeAddress) error {
 	if err := address.Validate(); err != nil {
 		return err
+	}
+	if address.NodeID == m.selfID {
+		return fmt.Errorf("can't add self (%v) to peer store", m.selfID)
 	}
 
 	m.mtx.Lock()
@@ -523,7 +537,9 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 			// multiple lower-scored peers (shouldn't really happen).
 		}
 	}
-
+	if address.NodeID == m.selfID {
+		return fmt.Errorf("rejecting connection to self (%v)", address.NodeID)
+	}
 	if m.connected[address.NodeID] {
 		return fmt.Errorf("peer %v is already connected", address.NodeID)
 	}
@@ -587,6 +603,9 @@ func (m *PeerManager) Accepted(peerID NodeID) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
+	if peerID == m.selfID {
+		return fmt.Errorf("rejecting connection from self (%v)", peerID)
+	}
 	if m.connected[peerID] {
 		return fmt.Errorf("peer %q is already connected", peerID)
 	}

@@ -170,7 +170,7 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 				"height", snapshot.Height,
 				"format", snapshot.Format,
 			)
-			r.snapshotCh.Out() <- p2p.Envelope{
+			r.snapshotCh.Out <- p2p.Envelope{
 				To: envelope.From,
 				Message: &ssproto.SnapshotsResponse{
 					Height:   snapshot.Height,
@@ -254,7 +254,7 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 			"chunk", msg.Index,
 			"peer", envelope.From,
 		)
-		r.chunkCh.Out() <- p2p.Envelope{
+		r.chunkCh.Out <- p2p.Envelope{
 			To: envelope.From,
 			Message: &ssproto.ChunkResponse{
 				Height:  msg.Height,
@@ -343,10 +343,10 @@ func (r *Reactor) processSnapshotCh() {
 
 	for {
 		select {
-		case envelope := <-r.snapshotCh.In():
-			if err := r.handleMessage(r.snapshotCh.ID(), envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.snapshotCh.ID(), "envelope", envelope, "err", err)
-				r.snapshotCh.Error() <- p2p.PeerError{
+		case envelope := <-r.snapshotCh.In:
+			if err := r.handleMessage(r.snapshotCh.ID, envelope); err != nil {
+				r.Logger.Error("failed to process message", "ch_id", r.snapshotCh.ID, "envelope", envelope, "err", err)
+				r.snapshotCh.Error <- p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
 				}
@@ -369,10 +369,10 @@ func (r *Reactor) processChunkCh() {
 
 	for {
 		select {
-		case envelope := <-r.chunkCh.In():
-			if err := r.handleMessage(r.chunkCh.ID(), envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.chunkCh.ID(), "envelope", envelope, "err", err)
-				r.chunkCh.Error() <- p2p.PeerError{
+		case envelope := <-r.chunkCh.In:
+			if err := r.handleMessage(r.chunkCh.ID, envelope); err != nil {
+				r.Logger.Error("failed to process message", "ch_id", r.chunkCh.ID, "envelope", envelope, "err", err)
+				r.chunkCh.Error <- p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
 				}
@@ -470,12 +470,12 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 		return sm.State{}, nil, errors.New("a state sync is already in progress")
 	}
 
-	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateProvider, r.snapshotCh.Out(), r.chunkCh.Out(), r.tempDir)
+	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateProvider, r.snapshotCh.Out, r.chunkCh.Out, r.tempDir)
 	r.mtx.Unlock()
 
 	// request snapshots from all currently connected peers
 	r.Logger.Debug("requesting snapshots from known peers")
-	r.snapshotCh.Out() <- p2p.Envelope{
+	r.snapshotCh.Out <- p2p.Envelope{
 		Broadcast: true,
 		Message:   &ssproto.SnapshotsRequest{},
 	}
