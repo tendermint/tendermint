@@ -49,7 +49,7 @@ jobs:
           SLACK_USERNAME: Nightly E2E Tests
           SLACK_ICON_EMOJI: ':skull:'
           SLACK_COLOR: danger
-          SLACK_MESSAGE: Nightly E2E (copy) tests failed
+          SLACK_MESSAGE: Nightly E2E (copy) tests failed on master
           SLACK_FOOTER: ''
 
   e2e-nightly-success: # may turn this off once they seem to pass consistently
@@ -65,5 +65,5 @@ jobs:
           SLACK_USERNAME: Nightly E2E Tests
           SLACK_ICON_EMOJI: ':white_check_mark:'
           SLACK_COLOR: good
-          SLACK_MESSAGE: Nightly E2E (copy) tests passed
+          SLACK_MESSAGE: Nightly E2E (copy) tests passed on master
           SLACK_FOOTER: ''
