@@ -1,5 +1,5 @@
 # Runs randomly generated E2E testnets nightly on master
-name: e2e-nightly2
+name: e2e-nightly-master
 on:
   workflow_dispatch: # allow running workflow manually
   schedule:
