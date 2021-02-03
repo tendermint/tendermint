@@ -313,7 +313,7 @@ func TestRouter_AcceptPeers(t *testing.T) {
 			// Set up a mock transport that handshakes.
 			closer := tmsync.NewCloser()
 			mockConnection := &mocks.Connection{}
-			mockConnection.On("String").Return("mock")
+			mockConnection.On("String").Maybe().Return("mock")
 			mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
 				Return(tc.peerInfo, tc.peerKey, nil)
 			mockConnection.On("Close").Run(func(_ mock.Arguments) { closer.Close() }).Return(nil)
@@ -322,7 +322,7 @@ func TestRouter_AcceptPeers(t *testing.T) {
 			}
 
 			mockTransport := &mocks.Transport{}
-			mockTransport.On("String").Return("mock")
+			mockTransport.On("String").Maybe().Return("mock")
 			mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 			mockTransport.On("Close").Return(nil)
 			mockTransport.On("Accept").Once().Return(mockConnection, nil)
@@ -355,6 +355,7 @@ func TestRouter_AcceptPeers(t *testing.T) {
 
 			require.NoError(t, router.Stop())
 			mockTransport.AssertExpectations(t)
+			mockConnection.AssertExpectations(t)
 		})
 	}
 }
@@ -365,7 +366,7 @@ func TestRouter_AcceptPeers_Error(t *testing.T) {
 	// Set up a mock transport that returns an error, which should prevent
 	// the router from calling Accept again.
 	mockTransport := &mocks.Transport{}
-	mockTransport.On("String").Return("mock")
+	mockTransport.On("String").Maybe().Return("mock")
 	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 	mockTransport.On("Accept").Once().Return(nil, errors.New("boom"))
 	mockTransport.On("Close").Return(nil)
@@ -390,7 +391,7 @@ func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
 	// Set up a mock transport that returns io.EOF once, which should prevent
 	// the router from calling Accept again.
 	mockTransport := &mocks.Transport{}
-	mockTransport.On("String").Return("mock")
+	mockTransport.On("String").Maybe().Return("mock")
 	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 	mockTransport.On("Accept").Once().Return(nil, io.EOF)
 	mockTransport.On("Close").Return(nil)
@@ -419,13 +420,13 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 	closeCh := make(chan time.Time)
 
 	mockConnection := &mocks.Connection{}
-	mockConnection.On("String").Return("mock")
+	mockConnection.On("String").Maybe().Return("mock")
 	mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
 		WaitUntil(closeCh).Return(p2p.NodeInfo{}, nil, io.EOF)
 	mockConnection.On("Close").Return(nil)
 
 	mockTransport := &mocks.Transport{}
-	mockTransport.On("String").Return("mock")
+	mockTransport.On("String").Maybe().Return("mock")
 	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 	mockTransport.On("Close").Return(nil)
 	mockTransport.On("Accept").Times(3).Run(func(_ mock.Arguments) {
@@ -448,6 +449,7 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 
 	require.NoError(t, router.Stop())
 	mockTransport.AssertExpectations(t)
+	mockConnection.AssertExpectations(t)
 }
 
 func TestRouter_DialPeers(t *testing.T) {
@@ -475,10 +477,10 @@ func TestRouter_DialPeers(t *testing.T) {
 			// Set up a mock transport that handshakes.
 			closer := tmsync.NewCloser()
 			mockConnection := &mocks.Connection{}
-			mockConnection.On("String").Return("mock")
-			mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
-				Return(tc.peerInfo, tc.peerKey, nil)
+			mockConnection.On("String").Maybe().Return("mock")
 			if tc.dialErr == nil {
+				mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
+					Return(tc.peerInfo, tc.peerKey, nil)
 				mockConnection.On("Close").Run(func(_ mock.Arguments) { closer.Close() }).Return(nil)
 			}
 			if tc.ok {
@@ -486,7 +488,7 @@ func TestRouter_DialPeers(t *testing.T) {
 			}
 
 			mockTransport := &mocks.Transport{}
-			mockTransport.On("String").Return("mock")
+			mockTransport.On("String").Maybe().Return("mock")
 			mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 			mockTransport.On("Close").Return(nil)
 			mockTransport.On("Accept").Once().Return(nil, io.EOF)
@@ -526,6 +528,7 @@ func TestRouter_DialPeers(t *testing.T) {
 
 			require.NoError(t, router.Stop())
 			mockTransport.AssertExpectations(t)
+			mockConnection.AssertExpectations(t)
 		})
 	}
 }
@@ -543,13 +546,13 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 	closeCh := make(chan time.Time)
 
 	mockConnection := &mocks.Connection{}
-	mockConnection.On("String").Return("mock")
+	mockConnection.On("String").Maybe().Return("mock")
 	mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
 		WaitUntil(closeCh).Return(p2p.NodeInfo{}, nil, io.EOF)
 	mockConnection.On("Close").Return(nil)
 
 	mockTransport := &mocks.Transport{}
-	mockTransport.On("String").Return("mock")
+	mockTransport.On("String").Maybe().Return("mock")
 	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 	mockTransport.On("Close").Return(nil)
 	mockTransport.On("Accept").Once().Return(nil, io.EOF)
@@ -579,6 +582,7 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 
 	require.NoError(t, router.Stop())
 	mockTransport.AssertExpectations(t)
+	mockConnection.AssertExpectations(t)
 }
 
 func TestRouter_EvictPeers(t *testing.T) {
@@ -589,7 +593,7 @@ func TestRouter_EvictPeers(t *testing.T) {
 	closeOnce := sync.Once{}
 
 	mockConnection := &mocks.Connection{}
-	mockConnection.On("String").Return("mock")
+	mockConnection.On("String").Maybe().Return("mock")
 	mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
 		Return(peerInfo, peerKey.PubKey(), nil)
 	mockConnection.On("ReceiveMessage").WaitUntil(closeCh).Return(chID, nil, io.EOF)
@@ -600,7 +604,7 @@ func TestRouter_EvictPeers(t *testing.T) {
 	}).Return(nil)
 
 	mockTransport := &mocks.Transport{}
-	mockTransport.On("String").Return("mock")
+	mockTransport.On("String").Maybe().Return("mock")
 	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 	mockTransport.On("Close").Return(nil)
 	mockTransport.On("Accept").Once().Return(mockConnection, nil)
@@ -633,4 +637,5 @@ func TestRouter_EvictPeers(t *testing.T) {
 
 	require.NoError(t, router.Stop())
 	mockTransport.AssertExpectations(t)
+	mockConnection.AssertExpectations(t)
 }
