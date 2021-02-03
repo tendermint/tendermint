@@ -412,7 +412,7 @@ func (r *Router) acceptPeers(transport Transport) {
 			case errors.Is(err, context.Canceled):
 				return
 			case err != nil:
-				r.logger.Error("peer handshake failed", "endpoint", conn, "err", err)
+				r.logger.Error("peer handshake failed", "endpoint", conn.RemoteEndpoint(), "err", err)
 				return
 			}
 
@@ -448,6 +448,7 @@ func (r *Router) acceptPeers(transport Transport) {
 
 // dialPeers maintains outbound connections to peers by dialing them.
 func (r *Router) dialPeers() {
+	r.logger.Debug("starting dial routine")
 	ctx := r.stopCtx()
 	for {
 		address, err := r.peerManager.DialNext(ctx)
@@ -528,7 +529,7 @@ func (r *Router) dialPeer(ctx context.Context, address NodeAddress) (Connection,
 		defer cancel()
 	}
 
-	r.logger.Info("resolving peer address", "peer", address)
+	r.logger.Debug("resolving peer address", "peer", address)
 	endpoints, err := address.Resolve(resolveCtx)
 	switch {
 	case err != nil:
@@ -562,7 +563,7 @@ func (r *Router) dialPeer(ctx context.Context, address NodeAddress) (Connection,
 		if err != nil {
 			r.logger.Error("failed to dial endpoint", "peer", address.NodeID, "endpoint", endpoint, "err", err)
 		} else {
-			r.logger.Info("dialed peer", "peer", address.NodeID, "endpoint", endpoint)
+			r.logger.Debug("dialed peer", "peer", address.NodeID, "endpoint", endpoint)
 			return conn, nil
 		}
 	}
@@ -600,7 +601,7 @@ func (r *Router) handshakePeer(ctx context.Context, conn Connection, expectID No
 // channels. It will close the given connection and send queue when done, or if
 // they are closed elsewhere it will cause this method to shut down and return.
 func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
-	r.logger.Info("peer connected", "peer", peerID, "endpoint", conn)
+	r.logger.Info("peer connected", "peer", peerID, "endpoint", conn.RemoteEndpoint())
 	errCh := make(chan error, 2)
 	go func() {
 		errCh <- r.receivePeer(peerID, conn)
@@ -619,9 +620,9 @@ func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
 	}
 	switch err {
 	case nil, io.EOF:
-		r.logger.Info("peer disconnected", "peer", peerID, "endpoint", conn)
+		r.logger.Info("peer disconnected", "peer", peerID, "endpoint", conn.RemoteEndpoint())
 	default:
-		r.logger.Error("peer failure", "peer", peerID, "endpoint", conn, "err", err)
+		r.logger.Error("peer failure", "peer", peerID, "endpoint", conn.RemoteEndpoint(), "err", err)
 	}
 }
 
@@ -699,6 +700,7 @@ func (r *Router) sendPeer(peerID NodeID, conn Connection, queue queue) error {
 
 // evictPeers evicts connected peers as requested by the peer manager.
 func (r *Router) evictPeers() {
+	r.logger.Debug("starting evict routine")
 	ctx := r.stopCtx()
 	for {
 		peerID, err := r.peerManager.EvictNext(ctx)
