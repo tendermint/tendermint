@@ -1,0 +1,142 @@
+package p2ptest
+
+import (
+	"testing"
+	"time"
+
+	"github.com/gogo/protobuf/proto"
+	"github.com/stretchr/testify/require"
+
+	"github.com/tendermint/tendermint/p2p"
+)
+
+// RequireEmpty requires that the given channel is empty.
+func RequireEmpty(t *testing.T, channel *p2p.Channel) {
+	select {
+	case e := <-channel.In:
+		require.Fail(t, "expected channel %v to be empty, got %v", channel.ID, e)
+	default:
+	}
+}
+
+// RequireReceive requires that the given envelope is received on the channel.
+func RequireReceive(t *testing.T, channel *p2p.Channel, expect p2p.Envelope) {
+	timer := time.NewTimer(time.Second) // not time.After due to goroutine leaks
+	defer timer.Stop()
+
+	select {
+	case e, ok := <-channel.In:
+		require.True(t, ok, "channel %v is closed", channel.ID)
+		require.Equal(t, expect, e)
+
+	case <-channel.Done():
+		require.Fail(t, "channel %v is closed", channel.ID)
+
+	case <-timer.C:
+		require.Fail(t, "timed out waiting for envelope %v on channel %v", expect, channel.ID)
+	}
+}
+
+// RequireReceiveUnordered requires that the given envelopes are all received on
+// the channel, ignoring order.
+func RequireReceiveUnordered(t *testing.T, channel *p2p.Channel, expect []p2p.Envelope) {
+	timer := time.NewTimer(time.Second) // not time.After due to goroutine leaks
+	defer timer.Stop()
+
+	actual := []p2p.Envelope{}
+	for {
+		select {
+		case e, ok := <-channel.In:
+			require.True(t, ok, "channel %v is closed", channel.ID)
+			actual = append(actual, e)
+			if len(actual) == len(expect) {
+				require.ElementsMatch(t, expect, actual)
+				return
+			}
+
+		case <-channel.Done():
+			require.Fail(t, "channel %v is closed", channel.ID)
+
+		case <-timer.C:
+			require.ElementsMatch(t, expect, actual)
+			return
+		}
+	}
+
+}
+
+// RequireSend requires that the given envelope is sent on the channel.
+func RequireSend(t *testing.T, channel *p2p.Channel, envelope p2p.Envelope) {
+	timer := time.NewTimer(time.Second) // not time.After due to goroutine leaks
+	defer timer.Stop()
+	select {
+	case channel.Out <- envelope:
+	case <-timer.C:
+		require.Fail(t, "timed out sending envelope %v on channel %v", envelope, channel.ID)
+	}
+}
+
+// RequireSendReceive requires that a given Protobuf message is sent to the
+// given peer, and then that the given response is received back.
+func RequireSendReceive(
+	t *testing.T,
+	channel *p2p.Channel,
+	peerID p2p.NodeID,
+	send proto.Message,
+	receive proto.Message,
+) {
+	RequireSend(t, channel, p2p.Envelope{To: peerID, Message: send})
+	RequireReceive(t, channel, p2p.Envelope{From: peerID, Message: send})
+}
+
+// RequireNoUpdates requires that a PeerUpdates subscription is empty.
+func RequireNoUpdates(t *testing.T, peerUpdates *p2p.PeerUpdates) {
+	select {
+	case update := <-peerUpdates.Updates():
+		require.Fail(t, "expected no peer updates, got %v", update)
+	default:
+	}
+}
+
+// RequireUpdate requires that a PeerUpdates subscription yields the given update.
+func RequireUpdate(t *testing.T, peerUpdates *p2p.PeerUpdates, expect p2p.PeerUpdate) {
+	timer := time.NewTimer(time.Second) // not time.After due to goroutine leaks
+	defer timer.Stop()
+
+	select {
+	case update := <-peerUpdates.Updates():
+		require.Equal(t, expect, update, "peer update did not match")
+
+	case <-peerUpdates.Done():
+		require.Fail(t, "peer updates subscription is closed")
+
+	case <-timer.C:
+		require.Fail(t, "timed out waiting for peer update %v", expect)
+	}
+}
+
+// RequireUpdates requires that a PeerUpdates subscription yields the given updates
+// in the given order.
+func RequireUpdates(t *testing.T, peerUpdates *p2p.PeerUpdates, expect []p2p.PeerUpdate) {
+	timer := time.NewTimer(time.Second) // not time.After due to goroutine leaks
+	defer timer.Stop()
+
+	actual := []p2p.PeerUpdate{}
+	for {
+		select {
+		case update := <-peerUpdates.Updates():
+			actual = append(actual, update)
+			if len(actual) == len(expect) {
+				require.Equal(t, expect, actual)
+				return
+			}
+
+		case <-peerUpdates.Done():
+			require.Fail(t, "peer updates subscription is closed")
+
+		case <-timer.C:
+			require.Equal(t, expect, actual, "did not receive expected peer updates")
+			return
+		}
+	}
+}

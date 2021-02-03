@@ -16,23 +16,27 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-// StringMessage is a simple message containing a string-typed Value field.
-type StringMessage = gogotypes.StringValue
+// Message is a simple message containing a string-typed Value field.
+type Message = gogotypes.StringValue
 
 // Network sets up an in-memory network that can be used for high-level P2P
 // testing. It creates an arbitrary number of nodes that are connected to each
 // other, and can open channels across all nodes with custom reactors.
 type Network struct {
-	Nodes         map[p2p.NodeID]*Node
+	Nodes map[p2p.NodeID]*Node
+
+	logger        log.Logger
 	memoryNetwork *p2p.MemoryNetwork
 }
 
 // MakeNetwork creates a test network with the given number of nodes and
 // connects them to each other.
 func MakeNetwork(t *testing.T, nodes int) *Network {
+	logger := log.TestingLogger()
 	network := &Network{
 		Nodes:         map[p2p.NodeID]*Node{},
-		memoryNetwork: p2p.NewMemoryNetwork(log.TestingLogger()),
+		logger:        logger,
+		memoryNetwork: p2p.NewMemoryNetwork(logger),
 	}
 	for i := 0; i < nodes; i++ {
 		node := MakeNode(t, network)
@@ -89,39 +93,18 @@ func MakeNetwork(t *testing.T, nodes int) *Network {
 	return network
 }
 
-// MakeChannelAtNode opens a channel across all nodes in the network, calling
-// the given onPeers function for each node except the given node ID, and returns
-// the channel at the given node ID.
-func (n *Network) MakeChannelAtNode(
+// MakeChannels makes a channel on all nodes and returns them, automatically
+// doing error checks and cleanups.
+func (n *Network) MakeChannels(
 	t *testing.T,
-	nodeID p2p.NodeID,
 	chID p2p.ChannelID,
 	messageType proto.Message,
-	onPeers func(*testing.T, p2p.NodeID, *p2p.Channel),
-) *p2p.Channel {
-
-	// First create the channel on the "local" (specified) node.
-	require.Contains(t, n.Nodes, nodeID)
-	node := n.Nodes[nodeID]
-	channel, err := node.Router.OpenChannel(chID, messageType)
-	require.NoError(t, err)
-	t.Cleanup(channel.Close)
-
-	// Then create the channel on all "remote" (unspecified) peers,
-	// calling onPeers with the channel.
-	for _, peer := range n.Nodes {
-		if peer.NodeID == nodeID {
-			continue
-		}
-
-		channel, err := peer.Router.OpenChannel(chID, messageType)
-		require.NoError(t, err)
-		t.Cleanup(channel.Close)
-
-		onPeers(t, peer.NodeID, channel)
+) map[p2p.NodeID]*p2p.Channel {
+	channels := map[p2p.NodeID]*p2p.Channel{}
+	for _, node := range n.Nodes {
+		channels[node.NodeID] = node.MakeChannel(t, chID, messageType)
 	}
-
-	return channel
+	return channels
 }
 
 // RandomNode returns a random node.
@@ -144,7 +127,7 @@ func (n *Network) Peers(id p2p.NodeID) []*Node {
 	return peers
 }
 
-// Node is a node in a TestNetwork, with a Router and a PeerManager.
+// Node is a node in a Network, with a Router and a PeerManager.
 type Node struct {
 	NodeID      p2p.NodeID
 	NodeInfo    p2p.NodeInfo
@@ -155,9 +138,8 @@ type Node struct {
 	Transport   *p2p.MemoryTransport
 }
 
-// NewNode creates a new TestNode.
+// MakeNode creates a new Node.
 func MakeNode(t *testing.T, network *Network) *Node {
-	logger := log.TestingLogger()
 	privKey := ed25519.GenPrivKey()
 	nodeID := p2p.NodeIDFromPubKey(privKey.PubKey())
 	nodeInfo := p2p.NodeInfo{
@@ -167,32 +149,57 @@ func MakeNode(t *testing.T, network *Network) *Node {
 	}
 
 	transport := network.memoryNetwork.CreateTransport(nodeID)
-	endpoints := transport.Endpoints()
-	require.Len(t, endpoints, 1)
+	require.Len(t, transport.Endpoints(), 1, "transport not listening on 1 endpoint")
 
-	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{
+		MinRetryTime: 10 * time.Millisecond,
+	})
 	require.NoError(t, err)
 
-	router, err := p2p.NewRouter(logger, nodeInfo, privKey, peerManager, []p2p.Transport{transport}, p2p.RouterOptions{})
+	router, err := p2p.NewRouter(network.logger, nodeInfo, privKey, peerManager,
+		[]p2p.Transport{transport}, p2p.RouterOptions{})
 	require.NoError(t, err)
-	err = router.Start()
-	require.NoError(t, err)
+	require.NoError(t, router.Start())
 
 	t.Cleanup(func() {
-		peerManager.Close()
-		require.NoError(t, transport.Close())
 		if router.IsRunning() {
 			require.NoError(t, router.Stop())
 		}
+		peerManager.Close()
+		require.NoError(t, transport.Close())
 	})
 
 	return &Node{
 		NodeID:      nodeID,
 		NodeInfo:    nodeInfo,
-		NodeAddress: endpoints[0].NodeAddress(nodeID),
+		NodeAddress: transport.Endpoints()[0].NodeAddress(nodeID),
 		PrivKey:     privKey,
 		Router:      router,
 		PeerManager: peerManager,
 		Transport:   transport,
 	}
+}
+
+// MakeChannel opens a channel, with automatic error handling and cleanup. On
+// test cleanup, it also checks that the channel is empty, to make sure
+// all expected messages have been asserted.
+func (n *Node) MakeChannel(t *testing.T, chID p2p.ChannelID, messageType proto.Message) *p2p.Channel {
+	channel, err := n.Router.OpenChannel(chID, messageType)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		RequireEmpty(t, channel)
+		channel.Close()
+	})
+	return channel
+}
+
+// MakePeerUpdates opens a peer update subscription, with automatic cleanup.
+// It checks that all updates have been consumed during cleanup.
+func (n *Node) MakePeerUpdates(t *testing.T) *p2p.PeerUpdates {
+	sub := n.PeerManager.Subscribe()
+	t.Cleanup(func() {
+		RequireNoUpdates(t, sub)
+		sub.Close()
+	})
+	return sub
 }
