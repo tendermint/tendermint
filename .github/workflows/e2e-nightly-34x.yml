@@ -1,6 +1,6 @@
 # Runs randomly generated E2E testnets nightly
 # on the 0.34.x release branch
-name: e2e-nightly
+name: e2e-nightly-34x
 on:
   workflow_dispatch: # allow running workflow manually, in theory
   schedule:
