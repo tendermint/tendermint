@@ -8,7 +8,7 @@
 
 - 2020-11-16: Notes on recommended reactor implementation patterns, approve ADR (@erikgrinaker)
 
-- 2021-02-04: Update with new P2P core and Transport API changes (@erikgrinkaer).
+- 2021-02-04: Update with new P2P core and Transport API changes (@erikgrinaker).
 
 ## Context
 
@@ -26,11 +26,11 @@ The initial version of this ADR had a byte-oriented multi-stream transport API, 
 
 ## Decision
 
-The P2P stack will be redesigned as a message-oriented architecture, primarily relying on Go channels for communication and scheduling. It will use IO stream transports to exchange raw bytes with individual peers, bidirectional peer-addressable channels to send and receive Protobuf messages, and a router to route messages between reactors and peers. Message passing is asynchronous with at-most-once delivery.
+The P2P stack will be redesigned as a message-oriented architecture, primarily relying on Go channels for communication and scheduling. It will use a message-oriented transport to binary messages with individual peers, bidirectional peer-addressable channels to send and receive Protobuf messages, a router to route messages between reactors and peers, and a peer manager to manage peer lifecycle information. Message passing is asynchronous with at-most-once delivery.
 
 ## Detailed Design
 
-This ADR is primarily concerned with the architecture and interfaces of the P2P stack, not implementation details. Separate ADRs may be submitted for individual components, since implementation may be non-trivial. The interfaces described here should therefore be considered a rough architecture outline, not a complete and final design.
+This ADR is primarily concerned with the architecture and interfaces of the P2P stack, not implementation details. The interfaces described here should therefore be considered a rough architecture outline, not a complete and final design.
 
 Primary design objectives have been:
 
@@ -65,32 +65,32 @@ Transports must satisfy the following requirements:
 
 * Exchange the MConnection `NodeInfo` and public key via a node handshake, and possibly encrypt or sign the traffic as appropriate.
 
-The initial transport is a port of the current MConnection protocol currently used by Tendermint, and should be backwards-compatible at the wire level, as wel as an in-memory transport used for testing. There are plans to explore a QUIC transport that may replace MConnection.
+The initial transport is a port of the current MConnection protocol currently used by Tendermint, and should be backwards-compatible at the wire level. An in-memory transport for testing has also been implemented. There are plans to explore a QUIC transport that may replace the MConnection protocol.
 
 The `Transport` interface is as follows:
 
 ```go
 // Transport is a connection-oriented mechanism for exchanging data with a peer.
 type Transport interface {
-	// Protocols returns the protocols supported by the transport. The Router
-	// uses this to pick a transport for an Endpoint.
-	Protocols() []Protocol
+    // Protocols returns the protocols supported by the transport. The Router
+    // uses this to pick a transport for an Endpoint.
+    Protocols() []Protocol
 
-	// Endpoints returns the local endpoints the transport is listening on, if any.
-	// How to listen is transport-dependent, e.g. MConnTransport uses Listen() while
-	// MemoryTransport starts listening via MemoryNetwork.CreateTransport().
-	Endpoints() []Endpoint
+    // Endpoints returns the local endpoints the transport is listening on, if any.
+    // How to listen is transport-dependent, e.g. MConnTransport uses Listen() while
+    // MemoryTransport starts listening via MemoryNetwork.CreateTransport().
+    Endpoints() []Endpoint
 
-	// Accept waits for the next inbound connection on a listening endpoint, blocking
-	// until either a connection is available or the transport is closed. On closure,
-	// io.EOF is returned and further Accept calls are futile.
-	Accept() (Connection, error)
+    // Accept waits for the next inbound connection on a listening endpoint, blocking
+    // until either a connection is available or the transport is closed. On closure,
+    // io.EOF is returned and further Accept calls are futile.
+    Accept() (Connection, error)
 
-	// Dial creates an outbound connection to an endpoint.
-	Dial(context.Context, Endpoint) (Connection, error)
+    // Dial creates an outbound connection to an endpoint.
+    Dial(context.Context, Endpoint) (Connection, error)
 
-	// Close stops accepting new connections, but does not close active connections.
-	Close() error
+    // Close stops accepting new connections, but does not close active connections.
+    Close() error
 }
 ```
 
@@ -109,19 +109,19 @@ The `Endpoint` struct is:
 // networked endpoints must use IP as the underlying transport protocol to allow
 // e.g. IP address filtering. Either IP or Path (or both) must be set.
 type Endpoint struct {
-	// Protocol specifies the transport protocol.
-	Protocol Protocol
+    // Protocol specifies the transport protocol.
+    Protocol Protocol
 
-	// IP is an IP address (v4 or v6) to connect to. If set, this defines the
-	// endpoint as a networked endpoint.
-	IP net.IP
+    // IP is an IP address (v4 or v6) to connect to. If set, this defines the
+    // endpoint as a networked endpoint.
+    IP net.IP
 
-	// Port is a network port (either TCP or UDP). If 0, a default port may be
-	// used depending on the protocol.
-	Port uint16
+    // Port is a network port (either TCP or UDP). If 0, a default port may be
+    // used depending on the protocol.
+    Port uint16
 
-	// Path is an optional transport-specific path or identifier.
-	Path string
+    // Path is an optional transport-specific path or identifier.
+    Path string
 }
 
 // Protocol identifies a transport protocol.
@@ -143,26 +143,26 @@ The `Connection` interface is shown below. It omits certain additions that are c
 ```go
 // Connection represents an established connection between two endpoints.
 type Connection interface {
-	// Handshake executes a node handshake with the remote peer. It must be
-	// called once the connection is established, and returns the remote peer's
-	// node info and public key. The caller is responsible for validation.
-	Handshake(context.Context, NodeInfo, crypto.PrivKey) (NodeInfo, crypto.PubKey, error)
+    // Handshake executes a node handshake with the remote peer. It must be
+    // called once the connection is established, and returns the remote peer's
+    // node info and public key. The caller is responsible for validation.
+    Handshake(context.Context, NodeInfo, crypto.PrivKey) (NodeInfo, crypto.PubKey, error)
 
-	// ReceiveMessage returns the next message received on the connection,
-	// blocking until one is available. Returns io.EOF if closed.
-	ReceiveMessage() (ChannelID, []byte, error)
+    // ReceiveMessage returns the next message received on the connection,
+    // blocking until one is available. Returns io.EOF if closed.
+    ReceiveMessage() (ChannelID, []byte, error)
 
-	// SendMessage sends a message on the connection. Returns io.EOF if closed.
-	SendMessage(ChannelID, []byte) error
+    // SendMessage sends a message on the connection. Returns io.EOF if closed.
+    SendMessage(ChannelID, []byte) error
 
-	// LocalEndpoint returns the local endpoint for the connection.
-	LocalEndpoint() Endpoint
+    // LocalEndpoint returns the local endpoint for the connection.
+    LocalEndpoint() Endpoint
 
-	// RemoteEndpoint returns the remote endpoint for the connection.
-	RemoteEndpoint() Endpoint
+    // RemoteEndpoint returns the remote endpoint for the connection.
+    RemoteEndpoint() Endpoint
 
-	// Close closes the connection.
-	Close() error
+    // Close closes the connection.
+    Close() error
 }
 ```
 
@@ -193,11 +193,11 @@ type NodeID string
 // If the URL is opaque, i.e. of the form "scheme:opaque", then the opaque part
 // is expected to contain a node ID.
 type NodeAddress struct {
-	NodeID   NodeID
-	Protocol Protocol
-	Hostname string
-	Port     uint16
-	Path     string
+    NodeID   NodeID
+    Protocol Protocol
+    Hostname string
+    Port     uint16
+    Path     string
 }
 
 // ParseNodeAddress parses a node address URL into a NodeAddress, normalizing
@@ -272,16 +272,16 @@ func (m *PeerManager) Subscribe() *PeerUpdates
 
 // PeerUpdate is a peer update event sent via PeerUpdates.
 type PeerUpdate struct {
-	NodeID NodeID
-	Status PeerStatus
+    NodeID NodeID
+    Status PeerStatus
 }
 
 // PeerStatus is a peer status.
 type PeerStatus string
 
 const (
-	PeerStatusUp   PeerStatus = "up"   // Connected and ready.
-	PeerStatusDown PeerStatus = "down" // Disconnected.
+    PeerStatusUp   PeerStatus = "up"   // Connected and ready.
+    PeerStatusDown PeerStatus = "down" // Disconnected.
 )
 
 // PeerUpdates is a real-time peer update subscription.
@@ -312,8 +312,8 @@ type ChannelID uint16
 type Channel struct {
     ID          ChannelID        // Channel ID.
     In          <-chan Envelope  // Inbound messages (peers to reactors).
-	Out         chan<- Envelope  // outbound messages (reactors to peers)
-	Error       chan<- PeerError // Peer error reporting.
+    Out         chan<- Envelope  // outbound messages (reactors to peers)
+    Error       chan<- PeerError // Peer error reporting.
     messageType proto.Message    // Channel's message type, for e.g. unmarshalling.
 }
 
@@ -369,18 +369,18 @@ The `Router` has a very minimal API, since it is mostly driven by `PeerManager` 
 type Router struct {
     // Some details have been omitted below.
 
-	logger          log.Logger
-	options         RouterOptions
-	nodeInfo        NodeInfo
-	privKey         crypto.PrivKey
-	peerManager     *PeerManager
-	transports      []Transport
+    logger          log.Logger
+    options         RouterOptions
+    nodeInfo        NodeInfo
+    privKey         crypto.PrivKey
+    peerManager     *PeerManager
+    transports      []Transport
 
-	peerMtx         sync.RWMutex
-	peerQueues      map[NodeID]queue
+    peerMtx         sync.RWMutex
+    peerQueues      map[NodeID]queue
 
-	channelMtx      sync.RWMutex
-	channelQueues   map[ChannelID]queue
+    channelMtx      sync.RWMutex
+    channelQueues   map[ChannelID]queue
 }
 
 // OpenChannel opens a new channel for the given message type. The caller must
@@ -403,19 +403,19 @@ All Go channel sends in the `Router` and reactors are blocking (the router also 
 // - Receiving inbound messages to a single channel from all peers.
 // - Sending outbound messages to a single peer from all channels.
 type queue interface {
-	// enqueue returns a channel for submitting envelopes.
-	enqueue() chan<- Envelope
+    // enqueue returns a channel for submitting envelopes.
+    enqueue() chan<- Envelope
 
-	// dequeue returns a channel ordered according to some queueing policy.
-	dequeue() <-chan Envelope
+    // dequeue returns a channel ordered according to some queueing policy.
+    dequeue() <-chan Envelope
 
-	// close closes the queue. After this call enqueue() will block, so the
-	// caller must select on closed() as well to avoid blocking forever. The
-	// enqueue() and dequeue() channels will not be closed.
-	close()
+    // close closes the queue. After this call enqueue() will block, so the
+    // caller must select on closed() as well to avoid blocking forever. The
+    // enqueue() and dequeue() channels will not be closed.
+    close()
 
-	// closed returns a channel that's closed when the scheduler is closed.
-	closed() <-chan struct{}
+    // closed returns a channel that's closed when the scheduler is closed.
+    closed() <-chan struct{}
 }
 ```
 
@@ -577,7 +577,7 @@ func EchoReactor(ctx context.Context, channel *p2p.Channel, peerUpdates *p2p.Pee
 
 ## Status
 
-Partially Implemented
+Partially implemented
 
 ## Consequences
 
