@@ -8,6 +8,8 @@
 
 - 2020-11-16: Notes on recommended reactor implementation patterns, approve ADR (@erikgrinaker)
 
+- 2021-02-04: Update with new P2P core and Transport API changes (@erikgrinkaer).
+
 ## Context
 
 In [ADR 061](adr-061-p2p-refactor-scope.md) we decided to refactor the peer-to-peer (P2P) networking stack. The first phase is to redesign and refactor the internal P2P architecture, while retaining protocol compatibility as far as possible.
