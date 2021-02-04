@@ -355,39 +355,107 @@ type Wrapper interface {
 
 ### Routers
 
-The router manages all P2P networking for a node, and is responsible for keeping track of network peers, maintaining transport connections, and routing channel messages. As such, it must do e.g. connection retries and backoff, message QoS scheduling and backpressure, peer quality assessments, and endpoint detection and advertisement. In addition, the router provides a mechanism to subscribe to peer updates (e.g. peers connecting or disconnecting), and handles reported peer errors from reactors.
+The router exeutes P2P networking for a node, taking instructions from and reporting events to the `PeerManager`, maintaining transport connections to peers, and routing messages between channels and peers.
 
-The implementation of the router is likely to be non-trivial, and is intentionally unspecified here. A separate ADR will likely be submitted for this. It is unclear whether message routing/scheduling and peer lifecycle management can be split into two separate components, or if these need to be tightly coupled.
+Practically all concurrency in the P2P stack has been moved into the router and reactors, while as many other responsibilities as possible have been moved into separate components such as the `Transport` and `PeerManager` that can remain largely synchronous. Limiting concurrency to a single core component makes it much easier to reason about since there is only a single concurrency structure, while the remaining components can be serial, simple, and easily testable.
 
-The `Router` API is as follows:
+The `Router` has a very minimal API, since it is mostly driven by `PeerManager` and `Transport` events:
 
 ```go
-// Router manages connections to peers and routes Protobuf messages between them
-// and local reactors. It also provides peer status updates and error reporting.
-type Router struct{}
+// Router maintains peer transport connections and routes messages between
+// peers and channels.
+type Router struct {
+    // Some details have been omitted below.
 
-// NewRouter creates a new router, using the given peer store to track peers.
-// Transports must be pre-initialized to listen on appropriate endpoints.
-func NewRouter(peerStore *peerStore, transports map[Protocol]Transport) *Router { return nil }
+	logger          log.Logger
+	options         RouterOptions
+	nodeInfo        NodeInfo
+	privKey         crypto.PrivKey
+	peerManager     *PeerManager
+	transports      []Transport
 
-// Channel opens a new channel with the given ID. messageType should be an empty
-// Protobuf message of the type that will be passed through the channel. The
-// message can implement Wrapper for automatic message (un)wrapping.
-func (r *Router) Channel(id ChannelID, messageType proto.Message) (*Channel, error) { return nil, nil }
+	peerMtx         sync.RWMutex
+	peerQueues      map[NodeID]queue
 
-// PeerUpdates returns a channel with peer updates. The caller must cancel the
-// context to end the subscription, and keep consuming messages in a timely
-// fashion until the channel is closed to avoid blocking updates.
-func (r *Router) PeerUpdates(ctx context.Context) PeerUpdates { return nil }
-
-// PeerUpdates is a channel for receiving peer updates.
-type PeerUpdates <-chan PeerUpdate
-
-// PeerUpdate is a peer status update for reactors.
-type PeerUpdate struct {
-    PeerID PeerID
-    Status PeerStatus
+	channelMtx      sync.RWMutex
+	channelQueues   map[ChannelID]queue
 }
+
+// OpenChannel opens a new channel for the given message type. The caller must
+// close the channel when done, before stopping the Router. messageType is the
+// type of message passed through the channel.
+func (r *Router) OpenChannel(id ChannelID, messageType proto.Message) (*Channel, error)
+
+// Start starts the router, connecting to peers and routing messages.
+func (r *Router) Start() error
+
+// Stop stops the router, disconnecting from all peers and stopping message routing.
+func (r *Router) Stop() error
+```
+
+All Go channel sends in the `Router` and reactors are blocking (the router also selects on signal channels for closure and shutdown). The responsibility for message scheduling, prioritization, backpressure, and load shedding is centralized in a core `queue` interface that is used at contention points (i.e. from all peers to a single channel, and from all channels to a single peer):
+
+```go
+// queue does QoS scheduling for Envelopes, enqueueing and dequeueing according
+// to some policy. Queues are used at contention points, i.e.:
+// - Receiving inbound messages to a single channel from all peers.
+// - Sending outbound messages to a single peer from all channels.
+type queue interface {
+	// enqueue returns a channel for submitting envelopes.
+	enqueue() chan<- Envelope
+
+	// dequeue returns a channel ordered according to some queueing policy.
+	dequeue() <-chan Envelope
+
+	// close closes the queue. After this call enqueue() will block, so the
+	// caller must select on closed() as well to avoid blocking forever. The
+	// enqueue() and dequeue() channels will not be closed.
+	close()
+
+	// closed returns a channel that's closed when the scheduler is closed.
+	closed() <-chan struct{}
+}
+```
+
+The current implementation is `fifoQueue`, which is a simple unbuffered lossless queue that passes messages in the order they were received and blocks until the message is delivered (i.e. it is a Go channel). The router will need a more sophisticated queueing policy, but this has not yet been implemented.
+
+The internal `Router` goroutine structure and design is described in the `Router` GoDoc, which is included below for reference:
+
+```go
+// On startup, three main goroutines are spawned to maintain peer connections:
+//
+//   dialPeers(): in a loop, calls PeerManager.DialNext() to get the next peer
+//   address to dial and spawns a goroutine that dials the peer, handshakes
+//   with it, and begins to route messages if successful.
+//
+//   acceptPeers(): in a loop, waits for an inbound connection via
+//   Transport.Accept() and spawns a goroutine that handshakes with it and
+//   begins to route messages if successful.
+//
+//   evictPeers(): in a loop, calls PeerManager.EvictNext() to get the next
+//   peer to evict, and disconnects it by closing its message queue.
+//
+// When a peer is connected, an outbound peer message queue is registered in
+// peerQueues, and routePeer() is called to spawn off two additional goroutines:
+//
+//   sendPeer(): waits for an outbound message from the peerQueues queue,
+//   marshals it, and passes it to the peer transport which delivers it.
+//
+//   receivePeer(): waits for an inbound message from the peer transport,
+//   unmarshals it, and passes it to the appropriate inbound channel queue
+//   in channelQueues.
+//
+// When a reactor opens a channel via OpenChannel, an inbound channel message
+// queue is registered in channelQueues, and a channel goroutine is spawned:
+//
+//   routeChannel(): waits for an outbound message from the channel, looks
+//   up the recipient peer's outbound message queue in peerQueues, and submits
+//   the message to it.
+//
+// All channel sends in the router are blocking. It is the responsibility of the
+// queue interface in peerQueues and channelQueues to prioritize and drop
+// messages as appropriate during contention to prevent stalls and ensure good
+// quality of service.
 ```
 
 ### Reactor Example
@@ -446,21 +514,21 @@ The reactor itself would be implemented e.g. like this:
 
 ```go
 // RunEchoReactor wires up an echo reactor to a router and runs it.
-func RunEchoReactor(router *p2p.Router) error {
-    ctx, cancel := context.WithCancel(context.Background())
-    defer cancel()
-
-    channel, err := router.Channel(1, &EchoMessage{})
+func RunEchoReactor(router *p2p.Router, peerManager *p2p.PeerManager) error {
+    channel, err := router.OpenChannel(1, &EchoMessage{})
     if err != nil {
         return err
     }
     defer channel.Close()
+    peerUpdates := peerManager.Subscribe()
+    defer peerUpdates.Close()
 
-    return EchoReactor(ctx, channel, router.PeerUpdates(ctx))
+    return EchoReactor(context.Background(), channel, peerUpdates)
 }
 
-// EchoReactor provides an echo service, pinging all known peers until cancelled.
-func EchoReactor(ctx context.Context, channel *p2p.Channel, peerUpdates p2p.PeerUpdates) error {
+// EchoReactor provides an echo service, pinging all known peers until the given
+// context is cancelled.
+func EchoReactor(ctx context.Context, channel *p2p.Channel, peerUpdates *p2p.PeerUpdates) error {
     ticker := time.NewTicker(5 * time.Second)
     defer ticker.Stop()
 
@@ -488,9 +556,8 @@ func EchoReactor(ctx context.Context, channel *p2p.Channel, peerUpdates p2p.Peer
 
             default:
                 channel.Error <- PeerError{
-                    PeerID:   envelope.From,
-                    Err:      fmt.Errorf("unexpected message %T", msg),
-                    Severity: PeerErrorSeverityLow,
+                    PeerID: envelope.From,
+                    Err:    fmt.Errorf("unexpected message %T", msg),
                 }
             }
 
@@ -506,31 +573,9 @@ func EchoReactor(ctx context.Context, channel *p2p.Channel, peerUpdates p2p.Peer
 }
 ```
 
-### Implementation Plan
-
-The existing P2P stack should be gradually migrated towards this design. The easiest path would likely be:
-
-1. Implement the `Channel` and `PeerUpdates` APIs as shims on top of the current `Switch` and `Peer` APIs, and rewrite all reactors to use them instead.
-
-2. Port the `privval` package to no longer use `SecretConnection` (e.g. by using gRPC instead), or temporarily duplicate its functionality.
-
-3. Rewrite the current MConn connection and transport code to use the new `Transport` API, and migrate existing code to use it instead.
-
-4. Implement the new `peer` and `peerStore` APIs, and either make the current address book a shim on top of these or replace it.
-
-5. Replace the existing `Switch` abstraction with the new `Router`.
-
-6. Move the PEX reactor and other address advertisement/exchange into the P2P core, possibly the `Router`.
-
-7. Consider rewriting and/or cleaning up reactors and other P2P-related code to make better use of the new abstractions.
-
-A note on backwards-compatibility: the current MConn protocol takes whole messages expressed as byte slices and splits them up into `PacketMsg` messages, where the final packet of a message has `PacketMsg.EOF` set. In order to maintain wire-compatibility with this protocol, the MConn transport needs to be aware of message boundaries, even though it does not care what the messages actually are. One way to handle this is to break abstraction boundaries and have the transport decode the input's length-prefixed message framing and use this to determine message boundaries, unless we accept breaking the protocol here.
-
-Similarly, implementing channel handshakes with the current MConn protocol would require doing an initial connection handshake as today and use that information to "fake" the local channel handshake without it hitting the wire.
-
 ## Status
 
-Accepted
+Partially Implemented
 
 ## Consequences
 
@@ -556,7 +601,7 @@ Accepted
 
 * A complete overhaul of P2P internals is likely to cause temporary performance regressions and bugs as the implementation matures.
 
-* Hiding peer management information inside the `p2p` package may prevent certain functionality or require additional deliberate interfaces for information exchange, as a tradeoff to simplify the design, reduce coupling, and avoid race conditions and lock contention.
+* Hiding peer management information inside the `PeerManager` may prevent certain functionality or require additional deliberate interfaces for information exchange, as a tradeoff to simplify the design, reduce coupling, and avoid race conditions and lock contention.
 
 ### Neutral
 
