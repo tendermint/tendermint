@@ -221,10 +221,10 @@ func (r *Reactor) processMempoolCh() {
 
 	for {
 		select {
-		case envelope := <-r.mempoolCh.In():
-			if err := r.handleMessage(r.mempoolCh.ID(), envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.mempoolCh.ID(), "envelope", envelope, "err", err)
-				r.mempoolCh.Error() <- p2p.PeerError{
+		case envelope := <-r.mempoolCh.In:
+			if err := r.handleMessage(r.mempoolCh.ID, envelope); err != nil {
+				r.Logger.Error("failed to process message", "ch_id", r.mempoolCh.ID, "envelope", envelope, "err", err)
+				r.mempoolCh.Error <- p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
 				}
@@ -370,7 +370,7 @@ func (r *Reactor) broadcastTxRoutine(peerID p2p.NodeID, closer *tmsync.Closer) {
 		if _, ok := memTx.senders.Load(peerMempoolID); !ok {
 			// Send the mempool tx to the corresponding peer. Note, the peer may be
 			// behind and thus would not be able to process the mempool tx correctly.
-			r.mempoolCh.Out() <- p2p.Envelope{
+			r.mempoolCh.Out <- p2p.Envelope{
 				To: peerID,
 				Message: &protomem.Txs{
 					Txs: [][]byte{memTx.tx},

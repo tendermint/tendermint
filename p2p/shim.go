@@ -39,6 +39,9 @@ type (
 	ChannelShim struct {
 		Descriptor *ChannelDescriptor
 		Channel    *Channel
+		inCh       chan<- Envelope
+		outCh      <-chan Envelope
+		errCh      <-chan PeerError
 	}
 
 	// ChannelDescriptorShim defines a shim wrapper around a legacy p2p channel
@@ -56,7 +59,7 @@ func NewReactorShim(logger log.Logger, name string, descriptors map[ChannelID]*C
 
 	for _, cds := range descriptors {
 		chShim := NewChannelShim(cds, 0)
-		channels[chShim.Channel.id] = chShim
+		channels[chShim.Channel.ID] = chShim
 	}
 
 	rs := &ReactorShim{
@@ -72,15 +75,21 @@ func NewReactorShim(logger log.Logger, name string, descriptors map[ChannelID]*C
 }
 
 func NewChannelShim(cds *ChannelDescriptorShim, buf uint) *ChannelShim {
+	inCh := make(chan Envelope, buf)
+	outCh := make(chan Envelope, buf)
+	errCh := make(chan PeerError, buf)
 	return &ChannelShim{
 		Descriptor: cds.Descriptor,
 		Channel: NewChannel(
 			ChannelID(cds.Descriptor.ID),
 			cds.MsgType,
-			make(chan Envelope, buf),
-			make(chan Envelope, buf),
-			make(chan PeerError, buf),
+			inCh,
+			outCh,
+			errCh,
 		),
+		inCh:  inCh,
+		outCh: outCh,
+		errCh: errCh,
 	}
 }
 
@@ -91,7 +100,7 @@ func NewChannelShim(cds *ChannelDescriptorShim, buf uint) *ChannelShim {
 func (rs *ReactorShim) proxyPeerEnvelopes() {
 	for _, cs := range rs.Channels {
 		go func(cs *ChannelShim) {
-			for e := range cs.Channel.outCh {
+			for e := range cs.outCh {
 				msg := proto.Clone(cs.Channel.messageType)
 				msg.Reset()
 
@@ -161,7 +170,7 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 func (rs *ReactorShim) handlePeerErrors() {
 	for _, cs := range rs.Channels {
 		go func(cs *ChannelShim) {
-			for pErr := range cs.Channel.errCh {
+			for pErr := range cs.errCh {
 				if pErr.NodeID != "" {
 					peer := rs.Switch.peers.Get(pErr.NodeID)
 					if peer == nil {
@@ -311,7 +320,7 @@ func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 	}
 
 	select {
-	case channelShim.Channel.inCh <- Envelope{From: src.ID(), Message: msg}:
+	case channelShim.inCh <- Envelope{From: src.ID(), Message: msg}:
 		rs.Logger.Debug("proxied envelope", "reactor", rs.Name, "ch_id", cID, "peer", src.ID())
 
 	case <-channelShim.Channel.Done():

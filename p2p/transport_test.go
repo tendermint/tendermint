@@ -19,11 +19,8 @@ import (
 // transportFactory is used to set up transports for tests.
 type transportFactory func(t *testing.T) p2p.Transport
 
-var (
-	ctx            = context.Background()          // convenience context
-	chID           = p2p.ChannelID(1)              // channel ID for use in tests
-	testTransports = map[string]transportFactory{} // registry for withTransports
-)
+// testTransports is a registry of transport factories for withTransports().
+var testTransports = map[string]transportFactory{}
 
 // withTransports is a test helper that runs a test against all transports
 // registered in testTransports.

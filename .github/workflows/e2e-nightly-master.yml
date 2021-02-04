@@ -1,6 +1,5 @@
-# Runs randomly generated E2E testnets nightly.
-# Copy of earlier nightly test file, for debugging
-name: e2e-nightly2
+# Runs randomly generated E2E testnets nightly on master
+name: e2e-nightly-master
 on:
   workflow_dispatch: # allow running workflow manually
   schedule:
@@ -50,10 +49,10 @@ jobs:
           SLACK_USERNAME: Nightly E2E Tests
           SLACK_ICON_EMOJI: ':skull:'
           SLACK_COLOR: danger
-          SLACK_MESSAGE: Nightly E2E (copy) tests failed
+          SLACK_MESSAGE: Nightly E2E (copy) tests failed on master
           SLACK_FOOTER: ''
 
-  e2e-nightly-success:
+  e2e-nightly-success: # may turn this off once they seem to pass consistently
     needs: e2e-nightly-test-2
     if: ${{ success() }}
     runs-on: ubuntu-latest
@@ -64,7 +63,7 @@ jobs:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SLACK_CHANNEL: tendermint-internal
           SLACK_USERNAME: Nightly E2E Tests
-          SLACK_ICON_EMOJI: ':green_heart:'
+          SLACK_ICON_EMOJI: ':white_check_mark:'
           SLACK_COLOR: good
-          SLACK_MESSAGE: Nightly E2E (copy) tests failed
+          SLACK_MESSAGE: Nightly E2E (copy) tests passed on master
           SLACK_FOOTER: ''
