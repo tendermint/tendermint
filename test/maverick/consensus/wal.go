@@ -95,7 +95,7 @@ func (wal *BaseWAL) OnStart() error {
 	if err != nil {
 		return err
 	} else if size == 0 {
-		if err := wal.WriteSync(tmcon.EndHeightMessage{0}); err != nil {
+		if err := wal.WriteSync(tmcon.EndHeightMessage{Height: 0}); err != nil {
 			return err
 		}
 	}
@@ -398,7 +398,8 @@ var _ tmcon.WAL = nilWAL{}
 func (nilWAL) Write(m tmcon.WALMessage) error     { return nil }
 func (nilWAL) WriteSync(m tmcon.WALMessage) error { return nil }
 func (nilWAL) FlushAndSync() error                { return nil }
-func (nilWAL) SearchForEndHeight(height int64, options *tmcon.WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
+func (nilWAL) SearchForEndHeight(height int64,
+	options *tmcon.WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	return nil, false, nil
 }
 func (nilWAL) Start() error { return nil }

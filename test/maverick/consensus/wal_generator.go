@@ -102,7 +102,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	numBlocksWritten := make(chan struct{})
 	wal := newByteBufferWAL(logger, NewWALEncoder(wr), int64(numBlocks), numBlocksWritten)
 	// see wal.go#103
-	if err := wal.Write(tmcon.EndHeightMessage{0}); err != nil {
+	if err := wal.Write(tmcon.EndHeightMessage{Height: 0}); err != nil {
 		t.Error(err)
 	}
 
