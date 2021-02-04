@@ -90,14 +90,6 @@ func Logger(l log.Logger) Option {
 	}
 }
 
-// MaxRetryAttempts option can be used to set max attempts before replacing
-// primary with a witness.
-func MaxRetryAttempts(max uint16) Option {
-	return func(c *Client) {
-		c.maxRetryAttempts = max
-	}
-}
-
 // MaxClockDrift defines how much new header's time can drift into
 // the future. Default: 10s.
 func MaxClockDrift(d time.Duration) Option {
@@ -116,7 +108,6 @@ type Client struct {
 	trustingPeriod   time.Duration // see TrustOptions.Period
 	verificationMode mode
 	trustLevel       tmmath.Fraction
-	maxRetryAttempts uint16 // see MaxRetryAttempts option
 	maxClockDrift    time.Duration
 
 	// Mutex for locking during changes of the light clients providers
@@ -202,7 +193,6 @@ func NewClientFromTrustedStore(
 		trustingPeriod:   trustingPeriod,
 		verificationMode: skipping,
 		trustLevel:       DefaultTrustLevel,
-		maxRetryAttempts: defaultMaxRetryAttempts,
 		maxClockDrift:    defaultMaxClockDrift,
 		primary:          primary,
 		witnesses:        witnesses,
