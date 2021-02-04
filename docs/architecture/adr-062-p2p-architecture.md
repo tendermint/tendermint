@@ -20,6 +20,8 @@ Several variations of the proposed design were considered, including e.g. callin
 
 There were also proposals to use LibP2P instead of maintaining our own P2P stack, which were rejected (for now) in [ADR 061](adr-061-p2p-refactor-scope.md).
 
+The initial version of this ADR had a byte-oriented multi-stream transport API, but this had to be abandoned/postponed to maintain backwards-compatibility with the existing MConnection protocol which is message-oriented. See the rejected RFC in [tendermint/spec#227](https://github.com/tendermint/spec/pull/227) for details.
+
 ## Decision
 
 The P2P stack will be redesigned as a message-oriented architecture, primarily relying on Go channels for communication and scheduling. It will use IO stream transports to exchange raw bytes with individual peers, bidirectional peer-addressable channels to send and receive Protobuf messages, and a router to route messages between reactors and peers. Message passing is asynchronous with at-most-once delivery.
@@ -39,10 +41,10 @@ Primary design objectives have been:
 
 The main abstractions in the new stack are:
 
-* `peer`: A node in the network, uniquely identified by a `PeerID` and stored in a `peerStore`.
-* `Transport`: An arbitrary mechanism to exchange bytes with a peer using IO `Stream`s across a `Connection`.
-* `Channel`: A bidirectional channel to asynchronously exchange Protobuf messages with peers addressed with `PeerID`.
+* `Transport`: An arbitrary mechanism to exchange binary messages with a peer across a `Connection`.
+* `Channel`: A bidirectional channel to asynchronously exchange Protobuf messages with peers using node ID addressing.
 * `Router`: Maintains transport connections to relevant peers and routes channel messages.
+* `PeerManager`: Manages peer lifecycle information, e.g. deciding which peers to dial and when, using a `peerStore` for storage.
 * Reactor: A design pattern loosely defined as "something which listens on a channel and reacts to messages".
 
 These abstractions are illustrated in the following diagram (representing the internals of node A) and described in detail below.
@@ -51,33 +53,42 @@ These abstractions are illustrated in the following diagram (representing the in
 
 ### Transports
 
-Transports are arbitrary mechanisms for exchanging raw bytes with a peer. For example, a gRPC transport would connect to a peer over TCP/IP and send data using the gRPC protocol, while an in-memory transport might communicate with a peer running in another goroutine using internal byte buffers. Note that transports don't have a notion of a `peer` as such - instead, they communicate with an arbitrary endpoint address (e.g. IP address and port number), to decouple them from the rest of the P2P stack.
+Transports are arbitrary mechanisms for exchanging binary messages with a peer. For example, a gRPC transport would connect to a peer over TCP/IP and send data using the gRPC protocol, while an in-memory transport might communicate with a peer running in another goroutine using internal Go channels. Note that transports don't have a notion of a "peer" or "node" as such - instead, they establish connections between arbitrary endpoint addresses (e.g. IP address and port number), to decouple them from the rest of the P2P stack.
 
 Transports must satisfy the following requirements:
 
 * Be connection-oriented, and support both listening for inbound connections and making outbound connections using endpoint addresses.
 
-* Support multiple logical IO streams within a single connection, to take full advantage of protocols with native stream support. For example, QUIC supports multiple independent streams, while HTTP/2 and MConn multiplex logical streams onto a single TCP connection.
+* Support sending binary messages with distinct channel IDs (although channels and channel IDs are a higher-level application protocol concept explained in the Router section, they are threaded through the transport layer as well for backwards compatibilty with the existing MConnection protocol).
 
-* Provide the public key of the peer, and possibly encrypt or sign the traffic as appropriate. This should be compared with known data (e.g. the peer ID) to authenticate the peer and avoid man-in-the-middle attacks.
+* Exchange the MConnection `NodeInfo` and public key via a node handshake, and possibly encrypt or sign the traffic as appropriate.
 
-The initial transport implementation will be a port of the current MConn protocol currently used by Tendermint, and should be backwards-compatible at the wire level as far as possible. This will be followed by an in-memory transport for testing, and a QUIC transport that may eventually replace MConn.
+The initial transport is a port of the current MConnection protocol currently used by Tendermint, and should be backwards-compatible at the wire level, as wel as an in-memory transport used for testing. There are plans to explore a QUIC transport that may replace MConnection.
 
-The `Transport` interface is:
+The `Transport` interface is as follows:
 
 ```go
-// Transport is an arbitrary mechanism for exchanging bytes with a peer.
+// Transport is a connection-oriented mechanism for exchanging data with a peer.
 type Transport interface {
-    // Accept waits for the next inbound connection on a listening endpoint.
-    Accept(context.Context) (Connection, error)
+	// Protocols returns the protocols supported by the transport. The Router
+	// uses this to pick a transport for an Endpoint.
+	Protocols() []Protocol
 
-    // Dial creates an outbound connection to an endpoint.
-    Dial(context.Context, Endpoint) (Connection, error)
+	// Endpoints returns the local endpoints the transport is listening on, if any.
+	// How to listen is transport-dependent, e.g. MConnTransport uses Listen() while
+	// MemoryTransport starts listening via MemoryNetwork.CreateTransport().
+	Endpoints() []Endpoint
 
-    // Endpoints lists endpoints the transport is listening on. Any endpoint IP
-    // addresses do not need to be normalized in any way (e.g. 0.0.0.0 is
-    // valid), as they should be preprocessed before being advertised.
-    Endpoints() []Endpoint
+	// Accept waits for the next inbound connection on a listening endpoint, blocking
+	// until either a connection is available or the transport is closed. On closure,
+	// io.EOF is returned and further Accept calls are futile.
+	Accept() (Connection, error)
+
+	// Dial creates an outbound connection to an endpoint.
+	Dial(context.Context, Endpoint) (Connection, error)
+
+	// Close stops accepting new connections, but does not close active connections.
+	Close() error
 }
 ```
 
@@ -91,21 +102,24 @@ The `Endpoint` struct is:
 
 ```go
 // Endpoint represents a transport connection endpoint, either local or remote.
+//
+// Endpoints are not necessarily networked (see e.g. MemoryTransport) but all
+// networked endpoints must use IP as the underlying transport protocol to allow
+// e.g. IP address filtering. Either IP or Path (or both) must be set.
 type Endpoint struct {
-    // Protocol specifies the transport protocol, used by the router to pick a
-    // transport for an endpoint.
-    Protocol Protocol
+	// Protocol specifies the transport protocol.
+	Protocol Protocol
 
-    // Path is an optional, arbitrary transport-specific path or identifier.
-    Path string
+	// IP is an IP address (v4 or v6) to connect to. If set, this defines the
+	// endpoint as a networked endpoint.
+	IP net.IP
 
-    // IP is an IP address (v4 or v6) to connect to. If set, this defines the
-    // endpoint as a networked endpoint.
-    IP net.IP
+	// Port is a network port (either TCP or UDP). If 0, a default port may be
+	// used depending on the protocol.
+	Port uint16
 
-    // Port is a network port (either TCP or UDP). If not set, a default port
-    // may be used depending on the protocol.
-    Port uint16
+	// Path is an optional transport-specific path or identifier.
+	Path string
 }
 
 // Protocol identifies a transport protocol.
@@ -114,40 +128,42 @@ type Protocol string
 
 Endpoints are arbitrary transport-specific addresses, but if they are networked they must use IP addresses and thus rely on IP as a fundamental packet routing protocol. This enables policies for address discovery, advertisement, and exchange - for example, a private `192.168.0.0/24` IP address should only be advertised to peers on that IP network, while the public address `8.8.8.8` may be advertised to all peers. Similarly, any port numbers if given must represent TCP and/or UDP port numbers, in order to use [UPnP](https://en.wikipedia.org/wiki/Universal_Plug_and_Play) to autoconfigure e.g. NAT gateways.
 
-Non-networked endpoints (without an IP address) are considered local, and will only be advertised to other peers connecting via the same protocol. For example, an in-memory transport used for testing might have `Endpoint{Protocol: "memory", Path: "foo"}` as an address for the node "foo", and this should only be advertised to other nodes using `Protocol: "memory"`.
+Non-networked endpoints (without an IP address) are considered local, and will only be advertised to other peers connecting via the same protocol. For example, the in-memory transport used for testing uses `Endpoint{Protocol: "memory", Path: "foo"}` as an address for the node "foo", and this should only be advertised to other nodes using `Protocol: "memory"`.
 
-#### Connections and Streams
+#### Connections
 
-A connection represents an established transport connection between two endpoints (and thus two nodes), which can be used to exchange bytes via logically distinct IO streams. Connections are set up either via `Transport.Dial()` (outbound) or `Transport.Accept()` (inbound). The caller is responsible for verifying the remote peer's public key as returned by the connection, following the current MConn protocol behavior for now.
+A connection represents an established transport connection between two endpoints (i.e. two nodes), which can be used to exchange binary messages with logical channel IDs (corresponding to the higher-level channel IDs used in the router). Connections are set up either via `Transport.Dial()` (outbound) or `Transport.Accept()` (inbound).
 
-Data is exchanged over IO streams created with `Connection.Stream()`. These implement the standard Go `io.Reader` and `io.Writer` interfaces to read and write bytes. Transports are free to choose how to implement such streams, e.g. by taking advantage of native stream support in the underlying protocol or through multiplexing.
+Once a connection is esablished, `Transport.Handshake()` must be called to perform a node handshake, exchanging node info and public keys to verify node identities. Node handshakes should not really be part of the transport protocol (rather it should be part of the application protocol), this exists for backwards-compatibility with the existing MConnection protocol which conflates the two, and allows the router to do common `NodeInfo` verification across transports as well as varying e.g. `NodeInfo` contents by peer (e.g. to advertise different listen addresses to different peers).
 
-`Connection` and the related `Stream` interfaces are:
+This ADR initially proposed a byte-oriented multi-stream connection API that follows more typical networking API conventions (using e.g. `io.Reader` and `io.Writer` interfaces which easily compose with other libraries). This would also allow moving the responsibility for message framing, node handshakes, and traffic scheduling to the common router instead of reimplementing this across transports, and would allow making better use of multi-stream protocols such as QUIC. However, this would require minor breaking changes to the MConnection protocol which were rejected, see [tendermint/spec#227](https://github.com/tendermint/spec/pull/227) for details. This should be revisited when starting work on a QUIC transport.
+
+The `Connection` interface is shown below. It omits certain additions that are currently implemented for backwards compatibility with the legacy P2P stack and are planned to be removed before the final release.
 
 ```go
 // Connection represents an established connection between two endpoints.
 type Connection interface {
-    // Stream creates a new logically distinct IO stream within the connection.
-    Stream() (Stream, error)
+	// Handshake executes a node handshake with the remote peer. It must be
+	// called immediately after the connection is established, and returns the
+	// remote peer's node info and public key. The caller is responsible for
+	// validation.
+	Handshake(context.Context, NodeInfo, crypto.PrivKey) (NodeInfo, crypto.PubKey, error)
 
-    // LocalEndpoint returns the local endpoint for the connection.
-    LocalEndpoint() Endpoint
+	// ReceiveMessage returns the next message received on the connection,
+	// blocking until one is available. Returns io.EOF if closed.
+	ReceiveMessage() (ChannelID, []byte, error)
 
-    // RemoteEndpoint returns the remote endpoint for the connection.
-    RemoteEndpoint() Endpoint
+	// SendMessage sends a message on the connection. Returns io.EOF if closed.
+	SendMessage(ChannelID, []byte) error
 
-    // PubKey returns the public key of the remote peer.
-    PubKey() crypto.PubKey
+	// LocalEndpoint returns the local endpoint for the connection.
+	LocalEndpoint() Endpoint
 
-    // Close closes the connection.
-    Close() error
-}
+	// RemoteEndpoint returns the remote endpoint for the connection.
+	RemoteEndpoint() Endpoint
 
-// Stream represents a single logical IO stream within a connection.
-type Stream interface {
-    io.Reader // Read([]byte) (int, error)
-    io.Writer // Write([]byte) (int, error)
-    io.Closer // Close() error
+	// Close closes the connection.
+	Close() error
 }
 ```
 
