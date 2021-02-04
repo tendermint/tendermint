@@ -292,75 +292,48 @@ func (pu *PeerUpdates) Updates() <-chan PeerUpdate
 func (pu *PeerUpdates) Close()
 ```
 
-The `PeerManager` will also be responsible for providing peer information to the PEX reactor that can be gossipped to other nodes. This requires an improved system for peer address detection and advertisement, that e.g. reliably detects peer addresses and only gossips private network addresses to other peers on the same network, but this system has not yet been fully designed and implemented.
+The `PeerManager` will also be responsible for providing peer information to the PEX reactor that can be gossipped to other nodes. This requires an improved system for peer address detection and advertisement, that e.g. reliably detects peer and self addresses and only gossips private network addresses to other peers on the same network, but this system has not yet been fully designed and implemented.
 
 ### Channels
 
-While low-level data exchange happens via transport IO streams, the high-level API is based on a bidirectional `Channel` that can send and receive Protobuf messages addressed by `NodeID`. A channel is identified by an arbitrary `ChannelID` identifier, and can exchange Protobuf messages of one specific type (since the type to unmarshal into must be predefined). Message delivery is asynchronous and at-most-once.
+While low-level data exchange happens via the `Transport`, the high-level API is based on a bidirectional `Channel` that can send and receive Protobuf messages addressed by `NodeID`. A channel is identified by an arbitrary `ChannelID` identifier, and can exchange Protobuf messages of one specific type (since the type to unmarshal into must be predefined). Message delivery is asynchronous and at-most-once.
 
-The channel can also be used to report peer errors, e.g. when receiving an invalid or malignant message. This may cause the peer to be disconnected or banned depending on `PeerManager` policy.
+The channel can also be used to report peer errors, e.g. when receiving an invalid or malignant message. This may cause the peer to be disconnected or banned depending on `PeerManager` policy, but should probably be replaced by a broader peer behavior API that can also report good behavior.
 
 A `Channel` has this interface:
 
 ```go
-// Channel is a bidirectional channel for Protobuf message exchange with peers.
-type Channel struct {
-    // ID contains the channel ID.
-    ID ChannelID
-
-    // messageType specifies the type of messages exchanged via the channel, and
-    // is used e.g. for automatic unmarshaling.
-    messageType proto.Message
-
-    // In is a channel for receiving inbound messages. Envelope.From is always
-    // set.
-    In <-chan Envelope
-
-    // Out is a channel for sending outbound messages. Envelope.To or Broadcast
-    // must be set, otherwise the message is discarded.
-    Out chan<- Envelope
-
-    // Error is a channel for reporting peer errors to the router, typically used
-    // when peers send an invalid or malignant message.
-    Error chan<- PeerError
-}
-
-// Close closes the channel, and is equivalent to close(Channel.Out). This will
-// cause Channel.In to be closed when appropriate. The ID can then be reused.
-func (c *Channel) Close() error { return nil }
-
 // ChannelID is an arbitrary channel ID.
 type ChannelID uint16
 
+// Channel is a bidirectional channel to exchange Protobuf messages with peers.
+type Channel struct {
+    ID          ChannelID        // Channel ID.
+    In          <-chan Envelope  // Inbound messages (peers to reactors).
+	Out         chan<- Envelope  // outbound messages (reactors to peers)
+	Error       chan<- PeerError // Peer error reporting.
+    messageType proto.Message    // Channel's message type, for e.g. unmarshalling.
+}
+
+// Close closes the channel, also closing Out and Error.
+func (c *Channel) Close() error
+
 // Envelope specifies the message receiver and sender.
 type Envelope struct {
-    From      PeerID        // Message sender, or empty for outbound messages.
-    To        PeerID        // Message receiver, or empty for inbound messages.
-    Broadcast bool          // Send message to all connected peers, ignoring To.
-    Message   proto.Message // Payload.
+    From      NodeID        // Sender (empty if outbound).
+    To        NodeID        // Receiver (empty if inbound).
+    Broadcast bool          // Send to all connected peers, ignoring To.
+    Message   proto.Message // Message payload.
 }
 
-// PeerError is a peer error reported by a reactor via the Error channel. The
-// severity may cause the peer to be disconnected or banned depending on policy.
+// PeerError is a peer error reported via the Error channel.
 type PeerError struct {
-    PeerID   PeerID
+    NodeID   NodeID
     Err      error
-    Severity PeerErrorSeverity
 }
-
-// PeerErrorSeverity determines the severity of a peer error.
-type PeerErrorSeverity string
-
-const (
-    PeerErrorSeverityLow      PeerErrorSeverity = "low"      // Mostly ignored.
-    PeerErrorSeverityHigh     PeerErrorSeverity = "high"     // May disconnect.
-    PeerErrorSeverityCritical PeerErrorSeverity = "critical" // Ban.
-)
 ```
 
-A channel can reach any connected peer, and is implemented using transport streams against each individual peer, with an initial handshake to exchange the channel ID and any other metadata. The channel will automatically (un)marshal Protobuf to byte slices and use length-prefixed framing (the de facto standard for Protobuf streams) when writing them to the stream.
-
-Message scheduling and queueing is left as an implementation detail, and can use any number of algorithms such as FIFO, round-robin, priority queues, etc. Since message delivery is not guaranteed, both inbound and outbound messages may be dropped, buffered, or blocked as appropriate.
+A channel can reach any connected peer, and will automatically (un)marshal the Protobuf messages. Message scheduling and queueing is a `Router` implementation concern, and can use any number of algorithms such as FIFO, round-robin, priority queues, etc. Since message delivery is not guaranteed, both inbound and outbound messages may be dropped, buffered, reordered, or blocked as appropriate.
 
 Since a channel can only exchange messages of a single type, it is often useful to use a wrapper message type with e.g. a Protobuf `oneof` field that specifies a set of inner message types that it can contain. The channel can automatically perform this (un)wrapping if the outer message type implements the `Wrapper` interface (see [Reactor Example](#reactor-example) for an example):
 
@@ -370,6 +343,8 @@ Since a channel can only exchange messages of a single type, it is often useful 
 // automatically (un)wrap passed messages using the container type, such that
 // the channel can transparently support multiple message types.
 type Wrapper interface {
+    proto.Message
+
     // Wrap will take a message and wrap it in this one.
     Wrap(proto.Message) error
 
