@@ -13,6 +13,7 @@ import (
 
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	// tmjson "github.com/tendermint/tendermint/libs/json"
+	tmcon "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/service"
@@ -300,7 +301,7 @@ func NewWALEncoder(wr io.Writer) *WALEncoder {
 // the encoded size of v is greater than 1MB. Any error encountered
 // during the write is also returned.
 func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
-	pbMsg, err := WALToProto(v.Msg)
+	pbMsg, err := tmcon.WALToProto(v.Msg)
 	if err != nil {
 		return err
 	}
@@ -410,7 +411,7 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 		return nil, DataCorruptionError{fmt.Errorf("failed to decode data: %v", err)}
 	}
 
-	walMsg, err := WALFromProto(res.Msg)
+	walMsg, err := tmcon.WALFromProto(res.Msg)
 	if err != nil {
 		return nil, DataCorruptionError{fmt.Errorf("failed to convert from proto: %w", err)}
 	}
