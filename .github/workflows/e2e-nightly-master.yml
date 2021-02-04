@@ -1,4 +1,8 @@
 # Runs randomly generated E2E testnets nightly on master
+
+# !! If you change something in this file, you probably want
+# to update the e2e-nightly-34x workflow as well!
+
 name: e2e-nightly-master
 on:
   workflow_dispatch: # allow running workflow manually
@@ -49,7 +53,7 @@ jobs:
           SLACK_USERNAME: Nightly E2E Tests
           SLACK_ICON_EMOJI: ':skull:'
           SLACK_COLOR: danger
-          SLACK_MESSAGE: Nightly E2E (copy) tests failed on master
+          SLACK_MESSAGE: Nightly E2E tests failed on master
           SLACK_FOOTER: ''
 
   e2e-nightly-success: # may turn this off once they seem to pass consistently
@@ -65,5 +69,5 @@ jobs:
           SLACK_USERNAME: Nightly E2E Tests
           SLACK_ICON_EMOJI: ':white_check_mark:'
           SLACK_COLOR: good
-          SLACK_MESSAGE: Nightly E2E (copy) tests passed on master
+          SLACK_MESSAGE: Nightly E2E tests passed on master
           SLACK_FOOTER: ''
