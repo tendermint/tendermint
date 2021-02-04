@@ -12,7 +12,7 @@ import (
 // block execution failure, event will indicate the peer(s) that caused the error
 type pcBlockVerificationFailure struct {
 	priorityNormal
-	height       int64
+	height       uint64
 	firstPeerID  p2p.NodeID
 	secondPeerID p2p.NodeID
 }
@@ -25,7 +25,7 @@ func (e pcBlockVerificationFailure) String() string {
 // successful block execution
 type pcBlockProcessed struct {
 	priorityNormal
-	height int64
+	height uint64
 	peerID p2p.NodeID
 }
 
@@ -49,7 +49,7 @@ type queueItem struct {
 	peerID p2p.NodeID
 }
 
-type blockQueue map[int64]queueItem
+type blockQueue map[uint64]queueItem
 
 type pcState struct {
 	// blocks waiting to be processed
@@ -95,7 +95,7 @@ func (state *pcState) synced() bool {
 	return len(state.queue) <= 1
 }
 
-func (state *pcState) enqueue(peerID p2p.NodeID, block *types.Block, height int64) {
+func (state *pcState) enqueue(peerID p2p.NodeID, block *types.Block, height uint64) {
 	if item, ok := state.queue[height]; ok {
 		panic(fmt.Sprintf(
 			"duplicate block %d (%X) enqueued by processor (sent by %v; existing block %X from %v)",
@@ -105,7 +105,7 @@ func (state *pcState) enqueue(peerID p2p.NodeID, block *types.Block, height int6
 	state.queue[height] = queueItem{block: block, peerID: peerID}
 }
 
-func (state *pcState) height() int64 {
+func (state *pcState) height() uint64 {
 	return state.context.tmState().LastBlockHeight
 }
 

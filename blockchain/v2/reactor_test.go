@@ -61,14 +61,14 @@ func (mp mockPeer) Get(string) interface{}  { return struct{}{} }
 
 //nolint:unused
 type mockBlockStore struct {
-	blocks map[int64]*types.Block
+	blocks map[uint64]*types.Block
 }
 
 func (ml *mockBlockStore) Height() int64 {
 	return int64(len(ml.blocks))
 }
 
-func (ml *mockBlockStore) LoadBlock(height int64) *types.Block {
+func (ml *mockBlockStore) LoadBlock(height uint64) *types.Block {
 	return ml.blocks[height]
 }
 
@@ -82,7 +82,7 @@ type mockBlockApplier struct {
 // XXX: Add whitelist/blacklist?
 func (mba *mockBlockApplier) ApplyBlock(
 	state sm.State, blockID types.BlockID, block *types.Block,
-) (sm.State, int64, error) {
+) (sm.State, uint64, error) {
 	state.LastBlockHeight++
 	return state, 0, nil
 }
@@ -98,11 +98,11 @@ type mockSwitchIo struct {
 
 var _ iIO = (*mockSwitchIo)(nil)
 
-func (sio *mockSwitchIo) sendBlockRequest(_ p2p.Peer, _ int64) error {
+func (sio *mockSwitchIo) sendBlockRequest(_ p2p.Peer, _ uint64) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) sendStatusResponse(_, _ int64, _ p2p.Peer) error {
+func (sio *mockSwitchIo) sendStatusResponse(_, _ uint64, _ p2p.Peer) error {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.numStatusResponse++
@@ -116,7 +116,7 @@ func (sio *mockSwitchIo) sendBlockToPeer(_ *types.Block, _ p2p.Peer) error {
 	return nil
 }
 
-func (sio *mockSwitchIo) sendBlockNotFound(_ int64, _ p2p.Peer) error {
+func (sio *mockSwitchIo) sendBlockNotFound(_ uint64, _ p2p.Peer) error {
 	sio.mtx.Lock()
 	defer sio.mtx.Unlock()
 	sio.numNoBlockResponse++
@@ -145,7 +145,7 @@ type testReactorParams struct {
 	logger      log.Logger
 	genDoc      *types.GenesisDoc
 	privVals    []types.PrivValidator
-	startHeight int64
+	startHeight uint64
 	mockA       bool
 }
 
@@ -201,7 +201,7 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 // 	type testEvent struct {
 // 		evType string
 // 		peer   string
-// 		height int64
+// 		height uint64
 // 	}
 
 // 	tests := []struct {
@@ -469,14 +469,14 @@ func TestReactorSetSwitchNil(t *testing.T) {
 //----------------------------------------------
 // utility funcs
 
-func makeTxs(height int64) (txs []types.Tx) {
+func makeTxs(height uint64) (txs []types.Tx) {
 	for i := 0; i < 10; i++ {
 		txs = append(txs, types.Tx([]byte{byte(height), byte(i)}))
 	}
 	return txs
 }
 
-func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
+func makeBlock(height uint64, state sm.State, lastCommit *types.Commit) *types.Block {
 	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
 	return block
 }
@@ -511,7 +511,7 @@ func randGenesisDoc(chainID string, numValidators int, randPower bool, minPower 
 func newReactorStore(
 	genDoc *types.GenesisDoc,
 	privVals []types.PrivValidator,
-	maxBlockHeight int64) (*store.BlockStore, sm.State, *sm.BlockExecutor) {
+	maxBlockHeight uint64) (*store.BlockStore, sm.State, *sm.BlockExecutor) {
 	if len(privVals) != 1 {
 		panic("only support one validator")
 	}
@@ -540,7 +540,7 @@ func newReactorStore(
 	}
 
 	// add blocks in
-	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
+	for blockHeight := uint64(1); blockHeight <= maxBlockHeight; blockHeight++ {
 		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil)
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)

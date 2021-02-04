@@ -96,7 +96,7 @@ func (r *BlockchainReactor) SetSwitch(sw *p2p.Switch) {
 	}
 }
 
-func (r *BlockchainReactor) setMaxPeerHeight(height int64) {
+func (r *BlockchainReactor) setMaxPeerHeight(height uint64) {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 	if height > r.maxPeerHeight {
@@ -104,14 +104,14 @@ func (r *BlockchainReactor) setMaxPeerHeight(height int64) {
 	}
 }
 
-func (r *BlockchainReactor) setSyncHeight(height int64) {
+func (r *BlockchainReactor) setSyncHeight(height uint64) {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 	r.syncHeight = height
 }
 
 // SyncHeight returns the height to which the BlockchainReactor has synced.
-func (r *BlockchainReactor) SyncHeight() int64 {
+func (r *BlockchainReactor) SyncHeight() uint64 {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 	return r.syncHeight
@@ -226,7 +226,7 @@ type bcNoBlockResponse struct {
 	priorityNormal
 	time   time.Time
 	peerID p2p.NodeID
-	height int64
+	height uint64
 }
 
 func (resp bcNoBlockResponse) String() string {
@@ -239,8 +239,8 @@ type bcStatusResponse struct {
 	priorityNormal
 	time   time.Time
 	peerID p2p.NodeID
-	base   int64
-	height int64
+	base   uint64
+	height uint64
 }
 
 func (resp bcStatusResponse) String() string {

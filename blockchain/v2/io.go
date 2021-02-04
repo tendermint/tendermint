@@ -15,10 +15,10 @@ var (
 )
 
 type iIO interface {
-	sendBlockRequest(peer p2p.Peer, height int64) error
+	sendBlockRequest(peer p2p.Peer, height uint64) error
 	sendBlockToPeer(block *types.Block, peer p2p.Peer) error
-	sendBlockNotFound(height int64, peer p2p.Peer) error
-	sendStatusResponse(base, height int64, peer p2p.Peer) error
+	sendBlockNotFound(height uint64, peer p2p.Peer) error
+	sendStatusResponse(base, height uint64, peer p2p.Peer) error
 
 	sendStatusRequest(peer p2p.Peer) error
 	broadcastStatusRequest() error
@@ -47,7 +47,7 @@ type consensusReactor interface {
 	SwitchToConsensus(state state.State, skipWAL bool)
 }
 
-func (sio *switchIO) sendBlockRequest(peer p2p.Peer, height int64) error {
+func (sio *switchIO) sendBlockRequest(peer p2p.Peer, height uint64) error {
 	msgProto := &bcproto.Message{
 		Sum: &bcproto.Message_BlockRequest{
 			BlockRequest: &bcproto.BlockRequest{
@@ -68,7 +68,7 @@ func (sio *switchIO) sendBlockRequest(peer p2p.Peer, height int64) error {
 	return nil
 }
 
-func (sio *switchIO) sendStatusResponse(base int64, height int64, peer p2p.Peer) error {
+func (sio *switchIO) sendStatusResponse(base, height uint64, peer p2p.Peer) error {
 	msgProto := &bcproto.Message{
 		Sum: &bcproto.Message_StatusResponse{
 			StatusResponse: &bcproto.StatusResponse{
@@ -120,7 +120,7 @@ func (sio *switchIO) sendBlockToPeer(block *types.Block, peer p2p.Peer) error {
 	return nil
 }
 
-func (sio *switchIO) sendBlockNotFound(height int64, peer p2p.Peer) error {
+func (sio *switchIO) sendBlockNotFound(height uint64, peer p2p.Peer) error {
 	msgProto := &bcproto.Message{
 		Sum: &bcproto.Message_NoBlockResponse{
 			NoBlockResponse: &bcproto.NoBlockResponse{

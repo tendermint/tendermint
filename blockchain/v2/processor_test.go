@@ -13,12 +13,12 @@ import (
 // pcBlock is a test helper structure with simple types. Its purpose is to help with test readability.
 type pcBlock struct {
 	pid    string
-	height int64
+	height uint64
 }
 
 // params is a test structure used to create processor state.
 type params struct {
-	height       int64
+	height       uint64
 	items        []pcBlock
 	blocksSynced int
 	verBL        []int64
@@ -27,7 +27,7 @@ type params struct {
 }
 
 // makePcBlock makes an empty block.
-func makePcBlock(height int64) *types.Block {
+func makePcBlock(height uint64) *types.Block {
 	return &types.Block{Header: types.Header{Height: height}}
 }
 
@@ -48,7 +48,7 @@ func makeState(p *params) *pcState {
 	return state
 }
 
-func mBlockResponse(peerID p2p.NodeID, height int64) scBlockReceived {
+func mBlockResponse(peerID p2p.NodeID, height uint64) scBlockReceived {
 	return scBlockReceived{
 		peerID: peerID,
 		block:  makePcBlock(height),

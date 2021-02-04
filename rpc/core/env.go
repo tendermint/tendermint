@@ -42,8 +42,8 @@ func SetEnvironment(e *Environment) {
 
 type Consensus interface {
 	GetState() sm.State
-	GetValidators() (int64, []*types.Validator)
-	GetLastHeight() int64
+	GetValidators() (uint64, []*types.Validator)
+	GetLastHeight() uint64
 	GetRoundStateJSON() ([]byte, error)
 	GetRoundStateSimpleJSON() ([]byte, error)
 }

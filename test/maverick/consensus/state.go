@@ -504,7 +504,7 @@ func (cs *State) GetState() sm.State {
 
 // GetLastHeight returns the last height committed.
 // If there were no blocks, returns 0.
-func (cs *State) GetLastHeight() int64 {
+func (cs *State) GetLastHeight() uint64 {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
 	return cs.RoundState.Height - 1
