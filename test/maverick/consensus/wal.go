@@ -37,23 +37,6 @@ const (
 // 	tmjson.RegisterType(tmcon.EndHeightMessage  {}, "tendermint/wal/EndHeightMessage  ")
 // }
 
-//--------------------------------------------------------
-// Simple write-ahead logger
-
-// WAL is an interface for any write-ahead logger.
-type WAL interface {
-	Write(tmcon.WALMessage) error
-	WriteSync(tmcon.WALMessage) error
-	FlushAndSync() error
-
-	SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error)
-
-	// service methods
-	Start() error
-	Stop() error
-	Wait()
-}
-
 // Write ahead logger writes msgs to disk before they are processed.
 // Can be used for crash-recovery and deterministic replay.
 // TODO: currently the wal is overwritten during replay catchup, give it a mode
@@ -70,7 +53,7 @@ type BaseWAL struct {
 	flushInterval time.Duration
 }
 
-var _ WAL = &BaseWAL{}
+var _ tmcon.WAL = &BaseWAL{}
 
 // NewWAL returns a new write-ahead logger based on `baseWAL`, which implements
 // WAL. It's flushed and synced to disk every 2s and once when stopped.
@@ -216,7 +199,7 @@ type WALSearchOptions struct {
 // CONTRACT: caller must close group reader.
 func (wal *BaseWAL) SearchForEndHeight(
 	height int64,
-	options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
+	options *tmcon.WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	var (
 		msg *tmcon.TimedWALMessage
 		gr  *auto.GroupReader
@@ -410,12 +393,12 @@ func (dec *WALDecoder) Decode() (*tmcon.TimedWALMessage, error) {
 
 type nilWAL struct{}
 
-var _ WAL = nilWAL{}
+var _ tmcon.WAL = nilWAL{}
 
 func (nilWAL) Write(m tmcon.WALMessage) error     { return nil }
 func (nilWAL) WriteSync(m tmcon.WALMessage) error { return nil }
 func (nilWAL) FlushAndSync() error                { return nil }
-func (nilWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
+func (nilWAL) SearchForEndHeight(height int64, options *tmcon.WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	return nil, false, nil
 }
 func (nilWAL) Start() error { return nil }
