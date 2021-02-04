@@ -37,9 +37,9 @@ var crc32c = crc32.MakeTable(crc32.Castagnoli)
 // Unmarshal and apply a single message to the consensus state as if it were
 // received in receiveRoutine.  Lines that start with "#" are ignored.
 // NOTE: receiveRoutine should not be running.
-func (cs *State) readReplayMessage(msg *TimedWALMessage, newStepSub types.Subscription) error {
+func (cs *State) readReplayMessage(msg *tmcon.TimedWALMessage, newStepSub types.Subscription) error {
 	// Skip meta messages which exist for demarcating boundaries.
-	if _, ok := msg.Msg.(EndHeightMessage); ok {
+	if _, ok := msg.Msg.(tmcon.EndHeightMessage); ok {
 		return nil
 	}
 
@@ -140,7 +140,7 @@ func (cs *State) catchupReplay(csHeight int64) error {
 
 	cs.Logger.Info("Catchup by replaying consensus messages", "height", csHeight)
 
-	var msg *TimedWALMessage
+	var msg *tmcon.TimedWALMessage
 	dec := WALDecoder{gr}
 
 LOOP:

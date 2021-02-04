@@ -1492,7 +1492,7 @@ func (cs *State) finalizeCommit(height int64) {
 	// Either way, the State should not be resumed until we
 	// successfully call ApplyBlock (ie. later here, or in Handshake after
 	// restart).
-	endMsg := EndHeightMessage{height}
+	endMsg := tmcon.EndHeightMessage{height}
 	if err := cs.wal.WriteSync(endMsg); err != nil { // NOTE: fsync
 		panic(fmt.Sprintf("Failed to write %v msg to consensus wal due to %v. Check your FS and restart the node",
 			endMsg, err))
