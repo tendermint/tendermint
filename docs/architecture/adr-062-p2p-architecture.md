@@ -134,9 +134,7 @@ Non-networked endpoints (without an IP address) are considered local, and will o
 
 A connection represents an established transport connection between two endpoints (i.e. two nodes), which can be used to exchange binary messages with logical channel IDs (corresponding to the higher-level channel IDs used in the router). Connections are set up either via `Transport.Dial()` (outbound) or `Transport.Accept()` (inbound).
 
-Once a connection is esablished, `Transport.Handshake()` must be called to perform a node handshake, exchanging node info and public keys to verify node identities. Node handshakes should not really be part of the transport protocol (rather it should be part of the application protocol), this exists for backwards-compatibility with the existing MConnection protocol which conflates the two, and allows the router to do common `NodeInfo` verification across transports as well as varying e.g. `NodeInfo` contents by peer (e.g. to advertise different listen addresses to different peers).
-
-This ADR initially proposed a byte-oriented multi-stream connection API that follows more typical networking API conventions (using e.g. `io.Reader` and `io.Writer` interfaces which easily compose with other libraries). This would also allow moving the responsibility for message framing, node handshakes, and traffic scheduling to the common router instead of reimplementing this across transports, and would allow making better use of multi-stream protocols such as QUIC. However, this would require minor breaking changes to the MConnection protocol which were rejected, see [tendermint/spec#227](https://github.com/tendermint/spec/pull/227) for details. This should be revisited when starting work on a QUIC transport.
+Once a connection is esablished, `Transport.Handshake()` must be called to perform a node handshake, exchanging node info and public keys to verify node identities. Node handshakes should not really be part of the transport layer (it's an application protocol concern), this exists for backwards-compatibility with the existing MConnection protocol which conflates the two. `NodeInfo` is part of the existing MConnection protocol, but does not appear to be documented in the specification -- refer to the Go codebase for details.
 
 The `Connection` interface is shown below. It omits certain additions that are currently implemented for backwards compatibility with the legacy P2P stack and are planned to be removed before the final release.
 
@@ -144,9 +142,8 @@ The `Connection` interface is shown below. It omits certain additions that are c
 // Connection represents an established connection between two endpoints.
 type Connection interface {
 	// Handshake executes a node handshake with the remote peer. It must be
-	// called immediately after the connection is established, and returns the
-	// remote peer's node info and public key. The caller is responsible for
-	// validation.
+	// called once the connection is established, and returns the remote peer's
+	// node info and public key. The caller is responsible for validation.
 	Handshake(context.Context, NodeInfo, crypto.PrivKey) (NodeInfo, crypto.PubKey, error)
 
 	// ReceiveMessage returns the next message received on the connection,
@@ -167,92 +164,141 @@ type Connection interface {
 }
 ```
 
-### Peers
+This ADR initially proposed a byte-oriented multi-stream connection API that follows more typical networking API conventions (using e.g. `io.Reader` and `io.Writer` interfaces which easily compose with other libraries). This would also allow moving the responsibility for message framing, node handshakes, and traffic scheduling to the common router instead of reimplementing this across transports, and would allow making better use of multi-stream protocols such as QUIC. However, this would require minor breaking changes to the MConnection protocol which were rejected, see [tendermint/spec#227](https://github.com/tendermint/spec/pull/227) for details. This should be revisited when starting work on a QUIC transport.
 
-Peers are other Tendermint network nodes. Each peer is identified by a unique `PeerID`, and has a set of `PeerAddress` addresses expressed as URLs that they can be reached at. Examples of peer addresses might be e.g.:
+### Peer Management
 
-* `mconn://b10c@host.domain.com:25567/path`
-* `unix:///var/run/tendermint/peer.sock`
-* `memory:testpeer`
+Peers are other Tendermint nodes. Each peer is identified by a unique `NodeID` (tied to the node's private key).
 
-Addresses are resolved into one or more transport endpoints, e.g. by resolving DNS hostnames into IP addresses (which should be refreshed periodically). Peers should always be expressed as address URLs, and never as endpoints which are a lower-level construct.
+#### Peer Addresses
 
-```go
-// PeerID is a unique peer ID, generally expressed in hex form.
-type PeerID []byte
+Nodes have one or more `NodeAddress` addresses expressed as URLs that they can be reached at. Examples of node addresses might be e.g.:
 
-// PeerAddress is a peer address URL. The User field, if set, gives the
-// hex-encoded remote PeerID, which should be verified with the remote peer's
-// public key as returned by the connection.
-type PeerAddress url.URL
+* `mconn://nodeid@host.domain.com:25567/path`
+* `memory:nodeid`
 
-// Resolve resolves a PeerAddress into a set of Endpoints, typically by
-// expanding out a DNS name in Host to its IP addresses. Field mapping:
-//
-//   Scheme → Endpoint.Protocol
-//   Host   → Endpoint.IP
-//   Port   → Endpoint.Port
-//   Path+Query+Fragment,Opaque → Endpoint.Path
-//
-func (a PeerAddress) Resolve(ctx context.Context) []Endpoint { return nil }
-```
-
-The P2P stack needs to track a lot of internal information about peers, such as endpoints, status, priorities, and so on. This is done in an internal `peer` struct, which should not be exposed outside of the `p2p` package (e.g. to reactors) in order to avoid race conditions and lock contention - other packages should use `PeerID`.
-
-The `peer` struct might look like the following, but is intentionally underspecified and will depend on implementation requirements (for example, it will almost certainly have to track statistics about connection failures and retries):
+Addresses are resolved into one or more transport endpoints, e.g. by resolving DNS hostnames into IP addresses. Peers should always be expressed as address URLs rather than endpoints (which are a lower-level transport construct).
 
 ```go
-// peer tracks internal status information about a peer.
-type peer struct {
-    ID        PeerID
-    Status    PeerStatus
-    Priority  PeerPriority
-    Endpoints map[PeerAddress][]Endpoint // Resolved endpoints by address.
+// NodeID is a hex-encoded crypto.Address. It must be lowercased
+// (for uniqueness) and of length 40.
+type NodeID string
+
+// NodeAddress is a node address URL. It differs from a transport Endpoint in
+// that it contains the node's ID, and that the address hostname may be resolved
+// into multiple IP addresses (and thus multiple endpoints).
+//
+// If the URL is opaque, i.e. of the form "scheme:opaque", then the opaque part
+// is expected to contain a node ID.
+type NodeAddress struct {
+	NodeID   NodeID
+	Protocol Protocol
+	Hostname string
+	Port     uint16
+	Path     string
 }
 
-// PeerStatus specifies peer statuses.
+// ParseNodeAddress parses a node address URL into a NodeAddress, normalizing
+// and validating it.
+func ParseNodeAddress(urlString string) (NodeAddress, error)
+
+// Resolve resolves a NodeAddress into a set of Endpoints, e.g. by expanding
+// out a DNS hostname to IP addresses.
+func (a NodeAddress) Resolve(ctx context.Context) ([]Endpoint, error)
+```
+
+#### Peer Manager
+
+The P2P stack needs to track a lot of internal state about peers, such as their addresses, connection state, priorities, availability, failures, retries, and so on. This responsibility has been separated out to a `PeerManager`, which track this state for the `Router` (but does not maintain the actual transport connections themselves, which is the router's responsibility).
+
+The `PeerManager` is a synchronous state machine, where all state transitions are serialized (implemented as synchronous method calls holding an exclusive mutex lock). Most peer state is intentionally kept internal, stored in a `peerStore` database that persists it as appropriate, and the external interfaces pass the minimum amount of information necessary in order to avoid shared state between router goroutines. This design significantly simplifies the model, making it much easier to reason about and test than if it was baked into the asynchronous ball of concurrency that the P2P networking core must necessarily be. As peer lifecycle events are expected to be relatively infrequent, this should not significantly impact performance either.
+
+The `Router` uses the `PeerManager` to request which peers to dial and evict, and reports in with peer lifecycle events such as connections, disconnections, and failures as they occur. The manager can reject these events (e.g. reject an inbound connection) by returning errors. This happens as follows:
+
+* Outbound connections, via `Transport.Dial`:
+    * `DialNext()`: returns a peer address to dial, or blocks until one is available.
+    * `DialFailed()`: reports a peer dial failure.
+    * `Dialed()`: reports a peer dial success.
+    * `Ready()`: reports the peer as routed and ready.
+    * `Disconnected()`: reports a peer disconnection.
+
+* Inbound connections, via `Transport.Accept`:
+    * `Accepted()`: reports an inbound peer connection.
+    * `Ready()`: reports the peer as routed and ready.
+    * `Disconnected()`: reports a peer disconnection.
+
+* Evictions, via `Connection.Close`:
+    * `EvictNext()`: returns a peer to disconnect, or blocks until one is available.
+    * `Disconnected()`: reports a peer disconnection.
+
+These calls have the following interface:
+
+```go
+// DialNext returns a peer address to dial, blocking until one is available.
+func (m *PeerManager) DialNext(ctx context.Context) (NodeAddress, error)
+
+// DialFailed reports a dial failure for the given address.
+func (m *PeerManager) DialFailed(address NodeAddress) error
+
+// Dialed reports a successful outbound connection to the given address.
+func (m *PeerManager) Dialed(address NodeAddress) error
+
+// Accepted reports a successful inbound connection from the given node.
+func (m *PeerManager) Accepted(peerID NodeID) error
+
+// Ready reports the peer as fully routed and ready for use.
+func (m *PeerManager) Ready(peerID NodeID) error
+
+// EvictNext returns a peer ID to disconnect, blocking until one is available.
+func (m *PeerManager) EvictNext(ctx context.Context) (NodeID, error)
+
+// Disconnected reports a peer disconnection.
+func (m *PeerManager) Disconnected(peerID NodeID) error
+```
+
+Internally, the `PeerManager` uses a numeric peer score to prioritize peers, e.g. when deciding which peers to dial next. The scoring policy has not yet been implemented, but should take into account e.g. node configuration such a `persistent_peers`, uptime and connection failures, performance, and so on. The manager will also attempt to automatically upgrade to better-scored peers by evicting lower-scored peers when a better one becomes available (e.g. when a persistent peer comes back online after an outage).
+
+The `PeerManager` should also have an API for reporting peer behavior from reactors that affects its score (e.g. signing a block increases the score, double-voting decreases it or even bans the peer), but this has not yet been designed and implemented.
+
+Additionally, the `PeerManager` provides `PeerUpdates` subscriptions that will receive `PeerUpdate` events whenever significant peer state changes happen. Reactors can use these e.g. to know when peers are connected or disconnected, and take appropriate action. This is currently fairly minimal:
+
+```go
+// Subscribe subscribes to peer updates. The caller must consume the peer updates
+// in a timely fashion and close the subscription when done, to avoid stalling the
+// PeerManager as delivery is semi-synchronous, guaranteed, and ordered.
+func (m *PeerManager) Subscribe() *PeerUpdates
+
+// PeerUpdate is a peer update event sent via PeerUpdates.
+type PeerUpdate struct {
+	NodeID NodeID
+	Status PeerStatus
+}
+
+// PeerStatus is a peer status.
 type PeerStatus string
 
 const (
-    PeerStatusNew     = "new"     // New peer which we haven't tried to contact yet.
-    PeerStatusUp      = "up"      // Peer which we have an active connection to.
-    PeerStatusDown    = "down"    // Peer which we're temporarily disconnected from.
-    PeerStatusRemoved = "removed" // Peer which has been removed.
-    PeerStatusBanned  = "banned"  // Peer which is banned for misbehavior.
+	PeerStatusUp   PeerStatus = "up"   // Connected and ready.
+	PeerStatusDown PeerStatus = "down" // Disconnected.
 )
 
-// PeerPriority specifies peer priorities.
-type PeerPriority int
+// PeerUpdates is a real-time peer update subscription.
+type PeerUpdates struct { ... }
 
-const (
-    PeerPriorityNormal PeerPriority = iota + 1
-    PeerPriorityValidator
-    PeerPriorityPersistent
-)
+// Updates returns a channel for consuming peer updates.
+func (pu *PeerUpdates) Updates() <-chan PeerUpdate
+
+// Close closes the peer updates subscription.
+func (pu *PeerUpdates) Close()
 ```
 
-Peer information is stored in a `peerStore`, which may be persisted in an underlying database, and will replace the current address book either partially or in full. It is kept internal to avoid race conditions and tight coupling, and should at the very least contain basic CRUD functionality as outlined below, but will likely need additional functionality and is intentionally underspecified:
-
-```go
-// peerStore contains information about peers, possibly persisted to disk.
-type peerStore struct {
-    peers map[string]*peer // Entire set in memory, with PeerID.String() keys.
-    db    dbm.DB           // Database for persistence, if non-nil.
-}
-
-func (p *peerStore) Delete(id PeerID) error     { return nil }
-func (p *peerStore) Get(id PeerID) (peer, bool) { return peer{}, false }
-func (p *peerStore) List() []peer               { return nil }
-func (p *peerStore) Set(peer peer) error        { return nil }
-```
-
-Peer address detection, advertisement and exchange (including detection of externally-reachable addresses via e.g. NAT gateways) is out of scope for this ADR, but may be covered in a separate ADR. The current PEX reactor should probably be absorbed into the core P2P stack and protocol instead of running as a separate reactor, since this needs to mutate the core peer data structures and will thus be tightly coupled with the router.
+The `PeerManager` will also be responsible for providing peer information to the PEX reactor that can be gossipped to other nodes. This requires an improved system for peer address detection and advertisement, that e.g. reliably detects peer addresses and only gossips private network addresses to other peers on the same network, but this system has not yet been fully designed and implemented.
 
 ### Channels
 
-While low-level data exchange happens via transport IO streams, the high-level API is based on a bidirectional `Channel` that can send and receive Protobuf messages addressed by `PeerID`. A channel is identified by an arbitrary `ChannelID` identifier, and can exchange Protobuf messages of one specific type (since the type to unmarshal into must be known). Message delivery is asynchronous and at-most-once.
+While low-level data exchange happens via transport IO streams, the high-level API is based on a bidirectional `Channel` that can send and receive Protobuf messages addressed by `NodeID`. A channel is identified by an arbitrary `ChannelID` identifier, and can exchange Protobuf messages of one specific type (since the type to unmarshal into must be predefined). Message delivery is asynchronous and at-most-once.
 
-The channel can also be used to report peer errors, e.g. when receiving an invalid or malignant message. This may cause the peer to be disconnected or banned depending on the router's policy.
+The channel can also be used to report peer errors, e.g. when receiving an invalid or malignant message. This may cause the peer to be disconnected or banned depending on `PeerManager` policy.
 
 A `Channel` has this interface:
 
