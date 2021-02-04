@@ -1,5 +1,7 @@
 package version
 
+import tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
+
 var (
 	// TMCoreSemVer is the current version of Tendermint Core.
 	// It's the Semantic Version of the software.
@@ -22,3 +24,15 @@ var (
 	// This includes validity of blocks and state updates.
 	BlockProtocol uint64 = 11
 )
+
+type Consensus struct {
+	Block uint64 `json:"block"`
+	App   uint64 `json:"app"`
+}
+
+func (c Consensus) ToProto() tmversion.Consensus {
+	return tmversion.Consensus{
+		Block: c.Block,
+		App:   c.App,
+	}
+}

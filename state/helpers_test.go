@@ -10,6 +10,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -21,7 +22,7 @@ import (
 
 type paramsChangeTestCase struct {
 	height int64
-	params tmproto.ConsensusParams
+	params types.ConsensusParams
 }
 
 func newTestApp() proxy.AppConns {
@@ -163,10 +164,18 @@ func makeHeaderPartsResponsesValPubKeyChange(
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
+		vPbPk, err := cryptoenc.PubKeyToProto(val.PubKey)
+		if err != nil {
+			panic(err)
+		}
+		pbPk, err := cryptoenc.PubKeyToProto(pubkey)
+		if err != nil {
+			panic(err)
+		}
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			ValidatorUpdates: []abci.ValidatorUpdate{
-				types.TM2PB.NewValidatorUpdate(val.PubKey, 0),
-				types.TM2PB.NewValidatorUpdate(pubkey, 10),
+				{PubKey: vPbPk, Power: 0},
+				{PubKey: pbPk, Power: 10},
 			},
 		}
 	}
@@ -188,9 +197,13 @@ func makeHeaderPartsResponsesValPowerChange(
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if val.VotingPower != power {
+		vPbPk, err := cryptoenc.PubKeyToProto(val.PubKey)
+		if err != nil {
+			panic(err)
+		}
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			ValidatorUpdates: []abci.ValidatorUpdate{
-				types.TM2PB.NewValidatorUpdate(val.PubKey, power),
+				{PubKey: vPbPk, Power: power},
 			},
 		}
 	}
@@ -200,13 +213,14 @@ func makeHeaderPartsResponsesValPowerChange(
 
 func makeHeaderPartsResponsesParams(
 	state sm.State,
-	params tmproto.ConsensusParams,
+	params *types.ConsensusParams,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
 	block := makeBlock(state, state.LastBlockHeight+1)
+	pbParams := params.ToProto()
 	abciResponses := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
-		EndBlock:   &abci.ResponseEndBlock{ConsensusParamUpdates: types.TM2PB.ConsensusParams(&params)},
+		EndBlock:   &abci.ResponseEndBlock{ConsensusParamUpdates: &pbParams},
 	}
 	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
 }
@@ -245,7 +259,7 @@ func makeRandomStateFromValidatorSet(
 	}
 }
 
-func makeRandomStateFromConsensusParams(consensusParams *tmproto.ConsensusParams,
+func makeRandomStateFromConsensusParams(consensusParams *types.ConsensusParams,
 	height, lastHeightConsensusParamsChanged int64) sm.State {
 	val, _ := types.RandValidator(true, 10)
 	valSet := types.NewValidatorSet([]*types.Validator{val})
@@ -286,7 +300,7 @@ func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlo
 func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
 	return abci.ResponseEndBlock{
 		ValidatorUpdates: app.ValidatorUpdates,
-		ConsensusParamUpdates: &abci.ConsensusParams{
+		ConsensusParamUpdates: &tmproto.ConsensusParams{
 			Version: &tmproto.VersionParams{
 				AppVersion: 1}}}
 }

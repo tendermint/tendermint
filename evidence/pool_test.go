@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	sm "github.com/tendermint/tendermint/state"
 	smmocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/store"
@@ -173,7 +172,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	pool, val := defaultTestPool(t, height)
 	state := pool.State()
 
-	// create new block (no need to save it to blockStore)
+	// create two lots of old evidence that we expect to be pruned when we update
 	prunedEv := types.NewMockDuplicateVoteEvidenceWithValidator(
 		1,
 		defaultEvidenceTime.Add(1*time.Minute),
@@ -181,7 +180,15 @@ func TestEvidencePoolUpdate(t *testing.T) {
 		evidenceChainID,
 	)
 
+	notPrunedEv := types.NewMockDuplicateVoteEvidenceWithValidator(
+		2,
+		defaultEvidenceTime.Add(2*time.Minute),
+		val,
+		evidenceChainID,
+	)
+
 	require.NoError(t, pool.AddEvidence(prunedEv))
+	require.NoError(t, pool.AddEvidence(notPrunedEv))
 
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(
 		height,
@@ -196,14 +203,23 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	state.LastBlockHeight = height + 1
 	state.LastBlockTime = defaultEvidenceTime.Add(22 * time.Minute)
 
+	evList, _ := pool.PendingEvidence(2 * defaultEvidenceMaxBytes)
+	require.Equal(t, 2, len(evList))
+
+	require.Equal(t, uint32(2), pool.Size())
+
 	require.NoError(t, pool.CheckEvidence(types.EvidenceList{ev}))
+
+	evList, _ = pool.PendingEvidence(3 * defaultEvidenceMaxBytes)
+	require.Equal(t, 3, len(evList))
+
+	require.Equal(t, uint32(3), pool.Size())
 
 	pool.Update(state, block.Evidence.Evidence)
 
 	// a) Update marks evidence as committed so pending evidence should be empty
-	evList, evSize := pool.PendingEvidence(defaultEvidenceMaxBytes)
-	require.Empty(t, evList)
-	require.Zero(t, evSize)
+	evList, _ = pool.PendingEvidence(defaultEvidenceMaxBytes)
+	require.Equal(t, []types.Evidence{notPrunedEv}, evList)
 
 	// b) If we try to check this evidence again it should fail because it has already been committed
 	err := pool.CheckEvidence(types.EvidenceList{ev})
@@ -364,12 +380,12 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	newStateStore.On("Load").Return(sm.State{
 		LastBlockTime:   defaultEvidenceTime.Add(25 * time.Minute),
 		LastBlockHeight: height + 15,
-		ConsensusParams: tmproto.ConsensusParams{
-			Block: tmproto.BlockParams{
+		ConsensusParams: types.ConsensusParams{
+			Block: types.BlockParams{
 				MaxBytes: 22020096,
 				MaxGas:   -1,
 			},
-			Evidence: tmproto.EvidenceParams{
+			Evidence: types.EvidenceParams{
 				MaxAgeNumBlocks: 20,
 				MaxAgeDuration:  20 * time.Minute,
 				MaxBytes:        1000,
@@ -399,12 +415,12 @@ func initializeStateFromValidatorSet(t *testing.T, valSet *types.ValidatorSet, h
 		NextValidators:              valSet.CopyIncrementProposerPriority(1),
 		LastValidators:              valSet,
 		LastHeightValidatorsChanged: 1,
-		ConsensusParams: tmproto.ConsensusParams{
-			Block: tmproto.BlockParams{
+		ConsensusParams: types.ConsensusParams{
+			Block: types.BlockParams{
 				MaxBytes: 22020096,
 				MaxGas:   -1,
 			},
-			Evidence: tmproto.EvidenceParams{
+			Evidence: types.EvidenceParams{
 				MaxAgeNumBlocks: 20,
 				MaxAgeDuration:  20 * time.Minute,
 				MaxBytes:        1000,
@@ -444,7 +460,7 @@ func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) *store.Bloc
 		block, _ := state.MakeBlock(i, []types.Tx{}, lastCommit, nil,
 			state.Validators.GetProposer().Address)
 		block.Header.Time = defaultEvidenceTime.Add(time.Duration(i) * time.Minute)
-		block.Header.Version = tmversion.Consensus{Block: version.BlockProtocol, App: 1}
+		block.Header.Version = version.Consensus{Block: version.BlockProtocol, App: 1}
 		const parts = 1
 		partSet := block.MakePartSet(parts)
 

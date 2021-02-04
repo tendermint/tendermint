@@ -55,7 +55,7 @@ type reactorTestSuite struct {
 	voteSetBitsPeerErrCh chan p2p.PeerError
 
 	peerUpdatesCh chan p2p.PeerUpdate
-	peerUpdates   *p2p.PeerUpdatesCh
+	peerUpdates   *p2p.PeerUpdates
 }
 
 func setup(t *testing.T, cs *State, chBuf uint) *reactorTestSuite {
@@ -199,8 +199,8 @@ func simulateRouter(primary *reactorTestSuite, suites []*reactorTestSuite, dropC
 					primary.reactor.Logger.Debug("dropped peer error", "err", pErr.Err)
 				} else {
 					primary.peerUpdatesCh <- p2p.PeerUpdate{
-						PeerID: pErr.PeerID,
-						Status: p2p.PeerStatusRemoved,
+						NodeID: pErr.NodeID,
+						Status: p2p.PeerStatusDown,
 					}
 				}
 			}
@@ -231,7 +231,7 @@ func TestReactorBasic(t *testing.T) {
 			if ts.peerID != tss.peerID {
 				ts.peerUpdatesCh <- p2p.PeerUpdate{
 					Status: p2p.PeerStatusUp,
-					PeerID: tss.peerID,
+					NodeID: tss.peerID,
 				}
 			}
 		}
@@ -337,7 +337,7 @@ func TestReactorWithEvidence(t *testing.T) {
 			if ts.peerID != tss.peerID {
 				ts.peerUpdatesCh <- p2p.PeerUpdate{
 					Status: p2p.PeerStatusUp,
-					PeerID: tss.peerID,
+					NodeID: tss.peerID,
 				}
 			}
 		}
@@ -390,7 +390,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 			if ts.peerID != tss.peerID {
 				ts.peerUpdatesCh <- p2p.PeerUpdate{
 					Status: p2p.PeerStatusUp,
-					PeerID: tss.peerID,
+					NodeID: tss.peerID,
 				}
 			}
 		}
@@ -439,7 +439,7 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 			if ts.peerID != tss.peerID {
 				ts.peerUpdatesCh <- p2p.PeerUpdate{
 					Status: p2p.PeerStatusUp,
-					PeerID: tss.peerID,
+					NodeID: tss.peerID,
 				}
 			}
 		}

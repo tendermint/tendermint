@@ -136,7 +136,7 @@ func MakeDockerCompose(testnet *e2e.Testnet) ([]byte, error) {
 			if misbehaviorString != "" {
 				command += " --misbehaviors " + misbehaviorString
 			}
-			if logLevel != "" && logLevel != config.DefaultPackageLogLevels() {
+			if logLevel != "" && logLevel != config.DefaultLogLevel {
 				command += " --log-level " + logLevel
 			}
 			return command
@@ -175,6 +175,7 @@ services:
     ports:
     - 26656
     - {{ if .ProxyPort }}{{ .ProxyPort }}:{{ end }}26657
+    - 6060
     volumes:
     - ./{{ .Name }}:/tendermint
     networks:
@@ -240,6 +241,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		cfg.LogLevel = node.LogLevel
 	}
 	cfg.RPC.ListenAddress = "tcp://0.0.0.0:26657"
+	cfg.RPC.PprofListenAddress = ":6060"
 	cfg.P2P.ExternalAddress = fmt.Sprintf("tcp://%v", node.AddressP2P(false))
 	cfg.P2P.AddrBookStrict = false
 	cfg.DBBackend = node.Database

@@ -477,13 +477,30 @@ func createConsensusReactor(
 func createTransport(
 	logger log.Logger,
 	config *cfg.Config,
+) *p2p.MConnTransport {
+	return p2p.NewMConnTransport(
+		logger, p2p.MConnConfig(config.P2P), []*p2p.ChannelDescriptor{},
+		p2p.MConnTransportOptions{
+			MaxAcceptedConnections: uint32(config.P2P.MaxNumInboundPeers +
+				len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " ")),
+			),
+		},
+	)
+}
+
+func createSwitch(config *cfg.Config,
+	transport p2p.Transport,
+	p2pMetrics *p2p.Metrics,
+	mempoolReactor *p2p.ReactorShim,
+	bcReactor p2p.Reactor,
+	stateSyncReactor *p2p.ReactorShim,
+	consensusReactor *p2p.ReactorShim,
+	evidenceReactor *p2p.ReactorShim,
+	proxyApp proxy.AppConns,
 	nodeInfo p2p.NodeInfo,
 	nodeKey p2p.NodeKey,
-	proxyApp proxy.AppConns,
-) (
-	*p2p.MConnTransport,
-	[]p2p.PeerFilterFunc,
-) {
+	p2pLogger log.Logger) *p2p.Switch {
+
 	var (
 		connFilters = []p2p.ConnFilterFunc{}
 		peerFilters = []p2p.PeerFilterFunc{}
@@ -533,35 +550,12 @@ func createTransport(
 		)
 	}
 
-	transport := p2p.NewMConnTransport(
-		logger, nodeInfo, nodeKey.PrivKey, p2p.MConnConfig(config.P2P),
-		p2p.MConnTransportConnFilters(connFilters...),
-		p2p.MConnTransportMaxIncomingConnections(config.P2P.MaxNumInboundPeers+
-			len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))),
-	)
-
-	return transport, peerFilters
-}
-
-func createSwitch(config *cfg.Config,
-	transport p2p.Transport,
-	p2pMetrics *p2p.Metrics,
-	peerFilters []p2p.PeerFilterFunc,
-	mempoolReactor *p2p.ReactorShim,
-	bcReactor p2p.Reactor,
-	stateSyncReactor *p2p.ReactorShim,
-	consensusReactor *p2p.ReactorShim,
-	evidenceReactor *p2p.ReactorShim,
-	nodeInfo p2p.NodeInfo,
-	nodeKey p2p.NodeKey,
-	p2pLogger log.Logger,
-) *p2p.Switch {
-
 	sw := p2p.NewSwitch(
 		config.P2P,
 		transport,
 		p2p.WithMetrics(p2pMetrics),
 		p2p.SwitchPeerFilters(peerFilters...),
+		p2p.SwitchConnFilters(connFilters...),
 	)
 	sw.SetLogger(p2pLogger)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
@@ -781,7 +775,7 @@ func NewNode(config *cfg.Config,
 
 	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
 	// TODO: Use a persistent peer database.
-	peerMgr, err := p2p.NewPeerManager(dbm.NewMemDB(), p2p.PeerManagerOptions{})
+	peerMgr, err := p2p.NewPeerManager(nodeKey.ID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -857,10 +851,10 @@ func NewNode(config *cfg.Config,
 
 	// Setup Transport and Switch.
 	p2pLogger := logger.With("module", "p2p")
-	transport, peerFilters := createTransport(p2pLogger, config, nodeInfo, nodeKey, proxyApp)
+	transport := createTransport(p2pLogger, config)
 	sw := createSwitch(
-		config, transport, p2pMetrics, peerFilters, mpReactorShim, bcReactorForSwitch,
-		stateSyncReactorShim, csReactorShim, evReactorShim, nodeInfo, nodeKey, p2pLogger,
+		config, transport, p2pMetrics, mpReactorShim, bcReactorForSwitch,
+		stateSyncReactorShim, csReactorShim, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
 	)
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
@@ -975,12 +969,6 @@ func (n *Node) OnStart() error {
 		}
 	}
 
-	// Start the switch (the P2P server).
-	err := n.sw.Start()
-	if err != nil {
-		return err
-	}
-
 	// Start the transport.
 	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(n.nodeKey.ID, n.config.P2P.ListenAddress))
 	if err != nil {
@@ -991,6 +979,12 @@ func (n *Node) OnStart() error {
 	}
 
 	n.isListening = true
+
+	// Start the switch (the P2P server).
+	err = n.sw.Start()
+	if err != nil {
+		return err
+	}
 
 	if n.config.FastSync.Version == "v0" {
 		// Start the real blockchain reactor separately since the switch uses the shim.
