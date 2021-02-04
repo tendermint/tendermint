@@ -42,7 +42,7 @@ type reactorTestSuite struct {
 	evidencePeerErrCh chan p2p.PeerError
 
 	peerUpdatesCh chan p2p.PeerUpdate
-	peerUpdates   *p2p.PeerUpdatesCh
+	peerUpdates   *p2p.PeerUpdates
 }
 
 func setup(t *testing.T, logger log.Logger, pool *evidence.Pool, chBuf uint) *reactorTestSuite {
@@ -224,18 +224,18 @@ func TestReactorMultiDisconnect(t *testing.T) {
 
 	primary.peerUpdatesCh <- p2p.PeerUpdate{
 		Status: p2p.PeerStatusUp,
-		PeerID: secondary.peerID,
+		NodeID: secondary.peerID,
 	}
 
 	// Ensure "disconnecting" the secondary peer from the primary more than once
 	// is handled gracefully.
 	primary.peerUpdatesCh <- p2p.PeerUpdate{
 		Status: p2p.PeerStatusDown,
-		PeerID: secondary.peerID,
+		NodeID: secondary.peerID,
 	}
 	primary.peerUpdatesCh <- p2p.PeerUpdate{
 		Status: p2p.PeerStatusDown,
-		PeerID: secondary.peerID,
+		NodeID: secondary.peerID,
 	}
 }
 
@@ -276,7 +276,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	for _, suite := range secondaries {
 		primary.peerUpdatesCh <- p2p.PeerUpdate{
 			Status: p2p.PeerStatusUp,
-			PeerID: suite.peerID,
+			NodeID: suite.peerID,
 		}
 	}
 
@@ -327,7 +327,7 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 	for _, suite := range secondaries {
 		primary.peerUpdatesCh <- p2p.PeerUpdate{
 			Status: p2p.PeerStatusUp,
-			PeerID: suite.peerID,
+			NodeID: suite.peerID,
 		}
 	}
 
@@ -378,7 +378,7 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	// add the secondary reactor as a peer to the primary reactor
 	primary.peerUpdatesCh <- p2p.PeerUpdate{
 		Status: p2p.PeerStatusUp,
-		PeerID: secondary.peerID,
+		NodeID: secondary.peerID,
 	}
 
 	// The secondary reactor should have received all the evidence ignoring the
@@ -438,7 +438,7 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	// add the secondary reactor as a peer to the primary reactor
 	primary.peerUpdatesCh <- p2p.PeerUpdate{
 		Status: p2p.PeerStatusUp,
-		PeerID: secondary.peerID,
+		NodeID: secondary.peerID,
 	}
 
 	// The secondary reactor should have received all the evidence ignoring the
@@ -487,7 +487,7 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 			if suiteI.peerID != suiteJ.peerID {
 				suiteI.peerUpdatesCh <- p2p.PeerUpdate{
 					Status: p2p.PeerStatusUp,
-					PeerID: suiteJ.peerID,
+					NodeID: suiteJ.peerID,
 				}
 			}
 		}
@@ -530,7 +530,7 @@ func TestReactorBroadcastEvidence_RemovePeer(t *testing.T) {
 	// add the secondary reactor as a peer to the primary reactor
 	primary.peerUpdatesCh <- p2p.PeerUpdate{
 		Status: p2p.PeerStatusUp,
-		PeerID: secondary.peerID,
+		NodeID: secondary.peerID,
 	}
 
 	// have the secondary reactor receive only half the evidence
@@ -539,7 +539,7 @@ func TestReactorBroadcastEvidence_RemovePeer(t *testing.T) {
 	// disconnect the peer
 	primary.peerUpdatesCh <- p2p.PeerUpdate{
 		Status: p2p.PeerStatusDown,
-		PeerID: secondary.peerID,
+		NodeID: secondary.peerID,
 	}
 
 	// Ensure the secondary only received half of the evidence before being

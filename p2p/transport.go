@@ -10,6 +10,8 @@ import (
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
+//go:generate mockery --case underscore --name Transport|Connection
+
 const (
 	// defaultProtocol is the default protocol used for NodeAddress when
 	// a protocol isn't explicitly given as a URL scheme.

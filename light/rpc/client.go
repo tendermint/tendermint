@@ -29,6 +29,7 @@ type KeyPathFunc func(path string, key []byte) (merkle.KeyPath, error)
 //go:generate mockery --case underscore --name LightClient
 type LightClient interface {
 	ChainID() string
+	Update(ctx context.Context, now time.Time) (*types.LightBlock, error)
 	VerifyLightBlockAtHeight(ctx context.Context, height uint64, now time.Time) (*types.LightBlock, error)
 	TrustedLightBlock(height uint64) (*types.LightBlock, error)
 }
@@ -131,7 +132,8 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 
 	// Update the light client if we're behind.
 	// NOTE: AppHash for height H is in header H+1.
-	l, err := c.updateLightClientIfNeededTo(ctx, resp.Height+1)
+	nextHeight := resp.Height + 1
+	l, err := c.updateLightClientIfNeededTo(ctx, &nextHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +216,7 @@ func (c *Client) ConsensusParams(ctx context.Context, height *uint64) (*ctypes.R
 	}
 
 	// Update the light client if we're behind.
-	l, err := c.updateLightClientIfNeededTo(ctx, res.BlockHeight)
+	l, err := c.updateLightClientIfNeededTo(ctx, &res.BlockHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +255,7 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight uint64
 	// Update the light client if we're behind.
 	if len(res.BlockMetas) > 0 {
 		lastHeight := res.BlockMetas[len(res.BlockMetas)-1].Header.Height
-		if _, err := c.updateLightClientIfNeededTo(ctx, lastHeight); err != nil {
+		if _, err := c.updateLightClientIfNeededTo(ctx, &lastHeight); err != nil {
 			return nil, err
 		}
 	}
@@ -297,7 +299,7 @@ func (c *Client) Block(ctx context.Context, height *uint64) (*ctypes.ResultBlock
 	}
 
 	// Update the light client if we're behind.
-	l, err := c.updateLightClientIfNeededTo(ctx, res.Block.Height)
+	l, err := c.updateLightClientIfNeededTo(ctx, &res.Block.Height)
 	if err != nil {
 		return nil, err
 	}
@@ -331,7 +333,7 @@ func (c *Client) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBl
 	}
 
 	// Update the light client if we're behind.
-	l, err := c.updateLightClientIfNeededTo(ctx, res.Block.Height)
+	l, err := c.updateLightClientIfNeededTo(ctx, &res.Block.Height)
 	if err != nil {
 		return nil, err
 	}
@@ -372,7 +374,8 @@ func (c *Client) BlockResults(ctx context.Context, height *uint64) (*ctypes.Resu
 	}
 
 	// Update the light client if we're behind.
-	trustedBlock, err := c.updateLightClientIfNeededTo(ctx, h+1)
+	nextHeight := h + 1
+	trustedBlock, err := c.updateLightClientIfNeededTo(ctx, &nextHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -410,7 +413,8 @@ func (c *Client) BlockResults(ctx context.Context, height *uint64) (*ctypes.Resu
 
 func (c *Client) Commit(ctx context.Context, height *uint64) (*ctypes.ResultCommit, error) {
 	// Update the light client if we're behind and retrieve the light block at the requested height
-	l, err := c.updateLightClientIfNeededTo(ctx, *height)
+	// or at the latest height if no height is provided.
+	l, err := c.updateLightClientIfNeededTo(ctx, height)
 	if err != nil {
 		return nil, err
 	}
@@ -435,7 +439,7 @@ func (c *Client) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.Resul
 	}
 
 	// Update the light client if we're behind.
-	l, err := c.updateLightClientIfNeededTo(ctx, res.Height)
+	l, err := c.updateLightClientIfNeededTo(ctx, &res.Height)
 	if err != nil {
 		return nil, err
 	}
@@ -452,8 +456,9 @@ func (c *Client) TxSearch(ctx context.Context, query string, prove bool, page, p
 // Validators fetches and verifies validators.
 func (c *Client) Validators(ctx context.Context, height *uint64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators,
 	error) {
-	// Update the light client if we're behind and retrieve the light block at the requested height.
-	l, err := c.updateLightClientIfNeededTo(ctx, *height)
+	// Update the light client if we're behind and retrieve the light block at the requested height
+	// or at the latest height if no height is provided.
+	l, err := c.updateLightClientIfNeededTo(ctx, height)
 	if err != nil {
 		return nil, err
 	}
@@ -470,7 +475,7 @@ func (c *Client) Validators(ctx context.Context, height *uint64, pagePtr, perPag
 	v := l.ValidatorSet.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
 
 	return &ctypes.ResultValidators{
-		BlockHeight: *height,
+		BlockHeight: l.Height,
 		Validators:  v,
 		Count:       len(v),
 		Total:       totalCount}, nil
@@ -493,8 +498,16 @@ func (c *Client) UnsubscribeAll(ctx context.Context, subscriber string) error {
 	return c.next.UnsubscribeAll(ctx, subscriber)
 }
 
-func (c *Client) updateLightClientIfNeededTo(ctx context.Context, height uint64) (*types.LightBlock, error) {
-	l, err := c.lc.VerifyLightBlockAtHeight(ctx, height, time.Now())
+func (c *Client) updateLightClientIfNeededTo(ctx context.Context, height *uint64) (*types.LightBlock, error) {
+	var (
+		l   *types.LightBlock
+		err error
+	)
+	if height == nil {
+		l, err = c.lc.Update(ctx, time.Now())
+	} else {
+		l, err = c.lc.VerifyLightBlockAtHeight(ctx, *height, time.Now())
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to update light client to %d: %w", height, err)
 	}

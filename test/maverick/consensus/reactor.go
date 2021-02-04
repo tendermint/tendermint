@@ -981,7 +981,7 @@ func (ps *PeerState) ToJSON() ([]byte, error) {
 
 // GetHeight returns an atomic snapshot of the PeerRoundState's height
 // used by the mempool to ensure peers are caught up before broadcasting new txs
-func (ps *PeerState) GetHeight() int64 {
+func (ps *PeerState) GetHeight() uint64 {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	return ps.PRS.Height

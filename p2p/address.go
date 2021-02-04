@@ -106,10 +106,9 @@ func ParseNodeAddress(urlString string) (NodeAddress, error) {
 		Protocol: Protocol(strings.ToLower(url.Scheme)),
 	}
 
-	// Opaque URLs are expected to contain only a node ID, also used as path.
+	// Opaque URLs are expected to contain only a node ID.
 	if url.Opaque != "" {
 		address.NodeID = NodeID(url.Opaque)
-		address.Path = url.Opaque
 		return address, address.Validate()
 	}
 

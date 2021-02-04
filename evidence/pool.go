@@ -23,8 +23,8 @@ import (
 
 const (
 	// prefixes are unique across all tm db's
-	prefixCommitted = int64(8)
-	prefixPending   = int64(9)
+	prefixCommitted = int64(9)
+	prefixPending   = int64(10)
 )
 
 // Pool maintains a pool of valid evidence to be broadcasted and committed
@@ -132,7 +132,7 @@ func (evpool *Pool) Update(state sm.State, ev types.EvidenceList) {
 	evpool.updateState(state)
 
 	// move committed evidence out from the pending pool and into the committed pool
-	evpool.markEvidenceAsCommitted(ev)
+	evpool.markEvidenceAsCommitted(ev, state.LastBlockHeight)
 
 	// Prune pending evidence when it has expired. This also updates when the next
 	// evidence will expire.
@@ -386,23 +386,18 @@ func (evpool *Pool) addPendingEvidence(ev types.Evidence) error {
 	return nil
 }
 
-func (evpool *Pool) removePendingEvidence(evidence types.Evidence) {
-	key := keyPending(evidence)
-	if err := evpool.evidenceStore.Delete(key); err != nil {
-		evpool.logger.Error("failed to delete pending evidence", "err", err)
-	} else {
-		atomic.AddUint32(&evpool.evidenceSize, ^uint32(0))
-		evpool.logger.Debug("deleted pending evidence", "evidence", evidence)
-	}
-}
-
 // markEvidenceAsCommitted processes all the evidence in the block, marking it as
 // committed and removing it from the pending database.
-func (evpool *Pool) markEvidenceAsCommitted(evidence types.EvidenceList) {
+func (evpool *Pool) markEvidenceAsCommitted(evidence types.EvidenceList, height uint64) {
 	blockEvidenceMap := make(map[string]struct{}, len(evidence))
+	batch := evpool.evidenceStore.NewBatch()
+	defer batch.Close()
+
 	for _, ev := range evidence {
 		if evpool.isPending(ev) {
-			evpool.removePendingEvidence(ev)
+			if err := batch.Delete(keyPending(ev)); err != nil {
+				evpool.logger.Error("failed to batch pending evidence", "err", err)
+			}
 			blockEvidenceMap[evMapKey(ev)] = struct{}{}
 		}
 
@@ -410,7 +405,7 @@ func (evpool *Pool) markEvidenceAsCommitted(evidence types.EvidenceList) {
 		// we only need to record the height that it was saved at.
 		key := keyCommitted(ev)
 
-		h := gogotypes.UInt64Value{Value: ev.Height()}
+		h := gogotypes.UInt64Value{Value: height}
 		evBytes, err := proto.Marshal(&h)
 		if err != nil {
 			evpool.logger.Error("failed to marshal committed evidence", "key(height/hash)", key, "err", err)
@@ -424,10 +419,22 @@ func (evpool *Pool) markEvidenceAsCommitted(evidence types.EvidenceList) {
 		evpool.logger.Debug("marked evidence as committed", "evidence", ev)
 	}
 
-	// remove committed evidence from the clist
-	if len(blockEvidenceMap) != 0 {
-		evpool.removeEvidenceFromList(blockEvidenceMap)
+	// check if we need to remove any pending evidence
+	if len(blockEvidenceMap) == 0 {
+		return
 	}
+
+	// remove committed evidence from pending bucket
+	if err := batch.WriteSync(); err != nil {
+		evpool.logger.Error("failed to batch delete pending evidence", "err", err)
+		return
+	}
+
+	// remove committed evidence from the clist
+	evpool.removeEvidenceFromList(blockEvidenceMap)
+
+	// update the evidence size
+	atomic.AddUint32(&evpool.evidenceSize, ^uint32(len(blockEvidenceMap)-1))
 }
 
 // listEvidence retrieves lists evidence from oldest to newest within maxBytes.
@@ -481,44 +488,73 @@ func (evpool *Pool) listEvidence(prefixKey int64, maxBytes int64) ([]types.Evide
 }
 
 func (evpool *Pool) removeExpiredPendingEvidence() (uint64, time.Time) {
-	iter, err := dbm.IteratePrefix(evpool.evidenceStore, prefixToBytes(prefixPending))
-	if err != nil {
-		evpool.logger.Error("failed to iterate over pending evidence", "err", err)
+	batch := evpool.evidenceStore.NewBatch()
+	defer batch.Close()
+
+	height, time, blockEvidenceMap := evpool.batchExpiredPendingEvidence(batch)
+
+	// if we haven't removed any evidence then return early
+	if len(blockEvidenceMap) == 0 {
+		return height, time
+	}
+
+	evpool.logger.Debug("removing expired evidence",
+		"height", evpool.State().LastBlockHeight,
+		"time", evpool.State().LastBlockTime,
+		"expired evidence", len(blockEvidenceMap),
+	)
+
+	// remove expired evidence from pending bucket
+	if err := batch.WriteSync(); err != nil {
+		evpool.logger.Error("failed to batch delete pending evidence", "err", err)
 		return evpool.State().LastBlockHeight, evpool.State().LastBlockTime
 	}
 
-	defer iter.Close()
+	// remove evidence from the clist
+	evpool.removeEvidenceFromList(blockEvidenceMap)
 
+	// update the evidence size
+	atomic.AddUint32(&evpool.evidenceSize, ^uint32(len(blockEvidenceMap)-1))
+
+	return height, time
+}
+
+func (evpool *Pool) batchExpiredPendingEvidence(batch dbm.Batch) (uint64, time.Time, map[string]struct{}) {
 	blockEvidenceMap := make(map[string]struct{})
+	iter, err := dbm.IteratePrefix(evpool.evidenceStore, prefixToBytes(prefixPending))
+	if err != nil {
+		evpool.logger.Error("failed to iterate over pending evidence", "err", err)
+		return evpool.State().LastBlockHeight, evpool.State().LastBlockTime, blockEvidenceMap
+	}
+	defer iter.Close()
 
 	for ; iter.Valid(); iter.Next() {
 		ev, err := bytesToEv(iter.Value())
 		if err != nil {
-			evpool.logger.Error("failed to transition evidence from protobuf", "err", err)
+			evpool.logger.Error("failed to transition evidence from protobuf", "err", err, "ev", ev)
 			continue
 		}
 
+		// if true, we have looped through all expired evidence
 		if !evpool.isExpired(ev.Height(), ev.Time()) {
-			if len(blockEvidenceMap) != 0 {
-				evpool.removeEvidenceFromList(blockEvidenceMap)
-			}
-
 			// Return the height and time with which this evidence will have expired
 			// so we know when to prune next.
 			return ev.Height() + uint64(evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks+1),
-				ev.Time().Add(evpool.State().ConsensusParams.Evidence.MaxAgeDuration).Add(time.Second)
+				ev.Time().Add(evpool.State().ConsensusParams.Evidence.MaxAgeDuration).Add(time.Second),
+				blockEvidenceMap
 		}
 
-		evpool.removePendingEvidence(ev)
+		// else add to the batch
+		if err := batch.Delete(iter.Key()); err != nil {
+			evpool.logger.Error("failed to batch evidence", "err", err, "ev", ev)
+			continue
+		}
+
+		// and add to the map to remove the evidence from the clist
 		blockEvidenceMap[evMapKey(ev)] = struct{}{}
 	}
 
-	// we either have no pending evidence or all evidence has expired
-	if len(blockEvidenceMap) != 0 {
-		evpool.removeEvidenceFromList(blockEvidenceMap)
-	}
-
-	return evpool.State().LastBlockHeight, evpool.State().LastBlockTime
+	return evpool.State().LastBlockHeight, evpool.State().LastBlockTime, blockEvidenceMap
 }
 
 func (evpool *Pool) removeEvidenceFromList(

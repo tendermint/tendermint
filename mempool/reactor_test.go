@@ -33,7 +33,7 @@ type reactorTestSuite struct {
 	mempoolPeerErrCh chan p2p.PeerError
 
 	peerUpdatesCh chan p2p.PeerUpdate
-	peerUpdates   *p2p.PeerUpdatesCh
+	peerUpdates   *p2p.PeerUpdates
 }
 
 func setup(t *testing.T, cfg *cfg.MempoolConfig, logger log.Logger, chBuf uint) *reactorTestSuite {
@@ -189,7 +189,7 @@ func TestReactorBroadcastTxs(t *testing.T) {
 	for _, suite := range secondaries {
 		primary.peerUpdatesCh <- p2p.PeerUpdate{
 			Status: p2p.PeerStatusUp,
-			PeerID: suite.peerID,
+			NodeID: suite.peerID,
 		}
 	}
 
@@ -295,7 +295,7 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 
 	primary.peerUpdatesCh <- p2p.PeerUpdate{
 		Status: p2p.PeerStatusUp,
-		PeerID: secondary.peerID,
+		NodeID: secondary.peerID,
 	}
 
 	time.Sleep(100 * time.Millisecond)
@@ -360,7 +360,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 
 	primary.peerUpdatesCh <- p2p.PeerUpdate{
 		Status: p2p.PeerStatusUp,
-		PeerID: secondary.peerID,
+		NodeID: secondary.peerID,
 	}
 
 	// Wait till all secondary suites (reactor) received all mempool txs from the
@@ -406,7 +406,7 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	for i := 0; i < maxActiveIDs+1; i++ {
 		reactor.peerUpdatesCh <- p2p.PeerUpdate{
 			Status: p2p.PeerStatusUp,
-			PeerID: peerID,
+			NodeID: peerID,
 		}
 		reactor.mempoolOutCh <- p2p.Envelope{
 			To: peerID,
@@ -466,12 +466,12 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 	// connect peer
 	primary.peerUpdatesCh <- p2p.PeerUpdate{
 		Status: p2p.PeerStatusUp,
-		PeerID: secondary.peerID,
+		NodeID: secondary.peerID,
 	}
 
 	// disconnect peer
 	primary.peerUpdatesCh <- p2p.PeerUpdate{
 		Status: p2p.PeerStatusDown,
-		PeerID: secondary.peerID,
+		NodeID: secondary.peerID,
 	}
 }
