@@ -15,7 +15,7 @@ import (
 func TestEvidence_Misbehavior(t *testing.T) {
 	blocks := fetchBlockChain(t)
 	testNode(t, func(t *testing.T, node e2e.Node) {
-		seenEvidence := make(map[int64]struct{})
+		seenEvidence := make(map[uint64]struct{})
 		for _, block := range blocks {
 			// Find any evidence blaming this node in this block
 			var nodeEvidence types.Evidence

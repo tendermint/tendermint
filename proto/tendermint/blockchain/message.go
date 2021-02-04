@@ -69,26 +69,12 @@ func (m *Message) Validate() error {
 
 	switch msg := m.Sum.(type) {
 	case *Message_BlockRequest:
-		if m.GetBlockRequest().Height < 0 {
-			return errors.New("negative Height")
-		}
-
 	case *Message_BlockResponse:
 		// validate basic is called later when converting from proto
 		return nil
 
 	case *Message_NoBlockResponse:
-		if m.GetNoBlockResponse().Height < 0 {
-			return errors.New("negative Height")
-		}
-
 	case *Message_StatusResponse:
-		if m.GetStatusResponse().Base < 0 {
-			return errors.New("negative Base")
-		}
-		if m.GetStatusResponse().Height < 0 {
-			return errors.New("negative Height")
-		}
 		if m.GetStatusResponse().Base > m.GetStatusResponse().Height {
 			return fmt.Errorf(
 				"base %v cannot be greater than height %v",

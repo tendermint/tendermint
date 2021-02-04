@@ -29,7 +29,8 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 
 	witnessHeaders, witnessValidators, chainKeys := genMockNodeWithKeys(chainID, int64(latestHeight), valSize, 2, bTime)
 	witness := mockp.New(chainID, witnessHeaders, witnessValidators)
-	forgedKeys := chainKeys[int64(divergenceHeight)-1].ChangeKeys(3) // we change 3 out of the 5 validators (still 2/5 remain)
+	// we change 3 out of the 5 validators (still 2/5 remain)
+	forgedKeys := chainKeys[int64(divergenceHeight)-1].ChangeKeys(3)
 	forgedVals := forgedKeys.ToValidators(2, 0)
 
 	for height := uint64(1); height <= latestHeight; height++ {
@@ -38,7 +39,9 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 			primaryValidators[int64(height)] = witnessValidators[int64(height)]
 			continue
 		}
-		primaryHeaders[int64(height)] = forgedKeys.GenSignedHeader(chainID, height, bTime.Add(time.Duration(height)*time.Minute),
+		primaryHeaders[int64(height)] = forgedKeys.GenSignedHeader(chainID,
+			height,
+			bTime.Add(time.Duration(height)*time.Minute),
 			nil, forgedVals, forgedVals, hash("app_hash"), hash("cons_hash"), hash("results_hash"), 0, len(forgedKeys))
 		primaryValidators[int64(height)] = forgedVals
 	}

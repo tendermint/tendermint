@@ -236,7 +236,10 @@ func (c *Client) Health(ctx context.Context) (*ctypes.ResultHealth, error) {
 
 // BlockchainInfo calls rpcclient#BlockchainInfo and then verifies every header
 // returned.
-func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight uint64) (*ctypes.ResultBlockchainInfo, error) {
+func (c *Client) BlockchainInfo(
+	ctx context.Context,
+	minHeight,
+	maxHeight uint64) (*ctypes.ResultBlockchainInfo, error) {
 	res, err := c.next.BlockchainInfo(ctx, minHeight, maxHeight)
 	if err != nil {
 		return nil, err

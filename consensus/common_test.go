@@ -480,7 +480,12 @@ func ensureNoNewTimeout(stepCh <-chan tmpubsub.Message, timeout int64) {
 		"We should be stuck waiting, not receiving NewTimeout event")
 }
 
-func ensureNewEvent(ch <-chan tmpubsub.Message, height uint64, round int32, timeout time.Duration, errorMessage string) {
+func ensureNewEvent(
+	ch <-chan tmpubsub.Message,
+	height uint64,
+	round int32,
+	timeout time.Duration,
+	errorMessage string) {
 	select {
 	case <-time.After(timeout):
 		panic(errorMessage)

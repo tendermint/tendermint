@@ -984,9 +984,6 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 	if cfg.PeerQueryMaj23SleepDuration < 0 {
 		return errors.New("peer-query-maj23-sleep-duration can't be negative")
 	}
-	if cfg.DoubleSignCheckHeight < 0 {
-		return errors.New("double-sign-check-height can't be negative")
-	}
 	return nil
 }
 

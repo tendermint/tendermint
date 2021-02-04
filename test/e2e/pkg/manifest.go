@@ -13,7 +13,7 @@ type Manifest struct {
 	IPv6 bool `toml:"ipv6"`
 
 	// InitialHeight specifies the initial block height, set in genesis. Defaults to 1.
-	InitialHeight int64 `toml:"initial_height"`
+	InitialHeight uint64 `toml:"initial_height"`
 
 	// InitialState is an initial set of key/value pairs for the application,
 	// set in genesis. Defaults to nothing.
@@ -90,7 +90,7 @@ type ManifestNode struct {
 
 	// StartAt specifies the block height at which the node will be started. The
 	// runner will wait for the network to reach at least this block height.
-	StartAt int64 `toml:"start_at"`
+	StartAt uint64 `toml:"start_at"`
 
 	// FastSync specifies the fast sync mode: "" (disable), "v0" or "v2".
 	// Defaults to disabled.

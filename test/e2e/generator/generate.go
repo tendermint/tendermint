@@ -69,7 +69,7 @@ func Generate(r *rand.Rand) ([]e2e.Manifest, error) {
 func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, error) {
 	manifest := e2e.Manifest{
 		IPv6:             opt["ipv6"].(bool),
-		InitialHeight:    int64(opt["initialHeight"].(int)),
+		InitialHeight:    uint64(opt["initialHeight"].(int)),
 		InitialState:     opt["initialState"].(map[string]string),
 		Validators:       &map[string]int64{},
 		ValidatorUpdates: map[string]map[string]int64{},
@@ -104,7 +104,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	nextStartAt := manifest.InitialHeight + 5
 	quorum := numValidators*2/3 + 1
 	for i := 1; i <= numValidators; i++ {
-		startAt := int64(0)
+		startAt := uint64(0)
 		if i > quorum {
 			startAt = nextStartAt
 			nextStartAt += 5
@@ -134,7 +134,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 
 	// Finally, we generate random full nodes.
 	for i := 1; i <= numFulls; i++ {
-		startAt := int64(0)
+		startAt := uint64(0)
 		if r.Float64() >= 0.5 {
 			startAt = nextStartAt
 			nextStartAt += 5
@@ -190,7 +190,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 // here, since we need to know the overall network topology and startup
 // sequencing.
 func generateNode(
-	r *rand.Rand, mode e2e.Mode, startAt int64, initialHeight int64, forceArchive bool,
+	r *rand.Rand, mode e2e.Mode, startAt, initialHeight uint64, forceArchive bool,
 ) *e2e.ManifestNode {
 	node := e2e.ManifestNode{
 		Mode:             string(mode),
@@ -214,7 +214,7 @@ func generateNode(
 	}
 
 	if node.Mode == "validator" {
-		misbehaveAt := startAt + 5 + int64(r.Intn(10))
+		misbehaveAt := startAt + 5 + uint64(r.Intn(10))
 		if startAt == 0 {
 			misbehaveAt += initialHeight - 1
 		}
@@ -256,7 +256,7 @@ type misbehaviorOption struct {
 	misbehavior string
 }
 
-func (m misbehaviorOption) atHeight(height int64) map[string]string {
+func (m misbehaviorOption) atHeight(height uint64) map[string]string {
 	misbehaviorMap := make(map[string]string)
 	if m.misbehavior == "" {
 		return misbehaviorMap

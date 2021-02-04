@@ -73,9 +73,6 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 	if len(genDoc.ChainID) > MaxChainIDLen {
 		return fmt.Errorf("chain_id in genesis doc is too long (max: %d)", MaxChainIDLen)
 	}
-	if genDoc.InitialHeight < 0 {
-		return fmt.Errorf("initial_height cannot be negative (got %v)", genDoc.InitialHeight)
-	}
 	if genDoc.InitialHeight == 0 {
 		genDoc.InitialHeight = 1
 	}

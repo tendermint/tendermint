@@ -458,7 +458,7 @@ func (s *syncer) verifyApp(snapshot *snapshot) (uint64, error) {
 		return 0, errVerifyFailed
 	}
 
-	if uint64(resp.LastBlockHeight) != snapshot.Height {
+	if resp.LastBlockHeight != snapshot.Height {
 		s.logger.Error(
 			"ABCI app reported unexpected last block height",
 			"expected", snapshot.Height,

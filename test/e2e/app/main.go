@@ -152,9 +152,9 @@ func startMaverick(cfg *Config) error {
 		return fmt.Errorf("failed to setup config: %w", err)
 	}
 
-	misbehaviors := make(map[int64]mcs.Misbehavior, len(cfg.Misbehaviors))
+	misbehaviors := make(map[uint64]mcs.Misbehavior, len(cfg.Misbehaviors))
 	for heightString, misbehaviorString := range cfg.Misbehaviors {
-		height, _ := strconv.ParseInt(heightString, 10, 64)
+		height, _ := strconv.ParseUint(heightString, 10, 64)
 		misbehaviors[height] = mcs.MisbehaviorList[misbehaviorString]
 	}
 

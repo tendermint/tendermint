@@ -394,8 +394,6 @@ func (c *Client) compareWithLatestHeight(height uint64) (uint64, error) {
 		return 0, fmt.Errorf("unverified header/valset requested (latest: %d)", latestHeight)
 	case height == 0:
 		return latestHeight, nil
-	case height < 0:
-		return 0, errors.New("negative height")
 	}
 
 	return height, nil
@@ -442,7 +440,10 @@ func (c *Client) Update(ctx context.Context, now time.Time) (*types.LightBlock, 
 // primary.
 //
 // It will replace the primary provider if an error from a request to the provider occurs
-func (c *Client) VerifyLightBlockAtHeight(ctx context.Context, height uint64, now time.Time) (*types.LightBlock, error) {
+func (c *Client) VerifyLightBlockAtHeight(
+	ctx context.Context,
+	height uint64,
+	now time.Time) (*types.LightBlock, error) {
 	if height <= 0 {
 		return nil, errors.New("negative or zero height")
 	}

@@ -88,7 +88,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	evpool := sm.EmptyEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 	consensusState := NewState(config.Consensus, state.Copy(),
-		blockExec, blockStore, mempool, evpool, map[int64]Misbehavior{})
+		blockExec, blockStore, mempool, evpool, map[uint64]Misbehavior{})
 	consensusState.SetLogger(logger)
 	consensusState.SetEventBus(eventBus)
 	if privValidator != nil {
@@ -99,7 +99,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 
 	// set consensus wal to buffered WAL, which will write all incoming msgs to buffer
 	numBlocksWritten := make(chan struct{})
-	wal := newByteBufferWAL(logger, NewWALEncoder(wr), int64(numBlocks), numBlocksWritten)
+	wal := newByteBufferWAL(logger, NewWALEncoder(wr), uint64(numBlocks), numBlocksWritten)
 	// see wal.go#103
 	if err := wal.Write(EndHeightMessage{0}); err != nil {
 		t.Error(err)
@@ -169,7 +169,7 @@ func getConfig(t *testing.T) *cfg.Config {
 type byteBufferWAL struct {
 	enc               *WALEncoder
 	stopped           bool
-	heightToStop      int64
+	heightToStop      uint64
 	signalWhenStopsTo chan<- struct{}
 
 	logger log.Logger
@@ -178,7 +178,7 @@ type byteBufferWAL struct {
 // needed for determinism
 var fixedTime, _ = time.Parse(time.RFC3339, "2017-01-02T15:04:05Z")
 
-func newByteBufferWAL(logger log.Logger, enc *WALEncoder, nBlocks int64, signalStop chan<- struct{}) *byteBufferWAL {
+func newByteBufferWAL(logger log.Logger, enc *WALEncoder, nBlocks uint64, signalStop chan<- struct{}) *byteBufferWAL {
 	return &byteBufferWAL{
 		enc:               enc,
 		heightToStop:      nBlocks,
@@ -222,7 +222,7 @@ func (w *byteBufferWAL) WriteSync(m WALMessage) error {
 func (w *byteBufferWAL) FlushAndSync() error { return nil }
 
 func (w *byteBufferWAL) SearchForEndHeight(
-	height int64,
+	height uint64,
 	options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	return nil, false, nil
 }

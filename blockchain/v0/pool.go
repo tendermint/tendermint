@@ -249,9 +249,9 @@ func (pool *BlockPool) AddBlock(peerID p2p.NodeID, block *types.Block, blockSize
 		pool.Logger.Error("peer sent us a block we didn't expect",
 			"peer", peerID, "curHeight", pool.height, "blockHeight", block.Height)
 		diff := pool.height - block.Height
-		if diff < 0 {
-			// diff *= -1 //todo: what?
-		}
+		// if diff < 0 {
+		// diff *= -1 //todo: what?
+		// }
 		if diff > maxDiffBetweenCurrentAndReceivedBlockHeight {
 			pool.sendError(errors.New("peer sent us a block we didn't expect with a height too far ahead/behind"), peerID)
 		}

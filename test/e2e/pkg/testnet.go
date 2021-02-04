@@ -54,10 +54,10 @@ type Testnet struct {
 	File             string
 	Dir              string
 	IP               *net.IPNet
-	InitialHeight    int64
+	InitialHeight    uint64
 	InitialState     map[string]string
 	Validators       map[*Node]int64
-	ValidatorUpdates map[int64]map[*Node]int64
+	ValidatorUpdates map[uint64]map[*Node]int64
 	Nodes            []*Node
 	KeyType          string
 	LogLevel         string
@@ -72,7 +72,7 @@ type Node struct {
 	NodeKey          crypto.PrivKey
 	IP               net.IP
 	ProxyPort        uint32
-	StartAt          int64
+	StartAt          uint64
 	FastSync         string
 	StateSync        bool
 	Database         string
@@ -84,7 +84,7 @@ type Node struct {
 	Seeds            []*Node
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
-	Misbehaviors     map[int64]string
+	Misbehaviors     map[uint64]string
 	LogLevel         string
 }
 
@@ -122,7 +122,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 		InitialHeight:    1,
 		InitialState:     manifest.InitialState,
 		Validators:       map[*Node]int64{},
-		ValidatorUpdates: map[int64]map[*Node]int64{},
+		ValidatorUpdates: map[uint64]map[*Node]int64{},
 		Nodes:            []*Node{},
 		KeyType:          "ed25519",
 		LogLevel:         manifest.LogLevel,
@@ -161,7 +161,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			SnapshotInterval: nodeManifest.SnapshotInterval,
 			RetainBlocks:     nodeManifest.RetainBlocks,
 			Perturbations:    []Perturbation{},
-			Misbehaviors:     make(map[int64]string),
+			Misbehaviors:     make(map[uint64]string),
 			LogLevel:         manifest.LogLevel,
 		}
 		if node.StartAt == testnet.InitialHeight {
@@ -186,7 +186,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			node.Perturbations = append(node.Perturbations, Perturbation(p))
 		}
 		for heightString, misbehavior := range nodeManifest.Misbehaviors {
-			height, err := strconv.ParseInt(heightString, 10, 64)
+			height, err := strconv.ParseUint(heightString, 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("unable to parse height %s to int64: %w", heightString, err)
 			}
@@ -262,7 +262,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			}
 			valUpdate[node] = power
 		}
-		testnet.ValidatorUpdates[int64(height)] = valUpdate
+		testnet.ValidatorUpdates[uint64(height)] = valUpdate
 	}
 
 	return testnet, testnet.Validate()
@@ -435,8 +435,8 @@ func (t Testnet) HasPerturbations() bool {
 }
 
 // LastMisbehaviorHeight returns the height of the last misbehavior.
-func (t Testnet) LastMisbehaviorHeight() int64 {
-	lastHeight := int64(0)
+func (t Testnet) LastMisbehaviorHeight() uint64 {
+	lastHeight := uint64(0)
 	for _, node := range t.Nodes {
 		for height := range node.Misbehaviors {
 			if height > lastHeight {

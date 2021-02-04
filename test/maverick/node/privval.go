@@ -73,7 +73,7 @@ func (pvKey FilePVKey) Save() {
 
 // FilePVLastSignState stores the mutable part of PrivValidator.
 type FilePVLastSignState struct {
-	Height    int64            `json:"height"`
+	Height    uint64           `json:"height"`
 	Round     int32            `json:"round"`
 	Step      int8             `json:"step"`
 	Signature []byte           `json:"signature,omitempty"`
@@ -89,7 +89,7 @@ type FilePVLastSignState struct {
 // it returns true if the HRS matches the arguments and the SignBytes are not empty (indicating
 // we have already signed for this HRS, and can reuse the existing signature).
 // It panics if the HRS matches the arguments, there's a SignBytes, but no Signature.
-func (lss *FilePVLastSignState) CheckHRS(height int64, round int32, step int8) (bool, error) {
+func (lss *FilePVLastSignState) CheckHRS(height uint64, round int32, step int8) (bool, error) {
 
 	if lss.Height > height {
 		return false, fmt.Errorf("height regression. Got %v, last height %v", height, lss.Height)
@@ -346,7 +346,7 @@ func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error
 }
 
 // Persist height/round/step and signature
-func (pv *FilePV) saveSigned(height int64, round int32, step int8,
+func (pv *FilePV) saveSigned(height uint64, round int32, step int8,
 	signBytes []byte, sig []byte) {
 
 	pv.LastSignState.Height = height

@@ -390,9 +390,7 @@ func (h Header) ValidateBasic() error {
 		return fmt.Errorf("chainID is too long; got: %d, max: %d", len(h.ChainID), MaxChainIDLen)
 	}
 
-	if h.Height < 0 {
-		return errors.New("negative Height")
-	} else if h.Height == 0 {
+	if h.Height == 0 {
 		return errors.New("zero Height")
 	}
 
@@ -874,9 +872,6 @@ func (commit *Commit) IsCommit() bool {
 // ValidateBasic performs basic validation that doesn't involve state data.
 // Does not actually check the cryptographic signatures.
 func (commit *Commit) ValidateBasic() error {
-	if commit.Height < 0 {
-		return errors.New("negative Height")
-	}
 	if commit.Round < 0 {
 		return errors.New("negative Round")
 	}

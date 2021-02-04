@@ -404,7 +404,7 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 }
 
 // UpdateConfigStateSync updates the state sync config for a node.
-func UpdateConfigStateSync(node *e2e.Node, height int64, hash []byte) error {
+func UpdateConfigStateSync(node *e2e.Node, height uint64, hash []byte) error {
 	cfgPath := filepath.Join(node.Testnet.Dir, node.Name, "config", "config.toml")
 
 	// FIXME Apparently there's no function to simply load a config file without

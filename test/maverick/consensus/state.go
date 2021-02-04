@@ -86,7 +86,7 @@ type State struct {
 	nSteps int
 
 	// some functions can be overwritten for testing
-	decideProposal func(height int64, round int32)
+	decideProposal func(height uint64, round int32)
 
 	// closed when we finish shutting down
 	done chan struct{}
@@ -99,7 +99,7 @@ type State struct {
 	metrics *Metrics
 
 	// misbehaviors mapped for each height (can't have more than one misbehavior per height)
-	misbehaviors map[int64]Misbehavior
+	misbehaviors map[uint64]Misbehavior
 
 	// the switch is passed to the state so that maveick misbehaviors can directly control which
 	// information they send to which nodes
@@ -117,7 +117,7 @@ func NewState(
 	blockStore sm.BlockStore,
 	txNotifier txNotifier,
 	evpool evidencePool,
-	misbehaviors map[int64]Misbehavior,
+	misbehaviors map[uint64]Misbehavior,
 	options ...StateOption,
 ) *State {
 	cs := &State{
@@ -237,7 +237,7 @@ func (cs *State) handleMsg(mi msgInfo) {
 // Enter (CreateEmptyBlocks, CreateEmptyBlocksInterval > 0 ):
 // 		after enterNewRound(height,round), after timeout of CreateEmptyBlocksInterval
 // Enter (!CreateEmptyBlocks) : after enterNewRound(height,round), once txs are in the mempool
-func (cs *State) enterPropose(height int64, round int32) {
+func (cs *State) enterPropose(height uint64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPropose <= cs.Step) {
@@ -276,7 +276,7 @@ func (cs *State) enterPropose(height int64, round int32) {
 // Enter: proposal block and POL is ready.
 // Prevote for LockedBlock if we're locked, or ProposalBlock if valid.
 // Otherwise vote nil.
-func (cs *State) enterPrevote(height int64, round int32) {
+func (cs *State) enterPrevote(height uint64, round int32) {
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrevote <= cs.Step) {
 		cs.Logger.Debug(fmt.Sprintf(
 			"enterPrevote(%v/%v): Invalid args. Current step: %v/%v/%v",
@@ -313,7 +313,7 @@ func (cs *State) enterPrevote(height int64, round int32) {
 // Lock & precommit the ProposalBlock if we have enough prevotes for it (a POL in this round)
 // else, unlock an existing lock and precommit nil if +2/3 of prevotes were nil,
 // else, precommit nil otherwise.
-func (cs *State) enterPrecommit(height int64, round int32) {
+func (cs *State) enterPrecommit(height uint64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrecommit <= cs.Step) {
@@ -449,7 +449,7 @@ type msgInfo struct {
 // internally generated messages which may update the state
 type timeoutInfo struct {
 	Duration time.Duration         `json:"duration"`
-	Height   int64                 `json:"height"`
+	Height   uint64                `json:"height"`
 	Round    int32                 `json:"round"`
 	Step     cstypes.RoundStepType `json:"step"`
 }
@@ -533,7 +533,7 @@ func (cs *State) GetRoundStateSimpleJSON() ([]byte, error) {
 }
 
 // GetValidators returns a copy of the current validators.
-func (cs *State) GetValidators() (int64, []*types.Validator) {
+func (cs *State) GetValidators() (uint64, []*types.Validator) {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
 	return cs.state.LastBlockHeight, cs.state.Validators.Copy().Validators
@@ -560,7 +560,7 @@ func (cs *State) SetTimeoutTicker(timeoutTicker TimeoutTicker) {
 }
 
 // LoadCommit loads the commit for a given height.
-func (cs *State) LoadCommit(height int64) *types.Commit {
+func (cs *State) LoadCommit(height uint64) *types.Commit {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
 	if height == cs.blockStore.Height() {
@@ -732,7 +732,7 @@ func (cs *State) SetProposal(proposal *types.Proposal, peerID p2p.NodeID) error 
 }
 
 // AddProposalBlockPart inputs a part of the proposal block.
-func (cs *State) AddProposalBlockPart(height int64, round int32, part *types.Part, peerID p2p.NodeID) error {
+func (cs *State) AddProposalBlockPart(height uint64, round int32, part *types.Part, peerID p2p.NodeID) error {
 
 	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, ""}
@@ -766,7 +766,7 @@ func (cs *State) SetProposalAndBlock(
 //------------------------------------------------------------
 // internal functions for managing the state
 
-func (cs *State) updateHeight(height int64) {
+func (cs *State) updateHeight(height uint64) {
 	cs.metrics.Height.Set(float64(height))
 	cs.Height = height
 }
@@ -784,7 +784,7 @@ func (cs *State) scheduleRound0(rs *cstypes.RoundState) {
 }
 
 // Attempt to schedule a timeout (by sending timeoutInfo on the tickChan)
-func (cs *State) scheduleTimeout(duration time.Duration, height int64, round int32, step cstypes.RoundStepType) {
+func (cs *State) scheduleTimeout(duration time.Duration, height uint64, round int32, step cstypes.RoundStepType) {
 	cs.timeoutTicker.ScheduleTimeout(timeoutInfo{duration, height, round, step})
 }
 
@@ -1098,7 +1098,7 @@ func (cs *State) handleTxsAvailable() {
 // Enter: +2/3 precommits for nil at (height,round-1)
 // Enter: +2/3 prevotes any or +2/3 precommits for block or any from (height, round)
 // NOTE: cs.StartTime was already set for height.
-func (cs *State) enterNewRound(height int64, round int32) {
+func (cs *State) enterNewRound(height uint64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.Step != cstypes.RoundStepNewHeight) {
@@ -1164,7 +1164,7 @@ func (cs *State) enterNewRound(height int64, round int32) {
 
 // needProofBlock returns true on the first height (so the genesis app hash is signed right away)
 // and where the last block (height-1) caused the app hash to change
-func (cs *State) needProofBlock(height int64) bool {
+func (cs *State) needProofBlock(height uint64) bool {
 	if height == cs.state.InitialHeight {
 		return true
 	}
@@ -1180,7 +1180,7 @@ func (cs *State) isProposer(address []byte) bool {
 	return bytes.Equal(cs.Validators.GetProposer().Address, address)
 }
 
-func (cs *State) defaultDecideProposal(height int64, round int32) {
+func (cs *State) defaultDecideProposal(height uint64, round int32) {
 	var block *types.Block
 	var blockParts *types.PartSet
 
@@ -1276,7 +1276,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 }
 
 // Enter: any +2/3 prevotes at next round.
-func (cs *State) enterPrevoteWait(height int64, round int32) {
+func (cs *State) enterPrevoteWait(height uint64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrevoteWait <= cs.Step) {
@@ -1306,7 +1306,7 @@ func (cs *State) enterPrevoteWait(height int64, round int32) {
 }
 
 // Enter: any +2/3 precommits for next round.
-func (cs *State) enterPrecommitWait(height int64, round int32) {
+func (cs *State) enterPrecommitWait(height uint64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.TriggeredTimeoutPrecommit) {
@@ -1333,7 +1333,7 @@ func (cs *State) enterPrecommitWait(height int64, round int32) {
 }
 
 // Enter: +2/3 precommits for block
-func (cs *State) enterCommit(height int64, commitRound int32) {
+func (cs *State) enterCommit(height uint64, commitRound int32) {
 	logger := cs.Logger.With("height", height, "commitRound", commitRound)
 
 	if cs.Height != height || cstypes.RoundStepCommit <= cs.Step {
@@ -1399,7 +1399,7 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 }
 
 // If we have the block AND +2/3 commits for it, finalize.
-func (cs *State) tryFinalizeCommit(height int64) {
+func (cs *State) tryFinalizeCommit(height uint64) {
 	logger := cs.Logger.With("height", height)
 
 	if cs.Height != height {
@@ -1427,7 +1427,7 @@ func (cs *State) tryFinalizeCommit(height int64) {
 }
 
 // Increment height and goto cstypes.RoundStepNewHeight
-func (cs *State) finalizeCommit(height int64) {
+func (cs *State) finalizeCommit(height uint64) {
 	if cs.Height != height || cs.Step != cstypes.RoundStepCommit {
 		cs.Logger.Debug(fmt.Sprintf(
 			"finalizeCommit(%v): Invalid args. Current step: %v/%v/%v",
@@ -1505,7 +1505,7 @@ func (cs *State) finalizeCommit(height int64) {
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// NOTE The block.AppHash wont reflect these txs until the next block.
 	var err error
-	var retainHeight int64
+	var retainHeight uint64
 	stateCopy, retainHeight, err = cs.blockExec.ApplyBlock(
 		stateCopy,
 		types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()},
@@ -1550,7 +1550,7 @@ func (cs *State) finalizeCommit(height int64) {
 	// * cs.StartTime is set to when we will start round0.
 }
 
-func (cs *State) pruneBlocks(retainHeight int64) (uint64, error) {
+func (cs *State) pruneBlocks(retainHeight uint64) (uint64, error) {
 	base := cs.blockStore.Base()
 	if retainHeight <= base {
 		return 0, nil
@@ -1567,7 +1567,7 @@ func (cs *State) pruneBlocks(retainHeight int64) (uint64, error) {
 	return pruned, nil
 }
 
-func (cs *State) recordMetrics(height int64, block *types.Block) {
+func (cs *State) recordMetrics(height uint64, block *types.Block) {
 	cs.metrics.Validators.Set(float64(cs.Validators.Size()))
 	cs.metrics.ValidatorsPower.Set(float64(cs.Validators.TotalVotingPower()))
 
@@ -1887,14 +1887,14 @@ func (cs *State) updatePrivValidatorPubKey() error {
 }
 
 // look back to check existence of the node's consensus votes before joining consensus
-func (cs *State) checkDoubleSigningRisk(height int64) error {
+func (cs *State) checkDoubleSigningRisk(height uint64) error {
 	if cs.privValidator != nil && cs.privValidatorPubKey != nil && cs.config.DoubleSignCheckHeight > 0 && height > 0 {
 		valAddr := cs.privValidatorPubKey.Address()
 		doubleSignCheckHeight := cs.config.DoubleSignCheckHeight
 		if doubleSignCheckHeight > height {
 			doubleSignCheckHeight = height
 		}
-		for i := int64(1); i < doubleSignCheckHeight; i++ {
+		for i := uint64(1); i < doubleSignCheckHeight; i++ {
 			lastCommit := cs.blockStore.LoadSeenCommit(height - i)
 			if lastCommit != nil {
 				for sigIdx, s := range lastCommit.Signatures {
@@ -1911,7 +1911,7 @@ func (cs *State) checkDoubleSigningRisk(height int64) error {
 
 //---------------------------------------------------------
 
-func CompareHRS(h1 int64, r1 int32, s1 cstypes.RoundStepType, h2 int64, r2 int32, s2 cstypes.RoundStepType) int {
+func CompareHRS(h1 uint64, r1 int32, s1 cstypes.RoundStepType, h2 uint64, r2 int32, s2 cstypes.RoundStepType) int {
 	if h1 < h2 {
 		return -1
 	} else if h1 > h2 {

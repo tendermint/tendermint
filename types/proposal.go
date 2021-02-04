@@ -50,9 +50,6 @@ func (p *Proposal) ValidateBasic() error {
 	if p.Type != tmproto.ProposalType {
 		return errors.New("invalid Type")
 	}
-	if p.Height < 0 {
-		return errors.New("negative Height")
-	}
 	if p.Round < 0 {
 		return errors.New("negative Round")
 	}

@@ -15,7 +15,7 @@ import (
 // waitForHeight waits for the network to reach a certain height (or above),
 // returning the highest height seen. Errors if the network is not making
 // progress at all.
-func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.BlockID, error) {
+func waitForHeight(testnet *e2e.Testnet, height uint64) (*types.Block, *types.BlockID, error) {
 	var (
 		err          error
 		maxResult    *rpctypes.ResultBlock
@@ -66,7 +66,7 @@ func waitForHeight(testnet *e2e.Testnet, height int64) (*types.Block, *types.Blo
 }
 
 // waitForNode waits for a node to become available and catch up to the given block height.
-func waitForNode(node *e2e.Node, height int64, timeout time.Duration) (*rpctypes.ResultStatus, error) {
+func waitForNode(node *e2e.Node, height uint64, timeout time.Duration) (*rpctypes.ResultStatus, error) {
 	client, err := node.Client()
 	if err != nil {
 		return nil, err
@@ -89,8 +89,8 @@ func waitForNode(node *e2e.Node, height int64, timeout time.Duration) (*rpctypes
 }
 
 // waitForAllNodes waits for all nodes to become available and catch up to the given block height.
-func waitForAllNodes(testnet *e2e.Testnet, height int64, timeout time.Duration) (int64, error) {
-	lastHeight := int64(0)
+func waitForAllNodes(testnet *e2e.Testnet, height uint64, timeout time.Duration) (uint64, error) {
+	lastHeight := uint64(0)
 	for _, node := range testnet.Nodes {
 		if node.Mode == e2e.ModeSeed {
 			continue

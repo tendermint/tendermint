@@ -292,7 +292,11 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				panic("Bad VoteSetBitsMessage field Type. Forgot to add a check in ValidateBasic?")
 			}
 			src.TrySend(VoteSetBitsChannel, MustEncode(&VoteSetBitsMessage{
-x
+				Height:  msg.Height,
+				Round:   msg.Round,
+				Type:    msg.Type,
+				BlockID: msg.BlockID,
+				Votes:   ourVotes,
 			}))
 		default:
 			conR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
@@ -1027,7 +1031,7 @@ func (ps *PeerState) InitProposalBlockParts(partSetHeader types.PartSetHeader) {
 }
 
 // SetHasProposalBlockPart sets the given block part index as known for the peer.
-func (ps *PeerState) SetHasProposalBlockPart(height int64, round int32, index int) {
+func (ps *PeerState) SetHasProposalBlockPart(height uint64, round int32, index int) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -1083,7 +1087,7 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 	return nil, false
 }
 
-func (ps *PeerState) getVoteBitArray(height int64, round int32, votesType tmproto.SignedMsgType) *bits.BitArray {
+func (ps *PeerState) getVoteBitArray(height uint64, round int32, votesType tmproto.SignedMsgType) *bits.BitArray {
 	if !types.IsVoteTypeValid(votesType) {
 		return nil
 	}
@@ -1130,7 +1134,7 @@ func (ps *PeerState) getVoteBitArray(height int64, round int32, votesType tmprot
 }
 
 // 'round': A round for which we have a +2/3 commit.
-func (ps *PeerState) ensureCatchupCommitRound(height int64, round int32, numValidators int) {
+func (ps *PeerState) ensureCatchupCommitRound(height uint64, round int32, numValidators int) {
 	if ps.PRS.Height != height {
 		return
 	}
@@ -1162,13 +1166,13 @@ func (ps *PeerState) ensureCatchupCommitRound(height int64, round int32, numVali
 // what votes this peer has received.
 // NOTE: It's important to make sure that numValidators actually matches
 // what the node sees as the number of validators for height.
-func (ps *PeerState) EnsureVoteBitArrays(height int64, numValidators int) {
+func (ps *PeerState) EnsureVoteBitArrays(height uint64, numValidators int) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	ps.ensureVoteBitArrays(height, numValidators)
 }
 
-func (ps *PeerState) ensureVoteBitArrays(height int64, numValidators int) {
+func (ps *PeerState) ensureVoteBitArrays(height uint64, numValidators int) {
 	if ps.PRS.Height == height {
 		if ps.PRS.Prevotes == nil {
 			ps.PRS.Prevotes = bits.NewBitArray(numValidators)
@@ -1235,7 +1239,7 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
 }
 
-func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.SignedMsgType, index int32) {
+func (ps *PeerState) setHasVote(height uint64, round int32, voteType tmproto.SignedMsgType, index int32) {
 	logger := ps.logger.With(
 		"peerH/R",
 		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
@@ -1424,7 +1428,7 @@ func decodeMsg(bz []byte) (msg Message, err error) {
 // NewRoundStepMessage is sent for every step taken in the ConsensusState.
 // For every height/round/step transition
 type NewRoundStepMessage struct {
-	Height                int64
+	Height                uint64
 	Round                 int32
 	Step                  cstypes.RoundStepType
 	SecondsSinceStartTime int64
@@ -1433,9 +1437,6 @@ type NewRoundStepMessage struct {
 
 // ValidateBasic performs basic validation.
 func (m *NewRoundStepMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
 	if m.Round < 0 {
 		return errors.New("negative Round")
 	}
@@ -1456,7 +1457,7 @@ func (m *NewRoundStepMessage) ValidateBasic() error {
 }
 
 // ValidateHeight validates the height given the chain's initial height.
-func (m *NewRoundStepMessage) ValidateHeight(initialHeight int64) error {
+func (m *NewRoundStepMessage) ValidateHeight(initialHeight uint64) error {
 	if m.Height < initialHeight {
 		return fmt.Errorf("invalid Height %v (lower than initial height %v)",
 			m.Height, initialHeight)
@@ -1484,7 +1485,7 @@ func (m *NewRoundStepMessage) String() string {
 // i.e., there is a Proposal for block B and 2/3+ prevotes for the block B in the round r.
 // In case the block is also committed, then IsCommit flag is set to true.
 type NewValidBlockMessage struct {
-	Height             int64
+	Height             uint64
 	Round              int32
 	BlockPartSetHeader types.PartSetHeader
 	BlockParts         *bits.BitArray
@@ -1493,9 +1494,6 @@ type NewValidBlockMessage struct {
 
 // ValidateBasic performs basic validation.
 func (m *NewValidBlockMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
 	if m.Round < 0 {
 		return errors.New("negative Round")
 	}
@@ -1543,16 +1541,13 @@ func (m *ProposalMessage) String() string {
 
 // ProposalPOLMessage is sent when a previous proposal is re-proposed.
 type ProposalPOLMessage struct {
-	Height           int64
+	Height           uint64
 	ProposalPOLRound int32
 	ProposalPOL      *bits.BitArray
 }
 
 // ValidateBasic performs basic validation.
 func (m *ProposalPOLMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
 	if m.ProposalPOLRound < 0 {
 		return errors.New("negative ProposalPOLRound")
 	}
@@ -1574,16 +1569,13 @@ func (m *ProposalPOLMessage) String() string {
 
 // BlockPartMessage is sent when gossipping a piece of the proposed block.
 type BlockPartMessage struct {
-	Height int64
+	Height uint64
 	Round  int32
 	Part   *types.Part
 }
 
 // ValidateBasic performs basic validation.
 func (m *BlockPartMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
 	if m.Round < 0 {
 		return errors.New("negative Round")
 	}
@@ -1619,7 +1611,7 @@ func (m *VoteMessage) String() string {
 
 // HasVoteMessage is sent to indicate that a particular vote has been received.
 type HasVoteMessage struct {
-	Height int64
+	Height uint64
 	Round  int32
 	Type   tmproto.SignedMsgType
 	Index  int32
@@ -1627,9 +1619,6 @@ type HasVoteMessage struct {
 
 // ValidateBasic performs basic validation.
 func (m *HasVoteMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
 	if m.Round < 0 {
 		return errors.New("negative Round")
 	}
@@ -1651,7 +1640,7 @@ func (m *HasVoteMessage) String() string {
 
 // VoteSetMaj23Message is sent to indicate that a given BlockID has seen +2/3 votes.
 type VoteSetMaj23Message struct {
-	Height  int64
+	Height  uint64
 	Round   int32
 	Type    tmproto.SignedMsgType
 	BlockID types.BlockID
@@ -1659,9 +1648,6 @@ type VoteSetMaj23Message struct {
 
 // ValidateBasic performs basic validation.
 func (m *VoteSetMaj23Message) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
 	if m.Round < 0 {
 		return errors.New("negative Round")
 	}
@@ -1683,7 +1669,7 @@ func (m *VoteSetMaj23Message) String() string {
 
 // VoteSetBitsMessage is sent to communicate the bit-array of votes seen for the BlockID.
 type VoteSetBitsMessage struct {
-	Height  int64
+	Height  uint64
 	Round   int32
 	Type    tmproto.SignedMsgType
 	BlockID types.BlockID
@@ -1692,9 +1678,6 @@ type VoteSetBitsMessage struct {
 
 // ValidateBasic performs basic validation.
 func (m *VoteSetBitsMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
 	if !types.IsVoteTypeValid(m.Type) {
 		return errors.New("invalid Type")
 	}

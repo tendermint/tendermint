@@ -78,7 +78,11 @@ func (mpc *mockPContext) applyBlock(blockID types.BlockID, block *types.Block) e
 	return nil
 }
 
-func (mpc *mockPContext) verifyCommit(chainID string, blockID types.BlockID, height uint64, commit *types.Commit) error {
+func (mpc *mockPContext) verifyCommit(
+	chainID string,
+	blockID types.BlockID,
+	height uint64,
+	commit *types.Commit) error {
 	for _, h := range mpc.verificationBL {
 		if uint64(h) == height {
 			return fmt.Errorf("generic verification error")

@@ -63,7 +63,7 @@ func TestBlock_Range(t *testing.T) {
 			assert.Greater(t, first, node.Testnet.InitialHeight,
 				"state synced nodes should not contain network's initial height")
 
-		case node.RetainBlocks > 0 && int64(node.RetainBlocks) < (last-node.Testnet.InitialHeight+1):
+		case node.RetainBlocks > 0 && node.RetainBlocks < (last-node.Testnet.InitialHeight+1):
 			// Delta handles race conditions in reading first/last heights.
 			assert.InDelta(t, node.RetainBlocks, last-first+1, 1,
 				"node not pruning expected blocks")

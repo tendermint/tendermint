@@ -170,9 +170,6 @@ func (p *http) signedHeader(ctx context.Context, height *uint64) (*types.SignedH
 }
 
 func validateHeight(height uint64) (*uint64, error) {
-	if height < 0 {
-		return nil, fmt.Errorf("expected height >= 0, got height %d", height)
-	}
 
 	h := &height
 	if height == 0 {

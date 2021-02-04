@@ -54,9 +54,9 @@ import (
 
 // ParseMisbehaviors is a util function that converts a comma separated string into
 // a map of misbehaviors to be executed by the maverick node
-func ParseMisbehaviors(str string) (map[int64]cs.Misbehavior, error) {
+func ParseMisbehaviors(str string) (map[uint64]cs.Misbehavior, error) {
 	// check if string is empty in which case we run a normal node
-	var misbehaviors = make(map[int64]cs.Misbehavior)
+	var misbehaviors = make(map[uint64]cs.Misbehavior)
 	if str == "" {
 		return misbehaviors, nil
 	}
@@ -66,7 +66,7 @@ func ParseMisbehaviors(str string) (map[int64]cs.Misbehavior, error) {
 	}
 OUTER_LOOP:
 	for i := 0; i < len(strs); i += 2 {
-		height, err := strconv.ParseInt(strs[i+1], 10, 64)
+		height, err := strconv.ParseUint(strs[i+1], 10, 64)
 		if err != nil {
 			return misbehaviors, fmt.Errorf("failed to parse misbehavior height: %w", err)
 		}
@@ -117,7 +117,7 @@ type Provider func(*cfg.Config, log.Logger) (*Node, error)
 // DefaultNewNode returns a Tendermint node with default settings for the
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
-func DefaultNewNode(config *cfg.Config, logger log.Logger, misbehaviors map[int64]cs.Misbehavior) (*Node, error) {
+func DefaultNewNode(config *cfg.Config, logger log.Logger, misbehaviors map[uint64]cs.Misbehavior) (*Node, error) {
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load or gen node key %s, err: %w", config.NodeKeyFile(), err)
@@ -476,7 +476,7 @@ func createConsensusReactor(config *cfg.Config,
 	waitSync bool,
 	eventBus *types.EventBus,
 	consensusLogger log.Logger,
-	misbehaviors map[int64]cs.Misbehavior) (*cs.Reactor, *cs.State) {
+	misbehaviors map[uint64]cs.Misbehavior) (*cs.Reactor, *cs.State) {
 
 	consensusState := cs.NewState(
 		config.Consensus,
@@ -710,7 +710,7 @@ func NewNode(config *cfg.Config,
 	dbProvider DBProvider,
 	metricsProvider MetricsProvider,
 	logger log.Logger,
-	misbehaviors map[int64]cs.Misbehavior,
+	misbehaviors map[uint64]cs.Misbehavior,
 	options ...Option) (*Node, error) {
 
 	blockStore, stateDB, err := initDBs(config, dbProvider)

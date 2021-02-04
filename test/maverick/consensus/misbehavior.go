@@ -16,11 +16,11 @@ var MisbehaviorList = map[string]Misbehavior{
 type Misbehavior struct {
 	Name string
 
-	EnterPropose func(cs *State, height int64, round int32)
+	EnterPropose func(cs *State, height uint64, round int32)
 
-	EnterPrevote func(cs *State, height int64, round int32)
+	EnterPrevote func(cs *State, height uint64, round int32)
 
-	EnterPrecommit func(cs *State, height int64, round int32)
+	EnterPrecommit func(cs *State, height uint64, round int32)
 
 	ReceivePrevote func(cs *State, prevote *types.Vote)
 
@@ -48,7 +48,7 @@ func DefaultMisbehavior() Misbehavior {
 func DoublePrevoteMisbehavior() Misbehavior {
 	b := DefaultMisbehavior()
 	b.Name = "double-prevote"
-	b.EnterPrevote = func(cs *State, height int64, round int32) {
+	b.EnterPrevote = func(cs *State, height uint64, round int32) {
 
 		// If a block is locked, prevote that.
 		if cs.LockedBlock != nil {
@@ -107,7 +107,7 @@ func DoublePrevoteMisbehavior() Misbehavior {
 
 // DEFAULTS
 
-func defaultEnterPropose(cs *State, height int64, round int32) {
+func defaultEnterPropose(cs *State, height uint64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 	// If we don't get the proposal and all block parts quick enough, enterPrevote
 	cs.scheduleTimeout(cs.config.Propose(round), height, round, cstypes.RoundStepPropose)
@@ -148,7 +148,7 @@ func defaultEnterPropose(cs *State, height int64, round int32) {
 	}
 }
 
-func defaultEnterPrevote(cs *State, height int64, round int32) {
+func defaultEnterPrevote(cs *State, height uint64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	// If a block is locked, prevote that.
@@ -181,7 +181,7 @@ func defaultEnterPrevote(cs *State, height int64, round int32) {
 	cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
 }
 
-func defaultEnterPrecommit(cs *State, height int64, round int32) {
+func defaultEnterPrecommit(cs *State, height uint64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	// check for a polka

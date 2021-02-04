@@ -50,7 +50,7 @@ func (app *Application) Info(req abci.RequestInfo) abci.ResponseInfo {
 	return abci.ResponseInfo{
 		Version:          version.ABCIVersion,
 		AppVersion:       1,
-		LastBlockHeight:  int64(app.state.Height),
+		LastBlockHeight:  app.state.Height,
 		LastBlockAppHash: app.state.Hash,
 	}
 }
@@ -58,7 +58,7 @@ func (app *Application) Info(req abci.RequestInfo) abci.ResponseInfo {
 // Info implements ABCI.
 func (app *Application) InitChain(req abci.RequestInitChain) abci.ResponseInitChain {
 	var err error
-	app.state.initialHeight = uint64(req.InitialHeight)
+	app.state.initialHeight = req.InitialHeight
 	if len(req.AppStateBytes) > 0 {
 		err = app.state.Import(0, req.AppStateBytes)
 		if err != nil {
@@ -100,7 +100,7 @@ func (app *Application) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDelive
 func (app *Application) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
 	var err error
 	resp := abci.ResponseEndBlock{}
-	if resp.ValidatorUpdates, err = app.validatorUpdates(uint64(req.Height)); err != nil {
+	if resp.ValidatorUpdates, err = app.validatorUpdates(req.Height); err != nil {
 		panic(err)
 	}
 	return resp
@@ -119,9 +119,9 @@ func (app *Application) Commit() abci.ResponseCommit {
 		}
 		logger.Info("Created state sync snapshot", "height", snapshot.Height)
 	}
-	retainHeight := int64(0)
+	retainHeight := uint64(0)
 	if app.cfg.RetainBlocks > 0 {
-		retainHeight = int64(height - app.cfg.RetainBlocks + 1)
+		retainHeight = height - app.cfg.RetainBlocks + 1
 	}
 	return abci.ResponseCommit{
 		Data:         hash,
@@ -132,7 +132,7 @@ func (app *Application) Commit() abci.ResponseCommit {
 // Query implements ABCI.
 func (app *Application) Query(req abci.RequestQuery) abci.ResponseQuery {
 	return abci.ResponseQuery{
-		Height: int64(app.state.Height),
+		Height: app.state.Height,
 		Key:    req.Data,
 		Value:  []byte(app.state.Get(string(req.Data))),
 	}
