@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -994,6 +995,9 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 	compareCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	c.providerMutex.Lock()
+	defer c.providerMutex.Unlock()
+
 	if len(c.witnesses) < 1 {
 		return ErrNoWitnesses
 	}
@@ -1027,8 +1031,11 @@ and remove witness. Otherwise, use the different primary`, e.WitnessIndex), "wit
 		}
 	}
 
-	for _, idx := range witnessesToRemove {
-		c.removeWitness(idx)
+	// we need to make sure that we remove witnesses by index in the reverse
+	// order so as to not affect the indexes themselves
+	sort.Ints(witnessesToRemove)
+	for i := len(witnessesToRemove) - 1; i >= 0; i-- {
+		c.removeWitness(witnessesToRemove[i])
 	}
 
 	return nil
