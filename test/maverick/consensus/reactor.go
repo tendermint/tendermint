@@ -1047,7 +1047,7 @@ func (ps *PeerState) SetHasProposalBlockPart(height int64, round int32, index in
 // Returns true if vote was sent.
 func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
 	if vote, ok := ps.PickVoteToSend(votes); ok {
-		msg := &tmcon.VoteMessage{vote}
+		msg := &tmcon.VoteMessage{Vote: vote}
 		ps.logger.Debug("Sending vote message", "ps", ps, "vote", vote)
 		if ps.peer.Send(VoteChannel, tmcon.MustEncode(msg)) {
 			ps.SetHasVote(vote)

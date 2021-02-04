@@ -710,9 +710,9 @@ func (cs *State) OpenWAL(walFile string) (WAL, error) {
 // AddVote inputs a vote.
 func (cs *State) AddVote(vote *types.Vote, peerID p2p.NodeID) (added bool, err error) {
 	if peerID == "" {
-		cs.internalMsgQueue <- msgInfo{&tmcon.VoteMessage{vote}, ""}
+		cs.internalMsgQueue <- msgInfo{&tmcon.VoteMessage{Vote: vote}, ""}
 	} else {
-		cs.peerMsgQueue <- msgInfo{&tmcon.VoteMessage{vote}, peerID}
+		cs.peerMsgQueue <- msgInfo{&tmcon.VoteMessage{Vote: vote}, peerID}
 	}
 
 	// TODO: wait for event?!
@@ -723,9 +723,9 @@ func (cs *State) AddVote(vote *types.Vote, peerID p2p.NodeID) (added bool, err e
 func (cs *State) SetProposal(proposal *types.Proposal, peerID p2p.NodeID) error {
 
 	if peerID == "" {
-		cs.internalMsgQueue <- msgInfo{&tmcon.ProposalMessage{proposal}, ""}
+		cs.internalMsgQueue <- msgInfo{&tmcon.ProposalMessage{Proposal: proposal}, ""}
 	} else {
-		cs.peerMsgQueue <- msgInfo{&tmcon.ProposalMessage{proposal}, peerID}
+		cs.peerMsgQueue <- msgInfo{&tmcon.ProposalMessage{Proposal: proposal}, peerID}
 	}
 
 	// TODO: wait for event?!
@@ -736,9 +736,9 @@ func (cs *State) SetProposal(proposal *types.Proposal, peerID p2p.NodeID) error 
 func (cs *State) AddProposalBlockPart(height int64, round int32, part *types.Part, peerID p2p.NodeID) error {
 
 	if peerID == "" {
-		cs.internalMsgQueue <- msgInfo{&tmcon.BlockPartMessage{height, round, part}, ""}
+		cs.internalMsgQueue <- msgInfo{&tmcon.BlockPartMessage{Height: height, Round: round, Part: part}, ""}
 	} else {
-		cs.peerMsgQueue <- msgInfo{&tmcon.BlockPartMessage{height, round, part}, peerID}
+		cs.peerMsgQueue <- msgInfo{&tmcon.BlockPartMessage{Height: height, Round: round, Part: part}, peerID}
 	}
 
 	// TODO: wait for event?!
@@ -1211,10 +1211,10 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 		proposal.Signature = p.Signature
 
 		// send proposal and block parts on internal msg queue
-		cs.sendInternalMessage(msgInfo{&tmcon.ProposalMessage{proposal}, ""})
+		cs.sendInternalMessage(msgInfo{&tmcon.ProposalMessage{Proposal: proposal}, ""})
 		for i := 0; i < int(blockParts.Total()); i++ {
 			part := blockParts.GetPart(i)
-			cs.sendInternalMessage(msgInfo{&tmcon.BlockPartMessage{cs.Height, cs.Round, part}, ""})
+			cs.sendInternalMessage(msgInfo{&tmcon.BlockPartMessage{Height: cs.Height, Round: cs.Round, Part: part}, ""})
 		}
 		cs.Logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
 		cs.Logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
@@ -1861,7 +1861,7 @@ func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header 
 	// TODO: pass pubKey to signVote
 	vote, err := cs.signVote(msgType, hash, header)
 	if err == nil {
-		cs.sendInternalMessage(msgInfo{&tmcon.VoteMessage{vote}, ""})
+		cs.sendInternalMessage(msgInfo{&tmcon.VoteMessage{Vote: vote}, ""})
 		cs.Logger.Info("Signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)
 		return vote
 	}
