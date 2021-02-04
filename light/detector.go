@@ -152,7 +152,16 @@ func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan erro
 	witness provider.Provider, witnessIndex int) {
 
 	lightBlock, err := witness.LightBlock(ctx, h.Height)
-	if err != nil {
+	switch err {
+	case nil:
+		break
+	case provider.ErrNoResponse:
+	case provider.ErrLightBlockNotFound:
+		errc <- err
+		return
+	default:
+		// all other errors (i.e. invalid block or unreliable provider) we mark the witness as bad
+		// and remove it
 		errc <- errBadWitness{Reason: err, WitnessIndex: witnessIndex}
 		return
 	}

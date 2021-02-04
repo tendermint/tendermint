@@ -112,12 +112,13 @@ func MaxClockDrift(d time.Duration) Option {
 //
 // Default verification: SkippingVerification(DefaultTrustLevel)
 type Client struct {
-	chainID          string
-	trustingPeriod   time.Duration // see TrustOptions.Period
-	verificationMode mode
-	trustLevel       tmmath.Fraction
-	maxRetryAttempts uint16 // see MaxRetryAttempts option
-	maxClockDrift    time.Duration
+	chainID            string
+	trustingPeriod     time.Duration // see TrustOptions.Period
+	verificationMode   mode
+	trustLevel         tmmath.Fraction
+	maxRetryAttempts   uint16 // see MaxRetryAttempts option
+	maxClockDrift      time.Duration
+	lightBlockRequests uint16
 
 	// Mutex for locking during changes of the light clients providers
 	providerMutex tmsync.Mutex
@@ -624,12 +625,10 @@ func (c *Client) verifySequential(
 					return err
 				}
 
-				// If some intermediate header is invalid, replace the primary and try
-				// again.
-				c.logger.Error("primary sent invalid header -> replacing", "err", err, "primary", c.primary)
-				replaceErr := c.replacePrimaryProvider()
-				if replaceErr != nil {
-					c.logger.Error("Can't replace primary", "err", replaceErr)
+				// If some intermediate header is invalid, remove the primary and try again.
+				c.logger.Error("primary sent invalid header -> removing", "err", err, "primary", c.primary)
+				if removeErr := c.removePrimaryProvider(); removeErr != nil {
+					c.logger.Error("Can't remove primary", "err", removeErr)
 					// return original error
 					return err
 				}
@@ -758,12 +757,10 @@ func (c *Client) verifySkippingAgainstPrimary(
 			return err
 		}
 
-		// If some intermediate header is invalid, replace the primary and try
-		// again.
+		// If some intermediate header is invalid, remove the primary and try again.
 		c.logger.Error("primary sent invalid header -> replacing", "err", err, "primary", c.primary)
-		replaceErr := c.replacePrimaryProvider()
-		if replaceErr != nil {
-			c.logger.Error("Can't replace primary", "err", replaceErr)
+		if removeErr := c.removePrimaryProvider(); err != nil {
+			c.logger.Error("Can't remove primary", "err", removeErr)
 			// return original error
 			return err
 		}
@@ -925,8 +922,8 @@ func (c *Client) backwards(
 			"newHash", interimHeader.Hash())
 		if err := VerifyBackwards(interimHeader, verifiedHeader); err != nil {
 			c.logger.Error("primary sent invalid header -> replacing", "err", err, "primary", c.primary)
-			if replaceErr := c.replacePrimaryProvider(); replaceErr != nil {
-				c.logger.Error("Can't replace primary", "err", replaceErr)
+			if removeErr := c.removePrimaryProvider(); removeErr != nil {
+				c.logger.Error("Can't replace primary", "err", removeErr)
 				// return original error
 				return fmt.Errorf("verify backwards from %d to %d failed: %w",
 					verifiedHeader.Height, interimHeader.Height, err)
@@ -940,52 +937,92 @@ func (c *Client) backwards(
 	return nil
 }
 
-// NOTE: requires a providerMutex locked.
-func (c *Client) removeWitness(idx int) {
-	switch len(c.witnesses) {
-	case 0:
-		panic(fmt.Sprintf("wanted to remove %d element from empty witnesses slice", idx))
-	case 1:
-		c.witnesses = make([]provider.Provider, 0)
+// lightBlockFromPrimary retrieves the lightBlock from the primary provider
+// at the specified height. This method also handles provider behavior as follows:
+//
+// 1. If the provider does not respond or does not have the block, it tries again
+//    with a different provider
+// 2. If all providers return the same error, the light client forwards the error to
+//    where the initial request came from
+// 3. If the provider provides an invalid light block, is deemed unreliable or returns
+//    any other error, the primary is permanently dropped and is replaced by a witness.
+func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*types.LightBlock, error) {
+	c.providerMutex.Lock()
+	l, err := c.primary.LightBlock(ctx, height)
+	c.providerMutex.Unlock()
+
+	switch err {
+	case nil:
+		// Everything went smoothly. We reset the lightBlockRequests and return the light block
+		c.lightBlockRequests = 0
+		return l, nil
+
+	case provider.ErrNoResponse:
+	case provider.ErrLightBlockNotFound:
+		c.lightBlockRequests++
+		// if the light client has requested the same block to all providers and they have given one of
+		// the above two errors, then we can assume that the light block is unreachable at the time and
+		// we return the error
+		if c.lightBlockRequests > uint16(len(c.witnesses)) {
+			return nil, err
+		}
+		// else we cycle through the next witness and try again
+		c.swapPrimaryProvider()
+
 	default:
-		c.witnesses[idx] = c.witnesses[len(c.witnesses)-1]
-		c.witnesses = c.witnesses[:len(c.witnesses)-1]
+		// The light client has most likely received either provider.ErrUnreliableProvider or provider.ErrBadLightBlock
+		// These errors mean that the light client should drop the primary and try with another provider instead
+		c.logger.Debug("Error on light block request from primary", "error", err, "primary", c.primary)
+		if removeErr := c.removePrimaryProvider(); removeErr != nil {
+			return nil, fmt.Errorf("%v. Tried to remove primary but: %w", err.Error(), removeErr)
+		}
 	}
+
+	return c.lightBlockFromPrimary(ctx, height)
 }
 
-// replaceProvider takes the first alternative provider and promotes it as the
-// primary provider.
-func (c *Client) replacePrimaryProvider() error {
+// NOTE: requires a providerMutexLocked
+func (c *Client) removeWitness(idx int) error {
+	if len(c.witnesses) < 2 {
+		return ErrNoWitnesses
+	}
+
+	c.witnesses[idx] = c.witnesses[len(c.witnesses)-1]
+	c.witnesses = c.witnesses[:len(c.witnesses)-1]
+	return nil
+}
+
+// removePrimaryProvider drops the primary and uses the next witness in the array
+// as the new primary. Returns an error if there are not witnesses left
+func (c *Client) removePrimaryProvider() error {
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 
 	if len(c.witnesses) <= 1 {
 		return ErrNoWitnesses
 	}
+
 	c.primary = c.witnesses[0]
 	c.witnesses = c.witnesses[1:]
-	c.logger.Info("Replacing primary with the first witness", "new_primary", c.primary)
+	c.logger.Info("Removing primary and replacing with the first witness", "new_primary", c.primary)
 
 	return nil
 }
 
-// lightBlockFromPrimary retrieves the lightBlock from the primary provider
-// at the specified height. Handles dropout by the primary provider by swapping
-// with an alternative provider.
-func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*types.LightBlock, error) {
+// swapPrimaryProvider takes the first alternative provider and promotes it as the
+// primary provider, pushing the previous provider to the back of the queue
+func (c *Client) swapPrimaryProvider() {
 	c.providerMutex.Lock()
-	l, err := c.primary.LightBlock(ctx, height)
-	c.providerMutex.Unlock()
-	if err != nil {
-		c.logger.Debug("Error on light block request from primary", "error", err, "primary", c.primary)
-		replaceErr := c.replacePrimaryProvider()
-		if replaceErr != nil {
-			return nil, fmt.Errorf("%v. Tried to replace primary but: %w", err.Error(), replaceErr)
-		}
-		// replace primary and request a light block again
-		return c.lightBlockFromPrimary(ctx, height)
+	defer c.providerMutex.Unlock()
+
+	if len(c.witnesses) < 1 {
+		panic("wanted to swap primary but there were no witnesses to swap with")
 	}
-	return l, err
+
+	oldPrimary := c.primary
+	c.primary = c.witnesses[0]
+	c.witnesses = append(c.witnesses[1:], oldPrimary)
+	c.logger.Info("Swapping primary with the first witness", "new_primary", c.primary)
 }
 
 // compareFirstHeaderWithWitnesses compares h with all witnesses. If any

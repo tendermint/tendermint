@@ -18,14 +18,19 @@ var (
 	// This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
 	regexpMissingHeight = regexp.MustCompile(`height \d+ (must be less than or equal to|is not available)`)
 
-	maxRetryAttempts = 10
-	timeout          = 5 * time.Second
+	maxRetryAttempts           = 10
+	timeout                    = 5 * time.Second
+	noResponseThreshold uint16 = 5
+	noBlockThreshold    uint16 = 5
 )
 
 // http provider uses an RPC client to obtain the necessary information.
 type http struct {
 	chainID string
 	client  rpcclient.RemoteClient
+
+	noResponseCount uint16
+	noBlockCount    uint16
 }
 
 // New creates a HTTP provider, which is using the rpchttp.HTTP client under
@@ -113,11 +118,12 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 			if err != nil {
 				// TODO: standardize errors on the RPC side
 				if regexpMissingHeight.MatchString(err.Error()) {
-					return nil, provider.ErrLightBlockNotFound
+					return nil, p.noBlock()
 				}
 				// if we have exceeded retry attempts then return no response error
 				if attempt == maxRetryAttempts {
-					return nil, provider.ErrNoResponse
+					p.noResponseCount++
+					return nil, p.noResponse()
 				}
 				// else we wait and try again with exponential backoff
 				time.Sleep(backoffTimeout(uint16(attempt)))
@@ -158,7 +164,7 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 		if err != nil {
 			// TODO: standardize errors on the RPC side
 			if regexpMissingHeight.MatchString(err.Error()) {
-				return nil, provider.ErrLightBlockNotFound
+				return nil, p.noBlock()
 			}
 			// we wait and try again with exponential backoff
 			time.Sleep(backoffTimeout(uint16(attempt)))
@@ -166,7 +172,27 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 		}
 		return &commit.SignedHeader, nil
 	}
-	return nil, provider.ErrNoResponse
+	return nil, p.noResponse()
+}
+
+func (p *http) noResponse() error {
+	p.noResponseCount++
+	if p.noResponseCount > noResponseThreshold {
+		return provider.ErrUnreliableProvider{
+			Reason: fmt.Sprintf("failed to respond after %d attempts", p.noResponseCount),
+		}
+	}
+	return provider.ErrNoResponse
+}
+
+func (p *http) noBlock() error {
+	p.noBlockCount++
+	if p.noBlockCount > noBlockThreshold {
+		return provider.ErrUnreliableProvider{
+			Reason: fmt.Sprintf("failed to provide a block after %d attempts", p.noBlockCount),
+		}
+	}
+	return provider.ErrLightBlockNotFound
 }
 
 func validateHeight(height int64) (*int64, error) {
