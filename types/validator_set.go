@@ -982,16 +982,21 @@ func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 	return vals, vals.ValidateBasic()
 }
 
-// ValidatorSetFromExistingValidators takes an existing array of validators and rebuilds
-// the exact same validator set that corresponds to it without changing the proposer priority or power
-// if any of the validators fail validate basic then an empty set is returned.
+// ValidatorSetFromExistingValidators takes an existing array of validators and
+// rebuilds the exact same validator set that corresponds to it without
+// changing the proposer priority or power if any of the validators fail
+// validate basic then an empty set is returned.
 func ValidatorSetFromExistingValidators(valz []*Validator) (*ValidatorSet, error) {
+	if len(valz) == 0 {
+		return nil, errors.New("validator set is empty")
+	}
 	for _, val := range valz {
 		err := val.ValidateBasic()
 		if err != nil {
 			return nil, fmt.Errorf("can't create validator set: %w", err)
 		}
 	}
+
 	vals := &ValidatorSet{
 		Validators: valz,
 	}
