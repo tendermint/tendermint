@@ -65,7 +65,7 @@ func TestMain(m *testing.M) {
 // wal writer when we need to, instead of with every message.
 
 func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Config,
-	lastBlockHeight int64, blockDB dbm.DB, stateStore sm.Store) {
+	lastBlockHeight uint64, blockDB dbm.DB, stateStore sm.Store) {
 	logger := log.TestingLogger()
 	state, _ := stateStore.LoadFromDBOrGenesisFile(consensusReplayConfig.GenesisFile())
 	privValidator := loadPrivValidator(consensusReplayConfig)
@@ -124,7 +124,7 @@ func TestWALCrash(t *testing.T) {
 	testCases := []struct {
 		name         string
 		initFn       func(dbm.DB, *State, context.Context)
-		heightToStop int64
+		heightToStop uint64
 	}{
 		{"empty block",
 			func(stateDB dbm.DB, cs *State, ctx context.Context) {},
@@ -146,7 +146,7 @@ func TestWALCrash(t *testing.T) {
 }
 
 func crashWALandCheckLiveness(t *testing.T, consensusReplayConfig *cfg.Config,
-	initFn func(dbm.DB, *State, context.Context), heightToStop int64) {
+	initFn func(dbm.DB, *State, context.Context), heightToStop uint64) {
 	walPanicked := make(chan error)
 	crashingWal := &crashingWAL{panicCh: walPanicked, heightToStop: heightToStop}
 
@@ -222,7 +222,7 @@ LOOP:
 type crashingWAL struct {
 	next         WAL
 	panicCh      chan error
-	heightToStop int64
+	heightToStop uint64
 
 	msgIndex                int // current message index
 	lastPanickedForMsgIndex int // last message for which we panicked
@@ -242,7 +242,7 @@ func (e WALWriteError) Error() string {
 // ReachedHeightToStopError indicates we've reached the required consensus
 // height and may exit.
 type ReachedHeightToStopError struct {
-	height int64
+	height uint64
 }
 
 func (e ReachedHeightToStopError) Error() string {
@@ -281,7 +281,7 @@ func (w *crashingWAL) WriteSync(m WALMessage) error {
 func (w *crashingWAL) FlushAndSync() error { return w.next.FlushAndSync() }
 
 func (w *crashingWAL) SearchForEndHeight(
-	height int64,
+	height uint64,
 	options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
 	return w.next.SearchForEndHeight(height, options)
 }
@@ -537,8 +537,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	sim.Chain = make([]*types.Block, 0)
 	sim.Commits = make([]*types.Commit, 0)
 	for i := 1; i <= numBlocks; i++ {
-		sim.Chain = append(sim.Chain, css[0].blockStore.LoadBlock(int64(i)))
-		sim.Commits = append(sim.Commits, css[0].blockStore.LoadBlockCommit(int64(i)))
+		sim.Chain = append(sim.Chain, css[0].blockStore.LoadBlock(uint64(i)))
+		sim.Commits = append(sim.Commits, css[0].blockStore.LoadBlockCommit(uint64(i)))
 	}
 }
 
@@ -958,7 +958,7 @@ func makeBlocks(n int, state *sm.State, privVal types.PrivValidator) []*types.Bl
 
 	appHeight := byte(0x01)
 	for i := 0; i < n; i++ {
-		height := int64(i + 1)
+		height := uint64(i + 1)
 
 		block, parts := makeBlock(*state, prevBlock, prevBlockMeta, privVal, height)
 		blocks = append(blocks, block)
@@ -976,7 +976,7 @@ func makeBlocks(n int, state *sm.State, privVal types.PrivValidator) []*types.Bl
 }
 
 func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.BlockMeta,
-	privVal types.PrivValidator, height int64) (*types.Block, *types.PartSet) {
+	privVal types.PrivValidator, height uint64) (*types.Block, *types.PartSet) {
 
 	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
 	if height > 1 {
@@ -1020,7 +1020,7 @@ func (app *badApp) Commit() abci.ResponseCommit {
 // utils for making blocks
 
 func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
-	var height int64
+	var height uint64
 
 	// Search for height marker
 	gr, found, err := wal.SearchForEndHeight(height, &WALSearchOptions{})
@@ -1167,7 +1167,7 @@ type mockBlockStore struct {
 	params  types.ConsensusParams
 	chain   []*types.Block
 	commits []*types.Commit
-	base    int64
+	base    uint64
 }
 
 // TODO: NewBlockStore(db.NewMemDB) ...
@@ -1175,34 +1175,34 @@ func newMockBlockStore(config *cfg.Config, params types.ConsensusParams) *mockBl
 	return &mockBlockStore{config, params, nil, nil, 0}
 }
 
-func (bs *mockBlockStore) Height() int64                       { return int64(len(bs.chain)) }
-func (bs *mockBlockStore) Base() int64                         { return bs.base }
-func (bs *mockBlockStore) Size() int64                         { return bs.Height() - bs.Base() + 1 }
-func (bs *mockBlockStore) LoadBaseMeta() *types.BlockMeta      { return bs.LoadBlockMeta(bs.base) }
-func (bs *mockBlockStore) LoadBlock(height int64) *types.Block { return bs.chain[height-1] }
+func (bs *mockBlockStore) Height() uint64                       { return uint64(len(bs.chain)) }
+func (bs *mockBlockStore) Base() uint64                         { return bs.base }
+func (bs *mockBlockStore) Size() uint64                         { return bs.Height() - bs.Base() + 1 }
+func (bs *mockBlockStore) LoadBaseMeta() *types.BlockMeta       { return bs.LoadBlockMeta(bs.base) }
+func (bs *mockBlockStore) LoadBlock(height uint64) *types.Block { return bs.chain[height-1] }
 func (bs *mockBlockStore) LoadBlockByHash(hash []byte) *types.Block {
 	return bs.chain[int64(len(bs.chain))-1]
 }
-func (bs *mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
+func (bs *mockBlockStore) LoadBlockMeta(height uint64) *types.BlockMeta {
 	block := bs.chain[height-1]
 	return &types.BlockMeta{
 		BlockID: types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(types.BlockPartSizeBytes).Header()},
 		Header:  block.Header,
 	}
 }
-func (bs *mockBlockStore) LoadBlockPart(height int64, index int) *types.Part { return nil }
+func (bs *mockBlockStore) LoadBlockPart(height uint64, index int) *types.Part { return nil }
 func (bs *mockBlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
 }
-func (bs *mockBlockStore) LoadBlockCommit(height int64) *types.Commit {
+func (bs *mockBlockStore) LoadBlockCommit(height uint64) *types.Commit {
 	return bs.commits[height-1]
 }
-func (bs *mockBlockStore) LoadSeenCommit(height int64) *types.Commit {
+func (bs *mockBlockStore) LoadSeenCommit(height uint64) *types.Commit {
 	return bs.commits[height-1]
 }
 
-func (bs *mockBlockStore) PruneBlocks(height int64) (uint64, error) {
+func (bs *mockBlockStore) PruneBlocks(height uint64) (uint64, error) {
 	pruned := uint64(0)
-	for i := int64(0); i < height-1; i++ {
+	for i := uint64(0); i < height-1; i++ {
 		bs.chain[i] = nil
 		bs.commits[i] = nil
 		pruned++

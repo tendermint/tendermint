@@ -39,7 +39,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	// and otherwise disable the priv validator
 	byzVal.mtx.Lock()
 	pv := byzVal.privValidator
-	byzVal.doPrevote = func(height int64, round int32) {
+	byzVal.doPrevote = func(height uint64, round int32) {
 		invalidDoPrevoteFunc(t, height, round, byzVal, byzR.Switch, pv)
 	}
 	byzVal.mtx.Unlock()
@@ -54,7 +54,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	}
 }
 
-func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, sw *p2p.Switch, pv types.PrivValidator) {
+func invalidDoPrevoteFunc(t *testing.T, height uint64, round int32, cs *State, sw *p2p.Switch, pv types.PrivValidator) {
 	// routine to:
 	// - precommit for a random block
 	// - send precommit to all peers

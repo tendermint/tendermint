@@ -19,7 +19,7 @@ message MsgInfo {
 message TimeoutInfo {
   google.protobuf.Duration duration = 1
       [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
-  int64  height = 2;
+  uint64 height = 2;
   int32  round  = 3;
   uint32 step   = 4;
 }
@@ -27,7 +27,7 @@ message TimeoutInfo {
 // EndHeight marks the end of the given height inside WAL.
 // @internal used by scripts/wal2json util.
 message EndHeight {
-  int64 height = 1;
+  uint64 height = 1;
 }
 
 message WALMessage {

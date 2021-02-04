@@ -40,7 +40,7 @@ One for their LastCommit round, and another for the official commit round.
 */
 type HeightVoteSet struct {
 	chainID string
-	height  int64
+	height  uint64
 	valSet  *types.ValidatorSet
 
 	mtx               sync.Mutex
@@ -49,7 +49,7 @@ type HeightVoteSet struct {
 	peerCatchupRounds map[p2p.NodeID][]int32 // keys: peer.ID; values: at most 2 rounds
 }
 
-func NewHeightVoteSet(chainID string, height int64, valSet *types.ValidatorSet) *HeightVoteSet {
+func NewHeightVoteSet(chainID string, height uint64, valSet *types.ValidatorSet) *HeightVoteSet {
 	hvs := &HeightVoteSet{
 		chainID: chainID,
 	}
@@ -57,7 +57,7 @@ func NewHeightVoteSet(chainID string, height int64, valSet *types.ValidatorSet) 
 	return hvs
 }
 
-func (hvs *HeightVoteSet) Reset(height int64, valSet *types.ValidatorSet) {
+func (hvs *HeightVoteSet) Reset(height uint64, valSet *types.ValidatorSet) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 
@@ -70,7 +70,7 @@ func (hvs *HeightVoteSet) Reset(height int64, valSet *types.ValidatorSet) {
 	hvs.round = 0
 }
 
-func (hvs *HeightVoteSet) Height() int64 {
+func (hvs *HeightVoteSet) Height() uint64 {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	return hvs.height

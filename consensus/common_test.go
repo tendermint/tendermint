@@ -70,7 +70,7 @@ func ResetConfig(name string) *cfg.Config {
 
 type validatorStub struct {
 	Index  int32 // Validator index. NOTE: we don't assume validator set changes.
-	Height int64
+	Height uint64
 	Round  int32
 	types.PrivValidator
 	VotingPower int64
@@ -178,7 +178,7 @@ func (vss ValidatorStubsByPower) Swap(i, j int) {
 //-------------------------------------------------------------------------------
 // Functions for transitioning the consensus state
 
-func startTestRound(cs *State, height int64, round int32) {
+func startTestRound(cs *State, height uint64, round int32) {
 	cs.enterNewRound(height, round)
 	cs.startRoutines(0)
 }
@@ -187,7 +187,7 @@ func startTestRound(cs *State, height int64, round int32) {
 func decideProposal(
 	cs1 *State,
 	vs *validatorStub,
-	height int64,
+	height uint64,
 	round int32,
 ) (proposal *types.Proposal, block *types.Block) {
 	cs1.mtx.Lock()
@@ -480,7 +480,7 @@ func ensureNoNewTimeout(stepCh <-chan tmpubsub.Message, timeout int64) {
 		"We should be stuck waiting, not receiving NewTimeout event")
 }
 
-func ensureNewEvent(ch <-chan tmpubsub.Message, height int64, round int32, timeout time.Duration, errorMessage string) {
+func ensureNewEvent(ch <-chan tmpubsub.Message, height uint64, round int32, timeout time.Duration, errorMessage string) {
 	select {
 	case <-time.After(timeout):
 		panic(errorMessage)
@@ -500,7 +500,7 @@ func ensureNewEvent(ch <-chan tmpubsub.Message, height int64, round int32, timeo
 	}
 }
 
-func ensureNewRound(roundCh <-chan tmpubsub.Message, height int64, round int32) {
+func ensureNewRound(roundCh <-chan tmpubsub.Message, height uint64, round int32) {
 	select {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for NewRound event")
@@ -519,13 +519,13 @@ func ensureNewRound(roundCh <-chan tmpubsub.Message, height int64, round int32) 
 	}
 }
 
-func ensureNewTimeout(timeoutCh <-chan tmpubsub.Message, height int64, round int32, timeout int64) {
+func ensureNewTimeout(timeoutCh <-chan tmpubsub.Message, height uint64, round int32, timeout int64) {
 	timeoutDuration := time.Duration(timeout*10) * time.Nanosecond
 	ensureNewEvent(timeoutCh, height, round, timeoutDuration,
 		"Timeout expired while waiting for NewTimeout event")
 }
 
-func ensureNewProposal(proposalCh <-chan tmpubsub.Message, height int64, round int32) {
+func ensureNewProposal(proposalCh <-chan tmpubsub.Message, height uint64, round int32) {
 	select {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for NewProposal event")
@@ -544,12 +544,12 @@ func ensureNewProposal(proposalCh <-chan tmpubsub.Message, height int64, round i
 	}
 }
 
-func ensureNewValidBlock(validBlockCh <-chan tmpubsub.Message, height int64, round int32) {
+func ensureNewValidBlock(validBlockCh <-chan tmpubsub.Message, height uint64, round int32) {
 	ensureNewEvent(validBlockCh, height, round, ensureTimeout,
 		"Timeout expired while waiting for NewValidBlock event")
 }
 
-func ensureNewBlock(blockCh <-chan tmpubsub.Message, height int64) {
+func ensureNewBlock(blockCh <-chan tmpubsub.Message, height uint64) {
 	select {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for NewBlock event")
@@ -565,7 +565,7 @@ func ensureNewBlock(blockCh <-chan tmpubsub.Message, height int64) {
 	}
 }
 
-func ensureNewBlockHeader(blockCh <-chan tmpubsub.Message, height int64, blockHash tmbytes.HexBytes) {
+func ensureNewBlockHeader(blockCh <-chan tmpubsub.Message, height uint64, blockHash tmbytes.HexBytes) {
 	select {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for NewBlockHeader event")
@@ -584,12 +584,12 @@ func ensureNewBlockHeader(blockCh <-chan tmpubsub.Message, height int64, blockHa
 	}
 }
 
-func ensureNewUnlock(unlockCh <-chan tmpubsub.Message, height int64, round int32) {
+func ensureNewUnlock(unlockCh <-chan tmpubsub.Message, height uint64, round int32) {
 	ensureNewEvent(unlockCh, height, round, ensureTimeout,
 		"Timeout expired while waiting for NewUnlock event")
 }
 
-func ensureProposal(proposalCh <-chan tmpubsub.Message, height int64, round int32, propID types.BlockID) {
+func ensureProposal(proposalCh <-chan tmpubsub.Message, height uint64, round int32, propID types.BlockID) {
 	select {
 	case <-time.After(ensureTimeout):
 		panic("Timeout expired while waiting for NewProposal event")
@@ -611,15 +611,15 @@ func ensureProposal(proposalCh <-chan tmpubsub.Message, height int64, round int3
 	}
 }
 
-func ensurePrecommit(voteCh <-chan tmpubsub.Message, height int64, round int32) {
+func ensurePrecommit(voteCh <-chan tmpubsub.Message, height uint64, round int32) {
 	ensureVote(voteCh, height, round, tmproto.PrecommitType)
 }
 
-func ensurePrevote(voteCh <-chan tmpubsub.Message, height int64, round int32) {
+func ensurePrevote(voteCh <-chan tmpubsub.Message, height uint64, round int32) {
 	ensureVote(voteCh, height, round, tmproto.PrevoteType)
 }
 
-func ensureVote(voteCh <-chan tmpubsub.Message, height int64, round int32,
+func ensureVote(voteCh <-chan tmpubsub.Message, height uint64, round int32,
 	voteType tmproto.SignedMsgType) {
 	select {
 	case <-time.After(ensureTimeout):

@@ -171,7 +171,7 @@ LOOP:
 // Parses marker lines of the form:
 // #ENDHEIGHT: 12345
 /*
-func makeHeightSearchFunc(height int64) auto.SearchFunc {
+func makeHeightSearchFunc(height uint64) auto.SearchFunc {
 	return func(line string) (int, error) {
 		line = strings.TrimRight(line, "\n")
 		parts := strings.Split(line, " ")
@@ -285,7 +285,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 func (h *Handshaker) ReplayBlocks(
 	state sm.State,
 	appHash []byte,
-	appBlockHeight int64,
+	appBlockHeight uint64,
 	proxyApp proxy.AppConns,
 ) ([]byte, error) {
 	storeBlockBase := h.store.Base()
@@ -439,7 +439,7 @@ func (h *Handshaker) replayBlocks(
 	state sm.State,
 	proxyApp proxy.AppConns,
 	appBlockHeight,
-	storeBlockHeight int64,
+	storeBlockHeight uint64,
 	mutateState bool) ([]byte, error) {
 	// App is further behind than it should be, so we need to replay blocks.
 	// We replay all blocks from appBlockHeight+1.
@@ -491,7 +491,7 @@ func (h *Handshaker) replayBlocks(
 }
 
 // ApplyBlock on the proxyApp with the last block.
-func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.AppConnConsensus) (sm.State, error) {
+func (h *Handshaker) replayBlock(state sm.State, height uint64, proxyApp proxy.AppConnConsensus) (sm.State, error) {
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 

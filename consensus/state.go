@@ -234,7 +234,7 @@ func (cs *State) GetState() sm.State {
 
 // GetLastHeight returns the last height committed.
 // If there were no blocks, returns 0.
-func (cs *State) GetLastHeight() int64 {
+func (cs *State) GetLastHeight() uint64 {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
 	return cs.RoundState.Height - 1
@@ -507,7 +507,7 @@ func (cs *State) SetProposalAndBlock(
 //------------------------------------------------------------
 // internal functions for managing the state
 
-func (cs *State) updateHeight(height int64) {
+func (cs *State) updateHeight(height uint64) {
 	cs.metrics.Height.Set(float64(height))
 	cs.Height = height
 }
@@ -1485,7 +1485,7 @@ func (cs *State) tryFinalizeCommit(height uint64) {
 }
 
 // Increment height and goto cstypes.RoundStepNewHeight
-func (cs *State) finalizeCommit(height int64) {
+func (cs *State) finalizeCommit(height uint64) {
 	if cs.Height != height || cs.Step != cstypes.RoundStepCommit {
 		cs.Logger.Debug(fmt.Sprintf(
 			"finalizeCommit(%v): Invalid args. Current step: %v/%v/%v",
@@ -1625,7 +1625,7 @@ func (cs *State) pruneBlocks(retainHeight uint64) (uint64, error) {
 	return pruned, nil
 }
 
-func (cs *State) recordMetrics(height int64, block *types.Block) {
+func (cs *State) recordMetrics(height uint64, block *types.Block) {
 	cs.metrics.Validators.Set(float64(cs.Validators.Size()))
 	cs.metrics.ValidatorsPower.Set(float64(cs.Validators.TotalVotingPower()))
 
@@ -2187,7 +2187,7 @@ func (cs *State) checkDoubleSigningRisk(height uint64) error {
 
 //---------------------------------------------------------
 
-func CompareHRS(h1 int64, r1 int32, s1 cstypes.RoundStepType, h2 int64, r2 int32, s2 cstypes.RoundStepType) int {
+func CompareHRS(h1 uint64, r1 int32, s1 cstypes.RoundStepType, h2 uint64, r2 int32, s2 cstypes.RoundStepType) int {
 	if h1 < h2 {
 		return -1
 	} else if h1 > h2 {

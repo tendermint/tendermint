@@ -13,7 +13,7 @@ import (
 // PeerRoundState contains the known state of a peer.
 // NOTE: Read-only when returned by PeerState.GetRoundState().
 type PeerRoundState struct {
-	Height int64         `json:"height"` // Height peer is at
+	Height uint64        `json:"height"` // Height peer is at
 	Round  int32         `json:"round"`  // Round peer is at, -1 if unknown.
 	Step   RoundStepType `json:"step"`   // Step peer is at
 

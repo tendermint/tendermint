@@ -672,13 +672,12 @@ func TestNewRoundStepMessageValidateBasic(t *testing.T) {
 		expectErr              bool
 		messageRound           int32
 		messageLastCommitRound int32
-		messageHeight          int64
+		messageHeight          uint64
 		testName               string
 		messageStep            cstypes.RoundStepType
 	}{
 		{false, 0, 0, 0, "Valid Message", cstypes.RoundStepNewHeight},
 		{true, -1, 0, 0, "Negative round", cstypes.RoundStepNewHeight},
-		{true, 0, 0, -1, "Negative height", cstypes.RoundStepNewHeight},
 		{true, 0, 0, 0, "Invalid Step", cstypes.RoundStepCommit + 1},
 		// The following cases will be handled by ValidateHeight
 		{false, 0, 0, 1, "H == 1 but LCR != -1 ", cstypes.RoundStepNewHeight},
@@ -706,15 +705,14 @@ func TestNewRoundStepMessageValidateBasic(t *testing.T) {
 }
 
 func TestNewRoundStepMessageValidateHeight(t *testing.T) {
-	initialHeight := int64(10)
+	initialHeight := uint64(10)
 	testCases := []struct { // nolint: maligned
 		expectErr              bool
 		messageLastCommitRound int32
-		messageHeight          int64
+		messageHeight          uint64
 		testName               string
 	}{
 		{false, 0, 11, "Valid Message"},
-		{true, 0, -1, "Negative height"},
 		{true, 0, 0, "Zero height"},
 		{true, 0, 10, "Initial height but LCR != -1 "},
 		{true, -1, 11, "Normal height but LCR < 0"},
@@ -746,7 +744,6 @@ func TestNewValidBlockMessageValidateBasic(t *testing.T) {
 		expErr     string
 	}{
 		{func(msg *NewValidBlockMessage) {}, ""},
-		{func(msg *NewValidBlockMessage) { msg.Height = -1 }, "negative Height"},
 		{func(msg *NewValidBlockMessage) { msg.Round = -1 }, "negative Round"},
 		{
 			func(msg *NewValidBlockMessage) { msg.BlockPartSetHeader.Total = 2 },
@@ -792,7 +789,6 @@ func TestProposalPOLMessageValidateBasic(t *testing.T) {
 		expErr     string
 	}{
 		{func(msg *ProposalPOLMessage) {}, ""},
-		{func(msg *ProposalPOLMessage) { msg.Height = -1 }, "negative Height"},
 		{func(msg *ProposalPOLMessage) { msg.ProposalPOLRound = -1 }, "negative ProposalPOLRound"},
 		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(0) }, "empty ProposalPOL bit array"},
 		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(types.MaxVotesCount + 1) },
@@ -822,13 +818,12 @@ func TestBlockPartMessageValidateBasic(t *testing.T) {
 	testPart.Proof.LeafHash = tmhash.Sum([]byte("leaf"))
 	testCases := []struct {
 		testName      string
-		messageHeight int64
+		messageHeight uint64
 		messageRound  int32
 		messagePart   *types.Part
 		expectErr     bool
 	}{
 		{"Valid Message", 0, 0, testPart, false},
-		{"Invalid Message", -1, 0, testPart, true},
 		{"Invalid Message", 0, -1, testPart, true},
 	}
 
@@ -861,7 +856,7 @@ func TestHasVoteMessageValidateBasic(t *testing.T) {
 		expectErr     bool
 		messageRound  int32
 		messageIndex  int32
-		messageHeight int64
+		messageHeight uint64
 		testName      string
 		messageType   tmproto.SignedMsgType
 	}{
@@ -869,7 +864,6 @@ func TestHasVoteMessageValidateBasic(t *testing.T) {
 		{true, -1, 0, 0, "Invalid Message", validSignedMsgType},
 		{true, 0, -1, 0, "Invalid Message", validSignedMsgType},
 		{true, 0, 0, 0, "Invalid Message", invalidSignedMsgType},
-		{true, 0, 0, -1, "Invalid Message", validSignedMsgType},
 	}
 
 	for _, tc := range testCases {
@@ -905,14 +899,13 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 	testCases := []struct { // nolint: maligned
 		expectErr      bool
 		messageRound   int32
-		messageHeight  int64
+		messageHeight  uint64
 		testName       string
 		messageType    tmproto.SignedMsgType
 		messageBlockID types.BlockID
 	}{
 		{false, 0, 0, "Valid Message", validSignedMsgType, validBlockID},
 		{true, -1, 0, "Invalid Message", validSignedMsgType, validBlockID},
-		{true, 0, -1, "Invalid Message", validSignedMsgType, validBlockID},
 		{true, 0, 0, "Invalid Message", invalidSignedMsgType, validBlockID},
 		{true, 0, 0, "Invalid Message", validSignedMsgType, invalidBlockID},
 	}
@@ -938,7 +931,6 @@ func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
 		expErr     string
 	}{
 		{func(msg *VoteSetBitsMessage) {}, ""},
-		{func(msg *VoteSetBitsMessage) { msg.Height = -1 }, "negative Height"},
 		{func(msg *VoteSetBitsMessage) { msg.Type = 0x03 }, "invalid Type"},
 		{func(msg *VoteSetBitsMessage) {
 			msg.BlockID = types.BlockID{

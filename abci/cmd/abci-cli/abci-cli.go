@@ -576,7 +576,7 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 	resQuery, err := client.QuerySync(ctx, types.RequestQuery{
 		Data:   queryBytes,
 		Path:   flagPath,
-		Height: int64(flagHeight),
+		Height: uint64(flagHeight),
 		Prove:  flagProve,
 	})
 	if err != nil {

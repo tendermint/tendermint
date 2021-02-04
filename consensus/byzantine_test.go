@@ -35,7 +35,7 @@ import (
 func TestByzantinePrevoteEquivocation(t *testing.T) {
 	const nValidators = 4
 	const byzantineNode = 0
-	const prevoteHeight = int64(2)
+	const prevoteHeight = uint64(2)
 	testName := "consensus_byzantine_test"
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newCounter
@@ -127,7 +127,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	bcs := css[byzantineNode]
 
 	// alter prevote so that the byzantine node double votes when height is 2
-	bcs.doPrevote = func(height int64, round int32) {
+	bcs.doPrevote = func(height uint64, round int32) {
 		// allow first height to happen normally so that byzantine validator is no longer proposer
 		if height == prevoteHeight {
 			bcs.Logger.Info("Sending two votes")
@@ -158,7 +158,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	// proposed will have a valid timestamp
 	lazyProposer := css[1]
 
-	lazyProposer.decideProposal = func(height int64, round int32) {
+	lazyProposer.decideProposal = func(height uint64, round int32) {
 		lazyProposer.Logger.Info("Lazy Proposer proposing condensed commit")
 		if lazyProposer.privValidator == nil {
 			panic("entered createProposalBlock with privValidator being nil")
@@ -337,14 +337,14 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	// NOTE: Now, test validators are MockPV, which by default doesn't
 	// do any safety checks.
 	css[0].privValidator.(types.MockPV).DisableChecks()
-	css[0].decideProposal = func(j int32) func(int64, int32) {
-		return func(height int64, round int32) {
+	css[0].decideProposal = func(j int32) func(uint64, int32) {
+		return func(height uint64, round int32) {
 			byzantineDecideProposalFunc(t, height, round, css[j], switches[j])
 		}
 	}(int32(0))
 	// We are setting the prevote function to do nothing because the prevoting
 	// and precommitting are done alongside the proposal.
-	css[0].doPrevote = func(height int64, round int32) {}
+	css[0].doPrevote = func(height uint64, round int32) {}
 
 	defer func() {
 		for _, sw := range switches {
@@ -417,7 +417,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 //-------------------------------
 // byzantine consensus functions
 
-func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *State, sw *p2p.Switch) {
+func byzantineDecideProposalFunc(t *testing.T, height uint64, round int32, cs *State, sw *p2p.Switch) {
 	// byzantine user should create two proposals and try to split the vote.
 	// Avoid sending on internalMsgQueue and running consensus state.
 
@@ -462,7 +462,7 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 }
 
 func sendProposalAndParts(
-	height int64,
+	height uint64,
 	round int32,
 	cs *State,
 	peer p2p.Peer,
