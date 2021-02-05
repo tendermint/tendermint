@@ -30,7 +30,7 @@ type ReactorV2 struct {
 
 	peerManager *p2p.PeerManager
 	pexCh       *p2p.Channel
-	peerUpdates *p2p.PeerUpdatesCh
+	peerUpdates *p2p.PeerUpdates
 	closeCh     chan struct{}
 }
 
@@ -39,7 +39,7 @@ func NewReactorV2(
 	logger log.Logger,
 	peerManager *p2p.PeerManager,
 	pexCh *p2p.Channel,
-	peerUpdates *p2p.PeerUpdatesCh,
+	peerUpdates *p2p.PeerUpdates,
 ) *ReactorV2 {
 	r := &ReactorV2{
 		peerManager: peerManager,
@@ -85,14 +85,14 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 	switch msg := envelope.Message.(type) {
 	case *protop2p.PexRequest:
 		pexAddresses := r.resolve(r.peerManager.Advertise(envelope.From, maxAddresses), maxAddresses)
-		r.pexCh.Out() <- p2p.Envelope{
+		r.pexCh.Out <- p2p.Envelope{
 			To:      envelope.From,
 			Message: &protop2p.PexResponse{Addresses: pexAddresses},
 		}
 
 	case *protop2p.PexResponse:
 		for _, pexAddress := range msg.Addresses {
-			peerAddress, err := p2p.ParsePeerAddress(
+			peerAddress, err := p2p.ParseNodeAddress(
 				fmt.Sprintf("%s@%s:%d", pexAddress.ID, pexAddress.IP, pexAddress.Port))
 			if err != nil {
 				logger.Debug("invalid PEX address", "address", pexAddress, "err", err)
@@ -113,13 +113,13 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 // resolve resolves a set of peer addresses into PEX addresses.
 //
 // FIXME: This is necessary because the current PEX protocol only supports
-// IP/port pairs, while the P2P stack uses PeerAddress URLs. The PEX protocol
+// IP/port pairs, while the P2P stack uses NodeAddress URLs. The PEX protocol
 // should really use URLs too, to exchange DNS names instead of IPs and allow
 // different transport protocols (e.g. QUIC and MemoryTransport).
 //
 // FIXME: We may want to cache and parallelize this, but for now we'll just rely
 // on the operating system to cache it for us.
-func (r *ReactorV2) resolve(addresses []p2p.PeerAddress, limit uint16) []protop2p.PexAddress {
+func (r *ReactorV2) resolve(addresses []p2p.NodeAddress, limit uint16) []protop2p.PexAddress {
 	pexAddresses := make([]protop2p.PexAddress, 0, len(addresses))
 	for _, address := range addresses {
 		ctx, cancel := context.WithTimeout(context.Background(), resolveTimeout)
@@ -137,7 +137,7 @@ func (r *ReactorV2) resolve(addresses []p2p.PeerAddress, limit uint16) []protop2
 				// PEX currently only supports IP-networked transports (as
 				// opposed to e.g. p2p.MemoryTransport).
 				pexAddresses = append(pexAddresses, protop2p.PexAddress{
-					ID:   string(endpoint.PeerID),
+					ID:   string(address.NodeID),
 					IP:   endpoint.IP.String(),
 					Port: uint32(endpoint.Port),
 				})
@@ -177,13 +177,12 @@ func (r *ReactorV2) processPexCh() {
 
 	for {
 		select {
-		case envelope := <-r.pexCh.In():
-			if err := r.handleMessage(r.pexCh.ID(), envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.pexCh.ID(), "envelope", envelope, "err", err)
-				r.pexCh.Error() <- p2p.PeerError{
-					PeerID:   envelope.From,
-					Err:      err,
-					Severity: p2p.PeerErrorSeverityLow,
+		case envelope := <-r.pexCh.In:
+			if err := r.handleMessage(r.pexCh.ID, envelope); err != nil {
+				r.Logger.Error("failed to process message", "ch_id", r.pexCh.ID, "envelope", envelope, "err", err)
+				r.pexCh.Error <- p2p.PeerError{
+					NodeID: envelope.From,
+					Err:    err,
 				}
 			}
 
@@ -197,11 +196,11 @@ func (r *ReactorV2) processPexCh() {
 // processPeerUpdate processes a PeerUpdate. For added peers, PeerStatusUp, we
 // send a request for addresses.
 func (r *ReactorV2) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
-	r.Logger.Debug("received peer update", "peer", peerUpdate.PeerID, "status", peerUpdate.Status)
+	r.Logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	if peerUpdate.Status == p2p.PeerStatusUp {
-		r.pexCh.Out() <- p2p.Envelope{
-			To:      peerUpdate.PeerID,
+		r.pexCh.Out <- p2p.Envelope{
+			To:      peerUpdate.NodeID,
 			Message: &protop2p.PexRequest{},
 		}
 	}

@@ -10,6 +10,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -163,10 +164,18 @@ func makeHeaderPartsResponsesValPubKeyChange(
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
+		vPbPk, err := cryptoenc.PubKeyToProto(val.PubKey)
+		if err != nil {
+			panic(err)
+		}
+		pbPk, err := cryptoenc.PubKeyToProto(pubkey)
+		if err != nil {
+			panic(err)
+		}
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			ValidatorUpdates: []abci.ValidatorUpdate{
-				types.TM2PB.NewValidatorUpdate(val.PubKey, 0),
-				types.TM2PB.NewValidatorUpdate(pubkey, 10),
+				{PubKey: vPbPk, Power: 0},
+				{PubKey: pbPk, Power: 10},
 			},
 		}
 	}
@@ -188,9 +197,13 @@ func makeHeaderPartsResponsesValPowerChange(
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if val.VotingPower != power {
+		vPbPk, err := cryptoenc.PubKeyToProto(val.PubKey)
+		if err != nil {
+			panic(err)
+		}
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			ValidatorUpdates: []abci.ValidatorUpdate{
-				types.TM2PB.NewValidatorUpdate(val.PubKey, power),
+				{PubKey: vPbPk, Power: power},
 			},
 		}
 	}
