@@ -49,7 +49,7 @@ The main reason this approach is being taken is to prevent simple mistakes. Some
 func Verify(keys []crypto.Pubkey, signatures, messages[][]byte) bool
 ```
 
-This change will not require will not effect any users in anyway other than faster verification times.
+This change will not affect any users in anyway other than faster verification times.
 
 This new api will be used for verification in both consensus and block syncing. Within the current Verify functions there will be a check to see if the key types supports the BatchVerification API. If it does it will execute batch verification, if not single signature verification will be used. 
 
