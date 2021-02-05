@@ -21,8 +21,7 @@ const (
 	sequential mode = iota + 1
 	skipping
 
-	defaultPruningSize      = 1000
-	defaultMaxRetryAttempts = 10
+	defaultPruningSize = 1000
 	// For verifySkipping, when using the cache of headers from the previous batch,
 	// they will always be at a height greater than 1/2 (normal verifySkipping) so to
 	// find something in between the range, 9/16 is used.
