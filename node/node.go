@@ -34,7 +34,6 @@ import (
 	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
-	protomem "github.com/tendermint/tendermint/proto/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
@@ -346,21 +345,18 @@ func createMempoolReactor(
 
 	mempool.SetLogger(logger)
 
-	reactorShim := p2p.NewReactorShim(logger, "MempoolShim", mempl.GetChannelShims(config.Mempool))
+	channelShims := mempl.GetChannelShims(config.Mempool)
+	reactorShim := p2p.NewReactorShim(logger, "MempoolShim", channelShims)
 
 	var (
-		channel     *p2p.Channel
+		channels    map[p2p.ChannelID]*p2p.Channel
 		peerUpdates *p2p.PeerUpdates
-		err         error
 	)
 	if useLegacyP2P {
-		channel = reactorShim.GetChannel(mempl.MempoolChannel)
+		channels = getChannelsFromShim(reactorShim)
 		peerUpdates = reactorShim.PeerUpdates
 	} else {
-		channel, err = router.OpenChannel(mempl.MempoolChannel, &protomem.Message{})
-		if err != nil {
-			panic(fmt.Sprintf("failed to open mempool channel: %v", err))
-		}
+		channels = makeChannelsFromShims(router, channelShims)
 		peerUpdates = peerManager.Subscribe()
 	}
 
@@ -369,7 +365,7 @@ func createMempoolReactor(
 		config.Mempool,
 		peerManager,
 		mempool,
-		channel,
+		channels[mempl.MempoolChannel],
 		peerUpdates,
 	)
 
@@ -385,6 +381,8 @@ func createEvidenceReactor(
 	dbProvider DBProvider,
 	stateDB dbm.DB,
 	blockStore *store.BlockStore,
+	peerManager *p2p.PeerManager,
+	router *p2p.Router,
 	logger log.Logger,
 ) (*p2p.ReactorShim, *evidence.Reactor, *evidence.Pool, error) {
 	evidenceDB, err := dbProvider(&DBContext{"evidence", config})
@@ -399,15 +397,27 @@ func createEvidenceReactor(
 		return nil, nil, nil, err
 	}
 
-	evidenceReactorShim := p2p.NewReactorShim(logger, "EvidenceShim", evidence.ChannelShims)
+	reactorShim := p2p.NewReactorShim(logger, "EvidenceShim", evidence.ChannelShims)
+	var (
+		channels    map[p2p.ChannelID]*p2p.Channel
+		peerUpdates *p2p.PeerUpdates
+	)
+	if useLegacyP2P {
+		channels = getChannelsFromShim(reactorShim)
+		peerUpdates = reactorShim.PeerUpdates
+	} else {
+		channels = makeChannelsFromShims(router, evidence.ChannelShims)
+		peerUpdates = peerManager.Subscribe()
+	}
+
 	evidenceReactor := evidence.NewReactor(
 		logger,
-		evidenceReactorShim.GetChannel(evidence.EvidenceChannel),
-		evidenceReactorShim.PeerUpdates,
+		channels[evidence.EvidenceChannel],
+		peerUpdates,
 		evidencePool,
 	)
 
-	return evidenceReactorShim, evidenceReactor, evidencePool, nil
+	return reactorShim, evidenceReactor, evidencePool, nil
 }
 
 func createBlockchainReactor(
@@ -458,6 +468,8 @@ func createConsensusReactor(
 	csMetrics *cs.Metrics,
 	waitSync bool,
 	eventBus *types.EventBus,
+	peerManager *p2p.PeerManager,
+	router *p2p.Router,
 	logger log.Logger,
 ) (*p2p.ReactorShim, *cs.Reactor, *cs.State) {
 
@@ -478,14 +490,26 @@ func createConsensusReactor(
 	}
 
 	reactorShim := p2p.NewReactorShim(logger, "ConsensusShim", cs.ChannelShims)
+	var (
+		channels    map[p2p.ChannelID]*p2p.Channel
+		peerUpdates *p2p.PeerUpdates
+	)
+	if useLegacyP2P {
+		channels = getChannelsFromShim(reactorShim)
+		peerUpdates = reactorShim.PeerUpdates
+	} else {
+		channels = makeChannelsFromShims(router, cs.ChannelShims)
+		peerUpdates = peerManager.Subscribe()
+	}
+
 	reactor := cs.NewReactor(
 		logger,
 		consensusState,
-		reactorShim.GetChannel(cs.StateChannel),
-		reactorShim.GetChannel(cs.DataChannel),
-		reactorShim.GetChannel(cs.VoteChannel),
-		reactorShim.GetChannel(cs.VoteSetBitsChannel),
-		reactorShim.PeerUpdates,
+		channels[cs.StateChannel],
+		channels[cs.DataChannel],
+		channels[cs.VoteChannel],
+		channels[cs.VoteSetBitsChannel],
+		peerUpdates,
 		waitSync,
 		cs.ReactorMetrics(csMetrics),
 	)
@@ -864,7 +888,8 @@ func NewNode(config *cfg.Config,
 	mpReactorShim, mpReactor, mempool := createMempoolReactor(config, proxyApp, state, memplMetrics,
 		peerManager, router, logger)
 
-	evReactorShim, evReactor, evPool, err := createEvidenceReactor(config, dbProvider, stateDB, blockStore, logger)
+	evReactorShim, evReactor, evPool, err := createEvidenceReactor(config, dbProvider, stateDB, blockStore,
+		peerManager, router, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -881,7 +906,8 @@ func NewNode(config *cfg.Config,
 
 	csReactorShim, csReactor, csState := createConsensusReactor(
 		config, state, blockExec, blockStore, mempool, evPool,
-		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger,
+		privValidator, csMetrics, stateSync || fastSync, eventBus,
+		peerManager, router, consensusLogger,
 	)
 
 	// Create the blockchain reactor. Note, we do not start fast sync if we're
@@ -1631,4 +1657,30 @@ func createAndStartPrivValidatorGRPCClient(
 	}
 
 	return pvsc, nil
+}
+
+// FIXME: Temporary helper function, shims should be removed.
+func makeChannelsFromShims(
+	router *p2p.Router,
+	chShims map[p2p.ChannelID]*p2p.ChannelDescriptorShim,
+) map[p2p.ChannelID]*p2p.Channel {
+	channels := map[p2p.ChannelID]*p2p.Channel{}
+	for chID, chShim := range chShims {
+		ch, err := router.OpenChannel(chID, chShim.MsgType)
+		if err != nil {
+			panic(fmt.Sprintf("failed to open channel %v: %v", chID, err))
+		}
+		channels[chID] = ch
+	}
+	return channels
+}
+
+func getChannelsFromShim(
+	reactorShim *p2p.ReactorShim,
+) map[p2p.ChannelID]*p2p.Channel {
+	channels := map[p2p.ChannelID]*p2p.Channel{}
+	for chID := range reactorShim.Channels {
+		channels[chID] = reactorShim.GetChannel(chID)
+	}
+	return channels
 }
