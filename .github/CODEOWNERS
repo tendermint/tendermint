@@ -1,4 +1,4 @@
 # CODEOWNERS: https://help.github.com/articles/about-codeowners/
 
-# Everything goes through Anton, Erik and Tess.
-*       @melekes @erikgrinaker @tessr
+# Everything goes through Anton and Tess.
+*       @melekes @tessr
