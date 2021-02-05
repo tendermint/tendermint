@@ -50,7 +50,7 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-const useLegacyP2P = true
+const useLegacyP2P = false
 
 //------------------------------------------------------------------------------
 
@@ -675,6 +675,9 @@ func createSwitch(config *cfg.Config,
 
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
+
+	// eww, but needed to support old/new P2P stacks
+	sw.PutChannelDescsIntoTransport()
 
 	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID, "file", config.NodeKeyFile())
 	return sw

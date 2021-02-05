@@ -1037,3 +1037,11 @@ func (sw *Switch) addPeer(p Peer) error {
 
 	return nil
 }
+
+// FIXME: Eww, needed to wire up the new P2P stack along with the old one. This
+// should be passed into the transport when it's constructed.
+func (sw *Switch) PutChannelDescsIntoTransport() {
+	if t, ok := sw.transport.(*MConnTransport); ok {
+		t.channelDescs = sw.chDescs
+	}
+}
