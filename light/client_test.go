@@ -768,7 +768,6 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 		[]provider.Provider{fullNode, fullNode},
 		dbs.New(dbm.NewMemDB(), chainID),
 		light.Logger(log.TestingLogger()),
-		light.MaxRetryAttempts(1),
 	)
 
 	require.NoError(t, err)
@@ -946,7 +945,6 @@ func TestClientRemovesWitnessIfItSendsUsIncorrectHeader(t *testing.T) {
 		[]provider.Provider{badProvider1, badProvider2},
 		dbs.New(dbm.NewMemDB(), chainID),
 		light.Logger(log.TestingLogger()),
-		light.MaxRetryAttempts(1),
 	)
 	// witness should have behaved properly -> no error
 	require.NoError(t, err)
@@ -1086,7 +1084,6 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 			badNode,
 			[]provider.Provider{badNode, badNode},
 			dbs.New(dbm.NewMemDB(), chainID),
-			light.MaxRetryAttempts(1),
 		)
 		require.NoError(t, err)
 

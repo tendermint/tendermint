@@ -16,6 +16,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - Go API
 
+- [light] \#6054 Move `MaxRetryAttempt` option from client to provider.
+    - `NewWithOptions` now sets the max retry attempts and timeouts (@cmwaters)
+
 - Blockchain Protocol
 
 ### FEATURES
