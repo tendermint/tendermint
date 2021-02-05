@@ -53,6 +53,14 @@ This change will not affect any users in anyway other than faster verification t
 
 This new api will be used for verification in both consensus and block syncing. Within the current Verify functions there will be a check to see if the key types supports the BatchVerification API. If it does it will execute batch verification, if not single signature verification will be used. 
 
+#### Consensus
+
+  The process within consensus will be to wait for 2/3+ of the votes to be received, once they are received `Verify()` will be called to batch verify all the messages. The messages that come in after 2/3+ has been verified will be individually verified. 
+
+#### Block Sync & Light Client
+
+  The process for block sync & light client verification will be to verify only 2/3+ in a batch style. Since these processes are not participating in consensus there is no need to wait for more messages.
+
 If batch verifications fails for any reason, it will not be known which entry caused the failure. Verification will need to revert to single signature verification.
 
 Starting out, only ed25519 will support batch verification. 
@@ -74,6 +82,4 @@ Proposed
 
 ## References
 
-> Are there any relevant PR comments, issues that led up to this, or articles referenced for why we made the given design choice? If so link them here!
-
-- {reference link}
+[Ed25519 Library](https://github.com/hdevalence/ed25519consensus)
