@@ -34,6 +34,7 @@ import (
 	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
+	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
@@ -206,6 +207,7 @@ type Node struct {
 	consensusState    *cs.State               // latest consensus state
 	consensusReactor  *cs.Reactor             // for participating in the consensus
 	pexReactor        *pex.Reactor            // for exchanging peer addresses
+	pexReactorV2      *pex.ReactorV2          // for exchanging peer addresses
 	evidenceReactor   *evidence.Reactor
 	evidencePool      *evidence.Pool // tracking evidence
 	proxyApp          proxy.AppConns // connection to the application
@@ -427,6 +429,8 @@ func createBlockchainReactor(
 	blockExec *sm.BlockExecutor,
 	blockStore *store.BlockStore,
 	csReactor *cs.Reactor,
+	peerManager *p2p.PeerManager,
+	router *p2p.Router,
 	fastSync bool,
 ) (*p2p.ReactorShim, service.Service, error) {
 
@@ -435,10 +439,21 @@ func createBlockchainReactor(
 	switch config.FastSync.Version {
 	case "v0":
 		reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", bcv0.ChannelShims)
+		var (
+			channels    map[p2p.ChannelID]*p2p.Channel
+			peerUpdates *p2p.PeerUpdates
+		)
+		if useLegacyP2P {
+			channels = getChannelsFromShim(reactorShim)
+			peerUpdates = reactorShim.PeerUpdates
+		} else {
+			channels = makeChannelsFromShims(router, bcv0.ChannelShims)
+			peerUpdates = peerManager.Subscribe()
+		}
 
 		reactor, err := bcv0.NewReactor(
 			logger, state.Copy(), blockExec, blockStore, csReactor,
-			reactorShim.GetChannel(bcv0.BlockchainChannel), reactorShim.PeerUpdates, fastSync,
+			channels[bcv0.BlockchainChannel], peerUpdates, fastSync,
 		)
 		if err != nil {
 			return nil, nil, err
@@ -713,6 +728,18 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 	return pexReactor
 }
 
+func createPEXReactorV2(config *cfg.Config, logger log.Logger, peerManager *p2p.PeerManager,
+	router *p2p.Router) (*pex.ReactorV2, error) {
+
+	channel, err := router.OpenChannel(p2p.ChannelID(pex.PexChannel), &protop2p.PexMessage{})
+	if err != nil {
+		return nil, err
+	}
+	peerUpdates := peerManager.Subscribe()
+
+	return pex.NewReactorV2(logger, peerManager, channel, peerUpdates), nil
+}
+
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
 func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
 	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
@@ -913,7 +940,8 @@ func NewNode(config *cfg.Config,
 	// Create the blockchain reactor. Note, we do not start fast sync if we're
 	// doing a state sync first.
 	bcReactorShim, bcReactor, err := createBlockchainReactor(
-		logger, config, state, blockExec, blockStore, csReactor, fastSync && !stateSync,
+		logger, config, state, blockExec, blockStore, csReactor,
+		peerManager, router, fastSync && !stateSync,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
@@ -940,14 +968,25 @@ func NewNode(config *cfg.Config,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
 	stateSyncReactorShim := p2p.NewReactorShim(logger.With("module", "statesync"), "StateSyncShim", statesync.ChannelShims)
+	var (
+		channels    map[p2p.ChannelID]*p2p.Channel
+		peerUpdates *p2p.PeerUpdates
+	)
+	if useLegacyP2P {
+		channels = getChannelsFromShim(stateSyncReactorShim)
+		peerUpdates = stateSyncReactorShim.PeerUpdates
+	} else {
+		channels = makeChannelsFromShims(router, statesync.ChannelShims)
+		peerUpdates = peerManager.Subscribe()
+	}
 
 	stateSyncReactor := statesync.NewReactor(
 		stateSyncReactorShim.Logger,
 		proxyApp.Snapshot(),
 		proxyApp.Query(),
-		stateSyncReactorShim.GetChannel(statesync.SnapshotChannel),
-		stateSyncReactorShim.GetChannel(statesync.ChunkChannel),
-		stateSyncReactorShim.PeerUpdates,
+		channels[statesync.SnapshotChannel],
+		channels[statesync.ChunkChannel],
+		peerUpdates,
 		config.StateSync.TempDir,
 	)
 
@@ -983,9 +1022,16 @@ func NewNode(config *cfg.Config,
 	//
 	// If PEX is on, it should handle dialing the seeds. Otherwise the switch does it.
 	// Note we currently use the addrBook regardless at least for AddOurAddress
-	var pexReactor *pex.Reactor
+	var (
+		pexReactor   *pex.Reactor
+		pexReactorV2 *pex.ReactorV2
+	)
 	if config.P2P.PexReactor {
 		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
+		pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if config.RPC.PprofListenAddress != "" {
@@ -1019,6 +1065,7 @@ func NewNode(config *cfg.Config,
 		stateSync:        stateSync,
 		stateSyncGenesis: state, // Shouldn't be necessary, but need a way to pass the genesis state
 		pexReactor:       pexReactor,
+		pexReactorV2:     pexReactorV2,
 		evidenceReactor:  evReactor,
 		evidencePool:     evPool,
 		proxyApp:         proxyApp,
@@ -1118,6 +1165,12 @@ func (n *Node) OnStart() error {
 		return err
 	}
 
+	if n.pexReactorV2 != nil {
+		if err := n.pexReactorV2.Start(); err != nil {
+			return err
+		}
+	}
+
 	// Always connect to persistent peers
 	err = n.sw.DialPeersAsync(splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
@@ -1180,6 +1233,12 @@ func (n *Node) OnStop() {
 	// Stop the real evidence reactor separately since the switch uses the shim.
 	if err := n.evidenceReactor.Stop(); err != nil {
 		n.Logger.Error("failed to stop the evidence reactor", "err", err)
+	}
+
+	if n.pexReactorV2 != nil {
+		if err := n.pexReactorV2.Start(); err != nil {
+			n.Logger.Error("failed to stop the PEX reactor", "err", err)
+		}
 	}
 
 	if useLegacyP2P {
