@@ -21,8 +21,7 @@ const (
 	sequential mode = iota + 1
 	skipping
 
-	defaultPruningSize      = 1000
-	defaultMaxRetryAttempts = 10
+	defaultPruningSize = 1000
 	// For verifySkipping, when using the cache of headers from the previous batch,
 	// they will always be at a height greater than 1/2 (normal verifySkipping) so to
 	// find something in between the range, 9/16 is used.
@@ -90,14 +89,6 @@ func Logger(l log.Logger) Option {
 	}
 }
 
-// MaxRetryAttempts option can be used to set max attempts before replacing
-// primary with a witness.
-func MaxRetryAttempts(max uint16) Option {
-	return func(c *Client) {
-		c.maxRetryAttempts = max
-	}
-}
-
 // MaxClockDrift defines how much new header's time can drift into
 // the future. Default: 10s.
 func MaxClockDrift(d time.Duration) Option {
@@ -116,7 +107,6 @@ type Client struct {
 	trustingPeriod   time.Duration // see TrustOptions.Period
 	verificationMode mode
 	trustLevel       tmmath.Fraction
-	maxRetryAttempts uint16 // see MaxRetryAttempts option
 	maxClockDrift    time.Duration
 
 	// Mutex for locking during changes of the light clients providers
@@ -202,7 +192,6 @@ func NewClientFromTrustedStore(
 		trustingPeriod:   trustingPeriod,
 		verificationMode: skipping,
 		trustLevel:       DefaultTrustLevel,
-		maxRetryAttempts: defaultMaxRetryAttempts,
 		maxClockDrift:    defaultMaxClockDrift,
 		primary:          primary,
 		witnesses:        witnesses,
