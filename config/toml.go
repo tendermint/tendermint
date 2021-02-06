@@ -88,6 +88,19 @@ proxy-app = "{{ .BaseConfig.ProxyApp }}"
 # A custom human readable name for this node
 moniker = "{{ .BaseConfig.Moniker }}"
 
+# Mode of Node: fullnode | validator | seednode (default: "fullnode")
+# Default value is fullnode, so you need to set it to "validator" if you want to run the node as validator
+# * fullnode (default)
+#   - all reactors
+#   - No priv_validator_key.json, priv_validator_state.json
+# * validator
+#   - all reactors
+#   - with priv_validator_key.json, priv_validator_state.json
+# * seednode
+#   - only P2P, PEX Reactor
+#   - No priv_validator_key.json, priv_validator_state.json
+mode = "{{ .BaseConfig.Mode }}"
+
 # If this node is many blocks behind the tip of the chain, FastSync
 # allows them to catchup quickly by downloading blocks in parallel
 # and verifying their commits

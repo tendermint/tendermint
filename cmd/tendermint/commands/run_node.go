@@ -24,6 +24,9 @@ func AddNodeFlags(cmd *cobra.Command) {
 	// bind flags
 	cmd.Flags().String("moniker", config.Moniker, "node name")
 
+	// mode flags
+	cmd.Flags().String("mode", config.Mode, "Mode of Node (fullnode | validator | seednode )")
+
 	// priv val flags
 	cmd.Flags().String(
 		"priv-validator-laddr",
@@ -102,6 +105,9 @@ func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 		Use:     "start",
 		Aliases: []string{"node", "run"},
 		Short:   "Run the tendermint node",
+		Long: `Run the tendermint node
+
+need to set "--mode validator" to run the node as validator`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkGenesisHash(config); err != nil {
 				return err

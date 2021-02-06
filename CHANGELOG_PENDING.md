@@ -43,6 +43,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES
 
+- [config] Add `--mode` flag and config variable. See [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md)
+
 ### IMPROVEMENTS
 
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)

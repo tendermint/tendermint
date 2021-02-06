@@ -91,12 +91,25 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", config.NodeKeyFile(), err)
 	}
-
-	pval, err := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
-	if err != nil {
-		return nil, err
+	if config.Mode == cfg.ModeSeedNode {
+		return NewSeedNode(config,
+			nodeKey,
+			proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
+			DefaultGenesisDocProviderFunc(config),
+			DefaultDBProvider,
+			logger,
+		)
 	}
 
+	var pval *privval.FilePV
+	if config.Mode == cfg.ModeValidator {
+		pval, err = privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		pval = nil
+	}
 	return NewNode(config,
 		pval,
 		nodeKey,
@@ -286,12 +299,13 @@ func doHandshake(
 	return nil
 }
 
-func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusLogger log.Logger) {
+func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusLogger log.Logger, mode string) {
 	// Log the version info.
 	logger.Info("Version info",
 		"software", version.TMCoreSemVer,
 		"block", version.BlockProtocol,
 		"p2p", version.P2PProtocol,
+		"mode", mode,
 	)
 
 	// If the state and software differ in block version, at least log it.
@@ -301,13 +315,18 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 			"state", state.Version.Consensus.Block,
 		)
 	}
-
-	addr := pubKey.Address()
-	// Log whether this node is a validator or an observer
-	if state.Validators.HasAddress(addr) {
-		consensusLogger.Info("This node is a validator", "addr", addr, "pubKey", pubKey)
-	} else {
-		consensusLogger.Info("This node is not a validator", "addr", addr, "pubKey", pubKey)
+	switch {
+	case mode == cfg.ModeFullNode:
+		consensusLogger.Info("This node is a fullnode")
+	case mode == cfg.ModeValidator:
+		addr := pubKey.Address()
+		// Log whether this node is a validator or an observer
+		if state.Validators.HasAddress(addr) {
+			consensusLogger.Info("This node is a validator", "addr", addr, "pubKey", pubKey)
+		} else {
+			consensusLogger.Info("This node is a validator (NOT in the active validator set)",
+				"addr", addr, "pubKey", pubKey)
+		}
 	}
 }
 
@@ -316,7 +335,7 @@ func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
 		return false
 	}
 	addr, _ := state.Validators.GetByIndex(0)
-	return bytes.Equal(pubKey.Address(), addr)
+	return pubKey != nil && bytes.Equal(pubKey.Address(), addr)
 }
 
 func createMempoolReactor(
@@ -446,7 +465,7 @@ func createConsensusReactor(config *cfg.Config,
 		cs.StateMetrics(csMetrics),
 	)
 	consensusState.SetLogger(consensusLogger)
-	if privValidator != nil {
+	if privValidator != nil && config.Mode == cfg.ModeValidator {
 		consensusState.SetPrivValidator(privValidator)
 	}
 	consensusReactor := cs.NewReactor(consensusState, waitSync, cs.ReactorMetrics(csMetrics))
@@ -541,11 +560,21 @@ func createSwitch(config *cfg.Config,
 		p2p.SwitchConnFilters(connFilters...),
 	)
 	sw.SetLogger(p2pLogger)
-	sw.AddReactor("MEMPOOL", mempoolReactor)
-	sw.AddReactor("BLOCKCHAIN", bcReactor)
-	sw.AddReactor("CONSENSUS", consensusReactor)
-	sw.AddReactor("EVIDENCE", evidenceReactor)
-	sw.AddReactor("STATESYNC", stateSyncReactor)
+	if mempoolReactor != nil {
+		sw.AddReactor("MEMPOOL", mempoolReactor)
+	}
+	if bcReactor != nil {
+		sw.AddReactor("BLOCKCHAIN", bcReactor)
+	}
+	if consensusReactor != nil {
+		sw.AddReactor("CONSENSUS", consensusReactor)
+	}
+	if evidenceReactor != nil {
+		sw.AddReactor("EVIDENCE", evidenceReactor)
+	}
+	if stateSyncReactor != nil {
+		sw.AddReactor("STATESYNC", stateSyncReactor)
+	}
 
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
@@ -658,6 +687,86 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 	return nil
 }
 
+// NewSeedNode returns a new seed node, containing only p2p, pex reactor
+func NewSeedNode(config *cfg.Config,
+	nodeKey p2p.NodeKey,
+	clientCreator proxy.ClientCreator,
+	genesisDocProvider GenesisDocProvider,
+	dbProvider DBProvider,
+	logger log.Logger,
+	options ...Option) (*Node, error) {
+
+	_, stateDB, err := initDBs(config, dbProvider)
+	if err != nil {
+		return nil, err
+	}
+
+	state, genDoc, err := LoadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
+	if err != nil {
+		return nil, err
+	}
+
+	nodeInfo, err := makeSeedNodeInfo(config, nodeKey, genDoc, state)
+	if err != nil {
+		return nil, err
+	}
+
+	// Setup Transport and Switch.
+	p2pMetrics := p2p.PrometheusMetrics(config.Instrumentation.Namespace, "chain_id", genDoc.ChainID)
+	p2pLogger := logger.With("module", "p2p")
+	transport := createTransport(p2pLogger, config)
+	sw := createSwitch(
+		config, transport, p2pMetrics, nil, nil,
+		nil, nil, nil, nil, nodeInfo, nodeKey, p2pLogger,
+	)
+
+	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
+	if err != nil {
+
+		return nil, fmt.Errorf("could not add peers from persistent_peers field: %w", err)
+	}
+
+	err = sw.AddUnconditionalPeerIDs(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
+	if err != nil {
+		return nil, fmt.Errorf("could not add peer ids from unconditional_peer_ids field: %w", err)
+	}
+
+	addrBook, err := createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
+	if err != nil {
+		return nil, fmt.Errorf("could not create addrbook: %w", err)
+	}
+
+	// start the pex reactor
+	pexReactor := createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
+
+	if config.RPC.PprofListenAddress != "" {
+		go func() {
+			logger.Info("Starting pprof server", "laddr", config.RPC.PprofListenAddress)
+			logger.Error("pprof server error", "err", http.ListenAndServe(config.RPC.PprofListenAddress, nil))
+		}()
+	}
+
+	node := &Node{
+		config:     config,
+		genesisDoc: genDoc,
+
+		transport: transport,
+		sw:        sw,
+		addrBook:  addrBook,
+		nodeInfo:  nodeInfo,
+		nodeKey:   nodeKey,
+
+		pexReactor: pexReactor,
+	}
+	node.BaseService = *service.NewBaseService(logger, "SeedNode", node)
+
+	for _, option := range options {
+		option(node)
+	}
+
+	return node, nil
+}
+
 // NewNode returns a new, ready to go, Tendermint Node.
 func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
@@ -720,10 +829,15 @@ func NewNode(config *cfg.Config,
 			}
 		}
 	}
-
-	pubKey, err := privValidator.GetPubKey()
-	if err != nil {
-		return nil, fmt.Errorf("can't get pubkey: %w", err)
+	var pubKey crypto.PubKey
+	if config.Mode == cfg.ModeValidator {
+		pubKey, err = privValidator.GetPubKey()
+		if err != nil {
+			return nil, fmt.Errorf("can't get pubkey: %w", err)
+		}
+		if pubKey == nil {
+			return nil, errors.New("could not retrieve public key from private validator")
+		}
 	}
 
 	// Determine whether we should attempt state sync.
@@ -754,7 +868,7 @@ func NewNode(config *cfg.Config,
 	// app may modify the validator set, specifying ourself as the only validator.
 	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
 
-	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
+	logNodeStartupInfo(state, pubKey, logger, consensusLogger, config.Mode)
 
 	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
 	// TODO: Use a persistent peer database.
@@ -815,17 +929,23 @@ func NewNode(config *cfg.Config,
 	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
-	stateSyncReactorShim := p2p.NewReactorShim(logger.With("module", "statesync"), "StateSyncShim", statesync.ChannelShims)
+	var stateSyncReactor *statesync.Reactor
+	var stateSyncReactorShim *p2p.ReactorShim
 
-	stateSyncReactor := statesync.NewReactor(
-		stateSyncReactorShim.Logger,
-		proxyApp.Snapshot(),
-		proxyApp.Query(),
-		stateSyncReactorShim.GetChannel(statesync.SnapshotChannel),
-		stateSyncReactorShim.GetChannel(statesync.ChunkChannel),
-		stateSyncReactorShim.PeerUpdates,
-		config.StateSync.TempDir,
-	)
+	if config.Mode != cfg.ModeSeedNode {
+		stateSyncReactorShim = p2p.NewReactorShim(logger.With("module", "statesync"), "StateSyncShim", statesync.ChannelShims)
+
+		stateSyncReactor = statesync.NewReactor(
+			stateSyncReactorShim.Logger,
+			proxyApp.Snapshot(),
+			proxyApp.Query(),
+			stateSyncReactorShim.GetChannel(statesync.SnapshotChannel),
+			stateSyncReactorShim.GetChannel(statesync.ChunkChannel),
+			stateSyncReactorShim.PeerUpdates,
+			config.StateSync.TempDir,
+		)
+	}
+
 
 	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
 	if err != nil {
@@ -931,7 +1051,7 @@ func (n *Node) OnStart() error {
 
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
-	if n.config.RPC.ListenAddress != "" {
+	if n.config.RPC.ListenAddress != "" && n.config.Mode != cfg.ModeSeedNode {
 		listeners, err := n.startRPC()
 		if err != nil {
 			return err
@@ -977,8 +1097,10 @@ func (n *Node) OnStart() error {
 	}
 
 	// Start the real state sync reactor separately since the switch uses the shim.
-	if err := n.stateSyncReactor.Start(); err != nil {
-		return err
+	if n.config.Mode != cfg.ModeSeedNode {
+		if err := n.stateSyncReactor.Start(); err != nil {
+			return err
+		}
 	}
 
 	// Start the real mempool reactor separately since the switch uses the shim.
@@ -1089,11 +1211,7 @@ func (n *Node) OnStop() {
 
 // ConfigureRPC makes sure RPC has all the objects it needs to operate.
 func (n *Node) ConfigureRPC() error {
-	pubKey, err := n.privValidator.GetPubKey()
-	if err != nil {
-		return fmt.Errorf("can't get pubkey: %w", err)
-	}
-	rpccore.SetEnvironment(&rpccore.Environment{
+	rpcCoreEnv := rpccore.Environment{
 		ProxyAppQuery:   n.proxyApp.Query(),
 		ProxyAppMempool: n.proxyApp.Mempool(),
 
@@ -1104,7 +1222,6 @@ func (n *Node) ConfigureRPC() error {
 		P2PPeers:       n.sw,
 		P2PTransport:   n,
 
-		PubKey:           pubKey,
 		GenDoc:           n.genesisDoc,
 		TxIndexer:        n.txIndexer,
 		ConsensusReactor: n.consensusReactor,
@@ -1114,7 +1231,15 @@ func (n *Node) ConfigureRPC() error {
 		Logger: n.Logger.With("module", "rpc"),
 
 		Config: *n.config.RPC,
-	})
+	}
+	if n.config.Mode == cfg.ModeValidator {
+		pubKey, err := n.privValidator.GetPubKey()
+		if pubKey == nil || err != nil {
+			return fmt.Errorf("can't get pubkey: %w", err)
+		}
+		rpcCoreEnv.PubKey = pubKey
+	}
+	rpccore.SetEnvironment(&rpcCoreEnv)
 	return nil
 }
 
@@ -1387,6 +1512,44 @@ func makeNodeInfo(
 		Moniker: config.Moniker,
 		Other: p2p.NodeInfoOther{
 			TxIndex:    txIndexerStatus,
+			RPCAddress: config.RPC.ListenAddress,
+		},
+	}
+
+	if config.P2P.PexReactor {
+		nodeInfo.Channels = append(nodeInfo.Channels, pex.PexChannel)
+	}
+
+	lAddr := config.P2P.ExternalAddress
+
+	if lAddr == "" {
+		lAddr = config.P2P.ListenAddress
+	}
+
+	nodeInfo.ListenAddr = lAddr
+
+	err := nodeInfo.Validate()
+	return nodeInfo, err
+}
+
+func makeSeedNodeInfo(
+	config *cfg.Config,
+	nodeKey p2p.NodeKey,
+	genDoc *types.GenesisDoc,
+	state sm.State,
+) (p2p.NodeInfo, error) {
+	nodeInfo := p2p.NodeInfo{
+		ProtocolVersion: p2p.NewProtocolVersion(
+			version.P2PProtocol,
+			state.Version.Consensus.Block,
+			state.Version.Consensus.App,
+		),
+		NodeID:  nodeKey.ID,
+		Network:       genDoc.ChainID,
+		Version:       version.TMCoreSemVer,
+		Channels:      []byte{},
+		Moniker:       config.Moniker,
+		Other: p2p.NodeInfoOther{
 			RPCAddress: config.RPC.ListenAddress,
 		},
 	}

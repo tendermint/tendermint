@@ -41,6 +41,19 @@ moniker = "anonymous"
 # and verifying their commits
 fast-sync = true
 
+# Mode of Node: fullnode | validator | seednode
+# Default value is fullnode, so you need to set it to "validator" if you want to run the node as validator
+# * fullnode (default)
+#   - all reactors
+#   - No priv_validator_key.json, priv_validator_state.json
+# * validator
+#   - all reactors
+#   - with priv_validator_key.json, priv_validator_state.json
+# * seednode
+#   - only P2P, PEX Reactor
+#   - No priv_validator_key.json, priv_validator_state.json
+mode = "fullnode"
+
 # Database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
 #   - pure go

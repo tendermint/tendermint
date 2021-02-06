@@ -23,6 +23,10 @@ const (
 
 	// DefaultLogLevel defines a default log level as INFO.
 	DefaultLogLevel = "info"
+
+	ModeFullNode  = "fullnode"
+	ModeValidator = "validator"
+	ModeSeedNode  = "seednode"
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -39,6 +43,7 @@ var (
 	defaultConfigFileName  = "config.toml"
 	defaultGenesisJSONName = "genesis.json"
 
+	defaultMode             = ModeFullNode
 	defaultPrivValKeyName   = "priv_validator_key.json"
 	defaultPrivValStateName = "priv_validator_state.json"
 
@@ -159,6 +164,18 @@ type BaseConfig struct { //nolint: maligned
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
 
+	// Mode of Node: fullnode | validator | seednode (default: "fullnode")
+	// * fullnode (default)
+	//   - all reactors
+	//   - No priv_validator_key.json, priv_validator_state.json
+	// * validator
+	//   - all reactors
+	//   - with priv_validator_key.json, priv_validator_state.json
+	// * seednode
+	//   - only P2P, PEX Reactor
+	//   - No priv_validator_key.json, priv_validator_state.json
+	Mode string `mapstructure:"mode"`
+
 	// If this node is many blocks behind the tip of the chain, FastSync
 	// allows them to catchup quickly by downloading blocks in parallel
 	// and verifying their commits
@@ -235,6 +252,7 @@ func DefaultBaseConfig() BaseConfig {
 		PrivValidatorKey:   defaultPrivValKeyPath,
 		PrivValidatorState: defaultPrivValStatePath,
 		NodeKey:            defaultNodeKeyPath,
+		Mode:               defaultMode,
 		Moniker:            defaultMoniker,
 		ProxyApp:           "tcp://127.0.0.1:26658",
 		ABCI:               "socket",
@@ -251,6 +269,7 @@ func DefaultBaseConfig() BaseConfig {
 func TestBaseConfig() BaseConfig {
 	cfg := DefaultBaseConfig()
 	cfg.chainID = "tendermint_test"
+	cfg.Mode = ModeValidator
 	cfg.ProxyApp = "kvstore"
 	cfg.FastSyncMode = false
 	cfg.DBBackend = "memdb"
@@ -321,6 +340,11 @@ func (cfg BaseConfig) ValidateBasic() error {
 	case LogFormatPlain, LogFormatJSON:
 	default:
 		return errors.New("unknown log format (must be 'plain' or 'json')")
+	}
+	switch cfg.Mode {
+	case ModeFullNode, ModeValidator, ModeSeedNode:
+	default:
+		return errors.New("unknown mode (must be 'fullnode' or 'validator' or 'seednode')")
 	}
 	return nil
 }
