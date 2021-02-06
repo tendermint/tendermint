@@ -1427,6 +1427,11 @@ func LoadStateFromDBOrGenesisDocProvider(
 		if err != nil {
 			return sm.State{}, nil, err
 		}
+		// This mutates the passed genesis doc which may or may not be a problem
+		err = genDoc.ValidateAndComplete()
+		if err != nil {
+			return sm.State{}, nil, fmt.Errorf("error in genesis doc: %w", err)
+		}
 		// save genesis doc to prevent a certain class of user errors (e.g. when it
 		// was changed, accidentally or not). Also good for audit trail.
 		if err := saveGenesisDoc(stateDB, genDoc); err != nil {
