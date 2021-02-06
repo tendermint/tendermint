@@ -99,6 +99,7 @@ moniker = "{{ .BaseConfig.Moniker }}"
 # * seednode
 #   - only P2P, PEX Reactor
 #   - No priv_validator_key.json, priv_validator_state.json
+#   - It automatically set seed-mode to true
 mode = "{{ .BaseConfig.Mode }}"
 
 # If this node is many blocks behind the tip of the chain, FastSync
@@ -322,6 +323,7 @@ pex = {{ .P2P.PexReactor }}
 # peers. If another node asks it for addresses, it responds and disconnects.
 #
 # Does not work if the peer-exchange reactor is disabled.
+# automatically set true if Mode of the node is seednode
 seed-mode = {{ .P2P.SeedMode }}
 
 # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)

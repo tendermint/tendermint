@@ -560,19 +560,11 @@ func createSwitch(config *cfg.Config,
 		p2p.SwitchConnFilters(connFilters...),
 	)
 	sw.SetLogger(p2pLogger)
-	if mempoolReactor != nil {
+	if config.Mode != cfg.ModeSeedNode {
 		sw.AddReactor("MEMPOOL", mempoolReactor)
-	}
-	if bcReactor != nil {
 		sw.AddReactor("BLOCKCHAIN", bcReactor)
-	}
-	if consensusReactor != nil {
 		sw.AddReactor("CONSENSUS", consensusReactor)
-	}
-	if evidenceReactor != nil {
 		sw.AddReactor("EVIDENCE", evidenceReactor)
-	}
-	if stateSyncReactor != nil {
 		sw.AddReactor("STATESYNC", stateSyncReactor)
 	}
 
@@ -613,19 +605,23 @@ func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
 func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 	sw *p2p.Switch, logger log.Logger) *pex.Reactor {
 
+	reactorConfig := &pex.ReactorConfig{
+		Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
+		SeedMode: config.P2P.SeedMode,
+		// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
+		// blocks assuming 10s blocks ~ 28 hours.
+		// TODO (melekes): make it dynamic based on the actual block latencies
+		// from the live network.
+		// https://github.com/tendermint/tendermint/issues/3523
+		SeedDisconnectWaitPeriod:     28 * time.Hour,
+		PersistentPeersMaxDialPeriod: config.P2P.PersistentPeersMaxDialPeriod,
+	}
+	// set seed_mode to true, if mode of the node is seednode
+	if config.Mode == cfg.ModeSeedNode {
+		reactorConfig.SeedMode = true
+	}
 	// TODO persistent peers ? so we can have their DNS addrs saved
-	pexReactor := pex.NewReactor(addrBook,
-		&pex.ReactorConfig{
-			Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
-			SeedMode: config.P2P.SeedMode,
-			// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
-			// blocks assuming 10s blocks ~ 28 hours.
-			// TODO (melekes): make it dynamic based on the actual block latencies
-			// from the live network.
-			// https://github.com/tendermint/tendermint/issues/3523
-			SeedDisconnectWaitPeriod:     28 * time.Hour,
-			PersistentPeersMaxDialPeriod: config.P2P.PersistentPeersMaxDialPeriod,
-		})
+	pexReactor := pex.NewReactor(addrBook, reactorConfig)
 	pexReactor.SetLogger(logger.With("module", "pex"))
 	sw.AddReactor("PEX", pexReactor)
 	return pexReactor
@@ -945,7 +941,6 @@ func NewNode(config *cfg.Config,
 			config.StateSync.TempDir,
 		)
 	}
-
 
 	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
 	if err != nil {
@@ -1544,11 +1539,11 @@ func makeSeedNodeInfo(
 			state.Version.Consensus.Block,
 			state.Version.Consensus.App,
 		),
-		NodeID:  nodeKey.ID,
-		Network:       genDoc.ChainID,
-		Version:       version.TMCoreSemVer,
-		Channels:      []byte{},
-		Moniker:       config.Moniker,
+		NodeID:   nodeKey.ID,
+		Network:  genDoc.ChainID,
+		Version:  version.TMCoreSemVer,
+		Channels: []byte{},
+		Moniker:  config.Moniker,
 		Other: p2p.NodeInfoOther{
 			RPCAddress: config.RPC.ListenAddress,
 		},

@@ -17,7 +17,10 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 * `fast_sync = "v1"` is no longer supported. Please use `v2` instead.
 
 * All config parameters are now hyphen-case (also known as kebab-case) instead of snake_case. Before restarting the node make sure
-  you have updated all the variables in your `config.toml` file. 
+  you have updated all the variables in your `config.toml` file.
+
+* Added `--mode` flag and `Mode` config variable on `config.toml` for setting Mode of the Node: `fullnode` | `validator` | `seednode` (default: `fullnode`)
+  [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md)
 
 ### CLI Changes
 
@@ -30,7 +33,7 @@ This guide provides instructions for upgrading to specific versions of Tendermin
   $ tendermint gen_node_key > $TMHOME/config/node_key.json
   ```
 
-* CLI commands and flags are all now hyphen-case instead of snake_case. 
+* CLI commands and flags are all now hyphen-case instead of snake_case.
   Make sure to adjust any scripts that calls a cli command with snake_casing
 ## v0.34.0
 

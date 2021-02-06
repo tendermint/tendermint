@@ -52,6 +52,7 @@ fast-sync = true
 # * seednode
 #   - only P2P, PEX Reactor
 #   - No priv_validator_key.json, priv_validator_state.json
+#   - It automatically set seed-mode to true
 mode = "fullnode"
 
 # Database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb
@@ -259,6 +260,7 @@ pex = true
 # peers. If another node asks it for addresses, it responds and disconnects.
 #
 # Does not work if the peer-exchange reactor is disabled.
+# automatically set true if Mode of the node is seednode
 seed-mode = false
 
 # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
