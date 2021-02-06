@@ -96,7 +96,7 @@ function counter_over_grpc_grpc() {
     kill -9 $pid_counter $pid_tendermint
 }
 
-case "$1" in
+case "$1" in 
     "kvstore_over_socket")
     kvstore_over_socket
     ;;

@@ -94,7 +94,6 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	if config.Mode == cfg.ModeSeedNode {
 		return NewSeedNode(config,
 			nodeKey,
-			proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 			DefaultGenesisDocProviderFunc(config),
 			DefaultDBProvider,
 			logger,
@@ -686,7 +685,6 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 // NewSeedNode returns a new seed node, containing only p2p, pex reactor
 func NewSeedNode(config *cfg.Config,
 	nodeKey p2p.NodeKey,
-	clientCreator proxy.ClientCreator,
 	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
 	logger log.Logger,
@@ -1084,28 +1082,28 @@ func (n *Node) OnStart() error {
 		return err
 	}
 
-	if n.config.FastSync.Version == "v0" {
+	if n.config.FastSync.Version == "v0" && n.config.Mode != cfg.ModeSeedNode {
 		// Start the real blockchain reactor separately since the switch uses the shim.
 		if err := n.bcReactor.Start(); err != nil {
 			return err
 		}
 	}
 
-	// Start the real state sync reactor separately since the switch uses the shim.
 	if n.config.Mode != cfg.ModeSeedNode {
+		// Start the real state sync reactor separately since the switch uses the shim.
 		if err := n.stateSyncReactor.Start(); err != nil {
 			return err
 		}
-	}
 
-	// Start the real mempool reactor separately since the switch uses the shim.
-	if err := n.mempoolReactor.Start(); err != nil {
-		return err
-	}
+		// Start the real mempool reactor separately since the switch uses the shim.
+		if err := n.mempoolReactor.Start(); err != nil {
+			return err
+		}
 
-	// Start the real evidence reactor separately since the switch uses the shim.
-	if err := n.evidenceReactor.Start(); err != nil {
-		return err
+		// Start the real evidence reactor separately since the switch uses the shim.
+		if err := n.evidenceReactor.Start(); err != nil {
+			return err
+		}
 	}
 
 	// Always connect to persistent peers
@@ -1149,7 +1147,7 @@ func (n *Node) OnStop() {
 		n.Logger.Error("Error closing switch", "err", err)
 	}
 
-	if n.config.FastSync.Version == "v0" {
+	if n.config.FastSync.Version == "v0" && n.config.Mode != cfg.ModeSeedNode {
 		// Stop the real blockchain reactor separately since the switch uses the shim.
 		if err := n.bcReactor.Stop(); err != nil {
 			n.Logger.Error("failed to stop the blockchain reactor", "err", err)
@@ -1535,7 +1533,7 @@ func makeSeedNodeInfo(
 ) (p2p.NodeInfo, error) {
 	nodeInfo := p2p.NodeInfo{
 		ProtocolVersion: p2p.NewProtocolVersion(
-			version.P2PProtocol,
+			version.P2PProtocol, // global
 			state.Version.Consensus.Block,
 			state.Version.Consensus.App,
 		),
@@ -1545,6 +1543,7 @@ func makeSeedNodeInfo(
 		Channels: []byte{},
 		Moniker:  config.Moniker,
 		Other: p2p.NodeInfoOther{
+			TxIndex:    "off",
 			RPCAddress: config.RPC.ListenAddress,
 		},
 	}
