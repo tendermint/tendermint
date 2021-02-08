@@ -18,8 +18,10 @@ var (
 	// This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
 	regexpMissingHeight = regexp.MustCompile(`height \d+ (must be less than or equal to|is not available)`)
 
-	defaultMaxRetryAttempts = 10
-	defaultTimeout          = 5 * time.Second
+	defaultOptions = Options{
+		MaxRetryAttempts: 10,
+		Timeout:          5 * time.Second,
+	}
 )
 
 // http provider uses an RPC client to obtain the necessary information.
@@ -30,39 +32,46 @@ type http struct {
 	maxRetryAttempts int
 }
 
+type Options struct {
+	// -1 means no limit
+	MaxRetryAttempts int
+	// 0 means no timeout.
+	Timeout time.Duration
+}
+
 // New creates a HTTP provider, which is using the rpchttp.HTTP client under
 // the hood. If no scheme is provided in the remote URL, http will be used by
 // default. The 5s timeout is used for all requests.
 func New(chainID, remote string) (provider.Provider, error) {
-	return NewWithOptions(chainID, remote, defaultMaxRetryAttempts, defaultTimeout)
+	return NewWithOptions(chainID, remote, defaultOptions)
 }
 
 // NewWithOptions is an extension to creating a new http provider that allows the addition
 // of a specified timeout and maxRetryAttempts
-func NewWithOptions(chainID, remote string, maxRetryAttempts int, timeout time.Duration) (provider.Provider, error) {
+func NewWithOptions(chainID, remote string, options Options) (provider.Provider, error) {
 	// Ensure URL scheme is set (default HTTP) when not provided.
 	if !strings.Contains(remote, "://") {
 		remote = "http://" + remote
 	}
 
-	httpClient, err := rpchttp.NewWithTimeout(remote, "/websocket", timeout)
+	httpClient, err := rpchttp.NewWithTimeout(remote, "/websocket", options.Timeout)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewWithClientAndOptions(chainID, httpClient, maxRetryAttempts), nil
+	return NewWithClientAndOptions(chainID, httpClient, options), nil
 }
 
 func NewWithClient(chainID string, client rpcclient.RemoteClient) provider.Provider {
-	return NewWithClientAndOptions(chainID, client, defaultMaxRetryAttempts)
+	return NewWithClientAndOptions(chainID, client, defaultOptions)
 }
 
 // NewWithClient allows you to provide a custom client.
-func NewWithClientAndOptions(chainID string, client rpcclient.RemoteClient, maxRetryAttempts int) provider.Provider {
+func NewWithClientAndOptions(chainID string, client rpcclient.RemoteClient, options Options) provider.Provider {
 	return &http{
 		client:           client,
 		chainID:          chainID,
-		maxRetryAttempts: maxRetryAttempts,
+		maxRetryAttempts: options.MaxRetryAttempts,
 	}
 }
 
