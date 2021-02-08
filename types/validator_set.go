@@ -106,7 +106,7 @@ func (vals *ValidatorSet) ValidateBasic() error {
 	}
 
 	if err := vals.QuorumHashValid(); err != nil {
-		return fmt.Errorf("thresholdPublicKey error: %w", err)
+		return fmt.Errorf("quorumHash error: %w", err)
 	}
 
 	if err := vals.Proposer.ValidateBasic(); err != nil {

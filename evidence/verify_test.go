@@ -354,13 +354,13 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 	}
 
 	// create good evidence and correct validator power
-	goodEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID)
+	goodEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID, randQuorumHash)
 	goodEv.ValidatorPower = types.DefaultDashVotingPower
 	goodEv.TotalVotingPower = types.DefaultDashVotingPower
-	badEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID)
+	badEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID, randQuorumHash)
 	badEv.ValidatorPower = types.DefaultDashVotingPower + 1
 	badEv.TotalVotingPower = types.DefaultDashVotingPower
-	badTimeEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime.Add(1*time.Minute), val, chainID)
+	badTimeEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime.Add(1*time.Minute), val, chainID, randQuorumHash)
 	badTimeEv.ValidatorPower = types.DefaultDashVotingPower
 	badTimeEv.TotalVotingPower = types.DefaultDashVotingPower
 	state := sm.State{

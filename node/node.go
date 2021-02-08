@@ -656,9 +656,11 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	if config.PrivValidatorCoreLocalPort != "" {
+	if config.PrivValidatorCoreLocalPort != 0 {
+		username := config.DashClientRPC.Username
+		password := config.DashClientRPC.Password
 		// If a local port is provided for Dash Core rpc into the service to sign.
-		privValidator, err = createAndStartPrivValidatorRPCClient(config.PrivValidatorCoreLocalPort, genDoc.ChainID, logger)
+		privValidator, err = createAndStartPrivValidatorRPCClient(config.PrivValidatorCoreLocalPort, genDoc.ChainID, genDoc.QuorumHash, username, password, logger)
 		if err != nil {
 			return nil, fmt.Errorf("error with private validator socket client: %w", err)
 		}
@@ -666,13 +668,13 @@ func NewNode(config *cfg.Config,
 		// If an address is provided, listen on the socket for a connection from an
 		// external signing process.
 		// FIXME: we should start services inside OnStart
-		privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, genDoc.ChainID, logger)
+		privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, genDoc.ChainID, genDoc.QuorumHash, logger)
 		if err != nil {
 			return nil, fmt.Errorf("error with private validator socket client: %w", err)
 		}
 	}
 
-	pubKey, err := privValidator.GetPubKey()
+	pubKey, err := privValidator.GetPubKey(genDoc.QuorumHash)
 	if err != nil {
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
@@ -983,7 +985,7 @@ func (n *Node) ConfigureRPC() error {
 	if err != nil {
 		return fmt.Errorf("can't get proTxHash: %w", err)
 	}
-	pubKey, err := n.privValidator.GetPubKey()
+	pubKey, err := n.privValidator.GetPubKey(n.genesisDoc.QuorumHash)
 	if err != nil {
 		return fmt.Errorf("can't get pubkey: %w", err)
 	}
@@ -1365,6 +1367,7 @@ func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) error {
 func createAndStartPrivValidatorSocketClient(
 	listenAddr,
 	chainID string,
+	initialQuorumHash crypto.QuorumHash,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
 	pve, err := privval.NewSignerListener(listenAddr, logger)
@@ -1378,7 +1381,7 @@ func createAndStartPrivValidatorSocketClient(
 	}
 
 	// try to get a pubkey from private validate first time
-	_, err = pvsc.GetPubKey()
+	_, err = pvsc.GetPubKey(initialQuorumHash)
 	if err != nil {
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
@@ -1393,29 +1396,32 @@ func createAndStartPrivValidatorSocketClient(
 }
 
 func createAndStartPrivValidatorRPCClient(
-	port,
+	port uint16,
 	chainID string,
+	initialQuorumHash crypto.QuorumHash,
+	username string,
+	password string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
 
-	pvsc, err := privval.NewDashCoreSignerClient(port, chainID)
+	pvsc, err := privval.NewDashCoreSignerClient(port, username, password, chainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
 
 	// try to get a pubkey from private validate first time
-	_, err = pvsc.GetPubKey()
+	_, err = pvsc.GetPubKey(initialQuorumHash)
 	if err != nil {
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
 
-	const (
-		retries = 50 // 50 * 100ms = 5s total
-		timeout = 100 * time.Millisecond
-	)
-	pvscWithRetries := privval.NewRetrySignerClient(pvsc, retries, timeout)
+	//const (
+	//	retries = 50 // 50 * 100ms = 5s total
+	//	timeout = 100 * time.Millisecond
+	//)
+	//pvscWithRetries := privval.NewRetrySignerClient(pvsc, retries, timeout)
 
-	return pvscWithRetries, nil
+	return pvsc, nil
 }
 
 // splitAndTrimEmpty slices s into all subslices separated by sep and returns a

@@ -224,7 +224,7 @@ func RandValidator() (*Validator, PrivValidator) {
 	if err != nil {
 		panic(fmt.Errorf("could not retrieve proTxHash %w", err))
 	}
-	pubKey, err := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey(crypto.QuorumHash{})
 	if err != nil {
 		panic(fmt.Errorf("could not retrieve pubkey %w", err))
 	}

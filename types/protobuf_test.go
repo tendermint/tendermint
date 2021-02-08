@@ -31,6 +31,7 @@ func testABCIPubKey(t *testing.T, pk crypto.PubKey, typeStr string) error {
 func TestABCIValidators(t *testing.T) {
 	pkBLS := bls12381.GenPrivKey().PubKey()
 	proTxHash := crypto.RandProTxHash()
+	quorumHash := crypto.RandQuorumHash()
 
 	// correct validator
 	tmValExpected := NewValidatorDefaultVotingPower(pkBLS, proTxHash)
@@ -42,7 +43,7 @@ func TestABCIValidators(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, tmValExpected, tmVals[0])
 
-	abciVals := TM2PB.ValidatorUpdates(NewValidatorSet(tmVals, tmVal.PubKey))
+	abciVals := TM2PB.ValidatorUpdates(NewValidatorSet(tmVals, tmVal.PubKey, quorumHash))
 	assert.Equal(t, abci.ValidatorSetUpdate{
 		ValidatorUpdates:   []abci.ValidatorUpdate{abciVal},
 		ThresholdPublicKey: abciVal.PubKey,

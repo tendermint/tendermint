@@ -64,7 +64,7 @@ func (sc *RetrySignerClient) GetPubKey(quorumHash crypto.QuorumHash) (crypto.Pub
 		err error
 	)
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
-		pk, err = sc.next.GetPubKey()
+		pk, err = sc.next.GetPubKey(quorumHash)
 		if err == nil {
 			return pk, nil
 		}
@@ -118,7 +118,7 @@ func (sc *RetrySignerClient) SignVote(chainID string, quorumHash crypto.QuorumHa
 func (sc *RetrySignerClient) SignProposal(chainID string, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
-		err = sc.next.SignProposal(chainID, proposal)
+		err = sc.next.SignProposal(chainID, quorumHash, proposal)
 		if err == nil {
 			return nil
 		}

@@ -95,6 +95,7 @@ func TestGenesisGood(t *testing.T) {
 				"type": "tendermint/PubKeyBLS12381",
 				"value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"
 			},
+			"quorum_hash":"43FF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C4CC",
 			"app_hash":"",
 			"app_state":{"account_owner": "Bob"}
 		}`,
@@ -106,8 +107,9 @@ func TestGenesisGood(t *testing.T) {
 	// create a base gendoc from struct
 	baseGenDoc := &GenesisDoc{
 		ChainID:            "abc",
-		Validators:         []GenesisValidator{{pubkey.Address(), pubkey, 10, "myval", crypto.RandProTxHash()}},
+		Validators:         []GenesisValidator{{pubkey.Address(), pubkey, 100, "myval", crypto.RandProTxHash()}},
 		ThresholdPublicKey: pubkey,
+		QuorumHash:         crypto.RandQuorumHash(),
 	}
 	genDocBytes, err = tmjson.Marshal(baseGenDoc)
 	assert.NoError(t, err, "error marshalling genDoc")
@@ -184,9 +186,10 @@ func randomGenesisDoc() *GenesisDoc {
 		GenesisTime:        tmtime.Now(),
 		ChainID:            "abc",
 		InitialHeight:      1000,
-		Validators:         []GenesisValidator{{pubkey.Address(), pubkey, 10, "myval", crypto.CRandBytes(32)}},
+		Validators:         []GenesisValidator{{pubkey.Address(), pubkey, DefaultDashVotingPower, "myval", crypto.RandProTxHash()}},
 		ConsensusParams:    DefaultConsensusParams(),
 		ThresholdPublicKey: pubkey,
+		QuorumHash:         crypto.RandQuorumHash(),
 		AppHash:            []byte{1, 2, 3},
 	}
 }

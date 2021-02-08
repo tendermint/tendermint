@@ -2,6 +2,7 @@
 package evidence_test
 
 import (
+	"github.com/tendermint/tendermint/crypto"
 	"os"
 	"testing"
 	"time"
@@ -62,7 +63,7 @@ func TestEvidencePoolSingleValidator(t *testing.T) {
 	assert.Equal(t, 0, len(evs))
 	assert.Zero(t, size)
 
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, privVals[0], evidenceChainID)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, privVals[0], evidenceChainID, valSet.QuorumHash)
 
 	// good evidence
 	evAdded := make(chan struct{})
@@ -120,7 +121,7 @@ func TestEvidencePoolQuorum(t *testing.T) {
 	assert.Equal(t, 0, len(evs))
 	assert.Zero(t, size)
 
-	ev := types.NewMockDuplicateVoteEvidenceWithPrivValInValidatorSet(height, defaultEvidenceTime, privVals[0], valSet, evidenceChainID)
+	ev := types.NewMockDuplicateVoteEvidenceWithPrivValInValidatorSet(height, defaultEvidenceTime, privVals[0], valSet, evidenceChainID, valSet.QuorumHash)
 
 	// good evidence
 	evAdded := make(chan struct{})
@@ -158,7 +159,7 @@ func TestAddExpiredEvidence(t *testing.T) {
 	var (
 		val                 = types.NewMockPV()
 		height              = int64(30)
-		stateStore          = initializeValidatorState(val, height)
+		stateStore          = initializeValidatorState(val, height, crypto.RandQuorumHash())
 		evidenceDB          = dbm.NewMemDB()
 		blockStore          = &mocks.BlockStore{}
 		expiredEvidenceTime = time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -192,7 +193,7 @@ func TestAddExpiredEvidence(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.evDescription, func(t *testing.T) {
-			ev := types.NewMockDuplicateVoteEvidenceWithValidator(tc.evHeight, tc.evTime, val, evidenceChainID)
+			ev := types.NewMockDuplicateVoteEvidenceWithValidator(tc.evHeight, tc.evTime, val, evidenceChainID, crypto.RandQuorumHash())
 			err := pool.AddEvidence(ev)
 			if tc.expErr {
 				assert.Error(t, err)
@@ -206,7 +207,7 @@ func TestAddExpiredEvidence(t *testing.T) {
 func TestAddEvidenceFromConsensus(t *testing.T) {
 	var height int64 = 10
 	pool, val := defaultTestPool(height)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID, crypto.RandQuorumHash())
 	err := pool.AddEvidenceFromConsensus(ev)
 	assert.NoError(t, err)
 	next := pool.EvidenceFront()
@@ -226,11 +227,11 @@ func TestEvidencePoolUpdate(t *testing.T) {
 
 	// create new block (no need to save it to blockStore)
 	prunedEv := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultEvidenceTime.Add(1*time.Minute),
-		val, evidenceChainID)
+		val, evidenceChainID, crypto.RandQuorumHash())
 	err := pool.AddEvidence(prunedEv)
 	require.NoError(t, err)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(21*time.Minute),
-		val, evidenceChainID)
+		val, evidenceChainID, crypto.RandQuorumHash())
 	lastCommit := makeCommit(height, val.ProTxHash)
 
 	coreChainLockHeight := state.LastCoreChainLockedBlockHeight
@@ -259,7 +260,7 @@ func TestVerifyPendingEvidencePasses(t *testing.T) {
 	var height int64 = 1
 	pool, val := defaultTestPool(height)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(1*time.Minute),
-		val, evidenceChainID)
+		val, evidenceChainID, crypto.RandQuorumHash())
 	err := pool.AddEvidence(ev)
 	require.NoError(t, err)
 
@@ -271,7 +272,7 @@ func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 	var height int64 = 1
 	pool, val := defaultTestPool(height)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(1*time.Minute),
-		val, evidenceChainID)
+		val, evidenceChainID, crypto.RandQuorumHash())
 	err := pool.CheckEvidence(types.EvidenceList{ev, ev})
 	if assert.Error(t, err) {
 		assert.Equal(t, "duplicate evidence", err.(*types.ErrInvalidEvidence).Reason.Error())
@@ -363,7 +364,7 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	val := types.NewMockPV()
 	valProTxHash := val.ProTxHash
 	evidenceDB := dbm.NewMemDB()
-	stateStore := initializeValidatorState(val, height)
+	stateStore := initializeValidatorState(val, height, crypto.RandQuorumHash())
 	state, err := stateStore.Load()
 	require.NoError(t, err)
 	blockStore := initializeBlockStore(dbm.NewMemDB(), state, valProTxHash)
@@ -372,9 +373,9 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	require.NoError(t, err)
 	pool.SetLogger(log.TestingLogger())
 	goodEvidence := types.NewMockDuplicateVoteEvidenceWithValidator(height,
-		defaultEvidenceTime.Add(10*time.Minute), val, evidenceChainID)
+		defaultEvidenceTime.Add(10*time.Minute), val, evidenceChainID, crypto.RandQuorumHash())
 	expiredEvidence := types.NewMockDuplicateVoteEvidenceWithValidator(int64(1),
-		defaultEvidenceTime.Add(1*time.Minute), val, evidenceChainID)
+		defaultEvidenceTime.Add(1*time.Minute), val, evidenceChainID, crypto.RandQuorumHash())
 	err = pool.AddEvidence(goodEvidence)
 	require.NoError(t, err)
 	err = pool.AddEvidence(expiredEvidence)
@@ -442,8 +443,8 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) s
 	return stateStore
 }
 
-func initializeValidatorState(privVal types.PrivValidator, height int64) sm.Store {
-	pubKey, _ := privVal.GetPubKey()
+func initializeValidatorState(privVal types.PrivValidator, height int64, quorumHash crypto.QuorumHash) sm.Store {
+	pubKey, _ := privVal.GetPubKey(quorumHash)
 	proTxHash, _ := privVal.GetProTxHash()
 	if len(proTxHash) != 32 {
 		panic("proTxHash len not correct")
@@ -455,6 +456,7 @@ func initializeValidatorState(privVal types.PrivValidator, height int64) sm.Stor
 		Validators:         []*types.Validator{validator},
 		Proposer:           validator,
 		ThresholdPublicKey: validator.PubKey,
+		QuorumHash:         quorumHash,
 	}
 
 	return initializeStateFromValidatorSet(valSet, height)
@@ -495,7 +497,7 @@ func defaultTestPool(height int64) (*evidence.Pool, *types.MockPV) {
 	val := types.NewMockPV()
 	valProTxHash := val.ProTxHash
 	evidenceDB := dbm.NewMemDB()
-	stateStore := initializeValidatorState(val, height)
+	stateStore := initializeValidatorState(val, height, crypto.RandQuorumHash())
 	state, _ := stateStore.Load()
 	blockStore := initializeBlockStore(dbm.NewMemDB(), state, valProTxHash)
 	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)

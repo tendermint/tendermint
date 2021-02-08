@@ -136,7 +136,7 @@ func TestVoteProposalNotEq(t *testing.T) {
 
 func TestVoteVerifySignature(t *testing.T) {
 	privVal := NewMockPV()
-	pubkey, err := privVal.GetPubKey()
+	pubkey, err := privVal.GetPubKey(crypto.QuorumHash{})
 	require.NoError(t, err)
 
 	vote := examplePrecommit()
@@ -145,7 +145,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	signStateBytes := VoteStateSignBytes("test_chain_id", v)
 
 	// sign it
-	err = privVal.SignVote("test_chain_id", v)
+	err = privVal.SignVote("test_chain_id", crypto.QuorumHash{}, v)
 	require.NoError(t, err)
 
 	// verify the same vote
@@ -199,7 +199,7 @@ func TestVoteVerify(t *testing.T) {
 	privVal := NewMockPV()
 	proTxHash, err := privVal.GetProTxHash()
 	require.NoError(t, err)
-	pubkey, err := privVal.GetPubKey()
+	pubkey, err := privVal.GetPubKey(crypto.QuorumHash{})
 	require.NoError(t, err)
 
 	vote := examplePrevote()
@@ -254,7 +254,7 @@ func TestVoteValidateBasic(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			vote := examplePrecommit()
 			v := vote.ToProto()
-			err := privVal.SignVote("test_chain_id", v)
+			err := privVal.SignVote("test_chain_id", crypto.QuorumHash{}, v)
 			vote.BlockSignature = v.BlockSignature
 			vote.StateSignature = v.StateSignature
 			require.NoError(t, err)
@@ -268,7 +268,7 @@ func TestVoteProtobuf(t *testing.T) {
 	privVal := NewMockPV()
 	vote := examplePrecommit()
 	v := vote.ToProto()
-	err := privVal.SignVote("test_chain_id", v)
+	err := privVal.SignVote("test_chain_id", crypto.QuorumHash{}, v)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
 	require.NoError(t, err)

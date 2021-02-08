@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"os"
 	"sync"
 	"testing"
@@ -34,6 +35,7 @@ func randGenesisDoc(numValidators int) (*types.GenesisDoc, []types.PrivValidator
 		ChainID:            config.ChainID(),
 		Validators:         validators,
 		ThresholdPublicKey: thresholdPublicKey,
+		QuorumHash:         crypto.RandQuorumHash(),
 	}, privValidators
 }
 

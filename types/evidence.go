@@ -541,44 +541,44 @@ func (err *ErrEvidenceOverflow) Error() string {
 // unstable - use only for testing
 
 // assumes the round to be 0 and the validator index to be 0
-func NewMockDuplicateVoteEvidence(height int64, time time.Time, chainID string) *DuplicateVoteEvidence {
+func NewMockDuplicateVoteEvidence(height int64, time time.Time, chainID string, quorumHash crypto.QuorumHash) *DuplicateVoteEvidence {
 	val := NewMockPV()
-	return NewMockDuplicateVoteEvidenceWithValidator(height, time, val, chainID)
+	return NewMockDuplicateVoteEvidenceWithValidator(height, time, val, chainID, quorumHash)
 }
 
 // assumes voting power to be DefaultDashVotingPower and validator to be the only one in the set
 func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
-	pv PrivValidator, chainID string) *DuplicateVoteEvidence {
-	pubKey, _ := pv.GetPubKey()
+	pv PrivValidator, chainID string, quorumHash crypto.QuorumHash) *DuplicateVoteEvidence {
+	pubKey, _ := pv.GetPubKey(quorumHash)
 	proTxHash, _ := pv.GetProTxHash()
 	val := NewValidator(pubKey, DefaultDashVotingPower, proTxHash)
 
 	voteA := makeMockVote(height, 0, 0, proTxHash, randBlockID(), randStateID())
 	vA := voteA.ToProto()
-	_ = pv.SignVote(chainID, vA)
+	_ = pv.SignVote(chainID, quorumHash, vA)
 	voteA.BlockSignature = vA.BlockSignature
 	voteA.StateSignature = vA.StateSignature
 	voteB := makeMockVote(height, 0, 0, proTxHash, randBlockID(), randStateID())
 	vB := voteB.ToProto()
-	_ = pv.SignVote(chainID, vB)
+	_ = pv.SignVote(chainID, quorumHash, vB)
 	voteB.BlockSignature = vB.BlockSignature
 	voteB.StateSignature = vB.StateSignature
-	return NewDuplicateVoteEvidence(voteA, voteB, time, NewValidatorSet([]*Validator{val}, val.PubKey))
+	return NewDuplicateVoteEvidence(voteA, voteB, time, NewValidatorSet([]*Validator{val}, val.PubKey, quorumHash))
 }
 
 // assumes voting power to be DefaultDashVotingPower and validator to be the only one in the set
 func NewMockDuplicateVoteEvidenceWithPrivValInValidatorSet(height int64, time time.Time,
-	pv PrivValidator, valSet *ValidatorSet, chainID string) *DuplicateVoteEvidence {
+	pv PrivValidator, valSet *ValidatorSet, chainID string, quorumHash crypto.QuorumHash) *DuplicateVoteEvidence {
 	proTxHash, _ := pv.GetProTxHash()
 
 	voteA := makeMockVote(height, 0, 0, proTxHash, randBlockID(), randStateID())
 	vA := voteA.ToProto()
-	_ = pv.SignVote(chainID, vA)
+	_ = pv.SignVote(chainID, quorumHash, vA)
 	voteA.BlockSignature = vA.BlockSignature
 	voteA.StateSignature = vA.StateSignature
 	voteB := makeMockVote(height, 0, 0, proTxHash, randBlockID(), randStateID())
 	vB := voteB.ToProto()
-	_ = pv.SignVote(chainID, vB)
+	_ = pv.SignVote(chainID, quorumHash, vB)
 	voteB.BlockSignature = vB.BlockSignature
 	voteB.StateSignature = vB.StateSignature
 	return NewDuplicateVoteEvidence(voteA, voteB, time, valSet)

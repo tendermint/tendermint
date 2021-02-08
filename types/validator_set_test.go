@@ -22,10 +22,10 @@ import (
 func TestValidatorSetBasic(t *testing.T) {
 	// empty or nil validator lists are allowed,
 	// but attempting to IncrementProposerPriority on them will panic.
-	vset := NewValidatorSet([]*Validator{}, nil)
+	vset := NewValidatorSet([]*Validator{}, nil, nil)
 	assert.Panics(t, func() { vset.IncrementProposerPriority(1) })
 
-	vset = NewValidatorSet(nil, nil)
+	vset = NewValidatorSet(nil, nil, nil)
 	assert.Panics(t, func() { vset.IncrementProposerPriority(1) })
 
 	assert.EqualValues(t, vset, vset.Copy())
@@ -106,6 +106,7 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 			vals: ValidatorSet{
 				Validators:         []*Validator{},
 				ThresholdPublicKey: bls12381.GenPrivKey().PubKey(),
+				QuorumHash: crypto.RandQuorumHash(),
 			},
 			err: true,
 			msg: "validator set is nil or empty",
@@ -113,6 +114,7 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 		{
 			vals: ValidatorSet{
 				Validators: []*Validator{},
+				QuorumHash: crypto.RandQuorumHash(),
 			},
 			err: true,
 			msg: "validator set is nil or empty",
@@ -121,6 +123,7 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 			vals: ValidatorSet{
 				Validators:         []*Validator{val},
 				ThresholdPublicKey: val.PubKey,
+				QuorumHash: crypto.RandQuorumHash(),
 			},
 			err: true,
 			msg: "proposer failed validate basic, error: nil validator",
@@ -129,6 +132,7 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 			vals: ValidatorSet{
 				Validators:         []*Validator{val},
 				ThresholdPublicKey: bls12381.GenPrivKey().PubKey(),
+				QuorumHash: crypto.RandQuorumHash(),
 			},
 			err: true,
 			msg: "thresholdPublicKey error: incorrect threshold public key",
@@ -137,6 +141,7 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 			vals: ValidatorSet{
 				Validators:         []*Validator{badValNoPublicKey},
 				ThresholdPublicKey: bls12381.GenPrivKey().PubKey(),
+				QuorumHash: crypto.RandQuorumHash(),
 			},
 			err: true,
 			msg: "invalid validator #0: validator does not have a public key",
@@ -145,6 +150,7 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 			vals: ValidatorSet{
 				Validators:         []*Validator{badValNoProTxHash},
 				ThresholdPublicKey: bls12381.GenPrivKey().PubKey(),
+				QuorumHash: crypto.RandQuorumHash(),
 			},
 			err: true,
 			msg: "invalid validator #0: validator does not have a provider transaction hash",
@@ -154,6 +160,16 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 				Validators:         []*Validator{val},
 				Proposer:           val,
 				ThresholdPublicKey: val.PubKey,
+			},
+			err: true,
+			msg: "quorumHash error: quorum hash is not set",
+		},
+		{
+			vals: ValidatorSet{
+				Validators:         []*Validator{val},
+				Proposer:           val,
+				ThresholdPublicKey: val.PubKey,
+				QuorumHash: crypto.RandQuorumHash(),
 			},
 			err: false,
 			msg: "",
@@ -212,7 +228,7 @@ func TestIncrementProposerPriorityPositiveTimes(t *testing.T) {
 		NewTestValidatorGeneratedFromAddress([]byte("foo")),
 		NewTestValidatorGeneratedFromAddress([]byte("bar")),
 		NewTestValidatorGeneratedFromAddress([]byte("baz")),
-	}, pubKeyBLS{})
+	}, pubKeyBLS{}, crypto.QuorumHash{})
 
 	assert.Panics(t, func() { vset.IncrementProposerPriority(-1) })
 	assert.Panics(t, func() { vset.IncrementProposerPriority(0) })
@@ -221,7 +237,7 @@ func TestIncrementProposerPriorityPositiveTimes(t *testing.T) {
 
 func BenchmarkValidatorSetCopy(b *testing.B) {
 	b.StopTimer()
-	vset := NewValidatorSet([]*Validator{}, nil)
+	vset := NewValidatorSet([]*Validator{}, nil, nil)
 	for i := 0; i < 1000; i++ {
 		privKey := bls12381.GenPrivKey()
 		pubKey := privKey.PubKey()
@@ -245,7 +261,7 @@ func TestProposerSelection1(t *testing.T) {
 		NewTestValidatorGeneratedFromAddress([]byte("foo")),
 		NewTestValidatorGeneratedFromAddress([]byte("bar")),
 		NewTestValidatorGeneratedFromAddress([]byte("baz")),
-	}, pubKeyBLS{})
+	}, pubKeyBLS{}, crypto.QuorumHash{})
 	var proposers []string
 	for i := 0; i < 99; i++ {
 		val := vset.GetProposer()
@@ -498,7 +514,8 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 		privKey   = bls12381.GenPrivKey()
 		pubKey    = privKey.PubKey()
 		v1        = NewValidatorDefaultVotingPower(pubKey, proTxHash)
-		vset      = NewValidatorSet([]*Validator{v1}, v1.PubKey)
+		quorumHash = crypto.RandQuorumHash()
+		vset      = NewValidatorSet([]*Validator{v1}, v1.PubKey, quorumHash)
 
 		chainID = "Lalande21185"
 	)
@@ -598,7 +615,7 @@ func TestValidatorSet_VerifyCommit_CheckAllSignatures(t *testing.T) {
 	// malleate 4th signature
 	vote := voteSet.GetByIndex(3)
 	v := vote.ToProto()
-	err = vals[3].SignVote("CentaurusA", v)
+	err = vals[3].SignVote("CentaurusA", valSet.QuorumHash, v)
 	require.NoError(t, err)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
@@ -625,7 +642,7 @@ func TestValidatorSet_VerifyCommitLight_ReturnsAsSoonAsMajorityOfVotingPowerSign
 	// malleate 4th signature (3 signatures are enough for 2/3+)
 	vote := voteSet.GetByIndex(3)
 	v := vote.ToProto()
-	err = vals[3].SignVote("CentaurusA", v)
+	err = vals[3].SignVote("CentaurusA", valSet.QuorumHash, v)
 	require.NoError(t, err)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
@@ -650,7 +667,7 @@ func TestValidatorSet_VerifyCommitLightTrusting_ReturnsAsSoonAsTrustLevelOfVotin
 	// malleate 3rd signature (2 signatures are enough for 1/3+ trust level)
 	vote := voteSet.GetByIndex(2)
 	v := vote.ToProto()
-	err = vals[2].SignVote("CentaurusA", v)
+	err = vals[2].SignVote("CentaurusA", valSet.QuorumHash, v)
 	require.NoError(t, err)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
@@ -663,7 +680,7 @@ func TestValidatorSet_VerifyCommitLightTrusting_ReturnsAsSoonAsTrustLevelOfVotin
 func TestEmptySet(t *testing.T) {
 
 	var valList []*Validator
-	valSet := NewValidatorSet(valList, bls12381.PubKey{})
+	valSet := NewValidatorSet(valList, bls12381.PubKey{}, crypto.QuorumHash{})
 	assert.Panics(t, func() { valSet.IncrementProposerPriority(1) })
 	assert.Panics(t, func() { valSet.RescalePriorities(100) })
 	assert.Panics(t, func() { valSet.shiftByAvgProposerPriority() })
@@ -699,14 +716,14 @@ func TestUpdatesForNewValidatorSet(t *testing.T) {
 	v112 := NewTestValidatorGeneratedFromAddress([]byte("v1"))
 	v113 := NewTestValidatorGeneratedFromAddress([]byte("v1"))
 	valList := []*Validator{v111, v112, v113}
-	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}) })
+	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}, crypto.QuorumHash{}) })
 
 	// Verify set including validator with voting power 0 cannot be created
 	v1 := NewTestRemoveValidatorGeneratedFromAddress([]byte("v1"))
 	v2 := NewTestValidatorGeneratedFromAddress([]byte("v2"))
 	v3 := NewTestValidatorGeneratedFromAddress([]byte("v3"))
 	valList = []*Validator{v1, v2, v3}
-	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}) })
+	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}, crypto.QuorumHash{}) })
 
 	// Verify set including validator with negative voting power cannot be created
 	v1 = NewTestValidatorGeneratedFromAddress([]byte("v1"))
@@ -718,7 +735,7 @@ func TestUpdatesForNewValidatorSet(t *testing.T) {
 	}
 	v3 = NewTestValidatorGeneratedFromAddress([]byte("v3"))
 	valList = []*Validator{v1, v2, v3}
-	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}) })
+	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}, crypto.QuorumHash{}) })
 
 }
 
@@ -1326,14 +1343,14 @@ func TestNewValidatorSetFromExistingValidators(t *testing.T) {
 	valSet, _ := GenerateValidatorSet(size)
 	valSet.IncrementProposerPriority(3)
 
-	newValSet0 := NewValidatorSet(valSet.Validators, valSet.ThresholdPublicKey)
+	newValSet0 := NewValidatorSet(valSet.Validators, valSet.ThresholdPublicKey, valSet.QuorumHash)
 	assert.NotEqual(t, valSet, newValSet0)
 
 	valSet.IncrementProposerPriority(2)
-	newValSet1 := NewValidatorSet(valSet.Validators, valSet.ThresholdPublicKey)
+	newValSet1 := NewValidatorSet(valSet.Validators, valSet.ThresholdPublicKey, valSet.QuorumHash)
 	assert.Equal(t, valSet, newValSet1)
 
-	existingValSet, err := ValidatorSetFromExistingValidators(valSet.Validators, valSet.ThresholdPublicKey)
+	existingValSet, err := ValidatorSetFromExistingValidators(valSet.Validators, valSet.ThresholdPublicKey, valSet.QuorumHash)
 	assert.NoError(t, err)
 	assert.Equal(t, valSet, existingValSet)
 	assert.Equal(t, valSet.CopyIncrementProposerPriority(3), existingValSet.CopyIncrementProposerPriority(3))

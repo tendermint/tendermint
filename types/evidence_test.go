@@ -46,7 +46,7 @@ func randomDuplicateVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
 
 func TestDuplicateVoteEvidence(t *testing.T) {
 	const height = int64(13)
-	ev := NewMockDuplicateVoteEvidence(height, time.Now(), "mock-chain-id")
+	ev := NewMockDuplicateVoteEvidence(height, time.Now(), "mock-chain-id", crypto.RandQuorumHash())
 	assert.Equal(t, ev.Hash(), tmhash.Sum(ev.Bytes()))
 	assert.NotNil(t, ev.String())
 	assert.Equal(t, ev.Height(), height)
@@ -221,7 +221,7 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 }
 
 func TestMockEvidenceValidateBasic(t *testing.T) {
-	goodEvidence := NewMockDuplicateVoteEvidence(int64(1), time.Now(), "mock-chain-id")
+	goodEvidence := NewMockDuplicateVoteEvidence(int64(1), time.Now(), "mock-chain-id", crypto.RandQuorumHash())
 	assert.Nil(t, goodEvidence.ValidateBasic())
 }
 

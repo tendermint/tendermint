@@ -47,7 +47,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	// we need validators saved for heights at least as high as we have evidence for
 	height := int64(numEvidence) + 10
 	for i := 0; i < N; i++ {
-		stateDBs[i] = initializeValidatorState(val, height)
+		stateDBs[i] = initializeValidatorState(val, height, crypto.RandQuorumHash())
 	}
 
 	// make reactors from statedb
@@ -77,9 +77,11 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	height1 := int64(numEvidence) + 10
 	height2 := int64(numEvidence) / 2
 
+	quorumHash := crypto.RandQuorumHash()
+
 	// DB1 is ahead of DB2
-	stateDB1 := initializeValidatorState(val, height1)
-	stateDB2 := initializeValidatorState(val, height2)
+	stateDB1 := initializeValidatorState(val, height1, quorumHash)
+	stateDB2 := initializeValidatorState(val, height2, quorumHash)
 
 	// make reactors from statedb
 	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
@@ -119,9 +121,11 @@ func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
 	val := types.NewMockPV()
 	var height int64 = 10
 
+	quorumHash := crypto.RandQuorumHash()
+
 	// DB1 is ahead of DB2
-	stateDB1 := initializeValidatorState(val, height-1)
-	stateDB2 := initializeValidatorState(val, height-2)
+	stateDB1 := initializeValidatorState(val, height-1, quorumHash)
+	stateDB2 := initializeValidatorState(val, height-2, quorumHash)
 	state, err := stateDB1.Load()
 	require.NoError(t, err)
 	state.LastBlockHeight++
@@ -153,7 +157,8 @@ func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
 	evList = make([]types.Evidence, 3)
 	for i := 0; i < 3; i++ {
 		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height-3+int64(i),
-			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val, state.ChainID)
+			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val,
+			state.ChainID, quorumHash)
 		err := pools[0].AddEvidence(ev)
 		require.NoError(t, err)
 		evList[i] = ev
@@ -293,7 +298,7 @@ func sendEvidence(t *testing.T, evpool *evidence.Pool, val types.PrivValidator, 
 	evList := make([]types.Evidence, n)
 	for i := 0; i < n; i++ {
 		ev := types.NewMockDuplicateVoteEvidenceWithValidator(int64(i+1),
-			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val, evidenceChainID)
+			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val, evidenceChainID, crypto.QuorumHash{})
 		err := evpool.AddEvidence(ev)
 		require.NoError(t, err)
 		evList[i] = ev
@@ -338,7 +343,7 @@ func TestEvidenceVectors(t *testing.T) {
 		VotingPower: types.DefaultDashVotingPower,
 	}
 
-	valSet := types.NewValidatorSet([]*types.Validator{val}, val.PubKey)
+	valSet := types.NewValidatorSet([]*types.Validator{val}, val.PubKey, crypto.RandQuorumHash())
 
 	dupl := types.NewDuplicateVoteEvidence(
 		exampleVote(1),
