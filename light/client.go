@@ -981,7 +981,7 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 	return c.lightBlockFromPrimary(ctx, height)
 }
 
-// NOTE: requires a providerMutexLocked
+// NOTE: requires a providerMutex lock
 func (c *Client) removeWitness(idx int) error {
 	if len(c.witnesses) < 2 {
 		return ErrNoWitnesses

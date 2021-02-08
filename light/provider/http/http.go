@@ -122,7 +122,6 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 				}
 				// if we have exceeded retry attempts then return no response error
 				if attempt == maxRetryAttempts {
-					p.noResponseCount++
 					return nil, p.noResponse()
 				}
 				// else we wait and try again with exponential backoff
