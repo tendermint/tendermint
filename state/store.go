@@ -186,30 +186,37 @@ func (store dbStore) Save(state State) error {
 }
 
 func (store dbStore) save(state State, key []byte) error {
+	batch := store.db.NewBatch()
+
 	nextHeight := state.LastBlockHeight + 1
 	// If first block, save validators for the block.
 	if nextHeight == 1 {
 		nextHeight = state.InitialHeight
 		// This extra logic due to Tendermint validator set changes being delayed 1 block.
 		// It may get overwritten due to InitChain validator updates.
-		if err := store.saveValidatorsInfo(nextHeight, nextHeight, state.Validators); err != nil {
+		if err := store.saveValidatorsInfo(nextHeight, nextHeight, state.Validators, batch); err != nil {
 			return err
 		}
 	}
 	// Save next validators.
-	if err := store.saveValidatorsInfo(nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators); err != nil {
+	if err := store.saveValidatorsInfo(nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators, batch); err != nil {
 		return err
 	}
 
 	// Save next consensus params.
 	if err := store.saveConsensusParamsInfo(nextHeight,
-		state.LastHeightConsensusParamsChanged, state.ConsensusParams); err != nil {
+		state.LastHeightConsensusParamsChanged, state.ConsensusParams, batch); err != nil {
 		return err
 	}
-	err := store.db.SetSync(key, state.Bytes())
-	if err != nil {
-		return err
+
+	if err := batch.WriteSync(); err != nil {
+		panic(err)
 	}
+
+	if err := batch.Close(); err != nil {
+		panic(err)
+	}
+
 	return nil
 }
 
@@ -220,26 +227,33 @@ func (store dbStore) Bootstrap(state State) error {
 		height = state.InitialHeight
 	}
 
+	batch := store.db.NewBatch()
+
 	if height > 1 && !state.LastValidators.IsNilOrEmpty() {
-		if err := store.saveValidatorsInfo(height-1, height-1, state.LastValidators); err != nil {
+		if err := store.saveValidatorsInfo(height-1, height-1, state.LastValidators, batch); err != nil {
 			return err
 		}
 	}
 
-	if err := store.saveValidatorsInfo(height, height, state.Validators); err != nil {
+	if err := store.saveValidatorsInfo(height, height, state.Validators, batch); err != nil {
 		return err
 	}
 
-	if err := store.saveValidatorsInfo(height+1, height+1, state.NextValidators); err != nil {
+	if err := store.saveValidatorsInfo(height+1, height+1, state.NextValidators, batch); err != nil {
 		return err
 	}
 
 	if err := store.saveConsensusParamsInfo(height,
-		state.LastHeightConsensusParamsChanged, state.ConsensusParams); err != nil {
+		state.LastHeightConsensusParamsChanged, state.ConsensusParams, batch); err != nil {
 		return err
 	}
 
-	return store.db.SetSync(stateKey, state.Bytes())
+	if err := batch.WriteSync(); err != nil {
+		panic(err)
+	}
+
+	// return store.db.SetSync(stateKey, state.Bytes())
+	return batch.Close()
 }
 
 // PruneStates deletes states up to the height specified (exclusive). It is not
@@ -468,6 +482,10 @@ func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, er
 //
 // Exposed for testing.
 func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) error {
+	return store.saveABCIResponses(height, abciResponses)
+}
+
+func (store dbStore) saveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) error {
 	var dtxs []*abci.ResponseDeliverTx
 	// strip nil values,
 	for _, tx := range abciResponses.DeliverTxs {
@@ -475,6 +493,9 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 			dtxs = append(dtxs, tx)
 		}
 	}
+
+	batch := store.db.NewBatch()
+
 	abciResponses.DeliverTxs = dtxs
 
 	bz, err := abciResponses.Marshal()
@@ -482,13 +503,20 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 		return err
 	}
 
-	err = store.db.SetSync(abciResponsesKey(height), bz)
+	err = batch.Set(abciResponsesKey(height), bz)
 	if err != nil {
 		return err
 	}
 
 	return nil
 }
+
+
+
+
+
+
+
 
 //-----------------------------------------------------------------------------
 
@@ -568,7 +596,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) (*tmstate.ValidatorsInfo, error
 // `height` is the effective height for which the validator is responsible for
 // signing. It should be called from s.Save(), right before the state itself is
 // persisted.
-func (store dbStore) saveValidatorsInfo(height, lastHeightChanged int64, valSet *types.ValidatorSet) error {
+func (store dbStore) saveValidatorsInfo(height, lastHeightChanged int64, valSet *types.ValidatorSet, batch dbm.Batch) error {
 	if lastHeightChanged > height {
 		return errors.New("lastHeightChanged cannot be greater than ValidatorsInfo height")
 	}
@@ -590,7 +618,7 @@ func (store dbStore) saveValidatorsInfo(height, lastHeightChanged int64, valSet 
 		return err
 	}
 
-	err = store.db.Set(validatorsKey(height), bz)
+	err = batch.Set(validatorsKey(height), bz)
 	if err != nil {
 		return err
 	}
@@ -656,7 +684,7 @@ func (store dbStore) loadConsensusParamsInfo(height int64) (*tmstate.ConsensusPa
 // It should be called from s.Save(), right before the state itself is persisted.
 // If the consensus params did not change after processing the latest block,
 // only the last height for which they changed is persisted.
-func (store dbStore) saveConsensusParamsInfo(nextHeight, changeHeight int64, params types.ConsensusParams) error {
+func (store dbStore) saveConsensusParamsInfo(nextHeight, changeHeight int64, params types.ConsensusParams, batch dbm.Batch) error {
 	paramsInfo := &tmstate.ConsensusParamsInfo{
 		LastHeightChanged: changeHeight,
 	}
@@ -669,7 +697,7 @@ func (store dbStore) saveConsensusParamsInfo(nextHeight, changeHeight int64, par
 		return err
 	}
 
-	err = store.db.Set(consensusParamsKey(nextHeight), bz)
+	err = batch.Set(consensusParamsKey(nextHeight), bz)
 	if err != nil {
 		return err
 	}
