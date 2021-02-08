@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/go-kit/kit/log/term"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -21,6 +22,7 @@ import (
 	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
+	p2pmocks "github.com/tendermint/tendermint/p2p/mocks"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -183,6 +185,41 @@ func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
 
 	peerEv, _ = pools[1].PendingEvidence(1000)
 	assert.EqualValues(t, []types.Evidence{evList[0], evList[1]}, peerEv)
+}
+
+func TestReactorBroadcastEvidenceMemoryLeak(t *testing.T) {
+	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
+	evidenceDB := dbm.NewMemDB()
+	blockStore := &mocks.BlockStore{}
+	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
+		&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
+	)
+	val := types.NewMockPV()
+	stateStore := initializeValidatorState(val, 1)
+	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
+	require.NoError(t, err)
+
+	p := &p2pmocks.Peer{}
+
+	p.On("IsRunning").Once().Return(true)
+	p.On("IsRunning").Return(false)
+	// check that we are not leaking any go-routines
+	// i.e. broadcastEvidenceRoutine finishes when peer is stopped
+	defer leaktest.CheckTimeout(t, 10*time.Second)()
+
+	p.On("Send", evidence.EvidenceChannel, mock.AnythingOfType("[]uint8")).Return(false)
+	quitChan := make(<-chan struct{})
+	p.On("Quit").Return(quitChan)
+	ps := peerState{2}
+	p.On("Get", types.PeerStateKey).Return(ps)
+	p.On("ID").Return("ABC")
+	p.On("String").Return("mock")
+
+	r := evidence.NewReactor(pool)
+	r.SetLogger(log.TestingLogger())
+	r.AddPeer(p)
+
+	_ = sendEvidence(t, pool, val, 2)
 }
 
 // evidenceLogger is a TestingLogger which uses a different
