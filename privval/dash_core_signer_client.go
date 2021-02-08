@@ -1,17 +1,20 @@
 package privval
 
 import (
+	"bytes"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"strconv"
-	"time"
 
 	rpc "github.com/dashevo/dashd-go/rpcclient"
 	"github.com/tendermint/tendermint/crypto"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
+	types "github.com/tendermint/tendermint/types"
 )
 
 // SignerClient implements PrivValidator.
@@ -51,18 +54,8 @@ func NewDashCoreSignerClient(port uint16, rpcUsername string, rpcPassword string
 
 // Close closes the underlying connection
 func (sc *DashCoreSignerClient) Close() error {
-	sc.endpoint.Disconnect()
+	sc.endpoint.Shutdown()
 	return nil
-}
-
-// IsConnected indicates with the signer is connected to a remote signing service
-func (sc *DashCoreSignerClient) IsConnected() bool {
-	return sc.endpoint.connec()
-}
-
-// WaitForConnection waits maxWait for a connection or returns a timeout error
-func (sc *DashCoreSignerClient) WaitForConnection(maxWait time.Duration) error {
-	return sc.endpoint.WaitForConnection(maxWait)
 }
 
 //--------------------------------------------------------
@@ -103,20 +96,45 @@ func (sc *DashCoreSignerClient) GetPubKey(quorumHash crypto.QuorumHash) (crypto.
 	if len(quorumHash.Bytes()) != crypto.DefaultHashSize {
 		return nil, fmt.Errorf("quorum hash must be 32 bytes long if requesting public key from dash core")
 	}
-	response, err := sc.endpoint.QuorumInfo(btcjson.LLMQType_100_67, quorumHash, false)
+
+	var quorumHashFixed *chainhash.Hash
+
+	copy(quorumHashFixed[:], quorumHash)
+
+	response, err := sc.endpoint.QuorumInfo(btcjson.LLMQType_100_67, quorumHashFixed, false)
 	if err != nil {
 		return nil, fmt.Errorf("send: %w", err)
 	}
 
-	quorumMembers := response.Members
+	proTxHash, err := sc.GetProTxHash()
 
-
-	pk, err := cryptoenc.PubKeyFromProto(resp.PubKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("send: %w", err)
 	}
 
-	return pk, nil
+	var decodedPublicKeyShare []byte
+
+	for _, quorumMember := range response.Members {
+		decodedMemberProTxHash, err := hex.DecodeString(quorumMember.ProTxHash)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding proTxHash : %v", err)
+		}
+		if len(decodedMemberProTxHash) != crypto.DefaultHashSize {
+			return nil, fmt.Errorf("decoding proTxHash %d is incorrect size when getting public key : %v", len(decodedMemberProTxHash), err)
+		}
+		if bytes.Equal(proTxHash, decodedMemberProTxHash) {
+			decodedPublicKeyShare, err = hex.DecodeString(quorumMember.PubKeyShare)
+			if err != nil {
+				return nil, fmt.Errorf("error decoding publicKeyShare : %v", err)
+			}
+			if len(decodedPublicKeyShare) != bls12381.PubKeySize {
+				return nil, fmt.Errorf("decoding public key share %d is incorrect size when getting public key : %v", len(decodedMemberProTxHash), err)
+			}
+			break
+		}
+	}
+
+	return bls12381.PubKey(decodedPublicKeyShare), nil
 }
 
 func (sc *DashCoreSignerClient) GetProTxHash() (crypto.ProTxHash, error) {
@@ -125,32 +143,127 @@ func (sc *DashCoreSignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 		return nil, fmt.Errorf("send: %w", err)
 	}
 
-	if len(masternodeStatus.ProTxHash) != 32 {
-		return nil, fmt.Errorf("proTxHash is invalid size")
+	decodedProTxHash, err := hex.DecodeString(masternodeStatus.ProTxHash)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding proTxHash : %v", err)
+	}
+	if len(decodedProTxHash) != crypto.DefaultHashSize {
+		return nil, fmt.Errorf("decoding proTxHash %d is incorrect size when signing proposal : %v", len(decodedProTxHash), err)
 	}
 
-	return masternodeStatus.ProTxHash, nil
+	return decodedProTxHash, nil
+}
+
+func VoteBlockRequestId(vote *tmproto.Vote) []byte {
+	requestIdMessage := []byte("dpbvote")
+	heightByteArray := make([]byte, 8)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
+	roundByteArray := make([]byte, 4)
+	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
+
+	requestIdMessage = append(requestIdMessage, heightByteArray...)
+	requestIdMessage = append(requestIdMessage, roundByteArray...)
+
+	return crypto.Sha256(requestIdMessage)
+}
+
+func VoteStateRequestId(vote *tmproto.Vote) []byte {
+	requestIdMessage := []byte("dpsvote")
+	heightByteArray := make([]byte, 8)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
+	roundByteArray := make([]byte, 4)
+	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
+
+	requestIdMessage = append(requestIdMessage, heightByteArray...)
+	requestIdMessage = append(requestIdMessage, roundByteArray...)
+
+	return crypto.Sha256(requestIdMessage)
 }
 
 // SignVote requests a remote signer to sign a vote
 func (sc *DashCoreSignerClient) SignVote(chainID string, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
-	// fmt.Printf("--> sending request to sign vote (%d/%d) %v - %v", vote.Height, vote.Round, vote.BlockID, vote)
-	response, err := sc.endpoint.QuorumSign()
-	if err != nil {
-		return err
-	}
+	blockSignBytes := types.VoteBlockSignBytes(chainID, vote)
+	stateSignBytes := types.VoteStateSignBytes(chainID, vote)
 
-	resp := response.GetSignedVoteResponse()
-	if resp == nil {
+	blockMessageHash := crypto.Sha256(blockSignBytes)
+
+	var blockMessageHashFixed *chainhash.Hash
+
+	copy(blockMessageHashFixed[:], blockMessageHash)
+
+	stateMessageHash := crypto.Sha256(stateSignBytes)
+
+	var stateMessageHashFixed *chainhash.Hash
+
+	copy(stateMessageHashFixed[:], stateMessageHash)
+
+	blockRequestIdHash := VoteBlockRequestId(vote)
+
+	var blockRequestIdHashFixed *chainhash.Hash
+
+	copy(blockRequestIdHashFixed[:], blockRequestIdHash)
+
+	stateRequestIdHash := VoteStateRequestId(vote)
+
+	var stateRequestIdHashFixed *chainhash.Hash
+
+	copy(stateRequestIdHashFixed[:], stateRequestIdHash)
+
+	var quorumHashFixed *chainhash.Hash
+
+	copy(quorumHashFixed[:], quorumHash)
+
+	blockResponse, err := sc.endpoint.QuorumSign(btcjson.LLMQType_100_67, blockRequestIdHashFixed, blockMessageHashFixed, quorumHashFixed, false)
+
+	if blockResponse == nil {
 		return ErrUnexpectedResponse
 	}
-	if resp.Error != nil {
-		return &RemoteSignerError{Code: int(resp.Error.Code), Description: resp.Error.Description}
+	if err != nil {
+		return &RemoteSignerError{Code: 500, Description: err.Error()}
 	}
 
-	*vote = resp.Vote
+	blockDecodedSignature, err := hex.DecodeString(blockResponse.Signature)
+	if err != nil {
+		return fmt.Errorf("error decoding signature when signing proposal : %v", err)
+	}
+	if len(blockDecodedSignature) != bls12381.SignatureSize {
+		return fmt.Errorf("decoding signature %d is incorrect size when signing proposal : %v", len(blockDecodedSignature), err)
+	}
+
+	stateResponse, err := sc.endpoint.QuorumSign(btcjson.LLMQType_100_67, stateRequestIdHashFixed, blockMessageHashFixed, quorumHashFixed, false)
+
+	if stateResponse == nil {
+		return ErrUnexpectedResponse
+	}
+	if err != nil {
+		return &RemoteSignerError{Code: 500, Description: err.Error()}
+	}
+
+	stateDecodedSignature, err := hex.DecodeString(stateResponse.Signature)
+	if err != nil {
+		return fmt.Errorf("error decoding signature when signing proposal : %v", err)
+	}
+	if len(stateDecodedSignature) != bls12381.SignatureSize {
+		return fmt.Errorf("decoding signature %d is incorrect size when signing proposal : %v", len(stateDecodedSignature), err)
+	}
+
+	vote.BlockSignature = blockDecodedSignature
+	vote.StateSignature = stateDecodedSignature
 
 	return nil
+}
+
+func ProposalRequestId(proposal *tmproto.Proposal) []byte {
+	requestIdMessage := []byte("dpprop")
+	heightByteArray := make([]byte, 8)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(proposal.Height))
+	roundByteArray := make([]byte, 4)
+	binary.LittleEndian.PutUint32(roundByteArray, uint32(proposal.Round))
+
+	requestIdMessage = append(requestIdMessage, heightByteArray...)
+	requestIdMessage = append(requestIdMessage, roundByteArray...)
+
+	return crypto.Sha256(requestIdMessage)
 }
 
 // SignProposal requests a remote signer to sign a proposal
@@ -159,21 +272,46 @@ func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumHash crypto.Q
 		&privvalproto.SignProposalRequest{Proposal: proposal, ChainId: chainID},
 	)
 
-	response, err := sc.endpoint.QuorumSign(btcjson.LLMQType_100_67, requestId, message, quorumHash, false)
+	messageBytes, err := message.Marshal()
+
 	if err != nil {
-		return err
+		return fmt.Errorf("error marshalling message when signing proposal : %v", err)
 	}
+
+	messageHash := crypto.Sha256(messageBytes)
+
+	var messageHashFixed *chainhash.Hash
+
+	copy(messageHashFixed[:], messageHash)
+
+	requestIdHash := ProposalRequestId(proposal)
+
+	var requestIdHashFixed *chainhash.Hash
+
+	copy(requestIdHashFixed[:], requestIdHash)
+
+	var quorumHashFixed *chainhash.Hash
+
+	copy(quorumHashFixed[:], quorumHash)
+
+	response, err := sc.endpoint.QuorumSign(btcjson.LLMQType_100_67, requestIdHashFixed, messageHashFixed, quorumHashFixed, false)
 
 	if response == nil {
 		return ErrUnexpectedResponse
 	}
 	if err != nil {
-		return &RemoteSignerError{Code: int(resp.Error.Code), Description: err.Error()}
+		return &RemoteSignerError{Code: 500, Description: err.Error()}
 	}
 
-	proposal.Signature = response.Signature
+	decodedSignature, err := hex.DecodeString(response.Signature)
+	if err != nil {
+		return fmt.Errorf("error decoding signature when signing proposal : %v", err)
+	}
+	if len(decodedSignature) != bls12381.SignatureSize {
+		return fmt.Errorf("decoding signature %d is incorrect size when signing proposal : %v", len(decodedSignature), err)
+	}
 
-	*proposal = resp.Proposal
+	proposal.Signature = decodedSignature
 
 	return nil
 }

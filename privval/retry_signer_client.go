@@ -102,7 +102,7 @@ func (sc *RetrySignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 func (sc *RetrySignerClient) SignVote(chainID string, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
-		err = sc.next.SignVote(chainID, vote)
+		err = sc.next.SignVote(chainID, quorumHash, vote)
 		if err == nil {
 			return nil
 		}
