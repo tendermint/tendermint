@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/tendermint/tendermint/light/provider"
@@ -121,8 +122,11 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 		}
 	}
 
-	for _, idx := range witnessesToRemove {
-		c.removeWitness(idx)
+	// we need to make sure that we remove witnesses by index in the reverse
+	// order so as to not affect the indexes themselves
+	sort.Ints(witnessesToRemove)
+	for i := len(witnessesToRemove) - 1; i >= 0; i-- {
+		c.removeWitness(witnessesToRemove[i])
 	}
 
 	// 1. If we had at least one witness that returned the same header then we
