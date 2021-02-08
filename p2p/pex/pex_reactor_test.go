@@ -128,7 +128,7 @@ func TestPEXReactorReceive(t *testing.T) {
 	size := book.Size()
 	na, err := peer.NodeInfo().NetAddress()
 	require.NoError(t, err)
-	msg := mustEncode(&tmp2p.PexAddrs{Addrs: []tmp2p.NetAddress{na.ToProto()}})
+	msg := mustEncode(&tmp2p.PexResponse{Addresses: []tmp2p.PexAddress{na.ToProto()}})
 	r.Receive(PexChannel, peer, msg)
 	assert.Equal(t, size+1, book.Size())
 
@@ -185,7 +185,7 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	assert.True(t, r.requestsSent.Has(id))
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
-	msg := mustEncode(&tmp2p.PexAddrs{Addrs: []tmp2p.NetAddress{peer.SocketAddr().ToProto()}})
+	msg := mustEncode(&tmp2p.PexResponse{Addresses: []tmp2p.PexAddress{peer.SocketAddr().ToProto()}})
 
 	// receive some addrs. should clear the request
 	r.Receive(PexChannel, peer, msg)
@@ -376,6 +376,7 @@ func TestPEXReactorDialsPeerUpToMaxAttemptsInSeedMode(t *testing.T) {
 // with FlushStop. Before a fix, this non-deterministically reproduced
 // https://github.com/tendermint/tendermint/issues/3231.
 func TestPEXReactorSeedModeFlushStop(t *testing.T) {
+	t.Skip("flaky test, will be replaced by new P2P stack")
 	N := 2
 	switches := make([]*p2p.Switch, N)
 
@@ -456,7 +457,7 @@ func TestPEXReactorDoesNotAddPrivatePeersToAddrBook(t *testing.T) {
 	size := book.Size()
 	na, err := peer.NodeInfo().NetAddress()
 	require.NoError(t, err)
-	msg := mustEncode(&tmp2p.PexAddrs{Addrs: []tmp2p.NetAddress{na.ToProto()}})
+	msg := mustEncode(&tmp2p.PexResponse{Addresses: []tmp2p.PexAddress{na.ToProto()}})
 	pexR.Receive(PexChannel, peer, msg)
 	assert.Equal(t, size, book.Size())
 
@@ -634,7 +635,7 @@ func createSwitchAndAddReactors(reactors ...p2p.Reactor) *p2p.Switch {
 }
 
 func TestPexVectors(t *testing.T) {
-	addr := tmp2p.NetAddress{
+	addr := tmp2p.PexAddress{
 		ID:   "1",
 		IP:   "127.0.0.1",
 		Port: 9090,
@@ -646,7 +647,7 @@ func TestPexVectors(t *testing.T) {
 		expBytes string
 	}{
 		{"PexRequest", &tmp2p.PexRequest{}, "0a00"},
-		{"PexAddrs", &tmp2p.PexAddrs{Addrs: []tmp2p.NetAddress{addr}}, "12130a110a013112093132372e302e302e31188247"},
+		{"PexAddrs", &tmp2p.PexResponse{Addresses: []tmp2p.PexAddress{addr}}, "12130a110a013112093132372e302e302e31188247"},
 	}
 
 	for _, tc := range testCases {

@@ -84,7 +84,7 @@ type Reactor struct {
 	fastSync    bool
 
 	blockchainCh *p2p.Channel
-	peerUpdates  *p2p.PeerUpdatesCh
+	peerUpdates  *p2p.PeerUpdates
 	closeCh      chan struct{}
 
 	requestsCh <-chan BlockRequest
@@ -104,7 +104,7 @@ func NewReactor(
 	store *store.BlockStore,
 	consReactor consensusReactor,
 	blockchainCh *p2p.Channel,
-	peerUpdates *p2p.PeerUpdatesCh,
+	peerUpdates *p2p.PeerUpdates,
 	fastSync bool,
 ) (*Reactor, error) {
 	if state.LastBlockHeight != store.Height() {
@@ -150,6 +150,7 @@ func (r *Reactor) OnStart() error {
 			return err
 		}
 
+		r.poolWG.Add(1)
 		go r.poolRoutine(false)
 	}
 
@@ -193,7 +194,7 @@ func (r *Reactor) respondToPeer(msg *bcproto.BlockRequest, peerID p2p.NodeID) {
 			return
 		}
 
-		r.blockchainCh.Out() <- p2p.Envelope{
+		r.blockchainCh.Out <- p2p.Envelope{
 			To:      peerID,
 			Message: &bcproto.BlockResponse{Block: blockProto},
 		}
@@ -202,7 +203,7 @@ func (r *Reactor) respondToPeer(msg *bcproto.BlockRequest, peerID p2p.NodeID) {
 	}
 
 	r.Logger.Info("peer requesting a block we do not have", "peer", peerID, "height", msg.Height)
-	r.blockchainCh.Out() <- p2p.Envelope{
+	r.blockchainCh.Out <- p2p.Envelope{
 		To:      peerID,
 		Message: &bcproto.NoBlockResponse{Height: msg.Height},
 	}
@@ -228,7 +229,7 @@ func (r *Reactor) handleBlockchainMessage(envelope p2p.Envelope) error {
 		r.pool.AddBlock(envelope.From, block, block.Size())
 
 	case *bcproto.StatusRequest:
-		r.blockchainCh.Out() <- p2p.Envelope{
+		r.blockchainCh.Out <- p2p.Envelope{
 			To: envelope.From,
 			Message: &bcproto.StatusResponse{
 				Height: r.store.Height(),
@@ -283,13 +284,12 @@ func (r *Reactor) processBlockchainCh() {
 
 	for {
 		select {
-		case envelope := <-r.blockchainCh.In():
-			if err := r.handleMessage(r.blockchainCh.ID(), envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.blockchainCh.ID(), "envelope", envelope, "err", err)
-				r.blockchainCh.Error() <- p2p.PeerError{
-					PeerID:   envelope.From,
-					Err:      err,
-					Severity: p2p.PeerErrorSeverityLow,
+		case envelope := <-r.blockchainCh.In:
+			if err := r.handleMessage(r.blockchainCh.ID, envelope); err != nil {
+				r.Logger.Error("failed to process message", "ch_id", r.blockchainCh.ID, "envelope", envelope, "err", err)
+				r.blockchainCh.Error <- p2p.PeerError{
+					NodeID: envelope.From,
+					Err:    err,
 				}
 			}
 
@@ -302,26 +302,26 @@ func (r *Reactor) processBlockchainCh() {
 
 // processPeerUpdate processes a PeerUpdate.
 func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
-	r.Logger.Debug("received peer update", "peer", peerUpdate.PeerID, "status", peerUpdate.Status)
+	r.Logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	// XXX: Pool#RedoRequest can sometimes give us an empty peer.
-	if len(peerUpdate.PeerID) == 0 {
+	if len(peerUpdate.NodeID) == 0 {
 		return
 	}
 
 	switch peerUpdate.Status {
-	case p2p.PeerStatusNew, p2p.PeerStatusUp:
+	case p2p.PeerStatusUp:
 		// send a status update the newly added peer
-		r.blockchainCh.Out() <- p2p.Envelope{
-			To: peerUpdate.PeerID,
+		r.blockchainCh.Out <- p2p.Envelope{
+			To: peerUpdate.NodeID,
 			Message: &bcproto.StatusResponse{
 				Base:   r.store.Base(),
 				Height: r.store.Height(),
 			},
 		}
 
-	case p2p.PeerStatusDown, p2p.PeerStatusRemoved, p2p.PeerStatusBanned:
-		r.pool.RemovePeer(peerUpdate.PeerID)
+	case p2p.PeerStatusDown:
+		r.pool.RemovePeer(peerUpdate.NodeID)
 	}
 }
 
@@ -354,7 +354,9 @@ func (r *Reactor) SwitchToFastSync(state sm.State) error {
 		return err
 	}
 
+	r.poolWG.Add(1)
 	go r.poolRoutine(true)
+
 	return nil
 }
 
@@ -374,16 +376,15 @@ func (r *Reactor) requestRoutine() {
 			return
 
 		case request := <-r.requestsCh:
-			r.blockchainCh.Out() <- p2p.Envelope{
+			r.blockchainCh.Out <- p2p.Envelope{
 				To:      request.PeerID,
 				Message: &bcproto.BlockRequest{Height: request.Height},
 			}
 
 		case pErr := <-r.errorsCh:
-			r.blockchainCh.Error() <- p2p.PeerError{
-				PeerID:   pErr.peerID,
-				Err:      pErr.err,
-				Severity: p2p.PeerErrorSeverityLow,
+			r.blockchainCh.Error <- p2p.PeerError{
+				NodeID: pErr.peerID,
+				Err:    pErr.err,
 			}
 
 		case <-statusUpdateTicker.C:
@@ -392,7 +393,7 @@ func (r *Reactor) requestRoutine() {
 			go func() {
 				defer r.poolWG.Done()
 
-				r.blockchainCh.Out() <- p2p.Envelope{
+				r.blockchainCh.Out <- p2p.Envelope{
 					Broadcast: true,
 					Message:   &bcproto.StatusRequest{},
 				}
@@ -426,7 +427,6 @@ func (r *Reactor) poolRoutine(stateSynced bool) {
 
 	go r.requestRoutine()
 
-	r.poolWG.Add(1)
 	defer r.poolWG.Done()
 
 FOR_LOOP:
@@ -522,18 +522,16 @@ FOR_LOOP:
 				// NOTE: We've already removed the peer's request, but we still need
 				// to clean up the rest.
 				peerID := r.pool.RedoRequest(first.Height)
-				r.blockchainCh.Error() <- p2p.PeerError{
-					PeerID:   peerID,
-					Err:      err,
-					Severity: p2p.PeerErrorSeverityLow,
+				r.blockchainCh.Error <- p2p.PeerError{
+					NodeID: peerID,
+					Err:    err,
 				}
 
 				peerID2 := r.pool.RedoRequest(second.Height)
 				if peerID2 != peerID {
-					r.blockchainCh.Error() <- p2p.PeerError{
-						PeerID:   peerID2,
-						Err:      err,
-						Severity: p2p.PeerErrorSeverityLow,
+					r.blockchainCh.Error <- p2p.PeerError{
+						NodeID: peerID2,
+						Err:    err,
 					}
 				}
 

@@ -3,6 +3,7 @@ package consensus
 import (
 	"fmt"
 
+	tmcon "github.com/tendermint/tendermint/consensus"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -52,14 +53,14 @@ func DoublePrevoteMisbehavior() Misbehavior {
 
 		// If a block is locked, prevote that.
 		if cs.LockedBlock != nil {
-			cs.Logger.Info("enterPrevote: Already locked on a block, prevoting locked block")
+			cs.Logger.Debug("enterPrevote: already locked on a block, prevoting locked block")
 			cs.signAddVote(tmproto.PrevoteType, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
 			return
 		}
 
 		// If ProposalBlock is nil, prevote nil.
 		if cs.ProposalBlock == nil {
-			cs.Logger.Info("enterPrevote: ProposalBlock is nil")
+			cs.Logger.Debug("enterPrevote: ProposalBlock is nil")
 			cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 			return
 		}
@@ -89,16 +90,16 @@ func DoublePrevoteMisbehavior() Misbehavior {
 		}
 
 		// add our own vote
-		cs.sendInternalMessage(msgInfo{&VoteMessage{prevote}, ""})
+		cs.sendInternalMessage(msgInfo{&tmcon.VoteMessage{Vote: prevote}, ""})
 
 		cs.Logger.Info("Sending conflicting votes")
 		peers := cs.sw.Peers().List()
 		// there has to be at least two other peers connected else this behavior works normally
 		for idx, peer := range peers {
 			if idx%2 == 0 { // sign the proposal block
-				peer.Send(VoteChannel, MustEncode(&VoteMessage{prevote}))
+				peer.Send(VoteChannel, tmcon.MustEncode(&tmcon.VoteMessage{Vote: prevote}))
 			} else { // sign a nil block
-				peer.Send(VoteChannel, MustEncode(&VoteMessage{nilPrevote}))
+				peer.Send(VoteChannel, tmcon.MustEncode(&tmcon.VoteMessage{Vote: nilPrevote}))
 			}
 		}
 	}
@@ -135,18 +136,16 @@ func defaultEnterPropose(cs *State, height int64, round int32) {
 	}
 
 	if cs.isProposer(address) {
-		logger.Info("enterPropose: Our turn to propose",
-			"proposer",
-			address,
-			"privValidator",
-			cs.privValidator)
+		logger.Debug("enterPropose: our turn to propose",
+			"proposer", address,
+			"privValidator", cs.privValidator,
+		)
 		cs.decideProposal(height, round)
 	} else {
-		logger.Info("enterPropose: Not our turn to propose",
-			"proposer",
-			cs.Validators.GetProposer().Address,
-			"privValidator",
-			cs.privValidator)
+		logger.Debug("enterPropose: not our turn to propose",
+			"proposer", cs.Validators.GetProposer().Address,
+			"privValidator", cs.privValidator,
+		)
 	}
 }
 
@@ -155,14 +154,14 @@ func defaultEnterPrevote(cs *State, height int64, round int32) {
 
 	// If a block is locked, prevote that.
 	if cs.LockedBlock != nil {
-		logger.Info("enterPrevote: Already locked on a block, prevoting locked block")
+		logger.Debug("enterPrevote: already locked on a block, prevoting locked block")
 		cs.signAddVote(tmproto.PrevoteType, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
 		return
 	}
 
 	// If ProposalBlock is nil, prevote nil.
 	if cs.ProposalBlock == nil {
-		logger.Info("enterPrevote: ProposalBlock is nil")
+		logger.Debug("enterPrevote: ProposalBlock is nil")
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
@@ -179,7 +178,7 @@ func defaultEnterPrevote(cs *State, height int64, round int32) {
 	// Prevote cs.ProposalBlock
 	// NOTE: the proposal signature is validated when it is received,
 	// and the proposal block parts are validated as they are received (against the merkle hash in the proposal)
-	logger.Info("enterPrevote: ProposalBlock is valid")
+	logger.Debug("enterPrevote: ProposalBlock is valid")
 	cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
 }
 
@@ -192,9 +191,9 @@ func defaultEnterPrecommit(cs *State, height int64, round int32) {
 	// If we don't have a polka, we must precommit nil.
 	if !ok {
 		if cs.LockedBlock != nil {
-			logger.Info("enterPrecommit: No +2/3 prevotes during enterPrecommit while we're locked. Precommitting nil")
+			logger.Debug("enterPrecommit: no +2/3 prevotes during enterPrecommit while we're locked; precommitting nil")
 		} else {
-			logger.Info("enterPrecommit: No +2/3 prevotes during enterPrecommit. Precommitting nil.")
+			logger.Debug("enterPrecommit: no +2/3 prevotes during enterPrecommit; precommitting nil.")
 		}
 		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 		return
@@ -212,9 +211,9 @@ func defaultEnterPrecommit(cs *State, height int64, round int32) {
 	// +2/3 prevoted nil. Unlock and precommit nil.
 	if len(blockID.Hash) == 0 {
 		if cs.LockedBlock == nil {
-			logger.Info("enterPrecommit: +2/3 prevoted for nil.")
+			logger.Debug("enterPrecommit: +2/3 prevoted for nil")
 		} else {
-			logger.Info("enterPrecommit: +2/3 prevoted for nil. Unlocking")
+			logger.Debug("enterPrecommit: +2/3 prevoted for nil; unlocking")
 			cs.LockedRound = -1
 			cs.LockedBlock = nil
 			cs.LockedBlockParts = nil
@@ -228,7 +227,7 @@ func defaultEnterPrecommit(cs *State, height int64, round int32) {
 
 	// If we're already locked on that block, precommit it, and update the LockedRound
 	if cs.LockedBlock.HashesTo(blockID.Hash) {
-		logger.Info("enterPrecommit: +2/3 prevoted locked block. Relocking")
+		logger.Debug("enterPrecommit: +2/3 prevoted locked block; relocking")
 		cs.LockedRound = round
 		_ = cs.eventBus.PublishEventRelock(cs.RoundStateEvent())
 		cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
@@ -237,7 +236,7 @@ func defaultEnterPrecommit(cs *State, height int64, round int32) {
 
 	// If +2/3 prevoted for proposal block, stage and precommit it
 	if cs.ProposalBlock.HashesTo(blockID.Hash) {
-		logger.Info("enterPrecommit: +2/3 prevoted proposal block. Locking", "hash", blockID.Hash)
+		logger.Debug("enterPrecommit: +2/3 prevoted proposal block; locking", "hash", blockID.Hash)
 		// Validate the block.
 		if err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock); err != nil {
 			panic(fmt.Sprintf("enterPrecommit: +2/3 prevoted for an invalid block: %v", err))
@@ -253,7 +252,7 @@ func defaultEnterPrecommit(cs *State, height int64, round int32) {
 	// There was a polka in this round for a block we don't have.
 	// Fetch that block, unlock, and precommit nil.
 	// The +2/3 prevotes for this round is the POL for our unlock.
-	logger.Info("enterPrecommit: +2/3 prevotes for a block we don't have. Voting nil", "blockID", blockID)
+	logger.Debug("enterPrecommit: +2/3 prevotes for a block we don't have; voting nil", "blockID", blockID)
 	cs.LockedRound = -1
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
@@ -302,8 +301,11 @@ func defaultReceivePrevote(cs *State, vote *types.Vote) {
 				cs.ValidBlockParts = cs.ProposalBlockParts
 			} else {
 				cs.Logger.Info(
-					"Valid block we don't know about. Set ProposalBlock=nil",
-					"proposal", cs.ProposalBlock.Hash(), "blockID", blockID.Hash)
+					"valid block we do not know about; set ProposalBlock=nil",
+					"proposal", cs.ProposalBlock.Hash(),
+					"blockID", blockID.Hash,
+				)
+
 				// We're getting the wrong block.
 				cs.ProposalBlock = nil
 			}
@@ -393,6 +395,7 @@ func defaultReceiveProposal(cs *State, proposal *types.Proposal) error {
 	if cs.ProposalBlockParts == nil {
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockID.PartSetHeader)
 	}
-	cs.Logger.Info("Received proposal", "proposal", proposal)
+
+	cs.Logger.Info("received proposal", "proposal", proposal)
 	return nil
 }

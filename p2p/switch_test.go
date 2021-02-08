@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -246,7 +245,12 @@ func TestSwitchPeerFilter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	peerInfo, _, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	p := newPeer(
+		peerInfo,
 		newPeerConn(true, false, c),
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -297,7 +301,12 @@ func TestSwitchPeerFilterTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	peerInfo, _, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	p := newPeer(
+		peerInfo,
 		newPeerConn(true, false, c),
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -328,7 +337,12 @@ func TestSwitchPeerFilterDuplicate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	peerInfo, _, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	p := newPeer(
+		peerInfo,
 		newPeerConn(true, false, c),
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -378,7 +392,12 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	peerInfo, _, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	p := newPeer(
+		peerInfo,
 		newPeerConn(true, false, c),
 		sw.reactorsByCh,
 		sw.StopPeerForError,
@@ -607,9 +626,8 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	err = sw.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		if err := sw.Stop(); err != nil {
-			t.Error(err)
-		}
+		err := sw.Stop()
+		require.NoError(t, err)
 	})
 
 	// 0. check there are no peers
@@ -634,7 +652,7 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 			}
 		}(c)
 	}
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	assert.Equal(t, cfg.MaxNumInboundPeers, sw.Peers().Size())
 
 	// 2. check we close new connections if we already have MaxNumInboundPeers peers
@@ -644,10 +662,9 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 	require.NoError(t, err)
 	// check conn is closed
 	one := make([]byte, 1)
-	err = conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
-	require.NoError(t, err)
+	_ = conn.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
 	_, err = conn.Read(one)
-	assert.Equal(t, io.EOF, err)
+	assert.Error(t, err)
 	assert.Equal(t, cfg.MaxNumInboundPeers, sw.Peers().Size())
 	peer.Stop()
 
@@ -681,16 +698,23 @@ type errorTransport struct {
 	acceptErr error
 }
 
-func (et errorTransport) Accept(context.Context) (Connection, error) {
+func (et errorTransport) String() string {
+	return "error"
+}
+
+func (et errorTransport) Protocols() []Protocol {
+	return []Protocol{"error"}
+}
+
+func (et errorTransport) Accept() (Connection, error) {
 	return nil, et.acceptErr
 }
 func (errorTransport) Dial(context.Context, Endpoint) (Connection, error) {
 	panic("not implemented")
 }
-func (errorTransport) Close() error                               { panic("not implemented") }
-func (errorTransport) FlushClose() error                          { panic("not implemented") }
-func (errorTransport) Endpoints() []Endpoint                      { panic("not implemented") }
-func (errorTransport) SetChannelDescriptors([]*ChannelDescriptor) {}
+func (errorTransport) Close() error          { panic("not implemented") }
+func (errorTransport) FlushClose() error     { panic("not implemented") }
+func (errorTransport) Endpoints() []Endpoint { panic("not implemented") }
 
 func TestSwitchAcceptRoutineErrorCases(t *testing.T) {
 	sw := NewSwitch(cfg, errorTransport{ErrFilterTimeout{}})

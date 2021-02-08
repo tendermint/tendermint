@@ -14,40 +14,64 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
 var (
+	// This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
 	regexpMissingHeight = regexp.MustCompile(`height \d+ (must be less than or equal to|is not available)`)
-	maxRetryAttempts    = 10
+
+	defaultOptions = Options{
+		MaxRetryAttempts: 10,
+		Timeout:          5 * time.Second,
+	}
 )
 
 // http provider uses an RPC client to obtain the necessary information.
 type http struct {
 	chainID string
 	client  rpcclient.RemoteClient
+
+	maxRetryAttempts int
+}
+
+type Options struct {
+	// -1 means no limit
+	MaxRetryAttempts int
+	// 0 means no timeout.
+	Timeout time.Duration
 }
 
 // New creates a HTTP provider, which is using the rpchttp.HTTP client under
 // the hood. If no scheme is provided in the remote URL, http will be used by
-// default.
+// default. The 5s timeout is used for all requests.
 func New(chainID, remote string) (provider.Provider, error) {
+	return NewWithOptions(chainID, remote, defaultOptions)
+}
+
+// NewWithOptions is an extension to creating a new http provider that allows the addition
+// of a specified timeout and maxRetryAttempts
+func NewWithOptions(chainID, remote string, options Options) (provider.Provider, error) {
 	// Ensure URL scheme is set (default HTTP) when not provided.
 	if !strings.Contains(remote, "://") {
 		remote = "http://" + remote
 	}
 
-	httpClient, err := rpchttp.New(remote, "/websocket")
+	httpClient, err := rpchttp.NewWithTimeout(remote, "/websocket", options.Timeout)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewWithClient(chainID, httpClient), nil
+	return NewWithClientAndOptions(chainID, httpClient, options), nil
+}
+
+func NewWithClient(chainID string, client rpcclient.RemoteClient) provider.Provider {
+	return NewWithClientAndOptions(chainID, client, defaultOptions)
 }
 
 // NewWithClient allows you to provide a custom client.
-func NewWithClient(chainID string, client rpcclient.RemoteClient) provider.Provider {
+func NewWithClientAndOptions(chainID string, client rpcclient.RemoteClient, options Options) provider.Provider {
 	return &http{
-		client:  client,
-		chainID: chainID,
+		client:           client,
+		chainID:          chainID,
+		maxRetryAttempts: options.MaxRetryAttempts,
 	}
 }
 
@@ -68,7 +92,7 @@ func (p *http) LightBlock(ctx context.Context, height int64) (*types.LightBlock,
 		return nil, err
 	}
 
-	vs, err := p.validatorSet(ctx, h)
+	vs, err := p.validatorSet(ctx, &sh.Height)
 	if err != nil {
 		return nil, err
 	}
@@ -93,40 +117,58 @@ func (p *http) ReportEvidence(ctx context.Context, ev types.Evidence) error {
 }
 
 func (p *http) validatorSet(ctx context.Context, height *int64) (*types.ValidatorSet, error) {
+	// Since the malicious node could report a massive number of pages, making us
+	// spend a considerable time iterating, we restrict the number of pages here.
+	// => 10000 validators max
+	const maxPages = 100
+
 	var (
-		maxPerPage = 100
-		vals       = []*types.Validator{}
-		page       = 1
+		perPage = 100
+		vals    = []*types.Validator{}
+		page    = 1
+		total   = -1
 	)
 
-	for len(vals)%maxPerPage == 0 {
-		for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
-			res, err := p.client.Validators(ctx, height, &page, &maxPerPage)
+	for len(vals) != total && page <= maxPages {
+		// create another for loop to control retries. If p.maxRetryAttempts
+		// is negative we will keep repeating.
+		for attempt := 0; attempt != p.maxRetryAttempts+1; attempt++ {
+			res, err := p.client.Validators(ctx, height, &page, &perPage)
 			if err != nil {
 				// TODO: standardize errors on the RPC side
 				if regexpMissingHeight.MatchString(err.Error()) {
 					return nil, provider.ErrLightBlockNotFound
 				}
 				// if we have exceeded retry attempts then return no response error
-				if attempt == maxRetryAttempts {
+				if attempt == p.maxRetryAttempts {
 					return nil, provider.ErrNoResponse
 				}
 				// else we wait and try again with exponential backoff
 				time.Sleep(backoffTimeout(uint16(attempt)))
 				continue
 			}
-			if len(res.Validators) == 0 { // no more validators left
-				valSet, err := types.ValidatorSetFromExistingValidators(vals)
-				if err != nil {
-					return nil, provider.ErrBadLightBlock{Reason: err}
+
+			// Validate response.
+			if len(res.Validators) == 0 {
+				return nil, provider.ErrBadLightBlock{
+					Reason: fmt.Errorf("validator set is empty (height: %d, page: %d, per_page: %d)",
+						height, page, perPage),
 				}
-				return valSet, nil
 			}
+			if res.Total <= 0 {
+				return nil, provider.ErrBadLightBlock{
+					Reason: fmt.Errorf("total number of vals is <= 0: %d (height: %d, page: %d, per_page: %d)",
+						res.Total, height, page, perPage),
+				}
+			}
+
+			total = res.Total
 			vals = append(vals, res.Validators...)
 			page++
 			break
 		}
 	}
+
 	valSet, err := types.ValidatorSetFromExistingValidators(vals)
 	if err != nil {
 		return nil, provider.ErrBadLightBlock{Reason: err}
@@ -135,7 +177,9 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 }
 
 func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHeader, error) {
-	for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
+	// create a for loop to control retries. If p.maxRetryAttempts
+	// is negative we will keep repeating.
+	for attempt := 0; attempt != p.maxRetryAttempts+1; attempt++ {
 		commit, err := p.client.Commit(ctx, height)
 		if err != nil {
 			// TODO: standardize errors on the RPC side

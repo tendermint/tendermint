@@ -129,16 +129,16 @@ You should now be able to run `make proto-gen` from inside the root Tendermint d
 
 ### Visual Studio Code
 
-If you are a VS Code user, you may want to add the following to your `.vscode/settings.json`:  
+If you are a VS Code user, you may want to add the following to your `.vscode/settings.json`:
 
 ```json
-{	
-  "protoc": {	
-    "options": [	
-      "--proto_path=${workspaceRoot}/proto",	
-      "--proto_path=${workspaceRoot}/third_party/proto"	
-    ]	
-  }	
+{
+  "protoc": {
+    "options": [
+      "--proto_path=${workspaceRoot}/proto",
+      "--proto_path=${workspaceRoot}/third_party/proto"
+    ]
+  }
 }
 ```
 
@@ -247,33 +247,33 @@ Each PR should have one commit once it lands on `master`; this can be accomplish
 
 #### Major Release
 
-This major release process assumes that this release was preceded by release candidates. 
-If there were no release candidates, and you'd like to cut a major release directly from master, see below. 
+This major release process assumes that this release was preceded by release candidates.
+If there were no release candidates, and you'd like to cut a major release directly from master, see below.
 
 1. Start on the latest RC branch (`RCx/vX.X.0`).
 2. Run integration tests.
 3. Branch off of the RC branch (`git checkout -b release-prep`) and prepare the release:
-   - "Squash" changes from the changelog entries for the RCs into a single entry, 
-      and add all changes included in `CHANGELOG_PENDING.md`. 
+   - "Squash" changes from the changelog entries for the RCs into a single entry,
+      and add all changes included in `CHANGELOG_PENDING.md`.
       (Squashing includes both combining all entries, as well as removing or simplifying
       any intra-RC changes. It may also help to alphabetize the entries by package name.)
    - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
-     all PRs 
+     all PRs
    - Ensure that UPGRADING.md is up-to-date and includes notes on any breaking changes
-      or other upgrading flows. 
+      or other upgrading flows.
    - Bump P2P and block protocol versions in  `version.go`, if necessary
    - Bump ABCI protocol version in `version.go`, if necessary
    - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
-4. Open a PR with these changes against the RC branch (`RCx/vX.X.0`). 
+4. Open a PR with these changes against the RC branch (`RCx/vX.X.0`).
 5. Once these changes are on the RC branch, branch off of the RC branch again to create a release branch:
    - `git checkout RCx/vX.X.0`
-   - `git checkout -b release/vX.X.0` 
+   - `git checkout -b release/vX.X.0`
 6. Push a tag with prepared release details. This will trigger the actual release `vX.X.0`.
    - `git tag -a vX.X.0 -m 'Release vX.X.0'`
    - `git push origin vX.X.0`
-7. Make sure that `master` is updated with the latest `CHANGELOG.md`, `CHANGELOG_PENDING.md`, and `UPGRADING.md`. 
+7. Make sure that `master` is updated with the latest `CHANGELOG.md`, `CHANGELOG_PENDING.md`, and `UPGRADING.md`.
 8. Create the long-lived minor release branch `RC0/vX.X.1` for the next point release on this
-   new major release series. 
+   new major release series.
 
 ##### Major Release (from `master`)
 
@@ -306,7 +306,7 @@ the backport branches have names like `v0.34.x` or `v0.33.x` (literally, `x`; it
 
 As non-breaking changes land on `master`, they should also be backported (cherry-picked) to these backport branches.
 
-Minor releases don't have release candidates by default, although any tricky changes may merit a release candidate. 
+Minor releases don't have release candidates by default, although any tricky changes may merit a release candidate.
 
 To create a minor release:
 
@@ -317,8 +317,8 @@ To create a minor release:
    - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
    - Run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
    - Reset the `CHANGELOG_PENDING.md`
-   - Bump the ABCI version number, if necessary. 
-     (Note that ABCI follows semver, and that ABCI versions are the only versions 
+   - Bump the ABCI version number, if necessary.
+     (Note that ABCI follows semver, and that ABCI versions are the only versions
      which can change during minor releases, and only field additions are valid minor changes.)
    - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
 4. Open a PR with these changes that will land them back on `vX.X.x`
@@ -341,27 +341,103 @@ the "standard" release naming conventions, with `-rcX` at the end (`vX.X.X-rcX`)
 have distinct names from the tags/release names.)
 
 1. Start from the RC branch (e.g. `RC0/v0.34.0`).
-2. Create the new tag, specifying a name and a tag "message":  
-   `git tag -a v0.34.0-rc0 -m "Release Candidate v0.34.0-rc0` 
-3. Push the tag back up to origin:  
-   `git push origin v0.34.0-rc4`  
-   Now the tag should be available on the repo's releases page. 
-4. Create a new release candidate branch for any possible updates to the RC:  
+2. Create the new tag, specifying a name and a tag "message":
+   `git tag -a v0.34.0-rc0 -m "Release Candidate v0.34.0-rc0`
+3. Push the tag back up to origin:
+   `git push origin v0.34.0-rc4`
+   Now the tag should be available on the repo's releases page.
+4. Create a new release candidate branch for any possible updates to the RC:
    `git checkout -b RC1/v0.34.0; git push origin RC1/v0.34.0`
 
 ## Testing
 
-All repos should be hooked up to [CircleCI](https://circleci.com/).
+### Unit tests
 
-If they have `.go` files in the root directory, they will be automatically
-tested by circle using `go test -v -race ./...`. If not, they will need a
-`circle.yml`. Ideally, every repo has a `Makefile` that defines `make test` and
-includes its continuous integration status using a badge in the `README.md`.
+Unit tests are located in `_test.go` files as directed by [the Go testing
+package](https://golang.org/pkg/testing/). If you're adding or removing a
+function, please check there's a `TestType_Method` test for it.
+
+Run: `make test`
+
+### Integration tests
+
+Integration tests are also located in `_test.go` files. What differentiates
+them is a more complicated setup, which usually involves setting up two or more
+components.
+
+Run: `make test_integrations`
+
+### End-to-end tests
+
+End-to-end tests are used to verify a fully integrated Tendermint network.
+
+See [README](./test/e2e/README.md) for details.
+
+Run:
+
+```sh
+cd test/e2e && \
+  make && \
+  ./build/runner -f networks/ci.toml
+```
+
+### Maverick
+
+**If you're changing the code in `consensus` package, please make sure to
+replicate all the changes in `./test/maverick/consensus`**. Maverick is a
+byzantine node used to assert that the validator gets punished for malicious
+behavior.
+
+See [README](./test/maverick/README.md) for details.
+
+### Model-based tests (ADVANCED)
+
+*NOTE: if you're just submitting your first PR, you won't need to touch these
+most probably (99.9%)*.
+
+For components, that have been [formally
+verified](https://en.wikipedia.org/wiki/Formal_verification) using
+[TLA+](https://en.wikipedia.org/wiki/TLA%2B), it may be possible to generate
+tests using a combination of the [Apalache Model
+Checker](https://apalache.informal.systems/) and [tendermint-rs testgen
+util](https://github.com/informalsystems/tendermint-rs/tree/master/testgen).
+
+Now, I know there's a lot to take in. If you want to learn more, check out [
+this video](https://www.youtube.com/watch?v=aveoIMphzW8) by Andrey Kupriyanov
+& Igor Konnov.
+
+At the moment, we have model-based tests for the light client, located in the
+`./light/mbt` directory.
+
+Run: `cd light/mbt && go test`
+
+### Fuzz tests (ADVANCED)
+
+*NOTE: if you're just submitting your first PR, you won't need to touch these
+most probably (99.9%)*.
+
+[Fuzz tests](https://en.wikipedia.org/wiki/Fuzzing) can be found inside the
+`./test/fuzz` directory. See [README.md](./test/fuzz/README.md) for details.
+
+Run: `cd test/fuzz && make fuzz-{PACKAGE-COMPONENT}`
+
+### Jepsen tests (ADVANCED)
+
+*NOTE: if you're just submitting your first PR, you won't need to touch these
+most probably (99.9%)*.
+
+[Jepsen](http://jepsen.io/) tests are used to verify the
+[linearizability](https://jepsen.io/consistency/models/linearizable) property
+of the Tendermint consensus. They are located in a separate repository
+-> https://github.com/tendermint/jepsen. Please refer to it's README for more
+information.
 
 ### RPC Testing
 
-If you contribute to the RPC endpoints it's important to document your changes in the [Openapi file](./rpc/openapi/openapi.yaml)
-To test your changes you should install `nodejs` and run:
+**If you contribute to the RPC endpoints it's important to document your
+changes in the [Openapi file](./rpc/openapi/openapi.yaml)**.
+
+To test your changes you must install `nodejs` and run:
 
 ```bash
 npm i -g dredd
@@ -369,4 +445,8 @@ make build-linux build-contract-tests-hooks
 make contract-tests
 ```
 
-This command will popup a network and check every endpoint against what has been documented
+**WARNING: these are currently broken due to https://github.com/apiaryio/dredd
+not supporting complete OpenAPI 3**.
+
+This command will popup a network and check every endpoint against what has
+been documented.

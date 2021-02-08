@@ -1,4 +1,4 @@
-project_name: Tendermint
+project_name: tendermint
 
 env:
   # Require use of Go modules.
