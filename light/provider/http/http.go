@@ -130,7 +130,7 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 	)
 
 	for len(vals) != total && page <= maxPages {
-		for attempt := 1; attempt <= p.maxRetryAttempts; attempt++ {
+		for attempt := 0; attempt <= p.maxRetryAttempts; attempt++ {
 			res, err := p.client.Validators(ctx, height, &page, &perPage)
 			if err != nil {
 				// TODO: standardize errors on the RPC side
@@ -175,7 +175,7 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 }
 
 func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHeader, error) {
-	for attempt := 1; attempt <= p.maxRetryAttempts; attempt++ {
+	for attempt := 0; attempt <= p.maxRetryAttempts; attempt++ {
 		commit, err := p.client.Commit(ctx, height)
 		if err != nil {
 			// TODO: standardize errors on the RPC side
