@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/spf13/cobra"
 
@@ -62,7 +63,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 			ConsensusParams: types.DefaultConsensusParams(),
 		}
 
-		pubKey, err := pv.GetPubKey()
+		pubKey, err := pv.GetPubKey(crypto.QuorumHash{})
 		if err != nil {
 			return fmt.Errorf("can't get pubkey: %w", err)
 		}

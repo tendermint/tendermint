@@ -656,9 +656,15 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	// If an address is provided, listen on the socket for a connection from an
-	// external signing process.
-	if config.PrivValidatorListenAddr != "" {
+	if config.PrivValidatorCoreLocalPort != "" {
+		// If a local port is provided for Dash Core rpc into the service to sign.
+		privValidator, err = createAndStartPrivValidatorRPCClient(config.PrivValidatorCoreLocalPort, genDoc.ChainID, logger)
+		if err != nil {
+			return nil, fmt.Errorf("error with private validator socket client: %w", err)
+		}
+	} else if config.PrivValidatorListenAddr != "" {
+		// If an address is provided, listen on the socket for a connection from an
+		// external signing process.
 		// FIXME: we should start services inside OnStart
 		privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, genDoc.ChainID, logger)
 		if err != nil {
@@ -1367,6 +1373,32 @@ func createAndStartPrivValidatorSocketClient(
 	}
 
 	pvsc, err := privval.NewSignerClient(pve, chainID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start private validator: %w", err)
+	}
+
+	// try to get a pubkey from private validate first time
+	_, err = pvsc.GetPubKey()
+	if err != nil {
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
+	}
+
+	const (
+		retries = 50 // 50 * 100ms = 5s total
+		timeout = 100 * time.Millisecond
+	)
+	pvscWithRetries := privval.NewRetrySignerClient(pvsc, retries, timeout)
+
+	return pvscWithRetries, nil
+}
+
+func createAndStartPrivValidatorRPCClient(
+	port,
+	chainID string,
+	logger log.Logger,
+) (types.PrivValidator, error) {
+
+	pvsc, err := privval.NewDashCoreSignerClient(port, chainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}

@@ -94,6 +94,7 @@ func (vs *validatorStub) signVote(
 	voteType tmproto.SignedMsgType,
 	hash []byte,
 	lastAppHash []byte,
+	quorumHash crypto.QuorumHash,
 	header types.PartSetHeader) (*types.Vote, error) {
 
 	proTxHash, err := vs.PrivValidator.GetProTxHash()
@@ -111,7 +112,7 @@ func (vs *validatorStub) signVote(
 		StateID:            types.StateID{LastAppHash: lastAppHash},
 	}
 	v := vote.ToProto()
-	err = vs.PrivValidator.SignVote(config.ChainID(), v)
+	err = vs.PrivValidator.SignVote(config.ChainID(), quorumHash, v)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
 
@@ -119,8 +120,8 @@ func (vs *validatorStub) signVote(
 }
 
 // Sign vote for type/hash/header
-func signVote(vs *validatorStub, voteType tmproto.SignedMsgType, hash []byte, lastAppHash []byte, header types.PartSetHeader) *types.Vote {
-	v, err := vs.signVote(voteType, hash, lastAppHash, header)
+func signVote(vs *validatorStub, voteType tmproto.SignedMsgType, hash []byte, lastAppHash []byte, quorumHash crypto.QuorumHash, header types.PartSetHeader) *types.Vote {
+	v, err := vs.signVote(voteType, hash, lastAppHash, quorumHash, header)
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
 	}
@@ -131,11 +132,12 @@ func signVotes(
 	voteType tmproto.SignedMsgType,
 	hash []byte,
 	lastAppHash []byte,
-	header types.PartSetHeader,
+	quorumHash crypto.QuorumHash,
+    header types.PartSetHeader,
 	vss ...*validatorStub) []*types.Vote {
 	votes := make([]*types.Vote, len(vss))
 	for i, vs := range vss {
-		votes[i] = signVote(vs, voteType, hash, lastAppHash, header)
+		votes[i] = signVote(vs, voteType, hash, lastAppHash, quorumHash, header)
 	}
 	return votes
 }
@@ -201,6 +203,7 @@ func decideProposal(
 	block, blockParts := cs1.createProposalBlock()
 	validRound := cs1.ValidRound
 	chainID := cs1.state.ChainID
+	quorumHash := cs1.Validators.QuorumHash
 	cs1.mtx.Unlock()
 	if block == nil {
 		panic("Failed to createProposalBlock. Did you forget to add commit for previous block?")
@@ -210,7 +213,7 @@ func decideProposal(
 	polRound, propBlockID := validRound, types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 	proposal = types.NewProposal(height, 1, round, polRound, propBlockID)
 	p := proposal.ToProto()
-	if err := vs.SignProposal(chainID, p); err != nil {
+	if err := vs.SignProposal(chainID, quorumHash, p); err != nil {
 		panic(err)
 	}
 
@@ -232,7 +235,7 @@ func signAddVotes(
 	header types.PartSetHeader,
 	vss ...*validatorStub,
 ) {
-	votes := signVotes(voteType, hash, to.state.AppHash, header, vss...)
+	votes := signVotes(voteType, hash, to.state.AppHash, to.Validators.QuorumHash, header, vss...)
 	addVotes(to, votes...)
 }
 
@@ -709,7 +712,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 	}
 }
 
-func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount int, validate bool) ([]*types.Validator, []crypto.ProTxHash, crypto.PubKey) {
+func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount int, validate bool) ([]*types.Validator, []crypto.ProTxHash, crypto.PubKey, crypto.QuorumHash) {
 	currentHeight, currentValidators := css[0].GetValidatorSet()
 	currentValidatorCount := len(currentValidators.Validators)
 
@@ -742,7 +745,7 @@ func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount 
 	// now that we have the list of all the protxhashes we need to regenerate the keys and the threshold public key
 	privKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(validatorProTxHashes)
 	// privKeys are returned in order
-
+	quorumHash := crypto.RandQuorumHash()
 	var privVal types.PrivValidator
 	updatedValidators := make([]*types.Validator, len(validatorProTxHashes))
 	publicKeys := make([]crypto.PubKey, len(validatorProTxHashes))
@@ -759,7 +762,7 @@ func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount 
 				if err != nil {
 					panic(err)
 				}
-				updatedValidators[j] = privVal.ExtractIntoValidator(height + 3)
+				updatedValidators[j] = privVal.ExtractIntoValidator(height + 3, quorumHash)
 				publicKeys[j] = privKeys[j].PubKey()
 				if !bytes.Equal(updatedValidators[j].PubKey.Bytes(), publicKeys[j].Bytes()) {
 					panic("the validator public key should match the public key")
@@ -777,10 +780,10 @@ func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount 
 	if !bytes.Equal(recoveredThresholdPublicKey.Bytes(), thresholdPublicKey.Bytes()) {
 		panic("the recovered public key should match the threshold public key")
 	}
-	return updatedValidators, newValidatorProTxHashes, thresholdPublicKey
+	return updatedValidators, newValidatorProTxHashes, thresholdPublicKey, quorumHash
 }
 
-func updateConsensusNetRemoveValidators(css []*State, height int64, removeValCount int, validate bool) ([]*types.Validator, []*types.Validator, crypto.PubKey) {
+func updateConsensusNetRemoveValidators(css []*State, height int64, removeValCount int, validate bool) ([]*types.Validator, []*types.Validator, crypto.PubKey, crypto.QuorumHash) {
 
 	currentHeight, currentValidators := css[0].GetValidatorSet()
 	currentValidatorCount := len(currentValidators.Validators)
@@ -808,7 +811,7 @@ func updateConsensusNetRemoveValidators(css []*State, height int64, removeValCou
 	return updateConsensusNetRemoveValidatorsWithProTxHashes(css, height, removedValidatorProTxHashes, validate)
 }
 
-func updateConsensusNetRemoveValidatorsWithProTxHashes(css []*State, height int64, removalProTxHashes []crypto.ProTxHash, validate bool) ([]*types.Validator, []*types.Validator, crypto.PubKey) {
+func updateConsensusNetRemoveValidatorsWithProTxHashes(css []*State, height int64, removalProTxHashes []crypto.ProTxHash, validate bool) ([]*types.Validator, []*types.Validator, crypto.PubKey, crypto.QuorumHash) {
 	currentValidatorCount := len(css[0].Validators.Validators)
 	currentValidators := css[0].Validators
 
@@ -841,7 +844,7 @@ func updateConsensusNetRemoveValidatorsWithProTxHashes(css []*State, height int6
 	// now that we have the list of all the protxhashes we need to regenerate the keys and the threshold public key
 	privKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(validatorProTxHashes)
 	// privKeys are returned in order
-
+	quorumHash := crypto.RandQuorumHash()
 	var privVal types.PrivValidator
 	updatedValidators := make([]*types.Validator, len(validatorProTxHashes))
 	removedValidators := make([]*types.Validator, len(removalProTxHashes))
@@ -860,7 +863,7 @@ func updateConsensusNetRemoveValidatorsWithProTxHashes(css []*State, height int6
 				if err != nil {
 					panic(err)
 				}
-				updatedValidators[i] = privVal.ExtractIntoValidator(height + 3)
+				updatedValidators[i] = privVal.ExtractIntoValidator(height + 3, quorumHash)
 				publicKeys[i] = privKeys[i].PubKey()
 				if !bytes.Equal(updatedValidators[i].PubKey.Bytes(), publicKeys[i].Bytes()) {
 					panic("the validator public key should match the public key")
@@ -882,7 +885,7 @@ func updateConsensusNetRemoveValidatorsWithProTxHashes(css []*State, height int6
 	if !bytes.Equal(recoveredThresholdPublicKey.Bytes(), thresholdPublicKey.Bytes()) {
 		panic("the recovered public key should match the threshold public key")
 	}
-	return updatedValidators, removedValidators, thresholdPublicKey
+	return updatedValidators, removedValidators, thresholdPublicKey, quorumHash
 }
 
 // nPeers = nValidators + nNotValidator

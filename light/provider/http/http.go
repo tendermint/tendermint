@@ -104,6 +104,7 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 		maxPerPage         = 100
 		vals               = []*types.Validator{}
 		thresholdPublicKey crypto.PubKey
+		quorumHash         crypto.QuorumHash
 		page               = 1
 	)
 
@@ -125,7 +126,7 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 				continue
 			}
 			if len(res.Validators) == 0 { // no more validators left
-				valSet, err := types.ValidatorSetFromExistingValidators(vals, thresholdPublicKey)
+				valSet, err := types.ValidatorSetFromExistingValidators(vals, thresholdPublicKey, quorumHash)
 				if err != nil {
 					return nil, provider.ErrBadLightBlock{Reason: err}
 				}
@@ -134,12 +135,13 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 			vals = append(vals, res.Validators...)
 			if requestThresholdPublicKey {
 				thresholdPublicKey = *res.ThresholdPublicKey
+				quorumHash = *res.QuorumHash
 			}
 			page++
 			break
 		}
 	}
-	valSet, err := types.ValidatorSetFromExistingValidators(vals, thresholdPublicKey)
+	valSet, err := types.ValidatorSetFromExistingValidators(vals, thresholdPublicKey, quorumHash)
 	if err != nil {
 		return nil, provider.ErrBadLightBlock{Reason: err}
 	}

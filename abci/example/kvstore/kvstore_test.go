@@ -1,6 +1,7 @@
 package kvstore
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"sort"
@@ -209,6 +210,10 @@ func valSetEqualTest(t *testing.T, vals1, vals2 types.ValidatorSetUpdate) {
 	if !vals1.ThresholdPublicKey.Equal(vals2.ThresholdPublicKey) {
 		t.Fatalf("val set threshold public key did not match. got %X, expected %X",
 			vals1.ThresholdPublicKey, vals2.ThresholdPublicKey)
+	}
+	if !bytes.Equal(vals1.QuorumHash, vals2.QuorumHash) {
+		t.Fatalf("val set quorum hash did not match. got %X, expected %X",
+			vals1.QuorumHash, vals2.QuorumHash)
 	}
 }
 

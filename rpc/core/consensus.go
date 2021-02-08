@@ -42,14 +42,17 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64, pagePtr, perPagePtr *in
 
 	v := validators.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
 	var thresholdPublicKey crypto.PubKey = nil
+	var quorumHash crypto.QuorumHash = nil
 	if requestThresholdPublicKey {
 		thresholdPublicKey = validators.ThresholdPublicKey
+		quorumHash = validators.QuorumHash
 	}
 
 	return &ctypes.ResultValidators{
 		BlockHeight:        height,
 		Validators:         v,
 		ThresholdPublicKey: &thresholdPublicKey,
+		QuorumHash:         &quorumHash,
 		Count:              len(v),
 		Total:              totalCount}, nil
 }

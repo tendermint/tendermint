@@ -204,6 +204,10 @@ type BaseConfig struct { //nolint: maligned
 	// connections from an external PrivValidator process
 	PrivValidatorListenAddr string `mapstructure:"priv_validator_laddr"`
 
+	// RPC port for Tendermint to query for
+	// an external PrivValidator process
+	PrivValidatorCoreLocalPort string `mapstructure:"priv_validator_core_local_port"`
+
 	// A JSON file containing the private key to use for p2p authenticated encryption
 	NodeKey string `mapstructure:"node_key_file"`
 

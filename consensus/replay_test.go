@@ -359,7 +359,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	// HEIGHT 2
-	updatedValidators, _, newThresholdPublicKey := updateConsensusNetAddNewValidators(css, height, 1, false)
+	updatedValidators, _, newThresholdPublicKey, quorumHash2 := updateConsensusNetAddNewValidators(css, height, 1, false)
 	height++
 	incrementHeight(vss...)
 	updateTransactions := make([][]byte, len(updatedValidators)+1)
@@ -384,7 +384,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal := types.NewProposal(vss[1].Height, 1, round, -1, blockID)
 	p := proposal.ToProto()
-	if err := vss[1].SignProposal(config.ChainID(), p); err != nil {
+	if err := vss[1].SignProposal(config.ChainID(), quorumHash2, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -409,7 +409,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal = types.NewProposal(vss[2].Height, 1, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vss[2].SignProposal(config.ChainID(), p); err != nil {
+	if err := vss[2].SignProposal(config.ChainID(), quorumHash2, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -426,7 +426,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	// HEIGHT 4
 	// 1 new validator comes in here from block 2
-	updatedValidators, _, newThresholdPublicKey = updateConsensusNetAddNewValidators(css, height, 2, false)
+	updatedValidators, _, newThresholdPublicKey, quorumHash4 := updateConsensusNetAddNewValidators(css, height, 2, false)
 	height++
 	incrementHeight(vss...)
 	updateTransactions2 := make([][]byte, len(updatedValidators)+1)
@@ -449,7 +449,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal = types.NewProposal(vss[3].Height, 1, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vss[3].SignProposal(config.ChainID(), p); err != nil {
+	if err := vss[3].SignProposal(config.ChainID(), quorumHash2, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -517,7 +517,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		panic(fmt.Sprintf("validator proTxHash %X not found in newVss", proposerProTxHash))
 	}
 	proposerIndex := valIndexFnByProTxHash(proposerProTxHash)
-	if err := vss[proposerIndex].SignProposal(config.ChainID(), p); err != nil {
+	if err := vss[proposerIndex].SignProposal(config.ChainID(), quorumHash2, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -544,7 +544,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	// HEIGHT 6
 	//
-	updatedValidators, removedValidators, newThresholdPublicKey := updateConsensusNetRemoveValidators(css, height,
+	updatedValidators, removedValidators, newThresholdPublicKey, quorumHash6 := updateConsensusNetRemoveValidators(css, height,
 		1, false)
 	height++
 	updateTransactions3 := make([][]byte, len(updatedValidators)+len(removedValidators)+1)
@@ -590,7 +590,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		panic(fmt.Sprintf("validator proTxHash %X not found in newVss", proposerProTxHash))
 	}
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
-	if err := vss[proposerIndex].SignProposal(config.ChainID(), p); err != nil {
+	if err := vss[proposerIndex].SignProposal(config.ChainID(), quorumHash4, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -634,7 +634,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	p = proposal.ToProto()
 	proposerProTxHash = css[0].RoundState.Validators.GetProposer().ProTxHash
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
-	if err := vss[proposerIndex].SignProposal(config.ChainID(), p); err != nil {
+	if err := vss[proposerIndex].SignProposal(config.ChainID(), quorumHash4, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -665,7 +665,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	// HEIGHT 8
 
 	proTxHashToRemove := updatedValidators[len(updatedValidators)-1].ProTxHash
-	updatedValidators, removedValidators, newThresholdPublicKey = updateConsensusNetRemoveValidatorsWithProTxHashes(css,
+	updatedValidators, removedValidators, newThresholdPublicKey, _ = updateConsensusNetRemoveValidatorsWithProTxHashes(css,
 		height, []crypto.ProTxHash{proTxHashToRemove}, false)
 	height++
 	incrementHeight(vss...)
@@ -701,7 +701,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	p = proposal.ToProto()
 	proposerProTxHash = css[0].RoundState.Validators.GetProposer().ProTxHash
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
-	if err := vss[proposerIndex].SignProposal(config.ChainID(), p); err != nil {
+	if err := vss[proposerIndex].SignProposal(config.ChainID(), quorumHash6, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -874,6 +874,11 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 
 		privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 
+		gdoc, err := sm.MakeGenesisDocFromFile(config.GenesisFile())
+		if err != nil {
+			t.Error(err)
+		}
+
 		wal, err := NewWAL(walFile)
 		require.NoError(t, err)
 		wal.SetLogger(log.TestingLogger())
@@ -886,7 +891,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		})
 		chain, commits, err = makeBlockchainFromWAL(wal)
 		require.NoError(t, err)
-		pubKey, err := privVal.GetPubKey()
+		pubKey, err := privVal.GetPubKey(gdoc.QuorumHash)
 		require.NoError(t, err)
 		stateDB, genesisState, store = stateAndStore(config, pubKey, kvstore.ProtocolVersion)
 
@@ -1087,7 +1092,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	const appVersion = 0x0
-	pubKey, err := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey(crypto.QuorumHash{})
 	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(config, pubKey, appVersion)
 	stateStore := sm.NewStore(stateDB)
@@ -1422,7 +1427,8 @@ func (bs *mockBlockStore) PruneBlocks(height int64) (uint64, error) {
 
 func TestHandshakeUpdatesValidators(t *testing.T) {
 	val, _ := types.RandValidator()
-	vals := types.NewValidatorSet([]*types.Validator{val}, val.PubKey)
+	randQuorumHash := crypto.RandQuorumHash()
+	vals := types.NewValidatorSet([]*types.Validator{val}, val.PubKey, randQuorumHash)
 	abciValidatorSetUpdates := types.TM2PB.ValidatorUpdates(vals)
 	app := &initChainApp{vals: &abciValidatorSetUpdates}
 	clientCreator := proxy.NewLocalClientCreator(app)
@@ -1430,7 +1436,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	config := ResetConfig("handshake_test_")
 	defer os.RemoveAll(config.RootDir)
 	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
-	pubKey, err := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey(randQuorumHash)
 	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(config, pubKey, 0x0)
 	stateStore := sm.NewStore(stateDB)

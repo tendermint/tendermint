@@ -26,7 +26,7 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 
 	conflictingVals, conflictingPrivVals := types.GenerateValidatorSet(3)
 
-	commonVals := types.NewValidatorSet(conflictingVals.Validators[0:2], conflictingVals.ThresholdPublicKey)
+	commonVals := types.NewValidatorSet(conflictingVals.Validators[0:2], conflictingVals.ThresholdPublicKey, conflictingVals.QuorumHash)
 
 	commonHeader := makeHeaderRandom(4)
 	commonHeader.Time = defaultEvidenceTime
@@ -299,7 +299,9 @@ type voteData struct {
 func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 	val := types.NewMockPV()
 	val2 := types.NewMockPV()
-	valSet := types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(0)}, val.PrivKey.PubKey())
+	randQuorumHash := crypto.RandQuorumHash()
+	valSet := types.NewValidatorSet([]*types.Validator{val.ExtractIntoValidator(0, randQuorumHash)},
+		val.PrivKey.PubKey(), randQuorumHash)
 
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
@@ -310,28 +312,28 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 
 	const chainID = "mychain"
 
-	vote1 := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, stateID)
+	vote1 := makeVote(t, val, chainID, randQuorumHash, 0, 10, 2, 1, blockID, stateID)
 	v1 := vote1.ToProto()
-	err := val.SignVote(chainID, v1)
+	err := val.SignVote(chainID, randQuorumHash, v1)
 	require.NoError(t, err)
-	badVote := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, stateID)
+	badVote := makeVote(t, val, chainID, randQuorumHash, 0, 10, 2, 1, blockID, stateID)
 	bv := badVote.ToProto()
-	err = val2.SignVote(chainID, bv)
+	err = val2.SignVote(chainID, randQuorumHash, bv)
 	require.NoError(t, err)
 
 	vote1.BlockSignature = v1.BlockSignature
 	badVote.BlockSignature = bv.BlockSignature
 
 	cases := []voteData{
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, stateID), true}, // different block ids
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID3, stateID), true},
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID4, stateID), true},
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID, stateID), false},     // wrong block id
-		{vote1, makeVote(t, val, "mychain2", 0, 10, 2, 1, blockID2, stateID), false}, // wrong chain id
-		{vote1, makeVote(t, val, chainID, 0, 11, 2, 1, blockID2, stateID), false},    // wrong height
-		{vote1, makeVote(t, val, chainID, 0, 10, 3, 1, blockID2, stateID), false},    // wrong round
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 2, blockID2, stateID), false},    // wrong step
-		{vote1, makeVote(t, val2, chainID, 0, 10, 2, 1, blockID2, stateID), false},   // wrong validator
+		{vote1, makeVote(t, val, chainID, randQuorumHash, 0, 10, 2, 1, blockID2, stateID), true}, // different block ids
+		{vote1, makeVote(t, val, chainID, randQuorumHash, 0, 10, 2, 1, blockID3, stateID), true},
+		{vote1, makeVote(t, val, chainID, randQuorumHash, 0, 10, 2, 1, blockID4, stateID), true},
+		{vote1, makeVote(t, val, chainID, randQuorumHash, 0, 10, 2, 1, blockID, stateID), false},     // wrong block id
+		{vote1, makeVote(t, val, "mychain2", randQuorumHash, 0, 10, 2, 1, blockID2, stateID), false}, // wrong chain id
+		{vote1, makeVote(t, val, chainID, randQuorumHash, 0, 11, 2, 1, blockID2, stateID), false},    // wrong height
+		{vote1, makeVote(t, val, chainID, randQuorumHash, 0, 10, 3, 1, blockID2, stateID), false},    // wrong round
+		{vote1, makeVote(t, val, chainID, randQuorumHash, 0, 10, 2, 2, blockID2, stateID), false},    // wrong step
+		{vote1, makeVote(t, val2, chainID, randQuorumHash, 0, 10, 2, 1, blockID2, stateID), false},   // wrong validator
 		{vote1, badVote, false}, // signed by wrong key
 	}
 
@@ -392,7 +394,7 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 }
 
 func makeVote(
-	t *testing.T, val types.PrivValidator, chainID string, valIndex int32, height int64,
+	t *testing.T, val types.PrivValidator, chainID string, quorumHash crypto.QuorumHash, valIndex int32, height int64,
 	round int32, step int, blockID types.BlockID, stateID types.StateID) *types.Vote {
 	proTxHash, err := val.GetProTxHash()
 	require.NoError(t, err)
@@ -407,7 +409,7 @@ func makeVote(
 	}
 
 	vpb := v.ToProto()
-	err = val.SignVote(chainID, vpb)
+	err = val.SignVote(chainID, quorumHash, vpb)
 	if err != nil {
 		panic(err)
 	}

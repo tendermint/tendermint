@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"strconv"
 	"strings"
 
@@ -20,6 +21,7 @@ const (
 	ValidatorSetChangePrefix                string = "val:"
 	ValidatorThresholdPublicKeyChangePrefix string = "tpk:"
 	ValidatorThresholdPublicKeyPrefix       string = "tpk"
+	ValidatorSetQuorumHashPrefix            string = "vqh"
 )
 
 //-----------------------------------------
@@ -77,6 +79,8 @@ func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) t
 		return app.execValidatorTx(req.Tx)
 	} else if isThresholdPublicKeyTx(req.Tx) {
 		return app.execThresholdPublicKeyTx(req.Tx)
+	} else if isQuorumHashTx(req.Tx) {
+		return app.execQuorumHashTx(req.Tx)
 	}
 
 	// otherwise, update the key-value store
@@ -112,6 +116,16 @@ func (app *PersistentKVStoreApplication) Query(reqQuery types.RequestQuery) (res
 		return
 	case "/tpk":
 		key := []byte("tpk")
+		value, err := app.app.state.db.Get(key)
+		if err != nil {
+			panic(err)
+		}
+
+		resQuery.Key = reqQuery.Data
+		resQuery.Value = value
+		return
+	case "/vqh":
+		key := []byte("vqh")
 		value, err := app.app.state.db.Get(key)
 		if err != nil {
 			panic(err)
@@ -223,12 +237,21 @@ func MakeThresholdPublicKeyChangeTx(thresholdPublicKey pc.PublicKey) []byte {
 	return []byte(fmt.Sprintf("tpk:%s", pubStr))
 }
 
+func MakeQuorumHashTx(quorumHash crypto.QuorumHash) []byte {
+	pubStr := base64.StdEncoding.EncodeToString(quorumHash)
+	return []byte(fmt.Sprintf("vqh:%s", pubStr))
+}
+
 func isValidatorTx(tx []byte) bool {
 	return strings.HasPrefix(string(tx), ValidatorSetChangePrefix)
 }
 
 func isThresholdPublicKeyTx(tx []byte) bool {
 	return strings.HasPrefix(string(tx), ValidatorThresholdPublicKeyPrefix)
+}
+
+func isQuorumHashTx(tx []byte) bool {
+	return strings.HasPrefix(string(tx), ValidatorSetQuorumHashPrefix)
 }
 
 // format is "val:proTxHash!pubkey!power"
@@ -287,6 +310,23 @@ func (app *PersistentKVStoreApplication) execThresholdPublicKeyTx(tx []byte) typ
 
 	return app.updateThresholdPublicKey(types.UpdateThresholdPublicKey(pubkey))
 }
+
+// format is "vqh:hash"
+// hash is a base64-encoded 32-byte hash
+func (app *PersistentKVStoreApplication) execQuorumHashTx(tx []byte) types.ResponseDeliverTx {
+	tx = tx[len(ValidatorSetQuorumHashPrefix):]
+
+	// decode the pubkey
+	quorumHash, err := base64.StdEncoding.DecodeString(string(tx))
+	if err != nil {
+		return types.ResponseDeliverTx{
+			Code: code.CodeTypeEncodingError,
+			Log:  fmt.Sprintf("Quorum Hash (%s) is invalid base64", string(tx))}
+	}
+
+	return app.updateQuorumHash(types.UpdateQuorumHash(quorumHash))
+}
+
 
 // add, update, or remove a validator
 func (app *PersistentKVStoreApplication) updateValidatorSet(v types.ValidatorUpdate) types.ResponseDeliverTx {
@@ -356,6 +396,27 @@ func (app *PersistentKVStoreApplication) updateThresholdPublicKey(
 
 	// we only update the changes array if we successfully updated the tree
 	app.ValidatorSetUpdates.ThresholdPublicKey = thresholdPublicKeyUpdate.GetThresholdPublicKey()
+
+	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
+}
+
+func (app *PersistentKVStoreApplication) updateQuorumHash(
+	quorumHashUpdate types.QuorumHashUpdate) types.ResponseDeliverTx {
+	key := []byte("vqh")
+
+	// add or update thresholdPublicKey
+	value := bytes.NewBuffer(make([]byte, 0))
+	if err := types.WriteMessage(&quorumHashUpdate, value); err != nil {
+		return types.ResponseDeliverTx{
+			Code: code.CodeTypeEncodingError,
+			Log:  fmt.Sprintf("Error encoding threshold public key: %v", err)}
+	}
+	if err := app.app.state.db.Set(key, value.Bytes()); err != nil {
+		panic(err)
+	}
+
+	// we only update the changes array if we successfully updated the tree
+	app.ValidatorSetUpdates.QuorumHash = quorumHashUpdate.GetQuorumHash()
 
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
 }

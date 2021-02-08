@@ -12,6 +12,7 @@ const (
 	AddressSize     = tmhash.TruncatedSize
 	DefaultHashSize = 32
 	ProTxHashSize   = DefaultHashSize
+	QuorumHashSize  = DefaultHashSize
 )
 
 type KeyType int
@@ -31,6 +32,8 @@ type Address = bytes.HexBytes
 
 type ProTxHash = bytes.HexBytes
 
+type QuorumHash = bytes.HexBytes
+
 func AddressHash(bz []byte) Address {
 	return Address(tmhash.SumTruncated(bz))
 }
@@ -41,6 +44,10 @@ func ProTxHashFromSeedBytes(bz []byte) ProTxHash {
 
 func RandProTxHash() ProTxHash {
 	return ProTxHash(CRandBytes(ProTxHashSize))
+}
+
+func RandQuorumHash() QuorumHash {
+	return QuorumHash(CRandBytes(ProTxHashSize))
 }
 
 type SortProTxHash []ProTxHash

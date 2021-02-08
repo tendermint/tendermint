@@ -355,10 +355,15 @@ message ValidatorUpdate {
 message ValidatorSetUpdate {
   repeated ValidatorUpdate validator_updates = 1 [(gogoproto.nullable) = false];
   tendermint.crypto.PublicKey threshold_public_key = 2 [(gogoproto.nullable) = false];
+  bytes quorum_hash = 3;
 }
 
 message ThresholdPublicKeyUpdate {
   tendermint.crypto.PublicKey threshold_public_key = 1 [(gogoproto.nullable) = false];
+}
+
+message QuorumHashUpdate {
+  bytes quorum_hash = 1;
 }
 
 // VoteInfo

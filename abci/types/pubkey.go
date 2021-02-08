@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	crypto2 "github.com/tendermint/tendermint/proto/tendermint/crypto"
@@ -36,5 +37,11 @@ func UpdateThresholdPublicKey(pk []byte) ThresholdPublicKeyUpdate {
 
 	return ThresholdPublicKeyUpdate{
 		ThresholdPublicKey: pkp,
+	}
+}
+
+func UpdateQuorumHash(quorumHash crypto.QuorumHash) QuorumHashUpdate {
+	return QuorumHashUpdate{
+		QuorumHash: quorumHash,
 	}
 }

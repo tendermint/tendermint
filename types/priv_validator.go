@@ -15,15 +15,15 @@ import (
 // PrivValidator defines the functionality of a local Tendermint validator
 // that signs votes and proposals, and never double signs.
 type PrivValidator interface {
-	GetPubKey() (crypto.PubKey, error)
+	GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error)
 	UpdatePrivateKey(privateKey crypto.PrivKey, height int64) error
 
 	GetProTxHash() (crypto.ProTxHash, error)
 
-	SignVote(chainID string, vote *tmproto.Vote) error
-	SignProposal(chainID string, proposal *tmproto.Proposal) error
+	SignVote(chainID string, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error
+	SignProposal(chainID string, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error
 
-	ExtractIntoValidator(height int64) *Validator
+	ExtractIntoValidator(height int64, quorumHash crypto.QuorumHash) *Validator
 }
 
 type PrivValidatorsByProTxHash []PrivValidator
@@ -79,7 +79,7 @@ func NewMockPVWithParams(privKey crypto.PrivKey, proTxHash []byte, breakProposal
 }
 
 // Implements PrivValidator.
-func (pv *MockPV) GetPubKey() (crypto.PubKey, error) {
+func (pv *MockPV) GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
 	return pv.PrivKey.PubKey(), nil
 }
 
@@ -92,7 +92,7 @@ func (pv *MockPV) GetProTxHash() (crypto.ProTxHash, error) {
 }
 
 // Implements PrivValidator.
-func (pv *MockPV) SignVote(chainID string, vote *tmproto.Vote) error {
+func (pv *MockPV) SignVote(chainID string, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
 	pv.updateKeyIfNeeded(vote.Height)
 	useChainID := chainID
 	if pv.breakVoteSigning {
@@ -123,7 +123,7 @@ func (pv *MockPV) SignVote(chainID string, vote *tmproto.Vote) error {
 }
 
 // Implements PrivValidator.
-func (pv *MockPV) SignProposal(chainID string, proposal *tmproto.Proposal) error {
+func (pv *MockPV) SignProposal(chainID string, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
 	pv.updateKeyIfNeeded(proposal.Height)
 	useChainID := chainID
 	if pv.breakProposalSigning {
@@ -175,7 +175,7 @@ func (pv *MockPV) updateKeyIfNeeded(height int64) {
 	pv.mtx.RUnlock()
 }
 
-func (pv *MockPV) ExtractIntoValidator(height int64) *Validator {
+func (pv *MockPV) ExtractIntoValidator(height int64, quorumHash crypto.QuorumHash) *Validator {
 	var pubKey crypto.PubKey
 	if pv.NextPrivKeys != nil && len(pv.NextPrivKeys) > 0 && height >= pv.NextPrivKeyHeights[0] {
 		for i, nextPrivKeyHeight := range pv.NextPrivKeyHeights {
@@ -184,7 +184,7 @@ func (pv *MockPV) ExtractIntoValidator(height int64) *Validator {
 			}
 		}
 	} else {
-		pubKey, _ = pv.GetPubKey()
+		pubKey, _ = pv.GetPubKey(quorumHash)
 	}
 	if len(pv.ProTxHash) != crypto.DefaultHashSize {
 		panic("proTxHash wrong length")
@@ -199,7 +199,7 @@ func (pv *MockPV) ExtractIntoValidator(height int64) *Validator {
 
 // String returns a string representation of the MockPV.
 func (pv *MockPV) String() string {
-	mpv, _ := pv.GetPubKey() // mockPV will never return an error, ignored here
+	mpv, _ := pv.GetPubKey([]byte{}) // mockPV will never return an error, ignored here
 	return fmt.Sprintf("MockPV{%v}", mpv.Address())
 }
 

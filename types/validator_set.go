@@ -60,6 +60,7 @@ type ValidatorSet struct {
 	Validators         []*Validator  `json:"validators"`
 	Proposer           *Validator    `json:"proposer"`
 	ThresholdPublicKey crypto.PubKey `json:"threshold_public_key"`
+	QuorumHash         crypto.QuorumHash `json:"quorum_hash"`
 
 	// cached (unexported)
 	totalVotingPower int64
@@ -75,8 +76,10 @@ type ValidatorSet struct {
 // Note the validator set size has an implied limit equal to that of the
 // MaxVotesCount - commits by a validator set larger than this will fail
 // validation.
-func NewValidatorSet(valz []*Validator, newThresholdPublicKey crypto.PubKey) *ValidatorSet {
-	vals := &ValidatorSet{}
+func NewValidatorSet(valz []*Validator, newThresholdPublicKey crypto.PubKey, quorumHash crypto.QuorumHash) *ValidatorSet {
+	vals := &ValidatorSet{
+		QuorumHash: quorumHash,
+	}
 	err := vals.updateWithChangeSet(valz, false, newThresholdPublicKey)
 	if err != nil {
 		panic(fmt.Sprintf("Cannot create validator set: %v", err))
@@ -102,6 +105,10 @@ func (vals *ValidatorSet) ValidateBasic() error {
 		return fmt.Errorf("thresholdPublicKey error: %w", err)
 	}
 
+	if err := vals.QuorumHashValid(); err != nil {
+		return fmt.Errorf("thresholdPublicKey error: %w", err)
+	}
+
 	if err := vals.Proposer.ValidateBasic(); err != nil {
 		return fmt.Errorf("proposer failed validate basic, error: %w", err)
 	}
@@ -111,6 +118,9 @@ func (vals *ValidatorSet) ValidateBasic() error {
 
 func (vals *ValidatorSet) Equals(other *ValidatorSet) bool {
 	if !vals.ThresholdPublicKey.Equals(other.ThresholdPublicKey) {
+		return false
+	}
+	if !bytes.Equal(vals.QuorumHash, other.QuorumHash) {
 		return false
 	}
 	if len(vals.Validators) != len(other.Validators) {
@@ -129,7 +139,7 @@ func (vals *ValidatorSet) IsNilOrEmpty() bool {
 	return vals == nil || len(vals.Validators) == 0
 }
 
-// IsNilOrEmpty returns true if validator set is nil or empty.
+// ThresholdPublicKeyValid returns true if threshold public key is valid.
 func (vals *ValidatorSet) ThresholdPublicKeyValid() error {
 	if vals.ThresholdPublicKey == nil {
 		return errors.New("threshold public key is not set")
@@ -149,6 +159,17 @@ func (vals *ValidatorSet) ThresholdPublicKeyValid() error {
 		} else if !recoveredThresholdPublicKey.Equals(vals.ThresholdPublicKey) {
 			return errors.New("incorrect recovered threshold public key")
 		}
+	}
+	return nil
+}
+
+// QuorumHashValid returns true if quorum hash is valid.
+func (vals *ValidatorSet) QuorumHashValid() error {
+	if vals.QuorumHash == nil {
+		return errors.New("quorum hash is not set")
+	}
+	if len(vals.QuorumHash.Bytes()) != crypto.DefaultHashSize {
+		return errors.New("quorum hash is wrong size")
 	}
 	return nil
 }
@@ -303,6 +324,7 @@ func (vals *ValidatorSet) Copy() *ValidatorSet {
 		Proposer:           vals.Proposer,
 		totalVotingPower:   vals.totalVotingPower,
 		ThresholdPublicKey: vals.ThresholdPublicKey,
+		QuorumHash:         vals.QuorumHash,
 	}
 }
 
@@ -446,7 +468,7 @@ func (vals *ValidatorSet) RegenerateWithNewKeys() (*ValidatorSet, []PrivValidato
 	// Just to make sure
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.RandQuorumHash()), privValidators
 }
 
 // Forces recalculation of the set's total voting power.
@@ -1231,6 +1253,7 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 		return nil, fmt.Errorf("toProto: thresholdPublicKey error: %w", err)
 	}
 	vp.ThresholdPublicKey = thresholdPublicKey
+	vp.QuorumHash = vals.QuorumHash
 
 	return vp, nil
 }
@@ -1271,13 +1294,16 @@ func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 
 	vals.ThresholdPublicKey = thresholdPublicKey
 
+	vals.QuorumHash = vp.QuorumHash
+
 	return vals, vals.ValidateBasic()
 }
 
 // ValidatorSetFromExistingValidators takes an existing array of validators and rebuilds
 // the exact same validator set that corresponds to it without changing the proposer priority or power
 // if any of the validators fail validate basic then an empty set is returned.
-func ValidatorSetFromExistingValidators(valz []*Validator, thresholdPublicKey crypto.PubKey) (*ValidatorSet, error) {
+func ValidatorSetFromExistingValidators(valz []*Validator, thresholdPublicKey crypto.PubKey,
+	quorumHash crypto.QuorumHash) (*ValidatorSet, error) {
 	for _, val := range valz {
 		err := val.ValidateBasic()
 		if err != nil {
@@ -1287,6 +1313,7 @@ func ValidatorSetFromExistingValidators(valz []*Validator, thresholdPublicKey cr
 	vals := &ValidatorSet{
 		Validators:         valz,
 		ThresholdPublicKey: thresholdPublicKey,
+		QuorumHash: quorumHash,
 	}
 	vals.Proposer = vals.findPreviousProposer()
 	vals.updateTotalVotingPower()
@@ -1315,7 +1342,7 @@ func GenerateValidatorSet(numValidators int) (*ValidatorSet, []PrivValidator) {
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.RandQuorumHash()), privValidators
 }
 
 func GenerateTestValidatorSetWithAddresses(addresses []crypto.Address, power []int64) (*ValidatorSet, []PrivValidator) {
@@ -1345,7 +1372,7 @@ func GenerateTestValidatorSetWithAddresses(addresses []crypto.Address, power []i
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.RandQuorumHash()), privValidators
 }
 
 func GenerateTestValidatorSetWithAddressesDefaultPower(addresses []crypto.Address) (*ValidatorSet, []PrivValidator) {
@@ -1373,7 +1400,7 @@ func GenerateTestValidatorSetWithAddressesDefaultPower(addresses []crypto.Addres
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.RandQuorumHash()), privValidators
 }
 
 func GenerateMockValidatorSet(numValidators int) (*ValidatorSet, []*MockPV) {
@@ -1392,7 +1419,7 @@ func GenerateMockValidatorSet(numValidators int) (*ValidatorSet, []*MockPV) {
 
 	sort.Sort(MockPrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.RandQuorumHash()), privValidators
 }
 
 func GenerateGenesisValidators(numValidators int) ([]GenesisValidator, []PrivValidator, crypto.PubKey) {
@@ -1460,7 +1487,7 @@ func GenerateValidatorSetUsingProTxHashes(proTxHashes []crypto.ProTxHash) (*Vali
 
 	sort.Sort(PrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.RandQuorumHash()), privValidators
 }
 
 func GenerateMockValidatorSetUsingProTxHashes(proTxHashes []crypto.ProTxHash) (*ValidatorSet, []*MockPV) {
@@ -1482,7 +1509,7 @@ func GenerateMockValidatorSetUsingProTxHashes(proTxHashes []crypto.ProTxHash) (*
 
 	sort.Sort(MockPrivValidatorsByProTxHash(privValidators))
 
-	return NewValidatorSet(valz, thresholdPublicKey), privValidators
+	return NewValidatorSet(valz, thresholdPublicKey, crypto.RandQuorumHash()), privValidators
 }
 
 func ValidatorUpdatesRegenerateOnProTxHashes(proTxHashes []crypto.ProTxHash) abci.ValidatorSetUpdate {

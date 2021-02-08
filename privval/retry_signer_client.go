@@ -44,8 +44,8 @@ func (sc *RetrySignerClient) Ping() error {
 	return sc.next.Ping()
 }
 
-func (sc *RetrySignerClient) ExtractIntoValidator(height int64) *types.Validator {
-	pubKey, _ := sc.GetPubKey()
+func (sc *RetrySignerClient) ExtractIntoValidator(height int64, quorumHash crypto.QuorumHash) *types.Validator {
+	pubKey, _ := sc.GetPubKey(quorumHash)
 	proTxHash, _ := sc.GetProTxHash()
 	if len(proTxHash) != crypto.DefaultHashSize {
 		panic("proTxHash wrong length")
@@ -58,7 +58,7 @@ func (sc *RetrySignerClient) ExtractIntoValidator(height int64) *types.Validator
 	}
 }
 
-func (sc *RetrySignerClient) GetPubKey() (crypto.PubKey, error) {
+func (sc *RetrySignerClient) GetPubKey(quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
 	var (
 		pk  crypto.PubKey
 		err error
@@ -99,7 +99,7 @@ func (sc *RetrySignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 	return nil, fmt.Errorf("exhausted all attempts to get protxhash: %w", err)
 }
 
-func (sc *RetrySignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
+func (sc *RetrySignerClient) SignVote(chainID string, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
 		err = sc.next.SignVote(chainID, vote)
@@ -115,7 +115,7 @@ func (sc *RetrySignerClient) SignVote(chainID string, vote *tmproto.Vote) error 
 	return fmt.Errorf("exhausted all attempts to sign vote: %w", err)
 }
 
-func (sc *RetrySignerClient) SignProposal(chainID string, proposal *tmproto.Proposal) error {
+func (sc *RetrySignerClient) SignProposal(chainID string, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
 		err = sc.next.SignProposal(chainID, proposal)
