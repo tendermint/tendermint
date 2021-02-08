@@ -495,6 +495,7 @@ func (store dbStore) saveABCIResponses(height int64, abciResponses *tmstate.ABCI
 	}
 
 	batch := store.db.NewBatch()
+	defer batch.Close()
 
 	abciResponses.DeliverTxs = dtxs
 
@@ -508,15 +509,10 @@ func (store dbStore) saveABCIResponses(height int64, abciResponses *tmstate.ABCI
 		return err
 	}
 
+	err = batch.WriteSync()
+
 	return nil
 }
-
-
-
-
-
-
-
 
 //-----------------------------------------------------------------------------
 
