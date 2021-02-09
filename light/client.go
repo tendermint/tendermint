@@ -630,7 +630,7 @@ func (c *Client) verifySequential(
 
 				// attempt to verify header again
 				height--
-				
+
 				continue
 			default:
 				return err
@@ -952,7 +952,7 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 // NOTE: requires a providerMutex lock
 func (c *Client) removeWitnesses(indexes []int) error {
 	// check that we will still have witnesses remaaining
-	if len(c.witnesses) <= len(indexes)  {
+	if len(c.witnesses) <= len(indexes) {
 		return ErrNoWitnesses
 	}
 
@@ -968,9 +968,9 @@ func (c *Client) removeWitnesses(indexes []int) error {
 }
 
 type witnessResponse struct {
-	lb *types.LightBlock
+	lb           *types.LightBlock
 	witnessIndex int
-	err error
+	err          error
 }
 
 // findNewPrimary takes the first alternative provider and promotes it as the
@@ -986,22 +986,22 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 	var (
 		witnessResponsesC = make(chan witnessResponse, len(c.witnesses))
 		witnessesToRemove []int
-		lastError error
+		lastError         error
 	)
 
 	for i, witness := range c.witnesses {
 		go func(witnessIndex int, witnessResponsesC chan witnessResponse) {
 			lb, err := witness.LightBlock(ctx, height)
-			witnessResponsesC <- witnessResponse{ lb, witnessIndex, err }
+			witnessResponsesC <- witnessResponse{lb, witnessIndex, err}
 		}(i, witnessResponsesC)
 	}
 
 	for i := 0; i < cap(witnessResponsesC); i++ {
-		response := <- witnessResponsesC
+		response := <-witnessResponsesC
 		switch response.err {
-		case nil: 
+		case nil:
 			// if we are not intending on removing the primary then append the old primary to the end of the witness slice
-			if (!remove) {
+			if !remove {
 				c.witnesses = append(c.witnesses, c.primary)
 			}
 
@@ -1015,28 +1015,27 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 			// remove witnesses marked as bad (the client must do this before we alter the witness slice and change the indexes
 			// of witnesses). Removal is done in descending order
 			c.removeWitnesses(witnessesToRemove)
-			
+
 			// return the light block that new primary responded with
 			return response.lb, nil
 
 		case provider.ErrLightBlockNotFound:
 		case provider.ErrNoResponse:
 			lastError = response.err
-			c.logger.Debug("error on light block request from witness", 
-			"error", response.err, "primary", c.witnesses[response.witnessIndex])
+			c.logger.Debug("error on light block request from witness",
+				"error", response.err, "primary", c.witnesses[response.witnessIndex])
 			continue
 
 		default:
 			lastError = response.err
-			c.logger.Error("error on light block request from witness, removing...", 
-			"error", response.err, "primary", c.witnesses[response.witnessIndex])
+			c.logger.Error("error on light block request from witness, removing...",
+				"error", response.err, "primary", c.witnesses[response.witnessIndex])
 			witnessesToRemove = append(witnessesToRemove, response.witnessIndex)
 		}
 	}
 
 	return nil, lastError
 }
-
 
 // compareFirstHeaderWithWitnesses concurrently compares h with all witnesses. If any
 // witness reports a different header than h, the function returns an error.
@@ -1079,7 +1078,7 @@ and remove witness. Otherwise, use a different primary`, e.WitnessIndex), "witne
 			}
 		}
 	}
-	
+
 	// remove all witnesses that misbehaved
 	c.removeWitnesses(witnessesToRemove)
 

@@ -42,13 +42,13 @@ type http struct {
 	// The provider tracks the amount of time the client
 	// doesn't have a block. If this exceeds the threshold
 	// then the provider will return an unreliable provider error
-	noBlockThreshold    uint16
-	noBlockCount        uint16
+	noBlockThreshold uint16
+	noBlockCount     uint16
 
 	// In a single request, the provider attempts multiple times
 	// with exponential backoff to reach the client. If this
 	// exceeds the maxRetry attempts, this result in a ErrNoResponse
-	maxRetryAttempts    uint16
+	maxRetryAttempts uint16
 }
 
 type Options struct {
@@ -94,11 +94,11 @@ func NewWithClient(chainID string, client rpcclient.RemoteClient) provider.Provi
 // NewWithClient allows you to provide a custom client.
 func NewWithClientAndOptions(chainID string, client rpcclient.RemoteClient, options Options) provider.Provider {
 	return &http{
-		client:           client,
-		chainID:          chainID,
-		maxRetryAttempts: options.MaxRetryAttempts,
+		client:              client,
+		chainID:             chainID,
+		maxRetryAttempts:    options.MaxRetryAttempts,
 		noResponseThreshold: options.NoResponseThreshold,
-		noBlockThreshold: options.NoBlockThreshold,
+		noBlockThreshold:    options.NoBlockThreshold,
 	}
 }
 

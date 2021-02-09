@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/tendermint/tendermint/light/provider"
@@ -128,12 +127,8 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 		}
 	}
 
-	// we need to make sure that we remove witnesses by index in the reverse
-	// order so as to not affect the indexes themselves
-	sort.Ints(witnessesToRemove)
-	for i := len(witnessesToRemove) - 1; i >= 0; i-- {
-		c.removeWitness(witnessesToRemove[i])
-	}
+	// remove witnesses that have misbehaved
+	c.removeWitnesses(witnessesToRemove)
 
 	// 1. If we had at least one witness that returned the same header then we
 	// conclude that we can trust the header
