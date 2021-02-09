@@ -7,32 +7,35 @@ BINDIR ?= $(GOPATH)/bin
 
 ## required to be run first by most tests
 build_docker_test_image:
-	docker build -t tester -f ./test/docker/Dockerfile .
+	# get tendermint src code to build against
+	(cd ../.. && rsync -r -exclude=tendermint/.git -exclude=tendermint/test tendermint tendermint/test) &>/dev/null
+	docker build -t tendermint-tester -f ./docker/Dockerfile .
 .PHONY: build_docker_test_image
 
 ### coverage, app, persistence, and libs tests
 test_cover:
 	# run the go unit tests with coverage
-	bash test/test_cover.sh
+	bash test_cover.sh
 .PHONY: test_cover
 
 test_apps:
 	# run the app tests using bash
 	# requires `abci-cli` and `tendermint` binaries installed
-	bash test/app/test.sh
+	bash /app/test.sh
 .PHONY: test_apps
 
 test_abci_apps:
-	bash abci/tests/test_app/test.sh
+	bash path=$(cd .. && pwd); $(path)/abci/tests/test_app/test.sh
 .PHONY: test_abci_apps
 
 test_abci_cli:
 	# test the cli against the examples in the tutorial at:
 	# ./docs/abci-cli.md
 	# if test fails, update the docs ^
-	@ bash abci/tests/test_cli/test.sh
+	@ bash bash path=$(cd .. && pwd); $(path)/abci/tests/test_cli/test.sh
 .PHONY: test_abci_cli
 
+# now that tendermint is running perform the intergration tests
 test_integrations:
 	make build_docker_test_image
 	make tools
