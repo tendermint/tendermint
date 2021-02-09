@@ -171,7 +171,7 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 					return nil, p.noResponse()
 				}
 				// else we wait and try again with exponential backoff
-				time.Sleep(backoffTimeout(uint16(attempt)))
+				time.Sleep(backoffTimeout(attempt))
 				continue
 			}
 

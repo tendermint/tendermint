@@ -624,7 +624,7 @@ func (c *Client) verifySequential(
 				}
 
 				if !bytes.Equal(replacementBlock.Hash(), newLightBlock.Hash()) {
-					c.logger.Debug("replaced primary but new primary has a different block to the initial one. Returning original error")
+					c.logger.Debug("replaced primary but new primary has a different block to the initial one")
 					return err
 				}
 
@@ -705,10 +705,21 @@ func (c *Client) verifySkipping(
 				pivotHeight := verifiedBlock.Height + (blockCache[depth].Height-verifiedBlock.
 					Height)*verifySkippingNumerator/verifySkippingDenominator
 				interimBlock, providerErr := source.LightBlock(ctx, pivotHeight)
-				if providerErr != nil {
+				switch providerErr {
+				case nil:
+					blockCache = append(blockCache, interimBlock)
+
+				// if the error is benign, the client does not need to replace the primary
+				case provider.ErrLightBlockNotFound:
+				case provider.ErrNoResponse:
+					return nil, err
+
+				// all other errors such as ErrBadLightBlock or ErrUnreliableProvider are seen as malevolent and the
+				// provider is removed
+				default:
 					return nil, ErrVerificationFailed{From: verifiedBlock.Height, To: pivotHeight, Reason: providerErr}
 				}
-				blockCache = append(blockCache, interimBlock)
+
 			}
 			depth++
 
@@ -901,11 +912,14 @@ func (c *Client) backwards(
 				return err
 			}
 
+			// before continuing we must check that they have the same target header to validate
 			if !bytes.Equal(newPrimarysBlock.Hash(), newHeader.Hash()) {
-				c.logger.Debug("replaced primary but new primary has a different block to the initial one. Returning original error")
+				c.logger.Debug("replaced primary but new primary has a different block to the initial one")
+				// return the original error
 				return err
 			}
 
+			// try again with the new primary
 			return c.backwards(ctx, verifiedHeader, newPrimarysBlock.Header)
 		}
 		verifiedHeader = interimHeader
@@ -973,8 +987,10 @@ type witnessResponse struct {
 	err          error
 }
 
-// findNewPrimary takes the first alternative provider and promotes it as the
-// primary provider, pushing the previous provider to the back of the queue
+// findNewPrimary concurrently sends a light block request, promoting the first witness to return
+// a valid light block as the new primary. The remove option indicates whether the primary should be
+// entire removed or just appended to the back of the witnesses list. This method also handles witness
+// errors. If no witness is available, it returns the last error of the witness.
 func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) (*types.LightBlock, error) {
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
@@ -989,16 +1005,19 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 		lastError         error
 	)
 
-	for i, witness := range c.witnesses {
+	// send out a ligh block request to all witnesses
+	for index := range c.witnesses {
 		go func(witnessIndex int, witnessResponsesC chan witnessResponse) {
-			lb, err := witness.LightBlock(ctx, height)
+			lb, err := c.witnesses[witnessIndex].LightBlock(ctx, height)
 			witnessResponsesC <- witnessResponse{lb, witnessIndex, err}
-		}(i, witnessResponsesC)
+		}(index, witnessResponsesC)
 	}
 
+	// process all the responses as they come in
 	for i := 0; i < cap(witnessResponsesC); i++ {
 		response := <-witnessResponsesC
 		switch response.err {
+		// success! We have found a new primary
 		case nil:
 			// if we are not intending on removing the primary then append the old primary to the end of the witness slice
 			if !remove {
@@ -1014,11 +1033,14 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 
 			// remove witnesses marked as bad (the client must do this before we alter the witness slice and change the indexes
 			// of witnesses). Removal is done in descending order
-			c.removeWitnesses(witnessesToRemove)
+			if err := c.removeWitnesses(witnessesToRemove); err != nil {
+				return nil, err
+			}
 
 			// return the light block that new primary responded with
 			return response.lb, nil
 
+		// process benign errors by logging them only
 		case provider.ErrLightBlockNotFound:
 		case provider.ErrNoResponse:
 			lastError = response.err
@@ -1026,6 +1048,7 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 				"error", response.err, "primary", c.witnesses[response.witnessIndex])
 			continue
 
+		// process malovent errors like ErrUnreliableProvider and ErrBadLightBlock by removing the witness
 		default:
 			lastError = response.err
 			c.logger.Error("error on light block request from witness, removing...",
@@ -1080,7 +1103,5 @@ and remove witness. Otherwise, use a different primary`, e.WitnessIndex), "witne
 	}
 
 	// remove all witnesses that misbehaved
-	c.removeWitnesses(witnessesToRemove)
-
-	return nil
+	return c.removeWitnesses(witnessesToRemove)
 }

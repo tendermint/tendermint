@@ -128,7 +128,9 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 	}
 
 	// remove witnesses that have misbehaved
-	c.removeWitnesses(witnessesToRemove)
+	if err := c.removeWitnesses(witnessesToRemove); err != nil {
+		return err
+	}
 
 	// 1. If we had at least one witness that returned the same header then we
 	// conclude that we can trust the header
