@@ -61,7 +61,7 @@ type reactorTestSuite struct {
 func setup(t *testing.T, cs *State, chBuf uint) *reactorTestSuite {
 	t.Helper()
 
-	pID := make([]byte, 16)
+	pID := make([]byte, 20)
 	_, err := rng.Read(pID)
 	require.NoError(t, err)
 
