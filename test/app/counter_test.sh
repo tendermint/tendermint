@@ -1,6 +1,12 @@
 #! /bin/bash
 
+#####################
+# counter over socket
+#####################
+
 export GO111MODULE=on
+
+TESTNAME=$1
 
 if [[ "$GRPC_BROADCAST_TX" == "" ]]; then
 	GRPC_BROADCAST_TX=""
@@ -8,13 +14,16 @@ fi
 
 set -u
 
-#####################
-# counter over socket
-#####################
-TESTNAME=$1
+# build grpc client if needed
+if [[ "$GRPC_BROADCAST_TX" != "" ]]; then
+	if [  -f test/app/grpc_client ]; then
+		rm test/app/grpc_client
+	fi
+	echo "... building grpc_client"
+	go build -mod=readonly -o test/app/grpc_client test/app/grpc_client.go
+fi
 
-# Send some txs
-
+# getCode unmarshals a response after sending a tx, sendTx 
 function getCode() {
 	set +u
 	R=$1
@@ -34,15 +43,7 @@ function getCode() {
 	fi
 }
 
-# build grpc client if needed
-if [[ "$GRPC_BROADCAST_TX" != "" ]]; then
-	if [  -f test/app/grpc_client ]; then
-		rm test/app/grpc_client
-	fi
-	echo "... building grpc_client"
-	go build -mod=readonly -o test/app/grpc_client test/app/grpc_client.go
-fi
-
+# sendTx sends a transaction using the grpc_client or curl
 function sendTx() {
 	TX=$1
 	set +u

@@ -1,6 +1,8 @@
 #! /bin/bash
 set -ex
 
+# tests queries using the abci-cli, and abci_query by seeing if we can query with the key or value
+
 function toHex() {
     echo -n $1 | hexdump -ve '1/1 "%.2X"' | awk '{print "0x" $0}'
 

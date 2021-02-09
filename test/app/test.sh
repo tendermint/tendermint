@@ -27,7 +27,6 @@ function kvstore_over_socket(){
     kill -9 $pid_kvstore $pid_tendermint
 }
 
-# start tendermint first
 function kvstore_over_socket_reorder(){
     rm -rf $TMHOME
     tendermint init
