@@ -18,10 +18,12 @@ var (
 	// This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
 	regexpMissingHeight = regexp.MustCompile(`height \d+ (must be less than or equal to|is not available)`)
 
-	maxRetryAttempts           = 10
-	timeout                    = 5 * time.Second
-	noResponseThreshold uint16 = 5
-	noBlockThreshold    uint16 = 5
+	defaultOptions = Options{
+		MaxRetryAttempts:    10,
+		Timeout:             5 * time.Second,
+		NoBlockThreshold:    5,
+		NoResponseThreshold: 5,
+	}
 )
 
 // http provider uses an RPC client to obtain the necessary information.
@@ -29,32 +31,74 @@ type http struct {
 	chainID string
 	client  rpcclient.RemoteClient
 
-	noResponseCount uint16
-	noBlockCount    uint16
+	// httt provider heuristics
+
+	// The provider tracks the amount of times that the
+	// client doesn't respond. If this exceeds the threshold
+	// then the provider will return an unreliable provider error
+	noResponseThreshold uint16
+	noResponseCount     uint16
+
+	// The provider tracks the amount of time the client
+	// doesn't have a block. If this exceeds the threshold
+	// then the provider will return an unreliable provider error
+	noBlockThreshold    uint16
+	noBlockCount        uint16
+
+	// In a single request, the provider attempts multiple times
+	// with exponential backoff to reach the client. If this
+	// exceeds the maxRetry attempts, this result in a ErrNoResponse
+	maxRetryAttempts    uint16
+}
+
+type Options struct {
+	// -1 means no limit
+	MaxRetryAttempts uint16
+	// 0 means no timeout.
+	Timeout time.Duration
+	// The amount of requests that a client doesn't have the block
+	// for before the provider deems the client unreliable
+	NoBlockThreshold uint16
+	// The amount of requests that a client doesn't respond to
+	// before the provider deems the client unreliable
+	NoResponseThreshold uint16
 }
 
 // New creates a HTTP provider, which is using the rpchttp.HTTP client under
 // the hood. If no scheme is provided in the remote URL, http will be used by
 // default. The 5s timeout is used for all requests.
 func New(chainID, remote string) (provider.Provider, error) {
+	return NewWithOptions(chainID, remote, defaultOptions)
+}
+
+// NewWithOptions is an extension to creating a new http provider that allows the addition
+// of a specified timeout and maxRetryAttempts
+func NewWithOptions(chainID, remote string, options Options) (provider.Provider, error) {
 	// Ensure URL scheme is set (default HTTP) when not provided.
 	if !strings.Contains(remote, "://") {
 		remote = "http://" + remote
 	}
 
-	httpClient, err := rpchttp.NewWithTimeout(remote, "/websocket", timeout)
+	httpClient, err := rpchttp.NewWithTimeout(remote, "/websocket", options.Timeout)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewWithClient(chainID, httpClient), nil
+	return NewWithClientAndOptions(chainID, httpClient, options), nil
+}
+
+func NewWithClient(chainID string, client rpcclient.RemoteClient) provider.Provider {
+	return NewWithClientAndOptions(chainID, client, defaultOptions)
 }
 
 // NewWithClient allows you to provide a custom client.
-func NewWithClient(chainID string, client rpcclient.RemoteClient) provider.Provider {
+func NewWithClientAndOptions(chainID string, client rpcclient.RemoteClient, options Options) provider.Provider {
 	return &http{
-		client:  client,
-		chainID: chainID,
+		client:           client,
+		chainID:          chainID,
+		maxRetryAttempts: options.MaxRetryAttempts,
+		noResponseThreshold: options.NoResponseThreshold,
+		noBlockThreshold: options.NoBlockThreshold,
 	}
 }
 
@@ -113,7 +157,9 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 	)
 
 	for len(vals) != total && page <= maxPages {
-		for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
+		// create another for loop to control retries. If p.maxRetryAttempts
+		// is negative we will keep repeating.
+		for attempt := uint16(0); attempt != p.maxRetryAttempts+1; attempt++ {
 			res, err := p.client.Validators(ctx, height, &page, &perPage)
 			if err != nil {
 				// TODO: standardize errors on the RPC side
@@ -121,7 +167,7 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 					return nil, p.noBlock()
 				}
 				// if we have exceeded retry attempts then return no response error
-				if attempt == maxRetryAttempts {
+				if attempt == p.maxRetryAttempts {
 					return nil, p.noResponse()
 				}
 				// else we wait and try again with exponential backoff
@@ -158,7 +204,9 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 }
 
 func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHeader, error) {
-	for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
+	// create a for loop to control retries. If p.maxRetryAttempts
+	// is negative we will keep repeating.
+	for attempt := uint16(0); attempt != p.maxRetryAttempts+1; attempt++ {
 		commit, err := p.client.Commit(ctx, height)
 		if err != nil {
 			// TODO: standardize errors on the RPC side
@@ -166,7 +214,7 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 				return nil, p.noBlock()
 			}
 			// we wait and try again with exponential backoff
-			time.Sleep(backoffTimeout(uint16(attempt)))
+			time.Sleep(backoffTimeout(attempt))
 			continue
 		}
 		return &commit.SignedHeader, nil
@@ -176,7 +224,7 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 
 func (p *http) noResponse() error {
 	p.noResponseCount++
-	if p.noResponseCount > noResponseThreshold {
+	if p.noResponseCount > p.noResponseThreshold {
 		return provider.ErrUnreliableProvider{
 			Reason: fmt.Sprintf("failed to respond after %d attempts", p.noResponseCount),
 		}
@@ -186,7 +234,7 @@ func (p *http) noResponse() error {
 
 func (p *http) noBlock() error {
 	p.noBlockCount++
-	if p.noBlockCount > noBlockThreshold {
+	if p.noBlockCount > p.noBlockThreshold {
 		return provider.ErrUnreliableProvider{
 			Reason: fmt.Sprintf("failed to provide a block after %d attempts", p.noBlockCount),
 		}

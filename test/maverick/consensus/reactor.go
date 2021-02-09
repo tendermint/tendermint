@@ -9,6 +9,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
+	tmcon "github.com/tendermint/tendermint/consensus"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmevents "github.com/tendermint/tendermint/libs/events"
@@ -47,7 +48,7 @@ type Reactor struct {
 	waitSync bool
 	eventBus *types.EventBus
 
-	Metrics *Metrics
+	Metrics *tmcon.Metrics
 }
 
 type ReactorOption func(*Reactor)
@@ -58,7 +59,7 @@ func NewReactor(consensusState *State, waitSync bool, options ...ReactorOption) 
 	conR := &Reactor{
 		conS:     consensusState,
 		waitSync: waitSync,
-		Metrics:  NopMetrics(),
+		Metrics:  tmcon.NopMetrics(),
 	}
 	conR.BaseReactor = *p2p.NewBaseReactor("Consensus", conR)
 
@@ -252,7 +253,7 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	switch chID {
 	case StateChannel:
 		switch msg := msg.(type) {
-		case *NewRoundStepMessage:
+		case *tmcon.NewRoundStepMessage:
 			conR.conS.mtx.Lock()
 			initialHeight := conR.conS.state.InitialHeight
 			conR.conS.mtx.Unlock()
@@ -262,11 +263,11 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				return
 			}
 			ps.ApplyNewRoundStepMessage(msg)
-		case *NewValidBlockMessage:
+		case *tmcon.NewValidBlockMessage:
 			ps.ApplyNewValidBlockMessage(msg)
-		case *HasVoteMessage:
+		case *tmcon.HasVoteMessage:
 			ps.ApplyHasVoteMessage(msg)
-		case *VoteSetMaj23Message:
+		case *tmcon.VoteSetMaj23Message:
 			cs := conR.conS
 			cs.mtx.Lock()
 			height, votes := cs.Height, cs.Votes
@@ -291,7 +292,7 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			default:
 				panic("Bad VoteSetBitsMessage field Type. Forgot to add a check in ValidateBasic?")
 			}
-			src.TrySend(VoteSetBitsChannel, MustEncode(&VoteSetBitsMessage{
+			src.TrySend(VoteSetBitsChannel, tmcon.MustEncode(&tmcon.VoteSetBitsMessage{
 				Height:  msg.Height,
 				Round:   msg.Round,
 				Type:    msg.Type,
@@ -308,12 +309,12 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			return
 		}
 		switch msg := msg.(type) {
-		case *ProposalMessage:
+		case *tmcon.ProposalMessage:
 			ps.SetHasProposal(msg.Proposal)
 			conR.conS.peerMsgQueue <- msgInfo{msg, src.ID()}
-		case *ProposalPOLMessage:
+		case *tmcon.ProposalPOLMessage:
 			ps.ApplyProposalPOLMessage(msg)
-		case *BlockPartMessage:
+		case *tmcon.BlockPartMessage:
 			ps.SetHasProposalBlockPart(msg.Height, msg.Round, int(msg.Part.Index))
 			conR.Metrics.BlockParts.With("peer_id", string(src.ID())).Add(1)
 			conR.conS.peerMsgQueue <- msgInfo{msg, src.ID()}
@@ -327,7 +328,7 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			return
 		}
 		switch msg := msg.(type) {
-		case *VoteMessage:
+		case *tmcon.VoteMessage:
 			cs := conR.conS
 			cs.mtx.RLock()
 			height, valSize, lastCommitSize := cs.Height, cs.Validators.Size(), cs.LastCommit.Size()
@@ -349,7 +350,7 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			return
 		}
 		switch msg := msg.(type) {
-		case *VoteSetBitsMessage:
+		case *tmcon.VoteSetBitsMessage:
 			cs := conR.conS
 			cs.mtx.Lock()
 			height, votes := cs.Height, cs.Votes
@@ -429,29 +430,29 @@ func (conR *Reactor) unsubscribeFromBroadcastEvents() {
 
 func (conR *Reactor) broadcastNewRoundStepMessage(rs *cstypes.RoundState) {
 	nrsMsg := makeRoundStepMessage(rs)
-	conR.Switch.Broadcast(StateChannel, MustEncode(nrsMsg))
+	conR.Switch.Broadcast(StateChannel, tmcon.MustEncode(nrsMsg))
 }
 
 func (conR *Reactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
-	csMsg := &NewValidBlockMessage{
+	csMsg := &tmcon.NewValidBlockMessage{
 		Height:             rs.Height,
 		Round:              rs.Round,
 		BlockPartSetHeader: rs.ProposalBlockParts.Header(),
 		BlockParts:         rs.ProposalBlockParts.BitArray(),
 		IsCommit:           rs.Step == cstypes.RoundStepCommit,
 	}
-	conR.Switch.Broadcast(StateChannel, MustEncode(csMsg))
+	conR.Switch.Broadcast(StateChannel, tmcon.MustEncode(csMsg))
 }
 
 // Broadcasts HasVoteMessage to peers that care.
 func (conR *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
-	msg := &HasVoteMessage{
+	msg := &tmcon.HasVoteMessage{
 		Height: vote.Height,
 		Round:  vote.Round,
 		Type:   vote.Type,
 		Index:  vote.ValidatorIndex,
 	}
-	conR.Switch.Broadcast(StateChannel, MustEncode(msg))
+	conR.Switch.Broadcast(StateChannel, tmcon.MustEncode(msg))
 	/*
 		// TODO: Make this broadcast more selective.
 		for _, peer := range conR.Switch.Peers().List() {
@@ -472,8 +473,8 @@ func (conR *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 	*/
 }
 
-func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage) {
-	nrsMsg = &NewRoundStepMessage{
+func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *tmcon.NewRoundStepMessage) {
+	nrsMsg = &tmcon.NewRoundStepMessage{
 		Height:                rs.Height,
 		Round:                 rs.Round,
 		Step:                  rs.Step,
@@ -486,7 +487,7 @@ func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage) 
 func (conR *Reactor) sendNewRoundStepMessage(peer p2p.Peer) {
 	rs := conR.conS.GetRoundState()
 	nrsMsg := makeRoundStepMessage(rs)
-	peer.Send(StateChannel, MustEncode(nrsMsg))
+	peer.Send(StateChannel, tmcon.MustEncode(nrsMsg))
 }
 
 func (conR *Reactor) gossipDataRoutine(peer p2p.Peer, ps *PeerState) {
@@ -506,13 +507,13 @@ OUTER_LOOP:
 		if rs.ProposalBlockParts.HasHeader(prs.ProposalBlockPartSetHeader) {
 			if index, ok := rs.ProposalBlockParts.BitArray().Sub(prs.ProposalBlockParts.Copy()).PickRandom(); ok {
 				part := rs.ProposalBlockParts.GetPart(index)
-				msg := &BlockPartMessage{
+				msg := &tmcon.BlockPartMessage{
 					Height: rs.Height, // This tells peer that this part applies to us.
 					Round:  rs.Round,  // This tells peer that this part applies to us.
 					Part:   part,
 				}
 				logger.Debug("Sending block part", "height", prs.Height, "round", prs.Round)
-				if peer.Send(DataChannel, MustEncode(msg)) {
+				if peer.Send(DataChannel, tmcon.MustEncode(msg)) {
 					ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 				}
 				continue OUTER_LOOP
@@ -555,9 +556,9 @@ OUTER_LOOP:
 		if rs.Proposal != nil && !prs.Proposal {
 			// Proposal: share the proposal metadata with peer.
 			{
-				msg := &ProposalMessage{Proposal: rs.Proposal}
+				msg := &tmcon.ProposalMessage{Proposal: rs.Proposal}
 				logger.Debug("Sending proposal", "height", prs.Height, "round", prs.Round)
-				if peer.Send(DataChannel, MustEncode(msg)) {
+				if peer.Send(DataChannel, tmcon.MustEncode(msg)) {
 					// NOTE[ZM]: A peer might have received different proposal msg so this Proposal msg will be rejected!
 					ps.SetHasProposal(rs.Proposal)
 				}
@@ -567,13 +568,13 @@ OUTER_LOOP:
 			// rs.Proposal was validated, so rs.Proposal.POLRound <= rs.Round,
 			// so we definitely have rs.Votes.Prevotes(rs.Proposal.POLRound).
 			if 0 <= rs.Proposal.POLRound {
-				msg := &ProposalPOLMessage{
+				msg := &tmcon.ProposalPOLMessage{
 					Height:           rs.Height,
 					ProposalPOLRound: rs.Proposal.POLRound,
 					ProposalPOL:      rs.Votes.Prevotes(rs.Proposal.POLRound).BitArray(),
 				}
 				logger.Debug("Sending POL", "height", prs.Height, "round", prs.Round)
-				peer.Send(DataChannel, MustEncode(msg))
+				peer.Send(DataChannel, tmcon.MustEncode(msg))
 			}
 			continue OUTER_LOOP
 		}
@@ -610,13 +611,13 @@ func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundSt
 			return
 		}
 		// Send the part
-		msg := &BlockPartMessage{
+		msg := &tmcon.BlockPartMessage{
 			Height: prs.Height, // Not our height, so it doesn't matter.
 			Round:  prs.Round,  // Not our height, so it doesn't matter.
 			Part:   part,
 		}
 		logger.Debug("Sending block part for catchup", "round", prs.Round, "index", index)
-		if peer.Send(DataChannel, MustEncode(msg)) {
+		if peer.Send(DataChannel, tmcon.MustEncode(msg)) {
 			ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 		} else {
 			logger.Debug("Sending block part for catchup failed")
@@ -773,7 +774,7 @@ OUTER_LOOP:
 			prs := ps.GetRoundState()
 			if rs.Height == prs.Height {
 				if maj23, ok := rs.Votes.Prevotes(prs.Round).TwoThirdsMajority(); ok {
-					peer.TrySend(StateChannel, MustEncode(&VoteSetMaj23Message{
+					peer.TrySend(StateChannel, tmcon.MustEncode(&tmcon.VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.Round,
 						Type:    tmproto.PrevoteType,
@@ -790,7 +791,7 @@ OUTER_LOOP:
 			prs := ps.GetRoundState()
 			if rs.Height == prs.Height {
 				if maj23, ok := rs.Votes.Precommits(prs.Round).TwoThirdsMajority(); ok {
-					peer.TrySend(StateChannel, MustEncode(&VoteSetMaj23Message{
+					peer.TrySend(StateChannel, tmcon.MustEncode(&tmcon.VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.Round,
 						Type:    tmproto.PrecommitType,
@@ -807,7 +808,7 @@ OUTER_LOOP:
 			prs := ps.GetRoundState()
 			if rs.Height == prs.Height && prs.ProposalPOLRound >= 0 {
 				if maj23, ok := rs.Votes.Prevotes(prs.ProposalPOLRound).TwoThirdsMajority(); ok {
-					peer.TrySend(StateChannel, MustEncode(&VoteSetMaj23Message{
+					peer.TrySend(StateChannel, tmcon.MustEncode(&tmcon.VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.ProposalPOLRound,
 						Type:    tmproto.PrevoteType,
@@ -827,7 +828,7 @@ OUTER_LOOP:
 			if prs.CatchupCommitRound != -1 && prs.Height > 0 && prs.Height <= conR.conS.blockStore.Height() &&
 				prs.Height >= conR.conS.blockStore.Base() {
 				if commit := conR.conS.LoadCommit(prs.Height); commit != nil {
-					peer.TrySend(StateChannel, MustEncode(&VoteSetMaj23Message{
+					peer.TrySend(StateChannel, tmcon.MustEncode(&tmcon.VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   commit.Round,
 						Type:    tmproto.PrecommitType,
@@ -866,11 +867,11 @@ func (conR *Reactor) peerStatsRoutine() {
 				panic(fmt.Sprintf("Peer %v has no state", peer))
 			}
 			switch msg.Msg.(type) {
-			case *VoteMessage:
+			case *tmcon.VoteMessage:
 				if numVotes := ps.RecordVote(); numVotes%votesToContributeToBecomeGoodPeer == 0 {
 					conR.Switch.MarkPeerAsGood(peer)
 				}
-			case *BlockPartMessage:
+			case *tmcon.BlockPartMessage:
 				if numParts := ps.RecordBlockPart(); numParts%blocksToContributeToBecomeGoodPeer == 0 {
 					conR.Switch.MarkPeerAsGood(peer)
 				}
@@ -908,7 +909,7 @@ func (conR *Reactor) StringIndented(indent string) string {
 }
 
 // ReactorMetrics sets the metrics
-func ReactorMetrics(metrics *Metrics) ReactorOption {
+func ReactorMetrics(metrics *tmcon.Metrics) ReactorOption {
 	return func(conR *Reactor) { conR.Metrics = metrics }
 }
 
@@ -1046,9 +1047,9 @@ func (ps *PeerState) SetHasProposalBlockPart(height int64, round int32, index in
 // Returns true if vote was sent.
 func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
 	if vote, ok := ps.PickVoteToSend(votes); ok {
-		msg := &VoteMessage{vote}
+		msg := &tmcon.VoteMessage{Vote: vote}
 		ps.logger.Debug("Sending vote message", "ps", ps, "vote", vote)
-		if ps.peer.Send(VoteChannel, MustEncode(msg)) {
+		if ps.peer.Send(VoteChannel, tmcon.MustEncode(msg)) {
 			ps.SetHasVote(vote)
 			return true
 		}
@@ -1255,7 +1256,7 @@ func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.Sign
 }
 
 // ApplyNewRoundStepMessage updates the peer state for the new round.
-func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
+func (ps *PeerState) ApplyNewRoundStepMessage(msg *tmcon.NewRoundStepMessage) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -1308,7 +1309,7 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 }
 
 // ApplyNewValidBlockMessage updates the peer state for the new valid block.
-func (ps *PeerState) ApplyNewValidBlockMessage(msg *NewValidBlockMessage) {
+func (ps *PeerState) ApplyNewValidBlockMessage(msg *tmcon.NewValidBlockMessage) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -1325,7 +1326,7 @@ func (ps *PeerState) ApplyNewValidBlockMessage(msg *NewValidBlockMessage) {
 }
 
 // ApplyProposalPOLMessage updates the peer state for the new proposal POL.
-func (ps *PeerState) ApplyProposalPOLMessage(msg *ProposalPOLMessage) {
+func (ps *PeerState) ApplyProposalPOLMessage(msg *tmcon.ProposalPOLMessage) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -1342,7 +1343,7 @@ func (ps *PeerState) ApplyProposalPOLMessage(msg *ProposalPOLMessage) {
 }
 
 // ApplyHasVoteMessage updates the peer state for the new vote.
-func (ps *PeerState) ApplyHasVoteMessage(msg *HasVoteMessage) {
+func (ps *PeerState) ApplyHasVoteMessage(msg *tmcon.HasVoteMessage) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -1358,7 +1359,7 @@ func (ps *PeerState) ApplyHasVoteMessage(msg *HasVoteMessage) {
 // `ourVotes` is a BitArray of votes we have for msg.BlockID
 // NOTE: if ourVotes is nil (e.g. msg.Height < rs.Height),
 // we conservatively overwrite ps's votes w/ msg.Votes.
-func (ps *PeerState) ApplyVoteSetBitsMessage(msg *VoteSetBitsMessage, ourVotes *bits.BitArray) {
+func (ps *PeerState) ApplyVoteSetBitsMessage(msg *tmcon.VoteSetBitsMessage, ourVotes *bits.BitArray) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -1395,12 +1396,6 @@ func (ps *PeerState) StringIndented(indent string) string {
 }
 
 //-----------------------------------------------------------------------------
-// Messages
-
-// Message is a message that can be sent and received on the Reactor
-type Message interface {
-	ValidateBasic() error
-}
 
 // func init() {
 // 	tmjson.RegisterType(&NewRoundStepMessage{}, "tendermint/NewRoundStepMessage")
@@ -1414,307 +1409,11 @@ type Message interface {
 // 	tmjson.RegisterType(&VoteSetBitsMessage{}, "tendermint/VoteSetBits")
 // }
 
-func decodeMsg(bz []byte) (msg Message, err error) {
+func decodeMsg(bz []byte) (msg tmcon.Message, err error) {
 	pb := &tmcons.Message{}
 	if err = proto.Unmarshal(bz, pb); err != nil {
 		return msg, err
 	}
 
-	return MsgFromProto(pb)
+	return tmcon.MsgFromProto(pb)
 }
-
-//-------------------------------------
-
-// NewRoundStepMessage is sent for every step taken in the ConsensusState.
-// For every height/round/step transition
-type NewRoundStepMessage struct {
-	Height                int64
-	Round                 int32
-	Step                  cstypes.RoundStepType
-	SecondsSinceStartTime int64
-	LastCommitRound       int32
-}
-
-// ValidateBasic performs basic validation.
-func (m *NewRoundStepMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.Round < 0 {
-		return errors.New("negative Round")
-	}
-	if !m.Step.IsValid() {
-		return errors.New("invalid Step")
-	}
-
-	// NOTE: SecondsSinceStartTime may be negative
-
-	// LastCommitRound will be -1 for the initial height, but we don't know what height this is
-	// since it can be specified in genesis. The reactor will have to validate this via
-	// ValidateHeight().
-	if m.LastCommitRound < -1 {
-		return errors.New("invalid LastCommitRound (cannot be < -1)")
-	}
-
-	return nil
-}
-
-// ValidateHeight validates the height given the chain's initial height.
-func (m *NewRoundStepMessage) ValidateHeight(initialHeight int64) error {
-	if m.Height < initialHeight {
-		return fmt.Errorf("invalid Height %v (lower than initial height %v)",
-			m.Height, initialHeight)
-	}
-	if m.Height == initialHeight && m.LastCommitRound != -1 {
-		return fmt.Errorf("invalid LastCommitRound %v (must be -1 for initial height %v)",
-			m.LastCommitRound, initialHeight)
-	}
-	if m.Height > initialHeight && m.LastCommitRound < 0 {
-		return fmt.Errorf("LastCommitRound can only be negative for initial height %v", // nolint
-			initialHeight)
-	}
-	return nil
-}
-
-// String returns a string representation.
-func (m *NewRoundStepMessage) String() string {
-	return fmt.Sprintf("[NewRoundStep H:%v R:%v S:%v LCR:%v]",
-		m.Height, m.Round, m.Step, m.LastCommitRound)
-}
-
-//-------------------------------------
-
-// NewValidBlockMessage is sent when a validator observes a valid block B in some round r,
-// i.e., there is a Proposal for block B and 2/3+ prevotes for the block B in the round r.
-// In case the block is also committed, then IsCommit flag is set to true.
-type NewValidBlockMessage struct {
-	Height             int64
-	Round              int32
-	BlockPartSetHeader types.PartSetHeader
-	BlockParts         *bits.BitArray
-	IsCommit           bool
-}
-
-// ValidateBasic performs basic validation.
-func (m *NewValidBlockMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.Round < 0 {
-		return errors.New("negative Round")
-	}
-	if err := m.BlockPartSetHeader.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong BlockPartSetHeader: %v", err)
-	}
-	if m.BlockParts.Size() == 0 {
-		return errors.New("empty blockParts")
-	}
-	if m.BlockParts.Size() != int(m.BlockPartSetHeader.Total) {
-		return fmt.Errorf("blockParts bit array size %d not equal to BlockPartSetHeader.Total %d",
-			m.BlockParts.Size(),
-			m.BlockPartSetHeader.Total)
-	}
-	if m.BlockParts.Size() > int(types.MaxBlockPartsCount) {
-		return fmt.Errorf("blockParts bit array is too big: %d, max: %d", m.BlockParts.Size(), types.MaxBlockPartsCount)
-	}
-	return nil
-}
-
-// String returns a string representation.
-func (m *NewValidBlockMessage) String() string {
-	return fmt.Sprintf("[ValidBlockMessage H:%v R:%v BP:%v BA:%v IsCommit:%v]",
-		m.Height, m.Round, m.BlockPartSetHeader, m.BlockParts, m.IsCommit)
-}
-
-//-------------------------------------
-
-// ProposalMessage is sent when a new block is proposed.
-type ProposalMessage struct {
-	Proposal *types.Proposal
-}
-
-// ValidateBasic performs basic validation.
-func (m *ProposalMessage) ValidateBasic() error {
-	return m.Proposal.ValidateBasic()
-}
-
-// String returns a string representation.
-func (m *ProposalMessage) String() string {
-	return fmt.Sprintf("[Proposal %v]", m.Proposal)
-}
-
-//-------------------------------------
-
-// ProposalPOLMessage is sent when a previous proposal is re-proposed.
-type ProposalPOLMessage struct {
-	Height           int64
-	ProposalPOLRound int32
-	ProposalPOL      *bits.BitArray
-}
-
-// ValidateBasic performs basic validation.
-func (m *ProposalPOLMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.ProposalPOLRound < 0 {
-		return errors.New("negative ProposalPOLRound")
-	}
-	if m.ProposalPOL.Size() == 0 {
-		return errors.New("empty ProposalPOL bit array")
-	}
-	if m.ProposalPOL.Size() > types.MaxVotesCount {
-		return fmt.Errorf("proposalPOL bit array is too big: %d, max: %d", m.ProposalPOL.Size(), types.MaxVotesCount)
-	}
-	return nil
-}
-
-// String returns a string representation.
-func (m *ProposalPOLMessage) String() string {
-	return fmt.Sprintf("[ProposalPOL H:%v POLR:%v POL:%v]", m.Height, m.ProposalPOLRound, m.ProposalPOL)
-}
-
-//-------------------------------------
-
-// BlockPartMessage is sent when gossipping a piece of the proposed block.
-type BlockPartMessage struct {
-	Height int64
-	Round  int32
-	Part   *types.Part
-}
-
-// ValidateBasic performs basic validation.
-func (m *BlockPartMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.Round < 0 {
-		return errors.New("negative Round")
-	}
-	if err := m.Part.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong Part: %v", err)
-	}
-	return nil
-}
-
-// String returns a string representation.
-func (m *BlockPartMessage) String() string {
-	return fmt.Sprintf("[BlockPart H:%v R:%v P:%v]", m.Height, m.Round, m.Part)
-}
-
-//-------------------------------------
-
-// VoteMessage is sent when voting for a proposal (or lack thereof).
-type VoteMessage struct {
-	Vote *types.Vote
-}
-
-// ValidateBasic performs basic validation.
-func (m *VoteMessage) ValidateBasic() error {
-	return m.Vote.ValidateBasic()
-}
-
-// String returns a string representation.
-func (m *VoteMessage) String() string {
-	return fmt.Sprintf("[Vote %v]", m.Vote)
-}
-
-//-------------------------------------
-
-// HasVoteMessage is sent to indicate that a particular vote has been received.
-type HasVoteMessage struct {
-	Height int64
-	Round  int32
-	Type   tmproto.SignedMsgType
-	Index  int32
-}
-
-// ValidateBasic performs basic validation.
-func (m *HasVoteMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.Round < 0 {
-		return errors.New("negative Round")
-	}
-	if !types.IsVoteTypeValid(m.Type) {
-		return errors.New("invalid Type")
-	}
-	if m.Index < 0 {
-		return errors.New("negative Index")
-	}
-	return nil
-}
-
-// String returns a string representation.
-func (m *HasVoteMessage) String() string {
-	return fmt.Sprintf("[HasVote VI:%v V:{%v/%02d/%v}]", m.Index, m.Height, m.Round, m.Type)
-}
-
-//-------------------------------------
-
-// VoteSetMaj23Message is sent to indicate that a given BlockID has seen +2/3 votes.
-type VoteSetMaj23Message struct {
-	Height  int64
-	Round   int32
-	Type    tmproto.SignedMsgType
-	BlockID types.BlockID
-}
-
-// ValidateBasic performs basic validation.
-func (m *VoteSetMaj23Message) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.Round < 0 {
-		return errors.New("negative Round")
-	}
-	if !types.IsVoteTypeValid(m.Type) {
-		return errors.New("invalid Type")
-	}
-	if err := m.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong BlockID: %v", err)
-	}
-	return nil
-}
-
-// String returns a string representation.
-func (m *VoteSetMaj23Message) String() string {
-	return fmt.Sprintf("[VSM23 %v/%02d/%v %v]", m.Height, m.Round, m.Type, m.BlockID)
-}
-
-//-------------------------------------
-
-// VoteSetBitsMessage is sent to communicate the bit-array of votes seen for the BlockID.
-type VoteSetBitsMessage struct {
-	Height  int64
-	Round   int32
-	Type    tmproto.SignedMsgType
-	BlockID types.BlockID
-	Votes   *bits.BitArray
-}
-
-// ValidateBasic performs basic validation.
-func (m *VoteSetBitsMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if !types.IsVoteTypeValid(m.Type) {
-		return errors.New("invalid Type")
-	}
-	if err := m.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong BlockID: %v", err)
-	}
-	// NOTE: Votes.Size() can be zero if the node does not have any
-	if m.Votes.Size() > types.MaxVotesCount {
-		return fmt.Errorf("votes bit array is too big: %d, max: %d", m.Votes.Size(), types.MaxVotesCount)
-	}
-	return nil
-}
-
-// String returns a string representation.
-func (m *VoteSetBitsMessage) String() string {
-	return fmt.Sprintf("[VSB %v/%02d/%v %v %v]", m.Height, m.Round, m.Type, m.BlockID, m.Votes)
-}
-
-//-------------------------------------
