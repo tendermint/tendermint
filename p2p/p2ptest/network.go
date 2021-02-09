@@ -34,16 +34,24 @@ func MakeNetwork(t *testing.T, nodes int) *Network {
 		logger:        logger,
 		memoryNetwork: p2p.NewMemoryNetwork(logger),
 	}
+
 	for i := 0; i < nodes; i++ {
 		node := MakeNode(t, network)
 		network.Nodes[node.NodeID] = node
 	}
 
+	return network
+}
+
+// Start starts the network by setting up a list of node addresses to dial in
+// addition to creating a peer update subscription for each node. Finally, all
+// nodes are connected to each other.
+func (n *Network) Start(t *testing.T) {
 	// Set up a list of node addresses to dial, and a peer update subscription
 	// for each node.
 	dialQueue := []p2p.NodeAddress{}
 	subs := map[p2p.NodeID]*p2p.PeerUpdates{}
-	for _, node := range network.Nodes {
+	for _, node := range n.Nodes {
 		dialQueue = append(dialQueue, node.NodeAddress)
 		subs[node.NodeID] = node.PeerManager.Subscribe()
 		defer subs[node.NodeID].Close()
@@ -53,10 +61,11 @@ func MakeNetwork(t *testing.T, nodes int) *Network {
 	// (either inbound or outbound), and wait for both sides to confirm the
 	// connection via the subscriptions.
 	for i, sourceAddress := range dialQueue {
-		sourceNode := network.Nodes[sourceAddress.NodeID]
+		sourceNode := n.Nodes[sourceAddress.NodeID]
 		sourceSub := subs[sourceAddress.NodeID]
+
 		for _, targetAddress := range dialQueue[i+1:] { // nodes <i already connected
-			targetNode := network.Nodes[targetAddress.NodeID]
+			targetNode := n.Nodes[targetAddress.NodeID]
 			targetSub := subs[targetAddress.NodeID]
 			require.NoError(t, sourceNode.PeerManager.Add(targetAddress))
 
@@ -87,8 +96,6 @@ func MakeNetwork(t *testing.T, nodes int) *Network {
 			require.NoError(t, targetNode.PeerManager.Add(sourceAddress))
 		}
 	}
-
-	return network
 }
 
 // NodeIDs returns the network's node IDs.
@@ -110,6 +117,20 @@ func (n *Network) MakeChannels(
 	channels := map[p2p.NodeID]*p2p.Channel{}
 	for _, node := range n.Nodes {
 		channels[node.NodeID] = node.MakeChannel(t, chID, messageType)
+	}
+	return channels
+}
+
+// MakeChannelsNoCleanup makes a channel on all nodes and returns them,
+// automatically doing error checks.
+func (n *Network) MakeChannelsNoCleanup(
+	t *testing.T,
+	chID p2p.ChannelID,
+	messageType proto.Message,
+) map[p2p.NodeID]*p2p.Channel {
+	channels := map[p2p.NodeID]*p2p.Channel{}
+	for _, node := range n.Nodes {
+		channels[node.NodeID] = node.MakeChannelNoCleanup(t, chID, messageType)
 	}
 	return channels
 }
@@ -225,6 +246,13 @@ func (n *Node) MakeChannel(t *testing.T, chID p2p.ChannelID, messageType proto.M
 		RequireEmpty(t, channel)
 		channel.Close()
 	})
+	return channel
+}
+
+// MakeChannelNoCleanup opens a channel, with automatic error handling.
+func (n *Node) MakeChannelNoCleanup(t *testing.T, chID p2p.ChannelID, messageType proto.Message) *p2p.Channel {
+	channel, err := n.Router.OpenChannel(chID, messageType)
+	require.NoError(t, err)
 	return channel
 }
 
