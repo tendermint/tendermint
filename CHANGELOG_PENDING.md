@@ -57,7 +57,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [cli] \#5772 `gen_node_key` output now contains node ID (`id` field) (@melekes)
 - [blockchain/v2] \#5774 Send status request when new peer joins (@melekes)
 - [consensus] \#5792 Deprecates the `time_iota_ms` consensus parameter, to reduce the bug surface. The parameter is no longer used. (@valardragon)
-- [store] \#5888 store.SaveBlock saves using batches instead of transactions for now to improve ACID properties. A short term fix.
+- [store] \#5888 store.SaveBlock saves using batches instead of transactions for now to improve ACID properties. This is a quick fix for underlying issues around tm-db and ACID guarantees. (@githubsands)
 - [consensus] \#5987 Remove `time_iota_ms` from consensus params. Merge `tmproto.ConsensusParams` and `abci.ConsensusParams`. (@marbar3778)
 - [types] \#5994 Reduce the use of protobuf types in core logic. (@marbar3778)
   - `ConsensusParams`, `BlockParams`, `ValidatorParams`, `EvidenceParams`, `VersionParams`, `sm.Version` and `version.Consensus` have become native types. They still utilize protobuf when being sent over the wire or written to disk.
