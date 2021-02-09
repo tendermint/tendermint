@@ -1,11 +1,5 @@
 FROM golang:1.15
 
-# Grab deps (jq, hexdump, xxd, killall)
-RUN apt-get update && \
-  apt-get install -y --no-install-recommends \
-  jq bsdmainutils vim-common psmisc netcat curl
-
-# Setup tendermint repo
 ENV REPO $GOPATH/src/github.com/tendermint/tendermint
 ENV GOBIN $GOPATH/bin
 WORKDIR $REPO
@@ -14,29 +8,21 @@ WORKDIR $REPO
 # TODO: rewrite to only copy Makefile & other files?
 COPY . $REPO
 
+# Grab deps (jq, hexdump, xxd, killall)
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends \
+  jq bsdmainutils vim-common psmisc netcat curl
+
 # Install the vendored dependencies
 # docker caching prevents reinstall on code change!
-RUN make tools
-
-# install ABCI CLI
-RUN make install_abci
-
-# install Tendermint
-RUN make install
-
-RUN tendermint testnet \
-  --config $REPO/test/docker/config-template.toml \
-  --node-dir-prefix="mach" \
-  --v=4 \
-  --populate-persistent-peers=false \
-  --o=$REPO/test/p2p/data
-
-# Now copy in the code
-# NOTE: this will overwrite whatever is in vendor/
-COPY . $REPO
+RUN make tools \
+    make install_abci \
+    make install \
+    chmod u+x tendermint-entry.sh
 
 # expose the volume for debugging
 VOLUME $REPO
 
-EXPOSE 26656
-EXPOSE 26657
+EXPOSE 26656 26657
+
+ENTRYPOINT["tendermint-entry.sh"]
