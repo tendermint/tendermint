@@ -161,14 +161,14 @@ func NewClient(
 	}
 
 	if c.latestTrustedBlock != nil {
-		c.logger.Info("Checking trusted light block using options")
+		c.logger.Info("checking trusted light block using options")
 		if err := c.checkTrustedHeaderUsingOptions(ctx, trustOptions); err != nil {
 			return nil, err
 		}
 	}
 
 	if c.latestTrustedBlock == nil || c.latestTrustedBlock.Height < trustOptions.Height {
-		c.logger.Info("Downloading trusted light block using options")
+		c.logger.Info("downloading trusted light block using options")
 		if err := c.initializeWithTrustOptions(ctx, trustOptions); err != nil {
 			return nil, err
 		}
@@ -237,7 +237,7 @@ func (c *Client) restoreTrustedLightBlock() error {
 			return fmt.Errorf("can't get last trusted light block: %w", err)
 		}
 		c.latestTrustedBlock = trustedBlock
-		c.logger.Info("Restored trusted light block", "height", lastHeight)
+		c.logger.Info("restored trusted light block", "height", lastHeight)
 	}
 
 	return nil
@@ -273,7 +273,7 @@ func (c *Client) checkTrustedHeaderUsingOptions(ctx context.Context, options Tru
 	case options.Height == c.latestTrustedBlock.Height:
 		primaryHash = options.Hash
 	case options.Height < c.latestTrustedBlock.Height:
-		c.logger.Info("Client initialized with old header (trusted is more recent)",
+		c.logger.Info("client initialized with old header (trusted is more recent)",
 			"old", options.Height,
 			"trustedHeight", c.latestTrustedBlock.Height,
 			"trustedHash", c.latestTrustedBlock.Hash())
@@ -299,11 +299,11 @@ func (c *Client) checkTrustedHeaderUsingOptions(ctx context.Context, options Tru
 	}
 
 	if !bytes.Equal(primaryHash, c.latestTrustedBlock.Hash()) {
-		c.logger.Info("Prev. trusted header's hash (h1) doesn't match hash from primary provider (h2)",
+		c.logger.Info("previous trusted header's hash (h1) doesn't match hash from primary provider (h2)",
 			"h1", c.latestTrustedBlock.Hash(), "h2", primaryHash)
 
 		action := fmt.Sprintf(
-			"Prev. trusted header's hash %X doesn't match hash %X from primary provider. Remove all the stored light blocks?",
+			"Previous trusted header's hash %X doesn't match hash %X from primary provider. Remove all the stored light blocks?",
 			c.latestTrustedBlock.Hash(), primaryHash)
 		if c.confirmationFn(action) {
 			err := c.Cleanup()
@@ -415,7 +415,7 @@ func (c *Client) Update(ctx context.Context, now time.Time) (*types.LightBlock, 
 		if err != nil {
 			return nil, err
 		}
-		c.logger.Info("Advanced to new state", "height", latestBlock.Height, "hash", latestBlock.Hash())
+		c.logger.Info("advanced to new state", "height", latestBlock.Height, "hash", latestBlock.Hash())
 		return latestBlock, nil
 	}
 
@@ -440,7 +440,7 @@ func (c *Client) VerifyLightBlockAtHeight(ctx context.Context, height int64, now
 	// Check if the light block is already verified.
 	h, err := c.TrustedLightBlock(height)
 	if err == nil {
-		c.logger.Info("Header has already been verified", "height", height, "hash", h.Hash())
+		c.logger.Debug("header has already been verified", "height", height, "hash", h.Hash())
 		// Return already trusted light block
 		return h, nil
 	}
@@ -497,7 +497,7 @@ func (c *Client) VerifyHeader(ctx context.Context, newHeader *types.Header, now 
 		if !bytes.Equal(l.Hash(), newHeader.Hash()) {
 			return fmt.Errorf("existing trusted header %X does not match newHeader %X", l.Hash(), newHeader.Hash())
 		}
-		c.logger.Info("Header has already been verified",
+		c.logger.Debug("header has already been verified",
 			"height", newHeader.Height, "hash", newHeader.Hash())
 		return nil
 	}
@@ -516,7 +516,7 @@ func (c *Client) VerifyHeader(ctx context.Context, newHeader *types.Header, now 
 }
 
 func (c *Client) verifyLightBlock(ctx context.Context, newLightBlock *types.LightBlock, now time.Time) error {
-	c.logger.Info("VerifyHeader", "height", newLightBlock.Height, "hash", newLightBlock.Hash())
+	c.logger.Info("verify light block", "height", newLightBlock.Height, "hash", newLightBlock.Hash())
 
 	var (
 		verifyFunc func(ctx context.Context, trusted *types.LightBlock, new *types.LightBlock, now time.Time) error
@@ -561,7 +561,7 @@ func (c *Client) verifyLightBlock(ctx context.Context, newLightBlock *types.Ligh
 		err = verifyFunc(ctx, closestBlock, newLightBlock, now)
 	}
 	if err != nil {
-		c.logger.Error("Can't verify", "err", err)
+		c.logger.Error("failed to verify", "err", err)
 		return err
 	}
 
@@ -675,7 +675,7 @@ func (c *Client) verifySkipping(
 	)
 
 	for {
-		c.logger.Debug("Verify non-adjacent newHeader against verifiedBlock",
+		c.logger.Debug("verify non-adjacent newHeader against verifiedBlock",
 			"trustedHeight", verifiedBlock.Height,
 			"trustedHash", verifiedBlock.Hash(),
 			"newHeight", blockCache[depth].Height,
@@ -950,13 +950,13 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 	case provider.ErrNoResponse:
 	case provider.ErrLightBlockNotFound:
 		// we find a new witness to replace the primary
-		c.logger.Debug("Error on light block request from primary, replacing...", "error", err, "primary", c.primary)
+		c.logger.Debug("error from light block request from primary, replacing...", "error", err, "primary", c.primary)
 		return c.findNewPrimary(ctx, height, false)
 
 	default:
 		// The light client has most likely received either provider.ErrUnreliableProvider or provider.ErrBadLightBlock
 		// These errors mean that the light client should drop the primary and try with another provider instead
-		c.logger.Error("Error on light block request from primary, removing...", "error", err, "primary", c.primary)
+		c.logger.Error("error from light block request from primary, removing...", "error", err, "primary", c.primary)
 		return c.findNewPrimary(ctx, height, true)
 	}
 
