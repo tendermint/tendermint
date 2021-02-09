@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -125,7 +126,7 @@ type Client struct {
 	// Primary provider of new headers.
 	primary provider.Provider
 	// Providers used to "witness" new headers.
-	witnesses []provider.Provider
+	witnesses map[string]provider.Provider
 
 	// Where trusted light blocks are stored.
 	trustedStore store.Store
@@ -197,6 +198,11 @@ func NewClientFromTrustedStore(
 	witnesses []provider.Provider,
 	trustedStore store.Store,
 	options ...Option) (*Client, error) {
+
+	witnessMap := make(map[string]provider.Provider)
+	for _, witness := range witnesses {
+		witness
+	}
 
 	c := &Client{
 		chainID:          chainID,
@@ -967,7 +973,7 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 			return nil, err
 		}
 		// else we cycle through the next witness and try again
-		c.swapPrimaryProvider()
+		return c.findNewPrimary(ctx, height)
 
 	default:
 		// The light client has most likely received either provider.ErrUnreliableProvider or provider.ErrBadLightBlock
@@ -1009,9 +1015,9 @@ func (c *Client) removePrimaryProvider() error {
 	return nil
 }
 
-// swapPrimaryProvider takes the first alternative provider and promotes it as the
+// findNewPrimary takes the first alternative provider and promotes it as the
 // primary provider, pushing the previous provider to the back of the queue
-func (c *Client) swapPrimaryProvider() {
+func (c *Client) findNewPrimary(ctx context.Context, height int64) (*types.LightBlock, error) {
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 
@@ -1025,7 +1031,57 @@ func (c *Client) swapPrimaryProvider() {
 	c.logger.Info("Swapping primary with the first witness", "new_primary", c.primary)
 }
 
-// compareFirstHeaderWithWitnesses compares h with all witnesses. If any
+type witnessResponse struct {
+	lb *types.LightBlock
+	witnessIndex int
+	err error
+}
+
+// lightBlockFromWitnesses concurrely queries all witnesses for a light block returning the
+// light block and the index of the provider who sent it. lightBlockFromWitnesses also performs
+// the same error handling as ligthBlockFromPrimary
+func (c *Client) lightBlocksFromWitnesses(ctx context.Context, height int64) chan *types.LightBlock {
+	var (
+		witnessResponsesC = make(chan *types.LightBlock, len(c.witnesses))
+		witnessesToRemoveC  = make(chan int, len(c.witnesses))
+	)
+
+	go func(witnessesToRemoveC chan int) {
+		c.providerMutex.Lock()
+		defer c.providerMutex.Unlock()
+
+		witnesses := make([]int, 0)
+		for i := 0; i < cap(witnessesToRemoveC); i++ {
+			witnessIndex := <- witnessesToRemoveC
+			if witnessIndex >= 0 {
+				witnesses = append(witnesses, witnessIndex)
+			}
+		}
+		sort.Ints(witnesses)
+	}(witnessesToRemoveC)
+
+	for i, witness := range c.witnesses {
+		go func(witnessIndex int, witness provider.Provider, witnessResponsesC chan *types.LightBlock) {
+			lb, err := witness.LightBlock(ctx, height)
+			switch err {
+				case nil:
+					witnessResponsesC <- lb
+					witnessesToRemoveC <- -1
+				case provider.ErrNoResponse:
+				case provider.ErrLightBlockNotFound:
+					witnessesToRemoveC <- -1
+				default: // provider.ErrUnreliableProvider, provider.ErrBadLightBlock
+					witnessesToRemoveC <- witnessIndex
+			}
+		}(i, witness, witnessResponsesC)
+	}
+
+	
+
+	return witnessResponsesC
+}
+
+// compareFirstHeaderWithWitnesses concurrently compares h with all witnesses. If any
 // witness reports a different header than h, the function returns an error.
 func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.SignedHeader) error {
 	compareCtx, cancel := context.WithCancel(ctx)
