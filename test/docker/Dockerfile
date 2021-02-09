@@ -16,13 +16,13 @@ RUN apt-get update && \
 # Install the vendored dependencies
 # docker caching prevents reinstall on code change!
 RUN make tools \
-    make install_abci \
-    make install \
-    chmod u+x tendermint-entry.sh
+    && make install_abci \
+    && make install \
+    && chmod u+x tendermint-entry.sh
 
 # expose the volume for debugging
 VOLUME $REPO
 
 EXPOSE 26656 26657
 
-ENTRYPOINT["tendermint-entry.sh"]
+ENTRYPOINT ["tendermint-entry.sh"]

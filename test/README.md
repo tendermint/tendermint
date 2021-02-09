@@ -17,7 +17,12 @@ and run the following tests in docker containers:
 
 ## App
 
-App tests app situations using abci-cli and tendermint.
+App tests app situations using abci-cli and tendermint. To use run:
+
+(1) make install_abci
+(2) bash test/app/test.sh
+
+in the tendermint home directory.
 
 ## Fuzzing
 
@@ -25,9 +30,10 @@ App tests app situations using abci-cli and tendermint.
 
 See `./fuzz/README.md` for more details.
 
-## e2e - end to end 
+## e2e - end to end
 
-End to end tests using docker-compose clusters
+End to end tests using docker-compose clusters. To use run
+make docker && make runner in the tendermint/test/e2e directory.
 
 See `./e2e/README.md` for more details.
 
