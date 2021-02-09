@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for considering making contributions to IAVL+!
+Thank you for your interest in contributing to tm-db!
 This repository follows the [contribution guidelines] of tendermint and the corresponding [coding repo].
 Please take a look if you are not already familiar with those.
 
