@@ -13,6 +13,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	cfg "github.com/tendermint/tendermint/config"
+	tmcon "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/proxy"
@@ -73,7 +74,7 @@ func (cs *State) ReplayFile(file string, console bool) error {
 	defer pb.fp.Close()
 
 	var nextN int // apply N msgs in a row
-	var msg *TimedWALMessage
+	var msg *tmcon.TimedWALMessage
 	for {
 		if nextN == 0 && console {
 			nextN = pb.replayConsoleLoop()
@@ -147,7 +148,7 @@ func (pb *playback) replayReset(count int, newStepSub types.Subscription) error 
 	fmt.Printf("Reseting from %d to %d\n", pb.count, count)
 	pb.count = 0
 	pb.cs = newCS
-	var msg *TimedWALMessage
+	var msg *tmcon.TimedWALMessage
 	for i := 0; i < count; i++ {
 		msg, err = pb.dec.Decode()
 		if err == io.EOF {

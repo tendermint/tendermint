@@ -59,7 +59,6 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 		[]provider.Provider{witness},
 		dbs.New(dbm.NewMemDB()),
 		light.Logger(log.TestingLogger()),
-		light.MaxRetryAttempts(1),
 	)
 	require.NoError(t, err)
 
@@ -141,7 +140,6 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 			[]provider.Provider{witness},
 			dbs.New(dbm.NewMemDB()),
 			light.Logger(log.TestingLogger()),
-			light.MaxRetryAttempts(1),
 			verificationOption,
 		)
 		require.NoError(t, err)
@@ -196,7 +194,6 @@ func TestClientDivergentTraces1(t *testing.T) {
 		[]provider.Provider{witness},
 		dbs.New(dbm.NewMemDB()),
 		light.Logger(log.TestingLogger()),
-		light.MaxRetryAttempts(1),
 	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "does not match primary")
@@ -220,7 +217,6 @@ func TestClientDivergentTraces2(t *testing.T) {
 		[]provider.Provider{deadNode, deadNode, primary},
 		dbs.New(dbm.NewMemDB()),
 		light.Logger(log.TestingLogger()),
-		light.MaxRetryAttempts(1),
 	)
 	require.NoError(t, err)
 
@@ -255,7 +251,6 @@ func TestClientDivergentTraces3(t *testing.T) {
 		[]provider.Provider{witness},
 		dbs.New(dbm.NewMemDB()),
 		light.Logger(log.TestingLogger()),
-		light.MaxRetryAttempts(1),
 	)
 	require.NoError(t, err)
 

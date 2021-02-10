@@ -10,6 +10,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmcon "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
@@ -36,9 +37,9 @@ var crc32c = crc32.MakeTable(crc32.Castagnoli)
 // Unmarshal and apply a single message to the consensus state as if it were
 // received in receiveRoutine.  Lines that start with "#" are ignored.
 // NOTE: receiveRoutine should not be running.
-func (cs *State) readReplayMessage(msg *TimedWALMessage, newStepSub types.Subscription) error {
+func (cs *State) readReplayMessage(msg *tmcon.TimedWALMessage, newStepSub types.Subscription) error {
 	// Skip meta messages which exist for demarcating boundaries.
-	if _, ok := msg.Msg.(EndHeightMessage); ok {
+	if _, ok := msg.Msg.(tmcon.EndHeightMessage); ok {
 		return nil
 	}
 
@@ -67,13 +68,13 @@ func (cs *State) readReplayMessage(msg *TimedWALMessage, newStepSub types.Subscr
 			peerID = "local"
 		}
 		switch msg := m.Msg.(type) {
-		case *ProposalMessage:
+		case *tmcon.ProposalMessage:
 			p := msg.Proposal
 			cs.Logger.Info("Replay: Proposal", "height", p.Height, "round", p.Round, "header",
 				p.BlockID.PartSetHeader, "pol", p.POLRound, "peer", peerID)
-		case *BlockPartMessage:
+		case *tmcon.BlockPartMessage:
 			cs.Logger.Info("Replay: BlockPart", "height", msg.Height, "round", msg.Round, "peer", peerID)
-		case *VoteMessage:
+		case *tmcon.VoteMessage:
 			v := msg.Vote
 			cs.Logger.Info("Replay: Vote", "height", v.Height, "round", v.Round, "type", v.Type,
 				"blockID", v.BlockID, "peer", peerID)
@@ -103,7 +104,7 @@ func (cs *State) catchupReplay(csHeight uint64) error {
 	// this check (since we can crash after writing #ENDHEIGHT).
 	//
 	// Ignore data corruption errors since this is a sanity check.
-	gr, found, err := cs.wal.SearchForEndHeight(csHeight, &WALSearchOptions{IgnoreDataCorruptionErrors: true})
+	gr, found, err := cs.wal.SearchForEndHeight(csHeight, &tmcon.WALSearchOptions{IgnoreDataCorruptionErrors: true})
 	if err != nil {
 		return err
 	}
@@ -126,7 +127,7 @@ func (cs *State) catchupReplay(csHeight uint64) error {
 	if csHeight == cs.state.InitialHeight {
 		endHeight = 0
 	}
-	gr, found, err = cs.wal.SearchForEndHeight(endHeight, &WALSearchOptions{IgnoreDataCorruptionErrors: true})
+	gr, found, err = cs.wal.SearchForEndHeight(endHeight, &tmcon.WALSearchOptions{IgnoreDataCorruptionErrors: true})
 	if err == io.EOF {
 		cs.Logger.Error("Replay: wal.group.Search returned EOF", "#ENDHEIGHT", endHeight)
 	} else if err != nil {
@@ -139,7 +140,7 @@ func (cs *State) catchupReplay(csHeight uint64) error {
 
 	cs.Logger.Info("Catchup by replaying consensus messages", "height", csHeight)
 
-	var msg *TimedWALMessage
+	var msg *tmcon.TimedWALMessage
 	dec := WALDecoder{gr}
 
 LOOP:
