@@ -466,8 +466,8 @@ func (sc *scheduler) nextHeightToSchedule() uint64 {
 			min = height
 		}
 	}
-	if min == math.MaxInt64 {
-		min = 0 //todo: see if this changes logic
+	if min == math.MaxUint64 {
+		min = 0
 	}
 	return min
 }

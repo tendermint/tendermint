@@ -23,11 +23,11 @@ func TestLast_FirstLightBlockHeight(t *testing.T) {
 	// Empty store
 	height, err := dbStore.LastLightBlockHeight()
 	require.NoError(t, err)
-	assert.EqualValues(t, -1, height)
+	assert.EqualValues(t, 0, height)
 
 	height, err = dbStore.FirstLightBlockHeight()
 	require.NoError(t, err)
-	assert.EqualValues(t, -1, height)
+	assert.EqualValues(t, 0, height)
 
 	// 1 key
 	err = dbStore.SaveLightBlock(randLightBlock(uint64(1)))

@@ -94,13 +94,13 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 		ConsensusParams: *types.DefaultConsensusParams(),
 	}
 	stateStore := &smmocks.Store{}
-	stateStore.On("LoadValidators", int64(4)).Return(commonVals, nil)
+	stateStore.On("LoadValidators", uint64(4)).Return(commonVals, nil)
 	stateStore.On("Load").Return(state, nil)
 	blockStore := &mocks.BlockStore{}
-	blockStore.On("LoadBlockMeta", int64(4)).Return(&types.BlockMeta{Header: *commonHeader})
-	blockStore.On("LoadBlockMeta", int64(10)).Return(&types.BlockMeta{Header: *trustedHeader})
-	blockStore.On("LoadBlockCommit", int64(4)).Return(commit)
-	blockStore.On("LoadBlockCommit", int64(10)).Return(trustedCommit)
+	blockStore.On("LoadBlockMeta", uint64(4)).Return(&types.BlockMeta{Header: *commonHeader})
+	blockStore.On("LoadBlockMeta", uint64(10)).Return(&types.BlockMeta{Header: *trustedHeader})
+	blockStore.On("LoadBlockCommit", uint64(4)).Return(commit)
+	blockStore.On("LoadBlockCommit", uint64(10)).Return(trustedCommit)
 
 	pool, err := evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, blockStore)
 	require.NoError(t, err)
@@ -193,11 +193,11 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 		ConsensusParams: *types.DefaultConsensusParams(),
 	}
 	stateStore := &smmocks.Store{}
-	stateStore.On("LoadValidators", int64(10)).Return(conflictingVals, nil)
+	stateStore.On("LoadValidators", uint64(10)).Return(conflictingVals, nil)
 	stateStore.On("Load").Return(state, nil)
 	blockStore := &mocks.BlockStore{}
-	blockStore.On("LoadBlockMeta", int64(10)).Return(&types.BlockMeta{Header: *trustedHeader})
-	blockStore.On("LoadBlockCommit", int64(10)).Return(trustedCommit)
+	blockStore.On("LoadBlockMeta", uint64(10)).Return(&types.BlockMeta{Header: *trustedHeader})
+	blockStore.On("LoadBlockCommit", uint64(10)).Return(trustedCommit)
 
 	pool, err := evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, blockStore)
 	require.NoError(t, err)
@@ -267,11 +267,11 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 		ConsensusParams: *types.DefaultConsensusParams(),
 	}
 	stateStore := &smmocks.Store{}
-	stateStore.On("LoadValidators", int64(10)).Return(conflictingVals, nil)
+	stateStore.On("LoadValidators", uint64(10)).Return(conflictingVals, nil)
 	stateStore.On("Load").Return(state, nil)
 	blockStore := &mocks.BlockStore{}
-	blockStore.On("LoadBlockMeta", int64(10)).Return(&types.BlockMeta{Header: *trustedHeader})
-	blockStore.On("LoadBlockCommit", int64(10)).Return(trustedCommit)
+	blockStore.On("LoadBlockMeta", uint64(10)).Return(&types.BlockMeta{Header: *trustedHeader})
+	blockStore.On("LoadBlockCommit", uint64(10)).Return(trustedCommit)
 
 	pool, err := evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, blockStore)
 	require.NoError(t, err)
@@ -360,10 +360,10 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 		ConsensusParams: *types.DefaultConsensusParams(),
 	}
 	stateStore := &smmocks.Store{}
-	stateStore.On("LoadValidators", int64(10)).Return(valSet, nil)
+	stateStore.On("LoadValidators", uint64(10)).Return(valSet, nil)
 	stateStore.On("Load").Return(state, nil)
 	blockStore := &mocks.BlockStore{}
-	blockStore.On("LoadBlockMeta", int64(10)).Return(&types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}})
+	blockStore.On("LoadBlockMeta", uint64(10)).Return(&types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}})
 
 	pool, err := evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, blockStore)
 	require.NoError(t, err)

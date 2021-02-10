@@ -96,8 +96,8 @@ func TestMain(m *testing.M) {
 func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	state, bs, cleanup := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
 	defer cleanup()
-	require.Equal(t, bs.Base(), int64(0), "initially the base should be zero")
-	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
+	require.Equal(t, bs.Base(), uint64(0), "initially the base should be zero")
+	require.Equal(t, bs.Height(), uint64(0), "initially the height should be zero")
 
 	// check there are no blocks at various heights
 	noBlockHeights := []uint64{0, 100, 1000, 2}
@@ -479,7 +479,7 @@ func TestLoadBlockMeta(t *testing.T) {
 func TestBlockFetchAtHeight(t *testing.T) {
 	state, bs, cleanup := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
 	defer cleanup()
-	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
+	require.Equal(t, bs.Height(), uint64(0), "initially the height should be zero")
 	block := makeBlock(bs.Height()+1, state, new(types.Commit))
 
 	partSet := block.MakePartSet(2)

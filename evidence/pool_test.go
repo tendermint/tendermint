@@ -38,10 +38,10 @@ func TestEvidencePoolBasic(t *testing.T) {
 
 	valSet, privVals := types.RandValidatorSet(1, 10)
 
-	blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
+	blockStore.On("LoadBlockMeta", mock.AnythingOfType("uint64")).Return(
 		&types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}},
 	)
-	stateStore.On("LoadValidators", mock.AnythingOfType("int64")).Return(valSet, nil)
+	stateStore.On("LoadValidators", mock.AnythingOfType("uint64")).Return(valSet, nil)
 	stateStore.On("Load").Return(createState(height+1, valSet), nil)
 
 	pool, err := evidence.NewPool(log.TestingLogger(), evidenceDB, stateStore, blockStore)

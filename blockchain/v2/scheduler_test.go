@@ -111,7 +111,7 @@ func TestScMaxHeights(t *testing.T) {
 	tests := []struct {
 		name    string
 		sc      scheduler
-		wantMax int64
+		wantMax uint64
 	}{
 		{
 			name:    "no peers",
@@ -1157,12 +1157,12 @@ func TestScNextHeightToSchedule(t *testing.T) {
 	tests := []struct {
 		name       string
 		fields     scTestParams
-		wantHeight int64
+		wantHeight uint64
 	}{
 		{
 			name:       "no blocks",
 			fields:     scTestParams{initHeight: 11, height: 11},
-			wantHeight: -1,
+			wantHeight: 0,
 		},
 		{
 			name: "only New blocks",
@@ -1182,7 +1182,7 @@ func TestScNextHeightToSchedule(t *testing.T) {
 				pending:     map[uint64]p2p.NodeID{1: "P1", 2: "P1", 3: "P1", 4: "P1"},
 				pendingTime: map[uint64]time.Time{1: now, 2: now, 3: now, 4: now},
 			},
-			wantHeight: -1,
+			wantHeight: 0,
 		},
 		{
 			name: "only Received blocks",
@@ -1192,7 +1192,7 @@ func TestScNextHeightToSchedule(t *testing.T) {
 				allB:       []uint64{1, 2, 3, 4},
 				received:   map[uint64]p2p.NodeID{1: "P1", 2: "P1", 3: "P1", 4: "P1"},
 			},
-			wantHeight: -1,
+			wantHeight: 0,
 		},
 		{
 			name: "only Processed blocks",

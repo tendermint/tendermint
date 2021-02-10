@@ -64,7 +64,7 @@ func TestABCIQuery(t *testing.T) {
 
 	lc := &lcmock.LightClient{}
 	appHash, _ := hex.DecodeString("5EFD44055350B5CC34DBD26085347A9DBBE44EA192B9286A9FC107F40EA1FAC5")
-	lc.On("VerifyLightBlockAtHeight", context.Background(), int64(2), mock.AnythingOfType("time.Time")).Return(
+	lc.On("VerifyLightBlockAtHeight", context.Background(), uint64(2), mock.AnythingOfType("time.Time")).Return(
 		&types.LightBlock{
 			SignedHeader: &types.SignedHeader{
 				Header: &types.Header{AppHash: appHash},

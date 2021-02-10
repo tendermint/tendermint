@@ -147,7 +147,7 @@ func TestLightClientAttackEvidence(t *testing.T) {
 		CommonHeight: height - 2,
 	}
 	assert.NotEqual(t, lcae.Hash(), differentEv.Hash())
-	assert.Equal(t, lcae.Height(), int64(4)) // Height should be the common Height
+	assert.Equal(t, lcae.Height(), uint64(4)) // Height should be the common Height
 	assert.NotNil(t, lcae.Bytes())
 }
 

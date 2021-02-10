@@ -101,7 +101,7 @@ func createTestSuites(t *testing.T, stateStores []sm.Store, chBuf uint) []*react
 		logger := log.TestingLogger().With("validator", i)
 		evidenceDB := dbm.NewMemDB()
 		blockStore := &mocks.BlockStore{}
-		blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
+		blockStore.On("LoadBlockMeta", mock.AnythingOfType("uint64")).Return(
 			&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
 		)
 

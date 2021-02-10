@@ -43,7 +43,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	go func() {
 		msg := <-txsSub.Out()
 		edt := msg.Data().(EventDataTx)
-		assert.Equal(t, int64(1), edt.Height)
+		assert.Equal(t, uint64(1), edt.Height)
 		assert.Equal(t, uint32(0), edt.Index)
 		assert.EqualValues(t, tx, edt.Tx)
 		assert.Equal(t, result, edt.Result)
@@ -193,7 +193,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 			select {
 			case msg := <-sub.Out():
 				data := msg.Data().(EventDataTx)
-				assert.Equal(t, int64(1), data.Height)
+				assert.Equal(t, uint64(1), data.Height)
 				assert.Equal(t, uint32(0), data.Index)
 				assert.EqualValues(t, tx, data.Tx)
 				assert.Equal(t, result, data.Result)
@@ -296,7 +296,7 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 		msg := <-evSub.Out()
 		edt := msg.Data().(EventDataNewEvidence)
 		assert.Equal(t, ev, edt.Evidence)
-		assert.Equal(t, int64(4), edt.Height)
+		assert.Equal(t, uint64(4), edt.Height)
 		close(done)
 	}()
 

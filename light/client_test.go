@@ -114,7 +114,7 @@ func TestValidateTrustOptions(t *testing.T) {
 
 func TestMock(t *testing.T) {
 	l, _ := fullNode.LightBlock(ctx, 3)
-	assert.Equal(t, int64(3), l.Height)
+	assert.Equal(t, uint64(3), l.Height)
 }
 
 func TestClient_SequentialVerification(t *testing.T) {
@@ -1020,7 +1020,7 @@ func TestClientPrunesHeadersAndValidatorSets(t *testing.T) {
 
 	h, err := c.Update(ctx, bTime.Add(2*time.Hour))
 	require.NoError(t, err)
-	require.Equal(t, int64(3), h.Height)
+	require.Equal(t, uint64(3), h.Height)
 
 	_, err = c.TrustedLightBlock(1)
 	assert.Error(t, err)
