@@ -2,13 +2,13 @@ package server
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
 	"regexp"
 	"strings"
 
-	"github.com/pkg/errors"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -58,7 +58,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		logger.Debug("HTTPRestRPC", "method", r.URL.Path, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
 		if err != nil {
-			switch errors.Cause(err) {
+			switch errors.Unwrap(err) {
 			case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage:
 				WriteRPCResponseHTTPError(w, http.StatusBadRequest, types.RPCInvalidRequestError(dummyID, err))
 			case ctypes.ErrHeightNotAvailable, ctypes.ErrPageOutOfRange, ctypes.ErrHeightExceedsChainHead:

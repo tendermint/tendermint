@@ -152,7 +152,7 @@ func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
 		}
 		base := env.BlockStore.Base()
 		if height < base {
-			return 0, fmt.Errorf("%w (requested height: %v, base height: %v)", ctypes.ErrHeightExceedsChainHead, height, base)
+			return 0, fmt.Errorf("%w (requested height: %d, base height: %d)", ctypes.ErrHeightExceedsChainHead, height, base)
 		}
 		return height, nil
 	}

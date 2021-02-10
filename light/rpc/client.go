@@ -3,11 +3,11 @@ package rpc
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
@@ -19,8 +19,6 @@ import (
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
-
-var errNegOrZeroHeight = errors.New("negative or zero height")
 
 // KeyPathFunc builds a merkle path out of the given path and key.
 type KeyPathFunc func(path string, key []byte) (merkle.KeyPath, error)
@@ -127,7 +125,7 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 		return nil, errors.New("no proof ops")
 	}
 	if resp.Height <= 0 {
-		return nil, errNegOrZeroHeight
+		return nil, ctypes.ErrZeroOrNegativeHeight
 	}
 
 	// Update the light client if we're behind.
@@ -212,7 +210,7 @@ func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*ctypes.Re
 		return nil, err
 	}
 	if res.BlockHeight <= 0 {
-		return nil, errNegOrZeroHeight
+		return nil, ctypes.ErrZeroOrNegativeHeight
 	}
 
 	// Update the light client if we're behind.
@@ -370,7 +368,7 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*ctypes.Resul
 
 	// Validate res.
 	if res.Height <= 0 {
-		return nil, errNegOrZeroHeight
+		return nil, ctypes.ErrZeroOrNegativeHeight
 	}
 
 	// Update the light client if we're behind.
@@ -435,7 +433,7 @@ func (c *Client) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.Resul
 
 	// Validate res.
 	if res.Height <= 0 {
-		return nil, errNegOrZeroHeight
+		return nil, ctypes.ErrZeroOrNegativeHeight
 	}
 
 	// Update the light client if we're behind.
@@ -576,7 +574,7 @@ const (
 
 func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	if perPage < 1 {
-		panic(errors.Wrapf(ctypes.ErrZeroOrNegativePerPage, "%d", perPage))
+		panic(fmt.Errorf("%w (%d)", ctypes.ErrZeroOrNegativePerPage, perPage))
 	}
 
 	if pagePtr == nil { // no page parameter
@@ -589,7 +587,7 @@ func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	}
 	page := *pagePtr
 	if page <= 0 || page > pages {
-		return 1, errors.Wrapf(ctypes.ErrPageOutOfRange, "expected range: [1, %d], given %d", pages, page)
+		return 1, fmt.Errorf("%w expected range: [1, %d], given %d", ctypes.ErrPageOutOfRange, pages, page)
 	}
 
 	return page, nil
