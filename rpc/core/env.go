@@ -147,7 +147,8 @@ func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
 			return 0, fmt.Errorf("%w (requested height: %d)", ctypes.ErrZeroOrNegativeHeight, height)
 		}
 		if height > latestHeight {
-			return 0, fmt.Errorf("%w (requested height: %d, blockchain height: %d)", ctypes.ErrHeightExceedsChainHead, height, latestHeight)
+			return 0, fmt.Errorf("%w (requested height: %d, blockchain height: %d)",
+				ctypes.ErrHeightExceedsChainHead, height, latestHeight)
 		}
 		base := env.BlockStore.Base()
 		if height < base {
