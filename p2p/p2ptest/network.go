@@ -113,24 +113,27 @@ func (n *Network) MakeChannels(
 	t *testing.T,
 	chID p2p.ChannelID,
 	messageType proto.Message,
+	size int,
 ) map[p2p.NodeID]*p2p.Channel {
 	channels := map[p2p.NodeID]*p2p.Channel{}
 	for _, node := range n.Nodes {
-		channels[node.NodeID] = node.MakeChannel(t, chID, messageType)
+		channels[node.NodeID] = node.MakeChannel(t, chID, messageType, size)
 	}
 	return channels
 }
 
 // MakeChannelsNoCleanup makes a channel on all nodes and returns them,
-// automatically doing error checks.
+// automatically doing error checks. The caller must ensure proper cleanup of
+// all the channels.
 func (n *Network) MakeChannelsNoCleanup(
 	t *testing.T,
 	chID p2p.ChannelID,
 	messageType proto.Message,
+	size int,
 ) map[p2p.NodeID]*p2p.Channel {
 	channels := map[p2p.NodeID]*p2p.Channel{}
 	for _, node := range n.Nodes {
-		channels[node.NodeID] = node.MakeChannelNoCleanup(t, chID, messageType)
+		channels[node.NodeID] = node.MakeChannelNoCleanup(t, chID, messageType, size)
 	}
 	return channels
 }
@@ -239,8 +242,8 @@ func MakeNode(t *testing.T, network *Network) *Node {
 // MakeChannel opens a channel, with automatic error handling and cleanup. On
 // test cleanup, it also checks that the channel is empty, to make sure
 // all expected messages have been asserted.
-func (n *Node) MakeChannel(t *testing.T, chID p2p.ChannelID, messageType proto.Message) *p2p.Channel {
-	channel, err := n.Router.OpenChannel(chID, messageType)
+func (n *Node) MakeChannel(t *testing.T, chID p2p.ChannelID, messageType proto.Message, size int) *p2p.Channel {
+	channel, err := n.Router.OpenChannel(chID, messageType, size)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		RequireEmpty(t, channel)
@@ -249,9 +252,10 @@ func (n *Node) MakeChannel(t *testing.T, chID p2p.ChannelID, messageType proto.M
 	return channel
 }
 
-// MakeChannelNoCleanup opens a channel, with automatic error handling.
-func (n *Node) MakeChannelNoCleanup(t *testing.T, chID p2p.ChannelID, messageType proto.Message) *p2p.Channel {
-	channel, err := n.Router.OpenChannel(chID, messageType)
+// MakeChannelNoCleanup opens a channel, with automatic error handling. The
+// caller must ensure proper cleanup of the channel.
+func (n *Node) MakeChannelNoCleanup(t *testing.T, chID p2p.ChannelID, messageType proto.Message, size int) *p2p.Channel {
+	channel, err := n.Router.OpenChannel(chID, messageType, size)
 	require.NoError(t, err)
 	return channel
 }
