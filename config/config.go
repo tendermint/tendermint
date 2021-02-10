@@ -345,7 +345,7 @@ func (cfg BaseConfig) ValidateBasic() error {
 	switch cfg.Mode {
 	case ModeFullNode, ModeValidator, ModeSeedNode:
 	default:
-		return fmt.Errorf("unknown mode: %v". cfg.Mode)
+		return fmt.Errorf("unknown mode: %v", cfg.Mode)
 	}
 	return nil
 }
