@@ -14,8 +14,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -114,6 +116,101 @@ func setup(t *testing.T, states []*State, size int) *reactorTestSuite {
 	})
 
 	return rts
+}
+
+func validateBlock(block *types.Block, activeVals map[string]struct{}) error {
+	if block.LastCommit.Size() != len(activeVals) {
+		return fmt.Errorf(
+			"commit size doesn't match number of active validators. Got %d, expected %d",
+			block.LastCommit.Size(), len(activeVals),
+		)
+	}
+
+	for _, commitSig := range block.LastCommit.Signatures {
+		if _, ok := activeVals[string(commitSig.ValidatorAddress)]; !ok {
+			return fmt.Errorf("found vote for inactive validator %X", commitSig.ValidatorAddress)
+		}
+	}
+
+	return nil
+}
+
+func waitForAndValidateBlock(
+	t *testing.T,
+	n int,
+	activeVals map[string]struct{},
+	blocksSubs []types.Subscription,
+	states []*State,
+	txs ...[]byte,
+) {
+
+	fn := func(j int) {
+		msg := <-blocksSubs[j].Out()
+		newBlock := msg.Data().(types.EventDataNewBlock).Block
+
+		require.NoError(t, validateBlock(newBlock, activeVals))
+
+		for _, tx := range txs {
+			require.NoError(t, assertMempool(states[j].txNotifier).CheckTx(tx, nil, mempl.TxInfo{}))
+		}
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(n)
+
+	for i := 0; i < n; i++ {
+		go func(j int) {
+			fn(j)
+			wg.Done()
+		}(i)
+	}
+
+	wg.Wait()
+}
+
+func waitForAndValidateBlockWithTx(
+	t *testing.T,
+	n int,
+	activeVals map[string]struct{},
+	blocksSubs []types.Subscription,
+	states []*State,
+	txs ...[]byte,
+) {
+
+	fn := func(j int) {
+		ntxs := 0
+	BLOCK_TX_LOOP:
+		for {
+			msg := <-blocksSubs[j].Out()
+			newBlock := msg.Data().(types.EventDataNewBlock).Block
+
+			require.NoError(t, validateBlock(newBlock, activeVals))
+
+			// check that txs match the txs we're waiting for.
+			// note they could be spread over multiple blocks,
+			// but they should be in order.
+			for _, tx := range newBlock.Data.Txs {
+				require.EqualValues(t, txs[ntxs], tx)
+				ntxs++
+			}
+
+			if ntxs == len(txs) {
+				break BLOCK_TX_LOOP
+			}
+		}
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(n)
+
+	for i := 0; i < n; i++ {
+		go func(j int) {
+			fn(j)
+			wg.Done()
+		}(i)
+	}
+
+	wg.Wait()
 }
 
 func TestReactorBasic(t *testing.T) {
@@ -339,100 +436,106 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 	require.Greater(t, ps.VotesSent(), 0, "number of votes sent should've increased")
 }
 
-// func TestReactorVotingPowerChange(t *testing.T) {
-// 	configSetup(t)
+func TestReactorVotingPowerChange(t *testing.T) {
+	configSetup(t)
 
-// 	nVals := 4
-// 	css, cleanup := randConsensusState(
-// 		nVals,
-// 		"consensus_voting_power_changes_test",
-// 		newMockTickerFunc(true),
-// 		newPersistentKVStore,
-// 	)
+	n := 4
+	states, cleanup := randConsensusState(
+		n,
+		"consensus_voting_power_changes_test",
+		newMockTickerFunc(true),
+		newPersistentKVStore,
+	)
 
-// 	t.Cleanup(func() {
-// 		cleanup()
-// 	})
+	t.Cleanup(func() {
+		cleanup()
+	})
 
-// 	testSuites := make([]*reactorTestSuite, nVals)
-// 	for i := range testSuites {
-// 		testSuites[i] = setup(t, css[i], 100) // buffer must be large enough to not deadlock
-// 	}
+	rts := setup(t, states, 100) // buffer must be large enough to not deadlock
 
-// 	// map of active validators
-// 	activeVals := make(map[string]struct{})
-// 	for i := 0; i < nVals; i++ {
-// 		pubKey, err := css[i].privValidator.GetPubKey()
-// 		require.NoError(t, err)
+	for _, reactor := range rts.reactors {
+		state := reactor.conS.GetState()
+		reactor.SwitchToConsensus(state, false)
+	}
 
-// 		addr := pubKey.Address()
-// 		activeVals[string(addr)] = struct{}{}
-// 	}
+	// map of active validators
+	activeVals := make(map[string]struct{})
+	for i := 0; i < n; i++ {
+		pubKey, err := states[i].privValidator.GetPubKey()
+		require.NoError(t, err)
 
-// 	var wg sync.WaitGroup
-// 	for _, ts := range testSuites {
-// 		wg.Add(1)
+		addr := pubKey.Address()
+		activeVals[string(addr)] = struct{}{}
+	}
 
-// 		// wait till everyone makes the first new block
-// 		go func(rts *reactorTestSuite) {
-// 			<-rts.sub.Out()
-// 			wg.Done()
-// 		}(ts)
-// 	}
+	var wg sync.WaitGroup
+	for _, sub := range rts.subs {
+		wg.Add(1)
 
-// 	wg.Wait()
+		// wait till everyone makes the first new block
+		go func(s types.Subscription) {
+			<-s.Out()
+			wg.Done()
+		}(sub)
+	}
 
-// 	val1PubKey, err := css[0].privValidator.GetPubKey()
-// 	require.NoError(t, err)
+	wg.Wait()
 
-// 	val1PubKeyABCI, err := cryptoenc.PubKeyToProto(val1PubKey)
-// 	require.NoError(t, err)
+	blocksSubs := []types.Subscription{}
+	for _, sub := range rts.subs {
+		blocksSubs = append(blocksSubs, sub)
+	}
 
-// 	updateValidatorTx := kvstore.MakeValSetChangeTx(val1PubKeyABCI, 25)
-// 	previousTotalVotingPower := css[0].GetRoundState().LastValidators.TotalVotingPower()
+	val1PubKey, err := states[0].privValidator.GetPubKey()
+	require.NoError(t, err)
 
-// 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css, updateValidatorTx)
-// 	waitForAndValidateBlockWithTx(t, nVals, activeVals, blocksSubs, css, updateValidatorTx)
-// 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
-// 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
+	val1PubKeyABCI, err := cryptoenc.PubKeyToProto(val1PubKey)
+	require.NoError(t, err)
 
-// 	require.NotEqualf(
-// 		t, previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower(),
-// 		"expected voting power to change (before: %d, after: %d)",
-// 		previousTotalVotingPower,
-// 		css[0].GetRoundState().LastValidators.TotalVotingPower(),
-// 	)
+	updateValidatorTx := kvstore.MakeValSetChangeTx(val1PubKeyABCI, 25)
+	previousTotalVotingPower := states[0].GetRoundState().LastValidators.TotalVotingPower()
 
-// 	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 2)
-// 	previousTotalVotingPower = css[0].GetRoundState().LastValidators.TotalVotingPower()
+	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states, updateValidatorTx)
+	waitForAndValidateBlockWithTx(t, n, activeVals, blocksSubs, states, updateValidatorTx)
+	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states)
+	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states)
 
-// 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css, updateValidatorTx)
-// 	waitForAndValidateBlockWithTx(t, nVals, activeVals, blocksSubs, css, updateValidatorTx)
-// 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
-// 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
+	require.NotEqualf(
+		t, previousTotalVotingPower, states[0].GetRoundState().LastValidators.TotalVotingPower(),
+		"expected voting power to change (before: %d, after: %d)",
+		previousTotalVotingPower,
+		states[0].GetRoundState().LastValidators.TotalVotingPower(),
+	)
 
-// 	if css[0].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-// 		t.Fatalf(
-// 			"expected voting power to change (before: %d, after: %d)",
-// 			previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower(),
-// 		)
-// 	}
+	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 2)
+	previousTotalVotingPower = states[0].GetRoundState().LastValidators.TotalVotingPower()
 
-// 	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 26)
-// 	previousTotalVotingPower = css[0].GetRoundState().LastValidators.TotalVotingPower()
+	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states, updateValidatorTx)
+	waitForAndValidateBlockWithTx(t, n, activeVals, blocksSubs, states, updateValidatorTx)
+	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states)
+	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states)
 
-// 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css, updateValidatorTx)
-// 	waitForAndValidateBlockWithTx(t, nVals, activeVals, blocksSubs, css, updateValidatorTx)
-// 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
-// 	waitForAndValidateBlock(t, nVals, activeVals, blocksSubs, css)
+	require.NotEqualf(
+		t, states[0].GetRoundState().LastValidators.TotalVotingPower(), previousTotalVotingPower,
+		"expected voting power to change (before: %d, after: %d)",
+		previousTotalVotingPower, states[0].GetRoundState().LastValidators.TotalVotingPower(),
+	)
 
-// 	require.NotEqualf(
-// 		t, previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower(),
-// 		"expected voting power to change (before: %d, after: %d)",
-// 		previousTotalVotingPower,
-// 		css[0].GetRoundState().LastValidators.TotalVotingPower(),
-// 	)
-// }
+	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 26)
+	previousTotalVotingPower = states[0].GetRoundState().LastValidators.TotalVotingPower()
+
+	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states, updateValidatorTx)
+	waitForAndValidateBlockWithTx(t, n, activeVals, blocksSubs, states, updateValidatorTx)
+	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states)
+	waitForAndValidateBlock(t, n, activeVals, blocksSubs, states)
+
+	require.NotEqualf(
+		t, previousTotalVotingPower, states[0].GetRoundState().LastValidators.TotalVotingPower(),
+		"expected voting power to change (before: %d, after: %d)",
+		previousTotalVotingPower,
+		states[0].GetRoundState().LastValidators.TotalVotingPower(),
+	)
+}
 
 // ============================================================================
 // ============================================================================
