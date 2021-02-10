@@ -314,7 +314,7 @@ type Channel struct {
     In          <-chan Envelope  // Inbound messages (peers to reactors).
     Out         chan<- Envelope  // outbound messages (reactors to peers)
     Error       chan<- PeerError // Peer error reporting.
-    messageType proto.Message    // Channel's message type, for e.g. unmarshalling.
+    messageType proto.Message    // Channel's message type, for e.g. unmarshaling.
 }
 
 // Close closes the channel, also closing Out and Error.
@@ -529,7 +529,7 @@ func RunEchoReactor(router *p2p.Router, peerManager *p2p.PeerManager) error {
 }
 
 // EchoReactor provides an echo service, pinging all known peers until the given
-// context is cancelled.
+// context is canceled.
 func EchoReactor(ctx context.Context, channel *p2p.Channel, peerUpdates *p2p.PeerUpdates) error {
     ticker := time.NewTicker(5 * time.Second)
     defer ticker.Stop()
@@ -567,7 +567,7 @@ func EchoReactor(ctx context.Context, channel *p2p.Channel, peerUpdates *p2p.Pee
         case peerUpdate := <-peerUpdates:
             fmt.Printf("Peer %q changed status to %q", peerUpdate.PeerID, peerUpdate.Status)
 
-        // Exit when context is cancelled.
+        // Exit when context is canceled.
         case <-ctx.Done():
             return nil
         }

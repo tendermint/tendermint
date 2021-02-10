@@ -14,7 +14,7 @@ import (
 )
 
 // Load generates transactions against the network until the given
-// context is cancelled.
+// context is canceled.
 func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	// Since transactions are executed across all nodes in the network, we need
 	// to reduce transaction load for larger networks to avoid using too much
@@ -64,7 +64,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	}
 }
 
-// loadGenerate generates jobs until the context is cancelled
+// loadGenerate generates jobs until the context is canceled
 func loadGenerate(ctx context.Context, chTx chan<- types.Tx) {
 	for i := 0; i < math.MaxInt64; i++ {
 		// We keep generating the same 1000 keys over and over, with different values.
