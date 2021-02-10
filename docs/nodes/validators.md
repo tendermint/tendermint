@@ -56,7 +56,7 @@ The validator will only talk to the sentry that are provided, the sentry nodes w
 
 When initializing nodes there are five parameters in the `config.toml` that may need to be altered.
 
-- `mode:` (fullnode | validator | seednode) Mode of node, Default value is fullnode so you need to set it to `validator` if you want to run the node as validator, When set to `fullnode`, the privValidator is disabled. When set to `seednode`, only p2p and pex reactor are used.
+- `mode:` (fullnode | validator | seednode) Mode of node (default: 'fullnode'). If you want to run the node as validator, change it to 'validator'.
 - `pex:` boolean. This turns the peer exchange reactor on or off for a node. When `pex=false`, only the `persistent-peers` list is available for connection.
 - `persistent-peers:` a comma separated list of `nodeID@ip:port` values that define a list of peers that are expected to be online at all times. This is necessary at first startup because by setting `pex=false` the node will not be able to join the network.
 - `unconditional-peer-ids:` comma separated list of nodeID's. These nodes will be connected to no matter the limits of inbound and outbound peers. This is useful for when sentry nodes have full address books.
@@ -76,7 +76,7 @@ When initializing nodes there are five parameters in the `config.toml` that may 
 | addr-book-strict         | false                      |
 | double-sign-check-height | 10                         |
 
-To run the node as validator must set `mode=validator`, The validator node should have `pex=false` so it does not gossip to the entire network. The persistent peers will be your sentry nodes. Private peers can be left empty as the validator is not trying to hide who it is communicating with. Setting unconditional peers is optional for a validator because they will not have a full address books.
+To run the node as validator ensure `mode=validator`. The validator node should have `pex=false` so it does not gossip to the entire network. The persistent peers will be your sentry nodes. Private peers can be left empty as the validator is not trying to hide who it is communicating with. Setting unconditional peers is optional for a validator because they will not have a full address books.
 
 #### Sentry Node Configuration
 
