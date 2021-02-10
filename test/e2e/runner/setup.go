@@ -122,7 +122,7 @@ func Setup(testnet *e2e.Testnet) error {
 func MakeDockerCompose(testnet *e2e.Testnet) ([]byte, error) {
 	// Must use version 2 Docker Compose format, to support IPv6.
 	tmpl, err := template.New("docker-compose").Funcs(template.FuncMap{
-		"startCommands": func(misbehaviors map[int64]string, logLevel string) string {
+		"startCommands": func(misbehaviors map[uint64]string, logLevel string) string {
 			command := "start"
 			misbehaviorString := ""
 			for height, misbehavior := range misbehaviors {
