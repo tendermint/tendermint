@@ -1150,6 +1150,7 @@ func (vals *ValidatorSet) ABCIEquivalentValidatorUpdates() *abci.ValidatorSetUpd
 	return &abci.ValidatorSetUpdate{
 		ValidatorUpdates:   valUpdates,
 		ThresholdPublicKey: abciThresholdPublicKey,
+		QuorumHash:         vals.QuorumHash,
 	}
 }
 
@@ -1253,6 +1254,11 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 		return nil, fmt.Errorf("toProto: thresholdPublicKey error: %w", err)
 	}
 	vp.ThresholdPublicKey = thresholdPublicKey
+
+	if len(vals.QuorumHash) != crypto.DefaultHashSize {
+		return nil, fmt.Errorf("toProto: quorumHash is incorrect size: %d", len(vals.QuorumHash))
+	}
+
 	vp.QuorumHash = vals.QuorumHash
 
 	return vp, nil
@@ -1526,6 +1532,7 @@ func ValidatorUpdatesRegenerateOnProTxHashes(proTxHashes []crypto.ProTxHash) abc
 	return abci.ValidatorSetUpdate{
 		ValidatorUpdates:   valUpdates,
 		ThresholdPublicKey: abciThresholdPublicKey,
+		QuorumHash:         crypto.RandQuorumHash(),
 	}
 }
 

@@ -8,7 +8,7 @@ require (
 	github.com/Workiva/go-datastructures v1.0.52
 	github.com/btcsuite/btcd v0.21.0-beta
 	github.com/btcsuite/btcutil v1.0.2
-	github.com/dashevo/dashd-go v0.0.0-20210207161516-5ca689950663
+	github.com/dashevo/dashd-go v0.0.0-20210209074901-db917da50228
 	github.com/dashpay/bls-signatures/go-bindings v0.0.0-20201127091120-745324b80143
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/go-kit/kit v0.10.0

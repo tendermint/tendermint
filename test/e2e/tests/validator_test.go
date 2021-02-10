@@ -149,11 +149,13 @@ type validatorSchedule struct {
 	height                    int64
 	updates                   map[int64]map[*e2e.Node]crypto.PubKey
 	thresholdPublicKeyUpdates map[int64]crypto.PubKey
+	quorumHashUpdates         map[int64]crypto.QuorumHash
 }
 
 func newValidatorSchedule(testnet e2e.Testnet) *validatorSchedule {
 	valMap := testnet.Validators // genesis validators
 	thresholdPublicKey := testnet.ThresholdPublicKey
+	quorumHash := testnet.QuorumHash
 	if thresholdPublicKey == nil {
 		panic("threshold public key must be set")
 	}
@@ -164,13 +166,19 @@ func newValidatorSchedule(testnet e2e.Testnet) *validatorSchedule {
 		} else {
 			panic("threshold public key must be set for height 0 if validator changes")
 		}
+		if q, ok := testnet.QuorumHashUpdates[0]; ok { // InitChain threshold public key
+			quorumHash = q
+		} else {
+			panic("quorum hash key must be set for height 0 if validator changes")
+		}
 	}
 
 	return &validatorSchedule{
 		height:                    testnet.InitialHeight,
-		Set:                       types.NewValidatorSet(makeVals(valMap), thresholdPublicKey),
+		Set:                       types.NewValidatorSet(makeVals(valMap), thresholdPublicKey, quorumHash),
 		updates:                   testnet.ValidatorUpdates,
 		thresholdPublicKeyUpdates: testnet.ThresholdPublicKeyUpdates,
+		quorumHashUpdates:         testnet.QuorumHashUpdates,
 	}
 }
 
@@ -182,8 +190,14 @@ func (s *validatorSchedule) Increment(heights int64) {
 			// two blocks after they're returned.
 			if update, ok := s.updates[s.height-2]; ok {
 				if thresholdPublicKeyUpdate, ok := s.thresholdPublicKeyUpdates[s.height-2]; ok {
-					if err := s.Set.UpdateWithChangeSet(makeVals(update), thresholdPublicKeyUpdate); err != nil {
-						panic(err)
+					if quorumHashUpdate, ok := s.quorumHashUpdates[s.height-2]; ok {
+						if bytes.Equal(quorumHashUpdate, s.Set.QuorumHash) {
+							if err := s.Set.UpdateWithChangeSet(makeVals(update), thresholdPublicKeyUpdate); err != nil {
+								panic(err)
+							}
+						} else {
+							s.Set = types.NewValidatorSet(makeVals(update), thresholdPublicKeyUpdate, quorumHashUpdate)
+						}
 					}
 				}
 			}

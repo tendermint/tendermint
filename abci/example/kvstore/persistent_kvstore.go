@@ -22,6 +22,7 @@ const (
 	ValidatorThresholdPublicKeyChangePrefix string = "tpk:"
 	ValidatorThresholdPublicKeyPrefix       string = "tpk"
 	ValidatorSetQuorumHashPrefix            string = "vqh"
+	ValidatorSetQuorumHashChangePrefix      string = "vqh:"
 )
 
 //-----------------------------------------
@@ -149,6 +150,9 @@ func (app *PersistentKVStoreApplication) InitChain(req types.RequestInitChain) t
 	}
 	app.updateThresholdPublicKey(types.ThresholdPublicKeyUpdate{
 		ThresholdPublicKey: req.ValidatorSet.ThresholdPublicKey,
+	})
+	app.updateQuorumHash(types.QuorumHashUpdate{
+		QuorumHash: req.ValidatorSet.QuorumHash,
 	})
 	return types.ResponseInitChain{}
 }
@@ -314,7 +318,7 @@ func (app *PersistentKVStoreApplication) execThresholdPublicKeyTx(tx []byte) typ
 // format is "vqh:hash"
 // hash is a base64-encoded 32-byte hash
 func (app *PersistentKVStoreApplication) execQuorumHashTx(tx []byte) types.ResponseDeliverTx {
-	tx = tx[len(ValidatorSetQuorumHashPrefix):]
+	tx = tx[len(ValidatorSetQuorumHashChangePrefix):]
 
 	// decode the pubkey
 	quorumHash, err := base64.StdEncoding.DecodeString(string(tx))

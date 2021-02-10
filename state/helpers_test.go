@@ -116,6 +116,7 @@ func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValida
 		ChainID:            chainID,
 		Validators:         vals,
 		ThresholdPublicKey: thresholdPublicKey,
+		QuorumHash:         crypto.RandQuorumHash(),
 		AppHash:            nil,
 	})
 
@@ -218,6 +219,7 @@ func randomGenesisDoc() *types.GenesisDoc {
 		},
 		ConsensusParams:    types.DefaultConsensusParams(),
 		ThresholdPublicKey: pubkey,
+		QuorumHash:         crypto.RandQuorumHash(),
 	}
 }
 

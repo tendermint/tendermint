@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/tendermint/tendermint/crypto"
 	"os"
 	"time"
 
@@ -50,7 +51,7 @@ func main() {
 	}
 
 	sd := privval.NewSignerDialerEndpoint(logger, dialer)
-	ss := privval.NewSignerServer(sd, *chainID, pv)
+	ss := privval.NewSignerServer(sd, *chainID, crypto.RandQuorumHash(), pv)
 
 	err := ss.Start()
 	if err != nil {

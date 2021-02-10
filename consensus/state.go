@@ -1790,9 +1790,6 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 		return fmt.Errorf("error proposer %X verifying proposal signature %X at height %d with key %X blockSignBytes %X",
 			proposer.ProTxHash, proposal.Signature, proposal.Height, proposer.PubKey.Bytes(), proposalBlockSignBytes)
 	}
-	// } else if proposal.Height == 9 {
-	//	 return errors.New("just need a breakpoint")
-	// }
 
 	proposal.Signature = p.Signature
 	cs.Proposal = proposal

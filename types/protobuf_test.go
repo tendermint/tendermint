@@ -47,6 +47,7 @@ func TestABCIValidators(t *testing.T) {
 	assert.Equal(t, abci.ValidatorSetUpdate{
 		ValidatorUpdates:   []abci.ValidatorUpdate{abciVal},
 		ThresholdPublicKey: abciVal.PubKey,
+		QuorumHash:         quorumHash,
 	}, abciVals)
 
 	// val with address

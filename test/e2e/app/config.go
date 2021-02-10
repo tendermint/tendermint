@@ -19,6 +19,7 @@ type Config struct {
 	RetainBlocks            uint64                       `toml:"retain_blocks"`
 	ValidatorUpdates        map[string]map[string]string `toml:"validator_update"`
 	ThesholdPublicKeyUpdate map[string]string            `toml:"threshold_public_key_update"`
+	QuorumHashUpdate        map[string]string            `toml:"quorum_hash_update"`
 	ChainLockUpdates        map[string]string            `toml:"chainlock_updates"`
 	PrivValServer           string                       `toml:"privval_server"`
 	PrivValKey              string                       `toml:"privval_key"`

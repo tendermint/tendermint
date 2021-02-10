@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"encoding/hex"
+	"github.com/tendermint/tendermint/crypto"
 	"math"
 	"testing"
 	"time"
@@ -59,7 +60,7 @@ func TestMsgToProto(t *testing.T) {
 	pbProposal := proposal.ToProto()
 
 	pv := types.NewMockPV()
-	pk, err := pv.GetPubKey()
+	pk, err := pv.GetPubKey(crypto.QuorumHash{})
 	require.NoError(t, err)
 	val := types.NewValidatorDefaultVotingPower(pk, pv.ProTxHash)
 

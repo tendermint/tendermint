@@ -227,9 +227,9 @@ func TestValidateBlockCommit(t *testing.T) {
 		g := goodVote.ToProto()
 		b := badVote.ToProto()
 
-		err = badPrivVal.SignVote(chainID, g)
+		err = badPrivVal.SignVote(chainID, state.Validators.QuorumHash, g)
 		require.NoError(t, err, "height %d", height)
-		err = badPrivVal.SignVote(chainID, b)
+		err = badPrivVal.SignVote(chainID, state.Validators.QuorumHash, b)
 		require.NoError(t, err, "height %d", height)
 
 		goodVote.BlockSignature, badVote.BlockSignature = g.BlockSignature, b.BlockSignature
@@ -281,7 +281,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 			// more bytes than the maximum allowed for evidence
 			for currentBytes <= maxBytesEvidence {
 				newEv := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(),
-					privVals[proposerProTxHash.String()], chainID)
+					privVals[proposerProTxHash.String()], chainID, state.Validators.QuorumHash)
 				evidence = append(evidence, newEv)
 				currentBytes += int64(len(newEv.Bytes()))
 			}
@@ -303,7 +303,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 		for {
 			proposerProTxHashString := proposerProTxHash.String()
 			newEv := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime,
-				privVals[proposerProTxHashString], chainID)
+				privVals[proposerProTxHashString], chainID, state.Validators.QuorumHash)
 			currentBytes += int64(len(newEv.Bytes()))
 			if currentBytes >= maxBytesEvidence {
 				break

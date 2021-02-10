@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"net"
 	"os"
 	"path/filepath"
@@ -144,7 +145,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		pvStateFile := filepath.Join(nodeDir, config.BaseConfig.PrivValidatorState)
 		pv := privval.LoadFilePV(pvKeyFile, pvStateFile)
 
-		pubKey, err := pv.GetPubKey()
+		pubKey, err := pv.GetPubKey(crypto.QuorumHash{})
 		if err != nil {
 			return fmt.Errorf("can't get pubkey: %w", err)
 		}

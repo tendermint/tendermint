@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"time"
@@ -205,7 +206,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, 0, fmt.Errorf("error in chain lock from proto: %v", err)
 	}
 
-	validatorUpdates, thresholdPublicKeyUpdate, err :=
+	validatorUpdates, thresholdPublicKeyUpdate, quorumHash, err :=
 		types.PB2TM.ValidatorUpdatesFromValidatorSet(abciValidatorSetUpdates)
 	if err != nil {
 		return state, 0, err
@@ -215,7 +216,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update the state with the block and responses.
-	state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates, thresholdPublicKeyUpdate)
+	state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates, thresholdPublicKeyUpdate, quorumHash)
 	if err != nil {
 		return state, 0, fmt.Errorf("commit failed for application: %v", err)
 	}
@@ -485,6 +486,7 @@ func updateState(
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 	newThresholdPublicKey crypto.PubKey,
+	quorumHash crypto.QuorumHash,
 ) (State, error) {
 
 	// Copy the valset so we can apply changes from EndBlock
@@ -494,12 +496,18 @@ func updateState(
 	// Update the validator set with the latest abciResponses.
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
 	if len(validatorUpdates) > 0 {
-		err := nValSet.UpdateWithChangeSet(validatorUpdates, newThresholdPublicKey)
-		if err != nil {
-			return state, fmt.Errorf("error changing validator set: %v", err)
+		if bytes.Equal(nValSet.QuorumHash, quorumHash) {
+			err := nValSet.UpdateWithChangeSet(validatorUpdates, newThresholdPublicKey)
+			if err != nil {
+				return state, fmt.Errorf("error changing validator set: %v", err)
+			}
+			// Change results from this height but only applies to the next next height.
+			lastHeightValsChanged = header.Height + 1 + 1
+		} else {
+			nValSet =  types.NewValidatorSet(validatorUpdates, newThresholdPublicKey, quorumHash)
+			// Change results from this height but only applies to the next next height.
+			lastHeightValsChanged = header.Height + 1 + 1
 		}
-		// Change results from this height but only applies to the next next height.
-		lastHeightValsChanged = header.Height + 1 + 1
 	}
 
 	// Update validator proposer priority and set state variables.

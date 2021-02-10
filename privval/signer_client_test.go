@@ -37,7 +37,7 @@ func getSignerTestCases(t *testing.T) []signerTestCase {
 		sl, sd := getMockEndpoints(t, dtc.addr, dtc.dialer)
 		sc, err := NewSignerClient(sl, chainID)
 		require.NoError(t, err)
-		ss := NewSignerServer(sd, chainID, mockPV)
+		ss := NewSignerServer(sd, chainID, crypto.RandQuorumHash(), mockPV)
 
 		err = ss.Start()
 		require.NoError(t, err)
@@ -398,7 +398,7 @@ func TestSignerSignVoteErrors(t *testing.T) {
 }
 
 func brokenHandler(privVal types.PrivValidator, request privvalproto.Message,
-	chainID string) (privvalproto.Message, error) {
+	chainID string, quorumHash crypto.QuorumHash) (privvalproto.Message, error) {
 	var res privvalproto.Message
 	var err error
 

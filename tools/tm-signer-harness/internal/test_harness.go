@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"net"
 	"os"
 	"os/signal"
@@ -56,6 +57,7 @@ type TestHarness struct {
 	signerClient     *privval.SignerClient
 	fpv              *privval.FilePV
 	chainID          string
+	quorumHash       crypto.QuorumHash
 	acceptRetries    int
 	logger           log.Logger
 	exitWhenComplete bool
@@ -120,6 +122,7 @@ func NewTestHarness(logger log.Logger, cfg TestHarnessConfig) (*TestHarness, err
 		signerClient:     signerClient,
 		fpv:              fpv,
 		chainID:          st.ChainID,
+		quorumHash:       st.QuorumHash,
 		acceptRetries:    cfg.AcceptRetries,
 		logger:           logger,
 		exitWhenComplete: cfg.ExitWhenComplete,
@@ -193,12 +196,12 @@ func (th *TestHarness) Run() {
 // local Tendermint version.
 func (th *TestHarness) TestPublicKey() error {
 	th.logger.Info("TEST: Public key of remote signer")
-	fpvk, err := th.fpv.GetPubKey()
+	fpvk, err := th.fpv.GetPubKey(th.quorumHash)
 	if err != nil {
 		return err
 	}
 	th.logger.Info("Local", "pubKey", fpvk)
-	sck, err := th.signerClient.GetPubKey()
+	sck, err := th.signerClient.GetPubKey(th.quorumHash)
 	if err != nil {
 		return err
 	}
@@ -233,7 +236,7 @@ func (th *TestHarness) TestSignProposal() error {
 	}
 	p := prop.ToProto()
 	propBytes := types.ProposalBlockSignBytes(th.chainID, p)
-	if err := th.signerClient.SignProposal(th.chainID, p); err != nil {
+	if err := th.signerClient.SignProposal(th.chainID, th.quorumHash, p); err != nil {
 		th.logger.Error("FAILED: Signing of proposal", "err", err)
 		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
 	}
@@ -244,7 +247,7 @@ func (th *TestHarness) TestSignProposal() error {
 		th.logger.Error("FAILED: Signed proposal is invalid", "err", err)
 		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
 	}
-	sck, err := th.signerClient.GetPubKey()
+	sck, err := th.signerClient.GetPubKey(th.quorumHash)
 	if err != nil {
 		return err
 	}
@@ -287,7 +290,7 @@ func (th *TestHarness) TestSignVote() error {
 		voteBlockBytes := types.VoteBlockSignBytes(th.chainID, v)
 		voteStateBytes := types.VoteStateSignBytes(th.chainID, v)
 		// sign the vote
-		if err := th.signerClient.SignVote(th.chainID, v); err != nil {
+		if err := th.signerClient.SignVote(th.chainID, th.quorumHash, v); err != nil {
 			th.logger.Error("FAILED: Signing of vote", "err", err)
 			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
 		}
@@ -299,7 +302,7 @@ func (th *TestHarness) TestSignVote() error {
 			th.logger.Error("FAILED: Signed vote is invalid", "err", err)
 			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
 		}
-		sck, err := th.signerClient.GetPubKey()
+		sck, err := th.signerClient.GetPubKey(th.quorumHash)
 		if err != nil {
 			return err
 		}

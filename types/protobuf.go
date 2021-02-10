@@ -111,7 +111,7 @@ func (tm2pb) ValidatorUpdates(vals *ValidatorSet) abci.ValidatorSetUpdate {
 	if err != nil {
 		panic(err)
 	}
-	return abci.ValidatorSetUpdate{ValidatorUpdates: validators, ThresholdPublicKey: abciThresholdPublicKey}
+	return abci.ValidatorSetUpdate{ValidatorUpdates: validators, ThresholdPublicKey: abciThresholdPublicKey, QuorumHash: vals.QuorumHash}
 }
 
 func (tm2pb) ConsensusParams(params *tmproto.ConsensusParams) *abci.ConsensusParams {
@@ -159,30 +159,34 @@ func (pb2tm) ValidatorUpdates(vals []abci.ValidatorUpdate) ([]*Validator, error)
 }
 
 func (pb2tm) ValidatorUpdatesFromValidatorSet(valSetUpdate *abci.ValidatorSetUpdate) ([]*Validator,
-	crypto.PubKey, error) {
+	crypto.PubKey, crypto.QuorumHash, error) {
 	if valSetUpdate == nil {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 	tmVals := make([]*Validator, len(valSetUpdate.ValidatorUpdates))
 	for i, v := range valSetUpdate.ValidatorUpdates {
 		pub, err := cryptoenc.PubKeyFromProto(v.PubKey)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		tmVals[i] = NewValidator(pub, v.Power, v.ProTxHash)
 		err = tmVals[i].ValidateBasic()
 		if err != nil {
-			return nil, nil, fmt.Errorf("validator updates from validator set error when validating validator: %s", err)
+			return nil, nil, nil, fmt.Errorf("validator updates from validator set error when validating validator: %s", err)
 		}
 	}
 	if valSetUpdate.ThresholdPublicKey.Sum == nil {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 	pub, err := cryptoenc.PubKeyFromProto(valSetUpdate.ThresholdPublicKey)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return tmVals, pub, nil
+	if len(valSetUpdate.QuorumHash) != crypto.DefaultHashSize {
+		return nil, nil, nil, fmt.Errorf("validator set update must have a quorum" +
+			" hash of 32 bytes (size: %d bytes)", len(valSetUpdate.QuorumHash))
+	}
+	return tmVals, pub, valSetUpdate.QuorumHash, nil
 }
 
 func (pb2tm) ThresholdPublicKeyUpdate(thresholdPublicKey crypto2.PublicKey) (crypto.PubKey, error) {

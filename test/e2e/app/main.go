@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -185,7 +186,7 @@ func startSigner(cfg *Config) error {
 	endpoint := privval.NewSignerDialerEndpoint(logger, dialFn,
 		privval.SignerDialerEndpointRetryWaitInterval(1*time.Second),
 		privval.SignerDialerEndpointConnRetries(100))
-	err := privval.NewSignerServer(endpoint, cfg.ChainID, filePV).Start()
+	err := privval.NewSignerServer(endpoint, cfg.ChainID, crypto.RandQuorumHash(), filePV).Start()
 	if err != nil {
 		return err
 	}

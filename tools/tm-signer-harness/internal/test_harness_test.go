@@ -71,6 +71,7 @@ const (
 		"pro_tx_hash": "51BF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C45F"
 		}
 	],
+    "quorum_hash": "444F39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C433",
     "threshold_public_key": {
 		"type": "tendermint/PubKeyBLS12381",
         "value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"
@@ -150,7 +151,7 @@ func newMockSignerServer(
 		),
 	)
 
-	return privval.NewSignerServer(dialerEndpoint, th.chainID, mockPV)
+	return privval.NewSignerServer(dialerEndpoint, th.chainID, crypto.RandQuorumHash(), mockPV)
 }
 
 // For running relatively standard tests.

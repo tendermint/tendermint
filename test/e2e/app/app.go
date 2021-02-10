@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -226,6 +227,18 @@ func (app *Application) validatorSetUpdates(height uint64) (*abci.ValidatorSetUp
 		panic(err)
 	}
 
+
+	quorumHashUpdateString := app.cfg.QuorumHashUpdate[fmt.Sprintf("%v", height)]
+	if len(quorumHashUpdateString) == 0 {
+		return nil, fmt.Errorf("quorumHashUpdate must be set")
+	}
+	quorumHashUpdateBytes, err := hex.DecodeString(quorumHashUpdateString)
+	if err != nil {
+		return nil, fmt.Errorf("invalid hex quorum value %q: %w", quorumHashUpdateString, err)
+	}
+	quorumHashUpdate := crypto.QuorumHash(quorumHashUpdateBytes)
+
+
 	valSetUpdates := abci.ValidatorSetUpdate{}
 
 	valUpdates := abci.ValidatorUpdates{}
@@ -243,6 +256,7 @@ func (app *Application) validatorSetUpdates(height uint64) (*abci.ValidatorSetUp
 	}
 	valSetUpdates.ValidatorUpdates = valUpdates
 	valSetUpdates.ThresholdPublicKey = abciThresholdPublicKeyUpdate
+	valSetUpdates.QuorumHash = quorumHashUpdate
 	return &valSetUpdates, nil
 }
 

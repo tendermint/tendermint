@@ -150,6 +150,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	signerServer := privval.NewSignerServer(
 		dialerEndpoint,
 		config.ChainID(),
+		crypto.RandQuorumHash(),
 		types.NewMockPV(),
 	)
 
@@ -196,6 +197,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	pvsc := privval.NewSignerServer(
 		dialerEndpoint,
 		config.ChainID(),
+		crypto.RandQuorumHash(),
 		types.NewMockPV(),
 	)
 
@@ -265,7 +267,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	// than can fit in a block
 	var currentBytes int64 = 0
 	for currentBytes <= maxEvidenceBytes {
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
+		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain", state.Validators.QuorumHash)
 		currentBytes += int64(len(ev.Bytes()))
 		err := evidencePool.AddEvidenceFromConsensus(ev)
 		require.NoError(t, err)
@@ -416,6 +418,7 @@ func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 		ChainID:            "test-chain",
 		Validators:         vals,
 		ThresholdPublicKey: thresholdPublicKey,
+		QuorumHash:         crypto.RandQuorumHash(),
 		AppHash:            nil,
 	})
 

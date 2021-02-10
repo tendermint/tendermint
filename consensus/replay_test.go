@@ -362,7 +362,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	updatedValidators, _, newThresholdPublicKey, quorumHash2 := updateConsensusNetAddNewValidators(css, height, 1, false)
 	height++
 	incrementHeight(vss...)
-	updateTransactions := make([][]byte, len(updatedValidators)+1)
+	updateTransactions := make([][]byte, len(updatedValidators)+2)
 	for i := 0; i < len(updatedValidators); i++ {
 		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators[i].PubKey)
@@ -372,6 +372,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	abciThresholdPubKey, err := cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
 	updateTransactions[len(updatedValidators)] = kvstore.MakeThresholdPublicKeyChangeTx(abciThresholdPubKey)
+	updateTransactions[len(updatedValidators) + 1] = kvstore.MakeQuorumHashTx(quorumHash2)
 	for _, updateTransaction := range updateTransactions {
 		err = assertMempool(css[0].txNotifier).CheckTx(updateTransaction, nil, mempl.TxInfo{})
 		assert.Nil(t, err)
@@ -429,7 +430,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	updatedValidators, _, newThresholdPublicKey, quorumHash4 := updateConsensusNetAddNewValidators(css, height, 2, false)
 	height++
 	incrementHeight(vss...)
-	updateTransactions2 := make([][]byte, len(updatedValidators)+1)
+	updateTransactions2 := make([][]byte, len(updatedValidators)+2)
 	for i := 0; i < len(updatedValidators); i++ {
 		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators[i].PubKey)
@@ -439,6 +440,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	abciThresholdPubKey2, err := cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
 	updateTransactions2[len(updatedValidators)] = kvstore.MakeThresholdPublicKeyChangeTx(abciThresholdPubKey2)
+	updateTransactions2[len(updatedValidators) + 1] = kvstore.MakeQuorumHashTx(quorumHash4)
 	for _, updateTransaction := range updateTransactions2 {
 		err = assertMempool(css[0].txNotifier).CheckTx(updateTransaction, nil, mempl.TxInfo{})
 		assert.Nil(t, err)
@@ -544,27 +546,21 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	// HEIGHT 6
 	//
-	updatedValidators, removedValidators, newThresholdPublicKey, quorumHash6 := updateConsensusNetRemoveValidators(css, height,
+	updatedValidators, _, newThresholdPublicKey, quorumHash6 := updateConsensusNetRemoveValidators(css, height,
 		1, false)
 	height++
-	updateTransactions3 := make([][]byte, len(updatedValidators)+len(removedValidators)+1)
+	updateTransactions3 := make([][]byte, len(updatedValidators)+2)
 	for i := 0; i < len(updatedValidators); i++ {
 		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators[i].PubKey)
 		require.NoError(t, err)
 		updateTransactions3[i] = kvstore.MakeValSetChangeTx(updatedValidators[i].ProTxHash, abciPubKey, testMinPower)
 	}
-	for i := 0; i < len(removedValidators); i++ {
-		// start by adding all validator transactions
-		abciPubKey, err := cryptoenc.PubKeyToProto(removedValidators[i].PubKey)
-		require.NoError(t, err)
-		updateTransactions3[len(updatedValidators)+i] = kvstore.MakeValSetChangeTx(removedValidators[i].ProTxHash,
-			abciPubKey, 0)
-	}
 	abciThresholdPubKey, err = cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
-	updateTransactions3[len(updatedValidators)+len(removedValidators)] =
+	updateTransactions3[len(updatedValidators)] =
 		kvstore.MakeThresholdPublicKeyChangeTx(abciThresholdPubKey)
+	updateTransactions3[len(updatedValidators) + 1] = kvstore.MakeQuorumHashTx(quorumHash6)
 
 	for _, updateTransaction := range updateTransactions3 {
 		err = assertMempool(css[0].txNotifier).CheckTx(updateTransaction, nil, mempl.TxInfo{})
@@ -665,29 +661,22 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	// HEIGHT 8
 
 	proTxHashToRemove := updatedValidators[len(updatedValidators)-1].ProTxHash
-	updatedValidators, removedValidators, newThresholdPublicKey, _ = updateConsensusNetRemoveValidatorsWithProTxHashes(css,
+	updatedValidators, _, newThresholdPublicKey, quorumHash8 := updateConsensusNetRemoveValidatorsWithProTxHashes(css,
 		height, []crypto.ProTxHash{proTxHashToRemove}, false)
 	height++
 	incrementHeight(vss...)
 
-	updateTransactions4 := make([][]byte, len(updatedValidators)+len(removedValidators)+1)
+	updateTransactions4 := make([][]byte, len(updatedValidators)+2)
 	for i := 0; i < len(updatedValidators); i++ {
 		// start by adding all validator transactions
 		abciPubKey, err := cryptoenc.PubKeyToProto(updatedValidators[i].PubKey)
 		require.NoError(t, err)
 		updateTransactions4[i] = kvstore.MakeValSetChangeTx(updatedValidators[i].ProTxHash, abciPubKey, testMinPower)
 	}
-	for i := 0; i < len(removedValidators); i++ {
-		// start by adding all validator transactions
-		abciPubKey, err := cryptoenc.PubKeyToProto(removedValidators[i].PubKey)
-		require.NoError(t, err)
-		updateTransactions4[len(updatedValidators)+i] = kvstore.MakeValSetChangeTx(removedValidators[i].ProTxHash,
-			abciPubKey, 0)
-	}
 	abciThresholdPubKey, err = cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
-	updateTransactions4[len(updatedValidators)+len(removedValidators)] =
-		kvstore.MakeThresholdPublicKeyChangeTx(abciThresholdPubKey)
+	updateTransactions4[len(updatedValidators)] = kvstore.MakeThresholdPublicKeyChangeTx(abciThresholdPubKey)
+	updateTransactions4[len(updatedValidators) + 1] = kvstore.MakeQuorumHashTx(quorumHash8)
 
 	for _, updateTransaction := range updateTransactions4 {
 		err = assertMempool(css[0].txNotifier).CheckTx(updateTransaction, nil, mempl.TxInfo{})

@@ -2,8 +2,8 @@ package commands
 
 import (
 	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/tendermint/tendermint/crypto"
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -25,7 +25,7 @@ func showValidator(cmd *cobra.Command, args []string) error {
 
 	pv := privval.LoadFilePV(keyFilePath, config.PrivValidatorStateFile())
 
-	pubKey, err := pv.GetPubKey()
+	pubKey, err := pv.GetPubKey(crypto.QuorumHash{})
 	if err != nil {
 		return fmt.Errorf("can't get pubkey: %w", err)
 	}

@@ -118,6 +118,7 @@ func TestPruneStates(t *testing.T) {
 				Validators:         []*types.Validator{validator},
 				Proposer:           validator,
 				ThresholdPublicKey: validator.PubKey,
+				QuorumHash:         crypto.RandQuorumHash(),
 			}
 			valsChanged := int64(0)
 			paramsChanged := int64(0)

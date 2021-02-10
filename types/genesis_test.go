@@ -68,6 +68,25 @@ func TestGenesisBad(t *testing.T) {
 				`},"power":"10","name":""}` +
 				`]}`,
 		),
+		// missing quorum_hash
+		[]byte(
+			`{
+			"genesis_time": "0001-01-01T00:00:00Z",
+			"chain_id": "test-chain-QDKdJr",
+			"initial_height": "1000",
+            "initial_core_chain_locked_height": 3000,
+			"consensus_params": null,
+			"validators": [{
+				"pub_key":{"type": "tendermint/PubKeyBLS12381","value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"},
+				"power":"100",
+				"name":"",
+				"pro_tx_hash":"51BF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C45F"
+			}],
+			"threshold_public_key": {
+				"type": "tendermint/PubKeyBLS12381",
+				"value": "F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"
+			}
+		}`),
 	}
 
 	for _, testCase := range testCases {

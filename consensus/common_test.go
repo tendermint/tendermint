@@ -986,6 +986,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 		InitialCoreChainLockedHeight: 1,
 		InitialProposalCoreChainLock: coreChainLock.ToProto(),
 		ThresholdPublicKey:           thresholdPublicKey,
+		QuorumHash:                   crypto.RandQuorumHash(),
 	}, privValidators
 }
 

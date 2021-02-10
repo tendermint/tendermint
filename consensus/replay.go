@@ -320,7 +320,7 @@ func (h *Handshaker) ReplayBlocks(
 				return nil, fmt.Errorf("replay blocks error when validating validator: %s", err)
 			}
 		}
-		validatorSet := types.NewValidatorSet(validators, h.genDoc.ThresholdPublicKey)
+		validatorSet := types.NewValidatorSet(validators, h.genDoc.ThresholdPublicKey, h.genDoc.QuorumHash)
 		err := validatorSet.ValidateBasic()
 		if err != nil {
 			return nil, fmt.Errorf("replay blocks error when validating validatorSet: %s", err)
@@ -351,12 +351,12 @@ func (h *Handshaker) ReplayBlocks(
 			}
 			// If the app returned validators or consensus params, update the state.
 			if len(res.ValidatorSetUpdate.ValidatorUpdates) > 0 {
-				vals, thresholdPublicKey, err := types.PB2TM.ValidatorUpdatesFromValidatorSet(&res.ValidatorSetUpdate)
+				vals, thresholdPublicKey, quorumHash, err := types.PB2TM.ValidatorUpdatesFromValidatorSet(&res.ValidatorSetUpdate)
 				if err != nil {
 					return nil, err
 				}
-				state.Validators = types.NewValidatorSet(vals, thresholdPublicKey)
-				state.NextValidators = types.NewValidatorSet(vals, thresholdPublicKey).CopyIncrementProposerPriority(1)
+				state.Validators = types.NewValidatorSet(vals, thresholdPublicKey, quorumHash)
+				state.NextValidators = types.NewValidatorSet(vals, thresholdPublicKey, quorumHash).CopyIncrementProposerPriority(1)
 			} else if len(h.genDoc.Validators) == 0 {
 				// If validator set is not set in genesis and still empty after InitChain, exit.
 				return nil, fmt.Errorf("validator set is nil in genesis and still empty after InitChain")

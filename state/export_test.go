@@ -32,8 +32,9 @@ func UpdateState(
 	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 	newThresholdPublicKey crypto.PubKey,
+	quorumHash crypto.QuorumHash,
 ) (State, error) {
-	return updateState(state, blockID, header, abciResponses, validatorUpdates, newThresholdPublicKey)
+	return updateState(state, blockID, header, abciResponses, validatorUpdates, newThresholdPublicKey, quorumHash)
 }
 
 // ValidateValidatorUpdates is an alias for validateValidatorUpdates exported

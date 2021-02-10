@@ -65,6 +65,8 @@ type Testnet struct {
 	KeyType                   string
 	ThresholdPublicKey        crypto.PubKey
 	ThresholdPublicKeyUpdates map[int64]crypto.PubKey
+	QuorumHash                crypto.QuorumHash
+	QuorumHashUpdates         map[int64]crypto.QuorumHash
 }
 
 // Node represents a Tenderdash node in a testnet.

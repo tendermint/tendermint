@@ -154,7 +154,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	}
 
 	// we don't need to worry about validating the evidence as long as they pass validate basic
-	dve := types.NewMockDuplicateVoteEvidenceWithValidator(3, defaultEvidenceTime, privVal, state.ChainID)
+	dve := types.NewMockDuplicateVoteEvidenceWithValidator(3, defaultEvidenceTime, privVal, state.ChainID, state.Validators.QuorumHash)
 	dve.ValidatorPower = types.DefaultDashVotingPower
 	commitSig := []types.CommitSig{{
 		BlockIDFlag:        types.BlockIDFlagNil,
@@ -339,6 +339,7 @@ func TestUpdateValidators(t *testing.T) {
 			&abci.ValidatorSetUpdate{
 				ValidatorUpdates:   []abci.ValidatorUpdate{{ProTxHash: crypto.RandProTxHash(), PubKey: pk, Power: 0}},
 				ThresholdPublicKey: pk,
+				QuorumHash:         removedValidatorSet.QuorumHash,
 			},
 			removedValidatorSet.ThresholdPublicKey,
 			removedValidatorSet,
@@ -349,7 +350,7 @@ func TestUpdateValidators(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			updates, _, err := types.PB2TM.ValidatorUpdatesFromValidatorSet(tc.abciUpdates)
+			updates, _, _, err := types.PB2TM.ValidatorUpdatesFromValidatorSet(tc.abciUpdates)
 			assert.NoError(t, err)
 			err = tc.currentSet.UpdateWithChangeSet(updates, tc.thresholdPublicKeyUpdate)
 			if tc.shouldErr {
@@ -481,9 +482,12 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	validatorUpdates := []abci.ValidatorUpdate{
 		{PubKey: publicKey, ProTxHash: proTxHash, Power: 0},
 	}
+	// the quorum hash needs to be the same
+	// because we are providing an update removing a member from a known quorum, not changing the quorum
 	app.ValidatorSetUpdate = &abci.ValidatorSetUpdate{
 		ValidatorUpdates:   validatorUpdates,
 		ThresholdPublicKey: publicKey,
+		QuorumHash: state.Validators.QuorumHash,
 	}
 
 	assert.NotPanics(t, func() { state, _, err = blockExec.ApplyBlock(state, blockID, block) })

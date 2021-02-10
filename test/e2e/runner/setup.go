@@ -381,6 +381,13 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 			thresholdPublicKeyUpdates[fmt.Sprintf("%v", height)] = base64.StdEncoding.EncodeToString(thresholdPublicKey.Bytes())
 		}
 		cfg["threshold_public_key_update"] = thresholdPublicKeyUpdates
+
+		quorumHashUpdates := map[string]string{}
+		for height, quorumHash := range node.Testnet.QuorumHashUpdates {
+
+			quorumHashUpdates[fmt.Sprintf("%v", height)] = hex.EncodeToString(quorumHash.Bytes())
+		}
+		cfg["quorum_hash_update"] = quorumHashUpdates
 	}
 	if len(node.Testnet.ChainLockUpdates) > 0 {
 		chainLockUpdates := map[string]string{}

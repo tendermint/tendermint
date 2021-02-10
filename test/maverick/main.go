@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"os"
 	"path/filepath"
 
@@ -199,10 +200,11 @@ func initFilesWithConfig(config *cfg.Config) error {
 	} else {
 		genDoc := types.GenesisDoc{
 			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
+			QuorumHash:      crypto.RandQuorumHash(),
 			GenesisTime:     tmtime.Now(),
 			ConsensusParams: types.DefaultConsensusParams(),
 		}
-		pubKey, err := pv.GetPubKey()
+		pubKey, err := pv.GetPubKey(genDoc.QuorumHash)
 		if err != nil {
 			return fmt.Errorf("can't get pubkey: %w", err)
 		}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"testing"
 	"time"
 
@@ -69,7 +70,7 @@ func TestStateProposerSelection0(t *testing.T) {
 
 	// Commit a block and ensure proposer for the next height is correct.
 	prop := cs1.GetRoundState().Validators.GetProposer()
-	pv, err := cs1.privValidator.GetPubKey()
+	pv, err := cs1.privValidator.GetPubKey(crypto.QuorumHash{})
 	require.NoError(t, err)
 	address := pv.Address()
 	if !bytes.Equal(prop.Address, address) {
@@ -86,7 +87,7 @@ func TestStateProposerSelection0(t *testing.T) {
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	prop = cs1.GetRoundState().Validators.GetProposer()
-	pv1, err := vss[1].GetPubKey()
+	pv1, err := vss[1].GetPubKey(crypto.QuorumHash{})
 	require.NoError(t, err)
 	addr := pv1.Address()
 	if !bytes.Equal(prop.Address, addr) {
@@ -112,7 +113,7 @@ func TestStateProposerSelection2(t *testing.T) {
 	// everyone just votes nil. we get a new proposer each round
 	for i := int32(0); int(i) < len(vss); i++ {
 		prop := cs1.GetRoundState().Validators.GetProposer()
-		pvk, err := vss[int(i+round)%len(vss)].GetPubKey()
+		pvk, err := vss[int(i+round)%len(vss)].GetPubKey(crypto.QuorumHash{})
 		require.NoError(t, err)
 		addr := pvk.Address()
 		correctProposer := addr
@@ -208,7 +209,7 @@ func TestStateBadProposal(t *testing.T) {
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 	proposal := types.NewProposal(vs2.Height, 1, round, -1, blockID)
 	p := proposal.ToProto()
-	if err := vs2.SignProposal(config.ChainID(), p); err != nil {
+	if err := vs2.SignProposal(config.ChainID(), cs1.Validators.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 
@@ -262,7 +263,7 @@ func TestStateOversizedBlock(t *testing.T) {
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 	proposal := types.NewProposal(height, 1, round, -1, blockID)
 	p := proposal.ToProto()
-	if err := vs2.SignProposal(config.ChainID(), p); err != nil {
+	if err := vs2.SignProposal(config.ChainID(), cs1.Validators.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -924,7 +925,7 @@ func TestStateLockPOLSafety1(t *testing.T) {
 	validatePrevote(t, cs1, round, vss[0], propBlock.Hash())
 
 	// the others sign a polka but we don't see it
-	prevotes := signVotes(tmproto.PrevoteType, propBlock.Hash(), cs1.state.AppHash,
+	prevotes := signVotes(tmproto.PrevoteType, propBlock.Hash(), cs1.state.AppHash, cs1.Validators.QuorumHash,
 		propBlock.MakePartSet(partSize).Header(), vs2, vs3, vs4)
 
 	t.Logf("old prop hash %v", fmt.Sprintf("%X", propBlock.Hash()))
@@ -1039,7 +1040,8 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	propBlockID0 := types.BlockID{Hash: propBlockHash0, PartSetHeader: propBlockParts0.Header()}
 
 	// the others sign a polka but we don't see it
-	prevotes := signVotes(tmproto.PrevoteType, propBlockHash0, cs1.state.AppHash, propBlockParts0.Header(), vs2, vs3, vs4)
+	prevotes := signVotes(tmproto.PrevoteType, propBlockHash0, cs1.state.AppHash, cs1.Validators.QuorumHash,
+		propBlockParts0.Header(), vs2, vs3, vs4)
 
 	// the block for round 1
 	prop1, propBlock1 := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
@@ -1081,7 +1083,7 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	// in round 2 we see the polkad block from round 0
 	newProp := types.NewProposal(height, 1, round, 0, propBlockID0)
 	p := newProp.ToProto()
-	if err := vs3.SignProposal(config.ChainID(), p); err != nil {
+	if err := vs3.SignProposal(config.ChainID(), cs1.Validators.QuorumHash, p); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1757,7 +1759,7 @@ func TestStateHalt1(t *testing.T) {
 	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2) // didnt receive proposal
 	signAddVotes(cs1, tmproto.PrecommitType, propBlock.Hash(), propBlockParts.Header(), vs3)
 	// we receive this later, but vs3 might receive it earlier and with ours will go to commit!
-	precommit4 := signVote(vs4, tmproto.PrecommitType, propBlock.Hash(), cs1.state.AppHash, propBlockParts.Header())
+	precommit4 := signVote(vs4, tmproto.PrecommitType, propBlock.Hash(), cs1.state.AppHash, cs1.state.Validators.QuorumHash, propBlockParts.Header())
 
 	incrementRound(vs2, vs3, vs4)
 
@@ -1838,7 +1840,7 @@ func TestStateOutputVoteStats(t *testing.T) {
 
 	randBytes := tmrand.Bytes(tmhash.Size)
 
-	vote := signVote(vss[1], tmproto.PrecommitType, randBytes, cs.state.AppHash, types.PartSetHeader{})
+	vote := signVote(vss[1], tmproto.PrecommitType, randBytes, cs.state.AppHash, cs.state.Validators.QuorumHash, types.PartSetHeader{})
 
 	voteMessage := &VoteMessage{vote}
 	cs.handleMsg(msgInfo{voteMessage, peer.ID()})
@@ -1852,7 +1854,7 @@ func TestStateOutputVoteStats(t *testing.T) {
 
 	// sending the vote for the bigger height
 	incrementHeight(vss[1])
-	vote = signVote(vss[1], tmproto.PrecommitType, randBytes, cs.state.AppHash, types.PartSetHeader{})
+	vote = signVote(vss[1], tmproto.PrecommitType, randBytes, cs.state.AppHash, cs.state.Validators.QuorumHash, types.PartSetHeader{})
 
 	cs.handleMsg(msgInfo{&VoteMessage{vote}, peer.ID()})
 
