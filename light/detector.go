@@ -116,8 +116,8 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 			return ErrLightClientAttack
 
 		case errBadWitness:
-			c.logger.Info("witness returned an error during header comparison, removing...", "witness", c.witnesses[e.WitnessIndex],
-				"err", err)
+			c.logger.Info("witness returned an error during header comparison, removing...",
+				"witness", c.witnesses[e.WitnessIndex], "err", err)
 			witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 		default:
 			c.logger.Debug("error in light block request to witness", "err", err)
