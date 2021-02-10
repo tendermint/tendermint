@@ -37,6 +37,7 @@ var (
 
 type reactorTestSuite struct {
 	network             *p2ptest.Network
+	states              map[p2p.NodeID]*State
 	reactors            map[p2p.NodeID]*Reactor
 	subs                map[p2p.NodeID]types.Subscription
 	stateChannels       map[p2p.NodeID]*p2p.Channel
@@ -50,6 +51,7 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 
 	rts := &reactorTestSuite{
 		network:  p2ptest.MakeNetwork(t, numNodes),
+		states:   make(map[p2p.NodeID]*State),
 		reactors: make(map[p2p.NodeID]*Reactor, numNodes),
 		subs:     make(map[p2p.NodeID]types.Subscription, numNodes),
 	}
@@ -79,6 +81,7 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 		blocksSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
 		require.NoError(t, err)
 
+		rts.states[nodeID] = state
 		rts.subs[nodeID] = blocksSub
 		rts.reactors[nodeID] = reactor
 
@@ -99,15 +102,10 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 	rts.network.Start(t)
 
 	t.Cleanup(func() {
-		i := 0
-		for _, r := range rts.reactors {
-			state := states[i]
-
-			require.NoError(t, state.eventBus.Stop())
+		for nodeID, r := range rts.reactors {
+			require.NoError(t, rts.states[nodeID].eventBus.Stop())
 			require.NoError(t, r.Stop())
 			require.False(t, r.IsRunning())
-
-			i++
 		}
 
 		leaktest.Check(t)
@@ -252,10 +250,7 @@ func TestReactorBasic(t *testing.T) {
 
 	n := 4
 	states, cleanup := randConsensusState(n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
-
-	t.Cleanup(func() {
-		cleanup()
-	})
+	t.Cleanup(cleanup)
 
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
 
@@ -377,14 +372,17 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(n, "consensus_reactor_test", newMockTickerFunc(true), newCounter,
+	states, cleanup := randConsensusState(
+		n,
+		"consensus_reactor_test",
+		newMockTickerFunc(true),
+		newCounter,
 		func(c *cfg.Config) {
 			c.Consensus.CreateEmptyBlocks = false
-		})
+		},
+	)
 
-	t.Cleanup(func() {
-		cleanup()
-	})
+	t.Cleanup(cleanup)
 
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
 
@@ -415,10 +413,7 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 
 	n := 4
 	states, cleanup := randConsensusState(n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
-
-	t.Cleanup(func() {
-		cleanup()
-	})
+	t.Cleanup(cleanup)
 
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
 
@@ -481,9 +476,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		newPersistentKVStore,
 	)
 
-	t.Cleanup(func() {
-		cleanup()
-	})
+	t.Cleanup(cleanup)
 
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
 
@@ -583,10 +576,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		newMockTickerFunc(true),
 		newPersistentKVStoreWithPath,
 	)
-
-	t.Cleanup(func() {
-		cleanup()
-	})
+	t.Cleanup(cleanup)
 
 	rts := setup(t, nPeers, states, 100) // buffer must be large enough to not deadlock
 
