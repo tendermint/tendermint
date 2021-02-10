@@ -1,9 +1,8 @@
 package core
 
 import (
+	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
@@ -96,8 +95,9 @@ type Environment struct {
 //----------------------------------------------
 
 func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
+	// this can only happen if we haven't first run validatePerPage
 	if perPage < 1 {
-		panic(errors.Wrapf(ctypes.ErrZeroOrNegativePerPage, "%d", perPage))
+		panic(fmt.Errorf("%w (%d)", ctypes.ErrZeroOrNegativePerPage, perPage))
 	}
 
 	if pagePtr == nil { // no page parameter
@@ -110,7 +110,7 @@ func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	}
 	page := *pagePtr
 	if page <= 0 || page > pages {
-		return 1, errors.Wrapf(ctypes.ErrPageOutOfRange, "expected range: [1, %d], given %d", pages, page)
+		return 1, fmt.Errorf("%w expected range: [1, %d], given %d", ctypes.ErrPageOutOfRange, pages, page)
 	}
 
 	return page, nil
@@ -144,14 +144,14 @@ func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
 	if heightPtr != nil {
 		height := *heightPtr
 		if height <= 0 {
-			return 0, errors.Wrapf(ctypes.ErrNegativeHeight, "given height: %d", height)
+			return 0, fmt.Errorf("%w (requested height: %d)", ctypes.ErrZeroOrNegativeHeight, height)
 		}
 		if height > latestHeight {
-			return 0, errors.Wrapf(ctypes.ErrInvalidHeight, "given height: %d, blockchain height: %d", height, latestHeight)
+			return 0, fmt.Errorf("%w (requested height: %d, blockchain height: %d)", ctypes.ErrHeightExceedsChainHead, height, latestHeight)
 		}
 		base := env.BlockStore.Base()
 		if height < base {
-			return 0, errors.Wrapf(ctypes.ErrInvalidHeight, "given height: %v, lowest height: %v", height, base)
+			return 0, fmt.Errorf("%w (requested height: %v, base height: %v)", ctypes.ErrHeightExceedsChainHead, height, base)
 		}
 		return height, nil
 	}

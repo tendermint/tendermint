@@ -2,12 +2,12 @@ package http
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/light/provider"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
@@ -103,7 +103,8 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 		for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
 			res, err := p.client.Validators(ctx, height, &page, &maxPerPage)
 			if err != nil {
-				if err = errors.Cause(err); err == ctypes.ErrHeightNotAvailable || err == ctypes.ErrInvalidHeight {
+				if errors.Is(err, ctypes.ErrHeightNotAvailable) ||
+					errors.Is(err, ctypes.ErrHeightExceedsChainHead) {
 					return nil, provider.ErrLightBlockNotFound
 				}
 				// if we have exceeded retry attempts then return no response error
@@ -137,7 +138,8 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 	for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
 		commit, err := p.client.Commit(ctx, height)
 		if err != nil {
-			if err = errors.Cause(err); err == ctypes.ErrHeightNotAvailable || err == ctypes.ErrInvalidHeight {
+			if errors.Is(err, ctypes.ErrHeightNotAvailable) ||
+				errors.Is(err, ctypes.ErrHeightExceedsChainHead) {
 				return nil, provider.ErrLightBlockNotFound
 			}
 			// we wait and try again with exponential backoff

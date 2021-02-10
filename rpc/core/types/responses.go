@@ -15,11 +15,11 @@ import (
 
 // List of standardized errors used across RPC
 var (
-	ErrZeroOrNegativePerPage = errors.New("zero or negative perPage")
-	ErrPageOutOfRange        = errors.New("page should be within range")
-	ErrNegativeHeight        = errors.New("height must be greater than zero")
-	ErrInvalidHeight         = errors.New("height must be less than or equal to the current blockchain height")
-	ErrHeightNotAvailable    = errors.New("height is not available")
+	ErrZeroOrNegativePerPage  = errors.New("zero or negative perPage")
+	ErrPageOutOfRange         = errors.New("page should be within range")
+	ErrZeroOrNegativeHeight   = errors.New("height must be greater than zero")
+	ErrHeightExceedsChainHead = errors.New("height must be less than or equal to the head of the node's blockchain")
+	ErrHeightNotAvailable     = errors.New("height is not available")
 )
 
 // List of blocks

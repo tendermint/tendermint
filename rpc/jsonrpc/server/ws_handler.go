@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -387,11 +387,11 @@ func (wsc *wsConnection) readRoutine() {
 			result, err := unreflectResult(returns)
 			if err != nil {
 				var resp types.RPCResponse
-				switch errors.Cause(err) {
-				case ctypes.ErrNegativeHeight, ctypes.ErrZeroOrNegativePerPage, ctypes.ErrInvalidHeight:
+				switch errors.Unwrap(err) {
+				case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage, ctypes.ErrPageOutOfRange:
 					resp = types.RPCInvalidRequestError(request.ID, err)
-				case ctypes.ErrHeightNotAvailable, ctypes.ErrPageOutOfRange:
-					resp = types.RPCInvalidParamsError(request.ID, err)
+				case ctypes.ErrHeightExceedsChainHead, ctypes.ErrHeightNotAvailable:
+					resp = types.NewRPCSuccessResponse(request.ID, err.Error())
 				default:
 					resp = types.RPCInternalError(request.ID, err)
 				}

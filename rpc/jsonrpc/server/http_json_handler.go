@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"reflect"
 	"sort"
-
-	"github.com/pkg/errors"
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
@@ -105,11 +104,11 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			result, err := unreflectResult(returns)
 			if err != nil {
 				var response types.RPCResponse
-				switch errors.Cause(err) {
-				case ctypes.ErrNegativeHeight, ctypes.ErrZeroOrNegativePerPage, ctypes.ErrInvalidHeight:
+				switch errors.Unwrap(err) {
+				case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage, ctypes.ErrPageOutOfRange:
 					response = types.RPCInvalidRequestError(request.ID, err)
-				case ctypes.ErrHeightNotAvailable, ctypes.ErrPageOutOfRange:
-					response = types.RPCInvalidParamsError(request.ID, err)
+				case ctypes.ErrHeightExceedsChainHead, ctypes.ErrHeightNotAvailable:
+					response = types.NewRPCSuccessResponse(request.ID, err.Error())
 				default:
 					response = types.RPCInternalError(request.ID, err)
 				}
