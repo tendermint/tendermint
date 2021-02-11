@@ -525,7 +525,8 @@ OUTER_LOOP:
 		}
 
 		// if the peer is on a previous height that we have, help catch up
-		if (0 < prs.Height) && (prs.Height < rs.Height) && (prs.Height >= r.conS.blockStore.Base()) {
+		blockStoreBase := r.conS.blockStore.Base()
+		if blockStoreBase > 0 && 0 < prs.Height && prs.Height < rs.Height && prs.Height >= blockStoreBase {
 			heightLogger := logger.With("height", prs.Height)
 
 			// If we never received the commit message from the peer, the block parts
@@ -535,7 +536,7 @@ OUTER_LOOP:
 				if blockMeta == nil {
 					heightLogger.Error(
 						"failed to load block meta",
-						"blockstoreBase", r.conS.blockStore.Base(),
+						"blockstoreBase", blockStoreBase,
 						"blockstoreHeight", r.conS.blockStore.Height(),
 					)
 					time.Sleep(r.conS.config.PeerGossipSleepDuration)
@@ -736,7 +737,8 @@ OUTER_LOOP:
 		}
 
 		// catchup logic -- if peer is lagging by more than 1, send Commit
-		if prs.Height != 0 && rs.Height >= prs.Height+2 && prs.Height >= r.conS.blockStore.Base() {
+		blockStoreBase := r.conS.blockStore.Base()
+		if blockStoreBase > 0 && prs.Height != 0 && rs.Height >= prs.Height+2 && prs.Height >= blockStoreBase {
 			// Load the block commit for prs.Height, which contains precommit
 			// signatures for prs.Height.
 			if commit := r.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
