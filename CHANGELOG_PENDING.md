@@ -35,6 +35,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [rpc/client/http] \#6022 Change `timeout` type to `time.Duration` in `NewWithTimeout`
   - [light] \#6054 Move `MaxRetryAttempt` option from client to provider.
     - `NewWithOptions` now sets the max retry attempts and timeouts (@cmwaters)
+  - [beheavior/libs] \#6077 Change spelling from british english to american (@cmwaters)
+    - Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
+    - Rename "behaviour" pkg to "behavior" and internalized it in blockchain v2
 
 - Blockchain Protocol
 
