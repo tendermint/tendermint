@@ -7,8 +7,8 @@ import (
 
 	proto "github.com/gogo/protobuf/proto"
 
-	"github.com/tendermint/tendermint/behavior"
 	bc "github.com/tendermint/tendermint/blockchain"
+	"github.com/tendermint/tendermint/blockchain/v2/internal/behavior"
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"

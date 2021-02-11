@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	bh "github.com/tendermint/tendermint/behavior"
+	bh "github.com/tendermint/tendermint/blockchain/v2/internal/behavior"
 	"github.com/tendermint/tendermint/p2p"
 )
 
