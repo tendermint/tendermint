@@ -69,11 +69,12 @@ func run(configFile string) error {
 	case "socket", "grpc":
 		err = startApp(cfg)
 	case "builtin":
-		if len(cfg.Misbehaviors) == 0 {
-			err = startNode(cfg)
-		} else {
-			err = startMaverick(cfg)
-		}
+		// FIXME: Temporarily remove maverick until it is redesigned
+		// if len(cfg.Misbehaviors) == 0 {
+		err = startNode(cfg)
+		// } else {
+		// 	err = startMaverick(cfg)
+		// }
 	default:
 		err = fmt.Errorf("invalid protocol %q", cfg.Protocol)
 	}
