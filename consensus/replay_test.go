@@ -306,6 +306,8 @@ var modes = []uint{0, 1, 2, 3}
 
 // This is actually not a test, it's for storing validator change tx data for testHandshakeReplay
 func TestSimulateValidatorsChange(t *testing.T) {
+	configSetup(t)
+
 	nPeers := 7
 	nVals := 4
 	css, genDoc, config, cleanup := randConsensusNetWithPeers(
@@ -529,6 +531,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 // Sync from scratch
 func TestHandshakeReplayAll(t *testing.T) {
+	configSetup(t)
+
 	for _, m := range modes {
 		testHandshakeReplay(t, config, 0, m, false)
 	}
@@ -539,6 +543,8 @@ func TestHandshakeReplayAll(t *testing.T) {
 
 // Sync many, not from scratch
 func TestHandshakeReplaySome(t *testing.T) {
+	configSetup(t)
+
 	for _, m := range modes {
 		testHandshakeReplay(t, config, 2, m, false)
 	}
@@ -549,6 +555,8 @@ func TestHandshakeReplaySome(t *testing.T) {
 
 // Sync from lagging by one
 func TestHandshakeReplayOne(t *testing.T) {
+	configSetup(t)
+
 	for _, m := range modes {
 		testHandshakeReplay(t, config, numBlocks-1, m, false)
 	}
@@ -559,6 +567,8 @@ func TestHandshakeReplayOne(t *testing.T) {
 
 // Sync from caught up
 func TestHandshakeReplayNone(t *testing.T) {
+	configSetup(t)
+
 	for _, m := range modes {
 		testHandshakeReplay(t, config, numBlocks, m, false)
 	}
@@ -569,6 +579,8 @@ func TestHandshakeReplayNone(t *testing.T) {
 
 // Test mockProxyApp should not panic when app return ABCIResponses with some empty ResponseDeliverTx
 func TestMockProxyApp(t *testing.T) {
+	configSetup(t)
+
 	sim.CleanupFunc() // clean the test env created in TestSimulateValidatorsChange
 	logger := log.TestingLogger()
 	var validTxs, invalidTxs = 0, 0
