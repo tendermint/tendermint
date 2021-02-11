@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/spf13/viper"
@@ -24,8 +23,6 @@ import (
 	grpcprivval "github.com/tendermint/tendermint/privval/grpc"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
-	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
-	maverick "github.com/tendermint/tendermint/test/maverick/node"
 )
 
 var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
@@ -69,11 +66,12 @@ func run(configFile string) error {
 	case "socket", "grpc":
 		err = startApp(cfg)
 	case "builtin":
-		if len(cfg.Misbehaviors) == 0 {
-			err = startNode(cfg)
-		} else {
-			err = startMaverick(cfg)
-		}
+		// FIXME: Temporarily remove maverick until it is redesigned
+		// if len(cfg.Misbehaviors) == 0 {
+		err = startNode(cfg)
+		// } else {
+		// 	err = startMaverick(cfg)
+		// }
 	default:
 		err = fmt.Errorf("invalid protocol %q", cfg.Protocol)
 	}
@@ -139,41 +137,42 @@ func startNode(cfg *Config) error {
 	return n.Start()
 }
 
+// FIXME: Temporarily disconnected maverick until it is redesigned
 // startMaverick starts a Maverick node that runs the application directly. It assumes the Tendermint
 // configuration is in $TMHOME/config/tendermint.toml.
-func startMaverick(cfg *Config) error {
-	app, err := NewApplication(cfg)
-	if err != nil {
-		return err
-	}
+// func startMaverick(cfg *Config) error {
+// 	app, err := NewApplication(cfg)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	tmcfg, logger, nodeKey, err := setupNode()
-	if err != nil {
-		return fmt.Errorf("failed to setup config: %w", err)
-	}
+// 	tmcfg, logger, nodeKey, err := setupNode()
+// 	if err != nil {
+// 		return fmt.Errorf("failed to setup config: %w", err)
+// 	}
 
-	misbehaviors := make(map[int64]mcs.Misbehavior, len(cfg.Misbehaviors))
-	for heightString, misbehaviorString := range cfg.Misbehaviors {
-		height, _ := strconv.ParseInt(heightString, 10, 64)
-		misbehaviors[height] = mcs.MisbehaviorList[misbehaviorString]
-	}
+// 	misbehaviors := make(map[int64]mcs.Misbehavior, len(cfg.Misbehaviors))
+// 	for heightString, misbehaviorString := range cfg.Misbehaviors {
+// 		height, _ := strconv.ParseInt(heightString, 10, 64)
+// 		misbehaviors[height] = mcs.MisbehaviorList[misbehaviorString]
+// 	}
 
-	n, err := maverick.NewNode(tmcfg,
-		maverick.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
-		*nodeKey,
-		proxy.NewLocalClientCreator(app),
-		maverick.DefaultGenesisDocProviderFunc(tmcfg),
-		maverick.DefaultDBProvider,
-		maverick.DefaultMetricsProvider(tmcfg.Instrumentation),
-		logger,
-		misbehaviors,
-	)
-	if err != nil {
-		return err
-	}
+// 	n, err := maverick.NewNode(tmcfg,
+// 		maverick.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
+// 		*nodeKey,
+// 		proxy.NewLocalClientCreator(app),
+// 		maverick.DefaultGenesisDocProviderFunc(tmcfg),
+// 		maverick.DefaultDBProvider,
+// 		maverick.DefaultMetricsProvider(tmcfg.Instrumentation),
+// 		logger,
+// 		misbehaviors,
+// 	)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	return n.Start()
-}
+// 	return n.Start()
+// }
 
 // startSigner starts a signer server connecting to the given endpoint.
 func startSigner(cfg *Config) error {
