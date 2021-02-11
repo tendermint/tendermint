@@ -1553,9 +1553,7 @@ func (valz validatorsByPriority) Less(i, j int) bool {
 }
 
 func (valz validatorsByPriority) Swap(i, j int) {
-	it := valz[i]
-	valz[i] = valz[j]
-	valz[j] = it
+	valz[i], valz[j] = valz[j], valz[i]
 }
 
 //-------------------------------------

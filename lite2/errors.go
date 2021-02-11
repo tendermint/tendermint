@@ -44,5 +44,5 @@ func (e ErrInvalidHeader) Error() string {
 type errNoWitnesses struct{}
 
 func (e errNoWitnesses) Error() string {
-	return fmt.Sprint("no witnesses connected. please reset light client")
+	return "no witnesses connected. please reset light client"
 }

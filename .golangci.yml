@@ -69,4 +69,4 @@ linters-settings:
 #       - wrapperFunc
 #       - commentFormatting # https://github.com/go-critic/go-critic/issues/755
 service:
-  golangci-lint-version: 1.26.x 
+  golangci-lint-version: 1.31.x

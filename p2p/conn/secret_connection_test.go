@@ -431,7 +431,7 @@ func BenchmarkWriteSecretConnection(b *testing.B) {
 	if err := fooSecConn.Close(); err != nil {
 		b.Error(err)
 	}
-	//barSecConn.Close() race condition
+	// barSecConn.Close() race condition
 }
 
 func BenchmarkReadSecretConnection(b *testing.B) {

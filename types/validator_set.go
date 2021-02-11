@@ -952,9 +952,7 @@ func (valz ValidatorsByAddress) Less(i, j int) bool {
 }
 
 func (valz ValidatorsByAddress) Swap(i, j int) {
-	it := valz[i]
-	valz[i] = valz[j]
-	valz[j] = it
+	valz[i], valz[j] = valz[j], valz[i]
 }
 
 // ToProto converts ValidatorSet to protobuf
