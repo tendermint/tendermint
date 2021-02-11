@@ -42,7 +42,7 @@ func initCorpus(rootDir string) {
 			privKey := ed25519.GenPrivKey()
 			addr := fmt.Sprintf(
 				"%s@%v.%v.%v.%v:26656",
-				p2p.NodeIDFromPubKey(privKey.PubKey()),
+				p2p.PubKeyToID(privKey.PubKey()),
 				rand.Int()%256,
 				rand.Int()%256,
 				rand.Int()%256,
@@ -55,7 +55,7 @@ func initCorpus(rootDir string) {
 		// IPv6 addresses
 		privKey := ed25519.GenPrivKey()
 		ipv6a, err := p2p.NewNetAddressString(
-			fmt.Sprintf("%s@[ff02::1:114]:26656", p2p.NodeIDFromPubKey(privKey.PubKey())))
+			fmt.Sprintf("%s@[ff02::1:114]:26656", p2p.PubKeyToID(privKey.PubKey())))
 		if err != nil {
 			log.Fatalf("can't create a new netaddress: %v", err)
 		}
