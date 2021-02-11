@@ -108,24 +108,7 @@ We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along 
 
 For linting, checking breaking changes and generating proto stubs, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will need to have docker running locally. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
 
-There are two ways to generate your proto stubs.
-
-1. Use Docker, pull an image that will generate your proto stubs with no need to install anything. `make proto-gen-docker`
-2. Run `make proto-gen` after installing `buf` and `gogoproto`, you can do this by running `make protobuf`.
-
-### Installation Instructions
-
-To install `protoc`, download an appropriate release (<https://github.com/protocolbuffers/protobuf>) and then move the provided binaries into your PATH (follow instructions in README included with the download).
-
-To install `gogoproto`, do the following:
-
-```sh
-go get github.com/gogo/protobuf/gogoproto
-cd $GOPATH/pkg/mod/github.com/gogo/protobuf@v1.3.1 # or wherever go get installs things
-make install
-```
-
-You should now be able to run `make proto-gen` from inside the root Tendermint directory to generate new files from proto files.
+We use [Docker](https://www.docker.com/) to generate the protobuf stubs. To generate the stubs yourself, make sure docker is running then run `make proto-gen-docker`.
 
 ### Visual Studio Code
 
@@ -429,7 +412,7 @@ most probably (99.9%)*.
 [Jepsen](http://jepsen.io/) tests are used to verify the
 [linearizability](https://jepsen.io/consistency/models/linearizable) property
 of the Tendermint consensus. They are located in a separate repository
--> https://github.com/tendermint/jepsen. Please refer to it's README for more
+-> <https://github.com/tendermint/jepsen>. Please refer to it's README for more
 information.
 
 ### RPC Testing
@@ -445,7 +428,7 @@ make build-linux build-contract-tests-hooks
 make contract-tests
 ```
 
-**WARNING: these are currently broken due to https://github.com/apiaryio/dredd
+**WARNING: these are currently broken due to <https://github.com/apiaryio/dredd>
 not supporting complete OpenAPI 3**.
 
 This command will popup a network and check every endpoint against what has

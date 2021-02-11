@@ -58,8 +58,6 @@ LD_FLAGS += $(LDFLAGS)
 all: check build test install
 .PHONY: all
 
-# The below include contains the tools.
-include tools/Makefile
 include test/Makefile
 
 ###############################################################################
@@ -247,7 +245,7 @@ build-docker: build-linux
 ###############################################################################
 
 # Build linux binary on other platforms
-build-linux: tools
+build-linux:
 	GOOS=linux GOARCH=amd64 $(MAKE) build
 .PHONY: build-linux
 
