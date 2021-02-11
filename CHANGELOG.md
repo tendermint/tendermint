@@ -4,9 +4,13 @@
 
 *February 11, 2021*
 
-Special thanks to external contributors on this release: @yayajacky, @odidev, @laniehei, and @c29r3!
+This release includes a fix for a memory leak in the evidence reactor (see #6068, below). 
+All Tendermint clients are recommended to upgrade. 
+Thank you to our friends at Crypto.com for the initial report of this memory leak! 
 
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+Special thanks to other external contributors on this release: @yayajacky, @odidev, @laniehei, and @c29r3!
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BUG FIXES
 
