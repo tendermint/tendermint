@@ -1,15 +1,30 @@
 # Changelog
 
-## v0.34.3 
+## v0.34.4
+
+*February 11, 2021*
+
+Special thanks to external contributors on this release: @yayajacky, @odidev, @laniehei, and @c29r3!
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BUG FIXES
+
+- [light] [\#6022](https://github.com/tendermint/tendermint/pull/6022) Fix a bug when the number of validators equals 100 (@melekes)
+- [light] [\#6026](https://github.com/tendermint/tendermint/pull/6026) Fix a bug when height isn't provided for the rpc calls: `/commit` and `/validators` (@cmwaters)
+- [evidence] [\#6068](https://github.com/tendermint/tendermint/pull/6068) Terminate broadcastEvidenceRoutine when peer is stopped (@melekes)
+
+
+## v0.34.3
 
 *January 19, 2021*
 
-This release includes a fix for a high-severity security vulnerability. 
+This release includes a fix for a high-severity security vulnerability.
 More information on this vulnerability will be released on January 26, 2021
-and this changelog will be updated. 
+and this changelog will be updated.
 
 It also updates GoGo Protobuf to 1.3.2 in order to pick up the fix for
-https://nvd.nist.gov/vuln/detail/CVE-2021-3121. 
+https://nvd.nist.gov/vuln/detail/CVE-2021-3121.
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
 
