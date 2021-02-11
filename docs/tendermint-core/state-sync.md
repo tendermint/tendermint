@@ -35,7 +35,7 @@ If you are relying on publicly exposed RPC's to get the need information, you ca
 Example: 
 
 ```bash
-curl -s https://233.123.0.140:26657:26657/commit | jq "{height: .result.signed_header.header.height, hash: .result.signed_header.commit.block_id.hash}"
+curl -s https://233.123.0.140:26657/commit | jq "{height: .result.signed_header.header.height, hash: .result.signed_header.commit.block_id.hash}"
 ```
 
 The response will be: 
