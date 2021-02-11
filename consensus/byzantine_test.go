@@ -256,150 +256,152 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	}
 }
 
-// // 4 validators. 1 is byzantine. The other three are partitioned into A (1 val) and B (2 vals).
-// // byzantine validator sends conflicting proposals into A and B,
-// // and prevotes/precommits on both of them.
-// // B sees a commit, A doesn't.
-// // Heal partition and ensure A sees the commit
-// func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
-// 	N := 4
-// 	logger := consensusLogger().With("test", "byzantine")
-// 	app := newCounter
-// 	css, cleanup := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), app)
-// 	defer cleanup()
+// 4 validators. 1 is byzantine. The other three are partitioned into A (1 val) and B (2 vals).
+// byzantine validator sends conflicting proposals into A and B,
+// and prevotes/precommits on both of them.
+// B sees a commit, A doesn't.
+// Heal partition and ensure A sees the commit
+func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
+	configSetup(t)
 
-// 	// give the byzantine validator a normal ticker
-// 	ticker := NewTimeoutTicker()
-// 	ticker.SetLogger(css[0].Logger)
-// 	css[0].SetTimeoutTicker(ticker)
+	// TODO: https://github.com/tendermint/tendermint/issues/6092
+	t.SkipNow()
 
-// 	p2pLogger := logger.With("module", "p2p")
+	// n := 4
+	// logger := consensusLogger().With("test", "byzantine")
+	// app := newCounter
 
-// 	blocksSubs := make([]types.Subscription, N)
-// 	reactors := make([]p2p.Reactor, N)
-// 	for i := 0; i < N; i++ {
+	// states, cleanup := randConsensusState(n, "consensus_byzantine_test", newMockTickerFunc(false), app)
+	// t.Cleanup(cleanup)
 
-// 		// enable txs so we can create different proposals
-// 		assertMempool(css[i].txNotifier).EnableTxsAvailable()
+	// // give the byzantine validator a normal ticker
+	// ticker := NewTimeoutTicker()
+	// ticker.SetLogger(states[0].Logger)
+	// states[0].SetTimeoutTicker(ticker)
 
-// 		eventBus := css[i].eventBus
-// 		eventBus.SetLogger(logger.With("module", "events", "validator", i))
+	// p2pLogger := logger.With("module", "p2p")
 
-// 		var err error
-// 		blocksSubs[i], err = eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
-// 		require.NoError(t, err)
+	// blocksSubs := make([]types.Subscription, n)
+	// reactors := make([]p2p.Reactor, n)
+	// for i := 0; i < n; i++ {
+	// 	// enable txs so we can create different proposals
+	// 	assertMempool(states[i].txNotifier).EnableTxsAvailable()
 
-// 		conR := NewReactor(css[i], true) // so we don't start the consensus states
-// 		conR.SetLogger(logger.With("validator", i))
-// 		conR.SetEventBus(eventBus)
+	// 	eventBus := states[i].eventBus
+	// 	eventBus.SetLogger(logger.With("module", "events", "validator", i))
 
-// 		var conRI p2p.Reactor = conR
+	// 	var err error
+	// 	blocksSubs[i], err = eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
+	// 	require.NoError(t, err)
 
-// 		// make first val byzantine
-// 		if i == 0 {
-// 			conRI = NewByzantineReactor(conR)
-// 		}
+	// 	conR := NewReactor(states[i], true) // so we don't start the consensus states
+	// 	conR.SetLogger(logger.With("validator", i))
+	// 	conR.SetEventBus(eventBus)
 
-// 		reactors[i] = conRI
-// 		err = css[i].blockExec.Store().Save(css[i].state) // for save height 1's validators info
-// 		require.NoError(t, err)
-// 	}
+	// 	var conRI p2p.Reactor = conR
 
-// 	switches := p2p.MakeConnectedSwitches(config.P2P, N, func(i int, sw *p2p.Switch) *p2p.Switch {
-// 		sw.SetLogger(p2pLogger.With("validator", i))
-// 		sw.AddReactor("CONSENSUS", reactors[i])
-// 		return sw
-// 	}, func(sws []*p2p.Switch, i, j int) {
-// 		// the network starts partitioned with globally active adversary
-// 		if i != 0 {
-// 			return
-// 		}
-// 		p2p.Connect2Switches(sws, i, j)
-// 	})
+	// 	// make first val byzantine
+	// 	if i == 0 {
+	// 		conRI = NewByzantineReactor(conR)
+	// 	}
 
-// 	// make first val byzantine
-// 	// NOTE: Now, test validators are MockPV, which by default doesn't
-// 	// do any safety checks.
-// 	css[0].privValidator.(types.MockPV).DisableChecks()
-// 	css[0].decideProposal = func(j int32) func(int64, int32) {
-// 		return func(height int64, round int32) {
-// 			byzantineDecideProposalFunc(t, height, round, css[j], switches[j])
-// 		}
-// 	}(int32(0))
-// 	// We are setting the prevote function to do nothing because the prevoting
-// 	// and precommitting are done alongside the proposal.
-// 	css[0].doPrevote = func(height int64, round int32) {}
+	// 	reactors[i] = conRI
+	// 	err = states[i].blockExec.Store().Save(states[i].state) // for save height 1's validators info
+	// 	require.NoError(t, err)
+	// }
 
-// 	defer func() {
-// 		for _, sw := range switches {
-// 			err := sw.Stop()
-// 			require.NoError(t, err)
-// 		}
-// 	}()
+	// switches := p2p.MakeConnectedSwitches(config.P2P, N, func(i int, sw *p2p.Switch) *p2p.Switch {
+	// 	sw.SetLogger(p2pLogger.With("validator", i))
+	// 	sw.AddReactor("CONSENSUS", reactors[i])
+	// 	return sw
+	// }, func(sws []*p2p.Switch, i, j int) {
+	// 	// the network starts partitioned with globally active adversary
+	// 	if i != 0 {
+	// 		return
+	// 	}
+	// 	p2p.Connect2Switches(sws, i, j)
+	// })
 
-// 	// start the non-byz state machines.
-// 	// note these must be started before the byz
-// 	for i := 1; i < N; i++ {
-// 		cr := reactors[i].(*Reactor)
-// 		cr.SwitchToConsensus(cr.conS.GetState(), false)
-// 	}
+	// // make first val byzantine
+	// // NOTE: Now, test validators are MockPV, which by default doesn't
+	// // do any safety checks.
+	// states[0].privValidator.(types.MockPV).DisableChecks()
+	// states[0].decideProposal = func(j int32) func(int64, int32) {
+	// 	return func(height int64, round int32) {
+	// 		byzantineDecideProposalFunc(t, height, round, states[j], switches[j])
+	// 	}
+	// }(int32(0))
+	// // We are setting the prevote function to do nothing because the prevoting
+	// // and precommitting are done alongside the proposal.
+	// states[0].doPrevote = func(height int64, round int32) {}
 
-// 	// start the byzantine state machine
-// 	byzR := reactors[0].(*ByzantineReactor)
-// 	s := byzR.reactor.conS.GetState()
-// 	byzR.reactor.SwitchToConsensus(s, false)
+	// defer func() {
+	// 	for _, sw := range switches {
+	// 		err := sw.Stop()
+	// 		require.NoError(t, err)
+	// 	}
+	// }()
 
-// 	// byz proposer sends one block to peers[0]
-// 	// and the other block to peers[1] and peers[2].
-// 	// note peers and switches order don't match.
-// 	peers := switches[0].Peers().List()
+	// // start the non-byz state machines.
+	// // note these must be started before the byz
+	// for i := 1; i < n; i++ {
+	// 	cr := reactors[i].(*Reactor)
+	// 	cr.SwitchToConsensus(cr.conS.GetState(), false)
+	// }
 
-// 	// partition A
-// 	ind0 := getSwitchIndex(switches, peers[0])
+	// // start the byzantine state machine
+	// byzR := reactors[0].(*ByzantineReactor)
+	// s := byzR.reactor.conS.GetState()
+	// byzR.reactor.SwitchToConsensus(s, false)
 
-// 	// partition B
-// 	ind1 := getSwitchIndex(switches, peers[1])
-// 	ind2 := getSwitchIndex(switches, peers[2])
-// 	p2p.Connect2Switches(switches, ind1, ind2)
+	// // byz proposer sends one block to peers[0]
+	// // and the other block to peers[1] and peers[2].
+	// // note peers and switches order don't match.
+	// peers := switches[0].Peers().List()
 
-// 	// wait for someone in the big partition (B) to make a block
-// 	<-blocksSubs[ind2].Out()
+	// // partition A
+	// ind0 := getSwitchIndex(switches, peers[0])
 
-// 	t.Log("A block has been committed. Healing partition")
-// 	p2p.Connect2Switches(switches, ind0, ind1)
-// 	p2p.Connect2Switches(switches, ind0, ind2)
+	// // partition B
+	// ind1 := getSwitchIndex(switches, peers[1])
+	// ind2 := getSwitchIndex(switches, peers[2])
+	// p2p.Connect2Switches(switches, ind1, ind2)
 
-// 	// wait till everyone makes the first new block
-// 	// (one of them already has)
-// 	wg := new(sync.WaitGroup)
-// 	for i := 1; i < N-1; i++ {
-// 		wg.Add(1)
-// 		go func(j int) {
-// 			<-blocksSubs[j].Out()
-// 			wg.Done()
-// 		}(i)
-// 	}
+	// // wait for someone in the big partition (B) to make a block
+	// <-blocksSubs[ind2].Out()
 
-// 	done := make(chan struct{})
-// 	go func() {
-// 		wg.Wait()
-// 		close(done)
-// 	}()
+	// t.Log("A block has been committed. Healing partition")
+	// p2p.Connect2Switches(switches, ind0, ind1)
+	// p2p.Connect2Switches(switches, ind0, ind2)
 
-// 	tick := time.NewTicker(time.Second * 10)
-// 	select {
-// 	case <-done:
-// 	case <-tick.C:
-// 		for i, reactor := range reactors {
-// 			t.Log(fmt.Sprintf("Consensus Reactor %v", i))
-// 			t.Log(fmt.Sprintf("%v", reactor))
-// 		}
-// 		t.Fatalf("Timed out waiting for all validators to commit first block")
-// 	}
-// }
+	// // wait till everyone makes the first new block
+	// // (one of them already has)
+	// wg := new(sync.WaitGroup)
+	// for i := 1; i < N-1; i++ {
+	// 	wg.Add(1)
+	// 	go func(j int) {
+	// 		<-blocksSubs[j].Out()
+	// 		wg.Done()
+	// 	}(i)
+	// }
 
-//-------------------------------
-// byzantine consensus functions
+	// done := make(chan struct{})
+	// go func() {
+	// 	wg.Wait()
+	// 	close(done)
+	// }()
+
+	// tick := time.NewTicker(time.Second * 10)
+	// select {
+	// case <-done:
+	// case <-tick.C:
+	// 	for i, reactor := range reactors {
+	// 		t.Log(fmt.Sprintf("Consensus Reactor %v", i))
+	// 		t.Log(fmt.Sprintf("%v", reactor))
+	// 	}
+	// 	t.Fatalf("Timed out waiting for all validators to commit first block")
+	// }
+}
 
 // func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *State, sw *p2p.Switch) {
 // 	// byzantine user should create two proposals and try to split the vote.
@@ -479,9 +481,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 // 	peer.Send(VoteChannel, MustEncode(&VoteMessage{precommit}))
 // }
 
-// //----------------------------------------
-// // byzantine consensus reactor
-
 // type ByzantineReactor struct {
 // 	service.Service
 // 	reactor *Reactor
@@ -496,6 +495,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 // func (br *ByzantineReactor) SetSwitch(s *p2p.Switch)               { br.reactor.SetSwitch(s) }
 // func (br *ByzantineReactor) GetChannels() []*p2p.ChannelDescriptor { return br.reactor.GetChannels() }
+
 // func (br *ByzantineReactor) AddPeer(peer p2p.Peer) {
 // 	if !br.reactor.IsRunning() {
 // 		return
@@ -511,10 +511,13 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 // 		br.reactor.sendNewRoundStepMessage(peer)
 // 	}
 // }
+
 // func (br *ByzantineReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 // 	br.reactor.RemovePeer(peer, reason)
 // }
+
 // func (br *ByzantineReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
 // 	br.reactor.Receive(chID, peer, msgBytes)
 // }
+
 // func (br *ByzantineReactor) InitPeer(peer p2p.Peer) p2p.Peer { return peer }
