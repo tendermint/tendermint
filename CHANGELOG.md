@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.34.4
+
+*February 11, 2021*
+
+This release includes a fix for a memory leak in the evidence reactor (see #6068, below). 
+All Tendermint clients are recommended to upgrade. 
+Thank you to our friends at Crypto.com for the initial report of this memory leak! 
+
+Special thanks to other external contributors on this release: @yayajacky, @odidev, @laniehei, and @c29r3!
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BUG FIXES
+
+- [light] [\#6022](https://github.com/tendermint/tendermint/pull/6022) Fix a bug when the number of validators equals 100 (@melekes)
+- [light] [\#6026](https://github.com/tendermint/tendermint/pull/6026) Fix a bug when height isn't provided for the rpc calls: `/commit` and `/validators` (@cmwaters)
+- [evidence] [\#6068](https://github.com/tendermint/tendermint/pull/6068) Terminate broadcastEvidenceRoutine when peer is stopped (@melekes)
+
 ## v0.34.3 
 
 *January 19, 2021*
