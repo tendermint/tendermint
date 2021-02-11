@@ -4,7 +4,7 @@
 
 *February 11, 2021*
 
-This release includes a fix for a memory leak introduced in the 0.34 release series (see #6068, below). 
+This release includes a fix for a memory leak in the evidence reactor (see #6068, below). 
 All Tendermint clients are recommended to upgrade. 
 Thank you to our friends at Crypto.com for the initial report of this memory leak! 
 
