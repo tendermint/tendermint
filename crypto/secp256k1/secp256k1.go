@@ -152,7 +152,7 @@ func (pubKey PubKey) Address() crypto.Address {
 	return crypto.Address(hasherRIPEMD160.Sum(nil))
 }
 
-// Bytes returns the pubkey marshalled with amino encoding.
+// Bytes returns the pubkey marshaled with amino encoding.
 func (pubKey PubKey) Bytes() []byte {
 	return []byte(pubKey)
 }

@@ -55,7 +55,7 @@ type RPCRequest struct {
 	Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
 }
 
-// UnmarshalJSON custom JSON unmarshalling due to jsonrpcid being string or int
+// UnmarshalJSON custom JSON unmarshaling due to jsonrpcid being string or int
 func (req *RPCRequest) UnmarshalJSON(data []byte) error {
 	unsafeReq := &struct {
 		JSONRPC string          `json:"jsonrpc"`
@@ -154,7 +154,7 @@ type RPCResponse struct {
 	Error   *RPCError       `json:"error,omitempty"`
 }
 
-// UnmarshalJSON custom JSON unmarshalling due to jsonrpcid being string or int
+// UnmarshalJSON custom JSON unmarshaling due to jsonrpcid being string or int
 func (resp *RPCResponse) UnmarshalJSON(data []byte) error {
 	unsafeResp := &struct {
 		JSONRPC string          `json:"jsonrpc"`
@@ -187,7 +187,7 @@ func NewRPCSuccessResponse(id jsonrpcid, res interface{}) RPCResponse {
 		var js []byte
 		js, err := tmjson.Marshal(res)
 		if err != nil {
-			return RPCInternalError(id, fmt.Errorf("error marshalling response: %w", err))
+			return RPCInternalError(id, fmt.Errorf("error marshaling response: %w", err))
 		}
 		rawMsg = json.RawMessage(js)
 	}
