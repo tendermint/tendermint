@@ -56,20 +56,20 @@ func newFuzzPeer() *fuzzPeer {
 }
 
 var privKey = ed25519.GenPrivKey()
-var nodeID = p2p.NodeIDFromPubKey(privKey.PubKey())
-var defaultNodeInfo = p2p.NodeInfo{
+var nodeID = p2p.PubKeyToID(privKey.PubKey())
+var defaultNodeInfo = p2p.DefaultNodeInfo{
 	ProtocolVersion: p2p.NewProtocolVersion(
 		version.P2PProtocol,
 		version.BlockProtocol,
 		0,
 	),
-	NodeID:     nodeID,
-	ListenAddr: "0.0.0.0:98992",
-	Moniker:    "foo1",
+	DefaultNodeID: nodeID,
+	ListenAddr:    "0.0.0.0:98992",
+	Moniker:       "foo1",
 }
 
 func (fp *fuzzPeer) FlushStop()       {}
-func (fp *fuzzPeer) ID() p2p.NodeID   { return nodeID }
+func (fp *fuzzPeer) ID() p2p.ID       { return nodeID }
 func (fp *fuzzPeer) RemoteIP() net.IP { return net.IPv4(0, 0, 0, 0) }
 func (fp *fuzzPeer) RemoteAddr() net.Addr {
 	return &net.TCPAddr{IP: fp.RemoteIP(), Port: 98991, Zone: ""}
