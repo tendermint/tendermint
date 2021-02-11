@@ -198,6 +198,7 @@ func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 		ConsensusParams:    types.DefaultConsensusParams(),
 		InitialHeight:      testnet.InitialHeight,
 		ThresholdPublicKey: testnet.ThresholdPublicKey,
+		QuorumHash:         testnet.QuorumHash,
 	}
 	for validator, pubkey := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{

@@ -23,6 +23,9 @@ validator04 = 100
 [validator_update.1010]
 validator05 = 100
 
+[validator_update.1012]
+validator06 = 100
+
 [node.seed01]
 mode = "seed"
 seeds = ["seed02"]
@@ -68,6 +71,13 @@ fast_sync = "v0"
 abci_protocol = "grpc"
 privval_protocol = "tcp"
 perturb = ["kill", "pause", "disconnect", "restart"]
+
+[node.validator06]
+seeds = ["seed01"]
+database = "rocksdb"
+abci_protocol = "grpc"
+privval_protocol = "dashcore"
+perturb = ["pause"]
 
 [node.full01]
 start_at = 1010

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"runtime/debug"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -123,6 +124,7 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		return fmt.Errorf("the threshold public key must be 48 bytes for BLS")
 	}
 	if genDoc.Validators != nil && len(genDoc.QuorumHash.Bytes()) != crypto.DefaultHashSize {
+		debug.PrintStack()
 		return fmt.Errorf("the quorum hash must be 32 bytes long")
 	}
 

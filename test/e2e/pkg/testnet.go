@@ -123,6 +123,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 	ipGen := newIPGenerator(ipNet)
 	keyGen := newKeyGenerator(randomSeed)
 	proTxHashGen := newProTxHashGenerator(randomSeed + 1)
+	quorumHashGen := newQuorumHashGenerator(randomSeed + 1)
 	proxyPortGen := newPortGenerator(proxyPortFirst)
 
 	// Set up nodes, in alphabetical order (IPs and ports get same order).
@@ -162,6 +163,8 @@ func LoadTestnet(file string) (*Testnet, error) {
 	privateKeys, thresholdPublicKey :=
 		bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThresholdUsingSeedSource(proTxHashes, randomSeed)
 
+	quorumHash := quorumHashGen.Generate()
+
 	testnet := &Testnet{
 		Name:                      filepath.Base(dir),
 		File:                      file,
@@ -176,6 +179,8 @@ func LoadTestnet(file string) (*Testnet, error) {
 		Nodes:                     []*Node{},
 		ThresholdPublicKey:        thresholdPublicKey,
 		ThresholdPublicKeyUpdates: map[int64]crypto.PubKey{},
+		QuorumHash:                quorumHash,
+		QuorumHashUpdates:         map[int64]crypto.QuorumHash{},
 	}
 	if manifest.InitialHeight > 0 {
 		testnet.InitialHeight = manifest.InitialHeight
@@ -340,6 +345,8 @@ func LoadTestnet(file string) (*Testnet, error) {
 		privateKeys, thresholdPublicKey :=
 			bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThresholdUsingSeedSource(proTxHashes, randomSeed+int64(height))
 
+		quorumHash := quorumHashGen.Generate()
+
 		for i, proTxHash := range proTxHashes {
 			node := testnet.LookupNodeByProTxHash(proTxHash)
 			valUpdate[node] = privateKeys[i].PubKey()
@@ -361,6 +368,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 
 		testnet.ValidatorUpdates[int64(height)] = valUpdate
 		testnet.ThresholdPublicKeyUpdates[int64(height)] = thresholdPublicKey
+		testnet.QuorumHashUpdates[int64(height)] = quorumHash
 	}
 
 	chainLockSetHeights := make([]int, len(manifest.ChainLockUpdates))
@@ -716,3 +724,25 @@ func (g *proTxHashGenerator) Generate() crypto.ProTxHash {
 	}
 	return crypto.ProTxHash(seed)
 }
+
+// quorumHashGenerator generates pseudorandom quorumHash based on a seed.
+type quorumHashGenerator struct {
+	random *rand.Rand
+}
+
+func newQuorumHashGenerator(seed int64) *quorumHashGenerator {
+	return &quorumHashGenerator{
+		random: rand.New(rand.NewSource(seed)),
+	}
+}
+
+func (g *quorumHashGenerator) Generate() crypto.QuorumHash {
+	seed := make([]byte, crypto.DefaultHashSize)
+
+	_, err := io.ReadFull(g.random, seed)
+	if err != nil {
+		panic(err) // this shouldn't happen
+	}
+	return crypto.QuorumHash(seed)
+}
+

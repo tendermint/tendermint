@@ -2,7 +2,6 @@ package crypto
 
 import (
 	bytes2 "bytes"
-
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/bytes"
 )

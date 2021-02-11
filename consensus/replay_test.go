@@ -323,6 +323,16 @@ var (
 // 3 - save block and committed with truncated block store and state behind
 var modes = []uint{0, 1, 2, 3}
 
+func findProposer(validatorStubs []*validatorStub, proTxHash crypto.ProTxHash) *validatorStub {
+	for _, validatorStub := range validatorStubs {
+		valProTxHash, _ := validatorStub.GetProTxHash()
+		if bytes.Equal(valProTxHash, proTxHash) {
+			return validatorStub
+		}
+	}
+	panic("validator not found")
+}
+
 // This is actually not a test, it's for storing validator change tx data for testHandshakeReplay
 func TestSimulateValidatorsChange(t *testing.T) {
 	nPeers := 7
@@ -357,6 +367,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	signAddVotes(css[0], tmproto.PrevoteType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
+	//ensureNewBlock(blockCh, height)
 
 	// HEIGHT 2
 	updatedValidators, _, newThresholdPublicKey, quorumHash2 := updateConsensusNetAddNewValidators(css, height, 1, false)
@@ -449,9 +460,10 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	propBlockParts = propBlock.MakePartSet(partSize)
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 
+	vssProposer := findProposer(vss, css[0].Validators.Proposer.ProTxHash)
 	proposal = types.NewProposal(vss[3].Height, 1, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vss[3].SignProposal(config.ChainID(), quorumHash2, p); err != nil {
+	if err := vssProposer.SignProposal(config.ChainID(), quorumHash2, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature

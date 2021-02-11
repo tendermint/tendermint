@@ -27,7 +27,7 @@ var (
 	// The following specify randomly chosen values for testnet nodes.
 	nodeDatabases        = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
 	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "grpc", "builtin"}
-	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp"}
+	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp", "dashcore"}
 	// FIXME v1 disabled due to https://github.com/tendermint/tendermint/issues/5444
 	// FIXME v2 disabled due to:
 	// https://github.com/tendermint/tendermint/issues/5513
