@@ -17,10 +17,10 @@ func newPrefixBatch(prefix []byte, source Batch) prefixDBBatch {
 // Set implements Batch.
 func (pb prefixDBBatch) Set(key, value []byte) error {
 	if len(key) == 0 {
-		return errKeyEmpty
+		return ErrKeyEmpty
 	}
 	if value == nil {
-		return errValueNil
+		return ErrValueNil
 	}
 	pkey := append(cp(pb.prefix), key...)
 	return pb.source.Set(pkey, value)
@@ -29,7 +29,7 @@ func (pb prefixDBBatch) Set(key, value []byte) error {
 // Delete implements Batch.
 func (pb prefixDBBatch) Delete(key []byte) error {
 	if len(key) == 0 {
-		return errKeyEmpty
+		return ErrKeyEmpty
 	}
 	pkey := append(cp(pb.prefix), key...)
 	return pb.source.Delete(pkey)
