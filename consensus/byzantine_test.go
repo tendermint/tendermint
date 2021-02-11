@@ -262,8 +262,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 // B sees a commit, A doesn't.
 // Heal partition and ensure A sees the commit
 func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
-	configSetup(t)
-
 	// TODO: https://github.com/tendermint/tendermint/issues/6092
 	t.SkipNow()
 
