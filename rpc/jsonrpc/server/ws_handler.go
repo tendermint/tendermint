@@ -49,7 +49,7 @@ func NewWebsocketManager(
 			CheckOrigin: func(r *http.Request) bool {
 				// TODO ???
 				//
-				// The default behaviour would be relevant to browser-based clients,
+				// The default behavior would be relevant to browser-based clients,
 				// afaik. I suppose having a pass-through is a workaround for allowing
 				// for more complex security schemes, shifting the burden of
 				// AuthN/AuthZ outside the Tendermint RPC.

@@ -58,7 +58,7 @@ type Channel struct {
 	Out   chan<- Envelope  // outbound messages (reactors to peers)
 	Error chan<- PeerError // peer error reporting
 
-	messageType proto.Message // the channel's message type, used for unmarshalling
+	messageType proto.Message // the channel's message type, used for unmarshaling
 	closeCh     chan struct{}
 	closeOnce   sync.Once
 }
@@ -768,7 +768,7 @@ func (r *Router) OnStop() {
 	}
 }
 
-// stopCtx returns a new context that is cancelled when the router stops.
+// stopCtx returns a new context that is canceled when the router stops.
 func (r *Router) stopCtx() context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
