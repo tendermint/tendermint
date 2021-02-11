@@ -222,7 +222,7 @@ build-docker: build-linux
 ###############################################################################
 
 # Build linux binary on other platforms
-build-linux: tools
+build-linux:
 	GOOS=linux GOARCH=amd64 $(MAKE) build
 .PHONY: build-linux
 
