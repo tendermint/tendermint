@@ -255,7 +255,6 @@ func (c *WSClient) CallWithArrayParams(ctx context.Context, method string, param
 func (c *WSClient) Codec() *amino.Codec       { return c.cdc }
 func (c *WSClient) SetCodec(cdc *amino.Codec) { c.cdc = cdc }
 
-///////////////////////////////////////////////////////////////////////////////
 // Private methods
 
 func (c *WSClient) nextRequestID() types.JSONRPCIntID {
@@ -525,7 +524,6 @@ func (c *WSClient) readRoutine() {
 	}
 }
 
-///////////////////////////////////////////////////////////////////////////////
 // Predefined methods
 
 // Subscribe to a query. Note the server must have a "subscribe" route

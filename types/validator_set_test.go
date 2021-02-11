@@ -1569,9 +1569,7 @@ func (tvals testValsByAddress) Less(i, j int) bool {
 }
 
 func (tvals testValsByAddress) Swap(i, j int) {
-	it := tvals[i]
-	tvals[i] = tvals[j]
-	tvals[j] = it
+	tvals[i], tvals[j] = tvals[j], tvals[i]
 }
 
 //-------------------------------------

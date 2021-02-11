@@ -227,10 +227,10 @@ func TestBadBlockStopsPeer(t *testing.T) {
 		time.Sleep(1 * time.Second)
 	}
 
-	//at this time, reactors[0-3] is the newest
+	// at this time, reactors[0-3] is the newest
 	assert.Equal(t, 3, reactorPairs[1].reactor.Switch.Peers().Size())
 
-	//mark reactorPairs[3] is an invalid peer
+	// mark reactorPairs[3] is an invalid peer
 	reactorPairs[3].reactor.store = otherChain.reactor.store
 
 	lastReactorPair := newBlockchainReactor(log.TestingLogger(), genDoc, privVals, 0)

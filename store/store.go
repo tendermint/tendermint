@@ -278,7 +278,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 		panic(fmt.Sprintf("BlockStore can only save contiguous blocks. Wanted %v, got %v", w, g))
 	}
 	if !blockParts.IsComplete() {
-		panic(fmt.Sprintf("BlockStore can only save complete block part sets"))
+		panic("BlockStore can only save complete block part sets")
 	}
 
 	// Save block meta

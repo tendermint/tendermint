@@ -10,7 +10,7 @@ linters:
     # - gochecknoglobals
     # - gochecknoinits
     - goconst
-    - gocritic
+    # - gocritic
     # - gocyclo
     # - godox
     - gofmt
@@ -43,6 +43,9 @@ linters:
 
 issues:
   exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec
     - linters:
         - lll
       source: "https://"
