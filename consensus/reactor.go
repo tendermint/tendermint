@@ -1369,13 +1369,13 @@ func (r *Reactor) peerStatsRoutine() {
 
 			switch msg.Msg.(type) {
 			case *VoteMessage:
-				if numVotes := ps.RecordVote(); numVotes%votesToContributeToBecomeGoodPeer == 0 {
+				if numVotes := ps.RecordVote(); numVotes%votesToContributeToBecomeGoodPeer == 0 { // nolint: staticcheck
 					// TODO: Handle peer quality via the peer manager.
 					// r.Switch.MarkPeerAsGood(peer)
 				}
 
 			case *BlockPartMessage:
-				if numParts := ps.RecordBlockPart(); numParts%blocksToContributeToBecomeGoodPeer == 0 {
+				if numParts := ps.RecordBlockPart(); numParts%blocksToContributeToBecomeGoodPeer == 0 { // nolint: staticcheck
 					// TODO: Handle peer quality via the peer manager.
 					// r.Switch.MarkPeerAsGood(peer)
 				}

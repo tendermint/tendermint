@@ -104,7 +104,11 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	bzState.doPrevote = func(height int64, round int32) {
 		// allow first height to happen normally so that byzantine validator is no longer proposer
 		if height == prevoteHeight {
-			prevote1, err := bzState.signVote(tmproto.PrevoteType, bzState.ProposalBlock.Hash(), bzState.ProposalBlockParts.Header())
+			prevote1, err := bzState.signVote(
+				tmproto.PrevoteType,
+				bzState.ProposalBlock.Hash(),
+				bzState.ProposalBlockParts.Header(),
+			)
 			require.NoError(t, err)
 
 			prevote2, err := bzState.signVote(tmproto.PrevoteType, nil, types.PartSetHeader{})

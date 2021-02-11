@@ -31,7 +31,6 @@ import (
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -797,18 +796,6 @@ func randConsensusNetWithPeers(
 	}
 }
 
-func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
-	for i, s := range switches {
-		if peer.NodeInfo().ID() == s.NodeInfo().ID() {
-			return i
-		}
-	}
-	panic("didnt find peer in switches")
-}
-
-//-------------------------------------------------------------------------------
-// genesis
-
 func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
 	validators := make([]types.GenesisValidator, numValidators)
 	privValidators := make([]types.PrivValidator, numValidators)
@@ -835,9 +822,6 @@ func randGenesisState(numValidators int, randPower bool, minPower int64) (sm.Sta
 	s0, _ := sm.MakeGenesisState(genDoc)
 	return s0, privValidators
 }
-
-//------------------------------------
-// mock ticker
 
 func newMockTickerFunc(onlyOnce bool) func() TimeoutTicker {
 	return func() TimeoutTicker {
@@ -883,8 +867,6 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 }
 
 func (*mockTicker) SetLogger(log.Logger) {}
-
-//------------------------------------
 
 func newCounter() abci.Application {
 	return counter.NewApplication(true)
