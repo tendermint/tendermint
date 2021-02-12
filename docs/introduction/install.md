@@ -25,12 +25,6 @@ git clone https://github.com/tendermint/tendermint.git
 cd tendermint
 ```
 
-### Get Tools & Dependencies
-
-```sh
-make tools
-```
-
 ### Compile
 
 ```sh
