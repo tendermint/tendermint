@@ -108,28 +108,7 @@ We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along 
 
 For linting and checking breaking changes, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will need to have docker running locally. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
 
-<<<<<<< HEAD
-There are two ways to generate your proto stubs.
-
-1. Use Docker, pull an image that will generate your proto stubs with no need to install anything. `make proto-gen-docker`
-2. Run `make proto-gen` after installing `protoc` and gogoproto, you can do this by running `make protobuf`.
-
-### Installation Instructions
-
-To install `protoc`, download an appropriate release (<https://github.com/protocolbuffers/protobuf>) and then move the provided binaries into your PATH (follow instructions in README included with the download).
-
-To install `gogoproto`, do the following:
-
-```sh
-go get github.com/gogo/protobuf/gogoproto
-cd $GOPATH/pkg/mod/github.com/gogo/protobuf@v1.3.1 # or wherever go get installs things
-make install
-```
-
-You should now be able to run `make proto-gen` from inside the root Tendermint directory to generate new files from proto files.
-=======
 We use [Docker](https://www.docker.com/) to generate the protobuf stubs. To generate the stubs yourself, make sure docker is running then run `make proto-gen`.
->>>>>>> 2d57043aa... tooling: remove tools/Makefile (#6102)
 
 ## Vagrant
 
@@ -330,14 +309,28 @@ have distinct names from the tags/release names.)
 
 ## Testing
 
-All repos should be hooked up to [CircleCI](https://circleci.com/).
+### Unit tests
 
-<<<<<<< HEAD
-If they have `.go` files in the root directory, they will be automatically
-tested by circle using `go test -v -race ./...`. If not, they will need a
-`circle.yml`. Ideally, every repo has a `Makefile` that defines `make test` and
-includes its continuous integration status using a badge in the `README.md`.
-=======
+Unit tests are located in `_test.go` files as directed by [the Go testing
+package](https://golang.org/pkg/testing/). If you're adding or removing a
+function, please check there's a `TestType_Method` test for it.
+
+Run: `make test`
+
+### Integration tests
+
+Integration tests are also located in `_test.go` files. What differentiates
+them is a more complicated setup, which usually involves setting up two or more
+components.
+
+Run: `make test_integrations`
+
+### End-to-end tests
+
+End-to-end tests are used to verify a fully integrated Tendermint network.
+
+See [README](./test/e2e/README.md) for details.
+
 Run:
 
 ```sh
@@ -396,7 +389,6 @@ most probably (99.9%)*.
 of the Tendermint consensus. They are located in a separate repository
 -> <https://github.com/tendermint/jepsen>. Please refer to its README for more
 information.
->>>>>>> 2d57043aa... tooling: remove tools/Makefile (#6102)
 
 ### RPC Testing
 
@@ -409,12 +401,8 @@ make build-linux build-contract-tests-hooks
 make contract-tests
 ```
 
-<<<<<<< HEAD
-This command will popup a network and check every endpoint against what has been documented
-=======
 **WARNING: these are currently broken due to <https://github.com/apiaryio/dredd>
 not supporting complete OpenAPI 3**.
 
 This command will popup a network and check every endpoint against what has
 been documented.
->>>>>>> 2d57043aa... tooling: remove tools/Makefile (#6102)
