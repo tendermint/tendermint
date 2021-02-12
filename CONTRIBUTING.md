@@ -412,7 +412,7 @@ most probably (99.9%)*.
 [Jepsen](http://jepsen.io/) tests are used to verify the
 [linearizability](https://jepsen.io/consistency/models/linearizable) property
 of the Tendermint consensus. They are located in a separate repository
--> <https://github.com/tendermint/jepsen>. Please refer to it's README for more
+-> <https://github.com/tendermint/jepsen>. Please refer to its README for more
 information.
 
 ### RPC Testing
