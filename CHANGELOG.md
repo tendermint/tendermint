@@ -34,7 +34,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 ### BUG FIXES
 
-- [evidence] [security fix](https://github.com/tendermint/tendermint/security/advisories/GHSA-p658-8693-mhvg) Use correct source of evidence time (@cmwaters)
+- [evidence] [[security fix]](https://github.com/tendermint/tendermint/security/advisories/GHSA-p658-8693-mhvg) Use correct source of evidence time (@cmwaters)
 - [proto] [\#5886](https://github.com/tendermint/tendermint/pull/5889) Bump gogoproto to 1.3.2 (@marbar3778)
 
 ## v0.34.2
