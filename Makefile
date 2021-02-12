@@ -49,13 +49,7 @@ LD_FLAGS += $(LDFLAGS)
 all: check build test install
 .PHONY: all
 
-<<<<<<< HEAD
-# The below include contains the tools.
-include tools.mk
-include tests.mk
-=======
 include test/Makefile
->>>>>>> 2d57043aa... tooling: remove tools/Makefile (#6102)
 
 ###############################################################################
 ###                                Build Tendermint                        ###
