@@ -289,7 +289,7 @@ the backport branches have names like `v0.34.x` or `v0.33.x` (literally, `x`; it
 
 As non-breaking changes land on `master`, they should also be backported (cherry-picked) to these backport branches.
 
-We use mergify's backport feature to automatically backport to the needed branch. Depending on which backport branch you need to backport to there will be labels for them. To notify the bot to backport a pull request, mark the pull request with the label `backport-to-<backport_branch>`. Once the original pull request is merged the bot will try to cherry-pick the pull request to the backport branch. If the bot fails to backport, it will open a pull request. The author of the original pull request is responsible for solving the conflicts and merging the pull request.
+We use Mergify's [backport feature](https://mergify.io/features/backports) to automatically backport to the needed branch. Depending on which backport branch you need to backport to there will be labels for them. To notify the bot to backport a pull request, mark the pull request with the label `backport-to-<backport_branch>`. Once the original pull request is merged, the bot will try to cherry-pick the pull request to the backport branch. If the bot fails to backport, it will open a pull request. The author of the original pull request is responsible for solving the conflicts and merging the pull request.
 
 Minor releases don't have release candidates by default, although any tricky changes may merit a release candidate.
 
