@@ -136,7 +136,7 @@ another window. If you don't, kill Tendermint and run an in-process version of
 the `kvstore` app:
 
 ```bash
-tendermint node --proxy-app=kvstore
+tendermint node --proxy_app=kvstore
 ```
 
 After a few seconds, you should see blocks start streaming in. Note that blocks
@@ -150,7 +150,7 @@ Go, run it in another process, and use the `--proxy-app` flag to specify the
 address of the socket it is listening on, for instance:
 
 ```bash
-tendermint node --proxy-app=/var/run/abci.sock
+tendermint node --proxy_proxyapp=/var/run/abci.sock
 ```
 
 You can find out what flags are supported by running `tendermint node --help`.
@@ -252,7 +252,7 @@ Tendermint uses a `config.toml` for configuration. For details, see [the
 config specification](./configuration.md).
 
 Notable options include the socket address of the application
-(`proxy-app`), the listening address of the Tendermint peer
+(`proxy_app`), the listening address of the Tendermint peer
 (`p2p.laddr`), and the listening address of the RPC server
 (`rpc.laddr`).
 
