@@ -28,10 +28,15 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [proto/p2p] Renamed `DefaultNodeInfo` and `DefaultNodeInfoOther` to `NodeInfo` and `NodeInfoOther` (@erikgrinaker)
   - [proto/p2p] Rename `NodeInfo.default_node_id` to `node_id` (@erikgrinaker)
   - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
-  - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)  - [state] \#5864 Use an iterator when pruning state (@cmwaters)
+  - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)  
+  - [state] \#5864 Use an iterator when pruning state (@cmwaters)
   - [types] \#6023 Remove `tm2pb.Header`, `tm2pb.BlockID`, `tm2pb.PartSetHeader` and `tm2pb.NewValidatorUpdate`.
     - Each of the above types has a `ToProto` and `FromProto` method or function which replaced this logic.
-  - [rpc/client/http] \#6022 Change `timeout` type to `time.Duration` in `NewWithTimeout`
+  - [light] \#6054 Move `MaxRetryAttempt` option from client to provider.
+    - `NewWithOptions` now sets the max retry attempts and timeouts (@cmwaters)
+  - [all] \#6077 Change spelling from British English to American (@cmwaters)
+    - Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
+    - Rename "behaviour" pkg to "behavior" and internalized it in blockchain v2
 
 - Blockchain Protocol
 
@@ -54,6 +59,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [cli] \#5772 `gen_node_key` output now contains node ID (`id` field) (@melekes)
 - [blockchain/v2] \#5774 Send status request when new peer joins (@melekes)
 - [consensus] \#5792 Deprecates the `time_iota_ms` consensus parameter, to reduce the bug surface. The parameter is no longer used. (@valardragon)
+- [store] \#5888 store.SaveBlock saves using batches instead of transactions for now to improve ACID properties. This is a quick fix for underlying issues around tm-db and ACID guarantees. (@githubsands)
 - [consensus] \#5987 Remove `time_iota_ms` from consensus params. Merge `tmproto.ConsensusParams` and `abci.ConsensusParams`. (@marbar3778)
 - [types] \#5994 Reduce the use of protobuf types in core logic. (@marbar3778)
   - `ConsensusParams`, `BlockParams`, `ValidatorParams`, `EvidenceParams`, `VersionParams`, `sm.Version` and `version.Consensus` have become native types. They still utilize protobuf when being sent over the wire or written to disk.
@@ -64,5 +70,3 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
 - [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)
-- [light] \#6022 Fix a bug when the number of validators equals 100 (@melekes)
-- [light] \#6026 Fix a bug when height isn't provided for the rpc calls: `/commit` and `/validators` (@cmwaters)

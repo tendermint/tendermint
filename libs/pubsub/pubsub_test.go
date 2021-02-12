@@ -59,7 +59,7 @@ func TestSubscribe(t *testing.T) {
 	select {
 	case <-published:
 		assertReceive(t, "Quicksilver", subscription.Out())
-		assertCancelled(t, subscription, pubsub.ErrOutOfCapacity)
+		assertCanceled(t, subscription, pubsub.ErrOutOfCapacity)
 	case <-time.After(3 * time.Second):
 		t.Fatal("Expected Publish(Asylum) not to block")
 	}
@@ -146,7 +146,7 @@ func TestSlowClientIsRemovedWithErrOutOfCapacity(t *testing.T) {
 	err = s.Publish(ctx, "Viper")
 	require.NoError(t, err)
 
-	assertCancelled(t, subscription, pubsub.ErrOutOfCapacity)
+	assertCanceled(t, subscription, pubsub.ErrOutOfCapacity)
 }
 
 func TestDifferentClients(t *testing.T) {
@@ -298,7 +298,7 @@ func TestUnsubscribe(t *testing.T) {
 	require.NoError(t, err)
 	assert.Zero(t, len(subscription.Out()), "Should not receive anything after Unsubscribe")
 
-	assertCancelled(t, subscription, pubsub.ErrUnsubscribed)
+	assertCanceled(t, subscription, pubsub.ErrUnsubscribed)
 }
 
 func TestClientUnsubscribesTwice(t *testing.T) {
@@ -373,8 +373,8 @@ func TestUnsubscribeAll(t *testing.T) {
 	assert.Zero(t, len(subscription1.Out()), "Should not receive anything after UnsubscribeAll")
 	assert.Zero(t, len(subscription2.Out()), "Should not receive anything after UnsubscribeAll")
 
-	assertCancelled(t, subscription1, pubsub.ErrUnsubscribed)
-	assertCancelled(t, subscription2, pubsub.ErrUnsubscribed)
+	assertCanceled(t, subscription1, pubsub.ErrUnsubscribed)
+	assertCanceled(t, subscription2, pubsub.ErrUnsubscribed)
 }
 
 func TestBufferCapacity(t *testing.T) {
@@ -431,7 +431,7 @@ func benchmarkNClients(n int, b *testing.B) {
 				select {
 				case <-subscription.Out():
 					continue
-				case <-subscription.Cancelled():
+				case <-subscription.Canceled():
 					return
 				}
 			}
@@ -472,7 +472,7 @@ func benchmarkNClientsOneQuery(n int, b *testing.B) {
 				select {
 				case <-subscription.Out():
 					continue
-				case <-subscription.Cancelled():
+				case <-subscription.Canceled():
 					return
 				}
 			}
@@ -500,8 +500,8 @@ func assertReceive(t *testing.T, expected interface{}, ch <-chan pubsub.Message,
 	}
 }
 
-func assertCancelled(t *testing.T, subscription *pubsub.Subscription, err error) {
-	_, ok := <-subscription.Cancelled()
+func assertCanceled(t *testing.T, subscription *pubsub.Subscription, err error) {
+	_, ok := <-subscription.Canceled()
 	assert.False(t, ok)
 	assert.Equal(t, err, subscription.Err())
 }

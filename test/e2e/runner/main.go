@@ -171,7 +171,7 @@ func NewCLI() *CLI {
 
 	cli.root.AddCommand(&cobra.Command{
 		Use:   "load",
-		Short: "Generates transaction load until the command is cancelled",
+		Short: "Generates transaction load until the command is canceled",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return Load(context.Background(), cli.testnet)
 		},
