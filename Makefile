@@ -49,7 +49,7 @@ LD_FLAGS += $(LDFLAGS)
 all: check build test install
 .PHONY: all
 
-include test/Makefile
+include tests.mk
 
 ###############################################################################
 ###                                Build Tendermint                        ###
