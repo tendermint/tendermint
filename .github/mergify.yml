@@ -11,7 +11,7 @@ pull_request_rules:
   - name: backport patches to v0.34.x branch
     conditions:
       - base=master
-      - label=backport-to-v0.34.x
+      - label=S:backport-to-v0.34.x
     actions:
       backport:
         branches:
