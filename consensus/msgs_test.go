@@ -2,10 +2,11 @@ package consensus
 
 import (
 	"encoding/hex"
-	"github.com/tendermint/tendermint/crypto"
 	"math"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"

@@ -106,12 +106,12 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 	const maxPages = 100
 
 	var (
-		perPage         = 100
+		perPage            = 100
 		vals               = []*types.Validator{}
 		thresholdPublicKey crypto.PubKey
 		quorumHash         crypto.QuorumHash
 		page               = 1
-		total   = -1
+		total              = -1
 	)
 
 	for len(vals) != total && page <= maxPages {

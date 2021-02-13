@@ -347,7 +347,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	require.NoError(t, err)
 	updateTransactions[len(updatedValidators)] = kvstore.MakeThresholdPublicKeyChangeTx(abciThresholdPubKey)
 
-	updateTransactions[len(updatedValidators) + 1] = kvstore.MakeQuorumHashTx(quorumHash)
+	updateTransactions[len(updatedValidators)+1] = kvstore.MakeQuorumHashTx(quorumHash)
 
 	// wait till everyone makes block 2
 	// ensure the commit includes all validators
@@ -385,7 +385,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	require.NoError(t, err)
 	updateTransactions2[len(updatedValidators)] = kvstore.MakeThresholdPublicKeyChangeTx(abciThresholdPubKey)
 
-	updateTransactions2[len(updatedValidators) + 1] = kvstore.MakeQuorumHashTx(quorumHash)
+	updateTransactions2[len(updatedValidators)+1] = kvstore.MakeQuorumHashTx(quorumHash)
 
 	// block 7
 	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, updateTransactions2...)
@@ -416,7 +416,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	require.NoError(t, err)
 	updateTransactions3[len(updatedValidators)] = kvstore.MakeThresholdPublicKeyChangeTx(abciThresholdPubKey)
 
-	updateTransactions3[len(updatedValidators) + 1] = kvstore.MakeQuorumHashTx(newQuorumHash)
+	updateTransactions3[len(updatedValidators)+1] = kvstore.MakeQuorumHashTx(newQuorumHash)
 
 	// block 12
 	waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, updateTransactions3...)

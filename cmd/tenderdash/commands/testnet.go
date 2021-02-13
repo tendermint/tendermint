@@ -2,11 +2,12 @@ package commands
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

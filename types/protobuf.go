@@ -183,7 +183,7 @@ func (pb2tm) ValidatorUpdatesFromValidatorSet(valSetUpdate *abci.ValidatorSetUpd
 		return nil, nil, nil, err
 	}
 	if len(valSetUpdate.QuorumHash) != crypto.DefaultHashSize {
-		return nil, nil, nil, fmt.Errorf("validator set update must have a quorum" +
+		return nil, nil, nil, fmt.Errorf("validator set update must have a quorum"+
 			" hash of 32 bytes (size: %d bytes)", len(valSetUpdate.QuorumHash))
 	}
 	return tmVals, pub, valSetUpdate.QuorumHash, nil

@@ -383,7 +383,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	abciThresholdPubKey, err := cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
 	updateTransactions[len(updatedValidators)] = kvstore.MakeThresholdPublicKeyChangeTx(abciThresholdPubKey)
-	updateTransactions[len(updatedValidators) + 1] = kvstore.MakeQuorumHashTx(quorumHash2)
+	updateTransactions[len(updatedValidators)+1] = kvstore.MakeQuorumHashTx(quorumHash2)
 	for _, updateTransaction := range updateTransactions {
 		err = assertMempool(css[0].txNotifier).CheckTx(updateTransaction, nil, mempl.TxInfo{})
 		assert.Nil(t, err)
@@ -451,7 +451,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	abciThresholdPubKey2, err := cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
 	updateTransactions2[len(updatedValidators)] = kvstore.MakeThresholdPublicKeyChangeTx(abciThresholdPubKey2)
-	updateTransactions2[len(updatedValidators) + 1] = kvstore.MakeQuorumHashTx(quorumHash4)
+	updateTransactions2[len(updatedValidators)+1] = kvstore.MakeQuorumHashTx(quorumHash4)
 	for _, updateTransaction := range updateTransactions2 {
 		err = assertMempool(css[0].txNotifier).CheckTx(updateTransaction, nil, mempl.TxInfo{})
 		assert.Nil(t, err)
@@ -572,7 +572,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	require.NoError(t, err)
 	updateTransactions3[len(updatedValidators)] =
 		kvstore.MakeThresholdPublicKeyChangeTx(abciThresholdPubKey)
-	updateTransactions3[len(updatedValidators) + 1] = kvstore.MakeQuorumHashTx(quorumHash6)
+	updateTransactions3[len(updatedValidators)+1] = kvstore.MakeQuorumHashTx(quorumHash6)
 
 	for _, updateTransaction := range updateTransactions3 {
 		err = assertMempool(css[0].txNotifier).CheckTx(updateTransaction, nil, mempl.TxInfo{})
@@ -688,7 +688,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	abciThresholdPubKey, err = cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
 	updateTransactions4[len(updatedValidators)] = kvstore.MakeThresholdPublicKeyChangeTx(abciThresholdPubKey)
-	updateTransactions4[len(updatedValidators) + 1] = kvstore.MakeQuorumHashTx(quorumHash8)
+	updateTransactions4[len(updatedValidators)+1] = kvstore.MakeQuorumHashTx(quorumHash8)
 
 	for _, updateTransaction := range updateTransactions4 {
 		err = assertMempool(css[0].txNotifier).CheckTx(updateTransaction, nil, mempl.TxInfo{})

@@ -745,4 +745,3 @@ func (g *quorumHashGenerator) Generate() crypto.QuorumHash {
 	}
 	return crypto.QuorumHash(seed)
 }
-

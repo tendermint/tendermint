@@ -2,9 +2,10 @@ package main
 
 import (
 	"flag"
-	"github.com/tendermint/tendermint/crypto"
 	"os"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"

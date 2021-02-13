@@ -1,8 +1,9 @@
 package privval
 
 import (
-	"github.com/tendermint/tendermint/crypto"
 	"io"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
@@ -19,10 +20,10 @@ type ValidationRequestHandlerFunc func(
 type SignerServer struct {
 	service.BaseService
 
-	endpoint *SignerDialerEndpoint
-	chainID  string
+	endpoint   *SignerDialerEndpoint
+	chainID    string
 	quorumHash crypto.QuorumHash
-	privVal  types.PrivValidator
+	privVal    types.PrivValidator
 
 	handlerMtx               tmsync.Mutex
 	validationRequestHandler ValidationRequestHandlerFunc

@@ -3,10 +3,11 @@ package types
 import (
 	"context"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

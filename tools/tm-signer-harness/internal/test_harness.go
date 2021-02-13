@@ -3,11 +3,12 @@ package internal
 import (
 	"bytes"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"net"
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 

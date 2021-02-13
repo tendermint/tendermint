@@ -2,10 +2,11 @@
 package evidence_test
 
 import (
-	"github.com/tendermint/tendermint/crypto"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

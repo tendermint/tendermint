@@ -57,9 +57,9 @@ var ErrTotalVotingPowerOverflow = fmt.Errorf("total voting power of resulting va
 // NOTE: All get/set to validators should copy the value for safety.
 type ValidatorSet struct {
 	// NOTE: persisted via reflect, must be exported.
-	Validators         []*Validator  `json:"validators"`
-	Proposer           *Validator    `json:"proposer"`
-	ThresholdPublicKey crypto.PubKey `json:"threshold_public_key"`
+	Validators         []*Validator      `json:"validators"`
+	Proposer           *Validator        `json:"proposer"`
+	ThresholdPublicKey crypto.PubKey     `json:"threshold_public_key"`
 	QuorumHash         crypto.QuorumHash `json:"quorum_hash"`
 
 	// cached (unexported)
@@ -1319,7 +1319,7 @@ func ValidatorSetFromExistingValidators(valz []*Validator, thresholdPublicKey cr
 	vals := &ValidatorSet{
 		Validators:         valz,
 		ThresholdPublicKey: thresholdPublicKey,
-		QuorumHash: quorumHash,
+		QuorumHash:         quorumHash,
 	}
 	vals.Proposer = vals.findPreviousProposer()
 	vals.updateTotalVotingPower()

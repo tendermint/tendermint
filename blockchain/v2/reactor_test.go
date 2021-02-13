@@ -2,11 +2,12 @@ package v2
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"net"
 	"os"
 	"sync"
 	"testing"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

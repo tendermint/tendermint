@@ -487,7 +487,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	app.ValidatorSetUpdate = &abci.ValidatorSetUpdate{
 		ValidatorUpdates:   validatorUpdates,
 		ThresholdPublicKey: publicKey,
-		QuorumHash: state.Validators.QuorumHash,
+		QuorumHash:         state.Validators.QuorumHash,
 	}
 
 	assert.NotPanics(t, func() { state, _, err = blockExec.ApplyBlock(state, blockID, block) })

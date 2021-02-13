@@ -2,9 +2,10 @@ package types
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"os"
 	"testing"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/tmhash"

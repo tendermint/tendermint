@@ -499,9 +499,9 @@ type DashClientRPCConfig struct {
 // DefaultRPCConfig returns a default configuration for the RPC server
 func DefaultDashClientRPCConfig() *DashClientRPCConfig {
 	return &DashClientRPCConfig{
-		Port:          9998,
-		Username:     "rpc",
-		Password:     "password",
+		Port:     9998,
+		Username: "rpc",
+		Password: "password",
 	}
 }
 

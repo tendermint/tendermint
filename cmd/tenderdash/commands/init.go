@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+
 	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/spf13/cobra"
