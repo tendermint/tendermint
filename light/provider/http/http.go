@@ -100,18 +100,24 @@ func (p *http) ReportEvidence(ctx context.Context, ev types.Evidence) error {
 }
 
 func (p *http) validatorSet(ctx context.Context, height *int64) (*types.ValidatorSet, error) {
+	// Since the malicious node could report a massive number of pages, making us
+	// spend a considerable time iterating, we restrict the number of pages here.
+	// => 10000 validators max
+	const maxPages = 100
+
 	var (
-		maxPerPage         = 100
+		perPage         = 100
 		vals               = []*types.Validator{}
 		thresholdPublicKey crypto.PubKey
 		quorumHash         crypto.QuorumHash
 		page               = 1
+		total   = -1
 	)
 
-	for len(vals)%maxPerPage == 0 {
+	for len(vals) != total && page <= maxPages {
 		for attempt := 1; attempt <= maxRetryAttempts; attempt++ {
 			requestThresholdPublicKey := attempt == 1
-			res, err := p.client.Validators(ctx, height, &page, &maxPerPage, &requestThresholdPublicKey)
+			res, err := p.client.Validators(ctx, height, &page, &perPage, &requestThresholdPublicKey)
 			if err != nil {
 				// TODO: standardize errors on the RPC side
 				if regexpMissingHeight.MatchString(err.Error()) {
@@ -125,13 +131,22 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 				time.Sleep(backoffTimeout(uint16(attempt)))
 				continue
 			}
-			if len(res.Validators) == 0 { // no more validators left
-				valSet, err := types.ValidatorSetFromExistingValidators(vals, thresholdPublicKey, quorumHash)
-				if err != nil {
-					return nil, provider.ErrBadLightBlock{Reason: err}
+
+			// Validate response.
+			if len(res.Validators) == 0 {
+				return nil, provider.ErrBadLightBlock{
+					Reason: fmt.Errorf("validator set is empty (height: %d, page: %d, per_page: %d)",
+						height, page, perPage),
 				}
-				return valSet, nil
 			}
+			if res.Total <= 0 {
+				return nil, provider.ErrBadLightBlock{
+					Reason: fmt.Errorf("total number of vals is <= 0: %d (height: %d, page: %d, per_page: %d)",
+						res.Total, height, page, perPage),
+				}
+			}
+
+			total = res.Total
 			vals = append(vals, res.Validators...)
 			if requestThresholdPublicKey {
 				thresholdPublicKey = *res.ThresholdPublicKey

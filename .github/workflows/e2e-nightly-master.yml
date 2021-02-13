@@ -1,0 +1,73 @@
+# Runs randomly generated E2E testnets nightly on master
+
+# !! If you change something in this file, you probably want
+# to update the e2e-nightly-34x workflow as well!
+
+name: e2e-nightly-master
+on:
+  workflow_dispatch: # allow running workflow manually
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  e2e-nightly-test-2:
+    # Run parallel jobs for the listed testnet groups (must match the
+    # ./build/generator -g flag)
+    strategy:
+      fail-fast: false
+      matrix:
+        group: ['00', '01', '02', '03']
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.15'
+
+      - uses: actions/checkout@v2
+
+      - name: Build
+        working-directory: test/e2e
+        # Run make jobs in parallel, since we can't run steps in parallel.
+        run: make -j2 docker generator runner
+
+      - name: Generate testnets
+        working-directory: test/e2e
+        # When changing -g, also change the matrix groups above
+        run: ./build/generator -g 4 -d networks/nightly
+
+      - name: Run testnets in group ${{ matrix.group }}
+        working-directory: test/e2e
+        run: ./run-multiple.sh networks/nightly/*-group${{ matrix.group }}-*.toml
+
+  e2e-nightly-fail-2:
+    needs: e2e-nightly-test-2
+    if: ${{ failure() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack on failure
+        uses: rtCamp/action-slack-notify@ae4223259071871559b6e9d08b24a63d71b3f0c0
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: tendermint-internal
+          SLACK_USERNAME: Nightly E2E Tests
+          SLACK_ICON_EMOJI: ':skull:'
+          SLACK_COLOR: danger
+          SLACK_MESSAGE: Nightly E2E tests failed on master
+          SLACK_FOOTER: ''
+
+  e2e-nightly-success: # may turn this off once they seem to pass consistently
+    needs: e2e-nightly-test-2
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack on success
+        uses: rtCamp/action-slack-notify@ae4223259071871559b6e9d08b24a63d71b3f0c0
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: tendermint-internal
+          SLACK_USERNAME: Nightly E2E Tests
+          SLACK_ICON_EMOJI: ':white_check_mark:'
+          SLACK_COLOR: good
+          SLACK_MESSAGE: Nightly E2E tests passed on master
+          SLACK_FOOTER: ''

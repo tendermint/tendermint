@@ -70,6 +70,30 @@ jobs:
         with:
           name: "${{ github.sha }}-03"
           path: ./pkgs.txt.part.03
+
+  build-linux:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        goarch: ["arm", "amd64"]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "^1.15.4"
+      - uses: actions/checkout@v2
+      - uses: technote-space/get-diff-action@v4
+        with:
+          PATTERNS: |
+            **/**.go
+            go.mod
+            go.sum
+      - name: install
+        run: GOOS=linux GOARCH=${{ matrix.goarch }} make build
+        if: "env.GIT_DIFF != ''"
+
   tests:
     runs-on: ubuntu-latest
     needs: [bls-signatures, split-test-files]
@@ -80,7 +104,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: '^1.15.4'
+          go-version: "^1.15.4"
       - uses: actions/checkout@v2
       - uses: technote-space/get-diff-action@v4
         with:

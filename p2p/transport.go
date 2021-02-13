@@ -537,7 +537,7 @@ func handshake(
 	}(errc, c)
 	go func(errc chan<- error, c net.Conn) {
 		protoReader := protoio.NewDelimitedReader(c, MaxNodeInfoSize())
-		err := protoReader.ReadMsg(&pbpeerNodeInfo)
+		_, err := protoReader.ReadMsg(&pbpeerNodeInfo)
 		errc <- err
 	}(errc, c)
 

@@ -583,7 +583,8 @@ FOR_LOOP:
 		// Read packet type
 		var packet tmp2p.Packet
 
-		err := protoReader.ReadMsg(&packet)
+		_n, err := protoReader.ReadMsg(&packet)
+		c.recvMonitor.Update(_n)
 		if err != nil {
 			// stopServices was invoked and we are shutting down
 			// receiving is excpected to fail since we will close the connection

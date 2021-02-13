@@ -13,9 +13,11 @@ import (
 // ResetAllCmd removes the database of this Tendermint core
 // instance.
 var ResetAllCmd = &cobra.Command{
-	Use:   "unsafe_reset_all",
-	Short: "(unsafe) Remove all the data and WAL, reset this node's validator to genesis state",
-	Run:   resetAll,
+	Use:     "unsafe-reset-all",
+	Aliases: []string{"unsafe_reset_all"},
+	Short:   "(unsafe) Remove all the data and WAL, reset this node's validator to genesis state",
+	Run:     resetAll,
+	PreRun:  deprecateSnakeCase,
 }
 
 var keepAddrBook bool
@@ -26,9 +28,11 @@ func init() {
 
 // ResetPrivValidatorCmd resets the private validator files.
 var ResetPrivValidatorCmd = &cobra.Command{
-	Use:   "unsafe_reset_priv_validator",
-	Short: "(unsafe) Reset this node's validator to genesis state",
-	Run:   resetPrivValidator,
+	Use:     "unsafe-reset-priv-validator",
+	Aliases: []string{"unsafe_reset_priv_validator"},
+	Short:   "(unsafe) Reset this node's validator to genesis state",
+	Run:     resetPrivValidator,
+	PreRun:  deprecateSnakeCase,
 }
 
 // XXX: this is totally unsafe.
