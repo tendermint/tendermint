@@ -653,7 +653,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 	)
 
 	validatorUpdates, thresholdPublicKeyUpdate, quorumHash, err =
-	 	types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
+		types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
 	require.NoError(t, err)
 
 	updatedState3, err := sm.UpdateState(updatedState2, blockID, &block.Header, abciResponses,
@@ -698,7 +698,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 		EndBlock:   &abci.ResponseEndBlock{ValidatorSetUpdate: nil},
 	}
 	validatorUpdates, thresholdPublicKeyUpdate, quorumHash, err =
-	 	types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
+		types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
 	require.NoError(t, err)
 
 	oldState, err = sm.UpdateState(oldState, blockID, &block.Header, abciResponses,
@@ -716,7 +716,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 			EndBlock:   &abci.ResponseEndBlock{ValidatorSetUpdate: nil},
 		}
 		validatorUpdates, thresholdPublicKeyUpdate, quorumHash, err =
-		 	types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
+			types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
 		require.NoError(t, err)
 
 		updatedState, err := sm.UpdateState(oldState, blockID, &block.Header, abciResponses,
@@ -799,7 +799,7 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 		EndBlock:   &abci.ResponseEndBlock{ValidatorSetUpdate: &abciValidatorUpdates0},
 	}
 	validatorUpdates, thresholdPublicKey, quorumHash, err :=
-	 	types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
+		types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
 	require.NoError(t, err)
 
 	block := makeBlock(oldState, oldState.LastBlockHeight+1)
@@ -816,7 +816,7 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 			EndBlock:   &abci.ResponseEndBlock{ValidatorSetUpdate: nil},
 		}
 		validatorUpdates, thresholdPublicKey, _, err :=
-		 	types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
+			types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
 		require.NoError(t, err)
 
 		block := makeBlock(lastState, lastState.LastBlockHeight+1)
@@ -849,11 +849,11 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 		abciValidatorSetUpdate := abci.ValidatorSetUpdate{
 			ValidatorUpdates:   abciValidatorUpdates,
 			ThresholdPublicKey: abciThresholdPublicKey3,
-			QuorumHash: quorumHash,
+			QuorumHash:         quorumHash,
 		}
 
 		validatorUpdates, thresholdPublicKey3, _, err :=
-		 	types.PB2TM.ValidatorUpdatesFromValidatorSet(&abciValidatorSetUpdate)
+			types.PB2TM.ValidatorUpdatesFromValidatorSet(&abciValidatorSetUpdate)
 		assert.NoError(t, err)
 
 		abciResponses := &tmstate.ABCIResponses{
@@ -898,7 +898,7 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 	block = makeBlock(oldState, oldState.LastBlockHeight+1)
 	blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
 	validatorUpdates, thresholdPublicKey, quorumHash, err =
-	 	types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
+		types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
 	require.NoError(t, err)
 	updatedState, err = sm.UpdateState(state, blockID, &block.Header, abciResponses,
 		validatorUpdates, thresholdPublicKey, quorumHash)
@@ -917,7 +917,7 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 			EndBlock:   &abci.ResponseEndBlock{ValidatorSetUpdate: nil},
 		}
 		validatorUpdates, thresholdPublicKey, quorumHash, err =
-		 	types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
+			types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
 		require.NoError(t, err)
 		block = makeBlock(curState, curState.LastBlockHeight+1)
 		blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(testPartSize).Header()}
@@ -943,7 +943,7 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 			EndBlock:   &abci.ResponseEndBlock{ValidatorSetUpdate: nil},
 		}
 		validatorUpdates, thresholdPublicKey, quorumHash, err :=
-		 	types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
+			types.PB2TM.ValidatorUpdatesFromValidatorSet(abciResponses.EndBlock.ValidatorSetUpdate)
 		require.NoError(t, err)
 
 		block := makeBlock(updatedState, updatedState.LastBlockHeight+1)

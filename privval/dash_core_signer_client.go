@@ -5,10 +5,11 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"strconv"
+
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	"strconv"
 
 	rpc "github.com/dashevo/dashd-go/rpcclient"
 	"github.com/tendermint/tendermint/crypto"
@@ -20,11 +21,11 @@ import (
 // SignerClient implements PrivValidator.
 // Handles remote validator connections that provide signing services
 type DashCoreSignerClient struct {
-	endpoint *rpc.Client
-	port uint16
+	endpoint    *rpc.Client
+	port        uint16
 	rpcUsername string
 	rpcPassword string
-	chainID  string
+	chainID     string
 }
 
 var _ types.PrivValidator = (*DashCoreSignerClient)(nil)
@@ -49,7 +50,7 @@ func NewDashCoreSignerClient(port uint16, rpcUsername string, rpcPassword string
 	}
 	defer client.Shutdown()
 
-	return &DashCoreSignerClient{endpoint:client, port: port, rpcUsername: rpcUsername, rpcPassword: rpcPassword, chainID: chainID}, nil
+	return &DashCoreSignerClient{endpoint: client, port: port, rpcUsername: rpcUsername, rpcPassword: rpcPassword, chainID: chainID}, nil
 }
 
 // Close closes the underlying connection

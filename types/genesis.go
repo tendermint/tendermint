@@ -49,7 +49,7 @@ type GenesisDoc struct {
 	ConsensusParams              *tmproto.ConsensusParams `json:"consensus_params,omitempty"`
 	Validators                   []GenesisValidator       `json:"validators,omitempty"`
 	ThresholdPublicKey           crypto.PubKey            `json:"threshold_public_key"`
-	QuorumHash			         crypto.QuorumHash        `json:"quorum_hash"`
+	QuorumHash                   crypto.QuorumHash        `json:"quorum_hash"`
 	AppHash                      tmbytes.HexBytes         `json:"app_hash"`
 	AppState                     json.RawMessage          `json:"app_state,omitempty"`
 }

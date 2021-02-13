@@ -1,4 +1,4 @@
-project_name: Tendermint
+project_name: tendermint
 
 env:
   # Require use of Go modules.
@@ -8,7 +8,7 @@ builds:
   - id: "Tendermint"
     main: ./cmd/tendermint/main.go
     ldflags:
-     - -s -w -X github.com/tendermint/tendermint/version.TMCoreSemVer={{ .Version }}
+      - -s -w -X github.com/tendermint/tendermint/version.TMCoreSemVer={{ .Version }}
     env:
       - CGO_ENABLED=0
     goos:
@@ -17,6 +17,7 @@ builds:
       - windows
     goarch:
       - amd64
+      - arm
       - arm64
 
 checksum:

@@ -82,11 +82,36 @@ func init() {
 
 ### Debugging Failures
 
-If a command or test fails, the runner simply exits with an error message and non-zero status code. The testnet is left running with data in the testnet directory, and can be inspected with e.g. `docker ps`, `docker logs`, or `./build/runner -f <manifest> logs` or `tail`. To shut down and remove the testnet, run `./build/runner -f <manifest> cleanup`.
+If a command or test fails, the runner simply exits with an error message and
+non-zero status code. The testnet is left running with data in the testnet
+directory, and can be inspected with e.g. `docker ps`, `docker logs`, or
+`./build/runner -f <manifest> logs` or `tail`. To shut down and remove the
+testnet, run `./build/runner -f <manifest> cleanup`.
+
+If the standard `log_level` is not detailed enough (e.g. you want "debug" level
+logging for certain modules), you can change it in the manifest file.
+
+Each node exposes a [pprof](https://golang.org/pkg/runtime/pprof/) server. To
+find out the local port, run `docker port <NODENAME> 6060 | awk -F: '{print
+$2}'`. Then you may perform any queries supported by the pprof tool. Julia
+Evans has a [great
+post](https://jvns.ca/blog/2017/09/24/profiling-go-with-pprof/) on this
+subject.
+
+```bash
+export PORT=$(docker port full01 6060 | awk -F: '{print $2}')
+
+go tool pprof http://localhost:$PORT/debug/pprof/goroutine
+go tool pprof http://localhost:$PORT/debug/pprof/heap
+go tool pprof http://localhost:$PORT/debug/pprof/threadcreate
+go tool pprof http://localhost:$PORT/debug/pprof/block
+go tool pprof http://localhost:$PORT/debug/pprof/mutex
+```
 
 ## Enabling IPv6
 
-Docker does not enable IPv6 by default. To do so, enter the following in `daemon.json` (or in the Docker for Mac UI under Preferences → Docker Engine):
+Docker does not enable IPv6 by default. To do so, enter the following in
+`daemon.json` (or in the Docker for Mac UI under Preferences → Docker Engine):
 
 ```json
 {

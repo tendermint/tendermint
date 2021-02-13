@@ -99,8 +99,9 @@ func AddNodeFlags(cmd *cobra.Command) {
 // It can be used with a custom PrivValidator and in-process ABCI application.
 func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "node",
-		Short: "Run the tendermint node",
+		Use:     "start",
+		Aliases: []string{"node", "run"},
+		Short:   "Run the tendermint node",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkGenesisHash(config); err != nil {
 				return err

@@ -1,27 +1,25 @@
 # CODEOWNERS: https://help.github.com/articles/about-codeowners/
 
-# Everything goes through the following "global owners" by default. 
+# Everything goes through the following "global owners" by default.
 # Unless a later match takes precedence, these three will be
-# requested for review when someone opens a PR. 
+# requested for review when someone opens a PR.
 # Note that the last matching pattern takes precedence, so
 # global owners are only requested if there isn't a more specific
-# codeowner specified below. For this reason, the global codeowners 
+# codeowner specified below. For this reason, the global codeowners
 # are often repeated in package-level definitions.
-*       @ebuchman @erikgrinaker @melekes @tessr 
+*       @alexanderbez @ebuchman @melekes @tessr
 
 # Overrides for tooling packages
-.circleci/ @marbar3778  @ebuchman @erikgrinaker @melekes @tessr 
-.github/ @marbar3778 @ebuchman @erikgrinaker @melekes @tessr 
-DOCKER/ @marbar3778 @ebuchman @erikgrinaker @melekes @tessr 
+.github/ @marbar3778 @alexanderbez @ebuchman @melekes @tessr
+DOCKER/ @marbar3778 @alexanderbez @ebuchman @melekes @tessr
 
-# Overrides for core Tendermint packages 
-abci/  @marbar3778 @ebuchman @erikgrinaker @melekes @tessr 
-evidence/ @cmwaters @ebuchman @erikgrinaker @melekes @tessr
-light/ @cmwaters @melekes @ebuchman
+# Overrides for core Tendermint packages
+abci/  @marbar3778 @alexanderbez @ebuchman @melekes @tessr
+evidence/ @cmwaters @ebuchman @melekes @tessr
+light/ @cmwaters @melekes @ebuchman @tessr
 
 # Overrides for docs
-*.md @marbar3778 @ebuchman @erikgrinaker @melekes @tessr  
-docs/ @marbar3778 @ebuchman @erikgrinaker @melekes @tessr 
-
+*.md @marbar3778 @alexanderbez @ebuchman @melekes @tessr
+docs/ @marbar3778 @alexanderbez @ebuchman @melekes @tessr
 
 

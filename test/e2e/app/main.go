@@ -3,11 +3,12 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"os"
 	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/spf13/viper"
 

@@ -106,7 +106,7 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 			vals: ValidatorSet{
 				Validators:         []*Validator{},
 				ThresholdPublicKey: bls12381.GenPrivKey().PubKey(),
-				QuorumHash: crypto.RandQuorumHash(),
+				QuorumHash:         crypto.RandQuorumHash(),
 			},
 			err: true,
 			msg: "validator set is nil or empty",
@@ -123,7 +123,7 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 			vals: ValidatorSet{
 				Validators:         []*Validator{val},
 				ThresholdPublicKey: val.PubKey,
-				QuorumHash: crypto.RandQuorumHash(),
+				QuorumHash:         crypto.RandQuorumHash(),
 			},
 			err: true,
 			msg: "proposer failed validate basic, error: nil validator",
@@ -132,7 +132,7 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 			vals: ValidatorSet{
 				Validators:         []*Validator{val},
 				ThresholdPublicKey: bls12381.GenPrivKey().PubKey(),
-				QuorumHash: crypto.RandQuorumHash(),
+				QuorumHash:         crypto.RandQuorumHash(),
 			},
 			err: true,
 			msg: "thresholdPublicKey error: incorrect threshold public key",
@@ -141,7 +141,7 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 			vals: ValidatorSet{
 				Validators:         []*Validator{badValNoPublicKey},
 				ThresholdPublicKey: bls12381.GenPrivKey().PubKey(),
-				QuorumHash: crypto.RandQuorumHash(),
+				QuorumHash:         crypto.RandQuorumHash(),
 			},
 			err: true,
 			msg: "invalid validator #0: validator does not have a public key",
@@ -150,7 +150,7 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 			vals: ValidatorSet{
 				Validators:         []*Validator{badValNoProTxHash},
 				ThresholdPublicKey: bls12381.GenPrivKey().PubKey(),
-				QuorumHash: crypto.RandQuorumHash(),
+				QuorumHash:         crypto.RandQuorumHash(),
 			},
 			err: true,
 			msg: "invalid validator #0: validator does not have a provider transaction hash",
@@ -169,7 +169,7 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 				Validators:         []*Validator{val},
 				Proposer:           val,
 				ThresholdPublicKey: val.PubKey,
-				QuorumHash: crypto.RandQuorumHash(),
+				QuorumHash:         crypto.RandQuorumHash(),
 			},
 			err: false,
 			msg: "",
@@ -510,12 +510,12 @@ func TestSafeSubClip(t *testing.T) {
 // verification.
 func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 	var (
-		proTxHash = crypto.RandProTxHash()
-		privKey   = bls12381.GenPrivKey()
-		pubKey    = privKey.PubKey()
-		v1        = NewValidatorDefaultVotingPower(pubKey, proTxHash)
+		proTxHash  = crypto.RandProTxHash()
+		privKey    = bls12381.GenPrivKey()
+		pubKey     = privKey.PubKey()
+		v1         = NewValidatorDefaultVotingPower(pubKey, proTxHash)
 		quorumHash = crypto.RandQuorumHash()
-		vset      = NewValidatorSet([]*Validator{v1}, v1.PubKey, quorumHash)
+		vset       = NewValidatorSet([]*Validator{v1}, v1.PubKey, quorumHash)
 
 		chainID = "Lalande21185"
 	)

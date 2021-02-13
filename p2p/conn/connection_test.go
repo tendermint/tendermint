@@ -185,7 +185,7 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 	go func() {
 		// read ping
 		var pkt tmp2p.Packet
-		err := protoio.NewDelimitedReader(server, maxPingPongPacketSize).ReadMsg(&pkt)
+		_, err := protoio.NewDelimitedReader(server, maxPingPongPacketSize).ReadMsg(&pkt)
 		require.NoError(t, err)
 		serverGotPing <- struct{}{}
 	}()
@@ -236,7 +236,7 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	go func() {
 		// read ping (one byte)
 		var packet tmp2p.Packet
-		err := protoio.NewDelimitedReader(server, maxPingPongPacketSize).ReadMsg(&packet)
+		_, err := protoio.NewDelimitedReader(server, maxPingPongPacketSize).ReadMsg(&packet)
 		require.NoError(t, err)
 		serverGotPing <- struct{}{}
 
@@ -284,19 +284,19 @@ func TestMConnectionMultiplePings(t *testing.T) {
 	_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPing{}))
 	require.NoError(t, err)
 
-	err = protoReader.ReadMsg(&pkt)
+	_, err = protoReader.ReadMsg(&pkt)
 	require.NoError(t, err)
 
 	_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPing{}))
 	require.NoError(t, err)
 
-	err = protoReader.ReadMsg(&pkt)
+	_, err = protoReader.ReadMsg(&pkt)
 	require.NoError(t, err)
 
 	_, err = protoWriter.WriteMsg(mustWrapPacket(&tmp2p.PacketPing{}))
 	require.NoError(t, err)
 
-	err = protoReader.ReadMsg(&pkt)
+	_, err = protoReader.ReadMsg(&pkt)
 	require.NoError(t, err)
 
 	assert.True(t, mconn.IsRunning())
@@ -331,7 +331,7 @@ func TestMConnectionPingPongs(t *testing.T) {
 		var pkt tmp2p.PacketPing
 
 		// read ping
-		err = protoReader.ReadMsg(&pkt)
+		_, err = protoReader.ReadMsg(&pkt)
 		require.NoError(t, err)
 		serverGotPing <- struct{}{}
 
@@ -342,7 +342,7 @@ func TestMConnectionPingPongs(t *testing.T) {
 		time.Sleep(mconn.config.PingInterval)
 
 		// read ping
-		err = protoReader.ReadMsg(&pkt)
+		_, err = protoReader.ReadMsg(&pkt)
 		require.NoError(t, err)
 		serverGotPing <- struct{}{}
 

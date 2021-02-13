@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"strconv"
 	"strings"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -330,7 +331,6 @@ func (app *PersistentKVStoreApplication) execQuorumHashTx(tx []byte) types.Respo
 
 	return app.updateQuorumHash(types.UpdateQuorumHash(quorumHash))
 }
-
 
 // add, update, or remove a validator
 func (app *PersistentKVStoreApplication) updateValidatorSet(v types.ValidatorUpdate) types.ResponseDeliverTx {

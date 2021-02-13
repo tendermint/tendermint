@@ -45,7 +45,16 @@ addrbook.json
 terraform.tfstate
 terraform.tfstate.backup
 terraform.tfstate.d
-
 profile\.out
 
 third_party/bls-signatures/build
+test/e2e/build
+test/e2e/networks/*/
+test/logs
+test/maverick/maverick
+test/p2p/data/
+vendor
+test/fuzz/**/corpus
+test/fuzz/**/crashers
+test/fuzz/**/suppressions
+test/fuzz/**/*.zip

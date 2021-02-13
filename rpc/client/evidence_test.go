@@ -3,9 +3,10 @@ package client_test
 import (
 	"bytes"
 	"context"
-	"github.com/tendermint/tendermint/crypto"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
 

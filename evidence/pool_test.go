@@ -2,10 +2,11 @@
 package evidence_test
 
 import (
-	"github.com/tendermint/tendermint/crypto"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -204,20 +205,37 @@ func TestAddExpiredEvidence(t *testing.T) {
 	}
 }
 
-func TestAddEvidenceFromConsensus(t *testing.T) {
+func TestReportConflictingVotes(t *testing.T) {
 	var height int64 = 10
-	pool, val := defaultTestPool(height)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, val, evidenceChainID, crypto.RandQuorumHash())
-	err := pool.AddEvidenceFromConsensus(ev)
-	assert.NoError(t, err)
-	next := pool.EvidenceFront()
-	assert.Equal(t, ev, next.Value.(types.Evidence))
+
+	pool, pv := defaultTestPool(height)
+	quorumHash := crypto.RandQuorumHash()
+	val := pv.ExtractIntoValidator(height+1, quorumHash)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height+1, defaultEvidenceTime, pv, evidenceChainID, quorumHash)
+
+	pool.ReportConflictingVotes(ev.VoteA, ev.VoteB)
 
 	// shouldn't be able to submit the same evidence twice
-	err = pool.AddEvidenceFromConsensus(ev)
-	assert.NoError(t, err)
-	evs, _ := pool.PendingEvidence(defaultEvidenceMaxBytes)
-	assert.Equal(t, 1, len(evs))
+	pool.ReportConflictingVotes(ev.VoteA, ev.VoteB)
+
+	// evidence from consensus should not be added immediately but reside in the consensus buffer
+	evList, evSize := pool.PendingEvidence(defaultEvidenceMaxBytes)
+	require.Empty(t, evList)
+	require.Zero(t, evSize)
+
+	next := pool.EvidenceFront()
+	require.Nil(t, next)
+
+	// move to next height and update state and evidence pool
+	state := pool.State()
+	state.LastBlockHeight++
+	state.LastBlockTime = ev.Time()
+	state.LastValidators = types.NewValidatorSet([]*types.Validator{val}, val.PubKey, quorumHash)
+	pool.Update(state, []types.Evidence{})
+
+	// should be able to retrieve evidence from pool
+	evList, _ = pool.PendingEvidence(defaultEvidenceMaxBytes)
+	require.Equal(t, []types.Evidence{ev}, evList)
 }
 
 func TestEvidencePoolUpdate(t *testing.T) {

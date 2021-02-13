@@ -21,6 +21,24 @@ module.exports = {
       key: "59f0e2deb984aa9cdf2b3a5fd24ac501",
       index: "tendermint"
     },
+    versions: [
+      {
+        "label": "v0.32",
+        "key": "v0.32"
+      },
+      {
+        "label": "v0.33",
+        "key": "v0.33"
+      },
+      {
+        "label": "v0.34",
+        "key": "v0.34"
+      },
+      {
+        "label": "master",
+        "key": "master"
+      }
+    ],
     topbar: {
       banner: false,
     },
@@ -37,17 +55,6 @@ module.exports = {
             {
               title: 'RPC',
               path: 'https://docs.tendermint.com/master/rpc/',
-              static: true
-            },
-            // TODO: remove once https://github.com/cosmos/vuepress-theme-cosmos/issues/91 is closed
-            {
-              title: 'Version 0.32',
-              path: '/v0.32',
-              static: true
-            },
-            {
-              title: 'Version 0.33',
-              path: '/v0.33',
               static: true
             },
           ]
@@ -71,7 +78,7 @@ module.exports = {
     },
     footer: {
       question: {
-        text: 'Chat with Tendermint developers in <a href=\'https://discord.gg/cr7N47p\' target=\'_blank\'>Discord</a> or reach out on the <a href=\'https://forum.cosmos.network/c/tendermint\' target=\'_blank\'>Tendermint Forum</a> to learn more.'
+        text: 'Chat with Tendermint developers in <a href=\'https://discord.gg/vcExX9T\' target=\'_blank\'>Discord</a> or reach out on the <a href=\'https://forum.cosmos.network/c/tendermint\' target=\'_blank\'>Tendermint Forum</a> to learn more.'
       },
       logo: '/logo-bw.svg',
       textLink: {
@@ -105,7 +112,7 @@ module.exports = {
         }
       ],
       smallprint:
-          'The development of the Tendermint project is led primarily by Tendermint Inc., the for-profit entity which also maintains this website. Funding for this development comes primarily from the Interchain Foundation, a Swiss non-profit.',
+        'The development of Tendermint Core is led primarily by [Interchain GmbH](https://interchain.berlin/). Funding for this development comes primarily from the Interchain Foundation, a Swiss non-profit. The Tendermint trademark is owned by Tendermint Inc, the for-profit entity that also maintains this website.',
       links: [
         {
           title: 'Documentation',
@@ -160,5 +167,5 @@ module.exports = {
         ga: 'UA-51029217-11'
       }
     ]
-  ],
+  ]
 };

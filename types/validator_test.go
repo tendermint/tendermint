@@ -1,8 +1,9 @@
 package types
 
 import (
-	"github.com/tendermint/tendermint/crypto"
 	"testing"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -297,7 +297,7 @@ func (blockExec *BlockExecutor) Commit(
 		"Committed state",
 		"height", block.Height,
 		"txs", len(block.Txs),
-		"appHash", fmt.Sprintf("%X", res.Data),
+		"appHash", res.Data,
 	)
 
 	// Update mempool.
@@ -504,7 +504,7 @@ func updateState(
 			// Change results from this height but only applies to the next next height.
 			lastHeightValsChanged = header.Height + 1 + 1
 		} else {
-			nValSet =  types.NewValidatorSet(validatorUpdates, newThresholdPublicKey, quorumHash)
+			nValSet = types.NewValidatorSet(validatorUpdates, newThresholdPublicKey, quorumHash)
 			// Change results from this height but only applies to the next next height.
 			lastHeightValsChanged = header.Height + 1 + 1
 		}

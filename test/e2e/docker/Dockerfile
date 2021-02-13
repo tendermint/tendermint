@@ -30,7 +30,7 @@ WORKDIR /tenderdash
 VOLUME /tenderdash
 ENV TMHOME=/tenderdash
 
-EXPOSE 26656 26657 26660
+EXPOSE 26656 26657 26660 6060
 ENTRYPOINT ["/usr/bin/entrypoint"]
 CMD ["node"]
 STOPSIGNAL SIGTERM

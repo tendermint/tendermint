@@ -1,10 +1,11 @@
 package privval
 
 import (
-	"github.com/tendermint/tendermint/crypto"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

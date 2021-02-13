@@ -133,7 +133,7 @@ func signVotes(
 	hash []byte,
 	lastAppHash []byte,
 	quorumHash crypto.QuorumHash,
-    header types.PartSetHeader,
+	header types.PartSetHeader,
 	vss ...*validatorStub) []*types.Vote {
 	votes := make([]*types.Vote, len(vss))
 	for i, vs := range vss {
@@ -762,7 +762,7 @@ func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount 
 				if err != nil {
 					panic(err)
 				}
-				updatedValidators[j] = privVal.ExtractIntoValidator(height + 3, quorumHash)
+				updatedValidators[j] = privVal.ExtractIntoValidator(height+3, quorumHash)
 				publicKeys[j] = privKeys[j].PubKey()
 				if !bytes.Equal(updatedValidators[j].PubKey.Bytes(), publicKeys[j].Bytes()) {
 					panic("the validator public key should match the public key")
@@ -863,7 +863,7 @@ func updateConsensusNetRemoveValidatorsWithProTxHashes(css []*State, height int6
 				if err != nil {
 					panic(err)
 				}
-				updatedValidators[i] = privVal.ExtractIntoValidator(height + 3, quorumHash)
+				updatedValidators[i] = privVal.ExtractIntoValidator(height+3, quorumHash)
 				publicKeys[i] = privKeys[i].PubKey()
 				if !bytes.Equal(updatedValidators[i].PubKey.Bytes(), publicKeys[i].Bytes()) {
 					panic("the validator public key should match the public key")

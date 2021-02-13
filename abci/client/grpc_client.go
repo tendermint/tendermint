@@ -129,11 +129,11 @@ func (cli *grpcClient) OnStop() {
 }
 
 func (cli *grpcClient) StopForError(err error) {
-	cli.mtx.Lock()
 	if !cli.IsRunning() {
 		return
 	}
 
+	cli.mtx.Lock()
 	if cli.err == nil {
 		cli.err = err
 	}
