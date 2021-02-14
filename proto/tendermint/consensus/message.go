@@ -78,35 +78,3 @@ func (m *Message) Unwrap() (proto.Message, error) {
 		return nil, fmt.Errorf("unknown message: %T", msg)
 	}
 }
-
-// // Validate validates the message returning an error upon failure.
-// func (m *Message) Validate() error {
-// 	if m == nil {
-// 		return errors.New("message cannot be nil")
-// 	}
-
-// 	switch msg := m.Sum.(type) {
-// 	case *Message_NewRoundStep:
-
-// 	case *Message_NewValidBlock:
-
-// 	case *Message_Proposal:
-
-// 	case *Message_ProposalPol:
-
-// 	case *Message_BlockPart:
-
-// 	case *Message_Vote:
-
-// 	case *Message_HasVote:
-
-// 	case *Message_VoteSetMaj23:
-
-// 	case *Message_VoteSetBits:
-
-// 	default:
-// 		return fmt.Errorf("unknown message type: %T", msg)
-// 	}
-
-// 	return nil
-// }

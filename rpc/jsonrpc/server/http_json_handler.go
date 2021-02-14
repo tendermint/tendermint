@@ -52,7 +52,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 					w,
 					http.StatusInternalServerError,
 					types.RPCParseError(
-						fmt.Errorf("error unmarshalling request: %w", err),
+						fmt.Errorf("error unmarshaling request: %w", err),
 					),
 				)
 				return

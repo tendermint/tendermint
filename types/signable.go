@@ -17,7 +17,7 @@ var (
 // SignBytes returns the bytes to be signed
 // NOTE: chainIDs are part of the SignBytes but not
 // necessarily the object themselves.
-// NOTE: Expected to panic if there is an error marshalling.
+// NOTE: Expected to panic if there is an error marshaling.
 type Signable interface {
 	SignBytes(chainID string) []byte
 }

@@ -121,7 +121,7 @@ type Subscription struct {
 }
 
 func (s *Subscription) Out() <-chan MsgAndTags
-func (s *Subscription) Cancelled() <-chan struct{}
+func (s *Subscription) Canceled() <-chan struct{}
 func (s *Subscription) Err() error
 ```
 
@@ -129,10 +129,10 @@ func (s *Subscription) Err() error
 `Unsubscribe`/`UnsubscribeAll` does not close the channel to avoid clients from
 receiving a nil message.
 
-`Cancelled()` returns a channel that's closed when the subscription is terminated
+`Canceled()` returns a channel that's closed when the subscription is terminated
 and supposed to be used in a select statement.
 
-If the channel returned by `Cancelled()` is not closed yet, `Err()` returns nil.
+If the channel returned by `Canceled()` is not closed yet, `Err()` returns nil.
 If the channel is closed, `Err()` returns a non-nil error explaining why:
 `ErrUnsubscribed` if the subscriber choose to unsubscribe,
 `ErrOutOfCapacity` if the subscriber is not pulling messages fast enough and the channel returned by `Out()` became full.
@@ -147,7 +147,7 @@ for {
 select {
   case msgAndTags <- subscription.Out():
     // ...
-  case <-subscription.Cancelled():
+  case <-subscription.Canceled():
     return subscription.Err()
 }
 ```
@@ -232,7 +232,7 @@ In review
 
 - more idiomatic interface
 - subscribers know what tags msg was published with
-- subscribers aware of the reason their subscription was cancelled
+- subscribers aware of the reason their subscription was canceled
 
 ### Negative
 
