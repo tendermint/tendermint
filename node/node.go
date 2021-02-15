@@ -8,6 +8,8 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -50,9 +52,11 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-const useLegacyP2P = false
+var useLegacyP2P bool
 
-//------------------------------------------------------------------------------
+func init() {
+	useLegacyP2P, _ = strconv.ParseBool(os.Getenv("TENDERMINT_LEGACY_P2P"))
+}
 
 // DBContext specifies config information for loading a new DB.
 type DBContext struct {
@@ -354,6 +358,7 @@ func createMempoolReactor(
 		channels    map[p2p.ChannelID]*p2p.Channel
 		peerUpdates *p2p.PeerUpdates
 	)
+
 	if useLegacyP2P {
 		channels = getChannelsFromShim(reactorShim)
 		peerUpdates = reactorShim.PeerUpdates
@@ -393,17 +398,18 @@ func createEvidenceReactor(
 	}
 
 	logger = logger.With("module", "evidence")
+	reactorShim := p2p.NewReactorShim(logger, "EvidenceShim", evidence.ChannelShims)
 
 	evidencePool, err := evidence.NewPool(logger, evidenceDB, sm.NewStore(stateDB), blockStore)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	reactorShim := p2p.NewReactorShim(logger, "EvidenceShim", evidence.ChannelShims)
 	var (
 		channels    map[p2p.ChannelID]*p2p.Channel
 		peerUpdates *p2p.PeerUpdates
 	)
+
 	if useLegacyP2P {
 		channels = getChannelsFromShim(reactorShim)
 		peerUpdates = reactorShim.PeerUpdates
@@ -439,10 +445,12 @@ func createBlockchainReactor(
 	switch config.FastSync.Version {
 	case "v0":
 		reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", bcv0.ChannelShims)
+
 		var (
 			channels    map[p2p.ChannelID]*p2p.Channel
 			peerUpdates *p2p.PeerUpdates
 		)
+
 		if useLegacyP2P {
 			channels = getChannelsFromShim(reactorShim)
 			peerUpdates = reactorShim.PeerUpdates
@@ -505,10 +513,12 @@ func createConsensusReactor(
 	}
 
 	reactorShim := p2p.NewReactorShim(logger, "ConsensusShim", cs.ChannelShims)
+
 	var (
 		channels    map[p2p.ChannelID]*p2p.Channel
 		peerUpdates *p2p.PeerUpdates
 	)
+
 	if useLegacyP2P {
 		channels = getChannelsFromShim(reactorShim)
 		peerUpdates = reactorShim.PeerUpdates
@@ -536,10 +546,7 @@ func createConsensusReactor(
 	return reactorShim, reactor, consensusState
 }
 
-func createTransport(
-	logger log.Logger,
-	config *cfg.Config,
-) *p2p.MConnTransport {
+func createTransport(logger log.Logger, config *cfg.Config) *p2p.MConnTransport {
 	return p2p.NewMConnTransport(
 		logger, p2p.MConnConfig(config.P2P), []*p2p.ChannelDescriptor{},
 		p2p.MConnTransportOptions{
@@ -550,11 +557,7 @@ func createTransport(
 	)
 }
 
-func createPeerManager(
-	config *cfg.Config,
-	p2pLogger log.Logger,
-	nodeID p2p.NodeID,
-) (*p2p.PeerManager, error) {
+func createPeerManager(config *cfg.Config, p2pLogger log.Logger, nodeID p2p.NodeID) (*p2p.PeerManager, error) {
 	options := p2p.PeerManagerOptions{
 		MaxConnected:           64,
 		MaxConnectedUpgrade:    4,
@@ -571,6 +574,7 @@ func createPeerManager(
 		if err != nil {
 			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
 		}
+
 		peers = append(peers, address)
 		options.PersistentPeers = append(options.PersistentPeers, address.NodeID)
 	}
@@ -579,11 +583,13 @@ func createPeerManager(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
+
 	for _, peer := range peers {
 		if err := peerManager.Add(peer); err != nil {
 			return nil, fmt.Errorf("failed to add peer %q: %w", peer, err)
 		}
 	}
+
 	return peerManager, nil
 }
 
@@ -608,7 +614,8 @@ func createSwitch(config *cfg.Config,
 	proxyApp proxy.AppConns,
 	nodeInfo p2p.NodeInfo,
 	nodeKey p2p.NodeKey,
-	p2pLogger log.Logger) *p2p.Switch {
+	p2pLogger log.Logger,
+) *p2p.Switch {
 
 	var (
 		connFilters = []p2p.ConnFilterFunc{}
@@ -666,6 +673,7 @@ func createSwitch(config *cfg.Config,
 		p2p.SwitchPeerFilters(peerFilters...),
 		p2p.SwitchConnFilters(connFilters...),
 	)
+
 	sw.SetLogger(p2pLogger)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
@@ -676,7 +684,7 @@ func createSwitch(config *cfg.Config,
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
 
-	// eww, but needed to support old/new P2P stacks
+	// XXX: needed to support old/new P2P stacks
 	sw.PutChannelDescsIntoTransport()
 
 	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID, "file", config.NodeKeyFile())
@@ -731,15 +739,19 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 	return pexReactor
 }
 
-func createPEXReactorV2(config *cfg.Config, logger log.Logger, peerManager *p2p.PeerManager,
-	router *p2p.Router) (*pex.ReactorV2, error) {
+func createPEXReactorV2(
+	config *cfg.Config,
+	logger log.Logger,
+	peerManager *p2p.PeerManager,
+	router *p2p.Router,
+) (*pex.ReactorV2, error) {
 
-	channel, err := router.OpenChannel(p2p.ChannelID(pex.PexChannel), &protop2p.PexMessage{})
+	channel, err := router.OpenChannel(p2p.ChannelID(pex.PexChannel), &protop2p.PexMessage{}, 0)
 	if err != nil {
 		return nil, err
 	}
-	peerUpdates := peerManager.Subscribe()
 
+	peerUpdates := peerManager.Subscribe()
 	return pex.NewReactorV2(logger, peerManager, channel, peerUpdates), nil
 }
 
@@ -903,23 +915,28 @@ func NewNode(config *cfg.Config,
 	if err != nil {
 		return nil, err
 	}
+
 	p2pLogger := logger.With("module", "p2p")
 	transport := createTransport(p2pLogger, config)
+
 	peerManager, err := createPeerManager(config, p2pLogger, nodeKey.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
+
 	router, err := createRouter(p2pLogger, nodeInfo, nodeKey.PrivKey, peerManager, transport)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
 
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
-	mpReactorShim, mpReactor, mempool := createMempoolReactor(config, proxyApp, state, memplMetrics,
-		peerManager, router, logger)
+	mpReactorShim, mpReactor, mempool := createMempoolReactor(
+		config, proxyApp, state, memplMetrics, peerManager, router, logger,
+	)
 
-	evReactorShim, evReactor, evPool, err := createEvidenceReactor(config, dbProvider, stateDB, blockStore,
-		peerManager, router, logger)
+	evReactorShim, evReactor, evPool, err := createEvidenceReactor(
+		config, dbProvider, stateDB, blockStore, peerManager, router, logger,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -971,10 +988,12 @@ func NewNode(config *cfg.Config,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
 	stateSyncReactorShim := p2p.NewReactorShim(logger.With("module", "statesync"), "StateSyncShim", statesync.ChannelShims)
+
 	var (
 		channels    map[p2p.ChannelID]*p2p.Channel
 		peerUpdates *p2p.PeerUpdates
 	)
+
 	if useLegacyP2P {
 		channels = getChannelsFromShim(stateSyncReactorShim)
 		peerUpdates = stateSyncReactorShim.PeerUpdates
@@ -1029,6 +1048,7 @@ func NewNode(config *cfg.Config,
 		pexReactor   *pex.Reactor
 		pexReactorV2 *pex.ReactorV2
 	)
+
 	if config.P2P.PexReactor {
 		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
 		pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
@@ -1168,7 +1188,7 @@ func (n *Node) OnStart() error {
 		return err
 	}
 
-	if n.pexReactorV2 != nil {
+	if !useLegacyP2P && n.pexReactorV2 != nil {
 		if err := n.pexReactorV2.Start(); err != nil {
 			return err
 		}
@@ -1238,19 +1258,19 @@ func (n *Node) OnStop() {
 		n.Logger.Error("failed to stop the evidence reactor", "err", err)
 	}
 
-	if n.pexReactorV2 != nil {
-		if err := n.pexReactorV2.Start(); err != nil {
-			n.Logger.Error("failed to stop the PEX reactor", "err", err)
+	if !useLegacyP2P && n.pexReactorV2 != nil {
+		if err := n.pexReactorV2.Stop(); err != nil {
+			n.Logger.Error("failed to stop the PEX v2 reactor", "err", err)
 		}
 	}
 
 	if useLegacyP2P {
 		if err := n.sw.Stop(); err != nil {
-			n.Logger.Error("Error closing switch", "err", err)
+			n.Logger.Error("failed to stop switch", "err", err)
 		}
 	} else {
 		if err := n.router.Stop(); err != nil {
-			n.Logger.Error("Error closing router", "err", err)
+			n.Logger.Error("failed to stop router", "err", err)
 		}
 	}
 
@@ -1726,23 +1746,25 @@ func makeChannelsFromShims(
 	router *p2p.Router,
 	chShims map[p2p.ChannelID]*p2p.ChannelDescriptorShim,
 ) map[p2p.ChannelID]*p2p.Channel {
+
 	channels := map[p2p.ChannelID]*p2p.Channel{}
 	for chID, chShim := range chShims {
-		ch, err := router.OpenChannel(chID, chShim.MsgType)
+		ch, err := router.OpenChannel(chID, chShim.MsgType, 0)
 		if err != nil {
 			panic(fmt.Sprintf("failed to open channel %v: %v", chID, err))
 		}
+
 		channels[chID] = ch
 	}
+
 	return channels
 }
 
-func getChannelsFromShim(
-	reactorShim *p2p.ReactorShim,
-) map[p2p.ChannelID]*p2p.Channel {
+func getChannelsFromShim(reactorShim *p2p.ReactorShim) map[p2p.ChannelID]*p2p.Channel {
 	channels := map[p2p.ChannelID]*p2p.Channel{}
 	for chID := range reactorShim.Channels {
 		channels[chID] = reactorShim.GetChannel(chID)
 	}
+
 	return channels
 }
