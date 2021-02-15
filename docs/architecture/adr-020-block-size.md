@@ -12,7 +12,7 @@
 ## Context
 
 We currently use MaxTxs to reap txs from the mempool when proposing a block,
-but enforce MaxBytes when unmarshalling a block, so we could easily propose a
+but enforce MaxBytes when unmarshaling a block, so we could easily propose a
 block thats too large to be valid.
 
 We should just remove MaxTxs all together and stick with MaxBytes, and have a
@@ -33,7 +33,7 @@ MaxBytes provides a clear limit on the total size of a block that requires no
 additional calculation if you want to use it to bound resource usage, and there
 has been considerable discussions about optimizing tendermint around 1MB blocks.
 Regardless, we need some maximum on the size of a block so we can avoid
-unmarshalling blocks that are too big during the consensus, and it seems more
+unmarshaling blocks that are too big during the consensus, and it seems more
 straightforward to provide a single fixed number for this rather than a
 computation of "MaxDataBytes + everything else you need to make room for
 (signatures, evidence, header)". MaxBytes provides a simple bound so we can
