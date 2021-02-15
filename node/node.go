@@ -52,10 +52,12 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-var useLegacyP2P bool
+var useLegacyP2P = true
 
 func init() {
-	useLegacyP2P, _ = strconv.ParseBool(os.Getenv("TM_LEGACY_P2P"))
+	if v := os.Getenv("TM_LEGACY_P2P"); len(v) > 0 {
+		useLegacyP2P, _ = strconv.ParseBool(v)
+	}
 }
 
 // DBContext specifies config information for loading a new DB.
