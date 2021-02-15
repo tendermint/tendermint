@@ -6,12 +6,15 @@
 
 ## Context
 
-Tendermint uses public private key cryptography for validator signing. When a block is proposed and voted on validators sign a message representing acceptance or rejection of a block. These signatures are also used to verify previous blocks are correct if a node is syncing. Currently, Tendermint requires each signature to be verified individually, this leads to a slow down of block times.
+Tendermint uses public private key cryptography for validator signing. When a block is proposed and voted on validators sign a message representing acceptance of a block, rejection is signaled via a nil vote. These signatures are also used to verify previous blocks are correct if a node is syncing. Currently, Tendermint requires each signature to be verified individually, this leads to a slow down of block times.
+
+Batch Verification is the process of taking many messages, keys, and signatures adding them together and verifying them all at once. The public key can be the same in which case it would mean a single user is signing many messages. In our case each public key is unique, each validator has their own and contribute a unique message. The algorithm can vary from curve to curve but the performance benefit, over single verifying messages, public keys and signatures is shared.  
 
 ## Alternative Approaches
 
 - Signature aggregation
-  - Signature aggregation is an alternative to batch verification. Signature aggregation leads to fast verification and smaller block sizes. At the time of writing this ADR there is on going work to enable signature aggregation in Tendermint. The reason why we have opted to not introduce it at this time is because every validator signs a unique message. One of the two benefits can be done, aggregation, but verification would suffer because the software would need to verify each signature individually due to their uniqueness. For example if we were to implement signature aggregation with BLS, there could be a potential slow down of 10x-100x in verification speeds.
+  - Signature aggregation is an alternative to batch verification. Signature aggregation leads to fast verification and smaller block sizes. At the time of writing this ADR there is on going work to enable signature aggregation in Tendermint. The reason why we have opted to not introduce it at this time is because every validator signs a unique message.
+  Signing a unique message prevents aggregation before verification. For example if we were to implement signature aggregation with BLS, there could be a potential slow down of 10x-100x in verification speeds.
 
 ## Decision
 
@@ -23,7 +26,6 @@ A new interface will be introduced. This interface will have three methods `NewB
 
 ```go
 type BatchVerifier interface {
-  NewBatchVerifier() BatchVerifier // NewBatchVerifier create a new verifier where keys, signatures and messages can be added as entries
   Add(key crypto.Pubkey, signature, message []byte) error // Add appends an entry into the BatchVerifier.
   Verify() bool // Verify verifies all the entries in the BatchVerifier. If the verification fails it is unknown which entry failed and each entry will need to be verified individually.
 }
@@ -83,3 +85,6 @@ Proposed
 ## References
 
 [Ed25519 Library](https://github.com/hdevalence/ed25519consensus)
+[Ed25519 spec](https://ed25519.cr.yp.to/)
+[Signature Aggregation for votes](https://github.com/tendermint/tendermint/issues/1319)
+[Proposer-based timestamps](https://github.com/tendermint/tendermint/issues/2840)
