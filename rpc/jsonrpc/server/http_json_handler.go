@@ -105,11 +105,10 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			if err != nil {
 				var response types.RPCResponse
 				switch errors.Unwrap(err) {
-				case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage, ctypes.ErrPageOutOfRange:
+				case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage,
+					ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
 					response = types.RPCInvalidRequestError(request.ID, err)
-				case ctypes.ErrHeightExceedsChainHead, ctypes.ErrHeightNotAvailable:
-					response = types.NewRPCSuccessResponse(request.ID, err.Error())
-				default:
+				default: // includes ctypes.ErrHeightExceedsChainHead, ctypes.ErrHeightNotAvailable
 					response = types.RPCInternalError(request.ID, err)
 				}
 				responses = append(responses, response)

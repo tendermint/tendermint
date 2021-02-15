@@ -20,6 +20,7 @@ var (
 	ErrZeroOrNegativeHeight   = errors.New("height must be greater than zero")
 	ErrHeightExceedsChainHead = errors.New("height must be less than or equal to the head of the node's blockchain")
 	ErrHeightNotAvailable     = errors.New("height is not available")
+	ErrInvalidRequest         = errors.New("invalid request")
 )
 
 // List of blocks

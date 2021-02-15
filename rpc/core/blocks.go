@@ -75,7 +75,7 @@ func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
 	min = tmmath.MaxInt64(min, max-limit+1)
 
 	if min > max {
-		return min, max, fmt.Errorf("min height %d can't be greater than max height %d", min, max)
+		return min, max, fmt.Errorf("%w: min height %d can't be greater than max height %d", ctypes.ErrInvalidRequest, min, max)
 	}
 	return min, max, nil
 }

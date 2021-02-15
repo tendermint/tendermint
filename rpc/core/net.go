@@ -1,7 +1,7 @@
 package core
 
 import (
-	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/tendermint/tendermint/p2p"
@@ -36,7 +36,7 @@ func NetInfo(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error) {
 // UnsafeDialSeeds dials the given seeds (comma-separated id@IP:PORT).
 func UnsafeDialSeeds(ctx *rpctypes.Context, seeds []string) (*ctypes.ResultDialSeeds, error) {
 	if len(seeds) == 0 {
-		return &ctypes.ResultDialSeeds{}, errors.New("no seeds provided")
+		return &ctypes.ResultDialSeeds{}, fmt.Errorf("%w: no seeds provided", ctypes.ErrInvalidRequest)
 	}
 	env.Logger.Info("DialSeeds", "seeds", seeds)
 	if err := env.P2PPeers.DialPeersAsync(seeds); err != nil {
@@ -50,7 +50,7 @@ func UnsafeDialSeeds(ctx *rpctypes.Context, seeds []string) (*ctypes.ResultDialS
 func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent, unconditional, private bool) (
 	*ctypes.ResultDialPeers, error) {
 	if len(peers) == 0 {
-		return &ctypes.ResultDialPeers{}, errors.New("no peers provided")
+		return &ctypes.ResultDialPeers{}, fmt.Errorf("%w: no peers provided", ctypes.ErrInvalidRequest)
 	}
 
 	ids, err := getIDs(peers)
