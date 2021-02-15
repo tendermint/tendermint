@@ -55,7 +55,7 @@ import (
 var useLegacyP2P bool
 
 func init() {
-	useLegacyP2P, _ = strconv.ParseBool(os.Getenv("TENDERMINT_LEGACY_P2P"))
+	useLegacyP2P, _ = strconv.ParseBool(os.Getenv("TM_LEGACY_P2P"))
 }
 
 // DBContext specifies config information for loading a new DB.
