@@ -23,18 +23,19 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 *January 19, 2021*
 
-This release includes a fix for a high-severity security vulnerability.
-More information on this vulnerability will be released on January 26, 2021
-and this changelog will be updated.
+This release includes a fix for a high-severity security vulnerability, 
+a DoS-vector that impacted Tendermint Core v0.34.0-v0.34.2. For more details, see
+[Security Advisory Mulberry](https://github.com/tendermint/tendermint/security/advisories/GHSA-p658-8693-mhvg) 
+or https://nvd.nist.gov/vuln/detail/CVE-2021-21271. 
 
-It also updates GoGo Protobuf to 1.3.2 in order to pick up the fix for
-https://nvd.nist.gov/vuln/detail/CVE-2021-3121.
+Tendermint Core v0.34.3 also updates GoGo Protobuf to 1.3.2 in order to pick up the fix for
+https://nvd.nist.gov/vuln/detail/CVE-2021-3121. 
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BUG FIXES
 
-- [evidence] [N/A] Use correct source of evidence time (@cmwaters)
+- [evidence] [[security fix]](https://github.com/tendermint/tendermint/security/advisories/GHSA-p658-8693-mhvg) Use correct source of evidence time (@cmwaters)
 - [proto] [\#5886](https://github.com/tendermint/tendermint/pull/5889) Bump gogoproto to 1.3.2 (@marbar3778)
 
 ## v0.34.2
