@@ -94,7 +94,7 @@ type ReactorOption func(*Reactor)
 type Reactor struct {
 	service.BaseService
 
-	conS     *State
+	state    *State
 	eventBus *types.EventBus
 	Metrics  *Metrics
 
@@ -133,7 +133,7 @@ func NewReactor(
 ) *Reactor {
 
 	r := &Reactor{
-		conS:          cs,
+		state:         cs,
 		waitSync:      waitSync,
 		peers:         make(map[p2p.NodeID]*PeerState),
 		Metrics:       NopMetrics(),
@@ -170,7 +170,7 @@ func (r *Reactor) OnStart() error {
 	r.subscribeToBroadcastEvents()
 
 	if !r.WaitSync() {
-		if err := r.conS.Start(); err != nil {
+		if err := r.state.Start(); err != nil {
 			return err
 		}
 	}
@@ -190,12 +190,12 @@ func (r *Reactor) OnStart() error {
 func (r *Reactor) OnStop() {
 	r.unsubscribeFromBroadcastEvents()
 
-	if err := r.conS.Stop(); err != nil {
+	if err := r.state.Stop(); err != nil {
 		r.Logger.Error("failed to stop consensus state", "err", err)
 	}
 
 	if !r.WaitSync() {
-		r.conS.Wait()
+		r.state.Wait()
 	}
 
 	r.mtx.Lock()
@@ -231,7 +231,7 @@ func (r *Reactor) OnStop() {
 // SetEventBus sets the reactor's event bus.
 func (r *Reactor) SetEventBus(b *types.EventBus) {
 	r.eventBus = b
-	r.conS.SetEventBus(b)
+	r.state.SetEventBus(b)
 }
 
 // WaitSync returns whether the consensus reactor is waiting for state/fast sync.
@@ -254,12 +254,12 @@ func (r *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 
 	// we have no votes, so reconstruct LastCommit from SeenCommit
 	if state.LastBlockHeight > 0 {
-		r.conS.reconstructLastCommit(state)
+		r.state.reconstructLastCommit(state)
 	}
 
 	// NOTE: The line below causes broadcastNewRoundStepRoutine() to broadcast a
 	// NewRoundStepMessage.
-	r.conS.updateToState(state)
+	r.state.updateToState(state)
 
 	r.mtx.Lock()
 	r.waitSync = false
@@ -269,17 +269,17 @@ func (r *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 	r.Metrics.StateSyncing.Set(0)
 
 	if skipWAL {
-		r.conS.doWALCatchup = false
+		r.state.doWALCatchup = false
 	}
 
-	if err := r.conS.Start(); err != nil {
+	if err := r.state.Start(); err != nil {
 		panic(fmt.Sprintf(`failed to start consensus state: %v
 
 conS:
 %+v
 
 conR:
-%+v`, err, r.conS, r))
+%+v`, err, r.state, r))
 	}
 }
 
@@ -299,7 +299,7 @@ func (r *Reactor) StringIndented(indent string) string {
 	defer r.mtx.RUnlock()
 
 	s := "ConsensusReactor{\n"
-	s += indent + "  " + r.conS.StringIndented(indent+"  ") + "\n"
+	s += indent + "  " + r.state.StringIndented(indent+"  ") + "\n"
 
 	for _, ps := range r.peers {
 		s += indent + "  " + ps.StringIndented(indent+"  ") + "\n"
@@ -355,7 +355,7 @@ func (r *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 // internal pubsub defined in the consensus state to broadcast them to peers
 // upon receiving.
 func (r *Reactor) subscribeToBroadcastEvents() {
-	err := r.conS.evsw.AddListenerForEvent(
+	err := r.state.evsw.AddListenerForEvent(
 		listenerIDConsensus,
 		types.EventNewRoundStep,
 		func(data tmevents.EventData) {
@@ -366,7 +366,7 @@ func (r *Reactor) subscribeToBroadcastEvents() {
 		r.Logger.Error("failed to add listener for events", "err", err)
 	}
 
-	err = r.conS.evsw.AddListenerForEvent(
+	err = r.state.evsw.AddListenerForEvent(
 		listenerIDConsensus,
 		types.EventValidBlock,
 		func(data tmevents.EventData) {
@@ -377,7 +377,7 @@ func (r *Reactor) subscribeToBroadcastEvents() {
 		r.Logger.Error("failed to add listener for events", "err", err)
 	}
 
-	err = r.conS.evsw.AddListenerForEvent(
+	err = r.state.evsw.AddListenerForEvent(
 		listenerIDConsensus,
 		types.EventVote,
 		func(data tmevents.EventData) {
@@ -390,7 +390,7 @@ func (r *Reactor) subscribeToBroadcastEvents() {
 }
 
 func (r *Reactor) unsubscribeFromBroadcastEvents() {
-	r.conS.evsw.RemoveListener(listenerIDConsensus)
+	r.state.evsw.RemoveListener(listenerIDConsensus)
 }
 
 func makeRoundStepMessage(rs *cstypes.RoundState) *tmcons.NewRoundStep {
@@ -404,7 +404,7 @@ func makeRoundStepMessage(rs *cstypes.RoundState) *tmcons.NewRoundStep {
 }
 
 func (r *Reactor) sendNewRoundStepMessage(peerID p2p.NodeID) {
-	rs := r.conS.GetRoundState()
+	rs := r.state.GetRoundState()
 	msg := makeRoundStepMessage(rs)
 	r.stateCh.Out <- p2p.Envelope{
 		To:      peerID,
@@ -417,16 +417,16 @@ func (r *Reactor) gossipDataForCatchup(rs *cstypes.RoundState, prs *cstypes.Peer
 
 	if index, ok := prs.ProposalBlockParts.Not().PickRandom(); ok {
 		// ensure that the peer's PartSetHeader is correct
-		blockMeta := r.conS.blockStore.LoadBlockMeta(prs.Height)
+		blockMeta := r.state.blockStore.LoadBlockMeta(prs.Height)
 		if blockMeta == nil {
 			logger.Error(
 				"failed to load block meta",
 				"our_height", rs.Height,
-				"blockstore_base", r.conS.blockStore.Base(),
-				"blockstore_height", r.conS.blockStore.Height(),
+				"blockstore_base", r.state.blockStore.Base(),
+				"blockstore_height", r.state.blockStore.Height(),
 			)
 
-			time.Sleep(r.conS.config.PeerGossipSleepDuration)
+			time.Sleep(r.state.config.PeerGossipSleepDuration)
 			return
 		} else if !blockMeta.BlockID.PartSetHeader.Equals(prs.ProposalBlockPartSetHeader) {
 			logger.Info(
@@ -435,11 +435,11 @@ func (r *Reactor) gossipDataForCatchup(rs *cstypes.RoundState, prs *cstypes.Peer
 				"peer_block_part_set_header", prs.ProposalBlockPartSetHeader,
 			)
 
-			time.Sleep(r.conS.config.PeerGossipSleepDuration)
+			time.Sleep(r.state.config.PeerGossipSleepDuration)
 			return
 		}
 
-		part := r.conS.blockStore.LoadBlockPart(prs.Height, index)
+		part := r.state.blockStore.LoadBlockPart(prs.Height, index)
 		if part == nil {
 			logger.Error(
 				"failed to load block part",
@@ -448,7 +448,7 @@ func (r *Reactor) gossipDataForCatchup(rs *cstypes.RoundState, prs *cstypes.Peer
 				"peer_block_part_set_header", prs.ProposalBlockPartSetHeader,
 			)
 
-			time.Sleep(r.conS.config.PeerGossipSleepDuration)
+			time.Sleep(r.state.config.PeerGossipSleepDuration)
 			return
 		}
 
@@ -456,7 +456,7 @@ func (r *Reactor) gossipDataForCatchup(rs *cstypes.RoundState, prs *cstypes.Peer
 		if err != nil {
 			logger.Error("failed to convert block part to proto", "err", err)
 
-			time.Sleep(r.conS.config.PeerGossipSleepDuration)
+			time.Sleep(r.state.config.PeerGossipSleepDuration)
 			return
 		}
 
@@ -473,7 +473,7 @@ func (r *Reactor) gossipDataForCatchup(rs *cstypes.RoundState, prs *cstypes.Peer
 		return
 	}
 
-	time.Sleep(r.conS.config.PeerGossipSleepDuration)
+	time.Sleep(r.state.config.PeerGossipSleepDuration)
 }
 
 func (r *Reactor) gossipDataRoutine(ps *PeerState) {
@@ -496,7 +496,7 @@ OUTER_LOOP:
 		default:
 		}
 
-		rs := r.conS.GetRoundState()
+		rs := r.state.GetRoundState()
 		prs := ps.GetRoundState()
 
 		// Send proposal Block parts?
@@ -525,21 +525,21 @@ OUTER_LOOP:
 		}
 
 		// if the peer is on a previous height that we have, help catch up
-		blockStoreBase := r.conS.blockStore.Base()
+		blockStoreBase := r.state.blockStore.Base()
 		if blockStoreBase > 0 && 0 < prs.Height && prs.Height < rs.Height && prs.Height >= blockStoreBase {
 			heightLogger := logger.With("height", prs.Height)
 
 			// If we never received the commit message from the peer, the block parts
 			// will not be initialized.
 			if prs.ProposalBlockParts == nil {
-				blockMeta := r.conS.blockStore.LoadBlockMeta(prs.Height)
+				blockMeta := r.state.blockStore.LoadBlockMeta(prs.Height)
 				if blockMeta == nil {
 					heightLogger.Error(
 						"failed to load block meta",
 						"blockstoreBase", blockStoreBase,
-						"blockstoreHeight", r.conS.blockStore.Height(),
+						"blockstoreHeight", r.state.blockStore.Height(),
 					)
-					time.Sleep(r.conS.config.PeerGossipSleepDuration)
+					time.Sleep(r.state.config.PeerGossipSleepDuration)
 				} else {
 					ps.InitProposalBlockParts(blockMeta.BlockID.PartSetHeader)
 				}
@@ -555,7 +555,7 @@ OUTER_LOOP:
 
 		// if height and round don't match, sleep
 		if (rs.Height != prs.Height) || (rs.Round != prs.Round) {
-			time.Sleep(r.conS.config.PeerGossipSleepDuration)
+			time.Sleep(r.state.config.PeerGossipSleepDuration)
 			continue OUTER_LOOP
 		}
 
@@ -606,7 +606,7 @@ OUTER_LOOP:
 		}
 
 		// nothing to do -- sleep
-		time.Sleep(r.conS.config.PeerGossipSleepDuration)
+		time.Sleep(r.state.config.PeerGossipSleepDuration)
 		continue OUTER_LOOP
 	}
 }
@@ -711,7 +711,7 @@ OUTER_LOOP:
 		default:
 		}
 
-		rs := r.conS.GetRoundState()
+		rs := r.state.GetRoundState()
 		prs := ps.GetRoundState()
 
 		switch logThrottle {
@@ -737,11 +737,11 @@ OUTER_LOOP:
 		}
 
 		// catchup logic -- if peer is lagging by more than 1, send Commit
-		blockStoreBase := r.conS.blockStore.Base()
+		blockStoreBase := r.state.blockStore.Base()
 		if blockStoreBase > 0 && prs.Height != 0 && rs.Height >= prs.Height+2 && prs.Height >= blockStoreBase {
 			// Load the block commit for prs.Height, which contains precommit
 			// signatures for prs.Height.
-			if commit := r.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
+			if commit := r.state.blockStore.LoadBlockCommit(prs.Height); commit != nil {
 				if r.pickSendVote(ps, commit) {
 					logger.Debug("picked Catchup commit to send", "height", prs.Height)
 					continue OUTER_LOOP
@@ -763,7 +763,7 @@ OUTER_LOOP:
 			logThrottle = 1
 		}
 
-		time.Sleep(r.conS.config.PeerGossipSleepDuration)
+		time.Sleep(r.state.config.PeerGossipSleepDuration)
 		continue OUTER_LOOP
 	}
 }
@@ -790,7 +790,7 @@ OUTER_LOOP:
 
 		// maybe send Height/Round/Prevotes
 		{
-			rs := r.conS.GetRoundState()
+			rs := r.state.GetRoundState()
 			prs := ps.GetRoundState()
 
 			if rs.Height == prs.Height {
@@ -805,14 +805,14 @@ OUTER_LOOP:
 						},
 					}
 
-					time.Sleep(r.conS.config.PeerQueryMaj23SleepDuration)
+					time.Sleep(r.state.config.PeerQueryMaj23SleepDuration)
 				}
 			}
 		}
 
 		// maybe send Height/Round/Precommits
 		{
-			rs := r.conS.GetRoundState()
+			rs := r.state.GetRoundState()
 			prs := ps.GetRoundState()
 
 			if rs.Height == prs.Height {
@@ -827,14 +827,14 @@ OUTER_LOOP:
 						},
 					}
 
-					time.Sleep(r.conS.config.PeerQueryMaj23SleepDuration)
+					time.Sleep(r.state.config.PeerQueryMaj23SleepDuration)
 				}
 			}
 		}
 
 		// maybe send Height/Round/ProposalPOL
 		{
-			rs := r.conS.GetRoundState()
+			rs := r.state.GetRoundState()
 			prs := ps.GetRoundState()
 
 			if rs.Height == prs.Height && prs.ProposalPOLRound >= 0 {
@@ -849,7 +849,7 @@ OUTER_LOOP:
 						},
 					}
 
-					time.Sleep(r.conS.config.PeerQueryMaj23SleepDuration)
+					time.Sleep(r.state.config.PeerQueryMaj23SleepDuration)
 				}
 			}
 		}
@@ -861,9 +861,9 @@ OUTER_LOOP:
 		{
 			prs := ps.GetRoundState()
 
-			if prs.CatchupCommitRound != -1 && prs.Height > 0 && prs.Height <= r.conS.blockStore.Height() &&
-				prs.Height >= r.conS.blockStore.Base() {
-				if commit := r.conS.LoadCommit(prs.Height); commit != nil {
+			if prs.CatchupCommitRound != -1 && prs.Height > 0 && prs.Height <= r.state.blockStore.Height() &&
+				prs.Height >= r.state.blockStore.Base() {
+				if commit := r.state.LoadCommit(prs.Height); commit != nil {
 					r.stateCh.Out <- p2p.Envelope{
 						To: ps.peerID,
 						Message: &tmcons.VoteSetMaj23{
@@ -874,12 +874,12 @@ OUTER_LOOP:
 						},
 					}
 
-					time.Sleep(r.conS.config.PeerQueryMaj23SleepDuration)
+					time.Sleep(r.state.config.PeerQueryMaj23SleepDuration)
 				}
 			}
 		}
 
-		time.Sleep(r.conS.config.PeerQueryMaj23SleepDuration)
+		time.Sleep(r.state.config.PeerQueryMaj23SleepDuration)
 		continue OUTER_LOOP
 	}
 }
@@ -971,9 +971,9 @@ func (r *Reactor) handleStateMessage(envelope p2p.Envelope, msgI Message) error 
 
 	switch msg := envelope.Message.(type) {
 	case *tmcons.NewRoundStep:
-		r.conS.mtx.RLock()
-		initialHeight := r.conS.state.InitialHeight
-		r.conS.mtx.RUnlock()
+		r.state.mtx.RLock()
+		initialHeight := r.state.state.InitialHeight
+		r.state.mtx.RUnlock()
 
 		if err := msgI.(*NewRoundStepMessage).ValidateHeight(initialHeight); err != nil {
 			r.Logger.Error("peer sent us an invalid msg", "msg", msg, "err", err)
@@ -989,9 +989,9 @@ func (r *Reactor) handleStateMessage(envelope p2p.Envelope, msgI Message) error 
 		ps.ApplyHasVoteMessage(msgI.(*HasVoteMessage))
 
 	case *tmcons.VoteSetMaj23:
-		r.conS.mtx.RLock()
-		height, votes := r.conS.Height, r.conS.Votes
-		r.conS.mtx.RUnlock()
+		r.state.mtx.RLock()
+		height, votes := r.state.Height, r.state.Votes
+		r.state.mtx.RUnlock()
 
 		if height != msg.Height {
 			return nil
@@ -1065,7 +1065,7 @@ func (r *Reactor) handleDataMessage(envelope p2p.Envelope, msgI Message) error {
 		pMsg := msgI.(*ProposalMessage)
 
 		ps.SetHasProposal(pMsg.Proposal)
-		r.conS.peerMsgQueue <- msgInfo{pMsg, envelope.From}
+		r.state.peerMsgQueue <- msgInfo{pMsg, envelope.From}
 
 	case *tmcons.ProposalPOL:
 		ps.ApplyProposalPOLMessage(msgI.(*ProposalPOLMessage))
@@ -1075,7 +1075,7 @@ func (r *Reactor) handleDataMessage(envelope p2p.Envelope, msgI Message) error {
 
 		ps.SetHasProposalBlockPart(bpMsg.Height, bpMsg.Round, int(bpMsg.Part.Index))
 		r.Metrics.BlockParts.With("peer_id", string(envelope.From)).Add(1)
-		r.conS.peerMsgQueue <- msgInfo{bpMsg, envelope.From}
+		r.state.peerMsgQueue <- msgInfo{bpMsg, envelope.From}
 
 	default:
 		return fmt.Errorf("received unknown message on DataChannel: %T", msg)
@@ -1104,9 +1104,9 @@ func (r *Reactor) handleVoteMessage(envelope p2p.Envelope, msgI Message) error {
 
 	switch msg := envelope.Message.(type) {
 	case *tmcons.Vote:
-		r.conS.mtx.RLock()
-		height, valSize, lastCommitSize := r.conS.Height, r.conS.Validators.Size(), r.conS.LastCommit.Size()
-		r.conS.mtx.RUnlock()
+		r.state.mtx.RLock()
+		height, valSize, lastCommitSize := r.state.Height, r.state.Validators.Size(), r.state.LastCommit.Size()
+		r.state.mtx.RUnlock()
 
 		vMsg := msgI.(*VoteMessage)
 
@@ -1114,7 +1114,7 @@ func (r *Reactor) handleVoteMessage(envelope p2p.Envelope, msgI Message) error {
 		ps.EnsureVoteBitArrays(height-1, lastCommitSize)
 		ps.SetHasVote(vMsg.Vote)
 
-		r.conS.peerMsgQueue <- msgInfo{vMsg, envelope.From}
+		r.state.peerMsgQueue <- msgInfo{vMsg, envelope.From}
 
 	default:
 		return fmt.Errorf("received unknown message on VoteChannel: %T", msg)
@@ -1143,9 +1143,9 @@ func (r *Reactor) handleVoteSetBitsMessage(envelope p2p.Envelope, msgI Message) 
 
 	switch msg := envelope.Message.(type) {
 	case *tmcons.VoteSetBits:
-		r.conS.mtx.RLock()
-		height, votes := r.conS.Height, r.conS.Votes
-		r.conS.mtx.RUnlock()
+		r.state.mtx.RLock()
+		height, votes := r.state.Height, r.state.Votes
+		r.state.mtx.RUnlock()
 
 		vsbMsg := msgI.(*VoteSetBitsMessage)
 
@@ -1360,7 +1360,7 @@ func (r *Reactor) peerStatsRoutine() {
 		}
 
 		select {
-		case msg := <-r.conS.statsMsgQueue:
+		case msg := <-r.state.statsMsgQueue:
 			ps, ok := r.GetPeerState(msg.PeerID)
 			if !ok || ps == nil {
 				r.Logger.Debug("attempt to update stats for non-existent peer", "peer", msg.PeerID)

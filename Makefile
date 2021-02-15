@@ -58,8 +58,6 @@ LD_FLAGS += $(LDFLAGS)
 all: check build test install
 .PHONY: all
 
-# The below include contains the tools.
-include tools/Makefile
 include test/Makefile
 
 ###############################################################################
@@ -85,19 +83,10 @@ proto-all: proto-gen proto-lint proto-check-breaking
 .PHONY: proto-all
 
 proto-gen:
-	## If you get the following error,
-	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
-	## See https://stackoverflow.com/a/25518702
-	## Note the $< here is substituted for the %.proto
-	## Note the $@ here is substituted for the %.pb.go
-	@sh scripts/protocgen.sh
-.PHONY: proto-gen
-
-proto-gen-docker:
 	@docker pull -q tendermintdev/docker-build-proto
 	@echo "Generating Protobuf files"
 	@docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto sh ./scripts/protocgen.sh
-.PHONY: proto-gen-docker
+.PHONY: proto-gen
 
 proto-lint:
 	@$(DOCKER_BUF) check lint --error-format=json
@@ -247,7 +236,7 @@ build-docker: build-linux
 ###############################################################################
 
 # Build linux binary on other platforms
-build-linux: tools
+build-linux:
 	GOOS=linux GOARCH=amd64 $(MAKE) build
 .PHONY: build-linux
 
