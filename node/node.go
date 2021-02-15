@@ -1151,7 +1151,8 @@ func (n *Node) OnStart() error {
 
 	n.isListening = true
 
-	// Start the switch (the P2P server).
+	n.Logger.Info("p2p service", "legacy_enabled", useLegacyP2P)
+
 	if useLegacyP2P {
 		err = n.sw.Start()
 	} else {
