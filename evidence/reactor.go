@@ -129,6 +129,8 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 			case <-evR.Quit():
 				return
 			}
+		} else if !peer.IsRunning() || !evR.IsRunning() {
+			return
 		}
 
 		ev := next.Value.(types.Evidence)
