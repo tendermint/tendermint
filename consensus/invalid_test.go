@@ -29,7 +29,7 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
-		state := reactor.conS.GetState()
+		state := reactor.state.GetState()
 		reactor.SwitchToConsensus(state, false)
 	}
 

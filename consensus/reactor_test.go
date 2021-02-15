@@ -255,7 +255,7 @@ func TestReactorBasic(t *testing.T) {
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
-		state := reactor.conS.GetState()
+		state := reactor.state.GetState()
 		reactor.SwitchToConsensus(state, false)
 	}
 
@@ -346,7 +346,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
-		state := reactor.conS.GetState()
+		state := reactor.state.GetState()
 		reactor.SwitchToConsensus(state, false)
 	}
 
@@ -387,7 +387,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
-		state := reactor.conS.GetState()
+		state := reactor.state.GetState()
 		reactor.SwitchToConsensus(state, false)
 	}
 
@@ -418,7 +418,7 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
-		state := reactor.conS.GetState()
+		state := reactor.state.GetState()
 		reactor.SwitchToConsensus(state, false)
 	}
 
@@ -481,7 +481,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
-		state := reactor.conS.GetState()
+		state := reactor.state.GetState()
 		reactor.SwitchToConsensus(state, false)
 	}
 
@@ -581,7 +581,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	rts := setup(t, nPeers, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
-		state := reactor.conS.GetState()
+		state := reactor.state.GetState()
 		reactor.SwitchToConsensus(state, false)
 	}
 

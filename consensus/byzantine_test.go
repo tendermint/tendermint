@@ -208,7 +208,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	}
 
 	for _, reactor := range rts.reactors {
-		state := reactor.conS.GetState()
+		state := reactor.state.GetState()
 		reactor.SwitchToConsensus(state, false)
 	}
 
