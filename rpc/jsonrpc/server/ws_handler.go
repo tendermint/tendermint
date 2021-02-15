@@ -388,7 +388,8 @@ func (wsc *wsConnection) readRoutine() {
 			if err != nil {
 				var resp types.RPCResponse
 				switch errors.Unwrap(err) {
-				case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage, ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
+				case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage,
+					ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
 					resp = types.RPCInvalidRequestError(request.ID, err)
 				default: // includes ctypes.ErrHeightExceedsChainHead, ctypes.ErrHeightNotAvailable
 					resp = types.RPCInternalError(request.ID, err)

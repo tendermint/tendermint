@@ -59,7 +59,8 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		result, err := unreflectResult(returns)
 		if err != nil {
 			switch errors.Unwrap(err) {
-			case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage, ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
+			case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage,
+				ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
 				WriteRPCResponseHTTPError(w, http.StatusBadRequest, types.RPCInvalidRequestError(dummyID, err))
 			case ctypes.ErrHeightNotAvailable, ctypes.ErrHeightExceedsChainHead:
 				WriteRPCResponseHTTPError(w, http.StatusNotFound, types.RPCInternalError(dummyID, err))
