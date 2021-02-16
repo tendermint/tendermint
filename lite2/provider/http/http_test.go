@@ -11,7 +11,6 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/lite2/provider"
 	"github.com/tendermint/tendermint/lite2/provider/http"
-	litehttp "github.com/tendermint/tendermint/lite2/provider/http"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
@@ -52,7 +51,7 @@ func TestProvider(t *testing.T) {
 	}
 	chainID := genDoc.ChainID
 	t.Log("chainID:", chainID)
-	p, err := litehttp.New(chainID, rpcAddr)
+	p, err := http.New(chainID, rpcAddr)
 	require.Nil(t, err)
 	require.NotNil(t, p)
 

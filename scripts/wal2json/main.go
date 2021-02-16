@@ -63,7 +63,7 @@ func main() {
 		}
 		if err != nil {
 			fmt.Println("Failed to write message", err)
-			os.Exit(1)
+			os.Exit(1) // nolint: gocritic
 		}
 	}
 }

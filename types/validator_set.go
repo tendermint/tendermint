@@ -676,9 +676,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 	return nil
 }
 
-///////////////////////////////////////////////////////////////////////////////
 // LIGHT CLIENT VERIFICATION METHODS
-///////////////////////////////////////////////////////////////////////////////
 
 // VerifyCommitLight verifies +2/3 of the set had signed the given commit.
 //
@@ -952,9 +950,7 @@ func (valz ValidatorsByAddress) Less(i, j int) bool {
 }
 
 func (valz ValidatorsByAddress) Swap(i, j int) {
-	it := valz[i]
-	valz[i] = valz[j]
-	valz[j] = it
+	valz[i], valz[j] = valz[j], valz[i]
 }
 
 // ToProto converts ValidatorSet to protobuf
@@ -1034,7 +1030,6 @@ func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []Pr
 	return vals, privValidators
 }
 
-///////////////////////////////////////////////////////////////////////////////
 // safe addition/subtraction/multiplication
 
 func safeAdd(a, b int64) (int64, bool) {

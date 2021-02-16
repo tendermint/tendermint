@@ -26,9 +26,7 @@ func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, cdc *amin
 	mux.HandleFunc("/", handleInvalidJSONRPCPaths(makeJSONRPCHandler(funcMap, cdc, logger)))
 }
 
-///////////////////////////////////////////////////////////////////////////////
 // Function introspection
-///////////////////////////////////////////////////////////////////////////////
 
 // RPCFunc contains the introspected type information for a function
 type RPCFunc struct {

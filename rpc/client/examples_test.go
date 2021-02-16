@@ -21,7 +21,7 @@ func ExampleHTTP_simple() {
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
 	c, err := rpchttp.New(rpcAddr, "/websocket")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err) // nolint: gocritic
 	}
 
 	// Create a transaction
@@ -74,7 +74,7 @@ func ExampleHTTP_batching() {
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
 	c, err := rpchttp.New(rpcAddr, "/websocket")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err) // nolint: gocritic
 	}
 
 	// Create our two transactions

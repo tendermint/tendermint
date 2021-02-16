@@ -255,7 +255,6 @@ func (c *WSClient) CallWithArrayParams(ctx context.Context, method string, param
 func (c *WSClient) Codec() *amino.Codec       { return c.cdc }
 func (c *WSClient) SetCodec(cdc *amino.Codec) { c.cdc = cdc }
 
-///////////////////////////////////////////////////////////////////////////////
 // Private methods
 
 func (c *WSClient) nextRequestID() types.JSONRPCIntID {
@@ -295,8 +294,8 @@ func (c *WSClient) reconnect() error {
 	}()
 
 	for {
-		jitterSeconds := time.Duration(tmrand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
-		backoffDuration := jitterSeconds + ((1 << uint(attempt)) * time.Second)
+		jitter := time.Duration(tmrand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
+		backoffDuration := jitter + ((1 << uint(attempt)) * time.Second)
 
 		c.Logger.Info("reconnecting", "attempt", attempt+1, "backoff_duration", backoffDuration)
 		time.Sleep(backoffDuration)
@@ -525,7 +524,6 @@ func (c *WSClient) readRoutine() {
 	}
 }
 
-///////////////////////////////////////////////////////////////////////////////
 // Predefined methods
 
 // Subscribe to a query. Note the server must have a "subscribe" route
