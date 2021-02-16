@@ -105,9 +105,6 @@ func NewRunNodeCmd(nodeProvider nm.Provider) *cobra.Command {
 		Use:     "start",
 		Aliases: []string{"node", "run"},
 		Short:   "Run the tendermint node",
-		Long: `Run the tendermint node
-
-need to set "--mode validator" to run the node as validator`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkGenesisHash(config); err != nil {
 				return err
