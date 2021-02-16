@@ -40,3 +40,11 @@ type Symmetric interface {
 	Encrypt(plaintext []byte, secret []byte) (ciphertext []byte)
 	Decrypt(ciphertext []byte, secret []byte) (plaintext []byte, err error)
 }
+
+type BatchVerifier interface {
+	// Add appends an entry into the BatchVerifier.
+	Add(key PubKey, message, signature []byte) error
+	// Verify verifies all the entries in the BatchVerifier.
+	// If the verification fails it is unknown which entry failed and each entry will need to be verified individually.
+	Verify() bool
+}

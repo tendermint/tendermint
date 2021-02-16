@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"io"
 
@@ -169,4 +170,31 @@ func (pubKey PubKey) Equals(other crypto.PubKey) bool {
 	}
 
 	return false
+}
+
+var _ crypto.BatchVerifier = BatchVerifier{}
+
+type BatchVerifier struct {
+	ed25519consensus.BatchVerifier
+}
+
+func NewBatchVerifier() crypto.BatchVerifier {
+	return BatchVerifier{ed25519consensus.NewBatchVerifier()}
+}
+
+func (b BatchVerifier) Add(key crypto.PubKey, msg, signature []byte) error {
+	if l := len(key.Bytes()); l != PubKeySize {
+		return errors.New("pubkey size is incorrect")
+	}
+
+	if len(signature) != SignatureSize || signature[63]&224 != 0 {
+		return errors.New("invalid signature")
+	}
+	b.BatchVerifier.Add(ed25519.PublicKey(key.Bytes()), msg, signature)
+	return nil
+}
+
+func (b BatchVerifier) Verify() bool {
+	b.BatchVerifier.Verify()
+	return true
 }
