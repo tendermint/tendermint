@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -86,8 +85,8 @@ func funcReturnTypes(f interface{}) []reflect.Type {
 // NOTE: assume returns is result struct and error. If error is not nil, return it
 func unreflectResult(returns []reflect.Value) (interface{}, error) {
 	errV := returns[1]
-	if errV.Interface() != nil {
-		return nil, fmt.Errorf("%v", errV.Interface())
+	if err, ok := errV.Interface().(error); ok && err != nil {
+		return nil, err
 	}
 	rv := returns[0]
 	// the result is a registered interface,
