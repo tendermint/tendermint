@@ -1,7 +1,7 @@
 package bech32
 
 import (
-	"github.com/btcsuite/btcutil/bech32"
+	"github.com/enigmampc/btcutil/bech32"
 	"github.com/pkg/errors"
 )
 
@@ -17,7 +17,7 @@ func ConvertAndEncode(hrp string, data []byte) (string, error) {
 
 //DecodeAndConvert decodes a bech32 encoded string and converts to base64 encoded bytes
 func DecodeAndConvert(bech string) (string, []byte, error) {
-	hrp, data, err := bech32.Decode(bech)
+	hrp, data, err := bech32.Decode(bech, 1023)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "decoding bech32 failed")
 	}

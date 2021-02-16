@@ -28,3 +28,7 @@ func init() {
 	cdc.RegisterConcrete(secp256k1.PubKeySecp256k1{},
 		secp256k1.PubKeyAminoName, nil)
 }
+
+func RegisterKeyType(o interface{}, name string) {
+	cdc.RegisterConcrete(o, name, nil)
+}
