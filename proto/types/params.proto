@@ -20,13 +20,10 @@ message ConsensusParams {
 // BlockParams contains limits on the block size.
 message BlockParams {
   // Max block size, in bytes.
-  // Note: must be greater than 0
   int64 max_bytes = 1;
   // Max gas per block.
   // Note: must be greater or equal to -1
   int64 max_gas = 2;
-  // This parameter is unused.
-  int64 time_iota_ms = 3;
 }
 
 // EvidenceParams determine how we handle evidence of malfeasance.
@@ -72,6 +69,6 @@ message VersionParams {
 //
 // It is hashed into the Header.ConsensusHash.
 message HashedParams {
-  int64 block_max_bytes = 1;
-  int64 block_max_gas   = 2;
+  uint64 block_max_bytes = 1;
+  uint64 block_max_gas   = 2;
 }

@@ -24,7 +24,6 @@ message Packet {
   }
 }
 
-// AuthSigMessage is used while upgrading an insecure connection.
 message AuthSigMessage {
   tendermint.crypto.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
   bytes                       sig     = 2;
