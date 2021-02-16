@@ -31,7 +31,6 @@ import (
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	mempl "github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -54,6 +53,24 @@ var (
 	consensusReplayConfig *cfg.Config
 	ensureTimeout         = time.Millisecond * 200
 )
+
+func configSetup(t *testing.T) {
+	t.Helper()
+
+	config = ResetConfig("consensus_reactor_test")
+	consensusReplayConfig = ResetConfig("consensus_replay_test")
+	configStateTest := ResetConfig("consensus_state_test")
+	configMempoolTest := ResetConfig("consensus_mempool_test")
+	configByzantineTest := ResetConfig("consensus_byzantine_test")
+
+	t.Cleanup(func() {
+		os.RemoveAll(config.RootDir)
+		os.RemoveAll(consensusReplayConfig.RootDir)
+		os.RemoveAll(configStateTest.RootDir)
+		os.RemoveAll(configMempoolTest.RootDir)
+		os.RemoveAll(configByzantineTest.RootDir)
+	})
+}
 
 func ensureDir(dir string, mode os.FileMode) {
 	if err := tmos.EnsureDir(dir, mode); err != nil {
@@ -675,11 +692,18 @@ func consensusLogger() log.Logger {
 	}).With("module", "consensus")
 }
 
-func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker,
-	appFunc func() abci.Application, configOpts ...func(*cfg.Config)) ([]*State, cleanupFunc) {
+func randConsensusState(
+	nValidators int,
+	testName string,
+	tickerFunc func() TimeoutTicker,
+	appFunc func() abci.Application,
+	configOpts ...func(*cfg.Config),
+) ([]*State, cleanupFunc) {
+
 	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
+
 	configRootDirs := make([]string, 0, nValidators)
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
@@ -687,10 +711,13 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
+
 		for _, opt := range configOpts {
 			opt(thisConfig)
 		}
+
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
@@ -699,6 +726,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		css[i].SetTimeoutTicker(tickerFunc())
 		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
+
 	return css, func() {
 		for _, dir := range configRootDirs {
 			os.RemoveAll(dir)
@@ -768,18 +796,6 @@ func randConsensusNetWithPeers(
 	}
 }
 
-func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
-	for i, s := range switches {
-		if peer.NodeInfo().ID() == s.NodeInfo().ID() {
-			return i
-		}
-	}
-	panic("didnt find peer in switches")
-}
-
-//-------------------------------------------------------------------------------
-// genesis
-
 func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
 	validators := make([]types.GenesisValidator, numValidators)
 	privValidators := make([]types.PrivValidator, numValidators)
@@ -806,9 +822,6 @@ func randGenesisState(numValidators int, randPower bool, minPower int64) (sm.Sta
 	s0, _ := sm.MakeGenesisState(genDoc)
 	return s0, privValidators
 }
-
-//------------------------------------
-// mock ticker
 
 func newMockTickerFunc(onlyOnce bool) func() TimeoutTicker {
 	return func() TimeoutTicker {
@@ -854,8 +867,6 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 }
 
 func (*mockTicker) SetLogger(log.Logger) {}
-
-//------------------------------------
 
 func newCounter() abci.Application {
 	return counter.NewApplication(true)

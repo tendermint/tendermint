@@ -424,7 +424,8 @@ func createBlockchainReactor(
 	}
 }
 
-func createConsensusReactor(config *cfg.Config,
+func createConsensusReactor(
+	config *cfg.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
@@ -434,7 +435,8 @@ func createConsensusReactor(config *cfg.Config,
 	csMetrics *cs.Metrics,
 	waitSync bool,
 	eventBus *types.EventBus,
-	consensusLogger log.Logger) (*cs.Reactor, *cs.State) {
+	logger log.Logger,
+) (*p2p.ReactorShim, *cs.Reactor, *cs.State) {
 
 	consensusState := cs.NewState(
 		config.Consensus,
@@ -445,16 +447,31 @@ func createConsensusReactor(config *cfg.Config,
 		evidencePool,
 		cs.StateMetrics(csMetrics),
 	)
-	consensusState.SetLogger(consensusLogger)
+
+	consensusState.SetLogger(logger)
+
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
-	consensusReactor := cs.NewReactor(consensusState, waitSync, cs.ReactorMetrics(csMetrics))
-	consensusReactor.SetLogger(consensusLogger)
-	// services which will be publishing and/or subscribing for messages (events)
-	// consensusReactor will set it on consensusState and blockExecutor
-	consensusReactor.SetEventBus(eventBus)
-	return consensusReactor, consensusState
+
+	reactorShim := p2p.NewReactorShim(logger, "ConsensusShim", cs.ChannelShims)
+	reactor := cs.NewReactor(
+		logger,
+		consensusState,
+		reactorShim.GetChannel(cs.StateChannel),
+		reactorShim.GetChannel(cs.DataChannel),
+		reactorShim.GetChannel(cs.VoteChannel),
+		reactorShim.GetChannel(cs.VoteSetBitsChannel),
+		reactorShim.PeerUpdates,
+		waitSync,
+		cs.ReactorMetrics(csMetrics),
+	)
+
+	// Services which will be publishing and/or subscribing for messages (events)
+	// consensusReactor will set it on consensusState and blockExecutor.
+	reactor.SetEventBus(eventBus)
+
+	return reactorShim, reactor, consensusState
 }
 
 func createTransport(
@@ -477,7 +494,7 @@ func createSwitch(config *cfg.Config,
 	mempoolReactor *p2p.ReactorShim,
 	bcReactor p2p.Reactor,
 	stateSyncReactor *p2p.ReactorShim,
-	consensusReactor *cs.Reactor,
+	consensusReactor *p2p.ReactorShim,
 	evidenceReactor *p2p.ReactorShim,
 	proxyApp proxy.AppConns,
 	nodeInfo p2p.NodeInfo,
@@ -781,7 +798,7 @@ func NewNode(config *cfg.Config,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 
-	csReactor, csState := createConsensusReactor(
+	csReactorShim, csReactor, csState := createConsensusReactor(
 		config, state, blockExec, blockStore, mempool, evPool,
 		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger,
 	)
@@ -837,7 +854,7 @@ func NewNode(config *cfg.Config,
 	transport := createTransport(p2pLogger, config)
 	sw := createSwitch(
 		config, transport, p2pMetrics, mpReactorShim, bcReactorForSwitch,
-		stateSyncReactorShim, csReactor, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
+		stateSyncReactorShim, csReactorShim, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
 	)
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
@@ -976,6 +993,11 @@ func (n *Node) OnStart() error {
 		}
 	}
 
+	// Start the real consensus reactor separately since the switch uses the shim.
+	if err := n.consensusReactor.Start(); err != nil {
+		return err
+	}
+
 	// Start the real state sync reactor separately since the switch uses the shim.
 	if err := n.stateSyncReactor.Start(); err != nil {
 		return err
@@ -1037,6 +1059,11 @@ func (n *Node) OnStop() {
 		if err := n.bcReactor.Stop(); err != nil {
 			n.Logger.Error("failed to stop the blockchain reactor", "err", err)
 		}
+	}
+
+	// Stop the real consensus reactor separately since the switch uses the shim.
+	if err := n.consensusReactor.Stop(); err != nil {
+		n.Logger.Error("failed to stop the consensus reactor", "err", err)
 	}
 
 	// Stop the real state sync reactor separately since the switch uses the shim.
@@ -1375,10 +1402,10 @@ func makeNodeInfo(
 		Version: version.TMCoreSemVer,
 		Channels: []byte{
 			bcChannel,
-			cs.StateChannel,
-			cs.DataChannel,
-			cs.VoteChannel,
-			cs.VoteSetBitsChannel,
+			byte(cs.StateChannel),
+			byte(cs.DataChannel),
+			byte(cs.VoteChannel),
+			byte(cs.VoteSetBitsChannel),
 			byte(mempl.MempoolChannel),
 			byte(evidence.EvidenceChannel),
 			byte(statesync.SnapshotChannel),
