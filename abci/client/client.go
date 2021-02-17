@@ -119,13 +119,13 @@ func (r *ReqRes) SetCallback(cb func(res *types.Response)) {
 	r.mtx.Unlock()
 }
 
-// InvokeCallback invokes the configured callback if non-nil and the ReqRes is
-// marked done.
+// InvokeCallback invokes a thread-safe execution of the configured callback
+// if non-nil.
 func (r *ReqRes) InvokeCallback() {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 
-	if r.done && r.cb != nil {
+	if r.cb != nil {
 		r.cb(r.Response)
 	}
 }
