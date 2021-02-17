@@ -41,6 +41,8 @@ type Symmetric interface {
 	Decrypt(ciphertext []byte, secret []byte) (plaintext []byte, err error)
 }
 
+// If a new key type implements batch verification,
+// the key type must be registered in github.com/tendermint/tendermint/crypto/batch
 type BatchVerifier interface {
 	// Add appends an entry into the BatchVerifier.
 	Add(key PubKey, message, signature []byte) error
