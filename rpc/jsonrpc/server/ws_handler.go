@@ -384,25 +384,34 @@ func (wsc *wsConnection) readRoutine() {
 			// TODO: Need to encode args/returns to string if we want to log them
 			wsc.Logger.Info("WSJSONRPC", "method", request.Method)
 
+			var resp types.RPCResponse
 			result, err := unreflectResult(returns)
-			if err != nil {
-				var resp types.RPCResponse
+			switch e := err.(type) {
+			// if no error then return a success reponse
+			case nil:
+				resp = types.NewRPCSuccessResponse(request.ID, result)
+
+			// if this already of type RPC error then forward that error
+			case *types.RPCError:
+				resp = types.NewRPCErrorResponse(request.ID, e.Code, e.Message, e.Data)
+
+			default: // we need to unwrap the error and parse it accordingly
 				switch errors.Unwrap(err) {
+				// check if the error was due to an invald request
 				case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage,
-					ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest, ctypes.ErrHeightExceedsChainHead:
+					ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
 					resp = types.RPCInvalidRequestError(request.ID, err)
-				default: // includes ctypes.ErrHeightNotAvailable
+
+				// lastly default all remainding errors as internal
+				default: // includes ctypes.ErrHeightNotAvailable and ctypes.ErrHeightExceedsChainHead
 					resp = types.RPCInternalError(request.ID, err)
 				}
-				if err := wsc.WriteRPCResponse(writeCtx, resp); err != nil {
-					wsc.Logger.Error("Error writing RPC response", "err", err)
-				}
-				continue
-			}
+			}			
 
-			if err := wsc.WriteRPCResponse(writeCtx, types.NewRPCSuccessResponse(request.ID, result)); err != nil {
+			if err := wsc.WriteRPCResponse(writeCtx, resp); err != nil {
 				wsc.Logger.Error("Error writing RPC response", "err", err)
 			}
+			
 		}
 	}
 }

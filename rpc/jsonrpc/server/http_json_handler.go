@@ -102,19 +102,27 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			returns := rpcFunc.f.Call(args)
 			logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
 			result, err := unreflectResult(returns)
-			if err != nil {
-				var response types.RPCResponse
+			switch e := err.(type) {
+			// if no error then return a success reponse
+			case nil:
+				responses = append(responses, types.NewRPCSuccessResponse(request.ID, result))
+
+			// if this already of type RPC error then forward that error
+			case *types.RPCError:
+				responses = append(responses, types.NewRPCErrorResponse(request.ID, e.Code, e.Message, e.Data))
+
+			default: // we need to unwrap the error and parse it accordingly
 				switch errors.Unwrap(err) {
+				// check if the error was due to an invald request
 				case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage,
-					ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest, ctypes.ErrHeightExceedsChainHead:
-					response = types.RPCInvalidRequestError(request.ID, err)
-				default: // includes ctypes.ErrHeightNotAvailable
-					response = types.RPCInternalError(request.ID, err)
+					ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
+					responses = append(responses, types.RPCInvalidRequestError(request.ID, err))
+
+				// lastly default all remainding errors as internal
+				default: // includes ctypes.ErrHeightNotAvailable and ctypes.ErrHeightExceedsChainHead
+					responses = append(responses, types.RPCInternalError(request.ID, err))
 				}
-				responses = append(responses, response)
-				continue
 			}
-			responses = append(responses, types.NewRPCSuccessResponse(request.ID, result))
 		}
 		if len(responses) > 0 {
 			WriteRPCResponseHTTP(w, responses...)
