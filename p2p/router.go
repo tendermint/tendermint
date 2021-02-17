@@ -174,6 +174,7 @@ type Router struct {
 	*service.BaseService
 
 	logger             log.Logger
+	metrics            *Metrics
 	options            RouterOptions
 	nodeInfo           NodeInfo
 	privKey            crypto.PrivKey
@@ -183,13 +184,13 @@ type Router struct {
 	stopCh             chan struct{} // signals Router shutdown
 
 	peerMtx    sync.RWMutex
-	peerQueues map[NodeID]queue
+	peerQueues map[NodeID]queue // outbound messages per peer for all channels
 
 	// FIXME: We don't strictly need to use a mutex for this if we seal the
 	// channels on router start. This depends on whether we want to allow
 	// dynamic channels in the future.
 	channelMtx      sync.RWMutex
-	channelQueues   map[ChannelID]queue
+	channelQueues   map[ChannelID]queue // inbound messages from all peers to a single channel
 	channelMessages map[ChannelID]proto.Message
 }
 
@@ -198,6 +199,7 @@ type Router struct {
 // stops.
 func NewRouter(
 	logger log.Logger,
+	metrics *Metrics,
 	nodeInfo NodeInfo,
 	privKey crypto.PrivKey,
 	peerManager *PeerManager,
@@ -210,6 +212,7 @@ func NewRouter(
 
 	router := &Router{
 		logger:             logger,
+		metrics:            metrics,
 		nodeInfo:           nodeInfo,
 		privKey:            privKey,
 		transports:         transports,
@@ -330,11 +333,15 @@ func (r *Router) routeChannel(
 
 			// Send message to peers.
 			for _, q := range queues {
+				start := time.Now().UTC()
+
 				select {
 				case q.enqueue() <- envelope:
+					r.metrics.RouterPeerQueueSend.Observe(time.Since(start).Seconds())
+
 				case <-q.closed():
-					r.logger.Debug("dropping message for unconnected peer",
-						"peer", envelope.To, "channel", chID)
+					r.logger.Debug("dropping message for unconnected peer", "peer", envelope.To, "channel", chID)
+
 				case <-r.stopCh:
 					return
 				}
@@ -658,11 +665,16 @@ func (r *Router) receivePeer(peerID NodeID, conn Connection) error {
 			}
 		}
 
+		start := time.Now().UTC()
+
 		select {
 		case queue.enqueue() <- Envelope{From: peerID, Message: msg}:
+			r.metrics.RouterChannelQueueSend.Observe(time.Since(start).Seconds())
 			r.logger.Debug("received message", "peer", peerID, "message", msg)
+
 		case <-queue.closed():
 			r.logger.Debug("channel closed, dropping message", "peer", peerID, "channel", chID)
+
 		case <-r.stopCh:
 			return nil
 		}
@@ -670,14 +682,18 @@ func (r *Router) receivePeer(peerID NodeID, conn Connection) error {
 }
 
 // sendPeer sends queued messages to a peer.
-func (r *Router) sendPeer(peerID NodeID, conn Connection, queue queue) error {
+func (r *Router) sendPeer(peerID NodeID, conn Connection, peerQueue queue) error {
 	for {
+		start := time.Now().UTC()
+
 		select {
-		case envelope := <-queue.dequeue():
+		case envelope := <-peerQueue.dequeue():
+			r.metrics.RouterPeerQueueRecv.Observe(time.Since(start).Seconds())
 			if envelope.Message == nil {
 				r.logger.Error("dropping nil message", "peer", peerID)
 				continue
 			}
+
 			bz, err := proto.Marshal(envelope.Message)
 			if err != nil {
 				r.logger.Error("failed to marshal message", "peer", peerID, "err", err)
@@ -688,9 +704,10 @@ func (r *Router) sendPeer(peerID NodeID, conn Connection, queue queue) error {
 			if err != nil {
 				return err
 			}
+
 			r.logger.Debug("sent message", "peer", envelope.To, "message", envelope.Message)
 
-		case <-queue.closed():
+		case <-peerQueue.closed():
 			return nil
 
 		case <-r.stopCh:

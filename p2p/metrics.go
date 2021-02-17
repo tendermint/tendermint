@@ -25,11 +25,25 @@ type Metrics struct {
 	PeerPendingSendBytes metrics.Gauge
 	// Number of transactions submitted by each peer.
 	NumTxs metrics.Gauge
+
+	// RouterPeerQueueRecv defines the time taken to read off of a peer's queue
+	// before sending on the connection.
+	RouterPeerQueueRecv metrics.Histogram
+
+	// RouterPeerQueueSend defines the time taken to send on a peer's queue which
+	// will later be read and sent on the connection (see RouterPeerQueueRecv).
+	RouterPeerQueueSend metrics.Histogram
+
+	// RouterChannelQueueSend defines the time taken to send on a p2p channel's
+	// queue which will later be consued by the corresponding reactor/service.
+	RouterChannelQueueSend metrics.Histogram
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
 // Optionally, labels can be provided along with their values ("foo",
 // "fooValue").
+//
+// nolint: lll
 func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 	labels := []string{}
 	for i := 0; i < len(labelsAndValues); i += 2 {
@@ -66,16 +80,40 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "num_txs",
 			Help:      "Number of transactions submitted by each peer.",
 		}, append(labels, "peer_id")).With(labelsAndValues...),
+
+		RouterPeerQueueRecv: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "router_peer_queue_recv",
+			Help:      "The time taken to read off of a peer's queue before sending on the connection.",
+		}, labels).With(labelsAndValues...),
+
+		RouterPeerQueueSend: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "router_peer_queue_send",
+			Help:      "The time taken to send on a peer's queue which will later be read and sent on the connection (see RouterPeerQueueRecv).",
+		}, labels).With(labelsAndValues...),
+
+		RouterChannelQueueSend: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "router_channel_queue_send",
+			Help:      "The time taken to send on a p2p channel's queue which will later be consued by the corresponding reactor/service.",
+		}, labels).With(labelsAndValues...),
 	}
 }
 
 // NopMetrics returns no-op Metrics.
 func NopMetrics() *Metrics {
 	return &Metrics{
-		Peers:                 discard.NewGauge(),
-		PeerReceiveBytesTotal: discard.NewCounter(),
-		PeerSendBytesTotal:    discard.NewCounter(),
-		PeerPendingSendBytes:  discard.NewGauge(),
-		NumTxs:                discard.NewGauge(),
+		Peers:                  discard.NewGauge(),
+		PeerReceiveBytesTotal:  discard.NewCounter(),
+		PeerSendBytesTotal:     discard.NewCounter(),
+		PeerPendingSendBytes:   discard.NewGauge(),
+		NumTxs:                 discard.NewGauge(),
+		RouterPeerQueueRecv:    discard.NewHistogram(),
+		RouterPeerQueueSend:    discard.NewHistogram(),
+		RouterChannelQueueSend: discard.NewHistogram(),
 	}
 }

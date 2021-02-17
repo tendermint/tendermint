@@ -597,15 +597,26 @@ func createPeerManager(config *cfg.Config, p2pLogger log.Logger, nodeID p2p.Node
 
 func createRouter(
 	p2pLogger log.Logger,
+	p2pMetrics *p2p.Metrics,
 	nodeInfo p2p.NodeInfo,
 	privKey crypto.PrivKey,
 	peerManager *p2p.PeerManager,
 	transport p2p.Transport,
 ) (*p2p.Router, error) {
-	return p2p.NewRouter(p2pLogger, nodeInfo, privKey, peerManager, []p2p.Transport{transport}, p2p.RouterOptions{})
+
+	return p2p.NewRouter(
+		p2pLogger,
+		p2pMetrics,
+		nodeInfo,
+		privKey,
+		peerManager,
+		[]p2p.Transport{transport},
+		p2p.RouterOptions{},
+	)
 }
 
-func createSwitch(config *cfg.Config,
+func createSwitch(
+	config *cfg.Config,
 	transport p2p.Transport,
 	p2pMetrics *p2p.Metrics,
 	mempoolReactor *p2p.ReactorShim,
@@ -926,12 +937,13 @@ func NewNode(config *cfg.Config,
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
 
-	router, err := createRouter(p2pLogger, nodeInfo, nodeKey.PrivKey, peerManager, transport)
+	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
+
+	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey, peerManager, transport)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
 
-	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 	mpReactorShim, mpReactor, mempool := createMempoolReactor(
 		config, proxyApp, state, memplMetrics, peerManager, router, logger,
 	)
