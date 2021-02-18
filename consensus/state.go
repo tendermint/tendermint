@@ -30,9 +30,7 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-//-----------------------------------------------------------------------------
-// Errors
-
+// Consensus sentinel errors
 var (
 	ErrInvalidProposalSignature   = errors.New("error invalid proposal signature")
 	ErrInvalidProposalPOLRound    = errors.New("error invalid proposal POL round")
@@ -42,11 +40,7 @@ var (
 	errPubKeyIsNotSet = errors.New("pubkey is not set. Look for \"Can't get private validator pubkey\" errors")
 )
 
-//-----------------------------------------------------------------------------
-
-var (
-	msgQueueSize = 1000
-)
+var msgQueueSize = 1000
 
 // msgs from the reactor which may update the state
 type msgInfo struct {
@@ -177,6 +171,7 @@ func NewState(
 		evsw:             tmevents.NewEventSwitch(),
 		metrics:          NopMetrics(),
 	}
+
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
 	cs.doPrevote = cs.defaultDoPrevote
@@ -189,18 +184,15 @@ func NewState(
 
 	cs.updateToState(state)
 
-	// Don't call scheduleRound0 yet.
-	// We do that upon Start().
+	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
 
 	cs.BaseService = *service.NewBaseService(nil, "State", cs)
 	for _, option := range options {
 		option(cs)
 	}
+
 	return cs
 }
-
-//----------------------------------------
-// Public interface
 
 // SetLogger implements Service.
 func (cs *State) SetLogger(l log.Logger) {
@@ -278,11 +270,12 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 	cs.privValidator = priv
 
 	if err := cs.updatePrivValidatorPubKey(); err != nil {
-		cs.Logger.Error("Can't get private validator pubkey", "err", err)
+		cs.Logger.Error("failed to get private validator pubkey", "err", err)
 	}
 }
 
-// SetTimeoutTicker sets the local timer. It may be useful to overwrite for testing.
+// SetTimeoutTicker sets the local timer. It may be useful to overwrite for
+// testing.
 func (cs *State) SetTimeoutTicker(timeoutTicker TimeoutTicker) {
 	cs.mtx.Lock()
 	cs.timeoutTicker = timeoutTicker
@@ -293,9 +286,11 @@ func (cs *State) SetTimeoutTicker(timeoutTicker TimeoutTicker) {
 func (cs *State) LoadCommit(height int64) *types.Commit {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
+
 	if height == cs.blockStore.Height() {
 		return cs.blockStore.LoadSeenCommit(height)
 	}
+
 	return cs.blockStore.LoadBlockCommit(height)
 }
 
@@ -314,25 +309,29 @@ func (cs *State) OnStart() error {
 	// log to catchup.
 	if cs.doWALCatchup {
 		repairAttempted := false
+
 	LOOP:
 		for {
 			err := cs.catchupReplay(cs.Height)
 			switch {
 			case err == nil:
 				break LOOP
+
 			case !IsDataCorruptionError(err):
-				cs.Logger.Error("Error on catchup replay. Proceeding to start State anyway", "err", err)
+				cs.Logger.Error("error on catchup replay; proceeding to start state anyway", "err", err)
 				break LOOP
+
 			case repairAttempted:
 				return err
 			}
 
-			cs.Logger.Error("WAL file is corrupted, attempting repair", "err", err)
+			cs.Logger.Error("the WAL file is corrupted; attempting repair", "err", err)
 
 			// 1) prep work
 			if err := cs.wal.Stop(); err != nil {
 				return err
 			}
+
 			repairAttempted = true
 
 			// 2) backup original WAL file
@@ -340,14 +339,16 @@ func (cs *State) OnStart() error {
 			if err := tmos.CopyFile(cs.config.WalFile(), corruptedFile); err != nil {
 				return err
 			}
-			cs.Logger.Info("Backed up WAL file", "src", cs.config.WalFile(), "dst", corruptedFile)
+
+			cs.Logger.Info("backed up WAL file", "src", cs.config.WalFile(), "dst", corruptedFile)
 
 			// 3) try to repair (WAL file will be overwritten!)
 			if err := repairWalFile(corruptedFile, cs.config.WalFile()); err != nil {
-				cs.Logger.Error("WAL repair failed", "err", err)
+				cs.Logger.Error("the WAL repair failed", "err", err)
 				return err
 			}
-			cs.Logger.Info("Successful repair")
+
+			cs.Logger.Info("successful WAL repair")
 
 			// reload WAL file
 			if err := cs.loadWalFile(); err != nil {
@@ -389,9 +390,10 @@ func (cs *State) OnStart() error {
 func (cs *State) startRoutines(maxSteps int) {
 	err := cs.timeoutTicker.Start()
 	if err != nil {
-		cs.Logger.Error("Error starting timeout ticker", "err", err)
+		cs.Logger.Error("failed to start timeout ticker", "err", err)
 		return
 	}
+
 	go cs.receiveRoutine(maxSteps)
 }
 
@@ -399,9 +401,10 @@ func (cs *State) startRoutines(maxSteps int) {
 func (cs *State) loadWalFile() error {
 	wal, err := cs.OpenWAL(cs.config.WalFile())
 	if err != nil {
-		cs.Logger.Error("Error loading State wal", "err", err)
+		cs.Logger.Error("failed to load state WAL", "err", err)
 		return err
 	}
+
 	cs.wal = wal
 	return nil
 }
@@ -409,10 +412,11 @@ func (cs *State) loadWalFile() error {
 // OnStop implements service.Service.
 func (cs *State) OnStop() {
 	if err := cs.evsw.Stop(); err != nil {
-		cs.Logger.Error("error trying to stop eventSwitch", "error", err)
+		cs.Logger.Error("failed trying to stop eventSwitch", "error", err)
 	}
+
 	if err := cs.timeoutTicker.Stop(); err != nil {
-		cs.Logger.Error("error trying to stop timeoutTicket", "error", err)
+		cs.Logger.Error("failed trying to stop timeoutTicket", "error", err)
 	}
 	// WAL is stopped in receiveRoutine.
 }
@@ -429,14 +433,17 @@ func (cs *State) Wait() {
 func (cs *State) OpenWAL(walFile string) (WAL, error) {
 	wal, err := NewWAL(walFile)
 	if err != nil {
-		cs.Logger.Error("Failed to open WAL", "file", walFile, "err", err)
+		cs.Logger.Error("failed to open WAL", "file", walFile, "err", err)
 		return nil, err
 	}
+
 	wal.SetLogger(cs.Logger.With("wal", walFile))
+
 	if err := wal.Start(); err != nil {
-		cs.Logger.Error("Failed to start WAL", "err", err)
+		cs.Logger.Error("failed to start WAL", "err", err)
 		return nil, err
 	}
+
 	return wal, nil
 }
 
@@ -492,15 +499,18 @@ func (cs *State) SetProposalAndBlock(
 	parts *types.PartSet,
 	peerID p2p.NodeID,
 ) error {
+
 	if err := cs.SetProposal(proposal, peerID); err != nil {
 		return err
 	}
+
 	for i := 0; i < int(parts.Total()); i++ {
 		part := parts.GetPart(i)
 		if err := cs.AddProposalBlockPart(proposal.Height, proposal.Round, part, peerID); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -538,7 +548,7 @@ func (cs *State) sendInternalMessage(mi msgInfo) {
 		// be processed out of order.
 		// TODO: use CList here for strict determinism and
 		// attempt push to internalMsgQueue in receiveRoutine
-		cs.Logger.Info("Internal msg queue is full. Using a go-routine")
+		cs.Logger.Debug("internal msg queue is full; using a go-routine")
 		go func() { cs.internalMsgQueue <- mi }()
 	}
 }
