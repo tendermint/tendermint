@@ -226,9 +226,7 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 	//
 	// NOTE: It is possible this callback isn't set on the reqres object. At this
 	// point, in which case it will be called after, when it is set.
-	if cb := reqres.GetCallback(); cb != nil {
-		cb(res)
-	}
+	reqres.InvokeCallback()
 
 	return nil
 }
