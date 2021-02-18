@@ -17,6 +17,7 @@ Next, install the `abci-cli` tool and example applications:
 ```sh
 git clone https://github.com/tendermint/tendermint.git
 cd tendermint
+make tools
 make install_abci
 ```
 
