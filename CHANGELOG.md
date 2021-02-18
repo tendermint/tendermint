@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.34.5
+## v0.34.6
 
 *February 18, 2021*
 
@@ -23,7 +23,7 @@ The introduction of the typed logger meant that previously un-logged fields with
 interfaces are now sometimes logged, including the private key material inside the
 `FilePV` struct.
 
-Tendermint Core v0.34.5 fixes this issue; however, we strongly recommend that all validators
+Tendermint Core v0.34.6 fixes this issue; however, we strongly recommend that all validators
 use remote signer implementations instead of `FilePV` in production.
 
 Thank you to @joe-bowman for his assistance with this vulnerability and a particular
@@ -34,6 +34,12 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 ### BUG FIXES
 
 - [consensus] [\#6128](https://github.com/tendermint/tendermint/pull/6128) Remove privValidator from log call (@tessr)
+
+## v0.34.5
+
+*February 18, 2021* 
+
+_Tendermint Core v0.34.5 has been recalled._
 
 ## v0.34.4
 
