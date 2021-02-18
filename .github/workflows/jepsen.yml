@@ -2,35 +2,36 @@
 name: jepsen
 on:
   workflow_dispatch:
-    workload:
-      description: 'Test workload to run; e.g. cas-register, set'
-      required: true
-      default: 'cas-register'
-    nemesis:
-      description: 'Nemesis to use; e.g. clocks'
-      required: true
-      default: 'none'
-    dupValidators:
-      description: 'Whether to have multiple validators share the same key.'
-      required: false
-    superByzantineValidators:
-      description: 'Should byzantine validators have just shy of 2/3 the voting weight?'
-      required: false
-    concurrency:
-      description: 'How many concurrent processes to run'
-      required: true
-      default: 10
-    timeLimit:
-      description: 'Time limit'
-      required: false
-    tendermintUrl:
-      description: 'Where to grab the Tendermint binary (linux/amd64)?'
-      required: true
-      default: 'https://github.com/melekes/katas/releases/download/0.2.0/tendermint.tar.gz'
-    merkleeyesUrl:
-      description: 'Where to grab the Merkleeyes binary (linux/amd64)?'
-      required: true
-      default: 'https://github.com/melekes/katas/releases/download/0.2.0/merkleeyes_0.1.7.tar.gz'
+    inputs:
+      workload:
+        description: 'Test workload to run; e.g. cas-register, set'
+        required: true
+        default: 'cas-register'
+      nemesis:
+        description: 'Nemesis to use; e.g. clocks'
+        required: true
+        default: 'none'
+      dupValidators:
+        description: 'Whether to have multiple validators share the same key.'
+        required: false
+      superByzantineValidators:
+        description: 'Should byzantine validators have just shy of 2/3 the voting weight?'
+        required: false
+      concurrency:
+        description: 'How many concurrent processes to run'
+        required: true
+        default: 10
+      timeLimit:
+        description: 'Time limit'
+        required: false
+      tendermintUrl:
+        description: 'Where to grab the Tendermint binary (linux/amd64)?'
+        required: true
+        default: 'https://github.com/melekes/katas/releases/download/0.2.0/tendermint.tar.gz'
+      merkleeyesUrl:
+        description: 'Where to grab the Merkleeyes binary (linux/amd64)?'
+        required: true
+        default: 'https://github.com/melekes/katas/releases/download/0.2.0/merkleeyes_0.1.7.tar.gz'
 
 jobs:
   jepsen-test:
@@ -45,4 +46,4 @@ jobs:
         run: ./bin/up --daemon
 
       - name: Run the test
-        run: docker exec -it jepsen-control 'cd tendermint && lein run test --nemesis ${{ github.event.inputs.nemesis }} --workload ${{ github.event.inputs.workload }}'
+        run: docker exec -i jepsen-control 'cd tendermint && lein run test --nemesis ${{ github.event.inputs.nemesis }} --workload ${{ github.event.inputs.workload }}'
