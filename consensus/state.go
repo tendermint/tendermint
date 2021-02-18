@@ -873,11 +873,11 @@ func (cs *State) handleMsg(mi msgInfo) {
 }
 
 func (cs *State) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
-	cs.Logger.Debug("Received tock", "timeout", ti.Duration, "height", ti.Height, "round", ti.Round, "step", ti.Step)
+	cs.Logger.Debug("received tock", "timeout", ti.Duration, "height", ti.Height, "round", ti.Round, "step", ti.Step)
 
 	// timeouts must be for current height, round, step
 	if ti.Height != rs.Height || ti.Round < rs.Round || (ti.Round == rs.Round && ti.Step < rs.Step) {
-		cs.Logger.Debug("Ignoring tock because we're ahead", "height", rs.Height, "round", rs.Round, "step", rs.Step)
+		cs.Logger.Debug("ignoring tock because we are ahead", "height", rs.Height, "round", rs.Round, "step", rs.Step)
 		return
 	}
 
@@ -890,26 +890,34 @@ func (cs *State) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 		// NewRound event fired from enterNewRound.
 		// XXX: should we fire timeout here (for timeout commit)?
 		cs.enterNewRound(ti.Height, 0)
+
 	case cstypes.RoundStepNewRound:
 		cs.enterPropose(ti.Height, 0)
+
 	case cstypes.RoundStepPropose:
 		if err := cs.eventBus.PublishEventTimeoutPropose(cs.RoundStateEvent()); err != nil {
-			cs.Logger.Error("Error publishing timeout propose", "err", err)
+			cs.Logger.Error("failed publishing timeout propose", "err", err)
 		}
+
 		cs.enterPrevote(ti.Height, ti.Round)
+
 	case cstypes.RoundStepPrevoteWait:
 		if err := cs.eventBus.PublishEventTimeoutWait(cs.RoundStateEvent()); err != nil {
-			cs.Logger.Error("Error publishing timeout wait", "err", err)
+			cs.Logger.Error("failed publishing timeout wait", "err", err)
 		}
+
 		cs.enterPrecommit(ti.Height, ti.Round)
+
 	case cstypes.RoundStepPrecommitWait:
 		if err := cs.eventBus.PublishEventTimeoutWait(cs.RoundStateEvent()); err != nil {
-			cs.Logger.Error("Error publishing timeout wait", "err", err)
+			cs.Logger.Error("failed publishing timeout wait", "err", err)
 		}
+
 		cs.enterPrecommit(ti.Height, ti.Round)
 		cs.enterNewRound(ti.Height, ti.Round+1)
+
 	default:
-		panic(fmt.Sprintf("Invalid timeout step: %v", ti.Step))
+		panic(fmt.Sprintf("invalid timeout step: %v", ti.Step))
 	}
 
 }
@@ -933,6 +941,7 @@ func (cs *State) handleTxsAvailable() {
 		// +1ms to ensure RoundStepNewRound timeout always happens after RoundStepNewHeight
 		timeoutCommit := cs.StartTime.Sub(tmtime.Now()) + 1*time.Millisecond
 		cs.scheduleTimeout(timeoutCommit, cs.Height, 0, cstypes.RoundStepNewRound)
+
 	case cstypes.RoundStepNewRound: // after timeoutCommit
 		cs.enterPropose(cs.Height, 0)
 	}
@@ -952,23 +961,27 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.Step != cstypes.RoundStepNewHeight) {
-		logger.Debug(fmt.Sprintf(
-			"enterNewRound(%v/%v): Invalid args. Current step: %v/%v/%v",
-			height,
-			round,
-			cs.Height,
-			cs.Round,
-			cs.Step))
+		logger.Debug(
+			"entering new round with invalid args",
+			"height", height,
+			"round", round,
+			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
+		)
 		return
 	}
 
 	if now := tmtime.Now(); cs.StartTime.After(now) {
-		logger.Debug("need to set a buffer and log message here for sanity", "startTime", cs.StartTime, "now", now)
+		logger.Debug("need to set a buffer and log message here for sanity", "start_time", cs.StartTime, "now", now)
 	}
 
-	logger.Info(fmt.Sprintf("enterNewRound(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+	logger.Debug(
+		"entering new round",
+		"height", height,
+		"round", round,
+		"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
+	)
 
-	// Increment validators if necessary
+	// increment validators if necessary
 	validators := cs.Validators
 	if cs.Round < round {
 		validators = validators.Copy()
@@ -985,17 +998,19 @@ func (cs *State) enterNewRound(height int64, round int32) {
 		// and meanwhile we might have received a proposal
 		// for round 0.
 	} else {
-		logger.Info("Resetting Proposal info")
+		logger.Debug("resetting proposal info")
 		cs.Proposal = nil
 		cs.ProposalBlock = nil
 		cs.ProposalBlockParts = nil
 	}
+
 	cs.Votes.SetRound(tmmath.SafeAddInt32(round, 1)) // also track next round (round+1) to allow round-skipping
 	cs.TriggeredTimeoutPrecommit = false
 
 	if err := cs.eventBus.PublishEventNewRound(cs.NewRoundEvent()); err != nil {
-		cs.Logger.Error("Error publishing new round", "err", err)
+		cs.Logger.Error("failed publishing new round", "err", err)
 	}
+
 	cs.metrics.Rounds.Set(float64(round))
 
 	// Wait for txs to be available in the mempool
@@ -1023,6 +1038,7 @@ func (cs *State) needProofBlock(height int64) bool {
 	if lastBlockMeta == nil {
 		panic(fmt.Sprintf("needProofBlock: last block meta for height %d not found", height-1))
 	}
+
 	return !bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash)
 }
 
@@ -1034,16 +1050,21 @@ func (cs *State) enterPropose(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPropose <= cs.Step) {
-		logger.Debug(fmt.Sprintf(
-			"enterPropose(%v/%v): Invalid args. Current step: %v/%v/%v",
-			height,
-			round,
-			cs.Height,
-			cs.Round,
-			cs.Step))
+		logger.Debug(
+			"entering propose step with invalid args",
+			"height", height,
+			"round", round,
+			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
+		)
 		return
 	}
-	logger.Info(fmt.Sprintf("enterPropose(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+
+	logger.Debug(
+		"entering propose step",
+		"height", height,
+		"round", round,
+		"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
+	)
 
 	defer func() {
 		// Done enterPropose:
@@ -1063,35 +1084,40 @@ func (cs *State) enterPropose(height int64, round int32) {
 
 	// Nothing more to do if we're not a validator
 	if cs.privValidator == nil {
-		logger.Debug("This node is not a validator")
+		logger.Debug("node is not a validator")
 		return
 	}
-	logger.Debug("This node is a validator")
+
+	logger.Debug("node is a validator")
 
 	if cs.privValidatorPubKey == nil {
 		// If this node is a validator & proposer in the current round, it will
 		// miss the opportunity to create a block.
-		logger.Error(fmt.Sprintf("enterPropose: %v", errPubKeyIsNotSet))
+		logger.Error("propose step; empty priv validator public key", "err", errPubKeyIsNotSet)
 		return
 	}
+
 	address := cs.privValidatorPubKey.Address()
 
 	// if not a validator, we're done
 	if !cs.Validators.HasAddress(address) {
-		logger.Debug("This node is not a validator", "addr", address, "vals", cs.Validators)
+		logger.Debug("node is not a validator", "addr", address, "vals", cs.Validators)
 		return
 	}
 
 	if cs.isProposer(address) {
-		logger.Debug("enterPropose: our turn to propose",
+		logger.Debug(
+			"propose step; our turn to propose",
 			"proposer", address,
-			"privValidator", cs.privValidator,
+			"priv_validator", cs.privValidator,
 		)
+
 		cs.decideProposal(height, round)
 	} else {
-		logger.Debug("enterPropose: not our turn to propose",
+		logger.Debug(
+			"propose step; not our turn to propose",
 			"proposer", cs.Validators.GetProposer().Address,
-			"privValidator", cs.privValidator,
+			"priv_validator", cs.privValidator,
 		)
 	}
 }
@@ -1119,7 +1145,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	// Flush the WAL. Otherwise, we may not recompute the same proposal to sign,
 	// and the privValidator will refuse to sign anything.
 	if err := cs.wal.FlushAndSync(); err != nil {
-		cs.Logger.Error("Error flushing to disk")
+		cs.Logger.Error("failed flushing WAL to disk")
 	}
 
 	// Make proposal
@@ -1131,14 +1157,16 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 
 		// send proposal and block parts on internal msg queue
 		cs.sendInternalMessage(msgInfo{&ProposalMessage{proposal}, ""})
+
 		for i := 0; i < int(blockParts.Total()); i++ {
 			part := blockParts.GetPart(i)
 			cs.sendInternalMessage(msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, ""})
 		}
-		cs.Logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
-		cs.Logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
+
+		cs.Logger.Info("signed proposal", "height", height, "round", round, "proposal", proposal)
+		cs.Logger.Debug("signed proposal block", "block", block)
 	} else if !cs.replayMode {
-		cs.Logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
+		cs.Logger.Error("propose step; failed signing proposal", "height", height, "round", round, "err", err)
 	}
 }
 
