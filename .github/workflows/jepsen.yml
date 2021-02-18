@@ -42,8 +42,7 @@ jobs:
 
       - name: Start a Jepsen cluster
         working-directory: docker
-        run: ./bin/up
+        run: ./bin/up --daemon
 
-      - name: Open up a console
-        working-directory: docker
+      - name: Run the test
         run: docker exec -it jepsen-control 'cd tendermint && lein run test --nemesis ${{ github.event.inputs.nemesis }} --workload ${{ github.event.inputs.workload }}'
