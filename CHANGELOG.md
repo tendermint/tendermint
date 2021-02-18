@@ -33,7 +33,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 ### BUG FIXES
 
-- [consensus][\#6128](https://github.com/tendermint/tendermint/pull/6128) Remove privValidator from log call (@tessr)
+- [consensus] [\#6128](https://github.com/tendermint/tendermint/pull/6128) Remove privValidator from log call (@tessr)
 
 ## v0.34.4
 
