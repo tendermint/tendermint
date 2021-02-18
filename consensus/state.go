@@ -1368,7 +1368,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 			cs.LockedBlockParts = nil
 
 			if err := cs.eventBus.PublishEventUnlock(cs.RoundStateEvent()); err != nil {
-				cs.Logger.Error("failed publishing event unlock", "err", err)
+				logger.Error("failed publishing event unlock", "err", err)
 			}
 		}
 
@@ -1384,7 +1384,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 		cs.LockedRound = round
 
 		if err := cs.eventBus.PublishEventRelock(cs.RoundStateEvent()); err != nil {
-			cs.Logger.Error("failed publishing event relock", "err", err)
+			logger.Error("failed publishing event relock", "err", err)
 		}
 
 		cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
@@ -1405,7 +1405,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 		cs.LockedBlockParts = cs.ProposalBlockParts
 
 		if err := cs.eventBus.PublishEventLock(cs.RoundStateEvent()); err != nil {
-			cs.Logger.Error("failed publishing event lock", "err", err)
+			logger.Error("failed publishing event lock", "err", err)
 		}
 
 		cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
@@ -1427,7 +1427,7 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 	}
 
 	if err := cs.eventBus.PublishEventUnlock(cs.RoundStateEvent()); err != nil {
-		cs.Logger.Error("Error publishing event unlock", "err", err)
+		logger.Error("failed publishing event unlock", "err", err)
 	}
 
 	cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
@@ -1439,16 +1439,21 @@ func (cs *State) enterPrecommitWait(height int64, round int32) {
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.TriggeredTimeoutPrecommit) {
 		logger.Debug(
-			fmt.Sprintf(
-				"enterPrecommitWait(%v/%v): Invalid args. "+
-					"Current state is Height/Round: %v/%v/, TriggeredTimeoutPrecommit:%v",
-				height, round, cs.Height, cs.Round, cs.TriggeredTimeoutPrecommit))
+			"entering precommit wait step with invalid args",
+			"triggered_timeout", cs.TriggeredTimeoutPrecommit,
+			"current", fmt.Sprintf("%v/%v", cs.Height, cs.Round),
+		)
 		return
 	}
+
 	if !cs.Votes.Precommits(round).HasTwoThirdsAny() {
-		panic(fmt.Sprintf("enterPrecommitWait(%v/%v), but Precommits does not have any +2/3 votes", height, round))
+		panic(fmt.Sprintf(
+			"entering precommit wait step (%v/%v), but precommits does not have any +2/3 votes",
+			height, round,
+		))
 	}
-	logger.Debug(fmt.Sprintf("enterPrecommitWait(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+
+	logger.Debug("entering precommit wait step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
 
 	defer func() {
 		// Done enterPrecommitWait:
@@ -1456,25 +1461,23 @@ func (cs *State) enterPrecommitWait(height int64, round int32) {
 		cs.newStep()
 	}()
 
-	// Wait for some more precommits; enterNewRound
+	// wait for some more precommits; enterNewRound
 	cs.scheduleTimeout(cs.config.Precommit(round), height, round, cstypes.RoundStepPrecommitWait)
 }
 
 // Enter: +2/3 precommits for block
 func (cs *State) enterCommit(height int64, commitRound int32) {
-	logger := cs.Logger.With("height", height, "commitRound", commitRound)
+	logger := cs.Logger.With("height", height, "commit_round", commitRound)
 
 	if cs.Height != height || cstypes.RoundStepCommit <= cs.Step {
-		logger.Debug(fmt.Sprintf(
-			"enterCommit(%v/%v): Invalid args. Current step: %v/%v/%v",
-			height,
-			commitRound,
-			cs.Height,
-			cs.Round,
-			cs.Step))
+		logger.Debug(
+			"entering commit step with invalid args",
+			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
+		)
 		return
 	}
-	logger.Info(fmt.Sprintf("enterCommit(%v/%v). Current: %v/%v/%v", height, commitRound, cs.Height, cs.Round, cs.Step))
+
+	logger.Debug("entering commit step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
 
 	defer func() {
 		// Done enterCommit:
@@ -1497,7 +1500,7 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 	// Move them over to ProposalBlock if they match the commit hash,
 	// otherwise they'll be cleared in updateToState.
 	if cs.LockedBlock.HashesTo(blockID.Hash) {
-		logger.Debug("commit is for a locked block; set ProposalBlock=LockedBlock", "blockHash", blockID.Hash)
+		logger.Debug("commit is for a locked block; set ProposalBlock=LockedBlock", "block_hash", blockID.Hash)
 		cs.ProposalBlock = cs.LockedBlock
 		cs.ProposalBlockParts = cs.LockedBlockParts
 	}
@@ -1515,14 +1518,13 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 			// Set up ProposalBlockParts and keep waiting.
 			cs.ProposalBlock = nil
 			cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
+
 			if err := cs.eventBus.PublishEventValidBlock(cs.RoundStateEvent()); err != nil {
-				cs.Logger.Error("Error publishing valid block", "err", err)
+				logger.Error("failed publishing valid block", "err", err)
 			}
+
 			cs.evsw.FireEvent(types.EventValidBlock, &cs.RoundState)
 		}
-		// else {
-		// We just need to keep waiting.
-		// }
 	}
 }
 
@@ -1536,33 +1538,33 @@ func (cs *State) tryFinalizeCommit(height int64) {
 
 	blockID, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
 	if !ok || len(blockID.Hash) == 0 {
-		logger.Error("Attempt to finalize failed. There was no +2/3 majority, or +2/3 was for <nil>.")
+		logger.Error("failed attempt to finalize commit; there was no +2/3 majority or +2/3 was for nil")
 		return
 	}
+
 	if !cs.ProposalBlock.HashesTo(blockID.Hash) {
 		// TODO: this happens every time if we're not a validator (ugly logs)
 		// TODO: ^^ wait, why does it matter that we're a validator?
 		logger.Debug(
-			"attempt to finalize failed; we do not have the commit block",
-			"proposal-block", cs.ProposalBlock.Hash(),
-			"commit-block", blockID.Hash,
+			"failed attempt to finalize commit; we do not have the commit block",
+			"proposal_block", cs.ProposalBlock.Hash(),
+			"commit_block", blockID.Hash,
 		)
 		return
 	}
 
-	//	go
 	cs.finalizeCommit(height)
 }
 
 // Increment height and goto cstypes.RoundStepNewHeight
 func (cs *State) finalizeCommit(height int64) {
+	logger := cs.Logger.With("height", height)
+
 	if cs.Height != height || cs.Step != cstypes.RoundStepCommit {
-		cs.Logger.Debug(fmt.Sprintf(
-			"finalizeCommit(%v): Invalid args. Current step: %v/%v/%v",
-			height,
-			cs.Height,
-			cs.Round,
-			cs.Step))
+		logger.Debug(
+			"entering finalize commit step",
+			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
+		)
 		return
 	}
 
@@ -1570,25 +1572,26 @@ func (cs *State) finalizeCommit(height int64) {
 	block, blockParts := cs.ProposalBlock, cs.ProposalBlockParts
 
 	if !ok {
-		panic("Cannot finalizeCommit, commit does not have two thirds majority")
+		panic("cannot finalize commit; commit does not have 2/3 majority")
 	}
 	if !blockParts.HasHeader(blockID.PartSetHeader) {
-		panic("Expected ProposalBlockParts header to be commit header")
+		panic("expected ProposalBlockParts header to be commit header")
 	}
 	if !block.HashesTo(blockID.Hash) {
-		panic("Cannot finalizeCommit, ProposalBlock does not hash to commit hash")
+		panic("cannot finalize commit; proposal block does not hash to commit hash")
 	}
+
 	if err := cs.blockExec.ValidateBlock(cs.state, block); err != nil {
 		panic(fmt.Errorf("+2/3 committed an invalid block: %w", err))
 	}
 
-	cs.Logger.Info("finalizing commit of block with N txs",
-		"height", block.Height,
+	logger.Info(
+		"finalizing commit of block",
 		"hash", block.Hash(),
 		"root", block.AppHash,
-		"N", len(block.Txs),
+		"num_txs", len(block.Txs),
 	)
-	cs.Logger.Debug(fmt.Sprintf("%v", block))
+	logger.Debug(fmt.Sprintf("%v", block))
 
 	fail.Fail() // XXX
 
@@ -1601,7 +1604,7 @@ func (cs *State) finalizeCommit(height int64) {
 		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
 	} else {
 		// Happens during replay if we already saved the block but didn't commit
-		cs.Logger.Debug("calling finalizeCommit on already stored block", "height", block.Height)
+		logger.Debug("calling finalizeCommit on already stored block", "height", block.Height)
 	}
 
 	fail.Fail() // XXX
@@ -1621,8 +1624,10 @@ func (cs *State) finalizeCommit(height int64) {
 	// restart).
 	endMsg := EndHeightMessage{height}
 	if err := cs.wal.WriteSync(endMsg); err != nil { // NOTE: fsync
-		panic(fmt.Sprintf("Failed to write %v msg to consensus wal due to %v. Check your FS and restart the node",
-			endMsg, err))
+		panic(fmt.Sprintf(
+			"failed to write %v msg to consensus wal due to %v; check your file system and restart the node",
+			endMsg, err,
+		))
 	}
 
 	fail.Fail() // XXX
@@ -1632,14 +1637,21 @@ func (cs *State) finalizeCommit(height int64) {
 
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// NOTE The block.AppHash wont reflect these txs until the next block.
-	var err error
-	var retainHeight int64
+	var (
+		err          error
+		retainHeight int64
+	)
+
 	stateCopy, retainHeight, err = cs.blockExec.ApplyBlock(
 		stateCopy,
-		types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()},
-		block)
+		types.BlockID{
+			Hash:          block.Hash(),
+			PartSetHeader: blockParts.Header(),
+		},
+		block,
+	)
 	if err != nil {
-		cs.Logger.Error("Error on ApplyBlock", "err", err)
+		logger.Error("failed to apply block", "err", err)
 		return
 	}
 
@@ -1649,9 +1661,9 @@ func (cs *State) finalizeCommit(height int64) {
 	if retainHeight > 0 {
 		pruned, err := cs.pruneBlocks(retainHeight)
 		if err != nil {
-			cs.Logger.Error("Failed to prune blocks", "retainHeight", retainHeight, "err", err)
+			logger.Error("failed to prune blocks", "retain_height", retainHeight, "err", err)
 		} else {
-			cs.Logger.Info("Pruned blocks", "pruned", pruned, "retainHeight", retainHeight)
+			logger.Info("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
 		}
 	}
 
@@ -1665,7 +1677,7 @@ func (cs *State) finalizeCommit(height int64) {
 
 	// Private validator might have changed it's key pair => refetch pubkey.
 	if err := cs.updatePrivValidatorPubKey(); err != nil {
-		cs.Logger.Error("Can't get private validator pubkey", "err", err)
+		logger.Error("failed to get private validator pubkey", "err", err)
 	}
 
 	// cs.StartTime is already set.
