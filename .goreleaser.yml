@@ -18,7 +18,6 @@ builds:
     goarch:
       - amd64
       - arm
-      - arm64
 
 checksum:
   name_template: SHA256SUMS-{{.Version}}.txt
