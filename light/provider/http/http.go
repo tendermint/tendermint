@@ -164,8 +164,8 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 				return nil, provider.ErrBadLightBlock{Reason: e}
 
 			default:
-				// If we don't know the error then by default we return a bad light block error and terminate the connection
-				// with the peer
+				// If we don't know the error then by default we return a bad light block error and
+				// terminate the connection with the peer.
 				return nil, provider.ErrBadLightBlock{Reason: e}
 			}
 
@@ -217,8 +217,8 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 			}
 
 		default:
-			// If we don't know the error then by default we return a bad light block error and terminate the connection
-			// with the peer
+			// If we don't know the error then by default we return a bad light block error and
+			// terminate the connection with the peer.
 			return nil, provider.ErrBadLightBlock{Reason: e}
 		}
 	}

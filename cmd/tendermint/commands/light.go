@@ -219,7 +219,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 
 	rpcClient, err := rpchttp.NewWithTimeout(primaryAddr, "/websocket", cfg.WriteTimeout)
 	if err != nil {
-		return fmt.Errorf("http client for %s: %w", primaryAddr, err)
+		return fmt.Errorf("failed to create http client for %s: %w", primaryAddr, err)
 	}
 
 	p := lproxy.Proxy{
