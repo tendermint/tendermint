@@ -16,10 +16,9 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// this equates to a maximum time of 28,5 seconds per request
 var defaultOptions = Options{
-	MaxRetryAttempts: 5,
-	Timeout:          3 * time.Second,
+	MaxRetryAttempts: 10,
+	Timeout:          5 * time.Second,
 }
 
 // http provider uses an RPC client to obtain the necessary information.
@@ -148,20 +147,22 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 				}
 
 			case *rpctypes.RPCError:
-				// Check if we got status bad request. This shouldn't happen unless the RPC module
-				// has been tampered with. If we do get this error, stop the connection with the peer
-				// and return an error
-				if e.Code == -32600 {
+				// Check if we got something other than internal error. This shouldn't happen unless the RPC module
+				// or light client has been tampered with. If we do get this error, stop the connection with the
+				// peer and return an error
+				if e.Code != -32603 {
 					return nil, provider.ErrBadLightBlock{Reason: errors.New(e.Data)}
 				}
 
 				// check if the error indicates that the peer doesn't have the block
-				if strings.Contains(err.Error(), ctypes.ErrHeightNotAvailable.Error()) ||
-					strings.Contains(err.Error(), ctypes.ErrHeightExceedsChainHead.Error()) {
+				if strings.Contains(e.Data, ctypes.ErrHeightNotAvailable.Error()) ||
+					strings.Contains(e.Data, ctypes.ErrHeightExceedsChainHead.Error()) {
 					return nil, provider.ErrLightBlockNotFound
 				}
 
 				// we wait and try again with exponential backoff
+				// TODO: If we can, we should check if the error is purely because the node failed to respond in
+				// time. If this is the case then we continue, else we should stop straight away
 				time.Sleep(backoffTimeout(uint16(attempt)))
 				continue
 
@@ -196,9 +197,10 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 			return &commit.SignedHeader, nil
 
 		case *rpctypes.RPCError:
-			// Check if we got status bad request. This shouldn't happen but if
-			// it does we should stop the connection with the peer and return an error
-			if e.Code == -32600 {
+			// Check if we got something other than internal error. This shouldn't happen unless the RPC module
+			// or light client has been tampered with. If we do get this error, stop the connection with the
+			// peer and return an error
+			if e.Code != -32603 {
 				return nil, provider.ErrBadLightBlock{Reason: errors.New(e.Data)}
 			}
 
@@ -209,6 +211,8 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 			}
 
 			// we wait and try again with exponential backoff
+			// TODO: If we can, we should check if the error is purely because the node failed to respond in
+			// time. If this is the case then we continue, else we should stop straight away
 			time.Sleep(backoffTimeout(uint16(attempt)))
 			continue
 

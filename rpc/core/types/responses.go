@@ -20,7 +20,7 @@ var (
 	ErrZeroOrNegativeHeight   = errors.New("height must be greater than zero")
 	ErrHeightExceedsChainHead = errors.New("height must be less than or equal to the head of the node's blockchain")
 	ErrHeightNotAvailable     = errors.New("height is not available")
-	// This is used as a wrapper to cover more specific cases where the user has
+	// ErrInvalidRequest is used as a wrapper to cover more specific cases where the user has
 	// made an invalid request
 	ErrInvalidRequest = errors.New("invalid request")
 )

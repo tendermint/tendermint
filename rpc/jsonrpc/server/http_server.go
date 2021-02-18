@@ -92,7 +92,7 @@ func ServeTLS(
 // WriteRPCResponseHTTPError marshals res as JSON and writes it to w.
 //
 // Maps JSON RPC error codes to HTTP Status codes as follows:
-// 
+//
 // HTTP Status	code	message
 // 500	-32700	Parse error.
 // 400	-32600	Invalid Request.
@@ -115,11 +115,11 @@ func WriteRPCResponseHTTPError(
 	jsonBytes, err := json.MarshalIndent(res, "", "  ")
 	if err != nil {
 		panic(err)
-	}	
+	}
 
 	var httpCode int
 	switch res.Error.Code {
-	case -32600: 
+	case -32600:
 		httpCode = http.StatusBadRequest
 	case -32601:
 		httpCode = http.StatusNotFound

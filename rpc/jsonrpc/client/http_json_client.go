@@ -183,6 +183,9 @@ func (c *Client) Call(
 	}
 
 	httpResponse, err := c.client.Do(httpRequest)
+	if e, ok := err.(*url.Error); ok && e.Timeout() {
+		panic("Hello world")
+	}
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}

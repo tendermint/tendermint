@@ -65,14 +65,14 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 			WriteRPCResponseHTTPError(w, types.NewRPCErrorResponse(dummyID, e.Code, e.Message, e.Data))
 
 		default: // we need to unwrap the error and parse it accordingly
+
 			switch errors.Unwrap(err) {
 			case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage,
 				ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
 				WriteRPCResponseHTTPError(w, types.RPCInvalidRequestError(dummyID, err))
-			case ctypes.ErrHeightNotAvailable, ctypes.ErrHeightExceedsChainHead:
+
+			default: // ctypes.ErrHeightNotAvailable, ctypes.ErrHeightExceedsChainHead:
 				WriteRPCResponseHTTPError(w, types.RPCInternalError(dummyID, err))
-			default:
-				WriteRPCResponseHTTPError(w, types.RPCInternalError(dummyID, fmt.Errorf("hello world: %w", err)))
 			}
 		}
 
