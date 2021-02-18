@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"reflect"
 	"runtime/debug"
 	"time"
 
@@ -558,13 +557,15 @@ func (cs *State) sendInternalMessage(mi msgInfo) {
 func (cs *State) reconstructLastCommit(state sm.State) {
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
 	if seenCommit == nil {
-		panic(fmt.Sprintf("Failed to reconstruct LastCommit: seen commit for height %v not found",
-			state.LastBlockHeight))
+		panic(fmt.Sprintf(
+			"failed to reconstruct LastCommit: seen commit for height %v not found",
+			state.LastBlockHeight,
+		))
 	}
 
 	lastPrecommits := types.CommitToVoteSet(state.ChainID, seenCommit, state.LastValidators)
 	if !lastPrecommits.HasTwoThirdsMajority() {
-		panic("Failed to reconstruct LastCommit: Does not have +2/3 maj")
+		panic("failed to reconstruct LastCommit: does not have +2/3 maj")
 	}
 
 	cs.LastCommit = lastPrecommits
@@ -574,19 +575,26 @@ func (cs *State) reconstructLastCommit(state sm.State) {
 // The round becomes 0 and cs.Step becomes cstypes.RoundStepNewHeight.
 func (cs *State) updateToState(state sm.State) {
 	if cs.CommitRound > -1 && 0 < cs.Height && cs.Height != state.LastBlockHeight {
-		panic(fmt.Sprintf("updateToState() expected state height of %v but found %v",
-			cs.Height, state.LastBlockHeight))
+		panic(fmt.Sprintf(
+			"updateToState() expected state height of %v but found %v",
+			cs.Height, state.LastBlockHeight,
+		))
 	}
+
 	if !cs.state.IsEmpty() {
 		if cs.state.LastBlockHeight > 0 && cs.state.LastBlockHeight+1 != cs.Height {
 			// This might happen when someone else is mutating cs.state.
 			// Someone forgot to pass in state.Copy() somewhere?!
-			panic(fmt.Sprintf("Inconsistent cs.state.LastBlockHeight+1 %v vs cs.Height %v",
-				cs.state.LastBlockHeight+1, cs.Height))
+			panic(fmt.Sprintf(
+				"inconsistent cs.state.LastBlockHeight+1 %v vs cs.Height %v",
+				cs.state.LastBlockHeight+1, cs.Height,
+			))
 		}
 		if cs.state.LastBlockHeight > 0 && cs.Height == cs.state.InitialHeight {
-			panic(fmt.Sprintf("Inconsistent cs.state.LastBlockHeight %v, expected 0 for initial height %v",
-				cs.state.LastBlockHeight, cs.state.InitialHeight))
+			panic(fmt.Sprintf(
+				"inconsistent cs.state.LastBlockHeight %v, expected 0 for initial height %v",
+				cs.state.LastBlockHeight, cs.state.InitialHeight,
+			))
 		}
 
 		// If state isn't further out than cs.state, just ignore.
@@ -595,12 +603,11 @@ func (cs *State) updateToState(state sm.State) {
 		// signal the new round step, because other services (eg. txNotifier)
 		// depend on having an up-to-date peer state!
 		if state.LastBlockHeight <= cs.state.LastBlockHeight {
-			cs.Logger.Info(
-				"Ignoring updateToState()",
-				"newHeight",
-				state.LastBlockHeight+1,
-				"oldHeight",
-				cs.state.LastBlockHeight+1)
+			cs.Logger.Debug(
+				"ignoring updateToState()",
+				"newHeight", state.LastBlockHeight+1,
+				"oldHeight", cs.state.LastBlockHeight+1,
+			)
 			cs.newStep()
 			return
 		}
@@ -614,16 +621,19 @@ func (cs *State) updateToState(state sm.State) {
 		cs.LastCommit = (*types.VoteSet)(nil)
 	case cs.CommitRound > -1 && cs.Votes != nil: // Otherwise, use cs.Votes
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
-			panic(fmt.Sprintf("Wanted to form a Commit, but Precommits (H/R: %d/%d) didn't have 2/3+: %v",
-				state.LastBlockHeight,
-				cs.CommitRound,
-				cs.Votes.Precommits(cs.CommitRound)))
+			panic(fmt.Sprintf(
+				"wanted to form a commit, but precommits (H/R: %d/%d) didn't have 2/3+: %v",
+				state.LastBlockHeight, cs.CommitRound, cs.Votes.Precommits(cs.CommitRound),
+			))
 		}
+
 		cs.LastCommit = cs.Votes.Precommits(cs.CommitRound)
+
 	case cs.LastCommit == nil:
 		// NOTE: when Tendermint starts, it has no votes. reconstructLastCommit
 		// must be called to reconstruct LastCommit from SeenCommit.
-		panic(fmt.Sprintf("LastCommit cannot be empty after initial block (H:%d)",
+		panic(fmt.Sprintf(
+			"last commit cannot be empty after initial block (H:%d)",
 			state.LastBlockHeight+1,
 		))
 	}
@@ -637,6 +647,7 @@ func (cs *State) updateToState(state sm.State) {
 	// RoundState fields
 	cs.updateHeight(height)
 	cs.updateRoundStep(0, cstypes.RoundStepNewHeight)
+
 	if cs.CommitTime.IsZero() {
 		// "Now" makes it easier to sync up dev nodes.
 		// We add timeoutCommit to allow transactions
@@ -672,14 +683,17 @@ func (cs *State) updateToState(state sm.State) {
 func (cs *State) newStep() {
 	rs := cs.RoundStateEvent()
 	if err := cs.wal.Write(rs); err != nil {
-		cs.Logger.Error("Error writing to wal", "err", err)
+		cs.Logger.Error("failed writing to WAL", "err", err)
 	}
+
 	cs.nSteps++
+
 	// newStep is called by updateToState in NewState before the eventBus is set!
 	if cs.eventBus != nil {
 		if err := cs.eventBus.PublishEventNewRoundStep(rs); err != nil {
-			cs.Logger.Error("Error publishing new round step", "err", err)
+			cs.Logger.Error("failed publishing new round step", "err", err)
 		}
+
 		cs.evsw.FireEvent(types.EventNewRoundStep, &cs.RoundState)
 	}
 }
@@ -700,10 +714,10 @@ func (cs *State) receiveRoutine(maxSteps int) {
 
 		// close wal now that we're done writing to it
 		if err := cs.wal.Stop(); err != nil {
-			cs.Logger.Error("error trying to stop wal", "error", err)
+			cs.Logger.Error("failed trying to stop WAL", "error", err)
 		}
-		cs.wal.Wait()
 
+		cs.wal.Wait()
 		close(cs.done)
 	}
 
@@ -725,28 +739,35 @@ func (cs *State) receiveRoutine(maxSteps int) {
 	for {
 		if maxSteps > 0 {
 			if cs.nSteps >= maxSteps {
-				cs.Logger.Info("reached max steps. exiting receive routine")
+				cs.Logger.Info("reached max steps; exiting receive routine")
 				cs.nSteps = 0
 				return
 			}
 		}
+
 		rs := cs.RoundState
 		var mi msgInfo
 
 		select {
 		case <-cs.txNotifier.TxsAvailable():
 			cs.handleTxsAvailable()
+
 		case mi = <-cs.peerMsgQueue:
 			if err := cs.wal.Write(mi); err != nil {
-				cs.Logger.Error("Error writing to wal", "err", err)
+				cs.Logger.Error("failed writing to WAL", "err", err)
 			}
+
 			// handles proposals, block parts, votes
 			// may generate internal events (votes, complete proposals, 2/3 majorities)
 			cs.handleMsg(mi)
+
 		case mi = <-cs.internalMsgQueue:
 			err := cs.wal.WriteSync(mi) // NOTE: fsync
 			if err != nil {
-				panic(fmt.Sprintf("Failed to write %v msg to consensus wal due to %v. Check your FS and restart the node", mi, err))
+				panic(fmt.Sprintf(
+					"failed to write %v msg to consensus WAL due to %v; check your file system and restart the node",
+					mi, err,
+				))
 			}
 
 			if _, ok := mi.Msg.(*VoteMessage); ok {
@@ -759,13 +780,16 @@ func (cs *State) receiveRoutine(maxSteps int) {
 
 			// handles proposals, block parts, votes
 			cs.handleMsg(mi)
+
 		case ti := <-cs.timeoutTicker.Chan(): // tockChan:
 			if err := cs.wal.Write(ti); err != nil {
-				cs.Logger.Error("Error writing to wal", "err", err)
+				cs.Logger.Error("failed writing to WAL", "err", err)
 			}
+
 			// if the timeout is relevant to the rs
 			// go to the next step
 			cs.handleTimeout(ti, rs)
+
 		case <-cs.Quit():
 			onExit(cs)
 			return
@@ -782,12 +806,15 @@ func (cs *State) handleMsg(mi msgInfo) {
 		added bool
 		err   error
 	)
+
 	msg, peerID := mi.Msg, mi.PeerID
+
 	switch msg := msg.(type) {
 	case *ProposalMessage:
 		// will not cause transition.
 		// once proposal is set, we can receive block parts
 		err = cs.setProposal(msg.Proposal)
+
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
 		added, err = cs.addProposalBlockPart(msg, peerID)
@@ -797,15 +824,14 @@ func (cs *State) handleMsg(mi msgInfo) {
 
 		if err != nil && msg.Round != cs.Round {
 			cs.Logger.Debug(
-				"Received block part from wrong round",
-				"height",
-				cs.Height,
-				"csRound",
-				cs.Round,
-				"blockRound",
-				msg.Round)
+				"received block part from wrong round",
+				"height", cs.Height,
+				"csRound", cs.Round,
+				"blockRound", msg.Round,
+			)
 			err = nil
 		}
+
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
@@ -828,14 +854,21 @@ func (cs *State) handleMsg(mi msgInfo) {
 		// TODO: If rs.Height == vote.Height && rs.Round < vote.Round,
 		// the peer is sending us CatchupCommit precommits.
 		// We could make note of this and help filter in broadcastHasVoteMessage().
+
 	default:
-		cs.Logger.Error("Unknown msg type", "type", reflect.TypeOf(msg))
+		cs.Logger.Error("unknown msg type", "type", fmt.Sprintf("%T", msg))
 		return
 	}
 
 	if err != nil {
-		cs.Logger.Error("Error with msg", "height", cs.Height, "round", cs.Round,
-			"peer", peerID, "err", err, "msg", msg)
+		cs.Logger.Error(
+			"failed process message",
+			"height", cs.Height,
+			"round", cs.Round,
+			"peer", peerID,
+			"err", err,
+			"msg", msg,
+		)
 	}
 }
 
