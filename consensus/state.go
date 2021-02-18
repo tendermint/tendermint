@@ -1844,7 +1844,7 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.NodeID) 
 
 	// Blocks might be reused, so round mismatch is OK
 	if cs.Height != height {
-		cs.Logger.Debug("Received block part from wrong height", "height", height, "round", round)
+		cs.Logger.Debug("received block part from wrong height", "height", height, "round", round)
 		return false, nil
 	}
 
@@ -1852,8 +1852,13 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.NodeID) 
 	if cs.ProposalBlockParts == nil {
 		// NOTE: this can happen when we've gone to a higher round and
 		// then receive parts from the previous round - not necessarily a bad peer.
-		cs.Logger.Info("Received a block part when we're not expecting any",
-			"height", height, "round", round, "index", part.Index, "peer", peerID)
+		cs.Logger.Debug(
+			"received a block part when we are not expecting any",
+			"height", height,
+			"round", round,
+			"index", part.Index,
+			"peer", peerID,
+		)
 		return false, nil
 	}
 
@@ -1884,10 +1889,12 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.NodeID) 
 		}
 
 		cs.ProposalBlock = block
+
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
-		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
+		cs.Logger.Info("received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
+
 		if err := cs.eventBus.PublishEventCompleteProposal(cs.CompleteProposalEvent()); err != nil {
-			cs.Logger.Error("Error publishing event complete proposal", "err", err)
+			cs.Logger.Error("failed publishing event complete proposal", "err", err)
 		}
 
 		// Update Valid* if we can.
@@ -1895,8 +1902,12 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.NodeID) 
 		blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
 		if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
 			if cs.ProposalBlock.HashesTo(blockID.Hash) {
-				cs.Logger.Info("Updating valid block to new proposal block",
-					"valid-round", cs.Round, "valid-block-hash", cs.ProposalBlock.Hash())
+				cs.Logger.Debug(
+					"updating valid block to new proposal block",
+					"valid_round", cs.Round,
+					"valid_block_hash", cs.ProposalBlock.Hash(),
+				)
+
 				cs.ValidRound = cs.Round
 				cs.ValidBlock = cs.ProposalBlock
 				cs.ValidBlockParts = cs.ProposalBlockParts
@@ -1918,8 +1929,10 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.NodeID) 
 			// If we're waiting on the proposal block...
 			cs.tryFinalizeCommit(height)
 		}
+
 		return added, nil
 	}
+
 	return added, nil
 }
 
