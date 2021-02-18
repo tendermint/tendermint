@@ -13,7 +13,7 @@ import (
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	"github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 // HTTP + JSON handler
@@ -25,7 +25,6 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 		if err != nil {
 			WriteRPCResponseHTTPError(
 				w,
-				http.StatusBadRequest,
 				types.RPCInvalidRequestError(
 					nil,
 					fmt.Errorf("error reading request body: %w", err),
@@ -52,7 +51,6 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			if err := json.Unmarshal(b, &request); err != nil {
 				WriteRPCResponseHTTPError(
 					w,
-					http.StatusInternalServerError,
 					types.RPCParseError(
 						fmt.Errorf("error unmarshaling request: %w", err),
 					),

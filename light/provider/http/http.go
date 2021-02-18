@@ -12,12 +12,14 @@ import (
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
 
+// this equates to a maximum time of 28,5 seconds per request
 var defaultOptions = Options{
-	MaxRetryAttempts: 10,
-	Timeout:          5 * time.Second,
+	MaxRetryAttempts: 5,
+	Timeout:          3 * time.Second,
 }
 
 // http provider uses an RPC client to obtain the necessary information.
@@ -130,34 +132,46 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 		// is negative we will keep repeating.
 		for attempt := 0; attempt != p.maxRetryAttempts+1; attempt++ {
 			res, err := p.client.Validators(ctx, height, &page, &perPage)
-			if err != nil {
-				if errors.Is(err, ctypes.ErrHeightNotAvailable) ||
-					errors.Is(err, ctypes.ErrHeightExceedsChainHead) {
+			switch e := err.(type) {
+			case nil: // success!! Now we validate the response
+				if len(res.Validators) == 0 {
+					return nil, provider.ErrBadLightBlock{
+						Reason: fmt.Errorf("validator set is empty (height: %d, page: %d, per_page: %d)",
+							height, page, perPage),
+					}
+				}
+				if res.Total <= 0 {
+					return nil, provider.ErrBadLightBlock{
+						Reason: fmt.Errorf("total number of vals is <= 0: %d (height: %d, page: %d, per_page: %d)",
+							res.Total, height, page, perPage),
+					}
+				}
+
+			case *rpctypes.RPCError:
+				// Check if we got status bad request. This shouldn't happen unless the RPC module
+				// has been tampered with. If we do get this error, stop the connection with the peer
+				// and return an error
+				if e.Code == -32600 {
+					return nil, provider.ErrBadLightBlock{Reason: errors.New(e.Data)}
+				}
+
+				// check if the error indicates that the peer doesn't have the block
+				if strings.Contains(err.Error(), ctypes.ErrHeightNotAvailable.Error()) ||
+					strings.Contains(err.Error(), ctypes.ErrHeightExceedsChainHead.Error()) {
 					return nil, provider.ErrLightBlockNotFound
 				}
-				// if we have exceeded retry attempts then return no response error
-				if attempt == p.maxRetryAttempts {
-					return nil, provider.ErrNoResponse
-				}
-				// else we wait and try again with exponential backoff
+
+				// we wait and try again with exponential backoff
 				time.Sleep(backoffTimeout(uint16(attempt)))
 				continue
+
+			default:
+				// something has happened to the RPC module if we are not receiving errors of type RPCError
+				panic(fmt.Errorf("unexpected error type: %w", err))
 			}
 
-			// Validate response.
-			if len(res.Validators) == 0 {
-				return nil, provider.ErrBadLightBlock{
-					Reason: fmt.Errorf("validator set is empty (height: %d, page: %d, per_page: %d)",
-						height, page, perPage),
-				}
-			}
-			if res.Total <= 0 {
-				return nil, provider.ErrBadLightBlock{
-					Reason: fmt.Errorf("total number of vals is <= 0: %d (height: %d, page: %d, per_page: %d)",
-						res.Total, height, page, perPage),
-				}
-			}
-
+			// update the total and increment the page index so we can fetch the
+			// next page of validators if need be
 			total = res.Total
 			vals = append(vals, res.Validators...)
 			page++
@@ -177,16 +191,31 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 	// is negative we will keep repeating.
 	for attempt := 0; attempt != p.maxRetryAttempts+1; attempt++ {
 		commit, err := p.client.Commit(ctx, height)
-		if err != nil {
-			if errors.Is(err, ctypes.ErrHeightNotAvailable) ||
-				errors.Is(err, ctypes.ErrHeightExceedsChainHead) {
+		switch e := err.(type) {
+		case nil: // success!!
+			return &commit.SignedHeader, nil
+
+		case *rpctypes.RPCError:
+			// Check if we got status bad request. This shouldn't happen but if
+			// it does we should stop the connection with the peer and return an error
+			if e.Code == -32600 {
+				return nil, provider.ErrBadLightBlock{Reason: errors.New(e.Data)}
+			}
+
+			// check if the error indicates that the peer doesn't have the block
+			if strings.Contains(err.Error(), ctypes.ErrHeightNotAvailable.Error()) ||
+				strings.Contains(err.Error(), ctypes.ErrHeightExceedsChainHead.Error()) {
 				return nil, provider.ErrLightBlockNotFound
 			}
+
 			// we wait and try again with exponential backoff
 			time.Sleep(backoffTimeout(uint16(attempt)))
 			continue
+
+		default:
+			// something has happened to the RPC module if we are not receiving errors of type RPCError
+			panic(fmt.Errorf("unexpected error type: %w", err))
 		}
-		return &commit.SignedHeader, nil
 	}
 	return nil, provider.ErrNoResponse
 }
