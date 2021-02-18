@@ -206,11 +206,6 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	rpcClient, err := rpchttp.New(primaryAddr, "/websocket")
-	if err != nil {
-		return fmt.Errorf("http client for %s: %w", primaryAddr, err)
-	}
-
 	cfg := rpcserver.DefaultConfig()
 	cfg.MaxBodyBytes = config.RPC.MaxBodyBytes
 	cfg.MaxHeaderBytes = config.RPC.MaxHeaderBytes
@@ -220,6 +215,11 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	// See https://github.com/tendermint/tendermint/issues/3435
 	if cfg.WriteTimeout <= config.RPC.TimeoutBroadcastTxCommit {
 		cfg.WriteTimeout = config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
+	}
+
+	rpcClient, err := rpchttp.NewWithTimeout(primaryAddr, "/websocket", cfg.WriteTimeout)
+	if err != nil {
+		return fmt.Errorf("http client for %s: %w", primaryAddr, err)
 	}
 
 	p := lproxy.Proxy{

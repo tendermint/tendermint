@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"net/url"
 	"strings"
 	"time"
 
@@ -17,8 +18,8 @@ import (
 )
 
 var defaultOptions = Options{
-	MaxRetryAttempts: 10,
-	Timeout:          5 * time.Second,
+	MaxRetryAttempts: 5,
+	Timeout:          3 * time.Second,
 }
 
 // http provider uses an RPC client to obtain the necessary information.
@@ -146,29 +147,26 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 					}
 				}
 
-			case *rpctypes.RPCError:
-				// Check if we got something other than internal error. This shouldn't happen unless the RPC module
-				// or light client has been tampered with. If we do get this error, stop the connection with the
-				// peer and return an error
-				if e.Code != -32603 {
-					return nil, provider.ErrBadLightBlock{Reason: errors.New(e.Data)}
+			case *url.Error:
+				if e.Timeout() {
+					// request timed out: we wait and try again with exponential backoff
+					time.Sleep(backoffTimeout(uint16(attempt)))
+					continue
 				}
+				return nil, provider.ErrBadLightBlock{Reason: e}
 
+			case *rpctypes.RPCError:
 				// check if the error indicates that the peer doesn't have the block
 				if strings.Contains(e.Data, ctypes.ErrHeightNotAvailable.Error()) ||
 					strings.Contains(e.Data, ctypes.ErrHeightExceedsChainHead.Error()) {
 					return nil, provider.ErrLightBlockNotFound
 				}
-
-				// we wait and try again with exponential backoff
-				// TODO: If we can, we should check if the error is purely because the node failed to respond in
-				// time. If this is the case then we continue, else we should stop straight away
-				time.Sleep(backoffTimeout(uint16(attempt)))
-				continue
+				return nil, provider.ErrBadLightBlock{Reason: e}
 
 			default:
-				// something has happened to the RPC module if we are not receiving errors of type RPCError
-				panic(fmt.Errorf("unexpected error type: %w", err))
+				// If we don't know the error then by default we return a bad light block error and terminate the connection
+				// with the peer
+				return nil, provider.ErrBadLightBlock{Reason: e}
 			}
 
 			// update the total and increment the page index so we can fetch the
@@ -196,6 +194,14 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 		case nil: // success!!
 			return &commit.SignedHeader, nil
 
+		case *url.Error:
+			if e.Timeout() {
+				// we wait and try again with exponential backoff
+				time.Sleep(backoffTimeout(uint16(attempt)))
+				continue
+			}
+			return nil, provider.ErrBadLightBlock{Reason: e}
+
 		case *rpctypes.RPCError:
 			// Check if we got something other than internal error. This shouldn't happen unless the RPC module
 			// or light client has been tampered with. If we do get this error, stop the connection with the
@@ -210,15 +216,10 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 				return nil, provider.ErrLightBlockNotFound
 			}
 
-			// we wait and try again with exponential backoff
-			// TODO: If we can, we should check if the error is purely because the node failed to respond in
-			// time. If this is the case then we continue, else we should stop straight away
-			time.Sleep(backoffTimeout(uint16(attempt)))
-			continue
-
 		default:
-			// something has happened to the RPC module if we are not receiving errors of type RPCError
-			panic(fmt.Errorf("unexpected error type: %w", err))
+			// If we don't know the error then by default we return a bad light block error and terminate the connection
+			// with the peer
+			return nil, provider.ErrBadLightBlock{Reason: e}
 		}
 	}
 	return nil, provider.ErrNoResponse
