@@ -963,8 +963,6 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.Step != cstypes.RoundStepNewHeight) {
 		logger.Debug(
 			"entering new round with invalid args",
-			"height", height,
-			"round", round,
 			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
 		)
 		return
@@ -974,12 +972,7 @@ func (cs *State) enterNewRound(height int64, round int32) {
 		logger.Debug("need to set a buffer and log message here for sanity", "start_time", cs.StartTime, "now", now)
 	}
 
-	logger.Debug(
-		"entering new round",
-		"height", height,
-		"round", round,
-		"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
-	)
+	logger.Debug("entering new round", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
 
 	// increment validators if necessary
 	validators := cs.Validators
@@ -1052,19 +1045,12 @@ func (cs *State) enterPropose(height int64, round int32) {
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPropose <= cs.Step) {
 		logger.Debug(
 			"entering propose step with invalid args",
-			"height", height,
-			"round", round,
 			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
 		)
 		return
 	}
 
-	logger.Debug(
-		"entering propose step",
-		"height", height,
-		"round", round,
-		"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
-	)
+	logger.Debug("entering propose step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
 
 	defer func() {
 		// Done enterPropose:
@@ -1204,20 +1190,23 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
 		commit = types.NewCommit(0, 0, types.BlockID{}, nil)
+
 	case cs.LastCommit.HasTwoThirdsMajority():
 		// Make the commit from LastCommit
 		commit = cs.LastCommit.MakeCommit()
+
 	default: // This shouldn't happen.
-		cs.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
+		cs.Logger.Error("propose step; cannot propose anything without commit for the previous block")
 		return
 	}
 
 	if cs.privValidatorPubKey == nil {
 		// If this node is a validator & proposer in the current round, it will
 		// miss the opportunity to create a block.
-		cs.Logger.Error(fmt.Sprintf("enterPropose: %v", errPubKeyIsNotSet))
+		cs.Logger.Error("propose step; empty priv validator public key", "err", errPubKeyIsNotSet)
 		return
 	}
+
 	proposerAddr := cs.privValidatorPubKey.Address()
 
 	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr)
@@ -1228,14 +1217,13 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 // Prevote for LockedBlock if we're locked, or ProposalBlock if valid.
 // Otherwise vote nil.
 func (cs *State) enterPrevote(height int64, round int32) {
+	logger := cs.Logger.With("height", height, "round", round)
+
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrevote <= cs.Step) {
-		cs.Logger.Debug(fmt.Sprintf(
-			"enterPrevote(%v/%v): Invalid args. Current step: %v/%v/%v",
-			height,
-			round,
-			cs.Height,
-			cs.Round,
-			cs.Step))
+		logger.Debug(
+			"entering prevote step with invalid args",
+			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
+		)
 		return
 	}
 
@@ -1245,7 +1233,7 @@ func (cs *State) enterPrevote(height int64, round int32) {
 		cs.newStep()
 	}()
 
-	cs.Logger.Debug(fmt.Sprintf("enterPrevote(%v/%v); current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+	logger.Debug("entering prevote step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
 
 	// Sign and broadcast vote as necessary
 	cs.doPrevote(height, round)
@@ -1259,14 +1247,14 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 
 	// If a block is locked, prevote that.
 	if cs.LockedBlock != nil {
-		logger.Debug("enterPrevote: already locked on a block; prevoting locked block")
+		logger.Debug("prevote step; already locked on a block; prevoting locked block")
 		cs.signAddVote(tmproto.PrevoteType, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
 		return
 	}
 
 	// If ProposalBlock is nil, prevote nil.
 	if cs.ProposalBlock == nil {
-		logger.Debug("enterPrevote: ProposalBlock is nil")
+		logger.Debug("prevote step: ProposalBlock is nil")
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
@@ -1275,7 +1263,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
-		logger.Error("enterPrevote: ProposalBlock is invalid", "err", err)
+		logger.Error("prevote step: ProposalBlock is invalid", "err", err)
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
 		return
 	}
@@ -1283,7 +1271,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 	// Prevote cs.ProposalBlock
 	// NOTE: the proposal signature is validated when it is received,
 	// and the proposal block parts are validated as they are received (against the merkle hash in the proposal)
-	logger.Debug("enterPrevote: ProposalBlock is valid")
+	logger.Debug("prevote step: ProposalBlock is valid")
 	cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
 }
 
@@ -1292,20 +1280,21 @@ func (cs *State) enterPrevoteWait(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrevoteWait <= cs.Step) {
-		logger.Debug(fmt.Sprintf(
-			"enterPrevoteWait(%v/%v): Invalid args. Current step: %v/%v/%v",
-			height,
-			round,
-			cs.Height,
-			cs.Round,
-			cs.Step))
+		logger.Debug(
+			"entering prevote wait step with invalid args",
+			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
+		)
 		return
 	}
+
 	if !cs.Votes.Prevotes(round).HasTwoThirdsAny() {
-		panic(fmt.Sprintf("enterPrevoteWait(%v/%v), but Prevotes does not have any +2/3 votes", height, round))
+		panic(fmt.Sprintf(
+			"entering prevote wait step (%v/%v), but prevotes does not have any +2/3 votes",
+			height, round,
+		))
 	}
 
-	logger.Debug(fmt.Sprintf("enterPrevoteWait(%v/%v); current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+	logger.Debug("entering prevote wait step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
 
 	defer func() {
 		// Done enterPrevoteWait:
@@ -1327,17 +1316,14 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrecommit <= cs.Step) {
-		logger.Debug(fmt.Sprintf(
-			"enterPrecommit(%v/%v): Invalid args. Current step: %v/%v/%v",
-			height,
-			round,
-			cs.Height,
-			cs.Round,
-			cs.Step))
+		logger.Debug(
+			"entering precommit step with invalid args",
+			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
+		)
 		return
 	}
 
-	logger.Debug(fmt.Sprintf("enterPrecommit(%v/%v); current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+	logger.Debug("entering precommit step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
 
 	defer func() {
 		// Done enterPrecommit:
@@ -1351,38 +1337,41 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 	// If we don't have a polka, we must precommit nil.
 	if !ok {
 		if cs.LockedBlock != nil {
-			logger.Debug("enterPrecommit: no +2/3 prevotes during enterPrecommit while we're locked. Precommitting nil")
+			logger.Debug("precommit step; no +2/3 prevotes during enterPrecommit while we are locked; precommitting nil")
 		} else {
-			logger.Debug("enterPrecommit: no +2/3 prevotes during enterPrecommit. Precommitting nil.")
+			logger.Debug("precommit step; no +2/3 prevotes during enterPrecommit; precommitting nil")
 		}
+
 		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 		return
 	}
 
 	// At this point +2/3 prevoted for a particular block or nil.
 	if err := cs.eventBus.PublishEventPolka(cs.RoundStateEvent()); err != nil {
-		cs.Logger.Error("Error publishing polka", "err", err)
+		logger.Error("failed publishing polka", "err", err)
 	}
 
 	// the latest POLRound should be this round.
 	polRound, _ := cs.Votes.POLInfo()
 	if polRound < round {
-		panic(fmt.Sprintf("This POLRound should be %v but got %v", round, polRound))
+		panic(fmt.Sprintf("this POLRound should be %v but got %v", round, polRound))
 	}
 
 	// +2/3 prevoted nil. Unlock and precommit nil.
 	if len(blockID.Hash) == 0 {
 		if cs.LockedBlock == nil {
-			logger.Debug("enterPrecommit: +2/3 prevoted for nil")
+			logger.Debug("precommit step; +2/3 prevoted for nil")
 		} else {
-			logger.Debug("enterPrecommit: +2/3 prevoted for nil; unlocking")
+			logger.Debug("precommit step; +2/3 prevoted for nil; unlocking")
 			cs.LockedRound = -1
 			cs.LockedBlock = nil
 			cs.LockedBlockParts = nil
+
 			if err := cs.eventBus.PublishEventUnlock(cs.RoundStateEvent()); err != nil {
-				cs.Logger.Error("Error publishing event unlock", "err", err)
+				cs.Logger.Error("failed publishing event unlock", "err", err)
 			}
 		}
+
 		cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 		return
 	}
@@ -1391,28 +1380,34 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 
 	// If we're already locked on that block, precommit it, and update the LockedRound
 	if cs.LockedBlock.HashesTo(blockID.Hash) {
-		logger.Debug("enterPrecommit: +2/3 prevoted locked block; relocking")
+		logger.Debug("precommit step; +2/3 prevoted locked block; relocking")
 		cs.LockedRound = round
+
 		if err := cs.eventBus.PublishEventRelock(cs.RoundStateEvent()); err != nil {
-			cs.Logger.Error("Error publishing event relock", "err", err)
+			cs.Logger.Error("failed publishing event relock", "err", err)
 		}
+
 		cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
 		return
 	}
 
 	// If +2/3 prevoted for proposal block, stage and precommit it
 	if cs.ProposalBlock.HashesTo(blockID.Hash) {
-		logger.Debug("enterPrecommit: +2/3 prevoted proposal block; locking", "hash", blockID.Hash)
+		logger.Debug("precommit step; +2/3 prevoted proposal block; locking", "hash", blockID.Hash)
+
 		// Validate the block.
 		if err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock); err != nil {
-			panic(fmt.Sprintf("enterPrecommit: +2/3 prevoted for an invalid block: %v", err))
+			panic(fmt.Sprintf("precommit step; +2/3 prevoted for an invalid block: %v", err))
 		}
+
 		cs.LockedRound = round
 		cs.LockedBlock = cs.ProposalBlock
 		cs.LockedBlockParts = cs.ProposalBlockParts
+
 		if err := cs.eventBus.PublishEventLock(cs.RoundStateEvent()); err != nil {
-			cs.Logger.Error("Error publishing event lock", "err", err)
+			cs.Logger.Error("failed publishing event lock", "err", err)
 		}
+
 		cs.signAddVote(tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader)
 		return
 	}
@@ -1420,17 +1415,21 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 	// There was a polka in this round for a block we don't have.
 	// Fetch that block, unlock, and precommit nil.
 	// The +2/3 prevotes for this round is the POL for our unlock.
-	logger.Debug("enterPrecommit: +2/3 prevotes for a block we do not have; voting nil", "blockID", blockID)
+	logger.Debug("precommit step; +2/3 prevotes for a block we do not have; voting nil", "block_id", blockID)
+
 	cs.LockedRound = -1
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
+
 	if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
 		cs.ProposalBlock = nil
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartSetHeader)
 	}
+
 	if err := cs.eventBus.PublishEventUnlock(cs.RoundStateEvent()); err != nil {
 		cs.Logger.Error("Error publishing event unlock", "err", err)
 	}
+
 	cs.signAddVote(tmproto.PrecommitType, nil, types.PartSetHeader{})
 }
 
