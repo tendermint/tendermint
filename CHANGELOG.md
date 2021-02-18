@@ -1,5 +1,40 @@
 # Changelog
 
+## v0.34.5
+
+*February 18, 2021*
+
+This release fixes a downstream security issue which impacts Cosmos SDK
+users who are:
+
+* Using Cosmos SDK v0.40.0 or later, AND
+* Running validator nodes, AND
+* Using the file-based `FilePV` implementation for their consensus keys
+
+Users who fulfill all the above criteria were susceptible to leaking
+private key material in the logs. All other users are unaffected.
+
+The root cause was a discrepancy
+between the Tendermint Core (untyped) logger and the Cosmos SDK (typed) logger:
+Tendermint Core's logger automatically stringifies Go interfaces whenever possible;
+however, the Cosmos SDK's logger uses reflection to log the fields within a Go interface.
+
+The introduction of the typed logger meant that previously un-logged fields within
+interfaces are now sometimes logged, including the private key material inside the
+`FilePV` struct.
+
+Tendermint Core v0.34.5 fixes this issue; however, we strongly recommend that all validators
+use remote signer implementations instead of `FilePV` in production.
+
+Thank you to @joe-bowman for his assistance with this vulnerability and a particular
+shout-out to @marbar3778 for diagnosing it quickly.
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BUG FIXES
+
+- [consensus] [\#6128](https://github.com/tendermint/tendermint/pull/6128) Remove privValidator from log call (@tessr)
+
 ## v0.34.4
 
 *February 11, 2021*
