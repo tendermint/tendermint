@@ -78,7 +78,7 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 
 		reactor.SetEventBus(state.eventBus)
 
-		blocksSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
+		blocksSub, err := state.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, size)
 		require.NoError(t, err)
 
 		rts.states[nodeID] = state
