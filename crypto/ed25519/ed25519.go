@@ -190,6 +190,7 @@ func (b BatchVerifier) Add(key crypto.PubKey, msg, signature []byte) error {
 	if len(signature) != SignatureSize || signature[63]&224 != 0 {
 		return errors.New("invalid signature")
 	}
+
 	b.BatchVerifier.Add(ed25519.PublicKey(key.Bytes()), msg, signature)
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/internal/benchmarking"
 )
@@ -28,6 +29,7 @@ func BenchmarkVerification(b *testing.B) {
 
 func BenchmarkVerifyBatch(b *testing.B) {
 	for _, n := range []int{1, 8, 64, 1024} {
+		n := n
 		b.Run(fmt.Sprint(n), func(b *testing.B) {
 			b.ReportAllocs()
 			v := NewBatchVerifier()
@@ -36,7 +38,8 @@ func BenchmarkVerifyBatch(b *testing.B) {
 				pub := priv.PubKey()
 				msg := []byte("BatchVerifyTest")
 				sig, _ := priv.Sign(msg)
-				v.Add(pub, msg, sig)
+				err := v.Add(pub, msg, sig)
+				require.NoError(b, err)
 			}
 			// NOTE: dividing by n so that metrics are per-signature
 			for i := 0; i < b.N/n; i++ {
