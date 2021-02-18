@@ -102,6 +102,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	for nID, s := range rts.states {
 		if s == bzNodeState {
 			bzNodeID = nID
+			break
 		}
 	}
 
