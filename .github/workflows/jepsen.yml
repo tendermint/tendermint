@@ -11,21 +11,18 @@ on:
         description: 'Nemesis to use: (none | clocks | single-partitions | half-partitions | ring-partitions | split-dup-validators | peekaboo-dup-validators | changing-validators | crash | truncate-tendermint | truncate-merkleeyes)'
         required: true
         default: 'none'
-      dupValidators:
-        description: 'Whether to have multiple validators share the same key.'
+      dupOrSuperByzValidators:
+        description: '"--dup-validators" (multiple validators share the same key) and(or) "--super-byzantine-validators" (byzantine validators have just shy of 2/3 the voting weight)'
         required: false
-        default: 'false'
-      superByzantineValidators:
-        description: 'Should byzantine validators have just shy of 2/3 the voting weight?'
-        required: false
-        default: 'false'
+        default: ''
       concurrency:
         description: 'How many workers should we run? Must be an integer and >= 10, optionally followed by n (e.g. 3n) to multiply by the number of nodes.'
         required: true
         default: 10
       timeLimit:
         description: 'Excluding setup and teardown, how long should a test run for, in seconds?'
-        required: false
+        required: true
+        default: 60
       tendermintUrl:
         description: 'Where to grab the Tendermint binary (linux/amd64 tarball)?'
         required: true
@@ -49,4 +46,4 @@ jobs:
 
       - name: Run the test
         working-directory: tendermint
-        run: docker exec -i jepsen-control 'lein run test --nemesis ${{ github.event.inputs.nemesis }} --workload ${{ github.event.inputs.workload }} --concurrency ${{ github.event.inputs.concurrency }} --tendermint-url ${{ github.event.inputs.tendermintUrl }} --merkleeyes-url ${{ github.event.inputs.merkleeyesUrl }}'
+        run: docker exec -i jepsen-control bash -c 'lein run test --nemesis ${{ github.event.inputs.nemesis }} --workload ${{ github.event.inputs.workload }} --concurrency ${{ github.event.inputs.concurrency }} --tendermint-url ${{ github.event.inputs.tendermintUrl }} --merkleeyes-url ${{ github.event.inputs.merkleeyesUrl }} --time-limit ${{ github.event.inputs.timeLimit }} ${{ github.event.inputs.dupOrSuperByzValidators }}'
