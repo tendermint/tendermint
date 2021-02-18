@@ -339,7 +339,7 @@ func (cs *State) OnStart() error {
 				return err
 			}
 
-			cs.Logger.Info("backed up WAL file", "src", cs.config.WalFile(), "dst", corruptedFile)
+			cs.Logger.Debug("backed up WAL file", "src", cs.config.WalFile(), "dst", corruptedFile)
 
 			// 3) try to repair (WAL file will be overwritten!)
 			if err := repairWalFile(corruptedFile, cs.config.WalFile()); err != nil {
@@ -558,14 +558,14 @@ func (cs *State) reconstructLastCommit(state sm.State) {
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
 	if seenCommit == nil {
 		panic(fmt.Sprintf(
-			"failed to reconstruct LastCommit: seen commit for height %v not found",
+			"failed to reconstruct last commit; seen commit for height %v not found",
 			state.LastBlockHeight,
 		))
 	}
 
 	lastPrecommits := types.CommitToVoteSet(state.ChainID, seenCommit, state.LastValidators)
 	if !lastPrecommits.HasTwoThirdsMajority() {
-		panic("failed to reconstruct LastCommit: does not have +2/3 maj")
+		panic("failed to reconstruct last commit; does not have +2/3 maj")
 	}
 
 	cs.LastCommit = lastPrecommits
@@ -605,8 +605,8 @@ func (cs *State) updateToState(state sm.State) {
 		if state.LastBlockHeight <= cs.state.LastBlockHeight {
 			cs.Logger.Debug(
 				"ignoring updateToState()",
-				"newHeight", state.LastBlockHeight+1,
-				"oldHeight", cs.state.LastBlockHeight+1,
+				"new_height", state.LastBlockHeight+1,
+				"old_height", cs.state.LastBlockHeight+1,
 			)
 			cs.newStep()
 			return
@@ -739,7 +739,7 @@ func (cs *State) receiveRoutine(maxSteps int) {
 	for {
 		if maxSteps > 0 {
 			if cs.nSteps >= maxSteps {
-				cs.Logger.Info("reached max steps; exiting receive routine")
+				cs.Logger.Debug("reached max steps; exiting receive routine")
 				cs.nSteps = 0
 				return
 			}
@@ -826,8 +826,8 @@ func (cs *State) handleMsg(mi msgInfo) {
 			cs.Logger.Debug(
 				"received block part from wrong round",
 				"height", cs.Height,
-				"csRound", cs.Round,
-				"blockRound", msg.Round,
+				"cs_round", cs.Round,
+				"block_round", msg.Round,
 			)
 			err = nil
 		}
@@ -862,7 +862,7 @@ func (cs *State) handleMsg(mi msgInfo) {
 
 	if err != nil {
 		cs.Logger.Error(
-			"failed process message",
+			"failed to process message",
 			"height", cs.Height,
 			"round", cs.Round,
 			"peer", peerID,
@@ -1625,7 +1625,7 @@ func (cs *State) finalizeCommit(height int64) {
 	endMsg := EndHeightMessage{height}
 	if err := cs.wal.WriteSync(endMsg); err != nil { // NOTE: fsync
 		panic(fmt.Sprintf(
-			"failed to write %v msg to consensus wal due to %v; check your file system and restart the node",
+			"failed to write %v msg to consensus WAL due to %v; check your file system and restart the node",
 			endMsg, err,
 		))
 	}
