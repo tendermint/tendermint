@@ -1887,21 +1887,13 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.NodeID) (bool, error) {
 	return added, nil
 }
 
-//-----------------------------------------------------------------------------
-
-func (cs *State) addVote(
-	vote *types.Vote,
-	peerID p2p.NodeID) (added bool, err error) {
+func (cs *State) addVote(vote *types.Vote, peerID p2p.NodeID) (added bool, err error) {
 	cs.Logger.Debug(
 		"addVote",
-		"voteHeight",
-		vote.Height,
-		"voteType",
-		vote.Type,
-		"valIndex",
-		vote.ValidatorIndex,
-		"csHeight",
-		cs.Height,
+		"voteHeight", vote.Height,
+		"voteType", vote.Type,
+		"valIndex", vote.ValidatorIndex,
+		"csHeight", cs.Height,
 	)
 
 	// A precommit for the previous height?
@@ -1909,18 +1901,20 @@ func (cs *State) addVote(
 	if vote.Height+1 == cs.Height && vote.Type == tmproto.PrecommitType {
 		if cs.Step != cstypes.RoundStepNewHeight {
 			// Late precommit at prior height is ignored
-			cs.Logger.Debug("Precommit vote came in after commit timeout and has been ignored", "vote", vote)
+			cs.Logger.Debug("precommit vote came in after commit timeout and has been ignored", "vote", vote)
 			return
 		}
+
 		added, err = cs.LastCommit.AddVote(vote)
 		if !added {
 			return
 		}
 
-		cs.Logger.Info(fmt.Sprintf("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
+		cs.Logger.Debug("added to last precommits", "last_commit", cs.LastCommit.StringShort())
 		if err := cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote}); err != nil {
 			return added, err
 		}
+
 		cs.evsw.FireEvent(types.EventVote, vote)
 
 		// if we can skip timeoutCommit and have all the votes now,
