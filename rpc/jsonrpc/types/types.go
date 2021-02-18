@@ -214,7 +214,7 @@ func (resp RPCResponse) String() string {
 //	If there was an error in detecting the id in the Request object (e.g. Parse
 // 	error/Invalid Request), it MUST be Null.
 func RPCParseError(err error) RPCResponse {
-	return NewRPCErrorResponse(nil, -32700, "Parse error. Invalid JSON", err.Error())
+	return NewRPCErrorResponse(nil, -32700, "Parse error", err.Error())
 }
 
 // From the JSON-RPC 2.0 spec:
