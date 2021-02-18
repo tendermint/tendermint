@@ -138,13 +138,11 @@ func defaultEnterPropose(cs *State, height int64, round int32) {
 	if cs.isProposer(address) {
 		logger.Debug("enterPropose: our turn to propose",
 			"proposer", address,
-			"privValidator", cs.privValidator,
 		)
 		cs.decideProposal(height, round)
 	} else {
 		logger.Debug("enterPropose: not our turn to propose",
 			"proposer", cs.Validators.GetProposer().Address,
-			"privValidator", cs.privValidator,
 		)
 	}
 }
