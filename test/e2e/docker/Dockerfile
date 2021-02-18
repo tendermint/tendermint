@@ -27,6 +27,7 @@ RUN cd test/e2e && make app && cp build/app /usr/bin/app
 WORKDIR /tendermint
 VOLUME /tendermint
 ENV TMHOME=/tendermint
+ENV TM_LEGACY_P2P=true
 
 EXPOSE 26656 26657 26660 6060
 ENTRYPOINT ["/usr/bin/entrypoint"]
