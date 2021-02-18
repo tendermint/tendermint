@@ -1095,7 +1095,7 @@ func (cs *State) enterPropose(height int64, round int32) {
 		logger.Debug(
 			"propose step; our turn to propose",
 			"proposer", address,
-			"priv_validator", cs.privValidator,
+			"priv_validator", address,
 		)
 
 		cs.decideProposal(height, round)
@@ -1103,7 +1103,7 @@ func (cs *State) enterPropose(height int64, round int32) {
 		logger.Debug(
 			"propose step; not our turn to propose",
 			"proposer", cs.Validators.GetProposer().Address,
-			"priv_validator", cs.privValidator,
+			"priv_validator", address,
 		)
 	}
 }
