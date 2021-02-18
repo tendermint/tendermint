@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -10,6 +11,7 @@ import (
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -25,8 +27,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 	// Exception for websocket endpoints
 	if rpcFunc.ws {
 		return func(w http.ResponseWriter, r *http.Request) {
-			WriteRPCResponseHTTPError(w, http.StatusNotFound,
-				types.RPCMethodNotFoundError(dummyID))
+			WriteRPCResponseHTTPError(w, types.RPCMethodNotFoundError(dummyID))
 		}
 	}
 
@@ -41,7 +42,6 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		if err != nil {
 			WriteRPCResponseHTTPError(
 				w,
-				http.StatusInternalServerError,
 				types.RPCInvalidParamsError(
 					dummyID,
 					fmt.Errorf("error converting http params to arguments: %w", err),
@@ -55,12 +55,27 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 
 		logger.Debug("HTTPRestRPC", "method", r.URL.Path, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
-		if err != nil {
-			WriteRPCResponseHTTPError(w, http.StatusInternalServerError,
-				types.RPCInternalError(dummyID, err))
-			return
+		switch e := err.(type) {
+		// if no error then return a success response
+		case nil:
+			WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(dummyID, result))
+
+		// if this already of type RPC error then forward that error.
+		case *types.RPCError:
+			WriteRPCResponseHTTPError(w, types.NewRPCErrorResponse(dummyID, e.Code, e.Message, e.Data))
+
+		default: // we need to unwrap the error and parse it accordingly
+
+			switch errors.Unwrap(err) {
+			case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage,
+				ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
+				WriteRPCResponseHTTPError(w, types.RPCInvalidRequestError(dummyID, err))
+
+			default: // ctypes.ErrHeightNotAvailable, ctypes.ErrHeightExceedsChainHead:
+				WriteRPCResponseHTTPError(w, types.RPCInternalError(dummyID, err))
+			}
 		}
-		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(dummyID, result))
+
 	}
 }
 

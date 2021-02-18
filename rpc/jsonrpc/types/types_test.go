@@ -40,7 +40,7 @@ func TestResponses(t *testing.T) {
 
 		d := RPCParseError(errors.New("hello world"))
 		e, _ := json.Marshal(d)
-		f := `{"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error. Invalid JSON","data":"hello world"}}`
+		f := `{"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error","data":"hello world"}}`
 		assert.Equal(f, string(e))
 
 		g := RPCMethodNotFoundError(jsonid)
