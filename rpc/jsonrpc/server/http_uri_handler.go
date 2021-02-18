@@ -58,22 +58,22 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		logger.Debug("HTTPRestRPC", "method", r.URL.Path, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
 		switch e := err.(type) {
-		// if no error then return a success reponse
+		// if no error then return a success response
 		case nil:
 			WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(dummyID, result))
-		
+
 		// if this already of type RPC error then forward that error. Annoyingly, we still need to unwrap the error
-		// to determing what http status code it should be sent with
+		// to determine what http status code it should be sent with
 		case *types.RPCError:
 			httpStatus := http.StatusInternalServerError
 			if e.Code == -32600 {
 				httpStatus = http.StatusBadRequest
-			} else if strings.Contains(e.Data, ctypes.ErrHeightNotAvailable.Error()) || 
+			} else if strings.Contains(e.Data, ctypes.ErrHeightNotAvailable.Error()) ||
 				strings.Contains(e.Data, ctypes.ErrHeightExceedsChainHead.Error()) {
 				httpStatus = http.StatusNotFound
 			}
 			WriteRPCResponseHTTPError(w, httpStatus, types.NewRPCErrorResponse(dummyID, e.Code, e.Message, e.Data))
-		
+
 		default: // we need to unwrap the error and parse it accordingly
 			switch errors.Unwrap(err) {
 			case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage,
@@ -86,7 +86,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 					types.RPCInternalError(dummyID, err))
 			}
 		}
-		
+
 	}
 }
 

@@ -103,7 +103,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
 			result, err := unreflectResult(returns)
 			switch e := err.(type) {
-			// if no error then return a success reponse
+			// if no error then return a success response
 			case nil:
 				responses = append(responses, types.NewRPCSuccessResponse(request.ID, result))
 
@@ -118,7 +118,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 					ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
 					responses = append(responses, types.RPCInvalidRequestError(request.ID, err))
 
-				// lastly default all remainding errors as internal
+				// lastly default all remaining errors as internal errors
 				default: // includes ctypes.ErrHeightNotAvailable and ctypes.ErrHeightExceedsChainHead
 					responses = append(responses, types.RPCInternalError(request.ID, err))
 				}

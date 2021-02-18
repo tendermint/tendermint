@@ -387,7 +387,7 @@ func (wsc *wsConnection) readRoutine() {
 			var resp types.RPCResponse
 			result, err := unreflectResult(returns)
 			switch e := err.(type) {
-			// if no error then return a success reponse
+			// if no error then return a success response
 			case nil:
 				resp = types.NewRPCSuccessResponse(request.ID, result)
 
@@ -402,16 +402,16 @@ func (wsc *wsConnection) readRoutine() {
 					ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
 					resp = types.RPCInvalidRequestError(request.ID, err)
 
-				// lastly default all remainding errors as internal
+				// lastly default all remaining errors as internal errors
 				default: // includes ctypes.ErrHeightNotAvailable and ctypes.ErrHeightExceedsChainHead
 					resp = types.RPCInternalError(request.ID, err)
 				}
-			}			
+			}
 
 			if err := wsc.WriteRPCResponse(writeCtx, resp); err != nil {
 				wsc.Logger.Error("Error writing RPC response", "err", err)
 			}
-			
+
 		}
 	}
 }
