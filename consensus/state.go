@@ -1095,10 +1095,7 @@ func (cs *State) enterPropose(height int64, round int32) {
 		logger.Debug(
 			"propose step; our turn to propose",
 			"proposer", address,
-<<<<<<< HEAD
-=======
 			"priv_validator", cs.privValidator,
->>>>>>> 8a3637a24... consensus: more log grooming (#6140)
 		)
 
 		cs.decideProposal(height, round)
@@ -1106,10 +1103,7 @@ func (cs *State) enterPropose(height int64, round int32) {
 		logger.Debug(
 			"propose step; not our turn to propose",
 			"proposer", cs.Validators.GetProposer().Address,
-<<<<<<< HEAD
-=======
 			"priv_validator", cs.privValidator,
->>>>>>> 8a3637a24... consensus: more log grooming (#6140)
 		)
 	}
 }
@@ -1982,11 +1976,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 			// 2) not a bad peer? this can also err sometimes with "Unexpected step" OR
 			// 3) tmkms use with multiple validators connecting to a single tmkms instance
 			// 		(https://github.com/tendermint/tendermint/issues/3839).
-<<<<<<< HEAD
-			cs.Logger.Info("Error attempting to add vote", "err", err)
-=======
 			cs.Logger.Error("failed attempting to add vote", "err", err)
->>>>>>> 8a3637a24... consensus: more log grooming (#6140)
 			return added, ErrAddingVote
 		}
 	}
@@ -1994,15 +1984,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 	return added, nil
 }
 
-<<<<<<< HEAD
-//-----------------------------------------------------------------------------
-
-func (cs *State) addVote(
-	vote *types.Vote,
-	peerID p2p.ID) (added bool, err error) {
-=======
-func (cs *State) addVote(vote *types.Vote, peerID p2p.NodeID) (added bool, err error) {
->>>>>>> 8a3637a24... consensus: more log grooming (#6140)
+func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error) {
 	cs.Logger.Debug(
 		"adding vote",
 		"vote_height", vote.Height,
@@ -2247,11 +2229,7 @@ func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header 
 	vote, err := cs.signVote(msgType, hash, header)
 	if err == nil {
 		cs.sendInternalMessage(msgInfo{&VoteMessage{vote}, ""})
-<<<<<<< HEAD
-		cs.Logger.Info("Signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)
-=======
 		cs.Logger.Info("signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)
->>>>>>> 8a3637a24... consensus: more log grooming (#6140)
 		return vote
 	}
 
