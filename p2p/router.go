@@ -260,6 +260,7 @@ func (r *Router) OpenChannel(id ChannelID, messageType proto.Message, size int) 
 	if _, ok := r.channelQueues[id]; ok {
 		return nil, fmt.Errorf("channel %v already exists", id)
 	}
+
 	r.channelQueues[id] = queue
 	r.channelMessages[id] = messageType
 
@@ -300,38 +301,43 @@ func (r *Router) routeChannel(
 			// it on to Transport.SendMessage().
 			envelope.channelID = chID
 
-			// Wrap the message in a wrapper message, if requested.
+			// wrap the message in a wrapper message, if requested
 			if wrapper != nil {
 				msg := proto.Clone(wrapper)
 				if err := msg.(Wrapper).Wrap(envelope.Message); err != nil {
 					r.Logger.Error("failed to wrap message", "channel", chID, "err", err)
 					continue
 				}
+
 				envelope.Message = msg
 			}
 
-			// Collect peer queues to pass the message via.
+			// collect peer queues to pass the message via
 			var queues []queue
 			if envelope.Broadcast {
 				r.peerMtx.RLock()
+
 				queues = make([]queue, 0, len(r.peerQueues))
 				for _, q := range r.peerQueues {
 					queues = append(queues, q)
 				}
+
 				r.peerMtx.RUnlock()
 			} else {
 				r.peerMtx.RLock()
 				q, ok := r.peerQueues[envelope.To]
 				r.peerMtx.RUnlock()
+
 				if !ok {
 					r.logger.Debug("dropping message for unconnected peer",
 						"peer", envelope.To, "channel", chID)
 					continue
 				}
+
 				queues = []queue{q}
 			}
 
-			// Send message to peers.
+			// send message to peers
 			for _, q := range queues {
 				start := time.Now().UTC()
 
@@ -351,7 +357,9 @@ func (r *Router) routeChannel(
 			if !ok {
 				return
 			}
+
 			r.logger.Error("peer error, evicting", "peer", peerError.NodeID, "err", peerError.Err)
+
 			if err := r.peerManager.Errored(peerError.NodeID, peerError.Err); err != nil {
 				r.logger.Error("failed to report peer error", "peer", peerError.NodeID, "err", err)
 			}
@@ -610,10 +618,13 @@ func (r *Router) handshakePeer(ctx context.Context, conn Connection, expectID No
 // they are closed elsewhere it will cause this method to shut down and return.
 func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
 	r.logger.Info("peer connected", "peer", peerID, "endpoint", conn)
+
 	errCh := make(chan error, 2)
+
 	go func() {
 		errCh <- r.receivePeer(peerID, conn)
 	}()
+
 	go func() {
 		errCh <- r.sendPeer(peerID, conn, sendQueue)
 	}()
@@ -621,14 +632,17 @@ func (r *Router) routePeer(peerID NodeID, conn Connection, sendQueue queue) {
 	err := <-errCh
 	_ = conn.Close()
 	sendQueue.close()
+
 	if e := <-errCh; err == nil {
 		// The first err was nil, so we update it with the second err, which may
 		// or may not be nil.
 		err = e
 	}
+
 	switch err {
 	case nil, io.EOF:
 		r.logger.Info("peer disconnected", "peer", peerID, "endpoint", conn)
+
 	default:
 		r.logger.Error("peer failure", "peer", peerID, "endpoint", conn, "err", err)
 	}
@@ -647,6 +661,7 @@ func (r *Router) receivePeer(peerID NodeID, conn Connection) error {
 		queue, ok := r.channelQueues[chID]
 		messageType := r.channelMessages[chID]
 		r.channelMtx.RUnlock()
+
 		if !ok {
 			r.logger.Debug("dropping message for unknown channel", "peer", peerID, "channel", chID)
 			continue
@@ -657,6 +672,7 @@ func (r *Router) receivePeer(peerID NodeID, conn Connection) error {
 			r.logger.Error("message decoding failed, dropping message", "peer", peerID, "err", err)
 			continue
 		}
+
 		if wrapper, ok := msg.(Wrapper); ok {
 			msg, err = wrapper.Unwrap()
 			if err != nil {
@@ -720,21 +736,26 @@ func (r *Router) sendPeer(peerID NodeID, conn Connection, peerQueue queue) error
 func (r *Router) evictPeers() {
 	r.logger.Debug("starting evict routine")
 	ctx := r.stopCtx()
+
 	for {
 		peerID, err := r.peerManager.EvictNext(ctx)
+
 		switch {
 		case errors.Is(err, context.Canceled):
 			r.logger.Debug("stopping evict routine")
 			return
+
 		case err != nil:
 			r.logger.Error("failed to find next peer to evict", "err", err)
 			return
 		}
 
 		r.logger.Info("evicting peer", "peer", peerID)
+
 		r.peerMtx.RLock()
 		queue, ok := r.peerQueues[peerID]
 		r.peerMtx.RUnlock()
+
 		if ok {
 			queue.close()
 		}
@@ -745,9 +766,11 @@ func (r *Router) evictPeers() {
 func (r *Router) OnStart() error {
 	go r.dialPeers()
 	go r.evictPeers()
+
 	for _, transport := range r.transports {
 		go r.acceptPeers(transport)
 	}
+
 	return nil
 }
 
@@ -770,16 +793,19 @@ func (r *Router) OnStop() {
 
 	// Collect all remaining queues, and wait for them to close.
 	queues := []queue{}
+
 	r.channelMtx.RLock()
 	for _, q := range r.channelQueues {
 		queues = append(queues, q)
 	}
 	r.channelMtx.RUnlock()
+
 	r.peerMtx.RLock()
 	for _, q := range r.peerQueues {
 		queues = append(queues, q)
 	}
 	r.peerMtx.RUnlock()
+
 	for _, q := range queues {
 		<-q.closed()
 	}
@@ -788,9 +814,11 @@ func (r *Router) OnStop() {
 // stopCtx returns a new context that is canceled when the router stops.
 func (r *Router) stopCtx() context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
+
 	go func() {
 		<-r.stopCh
 		cancel()
 	}()
+
 	return ctx
 }
