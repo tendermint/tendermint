@@ -234,10 +234,10 @@ func (blockExec *BlockExecutor) Commit(
 	// ResponseCommit has no error code - just data
 
 	blockExec.logger.Info(
-		"Committed state",
+		"committed state",
 		"height", block.Height,
-		"txs", len(block.Txs),
-		"appHash", res.Data,
+		"num_txs", len(block.Txs),
+		"app_hash", fmt.Sprintf("%X", res.Data),
 	)
 
 	// Update mempool.
@@ -333,7 +333,7 @@ func execBlockOnProxyApp(
 		return nil, err
 	}
 
-	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
+	logger.Info("executed block", "height", block.Height, "num_valid_txs", validTxs, "num_invalid_txs", invalidTxs)
 
 	return abciResponses, nil
 }
