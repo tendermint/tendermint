@@ -772,49 +772,54 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID,
 		if !bv.Verify() {
 			// reset talliedVotingPower to verify enough signatures to meet the 2/3+ threshold
 			talliedVotingPower = 0
-			if err := singleVerifyCommitLight(commit, vals, chainID, talliedVotingPower, votingPowerNeeded); err != nil {
-				return err
+			for idx, commitSig := range commit.Signatures {
+				// No need to verify absent or nil votes.
+				if !commitSig.ForBlock() {
+					continue
+				}
+
+				// The vals and commit have a 1-to-1 correspondance.
+				// This means we don't need the validator address or to do any lookup.
+				val := vals.Validators[idx]
+				voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+				// Validate signature.
+				if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
+					return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
+				}
+
+				talliedVotingPower += val.VotingPower
+
+				// return as soon as +2/3 of the signatures are verified
+				if talliedVotingPower > votingPowerNeeded {
+					return nil
+				}
 			}
 		}
-
 	} else {
-		if err := singleVerifyCommitLight(commit, vals, chainID, talliedVotingPower, votingPowerNeeded); err != nil {
-			return err
+		for idx, commitSig := range commit.Signatures {
+			// No need to verify absent or nil votes.
+			if !commitSig.ForBlock() {
+				continue
+			}
+
+			// The vals and commit have a 1-to-1 correspondance.
+			// This means we don't need the validator address or to do any lookup.
+			val := vals.Validators[idx]
+			voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+			// Validate signature.
+			if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
+				return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
+			}
+
+			talliedVotingPower += val.VotingPower
+
+			// return as soon as +2/3 of the signatures are verified
+			if talliedVotingPower > votingPowerNeeded {
+				return nil
+			}
 		}
 	}
-
 	return ErrNotEnoughVotingPowerSigned{Got: talliedVotingPower, Needed: votingPowerNeeded}
-}
-
-// singleVerifyCommitLight loops through commit signatures rebuilding commits in order to verify signatures.
-func singleVerifyCommitLight(
-	commit *Commit,
-	vals *ValidatorSet,
-	chainID string,
-	talliedVotingPower, votingPowerNeeded int64) error {
-	for idx, commitSig := range commit.Signatures {
-		// No need to verify absent or nil votes.
-		if !commitSig.ForBlock() {
-			continue
-		}
-
-		// The vals and commit have a 1-to-1 correspondance.
-		// This means we don't need the validator address or to do any lookup.
-		val := vals.Validators[idx]
-		voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
-		// Validate signature.
-		if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
-			return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
-		}
-
-		talliedVotingPower += val.VotingPower
-
-		// return as soon as +2/3 of the signatures are verified
-		if talliedVotingPower > votingPowerNeeded {
-			return nil
-		}
-	}
-	return nil
 }
 
 // VerifyCommitLightTrusting verifies that trustLevel of the validator set signed
@@ -885,64 +890,74 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 		}
 		if !bv.Verify() {
 			talliedVotingPower = 0
-			if err := singleVerifyCommitLightTrusting(
-				commit, vals, seenVals, chainID, talliedVotingPower, votingPowerNeeded,
-			); err != nil {
-				return err
+			for idx, commitSig := range commit.Signatures {
+				// No need to verify absent or nil votes.
+				if !commitSig.ForBlock() {
+					continue
+				}
+
+				// We don't know the validators that committed this block, so we have to
+				// check for each vote if its validator is already known.
+				valIdx, val := vals.GetByAddress(commitSig.ValidatorAddress)
+
+				if val != nil {
+					// check for double vote of validator on the same commit
+					if firstIndex, ok := seenVals[valIdx]; ok {
+						secondIndex := idx
+						return fmt.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
+					}
+					seenVals[valIdx] = idx
+
+					// Validate signature.
+					voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+					if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
+						return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
+					}
+
+					talliedVotingPower += val.VotingPower
+
+					if talliedVotingPower > votingPowerNeeded {
+						return nil
+					}
+				}
 			}
 
 		}
 	} else {
-		if err := singleVerifyCommitLightTrusting(
-			commit, vals, seenVals, chainID, talliedVotingPower, votingPowerNeeded,
-		); err != nil {
-			return err
+		for idx, commitSig := range commit.Signatures {
+			// No need to verify absent or nil votes.
+			if !commitSig.ForBlock() {
+				continue
+			}
+
+			// We don't know the validators that committed this block, so we have to
+			// check for each vote if its validator is already known.
+			valIdx, val := vals.GetByAddress(commitSig.ValidatorAddress)
+
+			if val != nil {
+				// check for double vote of validator on the same commit
+				if firstIndex, ok := seenVals[valIdx]; ok {
+					secondIndex := idx
+					return fmt.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
+				}
+				seenVals[valIdx] = idx
+
+				// Validate signature.
+				voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+				if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
+					return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
+				}
+
+				talliedVotingPower += val.VotingPower
+
+				if talliedVotingPower > votingPowerNeeded {
+					return nil
+				}
+			}
 		}
 	}
 
 	return ErrNotEnoughVotingPowerSigned{Got: talliedVotingPower, Needed: votingPowerNeeded}
-}
-
-// singleVerifyCommitLightTrusting handles single key verification for VerifyCommitLightTrusting
-func singleVerifyCommitLightTrusting(
-	commit *Commit,
-	vals *ValidatorSet,
-	seenVals map[int32]int,
-	chainID string,
-	talliedVotingPower, votingPowerNeeded int64) error {
-	for idx, commitSig := range commit.Signatures {
-		// No need to verify absent or nil votes.
-		if !commitSig.ForBlock() {
-			continue
-		}
-
-		// We don't know the validators that committed this block, so we have to
-		// check for each vote if its validator is already known.
-		valIdx, val := vals.GetByAddress(commitSig.ValidatorAddress)
-
-		if val != nil {
-			// check for double vote of validator on the same commit
-			if firstIndex, ok := seenVals[valIdx]; ok {
-				secondIndex := idx
-				return fmt.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
-			}
-			seenVals[valIdx] = idx
-
-			// Validate signature.
-			voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
-			if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
-				return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
-			}
-
-			talliedVotingPower += val.VotingPower
-
-			if talliedVotingPower > votingPowerNeeded {
-				return nil
-			}
-		}
-	}
-
-	return nil
 }
 
 // findPreviousProposer reverses the compare proposer priority function to find the validator
