@@ -53,9 +53,9 @@ issues:
 linters-settings:
   dogsled:
     max-blank-identifiers: 3
-  maligned:
-    suggest-new: true
-  # govet:
-  #   check-shadowing: true
   golint:
     min-confidence: 0
+  maligned:
+    suggest-new: true
+  misspell:
+    locale: US

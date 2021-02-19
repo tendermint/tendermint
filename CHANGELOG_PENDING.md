@@ -13,6 +13,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [config] \#5728 `fast_sync = "v1"` is no longer supported (@melekes)
   - [cli] \#5772 `gen_node_key` prints JSON-encoded `NodeKey` rather than ID and does not save it to `node_key.json` (@melekes)
   - [cli] \#5777 use hyphen-case instead of snake_case for all cli commands and config parameters (@cmwaters)
+  - [rpc] \#6019 standardise RPC errors and return the correct status code (@bipulprasad & @cmwaters)
 
 - Apps
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
@@ -32,9 +33,11 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [state] \#5864 Use an iterator when pruning state (@cmwaters)
   - [types] \#6023 Remove `tm2pb.Header`, `tm2pb.BlockID`, `tm2pb.PartSetHeader` and `tm2pb.NewValidatorUpdate`.
     - Each of the above types has a `ToProto` and `FromProto` method or function which replaced this logic.
-  - [rpc/client/http] \#6022 Change `timeout` type to `time.Duration` in `NewWithTimeout`
   - [light] \#6054 Move `MaxRetryAttempt` option from client to provider.
     - `NewWithOptions` now sets the max retry attempts and timeouts (@cmwaters)
+  - [all] \#6077 Change spelling from British English to American (@cmwaters)
+    - Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
+    - Rename "behaviour" pkg to "behavior" and internalized it in blockchain v2
 
 - Blockchain Protocol
 
@@ -64,9 +67,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### BUG FIXES
 
+- [ABCI] \#6124 Fixes a panic condition during callback execution in `ReCheckTx` during high tx load. (@alexanderbez)
 - [types] \#5523 Change json naming of `PartSetHeader` within `BlockID` from `parts` to `part_set_header` (@marbar3778)
 - [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
 - [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)
-- [light] \#6022 Fix a bug when the number of validators equals 100 (@melekes)
-- [light] \#6026 Fix a bug when height isn't provided for the rpc calls: `/commit` and `/validators` (@cmwaters)

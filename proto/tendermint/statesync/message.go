@@ -7,7 +7,7 @@ import (
 	proto "github.com/gogo/protobuf/proto"
 )
 
-// Wrap implements the p2p Wrapper interface and wraps a state sync messages.
+// Wrap implements the p2p Wrapper interface and wraps a state sync proto message.
 func (m *Message) Wrap(pb proto.Message) error {
 	switch msg := pb.(type) {
 	case *ChunkRequest:
@@ -30,7 +30,7 @@ func (m *Message) Wrap(pb proto.Message) error {
 }
 
 // Unwrap implements the p2p Wrapper interface and unwraps a wrapped state sync
-// message.
+// proto message.
 func (m *Message) Unwrap() (proto.Message, error) {
 	switch msg := m.Sum.(type) {
 	case *Message_ChunkRequest:

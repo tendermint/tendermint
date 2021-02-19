@@ -11,6 +11,7 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
@@ -94,8 +95,9 @@ type Environment struct {
 //----------------------------------------------
 
 func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
+	// this can only happen if we haven't first run validatePerPage
 	if perPage < 1 {
-		panic(fmt.Sprintf("zero or negative perPage: %d", perPage))
+		panic(fmt.Errorf("%w (%d)", ctypes.ErrZeroOrNegativePerPage, perPage))
 	}
 
 	if pagePtr == nil { // no page parameter
@@ -108,7 +110,7 @@ func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	}
 	page := *pagePtr
 	if page <= 0 || page > pages {
-		return 1, fmt.Errorf("page should be within [1, %d] range, given %d", pages, page)
+		return 1, fmt.Errorf("%w expected range: [1, %d], given %d", ctypes.ErrPageOutOfRange, pages, page)
 	}
 
 	return page, nil
@@ -142,16 +144,15 @@ func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
 	if heightPtr != nil {
 		height := *heightPtr
 		if height <= 0 {
-			return 0, fmt.Errorf("height must be greater than 0, but got %d", height)
+			return 0, fmt.Errorf("%w (requested height: %d)", ctypes.ErrZeroOrNegativeHeight, height)
 		}
 		if height > latestHeight {
-			return 0, fmt.Errorf("height %d must be less than or equal to the current blockchain height %d",
-				height, latestHeight)
+			return 0, fmt.Errorf("%w (requested height: %d, blockchain height: %d)",
+				ctypes.ErrHeightExceedsChainHead, height, latestHeight)
 		}
 		base := env.BlockStore.Base()
 		if height < base {
-			return 0, fmt.Errorf("height %v is not available, lowest height is %v",
-				height, base)
+			return 0, fmt.Errorf("%w (requested height: %d, base height: %d)", ctypes.ErrHeightExceedsChainHead, height, base)
 		}
 		return height, nil
 	}

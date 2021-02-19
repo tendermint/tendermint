@@ -61,11 +61,11 @@ Inside the example directory create a `main.go` file with the following content:
 package main
 
 import (
-	"fmt"
+ "fmt"
 )
 
 func main() {
-	fmt.Println("Hello, Tendermint Core")
+ fmt.Println("Hello, Tendermint Core")
 }
 ```
 
@@ -90,7 +90,7 @@ Create a file called `app.go` with the following content:
 package main
 
 import (
-	abcitypes "github.com/tendermint/tendermint/abci/types"
+ abcitypes "github.com/tendermint/tendermint/abci/types"
 )
 
 type KVStoreApplication struct {}
@@ -98,55 +98,55 @@ type KVStoreApplication struct {}
 var _ abcitypes.Application = (*KVStoreApplication)(nil)
 
 func NewKVStoreApplication() *KVStoreApplication {
-	return &KVStoreApplication{}
+ return &KVStoreApplication{}
 }
 
 func (KVStoreApplication) Info(req abcitypes.RequestInfo) abcitypes.ResponseInfo {
-	return abcitypes.ResponseInfo{}
+ return abcitypes.ResponseInfo{}
 }
 
 func (KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcitypes.ResponseDeliverTx {
-	return abcitypes.ResponseDeliverTx{Code: 0}
+ return abcitypes.ResponseDeliverTx{Code: 0}
 }
 
 func (KVStoreApplication) CheckTx(req abcitypes.RequestCheckTx) abcitypes.ResponseCheckTx {
-	return abcitypes.ResponseCheckTx{Code: 0}
+ return abcitypes.ResponseCheckTx{Code: 0}
 }
 
 func (KVStoreApplication) Commit() abcitypes.ResponseCommit {
-	return abcitypes.ResponseCommit{}
+ return abcitypes.ResponseCommit{}
 }
 
 func (KVStoreApplication) Query(req abcitypes.RequestQuery) abcitypes.ResponseQuery {
-	return abcitypes.ResponseQuery{Code: 0}
+ return abcitypes.ResponseQuery{Code: 0}
 }
 
 func (KVStoreApplication) InitChain(req abcitypes.RequestInitChain) abcitypes.ResponseInitChain {
-	return abcitypes.ResponseInitChain{}
+ return abcitypes.ResponseInitChain{}
 }
 
 func (KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
-	return abcitypes.ResponseBeginBlock{}
+ return abcitypes.ResponseBeginBlock{}
 }
 
 func (KVStoreApplication) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndBlock {
-	return abcitypes.ResponseEndBlock{}
+ return abcitypes.ResponseEndBlock{}
 }
 
 func (KVStoreApplication) ListSnapshots(abcitypes.RequestListSnapshots) abcitypes.ResponseListSnapshots {
-	return abcitypes.ResponseListSnapshots{}
+ return abcitypes.ResponseListSnapshots{}
 }
 
 func (KVStoreApplication) OfferSnapshot(abcitypes.RequestOfferSnapshot) abcitypes.ResponseOfferSnapshot {
-	return abcitypes.ResponseOfferSnapshot{}
+ return abcitypes.ResponseOfferSnapshot{}
 }
 
 func (KVStoreApplication) LoadSnapshotChunk(abcitypes.RequestLoadSnapshotChunk) abcitypes.ResponseLoadSnapshotChunk {
-	return abcitypes.ResponseLoadSnapshotChunk{}
+ return abcitypes.ResponseLoadSnapshotChunk{}
 }
 
 func (KVStoreApplication) ApplySnapshotChunk(abcitypes.RequestApplySnapshotChunk) abcitypes.ResponseApplySnapshotChunk {
-	return abcitypes.ResponseApplySnapshotChunk{}
+ return abcitypes.ResponseApplySnapshotChunk{}
 }
 ```
 
@@ -162,40 +162,40 @@ application to check it (validate the format, signatures, etc.).
 import "bytes"
 
 func (app *KVStoreApplication) isValid(tx []byte) (code uint32) {
-	// check format
-	parts := bytes.Split(tx, []byte("="))
-	if len(parts) != 2 {
-		return 1
-	}
+ // check format
+ parts := bytes.Split(tx, []byte("="))
+ if len(parts) != 2 {
+  return 1
+ }
 
-	key, value := parts[0], parts[1]
+ key, value := parts[0], parts[1]
 
-	// check if the same key=value already exists
-	err := app.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
-		if err != nil && err != badger.ErrKeyNotFound {
-			return err
-		}
-		if err == nil {
-			return item.Value(func(val []byte) error {
-				if bytes.Equal(val, value) {
-					code = 2
-				}
-				return nil
-			})
-		}
-		return nil
-	})
-	if err != nil {
-		panic(err)
-	}
+ // check if the same key=value already exists
+ err := app.db.View(func(txn *badger.Txn) error {
+  item, err := txn.Get(key)
+  if err != nil && err != badger.ErrKeyNotFound {
+   return err
+  }
+  if err == nil {
+   return item.Value(func(val []byte) error {
+    if bytes.Equal(val, value) {
+     code = 2
+    }
+    return nil
+   })
+  }
+  return nil
+ })
+ if err != nil {
+  panic(err)
+ }
 
-	return code
+ return code
 }
 
 func (app *KVStoreApplication) CheckTx(req abcitypes.RequestCheckTx) abcitypes.ResponseCheckTx {
-	code := app.isValid(req.Tx)
-	return abcitypes.ResponseCheckTx{Code: code, GasWanted: 1}
+ code := app.isValid(req.Tx)
+ return abcitypes.ResponseCheckTx{Code: code, GasWanted: 1}
 }
 ```
 
@@ -220,14 +220,14 @@ persistent and fast key-value (KV) database.
 import "github.com/dgraph-io/badger"
 
 type KVStoreApplication struct {
-	db           *badger.DB
-	currentBatch *badger.Txn
+ db           *badger.DB
+ currentBatch *badger.Txn
 }
 
 func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
-	return &KVStoreApplication{
-		db: db,
-	}
+ return &KVStoreApplication{
+  db: db,
+ }
 }
 ```
 
@@ -240,8 +240,8 @@ responses are expected to come in order.
 
 ```go
 func (app *KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
-	app.currentBatch = app.db.NewTransaction(true)
-	return abcitypes.ResponseBeginBlock{}
+ app.currentBatch = app.db.NewTransaction(true)
+ return abcitypes.ResponseBeginBlock{}
 }
 ```
 
@@ -249,20 +249,20 @@ Here we create a batch, which will store block's transactions.
 
 ```go
 func (app *KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcitypes.ResponseDeliverTx {
-	code := app.isValid(req.Tx)
-	if code != 0 {
-		return abcitypes.ResponseDeliverTx{Code: code}
-	}
+ code := app.isValid(req.Tx)
+ if code != 0 {
+  return abcitypes.ResponseDeliverTx{Code: code}
+ }
 
-	parts := bytes.Split(req.Tx, []byte("="))
-	key, value := parts[0], parts[1]
+ parts := bytes.Split(req.Tx, []byte("="))
+ key, value := parts[0], parts[1]
 
-	err := app.currentBatch.Set(key, value)
-	if err != nil {
-		panic(err)
-	}
+ err := app.currentBatch.Set(key, value)
+ if err != nil {
+  panic(err)
+ }
 
-	return abcitypes.ResponseDeliverTx{Code: 0}
+ return abcitypes.ResponseDeliverTx{Code: 0}
 }
 ```
 
@@ -282,8 +282,8 @@ yet committed).
 
 ```go
 func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
-	app.currentBatch.Commit()
-	return abcitypes.ResponseCommit{Data: []byte{}}
+ app.currentBatch.Commit()
+ return abcitypes.ResponseCommit{Data: []byte{}}
 }
 ```
 
@@ -303,27 +303,27 @@ Note we don't include a proof here.
 
 ```go
 func (app *KVStoreApplication) Query(reqQuery abcitypes.RequestQuery) (resQuery abcitypes.ResponseQuery) {
-	resQuery.Key = reqQuery.Data
-	err := app.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(reqQuery.Data)
-		if err != nil && err != badger.ErrKeyNotFound {
-			return err
-		}
-		if err == badger.ErrKeyNotFound {
-			resQuery.Log = "does not exist"
-		} else {
-			return item.Value(func(val []byte) error {
-				resQuery.Log = "exists"
-				resQuery.Value = val
-				return nil
-			})
-		}
-		return nil
-	})
-	if err != nil {
-		panic(err)
-	}
-	return
+ resQuery.Key = reqQuery.Data
+ err := app.db.View(func(txn *badger.Txn) error {
+  item, err := txn.Get(reqQuery.Data)
+  if err != nil && err != badger.ErrKeyNotFound {
+   return err
+  }
+  if err == badger.ErrKeyNotFound {
+   resQuery.Log = "does not exist"
+  } else {
+   return item.Value(func(val []byte) error {
+    resQuery.Log = "exists"
+    resQuery.Value = val
+    return nil
+   })
+  }
+  return nil
+ })
+ if err != nil {
+  panic(err)
+ }
+ return
 }
 ```
 
@@ -338,49 +338,49 @@ Put the following code into the "main.go" file:
 package main
 
 import (
-	"flag"
-	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
+ "flag"
+ "fmt"
+ "os"
+ "os/signal"
+ "syscall"
 
-	"github.com/dgraph-io/badger"
+ "github.com/dgraph-io/badger"
 
-	abciserver "github.com/tendermint/tendermint/abci/server"
-	"github.com/tendermint/tendermint/libs/log"
+ abciserver "github.com/tendermint/tendermint/abci/server"
+ "github.com/tendermint/tendermint/libs/log"
 )
 
 var socketAddr string
 
 func init() {
-	flag.StringVar(&socketAddr, "socket-addr", "unix://example.sock", "Unix domain socket address")
+ flag.StringVar(&socketAddr, "socket-addr", "unix://example.sock", "Unix domain socket address")
 }
 
 func main() {
-	db, err := badger.Open(badger.DefaultOptions("/tmp/badger"))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open badger db: %v", err)
-		os.Exit(1)
-	}
-	defer db.Close()
-	app := NewKVStoreApplication(db)
+ db, err := badger.Open(badger.DefaultOptions("/tmp/badger"))
+ if err != nil {
+  fmt.Fprintf(os.Stderr, "failed to open badger db: %v", err)
+  os.Exit(1)
+ }
+ defer db.Close()
+ app := NewKVStoreApplication(db)
 
-	flag.Parse()
+ flag.Parse()
 
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+ logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
-	server := abciserver.NewSocketServer(socketAddr, app)
-	server.SetLogger(logger)
-	if err := server.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "error starting socket server: %v", err)
-		os.Exit(1)
-	}
-	defer server.Stop()
+ server := abciserver.NewSocketServer(socketAddr, app)
+ server.SetLogger(logger)
+ if err := server.Start(); err != nil {
+  fmt.Fprintf(os.Stderr, "error starting socket server: %v", err)
+  os.Exit(1)
+ }
+ defer server.Stop()
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	<-c
-	os.Exit(0)
+ c := make(chan os.Signal, 1)
+ signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+ <-c
+ os.Exit(0)
 }
 ```
 
@@ -391,8 +391,8 @@ First, we initialize the Badger database and create an app instance:
 ```go
 db, err := badger.Open(badger.DefaultOptions("/tmp/badger"))
 if err != nil {
-	fmt.Fprintf(os.Stderr, "failed to open badger db: %v", err)
-	os.Exit(1)
+ fmt.Fprintf(os.Stderr, "failed to open badger db: %v", err)
+ os.Exit(1)
 }
 defer db.Close()
 app := NewKVStoreApplication(db)
@@ -413,8 +413,8 @@ which connects to our server and send us transactions and other messages.
 server := abciserver.NewSocketServer(socketAddr, app)
 server.SetLogger(logger)
 if err := server.Start(); err != nil {
-	fmt.Fprintf(os.Stderr, "error starting socket server: %v", err)
-	os.Exit(1)
+ fmt.Fprintf(os.Stderr, "error starting socket server: %v", err)
+ os.Exit(1)
 }
 defer server.Stop()
 
@@ -449,8 +449,8 @@ module github.com/me/example
 go 1.15
 
 require (
-	github.com/dgraph-io/badger v1.6.2
-	github.com/tendermint/tendermint <vX>
+ github.com/dgraph-io/badger v1.6.2
+ github.com/tendermint/tendermint <vX>
 )
 ```
 

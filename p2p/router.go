@@ -58,7 +58,7 @@ type Channel struct {
 	Out   chan<- Envelope  // outbound messages (reactors to peers)
 	Error chan<- PeerError // peer error reporting
 
-	messageType proto.Message // the channel's message type, used for unmarshalling
+	messageType proto.Message // the channel's message type, used for unmarshaling
 	closeCh     chan struct{}
 	closeOnce   sync.Once
 }
@@ -238,11 +238,12 @@ func NewRouter(
 // close the channel when done, before stopping the Router. messageType is the
 // type of message passed through the channel (used for unmarshaling), which can
 // implement Wrapper to automatically (un)wrap multiple message types in a
-// wrapper message.
-func (r *Router) OpenChannel(id ChannelID, messageType proto.Message) (*Channel, error) {
-	queue := newFIFOQueue()
-	outCh := make(chan Envelope)
-	errCh := make(chan PeerError)
+// wrapper message. The caller may provide a size to make the channel buffered,
+// which internally makes the inbound, outbound, and error channel buffered.
+func (r *Router) OpenChannel(id ChannelID, messageType proto.Message, size int) (*Channel, error) {
+	queue := newFIFOQueue(size)
+	outCh := make(chan Envelope, size)
+	errCh := make(chan PeerError, size)
 	channel := NewChannel(id, messageType, queue.dequeue(), outCh, errCh)
 
 	var wrapper Wrapper
@@ -421,7 +422,7 @@ func (r *Router) acceptPeers(transport Transport) {
 				return
 			}
 
-			queue := newFIFOQueue()
+			queue := newFIFOQueue(0)
 			r.peerMtx.Lock()
 			r.peerQueues[peerInfo.NodeID] = queue
 			r.peerMtx.Unlock()
@@ -495,7 +496,7 @@ func (r *Router) dialPeers() {
 				return
 			}
 
-			queue := newFIFOQueue()
+			queue := newFIFOQueue(0)
 			r.peerMtx.Lock()
 			r.peerQueues[peerID] = queue
 			r.peerMtx.Unlock()
@@ -767,7 +768,7 @@ func (r *Router) OnStop() {
 	}
 }
 
-// stopCtx returns a new context that is cancelled when the router stops.
+// stopCtx returns a new context that is canceled when the router stops.
 func (r *Router) stopCtx() context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
