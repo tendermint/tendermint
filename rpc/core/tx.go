@@ -88,7 +88,7 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, pagePtr, perPageP
 			return results[i].Height < results[j].Height
 		})
 	default:
-		return nil, errors.New("expected order_by to be either `asc` or `desc` or empty")
+		return nil, fmt.Errorf("%w: expected order_by to be either `asc` or `desc` or empty", ctypes.ErrInvalidRequest)
 	}
 
 	// paginate results
