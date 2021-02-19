@@ -12,7 +12,7 @@ To update the documentation, edit the relevant `godoc` comments in the [rpc/core
 
 If you are using Tendermint in-process, you will need to set the version to be displayed in the RPC.
 
-If you are using a makefile with your go project this can be done by using sed and `ldflags`.
+If you are using a makefile with your go project, this can be done by using sed and `ldflags`.
 
 Example: 
 
