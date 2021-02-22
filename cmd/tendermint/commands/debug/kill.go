@@ -81,9 +81,9 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 	if err := copyWAL(conf, tmpDir); err != nil {
 		if !os.IsNotExist(err) {
 			return err
-		} else {
-			logger.Info("node WAL does not exist; continuing...")
 		}
+
+		logger.Info("node WAL does not exist; continuing...")
 	}
 
 	logger.Info("copying node configuration...")
