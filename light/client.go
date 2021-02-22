@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -965,7 +966,7 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 
 // NOTE: requires a providerMutex lock
 func (c *Client) removeWitnesses(indexes []int) error {
-	// check that we will still have witnesses remaaining
+	// check that we will still have witnesses remaining
 	if len(c.witnesses) <= len(indexes) {
 		return ErrNoWitnesses
 	}
@@ -1003,16 +1004,18 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 		witnessResponsesC = make(chan witnessResponse, len(c.witnesses))
 		witnessesToRemove []int
 		lastError         error
+		wg                sync.WaitGroup
 	)
-	// close the channel
-	defer close(witnessResponsesC)
 
 	// send out a light block request to all witnesses
-	ctx, cancel := context.WithCancel(ctx)
+	subctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	for index := range c.witnesses {
+		wg.Add(1)
 		go func(witnessIndex int, witnessResponsesC chan witnessResponse) {
-			lb, err := c.witnesses[witnessIndex].LightBlock(ctx, height)
+			defer wg.Done()
+
+			lb, err := c.witnesses[witnessIndex].LightBlock(subctx, height)
 			witnessResponsesC <- witnessResponse{lb, witnessIndex, err}
 		}(index, witnessResponsesC)
 	}
@@ -1023,6 +1026,10 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 		switch response.err {
 		// success! We have found a new primary
 		case nil:
+			cancel() // cancel all remaining requests to other witnesses
+
+			wg.Wait() // wait for all goroutines to finish
+
 			// if we are not intending on removing the primary then append the old primary to the end of the witness slice
 			if !remove {
 				c.witnesses = append(c.witnesses, c.primary)
