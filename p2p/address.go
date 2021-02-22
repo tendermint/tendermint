@@ -26,7 +26,7 @@ var (
 
 	// stringHasScheme tries to detect URLs with schemes. It looks for a : before a / (if any).
 	stringHasScheme = func(str string) bool {
-		return strings.Contains(str, ":/")
+		return strings.Contains(str, "://")
 	}
 
 	// reSchemeIsHost tries to detect URLs where the scheme part is instead a
