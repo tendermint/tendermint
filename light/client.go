@@ -1004,9 +1004,12 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 		witnessesToRemove []int
 		lastError         error
 	)
+	// close the channel
+	defer close(witnessResponsesC)
 
 	// send out a light block request to all witnesses
 	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	for index := range c.witnesses {
 		go func(witnessIndex int, witnessResponsesC chan witnessResponse) {
 			lb, err := c.witnesses[witnessIndex].LightBlock(ctx, height)
@@ -1020,12 +1023,6 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 		switch response.err {
 		// success! We have found a new primary
 		case nil:
-			// cancel all other calls
-			cancel()
-
-			// close the channel
-			close(witnessResponsesC)
-
 			// if we are not intending on removing the primary then append the old primary to the end of the witness slice
 			if !remove {
 				c.witnesses = append(c.witnesses, c.primary)
@@ -1062,9 +1059,6 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 			witnessesToRemove = append(witnessesToRemove, response.witnessIndex)
 		}
 	}
-
-	// There shouldn't be any ongoing LightBlock requests but for sanity, we cancel them anyway.
-	cancel()
 
 	return nil, lastError
 }
