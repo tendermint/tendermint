@@ -161,6 +161,16 @@ func TestParseNodeAddress(t *testing.T) {
 			p2p.NodeAddress{Protocol: "memory", NodeID: id},
 			true,
 		},
+		{
+			user + "@[1::]",
+			p2p.NodeAddress{Protocol: "mconn", NodeID: id, Hostname: "1::"},
+			true,
+		},
+		{
+			"mconn://" + user + "@[fd80:b10c::2]:26657",
+			p2p.NodeAddress{Protocol: "mconn", NodeID: id, Hostname: "fd80:b10c::2", Port: 26657},
+			true,
+		},
 
 		// Invalid addresses.
 		{"", p2p.NodeAddress{}, false},
