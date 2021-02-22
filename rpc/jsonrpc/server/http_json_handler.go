@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -11,7 +12,8 @@ import (
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
-	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 // HTTP + JSON handler
@@ -23,7 +25,6 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 		if err != nil {
 			WriteRPCResponseHTTPError(
 				w,
-				http.StatusBadRequest,
 				types.RPCInvalidRequestError(
 					nil,
 					fmt.Errorf("error reading request body: %w", err),
@@ -50,7 +51,6 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			if err := json.Unmarshal(b, &request); err != nil {
 				WriteRPCResponseHTTPError(
 					w,
-					http.StatusInternalServerError,
 					types.RPCParseError(
 						fmt.Errorf("error unmarshaling request: %w", err),
 					),
@@ -100,11 +100,27 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			returns := rpcFunc.f.Call(args)
 			logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
 			result, err := unreflectResult(returns)
-			if err != nil {
-				responses = append(responses, types.RPCInternalError(request.ID, err))
-				continue
+			switch e := err.(type) {
+			// if no error then return a success response
+			case nil:
+				responses = append(responses, types.NewRPCSuccessResponse(request.ID, result))
+
+			// if this already of type RPC error then forward that error
+			case *types.RPCError:
+				responses = append(responses, types.NewRPCErrorResponse(request.ID, e.Code, e.Message, e.Data))
+
+			default: // we need to unwrap the error and parse it accordingly
+				switch errors.Unwrap(err) {
+				// check if the error was due to an invald request
+				case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage,
+					ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
+					responses = append(responses, types.RPCInvalidRequestError(request.ID, err))
+
+				// lastly default all remaining errors as internal errors
+				default: // includes ctypes.ErrHeightNotAvailable and ctypes.ErrHeightExceedsChainHead
+					responses = append(responses, types.RPCInternalError(request.ID, err))
+				}
 			}
-			responses = append(responses, types.NewRPCSuccessResponse(request.ID, result))
 		}
 		if len(responses) > 0 {
 			WriteRPCResponseHTTP(w, responses...)
