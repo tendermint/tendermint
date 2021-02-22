@@ -1005,7 +1005,8 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 		lastError         error
 	)
 
-	// send out a ligh block request to all witnesses
+	// send out a light block request to all witnesses
+	ctx, cancel := context.WithCancel(ctx)
 	for index := range c.witnesses {
 		go func(witnessIndex int, witnessResponsesC chan witnessResponse) {
 			lb, err := c.witnesses[witnessIndex].LightBlock(ctx, height)
@@ -1019,6 +1020,12 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 		switch response.err {
 		// success! We have found a new primary
 		case nil:
+			// cancel all other calls
+			cancel()
+
+			// close the channel
+			close(witnessResponsesC)
+
 			// if we are not intending on removing the primary then append the old primary to the end of the witness slice
 			if !remove {
 				c.witnesses = append(c.witnesses, c.primary)
@@ -1041,14 +1048,13 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 			return response.lb, nil
 
 		// process benign errors by logging them only
-		case provider.ErrLightBlockNotFound:
-		case provider.ErrNoResponse:
+		case provider.ErrNoResponse, provider.ErrLightBlockNotFound:
 			lastError = response.err
 			c.logger.Debug("error on light block request from witness",
 				"error", response.err, "primary", c.witnesses[response.witnessIndex])
 			continue
 
-		// process malovent errors like ErrUnreliableProvider and ErrBadLightBlock by removing the witness
+		// process malevolent errors like ErrUnreliableProvider and ErrBadLightBlock by removing the witness
 		default:
 			lastError = response.err
 			c.logger.Error("error on light block request from witness, removing...",
@@ -1056,6 +1062,9 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 			witnessesToRemove = append(witnessesToRemove, response.witnessIndex)
 		}
 	}
+
+	// There shouldn't be any ongoing LightBlock requests but for sanity, we cancel them anyway.
+	cancel()
 
 	return nil, lastError
 }

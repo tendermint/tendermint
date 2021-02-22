@@ -18,9 +18,9 @@ import (
 )
 
 var defaultOptions = Options{
-	MaxRetryAttempts: 5,
-	Timeout:          3 * time.Second,
-  NoBlockThreshold:    5,
+	MaxRetryAttempts:    5,
+	Timeout:             3 * time.Second,
+	NoBlockThreshold:    5,
 	NoResponseThreshold: 5,
 }
 
@@ -157,7 +157,7 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 	for len(vals) != total && page <= maxPages {
 		// create another for loop to control retries. If p.maxRetryAttempts
 		// is negative we will keep repeating.
-    attemt := uint16(0)
+		attempt := uint16(0)
 		for {
 			res, err := p.client.Validators(ctx, height, &page, &perPage)
 			switch e := err.(type) {
@@ -177,13 +177,13 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 
 			case *url.Error:
 				if e.Timeout() {
-          // if we have exceeded retry attempts then return a no response error 
-          if attempt == p.maxRetryAttempts {
-            return nil, p.noResponse() 
-          }
-          attempt++
+					// if we have exceeded retry attempts then return a no response error
+					if attempt == p.maxRetryAttempts {
+						return nil, p.noResponse()
+					}
+					attempt++
 					// request timed out: we wait and try again with exponential backoff
-					time.Sleep(backoffTimeout(uint16(attempt)))
+					time.Sleep(backoffTimeout(attempt))
 					continue
 				}
 				return nil, provider.ErrBadLightBlock{Reason: e}
@@ -230,24 +230,20 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 		case *url.Error:
 			if e.Timeout() {
 				// we wait and try again with exponential backoff
-				time.Sleep(backoffTimeout(uint16(attempt)))
+				time.Sleep(backoffTimeout(attempt))
 				continue
 			}
 			return nil, provider.ErrBadLightBlock{Reason: e}
 
 		case *rpctypes.RPCError:
-			// Check if we got something other than internal error. This shouldn't happen unless the RPC module
-			// or light client has been tampered with. If we do get this error, stop the connection with the
-			// peer and return an error
-			if e.Code != -32603 {
-				return nil, provider.ErrBadLightBlock{Reason: errors.New(e.Data)}
+			// check if the error indicates that the peer doesn't have the block
+			if strings.Contains(e.Data, ctypes.ErrHeightNotAvailable.Error()) ||
+				strings.Contains(e.Data, ctypes.ErrHeightExceedsChainHead.Error()) {
+				return nil, p.noBlock()
 			}
 
-			// check if the error indicates that the peer doesn't have the block
-			if strings.Contains(err.Error(), ctypes.ErrHeightNotAvailable.Error()) ||
-				strings.Contains(err.Error(), ctypes.ErrHeightExceedsChainHead.Error()) {
-        return nil, p.noBlock()
-			}
+			// for every other error, the provider returns a bad block
+			return nil, provider.ErrBadLightBlock{Reason: errors.New(e.Data)}
 
 		default:
 			// If we don't know the error then by default we return a bad light block error and
