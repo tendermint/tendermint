@@ -33,11 +33,11 @@ on:
         required: true
         default: 60
       tendermintUrl:
-        description: 'Where to grab the Tendermint tarball (w/ linux/amd64 binary)?'
+        description: 'Where to grab the Tendermint tarball (w/ linux/amd64 binary)'
         required: true
         default: 'https://github.com/melekes/katas/releases/download/0.2.0/tendermint.tar.gz'
       merkleeyesUrl:
-        description: 'Where to grab the Merkleeyes tarball (w/ linux/amd64 binary)?'
+        description: 'Where to grab the Merkleeyes tarball (w/ linux/amd64 binary)'
         required: true
         default: 'https://github.com/melekes/katas/releases/download/0.2.0/merkleeyes_0.1.7.tar.gz'
 
