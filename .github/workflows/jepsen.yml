@@ -39,7 +39,7 @@ on:
       merkleeyesUrl:
         description: 'Where to grab the Merkleeyes tarball (w/ linux/amd64 binary)'
         required: true
-        default: 'https://github.com/melekes/katas/releases/download/0.2.0/merkleeyes_0.1.7.tar.gz'
+        default: 'https://github.com/tendermint/jepsen/releases/download/0.2.1/merkleeyes_0.1.7.tar.gz'
 
 jobs:
   jepsen-test:
