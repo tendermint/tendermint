@@ -707,18 +707,15 @@ func (w *WSEvents) eventListener() {
 			}
 
 			w.mtx.RLock()
-			if out, ok := w.subscriptions[result.Query]; ok {
-				if cap(out) == 0 {
-					out <- *result
-				} else {
-					select {
-					case out <- *result:
-					default:
-						w.Logger.Error("wanted to publish ResultEvent, but out channel is full", "result", result, "query", result.Query)
-					}
+			out, ok := w.subscriptions[result.Query]
+			w.mtx.RUnlock()
+			if ok {
+				select {
+				case out <- *result:
+				case <-w.Quit():
+					return
 				}
 			}
-			w.mtx.RUnlock()
 		case <-w.Quit():
 			return
 		}
