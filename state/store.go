@@ -200,7 +200,8 @@ func (store dbStore) save(state State, key []byte) error {
 		}
 	}
 	// Save next validators.
-	if err := store.saveValidatorsInfo(nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators, batch); err != nil {
+	err := store.saveValidatorsInfo(nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators, batch)
+	if err != nil {
 		return err
 	}
 
