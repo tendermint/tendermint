@@ -127,8 +127,10 @@ type Client struct {
 	pruningSize uint16
 	// See ConfirmationFunction option
 	confirmationFn func(action string) bool
-
-	quit chan struct{}
+	// The light client keeps track of how many times it has requested a light
+	// block from it's providers. When this exceeds the amount of witnesses the
+	// light client will just return the last error sent by the providers
+	// repeatRequests uint16
 
 	logger log.Logger
 }
@@ -200,7 +202,6 @@ func NewClientFromTrustedStore(
 		trustedStore:     trustedStore,
 		pruningSize:      defaultPruningSize,
 		confirmationFn:   func(action string) bool { return true },
-		quit:             make(chan struct{}),
 		logger:           log.NewNopLogger(),
 	}
 
@@ -711,8 +712,7 @@ func (c *Client) verifySkipping(
 					blockCache = append(blockCache, interimBlock)
 
 				// if the error is benign, the client does not need to replace the primary
-				case provider.ErrLightBlockNotFound:
-				case provider.ErrNoResponse:
+				case provider.ErrLightBlockNotFound, provider.ErrNoResponse:
 					return nil, err
 
 				// all other errors such as ErrBadLightBlock or ErrUnreliableProvider are seen as malevolent and the
@@ -948,8 +948,7 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 		// Everything went smoothly. We reset the lightBlockRequests and return the light block
 		return l, nil
 
-	case provider.ErrNoResponse:
-	case provider.ErrLightBlockNotFound:
+	case provider.ErrNoResponse, provider.ErrLightBlockNotFound:
 		// we find a new witness to replace the primary
 		c.logger.Debug("error from light block request from primary, replacing...", "error", err, "primary", c.primary)
 		return c.findNewPrimary(ctx, height, false)
@@ -960,8 +959,6 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 		c.logger.Error("error from light block request from primary, removing...", "error", err, "primary", c.primary)
 		return c.findNewPrimary(ctx, height, true)
 	}
-
-	return c.lightBlockFromPrimary(ctx, height)
 }
 
 // NOTE: requires a providerMutex lock
