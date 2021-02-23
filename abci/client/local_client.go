@@ -8,10 +8,6 @@ import (
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
-// NOTE: use defer to unlock mutex because Application might panic (e.g., in
-// case of malicious tx or query). It only makes sense for publicly exposed
-// methods like CheckTx (/broadcast_tx_* RPC endpoint) or Query (/abci_query
-// RPC endpoint), but defers are used everywhere for the sake of consistency.
 type localClient struct {
 	service.BaseService
 
@@ -55,9 +51,6 @@ func (app *localClient) FlushAsync(ctx context.Context) (*ReqRes, error) {
 }
 
 func (app *localClient) EchoAsync(ctx context.Context, msg string) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	return app.callback(
 		types.ToRequestEcho(msg),
 		types.ToResponseEcho(msg),
@@ -66,9 +59,9 @@ func (app *localClient) EchoAsync(ctx context.Context, msg string) (*ReqRes, err
 
 func (app *localClient) InfoAsync(ctx context.Context, req types.RequestInfo) (*ReqRes, error) {
 	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.Info(req)
+	app.mtx.Unlock()
+
 	return app.callback(
 		types.ToRequestInfo(req),
 		types.ToResponseInfo(res),
@@ -77,9 +70,9 @@ func (app *localClient) InfoAsync(ctx context.Context, req types.RequestInfo) (*
 
 func (app *localClient) DeliverTxAsync(ctx context.Context, params types.RequestDeliverTx) (*ReqRes, error) {
 	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.DeliverTx(params)
+	app.mtx.Unlock()
+
 	return app.callback(
 		types.ToRequestDeliverTx(params),
 		types.ToResponseDeliverTx(res),
@@ -87,10 +80,14 @@ func (app *localClient) DeliverTxAsync(ctx context.Context, params types.Request
 }
 
 func (app *localClient) CheckTxAsync(ctx context.Context, req types.RequestCheckTx) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	var res types.ResponseCheckTx
+	{
+		app.mtx.Lock()
+		// Use defer because app might panic on external input.
+		defer app.mtx.Unlock()
+		res = app.Application.CheckTx(req)
+	}
 
-	res := app.Application.CheckTx(req)
 	return app.callback(
 		types.ToRequestCheckTx(req),
 		types.ToResponseCheckTx(res),
@@ -98,10 +95,14 @@ func (app *localClient) CheckTxAsync(ctx context.Context, req types.RequestCheck
 }
 
 func (app *localClient) QueryAsync(ctx context.Context, req types.RequestQuery) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	var res types.ResponseQuery
+	{
+		app.mtx.Lock()
+		// Use defer because app might panic on external input.
+		defer app.mtx.Unlock()
+		res = app.Application.Query(req)
+	}
 
-	res := app.Application.Query(req)
 	return app.callback(
 		types.ToRequestQuery(req),
 		types.ToResponseQuery(res),
@@ -110,9 +111,9 @@ func (app *localClient) QueryAsync(ctx context.Context, req types.RequestQuery) 
 
 func (app *localClient) CommitAsync(ctx context.Context) (*ReqRes, error) {
 	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.Commit()
+	app.mtx.Unlock()
+
 	return app.callback(
 		types.ToRequestCommit(),
 		types.ToResponseCommit(res),
@@ -121,9 +122,9 @@ func (app *localClient) CommitAsync(ctx context.Context) (*ReqRes, error) {
 
 func (app *localClient) InitChainAsync(ctx context.Context, req types.RequestInitChain) (*ReqRes, error) {
 	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.InitChain(req)
+	app.mtx.Unlock()
+
 	return app.callback(
 		types.ToRequestInitChain(req),
 		types.ToResponseInitChain(res),
@@ -132,9 +133,9 @@ func (app *localClient) InitChainAsync(ctx context.Context, req types.RequestIni
 
 func (app *localClient) BeginBlockAsync(ctx context.Context, req types.RequestBeginBlock) (*ReqRes, error) {
 	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.BeginBlock(req)
+	app.mtx.Unlock()
+
 	return app.callback(
 		types.ToRequestBeginBlock(req),
 		types.ToResponseBeginBlock(res),
@@ -143,9 +144,9 @@ func (app *localClient) BeginBlockAsync(ctx context.Context, req types.RequestBe
 
 func (app *localClient) EndBlockAsync(ctx context.Context, req types.RequestEndBlock) (*ReqRes, error) {
 	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.EndBlock(req)
+	app.mtx.Unlock()
+
 	return app.callback(
 		types.ToRequestEndBlock(req),
 		types.ToResponseEndBlock(res),
@@ -154,9 +155,9 @@ func (app *localClient) EndBlockAsync(ctx context.Context, req types.RequestEndB
 
 func (app *localClient) ListSnapshotsAsync(ctx context.Context, req types.RequestListSnapshots) (*ReqRes, error) {
 	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.ListSnapshots(req)
+	app.mtx.Unlock()
+
 	return app.callback(
 		types.ToRequestListSnapshots(req),
 		types.ToResponseListSnapshots(res),
@@ -165,9 +166,9 @@ func (app *localClient) ListSnapshotsAsync(ctx context.Context, req types.Reques
 
 func (app *localClient) OfferSnapshotAsync(ctx context.Context, req types.RequestOfferSnapshot) (*ReqRes, error) {
 	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.OfferSnapshot(req)
+	app.mtx.Unlock()
+
 	return app.callback(
 		types.ToRequestOfferSnapshot(req),
 		types.ToResponseOfferSnapshot(res),
@@ -179,9 +180,9 @@ func (app *localClient) LoadSnapshotChunkAsync(
 	req types.RequestLoadSnapshotChunk,
 ) (*ReqRes, error) {
 	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
 	res := app.Application.LoadSnapshotChunk(req)
+	app.mtx.Unlock()
+
 	return app.callback(
 		types.ToRequestLoadSnapshotChunk(req),
 		types.ToResponseLoadSnapshotChunk(res),
@@ -192,10 +193,14 @@ func (app *localClient) ApplySnapshotChunkAsync(
 	ctx context.Context,
 	req types.RequestApplySnapshotChunk,
 ) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	var res types.ResponseApplySnapshotChunk
+	{
+		app.mtx.Lock()
+		// Use defer because app might panic on external input.
+		defer app.mtx.Unlock()
+		res = app.Application.ApplySnapshotChunk(req)
+	}
 
-	res := app.Application.ApplySnapshotChunk(req)
 	return app.callback(
 		types.ToRequestApplySnapshotChunk(req),
 		types.ToResponseApplySnapshotChunk(res),
@@ -237,6 +242,7 @@ func (app *localClient) CheckTxSync(
 	req types.RequestCheckTx,
 ) (*types.ResponseCheckTx, error) {
 	app.mtx.Lock()
+	// Use defer because app might panic on external input.
 	defer app.mtx.Unlock()
 
 	res := app.Application.CheckTx(req)
@@ -248,6 +254,7 @@ func (app *localClient) QuerySync(
 	req types.RequestQuery,
 ) (*types.ResponseQuery, error) {
 	app.mtx.Lock()
+	// Use defer because app might panic on external input.
 	defer app.mtx.Unlock()
 
 	res := app.Application.Query(req)
@@ -338,6 +345,7 @@ func (app *localClient) ApplySnapshotChunkSync(
 	req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
 
 	app.mtx.Lock()
+	// Use defer because app might panic on external input.
 	defer app.mtx.Unlock()
 
 	res := app.Application.ApplySnapshotChunk(req)
