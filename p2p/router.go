@@ -329,8 +329,7 @@ func (r *Router) routeChannel(
 				r.peerMtx.RUnlock()
 
 				if !ok {
-					r.logger.Debug("dropping message for unconnected peer",
-						"peer", envelope.To, "channel", chID)
+					r.logger.Debug("dropping message for unconnected peer", "peer", envelope.To, "channel", chID)
 					continue
 				}
 

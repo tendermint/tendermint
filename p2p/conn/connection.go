@@ -723,6 +723,14 @@ type ChannelDescriptor struct {
 	SendQueueCapacity   int
 	RecvBufferCapacity  int
 	RecvMessageCapacity int
+
+	// MaxSendBytes defines the maximum number of bytes that can be sent at any
+	// given moment from a Channel to a peer.
+	MaxSendBytes uint
+	// MaxSendCapacityBytes defines the maximum number of bytes that can be held
+	// by a peer's message queue. Any messages attempted to be enqueued by the
+	// router will be dropped if it's size exceeds the queue's capacity.
+	MaxSendCapacityBytes uint
 }
 
 func (chDesc ChannelDescriptor) FillDefaults() (filled ChannelDescriptor) {
