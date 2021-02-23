@@ -582,10 +582,15 @@ func (w *WSEvents) OnStop() {
 }
 
 // Subscribe implements EventsClient by using WSClient to subscribe given
-// subscriber to query. By default, returns a channel with cap=1. Error is
+// subscriber to query. By default, it returns a channel with cap=1. Error is
 // returned if it fails to subscribe.
 //
-// Channel is never closed to prevent clients from seeing an erroneous event.
+// When reading from the channel, keep in mind there's a single events loop, so
+// if you don't read events for this subscription fast enough, other
+// subscriptions will slow down in effect.
+//
+// The channel is never closed to prevent clients from seeing an erroneous
+// event.
 //
 // It returns an error if WSEvents is not running.
 func (w *WSEvents) Subscribe(ctx context.Context, subscriber, query string,
