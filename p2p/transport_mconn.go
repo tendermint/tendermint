@@ -254,7 +254,7 @@ func (c *mConnConnection) Handshake(
 	)
 	// To handle context cancellation, we need to do the handshake in a
 	// goroutine and abort the blocking network calls by closing the connection
-	// when the context is cancelled.
+	// when the context is canceled.
 	go func() {
 		// FIXME: Since the MConnection code panics, we need to recover it and turn it
 		// into an error. We should remove panics instead.

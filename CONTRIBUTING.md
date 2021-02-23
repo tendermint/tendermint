@@ -108,24 +108,7 @@ We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along 
 
 For linting, checking breaking changes and generating proto stubs, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will need to have docker running locally. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
 
-There are two ways to generate your proto stubs.
-
-1. Use Docker, pull an image that will generate your proto stubs with no need to install anything. `make proto-gen-docker`
-2. Run `make proto-gen` after installing `buf` and `gogoproto`, you can do this by running `make protobuf`.
-
-### Installation Instructions
-
-To install `protoc`, download an appropriate release (<https://github.com/protocolbuffers/protobuf>) and then move the provided binaries into your PATH (follow instructions in README included with the download).
-
-To install `gogoproto`, do the following:
-
-```sh
-go get github.com/gogo/protobuf/gogoproto
-cd $GOPATH/pkg/mod/github.com/gogo/protobuf@v1.3.1 # or wherever go get installs things
-make install
-```
-
-You should now be able to run `make proto-gen` from inside the root Tendermint directory to generate new files from proto files.
+We use [Docker](https://www.docker.com/) to generate the protobuf stubs. To generate the stubs yourself, make sure docker is running then run `make proto-gen`.
 
 ### Visual Studio Code
 
@@ -306,6 +289,8 @@ the backport branches have names like `v0.34.x` or `v0.33.x` (literally, `x`; it
 
 As non-breaking changes land on `master`, they should also be backported (cherry-picked) to these backport branches.
 
+We use Mergify's [backport feature](https://mergify.io/features/backports) to automatically backport to the needed branch. Depending on which backport branch you need to backport to there will be labels for them. To notify the bot to backport a pull request, mark the pull request with the label `backport-to-<backport_branch>`. Once the original pull request is merged, the bot will try to cherry-pick the pull request to the backport branch. If the bot fails to backport, it will open a pull request. The author of the original pull request is responsible for solving the conflicts and merging the pull request.
+
 Minor releases don't have release candidates by default, although any tricky changes may merit a release candidate.
 
 To create a minor release:
@@ -429,7 +414,7 @@ most probably (99.9%)*.
 [Jepsen](http://jepsen.io/) tests are used to verify the
 [linearizability](https://jepsen.io/consistency/models/linearizable) property
 of the Tendermint consensus. They are located in a separate repository
--> https://github.com/tendermint/jepsen. Please refer to it's README for more
+-> <https://github.com/tendermint/jepsen>. Please refer to its README for more
 information.
 
 ### RPC Testing
@@ -445,7 +430,7 @@ make build-linux build-contract-tests-hooks
 make contract-tests
 ```
 
-**WARNING: these are currently broken due to https://github.com/apiaryio/dredd
+**WARNING: these are currently broken due to <https://github.com/apiaryio/dredd>
 not supporting complete OpenAPI 3**.
 
 This command will popup a network and check every endpoint against what has

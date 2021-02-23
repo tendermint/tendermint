@@ -177,20 +177,20 @@ mkdir -p \
 
 cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/abci/types.proto \
    $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/abci/types.proto
-cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/version/version.proto \
-   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/version/version.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/version/types.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/version/types.proto
 cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/types/types.proto \
    $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/types/types.proto
 cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/types/evidence.proto \
    $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/types/evidence.proto
 cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/types/params.proto \
    $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/types/params.proto
-cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/crypto/merkle.proto \
-   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/crypto/merkle.proto
+cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/crypto/proof.proto \
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/crypto/proof.proto
 cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/crypto/keys.proto \
    $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/crypto/keys.proto
 cp $GOPATH/src/github.com/tendermint/tendermint/proto/tendermint/libs/types.proto \
-   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/libs/types.proto
+   $KVSTORE_HOME/src/main/proto/github.com/tendermint/tendermint/proto/tendermint/libs/bits/types.proto
 cp $GOPATH/src/github.com/gogo/protobuf/gogoproto/gogo.proto \
    $KVSTORE_HOME/src/main/proto/github.com/gogo/protobuf/gogoproto/gogo.proto
 ```
@@ -229,8 +229,8 @@ build/generated/
 |               |           `-- GoGoProtos.java
 |               |-- common
 |               |   `-- Types.java
-|               |-- merkle
-|               |   `-- Merkle.java
+|               |-- proof
+|               |   `-- Proof.java
 |               `-- types
 |                   `-- Types.java
 ```

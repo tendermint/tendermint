@@ -60,15 +60,15 @@ jobs:
 
       - name: Set crashers count
         working-directory: test/fuzz
-        run: echo "::set-output name=crashers-count::$(find . -type d -name 'crashers' | xargs -I % sh -c 'ls % | wc -l' | awk '{total += $1} END {print total}')"
+        run: echo "::set-output name=count::$(find . -type d -name 'crashers' | xargs -I % sh -c 'ls % | wc -l' | awk '{total += $1} END {print total}')"
         id: set-crashers-count
 
     outputs:
-      crashers-count: ${{ steps.set-crashers-count.outputs.crashers-count }}
+      crashers-count: ${{ steps.set-crashers-count.outputs.count }}
 
   fuzz-nightly-fail:
     needs: fuzz-nightly-test
-    if: ${{ needs.set-crashers-count.outputs.crashers-count != 0 }}
+    if: ${{ needs.fuzz-nightly-test.outputs.crashers-count != 0 }}
     runs-on: ubuntu-latest
     steps:
       - name: Notify Slack if any crashers

@@ -72,7 +72,7 @@ The test runner has the following stages, which can also be executed explicitly 
 
 * `logs`: outputs all node logs.
 
-* `tail`: tails (follows) node logs until cancelled.
+* `tail`: tails (follows) node logs until canceled.
 
 ## Tests
 
