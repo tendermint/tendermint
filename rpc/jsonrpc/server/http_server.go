@@ -91,15 +91,40 @@ func ServeTLS(
 
 // WriteRPCResponseHTTPError marshals res as JSON and writes it to w.
 //
+// Maps JSON RPC error codes to HTTP Status codes as follows:
+//
+// HTTP Status	code	message
+// 500	-32700	Parse error.
+// 400	-32600	Invalid Request.
+// 404	-32601	Method not found.
+// 500	-32602	Invalid params.
+// 500	-32603	Internal error.
+// 500	-32099..-32000	Server error.
+//
+// source: https://www.jsonrpc.org/historical/json-rpc-over-http.html
+//
 // Panics if it can't Marshal res or write to w.
 func WriteRPCResponseHTTPError(
 	w http.ResponseWriter,
-	httpCode int,
 	res types.RPCResponse,
 ) {
+	if res.Error == nil {
+		panic("tried to write http error response without RPC error")
+	}
+
 	jsonBytes, err := json.MarshalIndent(res, "", "  ")
 	if err != nil {
 		panic(err)
+	}
+
+	var httpCode int
+	switch res.Error.Code {
+	case -32600:
+		httpCode = http.StatusBadRequest
+	case -32601:
+		httpCode = http.StatusNotFound
+	default:
+		httpCode = http.StatusInternalServerError
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -186,7 +211,6 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 					)
 					WriteRPCResponseHTTPError(
 						rww,
-						http.StatusInternalServerError,
 						types.RPCInternalError(types.JSONRPCIntID(-1), err),
 					)
 				}
