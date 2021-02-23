@@ -65,6 +65,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [consensus] \#5987 Remove `time_iota_ms` from consensus params. Merge `tmproto.ConsensusParams` and `abci.ConsensusParams`. (@marbar3778)
 - [types] \#5994 Reduce the use of protobuf types in core logic. (@marbar3778)
   - `ConsensusParams`, `BlockParams`, `ValidatorParams`, `EvidenceParams`, `VersionParams`, `sm.Version` and `version.Consensus` have become native types. They still utilize protobuf when being sent over the wire or written to disk.
+- [node] \#6059 Validate and complete genesis doc before saving to state store (@silasdavis)
 
 ### BUG FIXES
 
