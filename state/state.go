@@ -335,6 +335,11 @@ func MakeGenesisDocFromFile(genDocFile string) (*types.GenesisDoc, error) {
 
 // MakeGenesisState creates state from types.GenesisDoc.
 func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
+	err := genDoc.ValidateAndComplete()
+	if err != nil {
+		return State{}, fmt.Errorf("error in genesis doc: %w", err)
+	}
+
 	var validatorSet, nextValidatorSet *types.ValidatorSet
 	if genDoc.Validators == nil {
 		validatorSet = types.NewValidatorSet(nil)

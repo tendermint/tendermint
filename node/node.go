@@ -1427,7 +1427,7 @@ func LoadStateFromDBOrGenesisDocProvider(
 		if err != nil {
 			return sm.State{}, nil, err
 		}
-		// This mutates the passed genesis doc which may or may not be a problem
+
 		err = genDoc.ValidateAndComplete()
 		if err != nil {
 			return sm.State{}, nil, fmt.Errorf("error in genesis doc: %w", err)
