@@ -14,6 +14,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [cli] \#5772 `gen_node_key` prints JSON-encoded `NodeKey` rather than ID and does not save it to `node_key.json` (@melekes)
   - [cli] \#5777 use hyphen-case instead of snake_case for all cli commands and config parameters (@cmwaters)
   - [rpc] \#6019 standardise RPC errors and return the correct status code (@bipulprasad & @cmwaters)
+  - [rpc] \#6168 Change default sorting to desc for `/tx_search` results (@melekes)
 
 - Apps
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
@@ -29,7 +30,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [proto/p2p] Renamed `DefaultNodeInfo` and `DefaultNodeInfoOther` to `NodeInfo` and `NodeInfoOther` (@erikgrinaker)
   - [proto/p2p] Rename `NodeInfo.default_node_id` to `node_id` (@erikgrinaker)
   - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
-  - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)  
+  - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)
   - [state] \#5864 Use an iterator when pruning state (@cmwaters)
   - [types] \#6023 Remove `tm2pb.Header`, `tm2pb.BlockID`, `tm2pb.PartSetHeader` and `tm2pb.NewValidatorUpdate`.
     - Each of the above types has a `ToProto` and `FromProto` method or function which replaced this logic.

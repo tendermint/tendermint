@@ -73,14 +73,14 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, pagePtr, perPageP
 
 	// sort results (must be done before pagination)
 	switch orderBy {
-	case "desc":
+	case "desc", "":
 		sort.Slice(results, func(i, j int) bool {
 			if results[i].Height == results[j].Height {
 				return results[i].Index > results[j].Index
 			}
 			return results[i].Height > results[j].Height
 		})
-	case "asc", "":
+	case "asc":
 		sort.Slice(results, func(i, j int) bool {
 			if results[i].Height == results[j].Height {
 				return results[i].Index < results[j].Index
