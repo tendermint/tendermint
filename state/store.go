@@ -211,7 +211,7 @@ func (store dbStore) save(state State, key []byte) error {
 		return err
 	}
 
-	if err := batch.Set(stateKey, state.Bytes()); err != nil {
+	if err := batch.Set(key, state.Bytes()); err != nil {
 		return err
 	}
 
