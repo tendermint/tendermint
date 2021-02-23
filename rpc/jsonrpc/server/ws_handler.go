@@ -14,6 +14,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
@@ -49,7 +50,7 @@ func NewWebsocketManager(
 			CheckOrigin: func(r *http.Request) bool {
 				// TODO ???
 				//
-				// The default behaviour would be relevant to browser-based clients,
+				// The default behavior would be relevant to browser-based clients,
 				// afaik. I suppose having a pass-through is a workaround for allowing
 				// for more complex security schemes, shifting the burden of
 				// AuthN/AuthZ outside the Tendermint RPC.
@@ -369,7 +370,7 @@ func (wsc *wsConnection) readRoutine() {
 				fnArgs, err := jsonParamsToArgs(rpcFunc, request.Params)
 				if err != nil {
 					if err := wsc.WriteRPCResponse(writeCtx,
-						types.RPCInternalError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
+						types.RPCInvalidParamsError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
 					); err != nil {
 						wsc.Logger.Error("Error writing RPC response", "err", err)
 					}
@@ -383,17 +384,34 @@ func (wsc *wsConnection) readRoutine() {
 			// TODO: Need to encode args/returns to string if we want to log them
 			wsc.Logger.Info("WSJSONRPC", "method", request.Method)
 
+			var resp types.RPCResponse
 			result, err := unreflectResult(returns)
-			if err != nil {
-				if err := wsc.WriteRPCResponse(writeCtx, types.RPCInternalError(request.ID, err)); err != nil {
-					wsc.Logger.Error("Error writing RPC response", "err", err)
+			switch e := err.(type) {
+			// if no error then return a success response
+			case nil:
+				resp = types.NewRPCSuccessResponse(request.ID, result)
+
+			// if this already of type RPC error then forward that error
+			case *types.RPCError:
+				resp = types.NewRPCErrorResponse(request.ID, e.Code, e.Message, e.Data)
+
+			default: // we need to unwrap the error and parse it accordingly
+				switch errors.Unwrap(err) {
+				// check if the error was due to an invald request
+				case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage,
+					ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
+					resp = types.RPCInvalidRequestError(request.ID, err)
+
+				// lastly default all remaining errors as internal errors
+				default: // includes ctypes.ErrHeightNotAvailable and ctypes.ErrHeightExceedsChainHead
+					resp = types.RPCInternalError(request.ID, err)
 				}
-				continue
 			}
 
-			if err := wsc.WriteRPCResponse(writeCtx, types.NewRPCSuccessResponse(request.ID, result)); err != nil {
+			if err := wsc.WriteRPCResponse(writeCtx, resp); err != nil {
 				wsc.Logger.Error("Error writing RPC response", "err", err)
 			}
+
 		}
 	}
 }

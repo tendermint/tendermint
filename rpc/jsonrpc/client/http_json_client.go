@@ -173,7 +173,7 @@ func (c *Client) Call(
 	requestBuf := bytes.NewBuffer(requestBytes)
 	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, c.address, requestBuf)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		return nil, fmt.Errorf("request setup failed: %w", err)
 	}
 
 	httpRequest.Header.Set("Content-Type", "application/json")
@@ -184,7 +184,7 @@ func (c *Client) Call(
 
 	httpResponse, err := c.client.Do(httpRequest)
 	if err != nil {
-		return nil, fmt.Errorf("post failed: %w", err)
+		return nil, err
 	}
 
 	defer httpResponse.Body.Close()
