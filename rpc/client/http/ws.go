@@ -20,8 +20,7 @@ var errNotRunning = errors.New("client is not running. Use .Start() method to st
 
 // WSOptions for the WS part of the HTTP client.
 type WSOptions struct {
-	Path   string // path (defaults to '/websocket' if empty)
-	Scheme string // scheme (ws or wss; defaults to 'ws' if empty)
+	Path string // path (defaults to '/websocket' if empty)
 
 	jsonrpcclient.WSOptions // WSClient options
 }
@@ -30,18 +29,12 @@ type WSOptions struct {
 func DefaultWSOptions() WSOptions {
 	return WSOptions{
 		Path:      "/websocket",
-		Scheme:    "ws",
 		WSOptions: jsonrpcclient.DefaultWSOptions(),
 	}
 }
 
+// Validate performs a basic validation of WSOptions.
 func (wso WSOptions) Validate() error {
-	switch wso.Scheme {
-	case "ws", "wss":
-	default:
-		return errors.New("unknown Scheme (expected 'ws' or 'wss')")
-	}
-
 	if len(wso.Path) <= 1 {
 		return errors.New("empty Path")
 	}
