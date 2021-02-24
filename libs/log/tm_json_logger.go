@@ -11,5 +11,7 @@ import (
 // w.Write. The passed Writer must be safe for concurrent use by multiple
 // goroutines if the returned Logger will be used concurrently.
 func NewTMJSONLogger(w io.Writer) Logger {
-	return &tmLogger{kitlog.NewJSONLogger(w)}
+	logger := kitlog.NewJSONLogger(w)
+	logger = kitlog.With(logger, "ts", kitlog.DefaultTimestampUTC)
+	return &tmLogger{logger}
 }
