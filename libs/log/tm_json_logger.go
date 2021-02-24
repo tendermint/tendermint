@@ -15,3 +15,10 @@ func NewTMJSONLogger(w io.Writer) Logger {
 	logger = kitlog.With(logger, "ts", kitlog.DefaultTimestampUTC)
 	return &tmLogger{logger}
 }
+
+// NewTMJSONLoggerNoTs is the same as NewTMJSONLogger, but without the
+// timestamp.
+func NewTMJSONLoggerNoTs(w io.Writer) Logger {
+	logger := kitlog.NewJSONLogger(w)
+	return &tmLogger{logger}
+}
