@@ -28,7 +28,7 @@ go-routine state, and the node's WAL and config information. This aggregated dat
 is packaged into a compressed archive.
 
 Example:
-$ tendermint debug 34255 /path/to/tm-debug.zip`,
+$ tendermint debug kill 34255 /path/to/tm-debug.zip`,
 	Args: cobra.ExactArgs(2),
 	RunE: killCmdHandler,
 }
