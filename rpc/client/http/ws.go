@@ -20,7 +20,7 @@ var errNotRunning = errors.New("client is not running. Use .Start() method to st
 
 // WSOptions for the WS part of the HTTP client.
 type WSOptions struct {
-	Path string // path (defaults to '/websocket' if empty)
+	Path string // path (e.g. "/ws")
 
 	jsonrpcclient.WSOptions // WSClient options
 }
@@ -37,6 +37,9 @@ func DefaultWSOptions() WSOptions {
 func (wso WSOptions) Validate() error {
 	if len(wso.Path) <= 1 {
 		return errors.New("empty Path")
+	}
+	if wso.Path[0] != "/" {
+		return errors.New("leading slash is missing in Path")
 	}
 
 	return nil
