@@ -20,7 +20,7 @@ import (
 
 const (
 	defaultMaxReconnectAttempts = 25
-	defaultWriteWait            = 0
+	defaultWriteWait            = 10 * time.Second
 	defaultReadWait             = 0
 	defaultPingPeriod           = 0
 )
