@@ -14,6 +14,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [cli] \#5772 `gen_node_key` prints JSON-encoded `NodeKey` rather than ID and does not save it to `node_key.json` (@melekes)
   - [cli] \#5777 use hyphen-case instead of snake_case for all cli commands and config parameters (@cmwaters)
   - [rpc] \#6019 standardise RPC errors and return the correct status code (@bipulprasad & @cmwaters)
+  - [rpc] \#6168 Change default sorting to desc for `/tx_search` results (@melekes)
 
 - Apps
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
@@ -65,6 +66,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [types] \#5994 Reduce the use of protobuf types in core logic. (@marbar3778)
   - `ConsensusParams`, `BlockParams`, `ValidatorParams`, `EvidenceParams`, `VersionParams`, `sm.Version` and `version.Consensus` have become native types. They still utilize protobuf when being sent over the wire or written to disk.
 - [rpc/client/http] \#6163 Do not drop events even if the `out` channel is full (@melekes)
+- [node] \#6059 Validate and complete genesis doc before saving to state store (@silasdavis)
+- [state] \#6067 Batch save state data (@githubsands & @cmwaters)
 
 ### BUG FIXES
 
