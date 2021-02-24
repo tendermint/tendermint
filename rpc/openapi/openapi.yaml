@@ -340,7 +340,7 @@ paths:
         import rpchttp "github.com/tendermint/rpc/client/http"
         import "github.com/tendermint/tendermint/types"
 
-        client := rpchttp.New("tcp:0.0.0.0:26657", "/websocket")
+        client := rpchttp.New("tcp:0.0.0.0:26657")
         err := client.Start()
         if err != nil {
           handle error
@@ -397,7 +397,7 @@ paths:
       operationId: unsubscribe
       description: |
         ```go
-        client := rpchttp.New("tcp:0.0.0.0:26657", "/websocket")
+        client := rpchttp.New("tcp:0.0.0.0:26657")
         err := client.Start()
         if err != nil {
            handle error

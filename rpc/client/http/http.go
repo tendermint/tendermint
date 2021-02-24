@@ -2,17 +2,11 @@ package http
 
 import (
 	"context"
-	"errors"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/bytes"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	jsonrpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
@@ -39,7 +33,7 @@ the example for more details.
 
 Example:
 
-		c, err := New("http://192.168.1.10:26657", "/websocket")
+		c, err := New("http://192.168.1.10:26657")
 		if err != nil {
 			// handle error
 		}
@@ -105,49 +99,57 @@ var _ rpcClient = (*baseRPCClient)(nil)
 //-----------------------------------------------------------------------------
 // HTTP
 
-// New takes a remote endpoint in the form <protocol>://<host>:<port> and
-// the websocket path (which always seems to be "/websocket")
-// An error is returned on invalid remote. The function panics when remote is nil.
-func New(remote, wsEndpoint string) (*HTTP, error) {
-	httpClient, err := jsonrpcclient.DefaultHTTPClient(remote)
+// New takes a remote endpoint in the form <protocol>://<host>:<port>. An error
+// is returned on invalid remote.
+func New(remote string) (*HTTP, error) {
+	c, err := jsonrpcclient.DefaultHTTPClient(remote)
 	if err != nil {
 		return nil, err
 	}
-	return NewWithClient(remote, wsEndpoint, httpClient)
+	return NewWithClient(remote, c)
 }
 
 // NewWithTimeout does the same thing as New, except you can set a Timeout for
 // http.Client. A Timeout of zero means no timeout.
-func NewWithTimeout(remote, wsEndpoint string, timeout time.Duration) (*HTTP, error) {
-	httpClient, err := jsonrpcclient.DefaultHTTPClient(remote)
+func NewWithTimeout(remote string, t time.Duration) (*HTTP, error) {
+	c, err := jsonrpcclient.DefaultHTTPClient(remote)
 	if err != nil {
 		return nil, err
 	}
-	httpClient.Timeout = timeout
-	return NewWithClient(remote, wsEndpoint, httpClient)
+	c.Timeout = t
+	return NewWithClient(remote, c)
 }
 
-// NewWithClient allows for setting a custom http client (See New).
-// An error is returned on invalid remote. The function panics when remote is nil.
-func NewWithClient(remote, wsEndpoint string, client *http.Client) (*HTTP, error) {
-	if client == nil {
-		panic("nil http.Client provided")
+// NewWithClient allows you to set a custom http client. An error is returned
+// on invalid remote. The function panics when remote is nil.
+func NewWithClient(remote string, c *http.Client) (*HTTP, error) {
+	if c == nil {
+		panic("nil http.Client")
 	}
+	return NewWithClientAndWSOptions(remote, c, DefaultWSOptions())
+}
 
-	rc, err := jsonrpcclient.NewWithHTTPClient(remote, client)
+// NewWithClientAndWSOptions allows you to set a custom http client and
+// WebSocket options. An error is returned on invalid remote. The function
+// panics when remote is nil.
+func NewWithClientAndWSOptions(remote string, c *http.Client, wso WSOptions) (*HTTP, error) {
+	if c == nil {
+		panic("nil http.Client")
+	}
+	rpc, err := jsonrpcclient.NewWithHTTPClient(remote, c)
 	if err != nil {
 		return nil, err
 	}
 
-	wsEvents, err := newWsEvents(remote, wsEndpoint)
+	wsEvents, err := newWsEvents(remote, wso)
 	if err != nil {
 		return nil, err
 	}
 
 	httpClient := &HTTP{
-		rpc:           rc,
+		rpc:           rpc,
 		remote:        remote,
-		baseRPCClient: &baseRPCClient{caller: rc},
+		baseRPCClient: &baseRPCClient{caller: rpc},
 		wsEvents:      wsEvents,
 	}
 
@@ -524,207 +526,4 @@ func (c *baseRPCClient) BroadcastEvidence(
 		return nil, err
 	}
 	return result, nil
-}
-
-//-----------------------------------------------------------------------------
-// wsEvents
-
-var errNotRunning = errors.New("client is not running. Use .Start() method to start")
-
-// wsEvents is a wrapper around WSClient, which implements EventsClient.
-type wsEvents struct {
-	service.BaseService
-	remote   string
-	endpoint string
-	ws       *jsonrpcclient.WSClient
-
-	mtx           tmsync.RWMutex
-	subscriptions map[string]chan ctypes.ResultEvent // query -> chan
-}
-
-func newWsEvents(remote, endpoint string) (*wsEvents, error) {
-	w := &wsEvents{
-		endpoint:      endpoint,
-		remote:        remote,
-		subscriptions: make(map[string]chan ctypes.ResultEvent),
-	}
-	w.BaseService = *service.NewBaseService(nil, "wsEvents", w)
-
-	var err error
-	w.ws, err = jsonrpcclient.NewWS(w.remote, w.endpoint, jsonrpcclient.OnReconnect(func() {
-		// resubscribe immediately
-		w.redoSubscriptionsAfter(0 * time.Second)
-	}))
-	if err != nil {
-		return nil, err
-	}
-	w.ws.SetLogger(w.Logger)
-
-	return w, nil
-}
-
-// OnStart implements service.Service by starting WSClient and event loop.
-func (w *wsEvents) OnStart() error {
-	if err := w.ws.Start(); err != nil {
-		return err
-	}
-
-	go w.eventListener()
-
-	return nil
-}
-
-// OnStop implements service.Service by stopping WSClient.
-func (w *wsEvents) OnStop() {
-	if err := w.ws.Stop(); err != nil {
-		w.Logger.Error("Can't stop ws client", "err", err)
-	}
-}
-
-// Subscribe implements EventsClient by using WSClient to subscribe given
-// subscriber to query. By default, it returns a channel with cap=1. Error is
-// returned if it fails to subscribe.
-//
-// When reading from the channel, keep in mind there's a single events loop, so
-// if you don't read events for this subscription fast enough, other
-// subscriptions will slow down in effect.
-//
-// The channel is never closed to prevent clients from seeing an erroneous
-// event.
-//
-// It returns an error if wsEvents is not running.
-func (w *wsEvents) Subscribe(ctx context.Context, subscriber, query string,
-	outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
-
-	if !w.IsRunning() {
-		return nil, errNotRunning
-	}
-
-	if err := w.ws.Subscribe(ctx, query); err != nil {
-		return nil, err
-	}
-
-	outCap := 1
-	if len(outCapacity) > 0 {
-		outCap = outCapacity[0]
-	}
-
-	outc := make(chan ctypes.ResultEvent, outCap)
-	w.mtx.Lock()
-	// subscriber param is ignored because Tendermint will override it with
-	// remote IP anyway.
-	w.subscriptions[query] = outc
-	w.mtx.Unlock()
-
-	return outc, nil
-}
-
-// Unsubscribe implements EventsClient by using WSClient to unsubscribe given
-// subscriber from query.
-//
-// It returns an error if wsEvents is not running.
-func (w *wsEvents) Unsubscribe(ctx context.Context, subscriber, query string) error {
-	if !w.IsRunning() {
-		return errNotRunning
-	}
-
-	if err := w.ws.Unsubscribe(ctx, query); err != nil {
-		return err
-	}
-
-	w.mtx.Lock()
-	_, ok := w.subscriptions[query]
-	if ok {
-		delete(w.subscriptions, query)
-	}
-	w.mtx.Unlock()
-
-	return nil
-}
-
-// UnsubscribeAll implements EventsClient by using WSClient to unsubscribe
-// given subscriber from all the queries.
-//
-// It returns an error if wsEvents is not running.
-func (w *wsEvents) UnsubscribeAll(ctx context.Context, subscriber string) error {
-	if !w.IsRunning() {
-		return errNotRunning
-	}
-
-	if err := w.ws.UnsubscribeAll(ctx); err != nil {
-		return err
-	}
-
-	w.mtx.Lock()
-	w.subscriptions = make(map[string]chan ctypes.ResultEvent)
-	w.mtx.Unlock()
-
-	return nil
-}
-
-// After being reconnected, it is necessary to redo subscription to server
-// otherwise no data will be automatically received.
-func (w *wsEvents) redoSubscriptionsAfter(d time.Duration) {
-	time.Sleep(d)
-
-	ctx := context.Background()
-
-	w.mtx.Lock()
-	defer w.mtx.Unlock()
-	for q := range w.subscriptions {
-		err := w.ws.Subscribe(ctx, q)
-		if err != nil {
-			w.Logger.Error("failed to resubscribe", "query", q, "err", err)
-			delete(w.subscriptions, q)
-		}
-	}
-}
-
-func isErrAlreadySubscribed(err error) bool {
-	return strings.Contains(err.Error(), tmpubsub.ErrAlreadySubscribed.Error())
-}
-
-func (w *wsEvents) eventListener() {
-	for {
-		select {
-		case resp, ok := <-w.ws.ResponsesCh:
-			if !ok {
-				return
-			}
-
-			if resp.Error != nil {
-				w.Logger.Error("WS error", "err", resp.Error.Error())
-				// Error can be ErrAlreadySubscribed or max client (subscriptions per
-				// client) reached or Tendermint exited.
-				// We can ignore ErrAlreadySubscribed, but need to retry in other
-				// cases.
-				if !isErrAlreadySubscribed(resp.Error) {
-					// Resubscribe after 1 second to give Tendermint time to restart (if
-					// crashed).
-					w.redoSubscriptionsAfter(1 * time.Second)
-				}
-				continue
-			}
-
-			result := new(ctypes.ResultEvent)
-			err := tmjson.Unmarshal(resp.Result, result)
-			if err != nil {
-				w.Logger.Error("failed to unmarshal response", "err", err)
-				continue
-			}
-
-			w.mtx.RLock()
-			out, ok := w.subscriptions[result.Query]
-			w.mtx.RUnlock()
-			if ok {
-				select {
-				case out <- *result:
-				case <-w.Quit():
-					return
-				}
-			}
-		case <-w.Quit():
-			return
-		}
-	}
 }

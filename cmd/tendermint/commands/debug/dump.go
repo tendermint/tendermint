@@ -59,7 +59,7 @@ func dumpCmdHandler(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	rpc, err := rpchttp.New(nodeRPCAddr, "/websocket")
+	rpc, err := rpchttp.New(nodeRPCAddr)
 	if err != nil {
 		return fmt.Errorf("failed to create new http client: %w", err)
 	}

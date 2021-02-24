@@ -44,7 +44,7 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 		return errors.New("invalid output file")
 	}
 
-	rpc, err := rpchttp.New(nodeRPCAddr, "/websocket")
+	rpc, err := rpchttp.New(nodeRPCAddr)
 	if err != nil {
 		return fmt.Errorf("failed to create new http client: %w", err)
 	}
