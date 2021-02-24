@@ -1026,11 +1026,18 @@ func NewNode(config *cfg.Config,
 		config.StateSync.TempDir,
 	)
 
-	// Setup Transport and Switch.
+	router.AddChannelDescriptors(mpReactorShim.GetChannels())
+	router.AddChannelDescriptors(bcReactorForSwitch.GetChannels())
+	router.AddChannelDescriptors(csReactorShim.GetChannels())
+	router.AddChannelDescriptors(evReactorShim.GetChannels())
+	router.AddChannelDescriptors(stateSyncReactorShim.GetChannels())
+
+	// setup Transport and Switch
 	sw := createSwitch(
 		config, transport, p2pMetrics, mpReactorShim, bcReactorForSwitch,
 		stateSyncReactorShim, csReactorShim, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
 	)
+
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
 		return nil, fmt.Errorf("could not add peers from persistent-peers field: %w", err)
@@ -1069,6 +1076,8 @@ func NewNode(config *cfg.Config,
 		if err != nil {
 			return nil, err
 		}
+
+		router.AddChannelDescriptors(pexReactor.GetChannels())
 	}
 
 	if config.RPC.PprofListenAddress != "" {

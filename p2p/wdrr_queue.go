@@ -217,12 +217,19 @@ func (q *wdrrQueue) enqueueLoop() {
 	for {
 		select {
 		case e := <-q.enqueueCh:
+			chIDStr := strconv.Itoa(int(e.channelID))
+
 			flow := q.flows[e.channelID]
+			if flow == nil {
+				panic(fmt.Sprintf("queue flow not found for channel %s", chIDStr))
+			}
+
+			msgSize := proto.Size(e.Message)
+			q.metrics.PeerQueueMsgSize.With("ch_id", chIDStr).Set(float64(msgSize))
 
 			enqueued, size := flow.tryEnqueue(e)
 			if !enqueued {
-				msgSize := uint(proto.Size(e.Message))
-				// TODO: Record gauge metric for dropped envelope.
+				q.metrics.PeerQueueDroppedMsgs.With("ch_id", chIDStr).Add(1)
 				q.logger.Debug(
 					"dropped envelope",
 					"ch_id", e.channelID,

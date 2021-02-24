@@ -179,6 +179,7 @@ type Router struct {
 	nodeInfo           NodeInfo
 	privKey            crypto.PrivKey
 	peerManager        *PeerManager
+	chDescs            []ChannelDescriptor
 	transports         []Transport
 	protocolTransports map[Protocol]Transport
 	stopCh             chan struct{} // signals Router shutdown
@@ -215,6 +216,7 @@ func NewRouter(
 		metrics:            metrics,
 		nodeInfo:           nodeInfo,
 		privKey:            privKey,
+		chDescs:            make([]ChannelDescriptor, 0),
 		transports:         transports,
 		protocolTransports: map[Protocol]Transport{},
 		peerManager:        peerManager,
@@ -235,6 +237,14 @@ func NewRouter(
 	}
 
 	return router, nil
+}
+
+// AddChannelDescriptors adds a set of ChannelDescriptors to the reactor. Note,
+// this should be called before the router is started and any connections are made.
+func (r *Router) AddChannelDescriptors(chDescs []*ChannelDescriptor) {
+	for _, chDesc := range chDescs {
+		r.chDescs = append(r.chDescs, *chDesc)
+	}
 }
 
 // OpenChannel opens a new channel for the given message type. The caller must
@@ -436,7 +446,9 @@ func (r *Router) acceptPeers(transport Transport) {
 				return
 			}
 
-			queue := newFIFOQueue(0)
+			queue := newWDRRQueue(r.logger, peerInfo.NodeID, r.metrics, r.chDescs)
+			queue.start()
+
 			r.peerMtx.Lock()
 			r.peerQueues[peerInfo.NodeID] = queue
 			r.peerMtx.Unlock()
@@ -445,7 +457,9 @@ func (r *Router) acceptPeers(transport Transport) {
 				r.peerMtx.Lock()
 				delete(r.peerQueues, peerInfo.NodeID)
 				r.peerMtx.Unlock()
+
 				queue.close()
+
 				if err := r.peerManager.Disconnected(peerInfo.NodeID); err != nil {
 					r.logger.Error("failed to disconnect peer", "peer", peerInfo.NodeID, "err", err)
 				}
@@ -510,7 +524,9 @@ func (r *Router) dialPeers() {
 				return
 			}
 
-			queue := newFIFOQueue(0)
+			queue := newWDRRQueue(r.logger, peerID, r.metrics, r.chDescs)
+			queue.start()
+
 			r.peerMtx.Lock()
 			r.peerQueues[peerID] = queue
 			r.peerMtx.Unlock()
@@ -519,7 +535,9 @@ func (r *Router) dialPeers() {
 				r.peerMtx.Lock()
 				delete(r.peerQueues, peerID)
 				r.peerMtx.Unlock()
+
 				queue.close()
+
 				if err := r.peerManager.Disconnected(peerID); err != nil {
 					r.logger.Error("failed to disconnect peer", "peer", address, "err", err)
 				}
