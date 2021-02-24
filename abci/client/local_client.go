@@ -15,7 +15,7 @@ import (
 type localClient struct {
 	service.BaseService
 
-	mtx *tmsync.Mutex
+	mtx *tmsync.RWMutex
 	types.Application
 	Callback
 }
@@ -26,9 +26,9 @@ var _ Client = (*localClient)(nil)
 // methods of the given app.
 //
 // Both Async and Sync methods ignore the given context.Context parameter.
-func NewLocalClient(mtx *tmsync.Mutex, app types.Application) Client {
+func NewLocalClient(mtx *tmsync.RWMutex, app types.Application) Client {
 	if mtx == nil {
-		mtx = new(tmsync.Mutex)
+		mtx = new(tmsync.RWMutex)
 	}
 	cli := &localClient{
 		mtx:         mtx,
@@ -65,8 +65,8 @@ func (app *localClient) EchoAsync(ctx context.Context, msg string) (*ReqRes, err
 }
 
 func (app *localClient) InfoAsync(ctx context.Context, req types.RequestInfo) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.Info(req)
 	return app.callback(
@@ -98,8 +98,8 @@ func (app *localClient) CheckTxAsync(ctx context.Context, req types.RequestCheck
 }
 
 func (app *localClient) QueryAsync(ctx context.Context, req types.RequestQuery) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.Query(req)
 	return app.callback(
@@ -213,8 +213,8 @@ func (app *localClient) EchoSync(ctx context.Context, msg string) (*types.Respon
 }
 
 func (app *localClient) InfoSync(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.Info(req)
 	return &res, nil
@@ -247,8 +247,8 @@ func (app *localClient) QuerySync(
 	ctx context.Context,
 	req types.RequestQuery,
 ) (*types.ResponseQuery, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.Query(req)
 	return &res, nil
