@@ -68,13 +68,14 @@ func newWsEvents(remote string, wso WSOptions) (*wsEvents, error) {
 	w.BaseService = *service.NewBaseService(nil, "wsEvents", w)
 
 	var err error
-	w.ws, err = jsonrpcclient.NewWSWithOptions(remote, wso.Path, wso.WSOptions, jsonrpcclient.OnReconnect(func() {
-		// resubscribe immediately
-		w.redoSubscriptionsAfter(0 * time.Second)
-	}))
+	w.ws, err = jsonrpcclient.NewWSWithOptions(remote, wso.Path, wso.WSOptions)
 	if err != nil {
 		return nil, fmt.Errorf("can't create WS client: %w", err)
 	}
+	w.ws.OnReconnect(func() {
+		// resubscribe immediately
+		w.redoSubscriptionsAfter(0 * time.Second)
+	})
 	w.ws.SetLogger(w.Logger)
 
 	return w, nil

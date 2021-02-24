@@ -29,7 +29,7 @@ type WSOptions struct {
 // DefaultWSOptions returns default WS options.
 func DefaultWSOptions() WSOptions {
 	return WSOptions{
-		MaxReconnectAttempts: 25,
+		MaxReconnectAttempts: 10, // first: 2 sec, last: 17 min.
 		WriteWait:            10 * time.Second,
 		ReadWait:             0,
 		PingPeriod:           0,
@@ -95,12 +95,12 @@ type WSClient struct { // nolint: maligned
 // pong wait time. The endpoint argument must begin with a `/`.
 // An error is returned on invalid remote. The function panics when remote is nil.
 // It uses DefaultWSOptions.
-func NewWS(remoteAddr, endpoint string, options ...func(*WSClient)) (*WSClient, error) {
-	return NewWSWithOptions(remoteAddr, endpoint, DefaultWSOptions(), options...)
+func NewWS(remoteAddr, endpoint string) (*WSClient, error) {
+	return NewWSWithOptions(remoteAddr, endpoint, DefaultWSOptions())
 }
 
 // NewWSWithOptions allows you to provide custom WSOptions.
-func NewWSWithOptions(remoteAddr, endpoint string, opts WSOptions, options ...func(*WSClient)) (*WSClient, error) {
+func NewWSWithOptions(remoteAddr, endpoint string, opts WSOptions) (*WSClient, error) {
 	parsedURL, err := newParsedURL(remoteAddr)
 	if err != nil {
 		return nil, err
@@ -130,18 +130,14 @@ func NewWSWithOptions(remoteAddr, endpoint string, opts WSOptions, options ...fu
 		// sentIDs: make(map[types.JSONRPCIntID]bool),
 	}
 	c.BaseService = *service.NewBaseService(nil, "WSClient", c)
-	for _, option := range options {
-		option(c)
-	}
 	return c, nil
 }
 
 // OnReconnect sets the callback, which will be called every time after
 // successful reconnect.
-func OnReconnect(cb func()) func(*WSClient) {
-	return func(c *WSClient) {
-		c.onReconnect = cb
-	}
+// Could only be set before Start.
+func (c *WSClient) OnReconnect(cb func()) {
+	c.onReconnect = cb
 }
 
 // String returns WS client full address.
