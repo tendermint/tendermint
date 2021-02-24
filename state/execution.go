@@ -303,25 +303,13 @@ func execBlockOnProxyApp(
 	if pbh == nil {
 		return nil, errors.New("nil header")
 	}
-<<<<<<< HEAD
+
 	abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
 		Hash:                block.Hash(),
 		Header:              *pbh,
 		LastCommitInfo:      commitInfo,
 		ByzantineValidators: byzVals,
 	})
-=======
-
-	abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(
-		ctx,
-		abci.RequestBeginBlock{
-			Hash:                block.Hash(),
-			Header:              *pbh,
-			LastCommitInfo:      commitInfo,
-			ByzantineValidators: byzVals,
-		},
-	)
->>>>>>> c21f4c6fd... state executor: groom logs (#6152)
 	if err != nil {
 		logger.Error("error in proxyAppConn.BeginBlock", "err", err)
 		return nil, err
@@ -335,12 +323,8 @@ func execBlockOnProxyApp(
 		}
 	}
 
-<<<<<<< HEAD
 	// End block.
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
-=======
-	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(ctx, abci.RequestEndBlock{Height: block.Height})
->>>>>>> c21f4c6fd... state executor: groom logs (#6152)
 	if err != nil {
 		logger.Error("error in proxyAppConn.EndBlock", "err", err)
 		return nil, err
