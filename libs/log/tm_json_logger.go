@@ -16,9 +16,9 @@ func NewTMJSONLogger(w io.Writer) Logger {
 	return &tmLogger{logger}
 }
 
-// NewTMJSONLoggerNoTs is the same as NewTMJSONLogger, but without the
+// NewTMJSONLoggerNoTS is the same as NewTMJSONLogger, but without the
 // timestamp.
-func NewTMJSONLoggerNoTs(w io.Writer) Logger {
+func NewTMJSONLoggerNoTS(w io.Writer) Logger {
 	logger := kitlog.NewJSONLogger(w)
 	return &tmLogger{logger}
 }
