@@ -90,10 +90,8 @@ type WSClient struct { // nolint: maligned
 	PingPongLatencyTimer metrics.Timer
 }
 
-// NewWS returns a new client. See the commentary on the func(*WSClient)
-// functions for a detailed description of how to configure ping period and
-// pong wait time. The endpoint argument must begin with a `/`.
-// An error is returned on invalid remote. The function panics when remote is nil.
+// NewWS returns a new client. The endpoint argument must begin with a `/`. An
+// error is returned on invalid remote. 
 // It uses DefaultWSOptions.
 func NewWS(remoteAddr, endpoint string) (*WSClient, error) {
 	return NewWSWithOptions(remoteAddr, endpoint, DefaultWSOptions())

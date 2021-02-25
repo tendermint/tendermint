@@ -26,6 +26,7 @@ type WSOptions struct {
 }
 
 // DefaultWSOptions returns default WS options.
+// See jsonrpcclient.DefaultWSOptions.
 func DefaultWSOptions() WSOptions {
 	return WSOptions{
 		Path:      "/websocket",
