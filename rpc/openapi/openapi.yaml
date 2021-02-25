@@ -340,7 +340,7 @@ paths:
         import rpchttp "github.com/tendermint/rpc/client/http"
         import "github.com/tendermint/tendermint/types"
 
-        client := rpchttp.New("tcp:0.0.0.0:26657", "/websocket")
+        client := rpchttp.New("tcp://0.0.0.0:26657")
         err := client.Start()
         if err != nil {
           handle error
@@ -397,7 +397,7 @@ paths:
       operationId: unsubscribe
       description: |
         ```go
-        client := rpchttp.New("tcp:0.0.0.0:26657", "/websocket")
+        client := rpchttp.New("tcp://0.0.0.0:26657")
         err := client.Start()
         if err != nil {
            handle error
@@ -1221,7 +1221,7 @@ components:
           example: "5576458aef205977e18fd50b274e9b5d9014525a"
         listen_addr:
           type: string
-          example: "tcp:0.0.0.0:26656"
+          example: "tcp://0.0.0.0:26656"
         network:
           type: string
           example: "cosmoshub-2"
@@ -1242,7 +1242,7 @@ components:
               example: "on"
             rpc_address:
               type: string
-              example: "tcp:0.0.0.0:26657"
+              example: "tcp://0.0.0.0:26657"
     SyncInfo:
       type: object
       properties:
