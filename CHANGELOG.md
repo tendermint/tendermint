@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.34.8
+
+*February 25, 2021*
+
+This release, in conjunction with [a fix in the Cosmos SDK](https://github.com/cosmos/cosmos-sdk/pull/8641),
+introduces changes that should mean the logs are much, much quieter. 🎉
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+### IMPROVEMENTS
+
+- [libs/log] [\#6174](https://github.com/tendermint/tendermint/issues/6174) Include timestamp (`ts` field; `time.RFC3339Nano` format) in JSON logger output (@melekes)
+
+### BUG FIXES
+
+- [abci] [\#6124](https://github.com/tendermint/tendermint/issues/6124) Fixes a panic condition during callback execution in `ReCheckTx` during high tx load. (@alexanderbez)
+
 ## v0.34.7
 
 *February 18, 2021*
@@ -37,7 +54,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 ## v0.34.6
 
-*February 18, 2021* 
+*February 18, 2021*
 
 _Tendermint Core v0.34.5 and v0.34.6 have been recalled due to build tooling problems._
 
@@ -45,9 +62,9 @@ _Tendermint Core v0.34.5 and v0.34.6 have been recalled due to build tooling pro
 
 *February 11, 2021*
 
-This release includes a fix for a memory leak in the evidence reactor (see #6068, below). 
-All Tendermint clients are recommended to upgrade. 
-Thank you to our friends at Crypto.com for the initial report of this memory leak! 
+This release includes a fix for a memory leak in the evidence reactor (see #6068, below).
+All Tendermint clients are recommended to upgrade.
+Thank you to our friends at Crypto.com for the initial report of this memory leak!
 
 Special thanks to other external contributors on this release: @yayajacky, @odidev, @laniehei, and @c29r3!
 
@@ -64,13 +81,13 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 *January 19, 2021*
 
-This release includes a fix for a high-severity security vulnerability, 
+This release includes a fix for a high-severity security vulnerability,
 a DoS-vector that impacted Tendermint Core v0.34.0-v0.34.2. For more details, see
-[Security Advisory Mulberry](https://github.com/tendermint/tendermint/security/advisories/GHSA-p658-8693-mhvg) 
-or https://nvd.nist.gov/vuln/detail/CVE-2021-21271. 
+[Security Advisory Mulberry](https://github.com/tendermint/tendermint/security/advisories/GHSA-p658-8693-mhvg)
+or https://nvd.nist.gov/vuln/detail/CVE-2021-21271.
 
 Tendermint Core v0.34.3 also updates GoGo Protobuf to 1.3.2 in order to pick up the fix for
-https://nvd.nist.gov/vuln/detail/CVE-2021-3121. 
+https://nvd.nist.gov/vuln/detail/CVE-2021-3121.
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
 
