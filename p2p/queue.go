@@ -33,9 +33,9 @@ type fifoQueue struct {
 
 var _ queue = (*fifoQueue)(nil)
 
-func newFIFOQueue() *fifoQueue {
+func newFIFOQueue(size int) *fifoQueue {
 	return &fifoQueue{
-		queueCh: make(chan Envelope),
+		queueCh: make(chan Envelope, size),
 		closeCh: make(chan struct{}),
 	}
 }

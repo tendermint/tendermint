@@ -159,9 +159,7 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 
 func TestWriteRPCResponseHTTPError(t *testing.T) {
 	w := httptest.NewRecorder()
-	WriteRPCResponseHTTPError(w,
-		http.StatusInternalServerError,
-		types.RPCInternalError(types.JSONRPCIntID(-1), errors.New("foo")))
+	WriteRPCResponseHTTPError(w, types.RPCInternalError(types.JSONRPCIntID(-1), errors.New("foo")))
 	resp := w.Result()
 	body, err := ioutil.ReadAll(resp.Body)
 	_ = resp.Body.Close()

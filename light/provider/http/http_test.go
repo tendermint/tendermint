@@ -54,7 +54,7 @@ func TestProvider(t *testing.T) {
 	chainID := genDoc.ChainID
 	t.Log("chainID:", chainID)
 
-	c, err := rpchttp.New(rpcAddr, "/websocket")
+	c, err := rpchttp.New(rpcAddr)
 	require.Nil(t, err)
 
 	p := lighthttp.NewWithClient(chainID, c)
@@ -79,7 +79,7 @@ func TestProvider(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, lower, sh.Height)
 
-	// fetching missing heights (both future and pruned) should return appropriate errors
+	// // fetching missing heights (both future and pruned) should return appropriate errors
 	_, err = p.LightBlock(context.Background(), 1000)
 	require.Error(t, err)
 	assert.Equal(t, provider.ErrLightBlockNotFound, err)

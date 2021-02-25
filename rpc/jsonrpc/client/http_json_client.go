@@ -121,12 +121,12 @@ func New(remote string) (*Client, error) {
 	return NewWithHTTPClient(remote, httpClient)
 }
 
-// NewWithHTTPClient returns a Client pointed at the given
-// address using a custom http client. An error is returned on invalid remote.
-// The function panics when remote is nil.
-func NewWithHTTPClient(remote string, client *http.Client) (*Client, error) {
-	if client == nil {
-		panic("nil http.Client provided")
+// NewWithHTTPClient returns a Client pointed at the given address using a
+// custom http client. An error is returned on invalid remote. The function
+// panics when client is nil.
+func NewWithHTTPClient(remote string, c *http.Client) (*Client, error) {
+	if c == nil {
+		panic("nil http.Client")
 	}
 
 	parsedURL, err := newParsedURL(remote)
@@ -144,7 +144,7 @@ func NewWithHTTPClient(remote string, client *http.Client) (*Client, error) {
 		address:  address,
 		username: username,
 		password: password,
-		client:   client,
+		client:   c,
 	}
 
 	return rpcClient, nil
@@ -173,7 +173,7 @@ func (c *Client) Call(
 	requestBuf := bytes.NewBuffer(requestBytes)
 	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, c.address, requestBuf)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		return nil, fmt.Errorf("request setup failed: %w", err)
 	}
 
 	httpRequest.Header.Set("Content-Type", "application/json")
@@ -184,7 +184,7 @@ func (c *Client) Call(
 
 	httpResponse, err := c.client.Do(httpRequest)
 	if err != nil {
-		return nil, fmt.Errorf("post failed: %w", err)
+		return nil, err
 	}
 
 	defer httpResponse.Body.Close()

@@ -24,8 +24,10 @@ var (
 	// reNodeID is a regexp for valid node IDs.
 	reNodeID = regexp.MustCompile(`^[0-9a-f]{40}$`)
 
-	// reHasScheme tries to detect URLs with schemes. It looks for a : before a / (if any).
-	reHasScheme = regexp.MustCompile(`^[^/]+:`)
+	// stringHasScheme tries to detect URLs with schemes. It looks for a : before a / (if any).
+	stringHasScheme = func(str string) bool {
+		return strings.Contains(str, "://")
+	}
 
 	// reSchemeIsHost tries to detect URLs where the scheme part is instead a
 	// hostname, i.e. of the form "host:80/path" where host: is a hostname.
@@ -95,7 +97,7 @@ func ParseNodeAddress(urlString string) (NodeAddress, error) {
 	// we try to apply a default scheme.
 	url, err := url.Parse(urlString)
 	if (err != nil || url.Scheme == "") &&
-		(!reHasScheme.MatchString(urlString) || reSchemeIsHost.MatchString(urlString)) {
+		(!stringHasScheme(urlString) || reSchemeIsHost.MatchString(urlString)) {
 		url, err = url.Parse(string(defaultProtocol) + "://" + urlString)
 	}
 	if err != nil {
