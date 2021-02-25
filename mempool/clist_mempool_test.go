@@ -129,6 +129,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 		{20, 20000, -1, 20},
 		{20, 20000, 5, 5},
 		{20, 20000, 30, 20},
+		{2000, -1, -1, 300},
 	}
 	for tcIndex, tt := range tests {
 		checkTxs(t, mempool, tt.numTxsToCreate, UnknownPeerID)
