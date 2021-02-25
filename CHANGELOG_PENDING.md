@@ -39,6 +39,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [all] \#6077 Change spelling from British English to American (@cmwaters)
     - Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
     - Rename "behaviour" pkg to "behavior" and internalized it in blockchain v2
+  - [rpc/client/http] \#6176 Remove `endpoint` arg from `New`, `NewWithTimeout` and `NewWithClient` (@melekes)
+  - [rpc/client/http] \#6176 Unexpose `WSEvents` (@melekes)
+  - [rpc/jsonrpc/client/ws_client] \#6176 `NewWS` no longer accepts options (use `NewWSWithOptions` and `OnReconnect` funcs to configure the client) (@melekes)
 
 - Blockchain Protocol
 

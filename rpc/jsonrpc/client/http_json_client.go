@@ -121,12 +121,12 @@ func New(remote string) (*Client, error) {
 	return NewWithHTTPClient(remote, httpClient)
 }
 
-// NewWithHTTPClient returns a Client pointed at the given
-// address using a custom http client. An error is returned on invalid remote.
-// The function panics when remote is nil.
-func NewWithHTTPClient(remote string, client *http.Client) (*Client, error) {
-	if client == nil {
-		panic("nil http.Client provided")
+// NewWithHTTPClient returns a Client pointed at the given address using a
+// custom http client. An error is returned on invalid remote. The function
+// panics when client is nil.
+func NewWithHTTPClient(remote string, c *http.Client) (*Client, error) {
+	if c == nil {
+		panic("nil http.Client")
 	}
 
 	parsedURL, err := newParsedURL(remote)
@@ -144,7 +144,7 @@ func NewWithHTTPClient(remote string, client *http.Client) (*Client, error) {
 		address:  address,
 		username: username,
 		password: password,
-		client:   client,
+		client:   c,
 	}
 
 	return rpcClient, nil
