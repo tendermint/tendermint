@@ -699,22 +699,22 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 	}{
 		{"good", chainID, vote.BlockID, vote.Height, commit, false},
 
-		// {"wrong signature (#0)", "EpsilonEridani", vote.BlockID, vote.Height, commit, true},
-		// {"wrong block ID", chainID, makeBlockIDRandom(), vote.Height, commit, true},
-		// {"wrong height", chainID, vote.BlockID, vote.Height - 1, commit, true},
+		{"wrong signature (#0)", "EpsilonEridani", vote.BlockID, vote.Height, commit, true},
+		{"wrong block ID", chainID, makeBlockIDRandom(), vote.Height, commit, true},
+		{"wrong height", chainID, vote.BlockID, vote.Height - 1, commit, true},
 
-		// {"wrong set size: 1 vs 0", chainID, vote.BlockID, vote.Height,
-		// 	NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{}), true},
+		{"wrong set size: 1 vs 0", chainID, vote.BlockID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{}), true},
 
-		// {"wrong set size: 1 vs 2", chainID, vote.BlockID, vote.Height,
-		// 	NewCommit(vote.Height, vote.Round, vote.BlockID,
-		// 		[]CommitSig{vote.CommitSig(), {BlockIDFlag: BlockIDFlagAbsent}}), true},
+		{"wrong set size: 1 vs 2", chainID, vote.BlockID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID,
+				[]CommitSig{vote.CommitSig(), {BlockIDFlag: BlockIDFlagAbsent}}), true},
 
-		// {"insufficient voting power: got 0, needed more than 666", chainID, vote.BlockID, vote.Height,
-		// 	NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{{BlockIDFlag: BlockIDFlagAbsent}}), true},
+		{"insufficient voting power: got 0, needed more than 666", chainID, vote.BlockID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{{BlockIDFlag: BlockIDFlagAbsent}}), true},
 
-		// {"wrong signature (#0)", chainID, vote.BlockID, vote.Height,
-		// 	NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{vote2.CommitSig()}), true},
+		{"wrong signature (#0)", chainID, vote.BlockID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{vote2.CommitSig()}), true},
 	}
 
 	for _, tc := range testCases {
@@ -1707,5 +1707,53 @@ func BenchmarkUpdates(b *testing.B) {
 		// Add m validators to valSetCopy
 		valSetCopy := valSet.Copy()
 		assert.NoError(b, valSetCopy.UpdateWithChangeSet(newValList))
+	}
+}
+
+func BenchmarkValidatorSet_VerifyCommitLight(b *testing.B) {
+	for _, n := range []int{1, 8, 64, 1024} {
+		n := n
+		var (
+			chainID = "test_chain_id"
+			h       = int64(3)
+			blockID = makeBlockIDRandom()
+		)
+		b.Run(fmt.Sprint(n), func(b *testing.B) {
+			b.ReportAllocs()
+			// generate n validators
+			voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, n, int64(n*5))
+			// create a commit with n validators
+			commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+			require.NoError(b, err)
+
+			for i := 0; i < b.N/n; i++ {
+				err = valSet.VerifyCommitLight(chainID, blockID, h, commit)
+				assert.NoError(b, err)
+			}
+		})
+	}
+}
+
+func BenchmarkValidatorSet_VerifyCommitLightTrusting(b *testing.B) {
+	for _, n := range []int{1, 8, 64, 1024} {
+		n := n
+		var (
+			chainID = "test_chain_id"
+			h       = int64(3)
+			blockID = makeBlockIDRandom()
+		)
+		b.Run(fmt.Sprint(n), func(b *testing.B) {
+			b.ReportAllocs()
+			// generate n validators
+			voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, n, int64(n*5))
+			// create a commit with n validators
+			commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+			require.NoError(b, err)
+
+			for i := 0; i < b.N/n; i++ {
+				err = valSet.VerifyCommitLightTrusting(chainID, commit, tmmath.Fraction{Numerator: 1, Denominator: 3})
+				assert.NoError(b, err)
+			}
+		})
 	}
 }
