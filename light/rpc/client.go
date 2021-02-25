@@ -20,8 +20,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var errNegOrZeroHeight = errors.New("negative or zero height")
-
 // KeyPathFunc builds a merkle path out of the given path and key.
 type KeyPathFunc func(path string, key []byte) (merkle.KeyPath, error)
 
@@ -127,7 +125,7 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 		return nil, errors.New("no proof ops")
 	}
 	if resp.Height <= 0 {
-		return nil, errNegOrZeroHeight
+		return nil, ctypes.ErrZeroOrNegativeHeight
 	}
 
 	// Update the light client if we're behind.
@@ -212,7 +210,7 @@ func (c *Client) ConsensusParams(ctx context.Context, height *uint64) (*ctypes.R
 		return nil, err
 	}
 	if res.BlockHeight <= 0 {
-		return nil, errNegOrZeroHeight
+		return nil, ctypes.ErrZeroOrNegativeHeight
 	}
 
 	// Update the light client if we're behind.
@@ -373,7 +371,7 @@ func (c *Client) BlockResults(ctx context.Context, height *uint64) (*ctypes.Resu
 
 	// Validate res.
 	if res.Height <= 0 {
-		return nil, errNegOrZeroHeight
+		return nil, ctypes.ErrZeroOrNegativeHeight
 	}
 
 	// Update the light client if we're behind.
@@ -438,7 +436,7 @@ func (c *Client) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.Resul
 
 	// Validate res.
 	if res.Height <= 0 {
-		return nil, errNegOrZeroHeight
+		return nil, ctypes.ErrZeroOrNegativeHeight
 	}
 
 	// Update the light client if we're behind.
@@ -512,7 +510,7 @@ func (c *Client) updateLightClientIfNeededTo(ctx context.Context, height *uint64
 		l, err = c.lc.VerifyLightBlockAtHeight(ctx, *height, time.Now())
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to update light client to %d: %w", height, err)
+		return nil, fmt.Errorf("failed to update light client: %w", err)
 	}
 	return l, nil
 }
@@ -579,7 +577,7 @@ const (
 
 func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	if perPage < 1 {
-		panic(fmt.Sprintf("zero or negative perPage: %d", perPage))
+		panic(fmt.Errorf("%w (%d)", ctypes.ErrZeroOrNegativePerPage, perPage))
 	}
 
 	if pagePtr == nil { // no page parameter
@@ -592,7 +590,7 @@ func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	}
 	page := *pagePtr
 	if page <= 0 || page > pages {
-		return 1, fmt.Errorf("page should be within [1, %d] range, given %d", pages, page)
+		return 1, fmt.Errorf("%w expected range: [1, %d], given %d", ctypes.ErrPageOutOfRange, pages, page)
 	}
 
 	return page, nil

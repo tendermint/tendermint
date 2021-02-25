@@ -82,7 +82,7 @@ func executeProcessorTests(t *testing.T, tests []testFields) {
 					}
 				}()
 
-				// First step must always initialise the currentState as state.
+				// First step must always initialize the currentState as state.
 				if step.currentState != nil {
 					state = makeState(step.currentState)
 				}

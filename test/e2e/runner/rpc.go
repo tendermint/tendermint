@@ -71,8 +71,10 @@ func waitForNode(node *e2e.Node, height uint64, timeout time.Duration) (*rpctype
 	if err != nil {
 		return nil, err
 	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+
 	for {
 		status, err := client.Status(ctx)
 		switch {

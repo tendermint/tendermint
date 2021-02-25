@@ -16,7 +16,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
-	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -373,11 +372,12 @@ func (n Node) Validate(testnet Testnet) error {
 				height, testnet.InitialHeight)
 		}
 		exists := false
-		for possibleBehaviors := range mcs.MisbehaviorList {
-			if possibleBehaviors == misbehavior {
-				exists = true
-			}
-		}
+		// FIXME: Maverick has been disabled until it is redesigned
+		// for possibleBehaviors := range mcs.MisbehaviorList {
+		// 	if possibleBehaviors == misbehavior {
+		// 		exists = true
+		// 	}
+		// }
 		if !exists {
 			return fmt.Errorf("misbehavior %s does not exist", misbehavior)
 		}
@@ -473,7 +473,7 @@ func (n Node) AddressRPC() string {
 
 // Client returns an RPC client for a node.
 func (n Node) Client() (*rpchttp.HTTP, error) {
-	return rpchttp.New(fmt.Sprintf("http://127.0.0.1:%v", n.ProxyPort), "/websocket")
+	return rpchttp.New(fmt.Sprintf("http://127.0.0.1:%v", n.ProxyPort))
 }
 
 // keyGenerator generates pseudorandom Ed25519 keys based on a seed.

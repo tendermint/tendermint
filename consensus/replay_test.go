@@ -34,21 +34,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func TestMain(m *testing.M) {
-	config = ResetConfig("consensus_reactor_test")
-	consensusReplayConfig = ResetConfig("consensus_replay_test")
-	configStateTest := ResetConfig("consensus_state_test")
-	configMempoolTest := ResetConfig("consensus_mempool_test")
-	configByzantineTest := ResetConfig("consensus_byzantine_test")
-	code := m.Run()
-	os.RemoveAll(config.RootDir)
-	os.RemoveAll(consensusReplayConfig.RootDir)
-	os.RemoveAll(configStateTest.RootDir)
-	os.RemoveAll(configMempoolTest.RootDir)
-	os.RemoveAll(configByzantineTest.RootDir)
-	os.Exit(code)
-}
-
 // These tests ensure we can always recover from failure at any part of the consensus process.
 // There are two general failure scenarios: failure during consensus, and failure while applying the block.
 // Only the latter interacts with the app and store,
@@ -97,8 +82,8 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Confi
 	require.NoError(t, err)
 	select {
 	case <-newBlockSub.Out():
-	case <-newBlockSub.Cancelled():
-		t.Fatal("newBlockSub was cancelled")
+	case <-newBlockSub.Canceled():
+		t.Fatal("newBlockSub was canceled")
 	case <-time.After(120 * time.Second):
 		t.Fatal("Timed out waiting for new block (see trace above)")
 	}
@@ -321,6 +306,8 @@ var modes = []uint{0, 1, 2, 3}
 
 // This is actually not a test, it's for storing validator change tx data for testHandshakeReplay
 func TestSimulateValidatorsChange(t *testing.T) {
+	configSetup(t)
+
 	nPeers := 7
 	nVals := 4
 	css, genDoc, config, cleanup := randConsensusNetWithPeers(
@@ -544,6 +531,8 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 // Sync from scratch
 func TestHandshakeReplayAll(t *testing.T) {
+	configSetup(t)
+
 	for _, m := range modes {
 		testHandshakeReplay(t, config, 0, m, false)
 	}
@@ -554,6 +543,8 @@ func TestHandshakeReplayAll(t *testing.T) {
 
 // Sync many, not from scratch
 func TestHandshakeReplaySome(t *testing.T) {
+	configSetup(t)
+
 	for _, m := range modes {
 		testHandshakeReplay(t, config, 2, m, false)
 	}
@@ -564,6 +555,8 @@ func TestHandshakeReplaySome(t *testing.T) {
 
 // Sync from lagging by one
 func TestHandshakeReplayOne(t *testing.T) {
+	configSetup(t)
+
 	for _, m := range modes {
 		testHandshakeReplay(t, config, numBlocks-1, m, false)
 	}
@@ -574,6 +567,8 @@ func TestHandshakeReplayOne(t *testing.T) {
 
 // Sync from caught up
 func TestHandshakeReplayNone(t *testing.T) {
+	configSetup(t)
+
 	for _, m := range modes {
 		testHandshakeReplay(t, config, numBlocks, m, false)
 	}
@@ -584,6 +579,8 @@ func TestHandshakeReplayNone(t *testing.T) {
 
 // Test mockProxyApp should not panic when app return ABCIResponses with some empty ResponseDeliverTx
 func TestMockProxyApp(t *testing.T) {
+	configSetup(t)
+
 	sim.CleanupFunc() // clean the test env created in TestSimulateValidatorsChange
 	logger := log.TestingLogger()
 	var validTxs, invalidTxs = 0, 0

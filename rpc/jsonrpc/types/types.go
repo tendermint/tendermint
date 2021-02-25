@@ -55,7 +55,7 @@ type RPCRequest struct {
 	Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
 }
 
-// UnmarshalJSON custom JSON unmarshalling due to jsonrpcid being string or int
+// UnmarshalJSON custom JSON unmarshaling due to jsonrpcid being string or int
 func (req *RPCRequest) UnmarshalJSON(data []byte) error {
 	unsafeReq := &struct {
 		JSONRPC string          `json:"jsonrpc"`
@@ -154,7 +154,7 @@ type RPCResponse struct {
 	Error   *RPCError       `json:"error,omitempty"`
 }
 
-// UnmarshalJSON custom JSON unmarshalling due to jsonrpcid being string or int
+// UnmarshalJSON custom JSON unmarshaling due to jsonrpcid being string or int
 func (resp *RPCResponse) UnmarshalJSON(data []byte) error {
 	unsafeResp := &struct {
 		JSONRPC string          `json:"jsonrpc"`
@@ -187,7 +187,7 @@ func NewRPCSuccessResponse(id jsonrpcid, res interface{}) RPCResponse {
 		var js []byte
 		js, err := tmjson.Marshal(res)
 		if err != nil {
-			return RPCInternalError(id, fmt.Errorf("error marshalling response: %w", err))
+			return RPCInternalError(id, fmt.Errorf("error marshaling response: %w", err))
 		}
 		rawMsg = json.RawMessage(js)
 	}
@@ -214,7 +214,7 @@ func (resp RPCResponse) String() string {
 //	If there was an error in detecting the id in the Request object (e.g. Parse
 // 	error/Invalid Request), it MUST be Null.
 func RPCParseError(err error) RPCResponse {
-	return NewRPCErrorResponse(nil, -32700, "Parse error. Invalid JSON", err.Error())
+	return NewRPCErrorResponse(nil, -32700, "Parse error", err.Error())
 }
 
 // From the JSON-RPC 2.0 spec:

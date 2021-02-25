@@ -51,6 +51,10 @@ func BlockchainInfo(ctx *rpctypes.Context, minHeight, maxHeight uint64) (*ctypes
 // if 0, use blockstore base for min, latest block height for max
 // enforce limit.
 func filterMinMax(base, height, min, max, limit uint64) (uint64, uint64, error) {
+	// filter negatives
+	if min < 0 || max < 0 {
+		return min, max, ctypes.ErrZeroOrNegativeHeight
+	}
 
 	// adjust for default values
 	if min == 0 {
@@ -71,7 +75,8 @@ func filterMinMax(base, height, min, max, limit uint64) (uint64, uint64, error) 
 	min = tmmath.MaxUint64(min, max-limit+1)
 
 	if min > max {
-		return min, max, fmt.Errorf("min height %d can't be greater than max height %d", min, max)
+		return min, max, fmt.Errorf("%w: min height %d can't be greater than max height %d",
+			ctypes.ErrInvalidRequest, min, max)
 	}
 	return min, max, nil
 }

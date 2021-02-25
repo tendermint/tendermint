@@ -68,8 +68,8 @@ const (
 	chunkMsgSize = int(16e6)
 )
 
-// Reactor handles state sync, both restoring snapshots for the local node and serving snapshots
-// for other nodes.
+// Reactor handles state sync, both restoring snapshots for the local node and
+// serving snapshots for other nodes.
 type Reactor struct {
 	service.BaseService
 

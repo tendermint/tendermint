@@ -32,7 +32,7 @@ var (
 
 func getHTTPClient() *rpchttp.HTTP {
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c, err := rpchttp.New(rpcAddr, "/websocket")
+	c, err := rpchttp.New(rpcAddr)
 	if err != nil {
 		panic(err)
 	}
@@ -42,7 +42,7 @@ func getHTTPClient() *rpchttp.HTTP {
 
 func getHTTPClientWithTimeout(timeout time.Duration) *rpchttp.HTTP {
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress
-	c, err := rpchttp.NewWithTimeout(rpcAddr, "/websocket", timeout)
+	c, err := rpchttp.NewWithTimeout(rpcAddr, timeout)
 	if err != nil {
 		panic(err)
 	}
@@ -64,7 +64,7 @@ func GetClients() []client.Client {
 
 func TestNilCustomHTTPClient(t *testing.T) {
 	require.Panics(t, func() {
-		_, _ = rpchttp.NewWithClient("http://example.com", "/websocket", nil)
+		_, _ = rpchttp.NewWithClient("http://example.com", nil)
 	})
 	require.Panics(t, func() {
 		_, _ = rpcclient.NewWithHTTPClient("http://example.com", nil)
@@ -73,7 +73,7 @@ func TestNilCustomHTTPClient(t *testing.T) {
 
 func TestCustomHTTPClient(t *testing.T) {
 	remote := rpctest.GetConfig().RPC.ListenAddress
-	c, err := rpchttp.NewWithClient(remote, "/websocket", http.DefaultClient)
+	c, err := rpchttp.NewWithClient(remote, http.DefaultClient)
 	require.Nil(t, err)
 	status, err := c.Status(context.Background())
 	require.NoError(t, err)

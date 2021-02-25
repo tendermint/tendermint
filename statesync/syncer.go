@@ -245,7 +245,7 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 		return sm.State{}, nil, err
 	}
 
-	// Spawn chunk fetchers. They will terminate when the chunk queue is closed or context cancelled.
+	// Spawn chunk fetchers. They will terminate when the chunk queue is closed or context canceled.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	for i := int32(0); i < chunkFetchers; i++ {
@@ -385,7 +385,7 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 	for {
 		index, err := chunks.Allocate()
 		if err == errDone {
-			// Keep checking until the context is cancelled (restore is done), in case any
+			// Keep checking until the context is canceled (restore is done), in case any
 			// chunks need to be refetched.
 			select {
 			case <-ctx.Done():
