@@ -91,7 +91,7 @@ type WSClient struct { // nolint: maligned
 }
 
 // NewWS returns a new client. The endpoint argument must begin with a `/`. An
-// error is returned on invalid remote. 
+// error is returned on invalid remote.
 // It uses DefaultWSOptions.
 func NewWS(remoteAddr, endpoint string) (*WSClient, error) {
 	return NewWSWithOptions(remoteAddr, endpoint, DefaultWSOptions())
