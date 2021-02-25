@@ -45,9 +45,6 @@ type NewRoundStepMessage struct {
 
 // ValidateBasic performs basic validation.
 func (m *NewRoundStepMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
 	if m.Round < 0 {
 		return errors.New("negative Round")
 	}
@@ -103,9 +100,6 @@ type NewValidBlockMessage struct {
 
 // ValidateBasic performs basic validation.
 func (m *NewValidBlockMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
 	if m.Round < 0 {
 		return errors.New("negative Round")
 	}
@@ -156,9 +150,6 @@ type ProposalPOLMessage struct {
 
 // ValidateBasic performs basic validation.
 func (m *ProposalPOLMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
 	if m.ProposalPOLRound < 0 {
 		return errors.New("negative ProposalPOLRound")
 	}
@@ -185,9 +176,6 @@ type BlockPartMessage struct {
 
 // ValidateBasic performs basic validation.
 func (m *BlockPartMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
 	if m.Round < 0 {
 		return errors.New("negative Round")
 	}
@@ -227,9 +215,6 @@ type HasVoteMessage struct {
 
 // ValidateBasic performs basic validation.
 func (m *HasVoteMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
 	if m.Round < 0 {
 		return errors.New("negative Round")
 	}
@@ -257,12 +242,6 @@ type VoteSetMaj23Message struct {
 
 // ValidateBasic performs basic validation.
 func (m *VoteSetMaj23Message) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
-	if m.Round < 0 {
-		return errors.New("negative Round")
-	}
 	if !types.IsVoteTypeValid(m.Type) {
 		return errors.New("invalid Type")
 	}
@@ -290,9 +269,6 @@ type VoteSetBitsMessage struct {
 
 // ValidateBasic performs basic validation.
 func (m *VoteSetBitsMessage) ValidateBasic() error {
-	if m.Height < 0 {
-		return errors.New("negative Height")
-	}
 	if !types.IsVoteTypeValid(m.Type) {
 		return errors.New("invalid Type")
 	}
