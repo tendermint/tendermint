@@ -33,7 +33,6 @@ func TestSignAndValidateSr25519(t *testing.T) {
 func TestBatchSafe(t *testing.T) {
 	v := sr25519.NewBatchVerifier()
 	for i := 0; i <= 38; i++ {
-
 		priv := sr25519.GenPrivKey()
 		pub := priv.PubKey()
 

@@ -4,11 +4,14 @@ import (
 	"errors"
 
 	schnorrkel "github.com/ChainSafe/go-schnorrkel"
+
 	"github.com/tendermint/tendermint/crypto"
 )
 
 var _ crypto.BatchVerifier = BatchVerifier{}
 
+// BatchVerifier implements batch verification for sr25519.
+// https://github.com/ChainSafe/go-schnorrkel is used for batch verification
 type BatchVerifier struct {
 	*schnorrkel.BatchVerifier
 }
@@ -23,7 +26,7 @@ func (b BatchVerifier) Add(key crypto.PubKey, msg, sig []byte) error {
 	signature := &(schnorrkel.Signature{})
 	err := signature.Decode(sig64)
 	if err != nil {
-		return errors.New("unable to decode signature")
+		return fmt.Errorf("unable to decode signature: %w", err)
 	}
 
 	signingContext := schnorrkel.NewSigningContext([]byte{}, msg)

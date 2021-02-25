@@ -32,7 +32,6 @@ func TestSignAndValidateEd25519(t *testing.T) {
 func TestBatchSafe(t *testing.T) {
 	v := ed25519.NewBatchVerifier()
 	for i := 0; i <= 38; i++ {
-
 		priv := ed25519.GenPrivKey()
 		pub := priv.PubKey()
 
@@ -50,7 +49,5 @@ func TestBatchSafe(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	if !v.Verify() {
-		t.Error("failed batch verification")
-	}
+	require.True(t, v.Verify())
 }

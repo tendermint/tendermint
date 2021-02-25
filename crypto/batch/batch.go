@@ -6,9 +6,9 @@ import (
 	"github.com/tendermint/tendermint/crypto/sr25519"
 )
 
-// CheckBatch checks if a key type implements the batch verifier interface.
+// CreateBatchVerifier checks if a key type implements the batch verifier interface.
 // Currently only ed25519 & sr25519 supports batch verification.
-func CheckBatch(pk crypto.PubKey) (crypto.BatchVerifier, bool) {
+func CreateBatchVerifier(pk crypto.PubKey) (crypto.BatchVerifier, bool) {
 
 	switch pk.Type() {
 	case ed25519.KeyType:

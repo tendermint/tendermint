@@ -681,28 +681,69 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 
 	talliedVotingPower := int64(0)
 	votingPowerNeeded := vals.TotalVotingPower() * 2 / 3
-	for idx, commitSig := range commit.Signatures {
-		if commitSig.Absent() {
-			continue // OK, some signatures can be absent.
-		}
+	bv, batchVerify := batch.CreateBatchVerifier(vals.GetProposer().PubKey)
+	if batchVerify && len(commit.Signatures) > 1 {
+		for idx, commitSig := range commit.Signatures {
+			if commitSig.Absent() {
+				continue // OK, some signatures can be absent.
+			}
 
-		// The vals and commit have a 1-to-1 correspondance.
-		// This means we don't need the validator address or to do any lookup.
-		val := vals.Validators[idx]
+			// The vals and commit have a 1-to-1 correspondance.
+			// This means we don't need the validator address or to do any lookup.
+			val := vals.Validators[idx]
 
-		// Validate signature.
-		voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
-		if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
-			return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
+			// Validate signature.
+			voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+			// add the key, sig and message to the verifier
+			if err := bv.Add(val.PubKey, voteSignBytes, commitSig.Signature); err != nil {
+				return err
+			}
+
+			// Good!
+			if commitSig.ForBlock() {
+				talliedVotingPower += val.VotingPower
+			}
 		}
-		// Good!
-		if commitSig.ForBlock() {
-			talliedVotingPower += val.VotingPower
+		if !bv.Verify() {
+			talliedVotingPower = 0
+			for idx, commitSig := range commit.Signatures {
+				if commitSig.Absent() {
+					continue // OK, some signatures can be absent.
+				}
+
+				val := vals.Validators[idx]
+				voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+				if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
+					return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
+				}
+
+				// Good!
+				if commitSig.ForBlock() {
+					talliedVotingPower += val.VotingPower
+				}
+			}
 		}
-		// else {
-		// It's OK. We include stray signatures (~votes for nil) to measure
-		// validator availability.
-		// }
+	} else {
+		for idx, commitSig := range commit.Signatures {
+			if commitSig.Absent() {
+				continue // OK, some signatures can be absent.
+			}
+
+			// The vals and commit have a 1-to-1 correspondance.
+			// This means we don't need the validator address or to do any lookup.
+			val := vals.Validators[idx]
+
+			// Validate signature.
+			voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+			if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
+				return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
+			}
+
+			// Good!
+			if commitSig.ForBlock() {
+				talliedVotingPower += val.VotingPower
+			}
+		}
 	}
 
 	if got, needed := talliedVotingPower, votingPowerNeeded; got <= needed {
@@ -744,7 +785,7 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID,
 	// if batch is supported and the there are more than x key(s) run batch, otherwise run single.
 	// if batch verification fails reset tally votes to 0 and single verify until we have 2/3+
 	// check if the key supports batch verification
-	bv, batchVerify := batch.CheckBatch(vals.GetProposer().PubKey)
+	bv, batchVerify := batch.CreateBatchVerifier(vals.GetProposer().PubKey)
 	if batchVerify && len(commit.Signatures) > 1 {
 		for idx, commitSig := range commit.Signatures {
 			// No need to verify absent or nil votes.
@@ -851,7 +892,7 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 	}
 	votingPowerNeeded := totalVotingPowerMulByNumerator / int64(trustLevel.Denominator)
 
-	bv, batchVerify := batch.CheckBatch(vals.GetProposer().PubKey)
+	bv, batchVerify := batch.CreateBatchVerifier(vals.GetProposer().PubKey)
 	if batchVerify && len(commit.Signatures) > 1 {
 		for idx, commitSig := range commit.Signatures {
 			// No need to verify absent or nil votes.

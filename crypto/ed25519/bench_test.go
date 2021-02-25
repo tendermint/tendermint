@@ -28,12 +28,12 @@ func BenchmarkVerification(b *testing.B) {
 }
 
 func BenchmarkVerifyBatch(b *testing.B) {
-	for _, n := range []int{1, 8, 64, 1024} {
-		n := n
-		b.Run(fmt.Sprint(n), func(b *testing.B) {
+	for _, sigsCount := range []int{1, 8, 64, 1024} {
+		sigsCount := sigsCount
+		b.Run(fmt.Sprint("sig-count-%d", sigsCount), func(b *testing.B) {
 			b.ReportAllocs()
 			v := NewBatchVerifier()
-			for i := 0; i < n; i++ {
+			for i := 0; i < sigsCount; i++ {
 				priv := GenPrivKey()
 				pub := priv.PubKey()
 				msg := []byte("BatchVerifyTest")
@@ -42,7 +42,7 @@ func BenchmarkVerifyBatch(b *testing.B) {
 				require.NoError(b, err)
 			}
 			// NOTE: dividing by n so that metrics are per-signature
-			for i := 0; i < b.N/n; i++ {
+			for i := 0; i < b.N/sigsCount; i++ {
 				if !v.Verify() {
 					b.Fatal("signature set failed batch verification")
 				}
