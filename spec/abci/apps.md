@@ -22,6 +22,26 @@ Since Tendermint maintains four concurrent ABCI connections, it is typical
 for an application to maintain a distinct state for each, and for the states to
 be synchronized during `Commit`.
 
+### Concurrency
+
+In principle, each of the four ABCI connections operate concurrently with one
+another. This means applications need to ensure access to state is
+thread safe. In practice, both the
+[default in-process ABCI client](https://github.com/tendermint/tendermint/blob/v0.34.4/abci/client/local_client.go#L18)
+and the
+[default Go ABCI
+server](https://github.com/tendermint/tendermint/blob/v0.34.4/abci/server/socket_server.go#L32)
+use global locks across all connections, so they are not
+concurrent at all. This means if your app is written in Go, and compiled in-process with Tendermint
+using the default `NewLocalClient`, or run out-of-process using the default `SocketServer`,
+ABCI messages from all connections will be linearizable (received one at a
+time).
+
+The existence of this global mutex means Go application developers can get
+thread safety for application state by routing *all* reads and writes through the ABCI
+system. Thus it may be *unsafe* to expose application state directly to an RPC
+interface, and unless explicit measures are taken, all queries should be routed through the ABCI Query method.
+
 ### BeginBlock
 
 The BeginBlock request can be used to run some code at the beginning of
@@ -37,7 +57,7 @@ pick up from when it restarts. See information on the Handshake, below.
 Application state should only be persisted to disk during `Commit`.
 
 Before `Commit` is called, Tendermint locks and flushes the mempool so that no new messages will
-be received on the mempool connection. This provides an opportunity to safely update all three
+be received on the mempool connection. This provides an opportunity to safely update all four connection
 states to the latest committed state at once.
 
 When `Commit` completes, it unlocks the mempool.
