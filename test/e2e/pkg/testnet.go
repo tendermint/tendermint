@@ -33,6 +33,7 @@ type Perturbation string
 const (
 	ModeValidator Mode = "validator"
 	ModeFull      Mode = "full"
+	ModeLight     Mode = "light"
 	ModeSeed      Mode = "seed"
 
 	ProtocolBuiltin Protocol = "builtin"
@@ -151,7 +152,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			ProxyPort:        proxyPortGen.Next(),
 			Mode:             ModeValidator,
 			Database:         "goleveldb",
-			ABCIProtocol:     ProtocolUNIX,
+			ABCIProtocol:     ProtocolBuiltin,
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
 			FastSync:         nodeManifest.FastSync,
@@ -327,6 +328,9 @@ func (n Node) Validate(testnet Testnet) error {
 	default:
 		return fmt.Errorf("invalid ABCI protocol setting %q", n.ABCIProtocol)
 	}
+	if n.Mode == ModeLight && n.ABCIProtocol != ProtocolBuiltin {
+		return errors.New("light client must used built in protocol")
+	}
 	switch n.PrivvalProtocol {
 	case ProtocolFile, ProtocolTCP, ProtocolGRPC, ProtocolUNIX:
 	default:
@@ -402,7 +406,7 @@ func (t Testnet) LookupNode(name string) *Node {
 func (t Testnet) ArchiveNodes() []*Node {
 	nodes := []*Node{}
 	for _, node := range t.Nodes {
-		if node.Mode != ModeSeed && node.StartAt == 0 && node.RetainBlocks == 0 {
+		if node.Mode != ModeSeed && node.Mode != ModeLight && node.StartAt == 0 && node.RetainBlocks == 0 {
 			nodes = append(nodes, node)
 		}
 	}
@@ -413,7 +417,7 @@ func (t Testnet) ArchiveNodes() []*Node {
 func (t Testnet) RandomNode() *Node {
 	for {
 		node := t.Nodes[rand.Intn(len(t.Nodes))]
-		if node.Mode != ModeSeed {
+		if node.Mode != ModeSeed && node.Mode != ModeLight {
 			return node
 		}
 	}
