@@ -17,7 +17,7 @@ var ResetAllCmd = &cobra.Command{
 	Use:     "unsafe-reset-all",
 	Aliases: []string{"unsafe_reset_all"},
 	Short:   "(unsafe) Remove all the data and WAL, reset this node's validator to genesis state",
-	Run:     resetAll,
+	RunE:    resetAll,
 	PreRun:  deprecateSnakeCase,
 }
 
@@ -34,26 +34,26 @@ var ResetPrivValidatorCmd = &cobra.Command{
 	Use:     "unsafe-reset-priv-validator",
 	Aliases: []string{"unsafe_reset_priv_validator"},
 	Short:   "(unsafe) Reset this node's validator to genesis state",
-	Run:     resetPrivValidator,
+	RunE:    resetPrivValidator,
 	PreRun:  deprecateSnakeCase,
 }
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
-func resetAll(cmd *cobra.Command, args []string) {
-	ResetAll(config.DBDir(), config.P2P.AddrBookFile(), config.PrivValidatorKeyFile(),
+func resetAll(cmd *cobra.Command, args []string) error {
+	return ResetAll(config.DBDir(), config.P2P.AddrBookFile(), config.PrivValidatorKeyFile(),
 		config.PrivValidatorStateFile(), logger)
 }
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
-func resetPrivValidator(cmd *cobra.Command, args []string) {
-	resetFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile(), logger)
+func resetPrivValidator(cmd *cobra.Command, args []string) error {
+	return resetFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile(), logger)
 }
 
 // ResetAll removes address book files plus all data, and resets the privValdiator data.
 // Exported so other CLI tools can use it.
-func ResetAll(dbDir, addrBookFile, privValKeyFile, privValStateFile string, logger log.Logger) {
+func ResetAll(dbDir, addrBookFile, privValKeyFile, privValStateFile string, logger log.Logger) error {
 	if keepAddrBook {
 		logger.Info("The address book remains intact")
 	} else {
@@ -68,14 +68,14 @@ func ResetAll(dbDir, addrBookFile, privValKeyFile, privValStateFile string, logg
 	if err := tmos.EnsureDir(dbDir, 0700); err != nil {
 		logger.Error("unable to recreate dbDir", "err", err)
 	}
-	resetFilePV(privValKeyFile, privValStateFile, logger)
+	return resetFilePV(privValKeyFile, privValStateFile, logger)
 }
 
-func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger) {
+func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger) error {
 	if _, err := os.Stat(privValKeyFile); err == nil {
 		pv, err := privval.LoadFilePVEmptyState(privValKeyFile, privValStateFile)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		pv.Reset()
 		logger.Info("Reset private validator file to genesis state", "keyFile", privValKeyFile,
@@ -83,12 +83,13 @@ func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger) {
 	} else {
 		pv, err := privval.GenFilePV(privValKeyFile, privValStateFile, keyType)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		pv.Save()
 		logger.Info("Generated private validator file", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
 	}
+	return nil
 }
 
 func removeAddrBook(addrBookFile string, logger log.Logger) {
