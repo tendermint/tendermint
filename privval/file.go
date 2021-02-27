@@ -185,26 +185,26 @@ func GenFilePV(keyFilePath, stateFilePath, keyType string) (*FilePV, error) {
 // LoadFilePV loads a FilePV from the filePaths.  The FilePV handles double
 // signing prevention by persisting data to the stateFilePath.  If either file path
 // does not exist, the program will exit.
-func LoadFilePV(keyFilePath, stateFilePath string) *FilePV {
+func LoadFilePV(keyFilePath, stateFilePath string) (*FilePV, error) {
 	return loadFilePV(keyFilePath, stateFilePath, true)
 }
 
 // LoadFilePVEmptyState loads a FilePV from the given keyFilePath, with an empty LastSignState.
 // If the keyFilePath does not exist, the program will exit.
-func LoadFilePVEmptyState(keyFilePath, stateFilePath string) *FilePV {
+func LoadFilePVEmptyState(keyFilePath, stateFilePath string) (*FilePV, error) {
 	return loadFilePV(keyFilePath, stateFilePath, false)
 }
 
 // If loadState is true, we load from the stateFilePath. Otherwise, we use an empty LastSignState.
-func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
+func loadFilePV(keyFilePath, stateFilePath string, loadState bool) (*FilePV, error) {
 	keyJSONBytes, err := ioutil.ReadFile(keyFilePath)
 	if err != nil {
-		tmos.Exit(err.Error())
+		return nil, err
 	}
 	pvKey := FilePVKey{}
 	err = tmjson.Unmarshal(keyJSONBytes, &pvKey)
 	if err != nil {
-		tmos.Exit(fmt.Sprintf("Error reading PrivValidator key from %v: %v\n", keyFilePath, err))
+		return nil, fmt.Errorf("Error reading PrivValidator key from %v: %w\n", keyFilePath, err)
 	}
 
 	// overwrite pubkey and address for convenience
@@ -217,11 +217,11 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 	if loadState {
 		stateJSONBytes, err := ioutil.ReadFile(stateFilePath)
 		if err != nil {
-			tmos.Exit(err.Error())
+			return nil, err
 		}
 		err = tmjson.Unmarshal(stateJSONBytes, &pvState)
 		if err != nil {
-			tmos.Exit(fmt.Sprintf("Error reading PrivValidator state from %v: %v\n", stateFilePath, err))
+			return nil, fmt.Errorf("Error reading PrivValidator state from %v: %v\n", stateFilePath, err)
 		}
 	}
 
@@ -230,7 +230,7 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) *FilePV {
 	return &FilePV{
 		Key:           pvKey,
 		LastSignState: pvState,
-	}
+	}, nil
 }
 
 // LoadOrGenFilePV loads a FilePV from the given filePaths
@@ -241,7 +241,7 @@ func LoadOrGenFilePV(keyFilePath, stateFilePath string) (*FilePV, error) {
 		err error
 	)
 	if tmos.FileExists(keyFilePath) {
-		pv = LoadFilePV(keyFilePath, stateFilePath)
+		pv, err = LoadFilePV(keyFilePath, stateFilePath)
 	} else {
 		pv, err = GenFilePV(keyFilePath, stateFilePath, "")
 		pv.Save()
