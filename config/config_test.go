@@ -113,6 +113,7 @@ func TestMempoolConfigValidateBasic(t *testing.T) {
 		"MaxTxsBytes",
 		"CacheSize",
 		"MaxTxBytes",
+		"MaxTxNumPerBlock",
 	}
 
 	for _, fieldName := range fieldsToTest {

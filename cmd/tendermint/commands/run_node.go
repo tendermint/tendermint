@@ -81,6 +81,18 @@ func AddNodeFlags(cmd *cobra.Command) {
 		config.Consensus.CreateEmptyBlocksInterval.String(),
 		"The possible interval between empty blocks")
 
+	// mempool flags
+	cmd.Flags().Int(
+		"mempool.size",
+		config.Mempool.Size,
+		"Maximum number of transactions in the mempool",
+	)
+	cmd.Flags().Int64(
+		"mempool.max_tx_num_per_block",
+		config.Mempool.MaxTxNumPerBlock,
+		"Maximum number of transactions in a block",
+	)
+
 	// db flags
 	cmd.Flags().String(
 		"db_backend",

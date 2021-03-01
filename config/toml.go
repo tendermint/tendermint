@@ -315,6 +315,9 @@ cache_size = {{ .Mempool.CacheSize }}
 # NOTE: the max size of a tx transmitted over the network is {max_tx_bytes} + {amino overhead}.
 max_tx_bytes = {{ .Mempool.MaxTxBytes }}
 
+# Limit the max number of txs in the a block.
+max_tx_num_per_block = {{ .Mempool.MaxTxNumPerBlock }}
+
 ##### fast sync configuration options #####
 [fastsync]
 
