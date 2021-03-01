@@ -601,6 +601,7 @@ func testCreateSeed(dir string, id int, knownAddrs, srcAddrs []*p2p.NetAddress) 
 			sw.AddReactor("pex", r)
 			return sw
 		},
+		log.TestingLogger(),
 	)
 	return seed
 }
