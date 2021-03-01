@@ -2,6 +2,7 @@ package pex
 
 import (
 	"net"
+	"os"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -13,8 +14,9 @@ import (
 )
 
 var (
-	pexR *pex.Reactor
-	peer p2p.Peer
+	pexR   *pex.Reactor
+	peer   p2p.Peer
+	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 )
 
 func init() {
@@ -23,19 +25,22 @@ func init() {
 	if pexR == nil {
 		panic("NewReactor returned nil")
 	}
-	pexR.SetLogger(log.NewNopLogger())
+	pexR.SetLogger(logger)
 	peer := newFuzzPeer()
 	pexR.AddPeer(peer)
-
 }
 
 func Fuzz(data []byte) int {
+	if len(data) == 0 {
+		return -1
+	}
+
 	// MakeSwitch uses log.TestingLogger which can't be executed in init()
 	cfg := config.DefaultP2PConfig()
 	cfg.PexReactor = true
 	sw := p2p.MakeSwitch(cfg, 0, "127.0.0.1", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
 		return sw
-	})
+	}, logger)
 	pexR.SetSwitch(sw)
 
 	pexR.Receive(pex.PexChannel, peer, data)
@@ -64,7 +69,7 @@ var defaultNodeInfo = p2p.NodeInfo{
 		0,
 	),
 	NodeID:     nodeID,
-	ListenAddr: "0.0.0.0:98992",
+	ListenAddr: "0.0.0.0:8992",
 	Moniker:    "foo1",
 }
 
