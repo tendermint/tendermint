@@ -64,7 +64,11 @@ func main() {
 		"rootCA", *rootCA,
 	)
 
-	pv := privval.LoadFilePV(*privValKeyPath, *privValStatePath)
+	pv, err := privval.LoadFilePV(*privValKeyPath, *privValStatePath)
+	if err != nil {
+		fmt.Fprint(os.Stderr, err)
+		os.Exit(1)
+	}
 
 	opts := []grpc.ServerOption{}
 	if !*insecure {

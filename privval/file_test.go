@@ -36,7 +36,8 @@ func TestGenLoadValidator(t *testing.T) {
 	privVal.Save()
 	addr := privVal.GetAddress()
 
-	privVal = LoadFilePV(tempKeyFile.Name(), tempStateFile.Name())
+	privVal, err = LoadFilePV(tempKeyFile.Name(), tempStateFile.Name())
+	assert.NoError(err)
 	assert.Equal(addr, privVal.GetAddress(), "expected privval addr to be the same")
 	assert.Equal(height, privVal.LastSignState.Height, "expected privval.LastHeight to have been saved")
 }
