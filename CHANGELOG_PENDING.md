@@ -14,6 +14,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [cli] \#5772 `gen_node_key` prints JSON-encoded `NodeKey` rather than ID and does not save it to `node_key.json` (@melekes)
   - [cli] \#5777 use hyphen-case instead of snake_case for all cli commands and config parameters (@cmwaters)
   - [rpc] \#6019 standardise RPC errors and return the correct status code (@bipulprasad & @cmwaters)
+  - [rpc] \#6168 Change default sorting to desc for `/tx_search` results (@melekes)
 
 - Apps
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
@@ -29,7 +30,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [proto/p2p] Renamed `DefaultNodeInfo` and `DefaultNodeInfoOther` to `NodeInfo` and `NodeInfoOther` (@erikgrinaker)
   - [proto/p2p] Rename `NodeInfo.default_node_id` to `node_id` (@erikgrinaker)
   - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
-  - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)  
+  - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)
   - [state] \#5864 Use an iterator when pruning state (@cmwaters)
   - [types] \#6023 Remove `tm2pb.Header`, `tm2pb.BlockID`, `tm2pb.PartSetHeader` and `tm2pb.NewValidatorUpdate`.
     - Each of the above types has a `ToProto` and `FromProto` method or function which replaced this logic.
@@ -38,6 +39,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [all] \#6077 Change spelling from British English to American (@cmwaters)
     - Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
     - Rename "behaviour" pkg to "behavior" and internalized it in blockchain v2
+  - [rpc/client/http] \#6176 Remove `endpoint` arg from `New`, `NewWithTimeout` and `NewWithClient` (@melekes)
+  - [rpc/client/http] \#6176 Unexpose `WSEvents` (@melekes)
+  - [rpc/jsonrpc/client/ws_client] \#6176 `NewWS` no longer accepts options (use `NewWSWithOptions` and `OnReconnect` funcs to configure the client) (@melekes)
 
 - Blockchain Protocol
 
@@ -64,6 +68,11 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [consensus] \#5987 Remove `time_iota_ms` from consensus params. Merge `tmproto.ConsensusParams` and `abci.ConsensusParams`. (@marbar3778)
 - [types] \#5994 Reduce the use of protobuf types in core logic. (@marbar3778)
   - `ConsensusParams`, `BlockParams`, `ValidatorParams`, `EvidenceParams`, `VersionParams`, `sm.Version` and `version.Consensus` have become native types. They still utilize protobuf when being sent over the wire or written to disk.
+- [rpc/client/http] \#6163 Do not drop events even if the `out` channel is full (@melekes)
+- [node] \#6059 Validate and complete genesis doc before saving to state store (@silasdavis)
+- [state] \#6067 Batch save state data (@githubsands & @cmwaters)
+- [libs/log] \#6174 Include timestamp (`ts` field; `time.RFC3339Nano` format) in JSON logger output (@melekes)
+- [privval/file] \#6185 Return error on `LoadFilePV`, `LoadFilePVEmptyState`. Allows for better programmatic control of Tendermint. 
 
 ### BUG FIXES
 

@@ -15,7 +15,7 @@ const (
 
 func TestParseLogLevel(t *testing.T) {
 	var buf bytes.Buffer
-	jsonLogger := log.NewTMJSONLogger(&buf)
+	jsonLogger := log.NewTMJSONLoggerNoTS(&buf)
 
 	correctLogLevels := []struct {
 		lvl              string
