@@ -72,6 +72,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [node] \#6059 Validate and complete genesis doc before saving to state store (@silasdavis)
 - [state] \#6067 Batch save state data (@githubsands & @cmwaters)
 - [libs/log] \#6174 Include timestamp (`ts` field; `time.RFC3339Nano` format) in JSON logger output (@melekes)
+- [privval/file] \#6185 Return error on `LoadFilePV`, `LoadFilePVEmptyState`. Allows for better programmatic control of Tendermint. 
 
 ### BUG FIXES
 
