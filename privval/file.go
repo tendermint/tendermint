@@ -204,7 +204,7 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) (*FilePV, err
 	pvKey := FilePVKey{}
 	err = tmjson.Unmarshal(keyJSONBytes, &pvKey)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading PrivValidator key from %v: %w\n", keyFilePath, err)
+		return nil, fmt.Errorf("error reading PrivValidator key from %v: %w\n", keyFilePath, err)
 	}
 
 	// overwrite pubkey and address for convenience
@@ -221,7 +221,7 @@ func loadFilePV(keyFilePath, stateFilePath string, loadState bool) (*FilePV, err
 		}
 		err = tmjson.Unmarshal(stateJSONBytes, &pvState)
 		if err != nil {
-			return nil, fmt.Errorf("Error reading PrivValidator state from %v: %v\n", stateFilePath, err)
+			return nil, fmt.Errorf("error reading PrivValidator state from %v: %v\n", stateFilePath, err)
 		}
 	}
 

@@ -136,7 +136,7 @@ func extractKey(tmhome, outputPath string) {
 	stateFile := filepath.Join(internal.ExpandPath(tmhome), "data", "priv_validator_state.json")
 	fpv, err := privval.LoadFilePV(keyFile, stateFile)
 	if err != nil {
-		logger.Error("err", err)
+		logger.Error("Can't load file pv", "err", err)
 		os.Exit(1)
 	}
 	pkb := []byte(fpv.Key.PrivKey.(ed25519.PrivKey))
