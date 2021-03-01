@@ -4,7 +4,7 @@
 
 Special thanks to external contributors on this release:
 
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES
 
@@ -71,12 +71,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [rpc/client/http] \#6163 Do not drop events even if the `out` channel is full (@melekes)
 - [node] \#6059 Validate and complete genesis doc before saving to state store (@silasdavis)
 - [state] \#6067 Batch save state data (@githubsands & @cmwaters)
-- [libs/log] \#6174 Include timestamp (`ts` field; `time.RFC3339Nano` format) in JSON logger output (@melekes)
 - [privval/file] \#6185 Return error on `LoadFilePV`, `LoadFilePVEmptyState`. Allows for better programmatic control of Tendermint. 
 
 ### BUG FIXES
 
-- [ABCI] \#6124 Fixes a panic condition during callback execution in `ReCheckTx` during high tx load. (@alexanderbez)
 - [types] \#5523 Change json naming of `PartSetHeader` within `BlockID` from `parts` to `part_set_header` (@marbar3778)
 - [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
 - [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
