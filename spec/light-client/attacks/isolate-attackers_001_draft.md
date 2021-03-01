@@ -1,24 +1,24 @@
-*** This is the beginning of an unfinished draft. Don't continue reading! ***
 
 # Lightclient Attackers Isolation
 
+> Warning: This is the beginning of an unfinished draft. Don't continue reading!
+
 Adversarial nodes may have the incentive to lie to a lightclient about the state of a Tendermint blockchain. An attempt to do so is called attack. Light client [verification][verification] checks incoming data by checking a so-called "commit", which is a forwarded set of signed messages that is (supposedly) produced during executing Tendermint consensus. Thus, an attack boils down to creating and signing Tendermint consensus messages in deviation from the Tendermint consensus algorithm rules.
 
-As Tendermint consensus and light client verification is safe under the assumption of more than 2/3 of correct voting power per block [[TMBC-FM-2THIRDS]][TMBC-FM-2THIRDS-link], this implies that if there was an attack then [[TMBC-FM-2THIRDS]][TMBC-FM-2THIRDS-link] was violated, that is, there is a block such that 
-- validators deviated from the protocol, and 
+As Tendermint consensus and light client verification is safe under the assumption of more than 2/3 of correct voting power per block [[TMBC-FM-2THIRDS]][TMBC-FM-2THIRDS-link], this implies that if there was an attack then [[TMBC-FM-2THIRDS]][TMBC-FM-2THIRDS-link] was violated, that is, there is a block such that
+
+- validators deviated from the protocol, and
 - these validators represent more than 1/3 of the voting power in that block.
 
-In the case of an [attack][node-based-attack-characterization], the lightclient [attack detection mechanism][detection] computes data, so called evidence [[LC-DATA-EVIDENCE.1]][LC-DATA-EVIDENCE-link], that can be used 
-- to proof that there has been attack [[TMBC-LC-EVIDENCE-DATA.1]][TMBC-LC-EVIDENCE-DATA-link] and 
--  as basis to find the actual nodes that deviated from the Tendermint protocol. 
+In the case of an [attack][node-based-attack-characterization], the lightclient [attack detection mechanism][detection] computes data, so called evidence [[LC-DATA-EVIDENCE.1]][LC-DATA-EVIDENCE-link], that can be used
 
-
-
+- to proof that there has been attack [[TMBC-LC-EVIDENCE-DATA.1]][TMBC-LC-EVIDENCE-DATA-link] and
+- as basis to find the actual nodes that deviated from the Tendermint protocol.
 
 This specification considers how a full node in a Tendermint blockchain can isolate a set of attackers that launched the attack. The set should satisfy
+
 - the set does not contain a correct validator
 - the set contains validators that represent more than 1/3 of the voting power of a block that is still within the unbonding period
-
 
 # Outline
 
@@ -30,7 +30,8 @@ For definitions of data structures used here, in particular LightBlocks [[LCV-DA
 
 # Part II - Definition of the Problem
 
-The specification of the [detection mechanism][detection] describes 
+The specification of the [detection mechanism][detection] describes
+
 - what is a light client attack,
 - conditions under which the detector will detect a light client attack,
 - and the format of the output data, called evidence, in the case an attack is detected. The format is defined in
@@ -48,18 +49,18 @@ and a prefix of the blockchain `bc` at least up to height `ev.ConflictingBlock.H
 
 We assume that the full node is synchronized with the blockchain and has reached the height `ev.ConflictingBlock.Header.Height + 1`.
 
-
 #### **[FN-INV-Output.1]**
-When an output is generated it satisfies the following properties: 
+
+When an output is generated it satisfies the following properties:
+
 - If
-    - `bc[CommonHeight].bfttime` is within the unbonding period w.r.t. the time at the full node, 
+    - `bc[CommonHeight].bfttime` is within the unbonding period w.r.t. the time at the full node,
     - `ev.ConflictingBlock.Header != bc[ev.ConflictingBlock.Header.Height]`
     - Validators in `ev.ConflictingBlock.Commit` represent more than 1/3 of the voting power in `bc[ev.CommonHeight].NextValidators`
 - Then: A set of validators in `bc[CommonHeight].NextValidators` that
     - represent more than 1/3 of the voting power in `bc[ev.commonHeight].NextValidators`
     - signed Tendermint consensus messages for height `ev.ConflictingBlock.Header.Height` by violating the Tendermint consensus protocol.
 - Else: the empty set.
-
 
 # Part IV - Protocol
 
@@ -72,9 +73,10 @@ Here we discuss how to solve the problem of isolating misbehaving processes. We 
 > Describe solution (in English), decomposition into functions, where communication to other components happens.
 
 #### **[LCAI-FUNC-MAIN.1]**
+
 ```go
 func isolateMisbehavingProcesses(ev LightClientAttackEvidence, bc Blockchain) []ValidatorAddress {
-    
+
     reference := bc[ev.conflictingBlock.Header.Height].Header
     ev_header := ev.conflictingBlock.Header
 
@@ -87,18 +89,19 @@ func isolateMisbehavingProcesses(ev LightClientAttackEvidence, bc Blockchain) []
         bonded_vals := Addresses(bc[ev.CommonHeight].NextValidators)
         return intersection(signatories,bonded_vals)
 
-    } 
+    }
     // If this point is reached the validator sets in reference and ev_header are identical
     else if RoundOf(ref_commit) == RoundOf(ev_commit) {
         // equivocation light client attack
         return intersection(Signers(ref_commit), Signers(ev_commit))
-    } 
+    }
     else {
-        // amnesia light client attack 
+        // amnesia light client attack
         return IsolateAmnesiaAttacker(ev, bc)
-    } 
+    }
 }
 ```
+
 - Implementation comment
     - If the full node has only reached height `ev.conflictingBlock.Header.Height` then `bc[ev.conflictingBlock.Header.Height + 1].Header.LastCommit` refers to the locally stored commit for this height. (This commit must be present by the precondition on `length(bc)`.)
     - We check in the precondition that the unbonding period is not expired. However, since time moves on, before handing the validators over Cosmos SDK, the time needs to be checked again to satisfy the contract which requires that only bonded validators are reported. This passing of validators to the SDK is out of scope of this specification.
@@ -109,27 +112,30 @@ func isolateMisbehavingProcesses(ev LightClientAttackEvidence, bc Blockchain) []
     - TODO: input light blocks pass basic validation
 - Expected postcondition
     - [[FN-INV-Output.1]](#FN-INV-Output1) holds
-- Error condition 
+- Error condition
     - returns an error if precondition is violated.
-
 
 ### Details of the Functions
 
 #### **[LCAI-FUNC-VVU.1]**
+
 ```go
 func ValidAndVerifiedUnbonding(trusted LightBlock, untrusted LightBlock) Result
 ```
+
 - Conditions are identical to [[LCV-FUNC-VALID.2]][LCV-FUNC-VALID.link] except the precondition "*trusted.Header.Time > now - trustingPeriod*" is substituted with
     - `trusted.Header.Time > now - UnbondingPeriod`
 
 #### **[LCAI-FUNC-NONVALID.1]**
+
 ```go
 func violatesTMValidity(ref Header, ev Header) boolean
 ```
+
 - Implementation remarks
     - checks whether the evidence header `ev` violates the validity property of Tendermint Consensus, by checking agains a reference header
 - Expected precondition
-    - `ref.Height == ev.Height`    
+    - `ref.Height == ev.Height`
 - Expected postcondition
     - returns evaluation of the following disjunction  
     **[[LCAI-NONVALID-OUTPUT.1]]** ==  
@@ -139,52 +145,51 @@ func violatesTMValidity(ref Header, ev Header) boolean
     `ref.AppHash != ev.AppHash` or  
     `ref.LastResultsHash != ev.LastResultsHash`
 
-
 ```go
-func IsolateAmnesiaAttacker(ev LightClientAttackEvidence, bc Blockchain) []ValidatorAddress 
+func IsolateAmnesiaAttacker(ev LightClientAttackEvidence, bc Blockchain) []ValidatorAddress
 ```
+
 - Implementation remarks
     **TODO:** What should we do here? Refer to the accountability doc?
 - Expected postcondition
     **TODO:** What should we do here? Refer to the accountability doc?
 
 ```go
-func RoundOf(commit Commit) []ValidatorAddress 
+func RoundOf(commit Commit) []ValidatorAddress
 ```
+
 - Expected precondition
     - `commit` is well-formed. In particular all votes are from the same round `r`.
 - Expected postcondition
     - returns round `r` that is encoded in all the votes of the commit
 
 ```go
-func Signers(commit Commit) []ValidatorAddress 
+func Signers(commit Commit) []ValidatorAddress
 ```
+
 - Expected postcondition
     - returns all validator addresses in `commit`
 
 ```go
 func Addresses(vals Validator[]) ValidatorAddress[]
 ```
+
 - Expected postcondition
     - returns all validator addresses in `vals`
-
-
 
 # Part V - Completeness
 
 As discussed in the beginning of this document, an attack boils down to creating and signing Tendermint consensus messages in deviation from the Tendermint consensus algorithm rules.
 The main function `isolateMisbehavingProcesses` distinguishes three kinds of wrongly signing messages, namely,
+
 - lunatic: signing invalid blocks
-- equivocation: double-signing valid blocks in the same consensus round 
+- equivocation: double-signing valid blocks in the same consensus round
 - amnesia: signing conflicting blocks in different consensus rounds, without having seen a quorum of messages that would have allowed to do so.
 
-The question is whether this captures all attacks. 
+The question is whether this captures all attacks.
 First observe that the first checking in `isolateMisbehavingProcesses` is `violatesTMValidity`. It takes care of lunatic attacks. If this check passes, that is, if `violatesTMValidity` returns `FALSE` this means that [FN-NONVALID-OUTPUT] evaluates to false, which implies that `ref.ValidatorsHash = ev.ValidatorsHash`. Hence after `violatesTMValidity`, all the involved validators are the ones from the blockchain. It is thus sufficient to analyze one instance of Tendermint consensus with a fixed group membership (set of validators). Also it is sufficient to consider two different valid consensus values, that is, binary consensus.
 
 **TODO** we have analyzed Tendermint consensus with TLA+ and have accompanied Galois in an independent study of the protocol based on [Ivy proofs](https://github.com/tendermint/spec/tree/master/ivy-proofs).
-
-
-
 
 # References
 
@@ -194,16 +199,15 @@ First observe that the first checking in `isolateMisbehavingProcesses` is `viola
 
 [[detection]] The specification of the light client attack detection mechanism.
 
-[supervisor]: 
+[supervisor]:
 https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/supervisor/supervisor_001_draft.md
 
 [verification]: https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/verification/verification_002_draft.md
 
-[detection]: 
+[detection]:
 https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/detection/detection_003_reviewed.md
 
-
-[LC-DATA-EVIDENCE-link]: 
+[LC-DATA-EVIDENCE-link]:
 https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/detection/detection_003_reviewed.md#lc-data-evidence1
 
 [TMBC-LC-EVIDENCE-DATA-link]:

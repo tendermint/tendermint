@@ -1,6 +1,5 @@
 # Results of 001indinv-apalache
 
-
 ## 1. Awesome plots
 
 ### 1.1. Time (logarithmic scale)

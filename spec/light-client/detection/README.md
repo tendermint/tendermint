@@ -1,3 +1,9 @@
+---
+order: 1
+parent:
+  title: Fork Detection
+  order: 2
+---
 
 # Tendermint fork detection and IBC fork detection
 

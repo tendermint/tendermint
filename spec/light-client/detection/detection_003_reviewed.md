@@ -58,37 +58,33 @@ a new light block, the light client first does
 the light block (and the trace of light blocks that led to it) with
 the secondaries using this specification.
 
-
 # Outline
 
 - [Part I](#part-i---Tendermint-Consensus-and-Light-Client-Attacks):
   Formal definitions of lightclient attacks, based on basic
   properties of Tendermint consensus.
-     - [Node-based characterization of
+    - [Node-based characterization of
        attacks](#Node-based-characterization-of-attacks). The
        definition of attacks used in the problem statement of
-	   this specification.
+    this specification.
 
-     - [Block-based characterization of attacks](#Block-based-characterization-of-attacks). Alternative definitions
+    - [Block-based characterization of attacks](#Block-based-characterization-of-attacks). Alternative definitions
   provided for future reference.
-
 
 - [Part II](#part-ii---problem-statement): Problem statement of
   lightclient attack detection
   
-     - [Informal Problem Statement](#informal-problem-statement)
-     - [Assumptions](#Assumptions)
-     - [Definitions](#definitions)
-     - [Distributed Problem statement](#Distributed-Problem-statement)
+    - [Informal Problem Statement](#informal-problem-statement)
+    - [Assumptions](#Assumptions)
+    - [Definitions](#definitions)
+    - [Distributed Problem statement](#Distributed-Problem-statement)
   
 - [Part III](#part-iii---protocol): The protocol
 
-     - [Functions and Data defined in other Specifications](#Functions-and-Data-defined-in-other-Specifications)
-	 - [Outline of Solution](#Outline-of-solution) 
-	 - [Details of the functions](#Details-of-the-functions)
-	 - [Correctness arguments](#Correctness-arguments)
-
-
+    - [Functions and Data defined in other Specifications](#Functions-and-Data-defined-in-other-Specifications)
+    - [Outline of Solution](#Outline-of-solution)
+    - [Details of the functions](#Details-of-the-functions)
+    - [Correctness arguments](#Correctness-arguments)
 
 # Part I - Tendermint Consensus and Light Client Attacks
 
@@ -264,7 +260,6 @@ of v(i) and v(i+1) such that
 > - check that v(i+1)  differs from its block at that height, and
 > - verify v(i+1) in one step from v(i) as v is a verification trace.
 
-
 #### **[TMBC-LC-EVIDENCE-DATA.1]**
 
 To prove the attack to p1, because of Point E1, it is sufficient to
@@ -419,7 +414,6 @@ detector may help them to understand whether their header is a good
 one. We can thus base liveness arguments of the  detector on
 the assumptions that correct full nodes reliably talk to the
 detector.
-
 
 #### **[LCD-A-CorrFull.1]**
 
@@ -576,6 +570,7 @@ then the secondary is replaced before the detector terminates.
 ### From the [supervisor][supervisor]
 
 [[LC-FUNC-REPLACE-SECONDARY.1]][repl]
+
 ```go
 Replace_Secondary(addr Address, root-of-trust LightBlock)
 ```
@@ -583,6 +578,7 @@ Replace_Secondary(addr Address, root-of-trust LightBlock)
 ### From the [verifier][verification]
 
 [[LCV-FUNC-MAIN.2]][vtt]
+
 ```go
 func VerifyToTarget(primary PeerID, root LightBlock,
                     targetHeight Height) (LightStore, Result)
@@ -628,7 +624,7 @@ func AttackDetector(root LightBlock, primary_trace []LightBlock)
             Replace_Secondary(root);
         }
         else if lb.Header != primary_trace.Latest().Header {
-		
+  
             // we replay the primary trace with the secondary, in
             // order to generate evidence that we can submit to the
             // secondary. We return the evidence + the trace the
@@ -732,9 +728,9 @@ func CreateEvidenceForPeer(peer PeerID, root LightBlock, trace LightStore)
 
 ## Correctness arguments
 
-#### On the existence of evidence 
+#### On the existence of evidence
 
-**Proposition.** In the case of attack, 
+**Proposition.** In the case of attack,
 evidence [[TMBC-LC-ATTACK-EVIDENCE.1]](#TMBC-LC-ATTACK-EVIDENCE1)
  exists.  
 *Proof.* First observe that
@@ -749,7 +745,6 @@ Now by contradiction assume there is no evidence. Thus
 - from attack we have E2(h-1), and as there is no evidence for
   i = h - 1 we get **NOT E1(h-1)**. Contradiction.
 QED.
-
 
 #### Argument for [[LCD-DIST-INV-ATTACK.1]](#LCD-DIST-INV-ATTACK1)
 

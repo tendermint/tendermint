@@ -1,53 +1,54 @@
+
 # Synopsis
- 
+
  A TLA+ specification of a simplified Tendermint consensus, tuned for
  fork accountability. The simplifications are as follows:
 
- - the procotol runs for one height, that is, one-shot consensus
+- the procotol runs for one height, that is, one-shot consensus
 
- - this specification focuses on safety, so timeouts are modelled with
+- this specification focuses on safety, so timeouts are modelled with
    with non-determinism
 
- - the proposer function is non-determinstic, no fairness is assumed
+- the proposer function is non-determinstic, no fairness is assumed
 
- - the messages by the faulty processes are injected right in the initial states
+- the messages by the faulty processes are injected right in the initial states
 
- - every process has the voting power of 1
+- every process has the voting power of 1
 
- - hashes are modelled as identity
+- hashes are modelled as identity
 
  Having the above assumptions in mind, the specification follows the pseudo-code
- of the Tendermint paper: https://arxiv.org/abs/1807.04938
+ of the Tendermint paper: <https://arxiv.org/abs/1807.04938>
 
  Byzantine processes can demonstrate arbitrary behavior, including
  no communication. However, we have to show that under the collective evidence
  collected by the correct processes, at least `f+1` Byzantine processes demonstrate
  one of the following behaviors:
 
-   - Equivocation: a Byzantine process sends two different values
+- Equivocation: a Byzantine process sends two different values
      in the same round.
 
-   - Amnesia: a Byzantine process locks a value, although it has locked
+- Amnesia: a Byzantine process locks a value, although it has locked
      another value in the past.
 
 # TLA+ modules
- 
- - [TendermintAcc_004_draft](TendermintAcc_004_draft.tla) is the protocol
+
+- [TendermintAcc_004_draft](TendermintAcc_004_draft.tla) is the protocol
    specification,
 
- - [TendermintAccInv_004_draft](TendermintAccInv_004_draft.tla) contains an
+- [TendermintAccInv_004_draft](TendermintAccInv_004_draft.tla) contains an
    inductive invariant for establishing the protocol safety as well as the
    forking cases,
 
- - `MC_n<n>_f<f>`, e.g., [MC_n4_f1](MC_n4_f1.tla), contains fixed constants for
+- `MC_n<n>_f<f>`, e.g., [MC_n4_f1](MC_n4_f1.tla), contains fixed constants for
    model checking with the [Apalache model
    checker](https://github.com/informalsystems/apalache),
 
- - [TendermintAccTrace_004_draft](TendermintAccTrace_004_draft.tla) shows how
+- [TendermintAccTrace_004_draft](TendermintAccTrace_004_draft.tla) shows how
    to restrict the execution space to a fixed sequence of actions (e.g., to
    instantiate a counterexample),
 
- - [TendermintAccDebug_004_draft](TendermintAccDebug_004_draft.tla) contains
+- [TendermintAccDebug_004_draft](TendermintAccDebug_004_draft.tla) contains
    the useful definitions for debugging the protocol specification with TLC and
    Apalache.
 
@@ -90,7 +91,7 @@ THEOREM AgreementOrFork ==
     ~FaultyQuorum /\ TypedInv => Accountability
 ```
 
-# Model checking results   
+# Model checking results
 
 Check the report on [model checking with Apalache](./results/001indinv-apalache-report.md).
 
@@ -102,5 +103,3 @@ To run the model checking experiments, use the script:
 
 This script assumes that the apalache build is available in
 `~/devl/apalache-unstable`.
-
-

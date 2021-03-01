@@ -502,7 +502,6 @@ const (
 )
 ```
 
-
 > Only the detector module sets a lightBlock state to `StateTrusted`
 > and only if it was `StateVerified` before.
 
@@ -533,12 +532,12 @@ func (ls LightStore) LatestVerified() LightBlock
 ```go
 func (ls LightStore) Update(lightBlock LightBlock, 
                             verfiedState VerifiedState
-							verifiedBy Height)
+       verifiedBy Height)
 ```
 
 - Expected postcondition
     - The state of the LightBlock is set to *verifiedState*.
-	- verifiedBy of the Lightblock is set to *Height*
+    - verifiedBy of the Lightblock is set to *Height*
 
 > The following function is used only in the detector specification
 > listed here for completeness.

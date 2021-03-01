@@ -1,3 +1,9 @@
+---
+order: 1
+parent:
+  title: Verification
+  order: 2
+---
 # Core Verification
 
 ## Problem statement
