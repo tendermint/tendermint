@@ -14,7 +14,7 @@ import (
 
 func TestUnsafeDialSeeds(t *testing.T) {
 	sw := p2p.MakeSwitch(cfg.DefaultP2PConfig(), 1, "testing", "123.123.123",
-		func(n int, sw *p2p.Switch) *p2p.Switch { return sw })
+		func(n int, sw *p2p.Switch) *p2p.Switch { return sw }, log.TestingLogger())
 	err := sw.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -48,7 +48,7 @@ func TestUnsafeDialSeeds(t *testing.T) {
 
 func TestUnsafeDialPeers(t *testing.T) {
 	sw := p2p.MakeSwitch(cfg.DefaultP2PConfig(), 1, "testing", "123.123.123",
-		func(n int, sw *p2p.Switch) *p2p.Switch { return sw })
+		func(n int, sw *p2p.Switch) *p2p.Switch { return sw }, log.TestingLogger())
 	sw.SetAddrBook(&p2p.AddrBookMock{
 		Addrs:        make(map[string]struct{}),
 		OurAddrs:     make(map[string]struct{}),
