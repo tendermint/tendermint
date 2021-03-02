@@ -136,5 +136,7 @@ func NopMetrics() *Metrics {
 		RouterPeerQueueRecv:    discard.NewHistogram(),
 		RouterPeerQueueSend:    discard.NewHistogram(),
 		RouterChannelQueueSend: discard.NewHistogram(),
+		PeerQueueDroppedMsgs:   discard.NewCounter(),
+		PeerQueueMsgSize:       discard.NewGauge(),
 	}
 }

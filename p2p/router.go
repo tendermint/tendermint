@@ -446,7 +446,7 @@ func (r *Router) acceptPeers(transport Transport) {
 				return
 			}
 
-			queue := newWDRRQueue(r.logger, peerInfo.NodeID, r.metrics, r.chDescs)
+			queue := newWDRRScheduler(r.logger, peerInfo.NodeID, r.metrics, r.chDescs, 1000, 1000, defaultCapacity)
 			queue.start()
 
 			r.peerMtx.Lock()
@@ -524,7 +524,7 @@ func (r *Router) dialPeers() {
 				return
 			}
 
-			queue := newWDRRQueue(r.logger, peerID, r.metrics, r.chDescs)
+			queue := newWDRRScheduler(r.logger, peerID, r.metrics, r.chDescs, 1000, 1000, defaultCapacity)
 			queue.start()
 
 			r.peerMtx.Lock()
