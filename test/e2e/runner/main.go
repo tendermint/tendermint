@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/spf13/cobra"
 
@@ -59,7 +60,7 @@ func NewCLI() *CLI {
 			ctx, loadCancel := context.WithCancel(context.Background())
 			defer loadCancel()
 			go func() {
-				err := Load(ctx, cli.testnet)
+				err := Load(ctx, cli.testnet, 1)
 				if err != nil {
 					logger.Error(fmt.Sprintf("Transaction load failed: %v", err.Error()))
 				}
@@ -170,10 +171,16 @@ func NewCLI() *CLI {
 	})
 
 	cli.root.AddCommand(&cobra.Command{
-		Use:   "load",
+		Use:   "load [multiplier]",
+		Args:  cobra.MaximumNArgs(1),
 		Short: "Generates transaction load until the command is canceled",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Load(context.Background(), cli.testnet)
+			m, err := strconv.Atoi(args[0])
+			if err != nil {
+				return err
+			}
+
+			return Load(context.Background(), cli.testnet, m)
 		},
 	})
 

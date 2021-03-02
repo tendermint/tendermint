@@ -13,9 +13,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// Load generates transactions against the network until the given
-// context is canceled.
-func Load(ctx context.Context, testnet *e2e.Testnet) error {
+// Load generates transactions against the network until the given context is
+// canceled. A multiplier of great than one can be supplied if load needs to
+// be generated beyond a minimum amount.
+func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 	// Since transactions are executed across all nodes in the network, we need
 	// to reduce transaction load for larger networks to avoid using too much
 	// CPU. This gives high-throughput small networks and low-throughput large ones.
@@ -39,7 +40,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 
 	go loadGenerate(ctx, chTx)
 
-	for w := 0; w < concurrency; w++ {
+	for w := 0; w < concurrency*multiplier; w++ {
 		go loadProcess(ctx, testnet, chTx, chSuccess)
 	}
 
@@ -81,6 +82,7 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx) {
 		select {
 		case chTx <- tx:
 			time.Sleep(10 * time.Millisecond)
+
 		case <-ctx.Done():
 			close(chTx)
 			return
@@ -97,18 +99,21 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx
 	var err error
 	for tx := range chTx {
 		node := testnet.RandomNode()
+
 		client, ok := clients[node.Name]
 		if !ok {
 			client, err = node.Client()
 			if err != nil {
 				continue
 			}
+
 			clients[node.Name] = client
 		}
-		_, err = client.BroadcastTxCommit(ctx, tx)
-		if err != nil {
+
+		if _, err = client.BroadcastTxCommit(ctx, tx); err != nil {
 			continue
 		}
+
 		chSuccess <- tx
 	}
 }
