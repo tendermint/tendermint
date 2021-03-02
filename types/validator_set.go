@@ -918,9 +918,6 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 				if err := bv.Add(val.PubKey, voteSignBytes, commitSig.Signature); err != nil {
 					return err
 				}
-				// if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
-				// 	return fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
-				// }
 
 				talliedVotingPower += val.VotingPower
 

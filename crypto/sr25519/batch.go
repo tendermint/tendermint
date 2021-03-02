@@ -23,7 +23,7 @@ func NewBatchVerifier() crypto.BatchVerifier {
 func (b BatchVerifier) Add(key crypto.PubKey, msg, sig []byte) error {
 	var sig64 [SignatureSize]byte
 	copy(sig64[:], sig)
-	signature := &(schnorrkel.Signature{})
+	signature := new(schnorrkel.Signature)
 	err := signature.Decode(sig64)
 	if err != nil {
 		return fmt.Errorf("unable to decode signature: %w", err)
@@ -34,9 +34,7 @@ func (b BatchVerifier) Add(key crypto.PubKey, msg, sig []byte) error {
 	var pk [PubKeySize]byte
 	copy(pk[:], key.Bytes())
 
-	err = b.BatchVerifier.Add(signingContext, signature, schnorrkel.NewPublicKey(pk))
-
-	return err
+	return b.BatchVerifier.Add(signingContext, signature, schnorrkel.NewPublicKey(pk))
 }
 
 func (b BatchVerifier) Verify() bool {
