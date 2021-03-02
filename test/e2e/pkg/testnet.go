@@ -66,6 +66,7 @@ type Testnet struct {
 type Node struct {
 	Name             string
 	Testnet          *Testnet
+	RPCClient        *rpchttp.HTTP
 	Mode             Mode
 	PrivvalKey       crypto.PrivKey
 	NodeKey          crypto.PrivKey
@@ -472,8 +473,18 @@ func (n Node) AddressRPC() string {
 }
 
 // Client returns an RPC client for a node.
-func (n Node) Client() (*rpchttp.HTTP, error) {
-	return rpchttp.New(fmt.Sprintf("http://127.0.0.1:%v", n.ProxyPort), "/websocket")
+func (n *Node) Client() (*rpchttp.HTTP, error) {
+	if n.RPCClient != nil {
+		return n.RPCClient, nil
+	}
+
+	c, err := rpchttp.New(fmt.Sprintf("http://127.0.0.1:%v", n.ProxyPort), "/websocket")
+	if err != nil {
+		return nil, err
+	}
+
+	n.RPCClient = c
+	return c, nil
 }
 
 // keyGenerator generates pseudorandom Ed25519 keys based on a seed.
