@@ -57,27 +57,31 @@ type RPCRequest struct {
 
 // UnmarshalJSON custom JSON unmarshalling due to jsonrpcid being string or int
 func (req *RPCRequest) UnmarshalJSON(data []byte) error {
-	unsafeReq := &struct {
+	unsafeReq := struct {
 		JSONRPC string          `json:"jsonrpc"`
 		ID      interface{}     `json:"id,omitempty"`
 		Method  string          `json:"method"`
 		Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
 	}{}
+
 	err := json.Unmarshal(data, &unsafeReq)
 	if err != nil {
 		return err
 	}
+
+	if unsafeReq.ID == nil { // notification
+		return nil
+	}
+
 	req.JSONRPC = unsafeReq.JSONRPC
 	req.Method = unsafeReq.Method
 	req.Params = unsafeReq.Params
-	if unsafeReq.ID == nil {
-		return nil
-	}
 	id, err := idFromInterface(unsafeReq.ID)
 	if err != nil {
 		return err
 	}
 	req.ID = id
+
 	return nil
 }
 
