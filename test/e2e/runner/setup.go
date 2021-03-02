@@ -176,7 +176,7 @@ services:
       e2e: true
     container_name: {{ .Name }}
     image: tendermint/e2e-node
-{{- if eq .ABCIProtocol "builtin" | }}
+{{- if eq .ABCIProtocol "builtin" }}
     entrypoint: /usr/bin/entrypoint-builtin
 {{- else }}
     command: {{ startCommands .Misbehaviors .LogLevel }}

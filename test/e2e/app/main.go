@@ -60,7 +60,7 @@ func run(configFile string) error {
 		return err
 	}
 
-	// Start remote signer (must start before node if running builtin).make
+	// Start remote signer (must start before node if running builtin).
 	if cfg.PrivValServer != "" {
 		if err = startSigner(cfg); err != nil {
 			return err
