@@ -4,6 +4,10 @@ on:
   workflow_dispatch: # allow running workflow manually
   schedule:
     - cron: '0 3 * * *'
+  pull_request:
+    branches: [master]
+    paths:
+      - "test/fuzz/**/*.go"
 
 jobs:
   fuzz-nightly-test:
