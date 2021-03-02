@@ -21,12 +21,9 @@ var (
 
 func init() {
 	addrB := pex.NewAddrBook("./testdata/addrbook1", false)
-	pexR := pex.NewReactor(addrB, &pex.ReactorConfig{SeedMode: false})
-	if pexR == nil {
-		panic("NewReactor returned nil")
-	}
+	pexR = pex.NewReactor(addrB, &pex.ReactorConfig{SeedMode: false})
 	pexR.SetLogger(logger)
-	peer := newFuzzPeer()
+	peer = newFuzzPeer()
 	pexR.AddPeer(peer)
 }
 
@@ -69,7 +66,7 @@ var defaultNodeInfo = p2p.NodeInfo{
 		0,
 	),
 	NodeID:     nodeID,
-	ListenAddr: "198.163.190.214:8991",
+	ListenAddr: "127.0.0.1:0",
 	Moniker:    "foo1",
 }
 
@@ -77,7 +74,7 @@ func (fp *fuzzPeer) FlushStop()       {}
 func (fp *fuzzPeer) ID() p2p.NodeID   { return nodeID }
 func (fp *fuzzPeer) RemoteIP() net.IP { return net.IPv4(198, 163, 190, 214) }
 func (fp *fuzzPeer) RemoteAddr() net.Addr {
-	return &net.TCPAddr{IP: fp.RemoteIP(), Port: 8991, Zone: ""}
+	return &net.TCPAddr{IP: fp.RemoteIP(), Port: 26656, Zone: ""}
 }
 func (fp *fuzzPeer) IsOutbound() bool                  { return false }
 func (fp *fuzzPeer) IsPersistent() bool                { return false }
