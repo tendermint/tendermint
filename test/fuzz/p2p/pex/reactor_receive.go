@@ -21,13 +21,17 @@ var (
 
 func init() {
 	addrB := pex.NewAddrBook("./testdata/addrbook1", false)
-	pexR := pex.NewReactor(addrB, &pex.ReactorConfig{SeedMode: false})
-	if pexR == nil {
-		panic("NewReactor returned nil")
-	}
+	pexR = pex.NewReactor(addrB, &pex.ReactorConfig{SeedMode: false})
 	pexR.SetLogger(logger)
-	peer := newFuzzPeer()
+	peer = newFuzzPeer()
 	pexR.AddPeer(peer)
+
+	cfg := config.DefaultP2PConfig()
+	cfg.PexReactor = true
+	sw := p2p.MakeSwitch(cfg, 0, "127.0.0.1", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
+		return sw
+	}, logger)
+	pexR.SetSwitch(sw)
 }
 
 func Fuzz(data []byte) int {
@@ -35,15 +39,13 @@ func Fuzz(data []byte) int {
 		return -1
 	}
 
-	// MakeSwitch uses log.TestingLogger which can't be executed in init()
-	cfg := config.DefaultP2PConfig()
-	cfg.PexReactor = true
-	sw := p2p.MakeSwitch(cfg, 0, "127.0.0.1", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
-		return sw
-	}, logger)
-	pexR.SetSwitch(sw)
-
 	pexR.Receive(pex.PexChannel, peer, data)
+
+	if !peer.IsRunning() {
+		// do not increase priority for msgs which lead to peer being stopped
+		return 0
+	}
+
 	return 1
 }
 
@@ -69,15 +71,15 @@ var defaultNodeInfo = p2p.NodeInfo{
 		0,
 	),
 	NodeID:     nodeID,
-	ListenAddr: "0.0.0.0:8992",
+	ListenAddr: "127.0.0.1:0",
 	Moniker:    "foo1",
 }
 
 func (fp *fuzzPeer) FlushStop()       {}
 func (fp *fuzzPeer) ID() p2p.NodeID   { return nodeID }
-func (fp *fuzzPeer) RemoteIP() net.IP { return net.IPv4(0, 0, 0, 0) }
+func (fp *fuzzPeer) RemoteIP() net.IP { return net.IPv4(198, 163, 190, 214) }
 func (fp *fuzzPeer) RemoteAddr() net.Addr {
-	return &net.TCPAddr{IP: fp.RemoteIP(), Port: 98991, Zone: ""}
+	return &net.TCPAddr{IP: fp.RemoteIP(), Port: 26656, Zone: ""}
 }
 func (fp *fuzzPeer) IsOutbound() bool                  { return false }
 func (fp *fuzzPeer) IsPersistent() bool                { return false }
