@@ -1,7 +1,7 @@
 package sr25519
 
 import (
-	"errors"
+	"fmt"
 
 	schnorrkel "github.com/ChainSafe/go-schnorrkel"
 
