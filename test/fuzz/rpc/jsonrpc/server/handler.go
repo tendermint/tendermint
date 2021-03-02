@@ -25,6 +25,10 @@ func init() {
 }
 
 func Fuzz(data []byte) int {
+	if len(data) == 0 {
+		return -1
+	}
+
 	req, _ := http.NewRequest("POST", "http://localhost/", bytes.NewReader(data))
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
