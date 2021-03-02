@@ -2,7 +2,3 @@
 [node.validator02]
 [node.validator03]
 [node.validator04]
-[node.light01]
-    mode= "light"
-    start_at= 5
-    log_level= "debug"

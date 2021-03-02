@@ -406,7 +406,7 @@ func (t Testnet) LookupNode(name string) *Node {
 func (t Testnet) ArchiveNodes() []*Node {
 	nodes := []*Node{}
 	for _, node := range t.Nodes {
-		if node.Mode != ModeSeed && node.Mode != ModeLight && node.StartAt == 0 && node.RetainBlocks == 0 {
+		if !node.Stateless() && node.StartAt == 0 && node.RetainBlocks == 0 {
 			nodes = append(nodes, node)
 		}
 	}
@@ -417,7 +417,7 @@ func (t Testnet) ArchiveNodes() []*Node {
 func (t Testnet) RandomNode() *Node {
 	for {
 		node := t.Nodes[rand.Intn(len(t.Nodes))]
-		if node.Mode != ModeSeed && node.Mode != ModeLight {
+		if node.Mode != ModeSeed {
 			return node
 		}
 	}
@@ -478,6 +478,11 @@ func (n Node) AddressRPC() string {
 // Client returns an RPC client for a node.
 func (n Node) Client() (*rpchttp.HTTP, error) {
 	return rpchttp.New(fmt.Sprintf("http://127.0.0.1:%v", n.ProxyPort), "/websocket")
+}
+
+// Stateless returns true if the node is either a seed node or a light node
+func (n Node) Stateless() bool {
+	return n.Mode == ModeLight || n.Mode == ModeSeed
 }
 
 // keyGenerator generates pseudorandom Ed25519 keys based on a seed.

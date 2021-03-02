@@ -191,14 +191,13 @@ func startLightClient(cfg *Config) error {
 		rpccfg.WriteTimeout = tmcfg.RPC.TimeoutBroadcastTxCommit + 1*time.Second
 	}
 
-	listenAddr := fmt.Sprintf("tcp://127.0.0.1:%v", cfg.ProxyPort)
-	p, err := lproxy.NewProxy(c, listenAddr, providers[0], rpccfg, nodeLogger,
+	p, err := lproxy.NewProxy(c, tmcfg.RPC.ListenAddress, providers[0], rpccfg, nodeLogger,
 		lrpc.KeyPathFn(lrpc.DefaultMerkleKeyPathFn()))
 	if err != nil {
 		return err
 	}
 
-	logger.Info("Starting proxy...", "laddr", listenAddr)
+	logger.Info("Starting proxy...", "laddr", tmcfg.RPC.ListenAddress)
 	if err := p.ListenAndServe(); err != http.ErrServerClosed {
 		// Error starting or closing listener:
 		logger.Error("proxy ListenAndServe", "err", err)
@@ -339,8 +338,8 @@ func setupNode() (*config.Config, log.Logger, *p2p.NodeKey, error) {
 // using 26657 as the port number
 func rpcEndpoints(peers string) []string {
 	arr := strings.Split(peers, ",")
-	var result []string
-	for _, v := range arr {
+	endpoints := make([]string, len(arr))
+	for i, v := range arr {
 		addr, err := p2p.ParseNodeAddress(v)
 		if err != nil {
 			panic(err)
@@ -348,7 +347,7 @@ func rpcEndpoints(peers string) []string {
 		// use RPC port instead
 		addr.Port = 26657
 		rpcEndpoint := "http://" + addr.Hostname + ":" + fmt.Sprint(addr.Port)
-		result = append(result, rpcEndpoint)
+		endpoints[i] = rpcEndpoint
 	}
-	return result
+	return endpoints
 }
