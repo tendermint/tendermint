@@ -4,7 +4,7 @@
 
 Special thanks to external contributors on this release:
 
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES
 
@@ -39,6 +39,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [all] \#6077 Change spelling from British English to American (@cmwaters)
     - Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
     - Rename "behaviour" pkg to "behavior" and internalized it in blockchain v2
+  - [rpc/client/http] \#6176 Remove `endpoint` arg from `New`, `NewWithTimeout` and `NewWithClient` (@melekes)
+  - [rpc/client/http] \#6176 Unexpose `WSEvents` (@melekes)
+  - [rpc/jsonrpc/client/ws_client] \#6176 `NewWS` no longer accepts options (use `NewWSWithOptions` and `OnReconnect` funcs to configure the client) (@melekes)
 
 - Blockchain Protocol
 
@@ -68,11 +71,12 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [rpc/client/http] \#6163 Do not drop events even if the `out` channel is full (@melekes)
 - [node] \#6059 Validate and complete genesis doc before saving to state store (@silasdavis)
 - [state] \#6067 Batch save state data (@githubsands & @cmwaters)
+- [privval/file] \#6185 Return error on `LoadFilePV`, `LoadFilePVEmptyState`. Allows for better programmatic control of Tendermint.
 
 ### BUG FIXES
 
-- [ABCI] \#6124 Fixes a panic condition during callback execution in `ReCheckTx` during high tx load. (@alexanderbez)
 - [types] \#5523 Change json naming of `PartSetHeader` within `BlockID` from `parts` to `part_set_header` (@marbar3778)
 - [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
 - [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)
+- [rpc/jsonrpc/server] \#6191 Correctly unmarshal `RPCRequest` when data is `null` (@melekes)

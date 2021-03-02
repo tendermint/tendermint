@@ -477,7 +477,7 @@ func (n Node) AddressRPC() string {
 
 // Client returns an RPC client for a node.
 func (n Node) Client() (*rpchttp.HTTP, error) {
-	return rpchttp.New(fmt.Sprintf("http://127.0.0.1:%v", n.ProxyPort), "/websocket")
+	return rpchttp.New(fmt.Sprintf("http://127.0.0.1:%v", n.ProxyPort))
 }
 
 // Stateless returns true if the node is either a seed node or a light node

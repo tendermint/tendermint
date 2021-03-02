@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/tendermint/tendermint/light/provider"
@@ -35,7 +34,7 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 		lastVerifiedHeader = primaryTrace[len(primaryTrace)-1].SignedHeader
 		witnessesToRemove  = make([]int, 0)
 	)
-	c.logger.Debug("Running detector against trace", "endBlockHeight", lastVerifiedHeader.Height,
+	c.logger.Debug("running detector against trace", "endBlockHeight", lastVerifiedHeader.Height,
 		"endBlockHash", lastVerifiedHeader.Hash, "length", len(primaryTrace))
 
 	c.providerMutex.Lock()
@@ -75,7 +74,7 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 				now,
 			)
 			if err != nil {
-				c.logger.Info("Error validating witness's divergent header", "witness", supportingWitness, "err", err)
+				c.logger.Info("error validating witness's divergent header", "witness", supportingWitness, "err", err)
 				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 				continue
 			}
@@ -83,7 +82,7 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 			// We are suspecting that the primary is faulty, hence we hold the witness as the source of truth
 			// and generate evidence against the primary that we can send to the witness
 			primaryEv := newLightClientAttackEvidence(primaryBlock, witnessTrace[len(witnessTrace)-1], witnessTrace[0])
-			c.logger.Error("Attempted attack detected. Sending evidence againt primary by witness", "ev", primaryEv,
+			c.logger.Error("ATTEMPTED ATTACK DETECTED. Sending evidence againt primary by witness", "ev", primaryEv,
 				"primary", c.primary, "witness", supportingWitness)
 			c.sendEvidence(ctx, primaryEv, supportingWitness)
 
@@ -117,22 +116,17 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 			return ErrLightClientAttack
 
 		case errBadWitness:
-			c.logger.Info("Witness returned an error during header comparison", "witness", c.witnesses[e.WitnessIndex],
-				"err", err)
-			// if witness sent us an invalid header, then remove it. If it didn't respond or couldn't find the block, then we
-			// ignore it and move on to the next witness
-			if _, ok := e.Reason.(provider.ErrBadLightBlock); ok {
-				c.logger.Info("Witness sent us invalid header / vals -> removing it", "witness", c.witnesses[e.WitnessIndex])
-				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
-			}
+			c.logger.Info("witness returned an error during header comparison, removing...",
+				"witness", c.witnesses[e.WitnessIndex], "err", err)
+			witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
+		default:
+			c.logger.Debug("error in light block request to witness", "err", err)
 		}
 	}
 
-	// we need to make sure that we remove witnesses by index in the reverse
-	// order so as to not affect the indexes themselves
-	sort.Ints(witnessesToRemove)
-	for i := len(witnessesToRemove) - 1; i >= 0; i-- {
-		c.removeWitness(witnessesToRemove[i])
+	// remove witnesses that have misbehaved
+	if err := c.removeWitnesses(witnessesToRemove); err != nil {
+		return err
 	}
 
 	// 1. If we had at least one witness that returned the same header then we
@@ -156,7 +150,17 @@ func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan erro
 	witness provider.Provider, witnessIndex int) {
 
 	lightBlock, err := witness.LightBlock(ctx, h.Height)
-	if err != nil {
+	switch err {
+	case nil:
+		break
+
+	case provider.ErrNoResponse, provider.ErrLightBlockNotFound:
+		errc <- err
+		return
+
+	default:
+		// all other errors (i.e. invalid block or unreliable provider) we mark the witness as bad
+		// and remove it
 		errc <- errBadWitness{Reason: err, WitnessIndex: witnessIndex}
 		return
 	}
@@ -165,7 +169,7 @@ func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan erro
 		errc <- errConflictingHeaders{Block: lightBlock, WitnessIndex: witnessIndex}
 	}
 
-	c.logger.Debug("Matching header received by witness", "height", h.Height, "witness", witnessIndex)
+	c.logger.Debug("matching header received by witness", "height", h.Height, "witness", witnessIndex)
 	errc <- nil
 }
 
@@ -173,7 +177,7 @@ func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan erro
 func (c *Client) sendEvidence(ctx context.Context, ev *types.LightClientAttackEvidence, receiver provider.Provider) {
 	err := receiver.ReportEvidence(ctx, ev)
 	if err != nil {
-		c.logger.Error("Failed to report evidence to provider", "ev", ev, "provider", receiver)
+		c.logger.Error("failed to report evidence to provider", "ev", ev, "provider", receiver)
 	}
 }
 

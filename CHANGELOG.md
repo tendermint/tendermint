@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.34.8
+
+*February 25, 2021*
+
+This release, in conjunction with [a fix in the Cosmos SDK](https://github.com/cosmos/cosmos-sdk/pull/8641),
+introduces changes that should mean the logs are much, much quieter. 🎉
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+### IMPROVEMENTS
+
+- [libs/log] [\#6174](https://github.com/tendermint/tendermint/issues/6174) Include timestamp (`ts` field; `time.RFC3339Nano` format) in JSON logger output (@melekes)
+
+### BUG FIXES
+
+- [abci] [\#6124](https://github.com/tendermint/tendermint/issues/6124) Fixes a panic condition during callback execution in `ReCheckTx` during high tx load. (@alexanderbez)
+
 ## v0.34.7
 
 *February 18, 2021*

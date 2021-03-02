@@ -54,7 +54,7 @@ func TestProvider(t *testing.T) {
 	chainID := genDoc.ChainID
 	t.Log("chainID:", chainID)
 
-	c, err := rpchttp.New(rpcAddr, "/websocket")
+	c, err := rpchttp.New(rpcAddr)
 	require.Nil(t, err)
 
 	p := lighthttp.NewWithClient(chainID, c)
@@ -66,25 +66,33 @@ func TestProvider(t *testing.T) {
 	require.NoError(t, err)
 
 	// let's get the highest block
-	sh, err := p.LightBlock(context.Background(), 0)
+	lb, err := p.LightBlock(context.Background(), 0)
 	require.NoError(t, err)
-	assert.True(t, sh.Height < 1000)
+	assert.True(t, lb.Height < 1000)
 
 	// let's check this is valid somehow
-	assert.Nil(t, sh.ValidateBasic(chainID))
+	assert.Nil(t, lb.ValidateBasic(chainID))
 
 	// historical queries now work :)
-	lower := sh.Height - 3
-	sh, err = p.LightBlock(context.Background(), lower)
+	lower := lb.Height - 3
+	lb, err = p.LightBlock(context.Background(), lower)
 	require.NoError(t, err)
-	assert.Equal(t, lower, sh.Height)
+	assert.Equal(t, lower, lb.Height)
 
 	// // fetching missing heights (both future and pruned) should return appropriate errors
-	_, err = p.LightBlock(context.Background(), 1000)
+	lb, err = p.LightBlock(context.Background(), 1000)
 	require.Error(t, err)
+	require.Nil(t, lb)
 	assert.Equal(t, provider.ErrLightBlockNotFound, err)
 
 	_, err = p.LightBlock(context.Background(), 1)
 	require.Error(t, err)
 	assert.Equal(t, provider.ErrLightBlockNotFound, err)
+
+	// if the provider is unable to provide four more blocks then we should return
+	// an unreliable peer error
+	for i := 0; i < 4; i++ {
+		_, err = p.LightBlock(context.Background(), 1)
+	}
+	assert.IsType(t, provider.ErrUnreliableProvider{}, err)
 }
