@@ -277,11 +277,13 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 		// so we only record the sender for txs still in the mempool.
 		if e, ok := mem.txsMap.Load(TxKey(tx)); ok {
 			memTx := e.(*clist.CElement).Value.(*mempoolTx)
-			memTx.senders.LoadOrStore(txInfo.SenderID, true)
+			_, loaded := memTx.senders.LoadOrStore(txInfo.SenderID, true)
 			// TODO: consider punishing peer for dups,
 			// its non-trivial since invalid txs can become valid,
 			// but they can spam the same tx with little cost to them atm.
-			return ErrTxInCache
+			if loaded {
+				return ErrTxInCache
+			}
 		}
 
 		mem.logger.Debug("tx exists already in cache", "tx_hash", tx.Hash())
