@@ -718,25 +718,20 @@ func (c *MConnection) Status() ConnectionStatus {
 //-----------------------------------------------------------------------------
 
 type ChannelDescriptor struct {
-	ID byte
+	ID       byte
+	Priority int
 
 	// TODO: Remove once p2p refactor is complete.
-	Priority            int
 	SendQueueCapacity   int
 	RecvMessageCapacity int
 
-	// RecvBufferCapacity defines the maximum number of messages for a given
-	// queue for inbound messages from peers to a specific p2p Channel.
+	// RecvBufferCapacity defines the max buffer size of inbound messages for a
+	// given p2p Channel queue.
 	RecvBufferCapacity int
 
 	// MaxSendBytes defines the maximum number of bytes that can be sent at any
 	// given moment from a Channel to a peer.
 	MaxSendBytes uint
-
-	// MaxSendCapacityBytes defines the maximum number of bytes that can be held
-	// by a peer's message queue. Any messages attempted to be enqueued by the
-	// router will be dropped if it's size exceeds the queue's capacity.
-	MaxSendCapacityBytes uint
 }
 
 func (chDesc ChannelDescriptor) FillDefaults() (filled ChannelDescriptor) {

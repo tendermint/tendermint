@@ -254,6 +254,10 @@ func (r *Router) AddChannelDescriptors(chDescs []*ChannelDescriptor) {
 // wrapper message. The caller may provide a size to make the channel buffered,
 // which internally makes the inbound, outbound, and error channel buffered.
 func (r *Router) OpenChannel(id ChannelID, messageType proto.Message, size int) (*Channel, error) {
+	if size == 0 {
+		size = 4096
+	}
+
 	queue := newFIFOQueue(size)
 	outCh := make(chan Envelope, size)
 	errCh := make(chan PeerError, size)
@@ -446,7 +450,7 @@ func (r *Router) acceptPeers(transport Transport) {
 				return
 			}
 
-			queue := newWDRRScheduler(r.logger, peerInfo.NodeID, r.metrics, r.chDescs, 1000, 1000, defaultCapacity)
+			queue := newWDRRScheduler(r.logger, peerInfo.NodeID, r.metrics, r.chDescs, 10000, 10000, defaultCapacity)
 			queue.start()
 
 			r.peerMtx.Lock()
@@ -524,7 +528,7 @@ func (r *Router) dialPeers() {
 				return
 			}
 
-			queue := newWDRRScheduler(r.logger, peerID, r.metrics, r.chDescs, 1000, 1000, defaultCapacity)
+			queue := newWDRRScheduler(r.logger, peerID, r.metrics, r.chDescs, 10000, 10000, defaultCapacity)
 			queue.start()
 
 			r.peerMtx.Lock()

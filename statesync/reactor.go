@@ -37,6 +37,8 @@ var (
 				Priority:            5,
 				SendQueueCapacity:   10,
 				RecvMessageCapacity: snapshotMsgSize,
+
+				MaxSendBytes: 400,
 			},
 		},
 		ChunkChannel: {
@@ -46,6 +48,8 @@ var (
 				Priority:            1,
 				SendQueueCapacity:   4,
 				RecvMessageCapacity: chunkMsgSize,
+
+				MaxSendBytes: 400,
 			},
 		},
 	}

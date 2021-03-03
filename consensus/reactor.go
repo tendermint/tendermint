@@ -37,8 +37,7 @@ var (
 				SendQueueCapacity:   100,
 				RecvMessageCapacity: maxMsgSize,
 
-				MaxSendBytes:         maxMsgSize * 6,
-				MaxSendCapacityBytes: maxMsgSize / 100,
+				MaxSendBytes: 12000,
 			},
 		},
 		DataChannel: {
@@ -53,8 +52,7 @@ var (
 				RecvBufferCapacity:  50 * 4096,
 				RecvMessageCapacity: maxMsgSize,
 
-				MaxSendBytes:         maxMsgSize * 10,
-				MaxSendCapacityBytes: maxMsgSize / 100,
+				MaxSendBytes: 40000,
 			},
 		},
 		VoteChannel: {
@@ -66,8 +64,7 @@ var (
 				RecvBufferCapacity:  100 * 100,
 				RecvMessageCapacity: maxMsgSize,
 
-				MaxSendBytes:         maxMsgSize * 7,
-				MaxSendCapacityBytes: maxMsgSize / 100,
+				MaxSendBytes: 150,
 			},
 		},
 		VoteSetBitsChannel: {
@@ -79,8 +76,7 @@ var (
 				RecvBufferCapacity:  1024,
 				RecvMessageCapacity: maxMsgSize,
 
-				MaxSendBytes:         maxMsgSize,
-				MaxSendCapacityBytes: maxMsgSize / 100,
+				MaxSendBytes: 50,
 			},
 		},
 	}
