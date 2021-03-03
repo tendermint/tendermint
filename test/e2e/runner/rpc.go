@@ -86,7 +86,7 @@ func waitForNode(node *e2e.Node, height int64, timeout time.Duration) (*rpctypes
 			return status, nil
 		}
 
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(300 * time.Millisecond)
 	}
 }
 
@@ -99,7 +99,7 @@ func waitForAllNodes(testnet *e2e.Testnet, height int64, timeout time.Duration) 
 			continue
 		}
 
-		status, err := waitForNode(node, height, 30*time.Second)
+		status, err := waitForNode(node, height, timeout)
 		if err != nil {
 			return 0, err
 		}
