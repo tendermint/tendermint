@@ -1147,7 +1147,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 			cs.sendInternalMessage(msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, ""})
 		}
 
-		cs.Logger.Info("signed proposal", "height", height, "round", round, "proposal", proposal)
+		cs.Logger.Debug("signed proposal", "height", height, "round", round, "proposal", proposal)
 		cs.Logger.Debug("signed proposal block", "block", block)
 	} else if !cs.replayMode {
 		cs.Logger.Error("propose step; failed signing proposal", "height", height, "round", round, "err", err)
@@ -1583,7 +1583,7 @@ func (cs *State) finalizeCommit(height int64) {
 		panic(fmt.Errorf("+2/3 committed an invalid block: %w", err))
 	}
 
-	logger.Info(
+	logger.Debug(
 		"finalizing commit of block",
 		"hash", block.Hash(),
 		"root", block.AppHash,
@@ -1661,7 +1661,7 @@ func (cs *State) finalizeCommit(height int64) {
 		if err != nil {
 			logger.Error("failed to prune blocks", "retain_height", retainHeight, "err", err)
 		} else {
-			logger.Info("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
+			logger.Debug("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
 		}
 	}
 
@@ -1960,7 +1960,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.NodeID) (bool, error) {
 
 			// report conflicting votes to the evidence pool
 			cs.evpool.ReportConflictingVotes(voteErr.VoteA, voteErr.VoteB)
-			cs.Logger.Info(
+			cs.Logger.Debug(
 				"found and sent conflicting votes to the evidence pool",
 				"vote_a", voteErr.VoteA,
 				"vote_b", voteErr.VoteB,
@@ -1975,7 +1975,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.NodeID) (bool, error) {
 			// 2) not a bad peer? this can also err sometimes with "Unexpected step" OR
 			// 3) tmkms use with multiple validators connecting to a single tmkms instance
 			// 		(https://github.com/tendermint/tendermint/issues/3839).
-			cs.Logger.Info("failed attempting to add vote", "err", err)
+			cs.Logger.Debug("failed attempting to add vote", "err", err)
 			return added, ErrAddingVote
 		}
 	}
@@ -2124,7 +2124,7 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.NodeID) (added bool, err e
 
 	case tmproto.PrecommitType:
 		precommits := cs.Votes.Precommits(vote.Round)
-		cs.Logger.Info("added vote to precommit", "vote", vote, "precommits", precommits.StringShort())
+		cs.Logger.Debug("added vote to precommit", "vote", vote, "precommits", precommits.StringShort())
 
 		blockID, ok := precommits.TwoThirdsMajority()
 		if ok {
