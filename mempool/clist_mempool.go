@@ -437,7 +437,7 @@ func (mem *CListMempool) resCbFirstTime(
 			}
 			memTx.senders.Store(peerID, true)
 			mem.addTx(memTx)
-			mem.logger.Info("added good transaction",
+			mem.logger.Debug("added good transaction",
 				"tx", txID(tx),
 				"res", r,
 				"height", memTx.height,
@@ -446,7 +446,7 @@ func (mem *CListMempool) resCbFirstTime(
 			mem.notifyTxsAvailable()
 		} else {
 			// ignore bad transaction
-			mem.logger.Info("rejected bad transaction",
+			mem.logger.Debug("rejected bad transaction",
 				"tx", txID(tx), "peerID", peerP2PID, "res", r, "err", postCheckErr)
 			mem.metrics.FailedTxs.Add(1)
 			if !mem.config.KeepInvalidTxsInCache {
@@ -482,7 +482,7 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			// Good, nothing to do.
 		} else {
 			// Tx became invalidated due to newly committed block.
-			mem.logger.Info("tx is no longer valid", "tx", txID(tx), "res", r, "err", postCheckErr)
+			mem.logger.Debug("tx is no longer valid", "tx", txID(tx), "res", r, "err", postCheckErr)
 			// NOTE: we remove tx from the cache because it might be good later
 			mem.removeTx(tx, mem.recheckCursor, !mem.config.KeepInvalidTxsInCache)
 		}
@@ -493,7 +493,7 @@ func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 		}
 		if mem.recheckCursor == nil {
 			// Done!
-			mem.logger.Info("done rechecking txs")
+			mem.logger.Debug("done rechecking txs")
 
 			// incase the recheck removed all txs
 			if mem.Size() > 0 {
@@ -622,7 +622,7 @@ func (mem *CListMempool) Update(
 	// or just notify there're some txs left.
 	if mem.Size() > 0 {
 		if mem.config.Recheck {
-			mem.logger.Info("recheck txs", "numtxs", mem.Size(), "height", height)
+			mem.logger.Debug("recheck txs", "numtxs", mem.Size(), "height", height)
 			mem.recheckTxs()
 			// At this point, mem.txs are being rechecked.
 			// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
