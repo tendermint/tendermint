@@ -1148,7 +1148,6 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 		}
 
 		cs.Logger.Debug("signed proposal", "height", height, "round", round, "proposal", proposal)
-		cs.Logger.Debug("signed proposal block", "block", block)
 	} else if !cs.replayMode {
 		cs.Logger.Error("propose step; failed signing proposal", "height", height, "round", round, "err", err)
 	}
@@ -1583,7 +1582,7 @@ func (cs *State) finalizeCommit(height int64) {
 		panic(fmt.Errorf("+2/3 committed an invalid block: %w", err))
 	}
 
-	logger.Debug(
+	logger.Info(
 		"finalizing commit of block",
 		"hash", block.Hash(),
 		"root", block.AppHash,
@@ -1975,7 +1974,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.NodeID) (bool, error) {
 			// 2) not a bad peer? this can also err sometimes with "Unexpected step" OR
 			// 3) tmkms use with multiple validators connecting to a single tmkms instance
 			// 		(https://github.com/tendermint/tendermint/issues/3839).
-			cs.Logger.Debug("failed attempting to add vote", "err", err)
+			cs.Logger.Info("failed attempting to add vote", "err", err)
 			return added, ErrAddingVote
 		}
 	}
@@ -2233,7 +2232,7 @@ func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header 
 	vote, err := cs.signVote(msgType, hash, header)
 	if err == nil {
 		cs.sendInternalMessage(msgInfo{&VoteMessage{vote}, ""})
-		cs.Logger.Info("signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)
+		cs.Logger.Debug("signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)
 		return vote
 	}
 
