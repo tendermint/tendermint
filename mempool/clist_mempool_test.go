@@ -190,9 +190,7 @@ func TestMempoolUpdate(t *testing.T) {
 		err := mempool.Update(1, []types.Tx{[]byte{0x01}}, abciResponses(1, abci.CodeTypeOK), nil, nil)
 		require.NoError(t, err)
 		err = mempool.CheckTx([]byte{0x01}, nil, TxInfo{})
-		if assert.Error(t, err) {
-			assert.Equal(t, ErrTxInCache, err)
-		}
+		assert.NoError(t, err)
 	}
 
 	// 2. Removes valid txs from the mempool
@@ -245,15 +243,11 @@ func TestMempool_KeepInvalidTxsInCache(t *testing.T) {
 
 		// a must be added to the cache
 		err = mempool.CheckTx(a, nil, TxInfo{})
-		if assert.Error(t, err) {
-			assert.Equal(t, ErrTxInCache, err)
-		}
+		assert.NoError(t, err)
 
 		// b must remain in the cache
 		err = mempool.CheckTx(b, nil, TxInfo{})
-		if assert.Error(t, err) {
-			assert.Equal(t, ErrTxInCache, err)
-		}
+		assert.NoError(t, err)
 	}
 
 	// 2. An invalid transaction must remain in the cache
@@ -266,11 +260,6 @@ func TestMempool_KeepInvalidTxsInCache(t *testing.T) {
 
 		err := mempool.CheckTx(a, nil, TxInfo{})
 		require.NoError(t, err)
-
-		err = mempool.CheckTx(a, nil, TxInfo{})
-		if assert.Error(t, err) {
-			assert.Equal(t, ErrTxInCache, err)
-		}
 	}
 }
 
