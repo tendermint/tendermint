@@ -23,6 +23,8 @@ type Proxy struct {
 	Listener net.Listener
 }
 
+// NewProxy creates the struct used to run an HTTP server for serving light
+// client rpc requests.
 func NewProxy(
 	lightClient *light.Client,
 	listenAddr, providerAddr string,

@@ -60,6 +60,9 @@ func KeyPathFn(fn KeyPathFunc) Option {
 	}
 }
 
+// DefaultMerkleKeyPathFn creates a function used to generate merkle key paths
+// from a path string and a key. This is the default used by the cosmos SDK.
+// This merkle key paths are required when verifying /abci_query calls
 func DefaultMerkleKeyPathFn() KeyPathFunc {
 	// regexp for extracting store name from /abci_query path
 	storeNameRegexp := regexp.MustCompile(`\/store\/(.+)\/key`)

@@ -329,7 +329,7 @@ func (n Node) Validate(testnet Testnet) error {
 		return fmt.Errorf("invalid ABCI protocol setting %q", n.ABCIProtocol)
 	}
 	if n.Mode == ModeLight && n.ABCIProtocol != ProtocolBuiltin {
-		return errors.New("light client must used built in protocol")
+		return errors.New("light client must use builtin protocol")
 	}
 	switch n.PrivvalProtocol {
 	case ProtocolFile, ProtocolTCP, ProtocolGRPC, ProtocolUNIX:
