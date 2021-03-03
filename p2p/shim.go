@@ -110,7 +110,7 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 						rs.Logger.Error(
 							"failed to proxy envelope; failed to wrap message",
 							"ch_id", cs.Descriptor.ID,
-							"msg", e.Message,
+							"msg", e.Message.String(),
 							"err", err,
 						)
 						continue
@@ -124,7 +124,7 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 					rs.Logger.Error(
 						"failed to proxy envelope; failed to encode message",
 						"ch_id", cs.Descriptor.ID,
-						"msg", e.Message,
+						"msg", e.Message.String(),
 						"err", err,
 					)
 					continue
@@ -140,7 +140,7 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 						rs.Logger.Debug(
 							"failed to proxy envelope; failed to find peer",
 							"ch_id", cs.Descriptor.ID,
-							"msg", e.Message,
+							"msg", e.Message.String(),
 							"peer", e.To,
 						)
 						continue
@@ -150,7 +150,7 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 						rs.Logger.Error(
 							"failed to proxy message to peer",
 							"ch_id", cs.Descriptor.ID,
-							"msg", e.Message,
+							"msg", e.Message.String(),
 							"peer", e.To,
 						)
 					}
