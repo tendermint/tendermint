@@ -197,9 +197,11 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 			if rww.Status == -1 {
 				rww.Status = 200
 			}
-			logger.Info("Served RPC HTTP response",
-				"method", r.Method, "url", r.URL,
-				"status", rww.Status, "duration", durationMS,
+			logger.Debug("served RPC HTTP response",
+				"method", r.Method,
+				"url", r.URL,
+				"status", rww.Status,
+				"duration", durationMS,
 				"remoteAddr", r.RemoteAddr,
 			)
 		}()
