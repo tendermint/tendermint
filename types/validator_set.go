@@ -683,6 +683,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 	var (
 		talliedVotingPower int64 = 0
 		err                error
+		cacheSignBytes     = make(map[string][]byte, len(commit.Signatures))
 	)
 
 	bv, batchVerify := batch.CreateBatchVerifier(vals.GetProposer().PubKey)
@@ -698,6 +699,8 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 
 			// Validate signature.
 			voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+			// cache the signBytes in case batch verification fails
+			cacheSignBytes[string(val.PubKey.Bytes())] = voteSignBytes
 			// add the key, sig and message to the verifier
 			if err := bv.Add(val.PubKey, voteSignBytes, commitSig.Signature); err != nil {
 				return err
@@ -710,14 +713,14 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 		}
 		if !bv.Verify() {
 			talliedVotingPower, err = verifyCommitSingle(
-				chainID, vals, commit)
+				chainID, vals, commit, cacheSignBytes)
 			if err != nil {
 				return err
 			}
 		}
 	} else {
 		talliedVotingPower, err = verifyCommitSingle(
-			chainID, vals, commit)
+			chainID, vals, commit, cacheSignBytes)
 		if err != nil {
 			return err
 		}
@@ -757,6 +760,7 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID,
 
 	talliedVotingPower := int64(0)
 	votingPowerNeeded := vals.TotalVotingPower() * 2 / 3
+	cacheSignBytes := make(map[string][]byte, len(commit.Signatures))
 	var err error
 
 	// need to check if batch verification is supported
@@ -775,6 +779,7 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID,
 			// This means we don't need the validator address or to do any lookup.
 			val := vals.Validators[idx]
 			voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+			cacheSignBytes[string(val.PubKey.Bytes())] = voteSignBytes
 			// add the key, sig and message to the verifier
 			if err := bv.Add(val.PubKey, voteSignBytes, commitSig.Signature); err != nil {
 				return err
@@ -791,7 +796,7 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID,
 		if !bv.Verify() {
 			// reset talliedVotingPower to verify enough signatures to meet the 2/3+ threshold
 			talliedVotingPower, err = verifyCommitLightSingle(
-				chainID, vals, commit, votingPowerNeeded)
+				chainID, vals, commit, votingPowerNeeded, cacheSignBytes)
 			if err != nil {
 				return err
 			} else if talliedVotingPower > votingPowerNeeded {
@@ -800,7 +805,7 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID,
 		}
 	} else {
 		talliedVotingPower, err = verifyCommitLightSingle(
-			chainID, vals, commit, votingPowerNeeded)
+			chainID, vals, commit, votingPowerNeeded, cacheSignBytes)
 		if err != nil {
 			return err
 		} else if talliedVotingPower > votingPowerNeeded {
@@ -831,6 +836,7 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 		talliedVotingPower int64
 		seenVals           = make(map[int32]int, len(commit.Signatures)) // validator index -> commit index
 		err                error
+		cacheSignBytes     = make(map[string][]byte, len(commit.Signatures))
 	)
 
 	// Safely calculate voting power needed.
@@ -862,6 +868,8 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 
 				// Validate signature.
 				voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+				//cache the signed bytes in case we fail verification
+				cacheSignBytes[string(val.PubKey.Bytes())] = voteSignBytes
 				// if batch verification is supported add the key, sig and message to the verifier
 				if err := bv.Add(val.PubKey, voteSignBytes, commitSig.Signature); err != nil {
 					return err
@@ -876,7 +884,7 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 		}
 		if !bv.Verify() {
 			talliedVotingPower, err = verifyCommitLightTrustingSingle(
-				chainID, vals, commit, votingPowerNeeded)
+				chainID, vals, commit, votingPowerNeeded, cacheSignBytes)
 			if err != nil {
 				return err
 			} else if talliedVotingPower > votingPowerNeeded {
@@ -885,7 +893,7 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 		}
 	} else {
 		talliedVotingPower, err = verifyCommitLightTrustingSingle(
-			chainID, vals, commit, votingPowerNeeded)
+			chainID, vals, commit, votingPowerNeeded, cacheSignBytes)
 		if err != nil {
 			return err
 		} else if talliedVotingPower > votingPowerNeeded {
@@ -1169,8 +1177,11 @@ func safeMul(a, b int64) (int64, bool) {
 	return a * b, false
 }
 
+// verifyCommitLightTrustingSingle single verifies commits
+// If a key does not support batch verification, or batch verification fails this will be used
 func verifyCommitLightTrustingSingle(
-	chainID string, vals *ValidatorSet, commit *Commit, votingPowerNeeded int64) (int64, error) {
+	chainID string, vals *ValidatorSet, commit *Commit, votingPowerNeeded int64,
+	cachedVals map[string][]byte) (int64, error) {
 	var (
 		seenVals                 = make(map[int32]int, len(commit.Signatures))
 		talliedVotingPower int64 = 0
@@ -1180,6 +1191,8 @@ func verifyCommitLightTrustingSingle(
 		if !commitSig.ForBlock() {
 			continue
 		}
+
+		var voteSignBytes []byte
 
 		// We don't know the validators that committed this block, so we have to
 		// check for each vote if its validator is already known.
@@ -1194,7 +1207,12 @@ func verifyCommitLightTrustingSingle(
 			seenVals[valIdx] = idx
 
 			// Validate signature.
-			voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+			// voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+			if val, ok := cachedVals[string(val.PubKey.Bytes())]; !ok {
+				voteSignBytes = commit.VoteSignBytes(chainID, int32(idx))
+			} else {
+				voteSignBytes = val
+			}
 			if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
 				return 0, fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 			}
@@ -1209,8 +1227,11 @@ func verifyCommitLightTrustingSingle(
 	return talliedVotingPower, nil
 }
 
+// verifyCommitLightSingle single verifies commits.
+// If a key does not support batch verification, or batch verification fails this will be used
 func verifyCommitLightSingle(
-	chainID string, vals *ValidatorSet, commit *Commit, votingPowerNeeded int64) (int64, error) {
+	chainID string, vals *ValidatorSet, commit *Commit, votingPowerNeeded int64,
+	cachedVals map[string][]byte) (int64, error) {
 	var talliedVotingPower int64 = 0
 	for idx, commitSig := range commit.Signatures {
 		// No need to verify absent or nil votes.
@@ -1220,8 +1241,15 @@ func verifyCommitLightSingle(
 
 		// The vals and commit have a 1-to-1 correspondance.
 		// This means we don't need the validator address or to do any lookup.
+		var voteSignBytes []byte
 		val := vals.Validators[idx]
-		voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+
+		// Check if we have the validator in the cache
+		if val, ok := cachedVals[string(val.PubKey.Bytes())]; !ok {
+			voteSignBytes = commit.VoteSignBytes(chainID, int32(idx))
+		} else {
+			voteSignBytes = val
+		}
 		// Validate signature.
 		if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
 			return 0, fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
@@ -1237,15 +1265,26 @@ func verifyCommitLightSingle(
 	return talliedVotingPower, nil
 }
 
-func verifyCommitSingle(chainID string, vals *ValidatorSet, commit *Commit) (int64, error) {
+// verifyCommitSingle single verifies commits.
+// If a key does not support batch verification, or batch verification fails this will be used
+func verifyCommitSingle(chainID string, vals *ValidatorSet, commit *Commit,
+	cachedVals map[string][]byte) (int64, error) {
 	var talliedVotingPower int64 = 0
 	for idx, commitSig := range commit.Signatures {
 		if commitSig.Absent() {
 			continue // OK, some signatures can be absent.
 		}
 
+		var voteSignBytes []byte
 		val := vals.Validators[idx]
-		voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
+
+		// Check if we have the validator in the cache
+		if val, ok := cachedVals[string(val.PubKey.Bytes())]; !ok {
+			voteSignBytes = commit.VoteSignBytes(chainID, int32(idx))
+		} else {
+			voteSignBytes = val
+		}
+
 		if !val.PubKey.VerifySignature(voteSignBytes, commitSig.Signature) {
 			return talliedVotingPower, fmt.Errorf("wrong signature (#%d): %X", idx, commitSig.Signature)
 		}
