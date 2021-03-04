@@ -876,7 +876,7 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 		}
 		if !bv.Verify() {
 			talliedVotingPower, err = verifyCommitLightTrustingSingle(
-				chainID, vals, commit, votingPowerNeeded, seenVals)
+				chainID, vals, commit, votingPowerNeeded)
 			if err != nil {
 				return err
 			} else if talliedVotingPower > votingPowerNeeded {
@@ -885,7 +885,7 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 		}
 	} else {
 		talliedVotingPower, err = verifyCommitLightTrustingSingle(
-			chainID, vals, commit, votingPowerNeeded, seenVals)
+			chainID, vals, commit, votingPowerNeeded)
 		if err != nil {
 			return err
 		} else if talliedVotingPower > votingPowerNeeded {
@@ -1170,8 +1170,11 @@ func safeMul(a, b int64) (int64, bool) {
 }
 
 func verifyCommitLightTrustingSingle(
-	chainID string, vals *ValidatorSet, commit *Commit, votingPowerNeeded int64, seenVals map[int32]int) (int64, error) {
-	var talliedVotingPower int64 = 0
+	chainID string, vals *ValidatorSet, commit *Commit, votingPowerNeeded int64) (int64, error) {
+	var (
+		seenVals                 = make(map[int32]int, len(commit.Signatures))
+		talliedVotingPower int64 = 0
+	)
 	for idx, commitSig := range commit.Signatures {
 		// No need to verify absent or nil votes.
 		if !commitSig.ForBlock() {

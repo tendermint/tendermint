@@ -30,7 +30,7 @@ func BenchmarkVerification(b *testing.B) {
 func BenchmarkVerifyBatch(b *testing.B) {
 	for _, sigsCount := range []int{1, 8, 64, 1024} {
 		sigsCount := sigsCount
-		b.Run(fmt.Sprint("sig-count-%d", sigsCount), func(b *testing.B) {
+		b.Run(fmt.Sprintf("sig-count-%d", sigsCount), func(b *testing.B) {
 			b.ReportAllocs()
 			v := NewBatchVerifier()
 			for i := 0; i < sigsCount; i++ {
