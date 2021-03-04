@@ -246,7 +246,7 @@ func (s *pqScheduler) process() {
 
 			// dequeue
 
-			if s.pq.Len() > 0 {
+			for s.pq.Len() > 0 {
 				pqEnv = heap.Pop(s.pq).(*pqEnvelope)
 				s.size -= pqEnv.size
 
