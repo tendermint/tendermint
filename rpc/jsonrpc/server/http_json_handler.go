@@ -98,7 +98,11 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 				args = append(args, fnArgs...)
 			}
 			returns := rpcFunc.f.Call(args)
+<<<<<<< HEAD
 			logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
+=======
+			logger.Debug("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
+>>>>>>> 8c539f7c2... logs: cleanup (#6198)
 			result, err := unreflectResult(returns)
 			if err != nil {
 				responses = append(responses, types.RPCInternalError(request.ID, err))
