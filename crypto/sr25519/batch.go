@@ -38,6 +38,5 @@ func (b BatchVerifier) Add(key crypto.PubKey, msg, sig []byte) error {
 }
 
 func (b BatchVerifier) Verify() bool {
-	b.BatchVerifier.Verify()
-	return true
+	return b.BatchVerifier.Verify()
 }

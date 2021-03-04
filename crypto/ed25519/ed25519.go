@@ -172,7 +172,7 @@ func (pubKey PubKey) Equals(other crypto.PubKey) bool {
 	return false
 }
 
-var _ crypto.BatchVerifier = BatchVerifier{}
+var _ crypto.BatchVerifier = &BatchVerifier{}
 
 // BatchVerifier implements batch verification for ed25519.
 // https://github.com/hdevalence/ed25519consensus is used for batch verification
@@ -181,10 +181,10 @@ type BatchVerifier struct {
 }
 
 func NewBatchVerifier() crypto.BatchVerifier {
-	return BatchVerifier{ed25519consensus.NewBatchVerifier()}
+	return &BatchVerifier{ed25519consensus.NewBatchVerifier()}
 }
 
-func (b BatchVerifier) Add(key crypto.PubKey, msg, signature []byte) error {
+func (b *BatchVerifier) Add(key crypto.PubKey, msg, signature []byte) error {
 	if l := len(key.Bytes()); l != PubKeySize {
 		return fmt.Errorf("pubkey size is incorrect; expected: %d, got %d", PubKeySize, l)
 	}
@@ -199,6 +199,6 @@ func (b BatchVerifier) Add(key crypto.PubKey, msg, signature []byte) error {
 	return nil
 }
 
-func (b BatchVerifier) Verify() bool {
+func (b *BatchVerifier) Verify() bool {
 	return b.BatchVerifier.Verify()
 }
