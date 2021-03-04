@@ -67,7 +67,7 @@ func (is *IndexerService) OnStart() error {
 			if err = is.idr.AddBatch(batch); err != nil {
 				is.Logger.Error("Failed to index block", "height", height, "err", err)
 			} else {
-				is.Logger.Info("Indexed block", "height", height)
+				is.Logger.Debug("indexed block", "height", height)
 			}
 		}
 	}()
