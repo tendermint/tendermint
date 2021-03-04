@@ -117,11 +117,19 @@ func (memR *Reactor) InitPeer(peer p2p.Peer) p2p.Peer {
 	return peer
 }
 
+<<<<<<< HEAD
 // SetLogger sets the Logger on the reactor and the underlying mempool.
 func (memR *Reactor) SetLogger(l log.Logger) {
 	memR.Logger = l
 	memR.mempool.SetLogger(l)
 }
+=======
+		for _, tx := range protoTxs {
+			if err := r.mempool.CheckTx(types.Tx(tx), nil, txInfo); err != nil {
+				logger.Error("checktx failed for tx", "tx", fmt.Sprintf("%X", txID(tx)), "err", err)
+			}
+		}
+>>>>>>> be88fd3e6... mempool/rpc: log grooming (#6201)
 
 // OnStart implements p2p.BaseReactor.
 func (memR *Reactor) OnStart() error {
@@ -247,6 +255,7 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 					Txs: &protomem.Txs{Txs: [][]byte{memTx.tx}},
 				},
 			}
+<<<<<<< HEAD
 			bz, err := msg.Marshal()
 			if err != nil {
 				panic(err)
@@ -256,6 +265,9 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 				continue
 			}
+=======
+			r.Logger.Debug("gossiped tx to peer", "tx", fmt.Sprintf("%X", txID(memTx.tx)), "peer", peerID)
+>>>>>>> be88fd3e6... mempool/rpc: log grooming (#6201)
 		}
 
 		select {
