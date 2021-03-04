@@ -10,7 +10,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// Benchmark is a simple function for fetching, caclulating and printing
+// Benchmark is a simple function for fetching, calculating and printing
 // the following metrics:
 // 1. Average block production time
 // 2. Block interval standard deviation
@@ -27,8 +27,8 @@ func Benchmark(testnet *e2e.Testnet, benchmarkLength int64) error {
 
 	// wait for the length of the benchmark period in blocks to pass. We allow 5 seconds for each block
 	// which should be sufficient.
-	waitingTime := time.Duration(benchmarkLength * 5) * time.Second
-	endHeight, err := waitForAllNodes(testnet, block.Height + benchmarkLength, waitingTime)
+	waitingTime := time.Duration(benchmarkLength*5) * time.Second
+	endHeight, err := waitForAllNodes(testnet, block.Height+benchmarkLength, waitingTime)
 	if err != nil {
 		return err
 	}
@@ -52,14 +52,13 @@ func Benchmark(testnet *e2e.Testnet, benchmarkLength int64) error {
 	return nil
 }
 
-
 type testnetStats struct {
 	from int64
-	to int64
+	to   int64
 	mean time.Duration
-	std float64
-	max time.Duration
-	min time.Duration
+	std  float64
+	max  time.Duration
+	min  time.Duration
 }
 
 func (t *testnetStats) String() string {
@@ -68,7 +67,7 @@ func (t *testnetStats) String() string {
 	Standard Deviation: %f
 	Max Block Interval: %v
 	Min Block Interval: %v
-	`, 
+	`,
 		t.from,
 		t.to,
 		t.mean,
@@ -98,7 +97,6 @@ func fetchBlockChainSample(testnet *e2e.Testnet, benchmarkLength int64) ([]*type
 		return nil, err
 	}
 
-	
 	to := s.SyncInfo.LatestBlockHeight
 	from := to - benchmarkLength + 1
 	if from <= testnet.InitialHeight {
@@ -108,7 +106,7 @@ func fetchBlockChainSample(testnet *e2e.Testnet, benchmarkLength int64) ([]*type
 	// Fetch blocks
 	for from < to {
 		// fetch the blockchain metas. Currently we can only fetch 20 at a time
-		resp, err := c.BlockchainInfo(ctx, from, min(from + 19, to))
+		resp, err := c.BlockchainInfo(ctx, from, min(from+19, to))
 		if err != nil {
 			return nil, err
 		}
@@ -131,7 +129,7 @@ func fetchBlockChainSample(testnet *e2e.Testnet, benchmarkLength int64) ([]*type
 }
 
 func splitIntoBlockIntervals(blocks []*types.BlockMeta) []time.Duration {
-	intervals := make([]time.Duration, len(blocks) - 1)
+	intervals := make([]time.Duration, len(blocks)-1)
 	lastTime := blocks[0].Header.Time
 	for i, block := range blocks {
 		// skip the first block
@@ -139,7 +137,7 @@ func splitIntoBlockIntervals(blocks []*types.BlockMeta) []time.Duration {
 			continue
 		}
 
-		intervals[i - 1] = block.Header.Time.Sub(lastTime)
+		intervals[i-1] = block.Header.Time.Sub(lastTime)
 		lastTime = block.Header.Time
 	}
 	return intervals
@@ -160,22 +158,22 @@ func extractTestnetStats(intervals []time.Duration) testnetStats {
 		}
 
 		if interval < min {
-			min  = interval
+			min = interval
 		}
-	}	
-	mean = sum/time.Duration(len(intervals));
+	}
+	mean = sum / time.Duration(len(intervals))
 
 	for _, interval := range intervals {
-		diff := (interval - mean).Seconds() 
+		diff := (interval - mean).Seconds()
 		std += math.Pow(diff, 2)
 	}
-	std = math.Sqrt(std/float64(len(intervals)))
+	std = math.Sqrt(std / float64(len(intervals)))
 
 	return testnetStats{
 		mean: mean,
-		std: std,
-		max: max,
-		min: min,
+		std:  std,
+		max:  max,
+		min:  min,
 	}
 }
 
