@@ -99,7 +99,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			}
 
 			returns := rpcFunc.f.Call(args)
-
+			logger.Debug("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
 			result, err := unreflectResult(returns)
 			switch e := err.(type) {
 			// if no error then return a success response
