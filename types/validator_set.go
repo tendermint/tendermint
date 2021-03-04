@@ -868,7 +868,7 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 
 				// Validate signature.
 				voteSignBytes := commit.VoteSignBytes(chainID, int32(idx))
-				//cache the signed bytes in case we fail verification
+				// cache the signed bytes in case we fail verification
 				cacheSignBytes[string(val.PubKey.Bytes())] = voteSignBytes
 				// if batch verification is supported add the key, sig and message to the verifier
 				if err := bv.Add(val.PubKey, voteSignBytes, commitSig.Signature); err != nil {
