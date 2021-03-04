@@ -27,7 +27,10 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 	// Exception for websocket endpoints
 	if rpcFunc.ws {
 		return func(w http.ResponseWriter, r *http.Request) {
-			WriteRPCResponseHTTPError(w, types.RPCMethodNotFoundError(dummyID))
+			res := types.RPCMethodNotFoundError(dummyID)
+			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
 		}
 	}
 
@@ -40,13 +43,12 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 
 		fnArgs, err := httpParamsToArgs(rpcFunc, r)
 		if err != nil {
-			WriteRPCResponseHTTPError(
-				w,
-				types.RPCInvalidParamsError(
-					dummyID,
-					fmt.Errorf("error converting http params to arguments: %w", err),
-				),
+			res := types.RPCInvalidParamsError(dummyID,
+				fmt.Errorf("error converting http params to arguments: %w", err),
 			)
+			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
 			return
 		}
 		args = append(args, fnArgs...)
@@ -58,21 +60,33 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		switch e := err.(type) {
 		// if no error then return a success response
 		case nil:
-			WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(dummyID, result))
+			res := types.NewRPCSuccessResponse(dummyID, result)
+			if wErr := WriteRPCResponseHTTP(w, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
 
 		// if this already of type RPC error then forward that error.
 		case *types.RPCError:
-			WriteRPCResponseHTTPError(w, types.NewRPCErrorResponse(dummyID, e.Code, e.Message, e.Data))
+			res := types.NewRPCErrorResponse(dummyID, e.Code, e.Message, e.Data)
+			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
 
 		default: // we need to unwrap the error and parse it accordingly
+			var res types.RPCResponse
 
 			switch errors.Unwrap(err) {
-			case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage,
-				ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
-				WriteRPCResponseHTTPError(w, types.RPCInvalidRequestError(dummyID, err))
-
+			case ctypes.ErrZeroOrNegativeHeight,
+				ctypes.ErrZeroOrNegativePerPage,
+				ctypes.ErrPageOutOfRange,
+				ctypes.ErrInvalidRequest:
+				res = types.RPCInvalidRequestError(dummyID, err)
 			default: // ctypes.ErrHeightNotAvailable, ctypes.ErrHeightExceedsChainHead:
-				WriteRPCResponseHTTPError(w, types.RPCInternalError(dummyID, err))
+				res = types.RPCInternalError(dummyID, err)
+			}
+
+			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
 			}
 		}
 

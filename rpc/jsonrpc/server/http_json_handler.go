@@ -23,13 +23,12 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			WriteRPCResponseHTTPError(
-				w,
-				types.RPCInvalidRequestError(
-					nil,
-					fmt.Errorf("error reading request body: %w", err),
-				),
+			res := types.RPCInvalidRequestError(nil,
+				fmt.Errorf("error reading request body: %w", err),
 			)
+			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
 			return
 		}
 
@@ -49,12 +48,10 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			// next, try to unmarshal as a single request
 			var request types.RPCRequest
 			if err := json.Unmarshal(b, &request); err != nil {
-				WriteRPCResponseHTTPError(
-					w,
-					types.RPCParseError(
-						fmt.Errorf("error unmarshaling request: %w", err),
-					),
-				)
+				res := types.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err))
+				if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+					logger.Error("failed to write response", "res", res, "err", wErr)
+				}
 				return
 			}
 			requests = []types.RPCRequest{request}
@@ -125,7 +122,9 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 		}
 
 		if len(responses) > 0 {
-			WriteRPCResponseHTTP(w, responses...)
+			if wErr := WriteRPCResponseHTTP(w, responses...); wErr != nil {
+				logger.Error("failed to write responses", "res", responses, "err", wErr)
+			}
 		}
 	}
 }
