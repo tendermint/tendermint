@@ -719,8 +719,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 			}
 		}
 	} else {
-		talliedVotingPower, err = verifyCommitSingle(
-			chainID, vals, commit, cacheSignBytes)
+		talliedVotingPower, err = verifyCommitSingle(chainID, vals, commit, cacheSignBytes)
 		if err != nil {
 			return err
 		}
