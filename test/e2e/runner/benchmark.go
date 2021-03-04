@@ -16,14 +16,16 @@ import (
 // 2. Block interval standard deviation
 // 3. Max block interval (slowest block)
 // 4. Min block interval (fastest block)
+//
+// Metrics are based of the `benchmarkLength`, the amount of consecutive blocks
+// sampled from in the testnet
 func Benchmark(testnet *e2e.Testnet, benchmarkLength int64) error {
-
 	block, _, err := waitForHeight(testnet, 0)
 	if err != nil {
 		return err
 	}
 
-	logger.Info("Beginning benchmark period ...", "height", block.Height)
+	logger.Info("Beginning benchmark period...", "height", block.Height)
 
 	// wait for the length of the benchmark period in blocks to pass. We allow 5 seconds for each block
 	// which should be sufficient.
@@ -33,7 +35,7 @@ func Benchmark(testnet *e2e.Testnet, benchmarkLength int64) error {
 		return err
 	}
 
-	logger.Info("Ending benchmark period.", "height", endHeight)
+	logger.Info("Ending benchmark period", "height", endHeight)
 
 	// fetch a sample of blocks
 	blocks, err := fetchBlockChainSample(testnet, benchmarkLength)
@@ -44,8 +46,8 @@ func Benchmark(testnet *e2e.Testnet, benchmarkLength int64) error {
 	// slice into time intervals and collate data
 	timeIntervals := splitIntoBlockIntervals(blocks)
 	testnetStats := extractTestnetStats(timeIntervals)
-	testnetStats.from = blocks[0].Header.Height
-	testnetStats.to = blocks[len(blocks)-1].Header.Height
+	testnetStats.startHeight = blocks[0].Header.Height
+	testnetStats.endHeight = blocks[len(blocks)-1].Header.Height
 
 	// print and return
 	logger.Info(testnetStats.String())
@@ -53,11 +55,16 @@ func Benchmark(testnet *e2e.Testnet, benchmarkLength int64) error {
 }
 
 type testnetStats struct {
-	from int64
-	to   int64
+	startHeight  int64
+	endHeight   int64
+
+	// average time to produce a block
 	mean time.Duration
+	// standard deviation of block production
 	std  float64
+	// longest time to produce a block 
 	max  time.Duration
+	// shortest tiem to produce a block
 	min  time.Duration
 }
 
@@ -68,8 +75,8 @@ func (t *testnetStats) String() string {
 	Max Block Interval: %v
 	Min Block Interval: %v
 	`,
-		t.from,
-		t.to,
+		t.startHeight,
+		t.endHeight,
 		t.mean,
 		t.std,
 		t.max,
@@ -77,10 +84,9 @@ func (t *testnetStats) String() string {
 	)
 }
 
-// fetchBlockChain fetches a complete, up-to-date block history from
-// the freshest testnet archive node.
+// fetchBlockChainSample waits for `benchmarkLength` amount of blocks to pass, fetching
+// all of the headers for these blocks from an archive node and returning it. 
 func fetchBlockChainSample(testnet *e2e.Testnet, benchmarkLength int64) ([]*types.BlockMeta, error) {
-
 	var blocks []*types.BlockMeta
 
 	// Find the first archive node
@@ -100,7 +106,7 @@ func fetchBlockChainSample(testnet *e2e.Testnet, benchmarkLength int64) ([]*type
 	to := s.SyncInfo.LatestBlockHeight
 	from := to - benchmarkLength + 1
 	if from <= testnet.InitialHeight {
-		return nil, fmt.Errorf("tesnet was unable to reach required height for benchmarking. (latest height %d)", to)
+		return nil, fmt.Errorf("tesnet was unable to reach required height for benchmarking (latest height %d)", to)
 	}
 
 	// Fetch blocks
@@ -144,11 +150,12 @@ func splitIntoBlockIntervals(blocks []*types.BlockMeta) []time.Duration {
 }
 
 func extractTestnetStats(intervals []time.Duration) testnetStats {
-	var sum, mean, max, min time.Duration
-	var std float64
-
-	max = intervals[0]
-	min = intervals[0]
+	var (
+		sum, mean time.Duration
+		std float64
+		max = intervals[0]
+		min = intervals[0]
+	)
 
 	for _, interval := range intervals {
 		sum += interval
