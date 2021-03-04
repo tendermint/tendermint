@@ -202,7 +202,7 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 					default:
 					}
 
-					logger.Error("Panic in RPC HTTP handler", "err", e, "stack", string(debug.Stack()))
+					logger.Error("panic in RPC HTTP handler", "err", e, "stack", string(debug.Stack()))
 
 					res := types.RPCInternalError(types.JSONRPCIntID(-1), err)
 					if wErr := WriteRPCResponseHTTPError(rww, res); wErr != nil {
