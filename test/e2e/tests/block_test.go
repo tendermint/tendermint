@@ -2,13 +2,11 @@ package e2e_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Tests that block headers are identical across nodes where present.
@@ -43,7 +41,6 @@ func TestBlock_Header(t *testing.T) {
 				"block mismatch for height %v", block.Header.Height)
 		}
 	})
-	t.Fatal("average block time", "average", averageBlockTime(blocks))
 }
 
 // Tests that the node contains the expected block range.
@@ -91,10 +88,4 @@ func TestBlock_Range(t *testing.T) {
 			require.Error(t, err)
 		}
 	})
-}
-
-
-func averageBlockTime(blocks []*types.Block) time.Duration {
-	diff := blocks[len(blocks) - 1].Time.Sub(blocks[0].Time)
-	return diff / time.Duration(len(blocks) - 1)
 }
