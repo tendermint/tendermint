@@ -17,18 +17,40 @@ func Fuzz(data []byte) int {
 	}
 
 	fooConn, barConn := makeSecretConnPair()
-	n, err := fooConn.Write(data)
-	if err != nil {
-		panic(err)
+
+	// Run Write in a separate goroutine because if data is greater than 1024
+	// bytes, each Write must be followed by Read (see io.Pipe documentation).
+	go func() {
+		// Copy data because Write modifies the slice.
+		dataToWrite := make([]byte, len(data))
+		copy(dataToWrite, data)
+
+		n, err := fooConn.Write(dataToWrite)
+		if err != nil {
+			panic(err)
+		}
+		if n < len(data) {
+			panic(fmt.Sprintf("wanted to write %d bytes, but %d was written", len(data), n))
+		}
+	}()
+
+	dataRead := make([]byte, len(data))
+	totalRead := 0
+	for totalRead < len(data) {
+		buf := make([]byte, len(data)-totalRead)
+		m, err := barConn.Read(buf)
+		if err != nil {
+			panic(err)
+		}
+		copy(dataRead[totalRead:], buf[:m])
+		totalRead += m
+		log.Printf("total read: %d", totalRead)
 	}
-	dataRead := make([]byte, n)
-	m, err := barConn.Read(dataRead)
-	if err != nil {
-		panic(err)
+
+	if !bytes.Equal(data, dataRead) {
+		panic("bytes written != read")
 	}
-	if !bytes.Equal(data[:n], dataRead[:m]) {
-		panic(fmt.Sprintf("bytes written %X != read %X", data[:n], dataRead[:m]))
-	}
+
 	return 1
 }
 

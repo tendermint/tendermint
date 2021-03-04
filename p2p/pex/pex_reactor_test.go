@@ -91,7 +91,7 @@ func TestPEXReactorRunning(t *testing.T) {
 			sw.AddReactor("pex", r)
 
 			return sw
-		})
+		}, logger)
 	}
 
 	for _, sw := range switches {
@@ -406,7 +406,7 @@ func TestPEXReactorSeedModeFlushStop(t *testing.T) {
 			sw.AddReactor("pex", r)
 
 			return sw
-		})
+		}, logger)
 	}
 
 	for _, sw := range switches {
@@ -567,6 +567,7 @@ func testCreatePeerWithConfig(dir string, id int, config *ReactorConfig) *p2p.Sw
 			sw.AddReactor("pex", r)
 			return sw
 		},
+		log.TestingLogger(),
 	)
 	return peer
 }
@@ -600,6 +601,7 @@ func testCreateSeed(dir string, id int, knownAddrs, srcAddrs []*p2p.NetAddress) 
 			sw.AddReactor("pex", r)
 			return sw
 		},
+		log.TestingLogger(),
 	)
 	return seed
 }
@@ -629,8 +631,7 @@ func createSwitchAndAddReactors(reactors ...p2p.Reactor) *p2p.Switch {
 			sw.AddReactor(r.String(), r)
 		}
 		return sw
-	})
-	sw.SetLogger(log.TestingLogger())
+	}, log.TestingLogger())
 	return sw
 }
 

@@ -130,7 +130,7 @@ func VerifyAdjacent(
 
 	// Check the validator hashes are the same
 	if !bytes.Equal(untrustedHeader.ValidatorsHash, trustedHeader.NextValidatorsHash) {
-		err := fmt.Errorf("expected old header next validators (%X) to match those from new header (%X)",
+		err := fmt.Errorf("expected old header's next validators (%X) to match those from new header (%X)",
 			trustedHeader.NextValidatorsHash,
 			untrustedHeader.ValidatorsHash,
 		)
