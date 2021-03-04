@@ -97,6 +97,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 				}
 				args = append(args, fnArgs...)
 			}
+
 			returns := rpcFunc.f.Call(args)
 			logger.Debug("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
 			result, err := unreflectResult(returns)
@@ -122,6 +123,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 				}
 			}
 		}
+
 		if len(responses) > 0 {
 			WriteRPCResponseHTTP(w, responses...)
 		}
