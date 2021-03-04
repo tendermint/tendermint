@@ -96,12 +96,8 @@ func waitForAllNodes(testnet *e2e.Testnet, height int64, timeout time.Duration) 
 		if node.Mode == e2e.ModeSeed {
 			continue
 		}
-<<<<<<< HEAD
-		status, err := waitForNode(node, height, 20*time.Second)
-=======
 
 		status, err := waitForNode(node, height, timeout)
->>>>>>> be88fd3e6... mempool/rpc: log grooming (#6201)
 		if err != nil {
 			return 0, err
 		}
