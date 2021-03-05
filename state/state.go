@@ -62,7 +62,7 @@ func VersionFromProto(v tmstate.Version) Version {
 // including the last validator set and the consensus params.
 // All fields are exposed so the struct can be easily serialized,
 // but none of them should be mutated directly.
-// Instead, use state.Copy().
+// Instead, use state.Copy() or updateState(...).
 // NOTE: not goroutine-safe.
 type State struct {
 	Version Version
