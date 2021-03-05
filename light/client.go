@@ -861,6 +861,8 @@ func (c *Client) cleanupAfter(height int64) error {
 }
 
 func (c *Client) updateTrustedLightBlock(l *types.LightBlock) error {
+	c.logger.Debug("updating trusted light block", "light_block", l)
+
 	if err := c.trustedStore.SaveLightBlock(l); err != nil {
 		return fmt.Errorf("failed to save trusted header: %w", err)
 	}
