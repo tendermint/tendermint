@@ -477,10 +477,15 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 
 	// Save seen commit (seen +2/3 precommits for block)
-	// NOTE: we can delete this at a later height
 	pbsc := seenCommit.ToProto()
 	seenCommitBytes := mustEncode(pbsc)
 	if err := batch.Set(seenCommitKey(height), seenCommitBytes); err != nil {
+		panic(err)
+	}
+
+	// remove the previous seen commit that we have just replaced with the
+	// canonical commit
+	if err := batch.Delete(seenCommitKey(height - 1)); err != nil {
 		panic(err)
 	}
 
