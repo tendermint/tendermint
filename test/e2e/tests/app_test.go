@@ -16,7 +16,7 @@ import (
 // Tests that any initial state given in genesis has made it into the app.
 func TestApp_InitialState(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
-		if node.Mode == e2e.ModeSeed {
+		if node.Stateless() {
 			return
 		}
 		if len(node.Testnet.InitialState) == 0 {
@@ -84,9 +84,24 @@ func TestApp_Tx(t *testing.T) {
 		_, err = client.BroadcastTxCommit(ctx, tx)
 		require.NoError(t, err)
 
-		resp, err := client.ABCIQuery(ctx, "", []byte(key))
+		// wait for the tx to go through
+		time.Sleep(1 * time.Second)
+
+		hash := tx.Hash()
+		txResp, err := client.Tx(ctx, hash, false)
 		require.NoError(t, err)
-		assert.Equal(t, key, string(resp.Response.Key))
-		assert.Equal(t, value, string(resp.Response.Value))
+		assert.Equal(t, txResp.Tx, tx)
+
+		if node.Mode == e2e.ModeLight {
+			return
+		}
+
+		abciResp, err := client.ABCIQuery(ctx, "", []byte(key))
+		require.NoError(t, err)
+		assert.Equal(t, key, string(abciResp.Response.Key))
+		assert.Equal(t, value, string(abciResp.Response.Value))
+
+		assert.Equal(t, txResp.Height, abciResp.Response.Height)
+
 	})
 }
