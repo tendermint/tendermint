@@ -1177,6 +1177,7 @@ func safeMul(a, b int64) (int64, bool) {
 
 // verifyCommitLightTrustingSingle single verifies commits
 // If a key does not support batch verification, or batch verification fails this will be used
+// This method is used for light clients, it only checks 2/3+ of the signatures
 func verifyCommitLightTrustingSingle(
 	chainID string, vals *ValidatorSet, commit *Commit, votingPowerNeeded int64,
 	cachedVals map[string][]byte) (int64, error) {
@@ -1227,6 +1228,7 @@ func verifyCommitLightTrustingSingle(
 
 // verifyCommitLightSingle single verifies commits.
 // If a key does not support batch verification, or batch verification fails this will be used
+// This method is used for light client and block sync verification, it will only check 2/3+ signatures
 func verifyCommitLightSingle(
 	chainID string, vals *ValidatorSet, commit *Commit, votingPowerNeeded int64,
 	cachedVals map[string][]byte) (int64, error) {
@@ -1265,6 +1267,8 @@ func verifyCommitLightSingle(
 
 // verifyCommitSingle single verifies commits.
 // If a key does not support batch verification, or batch verification fails this will be used
+// This method is used to check all the signatures included in a commit.
+// It is used in consensus for validating a block LastCommit.
 func verifyCommitSingle(chainID string, vals *ValidatorSet, commit *Commit,
 	cachedVals map[string][]byte) (int64, error) {
 	var talliedVotingPower int64 = 0
