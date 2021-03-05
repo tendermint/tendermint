@@ -686,8 +686,8 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 		cacheSignBytes     = make(map[string][]byte, len(commit.Signatures))
 	)
 
-	bv, batchVerify := batch.CreateBatchVerifier(vals.GetProposer().PubKey)
-	if batchVerify && len(commit.Signatures) > 1 {
+	bv, ok := batch.CreateBatchVerifier(vals.GetProposer().PubKey)
+	if ok && len(commit.Signatures) > 1 {
 		for idx, commitSig := range commit.Signatures {
 			if commitSig.Absent() {
 				continue // OK, some signatures can be absent.
@@ -765,8 +765,8 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID,
 	// if batch is supported and the there are more than x key(s) run batch, otherwise run single.
 	// if batch verification fails reset tally votes to 0 and single verify until we have 2/3+
 	// check if the key supports batch verification
-	bv, batchVerify := batch.CreateBatchVerifier(vals.GetProposer().PubKey)
-	if batchVerify && len(commit.Signatures) > 1 {
+	bv, ok := batch.CreateBatchVerifier(vals.GetProposer().PubKey)
+	if ok && len(commit.Signatures) > 1 {
 		for idx, commitSig := range commit.Signatures {
 			// No need to verify absent or nil votes.
 			if !commitSig.ForBlock() {
@@ -844,8 +844,8 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 	}
 	votingPowerNeeded := totalVotingPowerMulByNumerator / int64(trustLevel.Denominator)
 
-	bv, batchVerify := batch.CreateBatchVerifier(vals.GetProposer().PubKey)
-	if batchVerify && len(commit.Signatures) > 1 {
+	bv, ok := batch.CreateBatchVerifier(vals.GetProposer().PubKey)
+	if ok && len(commit.Signatures) > 1 {
 		for idx, commitSig := range commit.Signatures {
 			// No need to verify absent or nil votes.
 			if !commitSig.ForBlock() {
