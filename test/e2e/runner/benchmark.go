@@ -55,17 +55,17 @@ func Benchmark(testnet *e2e.Testnet, benchmarkLength int64) error {
 }
 
 type testnetStats struct {
-	startHeight  int64
+	startHeight int64
 	endHeight   int64
 
 	// average time to produce a block
 	mean time.Duration
 	// standard deviation of block production
-	std  float64
-	// longest time to produce a block 
-	max  time.Duration
-	// shortest tiem to produce a block
-	min  time.Duration
+	std float64
+	// longest time to produce a block
+	max time.Duration
+	// shortest time to produce a block
+	min time.Duration
 }
 
 func (t *testnetStats) String() string {
@@ -85,7 +85,7 @@ func (t *testnetStats) String() string {
 }
 
 // fetchBlockChainSample waits for `benchmarkLength` amount of blocks to pass, fetching
-// all of the headers for these blocks from an archive node and returning it. 
+// all of the headers for these blocks from an archive node and returning it.
 func fetchBlockChainSample(testnet *e2e.Testnet, benchmarkLength int64) ([]*types.BlockMeta, error) {
 	var blocks []*types.BlockMeta
 
@@ -152,9 +152,9 @@ func splitIntoBlockIntervals(blocks []*types.BlockMeta) []time.Duration {
 func extractTestnetStats(intervals []time.Duration) testnetStats {
 	var (
 		sum, mean time.Duration
-		std float64
-		max = intervals[0]
-		min = intervals[0]
+		std       float64
+		max       = intervals[0]
+		min       = intervals[0]
 	)
 
 	for _, interval := range intervals {
