@@ -71,7 +71,6 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [rpc/client/http] \#6163 Do not drop events even if the `out` channel is full (@melekes)
 - [node] \#6059 Validate and complete genesis doc before saving to state store (@silasdavis)
 - [state] \#6067 Batch save state data (@githubsands & @cmwaters)
-- [libs/log] \#6174 Include timestamp (`ts` field; `time.RFC3339Nano` format) in JSON logger output (@melekes)
 - [crypto] \#6120 Implement batch verification interface for ed25519 and sr25519. (@marbar3778)
 - [types] \#6120 use batch verification for verifying commits signatures. 
   - If the key type supports the batch verification API it will try to batch verify. If the verification fails we will single verify each signature. 
