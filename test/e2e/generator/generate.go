@@ -74,7 +74,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		Nodes:            map[string]*e2e.ManifestNode{},
 	}
 
-	var numSeeds, numValidators, numFulls int
+	var numSeeds, numValidators, numFulls, numLightClients int
 	switch opt["topology"].(string) {
 	case "single":
 		numValidators = 1
@@ -82,7 +82,8 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		numValidators = 4
 	case "large":
 		// FIXME Networks are kept small since large ones use too much CPU.
-		numSeeds = r.Intn(4)
+		numSeeds = r.Intn(3)
+		numLightClients = r.Intn(3)
 		numValidators = 4 + r.Intn(7)
 		numFulls = r.Intn(5)
 	default:
@@ -140,6 +141,13 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
 	}
 
+	for i := 1; i <= numLightClients; i++ {
+		startAt := manifest.InitialHeight + 5
+		manifest.Nodes[fmt.Sprintf("light%02d", i)] = generateNode(
+			r, e2e.ModeLight, startAt+(5*int64(i)), manifest.InitialHeight, false,
+		)
+	}
+
 	// We now set up peer discovery for nodes. Seed nodes are fully meshed with
 	// each other, while non-seed nodes either use a set of random seeds or a
 	// set of random peers that start before themselves.
@@ -172,6 +180,10 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		}
 	})
 	for i, name := range peerNames {
+		// we skip over light clients - they connect to all peers initially
+		if manifest.Nodes[name].Mode == string(e2e.ModeLight) {
+			continue
+		}
 		if len(seedNames) > 0 && (i == 0 || r.Float64() >= 0.5) {
 			manifest.Nodes[name].Seeds = uniformSetChoice(seedNames).Choose(r)
 		} else if i > 0 {
@@ -210,7 +222,7 @@ func generateNode(
 		node.SnapshotInterval = 3
 	}
 
-	if node.Mode == "validator" {
+	if node.Mode == string(e2e.ModeValidator) {
 		misbehaveAt := startAt + 5 + int64(r.Intn(10))
 		if startAt == 0 {
 			misbehaveAt += initialHeight - 1
@@ -219,6 +231,11 @@ func generateNode(
 		if len(node.Misbehaviors) != 0 {
 			node.PrivvalProtocol = "file"
 		}
+	}
+
+	if node.Mode == string(e2e.ModeLight) {
+		node.ABCIProtocol = "builtin"
+		node.StateSync = false
 	}
 
 	// If a node which does not persist state also does not retain blocks, randomly
