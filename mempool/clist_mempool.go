@@ -72,6 +72,8 @@ type CListMempool struct {
 	logger log.Logger
 
 	metrics *Metrics
+
+	addMtx tmsync.Mutex
 }
 
 var _ Mempool = &CListMempool{}
@@ -295,12 +297,15 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 		ctx = txInfo.Context
 	}
 
+	mem.addMtx.Lock()
 	reqRes, err := mem.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{Tx: tx})
 	if err != nil {
+		mem.addMtx.Unlock()
 		mem.cache.Remove(tx)
 		return err
 	}
 	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderP2PID, cb))
+	mem.addMtx.Unlock()
 
 	return nil
 }
