@@ -1,6 +1,7 @@
 package privval
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -44,7 +45,7 @@ func (sc *RetrySignerClient) Ping() error {
 	return sc.next.Ping()
 }
 
-func (sc *RetrySignerClient) GetPubKey() (crypto.PubKey, error) {
+func (sc *RetrySignerClient) GetPubKey(ctx context.Context) (crypto.PubKey, error) {
 	var (
 		pk  crypto.PubKey
 		err error
@@ -63,7 +64,7 @@ func (sc *RetrySignerClient) GetPubKey() (crypto.PubKey, error) {
 	return nil, fmt.Errorf("exhausted all attempts to get pubkey: %w", err)
 }
 
-func (sc *RetrySignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
+func (sc *RetrySignerClient) SignVote(ctx context.Context, chainID string, vote *tmproto.Vote) error {
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
 		err = sc.next.SignVote(chainID, vote)
@@ -79,7 +80,7 @@ func (sc *RetrySignerClient) SignVote(chainID string, vote *tmproto.Vote) error 
 	return fmt.Errorf("exhausted all attempts to sign vote: %w", err)
 }
 
-func (sc *RetrySignerClient) SignProposal(chainID string, proposal *tmproto.Proposal) error {
+func (sc *RetrySignerClient) SignProposal(ctx context.Context, chainID string, proposal *tmproto.Proposal) error {
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
 		err = sc.next.SignProposal(chainID, proposal)
