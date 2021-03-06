@@ -1,6 +1,7 @@
 package evidence_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -438,7 +439,7 @@ func initializeStateFromValidatorSet(t *testing.T, valSet *types.ValidatorSet, h
 }
 
 func initializeValidatorState(t *testing.T, privVal types.PrivValidator, height int64) sm.Store {
-	pubKey, _ := privVal.GetPubKey()
+	pubKey, _ := privVal.GetPubKey(context.Background())
 	validator := &types.Validator{Address: pubKey.Address(), VotingPower: 10, PubKey: pubKey}
 
 	// create validator set and state

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -57,7 +58,7 @@ func TestPeerCatchupRounds(t *testing.T) {
 
 func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []types.PrivValidator) *types.Vote {
 	privVal := privVals[valIndex]
-	pubKey, err := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey(context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -76,7 +77,7 @@ func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []ty
 	chainID := config.ChainID()
 
 	v := vote.ToProto()
-	err = privVal.SignVote(chainID, v)
+	err = privVal.SignVote(context.Background(), chainID, v)
 	if err != nil {
 		panic(fmt.Sprintf("Error signing vote: %v", err))
 	}

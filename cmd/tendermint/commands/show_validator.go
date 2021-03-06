@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -36,7 +37,7 @@ func showValidator(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("can't connect to remote validator %w", err)
 		}
-		pubKey, err = pvsc.GetPubKey()
+		pubKey, err = pvsc.GetPubKey(context.TODO())
 		if err != nil {
 			return fmt.Errorf("can't get pubkey: %w", err)
 		}
@@ -52,7 +53,7 @@ func showValidator(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		pubKey, err = pv.GetPubKey()
+		pubKey, err = pv.GetPubKey(context.TODO())
 		if err != nil {
 			return fmt.Errorf("can't get pubkey: %w", err)
 		}

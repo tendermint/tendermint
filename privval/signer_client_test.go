@@ -98,14 +98,14 @@ func TestSignerGetPubKey(t *testing.T) {
 			}
 		})
 
-		pubKey, err := tc.signerClient.GetPubKey()
+		pubKey, err := tc.signerClient.GetPubKey(context.Background())
 		require.NoError(t, err)
 		expectedPubKey, err := tc.mockPV.GetPubKey(context.Background())
 		require.NoError(t, err)
 
 		assert.Equal(t, expectedPubKey, pubKey)
 
-		pubKey, err = tc.signerClient.GetPubKey()
+		pubKey, err = tc.signerClient.GetPubKey(context.Background())
 		require.NoError(t, err)
 		expectedpk, err := tc.mockPV.GetPubKey(context.Background())
 		require.NoError(t, err)
@@ -390,7 +390,7 @@ func TestSignerSignVoteErrors(t *testing.T) {
 	}
 }
 
-func brokenHandler(privVal types.PrivValidator, request privvalproto.Message,
+func brokenHandler(ctx context.Context, privVal types.PrivValidator, request privvalproto.Message,
 	chainID string) (privvalproto.Message, error) {
 	var res privvalproto.Message
 	var err error

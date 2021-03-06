@@ -488,7 +488,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < n; i++ {
-		pubKey, err := states[i].privValidator.GetPubKey()
+		pubKey, err := states[i].privValidator.GetPubKey(context.Background())
 		require.NoError(t, err)
 
 		addr := pubKey.Address()
@@ -513,7 +513,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		blocksSubs = append(blocksSubs, sub)
 	}
 
-	val1PubKey, err := states[0].privValidator.GetPubKey()
+	val1PubKey, err := states[0].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
 	val1PubKeyABCI, err := cryptoenc.PubKeyToProto(val1PubKey)
@@ -588,7 +588,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
-		pubKey, err := states[i].privValidator.GetPubKey()
+		pubKey, err := states[i].privValidator.GetPubKey(context.Background())
 		require.NoError(t, err)
 
 		activeVals[string(pubKey.Address())] = struct{}{}
@@ -607,7 +607,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	wg.Wait()
 
-	newValidatorPubKey1, err := states[nVals].privValidator.GetPubKey()
+	newValidatorPubKey1, err := states[nVals].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
 	valPubKey1ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey1)
@@ -640,7 +640,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// it includes the commit for block 4, which should have the updated validator set
 	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, states)
 
-	updateValidatorPubKey1, err := states[nVals].privValidator.GetPubKey()
+	updateValidatorPubKey1, err := states[nVals].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
 	updatePubKey1ABCI, err := cryptoenc.PubKeyToProto(updateValidatorPubKey1)
@@ -660,7 +660,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		previousTotalVotingPower, states[nVals].GetRoundState().LastValidators.TotalVotingPower(),
 	)
 
-	newValidatorPubKey2, err := states[nVals+1].privValidator.GetPubKey()
+	newValidatorPubKey2, err := states[nVals+1].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
 	newVal2ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey2)
@@ -668,7 +668,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
 
-	newValidatorPubKey3, err := states[nVals+2].privValidator.GetPubKey()
+	newValidatorPubKey3, err := states[nVals+2].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
 	newVal3ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey3)

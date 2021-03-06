@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -149,7 +150,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		pubKey, err := pv.GetPubKey()
+		pubKey, err := pv.GetPubKey(context.TODO())
 		if err != nil {
 			return fmt.Errorf("can't get pubkey: %w", err)
 		}
