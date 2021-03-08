@@ -178,7 +178,7 @@ func (c *Local) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.Result
 }
 
 func (c *Local) TxSearch(
-	ctx context.Context,
+	_ context.Context,
 	query string,
 	prove bool,
 	page,
@@ -189,7 +189,7 @@ func (c *Local) TxSearch(
 }
 
 func (c *Local) BlockSearch(
-	ctx context.Context,
+	_ context.Context,
 	query string,
 	prove bool,
 	page, perPage *int,
