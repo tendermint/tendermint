@@ -33,15 +33,18 @@ type LightClient interface {
 	TrustedLightBlock(height int64) (*types.LightBlock, error)
 }
 
+var _ rpcclient.SignClient = (*Client)(nil)
+
 // Client is an RPC client, which uses light#Client to verify data (if it can
-// be proved!). merkle.DefaultProofRuntime is used to verify values returned by
-// ABCIQuery.
+// be proved). Note, merkle.DefaultProofRuntime is used to verify values
+// returned by ABCI#Query.
 type Client struct {
 	service.BaseService
 
 	next rpcclient.Client
 	lc   LightClient
-	// Proof runtime used to verify values returned by ABCIQuery
+
+	// proof runtime used to verify values returned by ABCIQuery
 	prt       *merkle.ProofRuntime
 	keyPathFn KeyPathFunc
 }
@@ -468,9 +471,24 @@ func (c *Client) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.Resul
 	return res, res.Proof.Validate(l.DataHash)
 }
 
-func (c *Client) TxSearch(ctx context.Context, query string, prove bool, page, perPage *int, orderBy string) (
-	*ctypes.ResultTxSearch, error) {
+func (c *Client) TxSearch(
+	ctx context.Context,
+	query string,
+	prove bool,
+	page, perPage *int,
+	orderBy string,
+) (*ctypes.ResultTxSearch, error) {
 	return c.next.TxSearch(ctx, query, prove, page, perPage, orderBy)
+}
+
+func (c *Client) BlockSearch(
+	ctx context.Context,
+	query string,
+	prove bool,
+	page, perPage *int,
+	orderBy string,
+) (*ctypes.ResultBlockSearch, error) {
+	panic("not implemented!")
 }
 
 // Validators fetches and verifies validators.

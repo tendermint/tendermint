@@ -173,11 +173,10 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Ba
 // Search will exit early and return any result fetched so far,
 // when a message is received on the context chan.
 func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResult, error) {
-	// Potentially exit early.
 	select {
 	case <-ctx.Done():
-		results := make([]*abci.TxResult, 0)
-		return results, nil
+		return make([]*abci.TxResult, 0), nil
+
 	default:
 	}
 
