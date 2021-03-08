@@ -188,6 +188,16 @@ func (c *Local) TxSearch(
 	return core.TxSearch(c.ctx, query, prove, page, perPage, orderBy)
 }
 
+func (c *Local) BlockSearch(
+	ctx context.Context,
+	query string,
+	prove bool,
+	page, perPage *int,
+	orderBy string,
+) (*ctypes.ResultBlockSearch, error) {
+	return core.BlockSearch(c.ctx, query, prove, page, perPage, orderBy)
+}
+
 func (c *Local) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 	return core.BroadcastEvidence(c.ctx, ev)
 }

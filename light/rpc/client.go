@@ -33,7 +33,7 @@ type LightClient interface {
 	TrustedLightBlock(height int64) (*types.LightBlock, error)
 }
 
-var _ rpcclient.SignClient = (*Client)(nil)
+var _ rpcclient.Client = (*Client)(nil)
 
 // Client is an RPC client, which uses light#Client to verify data (if it can
 // be proved). Note, merkle.DefaultProofRuntime is used to verify values
@@ -488,12 +488,11 @@ func (c *Client) BlockSearch(
 	page, perPage *int,
 	orderBy string,
 ) (*ctypes.ResultBlockSearch, error) {
-	panic("not implemented!")
+	return c.next.BlockSearch(ctx, query, prove, page, perPage, orderBy)
 }
 
 // Validators fetches and verifies validators.
-func (c *Client) Validators(ctx context.Context, height *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators,
-	error) {
+func (c *Client) Validators(ctx context.Context, height *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators, error) {
 	// Update the light client if we're behind and retrieve the light block at the requested height
 	// or at the latest height if no height is provided.
 	l, err := c.updateLightClientIfNeededTo(ctx, height)
