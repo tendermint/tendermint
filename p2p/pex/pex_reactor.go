@@ -205,7 +205,7 @@ func (r *Reactor) AddPeer(p Peer) {
 			r.Logger.Error("Failed to get peer NetAddress", "err", err, "peer", p)
 			return
 		}
-
+		addr.IP = p.SocketAddr().IP
 		// Make it explicit that addr and src are the same for an inbound peer.
 		src := addr
 
