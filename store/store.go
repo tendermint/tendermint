@@ -374,10 +374,14 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 
 	// Save seen commit (seen +2/3 precommits for block)
-	// NOTE: we can delete this at a later height
 	pbsc := seenCommit.ToProto()
 	seenCommitBytes := mustEncode(pbsc)
 	if err := bs.db.Set(calcSeenCommitKey(height), seenCommitBytes); err != nil {
+		panic(err)
+	}
+
+	// Remove the seen commit from the previous height
+	if err := bs.db.Delete(calcSeenCommitKey(height - 1)); err != nil {
 		panic(err)
 	}
 
