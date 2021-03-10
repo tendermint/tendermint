@@ -20,6 +20,7 @@ const (
 	EventNewBlock            = "NewBlock"
 	EventNewBlockHeader      = "NewBlockHeader"
 	EventTx                  = "Tx"
+	EventPendingTx           = "PendingTx"
 	EventValidatorSetUpdates = "ValidatorSetUpdates"
 
 	// Internal consensus events.
@@ -167,9 +168,11 @@ type BlockEventPublisher interface {
 	PublishEventNewBlock(block EventDataNewBlock) error
 	PublishEventNewBlockHeader(header EventDataNewBlockHeader) error
 	PublishEventTx(EventDataTx) error
+	PublishEventPendingTx(EventDataTx) error
 	PublishEventValidatorSetUpdates(EventDataValidatorSetUpdates) error
 }
 
 type TxEventPublisher interface {
 	PublishEventTx(EventDataTx) error
+	PublishEventPendingTx(EventDataTx) error
 }

@@ -62,6 +62,8 @@ type CListMempool struct {
 	// This reduces the pressure on the proxyApp.
 	cache txCache
 
+	eventBus types.TxEventPublisher
+
 	logger log.Logger
 
 	metrics *Metrics
@@ -86,6 +88,7 @@ func NewCListMempool(
 		height:        height,
 		recheckCursor: nil,
 		recheckEnd:    nil,
+		eventBus:      types.NopEventBus{},
 		logger:        log.NewNopLogger(),
 		metrics:       NopMetrics(),
 	}
@@ -104,6 +107,11 @@ func NewCListMempool(
 // NOTE: not thread safe - should only be called once, on startup
 func (mem *CListMempool) EnableTxsAvailable() {
 	mem.txsAvailable = make(chan struct{}, 1)
+}
+
+// SetLogger sets the Logger.
+func (mem *CListMempool) SetEventBus(eventBus types.TxEventPublisher) {
+	mem.eventBus = eventBus
 }
 
 // SetLogger sets the Logger.
@@ -352,6 +360,10 @@ func (mem *CListMempool) addTx(memTx *mempoolTx) {
 	mem.txsMap.Store(txKey(memTx.tx), e)
 	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
 	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
+	mem.eventBus.PublishEventPendingTx(types.EventDataTx{TxResult: types.TxResult{
+		Height: memTx.height,
+		Tx:     memTx.tx,
+	}})
 }
 
 // Called from:

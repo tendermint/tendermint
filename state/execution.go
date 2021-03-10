@@ -83,6 +83,7 @@ func (blockExec *BlockExecutor) DB() dbm.DB {
 // If not called, it defaults to types.NopEventBus.
 func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) {
 	blockExec.eventBus = eventBus
+	blockExec.mempool.SetEventBus(eventBus)
 }
 
 // CreateProposalBlock calls state.MakeBlock with evidence from the evpool

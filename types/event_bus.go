@@ -181,6 +181,15 @@ func (b *EventBus) PublishEventTx(data EventDataTx) error {
 	return b.pubsub.PublishWithEvents(ctx, data, events)
 }
 
+func (b *EventBus) PublishEventPendingTx(data EventDataTx) error {
+	ctx := context.Background()
+
+	events := make(map[string][]string)
+	// add predefined compositeKeys
+	events[EventTypeKey] = append(events[EventTypeKey], EventPendingTx)
+	return b.pubsub.PublishWithEvents(ctx, data, events)
+}
+
 func (b *EventBus) PublishEventNewRoundStep(data EventDataRoundState) error {
 	return b.Publish(EventNewRoundStep, data)
 }
@@ -254,6 +263,10 @@ func (NopEventBus) PublishEventVote(data EventDataVote) error {
 }
 
 func (NopEventBus) PublishEventTx(data EventDataTx) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventPendingTx(data EventDataTx) error {
 	return nil
 }
 
