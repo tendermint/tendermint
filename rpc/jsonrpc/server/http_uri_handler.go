@@ -25,8 +25,15 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 	// Exception for websocket endpoints
 	if rpcFunc.ws {
 		return func(w http.ResponseWriter, r *http.Request) {
+<<<<<<< HEAD
 			WriteRPCResponseHTTPError(w, http.StatusNotFound,
 				types.RPCMethodNotFoundError(dummyID))
+=======
+			res := types.RPCMethodNotFoundError(dummyID)
+			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
+>>>>>>> 00b952416... rpc/jsonrpc/server: return an error in WriteRPCResponseHTTP(Error) (#6204)
 		}
 	}
 
@@ -39,6 +46,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 
 		fnArgs, err := httpParamsToArgs(rpcFunc, r)
 		if err != nil {
+<<<<<<< HEAD
 			WriteRPCResponseHTTPError(
 				w,
 				http.StatusInternalServerError,
@@ -46,7 +54,14 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 					dummyID,
 					fmt.Errorf("error converting http params to arguments: %w", err),
 				),
+=======
+			res := types.RPCInvalidParamsError(dummyID,
+				fmt.Errorf("error converting http params to arguments: %w", err),
+>>>>>>> 00b952416... rpc/jsonrpc/server: return an error in WriteRPCResponseHTTP(Error) (#6204)
 			)
+			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
 			return
 		}
 		args = append(args, fnArgs...)
@@ -55,10 +70,44 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 
 		logger.Debug("HTTPRestRPC", "method", r.URL.Path, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
+<<<<<<< HEAD
 		if err != nil {
 			WriteRPCResponseHTTPError(w, http.StatusInternalServerError,
 				types.RPCInternalError(dummyID, err))
 			return
+=======
+		switch e := err.(type) {
+		// if no error then return a success response
+		case nil:
+			res := types.NewRPCSuccessResponse(dummyID, result)
+			if wErr := WriteRPCResponseHTTP(w, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
+
+		// if this already of type RPC error then forward that error.
+		case *types.RPCError:
+			res := types.NewRPCErrorResponse(dummyID, e.Code, e.Message, e.Data)
+			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
+
+		default: // we need to unwrap the error and parse it accordingly
+			var res types.RPCResponse
+
+			switch errors.Unwrap(err) {
+			case ctypes.ErrZeroOrNegativeHeight,
+				ctypes.ErrZeroOrNegativePerPage,
+				ctypes.ErrPageOutOfRange,
+				ctypes.ErrInvalidRequest:
+				res = types.RPCInvalidRequestError(dummyID, err)
+			default: // ctypes.ErrHeightNotAvailable, ctypes.ErrHeightExceedsChainHead:
+				res = types.RPCInternalError(dummyID, err)
+			}
+
+			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
+>>>>>>> 00b952416... rpc/jsonrpc/server: return an error in WriteRPCResponseHTTP(Error) (#6204)
 		}
 		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(dummyID, result))
 	}

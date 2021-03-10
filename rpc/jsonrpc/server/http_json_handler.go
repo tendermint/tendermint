@@ -21,6 +21,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
+<<<<<<< HEAD
 			WriteRPCResponseHTTPError(
 				w,
 				http.StatusBadRequest,
@@ -28,7 +29,14 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 					nil,
 					fmt.Errorf("error reading request body: %w", err),
 				),
+=======
+			res := types.RPCInvalidRequestError(nil,
+				fmt.Errorf("error reading request body: %w", err),
+>>>>>>> 00b952416... rpc/jsonrpc/server: return an error in WriteRPCResponseHTTP(Error) (#6204)
 			)
+			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
 			return
 		}
 
@@ -48,6 +56,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			// next, try to unmarshal as a single request
 			var request types.RPCRequest
 			if err := json.Unmarshal(b, &request); err != nil {
+<<<<<<< HEAD
 				WriteRPCResponseHTTPError(
 					w,
 					http.StatusInternalServerError,
@@ -55,6 +64,12 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 						fmt.Errorf("error unmarshalling request: %w", err),
 					),
 				)
+=======
+				res := types.RPCParseError(fmt.Errorf("error unmarshaling request: %w", err))
+				if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
+					logger.Error("failed to write response", "res", res, "err", wErr)
+				}
+>>>>>>> 00b952416... rpc/jsonrpc/server: return an error in WriteRPCResponseHTTP(Error) (#6204)
 				return
 			}
 			requests = []types.RPCRequest{request}
@@ -108,7 +123,9 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 		}
 
 		if len(responses) > 0 {
-			WriteRPCResponseHTTP(w, responses...)
+			if wErr := WriteRPCResponseHTTP(w, responses...); wErr != nil {
+				logger.Error("failed to write responses", "res", responses, "err", wErr)
+			}
 		}
 	}
 }
