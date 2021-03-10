@@ -274,5 +274,6 @@ func (n *Node) MakePeerUpdates(t *testing.T) *p2p.PeerUpdates {
 		RequireNoUpdates(t, sub)
 		sub.Close()
 	})
+
 	return sub
 }
