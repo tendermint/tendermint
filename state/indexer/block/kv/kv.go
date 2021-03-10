@@ -32,6 +32,17 @@ func New(store dbm.DB) *BlockerIndexer {
 	}
 }
 
+// Has returns true if the given height has been indexed. An error is returned
+// upon database query failure.
+func (idx *BlockerIndexer) Has(height int64) (bool, error) {
+	key, err := heightKey(height)
+	if err != nil {
+		return false, fmt.Errorf("failed to create block height index key: %w", err)
+	}
+
+	return idx.store.Has(key)
+}
+
 // Index indexes BeginBlock and EndBlock events for a given block by its height.
 // The following is indexed:
 //
@@ -89,7 +100,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 	// (if it exists).
 	height, ok := lookForHeight(conditions)
 	if ok {
-		ok, err := idx.has(height)
+		ok, err := idx.Has(height)
 		if err != nil {
 			return nil, err
 		}
@@ -178,7 +189,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 	for _, hBz := range filteredHeights {
 		h := int64FromBytes(hBz)
 
-		ok, err := idx.has(h)
+		ok, err := idx.Has(h)
 		if err != nil {
 			return nil, err
 		}
@@ -478,13 +489,4 @@ func (idx *BlockerIndexer) indexEvents(batch dbm.Batch, events []abci.Event, typ
 	}
 
 	return nil
-}
-
-func (idx *BlockerIndexer) has(height int64) (bool, error) {
-	key, err := heightKey(height)
-	if err != nil {
-		return false, fmt.Errorf("failed to create block height index key: %w", err)
-	}
-
-	return idx.store.Has(key)
 }

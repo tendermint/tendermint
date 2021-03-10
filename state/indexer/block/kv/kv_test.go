@@ -14,7 +14,8 @@ import (
 )
 
 func TestBlockIndexer(t *testing.T) {
-	indexer := blockidxkv.New(db.NewMemDB())
+	store := db.NewPrefixDB(db.NewMemDB(), []byte("blocks"))
+	indexer := blockidxkv.New(store)
 
 	require.NoError(t, indexer.Index(types.EventDataNewBlockHeader{
 		Header: types.Header{Height: 1},
