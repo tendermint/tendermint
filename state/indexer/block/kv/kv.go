@@ -231,7 +231,17 @@ func (idx *BlockerIndexer) matchRange(
 
 LOOP:
 	for ; it.Valid(); it.Next() {
-		eventValue, err := parseValueFromEventKey(it.Key())
+		var (
+			eventValue string
+			err        error
+		)
+
+		if qr.Key == types.BlockHeightKey {
+			eventValue, err = parseValueFromPrimaryKey(it.Key())
+		} else {
+			eventValue, err = parseValueFromEventKey(it.Key())
+		}
+
 		if err != nil {
 			continue
 		}

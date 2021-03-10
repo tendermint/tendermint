@@ -3,6 +3,7 @@ package kv
 import (
 	"encoding/binary"
 	"fmt"
+	"strconv"
 
 	"github.com/google/orderedcode"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
@@ -48,6 +49,24 @@ func eventKey(compositeKey, typ, eventValue string, height int64) ([]byte, error
 	)
 }
 
+func parseValueFromPrimaryKey(key []byte) (string, error) {
+	var (
+		compositeKey string
+		height       int64
+	)
+
+	remaining, err := orderedcode.Parse(string(key), &compositeKey, &height)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse event key: %w", err)
+	}
+
+	if len(remaining) != 0 {
+		return "", fmt.Errorf("unexpected remainder in key: %s", remaining)
+	}
+
+	return strconv.FormatInt(height, 10), nil
+}
+
 func parseValueFromEventKey(key []byte) (string, error) {
 	var (
 		compositeKey, typ, eventValue string
@@ -56,7 +75,7 @@ func parseValueFromEventKey(key []byte) (string, error) {
 
 	remaining, err := orderedcode.Parse(string(key), &compositeKey, &eventValue, &height, &typ)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to parse event key: %w", err)
 	}
 
 	if len(remaining) != 0 {
