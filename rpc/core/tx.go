@@ -131,15 +131,3 @@ func TxSearch(
 
 	return &ctypes.ResultTxSearch{Txs: apiResults, TotalCount: totalCount}, nil
 }
-
-// BlockSearch searches for a paginated set of blocks matching BeginBlock and
-// EndBlock event search criteria.
-func BlockSearch(
-	ctx *rpctypes.Context,
-	query string,
-	prove bool,
-	pagePtr, perPagePtr *int,
-	orderBy string,
-) (*ctypes.ResultBlockSearch, error) {
-	panic("not implemented!")
-}
