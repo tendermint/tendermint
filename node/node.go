@@ -867,7 +867,7 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	indexerService, blockIndexer, txIndexer, err := createAndStartIndexerService(config, dbProvider, eventBus, logger)
+	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(config, dbProvider, eventBus, logger)
 	if err != nil {
 		return nil, err
 	}
