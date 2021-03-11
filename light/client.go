@@ -1101,14 +1101,16 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 and remove witness. Otherwise, use a different primary`, e.WitnessIndex), "witness", c.witnesses[e.WitnessIndex])
 			return err
 		case errBadWitness:
-			// If witness sent us an invalid header, then remove it. If it didn't
-			// respond or couldn't find the block, then we ignore it and move on to
-			// the next witness.
-			if _, ok := e.Reason.(provider.ErrBadLightBlock); ok {
-				c.logger.Info("Witness sent an invalid light block, removing...", "witness", c.witnesses[e.WitnessIndex])
-				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
-			}
+			// If witness sent us an invalid header, then remove it
+			c.logger.Info("Witness sent an invalid light block or didn't respond, removing...",
+				"witness", c.witnesses[e.WitnessIndex],
+				"err", err)
+			witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
+		default: // the witness either didn't respond or didn't have the block. We ignore it.
+			c.logger.Debug("Unable to compare first header with witness",
+				"err", err)
 		}
+
 	}
 
 	// remove all witnesses that misbehaved
