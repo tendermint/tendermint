@@ -33,21 +33,12 @@ var (
 
 type reactorTestSuite struct {
 	network      *p2ptest.Network
+	logger       log.Logger
 	reactors     map[p2p.NodeID]*evidence.Reactor
 	pools        map[p2p.NodeID]*evidence.Pool
 	dataChannels map[p2p.NodeID]*p2p.Channel
 	peers        map[p2p.NodeID]*p2p.PeerUpdates
 	peerChans    map[p2p.NodeID]chan p2p.PeerUpdate
-
-	logger log.Logger
-
-	// evidenceChannel   *p2p.Channel
-	// evidenceInCh      chan p2p.Envelope
-	// evidenceOutCh     chan p2p.Envelope
-	// evidencePeerErrCh chan p2p.PeerError
-
-	// peerUpdatesCh chan p2p.PeerUpdate
-	// peerUpdates   *p2p.PeerUpdates
 }
 
 func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
@@ -60,17 +51,17 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 	require.NoError(t, err)
 
 	rts := &reactorTestSuite{
-		logger:  log.TestingLogger().With("testCase", t.Name()),
-		network: p2ptest.MakeNetwork(t, numStateStores),
-		// pool:    pool,
-		// evidenceInCh:      make(chan p2p.Envelope, chBuf),
-		// evidenceOutCh:     make(chan p2p.Envelope, chBuf),
-		// evidencePeerErrCh: make(chan p2p.PeerError, chBuf),
-		// peerUpdatesCh:     peerUpdatesCh,
-		// peerUpdates:       p2p.NewPeerUpdates(peerUpdatesCh),
+		logger:       log.TestingLogger().With("testCase", t.Name()),
+		network:      p2ptest.MakeNetwork(t, numStateStores),
+		reactors:     make(map[p2p.NodeID]*evidence.Reactor, numStateStores),
+		pools:        make(map[p2p.NodeID]*evidence.Pool, numStateStores),
+		dataChannels: make(map[p2p.NodeID]*p2p.Channel, numStateStores),
+		peers:        make(map[p2p.NodeID]*p2p.PeerUpdates, numStateStores),
+		peerChans:    make(map[p2p.NodeID]chan p2p.PeerUpdate, numStateStores),
 	}
 
-	rts.dataChannels = rts.network.MakeChannelsNoCleanup(t, evidence.EvidenceChannel, new(tmproto.Evidence), numStateStores)
+	rts.dataChannels = rts.network.MakeChannelsNoCleanup(t, evidence.EvidenceChannel, new(tmproto.Evidence), int(chBuf))
+	require.Len(t, rts.network.RandomNode().PeerManager.Peers(), 0)
 
 	idx := 0
 	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -81,18 +72,24 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 		blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
 			&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
 		)
-		pool, err := evidence.NewPool(logger, evidenceDB, stateStores[idx], blockStore)
+		rts.pools[nodeID], err = evidence.NewPool(logger, evidenceDB, stateStores[idx], blockStore)
 		require.NoError(t, err)
-		rts.pools[nodeID] = pool
 
-		rts.peers[nodeID], rts.peerChans[nodeID] = node.MakePeerUpdates(t)
+		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
+		rts.peers[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID])
+		node.PeerManager.Register(rts.peers[nodeID])
 
-		rts.reactors[nodeID] = evidence.NewReactor(logger, rts.dataChannels[nodeID], rts.peers[nodeID], pool)
+		rts.reactors[nodeID] = evidence.NewReactor(logger, rts.dataChannels[nodeID], rts.peers[nodeID], rts.pools[nodeID])
+
+		require.NoError(t, rts.reactors[nodeID].Start())
+		require.True(t, rts.reactors[nodeID].IsRunning())
 
 		idx++
 	}
 
 	rts.network.Start(t)
+	require.Len(t, rts.network.RandomNode().PeerManager.Peers(), numStateStores-1,
+		"network does not have expected number of nodes")
 
 	t.Cleanup(func() {
 		for _, r := range rts.reactors {
@@ -108,7 +105,7 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 
 func (rts *reactorTestSuite) getPrimaryAndSecondary(t *testing.T) (primary *p2ptest.Node, secondary *p2ptest.Node) {
 	t.Helper()
-	require.True(t, len(rts.network.Nodes) < 2, "insufficient network size")
+	require.True(t, len(rts.network.Nodes) >= 2, "insufficient network size %d", len(rts.network.Nodes))
 
 	attempts := 0
 	for {
@@ -128,7 +125,7 @@ func (rts *reactorTestSuite) getPrimaryAndSecondary(t *testing.T) (primary *p2pt
 func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.EvidenceList, ids ...p2p.NodeID) {
 	t.Helper()
 
-	wg := &sync.WaitGroup{}
+	wg := sync.WaitGroup{}
 
 	for id := range rts.pools {
 		if len(ids) > 0 && !p2ptest.NodeInSlice(id, ids) {
@@ -141,11 +138,9 @@ func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.Evidence
 
 			var localEvList []types.Evidence
 
-			currentPoolSize := 0
-			for currentPoolSize != len(evList) {
+			for len(localEvList) != len(evList) {
 				// each evidence should not be more than 500 bytes
-				localEvList, _ = pool.PendingEvidence(int64(len(evList) * 500))
-				currentPoolSize = len(localEvList)
+				localEvList, _ = pool.PendingEvidence(int64(len(evList) * 5000))
 			}
 
 			// put the reaped evidence in a map so we can quickly check we got everything
@@ -165,8 +160,7 @@ func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.Evidence
 			}
 		}(rts.pools[id])
 	}
-
-	wg.Done()
+	wg.Wait()
 }
 
 func createEvidenceList(
@@ -246,12 +240,12 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	primary := rts.network.RandomNode()
 	secondaries := make([]*p2ptest.Node, 0, len(rts.network.NodeIDs())-1)
 	secondaryIDs := make([]p2p.NodeID, 0, cap(secondaries))
-	nodes := rts.network.Nodes
-	for id := range nodes {
+	for id := range rts.network.Nodes {
 		if id == primary.NodeID {
 			continue
 		}
-		secondaries = append(secondaries, nodes[id])
+
+		secondaries = append(secondaries, rts.network.Nodes[id])
 		secondaryIDs = append(secondaryIDs, id)
 	}
 
@@ -268,7 +262,6 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 
 	// Wait till all secondary suites (reactor) received all evidence from the
 	// primary suite (node).
-
 	rts.waitForEvidence(t, evList, secondaryIDs...)
 
 	for _, pool := range rts.pools {
@@ -279,6 +272,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	for _, ech := range rts.dataChannels {
 		require.Empty(t, ech)
 	}
+
 }
 
 // TestReactorSelectiveBroadcast tests a context where we have two reactors
