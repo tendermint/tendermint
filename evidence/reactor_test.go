@@ -97,9 +97,6 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 		idx++
 	}
 
-	// require.Len(t, rts.network.RandomNode().PeerManager.Peers(), rts.numStateStores-1,
-	// 	"network does not have expected number of nodes")
-
 	t.Cleanup(func() {
 		for _, r := range rts.reactors {
 			if r.IsRunning() {
@@ -112,6 +109,12 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 	})
 
 	return rts
+}
+
+func (rts *reactorTestSuite) start(t *testing.T) {
+	rts.network.Start(t)
+	require.Len(t, rts.network.RandomNode().PeerManager.Peers(), rts.numStateStores-1,
+		"network does not have expected number of nodes")
 }
 
 func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.EvidenceList, ids ...p2p.NodeID) {
@@ -137,7 +140,7 @@ func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.Evidence
 					"waitlist", len(evList), "|",
 					"size", size)
 			}
-			if loops == 1000 && size == 0 {
+			if loops == 10000 && size == 0 {
 				assert.Fail(t, "pool seems disconnected")
 				return
 			}
@@ -273,6 +276,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	}
 
 	rts := setup(t, stateDBs, 0)
+	rts.start(t)
 
 	// Create a series of fixtures where each suite contains a reactor and
 	// evidence pool. In addition, we mark a primary suite and the rest are
@@ -326,6 +330,8 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 	stateDB2 := initializeValidatorState(t, val, height2)
 
 	rts := setup(t, []sm.Store{stateDB1, stateDB2}, 100)
+	rts.start(t)
+
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
 
@@ -368,7 +374,7 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 		require.NoError(t, rts.pools[secondary.NodeID].AddEvidence(evList[i]))
 	}
 
-	rts.network.Start(t)
+	rts.start(t)
 
 	// the secondary should have half the evidence as pending
 	require.Equal(t, numEvidence/2, int(rts.pools[secondary.NodeID].Size()))
@@ -410,13 +416,9 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	stateDB2 := initializeValidatorState(t, val, height)
 
 	rts := setup(t, []sm.Store{stateDB1, stateDB2}, 0)
+
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
-
-	require.NoError(t, primary.PeerManager.Disconnected(secondary.NodeID))
-	_, err := primary.PeerManager.TryEvictNext()
-	require.NoError(t, err)
-	require.Equal(t, p2p.PeerStatusDown, primary.PeerManager.Status(secondary.NodeID))
 
 	// add all evidence to the primary reactor
 	evList := createEvidenceList(t, rts.pools[primary.NodeID], val, numEvidence)
@@ -440,23 +442,14 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	// the secondary should have half the evidence as committed
 	require.Equal(t, 0, int(rts.pools[secondary.NodeID].Size()))
 
-	// adding the secondary node back in node back in for the
-	// primary, and waiting for it to reconnect.
-	require.NoError(t, primary.PeerManager.Add(secondary.NodeAddress))
-
-	startAt := time.Now()
-	for {
-		if time.Since(startAt) > time.Second {
-			require.Fail(t, "could not reconnect the secondary in less than %s")
-		}
-		if primary.PeerManager.Status(secondary.NodeID) == p2p.PeerStatusUp {
-			break
-		}
-	}
+	// start the network and ensure it's configured
+	rts.start(t)
+	// without the following sleep the test consistently fails.
+	time.Sleep(2 * time.Millisecond)
 
 	// The secondary reactor should have received all the evidence ignoring the
 	// already committed evidence.
-	rts.waitForEvidence(t, evList, secondary.NodeID)
+	rts.waitForEvidence(t, evList[numEvidence/2:], secondary.NodeID)
 
 	require.Len(t, rts.pools, 2)
 	assert.EqualValues(t, numEvidence, rts.pools[primary.NodeID].Size(),
@@ -483,6 +476,7 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 	}
 
 	rts := setup(t, stateDBs, 0)
+	rts.start(t)
 
 	evList := createEvidenceList(t, rts.pools[rts.network.RandomNode().NodeID], val, numEvidence)
 
@@ -509,38 +503,6 @@ func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
 		state.LastBlockHeight++
 		pool.Update(state, evList)
 	}
-}
-
-func TestReactorBroadcastEvidence_RemovePeer(t *testing.T) {
-	val := types.NewMockPV()
-	height := int64(10)
-
-	stateDB1 := initializeValidatorState(t, val, height)
-	stateDB2 := initializeValidatorState(t, val, height)
-
-	rts := setup(t, []sm.Store{stateDB1, stateDB2}, uint(numEvidence))
-	primary := rts.nodes[0]
-	secondary := rts.nodes[1]
-	rts.network.Start(t)
-
-	// add all evidence to the primary reactor
-	evList := createEvidenceList(t, rts.pools[primary.NodeID], val, numEvidence/2)
-
-	// disconnect the peer
-	require.NoError(t, primary.PeerManager.Disconnected(secondary.NodeID))
-
-	// add all evidence to the primary reactor
-	evList = append(evList, createEvidenceList(t, rts.pools[primary.NodeID], val, numEvidence/2)...)
-
-	// have the secondary reactor receive only half the evidence
-	rts.waitForEvidence(t, evList[:numEvidence/2], secondary.NodeID)
-
-	// Ensure the secondary only received half of the evidence before being
-	// disconnected.
-	require.Equal(t, numEvidence/2, int(rts.pools[secondary.NodeID].Size()))
-
-	// Ensure check that the primary has all of the evidence.
-	require.Equal(t, numEvidence, int(rts.pools[primary.NodeID].Size()))
 }
 
 // nolint:lll
