@@ -330,8 +330,6 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 
 	// Send a list of valid evidence to the first reactor's, the one that is ahead,
 	// evidence pool.
-	//
-	// TODO(tychoish): this line passes/fails inconsistently.
 	evList := createEvidenceList(t, rts.pools[primary.NodeID], val, numEvidence)
 
 	// Add each secondary suite (node) as a peer to the primary suite (node). This
@@ -362,6 +360,8 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	secondary := rts.nodes[1]
 
 	require.NoError(t, primary.PeerManager.Disconnected(secondary.NodeID))
+	_, err := primary.PeerManager.TryEvictNext()
+	require.NoError(t, err)
 
 	evList := createEvidenceList(t, rts.pools[primary.NodeID], val, numEvidence)
 
@@ -374,9 +374,18 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	// the secondary should have half the evidence as pending
 	require.Equal(t, numEvidence/2, int(rts.pools[secondary.NodeID].Size()))
 
-	// adding the node back in: unclear how to properly get the
-	// node to reconnect.
+	// adding the secondary node back in node back in
 	require.NoError(t, primary.PeerManager.Add(secondary.NodeAddress))
+
+	startAt := time.Now()
+	for {
+		if time.Since(startAt) > time.Second {
+			require.Fail(t, "could not reconnect the secondary in less than a second")
+		}
+		if primary.PeerManager.Status(secondary.NodeID) == p2p.PeerStatusUp {
+			break
+		}
+	}
 
 	// The secondary reactor should have received all the evidence ignoring the
 	// already pending evidence.
@@ -388,11 +397,16 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 
 	// check to make sure that all of the evidence has
 	// propogated
-	for _, pool := range rts.pools {
-		require.Equal(t, numEvidence, int(pool.Size()))
+	require.Len(t, rts.pools, 2)
+	assert.EqualValues(t, numEvidence, rts.pools[primary.NodeID].Size(),
+		"primary node should have all the evidence")
+	if assert.EqualValues(t, numEvidence, rts.pools[secondary.NodeID].Size(),
+		"secondary nodes should have caught up") {
+
+		rts.assertEvidenceChannelsEmpty(t)
+
 	}
 
-	rts.assertEvidenceChannelsEmpty(t)
 }
 
 func TestReactorBroadcastEvidence_Committed(t *testing.T) {
@@ -406,6 +420,10 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
 
+	require.NoError(t, primary.PeerManager.Disconnected(secondary.NodeID))
+	_, err := primary.PeerManager.TryEvictNext()
+	require.NoError(t, err)
+
 	// add all evidence to the primary reactor
 	evList := createEvidenceList(t, rts.pools[primary.NodeID], val, numEvidence)
 
@@ -416,11 +434,7 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	}
 
 	// the secondary should have half the evidence as pending
-	//
-	// WHY IS THIS CONSISTENTLY DIFFERENT NOW?
-	//  - does the real reactor propogate more
-	require.Equal(t, numEvidence-1, int(rts.pools[secondary.NodeID].Size()))
-	// require.Equal(t, numEvidence/2, int(rts.pools[secondary.NodeID].Size()))
+	require.Equal(t, numEvidence/2, int(rts.pools[secondary.NodeID].Size()))
 
 	state, err := stateDB2.Load()
 	require.NoError(t, err)
@@ -430,27 +444,35 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	rts.pools[secondary.NodeID].Update(state, evList[:numEvidence/2])
 
 	// the secondary should have half the evidence as committed
-	//
-	// TODO: figure out why this changes?
-	//  - the comment (above) says half but the test says/said 0
-	//  - arguably, changing the test makes it match the comment
-	require.Equal(t, 4, int(rts.pools[secondary.NodeID].Size()))
-	// require.Equal(t, 0, int(rts.pools[secondary.NodeID].Size()))
+	require.Equal(t, 0, int(rts.pools[secondary.NodeID].Size()))
 
-	// add the secondary reactor as a peer to the primary reactor
-	rts.peerChans[primary.NodeID] <- p2p.PeerUpdate{
-		Status: p2p.PeerStatusUp,
-		NodeID: secondary.NodeID,
+	// adding the secondary node back in node back in for the
+	// primary, and waiting for it to reconnect.
+	require.NoError(t, primary.PeerManager.Add(secondary.NodeAddress))
+
+	startAt := time.Now()
+	for {
+		if time.Since(startAt) > time.Second {
+			require.Fail(t, "could not reconnect the secondary in less than %s")
+		}
+		if primary.PeerManager.Status(secondary.NodeID) == p2p.PeerStatusUp {
+			break
+		}
 	}
 
 	// The secondary reactor should have received all the evidence ignoring the
 	// already committed evidence.
-	rts.waitForEvidence(t, evList[numEvidence/2:], secondary.NodeID)
+	rts.waitForEvidence(t, evList[:numEvidence/2], secondary.NodeID)
 
-	require.Equal(t, numEvidence, int(rts.pools[primary.NodeID].Size()))
-	require.Equal(t, numEvidence/2, int(rts.pools[secondary.NodeID].Size()))
+	require.Len(t, rts.pools, 2)
+	assert.EqualValues(t, numEvidence, rts.pools[primary.NodeID].Size(),
+		"primary node should have all the evidence")
+	if assert.EqualValues(t, numEvidence/2, rts.pools[secondary.NodeID].Size(),
+		"secondary nodes should have caught up") {
 
-	rts.assertEvidenceChannelsEmpty(t)
+		rts.assertEvidenceChannelsEmpty(t)
+
+	}
 }
 
 func TestReactorBroadcastEvidence_FullyConnected(t *testing.T) {
