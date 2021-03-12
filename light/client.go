@@ -1102,12 +1102,12 @@ and remove witness. Otherwise, use a different primary`, e.WitnessIndex), "witne
 			return err
 		case errBadWitness:
 			// If witness sent us an invalid header, then remove it
-			c.logger.Info("Witness sent an invalid light block or didn't respond, removing...",
+			c.logger.Info("witness sent an invalid light block or didn't respond, removing...",
 				"witness", c.witnesses[e.WitnessIndex],
 				"err", err)
 			witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 		default: // the witness either didn't respond or didn't have the block. We ignore it.
-			c.logger.Debug("Unable to compare first header with witness",
+			c.logger.Debug("unable to compare first header with witness",
 				"err", err)
 		}
 
