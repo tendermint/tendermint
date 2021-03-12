@@ -97,10 +97,8 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 		idx++
 	}
 
-	rts.network.Start(t)
-
-	require.Len(t, rts.network.RandomNode().PeerManager.Peers(), rts.numStateStores-1,
-		"network does not have expected number of nodes")
+	// require.Len(t, rts.network.RandomNode().PeerManager.Peers(), rts.numStateStores-1,
+	// 	"network does not have expected number of nodes")
 
 	t.Cleanup(func() {
 		for _, r := range rts.reactors {
@@ -362,10 +360,6 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
 
-	require.NoError(t, primary.PeerManager.Disconnected(secondary.NodeID))
-	_, err := primary.PeerManager.TryEvictNext()
-	require.NoError(t, err)
-
 	evList := createEvidenceList(t, rts.pools[primary.NodeID], val, numEvidence)
 
 	// Manually add half the evidence to the secondary which will mark them as
@@ -373,6 +367,8 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	for i := 0; i < numEvidence/2; i++ {
 		require.NoError(t, rts.pools[secondary.NodeID].AddEvidence(evList[i]))
 	}
+
+	rts.network.Start(t)
 
 	// the secondary should have half the evidence as pending
 	require.Equal(t, numEvidence/2, int(rts.pools[secondary.NodeID].Size()))
@@ -392,11 +388,7 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 
 	// The secondary reactor should have received all the evidence ignoring the
 	// already pending evidence.
-	// rts.waitForEvidence(t, evList, secondary.NodeID)
-	//
-	// the above is correct, but it's easier to iterate on this if
-	// this doesn't deadlock.
-	rts.waitForEvidence(t, evList[:5], secondary.NodeID)
+	rts.waitForEvidence(t, evList, secondary.NodeID)
 
 	// check to make sure that all of the evidence has
 	// propogated
@@ -529,6 +521,7 @@ func TestReactorBroadcastEvidence_RemovePeer(t *testing.T) {
 	rts := setup(t, []sm.Store{stateDB1, stateDB2}, uint(numEvidence))
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
+	rts.network.Start(t)
 
 	// add all evidence to the primary reactor
 	evList := createEvidenceList(t, rts.pools[primary.NodeID], val, numEvidence/2)
