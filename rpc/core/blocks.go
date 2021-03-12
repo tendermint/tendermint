@@ -227,27 +227,6 @@ func BlockSearch(
 			Block:   block,
 			BlockID: blockMeta.BlockID,
 		})
-
-		// TODO: Should we instead return/use ResultBlockResults?
-
-		// height, err := getHeight(env.BlockStore.Height(), &results[i])
-		// if err != nil {
-		// 	return nil, err
-		// }
-
-		// results, err := env.StateStore.LoadABCIResponses(height)
-		// if err != nil {
-		// 	return nil, err
-		// }
-
-		// apiResults  = append(apiResults, &ctypes.ResultBlockResults{
-		// 	Height:                height,
-		// 	TxsResults:            results.DeliverTxs,
-		// 	BeginBlockEvents:      results.BeginBlock.Events,
-		// 	EndBlockEvents:        results.EndBlock.Events,
-		// 	ValidatorUpdates:      results.EndBlock.ValidatorUpdates,
-		// 	ConsensusParamUpdates: results.EndBlock.ConsensusParamUpdates,
-		// })
 	}
 
 	return &ctypes.ResultBlockSearch{Blocks: apiResults, TotalCount: totalCount}, nil
