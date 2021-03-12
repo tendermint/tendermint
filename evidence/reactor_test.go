@@ -62,7 +62,10 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 		peerChans:      make(map[p2p.NodeID]chan p2p.PeerUpdate, numStateStores),
 	}
 
-	rts.evidenceChannels = rts.network.MakeChannelsNoCleanup(t, evidence.EvidenceChannel, new(tmproto.EvidenceList), int(chBuf))
+	rts.evidenceChannels = rts.network.MakeChannelsNoCleanup(t,
+		evidence.EvidenceChannel,
+		new(tmproto.EvidenceList),
+		int(chBuf))
 	require.Len(t, rts.network.RandomNode().PeerManager.Peers(), 0)
 
 	idx := 0
@@ -421,6 +424,7 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 	require.NoError(t, primary.PeerManager.Disconnected(secondary.NodeID))
 	_, err := primary.PeerManager.TryEvictNext()
 	require.NoError(t, err)
+	require.Equal(t, p2p.PeerStatusDown, primary.PeerManager.Status(secondary.NodeID))
 
 	// add all evidence to the primary reactor
 	evList := createEvidenceList(t, rts.pools[primary.NodeID], val, numEvidence)
@@ -460,7 +464,7 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 
 	// The secondary reactor should have received all the evidence ignoring the
 	// already committed evidence.
-	rts.waitForEvidence(t, evList[:numEvidence/2], secondary.NodeID)
+	rts.waitForEvidence(t, evList, secondary.NodeID)
 
 	require.Len(t, rts.pools, 2)
 	assert.EqualValues(t, numEvidence, rts.pools[primary.NodeID].Size(),

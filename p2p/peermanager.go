@@ -810,8 +810,6 @@ func (m *PeerManager) Register(peerUpdates *PeerUpdates) {
 		case <-m.closeCh:
 		}
 	}()
-
-	return
 }
 
 // broadcast broadcasts a peer update to all subscriptions. The caller must
