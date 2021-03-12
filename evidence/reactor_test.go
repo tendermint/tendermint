@@ -374,6 +374,8 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 	// the secondary should have half the evidence as pending
 	require.Equal(t, numEvidence/2, int(rts.pools[secondary.NodeID].Size()))
 
+	// adding the node back in: unclear how to properly get the
+	// node to reconnect.
 	require.NoError(t, primary.PeerManager.Add(secondary.NodeAddress))
 
 	// The secondary reactor should have received all the evidence ignoring the
@@ -521,23 +523,8 @@ func TestReactorBroadcastEvidence_RemovePeer(t *testing.T) {
 	// disconnected.
 	require.Equal(t, numEvidence/2, int(rts.pools[secondary.NodeID].Size()))
 
-	// The primary reactor should still be attempting to send the remaining half.
-	//
-	// NOTE: The channel is buffered (size numEvidence) as to ensure the primary
-	// reactor will send all envelopes at once before receiving the signal to stop
-	// gossiping.
-	//
-	// This assertion attempted to drain the pending evidence that
-	// the primary was trying to send to the secondary, after it
-	// got disconnected, but that might not be a reasonable
-	// assertion anymore: the router should know that the
-	// secondary has disconnected and should clean up, so maybe
-	// this assertion was an artifact of the previous test implementation.
-	//
-	// assert.True(t, len(rts.evidenceChannels[primary.NodeID].Out) != 0,
-	// 	"len=%d", len(rts.evidenceChannels[primary.NodeID].Out))
-
-	rts.assertEvidenceChannelsEmpty(t)
+	// Ensure check that the primary has all of the evidence.
+	require.Equal(t, numEvidence, int(rts.pools[primary.NodeID].Size()))
 }
 
 // nolint:lll
