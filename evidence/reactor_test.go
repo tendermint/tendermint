@@ -404,9 +404,7 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 		"secondary nodes should have caught up") {
 
 		rts.assertEvidenceChannelsEmpty(t)
-
 	}
-
 }
 
 func TestReactorBroadcastEvidence_Committed(t *testing.T) {
@@ -471,7 +469,6 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 		"secondary nodes should have caught up") {
 
 		rts.assertEvidenceChannelsEmpty(t)
-
 	}
 }
 
