@@ -353,10 +353,10 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 	}
 
 	// only ones less than the peers height should make it through
-	rts.waitForEvidence(t, evList[:height2+2], secondary.NodeID)
+	rts.waitForEvidence(t, evList[:height2], secondary.NodeID)
 
 	require.Equal(t, numEvidence, int(rts.pools[primary.NodeID].Size()))
-	require.Equal(t, int(height2+2), int(rts.pools[secondary.NodeID].Size()))
+	require.Equal(t, int(height2), int(rts.pools[secondary.NodeID].Size()))
 
 	rts.assertEvidenceChannelsEmpty(t)
 }
