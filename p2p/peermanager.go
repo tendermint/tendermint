@@ -796,6 +796,14 @@ func (m *PeerManager) Subscribe() *PeerUpdates {
 	return peerUpdates
 }
 
+// Register allows you to inject a custom PeerUpdate instance into the
+// PeerManager, rather than relying on the instance constructed by the
+// Subscribe method, which wraps the functionality of the Register
+// method.
+//
+// The caller must consume the peer updates from this PeerUpdates
+// instance in a timely fashion and close the subscription when done,
+// otherwise the PeerManager will halt.
 func (m *PeerManager) Register(peerUpdates *PeerUpdates) {
 	m.mtx.Lock()
 	m.subscriptions[peerUpdates] = peerUpdates

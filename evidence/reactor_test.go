@@ -117,7 +117,9 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 
 func (rts *reactorTestSuite) start(t *testing.T) {
 	rts.network.Start(t)
-	require.Len(t, rts.network.RandomNode().PeerManager.Peers(), rts.numStateStores-1,
+	require.Len(t,
+		rts.network.RandomNode().PeerManager.Peers(),
+		rts.numStateStores-1,
 		"network does not have expected number of nodes")
 }
 
@@ -145,7 +147,7 @@ func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.Evidence
 					"size", size)
 			}
 			if loops == 10000 && size == 0 {
-				assert.Fail(t, "pool seems disconnected")
+				require.Fail(t, "pool seems disconnected")
 				return
 			}
 
@@ -181,6 +183,10 @@ func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.Evidence
 
 	for id := range rts.pools {
 		if len(ids) > 0 && !p2ptest.NodeInSlice(id, ids) {
+			// if an ID list is specified, then we only
+			// want to wait for those pools that are
+			// specified in the list, otherwise, wait for
+			// all pools.
 			continue
 		}
 
