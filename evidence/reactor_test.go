@@ -74,9 +74,13 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 		logger := rts.logger.With("validator", idx)
 		evidenceDB := dbm.NewMemDB()
 		blockStore := &mocks.BlockStore{}
-		blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(
-			&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
-		)
+		state, _ := stateStores[idx].Load()
+		blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(func(h int64) *types.BlockMeta {
+			if (h <= state.LastBlockHeight) {
+				return &types.BlockMeta{Header: types.Header{Time: evidenceTime}}
+			}	
+			return nil
+		})
 		rts.pools[nodeID], err = evidence.NewPool(logger, evidenceDB, stateStores[idx], blockStore)
 
 		require.NoError(t, err)
