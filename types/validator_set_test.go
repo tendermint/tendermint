@@ -1710,3 +1710,75 @@ func BenchmarkUpdates(b *testing.B) {
 		assert.NoError(b, valSetCopy.UpdateWithChangeSet(newValList))
 	}
 }
+
+func BenchmarkValidatorSet_VerifyCommit_Ed25519(b *testing.B) {
+	for _, n := range []int{1, 8, 64, 1024} {
+		n := n
+		var (
+			chainID = "test_chain_id"
+			h       = int64(3)
+			blockID = makeBlockIDRandom()
+		)
+		b.Run(fmt.Sprintf("valset size %d", n), func(b *testing.B) {
+			b.ReportAllocs()
+			// generate n validators
+			voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, n, int64(n*5))
+			// create a commit with n validators
+			commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+			require.NoError(b, err)
+
+			for i := 0; i < b.N/n; i++ {
+				err = valSet.VerifyCommit(chainID, blockID, h, commit)
+				assert.NoError(b, err)
+			}
+		})
+	}
+}
+
+func BenchmarkValidatorSet_VerifyCommitLight_Ed25519(b *testing.B) {
+	for _, n := range []int{1, 8, 64, 1024} {
+		n := n
+		var (
+			chainID = "test_chain_id"
+			h       = int64(3)
+			blockID = makeBlockIDRandom()
+		)
+		b.Run(fmt.Sprintf("valset size %d", n), func(b *testing.B) {
+			b.ReportAllocs()
+			// generate n validators
+			voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, n, int64(n*5))
+			// create a commit with n validators
+			commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+			require.NoError(b, err)
+
+			for i := 0; i < b.N/n; i++ {
+				err = valSet.VerifyCommitLight(chainID, blockID, h, commit)
+				assert.NoError(b, err)
+			}
+		})
+	}
+}
+
+func BenchmarkValidatorSet_VerifyCommitLightTrusting_Ed25519(b *testing.B) {
+	for _, n := range []int{1, 8, 64, 1024} {
+		n := n
+		var (
+			chainID = "test_chain_id"
+			h       = int64(3)
+			blockID = makeBlockIDRandom()
+		)
+		b.Run(fmt.Sprintf("valset size %d", n), func(b *testing.B) {
+			b.ReportAllocs()
+			// generate n validators
+			voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, n, int64(n*5))
+			// create a commit with n validators
+			commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+			require.NoError(b, err)
+
+			for i := 0; i < b.N/n; i++ {
+				err = valSet.VerifyCommitLightTrusting(chainID, commit, tmmath.Fraction{Numerator: 1, Denominator: 3})
+				assert.NoError(b, err)
+			}
+		})
+	}
+}
