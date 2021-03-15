@@ -28,3 +28,27 @@ func TestSignAndValidateEd25519(t *testing.T) {
 
 	assert.False(t, pubKey.VerifySignature(msg, sig))
 }
+
+func TestBatchSafe(t *testing.T) {
+	v := ed25519.NewBatchVerifier()
+
+	for i := 0; i <= 38; i++ {
+		priv := ed25519.GenPrivKey()
+		pub := priv.PubKey()
+
+		var msg []byte
+		if i%2 == 0 {
+			msg = []byte("easter")
+		} else {
+			msg = []byte("egg")
+		}
+
+		sig, err := priv.Sign(msg)
+		require.NoError(t, err)
+
+		err = v.Add(pub, msg, sig)
+		require.NoError(t, err)
+	}
+
+	require.True(t, v.Verify())
+}
