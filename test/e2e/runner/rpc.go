@@ -74,8 +74,10 @@ func waitForNode(node *e2e.Node, height int64, timeout time.Duration) (*rpctypes
 	if err != nil {
 		return nil, err
 	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+
 	for {
 		status, err := client.Status(ctx)
 		switch {
@@ -87,24 +89,28 @@ func waitForNode(node *e2e.Node, height int64, timeout time.Duration) (*rpctypes
 			return status, nil
 		}
 
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(300 * time.Millisecond)
 	}
 }
 
 // waitForAllNodes waits for all nodes to become available and catch up to the given block height.
 func waitForAllNodes(testnet *e2e.Testnet, height int64, timeout time.Duration) (int64, error) {
-	lastHeight := int64(0)
+	var lastHeight int64
+
 	for _, node := range testnet.Nodes {
 		if node.Mode == e2e.ModeSeed {
 			continue
 		}
-		status, err := waitForNode(node, height, 20*time.Second)
+
+		status, err := waitForNode(node, height, timeout)
 		if err != nil {
 			return 0, err
 		}
+
 		if status.SyncInfo.LatestBlockHeight > lastHeight {
 			lastHeight = status.SyncInfo.LatestBlockHeight
 		}
 	}
+
 	return lastHeight, nil
 }

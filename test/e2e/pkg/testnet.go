@@ -16,7 +16,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
-	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -33,8 +32,9 @@ type Perturbation string
 
 const (
 	ModeValidator Mode = "validator"
-	ModeFull      Mode = "fullnode"
-	ModeSeed      Mode = "seednode"
+	ModeFull      Mode = "full"
+	ModeLight     Mode = "light"
+	ModeSeed      Mode = "seed"
 
 	ProtocolBuiltin Protocol = "builtin"
 	ProtocolFile    Protocol = "file"
@@ -152,7 +152,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			ProxyPort:        proxyPortGen.Next(),
 			Mode:             ModeValidator,
 			Database:         "goleveldb",
-			ABCIProtocol:     ProtocolUNIX,
+			ABCIProtocol:     ProtocolBuiltin,
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
 			FastSync:         nodeManifest.FastSync,
@@ -328,6 +328,9 @@ func (n Node) Validate(testnet Testnet) error {
 	default:
 		return fmt.Errorf("invalid ABCI protocol setting %q", n.ABCIProtocol)
 	}
+	if n.Mode == ModeLight && n.ABCIProtocol != ProtocolBuiltin {
+		return errors.New("light client must use builtin protocol")
+	}
 	switch n.PrivvalProtocol {
 	case ProtocolFile, ProtocolTCP, ProtocolGRPC, ProtocolUNIX:
 	default:
@@ -373,11 +376,12 @@ func (n Node) Validate(testnet Testnet) error {
 				height, testnet.InitialHeight)
 		}
 		exists := false
-		for possibleBehaviors := range mcs.MisbehaviorList {
-			if possibleBehaviors == misbehavior {
-				exists = true
-			}
-		}
+		// FIXME: Maverick has been disabled until it is redesigned
+		// for possibleBehaviors := range mcs.MisbehaviorList {
+		// 	if possibleBehaviors == misbehavior {
+		// 		exists = true
+		// 	}
+		// }
 		if !exists {
 			return fmt.Errorf("misbehavior %s does not exist", misbehavior)
 		}
@@ -402,7 +406,7 @@ func (t Testnet) LookupNode(name string) *Node {
 func (t Testnet) ArchiveNodes() []*Node {
 	nodes := []*Node{}
 	for _, node := range t.Nodes {
-		if node.Mode != ModeSeed && node.StartAt == 0 && node.RetainBlocks == 0 {
+		if !node.Stateless() && node.StartAt == 0 && node.RetainBlocks == 0 {
 			nodes = append(nodes, node)
 		}
 	}
@@ -473,7 +477,12 @@ func (n Node) AddressRPC() string {
 
 // Client returns an RPC client for a node.
 func (n Node) Client() (*rpchttp.HTTP, error) {
-	return rpchttp.New(fmt.Sprintf("http://127.0.0.1:%v", n.ProxyPort), "/websocket")
+	return rpchttp.New(fmt.Sprintf("http://127.0.0.1:%v", n.ProxyPort))
+}
+
+// Stateless returns true if the node is either a seed node or a light node
+func (n Node) Stateless() bool {
+	return n.Mode == ModeLight || n.Mode == ModeSeed
 }
 
 // keyGenerator generates pseudorandom Ed25519 keys based on a seed.

@@ -473,7 +473,7 @@ In this case, the WS client will receive an error with description:
   "error": {
     "code": -32000,
     "msg": "Server error",
-    "data": "subscription was cancelled (reason: client is not pulling messages fast enough)" // or "subscription was cancelled (reason: Tendermint exited)"
+    "data": "subscription was canceled (reason: client is not pulling messages fast enough)" // or "subscription was canceled (reason: Tendermint exited)"
   }
 }
 

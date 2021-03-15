@@ -18,12 +18,23 @@ import (
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
-const (
-	defaultMaxReconnectAttempts = 25
-	defaultWriteWait            = 0
-	defaultReadWait             = 0
-	defaultPingPeriod           = 0
-)
+// WSOptions for WSClient.
+type WSOptions struct {
+	MaxReconnectAttempts uint          // maximum attempts to reconnect
+	ReadWait             time.Duration // deadline for any read op
+	WriteWait            time.Duration // deadline for any write op
+	PingPeriod           time.Duration // frequency with which pings are sent
+}
+
+// DefaultWSOptions returns default WS options.
+func DefaultWSOptions() WSOptions {
+	return WSOptions{
+		MaxReconnectAttempts: 10, // first: 2 sec, last: 17 min.
+		WriteWait:            10 * time.Second,
+		ReadWait:             0,
+		PingPeriod:           0,
+	}
+}
 
 // WSClient is a JSON-RPC client, which uses WebSocket for communication with
 // the remote server.
@@ -50,7 +61,7 @@ type WSClient struct { // nolint: maligned
 	readRoutineQuit chan struct{}         // a way for readRoutine to close writeRoutine
 
 	// Maximum reconnect attempts (0 or greater; default: 25).
-	maxReconnectAttempts int
+	maxReconnectAttempts uint
 
 	// Support both ws and wss protocols
 	protocol string
@@ -79,11 +90,15 @@ type WSClient struct { // nolint: maligned
 	PingPongLatencyTimer metrics.Timer
 }
 
-// NewWS returns a new client. See the commentary on the func(*WSClient)
-// functions for a detailed description of how to configure ping period and
-// pong wait time. The endpoint argument must begin with a `/`.
-// An error is returned on invalid remote. The function panics when remote is nil.
-func NewWS(remoteAddr, endpoint string, options ...func(*WSClient)) (*WSClient, error) {
+// NewWS returns a new client. The endpoint argument must begin with a `/`. An
+// error is returned on invalid remote.
+// It uses DefaultWSOptions.
+func NewWS(remoteAddr, endpoint string) (*WSClient, error) {
+	return NewWSWithOptions(remoteAddr, endpoint, DefaultWSOptions())
+}
+
+// NewWSWithOptions allows you to provide custom WSOptions.
+func NewWSWithOptions(remoteAddr, endpoint string, opts WSOptions) (*WSClient, error) {
 	parsedURL, err := newParsedURL(remoteAddr)
 	if err != nil {
 		return nil, err
@@ -104,59 +119,23 @@ func NewWS(remoteAddr, endpoint string, options ...func(*WSClient)) (*WSClient, 
 		Endpoint:             endpoint,
 		PingPongLatencyTimer: metrics.NewTimer(),
 
-		maxReconnectAttempts: defaultMaxReconnectAttempts,
-		readWait:             defaultReadWait,
-		writeWait:            defaultWriteWait,
-		pingPeriod:           defaultPingPeriod,
+		maxReconnectAttempts: opts.MaxReconnectAttempts,
+		readWait:             opts.ReadWait,
+		writeWait:            opts.WriteWait,
+		pingPeriod:           opts.PingPeriod,
 		protocol:             parsedURL.Scheme,
 
 		// sentIDs: make(map[types.JSONRPCIntID]bool),
 	}
 	c.BaseService = *service.NewBaseService(nil, "WSClient", c)
-	for _, option := range options {
-		option(c)
-	}
 	return c, nil
-}
-
-// MaxReconnectAttempts sets the maximum number of reconnect attempts before returning an error.
-// It should only be used in the constructor and is not Goroutine-safe.
-func MaxReconnectAttempts(max int) func(*WSClient) {
-	return func(c *WSClient) {
-		c.maxReconnectAttempts = max
-	}
-}
-
-// ReadWait sets the amount of time to wait before a websocket read times out.
-// It should only be used in the constructor and is not Goroutine-safe.
-func ReadWait(readWait time.Duration) func(*WSClient) {
-	return func(c *WSClient) {
-		c.readWait = readWait
-	}
-}
-
-// WriteWait sets the amount of time to wait before a websocket write times out.
-// It should only be used in the constructor and is not Goroutine-safe.
-func WriteWait(writeWait time.Duration) func(*WSClient) {
-	return func(c *WSClient) {
-		c.writeWait = writeWait
-	}
-}
-
-// PingPeriod sets the duration for sending websocket pings.
-// It should only be used in the constructor - not Goroutine-safe.
-func PingPeriod(pingPeriod time.Duration) func(*WSClient) {
-	return func(c *WSClient) {
-		c.pingPeriod = pingPeriod
-	}
 }
 
 // OnReconnect sets the callback, which will be called every time after
 // successful reconnect.
-func OnReconnect(cb func()) func(*WSClient) {
-	return func(c *WSClient) {
-		c.onReconnect = cb
-	}
+// Could only be set before Start.
+func (c *WSClient) OnReconnect(cb func()) {
+	c.onReconnect = cb
 }
 
 // String returns WS client full address.
@@ -275,7 +254,7 @@ func (c *WSClient) dial() error {
 // reconnect tries to redial up to maxReconnectAttempts with exponential
 // backoff.
 func (c *WSClient) reconnect() error {
-	attempt := 0
+	attempt := uint(0)
 
 	c.mtx.Lock()
 	c.reconnecting = true
@@ -288,7 +267,7 @@ func (c *WSClient) reconnect() error {
 
 	for {
 		jitter := time.Duration(tmrand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
-		backoffDuration := jitter + ((1 << uint(attempt)) * time.Second)
+		backoffDuration := jitter + ((1 << attempt) * time.Second)
 
 		c.Logger.Info("reconnecting", "attempt", attempt+1, "backoff_duration", backoffDuration)
 		time.Sleep(backoffDuration)

@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"encoding/hex"
+	"fmt"
 	"math"
 	"testing"
 	"time"
@@ -10,8 +11,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/bits"
+	"github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
@@ -422,6 +426,312 @@ func TestConsMsgsVectors(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, tc.expBytes, hex.EncodeToString(bz))
+		})
+	}
+}
+
+func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
+	const (
+		validSignedMsgType   tmproto.SignedMsgType = 0x01
+		invalidSignedMsgType tmproto.SignedMsgType = 0x03
+	)
+
+	validBlockID := types.BlockID{}
+	invalidBlockID := types.BlockID{
+		Hash: bytes.HexBytes{},
+		PartSetHeader: types.PartSetHeader{
+			Total: 1,
+			Hash:  []byte{0},
+		},
+	}
+
+	testCases := []struct { // nolint: maligned
+		expectErr      bool
+		messageRound   int32
+		messageHeight  int64
+		testName       string
+		messageType    tmproto.SignedMsgType
+		messageBlockID types.BlockID
+	}{
+		{false, 0, 0, "Valid Message", validSignedMsgType, validBlockID},
+		{true, -1, 0, "Invalid Message", validSignedMsgType, validBlockID},
+		{true, 0, -1, "Invalid Message", validSignedMsgType, validBlockID},
+		{true, 0, 0, "Invalid Message", invalidSignedMsgType, validBlockID},
+		{true, 0, 0, "Invalid Message", validSignedMsgType, invalidBlockID},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			message := VoteSetMaj23Message{
+				Height:  tc.messageHeight,
+				Round:   tc.messageRound,
+				Type:    tc.messageType,
+				BlockID: tc.messageBlockID,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+}
+
+func TestVoteSetBitsMessageValidateBasic(t *testing.T) {
+	testCases := []struct {
+		malleateFn func(*VoteSetBitsMessage)
+		expErr     string
+	}{
+		{func(msg *VoteSetBitsMessage) {}, ""},
+		{func(msg *VoteSetBitsMessage) { msg.Height = -1 }, "negative Height"},
+		{func(msg *VoteSetBitsMessage) { msg.Type = 0x03 }, "invalid Type"},
+		{func(msg *VoteSetBitsMessage) {
+			msg.BlockID = types.BlockID{
+				Hash: bytes.HexBytes{},
+				PartSetHeader: types.PartSetHeader{
+					Total: 1,
+					Hash:  []byte{0},
+				},
+			}
+		}, "wrong BlockID: wrong PartSetHeader: wrong Hash:"},
+		{func(msg *VoteSetBitsMessage) { msg.Votes = bits.NewBitArray(types.MaxVotesCount + 1) },
+			"votes bit array is too big: 10001, max: 10000"},
+	}
+
+	for i, tc := range testCases {
+		tc := tc
+		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
+			msg := &VoteSetBitsMessage{
+				Height:  1,
+				Round:   0,
+				Type:    0x01,
+				Votes:   bits.NewBitArray(1),
+				BlockID: types.BlockID{},
+			}
+
+			tc.malleateFn(msg)
+			err := msg.ValidateBasic()
+			if tc.expErr != "" && assert.Error(t, err) {
+				assert.Contains(t, err.Error(), tc.expErr)
+			}
+		})
+	}
+}
+
+func TestNewRoundStepMessageValidateBasic(t *testing.T) {
+	testCases := []struct { // nolint: maligned
+		expectErr              bool
+		messageRound           int32
+		messageLastCommitRound int32
+		messageHeight          int64
+		testName               string
+		messageStep            cstypes.RoundStepType
+	}{
+		{false, 0, 0, 0, "Valid Message", cstypes.RoundStepNewHeight},
+		{true, -1, 0, 0, "Negative round", cstypes.RoundStepNewHeight},
+		{true, 0, 0, -1, "Negative height", cstypes.RoundStepNewHeight},
+		{true, 0, 0, 0, "Invalid Step", cstypes.RoundStepCommit + 1},
+		// The following cases will be handled by ValidateHeight
+		{false, 0, 0, 1, "H == 1 but LCR != -1 ", cstypes.RoundStepNewHeight},
+		{false, 0, -1, 2, "H > 1 but LCR < 0", cstypes.RoundStepNewHeight},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			message := NewRoundStepMessage{
+				Height:          tc.messageHeight,
+				Round:           tc.messageRound,
+				Step:            tc.messageStep,
+				LastCommitRound: tc.messageLastCommitRound,
+			}
+
+			err := message.ValidateBasic()
+			if tc.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestNewRoundStepMessageValidateHeight(t *testing.T) {
+	initialHeight := int64(10)
+	testCases := []struct { // nolint: maligned
+		expectErr              bool
+		messageLastCommitRound int32
+		messageHeight          int64
+		testName               string
+	}{
+		{false, 0, 11, "Valid Message"},
+		{true, 0, -1, "Negative height"},
+		{true, 0, 0, "Zero height"},
+		{true, 0, 10, "Initial height but LCR != -1 "},
+		{true, -1, 11, "Normal height but LCR < 0"},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			message := NewRoundStepMessage{
+				Height:          tc.messageHeight,
+				Round:           0,
+				Step:            cstypes.RoundStepNewHeight,
+				LastCommitRound: tc.messageLastCommitRound,
+			}
+
+			err := message.ValidateHeight(initialHeight)
+			if tc.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestNewValidBlockMessageValidateBasic(t *testing.T) {
+	testCases := []struct {
+		malleateFn func(*NewValidBlockMessage)
+		expErr     string
+	}{
+		{func(msg *NewValidBlockMessage) {}, ""},
+		{func(msg *NewValidBlockMessage) { msg.Height = -1 }, "negative Height"},
+		{func(msg *NewValidBlockMessage) { msg.Round = -1 }, "negative Round"},
+		{
+			func(msg *NewValidBlockMessage) { msg.BlockPartSetHeader.Total = 2 },
+			"blockParts bit array size 1 not equal to BlockPartSetHeader.Total 2",
+		},
+		{
+			func(msg *NewValidBlockMessage) {
+				msg.BlockPartSetHeader.Total = 0
+				msg.BlockParts = bits.NewBitArray(0)
+			},
+			"empty blockParts",
+		},
+		{
+			func(msg *NewValidBlockMessage) { msg.BlockParts = bits.NewBitArray(int(types.MaxBlockPartsCount) + 1) },
+			"blockParts bit array size 1602 not equal to BlockPartSetHeader.Total 1",
+		},
+	}
+
+	for i, tc := range testCases {
+		tc := tc
+		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
+			msg := &NewValidBlockMessage{
+				Height: 1,
+				Round:  0,
+				BlockPartSetHeader: types.PartSetHeader{
+					Total: 1,
+				},
+				BlockParts: bits.NewBitArray(1),
+			}
+
+			tc.malleateFn(msg)
+			err := msg.ValidateBasic()
+			if tc.expErr != "" && assert.Error(t, err) {
+				assert.Contains(t, err.Error(), tc.expErr)
+			}
+		})
+	}
+}
+
+func TestProposalPOLMessageValidateBasic(t *testing.T) {
+	testCases := []struct {
+		malleateFn func(*ProposalPOLMessage)
+		expErr     string
+	}{
+		{func(msg *ProposalPOLMessage) {}, ""},
+		{func(msg *ProposalPOLMessage) { msg.Height = -1 }, "negative Height"},
+		{func(msg *ProposalPOLMessage) { msg.ProposalPOLRound = -1 }, "negative ProposalPOLRound"},
+		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(0) }, "empty ProposalPOL bit array"},
+		{func(msg *ProposalPOLMessage) { msg.ProposalPOL = bits.NewBitArray(types.MaxVotesCount + 1) },
+			"proposalPOL bit array is too big: 10001, max: 10000"},
+	}
+
+	for i, tc := range testCases {
+		tc := tc
+		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
+			msg := &ProposalPOLMessage{
+				Height:           1,
+				ProposalPOLRound: 1,
+				ProposalPOL:      bits.NewBitArray(1),
+			}
+
+			tc.malleateFn(msg)
+			err := msg.ValidateBasic()
+			if tc.expErr != "" && assert.Error(t, err) {
+				assert.Contains(t, err.Error(), tc.expErr)
+			}
+		})
+	}
+}
+
+func TestBlockPartMessageValidateBasic(t *testing.T) {
+	testPart := new(types.Part)
+	testPart.Proof.LeafHash = tmhash.Sum([]byte("leaf"))
+	testCases := []struct {
+		testName      string
+		messageHeight int64
+		messageRound  int32
+		messagePart   *types.Part
+		expectErr     bool
+	}{
+		{"Valid Message", 0, 0, testPart, false},
+		{"Invalid Message", -1, 0, testPart, true},
+		{"Invalid Message", 0, -1, testPart, true},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			message := BlockPartMessage{
+				Height: tc.messageHeight,
+				Round:  tc.messageRound,
+				Part:   tc.messagePart,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+		})
+	}
+
+	message := BlockPartMessage{Height: 0, Round: 0, Part: new(types.Part)}
+	message.Part.Index = 1
+
+	assert.Equal(t, true, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+}
+
+func TestHasVoteMessageValidateBasic(t *testing.T) {
+	const (
+		validSignedMsgType   tmproto.SignedMsgType = 0x01
+		invalidSignedMsgType tmproto.SignedMsgType = 0x03
+	)
+
+	testCases := []struct { // nolint: maligned
+		expectErr     bool
+		messageRound  int32
+		messageIndex  int32
+		messageHeight int64
+		testName      string
+		messageType   tmproto.SignedMsgType
+	}{
+		{false, 0, 0, 0, "Valid Message", validSignedMsgType},
+		{true, -1, 0, 0, "Invalid Message", validSignedMsgType},
+		{true, 0, -1, 0, "Invalid Message", validSignedMsgType},
+		{true, 0, 0, 0, "Invalid Message", invalidSignedMsgType},
+		{true, 0, 0, -1, "Invalid Message", validSignedMsgType},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			message := HasVoteMessage{
+				Height: tc.messageHeight,
+				Round:  tc.messageRound,
+				Type:   tc.messageType,
+				Index:  tc.messageIndex,
+			}
+
+			assert.Equal(t, tc.expectErr, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
 	}
 }

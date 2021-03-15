@@ -65,21 +65,21 @@ func Setup(testnet *e2e.Testnet) error {
 
 	for _, node := range testnet.Nodes {
 		nodeDir := filepath.Join(testnet.Dir, node.Name)
+
 		dirs := []string{
 			filepath.Join(nodeDir, "config"),
 			filepath.Join(nodeDir, "data"),
 			filepath.Join(nodeDir, "data", "app"),
 		}
 		for _, dir := range dirs {
+			// light clients don't need an app directory
+			if node.Mode == e2e.ModeLight && strings.Contains(dir, "app") {
+				continue
+			}
 			err := os.MkdirAll(dir, 0755)
 			if err != nil {
 				return err
 			}
-		}
-
-		err = genesis.SaveAs(filepath.Join(nodeDir, "config", "genesis.json"))
-		if err != nil {
-			return err
 		}
 
 		cfg, err := MakeConfig(node)
@@ -93,6 +93,16 @@ func Setup(testnet *e2e.Testnet) error {
 			return err
 		}
 		err = ioutil.WriteFile(filepath.Join(nodeDir, "config", "app.toml"), appCfg, 0644)
+		if err != nil {
+			return err
+		}
+
+		if node.Mode == e2e.ModeLight {
+			// stop early if a light client
+			continue
+		}
+
+		err = genesis.SaveAs(filepath.Join(nodeDir, "config", "genesis.json"))
 		if err != nil {
 			return err
 		}
@@ -124,18 +134,21 @@ func MakeDockerCompose(testnet *e2e.Testnet) ([]byte, error) {
 	tmpl, err := template.New("docker-compose").Funcs(template.FuncMap{
 		"startCommands": func(misbehaviors map[int64]string, logLevel string) string {
 			command := "start"
-			misbehaviorString := ""
-			for height, misbehavior := range misbehaviors {
-				// after the first behavior set, a comma must be prepended
-				if misbehaviorString != "" {
-					misbehaviorString += ","
-				}
-				heightString := strconv.Itoa(int(height))
-				misbehaviorString += misbehavior + "," + heightString
-			}
-			if misbehaviorString != "" {
-				command += " --misbehaviors " + misbehaviorString
-			}
+
+			// FIXME: Temporarily disable behaviors until maverick is redesigned
+			// misbehaviorString := ""
+			// for height, misbehavior := range misbehaviors {
+			// 	// after the first behavior set, a comma must be prepended
+			// 	if misbehaviorString != "" {
+			// 		misbehaviorString += ","
+			// 	}
+			// 	heightString := strconv.Itoa(int(height))
+			// 	misbehaviorString += misbehavior + "," + heightString
+			// }
+
+			// if misbehaviorString != "" {
+			// 	command += " --misbehaviors " + misbehaviorString
+			// }
 			if logLevel != "" && logLevel != config.DefaultLogLevel {
 				command += " --log-level " + logLevel
 			}
@@ -165,10 +178,7 @@ services:
     image: tendermint/e2e-node
 {{- if eq .ABCIProtocol "builtin" }}
     entrypoint: /usr/bin/entrypoint-builtin
-{{- else if .Misbehaviors }}
-    entrypoint: /usr/bin/entrypoint-maverick
-{{- end }}
-{{- if ne .ABCIProtocol "builtin"}}
+{{- else }}
     command: {{ startCommands .Misbehaviors .LogLevel }}
 {{- end }}
     init: true
@@ -289,7 +299,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	case e2e.ModeSeed:
 		cfg.P2P.SeedMode = true
 		cfg.P2P.PexReactor = true
-	case e2e.ModeFull:
+	case e2e.ModeFull, e2e.ModeLight:
 		// Don't need to do anything, since we're using a dummy privval key by default.
 	default:
 		return nil, fmt.Errorf("unexpected mode %q", node.Mode)
@@ -338,6 +348,8 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		"chain_id":          node.Testnet.Name,
 		"dir":               "data/app",
 		"listen":            AppAddressUNIX,
+		"mode":              node.Mode,
+		"proxy_port":        node.ProxyPort,
 		"protocol":          "socket",
 		"persist_interval":  node.PersistInterval,
 		"snapshot_interval": node.SnapshotInterval,

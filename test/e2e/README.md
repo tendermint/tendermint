@@ -70,9 +70,11 @@ The test runner has the following stages, which can also be executed explicitly 
 
 * `cleanup`: removes configuration files and Docker containers/networks.
 
+Auxiliary commands:
+
 * `logs`: outputs all node logs.
 
-* `tail`: tails (follows) node logs until cancelled.
+* `tail`: tails (follows) node logs until canceled.
 
 ## Tests
 
@@ -139,3 +141,11 @@ Docker does not enable IPv6 by default. To do so, enter the following in
   "fixed-cidr-v6": "2001:db8:1::/64"
 }
 ```
+
+## Benchmarking testnets
+
+It is also possible to run a simple benchmark on a testnet. This is done through the `benchmark` command. This manages the entire process: setting up the environment, starting the test net, waiting for a considerable amount of blocks to be used (currently 100), and then returning the following metrics from the sample of the blockchain:
+
+- Average time to produce a block
+- Standard deviation of producing a block
+- Minimum and maximum time to produce a block

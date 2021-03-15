@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -19,8 +20,6 @@ import (
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/types"
 )
-
-var errNegOrZeroHeight = errors.New("negative or zero height")
 
 // KeyPathFunc builds a merkle path out of the given path and key.
 type KeyPathFunc func(path string, key []byte) (merkle.KeyPath, error)
@@ -58,6 +57,27 @@ type Option func(*Client)
 func KeyPathFn(fn KeyPathFunc) Option {
 	return func(c *Client) {
 		c.keyPathFn = fn
+	}
+}
+
+// DefaultMerkleKeyPathFn creates a function used to generate merkle key paths
+// from a path string and a key. This is the default used by the cosmos SDK.
+// This merkle key paths are required when verifying /abci_query calls
+func DefaultMerkleKeyPathFn() KeyPathFunc {
+	// regexp for extracting store name from /abci_query path
+	storeNameRegexp := regexp.MustCompile(`\/store\/(.+)\/key`)
+
+	return func(path string, key []byte) (merkle.KeyPath, error) {
+		matches := storeNameRegexp.FindStringSubmatch(path)
+		if len(matches) != 2 {
+			return nil, fmt.Errorf("can't find store name in %s using %s", path, storeNameRegexp)
+		}
+		storeName := matches[1]
+
+		kp := merkle.KeyPath{}
+		kp = kp.AppendKey([]byte(storeName), merkle.KeyEncodingURL)
+		kp = kp.AppendKey(key, merkle.KeyEncodingURL)
+		return kp, nil
 	}
 }
 
@@ -127,7 +147,7 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 		return nil, errors.New("no proof ops")
 	}
 	if resp.Height <= 0 {
-		return nil, errNegOrZeroHeight
+		return nil, ctypes.ErrZeroOrNegativeHeight
 	}
 
 	// Update the light client if we're behind.
@@ -212,7 +232,7 @@ func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*ctypes.Re
 		return nil, err
 	}
 	if res.BlockHeight <= 0 {
-		return nil, errNegOrZeroHeight
+		return nil, ctypes.ErrZeroOrNegativeHeight
 	}
 
 	// Update the light client if we're behind.
@@ -370,7 +390,7 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*ctypes.Resul
 
 	// Validate res.
 	if res.Height <= 0 {
-		return nil, errNegOrZeroHeight
+		return nil, ctypes.ErrZeroOrNegativeHeight
 	}
 
 	// Update the light client if we're behind.
@@ -435,7 +455,7 @@ func (c *Client) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.Resul
 
 	// Validate res.
 	if res.Height <= 0 {
-		return nil, errNegOrZeroHeight
+		return nil, ctypes.ErrZeroOrNegativeHeight
 	}
 
 	// Update the light client if we're behind.
@@ -509,7 +529,7 @@ func (c *Client) updateLightClientIfNeededTo(ctx context.Context, height *int64)
 		l, err = c.lc.VerifyLightBlockAtHeight(ctx, *height, time.Now())
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to update light client to %d: %w", height, err)
+		return nil, fmt.Errorf("failed to update light client: %w", err)
 	}
 	return l, nil
 }
@@ -576,7 +596,7 @@ const (
 
 func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	if perPage < 1 {
-		panic(fmt.Sprintf("zero or negative perPage: %d", perPage))
+		panic(fmt.Errorf("%w (%d)", ctypes.ErrZeroOrNegativePerPage, perPage))
 	}
 
 	if pagePtr == nil { // no page parameter
@@ -589,7 +609,7 @@ func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	}
 	page := *pagePtr
 	if page <= 0 || page > pages {
-		return 1, fmt.Errorf("page should be within [1, %d] range, given %d", pages, page)
+		return 1, fmt.Errorf("%w expected range: [1, %d], given %d", ctypes.ErrPageOutOfRange, pages, page)
 	}
 
 	return page, nil

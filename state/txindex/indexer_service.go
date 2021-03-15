@@ -32,7 +32,7 @@ func NewIndexerService(idr TxIndexer, eventBus *types.EventBus) *IndexerService 
 // and indexing them by events.
 func (is *IndexerService) OnStart() error {
 	// Use SubscribeUnbuffered here to ensure both subscriptions does not get
-	// cancelled due to not pulling messages fast enough. Cause this might
+	// canceled due to not pulling messages fast enough. Cause this might
 	// sometimes happen when there are no other subscribers.
 
 	blockHeadersSub, err := is.eventBus.SubscribeUnbuffered(
@@ -67,7 +67,7 @@ func (is *IndexerService) OnStart() error {
 			if err = is.idr.AddBatch(batch); err != nil {
 				is.Logger.Error("Failed to index block", "height", height, "err", err)
 			} else {
-				is.Logger.Info("Indexed block", "height", height)
+				is.Logger.Debug("Indexed block", "height", height)
 			}
 		}
 	}()

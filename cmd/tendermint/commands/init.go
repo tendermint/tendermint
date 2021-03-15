@@ -14,7 +14,7 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-// InitFilesCmd initialises a fresh Tendermint Core instance.
+// InitFilesCmd initializes a fresh Tendermint Core instance.
 var InitFilesCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize Tendermint",
@@ -43,7 +43,11 @@ func initFilesWithConfig(config *cfg.Config) error {
 		err error
 	)
 	if tmos.FileExists(privValKeyFile) {
-		pv = privval.LoadFilePV(privValKeyFile, privValStateFile)
+		pv, err = privval.LoadFilePV(privValKeyFile, privValStateFile)
+		if err != nil {
+			return err
+		}
+
 		logger.Info("Found private validator", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
 	} else {

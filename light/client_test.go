@@ -740,7 +740,7 @@ func TestClient_Concurrency(t *testing.T) {
 			defer wg.Done()
 
 			// NOTE: Cleanup, Stop, VerifyLightBlockAtHeight and Verify are not supposed
-			// to be concurrenly safe.
+			// to be concurrently safe.
 
 			assert.Equal(t, chainID, c.ChainID())
 
@@ -774,8 +774,12 @@ func TestClientReplacesPrimaryWithWitnessIfPrimaryIsUnavailable(t *testing.T) {
 	_, err = c.Update(ctx, bTime.Add(2*time.Hour))
 	require.NoError(t, err)
 
+	// the primary should no longer be the deadNode
 	assert.NotEqual(t, c.Primary(), deadNode)
-	assert.Equal(t, 1, len(c.Witnesses()))
+
+	// we should still have the dead node as a witness because it
+	// hasn't repeatedly been unresponsive yet
+	assert.Equal(t, 2, len(c.Witnesses()))
 }
 
 func TestClient_BackwardsVerification(t *testing.T) {

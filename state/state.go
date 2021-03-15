@@ -62,7 +62,7 @@ func VersionFromProto(v tmstate.Version) Version {
 // including the last validator set and the consensus params.
 // All fields are exposed so the struct can be easily serialized,
 // but none of them should be mutated directly.
-// Instead, use state.Copy() or state.NextState(...).
+// Instead, use state.Copy() or updateState(...).
 // NOTE: not goroutine-safe.
 type State struct {
 	Version Version
@@ -337,7 +337,7 @@ func MakeGenesisDocFromFile(genDocFile string) (*types.GenesisDoc, error) {
 func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	err := genDoc.ValidateAndComplete()
 	if err != nil {
-		return State{}, fmt.Errorf("error in genesis file: %v", err)
+		return State{}, fmt.Errorf("error in genesis doc: %w", err)
 	}
 
 	var validatorSet, nextValidatorSet *types.ValidatorSet
