@@ -324,8 +324,8 @@ func TestReactorBroadcastEvidence_Lagging(t *testing.T) {
 	height1 := int64(numEvidence) + 10
 	height2 := int64(numEvidence) / 2
 
-	// stateDB1 is ahead of stateDB2, where stateDB1 has all heights (1-10) and
-	// stateDB2 only has heights 1-7.
+	// stateDB1 is ahead of stateDB2, where stateDB1 has all heights (1-20) and
+	// stateDB2 only has heights 1-5.
 	stateDB1 := initializeValidatorState(t, val, height1)
 	stateDB2 := initializeValidatorState(t, val, height2)
 
@@ -444,7 +444,10 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 
 	// start the network and ensure it's configured
 	rts.start(t)
-	// without the following sleep the test consistently fails.
+
+	// without the following sleep the test consistently fails;
+	// likely because the sleep forces a context switch that lets
+	// the router process other
 	time.Sleep(2 * time.Millisecond)
 
 	// The secondary reactor should have received all the evidence ignoring the
