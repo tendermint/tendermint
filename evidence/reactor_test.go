@@ -76,9 +76,9 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 		blockStore := &mocks.BlockStore{}
 		state, _ := stateStores[idx].Load()
 		blockStore.On("LoadBlockMeta", mock.AnythingOfType("int64")).Return(func(h int64) *types.BlockMeta {
-			if (h <= state.LastBlockHeight) {
+			if h <= state.LastBlockHeight {
 				return &types.BlockMeta{Header: types.Header{Time: evidenceTime}}
-			}	
+			}
 			return nil
 		})
 		rts.pools[nodeID], err = evidence.NewPool(logger, evidenceDB, stateStores[idx], blockStore)
@@ -451,7 +451,7 @@ func TestReactorBroadcastEvidence_Committed(t *testing.T) {
 
 	// without the following sleep the test consistently fails;
 	// likely because the sleep forces a context switch that lets
-	// the router process other
+	// the router process other operations.
 	time.Sleep(2 * time.Millisecond)
 
 	// The secondary reactor should have received all the evidence ignoring the
