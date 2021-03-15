@@ -141,21 +141,19 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
 	}
 
-	for i := 1; i <= numLightClients; i++ {
-		startAt := manifest.InitialHeight + 5
-		manifest.Nodes[fmt.Sprintf("light%02d", i)] = generateNode(
-			r, e2e.ModeLight, startAt+(5*int64(i)), manifest.InitialHeight, false,
-		)
-	}
-
 	// We now set up peer discovery for nodes. Seed nodes are fully meshed with
 	// each other, while non-seed nodes either use a set of random seeds or a
 	// set of random peers that start before themselves.
-	var seedNames, peerNames []string
+	var seedNames, peerNames, lightProviders []string
 	for name, node := range manifest.Nodes {
 		if node.Mode == string(e2e.ModeSeed) {
 			seedNames = append(seedNames, name)
 		} else {
+			// if the full node or validator is an ideal candidate, it is added as a light provider.
+			// There are at least two archive nodes so there should be at least two ideal candidates
+			if (node.StartAt == 0 || node.StartAt == manifest.InitialHeight) && node.RetainBlocks == 0 {
+				lightProviders = append(lightProviders, name)
+			}
 			peerNames = append(peerNames, name)
 		}
 	}
@@ -180,15 +178,19 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		}
 	})
 	for i, name := range peerNames {
-		// we skip over light clients - they connect to all peers initially
-		if manifest.Nodes[name].Mode == string(e2e.ModeLight) {
-			continue
-		}
 		if len(seedNames) > 0 && (i == 0 || r.Float64() >= 0.5) {
 			manifest.Nodes[name].Seeds = uniformSetChoice(seedNames).Choose(r)
 		} else if i > 0 {
 			manifest.Nodes[name].PersistentPeers = uniformSetChoice(peerNames[:i]).Choose(r)
 		}
+	}
+
+	// lastly, set up the light clients
+	for i := 1; i <= numLightClients; i++ {
+		startAt := manifest.InitialHeight + 5
+		manifest.Nodes[fmt.Sprintf("light%02d", i)] = generateLightNode(
+			r, startAt+(5*int64(i)), lightProviders,
+		)
 	}
 
 	return manifest, nil
@@ -233,11 +235,6 @@ func generateNode(
 		}
 	}
 
-	if node.Mode == string(e2e.ModeLight) {
-		node.ABCIProtocol = "builtin"
-		node.StateSync = false
-	}
-
 	// If a node which does not persist state also does not retain blocks, randomly
 	// choose to either persist state or retain all blocks.
 	if node.PersistInterval != nil && *node.PersistInterval == 0 && node.RetainBlocks > 0 {
@@ -260,6 +257,17 @@ func generateNode(
 	}
 
 	return &node
+}
+
+func generateLightNode(r *rand.Rand, startAt int64, providers []string) *e2e.ManifestNode {
+	return &e2e.ManifestNode{
+		Mode:            string(e2e.ModeLight),
+		StartAt:         startAt,
+		Database:        nodeDatabases.Choose(r).(string),
+		ABCIProtocol:    "builtin",
+		PersistInterval: ptrUint64(0),
+		PersistentPeers: providers,
+	}
 }
 
 func ptrUint64(i uint64) *uint64 {
