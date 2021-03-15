@@ -4,9 +4,14 @@ order: 6
 
 # Indexing Transactions
 
-Tendermint allows you to index transactions and later query or subscribe to their results.
+Tendermint allows you to index transactions and blocks and later query or
+subscribe to their results. Both transactions and blocks are indexed by their
+respective events. However, transactions are also indexed by a primary key which
+includes the transaction hash and maps to and stores the corresponding `TxResult`.
+Blocks are indexed by a primary key which includes the block height and maps to
+and stores the block height, i.e. the block itself is never stored.
 
-Events can be used to index transactions and blocks according to what happened
+Events are be used to index transactions and blocks according to what happened
 during their execution. Note that the set of events returned for a block from
 `BeginBlock` and `EndBlock` are merged. In case both methods return the same
 type, only the key-value pairs defined in `EndBlock` are used.
@@ -17,7 +22,7 @@ details on `Events`, see the
 [ABCI](https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#events)
 documentation.
 
-An Event has a composite key associated with it. A `compositeKey` is
+An `Event` has a composite key associated with it. A `compositeKey` is
 constructed by its type and key separated by a dot.
 
 For example:
@@ -44,8 +49,8 @@ Let's take a look at the `[tx_index]` config section:
 indexer = "kv"
 ```
 
-By default, Tendermint will index all transactions by their respective
-hashes and height using an embedded simple indexer.
+By default, Tendermint will index all transactions by their respective hashes
+and height and blocks by their height.
 
 You can turn off indexing completely by setting `tx_index` to `null`.
 
@@ -77,19 +82,21 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Resul
 }
 ```
 
-The transaction will be indexed (if the indexer is not `null`) with a certain attribute if the attribute's `Index` field is set to `true`. 
-In the above example, all attributes will be indexed.
+The transaction will be indexed (if the indexer is not `null`) with a certain
+attribute if the attribute's `Index` field is set to `true`. In the above example,
+all attributes will be indexed.
 
-## Querying Transactions
+## Querying Transactions Events
 
-You can query the transaction results by calling `/tx_search` RPC endpoint:
+You can query for a paginated set of transaction by their events by calling the
+`/tx_search` RPC endpoint:
 
 ```bash
 curl "localhost:26657/tx_search?query=\"account.name='igor'\"&prove=true"
 ```
 
-Check out [API docs](https://docs.tendermint.com/master/rpc/#/Info/tx_search) for more information
-on query syntax and other options.
+Check out [API docs](https://docs.tendermint.com/master/rpc/#/Info/tx_search)
+for more information on query syntax and other options.
 
 ## Subscribing to Transactions
 
@@ -109,3 +116,15 @@ a query to `/subscribe` RPC endpoint.
 
 Check out [API docs](https://docs.tendermint.com/master/rpc/#subscribe) for more information
 on query syntax and other options.
+
+## Querying Blocks Events
+
+You can query for a paginated set of blocks by their events by calling the
+`/block_search` RPC endpoint:
+
+```bash
+curl "localhost:26657/block_search?query=\"block.height > 10 AND valset.changed > 0\""
+```
+
+Check out [API docs](https://docs.tendermint.com/master/rpc/#/Info/block_search)
+for more information on query syntax and other options.
