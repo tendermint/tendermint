@@ -843,12 +843,12 @@ func NewSeedNode(config *cfg.Config,
 	logger log.Logger,
 	options ...Option) (*Node, error) {
 
-	_, stateDB, err := initDBs(config, dbProvider)
+	genDoc, err := genesisDocProvider()
 	if err != nil {
 		return nil, err
 	}
 
-	state, genDoc, err := LoadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
+	state, err := sm.MakeGenesisState(genDoc)
 	if err != nil {
 		return nil, err
 	}
