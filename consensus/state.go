@@ -1137,7 +1137,10 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID)
 	p := proposal.ToProto()
-	ctx := context.Background() // todo set a better context
+
+	// wait the max amount we would wait for a proposal
+	ctx, cancel := context.WithTimeout(context.Background(), cs.config.TimeoutPropose)
+	defer cancel()
 	if err := cs.privValidator.SignProposal(ctx, cs.state.ChainID, p); err == nil {
 		proposal.Signature = p.Signature
 
@@ -2183,7 +2186,19 @@ func (cs *State) signVote(
 	}
 
 	v := vote.ToProto()
-	ctx := context.Background() // todo set a better context
+
+	// If the signedMessageType is for precommit,
+	// use our local precommit Timeout as the max wait time for getting a singed commit. The same goes for prevote.
+	var timeout time.Duration
+	if msgType == tmproto.PrecommitType {
+		timeout = cs.config.TimeoutPrecommit
+	} else if msgType == tmproto.PrevoteType {
+		timeout = cs.config.TimeoutPrevote
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
 	err := cs.privValidator.SignVote(ctx, cs.state.ChainID, v)
 	vote.Signature = v.Signature
 
@@ -2251,7 +2266,9 @@ func (cs *State) updatePrivValidatorPubKey() error {
 		return nil
 	}
 
-	ctx := context.Background() // todo set a better context
+	// set a hard timeout for 2 seconds. This helps in avoiding blocking of the remote signer connection
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 	pubKey, err := cs.privValidator.GetPubKey(ctx)
 	if err != nil {
 		return err

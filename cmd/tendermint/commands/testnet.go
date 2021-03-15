@@ -150,7 +150,10 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		pubKey, err := pv.GetPubKey(context.TODO())
+		ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout)
+		defer cancel()
+
+		pubKey, err := pv.GetPubKey(ctx)
 		if err != nil {
 			return fmt.Errorf("can't get pubkey: %w", err)
 		}

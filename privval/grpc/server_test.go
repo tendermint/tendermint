@@ -115,6 +115,7 @@ func TestSignVote(t *testing.T) {
 				pbVote := tc.want.ToProto()
 
 				require.NoError(t, tc.pv.SignVote(context.Background(), chainID, pbVote))
+
 				assert.Equal(t, pbVote.Signature, resp.Vote.Signature)
 			}
 		})
