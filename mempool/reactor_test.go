@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p/p2ptest"
 	protomem "github.com/tendermint/tendermint/proto/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
@@ -23,17 +24,22 @@ import (
 var rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 type reactorTestSuite struct {
-	reactor *Reactor
+	network *p2ptest.Network
+	logger  log.Logger
 
-	peerID p2p.NodeID
+	reactors       map[p2p.NodeID]*Reactor
+	mempoolChnnels map[p2p.NodeID]*p2p.Channel
+	mempools       map[p2p.NodeID]*CListMempool
+	kvstores       map[p2p.NodeID]*kvstore.Application
 
-	mempoolChannel   *p2p.Channel
-	mempoolInCh      chan p2p.Envelope
-	mempoolOutCh     chan p2p.Envelope
-	mempoolPeerErrCh chan p2p.PeerError
+	mempoolInChns      map[p2p.NodeID]chan p2p.Envelope
+	mempoolOutChns     map[p2p.NodeID]chan p2p.Envelope
+	mempoolPeerErrChns map[p2p.NodeID]chan p2p.PeerError
 
-	peerUpdatesCh chan p2p.PeerUpdate
-	peerUpdates   *p2p.PeerUpdates
+	peerUpdatesChns map[p2p.NodeID]chan p2p.PeerUpdate
+	peerUpdates     map[p2p.NodeID]*p2p.PeerUpdates
+
+	closers []cleanupFunc
 }
 
 func setup(t *testing.T, cfg *cfg.MempoolConfig, logger log.Logger, chBuf uint) *reactorTestSuite {
