@@ -42,6 +42,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [rpc/client/http] \#6176 Remove `endpoint` arg from `New`, `NewWithTimeout` and `NewWithClient` (@melekes)
   - [rpc/client/http] \#6176 Unexpose `WSEvents` (@melekes)
   - [rpc/jsonrpc/client/ws_client] \#6176 `NewWS` no longer accepts options (use `NewWSWithOptions` and `OnReconnect` funcs to configure the client) (@melekes)
+  - [rpc/jsonrpc/server] \#6204 Modify `WriteRPCResponseHTTP(Error)` to return an error (@melekes)
 
 - Blockchain Protocol
 
@@ -73,6 +74,9 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [rpc/client/http] \#6163 Do not drop events even if the `out` channel is full (@melekes)
 - [node] \#6059 Validate and complete genesis doc before saving to state store (@silasdavis)
 - [state] \#6067 Batch save state data (@githubsands & @cmwaters)
+- [crypto] \#6120 Implement batch verification interface for ed25519 and sr25519. (@marbar3778)
+- [types] \#6120 use batch verification for verifying commits signatures. 
+  - If the key type supports the batch verification API it will try to batch verify. If the verification fails we will single verify each signature. 
 - [privval/file] \#6185 Return error on `LoadFilePV`, `LoadFilePVEmptyState`. Allows for better programmatic control of Tendermint.
 
 ### BUG FIXES

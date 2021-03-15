@@ -349,7 +349,13 @@ func rpcEndpoints(peers string) []string {
 		}
 		// use RPC port instead
 		addr.Port = 26657
-		rpcEndpoint := "http://" + addr.Hostname + ":" + fmt.Sprint(addr.Port)
+		var rpcEndpoint string
+		// for ipv6 addresses
+		if strings.Contains(addr.Hostname, ":") {
+			rpcEndpoint = "http://[" + addr.Hostname + "]:" + fmt.Sprint(addr.Port)
+		} else { // for ipv4 addresses
+			rpcEndpoint = "http://" + addr.Hostname + ":" + fmt.Sprint(addr.Port)
+		}
 		endpoints[i] = rpcEndpoint
 	}
 	return endpoints
