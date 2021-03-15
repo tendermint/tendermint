@@ -50,6 +50,8 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES
 
+- [rpc] \#6226 Index block events and expose a new RPC method, `/block_search`, to allow querying for blocks by `BeginBlock` and `EndBlock` events.
+
 ### IMPROVEMENTS
 
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
