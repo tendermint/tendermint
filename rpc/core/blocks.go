@@ -221,12 +221,15 @@ func BlockSearch(
 	apiResults := make([]*ctypes.ResultBlock, 0, pageSize)
 	for i := skipCount; i < skipCount+pageSize; i++ {
 		block := env.BlockStore.LoadBlock(results[i])
-		blockMeta := env.BlockStore.LoadBlockMeta(block.Height)
-
-		apiResults = append(apiResults, &ctypes.ResultBlock{
-			Block:   block,
-			BlockID: blockMeta.BlockID,
-		})
+		if block != nil {
+			blockMeta := env.BlockStore.LoadBlockMeta(block.Height)
+			if blockMeta != nil {
+				apiResults = append(apiResults, &ctypes.ResultBlock{
+					Block:   block,
+					BlockID: blockMeta.BlockID,
+				})
+			}
+		}
 	}
 
 	return &ctypes.ResultBlockSearch{Blocks: apiResults, TotalCount: totalCount}, nil
