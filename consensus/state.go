@@ -1139,7 +1139,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	p := proposal.ToProto()
 
 	// wait the max amount we would wait for a proposal
-	ctx, cancel := context.WithTimeout(context.Background(), cs.config.TimeoutPropose)
+	ctx, cancel := context.WithTimeout(context.TODO(), cs.config.TimeoutPropose)
 	defer cancel()
 	if err := cs.privValidator.SignProposal(ctx, cs.state.ChainID, p); err == nil {
 		proposal.Signature = p.Signature
@@ -2196,7 +2196,7 @@ func (cs *State) signVote(
 		timeout = cs.config.TimeoutPrevote
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
 
 	err := cs.privValidator.SignVote(ctx, cs.state.ChainID, v)
@@ -2267,7 +2267,7 @@ func (cs *State) updatePrivValidatorPubKey() error {
 	}
 
 	// set a hard timeout for 2 seconds. This helps in avoiding blocking of the remote signer connection
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
 	defer cancel()
 	pubKey, err := cs.privValidator.GetPubKey(ctx)
 	if err != nil {

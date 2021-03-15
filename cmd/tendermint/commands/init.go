@@ -88,7 +88,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 			}
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout)
+		ctx, cancel := context.WithTimeout(context.TODO(), ctxTimeout)
 		defer cancel()
 
 		pubKey, err := pv.GetPubKey(ctx)

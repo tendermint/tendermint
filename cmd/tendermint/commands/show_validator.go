@@ -38,7 +38,7 @@ func showValidator(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("can't connect to remote validator %w", err)
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout)
+		ctx, cancel := context.WithTimeout(context.TODO(), ctxTimeout)
 		defer cancel()
 
 		pubKey, err = pvsc.GetPubKey(ctx)
@@ -57,7 +57,7 @@ func showValidator(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout)
+		ctx, cancel := context.WithTimeout(context.TODO(), ctxTimeout)
 		defer cancel()
 
 		pubKey, err = pv.GetPubKey(ctx)
