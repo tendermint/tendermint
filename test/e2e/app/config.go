@@ -14,6 +14,7 @@ type Config struct {
 	Listen           string
 	Protocol         string
 	Dir              string
+	Mode             string                      `toml:"mode"`
 	PersistInterval  uint64                      `toml:"persist_interval"`
 	SnapshotInterval uint64                      `toml:"snapshot_interval"`
 	RetainBlocks     uint64                      `toml:"retain_blocks"`

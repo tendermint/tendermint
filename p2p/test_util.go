@@ -71,7 +71,7 @@ func MakeConnectedSwitches(cfg *config.P2PConfig,
 ) []*Switch {
 	switches := make([]*Switch, n)
 	for i := 0; i < n; i++ {
-		switches[i] = MakeSwitch(cfg, i, TestHost, "123.123.123", initSwitch)
+		switches[i] = MakeSwitch(cfg, i, TestHost, "123.123.123", initSwitch, log.TestingLogger())
 	}
 
 	if err := StartSwitches(switches); err != nil {
@@ -163,6 +163,7 @@ func MakeSwitch(
 	i int,
 	network, version string,
 	initSwitch func(int, *Switch) *Switch,
+	logger log.Logger,
 	opts ...SwitchOption,
 ) *Switch {
 
@@ -175,13 +176,13 @@ func MakeSwitch(
 		panic(err)
 	}
 
-	logger := log.TestingLogger().With("switch", i)
-	t := NewMConnTransport(logger, MConnConfig(cfg),
+	swLogger := logger.With("switch", i)
+	t := NewMConnTransport(swLogger, MConnConfig(cfg),
 		[]*ChannelDescriptor{}, MConnTransportOptions{})
 
 	// TODO: let the config be passed in?
 	sw := initSwitch(i, NewSwitch(cfg, t, opts...))
-	sw.SetLogger(log.TestingLogger().With("switch", i))
+	sw.SetLogger(swLogger)
 	sw.SetNodeKey(nodeKey)
 
 	if err := t.Listen(addr.Endpoint()); err != nil {

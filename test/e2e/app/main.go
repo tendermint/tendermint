@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -17,12 +20,18 @@ import (
 	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
+	"github.com/tendermint/tendermint/light"
+	lproxy "github.com/tendermint/tendermint/light/proxy"
+	lrpc "github.com/tendermint/tendermint/light/rpc"
+	dbs "github.com/tendermint/tendermint/light/store/db"
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	grpcprivval "github.com/tendermint/tendermint/privval/grpc"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
+	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
+	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
 var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
@@ -66,10 +75,13 @@ func run(configFile string) error {
 	case "socket", "grpc":
 		err = startApp(cfg)
 	case "builtin":
+		if cfg.Mode == string(e2e.ModeLight) {
+			err = startLightClient(cfg)
+		} else {
+			err = startNode(cfg)
+		}
 		// FIXME: Temporarily remove maverick until it is redesigned
 		// if len(cfg.Misbehaviors) == 0 {
-		err = startNode(cfg)
-		// } else {
 		// 	err = startMaverick(cfg)
 		// }
 	default:
@@ -137,6 +149,63 @@ func startNode(cfg *Config) error {
 	return n.Start()
 }
 
+func startLightClient(cfg *Config) error {
+	tmcfg, nodeLogger, _, err := setupNode()
+	if err != nil {
+		return err
+	}
+
+	dbContext := &node.DBContext{ID: "light", Config: tmcfg}
+	lightDB, err := node.DefaultDBProvider(dbContext)
+	if err != nil {
+		return err
+	}
+
+	providers := rpcEndpoints(tmcfg.P2P.PersistentPeers)
+
+	c, err := light.NewHTTPClient(
+		context.Background(),
+		cfg.ChainID,
+		light.TrustOptions{
+			Period: tmcfg.StateSync.TrustPeriod,
+			Height: tmcfg.StateSync.TrustHeight,
+			Hash:   tmcfg.StateSync.TrustHashBytes(),
+		},
+		providers[0],
+		providers[1:],
+		dbs.New(lightDB),
+		light.Logger(nodeLogger),
+	)
+	if err != nil {
+		return err
+	}
+
+	rpccfg := rpcserver.DefaultConfig()
+	rpccfg.MaxBodyBytes = tmcfg.RPC.MaxBodyBytes
+	rpccfg.MaxHeaderBytes = tmcfg.RPC.MaxHeaderBytes
+	rpccfg.MaxOpenConnections = tmcfg.RPC.MaxOpenConnections
+	// If necessary adjust global WriteTimeout to ensure it's greater than
+	// TimeoutBroadcastTxCommit.
+	// See https://github.com/tendermint/tendermint/issues/3435
+	if rpccfg.WriteTimeout <= tmcfg.RPC.TimeoutBroadcastTxCommit {
+		rpccfg.WriteTimeout = tmcfg.RPC.TimeoutBroadcastTxCommit + 1*time.Second
+	}
+
+	p, err := lproxy.NewProxy(c, tmcfg.RPC.ListenAddress, providers[0], rpccfg, nodeLogger,
+		lrpc.KeyPathFn(lrpc.DefaultMerkleKeyPathFn()))
+	if err != nil {
+		return err
+	}
+
+	logger.Info("Starting proxy...", "laddr", tmcfg.RPC.ListenAddress)
+	if err := p.ListenAndServe(); err != http.ErrServerClosed {
+		// Error starting or closing listener:
+		logger.Error("proxy ListenAndServe", "err", err)
+	}
+
+	return nil
+}
+
 // FIXME: Temporarily disconnected maverick until it is redesigned
 // startMaverick starts a Maverick node that runs the application directly. It assumes the Tendermint
 // configuration is in $TMHOME/config/tendermint.toml.
@@ -176,7 +245,10 @@ func startNode(cfg *Config) error {
 
 // startSigner starts a signer server connecting to the given endpoint.
 func startSigner(cfg *Config) error {
-	filePV := privval.LoadFilePV(cfg.PrivValKey, cfg.PrivValState)
+	filePV, err := privval.LoadFilePV(cfg.PrivValKey, cfg.PrivValState)
+	if err != nil {
+		return err
+	}
 
 	protocol, address := tmnet.ProtocolAndAddress(cfg.PrivValServer)
 	var dialFn privval.SocketDialer
@@ -210,7 +282,7 @@ func startSigner(cfg *Config) error {
 	endpoint := privval.NewSignerDialerEndpoint(logger, dialFn,
 		privval.SignerDialerEndpointRetryWaitInterval(1*time.Second),
 		privval.SignerDialerEndpointConnRetries(100))
-	err := privval.NewSignerServer(endpoint, cfg.ChainID, filePV).Start()
+	err = privval.NewSignerServer(endpoint, cfg.ChainID, filePV).Start()
 	if err != nil {
 		return err
 	}
@@ -263,4 +335,22 @@ func setupNode() (*config.Config, log.Logger, *p2p.NodeKey, error) {
 	}
 
 	return tmcfg, nodeLogger, &nodeKey, nil
+}
+
+// rpcEndpoints takes a list of persistent peers and splits them into a list of rpc endpoints
+// using 26657 as the port number
+func rpcEndpoints(peers string) []string {
+	arr := strings.Split(peers, ",")
+	endpoints := make([]string, len(arr))
+	for i, v := range arr {
+		addr, err := p2p.ParseNodeAddress(v)
+		if err != nil {
+			panic(err)
+		}
+		// use RPC port instead
+		addr.Port = 26657
+		rpcEndpoint := "http://" + addr.Hostname + ":" + fmt.Sprint(addr.Port)
+		endpoints[i] = rpcEndpoint
+	}
+	return endpoints
 }

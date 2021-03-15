@@ -61,7 +61,7 @@ func setup(t *testing.T, peers []p2p.Peer) *reactorShimTestSuite {
 
 		sw.AddReactor(rts.shim.Name, rts.shim)
 		return sw
-	})
+	}, log.TestingLogger())
 
 	// start the reactor shim
 	require.NoError(t, rts.shim.Start())

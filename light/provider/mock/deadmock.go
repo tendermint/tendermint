@@ -2,14 +2,11 @@ package mock
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/types"
 )
-
-var errNoResp = errors.New("no response from provider")
 
 type deadMock struct {
 	id string
@@ -25,9 +22,9 @@ func (p *deadMock) String() string {
 }
 
 func (p *deadMock) LightBlock(_ context.Context, height uint64) (*types.LightBlock, error) {
-	return nil, errNoResp
+	return nil, provider.ErrNoResponse
 }
 
 func (p *deadMock) ReportEvidence(_ context.Context, ev types.Evidence) error {
-	return errNoResp
+	return provider.ErrNoResponse
 }

@@ -18,8 +18,10 @@ import (
 )
 
 var defaultOptions = Options{
-	MaxRetryAttempts: 5,
-	Timeout:          3 * time.Second,
+	MaxRetryAttempts:    5,
+	Timeout:             3 * time.Second,
+	NoBlockThreshold:    5,
+	NoResponseThreshold: 5,
 }
 
 // http provider uses an RPC client to obtain the necessary information.
@@ -27,14 +29,37 @@ type http struct {
 	chainID string
 	client  rpcclient.RemoteClient
 
-	maxRetryAttempts int
+	// httt provider heuristics
+
+	// The provider tracks the amount of times that the
+	// client doesn't respond. If this exceeds the threshold
+	// then the provider will return an unreliable provider error
+	noResponseThreshold uint16
+	noResponseCount     uint16
+
+	// The provider tracks the amount of time the client
+	// doesn't have a block. If this exceeds the threshold
+	// then the provider will return an unreliable provider error
+	noBlockThreshold uint16
+	noBlockCount     uint16
+
+	// In a single request, the provider attempts multiple times
+	// with exponential backoff to reach the client. If this
+	// exceeds the maxRetry attempts, this result in a ErrNoResponse
+	maxRetryAttempts uint16
 }
 
 type Options struct {
-	// -1 means no limit
-	MaxRetryAttempts int
+	// 0 means no retries
+	MaxRetryAttempts uint16
 	// 0 means no timeout.
 	Timeout time.Duration
+	// The amount of requests that a client doesn't have the block
+	// for before the provider deems the client unreliable
+	NoBlockThreshold uint16
+	// The amount of requests that a client doesn't respond to
+	// before the provider deems the client unreliable
+	NoResponseThreshold uint16
 }
 
 // New creates a HTTP provider, which is using the rpchttp.HTTP client under
@@ -67,9 +92,11 @@ func NewWithClient(chainID string, client rpcclient.RemoteClient) provider.Provi
 // NewWithClient allows you to provide a custom client.
 func NewWithClientAndOptions(chainID string, client rpcclient.RemoteClient, options Options) provider.Provider {
 	return &http{
-		client:           client,
-		chainID:          chainID,
-		maxRetryAttempts: options.MaxRetryAttempts,
+		client:              client,
+		chainID:             chainID,
+		maxRetryAttempts:    options.MaxRetryAttempts,
+		noResponseThreshold: options.NoResponseThreshold,
+		noBlockThreshold:    options.NoBlockThreshold,
 	}
 }
 
@@ -130,7 +157,8 @@ func (p *http) validatorSet(ctx context.Context, height *uint64) (*types.Validat
 	for len(vals) != total && page <= maxPages {
 		// create another for loop to control retries. If p.maxRetryAttempts
 		// is negative we will keep repeating.
-		for attempt := 0; attempt != p.maxRetryAttempts+1; attempt++ {
+		attempt := uint16(0)
+		for {
 			res, err := p.client.Validators(ctx, height, &page, &perPage)
 			switch e := err.(type) {
 			case nil: // success!! Now we validate the response
@@ -149,8 +177,13 @@ func (p *http) validatorSet(ctx context.Context, height *uint64) (*types.Validat
 
 			case *url.Error:
 				if e.Timeout() {
+					// if we have exceeded retry attempts then return a no response error
+					if attempt == p.maxRetryAttempts {
+						return nil, p.noResponse()
+					}
+					attempt++
 					// request timed out: we wait and try again with exponential backoff
-					time.Sleep(backoffTimeout(uint16(attempt)))
+					time.Sleep(backoffTimeout(attempt))
 					continue
 				}
 				return nil, provider.ErrBadLightBlock{Reason: e}
@@ -188,7 +221,7 @@ func (p *http) validatorSet(ctx context.Context, height *uint64) (*types.Validat
 func (p *http) signedHeader(ctx context.Context, height *uint64) (*types.SignedHeader, error) {
 	// create a for loop to control retries. If p.maxRetryAttempts
 	// is negative we will keep repeating.
-	for attempt := 0; attempt != p.maxRetryAttempts+1; attempt++ {
+	for attempt := uint16(0); attempt != p.maxRetryAttempts+1; attempt++ {
 		commit, err := p.client.Commit(ctx, height)
 		switch e := err.(type) {
 		case nil: // success!!
@@ -197,24 +230,20 @@ func (p *http) signedHeader(ctx context.Context, height *uint64) (*types.SignedH
 		case *url.Error:
 			if e.Timeout() {
 				// we wait and try again with exponential backoff
-				time.Sleep(backoffTimeout(uint16(attempt)))
+				time.Sleep(backoffTimeout(attempt))
 				continue
 			}
 			return nil, provider.ErrBadLightBlock{Reason: e}
 
 		case *rpctypes.RPCError:
-			// Check if we got something other than internal error. This shouldn't happen unless the RPC module
-			// or light client has been tampered with. If we do get this error, stop the connection with the
-			// peer and return an error
-			if e.Code != -32603 {
-				return nil, provider.ErrBadLightBlock{Reason: errors.New(e.Data)}
+			// check if the error indicates that the peer doesn't have the block
+			if strings.Contains(e.Data, ctypes.ErrHeightNotAvailable.Error()) ||
+				strings.Contains(e.Data, ctypes.ErrHeightExceedsChainHead.Error()) {
+				return nil, p.noBlock()
 			}
 
-			// check if the error indicates that the peer doesn't have the block
-			if strings.Contains(err.Error(), ctypes.ErrHeightNotAvailable.Error()) ||
-				strings.Contains(err.Error(), ctypes.ErrHeightExceedsChainHead.Error()) {
-				return nil, provider.ErrLightBlockNotFound
-			}
+			// for every other error, the provider returns a bad block
+			return nil, provider.ErrBadLightBlock{Reason: errors.New(e.Data)}
 
 		default:
 			// If we don't know the error then by default we return a bad light block error and
@@ -222,7 +251,27 @@ func (p *http) signedHeader(ctx context.Context, height *uint64) (*types.SignedH
 			return nil, provider.ErrBadLightBlock{Reason: e}
 		}
 	}
-	return nil, provider.ErrNoResponse
+	return nil, p.noResponse()
+}
+
+func (p *http) noResponse() error {
+	p.noResponseCount++
+	if p.noResponseCount > p.noResponseThreshold {
+		return provider.ErrUnreliableProvider{
+			Reason: fmt.Sprintf("failed to respond after %d attempts", p.noResponseCount),
+		}
+	}
+	return provider.ErrNoResponse
+}
+
+func (p *http) noBlock() error {
+	p.noBlockCount++
+	if p.noBlockCount > p.noBlockThreshold {
+		return provider.ErrUnreliableProvider{
+			Reason: fmt.Sprintf("failed to provide a block after %d attempts", p.noBlockCount),
+		}
+	}
+	return provider.ErrLightBlockNotFound
 }
 
 func validateHeight(height uint64) (*uint64, error) {

@@ -167,7 +167,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, 0, err
 	}
 	if len(validatorUpdates) > 0 {
-		blockExec.logger.Info("updates to validators", "updates", types.ValidatorListString(validatorUpdates))
+		blockExec.logger.Debug("updates to validators", "updates", types.ValidatorListString(validatorUpdates))
 	}
 
 	// Update the state with the block and responses.
