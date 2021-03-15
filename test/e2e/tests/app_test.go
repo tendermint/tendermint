@@ -81,17 +81,19 @@ func TestApp_Tx(t *testing.T) {
 		value := fmt.Sprintf("%x", bz)
 		tx := types.Tx(fmt.Sprintf("%v=%v", key, value))
 
-		_, err = client.BroadcastTxCommit(ctx, tx)
+		resp, err := client.BroadcastTxCommit(ctx, tx)
 		require.NoError(t, err)
 
-		// wait for the tx to go through
-		time.Sleep(1 * time.Second)
+		// wait for the tx to be persisted in the tx indexer
+		time.Sleep(500 * time.Millisecond)
 
 		hash := tx.Hash()
 		txResp, err := client.Tx(ctx, hash, false)
 		require.NoError(t, err)
 		assert.Equal(t, txResp.Tx, tx)
+		assert.Equal(t, txResp.Height, resp.Height)
 
+		// NOTE: we don't test abci query of the light client
 		if node.Mode == e2e.ModeLight {
 			return
 		}
@@ -100,8 +102,6 @@ func TestApp_Tx(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, key, string(abciResp.Response.Key))
 		assert.Equal(t, value, string(abciResp.Response.Value))
-
-		assert.Equal(t, txResp.Height, abciResp.Response.Height)
 
 	})
 }
