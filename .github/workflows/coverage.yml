@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: "1.15"
+          go-version: "1.16"
       - uses: actions/checkout@v2
       - uses: technote-space/get-diff-action@v4
         with:
@@ -66,7 +66,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v2
         with:
-          go-version: "1.15"
+          go-version: "1.16"
       - uses: actions/checkout@v2
       - uses: technote-space/get-diff-action@v4
         with:
@@ -81,7 +81,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.15
+          go-version: 1.16
       - name: test & coverage report creation
         run: |
           cat pkgs.txt.part.${{ matrix.part }} | xargs go test -mod=readonly -timeout 8m -race -coverprofile=${{ matrix.part }}profile.out -covermode=atomic
@@ -121,7 +121,7 @@ jobs:
       - run: |
           cat ./*profile.out | grep -v "mode: atomic" >> coverage.txt
         if: env.GIT_DIFF
-      - uses: codecov/codecov-action@v1.2.1
+      - uses: codecov/codecov-action@v1.2.2
         with:
           file: ./coverage.txt
         if: env.GIT_DIFF

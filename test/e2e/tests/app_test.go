@@ -16,7 +16,7 @@ import (
 // Tests that any initial state given in genesis has made it into the app.
 func TestApp_InitialState(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
-		if node.Mode == e2e.ModeSeed {
+		if node.Stateless() {
 			return
 		}
 		if len(node.Testnet.InitialState) == 0 {
@@ -81,12 +81,27 @@ func TestApp_Tx(t *testing.T) {
 		value := fmt.Sprintf("%x", bz)
 		tx := types.Tx(fmt.Sprintf("%v=%v", key, value))
 
-		_, err = client.BroadcastTxCommit(ctx, tx)
+		resp, err := client.BroadcastTxCommit(ctx, tx)
 		require.NoError(t, err)
 
-		resp, err := client.ABCIQuery(ctx, "", []byte(key))
+		// wait for the tx to be persisted in the tx indexer
+		time.Sleep(500 * time.Millisecond)
+
+		hash := tx.Hash()
+		txResp, err := client.Tx(ctx, hash, false)
 		require.NoError(t, err)
-		assert.Equal(t, key, string(resp.Response.Key))
-		assert.Equal(t, value, string(resp.Response.Value))
+		assert.Equal(t, txResp.Tx, tx)
+		assert.Equal(t, txResp.Height, resp.Height)
+
+		// NOTE: we don't test abci query of the light client
+		if node.Mode == e2e.ModeLight {
+			return
+		}
+
+		abciResp, err := client.ABCIQuery(ctx, "", []byte(key))
+		require.NoError(t, err)
+		assert.Equal(t, key, string(abciResp.Response.Key))
+		assert.Equal(t, value, string(abciResp.Response.Value))
+
 	})
 }
