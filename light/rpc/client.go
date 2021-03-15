@@ -492,9 +492,14 @@ func (c *Client) BlockSearch(
 }
 
 // Validators fetches and verifies validators.
-func (c *Client) Validators(ctx context.Context, height *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators, error) {
-	// Update the light client if we're behind and retrieve the light block at the requested height
-	// or at the latest height if no height is provided.
+func (c *Client) Validators(
+	ctx context.Context,
+	height *int64,
+	pagePtr, perPagePtr *int,
+) (*ctypes.ResultValidators, error) {
+
+	// Update the light client if we're behind and retrieve the light block at the
+	// requested height or at the latest height if no height is provided.
 	l, err := c.updateLightClientIfNeededTo(ctx, height)
 	if err != nil {
 		return nil, err
@@ -508,7 +513,6 @@ func (c *Client) Validators(ctx context.Context, height *int64, pagePtr, perPage
 	}
 
 	skipCount := validateSkipCount(page, perPage)
-
 	v := l.ValidatorSet.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
 
 	return &ctypes.ResultValidators{

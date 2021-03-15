@@ -73,11 +73,23 @@ type SignClient interface {
 
 	// TxSearch defines a method to search for a paginated set of transactions by
 	// DeliverTx event search criteria.
-	TxSearch(ctx context.Context, query string, prove bool, page, perPage *int, orderBy string) (*ctypes.ResultTxSearch, error)
+	TxSearch(
+		ctx context.Context,
+		query string,
+		prove bool,
+		page, perPage *int,
+		orderBy string,
+	) (*ctypes.ResultTxSearch, error)
 
 	// BlockSearch defines a method to search for a paginated set of blocks by
 	// BeginBlock and EndBlock event search criteria.
-	BlockSearch(ctx context.Context, query string, prove bool, page, perPage *int, orderBy string) (*ctypes.ResultBlockSearch, error)
+	BlockSearch(
+		ctx context.Context,
+		query string,
+		prove bool, page,
+		perPage *int,
+		orderBy string,
+	) (*ctypes.ResultBlockSearch, error)
 }
 
 // HistoryClient provides access to data from genesis to now in large chunks.
