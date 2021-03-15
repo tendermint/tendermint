@@ -22,7 +22,7 @@ func TestBlockchainInfo(t *testing.T) {
 		min, max     uint64
 		base, height uint64
 		limit        uint64
-		resultLength int64
+		resultLength uint64
 		wantErr      bool
 	}{
 
@@ -48,7 +48,7 @@ func TestBlockchainInfo(t *testing.T) {
 		{1, 5, 0, 1, 10, 1, false},
 		{1, 5, 0, 10, 10, 5, false},
 		{1, 15, 0, 10, 10, 10, false},
-		{1, 15, 0, 15, 10, 10, false},
+		{1, 15, 0, 15, 10, 10, false}, //
 		{1, 15, 0, 15, 20, 15, false},
 		{1, 20, 0, 15, 20, 15, false},
 		{1, 20, 0, 20, 20, 20, false},

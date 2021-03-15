@@ -245,6 +245,9 @@ func (m *VoteSetMaj23Message) ValidateBasic() error {
 	if !types.IsVoteTypeValid(m.Type) {
 		return errors.New("invalid Type")
 	}
+	if m.Round < 0 {
+		return errors.New("negative Round")
+	}
 	if err := m.BlockID.ValidateBasic(); err != nil {
 		return fmt.Errorf("wrong BlockID: %v", err)
 	}
