@@ -245,21 +245,23 @@ func TestReactorMultiDisconnect(t *testing.T) {
 
 	_ = createEvidenceList(t, rts.pools[primary.NodeID], val, numEvidence)
 
-	rts.peerChans[primary.NodeID] <- p2p.PeerUpdate{
-		Status: p2p.PeerStatusUp,
-		NodeID: secondary.NodeID,
-	}
+	require.Equal(t, primary.PeerManager.Status(secondary.NodeID), p2p.PeerStatusDown)
 
+	rts.start(t)
+
+	require.Equal(t, primary.PeerManager.Status(secondary.NodeID), p2p.PeerStatusUp)
 	// Ensure "disconnecting" the secondary peer from the primary more than once
 	// is handled gracefully.
-	rts.peerChans[primary.NodeID] <- p2p.PeerUpdate{
-		Status: p2p.PeerStatusDown,
-		NodeID: secondary.NodeID,
-	}
-	rts.peerChans[primary.NodeID] <- p2p.PeerUpdate{
-		Status: p2p.PeerStatusDown,
-		NodeID: secondary.NodeID,
-	}
+
+	require.NoError(t, primary.PeerManager.Disconnected(secondary.NodeID))
+	require.Equal(t, primary.PeerManager.Status(secondary.NodeID), p2p.PeerStatusDown)
+	_, err := primary.PeerManager.TryEvictNext()
+	require.NoError(t, err)
+	require.NoError(t, primary.PeerManager.Disconnected(secondary.NodeID))
+
+	require.Equal(t, primary.PeerManager.Status(secondary.NodeID), p2p.PeerStatusDown)
+	require.Equal(t, secondary.PeerManager.Status(primary.NodeID), p2p.PeerStatusUp)
+
 }
 
 // TestReactorBroadcastEvidence creates an environment of multiple peers that
