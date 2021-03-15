@@ -1966,7 +1966,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.NodeID) (bool, error) {
 			)
 
 			return added, err
-		} else if err == types.ErrVoteNonDeterministicSignature {
+		} else if errors.Is(err, types.ErrVoteNonDeterministicSignature) {
 			cs.Logger.Debug("vote has non-deterministic signature", "err", err)
 		} else {
 			// Either
