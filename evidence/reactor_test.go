@@ -130,25 +130,21 @@ func (rts *reactorTestSuite) waitForEvidence(t *testing.T, evList types.Evidence
 		var (
 			localEvList []types.Evidence
 			size        int64
+			loops       int
 		)
 
 		// wait till we have at least the amount of evidence
 		// that we expect. if there's more local evidence then
 		// it doesn't make sense to wait longer and a
 		// different assertion should catch the resulting error
-		loops := 0
 		for len(localEvList) < len(evList) {
 			// each evidence should not be more than 500 bytes
 			localEvList, size = pool.PendingEvidence(int64(len(evList) * 500))
-			if loops == 10 {
+			if loops == 100 {
 				t.Log("current wait status:", "|",
 					"local", len(localEvList), "|",
 					"waitlist", len(evList), "|",
 					"size", size)
-			}
-			if loops == 10000 && size == 0 {
-				require.Fail(t, "pool seems disconnected")
-				return
 			}
 
 			loops++
