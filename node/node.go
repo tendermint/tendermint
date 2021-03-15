@@ -743,7 +743,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 
 	reactorConfig := &pex.ReactorConfig{
 		Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
-		SeedMode: config.P2P.SeedMode,
+		SeedMode: false,
 		// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
 		// blocks assuming 10s blocks ~ 28 hours.
 		// TODO (melekes): make it dynamic based on the actual block latencies
@@ -1096,10 +1096,10 @@ func NewNode(config *cfg.Config,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
 	var (
-		stateSyncReactor *statesync.Reactor
+		stateSyncReactor     *statesync.Reactor
 		stateSyncReactorShim *p2p.ReactorShim
-		channels    map[p2p.ChannelID]*p2p.Channel
-		peerUpdates *p2p.PeerUpdates
+		channels             map[p2p.ChannelID]*p2p.Channel
+		peerUpdates          *p2p.PeerUpdates
 	)
 
 	if config.Mode != cfg.ModeSeedNode {
@@ -1112,7 +1112,6 @@ func NewNode(config *cfg.Config,
 			channels = makeChannelsFromShims(router, statesync.ChannelShims)
 			peerUpdates = peerManager.Subscribe()
 		}
-
 
 		stateSyncReactor = statesync.NewReactor(
 			stateSyncReactorShim.Logger,

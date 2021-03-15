@@ -582,13 +582,6 @@ type P2PConfig struct { //nolint: maligned
 	// Set true to enable the peer-exchange reactor
 	PexReactor bool `mapstructure:"pex"`
 
-	// Seed mode, in which node constantly crawls the network and looks for
-	// peers. If another node asks it for addresses, it responds and disconnects.
-	//
-	// Does not work if the peer-exchange reactor is disabled.
-	// automatically set true if Mode of the node is seednode
-	SeedMode bool `mapstructure:"seed-mode"`
-
 	// Comma separated list of peer IDs to keep private (will not be gossiped to
 	// other peers)
 	PrivatePeerIDs string `mapstructure:"private-peer-ids"`
@@ -626,7 +619,6 @@ func DefaultP2PConfig() *P2PConfig {
 		SendRate:                5120000, // 5 mB/s
 		RecvRate:                5120000, // 5 mB/s
 		PexReactor:              true,
-		SeedMode:                false,
 		AllowDuplicateIP:        false,
 		HandshakeTimeout:        20 * time.Second,
 		DialTimeout:             3 * time.Second,

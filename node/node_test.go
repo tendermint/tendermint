@@ -541,7 +541,6 @@ func TestNodeNewSeedNode(t *testing.T) {
 	err = n.Start()
 	require.NoError(t, err)
 
-	assert.False(t, n.config.P2P.SeedMode)
 	assert.True(t, n.pexReactor.IsRunning())
 }
 
