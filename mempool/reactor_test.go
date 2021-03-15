@@ -55,6 +55,7 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, logger log.Logger, chBuf uint) 
 	peerUpdatesCh := make(chan p2p.PeerUpdate, chBuf)
 
 	rts := &reactorTestSuite{
+
 		mempoolInCh:      make(chan p2p.Envelope, chBuf),
 		mempoolOutCh:     make(chan p2p.Envelope, chBuf),
 		mempoolPeerErrCh: make(chan p2p.PeerError, chBuf),
