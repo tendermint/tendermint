@@ -100,11 +100,10 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to load or gen node key %s: %w", config.NodeKeyFile(), err)
 	}
-	if config.Mode == cfg.ModeSeedNode {
+	if config.Mode == cfg.ModeSeed {
 		return NewSeedNode(config,
 			nodeKey,
 			DefaultGenesisDocProviderFunc(config),
-			DefaultDBProvider,
 			logger,
 		)
 	}
@@ -327,7 +326,7 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 		)
 	}
 	switch {
-	case mode == cfg.ModeFullNode:
+	case mode == cfg.ModeFull:
 		consensusLogger.Info("This node is a fullnode")
 	case mode == cfg.ModeValidator:
 		addr := pubKey.Address()
@@ -693,7 +692,7 @@ func createSwitch(config *cfg.Config,
 	)
 
 	sw.SetLogger(p2pLogger)
-	if config.Mode != cfg.ModeSeedNode {
+	if config.Mode != cfg.ModeSeed {
 		sw.AddReactor("MEMPOOL", mempoolReactor)
 		sw.AddReactor("BLOCKCHAIN", bcReactor)
 		sw.AddReactor("CONSENSUS", consensusReactor)
@@ -743,7 +742,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 
 	reactorConfig := &pex.ReactorConfig{
 		Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
-		SeedMode: false,
+		SeedMode: config.Mode == cfg.ModeSeed,
 		// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
 		// blocks assuming 10s blocks ~ 28 hours.
 		// TODO (melekes): make it dynamic based on the actual block latencies
@@ -751,10 +750,6 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 		// https://github.com/tendermint/tendermint/issues/3523
 		SeedDisconnectWaitPeriod:     28 * time.Hour,
 		PersistentPeersMaxDialPeriod: config.P2P.PersistentPeersMaxDialPeriod,
-	}
-	// set seed_mode to true, if mode of the node is seednode
-	if config.Mode == cfg.ModeSeedNode {
-		reactorConfig.SeedMode = true
 	}
 	// TODO persistent peers ? so we can have their DNS addrs saved
 	pexReactor := pex.NewReactor(addrBook, reactorConfig)
@@ -839,7 +834,6 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 func NewSeedNode(config *cfg.Config,
 	nodeKey p2p.NodeKey,
 	genesisDocProvider GenesisDocProvider,
-	dbProvider DBProvider,
 	logger log.Logger,
 	options ...Option) (*Node, error) {
 
@@ -883,8 +877,22 @@ func NewSeedNode(config *cfg.Config,
 		return nil, fmt.Errorf("could not create addrbook: %w", err)
 	}
 
+	peerManager, err := createPeerManager(config, p2pLogger, nodeKey.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create peer manager: %w", err)
+	}
+
+	router, err := createRouter(p2pLogger, nodeInfo, nodeKey.PrivKey, peerManager, transport)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create router: %w", err)
+	}
+
 	// start the pex reactor
 	pexReactor := createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
+	pexReactorV2, err := createPEXReactorV2(config, logger, peerManager, router)
+	if err != nil {
+		return nil, err
+	}
 
 	if config.RPC.PprofListenAddress != "" {
 		go func() {
@@ -897,13 +905,16 @@ func NewSeedNode(config *cfg.Config,
 		config:     config,
 		genesisDoc: genDoc,
 
-		transport: transport,
-		sw:        sw,
-		addrBook:  addrBook,
-		nodeInfo:  nodeInfo,
-		nodeKey:   nodeKey,
+		transport:   transport,
+		sw:          sw,
+		addrBook:    addrBook,
+		nodeInfo:    nodeInfo,
+		nodeKey:     nodeKey,
+		peerManager: peerManager,
+		router:      router,
 
-		pexReactor: pexReactor,
+		pexReactor:   pexReactor,
+		pexReactorV2: pexReactorV2,
 	}
 	node.BaseService = *service.NewBaseService(logger, "SeedNode", node)
 
@@ -1098,31 +1109,30 @@ func NewNode(config *cfg.Config,
 	var (
 		stateSyncReactor     *statesync.Reactor
 		stateSyncReactorShim *p2p.ReactorShim
-		channels             map[p2p.ChannelID]*p2p.Channel
-		peerUpdates          *p2p.PeerUpdates
+
+		channels    map[p2p.ChannelID]*p2p.Channel
+		peerUpdates *p2p.PeerUpdates
 	)
 
-	if config.Mode != cfg.ModeSeedNode {
-		stateSyncReactorShim = p2p.NewReactorShim(logger.With("module", "statesync"), "StateSyncShim", statesync.ChannelShims)
+	stateSyncReactorShim = p2p.NewReactorShim(logger.With("module", "statesync"), "StateSyncShim", statesync.ChannelShims)
 
-		if useLegacyP2P {
-			channels = getChannelsFromShim(stateSyncReactorShim)
-			peerUpdates = stateSyncReactorShim.PeerUpdates
-		} else {
-			channels = makeChannelsFromShims(router, statesync.ChannelShims)
-			peerUpdates = peerManager.Subscribe()
-		}
-
-		stateSyncReactor = statesync.NewReactor(
-			stateSyncReactorShim.Logger,
-			proxyApp.Snapshot(),
-			proxyApp.Query(),
-			channels[statesync.SnapshotChannel],
-			channels[statesync.ChunkChannel],
-			peerUpdates,
-			config.StateSync.TempDir,
-		)
+	if useLegacyP2P {
+		channels = getChannelsFromShim(stateSyncReactorShim)
+		peerUpdates = stateSyncReactorShim.PeerUpdates
+	} else {
+		channels = makeChannelsFromShims(router, statesync.ChannelShims)
+		peerUpdates = peerManager.Subscribe()
 	}
+
+	stateSyncReactor = statesync.NewReactor(
+		stateSyncReactorShim.Logger,
+		proxyApp.Snapshot(),
+		proxyApp.Query(),
+		channels[statesync.SnapshotChannel],
+		channels[statesync.ChunkChannel],
+		peerUpdates,
+		config.StateSync.TempDir,
+	)
 
 	// Setup Transport and Switch.
 	sw := createSwitch(
@@ -1231,7 +1241,7 @@ func (n *Node) OnStart() error {
 
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
-	if n.config.RPC.ListenAddress != "" && n.config.Mode != cfg.ModeSeedNode {
+	if n.config.RPC.ListenAddress != "" && n.config.Mode != cfg.ModeSeed {
 		listeners, err := n.startRPC()
 		if err != nil {
 			return err
@@ -1274,14 +1284,15 @@ func (n *Node) OnStart() error {
 		return err
 	}
 
-	if n.config.FastSync.Version == "v0" && n.config.Mode != cfg.ModeSeedNode {
-		// Start the real blockchain reactor separately since the switch uses the shim.
-		if err := n.bcReactor.Start(); err != nil {
-			return err
-		}
-	}
+	if n.config.Mode != cfg.ModeSeed {
 
-	if n.config.Mode != cfg.ModeSeedNode {
+		if n.config.FastSync.Version == "v0" {
+			// Start the real blockchain reactor separately since the switch uses the shim.
+			if err := n.bcReactor.Start(); err != nil {
+				return err
+			}
+		}
+
 		// Start the real consensus reactor separately since the switch uses the shim.
 		if err := n.consensusReactor.Start(); err != nil {
 			return err
@@ -1345,32 +1356,35 @@ func (n *Node) OnStop() {
 		n.Logger.Error("Error closing indexerService", "err", err)
 	}
 
-	// now stop the reactors
-	if n.config.FastSync.Version == "v0" {
-		// Stop the real blockchain reactor separately since the switch uses the shim.
-		if err := n.bcReactor.Stop(); err != nil {
-			n.Logger.Error("failed to stop the blockchain reactor", "err", err)
+	if n.config.Mode != cfg.ModeSeed {
+
+		// now stop the reactors
+		if n.config.FastSync.Version == "v0" {
+			// Stop the real blockchain reactor separately since the switch uses the shim.
+			if err := n.bcReactor.Stop(); err != nil {
+				n.Logger.Error("failed to stop the blockchain reactor", "err", err)
+			}
 		}
-	}
 
-	// Stop the real consensus reactor separately since the switch uses the shim.
-	if err := n.consensusReactor.Stop(); err != nil {
-		n.Logger.Error("failed to stop the consensus reactor", "err", err)
-	}
+		// Stop the real consensus reactor separately since the switch uses the shim.
+		if err := n.consensusReactor.Stop(); err != nil {
+			n.Logger.Error("failed to stop the consensus reactor", "err", err)
+		}
 
-	// Stop the real state sync reactor separately since the switch uses the shim.
-	if err := n.stateSyncReactor.Stop(); err != nil {
-		n.Logger.Error("failed to stop the state sync reactor", "err", err)
-	}
+		// Stop the real state sync reactor separately since the switch uses the shim.
+		if err := n.stateSyncReactor.Stop(); err != nil {
+			n.Logger.Error("failed to stop the state sync reactor", "err", err)
+		}
 
-	// Stop the real mempool reactor separately since the switch uses the shim.
-	if err := n.mempoolReactor.Stop(); err != nil {
-		n.Logger.Error("failed to stop the mempool reactor", "err", err)
-	}
+		// Stop the real mempool reactor separately since the switch uses the shim.
+		if err := n.mempoolReactor.Stop(); err != nil {
+			n.Logger.Error("failed to stop the mempool reactor", "err", err)
+		}
 
-	// Stop the real evidence reactor separately since the switch uses the shim.
-	if err := n.evidenceReactor.Stop(); err != nil {
-		n.Logger.Error("failed to stop the evidence reactor", "err", err)
+		// Stop the real evidence reactor separately since the switch uses the shim.
+		if err := n.evidenceReactor.Stop(); err != nil {
+			n.Logger.Error("failed to stop the evidence reactor", "err", err)
+		}
 	}
 
 	if !useLegacyP2P && n.pexReactorV2 != nil {

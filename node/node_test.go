@@ -524,7 +524,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 
 func TestNodeNewSeedNode(t *testing.T) {
 	config := cfg.ResetTestRoot("node_new_node_custom_reactors_test")
-	config.Mode = cfg.ModeSeedNode
+	config.Mode = cfg.ModeSeed
 	defer os.RemoveAll(config.RootDir)
 
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
@@ -533,7 +533,6 @@ func TestNodeNewSeedNode(t *testing.T) {
 	n, err := NewSeedNode(config,
 		nodeKey,
 		DefaultGenesisDocProviderFunc(config),
-		DefaultDBProvider,
 		log.TestingLogger(),
 	)
 	require.NoError(t, err)

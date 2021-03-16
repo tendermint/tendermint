@@ -75,9 +75,12 @@ func run(configFile string) error {
 	case "socket", "grpc":
 		err = startApp(cfg)
 	case "builtin":
-		if cfg.Mode == string(e2e.ModeLight) {
-			err = startLightClient(cfg)
-		} else {
+		switch cfg.Mode {
+		case string(e2e.ModeLight):
+			err = startLightNode(cfg)
+		case string(e2e.ModeSeed):
+			err = startSeedNode(cfg)
+		default:
 			err = startNode(cfg)
 		}
 		// FIXME: Temporarily remove maverick until it is redesigned
@@ -149,7 +152,25 @@ func startNode(cfg *Config) error {
 	return n.Start()
 }
 
-func startLightClient(cfg *Config) error {
+func startSeedNode(cfg *Config) error {
+	tmcfg, nodeLogger, nodeKey, err := setupNode()
+	if err != nil {
+		return fmt.Errorf("failed to setup config: %w", err)
+	}
+
+	n, err := node.NewSeedNode(
+		tmcfg,
+		*nodeKey,
+		node.DefaultGenesisDocProviderFunc(tmcfg),
+		nodeLogger,
+	)
+	if err != nil {
+		return err
+	}
+	return n.Start()
+}
+
+func startLightNode(cfg *Config) error {
 	tmcfg, nodeLogger, _, err := setupNode()
 	if err != nil {
 		return err

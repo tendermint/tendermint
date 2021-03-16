@@ -24,9 +24,9 @@ const (
 	// DefaultLogLevel defines a default log level as INFO.
 	DefaultLogLevel = "info"
 
-	ModeFullNode  = "fullnode"
+	ModeFull      = "full"
 	ModeValidator = "validator"
-	ModeSeedNode  = "seednode"
+	ModeSeed      = "seed"
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -43,7 +43,7 @@ var (
 	defaultConfigFileName  = "config.toml"
 	defaultGenesisJSONName = "genesis.json"
 
-	defaultMode             = ModeFullNode
+	defaultMode             = ModeFull
 	defaultPrivValKeyName   = "priv_validator_key.json"
 	defaultPrivValStateName = "priv_validator_state.json"
 
@@ -164,14 +164,14 @@ type BaseConfig struct { //nolint: maligned
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
 
-	// Mode of Node: fullnode | validator | seednode (default: "fullnode")
-	// * fullnode (default)
+	// Mode of Node: full | validator | seed (default: "full")
+	// * full (default)
 	//   - all reactors
 	//   - No priv_validator_key.json, priv_validator_state.json
 	// * validator
 	//   - all reactors
 	//   - with priv_validator_key.json, priv_validator_state.json
-	// * seednode
+	// * seed
 	//   - only P2P, PEX Reactor
 	//   - No priv_validator_key.json, priv_validator_state.json
 	//   - It automatically set seed-mode to true
@@ -343,7 +343,7 @@ func (cfg BaseConfig) ValidateBasic() error {
 		return errors.New("unknown log format (must be 'plain' or 'json')")
 	}
 	switch cfg.Mode {
-	case ModeFullNode, ModeValidator, ModeSeedNode:
+	case ModeFull, ModeValidator, ModeSeed:
 	default:
 		return fmt.Errorf("unknown mode: %v", cfg.Mode)
 	}
