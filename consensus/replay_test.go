@@ -343,7 +343,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	// HEIGHT 2
 	height++
 	incrementHeight(vss...)
-	newValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
+	newValidatorPubKey1, err := css[nVals].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 	valPubKey1ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey1)
 	require.NoError(t, err)
@@ -356,7 +356,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal := types.NewProposal(vss[1].Height, round, -1, blockID)
 	p := proposal.ToProto()
-	if err := vss[1].SignProposal(config.ChainID(), p); err != nil {
+	if err := vss[1].SignProposal(context.Background(), config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -373,7 +373,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	// HEIGHT 3
 	height++
 	incrementHeight(vss...)
-	updateValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
+	updateValidatorPubKey1, err := css[nVals].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 	updatePubKey1ABCI, err := cryptoenc.PubKeyToProto(updateValidatorPubKey1)
 	require.NoError(t, err)
@@ -386,7 +386,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal = types.NewProposal(vss[2].Height, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vss[2].SignProposal(config.ChainID(), p); err != nil {
+	if err := vss[2].SignProposal(context.Background(), config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -403,14 +403,14 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	// HEIGHT 4
 	height++
 	incrementHeight(vss...)
-	newValidatorPubKey2, err := css[nVals+1].privValidator.GetPubKey()
+	newValidatorPubKey2, err := css[nVals+1].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 	newVal2ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey2)
 	require.NoError(t, err)
 	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
 	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx2, nil, mempl.TxInfo{})
 	assert.Nil(t, err)
-	newValidatorPubKey3, err := css[nVals+2].privValidator.GetPubKey()
+	newValidatorPubKey3, err := css[nVals+2].privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 	newVal3ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey3)
 	require.NoError(t, err)
@@ -426,10 +426,10 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	valIndexFn := func(cssIdx int) int {
 		for i, vs := range newVss {
-			vsPubKey, err := vs.GetPubKey()
+			vsPubKey, err := vs.GetPubKey(context.Background())
 			require.NoError(t, err)
 
-			cssPubKey, err := css[cssIdx].privValidator.GetPubKey()
+			cssPubKey, err := css[cssIdx].privValidator.GetPubKey(context.Background())
 			require.NoError(t, err)
 
 			if vsPubKey.Equals(cssPubKey) {
@@ -443,7 +443,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal = types.NewProposal(vss[3].Height, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vss[3].SignProposal(config.ChainID(), p); err != nil {
+	if err := vss[3].SignProposal(context.Background(), config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -502,7 +502,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	selfIndex = valIndexFn(0)
 	proposal = types.NewProposal(vss[1].Height, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vss[1].SignProposal(config.ChainID(), p); err != nil {
+	if err := vss[1].SignProposal(context.Background(), config.ChainID(), p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -687,7 +687,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		})
 		chain, commits, err = makeBlockchainFromWAL(wal)
 		require.NoError(t, err)
-		pubKey, err := privVal.GetPubKey()
+		pubKey, err := privVal.GetPubKey(context.Background())
 		require.NoError(t, err)
 		stateDB, genesisState, store = stateAndStore(config, pubKey, kvstore.ProtocolVersion)
 
@@ -888,7 +888,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	privVal, err := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	require.NoError(t, err)
 	const appVersion = 0x0
-	pubKey, err := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(config, pubKey, appVersion)
 	stateStore := sm.NewStore(stateDB)
@@ -1224,7 +1224,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 
 	privVal, err := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	require.NoError(t, err)
-	pubKey, err := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(config, pubKey, 0x0)
 	stateStore := sm.NewStore(stateDB)

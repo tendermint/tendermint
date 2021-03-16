@@ -1,6 +1,7 @@
 package evidence_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -304,11 +305,11 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 
 	vote1 := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultEvidenceTime)
 	v1 := vote1.ToProto()
-	err := val.SignVote(chainID, v1)
+	err := val.SignVote(context.Background(), chainID, v1)
 	require.NoError(t, err)
 	badVote := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultEvidenceTime)
 	bv := badVote.ToProto()
-	err = val2.SignVote(chainID, bv)
+	err = val2.SignVote(context.Background(), chainID, bv)
 	require.NoError(t, err)
 
 	vote1.Signature = v1.Signature
@@ -386,7 +387,7 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 func makeVote(
 	t *testing.T, val types.PrivValidator, chainID string, valIndex int32, height int64,
 	round int32, step int, blockID types.BlockID, time time.Time) *types.Vote {
-	pubKey, err := val.GetPubKey()
+	pubKey, err := val.GetPubKey(context.Background())
 	require.NoError(t, err)
 	v := &types.Vote{
 		ValidatorAddress: pubKey.Address(),
@@ -399,7 +400,7 @@ func makeVote(
 	}
 
 	vpb := v.ToProto()
-	err = val.SignVote(chainID, vpb)
+	err = val.SignVote(context.Background(), chainID, vpb)
 	if err != nil {
 		panic(err)
 	}

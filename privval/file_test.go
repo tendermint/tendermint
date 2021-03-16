@@ -1,6 +1,7 @@
 package privval
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
@@ -61,7 +62,7 @@ func TestResetValidator(t *testing.T) {
 	randBytes := tmrand.Bytes(tmhash.Size)
 	blockID := types.BlockID{Hash: randBytes, PartSetHeader: types.PartSetHeader{}}
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
-	err = privVal.SignVote("mychainid", vote.ToProto())
+	err = privVal.SignVote(context.Background(), "mychainid", vote.ToProto())
 	assert.NoError(t, err, "expected no error signing vote")
 
 	// priv val after signing is not same as empty
@@ -186,11 +187,11 @@ func TestSignVote(t *testing.T) {
 	// sign a vote for first time
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, block1)
 	v := vote.ToProto()
-	err = privVal.SignVote("mychainid", v)
+	err = privVal.SignVote(context.Background(), "mychainid", v)
 	assert.NoError(err, "expected no error signing vote")
 
 	// try to sign the same vote again; should be fine
-	err = privVal.SignVote("mychainid", v)
+	err = privVal.SignVote(context.Background(), "mychainid", v)
 	assert.NoError(err, "expected no error on signing same vote")
 
 	// now try some bad votes
@@ -203,14 +204,14 @@ func TestSignVote(t *testing.T) {
 
 	for _, c := range cases {
 		cpb := c.ToProto()
-		err = privVal.SignVote("mychainid", cpb)
+		err = privVal.SignVote(context.Background(), "mychainid", cpb)
 		assert.Error(err, "expected error on signing conflicting vote")
 	}
 
 	// try signing a vote with a different time stamp
 	sig := vote.Signature
 	vote.Timestamp = vote.Timestamp.Add(time.Duration(1000))
-	err = privVal.SignVote("mychainid", v)
+	err = privVal.SignVote(context.Background(), "mychainid", v)
 	assert.NoError(err)
 	assert.Equal(sig, vote.Signature)
 }
@@ -238,11 +239,11 @@ func TestSignProposal(t *testing.T) {
 	// sign a proposal for first time
 	proposal := newProposal(height, round, block1)
 	pbp := proposal.ToProto()
-	err = privVal.SignProposal("mychainid", pbp)
+	err = privVal.SignProposal(context.Background(), "mychainid", pbp)
 	assert.NoError(err, "expected no error signing proposal")
 
 	// try to sign the same proposal again; should be fine
-	err = privVal.SignProposal("mychainid", pbp)
+	err = privVal.SignProposal(context.Background(), "mychainid", pbp)
 	assert.NoError(err, "expected no error on signing same proposal")
 
 	// now try some bad Proposals
@@ -254,14 +255,14 @@ func TestSignProposal(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		err = privVal.SignProposal("mychainid", c.ToProto())
+		err = privVal.SignProposal(context.Background(), "mychainid", c.ToProto())
 		assert.Error(err, "expected error on signing conflicting proposal")
 	}
 
 	// try signing a proposal with a different time stamp
 	sig := proposal.Signature
 	proposal.Timestamp = proposal.Timestamp.Add(time.Duration(1000))
-	err = privVal.SignProposal("mychainid", pbp)
+	err = privVal.SignProposal(context.Background(), "mychainid", pbp)
 	assert.NoError(err)
 	assert.Equal(sig, proposal.Signature)
 }
@@ -283,7 +284,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	{
 		proposal := newProposal(height, round, block1)
 		pb := proposal.ToProto()
-		err := privVal.SignProposal(chainID, pb)
+		err := privVal.SignProposal(context.Background(), chainID, pb)
 		assert.NoError(t, err, "expected no error signing proposal")
 		signBytes := types.ProposalSignBytes(chainID, pb)
 
@@ -294,7 +295,7 @@ func TestDifferByTimestamp(t *testing.T) {
 		pb.Timestamp = pb.Timestamp.Add(time.Millisecond)
 		var emptySig []byte
 		proposal.Signature = emptySig
-		err = privVal.SignProposal("mychainid", pb)
+		err = privVal.SignProposal(context.Background(), "mychainid", pb)
 		assert.NoError(t, err, "expected no error on signing same proposal")
 
 		assert.Equal(t, timeStamp, pb.Timestamp)
@@ -308,7 +309,7 @@ func TestDifferByTimestamp(t *testing.T) {
 		blockID := types.BlockID{Hash: randbytes, PartSetHeader: types.PartSetHeader{}}
 		vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID)
 		v := vote.ToProto()
-		err := privVal.SignVote("mychainid", v)
+		err := privVal.SignVote(context.Background(), "mychainid", v)
 		assert.NoError(t, err, "expected no error signing vote")
 
 		signBytes := types.VoteSignBytes(chainID, v)
@@ -319,7 +320,7 @@ func TestDifferByTimestamp(t *testing.T) {
 		v.Timestamp = v.Timestamp.Add(time.Millisecond)
 		var emptySig []byte
 		v.Signature = emptySig
-		err = privVal.SignVote("mychainid", v)
+		err = privVal.SignVote(context.Background(), "mychainid", v)
 		assert.NoError(t, err, "expected no error on signing same vote")
 
 		assert.Equal(t, timeStamp, v.Timestamp)

@@ -3,6 +3,7 @@ package types
 import (
 	// it is ok to use math/rand here: we do not need a cryptographically secure random
 	// number generator here and we can run the tests a bit faster
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"math"
@@ -570,7 +571,7 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 		vi := int32(0)
 		for n := range tc.blockIDs {
 			for i := 0; i < tc.numVotes[n]; i++ {
-				pubKey, err := vals[vi].GetPubKey()
+				pubKey, err := vals[vi].GetPubKey(context.Background())
 				require.NoError(t, err)
 				vote := &Vote{
 					ValidatorAddress: pubKey.Address(),
