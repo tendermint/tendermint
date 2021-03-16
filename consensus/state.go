@@ -2270,8 +2270,15 @@ func (cs *State) updatePrivValidatorPubKey() error {
 		return nil
 	}
 
+	var timeout time.Duration
+	if cs.config.TimeoutPrecommit > cs.config.TimeoutPrevote {
+		timeout = cs.config.TimeoutPrecommit
+	} else {
+		timeout = cs.config.TimeoutPrevote
+	}
+
 	// set a hard timeout for 2 seconds. This helps in avoiding blocking of the remote signer connection
-	ctx, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
 	pubKey, err := cs.privValidator.GetPubKey(ctx)
 	if err != nil {
