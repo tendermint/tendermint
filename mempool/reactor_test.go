@@ -297,86 +297,60 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	numNodes := 2
 	config := cfg.TestConfig()
 
-	testSuites := make([]*reactorTestSuite, numNodes)
-	for i := 0; i < len(testSuites); i++ {
-		logger := log.TestingLogger().With("node", i)
-		testSuites[i] = setup(t, config.Mempool, logger, 0)
-	}
+	rts := setup(t, config.Mempool, numNodes, 0)
 
-	// ignore all peer errors
-	for _, suite := range testSuites {
-		go func(s *reactorTestSuite) {
-			// drop all errors on the mempool channel
-			for range s.mempoolPeerErrCh {
-			}
-		}(suite)
-	}
+	primary := rts.nodes[0]
+	secondary := rts.nodes[1]
 
-	primary := testSuites[0]
-	secondary := testSuites[1]
-
-	// Simulate a router by listening for all outbound envelopes and proxying the
-	// envelopes to the respective peer (suite).
-	wg := new(sync.WaitGroup)
-	simulateRouter(wg, primary, testSuites, 1)
+	// TODO(tychoish): figure out if we need to keep error
+	// channels empty here?
 
 	// Broadcast a tx, which has the max size and ensure it's received by the
 	// second reactor.
 	tx1 := tmrand.Bytes(config.Mempool.MaxTxBytes)
-	err := primary.reactor.mempool.CheckTx(tx1, nil, TxInfo{SenderID: UnknownPeerID})
+	err := rts.mempools[primary].CheckTx(tx1, nil, TxInfo{SenderID: UnknownPeerID})
 	require.NoError(t, err)
 
-	primary.peerUpdatesCh <- p2p.PeerUpdate{
-		Status: p2p.PeerStatusUp,
-		NodeID: secondary.peerID,
-	}
+	rts.start(t)
 
 	// Wait till all secondary suites (reactor) received all mempool txs from the
 	// primary suite (node).
-	waitForTxs(t, []types.Tx{tx1}, secondary)
+	rts.waitForTxns(t, []types.Tx{tx1}, secondary)
 
-	primary.reactor.mempool.Flush()
-	secondary.reactor.mempool.Flush()
+	rts.mempools[primary].Flush()
+	rts.mempools[secondary].Flush()
 
 	// broadcast a tx, which is beyond the max size and ensure it's not sent
 	tx2 := tmrand.Bytes(config.Mempool.MaxTxBytes + 1)
-	err = primary.reactor.mempool.CheckTx(tx2, nil, TxInfo{SenderID: UnknownPeerID})
+	err = rts.mempools[primary].CheckTx(tx2, nil, TxInfo{SenderID: UnknownPeerID})
 	require.Error(t, err)
 
-	wg.Wait()
-
-	// ensure all channels are drained
-	for _, suite := range testSuites {
-		require.Empty(t, suite.mempoolOutCh)
-	}
+	rts.assertMempoolChannelsDrained(t)
 }
 
 func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	config := cfg.TestConfig()
-	reactor := setup(t, config.Mempool, log.TestingLogger().With("node", 0), 0)
 
-	go func() {
-		// drop all messages on the mempool channel
-		for range reactor.mempoolOutCh {
-		}
-	}()
+	// we're creating a single node network, but not starting the
+	// network.
+	rts := setup(t, config.Mempool, 1, 0)
 
-	go func() {
-		// drop all errors on the mempool channel
-		for range reactor.mempoolPeerErrCh {
-		}
-	}()
+	nodeID := rts.nodes[0]
+
+	// TODO(tychoish): figure out if we need to drop mempool
+	// channel messages
 
 	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
 	// ensure the reactor does not panic (i.e. exhaust active IDs)
 	for i := 0; i < maxActiveIDs+1; i++ {
-		reactor.peerUpdatesCh <- p2p.PeerUpdate{
+		rts.peerChans[nodeID] <- p2p.PeerUpdate{
 			Status: p2p.PeerStatusUp,
 			NodeID: peerID,
 		}
-		reactor.mempoolOutCh <- p2p.Envelope{
+
+		rts.mempoolChnnels[nodeID].Out <- p2p.Envelope{
 			To: peerID,
 			Message: &protomem.Txs{
 				Txs: [][]byte{},
@@ -384,7 +358,7 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 		}
 	}
 
-	require.Empty(t, reactor.mempoolOutCh)
+	rts.assertMempoolChannelsDrained(t)
 }
 
 func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
@@ -414,32 +388,16 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 
 	config := cfg.TestConfig()
 
-	testSuites := []*reactorTestSuite{
-		setup(t, config.Mempool, log.TestingLogger().With("node", 0), 0),
-		setup(t, config.Mempool, log.TestingLogger().With("node", 1), 0),
-	}
+	rts := setup(t, config.Mempool, 2, 0)
 
-	primary := testSuites[0]
-	secondary := testSuites[1]
+	primary := rts.nodes[0]
+	secondary := rts.nodes[1]
 
-	// ignore all peer errors
-	for _, suite := range testSuites {
-		go func(s *reactorTestSuite) {
-			// drop all errors on the mempool channel
-			for range s.mempoolPeerErrCh {
-			}
-		}(suite)
-	}
-
-	// connect peer
-	primary.peerUpdatesCh <- p2p.PeerUpdate{
-		Status: p2p.PeerStatusUp,
-		NodeID: secondary.peerID,
-	}
+	rts.start(t)
 
 	// disconnect peer
-	primary.peerUpdatesCh <- p2p.PeerUpdate{
+	rts.peerChans[primary] <- p2p.PeerUpdate{
 		Status: p2p.PeerStatusDown,
-		NodeID: secondary.peerID,
+		NodeID: secondary,
 	}
 }
