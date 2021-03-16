@@ -65,7 +65,7 @@ func (ss *SignerServer) SignVote(ctx context.Context, req *privvalproto.SignVote
 		return nil, status.Errorf(codes.InvalidArgument, "error signing vote: %v", err)
 	}
 
-	ss.logger.Info("SignerServer: SignVote Success")
+	ss.logger.Info("SignerServer: SignVote Success", "height", req.Vote.Height)
 
 	return &privvalproto.SignedVoteResponse{Vote: *vote}, nil
 }
@@ -81,7 +81,7 @@ func (ss *SignerServer) SignProposal(ctx context.Context, req *privvalproto.Sign
 		return nil, status.Errorf(codes.InvalidArgument, "error signing proposal: %v", err)
 	}
 
-	ss.logger.Info("SignerServer: SignProposal Success")
+	ss.logger.Info("SignerServer: SignProposal Success", "height", req.Proposal.Height)
 
 	return &privvalproto.SignedProposalResponse{Proposal: *proposal}, nil
 }
