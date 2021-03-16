@@ -2197,7 +2197,7 @@ func (cs *State) signVote(
 	case tmproto.PrevoteType:
 		timeout = cs.config.TimeoutPrevote
 	default:
-		timeout = 1 * time.Second
+		timeout = time.Second
 	}
 
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
