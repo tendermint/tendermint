@@ -2190,10 +2190,14 @@ func (cs *State) signVote(
 	// If the signedMessageType is for precommit,
 	// use our local precommit Timeout as the max wait time for getting a singed commit. The same goes for prevote.
 	var timeout time.Duration
-	if msgType == tmproto.PrecommitType {
+
+	switch msgType {
+	case tmproto.PrecommitType:
 		timeout = cs.config.TimeoutPrecommit
-	} else if msgType == tmproto.PrevoteType {
+	case tmproto.PrevoteType:
 		timeout = cs.config.TimeoutPrevote
+	default:
+		timeout = 1 * time.Second
 	}
 
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
