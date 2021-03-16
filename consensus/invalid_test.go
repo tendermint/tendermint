@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"testing"
 
 	"github.com/tendermint/tendermint/libs/bytes"
@@ -62,7 +63,7 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, sw
 	go func() {
 		cs.mtx.Lock()
 		cs.privValidator = pv
-		pubKey, err := cs.privValidator.GetPubKey()
+		pubKey, err := cs.privValidator.GetPubKey(context.Background())
 		if err != nil {
 			panic(err)
 		}
@@ -83,7 +84,7 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, sw
 				PartSetHeader: types.PartSetHeader{Total: 1, Hash: tmrand.Bytes(32)}},
 		}
 		p := precommit.ToProto()
-		err = cs.privValidator.SignVote(cs.state.ChainID, p)
+		err = cs.privValidator.SignVote(context.Background(), cs.state.ChainID, p)
 		if err != nil {
 			t.Error(err)
 		}

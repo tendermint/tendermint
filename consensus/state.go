@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -1083,7 +1084,11 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID)
 	p := proposal.ToProto()
-	if err := cs.privValidator.SignProposal(cs.state.ChainID, p); err == nil {
+
+	ctx, cancel := context.WithTimeout(context.TODO(), cs.config.TimeoutPropose)
+	defer cancel()
+
+	if err := cs.privValidator.SignProposal(ctx, cs.state.ChainID, p); err == nil {
 		proposal.Signature = p.Signature
 
 		// send proposal and block parts on internal msg queue
@@ -2086,7 +2091,24 @@ func (cs *State) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 	v := vote.ToProto()
-	err := cs.privValidator.SignVote(cs.state.ChainID, v)
+
+	// If the signedMessageType is for precommit, use our local precommit Timeout
+	// as the max wait time for getting a singed commit. The same goes for prevote.
+	var timeout time.Duration
+
+	switch msgType {
+	case tmproto.PrecommitType:
+		timeout = cs.config.TimeoutPrecommit
+	case tmproto.PrevoteType:
+		timeout = cs.config.TimeoutPrevote
+	default:
+		timeout = time.Second
+	}
+
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	defer cancel()
+
+	err := cs.privValidator.SignVote(ctx, cs.state.ChainID, v)
 	vote.Signature = v.Signature
 
 	return vote, err
@@ -2154,10 +2176,21 @@ func (cs *State) updatePrivValidatorPubKey() error {
 		return nil
 	}
 
-	pubKey, err := cs.privValidator.GetPubKey()
+	var timeout time.Duration
+	if cs.config.TimeoutPrecommit > cs.config.TimeoutPrevote {
+		timeout = cs.config.TimeoutPrecommit
+	} else {
+		timeout = cs.config.TimeoutPrevote
+	}
+
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	defer cancel()
+
+	pubKey, err := cs.privValidator.GetPubKey(ctx)
 	if err != nil {
 		return err
 	}
+
 	cs.privValidatorPubKey = pubKey
 	return nil
 }

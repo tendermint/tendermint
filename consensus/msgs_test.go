@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"encoding/hex"
 	"math"
 	"testing"
@@ -58,7 +59,7 @@ func TestMsgToProto(t *testing.T) {
 	pbProposal := proposal.ToProto()
 
 	pv := types.NewMockPV()
-	pk, err := pv.GetPubKey()
+	pk, err := pv.GetPubKey(context.Background())
 	require.NoError(t, err)
 	val := types.NewValidator(pk, 100)
 

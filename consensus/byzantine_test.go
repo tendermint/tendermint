@@ -203,7 +203,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 		proposal := types.NewProposal(height, round, lazyProposer.ValidRound, propBlockID)
 		p := proposal.ToProto()
-		if err := lazyProposer.privValidator.SignProposal(lazyProposer.state.ChainID, p); err == nil {
+		if err := lazyProposer.privValidator.SignProposal(context.Background(), lazyProposer.state.ChainID, p); err == nil {
 			proposal.Signature = p.Signature
 
 			// send proposal and block parts on internal msg queue
@@ -251,7 +251,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		close(done)
 	}()
 
-	pubkey, err := bcs.privValidator.GetPubKey()
+	pubkey, err := bcs.privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
 	select {
@@ -426,7 +426,7 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 	polRound, propBlockID := cs.ValidRound, types.BlockID{Hash: block1.Hash(), PartSetHeader: blockParts1.Header()}
 	proposal1 := types.NewProposal(height, round, polRound, propBlockID)
 	p1 := proposal1.ToProto()
-	if err := cs.privValidator.SignProposal(cs.state.ChainID, p1); err != nil {
+	if err := cs.privValidator.SignProposal(context.Background(), cs.state.ChainID, p1); err != nil {
 		t.Error(err)
 	}
 
@@ -440,7 +440,7 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 	polRound, propBlockID = cs.ValidRound, types.BlockID{Hash: block2.Hash(), PartSetHeader: blockParts2.Header()}
 	proposal2 := types.NewProposal(height, round, polRound, propBlockID)
 	p2 := proposal2.ToProto()
-	if err := cs.privValidator.SignProposal(cs.state.ChainID, p2); err != nil {
+	if err := cs.privValidator.SignProposal(context.Background(), cs.state.ChainID, p2); err != nil {
 		t.Error(err)
 	}
 
