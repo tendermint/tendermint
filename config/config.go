@@ -856,6 +856,7 @@ type ConsensusConfig struct {
 	WalPath string `mapstructure:"wal-file"`
 	walFile string // overrides WalPath if set
 
+	// TODO: remove timeout configs, these should be global not local
 	// How long we wait for a proposal block before prevoting nil
 	TimeoutPropose time.Duration `mapstructure:"timeout-propose"`
 	// How much timeout-propose increases with each round

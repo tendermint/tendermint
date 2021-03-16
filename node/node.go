@@ -989,7 +989,7 @@ func NewNode(config *cfg.Config,
 	}
 	var pubKey crypto.PubKey
 	if config.Mode == cfg.ModeValidator {
-		pubKey, err = privValidator.GetPubKey()
+		pubKey, err = privValidator.GetPubKey(context.TODO())
 		if err != nil {
 			return nil, fmt.Errorf("can't get pubkey: %w", err)
 		}
@@ -1460,7 +1460,7 @@ func (n *Node) ConfigureRPC() error {
 		Config: *n.config.RPC,
 	}
 	if n.config.Mode == cfg.ModeValidator {
-		pubKey, err := n.privValidator.GetPubKey()
+		pubKey, err := n.privValidator.GetPubKey(context.TODO())
 		if pubKey == nil || err != nil {
 			return fmt.Errorf("can't get pubkey: %w", err)
 		}
@@ -1884,7 +1884,7 @@ func createAndStartPrivValidatorSocketClient(
 	}
 
 	// try to get a pubkey from private validate first time
-	_, err = pvsc.GetPubKey()
+	_, err = pvsc.GetPubKey(context.TODO())
 	if err != nil {
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
@@ -1909,7 +1909,7 @@ func createAndStartPrivValidatorGRPCClient(
 	}
 
 	// try to get a pubkey from private validate first time
-	_, err = pvsc.GetPubKey()
+	_, err = pvsc.GetPubKey(context.TODO())
 	if err != nil {
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}

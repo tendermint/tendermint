@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -86,7 +87,11 @@ func initFilesWithConfig(config *cfg.Config) error {
 				PubKeyTypes: []string{types.ABCIPubKeyTypeSecp256k1},
 			}
 		}
-		pubKey, err := pv.GetPubKey()
+
+		ctx, cancel := context.WithTimeout(context.TODO(), ctxTimeout)
+		defer cancel()
+
+		pubKey, err := pv.GetPubKey(ctx)
 		if err != nil {
 			return fmt.Errorf("can't get pubkey: %w", err)
 		}

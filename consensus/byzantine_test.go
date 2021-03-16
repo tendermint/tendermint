@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -200,7 +201,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 		proposal := types.NewProposal(height, round, lazyNodeState.ValidRound, propBlockID)
 		p := proposal.ToProto()
-		if err := lazyNodeState.privValidator.SignProposal(lazyNodeState.state.ChainID, p); err == nil {
+		if err := lazyNodeState.privValidator.SignProposal(context.Background(), lazyNodeState.state.ChainID, p); err == nil {
 			proposal.Signature = p.Signature
 
 			// send proposal and block parts on internal msg queue
@@ -247,7 +248,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	wg.Wait()
 
-	pubkey, err := bzNodeState.privValidator.GetPubKey()
+	pubkey, err := bzNodeState.privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
 	for idx, ev := range evidenceFromEachValidator {
