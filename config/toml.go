@@ -319,13 +319,6 @@ recv-rate = {{ .P2P.RecvRate }}
 # Set true to enable the peer-exchange reactor
 pex = {{ .P2P.PexReactor }}
 
-# Seed mode, in which node constantly crawls the network and looks for
-# peers. If another node asks it for addresses, it responds and disconnects.
-#
-# Does not work if the peer-exchange reactor is disabled.
-# automatically set true if Mode of the node is seednode
-seed-mode = {{ .P2P.SeedMode }}
-
 # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
 private-peer-ids = "{{ .P2P.PrivatePeerIDs }}"
 
