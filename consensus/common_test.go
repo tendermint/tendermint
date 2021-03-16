@@ -108,7 +108,7 @@ func (vs *validatorStub) signVote(
 	hash []byte,
 	header types.PartSetHeader) (*types.Vote, error) {
 
-	pubKey, err := vs.PrivValidator.GetPubKey()
+	pubKey, err := vs.PrivValidator.GetPubKey(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
@@ -123,7 +123,7 @@ func (vs *validatorStub) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 	v := vote.ToProto()
-	err = vs.PrivValidator.SignVote(config.ChainID(), v)
+	err = vs.PrivValidator.SignVote(context.Background(), config.ChainID(), v)
 	vote.Signature = v.Signature
 
 	return vote, err
@@ -169,11 +169,11 @@ func (vss ValidatorStubsByPower) Len() int {
 }
 
 func (vss ValidatorStubsByPower) Less(i, j int) bool {
-	vssi, err := vss[i].GetPubKey()
+	vssi, err := vss[i].GetPubKey(context.Background())
 	if err != nil {
 		panic(err)
 	}
-	vssj, err := vss[j].GetPubKey()
+	vssj, err := vss[j].GetPubKey(context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -220,7 +220,7 @@ func decideProposal(
 	polRound, propBlockID := validRound, types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 	proposal = types.NewProposal(height, round, polRound, propBlockID)
 	p := proposal.ToProto()
-	if err := vs.SignProposal(chainID, p); err != nil {
+	if err := vs.SignProposal(context.Background(), chainID, p); err != nil {
 		panic(err)
 	}
 
@@ -248,7 +248,7 @@ func signAddVotes(
 
 func validatePrevote(t *testing.T, cs *State, round int32, privVal *validatorStub, blockHash []byte) {
 	prevotes := cs.Votes.Prevotes(round)
-	pubKey, err := privVal.GetPubKey()
+	pubKey, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
 	address := pubKey.Address()
 	var vote *types.Vote
@@ -268,7 +268,7 @@ func validatePrevote(t *testing.T, cs *State, round int32, privVal *validatorStu
 
 func validateLastPrecommit(t *testing.T, cs *State, privVal *validatorStub, blockHash []byte) {
 	votes := cs.LastCommit
-	pv, err := privVal.GetPubKey()
+	pv, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
 	address := pv.Address()
 	var vote *types.Vote
@@ -290,7 +290,7 @@ func validatePrecommit(
 	lockedBlockHash []byte,
 ) {
 	precommits := cs.Votes.Precommits(thisRound)
-	pv, err := privVal.GetPubKey()
+	pv, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
 	address := pv.Address()
 	var vote *types.Vote

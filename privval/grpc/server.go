@@ -39,7 +39,7 @@ func (ss *SignerServer) GetPubKey(ctx context.Context, req *privvalproto.PubKeyR
 	*privvalproto.PubKeyResponse, error) {
 	var pubKey crypto.PubKey
 
-	pubKey, err := ss.privVal.GetPubKey()
+	pubKey, err := ss.privVal.GetPubKey(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "error getting pubkey: %v", err)
 	}
@@ -60,12 +60,12 @@ func (ss *SignerServer) SignVote(ctx context.Context, req *privvalproto.SignVote
 	*privvalproto.SignedVoteResponse, error) {
 	vote := req.Vote
 
-	err := ss.privVal.SignVote(req.ChainId, vote)
+	err := ss.privVal.SignVote(ctx, req.ChainId, vote)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "error signing vote: %v", err)
 	}
 
-	ss.logger.Info("SignerServer: SignVote Success")
+	ss.logger.Info("SignerServer: SignVote Success", "height", req.Vote.Height)
 
 	return &privvalproto.SignedVoteResponse{Vote: *vote}, nil
 }
@@ -76,12 +76,12 @@ func (ss *SignerServer) SignProposal(ctx context.Context, req *privvalproto.Sign
 	*privvalproto.SignedProposalResponse, error) {
 	proposal := req.Proposal
 
-	err := ss.privVal.SignProposal(req.ChainId, proposal)
+	err := ss.privVal.SignProposal(ctx, req.ChainId, proposal)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "error signing proposal: %v", err)
 	}
 
-	ss.logger.Info("SignerServer: SignProposal Success")
+	ss.logger.Info("SignerServer: SignProposal Success", "height", req.Proposal.Height)
 
 	return &privvalproto.SignedProposalResponse{Proposal: *proposal}, nil
 }
