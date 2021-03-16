@@ -516,27 +516,27 @@ func createConsensusReactor(
 
 	reactorShim := p2p.NewReactorShim(logger, "ConsensusShim", cs.ChannelShims)
 
-	var (
-		channels    map[p2p.ChannelID]*p2p.Channel
-		peerUpdates *p2p.PeerUpdates
-	)
+	// var (
+	// 	channels    map[p2p.ChannelID]*p2p.Channel
+	// 	peerUpdates *p2p.PeerUpdates
+	// )
 
-	if useLegacyP2P {
-		channels = getChannelsFromShim(reactorShim)
-		peerUpdates = reactorShim.PeerUpdates
-	} else {
-		channels = makeChannelsFromShims(router, cs.ChannelShims)
-		peerUpdates = peerManager.Subscribe()
-	}
+	// if useLegacyP2P {
+	// 	channels = getChannelsFromShim(reactorShim)
+	// 	peerUpdates = reactorShim.PeerUpdates
+	// } else {
+	// 	channels = makeChannelsFromShims(router, cs.ChannelShims)
+	// 	peerUpdates = peerManager.Subscribe()
+	// }
 
 	reactor := cs.NewReactor(
-		logger,
+		// logger,
 		consensusState,
-		channels[cs.StateChannel],
-		channels[cs.DataChannel],
-		channels[cs.VoteChannel],
-		channels[cs.VoteSetBitsChannel],
-		peerUpdates,
+		// channels[cs.StateChannel],
+		// channels[cs.DataChannel],
+		// channels[cs.VoteChannel],
+		// channels[cs.VoteSetBitsChannel],
+		// peerUpdates,
 		waitSync,
 		cs.ReactorMetrics(csMetrics),
 	)

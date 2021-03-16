@@ -25,8 +25,6 @@ func assertMempool(txn txNotifier) mempl.Mempool {
 }
 
 func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
-	configSetup(t)
-
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
@@ -47,8 +45,6 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 }
 
 func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
-	configSetup(t)
-
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
@@ -67,8 +63,6 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 }
 
 func TestMempoolProgressInHigherRound(t *testing.T) {
-	configSetup(t)
-
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
@@ -119,8 +113,6 @@ func deliverTxsRange(cs *State, start, end int) {
 }
 
 func TestMempoolTxConcurrentWithCommit(t *testing.T) {
-	configSetup(t)
-
 	state, privVals := randGenesisState(1, false, 10)
 	blockDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(blockDB)
@@ -145,8 +137,6 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 }
 
 func TestMempoolRmBadTx(t *testing.T) {
-	configSetup(t)
-
 	state, privVals := randGenesisState(1, false, 10)
 	app := NewCounterApplication()
 	blockDB := dbm.NewMemDB()
