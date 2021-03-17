@@ -19,7 +19,7 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 * All config parameters are now hyphen-case (also known as kebab-case) instead of snake_case. Before restarting the node make sure
   you have updated all the variables in your `config.toml` file.
 
-* Added `--mode` flag and `mode` config variable on `config.toml` for setting Mode of the Node: `fullnode` | `validator` | `seednode` (default: `fullnode`)
+* Added `--mode` flag and `mode` config variable on `config.toml` for setting Mode of the Node: `full` | `validator` | `seed` (default: `full`)
   [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md)
 
 ### CLI Changes

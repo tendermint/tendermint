@@ -56,7 +56,7 @@ The validator will only talk to the sentry that are provided, the sentry nodes w
 
 When initializing nodes there are five parameters in the `config.toml` that may need to be altered.
 
-- `mode:` (fullnode | validator | seednode) Mode of node (default: 'fullnode'). If you want to run the node as validator, change it to 'validator'.
+- `mode:` (full | validator | seed) Mode of node (default: 'full'). If you want to run the node as validator, change it to 'validator'.
 - `pex:` boolean. This turns the peer exchange reactor on or off for a node. When `pex=false`, only the `persistent-peers` list is available for connection.
 - `persistent-peers:` a comma separated list of `nodeID@ip:port` values that define a list of peers that are expected to be online at all times. This is necessary at first startup because by setting `pex=false` the node will not be able to join the network.
 - `unconditional-peer-ids:` comma separated list of nodeID's. These nodes will be connected to no matter the limits of inbound and outbound peers. This is useful for when sentry nodes have full address books.

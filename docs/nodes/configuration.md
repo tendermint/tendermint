@@ -41,15 +41,15 @@ moniker = "anonymous"
 # and verifying their commits
 fast-sync = true
 
-# Mode of Node: fullnode | validator | seednode
+# Mode of Node: full | validator | seed
 # Default value is fullnode, so you need to set it to "validator" if you want to run the node as validator
-# * fullnode (default)
+# * full node (default)
 #   - all reactors
 #   - No priv_validator_key.json, priv_validator_state.json
-# * validator
+# * validator node
 #   - all reactors
 #   - with priv_validator_key.json, priv_validator_state.json
-# * seednode
+# * seed node
 #   - only P2P, PEX Reactor
 #   - No priv_validator_key.json, priv_validator_state.json
 #   - It automatically set seed-mode to true
@@ -255,13 +255,6 @@ recv-rate = 5120000
 
 # Set true to enable the peer-exchange reactor
 pex = true
-
-# Seed mode, in which node constantly crawls the network and looks for
-# peers. If another node asks it for addresses, it responds and disconnects.
-#
-# Does not work if the peer-exchange reactor is disabled.
-# automatically set true if Mode of the node is seednode
-seed-mode = false
 
 # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
 private-peer-ids = ""
