@@ -211,7 +211,9 @@ func MakeNode(t *testing.T, network *Network) *Node {
 	require.Len(t, transport.Endpoints(), 1, "transport not listening on 1 endpoint")
 
 	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{
-		MinRetryTime: 10 * time.Millisecond,
+		MinRetryTime:    10 * time.Millisecond,
+		MaxRetryTime:    100 * time.Millisecond,
+		RetryTimeJitter: time.Millisecond,
 	})
 	require.NoError(t, err)
 
@@ -274,5 +276,6 @@ func (n *Node) MakePeerUpdates(t *testing.T) *p2p.PeerUpdates {
 		RequireNoUpdates(t, sub)
 		sub.Close()
 	})
+
 	return sub
 }
