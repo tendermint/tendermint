@@ -317,7 +317,7 @@ func rpcEndpoints(peers string) []string {
 	endpoints := make([]string, len(arr))
 	for i, v := range arr {
 		urlString := strings.SplitAfter(v, "@")[1]
-		hostName := strings.SplitAfter(urlString, ":25566")[0]
+		hostName := strings.Split(urlString, ":26656")[0]
 		// use RPC port instead
 		port := 26657
 		var rpcEndpoint string
