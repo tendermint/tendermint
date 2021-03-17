@@ -65,8 +65,7 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, numNodes int, chBuf uint) *reac
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
 		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID])
-		// TODO rebase to make this possible
-		// rts.network.Nodes[nodeID].PeerManager.Register(rts.peerUpdates[nodeID])
+		rts.network.Nodes[nodeID].PeerManager.Register(rts.peerUpdates[nodeID])
 
 		rts.reactors[nodeID] = NewReactor(
 			rts.logger.With("nodeID", nodeID),
@@ -103,7 +102,7 @@ func (rts *reactorTestSuite) start(t *testing.T) {
 	rts.network.Start(t)
 	require.Len(t,
 		rts.network.RandomNode().PeerManager.Peers(),
-		len(rts.nodes),
+		len(rts.nodes)-1,
 		"network does not have expected number of nodes")
 }
 
@@ -125,27 +124,23 @@ func (rts *reactorTestSuite) waitForTxns(t *testing.T, txs types.Txs, ids ...p2p
 	t.Helper()
 
 	fn := func(pool *CListMempool) {
-		iters := 0
 		for pool.Size() < len(txs) {
-			iters++
-			time.Sleep(100 * time.Millisecond)
-			if iters > 100 {
-				require.Fail(t, "timeout, TODO REMOVE")
-			}
+			time.Sleep(50 * time.Millisecond)
+		}
 
-			reapedTxs := pool.ReapMaxTxs(len(txs))
-			for i, tx := range txs {
-				require.Equalf(t,
-					tx,
-					reapedTxs[i],
-					"txs at index %d in reactor mempool mismatch; got: %v, expected: %v", i, tx, reapedTxs[i],
-				)
-			}
+		reapedTxs := pool.ReapMaxTxs(len(txs))
+		require.Equal(t, len(txs), len(reapedTxs))
+		for i, tx := range txs {
+			require.Equalf(t,
+				tx,
+				reapedTxs[i],
+				"txs at index %d in reactor mempool mismatch; got: %v, expected: %v", i, tx, reapedTxs[i],
+			)
 		}
 	}
 
 	if len(ids) == 1 {
-		fn(rts.mempools[ids[0]])
+		fn(rts.reactors[ids[0]].mempool)
 		return
 	}
 
@@ -156,7 +151,7 @@ func (rts *reactorTestSuite) waitForTxns(t *testing.T, txs types.Txs, ids ...p2p
 		}
 
 		wg.Add(1)
-		go func() { defer wg.Done(); fn(rts.mempools[id]) }()
+		func(nid p2p.NodeID) { defer wg.Done(); fn(rts.reactors[nid].mempool) }(id)
 	}
 
 	wg.Wait()
@@ -169,13 +164,10 @@ func TestReactorBroadcastTxs(t *testing.T) {
 
 	rts := setup(t, config.Mempool, numNodes, 0)
 
-	// TODO(tychoish): figure out if we need to keep error
-	// channels empty here?
-
 	primary := rts.nodes[0]
 	secondaries := rts.nodes[1:]
 
-	txs := checkTxs(t, rts.mempools[primary], numTxs, UnknownPeerID)
+	txs := checkTxs(t, rts.reactors[primary].mempool, numTxs, UnknownPeerID)
 
 	// run the router
 	rts.start(t)
@@ -261,9 +253,6 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
 
-	// TODO(tychoish): figure out if we need to keep error
-	// channels empty here?
-
 	peerID := uint16(1)
 	_ = checkTxs(t, rts.mempools[primary], numTxs, peerID)
 
@@ -302,13 +291,10 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	primary := rts.nodes[0]
 	secondary := rts.nodes[1]
 
-	// TODO(tychoish): figure out if we need to keep error
-	// channels empty here?
-
 	// Broadcast a tx, which has the max size and ensure it's received by the
 	// second reactor.
 	tx1 := tmrand.Bytes(config.Mempool.MaxTxBytes)
-	err := rts.mempools[primary].CheckTx(tx1, nil, TxInfo{SenderID: UnknownPeerID})
+	err := rts.reactors[primary].mempool.CheckTx(tx1, nil, TxInfo{SenderID: UnknownPeerID})
 	require.NoError(t, err)
 
 	rts.start(t)
@@ -317,8 +303,8 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	// primary suite (node).
 	rts.waitForTxns(t, []types.Tx{tx1}, secondary)
 
-	rts.mempools[primary].Flush()
-	rts.mempools[secondary].Flush()
+	rts.reactors[primary].mempool.Flush()
+	rts.reactors[secondary].mempool.Flush()
 
 	// broadcast a tx, which is beyond the max size and ensure it's not sent
 	tx2 := tmrand.Bytes(config.Mempool.MaxTxBytes + 1)
@@ -336,9 +322,6 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	rts := setup(t, config.Mempool, 1, 0)
 
 	nodeID := rts.nodes[0]
-
-	// TODO(tychoish): figure out if we need to drop mempool
-	// channel messages
 
 	peerID, err := p2p.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
