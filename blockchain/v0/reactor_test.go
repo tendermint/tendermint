@@ -87,7 +87,7 @@ func setup(
 				lastBlock.Header.Height,
 				lastBlockMeta.BlockID,
 				state.Validators,
-				privVals[0],
+				privVal,
 				lastBlock.Header.ChainID,
 				time.Now(),
 			)
