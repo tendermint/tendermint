@@ -92,34 +92,16 @@ func ServeTLS(
 // WriteRPCResponseHTTPError marshals res as JSON (with indent) and writes it
 // to w.
 //
-<<<<<<< HEAD
-// Panics if it can't Marshal res or write to w.
-=======
-// Maps JSON RPC error codes to HTTP Status codes as follows:
-//
-// HTTP Status	code	message
-// 500	-32700	Parse error.
-// 400	-32600	Invalid Request.
-// 404	-32601	Method not found.
-// 500	-32602	Invalid params.
-// 500	-32603	Internal error.
-// 500	-32099..-32000	Server error.
-//
 // source: https://www.jsonrpc.org/historical/json-rpc-over-http.html
->>>>>>> 00b952416... rpc/jsonrpc/server: return an error in WriteRPCResponseHTTP(Error) (#6204)
 func WriteRPCResponseHTTPError(
 	w http.ResponseWriter,
 	httpCode int,
 	res types.RPCResponse,
-<<<<<<< HEAD
-) {
-=======
 ) error {
 	if res.Error == nil {
 		panic("tried to write http error response without RPC error")
 	}
 
->>>>>>> 00b952416... rpc/jsonrpc/server: return an error in WriteRPCResponseHTTP(Error) (#6204)
 	jsonBytes, err := json.MarshalIndent(res, "", "  ")
 	if err != nil {
 		return fmt.Errorf("json marshal: %w", err)
@@ -201,24 +183,12 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 					default:
 					}
 
-<<<<<<< HEAD
-					logger.Error(
-						"Panic in RPC HTTP handler", "err", e, "stack",
-						string(debug.Stack()),
-					)
-					WriteRPCResponseHTTPError(
-						rww,
-						http.StatusInternalServerError,
-						types.RPCInternalError(types.JSONRPCIntID(-1), err),
-					)
-=======
 					logger.Error("panic in RPC HTTP handler", "err", e, "stack", string(debug.Stack()))
 
 					res := types.RPCInternalError(types.JSONRPCIntID(-1), err)
-					if wErr := WriteRPCResponseHTTPError(rww, res); wErr != nil {
+					if wErr := WriteRPCResponseHTTPError(rww, http.StatusInternalServerError, res); wErr != nil {
 						logger.Error("failed to write response", "res", res, "err", wErr)
 					}
->>>>>>> 00b952416... rpc/jsonrpc/server: return an error in WriteRPCResponseHTTP(Error) (#6204)
 				}
 			}
 
