@@ -1,7 +1,6 @@
 package v0
 
 import (
-	"fmt"
 	"math/rand"
 	"os"
 	"testing"
@@ -14,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mempool/mock"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p/p2ptest"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -25,186 +25,150 @@ import (
 var rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 type reactorTestSuite struct {
-	reactor *Reactor
-	app     proxy.AppConns
+	network *p2ptest.Network
+	logger  log.Logger
+	nodes   []p2p.NodeID
 
-	peerID p2p.NodeID
+	reactors map[p2p.NodeID]*Reactor
+	app      map[p2p.NodeID]proxy.AppConns
 
-	blockchainChannel   *p2p.Channel
-	blockchainInCh      chan p2p.Envelope
-	blockchainOutCh     chan p2p.Envelope
-	blockchainPeerErrCh chan p2p.PeerError
-
-	peerUpdatesCh chan p2p.PeerUpdate
-	peerUpdates   *p2p.PeerUpdates
+	blockchainChannels map[p2p.NodeID]*p2p.Channel
+	peerChans          map[p2p.NodeID]chan p2p.PeerUpdate
+	peerUpdates        map[p2p.NodeID]*p2p.PeerUpdates
 }
 
 func setup(
 	t *testing.T,
-	numNodes int,
 	genDoc *types.GenesisDoc,
 	privVal types.PrivValidator,
-	maxBlockHeight int64,
+	maxBlockHeights []int64,
 	chBuf uint,
 ) *reactorTestSuite {
 	t.Helper()
 
-	app := &abci.BaseApplication{}
-	cc := proxy.NewLocalClientCreator(app)
-
-	proxyApp := proxy.NewAppConns(cc)
-	require.NoError(t, proxyApp.Start())
-
-	blockDB := dbm.NewMemDB()
-	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB)
-	blockStore := store.NewBlockStore(blockDB)
-
-	state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
-	require.NoError(t, err)
-
-	fastSync := true
-	db := dbm.NewMemDB()
-	stateStore = sm.NewStore(db)
-
-	blockExec := sm.NewBlockExecutor(
-		stateStore,
-		log.TestingLogger(),
-		proxyApp.Consensus(),
-		mock.Mempool{},
-		sm.EmptyEvidencePool{},
-	)
-	require.NoError(t, stateStore.Save(state))
-
-	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil)
-
-		if blockHeight > 1 {
-			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
-			lastBlock := blockStore.LoadBlock(blockHeight - 1)
-
-			vote, err := types.MakeVote(
-				lastBlock.Header.Height,
-				lastBlockMeta.BlockID,
-				state.Validators,
-				privVal,
-				lastBlock.Header.ChainID,
-				time.Now(),
-			)
-			require.NoError(t, err)
-
-			lastCommit = types.NewCommit(
-				vote.Height,
-				vote.Round,
-				lastBlockMeta.BlockID,
-				[]types.CommitSig{vote.CommitSig()},
-			)
-		}
-
-		thisBlock := makeBlock(blockHeight, state, lastCommit)
-		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
-		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
-
-		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
-		require.NoError(t, err)
-
-		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
-	}
-
-	pID := make([]byte, 16)
-	_, err = rng.Read(pID)
-	require.NoError(t, err)
-
-	peerUpdatesCh := make(chan p2p.PeerUpdate, chBuf)
+	numNodes := len(maxBlockHeights)
+	require.True(t, numNodes >= 1,
+		"must specify at least one block height (nodes)")
 
 	rts := &reactorTestSuite{
-		app:                 proxyApp,
-		blockchainInCh:      make(chan p2p.Envelope, chBuf),
-		blockchainOutCh:     make(chan p2p.Envelope, chBuf),
-		blockchainPeerErrCh: make(chan p2p.PeerError, chBuf),
-		peerUpdatesCh:       peerUpdatesCh,
-		peerUpdates:         p2p.NewPeerUpdates(peerUpdatesCh),
-		peerID:              p2p.NodeID(fmt.Sprintf("%x", pID)),
+		logger:             log.TestingLogger().With("module", "blockchain", "testCase", t.Name()),
+		network:            p2ptest.MakeNetwork(t, numNodes),
+		nodes:              make([]p2p.NodeID, 0, numNodes),
+		reactors:           make(map[p2p.NodeID]*Reactor, numNodes),
+		app:                make(map[p2p.NodeID]proxy.AppConns, numNodes),
+		blockchainChannels: make(map[p2p.NodeID]*p2p.Channel, numNodes),
+		peerChans:          make(map[p2p.NodeID]chan p2p.PeerUpdate, numNodes),
+		peerUpdates:        make(map[p2p.NodeID]*p2p.PeerUpdates, numNodes),
 	}
 
-	rts.blockchainChannel = p2p.NewChannel(
-		BlockchainChannel,
-		new(bcproto.Message),
-		rts.blockchainInCh,
-		rts.blockchainOutCh,
-		rts.blockchainPeerErrCh,
-	)
+	rts.network.MakeChannelsNoCleanup(t, BlockchainChannel, new(bcproto.Message), int(chBuf))
 
-	reactor, err := NewReactor(
-		log.TestingLogger().With("module", "blockchain", "node", rts.peerID),
-		state.Copy(),
-		blockExec,
-		blockStore,
-		nil,
-		rts.blockchainChannel,
-		rts.peerUpdates,
-		fastSync,
-	)
+	const fastSync = true
 
-	require.NoError(t, err)
-	rts.reactor = reactor
+	i := 0
+	for nodeID := range rts.network.Nodes {
+		rts.nodes = append(rts.nodes, nodeID)
+		app := proxy.NewAppConns(proxy.NewLocalClientCreator(&abci.BaseApplication{}))
+		require.NoError(t, app.Start())
 
-	require.NoError(t, rts.reactor.Start())
-	require.True(t, rts.reactor.IsRunning())
+		blockDB := dbm.NewMemDB()
+		stateDB := dbm.NewMemDB()
+		stateStore := sm.NewStore(stateDB)
+		blockStore := store.NewBlockStore(blockDB)
+
+		state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
+		require.NoError(t, err)
+
+		db := dbm.NewMemDB()
+		stateStore = sm.NewStore(db)
+
+		blockExec := sm.NewBlockExecutor(
+			stateStore,
+			log.TestingLogger(),
+			app.Consensus(),
+			mock.Mempool{},
+			sm.EmptyEvidencePool{},
+		)
+		require.NoError(t, stateStore.Save(state))
+
+		for blockHeight := int64(1); blockHeight <= maxBlockHeights[i]; blockHeight++ {
+			lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil)
+
+			if blockHeight > 1 {
+				lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
+				lastBlock := blockStore.LoadBlock(blockHeight - 1)
+
+				vote, err := types.MakeVote(
+					lastBlock.Header.Height,
+					lastBlockMeta.BlockID,
+					state.Validators,
+					privVal,
+					lastBlock.Header.ChainID,
+					time.Now(),
+				)
+				require.NoError(t, err)
+
+				lastCommit = types.NewCommit(
+					vote.Height,
+					vote.Round,
+					lastBlockMeta.BlockID,
+					[]types.CommitSig{vote.CommitSig()},
+				)
+			}
+
+			thisBlock := makeBlock(blockHeight, state, lastCommit)
+			thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
+			blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
+
+			state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+			require.NoError(t, err)
+
+			blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
+		}
+
+		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
+		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID])
+		rts.network.Nodes[nodeID].PeerManager.Register(rts.peerUpdates[nodeID])
+		rts.reactors[nodeID], err = NewReactor(
+			rts.logger.With("nodeID", nodeID),
+			state.Copy(),
+			blockExec,
+			blockStore,
+			nil,
+			rts.blockchainChannels[nodeID],
+			rts.peerUpdates[nodeID],
+			fastSync)
+		require.NoError(t, err)
+
+		require.NoError(t, rts.reactors[nodeID].Start())
+		require.True(t, rts.reactors[nodeID].IsRunning())
+
+		i++
+	}
 
 	t.Cleanup(func() {
-		require.NoError(t, rts.reactor.Stop())
-		require.NoError(t, rts.app.Stop())
-		require.False(t, rts.reactor.IsRunning())
+		for _, nodeID := range rts.nodes {
+			rts.peerUpdates[nodeID].Close()
+
+			if rts.reactors[nodeID].IsRunning() {
+				require.NoError(t, rts.reactors[nodeID].Stop())
+				require.NoError(t, rts.app[nodeID].Stop())
+				require.False(t, rts.reactors[nodeID].IsRunning())
+			}
+
+		}
 	})
 
 	return rts
 }
 
-func simulateRouter(primary *reactorTestSuite, suites []*reactorTestSuite, dropChErr bool) {
-	// create a mapping for efficient suite lookup by peer ID
-	suitesByPeerID := make(map[p2p.NodeID]*reactorTestSuite)
-	for _, suite := range suites {
-		suitesByPeerID[suite.peerID] = suite
-	}
-
-	// Simulate a router by listening for all outbound envelopes and proxying the
-	// envelope to the respective peer (suite).
-	go func() {
-		for envelope := range primary.blockchainOutCh {
-			if envelope.Broadcast {
-				for _, s := range suites {
-					// broadcast to everyone except source
-					if s.peerID != primary.peerID {
-						s.blockchainInCh <- p2p.Envelope{
-							From:    primary.peerID,
-							To:      s.peerID,
-							Message: envelope.Message,
-						}
-					}
-				}
-			} else {
-				suitesByPeerID[envelope.To].blockchainInCh <- p2p.Envelope{
-					From:    primary.peerID,
-					To:      envelope.To,
-					Message: envelope.Message,
-				}
-			}
-		}
-	}()
-
-	go func() {
-		for pErr := range primary.blockchainPeerErrCh {
-			if dropChErr {
-				primary.reactor.Logger.Debug("dropped peer error", "err", pErr.Err)
-			} else {
-				primary.peerUpdatesCh <- p2p.PeerUpdate{
-					NodeID: pErr.NodeID,
-					Status: p2p.PeerStatusDown,
-				}
-			}
-		}
-	}()
+func (rts *reactorTestSuite) start(t *testing.T) {
+	t.Helper()
+	rts.network.Start(t)
+	require.Len(t,
+		rts.network.RandomNode().PeerManager.Peers(),
+		len(rts.nodes)-1,
+		"network does not have expected number of nodes")
 }
 
 func TestReactor_AbruptDisconnect(t *testing.T) {

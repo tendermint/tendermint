@@ -36,7 +36,7 @@ func MakeNetwork(t *testing.T, nodes int) *Network {
 	}
 
 	for i := 0; i < nodes; i++ {
-		node := MakeNode(t, network)
+		node := network.AddNode(t)
 		network.Nodes[node.NodeID] = node
 	}
 
@@ -197,8 +197,8 @@ type Node struct {
 	Transport   *p2p.MemoryTransport
 }
 
-// MakeNode creates a new Node.
-func MakeNode(t *testing.T, network *Network) *Node {
+// AddNode creates a new Node and adds it to the network.
+func (network *Network) AddNode(t *testing.T) *Node {
 	privKey := ed25519.GenPrivKey()
 	nodeID := p2p.NodeIDFromPubKey(privKey.PubKey())
 	nodeInfo := p2p.NodeInfo{
