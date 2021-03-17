@@ -20,7 +20,7 @@ import (
 
 const (
 	// see README
-	defaultPerPage = 30
+	defaultPerPage = -1
 	maxPerPage     = 100
 
 	// SubscribeTimeout is the maximum time we wait to subscribe for an event.
