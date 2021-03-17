@@ -697,6 +697,12 @@ func (sw *Switch) acceptRoutine() {
 					sw.addrBook.AddOurAddress(&addr)
 				}
 
+				if err.IsIncompatible() {
+					// Remove the given address from the address book to avoid dialing in the future.
+					addr := err.Addr()
+					sw.addrBook.RemoveAddress(&addr)
+				}
+
 				sw.Logger.Info(
 					"Inbound Peer rejected",
 					"err", err,
@@ -823,6 +829,11 @@ func (sw *Switch) addOutboundPeerWithConfig(
 				sw.addrBook.AddOurAddress(addr)
 
 				return err
+			}
+
+			if e.IsIncompatible() {
+				// Remove the given address from the address book to avoid dialing in the future.
+				sw.addrBook.RemoveAddress(addr)
 			}
 		}
 
