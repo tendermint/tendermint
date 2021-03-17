@@ -611,7 +611,8 @@ func createSwitch(config *cfg.Config,
 	mempoolReactor *p2p.ReactorShim,
 	bcReactor p2p.Reactor,
 	stateSyncReactor *p2p.ReactorShim,
-	consensusReactor *p2p.ReactorShim,
+	// consensusReactor *p2p.ReactorShim,
+	consensusReactor *cs.Reactor,
 	evidenceReactor *p2p.ReactorShim,
 	proxyApp proxy.AppConns,
 	nodeInfo p2p.NodeInfo,
@@ -953,7 +954,7 @@ func NewNode(config *cfg.Config,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 
-	csReactorShim, csReactor, csState := createConsensusReactor(
+	_, csReactor, csState := createConsensusReactor(
 		config, state, blockExec, blockStore, mempool, evPool,
 		privValidator, csMetrics, stateSync || fastSync, eventBus,
 		peerManager, router, consensusLogger,
@@ -1017,7 +1018,7 @@ func NewNode(config *cfg.Config,
 	// Setup Transport and Switch.
 	sw := createSwitch(
 		config, transport, p2pMetrics, mpReactorShim, bcReactorForSwitch,
-		stateSyncReactorShim, csReactorShim, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
+		stateSyncReactorShim, csReactor, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
 	)
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
@@ -1171,10 +1172,10 @@ func (n *Node) OnStart() error {
 		}
 	}
 
-	// Start the real consensus reactor separately since the switch uses the shim.
-	if err := n.consensusReactor.Start(); err != nil {
-		return err
-	}
+	// // Start the real consensus reactor separately since the switch uses the shim.
+	// if err := n.consensusReactor.Start(); err != nil {
+	// 	return err
+	// }
 
 	// Start the real state sync reactor separately since the switch uses the shim.
 	if err := n.stateSyncReactor.Start(); err != nil {
@@ -1241,10 +1242,10 @@ func (n *Node) OnStop() {
 		}
 	}
 
-	// Stop the real consensus reactor separately since the switch uses the shim.
-	if err := n.consensusReactor.Stop(); err != nil {
-		n.Logger.Error("failed to stop the consensus reactor", "err", err)
-	}
+	// // Stop the real consensus reactor separately since the switch uses the shim.
+	// if err := n.consensusReactor.Stop(); err != nil {
+	// 	n.Logger.Error("failed to stop the consensus reactor", "err", err)
+	// }
 
 	// Stop the real state sync reactor separately since the switch uses the shim.
 	if err := n.stateSyncReactor.Stop(); err != nil {
