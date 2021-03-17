@@ -41,14 +41,13 @@ type reactorTestSuite struct {
 
 func setup(
 	t *testing.T,
+	numNodes int,
 	genDoc *types.GenesisDoc,
-	privVals []types.PrivValidator,
+	privVal types.PrivValidator,
 	maxBlockHeight int64,
 	chBuf uint,
 ) *reactorTestSuite {
 	t.Helper()
-
-	require.Len(t, privVals, 1, "only one validator can be supported")
 
 	app := &abci.BaseApplication{}
 	cc := proxy.NewLocalClientCreator(app)
