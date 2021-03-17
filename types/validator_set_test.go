@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math"
 	"sort"
@@ -755,7 +756,7 @@ func TestValidatorSet_VerifyCommit_CheckAllSignatures(t *testing.T) {
 	// malleate 4th signature
 	vote := voteSet.GetByIndex(3)
 	v := vote.ToProto()
-	err = vals[3].SignVote("CentaurusA", v)
+	err = vals[3].SignVote(context.Background(), "CentaurusA", v)
 	require.NoError(t, err)
 	vote.Signature = v.Signature
 	commit.Signatures[3] = vote.CommitSig()
@@ -780,7 +781,7 @@ func TestValidatorSet_VerifyCommitLight_ReturnsAsSoonAsMajorityOfVotingPowerSign
 	// malleate 4th signature (3 signatures are enough for 2/3+)
 	vote := voteSet.GetByIndex(3)
 	v := vote.ToProto()
-	err = vals[3].SignVote("CentaurusA", v)
+	err = vals[3].SignVote(context.Background(), "CentaurusA", v)
 	require.NoError(t, err)
 	vote.Signature = v.Signature
 	commit.Signatures[3] = vote.CommitSig()
@@ -803,7 +804,7 @@ func TestValidatorSet_VerifyCommitLightTrusting_ReturnsAsSoonAsTrustLevelOfVotin
 	// malleate 3rd signature (2 signatures are enough for 1/3+ trust level)
 	vote := voteSet.GetByIndex(2)
 	v := vote.ToProto()
-	err = vals[2].SignVote("CentaurusA", v)
+	err = vals[2].SignVote(context.Background(), "CentaurusA", v)
 	require.NoError(t, err)
 	vote.Signature = v.Signature
 	commit.Signatures[2] = vote.CommitSig()
@@ -1707,5 +1708,77 @@ func BenchmarkUpdates(b *testing.B) {
 		// Add m validators to valSetCopy
 		valSetCopy := valSet.Copy()
 		assert.NoError(b, valSetCopy.UpdateWithChangeSet(newValList))
+	}
+}
+
+func BenchmarkValidatorSet_VerifyCommit_Ed25519(b *testing.B) {
+	for _, n := range []int{1, 8, 64, 1024} {
+		n := n
+		var (
+			chainID = "test_chain_id"
+			h       = int64(3)
+			blockID = makeBlockIDRandom()
+		)
+		b.Run(fmt.Sprintf("valset size %d", n), func(b *testing.B) {
+			b.ReportAllocs()
+			// generate n validators
+			voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, n, int64(n*5))
+			// create a commit with n validators
+			commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+			require.NoError(b, err)
+
+			for i := 0; i < b.N/n; i++ {
+				err = valSet.VerifyCommit(chainID, blockID, h, commit)
+				assert.NoError(b, err)
+			}
+		})
+	}
+}
+
+func BenchmarkValidatorSet_VerifyCommitLight_Ed25519(b *testing.B) {
+	for _, n := range []int{1, 8, 64, 1024} {
+		n := n
+		var (
+			chainID = "test_chain_id"
+			h       = int64(3)
+			blockID = makeBlockIDRandom()
+		)
+		b.Run(fmt.Sprintf("valset size %d", n), func(b *testing.B) {
+			b.ReportAllocs()
+			// generate n validators
+			voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, n, int64(n*5))
+			// create a commit with n validators
+			commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+			require.NoError(b, err)
+
+			for i := 0; i < b.N/n; i++ {
+				err = valSet.VerifyCommitLight(chainID, blockID, h, commit)
+				assert.NoError(b, err)
+			}
+		})
+	}
+}
+
+func BenchmarkValidatorSet_VerifyCommitLightTrusting_Ed25519(b *testing.B) {
+	for _, n := range []int{1, 8, 64, 1024} {
+		n := n
+		var (
+			chainID = "test_chain_id"
+			h       = int64(3)
+			blockID = makeBlockIDRandom()
+		)
+		b.Run(fmt.Sprintf("valset size %d", n), func(b *testing.B) {
+			b.ReportAllocs()
+			// generate n validators
+			voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, n, int64(n*5))
+			// create a commit with n validators
+			commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+			require.NoError(b, err)
+
+			for i := 0; i < b.N/n; i++ {
+				err = valSet.VerifyCommitLightTrusting(chainID, commit, tmmath.Fraction{Numerator: 1, Denominator: 3})
+				assert.NoError(b, err)
+			}
+		})
 	}
 }

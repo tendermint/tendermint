@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"math"
 	"testing"
 	"time"
@@ -220,7 +221,7 @@ func TestMockEvidenceValidateBasic(t *testing.T) {
 func makeVote(
 	t *testing.T, val PrivValidator, chainID string, valIndex int32, height int64, round int32, step int, blockID BlockID,
 	time time.Time) *Vote {
-	pubKey, err := val.GetPubKey()
+	pubKey, err := val.GetPubKey(context.Background())
 	require.NoError(t, err)
 	v := &Vote{
 		ValidatorAddress: pubKey.Address(),
@@ -233,7 +234,7 @@ func makeVote(
 	}
 
 	vpb := v.ToProto()
-	err = val.SignVote(chainID, vpb)
+	err = val.SignVote(context.Background(), chainID, vpb)
 	if err != nil {
 		panic(err)
 	}
