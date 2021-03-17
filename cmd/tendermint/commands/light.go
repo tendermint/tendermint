@@ -201,11 +201,6 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	rpcClient, err := rpchttp.New(primaryAddr, "/websocket")
-	if err != nil {
-		return fmt.Errorf("http client for %s: %w", primaryAddr, err)
-	}
-
 	cfg := rpcserver.DefaultConfig()
 	cfg.MaxBodyBytes = config.RPC.MaxBodyBytes
 	cfg.MaxHeaderBytes = config.RPC.MaxHeaderBytes
@@ -217,20 +212,11 @@ func runProxy(cmd *cobra.Command, args []string) error {
 		cfg.WriteTimeout = config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
 	}
 
-<<<<<<< HEAD
-	p := lproxy.Proxy{
-		Addr:   listenAddr,
-		Config: cfg,
-		Client: lrpc.NewClient(rpcClient, c, lrpc.KeyPathFn(defaultMerkleKeyPathFn())),
-		Logger: logger,
-	}
-=======
 	p, err := lproxy.NewProxy(c, listenAddr, primaryAddr, cfg, logger, lrpc.KeyPathFn(lrpc.DefaultMerkleKeyPathFn()))
 	if err != nil {
 		return err
 	}
 
->>>>>>> 418e2c140... e2e: integrate light clients (#6196)
 	// Stop upon receiving SIGTERM or CTRL-C.
 	tmos.TrapSignal(logger, func() {
 		p.Listener.Close()

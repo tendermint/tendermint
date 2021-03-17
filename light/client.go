@@ -1035,8 +1035,8 @@ and remove witness. Otherwise, use the different primary`, e.WitnessIndex), "wit
 			// respond or couldn't find the block, then we ignore it and move on to
 			// the next witness.
 			if _, ok := e.Reason.(provider.ErrBadLightBlock); ok {
-				c.logger.Info("Witness sent us invalid header / vals -> removing it", 
-				"witness", c.witnesses[e.WitnessIndex], "err", err)
+				c.logger.Info("Witness sent us invalid header / vals -> removing it",
+					"witness", c.witnesses[e.WitnessIndex], "err", err)
 				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 			}
 		}
