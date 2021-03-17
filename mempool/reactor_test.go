@@ -1,7 +1,6 @@
 package mempool
 
 import (
-	"math/rand"
 	"sync"
 	"testing"
 	"time"
@@ -19,8 +18,6 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
-
-var rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 type reactorTestSuite struct {
 	network *p2ptest.Network
