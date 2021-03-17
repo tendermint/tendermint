@@ -382,10 +382,10 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 		require.NoError(t, rts.pools[secondary.NodeID].AddEvidence(evList[i]))
 	}
 
-	rts.start(t)
-
 	// the secondary should have half the evidence as pending
 	require.Equal(t, numEvidence/2, int(rts.pools[secondary.NodeID].Size()))
+
+	rts.start(t)
 
 	// adding the secondary node back in node back in
 	require.NoError(t, primary.PeerManager.Add(secondary.NodeAddress))
