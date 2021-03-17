@@ -22,6 +22,6 @@ Some RFC's will be presented at a Tendermint Dev Session. If you are an outside 
 
 ## Table of Contents
 
-[001-block-retention](./001-block-retention.md)
-[002-nonzero-genesis](./002-nonzero-genesis.md)
-[003-ed25519-verification](./003-ed25519-verification.md)
+- [001-block-retention](./001-block-retention.md)
+- [002-nonzero-genesis](./002-nonzero-genesis.md)
+- [003-ed25519-verification](./003-ed25519-verification.md)
