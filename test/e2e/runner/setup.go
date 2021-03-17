@@ -167,14 +167,9 @@ services:
     image: tendermint/e2e-node
 {{- if eq .ABCIProtocol "builtin" }}
     entrypoint: /usr/bin/entrypoint-builtin
-<<<<<<< HEAD
 {{- else if .Misbehaviors }}
     entrypoint: /usr/bin/entrypoint-maverick
     command: ["node", "--misbehaviors", "{{ misbehaviorsToString .Misbehaviors }}"]
-=======
-{{- else }}
-    command: {{ startCommands .Misbehaviors .LogLevel }}
->>>>>>> 418e2c140... e2e: integrate light clients (#6196)
 {{- end }}
     init: true
     ports:

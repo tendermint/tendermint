@@ -4,17 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-<<<<<<< HEAD
-	"os"
-	"path/filepath"
-	"strconv"
-=======
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
->>>>>>> 418e2c140... e2e: integrate light clients (#6196)
 	"time"
 
 	"github.com/spf13/viper"
@@ -33,13 +27,10 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
-<<<<<<< HEAD
-	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
-	maverick "github.com/tendermint/tendermint/test/maverick/node"
-=======
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
->>>>>>> 418e2c140... e2e: integrate light clients (#6196)
+	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
+	maverick "github.com/tendermint/tendermint/test/maverick/node"
 )
 
 var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
@@ -83,23 +74,15 @@ func run(configFile string) error {
 	case "socket", "grpc":
 		err = startApp(cfg)
 	case "builtin":
-<<<<<<< HEAD
 		if len(cfg.Misbehaviors) == 0 {
-			err = startNode(cfg)
+			if cfg.Mode == string(e2e.ModeLight) {
+				err = startLightClient(cfg)
+			} else {
+				err = startNode(cfg)
+			}
 		} else {
 			err = startMaverick(cfg)
 		}
-=======
-		if cfg.Mode == string(e2e.ModeLight) {
-			err = startLightClient(cfg)
-		} else {
-			err = startNode(cfg)
-		}
-		// FIXME: Temporarily remove maverick until it is redesigned
-		// if len(cfg.Misbehaviors) == 0 {
-		// 	err = startMaverick(cfg)
-		// }
->>>>>>> 418e2c140... e2e: integrate light clients (#6196)
 	default:
 		err = fmt.Errorf("invalid protocol %q", cfg.Protocol)
 	}
@@ -161,8 +144,6 @@ func startNode(cfg *Config) error {
 	return n.Start()
 }
 
-<<<<<<< HEAD
-=======
 func startLightClient(cfg *Config) error {
 	tmcfg, nodeLogger, _, err := setupNode()
 	if err != nil {
@@ -187,7 +168,7 @@ func startLightClient(cfg *Config) error {
 		},
 		providers[0],
 		providers[1:],
-		dbs.New(lightDB),
+		dbs.New(lightDB, "light"),
 		light.Logger(nodeLogger),
 	)
 	if err != nil {
@@ -221,7 +202,6 @@ func startLightClient(cfg *Config) error {
 }
 
 // FIXME: Temporarily disconnected maverick until it is redesigned
->>>>>>> 418e2c140... e2e: integrate light clients (#6196)
 // startMaverick starts a Maverick node that runs the application directly. It assumes the Tendermint
 // configuration is in $TMHOME/config/tendermint.toml.
 func startMaverick(cfg *Config) error {
@@ -336,18 +316,16 @@ func rpcEndpoints(peers string) []string {
 	arr := strings.Split(peers, ",")
 	endpoints := make([]string, len(arr))
 	for i, v := range arr {
-		addr, err := p2p.ParseNodeAddress(v)
-		if err != nil {
-			panic(err)
-		}
+		urlString := strings.SplitAfter(v, "@")[1]
+		hostName := strings.SplitAfter(urlString, ":25566")[0]
 		// use RPC port instead
-		addr.Port = 26657
+		port := 26657
 		var rpcEndpoint string
 		// for ipv6 addresses
-		if strings.Contains(addr.Hostname, ":") {
-			rpcEndpoint = "http://[" + addr.Hostname + "]:" + fmt.Sprint(addr.Port)
+		if strings.Contains(hostName, ":") {
+			rpcEndpoint = "http://[" + hostName + "]:" + fmt.Sprint(port)
 		} else { // for ipv4 addresses
-			rpcEndpoint = "http://" + addr.Hostname + ":" + fmt.Sprint(addr.Port)
+			rpcEndpoint = "http://" + hostName + ":" + fmt.Sprint(port)
 		}
 		endpoints[i] = rpcEndpoint
 	}
