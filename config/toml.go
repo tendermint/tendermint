@@ -89,7 +89,7 @@ proxy-app = "{{ .BaseConfig.ProxyApp }}"
 moniker = "{{ .BaseConfig.Moniker }}"
 
 # Mode of Node: full | validator | seed (default: "full")
-# Default value is fullnode, so you need to set it to "validator" if you want to run the node as validator
+# You will need to set it to "validator" if you want to run the node as a validator
 # * full node (default)
 #   - all reactors
 #   - No priv_validator_key.json, priv_validator_state.json
@@ -99,7 +99,6 @@ moniker = "{{ .BaseConfig.Moniker }}"
 # * seed node
 #   - only P2P, PEX Reactor
 #   - No priv_validator_key.json, priv_validator_state.json
-#   - It automatically set seed-mode to true
 mode = "{{ .BaseConfig.Mode }}"
 
 # If this node is many blocks behind the tip of the chain, FastSync

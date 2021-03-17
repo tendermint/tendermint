@@ -174,7 +174,6 @@ type BaseConfig struct { //nolint: maligned
 	// * seed
 	//   - only P2P, PEX Reactor
 	//   - No priv_validator_key.json, priv_validator_state.json
-	//   - It automatically set seed-mode to true
 	Mode string `mapstructure:"mode"`
 
 	// If this node is many blocks behind the tip of the chain, FastSync

@@ -7,16 +7,16 @@
 
 ## Context
 
-- Fullnode mode: fullnode mode does not have the capability to become a validator.
+- Full mode: full mode does not have the capability to become a validator.
 - Validator mode : this mode is exactly same as existing state machine behavior. sync without voting on consensus, and participate consensus when fully synced
-- Seednode mode : lightweight seed node mode maintaining an address book, p2p like [TenderSeed](https://gitlab.com/polychainlabs/tenderseed)
+- Seed mode : lightweight seed node maintaining an address book, p2p like [TenderSeed](https://gitlab.com/polychainlabs/tenderseed)
 
 ## Decision
 
 We would like to suggest a simple Tendermint mode abstraction. These modes will live under one binary, and when initializing a node the user will be able to specify which node they would like to create.
 
 - Which reactor, component to include for each node
-    - fullnode *(default)*
+    - full *(default)*
         - switch, transport
         - reactors
           - mempool
@@ -38,7 +38,7 @@ We would like to suggest a simple Tendermint mode abstraction. These modes will 
           - statesync
         - rpc (safe connections only)
         - with privValidator(priv_validator_key.json, priv_validator_state.json)
-    - seednode
+    - seed
         - switch, transport
         - reactor
            - p2p/pex
@@ -46,17 +46,17 @@ We would like to suggest a simple Tendermint mode abstraction. These modes will 
     - We would like to suggest by introducing `mode` parameter in `config.toml` and cli
     - <span v-pre>`mode = "{{ .BaseConfig.Mode }}"`</span> in `config.toml`
     - `tendermint node --mode validator`  in cli
-    - fullnode | validator | seednode (default: "fullnode")
+    - full | validator | seednode (default: "full")
 - RPC modification
     - `host:26657/status`
-        - return empty `validator_info` when fullnode mode
+        - return empty `validator_info` when in full mode
     - no rpc server in seednode
 - Where to modify in codebase
     - Add  switch for `config.Mode` on `node/node.go:DefaultNewNode`
     - If `config.Mode==validator`, call default `NewNode` (current logic)
-    - If `config.Mode==fullnode`, call `NewNode` with `nil` `privValidator` (do not load or generation)
+    - If `config.Mode==full`, call `NewNode` with `nil` `privValidator` (do not load or generation)
         - Need to add exception routine for `nil` `privValidator` to related functions
-    - If `config.Mode==seednode`, call `NewSeedNode` (seed node version of `node/node.go:NewNode`)
+    - If `config.Mode==seed`, call `NewSeedNode` (seed node version of `node/node.go:NewNode`)
         - Need to add exception routine for `nil` `reactor`, `component` to related functions
 
 ## Status

@@ -82,7 +82,7 @@ To run the node as validator ensure `mode=validator`. The validator node should 
 
 | Config Option          | Setting                                       |
 | ---------------------- | --------------------------------------------- |
-| mode                   | fullnode                                      |
+| mode                   | full                                          |
 | pex                    | true                                          |
 | persistent-peers       | validator node, optionally other sentry nodes |
 | private-peer-ids       | validator node ID                             |
