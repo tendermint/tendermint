@@ -387,19 +387,6 @@ func TestReactorBroadcastEvidence_Pending(t *testing.T) {
 
 	rts.start(t)
 
-	// adding the secondary node back in node back in
-	require.NoError(t, primary.PeerManager.Add(secondary.NodeAddress))
-
-	startAt := time.Now()
-	for {
-		if time.Since(startAt) > time.Second {
-			require.Fail(t, "could not reconnect the secondary in less than a second")
-		}
-		if primary.PeerManager.Status(secondary.NodeID) == p2p.PeerStatusUp {
-			break
-		}
-	}
-
 	// The secondary reactor should have received all the evidence ignoring the
 	// already pending evidence.
 	rts.waitForEvidence(t, evList, secondary.NodeID)
