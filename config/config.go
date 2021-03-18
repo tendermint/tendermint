@@ -23,6 +23,13 @@ const (
 
 	// DefaultLogLevel defines a default log level as INFO.
 	DefaultLogLevel = "info"
+
+	ModeFull      = "full"
+	ModeValidator = "validator"
+	ModeSeed      = "seed"
+
+	BlockchainV0 = "v0"
+	BlockchainV2 = "v2"
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -39,6 +46,7 @@ var (
 	defaultConfigFileName  = "config.toml"
 	defaultGenesisJSONName = "genesis.json"
 
+	defaultMode             = ModeFull
 	defaultPrivValKeyName   = "priv_validator_key.json"
 	defaultPrivValStateName = "priv_validator_state.json"
 
@@ -159,6 +167,18 @@ type BaseConfig struct { //nolint: maligned
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
 
+	// Mode of Node: full | validator | seed (default: "full")
+	// * full (default)
+	//   - all reactors
+	//   - No priv_validator_key.json, priv_validator_state.json
+	// * validator
+	//   - all reactors
+	//   - with priv_validator_key.json, priv_validator_state.json
+	// * seed
+	//   - only P2P, PEX Reactor
+	//   - No priv_validator_key.json, priv_validator_state.json
+	Mode string `mapstructure:"mode"`
+
 	// If this node is many blocks behind the tip of the chain, FastSync
 	// allows them to catchup quickly by downloading blocks in parallel
 	// and verifying their commits
@@ -235,6 +255,7 @@ func DefaultBaseConfig() BaseConfig {
 		PrivValidatorKey:   defaultPrivValKeyPath,
 		PrivValidatorState: defaultPrivValStatePath,
 		NodeKey:            defaultNodeKeyPath,
+		Mode:               defaultMode,
 		Moniker:            defaultMoniker,
 		ProxyApp:           "tcp://127.0.0.1:26658",
 		ABCI:               "socket",
@@ -251,6 +272,7 @@ func DefaultBaseConfig() BaseConfig {
 func TestBaseConfig() BaseConfig {
 	cfg := DefaultBaseConfig()
 	cfg.chainID = "tendermint_test"
+	cfg.Mode = ModeValidator
 	cfg.ProxyApp = "kvstore"
 	cfg.FastSyncMode = false
 	cfg.DBBackend = "memdb"
@@ -321,6 +343,11 @@ func (cfg BaseConfig) ValidateBasic() error {
 	case LogFormatPlain, LogFormatJSON:
 	default:
 		return errors.New("unknown log format (must be 'plain' or 'json')")
+	}
+	switch cfg.Mode {
+	case ModeFull, ModeValidator, ModeSeed:
+	default:
+		return fmt.Errorf("unknown mode: %v", cfg.Mode)
 	}
 	return nil
 }
@@ -557,12 +584,6 @@ type P2PConfig struct { //nolint: maligned
 	// Set true to enable the peer-exchange reactor
 	PexReactor bool `mapstructure:"pex"`
 
-	// Seed mode, in which node constantly crawls the network and looks for
-	// peers. If another node asks it for addresses, it responds and disconnects.
-	//
-	// Does not work if the peer-exchange reactor is disabled.
-	SeedMode bool `mapstructure:"seed-mode"`
-
 	// Comma separated list of peer IDs to keep private (will not be gossiped to
 	// other peers)
 	PrivatePeerIDs string `mapstructure:"private-peer-ids"`
@@ -600,7 +621,6 @@ func DefaultP2PConfig() *P2PConfig {
 		SendRate:                5120000, // 5 mB/s
 		RecvRate:                5120000, // 5 mB/s
 		PexReactor:              true,
-		SeedMode:                false,
 		AllowDuplicateIP:        false,
 		HandshakeTimeout:        20 * time.Second,
 		DialTimeout:             3 * time.Second,
@@ -807,7 +827,7 @@ type FastSyncConfig struct {
 // DefaultFastSyncConfig returns a default configuration for the fast sync service
 func DefaultFastSyncConfig() *FastSyncConfig {
 	return &FastSyncConfig{
-		Version: "v0",
+		Version: BlockchainV0,
 	}
 }
 
@@ -819,9 +839,9 @@ func TestFastSyncConfig() *FastSyncConfig {
 // ValidateBasic performs basic validation.
 func (cfg *FastSyncConfig) ValidateBasic() error {
 	switch cfg.Version {
-	case "v0":
+	case BlockchainV0:
 		return nil
-	case "v2":
+	case BlockchainV2:
 		return nil
 	default:
 		return fmt.Errorf("unknown fastsync version %s", cfg.Version)

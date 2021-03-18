@@ -41,6 +41,19 @@ moniker = "anonymous"
 # and verifying their commits
 fast-sync = true
 
+# Mode of Node: full | validator | seed
+# You will need to set it to "validator" if you want to run the node as a validator
+# * full node (default)
+#   - all reactors
+#   - No priv_validator_key.json, priv_validator_state.json
+# * validator node
+#   - all reactors
+#   - with priv_validator_key.json, priv_validator_state.json
+# * seed node
+#   - only P2P, PEX Reactor
+#   - No priv_validator_key.json, priv_validator_state.json
+mode = "full"
+
 # Database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
 #   - pure go
@@ -241,12 +254,6 @@ recv-rate = 5120000
 
 # Set true to enable the peer-exchange reactor
 pex = true
-
-# Seed mode, in which node constantly crawls the network and looks for
-# peers. If another node asks it for addresses, it responds and disconnects.
-#
-# Does not work if the peer-exchange reactor is disabled.
-seed-mode = false
 
 # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
 private-peer-ids = ""
@@ -494,5 +501,4 @@ This section will cover settings within the p2p section of the `config.toml`.
 - `max-num-outbound-peers` = is the maximum number of peers you will initiate outbound connects to at one time (where you dial their address and initiate the connection).
 - `unconditional-peer-ids` = is similar to `persistent-peers` except that these peers will be connected to even if you are already connected to the maximum number of peers. This can be a validator node ID on your sentry node.
 - `pex` = turns the peer exchange reactor on or off. Validator node will want the `pex` turned off so it would not begin gossiping to unknown peers on the network. PeX can also be turned off for statically configured networks with fixed network connectivity. For full nodes on open, dynamic networks, it should be turned on.
-- `seed-mode` = is used for when node operators want to run their node as a seed node. Seed node's run a variation of the PeX protocol that disconnects from peers after sending them a list of peers to connect to. To minimize the servers usage, it is recommended to set the mempool's size to 0.
 - `private-peer-ids` = is a comma-separated list of node ids that will _not_ be exposed to other peers (i.e., you will not tell other peers about the ids in this list). This can be filled with a validator's node id.

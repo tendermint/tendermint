@@ -105,7 +105,9 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		)
 	}
 
+	// set mode to validator for testnet
 	config := cfg.DefaultConfig()
+	config.Mode = cfg.ModeValidator
 
 	// overwrite default config if set and valid
 	if configFile != "" {
