@@ -100,9 +100,9 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Resul
 }
 ```
 
-The transaction will be indexed (if the indexer is not `null`) with a certain
-attribute if the attribute's `Index` field is set to `true`. In the above example,
-all attributes will be indexed.
+If the indexer is not `null`, the transaction will be indexed. Each event is
+indexed using a composite key in the form of `{eventType}.{eventAttribute}={eventValue}`,
+e.g. `transfer.sender=bob`.
 
 ## Querying Transactions Events
 
