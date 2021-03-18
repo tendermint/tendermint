@@ -1,7 +1,6 @@
 package v0
 
 import (
-	"math/rand"
 	"os"
 	"testing"
 	"time"
@@ -21,8 +20,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
 )
-
-var rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 type reactorTestSuite struct {
 	network *p2ptest.Network

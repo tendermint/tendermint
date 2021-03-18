@@ -198,7 +198,7 @@ type Node struct {
 }
 
 // AddNode creates a new Node and adds it to the network.
-func (network *Network) AddNode(t *testing.T) *Node {
+func (n *Network) AddNode(t *testing.T) *Node {
 	privKey := ed25519.GenPrivKey()
 	nodeID := p2p.NodeIDFromPubKey(privKey.PubKey())
 	nodeInfo := p2p.NodeInfo{
@@ -207,7 +207,7 @@ func (network *Network) AddNode(t *testing.T) *Node {
 		Moniker:    string(nodeID),
 	}
 
-	transport := network.memoryNetwork.CreateTransport(nodeID)
+	transport := n.memoryNetwork.CreateTransport(nodeID)
 	require.Len(t, transport.Endpoints(), 1, "transport not listening on 1 endpoint")
 
 	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{
@@ -217,7 +217,7 @@ func (network *Network) AddNode(t *testing.T) *Node {
 	})
 	require.NoError(t, err)
 
-	router, err := p2p.NewRouter(network.logger, nodeInfo, privKey, peerManager,
+	router, err := p2p.NewRouter(n.logger, nodeInfo, privKey, peerManager,
 		[]p2p.Transport{transport}, p2p.RouterOptions{})
 	require.NoError(t, err)
 	require.NoError(t, router.Start())
