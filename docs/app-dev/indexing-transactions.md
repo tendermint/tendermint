@@ -11,7 +11,7 @@ includes the transaction hash and maps to and stores the corresponding `TxResult
 Blocks are indexed by a primary key which includes the block height and maps to
 and stores the block height, i.e. the block itself is never stored.
 
-Events are be used to index transactions and blocks according to what happened
+Events are used to index transactions and blocks according to what happened
 during their execution. Note that the set of events returned for a block from
 `BeginBlock` and `EndBlock` are merged. In case both methods return the same
 type, only the key-value pairs defined in `EndBlock` are used.
