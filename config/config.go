@@ -27,6 +27,9 @@ const (
 	ModeFull      = "full"
 	ModeValidator = "validator"
 	ModeSeed      = "seed"
+
+	BlockchainV0 = "v0"
+	BlockchainV2 = "v2"
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -824,7 +827,7 @@ type FastSyncConfig struct {
 // DefaultFastSyncConfig returns a default configuration for the fast sync service
 func DefaultFastSyncConfig() *FastSyncConfig {
 	return &FastSyncConfig{
-		Version: "v0",
+		Version: BlockchainV0,
 	}
 }
 
@@ -836,9 +839,9 @@ func TestFastSyncConfig() *FastSyncConfig {
 // ValidateBasic performs basic validation.
 func (cfg *FastSyncConfig) ValidateBasic() error {
 	switch cfg.Version {
-	case "v0":
+	case BlockchainV0:
 		return nil
-	case "v2":
+	case BlockchainV2:
 		return nil
 	default:
 		return fmt.Errorf("unknown fastsync version %s", cfg.Version)

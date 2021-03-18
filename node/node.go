@@ -462,7 +462,7 @@ func createBlockchainReactor(
 	logger = logger.With("module", "blockchain")
 
 	switch config.FastSync.Version {
-	case "v0":
+	case cfg.BlockchainV0:
 		reactorShim := p2p.NewReactorShim(logger, "BlockchainShim", bcv0.ChannelShims)
 
 		var (
@@ -488,7 +488,7 @@ func createBlockchainReactor(
 
 		return reactorShim, reactor, nil
 
-	case "v2":
+	case cfg.BlockchainV2:
 		reactor := bcv2.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 		reactor.SetLogger(logger)
 
@@ -863,7 +863,6 @@ func NewSeedNode(config *cfg.Config,
 
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
-
 		return nil, fmt.Errorf("could not add peers from persistent_peers field: %w", err)
 	}
 
@@ -1285,8 +1284,7 @@ func (n *Node) OnStart() error {
 	}
 
 	if n.config.Mode != cfg.ModeSeed {
-
-		if n.config.FastSync.Version == "v0" {
+		if n.config.FastSync.Version == cfg.BlockchainV0 {
 			// Start the real blockchain reactor separately since the switch uses the shim.
 			if err := n.bcReactor.Start(); err != nil {
 				return err
@@ -1706,10 +1704,10 @@ func makeNodeInfo(
 
 	var bcChannel byte
 	switch config.FastSync.Version {
-	case "v0":
+	case cfg.BlockchainV0:
 		bcChannel = byte(bcv0.BlockchainChannel)
 
-	case "v2":
+	case cfg.BlockchainV2:
 		bcChannel = bcv2.BlockchainChannel
 
 	default:
