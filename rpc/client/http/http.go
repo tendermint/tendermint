@@ -498,16 +498,13 @@ func (c *baseRPCClient) TxSearch(
 func (c *baseRPCClient) BlockSearch(
 	ctx context.Context,
 	query string,
-	prove bool,
-	page,
-	perPage *int,
+	page, perPage *int,
 	orderBy string,
 ) (*ctypes.ResultBlockSearch, error) {
 
 	result := new(ctypes.ResultBlockSearch)
 	params := map[string]interface{}{
 		"query":    query,
-		"prove":    prove,
 		"order_by": orderBy,
 	}
 

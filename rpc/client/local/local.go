@@ -191,11 +191,10 @@ func (c *Local) TxSearch(
 func (c *Local) BlockSearch(
 	_ context.Context,
 	query string,
-	prove bool,
 	page, perPage *int,
 	orderBy string,
 ) (*ctypes.ResultBlockSearch, error) {
-	return core.BlockSearch(c.ctx, query, prove, page, perPage, orderBy)
+	return core.BlockSearch(c.ctx, query, page, perPage, orderBy)
 }
 
 func (c *Local) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {

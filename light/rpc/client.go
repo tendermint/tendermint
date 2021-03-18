@@ -484,11 +484,10 @@ func (c *Client) TxSearch(
 func (c *Client) BlockSearch(
 	ctx context.Context,
 	query string,
-	prove bool,
 	page, perPage *int,
 	orderBy string,
 ) (*ctypes.ResultBlockSearch, error) {
-	return c.next.BlockSearch(ctx, query, prove, page, perPage, orderBy)
+	return c.next.BlockSearch(ctx, query, page, perPage, orderBy)
 }
 
 // Validators fetches and verifies validators.

@@ -86,8 +86,7 @@ type SignClient interface {
 	BlockSearch(
 		ctx context.Context,
 		query string,
-		prove bool, page,
-		perPage *int,
+		page, perPage *int,
 		orderBy string,
 	) (*ctypes.ResultBlockSearch, error)
 }

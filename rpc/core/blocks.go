@@ -174,7 +174,6 @@ func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockR
 func BlockSearch(
 	ctx *rpctypes.Context,
 	query string,
-	prove bool,
 	pagePtr, perPagePtr *int,
 	orderBy string,
 ) (*ctypes.ResultBlockSearch, error) {
