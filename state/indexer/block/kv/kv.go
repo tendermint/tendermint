@@ -351,11 +351,8 @@ func (idx *BlockerIndexer) match(
 		for ; it.Valid(); it.Next() {
 			tmpHeights[string(it.Value())] = it.Value()
 
-			select {
-			case <-ctx.Done():
+			if err := ctx.Err(); err != nil {
 				break
-
-			default:
 			}
 		}
 
