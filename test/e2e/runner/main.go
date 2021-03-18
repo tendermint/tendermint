@@ -204,6 +204,63 @@ func NewCLI() *CLI {
 		},
 	})
 
+	cli.root.AddCommand(&cobra.Command{
+		Use:   "benchmark",
+		Short: "Benchmarks testnet",
+		Long: `Benchmarks the following metrics:
+	Mean Block Interval
+	Standard Deviation
+	Min Block Interval
+	Max Block Interval
+over a 100 block sampling period.
+		
+Does not run any perbutations.
+		`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := Cleanup(cli.testnet); err != nil {
+				return err
+			}
+			if err := Setup(cli.testnet); err != nil {
+				return err
+			}
+
+			chLoadResult := make(chan error)
+			ctx, loadCancel := context.WithCancel(context.Background())
+			defer loadCancel()
+			go func() {
+				err := Load(ctx, cli.testnet)
+				if err != nil {
+					logger.Error(fmt.Sprintf("Transaction load failed: %v", err.Error()))
+				}
+				chLoadResult <- err
+			}()
+
+			if err := Start(cli.testnet); err != nil {
+				return err
+			}
+
+			if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
+				return err
+			}
+
+			// we benchmark performance over the next 100 blocks
+			if err := Benchmark(cli.testnet, 100); err != nil {
+				return err
+			}
+
+			loadCancel()
+			if err := <-chLoadResult; err != nil {
+				return err
+			}
+
+			if err := Cleanup(cli.testnet); err != nil {
+				return err
+			}
+
+			return nil
+		},
+	})
+
 	return cli
 }
 

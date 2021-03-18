@@ -26,3 +26,9 @@ func WaitUntil(testnet *e2e.Testnet, height int64) error {
 	}
 	return nil
 }
+
+// waitingTime estimates how long it should take for a node to reach the height.
+// More nodes in a network implies we may expect a slower network and may have to wait longer.
+func waitingTime(nodes int) time.Duration {
+	return time.Duration(20+(nodes*2)) * time.Second
+}
