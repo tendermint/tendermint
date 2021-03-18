@@ -54,6 +54,24 @@ and height and blocks by their height.
 
 You can turn off indexing completely by setting `tx_index` to `null`.
 
+## Default Indexes
+
+The Tendermint tx and block event indexer indexes a few select reserved events
+by default.
+
+### Transactions
+
+The following indexes are indexed by default:
+
+- `tx.height`
+- `tx.hash`
+
+### Blocks
+
+The following indexes are indexed by default:
+
+- `block.height`
+
 ## Adding Events
 
 Applications are free to define which events to index. Tendermint does not
@@ -92,7 +110,7 @@ You can query for a paginated set of transaction by their events by calling the
 `/tx_search` RPC endpoint:
 
 ```bash
-curl "localhost:26657/tx_search?query=\"account.name='igor'\"&prove=true"
+curl "localhost:26657/tx_search?query=\"message.sender='cosmos1...'\"&prove=true"
 ```
 
 Check out [API docs](https://docs.tendermint.com/master/rpc/#/Info/tx_search)
@@ -109,7 +127,7 @@ a query to `/subscribe` RPC endpoint.
   "method": "subscribe",
   "id": "0",
   "params": {
-    "query": "account.name='igor'"
+    "query": "message.sender='cosmos1...'"
   }
 }
 ```
@@ -123,7 +141,7 @@ You can query for a paginated set of blocks by their events by calling the
 `/block_search` RPC endpoint:
 
 ```bash
-curl "localhost:26657/block_search?query=\"block.height > 10 AND valset.changed > 0\""
+curl "localhost:26657/block_search?query=\"block.height > 10 AND val_set.num_changed > 0\""
 ```
 
 Check out [API docs](https://docs.tendermint.com/master/rpc/#/Info/block_search)
