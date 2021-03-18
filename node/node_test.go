@@ -522,6 +522,27 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 	assert.Equal(t, customBlockchainReactor, n.Switch().Reactor("BLOCKCHAIN"))
 }
 
+func TestNodeNewSeedNode(t *testing.T) {
+	config := cfg.ResetTestRoot("node_new_node_custom_reactors_test")
+	config.Mode = cfg.ModeSeed
+	defer os.RemoveAll(config.RootDir)
+
+	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
+	require.NoError(t, err)
+
+	n, err := NewSeedNode(config,
+		nodeKey,
+		DefaultGenesisDocProviderFunc(config),
+		log.TestingLogger(),
+	)
+	require.NoError(t, err)
+
+	err = n.Start()
+	require.NoError(t, err)
+
+	assert.True(t, n.pexReactor.IsRunning())
+}
+
 func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 	privVals := make([]types.PrivValidator, nVals)
 	vals := make([]types.GenesisValidator, nVals)
