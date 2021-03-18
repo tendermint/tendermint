@@ -8,7 +8,9 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/light"
 	lrpc "github.com/tendermint/tendermint/light/rpc"
+	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 )
 
@@ -19,6 +21,28 @@ type Proxy struct {
 	Client   *lrpc.Client
 	Logger   log.Logger
 	Listener net.Listener
+}
+
+// NewProxy creates the struct used to run an HTTP server for serving light
+// client rpc requests.
+func NewProxy(
+	lightClient *light.Client,
+	listenAddr, providerAddr string,
+	config *rpcserver.Config,
+	logger log.Logger,
+	opts ...lrpc.Option,
+) (*Proxy, error) {
+	rpcClient, err := rpchttp.NewWithTimeout(providerAddr, "/websocket", uint(config.WriteTimeout.Seconds()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create http client for %s: %w", providerAddr, err)
+	}
+
+	return &Proxy{
+		Addr:   listenAddr,
+		Config: config,
+		Client: lrpc.NewClient(rpcClient, lightClient, opts...),
+		Logger: logger,
+	}, nil
 }
 
 // ListenAndServe configures the rpcserver.WebsocketManager, sets up the RPC

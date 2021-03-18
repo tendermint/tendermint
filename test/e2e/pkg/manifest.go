@@ -54,9 +54,9 @@ type Manifest struct {
 
 // ManifestNode represents a node in a testnet manifest.
 type ManifestNode struct {
-	// Mode specifies the type of node: "validator", "full", or "seed". Defaults to
-	// "validator". Full nodes do not get a signing key (a dummy key is generated),
-	// and seed nodes run in seed mode with the PEX reactor enabled.
+	// Mode specifies the type of node: "validator", "full", "light" or "seed".
+	// Defaults to "validator". Full nodes do not get a signing key (a dummy key
+	// is generated), and seed nodes run in seed mode with the PEX reactor enabled.
 	Mode string `toml:"mode"`
 
 	// Seeds is the list of node names to use as P2P seed nodes. Defaults to none.
@@ -64,7 +64,8 @@ type ManifestNode struct {
 
 	// PersistentPeers is a list of node names to maintain persistent P2P
 	// connections to. If neither seeds nor persistent peers are specified,
-	// this defaults to all other nodes in the network.
+	// this defaults to all other nodes in the network. For light clients,
+	// this relates to the providers the light client is connected to.
 	PersistentPeers []string `toml:"persistent_peers"`
 
 	// Database specifies the database backend: "goleveldb", "cleveldb",

@@ -74,7 +74,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		Nodes:            map[string]*e2e.ManifestNode{},
 	}
 
-	var numSeeds, numValidators, numFulls int
+	var numSeeds, numValidators, numFulls, numLightClients int
 	switch opt["topology"].(string) {
 	case "single":
 		numValidators = 1
@@ -82,7 +82,8 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		numValidators = 4
 	case "large":
 		// FIXME Networks are kept small since large ones use too much CPU.
-		numSeeds = r.Intn(4)
+		numSeeds = r.Intn(3)
+		numLightClients = r.Intn(3)
 		numValidators = 4 + r.Intn(7)
 		numFulls = r.Intn(5)
 	default:
@@ -143,11 +144,16 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	// We now set up peer discovery for nodes. Seed nodes are fully meshed with
 	// each other, while non-seed nodes either use a set of random seeds or a
 	// set of random peers that start before themselves.
-	var seedNames, peerNames []string
+	var seedNames, peerNames, lightProviders []string
 	for name, node := range manifest.Nodes {
 		if node.Mode == string(e2e.ModeSeed) {
 			seedNames = append(seedNames, name)
 		} else {
+			// if the full node or validator is an ideal candidate, it is added as a light provider.
+			// There are at least two archive nodes so there should be at least two ideal candidates
+			if (node.StartAt == 0 || node.StartAt == manifest.InitialHeight) && node.RetainBlocks == 0 {
+				lightProviders = append(lightProviders, name)
+			}
 			peerNames = append(peerNames, name)
 		}
 	}
@@ -177,6 +183,14 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		} else if i > 0 {
 			manifest.Nodes[name].PersistentPeers = uniformSetChoice(peerNames[:i]).Choose(r)
 		}
+	}
+
+	// lastly, set up the light clients
+	for i := 1; i <= numLightClients; i++ {
+		startAt := manifest.InitialHeight + 5
+		manifest.Nodes[fmt.Sprintf("light%02d", i)] = generateLightNode(
+			r, startAt+(5*int64(i)), lightProviders,
+		)
 	}
 
 	return manifest, nil
@@ -210,7 +224,7 @@ func generateNode(
 		node.SnapshotInterval = 3
 	}
 
-	if node.Mode == "validator" {
+	if node.Mode == string(e2e.ModeValidator) {
 		misbehaveAt := startAt + 5 + int64(r.Intn(10))
 		if startAt == 0 {
 			misbehaveAt += initialHeight - 1
@@ -243,6 +257,17 @@ func generateNode(
 	}
 
 	return &node
+}
+
+func generateLightNode(r *rand.Rand, startAt int64, providers []string) *e2e.ManifestNode {
+	return &e2e.ManifestNode{
+		Mode:            string(e2e.ModeLight),
+		StartAt:         startAt,
+		Database:        nodeDatabases.Choose(r).(string),
+		ABCIProtocol:    "builtin",
+		PersistInterval: ptrUint64(0),
+		PersistentPeers: providers,
+	}
 }
 
 func ptrUint64(i uint64) *uint64 {

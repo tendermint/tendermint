@@ -891,6 +891,8 @@ func (c *Client) cleanupAfter(height int64) error {
 }
 
 func (c *Client) updateTrustedLightBlock(l *types.LightBlock) error {
+	c.logger.Debug("updating trusted light block", "light_block", l)
+
 	if err := c.trustedStore.SaveLightBlock(l); err != nil {
 		return fmt.Errorf("failed to save trusted header: %w", err)
 	}
@@ -1033,10 +1035,12 @@ and remove witness. Otherwise, use the different primary`, e.WitnessIndex), "wit
 			// respond or couldn't find the block, then we ignore it and move on to
 			// the next witness.
 			if _, ok := e.Reason.(provider.ErrBadLightBlock); ok {
-				c.logger.Info("Witness sent us invalid header / vals -> removing it", "witness", c.witnesses[e.WitnessIndex])
+				c.logger.Info("Witness sent us invalid header / vals -> removing it",
+					"witness", c.witnesses[e.WitnessIndex], "err", err)
 				witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 			}
 		}
+
 	}
 
 	// we need to make sure that we remove witnesses by index in the reverse
