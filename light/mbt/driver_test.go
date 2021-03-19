@@ -87,6 +87,7 @@ func TestVerify(t *testing.T) {
 	}
 }
 
+// nolint: unused // unused because of t.Skip()
 // jsonFilenames returns a list of files in jsonDir directory
 func jsonFilenames(t *testing.T) []string {
 	matches, err := filepath.Glob(filepath.Join(jsonDir, "*.json"))
