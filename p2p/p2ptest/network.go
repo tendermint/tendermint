@@ -36,7 +36,7 @@ func MakeNetwork(t *testing.T, nodes int) *Network {
 	}
 
 	for i := 0; i < nodes; i++ {
-		node := network.AddNode(t)
+		node := network.MakeNode(t)
 		network.Nodes[node.NodeID] = node
 	}
 
@@ -197,8 +197,10 @@ type Node struct {
 	Transport   *p2p.MemoryTransport
 }
 
-// AddNode creates a new Node and adds it to the network.
-func (n *Network) AddNode(t *testing.T) *Node {
+// MakeNode creates a new Node configured for the network with a
+// running peer manager, but does not add it to the existing
+// network. Callers are responsible for updating peering relationships
+func (n *Network) MakeNode(t *testing.T) *Node {
 	privKey := ed25519.GenPrivKey()
 	nodeID := p2p.NodeIDFromPubKey(privKey.PubKey())
 	nodeInfo := p2p.NodeInfo{
