@@ -199,7 +199,7 @@ type Node struct {
 
 // MakeNode creates a new Node configured for the network with a
 // running peer manager, but does not add it to the existing
-// network. Callers are responsible for updating peering relationships
+// network. Callers are responsible for updating peering relationships.
 func (n *Network) MakeNode(t *testing.T) *Node {
 	privKey := ed25519.GenPrivKey()
 	nodeID := p2p.NodeIDFromPubKey(privKey.PubKey())
