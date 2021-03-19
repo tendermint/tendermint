@@ -300,7 +300,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	// XXX: This causes a potential race condition.
 	// See: https://github.com/tendermint/tendermint/issues/6005
 	otherGenDoc, otherPrivVals := randGenesisDoc(config, 1, false, 30)
-	newNode := rts.network.AddNode(t)
+	newNode := rts.network.MakeNode(t)
 	rts.addNode(t, newNode.NodeID, otherGenDoc, otherPrivVals[0], maxBlockHeight)
 
 	// add a fake peer just so we do not wait for the consensus ticker to timeout
