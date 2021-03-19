@@ -80,7 +80,7 @@ func (op ValueOp) Run(args [][]byte) ([][]byte, error) {
 	}
 	value := args[0]
 	hasher := tmhash.New()
-	hasher.Write(value) //nolint: errcheck // does not error
+	hasher.Write(value)
 	vhash := hasher.Sum(nil)
 
 	bz := new(bytes.Buffer)
