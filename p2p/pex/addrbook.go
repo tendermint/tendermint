@@ -941,6 +941,6 @@ func (a *addrBook) hash(b []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	hasher.Write(b) //nolint:errcheck // ignore error
+	hasher.Write(b)
 	return hasher.Sum(nil), nil
 }
