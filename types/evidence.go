@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -547,15 +548,15 @@ func NewMockDuplicateVoteEvidence(height uint64, time time.Time, chainID string)
 // assumes voting power to be 10 and validator to be the only one in the set
 func NewMockDuplicateVoteEvidenceWithValidator(height uint64, time time.Time,
 	pv PrivValidator, chainID string) *DuplicateVoteEvidence {
-	pubKey, _ := pv.GetPubKey()
+	pubKey, _ := pv.GetPubKey(context.Background())
 	val := NewValidator(pubKey, 10)
 	voteA := makeMockVote(height, 0, 0, pubKey.Address(), randBlockID(), time)
 	vA := voteA.ToProto()
-	_ = pv.SignVote(chainID, vA)
+	_ = pv.SignVote(context.Background(), chainID, vA)
 	voteA.Signature = vA.Signature
 	voteB := makeMockVote(height, 0, 0, pubKey.Address(), randBlockID(), time)
 	vB := voteB.ToProto()
-	_ = pv.SignVote(chainID, vB)
+	_ = pv.SignVote(context.Background(), chainID, vB)
 	voteB.Signature = vB.Signature
 	return NewDuplicateVoteEvidence(voteA, voteB, time, NewValidatorSet([]*Validator{val}))
 }

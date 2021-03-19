@@ -1,6 +1,7 @@
 package state_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -199,7 +200,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		)
 		require.NoError(t, err, "height %d", height)
 
-		bpvPubKey, err := badPrivVal.GetPubKey()
+		bpvPubKey, err := badPrivVal.GetPubKey(context.Background())
 		require.NoError(t, err)
 
 		badVote := &types.Vote{
@@ -215,9 +216,9 @@ func TestValidateBlockCommit(t *testing.T) {
 		g := goodVote.ToProto()
 		b := badVote.ToProto()
 
-		err = badPrivVal.SignVote(chainID, g)
+		err = badPrivVal.SignVote(context.Background(), chainID, g)
 		require.NoError(t, err, "height %d", height)
-		err = badPrivVal.SignVote(chainID, b)
+		err = badPrivVal.SignVote(context.Background(), chainID, b)
 		require.NoError(t, err, "height %d", height)
 
 		goodVote.Signature, badVote.Signature = g.Signature, b.Signature

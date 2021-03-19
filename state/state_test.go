@@ -2,6 +2,7 @@ package state_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math"
 	"math/big"
@@ -363,7 +364,7 @@ func TestProposerFrequency(t *testing.T) {
 			votePower := int64(tmrand.Int()%maxPower) + 1
 			totalVotePower += votePower
 			privVal := types.NewMockPV()
-			pubKey, err := privVal.GetPubKey()
+			pubKey, err := privVal.GetPubKey(context.Background())
 			require.NoError(t, err)
 			val := types.NewValidator(pubKey, votePower)
 			val.ProposerPriority = tmrand.Int64()

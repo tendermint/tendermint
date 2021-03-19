@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -39,57 +40,59 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	states := make([]*State, nValidators)
 
 	for i := 0; i < nValidators; i++ {
-		logger := consensusLogger().With("test", "byzantine", "validator", i)
-		stateDB := dbm.NewMemDB() // each state needs its own db
-		stateStore := sm.NewStore(stateDB)
-		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
+		func() {
+			logger := consensusLogger().With("test", "byzantine", "validator", i)
+			stateDB := dbm.NewMemDB() // each state needs its own db
+			stateStore := sm.NewStore(stateDB)
+			state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 
-		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
-		defer os.RemoveAll(thisConfig.RootDir)
+			thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+			defer os.RemoveAll(thisConfig.RootDir)
 
-		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
-		app := appFunc()
-		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+			ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+			app := appFunc()
+			vals := types.TM2PB.ValidatorUpdates(state.Validators)
+			app.InitChain(abci.RequestInitChain{Validators: vals})
 
-		blockDB := dbm.NewMemDB()
-		blockStore := store.NewBlockStore(blockDB)
+			blockDB := dbm.NewMemDB()
+			blockStore := store.NewBlockStore(blockDB)
 
-		// one for mempool, one for consensus
-		mtx := new(tmsync.Mutex)
-		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
-		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+			// one for mempool, one for consensus
+			mtx := new(tmsync.Mutex)
+			proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
+			proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
-		// Make Mempool
-		mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
-		mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
-		if thisConfig.Consensus.WaitForTxs() {
-			mempool.EnableTxsAvailable()
-		}
+			// Make Mempool
+			mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
+			mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+			if thisConfig.Consensus.WaitForTxs() {
+				mempool.EnableTxsAvailable()
+			}
 
-		// Make a full instance of the evidence pool
-		evidenceDB := dbm.NewMemDB()
-		evpool, err := evidence.NewPool(logger.With("module", "evidence"), evidenceDB, stateStore, blockStore)
-		require.NoError(t, err)
+			// Make a full instance of the evidence pool
+			evidenceDB := dbm.NewMemDB()
+			evpool, err := evidence.NewPool(logger.With("module", "evidence"), evidenceDB, stateStore, blockStore)
+			require.NoError(t, err)
 
-		// Make State
-		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
-		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
-		cs.SetLogger(cs.Logger)
-		// set private validator
-		pv := privVals[i]
-		cs.SetPrivValidator(pv)
+			// Make State
+			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+			cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
+			cs.SetLogger(cs.Logger)
+			// set private validator
+			pv := privVals[i]
+			cs.SetPrivValidator(pv)
 
-		eventBus := types.NewEventBus()
-		eventBus.SetLogger(log.TestingLogger().With("module", "events"))
-		err = eventBus.Start()
-		require.NoError(t, err)
-		cs.SetEventBus(eventBus)
+			eventBus := types.NewEventBus()
+			eventBus.SetLogger(log.TestingLogger().With("module", "events"))
+			err = eventBus.Start()
+			require.NoError(t, err)
+			cs.SetEventBus(eventBus)
 
-		cs.SetTimeoutTicker(tickerFunc())
-		cs.SetLogger(logger)
+			cs.SetTimeoutTicker(tickerFunc())
+			cs.SetLogger(logger)
 
-		states[i] = cs
+			states[i] = cs
+		}()
 	}
 
 	rts := setup(t, nValidators, states, 100) // buffer must be large enough to not deadlock
@@ -200,7 +203,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 		proposal := types.NewProposal(height, round, lazyNodeState.ValidRound, propBlockID)
 		p := proposal.ToProto()
-		if err := lazyNodeState.privValidator.SignProposal(lazyNodeState.state.ChainID, p); err == nil {
+		if err := lazyNodeState.privValidator.SignProposal(context.Background(), lazyNodeState.state.ChainID, p); err == nil {
 			proposal.Signature = p.Signature
 
 			// send proposal and block parts on internal msg queue
@@ -232,11 +235,17 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 		go func(j int, s types.Subscription) {
 			defer wg.Done()
-
-			for msg := range s.Out() {
-				block := msg.Data().(types.EventDataNewBlock).Block
-				if len(block.Evidence.Evidence) != 0 {
-					evidenceFromEachValidator[j] = block.Evidence.Evidence[0]
+			for {
+				select {
+				case msg := <-s.Out():
+					require.NotNil(t, msg)
+					block := msg.Data().(types.EventDataNewBlock).Block
+					if len(block.Evidence.Evidence) != 0 {
+						evidenceFromEachValidator[j] = block.Evidence.Evidence[0]
+						return
+					}
+				case <-s.Canceled():
+					require.Fail(t, "subscription failed for %d", j)
 					return
 				}
 			}
@@ -247,7 +256,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	wg.Wait()
 
-	pubkey, err := bzNodeState.privValidator.GetPubKey()
+	pubkey, err := bzNodeState.privValidator.GetPubKey(context.Background())
 	require.NoError(t, err)
 
 	for idx, ev := range evidenceFromEachValidator {

@@ -2,6 +2,7 @@ package internal
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -195,12 +196,12 @@ func (th *TestHarness) Run() {
 // local Tendermint version.
 func (th *TestHarness) TestPublicKey() error {
 	th.logger.Info("TEST: Public key of remote signer")
-	fpvk, err := th.fpv.GetPubKey()
+	fpvk, err := th.fpv.GetPubKey(context.Background())
 	if err != nil {
 		return err
 	}
 	th.logger.Info("Local", "pubKey", fpvk)
-	sck, err := th.signerClient.GetPubKey()
+	sck, err := th.signerClient.GetPubKey(context.Background())
 	if err != nil {
 		return err
 	}
@@ -234,7 +235,7 @@ func (th *TestHarness) TestSignProposal() error {
 	}
 	p := prop.ToProto()
 	propBytes := types.ProposalSignBytes(th.chainID, p)
-	if err := th.signerClient.SignProposal(th.chainID, p); err != nil {
+	if err := th.signerClient.SignProposal(context.Background(), th.chainID, p); err != nil {
 		th.logger.Error("FAILED: Signing of proposal", "err", err)
 		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
 	}
@@ -245,7 +246,7 @@ func (th *TestHarness) TestSignProposal() error {
 		th.logger.Error("FAILED: Signed proposal is invalid", "err", err)
 		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
 	}
-	sck, err := th.signerClient.GetPubKey()
+	sck, err := th.signerClient.GetPubKey(context.Background())
 	if err != nil {
 		return err
 	}
@@ -284,7 +285,7 @@ func (th *TestHarness) TestSignVote() error {
 		v := vote.ToProto()
 		voteBytes := types.VoteSignBytes(th.chainID, v)
 		// sign the vote
-		if err := th.signerClient.SignVote(th.chainID, v); err != nil {
+		if err := th.signerClient.SignVote(context.Background(), th.chainID, v); err != nil {
 			th.logger.Error("FAILED: Signing of vote", "err", err)
 			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
 		}
@@ -295,7 +296,7 @@ func (th *TestHarness) TestSignVote() error {
 			th.logger.Error("FAILED: Signed vote is invalid", "err", err)
 			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
 		}
-		sck, err := th.signerClient.GetPubKey()
+		sck, err := th.signerClient.GetPubKey(context.Background())
 		if err != nil {
 			return err
 		}

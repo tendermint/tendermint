@@ -2,6 +2,7 @@ package privval
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -153,6 +154,8 @@ type FilePV struct {
 	LastSignState FilePVLastSignState
 }
 
+var _ types.PrivValidator = (*FilePV)(nil)
+
 // NewFilePV generates a new validator from the given key and paths.
 func NewFilePV(privKey crypto.PrivKey, keyFilePath, stateFilePath string) *FilePV {
 	return &FilePV{
@@ -257,13 +260,13 @@ func (pv *FilePV) GetAddress() types.Address {
 
 // GetPubKey returns the public key of the validator.
 // Implements PrivValidator.
-func (pv *FilePV) GetPubKey() (crypto.PubKey, error) {
+func (pv *FilePV) GetPubKey(ctx context.Context) (crypto.PubKey, error) {
 	return pv.Key.PubKey, nil
 }
 
 // SignVote signs a canonical representation of the vote, along with the
 // chainID. Implements PrivValidator.
-func (pv *FilePV) SignVote(chainID string, vote *tmproto.Vote) error {
+func (pv *FilePV) SignVote(ctx context.Context, chainID string, vote *tmproto.Vote) error {
 	if err := pv.signVote(chainID, vote); err != nil {
 		return fmt.Errorf("error signing vote: %v", err)
 	}
@@ -272,7 +275,7 @@ func (pv *FilePV) SignVote(chainID string, vote *tmproto.Vote) error {
 
 // SignProposal signs a canonical representation of the proposal, along with
 // the chainID. Implements PrivValidator.
-func (pv *FilePV) SignProposal(chainID string, proposal *tmproto.Proposal) error {
+func (pv *FilePV) SignProposal(ctx context.Context, chainID string, proposal *tmproto.Proposal) error {
 	if err := pv.signProposal(chainID, proposal); err != nil {
 		return fmt.Errorf("error signing proposal: %v", err)
 	}

@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math"
 	"sort"
@@ -755,7 +756,7 @@ func TestValidatorSet_VerifyCommit_CheckAllSignatures(t *testing.T) {
 	// malleate 4th signature
 	vote := voteSet.GetByIndex(3)
 	v := vote.ToProto()
-	err = vals[3].SignVote("CentaurusA", v)
+	err = vals[3].SignVote(context.Background(), "CentaurusA", v)
 	require.NoError(t, err)
 	vote.Signature = v.Signature
 	commit.Signatures[3] = vote.CommitSig()
@@ -780,7 +781,7 @@ func TestValidatorSet_VerifyCommitLight_ReturnsAsSoonAsMajorityOfVotingPowerSign
 	// malleate 4th signature (3 signatures are enough for 2/3+)
 	vote := voteSet.GetByIndex(3)
 	v := vote.ToProto()
-	err = vals[3].SignVote("CentaurusA", v)
+	err = vals[3].SignVote(context.Background(), "CentaurusA", v)
 	require.NoError(t, err)
 	vote.Signature = v.Signature
 	commit.Signatures[3] = vote.CommitSig()
@@ -803,7 +804,7 @@ func TestValidatorSet_VerifyCommitLightTrusting_ReturnsAsSoonAsTrustLevelOfVotin
 	// malleate 3rd signature (2 signatures are enough for 1/3+ trust level)
 	vote := voteSet.GetByIndex(2)
 	v := vote.ToProto()
-	err = vals[2].SignVote("CentaurusA", v)
+	err = vals[2].SignVote(context.Background(), "CentaurusA", v)
 	require.NoError(t, err)
 	vote.Signature = v.Signature
 	commit.Signatures[2] = vote.CommitSig()

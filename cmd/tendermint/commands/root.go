@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -15,8 +16,9 @@ import (
 )
 
 var (
-	config = cfg.DefaultConfig()
-	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	config     = cfg.DefaultConfig()
+	logger     = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+	ctxTimeout = 4 * time.Second
 )
 
 func init() {

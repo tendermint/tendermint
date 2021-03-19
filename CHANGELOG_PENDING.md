@@ -51,6 +51,8 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES
 
+- [config] Add `--mode` flag and config variable. See [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md) @dongsam
+
 ### IMPROVEMENTS
 
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
@@ -76,6 +78,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [types] \#6120 use batch verification for verifying commits signatures. 
   - If the key type supports the batch verification API it will try to batch verify. If the verification fails we will single verify each signature. 
 - [privval/file] \#6185 Return error on `LoadFilePV`, `LoadFilePVEmptyState`. Allows for better programmatic control of Tendermint.
+- [privval] /#6240 Add `context.Context` to privval interface. 
 
 ### BUG FIXES
 

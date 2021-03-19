@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -148,7 +149,7 @@ func TestVoteProposalNotEq(t *testing.T) {
 
 func TestVoteVerifySignature(t *testing.T) {
 	privVal := NewMockPV()
-	pubkey, err := privVal.GetPubKey()
+	pubkey, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
 
 	vote := examplePrecommit()
@@ -156,7 +157,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	signBytes := VoteSignBytes("test_chain_id", v)
 
 	// sign it
-	err = privVal.SignVote("test_chain_id", v)
+	err = privVal.SignVote(context.Background(), "test_chain_id", v)
 	require.NoError(t, err)
 
 	// verify the same vote
@@ -200,7 +201,7 @@ func TestIsVoteTypeValid(t *testing.T) {
 
 func TestVoteVerify(t *testing.T) {
 	privVal := NewMockPV()
-	pubkey, err := privVal.GetPubKey()
+	pubkey, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
 
 	vote := examplePrevote()
@@ -254,7 +255,7 @@ func TestVoteValidateBasic(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			vote := examplePrecommit()
 			v := vote.ToProto()
-			err := privVal.SignVote("test_chain_id", v)
+			err := privVal.SignVote(context.Background(), "test_chain_id", v)
 			vote.Signature = v.Signature
 			require.NoError(t, err)
 			tc.malleateVote(vote)
@@ -267,7 +268,7 @@ func TestVoteProtobuf(t *testing.T) {
 	privVal := NewMockPV()
 	vote := examplePrecommit()
 	v := vote.ToProto()
-	err := privVal.SignVote("test_chain_id", v)
+	err := privVal.SignVote(context.Background(), "test_chain_id", v)
 	vote.Signature = v.Signature
 	require.NoError(t, err)
 

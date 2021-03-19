@@ -792,6 +792,19 @@ func (m *PeerManager) Subscribe() *PeerUpdates {
 	// compounding. Limiting it to 1 means that the subscribers are still
 	// reasonably in sync. However, this should probably be benchmarked.
 	peerUpdates := NewPeerUpdates(make(chan PeerUpdate, 1))
+	m.Register(peerUpdates)
+	return peerUpdates
+}
+
+// Register allows you to inject a custom PeerUpdate instance into the
+// PeerManager, rather than relying on the instance constructed by the
+// Subscribe method, which wraps the functionality of the Register
+// method.
+//
+// The caller must consume the peer updates from this PeerUpdates
+// instance in a timely fashion and close the subscription when done,
+// otherwise the PeerManager will halt.
+func (m *PeerManager) Register(peerUpdates *PeerUpdates) {
 	m.mtx.Lock()
 	m.subscriptions[peerUpdates] = peerUpdates
 	m.mtx.Unlock()
@@ -805,7 +818,6 @@ func (m *PeerManager) Subscribe() *PeerUpdates {
 		case <-m.closeCh:
 		}
 	}()
-	return peerUpdates
 }
 
 // broadcast broadcasts a peer update to all subscriptions. The caller must

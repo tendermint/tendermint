@@ -2,7 +2,6 @@ package grpc
 
 import (
 	"context"
-	"time"
 
 	grpc "google.golang.org/grpc"
 	"google.golang.org/grpc/status"
@@ -55,9 +54,7 @@ func (sc *SignerClient) Close() error {
 
 // GetPubKey retrieves a public key from a remote signer
 // returns an error if client is not able to provide the key
-func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second) // Todo: should this be configurable?
-	defer cancel()
+func (sc *SignerClient) GetPubKey(ctx context.Context) (crypto.PubKey, error) {
 	resp, err := sc.client.GetPubKey(ctx, &privvalproto.PubKeyRequest{ChainId: sc.chainID})
 	if err != nil {
 		errStatus, _ := status.FromError(err)
@@ -74,9 +71,7 @@ func (sc *SignerClient) GetPubKey() (crypto.PubKey, error) {
 }
 
 // SignVote requests a remote signer to sign a vote
-func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
+func (sc *SignerClient) SignVote(ctx context.Context, chainID string, vote *tmproto.Vote) error {
 	resp, err := sc.client.SignVote(ctx, &privvalproto.SignVoteRequest{ChainId: sc.chainID, Vote: vote})
 	if err != nil {
 		errStatus, _ := status.FromError(err)
@@ -90,9 +85,7 @@ func (sc *SignerClient) SignVote(chainID string, vote *tmproto.Vote) error {
 }
 
 // SignProposal requests a remote signer to sign a proposal
-func (sc *SignerClient) SignProposal(chainID string, proposal *tmproto.Proposal) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
+func (sc *SignerClient) SignProposal(ctx context.Context, chainID string, proposal *tmproto.Proposal) error {
 	resp, err := sc.client.SignProposal(
 		ctx, &privvalproto.SignProposalRequest{ChainId: chainID, Proposal: proposal})
 
