@@ -526,6 +526,7 @@ func TestTxSearch(t *testing.T) {
 	txCount := len(result.Txs)
 
 	// pick out the last tx to have something to search for in tests
+	fmt.Println(len(result.Txs))
 	find := result.Txs[len(result.Txs)-1]
 	anotherTxHash := types.Tx("a different tx").Hash()
 

@@ -649,7 +649,7 @@ func secondaryKey(compositeKey, value string, height uint64, index uint32) []byt
 		nil,
 		compositeKey,
 		value,
-		height,
+		int64(height),
 		int64(index),
 	)
 	if err != nil {

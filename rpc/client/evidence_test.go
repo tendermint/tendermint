@@ -117,6 +117,7 @@ func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
 		config  = rpctest.GetConfig()
 		chainID = config.ChainID()
 	)
+
 	pv, err := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	require.NoError(t, err)
 
