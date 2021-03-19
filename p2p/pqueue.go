@@ -67,7 +67,6 @@ var _ queue = (*pqScheduler)(nil)
 
 type pqScheduler struct {
 	logger       log.Logger
-	peerID       NodeID
 	metrics      *Metrics
 	size         uint
 	sizes        map[uint]uint // cumulative priority sizes
@@ -84,7 +83,6 @@ type pqScheduler struct {
 
 func newPQScheduler(
 	logger log.Logger,
-	pID NodeID,
 	m *Metrics,
 	chDescs []ChannelDescriptor,
 	enqueueBuf, dequeueBuf, capacity uint,
@@ -110,8 +108,7 @@ func newPQScheduler(
 	heap.Init(&pq)
 
 	return &pqScheduler{
-		logger:       logger.With("peer", pID),
-		peerID:       pID,
+		logger:       logger.With("router", "priorityqueue"),
 		metrics:      m,
 		chDescs:      chDescsCopy,
 		capacity:     capacity,
