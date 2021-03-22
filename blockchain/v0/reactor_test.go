@@ -88,7 +88,7 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 	nodeID p2p.NodeID,
 	genDoc *types.GenesisDoc,
 	privVal types.PrivValidator,
-	maxBlockHeight int64,
+	maxBlockHeight uint64,
 ) {
 	t.Helper()
 
@@ -185,7 +185,7 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 	genDoc, privVals := randGenesisDoc(config, 1, false, 30)
 	maxBlockHeight := uint64(64)
 
-	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
+	rts := setup(t, genDoc, privVals[0], []uint64{maxBlockHeight, 0}, 0)
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 
@@ -220,7 +220,7 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 	genDoc, privVals := randGenesisDoc(config, 1, false, 30)
 	maxBlockHeight := uint64(65)
 
-	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0}, 0)
+	rts := setup(t, genDoc, privVals[0], []uint64{maxBlockHeight, 0}, 0)
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 
@@ -267,7 +267,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	maxBlockHeight := uint64(48)
 	genDoc, privVals := randGenesisDoc(config, 1, false, 30)
 
-	rts := setup(t, genDoc, privVals[0], []int64{maxBlockHeight, 0, 0, 0, 0}, 1000)
+	rts := setup(t, genDoc, privVals[0], []uint64{maxBlockHeight, 0, 0, 0, 0}, 1000)
 
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 
