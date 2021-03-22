@@ -18,6 +18,7 @@ RUN go mod download
 COPY . .
 RUN make build && cp build/tendermint /usr/bin/tendermint
 COPY test/e2e/docker/entrypoint* /usr/bin/
+
 # FIXME: Temporarily disconnect maverick node until it is redesigned
 # RUN cd test/e2e && make maverick && cp build/maverick /usr/bin/maverick
 RUN cd test/e2e && make app && cp build/app /usr/bin/app
@@ -28,6 +29,7 @@ WORKDIR /tendermint
 VOLUME /tendermint
 ENV TMHOME=/tendermint
 ENV TM_LEGACY_P2P=true
+ENV TM_P2P_QUEUE="priority"
 
 EXPOSE 26656 26657 26660 6060
 ENTRYPOINT ["/usr/bin/entrypoint"]

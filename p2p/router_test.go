@@ -97,7 +97,15 @@ func TestRouter_Channel(t *testing.T) {
 	// Set up a router with no transports (so no peers).
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
-	router, err := p2p.NewRouter(log.TestingLogger(), p2p.NopMetrics(), selfInfo, selfKey, peerManager, nil, p2p.RouterOptions{})
+	router, err := p2p.NewRouter(
+		log.TestingLogger(),
+		p2p.NopMetrics(),
+		selfInfo,
+		selfKey,
+		peerManager,
+		nil,
+		p2p.RouterOptions{},
+	)
 	require.NoError(t, err)
 
 	require.NoError(t, router.Start())

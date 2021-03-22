@@ -124,10 +124,29 @@ type RouterOptions struct {
 	// HandshakeTimeout is the timeout for handshaking with a peer. 0 means
 	// no timeout.
 	HandshakeTimeout time.Duration
+
+	// QueueType must be "wdrr" (Weighed Deficit Round Robin),
+	// "priority", or FIFO. Defaults to FIFO.
+	QueueType string
 }
+
+const (
+	queueTypeFifo     = "fifo"
+	queueTypePriority = "priority"
+	queueTypeWDRR     = "wdrr"
+)
 
 // Validate validates router options.
 func (o *RouterOptions) Validate() error {
+	switch o.QueueType {
+	case "":
+		o.QueueType = queueTypeFifo
+	case queueTypeFifo, queueTypeWDRR, queueTypePriority:
+		// pass
+	default:
+		return fmt.Errorf("queue type %q is not supported", o.QueueType)
+	}
+
 	return nil
 }
 
@@ -184,9 +203,10 @@ type Router struct {
 	protocolTransports map[Protocol]Transport
 	stopCh             chan struct{} // signals Router shutdown
 
-	peerMtx    sync.RWMutex
-	peerQueues map[NodeID]queue // outbound messages per peer for all channels
-
+	peerMtx            sync.RWMutex
+	peerQueues         map[NodeID]queue // outbound messages per peer for all channels
+	queueFactory       func(int) queue
+	queueBufferDefault int
 	// FIXME: We don't strictly need to use a mutex for this if we seal the
 	// channels on router start. This depends on whether we want to allow
 	// dynamic channels in the future.
@@ -207,6 +227,7 @@ func NewRouter(
 	transports []Transport,
 	options RouterOptions,
 ) (*Router, error) {
+
 	if err := options.Validate(); err != nil {
 		return nil, err
 	}
@@ -225,8 +246,15 @@ func NewRouter(
 		channelQueues:      map[ChannelID]queue{},
 		channelMessages:    map[ChannelID]proto.Message{},
 		peerQueues:         map[NodeID]queue{},
+		queueBufferDefault: 4096,
 	}
 	router.BaseService = service.NewBaseService(logger, "router", router)
+
+	qf, err := router.createQueueFactory()
+	if err != nil {
+		return nil, err
+	}
+	router.queueFactory = qf
 
 	for _, transport := range transports {
 		for _, protocol := range transport.Protocols() {
@@ -237,6 +265,35 @@ func NewRouter(
 	}
 
 	return router, nil
+}
+
+func (r *Router) createQueueFactory() (func(int) queue, error) {
+	switch r.options.QueueType {
+	case queueTypeFifo:
+		return newFIFOQueue, nil
+	case queueTypePriority:
+		return func(size int) queue {
+			if size%2 != 0 {
+				size++
+			}
+
+			q := newPQScheduler(r.logger, r.metrics, r.chDescs, uint(size)/2, uint(size)/2, defaultCapacity)
+			q.start()
+			return q
+		}, nil
+	case queueTypeWDRR:
+		return func(size int) queue {
+			if size%2 != 0 {
+				size++
+			}
+
+			q := newWDRRScheduler(r.logger, r.metrics, r.chDescs, uint(size)/2, uint(size)/2, defaultCapacity)
+			q.start()
+			return q
+		}, nil
+	default:
+		return nil, fmt.Errorf("cannot construct queue of type %q", r.options.QueueType)
+	}
 }
 
 // AddChannelDescriptors adds a set of ChannelDescriptors to the reactor. Note,
@@ -255,17 +312,7 @@ func (r *Router) AddChannelDescriptors(chDescs []*ChannelDescriptor) {
 // which internally makes the inbound, outbound, and error channel buffered.
 func (r *Router) OpenChannel(id ChannelID, messageType proto.Message, size int) (*Channel, error) {
 	if size == 0 {
-		size = 4096
-	}
-
-	queue := newFIFOQueue(size)
-	outCh := make(chan Envelope, size)
-	errCh := make(chan PeerError, size)
-	channel := NewChannel(id, messageType, queue.dequeue(), outCh, errCh)
-
-	var wrapper Wrapper
-	if w, ok := messageType.(Wrapper); ok {
-		wrapper = w
+		size = r.queueBufferDefault
 	}
 
 	r.channelMtx.Lock()
@@ -273,6 +320,16 @@ func (r *Router) OpenChannel(id ChannelID, messageType proto.Message, size int) 
 
 	if _, ok := r.channelQueues[id]; ok {
 		return nil, fmt.Errorf("channel %v already exists", id)
+	}
+
+	queue := r.queueFactory(size)
+	outCh := make(chan Envelope, size)
+	errCh := make(chan PeerError, size)
+	channel := NewChannel(id, messageType, queue.dequeue(), outCh, errCh)
+
+	var wrapper Wrapper
+	if w, ok := messageType.(Wrapper); ok {
+		wrapper = w
 	}
 
 	r.channelQueues[id] = queue
@@ -450,8 +507,7 @@ func (r *Router) acceptPeers(transport Transport) {
 				return
 			}
 
-			queue := newWDRRScheduler(r.logger, peerInfo.NodeID, r.metrics, r.chDescs, 10000, 10000, defaultCapacity)
-			queue.start()
+			queue := r.queueFactory(r.queueBufferDefault)
 
 			r.peerMtx.Lock()
 			r.peerQueues[peerInfo.NodeID] = queue
@@ -528,19 +584,13 @@ func (r *Router) dialPeers() {
 				return
 			}
 
-			queue := newWDRRScheduler(r.logger, peerID, r.metrics, r.chDescs, 10000, 10000, defaultCapacity)
-			queue.start()
-
-			r.peerMtx.Lock()
-			r.peerQueues[peerID] = queue
-			r.peerMtx.Unlock()
-
+			peerQueue := r.getOrMakeQueue(peerID)
 			defer func() {
 				r.peerMtx.Lock()
 				delete(r.peerQueues, peerID)
 				r.peerMtx.Unlock()
 
-				queue.close()
+				peerQueue.close()
 
 				if err := r.peerManager.Disconnected(peerID); err != nil {
 					r.logger.Error("failed to disconnect peer", "peer", address, "err", err)
@@ -552,9 +602,22 @@ func (r *Router) dialPeers() {
 				return
 			}
 
-			r.routePeer(peerID, conn, queue)
+			r.routePeer(peerID, conn, peerQueue)
 		}()
 	}
+}
+
+func (r *Router) getOrMakeQueue(peerID NodeID) queue {
+	r.peerMtx.Lock()
+	defer r.peerMtx.Unlock()
+
+	if peerQueue, ok := r.peerQueues[peerID]; ok {
+		return peerQueue
+	}
+
+	peerQueue := r.queueFactory(r.queueBufferDefault)
+	r.peerQueues[peerID] = peerQueue
+	return peerQueue
 }
 
 // dialPeer connects to a peer by dialing it.

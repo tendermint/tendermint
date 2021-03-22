@@ -32,9 +32,7 @@ type fifoQueue struct {
 	closer  *tmsync.Closer
 }
 
-var _ queue = (*fifoQueue)(nil)
-
-func newFIFOQueue(size int) *fifoQueue {
+func newFIFOQueue(size int) queue {
 	return &fifoQueue{
 		queueCh: make(chan Envelope, size),
 		closer:  tmsync.NewCloser(),
