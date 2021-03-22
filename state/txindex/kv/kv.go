@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gogo/protobuf/proto"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 )
@@ -170,11 +170,10 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Ba
 // Search will exit early and return any result fetched so far,
 // when a message is received on the context chan.
 func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResult, error) {
-	// Potentially exit early.
 	select {
 	case <-ctx.Done():
-		results := make([]*abci.TxResult, 0)
-		return results, nil
+		return make([]*abci.TxResult, 0), nil
+
 	default:
 	}
 
@@ -209,13 +208,13 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 	// extract ranges
 	// if both upper and lower bounds exist, it's better to get them in order not
 	// no iterate over kvs that are not within range.
-	ranges, rangeIndexes := lookForRanges(conditions)
+	ranges, rangeIndexes := indexer.LookForRanges(conditions)
 	if len(ranges) > 0 {
 		skipIndexes = append(skipIndexes, rangeIndexes...)
 
-		for _, r := range ranges {
+		for _, qr := range ranges {
 			if !hashesInitialized {
-				filteredHashes = txi.matchRange(ctx, r, startKey(r.key), filteredHashes, true)
+				filteredHashes = txi.matchRange(ctx, qr, startKey(qr.Key), filteredHashes, true)
 				hashesInitialized = true
 
 				// Ignore any remaining conditions if the first condition resulted
@@ -224,7 +223,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 					break
 				}
 			} else {
-				filteredHashes = txi.matchRange(ctx, r, startKey(r.key), filteredHashes, false)
+				filteredHashes = txi.matchRange(ctx, qr, startKey(qr.Key), filteredHashes, false)
 			}
 		}
 	}
@@ -289,100 +288,6 @@ func lookForHeight(conditions []query.Condition) (height int64) {
 		}
 	}
 	return 0
-}
-
-// special map to hold range conditions
-// Example: account.number => queryRange{lowerBound: 1, upperBound: 5}
-type queryRanges map[string]queryRange
-
-type queryRange struct {
-	lowerBound        interface{} // int || time.Time
-	upperBound        interface{} // int || time.Time
-	key               string
-	includeLowerBound bool
-	includeUpperBound bool
-}
-
-func (r queryRange) lowerBoundValue() interface{} {
-	if r.lowerBound == nil {
-		return nil
-	}
-
-	if r.includeLowerBound {
-		return r.lowerBound
-	}
-
-	switch t := r.lowerBound.(type) {
-	case int64:
-		return t + 1
-	case time.Time:
-		return t.Unix() + 1
-	default:
-		panic("not implemented")
-	}
-}
-
-func (r queryRange) AnyBound() interface{} {
-	if r.lowerBound != nil {
-		return r.lowerBound
-	}
-
-	return r.upperBound
-}
-
-func (r queryRange) upperBoundValue() interface{} {
-	if r.upperBound == nil {
-		return nil
-	}
-
-	if r.includeUpperBound {
-		return r.upperBound
-	}
-
-	switch t := r.upperBound.(type) {
-	case int64:
-		return t - 1
-	case time.Time:
-		return t.Unix() - 1
-	default:
-		panic("not implemented")
-	}
-}
-
-func lookForRanges(conditions []query.Condition) (ranges queryRanges, indexes []int) {
-	ranges = make(queryRanges)
-	for i, c := range conditions {
-		if isRangeOperation(c.Op) {
-			r, ok := ranges[c.CompositeKey]
-			if !ok {
-				r = queryRange{key: c.CompositeKey}
-			}
-			switch c.Op {
-			case query.OpGreater:
-				r.lowerBound = c.Operand
-			case query.OpGreaterEqual:
-				r.includeLowerBound = true
-				r.lowerBound = c.Operand
-			case query.OpLess:
-				r.upperBound = c.Operand
-			case query.OpLessEqual:
-				r.includeUpperBound = true
-				r.upperBound = c.Operand
-			}
-			ranges[c.CompositeKey] = r
-			indexes = append(indexes, i)
-		}
-	}
-	return ranges, indexes
-}
-
-func isRangeOperation(op query.Operator) bool {
-	switch op {
-	case query.OpGreater, query.OpGreaterEqual, query.OpLess, query.OpLessEqual:
-		return true
-	default:
-		return false
-	}
 }
 
 // match returns all matching txs by hash that meet a given condition and start
@@ -519,7 +424,7 @@ func (txi *TxIndex) match(
 // NOTE: filteredHashes may be empty if no previous condition has matched.
 func (txi *TxIndex) matchRange(
 	ctx context.Context,
-	r queryRange,
+	qr indexer.QueryRange,
 	startKey []byte,
 	filteredHashes map[string][]byte,
 	firstRun bool,
@@ -531,8 +436,8 @@ func (txi *TxIndex) matchRange(
 	}
 
 	tmpHashes := make(map[string][]byte)
-	lowerBound := r.lowerBoundValue()
-	upperBound := r.upperBoundValue()
+	lowerBound := qr.LowerBoundValue()
+	upperBound := qr.UpperBoundValue()
 
 	it, err := dbm.IteratePrefix(txi.store, startKey)
 	if err != nil {
@@ -546,7 +451,7 @@ LOOP:
 			continue
 		}
 
-		if _, ok := r.AnyBound().(int64); ok {
+		if _, ok := qr.AnyBound().(int64); ok {
 			v, err := strconv.ParseInt(extractValueFromKey(it.Key()), 10, 64)
 			if err != nil {
 				continue LOOP

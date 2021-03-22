@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -98,12 +99,29 @@ func (app *Application) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDelive
 
 // EndBlock implements ABCI.
 func (app *Application) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
-	var err error
-	resp := abci.ResponseEndBlock{}
-	if resp.ValidatorUpdates, err = app.validatorUpdates(uint64(req.Height)); err != nil {
+	valUpdates, err := app.validatorUpdates(uint64(req.Height))
+	if err != nil {
 		panic(err)
 	}
-	return resp
+
+	return abci.ResponseEndBlock{
+		ValidatorUpdates: valUpdates,
+		Events: []abci.Event{
+			{
+				Type: "val_updates",
+				Attributes: []abci.EventAttribute{
+					{
+						Key:   []byte("size"),
+						Value: []byte(strconv.Itoa(valUpdates.Len())),
+					},
+					{
+						Key:   []byte("height"),
+						Value: []byte(strconv.Itoa(int(req.Height))),
+					},
+				},
+			},
+		},
+	}
 }
 
 // Commit implements ABCI.

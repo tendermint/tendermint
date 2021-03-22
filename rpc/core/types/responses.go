@@ -195,6 +195,12 @@ type ResultTxSearch struct {
 	TotalCount int         `json:"total_count"`
 }
 
+// ResultBlockSearch defines the RPC response type for a block search by events.
+type ResultBlockSearch struct {
+	Blocks     []*ResultBlock `json:"blocks"`
+	TotalCount int            `json:"total_count"`
+}
+
 // List of mempool txs
 type ResultUnconfirmedTxs struct {
 	Count      int        `json:"n_txs"`

@@ -21,6 +21,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES
 
+- [rpc] \#6226 Index block events and expose a new RPC method, `/block_search`, to allow querying for blocks by `BeginBlock` and `EndBlock` events. (@alexanderbez)
+
 ### IMPROVEMENTS
 
 ### BUG FIXES

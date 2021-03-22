@@ -70,8 +70,25 @@ type SignClient interface {
 	Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit, error)
 	Validators(ctx context.Context, height *int64, page, perPage *int) (*ctypes.ResultValidators, error)
 	Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.ResultTx, error)
-	TxSearch(ctx context.Context, query string, prove bool, page, perPage *int,
-		orderBy string) (*ctypes.ResultTxSearch, error)
+
+	// TxSearch defines a method to search for a paginated set of transactions by
+	// DeliverTx event search criteria.
+	TxSearch(
+		ctx context.Context,
+		query string,
+		prove bool,
+		page, perPage *int,
+		orderBy string,
+	) (*ctypes.ResultTxSearch, error)
+
+	// BlockSearch defines a method to search for a paginated set of blocks by
+	// BeginBlock and EndBlock event search criteria.
+	BlockSearch(
+		ctx context.Context,
+		query string,
+		page, perPage *int,
+		orderBy string,
+	) (*ctypes.ResultBlockSearch, error)
 }
 
 // HistoryClient provides access to data from genesis to now in large chunks.
