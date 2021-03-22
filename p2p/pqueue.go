@@ -139,6 +139,7 @@ func (s *pqScheduler) closed() <-chan struct{} {
 	return s.closer.Done()
 }
 
+// start starts non-blocking process that starts the priority queue scheduler.
 func (s *pqScheduler) start() {
 	go s.process()
 }
