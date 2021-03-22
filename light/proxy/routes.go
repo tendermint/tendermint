@@ -168,7 +168,7 @@ func makeBlockSearchFunc(c *lrpc.Client) rpcBlockSearchFunc {
 		page, perPage *int,
 		orderBy string,
 	) (*ctypes.ResultBlockSearch, error) {
-		return c.BlockSearch(ctx.Context(), query, prove, page, perPage, orderBy)
+		return c.BlockSearch(ctx.Context(), query, page, perPage, orderBy)
 	}
 }
 
