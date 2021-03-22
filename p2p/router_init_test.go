@@ -38,7 +38,7 @@ func TestRouter_ConstructQueueFactory(t *testing.T) {
 		})
 
 		t.Run("ExplictFifo", func(t *testing.T) {
-			defer safeSetEnvVar(t, "TM_P2P_QUEUE", "fifo")()
+			defer safeSetEnvVar(t, "TM_P2P_QUEUE", queueTypeFifo)()
 
 			opts := RouterOptions{}
 			r, err := NewRouter(log.NewNopLogger(), nil, NodeInfo{}, nil, nil, nil, opts)
@@ -48,7 +48,7 @@ func TestRouter_ConstructQueueFactory(t *testing.T) {
 		})
 
 		t.Run("Priority", func(t *testing.T) {
-			defer safeSetEnvVar(t, "TM_P2P_QUEUE", "priority")()
+			defer safeSetEnvVar(t, "TM_P2P_QUEUE", queueTypePriority)()
 
 			opts := RouterOptions{}
 			r, err := NewRouter(log.NewNopLogger(), nil, NodeInfo{}, nil, nil, nil, opts)
@@ -59,7 +59,7 @@ func TestRouter_ConstructQueueFactory(t *testing.T) {
 		})
 
 		t.Run("WDRR", func(t *testing.T) {
-			defer safeSetEnvVar(t, "TM_P2P_QUEUE", "wdrr")()
+			defer safeSetEnvVar(t, "TM_P2P_QUEUE", queueTypeWDRR)()
 
 			opts := RouterOptions{}
 			r, err := NewRouter(log.NewNopLogger(), nil, NodeInfo{}, nil, nil, nil, opts)
@@ -81,14 +81,14 @@ func TestRouter_ConstructQueueFactory(t *testing.T) {
 			require.True(t, ok)
 		})
 		t.Run("Fifo", func(t *testing.T) {
-			opts := RouterOptions{QueueType: "fifo"}
+			opts := RouterOptions{QueueType: queueTypeFifo}
 			r, err := NewRouter(log.NewNopLogger(), nil, NodeInfo{}, nil, nil, nil, opts)
 			require.NoError(t, err)
 			_, ok := r.queueFactory(1).(*fifoQueue)
 			require.True(t, ok)
 		})
 		t.Run("Priority", func(t *testing.T) {
-			opts := RouterOptions{QueueType: "priority"}
+			opts := RouterOptions{QueueType: queueTypePriority}
 			r, err := NewRouter(log.NewNopLogger(), nil, NodeInfo{}, nil, nil, nil, opts)
 			require.NoError(t, err)
 			q, ok := r.queueFactory(1).(*pqScheduler)
@@ -96,7 +96,7 @@ func TestRouter_ConstructQueueFactory(t *testing.T) {
 			defer q.close()
 		})
 		t.Run("WDRR", func(t *testing.T) {
-			opts := RouterOptions{QueueType: "wdrr"}
+			opts := RouterOptions{QueueType: queueTypeWDRR}
 			r, err := NewRouter(log.NewNopLogger(), nil, NodeInfo{}, nil, nil, nil, opts)
 			require.NoError(t, err)
 			q, ok := r.queueFactory(1).(*wdrrScheduler)

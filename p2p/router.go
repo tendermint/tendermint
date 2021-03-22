@@ -131,12 +131,18 @@ type RouterOptions struct {
 	QueueType string
 }
 
+const (
+	queueTypeFifo     = "fifo"
+	queueTypePriority = "priority"
+	queueTypeWDRR     = "wdrr"
+)
+
 // Validate validates router options.
 func (o *RouterOptions) Validate() error {
 	switch o.QueueType {
 	case "":
-		o.QueueType = "fifo"
-	case "wdrr", "priority", "fifo":
+		o.QueueType = queueTypeFifo
+	case queueTypeFifo, queueTypeWDRR, queueTypePriority:
 		// pass
 	default:
 		return fmt.Errorf("queue type %q is not supported", o.QueueType)
@@ -249,11 +255,11 @@ func NewRouter(
 	}
 	router.BaseService = service.NewBaseService(logger, "router", router)
 
-	if qf, err := router.createQueueFactory(); err != nil {
+	qf, err := router.createQueueFactory()
+	if err != nil {
 		return nil, err
-	} else {
-		router.queueFactory = qf
 	}
+	router.queueFactory = qf
 
 	for _, transport := range transports {
 		for _, protocol := range transport.Protocols() {
@@ -269,7 +275,7 @@ func NewRouter(
 func (r *Router) createQueueFactory() (func(int) queue, error) {
 	switch r.options.QueueType {
 	case "fifo":
-		return func(s int) queue { return newFIFOQueue(s) }, nil
+		return newFIFOQueue, nil
 	case "priority":
 		return func(size int) queue {
 			if size%2 != 0 {

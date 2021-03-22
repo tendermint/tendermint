@@ -239,7 +239,7 @@ func (s *wdrrScheduler) process() {
 			}
 
 		default:
-			// perform the WDRR algorthim
+			// perform the WDRR algorithm
 			for _, chDesc := range s.chDescs {
 				chID := ChannelID(chDesc.ID)
 
