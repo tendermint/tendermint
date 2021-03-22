@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"sync"
 	"time"
 
@@ -228,10 +227,6 @@ func NewRouter(
 	transports []Transport,
 	options RouterOptions,
 ) (*Router, error) {
-
-	if options.QueueType == "" {
-		options.QueueType = os.Getenv("TM_P2P_QUEUE")
-	}
 
 	if err := options.Validate(); err != nil {
 		return nil, err

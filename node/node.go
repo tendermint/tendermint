@@ -52,11 +52,18 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-var useLegacyP2P = true
+var (
+	useLegacyP2P       = true
+	p2pRouterQueueType string
+)
 
 func init() {
 	if v := os.Getenv("TM_LEGACY_P2P"); len(v) > 0 {
 		useLegacyP2P, _ = strconv.ParseBool(v)
+	}
+
+	if v := os.Getenv("TM_P2P_QUEUE"); len(v) > 0 {
+		p2pRouterQueueType = v
 	}
 }
 
@@ -611,7 +618,7 @@ func createRouter(
 		privKey,
 		peerManager,
 		[]p2p.Transport{transport},
-		p2p.RouterOptions{},
+		p2p.RouterOptions{QueueType: p2pRouterQueueType},
 	)
 }
 
