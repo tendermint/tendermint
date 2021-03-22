@@ -5,16 +5,12 @@ order: 6
 # Indexing Transactions
 
 Tendermint allows you to index transactions and blocks and later query or
-subscribe to their results. Both transactions and blocks are indexed by their
-respective events. However, transactions are also indexed by a primary key which
-includes the transaction hash and maps to and stores the corresponding `TxResult`.
-Blocks are indexed by a primary key which includes the block height and maps to
-and stores the block height, i.e. the block itself is never stored.
-
-Events are used to index transactions and blocks according to what happened
-during their execution. Note that the set of events returned for a block from
-`BeginBlock` and `EndBlock` are merged. In case both methods return the same
-type, only the key-value pairs defined in `EndBlock` are used.
+subscribe to their results. Transactions are indexed by `TxResult.Events` and
+blocks are indexed by `Response(Begin|End)Block.Events`. However, transactions
+are also indexed by a primary key which includes the transaction hash and maps
+to and stores the corresponding `TxResult`. Blocks are indexed by a primary key
+which includes the block height and maps to and stores the block height, i.e.
+the block itself is never stored.
 
 Each event contains a type and a list of attributes, which are key-value pairs
 denoting something about what happened during the method's execution. For more
