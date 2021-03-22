@@ -35,15 +35,18 @@ type LightClient interface {
 	TrustedLightBlock(height int64) (*types.LightBlock, error)
 }
 
+var _ rpcclient.Client = (*Client)(nil)
+
 // Client is an RPC client, which uses light#Client to verify data (if it can
-// be proved!). merkle.DefaultProofRuntime is used to verify values returned by
-// ABCIQuery.
+// be proved). Note, merkle.DefaultProofRuntime is used to verify values
+// returned by ABCI#Query.
 type Client struct {
 	service.BaseService
 
 	next rpcclient.Client
 	lc   LightClient
-	// Proof runtime used to verify values returned by ABCIQuery
+
+	// proof runtime used to verify values returned by ABCIQuery
 	prt       *merkle.ProofRuntime
 	keyPathFn KeyPathFunc
 }
@@ -470,16 +473,34 @@ func (c *Client) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.Resul
 	return res, res.Proof.Validate(l.DataHash)
 }
 
-func (c *Client) TxSearch(ctx context.Context, query string, prove bool, page, perPage *int, orderBy string) (
-	*ctypes.ResultTxSearch, error) {
+func (c *Client) TxSearch(
+	ctx context.Context,
+	query string,
+	prove bool,
+	page, perPage *int,
+	orderBy string,
+) (*ctypes.ResultTxSearch, error) {
 	return c.next.TxSearch(ctx, query, prove, page, perPage, orderBy)
 }
 
+func (c *Client) BlockSearch(
+	ctx context.Context,
+	query string,
+	page, perPage *int,
+	orderBy string,
+) (*ctypes.ResultBlockSearch, error) {
+	return c.next.BlockSearch(ctx, query, page, perPage, orderBy)
+}
+
 // Validators fetches and verifies validators.
-func (c *Client) Validators(ctx context.Context, height *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators,
-	error) {
-	// Update the light client if we're behind and retrieve the light block at the requested height
-	// or at the latest height if no height is provided.
+func (c *Client) Validators(
+	ctx context.Context,
+	height *int64,
+	pagePtr, perPagePtr *int,
+) (*ctypes.ResultValidators, error) {
+
+	// Update the light client if we're behind and retrieve the light block at the
+	// requested height or at the latest height if no height is provided.
 	l, err := c.updateLightClientIfNeededTo(ctx, height)
 	if err != nil {
 		return nil, err
@@ -493,7 +514,6 @@ func (c *Client) Validators(ctx context.Context, height *int64, pagePtr, perPage
 	}
 
 	skipCount := validateSkipCount(page, perPage)
-
 	v := l.ValidatorSet.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
 
 	return &ctypes.ResultValidators{

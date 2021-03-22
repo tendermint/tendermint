@@ -14,7 +14,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
-
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -39,6 +38,9 @@ import (
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/state/indexer"
+	blockidxkv "github.com/tendermint/tendermint/state/indexer/block/kv"
+	blockidxnull "github.com/tendermint/tendermint/state/indexer/block/null"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/state/txindex/null"
@@ -201,6 +203,7 @@ type Node struct {
 	proxyApp          proxy.AppConns          // connection to the application
 	rpcListeners      []net.Listener          // rpc servers
 	txIndexer         txindex.TxIndexer
+	blockIndexer      indexer.BlockIndexer
 	indexerService    *txindex.IndexerService
 	prometheusSrv     *http.Server
 }
@@ -239,27 +242,40 @@ func createAndStartEventBus(logger log.Logger) (*types.EventBus, error) {
 	return eventBus, nil
 }
 
-func createAndStartIndexerService(config *cfg.Config, dbProvider DBProvider,
-	eventBus *types.EventBus, logger log.Logger) (*txindex.IndexerService, txindex.TxIndexer, error) {
+func createAndStartIndexerService(
+	config *cfg.Config,
+	dbProvider DBProvider,
+	eventBus *types.EventBus,
+	logger log.Logger,
+) (*txindex.IndexerService, txindex.TxIndexer, indexer.BlockIndexer, error) {
 
-	var txIndexer txindex.TxIndexer
+	var (
+		txIndexer    txindex.TxIndexer
+		blockIndexer indexer.BlockIndexer
+	)
+
 	switch config.TxIndex.Indexer {
 	case "kv":
 		store, err := dbProvider(&DBContext{"tx_index", config})
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
+
 		txIndexer = kv.NewTxIndex(store)
+		blockIndexer = blockidxkv.New(dbm.NewPrefixDB(store, []byte("block_events")))
 	default:
 		txIndexer = &null.TxIndex{}
+		blockIndexer = &blockidxnull.BlockerIndexer{}
 	}
 
-	indexerService := txindex.NewIndexerService(txIndexer, eventBus)
+	indexerService := txindex.NewIndexerService(txIndexer, blockIndexer, eventBus)
 	indexerService.SetLogger(logger.With("module", "txindex"))
+
 	if err := indexerService.Start(); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return indexerService, txIndexer, nil
+
+	return indexerService, txIndexer, blockIndexer, nil
 }
 
 func doHandshake(
@@ -650,8 +666,7 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	// Transaction indexing
-	indexerService, txIndexer, err := createAndStartIndexerService(config, dbProvider, eventBus, logger)
+	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(config, dbProvider, eventBus, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -828,6 +843,7 @@ func NewNode(config *cfg.Config,
 		proxyApp:         proxyApp,
 		txIndexer:        txIndexer,
 		indexerService:   indexerService,
+		blockIndexer:     blockIndexer,
 		eventBus:         eventBus,
 	}
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
@@ -984,6 +1000,7 @@ func (n *Node) ConfigureRPC() error {
 		PubKey:           pubKey,
 		GenDoc:           n.genesisDoc,
 		TxIndexer:        n.txIndexer,
+		BlockIndexer:     n.blockIndexer,
 		ConsensusReactor: n.consensusReactor,
 		EventBus:         n.eventBus,
 		Mempool:          n.mempool,
