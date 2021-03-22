@@ -192,7 +192,7 @@ func BlockSearch(
 		sort.Slice(results, func(i, j int) bool { return results[i] < results[j] })
 
 	default:
-		return nil, fmt.Errorf("%w: expected order_by to be either `asc` or `desc` or empty", ctypes.ErrInvalidRequest)
+		return nil, errors.New("expected order_by to be either `asc` or `desc` or empty")
 	}
 
 	// paginate results
