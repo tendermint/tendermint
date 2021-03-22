@@ -2,6 +2,7 @@ package null
 
 import (
 	"context"
+	"errors"
 
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/state/indexer"
@@ -14,7 +15,7 @@ var _ indexer.BlockIndexer = (*BlockerIndexer)(nil)
 type BlockerIndexer struct{}
 
 func (idx *BlockerIndexer) Has(height int64) (bool, error) {
-	return false, nil
+	return false, errors.New(`indexing is disabled (set 'tx_index = "kv"' in config)`)
 }
 
 func (idx *BlockerIndexer) Index(types.EventDataNewBlockHeader) error {
@@ -22,5 +23,5 @@ func (idx *BlockerIndexer) Index(types.EventDataNewBlockHeader) error {
 }
 
 func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64, error) {
-	return nil, nil
+	return []int64{}, nil
 }
