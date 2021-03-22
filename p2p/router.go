@@ -584,19 +584,7 @@ func (r *Router) dialPeers() {
 				return
 			}
 
-			var peerQueue queue
-			func() {
-				r.peerMtx.Lock()
-				defer r.peerMtx.Unlock()
-
-				if _, ok := r.peerQueues[peerID]; ok {
-					peerQueue = r.peerQueues[peerID]
-				} else {
-					peerQueue = r.queueFactory(r.queueBufferDefault)
-					r.peerQueues[peerID] = peerQueue
-				}
-			}()
-
+			peerQueue := r.getOrMakeQueue(peerID)
 			defer func() {
 				r.peerMtx.Lock()
 				delete(r.peerQueues, peerID)
@@ -617,6 +605,19 @@ func (r *Router) dialPeers() {
 			r.routePeer(peerID, conn, peerQueue)
 		}()
 	}
+}
+
+func (r *Router) getOrMakeQueue(peerID NodeID) queue {
+	r.peerMtx.Lock()
+	defer r.peerMtx.Unlock()
+
+	if peerQueue, ok := r.peerQueues[peerID]; ok {
+		return peerQueue
+	}
+
+	peerQueue := r.queueFactory(r.queueBufferDefault)
+	r.peerQueues[peerID] = peerQueue
+	return peerQueue
 }
 
 // dialPeer connects to a peer by dialing it.

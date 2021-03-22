@@ -8,18 +8,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-func safeSetEnvVar(t *testing.T, key, value string) func() {
-	t.Helper()
-
-	previous := os.Getenv(key)
-	require.NoError(t, os.Setenv(key, value))
-	require.Equal(t, value, os.Getenv(key))
-	return func() {
-		require.NoError(t, os.Setenv(key, previous))
-		require.Equal(t, previous, os.Getenv(key))
-	}
-}
-
 func TestRouter_ConstructQueueFactory(t *testing.T) {
 	t.Run("ValidateOptionsPopulatesDefaultQueue", func(t *testing.T) {
 		opts := RouterOptions{}
