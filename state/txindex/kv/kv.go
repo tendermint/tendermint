@@ -146,13 +146,6 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Ba
 
 			// index if `index: true` is set
 			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
-<<<<<<< HEAD
-=======
-			// ensure event does not conflict with a reserved prefix key
-			if compositeTag == types.TxHashKey || compositeTag == types.TxHeightKey {
-				return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeTag)
-			}
->>>>>>> 003f39451... rpc: index block events to support block event queries (#6226)
 			if attr.GetIndex() {
 				err := store.Set(keyForEvent(compositeTag, attr.Value, result), hash)
 				if err != nil {
@@ -221,11 +214,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 
 		for _, qr := range ranges {
 			if !hashesInitialized {
-<<<<<<< HEAD
-				filteredHashes = txi.matchRange(ctx, r, startKey(r.key), filteredHashes, true)
-=======
-				filteredHashes = txi.matchRange(ctx, qr, prefixFromCompositeKey(qr.Key), filteredHashes, true)
->>>>>>> 003f39451... rpc: index block events to support block event queries (#6226)
+				filteredHashes = txi.matchRange(ctx, qr, startKey(qr.Key), filteredHashes, true)
 				hashesInitialized = true
 
 				// Ignore any remaining conditions if the first condition resulted
@@ -234,11 +223,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 					break
 				}
 			} else {
-<<<<<<< HEAD
-				filteredHashes = txi.matchRange(ctx, r, startKey(r.key), filteredHashes, false)
-=======
-				filteredHashes = txi.matchRange(ctx, qr, prefixFromCompositeKey(qr.Key), filteredHashes, false)
->>>>>>> 003f39451... rpc: index block events to support block event queries (#6226)
+				filteredHashes = txi.matchRange(ctx, qr, startKey(qr.Key), filteredHashes, false)
 			}
 		}
 	}
@@ -465,14 +450,9 @@ LOOP:
 		if !isTagKey(it.Key()) {
 			continue
 		}
-<<<<<<< HEAD
 
-		if _, ok := r.AnyBound().(int64); ok {
-			v, err := strconv.ParseInt(extractValueFromKey(it.Key()), 10, 64)
-=======
 		if _, ok := qr.AnyBound().(int64); ok {
-			v, err := strconv.ParseInt(value, 10, 64)
->>>>>>> 003f39451... rpc: index block events to support block event queries (#6226)
+			v, err := strconv.ParseInt(extractValueFromKey(it.Key()), 10, 64)
 			if err != nil {
 				continue LOOP
 			}

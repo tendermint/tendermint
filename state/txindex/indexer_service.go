@@ -85,11 +85,7 @@ func (is *IndexerService) OnStart() error {
 			if err = is.txIdxr.AddBatch(batch); err != nil {
 				is.Logger.Error("failed to index block txs", "height", height, "err", err)
 			} else {
-<<<<<<< HEAD
-				is.Logger.Debug("indexed block", "height", height)
-=======
 				is.Logger.Debug("indexed block txs", "height", height, "num_txs", eventDataHeader.NumTxs)
->>>>>>> 003f39451... rpc: index block events to support block event queries (#6226)
 			}
 		}
 	}()
