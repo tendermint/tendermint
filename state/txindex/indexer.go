@@ -8,9 +8,10 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
+// XXX/TODO: These types should be moved to the indexer package.
+
 // TxIndexer interface defines methods to index and search transactions.
 type TxIndexer interface {
-
 	// AddBatch analyzes, indexes and stores a batch of transactions.
 	AddBatch(b *Batch) error
 
@@ -24,9 +25,6 @@ type TxIndexer interface {
 	// Search allows you to query for transactions.
 	Search(ctx context.Context, q *query.Query) ([]*abci.TxResult, error)
 }
-
-//----------------------------------------------------
-// Txs are written as a batch
 
 // Batch groups together multiple Index operations to be performed at the same time.
 // NOTE: Batch is NOT thread-safe and must not be modified after starting its execution.
@@ -51,9 +49,6 @@ func (b *Batch) Add(result *abci.TxResult) error {
 func (b *Batch) Size() int {
 	return len(b.Ops)
 }
-
-//----------------------------------------------------
-// Errors
 
 // ErrorEmptyHash indicates empty hash
 var ErrorEmptyHash = errors.New("transaction hash cannot be empty")
