@@ -108,7 +108,7 @@ func newPQScheduler(
 	heap.Init(&pq)
 
 	return &pqScheduler{
-		logger:       logger.With("router", "priorityqueue"),
+		logger:       logger.With("router", "scheduler"),
 		metrics:      m,
 		chDescs:      chDescsCopy,
 		capacity:     capacity,

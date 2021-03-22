@@ -274,9 +274,9 @@ func NewRouter(
 
 func (r *Router) createQueueFactory() (func(int) queue, error) {
 	switch r.options.QueueType {
-	case "fifo":
+	case queueTypeFifo:
 		return newFIFOQueue, nil
-	case "priority":
+	case queueTypePriority:
 		return func(size int) queue {
 			if size%2 != 0 {
 				size++
@@ -286,7 +286,7 @@ func (r *Router) createQueueFactory() (func(int) queue, error) {
 			q.start()
 			return q
 		}, nil
-	case "wdrr":
+	case queueTypeWDRR:
 		return func(size int) queue {
 			if size%2 != 0 {
 				size++
@@ -512,8 +512,7 @@ func (r *Router) acceptPeers(transport Transport) {
 				return
 			}
 
-			queue := newPQScheduler(r.logger, r.metrics, r.chDescs, 0, 0, defaultCapacity)
-			queue.start()
+			queue := r.queueFactory(r.queueBufferDefault)
 
 			r.peerMtx.Lock()
 			r.peerQueues[peerInfo.NodeID] = queue
