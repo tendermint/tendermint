@@ -5,14 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
+	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
-	"strings"
-
-	tmsync "github.com/tendermint/tendermint/libs/sync"
-	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 const (
@@ -61,17 +59,6 @@ func (u *parsedURL) SetDefaultSchemeHTTP() {
 func (u parsedURL) GetHostWithPath() string {
 	// Remove protocol, userinfo and # fragment, assume opaque is empty
 	return u.Host + u.EscapedPath()
-}
-
-// Get a trimmed address - useful for WS connections
-func (u parsedURL) GetTrimmedHostWithPath() string {
-	// replace / with . for http requests (kvstore domain)
-	return strings.ReplaceAll(u.GetHostWithPath(), "/", ".")
-}
-
-// Get a trimmed address with protocol - useful as address in RPC connections
-func (u parsedURL) GetTrimmedURL() string {
-	return u.Scheme + "://" + u.GetTrimmedHostWithPath()
 }
 
 //-------------------------------------------------------------
@@ -136,7 +123,7 @@ func NewWithHTTPClient(remote string, c *http.Client) (*Client, error) {
 
 	parsedURL.SetDefaultSchemeHTTP()
 
-	address := parsedURL.GetTrimmedURL()
+	address := parsedURL.String()
 	username := parsedURL.User.Username()
 	password, _ := parsedURL.User.Password()
 
@@ -350,7 +337,7 @@ func makeHTTPDialer(remoteAddr string) (func(string, string) (net.Conn, error), 
 	}
 
 	dialFn := func(proto, addr string) (net.Conn, error) {
-		return net.Dial(protocol, u.GetHostWithPath())
+		return net.Dial(protocol, addr)
 	}
 
 	return dialFn, nil
