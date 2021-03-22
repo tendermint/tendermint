@@ -48,7 +48,7 @@ func TestBlockchainInfo(t *testing.T) {
 		{1, 5, 0, 1, 10, 1, false},
 		{1, 5, 0, 10, 10, 5, false},
 		{1, 15, 0, 10, 10, 10, false},
-		{1, 15, 0, 15, 10, 10, false}, //
+		{1, 15, 0, 10, 10, 10, false}, // what changed here?
 		{1, 15, 0, 15, 20, 15, false},
 		{1, 20, 0, 15, 20, 15, false},
 		{1, 20, 0, 20, 20, 20, false},
@@ -61,7 +61,7 @@ func TestBlockchainInfo(t *testing.T) {
 			require.Error(t, err, caseString)
 		} else {
 			require.NoError(t, err, caseString)
-			require.Equal(t, 1+max-min, c.resultLength, caseString)
+			require.Equal(t, int64(1+max-min), int64(c.resultLength), caseString)
 		}
 	}
 }

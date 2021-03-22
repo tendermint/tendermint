@@ -68,16 +68,14 @@ func filterMinMax(base, height, min, max, limit uint64) (uint64, uint64, error) 
 
 	// limit min to within `limit` of max
 	// so the total number of blocks returned will be `limit`
-	mm := tmmath.MaxInt64(int64(min), int64(max-limit+1))
+	// mm := tmmath.MaxInt64(int64(min), int64(max-limit+1))
 
 	// min can be zero and we will allow it
-	if mm > int64(max) {
+	if min > max {
 		return min, max, fmt.Errorf("%w: min height %d can't be greater than max height %d",
 			ctypes.ErrInvalidRequest, min, max)
 	}
-	if mm < 0 {
-		min = 0
-	}
+
 	return min, max, nil
 }
 
