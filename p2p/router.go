@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"sync"
 	"time"
 
@@ -221,6 +222,11 @@ func NewRouter(
 	transports []Transport,
 	options RouterOptions,
 ) (*Router, error) {
+
+	if options.QueueType == "" {
+		options.QueueType = os.Getenv("TM_P2P_QUEUE")
+	}
+
 	if err := options.Validate(); err != nil {
 		return nil, err
 	}
@@ -243,31 +249,10 @@ func NewRouter(
 	}
 	router.BaseService = service.NewBaseService(logger, "router", router)
 
-	switch options.QueueType {
-	case "fifo":
-		router.queueFactory = func(s int) queue { return newFIFOQueue(s) }
-	case "priority":
-		router.queueFactory = func(size int) queue {
-			if size%2 != 0 {
-				size++
-			}
-
-			q := newPQScheduler(router.logger, router.metrics, router.chDescs, uint(size)/2, uint(size)/2, defaultCapacity)
-			q.start()
-			return q
-		}
-	case "wdrr":
-		router.queueFactory = func(size int) queue {
-			if size%2 != 0 {
-				size++
-			}
-
-			q := newWDRRScheduler(router.logger, router.metrics, router.chDescs, uint(size)/2, uint(size)/2, defaultCapacity)
-			q.start()
-			return q
-		}
-	default:
-		return nil, fmt.Errorf("cannot construct queue of type %q", options.QueueType)
+	if qf, err := router.createQueueFactory(); err != nil {
+		return nil, err
+	} else {
+		router.queueFactory = qf
 	}
 
 	for _, transport := range transports {
@@ -279,6 +264,35 @@ func NewRouter(
 	}
 
 	return router, nil
+}
+
+func (r *Router) createQueueFactory() (func(int) queue, error) {
+	switch r.options.QueueType {
+	case "fifo":
+		return func(s int) queue { return newFIFOQueue(s) }, nil
+	case "priority":
+		return func(size int) queue {
+			if size%2 != 0 {
+				size++
+			}
+
+			q := newPQScheduler(r.logger, r.metrics, r.chDescs, uint(size)/2, uint(size)/2, defaultCapacity)
+			q.start()
+			return q
+		}, nil
+	case "wdrr":
+		return func(size int) queue {
+			if size%2 != 0 {
+				size++
+			}
+
+			q := newWDRRScheduler(r.logger, r.metrics, r.chDescs, uint(size)/2, uint(size)/2, defaultCapacity)
+			q.start()
+			return q
+		}, nil
+	default:
+		return nil, fmt.Errorf("cannot construct queue of type %q", r.options.QueueType)
+	}
 }
 
 // AddChannelDescriptors adds a set of ChannelDescriptors to the reactor. Note,

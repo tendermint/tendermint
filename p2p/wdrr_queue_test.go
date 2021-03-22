@@ -23,7 +23,7 @@ func TestWDRRQueue_EqualWeights(t *testing.T) {
 		{ID: 0x06, Priority: 1, MaxSendBytes: 4},
 	}
 
-	peerQueue := newWDRRScheduler(log.NewNopLogger(), NodeID("FFAA"), NopMetrics(), chDescs, 1000, 1000, 120)
+	peerQueue := newWDRRScheduler(log.NewNopLogger(), NopMetrics(), chDescs, 1000, 1000, 120)
 	peerQueue.start()
 
 	totalMsgs := make(map[ChannelID]int)
@@ -119,7 +119,7 @@ func TestWDRRQueue_DecreasingWeights(t *testing.T) {
 		{ID: 0x06, Priority: 1, MaxSendBytes: 4},
 	}
 
-	peerQueue := newWDRRScheduler(log.NewNopLogger(), NodeID("FFAA"), NopMetrics(), chDescs, 0, 6000, 1500)
+	peerQueue := newWDRRScheduler(log.NewNopLogger(), NopMetrics(), chDescs, 0, 6000, 1500)
 	peerQueue.start()
 
 	totalMsgs := make(map[ChannelID]int)

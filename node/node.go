@@ -611,7 +611,7 @@ func createRouter(
 		privKey,
 		peerManager,
 		[]p2p.Transport{transport},
-		p2p.RouterOptions{QueueType: os.Getenv("TM_P2P_QUEUE")},
+		p2p.RouterOptions{},
 	)
 }
 
