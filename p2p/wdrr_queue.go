@@ -39,7 +39,6 @@ var _ queue = (*wdrrScheduler)(nil)
 // See: https://en.wikipedia.org/wiki/Deficit_round_robin
 type wdrrScheduler struct {
 	logger       log.Logger
-	peerID       NodeID
 	metrics      *Metrics
 	chDescs      []ChannelDescriptor
 	capacity     uint
@@ -58,7 +57,6 @@ type wdrrScheduler struct {
 
 func newWDRRScheduler(
 	logger log.Logger,
-	pID NodeID,
 	m *Metrics,
 	chDescs []ChannelDescriptor,
 	enqueueBuf, dequeueBuf, capacity uint,
@@ -84,8 +82,7 @@ func newWDRRScheduler(
 	}
 
 	return &wdrrScheduler{
-		logger:       logger.With("peer", pID),
-		peerID:       pID,
+		logger:       logger.With("queue", "wdrr"),
 		metrics:      m,
 		capacity:     capacity,
 		chPriorities: chPriorities,
@@ -242,7 +239,7 @@ func (s *wdrrScheduler) process() {
 			}
 
 		default:
-			// perform the WDRR algorthim
+			// perform the WDRR algorithm
 			for _, chDesc := range s.chDescs {
 				chID := ChannelID(chDesc.ID)
 
