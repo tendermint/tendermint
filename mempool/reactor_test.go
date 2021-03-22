@@ -50,7 +50,6 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, numNodes int, chBuf uint) *reac
 
 	rts.mempoolChnnels = rts.network.MakeChannelsNoCleanup(t, MempoolChannel, new(protomem.Message), int(chBuf))
 
-	i := 0
 	for nodeID := range rts.network.Nodes {
 		rts.kvstores[nodeID] = kvstore.NewApplication()
 		cc := proxy.NewLocalClientCreator(rts.kvstores[nodeID])
@@ -77,7 +76,6 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, numNodes int, chBuf uint) *reac
 
 		require.NoError(t, rts.reactors[nodeID].Start())
 		require.True(t, rts.reactors[nodeID].IsRunning())
-		i++
 	}
 
 	require.Len(t, rts.reactors, numNodes)
