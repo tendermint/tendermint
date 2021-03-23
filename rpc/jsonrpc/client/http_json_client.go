@@ -338,7 +338,7 @@ func makeHTTPDialer(remoteAddr string) (func(string, string) (net.Conn, error), 
 	}
 
 	dialFn := func(proto, addr string) (net.Conn, error) {
-		return net.Dial(protocol, addr)
+		return net.Dial(protocol, u.Host)
 	}
 
 	return dialFn, nil
