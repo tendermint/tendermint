@@ -9,6 +9,7 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/log"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 type testMessage = gogotypes.StringValue
@@ -30,7 +31,7 @@ func TestWDRRQueue_EqualWeights(t *testing.T) {
 	deliveredMsgs := make(map[ChannelID]int)
 	successRates := make(map[ChannelID]float64)
 
-	doneCh := make(chan struct{})
+	closer := tmsync.NewCloser()
 
 	go func() {
 		timout := 10 * time.Second
@@ -44,7 +45,7 @@ func TestWDRRQueue_EqualWeights(t *testing.T) {
 				ticker.Reset(timout)
 
 			case <-ticker.C:
-				close(doneCh)
+				closer.Close()
 			}
 		}
 	}()
@@ -68,7 +69,7 @@ func TestWDRRQueue_EqualWeights(t *testing.T) {
 	}
 
 	// wait for dequeueing to complete
-	<-doneCh
+	<-closer.Done()
 
 	// close queue and wait for cleanup
 	peerQueue.close()
@@ -119,7 +120,7 @@ func TestWDRRQueue_DecreasingWeights(t *testing.T) {
 		{ID: 0x06, Priority: 1, MaxSendBytes: 4},
 	}
 
-	peerQueue := newWDRRScheduler(log.NewNopLogger(), NopMetrics(), chDescs, 0, 6000, 1500)
+	peerQueue := newWDRRScheduler(log.NewNopLogger(), NopMetrics(), chDescs, 0, 0, 500)
 	peerQueue.start()
 
 	totalMsgs := make(map[ChannelID]int)
@@ -140,7 +141,7 @@ func TestWDRRQueue_DecreasingWeights(t *testing.T) {
 		}(ChannelID(chDesc.ID), total)
 	}
 
-	doneCh := make(chan struct{})
+	closer := tmsync.NewCloser()
 
 	go func() {
 		timout := 20 * time.Second
@@ -154,13 +155,13 @@ func TestWDRRQueue_DecreasingWeights(t *testing.T) {
 				ticker.Reset(timout)
 
 			case <-ticker.C:
-				close(doneCh)
+				closer.Close()
 			}
 		}
 	}()
 
 	// wait for dequeueing to complete
-	<-doneCh
+	<-closer.Done()
 
 	// close queue and wait for cleanup
 	peerQueue.close()
