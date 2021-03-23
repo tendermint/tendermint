@@ -120,6 +120,7 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	assert.Equal(t, "max-age=31536000", resp.Header.Get("Cache-control"))
 	assert.Equal(t, `{
   "jsonrpc": "2.0",
   "id": -1,

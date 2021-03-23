@@ -129,6 +129,7 @@ func WriteRPCResponseHTTP(w http.ResponseWriter, res ...types.RPCResponse) error
 		return fmt.Errorf("json marshal: %w", err)
 	}
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "max-age=31536000") // expired after one year
 	w.WriteHeader(200)
 	_, err = w.Write(jsonBytes)
 	return err
