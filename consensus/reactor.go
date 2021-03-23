@@ -1,12 +1,12 @@
 package consensus
 
 import (
-	"context"
 	"fmt"
 	"time"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
+	tmcontext "github.com/tendermint/tendermint/libs/context"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -1354,13 +1354,8 @@ func (r *Reactor) processPeerUpdates() {
 }
 
 func (r *Reactor) peerStatsRoutine() {
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := tmcontext.TODO(r.closeCh)
 	defer cancel()
-
-	go func() {
-		<-r.closeCh
-		cancel()
-	}()
 
 	for {
 		if !r.IsRunning() {

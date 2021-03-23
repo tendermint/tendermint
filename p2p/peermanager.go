@@ -820,13 +820,15 @@ func (m *PeerManager) Register(peerUpdates *PeerUpdates) {
 	m.subscriptions[peerUpdates] = peerUpdates
 	m.mtx.Unlock()
 
-	go func() {
-		select {
-		case pu := <-peerUpdates.routerUpdatesCh:
-			m.processPeerEvent(pu)
-		case <-m.closeCh:
-		}
-	}()
+	if peerUpdates.routerUpdatesCh != nil {
+		go func() {
+			select {
+			case pu := <-peerUpdates.routerUpdatesCh:
+				m.processPeerEvent(pu)
+			case <-m.closeCh:
+			}
+		}()
+	}
 
 	go func() {
 		select {
