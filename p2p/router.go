@@ -15,6 +15,8 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 )
 
+const queueBufferDefault = 4096
+
 // ChannelID is an arbitrary channel ID.
 type ChannelID uint16
 
@@ -203,10 +205,10 @@ type Router struct {
 	protocolTransports map[Protocol]Transport
 	stopCh             chan struct{} // signals Router shutdown
 
-	peerMtx            sync.RWMutex
-	peerQueues         map[NodeID]queue // outbound messages per peer for all channels
-	queueFactory       func(int) queue
-	queueBufferDefault int
+	peerMtx      sync.RWMutex
+	peerQueues   map[NodeID]queue // outbound messages per peer for all channels
+	queueFactory func(int) queue
+
 	// FIXME: We don't strictly need to use a mutex for this if we seal the
 	// channels on router start. This depends on whether we want to allow
 	// dynamic channels in the future.
@@ -246,14 +248,15 @@ func NewRouter(
 		channelQueues:      map[ChannelID]queue{},
 		channelMessages:    map[ChannelID]proto.Message{},
 		peerQueues:         map[NodeID]queue{},
-		queueBufferDefault: 4096,
 	}
+
 	router.BaseService = service.NewBaseService(logger, "router", router)
 
 	qf, err := router.createQueueFactory()
 	if err != nil {
 		return nil, err
 	}
+
 	router.queueFactory = qf
 
 	for _, transport := range transports {
@@ -271,6 +274,7 @@ func (r *Router) createQueueFactory() (func(int) queue, error) {
 	switch r.options.QueueType {
 	case queueTypeFifo:
 		return newFIFOQueue, nil
+
 	case queueTypePriority:
 		return func(size int) queue {
 			if size%2 != 0 {
@@ -281,6 +285,7 @@ func (r *Router) createQueueFactory() (func(int) queue, error) {
 			q.start()
 			return q
 		}, nil
+
 	case queueTypeWDRR:
 		return func(size int) queue {
 			if size%2 != 0 {
@@ -291,6 +296,7 @@ func (r *Router) createQueueFactory() (func(int) queue, error) {
 			q.start()
 			return q
 		}, nil
+
 	default:
 		return nil, fmt.Errorf("cannot construct queue of type %q", r.options.QueueType)
 	}
@@ -312,7 +318,7 @@ func (r *Router) AddChannelDescriptors(chDescs []*ChannelDescriptor) {
 // which internally makes the inbound, outbound, and error channel buffered.
 func (r *Router) OpenChannel(id ChannelID, messageType proto.Message, size int) (*Channel, error) {
 	if size == 0 {
-		size = r.queueBufferDefault
+		size = queueBufferDefault
 	}
 
 	r.channelMtx.Lock()
@@ -507,7 +513,7 @@ func (r *Router) acceptPeers(transport Transport) {
 				return
 			}
 
-			queue := r.queueFactory(r.queueBufferDefault)
+			queue := r.queueFactory(queueBufferDefault)
 
 			r.peerMtx.Lock()
 			r.peerQueues[peerInfo.NodeID] = queue
@@ -615,7 +621,7 @@ func (r *Router) getOrMakeQueue(peerID NodeID) queue {
 		return peerQueue
 	}
 
-	peerQueue := r.queueFactory(r.queueBufferDefault)
+	peerQueue := r.queueFactory(queueBufferDefault)
 	r.peerQueues[peerID] = peerQueue
 	return peerQueue
 }
