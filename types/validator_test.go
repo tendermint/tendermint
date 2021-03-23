@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,7 +41,7 @@ func TestValidatorProtoBuf(t *testing.T) {
 
 func TestValidatorValidateBasic(t *testing.T) {
 	priv := NewMockPV()
-	pubKey, _ := priv.GetPubKey()
+	pubKey, _ := priv.GetPubKey(context.Background())
 	testCases := []struct {
 		val *Validator
 		err bool

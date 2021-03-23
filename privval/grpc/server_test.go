@@ -41,7 +41,7 @@ func TestGetPubKey(t *testing.T) {
 			if tc.err {
 				require.Error(t, err)
 			} else {
-				pk, err := tc.pv.GetPubKey()
+				pk, err := tc.pv.GetPubKey(context.Background())
 				require.NoError(t, err)
 				assert.Equal(t, resp.PubKey.GetEd25519(), pk.Bytes())
 			}
@@ -114,7 +114,8 @@ func TestSignVote(t *testing.T) {
 			} else {
 				pbVote := tc.want.ToProto()
 
-				require.NoError(t, tc.pv.SignVote(ChainID, pbVote))
+				require.NoError(t, tc.pv.SignVote(context.Background(), ChainID, pbVote))
+
 				assert.Equal(t, pbVote.Signature, resp.Vote.Signature)
 			}
 		})
@@ -179,7 +180,7 @@ func TestSignProposal(t *testing.T) {
 				require.Error(t, err)
 			} else {
 				pbProposal := tc.want.ToProto()
-				require.NoError(t, tc.pv.SignProposal(ChainID, pbProposal))
+				require.NoError(t, tc.pv.SignProposal(context.Background(), ChainID, pbProposal))
 				assert.Equal(t, pbProposal.Signature, resp.Proposal.Signature)
 			}
 		})

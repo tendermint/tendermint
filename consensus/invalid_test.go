@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"sync"
 	"testing"
 
@@ -75,7 +76,7 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, r 
 		cs.mtx.Lock()
 		cs.privValidator = pv
 
-		pubKey, err := cs.privValidator.GetPubKey()
+		pubKey, err := cs.privValidator.GetPubKey(context.Background())
 		require.NoError(t, err)
 
 		addr := pubKey.Address()
@@ -96,7 +97,7 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, r 
 		}
 
 		p := precommit.ToProto()
-		err = cs.privValidator.SignVote(cs.state.ChainID, p)
+		err = cs.privValidator.SignVote(context.Background(), cs.state.ChainID, p)
 		require.NoError(t, err)
 
 		precommit.Signature = p.Signature

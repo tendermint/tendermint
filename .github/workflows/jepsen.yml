@@ -1,10 +1,19 @@
-# Runs Jepsen tests: https://github.com/tendermint/jepsen.
+# Runs a Jepsen test - cas-register (no nemesis) by default.
+#   See inputs for various options.
+#   Repo: https://github.com/tendermint/jepsen
+#
+# If you want to test a new breaking version of Tendermint, you'll need to
+# update the Merkleeyes ABCI app and 'merkleeyesUrl' input accordingly. You can
+# upload a new tarball to
+# https://github.com/tendermint/jepsen/releases/tag/0.2.1.
+#
+# Manually triggered.
 name: jepsen
 on:
   workflow_dispatch:
     inputs:
       workload:
-        description: 'Test workload to run; e.g. cas-register, set'
+        description: 'Test workload to run: (cas-register | set)'
         required: true
         default: 'cas-register'
       nemesis:
@@ -24,25 +33,33 @@ on:
         required: true
         default: 60
       tendermintUrl:
-        description: 'Where to grab the Tendermint binary (linux/amd64 tarball)?'
+        description: 'Where to grab the Tendermint tarball (w/ linux/amd64 binary)'
         required: true
         default: 'https://github.com/melekes/katas/releases/download/0.2.0/tendermint.tar.gz'
       merkleeyesUrl:
-        description: 'Where to grab the Merkleeyes binary (linux/amd64 tarball)?'
+        description: 'Where to grab the Merkleeyes tarball (w/ linux/amd64 binary)'
         required: true
-        default: 'https://github.com/melekes/katas/releases/download/0.2.0/merkleeyes_0.1.7.tar.gz'
+        default: 'https://github.com/tendermint/jepsen/releases/download/0.2.1/merkleeyes_0.1.7.tar.gz'
 
 jobs:
   jepsen-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout the Jepsen repository
+        uses: actions/checkout@v2
         with:
           repository: 'tendermint/jepsen'
 
-      - name: Start a Jepsen cluster
+      - name: Start a Jepsen cluster in background
         working-directory: docker
         run: ./bin/up --daemon
 
       - name: Run the test
         run: docker exec -i jepsen-control bash -c 'source /root/.bashrc; cd /jepsen/tendermint; lein run test --nemesis ${{ github.event.inputs.nemesis }} --workload ${{ github.event.inputs.workload }} --concurrency ${{ github.event.inputs.concurrency }} --tendermint-url ${{ github.event.inputs.tendermintUrl }} --merkleeyes-url ${{ github.event.inputs.merkleeyesUrl }} --time-limit ${{ github.event.inputs.timeLimit }} ${{ github.event.inputs.dupOrSuperByzValidators }}'
+
+      - name: Archive results
+        uses: actions/upload-artifact@v2
+        with:
+          name: results
+          path: tendermint/store/latest
+          retention-days: 3

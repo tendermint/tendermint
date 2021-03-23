@@ -36,7 +36,7 @@ func MakeNetwork(t *testing.T, nodes int) *Network {
 	}
 
 	for i := 0; i < nodes; i++ {
-		node := MakeNode(t, network)
+		node := network.MakeNode(t)
 		network.Nodes[node.NodeID] = node
 	}
 
@@ -197,8 +197,10 @@ type Node struct {
 	Transport   *p2p.MemoryTransport
 }
 
-// MakeNode creates a new Node.
-func MakeNode(t *testing.T, network *Network) *Node {
+// MakeNode creates a new Node configured for the network with a
+// running peer manager, but does not add it to the existing
+// network. Callers are responsible for updating peering relationships.
+func (n *Network) MakeNode(t *testing.T) *Node {
 	privKey := ed25519.GenPrivKey()
 	nodeID := p2p.NodeIDFromPubKey(privKey.PubKey())
 	nodeInfo := p2p.NodeInfo{
@@ -207,16 +209,18 @@ func MakeNode(t *testing.T, network *Network) *Node {
 		Moniker:    string(nodeID),
 	}
 
-	transport := network.memoryNetwork.CreateTransport(nodeID)
+	transport := n.memoryNetwork.CreateTransport(nodeID)
 	require.Len(t, transport.Endpoints(), 1, "transport not listening on 1 endpoint")
 
 	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{
-		MinRetryTime: 10 * time.Millisecond,
+		MinRetryTime:    10 * time.Millisecond,
+		MaxRetryTime:    100 * time.Millisecond,
+		RetryTimeJitter: time.Millisecond,
 	})
 	require.NoError(t, err)
 
 	router, err := p2p.NewRouter(
-		network.logger,
+		n.logger,
 		p2p.NopMetrics(),
 		nodeInfo,
 		privKey,
@@ -281,5 +285,6 @@ func (n *Node) MakePeerUpdates(t *testing.T) *p2p.PeerUpdates {
 		RequireNoUpdates(t, sub)
 		sub.Close()
 	})
+
 	return sub
 }

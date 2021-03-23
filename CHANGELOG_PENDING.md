@@ -4,7 +4,7 @@
 
 Special thanks to external contributors on this release:
 
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
 
 ### BREAKING CHANGES
 
@@ -14,6 +14,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [cli] \#5772 `gen_node_key` prints JSON-encoded `NodeKey` rather than ID and does not save it to `node_key.json` (@melekes)
   - [cli] \#5777 use hyphen-case instead of snake_case for all cli commands and config parameters (@cmwaters)
   - [rpc] \#6019 standardise RPC errors and return the correct status code (@bipulprasad & @cmwaters)
+  - [rpc] \#6168 Change default sorting to desc for `/tx_search` results (@melekes)
 
 - Apps
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
@@ -29,7 +30,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [proto/p2p] Renamed `DefaultNodeInfo` and `DefaultNodeInfoOther` to `NodeInfo` and `NodeInfoOther` (@erikgrinaker)
   - [proto/p2p] Rename `NodeInfo.default_node_id` to `node_id` (@erikgrinaker)
   - [libs/os] Kill() and {Must,}{Read,Write}File() functions have been removed. (@alessio)
-  - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)  
+  - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)
   - [state] \#5864 Use an iterator when pruning state (@cmwaters)
   - [types] \#6023 Remove `tm2pb.Header`, `tm2pb.BlockID`, `tm2pb.PartSetHeader` and `tm2pb.NewValidatorUpdate`.
     - Each of the above types has a `ToProto` and `FromProto` method or function which replaced this logic.
@@ -38,6 +39,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [all] \#6077 Change spelling from British English to American (@cmwaters)
     - Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
     - Rename "behaviour" pkg to "behavior" and internalized it in blockchain v2
+  - [rpc/client/http] \#6176 Remove `endpoint` arg from `New`, `NewWithTimeout` and `NewWithClient` (@melekes)
+  - [rpc/client/http] \#6176 Unexpose `WSEvents` (@melekes)
+  - [rpc/jsonrpc/client/ws_client] \#6176 `NewWS` no longer accepts options (use `NewWSWithOptions` and `OnReconnect` funcs to configure the client) (@melekes)
+  - [rpc/jsonrpc/server] \#6204 Modify `WriteRPCResponseHTTP(Error)` to return an error (@melekes)
 
 - Blockchain Protocol
 
@@ -45,6 +50,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [store/state/evidence/light] \#5771 Use an order-preserving varint key encoding (@cmwaters)
 
 ### FEATURES
+
+- [rpc] \#6226 Index block events and expose a new RPC method, `/block_search`, to allow querying for blocks by `BeginBlock` and `EndBlock` events. (@alexanderbez)
+- [config] Add `--mode` flag and config variable. See [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md) @dongsam
 
 ### IMPROVEMENTS
 
@@ -64,11 +72,19 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [consensus] \#5987 Remove `time_iota_ms` from consensus params. Merge `tmproto.ConsensusParams` and `abci.ConsensusParams`. (@marbar3778)
 - [types] \#5994 Reduce the use of protobuf types in core logic. (@marbar3778)
   - `ConsensusParams`, `BlockParams`, `ValidatorParams`, `EvidenceParams`, `VersionParams`, `sm.Version` and `version.Consensus` have become native types. They still utilize protobuf when being sent over the wire or written to disk.
+- [rpc/client/http] \#6163 Do not drop events even if the `out` channel is full (@melekes)
+- [node] \#6059 Validate and complete genesis doc before saving to state store (@silasdavis)
+- [state] \#6067 Batch save state data (@githubsands & @cmwaters)
+- [crypto] \#6120 Implement batch verification interface for ed25519 and sr25519. (@marbar3778)
+- [types] \#6120 use batch verification for verifying commits signatures. 
+  - If the key type supports the batch verification API it will try to batch verify. If the verification fails we will single verify each signature. 
+- [privval/file] \#6185 Return error on `LoadFilePV`, `LoadFilePVEmptyState`. Allows for better programmatic control of Tendermint.
+- [privval] /#6240 Add `context.Context` to privval interface. 
 
 ### BUG FIXES
 
-- [ABCI] \#6124 Fixes a panic condition during callback execution in `ReCheckTx` during high tx load. (@alexanderbez)
 - [types] \#5523 Change json naming of `PartSetHeader` within `BlockID` from `parts` to `part_set_header` (@marbar3778)
 - [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
 - [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)
+- [rpc/jsonrpc/server] \#6191 Correctly unmarshal `RPCRequest` when data is `null` (@melekes)

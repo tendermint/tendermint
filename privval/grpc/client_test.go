@@ -60,7 +60,7 @@ func TestSignerClient_GetPubKey(t *testing.T) {
 	client, err := tmgrpc.NewSignerClient(conn, chainID, logger)
 	require.NoError(t, err)
 
-	pk, err := client.GetPubKey()
+	pk, err := client.GetPubKey(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, mockPV.PrivKey.PubKey(), pk)
 }
@@ -108,12 +108,12 @@ func TestSignerClient_SignVote(t *testing.T) {
 
 	pbHave := have.ToProto()
 
-	err = client.SignVote(chainID, pbHave)
+	err = client.SignVote(context.Background(), chainID, pbHave)
 	require.NoError(t, err)
 
 	pbWant := want.ToProto()
 
-	require.NoError(t, mockPV.SignVote(chainID, pbWant))
+	require.NoError(t, mockPV.SignVote(context.Background(), chainID, pbWant))
 
 	assert.Equal(t, pbWant.Signature, pbHave.Signature)
 }
@@ -157,12 +157,12 @@ func TestSignerClient_SignProposal(t *testing.T) {
 
 	pbHave := have.ToProto()
 
-	err = client.SignProposal(chainID, pbHave)
+	err = client.SignProposal(context.Background(), chainID, pbHave)
 	require.NoError(t, err)
 
 	pbWant := want.ToProto()
 
-	require.NoError(t, mockPV.SignProposal(chainID, pbWant))
+	require.NoError(t, mockPV.SignProposal(context.Background(), chainID, pbWant))
 
 	assert.Equal(t, pbWant.Signature, pbHave.Signature)
 }

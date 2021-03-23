@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -1136,7 +1137,11 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockID)
 	p := proposal.ToProto()
-	if err := cs.privValidator.SignProposal(cs.state.ChainID, p); err == nil {
+
+	// wait the max amount we would wait for a proposal
+	ctx, cancel := context.WithTimeout(context.TODO(), cs.config.TimeoutPropose)
+	defer cancel()
+	if err := cs.privValidator.SignProposal(ctx, cs.state.ChainID, p); err == nil {
 		proposal.Signature = p.Signature
 
 		// send proposal and block parts on internal msg queue
@@ -1147,8 +1152,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 			cs.sendInternalMessage(msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, ""})
 		}
 
-		cs.Logger.Info("signed proposal", "height", height, "round", round, "proposal", proposal)
-		cs.Logger.Debug("signed proposal block", "block", block)
+		cs.Logger.Debug("signed proposal", "height", height, "round", round, "proposal", proposal)
 	} else if !cs.replayMode {
 		cs.Logger.Error("propose step; failed signing proposal", "height", height, "round", round, "err", err)
 	}
@@ -1661,7 +1665,7 @@ func (cs *State) finalizeCommit(height int64) {
 		if err != nil {
 			logger.Error("failed to prune blocks", "retain_height", retainHeight, "err", err)
 		} else {
-			logger.Info("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
+			logger.Debug("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
 		}
 	}
 
@@ -1960,14 +1964,14 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.NodeID) (bool, error) {
 
 			// report conflicting votes to the evidence pool
 			cs.evpool.ReportConflictingVotes(voteErr.VoteA, voteErr.VoteB)
-			cs.Logger.Info(
+			cs.Logger.Debug(
 				"found and sent conflicting votes to the evidence pool",
 				"vote_a", voteErr.VoteA,
 				"vote_b", voteErr.VoteB,
 			)
 
 			return added, err
-		} else if err == types.ErrVoteNonDeterministicSignature {
+		} else if errors.Is(err, types.ErrVoteNonDeterministicSignature) {
 			cs.Logger.Debug("vote has non-deterministic signature", "err", err)
 		} else {
 			// Either
@@ -1975,7 +1979,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.NodeID) (bool, error) {
 			// 2) not a bad peer? this can also err sometimes with "Unexpected step" OR
 			// 3) tmkms use with multiple validators connecting to a single tmkms instance
 			// 		(https://github.com/tendermint/tendermint/issues/3839).
-			cs.Logger.Error("failed attempting to add vote", "err", err)
+			cs.Logger.Info("failed attempting to add vote", "err", err)
 			return added, ErrAddingVote
 		}
 	}
@@ -2124,7 +2128,7 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.NodeID) (added bool, err e
 
 	case tmproto.PrecommitType:
 		precommits := cs.Votes.Precommits(vote.Round)
-		cs.Logger.Info("added vote to precommit", "vote", vote, "precommits", precommits.StringShort())
+		cs.Logger.Debug("added vote to precommit", "vote", vote, "precommits", precommits.StringShort())
 
 		blockID, ok := precommits.TwoThirdsMajority()
 		if ok {
@@ -2182,7 +2186,24 @@ func (cs *State) signVote(
 	}
 
 	v := vote.ToProto()
-	err := cs.privValidator.SignVote(cs.state.ChainID, v)
+
+	// If the signedMessageType is for precommit,
+	// use our local precommit Timeout as the max wait time for getting a singed commit. The same goes for prevote.
+	var timeout time.Duration
+
+	switch msgType {
+	case tmproto.PrecommitType:
+		timeout = cs.config.TimeoutPrecommit
+	case tmproto.PrevoteType:
+		timeout = cs.config.TimeoutPrevote
+	default:
+		timeout = time.Second
+	}
+
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	defer cancel()
+
+	err := cs.privValidator.SignVote(ctx, cs.state.ChainID, v)
 	vote.Signature = v.Signature
 
 	return vote, err
@@ -2233,7 +2254,7 @@ func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header 
 	vote, err := cs.signVote(msgType, hash, header)
 	if err == nil {
 		cs.sendInternalMessage(msgInfo{&VoteMessage{vote}, ""})
-		cs.Logger.Info("signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)
+		cs.Logger.Debug("signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)
 		return vote
 	}
 
@@ -2249,7 +2270,17 @@ func (cs *State) updatePrivValidatorPubKey() error {
 		return nil
 	}
 
-	pubKey, err := cs.privValidator.GetPubKey()
+	var timeout time.Duration
+	if cs.config.TimeoutPrecommit > cs.config.TimeoutPrevote {
+		timeout = cs.config.TimeoutPrecommit
+	} else {
+		timeout = cs.config.TimeoutPrevote
+	}
+
+	// set a hard timeout for 2 seconds. This helps in avoiding blocking of the remote signer connection
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	defer cancel()
+	pubKey, err := cs.privValidator.GetPubKey(ctx)
 	if err != nil {
 		return err
 	}

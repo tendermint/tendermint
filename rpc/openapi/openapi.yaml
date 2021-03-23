@@ -340,7 +340,7 @@ paths:
         import rpchttp "github.com/tendermint/rpc/client/http"
         import "github.com/tendermint/tendermint/types"
 
-        client := rpchttp.New("tcp:0.0.0.0:26657", "/websocket")
+        client := rpchttp.New("tcp://0.0.0.0:26657")
         err := client.Start()
         if err != nil {
           handle error
@@ -397,7 +397,7 @@ paths:
       operationId: unsubscribe
       description: |
         ```go
-        client := rpchttp.New("tcp:0.0.0.0:26657", "/websocket")
+        client := rpchttp.New("tcp://0.0.0.0:26657")
         err := client.Start()
         if err != nil {
            handle error
@@ -1004,7 +1004,7 @@ paths:
           required: false
           schema:
             type: string
-            default: "asc"
+            default: "desc"
             example: "asc"
       tags:
         - Info
@@ -1021,6 +1021,62 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /block_search:
+    get:
+      summary: Search for blocks by BeginBlock and EndBlock events
+      description: |
+        Search for blocks by BeginBlock and EndBlock events.
+
+        See /subscribe for the query syntax.
+      operationId: block_search
+      parameters:
+        - in: query
+          name: query
+          description: Query
+          required: true
+          schema:
+            type: string
+            example: "block.height > 1000 AND valset.changed > 0"
+        - in: query
+          name: page
+          description: "Page number (1-based)"
+          required: false
+          schema:
+            type: integer
+            default: 1
+            example: 1
+        - in: query
+          name: per_page
+          description: "Number of entries per page (max: 100)"
+          required: false
+          schema:
+            type: integer
+            default: 30
+            example: 30
+        - in: query
+          name: order_by
+          description: Order in which blocks are sorted ("asc" or "desc"), by height. If empty, default sorting will be still applied.
+          required: false
+          schema:
+            type: string
+            default: "desc"
+            example: "asc"
+      tags:
+        - Info
+      responses:
+        "200":
+          description: List of paginated blocks matching the search criteria.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlockSearchResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /tx:
     get:
       summary: Get transactions by hash
@@ -1221,7 +1277,7 @@ components:
           example: "5576458aef205977e18fd50b274e9b5d9014525a"
         listen_addr:
           type: string
-          example: "tcp:0.0.0.0:26656"
+          example: "tcp://0.0.0.0:26656"
         network:
           type: string
           example: "cosmoshub-2"
@@ -1242,7 +1298,7 @@ components:
               example: "on"
             rpc_address:
               type: string
-              example: "tcp:0.0.0.0:26657"
+              example: "tcp://0.0.0.0:26657"
     SyncInfo:
       type: object
       properties:

@@ -178,7 +178,7 @@ func (c *Local) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.Result
 }
 
 func (c *Local) TxSearch(
-	ctx context.Context,
+	_ context.Context,
 	query string,
 	prove bool,
 	page,
@@ -186,6 +186,15 @@ func (c *Local) TxSearch(
 	orderBy string,
 ) (*ctypes.ResultTxSearch, error) {
 	return core.TxSearch(c.ctx, query, prove, page, perPage, orderBy)
+}
+
+func (c *Local) BlockSearch(
+	_ context.Context,
+	query string,
+	page, perPage *int,
+	orderBy string,
+) (*ctypes.ResultBlockSearch, error) {
+	return core.BlockSearch(c.ctx, query, page, perPage, orderBy)
 }
 
 func (c *Local) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {

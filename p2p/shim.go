@@ -110,7 +110,6 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 						rs.Logger.Error(
 							"failed to proxy envelope; failed to wrap message",
 							"ch_id", cs.Descriptor.ID,
-							"msg", e.Message,
 							"err", err,
 						)
 						continue
@@ -124,7 +123,6 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 					rs.Logger.Error(
 						"failed to proxy envelope; failed to encode message",
 						"ch_id", cs.Descriptor.ID,
-						"msg", e.Message,
 						"err", err,
 					)
 					continue
@@ -140,7 +138,6 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 						rs.Logger.Debug(
 							"failed to proxy envelope; failed to find peer",
 							"ch_id", cs.Descriptor.ID,
-							"msg", e.Message,
 							"peer", e.To,
 						)
 						continue
@@ -150,13 +147,12 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 						rs.Logger.Error(
 							"failed to proxy message to peer",
 							"ch_id", cs.Descriptor.ID,
-							"msg", e.Message,
 							"peer", e.To,
 						)
 					}
 
 				default:
-					rs.Logger.Error("failed to proxy envelope; missing peer ID", "ch_id", cs.Descriptor.ID, "msg", e.Message)
+					rs.Logger.Error("failed to proxy envelope; missing peer ID", "ch_id", cs.Descriptor.ID)
 				}
 			}
 		}(cs)
@@ -294,7 +290,7 @@ func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 	msg.Reset()
 
 	if err := proto.Unmarshal(msgBytes, msg); err != nil {
-		rs.Logger.Error("error decoding message", "peer", src, "ch_id", cID, "msg", msg, "err", err)
+		rs.Logger.Error("error decoding message", "peer", src, "ch_id", cID, "err", err)
 		rs.Switch.StopPeerForError(src, err)
 		return
 	}
@@ -302,7 +298,7 @@ func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 	validator, ok := msg.(messageValidator)
 	if ok {
 		if err := validator.Validate(); err != nil {
-			rs.Logger.Error("invalid message", "peer", src, "ch_id", cID, "msg", msg, "err", err)
+			rs.Logger.Error("invalid message", "peer", src, "ch_id", cID, "err", err)
 			rs.Switch.StopPeerForError(src, err)
 			return
 		}
@@ -314,7 +310,7 @@ func (rs *ReactorShim) Receive(chID byte, src Peer, msgBytes []byte) {
 
 		msg, err = wrapper.Unwrap()
 		if err != nil {
-			rs.Logger.Error("failed to unwrap message", "peer", src, "ch_id", chID, "msg", msg, "err", err)
+			rs.Logger.Error("failed to unwrap message", "peer", src, "ch_id", chID, "err", err)
 			return
 		}
 	}
