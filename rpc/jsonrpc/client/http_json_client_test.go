@@ -36,14 +36,14 @@ func TestHTTPClientMakeHTTPDialer(t *testing.T) {
 }
 
 func Test_parsedURL(t *testing.T) {
-	type test struct {
+	type tableTest struct {
 		url                  string
 		expectedURL          string
 		expectedHostWithPath string
 		expectedDialAddress  string
 	}
 
-	tests := map[string]test{
+	tests := map[string]tableTest{
 		"unix endpoint": {
 			url:                  "unix:///tmp/test",
 			expectedURL:          "unix://.tmp.test",
