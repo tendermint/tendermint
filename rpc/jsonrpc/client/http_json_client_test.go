@@ -36,9 +36,17 @@ func TestHTTPClientMakeHTTPDialer(t *testing.T) {
 }
 
 func Test_parsedURL(t *testing.T) {
-	x, err := newParsedURL("unix:///tmp/test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(x.GetHostWithPath())
+	t.Run("unix", func(t *testing.T) {
+		x, err := newParsedURL("unix://hello")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if x.isUnixSocket != true {
+			t.Fatal("true expected")
+		}
+	})
+
+	t.Run("non-unix", func(t *testing.T) {
+
+	})
 }
