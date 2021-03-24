@@ -314,7 +314,7 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 
 	// we're creating a single node network, but not starting the
 	// network.
-	rts := setup(t, config.Mempool, 1, 0)
+	rts := setup(t, config.Mempool, 1, maxActiveIDs+1)
 
 	nodeID := rts.nodes[0]
 
