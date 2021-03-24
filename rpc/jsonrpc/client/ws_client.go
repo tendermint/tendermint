@@ -114,7 +114,7 @@ func NewWSWithOptions(remoteAddr, endpoint string, opts WSOptions) (*WSClient, e
 	}
 
 	c := &WSClient{
-		Address:              parsedURL.GetHostWithPath(),
+		Address:              parsedURL.GetTrimmedHostWithPath(),
 		Dialer:               dialFn,
 		Endpoint:             endpoint,
 		PingPongLatencyTimer: metrics.NewTimer(),

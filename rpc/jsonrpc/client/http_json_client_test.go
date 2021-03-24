@@ -34,3 +34,11 @@ func TestHTTPClientMakeHTTPDialer(t *testing.T) {
 		require.NotNil(t, addr)
 	}
 }
+
+func Test_parsedURL(t *testing.T) {
+	x, err := newParsedURL("unix:///tmp/test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(x.GetHostWithPath())
+}

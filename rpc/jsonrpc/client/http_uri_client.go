@@ -43,7 +43,7 @@ func NewURI(remote string) (*URIClient, error) {
 	parsedURL.SetDefaultSchemeHTTP()
 
 	uriClient := &URIClient{
-		address: parsedURL.String(),
+		address: parsedURL.GetTrimmedURL(),
 		client:  httpClient,
 	}
 
