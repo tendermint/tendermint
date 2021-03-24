@@ -1388,7 +1388,6 @@ func (r *Reactor) peerStatsRoutine() {
 					})
 				}
 			}
-
 		case <-r.closeCh:
 			return
 		}
