@@ -36,17 +36,50 @@ func TestHTTPClientMakeHTTPDialer(t *testing.T) {
 }
 
 func Test_parsedURL(t *testing.T) {
-	t.Run("unix", func(t *testing.T) {
-		x, err := newParsedURL("unix://hello")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if x.isUnixSocket != true {
-			t.Fatal("true expected")
-		}
-	})
+	type test struct {
+		url                  string
+		expectedURL          string
+		expectedHostWithPath string
+		expectedDialAddress  string
+	}
 
-	t.Run("non-unix", func(t *testing.T) {
+	tests := map[string]test{
+		"unix endpoint": {
+			url:                  "unix:///tmp/test",
+			expectedURL:          "unix://.tmp.test",
+			expectedHostWithPath: "/tmp/test",
+			expectedDialAddress:  "/tmp/test",
+		},
 
-	})
+		"http endpoint": {
+			url:                  "https://example.com",
+			expectedURL:          "https://example.com",
+			expectedHostWithPath: "example.com",
+			expectedDialAddress:  "example.com",
+		},
+
+		"http endpoint with port": {
+			url:                  "https://example.com:8080",
+			expectedURL:          "https://example.com:8080",
+			expectedHostWithPath: "example.com:8080",
+			expectedDialAddress:  "example.com:8080",
+		},
+
+		"http path routed endpoint": {
+			url:                  "https://example.com:8080/rpc",
+			expectedURL:          "https://example.com:8080/rpc",
+			expectedHostWithPath: "example.com:8080/rpc",
+			expectedDialAddress:  "example.com:8080",
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			parsed, err := newParsedURL(test.url)
+			require.NoError(t, err)
+			require.Equal(t, test.expectedDialAddress, parsed.GetDialAddress())
+			require.Equal(t, test.expectedURL, parsed.GetTrimmedURL())
+			require.Equal(t, test.expectedHostWithPath, parsed.GetHostWithPath())
+		})
+	}
 }
