@@ -57,6 +57,9 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			requests = []types.RPCRequest{request}
 		}
 
+		// Set the default response cache to true unless we see any error and any rpc request doesn't
+		// allow to be cached
+		var c = true
 		for _, request := range requests {
 			request := request
 
@@ -74,11 +77,13 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 					responses,
 					types.RPCInvalidRequestError(request.ID, fmt.Errorf("path %s is invalid", r.URL.Path)),
 				)
+				c = false
 				continue
 			}
 			rpcFunc, ok := funcMap[request.Method]
 			if !ok || rpcFunc.ws {
 				responses = append(responses, types.RPCMethodNotFoundError(request.ID))
+				c = false
 				continue
 			}
 			ctx := &types.Context{JSONReq: &request, HTTPReq: r}
@@ -90,6 +95,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 						responses,
 						types.RPCInvalidParamsError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
 					)
+					c = false
 					continue
 				}
 				args = append(args, fnArgs...)
@@ -106,23 +112,28 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			// if this already of type RPC error then forward that error
 			case *types.RPCError:
 				responses = append(responses, types.NewRPCErrorResponse(request.ID, e.Code, e.Message, e.Data))
-
+				c = false
 			default: // we need to unwrap the error and parse it accordingly
 				switch errors.Unwrap(err) {
 				// check if the error was due to an invald request
 				case ctypes.ErrZeroOrNegativeHeight, ctypes.ErrZeroOrNegativePerPage,
 					ctypes.ErrPageOutOfRange, ctypes.ErrInvalidRequest:
 					responses = append(responses, types.RPCInvalidRequestError(request.ID, err))
-
+					c = false
 				// lastly default all remaining errors as internal errors
 				default: // includes ctypes.ErrHeightNotAvailable and ctypes.ErrHeightExceedsChainHead
 					responses = append(responses, types.RPCInternalError(request.ID, err))
+					c = false
 				}
+			}
+
+			if c && !rpcFunc.cache {
+				c = false
 			}
 		}
 
 		if len(responses) > 0 {
-			if wErr := WriteRPCResponseHTTP(w, responses...); wErr != nil {
+			if wErr := WriteRPCResponseHTTP(w, c, responses...); wErr != nil {
 				logger.Error("failed to write responses", "res", responses, "err", wErr)
 			}
 		}
