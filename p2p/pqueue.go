@@ -178,11 +178,10 @@ func (s *pqScheduler) process() {
 				// There is not sufficient capacity to simply enqueue the incoming
 				// Envelope. So we have to attempt to make room for it by dropping lower
 				// priority Envelopes or drop the incoming Envelope otherwise.
-				var total uint
 
-				for i := 0; i < len(s.chDescs) && uint(s.chDescs[i].Priority) < pqEnv.priority && total < pqEnv.size; i++ {
-					total += s.sizes[uint(s.chDescs[i].Priority)]
-				}
+				// The cumulative size of all enqueue envelopes at the incoming envelope's
+				// priority or lower.
+				total := s.sizes[pqEnv.priority]
 
 				if total >= pqEnv.size {
 					// There is room for the incoming Envelope, so we drop as many lower
