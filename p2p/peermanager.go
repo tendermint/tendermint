@@ -821,11 +821,13 @@ func (m *PeerManager) Register(peerUpdates *PeerUpdates) {
 	m.mtx.Unlock()
 
 	go func() {
-		select {
-		case pu := <-peerUpdates.routerUpdatesCh:
-			m.processPeerEvent(pu)
-		case <-peerUpdates.closeCh:
-		case <-m.closeCh:
+		for {
+			select {
+			case pu := <-peerUpdates.routerUpdatesCh:
+				m.processPeerEvent(pu)
+			case <-peerUpdates.closeCh:
+			case <-m.closeCh:
+			}
 		}
 	}()
 
@@ -843,6 +845,10 @@ func (m *PeerManager) Register(peerUpdates *PeerUpdates) {
 func (m *PeerManager) processPeerEvent(pu PeerUpdate) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
+
+	if _, ok := m.store.peers[pu.NodeID]; !ok {
+		m.store.peers[pu.NodeID] = &peerInfo{}
+	}
 
 	switch pu.Status {
 	case PeerStatusBad:
