@@ -572,10 +572,7 @@ func (voteSet *VoteSet) LogString() string {
 	defer voteSet.mtx.Unlock()
 	voted, total, frac := voteSet.sumTotalFrac()
 
-	return fmt.Sprintf("Votes:%d/%d(%.3f) Validators:%q %v",
-		voted, total, frac,
-		voteSet.valSet,
-		voteSet.votesBitArray)
+	return fmt.Sprintf("Votes:%d/%d(%.3f)", voted, total, frac)
 }
 
 // return the power voted, the total, and the fraction
