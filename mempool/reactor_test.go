@@ -336,6 +336,21 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 		}
 	}
 
+	require.Eventually(
+		t,
+		func() bool {
+			for _, mch := range rts.mempoolChnnels {
+				if len(mch.Out) > 0 {
+					return false
+				}
+			}
+
+			return true
+		},
+		time.Minute,
+		10*time.Millisecond,
+	)
+
 	rts.assertMempoolChannelsDrained(t)
 }
 
