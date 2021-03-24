@@ -111,7 +111,7 @@ func (rts *reactorTestSuite) assertMempoolChannelsDrained(t *testing.T) {
 	}
 
 	for _, mch := range rts.mempoolChnnels {
-		require.Empty(t, mch.Out, "checking channel %q", mch.ID)
+		require.Empty(t, mch.Out, "checking channel %q (len=%d)", mch.ID, len(mch.Out))
 	}
 }
 
