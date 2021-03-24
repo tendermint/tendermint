@@ -164,7 +164,7 @@ func NewWithHTTPClient(remote string, c *http.Client) (*Client, error) {
 
 	parsedURL.SetDefaultSchemeHTTP()
 
-	address := parsedURL.GetHostWithPath()
+	address := parsedURL.GetTrimmedURL()
 	username := parsedURL.User.Username()
 	password, _ := parsedURL.User.Password()
 
