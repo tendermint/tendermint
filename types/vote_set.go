@@ -568,9 +568,7 @@ func (voteSet *VoteSet) LogString() string {
 	defer voteSet.mtx.Unlock()
 	voted, total, frac := voteSet.sumTotalFrac()
 
-	return fmt.Sprintf("H:%v R:%v Votes:%d/%d(%.3f) Validators:%q %v",
-		voteSet.height,
-		voteSet.round,
+	return fmt.Sprintf("Votes:%d/%d(%.3f) Validators:%q %v",
 		voted, total, frac,
 		voteSet.valSet,
 		voteSet.votesBitArray)
