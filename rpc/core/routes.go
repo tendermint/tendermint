@@ -14,46 +14,46 @@ var Routes = map[string]*rpc.RPCFunc{
 	"unsubscribe_all": rpc.NewWSRPCFunc(UnsubscribeAll, ""),
 
 	// info API
-	"health":               rpc.NewRPCFunc(Health, ""),
-	"status":               rpc.NewRPCFunc(Status, ""),
-	"net_info":             rpc.NewRPCFunc(NetInfo, ""),
-	"blockchain":           rpc.NewRPCFunc(BlockchainInfo, "minHeight,maxHeight"),
-	"genesis":              rpc.NewRPCFunc(Genesis, ""),
-	"genesis_chunked":      rpc.NewRPCFunc(GenesisChunked, "chunk"),
-	"block":                rpc.NewRPCFunc(Block, "height"),
-	"block_by_hash":        rpc.NewRPCFunc(BlockByHash, "hash"),
-	"block_results":        rpc.NewRPCFunc(BlockResults, "height"),
-	"commit":               rpc.NewRPCFunc(Commit, "height"),
-	"header":               rpc.NewRPCFunc(Header, "height"),
-	"header_by_hash":       rpc.NewRPCFunc(HeaderByHash, "hash"),
-	"check_tx":             rpc.NewRPCFunc(CheckTx, "tx"),
-	"tx":                   rpc.NewRPCFunc(Tx, "hash,prove"),
-	"tx_search":            rpc.NewRPCFunc(TxSearch, "query,prove,page,per_page,order_by"),
-	"block_search":         rpc.NewRPCFunc(BlockSearch, "query,page,per_page,order_by"),
-	"validators":           rpc.NewRPCFunc(Validators, "height,page,per_page"),
-	"dump_consensus_state": rpc.NewRPCFunc(DumpConsensusState, ""),
-	"consensus_state":      rpc.NewRPCFunc(ConsensusState, ""),
-	"consensus_params":     rpc.NewRPCFunc(ConsensusParams, "height"),
-	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxs, "limit"),
-	"num_unconfirmed_txs":  rpc.NewRPCFunc(NumUnconfirmedTxs, ""),
+	"health":               rpc.NewRPCFunc(Health, "", false),
+	"status":               rpc.NewRPCFunc(Status, "", false),
+	"net_info":             rpc.NewRPCFunc(NetInfo, "", false),
+	"blockchain":           rpc.NewRPCFunc(BlockchainInfo, "minHeight,maxHeight", true),
+	"genesis":              rpc.NewRPCFunc(Genesis, "", true),
+	"genesis_chunked":      rpc.NewRPCFunc(GenesisChunked, "chunk", true),
+	"block":                rpc.NewRPCFunc(Block, "height", true),
+	"block_by_hash":        rpc.NewRPCFunc(BlockByHash, "hash", true),
+	"block_results":        rpc.NewRPCFunc(BlockResults, "height", true),
+	"commit":               rpc.NewRPCFunc(Commit, "height", true),
+	"header":               rpc.NewRPCFunc(Header, "height", true),
+	"header_by_hash":       rpc.NewRPCFunc(HeaderByHash, "hash", true),
+	"check_tx":             rpc.NewRPCFunc(CheckTx, "tx", true),
+	"tx":                   rpc.NewRPCFunc(Tx, "hash,prove", true),
+	"tx_search":            rpc.NewRPCFunc(TxSearch, "query,prove,page,per_page,order_by", false),
+	"block_search":         rpc.NewRPCFunc(BlockSearch, "query,page,per_page,order_by", false),
+	"validators":           rpc.NewRPCFunc(Validators, "height,page,per_page", true),
+	"dump_consensus_state": rpc.NewRPCFunc(DumpConsensusState, "", false),
+	"consensus_state":      rpc.NewRPCFunc(ConsensusState, "", false),
+	"consensus_params":     rpc.NewRPCFunc(ConsensusParams, "height", true),
+	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxs, "limit", false),
+	"num_unconfirmed_txs":  rpc.NewRPCFunc(NumUnconfirmedTxs, "", false),
 
 	// tx broadcast API
-	"broadcast_tx_commit": rpc.NewRPCFunc(BroadcastTxCommit, "tx"),
-	"broadcast_tx_sync":   rpc.NewRPCFunc(BroadcastTxSync, "tx"),
-	"broadcast_tx_async":  rpc.NewRPCFunc(BroadcastTxAsync, "tx"),
+	"broadcast_tx_commit": rpc.NewRPCFunc(BroadcastTxCommit, "tx", false),
+	"broadcast_tx_sync":   rpc.NewRPCFunc(BroadcastTxSync, "tx", false),
+	"broadcast_tx_async":  rpc.NewRPCFunc(BroadcastTxAsync, "tx", false),
 
 	// abci API
-	"abci_query": rpc.NewRPCFunc(ABCIQuery, "path,data,height,prove"),
-	"abci_info":  rpc.NewRPCFunc(ABCIInfo, ""),
+	"abci_query": rpc.NewRPCFunc(ABCIQuery, "path,data,height,prove", false),
+	"abci_info":  rpc.NewRPCFunc(ABCIInfo, "", true),
 
 	// evidence API
-	"broadcast_evidence": rpc.NewRPCFunc(BroadcastEvidence, "evidence"),
+	"broadcast_evidence": rpc.NewRPCFunc(BroadcastEvidence, "evidence", false),
 }
 
 // AddUnsafeRoutes adds unsafe routes.
 func AddUnsafeRoutes() {
 	// control API
-	Routes["dial_seeds"] = rpc.NewRPCFunc(UnsafeDialSeeds, "seeds")
-	Routes["dial_peers"] = rpc.NewRPCFunc(UnsafeDialPeers, "peers,persistent,unconditional,private")
-	Routes["unsafe_flush_mempool"] = rpc.NewRPCFunc(UnsafeFlushMempool, "")
+	Routes["dial_seeds"] = rpc.NewRPCFunc(UnsafeDialSeeds, "seeds", false)
+	Routes["dial_peers"] = rpc.NewRPCFunc(UnsafeDialPeers, "peers,persistent,unconditional,private", false)
+	Routes["unsafe_flush_mempool"] = rpc.NewRPCFunc(UnsafeFlushMempool, "", false)
 }

@@ -55,6 +55,9 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			requests = []types.RPCRequest{request}
 		}
 
+		// Set the default response cache to true unless we see any error and any rpc request doesn't
+		// allow to be cached
+		var c = true
 		for _, request := range requests {
 			request := request
 
@@ -72,11 +75,13 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 					responses,
 					types.RPCInvalidRequestError(request.ID, fmt.Errorf("path %s is invalid", r.URL.Path)),
 				)
+				c = false
 				continue
 			}
 			rpcFunc, ok := funcMap[request.Method]
 			if !ok || rpcFunc.ws {
 				responses = append(responses, types.RPCMethodNotFoundError(request.ID))
+				c = false
 				continue
 			}
 			ctx := &types.Context{JSONReq: &request, HTTPReq: r}
@@ -88,6 +93,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 						responses,
 						types.RPCInvalidParamsError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
 					)
+					c = false
 					continue
 				}
 				args = append(args, fnArgs...)
@@ -100,10 +106,14 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 				continue
 			}
 			responses = append(responses, types.NewRPCSuccessResponse(request.ID, result))
+
+			if c && !rpcFunc.cache {
+				c = false
+			}
 		}
 
 		if len(responses) > 0 {
-			if wErr := WriteRPCResponseHTTP(w, responses...); wErr != nil {
+			if wErr := WriteRPCResponseHTTP(w, c, responses...); wErr != nil {
 				logger.Error("failed to write responses", "res", responses, "err", wErr)
 			}
 		}
