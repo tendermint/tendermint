@@ -36,14 +36,14 @@ func TestHTTPClientMakeHTTPDialer(t *testing.T) {
 }
 
 func Test_parsedURL(t *testing.T) {
-	type tableTest struct {
+	type test struct {
 		url                  string
 		expectedURL          string
 		expectedHostWithPath string
 		expectedDialAddress  string
 	}
 
-	tests := map[string]tableTest{
+	tests := map[string]test{
 		"unix endpoint": {
 			url:                  "unix:///tmp/test",
 			expectedURL:          "unix://.tmp.test",
@@ -73,13 +73,14 @@ func Test_parsedURL(t *testing.T) {
 		},
 	}
 
-	for name, test := range tests {
+	for name, tt := range tests {
+		tt := tt // suppressing linter
 		t.Run(name, func(t *testing.T) {
-			parsed, err := newParsedURL(test.url)
+			parsed, err := newParsedURL(tt.url)
 			require.NoError(t, err)
-			require.Equal(t, test.expectedDialAddress, parsed.GetDialAddress())
-			require.Equal(t, test.expectedURL, parsed.GetTrimmedURL())
-			require.Equal(t, test.expectedHostWithPath, parsed.GetHostWithPath())
+			require.Equal(t, tt.expectedDialAddress, parsed.GetDialAddress())
+			require.Equal(t, tt.expectedURL, parsed.GetTrimmedURL())
+			require.Equal(t, tt.expectedHostWithPath, parsed.GetHostWithPath())
 		})
 	}
 }
