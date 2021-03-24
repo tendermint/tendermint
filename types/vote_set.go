@@ -560,6 +560,22 @@ func (voteSet *VoteSet) StringShort() string {
 		voteSet.height, voteSet.round, voteSet.signedMsgType, voteSet.maj23, frac, voteSet.votesBitArray, voteSet.peerMaj23s)
 }
 
+func (voteSet *VoteSet) LogString() string {
+	if voteSet == nil {
+		return "nil-VoteSet"
+	}
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
+	voted, total, frac := voteSet.sumTotalFrac()
+
+	return fmt.Sprintf("H:%v R:%v Votes:%d/%d(%.3f) Validators:%q %v",
+		voteSet.height,
+		voteSet.round,
+		voted, total, frac,
+		voteSet.valSet,
+		voteSet.votesBitArray)
+}
+
 // return the power voted, the total, and the fraction
 func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
 	voted, total := voteSet.sum, voteSet.valSet.TotalVotingPower()
