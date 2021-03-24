@@ -6,7 +6,6 @@ import (
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
-	tmcontext "github.com/tendermint/tendermint/libs/context"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -1354,9 +1353,6 @@ func (r *Reactor) processPeerUpdates() {
 }
 
 func (r *Reactor) peerStatsRoutine() {
-	ctx, cancel := tmcontext.TODO(r.closeCh)
-	defer cancel()
-
 	for {
 		if !r.IsRunning() {
 			r.Logger.Info("stopping peerStatsRoutine")
@@ -1374,7 +1370,7 @@ func (r *Reactor) peerStatsRoutine() {
 			switch msg.Msg.(type) {
 			case *VoteMessage:
 				if numVotes := ps.RecordVote(); numVotes%votesToContributeToBecomeGoodPeer == 0 { // nolint: staticcheck
-					r.peerUpdates.SendUpdate(ctx, p2p.PeerUpdate{
+					r.peerUpdates.SendUpdate(p2p.PeerUpdate{
 						NodeID: msg.PeerID,
 						Status: p2p.PeerStatusGood,
 					})
@@ -1382,7 +1378,7 @@ func (r *Reactor) peerStatsRoutine() {
 
 			case *BlockPartMessage:
 				if numParts := ps.RecordBlockPart(); numParts%blocksToContributeToBecomeGoodPeer == 0 { // nolint: staticcheck
-					r.peerUpdates.SendUpdate(ctx, p2p.PeerUpdate{
+					r.peerUpdates.SendUpdate(p2p.PeerUpdate{
 						NodeID: msg.PeerID,
 						Status: p2p.PeerStatusGood,
 					})

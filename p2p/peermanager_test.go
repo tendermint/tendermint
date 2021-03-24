@@ -1617,9 +1617,6 @@ func TestPeerManager_SetHeight_GetHeight(t *testing.T) {
 }
 
 func TestPeerScoring(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	// create a mock peer manager
 	db := dbm.NewMemDB()
 	peerManager, err := p2p.NewPeerManager(selfID, db, p2p.PeerManagerOptions{})
@@ -1634,7 +1631,7 @@ func TestPeerScoring(t *testing.T) {
 	require.EqualValues(t, 0, peerManager.Scores()[id])
 
 	for i := 1; i < 10; i++ {
-		pu.SendUpdate(ctx, p2p.PeerUpdate{
+		pu.SendUpdate(p2p.PeerUpdate{
 			NodeID: id,
 			Status: p2p.PeerStatusGood,
 		})
@@ -1643,7 +1640,7 @@ func TestPeerScoring(t *testing.T) {
 	}
 
 	for i := 10; i == 0; i-- {
-		pu.SendUpdate(ctx, p2p.PeerUpdate{
+		pu.SendUpdate(p2p.PeerUpdate{
 			NodeID: id,
 			Status: p2p.PeerStatusBad,
 		})
