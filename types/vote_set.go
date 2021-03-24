@@ -442,12 +442,14 @@ func (voteSet *VoteSet) TwoThirdsMajority() (blockID BlockID, ok bool) {
 //--------------------------------------------------------------------------------
 // Strings and JSON
 
+const nilVoteSetString = "nil-VoteSet"
+
 // String returns a string representation of VoteSet.
 //
 // See StringIndented.
 func (voteSet *VoteSet) String() string {
 	if voteSet == nil {
-		return "nil-VoteSet"
+		return nilVoteSetString
 	}
 	return voteSet.StringIndented("")
 }
@@ -551,7 +553,7 @@ func (voteSet *VoteSet) voteStrings() []string {
 // 7. 2/3+ majority for each peer
 func (voteSet *VoteSet) StringShort() string {
 	if voteSet == nil {
-		return "nil-VoteSet"
+		return nilVoteSetString
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
@@ -560,9 +562,11 @@ func (voteSet *VoteSet) StringShort() string {
 		voteSet.height, voteSet.round, voteSet.signedMsgType, voteSet.maj23, frac, voteSet.votesBitArray, voteSet.peerMaj23s)
 }
 
+// LogString produces a logging suitable string representation of the
+// vote set.
 func (voteSet *VoteSet) LogString() string {
 	if voteSet == nil {
-		return "nil-VoteSet"
+		return nilVoteSetString
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
