@@ -78,6 +78,7 @@ func (pu *PeerUpdates) Updates() <-chan PeerUpdate {
 func (pu *PeerUpdates) SendUpdate(ctx context.Context, update PeerUpdate) {
 	select {
 	case <-ctx.Done():
+	case <-pu.closeCh:
 	case pu.routerUpdatesCh <- update:
 	}
 }
