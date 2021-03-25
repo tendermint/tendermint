@@ -23,8 +23,6 @@ type Metrics struct {
 	PeerSendBytesTotal metrics.Counter
 	// Pending bytes to be sent to a given peer.
 	PeerPendingSendBytes metrics.Gauge
-	// Number of transactions submitted by each peer.
-	NumTxs metrics.Gauge
 
 	// RouterPeerQueueRecv defines the time taken to read off of a peer's queue
 	// before sending on the connection.
@@ -76,18 +74,14 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "peer_send_bytes_total",
 			Help:      "Number of bytes sent to a given peer.",
 		}, append(labels, "peer_id", "chID")).With(labelsAndValues...),
+
 		PeerPendingSendBytes: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peer_pending_send_bytes",
 			Help:      "Number of pending bytes to be sent to a given peer.",
 		}, append(labels, "peer_id")).With(labelsAndValues...),
-		NumTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "num_txs",
-			Help:      "Number of transactions submitted by each peer.",
-		}, append(labels, "peer_id")).With(labelsAndValues...),
+
 		RouterPeerQueueRecv: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
@@ -132,7 +126,6 @@ func NopMetrics() *Metrics {
 		PeerReceiveBytesTotal:  discard.NewCounter(),
 		PeerSendBytesTotal:     discard.NewCounter(),
 		PeerPendingSendBytes:   discard.NewGauge(),
-		NumTxs:                 discard.NewGauge(),
 		RouterPeerQueueRecv:    discard.NewHistogram(),
 		RouterPeerQueueSend:    discard.NewHistogram(),
 		RouterChannelQueueSend: discard.NewHistogram(),
