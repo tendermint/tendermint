@@ -2128,7 +2128,12 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.NodeID) (added bool, err e
 
 	case tmproto.PrecommitType:
 		precommits := cs.Votes.Precommits(vote.Round)
-		cs.Logger.Debug("added vote to precommit", "vote", vote, "precommits", precommits.StringShort())
+		cs.Logger.Debug("added vote to precommit",
+			"height", vote.Height,
+			"round", vote.Round,
+			"validator", vote.ValidatorAddress.String(),
+			"vote_timestamp", vote.Timestamp,
+			"data", precommits.LogString())
 
 		blockID, ok := precommits.TwoThirdsMajority()
 		if ok {
