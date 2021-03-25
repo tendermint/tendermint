@@ -66,6 +66,12 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 		return nil, fmt.Errorf("unexpected perturbation %q", perturbation)
 	}
 
+	// seed nodes do not have an RPC endpoint exposed so we cannot assert that
+	// the node recovered. All we can do is hope.
+	if node.Mode == e2e.ModeSeed {
+		return nil, nil
+	}
+
 	status, err := waitForNode(node, 0, 10*time.Second)
 	if err != nil {
 		return nil, err
