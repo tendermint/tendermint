@@ -110,8 +110,8 @@ func (rts *reactorTestSuite) assertMempoolChannelsDrained(t *testing.T) {
 		require.False(t, r.IsRunning(), "reactor %s did not stop", id)
 	}
 
-	for id, mch := range rts.mempoolChnnels {
-		require.Empty(t, mch.Out, "checking channel %q", id)
+	for _, mch := range rts.mempoolChnnels {
+		require.Empty(t, mch.Out, "checking channel %q (len=%d)", mch.ID, len(mch.Out))
 	}
 }
 
@@ -314,7 +314,7 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 
 	// we're creating a single node network, but not starting the
 	// network.
-	rts := setup(t, config.Mempool, 1, 0)
+	rts := setup(t, config.Mempool, 1, maxActiveIDs+1)
 
 	nodeID := rts.nodes[0]
 
@@ -335,6 +335,21 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 			},
 		}
 	}
+
+	require.Eventually(
+		t,
+		func() bool {
+			for _, mch := range rts.mempoolChnnels {
+				if len(mch.Out) > 0 {
+					return false
+				}
+			}
+
+			return true
+		},
+		time.Minute,
+		10*time.Millisecond,
+	)
 
 	rts.assertMempoolChannelsDrained(t)
 }

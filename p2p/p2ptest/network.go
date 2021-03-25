@@ -233,8 +233,15 @@ func (n *Network) MakeNode(t *testing.T) *Node {
 	})
 	require.NoError(t, err)
 
-	router, err := p2p.NewRouter(n.logger, nodeInfo, privKey, peerManager,
-		[]p2p.Transport{transport}, p2p.RouterOptions{})
+	router, err := p2p.NewRouter(
+		n.logger,
+		p2p.NopMetrics(),
+		nodeInfo,
+		privKey,
+		peerManager,
+		[]p2p.Transport{transport},
+		p2p.RouterOptions{},
+	)
 	require.NoError(t, err)
 	require.NoError(t, router.Start())
 

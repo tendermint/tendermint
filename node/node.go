@@ -54,11 +54,18 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-var useLegacyP2P = true
+var (
+	useLegacyP2P       = true
+	p2pRouterQueueType string
+)
 
 func init() {
 	if v := os.Getenv("TM_LEGACY_P2P"); len(v) > 0 {
 		useLegacyP2P, _ = strconv.ParseBool(v)
+	}
+
+	if v := os.Getenv("TM_P2P_QUEUE"); len(v) > 0 {
+		p2pRouterQueueType = v
 	}
 }
 
@@ -628,15 +635,26 @@ func createPeerManager(config *cfg.Config, p2pLogger log.Logger, nodeID p2p.Node
 
 func createRouter(
 	p2pLogger log.Logger,
+	p2pMetrics *p2p.Metrics,
 	nodeInfo p2p.NodeInfo,
 	privKey crypto.PrivKey,
 	peerManager *p2p.PeerManager,
 	transport p2p.Transport,
 ) (*p2p.Router, error) {
-	return p2p.NewRouter(p2pLogger, nodeInfo, privKey, peerManager, []p2p.Transport{transport}, p2p.RouterOptions{})
+
+	return p2p.NewRouter(
+		p2pLogger,
+		p2pMetrics,
+		nodeInfo,
+		privKey,
+		peerManager,
+		[]p2p.Transport{transport},
+		p2p.RouterOptions{QueueType: p2pRouterQueueType},
+	)
 }
 
-func createSwitch(config *cfg.Config,
+func createSwitch(
+	config *cfg.Config,
 	transport p2p.Transport,
 	p2pMetrics *p2p.Metrics,
 	mempoolReactor *p2p.ReactorShim,
@@ -781,7 +799,7 @@ func createPEXReactorV2(
 	router *p2p.Router,
 ) (*pex.ReactorV2, error) {
 
-	channel, err := router.OpenChannel(p2p.ChannelID(pex.PexChannel), &protop2p.PexMessage{}, 0)
+	channel, err := router.OpenChannel(p2p.ChannelID(pex.PexChannel), &protop2p.PexMessage{}, 4096)
 	if err != nil {
 		return nil, err
 	}
@@ -897,7 +915,7 @@ func NewSeedNode(config *cfg.Config,
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
 
-	router, err := createRouter(p2pLogger, nodeInfo, nodeKey.PrivKey, peerManager, transport)
+	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey, peerManager, transport)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
@@ -1057,12 +1075,13 @@ func NewNode(config *cfg.Config,
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
 
-	router, err := createRouter(p2pLogger, nodeInfo, nodeKey.PrivKey, peerManager, transport)
+	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
+
+	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey, peerManager, transport)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
 
-	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 	mpReactorShim, mpReactor, mempool := createMempoolReactor(
 		config, proxyApp, state, memplMetrics, peerManager, router, logger,
 	)
@@ -1148,11 +1167,18 @@ func NewNode(config *cfg.Config,
 		config.StateSync.TempDir,
 	)
 
-	// Setup Transport and Switch.
+	router.AddChannelDescriptors(mpReactorShim.GetChannels())
+	router.AddChannelDescriptors(bcReactorForSwitch.GetChannels())
+	router.AddChannelDescriptors(csReactorShim.GetChannels())
+	router.AddChannelDescriptors(evReactorShim.GetChannels())
+	router.AddChannelDescriptors(stateSyncReactorShim.GetChannels())
+
+	// setup Transport and Switch
 	sw := createSwitch(
 		config, transport, p2pMetrics, mpReactorShim, bcReactorForSwitch,
 		stateSyncReactorShim, csReactorShim, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
 	)
+
 	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
 		return nil, fmt.Errorf("could not add peers from persistent-peers field: %w", err)
@@ -1191,6 +1217,8 @@ func NewNode(config *cfg.Config,
 		if err != nil {
 			return nil, err
 		}
+
+		router.AddChannelDescriptors(pexReactor.GetChannels())
 	}
 
 	if config.RPC.PprofListenAddress != "" {
@@ -1940,7 +1968,7 @@ func makeChannelsFromShims(
 
 	channels := map[p2p.ChannelID]*p2p.Channel{}
 	for chID, chShim := range chShims {
-		ch, err := router.OpenChannel(chID, chShim.MsgType, 0)
+		ch, err := router.OpenChannel(chID, chShim.MsgType, chShim.Descriptor.RecvBufferCapacity)
 		if err != nil {
 			panic(fmt.Sprintf("failed to open channel %v: %v", chID, err))
 		}
