@@ -775,6 +775,7 @@ func (r *Router) receivePeer(peerID NodeID, conn Connection) error {
 
 		select {
 		case queue.enqueue() <- Envelope{From: peerID, Message: msg}:
+			r.metrics.PeerReceiveBytesTotal.With("peer_id", string(peerID)).Add(float64(proto.Size(msg)))
 			r.metrics.RouterChannelQueueSend.Observe(time.Since(start).Seconds())
 			r.logger.Debug("received message", "peer", peerID, "message", msg)
 
