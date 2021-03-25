@@ -25,17 +25,31 @@ type Network struct {
 	memoryNetwork *p2p.MemoryNetwork
 }
 
+// NetworkOptions is an argument structure to parameterize the
+// MakeNetwork function.
+type NetworkOptions struct {
+	NumNodes   int
+	BufferSize int
+}
+
+func (opts *NetworkOptions) setDefaults() {
+	if opts.BufferSize == 0 {
+		opts.BufferSize = 1
+	}
+}
+
 // MakeNetwork creates a test network with the given number of nodes and
 // connects them to each other.
-func MakeNetwork(t *testing.T, nodes int) *Network {
+func MakeNetwork(t *testing.T, opts NetworkOptions) *Network {
+	opts.setDefaults()
 	logger := log.TestingLogger()
 	network := &Network{
 		Nodes:         map[p2p.NodeID]*Node{},
 		logger:        logger,
-		memoryNetwork: p2p.NewMemoryNetwork(logger),
+		memoryNetwork: p2p.NewMemoryNetwork(logger, opts.BufferSize),
 	}
 
-	for i := 0; i < nodes; i++ {
+	for i := 0; i < opts.NumNodes; i++ {
 		node := network.MakeNode(t)
 		network.Nodes[node.NodeID] = node
 	}
