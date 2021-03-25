@@ -2,6 +2,7 @@ package commands
 
 import (
 	"github.com/spf13/cobra"
+	abci "github.com/tendermint/tendermint/abci/types"
 )
 
 // AddNodeFlags exposes some common configuration options on the command-line
@@ -19,4 +20,5 @@ func addMoreFlags(cmd *cobra.Command) {
 		"Node listen address. (0.0.0.0:0 means any interface, any port)")
 
 	cmd.Flags().Duration("consensus.timeout_commit", config.Consensus.TimeoutCommit, "Set node block interval time")
+	cmd.Flags().Bool(abci.FlagCloseMutex, false, "Close local client query mutex for better concurrency")
 }
