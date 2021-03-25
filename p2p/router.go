@@ -513,6 +513,8 @@ func (r *Router) acceptPeers(transport Transport) {
 				return
 			}
 
+			r.metrics.Peers.Add(1)
+
 			queue := r.queueFactory(queueBufferDefault)
 
 			r.peerMtx.Lock()
@@ -528,6 +530,8 @@ func (r *Router) acceptPeers(transport Transport) {
 
 				if err := r.peerManager.Disconnected(peerInfo.NodeID); err != nil {
 					r.logger.Error("failed to disconnect peer", "peer", peerInfo.NodeID, "err", err)
+				} else {
+					r.metrics.Peers.Add(-1)
 				}
 			}()
 
@@ -600,6 +604,8 @@ func (r *Router) dialPeers() {
 
 				if err := r.peerManager.Disconnected(peerID); err != nil {
 					r.logger.Error("failed to disconnect peer", "peer", address, "err", err)
+				} else {
+					r.metrics.Peers.Add(-1)
 				}
 			}()
 
