@@ -14,9 +14,9 @@
 DOCKER/ @marbar3778 @alexanderbez @ebuchman @tessr
 
 # Overrides for core Tendermint packages
-abci/  @marbar3778 @alexanderbez @ebuchman @tessr
-evidence/ @cmwaters @ebuchman @tessr
-light/ @cmwaters @ebuchman @tessr
+abci/  @marbar3778 @alexanderbez @ebuchman @tessr @tychoish
+evidence/ @cmwaters @ebuchman @tessr @tychoish
+light/ @cmwaters @ebuchman @tessr @tychoish
 
 # Overrides for docs
 *.md @marbar3778 @alexanderbez @ebuchman @tessr
