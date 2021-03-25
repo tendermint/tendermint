@@ -68,6 +68,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "peer_receive_bytes_total",
 			Help:      "Number of bytes received from a given peer.",
 		}, append(labels, "peer_id", "chID")).With(labelsAndValues...),
+
 		PeerSendBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
