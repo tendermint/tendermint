@@ -44,7 +44,7 @@ func TestRouter_Network(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	// Create a test network and open a channel where all peers run echoReactor.
-	network := p2ptest.MakeNetwork(t, 8)
+	network := p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: 8})
 	network.Start(t)
 
 	local := network.RandomNode()
@@ -143,7 +143,7 @@ func TestRouter_Channel_SendReceive(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	// Create a test network and open a channel on all nodes.
-	network := p2ptest.MakeNetwork(t, 3)
+	network := p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: 3})
 	network.Start(t)
 
 	ids := network.NodeIDs()
@@ -201,7 +201,7 @@ func TestRouter_Channel_Broadcast(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	// Create a test network and open a channel on all nodes.
-	network := p2ptest.MakeNetwork(t, 4)
+	network := p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: 4})
 	network.Start(t)
 
 	ids := network.NodeIDs()
@@ -228,7 +228,7 @@ func TestRouter_Channel_Wrapper(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	// Create a test network and open a channel on all nodes.
-	network := p2ptest.MakeNetwork(t, 2)
+	network := p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: 2})
 	network.Start(t)
 
 	ids := network.NodeIDs()
@@ -286,7 +286,7 @@ func TestRouter_Channel_Error(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	// Create a test network and open a channel on all nodes.
-	network := p2ptest.MakeNetwork(t, 3)
+	network := p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: 3})
 	network.Start(t)
 
 	ids := network.NodeIDs()

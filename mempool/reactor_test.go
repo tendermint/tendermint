@@ -39,7 +39,7 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, numNodes int, chBuf uint) *reac
 
 	rts := &reactorTestSuite{
 		logger:         log.TestingLogger().With("testCase", t.Name()),
-		network:        p2ptest.MakeNetwork(t, numNodes),
+		network:        p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
 		reactors:       make(map[p2p.NodeID]*Reactor, numNodes),
 		mempoolChnnels: make(map[p2p.NodeID]*p2p.Channel, numNodes),
 		mempools:       make(map[p2p.NodeID]*CListMempool, numNodes),
