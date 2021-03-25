@@ -57,8 +57,10 @@ func (uc uniformChoice) Choose(r *rand.Rand) interface{} {
 }
 
 // weightedChoice chooses a single random key from a map of keys and weights.
+// nolint:unused
 type weightedChoice map[interface{}]uint
 
+// nolint:unused
 func (wc weightedChoice) Choose(r *rand.Rand) interface{} {
 	total := 0
 	choices := make([]interface{}, 0, len(wc))

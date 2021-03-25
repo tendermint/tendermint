@@ -2,6 +2,7 @@
 # functionality with a single network.
 
 initial_height = 1000
+evidence = 5
 initial_state = { initial01 = "a", initial02 = "b", initial03 = "c" }
 
 [validators]
@@ -36,8 +37,6 @@ seeds = ["seed01"]
 seeds = ["seed01"]
 snapshot_interval = 5
 perturb = ["disconnect"]
-# FIXME: maverick has been disabled until it is redesigned (https://github.com/tendermint/tendermint/issues/5575)
-# misbehaviors = { 1018 = "double-prevote" }
 
 [node.validator02]
 seeds = ["seed02"]

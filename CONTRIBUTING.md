@@ -366,15 +366,6 @@ cd test/e2e && \
   ./build/runner -f networks/ci.toml
 ```
 
-### Maverick
-
-**If you're changing the code in `consensus` package, please make sure to
-replicate all the changes in `./test/maverick/consensus`**. Maverick is a
-byzantine node used to assert that the validator gets punished for malicious
-behavior.
-
-See [README](./test/maverick/README.md) for details.
-
 ### Model-based tests (ADVANCED)
 
 *NOTE: if you're just submitting your first PR, you won't need to touch these

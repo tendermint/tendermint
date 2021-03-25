@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
-	"strconv"
 	"strings"
 
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
@@ -43,13 +42,7 @@ var (
 		"kill":       0.1,
 		"restart":    0.1,
 	}
-	nodeMisbehaviors = weightedChoice{
-		// FIXME: evidence disabled due to node panicing when not
-		// having sufficient block history to process evidence.
-		// https://github.com/tendermint/tendermint/issues/5617
-		// misbehaviorOption{"double-prevote"}: 1,
-		misbehaviorOption{}: 9,
-	}
+	evidence = uniformChoice{0, 1, 10}
 )
 
 // Generate generates random testnets using the given RNG.
@@ -75,6 +68,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		ValidatorUpdates: map[string]map[string]int64{},
 		Nodes:            map[string]*e2e.ManifestNode{},
 		KeyType:          opt["keyType"].(string),
+		Evidence:         int64(evidence.Choose(r).(int)),
 	}
 
 	var numSeeds, numValidators, numFulls, numLightClients int
@@ -227,17 +221,6 @@ func generateNode(
 		node.SnapshotInterval = 3
 	}
 
-	if node.Mode == string(e2e.ModeValidator) {
-		misbehaveAt := startAt + 5 + int64(r.Intn(10))
-		if startAt == 0 {
-			misbehaveAt += initialHeight - 1
-		}
-		node.Misbehaviors = nodeMisbehaviors.Choose(r).(misbehaviorOption).atHeight(misbehaveAt)
-		if len(node.Misbehaviors) != 0 {
-			node.PrivvalProtocol = "file"
-		}
-	}
-
 	// If a node which does not persist state also does not retain blocks, randomly
 	// choose to either persist state or retain all blocks.
 	if node.PersistInterval != nil && *node.PersistInterval == 0 && node.RetainBlocks > 0 {
@@ -275,17 +258,4 @@ func generateLightNode(r *rand.Rand, startAt int64, providers []string) *e2e.Man
 
 func ptrUint64(i uint64) *uint64 {
 	return &i
-}
-
-type misbehaviorOption struct {
-	misbehavior string
-}
-
-func (m misbehaviorOption) atHeight(height int64) map[string]string {
-	misbehaviorMap := make(map[string]string)
-	if m.misbehavior == "" {
-		return misbehaviorMap
-	}
-	misbehaviorMap[strconv.Itoa(int(height))] = m.misbehavior
-	return misbehaviorMap
 }
