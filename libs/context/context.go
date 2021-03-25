@@ -22,7 +22,11 @@ func TODO(done <-chan struct{}) (context.Context, context.CancelFunc) {
 // canceled or signal channel is closed. In either case, the afterClose
 // function is always called after the context is closed or the done
 // channel signals.
-func WithSignalChanelClose(ctx context.Context, done <-chan struct{}, afterClose func()) (context.Context, context.CancelFunc) {
+func WithSignalChanelClose(
+	ctx context.Context,
+	done <-chan struct{},
+	afterClose func()) (context.Context, context.CancelFunc) {
+
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
 

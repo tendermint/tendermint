@@ -1253,11 +1253,12 @@ func (p *peerInfo) Score() PeerScore {
 		score += PeerScorePersistent
 	}
 
-	if p.MutableScore+int64(score) > math.MaxUint8 {
+	switch {
+	case p.MutableScore+int64(score) > math.MaxUint8:
 		score = math.MaxUint8
-	} else if p.MutableScore+int64(score) < 0 {
+	case p.MutableScore+int64(score) < 0:
 		score = 0
-	} else {
+	default:
 		score += PeerScore(p.MutableScore)
 	}
 

@@ -60,7 +60,7 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, numNodes int, chBuf uint) *reac
 		rts.mempools[nodeID] = mempool
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
-		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID])
+		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
 		rts.network.Nodes[nodeID].PeerManager.Register(rts.peerUpdates[nodeID])
 
 		rts.reactors[nodeID] = NewReactor(

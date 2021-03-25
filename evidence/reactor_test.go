@@ -86,7 +86,7 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 		require.NoError(t, err)
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
-		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID])
+		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
 		rts.network.Nodes[nodeID].PeerManager.Register(rts.peerUpdates[nodeID])
 		rts.nodes = append(rts.nodes, rts.network.Nodes[nodeID])
 
