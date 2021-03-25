@@ -594,6 +594,8 @@ func (r *Router) dialPeers() {
 				return
 			}
 
+			r.metrics.Peers.Add(1)
+
 			peerQueue := r.getOrMakeQueue(peerID)
 			defer func() {
 				r.peerMtx.Lock()
