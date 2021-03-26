@@ -89,7 +89,7 @@ func (ps *PeerState) GetRoundState() *cstypes.PeerRoundState {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
-	prs := ps.PRS // copy
+	prs := ps.PRS.Copy()
 	return &prs
 }
 
