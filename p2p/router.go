@@ -132,7 +132,7 @@ type RouterOptions struct {
 	QueueType string
 
 	// MaxIncommingConnectionsPerIP limits the number of incoming
-	// connections per IP addres. Defaults to 100.
+	// connections per IP address. Defaults to 100.
 	MaxIncommingConnectionsPerIP uint
 
 	// IncomingConnectionWindow describes how often an IP address

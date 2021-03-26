@@ -45,7 +45,7 @@ func (rat *connTrackerImpl) AddConn(addr net.IP) error {
 		}
 	}
 
-	rat.cache[address] += 1
+	rat.cache[address]++
 	rat.lastConnect[address] = time.Now()
 
 	return nil
@@ -66,7 +66,7 @@ func (rat *connTrackerImpl) RemoveConn(addr net.IP) {
 	defer rat.mutex.Unlock()
 
 	if num := rat.cache[address]; num > 0 {
-		rat.cache[address] -= 1
+		rat.cache[address]--
 	}
 
 	if last, ok := rat.lastConnect[address]; ok && time.Since(last) > rat.window {
