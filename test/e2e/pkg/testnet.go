@@ -124,7 +124,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 		Validators:       map[*Node]int64{},
 		ValidatorUpdates: map[int64]map[*Node]int64{},
 		Nodes:            []*Node{},
-		Evidence:         int(manifest.Evidence),
+		Evidence:         manifest.Evidence,
 		KeyType:          "ed25519",
 		LogLevel:         manifest.LogLevel,
 	}

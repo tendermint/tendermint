@@ -188,6 +188,7 @@ func NewCLI() *CLI {
 
 	cli.root.AddCommand(&cobra.Command{
 		Use:   "evidence [amount]",
+		Args:  cobra.MaximumNArgs(1),
 		Short: "Generates and broadcasts evidence to a random node",
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			amount := 1

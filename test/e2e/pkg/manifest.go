@@ -53,7 +53,7 @@ type Manifest struct {
 
 	// Evidence indicates the amount of evidence that will be injected into the
 	// testnet via the RPC endpoint of a random node. Default is 0
-	Evidence int64 `toml:"evidence"`
+	Evidence int `toml:"evidence"`
 
 	// LogLevel sets the log level of the entire testnet. This can be overridden
 	// by individual nodes.

@@ -68,7 +68,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		ValidatorUpdates: map[string]map[string]int64{},
 		Nodes:            map[string]*e2e.ManifestNode{},
 		KeyType:          opt["keyType"].(string),
-		Evidence:         int64(evidence.Choose(r).(int)),
+		Evidence:         evidence.Choose(r).(int),
 	}
 
 	var numSeeds, numValidators, numFulls, numLightClients int
