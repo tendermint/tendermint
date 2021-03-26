@@ -370,6 +370,6 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
 
-		AppHash: genDoc.AppHash,
+		AppHash: []byte(""),
 	}, nil
 }

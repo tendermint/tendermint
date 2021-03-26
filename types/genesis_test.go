@@ -70,7 +70,6 @@ func TestGenesisGood(t *testing.T) {
 				"power":"10",
 				"name":""
 			}],
-			"app_hash":"",
 			"app_state":{"account_owner": "Bob"}
 		}`,
 	)
@@ -160,6 +159,5 @@ func randomGenesisDoc() *GenesisDoc {
 		InitialHeight:   1000,
 		Validators:      []GenesisValidator{{pubkey.Address(), pubkey, 10, "myval"}},
 		ConsensusParams: DefaultConsensusParams(),
-		AppHash:         []byte{1, 2, 3},
 	}
 }

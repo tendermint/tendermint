@@ -559,7 +559,6 @@ func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 	s, _ := sm.MakeGenesisState(&types.GenesisDoc{
 		ChainID:    "test-chain",
 		Validators: vals,
-		AppHash:    nil,
 	})
 
 	// save validators to db for 2 heights

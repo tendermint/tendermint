@@ -112,7 +112,6 @@ func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValida
 	s, _ := sm.MakeGenesisState(&types.GenesisDoc{
 		ChainID:    chainID,
 		Validators: vals,
-		AppHash:    nil,
 	})
 
 	stateDB := dbm.NewMemDB()
