@@ -422,21 +422,21 @@ func (bA *BitArray) UnmarshalJSON(bz []byte) error {
 
 // ToProto converts BitArray to protobuf. It returns nil if BitArray is
 // nil/empty.
-//
-// XXX: It does not copy the array.
 func (bA *BitArray) ToProto() *tmprotobits.BitArray {
 	if bA == nil ||
 		(len(bA.Elems) == 0 && bA.Bits == 0) { // empty
 		return nil
 	}
 
-	return &tmprotobits.BitArray{Bits: int64(bA.Bits), Elems: bA.Elems}
+	bA.mtx.Lock()
+	defer bA.mtx.Unlock()
+
+	bc := bA.copy()
+	return &tmprotobits.BitArray{Bits: int64(bc.Bits), Elems: bc.Elems}
 }
 
 // FromProto sets BitArray to the given protoBitArray. It returns an error if
 // protoBitArray is invalid.
-//
-// XXX: It does not copy the array.
 func (bA *BitArray) FromProto(protoBitArray *tmprotobits.BitArray) error {
 	if protoBitArray == nil {
 		return nil
@@ -454,8 +454,14 @@ func (bA *BitArray) FromProto(protoBitArray *tmprotobits.BitArray) error {
 		return fmt.Errorf("invalid number of Elems: got %d, but exp %d", got, exp)
 	}
 
+	bA.mtx.Lock()
+	defer bA.mtx.Unlock()
+
+	ec := make([]uint64, len(protoBitArray.Elems))
+	copy(ec, protoBitArray.Elems)
+
 	bA.Bits = int(protoBitArray.Bits)
-	bA.Elems = protoBitArray.Elems
+	bA.Elems = ec
 	return nil
 }
 
