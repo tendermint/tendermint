@@ -55,7 +55,7 @@ func setup(t *testing.T, stateStores []sm.Store, chBuf uint) *reactorTestSuite {
 	rts := &reactorTestSuite{
 		numStateStores: numStateStores,
 		logger:         log.TestingLogger().With("testCase", t.Name()),
-		network:        p2ptest.MakeNetwork(t, numStateStores),
+		network:        p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numStateStores}),
 		reactors:       make(map[p2p.NodeID]*evidence.Reactor, numStateStores),
 		pools:          make(map[p2p.NodeID]*evidence.Pool, numStateStores),
 		peerUpdates:    make(map[p2p.NodeID]*p2p.PeerUpdates, numStateStores),

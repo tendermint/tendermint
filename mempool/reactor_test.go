@@ -39,7 +39,7 @@ func setup(t *testing.T, cfg *cfg.MempoolConfig, numNodes int, chBuf uint) *reac
 
 	rts := &reactorTestSuite{
 		logger:         log.TestingLogger().With("testCase", t.Name()),
-		network:        p2ptest.MakeNetwork(t, numNodes),
+		network:        p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
 		reactors:       make(map[p2p.NodeID]*Reactor, numNodes),
 		mempoolChnnels: make(map[p2p.NodeID]*p2p.Channel, numNodes),
 		mempools:       make(map[p2p.NodeID]*CListMempool, numNodes),
@@ -110,8 +110,8 @@ func (rts *reactorTestSuite) assertMempoolChannelsDrained(t *testing.T) {
 		require.False(t, r.IsRunning(), "reactor %s did not stop", id)
 	}
 
-	for id, mch := range rts.mempoolChnnels {
-		require.Empty(t, mch.Out, "checking channel %q", id)
+	for _, mch := range rts.mempoolChnnels {
+		require.Empty(t, mch.Out, "checking channel %q (len=%d)", mch.ID, len(mch.Out))
 	}
 }
 
@@ -314,7 +314,7 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 
 	// we're creating a single node network, but not starting the
 	// network.
-	rts := setup(t, config.Mempool, 1, 0)
+	rts := setup(t, config.Mempool, 1, maxActiveIDs+1)
 
 	nodeID := rts.nodes[0]
 
@@ -335,6 +335,21 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 			},
 		}
 	}
+
+	require.Eventually(
+		t,
+		func() bool {
+			for _, mch := range rts.mempoolChnnels {
+				if len(mch.Out) > 0 {
+					return false
+				}
+			}
+
+			return true
+		},
+		time.Minute,
+		10*time.Millisecond,
+	)
 
 	rts.assertMempoolChannelsDrained(t)
 }

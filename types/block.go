@@ -1189,7 +1189,7 @@ func (blockID BlockID) Key() string {
 		panic(err)
 	}
 
-	return string(blockID.Hash) + string(bz)
+	return fmt.Sprint(string(blockID.Hash), string(bz))
 }
 
 // ValidateBasic performs basic validation.

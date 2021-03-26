@@ -51,7 +51,7 @@ func setup(
 
 	rts := &reactorTestSuite{
 		logger:             log.TestingLogger().With("module", "blockchain", "testCase", t.Name()),
-		network:            p2ptest.MakeNetwork(t, numNodes),
+		network:            p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
 		nodes:              make([]p2p.NodeID, 0, numNodes),
 		reactors:           make(map[p2p.NodeID]*Reactor, numNodes),
 		app:                make(map[p2p.NodeID]proxy.AppConns, numNodes),

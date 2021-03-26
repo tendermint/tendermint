@@ -31,6 +31,8 @@ var (
 				ID:                  byte(EvidenceChannel),
 				Priority:            6,
 				RecvMessageCapacity: maxMsgSize,
+
+				MaxSendBytes: 400,
 			},
 		},
 	}

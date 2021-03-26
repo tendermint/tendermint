@@ -44,7 +44,7 @@ func TestRouter_Network(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	// Create a test network and open a channel where all peers run echoReactor.
-	network := p2ptest.MakeNetwork(t, 8)
+	network := p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: 8})
 	network.Start(t)
 
 	local := network.RandomNode()
@@ -97,7 +97,15 @@ func TestRouter_Channel(t *testing.T) {
 	// Set up a router with no transports (so no peers).
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
-	router, err := p2p.NewRouter(log.TestingLogger(), selfInfo, selfKey, peerManager, nil, p2p.RouterOptions{})
+	router, err := p2p.NewRouter(
+		log.TestingLogger(),
+		p2p.NopMetrics(),
+		selfInfo,
+		selfKey,
+		peerManager,
+		nil,
+		p2p.RouterOptions{},
+	)
 	require.NoError(t, err)
 
 	require.NoError(t, router.Start())
@@ -143,7 +151,7 @@ func TestRouter_Channel_SendReceive(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	// Create a test network and open a channel on all nodes.
-	network := p2ptest.MakeNetwork(t, 3)
+	network := p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: 3})
 	network.Start(t)
 
 	ids := network.NodeIDs()
@@ -201,7 +209,7 @@ func TestRouter_Channel_Broadcast(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	// Create a test network and open a channel on all nodes.
-	network := p2ptest.MakeNetwork(t, 4)
+	network := p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: 4})
 	network.Start(t)
 
 	ids := network.NodeIDs()
@@ -228,7 +236,7 @@ func TestRouter_Channel_Wrapper(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	// Create a test network and open a channel on all nodes.
-	network := p2ptest.MakeNetwork(t, 2)
+	network := p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: 2})
 	network.Start(t)
 
 	ids := network.NodeIDs()
@@ -286,7 +294,7 @@ func TestRouter_Channel_Error(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	// Create a test network and open a channel on all nodes.
-	network := p2ptest.MakeNetwork(t, 3)
+	network := p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: 3})
 	network.Start(t)
 
 	ids := network.NodeIDs()
@@ -343,8 +351,15 @@ func TestRouter_AcceptPeers(t *testing.T) {
 			sub := peerManager.Subscribe()
 			defer sub.Close()
 
-			router, err := p2p.NewRouter(log.TestingLogger(), selfInfo, selfKey, peerManager,
-				[]p2p.Transport{mockTransport}, p2p.RouterOptions{})
+			router, err := p2p.NewRouter(
+				log.TestingLogger(),
+				p2p.NopMetrics(),
+				selfInfo,
+				selfKey,
+				peerManager,
+				[]p2p.Transport{mockTransport},
+				p2p.RouterOptions{},
+			)
 			require.NoError(t, err)
 			require.NoError(t, router.Start())
 
@@ -383,8 +398,15 @@ func TestRouter_AcceptPeers_Error(t *testing.T) {
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
-	router, err := p2p.NewRouter(log.TestingLogger(), selfInfo, selfKey, peerManager,
-		[]p2p.Transport{mockTransport}, p2p.RouterOptions{})
+	router, err := p2p.NewRouter(
+		log.TestingLogger(),
+		p2p.NopMetrics(),
+		selfInfo,
+		selfKey,
+		peerManager,
+		[]p2p.Transport{mockTransport},
+		p2p.RouterOptions{},
+	)
 	require.NoError(t, err)
 
 	require.NoError(t, router.Start())
@@ -408,8 +430,15 @@ func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
-	router, err := p2p.NewRouter(log.TestingLogger(), selfInfo, selfKey, peerManager,
-		[]p2p.Transport{mockTransport}, p2p.RouterOptions{})
+	router, err := p2p.NewRouter(
+		log.TestingLogger(),
+		p2p.NopMetrics(),
+		selfInfo,
+		selfKey,
+		peerManager,
+		[]p2p.Transport{mockTransport},
+		p2p.RouterOptions{},
+	)
 	require.NoError(t, err)
 
 	require.NoError(t, router.Start())
@@ -446,8 +475,15 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
-	router, err := p2p.NewRouter(log.TestingLogger(), selfInfo, selfKey, peerManager,
-		[]p2p.Transport{mockTransport}, p2p.RouterOptions{})
+	router, err := p2p.NewRouter(
+		log.TestingLogger(),
+		p2p.NopMetrics(),
+		selfInfo,
+		selfKey,
+		peerManager,
+		[]p2p.Transport{mockTransport},
+		p2p.RouterOptions{},
+	)
 	require.NoError(t, err)
 	require.NoError(t, router.Start())
 
@@ -520,8 +556,15 @@ func TestRouter_DialPeers(t *testing.T) {
 			sub := peerManager.Subscribe()
 			defer sub.Close()
 
-			router, err := p2p.NewRouter(log.TestingLogger(), selfInfo, selfKey, peerManager,
-				[]p2p.Transport{mockTransport}, p2p.RouterOptions{})
+			router, err := p2p.NewRouter(
+				log.TestingLogger(),
+				p2p.NopMetrics(),
+				selfInfo,
+				selfKey,
+				peerManager,
+				[]p2p.Transport{mockTransport},
+				p2p.RouterOptions{},
+			)
 			require.NoError(t, err)
 			require.NoError(t, router.Start())
 
@@ -583,8 +626,15 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 	require.NoError(t, peerManager.Add(b))
 	require.NoError(t, peerManager.Add(c))
 
-	router, err := p2p.NewRouter(log.TestingLogger(), selfInfo, selfKey, peerManager,
-		[]p2p.Transport{mockTransport}, p2p.RouterOptions{})
+	router, err := p2p.NewRouter(
+		log.TestingLogger(),
+		p2p.NopMetrics(),
+		selfInfo,
+		selfKey,
+		peerManager,
+		[]p2p.Transport{mockTransport},
+		p2p.RouterOptions{},
+	)
 	require.NoError(t, err)
 	require.NoError(t, router.Start())
 
@@ -630,8 +680,15 @@ func TestRouter_EvictPeers(t *testing.T) {
 	sub := peerManager.Subscribe()
 	defer sub.Close()
 
-	router, err := p2p.NewRouter(log.TestingLogger(), selfInfo, selfKey, peerManager,
-		[]p2p.Transport{mockTransport}, p2p.RouterOptions{})
+	router, err := p2p.NewRouter(
+		log.TestingLogger(),
+		p2p.NopMetrics(),
+		selfInfo,
+		selfKey,
+		peerManager,
+		[]p2p.Transport{mockTransport},
+		p2p.RouterOptions{},
+	)
 	require.NoError(t, err)
 	require.NoError(t, router.Start())
 

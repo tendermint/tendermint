@@ -50,7 +50,7 @@ func setup(t *testing.T, numNodes int, states []*State, size int) *reactorTestSu
 	t.Helper()
 
 	rts := &reactorTestSuite{
-		network:  p2ptest.MakeNetwork(t, numNodes),
+		network:  p2ptest.MakeNetwork(t, p2ptest.NetworkOptions{NumNodes: numNodes}),
 		states:   make(map[p2p.NodeID]*State),
 		reactors: make(map[p2p.NodeID]*Reactor, numNodes),
 		subs:     make(map[p2p.NodeID]types.Subscription, numNodes),
