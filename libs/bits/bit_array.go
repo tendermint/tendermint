@@ -430,7 +430,10 @@ func (bA *BitArray) ToProto() *tmprotobits.BitArray {
 		return nil
 	}
 
-	return &tmprotobits.BitArray{Bits: int64(bA.Bits), Elems: bA.Elems}
+	bc := bA.copy()
+	return &tmprotobits.BitArray{Bits: int64(bc.Bits), Elems: bc.Elems}
+	// return &tmprotobits.BitArray{Bits: int64(ba.Bits), Elems: bA.Elems}
+
 }
 
 // FromProto sets BitArray to the given protoBitArray. It returns an error if
@@ -454,6 +457,8 @@ func (bA *BitArray) FromProto(protoBitArray *tmprotobits.BitArray) error {
 		return fmt.Errorf("invalid number of Elems: got %d, but exp %d", got, exp)
 	}
 
+	bA.mtx.Lock()
+	defer bA.mtx.Unlock()
 	bA.Bits = int(protoBitArray.Bits)
 	bA.Elems = protoBitArray.Elems
 	return nil
