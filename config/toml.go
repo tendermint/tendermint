@@ -88,14 +88,13 @@ proxy-app = "{{ .BaseConfig.ProxyApp }}"
 # A custom human readable name for this node
 moniker = "{{ .BaseConfig.Moniker }}"
 
-# Mode of Node: full | validator | seed (default: "full")
-# You will need to set it to "validator" if you want to run the node as a validator
-# * full node (default)
-#   - all reactors
-#   - No priv_validator_key.json, priv_validator_state.json
-# * validator node
+# Mode of Node: full | validator | seed (default: "validator")
+# * validator node (default)
 #   - all reactors
 #   - with priv_validator_key.json, priv_validator_state.json
+# * full node
+#   - all reactors
+#   - No priv_validator_key.json, priv_validator_state.json
 # * seed node
 #   - only P2P, PEX Reactor
 #   - No priv_validator_key.json, priv_validator_state.json

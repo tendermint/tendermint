@@ -46,7 +46,7 @@ var (
 	defaultConfigFileName  = "config.toml"
 	defaultGenesisJSONName = "genesis.json"
 
-	defaultMode             = ModeFull
+	defaultMode             = ModeValidator
 	defaultPrivValKeyName   = "priv_validator_key.json"
 	defaultPrivValStateName = "priv_validator_state.json"
 
@@ -167,13 +167,13 @@ type BaseConfig struct { //nolint: maligned
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
 
-	// Mode of Node: full | validator | seed (default: "full")
-	// * full (default)
-	//   - all reactors
-	//   - No priv_validator_key.json, priv_validator_state.json
-	// * validator
+	// Mode of Node: full | validator | seed (default: "validator")
+	// * validator (default)
 	//   - all reactors
 	//   - with priv_validator_key.json, priv_validator_state.json
+	// * full
+	//   - all reactors
+	//   - No priv_validator_key.json, priv_validator_state.json
 	// * seed
 	//   - only P2P, PEX Reactor
 	//   - No priv_validator_key.json, priv_validator_state.json

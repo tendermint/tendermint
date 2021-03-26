@@ -16,7 +16,7 @@
 We would like to suggest a simple Tendermint mode abstraction. These modes will live under one binary, and when initializing a node the user will be able to specify which node they would like to create.
 
 - Which reactor, component to include for each node
-    - full *(default)*
+    - full
         - switch, transport
         - reactors
           - mempool
@@ -27,7 +27,7 @@ We would like to suggest a simple Tendermint mode abstraction. These modes will 
           - statesync
         - rpc (safe connections only)
         - *~~no privValidator(priv_validator_key.json, priv_validator_state.json)~~*
-    - validator
+    - validator  *(default)*
         - switch, transport
         - reactors
           - mempool
