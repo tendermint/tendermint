@@ -53,8 +53,10 @@ func (prs PeerRoundState) Copy() PeerRoundState {
 	// this works because it's not a pointer receiver so it's
 	// already, effectively a copy.
 
-	hashCopy := make([]byte, len(prs.ProposalBlockPartSetHeader.Hash.Bytes()))
-	copy(hashCopy, prs.ProposalBlockPartSetHeader.Hash.Bytes())
+	headerHash := prs.ProposalBlockPartSetHeader.Hash.Bytes()
+
+	hashCopy := make([]byte, len(headerHash))
+	copy(hashCopy, headerHash)
 	prs.ProposalBlockPartSetHeader = types.PartSetHeader{
 		Total: prs.ProposalBlockPartSetHeader.Total,
 		Hash:  hashCopy,
