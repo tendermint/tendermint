@@ -68,8 +68,8 @@ func (rat *connTrackerImpl) RemoveConn(addr net.IP) {
 	if num := rat.cache[address]; num > 0 {
 		rat.cache[address] -= 1
 	}
+
 	if last, ok := rat.lastConnect[address]; ok && time.Since(last) > rat.window {
 		delete(rat.lastConnect, address)
 	}
-
 }
