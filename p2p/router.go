@@ -130,6 +130,15 @@ type RouterOptions struct {
 	// QueueType must be "wdrr" (Weighed Deficit Round Robin),
 	// "priority", or FIFO. Defaults to FIFO.
 	QueueType string
+
+	// MaxIncommingConnectionsPerIP limits the number of incoming
+	// connections per IP addres. Defaults to 100.
+	MaxIncommingConnectionsPerIP uint
+
+	// IncomingConnectionWindow describes how often an IP address
+	// can attempt to create a new connection. Defaults to 10
+	// milliseconds, and cannot be less than 1 millisecond.
+	IncomingConnectionWindow time.Duration
 }
 
 const (
@@ -147,6 +156,18 @@ func (o *RouterOptions) Validate() error {
 		// pass
 	default:
 		return fmt.Errorf("queue type %q is not supported", o.QueueType)
+	}
+
+	switch {
+	case o.IncomingConnectionWindow == 0:
+		o.IncomingConnectionWindow = 100 * time.Millisecond
+	case o.IncomingConnectionWindow < time.Millisecond:
+		return fmt.Errorf("incomming connection window must be grater than 1m [%s]",
+			o.IncomingConnectionWindow)
+	}
+
+	if o.MaxIncommingConnectionsPerIP == 0 {
+		o.MaxIncommingConnectionsPerIP = 100
 	}
 
 	return nil
@@ -202,6 +223,7 @@ type Router struct {
 	peerManager        *PeerManager
 	chDescs            []ChannelDescriptor
 	transports         []Transport
+	tracker            connectionTracker
 	protocolTransports map[Protocol]Transport
 	stopCh             chan struct{} // signals Router shutdown
 
@@ -235,10 +257,13 @@ func NewRouter(
 	}
 
 	router := &Router{
-		logger:             logger,
-		metrics:            metrics,
-		nodeInfo:           nodeInfo,
-		privKey:            privKey,
+		logger:   logger,
+		metrics:  metrics,
+		nodeInfo: nodeInfo,
+		privKey:  privKey,
+		tracker: newConnTracker(
+			options.MaxIncommingConnectionsPerIP,
+			options.IncomingConnectionWindow),
 		chDescs:            make([]ChannelDescriptor, 0),
 		transports:         transports,
 		protocolTransports: map[Protocol]Transport{},
@@ -452,15 +477,6 @@ func (r *Router) acceptPeers(transport Transport) {
 	r.logger.Debug("starting accept routine", "transport", transport)
 	ctx := r.stopCtx()
 	for {
-		// FIXME: We may need transports to enforce some sort of rate limiting
-		// here (e.g. by IP address), or alternatively have PeerManager.Accepted()
-		// do it for us.
-		//
-		// FIXME: Even though PeerManager enforces MaxConnected, we may want to
-		// limit the maximum number of active connections here too, since e.g.
-		// an adversary can open a ton of connections and then just hang during
-		// the handshake, taking up TCP socket descriptors.
-		//
 		// FIXME: The old P2P stack rejected multiple connections for the same IP
 		// unless P2PConfig.AllowDuplicateIP is true -- it's better to limit this
 		// by peer ID rather than IP address, so this hasn't been implemented and
@@ -480,9 +496,21 @@ func (r *Router) acceptPeers(transport Transport) {
 			return
 		}
 
+		incomingIP := conn.RemoteEndpoint().IP
+		if err := r.tracker.AddConn(incomingIP); err != nil {
+			closeErr := conn.Close()
+			r.logger.Debug("rate limiting incoming peer",
+				"err", err,
+				"ip", incomingIP.String(),
+				"closeErr", closeErr)
+
+			continue
+		}
+
 		// Spawn a goroutine for the handshake, to avoid head-of-line blocking.
 		go func() {
 			defer conn.Close()
+			defer r.tracker.RemoveConn(incomingIP)
 
 			// FIXME: The peer manager may reject the peer during Accepted()
 			// after we've handshaked with the peer (to find out which peer it
@@ -514,7 +542,6 @@ func (r *Router) acceptPeers(transport Transport) {
 			}
 
 			r.metrics.Peers.Add(1)
-
 			queue := r.queueFactory(queueBufferDefault)
 
 			r.peerMtx.Lock()
@@ -692,6 +719,7 @@ func (r *Router) handshakePeer(ctx context.Context, conn Connection, expectID No
 		ctx, cancel = context.WithTimeout(ctx, r.options.HandshakeTimeout)
 		defer cancel()
 	}
+
 	peerInfo, peerKey, err := conn.Handshake(ctx, r.nodeInfo, r.privKey)
 	if err != nil {
 		return peerInfo, peerKey, err
