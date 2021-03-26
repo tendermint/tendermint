@@ -513,6 +513,8 @@ func (r *Router) acceptPeers(transport Transport) {
 				return
 			}
 
+			r.metrics.Peers.Add(1)
+
 			queue := r.queueFactory(queueBufferDefault)
 
 			r.peerMtx.Lock()
@@ -528,6 +530,8 @@ func (r *Router) acceptPeers(transport Transport) {
 
 				if err := r.peerManager.Disconnected(peerInfo.NodeID); err != nil {
 					r.logger.Error("failed to disconnect peer", "peer", peerInfo.NodeID, "err", err)
+				} else {
+					r.metrics.Peers.Add(-1)
 				}
 			}()
 
@@ -590,6 +594,8 @@ func (r *Router) dialPeers() {
 				return
 			}
 
+			r.metrics.Peers.Add(1)
+
 			peerQueue := r.getOrMakeQueue(peerID)
 			defer func() {
 				r.peerMtx.Lock()
@@ -600,6 +606,8 @@ func (r *Router) dialPeers() {
 
 				if err := r.peerManager.Disconnected(peerID); err != nil {
 					r.logger.Error("failed to disconnect peer", "peer", address, "err", err)
+				} else {
+					r.metrics.Peers.Add(-1)
 				}
 			}()
 
@@ -775,6 +783,7 @@ func (r *Router) receivePeer(peerID NodeID, conn Connection) error {
 
 		select {
 		case queue.enqueue() <- Envelope{From: peerID, Message: msg}:
+			r.metrics.PeerReceiveBytesTotal.With("peer_id", string(peerID)).Add(float64(proto.Size(msg)))
 			r.metrics.RouterChannelQueueSend.Observe(time.Since(start).Seconds())
 			r.logger.Debug("received message", "peer", peerID, "message", msg)
 

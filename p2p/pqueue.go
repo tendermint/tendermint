@@ -167,6 +167,8 @@ func (s *pqScheduler) process() {
 				timestamp: time.Now().UTC(),
 			}
 
+			s.metrics.PeerPendingSendBytes.With("peer_id", string(pqEnv.envelope.To)).Add(float64(pqEnv.size))
+
 			// enqueue
 
 			// Check if we have sufficient capacity to simply enqueue the incoming
@@ -252,6 +254,7 @@ func (s *pqScheduler) process() {
 					s.sizes[uint(s.chDescs[i].Priority)] -= pqEnv.size
 				}
 
+				s.metrics.PeerSendBytesTotal.With("peer_id", string(pqEnv.envelope.To)).Add(float64(pqEnv.size))
 				s.dequeueCh <- pqEnv.envelope
 			}
 
@@ -267,7 +270,7 @@ func (s *pqScheduler) push(pqEnv *pqEnvelope) {
 	// enqueue the incoming Envelope
 	heap.Push(s.pq, pqEnv)
 	s.size += pqEnv.size
-	s.metrics.PeerQueueMsgSize.With("ch_id", chIDStr).Set(float64(pqEnv.size))
+	s.metrics.PeerQueueMsgSize.With("ch_id", chIDStr).Add(float64(pqEnv.size))
 
 	// Update the cumulative sizes by adding the Envelope's size to every
 	// priority less than or equal to it.
