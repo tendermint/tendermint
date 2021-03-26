@@ -41,7 +41,7 @@ const (
 type PeerScore uint8
 
 const (
-	PeerScorePersistent PeerScore = 100 // persistent peers
+	PeerScorePersistent PeerScore = math.MaxUint8 // persistent peers
 )
 
 // PeerUpdate is a peer update event sent via PeerUpdates.
@@ -1245,13 +1245,14 @@ func (p *peerInfo) Copy() peerInfo {
 // Score calculates a score for the peer. Higher-scored peers will be
 // preferred over lower scores.
 func (p *peerInfo) Score() PeerScore {
-	var score PeerScore
 	if p.FixedScore > 0 {
 		return p.FixedScore
 	}
 	if p.Persistent {
-		score += PeerScorePersistent
+		return PeerScorePersistent
 	}
+
+	var score PeerScore
 
 	switch {
 	case p.MutableScore+int64(score) > math.MaxUint8:
