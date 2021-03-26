@@ -23,9 +23,9 @@ import (
 const lightClientEvidenceRatio = 4
 
 // InjectEvidence takes a running testnet and generates an amount of valid
-// evidence to a random node through the rpc endpoint `/broadcast_evidence`
+// evidence and broadcasts it to a random node through the rpc endpoint `/broadcast_evidence`.
 // Evidence is random and can be a mixture of LightClientAttackEvidence and
-// DuplicateVoteEvidence
+// DuplicateVoteEvidence.
 func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 	// select a random node
 	targetNode := testnet.RandomNode()
@@ -99,7 +99,7 @@ func getPrivateValidatorKeys(testnet *e2e.Testnet) ([]types.MockPV, error) {
 			privKeyPath := filepath.Join(testnet.Dir, node.Name, PrivvalKeyFile)
 			privKey, err := readPrivKey(privKeyPath)
 			if err != nil {
-				return privVals, err
+				return nil, err
 			}
 			// Create mock private validators from the validators private key. MockPV is
 			// stateless which means we can double vote and do other funky stuff
