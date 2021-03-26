@@ -174,6 +174,8 @@ func (s *wdrrScheduler) process() {
 			wEnv := wrappedEnvelope{envelope: e, size: uint(proto.Size(e.Message))}
 			msgSize := wEnv.size
 
+			s.metrics.PeerPendingSendBytes.With("peer_id", string(e.To)).Add(float64(msgSize))
+
 			// If we're at capacity, we need to either drop the incoming Envelope or
 			// an Envelope from a lower priority flow. Otherwise, we add the (wrapped)
 			// envelope to the flow's queue.
@@ -261,6 +263,7 @@ func (s *wdrrScheduler) process() {
 					// 4. remove from the flow's queue
 					// 5. grab the next HoQ Envelope and flow's deficit
 					for len(s.buffer[chID]) > 0 && d >= we.size {
+						s.metrics.PeerSendBytesTotal.With("peer_id", string(we.envelope.To)).Add(float64(we.size))
 						s.dequeueCh <- we.envelope
 						s.size -= we.size
 						s.deficits[chID] -= we.size

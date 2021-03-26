@@ -134,6 +134,9 @@ func MakeDockerCompose(testnet *e2e.Testnet) ([]byte, error) {
 		"addUint32": func(x, y uint32) uint32 {
 			return x + y
 		},
+		"addUint32": func(x, y uint32) uint32 {
+			return x + y
+		},
 	}).Parse(`version: '2.4'
 
 networks:
