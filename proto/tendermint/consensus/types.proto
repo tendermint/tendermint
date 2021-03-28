@@ -85,7 +85,7 @@ message Message {
     ProposalPOL   proposal_pol    = 4;
     BlockPart     block_part      = 5;
     Vote          vote            = 6;
-    HasVote       has_vote        = 7;
+    HasVote       have_vote       = 7;
     VoteSetMaj23  vote_set_maj23  = 8;
     VoteSetBits   vote_set_bits   = 9;
   }
