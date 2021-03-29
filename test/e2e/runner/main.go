@@ -71,14 +71,6 @@ func NewCLI() *CLI {
 				return err
 			}
 
-			if lastMisbehavior := cli.testnet.LastMisbehaviorHeight(); lastMisbehavior > 0 {
-				// wait for misbehaviors before starting perturbations. We do a separate
-				// wait for another 5 blocks, since the last misbehavior height may be
-				// in the past depending on network startup ordering.
-				if err := WaitUntil(cli.testnet, lastMisbehavior); err != nil {
-					return err
-				}
-			}
 			if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
 				return err
 			}
@@ -88,6 +80,15 @@ func NewCLI() *CLI {
 					return err
 				}
 				if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
+					return err
+				}
+			}
+
+			if cli.testnet.Evidence > 0 {
+				if err := InjectEvidence(cli.testnet, cli.testnet.Evidence); err != nil {
+					return err
+				}
+				if err := Wait(cli.testnet, 1); err != nil { // ensure chain progress
 					return err
 				}
 			}
@@ -185,6 +186,24 @@ func NewCLI() *CLI {
 			}
 
 			return Load(context.Background(), cli.testnet, m)
+		},
+	})
+
+	cli.root.AddCommand(&cobra.Command{
+		Use:   "evidence [amount]",
+		Args:  cobra.MaximumNArgs(1),
+		Short: "Generates and broadcasts evidence to a random node",
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
+			amount := 1
+
+			if len(args) == 1 {
+				amount, err = strconv.Atoi(args[0])
+				if err != nil {
+					return err
+				}
+			}
+
+			return InjectEvidence(cli.testnet, amount)
 		},
 	})
 

@@ -19,8 +19,6 @@ COPY . .
 RUN make build && cp build/tendermint /usr/bin/tendermint
 COPY test/e2e/docker/entrypoint* /usr/bin/
 
-# FIXME: Temporarily disconnect maverick node until it is redesigned
-# RUN cd test/e2e && make maverick && cp build/maverick /usr/bin/maverick
 RUN cd test/e2e && make app && cp build/app /usr/bin/app
 
 # Set up runtime directory. We don't use a separate runtime image since we need
