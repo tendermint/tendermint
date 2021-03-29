@@ -393,7 +393,7 @@ func main() {
 
 func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
  // read config
- config := cfg.DefaultConfig()
+ config := cfg.DefaultValidatorConfig()
  config.RootDir = filepath.Dir(filepath.Dir(configFile))
  viper.SetConfigFile(configFile)
  if err := viper.ReadInConfig(); err != nil {
@@ -503,7 +503,7 @@ of one communicating through a socket or gRPC.
 which we will generate later using the `tendermint init` command.
 
 ```go
-config := cfg.DefaultConfig()
+config := cfg.DefaultValidatorConfig()
 config.RootDir = filepath.Dir(filepath.Dir(configFile))
 viper.SetConfigFile(configFile)
 if err := viper.ReadInConfig(); err != nil {
