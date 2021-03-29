@@ -28,6 +28,7 @@ func TestConnTracker(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
+			factory := factory // nolint:scopelint
 			t.Run("Initialized", func(t *testing.T) {
 				ct := factory()
 				require.Equal(t, 0, ct.Len())
