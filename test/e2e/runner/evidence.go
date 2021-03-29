@@ -19,8 +19,11 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-// 1 in 4 evidence is light client evidence, the rest is duplicate vote
-const lightClientEvidenceRatio = 4
+// 1 in 11 evidence is light client evidence, the rest is duplicate vote
+// FIXME: Setting to 11 disables light client attack evidence since nodes
+// don't follow a minimum retention height invariant. When we fix this we
+// should use a ratio of 4.
+const lightClientEvidenceRatio = 11
 
 // InjectEvidence takes a running testnet and generates an amount of valid
 // evidence and broadcasts it to a random node through the rpc endpoint `/broadcast_evidence`.
@@ -42,8 +45,12 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 	if err != nil {
 		return err
 	}
+	lightEvidenceCommonHeight := blockRes.Block.Height
+	waitHeight := blockRes.Block.Height + 3
+	duplicateVoteHeight := waitHeight
+
 	nValidators := 100
-	valRes, err := client.Validators(context.Background(), &blockRes.Block.Height, nil, &nValidators)
+	valRes, err := client.Validators(context.Background(), &lightEvidenceCommonHeight, nil, &nValidators)
 	if err != nil {
 		return err
 	}
@@ -60,20 +67,21 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 
 	// wait for the node to reach the height above the forged height so that
 	// it is able to validate the evidence
-	_, err = waitForNode(targetNode, blockRes.Block.Height+3, 10*time.Second)
+	status, err := waitForNode(targetNode, waitHeight, 10*time.Second)
 	if err != nil {
 		return err
 	}
+	duplicateVoteTime := status.SyncInfo.LatestBlockTime
 
 	var ev types.Evidence
 	for i := 0; i < amount; i++ {
 		if i%lightClientEvidenceRatio == 0 {
 			ev, err = generateLightClientAttackEvidence(
-				privVals, blockRes.Block.Height, valSet, testnet.Name, blockRes.Block.Time,
+				privVals, lightEvidenceCommonHeight, valSet, testnet.Name, blockRes.Block.Time,
 			)
 		} else {
 			ev, err = generateDuplicateVoteEvidence(
-				privVals, blockRes.Block.Height, valSet, testnet.Name, blockRes.Block.Time,
+				privVals, duplicateVoteHeight, valSet, testnet.Name, duplicateVoteTime,
 			)
 		}
 		if err != nil {
@@ -110,7 +118,8 @@ func getPrivateValidatorKeys(testnet *e2e.Testnet) ([]types.MockPV, error) {
 	return privVals, nil
 }
 
-// creates evidence of a lunatic attack
+// creates evidence of a lunatic attack. The height provided is the common height. 
+// The forged height happens 2 blocks later.
 func generateLightClientAttackEvidence(
 	privVals []types.MockPV,
 	height int64,
