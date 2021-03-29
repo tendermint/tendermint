@@ -1,5 +1,6 @@
 name: Janitor
 # Janitor cleans up previous runs of various workflows
+# To add more workflows to cancel visit https://api.github.com/repos/tendermint/tendermint/actions/workflows and find the actions name
 on:
   pull_request:
 
