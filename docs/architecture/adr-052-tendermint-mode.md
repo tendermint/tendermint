@@ -45,7 +45,7 @@ We would like to suggest a simple Tendermint mode abstraction. These modes will 
 - Configuration, cli command
     - We would like to suggest by introducing `mode` parameter in `config.toml` and cli
     - <span v-pre>`mode = "{{ .BaseConfig.Mode }}"`</span> in `config.toml`
-    - `tendermint node --mode validator`  in cli
+    - `tendermint start --mode validator`  in cli
     - full | validator | seednode (default: "full")
 - RPC modification
     - `host:26657/status`
