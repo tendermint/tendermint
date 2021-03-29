@@ -9,7 +9,6 @@ import (
 
 type connectionTracker interface {
 	AddConn(net.IP) error
-	CheckConn(net.IP) (int, bool)
 	RemoveConn(net.IP)
 }
 
@@ -49,15 +48,6 @@ func (rat *connTrackerImpl) AddConn(addr net.IP) error {
 	rat.lastConnect[address] = time.Now()
 
 	return nil
-}
-
-func (rat *connTrackerImpl) CheckConn(addr net.IP) (int, bool) {
-	rat.mutex.RLock()
-	defer rat.mutex.RUnlock()
-
-	num := rat.cache[addr.String()]
-
-	return int(num), num >= rat.max
 }
 
 func (rat *connTrackerImpl) RemoveConn(addr net.IP) {

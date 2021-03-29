@@ -223,7 +223,7 @@ type Router struct {
 	peerManager        *PeerManager
 	chDescs            []ChannelDescriptor
 	transports         []Transport
-	tracker            connectionTracker
+	connTracker        connectionTracker
 	protocolTransports map[Protocol]Transport
 	stopCh             chan struct{} // signals Router shutdown
 
@@ -261,7 +261,7 @@ func NewRouter(
 		metrics:  metrics,
 		nodeInfo: nodeInfo,
 		privKey:  privKey,
-		tracker: newConnTracker(
+		connTracker: newConnTracker(
 			options.MaxIncommingConnectionsPerIP,
 			options.IncomingConnectionWindow),
 		chDescs:            make([]ChannelDescriptor, 0),
@@ -497,7 +497,7 @@ func (r *Router) acceptPeers(transport Transport) {
 		}
 
 		incomingIP := conn.RemoteEndpoint().IP
-		if err := r.tracker.AddConn(incomingIP); err != nil {
+		if err := r.connTracker.AddConn(incomingIP); err != nil {
 			closeErr := conn.Close()
 			r.logger.Debug("rate limiting incoming peer",
 				"err", err,
@@ -510,7 +510,7 @@ func (r *Router) acceptPeers(transport Transport) {
 		// Spawn a goroutine for the handshake, to avoid head-of-line blocking.
 		go func() {
 			defer conn.Close()
-			defer r.tracker.RemoveConn(incomingIP)
+			defer r.connTracker.RemoveConn(incomingIP)
 
 			// FIXME: The peer manager may reject the peer during Accepted()
 			// after we've handshaked with the peer (to find out which peer it
