@@ -650,7 +650,7 @@ func createRouter(
 		privKey,
 		peerManager,
 		[]p2p.Transport{transport},
-		otions,
+		options,
 	)
 }
 
@@ -1078,7 +1078,7 @@ func NewNode(config *cfg.Config,
 
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
-	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey, peerManager, transport)
+	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey, peerManager, transport, getRouterConfig(config))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
