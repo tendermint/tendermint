@@ -24,6 +24,8 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 ### CLI Changes
 
+* You must now specify the node mode (validator|full|seed) in `tendermint init [mode]`
+
 * If you had previously used `tendermint gen_node_key` to generate a new node
   key, keep in mind that it no longer saves the output to a file. You can use
   `tendermint init validator` or pipe the output of `tendermint gen_node_key` to
