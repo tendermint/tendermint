@@ -51,6 +51,10 @@ type Manifest struct {
 	// Options are ed25519 & secp256k1
 	KeyType string `toml:"key_type"`
 
+	// Evidence indicates the amount of evidence that will be injected into the
+	// testnet via the RPC endpoint of a random node. Default is 0
+	Evidence int `toml:"evidence"`
+
 	// LogLevel sets the log level of the entire testnet. This can be overridden
 	// by individual nodes.
 	LogLevel string `toml:"log_level"`
@@ -113,8 +117,8 @@ type ManifestNode struct {
 	SnapshotInterval uint64 `toml:"snapshot_interval"`
 
 	// RetainBlocks specifies the number of recent blocks to retain. Defaults to
-	// 0, which retains all blocks. Must be greater that PersistInterval and
-	// SnapshotInterval.
+	// 0, which retains all blocks. Must be greater that PersistInterval,
+	// SnapshotInterval and EvidenceAgeHeight.
 	RetainBlocks uint64 `toml:"retain_blocks"`
 
 	// Perturb lists perturbations to apply to the node after it has been
@@ -125,16 +129,6 @@ type ManifestNode struct {
 	// pause:      temporarily pauses (freezes) the node
 	// restart:    restarts the node, shutting it down with SIGTERM
 	Perturb []string `toml:"perturb"`
-
-	// Misbehaviors sets how a validator behaves during consensus at a
-	// certain height. Multiple misbehaviors at different heights can be used
-	//
-	// An example of misbehaviors
-	//    { 10 = "double-prevote", 20 = "double-prevote"}
-	//
-	// For more information, look at the readme in the maverick folder.
-	// A list of all behaviors can be found in ../maverick/consensus/behavior.go
-	Misbehaviors map[string]string `toml:"misbehaviors"`
 
 	// Log level sets the log level of the specific node i.e. "consensus:info,*:error".
 	// This is helpful when debugging a specific problem. This overrides the network
