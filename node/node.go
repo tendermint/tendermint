@@ -916,7 +916,8 @@ func NewSeedNode(config *cfg.Config,
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
 
-	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey, peerManager, transport, getRouterConfig(config))
+	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey,
+		peerManager, transport, getRouterConfig(config))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
@@ -1078,7 +1079,8 @@ func NewNode(config *cfg.Config,
 
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
-	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey, peerManager, transport, getRouterConfig(config))
+	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey,
+		peerManager, transport, getRouterConfig(config))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
