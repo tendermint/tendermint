@@ -44,7 +44,7 @@ in Go. See below for an application written in JavaScript.
 Now, let's run some apps!
 
 ## KVStore - A First Example
-`
+
 The kvstore app is a [Merkle
 tree](https://en.wikipedia.org/wiki/Merkle_tree) that just stores all
 transactions. If the transaction contains an `=`, e.g. `key=value`, then

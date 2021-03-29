@@ -31,7 +31,7 @@ var _ queue = (*wdrrScheduler)(nil)
 // - quantum: The number of bytes that is added to the deficit counter of the
 //   flow in each round. The flow can send at most quantum bytes at a time. Each
 //   flow has its own unique quantum, which gives the queue its weighted nature.
-//   A highzer quantum corresponds to a higher weight/priority. The quantum is
+//   A higher quantum corresponds to a higher weight/priority. The quantum is
 //   computed as MaxSendBytes * Priority.
 // - deficit counter: The number of bytes that the flow is allowed to transmit
 //   when it is its turn.
