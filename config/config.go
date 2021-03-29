@@ -46,7 +46,7 @@ var (
 	defaultConfigFileName  = "config.toml"
 	defaultGenesisJSONName = "genesis.json"
 
-	defaultMode             = ModeValidator
+	defaultMode             = ModeFull
 	defaultPrivValKeyName   = "priv_validator_key.json"
 	defaultPrivValStateName = "priv_validator_state.json"
 
@@ -91,6 +91,13 @@ func DefaultConfig() *Config {
 		TxIndex:         DefaultTxIndexConfig(),
 		Instrumentation: DefaultInstrumentationConfig(),
 	}
+}
+
+// DefaultValidatorConfig returns default config with mode as validator
+func DefaultValidatorConfig() *Config {
+	cfg := DefaultConfig()
+	cfg.Mode = ModeValidator
+	return cfg
 }
 
 // TestConfig returns a configuration that can be used for testing
@@ -167,8 +174,8 @@ type BaseConfig struct { //nolint: maligned
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
 
-	// Mode of Node: full | validator | seed (default: "validator")
-	// * validator (default)
+	// Mode of Node: full | validator | seed
+	// * validator
 	//   - all reactors
 	//   - with priv_validator_key.json, priv_validator_state.json
 	// * full
@@ -346,6 +353,8 @@ func (cfg BaseConfig) ValidateBasic() error {
 	}
 	switch cfg.Mode {
 	case ModeFull, ModeValidator, ModeSeed:
+	case "":
+		return errors.New("no mode has been set")
 	default:
 		return fmt.Errorf("unknown mode: %v", cfg.Mode)
 	}

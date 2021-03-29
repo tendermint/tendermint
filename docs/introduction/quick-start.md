@@ -34,7 +34,7 @@ For manual installation, see the [install instructions](install.md)
 Running:
 
 ```sh
-tendermint init
+tendermint init validator
 ```
 
 will create the required files for a single, local node.

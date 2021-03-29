@@ -1,8 +1,10 @@
 package commands
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -17,9 +19,11 @@ import (
 
 // InitFilesCmd initializes a fresh Tendermint Core instance.
 var InitFilesCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Initialize Tendermint",
-	RunE:  initFiles,
+	Use:       "init [full|validator|seed]",
+	Short:     "Initializes a Tendermint node",
+	ValidArgs: []string{"full", "validator", "seed"},
+	Args:      cobra.MaximumNArgs(1),
+	RunE:      initFiles,
 }
 
 var (
@@ -32,33 +36,43 @@ func init() {
 }
 
 func initFiles(cmd *cobra.Command, args []string) error {
+	var mode string
+	if len(args) == 0 {
+		mode = modePrompt()
+	} else {
+		mode = args[0]
+	}
+	config.Mode = mode
 	return initFilesWithConfig(config)
 }
 
 func initFilesWithConfig(config *cfg.Config) error {
-	// private validator
-	privValKeyFile := config.PrivValidatorKeyFile()
-	privValStateFile := config.PrivValidatorStateFile()
 	var (
 		pv  *privval.FilePV
 		err error
 	)
-	if tmos.FileExists(privValKeyFile) {
-		pv, err = privval.LoadFilePV(privValKeyFile, privValStateFile)
-		if err != nil {
-			return err
-		}
 
-		logger.Info("Found private validator", "keyFile", privValKeyFile,
-			"stateFile", privValStateFile)
-	} else {
-		pv, err = privval.GenFilePV(privValKeyFile, privValStateFile, keyType)
-		if err != nil {
-			return err
+	if config.Mode == cfg.ModeValidator {
+		// private validator
+		privValKeyFile := config.PrivValidatorKeyFile()
+		privValStateFile := config.PrivValidatorStateFile()
+		if tmos.FileExists(privValKeyFile) {
+			pv, err = privval.LoadFilePV(privValKeyFile, privValStateFile)
+			if err != nil {
+				return err
+			}
+
+			logger.Info("Found private validator", "keyFile", privValKeyFile,
+				"stateFile", privValStateFile)
+		} else {
+			pv, err = privval.GenFilePV(privValKeyFile, privValStateFile, keyType)
+			if err != nil {
+				return err
+			}
+			pv.Save()
+			logger.Info("Generated private validator", "keyFile", privValKeyFile,
+				"stateFile", privValStateFile)
 		}
-		pv.Save()
-		logger.Info("Generated private validator", "keyFile", privValKeyFile,
-			"stateFile", privValStateFile)
 	}
 
 	nodeKeyFile := config.NodeKeyFile()
@@ -91,15 +105,18 @@ func initFilesWithConfig(config *cfg.Config) error {
 		ctx, cancel := context.WithTimeout(context.TODO(), ctxTimeout)
 		defer cancel()
 
-		pubKey, err := pv.GetPubKey(ctx)
-		if err != nil {
-			return fmt.Errorf("can't get pubkey: %w", err)
+		// if this is a validator we add it to genesis
+		if pv != nil {
+			pubKey, err := pv.GetPubKey(ctx)
+			if err != nil {
+				return fmt.Errorf("can't get pubkey: %w", err)
+			}
+			genDoc.Validators = []types.GenesisValidator{{
+				Address: pubKey.Address(),
+				PubKey:  pubKey,
+				Power:   10,
+			}}
 		}
-		genDoc.Validators = []types.GenesisValidator{{
-			Address: pubKey.Address(),
-			PubKey:  pubKey,
-			Power:   10,
-		}}
 
 		if err := genDoc.SaveAs(genFile); err != nil {
 			return err
@@ -107,5 +124,24 @@ func initFilesWithConfig(config *cfg.Config) error {
 		logger.Info("Generated genesis file", "path", genFile)
 	}
 
+	// write config file
+	cfg.WriteConfigFile(config.RootDir, config)
+	logger.Info("Generated config", "mode", config.Mode)
+
 	return nil
+}
+
+func modePrompt() string {
+	fmt.Println("Please enter a node mode (validator|full|seed):")
+	scanner := bufio.NewScanner(os.Stdin)
+	for {
+		scanner.Scan()
+		response := scanner.Text()
+		switch response {
+		case cfg.ModeValidator, cfg.ModeFull, cfg.ModeSeed:
+			return response
+		default:
+			fmt.Println("Mode must be either validator, full or seed")
+		}
+	}
 }

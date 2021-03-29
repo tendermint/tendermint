@@ -26,7 +26,7 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 * If you had previously used `tendermint gen_node_key` to generate a new node
   key, keep in mind that it no longer saves the output to a file. You can use
-  `tendermint init` or pipe the output of `tendermint gen_node_key` to
+  `tendermint init validator` or pipe the output of `tendermint gen_node_key` to
   `$TMHOME/config/node_key.json`:
 
   ```
