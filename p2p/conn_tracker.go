@@ -10,6 +10,7 @@ import (
 type connectionTracker interface {
 	AddConn(net.IP) error
 	RemoveConn(net.IP)
+	Len() int
 }
 
 type connTrackerImpl struct {
@@ -26,6 +27,12 @@ func newConnTracker(max uint, window time.Duration) connectionTracker {
 		lastConnect: make(map[string]time.Time),
 		max:         max,
 	}
+}
+
+func (rat *connTrackerImpl) Len() int {
+	rat.mutex.RLock()
+	defer rat.mutex.RUnlock()
+	return len(rat.cache)
 }
 
 func (rat *connTrackerImpl) AddConn(addr net.IP) error {
@@ -57,6 +64,9 @@ func (rat *connTrackerImpl) RemoveConn(addr net.IP) {
 
 	if num := rat.cache[address]; num > 0 {
 		rat.cache[address]--
+	}
+	if num := rat.cache[address]; num <= 0 {
+		delete(rat.cache, address)
 	}
 
 	if last, ok := rat.lastConnect[address]; ok && time.Since(last) > rat.window {
