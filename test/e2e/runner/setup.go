@@ -200,6 +200,8 @@ func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 	default:
 		return genesis, errors.New("unsupported KeyType")
 	}
+	genesis.ConsensusParams.Evidence.MaxAgeNumBlocks = e2e.EvidenceAgeHeight
+	genesis.ConsensusParams.Evidence.MaxAgeDuration = e2e.EvidenceAgeTime
 	for validator, power := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
 			Name:    validator.Name,

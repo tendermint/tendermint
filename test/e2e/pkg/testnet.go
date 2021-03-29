@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -46,6 +47,9 @@ const (
 	PerturbationKill       Perturbation = "kill"
 	PerturbationPause      Perturbation = "pause"
 	PerturbationRestart    Perturbation = "restart"
+
+	EvidenceAgeHeight int64 = 3
+	EvidenceAgeTime time.Duration = 10 * time.Second
 )
 
 // Testnet represents a single testnet.
@@ -336,6 +340,10 @@ func (n Node) Validate(testnet Testnet) error {
 	}
 	if n.StateSync && n.StartAt == 0 {
 		return errors.New("state synced nodes cannot start at the initial height")
+	}
+	if n.RetainBlocks != 0 && n.RetainBlocks < uint64(EvidenceAgeHeight) {
+		return fmt.Errorf("retain_blocks must be greater or equal to max evidence age (%d)",
+			EvidenceAgeHeight)
 	}
 	if n.PersistInterval == 0 && n.RetainBlocks > 0 {
 		return errors.New("persist_interval=0 requires retain_blocks=0")

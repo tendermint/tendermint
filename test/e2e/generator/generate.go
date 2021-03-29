@@ -35,7 +35,7 @@ var (
 	nodeStateSyncs        = uniformChoice{false, true}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
-	nodeRetainBlocks      = uniformChoice{0, 1, 5}
+	nodeRetainBlocks      = uniformChoice{0, int(e2e.EvidenceAgeHeight), int(e2e.EvidenceAgeHeight) + 5}
 	nodePerturbations     = probSetChoice{
 		"disconnect": 0.1,
 		"pause":      0.1,
