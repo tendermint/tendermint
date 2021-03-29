@@ -373,3 +373,13 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		AppHash: genDoc.AppHash,
 	}, nil
 }
+
+func (sm State) GetBlockMaxBytes() int64 {
+	return sm.ConsensusParams.Block.MaxBytes
+}
+func (sm State) GetBlockMaxGas() int64 {
+	return sm.ConsensusParams.Block.MaxGas
+}
+func (sm State) GetValidatorSize() int {
+	return sm.Validators.Size()
+}

@@ -379,19 +379,9 @@ func createMempoolReactor(
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
-) (*p2p.ReactorShim, *mempl.Reactor, *mempl.CListMempool) {
+) (*p2p.ReactorShim, *mempl.Reactor, mempl.Mempool) {
 
 	logger = logger.With("module", "mempool")
-	mempool := mempl.NewCListMempool(
-		config.Mempool,
-		proxyApp.Mempool(),
-		state.LastBlockHeight,
-		mempl.WithMetrics(memplMetrics),
-		mempl.WithPreCheck(sm.TxPreCheck(state)),
-		mempl.WithPostCheck(sm.TxPostCheck(state)),
-	)
-
-	mempool.SetLogger(logger)
 
 	channelShims := mempl.GetChannelShims(config.Mempool)
 	reactorShim := p2p.NewReactorShim(logger, "MempoolShim", channelShims)
@@ -409,13 +399,16 @@ func createMempoolReactor(
 		peerUpdates = peerManager.Subscribe()
 	}
 
-	reactor := mempl.NewReactor(
+	reactor, mempool := mempl.NewReactor(
 		logger,
 		config.Mempool,
 		peerManager,
-		mempool,
 		channels[mempl.MempoolChannel],
 		peerUpdates,
+		proxyApp.Mempool(),
+		state,
+		memplMetrics,
+		state.LastBlockHeight,
 	)
 
 	if config.Consensus.WaitForTxs() {
@@ -527,7 +520,7 @@ func createConsensusReactor(
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
-	mempool *mempl.CListMempool,
+	mempool mempl.Mempool,
 	evidencePool *evidence.Pool,
 	privValidator types.PrivValidator,
 	csMetrics *cs.Metrics,

@@ -43,6 +43,19 @@ func (emptyMempool) TxsWaitChan() <-chan struct{} { return nil }
 
 func (emptyMempool) InitWAL() error { return nil }
 func (emptyMempool) CloseWAL()      {}
+func (emptyMempool) TxPreCheck(state mempl.SmState) mempl.PreCheckFunc {
+	maxDataBytes := types.MaxDataBytesNoEvidence(
+		state.GetBlockMaxBytes(),
+		state.GetValidatorSize(),
+	)
+	return mempl.PreCheckMaxBytes(maxDataBytes)
+}
+
+// TxPostCheck returns a function to filter transactions after processing.
+// The function limits the gas wanted by a transaction to the block's maximum total gas.
+func (emptyMempool) TxPostCheck(state mempl.SmState) mempl.PostCheckFunc {
+	return mempl.PostCheckMaxGas(state.GetBlockMaxGas())
+}
 
 //-----------------------------------------------------------------------------
 // mockProxyApp uses ABCIResponses to give the right results.

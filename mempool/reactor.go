@@ -14,6 +14,7 @@ import (
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	protomem "github.com/tendermint/tendermint/proto/tendermint/mempool"
+	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -69,15 +70,34 @@ type Reactor struct {
 	peerRoutines map[p2p.NodeID]*tmsync.Closer
 }
 
+type SmState interface {
+	GetBlockMaxBytes() int64
+	GetBlockMaxGas() int64
+	GetValidatorSize() int
+}
+
 // NewReactor returns a reference to a new reactor.
 func NewReactor(
 	logger log.Logger,
 	config *cfg.MempoolConfig,
 	peerMgr PeerManager,
-	mempool *CListMempool,
 	mempoolCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,
-) *Reactor {
+	memplproxy proxy.AppConnMempool,
+	state SmState,
+	memplMetrics *Metrics,
+	LastBlockHeight int64,
+) (*Reactor, *CListMempool) {
+
+	mempool := NewCListMempool(
+		config,
+		memplproxy,
+		LastBlockHeight,
+		WithMetrics(memplMetrics),
+	)
+	mempool.WithPreCheck(mempool.TxPreCheck(state))
+	mempool.WithPostCheck(mempool.TxPostCheck(state))
+	mempool.SetLogger(logger)
 
 	r := &Reactor{
 		config:       config,
@@ -91,7 +111,7 @@ func NewReactor(
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "Mempool", r)
-	return r
+	return r, mempool
 }
 
 // GetChannelShims returns a map of ChannelDescriptorShim objects, where each

@@ -244,8 +244,8 @@ func (blockExec *BlockExecutor) Commit(
 		block.Height,
 		block.Txs,
 		deliverTxResponses,
-		TxPreCheck(state),
-		TxPostCheck(state),
+		blockExec.mempool.TxPreCheck(state),
+		blockExec.mempool.TxPostCheck(state),
 	)
 
 	return res.Data, res.RetainHeight, err
