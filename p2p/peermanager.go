@@ -75,6 +75,8 @@ func (pu *PeerUpdates) Updates() <-chan PeerUpdate {
 	return pu.reactorUpdatesCh
 }
 
+// SendUpdate pushes information about a peer into the routing layer,
+// presumably from a peer.
 func (pu *PeerUpdates) SendUpdate(update PeerUpdate) {
 	select {
 	case <-pu.closeCh:
@@ -1252,18 +1254,15 @@ func (p *peerInfo) Score() PeerScore {
 		return PeerScorePersistent
 	}
 
-	var score PeerScore
-
-	switch {
-	case p.MutableScore+int64(score) > math.MaxUint8:
-		score = math.MaxUint8
-	case p.MutableScore+int64(score) < 0:
-		score = 0
-	default:
-		score += PeerScore(p.MutableScore)
+	if p.MutableScore <= 0 {
+		return 0
 	}
 
-	return score
+	if p.MutableScore >= math.MaxUint8 {
+		return PeerScore(math.MaxUint8)
+	}
+
+	return PeerScore(p.MutableScore)
 }
 
 // Validate validates the peer info.
