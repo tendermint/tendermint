@@ -154,6 +154,9 @@ func MakeDockerCompose(testnet *e2e.Testnet) ([]byte, error) {
 			}
 			return command
 		},
+		"addUint32": func(x, y uint32) uint32 {
+			return x + y
+		},
 	}).Parse(`version: '2.4'
 
 networks:
@@ -184,6 +187,7 @@ services:
     init: true
     ports:
     - 26656
+    - {{ if .ProxyPort }}{{ addUint32 .ProxyPort 1000 }}:{{ end }}26660
     - {{ if .ProxyPort }}{{ .ProxyPort }}:{{ end }}26657
     - 6060
     volumes:
@@ -247,9 +251,11 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg := config.DefaultConfig()
 	cfg.Moniker = node.Name
 	cfg.ProxyApp = AppAddressTCP
+
 	if node.LogLevel != "" {
 		cfg.LogLevel = node.LogLevel
 	}
+
 	cfg.RPC.ListenAddress = "tcp://0.0.0.0:26657"
 	cfg.RPC.PprofListenAddress = ":6060"
 	cfg.P2P.ExternalAddress = fmt.Sprintf("tcp://%v", node.AddressP2P(false))
@@ -315,12 +321,14 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	if node.StateSync {
 		cfg.StateSync.Enable = true
 		cfg.StateSync.RPCServers = []string{}
+
 		for _, peer := range node.Testnet.ArchiveNodes() {
 			if peer.Name == node.Name {
 				continue
 			}
 			cfg.StateSync.RPCServers = append(cfg.StateSync.RPCServers, peer.AddressRPC())
 		}
+
 		if len(cfg.StateSync.RPCServers) < 2 {
 			return nil, errors.New("unable to find 2 suitable state sync RPC servers")
 		}
@@ -333,6 +341,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		}
 		cfg.P2P.Seeds += seed.AddressP2P(true)
 	}
+
 	cfg.P2P.PersistentPeers = ""
 	for _, peer := range node.PersistentPeers {
 		if len(cfg.P2P.PersistentPeers) > 0 {
@@ -340,6 +349,9 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		}
 		cfg.P2P.PersistentPeers += peer.AddressP2P(true)
 	}
+
+	cfg.Instrumentation.Prometheus = true
+
 	return cfg, nil
 }
 
