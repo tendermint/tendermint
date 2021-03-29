@@ -477,11 +477,6 @@ func (r *Router) acceptPeers(transport Transport) {
 	r.logger.Debug("starting accept routine", "transport", transport)
 	ctx := r.stopCtx()
 	for {
-		// FIXME: The old P2P stack rejected multiple connections for the same IP
-		// unless P2PConfig.AllowDuplicateIP is true -- it's better to limit this
-		// by peer ID rather than IP address, so this hasn't been implemented and
-		// probably shouldn't (?).
-		//
 		// FIXME: The old P2P stack supported ABCI-based IP address filtering via
 		// /p2p/filter/addr/<ip> queries, do we want to implement this here as well?
 		// Filtering by node ID is probably better.
