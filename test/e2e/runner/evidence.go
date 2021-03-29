@@ -118,7 +118,7 @@ func getPrivateValidatorKeys(testnet *e2e.Testnet) ([]types.MockPV, error) {
 	return privVals, nil
 }
 
-// creates evidence of a lunatic attack. The height provided is the common height. 
+// creates evidence of a lunatic attack. The height provided is the common height.
 // The forged height happens 2 blocks later.
 func generateLightClientAttackEvidence(
 	privVals []types.MockPV,
