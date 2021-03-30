@@ -148,7 +148,7 @@ type RouterOptions struct {
 	// peer.
 	FilterPeerByIP func(context.Context, net.IP, uint16) error
 
-	//FilterPeerByID is used by the router to inject filtering
+	// FilterPeerByID is used by the router to inject filtering
 	// behavior for new incoming connections. The router passes
 	// the NodeID of the node before completing the connection,
 	// but this occurs after the handshake is complete. Filter by
