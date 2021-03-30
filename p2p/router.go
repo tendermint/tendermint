@@ -141,6 +141,8 @@ type RouterOptions struct {
 	// milliseconds, and cannot be less than 1 millisecond.
 	IncomingConnectionWindow time.Duration
 
+	// FilterPeerByIP and FilterPeerByID are used by the router to
+	// inject filtering behavior for new incoming connections.
 	FilterPeerByIP func(context.Context, net.IP, uint16) error
 	FilterPeerByID func(context.Context, NodeID) error
 }
