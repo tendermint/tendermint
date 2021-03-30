@@ -130,10 +130,15 @@ func newPeer(
 	onPeerError func(Peer, interface{}),
 	options ...PeerOption,
 ) *peer {
+	var channs = make([]byte, 0, len(chDescs))
+	for _, desc := range chDescs {
+		channs = append(channs, desc.ID)
+	}
+
 	p := &peer{
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
-		channels:      nodeInfo.(DefaultNodeInfo).Channels, // TODO
+		channels:      channs,
 		Data:          cmap.NewCMap(),
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),
