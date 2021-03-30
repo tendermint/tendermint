@@ -5,7 +5,7 @@ go 1.15
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20210222182958-bd440c890782
-	github.com/Workiva/go-datastructures v1.0.52
+	github.com/Workiva/go-datastructures v1.0.53
 	github.com/btcsuite/btcd v0.21.0-beta
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/confio/ics23/go v0.6.3
