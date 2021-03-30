@@ -640,6 +640,7 @@ func createRouter(
 	privKey crypto.PrivKey,
 	peerManager *p2p.PeerManager,
 	transport p2p.Transport,
+	options p2p.RouterOptions,
 ) (*p2p.Router, error) {
 
 	return p2p.NewRouter(
@@ -649,7 +650,7 @@ func createRouter(
 		privKey,
 		peerManager,
 		[]p2p.Transport{transport},
-		p2p.RouterOptions{QueueType: p2pRouterQueueType},
+		options,
 	)
 }
 
@@ -915,7 +916,8 @@ func NewSeedNode(config *cfg.Config,
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
 
-	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey, peerManager, transport)
+	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey,
+		peerManager, transport, getRouterConfig(config))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
@@ -1077,7 +1079,8 @@ func NewNode(config *cfg.Config,
 
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
-	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey, peerManager, transport)
+	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey,
+		peerManager, transport, getRouterConfig(config))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
@@ -1958,6 +1961,18 @@ func createAndStartPrivValidatorGRPCClient(
 	}
 
 	return pvsc, nil
+}
+
+func getRouterConfig(conf *cfg.Config) p2p.RouterOptions {
+	opts := p2p.RouterOptions{
+		QueueType: p2pRouterQueueType,
+	}
+
+	if conf.P2P.MaxNumInboundPeers > 0 {
+		opts.MaxIncommingConnectionsPerIP = uint(conf.P2P.MaxNumInboundPeers)
+	}
+
+	return opts
 }
 
 // FIXME: Temporary helper function, shims should be removed.
