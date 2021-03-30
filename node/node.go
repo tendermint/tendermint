@@ -917,7 +917,7 @@ func NewSeedNode(config *cfg.Config,
 	}
 
 	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey,
-		peerManager, transport, getRouterConfig(config))
+		peerManager, transport, getRouterConfig(config, nil))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
@@ -1080,7 +1080,7 @@ func NewNode(config *cfg.Config,
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
 	router, err := createRouter(p2pLogger, p2pMetrics, nodeInfo, nodeKey.PrivKey,
-		peerManager, transport, getRouterConfig(config))
+		peerManager, transport, getRouterConfig(config, proxyApp))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
@@ -1963,13 +1963,44 @@ func createAndStartPrivValidatorGRPCClient(
 	return pvsc, nil
 }
 
-func getRouterConfig(conf *cfg.Config) p2p.RouterOptions {
+func getRouterConfig(conf *cfg.Config, proxyApp proxy.AppConns) p2p.RouterOptions {
 	opts := p2p.RouterOptions{
 		QueueType: p2pRouterQueueType,
 	}
 
 	if conf.P2P.MaxNumInboundPeers > 0 {
 		opts.MaxIncommingConnectionsPerIP = uint(conf.P2P.MaxNumInboundPeers)
+	}
+
+	if conf.FilterPeers && proxyApp != nil {
+		opts.FilterPeerByID = func(ctx context.Context, id p2p.NodeID) error {
+			res, err := proxyApp.Query().QuerySync(context.Background(), abci.RequestQuery{
+				Path: fmt.Sprintf("/p2p/filter/id/%s", id),
+			})
+			if err != nil {
+				return err
+			}
+			if res.IsErr() {
+				return fmt.Errorf("error querying abci app: %v", res)
+			}
+
+			return nil
+		}
+
+		opts.FilterPeerByIP = func(ctx context.Context, ip net.IP, port uint16) error {
+			res, err := proxyApp.Query().QuerySync(ctx, abci.RequestQuery{
+				Path: fmt.Sprintf("/p2p/filter/addr/%s", net.JoinHostPort(ip.String(), strconv.Itoa(int(port)))),
+			})
+			if err != nil {
+				return err
+			}
+			if res.IsErr() {
+				return fmt.Errorf("error querying abci app: %v", res)
+			}
+
+			return nil
+		}
+
 	}
 
 	return opts

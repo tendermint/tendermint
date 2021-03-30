@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"sync"
 	"time"
 
@@ -139,6 +140,9 @@ type RouterOptions struct {
 	// can attempt to create a new connection. Defaults to 10
 	// milliseconds, and cannot be less than 1 millisecond.
 	IncomingConnectionWindow time.Duration
+
+	FilterPeerByIP func(context.Context, net.IP, uint16) error
+	FilterPeerByID func(context.Context, NodeID) error
 }
 
 const (
@@ -471,15 +475,28 @@ func (r *Router) routeChannel(
 	}
 }
 
+func (r *Router) filterPeersIP(ctx context.Context, ip net.IP, port uint16) error {
+	if r.options.FilterPeerByIP == nil {
+		return nil
+	}
+
+	return r.options.FilterPeerByIP(ctx, ip, port)
+}
+
+func (r *Router) filterPeersID(ctx context.Context, id NodeID) error {
+	if r.options.FilterPeerByID == nil {
+		return nil
+	}
+
+	return r.options.FilterPeerByID(ctx, id)
+}
+
 // acceptPeers accepts inbound connections from peers on the given transport,
 // and spawns goroutines that route messages to/from them.
 func (r *Router) acceptPeers(transport Transport) {
 	r.logger.Debug("starting accept routine", "transport", transport)
 	ctx := r.stopCtx()
 	for {
-		// FIXME: The old P2P stack supported ABCI-based IP address filtering via
-		// /p2p/filter/addr/<ip> queries, do we want to implement this here as well?
-		// Filtering by node ID is probably better.
 		conn, err := transport.Accept()
 		switch err {
 		case nil:
@@ -491,7 +508,8 @@ func (r *Router) acceptPeers(transport Transport) {
 			return
 		}
 
-		incomingIP := conn.RemoteEndpoint().IP
+		re := conn.RemoteEndpoint()
+		incomingIP := re.IP
 		if err := r.connTracker.AddConn(incomingIP); err != nil {
 			closeErr := conn.Close()
 			r.logger.Debug("rate limiting incoming peer",
@@ -506,6 +524,13 @@ func (r *Router) acceptPeers(transport Transport) {
 		go func() {
 			defer conn.Close()
 			defer r.connTracker.RemoveConn(incomingIP)
+
+			if err := r.filterPeersIP(ctx, incomingIP, re.Port); err != nil {
+				r.logger.Debug("peer filtered by IP",
+					"ip", incomingIP.String(),
+					"err", err)
+				return
+			}
 
 			// FIXME: The peer manager may reject the peer during Accepted()
 			// after we've handshaked with the peer (to find out which peer it
@@ -528,6 +553,13 @@ func (r *Router) acceptPeers(transport Transport) {
 				return
 			case err != nil:
 				r.logger.Error("peer handshake failed", "endpoint", conn, "err", err)
+				return
+			}
+
+			if err := r.filterPeersID(ctx, peerInfo.NodeID); err != nil {
+				r.logger.Debug("peer filtered by node ID",
+					"node", peerInfo.NodeID,
+					"err", err)
 				return
 			}
 
