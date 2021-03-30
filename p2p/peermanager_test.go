@@ -1615,3 +1615,39 @@ func TestPeerManager_SetHeight_GetHeight(t *testing.T) {
 	require.Zero(t, peerManager.GetHeight(a.NodeID))
 	require.Zero(t, peerManager.GetHeight(b.NodeID))
 }
+
+func TestPeerScoring(t *testing.T) {
+	// create a mock peer manager
+	db := dbm.NewMemDB()
+	peerManager, err := p2p.NewPeerManager(selfID, db, p2p.PeerManagerOptions{})
+	require.NoError(t, err)
+	defer peerManager.Close()
+
+	// create a fake node
+	id := p2p.NodeID(strings.Repeat("a1", 20))
+	require.NoError(t, peerManager.Add(p2p.NodeAddress{NodeID: id, Protocol: "memory"}))
+
+	// update the manager and make sure it's correct
+	pu := peerManager.Subscribe()
+	require.EqualValues(t, 0, peerManager.Scores()[id])
+
+	// add a bunch of good status updates and watch things increase.
+	for i := 1; i < 10; i++ {
+		pu.SendUpdate(p2p.PeerUpdate{
+			NodeID: id,
+			Status: p2p.PeerStatusGood,
+		})
+		time.Sleep(time.Millisecond) // force a context switch
+		require.EqualValues(t, i, peerManager.Scores()[id])
+	}
+
+	// watch the corresponding decreases respond to update
+	for i := 10; i == 0; i-- {
+		pu.SendUpdate(p2p.PeerUpdate{
+			NodeID: id,
+			Status: p2p.PeerStatusBad,
+		})
+		time.Sleep(time.Millisecond) // force a context switch
+		require.EqualValues(t, i, peerManager.Scores()[id])
+	}
+}

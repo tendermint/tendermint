@@ -33,13 +33,15 @@ type PeerStatus string
 const (
 	PeerStatusUp   PeerStatus = "up"   // connected and ready
 	PeerStatusDown PeerStatus = "down" // disconnected
+	PeerStatusGood PeerStatus = "good" // peer observed as good
+	PeerStatusBad  PeerStatus = "bad"  // peer observed as bad
 )
 
 // PeerScore is a numeric score assigned to a peer (higher is better).
 type PeerScore uint8
 
 const (
-	PeerScorePersistent PeerScore = 100 // persistent peers
+	PeerScorePersistent PeerScore = math.MaxUint8 // persistent peers
 )
 
 // PeerUpdate is a peer update event sent via PeerUpdates.
@@ -51,24 +53,35 @@ type PeerUpdate struct {
 // PeerUpdates is a peer update subscription with notifications about peer
 // events (currently just status changes).
 type PeerUpdates struct {
-	updatesCh chan PeerUpdate
-	closeCh   chan struct{}
-	closeOnce sync.Once
+	routerUpdatesCh  chan PeerUpdate
+	reactorUpdatesCh chan PeerUpdate
+	closeCh          chan struct{}
+	closeOnce        sync.Once
 }
 
 // NewPeerUpdates creates a new PeerUpdates subscription. It is primarily for
 // internal use, callers should typically use PeerManager.Subscribe(). The
 // subscriber must call Close() when done.
-func NewPeerUpdates(updatesCh chan PeerUpdate) *PeerUpdates {
+func NewPeerUpdates(updatesCh chan PeerUpdate, buf int) *PeerUpdates {
 	return &PeerUpdates{
-		updatesCh: updatesCh,
-		closeCh:   make(chan struct{}),
+		reactorUpdatesCh: updatesCh,
+		routerUpdatesCh:  make(chan PeerUpdate, buf),
+		closeCh:          make(chan struct{}),
 	}
 }
 
 // Updates returns a channel for consuming peer updates.
 func (pu *PeerUpdates) Updates() <-chan PeerUpdate {
-	return pu.updatesCh
+	return pu.reactorUpdatesCh
+}
+
+// SendUpdate pushes information about a peer into the routing layer,
+// presumably from a peer.
+func (pu *PeerUpdates) SendUpdate(update PeerUpdate) {
+	select {
+	case <-pu.closeCh:
+	case pu.routerUpdatesCh <- update:
+	}
 }
 
 // Close closes the peer updates subscription.
@@ -791,7 +804,7 @@ func (m *PeerManager) Subscribe() *PeerUpdates {
 	// to the next subscriptions. This also prevents tail latencies from
 	// compounding. Limiting it to 1 means that the subscribers are still
 	// reasonably in sync. However, this should probably be benchmarked.
-	peerUpdates := NewPeerUpdates(make(chan PeerUpdate, 1))
+	peerUpdates := NewPeerUpdates(make(chan PeerUpdate, 1), 1)
 	m.Register(peerUpdates)
 	return peerUpdates
 }
@@ -810,6 +823,19 @@ func (m *PeerManager) Register(peerUpdates *PeerUpdates) {
 	m.mtx.Unlock()
 
 	go func() {
+		for {
+			select {
+			case <-peerUpdates.closeCh:
+				return
+			case <-m.closeCh:
+				return
+			case pu := <-peerUpdates.routerUpdatesCh:
+				m.processPeerEvent(pu)
+			}
+		}
+	}()
+
+	go func() {
 		select {
 		case <-peerUpdates.Done():
 			m.mtx.Lock()
@@ -818,6 +844,22 @@ func (m *PeerManager) Register(peerUpdates *PeerUpdates) {
 		case <-m.closeCh:
 		}
 	}()
+}
+
+func (m *PeerManager) processPeerEvent(pu PeerUpdate) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	if _, ok := m.store.peers[pu.NodeID]; !ok {
+		m.store.peers[pu.NodeID] = &peerInfo{}
+	}
+
+	switch pu.Status {
+	case PeerStatusBad:
+		m.store.peers[pu.NodeID].MutableScore--
+	case PeerStatusGood:
+		m.store.peers[pu.NodeID].MutableScore++
+	}
 }
 
 // broadcast broadcasts a peer update to all subscriptions. The caller must
@@ -837,7 +879,7 @@ func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
 		default:
 		}
 		select {
-		case sub.updatesCh <- peerUpdate:
+		case sub.reactorUpdatesCh <- peerUpdate:
 		case <-sub.closeCh:
 		}
 	}
@@ -1149,6 +1191,8 @@ type peerInfo struct {
 	Persistent bool
 	Height     int64
 	FixedScore PeerScore // mainly for tests
+
+	MutableScore int64 // updated by router
 }
 
 // peerInfoFromProto converts a Protobuf PeerInfo message to a peerInfo,
@@ -1205,14 +1249,22 @@ func (p *peerInfo) Copy() peerInfo {
 // Score calculates a score for the peer. Higher-scored peers will be
 // preferred over lower scores.
 func (p *peerInfo) Score() PeerScore {
-	var score PeerScore
 	if p.FixedScore > 0 {
 		return p.FixedScore
 	}
 	if p.Persistent {
-		score += PeerScorePersistent
+		return PeerScorePersistent
 	}
-	return score
+
+	if p.MutableScore <= 0 {
+		return 0
+	}
+
+	if p.MutableScore >= math.MaxUint8 {
+		return PeerScore(math.MaxUint8)
+	}
+
+	return PeerScore(p.MutableScore)
 }
 
 // Validate validates the peer info.
