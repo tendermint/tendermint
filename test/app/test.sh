@@ -13,7 +13,7 @@ export TMHOME=$HOME/.tendermint_app
 
 function kvstore_over_socket(){
     rm -rf $TMHOME
-    tendermint init
+    tendermint init validator
     echo "Starting kvstore_over_socket"
     abci-cli kvstore > /dev/null &
     pid_kvstore=$!

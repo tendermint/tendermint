@@ -35,6 +35,7 @@ shunit2
 terraform.tfstate
 terraform.tfstate.backup
 terraform.tfstate.d
+test/app/grpc_client
 test/e2e/build
 test/e2e/networks/*/
 test/logs
