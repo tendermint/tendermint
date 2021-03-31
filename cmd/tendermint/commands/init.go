@@ -1,10 +1,9 @@
 package commands
 
 import (
-	"bufio"
 	"context"
+	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -22,8 +21,9 @@ var InitFilesCmd = &cobra.Command{
 	Use:       "init [full|validator|seed]",
 	Short:     "Initializes a Tendermint node",
 	ValidArgs: []string{"full", "validator", "seed"},
-	Args:      cobra.MaximumNArgs(1),
-	RunE:      initFiles,
+	// We allow for zero args so we can throw a more informative error
+	Args: cobra.MaximumNArgs(1),
+	RunE: initFiles,
 }
 
 var (
@@ -36,13 +36,10 @@ func init() {
 }
 
 func initFiles(cmd *cobra.Command, args []string) error {
-	var mode string
 	if len(args) == 0 {
-		mode = modePrompt()
-	} else {
-		mode = args[0]
+		return errors.New("must specify a node type: tendermint init [validator|full|seed]")
 	}
-	config.Mode = mode
+	config.Mode = args[0]
 	return initFilesWithConfig(config)
 }
 
@@ -129,19 +126,4 @@ func initFilesWithConfig(config *cfg.Config) error {
 	logger.Info("Generated config", "mode", config.Mode)
 
 	return nil
-}
-
-func modePrompt() string {
-	fmt.Println("Please enter a node mode (validator|full|seed):")
-	scanner := bufio.NewScanner(os.Stdin)
-	for {
-		scanner.Scan()
-		response := scanner.Text()
-		switch response {
-		case cfg.ModeValidator, cfg.ModeFull, cfg.ModeSeed:
-			return response
-		default:
-			fmt.Println("Mode must be either validator, full or seed")
-		}
-	}
 }
