@@ -838,7 +838,7 @@ func buildTMStateFromChain(
 	// run the whole chain against this client to build up the tendermint state
 	kvstoreApp := kvstore.NewPersistentKVStoreApplication(
 		filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode)))
-	defer kvstoreApp.Close() // nolint:errcheck
+	defer kvstoreApp.Close()
 	clientCreator := proxy.NewLocalClientCreator(kvstoreApp)
 
 	proxyApp := proxy.NewAppConns(clientCreator)
