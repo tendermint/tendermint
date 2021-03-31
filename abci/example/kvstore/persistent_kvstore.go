@@ -51,6 +51,10 @@ func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication
 	}
 }
 
+func (app *PersistentKVStoreApplication) Close() error {
+	return app.app.state.db.Close()
+}
+
 func (app *PersistentKVStoreApplication) SetLogger(l log.Logger) {
 	app.logger = l
 }
