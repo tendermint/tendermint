@@ -1,5 +1,23 @@
 # ADR 065: Custom Event Indexing
 
+- [ADR 065: Custom Event Indexing](#adr-065-custom-event-indexing)
+  - [Changelog](#changelog)
+  - [Status](#status)
+  - [Context](#context)
+  - [Alternative Approaches](#alternative-approaches)
+  - [Decision](#decision)
+  - [Detailed Design](#detailed-design)
+    - [EventSink](#eventsink)
+    - [Supported Sinks](#supported-sinks)
+    - [Configuration](#configuration)
+    - [Node](#node)
+    - [RPC](#rpc)
+  - [Consequences](#consequences)
+    - [Positive](#positive)
+    - [Negative](#negative)
+    - [Neutral](#neutral)
+  - [References](#references)
+
 ## Changelog
 
 - April 1, 2021: Initial Draft (@alexanderbez)
@@ -145,6 +163,11 @@ CREATE INDEX idx_tx_events_hash ON tx_events(hash);
 ```
 
 The `PSQLEventSink` will implement the `EventSink` interface as follows:
+
+
+```go
+
+```
 
 ### Configuration
 
