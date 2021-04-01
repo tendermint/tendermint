@@ -15,7 +15,7 @@ import (
 type localClient struct {
 	service.BaseService
 
-	mtx *tmsync.Mutex
+	mtx *tmsync.RWMutex
 	types.Application
 	Callback
 }
@@ -26,22 +26,24 @@ var _ Client = (*localClient)(nil)
 // methods of the given app.
 //
 // Both Async and Sync methods ignore the given context.Context parameter.
-func NewLocalClient(mtx *tmsync.Mutex, app types.Application) Client {
+func NewLocalClient(mtx *tmsync.RWMutex, app types.Application) Client {
 	if mtx == nil {
-		mtx = new(tmsync.Mutex)
+		mtx = &tmsync.RWMutex{}
 	}
+
 	cli := &localClient{
 		mtx:         mtx,
 		Application: app,
 	}
+
 	cli.BaseService = *service.NewBaseService(nil, "localClient", cli)
 	return cli
 }
 
 func (app *localClient) SetResponseCallback(cb Callback) {
 	app.mtx.Lock()
+	defer app.mtx.Unlock()
 	app.Callback = cb
-	app.mtx.Unlock()
 }
 
 // TODO: change types.Application to include Error()?
@@ -55,8 +57,8 @@ func (app *localClient) FlushAsync(ctx context.Context) (*ReqRes, error) {
 }
 
 func (app *localClient) EchoAsync(ctx context.Context, msg string) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	return app.callback(
 		types.ToRequestEcho(msg),
@@ -65,8 +67,8 @@ func (app *localClient) EchoAsync(ctx context.Context, msg string) (*ReqRes, err
 }
 
 func (app *localClient) InfoAsync(ctx context.Context, req types.RequestInfo) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.Info(req)
 	return app.callback(
@@ -76,8 +78,8 @@ func (app *localClient) InfoAsync(ctx context.Context, req types.RequestInfo) (*
 }
 
 func (app *localClient) DeliverTxAsync(ctx context.Context, params types.RequestDeliverTx) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.DeliverTx(params)
 	return app.callback(
@@ -87,8 +89,8 @@ func (app *localClient) DeliverTxAsync(ctx context.Context, params types.Request
 }
 
 func (app *localClient) CheckTxAsync(ctx context.Context, req types.RequestCheckTx) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.CheckTx(req)
 	return app.callback(
@@ -98,8 +100,8 @@ func (app *localClient) CheckTxAsync(ctx context.Context, req types.RequestCheck
 }
 
 func (app *localClient) QueryAsync(ctx context.Context, req types.RequestQuery) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.Query(req)
 	return app.callback(
@@ -109,8 +111,8 @@ func (app *localClient) QueryAsync(ctx context.Context, req types.RequestQuery) 
 }
 
 func (app *localClient) CommitAsync(ctx context.Context) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.Commit()
 	return app.callback(
@@ -120,8 +122,8 @@ func (app *localClient) CommitAsync(ctx context.Context) (*ReqRes, error) {
 }
 
 func (app *localClient) InitChainAsync(ctx context.Context, req types.RequestInitChain) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.InitChain(req)
 	return app.callback(
@@ -131,8 +133,8 @@ func (app *localClient) InitChainAsync(ctx context.Context, req types.RequestIni
 }
 
 func (app *localClient) BeginBlockAsync(ctx context.Context, req types.RequestBeginBlock) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.BeginBlock(req)
 	return app.callback(
@@ -142,8 +144,8 @@ func (app *localClient) BeginBlockAsync(ctx context.Context, req types.RequestBe
 }
 
 func (app *localClient) EndBlockAsync(ctx context.Context, req types.RequestEndBlock) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.EndBlock(req)
 	return app.callback(
@@ -153,8 +155,8 @@ func (app *localClient) EndBlockAsync(ctx context.Context, req types.RequestEndB
 }
 
 func (app *localClient) ListSnapshotsAsync(ctx context.Context, req types.RequestListSnapshots) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.ListSnapshots(req)
 	return app.callback(
@@ -164,8 +166,8 @@ func (app *localClient) ListSnapshotsAsync(ctx context.Context, req types.Reques
 }
 
 func (app *localClient) OfferSnapshotAsync(ctx context.Context, req types.RequestOfferSnapshot) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.OfferSnapshot(req)
 	return app.callback(
@@ -178,8 +180,8 @@ func (app *localClient) LoadSnapshotChunkAsync(
 	ctx context.Context,
 	req types.RequestLoadSnapshotChunk,
 ) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.LoadSnapshotChunk(req)
 	return app.callback(
@@ -192,8 +194,8 @@ func (app *localClient) ApplySnapshotChunkAsync(
 	ctx context.Context,
 	req types.RequestApplySnapshotChunk,
 ) (*ReqRes, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.ApplySnapshotChunk(req)
 	return app.callback(
@@ -213,8 +215,8 @@ func (app *localClient) EchoSync(ctx context.Context, msg string) (*types.Respon
 }
 
 func (app *localClient) InfoSync(ctx context.Context, req types.RequestInfo) (*types.ResponseInfo, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.Info(req)
 	return &res, nil
@@ -225,8 +227,8 @@ func (app *localClient) DeliverTxSync(
 	req types.RequestDeliverTx,
 ) (*types.ResponseDeliverTx, error) {
 
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.DeliverTx(req)
 	return &res, nil
@@ -236,8 +238,8 @@ func (app *localClient) CheckTxSync(
 	ctx context.Context,
 	req types.RequestCheckTx,
 ) (*types.ResponseCheckTx, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.CheckTx(req)
 	return &res, nil
@@ -247,16 +249,16 @@ func (app *localClient) QuerySync(
 	ctx context.Context,
 	req types.RequestQuery,
 ) (*types.ResponseQuery, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.Query(req)
 	return &res, nil
 }
 
 func (app *localClient) CommitSync(ctx context.Context) (*types.ResponseCommit, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.Commit()
 	return &res, nil
@@ -267,8 +269,8 @@ func (app *localClient) InitChainSync(
 	req types.RequestInitChain,
 ) (*types.ResponseInitChain, error) {
 
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.InitChain(req)
 	return &res, nil
@@ -279,8 +281,8 @@ func (app *localClient) BeginBlockSync(
 	req types.RequestBeginBlock,
 ) (*types.ResponseBeginBlock, error) {
 
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.BeginBlock(req)
 	return &res, nil
@@ -291,8 +293,8 @@ func (app *localClient) EndBlockSync(
 	req types.RequestEndBlock,
 ) (*types.ResponseEndBlock, error) {
 
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.EndBlock(req)
 	return &res, nil
@@ -303,8 +305,8 @@ func (app *localClient) ListSnapshotsSync(
 	req types.RequestListSnapshots,
 ) (*types.ResponseListSnapshots, error) {
 
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.ListSnapshots(req)
 	return &res, nil
@@ -315,8 +317,8 @@ func (app *localClient) OfferSnapshotSync(
 	req types.RequestOfferSnapshot,
 ) (*types.ResponseOfferSnapshot, error) {
 
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.OfferSnapshot(req)
 	return &res, nil
@@ -326,8 +328,8 @@ func (app *localClient) LoadSnapshotChunkSync(
 	ctx context.Context,
 	req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
 
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.LoadSnapshotChunk(req)
 	return &res, nil
@@ -337,8 +339,8 @@ func (app *localClient) ApplySnapshotChunkSync(
 	ctx context.Context,
 	req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
 
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
 
 	res := app.Application.ApplySnapshotChunk(req)
 	return &res, nil
