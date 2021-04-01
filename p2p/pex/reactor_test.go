@@ -207,6 +207,7 @@ func (r *reactorTestSuite) connectPeers(t *testing.T, node1, node2 p2p.NodeID) {
 	require.True(t, added)
 }
 
+// nolint: unused
 func (r *reactorTestSuite) pexAddresses(t *testing.T, nodeIndices []int) []proto.PexAddress {
 	var addresses []proto.PexAddress
 	for _, i := range nodeIndices {
