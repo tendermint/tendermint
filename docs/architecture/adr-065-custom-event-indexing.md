@@ -92,7 +92,87 @@ index both block and transaction events.
 
 ### Supported Sinks
 
+We will initially support two `EventSink` types out of the box.
+
+1. `KVEventSink`
+
+This type of `EventSink` is a combination of the  `TxIndexer` and `BlockIndexer`
+indexers, both of which are backed by a single embedded key/value database.
+
+A bulk of the existing business logic will remain the same, but the existing APIs
+mapped to the new `EventSink` API. Both types will be removed in favor of a single
+`KVEventSink` type.
+
+The `KVEventSink` will be the only `EventSink` enabled by default, so from a UX
+perspective, operators should not notice a difference apart from a configuration
+change.
+
+2. `PSQLEventSink`
+
+This type of `EventSink` indexes block and transaction events into a [PostgreSQL](https://www.postgresql.org/).
+database. We define and automatically migrate the following schema when the
+`IndexerService` starts.
+
+```sql
+-- Table Definition ----------------------------------------------
+
+CREATE TYPE IF NOT EXISTS block_event_type AS ENUM ('begin_block', 'end_block');
+
+CREATE TABLE IF NOT EXISTS block_events (
+    id SERIAL PRIMARY KEY,
+    key VARCHAR NOT NULL,
+    value VARCHAR NOT NULL,
+    height INTEGER NOT NULL,
+    type block_event_type NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tx_events (
+    id SERIAL PRIMARY KEY,
+    key VARCHAR NOT NULL,
+    value VARCHAR NOT NULL,
+    height INTEGER NOT NULL,
+    hash VARCHAR NOT NULL
+);
+
+-- Indices -------------------------------------------------------
+
+CREATE INDEX idx_block_events_key_value ON block_events(key, value);
+CREATE INDEX idx_tx_events_key_value ON tx_events(key, value);
+CREATE INDEX idx_tx_events_hash ON tx_events(hash);
+```
 ### Configuration
+
+The current `tx_index.indexer` configuration would be changed to accept a list
+of supported `EventSink` types instead of a single value.
+
+Example:
+
+```toml
+[tx_index]
+
+indexer = [
+  "kv",
+  "psql"
+]
+```
+
+If the `indexer` list contains the `null` indexer, then no indexers will be used
+regardless of what other values may exist.
+
+Additional configuration parameters might be required depending on what event
+sinks are supplied to `tx_index.indexer`. The `psql` will require an additional
+connection configuration.
+
+```toml
+[tx_index]
+
+indexer = [
+  "kv",
+  "psql"
+]
+
+pqsql_conn = "postgresql://<user>:<password>@<host>:<port>/<db>?<opts>"
+```
 
 ### Node
 
@@ -121,3 +201,5 @@ index both block and transaction events.
 ## References
 
 - [Cosmos SDK ADR-038](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-038-state-listening.md)
+- [PostgreSQL](https://www.postgresql.org/)
+- [SQLite](https://www.sqlite.org/index.html)
