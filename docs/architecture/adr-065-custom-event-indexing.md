@@ -48,9 +48,24 @@ the database used.
 
 ## Decision
 
-> This section records the decision that was made.
-> It is best to record as much info as possible from the discussion that happened.
-> This aids in not having to go back to the Pull Request to get the needed information.
+We will adopt a similar approach to that of the Cosmos SDK's `KVStore` state
+listening described in [ADR-038](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-038-state-listening.md).
+
+Namely, we will perform the following:
+
+- Introduce a new interface, `EventSink`, that all data sinks must implement.
+- Augment the existing `tx_index.indexer` configuration to now accept a series
+  of one or more indexer types, i.e sinks.
+- Combine the current `TxIndexer` and `BlockIndexer` into a single `KVEventSink`
+  that implements the `EventSink` interface.
+- Introduce an additional `EventSink` that is backed by [PostgreSQL](https://www.postgresql.org/).
+  - Implement the necessary schemas to support both block and transaction event
+  indexing.
+- Update `IndexerService` to use a series of `EventSinks`.
+- Update all relevant RPC methods.
+  - Update `/status` RPC method to report what enabled sinks are available.
+  - Introduce a new `sink` query variable to the block and transaction search RPC
+  methods.
 
 ## Detailed Design
 
