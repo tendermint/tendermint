@@ -219,7 +219,6 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 			peerAddress, err := p2p.ParseNodeAddress(
 				fmt.Sprintf("%s@%s:%d", pexAddress.ID, pexAddress.IP, pexAddress.Port))
 			if err != nil {
-				logger.Debug("invalid PEX address", "address", pexAddress, "err", err)
 				continue
 			}
 			added, err := r.peerManager.Add(peerAddress)
@@ -228,6 +227,7 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 			}
 			if added {
 				r.newPeers++
+				logger.Debug("added PEX address", "address", peerAddress)
 			}
 			r.totalPeers++
 		}
@@ -286,7 +286,7 @@ func (r *ReactorV2) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (er
 		}
 	}()
 
-	r.Logger.Debug("received message", "peer", envelope.From)
+	r.Logger.Debug("received PEX message", "peer", envelope.From)
 
 	switch chID {
 	case p2p.ChannelID(PexChannel):
@@ -302,7 +302,7 @@ func (r *ReactorV2) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (er
 // processPeerUpdate processes a PeerUpdate. For added peers, PeerStatusUp, we
 // send a request for addresses.
 func (r *ReactorV2) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
-	r.Logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
+	r.Logger.Debug("received PEX peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
 		r.availablePeers.PushBack(peerUpdate.NodeID)
