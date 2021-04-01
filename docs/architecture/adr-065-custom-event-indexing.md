@@ -64,9 +64,7 @@ Namely, we will perform the following:
 - Update `IndexerService` to use a series of `EventSinks`.
 - Proxy queries to the relevant sink's native query layer.
 - Update all relevant RPC methods.
-  - Update `/status` RPC method to report what enabled sinks are available.
-  - Introduce a new `sink` query variable to the block and transaction search RPC
-  methods.
+
 
 ## Detailed Design
 
@@ -108,13 +106,18 @@ Namely, we will perform the following:
 
 ### Positive
 
+- A more robust and flexible indexing and query engine for indexing and search
+  block and transaction events.
+- The ability to not have to support a custom indexing and query engine beyond
+  the legacy `kv` type.
+
 ### Negative
+
+- The need to support multiple and potentially a growing set of custom `EventSink`
+  types.
 
 ### Neutral
 
 ## References
 
-> Are there any relevant PR comments, issues that led up to this, or articles
-> referenced for why we made the given design choice? If so link them here!
-
-- {reference link}
+- [Cosmos SDK ADR-038](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-038-state-listening.md)
