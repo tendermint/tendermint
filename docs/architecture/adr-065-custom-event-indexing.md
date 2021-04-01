@@ -101,9 +101,6 @@ Namely, we will perform the following:
 
 ## Consequences
 
-> This section describes the consequences, after applying the decision. All
-> consequences should be summarized here, not just the "positive" ones.
-
 ### Positive
 
 - A more robust and flexible indexing and query engine for indexing and search
