@@ -107,6 +107,9 @@ The `KVEventSink` will be the only `EventSink` enabled by default, so from a UX
 perspective, operators should not notice a difference apart from a configuration
 change.
 
+We omit `EventSink` implementation details as it should be fairly straightforward
+to map the existing business logic to the new APIs.
+
 2. `PSQLEventSink`
 
 This type of `EventSink` indexes block and transaction events into a [PostgreSQL](https://www.postgresql.org/).
@@ -140,6 +143,9 @@ CREATE INDEX idx_block_events_key_value ON block_events(key, value);
 CREATE INDEX idx_tx_events_key_value ON tx_events(key, value);
 CREATE INDEX idx_tx_events_hash ON tx_events(hash);
 ```
+
+The `PSQLEventSink` will implement the `EventSink` interface as follows:
+
 ### Configuration
 
 The current `tx_index.indexer` configuration would be changed to accept a list
@@ -173,6 +179,9 @@ indexer = [
 
 pqsql_conn = "postgresql://<user>:<password>@<host>:<port>/<db>?<opts>"
 ```
+
+Any invalid or misconfigured `tx_index` configuration should yield an error as
+early as possible.
 
 ### Node
 
