@@ -68,36 +68,36 @@ Namely, we will perform the following:
 
 ## Detailed Design
 
-> This section does not need to be filled in at the start of the ADR, but must
-> be completed prior to the merging of the implementation.
->
-> Here are some common questions that get answered as part of the detailed design:
->
-> - What are the user requirements?
->
-> - What systems will be affected?
->
-> - What new data structures are needed, what data structures will be changed?
->
-> - What new APIs will be needed, what APIs will be changed?
->
-> - What are the efficiency considerations (time/space)?
->
-> - What are the expected access patterns (load/throughput)?
->
-> - Are there any logging, monitoring or observability needs?
->
-> - Are there any security considerations?
->
-> - Are there any privacy considerations?
->
-> - How will the changes be tested?
->
-> - If the change is large, how will the changes be broken up for ease of review?
->
-> - Will these changes require a breaking (major) release?
->
-> - Does this change require coordination with the SDK or other?
+### EventSink
+
+We introduce the `EventSink` interface type that all supported sinks must implement.
+The interface is defined as follows:
+
+```go
+type EventSink interface {
+  IndexBlockEvents(types.EventDataNewBlockHeader) error
+  IndexTxEvents(*abci.TxResult) error
+
+  SearchBlockEvents(context.Context, *query.Query) ([]int64, error)
+  SearchTxEvents(context.Context, *query.Query) ([]*abci.TxResult, error)
+
+  GetTxByHash([]byte) (*abci.TxResult, error)
+  HasBlock(int64) (bool, error)
+}
+```
+
+The `IndexerService`  will accept a list of one or more `EventSink` types. During
+the `OnStart` method it will call the appropriate APIs on each `EventSink` to
+index both block and transaction events.
+
+### Supported Sinks
+
+### Configuration
+
+### Node
+
+### RPC
+
 
 ## Consequences
 
