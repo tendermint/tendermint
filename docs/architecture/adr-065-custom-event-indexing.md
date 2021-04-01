@@ -37,9 +37,14 @@ solution.
 
 ## Alternative Approaches
 
-> This section contains information around alternative options that are considered
-> before making a decision. It should contain a explanation on why the alternative
-> approach(es) were not chosen.
+With regards to alternative approaches to a more robust solution, the only serious
+contender that was considered was to transition to using [SQLite](https://www.sqlite.org/index.html).
+
+While the approach would work, it locks us into a specific query language and
+storage layer, so in some ways it's only a bit better than our current approach.
+In addition, the implementation would require the introduction of CGO into the
+Tendermint Core stack, whereas right now CGO is only introduced depending on
+the database used.
 
 ## Decision
 
