@@ -20,21 +20,21 @@ var (
 // TODO: Consolidate with params file.
 const (
 	// the minimum time one peer can send another request to the same peer
-	minReceiveRequestInterval  = 300 * time.Millisecond
+	minReceiveRequestInterval = 300 * time.Millisecond
 
 	// the maximum amount of addresses that can be included in a response
-	maxAddresses uint16 	   = 100
+	maxAddresses uint16 = 100
 
 	// allocated time to resolve a node address into a set of endpoints
-	resolveTimeout        	   = 3 * time.Second
-	
+	resolveTimeout = 3 * time.Second
+
 	// How long to wait when there are no peers available before trying again
 	noAvailablePeersWaitPeriod = 1 * time.Second
 
 	// indicates the ping rate of the pex reactor when the peer store is full.
 	// The reactor should still look to add new peers in order to flush out low
 	// scoring peers that are still in the peer store
-	fullCapacityInterval	   = 10 * time.Minute
+	fullCapacityInterval = 10 * time.Minute
 )
 
 // ReactorV2 is a PEX reactor for the new P2P stack. The legacy reactor
@@ -45,7 +45,7 @@ const (
 // The peer explorer or PEX reactor supports the peer manager by sending
 // requests to other peers for addresses that can be given to the peer manager
 // and at the same time advertises addresses to peers that need more.
-// 
+//
 // The reactor is able to tweak the intensity of it's search by decreasing or
 // increasing the interval between each request. It tracks connected peers via
 // a linked list, sending a request to the node at the front of the list and
@@ -59,27 +59,27 @@ type ReactorV2 struct {
 	closeCh     chan struct{}
 
 	// list of available peers to loop through and send peer requests to
-	availablePeers       *clist.CList
+	availablePeers *clist.CList
 	// requestsSent keeps track of which peers the PEX reactor has sent requests
-	// to. This prevents the sending of spurious responses. 
-	// NOTE: If a node never responds, they will remain in this map until a 
+	// to. This prevents the sending of spurious responses.
+	// NOTE: If a node never responds, they will remain in this map until a
 	// peer down status update is sent
-	requestsSent         map[p2p.NodeID]struct{}
+	requestsSent map[p2p.NodeID]struct{}
 	// lastReceivedRequests keeps track of when peers send a request to prevent
 	// peers from sending requests too often (as defined by
 	// minReceiveRequestInterval).
 	lastReceivedRequests map[p2p.NodeID]time.Time
 
 	// the time when another request will be sent
-	nextRequestTime      time.Time
+	nextRequestTime time.Time
 
 	// keep track of how many new peers to existing peers we have received to
 	// extrapolate the size of the network
-	newPeers uint32
+	newPeers   uint32
 	totalPeers uint32
-	// discoveryRatio is the inverse ratio of new peers to old peers squared. 
-	// This is multiplied by the minimum duration to calculate how long to wait 
-	// between each request. 
+	// discoveryRatio is the inverse ratio of new peers to old peers squared.
+	// This is multiplied by the minimum duration to calculate how long to wait
+	// between each request.
 	discoveryRatio float32
 }
 
@@ -91,11 +91,13 @@ func NewReactorV2(
 	peerUpdates *p2p.PeerUpdates,
 ) *ReactorV2 {
 	r := &ReactorV2{
-		peerManager: peerManager,
-		pexCh:       pexCh,
-		peerUpdates: peerUpdates,
-		closeCh:     make(chan struct{}),
-		availablePeers: clist.New(),
+		peerManager:          peerManager,
+		pexCh:                pexCh,
+		peerUpdates:          peerUpdates,
+		closeCh:              make(chan struct{}),
+		availablePeers:       clist.New(),
+		requestsSent:         make(map[p2p.NodeID]struct{}),
+		lastReceivedRequests: make(map[p2p.NodeID]time.Time),
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "PEX", r)
@@ -136,7 +138,7 @@ func (r *ReactorV2) processPexCh() {
 		// outbound requests for new peers
 		case <-r.waitUntilNextRequest():
 			r.sendRequestForPeers()
-			
+
 		// inbound requests for new peers or responses to requests sent by this
 		// reactor
 		case envelope := <-r.pexCh.In:
@@ -180,11 +182,11 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 	switch msg := envelope.Message.(type) {
 	case *protop2p.PexRequest:
 		// check if the peer hasn't sent a prior request too close to this one
-		// in time  
+		// in time
 		if lastRequestTime, ok := r.lastReceivedRequests[envelope.From]; ok {
 			if time.Now().Before(lastRequestTime.Add(minReceiveRequestInterval)) {
-				return fmt.Errorf("peer sent a request too close after a prior one. Minimum interval: %v", 
-				minReceiveRequestInterval)
+				return fmt.Errorf("peer sent a request too close after a prior one. Minimum interval: %v",
+					minReceiveRequestInterval)
 			}
 		}
 		r.lastReceivedRequests[envelope.From] = time.Now()
@@ -220,7 +222,7 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 				logger.Debug("invalid PEX address", "address", pexAddress, "err", err)
 				continue
 			}
-			added, err := r.peerManager.Add(peerAddress); 
+			added, err := r.peerManager.Add(peerAddress)
 			if err != nil {
 				logger.Debug("failed to register PEX address", "address", peerAddress, "err", err)
 			}
@@ -302,11 +304,11 @@ func (r *ReactorV2) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (er
 func (r *ReactorV2) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	r.Logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 	switch peerUpdate.Status {
-		case p2p.PeerStatusUp:
-			r.availablePeers.PushBack(peerUpdate.NodeID)
-		case p2p.PeerStatusDown:
-			r.removePeer(peerUpdate.NodeID)
-		default:
+	case p2p.PeerStatusUp:
+		r.availablePeers.PushBack(peerUpdate.NodeID)
+	case p2p.PeerStatusDown:
+		r.removePeer(peerUpdate.NodeID)
+	default:
 	}
 }
 
@@ -314,22 +316,22 @@ func (r *ReactorV2) waitUntilNextRequest() <-chan time.Time {
 	return time.After(time.Until(r.nextRequestTime))
 }
 
-// sendRequestForPeers pops the first peerID off the list and sends the 
+// sendRequestForPeers pops the first peerID off the list and sends the
 // peer a request for more peer addresses. The function then moves the
 // peer into the requestsSent bucket and calculates when the next request
-// time should be 
+// time should be
 func (r *ReactorV2) sendRequestForPeers() {
 	peer := r.availablePeers.Front()
 	if peer == nil {
 		// no peers are available
 		r.Logger.Debug("no available peers to send request to, waiting...")
 		r.nextRequestTime = time.Now().Add(noAvailablePeersWaitPeriod)
-		return 
+		return
 	}
 	peerID := peer.Value.(p2p.NodeID)
 
 	r.pexCh.Out <- p2p.Envelope{
-		To: peerID,
+		To:      peerID,
 		Message: &protop2p.PexRequest{},
 	}
 
@@ -344,13 +346,13 @@ func (r *ReactorV2) sendRequestForPeers() {
 // The dependent variable in this calculation is the ratio of new peers to
 // all peers that the reactor receives. The interval is thus calculated as the
 // inverse squared. In the beginning, all peers should be new peers.
-// We  expect this ratio to be near 1 and thus the interval to be as short 
+// We  expect this ratio to be near 1 and thus the interval to be as short
 // as possible. As the node becomes more familiar with the network the ratio of
 // new nodes will plummet to a very small number, meaning the interval expands
 // to its upper bound.
 // MaxInterval = 100 * 100 * baseTime ~= 16mins for 10 peers
 func (r *ReactorV2) calculateNextRequestTime() {
-	// check if the peer store is full. If so then there is no need 
+	// check if the peer store is full. If so then there is no need
 	// to send peer requests too often
 	if r.peerManager.Capacity() > 0.95 {
 		r.nextRequestTime = time.Now().Add(fullCapacityInterval)
@@ -361,14 +363,16 @@ func (r *ReactorV2) calculateNextRequestTime() {
 	// in. For example if we have 10 peers and we can't send a message to the
 	// same peer every 500ms, then we can send a request every 50ms. In practice
 	// we use a safety margin of 2, ergo 100ms
-	baseTime := minReceiveRequestInterval / time.Duration(r.availablePeers.Len() * 2)
+	baseTime := minReceiveRequestInterval / time.Duration(r.availablePeers.Len()*2)
 
-	if (r.totalPeers > 0 || r.discoveryRatio == 0) {
+	if r.totalPeers > 0 || r.discoveryRatio == 0 {
 		// find the ratio of new peers. NOTE: We add 1 to both sides to avoid
 		// divide by zero problems
-		ratio := float32(r.totalPeers + 1) / float32(r.newPeers + 1)
-		// the constant we use to determi
+		ratio := float32(r.totalPeers+1) / float32(r.newPeers+1)
+		// square the ratio in order to get non linear time intervals
 		r.discoveryRatio = ratio * ratio
+		r.newPeers = 0
+		r.totalPeers = 0
 	}
 	interval := baseTime * time.Duration(r.discoveryRatio)
 	r.nextRequestTime = time.Now().Add(interval)

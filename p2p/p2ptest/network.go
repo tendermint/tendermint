@@ -30,6 +30,10 @@ type Network struct {
 type NetworkOptions struct {
 	NumNodes   int
 	BufferSize int
+
+	// default is unlimited
+	MaxPeers       uint16
+	MaxConnections uint16
 }
 
 func (opts *NetworkOptions) setDefaults() {
@@ -50,7 +54,7 @@ func MakeNetwork(t *testing.T, opts NetworkOptions) *Network {
 	}
 
 	for i := 0; i < opts.NumNodes; i++ {
-		node := network.MakeNode(t)
+		node := network.MakeNode(t, opts.MaxPeers, opts.MaxConnections)
 		network.Nodes[node.NodeID] = node
 	}
 
@@ -218,7 +222,7 @@ type Node struct {
 // MakeNode creates a new Node configured for the network with a
 // running peer manager, but does not add it to the existing
 // network. Callers are responsible for updating peering relationships.
-func (n *Network) MakeNode(t *testing.T) *Node {
+func (n *Network) MakeNode(t *testing.T, maxPeers, maxConnected uint16) *Node {
 	privKey := ed25519.GenPrivKey()
 	nodeID := p2p.NodeIDFromPubKey(privKey.PubKey())
 	nodeInfo := p2p.NodeInfo{
@@ -234,6 +238,8 @@ func (n *Network) MakeNode(t *testing.T) *Node {
 		MinRetryTime:    10 * time.Millisecond,
 		MaxRetryTime:    100 * time.Millisecond,
 		RetryTimeJitter: time.Millisecond,
+		MaxPeers:        maxPeers,
+		MaxConnected:    maxConnected,
 	})
 	require.NoError(t, err)
 
