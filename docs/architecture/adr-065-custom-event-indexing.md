@@ -62,6 +62,7 @@ Namely, we will perform the following:
   - Implement the necessary schemas to support both block and transaction event
   indexing.
 - Update `IndexerService` to use a series of `EventSinks`.
+- Proxy queries to the relevant sink's native query layer.
 - Update all relevant RPC methods.
   - Update `/status` RPC method to report what enabled sinks are available.
   - Introduce a new `sink` query variable to the block and transaction search RPC
