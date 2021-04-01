@@ -107,6 +107,9 @@ Namely, we will perform the following:
   block and transaction events.
 - The ability to not have to support a custom indexing and query engine beyond
   the legacy `kv` type.
+- The ability to offload/proxy indexing and querying to the underling sink.
+- Scalability and reliability that essentially comes "for free" from the underlying
+  sink, if it supports it.
 
 ### Negative
 
