@@ -154,7 +154,8 @@ CREATE TABLE IF NOT EXISTS tx_events (
     key VARCHAR NOT NULL,
     value VARCHAR NOT NULL,
     height INTEGER NOT NULL,
-    hash VARCHAR NOT NULL
+    hash VARCHAR NOT NULL,
+    tx_result BYTEA NOT NULL,
 );
 
 -- Indices -------------------------------------------------------
@@ -168,7 +169,26 @@ The `PSQLEventSink` will implement the `EventSink` interface as follows (some de
 
 
 ```go
-func NewPSQLEventSink()
+func NewPSQLEventSink(connStr string) (*PSQLEventSink, error) {
+  db, err := sql.Open("postgres", connStr)
+  if err != nil {
+    return nil, err
+  }
+
+  // ...
+}
+
+func (es *PSQLEventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
+
+}
+  // IndexTxEvents(*abci.TxResult) error
+
+  // SearchBlockEvents(context.Context, *query.Query) ([]int64, error)
+  // SearchTxEvents(context.Context, *query.Query) ([]*abci.TxResult, error)
+
+  // GetTxByHash([]byte) (*abci.TxResult, error)
+  // HasBlock(int64) (bool, error)
+
 ```
 
 ### Configuration
