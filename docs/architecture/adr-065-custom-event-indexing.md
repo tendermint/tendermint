@@ -9,6 +9,8 @@
   - [Detailed Design](#detailed-design)
     - [EventSink](#eventsink)
     - [Supported Sinks](#supported-sinks)
+      - [`KVEventSink`](#kveventsink)
+      - [`PSQLEventSink`](#psqleventsink)
     - [Configuration](#configuration)
     - [Node](#node)
     - [RPC](#rpc)
@@ -112,7 +114,7 @@ index both block and transaction events.
 
 We will initially support two `EventSink` types out of the box.
 
-1. `KVEventSink`
+#### `KVEventSink`
 
 This type of `EventSink` is a combination of the  `TxIndexer` and `BlockIndexer`
 indexers, both of which are backed by a single embedded key/value database.
@@ -128,7 +130,7 @@ change.
 We omit `EventSink` implementation details as it should be fairly straightforward
 to map the existing business logic to the new APIs.
 
-2. `PSQLEventSink`
+#### `PSQLEventSink`
 
 This type of `EventSink` indexes block and transaction events into a [PostgreSQL](https://www.postgresql.org/).
 database. We define and automatically migrate the following schema when the
@@ -162,11 +164,11 @@ CREATE INDEX idx_tx_events_key_value ON tx_events(key, value);
 CREATE INDEX idx_tx_events_hash ON tx_events(hash);
 ```
 
-The `PSQLEventSink` will implement the `EventSink` interface as follows:
+The `PSQLEventSink` will implement the `EventSink` interface as follows (some details omitted for brevity):
 
 
 ```go
-
+func NewPSQLEventSink()
 ```
 
 ### Configuration
