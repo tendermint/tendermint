@@ -229,18 +229,6 @@ type CList struct {
 	maxLen int       // max list length
 }
 
-func (l *CList) Init() *CList {
-	l.mtx.Lock()
-
-	l.wg = waitGroup1()
-	l.waitCh = make(chan struct{})
-	l.head = nil
-	l.tail = nil
-	l.len = 0
-	l.mtx.Unlock()
-	return l
-}
-
 // Return CList with MaxLength. CList will panic if it goes beyond MaxLength.
 func New() *CList { return newWithMax(MaxLength) }
 
@@ -249,7 +237,14 @@ func New() *CList { return newWithMax(MaxLength) }
 func newWithMax(maxLength int) *CList {
 	l := new(CList)
 	l.maxLen = maxLength
-	return l.Init()
+
+	l.wg = waitGroup1()
+	l.waitCh = make(chan struct{})
+	l.head = nil
+	l.tail = nil
+	l.len = 0
+
+	return l
 }
 
 func (l *CList) Len() int {
