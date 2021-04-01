@@ -81,7 +81,9 @@ func (n *Network) Start(t *testing.T) {
 		for _, targetAddress := range dialQueue[i+1:] { // nodes <i already connected
 			targetNode := n.Nodes[targetAddress.NodeID]
 			targetSub := subs[targetAddress.NodeID]
-			require.NoError(t, sourceNode.PeerManager.Add(targetAddress))
+			added, err := sourceNode.PeerManager.Add(targetAddress)
+			require.NoError(t, err)
+			require.True(t, added)
 
 			select {
 			case peerUpdate := <-sourceSub.Updates():
@@ -107,7 +109,9 @@ func (n *Network) Start(t *testing.T) {
 
 			// Add the address to the target as well, so it's able to dial the
 			// source back if that's even necessary.
-			require.NoError(t, targetNode.PeerManager.Add(sourceAddress))
+			added, err = targetNode.PeerManager.Add(sourceAddress)
+			require.NoError(t, err)
+			require.True(t, added)
 		}
 	}
 }

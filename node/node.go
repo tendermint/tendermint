@@ -625,7 +625,7 @@ func createPeerManager(config *cfg.Config, p2pLogger log.Logger, nodeID p2p.Node
 	}
 
 	for _, peer := range peers {
-		if err := peerManager.Add(peer); err != nil {
+		if _, err := peerManager.Add(peer); err != nil {
 			return nil, fmt.Errorf("failed to add peer %q: %w", peer, err)
 		}
 	}
