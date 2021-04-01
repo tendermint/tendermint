@@ -1,17 +1,12 @@
-# ADR {ADR-NUMBER}: {TITLE}
+# ADR 065: Custom Event Indexing
 
 ## Changelog
 
-- {date}: {changelog}
+- April 1, 2021: Initial Draft (@alexanderbez)
 
 ## Status
 
-> A decision may be "proposed" if it hasn't been agreed upon yet, or "accepted"
-> once it is agreed upon. Once the ADR has been implemented mark the ADR as
-> "implemented". If a later ADR changes or reverses a decision, it may be marked
-> as "deprecated" or "superseded" with a reference to its replacement.
-
-{Deprecated|Proposed|Accepted|Declined}
+Proposed
 
 ## Context
 
