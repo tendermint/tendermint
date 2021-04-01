@@ -68,8 +68,8 @@ func (cli *grpcClient) OnStart() error {
 	go func() {
 		// Use a separate function to use defer for mutex unlocks (this handles panics)
 		callCb := func(reqres *ReqRes) {
-			cli.mtx.RLock()
-			defer cli.mtx.RUnlock()
+			cli.mtx.Lock()
+			defer cli.mtx.Unlock()
 
 			reqres.SetDone()
 			reqres.Done()
