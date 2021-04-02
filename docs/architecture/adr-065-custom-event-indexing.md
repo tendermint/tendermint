@@ -165,7 +165,8 @@ CREATE INDEX idx_tx_events_key_value ON tx_events(key, value);
 CREATE INDEX idx_tx_events_hash ON tx_events(hash);
 ```
 
-The `PSQLEventSink` will implement the `EventSink` interface as follows (some details omitted for brevity):
+The `PSQLEventSink` will implement the `EventSink` interface as follows
+(some details omitted for brevity):
 
 
 ```go
@@ -179,7 +180,33 @@ func NewPSQLEventSink(connStr string) (*PSQLEventSink, error) {
 }
 
 func (es *PSQLEventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
+  sqlStatement := sq.Insert("block_events").Columns("key", "value", "height", "type")
 
+	for _, event := range h.ResultBeginBlock.Events {
+		// only index events with a non-empty type
+		if len(event.Type) == 0 {
+			continue
+		}
+
+		for _, attr := range event.Attributes {
+			if len(attr.Key) == 0 {
+				continue
+			}
+
+			// index iff the event specified index:true and it's not a reserved event
+			compositeKey := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
+			if compositeKey == types.TxHashKey || compositeKey == types.TxHeightKey {
+				return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeKey)
+			}
+
+			if attr.GetIndex() {
+        sqlStatement = sqlStatement.Values(compositeKey, string(attr.Value), h.Header.Height, BlockEventTypeBeginBlock)
+			}
+		}
+	}
+
+  // index end_block events...
+  // execute db query...
 }
   // IndexTxEvents(*abci.TxResult) error
 
