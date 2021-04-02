@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -307,7 +308,7 @@ var modes = []uint{0, 1, 2, 3}
 // This is actually not a test, it's for storing validator change tx data for testHandshakeReplay
 func setupSimulator(t *testing.T) *simulatorTestSuite {
 	t.Helper()
-	_ = configSetup(t)
+	config := configSetup(t)
 
 	sim := &simulatorTestSuite{}
 
@@ -315,7 +316,7 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	nVals := 4
 
 	css, genDoc, config, cleanup := randConsensusNetWithPeers(
-		sim.Config,
+		config,
 		nVals,
 		nPeers,
 		"replay_test",
@@ -731,7 +732,7 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 
 	// make a new client creator
 	kvstoreApp := kvstore.NewPersistentKVStoreApplication(
-		filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_a", nBlocks, mode)))
+		filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_a_r%d", nBlocks, mode, rand.Int())))
 	t.Cleanup(func() { require.NoError(t, kvstoreApp.Close()) })
 
 	clientCreator2 := proxy.NewLocalClientCreator(kvstoreApp)
