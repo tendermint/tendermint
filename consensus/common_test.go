@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -704,7 +705,10 @@ func randConsensusState(
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
 
+	closeFuncs := []func() error{}
+
 	configRootDirs := make([]string, 0, nValidators)
+
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		stateStore := sm.NewStore(stateDB)
@@ -719,6 +723,11 @@ func randConsensusState(
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 
 		app := appFunc()
+
+		if appCloser, ok := app.(io.Closer); ok {
+			closeFuncs = append(closeFuncs, appCloser.Close)
+		}
+
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
@@ -728,6 +737,9 @@ func randConsensusState(
 	}
 
 	return css, func() {
+		for _, closer := range closeFuncs {
+			closer()
+		}
 		for _, dir := range configRootDirs {
 			os.RemoveAll(dir)
 		}
