@@ -13,7 +13,7 @@ export TMHOME=$HOME/.tendermint_app
 
 function kvstore_over_socket(){
     rm -rf $TMHOME
-    tendermint init
+    tendermint init validator
     echo "Starting kvstore_over_socket"
     abci-cli kvstore > /dev/null &
     pid_kvstore=$!
@@ -30,7 +30,7 @@ function kvstore_over_socket(){
 # start tendermint first
 function kvstore_over_socket_reorder(){
     rm -rf $TMHOME
-    tendermint init
+    tendermint init validator
     echo "Starting kvstore_over_socket_reorder (ie. start tendermint first)"
     tendermint start --mode validator > tendermint.log &
     pid_tendermint=$!
@@ -48,7 +48,7 @@ function kvstore_over_socket_reorder(){
 
 function counter_over_socket() {
     rm -rf $TMHOME
-    tendermint init
+    tendermint init validator
     echo "Starting counter_over_socket"
     abci-cli counter --serial > /dev/null &
     pid_counter=$!
@@ -64,7 +64,7 @@ function counter_over_socket() {
 
 function counter_over_grpc() {
     rm -rf $TMHOME
-    tendermint init
+    tendermint init validator
     echo "Starting counter_over_grpc"
     abci-cli counter --serial --abci grpc > /dev/null &
     pid_counter=$!
@@ -80,7 +80,7 @@ function counter_over_grpc() {
 
 function counter_over_grpc_grpc() {
     rm -rf $TMHOME
-    tendermint init
+    tendermint init validator
     echo "Starting counter_over_grpc_grpc (ie. with grpc broadcast_tx)"
     abci-cli counter --serial --abci grpc > /dev/null &
     pid_counter=$!
