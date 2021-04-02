@@ -738,7 +738,7 @@ func randConsensusState(
 
 	return css, func() {
 		for _, closer := range closeFuncs {
-			closer()
+			_ = closer()
 		}
 		for _, dir := range configRootDirs {
 			os.RemoveAll(dir)
