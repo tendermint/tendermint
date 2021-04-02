@@ -21,7 +21,7 @@ this by setting the `TMHOME` environment variable.
 Initialize the root directory by running:
 
 ```sh
-tendermint init
+tendermint init validator
 ```
 
 This will create a new private key (`priv_validator_key.json`), and a

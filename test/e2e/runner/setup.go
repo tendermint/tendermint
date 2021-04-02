@@ -85,7 +85,7 @@ func Setup(testnet *e2e.Testnet) error {
 		if err != nil {
 			return err
 		}
-		config.WriteConfigFile(filepath.Join(nodeDir, "config", "config.toml"), cfg) // panics
+		config.WriteConfigFile(nodeDir, cfg) // panics
 
 		appCfg, err := MakeAppConfig(node)
 		if err != nil {

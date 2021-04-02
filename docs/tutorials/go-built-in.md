@@ -393,7 +393,7 @@ func main() {
 
 func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
  // read config
- config := cfg.DefaultConfig()
+ config := cfg.DefaultValidatorConfig()
  config.RootDir = filepath.Dir(filepath.Dir(configFile))
  viper.SetConfigFile(configFile)
  if err := viper.ReadInConfig(); err != nil {
@@ -503,7 +503,7 @@ of one communicating through a socket or gRPC.
 which we will generate later using the `tendermint init` command.
 
 ```go
-config := cfg.DefaultConfig()
+config := cfg.DefaultValidatorConfig()
 config.RootDir = filepath.Dir(filepath.Dir(configFile))
 viper.SetConfigFile(configFile)
 if err := viper.ReadInConfig(); err != nil {
@@ -604,7 +604,7 @@ go build
 ```
 
 To create a default configuration, nodeKey and private validator files, let's
-execute `tendermint init`. But before we do that, we will need to install
+execute `tendermint init validator`. But before we do that, we will need to install
 Tendermint Core. Please refer to [the official
 guide](https://docs.tendermint.com/master/introduction/install.html). If you're
 installing from source, don't forget to checkout the latest release (`git
@@ -613,11 +613,12 @@ major version.
 
 ```bash
 $ rm -rf /tmp/example
-$ TMHOME="/tmp/example" tendermint init
+$ TMHOME="/tmp/example" tendermint init validator
 
 I[2019-07-16|18:40:36.480] Generated private validator                  module=main keyFile=/tmp/example/config/priv_validator_key.json stateFile=/tmp/example2/data/priv_validator_state.json
 I[2019-07-16|18:40:36.481] Generated node key                           module=main path=/tmp/example/config/node_key.json
 I[2019-07-16|18:40:36.482] Generated genesis file                       module=main path=/tmp/example/config/genesis.json
+I[2019-07-16|18:40:36.483] Generated config                             module=main mode=validator
 ```
 
 We are ready to start our application:
