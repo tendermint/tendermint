@@ -63,7 +63,7 @@ Tendermint binary installed. If not, follow the steps from
 before, use:
 
 ```sh
-tendermint init
+tendermint init validator
 tendermint start
 ```
 

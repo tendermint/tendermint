@@ -15,6 +15,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [cli] \#5777 use hyphen-case instead of snake_case for all cli commands and config parameters (@cmwaters)
   - [rpc] \#6019 standardise RPC errors and return the correct status code (@bipulprasad & @cmwaters)
   - [rpc] \#6168 Change default sorting to desc for `/tx_search` results (@melekes)
+  - [cli] \#6282 User must specify the node mode when using `tendermint init` (@cmwaters)
 
 - Apps
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
