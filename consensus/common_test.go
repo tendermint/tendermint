@@ -132,7 +132,13 @@ func (vs *validatorStub) signVote(
 }
 
 // Sign vote for type/hash/header
-func signVote(vs *validatorStub, config *cfg.Config, voteType tmproto.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
+func signVote(
+	vs *validatorStub,
+	config *cfg.Config,
+	voteType tmproto.SignedMsgType,
+	hash []byte,
+	header types.PartSetHeader) *types.Vote {
+
 	v, err := vs.signVote(config, voteType, hash, header)
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
@@ -814,7 +820,12 @@ func randConsensusNetWithPeers(
 	}
 }
 
-func randGenesisDoc(config *cfg.Config, numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
+func randGenesisDoc(
+	config *cfg.Config,
+	numValidators int,
+	randPower bool,
+	minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
+
 	validators := make([]types.GenesisValidator, numValidators)
 	privValidators := make([]types.PrivValidator, numValidators)
 	for i := 0; i < numValidators; i++ {
@@ -835,7 +846,12 @@ func randGenesisDoc(config *cfg.Config, numValidators int, randPower bool, minPo
 	}, privValidators
 }
 
-func randGenesisState(config *cfg.Config, numValidators int, randPower bool, minPower int64) (sm.State, []types.PrivValidator) {
+func randGenesisState(
+	config *cfg.Config,
+	numValidators int,
+	randPower bool,
+	minPower int64) (sm.State, []types.PrivValidator) {
+
 	genDoc, privValidators := randGenesisDoc(config, numValidators, randPower, minPower)
 	s0, _ := sm.MakeGenesisState(genDoc)
 	return s0, privValidators

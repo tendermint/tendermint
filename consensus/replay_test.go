@@ -342,7 +342,11 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	ensureNewRound(newRoundCh, height, 0)
 	ensureNewProposal(proposalCh, height, round)
 	rs := css[0].GetRoundState()
-	signAddVotes(sim.Config, css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
+
+	signAddVotes(sim.Config, css[0], tmproto.PrecommitType,
+		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(),
+		vss[1:nVals]...)
+
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	// HEIGHT 2
@@ -372,7 +376,9 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	}
 	ensureNewProposal(proposalCh, height, round)
 	rs = css[0].GetRoundState()
-	signAddVotes(sim.Config, css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
+	signAddVotes(sim.Config, css[0], tmproto.PrecommitType,
+		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(),
+		vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	// HEIGHT 3
@@ -402,7 +408,9 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	}
 	ensureNewProposal(proposalCh, height, round)
 	rs = css[0].GetRoundState()
-	signAddVotes(sim.Config, css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
+	signAddVotes(sim.Config, css[0], tmproto.PrecommitType,
+		rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(),
+		vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	// HEIGHT 4
@@ -468,7 +476,9 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(sim.Config, css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
+		signAddVotes(sim.Config, css[0],
+			tmproto.PrecommitType, rs.ProposalBlock.Hash(),
+			rs.ProposalBlockParts.Header(), newVss[i])
 	}
 
 	ensureNewRound(newRoundCh, height+1, 0)
@@ -487,7 +497,9 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(sim.Config, css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
+		signAddVotes(sim.Config, css[0],
+			tmproto.PrecommitType, rs.ProposalBlock.Hash(),
+			rs.ProposalBlockParts.Header(), newVss[i])
 	}
 	ensureNewRound(newRoundCh, height+1, 0)
 
@@ -522,7 +534,9 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(sim.Config, css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
+		signAddVotes(sim.Config, css[0],
+			tmproto.PrecommitType, rs.ProposalBlock.Hash(),
+			rs.ProposalBlockParts.Header(), newVss[i])
 	}
 	ensureNewRound(newRoundCh, height+1, 0)
 
