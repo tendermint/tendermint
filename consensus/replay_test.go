@@ -276,7 +276,7 @@ func (w *crashingWAL) Stop() error  { return w.next.Stop() }
 func (w *crashingWAL) Wait()        { w.next.Wait() }
 
 //------------------------------------------------------------------------------------------
-type testSim struct {
+type simulatorTestSuite struct {
 	GenesisState sm.State
 	Config       *cfg.Config
 	Chain        []*types.Block
@@ -292,7 +292,7 @@ var (
 	mempool = emptyMempool{}
 	evpool  = sm.EmptyEvidencePool{}
 
-	sim testSim
+	// sim simulatorTestSuite
 )
 
 //---------------------------------------
@@ -305,12 +305,17 @@ var (
 var modes = []uint{0, 1, 2, 3}
 
 // This is actually not a test, it's for storing validator change tx data for testHandshakeReplay
-func TestSimulateValidatorsChange(t *testing.T) {
-	configSetup(t)
+func setupSimulator(t *testing.T) *simulatorTestSuite {
+	t.Helper()
+	_ = configSetup(t)
+
+	sim := &simulatorTestSuite{}
 
 	nPeers := 7
 	nVals := 4
+
 	css, genDoc, config, cleanup := randConsensusNetWithPeers(
+		sim.Config,
 		nVals,
 		nPeers,
 		"replay_test",
@@ -337,7 +342,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	ensureNewRound(newRoundCh, height, 0)
 	ensureNewProposal(proposalCh, height, round)
 	rs := css[0].GetRoundState()
-	signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
+	signAddVotes(sim.Config, css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	// HEIGHT 2
@@ -367,7 +372,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 	ensureNewProposal(proposalCh, height, round)
 	rs = css[0].GetRoundState()
-	signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
+	signAddVotes(sim.Config, css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	// HEIGHT 3
@@ -397,7 +402,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	}
 	ensureNewProposal(proposalCh, height, round)
 	rs = css[0].GetRoundState()
-	signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
+	signAddVotes(sim.Config, css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	// HEIGHT 4
@@ -463,7 +468,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
+		signAddVotes(sim.Config, css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
 	}
 
 	ensureNewRound(newRoundCh, height+1, 0)
@@ -482,7 +487,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
+		signAddVotes(sim.Config, css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
 	}
 	ensureNewRound(newRoundCh, height+1, 0)
 
@@ -517,7 +522,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		if i == selfIndex {
 			continue
 		}
-		signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
+		signAddVotes(sim.Config, css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
 	}
 	ensureNewRound(newRoundCh, height+1, 0)
 
@@ -527,61 +532,67 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		sim.Chain = append(sim.Chain, css[0].blockStore.LoadBlock(int64(i)))
 		sim.Commits = append(sim.Commits, css[0].blockStore.LoadBlockCommit(int64(i)))
 	}
+	if sim.CleanupFunc != nil {
+		t.Cleanup(sim.CleanupFunc)
+	}
+
+	return sim
 }
 
 // Sync from scratch
 func TestHandshakeReplayAll(t *testing.T) {
-	configSetup(t)
+	sim := setupSimulator(t)
 
 	for _, m := range modes {
-		testHandshakeReplay(t, config, 0, m, false)
+		testHandshakeReplay(t, sim, 0, m, false)
 	}
 	for _, m := range modes {
-		testHandshakeReplay(t, config, 0, m, true)
+		testHandshakeReplay(t, sim, 0, m, true)
 	}
 }
 
 // Sync many, not from scratch
 func TestHandshakeReplaySome(t *testing.T) {
-	configSetup(t)
+	sim := setupSimulator(t)
 
 	for _, m := range modes {
-		testHandshakeReplay(t, config, 2, m, false)
+		testHandshakeReplay(t, sim, 2, m, false)
 	}
 	for _, m := range modes {
-		testHandshakeReplay(t, config, 2, m, true)
+		testHandshakeReplay(t, sim, 2, m, true)
 	}
 }
 
 // Sync from lagging by one
 func TestHandshakeReplayOne(t *testing.T) {
-	configSetup(t)
+	sim := setupSimulator(t)
 
 	for _, m := range modes {
-		testHandshakeReplay(t, config, numBlocks-1, m, false)
+		testHandshakeReplay(t, sim, numBlocks-1, m, false)
 	}
 	for _, m := range modes {
-		testHandshakeReplay(t, config, numBlocks-1, m, true)
+		testHandshakeReplay(t, sim, numBlocks-1, m, true)
 	}
 }
 
 // Sync from caught up
 func TestHandshakeReplayNone(t *testing.T) {
-	configSetup(t)
+	sim := setupSimulator(t)
 
 	for _, m := range modes {
-		testHandshakeReplay(t, config, numBlocks, m, false)
+		testHandshakeReplay(t, sim, numBlocks, m, false)
 	}
 	for _, m := range modes {
-		testHandshakeReplay(t, config, numBlocks, m, true)
+		testHandshakeReplay(t, sim, numBlocks, m, true)
 	}
 }
 
 // Test mockProxyApp should not panic when app return ABCIResponses with some empty ResponseDeliverTx
 func TestMockProxyApp(t *testing.T) {
-	configSetup(t)
+	sim := setupSimulator(t) // setup config and simulator
+	config := sim.Config
+	assert.NotNil(t, config)
 
-	sim.CleanupFunc() // clean the test env created in TestSimulateValidatorsChange
 	logger := log.TestingLogger()
 	var validTxs, invalidTxs = 0, 0
 	txIndex := 0
@@ -648,12 +659,15 @@ func tempWALWithData(data []byte) string {
 
 // Make some blocks. Start a fresh app and apply nBlocks blocks.
 // Then restart the app and sync it up with the remaining blocks
-func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uint, testValidatorsChange bool) {
+func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mode uint, testValidatorsChange bool) {
 	var chain []*types.Block
 	var commits []*types.Commit
 	var store *mockBlockStore
 	var stateDB dbm.DB
 	var genesisState sm.State
+
+	config := sim.Config
+
 	if testValidatorsChange {
 		testConfig := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
 		defer func() { _ = os.RemoveAll(testConfig.RootDir) }()

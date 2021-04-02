@@ -50,16 +50,15 @@ type cleanupFunc func()
 
 // genesis, chain_id, priv_val
 var (
-	config                *cfg.Config // NOTE: must be reset for each _test.go file
-	consensusReplayConfig *cfg.Config
-	ensureTimeout         = time.Millisecond * 200
+	ensureTimeout = time.Millisecond * 200
 )
 
-func configSetup(t *testing.T) {
+func configSetup(t *testing.T) *cfg.Config {
 	t.Helper()
 
-	config = ResetConfig("consensus_reactor_test")
-	consensusReplayConfig = ResetConfig("consensus_replay_test")
+	config := ResetConfig("consensus_reactor_test")
+
+	consensusReplayConfig := ResetConfig("consensus_replay_test")
 	configStateTest := ResetConfig("consensus_state_test")
 	configMempoolTest := ResetConfig("consensus_mempool_test")
 	configByzantineTest := ResetConfig("consensus_byzantine_test")
@@ -71,6 +70,7 @@ func configSetup(t *testing.T) {
 		os.RemoveAll(configMempoolTest.RootDir)
 		os.RemoveAll(configByzantineTest.RootDir)
 	})
+	return config
 }
 
 func ensureDir(dir string, mode os.FileMode) {
@@ -105,6 +105,7 @@ func newValidatorStub(privValidator types.PrivValidator, valIndex int32) *valida
 }
 
 func (vs *validatorStub) signVote(
+	config *cfg.Config,
 	voteType tmproto.SignedMsgType,
 	hash []byte,
 	header types.PartSetHeader) (*types.Vote, error) {
@@ -131,8 +132,8 @@ func (vs *validatorStub) signVote(
 }
 
 // Sign vote for type/hash/header
-func signVote(vs *validatorStub, voteType tmproto.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
-	v, err := vs.signVote(voteType, hash, header)
+func signVote(vs *validatorStub, config *cfg.Config, voteType tmproto.SignedMsgType, hash []byte, header types.PartSetHeader) *types.Vote {
+	v, err := vs.signVote(config, voteType, hash, header)
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
 	}
@@ -140,13 +141,14 @@ func signVote(vs *validatorStub, voteType tmproto.SignedMsgType, hash []byte, he
 }
 
 func signVotes(
+	config *cfg.Config,
 	voteType tmproto.SignedMsgType,
 	hash []byte,
 	header types.PartSetHeader,
 	vss ...*validatorStub) []*types.Vote {
 	votes := make([]*types.Vote, len(vss))
 	for i, vs := range vss {
-		votes[i] = signVote(vs, voteType, hash, header)
+		votes[i] = signVote(vs, config, voteType, hash, header)
 	}
 	return votes
 }
@@ -237,13 +239,14 @@ func addVotes(to *State, votes ...*types.Vote) {
 }
 
 func signAddVotes(
+	config *cfg.Config,
 	to *State,
 	voteType tmproto.SignedMsgType,
 	hash []byte,
 	header types.PartSetHeader,
 	vss ...*validatorStub,
 ) {
-	votes := signVotes(voteType, hash, header, vss...)
+	votes := signVotes(config, voteType, hash, header, vss...)
 	addVotes(to, votes...)
 }
 
@@ -440,9 +443,9 @@ func loadPrivValidator(config *cfg.Config) *privval.FilePV {
 	return privValidator
 }
 
-func randState(nValidators int) (*State, []*validatorStub) {
+func randState(config *cfg.Config, nValidators int) (*State, []*validatorStub) {
 	// Get State
-	state, privVals := randGenesisState(nValidators, false, 10)
+	state, privVals := randGenesisState(config, nValidators, false, 10)
 
 	vss := make([]*validatorStub, nValidators)
 
@@ -694,6 +697,7 @@ func consensusLogger() log.Logger {
 }
 
 func randConsensusState(
+	config *cfg.Config,
 	nValidators int,
 	testName string,
 	tickerFunc func() TimeoutTicker,
@@ -701,7 +705,7 @@ func randConsensusState(
 	configOpts ...func(*cfg.Config),
 ) ([]*State, cleanupFunc) {
 
-	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
+	genDoc, privVals := randGenesisDoc(config, nValidators, false, 30)
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
 
@@ -748,15 +752,17 @@ func randConsensusState(
 
 // nPeers = nValidators + nNotValidator
 func randConsensusNetWithPeers(
+	config *cfg.Config,
 	nValidators,
 	nPeers int,
 	testName string,
 	tickerFunc func() TimeoutTicker,
 	appFunc func(string) abci.Application,
 ) ([]*State, *types.GenesisDoc, *cfg.Config, cleanupFunc) {
-	genDoc, privVals := randGenesisDoc(nValidators, false, testMinPower)
+	genDoc, privVals := randGenesisDoc(config, nValidators, false, testMinPower)
 	css := make([]*State, nPeers)
 	logger := consensusLogger()
+
 	var peer0Config *cfg.Config
 	configRootDirs := make([]string, 0, nPeers)
 	for i := 0; i < nPeers; i++ {
@@ -808,7 +814,7 @@ func randConsensusNetWithPeers(
 	}
 }
 
-func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
+func randGenesisDoc(config *cfg.Config, numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
 	validators := make([]types.GenesisValidator, numValidators)
 	privValidators := make([]types.PrivValidator, numValidators)
 	for i := 0; i < numValidators; i++ {
@@ -829,8 +835,8 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	}, privValidators
 }
 
-func randGenesisState(numValidators int, randPower bool, minPower int64) (sm.State, []types.PrivValidator) {
-	genDoc, privValidators := randGenesisDoc(numValidators, randPower, minPower)
+func randGenesisState(config *cfg.Config, numValidators int, randPower bool, minPower int64) (sm.State, []types.PrivValidator) {
+	genDoc, privValidators := randGenesisDoc(config, numValidators, randPower, minPower)
 	s0, _ := sm.MakeGenesisState(genDoc)
 	return s0, privValidators
 }
