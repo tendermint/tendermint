@@ -267,10 +267,6 @@ func (es *PSQLEventSink) IndexTxEvents(txr *abci.TxResult) error {
 
   // SearchBlockEvents(context.Context, *query.Query) ([]int64, error)
   // SearchTxEvents(context.Context, *query.Query) ([]*abci.TxResult, error)
-
-  // GetTxByHash([]byte) (*abci.TxResult, error)
-  // HasBlock(int64) (bool, error)
-
 ```
 
 ### Configuration
