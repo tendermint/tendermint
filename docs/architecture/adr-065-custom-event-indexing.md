@@ -265,8 +265,19 @@ func (es *PSQLEventSink) IndexTxEvents(txr *abci.TxResult) error {
   // execute sqlStmtEvents db query...
 }
 
-  // SearchBlockEvents(context.Context, *query.Query) ([]int64, error)
-  // SearchTxEvents(context.Context, *query.Query) ([]*abci.TxResult, error)
+func (es *PSQLEventSink) SearchBlockEvents(ctx context.Context, q *query.Query) ([]int64, error) {
+  sqlStmt = sq.Select("height").Distinct().From("block_events").Where(q.String())
+
+  // execute sqlStmt db query and scan into integer rows...
+}
+
+func (es *PSQLEventSink) SearchTxEvents(ctx context.Context, q *query.Query) ([]*abci.TxResult, error) {
+  sqlStmt = sq.Select("tx_result_id").Distinct().From("tx_events").Where(q.String())
+
+  // execute sqlStmt db query and scan into integer rows...
+  // query tx_results records and scan into binary slice rows...
+  // decode each row into a TxResult...
+}
 ```
 
 ### Configuration
