@@ -3,7 +3,7 @@ set -e
 
 if [ ! -d "$TMHOME/config" ]; then
 	echo "Running tendermint init to create (default) configuration for docker run."
-	tendermint init
+	tendermint init validator
 
 	sed -i \
 		-e "s/^proxy-app\s*=.*/proxy-app = \"$PROXY_APP\"/" \
