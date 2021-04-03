@@ -149,13 +149,18 @@ CREATE TABLE IF NOT EXISTS block_events (
     type block_event_type
 );
 
+CREATE TABLE IF NOT EXISTS tx_results {
+  id SERIAL PRIMARY KEY,
+  tx_result BYTEA NOT NULL
+}
+
 CREATE TABLE IF NOT EXISTS tx_events (
     id SERIAL PRIMARY KEY,
     key VARCHAR NOT NULL,
     value VARCHAR NOT NULL,
     height INTEGER NOT NULL,
     hash VARCHAR NOT NULL,
-    tx_result BYTEA NOT NULL
+    FOREIGN KEY (tx_result_id) REFERENCES tx_results(id) ON DELETE CASCADE
 );
 
 -- Indices -------------------------------------------------------
@@ -180,9 +185,10 @@ func NewPSQLEventSink(connStr string) (*PSQLEventSink, error) {
 }
 
 func (es *PSQLEventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
-  sqlStatement := sq.Insert("block_events").Columns("key", "value", "height", "type")
+  sqlStmt := sq.Insert("block_events").Columns("key", "value", "height", "type")
 
-  sqlStatement = sqlStatement.Values(types.BlockHeightKey, h.Header.Height, h.Header.Height, "")
+  // index the reserved block height index
+  sqlStmt = sqlStmt.Values(types.BlockHeightKey, h.Header.Height, h.Header.Height, "")
 
   for _, event := range h.ResultBeginBlock.Events {
     // only index events with a non-empty type
@@ -202,15 +208,62 @@ func (es *PSQLEventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error
       }
 
       if attr.GetIndex() {
-        sqlStatement = sqlStatement.Values(compositeKey, string(attr.Value), h.Header.Height, BlockEventTypeBeginBlock)
+        sqlStmt = sqlStmt.Values(compositeKey, string(attr.Value), h.Header.Height, BlockEventTypeBeginBlock)
       }
     }
   }
 
   // index end_block events...
-  // execute db query...
+  // execute sqlStmt db query...
 }
-  // IndexTxEvents(*abci.TxResult) error
+
+func (es *PSQLEventSink) IndexTxEvents(txr *abci.TxResult) error {
+  sqlStmtEvents := sq.Insert("tx_events").Columns("key", "value", "height", "hash", "tx_result_id")
+  sqlStmtTxResult := sq.Insert("tx_results").Columns("tx_result")
+
+
+  // store the tx result
+  txBz, err := proto.Marshal(txr)
+  if err != nil {
+    return err
+  }
+
+  sqlStmtTxResult = sqlStmtTxResult.Values(txBz)
+
+  // execute sqlStmtTxResult db query...
+
+  // index the reserved height and hash indices
+  hash := types.Tx(txr.Tx).Hash()
+  sqlStmtEvents = sqlStmtEvents.Values(types.TxHashKey, hash, txr.Height, hash, txrID)
+  sqlStmtEvents = sqlStmtEvents.Values(types.TxHeightKey, txr.Height, txr.Height, hash, txrID)
+
+  for _, event := range result.Result.Events {
+    // only index events with a non-empty type
+    if len(event.Type) == 0 {
+      continue
+    }
+
+    for _, attr := range event.Attributes {
+      if len(attr.Key) == 0 {
+        continue
+      }
+
+      // index if `index: true` is set
+      compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
+			
+      // ensure event does not conflict with a reserved prefix key
+      if compositeTag == types.TxHashKey || compositeTag == types.TxHeightKey {
+        return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeTag)
+      }
+		
+      if attr.GetIndex() {
+        sqlStmtEvents = sqlStmtEvents.Values(compositeKey, string(attr.Value), txr.Height, hash, txrID)
+      }
+    }
+  }
+
+  // execute sqlStmtEvents db query...
+}
 
   // SearchBlockEvents(context.Context, *query.Query) ([]int64, error)
   // SearchTxEvents(context.Context, *query.Query) ([]*abci.TxResult, error)
