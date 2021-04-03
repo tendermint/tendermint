@@ -12,8 +12,6 @@
       - [`KVEventSink`](#kveventsink)
       - [`PSQLEventSink`](#psqleventsink)
     - [Configuration](#configuration)
-    - [Node](#node)
-    - [RPC](#rpc)
   - [Consequences](#consequences)
     - [Positive](#positive)
     - [Negative](#negative)
@@ -316,11 +314,6 @@ pqsql_conn = "postgresql://<user>:<password>@<host>:<port>/<db>?<opts>"
 
 Any invalid or misconfigured `tx_index` configuration should yield an error as
 early as possible.
-
-### Node
-
-### RPC
-
 
 ## Consequences
 
