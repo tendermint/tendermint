@@ -2,8 +2,10 @@ package log
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -80,6 +82,11 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 			excludeIndexes = append(excludeIndexes, i)
 			module = keyvals[i+1].(string)
 		}
+
+		// Print []byte as a hexadecimal string (uppercased)
+		if b, ok := keyvals[i+1].([]byte); ok {
+			keyvals[i+1] = strings.ToUpper(hex.EncodeToString(b))
+		}
 	}
 
 	// Form a custom Tendermint line
@@ -107,7 +114,7 @@ KeyvalueLoop:
 
 		err := enc.EncodeKeyval(keyvals[i], keyvals[i+1])
 		if err == logfmt.ErrUnsupportedValueType {
-			enc.EncodeKeyval(keyvals[i], fmt.Sprintf("%+v", keyvals[i+1]))
+			enc.EncodeKeyval(keyvals[i], fmt.Sprintf("%+v", keyvals[i+1])) //nolint:errcheck // no need to check error again
 		} else if err != nil {
 			return err
 		}

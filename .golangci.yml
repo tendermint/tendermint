@@ -5,7 +5,7 @@ linters:
     - depguard
     - dogsled
     - dupl
-    # - errcheck
+    - errcheck
     # - funlen
     # - gochecknoglobals
     # - gochecknoinits
@@ -20,10 +20,10 @@ linters:
     - gosimple
     - govet
     - ineffassign
-    - interfacer
+    # - interfacer
     - lll
     - misspell
-    - maligned
+    # - maligned
     - nakedret
     - prealloc
     - scopelint
@@ -38,33 +38,24 @@ linters:
     # - whitespace
     # - wsl
     # - gocognit
-  disable:
-    - errcheck
+    - nolintlint
 
 issues:
   exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec
     - linters:
         - lll
       source: "https://"
+  max-same-issues: 50
 
 linters-settings:
   dogsled:
     max-blank-identifiers: 3
-  maligned:
-    suggest-new: true
-  # govet:
-  #   check-shadowing: true
   golint:
     min-confidence: 0
-#   gocyclo:
-#     min-complexity: 10
-#   misspell:
-#     locale: US
-#   gocritic:
-#     enabled-tags:
-#       - performance
-#       - style
-#       - experimental
-#     disabled-checks:
-#       - wrapperFunc
-#       - commentFormatting # https://github.com/go-critic/go-critic/issues/755
+  maligned:
+    suggest-new: true
+  misspell:
+    locale: US

@@ -3,18 +3,30 @@ package privval
 import (
 	"fmt"
 	"net"
-	"sync"
 	"time"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
+	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 )
 
-// SignerValidatorEndpointOption sets an optional parameter on the SocketVal.
-type SignerValidatorEndpointOption func(*SignerListenerEndpoint)
+// SignerListenerEndpointOption sets an optional parameter on the SignerListenerEndpoint.
+type SignerListenerEndpointOption func(*SignerListenerEndpoint)
 
-// SignerListenerEndpoint listens for an external process to dial in
-// and keeps the connection alive by dropping and reconnecting
+// SignerListenerEndpointTimeoutReadWrite sets the read and write timeout for
+// connections from external signing processes.
+//
+// Default: 5s
+func SignerListenerEndpointTimeoutReadWrite(timeout time.Duration) SignerListenerEndpointOption {
+	return func(sl *SignerListenerEndpoint) { sl.signerEndpoint.timeoutReadWrite = timeout }
+}
+
+// SignerListenerEndpoint listens for an external process to dial in and keeps
+// the connection alive by dropping and reconnecting.
+//
+// The process will send pings every ~3s (read/write timeout * 2/3) to keep the
+// connection alive.
 type SignerListenerEndpoint struct {
 	signerEndpoint
 
@@ -24,31 +36,40 @@ type SignerListenerEndpoint struct {
 
 	timeoutAccept time.Duration
 	pingTimer     *time.Ticker
+	pingInterval  time.Duration
 
-	instanceMtx sync.Mutex // Ensures instance public methods access, i.e. SendRequest
+	instanceMtx tmsync.Mutex // Ensures instance public methods access, i.e. SendRequest
 }
 
 // NewSignerListenerEndpoint returns an instance of SignerListenerEndpoint.
 func NewSignerListenerEndpoint(
 	logger log.Logger,
 	listener net.Listener,
+	options ...SignerListenerEndpointOption,
 ) *SignerListenerEndpoint {
-	sc := &SignerListenerEndpoint{
+	sl := &SignerListenerEndpoint{
 		listener:      listener,
 		timeoutAccept: defaultTimeoutAcceptSeconds * time.Second,
 	}
 
-	sc.BaseService = *cmn.NewBaseService(logger, "SignerListenerEndpoint", sc)
-	sc.signerEndpoint.timeoutReadWrite = defaultTimeoutReadWriteSeconds * time.Second
-	return sc
+	sl.BaseService = *service.NewBaseService(logger, "SignerListenerEndpoint", sl)
+	sl.signerEndpoint.timeoutReadWrite = defaultTimeoutReadWriteSeconds * time.Second
+
+	for _, optionFunc := range options {
+		optionFunc(sl)
+	}
+
+	return sl
 }
 
-// OnStart implements cmn.Service.
+// OnStart implements service.Service.
 func (sl *SignerListenerEndpoint) OnStart() error {
 	sl.connectRequestCh = make(chan struct{})
 	sl.connectionAvailableCh = make(chan net.Conn)
 
-	sl.pingTimer = time.NewTicker(defaultPingPeriodMilliseconds * time.Millisecond)
+	// NOTE: ping timeout must be less than read/write timeout
+	sl.pingInterval = time.Duration(sl.signerEndpoint.timeoutReadWrite.Milliseconds()*2/3) * time.Millisecond
+	sl.pingTimer = time.NewTicker(sl.pingInterval)
 
 	go sl.serviceLoop()
 	go sl.pingLoop()
@@ -58,7 +79,7 @@ func (sl *SignerListenerEndpoint) OnStart() error {
 	return nil
 }
 
-// OnStop implements cmn.Service
+// OnStop implements service.Service
 func (sl *SignerListenerEndpoint) OnStop() {
 	sl.instanceMtx.Lock()
 	defer sl.instanceMtx.Unlock()
@@ -83,7 +104,7 @@ func (sl *SignerListenerEndpoint) WaitForConnection(maxWait time.Duration) error
 }
 
 // SendRequest ensures there is a connection, sends a request and waits for a response
-func (sl *SignerListenerEndpoint) SendRequest(request SignerMessage) (SignerMessage, error) {
+func (sl *SignerListenerEndpoint) SendRequest(request privvalproto.Message) (*privvalproto.Message, error) {
 	sl.instanceMtx.Lock()
 	defer sl.instanceMtx.Unlock()
 
@@ -102,7 +123,10 @@ func (sl *SignerListenerEndpoint) SendRequest(request SignerMessage) (SignerMess
 		return nil, err
 	}
 
-	return res, nil
+	// Reset pingTimer to avoid sending unnecessary pings.
+	sl.pingTimer.Reset(sl.pingInterval)
+
+	return &res, nil
 }
 
 func (sl *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error {
@@ -116,6 +140,7 @@ func (sl *SignerListenerEndpoint) ensureConnection(maxWait time.Duration) error 
 	}
 
 	// block until connected or timeout
+	sl.Logger.Info("SignerListener: Blocking for connection")
 	sl.triggerConnect()
 	err := sl.WaitConnection(sl.connectionAvailableCh, maxWait)
 	if err != nil {
@@ -185,7 +210,7 @@ func (sl *SignerListenerEndpoint) pingLoop() {
 		select {
 		case <-sl.pingTimer.C:
 			{
-				_, err := sl.SendRequest(&PingRequest{})
+				_, err := sl.SendRequest(mustWrapMsg(&privvalproto.PingRequest{}))
 				if err != nil {
 					sl.Logger.Error("SignerListener: Ping timeout")
 					sl.triggerReconnect()

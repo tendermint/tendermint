@@ -1,7 +1,6 @@
 package types
 
 import (
-	"bytes"
 	"sort"
 )
 
@@ -24,11 +23,9 @@ func (v ValidatorUpdates) Len() int {
 
 // XXX: doesn't distinguish same validator with different power
 func (v ValidatorUpdates) Less(i, j int) bool {
-	return bytes.Compare(v[i].PubKey.Data, v[j].PubKey.Data) <= 0
+	return v[i].PubKey.Compare(v[j].PubKey) <= 0
 }
 
 func (v ValidatorUpdates) Swap(i, j int) {
-	v1 := v[i]
-	v[i] = v[j]
-	v[j] = v1
+	v[i], v[j] = v[j], v[i]
 }

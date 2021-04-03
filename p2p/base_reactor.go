@@ -1,7 +1,7 @@
 package p2p
 
 import (
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
@@ -13,7 +13,7 @@ import (
 //
 // Peer#Send or Peer#TrySend should be used to send the message to a peer.
 type Reactor interface {
-	cmn.Service // Start, Stop
+	service.Service // Start, Stop
 
 	// SetSwitch allows setting a switch.
 	SetSwitch(*Switch)
@@ -44,19 +44,22 @@ type Reactor interface {
 	// copying.
 	//
 	// CONTRACT: msgBytes are not nil.
+	//
+	// XXX: do not call any methods that can block or incur heavy processing.
+	// https://github.com/tendermint/tendermint/issues/2888
 	Receive(chID byte, peer Peer, msgBytes []byte)
 }
 
 //--------------------------------------
 
 type BaseReactor struct {
-	cmn.BaseService // Provides Start, Stop, .Quit
-	Switch          *Switch
+	service.BaseService // Provides Start, Stop, .Quit
+	Switch              *Switch
 }
 
 func NewBaseReactor(name string, impl Reactor) *BaseReactor {
 	return &BaseReactor{
-		BaseService: *cmn.NewBaseService(nil, name, impl),
+		BaseService: *service.NewBaseService(nil, name, impl),
 		Switch:      nil,
 	}
 }

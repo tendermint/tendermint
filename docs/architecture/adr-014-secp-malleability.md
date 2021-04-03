@@ -43,7 +43,7 @@ This is the same solution Ethereum has chosen for solving secp malleability.
 
 ## Proposed Implementation
 
-Fork https://github.com/btcsuite/btcd, and just update the [parse sig method](https://github.com/btcsuite/btcd/blob/master/btcec/signature.go#195) and serialize functions to enforce our canonical form.
+Fork https://github.com/btcsuite/btcd, and just update the [parse sig method](https://github.com/btcsuite/btcd/blob/11fcd83963ab0ecd1b84b429b1efc1d2cdc6d5c5/btcec/signature.go#L195) and serialize functions to enforce our canonical form.
 
 ## Status
 

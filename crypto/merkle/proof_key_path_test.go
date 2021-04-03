@@ -26,7 +26,7 @@ func TestKeyPath(t *testing.T) {
 					keys[i][j] = alphanum[rand.Intn(len(alphanum))]
 				}
 			case KeyEncodingHex:
-				rand.Read(keys[i]) //nolint: gosec
+				rand.Read(keys[i])
 			default:
 				panic("Unexpected encoding")
 			}

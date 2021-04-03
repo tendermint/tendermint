@@ -4,13 +4,6 @@ order: 3
 
 # Install Tendermint
 
-The fastest and easiest way to install the `tendermint` binary
-is to run [this script](https://github.com/tendermint/tendermint/blob/master/scripts/install/install_tendermint_ubuntu.sh) on
-a fresh Ubuntu instance,
-or [this script](https://github.com/tendermint/tendermint/blob/master/scripts/install/install_tendermint_bsd.sh)
-on a fresh FreeBSD instance. Read the comments / instructions carefully (i.e., reset your terminal after running the script,
-make sure you are okay with the network connections being made).
-
 ## From Binary
 
 To download pre-built binaries, see the [releases page](https://github.com/tendermint/tendermint/releases).
@@ -19,67 +12,65 @@ To download pre-built binaries, see the [releases page](https://github.com/tende
 
 You'll need `go` [installed](https://golang.org/doc/install) and the required
 environment variables set, which can be done with the following commands:
-```bash
+
+```sh
 echo export GOPATH=\"\$HOME/go\" >> ~/.bash_profile
 echo export PATH=\"\$PATH:\$GOPATH/bin\" >> ~/.bash_profile
-echo export GO111MODULE=on >> ~/.bash_profile
 ```
 
 ### Get Source Code
 
-```
-mkdir -p $GOPATH/src/github.com/tendermint
-cd $GOPATH/src/github.com/tendermint
+```sh
 git clone https://github.com/tendermint/tendermint.git
 cd tendermint
 ```
 
-### Get Tools & Dependencies
-
-```
-make tools
-```
-
 ### Compile
 
-```
+```sh
 make install
 ```
 
 to put the binary in `$GOPATH/bin` or use:
 
-```
+```sh
 make build
 ```
 
 to put the binary in `./build`.
 
-_DISCLAIMER_ The binary of tendermint is build/installed without the DWARF symbol table. If you would like to build/install tendermint with the DWARF symbol and debug information, remove `-s -w` from `BUILD_FLAGS` in the make file.
+_DISCLAIMER_ The binary of Tendermint is build/installed without the DWARF
+symbol table. If you would like to build/install Tendermint with the DWARF
+symbol and debug information, remove `-s -w` from `BUILD_FLAGS` in the make
+file.
 
-The latest `tendermint version` is now installed.
+The latest Tendermint is now installed. You can verify the installation by
+running:
+
+```sh
+tendermint version
+```
 
 ## Run
 
 To start a one-node blockchain with a simple in-process application:
 
-```
-tendermint init
-tendermint node --proxy_app=kvstore
+```sh
+tendermint init validator
+tendermint start --proxy-app=kvstore
 ```
 
 ## Reinstall
 
 If you already have Tendermint installed, and you make updates, simply
 
-```
-cd $GOPATH/src/github.com/tendermint/tendermint
+```sh
 make install
 ```
 
 To upgrade, run
 
-```
-cd $GOPATH/src/github.com/tendermint/tendermint
+```sh
 git pull origin master
 make install
 ```
@@ -90,7 +81,7 @@ Install [LevelDB](https://github.com/google/leveldb) (minimum version is 1.7).
 
 Install LevelDB with snappy (optionally). Below are commands for Ubuntu:
 
-```
+```sh
 sudo apt-get update
 sudo apt install build-essential
 
@@ -109,21 +100,21 @@ wget https://github.com/google/leveldb/archive/v1.20.tar.gz && \
 
 Set a database backend to `cleveldb`:
 
-```
+```toml
 # config/config.toml
 db_backend = "cleveldb"
 ```
 
 To install Tendermint, run:
 
-```
-CGO_LDFLAGS="-lsnappy" make install_c
+```sh
+CGO_LDFLAGS="-lsnappy" make install TENDERMINT_BUILD_OPTIONS=cleveldb
 ```
 
 or run:
 
-```
-CGO_LDFLAGS="-lsnappy" make build_c
+```sh
+CGO_LDFLAGS="-lsnappy" make build TENDERMINT_BUILD_OPTIONS=cleveldb
 ```
 
 which puts the binary in `./build`.

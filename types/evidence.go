@@ -2,115 +2,61 @@ package types
 
 import (
 	"bytes"
+	"context"
+	"encoding/binary"
+	"errors"
 	"fmt"
+	"sort"
 	"strings"
+	"time"
 
-	"github.com/pkg/errors"
-	"github.com/tendermint/tendermint/crypto/tmhash"
-
-	amino "github.com/tendermint/go-amino"
-
-	"github.com/tendermint/tendermint/crypto"
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmjson "github.com/tendermint/tendermint/libs/json"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
-const (
-	// MaxEvidenceBytes is a maximum size of any evidence (including amino overhead).
-	MaxEvidenceBytes int64 = 484
-)
-
-// ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.
-type ErrEvidenceInvalid struct {
-	Evidence   Evidence
-	ErrorValue error
-}
-
-// NewErrEvidenceInvalid returns a new EvidenceInvalid with the given err.
-func NewErrEvidenceInvalid(ev Evidence, err error) *ErrEvidenceInvalid {
-	return &ErrEvidenceInvalid{ev, err}
-}
-
-// Error returns a string representation of the error.
-func (err *ErrEvidenceInvalid) Error() string {
-	return fmt.Sprintf("Invalid evidence: %v. Evidence: %v", err.ErrorValue, err.Evidence)
-}
-
-// ErrEvidenceOverflow is for when there is too much evidence in a block.
-type ErrEvidenceOverflow struct {
-	MaxNum int64
-	GotNum int64
-}
-
-// NewErrEvidenceOverflow returns a new ErrEvidenceOverflow where got > max.
-func NewErrEvidenceOverflow(max, got int64) *ErrEvidenceOverflow {
-	return &ErrEvidenceOverflow{max, got}
-}
-
-// Error returns a string representation of the error.
-func (err *ErrEvidenceOverflow) Error() string {
-	return fmt.Sprintf("Too much evidence: Max %d, got %d", err.MaxNum, err.GotNum)
-}
-
-//-------------------------------------------
-
-// Evidence represents any provable malicious activity by a validator
+// Evidence represents any provable malicious activity by a validator.
+// Verification logic for each evidence is part of the evidence module.
 type Evidence interface {
-	Height() int64                                     // height of the equivocation
-	Address() []byte                                   // address of the equivocating validator
-	Bytes() []byte                                     // bytes which compromise the evidence
-	Hash() []byte                                      // hash of the evidence
-	Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
-	Equal(Evidence) bool                               // check equality of evidence
-
-	ValidateBasic() error
-	String() string
+	ABCI() []abci.Evidence // forms individual evidence to be sent to the application
+	Bytes() []byte         // bytes which comprise the evidence
+	Hash() []byte          // hash of the evidence
+	Height() int64         // height of the infraction
+	String() string        // string format of the evidence
+	Time() time.Time       // time of the infraction
+	ValidateBasic() error  // basic consistency check
 }
 
-func RegisterEvidences(cdc *amino.Codec) {
-	cdc.RegisterInterface((*Evidence)(nil), nil)
-	cdc.RegisterConcrete(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence", nil)
-}
+//--------------------------------------------------------------------------------------
 
-func RegisterMockEvidences(cdc *amino.Codec) {
-	cdc.RegisterConcrete(MockGoodEvidence{}, "tendermint/MockGoodEvidence", nil)
-	cdc.RegisterConcrete(MockRandomGoodEvidence{}, "tendermint/MockRandomGoodEvidence", nil)
-	cdc.RegisterConcrete(MockBadEvidence{}, "tendermint/MockBadEvidence", nil)
-}
-
-const (
-	MaxEvidenceBytesDenominator = 10
-)
-
-// MaxEvidencePerBlock returns the maximum number of evidences
-// allowed in the block and their maximum total size (limitted to 1/10th
-// of the maximum block size).
-// TODO: change to a constant, or to a fraction of the validator set size.
-// See https://github.com/tendermint/tendermint/issues/2590
-func MaxEvidencePerBlock(blockMaxBytes int64) (int64, int64) {
-	maxBytes := blockMaxBytes / MaxEvidenceBytesDenominator
-	maxNum := maxBytes / MaxEvidenceBytes
-	return maxNum, maxBytes
-}
-
-//-------------------------------------------
-
-// DuplicateVoteEvidence contains evidence a validator signed two conflicting
-// votes.
+// DuplicateVoteEvidence contains evidence of a single validator signing two conflicting votes.
 type DuplicateVoteEvidence struct {
-	PubKey crypto.PubKey
-	VoteA  *Vote
-	VoteB  *Vote
+	VoteA *Vote `json:"vote_a"`
+	VoteB *Vote `json:"vote_b"`
+
+	// abci specific information
+	TotalVotingPower int64
+	ValidatorPower   int64
+	Timestamp        time.Time
 }
 
 var _ Evidence = &DuplicateVoteEvidence{}
 
 // NewDuplicateVoteEvidence creates DuplicateVoteEvidence with right ordering given
 // two conflicting votes. If one of the votes is nil, evidence returned is nil as well
-func NewDuplicateVoteEvidence(pubkey crypto.PubKey, vote1 *Vote, vote2 *Vote) *DuplicateVoteEvidence {
+func NewDuplicateVoteEvidence(vote1, vote2 *Vote, blockTime time.Time, valSet *ValidatorSet) *DuplicateVoteEvidence {
 	var voteA, voteB *Vote
-	if vote1 == nil || vote2 == nil {
+	if vote1 == nil || vote2 == nil || valSet == nil {
 		return nil
 	}
+	idx, val := valSet.GetByAddress(vote1.ValidatorAddress)
+	if idx == -1 {
+		return nil
+	}
+
 	if strings.Compare(vote1.BlockID.Key(), vote2.BlockID.Key()) == -1 {
 		voteA = vote1
 		voteB = vote2
@@ -119,117 +65,73 @@ func NewDuplicateVoteEvidence(pubkey crypto.PubKey, vote1 *Vote, vote2 *Vote) *D
 		voteB = vote1
 	}
 	return &DuplicateVoteEvidence{
-		PubKey: pubkey,
-		VoteA:  voteA,
-		VoteB:  voteB,
+		VoteA:            voteA,
+		VoteB:            voteB,
+		TotalVotingPower: valSet.TotalVotingPower(),
+		ValidatorPower:   val.VotingPower,
+		Timestamp:        blockTime,
 	}
 }
 
-// String returns a string representation of the evidence.
-func (dve *DuplicateVoteEvidence) String() string {
-	return fmt.Sprintf("VoteA: %v; VoteB: %v", dve.VoteA, dve.VoteB)
-
+// ABCI returns the application relevant representation of the evidence
+func (dve *DuplicateVoteEvidence) ABCI() []abci.Evidence {
+	return []abci.Evidence{{
+		Type: abci.EvidenceType_DUPLICATE_VOTE,
+		Validator: abci.Validator{
+			Address: dve.VoteA.ValidatorAddress,
+			Power:   dve.ValidatorPower,
+		},
+		Height:           dve.VoteA.Height,
+		Time:             dve.Timestamp,
+		TotalVotingPower: dve.TotalVotingPower,
+	}}
 }
 
-// Height returns the height this evidence refers to.
-func (dve *DuplicateVoteEvidence) Height() int64 {
-	return dve.VoteA.Height
-}
-
-// Address returns the address of the validator.
-func (dve *DuplicateVoteEvidence) Address() []byte {
-	return dve.PubKey.Address()
-}
-
-// Hash returns the hash of the evidence.
+// Bytes returns the proto-encoded evidence as a byte array.
 func (dve *DuplicateVoteEvidence) Bytes() []byte {
-	return cdcEncode(dve)
+	pbe := dve.ToProto()
+	bz, err := pbe.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	return bz
 }
 
 // Hash returns the hash of the evidence.
 func (dve *DuplicateVoteEvidence) Hash() []byte {
-	return tmhash.Sum(cdcEncode(dve))
+	return tmhash.Sum(dve.Bytes())
 }
 
-// Verify returns an error if the two votes aren't conflicting.
-// To be conflicting, they must be from the same validator, for the same H/R/S, but for different blocks.
-func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
-	// H/R/S must be the same
-	if dve.VoteA.Height != dve.VoteB.Height ||
-		dve.VoteA.Round != dve.VoteB.Round ||
-		dve.VoteA.Type != dve.VoteB.Type {
-		return fmt.Errorf("duplicateVoteEvidence Error: H/R/S does not match. Got %v and %v", dve.VoteA, dve.VoteB)
-	}
-
-	// Address must be the same
-	if !bytes.Equal(dve.VoteA.ValidatorAddress, dve.VoteB.ValidatorAddress) {
-		return fmt.Errorf(
-			"duplicateVoteEvidence Error: Validator addresses do not match. Got %X and %X",
-			dve.VoteA.ValidatorAddress,
-			dve.VoteB.ValidatorAddress,
-		)
-	}
-
-	// Index must be the same
-	if dve.VoteA.ValidatorIndex != dve.VoteB.ValidatorIndex {
-		return fmt.Errorf(
-			"duplicateVoteEvidence Error: Validator indices do not match. Got %d and %d",
-			dve.VoteA.ValidatorIndex,
-			dve.VoteB.ValidatorIndex,
-		)
-	}
-
-	// BlockIDs must be different
-	if dve.VoteA.BlockID.Equals(dve.VoteB.BlockID) {
-		return fmt.Errorf(
-			"duplicateVoteEvidence Error: BlockIDs are the same (%v) - not a real duplicate vote",
-			dve.VoteA.BlockID,
-		)
-	}
-
-	// pubkey must match address (this should already be true, sanity check)
-	addr := dve.VoteA.ValidatorAddress
-	if !bytes.Equal(pubKey.Address(), addr) {
-		return fmt.Errorf("duplicateVoteEvidence FAILED SANITY CHECK - address (%X) doesn't match pubkey (%v - %X)",
-			addr, pubKey, pubKey.Address())
-	}
-
-	// Signatures must be valid
-	if !pubKey.VerifyBytes(dve.VoteA.SignBytes(chainID), dve.VoteA.Signature) {
-		return fmt.Errorf("duplicateVoteEvidence Error verifying VoteA: %v", ErrVoteInvalidSignature)
-	}
-	if !pubKey.VerifyBytes(dve.VoteB.SignBytes(chainID), dve.VoteB.Signature) {
-		return fmt.Errorf("duplicateVoteEvidence Error verifying VoteB: %v", ErrVoteInvalidSignature)
-	}
-
-	return nil
+// Height returns the height of the infraction
+func (dve *DuplicateVoteEvidence) Height() int64 {
+	return dve.VoteA.Height
 }
 
-// Equal checks if two pieces of evidence are equal.
-func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
-	if _, ok := ev.(*DuplicateVoteEvidence); !ok {
-		return false
-	}
+// String returns a string representation of the evidence.
+func (dve *DuplicateVoteEvidence) String() string {
+	return fmt.Sprintf("DuplicateVoteEvidence{VoteA: %v, VoteB: %v}", dve.VoteA, dve.VoteB)
+}
 
-	// just check their hashes
-	dveHash := tmhash.Sum(cdcEncode(dve))
-	evHash := tmhash.Sum(cdcEncode(ev))
-	return bytes.Equal(dveHash, evHash)
+// Time returns the time of the infraction
+func (dve *DuplicateVoteEvidence) Time() time.Time {
+	return dve.Timestamp
 }
 
 // ValidateBasic performs basic validation.
 func (dve *DuplicateVoteEvidence) ValidateBasic() error {
-	if len(dve.PubKey.Bytes()) == 0 {
-		return errors.New("empty PubKey")
+	if dve == nil {
+		return errors.New("empty duplicate vote evidence")
 	}
+
 	if dve.VoteA == nil || dve.VoteB == nil {
 		return fmt.Errorf("one or both of the votes are empty %v, %v", dve.VoteA, dve.VoteB)
 	}
 	if err := dve.VoteA.ValidateBasic(); err != nil {
-		return fmt.Errorf("invalid VoteA: %v", err)
+		return fmt.Errorf("invalid VoteA: %w", err)
 	}
 	if err := dve.VoteB.ValidateBasic(); err != nil {
-		return fmt.Errorf("invalid VoteB: %v", err)
+		return fmt.Errorf("invalid VoteB: %w", err)
 	}
 	// Enforce Votes are lexicographically sorted on blockID
 	if strings.Compare(dve.VoteA.BlockID.Key(), dve.VoteB.BlockID.Key()) >= 0 {
@@ -238,78 +140,277 @@ func (dve *DuplicateVoteEvidence) ValidateBasic() error {
 	return nil
 }
 
-//-----------------------------------------------------------------
-
-// UNSTABLE
-type MockRandomGoodEvidence struct {
-	MockGoodEvidence
-	randBytes []byte
-}
-
-var _ Evidence = &MockRandomGoodEvidence{}
-
-// UNSTABLE
-func NewMockRandomGoodEvidence(height int64, address []byte, randBytes []byte) MockRandomGoodEvidence {
-	return MockRandomGoodEvidence{
-		MockGoodEvidence{height, address}, randBytes,
+// ToProto encodes DuplicateVoteEvidence to protobuf
+func (dve *DuplicateVoteEvidence) ToProto() *tmproto.DuplicateVoteEvidence {
+	voteB := dve.VoteB.ToProto()
+	voteA := dve.VoteA.ToProto()
+	tp := tmproto.DuplicateVoteEvidence{
+		VoteA:            voteA,
+		VoteB:            voteB,
+		TotalVotingPower: dve.TotalVotingPower,
+		ValidatorPower:   dve.ValidatorPower,
+		Timestamp:        dve.Timestamp,
 	}
+	return &tp
 }
 
-func (e MockRandomGoodEvidence) Hash() []byte {
-	return []byte(fmt.Sprintf("%d-%x", e.EvidenceHeight, e.randBytes))
+// DuplicateVoteEvidenceFromProto decodes protobuf into DuplicateVoteEvidence
+func DuplicateVoteEvidenceFromProto(pb *tmproto.DuplicateVoteEvidence) (*DuplicateVoteEvidence, error) {
+	if pb == nil {
+		return nil, errors.New("nil duplicate vote evidence")
+	}
+
+	vA, err := VoteFromProto(pb.VoteA)
+	if err != nil {
+		return nil, err
+	}
+
+	vB, err := VoteFromProto(pb.VoteB)
+	if err != nil {
+		return nil, err
+	}
+
+	dve := &DuplicateVoteEvidence{
+		VoteA:            vA,
+		VoteB:            vB,
+		TotalVotingPower: pb.TotalVotingPower,
+		ValidatorPower:   pb.ValidatorPower,
+		Timestamp:        pb.Timestamp,
+	}
+
+	return dve, dve.ValidateBasic()
 }
 
-// UNSTABLE
-type MockGoodEvidence struct {
-	EvidenceHeight  int64
-	EvidenceAddress []byte
+//------------------------------------ LIGHT EVIDENCE --------------------------------------
+
+// LightClientAttackEvidence is a generalized evidence that captures all forms of known attacks on
+// a light client such that a full node can verify, propose and commit the evidence on-chain for
+// punishment of the malicious validators. There are three forms of attacks: Lunatic, Equivocation
+// and Amnesia. These attacks are exhaustive. You can find a more detailed overview of this at
+// tendermint/docs/architecture/adr-047-handling-evidence-from-light-client.md
+type LightClientAttackEvidence struct {
+	ConflictingBlock *LightBlock
+	CommonHeight     int64
+
+	// abci specific information
+	ByzantineValidators []*Validator // validators in the validator set that misbehaved in creating the conflicting block
+	TotalVotingPower    int64        // total voting power of the validator set at the common height
+	Timestamp           time.Time    // timestamp of the block at the common height
 }
 
-var _ Evidence = &MockGoodEvidence{}
+var _ Evidence = &LightClientAttackEvidence{}
 
-// UNSTABLE
-func NewMockGoodEvidence(height int64, idx int, address []byte) MockGoodEvidence {
-	return MockGoodEvidence{height, address}
-}
-
-func (e MockGoodEvidence) Height() int64   { return e.EvidenceHeight }
-func (e MockGoodEvidence) Address() []byte { return e.EvidenceAddress }
-func (e MockGoodEvidence) Hash() []byte {
-	return []byte(fmt.Sprintf("%d-%x", e.EvidenceHeight, e.EvidenceAddress))
-}
-func (e MockGoodEvidence) Bytes() []byte {
-	return []byte(fmt.Sprintf("%d-%x", e.EvidenceHeight, e.EvidenceAddress))
-}
-func (e MockGoodEvidence) Verify(chainID string, pubKey crypto.PubKey) error { return nil }
-func (e MockGoodEvidence) Equal(ev Evidence) bool {
-	e2 := ev.(MockGoodEvidence)
-	return e.EvidenceHeight == e2.EvidenceHeight &&
-		bytes.Equal(e.EvidenceAddress, e2.EvidenceAddress)
-}
-func (e MockGoodEvidence) ValidateBasic() error { return nil }
-func (e MockGoodEvidence) String() string {
-	return fmt.Sprintf("GoodEvidence: %d/%s", e.EvidenceHeight, e.EvidenceAddress)
+// ABCI forms an array of abci evidence for each byzantine validator
+func (l *LightClientAttackEvidence) ABCI() []abci.Evidence {
+	abciEv := make([]abci.Evidence, len(l.ByzantineValidators))
+	for idx, val := range l.ByzantineValidators {
+		abciEv[idx] = abci.Evidence{
+			Type:             abci.EvidenceType_LIGHT_CLIENT_ATTACK,
+			Validator:        TM2PB.Validator(val),
+			Height:           l.Height(),
+			Time:             l.Timestamp,
+			TotalVotingPower: l.TotalVotingPower,
+		}
+	}
+	return abciEv
 }
 
-// UNSTABLE
-type MockBadEvidence struct {
-	MockGoodEvidence
+// Bytes returns the proto-encoded evidence as a byte array
+func (l *LightClientAttackEvidence) Bytes() []byte {
+	pbe, err := l.ToProto()
+	if err != nil {
+		panic(err)
+	}
+	bz, err := pbe.Marshal()
+	if err != nil {
+		panic(err)
+	}
+	return bz
 }
 
-func (e MockBadEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
-	return fmt.Errorf("mockBadEvidence")
-}
-func (e MockBadEvidence) Equal(ev Evidence) bool {
-	e2 := ev.(MockBadEvidence)
-	return e.EvidenceHeight == e2.EvidenceHeight &&
-		bytes.Equal(e.EvidenceAddress, e2.EvidenceAddress)
-}
-func (e MockBadEvidence) ValidateBasic() error { return nil }
-func (e MockBadEvidence) String() string {
-	return fmt.Sprintf("BadEvidence: %d/%s", e.EvidenceHeight, e.EvidenceAddress)
+// GetByzantineValidators finds out what style of attack LightClientAttackEvidence was and then works out who
+// the malicious validators were and returns them. This is used both for forming the ByzantineValidators
+// field and for validating that it is correct. Validators are ordered based on validator power
+func (l *LightClientAttackEvidence) GetByzantineValidators(commonVals *ValidatorSet,
+	trusted *SignedHeader) []*Validator {
+	var validators []*Validator
+	// First check if the header is invalid. This means that it is a lunatic attack and therefore we take the
+	// validators who are in the commonVals and voted for the lunatic header
+	if l.ConflictingHeaderIsInvalid(trusted.Header) {
+		for _, commitSig := range l.ConflictingBlock.Commit.Signatures {
+			if !commitSig.ForBlock() {
+				continue
+			}
+
+			_, val := commonVals.GetByAddress(commitSig.ValidatorAddress)
+			if val == nil {
+				// validator wasn't in the common validator set
+				continue
+			}
+			validators = append(validators, val)
+		}
+		sort.Sort(ValidatorsByVotingPower(validators))
+		return validators
+	} else if trusted.Commit.Round == l.ConflictingBlock.Commit.Round {
+		// This is an equivocation attack as both commits are in the same round. We then find the validators
+		// from the conflicting light block validator set that voted in both headers.
+		// Validator hashes are the same therefore the indexing order of validators are the same and thus we
+		// only need a single loop to find the validators that voted twice.
+		for i := 0; i < len(l.ConflictingBlock.Commit.Signatures); i++ {
+			sigA := l.ConflictingBlock.Commit.Signatures[i]
+			if sigA.Absent() {
+				continue
+			}
+
+			sigB := trusted.Commit.Signatures[i]
+			if sigB.Absent() {
+				continue
+			}
+
+			_, val := l.ConflictingBlock.ValidatorSet.GetByAddress(sigA.ValidatorAddress)
+			validators = append(validators, val)
+		}
+		sort.Sort(ValidatorsByVotingPower(validators))
+		return validators
+	}
+	// if the rounds are different then this is an amnesia attack. Unfortunately, given the nature of the attack,
+	// we aren't able yet to deduce which are malicious validators and which are not hence we return an
+	// empty validator set.
+	return validators
 }
 
-//-------------------------------------------
+// ConflictingHeaderIsInvalid takes a trusted header and matches it againt a conflicting header
+// to determine whether the conflicting header was the product of a valid state transition
+// or not. If it is then all the deterministic fields of the header should be the same.
+// If not, it is an invalid header and constitutes a lunatic attack.
+func (l *LightClientAttackEvidence) ConflictingHeaderIsInvalid(trustedHeader *Header) bool {
+	return !bytes.Equal(trustedHeader.ValidatorsHash, l.ConflictingBlock.ValidatorsHash) ||
+		!bytes.Equal(trustedHeader.NextValidatorsHash, l.ConflictingBlock.NextValidatorsHash) ||
+		!bytes.Equal(trustedHeader.ConsensusHash, l.ConflictingBlock.ConsensusHash) ||
+		!bytes.Equal(trustedHeader.AppHash, l.ConflictingBlock.AppHash) ||
+		!bytes.Equal(trustedHeader.LastResultsHash, l.ConflictingBlock.LastResultsHash)
+
+}
+
+// Hash returns the hash of the header and the commonHeight. This is designed to cause hash collisions
+// with evidence that have the same conflicting header and common height but different permutations
+// of validator commit signatures. The reason for this is that we don't want to allow several
+// permutations of the same evidence to be committed on chain. Ideally we commit the header with the
+// most commit signatures (captures the most byzantine validators) but anything greater than 1/3 is sufficient.
+func (l *LightClientAttackEvidence) Hash() []byte {
+	buf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutVarint(buf, l.CommonHeight)
+	bz := make([]byte, tmhash.Size+n)
+	copy(bz[:tmhash.Size-1], l.ConflictingBlock.Hash().Bytes())
+	copy(bz[tmhash.Size:], buf)
+	return tmhash.Sum(bz)
+}
+
+// Height returns the last height at which the primary provider and witness provider had the same header.
+// We use this as the height of the infraction rather than the actual conflicting header because we know
+// that the malicious validators were bonded at this height which is important for evidence expiry
+func (l *LightClientAttackEvidence) Height() int64 {
+	return l.CommonHeight
+}
+
+// String returns a string representation of LightClientAttackEvidence
+func (l *LightClientAttackEvidence) String() string {
+	return fmt.Sprintf("LightClientAttackEvidence{ConflictingBlock: %v, CommonHeight: %d}",
+		l.ConflictingBlock.String(), l.CommonHeight)
+}
+
+// Time returns the time of the common block where the infraction leveraged off.
+func (l *LightClientAttackEvidence) Time() time.Time {
+	return l.Timestamp
+}
+
+// ValidateBasic performs basic validation such that the evidence is consistent and can now be used for verification.
+func (l *LightClientAttackEvidence) ValidateBasic() error {
+	if l.ConflictingBlock == nil {
+		return errors.New("conflicting block is nil")
+	}
+
+	// this check needs to be done before we can run validate basic
+	if l.ConflictingBlock.Header == nil {
+		return errors.New("conflicting block missing header")
+	}
+
+	if err := l.ConflictingBlock.ValidateBasic(l.ConflictingBlock.ChainID); err != nil {
+		return fmt.Errorf("invalid conflicting light block: %w", err)
+	}
+
+	if l.CommonHeight <= 0 {
+		return errors.New("negative or zero common height")
+	}
+
+	// check that common height isn't ahead of the height of the conflicting block. It
+	// is possible that they are the same height if the light node witnesses either an
+	// amnesia or a equivocation attack.
+	if l.CommonHeight > l.ConflictingBlock.Height {
+		return fmt.Errorf("common height is ahead of the conflicting block height (%d > %d)",
+			l.CommonHeight, l.ConflictingBlock.Height)
+	}
+
+	return nil
+}
+
+// ToProto encodes LightClientAttackEvidence to protobuf
+func (l *LightClientAttackEvidence) ToProto() (*tmproto.LightClientAttackEvidence, error) {
+	conflictingBlock, err := l.ConflictingBlock.ToProto()
+	if err != nil {
+		return nil, err
+	}
+
+	byzVals := make([]*tmproto.Validator, len(l.ByzantineValidators))
+	for idx, val := range l.ByzantineValidators {
+		valpb, err := val.ToProto()
+		if err != nil {
+			return nil, err
+		}
+		byzVals[idx] = valpb
+	}
+
+	return &tmproto.LightClientAttackEvidence{
+		ConflictingBlock:    conflictingBlock,
+		CommonHeight:        l.CommonHeight,
+		ByzantineValidators: byzVals,
+		TotalVotingPower:    l.TotalVotingPower,
+		Timestamp:           l.Timestamp,
+	}, nil
+}
+
+// LightClientAttackEvidenceFromProto decodes protobuf
+func LightClientAttackEvidenceFromProto(lpb *tmproto.LightClientAttackEvidence) (*LightClientAttackEvidence, error) {
+	if lpb == nil {
+		return nil, errors.New("empty light client attack evidence")
+	}
+
+	conflictingBlock, err := LightBlockFromProto(lpb.ConflictingBlock)
+	if err != nil {
+		return nil, err
+	}
+
+	byzVals := make([]*Validator, len(lpb.ByzantineValidators))
+	for idx, valpb := range lpb.ByzantineValidators {
+		val, err := ValidatorFromProto(valpb)
+		if err != nil {
+			return nil, err
+		}
+		byzVals[idx] = val
+	}
+
+	l := &LightClientAttackEvidence{
+		ConflictingBlock:    conflictingBlock,
+		CommonHeight:        lpb.CommonHeight,
+		ByzantineValidators: byzVals,
+		TotalVotingPower:    lpb.TotalVotingPower,
+		Timestamp:           lpb.Timestamp,
+	}
+
+	return l, l.ValidateBasic()
+}
+
+//------------------------------------------------------------------------------------------
 
 // EvidenceList is a list of Evidence. Evidences is not a word.
 type EvidenceList []Evidence
@@ -323,7 +424,7 @@ func (evl EvidenceList) Hash() []byte {
 	for i := 0; i < len(evl); i++ {
 		evidenceBzs[i] = evl[i].Bytes()
 	}
-	return merkle.SimpleHashFromByteSlices(evidenceBzs)
+	return merkle.HashFromByteSlices(evidenceBzs)
 }
 
 func (evl EvidenceList) String() string {
@@ -337,9 +438,148 @@ func (evl EvidenceList) String() string {
 // Has returns true if the evidence is in the EvidenceList.
 func (evl EvidenceList) Has(evidence Evidence) bool {
 	for _, ev := range evl {
-		if ev.Equal(evidence) {
+		if bytes.Equal(evidence.Hash(), ev.Hash()) {
 			return true
 		}
 	}
 	return false
+}
+
+//------------------------------------------ PROTO --------------------------------------
+
+// EvidenceToProto is a generalized function for encoding evidence that conforms to the
+// evidence interface to protobuf
+func EvidenceToProto(evidence Evidence) (*tmproto.Evidence, error) {
+	if evidence == nil {
+		return nil, errors.New("nil evidence")
+	}
+
+	switch evi := evidence.(type) {
+	case *DuplicateVoteEvidence:
+		pbev := evi.ToProto()
+		return &tmproto.Evidence{
+			Sum: &tmproto.Evidence_DuplicateVoteEvidence{
+				DuplicateVoteEvidence: pbev,
+			},
+		}, nil
+
+	case *LightClientAttackEvidence:
+		pbev, err := evi.ToProto()
+		if err != nil {
+			return nil, err
+		}
+		return &tmproto.Evidence{
+			Sum: &tmproto.Evidence_LightClientAttackEvidence{
+				LightClientAttackEvidence: pbev,
+			},
+		}, nil
+
+	default:
+		return nil, fmt.Errorf("toproto: evidence is not recognized: %T", evi)
+	}
+}
+
+// EvidenceFromProto is a generalized function for decoding protobuf into the
+// evidence interface
+func EvidenceFromProto(evidence *tmproto.Evidence) (Evidence, error) {
+	if evidence == nil {
+		return nil, errors.New("nil evidence")
+	}
+
+	switch evi := evidence.Sum.(type) {
+	case *tmproto.Evidence_DuplicateVoteEvidence:
+		return DuplicateVoteEvidenceFromProto(evi.DuplicateVoteEvidence)
+	case *tmproto.Evidence_LightClientAttackEvidence:
+		return LightClientAttackEvidenceFromProto(evi.LightClientAttackEvidence)
+	default:
+		return nil, errors.New("evidence is not recognized")
+	}
+}
+
+func init() {
+	tmjson.RegisterType(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence")
+	tmjson.RegisterType(&LightClientAttackEvidence{}, "tendermint/LightClientAttackEvidence")
+}
+
+//-------------------------------------------- ERRORS --------------------------------------
+
+// ErrInvalidEvidence wraps a piece of evidence and the error denoting how or why it is invalid.
+type ErrInvalidEvidence struct {
+	Evidence Evidence
+	Reason   error
+}
+
+// NewErrInvalidEvidence returns a new EvidenceInvalid with the given err.
+func NewErrInvalidEvidence(ev Evidence, err error) *ErrInvalidEvidence {
+	return &ErrInvalidEvidence{ev, err}
+}
+
+// Error returns a string representation of the error.
+func (err *ErrInvalidEvidence) Error() string {
+	return fmt.Sprintf("Invalid evidence: %v. Evidence: %v", err.Reason, err.Evidence)
+}
+
+// ErrEvidenceOverflow is for when there the amount of evidence exceeds the max bytes.
+type ErrEvidenceOverflow struct {
+	Max int64
+	Got int64
+}
+
+// NewErrEvidenceOverflow returns a new ErrEvidenceOverflow where got > max.
+func NewErrEvidenceOverflow(max, got int64) *ErrEvidenceOverflow {
+	return &ErrEvidenceOverflow{max, got}
+}
+
+// Error returns a string representation of the error.
+func (err *ErrEvidenceOverflow) Error() string {
+	return fmt.Sprintf("Too much evidence: Max %d, got %d", err.Max, err.Got)
+}
+
+//-------------------------------------------- MOCKING --------------------------------------
+
+// unstable - use only for testing
+
+// assumes the round to be 0 and the validator index to be 0
+func NewMockDuplicateVoteEvidence(height int64, time time.Time, chainID string) *DuplicateVoteEvidence {
+	val := NewMockPV()
+	return NewMockDuplicateVoteEvidenceWithValidator(height, time, val, chainID)
+}
+
+// assumes voting power to be 10 and validator to be the only one in the set
+func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
+	pv PrivValidator, chainID string) *DuplicateVoteEvidence {
+	pubKey, _ := pv.GetPubKey(context.Background())
+	val := NewValidator(pubKey, 10)
+	voteA := makeMockVote(height, 0, 0, pubKey.Address(), randBlockID(), time)
+	vA := voteA.ToProto()
+	_ = pv.SignVote(context.Background(), chainID, vA)
+	voteA.Signature = vA.Signature
+	voteB := makeMockVote(height, 0, 0, pubKey.Address(), randBlockID(), time)
+	vB := voteB.ToProto()
+	_ = pv.SignVote(context.Background(), chainID, vB)
+	voteB.Signature = vB.Signature
+	return NewDuplicateVoteEvidence(voteA, voteB, time, NewValidatorSet([]*Validator{val}))
+}
+
+func makeMockVote(height int64, round, index int32, addr Address,
+	blockID BlockID, time time.Time) *Vote {
+	return &Vote{
+		Type:             tmproto.SignedMsgType(2),
+		Height:           height,
+		Round:            round,
+		BlockID:          blockID,
+		Timestamp:        time,
+		ValidatorAddress: addr,
+		ValidatorIndex:   index,
+	}
+}
+
+func randBlockID() BlockID {
+	return BlockID{
+		Hash: tmrand.Bytes(tmhash.Size),
+		PartSetHeader: PartSetHeader{
+			Total: 1,
+			Hash:  tmrand.Bytes(tmhash.Size),
+		},
+	}
 }

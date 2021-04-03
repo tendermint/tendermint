@@ -1,5 +1,923 @@
 # Changelog
 
+## v0.34.8
+
+*February 25, 2021*
+
+This release, in conjunction with [a fix in the Cosmos SDK](https://github.com/cosmos/cosmos-sdk/pull/8641),
+introduces changes that should mean the logs are much, much quieter. 🎉
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+### IMPROVEMENTS
+
+- [libs/log] [\#6174](https://github.com/tendermint/tendermint/issues/6174) Include timestamp (`ts` field; `time.RFC3339Nano` format) in JSON logger output (@melekes)
+
+### BUG FIXES
+
+- [abci] [\#6124](https://github.com/tendermint/tendermint/issues/6124) Fixes a panic condition during callback execution in `ReCheckTx` during high tx load. (@alexanderbez)
+
+## v0.34.7
+
+*February 18, 2021*
+
+This release fixes a downstream security issue which impacts Cosmos SDK
+users who are:
+
+* Using Cosmos SDK v0.40.0 or later, AND
+* Running validator nodes, AND
+* Using the file-based `FilePV` implementation for their consensus keys
+
+Users who fulfill all the above criteria were susceptible to leaking
+private key material in the logs. All other users are unaffected.
+
+The root cause was a discrepancy
+between the Tendermint Core (untyped) logger and the Cosmos SDK (typed) logger:
+Tendermint Core's logger automatically stringifies Go interfaces whenever possible;
+however, the Cosmos SDK's logger uses reflection to log the fields within a Go interface.
+
+The introduction of the typed logger meant that previously un-logged fields within
+interfaces are now sometimes logged, including the private key material inside the
+`FilePV` struct.
+
+Tendermint Core v0.34.7 fixes this issue; however, we strongly recommend that all validators
+use remote signer implementations instead of `FilePV` in production.
+
+Thank you to @joe-bowman for his assistance with this vulnerability and a particular
+shout-out to @marbar3778 for diagnosing it quickly.
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BUG FIXES
+
+- [consensus] [\#6128](https://github.com/tendermint/tendermint/pull/6128) Remove privValidator from log call (@tessr)
+
+## v0.34.6
+
+*February 18, 2021* 
+
+_Tendermint Core v0.34.5 and v0.34.6 have been recalled due to release tooling problems._
+
+## v0.34.4
+
+*February 11, 2021*
+
+This release includes a fix for a memory leak in the evidence reactor (see #6068, below). 
+All Tendermint clients are recommended to upgrade. 
+Thank you to our friends at Crypto.com for the initial report of this memory leak! 
+
+Special thanks to other external contributors on this release: @yayajacky, @odidev, @laniehei, and @c29r3!
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BUG FIXES
+
+- [light] [\#6022](https://github.com/tendermint/tendermint/pull/6022) Fix a bug when the number of validators equals 100 (@melekes)
+- [light] [\#6026](https://github.com/tendermint/tendermint/pull/6026) Fix a bug when height isn't provided for the rpc calls: `/commit` and `/validators` (@cmwaters)
+- [evidence] [\#6068](https://github.com/tendermint/tendermint/pull/6068) Terminate broadcastEvidenceRoutine when peer is stopped (@melekes)
+
+## v0.34.3 
+
+*January 19, 2021*
+
+This release includes a fix for a high-severity security vulnerability, 
+a DoS-vector that impacted Tendermint Core v0.34.0-v0.34.2. For more details, see
+[Security Advisory Mulberry](https://github.com/tendermint/tendermint/security/advisories/GHSA-p658-8693-mhvg) 
+or https://nvd.nist.gov/vuln/detail/CVE-2021-21271. 
+
+Tendermint Core v0.34.3 also updates GoGo Protobuf to 1.3.2 in order to pick up the fix for
+https://nvd.nist.gov/vuln/detail/CVE-2021-3121. 
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BUG FIXES
+
+- [evidence] [[security fix]](https://github.com/tendermint/tendermint/security/advisories/GHSA-p658-8693-mhvg) Use correct source of evidence time (@cmwaters)
+- [proto] [\#5886](https://github.com/tendermint/tendermint/pull/5889) Bump gogoproto to 1.3.2 (@marbar3778)
+
+## v0.34.2
+
+*January 12, 2021*
+
+This release fixes a substantial bug in evidence handling where evidence could
+sometimes be broadcast before the block containing that evidence was fully committed,
+resulting in some nodes panicking when trying to verify said evidence.
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES
+
+- Go API
+  - [libs/os] [\#5871](https://github.com/tendermint/tendermint/issues/5871) `EnsureDir` now propagates IO errors and checks the file type (@erikgrinaker)
+
+### BUG FIXES
+
+- [evidence] [\#5890](https://github.com/tendermint/tendermint/pull/5890) Add a buffer to evidence from consensus to avoid broadcasting and proposing evidence before the
+  height of such an evidence has finished (@cmwaters)
+- [statesync] [\#5889](https://github.com/tendermint/tendermint/issues/5889) Set `LastHeightConsensusParamsChanged` when bootstrapping Tendermint state (@cmwaters)
+
+## v0.34.1
+
+*January 6, 2021*
+
+Special thanks to external contributors on this release:
+
+@p4u from vocdoni.io reported that the mempool might behave incorrectly under a
+high load. The consequences can range from pauses between blocks to the peers
+disconnecting from this node. As a temporary remedy (until the mempool package
+is refactored), the `max-batch-bytes` was disabled. Transactions will be sent
+one by one without batching.
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+  - [cli] [\#5786](https://github.com/tendermint/tendermint/issues/5786) deprecate snake_case commands for hyphen-case (@cmwaters)
+
+- Go API
+  - [libs/protoio] [\#5868](https://github.com/tendermint/tendermint/issues/5868) Return number of bytes read in `Reader.ReadMsg()` (@erikgrinaker)
+
+### IMPROVEMENTS
+
+- [mempool] [\#5813](https://github.com/tendermint/tendermint/issues/5813) Add `keep-invalid-txs-in-cache` config option. When set to true, mempool will keep invalid transactions in the cache (@p4u)
+
+### BUG FIXES
+
+- [crypto] [\#5707](https://github.com/tendermint/tendermint/issues/5707) Fix infinite recursion in string formatting of Secp256k1 keys (@erikgrinaker)
+- [mempool] [\#5800](https://github.com/tendermint/tendermint/issues/5800) Disable `max-batch-bytes` (@melekes)
+- [p2p] [\#5868](https://github.com/tendermint/tendermint/issues/5868) Fix inbound traffic statistics and rate limiting in `MConnection` (@erikgrinaker)
+
+## v0.34.0
+
+*November 19, 2020*
+
+Holy smokes, this is a big one! For a more reader-friendly overview of the changes in 0.34.0
+(and of the changes you need to accommodate as a user), check out [UPGRADING.md](UPGRADING.md).
+
+Special thanks to external contributors on this release: @james-ray, @fedekunze, @favadi, @alessio,
+@joe-bowman, @cuonglm, @SadPencil and @dongsam.
+
+And as always, friendly reminder, that we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+
+   - [config] [\#5315](https://github.com/tendermint/tendermint/pull/5315) Rename `prof_laddr` to `pprof_laddr` and move it to `rpc` section (@melekes)
+  - [evidence] [\#4959](https://github.com/tendermint/tendermint/pull/4959) Add JSON tags to `DuplicateVoteEvidence` (@marbar3778)
+  - [light] [\#4946](https://github.com/tendermint/tendermint/pull/4946) `tendermint lite` command has been renamed to `tendermint light` (@marbar3778)
+  - [privval] [\#4582](https://github.com/tendermint/tendermint/pull/4582) `round` in private_validator_state.json is no longer JSON string; instead it is a number (@marbar3778)
+  - [rpc] [\#4792](https://github.com/tendermint/tendermint/pull/4792) `/validators` are now sorted by voting power (@melekes)
+  - [rpc] [\#4947](https://github.com/tendermint/tendermint/pull/4947) Return an error when `page` pagination param is 0 in `/validators`, `tx_search` (@melekes)
+  - [rpc] [\#5137](https://github.com/tendermint/tendermint/pull/5137) JSON tags of `gasWanted` and `gasUsed` in `ResponseCheckTx` and `ResponseDeliverTx` have been made snake_case (`gas_wanted` and `gas_used`) (@marbar3778)
+  - [rpc] [\#5315](https://github.com/tendermint/tendermint/pull/5315) Remove `/unsafe_start_cpu_profiler`, `/unsafe_stop_cpu_profiler` and `/unsafe_write_heap_profile`. Please use pprof functionality instead (@melekes)
+  - [rpc/client, rpc/jsonrpc/client] [\#5347](https://github.com/tendermint/tendermint/pull/5347) All client methods now accept `context.Context` as 1st param (@melekes)
+
+- Apps
+
+  - [abci] [\#4704](https://github.com/tendermint/tendermint/pull/4704) Add ABCI methods `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, and `ApplySnapshotChunk` for state sync snapshots. `ABCIVersion` bumped to 0.17.0. (@erikgrinaker)
+  - [abci] [\#4989](https://github.com/tendermint/tendermint/pull/4989) `Proof` within `ResponseQuery` has been renamed to `ProofOps`  (@marbar3778)
+  - [abci] [\#5096](https://github.com/tendermint/tendermint/pull/5096) `CheckTxType` Protobuf enum names are now uppercase, to follow Protobuf style guide (@erikgrinaker)
+  - [abci] [\#5324](https://github.com/tendermint/tendermint/pull/5324) ABCI evidence type is now an enum with two types of possible evidence (@cmwaters)
+
+- P2P Protocol
+
+  - [blockchain] [\#4637](https://github.com/tendermint/tendermint/pull/4637) Migrate blockchain reactor(s) to Protobuf encoding (@marbar3778)
+  - [evidence] [\#4949](https://github.com/tendermint/tendermint/pull/4949) Migrate evidence reactor to Protobuf encoding (@marbar3778)
+  - [mempool] [\#4940](https://github.com/tendermint/tendermint/pull/4940) Migrate mempool from to Protobuf encoding (@marbar3778)
+  - [mempool] [\#5321](https://github.com/tendermint/tendermint/pull/5321) Batch transactions when broadcasting them to peers (@melekes) 
+     - `MaxBatchBytes` new config setting defines the max size of one batch.
+  - [p2p/pex] [\#4973](https://github.com/tendermint/tendermint/pull/4973) Migrate `p2p/pex` reactor to Protobuf encoding (@marbar3778)
+  - [statesync] [\#4943](https://github.com/tendermint/tendermint/pull/4943) Migrate state sync reactor to Protobuf encoding (@marbar3778)
+
+- Blockchain Protocol
+
+  - [evidence] [\#4725](https://github.com/tendermint/tendermint/pull/4725) Remove `Pubkey` from `DuplicateVoteEvidence` (@marbar3778) 
+  - [evidence] [\#5499](https://github.com/tendermint/tendermint/pull/5449) Cap evidence to a maximum number of bytes (supercedes [\#4780](https://github.com/tendermint/tendermint/pull/4780)) (@cmwaters)
+  - [merkle] [\#5193](https://github.com/tendermint/tendermint/pull/5193) Header hashes are no longer empty for empty inputs, notably `DataHash`, `EvidenceHash`, and `LastResultsHash` (@erikgrinaker)
+  - [state] [\#4845](https://github.com/tendermint/tendermint/pull/4845) Include `GasWanted` and `GasUsed` into `LastResultsHash` (@melekes)
+  - [types] [\#4792](https://github.com/tendermint/tendermint/pull/4792) Sort validators by voting power to enable faster commit verification (@melekes)
+
+- On-disk serialization
+
+  - [state] [\#4679](https://github.com/tendermint/tendermint/pull/4679) Migrate state module to Protobuf encoding (@marbar3778)
+    - `BlockStoreStateJSON` is now `BlockStoreState` and is encoded as binary in the database
+  - [store] [\#4778](https://github.com/tendermint/tendermint/pull/4778) Migrate store module to Protobuf encoding (@marbar3778)
+
+- Light client, private validator
+
+  - [light] [\#4964](https://github.com/tendermint/tendermint/pull/4964) Migrate light module migration to Protobuf encoding (@marbar3778)
+  - [privval] [\#4985](https://github.com/tendermint/tendermint/pull/4985) Migrate `privval` module to Protobuf encoding (@marbar3778)
+
+- Go API
+
+  - [consensus] [\#4582](https://github.com/tendermint/tendermint/pull/4582) RoundState: `Round`, `LockedRound` & `CommitRound` are now `int32` (@marbar3778)
+  - [consensus] [\#4582](https://github.com/tendermint/tendermint/pull/4582) HeightVoteSet: `round` is now `int32` (@marbar3778)
+  - [crypto] [\#4721](https://github.com/tendermint/tendermint/pull/4721) Remove `SimpleHashFromMap()` and `SimpleProofsFromMap()` (@erikgrinaker)
+  - [crypto] [\#4940](https://github.com/tendermint/tendermint/pull/4940) All keys have become `[]byte` instead of `[<size>]byte`. The byte method no longer returns the marshaled value but just the `[]byte` form of the data. (@marbar3778)
+  - [crypto] [\#4988](https://github.com/tendermint/tendermint/pull/4988) Removal of key type multisig (@marbar3778)
+    - The key has been moved to the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go)
+  - [crypto] [\#4989](https://github.com/tendermint/tendermint/pull/4989) Remove `Simple` prefixes from `SimpleProof`, `SimpleValueOp` & `SimpleProofNode`. (@marbar3778)
+    - `merkle.Proof` has been renamed to `ProofOps`.
+    - Protobuf messages `Proof` & `ProofOp` has been moved to `proto/crypto/merkle`
+    - `SimpleHashFromByteSlices` has been renamed to `HashFromByteSlices`
+    - `SimpleHashFromByteSlicesIterative` has been renamed to `HashFromByteSlicesIterative`
+    - `SimpleProofsFromByteSlices` has been renamed to `ProofsFromByteSlices`
+  - [crypto] [\#4941](https://github.com/tendermint/tendermint/pull/4941) Remove suffixes from all keys. (@marbar3778)
+    - ed25519: type `PrivKeyEd25519` is now `PrivKey`
+    - ed25519: type `PubKeyEd25519` is now `PubKey`
+    - secp256k1: type`PrivKeySecp256k1` is now `PrivKey`
+    - secp256k1: type`PubKeySecp256k1` is now `PubKey`
+    - sr25519: type `PrivKeySr25519` is now `PrivKey`
+    - sr25519: type `PubKeySr25519` is now `PubKey`
+  - [crypto] [\#5214](https://github.com/tendermint/tendermint/pull/5214) Change `GenPrivKeySecp256k1` to `GenPrivKeyFromSecret` to be consistent with other keys (@marbar3778)
+  - [crypto] [\#5236](https://github.com/tendermint/tendermint/pull/5236) `VerifyBytes` is now `VerifySignature` on the `crypto.PubKey` interface (@marbar3778)
+  - [evidence] [\#5361](https://github.com/tendermint/tendermint/pull/5361) Add LightClientAttackEvidence and change evidence interface (@cmwaters)
+  - [libs] [\#4831](https://github.com/tendermint/tendermint/pull/4831) Remove `Bech32` pkg from Tendermint. This pkg now lives in the [cosmos-sdk](https://github.com/cosmos/cosmos-sdk/tree/4173ea5ebad906dd9b45325bed69b9c655504867/types/bech32) (@marbar3778)
+  - [light] [\#4946](https://github.com/tendermint/tendermint/pull/4946) Rename `lite2` pkg to `light`. Remove `lite` implementation. (@marbar3778)
+  - [light] [\#5347](https://github.com/tendermint/tendermint/pull/5347) `NewClient`, `NewHTTPClient`, `VerifyHeader` and `VerifyLightBlockAtHeight` now accept `context.Context` as 1st param (@melekes)
+  - [merkle] [\#5193](https://github.com/tendermint/tendermint/pull/5193) `HashFromByteSlices` and `ProofsFromByteSlices` now return a hash for empty inputs, following RFC6962 (@erikgrinaker)
+  - [proto] [\#5025](https://github.com/tendermint/tendermint/pull/5025) All proto files have been moved to `/proto` directory. (@marbar3778)
+    - Using the recommended the file layout from buf, [see here for more info](https://buf.build/docs/lint-checkers#file_layout)
+  - [rpc/client] [\#4947](https://github.com/tendermint/tendermint/pull/4947) `Validators`, `TxSearch` `page`/`per_page` params become pointers (@melekes)
+    - `UnconfirmedTxs` `limit` param is a pointer
+  - [rpc/jsonrpc/server] [\#5141](https://github.com/tendermint/tendermint/pull/5141) Remove `WriteRPCResponseArrayHTTP` (use `WriteRPCResponseHTTP` instead) (@melekes)
+  - [state] [\#4679](https://github.com/tendermint/tendermint/pull/4679) `TxResult` is a Protobuf type defined in `abci` types directory (@marbar3778)
+  - [state] [\#5191](https://github.com/tendermint/tendermint/pull/5191) Add `State.InitialHeight` field to record initial block height, must be `1` (not `0`) to start from 1 (@erikgrinaker)
+  - [state] [\#5231](https://github.com/tendermint/tendermint/pull/5231) `LoadStateFromDBOrGenesisFile()` and `LoadStateFromDBOrGenesisDoc()` no longer saves the state in the database if not found, the genesis state is simply returned (@erikgrinaker)
+  - [state] [\#5348](https://github.com/tendermint/tendermint/pull/5348) Define an Interface for the state store. (@marbar3778)
+  - [types] [\#4939](https://github.com/tendermint/tendermint/pull/4939)  `SignedMsgType` has moved to a Protobuf enum types (@marbar3778)
+  - [types] [\#4962](https://github.com/tendermint/tendermint/pull/4962) `ConsensusParams`, `BlockParams`, `EvidenceParams`, `ValidatorParams` & `HashedParams` are now Protobuf types (@marbar3778)
+  - [types] [\#4852](https://github.com/tendermint/tendermint/pull/4852) Vote & Proposal `SignBytes` is now func `VoteSignBytes` & `ProposalSignBytes` (@marbar3778)
+  - [types] [\#4798](https://github.com/tendermint/tendermint/pull/4798) Simplify `VerifyCommitTrusting` func + remove extra validation (@melekes)
+  - [types] [\#4845](https://github.com/tendermint/tendermint/pull/4845) Remove `ABCIResult` (@melekes)
+  - [types] [\#5029](https://github.com/tendermint/tendermint/pull/5029) Rename all values from `PartsHeader` to `PartSetHeader` to have consistency (@marbar3778) 
+  - [types] [\#4939](https://github.com/tendermint/tendermint/pull/4939) `Total` in `Parts` & `PartSetHeader` has been changed from a `int` to a `uint32` (@marbar3778)
+  - [types] [\#4939](https://github.com/tendermint/tendermint/pull/4939) Vote: `ValidatorIndex` & `Round` are now `int32` (@marbar3778)
+  - [types] [\#4939](https://github.com/tendermint/tendermint/pull/4939) Proposal: `POLRound` & `Round` are now `int32` (@marbar3778)
+  - [types] [\#4939](https://github.com/tendermint/tendermint/pull/4939) Block: `Round` is now `int32` (@marbar3778)
+
+### FEATURES
+
+- [abci] [\#5031](https://github.com/tendermint/tendermint/pull/5031) Add `AppVersion` to consensus parameters (@james-ray)
+  - This makes it possible to update your ABCI application version via `EndBlock` response
+- [abci] [\#5174](https://github.com/tendermint/tendermint/pull/5174) Remove `MockEvidence` in favor of testing with actual evidence types (`DuplicateVoteEvidence` & `LightClientAttackEvidence`) (@cmwaters)
+- [abci] [\#5191](https://github.com/tendermint/tendermint/pull/5191) Add `InitChain.InitialHeight` field giving the initial block height (@erikgrinaker)
+- [abci] [\#5227](https://github.com/tendermint/tendermint/pull/5227) Add `ResponseInitChain.app_hash` which is recorded in genesis block (@erikgrinaker)
+- [config] [\#5147](https://github.com/tendermint/tendermint/pull/5147) Add `--consensus.double_sign_check_height` flag and `DoubleSignCheckHeight` config variable. See [ADR-51](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-051-double-signing-risk-reduction.md) (@dongsam)
+- [db] [\#5233](https://github.com/tendermint/tendermint/pull/5233) Add support for `badgerdb` database backend (@erikgrinaker)
+- [evidence] [\#4532](https://github.com/tendermint/tendermint/pull/4532) Handle evidence from light clients (@melekes)
+- [evidence] [#4821](https://github.com/tendermint/tendermint/pull/4821) Amnesia (light client attack) evidence can be detected, verified and committed (@cmwaters)
+- [genesis] [\#5191](https://github.com/tendermint/tendermint/pull/5191) Add `initial_height` field to specify the initial chain height (defaults to `1`) (@erikgrinaker)
+- [libs/math] [\#5665](https://github.com/tendermint/tendermint/pull/5665) Make fractions unsigned integers (uint64) (@cmwaters)
+- [light] [\#5298](https://github.com/tendermint/tendermint/pull/5298) Morph validator set and signed header into light block (@cmwaters)
+- [p2p] [\#4981](https://github.com/tendermint/tendermint/pull/4981) Expose `SaveAs` func on NodeKey (@melekes)
+- [privval] [\#5239](https://github.com/tendermint/tendermint/pull/5239) Add `chainID` to requests from client. (@marbar3778)
+- [rpc] [\#4532](https://github.com/tendermint/tendermint/pull/4923) Support `BlockByHash` query (@fedekunze)
+- [rpc] [\#4979](https://github.com/tendermint/tendermint/pull/4979) Support EXISTS operator in `/tx_search` query (@melekes)
+- [rpc] [\#5017](https://github.com/tendermint/tendermint/pull/5017) Add `/check_tx` endpoint to check transactions without executing them or adding them to the mempool (@melekes)
+- [rpc] [\#5108](https://github.com/tendermint/tendermint/pull/5108) Subscribe using the websocket for new evidence events (@cmwaters)
+- [statesync] Add state sync support, where a new node can be rapidly bootstrapped by fetching state snapshots from peers instead of replaying blocks. See the `[statesync]` config section.
+- [evidence] [\#5361](https://github.com/tendermint/tendermint/pull/5361) Add LightClientAttackEvidence and refactor evidence lifecycle - for more information see [ADR-059](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-059-evidence-composition-and-lifecycle.md) (@cmwaters)
+
+### IMPROVEMENTS
+
+- [blockchain] [\#5278](https://github.com/tendermint/tendermint/pull/5278) Verify only +2/3 of the signatures in a block when fast syncing. (@marbar3778)
+- [consensus] [\#4578](https://github.com/tendermint/tendermint/pull/4578) Attempt to repair the consensus WAL file (`data/cs.wal/wal`) automatically in case of corruption (@alessio)
+  - The original WAL file will be backed up to `data/cs.wal/wal.CORRUPTED`.
+- [consensus] [\#5143](https://github.com/tendermint/tendermint/pull/5143) Only call `privValidator.GetPubKey` once per block (@melekes)
+- [evidence] [\#4722](https://github.com/tendermint/tendermint/pull/4722) Consolidate evidence store and pool types to improve evidence DB (@cmwaters)
+- [evidence] [\#4839](https://github.com/tendermint/tendermint/pull/4839) Reject duplicate evidence from being proposed (@cmwaters)
+- [evidence] [\#5219](https://github.com/tendermint/tendermint/pull/5219) Change the source of evidence time to block time (@cmwaters)
+- [libs] [\#5126](https://github.com/tendermint/tendermint/pull/5126) Add a sync package which wraps sync.(RW)Mutex & deadlock.(RW)Mutex and use a build flag (deadlock) in order to enable deadlock checking (@marbar3778) 
+- [light] [\#4935](https://github.com/tendermint/tendermint/pull/4935) Fetch and compare a new header with witnesses in parallel (@melekes)
+- [light] [\#4929](https://github.com/tendermint/tendermint/pull/4929) Compare header with witnesses only when doing bisection (@melekes)
+- [light] [\#4916](https://github.com/tendermint/tendermint/pull/4916) Validate basic for inbound validator sets and headers before further processing them (@cmwaters)
+- [mempool] Add RemoveTxByKey() exported function for custom mempool cleaning (@p4u)
+- [p2p/conn] [\#4795](https://github.com/tendermint/tendermint/pull/4795) Return err on `signChallenge()` instead of panic
+- [privval] [\#5437](https://github.com/tendermint/tendermint/pull/5437) `NewSignerDialerEndpoint` can now be given `SignerServiceEndpointOption` (@erikgrinaker)
+- [rpc] [\#4968](https://github.com/tendermint/tendermint/pull/4968) JSON encoding is now handled by `libs/json`, not Amino (@erikgrinaker)
+- [rpc] [\#5293](https://github.com/tendermint/tendermint/pull/5293) `/dial_peers` has added `private` and `unconditional` as parameters. (@marbar3778)
+- [state] [\#4781](https://github.com/tendermint/tendermint/pull/4781) Export `InitStateVersion` for the initial state version (@erikgrinaker)
+- [txindex] [\#4466](https://github.com/tendermint/tendermint/pull/4466) Allow to index an event at runtime (@favadi)
+  - `abci.EventAttribute` replaces `KV.Pair`
+- [types] [\#4905](https://github.com/tendermint/tendermint/pull/4905) Add `ValidateBasic` to validator and validator set (@cmwaters)
+- [types] [\#5340](https://github.com/tendermint/tendermint/pull/5340) Add check in `Header.ValidateBasic()` for block protocol version (@marbar3778)
+- [types] [\#5490](https://github.com/tendermint/tendermint/pull/5490) Use `Commit` and `CommitSig` max sizes instead of vote max size to calculate the maximum block size. (@cmwaters)
+
+
+### BUG FIXES
+
+- [abci/grpc] [\#5520](https://github.com/tendermint/tendermint/pull/5520) Return async responses in order, to avoid mempool panics. (@erikgrinaker)
+- [blockchain/v2] [\#4971](https://github.com/tendermint/tendermint/pull/4971) Correctly set block store base in status responses (@erikgrinaker)
+- [blockchain/v2] [\#5499](https://github.com/tendermint/tendermint/pull/5499) Fix "duplicate block enqueued by processor" panic (@melekes)
+- [blockchain/v2] [\#5530](https://github.com/tendermint/tendermint/pull/5530) Fix out of order block processing panic (@melekes)
+- [blockchain/v2] [\#5553](https://github.com/tendermint/tendermint/pull/5553) Make the removal of an already removed peer a noop (@melekes)
+- [consensus] [\#4895](https://github.com/tendermint/tendermint/pull/4895) Cache the address of the validator to reduce querying a remote KMS (@joe-bowman)
+- [consensus] [\#4970](https://github.com/tendermint/tendermint/pull/4970) Don't allow `LastCommitRound` to be negative (@cuonglm)
+- [consensus] [\#5329](https://github.com/tendermint/tendermint/pull/5329) Fix wrong proposer schedule for validators returned by `InitChain` (@erikgrinaker)
+- [docker] [\#5385](https://github.com/tendermint/tendermint/pull/5385) Fix incorrect `time_iota_ms` default setting causing block timestamp drift (@erikgrinaker)
+- [evidence] [\#5170](https://github.com/tendermint/tendermint/pull/5170) Change ABCI evidence time to the time the infraction happened not the time the evidence was committed on the block (@cmwaters)
+- [evidence] [\#5610](https://github.com/tendermint/tendermint/pull/5610) Make it possible for ABCI evidence to be formed from Tendermint evidence (@cmwaters)
+- [libs/rand] [\#5215](https://github.com/tendermint/tendermint/pull/5215) Fix out-of-memory error on unexpected argument of Str() (@SadPencil)
+- [light] [\#5307](https://github.com/tendermint/tendermint/pull/5307) Persist correct proposer priority in light client validator sets (@cmwaters)
+- [p2p] [\#5136](https://github.com/tendermint/tendermint/pull/5136) Fix error for peer with the same ID but different IPs (@valardragon)
+- [privval] [\#5638](https://github.com/tendermint/tendermint/pull/5638) Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
+- [proxy] [\#5078](https://github.com/tendermint/tendermint/pull/5078) Force Tendermint to exit when ABCI app crashes  (@melekes)
+- [rpc] [\#5660](https://github.com/tendermint/tendermint/pull/5660) Set `application/json` as the `Content-Type` header in RPC responses. (@alexanderbez)
+- [store] [\#5382](https://github.com/tendermint/tendermint/pull/5382) Fix race conditions when loading/saving/pruning blocks (@erikgrinaker)
+
+## v0.33.8
+
+*August 11, 2020*
+
+### Go security update
+
+Go reported a security vulnerability that affected the `encoding/binary` package. The most recent binary for tendermint is using 1.14.6, for this
+reason the Tendermint engineering team has opted to conduct a release to aid users in using the correct version of Go. Read more about the security issue [here](https://github.com/golang/go/issues/40618).
+
+
+## v0.33.7
+
+ *August 4, 2020*
+
+ ### BUG FIXES:
+
+ - [go] Build release binary using Go 1.14.4, to avoid halt caused by Go 1.14.1 (https://github.com/golang/go/issues/38223)
+ - [privval] [\#5140](https://github.com/tendermint/tendermint/pull/5140) `RemoteSignerError` from remote signers are no longer retried (@melekes)
+
+
+## v0.33.6
+
+*July 2, 2020*
+
+This security release fixes:
+
+### Denial of service
+
+Tendermint 0.33.0 and above allow block proposers to include signatures for the
+wrong block. This may happen naturally if you start a network, have it run for
+some time and restart it **without changing the chainID**. (It is a
+[misconfiguration](https://docs.tendermint.com/master/tendermint-core/using-tendermint.html)
+to reuse chainIDs.) Correct block proposers will accidentally include signatures
+for the wrong block if they see these signatures, and then commits won't validate,
+making all proposed blocks invalid. A malicious validator (even with a minimal
+amount of stake) can use this vulnerability to completely halt the network.
+
+Tendermint 0.33.6 checks all the signatures are for the block with +2/3
+majority before creating a commit.
+
+### False Witness
+
+Tendermint 0.33.1 and above are no longer fully verifying commit signatures
+during block execution - they stop after +2/3. This means proposers can propose
+blocks that contain valid +2/3 signatures and then the rest of the signatures
+can be whatever they want. They can claim that all the other validators signed
+just by including a CommitSig with arbitrary signature data. While this doesn't
+seem to impact safety of Tendermint per se, it means that Commits may contain a
+lot of invalid data.
+
+_This was already true of blocks, since they could include invalid txs filled
+with garbage, but in that case the application knew that they are invalid and
+could punish the proposer. But since applications didn't--and don't--
+verify commit signatures directly (they trust Tendermint to do that),
+they won't be able to detect it._
+
+This can impact incentivization logic in the application that depends on the
+LastCommitInfo sent in BeginBlock, which includes which validators signed. For
+instance, Gaia incentivizes proposers with a bonus for including more than +2/3
+of the signatures. But a proposer can now claim that bonus just by including
+arbitrary data for the final -1/3 of validators without actually waiting for
+their signatures. There may be other tricks that can be played because of this.
+
+Tendermint 0.33.6 verifies all the signatures during block execution.
+
+_Please note that the light client does not check nil votes and exits as soon
+as 2/3+ of the signatures are checked._
+
+**All clients are recommended to upgrade.**
+
+Special thanks to @njmurarka at Bluzelle Networks for reporting this.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### SECURITY:
+
+- [consensus] Do not allow signatures for a wrong block in commits (@ebuchman)
+- [consensus] Verify all the signatures during block execution (@melekes)
+
+**Please note that the fix for the False Witness issue renames the `VerifyCommitTrusting`
+function to `VerifyCommitLightTrusting`. If you were relying on the light client, you may
+need to update your code.**
+
+## v0.33.5
+
+*May 28, 2020*
+
+Special thanks to external contributors on this release: @tau3,
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+- Go API
+
+  - [privval] [\#4744](https://github.com/tendermint/tendermint/pull/4744) Remove deprecated `OldFilePV` (@melekes)
+  - [mempool] [\#4759](https://github.com/tendermint/tendermint/pull/4759) Modify `Mempool#InitWAL` to return an error (@melekes)
+  - [node] [\#4832](https://github.com/tendermint/tendermint/pull/4832) `ConfigureRPC` returns an error (@melekes)
+  - [rpc] [\#4836](https://github.com/tendermint/tendermint/pull/4836) Overhaul `lib` folder (@melekes)
+    Move lib/ folder to jsonrpc/.
+    Rename:
+      rpc package -> jsonrpc package
+      rpcclient package -> client package
+      rpcserver package -> server package
+      JSONRPCClient to Client
+      JSONRPCRequestBatch to RequestBatch
+      JSONRPCCaller to Caller
+      StartHTTPServer to Serve
+      StartHTTPAndTLSServer to ServeTLS
+      NewURIClient to NewURI
+      NewJSONRPCClient to New
+      NewJSONRPCClientWithHTTPClient to NewWithHTTPClient
+      NewWSClient to NewWS
+    Unexpose ResponseWriterWrapper
+    Remove unused http_params.go
+
+
+### FEATURES:
+
+- [pex] [\#4439](https://github.com/tendermint/tendermint/pull/4439) Use highwayhash for pex buckets (@tau3)
+
+### IMPROVEMENTS:
+
+- [abci/server] [\#4719](https://github.com/tendermint/tendermint/pull/4719) Print panic & stack trace to STDERR if logger is not set (@melekes)
+- [types] [\#4638](https://github.com/tendermint/tendermint/pull/4638) Implement `Header#ValidateBasic` (@alexanderbez)
+- [buildsystem] [\#4378](https://github.com/tendermint/tendermint/pull/4738) Replace build_c and install_c with TENDERMINT_BUILD_OPTIONS parsing. The following options are available:
+  - nostrip: don't strip debugging symbols nor DWARF tables.
+  - cleveldb: use cleveldb as db backend instead of goleveldb.
+  - race: pass -race to go build and enable data race detection.
+- [mempool] [\#4759](https://github.com/tendermint/tendermint/pull/4759) Allow ReapX and CheckTx functions to run in parallel (@melekes)
+- [rpc/core] [\#4844](https://github.com/tendermint/tendermint/pull/4844) Do not lock consensus state in `/validators`, `/consensus_params` and `/status` (@melekes)
+
+### BUG FIXES:
+
+- [blockchain/v2] [\#4761](https://github.com/tendermint/tendermint/pull/4761) Fix excessive CPU usage caused by spinning on closed channels (@erikgrinaker)
+- [blockchain/v2] Respect `fast_sync` option (@erikgrinaker)
+- [light] [\#4741](https://github.com/tendermint/tendermint/pull/4741) Correctly return  `ErrSignedHeaderNotFound` and `ErrValidatorSetNotFound` on corresponding RPC errors (@erikgrinaker)
+- [rpc] [\#4805](https://github.com/tendermint/tendermint/issues/4805) Attempt to handle panics during panic recovery (@erikgrinaker)
+- [types] [\#4764](https://github.com/tendermint/tendermint/pull/4764) Return an error if voting power overflows in `VerifyCommitTrusting` (@melekes)
+- [privval] [\#4812](https://github.com/tendermint/tendermint/pull/4812) Retry `GetPubKey/SignVote/SignProposal` a few times before returning an error (@melekes)
+- [p2p] [\#4847](https://github.com/tendermint/tendermint/pull/4847) Return masked IP (not the actual IP) in addrbook#groupKey (@melekes)
+
+## v0.33.4
+
+- Nodes are no longer guaranteed to contain all blocks up to the latest height. The ABCI app can now control which blocks to retain through the ABCI field `ResponseCommit.retain_height`, all blocks and associated data below this height will be removed.
+
+*April 21, 2020*
+
+Special thanks to external contributors on this release: @whylee259, @greg-szabo
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+- Go API
+
+  - [lite2] [\#4616](https://github.com/tendermint/tendermint/pull/4616) Make `maxClockDrift` an option `Verify/VerifyAdjacent/VerifyNonAdjacent` now accept `maxClockDrift time.Duration` (@melekes).
+  - [rpc/client] [\#4628](https://github.com/tendermint/tendermint/pull/4628) Split out HTTP and local clients into `http` and `local` packages (@erikgrinaker).
+
+### FEATURES:
+
+- [abci] [\#4588](https://github.com/tendermint/tendermint/issues/4588) Add `ResponseCommit.retain_height` field, which will automatically remove blocks below this height. This bumps the ABCI version to 0.16.2 (@erikgrinaker).
+- [cmd] [\#4665](https://github.com/tendermint/tendermint/pull/4665) New `tendermint completion` command to generate Bash/Zsh completion scripts (@alessio).
+- [rpc] [\#4588](https://github.com/tendermint/tendermint/issues/4588) Add `/status` response fields for the earliest block available on the node (@erikgrinaker).
+- [rpc] [\#4611](https://github.com/tendermint/tendermint/pull/4611) Add `codespace` to `ResultBroadcastTx` (@whylee259).
+
+### IMPROVEMENTS:
+
+- [all] [\#4608](https://github.com/tendermint/tendermint/pull/4608) Give reactors descriptive names when they're initialized (@tessr).
+- [blockchain] [\#4588](https://github.com/tendermint/tendermint/issues/4588) Add `Base` to blockchain reactor P2P messages `StatusRequest` and `StatusResponse` (@erikgrinaker).
+- [Docker] [\#4569](https://github.com/tendermint/tendermint/issues/4569) Default configuration added to docker image (you can still mount your own config the same way) (@greg-szabo).
+- [example/kvstore] [\#4588](https://github.com/tendermint/tendermint/issues/4588) Add `RetainBlocks` option to control block retention (@erikgrinaker).
+- [evidence] [\#4632](https://github.com/tendermint/tendermint/pull/4632) Inbound evidence checked if already existing (@cmwaters).
+- [lite2] [\#4575](https://github.com/tendermint/tendermint/pull/4575) Use bisection for within-range verification (@cmwaters).
+- [lite2] [\#4562](https://github.com/tendermint/tendermint/pull/4562) Cache headers when using bisection (@cmwaters).
+- [p2p] [\#4548](https://github.com/tendermint/tendermint/pull/4548) Add ban list to address book (@cmwaters).
+- [privval] [\#4534](https://github.com/tendermint/tendermint/issues/4534) Add `error` as a return value on`GetPubKey()` (@marbar3778).
+- [p2p] [\#4621](https://github.com/tendermint/tendermint/issues/4621) Ban peers when messages are unsolicited or too frequent (@cmwaters).
+- [rpc] [\#4703](https://github.com/tendermint/tendermint/pull/4703) Add `count` and `total` to `/validators` response (@melekes).
+- [tools] [\#4615](https://github.com/tendermint/tendermint/issues/4615) Allow developers to use Docker to generate proto stubs, via `make proto-gen-docker` (@erikgrinaker).
+
+### BUG FIXES:
+
+- [rpc] [\#4568](https://github.com/tendermint/tendermint/issues/4568) Fix panic when `Subscribe` is called, but HTTP client is not running. `Subscribe`, `Unsubscribe(All)` methods return an error now (@melekes).
+
+## v0.33.3
+
+*April 6, 2020*
+
+This security release fixes:
+
+### Denial of service 1
+
+Tendermint 0.33.2 and earlier does not limit P2P connection requests number.
+For each p2p connection, Tendermint allocates ~0.5MB. Even though this
+memory is garbage collected once the connection is terminated (due to duplicate
+IP or reaching a maximum number of inbound peers), temporary memory spikes can
+lead to OOM (Out-Of-Memory) exceptions.
+
+Tendermint 0.33.3 (and 0.32.10) limits the total number of P2P incoming
+connection requests to to `p2p.max_num_inbound_peers +
+len(p2p.unconditional_peer_ids)`.
+
+Notes:
+
+- Tendermint does not rate limit P2P connection requests per IP (an attacker
+  can saturate all the inbound slots);
+- Tendermint does not rate limit HTTP(S) requests. If you expose any RPC
+  endpoints to the public, please make sure to put in place some protection
+  (https://www.nginx.com/blog/rate-limiting-nginx/). We may implement this in
+  the future ([\#1696](https://github.com/tendermint/tendermint/issues/1696)).
+
+### Denial of service 2
+
+Tendermint 0.33.2 and earlier does not reclaim `activeID` of a peer after it's
+removed in `Mempool` reactor. This does not happen all the time. It only
+happens when a connection fails (for any reason) before the Peer is created and
+added to all reactors. `RemovePeer` is therefore called before `AddPeer`, which
+leads to always growing memory (`activeIDs` map). The `activeIDs` map has a
+maximum size of 65535 and the node will panic if this map reaches the maximum.
+An attacker can create a lot of connection attempts (exploiting Denial of
+service 1), which ultimately will lead to the node panicking.
+
+Tendermint 0.33.3 (and 0.32.10) claims `activeID` for a peer in `InitPeer`,
+which is executed before `MConnection` is started.
+
+Notes:
+
+- `InitPeer` function was added to all reactors to combat a similar issue -
+  [\#3338](https://github.com/tendermint/tendermint/issues/3338);
+- Denial of service 2 is independent of Denial of service 1 and can be executed
+  without it.
+
+**All clients are recommended to upgrade**
+
+Special thanks to [fudongbai](https://hackerone.com/fudongbai) for finding
+and reporting this.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### SECURITY:
+
+- [mempool] Reserve IDs in InitPeer instead of AddPeer (@tessr)
+- [p2p] Limit the number of incoming connections (@melekes)
+
+## v0.33.2
+
+*March 11, 2020*
+
+Special thanks to external contributors on this release:
+@antho1404, @michaelfig, @gterzian, @tau3, @Shivani912
+
+Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES:
+
+- CLI/RPC/Config
+  - [cli] [\#4505](https://github.com/tendermint/tendermint/pull/4505) `tendermint lite` sub-command new syntax (@melekes):
+    `lite cosmoshub-3 -p 52.57.29.196:26657 -w public-seed-node.cosmoshub.certus.one:26657
+    --height 962118 --hash 28B97BE9F6DE51AC69F70E0B7BFD7E5C9CD1A595B7DC31AFF27C50D4948`
+
+- Go API
+  - [lite2] [\#4535](https://github.com/tendermint/tendermint/pull/4535) Remove `Start/Stop` (@melekes)
+  - [lite2] [\#4469](https://github.com/tendermint/tendermint/issues/4469) Remove `RemoveNoLongerTrustedHeaders` and `RemoveNoLongerTrustedHeadersPeriod` option (@cmwaters)
+  - [lite2] [\#4473](https://github.com/tendermint/tendermint/issues/4473) Return height as a 2nd param in `TrustedValidatorSet` (@melekes)
+  - [lite2] [\#4536](https://github.com/tendermint/tendermint/pull/4536) `Update` returns a signed header (1st param) (@melekes)
+
+
+### IMPROVEMENTS:
+
+- [blockchain/v2] [\#4361](https://github.com/tendermint/tendermint/pull/4361) Add reactor (@brapse)
+- [cmd] [\#4515](https://github.com/tendermint/tendermint/issues/4515) Change `tendermint debug dump` sub-command archives filename's format (@melekes)
+- [consensus] [\#3583](https://github.com/tendermint/tendermint/issues/3583) Reduce `non-deterministic signature` log noise (@tau3)
+- [examples/kvstore] [\#4507](https://github.com/tendermint/tendermint/issues/4507) ABCI query now returns the proper height (@erikgrinaker)
+- [lite2] [\#4462](https://github.com/tendermint/tendermint/issues/4462) Add `NewHTTPClient` and `NewHTTPClientFromTrustedStore` (@cmwaters)
+- [lite2] [\#4329](https://github.com/tendermint/tendermint/issues/4329) modified bisection to loop (@cmwaters)
+- [lite2] [\#4385](https://github.com/tendermint/tendermint/issues/4385) Disconnect from bad nodes (@melekes)
+- [lite2] [\#4398](https://github.com/tendermint/tendermint/issues/4398) Add `VerifyAdjacent` and `VerifyNonAdjacent` funcs (@cmwaters)
+- [lite2] [\#4426](https://github.com/tendermint/tendermint/issues/4426) Don't save intermediate headers (@cmwaters)
+- [lite2] [\#4464](https://github.com/tendermint/tendermint/issues/4464) Cross-check first header (@cmwaters)
+- [lite2] [\#4470](https://github.com/tendermint/tendermint/issues/4470) Fix inconsistent header-validatorset pairing (@melekes)
+- [lite2] [\#4488](https://github.com/tendermint/tendermint/issues/4488) Allow local clock drift -10 sec. (@melekes)
+- [p2p] [\#4449](https://github.com/tendermint/tendermint/pull/4449) Use `curve25519.X25519()` instead of `ScalarMult` (@erikgrinaker)
+- [types] [\#4417](https://github.com/tendermint/tendermint/issues/4417) **VerifyCommitX() functions should return as soon as +2/3 threshold is reached** (@alessio).
+- [libs/kv] [\#4542](https://github.com/tendermint/tendermint/pull/4542) remove unused type KI64Pair (@tessr)
+
+### BUG FIXES:
+
+- [cmd] [\#4303](https://github.com/tendermint/tendermint/issues/4303) Show useful error when Tendermint is not initialized (@melekes)
+- [cmd] [\#4515](https://github.com/tendermint/tendermint/issues/4515) **Fix `tendermint debug kill` sub-command** (@melekes)
+- [rpc] [\#3935](https://github.com/tendermint/tendermint/issues/3935) **Create buffered subscriptions on `/subscribe`** (@melekes)
+- [rpc] [\#4375](https://github.com/tendermint/tendermint/issues/4375) Stop searching for txs in `/tx_search` upon client timeout (@gterzian)
+- [rpc] [\#4406](https://github.com/tendermint/tendermint/pull/4406) Fix issue with multiple subscriptions on the websocket (@antho1404)
+- [rpc] [\#4432](https://github.com/tendermint/tendermint/issues/4432) Fix `/tx_search` pagination with ordered results (@erikgrinaker)
+- [rpc] [\#4492](https://github.com/tendermint/tendermint/issues/4492) Keep the original subscription "id" field when new RPCs come in (@michaelfig)
+
+
+## v0.33.1
+
+*Feburary 13, 2020*
+
+Special thanks to external contributors on this release:
+@princesinha19
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### FEATURES:
+
+- [rpc] [\#3333](https://github.com/tendermint/tendermint/issues/3333) Add `order_by` to `/tx_search` endpoint, allowing to change default ordering from asc to desc (@princesinha19)
+
+### IMPROVEMENTS:
+
+- [proto] [\#4369](https://github.com/tendermint/tendermint/issues/4369) Add [buf](https://buf.build/) for usage with linting and checking if there are breaking changes with the master branch.
+- [proto] [\#4369](https://github.com/tendermint/tendermint/issues/4369) Add `make proto-gen` cmd to generate proto stubs outside of GOPATH.
+
+### BUG FIXES:
+
+- [node] [\#4311](https://github.com/tendermint/tendermint/issues/4311) Use `GRPCMaxOpenConnections` when creating the gRPC server, not `MaxOpenConnections`
+- [rpc] [\#4319](https://github.com/tendermint/tendermint/issues/4319) Check `BlockMeta` is not nil in `/block` & `/block_by_hash`
+
+## v0.33
+
+Special thanks to external contributors on this release: @mrekucci, @PSalant726, @princesinha19, @greg-szabo, @dongsam, @cuonglm, @jgimeno, @yenkhoon
+
+Friendly reminder, we have a [bug bounty
+program.](https://hackerone.com/tendermint).
+
+*January 14, 2020*
+
+This release contains breaking changes to the `Block#Header`, specifically
+`NumTxs` and `TotalTxs` were removed (\#2521). Here's how this change affects
+different modules:
+
+- apps: it breaks the ABCI header field numbering
+- state: it breaks the format of `State` on disk
+- RPC: all RPC requests which expose the header broke
+- Go API: the `Header` broke
+- P2P: since blocks go over the wire, technically the P2P protocol broke
+
+Also, blocks are significantly smaller 🔥 because we got rid of the redundant
+information in `Block#LastCommit`. `Commit` now mainly consists of a signature
+and a validator address plus a timestamp. Note we may remove the validator
+address & timestamp fields in the future (see ADR-25).
+
+`lite2` package has been added to solve `lite` issues and introduce weak
+subjectivity interface. Refer to the [spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md) for complete details.
+`lite` package is now deprecated and will be removed in v0.34 release.
+
+### BREAKING CHANGES:
+
+- CLI/RPC/Config
+
+  - [rpc] [\#3471](https://github.com/tendermint/tendermint/issues/3471) Paginate `/validators` response (default: 30 vals per page)
+  - [rpc] [\#3188](https://github.com/tendermint/tendermint/issues/3188) Remove `BlockMeta` in `ResultBlock` in favor of `BlockId` for `/block`
+  - [rpc] `/block_results` response format updated (see RPC docs for details)
+    ```
+    {
+      "jsonrpc": "2.0",
+      "id": "",
+      "result": {
+        "height": "2109",
+        "txs_results": null,
+        "begin_block_events": null,
+        "end_block_events": null,
+        "validator_updates": null,
+        "consensus_param_updates": null
+      }
+    }
+    ```
+  - [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) Remove `#event` suffix from the ID in event responses.
+    `{"jsonrpc": "2.0", "id": 0, "result": ...}`
+  - [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) Switch to integer IDs instead of `json-client-XYZ`
+    ```
+    id=0 method=/subscribe
+    id=0 result=...
+    id=1 method=/abci_query
+    id=1 result=...
+    ```
+    - ID is unique for each request;
+    - Request.ID is now optional. Notification is a Request without an ID. Previously ID="" or ID=0 were considered as notifications.
+
+  - [config] [\#4046](https://github.com/tendermint/tendermint/issues/4046) Rename tag(s) to CompositeKey & places where tag is still present it was renamed to event or events. Find how a compositeKey is constructed [here](https://github.com/tendermint/tendermint/blob/6d05c531f7efef6f0619155cf10ae8557dd7832f/docs/app-dev/indexing-transactions.md)
+    - You will have to generate a new config for your Tendermint node(s)
+  - [genesis] [\#2565](https://github.com/tendermint/tendermint/issues/2565) Add `consensus_params.evidence.max_age_duration`. Rename
+    `consensus_params.evidence.max_age` to `max_age_num_blocks`.
+  - [cli] [\#1771](https://github.com/tendermint/tendermint/issues/1771) `tendermint lite` now uses new light client package (`lite2`)
+    and has 3 more flags: `--trusting-period`, `--trusted-height` and
+    `--trusted-hash`
+
+- Apps
+
+  - [tm-bench] Removed tm-bench in favor of [tm-load-test](https://github.com/informalsystems/tm-load-test)
+
+- Go API
+
+  - [rpc] [\#3953](https://github.com/tendermint/tendermint/issues/3953) Modify NewHTTP, NewXXXClient functions to return an error on invalid remote instead of panicking (@mrekucci)
+  - [rpc/client] [\#3471](https://github.com/tendermint/tendermint/issues/3471) `Validators` now requires two more args: `page` and `perPage`
+  - [libs/common] [\#3262](https://github.com/tendermint/tendermint/issues/3262) Make error the last parameter of `Task` (@PSalant726)
+  - [cs/types] [\#3262](https://github.com/tendermint/tendermint/issues/3262) Rename `GotVoteFromUnwantedRoundError` to `ErrGotVoteFromUnwantedRound` (@PSalant726)
+  - [libs/common] [\#3862](https://github.com/tendermint/tendermint/issues/3862) Remove `errors.go` from `libs/common`
+  - [libs/common] [\#4230](https://github.com/tendermint/tendermint/issues/4230) Move `KV` out of common to its own pkg
+  - [libs/common] [\#4230](https://github.com/tendermint/tendermint/issues/4230) Rename `cmn.KVPair(s)` to `kv.Pair(s)`s
+  - [libs/common] [\#4232](https://github.com/tendermint/tendermint/issues/4232) Move `Service` & `BaseService` from `libs/common` to `libs/service`
+  - [libs/common] [\#4232](https://github.com/tendermint/tendermint/issues/4232) Move `common/nil.go` to `types/utils.go` & make the functions private
+  - [libs/common] [\#4231](https://github.com/tendermint/tendermint/issues/4231) Move random functions from `libs/common` into pkg `rand`
+  - [libs/common] [\#4237](https://github.com/tendermint/tendermint/issues/4237) Move byte functions from `libs/common` into pkg `bytes`
+  - [libs/common] [\#4237](https://github.com/tendermint/tendermint/issues/4237) Move throttletimer functions from `libs/common` into pkg `timer`
+  - [libs/common] [\#4237](https://github.com/tendermint/tendermint/issues/4237) Move tempfile functions from `libs/common` into pkg `tempfile`
+  - [libs/common] [\#4240](https://github.com/tendermint/tendermint/issues/4240) Move os functions from `libs/common` into pkg `os`
+  - [libs/common] [\#4240](https://github.com/tendermint/tendermint/issues/4240) Move net functions from `libs/common` into pkg `net`
+  - [libs/common] [\#4240](https://github.com/tendermint/tendermint/issues/4240) Move mathematical functions and types out of `libs/common` to `math` pkg
+  - [libs/common] [\#4240](https://github.com/tendermint/tendermint/issues/4240) Move string functions out of `libs/common` to `strings` pkg
+  - [libs/common] [\#4240](https://github.com/tendermint/tendermint/issues/4240) Move async functions out of `libs/common` to `async` pkg
+  - [libs/common] [\#4240](https://github.com/tendermint/tendermint/issues/4240) Move bit functions out of `libs/common` to `bits` pkg
+  - [libs/common] [\#4240](https://github.com/tendermint/tendermint/issues/4240) Move cmap functions out of `libs/common` to `cmap` pkg
+  - [libs/common] [\#4258](https://github.com/tendermint/tendermint/issues/4258) Remove `Rand` from all `rand` pkg functions
+  - [types] [\#2565](https://github.com/tendermint/tendermint/issues/2565) Remove `MockBadEvidence` & `MockGoodEvidence` in favor of `MockEvidence`
+
+- Blockchain Protocol
+
+  - [abci] [\#2521](https://github.com/tendermint/tendermint/issues/2521) Remove `TotalTxs` and `NumTxs` from `Header`
+  - [types] [\#4151](https://github.com/tendermint/tendermint/pull/4151) Enforce ordering of votes in DuplicateVoteEvidence to be lexicographically sorted on BlockID
+  - [types] [\#1648](https://github.com/tendermint/tendermint/issues/1648) Change `Commit` to consist of just signatures
+
+- P2P Protocol
+
+  - [p2p] [\#3668](https://github.com/tendermint/tendermint/pull/3668) Make `SecretConnection` non-malleable
+
+- [proto] [\#3986](https://github.com/tendermint/tendermint/pull/3986) Prefix protobuf types to avoid name conflicts.
+  - ABCI becomes `tendermint.abci.types` with the new API endpoint `/tendermint.abci.types.ABCIApplication/`
+  - core_grpc becomes `tendermint.rpc.grpc` with the new API endpoint `/tendermint.rpc.grpc.BroadcastAPI/`
+  - merkle becomes `tendermint.crypto.merkle`
+  - libs.common becomes `tendermint.libs.common`
+  - proto3 becomes `tendermint.types.proto3`
+
+### FEATURES:
+
+- [p2p] [\#4053](https://github.com/tendermint/tendermint/issues/4053) Add `unconditional_peer_ids` and `persistent_peers_max_dial_period` config variables (see ADR-050) (@dongsam)
+- [tools] [\#4227](https://github.com/tendermint/tendermint/pull/4227) Implement `tendermint debug kill` and
+  `tendermint debug dump` commands for Tendermint node debugging functionality. See `--help` in both
+  commands for further documentation and usage.
+- [cli] [\#4234](https://github.com/tendermint/tendermint/issues/4234) Add `--db_backend and --db_dir` flags (@princesinha19)
+- [cli] [\#4113](https://github.com/tendermint/tendermint/issues/4113) Add optional `--genesis_hash` flag to check genesis hash upon startup
+- [config] [\#3831](https://github.com/tendermint/tendermint/issues/3831) Add support for [RocksDB](https://rocksdb.org/) (@Stumble)
+- [rpc] [\#3985](https://github.com/tendermint/tendermint/issues/3985) Add new `/block_by_hash` endpoint, which allows to fetch a block by its hash (@princesinha19)
+- [metrics] [\#4263](https://github.com/tendermint/tendermint/issues/4263) Add
+  - `consensus_validator_power`: track your validators power
+  - `consensus_validator_last_signed_height`: track at which height the validator last signed
+  - `consensus_validator_missed_blocks`: total amount of missed blocks for a validator
+  as gauges in prometheus for validator specific metrics
+- [rpc/lib] [\#4248](https://github.com/tendermint/tendermint/issues/4248) RPC client basic authentication support (@greg-szabo)
+- [lite2] [\#1771](https://github.com/tendermint/tendermint/issues/1771) Light client with weak subjectivity
+
+### IMPROVEMENTS:
+
+- [rpc] [\#3188](https://github.com/tendermint/tendermint/issues/3188) Added `block_size` to `BlockMeta` this is reflected in `/blockchain`
+- [types] [\#2521](https://github.com/tendermint/tendermint/issues/2521) Add `NumTxs` to `BlockMeta` and `EventDataNewBlockHeader`
+- [p2p] [\#4185](https://github.com/tendermint/tendermint/pull/4185) Simplify `SecretConnection` handshake with merlin
+- [cli] [\#4065](https://github.com/tendermint/tendermint/issues/4065) Add `--consensus.create_empty_blocks_interval` flag (@jgimeno)
+- [docs] [\#4065](https://github.com/tendermint/tendermint/issues/4065) Document `--consensus.create_empty_blocks_interval` flag (@jgimeno)
+- [crypto] [\#4190](https://github.com/tendermint/tendermint/pull/4190) Added SR25519 signature scheme
+- [abci] [\#4177] kvstore: Return `LastBlockHeight` and `LastBlockAppHash` in `Info` (@princesinha19)
+- [rpc] [\#2741](https://github.com/tendermint/tendermint/issues/2741) Add `proposer` to `/consensus_state` response (@princesinha19)
+- [deps] [\#4289](https://github.com/tendermint/tendermint/pull/4289) Update tm-db to 0.4.0, this includes major breaking changes in the dep that change how errors are handled.
+
+### BUG FIXES:
+
+- [rpc/lib][\#4051](https://github.com/tendermint/tendermint/pull/4131) Fix RPC client, which was previously resolving https protocol to http (@yenkhoon)
+- [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) JSONRPCClient: validate that Response.ID matches Request.ID
+- [rpc] [\#4141](https://github.com/tendermint/tendermint/pull/4141) WSClient: check for unsolicited responses
+- [types] [\4164](https://github.com/tendermint/tendermint/pull/4164) Prevent temporary power overflows on validator updates
+- [cs] [\#4069](https://github.com/tendermint/tendermint/issues/4069) Don't panic when block meta is not found in store (@gregzaitsev)
+- [types] [\#4164](https://github.com/tendermint/tendermint/issues/4164) Prevent temporary power overflows on validator updates (joint
+  efforts of @gchaincl and @ancazamfir)
+- [p2p] [\#4140](https://github.com/tendermint/tendermint/issues/4140) `SecretConnection`: use the transcript solely for authentication (i.e. MAC)
+- [consensus/types] [\#4243](https://github.com/tendermint/tendermint/issues/4243) fix BenchmarkRoundStateDeepCopy panics (@cuonglm)
+- [rpc] [\#4256](https://github.com/tendermint/tendermint/issues/4256) Pass `outCapacity` to `eventBus#Subscribe` when subscribing using a local client
+
+## v0.32.13
+
+*August 5, 2020*
+
+ ### BUG FIXES
+
+ - [privval] [\#5112](https://github.com/tendermint/tendermint/issues/5112) If remote signer errors, don't retry (@melekes)
+
+## v0.32.12
+
+*May 19, 2020*
+
+### BUG FIXES
+
+- [p2p] [\#4847](https://github.com/tendermint/tendermint/pull/4847) Return masked IP (not the actual IP) in addrbook#groupKey (@melekes)
+
+## v0.32.11
+
+*April 29, 2020*
+
+### BUG FIXES:
+
+- [privval] [\#4275](https://github.com/tendermint/tendermint/issues/4275) Fix consensus failure when remote signer drops (@melekes)
+
+## v0.32.10
+
+*April 6, 2020*
+
+This security release fixes:
+
+### Denial of Service 1
+
+Tendermint 0.33.2 and earlier does not limit the number of P2P connection
+requests. For each p2p connection, Tendermint allocates ~0.5MB. Even though
+this memory is garbage collected once the connection is terminated (due to
+duplicate IP or reaching a maximum number of inbound peers), temporary memory
+spikes can lead to OOM (Out-Of-Memory) exceptions.
+
+Tendermint 0.33.3 (and 0.32.10) limits the total number of P2P incoming
+connection requests to to `p2p.max_num_inbound_peers +
+len(p2p.unconditional_peer_ids)`.
+
+Notes:
+
+- Tendermint does not rate limit P2P connection requests per IP (an attacker
+  can saturate all the inbound slots);
+- Tendermint does not rate limit HTTP(S) requests. If you expose any RPC
+  endpoints to the public, please make sure to put in place some protection
+  (https://www.nginx.com/blog/rate-limiting-nginx/). We may implement this in
+  the future ([\#1696](https://github.com/tendermint/tendermint/issues/1696)).
+
+### Denial of Service 2
+
+Tendermint 0.33.2 and earlier does not reclaim `activeID` of a peer after it's
+removed in `Mempool` reactor. This does not happen all the time. It only
+happens when a connection fails (for any reason) before the Peer is created and
+added to all reactors. `RemovePeer` is therefore called before `AddPeer`, which
+leads to always growing memory (`activeIDs` map). The `activeIDs` map has a
+maximum size of 65535 and the node will panic if this map reaches the maximum.
+An attacker can create a lot of connection attempts (exploiting Denial of
+Service 1), which ultimately will lead to the node panicking.
+
+Tendermint 0.33.3 (and 0.32.10) claims `activeID` for a peer in `InitPeer`,
+which is executed before `MConnection` is started.
+
+Notes:
+
+- `InitPeer` function was added to all reactors to combat a similar issue -
+  [\#3338](https://github.com/tendermint/tendermint/issues/3338);
+- Denial of Service 2 is independent of Denial of Service 1 and can be executed
+  without it.
+
+**All clients are recommended to upgrade**
+
+Special thanks to [fudongbai](https://hackerone.com/fudongbai) for finding
+and reporting this.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### SECURITY:
+
+- [mempool] Reserve IDs in InitPeer instead of AddPeer (@tessr)
+- [p2p] Limit the number of incoming connections (@melekes)
+
+## v0.32.9
+
+_January, 9, 2020_
+
+Special thanks to external contributors on this release: @greg-szabo, @gregzaitsev, @yenkhoon
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### FEATURES:
+
+- [rpc/lib] [\#4248](https://github.com/tendermint/tendermint/issues/4248) RPC client basic authentication support (@greg-szabo)
+
+- [metrics] [\#4294](https://github.com/tendermint/tendermint/pull/4294) Add
+  - `consensus_validator_power`: track your validators power
+  - `consensus_validator_last_signed_height`: track at which height the validator last signed
+  - `consensus_validator_missed_blocks`: total amount of missed blocks for a validator
+    as gauges in prometheus for validator specific metrics
+
+### BUG FIXES:
+
+- [rpc/lib] [\#4131](https://github.com/tendermint/tendermint/pull/4131) Fix RPC client, which was previously resolving https protocol to http (@yenkhoon)
+- [cs] [\#4069](https://github.com/tendermint/tendermint/issues/4069) Don't panic when block meta is not found in store (@gregzaitsev)
+
 ## v0.32.8
 
 *November 19, 2019*
@@ -306,6 +1224,69 @@ program](https://hackerone.com/tendermint).
 - [libs/db] [\#3718](https://github.com/tendermint/tendermint/issues/3718) Fixed the BoltDB backend's Get and Iterator implementation (@Yawning)
 - [node] [\#3716](https://github.com/tendermint/tendermint/issues/3716) Fix a bug where `nil` is recorded as node's address
 - [node] [\#3741](https://github.com/tendermint/tendermint/issues/3741) Fix profiler blocking the entire node
+
+*Tendermint 0.31 release series has reached End-Of-Life and is no longer supported.*
+
+## v0.31.12
+
+*April 6, 2020*
+
+This security release fixes:
+
+### Denial of Service 1
+
+Tendermint 0.33.2 and earlier does not limit the number of P2P connection requests.
+For each p2p connection, Tendermint allocates ~0.5MB. Even though this
+memory is garbage collected once the connection is terminated (due to duplicate
+IP or reaching a maximum number of inbound peers), temporary memory spikes can
+lead to OOM (Out-Of-Memory) exceptions.
+
+Tendermint 0.33.3, 0.32.10, and 0.31.12 limit the total number of P2P incoming
+connection requests to to `p2p.max_num_inbound_peers +
+len(p2p.unconditional_peer_ids)`.
+
+Notes:
+
+- Tendermint does not rate limit P2P connection requests per IP (an attacker
+  can saturate all the inbound slots);
+- Tendermint does not rate limit HTTP(S) requests. If you expose any RPC
+  endpoints to the public, please make sure to put in place some protection
+  (https://www.nginx.com/blog/rate-limiting-nginx/). We may implement this in
+  the future ([\#1696](https://github.com/tendermint/tendermint/issues/1696)).
+
+### Denial of Service 2
+
+Tendermint 0.33.2 and earlier does not reclaim `activeID` of a peer after it's
+removed in `Mempool` reactor. This does not happen all the time. It only
+happens when a connection fails (for any reason) before the Peer is created and
+added to all reactors. `RemovePeer` is therefore called before `AddPeer`, which
+leads to always growing memory (`activeIDs` map). The `activeIDs` map has a
+maximum size of 65535 and the node will panic if this map reaches the maximum.
+An attacker can create a lot of connection attempts (exploiting Denial of
+Service 1), which ultimately will lead to the node panicking.
+
+Tendermint 0.33.3, 0.32.10, and 0.31.12 claim `activeID` for a peer in `InitPeer`,
+which is executed before `MConnection` is started.
+
+Notes:
+
+- `InitPeer` function was added to all reactors to combat a similar issue -
+  [\#3338](https://github.com/tendermint/tendermint/issues/3338);
+- Denial of Service 2 is independent of Denial of Service 1 and can be executed
+  without it.
+
+**All clients are recommended to upgrade**
+
+Special thanks to [fudongbai](https://hackerone.com/fudongbai) for finding
+and reporting this.
+
+Friendly reminder, we have a [bug bounty
+program](https://hackerone.com/tendermint).
+
+### SECURITY:
+
+- [mempool] Reserve IDs in InitPeer instead of AddPeer (@tessr)
+- [p2p] Limit the number of incoming connections (@melekes)
 
 ## v0.31.11
 
@@ -1033,7 +2014,7 @@ See [UPGRADING.md](UPGRADING.md) for more details.
 
 - [build] [\#3085](https://github.com/tendermint/tendermint/issues/3085) Fix `Version` field in build scripts (@husio)
 - [crypto/multisig] [\#3102](https://github.com/tendermint/tendermint/issues/3102) Fix multisig keys address length
-- [crypto/encoding] [\#3101](https://github.com/tendermint/tendermint/issues/3101) Fix `PubKeyMultisigThreshold` unmarshalling into `crypto.PubKey` interface
+- [crypto/encoding] [\#3101](https://github.com/tendermint/tendermint/issues/3101) Fix `PubKeyMultisigThreshold` unmarshaling into `crypto.PubKey` interface
 - [p2p/conn] [\#3111](https://github.com/tendermint/tendermint/issues/3111) Make SecretConnection thread safe
 - [rpc] [\#3053](https://github.com/tendermint/tendermint/issues/3053) Fix internal error in `/tx_search` when results are empty
   (@gianfelipe93)
@@ -1484,7 +2465,7 @@ FEATURES:
 - [libs] [\#2286](https://github.com/tendermint/tendermint/issues/2286) Panic if `autofile` or `db/fsdb` permissions change from 0600.
 
 IMPROVEMENTS:
-- [libs/db] [\#2371](https://github.com/tendermint/tendermint/issues/2371) Output error instead of panic when the given `db_backend` is not initialised (@bradyjoestar)
+- [libs/db] [\#2371](https://github.com/tendermint/tendermint/issues/2371) Output error instead of panic when the given `db_backend` is not initialized (@bradyjoestar)
 - [mempool] [\#2399](https://github.com/tendermint/tendermint/issues/2399) Make mempool cache a proper LRU (@bradyjoestar)
 - [p2p] [\#2126](https://github.com/tendermint/tendermint/issues/2126) Introduce PeerTransport interface to improve isolation of concerns
 - [libs/common] [\#2326](https://github.com/tendermint/tendermint/issues/2326) Service returns ErrNotStarted

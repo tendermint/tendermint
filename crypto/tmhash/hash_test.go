@@ -5,19 +5,23 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 func TestHash(t *testing.T) {
 	testVector := []byte("abc")
 	hasher := tmhash.New()
-	hasher.Write(testVector)
+	_, err := hasher.Write(testVector)
+	require.NoError(t, err)
 	bz := hasher.Sum(nil)
 
 	bz2 := tmhash.Sum(testVector)
 
 	hasher = sha256.New()
-	hasher.Write(testVector)
+	_, err = hasher.Write(testVector)
+	require.NoError(t, err)
 	bz3 := hasher.Sum(nil)
 
 	assert.Equal(t, bz, bz2)
@@ -27,13 +31,15 @@ func TestHash(t *testing.T) {
 func TestHashTruncated(t *testing.T) {
 	testVector := []byte("abc")
 	hasher := tmhash.NewTruncated()
-	hasher.Write(testVector)
+	_, err := hasher.Write(testVector)
+	require.NoError(t, err)
 	bz := hasher.Sum(nil)
 
 	bz2 := tmhash.SumTruncated(testVector)
 
 	hasher = sha256.New()
-	hasher.Write(testVector)
+	_, err = hasher.Write(testVector)
+	require.NoError(t, err)
 	bz3 := hasher.Sum(nil)
 	bz3 = bz3[:tmhash.TruncatedSize]
 

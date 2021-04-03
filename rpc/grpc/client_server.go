@@ -1,12 +1,12 @@
 package coregrpc
 
 import (
+	"context"
 	"net"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmnet "github.com/tendermint/tendermint/libs/net"
 )
 
 // Config is an gRPC server configuration.
@@ -34,5 +34,5 @@ func StartGRPCClient(protoAddr string) BroadcastAPIClient {
 }
 
 func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
-	return cmn.Connect(addr)
+	return tmnet.Connect(addr)
 }

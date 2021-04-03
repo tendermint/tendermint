@@ -28,13 +28,20 @@ func TestRFC6962Hasher(t *testing.T) {
 	leafHash := leafHashTrail.Hash
 	_, leafHashTrail = trailsFromByteSlices([][]byte{{}})
 	emptyLeafHash := leafHashTrail.Hash
+	_, emptyHashTrail := trailsFromByteSlices([][]byte{})
+	emptyTreeHash := emptyHashTrail.Hash
 	for _, tc := range []struct {
 		desc string
 		got  []byte
 		want string
 	}{
-		// Since creating a merkle tree of no leaves is unsupported here, we skip
-		// the corresponding trillian test vector.
+		// Check that empty trees return the hash of an empty string.
+		// echo -n '' | sha256sum
+		{
+			desc: "RFC6962 Empty Tree",
+			want: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"[:tmhash.Size*2],
+			got:  emptyTreeHash,
+		},
 
 		// Check that the empty hash is not the same as the hash of an empty leaf.
 		// echo -n 00 | xxd -r -p | sha256sum

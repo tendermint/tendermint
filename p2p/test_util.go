@@ -1,16 +1,13 @@
 package p2p
 
 import (
+	"context"
 	"fmt"
 	"net"
-	"time"
 
-	"github.com/pkg/errors"
-
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmnet "github.com/tendermint/tendermint/libs/net"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -20,29 +17,19 @@ const testCh = 0x01
 
 //------------------------------------------------
 
-type mockNodeInfo struct {
-	addr *NetAddress
-}
-
-func (ni mockNodeInfo) ID() ID                              { return ni.addr.ID }
-func (ni mockNodeInfo) NetAddress() (*NetAddress, error)    { return ni.addr, nil }
-func (ni mockNodeInfo) Validate() error                     { return nil }
-func (ni mockNodeInfo) CompatibleWith(other NodeInfo) error { return nil }
-
 func AddPeerToSwitchPeerSet(sw *Switch, peer Peer) {
-	sw.peers.Add(peer)
+	sw.peers.Add(peer) //nolint:errcheck // ignore error
 }
 
-func CreateRandomPeer(outbound bool) *peer {
+func CreateRandomPeer(outbound bool) Peer {
 	addr, netAddr := CreateRoutableAddr()
 	p := &peer{
-		peerConn: peerConn{
-			outbound:   outbound,
-			socketAddr: netAddr,
+		peerConn: peerConn{outbound: outbound},
+		nodeInfo: NodeInfo{
+			NodeID:     netAddr.ID,
+			ListenAddr: netAddr.DialString(),
 		},
-		nodeInfo: mockNodeInfo{netAddr},
-		mconn:    &conn.MConnection{},
-		metrics:  NopMetrics(),
+		metrics: NopMetrics(),
 	}
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p
@@ -52,11 +39,11 @@ func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
 	for {
 		var err error
 		addr = fmt.Sprintf("%X@%v.%v.%v.%v:26656",
-			cmn.RandBytes(20),
-			cmn.RandInt()%256,
-			cmn.RandInt()%256,
-			cmn.RandInt()%256,
-			cmn.RandInt()%256)
+			tmrand.Bytes(20),
+			tmrand.Int()%256,
+			tmrand.Int()%256,
+			tmrand.Int()%256,
+			tmrand.Int()%256)
 		netAddr, err = NewNetAddressString(addr)
 		if err != nil {
 			panic(err)
@@ -84,7 +71,7 @@ func MakeConnectedSwitches(cfg *config.P2PConfig,
 ) []*Switch {
 	switches := make([]*Switch, n)
 	for i := 0; i < n; i++ {
-		switches[i] = MakeSwitch(cfg, i, TestHost, "123.123.123", initSwitch)
+		switches[i] = MakeSwitch(cfg, i, TestHost, "123.123.123", initSwitch, log.TestingLogger())
 	}
 
 	if err := StartSwitches(switches); err != nil {
@@ -129,15 +116,14 @@ func Connect2Switches(switches []*Switch, i, j int) {
 }
 
 func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
-	pc, err := testInboundPeerConn(conn, sw.config, sw.nodeKey.PrivKey)
+	pc, err := testInboundPeerConn(sw.transport.(*MConnTransport), conn)
 	if err != nil {
 		if err := conn.Close(); err != nil {
 			sw.Logger.Error("Error closing connection", "err", err)
 		}
 		return err
 	}
-
-	ni, err := handshake(conn, time.Second, sw.nodeInfo)
+	peerNodeInfo, _, err := pc.conn.Handshake(context.Background(), sw.nodeInfo, sw.nodeKey.PrivKey)
 	if err != nil {
 		if err := conn.Close(); err != nil {
 			sw.Logger.Error("Error closing connection", "err", err)
@@ -146,11 +132,9 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 	}
 
 	p := newPeer(
+		peerNodeInfo,
 		pc,
-		MConnConfig(sw.config),
-		ni,
 		sw.reactorsByCh,
-		sw.chDescs,
 		sw.StopPeerForError,
 	)
 
@@ -179,32 +163,34 @@ func MakeSwitch(
 	i int,
 	network, version string,
 	initSwitch func(int, *Switch) *Switch,
+	logger log.Logger,
 	opts ...SwitchOption,
 ) *Switch {
 
-	nodeKey := NodeKey{
-		PrivKey: ed25519.GenPrivKey(),
-	}
-	nodeInfo := testNodeInfo(nodeKey.ID(), fmt.Sprintf("node%d", i))
+	nodeKey := GenNodeKey()
+	nodeInfo := testNodeInfo(nodeKey.ID, fmt.Sprintf("node%d", i))
 	addr, err := NewNetAddressString(
-		IDAddressString(nodeKey.ID(), nodeInfo.(DefaultNodeInfo).ListenAddr),
+		IDAddressString(nodeKey.ID, nodeInfo.ListenAddr),
 	)
 	if err != nil {
 		panic(err)
 	}
 
-	t := NewMultiplexTransport(nodeInfo, nodeKey, MConnConfig(cfg))
-
-	if err := t.Listen(*addr); err != nil {
-		panic(err)
-	}
+	swLogger := logger.With("switch", i)
+	t := NewMConnTransport(swLogger, MConnConfig(cfg),
+		[]*ChannelDescriptor{}, MConnTransportOptions{})
 
 	// TODO: let the config be passed in?
 	sw := initSwitch(i, NewSwitch(cfg, t, opts...))
-	sw.SetLogger(log.TestingLogger().With("switch", i))
-	sw.SetNodeKey(&nodeKey)
+	sw.SetLogger(swLogger)
+	sw.SetNodeKey(nodeKey)
 
-	ni := nodeInfo.(DefaultNodeInfo)
+	if err := t.Listen(addr.Endpoint()); err != nil {
+		panic(err)
+	}
+
+	ni := nodeInfo
+	ni.Channels = []byte{}
 	for ch := range sw.reactorsByCh {
 		ni.Channels = append(ni.Channels, ch)
 	}
@@ -212,62 +198,46 @@ func MakeSwitch(
 
 	// TODO: We need to setup reactors ahead of time so the NodeInfo is properly
 	// populated and we don't have to do those awkward overrides and setters.
-	t.nodeInfo = nodeInfo
 	sw.SetNodeInfo(nodeInfo)
 
 	return sw
 }
 
 func testInboundPeerConn(
+	transport *MConnTransport,
 	conn net.Conn,
-	config *config.P2PConfig,
-	ourNodePrivKey crypto.PrivKey,
 ) (peerConn, error) {
-	return testPeerConn(conn, config, false, false, ourNodePrivKey, nil)
+	return testPeerConn(transport, conn, false, false)
 }
 
 func testPeerConn(
+	transport *MConnTransport,
 	rawConn net.Conn,
-	cfg *config.P2PConfig,
 	outbound, persistent bool,
-	ourNodePrivKey crypto.PrivKey,
-	socketAddr *NetAddress,
 ) (pc peerConn, err error) {
-	conn := rawConn
 
-	// Fuzz connection
-	if cfg.TestFuzz {
-		// so we have time to do peer handshakes and get set up
-		conn = FuzzConnAfterFromConfig(conn, 10*time.Second, cfg.TestFuzzConfig)
-	}
+	conn := newMConnConnection(transport.logger, rawConn, transport.mConnConfig, transport.channelDescs)
 
-	// Encrypt connection
-	conn, err = upgradeSecretConn(conn, cfg.HandshakeTimeout, ourNodePrivKey)
-	if err != nil {
-		return pc, errors.Wrap(err, "Error creating peer")
-	}
-
-	// Only the information we already have
-	return newPeerConn(outbound, persistent, conn, socketAddr), nil
+	return newPeerConn(outbound, persistent, conn), nil
 }
 
 //----------------------------------------------------------------
 // rand node info
 
-func testNodeInfo(id ID, name string) NodeInfo {
+func testNodeInfo(id NodeID, name string) NodeInfo {
 	return testNodeInfoWithNetwork(id, name, "testing")
 }
 
-func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
-	return DefaultNodeInfo{
+func testNodeInfoWithNetwork(id NodeID, name, network string) NodeInfo {
+	return NodeInfo{
 		ProtocolVersion: defaultProtocolVersion,
-		DefaultNodeID:   id,
+		NodeID:          id,
 		ListenAddr:      fmt.Sprintf("127.0.0.1:%d", getFreePort()),
 		Network:         network,
 		Version:         "1.2.3-rc0-deadbeef",
 		Channels:        []byte{testCh},
 		Moniker:         name,
-		Other: DefaultNodeInfoOther{
+		Other: NodeInfoOther{
 			TxIndex:    "on",
 			RPCAddress: fmt.Sprintf("127.0.0.1:%d", getFreePort()),
 		},
@@ -275,9 +245,41 @@ func testNodeInfoWithNetwork(id ID, name, network string) NodeInfo {
 }
 
 func getFreePort() int {
-	port, err := cmn.GetFreePort()
+	port, err := tmnet.GetFreePort()
 	if err != nil {
 		panic(err)
 	}
 	return port
+}
+
+type AddrBookMock struct {
+	Addrs        map[string]struct{}
+	OurAddrs     map[string]struct{}
+	PrivateAddrs map[string]struct{}
+}
+
+var _ AddrBook = (*AddrBookMock)(nil)
+
+func (book *AddrBookMock) AddAddress(addr *NetAddress, src *NetAddress) error {
+	book.Addrs[addr.String()] = struct{}{}
+	return nil
+}
+func (book *AddrBookMock) AddOurAddress(addr *NetAddress) { book.OurAddrs[addr.String()] = struct{}{} }
+func (book *AddrBookMock) OurAddress(addr *NetAddress) bool {
+	_, ok := book.OurAddrs[addr.String()]
+	return ok
+}
+func (book *AddrBookMock) MarkGood(NodeID) {}
+func (book *AddrBookMock) HasAddress(addr *NetAddress) bool {
+	_, ok := book.Addrs[addr.String()]
+	return ok
+}
+func (book *AddrBookMock) RemoveAddress(addr *NetAddress) {
+	delete(book.Addrs, addr.String())
+}
+func (book *AddrBookMock) Save() {}
+func (book *AddrBookMock) AddPrivateIDs(addrs []string) {
+	for _, addr := range addrs {
+		book.PrivateAddrs[addr] = struct{}{}
+	}
 }

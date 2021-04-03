@@ -14,18 +14,15 @@ Make sure you [have Go installed](https://golang.org/doc/install).
 
 Next, install the `abci-cli` tool and example applications:
 
-```
-mkdir -p $GOPATH/src/github.com/tendermint
-cd $GOPATH/src/github.com/tendermint
+```sh
 git clone https://github.com/tendermint/tendermint.git
 cd tendermint
-make tools
 make install_abci
 ```
 
 Now run `abci-cli` to see the list of commands:
 
-```
+```sh
 Usage:
   abci-cli [command]
 
@@ -69,7 +66,7 @@ Its code can be found
 [here](https://github.com/tendermint/tendermint/blob/master/abci/cmd/abci-cli/abci-cli.go)
 and looks like:
 
-```
+```go
 func cmdKVStore(cmd *cobra.Command, args []string) error {
     logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
@@ -93,7 +90,7 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
     }
 
     // Stop upon receiving SIGTERM or CTRL-C.
-    cmn.TrapSignal(logger, func() {
+    tmos.TrapSignal(logger, func() {
         // Cleanup
         srv.Stop()
     })
@@ -105,27 +102,27 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 
 Start by running:
 
-```
+```sh
 abci-cli kvstore
 ```
 
 And in another terminal, run
 
-```
+```sh
 abci-cli echo hello
 abci-cli info
 ```
 
 You'll see something like:
 
-```
+```sh
 -> data: hello
 -> data.hex: 68656C6C6F
 ```
 
 and:
 
-```
+```sh
 -> data: {"size":0}
 -> data.hex: 7B2273697A65223A307D
 ```
@@ -142,7 +139,7 @@ response.
 The server may be generic for a particular language, and we provide a
 [reference implementation in
 Golang](https://github.com/tendermint/tendermint/tree/master/abci/server). See the
-[list of other ABCI implementations](./ecosystem.md) for servers in
+[list of other ABCI implementations](https://github.com/tendermint/awesome#ecosystem) for servers in
 other languages.
 
 The handler is specific to the application, and may be arbitrary, so
@@ -162,7 +159,7 @@ speaking ABCI messages to your application.
 
 Try running these commands:
 
-```
+```sh
 > echo hello
 -> code: OK
 -> data: hello
@@ -192,7 +189,7 @@ Try running these commands:
 > query "abc"
 -> code: OK
 -> log: exists
--> height: 0
+-> height: 2
 -> value: abc
 -> value.hex: 616263
 
@@ -206,7 +203,7 @@ Try running these commands:
 > query "def"
 -> code: OK
 -> log: exists
--> height: 0
+-> height: 3
 -> value: xyz
 -> value.hex: 78797A
 ```
@@ -226,7 +223,7 @@ Like the kvstore app, its code can be found
 [here](https://github.com/tendermint/tendermint/blob/master/abci/cmd/abci-cli/abci-cli.go)
 and looks like:
 
-```
+```go
 func cmdCounter(cmd *cobra.Command, args []string) error {
 
     app := counter.NewCounterApplication(flagSerial)
@@ -244,7 +241,7 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
     }
 
     // Stop upon receiving SIGTERM or CTRL-C.
-    cmn.TrapSignal(logger, func() {
+    tmos.TrapSignal(logger, func() {
         // Cleanup
         srv.Stop()
     })
@@ -280,16 +277,13 @@ whose integer is greater than the last committed one.
 Let's kill the console and the kvstore application, and start the
 counter app:
 
-```
+```sh
 abci-cli counter
 ```
 
 In another window, start the `abci-cli console`:
 
-```
-> set_option serial on
--> code: OK
--> log: OK (SetOption doesn't return anything.)
+```sh
 
 > check_tx 0x00
 -> code: OK
@@ -332,7 +326,7 @@ example directory](https://github.com/tendermint/tendermint/tree/master/abci/exa
 
 To run the Node.js version, fist download & install [the Javascript ABCI server](https://github.com/tendermint/js-abci):
 
-```
+```sh
 git clone https://github.com/tendermint/js-abci.git
 cd js-abci
 npm install abci
@@ -340,7 +334,7 @@ npm install abci
 
 Now you can start the app:
 
-```bash
+```sh
 node example/counter.js
 ```
 
@@ -360,7 +354,6 @@ deployment, the role of sending messages is taken by Tendermint, which
 connects to the app using three separate connections, each with its own
 pattern of messages.
 
-For more information, see the [application developers
-guide](./app-development.md). For examples of running an ABCI app with
+For examples of running an ABCI app with
 Tendermint, see the [getting started guide](./getting-started.md).
 Next is the ABCI specification.

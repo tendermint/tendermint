@@ -3,6 +3,7 @@ package types
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -10,22 +11,26 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
 func TestEventBusPublishEventTx(t *testing.T) {
 	eventBus := NewEventBus()
 	err := eventBus.Start()
 	require.NoError(t, err)
-	defer eventBus.Stop()
+	t.Cleanup(func() {
+		if err := eventBus.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	tx := Tx("foo")
 	result := abci.ResponseDeliverTx{
 		Data: []byte("bar"),
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}},
+			{Type: "testType", Attributes: []abci.EventAttribute{{Key: []byte("baz"), Value: []byte("1")}}},
 		},
 	}
 
@@ -40,12 +45,12 @@ func TestEventBusPublishEventTx(t *testing.T) {
 		edt := msg.Data().(EventDataTx)
 		assert.Equal(t, int64(1), edt.Height)
 		assert.Equal(t, uint32(0), edt.Index)
-		assert.Equal(t, tx, edt.Tx)
+		assert.EqualValues(t, tx, edt.Tx)
 		assert.Equal(t, result, edt.Result)
 		close(done)
 	}()
 
-	err = eventBus.PublishEventTx(EventDataTx{TxResult{
+	err = eventBus.PublishEventTx(EventDataTx{abci.TxResult{
 		Height: 1,
 		Index:  0,
 		Tx:     tx,
@@ -64,17 +69,21 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	eventBus := NewEventBus()
 	err := eventBus.Start()
 	require.NoError(t, err)
-	defer eventBus.Stop()
+	t.Cleanup(func() {
+		if err := eventBus.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
 	resultBeginBlock := abci.ResponseBeginBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}},
+			{Type: "testType", Attributes: []abci.EventAttribute{{Key: []byte("baz"), Value: []byte("1")}}},
 		},
 	}
 	resultEndBlock := abci.ResponseEndBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("foz"), Value: []byte("2")}}},
+			{Type: "testType", Attributes: []abci.EventAttribute{{Key: []byte("foz"), Value: []byte("2")}}},
 		},
 	}
 
@@ -111,7 +120,11 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 	eventBus := NewEventBus()
 	err := eventBus.Start()
 	require.NoError(t, err)
-	defer eventBus.Stop()
+	t.Cleanup(func() {
+		if err := eventBus.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	tx := Tx("foo")
 	result := abci.ResponseDeliverTx{
@@ -119,7 +132,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 		Events: []abci.Event{
 			{
 				Type: "transfer",
-				Attributes: []cmn.KVPair{
+				Attributes: []abci.EventAttribute{
 					{Key: []byte("sender"), Value: []byte("foo")},
 					{Key: []byte("recipient"), Value: []byte("bar")},
 					{Key: []byte("amount"), Value: []byte("5")},
@@ -127,7 +140,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 			},
 			{
 				Type: "transfer",
-				Attributes: []cmn.KVPair{
+				Attributes: []abci.EventAttribute{
 					{Key: []byte("sender"), Value: []byte("baz")},
 					{Key: []byte("recipient"), Value: []byte("cat")},
 					{Key: []byte("amount"), Value: []byte("13")},
@@ -135,7 +148,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 			},
 			{
 				Type: "withdraw.rewards",
-				Attributes: []cmn.KVPair{
+				Attributes: []abci.EventAttribute{
 					{Key: []byte("address"), Value: []byte("bar")},
 					{Key: []byte("source"), Value: []byte("iceman")},
 					{Key: []byte("amount"), Value: []byte("33")},
@@ -177,16 +190,20 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 		done := make(chan struct{})
 
 		go func() {
-			msg := <-sub.Out()
-			data := msg.Data().(EventDataTx)
-			assert.Equal(t, int64(1), data.Height)
-			assert.Equal(t, uint32(0), data.Index)
-			assert.Equal(t, tx, data.Tx)
-			assert.Equal(t, result, data.Result)
-			close(done)
+			select {
+			case msg := <-sub.Out():
+				data := msg.Data().(EventDataTx)
+				assert.Equal(t, int64(1), data.Height)
+				assert.Equal(t, uint32(0), data.Index)
+				assert.EqualValues(t, tx, data.Tx)
+				assert.Equal(t, result, data.Result)
+				close(done)
+			case <-time.After(1 * time.Second):
+				return
+			}
 		}()
 
-		err = eventBus.PublishEventTx(EventDataTx{TxResult{
+		err = eventBus.PublishEventTx(EventDataTx{abci.TxResult{
 			Height: 1,
 			Index:  0,
 			Tx:     tx,
@@ -211,17 +228,21 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	eventBus := NewEventBus()
 	err := eventBus.Start()
 	require.NoError(t, err)
-	defer eventBus.Stop()
+	t.Cleanup(func() {
+		if err := eventBus.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
 	resultBeginBlock := abci.ResponseBeginBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}},
+			{Type: "testType", Attributes: []abci.EventAttribute{{Key: []byte("baz"), Value: []byte("1")}}},
 		},
 	}
 	resultEndBlock := abci.ResponseEndBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []cmn.KVPair{{Key: []byte("foz"), Value: []byte("2")}}},
+			{Type: "testType", Attributes: []abci.EventAttribute{{Key: []byte("foz"), Value: []byte("2")}}},
 		},
 	}
 
@@ -254,11 +275,53 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	}
 }
 
+func TestEventBusPublishEventNewEvidence(t *testing.T) {
+	eventBus := NewEventBus()
+	err := eventBus.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := eventBus.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
+
+	ev := NewMockDuplicateVoteEvidence(1, time.Now(), "test-chain-id")
+
+	query := "tm.event='NewEvidence'"
+	evSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
+	require.NoError(t, err)
+
+	done := make(chan struct{})
+	go func() {
+		msg := <-evSub.Out()
+		edt := msg.Data().(EventDataNewEvidence)
+		assert.Equal(t, ev, edt.Evidence)
+		assert.Equal(t, int64(4), edt.Height)
+		close(done)
+	}()
+
+	err = eventBus.PublishEventNewEvidence(EventDataNewEvidence{
+		Evidence: ev,
+		Height:   4,
+	})
+	assert.NoError(t, err)
+
+	select {
+	case <-done:
+	case <-time.After(1 * time.Second):
+		t.Fatal("did not receive a block header after 1 sec.")
+	}
+}
+
 func TestEventBusPublish(t *testing.T) {
 	eventBus := NewEventBus()
 	err := eventBus.Start()
 	require.NoError(t, err)
-	defer eventBus.Stop()
+	t.Cleanup(func() {
+		if err := eventBus.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	const numEventsExpected = 14
 
@@ -347,11 +410,18 @@ func BenchmarkEventBus(b *testing.B) {
 
 func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *testing.B) {
 	// for random* functions
-	cmn.Seed(time.Now().Unix())
+	rand.Seed(time.Now().Unix())
 
 	eventBus := NewEventBusWithBufferCapacity(0) // set buffer capacity to 0 so we are not testing cache
-	eventBus.Start()
-	defer eventBus.Stop()
+	err := eventBus.Start()
+	if err != nil {
+		b.Error(err)
+	}
+	b.Cleanup(func() {
+		if err := eventBus.Stop(); err != nil {
+			b.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	q := EventQueryNewBlock
@@ -368,7 +438,7 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 			for {
 				select {
 				case <-sub.Out():
-				case <-sub.Cancelled():
+				case <-sub.Canceled():
 					return
 				}
 			}
@@ -384,7 +454,10 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 			eventType = randEvent()
 		}
 
-		eventBus.Publish(eventType, EventDataString("Gamora"))
+		err := eventBus.Publish(eventType, EventDataString("Gamora"))
+		if err != nil {
+			b.Error(err)
+		}
 	}
 }
 
@@ -403,7 +476,7 @@ var events = []string{
 	EventVote}
 
 func randEvent() string {
-	return events[cmn.RandIntn(len(events))]
+	return events[tmrand.Intn(len(events))]
 }
 
 var queries = []tmpubsub.Query{
@@ -421,5 +494,5 @@ var queries = []tmpubsub.Query{
 	EventQueryVote}
 
 func randQuery() tmpubsub.Query {
-	return queries[cmn.RandIntn(len(queries))]
+	return queries[tmrand.Intn(len(queries))]
 }

@@ -1,8 +1,0 @@
-Version: 4
-Signer:
-Date: @DATETIMESTAMP@
-Role: builder
-Files:
-	@BINMD5@ @BINSHA1@ @BINSIZE@ debian-binary
-	@CONMD5@ @CONSHA1@ @CONSIZE@ control.tar.gz
-	@DATMD5@ @DATSHA1@ @DATSIZE@ data.tar.xz

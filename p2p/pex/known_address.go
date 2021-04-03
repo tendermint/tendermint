@@ -16,6 +16,7 @@ type knownAddress struct {
 	BucketType  byte            `json:"bucket_type"`
 	LastAttempt time.Time       `json:"last_attempt"`
 	LastSuccess time.Time       `json:"last_success"`
+	LastBanTime time.Time       `json:"last_ban_time"`
 }
 
 func newKnownAddress(addr *p2p.NetAddress, src *p2p.NetAddress) *knownAddress {
@@ -29,7 +30,7 @@ func newKnownAddress(addr *p2p.NetAddress, src *p2p.NetAddress) *knownAddress {
 	}
 }
 
-func (ka *knownAddress) ID() p2p.ID {
+func (ka *knownAddress) ID() p2p.NodeID {
 	return ka.Addr.ID
 }
 
@@ -52,6 +53,16 @@ func (ka *knownAddress) markGood() {
 	ka.LastAttempt = now
 	ka.Attempts = 0
 	ka.LastSuccess = now
+}
+
+func (ka *knownAddress) ban(banTime time.Duration) {
+	if ka.LastBanTime.Before(time.Now().Add(banTime)) {
+		ka.LastBanTime = time.Now().Add(banTime)
+	}
+}
+
+func (ka *knownAddress) isBanned() bool {
+	return ka.LastBanTime.After(time.Now())
 }
 
 func (ka *knownAddress) addBucketRef(bucketIdx int) int {

@@ -23,8 +23,13 @@ const (
 func TestSubscribe(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
-	s.Start()
-	defer s.Stop()
+	err := s.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	subscription, err := s.Subscribe(ctx, clientID, query.Empty{})
@@ -54,7 +59,7 @@ func TestSubscribe(t *testing.T) {
 	select {
 	case <-published:
 		assertReceive(t, "Quicksilver", subscription.Out())
-		assertCancelled(t, subscription, pubsub.ErrOutOfCapacity)
+		assertCanceled(t, subscription, pubsub.ErrOutOfCapacity)
 	case <-time.After(3 * time.Second):
 		t.Fatal("Expected Publish(Asylum) not to block")
 	}
@@ -63,15 +68,22 @@ func TestSubscribe(t *testing.T) {
 func TestSubscribeWithCapacity(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
-	s.Start()
-	defer s.Stop()
+	err := s.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	assert.Panics(t, func() {
-		s.Subscribe(ctx, clientID, query.Empty{}, -1)
+		_, err = s.Subscribe(ctx, clientID, query.Empty{}, -1)
+		require.NoError(t, err)
 	})
 	assert.Panics(t, func() {
-		s.Subscribe(ctx, clientID, query.Empty{}, 0)
+		_, err = s.Subscribe(ctx, clientID, query.Empty{}, 0)
+		require.NoError(t, err)
 	})
 	subscription, err := s.Subscribe(ctx, clientID, query.Empty{}, 1)
 	require.NoError(t, err)
@@ -83,8 +95,13 @@ func TestSubscribeWithCapacity(t *testing.T) {
 func TestSubscribeUnbuffered(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
-	s.Start()
-	defer s.Stop()
+	err := s.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	subscription, err := s.SubscribeUnbuffered(ctx, clientID, query.Empty{})
@@ -113,8 +130,13 @@ func TestSubscribeUnbuffered(t *testing.T) {
 func TestSlowClientIsRemovedWithErrOutOfCapacity(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
-	s.Start()
-	defer s.Stop()
+	err := s.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	subscription, err := s.Subscribe(ctx, clientID, query.Empty{})
@@ -124,14 +146,19 @@ func TestSlowClientIsRemovedWithErrOutOfCapacity(t *testing.T) {
 	err = s.Publish(ctx, "Viper")
 	require.NoError(t, err)
 
-	assertCancelled(t, subscription, pubsub.ErrOutOfCapacity)
+	assertCanceled(t, subscription, pubsub.ErrOutOfCapacity)
 }
 
 func TestDifferentClients(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
-	s.Start()
-	defer s.Stop()
+	err := s.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	subscription1, err := s.Subscribe(ctx, "client-1", query.MustParse("tm.events.type='NewBlock'"))
@@ -171,7 +198,11 @@ func TestSubscribeDuplicateKeys(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
 	require.NoError(t, s.Start())
-	defer s.Stop()
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	testCases := []struct {
 		query    string
@@ -220,8 +251,13 @@ func TestSubscribeDuplicateKeys(t *testing.T) {
 func TestClientSubscribesTwice(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
-	s.Start()
-	defer s.Stop()
+	err := s.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	q := query.MustParse("tm.events.type='NewBlock'")
@@ -244,8 +280,13 @@ func TestClientSubscribesTwice(t *testing.T) {
 func TestUnsubscribe(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
-	s.Start()
-	defer s.Stop()
+	err := s.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	subscription, err := s.Subscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
@@ -257,17 +298,22 @@ func TestUnsubscribe(t *testing.T) {
 	require.NoError(t, err)
 	assert.Zero(t, len(subscription.Out()), "Should not receive anything after Unsubscribe")
 
-	assertCancelled(t, subscription, pubsub.ErrUnsubscribed)
+	assertCanceled(t, subscription, pubsub.ErrUnsubscribed)
 }
 
 func TestClientUnsubscribesTwice(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
-	s.Start()
-	defer s.Stop()
+	err := s.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
-	_, err := s.Subscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
+	_, err = s.Subscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
 	require.NoError(t, err)
 	err = s.Unsubscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
 	require.NoError(t, err)
@@ -281,11 +327,16 @@ func TestClientUnsubscribesTwice(t *testing.T) {
 func TestResubscribe(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
-	s.Start()
-	defer s.Stop()
+	err := s.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
-	_, err := s.Subscribe(ctx, clientID, query.Empty{})
+	_, err = s.Subscribe(ctx, clientID, query.Empty{})
 	require.NoError(t, err)
 	err = s.Unsubscribe(ctx, clientID, query.Empty{})
 	require.NoError(t, err)
@@ -300,8 +351,13 @@ func TestResubscribe(t *testing.T) {
 func TestUnsubscribeAll(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
-	s.Start()
-	defer s.Stop()
+	err := s.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	subscription1, err := s.Subscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
@@ -317,8 +373,8 @@ func TestUnsubscribeAll(t *testing.T) {
 	assert.Zero(t, len(subscription1.Out()), "Should not receive anything after UnsubscribeAll")
 	assert.Zero(t, len(subscription2.Out()), "Should not receive anything after UnsubscribeAll")
 
-	assertCancelled(t, subscription1, pubsub.ErrUnsubscribed)
-	assertCancelled(t, subscription2, pubsub.ErrUnsubscribed)
+	assertCanceled(t, subscription1, pubsub.ErrUnsubscribed)
+	assertCanceled(t, subscription2, pubsub.ErrUnsubscribed)
 }
 
 func TestBufferCapacity(t *testing.T) {
@@ -351,8 +407,14 @@ func Benchmark1000ClientsOneQuery(b *testing.B) { benchmarkNClientsOneQuery(1000
 
 func benchmarkNClients(n int, b *testing.B) {
 	s := pubsub.NewServer()
-	s.Start()
-	defer s.Stop()
+	err := s.Start()
+	require.NoError(b, err)
+
+	b.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			b.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	for i := 0; i < n; i++ {
@@ -369,7 +431,7 @@ func benchmarkNClients(n int, b *testing.B) {
 				select {
 				case <-subscription.Out():
 					continue
-				case <-subscription.Cancelled():
+				case <-subscription.Canceled():
 					return
 				}
 			}
@@ -379,18 +441,24 @@ func benchmarkNClients(n int, b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s.PublishWithEvents(
+		err = s.PublishWithEvents(
 			ctx,
 			"Gamora",
-			map[string][]string{"abci.Account.Owner": {"Ivan"}, "abci.Invoices.Number": {string(i)}},
+			map[string][]string{"abci.Account.Owner": {"Ivan"}, "abci.Invoices.Number": {string(rune(i))}},
 		)
+		require.NoError(b, err)
 	}
 }
 
 func benchmarkNClientsOneQuery(n int, b *testing.B) {
 	s := pubsub.NewServer()
-	s.Start()
-	defer s.Stop()
+	err := s.Start()
+	require.NoError(b, err)
+	b.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			b.Error(err)
+		}
+	})
 
 	ctx := context.Background()
 	q := query.MustParse("abci.Account.Owner = 'Ivan' AND abci.Invoices.Number = 1")
@@ -404,7 +472,7 @@ func benchmarkNClientsOneQuery(n int, b *testing.B) {
 				select {
 				case <-subscription.Out():
 					continue
-				case <-subscription.Cancelled():
+				case <-subscription.Canceled():
 					return
 				}
 			}
@@ -414,13 +482,13 @@ func benchmarkNClientsOneQuery(n int, b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s.PublishWithEvents(ctx, "Gamora", map[string][]string{"abci.Account.Owner": {"Ivan"}, "abci.Invoices.Number": {"1"}})
+		err = s.PublishWithEvents(ctx, "Gamora", map[string][]string{"abci.Account.Owner": {"Ivan"},
+			"abci.Invoices.Number": {"1"}})
+		require.NoError(b, err)
 	}
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// HELPERS
-///////////////////////////////////////////////////////////////////////////////
+// HELPERS
 
 func assertReceive(t *testing.T, expected interface{}, ch <-chan pubsub.Message, msgAndArgs ...interface{}) {
 	select {
@@ -432,8 +500,8 @@ func assertReceive(t *testing.T, expected interface{}, ch <-chan pubsub.Message,
 	}
 }
 
-func assertCancelled(t *testing.T, subscription *pubsub.Subscription, err error) {
-	_, ok := <-subscription.Cancelled()
+func assertCanceled(t *testing.T, subscription *pubsub.Subscription, err error) {
+	_, ok := <-subscription.Canceled()
 	assert.False(t, ok)
 	assert.Equal(t, err, subscription.Err())
 }

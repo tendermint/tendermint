@@ -3,19 +3,18 @@ package consensus
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
 	dbm "github.com/tendermint/tm-db"
 
 	cfg "github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/mock"
+	tmos "github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
@@ -35,7 +34,7 @@ func RunReplayFile(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig, console
 	consensusState := newConsensusStateForReplay(config, csConfig)
 
 	if err := consensusState.ReplayFile(csConfig.WalFile(), console); err != nil {
-		cmn.Exit(fmt.Sprintf("Error during consensus replay: %v", err))
+		tmos.Exit(fmt.Sprintf("Error during consensus replay: %v", err))
 	}
 }
 
@@ -56,9 +55,13 @@ func (cs *State) ReplayFile(file string, console bool) error {
 	ctx := context.Background()
 	newStepSub, err := cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep)
 	if err != nil {
-		return errors.Errorf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep)
+		return fmt.Errorf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep)
 	}
-	defer cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep)
+	defer func() {
+		if err := cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep); err != nil {
+			cs.Logger.Error("Error unsubscribing to event bus", "err", err)
+		}
+	}()
 
 	// just open the file for reading, no need to use wal
 	fp, err := os.OpenFile(file, os.O_RDONLY, 0600)
@@ -67,7 +70,7 @@ func (cs *State) ReplayFile(file string, console bool) error {
 	}
 
 	pb := newPlayback(file, fp, cs, cs.state.Copy())
-	defer pb.fp.Close() // nolint: errcheck
+	defer pb.fp.Close()
 
 	var nextN int // apply N msgs in a row
 	var msg *TimedWALMessage
@@ -121,7 +124,9 @@ func newPlayback(fileName string, fp *os.File, cs *State, genState sm.State) *pl
 
 // go back count steps by resetting the state and running (pb.count - count) steps
 func (pb *playback) replayReset(count int, newStepSub types.Subscription) error {
-	pb.cs.Stop()
+	if err := pb.cs.Stop(); err != nil {
+		return err
+	}
 	pb.cs.Wait()
 
 	newCS := NewState(pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
@@ -180,9 +185,9 @@ func (pb *playback) replayConsoleLoop() int {
 		bufReader := bufio.NewReader(os.Stdin)
 		line, more, err := bufReader.ReadLine()
 		if more {
-			cmn.Exit("input is too long")
+			tmos.Exit("input is too long")
 		} else if err != nil {
-			cmn.Exit(err.Error())
+			tmos.Exit(err.Error())
 		}
 
 		tokens := strings.Split(string(line), " ")
@@ -217,9 +222,13 @@ func (pb *playback) replayConsoleLoop() int {
 
 			newStepSub, err := pb.cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep)
 			if err != nil {
-				cmn.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep))
+				tmos.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep))
 			}
-			defer pb.cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep)
+			defer func() {
+				if err := pb.cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep); err != nil {
+					pb.cs.Logger.Error("Error unsubscribing from eventBus", "err", err)
+				}
+			}()
 
 			if len(tokens) == 1 {
 				if err := pb.replayReset(1, newStepSub); err != nil {
@@ -277,18 +286,25 @@ func (pb *playback) replayConsoleLoop() int {
 func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig) *State {
 	dbType := dbm.BackendType(config.DBBackend)
 	// Get BlockStore
-	blockStoreDB := dbm.NewDB("blockstore", dbType, config.DBDir())
+	blockStoreDB, err := dbm.NewDB("blockstore", dbType, config.DBDir())
+	if err != nil {
+		tmos.Exit(err.Error())
+	}
 	blockStore := store.NewBlockStore(blockStoreDB)
 
 	// Get State
-	stateDB := dbm.NewDB("state", dbType, config.DBDir())
+	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())
+	if err != nil {
+		tmos.Exit(err.Error())
+	}
+	stateStore := sm.NewStore(stateDB)
 	gdoc, err := sm.MakeGenesisDocFromFile(config.GenesisFile())
 	if err != nil {
-		cmn.Exit(err.Error())
+		tmos.Exit(err.Error())
 	}
 	state, err := sm.MakeGenesisState(gdoc)
 	if err != nil {
-		cmn.Exit(err.Error())
+		tmos.Exit(err.Error())
 	}
 
 	// Create proxyAppConn connection (consensus, mempool, query)
@@ -296,23 +312,23 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err = proxyApp.Start()
 	if err != nil {
-		cmn.Exit(fmt.Sprintf("Error starting proxy app conns: %v", err))
+		tmos.Exit(fmt.Sprintf("Error starting proxy app conns: %v", err))
 	}
 
 	eventBus := types.NewEventBus()
 	if err := eventBus.Start(); err != nil {
-		cmn.Exit(fmt.Sprintf("Failed to start event bus: %v", err))
+		tmos.Exit(fmt.Sprintf("Failed to start event bus: %v", err))
 	}
 
-	handshaker := NewHandshaker(stateDB, state, blockStore, gdoc)
+	handshaker := NewHandshaker(stateStore, state, blockStore, gdoc)
 	handshaker.SetEventBus(eventBus)
 	err = handshaker.Handshake(proxyApp)
 	if err != nil {
-		cmn.Exit(fmt.Sprintf("Error on handshake: %v", err))
+		tmos.Exit(fmt.Sprintf("Error on handshake: %v", err))
 	}
 
-	mempool, evpool := mock.Mempool{}, sm.MockEvidencePool{}
-	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
+	mempool, evpool := emptyMempool{}, sm.EmptyEvidencePool{}
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
 	consensusState := NewState(csConfig, state.Copy(), blockExec,
 		blockStore, mempool, evpool)

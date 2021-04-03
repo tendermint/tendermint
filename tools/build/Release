@@ -1,7 +1,0 @@
-Origin: Tendermint
-Label: Tendermint
-Suite: stable
-Date: Fri, 16 Jun 2017 19:44:00 UTC
-Architectures: amd64
-Components: main
-Description: Tendermint repository

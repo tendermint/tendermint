@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -201,10 +200,10 @@ func TestSetupTrace(t *testing.T) {
 		long     bool
 		expected string
 	}{
-		{nil, nil, false, "Trace flag = false"},
-		{[]string{"--trace"}, nil, true, "Trace flag = true"},
+		{nil, nil, false, "trace flag = false"},
+		{[]string{"--trace"}, nil, true, "trace flag = true"},
 		{[]string{"--no-such-flag"}, nil, false, "unknown flag: --no-such-flag"},
-		{nil, map[string]string{"DBG_TRACE": "true"}, true, "Trace flag = true"},
+		{nil, map[string]string{"DBG_TRACE": "true"}, true, "trace flag = true"},
 	}
 
 	for idx, tc := range cases {
@@ -213,7 +212,7 @@ func TestSetupTrace(t *testing.T) {
 		trace := &cobra.Command{
 			Use: "trace",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				return errors.Errorf("Trace flag = %t", viper.GetBool(TraceFlag))
+				return fmt.Errorf("trace flag = %t", viper.GetBool(TraceFlag))
 			},
 		}
 		cmd := PrepareBaseCmd(trace, "DBG", "/qwerty/asdfgh") // some missing dir..
@@ -228,10 +227,11 @@ func TestSetupTrace(t *testing.T) {
 		msg := strings.Split(stderr, "\n")
 		desired := fmt.Sprintf("ERROR: %s", tc.expected)
 		assert.Equal(t, desired, msg[0], i)
+		t.Log(msg)
 		if tc.long && assert.True(t, len(msg) > 2, i) {
 			// the next line starts the stack trace...
-			assert.Contains(t, msg[1], "TestSetupTrace", i)
-			assert.Contains(t, msg[2], "setup_test.go", i)
+			assert.Contains(t, stderr, "TestSetupTrace", i)
+			assert.Contains(t, stderr, "setup_test.go", i)
 		}
 	}
 }

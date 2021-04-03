@@ -19,7 +19,7 @@ A few solutions were considered:
    b) [go-kit metrics package](https://github.com/go-kit/kit/tree/master/metrics) as an interface plus Prometheus
    c) [telegraf](https://github.com/influxdata/telegraf)
    d) new service, which will listen to events emitted by pubsub and report metrics
-2. [OpenCensus](https://opencensus.io/go/index.html)
+2. [OpenCensus](https://opencensus.io/introduction/)
 
 ### 1. Prometheus
 

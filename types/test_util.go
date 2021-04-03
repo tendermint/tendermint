@@ -1,26 +1,33 @@
 package types
 
 import (
-	tmtime "github.com/tendermint/tendermint/types/time"
+	"context"
+	"fmt"
+	"time"
+
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
-func MakeCommit(blockID BlockID, height int64, round int,
-	voteSet *VoteSet, validators []PrivValidator) (*Commit, error) {
+func MakeCommit(blockID BlockID, height int64, round int32,
+	voteSet *VoteSet, validators []PrivValidator, now time.Time) (*Commit, error) {
 
 	// all sign
 	for i := 0; i < len(validators); i++ {
-		addr := validators[i].GetPubKey().Address()
+		pubKey, err := validators[i].GetPubKey(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("can't get pubkey: %w", err)
+		}
 		vote := &Vote{
-			ValidatorAddress: addr,
-			ValidatorIndex:   i,
+			ValidatorAddress: pubKey.Address(),
+			ValidatorIndex:   int32(i),
 			Height:           height,
 			Round:            round,
-			Type:             PrecommitType,
+			Type:             tmproto.PrecommitType,
 			BlockID:          blockID,
-			Timestamp:        tmtime.Now(),
+			Timestamp:        now,
 		}
 
-		_, err := signAddVote(validators[i], vote, voteSet)
+		_, err = signAddVote(validators[i], vote, voteSet)
 		if err != nil {
 			return nil, err
 		}
@@ -30,10 +37,12 @@ func MakeCommit(blockID BlockID, height int64, round int,
 }
 
 func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
-	err = privVal.SignVote(voteSet.ChainID(), vote)
+	v := vote.ToProto()
+	err = privVal.SignVote(context.Background(), voteSet.ChainID(), v)
 	if err != nil {
 		return false, err
 	}
+	vote.Signature = v.Signature
 	return voteSet.AddVote(vote)
 }
 
@@ -43,38 +52,30 @@ func MakeVote(
 	valSet *ValidatorSet,
 	privVal PrivValidator,
 	chainID string,
+	now time.Time,
 ) (*Vote, error) {
-	addr := privVal.GetPubKey().Address()
+	pubKey, err := privVal.GetPubKey(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
+	}
+	addr := pubKey.Address()
 	idx, _ := valSet.GetByAddress(addr)
 	vote := &Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,
 		Height:           height,
 		Round:            0,
-		Timestamp:        tmtime.Now(),
-		Type:             PrecommitType,
+		Timestamp:        now,
+		Type:             tmproto.PrecommitType,
 		BlockID:          blockID,
 	}
-	if err := privVal.SignVote(chainID, vote); err != nil {
+	v := vote.ToProto()
+
+	if err := privVal.SignVote(context.Background(), chainID, v); err != nil {
 		return nil, err
 	}
-	return vote, nil
-}
 
-// MakeBlock returns a new block with an empty header, except what can be
-// computed from itself.
-// It populates the same set of fields validated by ValidateBasic.
-func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) *Block {
-	block := &Block{
-		Header: Header{
-			Height: height,
-		},
-		Data: Data{
-			Txs: txs,
-		},
-		Evidence:   EvidenceData{Evidence: evidence},
-		LastCommit: lastCommit,
-	}
-	block.fillHeader()
-	return block
+	vote.Signature = v.Signature
+
+	return vote, nil
 }

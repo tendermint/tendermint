@@ -5,7 +5,7 @@ repository](https://github.com/tendermint/tendermint).
 
 The Tendermint remote signer test harness facilitates integration testing
 between Tendermint and remote signers such as
-[KMS](https://github.com/tendermint/kms). Such remote signers allow for signing
+[tkkms](https://github.com/iqlusioninc/tmkms). Such remote signers allow for signing
 of important Tendermint messages using
 [HSMs](https://en.wikipedia.org/wiki/Hardware_security_module), providing
 additional security.
@@ -21,10 +21,12 @@ When executed, `tm-signer-harness`:
    error.
 
 ## Prerequisites
+
 Requires the same prerequisites as for building
 [Tendermint](https://github.com/tendermint/tendermint).
 
 ## Building
+
 From the `tools/tm-signer-harness` directory in your Tendermint source
 repository, simply run:
 
@@ -36,6 +38,7 @@ make install
 ```
 
 ## Docker Image
+
 To build a Docker image containing the `tm-signer-harness`, also from the
 `tools/tm-signer-harness` directory of your Tendermint source repo, simply run:
 
@@ -44,14 +47,16 @@ make docker-image
 ```
 
 ## Running against KMS
+
 As an example of how to use `tm-signer-harness`, the following instructions show
-you how to execute its tests against [KMS](https://github.com/tendermint/kms).
+you how to execute its tests against [tkkms](https://github.com/iqlusioninc/tmkms).
 For this example, we will make use of the **software signing module in KMS**, as
 the hardware signing module requires a physical
 [YubiHSM](https://www.yubico.com/products/yubihsm/) device.
 
 ### Step 1: Install KMS on your local machine
-See the [KMS repo](https://github.com/tendermint/kms) for details on how to set
+
+See the [tkkms repo](https://github.com/iqlusioninc/tmkms) for details on how to set
 KMS up on your local machine.
 
 If you have [Rust](https://www.rust-lang.org/) installed on your local machine,
@@ -62,6 +67,7 @@ cargo install tmkms
 ```
 
 ### Step 2: Make keys for KMS
+
 The KMS software signing module needs a key with which to sign messages. In our
 example, we will simply export a signing key from our local Tendermint instance.
 
@@ -69,7 +75,7 @@ example, we will simply export a signing key from our local Tendermint instance.
 # Will generate all necessary Tendermint configuration files, including:
 # - ~/.tendermint/config/priv_validator_key.json
 # - ~/.tendermint/data/priv_validator_state.json
-tendermint init
+tendermint init validator
 
 # Extract the signing key from our local Tendermint instance
 tm-signer-harness extract_key \      # Use the "extract_key" command
@@ -85,6 +91,7 @@ tmkms keygen secret_connection.key
 ```
 
 ### Step 3: Configure and run KMS
+
 KMS needs some configuration to tell it to use the softer signing module as well
 as the `signing.key` file we just generated. Save the following to a file called
 `tmkms.toml`:
@@ -111,6 +118,7 @@ This will start KMS, which will repeatedly try to connect to
 `tcp://127.0.0.1:61219` until it is successful.
 
 ### Step 4: Run tm-signer-harness
+
 Now we get to run the signer test harness:
 
 ```bash
@@ -124,10 +132,12 @@ should now exit with a 0 exit code. If they are somehow not compatible, it
 should exit with a meaningful non-zero exit code (see the exit codes below).
 
 ### Step 5: Shut down KMS
+
 Simply hit Ctrl+Break on your KMS instance (or use the `kill` command in Linux)
 to terminate it gracefully.
 
 ## Exit Code Meanings
+
 The following list shows the various exit codes from `tm-signer-harness` and
 their meanings:
 

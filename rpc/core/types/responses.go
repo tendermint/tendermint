@@ -2,14 +2,27 @@ package coretypes
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
-
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/p2p"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
+)
+
+// List of standardized errors used across RPC
+var (
+	ErrZeroOrNegativePerPage  = errors.New("zero or negative per_page")
+	ErrPageOutOfRange         = errors.New("page should be within range")
+	ErrZeroOrNegativeHeight   = errors.New("height must be greater than zero")
+	ErrHeightExceedsChainHead = errors.New("height must be less than or equal to the head of the node's blockchain")
+	ErrHeightNotAvailable     = errors.New("height is not available")
+	// ErrInvalidRequest is used as a wrapper to cover more specific cases where the user has
+	// made an invalid request
+	ErrInvalidRequest = errors.New("invalid request")
 )
 
 // List of blocks
@@ -42,7 +55,7 @@ type ResultBlockResults struct {
 	BeginBlockEvents      []abci.Event              `json:"begin_block_events"`
 	EndBlockEvents        []abci.Event              `json:"end_block_events"`
 	ValidatorUpdates      []abci.ValidatorUpdate    `json:"validator_updates"`
-	ConsensusParamUpdates *abci.ConsensusParams     `json:"consensus_param_updates"`
+	ConsensusParamUpdates *tmproto.ConsensusParams  `json:"consensus_param_updates"`
 }
 
 // NewResultCommit is a helper to initialize the ResultCommit with
@@ -61,25 +74,31 @@ func NewResultCommit(header *types.Header, commit *types.Commit,
 
 // Info about the node's syncing state
 type SyncInfo struct {
-	LatestBlockHash   cmn.HexBytes `json:"latest_block_hash"`
-	LatestAppHash     cmn.HexBytes `json:"latest_app_hash"`
-	LatestBlockHeight int64        `json:"latest_block_height"`
-	LatestBlockTime   time.Time    `json:"latest_block_time"`
-	CatchingUp        bool         `json:"catching_up"`
+	LatestBlockHash   bytes.HexBytes `json:"latest_block_hash"`
+	LatestAppHash     bytes.HexBytes `json:"latest_app_hash"`
+	LatestBlockHeight int64          `json:"latest_block_height"`
+	LatestBlockTime   time.Time      `json:"latest_block_time"`
+
+	EarliestBlockHash   bytes.HexBytes `json:"earliest_block_hash"`
+	EarliestAppHash     bytes.HexBytes `json:"earliest_app_hash"`
+	EarliestBlockHeight int64          `json:"earliest_block_height"`
+	EarliestBlockTime   time.Time      `json:"earliest_block_time"`
+
+	CatchingUp bool `json:"catching_up"`
 }
 
 // Info about the node's validator
 type ValidatorInfo struct {
-	Address     cmn.HexBytes  `json:"address"`
-	PubKey      crypto.PubKey `json:"pub_key"`
-	VotingPower int64         `json:"voting_power"`
+	Address     bytes.HexBytes `json:"address"`
+	PubKey      crypto.PubKey  `json:"pub_key"`
+	VotingPower int64          `json:"voting_power"`
 }
 
 // Node Status
 type ResultStatus struct {
-	NodeInfo      p2p.DefaultNodeInfo `json:"node_info"`
-	SyncInfo      SyncInfo            `json:"sync_info"`
-	ValidatorInfo ValidatorInfo       `json:"validator_info"`
+	NodeInfo      p2p.NodeInfo  `json:"node_info"`
+	SyncInfo      SyncInfo      `json:"sync_info"`
+	ValidatorInfo ValidatorInfo `json:"validator_info"`
 }
 
 // Is TxIndexing enabled
@@ -110,16 +129,20 @@ type ResultDialPeers struct {
 
 // A peer
 type Peer struct {
-	NodeInfo         p2p.DefaultNodeInfo  `json:"node_info"`
+	NodeInfo         p2p.NodeInfo         `json:"node_info"`
 	IsOutbound       bool                 `json:"is_outbound"`
 	ConnectionStatus p2p.ConnectionStatus `json:"connection_status"`
 	RemoteIP         string               `json:"remote_ip"`
 }
 
-// Validators for a height
+// Validators for a height.
 type ResultValidators struct {
 	BlockHeight int64              `json:"block_height"`
 	Validators  []*types.Validator `json:"validators"`
+	// Count of actual validators in this result
+	Count int `json:"count"`
+	// Total number of validators
+	Total int `json:"total"`
 }
 
 // ConsensusParams for given height
@@ -148,24 +171,30 @@ type ResultConsensusState struct {
 
 // CheckTx result
 type ResultBroadcastTx struct {
-	Code uint32       `json:"code"`
-	Data cmn.HexBytes `json:"data"`
-	Log  string       `json:"log"`
+	Code      uint32         `json:"code"`
+	Data      bytes.HexBytes `json:"data"`
+	Log       string         `json:"log"`
+	Codespace string         `json:"codespace"`
 
-	Hash cmn.HexBytes `json:"hash"`
+	Hash bytes.HexBytes `json:"hash"`
 }
 
 // CheckTx and DeliverTx results
 type ResultBroadcastTxCommit struct {
 	CheckTx   abci.ResponseCheckTx   `json:"check_tx"`
 	DeliverTx abci.ResponseDeliverTx `json:"deliver_tx"`
-	Hash      cmn.HexBytes           `json:"hash"`
+	Hash      bytes.HexBytes         `json:"hash"`
 	Height    int64                  `json:"height"`
+}
+
+// ResultCheckTx wraps abci.ResponseCheckTx.
+type ResultCheckTx struct {
+	abci.ResponseCheckTx
 }
 
 // Result of querying for a tx
 type ResultTx struct {
-	Hash     cmn.HexBytes           `json:"hash"`
+	Hash     bytes.HexBytes         `json:"hash"`
 	Height   int64                  `json:"height"`
 	Index    uint32                 `json:"index"`
 	TxResult abci.ResponseDeliverTx `json:"tx_result"`
@@ -177,6 +206,12 @@ type ResultTx struct {
 type ResultTxSearch struct {
 	Txs        []*ResultTx `json:"txs"`
 	TotalCount int         `json:"total_count"`
+}
+
+// ResultBlockSearch defines the RPC response type for a block search by events.
+type ResultBlockSearch struct {
+	Blocks     []*ResultBlock `json:"blocks"`
+	TotalCount int            `json:"total_count"`
 }
 
 // List of mempool txs

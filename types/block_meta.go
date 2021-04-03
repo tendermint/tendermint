@@ -2,8 +2,10 @@ package types
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 
-	"github.com/pkg/errors"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 // BlockMeta contains meta information.
@@ -24,32 +26,43 @@ func NewBlockMeta(block *Block, blockParts *PartSet) *BlockMeta {
 	}
 }
 
-//-----------------------------------------------------------
-// These methods are for Protobuf Compatibility
-
-// Size returns the size of the amino encoding, in bytes.
-func (bm *BlockMeta) Size() int {
-	bs, _ := bm.Marshal()
-	return len(bs)
-}
-
-// Marshal returns the amino encoding.
-func (bm *BlockMeta) Marshal() ([]byte, error) {
-	return cdc.MarshalBinaryBare(bm)
-}
-
-// MarshalTo calls Marshal and copies to the given buffer.
-func (bm *BlockMeta) MarshalTo(data []byte) (int, error) {
-	bs, err := bm.Marshal()
-	if err != nil {
-		return -1, err
+func (bm *BlockMeta) ToProto() *tmproto.BlockMeta {
+	if bm == nil {
+		return nil
 	}
-	return copy(data, bs), nil
+
+	pb := &tmproto.BlockMeta{
+		BlockID:   bm.BlockID.ToProto(),
+		BlockSize: int64(bm.BlockSize),
+		Header:    *bm.Header.ToProto(),
+		NumTxs:    int64(bm.NumTxs),
+	}
+	return pb
 }
 
-// Unmarshal deserializes from amino encoded form.
-func (bm *BlockMeta) Unmarshal(bs []byte) error {
-	return cdc.UnmarshalBinaryBare(bs, bm)
+func BlockMetaFromProto(pb *tmproto.BlockMeta) (*BlockMeta, error) {
+	if pb == nil {
+		return nil, errors.New("blockmeta is empty")
+	}
+
+	bm := new(BlockMeta)
+
+	bi, err := BlockIDFromProto(&pb.BlockID)
+	if err != nil {
+		return nil, err
+	}
+
+	h, err := HeaderFromProto(&pb.Header)
+	if err != nil {
+		return nil, err
+	}
+
+	bm.BlockID = *bi
+	bm.BlockSize = int(pb.BlockSize)
+	bm.Header = h
+	bm.NumTxs = int(pb.NumTxs)
+
+	return bm, bm.ValidateBasic()
 }
 
 // ValidateBasic performs basic validation.
@@ -58,7 +71,7 @@ func (bm *BlockMeta) ValidateBasic() error {
 		return err
 	}
 	if !bytes.Equal(bm.BlockID.Hash, bm.Header.Hash()) {
-		return errors.Errorf("expected BlockID#Hash and Header#Hash to be the same, got %X != %X",
+		return fmt.Errorf("expected BlockID#Hash and Header#Hash to be the same, got %X != %X",
 			bm.BlockID.Hash, bm.Header.Hash())
 	}
 	return nil

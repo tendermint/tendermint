@@ -1,7 +1,7 @@
-package types // nolint: goimports
+package types
 
 import (
-	context "golang.org/x/net/context"
+	"context"
 )
 
 // Application is an interface that enables any finite, deterministic state machine
@@ -10,9 +10,8 @@ import (
 // except CheckTx/DeliverTx, which take `tx []byte`, and `Commit`, which takes nothing.
 type Application interface {
 	// Info/Query Connection
-	Info(RequestInfo) ResponseInfo                // Return application info
-	SetOption(RequestSetOption) ResponseSetOption // Set application option
-	Query(RequestQuery) ResponseQuery             // Query for state
+	Info(RequestInfo) ResponseInfo    // Return application info
+	Query(RequestQuery) ResponseQuery // Query for state
 
 	// Mempool Connection
 	CheckTx(RequestCheckTx) ResponseCheckTx // Validate a tx for the mempool
@@ -23,6 +22,12 @@ type Application interface {
 	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
 	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
 	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
+
+	// State Sync Connection
+	ListSnapshots(RequestListSnapshots) ResponseListSnapshots                // List available snapshots
+	OfferSnapshot(RequestOfferSnapshot) ResponseOfferSnapshot                // Offer a snapshot to the application
+	LoadSnapshotChunk(RequestLoadSnapshotChunk) ResponseLoadSnapshotChunk    // Load a snapshot chunk
+	ApplySnapshotChunk(RequestApplySnapshotChunk) ResponseApplySnapshotChunk // Apply a shapshot chunk
 }
 
 //-------------------------------------------------------
@@ -39,10 +44,6 @@ func NewBaseApplication() *BaseApplication {
 
 func (BaseApplication) Info(req RequestInfo) ResponseInfo {
 	return ResponseInfo{}
-}
-
-func (BaseApplication) SetOption(req RequestSetOption) ResponseSetOption {
-	return ResponseSetOption{}
 }
 
 func (BaseApplication) DeliverTx(req RequestDeliverTx) ResponseDeliverTx {
@@ -73,6 +74,22 @@ func (BaseApplication) EndBlock(req RequestEndBlock) ResponseEndBlock {
 	return ResponseEndBlock{}
 }
 
+func (BaseApplication) ListSnapshots(req RequestListSnapshots) ResponseListSnapshots {
+	return ResponseListSnapshots{}
+}
+
+func (BaseApplication) OfferSnapshot(req RequestOfferSnapshot) ResponseOfferSnapshot {
+	return ResponseOfferSnapshot{}
+}
+
+func (BaseApplication) LoadSnapshotChunk(req RequestLoadSnapshotChunk) ResponseLoadSnapshotChunk {
+	return ResponseLoadSnapshotChunk{}
+}
+
+func (BaseApplication) ApplySnapshotChunk(req RequestApplySnapshotChunk) ResponseApplySnapshotChunk {
+	return ResponseApplySnapshotChunk{}
+}
+
 //-------------------------------------------------------
 
 // GRPCApplication is a GRPC wrapper for Application
@@ -94,11 +111,6 @@ func (app *GRPCApplication) Flush(ctx context.Context, req *RequestFlush) (*Resp
 
 func (app *GRPCApplication) Info(ctx context.Context, req *RequestInfo) (*ResponseInfo, error) {
 	res := app.app.Info(*req)
-	return &res, nil
-}
-
-func (app *GRPCApplication) SetOption(ctx context.Context, req *RequestSetOption) (*ResponseSetOption, error) {
-	res := app.app.SetOption(*req)
 	return &res, nil
 }
 
@@ -134,5 +146,29 @@ func (app *GRPCApplication) BeginBlock(ctx context.Context, req *RequestBeginBlo
 
 func (app *GRPCApplication) EndBlock(ctx context.Context, req *RequestEndBlock) (*ResponseEndBlock, error) {
 	res := app.app.EndBlock(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) ListSnapshots(
+	ctx context.Context, req *RequestListSnapshots) (*ResponseListSnapshots, error) {
+	res := app.app.ListSnapshots(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) OfferSnapshot(
+	ctx context.Context, req *RequestOfferSnapshot) (*ResponseOfferSnapshot, error) {
+	res := app.app.OfferSnapshot(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) LoadSnapshotChunk(
+	ctx context.Context, req *RequestLoadSnapshotChunk) (*ResponseLoadSnapshotChunk, error) {
+	res := app.app.LoadSnapshotChunk(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) ApplySnapshotChunk(
+	ctx context.Context, req *RequestApplySnapshotChunk) (*ResponseApplySnapshotChunk, error) {
+	res := app.app.ApplySnapshotChunk(*req)
 	return &res, nil
 }

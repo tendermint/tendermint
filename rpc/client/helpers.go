@@ -2,9 +2,10 @@ package client
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -15,7 +16,7 @@ type Waiter func(delta int64) (abort error)
 // but you can plug in another one
 func DefaultWaitStrategy(delta int64) (abort error) {
 	if delta > 10 {
-		return errors.Errorf("waiting for %d blocks... aborting", delta)
+		return fmt.Errorf("waiting for %d blocks... aborting", delta)
 	} else if delta > 0 {
 		// estimate of wait time....
 		// wait half a second for the next block (in progress)
@@ -37,7 +38,7 @@ func WaitForHeight(c StatusClient, h int64, waiter Waiter) error {
 	}
 	delta := int64(1)
 	for delta > 0 {
-		s, err := c.Status()
+		s, err := c.Status(context.Background())
 		if err != nil {
 			return err
 		}
@@ -47,6 +48,7 @@ func WaitForHeight(c StatusClient, h int64, waiter Waiter) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -63,10 +65,14 @@ func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (type
 	// register for the next event of this type
 	eventCh, err := c.Subscribe(ctx, subscriber, types.QueryForEvent(evtTyp).String())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to subscribe")
+		return nil, fmt.Errorf("failed to subscribe: %w", err)
 	}
 	// make sure to unregister after the test is over
-	defer c.UnsubscribeAll(ctx, subscriber)
+	defer func() {
+		if deferErr := c.UnsubscribeAll(ctx, subscriber); deferErr != nil {
+			panic(err)
+		}
+	}()
 
 	select {
 	case event := <-eventCh:

@@ -1,75 +1,152 @@
-GOTOOLS = \
-	github.com/mitchellh/gox \
-	github.com/golangci/golangci-lint/cmd/golangci-lint \
-	github.com/gogo/protobuf/protoc-gen-gogo \
-	github.com/square/certstrap
-GOBIN?=${GOPATH}/bin
-PACKAGES=$(shell go list ./...)
-OUTPUT?=build/tendermint
+#!/usr/bin/make -f
 
-INCLUDE = -I=${GOPATH}/src/github.com/tendermint/tendermint -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
-BUILD_TAGS?='tendermint'
-LD_FLAGS = -X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD` -s -w
+PACKAGES=$(shell go list ./...)
+BUILDDIR ?= $(CURDIR)/build
+
+BUILD_TAGS?=tendermint
+
+# If building a release, please checkout the version tag to get the correct version setting
+ifneq ($(shell git symbolic-ref -q --short HEAD),)
+VERSION := unreleased-$(shell git symbolic-ref -q --short HEAD)-$(shell git rev-parse HEAD)
+else
+VERSION := $(shell git describe)
+endif
+
+LD_FLAGS = -X github.com/tendermint/tendermint/version.TMCoreSemVer=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
+HTTPS_GIT := https://github.com/tendermint/tendermint.git
+DOCKER_BUF := docker run -v $(shell pwd):/workspace --workdir /workspace bufbuild/buf
+CGO_ENABLED ?= 0
+
+# handle nostrip
+ifeq (,$(findstring nostrip,$(TENDERMINT_BUILD_OPTIONS)))
+  BUILD_FLAGS += -trimpath
+  LD_FLAGS += -s -w
+endif
+
+# handle race
+ifeq (race,$(findstring race,$(TENDERMINT_BUILD_OPTIONS)))
+  CGO_ENABLED=1
+  BUILD_FLAGS += -race
+endif
+
+# handle cleveldb
+ifeq (cleveldb,$(findstring cleveldb,$(TENDERMINT_BUILD_OPTIONS)))
+  CGO_ENABLED=1
+  BUILD_TAGS += cleveldb
+endif
+
+# handle badgerdb
+ifeq (badgerdb,$(findstring badgerdb,$(TENDERMINT_BUILD_OPTIONS)))
+  BUILD_TAGS += badgerdb
+endif
+
+# handle rocksdb
+ifeq (rocksdb,$(findstring rocksdb,$(TENDERMINT_BUILD_OPTIONS)))
+  CGO_ENABLED=1
+  BUILD_TAGS += rocksdb
+endif
+
+# handle boltdb
+ifeq (boltdb,$(findstring boltdb,$(TENDERMINT_BUILD_OPTIONS)))
+  BUILD_TAGS += boltdb
+endif
+
+# allow users to pass additional flags via the conventional LDFLAGS variable
+LD_FLAGS += $(LDFLAGS)
 
 all: check build test install
+.PHONY: all
 
-# The below include contains the tools.
-include tools.mk
-include tests.mk
+include test/Makefile
 
-########################################
-### Build Tendermint
+###############################################################################
+###                                Build Tendermint                         ###
+###############################################################################
 
-build:
-	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint/
-
-build_c:
-	CGO_ENABLED=1 go build $(BUILD_FLAGS) -tags "$(BUILD_TAGS) cleveldb" -o $(OUTPUT) ./cmd/tendermint/
-
-build_race:
-	CGO_ENABLED=1 go build -race $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint
+build: $(BUILDDIR)/
+	CGO_ENABLED=$(CGO_ENABLED) go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o $(BUILDDIR)/ ./cmd/tendermint/
+.PHONY: build
 
 install:
-	CGO_ENABLED=0 go install $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
+	CGO_ENABLED=$(CGO_ENABLED) go install $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
+.PHONY: install
 
-install_c:
-	CGO_ENABLED=1 go install $(BUILD_FLAGS) -tags "$(BUILD_TAGS) cleveldb" ./cmd/tendermint
+$(BUILDDIR)/:
+	mkdir -p $@
 
-########################################
-### Protobuf
+###############################################################################
+###                                Protobuf                                 ###
+###############################################################################
 
-protoc_all: protoc_libs protoc_merkle protoc_abci protoc_grpc protoc_proto3types
+proto-all: proto-gen proto-lint proto-check-breaking
+.PHONY: proto-all
 
-%.pb.go: %.proto
-	## If you get the following error,
-	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
-	## See https://stackoverflow.com/a/25518702
-	## Note the $< here is substituted for the %.proto
-	## Note the $@ here is substituted for the %.pb.go
-	protoc $(INCLUDE) $< --gogo_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,plugins=grpc:../../..
+proto-gen:
+	@docker pull -q tendermintdev/docker-build-proto
+	@echo "Generating Protobuf files"
+	@docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto sh ./scripts/protocgen.sh
+.PHONY: proto-gen
 
-########################################
-### Build ABCI
+proto-lint:
+	@$(DOCKER_BUF) check lint --error-format=json
+.PHONY: proto-lint
 
-# see protobuf section above
-protoc_abci: abci/types/types.pb.go
+proto-format:
+	@echo "Formatting Protobuf files"
+	docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto find ./ -not -path "./third_party/*" -name *.proto -exec clang-format -i {} \;
+.PHONY: proto-format
 
-protoc_proto3types: types/proto3/block.pb.go
+proto-check-breaking:
+	@$(DOCKER_BUF) check breaking --against-input .git#branch=master
+.PHONY: proto-check-breaking
+
+proto-check-breaking-ci:
+	@$(DOCKER_BUF) check breaking --against-input $(HTTPS_GIT)#branch=master
+.PHONY: proto-check-breaking-ci
+
+###############################################################################
+###                              Build ABCI                                 ###
+###############################################################################
 
 build_abci:
 	@go build -mod=readonly -i ./abci/cmd/...
+.PHONY: build_abci
 
 install_abci:
 	@go install -mod=readonly ./abci/cmd/...
+.PHONY: install_abci
 
-########################################
-### Distribution
+###############################################################################
+###                           	Privval Server                              ###
+###############################################################################
+
+build_privval_server:
+	@go build -mod=readonly -o $(BUILDDIR)/ -i ./cmd/priv_val_server/...
+.PHONY: build_privval_server
+
+generate_test_cert:
+	# generate self signing ceritificate authority
+	@certstrap init --common-name "root CA" --expires "20 years"
+	# generate server cerificate
+	@certstrap request-cert -cn server -ip 127.0.0.1
+	# self-sign server cerificate with rootCA
+	@certstrap sign server --CA "root CA" 
+	# generate client cerificate
+	@certstrap request-cert -cn client -ip 127.0.0.1
+	# self-sign client cerificate with rootCA
+	@certstrap sign client --CA "root CA" 
+.PHONY: generate_test_cert
+
+###############################################################################
+###                              Distribution                               ###
+###############################################################################
 
 # dist builds binaries for all platforms and packages them for distribution
 # TODO add abci to these scripts
 dist:
 	@BUILD_TAGS=$(BUILD_TAGS) sh -c "'$(CURDIR)/scripts/dist.sh'"
+.PHONY: dist
 
 go-mod-cache: go.sum
 	@echo "--> Download go modules to local cache"
@@ -85,134 +162,106 @@ draw_deps:
 	@# requires brew install graphviz or apt-get install graphviz
 	go get github.com/RobotsAndPencils/goviz
 	@goviz -i github.com/tendermint/tendermint/cmd/tendermint -d 3 | dot -Tpng -o dependency-graph.png
+.PHONY: draw_deps
 
 get_deps_bin_size:
 	@# Copy of build recipe with additional flags to perform binary size analysis
-	$(eval $(shell go build -work -a $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(OUTPUT) ./cmd/tendermint/ 2>&1))
+	$(eval $(shell go build -work -a $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o $(BUILDDIR)/ ./cmd/tendermint/ 2>&1))
 	@find $(WORK) -type f -name "*.a" | xargs -I{} du -hxs "{}" | sort -rh | sed -e s:${WORK}/::g > deps_bin_size.log
 	@echo "Results can be found here: $(CURDIR)/deps_bin_size.log"
+.PHONY: get_deps_bin_size
 
-########################################
-### Libs
-
-protoc_libs: libs/common/types.pb.go
+###############################################################################
+###                                  Libs                                   ###
+###############################################################################
 
 # generates certificates for TLS testing in remotedb and RPC server
 gen_certs: clean_certs
 	certstrap init --common-name "tendermint.com" --passphrase ""
-	certstrap request-cert --common-name "remotedb" -ip "127.0.0.1" --passphrase ""
-	certstrap sign "remotedb" --CA "tendermint.com" --passphrase ""
-	mv out/remotedb.crt libs/db/remotedb/test.crt
-	mv out/remotedb.key libs/db/remotedb/test.key
 	certstrap request-cert --common-name "server" -ip "127.0.0.1" --passphrase ""
 	certstrap sign "server" --CA "tendermint.com" --passphrase ""
-	mv out/server.crt rpc/lib/server/test.crt
-	mv out/server.key rpc/lib/server/test.key
+	mv out/server.crt rpc/jsonrpc/server/test.crt
+	mv out/server.key rpc/jsonrpc/server/test.key
 	rm -rf out
+.PHONY: gen_certs
 
 # deletes generated certificates
 clean_certs:
-	rm -f libs/db/remotedb/test.crt
-	rm -f libs/db/remotedb/test.key
-	rm -f rpc/lib/server/test.crt
-	rm -f rpc/lib/server/test.key
+	rm -f rpc/jsonrpc/server/test.crt
+	rm -f rpc/jsonrpc/server/test.key
+.PHONY: clean_certs
 
-test_libs:
-	go test -tags clevedb boltdb $(PACKAGES)
+###############################################################################
+###                  Formatting, linting, and vetting                       ###
+###############################################################################
 
-grpc_dbserver:
-	protoc -I libs/db/remotedb/proto/ libs/db/remotedb/proto/defs.proto --go_out=plugins=grpc:libs/db/remotedb/proto
-
-protoc_grpc: rpc/grpc/types.pb.go
-
-protoc_merkle: crypto/merkle/merkle.pb.go
-
-
-########################################
-### Formatting, linting, and vetting
-
-fmt:
-	@go fmt ./...
+format:
+	find . -name '*.go' -type f -not -path "*.git*" -not -name '*.pb.go' -not -name '*pb_test.go' | xargs gofmt -w -s
+	find . -name '*.go' -type f -not -path "*.git*"  -not -name '*.pb.go' -not -name '*pb_test.go' | xargs goimports -w -local github.com/tendermint/tendermint
+.PHONY: format
 
 lint:
 	@echo "--> Running linter"
 	@golangci-lint run
+.PHONY: lint
 
 DESTINATION = ./index.html.md
 
-###########################################################
-### Documentation
-
+###############################################################################
+###                           Documentation                                 ###
+###############################################################################
+# todo remove once tendermint.com DNS is solved
 build-docs:
-	cd docs && \
-	while read p; do \
-		(git checkout $${p} && npm install && VUEPRESS_BASE="/$${p}/" npm run build) ; \
-		mkdir -p ~/output/$${p} ; \
-		cp -r .vuepress/dist/* ~/output/$${p}/ ; \
-		cp ~/output/$${p}/index.html ~/output ; \
+	@cd docs && \
+	while read -r branch path_prefix; do \
+		(git checkout $${branch} && npm install && VUEPRESS_BASE="/$${path_prefix}/" npm run build) ; \
+		mkdir -p ~/output/$${path_prefix} ; \
+		cp -r .vuepress/dist/* ~/output/$${path_prefix}/ ; \
+		cp ~/output/$${path_prefix}/index.html ~/output ; \
 	done < versions ;
+.PHONY: build-docs
 
-sync-docs:
-	cd ~/output && \
-	echo "role_arn = ${DEPLOYMENT_ROLE_ARN}" >> /root/.aws/config ; \
-	echo "CI job = ${CIRCLE_BUILD_URL}" >> version.html ; \
-	aws s3 sync . s3://${WEBSITE_BUCKET} --profile terraform --delete ; \
-	aws cloudfront create-invalidation --distribution-id ${CF_DISTRIBUTION_ID} --profile terraform --path "/*" ;
-.PHONY: sync-docs
+###############################################################################
+###                            Docker image                                 ###
+###############################################################################
 
-###########################################################
-### Docker image
-
-build-docker:
-	cp $(OUTPUT) DOCKER/tendermint
+build-docker: build-linux
+	cp $(BUILDDIR)/tendermint DOCKER/tendermint
 	docker build --label=tendermint --tag="tendermint/tendermint" DOCKER
 	rm -rf DOCKER/tendermint
+.PHONY: build-docker
 
-###########################################################
-### Local testnet using docker
+###############################################################################
+###                       Local testnet using docker                        ###
+###############################################################################
 
 # Build linux binary on other platforms
-build-linux: tools
+build-linux:
 	GOOS=linux GOARCH=amd64 $(MAKE) build
+.PHONY: build-linux
 
 build-docker-localnode:
 	@cd networks/local && make
+.PHONY: build-docker-localnode
 
-# Runs `make build_c` from within an Amazon Linux (v2)-based Docker build
-# container in order to build an Amazon Linux-compatible binary. Produces a
-# compatible binary at ./build/tendermint
+# Runs `make build TENDERMINT_BUILD_OPTIONS=cleveldb` from within an Amazon
+# Linux (v2)-based Docker build container in order to build an Amazon
+# Linux-compatible binary. Produces a compatible binary at ./build/tendermint
 build_c-amazonlinux:
 	$(MAKE) -C ./DOCKER build_amazonlinux_buildimage
 	docker run --rm -it -v `pwd`:/tendermint tendermint/tendermint:build_c-amazonlinux
+.PHONY: build_c-amazonlinux
 
 # Run a 4-node testnet locally
 localnet-start: localnet-stop build-docker-localnode
-	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --config /etc/tendermint/config-template.toml --v 4 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2; fi
+	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --config /etc/tendermint/config-template.toml --o . --starting-ip-address 192.167.10.2; fi
 	docker-compose up
+.PHONY: localnet-start
 
 # Stop testnet
 localnet-stop:
 	docker-compose down
-
-###########################################################
-### Remote full-nodes (sentry) using terraform and ansible
-
-# Server management
-sentry-start:
-	@if [ -z "$(DO_API_TOKEN)" ]; then echo "DO_API_TOKEN environment variable not set." ; false ; fi
-	@if ! [ -f $(HOME)/.ssh/id_rsa.pub ]; then ssh-keygen ; fi
-	cd networks/remote/terraform && terraform init && terraform apply -var DO_API_TOKEN="$(DO_API_TOKEN)" -var SSH_KEY_FILE="$(HOME)/.ssh/id_rsa.pub"
-	@if ! [ -f $(CURDIR)/build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --v 0 --n 4 --o . ; fi
-	cd networks/remote/ansible && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory/digital_ocean.py -l sentrynet install.yml
-	@echo "Next step: Add your validator setup in the genesis.json and config.tml files and run \"make sentry-config\". (Public key of validator, chain ID, peer IP and node ID.)"
-
-# Configuration management
-sentry-config:
-	cd networks/remote/ansible && ansible-playbook -i inventory/digital_ocean.py -l sentrynet config.yml -e BINARY=$(CURDIR)/build/tendermint -e CONFIGDIR=$(CURDIR)/build
-
-sentry-stop:
-	@if [ -z "$(DO_API_TOKEN)" ]; then echo "DO_API_TOKEN environment variable not set." ; false ; fi
-	cd networks/remote/terraform && terraform destroy -var DO_API_TOKEN="$(DO_API_TOKEN)" -var SSH_KEY_FILE="$(HOME)/.ssh/id_rsa.pub"
+.PHONY: localnet-stop
 
 # Build hooks for dredd, to skip or add information on some steps
 build-contract-tests-hooks:
@@ -221,6 +270,7 @@ ifeq ($(OS),Windows_NT)
 else
 	go build -mod=readonly $(BUILD_FLAGS) -o build/contract_tests ./cmd/contract_tests
 endif
+.PHONY: build-contract-tests-hooks
 
 # Run a nodejs tool to test endpoints against a localnet
 # The command takes care of starting and stopping the network
@@ -229,12 +279,18 @@ endif
 # The binaries should be built beforehand
 contract-tests:
 	dredd
+.PHONY: contract-tests
 
-# To avoid unintended conflicts with file names, always add to .PHONY
-# unless there is a reason not to.
-# https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race build_abci dist install install_abci check_tools tools update_tools draw_deps \
- 	protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver fmt build-linux localnet-start \
- 	localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop protoc_grpc protoc_all \
- 	build_c install_c test_with_deadlock cleanup_after_test_with_deadlock lint build-contract-tests-hooks contract-tests \
-	build_c-amazonlinux
+clean:
+	rm -rf $(CURDIR)/artifacts/ $(BUILDDIR)/
+
+build-reproducible:
+	docker rm latest-build || true
+	docker run --volume=$(CURDIR):/sources:ro \
+		--env TARGET_PLATFORMS='linux/amd64 linux/arm64 darwin/amd64 windows/amd64' \
+		--env APP=tendermint \
+		--env COMMIT=$(shell git rev-parse --short=8 HEAD) \
+		--env VERSION=$(shell git describe --tags) \
+		--name latest-build cosmossdk/rbuilder:latest
+	docker cp -a latest-build:/home/builder/artifacts/ $(CURDIR)/
+.PHONY: build-reproducible

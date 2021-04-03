@@ -1,6 +1,0 @@
-tendermint (@VERSION@) @STABILITY@; urgency=medium
-
-  * Automatic build. See https://github.com/tendermint/tendermint for more information.
-
- -- Greg Szabo <greg@philosobear.com>  @DATETIMESTAMP@
-

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSimpleArmor(t *testing.T) {
+func TestArmor(t *testing.T) {
 	blockType := "MINT TEST"
 	data := []byte("somedata")
 	armorStr := EncodeArmor(blockType, nil, data)

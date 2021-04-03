@@ -1,13 +1,14 @@
 package core
 
 import (
+	"errors"
 	"fmt"
+	"sort"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
-
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
 )
@@ -15,15 +16,14 @@ import (
 // Tx allows you to query the transaction results. `nil` could mean the
 // transaction is in the mempool, invalidated, or was not sent in the first
 // place.
-// More: https://tendermint.com/rpc/#/Info/tx
+// More: https://docs.tendermint.com/master/rpc/#/Info/tx
 func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
-
 	// if index is disabled, return error
-	if _, ok := txIndexer.(*null.TxIndex); ok {
+	if _, ok := env.TxIndexer.(*null.TxIndex); ok {
 		return nil, fmt.Errorf("transaction indexing is disabled")
 	}
 
-	r, err := txIndexer.Get(hash)
+	r, err := env.TxIndexer.Get(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error
 
 	var proof types.TxProof
 	if prove {
-		block := blockStore.LoadBlock(height)
+		block := env.BlockStore.LoadBlock(height)
 		proof = block.Data.Txs.Proof(int(index)) // XXX: overflow on 32-bit machines
 	}
 
@@ -53,11 +53,18 @@ func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error
 
 // TxSearch allows you to query for multiple transactions results. It returns a
 // list of transactions (maximum ?per_page entries) and the total count.
-// More: https://tendermint.com/rpc/#/Info/tx_search
-func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error) {
+// More: https://docs.tendermint.com/master/rpc/#/Info/tx_search
+func TxSearch(
+	ctx *rpctypes.Context,
+	query string,
+	prove bool,
+	pagePtr, perPagePtr *int,
+	orderBy string,
+) (*ctypes.ResultTxSearch, error) {
+
 	// if index is disabled, return error
-	if _, ok := txIndexer.(*null.TxIndex); ok {
-		return nil, fmt.Errorf("transaction indexing is disabled")
+	if _, ok := env.TxIndexer.(*null.TxIndex); ok {
+		return nil, errors.New("transaction indexing is disabled")
 	}
 
 	q, err := tmquery.New(query)
@@ -65,40 +72,61 @@ func TxSearch(ctx *rpctypes.Context, query string, prove bool, page, perPage int
 		return nil, err
 	}
 
-	results, err := txIndexer.Search(q)
+	results, err := env.TxIndexer.Search(ctx.Context(), q)
 	if err != nil {
 		return nil, err
 	}
 
+	// sort results (must be done before pagination)
+	switch orderBy {
+	case "desc", "":
+		sort.Slice(results, func(i, j int) bool {
+			if results[i].Height == results[j].Height {
+				return results[i].Index > results[j].Index
+			}
+			return results[i].Height > results[j].Height
+		})
+	case "asc":
+		sort.Slice(results, func(i, j int) bool {
+			if results[i].Height == results[j].Height {
+				return results[i].Index < results[j].Index
+			}
+			return results[i].Height < results[j].Height
+		})
+	default:
+		return nil, fmt.Errorf("%w: expected order_by to be either `asc` or `desc` or empty", ctypes.ErrInvalidRequest)
+	}
+
+	// paginate results
 	totalCount := len(results)
-	perPage = validatePerPage(perPage)
-	page, err = validatePage(page, perPage, totalCount)
+	perPage := validatePerPage(perPagePtr)
+
+	page, err := validatePage(pagePtr, perPage, totalCount)
 	if err != nil {
 		return nil, err
 	}
+
 	skipCount := validateSkipCount(page, perPage)
+	pageSize := tmmath.MinInt(perPage, totalCount-skipCount)
 
-	apiResults := make([]*ctypes.ResultTx, cmn.MinInt(perPage, totalCount-skipCount))
-	var proof types.TxProof
-	// if there's no tx in the results array, we don't need to loop through the apiResults array
-	for i := 0; i < len(apiResults); i++ {
-		r := results[skipCount+i]
-		height := r.Height
-		index := r.Index
+	apiResults := make([]*ctypes.ResultTx, 0, pageSize)
+	for i := skipCount; i < skipCount+pageSize; i++ {
+		r := results[i]
 
+		var proof types.TxProof
 		if prove {
-			block := blockStore.LoadBlock(height)
-			proof = block.Data.Txs.Proof(int(index)) // XXX: overflow on 32-bit machines
+			block := env.BlockStore.LoadBlock(r.Height)
+			proof = block.Data.Txs.Proof(int(r.Index)) // XXX: overflow on 32-bit machines
 		}
 
-		apiResults[i] = &ctypes.ResultTx{
-			Hash:     r.Tx.Hash(),
-			Height:   height,
-			Index:    index,
+		apiResults = append(apiResults, &ctypes.ResultTx{
+			Hash:     types.Tx(r.Tx).Hash(),
+			Height:   r.Height,
+			Index:    r.Index,
 			TxResult: r.Result,
 			Tx:       r.Tx,
 			Proof:    proof,
-		}
+		})
 	}
 
 	return &ctypes.ResultTxSearch{Txs: apiResults, TotalCount: totalCount}, nil

@@ -2,41 +2,57 @@ package state
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
 )
 
-// database keys
-var (
-	stateKey = []byte("stateKey")
-)
-
 //-----------------------------------------------------------------------------
 
-// Version is for versioning the State.
-// It holds the Block and App version needed for making blocks,
-// and the software version to support upgrades to the format of
-// the State as stored on disk.
 type Version struct {
-	Consensus version.Consensus
-	Software  string
+	Consensus version.Consensus ` json:"consensus"`
+	Software  string            ` json:"software"`
 }
 
-// initStateVersion sets the Consensus.Block and Software versions,
+// InitStateVersion sets the Consensus.Block and Software versions,
 // but leaves the Consensus.App version blank.
 // The Consensus.App version will be set during the Handshake, once
 // we hear from the app what protocol version it is running.
-var initStateVersion = Version{
+var InitStateVersion = Version{
 	Consensus: version.Consensus{
 		Block: version.BlockProtocol,
 		App:   0,
 	},
 	Software: version.TMCoreSemVer,
+}
+
+func (v *Version) ToProto() tmstate.Version {
+	return tmstate.Version{
+		Consensus: tmversion.Consensus{
+			Block: v.Consensus.Block,
+			App:   v.Consensus.App,
+		},
+		Software: v.Software,
+	}
+}
+
+func VersionFromProto(v tmstate.Version) Version {
+	return Version{
+		Consensus: version.Consensus{
+			Block: v.Consensus.Block,
+			App:   v.Consensus.App,
+		},
+		Software: v.Software,
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -46,13 +62,14 @@ var initStateVersion = Version{
 // including the last validator set and the consensus params.
 // All fields are exposed so the struct can be easily serialized,
 // but none of them should be mutated directly.
-// Instead, use state.Copy() or state.NextState(...).
+// Instead, use state.Copy() or updateState(...).
 // NOTE: not goroutine-safe.
 type State struct {
 	Version Version
 
 	// immutable
-	ChainID string
+	ChainID       string
+	InitialHeight int64 // should be 1, not 0, when starting from height 1
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
 	LastBlockHeight int64
@@ -84,9 +101,11 @@ type State struct {
 
 // Copy makes a copy of the State for mutating.
 func (state State) Copy() State {
+
 	return State{
-		Version: state.Version,
-		ChainID: state.ChainID,
+		Version:       state.Version,
+		ChainID:       state.ChainID,
+		InitialHeight: state.InitialHeight,
 
 		LastBlockHeight: state.LastBlockHeight,
 		LastBlockID:     state.LastBlockID,
@@ -112,14 +131,118 @@ func (state State) Equals(state2 State) bool {
 	return bytes.Equal(sbz, s2bz)
 }
 
-// Bytes serializes the State using go-amino.
+// Bytes serializes the State using protobuf.
+// It panics if either casting to protobuf or serialization fails.
 func (state State) Bytes() []byte {
-	return cdc.MustMarshalBinaryBare(state)
+	sm, err := state.ToProto()
+	if err != nil {
+		panic(err)
+	}
+	bz, err := proto.Marshal(sm)
+	if err != nil {
+		panic(err)
+	}
+	return bz
 }
 
 // IsEmpty returns true if the State is equal to the empty State.
 func (state State) IsEmpty() bool {
 	return state.Validators == nil // XXX can't compare to Empty
+}
+
+// ToProto takes the local state type and returns the equivalent proto type
+func (state *State) ToProto() (*tmstate.State, error) {
+	if state == nil {
+		return nil, errors.New("state is nil")
+	}
+
+	sm := new(tmstate.State)
+
+	sm.Version = state.Version.ToProto()
+	sm.ChainID = state.ChainID
+	sm.InitialHeight = state.InitialHeight
+	sm.LastBlockHeight = state.LastBlockHeight
+
+	sm.LastBlockID = state.LastBlockID.ToProto()
+	sm.LastBlockTime = state.LastBlockTime
+	vals, err := state.Validators.ToProto()
+	if err != nil {
+		return nil, err
+	}
+	sm.Validators = vals
+
+	nVals, err := state.NextValidators.ToProto()
+	if err != nil {
+		return nil, err
+	}
+	sm.NextValidators = nVals
+
+	if state.LastBlockHeight >= 1 { // At Block 1 LastValidators is nil
+		lVals, err := state.LastValidators.ToProto()
+		if err != nil {
+			return nil, err
+		}
+		sm.LastValidators = lVals
+	}
+
+	sm.LastHeightValidatorsChanged = state.LastHeightValidatorsChanged
+	sm.ConsensusParams = state.ConsensusParams.ToProto()
+	sm.LastHeightConsensusParamsChanged = state.LastHeightConsensusParamsChanged
+	sm.LastResultsHash = state.LastResultsHash
+	sm.AppHash = state.AppHash
+
+	return sm, nil
+}
+
+// StateFromProto takes a state proto message & returns the local state type
+func StateFromProto(pb *tmstate.State) (*State, error) { //nolint:golint
+	if pb == nil {
+		return nil, errors.New("nil State")
+	}
+
+	state := new(State)
+
+	state.Version = VersionFromProto(pb.Version)
+	state.ChainID = pb.ChainID
+	state.InitialHeight = pb.InitialHeight
+
+	bi, err := types.BlockIDFromProto(&pb.LastBlockID)
+	if err != nil {
+		return nil, err
+	}
+	state.LastBlockID = *bi
+	state.LastBlockHeight = pb.LastBlockHeight
+	state.LastBlockTime = pb.LastBlockTime
+
+	vals, err := types.ValidatorSetFromProto(pb.Validators)
+	if err != nil {
+		return nil, err
+	}
+	state.Validators = vals
+
+	nVals, err := types.ValidatorSetFromProto(pb.NextValidators)
+	if err != nil {
+		return nil, err
+	}
+	state.NextValidators = nVals
+
+	if state.LastBlockHeight >= 1 { // At Block 1 LastValidators is nil
+		lVals, err := types.ValidatorSetFromProto(pb.LastValidators)
+		if err != nil {
+			return nil, err
+		}
+		state.LastValidators = lVals
+	} else {
+		state.LastValidators = types.NewValidatorSet(nil)
+	}
+
+	state.LastHeightValidatorsChanged = pb.LastHeightValidatorsChanged
+	state.ConsensusParams = types.ConsensusParamsFromProto(pb.ConsensusParams)
+	state.LastHeightConsensusParamsChanged = pb.LastHeightConsensusParamsChanged
+	state.LastResultsHash = pb.LastResultsHash
+	state.AppHash = pb.AppHash
+
+	return state, nil
 }
 
 //------------------------------------------------------------------------
@@ -141,7 +264,7 @@ func (state State) MakeBlock(
 
 	// Set time.
 	var timestamp time.Time
-	if height == 1 {
+	if height == state.InitialHeight {
 		timestamp = state.LastBlockTime // genesis time
 	} else {
 		timestamp = MedianTime(commit, state.LastValidators)
@@ -152,7 +275,7 @@ func (state State) MakeBlock(
 		state.Version.Consensus, state.ChainID,
 		timestamp, state.LastBlockID,
 		state.Validators.Hash(), state.NextValidators.Hash(),
-		state.ConsensusParams.Hash(), state.AppHash, state.LastResultsHash,
+		state.ConsensusParams.HashConsensusParams(), state.AppHash, state.LastResultsHash,
 		proposerAddress,
 	)
 
@@ -214,7 +337,7 @@ func MakeGenesisDocFromFile(genDocFile string) (*types.GenesisDoc, error) {
 func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	err := genDoc.ValidateAndComplete()
 	if err != nil {
-		return State{}, fmt.Errorf("error in genesis file: %v", err)
+		return State{}, fmt.Errorf("error in genesis doc: %w", err)
 	}
 
 	var validatorSet, nextValidatorSet *types.ValidatorSet
@@ -231,8 +354,9 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	}
 
 	return State{
-		Version: initStateVersion,
-		ChainID: genDoc.ChainID,
+		Version:       InitStateVersion,
+		ChainID:       genDoc.ChainID,
+		InitialHeight: genDoc.InitialHeight,
 
 		LastBlockHeight: 0,
 		LastBlockID:     types.BlockID{},
@@ -241,10 +365,10 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		NextValidators:              nextValidatorSet,
 		Validators:                  validatorSet,
 		LastValidators:              types.NewValidatorSet(nil),
-		LastHeightValidatorsChanged: 1,
+		LastHeightValidatorsChanged: genDoc.InitialHeight,
 
 		ConsensusParams:                  *genDoc.ConsensusParams,
-		LastHeightConsensusParamsChanged: 1,
+		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
 
 		AppHash: genDoc.AppHash,
 	}, nil

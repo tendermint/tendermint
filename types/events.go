@@ -3,8 +3,8 @@ package types
 import (
 	"fmt"
 
-	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
@@ -18,6 +18,7 @@ const (
 	// All of this data can be fetched through the rpc.
 	EventNewBlock            = "NewBlock"
 	EventNewBlockHeader      = "NewBlockHeader"
+	EventNewEvidence         = "NewEvidence"
 	EventTx                  = "Tx"
 	EventValidatorSetUpdates = "ValidatorSetUpdates"
 
@@ -37,26 +38,24 @@ const (
 	EventVote             = "Vote"
 )
 
-///////////////////////////////////////////////////////////////////////////////
 // ENCODING / DECODING
-///////////////////////////////////////////////////////////////////////////////
 
 // TMEventData implements events.EventData.
 type TMEventData interface {
 	// empty interface
 }
 
-func RegisterEventDatas(cdc *amino.Codec) {
-	cdc.RegisterInterface((*TMEventData)(nil), nil)
-	cdc.RegisterConcrete(EventDataNewBlock{}, "tendermint/event/NewBlock", nil)
-	cdc.RegisterConcrete(EventDataNewBlockHeader{}, "tendermint/event/NewBlockHeader", nil)
-	cdc.RegisterConcrete(EventDataTx{}, "tendermint/event/Tx", nil)
-	cdc.RegisterConcrete(EventDataRoundState{}, "tendermint/event/RoundState", nil)
-	cdc.RegisterConcrete(EventDataNewRound{}, "tendermint/event/NewRound", nil)
-	cdc.RegisterConcrete(EventDataCompleteProposal{}, "tendermint/event/CompleteProposal", nil)
-	cdc.RegisterConcrete(EventDataVote{}, "tendermint/event/Vote", nil)
-	cdc.RegisterConcrete(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates", nil)
-	cdc.RegisterConcrete(EventDataString(""), "tendermint/event/ProposalString", nil)
+func init() {
+	tmjson.RegisterType(EventDataNewBlock{}, "tendermint/event/NewBlock")
+	tmjson.RegisterType(EventDataNewBlockHeader{}, "tendermint/event/NewBlockHeader")
+	tmjson.RegisterType(EventDataNewEvidence{}, "tendermint/event/NewEvidence")
+	tmjson.RegisterType(EventDataTx{}, "tendermint/event/Tx")
+	tmjson.RegisterType(EventDataRoundState{}, "tendermint/event/RoundState")
+	tmjson.RegisterType(EventDataNewRound{}, "tendermint/event/NewRound")
+	tmjson.RegisterType(EventDataCompleteProposal{}, "tendermint/event/CompleteProposal")
+	tmjson.RegisterType(EventDataVote{}, "tendermint/event/Vote")
+	tmjson.RegisterType(EventDataValidatorSetUpdates{}, "tendermint/event/ValidatorSetUpdates")
+	tmjson.RegisterType(EventDataString(""), "tendermint/event/ProposalString")
 }
 
 // Most event messages are basic types (a block, a transaction)
@@ -77,26 +76,32 @@ type EventDataNewBlockHeader struct {
 	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
 }
 
+type EventDataNewEvidence struct {
+	Evidence Evidence `json:"evidence"`
+
+	Height int64 `json:"height"`
+}
+
 // All txs fire EventDataTx
 type EventDataTx struct {
-	TxResult
+	abci.TxResult
 }
 
 // NOTE: This goes into the replay WAL
 type EventDataRoundState struct {
 	Height int64  `json:"height"`
-	Round  int    `json:"round"`
+	Round  int32  `json:"round"`
 	Step   string `json:"step"`
 }
 
 type ValidatorInfo struct {
 	Address Address `json:"address"`
-	Index   int     `json:"index"`
+	Index   int32   `json:"index"`
 }
 
 type EventDataNewRound struct {
 	Height int64  `json:"height"`
-	Round  int    `json:"round"`
+	Round  int32  `json:"round"`
 	Step   string `json:"step"`
 
 	Proposer ValidatorInfo `json:"proposer"`
@@ -104,7 +109,7 @@ type EventDataNewRound struct {
 
 type EventDataCompleteProposal struct {
 	Height int64  `json:"height"`
-	Round  int    `json:"round"`
+	Round  int32  `json:"round"`
 	Step   string `json:"step"`
 
 	BlockID BlockID `json:"block_id"`
@@ -120,9 +125,7 @@ type EventDataValidatorSetUpdates struct {
 	ValidatorUpdates []*Validator `json:"validator_updates"`
 }
 
-///////////////////////////////////////////////////////////////////////////////
 // PUBSUB
-///////////////////////////////////////////////////////////////////////////////
 
 const (
 	// EventTypeKey is a reserved composite key for event name.
@@ -133,6 +136,10 @@ const (
 	// TxHeightKey is a reserved key, used to specify transaction block's height.
 	// see EventBus#PublishEventTx
 	TxHeightKey = "tx.height"
+
+	// BlockHeightKey is a reserved key used for indexing BeginBlock and Endblock
+	// events.
+	BlockHeightKey = "block.height"
 )
 
 var (
@@ -140,6 +147,7 @@ var (
 	EventQueryLock                = QueryForEvent(EventLock)
 	EventQueryNewBlock            = QueryForEvent(EventNewBlock)
 	EventQueryNewBlockHeader      = QueryForEvent(EventNewBlockHeader)
+	EventQueryNewEvidence         = QueryForEvent(EventNewEvidence)
 	EventQueryNewRound            = QueryForEvent(EventNewRound)
 	EventQueryNewRoundStep        = QueryForEvent(EventNewRoundStep)
 	EventQueryPolka               = QueryForEvent(EventPolka)
@@ -165,6 +173,7 @@ func QueryForEvent(eventType string) tmpubsub.Query {
 type BlockEventPublisher interface {
 	PublishEventNewBlock(block EventDataNewBlock) error
 	PublishEventNewBlockHeader(header EventDataNewBlockHeader) error
+	PublishEventNewEvidence(evidence EventDataNewEvidence) error
 	PublishEventTx(EventDataTx) error
 	PublishEventValidatorSetUpdates(EventDataValidatorSetUpdates) error
 }

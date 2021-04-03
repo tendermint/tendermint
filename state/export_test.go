@@ -2,8 +2,8 @@ package state
 
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 )
 
 //
@@ -17,15 +17,13 @@ import (
 // easily testable from outside of the package.
 //
 
-const ValSetCheckpointInterval = valSetCheckpointInterval
-
 // UpdateState is an alias for updateState exported from execution.go,
 // exclusively and explicitly for testing.
 func UpdateState(
 	state State,
 	blockID types.BlockID,
 	header *types.Header,
-	abciResponses *ABCIResponses,
+	abciResponses *tmstate.ABCIResponses,
 	validatorUpdates []*types.Validator,
 ) (State, error) {
 	return updateState(state, blockID, header, abciResponses, validatorUpdates)
@@ -35,16 +33,4 @@ func UpdateState(
 // from execution.go, exclusively and explicitly for testing.
 func ValidateValidatorUpdates(abciUpdates []abci.ValidatorUpdate, params types.ValidatorParams) error {
 	return validateValidatorUpdates(abciUpdates, params)
-}
-
-// SaveConsensusParamsInfo is an alias for the private saveConsensusParamsInfo
-// method in store.go, exported exclusively and explicitly for testing.
-func SaveConsensusParamsInfo(db dbm.DB, nextHeight, changeHeight int64, params types.ConsensusParams) {
-	saveConsensusParamsInfo(db, nextHeight, changeHeight, params)
-}
-
-// SaveValidatorsInfo is an alias for the private saveValidatorsInfo method in
-// store.go, exported exclusively and explicitly for testing.
-func SaveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *types.ValidatorSet) {
-	saveValidatorsInfo(db, height, lastHeightChanged, valSet)
 }

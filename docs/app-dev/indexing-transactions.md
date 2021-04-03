@@ -4,19 +4,23 @@ order: 6
 
 # Indexing Transactions
 
-Tendermint allows you to index transactions and later query or subscribe
-to their results.
-
-Events can be used to index transactions and blocks according to what happened
-during their execution. Note that the set of events returned for a block from
-`BeginBlock` and `EndBlock` are merged. In case both methods return the same
-type, only the key-value pairs defined in `EndBlock` are used.
+Tendermint allows you to index transactions and blocks and later query or
+subscribe to their results. Transactions are indexed by `TxResult.Events` and
+blocks are indexed by `Response(Begin|End)Block.Events`. However, transactions
+are also indexed by a primary key which includes the transaction hash and maps
+to and stores the corresponding `TxResult`. Blocks are indexed by a primary key
+which includes the block height and maps to and stores the block height, i.e.
+the block itself is never stored.
 
 Each event contains a type and a list of attributes, which are key-value pairs
 denoting something about what happened during the method's execution. For more
-details on `Events`, see the [ABCI](../spec/abci/abci.md) documentation.
+details on `Events`, see the
+[ABCI](https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#events)
+documentation.
 
-An Event has a composite key associated with it. A `compositeKey` is constructed by its type and key separated by a dot.
+An `Event` has a composite key associated with it. A `compositeKey` is
+constructed by its type and key separated by a dot.
+
 For example:
 
 ```json
@@ -39,34 +43,38 @@ Let's take a look at the `[tx_index]` config section:
 #   1) "null"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 indexer = "kv"
-
-# Comma-separated list of composite keys to index (by default the only key is "tx.hash")
-#
-# You can also index transactions by height by adding "tx.height" key here.
-#
-# It's recommended to index only a subset of keys due to possible memory
-# bloat. This is, of course, depends on the indexer's DB and the volume of
-# transactions.
-index_keys = ""
-
-# When set to true, tells indexer to index all compositeKeys (predefined keys:
-# "tx.hash", "tx.height" and all keys from DeliverTx responses).
-#
-# Note this may be not desirable (see the comment above). Indexkeys has a
-# precedence over IndexAllKeys (i.e. when given both, IndexKeys will be
-# indexed).
-index_all_keys = false
 ```
 
-By default, Tendermint will index all transactions by their respective
-hashes using an embedded simple indexer. Note, we are planning to add
-more options in the future (e.g., PostgreSQL indexer).
+By default, Tendermint will index all transactions by their respective hashes
+and height and blocks by their height.
+
+You can turn off indexing completely by setting `tx_index` to `null`.
+
+## Default Indexes
+
+The Tendermint tx and block event indexer indexes a few select reserved events
+by default.
+
+### Transactions
+
+The following indexes are indexed by default:
+
+- `tx.height`
+- `tx.hash`
+
+### Blocks
+
+The following indexes are indexed by default:
+
+- `block.height`
 
 ## Adding Events
 
-In your application's `DeliverTx` method, add the `Events` field with pairs of
-UTF-8 encoded strings (e.g. "transfer.sender": "Bob", "transfer.recipient": "Alice",
-"transfer.balance": "100").
+Applications are free to define which events to index. Tendermint does not
+expose functionality to define which events to index and which to ignore. In
+your application's `DeliverTx` method, add the `Events` field with pairs of
+UTF-8 encoded strings (e.g. "transfer.sender": "Bob", "transfer.recipient":
+"Alice", "transfer.balance": "100").
 
 Example:
 
@@ -76,10 +84,11 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Resul
     events := []abci.Event{
         {
             Type: "transfer",
-            Attributes: cmn.KVPairs{
-                cmn.KVPair{Key: []byte("sender"), Value: []byte("Bob")},
-                cmn.KVPair{Key: []byte("recipient"), Value: []byte("Alice")},
-                cmn.KVPair{Key: []byte("balance"), Value: []byte("100")},
+            Attributes: []abci.EventAttribute{
+                {Key: []byte("sender"), Value: []byte("Bob"), Index: true},
+                {Key: []byte("recipient"), Value: []byte("Alice"), Index: true},
+                {Key: []byte("balance"), Value: []byte("100"), Index: true},
+                {Key: []byte("note"), Value: []byte("nothing"), Index: true},
             },
         },
     }
@@ -87,27 +96,21 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Resul
 }
 ```
 
-If you want Tendermint to only index transactions by "transfer.sender" event type,
-in the config set `tx_index.index_tags="transfer.sender"`. If you to index all events,
-set `index_all_tags=true`
+If the indexer is not `null`, the transaction will be indexed. Each event is
+indexed using a composite key in the form of `{eventType}.{eventAttribute}={eventValue}`,
+e.g. `transfer.sender=bob`.
 
-Note, there are a few predefined event types:
+## Querying Transactions Events
 
-- `tx.hash` (transaction's hash)
-- `tx.height` (height of the block transaction was committed in)
+You can query for a paginated set of transaction by their events by calling the
+`/tx_search` RPC endpoint:
 
-Tendermint will throw a warning if you try to use any of the above keys.
-
-## Querying Transactions
-
-You can query the transaction results by calling `/tx_search` RPC endpoint:
-
-```shell
-curl "localhost:26657/tx_search?query=\"account.name='igor'\"&prove=true"
+```bash
+curl "localhost:26657/tx_search?query=\"message.sender='cosmos1...'\"&prove=true"
 ```
 
-Check out [API docs](https://tendermint.com/rpc/#txsearch) for more information
-on query syntax and other options.
+Check out [API docs](https://docs.tendermint.com/master/rpc/#/Info/tx_search)
+for more information on query syntax and other options.
 
 ## Subscribing to Transactions
 
@@ -120,10 +123,22 @@ a query to `/subscribe` RPC endpoint.
   "method": "subscribe",
   "id": "0",
   "params": {
-    "query": "account.name='igor'"
+    "query": "message.sender='cosmos1...'"
   }
 }
 ```
 
-Check out [API docs](https://tendermint.com/rpc/#subscribe) for more information
+Check out [API docs](https://docs.tendermint.com/master/rpc/#subscribe) for more information
 on query syntax and other options.
+
+## Querying Blocks Events
+
+You can query for a paginated set of blocks by their events by calling the
+`/block_search` RPC endpoint:
+
+```bash
+curl "localhost:26657/block_search?query=\"block.height > 10 AND val_set.num_changed > 0\""
+```
+
+Check out [API docs](https://docs.tendermint.com/master/rpc/#/Info/block_search)
+for more information on query syntax and other options.

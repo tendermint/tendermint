@@ -27,7 +27,7 @@
 //         select {
 //         case msg <- subscription.Out():
 //             // handle msg.Data() and msg.Events()
-//         case <-subscription.Cancelled():
+//         case <-subscription.Canceled():
 //             return subscription.Err()
 //         }
 //     }
@@ -36,10 +36,11 @@ package pubsub
 
 import (
 	"context"
-	"sync"
+	"errors"
+	"fmt"
 
-	"github.com/pkg/errors"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/service"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 type operation int
@@ -88,14 +89,14 @@ type cmd struct {
 // Server allows clients to subscribe/unsubscribe for messages, publishing
 // messages with or without events, and manages internal state.
 type Server struct {
-	cmn.BaseService
+	service.BaseService
 
 	cmds    chan cmd
 	cmdsCap int
 
 	// check if we have subscription before
 	// subscribing or unsubscribing
-	mtx           sync.RWMutex
+	mtx           tmsync.RWMutex
 	subscriptions map[string]map[string]struct{} // subscriber -> query (string) -> empty struct
 }
 
@@ -109,7 +110,7 @@ func NewServer(options ...Option) *Server {
 	s := &Server{
 		subscriptions: make(map[string]map[string]struct{}),
 	}
-	s.BaseService = *cmn.NewBaseService(nil, "PubSub", s)
+	s.BaseService = *service.NewBaseService(nil, "PubSub", s)
 
 	for _, option := range options {
 		option(s)
@@ -409,7 +410,7 @@ func (state *state) send(msg interface{}, events map[string][]string) error {
 
 		match, err := q.Matches(events)
 		if err != nil {
-			return errors.Wrapf(err, "failed to match against query %s", q.String())
+			return fmt.Errorf("failed to match against query %s: %w", q.String(), err)
 		}
 
 		if match {

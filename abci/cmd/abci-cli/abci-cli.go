@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -11,8 +12,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
@@ -22,13 +23,15 @@ import (
 	servertest "github.com/tendermint/tendermint/abci/tests/server"
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/abci/version"
-	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
 // client is a global variable so it can be reused by the console
 var (
 	client abcicli.Client
 	logger log.Logger
+
+	ctx = context.Background()
 )
 
 // flags
@@ -98,10 +101,10 @@ type response struct {
 }
 
 type queryResponse struct {
-	Key    []byte
-	Value  []byte
-	Height int64
-	Proof  *merkle.Proof
+	Key      []byte
+	Value    []byte
+	Height   int64
+	ProofOps *crypto.ProofOps
 }
 
 func Execute() error {
@@ -148,7 +151,6 @@ func addCommands() {
 	RootCmd.AddCommand(consoleCmd)
 	RootCmd.AddCommand(echoCmd)
 	RootCmd.AddCommand(infoCmd)
-	RootCmd.AddCommand(setOptionCmd)
 	RootCmd.AddCommand(deliverTxCmd)
 	RootCmd.AddCommand(checkTxCmd)
 	RootCmd.AddCommand(commitCmd)
@@ -176,7 +178,6 @@ you'd like to run:
 
 where example.file looks something like:
 
-    set_option serial on
     check_tx 0x00
     check_tx 0xff
     deliver_tx 0x00
@@ -198,7 +199,7 @@ This command opens an interactive console for running any of the other commands
 without opening a new connection each time
 `,
 	Args:      cobra.ExactArgs(0),
-	ValidArgs: []string{"echo", "info", "set_option", "deliver_tx", "check_tx", "commit", "query"},
+	ValidArgs: []string{"echo", "info", "deliver_tx", "check_tx", "commit", "query"},
 	RunE:      cmdConsole,
 }
 
@@ -215,13 +216,6 @@ var infoCmd = &cobra.Command{
 	Long:  "get some info about the application",
 	Args:  cobra.ExactArgs(0),
 	RunE:  cmdInfo,
-}
-var setOptionCmd = &cobra.Command{
-	Use:   "set_option",
-	Short: "set an option on the application",
-	Long:  "set an option on the application",
-	Args:  cobra.ExactArgs(2),
-	RunE:  cmdSetOption,
 }
 
 var deliverTxCmd = &cobra.Command{
@@ -324,7 +318,6 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 	return compose(
 		[]func() error{
 			func() error { return servertest.InitChain(client) },
-			func() error { return servertest.SetOption(client, "serial", "on") },
 			func() error { return servertest.Commit(client, nil) },
 			func() error { return servertest.DeliverTx(client, []byte("abc"), code.CodeTypeBadNonce, nil) },
 			func() error { return servertest.Commit(client, nil) },
@@ -439,8 +432,6 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 		return cmdInfo(cmd, actualArgs)
 	case "query":
 		return cmdQuery(cmd, actualArgs)
-	case "set_option":
-		return cmdSetOption(cmd, actualArgs)
 	default:
 		return cmdUnimplemented(cmd, pArgs)
 	}
@@ -464,7 +455,6 @@ func cmdUnimplemented(cmd *cobra.Command, args []string) error {
 	fmt.Printf("%s: %s\n", deliverTxCmd.Use, deliverTxCmd.Short)
 	fmt.Printf("%s: %s\n", queryCmd.Use, queryCmd.Short)
 	fmt.Printf("%s: %s\n", commitCmd.Use, commitCmd.Short)
-	fmt.Printf("%s: %s\n", setOptionCmd.Use, setOptionCmd.Short)
 	fmt.Println("Use \"[command] --help\" for more information about a command.")
 
 	return nil
@@ -476,7 +466,7 @@ func cmdEcho(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		msg = args[0]
 	}
-	res, err := client.EchoSync(msg)
+	res, err := client.EchoSync(ctx, msg)
 	if err != nil {
 		return err
 	}
@@ -492,7 +482,7 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		version = args[0]
 	}
-	res, err := client.InfoSync(types.RequestInfo{Version: version})
+	res, err := client.InfoSync(ctx, types.RequestInfo{Version: version})
 	if err != nil {
 		return err
 	}
@@ -503,25 +493,6 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 }
 
 const codeBad uint32 = 10
-
-// Set an option on the application
-func cmdSetOption(cmd *cobra.Command, args []string) error {
-	if len(args) < 2 {
-		printResponse(cmd, args, response{
-			Code: codeBad,
-			Log:  "want at least arguments of the form: <key> <value>",
-		})
-		return nil
-	}
-
-	key, val := args[0], args[1]
-	_, err := client.SetOptionSync(types.RequestSetOption{Key: key, Value: val})
-	if err != nil {
-		return err
-	}
-	printResponse(cmd, args, response{Log: "OK (SetOption doesn't return anything.)"}) // NOTE: Nothing to show...
-	return nil
-}
 
 // Append a new tx to application
 func cmdDeliverTx(cmd *cobra.Command, args []string) error {
@@ -536,7 +507,7 @@ func cmdDeliverTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := client.DeliverTxSync(types.RequestDeliverTx{Tx: txBytes})
+	res, err := client.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: txBytes})
 	if err != nil {
 		return err
 	}
@@ -562,7 +533,7 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := client.CheckTxSync(types.RequestCheckTx{Tx: txBytes})
+	res, err := client.CheckTxSync(ctx, types.RequestCheckTx{Tx: txBytes})
 	if err != nil {
 		return err
 	}
@@ -577,7 +548,7 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 
 // Get application Merkle root hash
 func cmdCommit(cmd *cobra.Command, args []string) error {
-	res, err := client.CommitSync()
+	res, err := client.CommitSync(ctx)
 	if err != nil {
 		return err
 	}
@@ -602,7 +573,7 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resQuery, err := client.QuerySync(types.RequestQuery{
+	resQuery, err := client.QuerySync(ctx, types.RequestQuery{
 		Data:   queryBytes,
 		Path:   flagPath,
 		Height: int64(flagHeight),
@@ -616,10 +587,10 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 		Info: resQuery.Info,
 		Log:  resQuery.Log,
 		Query: &queryResponse{
-			Key:    resQuery.Key,
-			Value:  resQuery.Value,
-			Height: resQuery.Height,
-			Proof:  resQuery.Proof,
+			Key:      resQuery.Key,
+			Value:    resQuery.Value,
+			Height:   resQuery.Height,
+			ProofOps: resQuery.ProofOps,
 		},
 	})
 	return nil
@@ -640,9 +611,11 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
 	}
 
 	// Stop upon receiving SIGTERM or CTRL-C.
-	cmn.TrapSignal(logger, func() {
+	tmos.TrapSignal(logger, func() {
 		// Cleanup
-		srv.Stop()
+		if err := srv.Stop(); err != nil {
+			logger.Error("Error while stopping server", "err", err)
+		}
 	})
 
 	// Run forever.
@@ -672,9 +645,11 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 	}
 
 	// Stop upon receiving SIGTERM or CTRL-C.
-	cmn.TrapSignal(logger, func() {
+	tmos.TrapSignal(logger, func() {
 		// Cleanup
-		srv.Stop()
+		if err := srv.Stop(); err != nil {
+			logger.Error("Error while stopping server", "err", err)
+		}
 	})
 
 	// Run forever.
@@ -719,8 +694,8 @@ func printResponse(cmd *cobra.Command, args []string, rsp response) {
 			fmt.Printf("-> value: %s\n", rsp.Query.Value)
 			fmt.Printf("-> value.hex: %X\n", rsp.Query.Value)
 		}
-		if rsp.Query.Proof != nil {
-			fmt.Printf("-> proof: %#v\n", rsp.Query.Proof)
+		if rsp.Query.ProofOps != nil {
+			fmt.Printf("-> proof: %#v\n", rsp.Query.ProofOps)
 		}
 	}
 }

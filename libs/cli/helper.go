@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"github.com/spf13/cobra"
 )
 
 // WriteConfigVals writes a toml file with the given values.
@@ -17,7 +19,7 @@ func WriteConfigVals(dir string, vals map[string]string) error {
 		data += fmt.Sprintf("%s = \"%s\"\n", k, v)
 	}
 	cfile := filepath.Join(dir, "config.toml")
-	return ioutil.WriteFile(cfile, []byte(data), 0666)
+	return ioutil.WriteFile(cfile, []byte(data), 0600)
 }
 
 // RunWithArgs executes the given command with the specified command line args
@@ -67,7 +69,7 @@ func RunCaptureWithArgs(cmd Executable, args []string, env map[string]string) (s
 		go func() {
 			var buf bytes.Buffer
 			// io.Copy will end when we call reader.Close() below
-			io.Copy(&buf, reader)
+			io.Copy(&buf, reader) //nolint:errcheck //ignore error
 			stdC <- buf.String()
 		}()
 		return &stdC
@@ -84,4 +86,43 @@ func RunCaptureWithArgs(cmd Executable, args []string, env map[string]string) (s
 	stdout = <-*outC
 	stderr = <-*errC
 	return stdout, stderr, err
+}
+
+// NewCompletionCmd returns a cobra.Command that generates bash and zsh
+// completion scripts for the given root command. If hidden is true, the
+// command will not show up in the root command's list of available commands.
+func NewCompletionCmd(rootCmd *cobra.Command, hidden bool) *cobra.Command {
+	flagZsh := "zsh"
+	cmd := &cobra.Command{
+		Use:   "completion",
+		Short: "Generate shell completion scripts",
+		Long: fmt.Sprintf(`Generate Bash and Zsh completion scripts and print them to STDOUT.
+
+Once saved to file, a completion script can be loaded in the shell's
+current session as shown:
+
+   $ . <(%s completion)
+
+To configure your bash shell to load completions for each session add to
+your $HOME/.bashrc or $HOME/.profile the following instruction:
+
+   . <(%s completion)
+`, rootCmd.Use, rootCmd.Use),
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			zsh, err := cmd.Flags().GetBool(flagZsh)
+			if err != nil {
+				return err
+			}
+			if zsh {
+				return rootCmd.GenZshCompletion(cmd.OutOrStdout())
+			}
+			return rootCmd.GenBashCompletion(cmd.OutOrStdout())
+		},
+		Hidden: hidden,
+		Args:   cobra.NoArgs,
+	}
+
+	cmd.Flags().Bool(flagZsh, false, "Generate Zsh completion script")
+
+	return cmd
 }

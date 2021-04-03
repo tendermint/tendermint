@@ -1,15 +1,19 @@
 package p2p
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"math"
+	"net"
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/tendermint/tendermint/config"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/libs/cmap"
+	"github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
@@ -27,6 +31,8 @@ const (
 	// ie. 3**10 = 16hrs
 	reconnectBackOffAttempts    = 10
 	reconnectBackOffBaseSeconds = 3
+
+	defaultFilterTimeout = 5 * time.Second
 )
 
 // MConnConfig returns an MConnConfig with fields updated
@@ -46,17 +52,38 @@ func MConnConfig(cfg *config.P2PConfig) conn.MConnConfig {
 // to store peer addresses.
 type AddrBook interface {
 	AddAddress(addr *NetAddress, src *NetAddress) error
+	AddPrivateIDs([]string)
 	AddOurAddress(*NetAddress)
 	OurAddress(*NetAddress) bool
-	MarkGood(ID)
+	MarkGood(NodeID)
 	RemoveAddress(*NetAddress)
 	HasAddress(*NetAddress) bool
 	Save()
 }
 
+// ConnFilterFunc is a callback for connection filtering. If it returns an
+// error, the connection is rejected. The set of existing connections is passed
+// along with the new connection and all resolved IPs.
+type ConnFilterFunc func(ConnSet, net.Conn, []net.IP) error
+
 // PeerFilterFunc to be implemented by filter hooks after a new Peer has been
 // fully setup.
 type PeerFilterFunc func(IPeerSet, Peer) error
+
+// ConnDuplicateIPFilter resolves and keeps all ips for an incoming connection
+// and refuses new ones if they come from a known ip.
+var ConnDuplicateIPFilter ConnFilterFunc = func(cs ConnSet, c net.Conn, ips []net.IP) error {
+	for _, ip := range ips {
+		if cs.HasIP(ip) {
+			return ErrRejected{
+				conn:        c,
+				err:         fmt.Errorf("ip<%v> already connected", ip),
+				isDuplicate: true,
+			}
+		}
+	}
+	return nil
+}
 
 //-----------------------------------------------------------------------------
 
@@ -65,36 +92,46 @@ type PeerFilterFunc func(IPeerSet, Peer) error
 // or more `Channels`.  So while sending outgoing messages is typically performed on the peer,
 // incoming messages are received on the reactor.
 type Switch struct {
-	cmn.BaseService
+	service.BaseService
 
 	config       *config.P2PConfig
 	reactors     map[string]Reactor
 	chDescs      []*conn.ChannelDescriptor
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
-	dialing      *cmn.CMap
-	reconnecting *cmn.CMap
+	dialing      *cmap.CMap
+	reconnecting *cmap.CMap
 	nodeInfo     NodeInfo // our node info
-	nodeKey      *NodeKey // our node privkey
+	nodeKey      NodeKey  // our node privkey
 	addrBook     AddrBook
 	// peers addresses with whom we'll maintain constant connection
 	persistentPeersAddrs []*NetAddress
-	unconditionalPeerIDs map[ID]struct{}
+	unconditionalPeerIDs map[NodeID]struct{}
 
 	transport Transport
 
 	filterTimeout time.Duration
 	peerFilters   []PeerFilterFunc
+	connFilters   []ConnFilterFunc
+	conns         ConnSet
 
-	rng *cmn.Rand // seed for randomizing dial times and orders
+	rng *rand.Rand // seed for randomizing dial times and orders
 
 	metrics *Metrics
 }
 
-// NetAddress returns the address the switch is listening on.
+// NetAddress returns the first address the switch is listening on,
+// or nil if no addresses are found.
 func (sw *Switch) NetAddress() *NetAddress {
-	addr := sw.transport.NetAddress()
-	return &addr
+	endpoints := sw.transport.Endpoints()
+	if len(endpoints) == 0 {
+		return nil
+	}
+	return &NetAddress{
+		ID:   sw.nodeInfo.NodeID,
+		IP:   endpoints[0].IP,
+		Port: endpoints[0].Port,
+	}
 }
 
 // SwitchOption sets an optional parameter on the Switch.
@@ -112,19 +149,20 @@ func NewSwitch(
 		chDescs:              make([]*conn.ChannelDescriptor, 0),
 		reactorsByCh:         make(map[byte]Reactor),
 		peers:                NewPeerSet(),
-		dialing:              cmn.NewCMap(),
-		reconnecting:         cmn.NewCMap(),
+		dialing:              cmap.NewCMap(),
+		reconnecting:         cmap.NewCMap(),
 		metrics:              NopMetrics(),
 		transport:            transport,
-		filterTimeout:        defaultFilterTimeout,
 		persistentPeersAddrs: make([]*NetAddress, 0),
-		unconditionalPeerIDs: make(map[ID]struct{}),
+		unconditionalPeerIDs: make(map[NodeID]struct{}),
+		filterTimeout:        defaultFilterTimeout,
+		conns:                NewConnSet(),
 	}
 
 	// Ensure we have a completely undeterministic PRNG.
-	sw.rng = cmn.NewRand()
+	sw.rng = rand.NewRand()
 
-	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
+	sw.BaseService = *service.NewBaseService(nil, "P2P Switch", sw)
 
 	for _, option := range options {
 		option(sw)
@@ -141,6 +179,11 @@ func SwitchFilterTimeout(timeout time.Duration) SwitchOption {
 // SwitchPeerFilters sets the filters for rejection of new peers.
 func SwitchPeerFilters(filters ...PeerFilterFunc) SwitchOption {
 	return func(sw *Switch) { sw.peerFilters = filters }
+}
+
+// SwitchConnFilters sets the filters for rejection of connections.
+func SwitchConnFilters(filters ...ConnFilterFunc) SwitchOption {
+	return func(sw *Switch) { sw.connFilters = filters }
 }
 
 // WithMetrics sets the metrics.
@@ -211,7 +254,7 @@ func (sw *Switch) NodeInfo() NodeInfo {
 
 // SetNodeKey sets the switch's private key for authenticated encryption.
 // NOTE: Not goroutine safe.
-func (sw *Switch) SetNodeKey(nodeKey *NodeKey) {
+func (sw *Switch) SetNodeKey(nodeKey NodeKey) {
 	sw.nodeKey = nodeKey
 }
 
@@ -220,11 +263,19 @@ func (sw *Switch) SetNodeKey(nodeKey *NodeKey) {
 
 // OnStart implements BaseService. It starts all the reactors and peers.
 func (sw *Switch) OnStart() error {
+
+	// FIXME: Temporary hack to pass channel descriptors to MConn transport,
+	// since they are not available when it is constructed. This will be
+	// fixed when we implement the new router abstraction.
+	if t, ok := sw.transport.(*MConnTransport); ok {
+		t.channelDescs = sw.chDescs
+	}
+
 	// Start reactors
 	for _, reactor := range sw.reactors {
 		err := reactor.Start()
 		if err != nil {
-			return errors.Wrapf(err, "failed to start %v", reactor)
+			return fmt.Errorf("failed to start %v: %w", reactor, err)
 		}
 	}
 
@@ -244,7 +295,9 @@ func (sw *Switch) OnStop() {
 	// Stop reactors
 	sw.Logger.Debug("Switch: Stopping reactors")
 	for _, reactor := range sw.reactors {
-		reactor.Stop()
+		if err := reactor.Stop(); err != nil {
+			sw.Logger.Error("error while stopping reactor", "reactor", reactor, "error", err)
+		}
 	}
 }
 
@@ -258,7 +311,7 @@ func (sw *Switch) OnStop() {
 //
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
 func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
-	sw.Logger.Debug("Broadcast", "channel", chID, "msgBytes", fmt.Sprintf("%X", msgBytes))
+	sw.Logger.Debug("Broadcast", "channel", chID, "msgBytes", msgBytes)
 
 	peers := sw.peers.List()
 	var wg sync.WaitGroup
@@ -300,7 +353,7 @@ func (sw *Switch) NumPeers() (outbound, inbound, dialing int) {
 	return
 }
 
-func (sw *Switch) IsPeerUnconditional(id ID) bool {
+func (sw *Switch) IsPeerUnconditional(id NodeID) bool {
 	_, ok := sw.unconditionalPeerIDs[id]
 	return ok
 }
@@ -319,6 +372,10 @@ func (sw *Switch) Peers() IPeerSet {
 // If the peer is persistent, it will attempt to reconnect.
 // TODO: make record depending on reason.
 func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
+	if !peer.IsRunning() {
+		return
+	}
+
 	sw.Logger.Error("Stopping peer for error", "peer", peer, "err", reason)
 	sw.stopAndRemovePeer(peer, reason)
 
@@ -347,8 +404,9 @@ func (sw *Switch) StopPeerGracefully(peer Peer) {
 }
 
 func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
-	sw.transport.Cleanup(peer)
-	peer.Stop()
+	if err := peer.Stop(); err != nil {
+		sw.Logger.Error("error while stopping peer", "error", err) // TODO: should return error to be handled accordingly
+	}
 
 	for _, reactor := range sw.reactors {
 		reactor.RemovePeer(peer, reason)
@@ -361,6 +419,8 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 	if sw.peers.Remove(peer) {
 		sw.metrics.Peers.Add(float64(-1))
 	}
+
+	sw.conns.RemoveAddr(peer.RemoteAddr())
 }
 
 // reconnectToPeer tries to reconnect to the addr, first repeatedly
@@ -441,7 +501,7 @@ type privateAddr interface {
 }
 
 func isPrivateAddr(err error) bool {
-	te, ok := errors.Cause(err).(privateAddr)
+	te, ok := err.(privateAddr)
 	return ok && te.PrivateAddr()
 }
 
@@ -573,19 +633,28 @@ func (sw *Switch) AddPersistentPeers(addrs []string) error {
 func (sw *Switch) AddUnconditionalPeerIDs(ids []string) error {
 	sw.Logger.Info("Adding unconditional peer ids", "ids", ids)
 	for i, id := range ids {
-		err := validateID(ID(id))
+		err := NodeID(id).Validate()
 		if err != nil {
-			return errors.Wrapf(err, "wrong ID #%d", i)
+			return fmt.Errorf("wrong ID #%d: %w", i, err)
 		}
-		sw.unconditionalPeerIDs[ID(id)] = struct{}{}
+		sw.unconditionalPeerIDs[NodeID(id)] = struct{}{}
 	}
 	return nil
 }
 
-func (sw *Switch) isPeerPersistentFn() func(*NetAddress) bool {
-	return func(na *NetAddress) bool {
-		return sw.IsPeerPersistent(na)
+func (sw *Switch) AddPrivatePeerIDs(ids []string) error {
+	validIDs := make([]string, 0, len(ids))
+	for i, id := range ids {
+		err := NodeID(id).Validate()
+		if err != nil {
+			return fmt.Errorf("wrong ID #%d: %w", i, err)
+		}
+		validIDs = append(validIDs, id)
 	}
+
+	sw.addrBook.AddPrivateIDs(validIDs)
+
+	return nil
 }
 
 func (sw *Switch) IsPeerPersistent(na *NetAddress) bool {
@@ -599,14 +668,25 @@ func (sw *Switch) IsPeerPersistent(na *NetAddress) bool {
 
 func (sw *Switch) acceptRoutine() {
 	for {
-		p, err := sw.transport.Accept(peerConfig{
-			chDescs:      sw.chDescs,
-			onPeerError:  sw.StopPeerForError,
-			reactorsByCh: sw.reactorsByCh,
-			metrics:      sw.metrics,
-			isPersistent: sw.isPeerPersistentFn(),
-		})
+		var peerNodeInfo NodeInfo
+		c, err := sw.transport.Accept()
+		if err == nil {
+			// NOTE: The legacy MConn transport did handshaking in Accept(),
+			// which was asynchronous and avoided head-of-line-blocking.
+			// However, as handshakes are being migrated out from the transport,
+			// we just do it synchronously here for now.
+			peerNodeInfo, _, err = sw.handshakePeer(c, "")
+		}
+		if err == nil {
+			err = sw.filterConn(c.(*mConnConnection).conn)
+		}
 		if err != nil {
+			if c != nil {
+				_ = c.Close()
+			}
+			if err == io.EOF {
+				err = ErrTransportClosed{}
+			}
 			switch err := err.(type) {
 			case ErrRejected:
 				if err.IsSelf() {
@@ -653,6 +733,20 @@ func (sw *Switch) acceptRoutine() {
 			break
 		}
 
+		isPersistent := false
+		addr, err := peerNodeInfo.NetAddress()
+		if err == nil {
+			isPersistent = sw.IsPeerPersistent(addr)
+		}
+
+		p := newPeer(
+			peerNodeInfo,
+			newPeerConn(false, isPersistent, c),
+			sw.reactorsByCh,
+			sw.StopPeerForError,
+			PeerMetrics(sw.metrics),
+		)
+
 		if !sw.IsPeerUnconditional(p.NodeInfo().ID()) {
 			// Ignore connection if we already have enough peers.
 			_, in, _ := sw.NumPeers()
@@ -663,19 +757,18 @@ func (sw *Switch) acceptRoutine() {
 					"have", in,
 					"max", sw.config.MaxNumInboundPeers,
 				)
-
-				sw.transport.Cleanup(p)
-
+				_ = p.CloseConn()
 				continue
 			}
 
 		}
 
 		if err := sw.addPeer(p); err != nil {
-			sw.transport.Cleanup(p)
+			_ = p.CloseConn()
 			if p.IsRunning() {
 				_ = p.Stop()
 			}
+			sw.conns.RemoveAddr(p.RemoteAddr())
 			sw.Logger.Info(
 				"Ignoring inbound connection: error while adding peer",
 				"err", err,
@@ -702,14 +795,26 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		return fmt.Errorf("dial err (peerConfig.DialFail == true)")
 	}
 
-	p, err := sw.transport.Dial(*addr, peerConfig{
-		chDescs:      sw.chDescs,
-		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.isPeerPersistentFn(),
-		reactorsByCh: sw.reactorsByCh,
-		metrics:      sw.metrics,
+	// Hardcoded timeout moved from MConn transport during refactoring.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var peerNodeInfo NodeInfo
+	c, err := sw.transport.Dial(ctx, Endpoint{
+		Protocol: MConnProtocol,
+		IP:       addr.IP,
+		Port:     addr.Port,
 	})
+	if err == nil {
+		peerNodeInfo, _, err = sw.handshakePeer(c, addr.ID)
+	}
+	if err == nil {
+		err = sw.filterConn(c.(*mConnConnection).conn)
+	}
 	if err != nil {
+		if c != nil {
+			_ = c.Close()
+		}
 		if e, ok := err.(ErrRejected); ok {
 			if e.IsSelf() {
 				// Remove the given address from the address book and add to our addresses
@@ -723,22 +828,91 @@ func (sw *Switch) addOutboundPeerWithConfig(
 
 		// retry persistent peers after
 		// any dial error besides IsSelf()
-		if sw.isPeerPersistentFn()(addr) {
+		if sw.IsPeerPersistent(addr) {
 			go sw.reconnectToPeer(addr)
 		}
 
 		return err
 	}
 
+	p := newPeer(
+		peerNodeInfo,
+		newPeerConn(true, sw.IsPeerPersistent(addr), c),
+		sw.reactorsByCh,
+		sw.StopPeerForError,
+		PeerMetrics(sw.metrics),
+	)
+
 	if err := sw.addPeer(p); err != nil {
-		sw.transport.Cleanup(p)
+		_ = p.CloseConn()
 		if p.IsRunning() {
 			_ = p.Stop()
 		}
+		sw.conns.RemoveAddr(p.RemoteAddr())
 		return err
 	}
 
 	return nil
+}
+
+func (sw *Switch) handshakePeer(c Connection, expectPeerID NodeID) (NodeInfo, crypto.PubKey, error) {
+	// Moved from transport and hardcoded until legacy P2P stack removal.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	peerInfo, peerKey, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	if err != nil {
+		return peerInfo, peerKey, ErrRejected{
+			conn:          c.(*mConnConnection).conn,
+			err:           fmt.Errorf("handshake failed: %v", err),
+			isAuthFailure: true,
+		}
+	}
+
+	if err = peerInfo.Validate(); err != nil {
+		return peerInfo, peerKey, ErrRejected{
+			conn:              c.(*mConnConnection).conn,
+			err:               err,
+			isNodeInfoInvalid: true,
+		}
+	}
+
+	// For outgoing conns, ensure connection key matches dialed key.
+	if expectPeerID != "" {
+		peerID := NodeIDFromPubKey(peerKey)
+		if expectPeerID != peerID {
+			return peerInfo, peerKey, ErrRejected{
+				conn: c.(*mConnConnection).conn,
+				id:   peerID,
+				err: fmt.Errorf(
+					"conn.ID (%v) dialed ID (%v) mismatch",
+					peerID,
+					expectPeerID,
+				),
+				isAuthFailure: true,
+			}
+		}
+	}
+
+	if sw.nodeInfo.ID() == peerInfo.ID() {
+		return peerInfo, peerKey, ErrRejected{
+			addr:   *NewNetAddress(peerInfo.ID(), c.(*mConnConnection).conn.RemoteAddr()),
+			conn:   c.(*mConnConnection).conn,
+			id:     peerInfo.ID(),
+			isSelf: true,
+		}
+	}
+
+	if err = sw.nodeInfo.CompatibleWith(peerInfo); err != nil {
+		return peerInfo, peerKey, ErrRejected{
+			conn:           c.(*mConnConnection).conn,
+			err:            err,
+			id:             peerInfo.ID(),
+			isIncompatible: true,
+		}
+	}
+
+	return peerInfo, peerKey, nil
 }
 
 func (sw *Switch) filterPeer(p Peer) error {
@@ -766,6 +940,51 @@ func (sw *Switch) filterPeer(p Peer) error {
 		}
 	}
 
+	return nil
+}
+
+// filterConn filters a connection, rejecting it if this function errors.
+//
+// FIXME: This is only here for compatibility with the current Switch code. In
+// the new P2P stack, peer/connection filtering should be moved into the Router
+// or PeerManager and removed from here.
+func (sw *Switch) filterConn(conn net.Conn) error {
+	if sw.conns.Has(conn) {
+		return ErrRejected{conn: conn, isDuplicate: true}
+	}
+
+	host, _, err := net.SplitHostPort(conn.RemoteAddr().String())
+	if err != nil {
+		return err
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return fmt.Errorf("connection address has invalid IP address %q", host)
+	}
+
+	// Apply filter callbacks.
+	chErr := make(chan error, len(sw.connFilters))
+	for _, connFilter := range sw.connFilters {
+		go func(connFilter ConnFilterFunc) {
+			chErr <- connFilter(sw.conns, conn, []net.IP{ip})
+		}(connFilter)
+	}
+
+	for i := 0; i < cap(chErr); i++ {
+		select {
+		case err := <-chErr:
+			if err != nil {
+				return ErrRejected{conn: conn, err: err, isFiltered: true}
+			}
+		case <-time.After(sw.filterTimeout):
+			return ErrFilterTimeout{}
+		}
+
+	}
+
+	// FIXME: Doesn't really make sense to set this here, but we preserve the
+	// behavior from the previous P2P transport implementation.
+	sw.conns.Set(conn, []net.IP{ip})
 	return nil
 }
 
@@ -817,4 +1036,12 @@ func (sw *Switch) addPeer(p Peer) error {
 	sw.Logger.Info("Added peer", "peer", p)
 
 	return nil
+}
+
+// FIXME: Eww, needed to wire up the new P2P stack along with the old one. This
+// should be passed into the transport when it's constructed.
+func (sw *Switch) PutChannelDescsIntoTransport() {
+	if t, ok := sw.transport.(*MConnTransport); ok {
+		t.channelDescs = sw.chDescs
+	}
 }

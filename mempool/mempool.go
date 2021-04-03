@@ -1,6 +1,7 @@
 package mempool
 
 import (
+	"context"
 	"fmt"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -37,7 +38,7 @@ type Mempool interface {
 
 	// Update informs the mempool that the given txs were committed and can be discarded.
 	// NOTE: this should be called *after* block is committed by consensus.
-	// NOTE: unsafe; Lock/Unlock must be managed by caller
+	// NOTE: Lock/Unlock must be managed by caller
 	Update(
 		blockHeight int64,
 		blockTxs types.Txs,
@@ -48,6 +49,7 @@ type Mempool interface {
 
 	// FlushAppConn flushes the mempool connection to ensure async reqResCb calls are
 	// done. E.g. from CheckTx.
+	// NOTE: Lock/Unlock must be managed by caller
 	FlushAppConn() error
 
 	// Flush removes all transactions from the mempool and cache
@@ -68,8 +70,9 @@ type Mempool interface {
 	// TxsBytes returns the total size of all txs in the mempool.
 	TxsBytes() int64
 
-	// InitWAL creates a directory for the WAL file and opens a file itself.
-	InitWAL()
+	// InitWAL creates a directory for the WAL file and opens a file itself. If
+	// there is an error, it will be of type *PathError.
+	InitWAL() error
 
 	// CloseWAL closes and discards the underlying WAL file.
 	// Any further writes will not be relayed to disk.
@@ -95,24 +98,20 @@ type TxInfo struct {
 	// sender, storing 2 bytes with each tx instead of 20 bytes for the p2p.ID.
 	SenderID uint16
 	// SenderP2PID is the actual p2p.ID of the sender, used e.g. for logging.
-	SenderP2PID p2p.ID
+	SenderP2PID p2p.NodeID
+	// Context is the optional context to cancel CheckTx
+	Context context.Context
 }
 
 //--------------------------------------------------------------------------------
 
-// PreCheckAminoMaxBytes checks that the size of the transaction plus the amino
-// overhead is smaller or equal to the expected maxBytes.
-func PreCheckAminoMaxBytes(maxBytes int64) PreCheckFunc {
+// PreCheckMaxBytes checks that the size of the transaction is smaller or equal to the expected maxBytes.
+func PreCheckMaxBytes(maxBytes int64) PreCheckFunc {
 	return func(tx types.Tx) error {
-		// We have to account for the amino overhead in the tx size as well
-		// NOTE: fieldNum = 1 as types.Block.Data contains Txs []Tx as first field.
-		// If this field order ever changes this needs to updated here accordingly.
-		// NOTE: if some []Tx are encoded without a parenting struct, the
-		// fieldNum is also equal to 1.
-		aminoOverhead := types.ComputeAminoOverhead(tx, 1)
-		txSize := int64(len(tx)) + aminoOverhead
+		txSize := types.ComputeProtoSizeForTxs([]types.Tx{tx})
+
 		if txSize > maxBytes {
-			return fmt.Errorf("tx size (including amino overhead) is too big: %d, max: %d",
+			return fmt.Errorf("tx size is too big: %d, max: %d",
 				txSize, maxBytes)
 		}
 		return nil

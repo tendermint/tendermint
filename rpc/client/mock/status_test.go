@@ -1,12 +1,13 @@
 package mock_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/rpc/client/mock"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
@@ -18,8 +19,8 @@ func TestStatus(t *testing.T) {
 		Call: mock.Call{
 			Response: &ctypes.ResultStatus{
 				SyncInfo: ctypes.SyncInfo{
-					LatestBlockHash:   cmn.HexBytes("block"),
-					LatestAppHash:     cmn.HexBytes("app"),
+					LatestBlockHash:   bytes.HexBytes("block"),
+					LatestAppHash:     bytes.HexBytes("app"),
 					LatestBlockHeight: 10,
 				},
 			}},
@@ -29,7 +30,7 @@ func TestStatus(t *testing.T) {
 	require.Equal(0, len(r.Calls))
 
 	// make sure response works proper
-	status, err := r.Status()
+	status, err := r.Status(context.Background())
 	require.Nil(err, "%+v", err)
 	assert.EqualValues("block", status.SyncInfo.LatestBlockHash)
 	assert.EqualValues(10, status.SyncInfo.LatestBlockHeight)

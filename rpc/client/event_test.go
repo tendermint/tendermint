@@ -1,39 +1,45 @@
 package client_test
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
 
-var waitForEventTimeout = 5 * time.Second
+var waitForEventTimeout = 8 * time.Second
 
 // MakeTxKV returns a text transaction, allong with expected key, value pair
 func MakeTxKV() ([]byte, []byte, []byte) {
-	k := []byte(cmn.RandStr(8))
-	v := []byte(cmn.RandStr(8))
+	k := []byte(tmrand.Str(8))
+	v := []byte(tmrand.Str(8))
 	return k, v, append(k, append([]byte("="), v...)...)
 }
 
 func TestHeaderEvents(t *testing.T) {
 	for i, c := range GetClients() {
-		i, c := i, c // capture params
+		i, c := i, c
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 			// start for this test it if it wasn't already running
 			if !c.IsRunning() {
 				// if so, then we start it, listen, and stop it.
 				err := c.Start()
 				require.Nil(t, err, "%d: %+v", i, err)
-				defer c.Stop()
+				t.Cleanup(func() {
+					if err := c.Stop(); err != nil {
+						t.Error(err)
+					}
+				})
 			}
 
 			evtTyp := types.EventNewBlockHeader
@@ -46,35 +52,47 @@ func TestHeaderEvents(t *testing.T) {
 	}
 }
 
+// subscribe to new blocks and make sure height increments by 1
 func TestBlockEvents(t *testing.T) {
-	for i, c := range GetClients() {
-		i, c := i, c // capture params
+	for _, c := range GetClients() {
+		c := c
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 
 			// start for this test it if it wasn't already running
 			if !c.IsRunning() {
 				// if so, then we start it, listen, and stop it.
 				err := c.Start()
-				require.Nil(t, err, "%d: %+v", i, err)
-				defer c.Stop()
+				require.Nil(t, err)
+				t.Cleanup(func() {
+					if err := c.Stop(); err != nil {
+						t.Error(err)
+					}
+				})
 			}
 
-			// listen for a new block; ensure height increases by 1
+			const subscriber = "TestBlockEvents"
+
+			eventCh, err := c.Subscribe(context.Background(), subscriber, types.QueryForEvent(types.EventNewBlock).String())
+			require.NoError(t, err)
+			t.Cleanup(func() {
+				if err := c.UnsubscribeAll(context.Background(), subscriber); err != nil {
+					t.Error(err)
+				}
+			})
+
 			var firstBlockHeight int64
-			for j := 0; j < 3; j++ {
-				evtTyp := types.EventNewBlock
-				evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
-				require.Nil(t, err, "%d: %+v", j, err)
-				blockEvent, ok := evt.(types.EventDataNewBlock)
-				require.True(t, ok, "%d: %#v", j, evt)
+			for i := int64(0); i < 3; i++ {
+				event := <-eventCh
+				blockEvent, ok := event.Data.(types.EventDataNewBlock)
+				require.True(t, ok)
 
 				block := blockEvent.Block
-				if j == 0 {
+
+				if firstBlockHeight == 0 {
 					firstBlockHeight = block.Header.Height
-					continue
 				}
 
-				require.Equal(t, block.Header.Height, firstBlockHeight+int64(j))
+				require.Equal(t, firstBlockHeight+i, block.Header.Height)
 			}
 		})
 	}
@@ -84,45 +102,53 @@ func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) { testTxEventsSent(t, "a
 func TestTxEventsSentWithBroadcastTxSync(t *testing.T)  { testTxEventsSent(t, "sync") }
 
 func testTxEventsSent(t *testing.T, broadcastMethod string) {
-	for i, c := range GetClients() {
-		i, c := i, c // capture params
+	for _, c := range GetClients() {
+		c := c
 		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 
 			// start for this test it if it wasn't already running
 			if !c.IsRunning() {
 				// if so, then we start it, listen, and stop it.
 				err := c.Start()
-				require.Nil(t, err, "%d: %+v", i, err)
-				defer c.Stop()
+				require.Nil(t, err)
+				t.Cleanup(func() {
+					if err := c.Stop(); err != nil {
+						t.Error(err)
+					}
+				})
 			}
 
 			// make the tx
 			_, _, tx := MakeTxKV()
-			evtTyp := types.EventTx
 
 			// send
-			var (
-				txres *ctypes.ResultBroadcastTx
-				err   error
-			)
-			switch broadcastMethod {
-			case "async":
-				txres, err = c.BroadcastTxAsync(tx)
-			case "sync":
-				txres, err = c.BroadcastTxSync(tx)
-			default:
-				panic(fmt.Sprintf("Unknown broadcastMethod %s", broadcastMethod))
-			}
-
-			require.NoError(t, err)
-			require.Equal(t, txres.Code, abci.CodeTypeOK)
+			go func() {
+				var (
+					txres *ctypes.ResultBroadcastTx
+					err   error
+					ctx   = context.Background()
+				)
+				switch broadcastMethod {
+				case "async":
+					txres, err = c.BroadcastTxAsync(ctx, tx)
+				case "sync":
+					txres, err = c.BroadcastTxSync(ctx, tx)
+				default:
+					panic(fmt.Sprintf("Unknown broadcastMethod %s", broadcastMethod))
+				}
+				if assert.NoError(t, err) {
+					assert.Equal(t, txres.Code, abci.CodeTypeOK)
+				}
+			}()
 
 			// and wait for confirmation
-			evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
-			require.Nil(t, err, "%d: %+v", i, err)
+			evt, err := client.WaitForOneEvent(c, types.EventTx, waitForEventTimeout)
+			require.Nil(t, err)
+
 			// and make sure it has the proper info
 			txe, ok := evt.(types.EventDataTx)
-			require.True(t, ok, "%d: %#v", i, evt)
+			require.True(t, ok)
+
 			// make sure this is the proper tx
 			require.EqualValues(t, tx, txe.Tx)
 			require.True(t, txe.Result.IsOK())
@@ -134,4 +160,22 @@ func testTxEventsSent(t *testing.T, broadcastMethod string) {
 // Test Local client resubscribes upon subscription error.
 func TestClientsResubscribe(t *testing.T) {
 	// TODO(melekes)
+}
+
+func TestHTTPReturnsErrorIfClientIsNotRunning(t *testing.T) {
+	c := getHTTPClient()
+
+	// on Subscribe
+	_, err := c.Subscribe(context.Background(), "TestHeaderEvents",
+		types.QueryForEvent(types.EventNewBlockHeader).String())
+	assert.Error(t, err)
+
+	// on Unsubscribe
+	err = c.Unsubscribe(context.Background(), "TestHeaderEvents",
+		types.QueryForEvent(types.EventNewBlockHeader).String())
+	assert.Error(t, err)
+
+	// on UnsubscribeAll
+	err = c.UnsubscribeAll(context.Background(), "TestHeaderEvents")
+	assert.Error(t, err)
 }

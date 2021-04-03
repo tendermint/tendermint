@@ -23,7 +23,8 @@ implementation.
 import (
 	"context"
 
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/service"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -31,7 +32,7 @@ import (
 // Client wraps most important rpc calls a client would make if you want to
 // listen for events, test if it also implements events.EventSwitch.
 type Client interface {
-	cmn.Service
+	service.Service
 	ABCIClient
 	EventsClient
 	HistoryClient
@@ -49,47 +50,66 @@ type Client interface {
 // is easier to mock.
 type ABCIClient interface {
 	// Reading from abci app
-	ABCIInfo() (*ctypes.ResultABCIInfo, error)
-	ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error)
-	ABCIQueryWithOptions(path string, data cmn.HexBytes,
+	ABCIInfo(context.Context) (*ctypes.ResultABCIInfo, error)
+	ABCIQuery(ctx context.Context, path string, data bytes.HexBytes) (*ctypes.ResultABCIQuery, error)
+	ABCIQueryWithOptions(ctx context.Context, path string, data bytes.HexBytes,
 		opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error)
 
 	// Writing to abci app
-	BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error)
-	BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error)
-	BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error)
+	BroadcastTxCommit(context.Context, types.Tx) (*ctypes.ResultBroadcastTxCommit, error)
+	BroadcastTxAsync(context.Context, types.Tx) (*ctypes.ResultBroadcastTx, error)
+	BroadcastTxSync(context.Context, types.Tx) (*ctypes.ResultBroadcastTx, error)
 }
 
 // SignClient groups together the functionality needed to get valid signatures
 // and prove anything about the chain.
 type SignClient interface {
-	Block(height *int64) (*ctypes.ResultBlock, error)
-	BlockResults(height *int64) (*ctypes.ResultBlockResults, error)
-	Commit(height *int64) (*ctypes.ResultCommit, error)
-	Validators(height *int64, page, perPage int) (*ctypes.ResultValidators, error)
-	Tx(hash []byte, prove bool) (*ctypes.ResultTx, error)
-	TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error)
+	Block(ctx context.Context, height *int64) (*ctypes.ResultBlock, error)
+	BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBlock, error)
+	BlockResults(ctx context.Context, height *int64) (*ctypes.ResultBlockResults, error)
+	Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit, error)
+	Validators(ctx context.Context, height *int64, page, perPage *int) (*ctypes.ResultValidators, error)
+	Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.ResultTx, error)
+
+	// TxSearch defines a method to search for a paginated set of transactions by
+	// DeliverTx event search criteria.
+	TxSearch(
+		ctx context.Context,
+		query string,
+		prove bool,
+		page, perPage *int,
+		orderBy string,
+	) (*ctypes.ResultTxSearch, error)
+
+	// BlockSearch defines a method to search for a paginated set of blocks by
+	// BeginBlock and EndBlock event search criteria.
+	BlockSearch(
+		ctx context.Context,
+		query string,
+		page, perPage *int,
+		orderBy string,
+	) (*ctypes.ResultBlockSearch, error)
 }
 
 // HistoryClient provides access to data from genesis to now in large chunks.
 type HistoryClient interface {
-	Genesis() (*ctypes.ResultGenesis, error)
-	BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error)
+	Genesis(context.Context) (*ctypes.ResultGenesis, error)
+	BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error)
 }
 
 // StatusClient provides access to general chain info.
 type StatusClient interface {
-	Status() (*ctypes.ResultStatus, error)
+	Status(context.Context) (*ctypes.ResultStatus, error)
 }
 
 // NetworkClient is general info about the network state. May not be needed
 // usually.
 type NetworkClient interface {
-	NetInfo() (*ctypes.ResultNetInfo, error)
-	DumpConsensusState() (*ctypes.ResultDumpConsensusState, error)
-	ConsensusState() (*ctypes.ResultConsensusState, error)
-	ConsensusParams(height *int64) (*ctypes.ResultConsensusParams, error)
-	Health() (*ctypes.ResultHealth, error)
+	NetInfo(context.Context) (*ctypes.ResultNetInfo, error)
+	DumpConsensusState(context.Context) (*ctypes.ResultDumpConsensusState, error)
+	ConsensusState(context.Context) (*ctypes.ResultConsensusState, error)
+	ConsensusParams(ctx context.Context, height *int64) (*ctypes.ResultConsensusParams, error)
+	Health(context.Context) (*ctypes.ResultHealth, error)
 }
 
 // EventsClient is reactive, you can subscribe to any message, given the proper
@@ -111,12 +131,21 @@ type EventsClient interface {
 
 // MempoolClient shows us data about current mempool state.
 type MempoolClient interface {
-	UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error)
-	NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error)
+	UnconfirmedTxs(ctx context.Context, limit *int) (*ctypes.ResultUnconfirmedTxs, error)
+	NumUnconfirmedTxs(context.Context) (*ctypes.ResultUnconfirmedTxs, error)
+	CheckTx(context.Context, types.Tx) (*ctypes.ResultCheckTx, error)
 }
 
 // EvidenceClient is used for submitting an evidence of the malicious
-// behaviour.
+// behavior.
 type EvidenceClient interface {
-	BroadcastEvidence(ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error)
+	BroadcastEvidence(context.Context, types.Evidence) (*ctypes.ResultBroadcastEvidence, error)
+}
+
+// RemoteClient is a Client, which can also return the remote network address.
+type RemoteClient interface {
+	Client
+
+	// Remote returns the remote network address in a string form.
+	Remote() string
 }

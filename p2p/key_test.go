@@ -1,50 +1,46 @@
-package p2p
+package p2p_test
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/stretchr/testify/require"
+
+	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/p2p"
 )
 
 func TestLoadOrGenNodeKey(t *testing.T) {
-	filePath := filepath.Join(os.TempDir(), cmn.RandStr(12)+"_peer_id.json")
+	filePath := filepath.Join(os.TempDir(), tmrand.Str(12)+"_peer_id.json")
 
-	nodeKey, err := LoadOrGenNodeKey(filePath)
-	assert.Nil(t, err)
+	nodeKey, err := p2p.LoadOrGenNodeKey(filePath)
+	require.Nil(t, err)
 
-	nodeKey2, err := LoadOrGenNodeKey(filePath)
-	assert.Nil(t, err)
-
-	assert.Equal(t, nodeKey, nodeKey2)
+	nodeKey2, err := p2p.LoadOrGenNodeKey(filePath)
+	require.Nil(t, err)
+	require.Equal(t, nodeKey, nodeKey2)
 }
 
-//----------------------------------------------------------
+func TestLoadNodeKey(t *testing.T) {
+	filePath := filepath.Join(os.TempDir(), tmrand.Str(12)+"_peer_id.json")
 
-func padBytes(bz []byte, targetBytes int) []byte {
-	return append(bz, bytes.Repeat([]byte{0xFF}, targetBytes-len(bz))...)
+	_, err := p2p.LoadNodeKey(filePath)
+	require.True(t, os.IsNotExist(err))
+
+	_, err = p2p.LoadOrGenNodeKey(filePath)
+	require.NoError(t, err)
+
+	nodeKey, err := p2p.LoadNodeKey(filePath)
+	require.NoError(t, err)
+	require.NotNil(t, nodeKey)
 }
 
-func TestPoWTarget(t *testing.T) {
+func TestNodeKeySaveAs(t *testing.T) {
+	filePath := filepath.Join(os.TempDir(), tmrand.Str(12)+"_peer_id.json")
+	require.NoFileExists(t, filePath)
 
-	targetBytes := 20
-	cases := []struct {
-		difficulty uint
-		target     []byte
-	}{
-		{0, padBytes([]byte{}, targetBytes)},
-		{1, padBytes([]byte{127}, targetBytes)},
-		{8, padBytes([]byte{0}, targetBytes)},
-		{9, padBytes([]byte{0, 127}, targetBytes)},
-		{10, padBytes([]byte{0, 63}, targetBytes)},
-		{16, padBytes([]byte{0, 0}, targetBytes)},
-		{17, padBytes([]byte{0, 0, 127}, targetBytes)},
-	}
-
-	for _, c := range cases {
-		assert.Equal(t, MakePoWTarget(c.difficulty, 20*8), c.target)
-	}
+	nodeKey := p2p.GenNodeKey()
+	require.NoError(t, nodeKey.SaveAs(filePath))
+	require.FileExists(t, filePath)
 }

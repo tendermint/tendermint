@@ -2,8 +2,7 @@
 
 The documentation for Tendermint Core is hosted at:
 
-- https://docs.tendermint.com/master/ and
-- https://tendermint-staging.interblock.io/docs/
+- <https://docs.tendermint.com/master/>
 
 built from the files in this (`/docs`) directory for
 [master](https://github.com/tendermint/tendermint/tree/master/docs) respectively.
@@ -62,25 +61,29 @@ to send users to the GitHub.
 
 Make sure you are in the `docs` directory and run the following commands:
 
-```sh
+```bash
 rm -rf node_modules
 ```
 
 This command will remove old version of the visual theme and required packages. This step is optional.
 
-```sh
+```bash
 npm install
 ```
 
 Install the theme and all dependencies.
 
-```sh
+```bash
 npm run serve
 ```
 
-Run `pre` and `post` hooks and start a hot-reloading web-server. See output of this command for the URL (it is often https://localhost:8080).
+<!-- markdown-link-check-disable -->
 
-To build documentation as a static website run `npm run build`. You will find the website in `.vuepress/dist`  directory.
+Run `pre` and `post` hooks and start a hot-reloading web-server. See output of this command for the URL (it is often <https://localhost:8080>).
+
+<!-- markdown-link-check-enable -->
+
+To build documentation as a static website run `npm run build`. You will find the website in `.vuepress/dist` directory.
 
 ## Search
 

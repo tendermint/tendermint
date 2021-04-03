@@ -1,10 +1,9 @@
 package flags
 
 import (
+	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/log"
 )
@@ -51,7 +50,7 @@ func ParseLogLevel(lvl string, logger log.Logger, defaultLogLevelValue string) (
 		if module == defaultLogLevelKey {
 			option, err = log.AllowLevel(level)
 			if err != nil {
-				return nil, errors.Wrap(err, fmt.Sprintf("Failed to parse default log level (pair %s, list %s)", item, l))
+				return nil, fmt.Errorf("failed to parse default log level (pair %s, list %s): %w", item, l, err)
 			}
 			options = append(options, option)
 			isDefaultLogLevelSet = true

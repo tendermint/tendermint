@@ -18,7 +18,7 @@ graceful here, but that's for another day.
 
 It's possible to fool lite clients without there being a fork on the
 main chain - so called Fork-Lite. See the
-[fork accountability](https://github.com/tendermint/tendermint/blob/master/docs/spec/consensus/fork-accountability.md)
+[fork accountability](https://docs.tendermint.com/master/spec/consensus/fork-accountability.html)
 document for more details. For a sequential lite client, this can happen via
 equivocation or amnesia attacks. For a skipping lite client this can also happen
 via lunatic validator attacks. There must be some way for applications to punish
@@ -31,7 +31,7 @@ checking).
 
 Currently, evidence verification is handled by Tendermint. Once committed,
 [evidence is passed over
-ABCI](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto#L321)
+ABCI](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto#L354)
 in BeginBlock in a reduced form that includes only
 the type of evidence, its height and timestamp, the validator it's from, and the
 total voting power of the validator set at the height. The app trusts Tendermint

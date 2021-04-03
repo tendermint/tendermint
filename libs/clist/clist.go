@@ -14,6 +14,8 @@ to ensure garbage collection of removed elements.
 import (
 	"fmt"
 	"sync"
+
+	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 // MaxLength is the max allowed number of elements a linked list is
@@ -42,7 +44,7 @@ waiting on NextWait() (since it's just a read operation).
 
 */
 type CElement struct {
-	mtx        sync.RWMutex
+	mtx        tmsync.RWMutex
 	prev       *CElement
 	prevWg     *sync.WaitGroup
 	prevWaitCh chan struct{}
@@ -218,25 +220,13 @@ func (e *CElement) SetRemoved() {
 // Operations are goroutine-safe.
 // Panics if length grows beyond the max.
 type CList struct {
-	mtx    sync.RWMutex
+	mtx    tmsync.RWMutex
 	wg     *sync.WaitGroup
 	waitCh chan struct{}
 	head   *CElement // first element
 	tail   *CElement // last element
 	len    int       // list length
 	maxLen int       // max list length
-}
-
-func (l *CList) Init() *CList {
-	l.mtx.Lock()
-
-	l.wg = waitGroup1()
-	l.waitCh = make(chan struct{})
-	l.head = nil
-	l.tail = nil
-	l.len = 0
-	l.mtx.Unlock()
-	return l
 }
 
 // Return CList with MaxLength. CList will panic if it goes beyond MaxLength.
@@ -247,7 +237,14 @@ func New() *CList { return newWithMax(MaxLength) }
 func newWithMax(maxLength int) *CList {
 	l := new(CList)
 	l.maxLen = maxLength
-	return l.Init()
+
+	l.wg = waitGroup1()
+	l.waitCh = make(chan struct{})
+	l.head = nil
+	l.tail = nil
+	l.len = 0
+
+	return l
 }
 
 func (l *CList) Len() int {
