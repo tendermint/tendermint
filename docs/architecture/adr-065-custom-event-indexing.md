@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS block_events (
     key VARCHAR NOT NULL,
     value VARCHAR NOT NULL,
     height INTEGER NOT NULL,
-    type block_event_type NOT NULL
+    type block_event_type
 );
 
 CREATE TABLE IF NOT EXISTS tx_events (
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS tx_events (
     value VARCHAR NOT NULL,
     height INTEGER NOT NULL,
     hash VARCHAR NOT NULL,
-    tx_result BYTEA NOT NULL,
+    tx_result BYTEA NOT NULL
 );
 
 -- Indices -------------------------------------------------------
@@ -182,28 +182,30 @@ func NewPSQLEventSink(connStr string) (*PSQLEventSink, error) {
 func (es *PSQLEventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
   sqlStatement := sq.Insert("block_events").Columns("key", "value", "height", "type")
 
-	for _, event := range h.ResultBeginBlock.Events {
-		// only index events with a non-empty type
-		if len(event.Type) == 0 {
-			continue
-		}
+  sqlStatement = sqlStatement.Values(types.BlockHeightKey, h.Header.Height, h.Header.Height, "")
 
-		for _, attr := range event.Attributes {
-			if len(attr.Key) == 0 {
-				continue
-			}
+  for _, event := range h.ResultBeginBlock.Events {
+    // only index events with a non-empty type
+    if len(event.Type) == 0 {
+      continue
+    }
 
-			// index iff the event specified index:true and it's not a reserved event
-			compositeKey := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
-			if compositeKey == types.TxHashKey || compositeKey == types.TxHeightKey {
-				return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeKey)
-			}
+    for _, attr := range event.Attributes {
+      if len(attr.Key) == 0 {
+        continue
+      }
 
-			if attr.GetIndex() {
+      // index iff the event specified index:true and it's not a reserved event
+      compositeKey := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
+      if compositeKey == types.BlockHeightKey {
+        return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeKey)
+      }
+
+      if attr.GetIndex() {
         sqlStatement = sqlStatement.Values(compositeKey, string(attr.Value), h.Header.Height, BlockEventTypeBeginBlock)
-			}
-		}
-	}
+      }
+    }
+  }
 
   // index end_block events...
   // execute db query...
