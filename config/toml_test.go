@@ -30,6 +30,8 @@ func TestEnsureRoot(t *testing.T) {
 	// create root dir
 	EnsureRoot(tmpDir)
 
+	WriteConfigFile(tmpDir, DefaultConfig())
+
 	// make sure config is set properly
 	data, err := ioutil.ReadFile(filepath.Join(tmpDir, defaultConfigFilePath))
 	require.Nil(err)
