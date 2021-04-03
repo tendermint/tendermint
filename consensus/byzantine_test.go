@@ -44,6 +44,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	css := make([]*State, nValidators)
 
 	for i := 0; i < nValidators; i++ {
+<<<<<<< HEAD
 		logger := consensusLogger().With("test", "byzantine", "validator", i)
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		stateStore := sm.NewStore(stateDB)
@@ -69,6 +70,58 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		if thisConfig.Consensus.WaitForTxs() {
 			mempool.EnableTxsAvailable()
 		}
+=======
+		func() {
+			logger := consensusLogger().With("test", "byzantine", "validator", i)
+			stateDB := dbm.NewMemDB() // each state needs its own db
+			stateStore := sm.NewStore(stateDB)
+			state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
+
+			thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+			defer os.RemoveAll(thisConfig.RootDir)
+
+			ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+			app := appFunc()
+			vals := types.TM2PB.ValidatorUpdates(state.Validators)
+			app.InitChain(abci.RequestInitChain{Validators: vals})
+
+			blockDB := dbm.NewMemDB()
+			blockStore := store.NewBlockStore(blockDB)
+
+			// one for mempool, one for consensus
+			mtx := new(tmsync.RWMutex)
+			proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
+			proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+
+			// Make Mempool
+			mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
+			mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+			if thisConfig.Consensus.WaitForTxs() {
+				mempool.EnableTxsAvailable()
+			}
+
+			// Make a full instance of the evidence pool
+			evidenceDB := dbm.NewMemDB()
+			evpool, err := evidence.NewPool(logger.With("module", "evidence"), evidenceDB, stateStore, blockStore)
+			require.NoError(t, err)
+
+			// Make State
+			blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+			cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
+			cs.SetLogger(cs.Logger)
+			// set private validator
+			pv := privVals[i]
+			cs.SetPrivValidator(pv)
+
+			eventBus := types.NewEventBus()
+			eventBus.SetLogger(log.TestingLogger().With("module", "events"))
+			err = eventBus.Start()
+			require.NoError(t, err)
+			cs.SetEventBus(eventBus)
+
+			cs.SetTimeoutTicker(tickerFunc())
+			cs.SetLogger(logger)
+>>>>>>> 1c4dbe30d (abci: change client to use multi-reader mutexes (#6306))
 
 		// Make a full instance of the evidence pool
 		evidenceDB := dbm.NewMemDB()
