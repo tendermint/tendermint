@@ -126,10 +126,12 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	} else {
 		pval = nil
 	}
+
+	appClient, _ := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
 	return NewNode(config,
 		pval,
 		nodeKey,
-		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
+		appClient,
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
