@@ -283,17 +283,13 @@ type simulatorTestSuite struct {
 	Chain        []*types.Block
 	Commits      []*types.Commit
 	CleanupFunc  cleanupFunc
+
+	Mempool mempl.Mempool
+	Evpool  sm.EvidencePool
 }
 
 const (
 	numBlocks = 6
-)
-
-var (
-	mempool = emptyMempool{}
-	evpool  = sm.EmptyEvidencePool{}
-
-	// sim simulatorTestSuite
 )
 
 //---------------------------------------
@@ -310,7 +306,10 @@ func setupSimulator(t *testing.T) *simulatorTestSuite {
 	t.Helper()
 	config := configSetup(t)
 
-	sim := &simulatorTestSuite{}
+	sim := &simulatorTestSuite{
+		Mempool: emptyMempool{},
+		Evpool:  sm.EmptyEvidencePool{},
+	}
 
 	nPeers := 7
 	nVals := 4
@@ -727,7 +726,7 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 
 	state := genesisState.Copy()
 	// run the chain through state.ApplyBlock to build up the tendermint state
-	state = buildTMStateFromChain(config, stateStore, state, chain, nBlocks, mode)
+	state = buildTMStateFromChain(config, sim.Mempool, sim.Evpool, stateStore, state, chain, nBlocks, mode)
 	latestAppHash := state.AppHash
 
 	// make a new client creator
@@ -744,7 +743,7 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 		stateStore := sm.NewStore(stateDB1)
 		err := stateStore.Save(genesisState)
 		require.NoError(t, err)
-		buildAppStateFromChain(proxyApp, stateStore, genesisState, chain, nBlocks, mode)
+		buildAppStateFromChain(proxyApp, stateStore, sim.Mempool, sim.Evpool, genesisState, chain, nBlocks, mode)
 	}
 
 	// Prune block store if requested
@@ -804,7 +803,12 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 	}
 }
 
-func applyBlock(stateStore sm.Store, st sm.State, blk *types.Block, proxyApp proxy.AppConns) sm.State {
+func applyBlock(stateStore sm.Store,
+	mempool mempl.Mempool,
+	evpool sm.EvidencePool,
+	st sm.State,
+	blk *types.Block,
+	proxyApp proxy.AppConns) sm.State {
 	testPartSize := types.BlockPartSizeBytes
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
@@ -816,8 +820,14 @@ func applyBlock(stateStore sm.Store, st sm.State, blk *types.Block, proxyApp pro
 	return newState
 }
 
-func buildAppStateFromChain(proxyApp proxy.AppConns, stateStore sm.Store,
-	state sm.State, chain []*types.Block, nBlocks int, mode uint) {
+func buildAppStateFromChain(
+	proxyApp proxy.AppConns,
+	stateStore sm.Store,
+	mempool mempl.Mempool,
+	evpool sm.EvidencePool,
+	state sm.State,
+	chain []*types.Block,
+	nBlocks int, mode uint) {
 	// start a new app without handshake, play nBlocks blocks
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
@@ -838,18 +848,18 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateStore sm.Store,
 	case 0:
 		for i := 0; i < nBlocks; i++ {
 			block := chain[i]
-			state = applyBlock(stateStore, state, block, proxyApp)
+			state = applyBlock(stateStore, mempool, evpool, state, block, proxyApp)
 		}
 	case 1, 2, 3:
 		for i := 0; i < nBlocks-1; i++ {
 			block := chain[i]
-			state = applyBlock(stateStore, state, block, proxyApp)
+			state = applyBlock(stateStore, mempool, evpool, state, block, proxyApp)
 		}
 
 		if mode == 2 || mode == 3 {
 			// update the kvstore height and apphash
 			// as if we ran commit but not
-			state = applyBlock(stateStore, state, chain[nBlocks-1], proxyApp)
+			state = applyBlock(stateStore, mempool, evpool, state, chain[nBlocks-1], proxyApp)
 		}
 	default:
 		panic(fmt.Sprintf("unknown mode %v", mode))
@@ -859,6 +869,8 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateStore sm.Store,
 
 func buildTMStateFromChain(
 	config *cfg.Config,
+	mempool mempl.Mempool,
+	evpool sm.EvidencePool,
 	stateStore sm.Store,
 	state sm.State,
 	chain []*types.Block,
@@ -890,19 +902,19 @@ func buildTMStateFromChain(
 	case 0:
 		// sync right up
 		for _, block := range chain {
-			state = applyBlock(stateStore, state, block, proxyApp)
+			state = applyBlock(stateStore, mempool, evpool, state, block, proxyApp)
 		}
 
 	case 1, 2, 3:
 		// sync up to the penultimate as if we stored the block.
 		// whether we commit or not depends on the appHash
 		for _, block := range chain[:len(chain)-1] {
-			state = applyBlock(stateStore, state, block, proxyApp)
+			state = applyBlock(stateStore, mempool, evpool, state, block, proxyApp)
 		}
 
 		// apply the final block to a state copy so we can
 		// get the right next appHash but keep the state back
-		applyBlock(stateStore, state, chain[len(chain)-1], proxyApp)
+		applyBlock(stateStore, mempool, evpool, state, chain[len(chain)-1], proxyApp)
 	default:
 		panic(fmt.Sprintf("unknown mode %v", mode))
 	}

@@ -42,16 +42,14 @@ import (
 
 const (
 	testSubscriber = "test-client"
+
+	// genesis, chain_id, priv_val
+	ensureTimeout = time.Millisecond * 200
 )
 
 // A cleanupFunc cleans up any config / test files created for a particular
 // test.
 type cleanupFunc func()
-
-// genesis, chain_id, priv_val
-var (
-	ensureTimeout = time.Millisecond * 200
-)
 
 func configSetup(t *testing.T) *cfg.Config {
 	t.Helper()
@@ -94,7 +92,7 @@ type validatorStub struct {
 	VotingPower int64
 }
 
-var testMinPower int64 = 10
+const testMinPower int64 = 10
 
 func newValidatorStub(privValidator types.PrivValidator, valIndex int32) *validatorStub {
 	return &validatorStub{
