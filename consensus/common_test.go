@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -713,7 +714,10 @@ func randConsensusNet(nValidators int, initialHeight int64, testName string, tic
 	genDoc, privVals := randGenesisDoc(nValidators, false, 30, initialHeight)
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
+
+	closeFuncs := make([]func() error, 0, nValidators)
 	configRootDirs := make([]string, 0, nValidators)
+
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		stateStore := sm.NewStore(stateDB)
@@ -725,6 +729,11 @@ func randConsensusNet(nValidators int, initialHeight int64, testName string, tic
 		}
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
+
+		if appCloser, ok := app.(io.Closer); ok {
+			closeFuncs = append(closeFuncs, appCloser.Close)
+		}
+
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{ValidatorSet: &vals})
 
@@ -733,6 +742,9 @@ func randConsensusNet(nValidators int, initialHeight int64, testName string, tic
 		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
 	return css, func() {
+		for _, closer := range closeFuncs {
+			_ = closer()
+		}
 		for _, dir := range configRootDirs {
 			os.RemoveAll(dir)
 		}
