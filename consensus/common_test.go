@@ -705,7 +705,7 @@ func randConsensusState(
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
 
-	closeFuncs := []func() error{}
+	closeFuncs := make([]func() error, 0, nValidators)
 
 	configRootDirs := make([]string, 0, nValidators)
 
