@@ -173,7 +173,7 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 	// 3) Add evidence to clist.
 	evpool.evidenceList.PushBack(ev)
 
-	evpool.logger.Info("verified new evidence of byzantine behavior", "evidence", ev)
+	evpool.logger.Info("AddEvidence: verified new evidence of byzantine behavior", "evidence", ev)
 	return nil
 }
 
@@ -222,7 +222,7 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 				evpool.logger.Error("failed to add evidence to pending list", "err", err, "evidence", ev)
 			}
 
-			evpool.logger.Info("verified new evidence of byzantine behavior", "evidence", ev)
+			evpool.logger.Info("CheckEvidence: verified new evidence of byzantine behavior", "evidence", ev)
 		}
 
 		// check for duplicate evidence. We cache hashes so we don't have to work them out again.
@@ -645,7 +645,7 @@ func (evpool *Pool) processConsensusBuffer(state sm.State) {
 
 		evpool.evidenceList.PushBack(dve)
 
-		evpool.logger.Info("verified new evidence of byzantine behavior", "evidence", dve)
+		evpool.logger.Info("processConsensusBuffer: verified new evidence of byzantine behavior", "evidence", dve)
 	}
 	// reset consensus buffer
 	evpool.consensusBuffer = make([]duplicateVoteSet, 0)
