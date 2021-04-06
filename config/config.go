@@ -607,6 +607,10 @@ type P2PConfig struct { //nolint: maligned
 	// Testing params.
 	// Force dial to fail
 	TestDialFail bool `mapstructure:"test-dial-fail"`
+
+	// Mostly for testing, use rather than environment variables
+	// to turn on the new P2P stack.
+	UseNewP2P bool `mapstructure:"use-new-p2p"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer

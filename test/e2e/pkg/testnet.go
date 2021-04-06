@@ -90,6 +90,7 @@ type Node struct {
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
 	LogLevel         string
+	UseNewP2P        bool
 }
 
 // LoadTestnet loads a testnet from a manifest file, using the filename to
@@ -167,6 +168,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			RetainBlocks:     nodeManifest.RetainBlocks,
 			Perturbations:    []Perturbation{},
 			LogLevel:         manifest.LogLevel,
+			UseNewP2P:        manifest.UseNewP2P,
 		}
 		if node.StartAt == testnet.InitialHeight {
 			node.StartAt = 0 // normalize to 0 for initial nodes, since code expects this

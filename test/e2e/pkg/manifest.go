@@ -58,6 +58,10 @@ type Manifest struct {
 	// LogLevel sets the log level of the entire testnet. This can be overridden
 	// by individual nodes.
 	LogLevel string `toml:"log_level"`
+
+	// UseNewP2P enables use of the new p2p layer for all nodes in
+	// a test.
+	UseNewP2P bool `toml:"new_p2p"`
 }
 
 // ManifestNode represents a node in a testnet manifest.
@@ -134,6 +138,9 @@ type ManifestNode struct {
 	// This is helpful when debugging a specific problem. This overrides the network
 	// level.
 	LogLevel string `toml:"log_level"`
+
+	// UseNewP2P enables use of the new p2p layer for this node.
+	UseNewP2P bool `toml:"new_p2p"`
 }
 
 // Save saves the testnet manifest to a file.

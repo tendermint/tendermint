@@ -16,6 +16,7 @@ var (
 	testnetCombinations = map[string][]interface{}{
 		"topology":      {"single", "quad", "large"},
 		"ipv6":          {false, true},
+		"useNewP2P":     {false, true},
 		"initialHeight": {0, 1000},
 		"initialState": {
 			map[string]string{},
@@ -62,6 +63,7 @@ func Generate(r *rand.Rand) ([]e2e.Manifest, error) {
 func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, error) {
 	manifest := e2e.Manifest{
 		IPv6:             opt["ipv6"].(bool),
+		UseNewP2P:        opt["useNewP2P"].(bool),
 		InitialHeight:    int64(opt["initialHeight"].(int)),
 		InitialState:     opt["initialState"].(map[string]string),
 		Validators:       &map[string]int64{},
@@ -89,8 +91,9 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 
 	// First we generate seed nodes, starting at the initial height.
 	for i := 1; i <= numSeeds; i++ {
-		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = generateNode(
-			r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
+		node := generateNode(r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
+		node.UseNewP2P = manifest.UseNewP2P
+		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = node
 	}
 
 	// Next, we generate validators. We make sure a BFT quorum of validators start
@@ -134,8 +137,9 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			startAt = nextStartAt
 			nextStartAt += 5
 		}
-		manifest.Nodes[fmt.Sprintf("full%02d", i)] = generateNode(
-			r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
+		node := generateNode(r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
+		node.UseNewP2P = manifest.UseNewP2P
+		manifest.Nodes[fmt.Sprintf("full%02d", i)] = node
 	}
 
 	// We now set up peer discovery for nodes. Seed nodes are fully meshed with
