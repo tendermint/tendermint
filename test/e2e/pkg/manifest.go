@@ -61,7 +61,7 @@ type Manifest struct {
 
 	// UseNewP2P enables use of the new p2p layer for all nodes in
 	// a test.
-	UseNewP2P bool `toml:"new_p2p"`
+	UseNewP2P bool `toml:"use_new_p2p"`
 }
 
 // ManifestNode represents a node in a testnet manifest.
@@ -140,7 +140,7 @@ type ManifestNode struct {
 	LogLevel string `toml:"log_level"`
 
 	// UseNewP2P enables use of the new p2p layer for this node.
-	UseNewP2P bool `toml:"new_p2p"`
+	UseNewP2P bool `toml:"use_new_p2p"`
 }
 
 // Save saves the testnet manifest to a file.
