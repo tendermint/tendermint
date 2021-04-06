@@ -106,8 +106,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 	}
 
 	// set mode to validator for testnet
-	config := cfg.DefaultConfig()
-	config.Mode = cfg.ModeValidator
+	config := cfg.DefaultValidatorConfig()
 
 	// overwrite default config if set and valid
 	if configFile != "" {
@@ -242,7 +241,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		}
 		config.Moniker = moniker(i)
 
-		cfg.WriteConfigFile(filepath.Join(nodeDir, "config", "config.toml"), config)
+		cfg.WriteConfigFile(nodeDir, config)
 	}
 
 	fmt.Printf("Successfully initialized %v node directories\n", nValidators+nNonValidators)

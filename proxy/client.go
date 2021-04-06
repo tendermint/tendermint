@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"fmt"
+	"io"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/counter"
@@ -20,7 +21,7 @@ type ClientCreator interface {
 // local proxy uses a mutex on an in-proc app
 
 type localClientCreator struct {
-	mtx *tmsync.Mutex
+	mtx *tmsync.RWMutex
 	app types.Application
 }
 
@@ -28,7 +29,7 @@ type localClientCreator struct {
 // which will be running locally.
 func NewLocalClientCreator(app types.Application) ClientCreator {
 	return &localClientCreator{
-		mtx: new(tmsync.Mutex),
+		mtx: new(tmsync.RWMutex),
 		app: app,
 	}
 }
@@ -69,20 +70,28 @@ func (r *remoteClientCreator) NewABCIClient() (abcicli.Client, error) {
 // DefaultClientCreator returns a default ClientCreator, which will create a
 // local client if addr is one of: 'counter', 'counter_serial', 'kvstore',
 // 'persistent_kvstore' or 'noop', otherwise - a remote client.
-func DefaultClientCreator(addr, transport, dbDir string) ClientCreator {
+//
+// The Closer is a noop except for persistent_kvstore applications,
+// which will clean up the store.
+func DefaultClientCreator(addr, transport, dbDir string) (ClientCreator, io.Closer) {
 	switch addr {
 	case "counter":
-		return NewLocalClientCreator(counter.NewApplication(false))
+		return NewLocalClientCreator(counter.NewApplication(false)), noopCloser{}
 	case "counter_serial":
-		return NewLocalClientCreator(counter.NewApplication(true))
+		return NewLocalClientCreator(counter.NewApplication(true)), noopCloser{}
 	case "kvstore":
-		return NewLocalClientCreator(kvstore.NewApplication())
+		return NewLocalClientCreator(kvstore.NewApplication()), noopCloser{}
 	case "persistent_kvstore":
-		return NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(dbDir))
+		app := kvstore.NewPersistentKVStoreApplication(dbDir)
+		return NewLocalClientCreator(app), app
 	case "noop":
-		return NewLocalClientCreator(types.NewBaseApplication())
+		return NewLocalClientCreator(types.NewBaseApplication()), noopCloser{}
 	default:
 		mustConnect := false // loop retrying
-		return NewRemoteClientCreator(addr, transport, mustConnect)
+		return NewRemoteClientCreator(addr, transport, mustConnect), noopCloser{}
 	}
 }
+
+type noopCloser struct{}
+
+func (noopCloser) Close() error { return nil }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"sync"
 	"time"
 
@@ -130,6 +131,30 @@ type RouterOptions struct {
 	// QueueType must be "wdrr" (Weighed Deficit Round Robin),
 	// "priority", or FIFO. Defaults to FIFO.
 	QueueType string
+
+	// MaxIncommingConnectionsPerIP limits the number of incoming
+	// connections per IP address. Defaults to 100.
+	MaxIncommingConnectionsPerIP uint
+
+	// IncomingConnectionWindow describes how often an IP address
+	// can attempt to create a new connection. Defaults to 10
+	// milliseconds, and cannot be less than 1 millisecond.
+	IncomingConnectionWindow time.Duration
+
+	// FilterPeerByIP is used by the router to inject filtering
+	// behavior for new incoming connections. The router passes
+	// the remote IP of the incoming connection the port number as
+	// arguments. Functions should return an error to reject the
+	// peer.
+	FilterPeerByIP func(context.Context, net.IP, uint16) error
+
+	// FilterPeerByID is used by the router to inject filtering
+	// behavior for new incoming connections. The router passes
+	// the NodeID of the node before completing the connection,
+	// but this occurs after the handshake is complete. Filter by
+	// IP address to filter before the handshake. Functions should
+	// return an error to reject the peer.
+	FilterPeerByID func(context.Context, NodeID) error
 }
 
 const (
@@ -147,6 +172,18 @@ func (o *RouterOptions) Validate() error {
 		// pass
 	default:
 		return fmt.Errorf("queue type %q is not supported", o.QueueType)
+	}
+
+	switch {
+	case o.IncomingConnectionWindow == 0:
+		o.IncomingConnectionWindow = 100 * time.Millisecond
+	case o.IncomingConnectionWindow < time.Millisecond:
+		return fmt.Errorf("incomming connection window must be grater than 1m [%s]",
+			o.IncomingConnectionWindow)
+	}
+
+	if o.MaxIncommingConnectionsPerIP == 0 {
+		o.MaxIncommingConnectionsPerIP = 100
 	}
 
 	return nil
@@ -202,6 +239,7 @@ type Router struct {
 	peerManager        *PeerManager
 	chDescs            []ChannelDescriptor
 	transports         []Transport
+	connTracker        connectionTracker
 	protocolTransports map[Protocol]Transport
 	stopCh             chan struct{} // signals Router shutdown
 
@@ -235,10 +273,13 @@ func NewRouter(
 	}
 
 	router := &Router{
-		logger:             logger,
-		metrics:            metrics,
-		nodeInfo:           nodeInfo,
-		privKey:            privKey,
+		logger:   logger,
+		metrics:  metrics,
+		nodeInfo: nodeInfo,
+		privKey:  privKey,
+		connTracker: newConnTracker(
+			options.MaxIncommingConnectionsPerIP,
+			options.IncomingConnectionWindow),
 		chDescs:            make([]ChannelDescriptor, 0),
 		transports:         transports,
 		protocolTransports: map[Protocol]Transport{},
@@ -446,29 +487,28 @@ func (r *Router) routeChannel(
 	}
 }
 
+func (r *Router) filterPeersIP(ctx context.Context, ip net.IP, port uint16) error {
+	if r.options.FilterPeerByIP == nil {
+		return nil
+	}
+
+	return r.options.FilterPeerByIP(ctx, ip, port)
+}
+
+func (r *Router) filterPeersID(ctx context.Context, id NodeID) error {
+	if r.options.FilterPeerByID == nil {
+		return nil
+	}
+
+	return r.options.FilterPeerByID(ctx, id)
+}
+
 // acceptPeers accepts inbound connections from peers on the given transport,
 // and spawns goroutines that route messages to/from them.
 func (r *Router) acceptPeers(transport Transport) {
 	r.logger.Debug("starting accept routine", "transport", transport)
 	ctx := r.stopCtx()
 	for {
-		// FIXME: We may need transports to enforce some sort of rate limiting
-		// here (e.g. by IP address), or alternatively have PeerManager.Accepted()
-		// do it for us.
-		//
-		// FIXME: Even though PeerManager enforces MaxConnected, we may want to
-		// limit the maximum number of active connections here too, since e.g.
-		// an adversary can open a ton of connections and then just hang during
-		// the handshake, taking up TCP socket descriptors.
-		//
-		// FIXME: The old P2P stack rejected multiple connections for the same IP
-		// unless P2PConfig.AllowDuplicateIP is true -- it's better to limit this
-		// by peer ID rather than IP address, so this hasn't been implemented and
-		// probably shouldn't (?).
-		//
-		// FIXME: The old P2P stack supported ABCI-based IP address filtering via
-		// /p2p/filter/addr/<ip> queries, do we want to implement this here as well?
-		// Filtering by node ID is probably better.
 		conn, err := transport.Accept()
 		switch err {
 		case nil:
@@ -480,69 +520,100 @@ func (r *Router) acceptPeers(transport Transport) {
 			return
 		}
 
+		incomingIP := conn.RemoteEndpoint().IP
+		if err := r.connTracker.AddConn(incomingIP); err != nil {
+			closeErr := conn.Close()
+			r.logger.Debug("rate limiting incoming peer",
+				"err", err,
+				"ip", incomingIP.String(),
+				"closeErr", closeErr)
+
+			return
+		}
+
 		// Spawn a goroutine for the handshake, to avoid head-of-line blocking.
-		go func() {
-			defer conn.Close()
+		go r.openConnection(ctx, conn)
 
-			// FIXME: The peer manager may reject the peer during Accepted()
-			// after we've handshaked with the peer (to find out which peer it
-			// is). However, because the handshake has no ack, the remote peer
-			// will think the handshake was successful and start sending us
-			// messages.
-			//
-			// This can cause problems in tests, where a disconnection can cause
-			// the local node to immediately redial, while the remote node may
-			// not have completed the disconnection yet and therefore reject the
-			// reconnection attempt (since it thinks we're still connected from
-			// before).
-			//
-			// The Router should do the handshake and have a final ack/fail
-			// message to make sure both ends have accepted the connection, such
-			// that it can be coordinated with the peer manager.
-			peerInfo, _, err := r.handshakePeer(ctx, conn, "")
-			switch {
-			case errors.Is(err, context.Canceled):
-				return
-			case err != nil:
-				r.logger.Error("peer handshake failed", "endpoint", conn, "err", err)
-				return
-			}
-
-			if err := r.peerManager.Accepted(peerInfo.NodeID); err != nil {
-				r.logger.Error("failed to accept connection", "peer", peerInfo.NodeID, "err", err)
-				return
-			}
-
-			r.metrics.Peers.Add(1)
-
-			queue := r.queueFactory(queueBufferDefault)
-
-			r.peerMtx.Lock()
-			r.peerQueues[peerInfo.NodeID] = queue
-			r.peerMtx.Unlock()
-
-			defer func() {
-				r.peerMtx.Lock()
-				delete(r.peerQueues, peerInfo.NodeID)
-				r.peerMtx.Unlock()
-
-				queue.close()
-
-				if err := r.peerManager.Disconnected(peerInfo.NodeID); err != nil {
-					r.logger.Error("failed to disconnect peer", "peer", peerInfo.NodeID, "err", err)
-				} else {
-					r.metrics.Peers.Add(-1)
-				}
-			}()
-
-			if err := r.peerManager.Ready(peerInfo.NodeID); err != nil {
-				r.logger.Error("failed to mark peer as ready", "peer", peerInfo.NodeID, "err", err)
-				return
-			}
-
-			r.routePeer(peerInfo.NodeID, conn, queue)
-		}()
 	}
+}
+
+func (r *Router) openConnection(ctx context.Context, conn Connection) {
+	defer conn.Close()
+	defer r.connTracker.RemoveConn(conn.RemoteEndpoint().IP)
+
+	re := conn.RemoteEndpoint()
+	incomingIP := re.IP
+
+	if err := r.filterPeersIP(ctx, incomingIP, re.Port); err != nil {
+		r.logger.Debug("peer filtered by IP",
+			"ip", incomingIP.String(),
+			"err", err)
+		return
+	}
+
+	// FIXME: The peer manager may reject the peer during Accepted()
+	// after we've handshaked with the peer (to find out which peer it
+	// is). However, because the handshake has no ack, the remote peer
+	// will think the handshake was successful and start sending us
+	// messages.
+	//
+	// This can cause problems in tests, where a disconnection can cause
+	// the local node to immediately redial, while the remote node may
+	// not have completed the disconnection yet and therefore reject the
+	// reconnection attempt (since it thinks we're still connected from
+	// before).
+	//
+	// The Router should do the handshake and have a final ack/fail
+	// message to make sure both ends have accepted the connection, such
+	// that it can be coordinated with the peer manager.
+	peerInfo, _, err := r.handshakePeer(ctx, conn, "")
+	switch {
+	case errors.Is(err, context.Canceled):
+		return
+	case err != nil:
+		r.logger.Error("peer handshake failed", "endpoint", conn, "err", err)
+		return
+	}
+
+	if err := r.filterPeersID(ctx, peerInfo.NodeID); err != nil {
+		r.logger.Debug("peer filtered by node ID",
+			"node", peerInfo.NodeID,
+			"err", err)
+		return
+	}
+
+	if err := r.peerManager.Accepted(peerInfo.NodeID); err != nil {
+		r.logger.Error("failed to accept connection", "peer", peerInfo.NodeID, "err", err)
+		return
+	}
+
+	r.metrics.Peers.Add(1)
+	queue := r.queueFactory(queueBufferDefault)
+
+	r.peerMtx.Lock()
+	r.peerQueues[peerInfo.NodeID] = queue
+	r.peerMtx.Unlock()
+
+	defer func() {
+		r.peerMtx.Lock()
+		delete(r.peerQueues, peerInfo.NodeID)
+		r.peerMtx.Unlock()
+
+		queue.close()
+
+		if err := r.peerManager.Disconnected(peerInfo.NodeID); err != nil {
+			r.logger.Error("failed to disconnect peer", "peer", peerInfo.NodeID, "err", err)
+		} else {
+			r.metrics.Peers.Add(-1)
+		}
+	}()
+
+	if err := r.peerManager.Ready(peerInfo.NodeID); err != nil {
+		r.logger.Error("failed to mark peer as ready", "peer", peerInfo.NodeID, "err", err)
+		return
+	}
+
+	r.routePeer(peerInfo.NodeID, conn, queue)
 }
 
 // dialPeers maintains outbound connections to peers by dialing them.
@@ -692,6 +763,7 @@ func (r *Router) handshakePeer(ctx context.Context, conn Connection, expectID No
 		ctx, cancel = context.WithTimeout(ctx, r.options.HandshakeTimeout)
 		defer cancel()
 	}
+
 	peerInfo, peerKey, err := conn.Handshake(ctx, r.nodeInfo, r.privKey)
 	if err != nil {
 		return peerInfo, peerKey, err

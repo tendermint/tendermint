@@ -499,10 +499,12 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 	pval, err := privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	require.NoError(t, err)
 
+	appClient, closer := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
+	t.Cleanup(func() { closer.Close() })
 	n, err := NewNode(config,
 		pval,
 		nodeKey,
-		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
+		appClient,
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),

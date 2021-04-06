@@ -26,6 +26,7 @@ func TestMain(m *testing.M) {
 
 	// and shut down proper at the end
 	rpctest.StopTendermint(node)
+	app.Close()
 	_ = os.RemoveAll(dir)
 	os.Exit(code)
 }

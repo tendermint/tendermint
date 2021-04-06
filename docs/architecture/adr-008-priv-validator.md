@@ -4,7 +4,7 @@ Tendermint node's should support only two in-process PrivValidator
 implementations:
 
 - FilePV uses an unencrypted private key in a "priv_validator.json" file - no
-  configuration required (just `tendermint init`).
+  configuration required (just `tendermint init validator`).
 - TCPVal and IPCVal use TCP and Unix sockets respectively to send signing requests
   to another process - the user is responsible for starting that process themselves.
 

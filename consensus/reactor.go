@@ -1377,18 +1377,21 @@ func (r *Reactor) peerStatsRoutine() {
 
 			switch msg.Msg.(type) {
 			case *VoteMessage:
-				if numVotes := ps.RecordVote(); numVotes%votesToContributeToBecomeGoodPeer == 0 { // nolint: staticcheck
-					// TODO: Handle peer quality via the peer manager.
-					// r.Switch.MarkPeerAsGood(peer)
+				if numVotes := ps.RecordVote(); numVotes%votesToContributeToBecomeGoodPeer == 0 {
+					r.peerUpdates.SendUpdate(p2p.PeerUpdate{
+						NodeID: msg.PeerID,
+						Status: p2p.PeerStatusGood,
+					})
 				}
 
 			case *BlockPartMessage:
-				if numParts := ps.RecordBlockPart(); numParts%blocksToContributeToBecomeGoodPeer == 0 { // nolint: staticcheck
-					// TODO: Handle peer quality via the peer manager.
-					// r.Switch.MarkPeerAsGood(peer)
+				if numParts := ps.RecordBlockPart(); numParts%blocksToContributeToBecomeGoodPeer == 0 {
+					r.peerUpdates.SendUpdate(p2p.PeerUpdate{
+						NodeID: msg.PeerID,
+						Status: p2p.PeerStatusGood,
+					})
 				}
 			}
-
 		case <-r.closeCh:
 			return
 		}

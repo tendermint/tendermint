@@ -4,6 +4,7 @@
 
 * 27-11-2019: Initial draft from ADR-051
 * 13-01-2020: Separate ADR Tendermint Mode from ADR-051
+* 29-03-2021: Update info regarding defaults
 
 ## Context
 
@@ -16,7 +17,7 @@
 We would like to suggest a simple Tendermint mode abstraction. These modes will live under one binary, and when initializing a node the user will be able to specify which node they would like to create.
 
 - Which reactor, component to include for each node
-    - full *(default)*
+    - full
         - switch, transport
         - reactors
           - mempool
@@ -45,8 +46,9 @@ We would like to suggest a simple Tendermint mode abstraction. These modes will 
 - Configuration, cli command
     - We would like to suggest by introducing `mode` parameter in `config.toml` and cli
     - <span v-pre>`mode = "{{ .BaseConfig.Mode }}"`</span> in `config.toml`
-    - `tendermint node --mode validator`  in cli
-    - full | validator | seednode (default: "full")
+    - `tendermint start --mode validator`  in cli
+    - full | validator | seednode
+    - There will be no default. Users will need to specify when they run `tendermint init`
 - RPC modification
     - `host:26657/status`
         - return empty `validator_info` when in full mode

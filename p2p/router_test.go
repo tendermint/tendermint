@@ -97,6 +97,8 @@ func TestRouter_Channel(t *testing.T) {
 	// Set up a router with no transports (so no peers).
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
+	defer peerManager.Close()
+
 	router, err := p2p.NewRouter(
 		log.TestingLogger(),
 		p2p.NopMetrics(),
@@ -334,7 +336,10 @@ func TestRouter_AcceptPeers(t *testing.T) {
 			mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
 				Return(tc.peerInfo, tc.peerKey, nil)
 			mockConnection.On("Close").Run(func(_ mock.Arguments) { closer.Close() }).Return(nil)
+			mockConnection.On("RemoteEndpoint").Return(p2p.Endpoint{})
 			if tc.ok {
+				// without the sleep after RequireUpdate this method isn't
+				// always called. Consider making this call optional.
 				mockConnection.On("ReceiveMessage").Return(chID, nil, io.EOF)
 			}
 
@@ -348,6 +353,8 @@ func TestRouter_AcceptPeers(t *testing.T) {
 			// Set up and start the router.
 			peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 			require.NoError(t, err)
+			defer peerManager.Close()
+
 			sub := peerManager.Subscribe()
 			defer sub.Close()
 
@@ -368,6 +375,9 @@ func TestRouter_AcceptPeers(t *testing.T) {
 					NodeID: tc.peerInfo.NodeID,
 					Status: p2p.PeerStatusUp,
 				})
+				// force a context switch so that the
+				// connection is handled.
+				time.Sleep(time.Millisecond)
 				sub.Close()
 			} else {
 				select {
@@ -398,6 +408,8 @@ func TestRouter_AcceptPeers_Error(t *testing.T) {
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
+	defer peerManager.Close()
+
 	router, err := p2p.NewRouter(
 		log.TestingLogger(),
 		p2p.NopMetrics(),
@@ -430,6 +442,8 @@ func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
+	defer peerManager.Close()
+
 	router, err := p2p.NewRouter(
 		log.TestingLogger(),
 		p2p.NopMetrics(),
@@ -462,6 +476,7 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 	mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
 		WaitUntil(closeCh).Return(p2p.NodeInfo{}, nil, io.EOF)
 	mockConnection.On("Close").Return(nil)
+	mockConnection.On("RemoteEndpoint").Return(p2p.Endpoint{})
 
 	mockTransport := &mocks.Transport{}
 	mockTransport.On("String").Maybe().Return("mock")
@@ -475,6 +490,8 @@ func TestRouter_AcceptPeers_HeadOfLineBlocking(t *testing.T) {
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
+	defer peerManager.Close()
+
 	router, err := p2p.NewRouter(
 		log.TestingLogger(),
 		p2p.NopMetrics(),
@@ -530,6 +547,8 @@ func TestRouter_DialPeers(t *testing.T) {
 				mockConnection.On("Close").Run(func(_ mock.Arguments) { closer.Close() }).Return(nil)
 			}
 			if tc.ok {
+				// without the sleep after RequireUpdate this method isn't
+				// always called. Consider making this call optional.
 				mockConnection.On("ReceiveMessage").Return(chID, nil, io.EOF)
 			}
 
@@ -552,6 +571,8 @@ func TestRouter_DialPeers(t *testing.T) {
 			// Set up and start the router.
 			peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 			require.NoError(t, err)
+			defer peerManager.Close()
+
 			require.NoError(t, peerManager.Add(address))
 			sub := peerManager.Subscribe()
 			defer sub.Close()
@@ -573,6 +594,9 @@ func TestRouter_DialPeers(t *testing.T) {
 					NodeID: tc.peerInfo.NodeID,
 					Status: p2p.PeerStatusUp,
 				})
+				// force a context switch so that the
+				// connection is handled.
+				time.Sleep(time.Millisecond)
 				sub.Close()
 			} else {
 				select {
@@ -622,6 +646,8 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
+	defer peerManager.Close()
+
 	require.NoError(t, peerManager.Add(a))
 	require.NoError(t, peerManager.Add(b))
 	require.NoError(t, peerManager.Add(c))
@@ -661,6 +687,7 @@ func TestRouter_EvictPeers(t *testing.T) {
 	mockConnection.On("Handshake", mock.Anything, selfInfo, selfKey).
 		Return(peerInfo, peerKey.PubKey(), nil)
 	mockConnection.On("ReceiveMessage").WaitUntil(closeCh).Return(chID, nil, io.EOF)
+	mockConnection.On("RemoteEndpoint").Return(p2p.Endpoint{})
 	mockConnection.On("Close").Run(func(_ mock.Arguments) {
 		closeOnce.Do(func() {
 			close(closeCh)
@@ -677,6 +704,8 @@ func TestRouter_EvictPeers(t *testing.T) {
 	// Set up and start the router.
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
+	defer peerManager.Close()
+
 	sub := peerManager.Subscribe()
 	defer sub.Close()
 
