@@ -55,7 +55,6 @@ type Reactor struct {
 	service.BaseService
 
 	evpool      *Pool
-	eventBus    *types.EventBus
 	evidenceCh  *p2p.Channel
 	peerUpdates *p2p.PeerUpdates
 	closeCh     chan struct{}
@@ -85,11 +84,6 @@ func NewReactor(
 
 	r.BaseService = *service.NewBaseService(logger, "Evidence", r)
 	return r
-}
-
-// SetEventBus implements events.Eventable.
-func (r *Reactor) SetEventBus(b *types.EventBus) {
-	r.eventBus = b
 }
 
 // OnStart starts separate go routines for each p2p Channel and listens for
