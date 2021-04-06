@@ -54,7 +54,7 @@ database = "badgerdb"
 #abci_protocol = "grpc"
 privval_protocol = "grpc"
 persist_interval = 3
-retain_blocks = 3
+retain_blocks = 5
 perturb = ["kill"]
 
 [node.validator04]
@@ -79,7 +79,7 @@ mode = "full"
 # FIXME: should be v2, disabled due to flake
 fast_sync = "v0"
 persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
-retain_blocks = 3
+retain_blocks = 5
 perturb = ["restart"]
 
 [node.full02]
