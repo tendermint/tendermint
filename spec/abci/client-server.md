@@ -1,3 +1,8 @@
+---
+order: 3
+title: Client and Server
+---
+
 # Client and Server
 
 This section is for those looking to implement their own ABCI Server, perhaps in

@@ -1,3 +1,8 @@
+---
+order: 2
+title: Applications
+---
+
 # Applications
 
 Please ensure you've first read the spec for [ABCI Methods and Types](abci.md)

@@ -1,3 +1,8 @@
+---
+order: 1
+title: Method and Types
+---
+
 # Methods and Types
 
 ## Overview
