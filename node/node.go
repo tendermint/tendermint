@@ -1107,6 +1107,7 @@ func NewNode(config *cfg.Config,
 		evPool,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
+	blockExec.SetEventBus(eventBus)
 
 	csReactorShim, csReactor, csState := createConsensusReactor(
 		config, state, blockExec, blockStore, mempool, evPool,
