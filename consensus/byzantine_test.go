@@ -28,7 +28,7 @@ import (
 // Byzantine node sends two different prevotes (nil and blockID) to the same
 // validator.
 func TestByzantinePrevoteEquivocation(t *testing.T) {
-	configSetup(t)
+	config := configSetup(t)
 
 	nValidators := 4
 	prevoteHeight := int64(2)
@@ -36,7 +36,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newCounter
 
-	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
+	genDoc, privVals := randGenesisDoc(config, nValidators, false, 30)
 	states := make([]*State, nValidators)
 
 	for i := 0; i < nValidators; i++ {
