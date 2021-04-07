@@ -36,3 +36,14 @@ I want to implement the pipleline protocol myself in my spare time.
 If you are intrested, have any question, or find any flaw in this paper, please contact me JamesRayLei@gmail.com
 
 I plan to work on the branch chainedTendermint of this repository, any cooperative work is appreciated.
+
+
+## Challenges
+
+The pipeline protocol relies on aggregated signature, which is not done in Tendermint yet.
+There are some discussion about the timestamp, each vote has different timestamp, so we need to address this problem.
+
+Anyway, I plan to implenment the first phase protocol: the basic parallel Tendermint protocol, which does not adopt aggregated signature, but only
+parallelize the prevotes and precommits, and "flatten" the rounds.  I think this needs lots of code modification.
+
+If this protocol has been done and well tested, I will call it release 1. When refer to test, I mean, to deploy several nodes as a cluster and run the new consensus protocol. Of course, all the CI tests should fail, because there is no concept of "round" in parallel Tendermint protocol, the modification is big, all UT should fail.
