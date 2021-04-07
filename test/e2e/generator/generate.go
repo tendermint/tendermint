@@ -16,7 +16,7 @@ var (
 	testnetCombinations = map[string][]interface{}{
 		"topology":      {"single", "quad", "large"},
 		"ipv6":          {false, true},
-		"useNewP2P":     {false, true, 2, 3},
+		"useNewP2P":     {false, true, 2},
 		"initialHeight": {0, 1000},
 		"initialState": {
 			map[string]string{},
