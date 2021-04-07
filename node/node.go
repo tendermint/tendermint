@@ -1316,7 +1316,7 @@ func (n *Node) OnStart() error {
 
 	n.isListening = true
 
-	n.Logger.Info("p2p service", "legacy_enabled", n.config.P2P.UseNewP2P)
+	n.Logger.Info("p2p service", "legacy_enabled", !n.config.P2P.UseNewP2P)
 
 	if n.config.P2P.UseNewP2P {
 		err = n.router.Start()
