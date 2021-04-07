@@ -279,9 +279,13 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 		var trustedPb tmproto.LightClientAttackEvidence
 
 		if err = trustedPb.Unmarshal(evBytes); err != nil {
+			height, hash, parseErr := parsePendingKey(key)
+			if parseErr != nil {
+				evpool.logger.Error("failed to parse pending key", "err", parseErr)
+			}
 			evpool.logger.Error(
 				"failed to convert light client attack evidence from bytes",
-				"key(height/hash)", key,
+				"height", height, "hash", hash,
 				"err", err,
 			)
 			return false
@@ -289,9 +293,13 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 
 		trustedEv, err := types.LightClientAttackEvidenceFromProto(&trustedPb)
 		if err != nil {
+			height, hash, parseErr := parsePendingKey(key)
+			if parseErr != nil {
+				evpool.logger.Error("failed to parse pending key", "err", parseErr)
+			}
 			evpool.logger.Error(
 				"failed to convert light client attack evidence from protobuf",
-				"key(height/hash)", key,
+				"height", height, "hash", hash,
 				"err", err,
 			)
 			return false
@@ -694,4 +702,26 @@ func keyPending(evidence types.Evidence) []byte {
 		panic(err)
 	}
 	return key
+}
+
+func parsePendingKey(key []byte) (int64, string, error) {
+	var (
+		prefix, height int64
+		hash           string
+	)
+	remainder, err := orderedcode.Parse(string(key), &prefix, &height, &hash)
+	if err != nil {
+		return -1, "", err
+	}
+
+	if len(remainder) == 0 {
+		return -1, "", fmt.Errorf("unexpected remainder when parsing pending key: %s", remainder)
+	}
+
+	if prefix != prefixPending {
+		return -1, "", fmt.Errorf("different prefix when parsing pending key. Expected: %d, got: %d",
+			prefixPending, prefix)
+	}
+
+	return height, hash, nil
 }

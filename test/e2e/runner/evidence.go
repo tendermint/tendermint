@@ -76,6 +76,8 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 	var ev types.Evidence
 	for i := 0; i < amount; i++ {
 		if i%lightClientEvidenceRatio == 0 {
+			logger.Info("Sending light client evidence. Why am I doing this?", "i", i,
+				"lightClientEvidenceRatio", lightClientEvidenceRatio)
 			ev, err = generateLightClientAttackEvidence(
 				privVals, lightEvidenceCommonHeight, valSet, testnet.Name, blockRes.Block.Time,
 			)

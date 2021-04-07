@@ -122,6 +122,7 @@ func TestLightClientAttackEvidence(t *testing.T) {
 		},
 		CommonHeight: height - 1,
 	}
+	// assert same hashes
 	assert.Equal(t, lcae.Hash(), differentEv.Hash())
 	// different header hash
 	differentHeader := makeHeaderRandom()
