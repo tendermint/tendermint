@@ -296,7 +296,6 @@ func (bs *BlockStore) LoadTxFromStore(hash []byte) *types.Tx {
 	if !bs.indexTransactions {
 		return nil
 	}
-	var ref = new(tmproto.TxRef)
 	bz, err := bs.db.Get(txReferenceKey(hash))
 	if err != nil {
 		panic(err)
@@ -304,14 +303,13 @@ func (bs *BlockStore) LoadTxFromStore(hash []byte) *types.Tx {
 	if len(bz) == 0 {
 		return nil
 	}
-	err = proto.Unmarshal(bz, ref)
-	if err != nil {
+	ref := new(tmproto.TxRef)
+	if err = proto.Unmarshal(bz, ref); err != nil {
 		panic(fmt.Sprintf("error reading transaction reference: %v", err))
 	}
 
 	block := bs.LoadBlock(ref.BlockHeight)
-	tx := block.Txs[ref.TxIndex]
-	return &tx
+	return &block.Txs[ref.TxIndex]
 }
 
 // PruneBlocks removes block up to (but not including) a height. It returns the number of blocks pruned.
