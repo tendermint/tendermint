@@ -1723,6 +1723,11 @@ func (n *Node) Config() *cfg.Config {
 	return n.config
 }
 
+// TxIndexer returns the Node's TxIndexer.
+func (n *Node) TxIndexer() txindex.TxIndexer {
+	return n.txIndexer
+}
+
 //------------------------------------------------------------------------------
 
 func (n *Node) Listeners() []string {
