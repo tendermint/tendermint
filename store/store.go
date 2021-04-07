@@ -282,6 +282,28 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	return commit
 }
 
+// LoadTxFromStore returns the transaction with the given hash.
+// It does this by fetching the transaction reference (blockHeight, txIndex)
+// for that hash, then loading the block itself.
+func (bs *BlockStore) LoadTxFromStore(hash []byte) *types.Tx {
+	var ref = new(tmproto.TxRef)
+	bz, err := bs.db.Get(txReferenceKey(hash))
+	if err != nil {
+		panic(err)
+	}
+	if len(bz) == 0 {
+		return nil
+	}
+	err = proto.Unmarshal(bz, ref)
+	if err != nil {
+		panic(fmt.Sprintf("error reading transaction reference: %v", err))
+	}
+
+	block := bs.LoadBlock(ref.BlockHeight)
+	tx := block.Txs[ref.TxIndex]
+	return &tx
+}
+
 // PruneBlocks removes block up to (but not including) a height. It returns the number of blocks pruned.
 func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 	if height <= 0 {
@@ -476,6 +498,15 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 		panic(err)
 	}
 
+	// Save the transactions for this block
+	for txIndex, tx := range block.Txs {
+		ref := &tmproto.TxRef{BlockHeight: block.Height, TxIndex: int64(txIndex)}
+		refBytes := mustEncode(ref)
+		if err := batch.Set(txReferenceKey(tx.Hash()), refBytes); err != nil {
+			panic(err)
+		}
+	}
+
 	// Save seen commit (seen +2/3 precommits for block)
 	pbsc := seenCommit.ToProto()
 	seenCommitBytes := mustEncode(pbsc)
@@ -529,6 +560,7 @@ const (
 	prefixBlockCommit = int64(2)
 	prefixSeenCommit  = int64(3)
 	prefixBlockHash   = int64(4)
+	prefixTxHash      = int64(5)
 )
 
 func blockMetaKey(height int64) []byte {
@@ -580,6 +612,14 @@ func seenCommitKey(height int64) []byte {
 
 func blockHashKey(hash []byte) []byte {
 	key, err := orderedcode.Append(nil, prefixBlockHash, string(hash))
+	if err != nil {
+		panic(err)
+	}
+	return key
+}
+
+func txReferenceKey(hash []byte) []byte {
+	key, err := orderedcode.Append(nil, prefixTxHash, string(hash))
 	if err != nil {
 		panic(err)
 	}

@@ -155,3 +155,8 @@ message TxProof {
   bytes                   data      = 2;
   tendermint.crypto.Proof proof     = 3;
 }
+
+message TxRef {
+  int64 block_height = 1;
+  int64 tx_index = 2;
+}
