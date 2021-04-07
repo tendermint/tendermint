@@ -196,7 +196,7 @@ func (r *Reactor) processEvidenceCh() {
 		select {
 		case envelope := <-r.evidenceCh.In:
 			if err := r.handleMessage(r.evidenceCh.ID, envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.evidenceCh.ID, "envelope", envelope, "err", err)
+				r.Logger.Error("failed to process message", "ch_id", r.evidenceCh.ID, "err", err)
 				r.evidenceCh.Error <- p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
