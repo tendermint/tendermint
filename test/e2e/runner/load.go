@@ -81,7 +81,7 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx) {
 
 		select {
 		case chTx <- tx:
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(20 * time.Millisecond)
 
 		case <-ctx.Done():
 			close(chTx)
@@ -103,6 +103,12 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx
 		client, ok := clients[node.Name]
 		if !ok {
 			client, err = node.Client()
+			if err != nil {
+				continue
+			}
+
+			// check that the node is up
+			_, err = client.Health(ctx)
 			if err != nil {
 				continue
 			}
