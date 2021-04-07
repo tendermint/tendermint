@@ -121,8 +121,15 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			nextStartAt += 5
 		}
 		name := fmt.Sprintf("validator%02d", i)
-		manifest.Nodes[name] = generateNode(
+		node := generateNode(
 			r, e2e.ModeValidator, startAt, manifest.InitialHeight, i <= 2)
+
+		if p2pNodeFactor == 0 {
+			node.UseNewP2P = manifest.UseNewP2P
+		} else if p2pNodeFactor%i == 0 {
+			node.UseNewP2P = !manifest.UseNewP2P
+		}
+		manifest.Nodes[name] = node
 
 		if startAt == 0 {
 			(*manifest.Validators)[name] = int64(30 + r.Intn(71))
