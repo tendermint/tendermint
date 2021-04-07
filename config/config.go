@@ -615,7 +615,7 @@ type P2PConfig struct { //nolint: maligned
 	// Makes it possible to configure which queue backend the p2p
 	// layer uses. Options are: "fifo", "priority" and "wdrr",
 	// with the default being "fifo".
-	QueueType string `mapstructure:queue-type""`
+	QueueType string `mapstructure:"queue-type"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
