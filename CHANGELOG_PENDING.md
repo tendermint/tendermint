@@ -1,5 +1,9 @@
 # Unreleased Changes
 
+- [store] \#6328 Enable `LoadTxFromStore` and tx indexing in BlockStore (@NateWilliams2)
+- [node] \#6328 Include BlockStore config option when creating BlockStore (@NateWilliams2)
+- [config] \#6328 Implement BlockStore config (`IndexTransactions`) (@NateWilliams2)
+
 ## vX.X
 
 Special thanks to external contributors on this release:
