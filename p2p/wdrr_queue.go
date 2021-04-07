@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 
@@ -263,7 +264,9 @@ func (s *wdrrScheduler) process() {
 					// 4. remove from the flow's queue
 					// 5. grab the next HoQ Envelope and flow's deficit
 					for len(s.buffer[chID]) > 0 && d >= we.size {
-						s.metrics.PeerSendBytesTotal.With("peer_id", string(we.envelope.To)).Add(float64(we.size))
+						s.metrics.PeerSendBytesTotal.With(
+							"chID", fmt.Sprint(chID),
+							"peer_id", string(we.envelope.To)).Add(float64(we.size))
 						s.dequeueCh <- we.envelope
 						s.size -= we.size
 						s.deficits[chID] -= we.size
