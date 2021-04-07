@@ -181,23 +181,22 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, t
 	commonVals *types.ValidatorSet, now time.Time, trustPeriod time.Duration) error {
 	// In the case of lunatic attack we need to perform a single verification jump between the
 	// common header and the conflicting one
-	if commonHeader.Height != trustedHeader.Height {
-		err := light.Verify(commonHeader, commonVals, e.ConflictingBlock.SignedHeader, e.ConflictingBlock.ValidatorSet,
-			trustPeriod, now, 0*time.Second, light.DefaultTrustLevel)
+	if commonHeader.Height != e.ConflictingBlock.Height {
+		err := commonVals.VerifyCommitLightTrusting(trustedHeader.ChainID, e.ConflictingBlock.Commit, light.DefaultTrustLevel)
 		if err != nil {
-			return fmt.Errorf("skipping verification from common to conflicting header failed: %w", err)
+			return fmt.Errorf("skipping verification of conflicting block failed: %w", err)
 		}
-	} else {
-		// in the case of equivocation and amnesia we expect some header hashes to be correctly derived
-		if isInvalidHeader(trustedHeader.Header, e.ConflictingBlock.Header) {
-			return errors.New("common height is the same as conflicting block height so expected the conflicting" +
-				" block to be correctly derived yet it wasn't")
-		}
-		// ensure that 2/3 of the validator set did vote for this block
-		if err := e.ConflictingBlock.ValidatorSet.VerifyCommitLight(trustedHeader.ChainID, e.ConflictingBlock.Commit.BlockID,
-			e.ConflictingBlock.Height, e.ConflictingBlock.Commit); err != nil {
-			return fmt.Errorf("invalid commit from conflicting block: %w", err)
-		}
+
+		// In the case of equivocation and amnesia we expect all header hashes to be correctly derived
+	} else if isInvalidHeader(trustedHeader.Header, e.ConflictingBlock.Header) {
+		return errors.New("common height is the same as conflicting block height so expected the conflicting" +
+			" block to be correctly derived yet it wasn't")
+	}
+
+	// Verify that the 2/3+ commits from the conflicting validator set were for the conflicting header
+	if err := e.ConflictingBlock.ValidatorSet.VerifyCommitLight(trustedHeader.ChainID, e.ConflictingBlock.Commit.BlockID,
+		e.ConflictingBlock.Height, e.ConflictingBlock.Commit); err != nil {
+		return fmt.Errorf("invalid commit from conflicting block: %w", err)
 	}
 
 	if evTotal, valsTotal := e.TotalVotingPower, commonVals.TotalVotingPower(); evTotal != valsTotal {
