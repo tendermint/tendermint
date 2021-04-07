@@ -4,7 +4,6 @@
 initial_height = 1000
 evidence = 0
 initial_state = { initial01 = "a", initial02 = "b", initial03 = "c" }
-use_new_p2p = true
 
 [validators]
 validator01 = 100
