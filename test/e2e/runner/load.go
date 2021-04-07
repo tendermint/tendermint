@@ -14,7 +14,7 @@ import (
 )
 
 // Load generates transactions against the network until the given context is
-// canceled. A multiplier of great than one can be supplied if load needs to
+// canceled. A multiplier of greater than one can be supplied if load needs to
 // be generated beyond a minimum amount.
 func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 	// Since transactions are executed across all nodes in the network, we need
@@ -38,9 +38,9 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 	logger.Info(fmt.Sprintf("Starting transaction load (%v workers)...", concurrency))
 	started := time.Now()
 
-	go loadGenerate(ctx, chTx)
+	go loadGenerate(ctx, chTx, multiplier)
 
-	for w := 0; w < concurrency*multiplier; w++ {
+	for w := 0; w < concurrency; w++ {
 		go loadProcess(ctx, testnet, chTx, chSuccess)
 	}
 
@@ -66,7 +66,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 }
 
 // loadGenerate generates jobs until the context is canceled
-func loadGenerate(ctx context.Context, chTx chan<- types.Tx) {
+func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int) {
 	for i := 0; i < math.MaxInt64; i++ {
 		// We keep generating the same 1000 keys over and over, with different values.
 		// This gives a reasonable load without putting too much data in the app.
@@ -81,7 +81,7 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx) {
 
 		select {
 		case chTx <- tx:
-			time.Sleep(20 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond / time.Duration(multiplier))
 
 		case <-ctx.Done():
 			close(chTx)
