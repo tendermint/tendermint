@@ -20,6 +20,7 @@ There are three types of information stored:
  - BlockMeta:   Meta information about each block
  - Block part:  Parts of each block, aggregated w/ PartSet
  - Commit:      The commit part of each block, for gossiping precommit votes
+ - TxRef:       If indexTransactions, stores transaction hash -> types.TxRef to load txs directly
 
 Currently the precommit signatures are duplicated in the Block parts as
 well as the Commit.  In the future this may change, perhaps by moving
@@ -31,13 +32,14 @@ The store can be assumed to contain all contiguous blocks between base and heigh
 // deserializing loaded data, indicating probable corruption on disk.
 */
 type BlockStore struct {
-	db dbm.DB
+	db                dbm.DB
+	indexTransactions bool
 }
 
 // NewBlockStore returns a new BlockStore with the given DB,
 // initialized to the last height that was committed to the DB.
-func NewBlockStore(db dbm.DB) *BlockStore {
-	return &BlockStore{db}
+func NewBlockStore(db dbm.DB, indexTransactions bool) *BlockStore {
+	return &BlockStore{db, indexTransactions}
 }
 
 // Base returns the first known contiguous block height, or 0 for empty block stores.
@@ -282,10 +284,18 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	return commit
 }
 
+// CanLoadTxs returns true if the LoadTxFromStore method is enabled
+func (bs *BlockStore) CanLoadTxs() bool {
+	return bs.indexTransactions
+}
+
 // LoadTxFromStore returns the transaction with the given hash.
 // It does this by fetching the transaction reference (blockHeight, txIndex)
 // for that hash, then loading the block itself.
 func (bs *BlockStore) LoadTxFromStore(hash []byte) *types.Tx {
+	if !bs.indexTransactions {
+		return nil
+	}
 	var ref = new(tmproto.TxRef)
 	bz, err := bs.db.Get(txReferenceKey(hash))
 	if err != nil {
@@ -499,11 +509,13 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 
 	// Save the transactions for this block
-	for txIndex, tx := range block.Txs {
-		ref := &tmproto.TxRef{BlockHeight: block.Height, TxIndex: int64(txIndex)}
-		refBytes := mustEncode(ref)
-		if err := batch.Set(txReferenceKey(tx.Hash()), refBytes); err != nil {
-			panic(err)
+	if bs.indexTransactions {
+		for txIndex, tx := range block.Txs {
+			ref := &tmproto.TxRef{BlockHeight: block.Height, TxIndex: int64(txIndex)}
+			refBytes := mustEncode(ref)
+			if err := batch.Set(txReferenceKey(tx.Hash()), refBytes); err != nil {
+				panic(err)
+			}
 		}
 	}
 

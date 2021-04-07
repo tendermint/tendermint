@@ -68,6 +68,7 @@ type Config struct {
 	BaseConfig `mapstructure:",squash"`
 
 	// Options for services
+	BlockStore      *BlockStoreConfig      `mapstructure:"block-store"`
 	RPC             *RPCConfig             `mapstructure:"rpc"`
 	P2P             *P2PConfig             `mapstructure:"p2p"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
@@ -82,6 +83,7 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		BaseConfig:      DefaultBaseConfig(),
+		BlockStore:      DefaultBlockStoreConfig(),
 		RPC:             DefaultRPCConfig(),
 		P2P:             DefaultP2PConfig(),
 		Mempool:         DefaultMempoolConfig(),
@@ -104,6 +106,7 @@ func DefaultValidatorConfig() *Config {
 func TestConfig() *Config {
 	return &Config{
 		BaseConfig:      TestBaseConfig(),
+		BlockStore:      TestBlockStoreConfig(),
 		RPC:             TestRPCConfig(),
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
@@ -359,6 +362,26 @@ func (cfg BaseConfig) ValidateBasic() error {
 		return fmt.Errorf("unknown mode: %v", cfg.Mode)
 	}
 	return nil
+}
+
+//-----------------------------------------------------------------------------
+// BlockStoreConfig defines the configuration for the block store,
+// including whether or not to provide indexed transactions.
+type BlockStoreConfig struct {
+	// Provide indexed transactions on the BlockStore
+	IndexTransactions bool `mapstructure:"index-transactions"`
+}
+
+// DefaultBlockStoreConfig returns a default configuration for the block store.
+func DefaultBlockStoreConfig() *BlockStoreConfig {
+	return &BlockStoreConfig{
+		IndexTransactions: false,
+	}
+}
+
+// TestBlockStoreConfig returns a default configuration for the block store.
+func TestBlockStoreConfig() *BlockStoreConfig {
+	return DefaultBlockStoreConfig()
 }
 
 //-----------------------------------------------------------------------------

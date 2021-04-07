@@ -169,6 +169,18 @@ abci = "{{ .BaseConfig.ABCI }}"
 filter-peers = {{ .BaseConfig.FilterPeers }}
 
 
+#######################################################
+###       Block Store Configuration Options         ###
+#######################################################
+[block-store]
+
+# Index transactions on the BlockStore
+#
+# If enabled, the BlockStore will store an index of txHash -> txRef
+# And will enable the LoadTxFromStore method which loads a transaction
+# given its hash.
+index-transactions = "{{ .BlockStore.IndexTransactions }}"
+
 #######################################################################
 ###                 Advanced Configuration Options                  ###
 #######################################################################
