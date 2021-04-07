@@ -714,7 +714,7 @@ func parsePendingKey(key []byte) (int64, string, error) {
 		return -1, "", err
 	}
 
-	if len(remainder) == 0 {
+	if len(remainder) != 0 {
 		return -1, "", fmt.Errorf("unexpected remainder when parsing pending key: %s", remainder)
 	}
 

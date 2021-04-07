@@ -23,7 +23,7 @@ import (
 // FIXME: Setting to 11 disables light client attack evidence since nodes
 // don't follow a minimum retention height invariant. When we fix this we
 // should use a ratio of 4.
-const lightClientEvidenceRatio = 11
+const lightClientEvidenceRatio = 4
 
 // InjectEvidence takes a running testnet and generates an amount of valid
 // evidence and broadcasts it to a random node through the rpc endpoint `/broadcast_evidence`.
@@ -74,10 +74,8 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 	duplicateVoteTime := status.SyncInfo.LatestBlockTime
 
 	var ev types.Evidence
-	for i := 0; i < amount; i++ {
+	for i := 1; i <= amount; i++ {
 		if i%lightClientEvidenceRatio == 0 {
-			logger.Info("Sending light client evidence. Why am I doing this?", "i", i,
-				"lightClientEvidenceRatio", lightClientEvidenceRatio)
 			ev, err = generateLightClientAttackEvidence(
 				privVals, lightEvidenceCommonHeight, valSet, testnet.Name, blockRes.Block.Time,
 			)
