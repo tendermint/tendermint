@@ -240,6 +240,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.P2P.ExternalAddress = fmt.Sprintf("tcp://%v", node.AddressP2P(false))
 	cfg.P2P.AddrBookStrict = false
 	cfg.P2P.UseNewP2P = node.UseNewP2P
+	cfg.P2P.QueueType = node.QueueType
 	cfg.DBBackend = node.Database
 	cfg.StateSync.DiscoveryTime = 5 * time.Second
 	if node.Mode != e2e.ModeLight {

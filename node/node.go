@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
-	"os"
 	"strconv"
 	"time"
 
@@ -53,16 +52,6 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
 )
-
-var (
-	p2pRouterQueueType string
-)
-
-func init() {
-	if v := os.Getenv("TM_P2P_QUEUE"); len(v) > 0 {
-		p2pRouterQueueType = v
-	}
-}
 
 // DBContext specifies config information for loading a new DB.
 type DBContext struct {
@@ -1962,7 +1951,7 @@ func createAndStartPrivValidatorGRPCClient(
 
 func getRouterConfig(conf *cfg.Config, proxyApp proxy.AppConns) p2p.RouterOptions {
 	opts := p2p.RouterOptions{
-		QueueType: p2pRouterQueueType,
+		QueueType: conf.P2P.QueueType,
 	}
 
 	if conf.P2P.MaxNumInboundPeers > 0 {

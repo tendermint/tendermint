@@ -62,6 +62,9 @@ type Manifest struct {
 	// UseNewP2P enables use of the new p2p layer for all nodes in
 	// a test.
 	UseNewP2P bool `toml:"use_new_p2p"`
+
+	// QueueType describes the type of queue that the system uses internally
+	QueueType string `toml:"queue_type"`
 }
 
 // ManifestNode represents a node in a testnet manifest.
@@ -141,6 +144,10 @@ type ManifestNode struct {
 
 	// UseNewP2P enables use of the new p2p layer for this node.
 	UseNewP2P bool `toml:"use_new_p2p"`
+
+	// QueueType describes the type of queue that the p2p layer
+	// uses internally.
+	QueueType string `toml:"queue_type"`
 }
 
 // Save saves the testnet manifest to a file.
