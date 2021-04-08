@@ -16,7 +16,8 @@ import (
 
 var (
 	// This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
-	regexpMissingHeight = regexp.MustCompile(`height \d+ (must be less than or equal to|is not available)`)
+	regexpMissingHeight = regexp.MustCompile(`height \d+ is not available`)
+	regexpTooHigh       = regexp.MustCompile(`height \d+ must be less than or equal to`)
 
 	maxRetryAttempts      = 10
 	timeout          uint = 5 // sec.
@@ -75,6 +76,12 @@ func (p *http) LightBlock(ctx context.Context, height int64) (*types.LightBlock,
 		return nil, err
 	}
 
+	if height != 0 && sh.Height != height {
+		return nil, provider.ErrBadLightBlock{
+			Reason: fmt.Errorf("height %d responded doesn't match height %d requested", sh.Height, height),
+		}
+	}
+
 	vs, err := p.validatorSet(ctx, &sh.Height)
 	if err != nil {
 		return nil, err
@@ -117,6 +124,10 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 			res, err := p.client.Validators(ctx, height, &page, &perPage)
 			if err != nil {
 				// TODO: standardize errors on the RPC side
+				if regexpTooHigh.MatchString(err.Error()) {
+					return nil, provider.ErrHeightTooHigh
+				}
+
 				if regexpMissingHeight.MatchString(err.Error()) {
 					return nil, provider.ErrLightBlockNotFound
 				}
@@ -162,6 +173,10 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 		commit, err := p.client.Commit(ctx, height)
 		if err != nil {
 			// TODO: standardize errors on the RPC side
+			if regexpTooHigh.MatchString(err.Error()) {
+				return nil, provider.ErrHeightTooHigh
+			}
+
 			if regexpMissingHeight.MatchString(err.Error()) {
 				return nil, provider.ErrLightBlockNotFound
 			}

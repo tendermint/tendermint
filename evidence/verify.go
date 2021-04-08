@@ -71,7 +71,21 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 		if evidence.Height() != ev.ConflictingBlock.Height {
 			trustedHeader, err = getSignedHeader(evpool.blockStore, ev.ConflictingBlock.Height)
 			if err != nil {
-				return err
+				// FIXME: This multi step process is a bit unergonomic. We may want to consider a more efficient process
+				// that doesn't require as much io and is atomic.
+
+				// If the node doesn't have a block at the height of the conflicting block, then this could be
+				// a forward lunatic attack. Thus the node must get the latest height it has
+				latestHeight := evpool.blockStore.Height()
+				trustedHeader, err = getSignedHeader(evpool.blockStore, latestHeight)
+				if err != nil {
+					return err
+				}
+				if trustedHeader.Time.Before(ev.ConflictingBlock.Time) {
+					return fmt.Errorf("latest block time (%v) is before conflicting block time (%v)",
+						trustedHeader.Time, ev.ConflictingBlock.Time,
+					)
+				}
 			}
 		}
 
@@ -119,36 +133,47 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 // the following checks:
 //     - the common header from the full node has at least 1/3 voting power which is also present in
 //       the conflicting header's commit
+//     - 2/3+ of the conflicting validator set correctly signed the conflicting block
 //     - the nodes trusted header at the same height as the conflicting header has a different hash
+//
+// CONTRACT: must run ValidateBasic() on the evidence before verifying
+//           must check that the evidence has not expired (i.e. is outside the maximum age threshold)
 func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, trustedHeader *types.SignedHeader,
 	commonVals *types.ValidatorSet, now time.Time, trustPeriod time.Duration) error {
-	// In the case of lunatic attack we need to perform a single verification jump between the
-	// common header and the conflicting one
-	if commonHeader.Height != trustedHeader.Height {
-		err := light.Verify(commonHeader, commonVals, e.ConflictingBlock.SignedHeader, e.ConflictingBlock.ValidatorSet,
-			trustPeriod, now, 0*time.Second, light.DefaultTrustLevel)
+	// In the case of lunatic attack there will be a different commonHeader height. Therefore the node perform a single
+	// verification jump between the common header and the conflicting one
+	if commonHeader.Height != e.ConflictingBlock.Height {
+		err := commonVals.VerifyCommitLightTrusting(trustedHeader.ChainID, e.ConflictingBlock.Commit, light.DefaultTrustLevel)
 		if err != nil {
-			return fmt.Errorf("skipping verification from common to conflicting header failed: %w", err)
+			return fmt.Errorf("skipping verification of conflicting block failed: %w", err)
 		}
-	} else {
-		// in the case of equivocation and amnesia we expect some header hashes to be correctly derived
-		if isInvalidHeader(trustedHeader.Header, e.ConflictingBlock.Header) {
-			return errors.New("common height is the same as conflicting block height so expected the conflicting" +
-				" block to be correctly derived yet it wasn't")
-		}
-		// ensure that 2/3 of the validator set did vote for this block
-		if err := e.ConflictingBlock.ValidatorSet.VerifyCommitLight(trustedHeader.ChainID, e.ConflictingBlock.Commit.BlockID,
-			e.ConflictingBlock.Height, e.ConflictingBlock.Commit); err != nil {
-			return fmt.Errorf("invalid commit from conflicting block: %w", err)
-		}
+
+		// In the case of equivocation and amnesia we expect all header hashes to be correctly derived
+	} else if isInvalidHeader(trustedHeader.Header, e.ConflictingBlock.Header) {
+		return errors.New("common height is the same as conflicting block height so expected the conflicting" +
+			" block to be correctly derived yet it wasn't")
 	}
 
+	// Verify that the 2/3+ commits from the conflicting validator set were for the conflicting header
+	if err := e.ConflictingBlock.ValidatorSet.VerifyCommitLight(trustedHeader.ChainID, e.ConflictingBlock.Commit.BlockID,
+		e.ConflictingBlock.Height, e.ConflictingBlock.Commit); err != nil {
+		return fmt.Errorf("invalid commit from conflicting block: %w", err)
+	}
+
+	// Assert the correct amount of voting power of the validator set
 	if evTotal, valsTotal := e.TotalVotingPower, commonVals.TotalVotingPower(); evTotal != valsTotal {
 		return fmt.Errorf("total voting power from the evidence and our validator set does not match (%d != %d)",
 			evTotal, valsTotal)
 	}
 
-	if bytes.Equal(trustedHeader.Hash(), e.ConflictingBlock.Hash()) {
+	// check in the case of a forward lunatic attack that monotonically increasing time has been violated
+	if e.ConflictingBlock.Height > trustedHeader.Height && e.ConflictingBlock.Time.After(trustedHeader.Time) {
+		return fmt.Errorf("conflicting block doesn't violate monotonically increasing time (%v is after %v)",
+			e.ConflictingBlock.Time, trustedHeader.Time,
+		)
+
+		// In all other cases check that the hashes of the conflicting header and the trusted header are different
+	} else if bytes.Equal(trustedHeader.Hash(), e.ConflictingBlock.Hash()) {
 		return fmt.Errorf("trusted header hash matches the evidence's conflicting header hash: %X",
 			trustedHeader.Hash())
 	}

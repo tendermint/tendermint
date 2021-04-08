@@ -34,6 +34,7 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 	commonHeader := makeHeaderRandom(4)
 	commonHeader.Time = defaultEvidenceTime
 	trustedHeader := makeHeaderRandom(10)
+	trustedHeader.Time = defaultEvidenceTime.Add(1 * time.Hour)
 
 	conflictingHeader := makeHeaderRandom(10)
 	conflictingHeader.Time = defaultEvidenceTime.Add(1 * time.Hour)
@@ -89,6 +90,30 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 	assert.Error(t, err)
 	ev.TotalVotingPower = 20
 
+	forwardConflictingHeader := makeHeaderRandom(11)
+	forwardConflictingHeader.Time = defaultEvidenceTime.Add(30 * time.Minute)
+	forwardConflictingHeader.ValidatorsHash = conflictingVals.Hash()
+	forwardBlockID := makeBlockID(forwardConflictingHeader.Hash(), 1000, []byte("partshash"))
+	forwardVoteSet := types.NewVoteSet(evidenceChainID, 11, 1, tmproto.SignedMsgType(2), conflictingVals)
+	forwardCommit, err := types.MakeCommit(forwardBlockID, 11, 1, forwardVoteSet, conflictingPrivVals, defaultEvidenceTime)
+	require.NoError(t, err)
+	forwardLunaticEv := &types.LightClientAttackEvidence{
+		ConflictingBlock: &types.LightBlock{
+			SignedHeader: &types.SignedHeader{
+				Header: forwardConflictingHeader,
+				Commit: forwardCommit,
+			},
+			ValidatorSet: conflictingVals,
+		},
+		CommonHeight:        4,
+		TotalVotingPower:    20,
+		ByzantineValidators: commonVals.Validators,
+		Timestamp:           defaultEvidenceTime,
+	}
+	err = evidence.VerifyLightClientAttack(forwardLunaticEv, commonSignedHeader, trustedSignedHeader, commonVals,
+		defaultEvidenceTime.Add(2*time.Hour), 3*time.Hour)
+	assert.NoError(t, err)
+
 	state := sm.State{
 		LastBlockTime:   defaultEvidenceTime.Add(2 * time.Hour),
 		LastBlockHeight: 11,
@@ -100,8 +125,10 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 	blockStore := &mocks.BlockStore{}
 	blockStore.On("LoadBlockMeta", int64(4)).Return(&types.BlockMeta{Header: *commonHeader})
 	blockStore.On("LoadBlockMeta", int64(10)).Return(&types.BlockMeta{Header: *trustedHeader})
+	blockStore.On("LoadBlockMeta", int64(11)).Return(nil)
 	blockStore.On("LoadBlockCommit", int64(4)).Return(commit)
 	blockStore.On("LoadBlockCommit", int64(10)).Return(trustedCommit)
+	blockStore.On("Height").Return(int64(10))
 
 	pool, err := evidence.NewPool(dbm.NewMemDB(), stateStore, blockStore)
 	require.NoError(t, err)
@@ -126,6 +153,9 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 	err = pool.CheckEvidence(evList)
 	assert.Error(t, err)
 
+	evList = types.EvidenceList{forwardLunaticEv}
+	err = pool.CheckEvidence(evList)
+	assert.NoError(t, err)
 }
 
 func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
