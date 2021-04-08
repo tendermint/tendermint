@@ -391,7 +391,7 @@ func TestClientDivergentTraces3(t *testing.T) {
 
 	_, err = c.VerifyLightBlockAtHeight(ctx, 10, bTime.Add(1*time.Hour))
 	assert.Error(t, err)
-	assert.Equal(t, 0, len(c.Witnesses()))
+	assert.Equal(t, 1, len(c.Witnesses()))
 }
 
 // 4. Witness has a divergent header but can not produce a valid trace to back it up.
@@ -404,7 +404,7 @@ func TestClientDivergentTraces4(t *testing.T) {
 	require.NoError(t, err)
 
 	_, mockHeaders, mockVals := genMockNode(chainID, 10, 5, 2, bTime)
-	witness := primary.Copy("witness")
+	witness := primary.Copy(chainID)
 	witness.AddLightBlock(&types.LightBlock{
 		SignedHeader: mockHeaders[10],
 		ValidatorSet: mockVals[10],
