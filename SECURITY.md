@@ -46,8 +46,9 @@ The following is an example timeline for the triage and response. The required r
 
 1. Request CVE number (ADMIN) 
 2. Gather emails and other contact info for validators (COMMS LEAD) 
-3. Test fixes on a testnet  (TENDERMINT ENG, COSMOS ENG) 
-4. Write “Security Advisory” for forum (TENDERMINT LEAD) 
+3. Create patches in a private security repo, and ensure that PRs are open targeting all relevant release branches (TENDERMINT ENG, TENDERMINT LEAD)
+4. Test fixes on a testnet  (TENDERMINT ENG, COSMOS ENG) 
+5. Write “Security Advisory” for forum (TENDERMINT LEAD) 
 
 #### 24 Hours Before Release Time
 
@@ -114,6 +115,9 @@ Assuming less than 1/3 of the voting power is Byzantine (malicious):
 * A node halting (liveness failure)
 * Syncing new and old nodes
 
+Assuming more than 1/3 the voting power is Byzantine:
+
+* Attacks that go unpunished (unhandled evidence)
 
 ### Networking
 
@@ -139,7 +143,7 @@ Attacks may come through the P2P network or the RPC layer:
 
 ### Libraries
 
-* Serialization (Amino)
+* Serialization
 * Reading/Writing files and databases
 
 ### Cryptography
