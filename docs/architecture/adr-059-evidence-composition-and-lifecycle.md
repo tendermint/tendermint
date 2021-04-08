@@ -4,6 +4,7 @@
 
 - 04/09/2020: Initial Draft (Unabridged)
 - 07/09/2020: First Version
+- 13.03.21: Ammendment to accomodate forward lunatic attack
 
 ## Scope
 
@@ -159,7 +160,7 @@ For `LightClientAttack`
 
 - Fetch the common signed header and val set from the common height and use skipping verification to verify the conflicting header
 
-- Fetch the trusted signed header at the same height as the conflicting header and compare with the conflicting header to work out which type of attack it is and in doing so return the malicious validators.
+- Fetch the trusted signed header at the same height as the conflicting header and compare with the conflicting header to work out which type of attack it is and in doing so return the malicious validators. NOTE: If the node doesn't have the signed header at the height of the conflicting header, it instead fetches the latest header it has and checks to see if it can prove the evidence based on a violation of header time. This is known as forward lunatic attack.
 
   - If equivocation, return the validators that signed for the commits of both the trusted and signed header
 
@@ -167,7 +168,11 @@ For `LightClientAttack`
 
   - If amnesia, return no validators (since we can't know which validators are malicious). This also means that we don't currently send amnesia evidence to the application, although we will introduce more robust amnesia evidence handling in future Tendermint Core releases
 
-- For each validator, check the look up table to make sure there already isn't evidence against this validator
+- Check that the hashes of the conflicting header and the trusted header are different
+
+- In the case of a forward lunatic attack, where the trusted header height is less than the conflicting header height, the node checks that the time of the trusted header is later than the time of conflicting header. This proves that the conflicting header breaks monotonically increasing time. If the node doesn't have a trusted header with a later time then it is unable to validate the evidence for now. 
+
+- Lastly, for each validator, check the look up table to make sure there already isn't evidence against this validator
 
 After verification we persist the evidence with the key `height/hash` to the pending evidence database in the evidence pool with the following format:
 

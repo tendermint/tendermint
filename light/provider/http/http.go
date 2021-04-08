@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"net/url"
@@ -117,6 +116,12 @@ func (p *http) LightBlock(ctx context.Context, height int64) (*types.LightBlock,
 		return nil, err
 	}
 
+	if height != 0 && sh.Height != height {
+		return nil, provider.ErrBadLightBlock{
+			Reason: fmt.Errorf("height %d responded doesn't match height %d requested", sh.Height, height),
+		}
+	}
+
 	vs, err := p.validatorSet(ctx, &sh.Height)
 	if err != nil {
 		return nil, err
@@ -189,17 +194,13 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 				return nil, provider.ErrBadLightBlock{Reason: e}
 
 			case *rpctypes.RPCError:
-				// check if the error indicates that the peer doesn't have the block
-				if strings.Contains(e.Data, ctypes.ErrHeightNotAvailable.Error()) ||
-					strings.Contains(e.Data, ctypes.ErrHeightExceedsChainHead.Error()) {
-					return nil, provider.ErrLightBlockNotFound
-				}
-				return nil, provider.ErrBadLightBlock{Reason: e}
+				// process the rpc error and return the corresponding error to the light client
+				return nil, p.parseRPCError(e)
 
 			default:
-				// If we don't know the error then by default we return a bad light block error and
+				// If we don't know the error then by default we return an unreliable provider error and
 				// terminate the connection with the peer.
-				return nil, provider.ErrBadLightBlock{Reason: e}
+				return nil, provider.ErrUnreliableProvider{Reason: e.Error()}
 			}
 
 			// update the total and increment the page index so we can fetch the
@@ -236,19 +237,13 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 			return nil, provider.ErrBadLightBlock{Reason: e}
 
 		case *rpctypes.RPCError:
-			// check if the error indicates that the peer doesn't have the block
-			if strings.Contains(e.Data, ctypes.ErrHeightNotAvailable.Error()) ||
-				strings.Contains(e.Data, ctypes.ErrHeightExceedsChainHead.Error()) {
-				return nil, p.noBlock()
-			}
-
-			// for every other error, the provider returns a bad block
-			return nil, provider.ErrBadLightBlock{Reason: errors.New(e.Data)}
+			// process the rpc error and return the corresponding error to the light client
+			return nil, p.parseRPCError(e)
 
 		default:
-			// If we don't know the error then by default we return a bad light block error and
+			// If we don't know the error then by default we return an unreliable provider error and
 			// terminate the connection with the peer.
-			return nil, provider.ErrBadLightBlock{Reason: e}
+			return nil, provider.ErrUnreliableProvider{Reason: e.Error()}
 		}
 	}
 	return nil, p.noResponse()
@@ -264,14 +259,37 @@ func (p *http) noResponse() error {
 	return provider.ErrNoResponse
 }
 
-func (p *http) noBlock() error {
+func (p *http) noBlock(e error) error {
 	p.noBlockCount++
 	if p.noBlockCount > p.noBlockThreshold {
 		return provider.ErrUnreliableProvider{
 			Reason: fmt.Sprintf("failed to provide a block after %d attempts", p.noBlockCount),
 		}
 	}
-	return provider.ErrLightBlockNotFound
+	return e
+}
+
+// parseRPCError process the error and return the corresponding error to the light clent
+// NOTE: When an error is sent over the wire it gets "flattened" hence we are unable to use error
+// checking functions like errors.Is() to unwrap the error.
+func (p *http) parseRPCError(e *rpctypes.RPCError) error {
+	switch {
+	// 1) check if the error indicates that the peer doesn't have the block
+	case strings.Contains(e.Data, ctypes.ErrHeightNotAvailable.Error()):
+		return p.noBlock(provider.ErrLightBlockNotFound)
+
+	// 2) check if the height requested is too high
+	case strings.Contains(e.Data, ctypes.ErrHeightExceedsChainHead.Error()):
+		return p.noBlock(provider.ErrHeightTooHigh)
+
+	// 3) check if the provider closed the connection
+	case strings.Contains(e.Data, "connection refused"):
+		return provider.ErrConnectionClosed
+
+	// 4) else return a generic error
+	default:
+		return provider.ErrBadLightBlock{Reason: e}
+	}
 }
 
 func validateHeight(height int64) (*int64, error) {
