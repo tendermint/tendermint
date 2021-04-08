@@ -1,5 +1,34 @@
 # Changelog
 
+## v0.34.9
+
+*April 8, 2021*
+
+This release fixes a moderate severity security issue, Security Advisory Alderfly, 
+which impacts all networks that rely on Tendermint light clients.
+Further details will be released once networks have upgraded.
+
+This release also includes a small Go API-breaking change, to reduce panics in the RPC layer.
+
+Special thanks to our external contributors on this release: @gchaincl
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+### BREAKING CHANGES
+
+- Go API
+    - [rpc/jsonrpc/server] [\#6204](https://github.com/tendermint/tendermint/issues/6204) Modify `WriteRPCResponseHTTP(Error)` to return an error (@melekes)
+
+### FEATURES
+
+- [rpc] [\#6226](https://github.com/tendermint/tendermint/issues/6226) Index block events and expose a new RPC method, `/block_search`, to allow querying for blocks by `BeginBlock` and `EndBlock` events (@alexanderbez)
+
+### BUG FIXES
+
+- [rpc/jsonrpc/server] [\#6191](https://github.com/tendermint/tendermint/issues/6191) Correctly unmarshal `RPCRequest` when data is `null` (@melekes)
+- [p2p] [\#6289](https://github.com/tendermint/tendermint/issues/6289) Fix "unknown channels" bug on CustomReactors (@gchaincl)
+- [light/evidence] Adds logic to handle forward lunatic attacks (@cmwaters)
+
 ## v0.34.8
 
 *February 25, 2021*
