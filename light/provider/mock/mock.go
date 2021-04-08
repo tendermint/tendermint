@@ -5,13 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/types"
 )
 
 type Mock struct {
-	id               string
+	id string
+
+	mtx              sync.Mutex
 	headers          map[int64]*types.SignedHeader
 	vals             map[int64]*types.ValidatorSet
 	evidenceToReport map[string]types.Evidence // hash => evidence
@@ -53,6 +56,9 @@ func (p *Mock) String() string {
 }
 
 func (p *Mock) LightBlock(_ context.Context, height int64) (*types.LightBlock, error) {
+	p.mtx.Lock()
+	defer p.mtx.Unlock()
+
 	var lb *types.LightBlock
 
 	if height > p.latestHeight {
@@ -94,6 +100,9 @@ func (p *Mock) HasEvidence(ev types.Evidence) bool {
 }
 
 func (p *Mock) AddLightBlock(lb *types.LightBlock) {
+	p.mtx.Lock()
+	defer p.mtx.Unlock()
+
 	if err := lb.ValidateBasic(lb.ChainID); err != nil {
 		panic(fmt.Sprintf("unable to add light block, err: %v", err))
 	}
