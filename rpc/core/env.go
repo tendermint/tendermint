@@ -21,7 +21,7 @@ import (
 const (
 	// see README
 	defaultPerPage = 30
-	maxPerPage     = 100
+	maxPerPage     = 1000
 
 	// SubscribeTimeout is the maximum time we wait to subscribe for an event.
 	// must be less than the server's write timeout (see rpcserver.DefaultConfig)
