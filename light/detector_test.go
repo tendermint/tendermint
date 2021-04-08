@@ -233,24 +233,24 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 
 	// two seconds later, the supporting withness should receive the header that can be used
 	// to prove that there was an attack
+	vals := chainKeys[latestHeight].ToValidators(2, 0)
+	newLb := &types.LightBlock{
+		SignedHeader: chainKeys[latestHeight].GenSignedHeader(
+			chainID,
+			proofHeight,
+			bTime.Add(time.Duration(proofHeight+1)*time.Minute), // 12 mins
+			nil,
+			vals,
+			vals,
+			hash("app_hash"),
+			hash("cons_hash"),
+			hash("results_hash"),
+			0, len(chainKeys),
+		),
+		ValidatorSet: vals,
+	}
 	go func() {
 		time.Sleep(2 * time.Second)
-		vals := chainKeys[latestHeight].ToValidators(2, 0)
-		newLb := &types.LightBlock{
-			SignedHeader: chainKeys[latestHeight].GenSignedHeader(
-				chainID,
-				proofHeight,
-				bTime.Add(time.Duration(proofHeight+1)*time.Minute), // 12 mins
-				nil,
-				vals,
-				vals,
-				hash("app_hash"),
-				hash("cons_hash"),
-				hash("results_hash"),
-				0, len(chainKeys),
-			),
-			ValidatorSet: vals,
-		}
 		witness.AddLightBlock(newLb)
 	}()
 
