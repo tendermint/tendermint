@@ -39,8 +39,8 @@ func TestBlock_Header(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, resp.Block.ValidateBasic())
 
-			require.Equal(t, block.Hash(), resp.Block.Hash(), 
-				"header hash mismatch. Expected: %v, got: %v", 
+			require.Equal(t, block.Hash(), resp.Block.Hash(),
+				"header hash mismatch. Expected: %v, got: %v",
 				block.Hash(), resp.Block.Hash(),
 			)
 		}

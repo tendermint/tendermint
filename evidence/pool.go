@@ -270,11 +270,11 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 		// the hash of the light client evidence is just the conflicting header.
 		// This means that someone could tamper with the evidence and remove
 		// some of the commits to prevent malicious validators from being
-		// punished. Therefore the node still needs to check whether 2/3+ of the 
-		// validator set voted for the conflicting block. 
+		// punished. Therefore the node still needs to check whether 2/3+ of the
+		// validator set voted for the conflicting block.
 		lb := lcae.ConflictingBlock
 		if err := lb.ValidatorSet.VerifyCommitLight(lb.ChainID, lb.Commit.BlockID,
-		lb.Height, lb.Commit); err != nil {
+			lb.Height, lb.Commit); err != nil {
 			return false
 		}
 	}
