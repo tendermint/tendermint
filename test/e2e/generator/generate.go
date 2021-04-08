@@ -17,7 +17,7 @@ var (
 		"topology":      {"single", "quad", "large"},
 		"ipv6":          {false, true},
 		"useNewP2P":     {false, true, 2},
-		"queueType":     {"priority", "fifo"},
+		"queueType":     {"priority"}, // "fifo", "wdrr"
 		"initialHeight": {0, 1000},
 		"initialState": {
 			map[string]string{},
