@@ -29,3 +29,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [rpc/jsonrpc/server] \#6191 Correctly unmarshal `RPCRequest` when data is `null` (@melekes)
 - [p2p] \#6289 Fix "unknown channels" bug on CustomReactors (@gchaincl)
+- [light/evidence] Adds logic to handle forward lunatic attacks (@cmwaters)

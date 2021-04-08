@@ -80,9 +80,10 @@ func TestProvider(t *testing.T) {
 	assert.Equal(t, lower, sh.Height)
 
 	// fetching missing heights (both future and pruned) should return appropriate errors
-	_, err = p.LightBlock(context.Background(), 1000)
+	lb, err := p.LightBlock(context.Background(), 1000)
 	require.Error(t, err)
-	assert.Equal(t, provider.ErrLightBlockNotFound, err)
+	require.Nil(t, lb)
+	assert.Equal(t, provider.ErrHeightTooHigh, err)
 
 	_, err = p.LightBlock(context.Background(), 1)
 	require.Error(t, err)
