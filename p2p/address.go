@@ -144,6 +144,11 @@ func ParseNodeAddress(urlString string) (NodeAddress, error) {
 		}
 	}
 
+	// Memory transports 
+	if address.Protocol == MemoryProtocol {
+		address.Path = string(address.NodeID)
+	}
+
 	return address, address.Validate()
 }
 

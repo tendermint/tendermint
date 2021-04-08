@@ -190,7 +190,6 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 			}
 		}
 		r.lastReceivedRequests[envelope.From] = time.Now()
-
 		pexAddresses := r.resolve(r.peerManager.Advertise(envelope.From, maxAddresses), maxAddresses)
 		r.pexCh.Out <- p2p.Envelope{
 			To:      envelope.From,
@@ -253,20 +252,27 @@ func (r *ReactorV2) resolve(addresses []p2p.NodeAddress, limit uint16) []protop2
 	for _, address := range addresses {
 		ctx, cancel := context.WithTimeout(context.Background(), resolveTimeout)
 		endpoints, err := address.Resolve(ctx)
+		r.Logger.Debug("resolved node address", "endpoints", endpoints)
 		cancel()
 		if err != nil {
 			r.Logger.Debug("failed to resolve address", "address", address, "err", err)
 			continue
 		}
 		for _, endpoint := range endpoints {
+			r.Logger.Debug("checking endpint", "IP", endpoint.IP, "Port", endpoint.Port)
 			if len(pexAddresses) >= int(limit) {
 				return pexAddresses
 
 			} else if endpoint.IP != nil {
+				r.Logger.Debug("appending pex address")
 				// PEX currently only supports IP-networked transports (as
 				// opposed to e.g. p2p.MemoryTransport).
+				//
+				// FIXME: as the PEX address contains no information about the
+				// protocol, we jam this into the ID. We won't need to this once
+				// we support URLs
 				pexAddresses = append(pexAddresses, protop2p.PexAddress{
-					ID:   string(address.NodeID),
+					ID:   fmt.Sprintf("%s://%v", endpoint.Protocol, address.NodeID),
 					IP:   endpoint.IP.String(),
 					Port: uint32(endpoint.Port),
 				})

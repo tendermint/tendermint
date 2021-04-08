@@ -14,6 +14,10 @@ import (
 	proto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
+const (
+	checkFrequency = 200 * time.Millisecond
+)
+
 type reactorTestSuite struct {
 	network *p2ptest.Network
 	logger  log.Logger
@@ -116,18 +120,39 @@ func (r *reactorTestSuite) sendRequestAndWaitForResponse(
 	waitPeriod time.Duration,
 	addresses []proto.PexAddress,
 ) {
-	r.pexChnnels[toNode].Out <- p2p.Envelope{
-		From:    fromNode,
+	r.pexChnnels[fromNode].Out <- p2p.Envelope{
+		To:      toNode,
 		Message: &proto.PexRequest{},
 	}
 
 	select {
 	case msg := <-r.pexChnnels[fromNode].In:
-		require.Equal(t, msg.Message, &proto.PexResponse{Addresses: addresses})
+		require.Equal(t, &proto.PexResponse{Addresses: addresses}, msg.Message)
 	case <-time.After(waitPeriod):
-		require.Fail(t, "timed out listening for PEX request",
+		require.Fail(t, "timed out waiting for PEX response",
 			"node=%q, waitPeriod=%s", toNode, waitPeriod)
 	}
+}
+
+func (r *reactorTestSuite) requireNumberOfPeers(
+	t *testing.T,
+	nodeIndex, numPeers int,
+	waitPeriod time.Duration,
+) {
+	nodeID := r.nodes[nodeIndex]
+	actualNumPeers := 0
+	iterations := int(waitPeriod / checkFrequency)
+	for i := 0; i < iterations; i++ {
+		connectedPeers := r.network.Nodes[r.nodes[nodeIndex]].PeerManager.Peers()
+		actualNumPeers = len(connectedPeers)
+		if len(connectedPeers) >= numPeers {
+			return
+		}
+		time.Sleep(checkFrequency)
+	}
+	require.Fail(t, "peer failed to connect with the asserted amount of peers",
+		"node=%q, waitPeriod=%s expected=%d actual=%d",
+		nodeID, waitPeriod, numPeers, actualNumPeers)
 }
 
 func (r *reactorTestSuite) connectAll(t *testing.T) {
@@ -174,7 +199,9 @@ func (r *reactorTestSuite) connectPeers(t *testing.T, node1, node2 p2p.NodeID) {
 	defer targetSub.Close()
 
 	sourceAddress := n1.NodeAddress
+	r.logger.Info("source address", "address", sourceAddress)
 	targetAddress := n2.NodeAddress
+	r.logger.Info("target address", "address", targetAddress)
 
 	added, err := n1.PeerManager.Add(targetAddress)
 	require.NoError(t, err)
@@ -239,13 +266,21 @@ func TestReactorBasic(t *testing.T) {
 	testNet.start(t)
 	testNet.connectAll(t)
 	// assert that the mock node receives a request
-	testNet.listenForRequest(t, testNet.mocks[0], time.Second)
-	// assert that when a mock node sends a request it receives the expected
-	testNet.sendRequestAndWaitForResponse(t, testNet.mocks[0], testNet.nodes[0], time.Second, []proto.PexAddress{})
+	testNet.listenForRequest(t, testNet.mocks[0], 10*time.Second)
+	// assert that when a mock node sends a request it receives a response
+	testNet.sendRequestAndWaitForResponse(t, testNet.mocks[0], testNet.nodes[0], 10*time.Second, []proto.PexAddress(nil))
 }
 
 func TestReactorConnectFullNetwork(t *testing.T) {
-
+	netSize := 5
+	testNet := setup(t, 0, netSize, 1)
+	testNet.start(t)
+	// make every node only connected with one other node
+	testNet.connectN(t, 1)
+	// assert that all nodes add each other in the network
+	for idx := 0; idx < len(testNet.nodes); idx++ {
+		testNet.requireNumberOfPeers(t, idx, netSize-1, 10*time.Second)
+	}
 }
 
 func TestReactorSendsRequestsTooOften(t *testing.T) {
