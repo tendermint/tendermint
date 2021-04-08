@@ -63,7 +63,7 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 	// Check verification returns an error.
 	_, err = c.VerifyLightBlockAtHeight(ctx, 10, bTime.Add(1*time.Hour))
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "does not match primary")
+		assert.Equal(t, light.ErrLightClientAttack, err)
 	}
 
 	// Check evidence was sent to both full nodes.
@@ -146,7 +146,7 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 		// Check verification returns an error.
 		_, err = c.VerifyLightBlockAtHeight(ctx, 10, bTime.Add(1*time.Hour))
 		if assert.Error(t, err) {
-			assert.Contains(t, err.Error(), "does not match primary")
+			assert.Equal(t, light.ErrLightClientAttack, err)
 		}
 
 		// Check evidence was sent to both full nodes.
@@ -210,7 +210,7 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 	witness := mockp.New(chainID, witnessHeaders, witnessValidators)
 	primary := mockp.New(chainID, primaryHeaders, primaryValidators)
 
-	laggingWitness := witness.Copy("laggingWitness")
+	laggingWitness := witness.Copy(chainID)
 
 	// In order to perform the attack, the primary needs at least one accomplice as a witness to also
 	// send the forged block
