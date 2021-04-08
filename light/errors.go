@@ -100,3 +100,7 @@ type errBadWitness struct {
 func (e errBadWitness) Error() string {
 	return fmt.Sprintf("Witness %d returned error: %s", e.WitnessIndex, e.Reason.Error())
 }
+
+var errNoDivergence = errors.New(
+	"sanity check failed: no divergence between the original trace and the provider's new trace",
+)
