@@ -168,7 +168,6 @@ abci = "{{ .BaseConfig.ABCI }}"
 # so the app can decide if we should keep the connection or not
 filter-peers = {{ .BaseConfig.FilterPeers }}
 
-
 #######################################################################
 ###                 Advanced Configuration Options                  ###
 #######################################################################
@@ -261,6 +260,12 @@ pprof-laddr = "{{ .RPC.PprofListenAddress }}"
 ###           P2P Configuration Options             ###
 #######################################################
 [p2p]
+
+# Enable the new p2p layer.
+use-new-p2p = {{ .P2P.UseNewP2P }}
+
+# Select the p2p internal queue
+queue-type = "{{ .P2P.QueueType }}"
 
 # Address to listen for incoming connections
 laddr = "{{ .P2P.ListenAddress }}"
