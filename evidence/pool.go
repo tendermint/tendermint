@@ -216,13 +216,15 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 				return err
 			}
 
-			if err := evpool.addPendingEvidence(ev); err != nil {
-				// Something went wrong with adding the evidence but we already know it is valid
-				// hence we log an error and continue
-				evpool.logger.Error("failed to add evidence to pending list", "err", err, "evidence", ev)
+			if !evpool.isPending(ev) {
+				if err := evpool.addPendingEvidence(ev); err != nil {
+					// Something went wrong with adding the evidence but we already know it is valid
+					// hence we log an error and continue
+					evpool.logger.Error("failed to add evidence to pending list", "err", err, "evidence", ev)
+				}
 			}
 
-			evpool.logger.Info("CheckEvidence: verified new evidence of byzantine behavior", "evidence", ev)
+			evpool.logger.Debug("valid evidence proposed in block", "evidence", ev.Hash())
 		}
 
 		// check for duplicate evidence. We cache hashes so we don't have to work them out again.
@@ -261,83 +263,22 @@ func (evpool *Pool) State() sm.State {
 }
 
 // fastCheck leverages the fact that the evidence pool may have already verified
-// the evidence to see if it can quickly conclude that the evidence is already
-// valid.
+// the evidence to see if it can quickly conclude that the evidence is valid.
 func (evpool *Pool) fastCheck(ev types.Evidence) bool {
-	if lcae, ok := ev.(*types.LightClientAttackEvidence); ok {
-		key := keyPending(ev)
-		evBytes, err := evpool.evidenceStore.Get(key)
-		if evBytes == nil { // the evidence is not in the nodes pending list
+	exists := evpool.isPending(ev)
+	if lcae, ok := ev.(*types.LightClientAttackEvidence); ok && exists {
+		// the hash of the light client evidence is just the conflicting header.
+		// This means that someone could tamper with the evidence and remove
+		// some of the commits to prevent malicious validators from being
+		// punished. Therefore the node still needs to check whether 2/3+ of the 
+		// validator set voted for the conflicting block. 
+		lb := lcae.ConflictingBlock
+		if err := lb.ValidatorSet.VerifyCommitLight(lb.ChainID, lb.Commit.BlockID,
+		lb.Height, lb.Commit); err != nil {
 			return false
 		}
-
-		if err != nil {
-			evpool.logger.Error("failed to load light client attack evidence", "err", err, "key(height/hash)", key)
-			return false
-		}
-
-		var trustedPb tmproto.LightClientAttackEvidence
-
-		if err = trustedPb.Unmarshal(evBytes); err != nil {
-			height, hash, parseErr := parsePendingKey(key)
-			if parseErr != nil {
-				evpool.logger.Error("failed to parse pending key", "err", parseErr)
-			}
-			evpool.logger.Error(
-				"failed to convert light client attack evidence from bytes",
-				"height", height, "hash", hash,
-				"err", err,
-			)
-			return false
-		}
-
-		trustedEv, err := types.LightClientAttackEvidenceFromProto(&trustedPb)
-		if err != nil {
-			height, hash, parseErr := parsePendingKey(key)
-			if parseErr != nil {
-				evpool.logger.Error("failed to parse pending key", "err", parseErr)
-			}
-			evpool.logger.Error(
-				"failed to convert light client attack evidence from protobuf",
-				"height", height, "hash", hash,
-				"err", err,
-			)
-			return false
-		}
-
-		// Ensure that all the byzantine validators that the evidence pool has match
-		// the byzantine validators in this evidence.
-		if trustedEv.ByzantineValidators == nil && lcae.ByzantineValidators != nil {
-			return false
-		}
-
-		if len(trustedEv.ByzantineValidators) != len(lcae.ByzantineValidators) {
-			return false
-		}
-
-		byzValsCopy := make([]*types.Validator, len(lcae.ByzantineValidators))
-		for i, v := range lcae.ByzantineValidators {
-			byzValsCopy[i] = v.Copy()
-		}
-
-		// ensure that both validator arrays are in the same order
-		sort.Sort(types.ValidatorsByVotingPower(byzValsCopy))
-
-		for idx, val := range trustedEv.ByzantineValidators {
-			if !bytes.Equal(byzValsCopy[idx].Address, val.Address) {
-				return false
-			}
-			if byzValsCopy[idx].VotingPower != val.VotingPower {
-				return false
-			}
-		}
-
-		return true
 	}
-
-	// For all other evidence the evidence pool just checks if it is already in
-	// the pending db.
-	return evpool.isPending(ev)
+	return exists
 }
 
 // IsExpired checks whether evidence or a polc is expired by checking whether a height and time is older
