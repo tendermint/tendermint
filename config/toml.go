@@ -265,7 +265,7 @@ pprof-laddr = "{{ .RPC.PprofListenAddress }}"
 use-new-p2p = {{ .P2P.UseNewP2P }}
 
 # Select the p2p internal queue
-queue-type = {{ .P2P.QueueType }}
+queue-type = "{{ .P2P.QueueType }}"
 
 # Address to listen for incoming connections
 laddr = "{{ .P2P.ListenAddress }}"
