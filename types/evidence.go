@@ -292,18 +292,20 @@ func (l *LightClientAttackEvidence) ConflictingHeaderIsInvalid(trustedHeader *He
 
 }
 
-// Hash returns the hash of the header and the commonHeight. This is designed to cause hash collisions
-// with evidence that have the same conflicting header and common height but different permutations
-// of validator commit signatures. The reason for this is that we don't want to allow several
-// permutations of the same evidence to be committed on chain. Ideally we commit the header with the
-// most commit signatures (captures the most byzantine validators) but anything greater than 1/3 is sufficient.
+// Hash returns the SHA256 hash of the header, commit, common height, total
+// voting power, byzantine validators and timestamp
 func (l *LightClientAttackEvidence) Hash() []byte {
-	buf := make([]byte, binary.MaxVarintLen64)
-	n := binary.PutVarint(buf, l.CommonHeight)
-	bz := make([]byte, tmhash.Size+n)
-	copy(bz[:tmhash.Size-1], l.ConflictingBlock.Hash().Bytes())
-	copy(bz[tmhash.Size:], buf)
-	return tmhash.Sum(bz)
+	buf := new(bytes.Buffer)
+	buf.Write(l.ConflictingBlock.Header.Hash())
+	buf.Write(l.ConflictingBlock.Commit.Hash())
+	_ = binary.Write(buf, binary.LittleEndian, l.CommonHeight)
+	_ = binary.Write(buf, binary.LittleEndian, l.TotalVotingPower)
+	for _, val := range l.ByzantineValidators {
+		_, _ = buf.Write(val.Bytes())
+	}
+	timeBytes, _ := l.Timestamp.MarshalBinary()
+	buf.Write(timeBytes)
+	return tmhash.Sum(buf.Bytes())
 }
 
 // Height returns the last height at which the primary provider and witness provider had the same header.
@@ -422,7 +424,7 @@ func (evl EvidenceList) Hash() []byte {
 	// the Evidence size is capped.
 	evidenceBzs := make([][]byte, len(evl))
 	for i := 0; i < len(evl); i++ {
-		evidenceBzs[i] = evl[i].Bytes()
+		evidenceBzs[i] = evl[i].Hash()
 	}
 	return merkle.HashFromByteSlices(evidenceBzs)
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -149,11 +150,19 @@ func (sh SignedHeader) ValidateBasic(chainID string) error {
 	if sh.Commit.Height != sh.Height {
 		return fmt.Errorf("header and commit height mismatch: %d vs %d", sh.Height, sh.Commit.Height)
 	}
-	if hhash, chash := sh.Hash(), sh.Commit.BlockID.Hash; !bytes.Equal(hhash, chash) {
+	if hhash, chash := sh.Header.Hash(), sh.Commit.BlockID.Hash; !bytes.Equal(hhash, chash) {
 		return fmt.Errorf("commit signs block %X, header is block %X", chash, hhash)
 	}
 
 	return nil
+}
+
+// Hash returns the SHA256 hash of both the header and the commit that signed that header
+func (sh SignedHeader) Hash() []byte {
+	bz := make([]byte, tmhash.Size*2)
+	copy(bz[:tmhash.Size-1], sh.Header.Hash())
+	copy(bz[tmhash.Size:], sh.Commit.Hash())
+	return tmhash.Sum(bz)
 }
 
 // String returns a string representation of SignedHeader.
