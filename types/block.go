@@ -1089,9 +1089,9 @@ type EvidenceData struct {
 
 // Hash returns the hash of the data.
 func (data *EvidenceData) Hash() tmbytes.HexBytes {
-	// if data.hash == nil {
-	// 	data.hash = data.Evidence.Hash()
-	// }
+	if data.hash == nil {
+		data.hash = data.Evidence.Hash()
+	}
 	return data.Evidence.Hash()
 }
 
