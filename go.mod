@@ -32,9 +32,5 @@ require (
 	github.com/tendermint/tm-db v0.6.4
 	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9
 	golang.org/x/net v0.0.0-20201021035429-f5854403a974
-<<<<<<< HEAD
-	google.golang.org/grpc v1.35.0
-=======
 	google.golang.org/grpc v1.37.0
->>>>>>> ae2646a37... build(deps): Bump google.golang.org/grpc from 1.36.1 to 1.37.0 (#6330)
 )
