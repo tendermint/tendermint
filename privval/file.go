@@ -491,8 +491,8 @@ func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error
 	if err != nil {
 		return err
 	}
-	// fmt.Printf("proposer %X signing proposal at height %d with key %X proposalSignBytes %X\n", pv.Key.ProTxHash,
-	//  proposal.Height, pv.Key.PrivKey.PubKey().Bytes(), blockSig)
+	 fmt.Printf("file proposer %X signing proposal at height %d with key %X proposalSignBytes %X\n", pv.Key.ProTxHash,
+	  proposal.Height, pv.Key.PrivKey.PubKey().Bytes(), blockSig)
 
 	pv.saveSigned(height, round, step, blockSignBytes, blockSig, nil, nil)
 	proposal.Signature = blockSig

@@ -659,6 +659,10 @@ func (cs *State) updateToState(state sm.State) {
 		cs.StartTime = cs.config.Commit(cs.CommitTime)
 	}
 
+	fmt.Printf("updating validators at height %v from %v to %v \n", height, cs.Validators, validators)
+	if height == 6 && bytes.Equal(cs.Validators.QuorumHash,validators.QuorumHash) {
+		fmt.Printf("this should not happen")
+	}
 	cs.Validators = validators
 	cs.Proposal = nil
 	cs.ProposalBlock = nil

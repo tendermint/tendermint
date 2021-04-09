@@ -131,7 +131,7 @@ func (pv *MockPV) SignProposal(chainID string, quorumHash crypto.QuorumHash, pro
 	}
 
 	signBytes := ProposalBlockSignBytes(useChainID, proposal)
-	// fmt.Printf("proposer %X signing proposal at height %d with key %X proposalSignBytes %X\n", pv.ProTxHash,
+	// fmt.Printf("mock proposer %X signing proposal at height %d with key %X proposalSignBytes %X\n", pv.ProTxHash,
 	//  proposal.Height, pv.PrivKey.PubKey().Bytes(), signBytes)
 	sig, err := pv.PrivKey.Sign(signBytes)
 	if err != nil {
@@ -158,7 +158,7 @@ func (pv *MockPV) updateKeyIfNeeded(height int64) {
 	if pv.NextPrivKeys != nil && len(pv.NextPrivKeys) > 0 && pv.NextPrivKeyHeights != nil &&
 		len(pv.NextPrivKeyHeights) > 0 && height >= pv.NextPrivKeyHeights[0] {
 		// fmt.Printf("mockpv node %X at height %d updating key %X with new key %X\n", pv.ProTxHash,
-		//  height, pv.PrivKey.PubKey().Bytes(), pv.NextPrivKeys[0].PubKey().Bytes())
+		// height, pv.PrivKey.PubKey().Bytes(), pv.NextPrivKeys[0].PubKey().Bytes())
 		pv.PrivKey = pv.NextPrivKeys[0]
 		if len(pv.NextPrivKeys) > 1 {
 			pv.NextPrivKeys = pv.NextPrivKeys[1:]

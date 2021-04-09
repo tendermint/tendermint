@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/dashevo/dashd-go/btcjson"
@@ -98,11 +99,7 @@ func (sc *DashCoreSignerClient) GetPubKey(quorumHash crypto.QuorumHash) (crypto.
 		return nil, fmt.Errorf("quorum hash must be 32 bytes long if requesting public key from dash core")
 	}
 
-	var quorumHashFixed *chainhash.Hash
-
-	copy(quorumHashFixed[:], quorumHash)
-
-	response, err := sc.endpoint.QuorumInfo(btcjson.LLMQType_100_67, quorumHashFixed, false)
+	response, err := sc.endpoint.QuorumInfo(btcjson.LLMQType_100_67, quorumHash.String(), false)
 	if err != nil {
 		return nil, fmt.Errorf("send: %w", err)
 	}
@@ -188,33 +185,25 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumHash crypto.Quoru
 
 	blockMessageHash := crypto.Sha256(blockSignBytes)
 
-	var blockMessageHashFixed *chainhash.Hash
-
-	copy(blockMessageHashFixed[:], blockMessageHash)
+	blockMessageHashString := strings.ToUpper(hex.EncodeToString(blockMessageHash))
 
 	stateMessageHash := crypto.Sha256(stateSignBytes)
 
-	var stateMessageHashFixed *chainhash.Hash
-
-	copy(stateMessageHashFixed[:], stateMessageHash)
+	stateMessageHashString := strings.ToUpper(hex.EncodeToString(stateMessageHash))
 
 	blockRequestIdHash := VoteBlockRequestId(vote)
 
-	var blockRequestIdHashFixed *chainhash.Hash
-
-	copy(blockRequestIdHashFixed[:], blockRequestIdHash)
+	blockRequestIdHashString := strings.ToUpper(hex.EncodeToString(blockRequestIdHash))
 
 	stateRequestIdHash := VoteStateRequestId(vote)
 
-	var stateRequestIdHashFixed *chainhash.Hash
-
-	copy(stateRequestIdHashFixed[:], stateRequestIdHash)
+	stateRequestIdHashString := strings.ToUpper(hex.EncodeToString(stateRequestIdHash))
 
 	var quorumHashFixed *chainhash.Hash
 
 	copy(quorumHashFixed[:], quorumHash)
 
-	blockResponse, err := sc.endpoint.QuorumSign(btcjson.LLMQType_100_67, blockRequestIdHashFixed, blockMessageHashFixed, quorumHashFixed, false)
+	blockResponse, err := sc.endpoint.QuorumSign(btcjson.LLMQType_100_67, blockRequestIdHashString, blockMessageHashString, quorumHash.String(), false)
 
 	if blockResponse == nil {
 		return ErrUnexpectedResponse
@@ -231,7 +220,7 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumHash crypto.Quoru
 		return fmt.Errorf("decoding signature %d is incorrect size when signing proposal : %v", len(blockDecodedSignature), err)
 	}
 
-	stateResponse, err := sc.endpoint.QuorumSign(btcjson.LLMQType_100_67, stateRequestIdHashFixed, blockMessageHashFixed, quorumHashFixed, false)
+	stateResponse, err := sc.endpoint.QuorumSign(btcjson.LLMQType_100_67, stateRequestIdHashString, stateMessageHashString, quorumHash.String(), false)
 
 	if stateResponse == nil {
 		return ErrUnexpectedResponse
@@ -281,21 +270,13 @@ func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumHash crypto.Q
 
 	messageHash := crypto.Sha256(messageBytes)
 
-	var messageHashFixed *chainhash.Hash
-
-	copy(messageHashFixed[:], messageHash)
+	messageHashString := strings.ToUpper(hex.EncodeToString(messageHash))
 
 	requestIdHash := ProposalRequestId(proposal)
 
-	var requestIdHashFixed *chainhash.Hash
+	requestIdHashString := strings.ToUpper(hex.EncodeToString(requestIdHash))
 
-	copy(requestIdHashFixed[:], requestIdHash)
-
-	var quorumHashFixed *chainhash.Hash
-
-	copy(quorumHashFixed[:], quorumHash)
-
-	response, err := sc.endpoint.QuorumSign(btcjson.LLMQType_100_67, requestIdHashFixed, messageHashFixed, quorumHashFixed, false)
+	response, err := sc.endpoint.QuorumSign(btcjson.LLMQType_100_67, requestIdHashString, messageHashString, quorumHash.String(), false)
 
 	if response == nil {
 		return ErrUnexpectedResponse
