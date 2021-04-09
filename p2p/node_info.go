@@ -245,6 +245,18 @@ func (info DefaultNodeInfo) ToProto() *tmp2p.DefaultNodeInfo {
 	return dni
 }
 
+// AddChannel checks if the nodeInfo doesn't already contain the channel before
+// appending it
+func (info DefaultNodeInfo) AddChannel(chId byte) error {
+	for _, ch := range info.Channels {
+		if ch == chId {
+			return fmt.Errorf("channel %v already exists", chId)
+		}
+	}
+	info.Channels = append(info.Channels, chId)
+	return nil
+}
+
 func DefaultNodeInfoFromToProto(pb *tmp2p.DefaultNodeInfo) (DefaultNodeInfo, error) {
 	if pb == nil {
 		return DefaultNodeInfo{}, errors.New("nil node info")

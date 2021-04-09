@@ -152,6 +152,14 @@ func CustomReactors(reactors map[string]p2p.Reactor) Option {
 				n.sw.RemoveReactor(name, existingReactor)
 			}
 			n.sw.AddReactor(name, reactor)
+			// register the new channels to the nodeInfo
+			for _, chDesc := range reactor.GetChannels() {
+				// these functions only error when the channel is already
+				// registered. This may be the case when we are replacing
+				// existing reactors so we can ignore these
+				_ = n.nodeInfo.(p2p.DefaultNodeInfo).AddChannel(chDesc.ID)
+				_ = n.transport.AddChannel(chDesc.ID)
+			}
 		}
 	}
 }
