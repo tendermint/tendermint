@@ -263,21 +263,11 @@ func (evpool *Pool) State() sm.State {
 
 // fastCheck leverages the fact that the evidence pool may have already verified
 // the evidence to see if it can quickly conclude that the evidence is valid.
+// Does not work with light client attack evidnce. We need to manually check
+// this.
 func (evpool *Pool) fastCheck(ev types.Evidence) bool {
-	exists := evpool.isPending(ev)
-	if lcae, ok := ev.(*types.LightClientAttackEvidence); ok && exists {
-		// the hash of the light client evidence is just the conflicting header.
-		// This means that someone could tamper with the evidence and remove
-		// some of the commits to prevent malicious validators from being
-		// punished. Therefore the node still needs to check whether 2/3+ of the
-		// validator set voted for the conflicting block.
-		lb := lcae.ConflictingBlock
-		if err := lb.ValidatorSet.VerifyCommitLight(lb.ChainID, lb.Commit.BlockID,
-			lb.Height, lb.Commit); err != nil {
-			return false
-		}
-	}
-	return exists
+	_, ok := ev.(*types.LightClientAttackEvidence)
+	return evpool.isPending(ev) && !ok
 }
 
 // IsExpired checks whether evidence or a polc is expired by checking whether a height and time is older

@@ -315,8 +315,14 @@ func (l *LightClientAttackEvidence) Height() int64 {
 
 // String returns a string representation of LightClientAttackEvidence
 func (l *LightClientAttackEvidence) String() string {
-	return fmt.Sprintf("LightClientAttackEvidence{ConflictingBlock: %v, CommonHeight: %d}",
-		l.ConflictingBlock.String(), l.CommonHeight)
+	return fmt.Sprintf(`LightClientAttackEvidence{
+		ConflictingBlock: %v, 
+		CommonHeight: %d, 
+		ByzatineValidators: %v, 
+		TotalVotingPower: %d, 
+		Timestamp: %v}#%X`,
+		l.ConflictingBlock.String(), l.CommonHeight, l.ByzantineValidators,
+		l.TotalVotingPower, l.Timestamp, l.Hash())
 }
 
 // Time returns the time of the common block where the infraction leveraged off.
@@ -422,7 +428,7 @@ func (evl EvidenceList) Hash() []byte {
 	// the Evidence size is capped.
 	evidenceBzs := make([][]byte, len(evl))
 	for i := 0; i < len(evl); i++ {
-		evidenceBzs[i] = evl[i].Bytes()
+		evidenceBzs[i] = evl[i].Hash()
 	}
 	return merkle.HashFromByteSlices(evidenceBzs)
 }

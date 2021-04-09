@@ -941,7 +941,7 @@ func (commit *Commit) StringIndented(indent string) string {
 		indent, commit.BlockID,
 		indent,
 		indent, strings.Join(commitSigStrings, "\n"+indent+"    "),
-		indent, commit.hash)
+		indent, commit.Hash())
 }
 
 // ToProto converts Commit to protobuf
@@ -1089,10 +1089,10 @@ type EvidenceData struct {
 
 // Hash returns the hash of the data.
 func (data *EvidenceData) Hash() tmbytes.HexBytes {
-	if data.hash == nil {
-		data.hash = data.Evidence.Hash()
-	}
-	return data.hash
+	// if data.hash == nil {
+	// 	data.hash = data.Evidence.Hash()
+	// }
+	return data.Evidence.Hash()
 }
 
 // ByteSize returns the total byte size of all the evidence
