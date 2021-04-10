@@ -1,23 +1,17 @@
-# stage 1 Generate Tenderdash Binary
-FROM golang:1.15 as builder
+FROM golang:1.15-alpine AS builder
 
-RUN apt-get -qq update -y && apt-get -qq upgrade -y >/dev/null
-RUN apt-get -qq install -y cmake sudo libgmp-dev libleveldb-dev librocksdb-dev >/dev/null
+RUN apk update && \
+    apk upgrade && \
+    apk add bash git gmp-dev sudo cmake build-base
 
-WORKDIR /src/tenderdash
+COPY . /go/src/github.com/dashevo/tenderdash
 
-# Fetch dependencies separately (for layer caching)
-COPY go.mod go.sum ./
-RUN go mod download
-
-# Copy Tenderdash source
-COPY . .
+WORKDIR /go/src/github.com/dashevo/tenderdash
 
 RUN make install-bls
 RUN make build-linux
 
-# stage 2
-FROM golang:1.15-alpine
+FROM alpine:3.9
 LABEL maintainer="developers@dash.org"
 
 # Tenderdash will be looking for the genesis file in /tenderdash/config/genesis.json
@@ -48,7 +42,7 @@ EXPOSE 26656 26657 26660
 
 STOPSIGNAL SIGTERM
 
-COPY --from=builder /src/tenderdash/build/tenderdash /usr/bin/tenderdash
+COPY --from=builder /go/src/github.com/dashevo/tenderdash/build/tenderdash /usr/bin/tenderdash
 
 # You can overwrite these before the first run to influence
 # config.json and genesis.json. Additionally, you can override
