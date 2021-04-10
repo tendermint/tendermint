@@ -16,10 +16,13 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
 var (
-	regexpMissingHeight = regexp.MustCompile(`height \d+ (must be less than or equal to|is not available)`)
-	maxRetryAttempts    = 10
+	// This is very brittle, see: https://github.com/tendermint/tendermint/issues/4740
+	regexpMissingHeight = regexp.MustCompile(`height \d+ is not available`)
+	regexpTooHigh       = regexp.MustCompile(`height \d+ must be less than or equal to`)
+
+	maxRetryAttempts      = 10
+	timeout          uint = 5 // sec.
 )
 
 // http provider uses an RPC client to obtain the necessary information.
@@ -30,14 +33,14 @@ type http struct {
 
 // New creates a HTTP provider, which is using the rpchttp.HTTP client under
 // the hood. If no scheme is provided in the remote URL, http will be used by
-// default.
+// default. The 5s timeout is used for all requests.
 func New(chainID, remote string) (provider.Provider, error) {
 	// Ensure URL scheme is set (default HTTP) when not provided.
 	if !strings.Contains(remote, "://") {
 		remote = "http://" + remote
 	}
 
-	httpClient, err := rpchttp.New(remote, "/websocket")
+	httpClient, err := rpchttp.NewWithTimeout(remote, "/websocket", timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +78,13 @@ func (p *http) LightBlock(ctx context.Context, height int64) (*types.LightBlock,
 		return nil, err
 	}
 
-	vs, err := p.validatorSet(ctx, h)
+	if height != 0 && sh.Height != height {
+		return nil, provider.ErrBadLightBlock{
+			Reason: fmt.Errorf("height %d responded doesn't match height %d requested", sh.Height, height),
+		}
+	}
+
+	vs, err := p.validatorSet(ctx, &sh.Height)
 	if err != nil {
 		return nil, err
 	}
@@ -120,6 +129,10 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 			res, err := p.client.Validators(ctx, height, &page, &perPage, &requestThresholdPublicKey)
 			if err != nil {
 				// TODO: standardize errors on the RPC side
+				if regexpTooHigh.MatchString(err.Error()) {
+					return nil, provider.ErrHeightTooHigh
+				}
+
 				if regexpMissingHeight.MatchString(err.Error()) {
 					return nil, provider.ErrLightBlockNotFound
 				}
@@ -168,6 +181,10 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 		commit, err := p.client.Commit(ctx, height)
 		if err != nil {
 			// TODO: standardize errors on the RPC side
+			if regexpTooHigh.MatchString(err.Error()) {
+				return nil, provider.ErrHeightTooHigh
+			}
+
 			if regexpMissingHeight.MatchString(err.Error()) {
 				return nil, provider.ErrLightBlockNotFound
 			}

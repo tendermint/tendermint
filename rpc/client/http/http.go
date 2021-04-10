@@ -468,24 +468,55 @@ func (c *baseRPCClient) TxSearch(
 	page,
 	perPage *int,
 	orderBy string,
-) (
-	*ctypes.ResultTxSearch, error) {
+) (*ctypes.ResultTxSearch, error) {
+
 	result := new(ctypes.ResultTxSearch)
 	params := map[string]interface{}{
 		"query":    query,
 		"prove":    prove,
 		"order_by": orderBy,
 	}
+
 	if page != nil {
 		params["page"] = page
 	}
 	if perPage != nil {
 		params["per_page"] = perPage
 	}
+
 	_, err := c.caller.Call(ctx, "tx_search", params, result)
 	if err != nil {
 		return nil, err
 	}
+
+	return result, nil
+}
+
+func (c *baseRPCClient) BlockSearch(
+	ctx context.Context,
+	query string,
+	page, perPage *int,
+	orderBy string,
+) (*ctypes.ResultBlockSearch, error) {
+
+	result := new(ctypes.ResultBlockSearch)
+	params := map[string]interface{}{
+		"query":    query,
+		"order_by": orderBy,
+	}
+
+	if page != nil {
+		params["page"] = page
+	}
+	if perPage != nil {
+		params["per_page"] = perPage
+	}
+
+	_, err := c.caller.Call(ctx, "block_search", params, result)
+	if err != nil {
+		return nil, err
+	}
+
 	return result, nil
 }
 

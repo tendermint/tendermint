@@ -112,7 +112,8 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 
 	// one argument
 	w := httptest.NewRecorder()
-	WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(id, &sampleResult{"hello"}))
+	err := WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(id, &sampleResult{"hello"}))
+	require.NoError(t, err)
 	resp := w.Result()
 	body, err := ioutil.ReadAll(resp.Body)
 	_ = resp.Body.Close()
@@ -129,9 +130,10 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 
 	// multiple arguments
 	w = httptest.NewRecorder()
-	WriteRPCResponseHTTP(w,
+	err = WriteRPCResponseHTTP(w,
 		types.NewRPCSuccessResponse(id, &sampleResult{"hello"}),
 		types.NewRPCSuccessResponse(id, &sampleResult{"world"}))
+	require.NoError(t, err)
 	resp = w.Result()
 	body, err = ioutil.ReadAll(resp.Body)
 	_ = resp.Body.Close()
@@ -159,9 +161,11 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 
 func TestWriteRPCResponseHTTPError(t *testing.T) {
 	w := httptest.NewRecorder()
-	WriteRPCResponseHTTPError(w,
+	err := WriteRPCResponseHTTPError(
+		w,
 		http.StatusInternalServerError,
 		types.RPCInternalError(types.JSONRPCIntID(-1), errors.New("foo")))
+	require.NoError(t, err)
 	resp := w.Result()
 	body, err := ioutil.ReadAll(resp.Body)
 	_ = resp.Body.Close()

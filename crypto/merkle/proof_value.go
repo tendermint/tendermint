@@ -80,13 +80,13 @@ func (op ValueOp) Run(args [][]byte) ([][]byte, error) {
 	}
 	value := args[0]
 	hasher := tmhash.New()
-	hasher.Write(value) //nolint: errcheck // does not error
+	hasher.Write(value)
 	vhash := hasher.Sum(nil)
 
 	bz := new(bytes.Buffer)
 	// Wrap <op.Key, vhash> to hash the KVPair.
-	encodeByteSlice(bz, op.key) //nolint: errcheck // does not error
-	encodeByteSlice(bz, vhash)  //nolint: errcheck // does not error
+	encodeByteSlice(bz, op.key) // nolint: errcheck // does not error
+	encodeByteSlice(bz, vhash)  // nolint: errcheck // does not error
 	kvhash := leafHash(bz.Bytes())
 
 	if !bytes.Equal(kvhash, op.Proof.LeafHash) {

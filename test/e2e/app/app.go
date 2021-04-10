@@ -115,6 +115,7 @@ func (app *Application) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDelive
 
 // EndBlock implements ABCI.
 func (app *Application) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
+
 	var err error
 	resp := abci.ResponseEndBlock{}
 	if resp.ValidatorSetUpdate, err = app.validatorSetUpdates(uint64(req.Height)); err != nil {
@@ -123,7 +124,30 @@ func (app *Application) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock
 	if resp.NextCoreChainLockUpdate, err = app.chainLockUpdate(uint64(req.Height)); err != nil {
 		panic(err)
 	}
-	return resp
+
+	validatorSetUpdates, err := app.validatorSetUpdates(uint64(req.Height))
+	if err != nil {
+		panic(err)
+	}
+
+	return abci.ResponseEndBlock{
+		ValidatorSetUpdate: validatorSetUpdates,
+		Events: []abci.Event{
+			{
+				Type: "val_updates",
+				Attributes: []abci.EventAttribute{
+					{
+						Key:   []byte("size"),
+						Value: []byte(strconv.Itoa(len(validatorSetUpdates.ValidatorUpdates))),
+					},
+					{
+						Key:   []byte("height"),
+						Value: []byte(strconv.Itoa(int(req.Height))),
+					},
+				},
+			},
+		},
+	}
 }
 
 // Commit implements ABCI.
@@ -137,7 +161,7 @@ func (app *Application) Commit() abci.ResponseCommit {
 		if err != nil {
 			panic(err)
 		}
-		logger.Info("Created state sync snapshot", "height", snapshot.Height)
+		app.logger.Info("Created state sync snapshot", "height", snapshot.Height)
 	}
 	retainHeight := int64(0)
 	if app.cfg.RetainBlocks > 0 {

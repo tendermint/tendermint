@@ -74,11 +74,7 @@ func NewClient(addr, transport string, mustConnect bool) (client Client, err err
 	return
 }
 
-//----------------------------------------
-
 type Callback func(*types.Request, *types.Response)
-
-//----------------------------------------
 
 type ReqRes struct {
 	*types.Request
@@ -101,34 +97,50 @@ func NewReqRes(req *types.Request) *ReqRes {
 	}
 }
 
-// Sets the callback for this ReqRes atomically.
-// If reqRes is already done, calls cb immediately.
-// NOTE: reqRes.cb should not change if reqRes.done.
-// NOTE: only one callback is supported.
-func (reqRes *ReqRes) SetCallback(cb func(res *types.Response)) {
-	reqRes.mtx.Lock()
+// Sets sets the callback. If reqRes is already done, it will call the cb
+// immediately. Note, reqRes.cb should not change if reqRes.done and only one
+// callback is supported.
+func (r *ReqRes) SetCallback(cb func(res *types.Response)) {
+	r.mtx.Lock()
 
-	if reqRes.done {
-		reqRes.mtx.Unlock()
-		cb(reqRes.Response)
+	if r.done {
+		r.mtx.Unlock()
+		cb(r.Response)
 		return
 	}
 
-	reqRes.cb = cb
-	reqRes.mtx.Unlock()
+	r.cb = cb
+	r.mtx.Unlock()
 }
 
-func (reqRes *ReqRes) GetCallback() func(*types.Response) {
-	reqRes.mtx.Lock()
-	defer reqRes.mtx.Unlock()
-	return reqRes.cb
+// InvokeCallback invokes a thread-safe execution of the configured callback
+// if non-nil.
+func (r *ReqRes) InvokeCallback() {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
+
+	if r.cb != nil {
+		r.cb(r.Response)
+	}
 }
 
-// NOTE: it should be safe to read reqRes.cb without locks after this.
-func (reqRes *ReqRes) SetDone() {
-	reqRes.mtx.Lock()
-	reqRes.done = true
-	reqRes.mtx.Unlock()
+// GetCallback returns the configured callback of the ReqRes object which may be
+// nil. Note, it is not safe to concurrently call this in cases where it is
+// marked done and SetCallback is called before calling GetCallback as that
+// will invoke the callback twice and create a potential race condition.
+//
+// ref: https://github.com/tendermint/tendermint/issues/5439
+func (r *ReqRes) GetCallback() func(*types.Response) {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
+	return r.cb
+}
+
+// SetDone marks the ReqRes object as done.
+func (r *ReqRes) SetDone() {
+	r.mtx.Lock()
+	r.done = true
+	r.mtx.Unlock()
 }
 
 func waitGroup1() (wg *sync.WaitGroup) {

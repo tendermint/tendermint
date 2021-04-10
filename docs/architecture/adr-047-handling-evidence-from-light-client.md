@@ -8,6 +8,7 @@
 * 14-08-2020: Introduce light traces (listed now as an alternative approach)
 * 20-08-2020: Light client produces evidence when detected instead of passing to full node
 * 16-09-2020: Post-implementation revision
+* 15-03-2020: Ammends for the case of a forward lunatic attack
 
 ### Glossary of Terms
 
@@ -106,8 +107,10 @@ This is done with:
 ```golang
 func (c *Client) examineConflictingHeaderAgainstTrace(
 	trace []*types.LightBlock,
-	divergentHeader *types.SignedHeader,
-	source provider.Provider, now time.Time) ([]*types.LightBlock, *types.LightBlock, error)
+	targetBlock *types.LightBlock,
+	source provider.Provider, 
+	now time.Time,
+	) ([]*types.LightBlock, *types.LightBlock, error)
 ```
 
 which performs the following
@@ -117,16 +120,21 @@ because witnesses cannot be added and removed after the client is initialized. B
 as a sanity check. If this fails we have to drop the witness.
 
 2. Querying and verifying the witness's headers using bisection at the same heights of all the
-intermediary headers of the primary (In the above example this is A, B, C, D, F, H). If bisection fails or the witness stops responding then
-we can call the witness faulty and drop it.
+intermediary headers of the primary (In the above example this is A, B, C, D, F, H). If bisection fails
+or the witness stops responding then we can call the witness faulty and drop it.
 
-3. We eventually reach a verified header by the witness which is not the same as the intermediary header (In the above example this is E).
-This is the point of bifurcation (This could also be the last header).
+3. We eventually reach a verified header by the witness which is not the same as the intermediary header 
+(In the above example this is E). This is the point of bifurcation (This could also be the last header).
+
+4. There is a unique case where the trace that is being examined against has blocks that have a greater 
+height than the targetBlock. This can occur as part of a forward lunatic attack where the primary has 
+provided a light block that has a height greater than the head of the chain (see Appendix B). In this 
+case, the light client will verify the sources blocks up to the targetBlock and return the block in the 
+trace that is directly after the targetBlock in height as the `ConflictingBlock`
 
 This function then returns the trace of blocks from the witness node between the common header and the
-divergent header of the primary as it
-is likely as seen in the example to the right below that multiple headers where required in order to
-verify the divergent one. This trace will
+divergent header of the primary as it is likely, as seen in the example to the right, that multiple 
+headers where required in order to verify the divergent one. This trace will
 be used later (as is also described later in this document).
 
 ![](../imgs/bifurcation-point.png)
@@ -225,3 +233,22 @@ would be validators that currently still have something staked.
 Not only this but there was a large degree of extra computation required in storing all
 the currently staked validators that could possibly fall into the group of being
 a phantom validator. Given this, it was removed.
+
+## Appendix B
+
+A unique flavor of lunatic attack is a forward lunatic attack. This is where a malicious
+node provides a header with a height greater than the height of the blockchain. Thus there
+are no witnesses capable of rebutting the malicious header. Such an attack will also 
+require an accomplice, i.e. at least one other witness to also return the same forged header.
+Although such attacks can be any arbitrary height ahead, they must still remain within the
+clock drift of the light clients real time. Therefore, to detect such an attack, a light
+client will wait for a time
+
+```
+2 * MAX_CLOCK_DRIFT + LAG
+```
+
+for a witness to provide the latest block it has. Given the time constraints, if the witness
+is operating at the head of the blockchain, it will have a header with an earlier height but
+a later timestamp. This can be used to prove that the primary has submitted a lunatic header
+which violates monotonically increasing time. 

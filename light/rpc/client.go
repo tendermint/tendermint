@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -36,15 +37,18 @@ type LightClient interface {
 	TrustedLightBlock(height int64) (*types.LightBlock, error)
 }
 
+var _ rpcclient.Client = (*Client)(nil)
+
 // Client is an RPC client, which uses light#Client to verify data (if it can
-// be proved!). merkle.DefaultProofRuntime is used to verify values returned by
-// ABCIQuery.
+// be proved). Note, merkle.DefaultProofRuntime is used to verify values
+// returned by ABCI#Query.
 type Client struct {
 	service.BaseService
 
 	next rpcclient.Client
 	lc   LightClient
-	// Proof runtime used to verify values returned by ABCIQuery
+
+	// proof runtime used to verify values returned by ABCIQuery
 	prt       *merkle.ProofRuntime
 	keyPathFn KeyPathFunc
 }
@@ -60,6 +64,27 @@ type Option func(*Client)
 func KeyPathFn(fn KeyPathFunc) Option {
 	return func(c *Client) {
 		c.keyPathFn = fn
+	}
+}
+
+// DefaultMerkleKeyPathFn creates a function used to generate merkle key paths
+// from a path string and a key. This is the default used by the cosmos SDK.
+// This merkle key paths are required when verifying /abci_query calls
+func DefaultMerkleKeyPathFn() KeyPathFunc {
+	// regexp for extracting store name from /abci_query path
+	storeNameRegexp := regexp.MustCompile(`\/store\/(.+)\/key`)
+
+	return func(path string, key []byte) (merkle.KeyPath, error) {
+		matches := storeNameRegexp.FindStringSubmatch(path)
+		if len(matches) != 2 {
+			return nil, fmt.Errorf("can't find store name in %s using %s", path, storeNameRegexp)
+		}
+		storeName := matches[1]
+
+		kp := merkle.KeyPath{}
+		kp = kp.AppendKey([]byte(storeName), merkle.KeyEncodingURL)
+		kp = kp.AppendKey(key, merkle.KeyEncodingURL)
+		return kp, nil
 	}
 }
 
@@ -450,9 +475,23 @@ func (c *Client) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.Resul
 	return res, res.Proof.Validate(l.DataHash)
 }
 
-func (c *Client) TxSearch(ctx context.Context, query string, prove bool, page, perPage *int, orderBy string) (
-	*ctypes.ResultTxSearch, error) {
+func (c *Client) TxSearch(
+	ctx context.Context,
+	query string,
+	prove bool,
+	page, perPage *int,
+	orderBy string,
+) (*ctypes.ResultTxSearch, error) {
 	return c.next.TxSearch(ctx, query, prove, page, perPage, orderBy)
+}
+
+func (c *Client) BlockSearch(
+	ctx context.Context,
+	query string,
+	page, perPage *int,
+	orderBy string,
+) (*ctypes.ResultBlockSearch, error) {
+	return c.next.BlockSearch(ctx, query, page, perPage, orderBy)
 }
 
 // Validators fetches and verifies validators.
@@ -474,7 +513,6 @@ func (c *Client) Validators(ctx context.Context, height *int64, pagePtr, perPage
 	}
 
 	skipCount := validateSkipCount(page, perPage)
-
 	v := l.ValidatorSet.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
 	var thresholdPublicKey crypto.PubKey = nil
 	if *requestThresholdPublicKey {

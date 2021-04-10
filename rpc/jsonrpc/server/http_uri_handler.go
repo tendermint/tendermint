@@ -25,8 +25,10 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 	// Exception for websocket endpoints
 	if rpcFunc.ws {
 		return func(w http.ResponseWriter, r *http.Request) {
-			WriteRPCResponseHTTPError(w, http.StatusNotFound,
-				types.RPCMethodNotFoundError(dummyID))
+			res := types.RPCMethodNotFoundError(dummyID)
+			if wErr := WriteRPCResponseHTTPError(w, http.StatusNotFound, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
 		}
 	}
 
@@ -39,14 +41,12 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 
 		fnArgs, err := httpParamsToArgs(rpcFunc, r)
 		if err != nil {
-			WriteRPCResponseHTTPError(
-				w,
-				http.StatusInternalServerError,
-				types.RPCInvalidParamsError(
-					dummyID,
-					fmt.Errorf("error converting http params to arguments: %w", err),
-				),
+			res := types.RPCInvalidParamsError(dummyID,
+				fmt.Errorf("error converting http params to arguments: %w", err),
 			)
+			if wErr := WriteRPCResponseHTTPError(w, http.StatusInternalServerError, res); wErr != nil {
+				logger.Error("failed to write response", "res", res, "err", wErr)
+			}
 			return
 		}
 		args = append(args, fnArgs...)
@@ -56,11 +56,17 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		logger.Debug("HTTPRestRPC", "method", r.URL.Path, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
 		if err != nil {
-			WriteRPCResponseHTTPError(w, http.StatusInternalServerError,
-				types.RPCInternalError(dummyID, err))
+			if err := WriteRPCResponseHTTPError(w, http.StatusInternalServerError,
+				types.RPCInternalError(dummyID, err)); err != nil {
+				logger.Error("failed to write response", "res", result, "err", err)
+				return
+			}
 			return
 		}
-		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(dummyID, result))
+		if err := WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(dummyID, result)); err != nil {
+			logger.Error("failed to write response", "res", result, "err", err)
+			return
+		}
 	}
 }
 
