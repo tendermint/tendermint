@@ -296,6 +296,7 @@ func (blockExec *BlockExecutor) Commit(
 	blockExec.logger.Info(
 		"Committed state",
 		"height", block.Height,
+		"coreHeight", block.CoreChainLockedHeight,
 		"txs", len(block.Txs),
 		"appHash", res.Data,
 	)
@@ -389,7 +390,7 @@ func execBlockOnProxyApp(
 		return nil, err
 	}
 
-	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
+	logger.Info("Executed block", "height", block.Height, "coreHeight", block.CoreChainLockedHeight, "validTxs", validTxs, "invalidTxs", invalidTxs)
 
 	return abciResponses, nil
 }
