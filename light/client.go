@@ -986,7 +986,7 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 		// Everything went smoothly. We reset the lightBlockRequests and return the light block
 		return l, nil
 
-	case provider.ErrNoResponse, provider.ErrLightBlockNotFound:
+	case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
 		// we find a new witness to replace the primary
 		c.logger.Debug("error from light block request from primary, replacing...",
 			"error", err, "height", height, "primary", c.primary)
