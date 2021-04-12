@@ -126,7 +126,9 @@ func validatePerPage(perPagePtr *int) int {
 	perPage := *perPagePtr
 	if perPage < 1 {
 		return defaultPerPage
-	} else if perPage > maxPerPage {
+		// in unsafe mode there is no max on the page size but in safe mode
+		// we cap it to maxPerPage
+	} else if perPage > maxPerPage && !env.Config.Unsafe {
 		return maxPerPage
 	}
 	return perPage
