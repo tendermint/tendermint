@@ -118,7 +118,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				return
 			}
 			for _, snapshot := range snapshots {
-				r.Logger.Debug("Advertising snapshot", "height", snapshot.Height,
+				r.Logger.Info("Advertising snapshot", "height", snapshot.Height,
 					"format", snapshot.Format, "peer", src.ID())
 				src.Send(chID, mustEncodeMsg(&ssproto.SnapshotsResponse{
 					Height:   snapshot.Height,
@@ -136,7 +136,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				r.Logger.Debug("Received unexpected snapshot, no state sync in progress")
 				return
 			}
-			r.Logger.Debug("Received snapshot", "height", msg.Height, "format", msg.Format, "peer", src.ID())
+			r.Logger.Info("Received snapshot", "height", msg.Height, "format", msg.Format, "peer", src.ID())
 			_, err := r.syncer.AddSnapshot(src, &snapshot{
 				Height:   msg.Height,
 				Format:   msg.Format,
@@ -157,7 +157,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	case ChunkChannel:
 		switch msg := msg.(type) {
 		case *ssproto.ChunkRequest:
-			r.Logger.Debug("Received chunk request", "height", msg.Height, "format", msg.Format,
+			r.Logger.Info("Received chunk request", "height", msg.Height, "format", msg.Format,
 				"chunk", msg.Index, "peer", src.ID())
 			resp, err := r.conn.LoadSnapshotChunkSync(abci.RequestLoadSnapshotChunk{
 				Height: msg.Height,
@@ -169,7 +169,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 					"chunk", msg.Index, "err", err)
 				return
 			}
-			r.Logger.Debug("Sending chunk", "height", msg.Height, "format", msg.Format,
+			r.Logger.Info("Sending chunk", "height", msg.Height, "format", msg.Format,
 				"chunk", msg.Index, "peer", src.ID())
 			src.Send(ChunkChannel, mustEncodeMsg(&ssproto.ChunkResponse{
 				Height:  msg.Height,
@@ -183,10 +183,10 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			r.mtx.RLock()
 			defer r.mtx.RUnlock()
 			if r.syncer == nil {
-				r.Logger.Debug("Received unexpected chunk, no state sync in progress", "peer", src.ID())
+				r.Logger.Info("Received unexpected chunk, no state sync in progress", "peer", src.ID())
 				return
 			}
-			r.Logger.Debug("Received chunk, adding to sync", "height", msg.Height, "format", msg.Format,
+			r.Logger.Info("Received chunk, adding to sync", "height", msg.Height, "format", msg.Format,
 				"chunk", msg.Index, "peer", src.ID())
 			_, err := r.syncer.AddChunk(&chunk{
 				Height: msg.Height,
@@ -256,7 +256,7 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 	r.mtx.Unlock()
 
 	// Request snapshots from all currently connected peers
-	r.Logger.Debug("Requesting snapshots from known peers")
+	r.Logger.Info("Requesting snapshots from known peers")
 	r.Switch.Broadcast(SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
 
 	state, commit, err := r.syncer.SyncAny(discoveryTime)
