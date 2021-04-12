@@ -338,8 +338,30 @@ func TestCheckEvidenceWithLightClientAttack(t *testing.T) {
 
 	// Take away the last signature -> there are less validators then what we have detected,
 	// hence this should fail.
-	commit.Signatures = append(commit.Signatures[:nValidators-1], types.NewCommitSigAbsent())
-	require.Error(t, pool.CheckEvidence(types.EvidenceList{ev}))
+	newSigs := append(commit.Signatures[:nValidators-2], types.NewCommitSigAbsent(), types.NewCommitSigAbsent())
+	newCommit := types.NewCommit(commit.Height, commit.Round, commit.BlockID, newSigs)
+	differentEv := &types.LightClientAttackEvidence{
+		ConflictingBlock: &types.LightBlock{
+			SignedHeader: &types.SignedHeader{
+				Header: conflictingHeader,
+				Commit: newCommit,
+			},
+			ValidatorSet: conflictingVals,
+		},
+		CommonHeight:        10,
+		TotalVotingPower:    int64(nValidators) * validatorPower,
+		ByzantineValidators: conflictingVals.Validators,
+		Timestamp:           defaultEvidenceTime,
+	}
+	require.Error(t, pool.CheckEvidence(types.EvidenceList{differentEv}))
+
+	state.LastBlockHeight++
+	pool.Update(state, types.EvidenceList{ev})
+
+	require.NoError(t, pool.AddEvidence(differentEv))
+	require.NoError(t, pool.AddEvidence(ev))
+	pendingEv, _ := pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
+	require.Empty(t, pendingEv)
 }
 
 // Tests that restarting the evidence pool after a potential failure will recover the

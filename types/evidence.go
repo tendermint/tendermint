@@ -317,8 +317,14 @@ func (l *LightClientAttackEvidence) Height() int64 {
 
 // String returns a string representation of LightClientAttackEvidence
 func (l *LightClientAttackEvidence) String() string {
-	return fmt.Sprintf("LightClientAttackEvidence{ConflictingBlock: %v, CommonHeight: %d}",
-		l.ConflictingBlock.String(), l.CommonHeight)
+	return fmt.Sprintf(`LightClientAttackEvidence{
+		ConflictingBlock: %v, 
+		CommonHeight: %d, 
+		ByzatineValidators: %v, 
+		TotalVotingPower: %d, 
+		Timestamp: %v}#%X`,
+		l.ConflictingBlock.String(), l.CommonHeight, l.ByzantineValidators,
+		l.TotalVotingPower, l.Timestamp, l.Hash())
 }
 
 // Time returns the time of the common block where the infraction leveraged off.
@@ -337,20 +343,24 @@ func (l *LightClientAttackEvidence) ValidateBasic() error {
 		return errors.New("conflicting block missing header")
 	}
 
-	if err := l.ConflictingBlock.ValidateBasic(l.ConflictingBlock.ChainID); err != nil {
-		return fmt.Errorf("invalid conflicting light block: %w", err)
+	if l.TotalVotingPower <= 0 {
+		return errors.New("negative or zero total voting power")
 	}
 
 	if l.CommonHeight <= 0 {
 		return errors.New("negative or zero common height")
 	}
-
+	
 	// check that common height isn't ahead of the height of the conflicting block. It
 	// is possible that they are the same height if the light node witnesses either an
 	// amnesia or a equivocation attack.
 	if l.CommonHeight > l.ConflictingBlock.Height {
 		return fmt.Errorf("common height is ahead of the conflicting block height (%d > %d)",
-			l.CommonHeight, l.ConflictingBlock.Height)
+		l.CommonHeight, l.ConflictingBlock.Height)
+	}
+	
+	if err := l.ConflictingBlock.ValidateBasic(l.ConflictingBlock.ChainID); err != nil {
+		return fmt.Errorf("invalid conflicting light block: %w", err)
 	}
 
 	return nil
