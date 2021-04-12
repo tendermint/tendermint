@@ -16,6 +16,8 @@ var (
 	testnetCombinations = map[string][]interface{}{
 		"topology":      {"single", "quad", "large"},
 		"ipv6":          {false, true},
+		"useNewP2P":     {false, true, 2},
+		"queueType":     {"priority"}, // "fifo", "wdrr"
 		"initialHeight": {0, 1000},
 		"initialState": {
 			map[string]string{},
@@ -69,6 +71,17 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		Nodes:            map[string]*e2e.ManifestNode{},
 		KeyType:          opt["keyType"].(string),
 		Evidence:         evidence.Choose(r).(int),
+		QueueType:        opt["queueType"].(string),
+	}
+
+	var p2pNodeFactor int
+
+	switch p2pInfo := opt["useNewP2P"].(type) {
+	case bool:
+		manifest.UseNewP2P = p2pInfo
+	case int:
+		manifest.UseNewP2P = false
+		p2pNodeFactor = p2pInfo
 	}
 
 	var numSeeds, numValidators, numFulls, numLightClients int
@@ -89,8 +102,14 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 
 	// First we generate seed nodes, starting at the initial height.
 	for i := 1; i <= numSeeds; i++ {
-		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = generateNode(
-			r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
+		node := generateNode(r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
+		node.QueueType = manifest.QueueType
+		if p2pNodeFactor == 0 {
+			node.UseNewP2P = manifest.UseNewP2P
+		} else if p2pNodeFactor%i == 0 {
+			node.UseNewP2P = !manifest.UseNewP2P
+		}
+		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = node
 	}
 
 	// Next, we generate validators. We make sure a BFT quorum of validators start
@@ -105,8 +124,16 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			nextStartAt += 5
 		}
 		name := fmt.Sprintf("validator%02d", i)
-		manifest.Nodes[name] = generateNode(
+		node := generateNode(
 			r, e2e.ModeValidator, startAt, manifest.InitialHeight, i <= 2)
+
+		node.QueueType = manifest.QueueType
+		if p2pNodeFactor == 0 {
+			node.UseNewP2P = manifest.UseNewP2P
+		} else if p2pNodeFactor%i == 0 {
+			node.UseNewP2P = !manifest.UseNewP2P
+		}
+		manifest.Nodes[name] = node
 
 		if startAt == 0 {
 			(*manifest.Validators)[name] = int64(30 + r.Intn(71))
@@ -134,8 +161,14 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			startAt = nextStartAt
 			nextStartAt += 5
 		}
-		manifest.Nodes[fmt.Sprintf("full%02d", i)] = generateNode(
-			r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
+		node := generateNode(r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
+		node.QueueType = manifest.QueueType
+		if p2pNodeFactor == 0 {
+			node.UseNewP2P = manifest.UseNewP2P
+		} else if p2pNodeFactor%i == 0 {
+			node.UseNewP2P = !manifest.UseNewP2P
+		}
+		manifest.Nodes[fmt.Sprintf("full%02d", i)] = node
 	}
 
 	// We now set up peer discovery for nodes. Seed nodes are fully meshed with
