@@ -21,7 +21,7 @@ import (
 const (
 	// see README
 	defaultPerPage = 30
-	maxPerPage     = 1000
+	maxPerPage     = 100
 
 	// SubscribeTimeout is the maximum time we wait to subscribe for an event.
 	// must be less than the server's write timeout (see rpcserver.DefaultConfig)
@@ -126,7 +126,9 @@ func validatePerPage(perPagePtr *int) int {
 	perPage := *perPagePtr
 	if perPage < 1 {
 		return defaultPerPage
-	} else if perPage > maxPerPage {
+		// in unsafe mode there is no max on the page size but in safe mode
+		// we cap it to maxPerPage
+	} else if perPage > maxPerPage && !env.Config.Unsafe {
 		return maxPerPage
 	}
 	return perPage
