@@ -1089,7 +1089,7 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 			return response.lb, nil
 
 		// process benign errors by logging them only
-		case provider.ErrNoResponse, provider.ErrLightBlockNotFound:
+		case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
 			lastError = response.err
 			c.logger.Debug("error on light block request from witness",
 				"error", response.err, "primary", c.witnesses[response.witnessIndex])
