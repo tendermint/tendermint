@@ -1,10 +1,10 @@
-# RFC 001: End-to-End Testing
+# ADR 66: End-to-End Testing
 
 ## Changelog
 
 - 2020-09-07: Initial draft (@erikgrinaker)
-
 - 2020-09-08: Minor improvements (@erikgrinaker)
+- 2021-04-12: Renamed from RFC 001 (@tessr)
 
 ## Authors
 
