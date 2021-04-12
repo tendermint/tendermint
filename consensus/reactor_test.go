@@ -246,10 +246,10 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 }
 
 func TestReactorBasic(t *testing.T) {
-	configSetup(t)
+	config := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	states, cleanup := randConsensusState(config, n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 	t.Cleanup(cleanup)
 
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
@@ -274,14 +274,14 @@ func TestReactorBasic(t *testing.T) {
 }
 
 func TestReactorWithEvidence(t *testing.T) {
-	configSetup(t)
+	config := configSetup(t)
 
 	n := 4
 	testName := "consensus_reactor_test"
 	tickerFunc := newMockTickerFunc(true)
 	appFunc := newCounter
 
-	genDoc, privVals := randGenesisDoc(n, false, 30)
+	genDoc, privVals := randGenesisDoc(config, n, false, 30)
 	states := make([]*State, n)
 	logger := consensusLogger()
 
@@ -303,7 +303,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		blockStore := store.NewBlockStore(blockDB)
 
 		// one for mempool, one for consensus
-		mtx := new(tmsync.Mutex)
+		mtx := new(tmsync.RWMutex)
 		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
 		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
@@ -369,10 +369,11 @@ func TestReactorWithEvidence(t *testing.T) {
 }
 
 func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
-	configSetup(t)
+	config := configSetup(t)
 
 	n := 4
 	states, cleanup := randConsensusState(
+		config,
 		n,
 		"consensus_reactor_test",
 		newMockTickerFunc(true),
@@ -409,10 +410,10 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 }
 
 func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
-	configSetup(t)
+	config := configSetup(t)
 
 	n := 4
-	states, cleanup := randConsensusState(n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	states, cleanup := randConsensusState(config, n, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 	t.Cleanup(cleanup)
 
 	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
@@ -466,10 +467,11 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 }
 
 func TestReactorVotingPowerChange(t *testing.T) {
-	configSetup(t)
+	config := configSetup(t)
 
 	n := 4
 	states, cleanup := randConsensusState(
+		config,
 		n,
 		"consensus_voting_power_changes_test",
 		newMockTickerFunc(true),
@@ -565,11 +567,12 @@ func TestReactorVotingPowerChange(t *testing.T) {
 }
 
 func TestReactorValidatorSetChanges(t *testing.T) {
-	configSetup(t)
+	config := configSetup(t)
 
 	nPeers := 7
 	nVals := 4
 	states, _, _, cleanup := randConsensusNetWithPeers(
+		config,
 		nVals,
 		nPeers,
 		"consensus_val_set_changes_test",
