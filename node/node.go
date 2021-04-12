@@ -153,12 +153,19 @@ func CustomReactors(reactors map[string]p2p.Reactor) Option {
 			}
 			n.sw.AddReactor(name, reactor)
 			// register the new channels to the nodeInfo
-			for _, chDesc := range reactor.GetChannels() {
-				// these functions only error when the channel is already
-				// registered. This may be the case when we are replacing
-				// existing reactors so we can ignore these
-				_ = n.nodeInfo.(p2p.DefaultNodeInfo).AddChannel(chDesc.ID)
-				_ = n.transport.AddChannel(chDesc.ID)
+			// NOTE: This is a bit messy now with the type casting but is
+			// cleaned up in the following version when NodeInfo is changed from
+			// and interface to a concrete type
+			if ni, ok := n.nodeInfo.(p2p.DefaultNodeInfo); ok {
+				for _, chDesc := range reactor.GetChannels() {
+					if !ni.HasChannel(chDesc.ID) {
+						ni.Channels = append(ni.Channels, chDesc.ID)
+						n.transport.AddChannel(chDesc.ID)
+					}
+				}
+				n.nodeInfo = ni
+			} else {
+				n.Logger.Error("Node info is not of type DefaultNodeInfo. Custom reactor channels can not be added.")
 			}
 		}
 	}
@@ -1248,7 +1255,7 @@ func makeNodeInfo(
 	txIndexer txindex.TxIndexer,
 	genDoc *types.GenesisDoc,
 	state sm.State,
-) (p2p.NodeInfo, error) {
+) (p2p.DefaultNodeInfo, error) {
 	txIndexerStatus := "on"
 	if _, ok := txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
@@ -1263,7 +1270,7 @@ func makeNodeInfo(
 	case "v2":
 		bcChannel = bcv2.BlockchainChannel
 	default:
-		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+		return p2p.DefaultNodeInfo{}, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
 
 	nodeInfo := p2p.DefaultNodeInfo{

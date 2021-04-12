@@ -261,10 +261,17 @@ func (mt *MultiplexTransport) Listen(addr NetAddress) error {
 	return nil
 }
 
-// AddChannel registers a channel to nodeInfo. This will be broadcaster to peers
-// to make them aware of what channels are open
-func (mt *MultiplexTransport) AddChannel(chID byte) error {
-	return mt.nodeInfo.(DefaultNodeInfo).AddChannel(chID)
+// AddChannel registers a channel to nodeInfo.
+// NOTE: NodeInfo must be of type DefaultNodeInfo else channels won't be updated
+// This is a bit messy at the moment but is cleaned up in the following version
+// when NodeInfo changes from an interface to a concrete type
+func (mt *MultiplexTransport) AddChannel(chID byte) {
+	if ni, ok := mt.nodeInfo.(DefaultNodeInfo); ok {
+		if !ni.HasChannel(chID) {
+			ni.Channels = append(ni.Channels, chID)
+		}
+		mt.nodeInfo = ni
+	}
 }
 
 func (mt *MultiplexTransport) acceptPeers() {
