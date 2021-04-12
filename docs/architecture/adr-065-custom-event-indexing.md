@@ -33,7 +33,7 @@ the `tx_index.indexer` configuration. Events are captured in transactions and
 are indexed via a `TxIndexer` type. Events are captured in blocks, specifically
 from `BeginBlock` and `EndBlock` application responses, and are indexed via a
 `BlockIndexer` type. Both of these types are managed by a single `IndexerService`
-which is responsibly for consuming events and sending those events off to be
+which is responsible for consuming events and sending those events off to be
 indexed by the respective type.
 
 In addition to indexing, Tendermint Core also supports the ability to query for
