@@ -233,6 +233,9 @@ max-num-inbound-peers = 40
 # Maximum number of outbound peers to connect to, excluding persistent peers
 max-num-outbound-peers = 10
 
+# Maximum number of connections (inbound and outbound).
+max-connections = 64
+
 # Rate limits the number of incoming connection attempts per IP address.
 max-incoming-connection-attempts = 100
 

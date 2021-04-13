@@ -584,8 +584,20 @@ func createTransport(logger log.Logger, config *cfg.Config) *p2p.MConnTransport 
 }
 
 func createPeerManager(config *cfg.Config, p2pLogger log.Logger, nodeID p2p.NodeID) (*p2p.PeerManager, error) {
+	var maxConns uint16
+	switch {
+	case config.P2P.MaxConnections > 0:
+		maxConns = uint16(config.P2P.MaxConnections)
+
+	case config.P2P.MaxNumInboundPeers > 0 && config.P2P.MaxNumOutboundPeers > 0:
+		maxConns = uint16(config.P2P.MaxNumInboundPeers + config.P2P.MaxNumOutboundPeers)
+
+	default:
+		maxConns = 64
+	}
+
 	options := p2p.PeerManagerOptions{
-		MaxConnected:           64,
+		MaxConnected:           maxConns,
 		MaxConnectedUpgrade:    4,
 		MaxPeers:               1000,
 		MinRetryTime:           100 * time.Millisecond,

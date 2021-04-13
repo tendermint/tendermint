@@ -294,15 +294,18 @@ addr-book-strict = {{ .P2P.AddrBookStrict }}
 
 # Maximum number of inbound peers
 #
-# TODO: Remove once p2p refactor is complete.
+# TODO: Remove once p2p refactor is complete in favor of MaxConnections.
 # ref: https://github.com/tendermint/tendermint/issues/5670
 max-num-inbound-peers = {{ .P2P.MaxNumInboundPeers }}
 
 # Maximum number of outbound peers to connect to, excluding persistent peers
 #
-# TODO: Remove once p2p refactor is complete.
+# TODO: Remove once p2p refactor is complete in favor of MaxConnections.
 # ref: https://github.com/tendermint/tendermint/issues/5670
 max-num-outbound-peers = {{ .P2P.MaxNumOutboundPeers }}
+
+# Maximum number of connections (inbound and outbound).
+max-connections = {{ .P2P.MaxConnections }}
 
 # Rate limits the number of incoming connection attempts per IP address.
 max-incoming-connection-attempts = {{ .P2P.MaxIncomingConnectionAttempts }}

@@ -527,7 +527,8 @@ func (r *Router) acceptPeers(transport Transport) {
 			r.logger.Debug("rate limiting incoming peer",
 				"err", err,
 				"ip", incomingIP.String(),
-				"closeErr", closeErr)
+				"close_err", closeErr,
+			)
 
 			return
 		}
@@ -575,9 +576,7 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 	}
 
 	if err := r.filterPeersID(ctx, peerInfo.NodeID); err != nil {
-		r.logger.Debug("peer filtered by node ID",
-			"node", peerInfo.NodeID,
-			"err", err)
+		r.logger.Debug("peer filtered by node ID", "node", peerInfo.NodeID, "err", err)
 		return
 	}
 

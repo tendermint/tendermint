@@ -568,15 +568,19 @@ type P2PConfig struct { //nolint: maligned
 
 	// Maximum number of inbound peers
 	//
-	// TODO: Remove once p2p refactor is complete.
+	// TODO: Remove once p2p refactor is complete in favor of MaxConnections.
 	// ref: https://github.com/tendermint/tendermint/issues/5670
 	MaxNumInboundPeers int `mapstructure:"max-num-inbound-peers"`
 
 	// Maximum number of outbound peers to connect to, excluding persistent peers.
 	//
-	// TODO: Remove once p2p refactor is complete.
+	// TODO: Remove once p2p refactor is complete in favor of MaxConnections.
 	// ref: https://github.com/tendermint/tendermint/issues/5670
 	MaxNumOutboundPeers int `mapstructure:"max-num-outbound-peers"`
+
+	// MaxConnections defines the maximum number of connected peers (inbound and
+	// outbound).
+	MaxConnections uint `mapstructure:"max-connections"`
 
 	// MaxIncomingConnectionAttempts rate limits the number of incoming connection
 	// attempts per IP address.
