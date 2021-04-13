@@ -72,7 +72,7 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int) {
 		// This gives a reasonable load without putting too much data in the app.
 		id := i % 1000
 
-		bz := make([]byte, 2048) // 4kb hex-encoded
+		bz := make([]byte, 1024) // 1kb hex-encoded
 		_, err := rand.Read(bz)
 		if err != nil {
 			panic(fmt.Sprintf("Failed to read random bytes: %v", err))
