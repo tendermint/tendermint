@@ -53,7 +53,7 @@ func Benchmark(testnet *e2e.Testnet, benchmarkLength int64) error {
 	// populate data
 	testnetStats.populateTxns(blocks)
 	testnetStats.totalTime = dur
-	testnetStats.height = benchmarkLength
+	testnetStats.benchmarkLength = benchmarkLength
 	testnetStats.startHeight = blocks[0].Header.Height
 	testnetStats.endHeight = blocks[len(blocks)-1].Header.Height
 
@@ -74,9 +74,9 @@ type testnetStats struct {
 	startHeight int64
 	endHeight   int64
 
-	height    int64
-	numtxns   int64
-	totalTime time.Duration
+	benchmarkLength int64
+	numtxns         int64
+	totalTime       time.Duration
 	// average time to produce a block
 	mean time.Duration
 	// standard deviation of block production
@@ -98,7 +98,7 @@ func (t *testnetStats) getReportJSON(net *e2e.Testnet) string {
 		"size":   len(net.Nodes),
 		"txns":   t.numtxns,
 		"dur":    t.totalTime.Seconds(),
-		"height": t.height,
+		"length": t.benchmarkLength,
 	})
 
 	if err != nil {
