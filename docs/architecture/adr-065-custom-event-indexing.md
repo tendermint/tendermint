@@ -315,6 +315,16 @@ pqsql_conn = "postgresql://<user>:<password>@<host>:<port>/<db>?<opts>"
 Any invalid or misconfigured `tx_index` configuration should yield an error as
 early as possible.
 
+## Future Improvements
+
+Although not technically required to maintain feature parity with the current
+existing Tendermint indexer, it would be beneficial for operators to have a method
+of performing a "re-index". Specifically, Tendermint operators could invoke an
+RPC method that allows the Tendermint node to perform a re-indexing of all block
+and transaction events between two given heights, H<sub>1</sub> and H<sub>2</sub>,
+so long as the block store contains the blocks and transaction results for all
+the heights specified in a given range.
+
 ## Consequences
 
 ### Positive
