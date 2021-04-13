@@ -748,9 +748,6 @@ func (c *Client) verifySkipping(
 				pivotHeight := verifiedBlock.Height + (blockCache[depth].Height-verifiedBlock.
 					Height)*verifySkippingNumerator/verifySkippingDenominator
 				interimBlock, providerErr := source.LightBlock(ctx, pivotHeight)
-<<<<<<< HEAD
-				if providerErr != nil {
-=======
 				switch providerErr {
 				case nil:
 					blockCache = append(blockCache, interimBlock)
@@ -762,7 +759,6 @@ func (c *Client) verifySkipping(
 				// all other errors such as ErrBadLightBlock or ErrUnreliableProvider are seen as malevolent and the
 				// provider is removed
 				default:
->>>>>>> d4d2b6606... light: handle too high errors correctly (#6346)
 					return nil, ErrVerificationFailed{From: verifiedBlock.Height, To: pivotHeight, Reason: providerErr}
 				}
 				blockCache = append(blockCache, interimBlock)
