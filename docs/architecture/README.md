@@ -51,6 +51,7 @@ Note the context/background should be written in the present tense.
 - [ADR-060: Go-API-Stability](./adr-060-go-api-stability.md)
 - [ADR-061: P2P-Refactor-Scope](./adr-061-p2p-refactor-scope.md)
 - [ADR-062: P2P-Architecture](./adr-062-p2p-architecture.md)
+- [ADR-065: Custom Event Indexing](./adr-065-custom-event-indexing.md)
 - [ADR-066-E2E-Testing](./adr-066-e2e-testing.md)
 
 ### Rejected
@@ -94,4 +95,3 @@ Note the context/background should be written in the present tense.
 - [ADR-054: Crypto-Encoding-2](./adr-054-crypto-encoding-2.md)
 - [ADR-057: RPC](./adr-057-RPC.md)
 - [ADR-063: Privval-gRPC](./adr-063-privval-grpc.md)
-- [ADR-065: Custom Event Indexing](./adr-065-custom-event-indexing.md)
