@@ -24,3 +24,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### BUG FIXES
 
+- [p2p/node] \#6339 Fix bug with using custom channels (@cmwaters)
+

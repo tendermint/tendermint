@@ -621,6 +621,21 @@ func TestTransportHandshake(t *testing.T) {
 	}
 }
 
+func TestTransportAddChannel(t *testing.T) {
+	mt := newMultiplexTransport(
+		emptyNodeInfo(),
+		NodeKey{
+			PrivKey: ed25519.GenPrivKey(),
+		},
+	)
+	testChannel := byte(0x01)
+
+	mt.AddChannel(testChannel)
+	if !mt.nodeInfo.(DefaultNodeInfo).HasChannel(testChannel) {
+		t.Errorf("missing added channel %v. Got %v", testChannel, mt.nodeInfo.(DefaultNodeInfo).Channels)
+	}
+}
+
 // create listener
 func testSetupMultiplexTransport(t *testing.T) *MultiplexTransport {
 	var (
