@@ -748,7 +748,17 @@ func (c *Client) verifySkipping(
 				pivotHeight := verifiedBlock.Height + (blockCache[depth].Height-verifiedBlock.
 					Height)*verifySkippingNumerator/verifySkippingDenominator
 				interimBlock, providerErr := source.LightBlock(ctx, pivotHeight)
-				if providerErr != nil {
+				switch providerErr {
+				case nil:
+					blockCache = append(blockCache, interimBlock)
+
+				// if the error is benign, the client does not need to replace the primary
+				case provider.ErrLightBlockNotFound, provider.ErrNoResponse, provider.ErrHeightTooHigh:
+					return nil, err
+
+				// all other errors such as ErrBadLightBlock or ErrUnreliableProvider are seen as malevolent and the
+				// provider is removed
+				default:
 					return nil, ErrVerificationFailed{From: verifiedBlock.Height, To: pivotHeight, Reason: providerErr}
 				}
 				blockCache = append(blockCache, interimBlock)
@@ -986,7 +996,7 @@ func (c *Client) lightBlockFromPrimary(ctx context.Context, height int64) (*type
 		// Everything went smoothly. We reset the lightBlockRequests and return the light block
 		return l, nil
 
-	case provider.ErrNoResponse, provider.ErrLightBlockNotFound:
+	case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
 		// we find a new witness to replace the primary
 		c.logger.Debug("error from light block request from primary, replacing...",
 			"error", err, "height", height, "primary", c.primary)
@@ -1089,7 +1099,7 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 			return response.lb, nil
 
 		// process benign errors by logging them only
-		case provider.ErrNoResponse, provider.ErrLightBlockNotFound:
+		case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
 			lastError = response.err
 			c.logger.Debug("error on light block request from witness",
 				"error", response.err, "primary", c.witnesses[response.witnessIndex])
