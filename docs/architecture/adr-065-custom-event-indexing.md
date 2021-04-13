@@ -12,6 +12,7 @@
       - [`KVEventSink`](#kveventsink)
       - [`PSQLEventSink`](#psqleventsink)
     - [Configuration](#configuration)
+  - [Future Improvements](#future-improvements)
   - [Consequences](#consequences)
     - [Positive](#positive)
     - [Negative](#negative)
