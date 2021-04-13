@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
@@ -587,10 +588,20 @@ func createPeerManager(config *cfg.Config, p2pLogger log.Logger, nodeID p2p.Node
 	var maxConns uint16
 	switch {
 	case config.P2P.MaxConnections > 0:
-		maxConns = uint16(config.P2P.MaxConnections)
+		maxConns = config.P2P.MaxConnections
 
 	case config.P2P.MaxNumInboundPeers > 0 && config.P2P.MaxNumOutboundPeers > 0:
-		maxConns = uint16(config.P2P.MaxNumInboundPeers + config.P2P.MaxNumOutboundPeers)
+		x := config.P2P.MaxNumInboundPeers + config.P2P.MaxNumOutboundPeers
+		if x > math.MaxUint16 {
+			return nil, fmt.Errorf(
+				"max inbound peers (%d) + max outbound peers (%d) exceeds maximum (%d)",
+				config.P2P.MaxNumInboundPeers,
+				config.P2P.MaxNumOutboundPeers,
+				math.MaxUint16,
+			)
+		}
+
+		maxConns = uint16(x)
 
 	default:
 		maxConns = 64

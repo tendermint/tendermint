@@ -580,7 +580,7 @@ type P2PConfig struct { //nolint: maligned
 
 	// MaxConnections defines the maximum number of connected peers (inbound and
 	// outbound).
-	MaxConnections uint `mapstructure:"max-connections"`
+	MaxConnections uint16 `mapstructure:"max-connections"`
 
 	// MaxIncomingConnectionAttempts rate limits the number of incoming connection
 	// attempts per IP address.
