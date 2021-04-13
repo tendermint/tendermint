@@ -55,8 +55,10 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			requests = []types.RPCRequest{request}
 		}
 
-		// Set the default response cache to true unless we see any error and any rpc request doesn't
-		// allow to be cached
+		// Set the default response cache to true unless
+		// 1. Any RPC request rrror.
+		// 2. Any RPC request doesn't allow to be cached.
+		// 3. Any RPC request has the height argument and the value is 0 (the default).
 		var c = true
 		for _, request := range requests {
 			request := request
@@ -97,6 +99,11 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 					continue
 				}
 				args = append(args, fnArgs...)
+
+			}
+
+			if hasDefaultHeight(request, args) {
+				c = false
 			}
 
 			returns := rpcFunc.f.Call(args)
@@ -249,4 +256,13 @@ func writeListOfEndpoints(w http.ResponseWriter, r *http.Request, funcMap map[st
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
 	w.Write(buf.Bytes()) //nolint: errcheck
+}
+
+func hasDefaultHeight(r types.RPCRequest, h []reflect.Value) bool {
+	switch r.Method {
+	case "block", "block_results", "commit", "consensus_params", "validators":
+		return len(h) < 2 || h[1].IsZero()
+	default:
+		return false
+	}
 }
