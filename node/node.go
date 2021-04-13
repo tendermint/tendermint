@@ -1404,17 +1404,8 @@ func (n *Node) OnStart() error {
 
 // OnStop stops the Node. It implements service.Service.
 func (n *Node) OnStop() {
-	n.BaseService.OnStop()
 
 	n.Logger.Info("Stopping Node")
-
-	// first stop the non-reactor services
-	if err := n.eventBus.Stop(); err != nil {
-		n.Logger.Error("Error closing eventBus", "err", err)
-	}
-	if err := n.indexerService.Stop(); err != nil {
-		n.Logger.Error("Error closing indexerService", "err", err)
-	}
 
 	if n.config.Mode != cfg.ModeSeed {
 		// now stop the reactors
@@ -1430,6 +1421,8 @@ func (n *Node) OnStop() {
 			n.Logger.Error("failed to stop the consensus reactor", "err", err)
 		}
 
+		n.stopNonReactorServices()
+
 		// Stop the real state sync reactor separately since the switch uses the shim.
 		if err := n.stateSyncReactor.Stop(); err != nil {
 			n.Logger.Error("failed to stop the state sync reactor", "err", err)
@@ -1444,6 +1437,8 @@ func (n *Node) OnStop() {
 		if err := n.evidenceReactor.Stop(); err != nil {
 			n.Logger.Error("failed to stop the evidence reactor", "err", err)
 		}
+	} else {
+		n.stopNonReactorServices()
 	}
 
 	if n.config.P2P.DisableLegacy && n.pexReactorV2 != nil {
@@ -2051,4 +2046,13 @@ func getChannelsFromShim(reactorShim *p2p.ReactorShim) map[p2p.ChannelID]*p2p.Ch
 	}
 
 	return channels
+}
+
+func (n *Node) stopNonReactorServices() {
+	if err := n.eventBus.Stop(); err != nil {
+		n.Logger.Error("Error closing eventBus", "err", err)
+	}
+	if err := n.indexerService.Stop(); err != nil {
+		n.Logger.Error("Error closing indexerService", "err", err)
+	}
 }
