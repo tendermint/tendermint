@@ -567,10 +567,20 @@ type P2PConfig struct { //nolint: maligned
 	AddrBookStrict bool `mapstructure:"addr-book-strict"`
 
 	// Maximum number of inbound peers
+	//
+	// TODO: Remove once p2p refactor is complete.
+	// ref: https://github.com/tendermint/tendermint/issues/5670
 	MaxNumInboundPeers int `mapstructure:"max-num-inbound-peers"`
 
-	// Maximum number of outbound peers to connect to, excluding persistent peers
+	// Maximum number of outbound peers to connect to, excluding persistent peers.
+	//
+	// TODO: Remove once p2p refactor is complete.
+	// ref: https://github.com/tendermint/tendermint/issues/5670
 	MaxNumOutboundPeers int `mapstructure:"max-num-outbound-peers"`
+
+	// MaxIncomingConnectionAttempts rate limits the number of incoming connection
+	// attempts per IP address.
+	MaxIncomingConnectionAttempts uint `mapstructure:"max-incoming-connection-attempts"`
 
 	// List of node IDs, to which a connection will be (re)established ignoring any existing limits
 	UnconditionalPeerIDs string `mapstructure:"unconditional-peer-ids"`

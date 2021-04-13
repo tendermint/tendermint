@@ -1959,7 +1959,7 @@ func getRouterConfig(conf *cfg.Config, proxyApp proxy.AppConns) p2p.RouterOption
 	}
 
 	if conf.P2P.MaxNumInboundPeers > 0 {
-		opts.MaxIncomingConnectionsPerIP = uint(conf.P2P.MaxNumInboundPeers)
+		opts.MaxIncomingConnectionAttempts = conf.P2P.MaxIncomingConnectionAttempts
 	}
 
 	if conf.FilterPeers && proxyApp != nil {

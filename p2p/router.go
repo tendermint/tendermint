@@ -128,13 +128,13 @@ type RouterOptions struct {
 	// no timeout.
 	HandshakeTimeout time.Duration
 
-	// QueueType must be "wdrr" (Weighed Deficit Round Robin),
-	// "priority", or FIFO. Defaults to FIFO.
+	// QueueType must be "wdrr" (Weighed Deficit Round Robin), "priority", or
+	// "fifo". Defaults to "fifo".
 	QueueType string
 
-	// MaxIncomingConnectionsPerIP limits the number of incoming
-	// connections per IP address. Defaults to 100.
-	MaxIncomingConnectionsPerIP uint
+	// MaxIncomingConnectionAttempts rate limits the number of incoming connection
+	// attempts per IP address. Defaults to 100.
+	MaxIncomingConnectionAttempts uint
 
 	// IncomingConnectionWindow describes how often an IP address
 	// can attempt to create a new connection. Defaults to 10
@@ -182,8 +182,8 @@ func (o *RouterOptions) Validate() error {
 			o.IncomingConnectionWindow)
 	}
 
-	if o.MaxIncomingConnectionsPerIP == 0 {
-		o.MaxIncomingConnectionsPerIP = 100
+	if o.MaxIncomingConnectionAttempts == 0 {
+		o.MaxIncomingConnectionAttempts = 100
 	}
 
 	return nil
@@ -278,7 +278,7 @@ func NewRouter(
 		nodeInfo: nodeInfo,
 		privKey:  privKey,
 		connTracker: newConnTracker(
-			options.MaxIncomingConnectionsPerIP,
+			options.MaxIncomingConnectionAttempts,
 			options.IncomingConnectionWindow,
 		),
 		chDescs:            make([]ChannelDescriptor, 0),
@@ -546,9 +546,7 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 	incomingIP := re.IP
 
 	if err := r.filterPeersIP(ctx, incomingIP, re.Port); err != nil {
-		r.logger.Debug("peer filtered by IP",
-			"ip", incomingIP.String(),
-			"err", err)
+		r.logger.Debug("peer filtered by IP", "ip", incomingIP.String(), "err", err)
 		return
 	}
 
