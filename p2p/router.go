@@ -132,9 +132,9 @@ type RouterOptions struct {
 	// "priority", or FIFO. Defaults to FIFO.
 	QueueType string
 
-	// MaxIncommingConnectionsPerIP limits the number of incoming
+	// MaxIncomingConnectionsPerIP limits the number of incoming
 	// connections per IP address. Defaults to 100.
-	MaxIncommingConnectionsPerIP uint
+	MaxIncomingConnectionsPerIP uint
 
 	// IncomingConnectionWindow describes how often an IP address
 	// can attempt to create a new connection. Defaults to 10
@@ -182,8 +182,8 @@ func (o *RouterOptions) Validate() error {
 			o.IncomingConnectionWindow)
 	}
 
-	if o.MaxIncommingConnectionsPerIP == 0 {
-		o.MaxIncommingConnectionsPerIP = 100
+	if o.MaxIncomingConnectionsPerIP == 0 {
+		o.MaxIncomingConnectionsPerIP = 100
 	}
 
 	return nil
@@ -278,8 +278,9 @@ func NewRouter(
 		nodeInfo: nodeInfo,
 		privKey:  privKey,
 		connTracker: newConnTracker(
-			options.MaxIncommingConnectionsPerIP,
-			options.IncomingConnectionWindow),
+			options.MaxIncomingConnectionsPerIP,
+			options.IncomingConnectionWindow,
+		),
 		chDescs:            make([]ChannelDescriptor, 0),
 		transports:         transports,
 		protocolTransports: map[Protocol]Transport{},

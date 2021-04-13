@@ -608,9 +608,9 @@ type P2PConfig struct { //nolint: maligned
 	// Force dial to fail
 	TestDialFail bool `mapstructure:"test-dial-fail"`
 
-	// Mostly for testing, use rather than environment variables
-	// to turn on the new P2P stack.
-	UseNewP2P bool `mapstructure:"use-new-p2p"`
+	// DisableLegacy is used mostly for testing to enable or disable the legacy
+	// P2P stack.
+	DisableLegacy bool `mapstructure:"disable-legacy"`
 
 	// Makes it possible to configure which queue backend the p2p
 	// layer uses. Options are: "fifo", "priority" and "wdrr",

@@ -387,7 +387,7 @@ func createMempoolReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if config.P2P.UseNewP2P {
+	if config.P2P.DisableLegacy {
 		channels = makeChannelsFromShims(router, channelShims)
 		peerUpdates = peerManager.Subscribe()
 	} else {
@@ -438,7 +438,7 @@ func createEvidenceReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if config.P2P.UseNewP2P {
+	if config.P2P.DisableLegacy {
 		channels = makeChannelsFromShims(router, evidence.ChannelShims)
 		peerUpdates = peerManager.Subscribe()
 	} else {
@@ -479,7 +479,7 @@ func createBlockchainReactor(
 			peerUpdates *p2p.PeerUpdates
 		)
 
-		if config.P2P.UseNewP2P {
+		if config.P2P.DisableLegacy {
 			channels = makeChannelsFromShims(router, bcv0.ChannelShims)
 			peerUpdates = peerManager.Subscribe()
 		} else {
@@ -545,7 +545,7 @@ func createConsensusReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if config.P2P.UseNewP2P {
+	if config.P2P.DisableLegacy {
 		channels = makeChannelsFromShims(router, cs.ChannelShims)
 		peerUpdates = peerManager.Subscribe()
 	} else {
@@ -1138,7 +1138,7 @@ func NewNode(config *cfg.Config,
 
 	stateSyncReactorShim = p2p.NewReactorShim(logger.With("module", "statesync"), "StateSyncShim", statesync.ChannelShims)
 
-	if config.P2P.UseNewP2P {
+	if config.P2P.DisableLegacy {
 		channels = makeChannelsFromShims(router, statesync.ChannelShims)
 		peerUpdates = peerManager.Subscribe()
 	} else {
@@ -1305,9 +1305,9 @@ func (n *Node) OnStart() error {
 
 	n.isListening = true
 
-	n.Logger.Info("p2p service", "legacy_enabled", !n.config.P2P.UseNewP2P)
+	n.Logger.Info("p2p service", "legacy_enabled", !n.config.P2P.DisableLegacy)
 
-	if n.config.P2P.UseNewP2P {
+	if n.config.P2P.DisableLegacy {
 		err = n.router.Start()
 	} else {
 		err = n.sw.Start()
@@ -1345,7 +1345,7 @@ func (n *Node) OnStart() error {
 		}
 	}
 
-	if n.config.P2P.UseNewP2P && n.pexReactorV2 != nil {
+	if n.config.P2P.DisableLegacy && n.pexReactorV2 != nil {
 		if err := n.pexReactorV2.Start(); err != nil {
 			return err
 		}
@@ -1388,7 +1388,6 @@ func (n *Node) OnStop() {
 	}
 
 	if n.config.Mode != cfg.ModeSeed {
-
 		// now stop the reactors
 		if n.config.FastSync.Version == "v0" {
 			// Stop the real blockchain reactor separately since the switch uses the shim.
@@ -1418,13 +1417,13 @@ func (n *Node) OnStop() {
 		}
 	}
 
-	if n.config.P2P.UseNewP2P && n.pexReactorV2 != nil {
+	if n.config.P2P.DisableLegacy && n.pexReactorV2 != nil {
 		if err := n.pexReactorV2.Stop(); err != nil {
 			n.Logger.Error("failed to stop the PEX v2 reactor", "err", err)
 		}
 	}
 
-	if n.config.P2P.UseNewP2P {
+	if n.config.P2P.DisableLegacy {
 		if err := n.router.Stop(); err != nil {
 			n.Logger.Error("failed to stop router", "err", err)
 		}
@@ -1960,7 +1959,7 @@ func getRouterConfig(conf *cfg.Config, proxyApp proxy.AppConns) p2p.RouterOption
 	}
 
 	if conf.P2P.MaxNumInboundPeers > 0 {
-		opts.MaxIncommingConnectionsPerIP = uint(conf.P2P.MaxNumInboundPeers)
+		opts.MaxIncomingConnectionsPerIP = uint(conf.P2P.MaxNumInboundPeers)
 	}
 
 	if conf.FilterPeers && proxyApp != nil {
