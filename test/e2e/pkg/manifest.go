@@ -59,8 +59,7 @@ type Manifest struct {
 	// by individual nodes.
 	LogLevel string `toml:"log_level"`
 
-	// DisableLegacy enables use of the new p2p layer for all nodes in
-	// a test.
+	// DisableLegacyP2P enables use of the new p2p layer for all nodes in a test.
 	DisableLegacyP2P bool `toml:"disable_legacy_p2p"`
 
 	// QueueType describes the type of queue that the system uses internally
