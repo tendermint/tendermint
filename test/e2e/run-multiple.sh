@@ -26,10 +26,13 @@ for MANIFEST in "$@"; do
 		cat "$MANIFEST"
 
 		echo "==> Dumping container logs for $MANIFEST..."
-		./build/runner -f "$MANIFEST" logs
+		cat "$MANIFEST" >> log.txt
+		./build/runner -f "$MANIFEST" logs >> logs.txt
 
 		echo "==> Cleaning up failed testnet $MANIFEST..."
 		./build/runner -f "$MANIFEST" cleanup
+
+		exit 1
 
 		FAILED+=("$MANIFEST")
 	fi

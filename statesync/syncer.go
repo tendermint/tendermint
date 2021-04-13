@@ -86,10 +86,10 @@ func (s *syncer) AddChunk(chunk *chunk) (bool, error) {
 		return false, err
 	}
 	if added {
-		s.logger.Debug("Added chunk to queue", "height", chunk.Height, "format", chunk.Format,
+		s.logger.Info("Added chunk to queue", "height", chunk.Height, "format", chunk.Format,
 			"chunk", chunk.Index)
 	} else {
-		s.logger.Debug("Ignoring duplicate chunk in queue", "height", chunk.Height, "format", chunk.Format,
+		s.logger.Info("Ignoring duplicate chunk in queue", "height", chunk.Height, "format", chunk.Format,
 			"chunk", chunk.Index)
 	}
 	return added, nil
@@ -225,6 +225,9 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 		s.chunks = nil
 		s.mtx.Unlock()
 	}()
+
+	s.logger.Info("Attempting to restore snapshot", "height", snapshot.Height, "format", snapshot.Format,
+		"hash", snapshot.Hash)
 
 	// Offer snapshot to ABCI app.
 	err := s.offerSnapshot(snapshot)

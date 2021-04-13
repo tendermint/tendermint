@@ -1,0 +1,455 @@
+Attaching to validator04, validator03, validator02, validator01
+[33mvalidator02    |[0m I[2021-04-13|08:27:17.655] Starting SignerServer service                impl=SignerServer
+[33mvalidator02    |[0m I[2021-04-13|08:27:17.655] Remote signer connecting to tcp://0.0.0.0:27559 
+[33mvalidator02    |[0m D[2021-04-13|08:27:17.656] SignerDialer: Reconnection failed            retries=1 max=100 err="dial tcp 0.0.0.0:27559: connect: connection refused"
+[33mvalidator02    |[0m I[2021-04-13|08:27:17.659] Server listening on tcp://127.0.0.1:30000 (socket protocol) 
+[33mvalidator02    |[0m D[2021-04-13|08:27:18.656] SignerDialer: Reconnection failed            retries=2 max=100 err="dial tcp 0.0.0.0:27559: connect: connection refused"
+[33mvalidator02    |[0m I[2021-04-13|08:27:18.730] Starting multiAppConn service                module=proxy impl=multiAppConn
+[33mvalidator02    |[0m I[2021-04-13|08:27:18.730] Starting socketClient service                module=abci-client connection=query impl=socketClient
+[33mvalidator02    |[0m I[2021-04-13|08:27:18.731] Starting socketClient service                module=abci-client connection=snapshot impl=socketClient
+[33mvalidator02    |[0m I[2021-04-13|08:27:18.731] Starting socketClient service                module=abci-client connection=mempool impl=socketClient
+[33mvalidator02    |[0m I[2021-04-13|08:27:18.731] Starting socketClient service                module=abci-client connection=consensus impl=socketClient
+[33mvalidator02    |[0m I[2021-04-13|08:27:18.731] Starting EventBus service                    module=events impl=EventBus
+[33mvalidator02    |[0m I[2021-04-13|08:27:18.731] Starting PubSub service                      module=pubsub impl=PubSub
+[33mvalidator02    |[0m I[2021-04-13|08:27:18.780] Starting IndexerService service              module=txindex impl=IndexerService
+[33mvalidator02    |[0m I[2021-04-13|08:27:18.780] Starting SignerListenerEndpoint service      module=privval impl=SignerListenerEndpoint
+[33mvalidator02    |[0m I[2021-04-13|08:27:18.780] SignerListener: Listening for new connection module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:27:18.780] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.658] SignerListener: Connected                    module=privval 
+[33mvalidator02    |[0m D[2021-04-13|08:27:19.658] SignerDialer: Connection Ready               
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.659] ABCI Handshake App Info                      module=consensus height=0 hash=E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855 software-version=0.17.0 protocol-version=1
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.659] ABCI Replay Blocks                           module=consensus appHeight=0 storeHeight=0 stateHeight=0
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.662] Completed ABCI Handshake - Tendermint and App are synced module=consensus appHeight=0 appHash=E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.662] Version info                                 module=main software=v0.34.9-7-gb1ccc18845 block=11 p2p=8
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.662] This node is a validator                     module=consensus addr=99F30C473E41A47BC8D6675531564A73793479D2 pubKey=PubKeyEd25519{39F81F7A628E75E4171A921EEE79FC30BA433D3D1B4DE76D3C9B4A0DADD31F01}
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.719] P2P Node ID                                  module=p2p ID=539ffc12a0ac78970dab31ae8cdcfdd4285b2162 file=/tendermint/config/node_key.json
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.719] Adding persistent peers                      module=p2p addrs=[4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656]
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.720] Adding unconditional peer ids                module=p2p ids=[]
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.720] Add our address to book                      module=p2p book=/tendermint/config/addrbook.json addr=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:26656
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.720] Add our address to book                      module=p2p book=/tendermint/config/addrbook.json addr=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@0.0.0.0:26656
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.720] Starting Node service                        module=main impl=Node
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.720] Starting pprof server                        module=main laddr=:6060
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.720] Starting P2P Switch service                  module=p2p impl="P2P Switch"
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.720] Starting Mempool service                     module=mempool impl=Mempool
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.720] Starting BlockchainReactor service           module=blockchain impl=BlockchainReactor
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.720] Starting Consensus service                   module=consensus impl=ConsensusReactor
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.720] Reactor                                      module=consensus waitSync=false
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.720] Starting RPC HTTP server on [::]:26657       module=rpc-server 
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.720] Starting State service                       module=consensus impl=ConsensusState
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.729] Starting baseWAL service                     module=consensus wal=/tendermint/data/cs.wal/wal impl=baseWAL
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.729] Starting Group service                       module=consensus wal=/tendermint/data/cs.wal/wal impl=Group
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.729] Searching for height                         module=consensus wal=/tendermint/data/cs.wal/wal height=1 min=0 max=0
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.731] Searching for height                         module=consensus wal=/tendermint/data/cs.wal/wal height=0 min=0 max=0
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.732] Found                                        module=consensus wal=/tendermint/data/cs.wal/wal height=0 index=0
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.732] Catchup by replaying consensus messages      module=consensus height=1
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.732] Replay: Done                                 module=consensus 
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.732] Starting TimeoutTicker service               module=consensus impl=TimeoutTicker
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.732] Starting Evidence service                    module=evidence impl=Evidence
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.732] Starting StateSync service                   module=statesync impl=StateSync
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.732] Starting PEX service                         module=pex impl=PEX
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.732] Starting AddrBook service                    module=p2p book=/tendermint/config/addrbook.json impl=AddrBook
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.733] Saving AddrBook to file                      module=p2p book=/tendermint/config/addrbook.json size=1
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.733] Ensure peers                                 module=pex numOutPeers=0 numInPeers=0 numDialing=0 numToDial=10
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.740] Will dial address                            module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.739] Started node                                 module=main nodeInfo="{ProtocolVersion:{P2P:8 Block:11 App:1} DefaultNodeID:539ffc12a0ac78970dab31ae8cdcfdd4285b2162 ListenAddr:tcp://10.186.73.3:26656 Network:gen-0003 Version:v0.34.9-7-gb1ccc18845 Channels:40202122233038606100 Moniker:validator02 Other:{TxIndex:on RPCAddress:tcp://0.0.0.0:26657}}"
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.740] Dialing peer                                 module=p2p address=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.742] Starting Peer service                        module=p2p peer=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656 impl="Peer{MConn{10.186.73.2:26656} 4fe295e4cfad69f1247ad85975c6fd87757195db out}"
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.742] Starting MConnection service                 module=p2p peer=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656 impl=MConn{10.186.73.2:26656}
+[33mvalidator02    |[0m I[2021-04-13|08:27:19.742] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.2:26656} 4fe295e4cfad69f1247ad85975c6fd87757195db out}"
+[33mvalidator02    |[0m I[2021-04-13|08:27:20.719] Timed out                                    module=consensus dur=986.599176ms height=1 round=0 step=RoundStepNewHeight
+[33mvalidator02    |[0m I[2021-04-13|08:27:20.731] received proposal                            module=consensus proposal="Proposal{1/0 (30310FCEC05FC7C769C13678FCF851DF4A85FA462C1EB6DBC8BEDCBA44EBE8AC:2:43E323776C6B, -1) C4021EF0C7AB @ 2021-04-13T08:27:20.723148837Z}"
+[33mvalidator02    |[0m I[2021-04-13|08:27:20.734] received complete proposal block             module=consensus height=1 hash=30310FCEC05FC7C769C13678FCF851DF4A85FA462C1EB6DBC8BEDCBA44EBE8AC
+[33mvalidator02    |[0m I[2021-04-13|08:27:20.856] finalizing commit of block                   module=consensus height=1 hash=30310FCEC05FC7C769C13678FCF851DF4A85FA462C1EB6DBC8BEDCBA44EBE8AC root=E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855 num_txs=16
+[33mvalidator02    |[0m I[2021-04-13|08:27:20.870] executed block                               module=state height=1 num_valid_txs=16 num_invalid_txs=0
+[33mvalidator02    |[0m I[2021-04-13|08:27:20.871] committed state                              module=state height=1 num_txs=16 app_hash=5346C498FB52AFCC2FE8158D382DE262063BF704F0E88946D203D45872A76A79
+[33mvalidator02    |[0m I[2021-04-13|08:27:20.875] indexed block                                module=txindex height=1
+[33mvalidator02    |[0m I[2021-04-13|08:27:21.856] Timed out                                    module=consensus dur=982.625451ms height=2 round=0 step=RoundStepNewHeight
+[33mvalidator02    |[0m I[2021-04-13|08:27:22.054] received proposal                            module=consensus proposal="Proposal{2/0 (C40C26E9C2955FEC27FBDE7AAA462D2C00BA8C4D89CE45DE7B47E0641EEFDF20:2:06F4AFFB2374, -1) 91D66A6E8306 @ 2021-04-13T08:27:21.954334182Z}"
+[33mvalidator02    |[0m I[2021-04-13|08:27:22.065] received complete proposal block             module=consensus height=2 hash=C40C26E9C2955FEC27FBDE7AAA462D2C00BA8C4D89CE45DE7B47E0641EEFDF20
+[33mvalidator02    |[0m I[2021-04-13|08:27:22.257] finalizing commit of block                   module=consensus height=2 hash=C40C26E9C2955FEC27FBDE7AAA462D2C00BA8C4D89CE45DE7B47E0641EEFDF20 root=5346C498FB52AFCC2FE8158D382DE262063BF704F0E88946D203D45872A76A79 num_txs=16
+[33mvalidator02    |[0m I[2021-04-13|08:27:22.268] executed block                               module=state height=2 num_valid_txs=16 num_invalid_txs=0
+[33mvalidator02    |[0m I[2021-04-13|08:27:22.271] committed state                              module=state height=2 num_txs=16 app_hash=3B8CF0ABC1D1ABC9FAA687CC2A25953CB28CBE5A43630265D5CE5794168E4046
+[33mvalidator02    |[0m I[2021-04-13|08:27:22.278] indexed block                                module=txindex height=2
+[33mvalidator02    |[0m I[2021-04-13|08:27:23.257] Timed out                                    module=consensus dur=979.019178ms height=3 round=0 step=RoundStepNewHeight
+[33mvalidator02    |[0m I[2021-04-13|08:27:26.259] Timed out                                    module=consensus dur=3s height=3 round=0 step=RoundStepPropose
+[33mvalidator02    |[0m I[2021-04-13|08:27:27.585] Timed out                                    module=consensus dur=1s height=3 round=0 step=RoundStepPrecommitWait
+[33mvalidator02    |[0m I[2021-04-13|08:27:27.606] received proposal                            module=consensus proposal="Proposal{3/1 (4373510D217BF217ABC1131054762DD2F714D89920F6B620EDFC1AA547655F5B:2:A3AA46DE031C, -1) E3D586B956F2 @ 2021-04-13T08:27:27.592028541Z}"
+[33mvalidator02    |[0m I[2021-04-13|08:27:27.611] received complete proposal block             module=consensus height=3 hash=4373510D217BF217ABC1131054762DD2F714D89920F6B620EDFC1AA547655F5B
+[33mvalidator02    |[0m I[2021-04-13|08:27:27.942] finalizing commit of block                   module=consensus height=3 hash=4373510D217BF217ABC1131054762DD2F714D89920F6B620EDFC1AA547655F5B root=3B8CF0ABC1D1ABC9FAA687CC2A25953CB28CBE5A43630265D5CE5794168E4046 num_txs=16
+[33mvalidator02    |[0m I[2021-04-13|08:27:27.950] executed block                               module=state height=3 num_valid_txs=16 num_invalid_txs=0
+[33mvalidator02    |[0m I[2021-04-13|08:27:27.961] Created state sync snapshot                  height=3
+[33mvalidator02    |[0m I[2021-04-13|08:27:27.962] committed state                              module=state height=3 num_txs=16 app_hash=0935ABC7A4432FFCE80F0E4B4981FC8B83B72DAD9550C40FF02A8EE2F94D0C4C
+[33mvalidator02    |[0m I[2021-04-13|08:27:27.966] indexed block                                module=txindex height=3
+[33mvalidator02    |[0m I[2021-04-13|08:27:28.941] Timed out                                    module=consensus dur=975.187022ms height=4 round=0 step=RoundStepNewHeight
+[33mvalidator02    |[0m I[2021-04-13|08:27:28.949] received proposal                            module=consensus proposal="Proposal{4/0 (BA8204BF3740EBAA4F3E22864BE788CB53FDD6400DEF1DC0649592716583FCC1:2:065D9629F9E7, -1) BB7AFD4B244B @ 2021-04-13T08:27:28.944463237Z}"
+[33mvalidator02    |[0m I[2021-04-13|08:27:28.952] received complete proposal block             module=consensus height=4 hash=BA8204BF3740EBAA4F3E22864BE788CB53FDD6400DEF1DC0649592716583FCC1
+[33mvalidator02    |[0m I[2021-04-13|08:27:29.122] finalizing commit of block                   module=consensus height=4 hash=BA8204BF3740EBAA4F3E22864BE788CB53FDD6400DEF1DC0649592716583FCC1 root=0935ABC7A4432FFCE80F0E4B4981FC8B83B72DAD9550C40FF02A8EE2F94D0C4C num_txs=16
+[33mvalidator02    |[0m I[2021-04-13|08:27:29.129] executed block                               module=state height=4 num_valid_txs=16 num_invalid_txs=0
+[33mvalidator02    |[0m I[2021-04-13|08:27:29.131] committed state                              module=state height=4 num_txs=16 app_hash=49DA258F0708A3D75A15FB29F82FB3175FEEBC7926A9B96F6EB52381E223F5F3
+[33mvalidator02    |[0m I[2021-04-13|08:27:29.136] indexed block                                module=txindex height=4
+[33mvalidator02    |[0m I[2021-04-13|08:27:30.122] Timed out                                    module=consensus dur=985.908116ms height=5 round=0 step=RoundStepNewHeight
+[33mvalidator02    |[0m I[2021-04-13|08:27:30.295] received proposal                            module=consensus proposal="Proposal{5/0 (02A4EDBE007BCEF02671F273CEE85976B01B5C391B07251ACC813EB27061B896:2:276E3B74BEC6, -1) 6E8A51CE0224 @ 2021-04-13T08:27:30.223188852Z}"
+[33mvalidator02    |[0m I[2021-04-13|08:27:30.347] received complete proposal block             module=consensus height=5 hash=02A4EDBE007BCEF02671F273CEE85976B01B5C391B07251ACC813EB27061B896
+[33mvalidator02    |[0m I[2021-04-13|08:27:30.625] finalizing commit of block                   module=consensus height=5 hash=02A4EDBE007BCEF02671F273CEE85976B01B5C391B07251ACC813EB27061B896 root=49DA258F0708A3D75A15FB29F82FB3175FEEBC7926A9B96F6EB52381E223F5F3 num_txs=16
+[33mvalidator02    |[0m I[2021-04-13|08:27:30.635] executed block                               module=state height=5 num_valid_txs=16 num_invalid_txs=0
+[33mvalidator02    |[0m I[2021-04-13|08:27:30.645] committed state                              module=state height=5 num_txs=16 app_hash=40AF2ADE29F55AB27E62D357643DFAC0A5A9FDE4967BC83523A2BCC434E7A13B
+[33mvalidator02    |[0m I[2021-04-13|08:27:30.651] indexed block                                module=txindex height=5
+[33mvalidator02    |[0m I[2021-04-13|08:27:31.624] Timed out                                    module=consensus dur=973.542946ms height=6 round=0 step=RoundStepNewHeight
+[33mvalidator02    |[0m I[2021-04-13|08:27:31.800] received proposal                            module=consensus proposal="Proposal{6/0 (B98AFD1944A9E42A653DFC8C0BCA24036047F5B2CC0C3B7A163D4FE938E6CE4F:2:C675D4D7906E, -1) 3B8AFBB03105 @ 2021-04-13T08:27:31.634382907Z}"
+[33mvalidator02    |[0m I[2021-04-13|08:27:31.830] received complete proposal block             module=consensus height=6 hash=B98AFD1944A9E42A653DFC8C0BCA24036047F5B2CC0C3B7A163D4FE938E6CE4F
+[33mvalidator02    |[0m I[2021-04-13|08:27:34.625] Timed out                                    module=consensus dur=3s height=6 round=0 step=RoundStepPropose
+[33mvalidator02    |[0m I[2021-04-13|08:27:36.840] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:27:36.841] SignerListener: Listening for new connection module=privval 
+[33mvalidator02    |[0m E[2021-04-13|08:27:39.841] SignerListener: Ping timeout                 module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:27:39.842] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m E[2021-04-13|08:27:40.560] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m E[2021-04-13|08:27:40.581] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m E[2021-04-13|08:27:40.607] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m E[2021-04-13|08:27:40.672] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m E[2021-04-13|08:27:40.706] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m I[2021-04-13|08:27:42.844] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:27:42.845] SignerListener: Listening for new connection module=privval 
+[33mvalidator02    |[0m E[2021-04-13|08:27:42.844] SignerListener: Ping timeout                 module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:27:45.845] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:27:45.845] SignerListener: Listening for new connection module=privval 
+[33mvalidator02    |[0m E[2021-04-13|08:27:48.846] SignerListener: Ping timeout                 module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:27:48.846] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:27:49.741] Ensure peers                                 module=pex numOutPeers=1 numInPeers=0 numDialing=0 numToDial=9
+[33mvalidator02    |[0m I[2021-04-13|08:27:49.741] Will dial address                            module=pex addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[33mvalidator02    |[0m I[2021-04-13|08:27:49.741] Will dial address                            module=pex addr=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:26656
+[33mvalidator02    |[0m I[2021-04-13|08:27:49.742] We need more addresses. Sending pexRequest to random peer module=pex peer="Peer{MConn{10.186.73.2:26656} 4fe295e4cfad69f1247ad85975c6fd87757195db out}"
+[33mvalidator02    |[0m I[2021-04-13|08:27:49.742] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[33mvalidator02    |[0m I[2021-04-13|08:27:49.742] Dialing peer                                 module=p2p address=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:26656
+[33mvalidator02    |[0m I[2021-04-13|08:27:49.746] Starting Peer service                        module=p2p peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:26656 impl="Peer{MConn{10.186.73.4:26656} 0a9c99096b50a6d72a24d5aa5286d3f7022b3555 out}"
+[33mvalidator02    |[0m I[2021-04-13|08:27:49.746] Starting MConnection service                 module=p2p peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:26656 impl=MConn{10.186.73.4:26656}
+[33mvalidator02    |[0m E[2021-04-13|08:27:50.586] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m E[2021-04-13|08:27:50.605] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m E[2021-04-13|08:27:50.611] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m E[2021-04-13|08:27:50.639] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m E[2021-04-13|08:27:50.665] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m E[2021-04-13|08:27:50.678] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m E[2021-04-13|08:27:50.715] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m E[2021-04-13|08:27:50.726] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m E[2021-04-13|08:27:50.742] dialing failed (attempts: 1): dial tcp 10.186.73.5:26656: i/o timeout module=pex addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[33mvalidator02    |[0m I[2021-04-13|08:27:51.846] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m E[2021-04-13|08:27:51.847] SignerListener: Ping timeout                 module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:27:51.847] SignerListener: Listening for new connection module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:27:54.848] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m E[2021-04-13|08:27:57.850] SignerListener: Ping timeout                 module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:27:57.850] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:27:57.850] SignerListener: Listening for new connection module=privval 
+[33mvalidator02    |[0m E[2021-04-13|08:28:00.618] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m E[2021-04-13|08:28:00.684] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m E[2021-04-13|08:28:00.724] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m E[2021-04-13|08:28:00.804] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m I[2021-04-13|08:28:00.850] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m E[2021-04-13|08:28:00.850] SignerListener: Ping timeout                 module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:03.851] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:03.851] SignerListener: Listening for new connection module=privval 
+[33mvalidator02    |[0m E[2021-04-13|08:28:06.851] SignerListener: Ping timeout                 module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:06.851] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:09.852] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:09.852] SignerListener: Listening for new connection module=privval 
+[33mvalidator02    |[0m E[2021-04-13|08:28:09.852] SignerListener: Ping timeout                 module=privval 
+[33mvalidator02    |[0m E[2021-04-13|08:28:10.600] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m E[2021-04-13|08:28:10.628] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m E[2021-04-13|08:28:10.650] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[33mvalidator02    |[0m I[2021-04-13|08:28:12.853] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:12.853] SignerListener: Listening for new connection module=privval 
+[33mvalidator02    |[0m E[2021-04-13|08:28:15.854] SignerListener: Ping timeout                 module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:15.855] SignerListener: Listening for new connection module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:15.855] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:18.856] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:18.857] SignerListener: Listening for new connection module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:19.742] Ensure peers                                 module=pex numOutPeers=2 numInPeers=0 numDialing=1 numToDial=7
+[33mvalidator02    |[0m I[2021-04-13|08:28:19.742] Will dial address                            module=pex addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[33mvalidator02    |[0m I[2021-04-13|08:28:19.743] We need more addresses. Sending pexRequest to random peer module=pex peer="Peer{MConn{10.186.73.2:26656} 4fe295e4cfad69f1247ad85975c6fd87757195db out}"
+[33mvalidator02    |[0m I[2021-04-13|08:28:19.743] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[33mvalidator02    |[0m E[2021-04-13|08:28:20.745] dialing failed (attempts: 2): dial tcp 10.186.73.5:26656: i/o timeout module=pex addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[33mvalidator02    |[0m E[2021-04-13|08:28:21.857] SignerListener: Ping timeout                 module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:21.857] SignerListener: Listening for new connection module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:21.857] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:24.858] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:24.858] SignerListener: Listening for new connection module=privval 
+[33mvalidator02    |[0m E[2021-04-13|08:28:27.861] SignerListener: Ping timeout                 module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:27.861] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:27.861] SignerListener: Listening for new connection module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:30.862] SignerListener: Blocking for connection      module=privval 
+[33mvalidator02    |[0m I[2021-04-13|08:28:30.862] SignerListener: Listening for new connection module=privval 
+[33mvalidator02    |[0m E[2021-04-13|08:28:30.862] SignerListener: Ping timeout                 module=privval 
+[32mvalidator03    |[0m I[2021-04-13|08:27:26.132] Starting SignerServer service                impl=SignerServer
+[32mvalidator03    |[0m I[2021-04-13|08:27:26.133] Remote signer connecting to unix:///var/run/privval.sock 
+[32mvalidator03    |[0m D[2021-04-13|08:27:26.133] SignerDialer: Reconnection failed            retries=1 max=100 err="dial unix /var/run/privval.sock: connect: no such file or directory"
+[32mvalidator03    |[0m I[2021-04-13|08:27:26.136] Server listening on unix:///var/run/app.sock (socket protocol) 
+[32mvalidator03    |[0m D[2021-04-13|08:27:27.133] SignerDialer: Reconnection failed            retries=2 max=100 err="dial unix /var/run/privval.sock: connect: no such file or directory"
+[32mvalidator03    |[0m I[2021-04-13|08:27:27.199] Starting multiAppConn service                module=proxy impl=multiAppConn
+[32mvalidator03    |[0m I[2021-04-13|08:27:27.199] Starting socketClient service                module=abci-client connection=query impl=socketClient
+[32mvalidator03    |[0m I[2021-04-13|08:27:27.199] Starting socketClient service                module=abci-client connection=snapshot impl=socketClient
+[32mvalidator03    |[0m I[2021-04-13|08:27:27.199] Starting socketClient service                module=abci-client connection=mempool impl=socketClient
+[32mvalidator03    |[0m I[2021-04-13|08:27:27.199] Starting socketClient service                module=abci-client connection=consensus impl=socketClient
+[32mvalidator03    |[0m I[2021-04-13|08:27:27.200] Starting EventBus service                    module=events impl=EventBus
+[32mvalidator03    |[0m I[2021-04-13|08:27:27.200] Starting PubSub service                      module=pubsub impl=PubSub
+[32mvalidator03    |[0m I[2021-04-13|08:27:27.231] Starting IndexerService service              module=txindex impl=IndexerService
+[32mvalidator03    |[0m I[2021-04-13|08:27:27.231] Starting SignerListenerEndpoint service      module=privval impl=SignerListenerEndpoint
+[32mvalidator03    |[0m I[2021-04-13|08:27:27.231] SignerListener: Listening for new connection module=privval 
+[32mvalidator03    |[0m I[2021-04-13|08:27:27.231] SignerListener: Blocking for connection      module=privval 
+[32mvalidator03    |[0m D[2021-04-13|08:27:28.133] SignerDialer: Connection Ready               
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.134] SignerListener: Connected                    module=privval 
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.135] ABCI Handshake App Info                      module=consensus height=0 hash=E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855 software-version=0.17.0 protocol-version=1
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.135] ABCI Replay Blocks                           module=consensus appHeight=0 storeHeight=0 stateHeight=0
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.140] Completed ABCI Handshake - Tendermint and App are synced module=consensus appHeight=0 appHash=E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.140] Version info                                 module=main software=v0.34.9-7-gb1ccc18845 block=11 p2p=8
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.140] This node is a validator                     module=consensus addr=A54399B792EC166437131D2A9801A67A959DD0F7 pubKey=PubKeyEd25519{69AC798531428F4E8DCF9803A34A27B14C04613F4F373A629C7934932C1368F1}
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.169] P2P Node ID                                  module=p2p ID=0a9c99096b50a6d72a24d5aa5286d3f7022b3555 file=/tendermint/config/node_key.json
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.169] Adding persistent peers                      module=p2p addrs=[4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656]
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.169] Adding unconditional peer ids                module=p2p ids=[]
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.169] Add our address to book                      module=p2p book=/tendermint/config/addrbook.json addr=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:26656
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.169] Add our address to book                      module=p2p book=/tendermint/config/addrbook.json addr=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@0.0.0.0:26656
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.169] Starting Node service                        module=main impl=Node
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.170] Starting pprof server                        module=main laddr=:6060
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.170] Starting P2P Switch service                  module=p2p impl="P2P Switch"
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.170] Starting Mempool service                     module=mempool impl=Mempool
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.170] Starting BlockchainReactor service           module=blockchain impl=BlockchainReactor
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.170] Starting BlockPool service                   module=blockchain impl=BlockPool
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.170] Starting Consensus service                   module=consensus impl=ConsensusReactor
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.170] Reactor                                      module=consensus waitSync=true
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.170] Starting Evidence service                    module=evidence impl=Evidence
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.170] Starting StateSync service                   module=statesync impl=StateSync
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.170] Starting PEX service                         module=pex impl=PEX
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.170] Starting AddrBook service                    module=p2p book=/tendermint/config/addrbook.json impl=AddrBook
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.170] Starting RPC HTTP server on [::]:26657       module=rpc-server 
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.175] Saving AddrBook to file                      module=p2p book=/tendermint/config/addrbook.json size=1
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.175] Ensure peers                                 module=pex numOutPeers=0 numInPeers=0 numDialing=0 numToDial=10
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.181] Started node                                 module=main nodeInfo="{ProtocolVersion:{P2P:8 Block:11 App:1} DefaultNodeID:0a9c99096b50a6d72a24d5aa5286d3f7022b3555 ListenAddr:tcp://10.186.73.4:26656 Network:gen-0003 Version:v0.34.9-7-gb1ccc18845 Channels:40202122233038606100 Moniker:validator03 Other:{TxIndex:on RPCAddress:tcp://0.0.0.0:26657}}"
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.181] Will dial address                            module=pex addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.181] Dialing peer                                 module=p2p address=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.183] Starting Peer service                        module=p2p peer=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656 impl="Peer{MConn{10.186.73.2:26656} 4fe295e4cfad69f1247ad85975c6fd87757195db out}"
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.183] Starting MConnection service                 module=p2p peer=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656 impl=MConn{10.186.73.2:26656}
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.183] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.2:26656} 4fe295e4cfad69f1247ad85975c6fd87757195db out}"
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.499] executed block                               module=state height=1 num_valid_txs=16 num_invalid_txs=0
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.500] committed state                              module=state height=1 num_txs=16 app_hash=5346C498FB52AFCC2FE8158D382DE262063BF704F0E88946D203D45872A76A79
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.504] indexed block                                module=txindex height=1
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.512] executed block                               module=state height=2 num_valid_txs=16 num_invalid_txs=0
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.513] committed state                              module=state height=2 num_txs=16 app_hash=3B8CF0ABC1D1ABC9FAA687CC2A25953CB28CBE5A43630265D5CE5794168E4046
+[32mvalidator03    |[0m I[2021-04-13|08:27:28.517] indexed block                                module=txindex height=2
+[36mvalidator01    |[0m I[2021-04-13|08:27:10.768] Server listening on unix:///var/run/app.sock (socket protocol) 
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.846] Starting multiAppConn service                module=proxy impl=multiAppConn
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.846] Starting socketClient service                module=abci-client connection=query impl=socketClient
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.846] Starting socketClient service                module=abci-client connection=snapshot impl=socketClient
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.847] Starting socketClient service                module=abci-client connection=mempool impl=socketClient
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.847] Starting socketClient service                module=abci-client connection=consensus impl=socketClient
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.847] Starting EventBus service                    module=events impl=EventBus
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.847] Starting PubSub service                      module=pubsub impl=PubSub
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.869] Starting IndexerService service              module=txindex impl=IndexerService
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.869] ABCI Handshake App Info                      module=consensus height=0 hash=E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855 software-version=0.17.0 protocol-version=1
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.869] ABCI Replay Blocks                           module=consensus appHeight=0 storeHeight=0 stateHeight=0
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.871] Completed ABCI Handshake - Tendermint and App are synced module=consensus appHeight=0 appHash=E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.871] Version info                                 module=main software=v0.34.9-7-gb1ccc18845 block=11 p2p=8
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.871] This node is a validator                     module=consensus addr=D3B5BFD2AEAC159C79812DD9426DE51A971C7A61 pubKey=PubKeyEd25519{80EBE59D6BA7A4D4FCD1DB05EC9467F78F0CC9298260656A25C016CAABFA7EDD}
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.894] P2P Node ID                                  module=p2p ID=4fe295e4cfad69f1247ad85975c6fd87757195db file=/tendermint/config/node_key.json
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.894] Adding persistent peers                      module=p2p addrs="[539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:26656 0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:26656 8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656]"
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.894] Adding unconditional peer ids                module=p2p ids=[]
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.894] Add our address to book                      module=p2p book=/tendermint/config/addrbook.json addr=4fe295e4cfad69f1247ad85975c6fd87757195db@10.186.73.2:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.894] Add our address to book                      module=p2p book=/tendermint/config/addrbook.json addr=4fe295e4cfad69f1247ad85975c6fd87757195db@0.0.0.0:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.894] Starting Node service                        module=main impl=Node
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.895] Starting P2P Switch service                  module=p2p impl="P2P Switch"
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.895] Starting Mempool service                     module=mempool impl=Mempool
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.895] Starting pprof server                        module=main laddr=:6060
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.895] Starting RPC HTTP server on [::]:26657       module=rpc-server 
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.895] Starting BlockchainReactor service           module=blockchain impl=BlockchainReactor
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.895] Starting BlockPool service                   module=blockchain impl=BlockPool
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.895] Starting Consensus service                   module=consensus impl=ConsensusReactor
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.895] Reactor                                      module=consensus waitSync=true
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.895] Starting Evidence service                    module=evidence impl=Evidence
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.895] Starting StateSync service                   module=statesync impl=StateSync
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.895] Starting PEX service                         module=pex impl=PEX
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.895] Starting AddrBook service                    module=p2p book=/tendermint/config/addrbook.json impl=AddrBook
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.896] Saving AddrBook to file                      module=p2p book=/tendermint/config/addrbook.json size=3
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.896] Ensure peers                                 module=pex numOutPeers=0 numInPeers=0 numDialing=0 numToDial=10
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.901] Started node                                 module=main nodeInfo="{ProtocolVersion:{P2P:8 Block:11 App:1} DefaultNodeID:4fe295e4cfad69f1247ad85975c6fd87757195db ListenAddr:tcp://10.186.73.2:26656 Network:gen-0003 Version:v0.34.9-7-gb1ccc18845 Channels:40202122233038606100 Moniker:validator01 Other:{TxIndex:on RPCAddress:tcp://0.0.0.0:26657}}"
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.902] Will dial address                            module=pex addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.902] Will dial address                            module=pex addr=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.902] Will dial address                            module=pex addr=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.902] Dialing peer                                 module=p2p address=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.902] Dialing peer                                 module=p2p address=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:11.902] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m E[2021-04-13|08:27:12.902] dialing failed (attempts: 1): dial tcp 10.186.73.3:26656: i/o timeout module=pex addr=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:26656
+[36mvalidator01    |[0m E[2021-04-13|08:27:12.902] dialing failed (attempts: 1): dial tcp 10.186.73.4:26656: i/o timeout module=pex addr=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:12.902] Reconnecting to peer                         module=p2p addr=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:12.903] Dialing peer                                 module=p2p address=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:12.903] Reconnecting to peer                         module=p2p addr=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:12.903] Dialing peer                                 module=p2p address=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:26656
+[36mvalidator01    |[0m E[2021-04-13|08:27:12.903] dialing failed (attempts: 1): dial tcp 10.186.73.5:26656: i/o timeout module=pex addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:12.903] Reconnecting to peer                         module=p2p addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:12.903] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:13.903] Error reconnecting to peer. Trying again     module=p2p tries=0 err="dial tcp 10.186.73.3:26656: i/o timeout" addr=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:13.903] Error reconnecting to peer. Trying again     module=p2p tries=0 err="dial tcp 10.186.73.5:26656: i/o timeout" addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.171] Time to switch to consensus reactor!         module=blockchain height=3
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.171] Stopping BlockPool service                   module=blockchain impl=BlockPool
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.171] SwitchToConsensus                            module=consensus 
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.171] Starting State service                       module=consensus impl=ConsensusState
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.177] Starting baseWAL service                     module=consensus wal=/tendermint/data/cs.wal/wal impl=baseWAL
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.178] Starting Group service                       module=consensus wal=/tendermint/data/cs.wal/wal impl=Group
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.178] Starting TimeoutTicker service               module=consensus impl=TimeoutTicker
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.299] commit is for a block we do not know about; set ProposalBlock=nil module=consensus height=3 commit_round=1 proposal= commit=4373510D217BF217ABC1131054762DD2F714D89920F6B620EDFC1AA547655F5B
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.319] received complete proposal block             module=consensus height=3 hash=4373510D217BF217ABC1131054762DD2F714D89920F6B620EDFC1AA547655F5B
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.319] finalizing commit of block                   module=consensus height=3 hash=4373510D217BF217ABC1131054762DD2F714D89920F6B620EDFC1AA547655F5B root=3B8CF0ABC1D1ABC9FAA687CC2A25953CB28CBE5A43630265D5CE5794168E4046 num_txs=16
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.327] executed block                               module=state height=3 num_valid_txs=16 num_invalid_txs=0
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.329] committed state                              module=state height=3 num_txs=16 app_hash=0935ABC7A4432FFCE80F0E4B4981FC8B83B72DAD9550C40FF02A8EE2F94D0C4C
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.332] indexed block                                module=txindex height=3
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.408] commit is for a block we do not know about; set ProposalBlock=nil module=consensus height=4 commit_round=0 proposal= commit=BA8204BF3740EBAA4F3E22864BE788CB53FDD6400DEF1DC0649592716583FCC1
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.439] received complete proposal block             module=consensus height=4 hash=BA8204BF3740EBAA4F3E22864BE788CB53FDD6400DEF1DC0649592716583FCC1
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.441] finalizing commit of block                   module=consensus height=4 hash=BA8204BF3740EBAA4F3E22864BE788CB53FDD6400DEF1DC0649592716583FCC1 root=0935ABC7A4432FFCE80F0E4B4981FC8B83B72DAD9550C40FF02A8EE2F94D0C4C num_txs=16
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.457] executed block                               module=state height=4 num_valid_txs=16 num_invalid_txs=0
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.460] committed state                              module=state height=4 num_txs=16 app_hash=49DA258F0708A3D75A15FB29F82FB3175FEEBC7926A9B96F6EB52381E223F5F3
+[32mvalidator03    |[0m I[2021-04-13|08:27:29.465] indexed block                                module=txindex height=4
+[32mvalidator03    |[0m I[2021-04-13|08:27:30.300] received proposal                            module=consensus proposal="Proposal{5/0 (02A4EDBE007BCEF02671F273CEE85976B01B5C391B07251ACC813EB27061B896:2:276E3B74BEC6, -1) 6E8A51CE0224 @ 2021-04-13T08:27:30.223188852Z}"
+[32mvalidator03    |[0m I[2021-04-13|08:27:30.347] received complete proposal block             module=consensus height=5 hash=02A4EDBE007BCEF02671F273CEE85976B01B5C391B07251ACC813EB27061B896
+[32mvalidator03    |[0m I[2021-04-13|08:27:30.409] Timed out                                    module=consensus dur=943.219583ms height=5 round=0 step=RoundStepNewHeight
+[32mvalidator03    |[0m I[2021-04-13|08:27:30.632] finalizing commit of block                   module=consensus height=5 hash=02A4EDBE007BCEF02671F273CEE85976B01B5C391B07251ACC813EB27061B896 root=49DA258F0708A3D75A15FB29F82FB3175FEEBC7926A9B96F6EB52381E223F5F3 num_txs=16
+[32mvalidator03    |[0m I[2021-04-13|08:27:30.646] executed block                               module=state height=5 num_valid_txs=16 num_invalid_txs=0
+[32mvalidator03    |[0m I[2021-04-13|08:27:30.656] committed state                              module=state height=5 num_txs=16 app_hash=40AF2ADE29F55AB27E62D357643DFAC0A5A9FDE4967BC83523A2BCC434E7A13B
+[32mvalidator03    |[0m I[2021-04-13|08:27:30.661] indexed block                                module=txindex height=5
+[32mvalidator03    |[0m I[2021-04-13|08:27:31.632] Timed out                                    module=consensus dur=971.83437ms height=6 round=0 step=RoundStepNewHeight
+[32mvalidator03    |[0m I[2021-04-13|08:27:31.640] received proposal                            module=consensus proposal="Proposal{6/0 (B98AFD1944A9E42A653DFC8C0BCA24036047F5B2CC0C3B7A163D4FE938E6CE4F:2:C675D4D7906E, -1) 3B8AFBB03105 @ 2021-04-13T08:27:31.634382907Z}"
+[32mvalidator03    |[0m I[2021-04-13|08:27:31.642] received complete proposal block             module=consensus height=6 hash=B98AFD1944A9E42A653DFC8C0BCA24036047F5B2CC0C3B7A163D4FE938E6CE4F
+[32mvalidator03    |[0m I[2021-04-13|08:27:34.633] Timed out                                    module=consensus dur=3s height=6 round=0 step=RoundStepPropose
+[32mvalidator03    |[0m E[2021-04-13|08:27:40.571] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m E[2021-04-13|08:27:40.596] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m E[2021-04-13|08:27:40.657] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m E[2021-04-13|08:27:40.683] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m E[2021-04-13|08:27:40.715] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m E[2021-04-13|08:27:40.773] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m E[2021-04-13|08:27:40.780] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m I[2021-04-13|08:27:49.747] Starting Peer service                        module=p2p peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:46566 impl="Peer{MConn{10.186.73.3:46566} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[32mvalidator03    |[0m I[2021-04-13|08:27:49.747] Starting MConnection service                 module=p2p peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:46566 impl=MConn{10.186.73.3:46566}
+[32mvalidator03    |[0m I[2021-04-13|08:27:49.747] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.3:46566} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[32mvalidator03    |[0m E[2021-04-13|08:27:50.687] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m E[2021-04-13|08:27:50.745] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m E[2021-04-13|08:27:50.754] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m E[2021-04-13|08:27:50.777] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m I[2021-04-13|08:27:58.183] Ensure peers                                 module=pex numOutPeers=1 numInPeers=1 numDialing=0 numToDial=9
+[32mvalidator03    |[0m I[2021-04-13|08:27:58.183] Will dial address                            module=pex addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:13.903] Error reconnecting to peer. Trying again     module=p2p tries=0 err="dial tcp 10.186.73.4:26656: i/o timeout" addr=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.002] Dialing peer                                 module=p2p address=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.003] Error reconnecting to peer. Trying again     module=p2p tries=1 err="dial tcp 10.186.73.3:26656: connect: connection refused" addr=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.437] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.742] Starting Peer service                        module=p2p peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:35106 impl="Peer{MConn{10.186.73.3:35106} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.742] Starting MConnection service                 module=p2p peer=539ffc12a0ac78970dab31ae8cdcfdd4285b2162@10.186.73.3:35106 impl=MConn{10.186.73.3:35106}
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.742] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.3:35106} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.895] Time to switch to consensus reactor!         module=blockchain height=1
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.895] Stopping BlockPool service                   module=blockchain impl=BlockPool
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.895] SwitchToConsensus                            module=consensus 
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.896] Starting State service                       module=consensus impl=ConsensusState
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.904] Starting baseWAL service                     module=consensus wal=/tendermint/data/cs.wal/wal impl=baseWAL
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.905] Starting Group service                       module=consensus wal=/tendermint/data/cs.wal/wal impl=Group
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.905] Searching for height                         module=consensus wal=/tendermint/data/cs.wal/wal height=1 min=0 max=0
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.907] Searching for height                         module=consensus wal=/tendermint/data/cs.wal/wal height=0 min=0 max=0
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.908] Found                                        module=consensus wal=/tendermint/data/cs.wal/wal height=0 index=0
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.908] Catchup by replaying consensus messages      module=consensus height=1
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.908] Replay: Done                                 module=consensus 
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.908] Starting TimeoutTicker service               module=consensus impl=TimeoutTicker
+[36mvalidator01    |[0m I[2021-04-13|08:27:19.908] Timed out                                    module=consensus dur=-7.014033772s height=1 round=0 step=RoundStepNewHeight
+[36mvalidator01    |[0m I[2021-04-13|08:27:20.437] Error reconnecting to peer. Trying again     module=p2p tries=1 err="dial tcp 10.186.73.5:26656: i/o timeout" addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:20.749] received proposal                            module=consensus proposal="Proposal{1/0 (30310FCEC05FC7C769C13678FCF851DF4A85FA462C1EB6DBC8BEDCBA44EBE8AC:2:43E323776C6B, -1) C4021EF0C7AB @ 2021-04-13T08:27:20.723148837Z}"
+[36mvalidator01    |[0m I[2021-04-13|08:27:20.832] received complete proposal block             module=consensus height=1 hash=30310FCEC05FC7C769C13678FCF851DF4A85FA462C1EB6DBC8BEDCBA44EBE8AC
+[36mvalidator01    |[0m I[2021-04-13|08:27:20.951] finalizing commit of block                   module=consensus height=1 hash=30310FCEC05FC7C769C13678FCF851DF4A85FA462C1EB6DBC8BEDCBA44EBE8AC root=E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855 num_txs=16
+[36mvalidator01    |[0m I[2021-04-13|08:27:20.961] executed block                               module=state height=1 num_valid_txs=16 num_invalid_txs=0
+[36mvalidator01    |[0m I[2021-04-13|08:27:20.962] committed state                              module=state height=1 num_txs=16 app_hash=5346C498FB52AFCC2FE8158D382DE262063BF704F0E88946D203D45872A76A79
+[36mvalidator01    |[0m I[2021-04-13|08:27:20.968] indexed block                                module=txindex height=1
+[36mvalidator01    |[0m I[2021-04-13|08:27:21.560] Dialing peer                                 module=p2p address=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:21.951] Timed out                                    module=consensus dur=984.194029ms height=2 round=0 step=RoundStepNewHeight
+[36mvalidator01    |[0m I[2021-04-13|08:27:21.963] received proposal                            module=consensus proposal="Proposal{2/0 (C40C26E9C2955FEC27FBDE7AAA462D2C00BA8C4D89CE45DE7B47E0641EEFDF20:2:06F4AFFB2374, -1) 91D66A6E8306 @ 2021-04-13T08:27:21.954334182Z}"
+[36mvalidator01    |[0m I[2021-04-13|08:27:21.968] received complete proposal block             module=consensus height=2 hash=C40C26E9C2955FEC27FBDE7AAA462D2C00BA8C4D89CE45DE7B47E0641EEFDF20
+[36mvalidator01    |[0m I[2021-04-13|08:27:22.170] finalizing commit of block                   module=consensus height=2 hash=C40C26E9C2955FEC27FBDE7AAA462D2C00BA8C4D89CE45DE7B47E0641EEFDF20 root=5346C498FB52AFCC2FE8158D382DE262063BF704F0E88946D203D45872A76A79 num_txs=16
+[36mvalidator01    |[0m I[2021-04-13|08:27:22.179] executed block                               module=state height=2 num_valid_txs=16 num_invalid_txs=0
+[36mvalidator01    |[0m I[2021-04-13|08:27:22.181] committed state                              module=state height=2 num_txs=16 app_hash=3B8CF0ABC1D1ABC9FAA687CC2A25953CB28CBE5A43630265D5CE5794168E4046
+[36mvalidator01    |[0m I[2021-04-13|08:27:22.186] indexed block                                module=txindex height=2
+[36mvalidator01    |[0m I[2021-04-13|08:27:22.560] Error reconnecting to peer. Trying again     module=p2p tries=1 err="dial tcp 10.186.73.4:26656: i/o timeout" addr=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:23.169] Timed out                                    module=consensus dur=984.164826ms height=3 round=0 step=RoundStepNewHeight
+[36mvalidator01    |[0m I[2021-04-13|08:27:26.170] Timed out                                    module=consensus dur=3s height=3 round=0 step=RoundStepPropose
+[36mvalidator01    |[0m I[2021-04-13|08:27:26.380] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:27.382] Error reconnecting to peer. Trying again     module=p2p tries=2 err="dial tcp 10.186.73.5:26656: i/o timeout" addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:27.499] Timed out                                    module=consensus dur=1s height=3 round=0 step=RoundStepPrecommitWait
+[36mvalidator01    |[0m I[2021-04-13|08:27:27.711] received proposal                            module=consensus proposal="Proposal{3/1 (4373510D217BF217ABC1131054762DD2F714D89920F6B620EDFC1AA547655F5B:2:A3AA46DE031C, -1) E3D586B956F2 @ 2021-04-13T08:27:27.592028541Z}"
+[36mvalidator01    |[0m I[2021-04-13|08:27:27.817] received complete proposal block             module=consensus height=3 hash=4373510D217BF217ABC1131054762DD2F714D89920F6B620EDFC1AA547655F5B
+[36mvalidator01    |[0m I[2021-04-13|08:27:28.035] finalizing commit of block                   module=consensus height=3 hash=4373510D217BF217ABC1131054762DD2F714D89920F6B620EDFC1AA547655F5B root=3B8CF0ABC1D1ABC9FAA687CC2A25953CB28CBE5A43630265D5CE5794168E4046 num_txs=16
+[36mvalidator01    |[0m I[2021-04-13|08:27:28.050] executed block                               module=state height=3 num_valid_txs=16 num_invalid_txs=0
+[36mvalidator01    |[0m I[2021-04-13|08:27:28.066] Created state sync snapshot                  height=3
+[36mvalidator01    |[0m I[2021-04-13|08:27:28.067] committed state                              module=state height=3 num_txs=16 app_hash=0935ABC7A4432FFCE80F0E4B4981FC8B83B72DAD9550C40FF02A8EE2F94D0C4C
+[36mvalidator01    |[0m I[2021-04-13|08:27:28.075] indexed block                                module=txindex height=3
+[36mvalidator01    |[0m I[2021-04-13|08:27:28.184] Starting Peer service                        module=p2p peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:33998 impl="Peer{MConn{10.186.73.4:33998} 0a9c99096b50a6d72a24d5aa5286d3f7022b3555 in}"
+[36mvalidator01    |[0m I[2021-04-13|08:27:28.184] Starting MConnection service                 module=p2p peer=0a9c99096b50a6d72a24d5aa5286d3f7022b3555@10.186.73.4:33998 impl=MConn{10.186.73.4:33998}
+[36mvalidator01    |[0m I[2021-04-13|08:27:28.184] Added peer                                   module=p2p peer="Peer{MConn{10.186.73.4:33998} 0a9c99096b50a6d72a24d5aa5286d3f7022b3555 in}"
+[36mvalidator01    |[0m I[2021-04-13|08:27:29.014] received proposal                            module=consensus proposal="Proposal{4/0 (BA8204BF3740EBAA4F3E22864BE788CB53FDD6400DEF1DC0649592716583FCC1:2:065D9629F9E7, -1) BB7AFD4B244B @ 2021-04-13T08:27:28.944463237Z}"
+[36mvalidator01    |[0m I[2021-04-13|08:27:29.034] Timed out                                    module=consensus dur=960.531643ms height=4 round=0 step=RoundStepNewHeight
+[36mvalidator01    |[0m I[2021-04-13|08:27:29.052] received complete proposal block             module=consensus height=4 hash=BA8204BF3740EBAA4F3E22864BE788CB53FDD6400DEF1DC0649592716583FCC1
+[36mvalidator01    |[0m I[2021-04-13|08:27:29.217] finalizing commit of block                   module=consensus height=4 hash=BA8204BF3740EBAA4F3E22864BE788CB53FDD6400DEF1DC0649592716583FCC1 root=0935ABC7A4432FFCE80F0E4B4981FC8B83B72DAD9550C40FF02A8EE2F94D0C4C num_txs=16
+[36mvalidator01    |[0m I[2021-04-13|08:27:29.227] executed block                               module=state height=4 num_valid_txs=16 num_invalid_txs=0
+[36mvalidator01    |[0m I[2021-04-13|08:27:29.230] committed state                              module=state height=4 num_txs=16 app_hash=49DA258F0708A3D75A15FB29F82FB3175FEEBC7926A9B96F6EB52381E223F5F3
+[36mvalidator01    |[0m I[2021-04-13|08:27:29.236] indexed block                                module=txindex height=4
+[36mvalidator01    |[0m I[2021-04-13|08:27:30.217] Timed out                                    module=consensus dur=981.466468ms height=5 round=0 step=RoundStepNewHeight
+[36mvalidator01    |[0m I[2021-04-13|08:27:30.237] received proposal                            module=consensus proposal="Proposal{5/0 (02A4EDBE007BCEF02671F273CEE85976B01B5C391B07251ACC813EB27061B896:2:276E3B74BEC6, -1) 6E8A51CE0224 @ 2021-04-13T08:27:30.223188852Z}"
+[36mvalidator01    |[0m I[2021-04-13|08:27:30.243] received complete proposal block             module=consensus height=5 hash=02A4EDBE007BCEF02671F273CEE85976B01B5C391B07251ACC813EB27061B896
+[36mvalidator01    |[0m I[2021-04-13|08:27:30.539] finalizing commit of block                   module=consensus height=5 hash=02A4EDBE007BCEF02671F273CEE85976B01B5C391B07251ACC813EB27061B896 root=49DA258F0708A3D75A15FB29F82FB3175FEEBC7926A9B96F6EB52381E223F5F3 num_txs=16
+[36mvalidator01    |[0m I[2021-04-13|08:27:30.549] executed block                               module=state height=5 num_valid_txs=16 num_invalid_txs=0
+[36mvalidator01    |[0m I[2021-04-13|08:27:30.553] committed state                              module=state height=5 num_txs=16 app_hash=40AF2ADE29F55AB27E62D357643DFAC0A5A9FDE4967BC83523A2BCC434E7A13B
+[36mvalidator01    |[0m I[2021-04-13|08:27:30.559] indexed block                                module=txindex height=5
+[36mvalidator01    |[0m I[2021-04-13|08:27:31.540] Timed out                                    module=consensus dur=980.184352ms height=6 round=0 step=RoundStepNewHeight
+[36mvalidator01    |[0m I[2021-04-13|08:27:31.725] received proposal                            module=consensus proposal="Proposal{6/0 (B98AFD1944A9E42A653DFC8C0BCA24036047F5B2CC0C3B7A163D4FE938E6CE4F:2:C675D4D7906E, -1) 3B8AFBB03105 @ 2021-04-13T08:27:31.634382907Z}"
+[36mvalidator01    |[0m I[2021-04-13|08:27:31.744] received complete proposal block             module=consensus height=6 hash=B98AFD1944A9E42A653DFC8C0BCA24036047F5B2CC0C3B7A163D4FE938E6CE4F
+[36mvalidator01    |[0m I[2021-04-13|08:27:34.123] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:34.542] Timed out                                    module=consensus dur=3s height=6 round=0 step=RoundStepPropose
+[36mvalidator01    |[0m I[2021-04-13|08:27:35.124] Error reconnecting to peer. Trying again     module=p2p tries=3 err="dial tcp 10.186.73.5:26656: i/o timeout" addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m E[2021-04-13|08:27:40.617] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[36mvalidator01    |[0m E[2021-04-13|08:27:40.738] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[36mvalidator01    |[0m E[2021-04-13|08:27:40.746] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[36mvalidator01    |[0m E[2021-04-13|08:27:40.759] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[36mvalidator01    |[0m I[2021-04-13|08:27:41.132] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:41.903] Ensure peers                                 module=pex numOutPeers=0 numInPeers=2 numDialing=1 numToDial=9
+[36mvalidator01    |[0m I[2021-04-13|08:27:41.904] We need more addresses. Sending pexRequest to random peer module=pex peer="Peer{MConn{10.186.73.3:35106} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[36mvalidator01    |[0m I[2021-04-13|08:27:41.904] No addresses to dial. Falling back to seeds  module=pex 
+[36mvalidator01    |[0m I[2021-04-13|08:27:42.134] Error reconnecting to peer. Trying again     module=p2p tries=4 err="dial tcp 10.186.73.5:26656: i/o timeout" addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:48.952] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:49.954] Error reconnecting to peer. Trying again     module=p2p tries=5 err="dial tcp 10.186.73.5:26656: i/o timeout" addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m E[2021-04-13|08:27:50.570] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[36mvalidator01    |[0m E[2021-04-13|08:27:50.577] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[36mvalidator01    |[0m E[2021-04-13|08:27:50.763] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[36mvalidator01    |[0m E[2021-04-13|08:27:50.789] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[36mvalidator01    |[0m I[2021-04-13|08:27:55.396] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:27:56.399] Error reconnecting to peer. Trying again     module=p2p tries=6 err="dial tcp 10.186.73.5:26656: i/o timeout" addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m E[2021-04-13|08:28:00.579] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[36mvalidator01    |[0m E[2021-04-13|08:28:00.589] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[36mvalidator01    |[0m E[2021-04-13|08:28:00.613] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[36mvalidator01    |[0m E[2021-04-13|08:28:00.736] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m I[2021-04-13|08:27:58.184] We need more addresses. Sending pexRequest to random peer module=pex peer="Peer{MConn{10.186.73.2:26656} 4fe295e4cfad69f1247ad85975c6fd87757195db out}"
+[32mvalidator03    |[0m I[2021-04-13|08:27:58.184] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[32mvalidator03    |[0m E[2021-04-13|08:27:59.186] dialing failed (attempts: 1): dial tcp 10.186.73.5:26656: i/o timeout module=pex addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[32mvalidator03    |[0m E[2021-04-13|08:28:00.631] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m E[2021-04-13|08:28:00.657] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m E[2021-04-13|08:28:00.671] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m E[2021-04-13|08:28:00.693] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m E[2021-04-13|08:28:00.792] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m E[2021-04-13|08:28:10.620] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[32mvalidator03    |[0m I[2021-04-13|08:28:28.183] Ensure peers                                 module=pex numOutPeers=1 numInPeers=1 numDialing=0 numToDial=9
+[32mvalidator03    |[0m I[2021-04-13|08:28:28.183] Will dial address                            module=pex addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[32mvalidator03    |[0m I[2021-04-13|08:28:28.184] We need more addresses. Sending pexRequest to random peer module=pex peer="Peer{MConn{10.186.73.3:46566} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[32mvalidator03    |[0m I[2021-04-13|08:28:28.184] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[32mvalidator03    |[0m E[2021-04-13|08:28:29.185] dialing failed (attempts: 2): dial tcp 10.186.73.5:26656: i/o timeout module=pex addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m E[2021-04-13|08:28:00.763] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[36mvalidator01    |[0m E[2021-04-13|08:28:00.772] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[36mvalidator01    |[0m E[2021-04-13|08:28:00.781] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[36mvalidator01    |[0m I[2021-04-13|08:28:01.953] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:28:02.954] Error reconnecting to peer. Trying again     module=p2p tries=7 err="dial tcp 10.186.73.5:26656: i/o timeout" addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:28:10.325] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m E[2021-04-13|08:28:10.593] Error on broadcastTxCommit                   module=rpc err="timed out waiting for tx to be included in a block"
+[36mvalidator01    |[0m I[2021-04-13|08:28:11.327] Error reconnecting to peer. Trying again     module=p2p tries=8 err="dial tcp 10.186.73.5:26656: i/o timeout" addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:28:11.903] Ensure peers                                 module=pex numOutPeers=0 numInPeers=2 numDialing=0 numToDial=10
+[36mvalidator01    |[0m I[2021-04-13|08:28:11.904] Will dial address                            module=pex addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:28:11.904] We need more addresses. Sending pexRequest to random peer module=pex peer="Peer{MConn{10.186.73.3:35106} 539ffc12a0ac78970dab31ae8cdcfdd4285b2162 in}"
+[36mvalidator01    |[0m I[2021-04-13|08:28:11.905] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m E[2021-04-13|08:28:12.906] dialing failed (attempts: 2): dial tcp 10.186.73.5:26656: i/o timeout module=pex addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:28:18.129] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:28:19.130] Error reconnecting to peer. Trying again     module=p2p tries=9 err="dial tcp 10.186.73.5:26656: i/o timeout" addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:28:26.729] Dialing peer                                 module=p2p address=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
+[36mvalidator01    |[0m I[2021-04-13|08:28:27.730] Error reconnecting to peer. Trying again     module=p2p tries=10 err="dial tcp 10.186.73.5:26656: i/o timeout" addr=8773a83e2f9fa4bc7a3e94303eb4df33af294288@10.186.73.5:26656
