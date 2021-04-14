@@ -41,7 +41,7 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 	defer c.providerMutex.Unlock()
 
 	if len(c.witnesses) == 0 {
-		return errNoWitnesses{}
+		return ErrNoWitnesses
 	}
 
 	// launch one goroutine per witness to retrieve the light block of the target height

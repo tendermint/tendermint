@@ -89,14 +89,6 @@ func (e errConflictingHeaders) Error() string {
 		e.Block.Hash(), e.WitnessIndex)
 }
 
-// errNoWitnesses means that there are not enough witnesses connected to
-// continue running the light client.
-type errNoWitnesses struct{}
-
-func (e errNoWitnesses) Error() string {
-	return "no witnesses connected. please reset light client"
-}
-
 // errBadWitness is returned when the witness either does not respond or
 // responds with an invalid header.
 type errBadWitness struct {
