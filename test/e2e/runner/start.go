@@ -75,7 +75,8 @@ func Start(testnet *e2e.Testnet) error {
 		if err := execCompose(testnet.Dir, "up", "-d", node.Name); err != nil {
 			return err
 		}
-		status, err := waitForNode(node, node.StartAt, 2*time.Minute)
+		// NOTE: we need to allow a extremely large amount of time for state syncing
+		status, err := waitForNode(node, node.StartAt, 5*time.Minute)
 		if err != nil {
 			return err
 		}

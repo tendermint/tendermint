@@ -413,7 +413,7 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 			"format", snapshot.Format, "hash", snapshot.Hash)
 		return
 	}
-	s.logger.Debug("Requesting snapshot chunk", "height", snapshot.Height,
+	s.logger.Info("Requesting snapshot chunk", "height", snapshot.Height,
 		"format", snapshot.Format, "chunk", chunk, "peer", peer.ID())
 	peer.Send(ChunkChannel, mustEncodeMsg(&ssproto.ChunkRequest{
 		Height: snapshot.Height,
