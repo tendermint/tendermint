@@ -33,12 +33,12 @@ I also paste it here: https://github.com/james-ray/tendermint/blob/chainedTender
 ## Releases
 
 I want to implement the pipleline protocol myself in my spare time. 
-If you are intrested, have any question, or find any flaw in this paper, please contact me JamesRayLei@gmail.com
+If you are interested, have any question, or find any flaw in this paper, please contact me JamesRayLei@gmail.com
 
 I plan to work on the branch chainedTendermint of this repository, any cooperative work is appreciated.
 
 
-## Challenges
+## Challenges and Plans
 
 The pipeline protocol relies on aggregated signature, which is not done in Tendermint yet.
 There are some discussion about the timestamp, each vote has different timestamp, so we need to address this problem.
