@@ -13,16 +13,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-<<<<<<< HEAD
-// Load generates transactions against the network until the given
-// context is cancelled.
-func Load(ctx context.Context, testnet *e2e.Testnet) error {
-=======
 // Load generates transactions against the network until the given context is
 // canceled. A multiplier of greater than one can be supplied if load needs to
 // be generated beyond a minimum amount.
 func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
->>>>>>> 2b8aa65e4... e2e: tx load to use broadcast sync instead of commit (#6347)
 	// Since transactions are executed across all nodes in the network, we need
 	// to reduce transaction load for larger networks to avoid using too much
 	// CPU. This gives high-throughput small networks and low-throughput large ones.
@@ -71,13 +65,8 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 	}
 }
 
-<<<<<<< HEAD
-// loadGenerate generates jobs until the context is cancelled
-func loadGenerate(ctx context.Context, chTx chan<- types.Tx) {
-=======
 // loadGenerate generates jobs until the context is canceled
 func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int) {
->>>>>>> 2b8aa65e4... e2e: tx load to use broadcast sync instead of commit (#6347)
 	for i := 0; i < math.MaxInt64; i++ {
 		// We keep generating the same 1000 keys over and over, with different values.
 		// This gives a reasonable load without putting too much data in the app.
@@ -92,12 +81,8 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int) {
 
 		select {
 		case chTx <- tx:
-<<<<<<< HEAD
-			time.Sleep(10 * time.Millisecond)
-=======
 			time.Sleep(time.Duration(100/multiplier) * time.Millisecond)
 
->>>>>>> 2b8aa65e4... e2e: tx load to use broadcast sync instead of commit (#6347)
 		case <-ctx.Done():
 			close(chTx)
 			return
@@ -120,12 +105,6 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx
 			if err != nil {
 				continue
 			}
-<<<<<<< HEAD
-			clients[node.Name] = client
-		}
-		_, err = client.BroadcastTxCommit(ctx, tx)
-		if err != nil {
-=======
 
 			// check that the node is up
 			_, err = client.Health(ctx)
@@ -137,7 +116,6 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx
 		}
 
 		if _, err = client.BroadcastTxSync(ctx, tx); err != nil {
->>>>>>> 2b8aa65e4... e2e: tx load to use broadcast sync instead of commit (#6347)
 			continue
 		}
 		chSuccess <- tx
