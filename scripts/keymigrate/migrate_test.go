@@ -21,7 +21,8 @@ func makeKey(t *testing.T, elems ...interface{}) []byte {
 func getLegacyPrefixKeys(val int) map[string][]byte {
 	return map[string][]byte{
 		"Height":            []byte(fmt.Sprintf("H:%d", val)),
-		"BlockPart":         []byte(fmt.Sprintf("P:%d", val)),
+		"BlockPart":         []byte(fmt.Sprintf("P:%d:%d", val, val)),
+		"BlockPartTwo":      []byte(fmt.Sprintf("P:%d:%d", val+2, val+val)),
 		"BlockCommit":       []byte(fmt.Sprintf("C:%d", val)),
 		"SeenCommit":        []byte(fmt.Sprintf("SC:%d", val)),
 		"BlockHeight":       []byte(fmt.Sprintf("BH:%d", val)),
@@ -29,18 +30,22 @@ func getLegacyPrefixKeys(val int) map[string][]byte {
 		"ConsensusParams":   []byte(fmt.Sprintf("consensusParamsKey:%d", val)),
 		"ABCIResponse":      []byte(fmt.Sprintf("abciResponsesKey:%d", val)),
 		"State":             []byte("stateKey"),
-		"CommittedEvidence": {0x00},
-		"PendingEvidence":   {0x01},
+		"CommittedEvidence": append([]byte{0x00}, []byte(fmt.Sprintf("%0.16X/%X", int64(val), []byte("comitted")))...),
+		"PendingEvidence":   append([]byte{0x01}, []byte(fmt.Sprintf("%0.16X/%X", int64(val), []byte("pending")))...),
 		"LightBLock":        []byte(fmt.Sprintf("lb/foo/%020d", val)),
 		"Size":              []byte("size"),
+		"TxHeight":          []byte(fmt.Sprintf("tx.height/%s/%d/%d", fmt.Sprint(val), val, val)),
+		"UserKey0":          []byte(fmt.Sprintf("foo/bar/%d/%d", val, val)),
+		"UserKey1":          []byte(fmt.Sprintf("foo/bar/baz/%d/%d", val, val)),
 	}
 }
 
-func getNewPrefixeKeys(t *testing.T, val int) map[string][]byte {
+func getNewPrefixKeys(t *testing.T, val int) map[string][]byte {
 	t.Helper()
 	return map[string][]byte{
 		"Height":            makeKey(t, int64(0), int64(val)),
-		"BlockPart":         makeKey(t, int64(1), int64(val)),
+		"BlockPart":         makeKey(t, int64(1), int64(val), int64(val)),
+		"BlockPartTwo":      makeKey(t, int64(1), int64(val+2), int64(val+val)),
 		"BlockCommit":       makeKey(t, int64(2), int64(val)),
 		"SeenCommit":        makeKey(t, int64(3), int64(val)),
 		"BlockHeight":       makeKey(t, int64(4), int64(val)),
@@ -52,6 +57,9 @@ func getNewPrefixeKeys(t *testing.T, val int) map[string][]byte {
 		"PendingEvidence":   makeKey(t, int64(10), int64(val)),
 		"LightBLock":        makeKey(t, int64(11), int64(val)),
 		"Size":              makeKey(t, int64(12)),
+		"UserKey0":          makeKey(t, "foo", "bar", int64(val), int64(val)),
+		"UserKey1":          makeKey(t, "foo", "bar/baz", int64(val), int64(val)),
+		"TxHeight":          makeKey(t, "tx.height", fmt.Sprint(val), int64(val), int64(val+2), int64(val+val)),
 	}
 }
 
@@ -61,7 +69,7 @@ func getLegacyDatabase(t *testing.T) (int, dbm.DB) {
 	ct := 0
 
 	generated := []map[string][]byte{
-		getLegacyPrefixKeys(0),
+		getLegacyPrefixKeys(2),
 		getLegacyPrefixKeys(9001),
 		getLegacyPrefixKeys(math.MaxInt32),
 		getLegacyPrefixKeys(math.MaxInt64 - 8),
@@ -76,7 +84,7 @@ func getLegacyDatabase(t *testing.T) (int, dbm.DB) {
 	}
 	require.NoError(t, batch.WriteSync())
 	require.NoError(t, batch.Close())
-	return ct - (3 * len(generated)), db
+	return ct - (2 * len(generated)) + 2, db
 }
 
 func TestMigration(t *testing.T) {
@@ -86,7 +94,7 @@ func TestMigration(t *testing.T) {
 
 		legacyPrefixes := getLegacyPrefixKeys(42)
 
-		newPrefixes := getNewPrefixeKeys(t, 42)
+		newPrefixes := getNewPrefixKeys(t, 42)
 
 		require.Equal(t, len(legacyPrefixes), len(newPrefixes))
 
@@ -113,6 +121,9 @@ func TestMigration(t *testing.T) {
 			table := map[string][]byte{
 				"Height":          []byte(fmt.Sprintf("H:%f", 4.22222)),
 				"BlockPart":       []byte(fmt.Sprintf("P:%f", 4.22222)),
+				"BlockPartTwo":    []byte(fmt.Sprintf("P:%d", 42)),
+				"BlockPartThree":  []byte(fmt.Sprintf("P:%f:%f", 4.222, 8.444)),
+				"BlockPartFour":   []byte(fmt.Sprintf("P:%d:%f", 4222, 8.444)),
 				"BlockCommit":     []byte(fmt.Sprintf("C:%f", 4.22222)),
 				"SeenCommit":      []byte(fmt.Sprintf("SC:%f", 4.22222)),
 				"BlockHeight":     []byte(fmt.Sprintf("BH:%f", 4.22222)),
@@ -122,6 +133,12 @@ func TestMigration(t *testing.T) {
 				"LightBlockShort": []byte(fmt.Sprintf("lb/foo/%010d", 42)),
 				"LightBlockLong":  []byte("lb/foo/12345678910.1234567890"),
 				"Invalid":         {0x03},
+				"BadTXHeight0":    []byte(fmt.Sprintf("tx.height/%s/%f/%f", "boop", 4.4, 4.5)),
+				"BadTXHeight1":    []byte(fmt.Sprintf("tx.height/%s/%f", "boop", 4.4)),
+				"UserKey0":        []byte("foo/bar/1.3/3.4"),
+				"UserKey1":        []byte("foo/bar/1/3.4"),
+				"UserKey2":        []byte("foo/bar/baz/1/3.4"),
+				"UserKey3":        []byte("foo/bar/baz/1.2/4"),
 			}
 			for kind, key := range table {
 				out, err := migarateKey(key)
@@ -176,7 +193,7 @@ func TestMigration(t *testing.T) {
 			require.Equal(t, size, legacyKeys)
 		})
 		t.Run("KeyIdempotency", func(t *testing.T) {
-			for _, key := range getNewPrefixeKeys(t, 84) {
+			for _, key := range getNewPrefixKeys(t, 84) {
 				require.False(t, keyIsLegacy(key))
 			}
 		})
@@ -199,6 +216,7 @@ func TestMigration(t *testing.T) {
 			keys, err := getAllLegacyKeys(db)
 			require.NoError(t, err)
 			require.Equal(t, 0, len(keys))
+
 		})
 	})
 }
