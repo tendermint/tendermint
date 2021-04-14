@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -81,17 +82,17 @@ func TestApp_Tx(t *testing.T) {
 		value := fmt.Sprintf("%x", bz)
 		tx := types.Tx(fmt.Sprintf("%v=%v", key, value))
 
-		resp, err := client.BroadcastTxCommit(ctx, tx)
+		_, err = client.BroadcastTxSync(ctx, tx)
 		require.NoError(t, err)
-
-		// wait for the tx to be persisted in the tx indexer
-		time.Sleep(500 * time.Millisecond)
 
 		hash := tx.Hash()
-		txResp, err := client.Tx(ctx, hash, false)
-		require.NoError(t, err)
-		assert.Equal(t, txResp.Tx, tx)
-		assert.Equal(t, txResp.Height, resp.Height)
+		waitTime := 20 * time.Second
+		require.Eventuallyf(t, func() bool {
+			txResp, err := client.Tx(ctx, hash, false)
+			return err == nil && bytes.Equal(txResp.Tx, tx)
+		}, waitTime, time.Second,
+			"submitted tx wasn't committed after %v", waitTime,
+		)
 
 		// NOTE: we don't test abci query of the light client
 		if node.Mode == e2e.ModeLight {
