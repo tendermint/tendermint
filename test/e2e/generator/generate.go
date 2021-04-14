@@ -78,9 +78,9 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 
 	switch p2pInfo := opt["useNewP2P"].(type) {
 	case bool:
-		manifest.UseNewP2P = p2pInfo
+		manifest.DisableLegacyP2P = p2pInfo
 	case int:
-		manifest.UseNewP2P = false
+		manifest.DisableLegacyP2P = false
 		p2pNodeFactor = p2pInfo
 	}
 
@@ -104,11 +104,13 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	for i := 1; i <= numSeeds; i++ {
 		node := generateNode(r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
 		node.QueueType = manifest.QueueType
+
 		if p2pNodeFactor == 0 {
-			node.UseNewP2P = manifest.UseNewP2P
+			node.DisableLegacyP2P = manifest.DisableLegacyP2P
 		} else if p2pNodeFactor%i == 0 {
-			node.UseNewP2P = !manifest.UseNewP2P
+			node.DisableLegacyP2P = !manifest.DisableLegacyP2P
 		}
+
 		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = node
 	}
 
@@ -129,10 +131,11 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 
 		node.QueueType = manifest.QueueType
 		if p2pNodeFactor == 0 {
-			node.UseNewP2P = manifest.UseNewP2P
+			node.DisableLegacyP2P = manifest.DisableLegacyP2P
 		} else if p2pNodeFactor%i == 0 {
-			node.UseNewP2P = !manifest.UseNewP2P
+			node.DisableLegacyP2P = !manifest.DisableLegacyP2P
 		}
+
 		manifest.Nodes[name] = node
 
 		if startAt == 0 {
@@ -164,9 +167,9 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		node := generateNode(r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
 		node.QueueType = manifest.QueueType
 		if p2pNodeFactor == 0 {
-			node.UseNewP2P = manifest.UseNewP2P
+			node.DisableLegacyP2P = manifest.DisableLegacyP2P
 		} else if p2pNodeFactor%i == 0 {
-			node.UseNewP2P = !manifest.UseNewP2P
+			node.DisableLegacyP2P = !manifest.DisableLegacyP2P
 		}
 		manifest.Nodes[fmt.Sprintf("full%02d", i)] = node
 	}
