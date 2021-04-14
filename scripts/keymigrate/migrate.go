@@ -209,7 +209,7 @@ func replaceKey(db dbm.DB, key keyID, gooseFn migrateFunc) error {
 
 	// 10% of the time, force a write to disk, but mostly don't,
 	// because it's faster.
-	if rand.Intn(100)%10 == 0 {
+	if rand.Intn(100)%10 == 0 { // nolint:gosec
 		if err = batch.WriteSync(); err != nil {
 			return err
 		}

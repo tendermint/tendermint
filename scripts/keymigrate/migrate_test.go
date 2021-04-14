@@ -29,8 +29,8 @@ func getLegacyPrefixKeys(val int) map[string][]byte {
 		"ConsensusParams":   []byte(fmt.Sprintf("consensusParamsKey:%d", val)),
 		"ABCIResponse":      []byte(fmt.Sprintf("abciResponsesKey:%d", val)),
 		"State":             []byte("stateKey"),
-		"CommittedEvidence": []byte{0x00},
-		"PendingEvidence":   []byte{0x01},
+		"CommittedEvidence": {0x00},
+		"PendingEvidence":   {0x01},
 		"LightBLock":        []byte(fmt.Sprintf("lb/foo/%020d", val)),
 		"Size":              []byte("size"),
 	}
@@ -92,25 +92,19 @@ func TestMigration(t *testing.T) {
 
 		t.Run("LegacyEvidence", func(t *testing.T) {
 			for kind, le := range legacyPrefixes {
-				t.Run(kind, func(t *testing.T) {
-					require.True(t, keyIsLegacy(le))
-				})
+				require.True(t, keyIsLegacy(le), kind)
 			}
 		})
 		t.Run("NewEvidence", func(t *testing.T) {
 			for kind, ne := range newPrefixes {
-				t.Run(kind, func(t *testing.T) {
-					require.False(t, keyIsLegacy(ne))
-				})
+				require.False(t, keyIsLegacy(ne), kind)
 			}
 		})
 		t.Run("Conversion", func(t *testing.T) {
 			for kind, le := range legacyPrefixes {
-				t.Run(kind, func(t *testing.T) {
-					nk, err := migarateKey(le)
-					require.NoError(t, err)
-					require.False(t, keyIsLegacy(nk))
-				})
+				nk, err := migarateKey(le)
+				require.NoError(t, err, kind)
+				require.False(t, keyIsLegacy(nk), kind)
 			}
 		})
 	})
@@ -127,14 +121,12 @@ func TestMigration(t *testing.T) {
 				"ABCIResponse":    []byte(fmt.Sprintf("abciResponsesKey:%f", 4.22222)),
 				"LightBlockShort": []byte(fmt.Sprintf("lb/foo/%010d", 42)),
 				"LightBlockLong":  []byte("lb/foo/12345678910.1234567890"),
-				"Invalid":         []byte{0x03},
+				"Invalid":         {0x03},
 			}
 			for kind, key := range table {
-				t.Run(kind, func(t *testing.T) {
-					out, err := migarateKey(key)
-					require.Error(t, err)
-					require.Nil(t, out)
-				})
+				out, err := migarateKey(key)
+				require.Error(t, err, kind)
+				require.Nil(t, out, kind)
 			}
 		})
 		t.Run("Replacement", func(t *testing.T) {
