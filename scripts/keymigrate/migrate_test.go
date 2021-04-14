@@ -30,7 +30,7 @@ func getLegacyPrefixKeys(val int) map[string][]byte {
 		"ConsensusParams":   []byte(fmt.Sprintf("consensusParamsKey:%d", val)),
 		"ABCIResponse":      []byte(fmt.Sprintf("abciResponsesKey:%d", val)),
 		"State":             []byte("stateKey"),
-		"CommittedEvidence": append([]byte{0x00}, []byte(fmt.Sprintf("%0.16X/%X", int64(val), []byte("comitted")))...),
+		"CommittedEvidence": append([]byte{0x00}, []byte(fmt.Sprintf("%0.16X/%X", int64(val), []byte("committed")))...),
 		"PendingEvidence":   append([]byte{0x01}, []byte(fmt.Sprintf("%0.16X/%X", int64(val), []byte("pending")))...),
 		"LightBLock":        []byte(fmt.Sprintf("lb/foo/%020d", val)),
 		"Size":              []byte("size"),

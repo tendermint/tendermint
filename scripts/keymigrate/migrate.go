@@ -99,11 +99,7 @@ func keyIsLegacy(key keyID) bool {
 	}
 
 	// this means it's a tx index...
-	if bytes.Count(key, []byte("/")) >= 3 {
-		return true
-	}
-
-	return false
+	return bytes.Count(key, []byte("/")) >= 3
 }
 
 func migarateKey(key keyID) (keyID, error) {
