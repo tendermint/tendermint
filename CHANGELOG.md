@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.34.10
+
+*April 14, 2021*
+
+This release fixes a bug where peers would sometimes try to send messages 
+on incorrect channels. Special thanks to our friends at Oasis Labs for surfacing
+this issue! 
+
+Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermint).
+
+- [p2p/node] [\#6339](https://github.com/tendermint/tendermint/issues/6339) Fix bug with using custom channels (@cmwaters)
+- [light] [\#6346](https://github.com/tendermint/tendermint/issues/6346) Correctly handle too high errors to improve client robustness (@cmwaters)
+
 ## v0.34.9
 
 *April 8, 2021*
