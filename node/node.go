@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
-	"os"
 	"strconv"
 	"time"
 
@@ -53,21 +52,6 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
 )
-
-var (
-	useLegacyP2P       = true
-	p2pRouterQueueType string
-)
-
-func init() {
-	if v := os.Getenv("TM_LEGACY_P2P"); len(v) > 0 {
-		useLegacyP2P, _ = strconv.ParseBool(v)
-	}
-
-	if v := os.Getenv("TM_P2P_QUEUE"); len(v) > 0 {
-		p2pRouterQueueType = v
-	}
-}
 
 // DBContext specifies config information for loading a new DB.
 type DBContext struct {
@@ -403,12 +387,12 @@ func createMempoolReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if useLegacyP2P {
-		channels = getChannelsFromShim(reactorShim)
-		peerUpdates = reactorShim.PeerUpdates
-	} else {
+	if config.P2P.UseNewP2P {
 		channels = makeChannelsFromShims(router, channelShims)
 		peerUpdates = peerManager.Subscribe()
+	} else {
+		channels = getChannelsFromShim(reactorShim)
+		peerUpdates = reactorShim.PeerUpdates
 	}
 
 	reactor := mempl.NewReactor(
@@ -454,12 +438,12 @@ func createEvidenceReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if useLegacyP2P {
-		channels = getChannelsFromShim(reactorShim)
-		peerUpdates = reactorShim.PeerUpdates
-	} else {
+	if config.P2P.UseNewP2P {
 		channels = makeChannelsFromShims(router, evidence.ChannelShims)
 		peerUpdates = peerManager.Subscribe()
+	} else {
+		channels = getChannelsFromShim(reactorShim)
+		peerUpdates = reactorShim.PeerUpdates
 	}
 
 	evidenceReactor := evidence.NewReactor(
@@ -495,12 +479,12 @@ func createBlockchainReactor(
 			peerUpdates *p2p.PeerUpdates
 		)
 
-		if useLegacyP2P {
-			channels = getChannelsFromShim(reactorShim)
-			peerUpdates = reactorShim.PeerUpdates
-		} else {
+		if config.P2P.UseNewP2P {
 			channels = makeChannelsFromShims(router, bcv0.ChannelShims)
 			peerUpdates = peerManager.Subscribe()
+		} else {
+			channels = getChannelsFromShim(reactorShim)
+			peerUpdates = reactorShim.PeerUpdates
 		}
 
 		reactor, err := bcv0.NewReactor(
@@ -561,12 +545,12 @@ func createConsensusReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if useLegacyP2P {
-		channels = getChannelsFromShim(reactorShim)
-		peerUpdates = reactorShim.PeerUpdates
-	} else {
+	if config.P2P.UseNewP2P {
 		channels = makeChannelsFromShims(router, cs.ChannelShims)
 		peerUpdates = peerManager.Subscribe()
+	} else {
+		channels = getChannelsFromShim(reactorShim)
+		peerUpdates = reactorShim.PeerUpdates
 	}
 
 	reactor := cs.NewReactor(
@@ -1154,12 +1138,12 @@ func NewNode(config *cfg.Config,
 
 	stateSyncReactorShim = p2p.NewReactorShim(logger.With("module", "statesync"), "StateSyncShim", statesync.ChannelShims)
 
-	if useLegacyP2P {
-		channels = getChannelsFromShim(stateSyncReactorShim)
-		peerUpdates = stateSyncReactorShim.PeerUpdates
-	} else {
+	if config.P2P.UseNewP2P {
 		channels = makeChannelsFromShims(router, statesync.ChannelShims)
 		peerUpdates = peerManager.Subscribe()
+	} else {
+		channels = getChannelsFromShim(stateSyncReactorShim)
+		peerUpdates = stateSyncReactorShim.PeerUpdates
 	}
 
 	stateSyncReactor = statesync.NewReactor(
@@ -1321,12 +1305,12 @@ func (n *Node) OnStart() error {
 
 	n.isListening = true
 
-	n.Logger.Info("p2p service", "legacy_enabled", useLegacyP2P)
+	n.Logger.Info("p2p service", "legacy_enabled", !n.config.P2P.UseNewP2P)
 
-	if useLegacyP2P {
-		err = n.sw.Start()
-	} else {
+	if n.config.P2P.UseNewP2P {
 		err = n.router.Start()
+	} else {
+		err = n.sw.Start()
 	}
 	if err != nil {
 		return err
@@ -1361,7 +1345,7 @@ func (n *Node) OnStart() error {
 		}
 	}
 
-	if !useLegacyP2P && n.pexReactorV2 != nil {
+	if n.config.P2P.UseNewP2P && n.pexReactorV2 != nil {
 		if err := n.pexReactorV2.Start(); err != nil {
 			return err
 		}
@@ -1434,19 +1418,19 @@ func (n *Node) OnStop() {
 		}
 	}
 
-	if !useLegacyP2P && n.pexReactorV2 != nil {
+	if n.config.P2P.UseNewP2P && n.pexReactorV2 != nil {
 		if err := n.pexReactorV2.Stop(); err != nil {
 			n.Logger.Error("failed to stop the PEX v2 reactor", "err", err)
 		}
 	}
 
-	if useLegacyP2P {
-		if err := n.sw.Stop(); err != nil {
-			n.Logger.Error("failed to stop switch", "err", err)
-		}
-	} else {
+	if n.config.P2P.UseNewP2P {
 		if err := n.router.Stop(); err != nil {
 			n.Logger.Error("failed to stop router", "err", err)
+		}
+	} else {
+		if err := n.sw.Stop(); err != nil {
+			n.Logger.Error("failed to stop switch", "err", err)
 		}
 	}
 
@@ -1723,6 +1707,11 @@ func (n *Node) Config() *cfg.Config {
 	return n.config
 }
 
+// TxIndexer returns the Node's TxIndexer.
+func (n *Node) TxIndexer() txindex.TxIndexer {
+	return n.txIndexer
+}
+
 //------------------------------------------------------------------------------
 
 func (n *Node) Listeners() []string {
@@ -1967,7 +1956,7 @@ func createAndStartPrivValidatorGRPCClient(
 
 func getRouterConfig(conf *cfg.Config, proxyApp proxy.AppConns) p2p.RouterOptions {
 	opts := p2p.RouterOptions{
-		QueueType: p2pRouterQueueType,
+		QueueType: conf.P2P.QueueType,
 	}
 
 	if conf.P2P.MaxNumInboundPeers > 0 {

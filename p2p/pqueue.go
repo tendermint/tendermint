@@ -254,7 +254,9 @@ func (s *pqScheduler) process() {
 					s.sizes[uint(s.chDescs[i].Priority)] -= pqEnv.size
 				}
 
-				s.metrics.PeerSendBytesTotal.With("peer_id", string(pqEnv.envelope.To)).Add(float64(pqEnv.size))
+				s.metrics.PeerSendBytesTotal.With(
+					"chID", chIDStr,
+					"peer_id", string(pqEnv.envelope.To)).Add(float64(pqEnv.size))
 				s.dequeueCh <- pqEnv.envelope
 			}
 
