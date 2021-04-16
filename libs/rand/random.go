@@ -78,10 +78,6 @@ func Uint() uint {
 	return grand.Uint()
 }
 
-func Int16() int16 {
-	return grand.Int16()
-}
-
 func Int32() int32 {
 	return grand.Int32()
 }
@@ -120,10 +116,6 @@ func Float32() float32 {
 
 func Float64() float64 {
 	return grand.Float64()
-}
-
-func Time() time.Time {
-	return grand.Time()
 }
 
 func Bytes(n int) []byte {
@@ -195,10 +187,6 @@ func (r *Rand) Uint() uint {
 	i := r.rand.Int()
 	r.Unlock()
 	return uint(i)
-}
-
-func (r *Rand) Int16() int16 {
-	return int16(r.Uint32() & (1<<16 - 1))
 }
 
 func (r *Rand) Int32() int32 {
