@@ -649,7 +649,7 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 	defer peerManager.Close()
-	
+
 	added, err := peerManager.Add(a)
 	require.NoError(t, err)
 	require.True(t, added)
