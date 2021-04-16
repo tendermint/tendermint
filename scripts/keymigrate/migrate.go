@@ -92,6 +92,7 @@ func keyIsLegacy(key keyID) bool {
 		keyID([]byte{0x01}),
 		// tx index
 		keyID("tx.height/"),
+		keyID("tx.hash/"),
 	} {
 		if bytes.HasPrefix(key, prefix) {
 			return true
@@ -99,7 +100,15 @@ func keyIsLegacy(key keyID) bool {
 	}
 
 	// this means it's a tx index...
-	return bytes.Count(key, []byte("/")) >= 3
+	if bytes.Count(key, []byte("/")) >= 3 {
+		return true
+	}
+
+	return keyIsHash(key)
+}
+
+func keyIsHash(key keyID) bool {
+	return len(key) == 32 && !bytes.Contains(key, []byte("/"))
 }
 
 func migarateKey(key keyID) (keyID, error) {
@@ -248,6 +257,8 @@ func migarateKey(key keyID) (keyID, error) {
 			elems = append(elems, string(appKey), int64(val), int64(val2))
 		}
 		return orderedcode.Append(nil, elems...)
+	case keyIsHash(key):
+		return orderedcode.Append(nil, "tx.hash", string(key))
 	default:
 		return nil, fmt.Errorf("key %q is in the wrong format", string(key))
 	}

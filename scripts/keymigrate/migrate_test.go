@@ -1,6 +1,7 @@
 package keymigrate
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math"
@@ -34,9 +35,13 @@ func getLegacyPrefixKeys(val int) map[string][]byte {
 		"PendingEvidence":   append([]byte{0x01}, []byte(fmt.Sprintf("%0.16X/%X", int64(val), []byte("pending")))...),
 		"LightBLock":        []byte(fmt.Sprintf("lb/foo/%020d", val)),
 		"Size":              []byte("size"),
-		"TxHeight":          []byte(fmt.Sprintf("tx.height/%s/%d/%d", fmt.Sprint(val), val, val)),
 		"UserKey0":          []byte(fmt.Sprintf("foo/bar/%d/%d", val, val)),
 		"UserKey1":          []byte(fmt.Sprintf("foo/bar/baz/%d/%d", val, val)),
+		"TxHeight":          []byte(fmt.Sprintf("tx.height/%s/%d/%d", fmt.Sprint(val), val, val)),
+		"TxHash": append(
+			bytes.Repeat([]byte{fmt.Sprint(val)[0]}, 16),
+			bytes.Repeat([]byte{fmt.Sprint(val)[len([]byte(fmt.Sprint(val)))-1]}, 16)...,
+		),
 	}
 }
 
@@ -60,6 +65,7 @@ func getNewPrefixKeys(t *testing.T, val int) map[string][]byte {
 		"UserKey0":          makeKey(t, "foo", "bar", int64(val), int64(val)),
 		"UserKey1":          makeKey(t, "foo", "bar/baz", int64(val), int64(val)),
 		"TxHeight":          makeKey(t, "tx.height", fmt.Sprint(val), int64(val), int64(val+2), int64(val+val)),
+		"TxHash":            makeKey(t, "tx.hash", string(bytes.Repeat([]byte{[]byte(fmt.Sprint(val))[0]}, 32))),
 	}
 }
 
@@ -69,9 +75,9 @@ func getLegacyDatabase(t *testing.T) (int, dbm.DB) {
 	ct := 0
 
 	generated := []map[string][]byte{
-		getLegacyPrefixKeys(2),
+		getLegacyPrefixKeys(8),
 		getLegacyPrefixKeys(9001),
-		getLegacyPrefixKeys(math.MaxInt32),
+		getLegacyPrefixKeys(math.MaxInt32 << 1),
 		getLegacyPrefixKeys(math.MaxInt64 - 8),
 	}
 
@@ -114,6 +120,17 @@ func TestMigration(t *testing.T) {
 				require.NoError(t, err, kind)
 				require.False(t, keyIsLegacy(nk), kind)
 			}
+		})
+		t.Run("Hashes", func(t *testing.T) {
+			t.Run("NewKeysAreNotHashes", func(t *testing.T) {
+				for _, key := range getNewPrefixKeys(t, 9001) {
+					require.True(t, len(key) != 32)
+				}
+			})
+			t.Run("ContrivedLegacyKeyDetection", func(t *testing.T) {
+				require.True(t, keyIsLegacy([]byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")))
+				require.False(t, keyIsLegacy([]byte("xxxxxxxxxxxxxxx/xxxxxxxxxxxxxxxx")))
+			})
 		})
 	})
 	t.Run("Migrations", func(t *testing.T) {
