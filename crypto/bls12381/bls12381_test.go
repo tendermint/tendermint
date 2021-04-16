@@ -39,6 +39,15 @@ func TestBLSAddress(t *testing.T) {
 	assert.EqualValues(t, decodedAddressBytes, address)
 }
 
+func reverseBytes(bz []byte) []byte  {
+	s := make([]byte, len(bz))
+	copy(s, bz)
+	for i,j := 0, len(s) - 1; i<j; i,j = i+1, j-1 {
+		s[i],s[j] = s[j], s[i]
+	}
+	return s
+}
+
 func TestRecoverThresholdPublicKeyFromPublicKeys4(t *testing.T) {
 	proTxHashStrings := make([]string, 4)
 	proTxHashStrings[0] = "FDC09407DA9473CDC5E5AFCBB55712C95765343B2AF900B28BE4004E69CEDBB3"
@@ -49,7 +58,7 @@ func TestRecoverThresholdPublicKeyFromPublicKeys4(t *testing.T) {
 	for i, proTxHashString := range proTxHashStrings {
 		decodedProTxHash, err := hex.DecodeString(proTxHashString)
 		require.NoError(t, err)
-		proTxHashes[i] = decodedProTxHash
+		proTxHashes[i] = reverseBytes(decodedProTxHash)
 	}
 	privateKeyStrings := make([]string, 4)
 	privateKeyStrings[0] = "BT0evsfM4r7Cc5lvbrVjBZuo1FYjMeIFg/6u7gb35M4="
@@ -92,7 +101,7 @@ func TestRecoverThresholdPublicKeyFromPublicKeys5(t *testing.T) {
 	for i, proTxHashString := range proTxHashStrings {
 		decodedProTxHash, err := hex.DecodeString(proTxHashString)
 		require.NoError(t, err)
-		proTxHashes[i] = decodedProTxHash
+		proTxHashes[i] = reverseBytes(decodedProTxHash)
 	}
 	privateKeyStrings := make([]string, 5)
 	privateKeyStrings[0] = "BT0evsfM4r7Cc5lvbrVjBZuo1FYjMeIFg/6u7gb35M4="
@@ -123,6 +132,34 @@ func TestRecoverThresholdPublicKeyFromPublicKeys5(t *testing.T) {
 	require.NoError(t, err)
 	expectedThresholdPublicKeyString := "FvssjZ2t8CeKdNz2mYa/zuJYEVbCGW9GGKucaXlTUJscgBeScgGf3StNkVauL9pQ"
 	encodedThresholdPublicKey := base64.StdEncoding.EncodeToString(thresholdPublicKey.Bytes())
+	require.Equal(t, expectedThresholdPublicKeyString, encodedThresholdPublicKey)
+}
+
+func TestRecoverThresholdPublicKeyFromPublicKeys6(t *testing.T) {
+	proTxHashStrings := make([]string, 3)
+	proTxHashStrings[0] = "0740ce79c4e016fe5bc9b5438d1cab95bb3222352322cfb5fcd8048b9c6568cb"
+	proTxHashStrings[1] = "007456fb4969a55aef48c6638ccb423dbd4dc5a871f373607f1f34d148dee0b0"
+	proTxHashStrings[2] = "f726a232e89395adf70cce664326eb9e7bfcc1de77e0e7ea3b65e6765cdd685c"
+	proTxHashes := make([][]byte, 3)
+	for i, proTxHashString := range proTxHashStrings {
+		decodedProTxHash, err := hex.DecodeString(proTxHashString)
+		require.NoError(t, err)
+		proTxHashes[i] = decodedProTxHash
+	}
+	publicKeyStrings := make([]string, 3)
+	publicKeyStrings[0] = "0576000a5c7787d9ff04c38ab28ed80915f629186dca1fc4bbdde323bcd272d1bc6790adb198968ce575821d8e17f3cb"
+	publicKeyStrings[1] = "0de93b6fc9cd50d0f8410ab967581adfb39f857ebe5c1155e84cdca9f048d55580373bb4afe8416129754f364b72b307"
+	publicKeyStrings[2] = "94f04de48efbf01a4f356403043524bb4cde869daf6511bb9e7e0ce91d032cacaf00f624d18b15f67e01a5c23f530766"
+	publicKeys := make([]crypto.PubKey, 3)
+	for i, publicKeyString := range publicKeyStrings {
+		decodedPublicKeyBytes, err := hex.DecodeString(publicKeyString)
+		require.NoError(t, err)
+		publicKeys[i] = bls12381.PubKey(decodedPublicKeyBytes)
+	}
+	thresholdPublicKey, err := bls12381.RecoverThresholdPublicKeyFromPublicKeys(publicKeys, proTxHashes)
+	require.NoError(t, err)
+	expectedThresholdPublicKeyString := "13330b5a849c8ac388c1b4643a5faca0125c6d43f0433478cea4c331096839aea479f73eebf829b73ea4abfa3a067ece"
+	encodedThresholdPublicKey := hex.EncodeToString(thresholdPublicKey.Bytes())
 	require.Equal(t, expectedThresholdPublicKeyString, encodedThresholdPublicKey)
 }
 

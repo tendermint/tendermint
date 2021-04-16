@@ -148,7 +148,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 
 		pubKey, err := pv.GetPubKey(crypto.QuorumHash{})
 		if err != nil {
-			return fmt.Errorf("can't get pubkey: %w", err)
+			return fmt.Errorf("can't get pubkey in testnet files: %w", err)
 		}
 		genVals[i] = types.GenesisValidator{
 			Address: pubKey.Address(),

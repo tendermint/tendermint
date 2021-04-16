@@ -106,7 +106,7 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 			ValidatorSet: conflictingVals,
 		},
 		CommonHeight:        4,
-		TotalVotingPower:    20,
+		TotalVotingPower:    200,
 		ByzantineValidators: commonVals.Validators,
 		Timestamp:           defaultEvidenceTime,
 	}

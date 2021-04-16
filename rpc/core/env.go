@@ -82,7 +82,6 @@ type Environment struct {
 
 	// objects
 	ProTxHash        crypto.ProTxHash
-	PubKey           crypto.PubKey
 	GenDoc           *types.GenesisDoc // cache the genesis structure
 	TxIndexer        txindex.TxIndexer
 	BlockIndexer     indexer.BlockIndexer

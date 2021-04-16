@@ -19,7 +19,7 @@ import (
 // InitFilesCmd initialises a fresh Tendermint Core instance.
 var InitFilesCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize Tendermint",
+	Short: "Initialize Tenderdash",
 	RunE:  initFiles,
 }
 
@@ -58,16 +58,19 @@ func initFilesWithConfig(config *cfg.Config) error {
 	if tmos.FileExists(genFile) {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
+		pubKey, err := pv.GetPubKey(crypto.QuorumHash{})
+		if err != nil {
+			return fmt.Errorf("can't get pubkey in init files with config: %w", err)
+		}
+
 		genDoc := types.GenesisDoc{
 			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
 			GenesisTime:     tmtime.Now(),
 			ConsensusParams: types.DefaultConsensusParams(),
+			ThresholdPublicKey: pubKey,
+			QuorumHash: crypto.RandQuorumHash(),
 		}
 
-		pubKey, err := pv.GetPubKey(crypto.QuorumHash{})
-		if err != nil {
-			return fmt.Errorf("can't get pubkey: %w", err)
-		}
 		proTxHash, err := pv.GetProTxHash()
 		if err != nil {
 			return fmt.Errorf("can't get proTxHash: %w", err)

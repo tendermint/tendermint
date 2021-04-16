@@ -66,8 +66,6 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 		},
 		ValidatorInfo: ctypes.ValidatorInfo{
 			ProTxHash:   env.ProTxHash,
-			Address:     env.PubKey.Address(),
-			PubKey:      env.PubKey,
 			VotingPower: votingPower,
 		},
 	}

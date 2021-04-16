@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"io/ioutil"
 	"runtime/debug"
 	"time"
@@ -49,6 +50,7 @@ type GenesisDoc struct {
 	ConsensusParams              *tmproto.ConsensusParams `json:"consensus_params,omitempty"`
 	Validators                   []GenesisValidator       `json:"validators,omitempty"`
 	ThresholdPublicKey           crypto.PubKey            `json:"threshold_public_key"`
+	QuorumType                   btcjson.LLMQType         `json:"quorum_type"`
 	QuorumHash                   crypto.QuorumHash        `json:"quorum_hash"`
 	AppHash                      tmbytes.HexBytes         `json:"app_hash"`
 	AppState                     json.RawMessage          `json:"app_state,omitempty"`
@@ -69,7 +71,7 @@ func (genDoc *GenesisDoc) ValidatorHash() []byte {
 	for i, v := range genDoc.Validators {
 		vals[i] = NewValidatorDefaultVotingPower(v.PubKey, v.ProTxHash)
 	}
-	vset := NewValidatorSet(vals, genDoc.ThresholdPublicKey, genDoc.QuorumHash)
+	vset := NewValidatorSet(vals, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash)
 	return vset.Hash()
 }
 
@@ -118,14 +120,15 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 	}
 
 	if genDoc.Validators != nil && genDoc.ThresholdPublicKey == nil {
-		return fmt.Errorf("the threshold public key must be set if there are validators")
+		return fmt.Errorf("the threshold public key must be set if there are validators (%d Validator(s))",
+			len(genDoc.Validators))
 	}
 	if genDoc.Validators != nil && len(genDoc.ThresholdPublicKey.Bytes()) != bls12381.PubKeySize {
 		return fmt.Errorf("the threshold public key must be 48 bytes for BLS")
 	}
 	if genDoc.Validators != nil && len(genDoc.QuorumHash.Bytes()) != crypto.DefaultHashSize {
 		debug.PrintStack()
-		return fmt.Errorf("the quorum hash must be 32 bytes long")
+		return fmt.Errorf("the quorum hash must be 32 bytes long (%d Validator(s))", len(genDoc.Validators))
 	}
 
 	if genDoc.GenesisTime.IsZero() {

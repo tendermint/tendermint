@@ -2,6 +2,7 @@ package crypto
 
 import (
 	bytes2 "bytes"
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/bytes"
@@ -50,6 +51,10 @@ func RandQuorumHash() QuorumHash {
 	return QuorumHash(CRandBytes(ProTxHashSize))
 }
 
+func SmallQuorumType() btcjson.LLMQType {
+	return btcjson.LLMQType_5_60
+}
+
 type SortProTxHash []ProTxHash
 
 func (sptxh SortProTxHash) Len() int {
@@ -68,11 +73,13 @@ type PubKey interface {
 	Address() Address
 	Bytes() []byte
 	VerifySignature(msg []byte, sig []byte) bool
+	VerifySignatureDigest(hash []byte, sig []byte) bool
 	AggregateSignatures(sigSharesData [][]byte, messages [][]byte) ([]byte, error)
 	VerifyAggregateSignature(msgs [][]byte, sig []byte) bool
 	Equals(PubKey) bool
 	Type() string
 	TypeValue() KeyType
+	String() string
 }
 
 type PrivKey interface {

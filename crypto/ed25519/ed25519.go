@@ -158,6 +158,10 @@ func (pubKey PubKey) VerifyAggregateSignature(messages [][]byte, sig []byte) boo
 	return false
 }
 
+func (pubKey PubKey) VerifySignatureDigest(hash []byte, sig []byte) bool {
+	return false
+}
+
 func (pubKey PubKey) VerifySignature(msg []byte, sig []byte) bool {
 	// make sure we use the same algorithm to sign
 	if len(sig) != SignatureSize {

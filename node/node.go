@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"net"
 	"net/http"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
@@ -296,7 +297,7 @@ func doHandshake(
 	return nil
 }
 
-func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusLogger log.Logger) {
+func logNodeStartupInfo(state sm.State, proTxHash crypto.ProTxHash, logger, consensusLogger log.Logger) {
 	// Log the version info.
 	logger.Info("Version info",
 		"software", version.TMCoreSemVer,
@@ -312,21 +313,20 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 		)
 	}
 
-	addr := pubKey.Address()
 	// Log whether this node is a validator or an observer
-	if state.Validators.HasAddress(addr) {
-		consensusLogger.Info("This node is a validator", "addr", addr, "pubKey", pubKey)
+	if state.Validators.HasProTxHash(proTxHash) {
+		consensusLogger.Info("This node is a validator", "proTxHash", proTxHash)
 	} else {
-		consensusLogger.Info("This node is not a validator", "addr", addr, "pubKey", pubKey)
+		consensusLogger.Info("This node is not a validator", "proTxHash", proTxHash)
 	}
 }
 
-func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
+func onlyValidatorIsUs(state sm.State, proTxHash types.ProTxHash) bool {
 	if state.Validators.Size() > 1 {
 		return false
 	}
-	addr, _ := state.Validators.GetByIndex(0)
-	return bytes.Equal(pubKey.Address(), addr)
+	validatorProTxHash, _ := state.Validators.GetByIndex(0)
+	return bytes.Equal(validatorProTxHash, proTxHash)
 }
 
 func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
@@ -671,31 +671,32 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	if config.PrivValidatorCoreLocalPort != 0 {
-		username := config.DashClientRPC.Username
-		password := config.DashClientRPC.Password
-		// If a local port is provided for Dash Core rpc into the service to sign.
-		privValidator, err = createAndStartPrivValidatorRPCClient(config.PrivValidatorCoreLocalPort, genDoc.ChainID, genDoc.QuorumHash, username, password, logger)
-		if err != nil {
-			return nil, fmt.Errorf("error with private validator socket client: %w", err)
-		}
-	} else if config.PrivValidatorListenAddr != "" {
-		// If an address is provided, listen on the socket for a connection from an
-		// external signing process.
-		// FIXME: we should start services inside OnStart
-		privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, genDoc.ChainID, genDoc.QuorumHash, logger)
-		if err != nil {
-			return nil, fmt.Errorf("error with private validator socket client: %w", err)
-		}
-	}
+	useDashCoreSigning := false
+	var weAreOnlyValidator bool
+	var proTxHash crypto.ProTxHash
+	if config.PrivValidatorCoreRPCHost != "" {
+		useDashCoreSigning = true
+		weAreOnlyValidator = false
+	} else {
+		if config.PrivValidatorListenAddr != "" {
+			// If an address is provided, listen on the socket for a connection from an
+			// external signing process.
+			// FIXME: we should start services inside OnStart
+			privValidator, err = createAndStartPrivValidatorSocketClient(config.PrivValidatorListenAddr, genDoc.ChainID, genDoc.QuorumHash, logger)
+			if err != nil {
+				return nil, fmt.Errorf("error with private validator socket client: %w", err)
+			}
 
-	pubKey, err := privValidator.GetPubKey(genDoc.QuorumHash)
-	if err != nil {
-		return nil, fmt.Errorf("can't get pubkey: %w", err)
+		}
+		proTxHash, err = privValidator.GetProTxHash()
+		if err != nil {
+			return nil, fmt.Errorf("can't get proTxHash: %w", err)
+		}
+		weAreOnlyValidator = onlyValidatorIsUs(state, proTxHash)
 	}
 
 	// Determine whether we should attempt state sync.
-	stateSync := config.StateSync.Enable && !onlyValidatorIsUs(state, pubKey)
+	stateSync := config.StateSync.Enable && !weAreOnlyValidator
 	if stateSync && state.LastBlockHeight > 0 {
 		logger.Info("Found local state with non-zero height, skipping state sync")
 		stateSync = false
@@ -718,11 +719,32 @@ func NewNode(config *cfg.Config,
 		}
 	}
 
+	// This needs to be done after init chain so we can get the first quorum hash
+	if useDashCoreSigning {
+		logger.Info("Initializing Dash Core Signing with quorum hash %s", state.Validators.QuorumHash.String())
+		username := config.BaseConfig.PrivValidatorCoreRPCUsername
+		password := config.BaseConfig.PrivValidatorCoreRPCPassword
+		llmqType := btcjson.LLMQType(config.LLMQTypeUsed)
+		if llmqType == 0 {
+			llmqType = btcjson.LLMQType_100_67
+		}
+		// If a local port is provided for Dash Core rpc into the service to sign.
+		privValidator, err = createAndStartPrivValidatorRPCClient(config.PrivValidatorCoreRPCHost, genDoc.ChainID, state.Validators.QuorumHash, btcjson.LLMQType(config.LLMQTypeUsed), username, password, logger)
+		if err != nil {
+			return nil, fmt.Errorf("error with private validator socket client: %w", err)
+		}
+		proTxHash, err = privValidator.GetProTxHash()
+		if err != nil {
+			return nil, fmt.Errorf("can't get proTxHash using dash core signing: %w", err)
+		}
+		weAreOnlyValidator = onlyValidatorIsUs(state, proTxHash)
+	}
+
 	// Determine whether we should do fast sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
-	fastSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
+	fastSync := config.FastSyncMode && !weAreOnlyValidator
 
-	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
+	logNodeStartupInfo(state, proTxHash, logger, consensusLogger)
 
 	csMetrics, p2pMetrics, memplMetrics, smMetrics := metricsProvider(genDoc.ChainID)
 
@@ -885,6 +907,7 @@ func (n *Node) OnStart() error {
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
 	if n.config.RPC.ListenAddress != "" {
+		n.Logger.Info("Starting RPC Server", "listen Address", n.config.RPC.ListenAddress)
 		listeners, err := n.startRPC()
 		if err != nil {
 			return err
@@ -999,11 +1022,7 @@ func (n *Node) OnStop() {
 func (n *Node) ConfigureRPC() error {
 	proTxHash, err := n.privValidator.GetProTxHash()
 	if err != nil {
-		return fmt.Errorf("can't get proTxHash: %w", err)
-	}
-	pubKey, err := n.privValidator.GetPubKey(n.genesisDoc.QuorumHash)
-	if err != nil {
-		return fmt.Errorf("can't get pubkey: %w", err)
+		return fmt.Errorf("can't get proTxHash for rpc: %w", err)
 	}
 	rpccore.SetEnvironment(&rpccore.Environment{
 		ProxyAppQuery:   n.proxyApp.Query(),
@@ -1017,7 +1036,6 @@ func (n *Node) ConfigureRPC() error {
 		P2PTransport:   n,
 
 		ProTxHash:        proTxHash,
-		PubKey:           pubKey,
 		GenDoc:           n.genesisDoc,
 		TxIndexer:        n.txIndexer,
 		BlockIndexer:     n.blockIndexer,
@@ -1400,7 +1418,7 @@ func createAndStartPrivValidatorSocketClient(
 	// try to get a pubkey from private validate first time
 	_, err = pvsc.GetPubKey(initialQuorumHash)
 	if err != nil {
-		return nil, fmt.Errorf("can't get pubkey: %w", err)
+		return nil, fmt.Errorf("can't get pubkey when starting private validator socket client: %w", err)
 	}
 
 	const (
@@ -1413,15 +1431,16 @@ func createAndStartPrivValidatorSocketClient(
 }
 
 func createAndStartPrivValidatorRPCClient(
-	port uint16,
+	host string,
 	chainID string,
 	initialQuorumHash crypto.QuorumHash,
+	defaultQuorumType btcjson.LLMQType,
 	username string,
 	password string,
 	logger log.Logger,
 ) (types.PrivValidator, error) {
 
-	pvsc, err := privval.NewDashCoreSignerClient(port, username, password, chainID)
+	pvsc, err := privval.NewDashCoreSignerClient(host, username, password, defaultQuorumType, chainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
@@ -1429,7 +1448,7 @@ func createAndStartPrivValidatorRPCClient(
 	// try to get a pubkey from private validate first time
 	_, err = pvsc.GetPubKey(initialQuorumHash)
 	if err != nil {
-		return nil, fmt.Errorf("can't get pubkey: %w", err)
+		return nil, fmt.Errorf("can't get pubkey when starting private validator rpc client: %w", err)
 	}
 
 	//const (

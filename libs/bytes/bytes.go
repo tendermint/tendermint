@@ -52,6 +52,15 @@ func (bz HexBytes) String() string {
 	return strings.ToUpper(hex.EncodeToString(bz))
 }
 
+func (bz HexBytes) ReversedBytes() HexBytes {
+	s := make([]byte, len(bz))
+	copy(s, bz)
+	for i,j := 0, len(s) - 1; i<j; i,j = i+1, j-1 {
+		s[i],s[j] = s[j], s[i]
+	}
+	return s
+}
+
 // Format writes either address of 0th element in a slice in base 16 notation,
 // with leading 0x (%p), or casts HexBytes to bytes and writes as hexadecimal
 // string to s.

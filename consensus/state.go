@@ -2,8 +2,10 @@ package consensus
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"io/ioutil"
 	"os"
 	"runtime/debug"
@@ -681,9 +683,6 @@ func (cs *State) updateToState(state sm.State) {
 	}
 
 	fmt.Printf("updating validators at height %v from %v to %v \n", height, cs.Validators, validators)
-	if height == 6 && bytes.Equal(cs.Validators.QuorumHash,validators.QuorumHash) {
-		fmt.Printf("this should not happen")
-	}
 	cs.Validators = validators
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
@@ -1860,10 +1859,21 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	p := proposal.ToProto()
 	// Verify signature
 	proposalBlockSignBytes := types.ProposalBlockSignBytes(cs.state.ChainID, p)
+
+	proposalBlockMessageHash := crypto.Sha256(proposalBlockSignBytes)
+
 	proposer := cs.Validators.GetProposer()
 
-	if !proposer.PubKey.VerifySignature(proposalBlockSignBytes, proposal.Signature) {
-		return fmt.Errorf("error proposer %X verifying proposal signature %X at height %d with key %X blockSignBytes %X",
+	proposalRequestId := types.ProposalRequestId(proposal)
+
+	signId := crypto.SignId(100, bls12381.ReverseBytes(cs.state.Validators.QuorumHash), bls12381.ReverseBytes(proposalRequestId), bls12381.ReverseBytes(proposalBlockMessageHash))
+
+	fmt.Printf("verifying request Id %s signId %s quorum hash %s proposalBlockSignBytes %s\n",
+		hex.EncodeToString(proposalRequestId), hex.EncodeToString(signId), hex.EncodeToString(cs.state.Validators.QuorumHash),
+		hex.EncodeToString(proposalBlockSignBytes))
+
+	if !proposer.PubKey.VerifySignatureDigest(signId, proposal.Signature) {
+		return fmt.Errorf("error proposer %X verifying proposal signature %X at height %d with key %X blockSignBytes %X\n",
 			proposer.ProTxHash, proposal.Signature, proposal.Height, proposer.PubKey.Bytes(), proposalBlockSignBytes)
 	}
 
@@ -2030,6 +2040,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 			// 2) not a bad peer? this can also err sometimes with "Unexpected step" OR
 			// 3) tmkms use with multiple validators connecting to a single tmkms instance
 			// 		(https://github.com/tendermint/tendermint/issues/3839).
+			fmt.Printf("failed attempting to add vote %v", err)
 			cs.Logger.Info("failed attempting to add vote", "err", err)
 			return added, ErrAddingVote
 		}
@@ -2261,6 +2272,7 @@ func (cs *State) signVote(
 	// fmt.Printf("##state signing vote %v\n", vote)
 
 	v := vote.ToProto()
+	fmt.Printf("validators for signing vote are %v\n", cs.state.Validators)
 	err := cs.privValidator.SignVote(cs.state.ChainID, cs.state.Validators.QuorumHash, v)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature

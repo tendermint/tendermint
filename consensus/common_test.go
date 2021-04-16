@@ -743,7 +743,7 @@ func updateConsensusNetAddNewValidators(css []*State, height int64, addValCount 
 	validatorProTxHashes = append(validatorProTxHashes, newValidatorProTxHashes...)
 	sort.Sort(crypto.SortProTxHash(validatorProTxHashes))
 	// now that we have the list of all the protxhashes we need to regenerate the keys and the threshold public key
-	privKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(validatorProTxHashes)
+	validatorProTxHashes, privKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(validatorProTxHashes)
 	// privKeys are returned in order
 	quorumHash := crypto.RandQuorumHash()
 	var privVal types.PrivValidator
@@ -842,7 +842,7 @@ func updateConsensusNetRemoveValidatorsWithProTxHashes(css []*State, height int6
 	validatorProTxHashes = newValidatorProTxHashes
 	sort.Sort(crypto.SortProTxHash(validatorProTxHashes))
 	// now that we have the list of all the protxhashes we need to regenerate the keys and the threshold public key
-	privKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(validatorProTxHashes)
+	validatorProTxHashes, privKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(validatorProTxHashes)
 	// privKeys are returned in order
 	quorumHash := crypto.RandQuorumHash()
 	var privVal types.PrivValidator

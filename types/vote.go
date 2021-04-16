@@ -2,9 +2,11 @@ package types
 
 import (
 	"bytes"
+	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
-
+	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -182,7 +184,59 @@ func (vote *Vote) String() string {
 	)
 }
 
-func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey, proTxHash crypto.ProTxHash) error {
+func VoteBlockRequestId(vote *Vote) []byte {
+	requestIdMessage := []byte("dpbvote")
+	heightByteArray := make([]byte, 8)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
+	roundByteArray := make([]byte, 4)
+	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
+
+	requestIdMessage = append(requestIdMessage, heightByteArray...)
+	requestIdMessage = append(requestIdMessage, roundByteArray...)
+
+	return crypto.Sha256(requestIdMessage)
+}
+
+func VoteBlockRequestIdProto(vote *tmproto.Vote) []byte {
+	requestIdMessage := []byte("dpbvote")
+	heightByteArray := make([]byte, 8)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
+	roundByteArray := make([]byte, 4)
+	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
+
+	requestIdMessage = append(requestIdMessage, heightByteArray...)
+	requestIdMessage = append(requestIdMessage, roundByteArray...)
+
+	return crypto.Sha256(requestIdMessage)
+}
+
+func VoteStateRequestId(vote *Vote) []byte {
+	requestIdMessage := []byte("dpsvote")
+	heightByteArray := make([]byte, 8)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
+	roundByteArray := make([]byte, 4)
+	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
+
+	requestIdMessage = append(requestIdMessage, heightByteArray...)
+	requestIdMessage = append(requestIdMessage, roundByteArray...)
+
+	return crypto.Sha256(requestIdMessage)
+}
+
+func VoteStateRequestIdProto(vote *tmproto.Vote) []byte {
+	requestIdMessage := []byte("dpsvote")
+	heightByteArray := make([]byte, 8)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(vote.Height))
+	roundByteArray := make([]byte, 4)
+	binary.LittleEndian.PutUint32(roundByteArray, uint32(vote.Round))
+
+	requestIdMessage = append(requestIdMessage, heightByteArray...)
+	requestIdMessage = append(requestIdMessage, roundByteArray...)
+
+	return crypto.Sha256(requestIdMessage)
+}
+
+func (vote *Vote) Verify(chainID string, quorumType btcjson.LLMQType, quorumHash []byte, pubKey crypto.PubKey, proTxHash crypto.ProTxHash) error {
 	if !bytes.Equal(proTxHash, vote.ValidatorProTxHash) {
 		return ErrVoteInvalidValidatorProTxHash
 	}
@@ -192,14 +246,30 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey, proTxHash crypto.
 	v := vote.ToProto()
 	voteBlockSignBytes := VoteBlockSignBytes(chainID, v)
 
-	if !pubKey.VerifySignature(voteBlockSignBytes, vote.BlockSignature) {
-		return ErrVoteInvalidBlockSignature
+	blockMessageHash := crypto.Sha256(voteBlockSignBytes)
+
+	blockRequestId := VoteBlockRequestId(vote)
+
+	signId := crypto.SignId(100, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
+
+	fmt.Printf("vote verify sign Id %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(signId), quorumType,
+		hex.EncodeToString(quorumHash), hex.EncodeToString(blockRequestId), hex.EncodeToString(blockMessageHash))
+
+	if !pubKey.VerifySignatureDigest(signId, vote.BlockSignature) {
+		return fmt.Errorf("%s proTxHash %s pubKey %v vote %v sign bytes %s block signature %s", ErrVoteInvalidBlockSignature.Error(),
+			proTxHash, pubKey, vote, hex.EncodeToString(voteBlockSignBytes), hex.EncodeToString(vote.BlockSignature))
 	}
 
 	// we must verify the stateID but only if the blockID isn't nil
 	if vote.BlockID.Hash != nil {
 		voteStateSignBytes := VoteStateSignBytes(chainID, v)
-		if !pubKey.VerifySignature(voteStateSignBytes, vote.StateSignature) {
+		stateMessageHash := crypto.Sha256(voteStateSignBytes)
+
+		stateRequestId := VoteStateRequestId(vote)
+
+		stateSignId := crypto.SignId(100, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
+
+		if !pubKey.VerifySignatureDigest(stateSignId, vote.StateSignature) {
 			return ErrVoteInvalidStateSignature
 		}
 	}

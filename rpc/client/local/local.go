@@ -50,6 +50,7 @@ type Local struct {
 // don't run in parallel, or try to simulate an entire network in
 // one process...
 func New(node *nm.Node) *Local {
+	node.Logger.Info("New local node")
 	if err := node.ConfigureRPC(); err != nil {
 		node.Logger.Error("Error configuring RPC", "err", err)
 	}

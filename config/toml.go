@@ -137,6 +137,19 @@ priv_validator_state_file = "{{ js .BaseConfig.PrivValidatorState }}"
 # connections from an external PrivValidator process
 priv_validator_laddr = "{{ .BaseConfig.PrivValidatorListenAddr }}"
 
+# Local Dash Core Host to connect to
+# If this is set, the node follows a Dash Core PrivValidator process
+priv_validator_core_rpc_host = "{{ .BaseConfig.PrivValidatorCoreRPCHost }}"
+
+# Local Dash Core RPC Username
+priv_validator_core_rpc_username = "{{ .BaseConfig.PrivValidatorCoreRPCUsername }}"
+
+# Local Dash Core RPC Password
+priv_validator_core_rpc_password = "{{ .BaseConfig.PrivValidatorCoreRPCPassword }}"
+
+# LLMQ Type used
+llmq_type_used = "{{ .BaseConfig.LLMQTypeUsed }}"
+
 # Path to the JSON file containing the private key to use for node authentication in the p2p protocol
 node_key_file = "{{ js .BaseConfig.NodeKey }}"
 

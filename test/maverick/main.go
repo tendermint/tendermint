@@ -212,11 +212,11 @@ func initFilesWithConfig(config *cfg.Config) error {
 		}
 		pubKey, err := pv.GetPubKey(genDoc.QuorumHash)
 		if err != nil {
-			return fmt.Errorf("can't get pubkey: %w", err)
+			return fmt.Errorf("can't get pubkey maverick init files with config: %w", err)
 		}
 		proTxHash, err := pv.GetProTxHash()
 		if err != nil {
-			return fmt.Errorf("can't get proTxHash: %w", err)
+			return fmt.Errorf("can't get proTxHash maverick init files with config: %w", err)
 		}
 		genDoc.Validators = []types.GenesisValidator{{
 			Address:   pubKey.Address(),

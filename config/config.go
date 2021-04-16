@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -32,7 +33,7 @@ const (
 // config/toml.go
 // NOTE: libs/cli must know to look in the config dir!
 var (
-	DefaultTendermintDir = ".tendermint"
+	DefaultTendermintDir = ".tenderdash"
 	defaultConfigDir     = "config"
 	defaultDataDir       = "data"
 
@@ -61,7 +62,6 @@ type Config struct {
 
 	// Options for services
 	RPC             *RPCConfig             `mapstructure:"rpc"`
-	DashClientRPC   *DashClientRPCConfig   `mapstructure:"dash_client_rpc"`
 	P2P             *P2PConfig             `mapstructure:"p2p"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
 	StateSync       *StateSyncConfig       `mapstructure:"statesync"`
@@ -76,7 +76,6 @@ func DefaultConfig() *Config {
 	return &Config{
 		BaseConfig:      DefaultBaseConfig(),
 		RPC:             DefaultRPCConfig(),
-		DashClientRPC:   DefaultDashClientRPCConfig(),
 		P2P:             DefaultP2PConfig(),
 		Mempool:         DefaultMempoolConfig(),
 		StateSync:       DefaultStateSyncConfig(),
@@ -92,7 +91,6 @@ func TestConfig() *Config {
 	return &Config{
 		BaseConfig:      TestBaseConfig(),
 		RPC:             TestRPCConfig(),
-		DashClientRPC:   TestDashClientRPCConfig(),
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
 		StateSync:       TestStateSyncConfig(),
@@ -107,7 +105,6 @@ func TestConfig() *Config {
 func (cfg *Config) SetRoot(root string) *Config {
 	cfg.BaseConfig.RootDir = root
 	cfg.RPC.RootDir = root
-	cfg.DashClientRPC.RootDir = root
 	cfg.P2P.RootDir = root
 	cfg.Mempool.RootDir = root
 	cfg.Consensus.RootDir = root
@@ -122,9 +119,6 @@ func (cfg *Config) ValidateBasic() error {
 	}
 	if err := cfg.RPC.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [rpc] section: %w", err)
-	}
-	if err := cfg.DashClientRPC.ValidateBasic(); err != nil {
-		return fmt.Errorf("error in [DashClientRPC] section: %w", err)
 	}
 	if err := cfg.P2P.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [p2p] section: %w", err)
@@ -216,7 +210,14 @@ type BaseConfig struct { //nolint: maligned
 
 	// RPC port for Tendermint to query for
 	// an external PrivValidator process
-	PrivValidatorCoreLocalPort uint16 `mapstructure:"priv_validator_core_local_port"`
+	PrivValidatorCoreRPCHost string `mapstructure:"priv_validator_core_rpc_host"`
+
+	PrivValidatorCoreRPCUsername string `mapstructure:"priv_validator_core_rpc_username"`
+
+	PrivValidatorCoreRPCPassword string `mapstructure:"priv_validator_core_rpc_password"`
+
+	// The LLMQ type that tenderdash should use when making queries to core
+	LLMQTypeUsed int `mapstructure:"llmq_type_used"`
 
 	// A JSON file containing the private key to use for p2p authenticated encryption
 	NodeKey string `mapstructure:"node_key_file"`
@@ -232,19 +233,23 @@ type BaseConfig struct { //nolint: maligned
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
-		Genesis:            defaultGenesisJSONPath,
-		PrivValidatorKey:   defaultPrivValKeyPath,
-		PrivValidatorState: defaultPrivValStatePath,
-		NodeKey:            defaultNodeKeyPath,
-		Moniker:            defaultMoniker,
-		ProxyApp:           "tcp://127.0.0.1:26658",
-		ABCI:               "socket",
-		LogLevel:           DefaultLogLevel,
-		LogFormat:          LogFormatPlain,
-		FastSyncMode:       true,
-		FilterPeers:        false,
-		DBBackend:          "goleveldb",
-		DBPath:             "data",
+		Genesis:                  defaultGenesisJSONPath,
+		PrivValidatorKey:         defaultPrivValKeyPath,
+		PrivValidatorState:       defaultPrivValStatePath,
+		PrivValidatorCoreRPCHost: "127.0.0.1:19998",
+		PrivValidatorCoreRPCUsername: "dashrpc",
+		PrivValidatorCoreRPCPassword: "rpcpassword",
+		LLMQTypeUsed:             int(btcjson.LLMQType_100_67),
+		NodeKey:                  defaultNodeKeyPath,
+		Moniker:                  defaultMoniker,
+		ProxyApp:                 "tcp://127.0.0.1:26658",
+		ABCI:                     "socket",
+		LogLevel:                 DefaultLogLevel,
+		LogFormat:                LogFormatPlain,
+		FastSyncMode:             true,
+		FilterPeers:              false,
+		DBBackend:                "goleveldb",
+		DBPath:                   "data",
 	}
 }
 
@@ -471,45 +476,6 @@ func (cfg RPCConfig) CertFile() string {
 
 func (cfg RPCConfig) IsTLSEnabled() bool {
 	return cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""
-}
-
-//-----------------------------------------------------------------------------
-// DashClientRPCConfig
-
-// DashClientRPCConfig defines the configuration options for the Tendermint peer-to-peer networking layer
-type DashClientRPCConfig struct {
-	RootDir string `mapstructure:"home"`
-
-	Port uint16 `mapstructure:"port"`
-
-	// TCP or UNIX socket address for the RPC server to listen on
-	Username string `mapstructure:"username"`
-
-	Password string `mapstructure:"password"`
-}
-
-// DefaultRPCConfig returns a default configuration for the RPC server
-func DefaultDashClientRPCConfig() *DashClientRPCConfig {
-	return &DashClientRPCConfig{
-		Port:     9998,
-		Username: "rpc",
-		Password: "password",
-	}
-}
-
-// TestDashClientRPCConfig returns a configuration for testing the RPC server
-func TestDashClientRPCConfig() *DashClientRPCConfig {
-	cfg := DefaultDashClientRPCConfig()
-	cfg.Port = 19998
-	cfg.Username = "rpc"
-	cfg.Password = "password"
-	return cfg
-}
-
-// ValidateBasic performs basic validation (checking param bounds, etc.) and
-// returns an error if any check fails.
-func (cfg *DashClientRPCConfig) ValidateBasic() error {
-	return nil
 }
 
 //-----------------------------------------------------------------------------

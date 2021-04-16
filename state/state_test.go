@@ -433,7 +433,7 @@ func TestProposerPriorityDoesNotGetResetToZero(t *testing.T) {
 
 	proTxHashes := bls12381.CreateProTxHashes(2)
 
-	privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	proTxHashes, privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
 
 	val1VotingPower := types.DefaultDashVotingPower
 	val1ProTxHash := proTxHashes[0]
@@ -561,7 +561,7 @@ func TestProposerPriorityProposerAlternates(t *testing.T) {
 
 	proTxHashes := bls12381.CreateProTxHashes(2)
 
-	privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+	proTxHashes, privateKeys, thresholdPublicKey := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
 
 	val1VotingPower := types.DefaultDashVotingPower
 	val1ProTxHash := proTxHashes[0]
@@ -839,7 +839,7 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		addedProTxHash := crypto.RandProTxHash()
 		proTxHashes := append(proTxHashes, addedProTxHash)
-		privateKeys3, thresholdPublicKey3 := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
+		proTxHashes, privateKeys3, thresholdPublicKey3 := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes)
 		abciValidatorUpdates := make([]abci.ValidatorUpdate, len(proTxHashes))
 		for j, proTxHash := range proTxHashes {
 			abciValidatorUpdates[j] = abci.UpdateValidator(proTxHash, privateKeys3[j].PubKey().Bytes(), types.DefaultDashVotingPower)
@@ -869,7 +869,7 @@ func TestFourAddFourMinusOneGenesisValidators(t *testing.T) {
 	require.Equal(t, 18, len(state.NextValidators.Validators))
 
 	// remove one genesis validator:
-	privateKeys4, thresholdPublicKey4 := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes[1:])
+	proTxHashes, privateKeys4, thresholdPublicKey4 := bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes[1:])
 	var abciValidatorUpdates []abci.ValidatorUpdate
 	updatedPubKey, err := cryptoenc.PubKeyToProto(originalValidatorSet.Validators[0].PubKey)
 	require.NoError(t, err)

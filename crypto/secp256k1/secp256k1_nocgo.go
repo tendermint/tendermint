@@ -39,6 +39,10 @@ func (pubKey PubKey) VerifyAggregateSignature(messages [][]byte, sig []byte) boo
 	return false
 }
 
+func (pubKey PubKey) VerifySignatureDigest(hash []byte, sig []byte) bool {
+	return false
+}
+
 // VerifySignature verifies a signature of the form R || S.
 // It rejects signatures which are not in lower-S form.
 func (pubKey PubKey) VerifySignature(msg []byte, sigStr []byte) bool {

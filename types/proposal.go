@@ -1,8 +1,10 @@
 package types
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/tendermint/tendermint/crypto"
 	"math"
 	"time"
 
@@ -121,6 +123,32 @@ func ProposalBlockSignBytes(chainID string, p *tmproto.Proposal) []byte {
 	}
 
 	return bz
+}
+
+func ProposalRequestId(p *Proposal) []byte {
+	requestIdMessage := []byte("dpproposal")
+	heightByteArray := make([]byte, 8)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(p.Height))
+	roundByteArray := make([]byte, 4)
+	binary.LittleEndian.PutUint32(roundByteArray, uint32(p.Round))
+
+	requestIdMessage = append(requestIdMessage, heightByteArray...)
+	requestIdMessage = append(requestIdMessage, roundByteArray...)
+
+	return crypto.Sha256(requestIdMessage)
+}
+
+func ProposalRequestIdProto(p *tmproto.Proposal) []byte {
+	requestIdMessage := []byte("dpproposal")
+	heightByteArray := make([]byte, 8)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(p.Height))
+	roundByteArray := make([]byte, 4)
+	binary.LittleEndian.PutUint32(roundByteArray, uint32(p.Round))
+
+	requestIdMessage = append(requestIdMessage, heightByteArray...)
+	requestIdMessage = append(requestIdMessage, roundByteArray...)
+
+	return crypto.Sha256(requestIdMessage)
 }
 
 // ToProto converts Proposal to protobuf

@@ -161,7 +161,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 		}
 	}
 
-	privateKeys, thresholdPublicKey :=
+	proTxHashes, privateKeys, thresholdPublicKey :=
 		bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThresholdUsingSeedSource(proTxHashes, randomSeed)
 
 	quorumHash := quorumHashGen.Generate()
@@ -343,7 +343,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 
 		sort.Sort(crypto.SortProTxHash(proTxHashes))
 
-		privateKeys, thresholdPublicKey :=
+		proTxHashes, privateKeys, thresholdPublicKey :=
 			bls12381.CreatePrivLLMQDataOnProTxHashesDefaultThresholdUsingSeedSource(proTxHashes, randomSeed+int64(height))
 
 		quorumHash := quorumHashGen.Generate()

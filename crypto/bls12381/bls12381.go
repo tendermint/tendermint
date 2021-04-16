@@ -6,14 +6,13 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
-	"io"
-	"math/rand"
-	"sort"
-
 	bls "github.com/dashpay/bls-signatures/go-bindings"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmjson "github.com/tendermint/tendermint/libs/json"
+	"io"
+	"math/rand"
+	"sort"
 )
 
 //-------------------------------------
@@ -143,6 +142,23 @@ func GenPrivKeyFromSecret(secret []byte) PrivKey {
 	return PrivKey(privKey.Serialize())
 }
 
+func ReverseBytes(bz []byte) []byte {
+	s := make([]byte, len(bz))
+	copy(s, bz)
+	for i,j := 0, len(s) - 1; i<j; i,j = i+1, j-1 {
+		s[i],s[j] = s[j], s[i]
+	}
+	return s
+}
+
+func ReverseProTxHashes(proTxHashes []crypto.ProTxHash) []crypto.ProTxHash {
+	reversedProTxHashes := make([]crypto.ProTxHash,len(proTxHashes))
+	for i := 0; i < len(proTxHashes); i++ {
+		reversedProTxHashes[i] = ReverseBytes(proTxHashes[i])
+	}
+	return reversedProTxHashes
+}
+
 func CreatePrivLLMQDataDefaultThreshold(members int) ([]crypto.PrivKey, []crypto.ProTxHash, crypto.PubKey) {
 	return CreatePrivLLMQData(members, members*2/3+1)
 }
@@ -157,25 +173,26 @@ func CreateProTxHashes(members int) []crypto.ProTxHash {
 
 func CreatePrivLLMQData(members int, threshold int) ([]crypto.PrivKey, []crypto.ProTxHash, crypto.PubKey) {
 	proTxHashes := CreateProTxHashes(members)
-	skShares, thresholdPublicKey := CreatePrivLLMQDataOnProTxHashes(proTxHashes, threshold)
-	return skShares, proTxHashes, thresholdPublicKey
+	orderedProTxHashes, skShares, thresholdPublicKey := CreatePrivLLMQDataOnProTxHashes(proTxHashes, threshold)
+	return skShares, orderedProTxHashes, thresholdPublicKey
 }
 
-func CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes []crypto.ProTxHash) ([]crypto.PrivKey, crypto.PubKey) {
+func CreatePrivLLMQDataOnProTxHashesDefaultThreshold(proTxHashes []crypto.ProTxHash) ([]crypto.ProTxHash,
+	[]crypto.PrivKey, crypto.PubKey) {
 	return CreatePrivLLMQDataOnProTxHashes(proTxHashes, len(proTxHashes)*2/3+1)
 }
 
 func CreatePrivLLMQDataOnProTxHashesDefaultThresholdUsingSeedSource(proTxHashes []crypto.ProTxHash,
-	seedSource int64) ([]crypto.PrivKey, crypto.PubKey) {
+	seedSource int64) ([]crypto.ProTxHash, []crypto.PrivKey, crypto.PubKey) {
 	return CreatePrivLLMQDataOnProTxHashesUsingSeed(proTxHashes, len(proTxHashes)*2/3+1, seedSource)
 }
 
-func CreatePrivLLMQDataOnProTxHashes(proTxHashes []crypto.ProTxHash, threshold int) ([]crypto.PrivKey, crypto.PubKey) {
+func CreatePrivLLMQDataOnProTxHashes(proTxHashes []crypto.ProTxHash, threshold int) ([]crypto.ProTxHash, []crypto.PrivKey, crypto.PubKey) {
 	return CreatePrivLLMQDataOnProTxHashesUsingSeed(proTxHashes, threshold, 0)
 }
 
 func CreatePrivLLMQDataOnProTxHashesUsingSeed(proTxHashes []crypto.ProTxHash, threshold int,
-	seedSource int64) ([]crypto.PrivKey, crypto.PubKey) {
+	seedSource int64) ([]crypto.ProTxHash, []crypto.PrivKey, crypto.PubKey) {
 	members := len(proTxHashes)
 	if members < threshold {
 		panic("members must be bigger than threshold")
@@ -205,11 +222,13 @@ func CreatePrivLLMQDataOnProTxHashesUsingSeed(proTxHashes []crypto.ProTxHash, th
 			panic(err)
 		}
 		privKey := GenPrivKeyFromSecret(createdSeed)
-		return []crypto.PrivKey{privKey}, privKey.PubKey()
+		return proTxHashes, []crypto.PrivKey{privKey}, privKey.PubKey()
 	}
 
+	reversedProTxHashes := ReverseProTxHashes(proTxHashes)
+
 	// sorting makes this easier
-	sort.Sort(crypto.SortProTxHash(proTxHashes))
+	sort.Sort(crypto.SortProTxHash(reversedProTxHashes))
 
 	ids := make([]bls.Hash, members)
 	secrets := make([]*bls.PrivateKey, threshold)
@@ -232,7 +251,7 @@ func CreatePrivLLMQDataOnProTxHashesUsingSeed(proTxHashes []crypto.ProTxHash, th
 
 	for i := 0; i < members; i++ {
 		var hash bls.Hash
-		copy(hash[:], proTxHashes[i].Bytes())
+		copy(hash[:], reversedProTxHashes[i].Bytes())
 		ids[i] = hash
 		skShare, err := bls.PrivateKeyShare(secrets, ids[i])
 		if err != nil {
@@ -240,7 +259,7 @@ func CreatePrivLLMQDataOnProTxHashesUsingSeed(proTxHashes []crypto.ProTxHash, th
 		}
 		skShares[i] = PrivKey(skShare.Serialize())
 		testPubKey[i] = skShares[i].PubKey()
-		testProTxHashes[i] = proTxHashes[i].Bytes()
+		testProTxHashes[i] = ReverseBytes(reversedProTxHashes[i].Bytes())
 	}
 
 	// as this is not used in production, we can add this test
@@ -251,7 +270,7 @@ func CreatePrivLLMQDataOnProTxHashesUsingSeed(proTxHashes []crypto.ProTxHash, th
 	if !testKey.Equals(PubKey(secrets[0].PublicKey().Serialize())) {
 		panic("these should be equal")
 	}
-	return skShares, PubKey(secrets[0].PublicKey().Serialize())
+	return ReverseProTxHashes(reversedProTxHashes), skShares, PubKey(secrets[0].PublicKey().Serialize())
 }
 
 func RecoverThresholdPublicKeyFromPublicKeys(publicKeys []crypto.PubKey, blsIds [][]byte) (crypto.PubKey, error) {
@@ -279,7 +298,7 @@ func RecoverThresholdPublicKeyFromPublicKeys(publicKeys []crypto.PubKey, blsIds 
 			return nil, fmt.Errorf("blsID incorrect size in public key recovery, expected 32 bytes (got %d)", len(blsID))
 		}
 		var hash bls.Hash
-		copy(hash[:], blsID)
+		copy(hash[:], ReverseBytes(blsID))
 		hashes[i] = hash
 	}
 
@@ -315,7 +334,7 @@ func RecoverThresholdSignatureFromShares(sigSharesData [][]byte, blsIds [][]byte
 			return nil, fmt.Errorf("blsID incorrect size in signature recovery, expected 32 bytes (got %d)", len(blsID))
 		}
 		var hash bls.Hash
-		copy(hash[:], blsID)
+		copy(hash[:], ReverseBytes(blsID))
 		hashes[i] = hash
 	}
 
@@ -367,6 +386,40 @@ func (pubKey PubKey) AggregateSignatures(sigSharesData [][]byte, messages [][]by
 
 	aggregatedSignature, error := bls.SignatureAggregate(sigShares)
 	return aggregatedSignature.Serialize(), error
+}
+
+func (pubKey PubKey) VerifySignatureDigest(hash []byte, sig []byte) bool {
+	// make sure we use the same algorithm to sign
+	if len(sig) == 0 {
+		//  fmt.Printf("bls verifying error (signature empty) from message %X with key %X\n", msg, pubKey.Bytes())
+		return false
+	}
+	if len(sig) != SignatureSize {
+		// fmt.Printf("bls verifying error (signature size) sig %X from message %X with key %X\n", sig, msg, pubKey.Bytes())
+		return false
+	}
+	publicKey, err := bls.PublicKeyFromBytes(pubKey)
+	if err != nil {
+		// fmt.Printf("bls verifying error (publicKey) sig %X from message %X with key %X\n", sig, msg, pubKey.Bytes())
+		return false
+	}
+	publicKeys := make([]*bls.PublicKey,1)
+	publicKeys[0] = publicKey
+
+	hashes := make([][]byte,1)
+	hashes[0] = hash
+
+	blsSignature, err := bls.InsecureSignatureFromBytes(sig)
+	if err != nil {
+		// fmt.Printf("bls verifying error (blsSignature) sig %X from message %X with key %X\n", sig, msg, pubKey.Bytes())
+		return false
+	}
+	verified := blsSignature.Verify(hashes, publicKeys)
+	//  if !verified {
+	//	  fmt.Printf("bls verified (%t) sig %X from message %X with key %X\n", verified, sig, msg, pubKey.Bytes())
+	//	  debug.PrintStack()
+	//  }
+	return verified
 }
 
 func (pubKey PubKey) VerifySignature(msg []byte, sig []byte) bool {
