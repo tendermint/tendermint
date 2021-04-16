@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	mrand "math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -313,7 +314,7 @@ func createGoldenTestVectors(t *testing.T) string {
 		randSecret := new([32]byte)
 		copy((*randSecret)[:], randSecretVector)
 		data += hex.EncodeToString((*randSecret)[:]) + ","
-		locIsLeast := tmrand.Bool()
+		locIsLeast := mrand.Int63()%2 == 0
 		data += strconv.FormatBool(locIsLeast) + ","
 		recvSecret, sendSecret := deriveSecrets(randSecret, locIsLeast)
 		data += hex.EncodeToString((*recvSecret)[:]) + ","
