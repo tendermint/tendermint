@@ -3,7 +3,6 @@ package rand
 import (
 	crand "crypto/rand"
 	mrand "math/rand"
-	"time"
 
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
@@ -232,22 +231,6 @@ func (r *Rand) Float64() float64 {
 	f64 := r.rand.Float64()
 	r.Unlock()
 	return f64
-}
-
-func (r *Rand) Time() time.Time {
-	return time.Unix(int64(r.Uint64()), 0)
-}
-
-// Bytes returns n random bytes generated from the internal
-// prng.
-func (r *Rand) Bytes(n int) []byte {
-	// cRandBytes isn't guaranteed to be fast so instead
-	// use random bytes generated from the internal PRNG
-	bs := make([]byte, n)
-	for i := 0; i < len(bs); i++ {
-		bs[i] = byte(r.Int() & 0xFF)
-	}
-	return bs
 }
 
 // Intn returns, as an int, a uniform pseudo-random number in the range [0, n).
