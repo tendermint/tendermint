@@ -63,7 +63,6 @@ func testThemAll() string {
 	blob, _ := json.Marshal(perm)
 	fmt.Fprintf(out, "perm: %s\n", blob)
 	fmt.Fprintf(out, "randInt: %d\n", Int())
-	fmt.Fprintf(out, "randUint: %d\n", Uint())
 	fmt.Fprintf(out, "randIntn: %d\n", Intn(97))
 	fmt.Fprintf(out, "randInt31: %d\n", Int31())
 	fmt.Fprintf(out, "randInt32: %d\n", Int32())

@@ -74,10 +74,6 @@ func Uint64() uint64 {
 	return grand.Uint64()
 }
 
-func Uint() uint {
-	return grand.Uint()
-}
-
 func Int32() int32 {
 	return grand.Int32()
 }
