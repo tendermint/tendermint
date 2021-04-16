@@ -5,11 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	mrand "math/rand"
 	"strings"
 
 	"github.com/tendermint/tendermint/crypto"
 	ce "github.com/tendermint/tendermint/crypto/encoding"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -183,7 +183,7 @@ func RandValidator(randPower bool, minPower int64) (*Validator, PrivValidator) {
 	privVal := NewMockPV()
 	votePower := minPower
 	if randPower {
-		votePower += int64(tmrand.Uint32())
+		votePower += int64(mrand.Uint32())
 	}
 	pubKey, err := privVal.GetPubKey(context.Background())
 	if err != nil {

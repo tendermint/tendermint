@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	mrand "math/rand"
 	"net"
 	"sync"
 	"time"
@@ -12,7 +13,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/cmap"
-	"github.com/tendermint/tendermint/libs/rand"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
@@ -115,7 +116,7 @@ type Switch struct {
 	connFilters   []ConnFilterFunc
 	conns         ConnSet
 
-	rng *rand.Rand // seed for randomizing dial times and orders
+	rng *mrand.Rand // seed for randomizing dial times and orders
 
 	metrics *Metrics
 }
@@ -160,7 +161,7 @@ func NewSwitch(
 	}
 
 	// Ensure we have a completely undeterministic PRNG.
-	sw.rng = rand.NewRand()
+	sw.rng = tmrand.NewRand()
 
 	sw.BaseService = *service.NewBaseService(nil, "P2P Switch", sw)
 

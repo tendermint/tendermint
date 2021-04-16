@@ -3,6 +3,7 @@ package p2p
 import (
 	"context"
 	"fmt"
+	mrand "math/rand"
 	"net"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -40,10 +41,10 @@ func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
 		var err error
 		addr = fmt.Sprintf("%X@%v.%v.%v.%v:26656",
 			tmrand.Bytes(20),
-			tmrand.Int()%256,
-			tmrand.Int()%256,
-			tmrand.Int()%256,
-			tmrand.Int()%256)
+			mrand.Int()%256,
+			mrand.Int()%256,
+			mrand.Int()%256,
+			mrand.Int()%256)
 		netAddr, err = NewNetAddressString(addr)
 		if err != nil {
 			panic(err)

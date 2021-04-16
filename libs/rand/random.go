@@ -2,140 +2,37 @@ package rand
 
 import (
 	crand "crypto/rand"
+	"encoding/binary"
 	mrand "math/rand"
-
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 const (
 	strChars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" // 62 characters
 )
 
-// Rand is a prng, that is seeded with OS randomness.
-// The OS randomness is obtained from crypto/rand, however none of the provided
-// methods are suitable for cryptographic usage.
-// They all utilize math/rand's prng internally.
+// NewRand returns a prng, that is seeded with OS randomness.
+// The OS randomness is obtained from crypto/rand, however, like with any math/rand.Rand
+// object none of the provided methods are suitable for cryptographic usage.
 //
-// All of the methods here are suitable for concurrent use.
-// This is achieved by using a mutex lock on all of the provided methods.
-type Rand struct {
-	tmsync.Mutex
-	rand *mrand.Rand
+// As this returns a math/rand.Rand instance all methods on
+// that object are suitable for concurrent use.
+func NewRand() *mrand.Rand {
+	var seed int64
+	binary.Read(crand.Reader, binary.BigEndian, &seed)
+	return mrand.New(mrand.NewSource(seed))
 }
 
-var grand *Rand
-
-func init() {
-	grand = NewRand()
-	grand.init()
-}
-
-func NewRand() *Rand {
-	rand := &Rand{}
-	rand.init()
-	return rand
-}
-
-func (r *Rand) init() {
-	bz := cRandBytes(8)
-	var seed uint64
-	for i := 0; i < 8; i++ {
-		seed |= uint64(bz[i])
-		seed <<= 8
-	}
-	r.reset(int64(seed))
-}
-
-func (r *Rand) reset(seed int64) {
-	r.rand = mrand.New(mrand.NewSource(seed)) // nolint:gosec // G404: Use of weak random number generator
-}
-
-//----------------------------------------
-// Global functions
-
-func Seed(seed int64) {
-	grand.Seed(seed)
-}
-
+// Str constructs a random alphanumeric string of given length
+// from a freshly instantiated prng.
 func Str(length int) string {
-	return grand.Str(length)
-}
-
-func Uint32() uint32 {
-	return grand.Uint32()
-}
-
-func Uint64() uint64 {
-	return grand.Uint64()
-}
-
-func Int32() int32 {
-	return grand.Int32()
-}
-
-func Int64() int64 {
-	return grand.Int64()
-}
-
-func Int() int {
-	return grand.Int()
-}
-
-func Int31() int32 {
-	return grand.Int31()
-}
-
-func Int31n(n int32) int32 {
-	return grand.Int31n(n)
-}
-
-func Int63() int64 {
-	return grand.Int63()
-}
-
-func Int63n(n int64) int64 {
-	return grand.Int63n(n)
-}
-
-func Float64() float64 {
-	return grand.Float64()
-}
-
-func Bytes(n int) []byte {
-	bs := make([]byte, n)
-	for i := 0; i < len(bs); i++ {
-		bs[i] = byte(mrand.Int() & 0xFF)
-	}
-	return bs
-}
-
-func Intn(n int) int {
-	return grand.Intn(n)
-}
-
-func Perm(n int) []int {
-	return grand.Perm(n)
-}
-
-//----------------------------------------
-// Rand methods
-
-func (r *Rand) Seed(seed int64) {
-	r.Lock()
-	r.reset(seed)
-	r.Unlock()
-}
-
-// Str constructs a random alphanumeric string of given length.
-func (r *Rand) Str(length int) string {
+	rand := NewRand()
 	if length <= 0 {
 		return ""
 	}
 
-	chars := []byte{}
-MAIN_LOOP:
+	chars := make([]byte, 0, length)
 	for {
-		val := r.Int63()
+		val := rand.Int63()
 		for i := 0; i < 10; i++ {
 			v := int(val & 0x3f) // rightmost 6 bits
 			if v >= 62 {         // only 62 characters in strChars
@@ -144,113 +41,20 @@ MAIN_LOOP:
 			} else {
 				chars = append(chars, strChars[v])
 				if len(chars) == length {
-					break MAIN_LOOP
+					return string(chars)
 				}
 				val >>= 6
 			}
 		}
 	}
-
-	return string(chars)
 }
 
-func (r *Rand) Uint16() uint16 {
-	return uint16(r.Uint32() & (1<<16 - 1))
-}
-
-func (r *Rand) Uint32() uint32 {
-	r.Lock()
-	u32 := r.rand.Uint32()
-	r.Unlock()
-	return u32
-}
-
-func (r *Rand) Uint64() uint64 {
-	return uint64(r.Uint32())<<32 + uint64(r.Uint32())
-}
-
-func (r *Rand) Uint() uint {
-	r.Lock()
-	i := r.rand.Int()
-	r.Unlock()
-	return uint(i)
-}
-
-func (r *Rand) Int32() int32 {
-	return int32(r.Uint32())
-}
-
-func (r *Rand) Int64() int64 {
-	return int64(r.Uint64())
-}
-
-func (r *Rand) Int() int {
-	r.Lock()
-	i := r.rand.Int()
-	r.Unlock()
-	return i
-}
-
-func (r *Rand) Int31() int32 {
-	r.Lock()
-	i31 := r.rand.Int31()
-	r.Unlock()
-	return i31
-}
-
-func (r *Rand) Int31n(n int32) int32 {
-	r.Lock()
-	i31n := r.rand.Int31n(n)
-	r.Unlock()
-	return i31n
-}
-
-func (r *Rand) Int63() int64 {
-	r.Lock()
-	i63 := r.rand.Int63()
-	r.Unlock()
-	return i63
-}
-
-func (r *Rand) Int63n(n int64) int64 {
-	r.Lock()
-	i63n := r.rand.Int63n(n)
-	r.Unlock()
-	return i63n
-}
-
-func (r *Rand) Float64() float64 {
-	r.Lock()
-	f64 := r.rand.Float64()
-	r.Unlock()
-	return f64
-}
-
-// Intn returns, as an int, a uniform pseudo-random number in the range [0, n).
-// It panics if n <= 0.
-func (r *Rand) Intn(n int) int {
-	r.Lock()
-	i := r.rand.Intn(n)
-	r.Unlock()
-	return i
-}
-
-// Perm returns a pseudo-random permutation of n integers in [0, n).
-func (r *Rand) Perm(n int) []int {
-	r.Lock()
-	perm := r.rand.Perm(n)
-	r.Unlock()
-	return perm
-}
-
-// NOTE: This relies on the os's random number generator.
-// For real security, we should salt that with some seed.
-// See github.com/tendermint/tendermint/crypto for a more secure reader.
-func cRandBytes(numBytes int) []byte {
-	b := make([]byte, numBytes)
-	_, err := crand.Read(b)
-	if err != nil {
-		panic(err)
+// Bytes returns n random bytes generated from a freshly instantiated prng.
+func Bytes(n int) []byte {
+	rand := NewRand()
+	bs := make([]byte, n)
+	for i := 0; i < len(bs); i++ {
+		bs[i] = byte(rand.Int() & 0xFF)
 	}
-	return b
+	return bs
 }

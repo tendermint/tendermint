@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	mrand "math/rand"
 	"regexp"
 	"strings"
 	"sync"
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmprotobits "github.com/tendermint/tendermint/proto/tendermint/libs/bits"
 )
 
@@ -256,7 +256,7 @@ func (bA *BitArray) PickRandom() (int, bool) {
 		return 0, false
 	}
 
-	return trueIndices[tmrand.Intn(len(trueIndices))], true
+	return trueIndices[mrand.Intn(len(trueIndices))], true
 }
 
 func (bA *BitArray) getTrueIndices() []int {

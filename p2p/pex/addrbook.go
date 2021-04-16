@@ -9,13 +9,12 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"math/rand"
+	mrand "math/rand"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/minio/highwayhash"
-
 	"github.com/tendermint/tendermint/crypto"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -89,7 +88,7 @@ type addrBook struct {
 
 	// accessed concurrently
 	mtx        tmsync.Mutex
-	rand       *tmrand.Rand
+	rand       *mrand.Rand
 	ourAddrs   map[string]struct{}
 	privateIDs map[p2p.NodeID]struct{}
 	addrLookup map[p2p.NodeID]*knownAddress // new & old
@@ -417,7 +416,7 @@ func (a *addrBook) GetSelection() []*p2p.NetAddress {
 	// `numAddresses' since we are throwing the rest.
 	for i := 0; i < numAddresses; i++ {
 		// pick a number between current index and the end
-		j := tmrand.Intn(len(allAddr)-i) + i
+		j := mrand.Intn(len(allAddr)-i) + i
 		allAddr[i], allAddr[j] = allAddr[j], allAddr[i]
 	}
 
@@ -717,6 +716,7 @@ func (a *addrBook) randomPickAddresses(bucketType byte, num int) []*p2p.NetAddre
 	}
 	selection := make([]*p2p.NetAddress, 0, num)
 	chosenSet := make(map[string]bool, num)
+	rand := tmrand.NewRand()
 	rand.Shuffle(total, func(i, j int) {
 		addresses[i], addresses[j] = addresses[j], addresses[i]
 	})
