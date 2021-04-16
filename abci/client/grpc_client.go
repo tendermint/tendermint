@@ -24,7 +24,7 @@ type grpcClient struct {
 	conn     *grpc.ClientConn
 	chReqRes chan *ReqRes // dispatches "async" responses to callbacks *in order*, needed by mempool
 
-	mtx   tmsync.Mutex
+	mtx   tmsync.RWMutex
 	addr  string
 	err   error
 	resCb func(*types.Request, *types.Response) // listens to all callbacks
@@ -149,8 +149,8 @@ func (cli *grpcClient) StopForError(err error) {
 }
 
 func (cli *grpcClient) Error() error {
-	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
+	cli.mtx.RLock()
+	defer cli.mtx.RUnlock()
 	return cli.err
 }
 
@@ -158,8 +158,8 @@ func (cli *grpcClient) Error() error {
 // NOTE: callback may get internally generated flush responses.
 func (cli *grpcClient) SetResponseCallback(resCb Callback) {
 	cli.mtx.Lock()
+	defer cli.mtx.Unlock()
 	cli.resCb = resCb
-	cli.mtx.Unlock()
 }
 
 //----------------------------------------

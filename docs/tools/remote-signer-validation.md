@@ -75,7 +75,7 @@ example, we will simply export a signing key from our local Tendermint instance.
 # Will generate all necessary Tendermint configuration files, including:
 # - ~/.tendermint/config/priv_validator_key.json
 # - ~/.tendermint/data/priv_validator_state.json
-tendermint init
+tendermint init validator
 
 # Extract the signing key from our local Tendermint instance
 tm-signer-harness extract_key \      # Use the "extract_key" command

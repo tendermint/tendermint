@@ -41,18 +41,17 @@ moniker = "anonymous"
 # and verifying their commits
 fast-sync = true
 
-# Mode of Node: full | validator | seed
-# You will need to set it to "validator" if you want to run the node as a validator
-# * full node (default)
-#   - all reactors
-#   - No priv_validator_key.json, priv_validator_state.json
-# * validator node
+# Mode of Node: full | validator | seed (default: "validator")
+# * validator node (default)
 #   - all reactors
 #   - with priv_validator_key.json, priv_validator_state.json
+# * full node 
+#   - all reactors
+#   - No priv_validator_key.json, priv_validator_state.json
 # * seed node
 #   - only P2P, PEX Reactor
 #   - No priv_validator_key.json, priv_validator_state.json
-mode = "full"
+mode = "validator"
 
 # Database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -233,6 +232,12 @@ max-num-inbound-peers = 40
 
 # Maximum number of outbound peers to connect to, excluding persistent peers
 max-num-outbound-peers = 10
+
+# Maximum number of connections (inbound and outbound).
+max-connections = 64
+
+# Rate limits the number of incoming connection attempts per IP address.
+max-incoming-connection-attempts = 100
 
 # List of node IDs, to which a connection will be (re)established ignoring any existing limits
 unconditional-peer-ids = ""

@@ -93,6 +93,13 @@ func DefaultConfig() *Config {
 	}
 }
 
+// DefaultValidatorConfig returns default config with mode as validator
+func DefaultValidatorConfig() *Config {
+	cfg := DefaultConfig()
+	cfg.Mode = ModeValidator
+	return cfg
+}
+
 // TestConfig returns a configuration that can be used for testing
 func TestConfig() *Config {
 	return &Config{
@@ -167,13 +174,13 @@ type BaseConfig struct { //nolint: maligned
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
 
-	// Mode of Node: full | validator | seed (default: "full")
-	// * full (default)
-	//   - all reactors
-	//   - No priv_validator_key.json, priv_validator_state.json
+	// Mode of Node: full | validator | seed
 	// * validator
 	//   - all reactors
 	//   - with priv_validator_key.json, priv_validator_state.json
+	// * full
+	//   - all reactors
+	//   - No priv_validator_key.json, priv_validator_state.json
 	// * seed
 	//   - only P2P, PEX Reactor
 	//   - No priv_validator_key.json, priv_validator_state.json
@@ -346,6 +353,8 @@ func (cfg BaseConfig) ValidateBasic() error {
 	}
 	switch cfg.Mode {
 	case ModeFull, ModeValidator, ModeSeed:
+	case "":
+		return errors.New("no mode has been set")
 	default:
 		return fmt.Errorf("unknown mode: %v", cfg.Mode)
 	}
@@ -558,10 +567,24 @@ type P2PConfig struct { //nolint: maligned
 	AddrBookStrict bool `mapstructure:"addr-book-strict"`
 
 	// Maximum number of inbound peers
+	//
+	// TODO: Remove once p2p refactor is complete in favor of MaxConnections.
+	// ref: https://github.com/tendermint/tendermint/issues/5670
 	MaxNumInboundPeers int `mapstructure:"max-num-inbound-peers"`
 
-	// Maximum number of outbound peers to connect to, excluding persistent peers
+	// Maximum number of outbound peers to connect to, excluding persistent peers.
+	//
+	// TODO: Remove once p2p refactor is complete in favor of MaxConnections.
+	// ref: https://github.com/tendermint/tendermint/issues/5670
 	MaxNumOutboundPeers int `mapstructure:"max-num-outbound-peers"`
+
+	// MaxConnections defines the maximum number of connected peers (inbound and
+	// outbound).
+	MaxConnections uint16 `mapstructure:"max-connections"`
+
+	// MaxIncomingConnectionAttempts rate limits the number of incoming connection
+	// attempts per IP address.
+	MaxIncomingConnectionAttempts uint `mapstructure:"max-incoming-connection-attempts"`
 
 	// List of node IDs, to which a connection will be (re)established ignoring any existing limits
 	UnconditionalPeerIDs string `mapstructure:"unconditional-peer-ids"`
@@ -598,20 +621,31 @@ type P2PConfig struct { //nolint: maligned
 	// Testing params.
 	// Force dial to fail
 	TestDialFail bool `mapstructure:"test-dial-fail"`
+
+	// DisableLegacy is used mostly for testing to enable or disable the legacy
+	// P2P stack.
+	DisableLegacy bool `mapstructure:"disable-legacy"`
+
+	// Makes it possible to configure which queue backend the p2p
+	// layer uses. Options are: "fifo", "priority" and "wdrr",
+	// with the default being "fifo".
+	QueueType string `mapstructure:"queue-type"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
-		ListenAddress:                "tcp://0.0.0.0:26656",
-		ExternalAddress:              "",
-		UPNP:                         false,
-		AddrBook:                     defaultAddrBookPath,
-		AddrBookStrict:               true,
-		MaxNumInboundPeers:           40,
-		MaxNumOutboundPeers:          10,
-		PersistentPeersMaxDialPeriod: 0 * time.Second,
-		FlushThrottleTimeout:         100 * time.Millisecond,
+		ListenAddress:                 "tcp://0.0.0.0:26656",
+		ExternalAddress:               "",
+		UPNP:                          false,
+		AddrBook:                      defaultAddrBookPath,
+		AddrBookStrict:                true,
+		MaxNumInboundPeers:            40,
+		MaxNumOutboundPeers:           10,
+		MaxConnections:                64,
+		MaxIncomingConnectionAttempts: 100,
+		PersistentPeersMaxDialPeriod:  0 * time.Second,
+		FlushThrottleTimeout:          100 * time.Millisecond,
 		// The MTU (Maximum Transmission Unit) for Ethernet is 1500 bytes.
 		// The IP header and the TCP header take up 20 bytes each at least (unless
 		// optional header fields are used) and thus the max for (non-Jumbo frame)
@@ -625,6 +659,7 @@ func DefaultP2PConfig() *P2PConfig {
 		HandshakeTimeout:        20 * time.Second,
 		DialTimeout:             3 * time.Second,
 		TestDialFail:            false,
+		QueueType:               "priority",
 	}
 }
 

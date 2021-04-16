@@ -58,6 +58,12 @@ type Manifest struct {
 	// LogLevel sets the log level of the entire testnet. This can be overridden
 	// by individual nodes.
 	LogLevel string `toml:"log_level"`
+
+	// DisableLegacyP2P enables use of the new p2p layer for all nodes in a test.
+	DisableLegacyP2P bool `toml:"disable_legacy_p2p"`
+
+	// QueueType describes the type of queue that the system uses internally
+	QueueType string `toml:"queue_type"`
 }
 
 // ManifestNode represents a node in a testnet manifest.
@@ -134,6 +140,13 @@ type ManifestNode struct {
 	// This is helpful when debugging a specific problem. This overrides the network
 	// level.
 	LogLevel string `toml:"log_level"`
+
+	// UseNewP2P enables use of the new p2p layer for this node.
+	DisableLegacyP2P bool `toml:"disable_legacy_p2p"`
+
+	// QueueType describes the type of queue that the p2p layer
+	// uses internally.
+	QueueType string `toml:"queue_type"`
 }
 
 // Save saves the testnet manifest to a file.
