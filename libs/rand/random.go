@@ -62,10 +62,6 @@ func Str(length int) string {
 	return grand.Str(length)
 }
 
-func Uint16() uint16 {
-	return grand.Uint16()
-}
-
 func Uint32() uint32 {
 	return grand.Uint32()
 }
