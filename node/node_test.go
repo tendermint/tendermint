@@ -533,6 +533,7 @@ func TestNodeNewSeedNode(t *testing.T) {
 	require.NoError(t, err)
 
 	n, err := NewSeedNode(config,
+		DefaultDBProvider,
 		nodeKey,
 		DefaultGenesisDocProviderFunc(config),
 		log.TestingLogger(),
