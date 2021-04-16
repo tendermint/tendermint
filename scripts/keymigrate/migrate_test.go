@@ -52,7 +52,7 @@ func getNewPrefixKeys(t *testing.T, val int) map[string][]byte {
 		"Validators":        makeKey(t, int64(5), int64(val)),
 		"ConsensusParams":   makeKey(t, int64(6), int64(val)),
 		"ABCIResponse":      makeKey(t, int64(7), int64(val)),
-		"State":             makeKey(t, int64(8), int64(val)),
+		"State":             makeKey(t, int64(8)),
 		"CommittedEvidence": makeKey(t, int64(9), int64(val)),
 		"PendingEvidence":   makeKey(t, int64(10), int64(val)),
 		"LightBLock":        makeKey(t, int64(11), int64(val)),
@@ -98,12 +98,12 @@ func TestMigration(t *testing.T) {
 
 		require.Equal(t, len(legacyPrefixes), len(newPrefixes))
 
-		t.Run("LegacyEvidence", func(t *testing.T) {
+		t.Run("Legacy", func(t *testing.T) {
 			for kind, le := range legacyPrefixes {
 				require.True(t, keyIsLegacy(le), kind)
 			}
 		})
-		t.Run("NewEvidence", func(t *testing.T) {
+		t.Run("New", func(t *testing.T) {
 			for kind, ne := range newPrefixes {
 				require.False(t, keyIsLegacy(ne), kind)
 			}
