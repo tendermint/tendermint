@@ -277,7 +277,13 @@ laddr = "{{ .P2P.ListenAddress }}"
 external-address = "{{ .P2P.ExternalAddress }}"
 
 # Comma separated list of seed nodes to connect to
+# We only use these if we can’t connect to peers in the addrbook
+# NOTE: not used by the new PEX reactor. Please use InitialPeers instead
 seeds = "{{ .P2P.Seeds }}"
+
+# Comma separated list of initial peers to be added to the peer store
+# and likely connected with on startup
+initial-peers = "{{ .P2P.InitialPeers }}"
 
 # Comma separated list of nodes to keep persistent connections to
 persistent-peers = "{{ .P2P.PersistentPeers }}"

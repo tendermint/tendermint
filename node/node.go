@@ -628,6 +628,14 @@ func createPeerManager(config *cfg.Config, p2pLogger log.Logger, nodeID p2p.Node
 		options.PersistentPeers = append(options.PersistentPeers, address.NodeID)
 	}
 
+	for _, p := range splitAndTrimEmpty(config.P2P.InitialPeers, ",", " ") {
+		address, err := p2p.ParseNodeAddress(p)
+		if err != nil {
+			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
+		}
+		peers = append(peers, address)
+	}
+
 	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
