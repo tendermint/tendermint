@@ -8,6 +8,7 @@ package keymigrate
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -339,7 +340,11 @@ func replaceKey(db dbm.DB, key keyID, gooseFn migrateFunc) error {
 // Migrate has "continue on error" semantics and will iterate through
 // all legacy keys attempt to migrate them, and will collect all
 // errors and will return only at the end of the operation.
-func Migrate(db dbm.DB) error {
+//
+// The context allows for a safe termination of the operation
+// (e.g connected to a singal handler,) to abort the operation
+// in-between migration operations.
+func Migrate(ctx context.Context, db dbm.DB) error {
 	keys, err := getAllLegacyKeys(db)
 	if err != nil {
 		return err
@@ -361,6 +366,10 @@ func Migrate(db dbm.DB) error {
 				err := replaceKey(db, key, migarateKey)
 				if err != nil {
 					errs <- err
+				}
+
+				if ctx.Err() != nil {
+					return
 				}
 			}
 		}()
