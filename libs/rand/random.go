@@ -97,10 +97,6 @@ func Int63n(n int64) int64 {
 	return grand.Int63n(n)
 }
 
-func Float32() float32 {
-	return grand.Float32()
-}
-
 func Float64() float64 {
 	return grand.Float64()
 }
@@ -221,13 +217,6 @@ func (r *Rand) Int63n(n int64) int64 {
 	i63n := r.rand.Int63n(n)
 	r.Unlock()
 	return i63n
-}
-
-func (r *Rand) Float32() float32 {
-	r.Lock()
-	f32 := r.rand.Float32()
-	r.Unlock()
-	return f32
 }
 
 func (r *Rand) Float64() float64 {
