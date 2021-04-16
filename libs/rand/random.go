@@ -106,7 +106,11 @@ func Float64() float64 {
 }
 
 func Bytes(n int) []byte {
-	return grand.Bytes(n)
+	bs := make([]byte, n)
+	for i := 0; i < len(bs); i++ {
+		bs[i] = byte(mrand.Int() & 0xFF)
+	}
+	return bs
 }
 
 func Intn(n int) int {
