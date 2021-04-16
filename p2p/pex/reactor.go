@@ -60,11 +60,13 @@ type ReactorV2 struct {
 
 	// list of available peers to loop through and send peer requests to
 	availablePeers *clist.CList
+
 	// requestsSent keeps track of which peers the PEX reactor has sent requests
 	// to. This prevents the sending of spurious responses.
 	// NOTE: If a node never responds, they will remain in this map until a
 	// peer down status update is sent
 	requestsSent map[p2p.NodeID]struct{}
+
 	// lastReceivedRequests keeps track of when peers send a request to prevent
 	// peers from sending requests too often (as defined by
 	// minReceiveRequestInterval).
@@ -110,7 +112,6 @@ func NewReactorV2(
 // OnStop to ensure the outbound p2p Channels are closed.
 func (r *ReactorV2) OnStart() error {
 	go r.processPexCh()
-	go r.processPeerUpdates()
 	return nil
 }
 
@@ -128,13 +129,28 @@ func (r *ReactorV2) OnStop() {
 	<-r.peerUpdates.Done()
 }
 
+// NextRequestTime returns the next time the pex reactor expects to send a
+// request. Used mainly for testing
+func (r *ReactorV2) NextRequestTime() time.Time {
+	return r.nextRequestTime
+}
+
 // processPexCh implements a blocking event loop where we listen for p2p
 // Envelope messages from the pexCh.
 func (r *ReactorV2) processPexCh() {
 	defer r.pexCh.Close()
+	defer r.peerUpdates.Close()
 
 	for {
 		select {
+		case <-r.closeCh:
+			r.Logger.Debug("stopped listening on PEX channel; closing...")
+			return
+
+		// handle peer updates
+		case peerUpdate := <-r.peerUpdates.Updates():
+			r.processPeerUpdate(peerUpdate)
+
 		// outbound requests for new peers
 		case <-r.waitUntilNextRequest():
 			r.sendRequestForPeers()
@@ -149,28 +165,6 @@ func (r *ReactorV2) processPexCh() {
 					Err:    err,
 				}
 			}
-
-		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on PEX channel; closing...")
-			return
-		}
-	}
-}
-
-// processPeerUpdates initiates a blocking process where we listen for and handle
-// PeerUpdate messages. When the reactor is stopped, we will catch the signal and
-// close the p2p PeerUpdatesCh gracefully.
-func (r *ReactorV2) processPeerUpdates() {
-	defer r.peerUpdates.Close()
-
-	for {
-		select {
-		case peerUpdate := <-r.peerUpdates.Updates():
-			r.processPeerUpdate(peerUpdate)
-
-		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on peer updates channel; closing...")
-			return
 		}
 	}
 }
@@ -180,31 +174,27 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 	logger := r.Logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
+
+	// LEGACY PEX MESSAGES
 	case *protop2p.PexRequest:
 		// check if the peer hasn't sent a prior request too close to this one
 		// in time
-		if lastRequestTime, ok := r.lastReceivedRequests[envelope.From]; ok {
-			if time.Now().Before(lastRequestTime.Add(minReceiveRequestInterval)) {
-				return fmt.Errorf("peer sent a request too close after a prior one. Minimum interval: %v",
-					minReceiveRequestInterval)
-			}
+		if err := r.markPeerRequest(envelope.From); err != nil {
+			return err
 		}
-		r.lastReceivedRequests[envelope.From] = time.Now()
-		pexAddresses := r.resolve(r.peerManager.Advertise(envelope.From, maxAddresses), maxAddresses)
+
+		// parse and send the legacy PEX addresses
+		pexAddresses := r.resolve(r.peerManager.Advertise(envelope.From, maxAddresses))
 		r.pexCh.Out <- p2p.Envelope{
 			To:      envelope.From,
 			Message: &protop2p.PexResponse{Addresses: pexAddresses},
 		}
 
 	case *protop2p.PexResponse:
-		// check if a request to this peer was sent
-		if _, ok := r.requestsSent[envelope.From]; !ok {
-			return fmt.Errorf("peer sent a PEX response when none was requested (%v)", envelope.From)
+		// check if the response matches a request that was made to that peer
+		if err := r.markPeerResponse(envelope.From); err != nil {
+			return err
 		}
-		delete(r.requestsSent, envelope.From)
-		// attach to the back of the list so that the peer can be used again for
-		// future requests
-		r.availablePeers.PushBack(envelope.From)
 
 		// check the size of the response
 		if len(msg.Addresses) > int(maxAddresses) {
@@ -215,6 +205,7 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 		}
 
 		for _, pexAddress := range msg.Addresses {
+			// no protocol is prefixed so we assume the default (mconn)
 			peerAddress, err := p2p.ParseNodeAddress(
 				fmt.Sprintf("%s@%s:%d", pexAddress.ID, pexAddress.IP, pexAddress.Port))
 			if err != nil {
@@ -222,11 +213,63 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 			}
 			added, err := r.peerManager.Add(peerAddress)
 			if err != nil {
-				logger.Debug("failed to register PEX address", "address", peerAddress, "err", err)
+				logger.Error("failed to add PEX address", "address", peerAddress, "err", err)
 			}
 			if added {
 				r.newPeers++
 				logger.Debug("added PEX address", "address", peerAddress)
+			}
+			r.totalPeers++
+		}
+
+	// V2 PEX MESSAGES
+	case *protop2p.PexRequestV2:
+		// check if the peer hasn't sent a prior request too close to this one
+		// in time
+		if err := r.markPeerRequest(envelope.From); err != nil {
+			return err
+		}
+
+		// request peers from the peer manager and parse the NodeAddresses into
+		// URL strings
+		nodeAddresses := r.peerManager.Advertise(envelope.From, maxAddresses)
+		pexAddressesV2 := make([]protop2p.PexAddressV2, len(nodeAddresses))
+		for idx, addr := range nodeAddresses {
+			pexAddressesV2[idx] = protop2p.PexAddressV2{
+				URL: addr.String(),
+			}
+		}
+		r.pexCh.Out <- p2p.Envelope{
+			To:      envelope.From,
+			Message: &protop2p.PexResponseV2{Addresses: pexAddressesV2},
+		}
+
+	case *protop2p.PexResponseV2:
+		// check if the response matches a request that was made to that peer
+		if err := r.markPeerResponse(envelope.From); err != nil {
+			return err
+		}
+
+		// check the size of the response
+		if len(msg.Addresses) > int(maxAddresses) {
+			return fmt.Errorf("peer sent too many addresses (max: %d, got: %d)",
+				maxAddresses,
+				len(msg.Addresses),
+			)
+		}
+
+		for _, pexAddress := range msg.Addresses {
+			peerAddress, err := p2p.ParseNodeAddress(pexAddress.URL)
+			if err != nil {
+				continue
+			}
+			added, err := r.peerManager.Add(peerAddress)
+			if err != nil {
+				logger.Error("failed to add V2 PEX address", "address", peerAddress, "err", err)
+			}
+			if added {
+				r.newPeers++
+				logger.Debug("added V2 PEX address", "address", peerAddress)
 			}
 			r.totalPeers++
 		}
@@ -247,8 +290,9 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 //
 // FIXME: We may want to cache and parallelize this, but for now we'll just rely
 // on the operating system to cache it for us.
-func (r *ReactorV2) resolve(addresses []p2p.NodeAddress, limit uint16) []protop2p.PexAddress {
-	pexAddresses := make([]protop2p.PexAddress, 0, len(addresses))
+func (r *ReactorV2) resolve(addresses []p2p.NodeAddress) []protop2p.PexAddress {
+	limit := len(addresses)
+	pexAddresses := make([]protop2p.PexAddress, 0, limit)
 	for _, address := range addresses {
 		ctx, cancel := context.WithTimeout(context.Background(), resolveTimeout)
 		endpoints, err := address.Resolve(ctx)
@@ -260,7 +304,7 @@ func (r *ReactorV2) resolve(addresses []p2p.NodeAddress, limit uint16) []protop2
 		}
 		for _, endpoint := range endpoints {
 			r.Logger.Debug("checking endpint", "IP", endpoint.IP, "Port", endpoint.Port)
-			if len(pexAddresses) >= int(limit) {
+			if len(pexAddresses) >= limit {
 				return pexAddresses
 
 			} else if endpoint.IP != nil {
@@ -272,7 +316,7 @@ func (r *ReactorV2) resolve(addresses []p2p.NodeAddress, limit uint16) []protop2
 				// protocol, we jam this into the ID. We won't need to this once
 				// we support URLs
 				pexAddresses = append(pexAddresses, protop2p.PexAddress{
-					ID:   fmt.Sprintf("%s://%v", endpoint.Protocol, address.NodeID),
+					ID:   string(address.NodeID),
 					IP:   endpoint.IP.String(),
 					Port: uint32(endpoint.Port),
 				})
@@ -336,15 +380,19 @@ func (r *ReactorV2) sendRequestForPeers() {
 	}
 	peerID := peer.Value.(p2p.NodeID)
 
+	// TODO: We should probably check the connection protocol and send the
+	// legacy PexRequest when it is a mconn
 	r.pexCh.Out <- p2p.Envelope{
 		To:      peerID,
-		Message: &protop2p.PexRequest{},
+		Message: &protop2p.PexRequestV2{},
 	}
 
 	r.availablePeers.Remove(peer)
+	peer.DetachPrev()
 	r.requestsSent[peerID] = struct{}{}
 
 	r.calculateNextRequestTime()
+	r.Logger.Debug("peer request sent", "next_request_time", r.nextRequestTime)
 }
 
 // calculateNextRequestTime implements something of a proportional controller
@@ -360,7 +408,9 @@ func (r *ReactorV2) sendRequestForPeers() {
 func (r *ReactorV2) calculateNextRequestTime() {
 	// check if the peer store is full. If so then there is no need
 	// to send peer requests too often
-	if r.peerManager.Capacity() > 0.95 {
+	if capacity := r.peerManager.Capacity(); capacity > 0.95 {
+		r.Logger.Debug("peer manager near full capacity, sleeping...",
+			"sleep_period", fullCapacityInterval, "capacity", capacity)
 		r.nextRequestTime = time.Now().Add(fullCapacityInterval)
 		return
 	}
@@ -369,13 +419,18 @@ func (r *ReactorV2) calculateNextRequestTime() {
 	// in. For example if we have 10 peers and we can't send a message to the
 	// same peer every 500ms, then we can send a request every 50ms. In practice
 	// we use a safety margin of 2, ergo 100ms
-	baseTime := minReceiveRequestInterval / time.Duration(r.availablePeers.Len()*2)
+	peers := r.availablePeers.Len()
+	baseTime := minReceiveRequestInterval
+	if peers > 0 {
+		baseTime = minReceiveRequestInterval / time.Duration(peers)
+	}
 
 	if r.totalPeers > 0 || r.discoveryRatio == 0 {
 		// find the ratio of new peers. NOTE: We add 1 to both sides to avoid
 		// divide by zero problems
 		ratio := float32(r.totalPeers+1) / float32(r.newPeers+1)
 		// square the ratio in order to get non linear time intervals
+		// NOTE: The longest possible interval is 50 minutes
 		r.discoveryRatio = ratio * ratio
 		r.newPeers = 0
 		r.totalPeers = 0
@@ -394,4 +449,27 @@ func (r *ReactorV2) removePeer(id p2p.NodeID) {
 	}
 	delete(r.requestsSent, id)
 	delete(r.lastReceivedRequests, id)
+}
+
+func (r *ReactorV2) markPeerRequest(peer p2p.NodeID) error {
+	if lastRequestTime, ok := r.lastReceivedRequests[peer]; ok {
+		if time.Now().Before(lastRequestTime.Add(minReceiveRequestInterval)) {
+			return fmt.Errorf("peer sent a request too close after a prior one. Minimum interval: %v",
+				minReceiveRequestInterval)
+		}
+	}
+	r.lastReceivedRequests[peer] = time.Now()
+	return nil
+}
+
+func (r *ReactorV2) markPeerResponse(peer p2p.NodeID) error {
+	// check if a request to this peer was sent
+	if _, ok := r.requestsSent[peer]; !ok {
+		return fmt.Errorf("peer sent a PEX response when none was requested (%v)", peer)
+	}
+	delete(r.requestsSent, peer)
+	// attach to the back of the list so that the peer can be used again for
+	// future requests
+	r.availablePeers.PushBack(peer)
+	return nil
 }
