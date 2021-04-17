@@ -3,6 +3,7 @@ package rand
 import (
 	crand "crypto/rand"
 	"encoding/binary"
+	"fmt"
 	mrand "math/rand"
 )
 
@@ -80,6 +81,9 @@ func Bytes(n int) []byte {
 
 func crandSeed() int64 {
 	var seed int64
-	binary.Read(crand.Reader, binary.BigEndian, &seed)
+	err := binary.Read(crand.Reader, binary.BigEndian, &seed)
+	if err != nil {
+		panic(fmt.Sprintf("could nor read random seed from crypto/rand: %v", err))
+	}
 	return seed
 }
