@@ -36,6 +36,7 @@ func CreateRandomPeer(outbound bool) Peer {
 	return p
 }
 
+// nolint:gosec // G404: Use of weak random number generator
 func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
 	for {
 		var err error

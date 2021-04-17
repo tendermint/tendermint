@@ -265,6 +265,7 @@ func (a *addrBook) Empty() bool {
 // and determines how biased we are to pick an address from a new bucket.
 // PickAddress returns nil if the AddrBook is empty or if we try to pick
 // from an empty bucket.
+// nolint:gosec // G404: Use of weak random number generator
 func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
@@ -384,6 +385,7 @@ func (a *addrBook) ReinstateBadPeers() {
 // GetSelection implements AddrBook.
 // It randomly selects some addresses (old & new). Suitable for peer-exchange protocols.
 // Must never return a nil address.
+// nolint:gosec // G404: Use of weak random number generator
 func (a *addrBook) GetSelection() []*p2p.NetAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
