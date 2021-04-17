@@ -14,25 +14,26 @@ const (
 // The OS randomness is obtained from crypto/rand, however, like with any math/rand.Rand
 // object none of the provided methods are suitable for cryptographic usage.
 //
-// As this returns a math/rand.Rand instance all methods on
-// that object are suitable for concurrent use.
+// Note that the returned instance of math/rand's Rand is not
+// suitable for concurrent use by multiple goroutines.
+//
+// For concurrent use, call Reseed to reseed math/rand's default source and
+// use math/rand's top-level convenience functions instead.
 func NewRand() *mrand.Rand {
-	var seed int64
-	binary.Read(crand.Reader, binary.BigEndian, &seed)
+	seed := crandSeed()
 	return mrand.New(mrand.NewSource(seed))
 }
 
 // Str constructs a random alphanumeric string of given length
 // from a freshly instantiated prng.
 func Str(length int) string {
-	rand := NewRand()
 	if length <= 0 {
 		return ""
 	}
 
 	chars := make([]byte, 0, length)
 	for {
-		val := rand.Int63()
+		val := mrand.Int63()
 		for i := 0; i < 10; i++ {
 			v := int(val & 0x3f) // rightmost 6 bits
 			if v >= 62 {         // only 62 characters in strChars
@@ -51,10 +52,15 @@ func Str(length int) string {
 
 // Bytes returns n random bytes generated from a freshly instantiated prng.
 func Bytes(n int) []byte {
-	rand := NewRand()
 	bs := make([]byte, n)
 	for i := 0; i < len(bs); i++ {
-		bs[i] = byte(rand.Int() & 0xFF)
+		bs[i] = byte(mrand.Int() & 0xFF)
 	}
 	return bs
+}
+
+func crandSeed() int64 {
+	var seed int64
+	binary.Read(crand.Reader, binary.BigEndian, &seed)
+	return seed
 }
