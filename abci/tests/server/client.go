@@ -18,6 +18,7 @@ func InitChain(client abcicli.Client) error {
 	total := 10
 	vals := make([]types.ValidatorUpdate, total)
 	for i := 0; i < total; i++ {
+		// nolint:gosec // G404: Use of weak random number generator
 		pubkey := tmrand.Bytes(33)
 		power := mrand.Int()
 		vals[i] = types.UpdateValidator(pubkey, int64(power), "")

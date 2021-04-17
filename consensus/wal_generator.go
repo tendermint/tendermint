@@ -140,6 +140,7 @@ func WALWithNBlocks(t *testing.T, numBlocks int) (data []byte, err error) {
 func randPort() int {
 	// returns between base and base + spread
 	base, spread := 20000, 20000
+	// nolint:gosec // G404: Use of weak random number generator
 	return base + mrand.Intn(spread)
 }
 
