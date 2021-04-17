@@ -11,6 +11,7 @@ import (
 // from the input value
 func RandVal(i int) types.ValidatorUpdate {
 	pubkey := tmrand.Bytes(32)
+	// Random value between [0, 2^16 - 1]
 	power := mrand.Uint32() & (1<<16 - 1)
 	v := types.UpdateValidator(pubkey, int64(power), "")
 	return v
