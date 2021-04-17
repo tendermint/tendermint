@@ -266,6 +266,7 @@ func (c *WSClient) reconnect() error {
 	}()
 
 	for {
+		// nolint:gosec // G404: Use of weak random number generator
 		jitter := time.Duration(mrand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
 		backoffDuration := jitter + ((1 << attempt) * time.Second)
 

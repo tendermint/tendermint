@@ -25,6 +25,7 @@ func init() {
 // use math/rand's top-level convenience functions instead.
 func NewRand() *mrand.Rand {
 	seed := crandSeed()
+	// nolint:gosec // G404: Use of weak random number generator
 	return mrand.New(mrand.NewSource(seed))
 }
 
@@ -49,6 +50,7 @@ func Str(length int) string {
 
 	chars := make([]byte, 0, length)
 	for {
+		// nolint:gosec // G404: Use of weak random number generator
 		val := mrand.Int63()
 		for i := 0; i < 10; i++ {
 			v := int(val & 0x3f) // rightmost 6 bits
@@ -70,6 +72,7 @@ func Str(length int) string {
 func Bytes(n int) []byte {
 	bs := make([]byte, n)
 	for i := 0; i < len(bs); i++ {
+		// nolint:gosec // G404: Use of weak random number generator
 		bs[i] = byte(mrand.Int() & 0xFF)
 	}
 	return bs

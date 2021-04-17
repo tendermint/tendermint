@@ -596,6 +596,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress) error {
 
 // sleep for interval plus some random amount of ms on [0, dialRandomizerIntervalMilliseconds]
 func (sw *Switch) randomSleep(interval time.Duration) {
+	// nolint:gosec // G404: Use of weak random number generator
 	r := time.Duration(mrand.Int63n(dialRandomizerIntervalMilliseconds)) * time.Millisecond
 	time.Sleep(r + interval)
 }

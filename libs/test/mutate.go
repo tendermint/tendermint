@@ -1,3 +1,4 @@
+// nolint:gosec // G404: Use of weak random number generator
 package test
 
 import (
