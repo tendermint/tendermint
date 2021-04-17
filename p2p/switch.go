@@ -116,8 +116,6 @@ type Switch struct {
 	connFilters   []ConnFilterFunc
 	conns         ConnSet
 
-	rng *mrand.Rand // seed for randomizing dial times and orders
-
 	metrics *Metrics
 }
 
@@ -160,8 +158,8 @@ func NewSwitch(
 		conns:                NewConnSet(),
 	}
 
-	// Ensure we have a completely undeterministic PRNG.
-	sw.rng = tmrand.NewRand()
+	// Ensure we have a completely PRNG is reseeded.
+	tmrand.Reseed()
 
 	sw.BaseService = *service.NewBaseService(nil, "P2P Switch", sw)
 
@@ -555,7 +553,7 @@ func (sw *Switch) dialPeersAsync(netAddrs []*NetAddress) {
 	}
 
 	// permute the list, dial them in random order.
-	perm := sw.rng.Perm(len(netAddrs))
+	perm := mrand.Perm(len(netAddrs))
 	for i := 0; i < len(perm); i++ {
 		go func(i int) {
 			j := perm[i]
@@ -598,7 +596,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress) error {
 
 // sleep for interval plus some random amount of ms on [0, dialRandomizerIntervalMilliseconds]
 func (sw *Switch) randomSleep(interval time.Duration) {
-	r := time.Duration(sw.rng.Int63n(dialRandomizerIntervalMilliseconds)) * time.Millisecond
+	r := time.Duration(mrand.Int63n(dialRandomizerIntervalMilliseconds)) * time.Millisecond
 	time.Sleep(r + interval)
 }
 
