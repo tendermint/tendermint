@@ -196,6 +196,18 @@ func (r *Reactor) OnStart() error {
 // blocking until they all exit, as well as unsubscribing from events and stopping
 // state.
 func (r *Reactor) OnStop() {
+
+	// If the node is committing the new block, wait until it finished!
+	var c = 0
+	for (r.state.Step == cstypes.RoundStepCommit) && (c < 3) {
+		time.Sleep(time.Second)
+		c++
+	}
+
+	if c == 3 {
+		r.Logger.Error("the 3 secs block commit waiting timeout! The block commit might be failed!")
+	}
+
 	r.unsubscribeFromBroadcastEvents()
 
 	if err := r.state.Stop(); err != nil {
