@@ -45,9 +45,41 @@ For more information on the various approaches and proposals, please see the
 
 ## Decision
 
-> This section records the decision that was made.
-> It is best to record as much info as possible from the discussion that happened.
-> This aids in not having to go back to the Pull Request to get the needed information.
+To incorporate a priority-based flexible and performant mempool in Tendermint Core,
+we will introduce new fields, `priority`, `sender`, and `nonce` , into the
+`ResponseCheckTx` type and augment the existing mempool data structure to
+facilitate prioritization of uncommitted transactions in addition to extended
+functionality such as replace-by-priority and allowing multiple transactions to
+exist from the same sender with varying priorities.
+
+### CheckTx
+
+We introduce the following new fields into the `ResponseCheckTx` type:
+
+```diff
+message ResponseCheckTx {
+  uint32         code       = 1;
+  bytes          data       = 2;
+  string         log        = 3;  // nondeterministic
+  string         info       = 4;  // nondeterministic
+  int64          gas_wanted = 5 [json_name = "gas_wanted"];
+  int64          gas_used   = 6 [json_name = "gas_used"];
+  repeated Event events     = 7 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  string         codespace  = 8;
++ int64          priority   = 9;
++ string         sender     = 10;
++ int64          nonce      = 11;
+}
+```
+
+It is entirely up the application in determining how these fields are populated
+and with what values, e.g. the `sender` could be the signer  and fee payer 
+the transaction, the `priority` could be the cumulative sum of the fee(s), and
+the `nonce` could be the signer's sequence number/nonce.
+
+> TODO: Add note on which, if any, of these new fields are required.
+
+### Mempool
 
 ## Detailed Design
 
