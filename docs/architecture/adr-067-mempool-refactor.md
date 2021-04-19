@@ -11,9 +11,21 @@ Proposed
 
 ## Context
 
-> This section contains all the context one needs to understand the current state,
-> and why there is a problem. It should be as succinct as possible and introduce
-> the high level idea behind the solution.
+Tendermint Core has a reactor and data structure, mempool, that facilitates the
+ephemeral storage of uncommitted transactions. Honest nodes participating in a
+Tendermint network gossip these uncommitted transactions to each other if they
+pass the application's `CheckTx`. In addition, block proposers select from the
+mempool a subset of uncommitted transactions to include in the next block.
+
+Currently, the mempool in Tendermint Core is designed as a FIFO queue. In other
+words, transactions are included in blocks as they are received by a node. There
+currently is no explicit and prioritized ordering of these uncommitted transactions.
+This presents a few technical and UX challenges for operators and applications.
+
+Namely, validators are not able to prioritize transactions by their fees or any
+incentive aligned mechanism. In addition, the lack of prioritization also leads
+to cascading effects in terms of DoS and various attack vectors on networks,
+e.g. [cosmos/cosmos-sdk#8224](https://github.com/cosmos/cosmos-sdk/discussions/8224).
 
 ## Alternative Approaches
 
