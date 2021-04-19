@@ -27,11 +27,21 @@ incentive aligned mechanism. In addition, the lack of prioritization also leads
 to cascading effects in terms of DoS and various attack vectors on networks,
 e.g. [cosmos/cosmos-sdk#8224](https://github.com/cosmos/cosmos-sdk/discussions/8224).
 
+Thus, Tendermint Core needs the ability for an application and its users to
+prioritize transactions in a flexible and performant manner.
+
 ## Alternative Approaches
 
-> This section contains information around alternative options that are considered
-> before making a decision. It should contain a explanation on why the alternative
-> approach(es) were not chosen.
+When considering which approach to take for a priority-based flexible and
+performant mempool, there are two core candidates. The first candidate in less
+invasive in the required  set of protocol and implementation changes, which
+simply extends the existing `CheckTx` ABCI method. The second candidate essentially
+involves the introduction of new ABCI method(s) and would require a higher degree
+of complexity in protocol and implementation changes, some of which may either
+overlap or conflict with the upcoming introduction of [ABCI++](https://github.com/tendermint/spec/blob/master/rfc/004-abci%2B%2B.md).
+
+For more information on the various approaches and proposals, please see the
+[mempool discussion](https://github.com/tendermint/tendermint/discussions/6295).
 
 ## Decision
 
