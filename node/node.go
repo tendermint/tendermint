@@ -96,6 +96,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	}
 	if config.Mode == cfg.ModeSeed {
 		return NewSeedNode(config,
+			DefaultDBProvider,
 			nodeKey,
 			DefaultGenesisDocProviderFunc(config),
 			logger,
@@ -240,10 +241,6 @@ func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.Block
 	blockStore = store.NewBlockStore(blockStoreDB)
 
 	stateDB, err = dbProvider(&DBContext{"state", config})
-	if err != nil {
-		return
-	}
-
 	return
 }
 
@@ -584,7 +581,11 @@ func createTransport(logger log.Logger, config *cfg.Config) *p2p.MConnTransport 
 	)
 }
 
-func createPeerManager(config *cfg.Config, p2pLogger log.Logger, nodeID p2p.NodeID) (*p2p.PeerManager, error) {
+func createPeerManager(
+	config *cfg.Config,
+	dbProvider DBProvider,
+	p2pLogger log.Logger,
+	nodeID p2p.NodeID) (*p2p.PeerManager, error) {
 	var maxConns uint16
 	switch {
 	case config.P2P.MaxConnections > 0:
@@ -628,7 +629,11 @@ func createPeerManager(config *cfg.Config, p2pLogger log.Logger, nodeID p2p.Node
 		options.PersistentPeers = append(options.PersistentPeers, address.NodeID)
 	}
 
-	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), options)
+	peerDB, err := dbProvider(&DBContext{"peerstore", config})
+	if err != nil {
+		return nil, err
+	}
+	peerManager, err := p2p.NewPeerManager(nodeID, peerDB, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
@@ -876,6 +881,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 
 // NewSeedNode returns a new seed node, containing only p2p, pex reactor
 func NewSeedNode(config *cfg.Config,
+	dbProvider DBProvider,
 	nodeKey p2p.NodeKey,
 	genesisDocProvider GenesisDocProvider,
 	logger log.Logger,
@@ -920,7 +926,7 @@ func NewSeedNode(config *cfg.Config,
 		return nil, fmt.Errorf("could not create addrbook: %w", err)
 	}
 
-	peerManager, err := createPeerManager(config, p2pLogger, nodeKey.ID)
+	peerManager, err := createPeerManager(config, dbProvider, p2pLogger, nodeKey.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
@@ -1081,7 +1087,7 @@ func NewNode(config *cfg.Config,
 	p2pLogger := logger.With("module", "p2p")
 	transport := createTransport(p2pLogger, config)
 
-	peerManager, err := createPeerManager(config, p2pLogger, nodeKey.ID)
+	peerManager, err := createPeerManager(config, dbProvider, p2pLogger, nodeKey.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
