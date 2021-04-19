@@ -43,7 +43,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [rpc/client/http] \#6176 Remove `endpoint` arg from `New`, `NewWithTimeout` and `NewWithClient` (@melekes)
   - [rpc/client/http] \#6176 Unexpose `WSEvents` (@melekes)
   - [rpc/jsonrpc/client/ws_client] \#6176 `NewWS` no longer accepts options (use `NewWSWithOptions` and `OnReconnect` funcs to configure the client) (@melekes)
-  - [internal/libs] Move `autofile`, `clist`,`fail`,`flowrate`, `protoio`, `service`, `sync`, `tempfile`, `test` and `timer` lib packages to an internal folder
+  - [internal/libs] \#6366 Move `autofile`, `clist`,`fail`,`flowrate`, `protoio`, `service`, `sync`, `tempfile`, `test` and `timer` lib packages to an internal folder
 
 - Blockchain Protocol
 
@@ -80,13 +80,8 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [types] \#6120 use batch verification for verifying commits signatures.
   - If the key type supports the batch verification API it will try to batch verify. If the verification fails we will single verify each signature.
 - [privval/file] \#6185 Return error on `LoadFilePV`, `LoadFilePVEmptyState`. Allows for better programmatic control of Tendermint.
-<<<<<<< HEAD
-- [privval] /#6240 Add `context.Context` to privval interface.
-=======
 - [privval] \#6240 Add `context.Context` to privval interface.
 - [rpc] \#6265 set cache control in http-rpc response header (@JayT106)
-
->>>>>>> master
 
 ### BUG FIXES
 
