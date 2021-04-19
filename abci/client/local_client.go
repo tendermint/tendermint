@@ -4,8 +4,8 @@ import (
 	"context"
 
 	types "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
+	"github.com/tendermint/tendermint/internal/libs/service"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 )
 
 // NOTE: use defer to unlock mutex because Application might panic (e.g., in

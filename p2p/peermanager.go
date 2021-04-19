@@ -14,7 +14,7 @@ import (
 	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
 
-	tmsync "github.com/tendermint/tendermint/libs/sync"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 

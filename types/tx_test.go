@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	ctest "github.com/tendermint/tendermint/internal/libs/test"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	ctest "github.com/tendermint/tendermint/libs/test"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 

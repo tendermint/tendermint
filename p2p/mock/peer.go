@@ -3,7 +3,7 @@ package mock
 import (
 	"net"
 
-	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/internal/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
 )

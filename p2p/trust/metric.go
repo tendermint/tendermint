@@ -7,8 +7,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
+	"github.com/tendermint/tendermint/internal/libs/service"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 )
 
 //---------------------------------------------------------------------------------------

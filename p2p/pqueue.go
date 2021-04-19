@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/libs/log"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 // pqEnvelope defines a wrapper around an Envelope with priority to be inserted
