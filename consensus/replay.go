@@ -469,9 +469,23 @@ func (h *Handshaker) replayBlocks(
 			assertAppHashEqualsOneFromBlock(appHash, block)
 		}
 
-		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger, h.stateStore, h.genDoc.InitialHeight)
-		if err != nil {
-			return nil, err
+		if i == finalBlock {
+			// We emit events for the index services at the final block due to the sync issue when
+			// the node shutdown during the block committing status.
+			blockExec := sm.NewBlockExecutor(
+				h.stateStore, h.logger, proxyApp.Consensus(), emptyMempool{}, sm.EmptyEvidencePool{})
+			blockExec.SetEventBus(h.eventBus)
+			appHash, err = sm.ExecCommitBlock(
+				blockExec, proxyApp.Consensus(), block, h.logger, h.stateStore, h.genDoc.InitialHeight)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			appHash, err = sm.ExecCommitBlock(
+				nil, proxyApp.Consensus(), block, h.logger, h.stateStore, h.genDoc.InitialHeight)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		h.nBlocks++

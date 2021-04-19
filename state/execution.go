@@ -551,16 +551,39 @@ func fireEvents(
 // ExecCommitBlock executes and commits a block on the proxyApp without validating or mutating the state.
 // It returns the application root hash (result of abci.Commit).
 func ExecCommitBlock(
+	be *BlockExecutor,
 	appConnConsensus proxy.AppConnConsensus,
 	block *types.Block,
 	logger log.Logger,
 	store Store,
 	initialHeight int64,
 ) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
+	abciResponses, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
 	if err != nil {
 		logger.Error("failed executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err
+	}
+
+	if be != nil {
+		if err := be.eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
+			Header:           block.Header,
+			NumTxs:           int64(len(block.Txs)),
+			ResultBeginBlock: *abciResponses.BeginBlock,
+			ResultEndBlock:   *abciResponses.EndBlock,
+		}); err != nil {
+			logger.Error("failed publishing new block header", "err", err)
+		}
+
+		for i, tx := range block.Data.Txs {
+			if err := be.eventBus.PublishEventTx(types.EventDataTx{TxResult: abci.TxResult{
+				Height: block.Height,
+				Index:  uint32(i),
+				Tx:     tx,
+				Result: *(abciResponses.DeliverTxs[i]),
+			}}); err != nil {
+				logger.Error("failed publishing event TX", "err", err)
+			}
+		}
 	}
 
 	// Commit block, get hash back
