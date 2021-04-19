@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"strings"
@@ -899,6 +900,24 @@ func (commit *Commit) VoteBlockSignBytes(chainID string, valIdx int32) []byte {
 	return VoteBlockSignBytes(chainID, v)
 }
 
+// VoteBlockRequestId returns the requestId Hash of the Vote corresponding to valIdx for
+// signing.
+//
+// Panics if valIdx >= commit.Size().
+//
+func (commit *Commit) VoteBlockRequestId() []byte {
+	requestIdMessage := []byte("dpbvote")
+	heightByteArray := make([]byte, 8)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(commit.Height))
+	roundByteArray := make([]byte, 4)
+	binary.LittleEndian.PutUint32(roundByteArray, uint32(commit.Round))
+
+	requestIdMessage = append(requestIdMessage, heightByteArray...)
+	requestIdMessage = append(requestIdMessage, roundByteArray...)
+
+	return crypto.Sha256(requestIdMessage)
+}
+
 // CanonicalVoteVerifySignBytes returns the bytes of the Canonical Vote that is threshold signed.
 //
 func (commit *Commit) CanonicalVoteVerifySignBytes(chainID string) []byte {
@@ -920,6 +939,25 @@ func (commit *Commit) VoteStateSignBytes(chainID string, valIdx int32) []byte {
 	v.StateID = commitSig.StateID(commit.StateID)
 	return VoteStateSignBytes(chainID, v.ToProto())
 }
+
+// VoteStateRequestId returns the requestId Hash of the Vote corresponding to valIdx for
+// signing.
+//
+// Panics if valIdx >= commit.Size().
+//
+func (commit *Commit) VoteStateRequestId() []byte {
+	requestIdMessage := []byte("dpsvote")
+	heightByteArray := make([]byte, 8)
+	binary.LittleEndian.PutUint64(heightByteArray, uint64(commit.Height))
+	roundByteArray := make([]byte, 4)
+	binary.LittleEndian.PutUint32(roundByteArray, uint32(commit.Round))
+
+	requestIdMessage = append(requestIdMessage, heightByteArray...)
+	requestIdMessage = append(requestIdMessage, roundByteArray...)
+
+	return crypto.Sha256(requestIdMessage)
+}
+
 
 // VoteStateSignBytes returns the bytes of the State corresponding to valIdx for
 // signing.
@@ -1405,7 +1443,7 @@ func (stateID StateID) Key() string {
 // ValidateBasic performs basic validation.
 func (stateID StateID) ValidateBasic() error {
 	// LastAppHash can be empty in case of genesis block.
-	if err := ValidateHash(stateID.LastAppHash); err != nil {
+	if err := ValidateAppHash(stateID.LastAppHash); err != nil {
 		return fmt.Errorf("wrong Hash")
 	}
 	return nil

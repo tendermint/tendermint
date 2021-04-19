@@ -252,8 +252,8 @@ func (vote *Vote) Verify(chainID string, quorumType btcjson.LLMQType, quorumHash
 
 	signId := crypto.SignId(100, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
 
-	fmt.Printf("vote verify sign Id %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(signId), quorumType,
-		hex.EncodeToString(quorumHash), hex.EncodeToString(blockRequestId), hex.EncodeToString(blockMessageHash))
+	// fmt.Printf("block vote verify sign Id %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(signId), quorumType,
+	//	hex.EncodeToString(quorumHash), hex.EncodeToString(blockRequestId), hex.EncodeToString(blockMessageHash))
 
 	if !pubKey.VerifySignatureDigest(signId, vote.BlockSignature) {
 		return fmt.Errorf("%s proTxHash %s pubKey %v vote %v sign bytes %s block signature %s", ErrVoteInvalidBlockSignature.Error(),
@@ -268,6 +268,9 @@ func (vote *Vote) Verify(chainID string, quorumType btcjson.LLMQType, quorumHash
 		stateRequestId := VoteStateRequestId(vote)
 
 		stateSignId := crypto.SignId(100, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
+
+		// fmt.Printf("state vote verify sign Id %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(stateSignId), quorumType,
+		//	hex.EncodeToString(quorumHash), hex.EncodeToString(stateRequestId), hex.EncodeToString(stateMessageHash))
 
 		if !pubKey.VerifySignatureDigest(stateSignId, vote.StateSignature) {
 			return ErrVoteInvalidStateSignature

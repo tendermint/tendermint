@@ -10,10 +10,13 @@ import (
 
 const (
 	// AddressSize is the size of a pubkey address.
-	AddressSize     = tmhash.TruncatedSize
-	DefaultHashSize = 32
-	ProTxHashSize   = DefaultHashSize
-	QuorumHashSize  = DefaultHashSize
+	AddressSize        = tmhash.TruncatedSize
+	DefaultHashSize    = 32
+	LargeAppHashSize   = DefaultHashSize
+	SmallAppHashSize   = 20
+	DefaultAppHashSize = SmallAppHashSize
+	ProTxHashSize      = DefaultHashSize
+	QuorumHashSize     = DefaultHashSize
 )
 
 type KeyType int

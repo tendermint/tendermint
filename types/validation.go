@@ -43,6 +43,18 @@ func ValidateHash(h []byte) error {
 	return nil
 }
 
+// ValidateAppHash returns an error if the hash is not empty, but its
+// size != tmhash.Size.
+func ValidateAppHash(h []byte) error {
+	if len(h) > 0 && len(h) != crypto.DefaultAppHashSize {
+		return fmt.Errorf("expected size to be %d bytes, got %d bytes",
+			crypto.DefaultAppHashSize,
+			len(h),
+		)
+	}
+	return nil
+}
+
 // ValidateSignature returns an error if the signature is not empty, but its
 // size != tmhash.Size.
 func ValidateSignatureSize(keyType crypto.KeyType, h []byte) error {

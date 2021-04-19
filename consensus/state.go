@@ -2272,7 +2272,7 @@ func (cs *State) signVote(
 	// fmt.Printf("##state signing vote %v\n", vote)
 
 	v := vote.ToProto()
-	fmt.Printf("validators for signing vote are %v\n", cs.state.Validators)
+	// fmt.Printf("validators for signing vote are %v\n", cs.state.Validators)
 	err := cs.privValidator.SignVote(cs.state.ChainID, cs.state.Validators.QuorumHash, v)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature

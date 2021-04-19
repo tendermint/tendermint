@@ -1778,7 +1778,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 
 			if bytes.Equal(vote.ValidatorProTxHash, cs.privValidatorProTxHash) {
 				cs.Logger.Error(
-					"Found conflicting vote from ourselves. Did you unsafe_reset a validator?",
+					"test found conflicting vote from ourselves. Did you unsafe_reset a validator?",
 					"height",
 					vote.Height,
 					"round",

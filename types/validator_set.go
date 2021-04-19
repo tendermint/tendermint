@@ -882,6 +882,9 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 	talliedVotingPower := int64(0)
 
 	votingPowerNeedMoreThan := vals.TotalVotingPower() * 2 / 3
+
+	blockRequestId := commit.VoteBlockRequestId()
+
 	for idx, commitSig := range commit.Signatures {
 		if commitSig.Absent() {
 			continue // OK, some signatures can be absent.
@@ -891,9 +894,17 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 		// This means we don't need the validator address or to do any lookup.
 		val := vals.Validators[idx]
 
+		// It is possible that a vote might sign a nil block to indicate it does not agree with the proposer
+
+		// This is why it must be here
+
 		// Validate block signature.
 		voteBlockSignBytes := commit.VoteBlockSignBytes(chainID, int32(idx))
-		if !val.PubKey.VerifySignature(voteBlockSignBytes, commitSig.BlockSignature) {
+
+		blockMessageHash := crypto.Sha256(voteBlockSignBytes)
+
+		signId := crypto.SignId(100, bls12381.ReverseBytes(vals.QuorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
+		if !val.PubKey.VerifySignatureDigest(signId, commitSig.BlockSignature) {
 			return fmt.Errorf("wrong block signature (#%d/proTxHash:%X/pubKey:%X) | voteBlockSignBytes : %X |"+
 				" signature : %X | commitBID: %s | vote :%v | commit sig %v", idx, val.ProTxHash, val.PubKey.Bytes(),
 				voteBlockSignBytes, commitSig.BlockSignature, commit.BlockID.String(), commit.GetVote(int32(idx)),
@@ -910,7 +921,14 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 		if commitSig.BlockIDFlag == BlockIDFlagCommit {
 			// Only verify signatures that voted to commit the block
 			voteStateSignBytes := commit.VoteStateSignBytes(chainID, int32(idx))
-			if !val.PubKey.VerifySignature(voteStateSignBytes, commitSig.StateSignature) {
+
+			stateMessageHash := crypto.Sha256(voteStateSignBytes)
+
+			stateRequestId := commit.VoteStateRequestId()
+
+			stateSignId := crypto.SignId(100, bls12381.ReverseBytes(vals.QuorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
+
+			if !val.PubKey.VerifySignatureDigest(stateSignId, commitSig.StateSignature) {
 				return fmt.Errorf("wrong state signature (#%d/proTxHash:%X/pubKey:%X) |"+
 					" voteStateSignBytes : %X | signature : %X", idx, val.ProTxHash, val.PubKey.Bytes(),
 					voteStateSignBytes, commitSig.StateSignature)
@@ -928,13 +946,25 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 	}
 
 	canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
-	if !vals.ThresholdPublicKey.VerifySignature(canonicalVoteBlockSignBytes, commit.ThresholdBlockSignature) {
+
+	canonicalVoteBlockMessageHash := crypto.Sha256(canonicalVoteBlockSignBytes)
+
+	blockSignId := crypto.SignId(100, bls12381.ReverseBytes(vals.QuorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(canonicalVoteBlockMessageHash))
+
+	if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignId, commit.ThresholdBlockSignature) {
 		return fmt.Errorf("incorrect threshold block signature %X %X", canonicalVoteBlockSignBytes,
 			commit.ThresholdBlockSignature)
 	}
 
 	canonicalVoteStateSignBytes := commit.CanonicalVoteStateSignBytes(chainID)
-	if !vals.ThresholdPublicKey.VerifySignature(canonicalVoteStateSignBytes, commit.ThresholdStateSignature) {
+
+	canonicalVoteStateMessageHash := crypto.Sha256(canonicalVoteStateSignBytes)
+
+	stateRequestId := commit.VoteStateRequestId()
+
+	stateSignId := crypto.SignId(100, bls12381.ReverseBytes(vals.QuorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(canonicalVoteStateMessageHash))
+
+	if !vals.ThresholdPublicKey.VerifySignatureDigest(stateSignId, commit.ThresholdStateSignature) {
 		return fmt.Errorf("incorrect threshold state signature %X %X", canonicalVoteStateSignBytes,
 			commit.ThresholdStateSignature)
 	}
