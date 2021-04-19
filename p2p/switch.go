@@ -158,7 +158,7 @@ func NewSwitch(
 		conns:                NewConnSet(),
 	}
 
-	// Ensure we have a completely PRNG is reseeded.
+	// Ensure PRNG is reseeded.
 	tmrand.Reseed()
 
 	sw.BaseService = *service.NewBaseService(nil, "P2P Switch", sw)
