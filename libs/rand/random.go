@@ -43,7 +43,7 @@ func Reseed() {
 }
 
 // Str constructs a random alphanumeric string of given length
-// from a freshly instantiated prng.
+// from math/rand's global default Source.
 func Str(length int) string {
 	if length <= 0 {
 		return ""
@@ -69,7 +69,7 @@ func Str(length int) string {
 	}
 }
 
-// Bytes returns n random bytes generated from a freshly instantiated prng.
+// Bytes returns n random bytes generated from math/rand's global default Source.
 func Bytes(n int) []byte {
 	bs := make([]byte, n)
 	for i := 0; i < len(bs); i++ {
