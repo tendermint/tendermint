@@ -126,7 +126,9 @@ func validatePerPage(perPagePtr *int) int {
 	perPage := *perPagePtr
 	if perPage < 1 {
 		return defaultPerPage
-	} else if perPage > maxPerPage {
+		// in unsafe mode there is no max on the page size but in safe mode
+		// we cap it to maxPerPage
+	} else if perPage > maxPerPage && !env.Config.Unsafe {
 		return maxPerPage
 	}
 	return perPage
@@ -154,7 +156,7 @@ func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
 		}
 		base := env.BlockStore.Base()
 		if height < base {
-			return 0, fmt.Errorf("%w (requested height: %d, base height: %d)", ctypes.ErrHeightExceedsChainHead, height, base)
+			return 0, fmt.Errorf("%w (requested height: %d, base height: %d)", ctypes.ErrHeightNotAvailable, height, base)
 		}
 		return height, nil
 	}

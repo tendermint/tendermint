@@ -6,12 +6,19 @@ import (
 )
 
 var (
+	// ErrHeightTooHigh is returned when the height is higher than the last
+	// block that the provider has. The light client will not remove the provider
+	ErrHeightTooHigh = errors.New("height requested is too high")
 	// ErrLightBlockNotFound is returned when a provider can't find the
-	// requested header. The light client will not remove the provider
+	// requested header (i.e. it has been pruned).
+	// The light client will not remove the provider
 	ErrLightBlockNotFound = errors.New("light block not found")
 	// ErrNoResponse is returned if the provider doesn't respond to the
 	// request in a given time. The light client will not remove the provider
 	ErrNoResponse = errors.New("client failed to respond")
+	// ErrConnectionClosed is returned if the provider closes the connection.
+	// In this case we remove the provider.
+	ErrConnectionClosed = errors.New("client closed connection")
 )
 
 // ErrBadLightBlock is returned when a provider returns an invalid

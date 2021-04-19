@@ -5,10 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
-	"os"
 	"strconv"
 	"time"
 
@@ -54,21 +54,6 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-var (
-	useLegacyP2P       = true
-	p2pRouterQueueType string
-)
-
-func init() {
-	if v := os.Getenv("TM_LEGACY_P2P"); len(v) > 0 {
-		useLegacyP2P, _ = strconv.ParseBool(v)
-	}
-
-	if v := os.Getenv("TM_P2P_QUEUE"); len(v) > 0 {
-		p2pRouterQueueType = v
-	}
-}
-
 // DBContext specifies config information for loading a new DB.
 type DBContext struct {
 	ID     string
@@ -111,6 +96,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	}
 	if config.Mode == cfg.ModeSeed {
 		return NewSeedNode(config,
+			DefaultDBProvider,
 			nodeKey,
 			DefaultGenesisDocProviderFunc(config),
 			logger,
@@ -255,10 +241,6 @@ func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.Block
 	blockStore = store.NewBlockStore(blockStoreDB)
 
 	stateDB, err = dbProvider(&DBContext{"state", config})
-	if err != nil {
-		return
-	}
-
 	return
 }
 
@@ -403,12 +385,12 @@ func createMempoolReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if useLegacyP2P {
-		channels = getChannelsFromShim(reactorShim)
-		peerUpdates = reactorShim.PeerUpdates
-	} else {
+	if config.P2P.DisableLegacy {
 		channels = makeChannelsFromShims(router, channelShims)
 		peerUpdates = peerManager.Subscribe()
+	} else {
+		channels = getChannelsFromShim(reactorShim)
+		peerUpdates = reactorShim.PeerUpdates
 	}
 
 	reactor := mempl.NewReactor(
@@ -454,12 +436,12 @@ func createEvidenceReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if useLegacyP2P {
-		channels = getChannelsFromShim(reactorShim)
-		peerUpdates = reactorShim.PeerUpdates
-	} else {
+	if config.P2P.DisableLegacy {
 		channels = makeChannelsFromShims(router, evidence.ChannelShims)
 		peerUpdates = peerManager.Subscribe()
+	} else {
+		channels = getChannelsFromShim(reactorShim)
+		peerUpdates = reactorShim.PeerUpdates
 	}
 
 	evidenceReactor := evidence.NewReactor(
@@ -495,12 +477,12 @@ func createBlockchainReactor(
 			peerUpdates *p2p.PeerUpdates
 		)
 
-		if useLegacyP2P {
-			channels = getChannelsFromShim(reactorShim)
-			peerUpdates = reactorShim.PeerUpdates
-		} else {
+		if config.P2P.DisableLegacy {
 			channels = makeChannelsFromShims(router, bcv0.ChannelShims)
 			peerUpdates = peerManager.Subscribe()
+		} else {
+			channels = getChannelsFromShim(reactorShim)
+			peerUpdates = reactorShim.PeerUpdates
 		}
 
 		reactor, err := bcv0.NewReactor(
@@ -561,12 +543,12 @@ func createConsensusReactor(
 		peerUpdates *p2p.PeerUpdates
 	)
 
-	if useLegacyP2P {
-		channels = getChannelsFromShim(reactorShim)
-		peerUpdates = reactorShim.PeerUpdates
-	} else {
+	if config.P2P.DisableLegacy {
 		channels = makeChannelsFromShims(router, cs.ChannelShims)
 		peerUpdates = peerManager.Subscribe()
+	} else {
+		channels = getChannelsFromShim(reactorShim)
+		peerUpdates = reactorShim.PeerUpdates
 	}
 
 	reactor := cs.NewReactor(
@@ -599,9 +581,35 @@ func createTransport(logger log.Logger, config *cfg.Config) *p2p.MConnTransport 
 	)
 }
 
-func createPeerManager(config *cfg.Config, p2pLogger log.Logger, nodeID p2p.NodeID) (*p2p.PeerManager, error) {
+func createPeerManager(
+	config *cfg.Config,
+	dbProvider DBProvider,
+	p2pLogger log.Logger,
+	nodeID p2p.NodeID) (*p2p.PeerManager, error) {
+	var maxConns uint16
+	switch {
+	case config.P2P.MaxConnections > 0:
+		maxConns = config.P2P.MaxConnections
+
+	case config.P2P.MaxNumInboundPeers > 0 && config.P2P.MaxNumOutboundPeers > 0:
+		x := config.P2P.MaxNumInboundPeers + config.P2P.MaxNumOutboundPeers
+		if x > math.MaxUint16 {
+			return nil, fmt.Errorf(
+				"max inbound peers (%d) + max outbound peers (%d) exceeds maximum (%d)",
+				config.P2P.MaxNumInboundPeers,
+				config.P2P.MaxNumOutboundPeers,
+				math.MaxUint16,
+			)
+		}
+
+		maxConns = uint16(x)
+
+	default:
+		maxConns = 64
+	}
+
 	options := p2p.PeerManagerOptions{
-		MaxConnected:           64,
+		MaxConnected:           maxConns,
 		MaxConnectedUpgrade:    4,
 		MaxPeers:               1000,
 		MinRetryTime:           100 * time.Millisecond,
@@ -621,7 +629,11 @@ func createPeerManager(config *cfg.Config, p2pLogger log.Logger, nodeID p2p.Node
 		options.PersistentPeers = append(options.PersistentPeers, address.NodeID)
 	}
 
-	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), options)
+	peerDB, err := dbProvider(&DBContext{"peerstore", config})
+	if err != nil {
+		return nil, err
+	}
+	peerManager, err := p2p.NewPeerManager(nodeID, peerDB, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
@@ -869,6 +881,7 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 
 // NewSeedNode returns a new seed node, containing only p2p, pex reactor
 func NewSeedNode(config *cfg.Config,
+	dbProvider DBProvider,
 	nodeKey p2p.NodeKey,
 	genesisDocProvider GenesisDocProvider,
 	logger log.Logger,
@@ -913,7 +926,7 @@ func NewSeedNode(config *cfg.Config,
 		return nil, fmt.Errorf("could not create addrbook: %w", err)
 	}
 
-	peerManager, err := createPeerManager(config, p2pLogger, nodeKey.ID)
+	peerManager, err := createPeerManager(config, dbProvider, p2pLogger, nodeKey.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
@@ -1074,7 +1087,7 @@ func NewNode(config *cfg.Config,
 	p2pLogger := logger.With("module", "p2p")
 	transport := createTransport(p2pLogger, config)
 
-	peerManager, err := createPeerManager(config, p2pLogger, nodeKey.ID)
+	peerManager, err := createPeerManager(config, dbProvider, p2pLogger, nodeKey.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
 	}
@@ -1154,12 +1167,12 @@ func NewNode(config *cfg.Config,
 
 	stateSyncReactorShim = p2p.NewReactorShim(logger.With("module", "statesync"), "StateSyncShim", statesync.ChannelShims)
 
-	if useLegacyP2P {
-		channels = getChannelsFromShim(stateSyncReactorShim)
-		peerUpdates = stateSyncReactorShim.PeerUpdates
-	} else {
+	if config.P2P.DisableLegacy {
 		channels = makeChannelsFromShims(router, statesync.ChannelShims)
 		peerUpdates = peerManager.Subscribe()
+	} else {
+		channels = getChannelsFromShim(stateSyncReactorShim)
+		peerUpdates = stateSyncReactorShim.PeerUpdates
 	}
 
 	stateSyncReactor = statesync.NewReactor(
@@ -1321,12 +1334,12 @@ func (n *Node) OnStart() error {
 
 	n.isListening = true
 
-	n.Logger.Info("p2p service", "legacy_enabled", useLegacyP2P)
+	n.Logger.Info("p2p service", "legacy_enabled", !n.config.P2P.DisableLegacy)
 
-	if useLegacyP2P {
-		err = n.sw.Start()
-	} else {
+	if n.config.P2P.DisableLegacy {
 		err = n.router.Start()
+	} else {
+		err = n.sw.Start()
 	}
 	if err != nil {
 		return err
@@ -1361,7 +1374,7 @@ func (n *Node) OnStart() error {
 		}
 	}
 
-	if !useLegacyP2P && n.pexReactorV2 != nil {
+	if n.config.P2P.DisableLegacy && n.pexReactorV2 != nil {
 		if err := n.pexReactorV2.Start(); err != nil {
 			return err
 		}
@@ -1404,7 +1417,6 @@ func (n *Node) OnStop() {
 	}
 
 	if n.config.Mode != cfg.ModeSeed {
-
 		// now stop the reactors
 		if n.config.FastSync.Version == "v0" {
 			// Stop the real blockchain reactor separately since the switch uses the shim.
@@ -1434,19 +1446,19 @@ func (n *Node) OnStop() {
 		}
 	}
 
-	if !useLegacyP2P && n.pexReactorV2 != nil {
+	if n.config.P2P.DisableLegacy && n.pexReactorV2 != nil {
 		if err := n.pexReactorV2.Stop(); err != nil {
 			n.Logger.Error("failed to stop the PEX v2 reactor", "err", err)
 		}
 	}
 
-	if useLegacyP2P {
-		if err := n.sw.Stop(); err != nil {
-			n.Logger.Error("failed to stop switch", "err", err)
-		}
-	} else {
+	if n.config.P2P.DisableLegacy {
 		if err := n.router.Stop(); err != nil {
 			n.Logger.Error("failed to stop router", "err", err)
+		}
+	} else {
+		if err := n.sw.Stop(); err != nil {
+			n.Logger.Error("failed to stop switch", "err", err)
 		}
 	}
 
@@ -1723,6 +1735,11 @@ func (n *Node) Config() *cfg.Config {
 	return n.config
 }
 
+// TxIndexer returns the Node's TxIndexer.
+func (n *Node) TxIndexer() txindex.TxIndexer {
+	return n.txIndexer
+}
+
 //------------------------------------------------------------------------------
 
 func (n *Node) Listeners() []string {
@@ -1967,11 +1984,11 @@ func createAndStartPrivValidatorGRPCClient(
 
 func getRouterConfig(conf *cfg.Config, proxyApp proxy.AppConns) p2p.RouterOptions {
 	opts := p2p.RouterOptions{
-		QueueType: p2pRouterQueueType,
+		QueueType: conf.P2P.QueueType,
 	}
 
 	if conf.P2P.MaxNumInboundPeers > 0 {
-		opts.MaxIncommingConnectionsPerIP = uint(conf.P2P.MaxNumInboundPeers)
+		opts.MaxIncomingConnectionAttempts = conf.P2P.MaxIncomingConnectionAttempts
 	}
 
 	if conf.FilterPeers && proxyApp != nil {

@@ -168,7 +168,6 @@ abci = "{{ .BaseConfig.ABCI }}"
 # so the app can decide if we should keep the connection or not
 filter-peers = {{ .BaseConfig.FilterPeers }}
 
-
 #######################################################################
 ###                 Advanced Configuration Options                  ###
 #######################################################################
@@ -262,6 +261,12 @@ pprof-laddr = "{{ .RPC.PprofListenAddress }}"
 #######################################################
 [p2p]
 
+# Enable the new p2p layer.
+disable-legacy = {{ .P2P.DisableLegacy }}
+
+# Select the p2p internal queue
+queue-type = "{{ .P2P.QueueType }}"
+
 # Address to listen for incoming connections
 laddr = "{{ .P2P.ListenAddress }}"
 
@@ -288,10 +293,22 @@ addr-book-file = "{{ js .P2P.AddrBook }}"
 addr-book-strict = {{ .P2P.AddrBookStrict }}
 
 # Maximum number of inbound peers
+#
+# TODO: Remove once p2p refactor is complete in favor of MaxConnections.
+# ref: https://github.com/tendermint/tendermint/issues/5670
 max-num-inbound-peers = {{ .P2P.MaxNumInboundPeers }}
 
 # Maximum number of outbound peers to connect to, excluding persistent peers
+#
+# TODO: Remove once p2p refactor is complete in favor of MaxConnections.
+# ref: https://github.com/tendermint/tendermint/issues/5670
 max-num-outbound-peers = {{ .P2P.MaxNumOutboundPeers }}
+
+# Maximum number of connections (inbound and outbound).
+max-connections = {{ .P2P.MaxConnections }}
+
+# Rate limits the number of incoming connection attempts per IP address.
+max-incoming-connection-attempts = {{ .P2P.MaxIncomingConnectionAttempts }}
 
 # List of node IDs, to which a connection will be (re)established ignoring any existing limits
 unconditional-peer-ids = "{{ .P2P.UnconditionalPeerIDs }}"
