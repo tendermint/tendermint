@@ -567,10 +567,24 @@ type P2PConfig struct { //nolint: maligned
 	AddrBookStrict bool `mapstructure:"addr-book-strict"`
 
 	// Maximum number of inbound peers
+	//
+	// TODO: Remove once p2p refactor is complete in favor of MaxConnections.
+	// ref: https://github.com/tendermint/tendermint/issues/5670
 	MaxNumInboundPeers int `mapstructure:"max-num-inbound-peers"`
 
-	// Maximum number of outbound peers to connect to, excluding persistent peers
+	// Maximum number of outbound peers to connect to, excluding persistent peers.
+	//
+	// TODO: Remove once p2p refactor is complete in favor of MaxConnections.
+	// ref: https://github.com/tendermint/tendermint/issues/5670
 	MaxNumOutboundPeers int `mapstructure:"max-num-outbound-peers"`
+
+	// MaxConnections defines the maximum number of connected peers (inbound and
+	// outbound).
+	MaxConnections uint16 `mapstructure:"max-connections"`
+
+	// MaxIncomingConnectionAttempts rate limits the number of incoming connection
+	// attempts per IP address.
+	MaxIncomingConnectionAttempts uint `mapstructure:"max-incoming-connection-attempts"`
 
 	// List of node IDs, to which a connection will be (re)established ignoring any existing limits
 	UnconditionalPeerIDs string `mapstructure:"unconditional-peer-ids"`
@@ -608,9 +622,9 @@ type P2PConfig struct { //nolint: maligned
 	// Force dial to fail
 	TestDialFail bool `mapstructure:"test-dial-fail"`
 
-	// Mostly for testing, use rather than environment variables
-	// to turn on the new P2P stack.
-	UseNewP2P bool `mapstructure:"use-new-p2p"`
+	// DisableLegacy is used mostly for testing to enable or disable the legacy
+	// P2P stack.
+	DisableLegacy bool `mapstructure:"disable-legacy"`
 
 	// Makes it possible to configure which queue backend the p2p
 	// layer uses. Options are: "fifo", "priority" and "wdrr",
@@ -621,15 +635,17 @@ type P2PConfig struct { //nolint: maligned
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
-		ListenAddress:                "tcp://0.0.0.0:26656",
-		ExternalAddress:              "",
-		UPNP:                         false,
-		AddrBook:                     defaultAddrBookPath,
-		AddrBookStrict:               true,
-		MaxNumInboundPeers:           40,
-		MaxNumOutboundPeers:          10,
-		PersistentPeersMaxDialPeriod: 0 * time.Second,
-		FlushThrottleTimeout:         100 * time.Millisecond,
+		ListenAddress:                 "tcp://0.0.0.0:26656",
+		ExternalAddress:               "",
+		UPNP:                          false,
+		AddrBook:                      defaultAddrBookPath,
+		AddrBookStrict:                true,
+		MaxNumInboundPeers:            40,
+		MaxNumOutboundPeers:           10,
+		MaxConnections:                64,
+		MaxIncomingConnectionAttempts: 100,
+		PersistentPeersMaxDialPeriod:  0 * time.Second,
+		FlushThrottleTimeout:          100 * time.Millisecond,
 		// The MTU (Maximum Transmission Unit) for Ethernet is 1500 bytes.
 		// The IP header and the TCP header take up 20 bytes each at least (unless
 		// optional header fields are used) and thus the max for (non-Jumbo frame)

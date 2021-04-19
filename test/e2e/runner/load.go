@@ -14,7 +14,7 @@ import (
 )
 
 // Load generates transactions against the network until the given context is
-// canceled. A multiplier of great than one can be supplied if load needs to
+// canceled. A multiplier of greater than one can be supplied if load needs to
 // be generated beyond a minimum amount.
 func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 	// Since transactions are executed across all nodes in the network, we need
@@ -38,9 +38,9 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 	logger.Info(fmt.Sprintf("Starting transaction load (%v workers)...", concurrency))
 	started := time.Now()
 
-	go loadGenerate(ctx, chTx)
+	go loadGenerate(ctx, chTx, multiplier)
 
-	for w := 0; w < concurrency*multiplier; w++ {
+	for w := 0; w < concurrency; w++ {
 		go loadProcess(ctx, testnet, chTx, chSuccess)
 	}
 
@@ -66,13 +66,13 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 }
 
 // loadGenerate generates jobs until the context is canceled
-func loadGenerate(ctx context.Context, chTx chan<- types.Tx) {
+func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int) {
 	for i := 0; i < math.MaxInt64; i++ {
 		// We keep generating the same 1000 keys over and over, with different values.
 		// This gives a reasonable load without putting too much data in the app.
 		id := i % 1000
 
-		bz := make([]byte, 2048) // 4kb hex-encoded
+		bz := make([]byte, 1024) // 1kb hex-encoded
 		_, err := rand.Read(bz)
 		if err != nil {
 			panic(fmt.Sprintf("Failed to read random bytes: %v", err))
@@ -81,7 +81,7 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx) {
 
 		select {
 		case chTx <- tx:
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(time.Duration(100/multiplier) * time.Millisecond)
 
 		case <-ctx.Done():
 			close(chTx)
@@ -107,10 +107,16 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx
 				continue
 			}
 
+			// check that the node is up
+			_, err = client.Health(ctx)
+			if err != nil {
+				continue
+			}
+
 			clients[node.Name] = client
 		}
 
-		if _, err = client.BroadcastTxCommit(ctx, tx); err != nil {
+		if _, err = client.BroadcastTxSync(ctx, tx); err != nil {
 			continue
 		}
 
