@@ -202,7 +202,8 @@ func (r *Reactor) OnStart() error {
 func (r *Reactor) OnStop() {
 
 	// If the node is committing the new block, wait until it finished!
-	if r.state.Step == cstypes.RoundStepCommit {
+
+	if r.state.GetRoundState().Step == cstypes.RoundStepCommit {
 		select {
 		case <-r.newHeightCh:
 		case <-time.After(3 * time.Second):
