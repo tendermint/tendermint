@@ -385,7 +385,7 @@ func (m *PeerManager) prunePeers() error {
 
 // Add adds a peer to the manager, given as an address. If the peer already
 // exists, the address is added to it if it isn't already present. This will push
-// low scoring peers out of the address book if it exceeds the maximum size
+// low scoring peers out of the address book if it exceeds the maximum size.
 func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 	if err := address.Validate(); err != nil {
 		return false, err

@@ -42,7 +42,7 @@ const (
 //
 // FIXME: Rename this when Reactor is removed, and consider moving to p2p/.
 //
-// The peer explorer or PEX reactor supports the peer manager by sending
+// The peer exchange or PEX reactor supports the peer manager by sending
 // requests to other peers for addresses that can be given to the peer manager
 // and at the same time advertises addresses to peers that need more.
 //
@@ -175,7 +175,6 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 
 	switch msg := envelope.Message.(type) {
 
-	// LEGACY PEX MESSAGES
 	case *protop2p.PexRequest:
 		// check if the peer hasn't sent a prior request too close to this one
 		// in time
