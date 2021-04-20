@@ -1,5 +1,27 @@
-[node.validator01]
-[node.validator02]
-[node.validator03]
-[node.validator04]
+shinitial_height = 10
 
+[validators]
+  validator01 = 55
+  validator02 = 78
+  validator03 = 32
+
+[validator_update]
+  [validator_update.1010]
+    validator02 = 94
+
+[node.validator01]
+    fast_sync = "v0"
+    state_sync = false
+    snapshot_interval = 2
+
+[node.validator02]
+    fast_sync = "v0"
+    state_sync = false
+    snapshot_interval = 2
+
+[node.validator03]
+    start_at = 15
+    fast_sync = ""
+    state_sync = true
+    persist_interval = 2
+    snapshot_interval = 2

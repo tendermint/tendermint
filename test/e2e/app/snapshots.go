@@ -87,11 +87,10 @@ func (s *SnapshotStore) Create(state *State) (abci.Snapshot, error) {
 	if err != nil {
 		return abci.Snapshot{}, err
 	}
-	hash := hashItems(state.Values)
 	snapshot := abci.Snapshot{
 		Height: state.Height,
 		Format: 1,
-		Hash:   hash[:],
+		Hash:   hashItems(state.Values),
 		Chunks: byteChunks(bz),
 	}
 	err = ioutil.WriteFile(filepath.Join(s.dir, fmt.Sprintf("%v.json", state.Height)), bz, 0644)
