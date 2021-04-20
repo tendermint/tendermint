@@ -476,13 +476,13 @@ func (h *Handshaker) replayBlocks(
 				h.stateStore, h.logger, proxyApp.Consensus(), emptyMempool{}, sm.EmptyEvidencePool{})
 			blockExec.SetEventBus(h.eventBus)
 			appHash, err = sm.ExecCommitBlock(
-				blockExec, proxyApp.Consensus(), block, h.logger, h.stateStore, h.genDoc.InitialHeight)
+				blockExec, proxyApp.Consensus(), block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
 			if err != nil {
 				return nil, err
 			}
 		} else {
 			appHash, err = sm.ExecCommitBlock(
-				nil, proxyApp.Consensus(), block, h.logger, h.stateStore, h.genDoc.InitialHeight)
+				nil, proxyApp.Consensus(), block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
 			if err != nil {
 				return nil, err
 			}

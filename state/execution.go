@@ -221,6 +221,16 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	return state, retainHeight, nil
 }
 
+func (blockExec *BlockExecutor) FireEvents(
+	logger log.Logger,
+	eventBus types.BlockEventPublisher,
+	block *types.Block,
+	abciResponses *tmstate.ABCIResponses,
+	validatorUpdates []*types.Validator) {
+	fireEvents(
+		logger, eventBus, block, abciResponses, validatorUpdates)
+}
+
 // Commit locks the mempool, runs the ABCI Commit message, and updates the
 // mempool.
 // It returns the result of calling abci.Commit (the AppHash) and the height to retain (if any).
@@ -557,6 +567,7 @@ func ExecCommitBlock(
 	logger log.Logger,
 	store Store,
 	initialHeight int64,
+	s State,
 ) ([]byte, error) {
 	abciResponses, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
 	if err != nil {
@@ -565,25 +576,19 @@ func ExecCommitBlock(
 	}
 
 	if be != nil {
-		if err := be.eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
-			Header:           block.Header,
-			NumTxs:           int64(len(block.Txs)),
-			ResultBeginBlock: *abciResponses.BeginBlock,
-			ResultEndBlock:   *abciResponses.EndBlock,
-		}); err != nil {
-			logger.Error("failed publishing new block header", "err", err)
+		abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
+		err = validateValidatorUpdates(abciValUpdates, s.ConsensusParams.Validator)
+		if err != nil {
+			logger.Error("err", err)
+			return nil, err
+		}
+		validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciValUpdates)
+		if err != nil {
+			logger.Error("err", err)
+			return nil, err
 		}
 
-		for i, tx := range block.Data.Txs {
-			if err := be.eventBus.PublishEventTx(types.EventDataTx{TxResult: abci.TxResult{
-				Height: block.Height,
-				Index:  uint32(i),
-				Tx:     tx,
-				Result: *(abciResponses.DeliverTxs[i]),
-			}}); err != nil {
-				logger.Error("failed publishing event TX", "err", err)
-			}
-		}
+		be.FireEvents(be.logger, be.eventBus, block, abciResponses, validatorUpdates)
 	}
 
 	// Commit block, get hash back
