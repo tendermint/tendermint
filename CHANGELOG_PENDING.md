@@ -53,6 +53,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 - [config] Add `--mode` flag and config variable. See [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md) @dongsam
 - [rpc] /#6329 Don't cap page size in unsafe mode (@gotjoshua, @cmwaters)
+- [crypto] /#6376 Enable sr25519 as a validator key
 
 ### IMPROVEMENTS
 
@@ -76,10 +77,10 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [node] \#6059 Validate and complete genesis doc before saving to state store (@silasdavis)
 - [state] \#6067 Batch save state data (@githubsands & @cmwaters)
 - [crypto] \#6120 Implement batch verification interface for ed25519 and sr25519. (@marbar3778)
-- [types] \#6120 use batch verification for verifying commits signatures. 
-  - If the key type supports the batch verification API it will try to batch verify. If the verification fails we will single verify each signature. 
+- [types] \#6120 use batch verification for verifying commits signatures.
+  - If the key type supports the batch verification API it will try to batch verify. If the verification fails we will single verify each signature.
 - [privval/file] \#6185 Return error on `LoadFilePV`, `LoadFilePVEmptyState`. Allows for better programmatic control of Tendermint.
-- [privval] \#6240 Add `context.Context` to privval interface. 
+- [privval] \#6240 Add `context.Context` to privval interface.
 - [rpc] \#6265 set cache control in http-rpc response header (@JayT106)
 
 ### BUG FIXES
