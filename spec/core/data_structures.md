@@ -26,10 +26,12 @@ The Tendermint blockchains consists of a short list of data types:
 - [`Validator`](#validator)
 - [`ValidatorSet`](#validatorset)
 - [`Address`](#address)
-- [`ConsensusParams](#consensusparams)
+- [`ConsensusParams`](#consensusparams)
+- [`BlockParams`](#blockparams)
 - [`EvidenceParams`](#evidenceparams)
 - [`ValidatorParams`](#validatorparams)
 - [`VersionParams`](#versionparams)
+
 
 ## Block
 
@@ -110,7 +112,7 @@ the data in the current block, the previous block, and the results returned by t
 
 | Name              | Type                      | Description                                                                                                                                                                                                                                                                                                                                                                           | Validation                                                                                                                                                                                       |
 |-------------------|---------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Version           | [Version](#version)       | Version defines the application and protocol verion being used.                                                                                                                                                                                                                                                                                                                       | Must adhere to the validation rules of [Version](#version)                                                                                                                                       |
+| Version           | [Version](#version)       | Version defines the application and protocol version being used.                                                                                                                                                                                                                                                                                                                       | Must adhere to the validation rules of [Version](#version)                                                                                                                                       |
 | ChainID           | String                    | ChainID is the ID of the chain. This must be unique to your chain.                                                                                                                                                                                                                                                                                                                    | ChainID must be less than 50 bytes.                                                                                                                                                              |
 | Height            | uint64                     | Height is the height for this header.                                                                                                                                                                                                                                                                                                                                                 | Must be > 0, >= initialHeight, and == previous Height+1                                                                                                                                          |
 | Time              | [Time](#time)             | The timestamp is equal to the weighted median of validators present in the last commit. Read more on time in the [BFT-time section](../consensus/bft-time.md). Note: the timestamp of a vote must be greater by at least one millisecond than that of the block being voted on.                                                                                                       | Time must be >= previous header timestamp + consensus parameters TimeIotaMs.  The timestamp of the first block must be equal to the genesis time (since there's no votes to compute the median). |
@@ -126,6 +128,10 @@ the data in the current block, the previous block, and the results returned by t
 | ProposerAddress   | slice of bytes (`[]byte`) | Address of the original proposer of the block. Validator must be in the current validatorSet.                                                                                                                                                                                                                                                                                         | Must  be of length 20                                                                                                                                                                            |
 
 ## Version
+
+NOTE: that this is more specifically the consensus version and doesn't include information like the
+P2P Version. (TODO: we should write a comprehensive document about
+versioning that this can refer to)
 
 | Name  | type   | Description                                                                                                     | Validation                                                                                                         |
 |-------|--------|-----------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
@@ -265,7 +271,7 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 }
 ```
 
-### Proposal
+## Proposal
 
 Proposal contains height and round for which this proposal is made, BlockID as a unique identifier
 of proposed block, timestamp, and POLRound (a so-called Proof-of-Lock (POL) round) that is needed for
@@ -430,7 +436,7 @@ func SumTruncated(bz []byte) []byte {
 }
 ```
 
-### ConsensusParams
+## ConsensusParams
 
 | Name      | Type                                | Description                                                                  | Field Number |
 |-----------|-------------------------------------|------------------------------------------------------------------------------|--------------|
@@ -446,7 +452,7 @@ func SumTruncated(bz []byte) []byte {
 | max_bytes    | int64 | Max size of a block, in bytes.                                                                                                                                                                              | 1            |
 | max_gas      | int64 | Max sum of `GasWanted` in a proposed block. NOTE: blocks that violate this may be committed if there are Byzantine proposers. It's the application's responsibility to handle this when processing a block! | 2            |
 
-### EvidenceParams
+## EvidenceParams
 
 | Name               | Type                                                                                                                               | Description                                                                                                                                                                                                                                                                    | Field Number |
 |--------------------|------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|
@@ -454,13 +460,13 @@ func SumTruncated(bz []byte) []byte {
 | max_age_duration   | [google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration) | Max age of evidence, in time. It should correspond with an app's "unbonding period" or other similar mechanism for handling [Nothing-At-Stake attacks](https://github.com/ethereum/wiki/wiki/Proof-of-Stake-FAQ#what-is-the-nothing-at-stake-problem-and-how-can-it-be-fixed). | 2            |
 | max_bytes          | int64                                                                                                                              | maximum size in bytes of total evidence allowed to be entered into a block                                                                                                                                                                                                     | 3            |
 
-### ValidatorParams
+## ValidatorParams
 
 | Name          | Type            | Description                                                           | Field Number |
 |---------------|-----------------|-----------------------------------------------------------------------|--------------|
 | pub_key_types | repeated string | List of accepted public key types. Uses same naming as `PubKey.Type`. | 1            |
 
-### VersionParams
+## VersionParams
 
 | Name        | Type   | Description                   | Field Number |
 |-------------|--------|-------------------------------|--------------|

@@ -9,4 +9,5 @@ This section describes the core types and functionality of the Tendermint protoc
 
 - [Core Data Structures](./data_structures.md)
 - [Encoding](./encoding.md)
+- [Genesis](./genesis.md)
 - [State](./state.md)
