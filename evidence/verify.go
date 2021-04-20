@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/tendermint/tendermint/light"
@@ -129,56 +128,6 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 		if err != nil {
 			return types.NewErrInvalidEvidence(evidence, err)
 		}
-
-		// Find out what type of attack this was and thus extract the malicious
-		// validators. Note, in the case of an Amnesia attack we don't have any
-		// malicious validators.
-		validators := ev.GetByzantineValidators(commonVals, trustedHeader)
-
-		// Ensure this matches the validators that are listed in the evidence. They
-		// should be ordered based on power.
-		if validators == nil && ev.ByzantineValidators != nil {
-			return types.NewErrInvalidEvidence(
-				evidence,
-				fmt.Errorf(
-					"expected nil validators from an amnesia light client attack but got %d",
-					len(ev.ByzantineValidators),
-				),
-			)
-		}
-
-		if exp, got := len(validators), len(ev.ByzantineValidators); exp != got {
-			return types.NewErrInvalidEvidence(
-				evidence,
-				fmt.Errorf("expected %d byzantine validators from evidence but got %d", exp, got),
-			)
-		}
-
-		// ensure that both validator arrays are in the same order
-		sort.Sort(types.ValidatorsByVotingPower(ev.ByzantineValidators))
-
-		for idx, val := range validators {
-			if !bytes.Equal(ev.ByzantineValidators[idx].Address, val.Address) {
-				return types.NewErrInvalidEvidence(
-					evidence,
-					fmt.Errorf(
-						"evidence contained an unexpected byzantine validator address; expected: %v, got: %v",
-						val.Address, ev.ByzantineValidators[idx].Address,
-					),
-				)
-			}
-
-			if ev.ByzantineValidators[idx].VotingPower != val.VotingPower {
-				return types.NewErrInvalidEvidence(
-					evidence,
-					fmt.Errorf(
-						"evidence contained unexpected byzantine validator power; expected %d, got %d",
-						val.VotingPower, ev.ByzantineValidators[idx].VotingPower,
-					),
-				)
-			}
-		}
-
 		return nil
 
 	default:
@@ -235,7 +184,7 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, t
 			trustedHeader.Hash())
 	}
 
-	return nil
+	return validateABCIEvidence(e, commonVals, trustedHeader)
 }
 
 // VerifyDuplicateVote verifies DuplicateVoteEvidence against the state of full node. This involves the
@@ -301,6 +250,55 @@ func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet 
 	}
 	if !pubKey.VerifySignature(types.VoteSignBytes(chainID, vb), e.VoteB.Signature) {
 		return fmt.Errorf("verifying VoteB: %w", types.ErrVoteInvalidSignature)
+	}
+
+	return nil
+}
+
+// validateABCIEvidence validates the ABCI component of the light client attack
+// evidence i.e voting power and byzantine validators
+func validateABCIEvidence(
+	ev *types.LightClientAttackEvidence,
+	commonVals *types.ValidatorSet,
+	trustedHeader *types.SignedHeader,
+) error {
+	if evTotal, valsTotal := ev.TotalVotingPower, commonVals.TotalVotingPower(); evTotal != valsTotal {
+		return fmt.Errorf("total voting power from the evidence and our validator set does not match (%d != %d)",
+			evTotal, valsTotal)
+	}
+
+	// Find out what type of attack this was and thus extract the malicious
+	// validators. Note, in the case of an Amnesia attack we don't have any
+	// malicious validators.
+	validators := ev.GetByzantineValidators(commonVals, trustedHeader)
+
+	// Ensure this matches the validators that are listed in the evidence. They
+	// should be ordered based on power.
+	if validators == nil && ev.ByzantineValidators != nil {
+		return fmt.Errorf(
+			"expected nil validators from an amnesia light client attack but got %d",
+			len(ev.ByzantineValidators),
+		)
+	}
+
+	if exp, got := len(validators), len(ev.ByzantineValidators); exp != got {
+		return fmt.Errorf("expected %d byzantine validators from evidence but got %d", exp, got)
+	}
+
+	for idx, val := range validators {
+		if !bytes.Equal(ev.ByzantineValidators[idx].Address, val.Address) {
+			return fmt.Errorf(
+				"evidence contained an unexpected byzantine validator address; expected: %v, got: %v",
+				val.Address, ev.ByzantineValidators[idx].Address,
+			)
+		}
+
+		if ev.ByzantineValidators[idx].VotingPower != val.VotingPower {
+			return fmt.Errorf(
+				"evidence contained unexpected byzantine validator power; expected %d, got %d",
+				val.VotingPower, ev.ByzantineValidators[idx].VotingPower,
+			)
+		}
 	}
 
 	return nil
