@@ -1674,6 +1674,7 @@ func (cs *State) finalizeCommit(height int64) {
 
 	// NewHeightStep!
 	cs.updateToState(stateCopy)
+	cs.evsw.FireEvent(types.EventRoundStepNewHeight, height)
 
 	fail.Fail() // XXX
 
