@@ -44,7 +44,7 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 	}
 	lightEvidenceCommonHeight := blockRes.Block.Height
 	waitHeight := blockRes.Block.Height + 3
-	duplicateVoteHeight := waitHeight
+	// duplicateVoteHeight := waitHeight
 
 	nValidators := 100
 	valRes, err := client.Validators(context.Background(), &lightEvidenceCommonHeight, nil, &nValidators)
@@ -64,23 +64,24 @@ func InjectEvidence(testnet *e2e.Testnet, amount int) error {
 
 	// wait for the node to reach the height above the forged height so that
 	// it is able to validate the evidence
-	status, err := waitForNode(targetNode, waitHeight, 10*time.Second)
+	_, err = waitForNode(targetNode, waitHeight, 10*time.Second)
 	if err != nil {
 		return err
 	}
-	duplicateVoteTime := status.SyncInfo.LatestBlockTime
+	// duplicateVoteTime := status.SyncInfo.LatestBlockTime
 
-	var ev types.Evidence
+	var ev *types.LightClientAttackEvidence
 	for i := 1; i <= amount; i++ {
-		if i%lightClientEvidenceRatio == 0 {
-			ev, err = generateLightClientAttackEvidence(
-				privVals, lightEvidenceCommonHeight, valSet, testnet.Name, blockRes.Block.Time,
-			)
-		} else {
-			ev, err = generateDuplicateVoteEvidence(
-				privVals, duplicateVoteHeight, valSet, testnet.Name, duplicateVoteTime,
-			)
-		}
+		// if i%lightClientEvidenceRatio == 0 {
+		ev, err = generateLightClientAttackEvidence(
+			privVals, lightEvidenceCommonHeight, valSet, testnet.Name, blockRes.Block.Time,
+		)
+		logger.Info("created ev", "TotalVotingPower", ev.ConflictingBlock.ValidatorSet.TotalPower)
+		// } else {
+		// 	ev, err = generateDuplicateVoteEvidence(
+		// 		privVals, duplicateVoteHeight, valSet, testnet.Name, duplicateVoteTime,
+		// 	)
+		// }
 		if err != nil {
 			return err
 		}

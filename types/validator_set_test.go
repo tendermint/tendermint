@@ -915,7 +915,7 @@ func verifyValidatorSet(t *testing.T, valSet *ValidatorSet) {
 	assert.Equal(t, len(valSet.Validators), cap(valSet.Validators))
 
 	// verify that the set's total voting power has been updated
-	tvp := valSet.totalVotingPower
+	tvp := valSet.TotalPower
 	valSet.updateTotalVotingPower()
 	expectedTvp := valSet.TotalVotingPower()
 	assert.Equal(t, expectedTvp, tvp,

@@ -1,7 +1,4 @@
-evidence = 5
+evidence = 1
 
 [node.validator01]
-[node.validator02]
-[node.validator03]
-[node.validator04]
 

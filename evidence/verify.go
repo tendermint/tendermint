@@ -206,7 +206,7 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, t
 		}
 
 		// In the case of equivocation and amnesia we expect all header hashes to be correctly derived
-	} else if isInvalidHeader(trustedHeader.Header, e.ConflictingBlock.Header) {
+	} else if e.ConflictingHeaderIsInvalid(trustedHeader.Header) {
 		return errors.New("common height is the same as conflicting block height so expected the conflicting" +
 			" block to be correctly derived yet it wasn't")
 	}
@@ -319,16 +319,4 @@ func getSignedHeader(blockStore BlockStore, height int64) (*types.SignedHeader, 
 		Header: &blockMeta.Header,
 		Commit: commit,
 	}, nil
-}
-
-// isInvalidHeader takes a trusted header and matches it againt a conflicting header
-// to determine whether the conflicting header was the product of a valid state transition
-// or not. If it is then all the deterministic fields of the header should be the same.
-// If not, it is an invalid header and constitutes a lunatic attack.
-func isInvalidHeader(trusted, conflicting *types.Header) bool {
-	return !bytes.Equal(trusted.ValidatorsHash, conflicting.ValidatorsHash) ||
-		!bytes.Equal(trusted.NextValidatorsHash, conflicting.NextValidatorsHash) ||
-		!bytes.Equal(trusted.ConsensusHash, conflicting.ConsensusHash) ||
-		!bytes.Equal(trusted.AppHash, conflicting.AppHash) ||
-		!bytes.Equal(trusted.LastResultsHash, conflicting.LastResultsHash)
 }

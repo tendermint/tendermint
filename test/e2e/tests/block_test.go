@@ -7,6 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+
+	"github.com/tendermint/tendermint/types"
 )
 
 // Tests that block headers are identical across nodes where present.
@@ -37,6 +39,14 @@ func TestBlock_Header(t *testing.T) {
 			}
 			resp, err := client.Block(ctx, &block.Header.Height)
 			require.NoError(t, err)
+
+			if len(resp.Block.Evidence.Evidence) > 0 {
+				t.Log("received evidence", "ev", resp.Block.Evidence.Evidence)
+				if ev, ok := resp.Block.Evidence.Evidence[0].(*types.LightClientAttackEvidence); ok {
+					t.Log("lcae voting power", "TotalVotingPower", ev.ConflictingBlock.ValidatorSet.TotalPower)
+				}
+			}
+
 			require.Equal(t, block, resp.Block,
 				"block mismatch for height %d", block.Header.Height)
 

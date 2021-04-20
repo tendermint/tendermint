@@ -55,7 +55,7 @@ type ValidatorSet struct {
 	Proposer   *Validator   `json:"proposer"`
 
 	// cached (unexported)
-	totalVotingPower int64
+	TotalPower int64
 }
 
 // NewValidatorSet initializes a ValidatorSet by copying over the values from
@@ -124,7 +124,7 @@ func (vals *ValidatorSet) IncrementProposerPriority(times int32) {
 
 	// Cap the difference between priorities to be proportional to 2*totalPower by
 	// re-normalizing priorities, i.e., rescale all priorities by multiplying with:
-	//  2*totalVotingPower/(maxPriority - minPriority)
+	//  2*TotalPower/(maxPriority - minPriority)
 	diffMax := PriorityWindowSizeFactor * vals.TotalVotingPower()
 	vals.RescalePriorities(diffMax)
 	vals.shiftByAvgProposerPriority()
@@ -251,7 +251,7 @@ func (vals *ValidatorSet) Copy() *ValidatorSet {
 	return &ValidatorSet{
 		Validators:       validatorListCopy(vals.Validators),
 		Proposer:         vals.Proposer,
-		totalVotingPower: vals.totalVotingPower,
+		TotalPower: vals.TotalPower,
 	}
 }
 
@@ -309,16 +309,16 @@ func (vals *ValidatorSet) updateTotalVotingPower() {
 		}
 	}
 
-	vals.totalVotingPower = sum
+	vals.TotalPower = sum
 }
 
 // TotalVotingPower returns the sum of the voting powers of all validators.
 // It recomputes the total voting power if required.
 func (vals *ValidatorSet) TotalVotingPower() int64 {
-	if vals.totalVotingPower == 0 {
+	if vals.TotalPower == 0 {
 		vals.updateTotalVotingPower()
 	}
-	return vals.totalVotingPower
+	return vals.TotalPower
 }
 
 // GetProposer returns the current proposer. If the validator set is empty, nil
@@ -478,13 +478,13 @@ func computeNewPriorities(updates []*Validator, vals *ValidatorSet, updatedTotal
 		_, val := vals.GetByAddress(address)
 		if val == nil {
 			// add val
-			// Set ProposerPriority to -C*totalVotingPower (with C ~= 1.125) to make sure validators can't
+			// Set ProposerPriority to -C*TotalPower (with C ~= 1.125) to make sure validators can't
 			// un-bond and then re-bond to reset their (potentially previously negative) ProposerPriority to zero.
 			//
 			// Contract: updatedVotingPower < 2 * MaxTotalVotingPower to ensure ProposerPriority does
 			// not exceed the bounds of int64.
 			//
-			// Compute ProposerPriority = -1.125*totalVotingPower == -(updatedVotingPower + (updatedVotingPower >> 3)).
+			// Compute ProposerPriority = -1.125*TotalPower == -(updatedVotingPower + (updatedVotingPower >> 3)).
 			valUpdate.ProposerPriority = -(updatedTotalVotingPower + (updatedTotalVotingPower >> 3))
 		} else {
 			valUpdate.ProposerPriority = val.ProposerPriority
@@ -838,11 +838,11 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 	)
 
 	// Safely calculate voting power needed.
-	totalVotingPowerMulByNumerator, overflow := safeMul(vals.TotalVotingPower(), int64(trustLevel.Numerator))
+	TotalPowerMulByNumerator, overflow := safeMul(vals.TotalVotingPower(), int64(trustLevel.Numerator))
 	if overflow {
 		return errors.New("int64 overflow while calculating voting power needed. please provide smaller trustLevel numerator")
 	}
-	votingPowerNeeded := totalVotingPowerMulByNumerator / int64(trustLevel.Denominator)
+	votingPowerNeeded := TotalPowerMulByNumerator / int64(trustLevel.Denominator)
 
 	bv, ok := batch.CreateBatchVerifier(vals.GetProposer().PubKey)
 	if ok && len(commit.Signatures) > 1 {
@@ -1028,7 +1028,7 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 	}
 	vp.Proposer = valProposer
 
-	vp.TotalVotingPower = vals.totalVotingPower
+	vp.TotalVotingPower = vals.TotalPower
 
 	return vp, nil
 }
@@ -1059,7 +1059,7 @@ func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 
 	vals.Proposer = p
 
-	vals.totalVotingPower = vp.GetTotalVotingPower()
+	vals.TotalPower = vp.GetTotalVotingPower()
 
 	return vals, vals.ValidateBasic()
 }

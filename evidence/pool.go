@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -19,6 +18,12 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+)
+
+const (
+	// prefixes are unique across all tm db's
+	prefixCommitted = int64(9)
+	prefixPending   = int64(10)
 )
 
 // Pool maintains a pool of valid evidence to be broadcasted and committed
@@ -146,11 +151,6 @@ func (evpool *Pool) AddEvidence(ev types.Evidence) error {
 		return nil
 	}
 
-	if evpool.checkForSimilarLightClientAttackEvidence(ev) {
-		evpool.logger.Debug("similar light client evidence already pending; ignoring", "evidence", ev)
-		return nil
-	}
-
 	// check that the evidence isn't already committed
 	if evpool.isCommitted(ev) {
 		// This can happen if the peer that sent us the evidence is behind so we
@@ -202,9 +202,11 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 	hashes := make([][]byte, len(evList))
 	for idx, ev := range evList {
 
-		ok := evpool.isPending(ev)
+		_, isLightEv := ev.(*types.LightClientAttackEvidence)
 
-		if !ok {
+		// We must verify light client attack evidence regardless because there could be a
+		// different conflicting block with the same hash.
+		if isLightEv || !evpool.isPending(ev) {
 			// check that the evidence isn't already committed
 			if evpool.isCommitted(ev) {
 				return &types.ErrInvalidEvidence{Evidence: ev, Reason: errors.New("evidence was already committed")}
@@ -259,78 +261,6 @@ func (evpool *Pool) State() sm.State {
 	return evpool.state
 }
 
-// fastCheck leverages the fact that the evidence pool may have already verified
-// the evidence to see if it can quickly conclude that the evidence is already
-// valid.
-func (evpool *Pool) fastCheck(ev types.Evidence) bool {
-	if lcae, ok := ev.(*types.LightClientAttackEvidence); ok {
-		key := keyPending(ev)
-		evBytes, err := evpool.evidenceStore.Get(key)
-		if evBytes == nil { // the evidence is not in the nodes pending list
-			return false
-		}
-
-		if err != nil {
-			evpool.logger.Error("failed to load light client attack evidence", "err", err, "key(height/hash)", key)
-			return false
-		}
-
-		var trustedPb tmproto.LightClientAttackEvidence
-
-		if err = trustedPb.Unmarshal(evBytes); err != nil {
-			evpool.logger.Error(
-				"failed to convert light client attack evidence from bytes",
-				"key(height/hash)", key,
-				"err", err,
-			)
-			return false
-		}
-
-		trustedEv, err := types.LightClientAttackEvidenceFromProto(&trustedPb)
-		if err != nil {
-			evpool.logger.Error(
-				"failed to convert light client attack evidence from protobuf",
-				"key(height/hash)", key,
-				"err", err,
-			)
-			return false
-		}
-
-		// Ensure that all the byzantine validators that the evidence pool has match
-		// the byzantine validators in this evidence.
-		if trustedEv.ByzantineValidators == nil && lcae.ByzantineValidators != nil {
-			return false
-		}
-
-		if len(trustedEv.ByzantineValidators) != len(lcae.ByzantineValidators) {
-			return false
-		}
-
-		byzValsCopy := make([]*types.Validator, len(lcae.ByzantineValidators))
-		for i, v := range lcae.ByzantineValidators {
-			byzValsCopy[i] = v.Copy()
-		}
-
-		// ensure that both validator arrays are in the same order
-		sort.Sort(types.ValidatorsByVotingPower(byzValsCopy))
-
-		for idx, val := range trustedEv.ByzantineValidators {
-			if !bytes.Equal(byzValsCopy[idx].Address, val.Address) {
-				return false
-			}
-			if byzValsCopy[idx].VotingPower != val.VotingPower {
-				return false
-			}
-		}
-
-		return true
-	}
-
-	// For all other evidence the evidence pool just checks if it is already in
-	// the pending db.
-	return evpool.isPending(ev)
-}
-
 // IsExpired checks whether evidence or a polc is expired by checking whether a height and time is older
 // than set by the evidence consensus parameters
 func (evpool *Pool) isExpired(height int64, time time.Time) bool {
@@ -381,15 +311,6 @@ func (evpool *Pool) addPendingEvidence(ev types.Evidence) error {
 		return fmt.Errorf("failed to persist evidence: %w", err)
 	}
 
-	// if it is light client attack evidence, adds a secondary key to avoid
-	// submission of multiple variants
-	if lcae, ok := ev.(*types.LightClientAttackEvidence); ok {
-		if err := evpool.evidenceStore.Set(keyLightEvidence(lcae), keyPending(ev)); err != nil {
-			return fmt.Errorf("failed to persist secondary key for light evidence: %w",
-				err)
-		}
-	}
-
 	atomic.AddUint32(&evpool.evidenceSize, 1)
 	return nil
 }
@@ -405,11 +326,6 @@ func (evpool *Pool) markEvidenceAsCommitted(evidence types.EvidenceList, height 
 		if evpool.isPending(ev) {
 			if err := batch.Delete(keyPending(ev)); err != nil {
 				evpool.logger.Error("failed to batch delete pending evidence", "err", err)
-			}
-			if lcae, ok := ev.(*types.LightClientAttackEvidence); ok {
-				if err := batch.Delete(keyLightEvidence(lcae)); err != nil {
-					evpool.logger.Error("failed to batch delete pending evidence", "err", err)
-				}
 			}
 			blockEvidenceMap[evMapKey(ev)] = struct{}{}
 		}
@@ -563,14 +479,6 @@ func (evpool *Pool) batchExpiredPendingEvidence(batch dbm.Batch) (int64, time.Ti
 			continue
 		}
 
-		// if it is light client attack evidence then delete the secondary index
-		if lcae, ok := ev.(*types.LightClientAttackEvidence); ok {
-			if err := batch.Delete(keyLightEvidence(lcae)); err != nil {
-				evpool.logger.Error("failed to batch delete evidence", "err", err, "ev", ev)
-				continue
-			}
-		}
-
 		// and add to the map to remove the evidence from the clist
 		blockEvidenceMap[evMapKey(ev)] = struct{}{}
 	}
@@ -672,17 +580,6 @@ func (evpool *Pool) processConsensusBuffer(state sm.State) {
 	evpool.consensusBuffer = make([]duplicateVoteSet, 0)
 }
 
-func (evpool *Pool) checkForSimilarLightClientAttackEvidence(ev types.Evidence) bool {
-	if lcae, ok := ev.(*types.LightClientAttackEvidence); ok {
-		ok, err := evpool.evidenceStore.Has(keyLightEvidence(lcae))
-		if err != nil {
-			evpool.logger.Error("failed to find pending evidence", "err", err)
-		}
-		return ok
-	}
-	return false
-}
-
 type duplicateVoteSet struct {
 	VoteA *types.Vote
 	VoteB *types.Vote
@@ -702,24 +599,6 @@ func evMapKey(ev types.Evidence) string {
 	return string(ev.Hash())
 }
 
-// ########################### KEYS ##############################
-
-const (
-	// prefixes are unique across all tm db's
-	prefixCommitted = int64(9)
-	prefixPending   = int64(10)
-
-	// It is very easy to manipulate LightClientAttackEvidence to
-	// form multiple valid versions of that evidence that all have
-	// different hashes i.e. change the common height or remove a
-	// commit. This is a potential DOS vector as this evidence is
-	// relatively large and a malicious node could freely fill
-	// blocks with it. To prevent this nodes won't verify a new
-	// LightClientAttackEvidence that has the same conflicting
-	// header
-	prefixLightEvidence = int64(13)
-)
-
 func prefixToBytes(prefix int64) []byte {
 	key, err := orderedcode.Append(nil, prefix)
 	if err != nil {
@@ -730,15 +609,7 @@ func prefixToBytes(prefix int64) []byte {
 
 func keyCommitted(evidence types.Evidence) []byte {
 	var height int64 = evidence.Height()
-	var hash string
-	// if it is light client attack evidence we add the header hash key to avoid
-	// submission of multiple variants
-	if lcae, ok := evidence.(*types.LightClientAttackEvidence); ok {
-		hash = string(lcae.ConflictingBlock.Header.Hash())
-	} else {
-		hash = string(evidence.Hash())
-	}
-	key, err := orderedcode.Append(nil, prefixCommitted, height, hash)
+	key, err := orderedcode.Append(nil, prefixCommitted, height, string(evidence.Hash()))
 	if err != nil {
 		panic(err)
 	}
@@ -748,15 +619,6 @@ func keyCommitted(evidence types.Evidence) []byte {
 func keyPending(evidence types.Evidence) []byte {
 	var height int64 = evidence.Height()
 	key, err := orderedcode.Append(nil, prefixPending, height, string(evidence.Hash()))
-	if err != nil {
-		panic(err)
-	}
-	return key
-}
-
-func keyLightEvidence(evidence *types.LightClientAttackEvidence) []byte {
-	key, err := orderedcode.Append(nil, prefixLightEvidence,
-		string(evidence.ConflictingBlock.Header.Hash()))
 	if err != nil {
 		panic(err)
 	}

@@ -292,20 +292,21 @@ func (l *LightClientAttackEvidence) ConflictingHeaderIsInvalid(trustedHeader *He
 
 }
 
-// Hash returns the SHA256 hash of the header, commit, common height, total
-// voting power, byzantine validators and timestamp
+// Hash returns the hash of the header and the commonHeight. This is designed to cause hash collisions
+// with evidence that have the same conflicting header and common height but different permutations
+// of validator commit signatures. The reason for this is that we don't want to allow several
+// permutations of the same evidence to be committed on chain. Ideally we commit the header with the
+// most commit signatures (captures the most byzantine validators) but anything greater than 1/3 is
+// sufficient.
+// TODO: We should change the hash to include the commit, header, total voting power, byzantine
+// validators and timestamp
 func (l *LightClientAttackEvidence) Hash() []byte {
-	buf := new(bytes.Buffer)
-	buf.Write(l.ConflictingBlock.Header.Hash())
-	buf.Write(l.ConflictingBlock.Commit.Hash())
-	_ = binary.Write(buf, binary.LittleEndian, l.CommonHeight)
-	_ = binary.Write(buf, binary.LittleEndian, l.TotalVotingPower)
-	for _, val := range l.ByzantineValidators {
-		_, _ = buf.Write(val.Bytes())
-	}
-	timeBytes, _ := l.Timestamp.MarshalBinary()
-	buf.Write(timeBytes)
-	return tmhash.Sum(buf.Bytes())
+	buf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutVarint(buf, l.CommonHeight)
+	bz := make([]byte, tmhash.Size+n)
+	copy(bz[:tmhash.Size-1], l.ConflictingBlock.Hash().Bytes())
+	copy(bz[tmhash.Size:], buf)
+	return tmhash.Sum(bz)
 }
 
 // Height returns the last height at which the primary provider and witness provider had the same header.
@@ -350,15 +351,15 @@ func (l *LightClientAttackEvidence) ValidateBasic() error {
 	if l.CommonHeight <= 0 {
 		return errors.New("negative or zero common height")
 	}
-	
+
 	// check that common height isn't ahead of the height of the conflicting block. It
 	// is possible that they are the same height if the light node witnesses either an
 	// amnesia or a equivocation attack.
 	if l.CommonHeight > l.ConflictingBlock.Height {
 		return fmt.Errorf("common height is ahead of the conflicting block height (%d > %d)",
-		l.CommonHeight, l.ConflictingBlock.Height)
+			l.CommonHeight, l.ConflictingBlock.Height)
 	}
-	
+
 	if err := l.ConflictingBlock.ValidateBasic(l.ConflictingBlock.ChainID); err != nil {
 		return fmt.Errorf("invalid conflicting light block: %w", err)
 	}
@@ -434,7 +435,9 @@ func (evl EvidenceList) Hash() []byte {
 	// the Evidence size is capped.
 	evidenceBzs := make([][]byte, len(evl))
 	for i := 0; i < len(evl); i++ {
-		evidenceBzs[i] = evl[i].Hash()
+		// TODO: We should change this to the hash. Using bytes contains some unexported data that
+		// may cause different hashes
+		evidenceBzs[i] = evl[i].Bytes()
 	}
 	return merkle.HashFromByteSlices(evidenceBzs)
 }
