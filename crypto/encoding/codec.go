@@ -67,7 +67,7 @@ func PubKeyFromProto(k pc.PublicKey) (crypto.PubKey, error) {
 	case *pc.PublicKey_Sr25519:
 		if len(k.Sr25519) != sr25519.PubKeySize {
 			return nil, fmt.Errorf("invalid size for PubKeySecp256k1. Got %d, expected %d",
-				len(k.Sr25519), secp256k1.PubKeySize)
+				len(k.Sr25519), sr25519.PubKeySize)
 		}
 		pk := make(sr25519.PubKey, sr25519.PubKeySize)
 		copy(pk, k.Sr25519)
