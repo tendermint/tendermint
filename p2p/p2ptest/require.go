@@ -93,6 +93,7 @@ func RequireSendReceive(
 
 // RequireNoUpdates requires that a PeerUpdates subscription is empty.
 func RequireNoUpdates(t *testing.T, peerUpdates *p2p.PeerUpdates) {
+	t.Helper()
 	select {
 	case update := <-peerUpdates.Updates():
 		require.Fail(t, "unexpected peer updates", "got %v", update)
