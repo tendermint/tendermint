@@ -165,14 +165,28 @@ func TestVerify_ForwardLunaticAttack(t *testing.T) {
 	blockStore.On("LoadBlockMeta", attackHeight).Return(nil)
 	blockStore.On("LoadBlockCommit", commonHeight).Return(common.Commit)
 	blockStore.On("LoadBlockCommit", nodeHeight).Return(trusted.Commit)
-	blockStore.On("LoadBlockCommit", attackHeight).Return(trusted.Commit)
 	blockStore.On("Height").Return(nodeHeight)
 	pool, err := evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, blockStore)
 	require.NoError(t, err)
 
-	evList := types.EvidenceList{ev}
 	// check that the evidence pool correctly verifies the evidence
-	assert.NoError(t, pool.CheckEvidence(evList))
+	assert.NoError(t, pool.CheckEvidence(types.EvidenceList{ev}))
+
+	// now we use a time which isn't able to contradict the FLA - thus we can't verify the evidence
+	oldBlockStore := &mocks.BlockStore{}
+	oldHeader := trusted.Header
+	oldHeader.Time = defaultEvidenceTime
+	oldBlockStore.On("LoadBlockMeta", commonHeight).Return(&types.BlockMeta{Header: *common.Header})
+	oldBlockStore.On("LoadBlockMeta", nodeHeight).Return(&types.BlockMeta{Header: *oldHeader})
+	oldBlockStore.On("LoadBlockMeta", attackHeight).Return(nil)
+	oldBlockStore.On("LoadBlockCommit", commonHeight).Return(common.Commit)
+	oldBlockStore.On("LoadBlockCommit", nodeHeight).Return(trusted.Commit)
+	oldBlockStore.On("Height").Return(nodeHeight)
+	require.Equal(t, defaultEvidenceTime, oldBlockStore.LoadBlockMeta(nodeHeight).Header.Time)
+
+	pool, err = evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, oldBlockStore)
+	require.NoError(t, err)
+	assert.Error(t, pool.CheckEvidence(types.EvidenceList{ev}))
 }
 
 func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
