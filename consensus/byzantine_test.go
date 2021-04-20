@@ -184,16 +184,16 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		// omit the last signature in the commit
 		commit.Signatures[len(commit.Signatures)-1] = types.NewCommitSigAbsent()
 
-		if lazyProposer.privValidatorPubKey == nil {
+		if lazyProposer.privValidatorProTxHash == nil {
 			// If this node is a validator & proposer in the current round, it will
 			// miss the opportunity to create a block.
-			lazyProposer.Logger.Error(fmt.Sprintf("enterPropose: %v", errPubKeyIsNotSet))
+			lazyProposer.Logger.Error(fmt.Sprintf("enterPropose: %v", errProTxHashIsNotSet))
 			return
 		}
-		proposerAddr := lazyProposer.privValidatorPubKey.Address()
+		proposerProTxHash := lazyProposer.privValidatorProTxHash
 
 		block, blockParts := lazyProposer.blockExec.CreateProposalBlock(
-			lazyProposer.Height, lazyProposer.state, commit, proposerAddr,
+			lazyProposer.Height, lazyProposer.state, commit, proposerProTxHash,
 		)
 
 		// Flush the WAL. Otherwise, we may not recompute the same proposal to sign,

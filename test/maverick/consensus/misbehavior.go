@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"bytes"
 	"fmt"
 
 	tmcon "github.com/tendermint/tendermint/consensus"
@@ -193,16 +194,18 @@ func defaultEnterPrevote(cs *State, height int64, round int32) {
 		return
 	}
 
-	// Validate proposal block
-	err = cs.blockExec.ValidateBlockTime(cs.state, cs.ProposalBlock)
-	if err != nil {
-		// ProposalBlock is invalid, prevote nil.
-		logger.Error("enterPrevote: ProposalBlock time is invalid", "err", err)
-		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
-		return
+	// Validate proposal block time if we are not proposer
+	if !bytes.Equal(cs.privValidatorProTxHash, cs.ProposalBlock.ProposerProTxHash) {
+		err = cs.blockExec.ValidateBlockTime(cs.state, cs.ProposalBlock)
+		if err != nil {
+			// ProposalBlock is invalid, prevote nil.
+			logger.Error("enterPrevote: ProposalBlock time is invalid", "err", err)
+			cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+			return
+		}
 	}
 
-	// Validate proposal block
+	// Validate proposal block chain lock
 	err = cs.blockExec.ValidateBlockChainLock(cs.state, cs.ProposalBlock)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.

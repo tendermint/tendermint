@@ -772,7 +772,7 @@ func NewNode(config *cfg.Config,
 
 	// This needs to be done after init chain so we can get the first quorum hash
 	if useDashCoreSigning {
-		logger.Info("Initializing Dash Core Signing with quorum hash %s", state.Validators.QuorumHash.String())
+		logger.Info("Initializing Dash Core Signing", "quorum hash", state.Validators.QuorumHash.String())
 		username := config.BaseConfig.PrivValidatorCoreRPCUsername
 		password := config.BaseConfig.PrivValidatorCoreRPCPassword
 		llmqType := btcjson.LLMQType(config.LLMQTypeUsed)

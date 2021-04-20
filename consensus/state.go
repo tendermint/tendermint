@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"bytes"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -39,7 +38,6 @@ var (
 	ErrAddingVote                 = errors.New("error adding vote")
 	ErrSignatureFoundInPastBlocks = errors.New("found signature from the same key")
 
-	errPubKeyIsNotSet    = errors.New("pubkey is not set. Look for \"Can't get private validator pubkey\" errors")
 	errProTxHashIsNotSet = errors.New("protxhash is not set. Look for \"Can't get private validator protxhash\" errors")
 )
 
@@ -1224,7 +1222,7 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 	if cs.privValidatorProTxHash == nil {
 		// If this node is a validator & proposer in the current round, it will
 		// miss the opportunity to create a block.
-		cs.Logger.Error("propose step; empty priv validator public key", "err", errPubKeyIsNotSet)
+		cs.Logger.Error("propose step; empty priv validator pro tx hash", "err", errProTxHashIsNotSet)
 		return
 	}
 	proposerProTxHash := cs.privValidatorProTxHash
@@ -1868,9 +1866,9 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 
 	signId := crypto.SignId(100, bls12381.ReverseBytes(cs.state.Validators.QuorumHash), bls12381.ReverseBytes(proposalRequestId), bls12381.ReverseBytes(proposalBlockMessageHash))
 
-	fmt.Printf("verifying request Id %s signId %s quorum hash %s proposalBlockSignBytes %s\n",
-		hex.EncodeToString(proposalRequestId), hex.EncodeToString(signId), hex.EncodeToString(cs.state.Validators.QuorumHash),
-		hex.EncodeToString(proposalBlockSignBytes))
+	//fmt.Printf("verifying request Id %s signId %s quorum hash %s proposalBlockSignBytes %s\n",
+	//	hex.EncodeToString(proposalRequestId), hex.EncodeToString(signId), hex.EncodeToString(cs.state.Validators.QuorumHash),
+	//	hex.EncodeToString(proposalBlockSignBytes))
 
 	if !proposer.PubKey.VerifySignatureDigest(signId, proposal.Signature) {
 		return fmt.Errorf("error proposer %X verifying proposal signature %X at height %d with key %X blockSignBytes %X\n",
@@ -2008,9 +2006,6 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 		if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
 			if cs.privValidatorProTxHash == nil {
 				return false, errProTxHashIsNotSet
-			}
-			if cs.privValidatorPubKey == nil {
-				return false, errPubKeyIsNotSet
 			}
 
 			if bytes.Equal(vote.ValidatorProTxHash, cs.privValidatorProTxHash) {
@@ -2286,9 +2281,9 @@ func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header 
 		return nil
 	}
 
-	if cs.privValidatorPubKey == nil {
+	if cs.privValidatorProTxHash == nil {
 		// Vote won't be signed, but it's not critical.
-		cs.Logger.Error(fmt.Sprintf("signAddVote: %v", errPubKeyIsNotSet))
+		cs.Logger.Error(fmt.Sprintf("signAddVote: %v", errProTxHashIsNotSet))
 		return nil
 	}
 
@@ -2346,7 +2341,7 @@ func (cs *State) updatePrivValidatorProTxHash() error {
 
 // look back to check existence of the node's consensus votes before joining consensus
 func (cs *State) checkDoubleSigningRisk(height int64) error {
-	if cs.privValidator != nil && cs.privValidatorPubKey != nil && cs.config.DoubleSignCheckHeight > 0 && height > 0 {
+	if cs.privValidator != nil && cs.privValidatorProTxHash != nil && cs.config.DoubleSignCheckHeight > 0 && height > 0 {
 		valProTxHash := cs.privValidatorProTxHash
 		doubleSignCheckHeight := cs.config.DoubleSignCheckHeight
 		if doubleSignCheckHeight > height {

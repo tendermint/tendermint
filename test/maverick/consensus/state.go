@@ -1772,8 +1772,8 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 		// If it's otherwise invalid, punish peer.
 		// nolint: gocritic
 		if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
-			if cs.privValidatorPubKey == nil {
-				return false, errPubKeyIsNotSet
+			if cs.privValidatorProTxHash == nil {
+				return false, errProTxHashIsNotSet
 			}
 
 			if bytes.Equal(vote.ValidatorProTxHash, cs.privValidatorProTxHash) {
@@ -1824,8 +1824,8 @@ func (cs *State) signVote(
 		return nil, err
 	}
 
-	if cs.privValidatorPubKey == nil {
-		return nil, errPubKeyIsNotSet
+	if cs.privValidatorProTxHash == nil {
+		return nil, errProTxHashIsNotSet
 	}
 	proTxHash := cs.privValidatorProTxHash
 	valIdx, _ := cs.Validators.GetByProTxHash(proTxHash)

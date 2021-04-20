@@ -205,12 +205,12 @@ func TestVoteVerify(t *testing.T) {
 	vote := examplePrevote()
 	vote.ValidatorProTxHash = proTxHash
 
-	err = vote.Verify("test_chain_id", bls12381.GenPrivKey().PubKey(), crypto.CRandBytes(32))
+	err = vote.Verify("test_chain_id", 0, crypto.QuorumHash{}, bls12381.GenPrivKey().PubKey(), crypto.RandProTxHash())
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrVoteInvalidValidatorProTxHash, err)
 	}
 
-	err = vote.Verify("test_chain_id", pubkey, proTxHash)
+	err = vote.Verify("test_chain_id", 0, crypto.QuorumHash{}, pubkey, proTxHash)
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrVoteInvalidBlockSignature, err) // since block signatures are verified first
 	}
