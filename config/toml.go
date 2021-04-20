@@ -276,14 +276,17 @@ laddr = "{{ .P2P.ListenAddress }}"
 # to figure out the address.
 external-address = "{{ .P2P.ExternalAddress }}"
 
-# Comma separated list of seed nodes to connect to
-# We only use these if we can’t connect to peers in the addrbook
-# NOTE: not used by the new PEX reactor. Please use InitialPeers instead
+// Comma separated list of seed nodes to connect to
+// We only use these if we can’t connect to peers in the addrbook
+// NOTE: not used by the new PEX reactor. Please use BootstrapPeers instead.
+// TODO: Remove once p2p refactor is complete
+// ref: https://github.com/tendermint/tendermint/issues/5670
 seeds = "{{ .P2P.Seeds }}"
 
-# Comma separated list of initial peers to be added to the peer store
-# and likely connected with on startup
-initial-peers = "{{ .P2P.InitialPeers }}"
+// Comma separated list of peers to be added to the peer store
+// on startup. Either BootstrapPeers or PersistentPeers are
+// needed for peer discovery
+bootstrap-peers = "{{ .P2P.BootstrapPeers }}"
 
 # Comma separated list of nodes to keep persistent connections to
 persistent-peers = "{{ .P2P.PersistentPeers }}"
