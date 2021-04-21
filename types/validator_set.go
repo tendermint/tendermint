@@ -1028,7 +1028,9 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 	}
 	vp.Proposer = valProposer
 
-	vp.TotalVotingPower = vals.totalVotingPower
+	// NOTE: Sometimes we use the bytes of the proto form as a hash. This means that we need to
+	// be consistent with cached data
+	vp.TotalVotingPower = 0
 
 	return vp, nil
 }
@@ -1059,7 +1061,10 @@ func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 
 	vals.Proposer = p
 
-	vals.totalVotingPower = vp.GetTotalVotingPower()
+	// NOTE: We can't trust the total voting power given to us by other peers. If someone were to
+	// inject a non-zeo value that wasn't the correct voting power we could assume a wrong total
+	// power. We should look to remove TotalVotingPower from proto or add it in the validators hash.
+	vals.totalVotingPower = 0
 
 	return vals, vals.ValidateBasic()
 }
