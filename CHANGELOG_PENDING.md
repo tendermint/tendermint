@@ -34,12 +34,12 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [store] \#5848 Remove block store state in favor of using the db iterators directly (@cmwaters)
   - [state] \#5864 Use an iterator when pruning state (@cmwaters)
   - [types] \#6023 Remove `tm2pb.Header`, `tm2pb.BlockID`, `tm2pb.PartSetHeader` and `tm2pb.NewValidatorUpdate`.
-    - Each of the above types has a `ToProto` and `FromProto` method or function which replaced this logic.
+	- Each of the above types has a `ToProto` and `FromProto` method or function which replaced this logic.
   - [light] \#6054 Move `MaxRetryAttempt` option from client to provider.
-    - `NewWithOptions` now sets the max retry attempts and timeouts (@cmwaters)
+	- `NewWithOptions` now sets the max retry attempts and timeouts (@cmwaters)
   - [all] \#6077 Change spelling from British English to American (@cmwaters)
-    - Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
-    - Rename "behaviour" pkg to "behavior" and internalized it in blockchain v2
+	- Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
+	- Rename "behaviour" pkg to "behavior" and internalized it in blockchain v2
   - [rpc/client/http] \#6176 Remove `endpoint` arg from `New`, `NewWithTimeout` and `NewWithClient` (@melekes)
   - [rpc/client/http] \#6176 Unexpose `WSEvents` (@melekes)
   - [rpc/jsonrpc/client/ws_client] \#6176 `NewWS` no longer accepts options (use `NewWSWithOptions` and `OnReconnect` funcs to configure the client) (@melekes)
@@ -82,6 +82,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [privval/file] \#6185 Return error on `LoadFilePV`, `LoadFilePVEmptyState`. Allows for better programmatic control of Tendermint.
 - [privval] \#6240 Add `context.Context` to privval interface.
 - [rpc] \#6265 set cache control in http-rpc response header (@JayT106)
+- [statesync] \#6378 Retry requests for snapshots and add a minimum discovery time (5s) for new snapshots.
 
 ### BUG FIXES
 
