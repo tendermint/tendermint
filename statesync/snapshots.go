@@ -177,6 +177,10 @@ func (p *snapshotPool) Ranked() []*snapshot {
 	p.Lock()
 	defer p.Unlock()
 
+	if len(p.snapshots) == 0 {
+		return []*snapshot{}
+	}
+
 	numPeers := make([]int, 0, len(p.snapshots))
 	for key := range p.snapshots {
 		numPeers = append(numPeers, len(p.snapshotPeers[key]))
