@@ -93,10 +93,30 @@ and with what values, e.g. the `sender` could be the signer  and fee payer
 the transaction, the `priority` could be the cumulative sum of the fee(s), and
 the `nonce` could be the signer's sequence number/nonce.
 
-> TODO: Add note on which, if any, of these new fields are required.
+Only `sender` is required, while `priority` and `nonce` can be omitted which
+would result in using the default value of zero.
 
 ### Mempool
 
+The existing concurrent-safe linked-list will be removed entirely in favor of a
+thread-safe map of `<sender:[]Tx>`, i.e a mapping from `sender` to a list of `Tx`
+objects, where each `Tx` is ordered by monotonically increasing, but not
+necessarily consecutive, `nonce` values. For example, the sender `Alice`, whose
+current committed nonce value is `3`, could have transactions in this map with
+nonce values `<4,5,6,8>`, where only the transaction with nonce `4` could be
+processed next.
+
+Note, the mempool itself does not and will not know about the latest committed
+nonce value, but it is assumed that all transactions that end up in the mempool
+pass `CheckTx`. In addition, the application and thus Tendermint's mempool does
+not necessarily have to utilize the concept of a nonce.
+
+On top of this mapping, we index all transactions by priority using a priority
+queue. When a proposer is ready to reap transactions for the next block proposal,
+transactions are selected from this priority index. For each priority-indexed
+transaction, we evaluate if that transaction is at the head of the sender's
+list of transactions, if so, it is included in the block and the index is removed
+along with the transaction itself.
 ## Consequences
 
 ### Positive
