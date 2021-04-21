@@ -186,11 +186,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 		LastBlockAppHash: []byte("app_hash"),
 	}, nil)
 
-<<<<<<< HEAD
-	newState, lastCommit, err := syncer.SyncAny(0)
-=======
-	newState, lastCommit, err := rts.syncer.SyncAny(0, func() {})
->>>>>>> d36a5905a... statesync: improve e2e test outcomes (#6378)
+	newState, lastCommit, err := syncer.SyncAny(0, func() {})
 	require.NoError(t, err)
 
 	time.Sleep(50 * time.Millisecond) // wait for peers to receive requests
@@ -213,19 +209,9 @@ func TestSyncer_SyncAny(t *testing.T) {
 }
 
 func TestSyncer_SyncAny_noSnapshots(t *testing.T) {
-<<<<<<< HEAD
 	syncer, _ := setupOfferSyncer(t)
-	_, _, err := syncer.SyncAny(0)
+	_, _, err := syncer.SyncAny(0, func() {})
 	assert.Equal(t, errNoSnapshots, err)
-=======
-	stateProvider := &mocks.StateProvider{}
-	stateProvider.On("AppHash", mock.Anything, mock.Anything).Return([]byte("app_hash"), nil)
-
-	rts := setup(t, nil, nil, stateProvider, 2)
-
-	_, _, err := rts.syncer.SyncAny(0, func() {})
-	require.Equal(t, errNoSnapshots, err)
->>>>>>> d36a5905a... statesync: improve e2e test outcomes (#6378)
 }
 
 func TestSyncer_SyncAny_abort(t *testing.T) {
@@ -238,15 +224,9 @@ func TestSyncer_SyncAny_abort(t *testing.T) {
 		Snapshot: toABCI(s), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ABORT}, nil)
 
-<<<<<<< HEAD
-	_, _, err = syncer.SyncAny(0)
+	_, _, err = syncer.SyncAny(0, func() {})
 	assert.Equal(t, errAbort, err)
 	connSnapshot.AssertExpectations(t)
-=======
-	_, _, err = rts.syncer.SyncAny(0, func() {})
-	require.Equal(t, errAbort, err)
-	rts.conn.AssertExpectations(t)
->>>>>>> d36a5905a... statesync: improve e2e test outcomes (#6378)
 }
 
 func TestSyncer_SyncAny_reject(t *testing.T) {
@@ -275,15 +255,9 @@ func TestSyncer_SyncAny_reject(t *testing.T) {
 		Snapshot: toABCI(s11), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT}, nil)
 
-<<<<<<< HEAD
-	_, _, err = syncer.SyncAny(0)
+	_, _, err = syncer.SyncAny(0, func() {})
 	assert.Equal(t, errNoSnapshots, err)
 	connSnapshot.AssertExpectations(t)
-=======
-	_, _, err = rts.syncer.SyncAny(0, func() {})
-	require.Equal(t, errNoSnapshots, err)
-	rts.conn.AssertExpectations(t)
->>>>>>> d36a5905a... statesync: improve e2e test outcomes (#6378)
 }
 
 func TestSyncer_SyncAny_reject_format(t *testing.T) {
@@ -308,15 +282,9 @@ func TestSyncer_SyncAny_reject_format(t *testing.T) {
 		Snapshot: toABCI(s11), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ABORT}, nil)
 
-<<<<<<< HEAD
-	_, _, err = syncer.SyncAny(0)
+	_, _, err = syncer.SyncAny(0, func() {})
 	assert.Equal(t, errAbort, err)
 	connSnapshot.AssertExpectations(t)
-=======
-	_, _, err = rts.syncer.SyncAny(0, func() {})
-	require.Equal(t, errAbort, err)
-	rts.conn.AssertExpectations(t)
->>>>>>> d36a5905a... statesync: improve e2e test outcomes (#6378)
 }
 
 func TestSyncer_SyncAny_reject_sender(t *testing.T) {
@@ -352,15 +320,9 @@ func TestSyncer_SyncAny_reject_sender(t *testing.T) {
 		Snapshot: toABCI(sa), AppHash: []byte("app_hash"),
 	}).Once().Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT}, nil)
 
-<<<<<<< HEAD
-	_, _, err = syncer.SyncAny(0)
+	_, _, err = syncer.SyncAny(0, func() {})
 	assert.Equal(t, errNoSnapshots, err)
 	connSnapshot.AssertExpectations(t)
-=======
-	_, _, err = rts.syncer.SyncAny(0, func() {})
-	require.Equal(t, errNoSnapshots, err)
-	rts.conn.AssertExpectations(t)
->>>>>>> d36a5905a... statesync: improve e2e test outcomes (#6378)
 }
 
 func TestSyncer_SyncAny_abciError(t *testing.T) {
@@ -374,15 +336,9 @@ func TestSyncer_SyncAny_abciError(t *testing.T) {
 		Snapshot: toABCI(s), AppHash: []byte("app_hash"),
 	}).Once().Return(nil, errBoom)
 
-<<<<<<< HEAD
-	_, _, err = syncer.SyncAny(0)
+	_, _, err = syncer.SyncAny(0, func() {})
 	assert.True(t, errors.Is(err, errBoom))
 	connSnapshot.AssertExpectations(t)
-=======
-	_, _, err = rts.syncer.SyncAny(0, func() {})
-	require.True(t, errors.Is(err, errBoom))
-	rts.conn.AssertExpectations(t)
->>>>>>> d36a5905a... statesync: improve e2e test outcomes (#6378)
 }
 
 func TestSyncer_offerSnapshot(t *testing.T) {

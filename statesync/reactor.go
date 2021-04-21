@@ -255,27 +255,16 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateProvider, r.tempDir)
 	r.mtx.Unlock()
 
-<<<<<<< HEAD
-	// Request snapshots from all currently connected peers
-	r.Logger.Debug("Requesting snapshots from known peers")
-	r.Switch.Broadcast(SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
-
-	state, commit, err := r.syncer.SyncAny(discoveryTime)
-=======
 	hook := func() {
-		// request snapshots from all currently connected peers
-		r.Logger.Debug("requesting snapshots from known peers")
-		r.snapshotCh.Out <- p2p.Envelope{
-			Broadcast: true,
-			Message:   &ssproto.SnapshotsRequest{},
-		}
+		r.Logger.Debug("Requesting snapshots from known peers")
+		// Request snapshots from all currently connected peers
+		r.Switch.Broadcast(SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
 	}
 
 	hook()
 
 	state, commit, err := r.syncer.SyncAny(discoveryTime, hook)
 
->>>>>>> d36a5905a... statesync: improve e2e test outcomes (#6378)
 	r.mtx.Lock()
 	r.syncer = nil
 	r.mtx.Unlock()
