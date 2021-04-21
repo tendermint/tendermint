@@ -14,7 +14,6 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -83,7 +82,7 @@ type Environment struct {
 	// objects
 	PubKey           crypto.PubKey
 	GenDoc           *types.GenesisDoc // cache the genesis structure
-	TxIndexer        txindex.TxIndexer
+	TxIndexer        indexer.TxIndexer
 	BlockIndexer     indexer.BlockIndexer
 	ConsensusReactor *consensus.Reactor
 	EventBus         *types.EventBus // thread safe
