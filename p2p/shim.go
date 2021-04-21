@@ -144,7 +144,10 @@ func (rs *ReactorShim) proxyPeerEnvelopes() {
 					}
 
 					if !src.Send(cs.Descriptor.ID, bz) {
-						rs.Logger.Error(
+						// This usually happens when we try to send across a channel
+						// that the peer doesn't have open. To avoid bloating the
+						// logs we set this to be Debug
+						rs.Logger.Debug(
 							"failed to proxy message to peer",
 							"ch_id", cs.Descriptor.ID,
 							"peer", e.To,
