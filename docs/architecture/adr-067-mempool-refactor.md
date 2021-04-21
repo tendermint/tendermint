@@ -89,7 +89,7 @@ message ResponseCheckTx {
 ```
 
 It is entirely up the application in determining how these fields are populated
-and with what values, e.g. the `sender` could be the signer  and fee payer 
+and with what values, e.g. the `sender` could be the signer and fee payer 
 the transaction, the `priority` could be the cumulative sum of the fee(s), and
 the `nonce` could be the signer's sequence number/nonce.
 
