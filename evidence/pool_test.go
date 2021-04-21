@@ -14,8 +14,11 @@ import (
 	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/log"
+<<<<<<< HEAD
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
+=======
+>>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 	sm "github.com/tendermint/tendermint/state"
 	smmocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/store"
@@ -174,6 +177,9 @@ func TestReportConflictingVotes(t *testing.T) {
 	// should be able to retrieve evidence from pool
 	evList, _ = pool.PendingEvidence(defaultEvidenceMaxBytes)
 	require.Equal(t, []types.Evidence{ev}, evList)
+
+	next = pool.EvidenceFront()
+	require.NotNil(t, next)
 }
 
 func TestEvidencePoolUpdate(t *testing.T) {
@@ -234,12 +240,12 @@ func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 
 // check that valid light client evidence is correctly validated and stored in
 // evidence pool
-func TestCheckEvidenceWithLightClientAttack(t *testing.T) {
+func TestLightClientAttackEvidenceLifecycle(t *testing.T) {
 	var (
-		nValidators          = 5
-		validatorPower int64 = 10
-		height         int64 = 10
+		height       int64 = 100
+		commonHeight int64 = 90
 	)
+<<<<<<< HEAD
 	conflictingVals, conflictingPrivVals := types.RandValidatorSet(nValidators, validatorPower)
 	trustedHeader := makeHeaderRandom(height)
 	trustedHeader.Time = defaultEvidenceTime
@@ -278,18 +284,26 @@ func TestCheckEvidenceWithLightClientAttack(t *testing.T) {
 	trustedCommit, err := types.MakeCommit(trustedBlockID, height, 1, trustedVoteSet, conflictingPrivVals,
 		defaultEvidenceTime)
 	require.NoError(t, err)
+=======
+
+	ev, trusted, common := makeLunaticEvidence(t, height, commonHeight,
+		10, 5, 5, defaultEvidenceTime, defaultEvidenceTime.Add(1*time.Hour))
+>>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 
 	state := sm.State{
-		LastBlockTime:   defaultEvidenceTime.Add(1 * time.Minute),
-		LastBlockHeight: 11,
+		LastBlockTime:   defaultEvidenceTime.Add(2 * time.Hour),
+		LastBlockHeight: 110,
 		ConsensusParams: *types.DefaultConsensusParams(),
 	}
 	stateStore := &smmocks.Store{}
-	stateStore.On("LoadValidators", height).Return(conflictingVals, nil)
+	stateStore.On("LoadValidators", height).Return(trusted.ValidatorSet, nil)
+	stateStore.On("LoadValidators", commonHeight).Return(common.ValidatorSet, nil)
 	stateStore.On("Load").Return(state, nil)
 	blockStore := &mocks.BlockStore{}
-	blockStore.On("LoadBlockMeta", height).Return(&types.BlockMeta{Header: *trustedHeader})
-	blockStore.On("LoadBlockCommit", height).Return(trustedCommit)
+	blockStore.On("LoadBlockMeta", height).Return(&types.BlockMeta{Header: *trusted.Header})
+	blockStore.On("LoadBlockMeta", commonHeight).Return(&types.BlockMeta{Header: *common.Header})
+	blockStore.On("LoadBlockCommit", height).Return(trusted.Commit)
+	blockStore.On("LoadBlockCommit", commonHeight).Return(common.Commit)
 
 	pool, err := evidence.NewPool(dbm.NewMemDB(), stateStore, blockStore)
 	require.NoError(t, err)
@@ -298,6 +312,7 @@ func TestCheckEvidenceWithLightClientAttack(t *testing.T) {
 	err = pool.AddEvidence(ev)
 	assert.NoError(t, err)
 
+<<<<<<< HEAD
 	err = pool.CheckEvidence(types.EvidenceList{ev})
 	assert.NoError(t, err)
 
@@ -306,6 +321,34 @@ func TestCheckEvidenceWithLightClientAttack(t *testing.T) {
 	commit.Signatures = append(commit.Signatures[:nValidators-1], types.NewCommitSigAbsent())
 	err = pool.CheckEvidence(types.EvidenceList{ev})
 	assert.Error(t, err)
+=======
+	hash := ev.Hash()
+
+	require.NoError(t, pool.AddEvidence(ev))
+	require.NoError(t, pool.AddEvidence(ev))
+
+	pendingEv, _ := pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
+	require.Equal(t, 1, len(pendingEv))
+	require.Equal(t, ev, pendingEv[0])
+
+	require.NoError(t, pool.CheckEvidence(pendingEv))
+	require.Equal(t, ev, pendingEv[0])
+
+	state.LastBlockHeight++
+	state.LastBlockTime = state.LastBlockTime.Add(1 * time.Minute)
+	pool.Update(state, pendingEv)
+	require.Equal(t, hash, pendingEv[0].Hash())
+
+	remaindingEv, _ := pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
+	require.Empty(t, remaindingEv)
+
+	// evidence is already committed so it shouldn't pass
+	require.Error(t, pool.CheckEvidence(types.EvidenceList{ev}))
+	require.NoError(t, pool.AddEvidence(ev))
+
+	remaindingEv, _ = pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
+	require.Empty(t, remaindingEv)
+>>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 }
 
 // Tests that restarting the evidence pool after a potential failure will recover the
@@ -345,7 +388,7 @@ func TestRecoverPendingEvidence(t *testing.T) {
 			Evidence: tmproto.EvidenceParams{
 				MaxAgeNumBlocks: 20,
 				MaxAgeDuration:  20 * time.Minute,
-				MaxBytes:        1000,
+				MaxBytes:        defaultEvidenceMaxBytes,
 			},
 		},
 	}, nil)

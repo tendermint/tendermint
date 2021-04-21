@@ -1,7 +1,12 @@
 # This testnet is run by CI, and attempts to cover a broad range of
 # functionality with a single network.
 
+<<<<<<< HEAD
 ipv6 = true
+=======
+disable_legacy_p2p = false
+evidence = 5
+>>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 initial_height = 1000
 initial_state = { initial01 = "a", initial02 = "b", initial03 = "c" }
 
@@ -54,8 +59,14 @@ database = "badgerdb"
 #abci_protocol = "grpc"
 privval_protocol = "unix"
 persist_interval = 3
+<<<<<<< HEAD
 retain_blocks = 3
 perturb = ["kill"]
+=======
+perturb = ["kill"]
+privval_protocol = "grpc"
+retain_blocks = 5
+>>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 
 [node.validator04]
 persistent_peers = ["validator01"]
@@ -81,6 +92,10 @@ fast_sync = "v0"
 persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
 retain_blocks = 1
 perturb = ["restart"]
+<<<<<<< HEAD
+=======
+retain_blocks = 5
+>>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 
 [node.full02]
 start_at = 1015

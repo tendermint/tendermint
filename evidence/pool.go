@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -194,9 +193,11 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 	hashes := make([][]byte, len(evList))
 	for idx, ev := range evList {
 
-		ok := evpool.fastCheck(ev)
+		_, isLightEv := ev.(*types.LightClientAttackEvidence)
 
-		if !ok {
+		// We must verify light client attack evidence regardless because there could be a
+		// different conflicting block with the same hash.
+		if isLightEv || !evpool.isPending(ev) {
 			// check that the evidence isn't already committed
 			if evpool.isCommitted(ev) {
 				return &types.ErrInvalidEvidence{Evidence: ev, Reason: errors.New("evidence was already committed")}
@@ -213,7 +214,11 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 				evpool.logger.Error("Can't add evidence to pending list", "err", err, "ev", ev)
 			}
 
+<<<<<<< HEAD
 			evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
+=======
+			evpool.logger.Info("check evidence: verified evidence of byzantine behavior", "evidence", ev)
+>>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 		}
 
 		// check for duplicate evidence. We cache hashes so we don't have to work them out again.
@@ -255,6 +260,7 @@ func (evpool *Pool) State() sm.State {
 	return evpool.state
 }
 
+<<<<<<< HEAD
 //--------------------------------------------------------------------------
 
 // fastCheck leverages the fact that the evidence pool may have already verified the evidence to see if it can
@@ -317,6 +323,8 @@ func (evpool *Pool) fastCheck(ev types.Evidence) bool {
 	return evpool.isPending(ev)
 }
 
+=======
+>>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 // IsExpired checks whether evidence or a polc is expired by checking whether a height and time is older
 // than set by the evidence consensus parameters
 func (evpool *Pool) isExpired(height int64, time time.Time) bool {
@@ -386,7 +394,13 @@ func (evpool *Pool) markEvidenceAsCommitted(evidence types.EvidenceList) {
 	blockEvidenceMap := make(map[string]struct{}, len(evidence))
 	for _, ev := range evidence {
 		if evpool.isPending(ev) {
+<<<<<<< HEAD
 			evpool.removePendingEvidence(ev)
+=======
+			if err := batch.Delete(keyPending(ev)); err != nil {
+				evpool.logger.Error("failed to batch delete pending evidence", "err", err)
+			}
+>>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 			blockEvidenceMap[evMapKey(ev)] = struct{}{}
 		}
 
@@ -476,9 +490,16 @@ func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
 				evpool.removeEvidenceFromList(blockEvidenceMap)
 			}
 
+<<<<<<< HEAD
 			// return the height and time with which this evidence will have expired so we know when to prune next
 			return ev.Height() + evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks + 1,
 				ev.Time().Add(evpool.State().ConsensusParams.Evidence.MaxAgeDuration).Add(time.Second)
+=======
+		// else add to the batch
+		if err := batch.Delete(iter.Key()); err != nil {
+			evpool.logger.Error("failed to batch delete evidence", "err", err, "ev", ev)
+			continue
+>>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 		}
 		evpool.removePendingEvidence(ev)
 		blockEvidenceMap[evMapKey(ev)] = struct{}{}
