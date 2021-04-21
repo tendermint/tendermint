@@ -2,7 +2,6 @@
 package main
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -88,11 +87,10 @@ func (s *SnapshotStore) Create(state *State) (abci.Snapshot, error) {
 	if err != nil {
 		return abci.Snapshot{}, err
 	}
-	hash := sha256.Sum256(bz)
 	snapshot := abci.Snapshot{
 		Height: state.Height,
 		Format: 1,
-		Hash:   hash[:],
+		Hash:   hashItems(state.Values),
 		Chunks: byteChunks(bz),
 	}
 	err = ioutil.WriteFile(filepath.Join(s.dir, fmt.Sprintf("%v.json", state.Height)), bz, 0644)
@@ -111,10 +109,9 @@ func (s *SnapshotStore) Create(state *State) (abci.Snapshot, error) {
 func (s *SnapshotStore) List() ([]*abci.Snapshot, error) {
 	s.RLock()
 	defer s.RUnlock()
-	snapshots := []*abci.Snapshot{}
-	for _, snapshot := range s.metadata {
-		s := snapshot // copy to avoid pointer to range variable
-		snapshots = append(snapshots, &s)
+	snapshots := make([]*abci.Snapshot, len(s.metadata))
+	for idx := range s.metadata {
+		snapshots[idx] = &s.metadata[idx]
 	}
 	return snapshots, nil
 }

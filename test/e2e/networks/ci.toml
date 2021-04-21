@@ -2,7 +2,7 @@
 # functionality with a single network.
 
 disable_legacy_p2p = false
-evidence = 0
+evidence = 5
 initial_height = 1000
 initial_state = {initial01 = "a", initial02 = "b", initial03 = "c"}
 queue_type = "priority"
@@ -57,7 +57,7 @@ seeds = ["seed01"]
 persist_interval = 3
 perturb = ["kill"]
 privval_protocol = "grpc"
-retain_blocks = 3
+retain_blocks = 5
 
 [node.validator04]
 abci_protocol = "builtin"
@@ -82,7 +82,7 @@ start_at = 1010
 fast_sync = "v0"
 persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
 perturb = ["restart"]
-retain_blocks = 3
+retain_blocks = 5
 
 [node.full02]
 mode = "full"
