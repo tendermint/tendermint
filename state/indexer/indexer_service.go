@@ -13,9 +13,9 @@ const (
 	subscriber = "IndexerService"
 )
 
-// IndexerService connects event bus, transaction and block indexers together in
+// Service connects event bus, transaction and block indexers together in
 // order to index transactions and blocks coming from the event bus.
-type IndexerService struct {
+type Service struct {
 	service.BaseService
 
 	txIdxr    TxIndexer
@@ -28,16 +28,16 @@ func NewIndexerService(
 	txIdxr TxIndexer,
 	blockIdxr BlockIndexer,
 	eventBus *types.EventBus,
-) *IndexerService {
+) *Service {
 
-	is := &IndexerService{txIdxr: txIdxr, blockIdxr: blockIdxr, eventBus: eventBus}
+	is := &Service{txIdxr: txIdxr, blockIdxr: blockIdxr, eventBus: eventBus}
 	is.BaseService = *service.NewBaseService(nil, "IndexerService", is)
 	return is
 }
 
 // OnStart implements service.Service by subscribing for all transactions
 // and indexing them by events.
-func (is *IndexerService) OnStart() error {
+func (is *Service) OnStart() error {
 	// Use SubscribeUnbuffered here to ensure both subscriptions does not get
 	// canceled due to not pulling messages fast enough. Cause this might
 	// sometimes happen when there are no other subscribers.
@@ -92,7 +92,7 @@ func (is *IndexerService) OnStart() error {
 }
 
 // OnStop implements service.Service by unsubscribing from all transactions.
-func (is *IndexerService) OnStop() {
+func (is *Service) OnStop() {
 	if is.eventBus.IsRunning() {
 		_ = is.eventBus.UnsubscribeAll(context.Background(), subscriber)
 	}

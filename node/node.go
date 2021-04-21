@@ -227,7 +227,7 @@ type Node struct {
 	rpcListeners      []net.Listener // rpc servers
 	txIndexer         indexer.TxIndexer
 	blockIndexer      indexer.BlockIndexer
-	indexerService    *indexer.IndexerService
+	indexerService    *indexer.Service
 	prometheusSrv     *http.Server
 }
 
@@ -266,7 +266,7 @@ func createAndStartIndexerService(
 	dbProvider DBProvider,
 	eventBus *types.EventBus,
 	logger log.Logger,
-) (*indexer.IndexerService, indexer.TxIndexer, indexer.BlockIndexer, error) {
+) (*indexer.Service, indexer.TxIndexer, indexer.BlockIndexer, error) {
 
 	var (
 		txIndexer    indexer.TxIndexer
