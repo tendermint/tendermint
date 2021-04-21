@@ -24,6 +24,9 @@ const (
 	chunkTimeout = 2 * time.Minute
 	// requestTimeout is the timeout before rerequesting a chunk, possibly from a different peer.
 	chunkRequestTimeout = 10 * time.Second
+	// minimumDiscoveryTime is the lowest allowable time for a
+	// SyncAny discovery time.
+	minimumDiscoveryTime = 5 * time.Second
 )
 
 var (
@@ -139,6 +142,10 @@ func (s *syncer) RemovePeer(peerID p2p.NodeID) {
 // snapshots if none were found and discoveryTime > 0. It returns the latest state and block commit
 // which the caller must use to bootstrap the node.
 func (s *syncer) SyncAny(discoveryTime time.Duration, retryHook func()) (sm.State, *types.Commit, error) {
+	if discoveryTime != 0 && discoveryTime < minimumDiscoveryTime {
+		discoveryTime = 5 * minimumDiscoveryTime
+	}
+
 	if discoveryTime > 0 {
 		s.logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
 		time.Sleep(discoveryTime)
