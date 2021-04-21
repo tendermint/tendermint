@@ -60,7 +60,7 @@ For more information on the various approaches and proposals, please see the
 ## Decision
 
 To incorporate a priority-based flexible and performant mempool in Tendermint Core,
-we will introduce new fields, `priority`, `sender`, and `nonce` , into the
+we will introduce new fields, `priority`, `sender`, and `sequence` , into the
 `ResponseCheckTx` type and augment the existing mempool data structure to
 facilitate prioritization of uncommitted transactions in addition to extended
 functionality such as replace-by-priority and allowing multiple transactions to
@@ -84,16 +84,16 @@ message ResponseCheckTx {
   string         codespace  = 8;
 + int64          priority   = 9;
 + string         sender     = 10;
-+ int64          nonce      = 11;
++ int64          sequence   = 11;
 }
 ```
 
 It is entirely up the application in determining how these fields are populated
 and with what values, e.g. the `sender` could be the signer and fee payer 
 the transaction, the `priority` could be the cumulative sum of the fee(s), and
-the `nonce` could be the signer's sequence number/nonce.
+the `sequence` could be the signer's sequence number.
 
-Only `sender` is required, while `priority` and `nonce` can be omitted which
+Only `sender` is required, while `priority` and `sequence` can be omitted which
 would result in using the default value of zero.
 
 ### Mempool
@@ -101,15 +101,15 @@ would result in using the default value of zero.
 The existing concurrent-safe linked-list will be removed entirely in favor of a
 thread-safe map of `<sender:[]Tx>`, i.e a mapping from `sender` to a list of `Tx`
 objects, where each `Tx` is ordered by monotonically increasing, but not
-necessarily consecutive, `nonce` values. For example, the sender `Alice`, whose
-current committed nonce value is `3`, could have transactions in this map with
-nonce values `<4,5,6,8>`, where only the transaction with nonce `4` could be
+necessarily consecutive, `sequence` values. For example, the sender `Alice`, whose
+current committed sequence value is `3`, could have transactions in this map with
+sequence values `<4,5,6,8>`, where only the transaction with sequence `4` could be
 processed next.
 
 Note, the mempool itself does not and will not know about the latest committed
-nonce value, but it is assumed that all transactions that end up in the mempool
+sequence value, but it is assumed that all transactions that end up in the mempool
 pass `CheckTx`. In addition, the application and thus Tendermint's mempool does
-not necessarily have to utilize the concept of a nonce.
+not necessarily have to utilize the concept of a sequence.
 
 On top of this mapping, we index all transactions by priority using a priority
 queue. When a proposer is ready to reap transactions for the next block proposal,
