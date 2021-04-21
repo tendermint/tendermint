@@ -123,19 +123,8 @@ func TestLightClientAttackEvidenceBasic(t *testing.T) {
 		malleateEvidence func(*LightClientAttackEvidence)
 	}{
 		{"Different header", func(ev *LightClientAttackEvidence) { ev.ConflictingBlock.Header = makeHeaderRandom() }},
-		{"Different commit", func(ev *LightClientAttackEvidence) {
-			newSigs := append(commit.Signatures[:len(commit.Signatures)-1], NewCommitSigAbsent())
-			newCommit := NewCommit(height, 0, blockID, newSigs)
-			require.NotEqual(t, commit.Hash(), newCommit.Hash())
-			ev.ConflictingBlock.Commit = newCommit
-		}},
 		{"Different common height", func(ev *LightClientAttackEvidence) {
 			ev.CommonHeight = height + 1
-		}},
-		{"Different total voting power", func(ev *LightClientAttackEvidence) { ev.TotalVotingPower *= 2 }},
-		{"Different timestamp", func(ev *LightClientAttackEvidence) { ev.Timestamp = header.Time.Add(1 * time.Hour) }},
-		{"Different byzantine validators", func(ev *LightClientAttackEvidence) {
-			ev.ByzantineValidators = []*Validator{}
 		}},
 	}
 

@@ -1063,8 +1063,10 @@ func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 
 	// NOTE: We can't trust the total voting power given to us by other peers. If someone were to
 	// inject a non-zeo value that wasn't the correct voting power we could assume a wrong total
-	// power. We should look to remove TotalVotingPower from proto or add it in the validators hash.
-	vals.totalVotingPower = 0
+	// power hence we need to recompute it.
+	// FIXME: We should look to remove TotalVotingPower from proto or add it in the validators hash
+	// so we don't have to do this
+	vals.TotalVotingPower()
 
 	return vals, vals.ValidateBasic()
 }
