@@ -117,6 +117,7 @@ transactions are selected from this priority index. For each priority-indexed
 transaction, we evaluate if that transaction is at the head of the sender's
 list of transactions, if so, it is included in the block and the index is removed
 along with the transaction itself.
+
 ## Consequences
 
 ### Positive
