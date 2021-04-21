@@ -143,7 +143,6 @@ func TestLightClientAttackEvidenceBasic(t *testing.T) {
 			ByzantineValidators: valSet.Validators[:nValidators/2],
 		}
 		hash := lcae.Hash()
-		t.Log(hash)
 		tc.malleateEvidence(lcae)
 		assert.NotEqual(t, hash, lcae.Hash(), tc.testName)
 	}
