@@ -1,10 +1,9 @@
-package txindex
+package indexer
 
 import (
 	"context"
 
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -20,14 +19,14 @@ type IndexerService struct {
 	service.BaseService
 
 	txIdxr    TxIndexer
-	blockIdxr indexer.BlockIndexer
+	blockIdxr BlockIndexer
 	eventBus  *types.EventBus
 }
 
 // NewIndexerService returns a new service instance.
 func NewIndexerService(
 	txIdxr TxIndexer,
-	blockIdxr indexer.BlockIndexer,
+	blockIdxr BlockIndexer,
 	eventBus *types.EventBus,
 ) *IndexerService {
 
