@@ -110,7 +110,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 			Hash:   []byte{1},
 		},
 		AppHash: []byte("app_hash_2"),
-	}).Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT_FORMAT}, nil)
+	}).Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT_FORMAT}, nil).Maybe()
 	connSnapshot.On("OfferSnapshotSync", ctx, abci.RequestOfferSnapshot{
 		Snapshot: &abci.Snapshot{
 			Height:   s.Height,
