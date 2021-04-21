@@ -16,12 +16,12 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	"github.com/tendermint/tendermint/state/txindex"
+	indexer "github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
 )
 
 func TestTxIndex(t *testing.T) {
-	indexer := NewTxIndex(db.NewMemDB())
+	txIndexer := NewTxIndex(db.NewMemDB())
 
 	tx := types.Tx("HELLO WORLD")
 	txResult := &abci.TxResult{
@@ -35,14 +35,14 @@ func TestTxIndex(t *testing.T) {
 	}
 	hash := tx.Hash()
 
-	batch := txindex.NewBatch(1)
+	batch := indexer.NewBatch(1)
 	if err := batch.Add(txResult); err != nil {
 		t.Error(err)
 	}
-	err := indexer.AddBatch(batch)
+	err := txIndexer.AddBatch(batch)
 	require.NoError(t, err)
 
-	loadedTxResult, err := indexer.Get(hash)
+	loadedTxResult, err := txIndexer.Get(hash)
 	require.NoError(t, err)
 	assert.True(t, proto.Equal(txResult, loadedTxResult))
 
@@ -58,10 +58,10 @@ func TestTxIndex(t *testing.T) {
 	}
 	hash2 := tx2.Hash()
 
-	err = indexer.Index(txResult2)
+	err = txIndexer.Index(txResult2)
 	require.NoError(t, err)
 
-	loadedTxResult2, err := indexer.Get(hash2)
+	loadedTxResult2, err := txIndexer.Get(hash2)
 	require.NoError(t, err)
 	assert.True(t, proto.Equal(txResult2, loadedTxResult2))
 }
@@ -341,9 +341,9 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 
 	store, err := db.NewDB("tx_index", "goleveldb", dir)
 	require.NoError(b, err)
-	indexer := NewTxIndex(store)
+	txIndexer := NewTxIndex(store)
 
-	batch := txindex.NewBatch(txsCount)
+	batch := indexer.NewBatch(txsCount)
 	txIndex := uint32(0)
 	for i := int64(0); i < txsCount; i++ {
 		tx := tmrand.Bytes(250)
@@ -367,7 +367,7 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
-		err = indexer.AddBatch(batch)
+		err = txIndexer.AddBatch(batch)
 	}
 	if err != nil {
 		b.Fatal(err)
