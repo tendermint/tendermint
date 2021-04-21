@@ -173,8 +173,8 @@ func (p *snapshotPool) Ranked() []*snapshot {
 	defer p.Unlock()
 
 	candidates := make([]*snapshot, 0, len(p.snapshots))
-	for _, snapshot := range p.snapshots {
-		candidates = append(candidates, snapshot)
+	for key := range p.snapshots {
+		candidates = append(candidates, p.snapshots[key])
 	}
 
 	sort.Slice(candidates, func(i, j int) bool {

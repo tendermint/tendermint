@@ -761,6 +761,10 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 				return errors.New("found empty rpc_servers entry")
 			}
 		}
+		if cfg.DiscoveryTime != 0 && cfg.DiscoveryTime < 5*time.Second {
+			return errors.New("discovery time must be 0s or greater than five seconds")
+		}
+
 		if cfg.TrustPeriod <= 0 {
 			return errors.New("trusted_period is required")
 		}
