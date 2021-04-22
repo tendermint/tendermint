@@ -657,7 +657,7 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 	added, err = peerManager.Add(b)
 	require.NoError(t, err)
 	require.True(t, added)
-	
+
 	added, err = peerManager.Add(c)
 	require.NoError(t, err)
 	require.True(t, added)

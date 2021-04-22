@@ -3,6 +3,7 @@ package pex
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/clist"
@@ -18,6 +19,7 @@ var (
 )
 
 // TODO: Consolidate with params file.
+// See https://github.com/tendermint/tendermint/issues/6371
 const (
 	// the minimum time one peer can send another request to the same peer
 	minReceiveRequestInterval = 300 * time.Millisecond
@@ -61,6 +63,7 @@ type ReactorV2 struct {
 	// list of available peers to loop through and send peer requests to
 	availablePeers *clist.CList
 
+	mtx sync.Mutex
 	// requestsSent keeps track of which peers the PEX reactor has sent requests
 	// to. This prevents the sending of spurious responses.
 	// NOTE: If a node never responds, they will remain in this map until a
@@ -112,6 +115,7 @@ func NewReactorV2(
 // OnStop to ensure the outbound p2p Channels are closed.
 func (r *ReactorV2) OnStart() error {
 	go r.processPexCh()
+	go r.processPeerUpdates()
 	return nil
 }
 
@@ -132,6 +136,8 @@ func (r *ReactorV2) OnStop() {
 // NextRequestTime returns the next time the pex reactor expects to send a
 // request. Used mainly for testing
 func (r *ReactorV2) NextRequestTime() time.Time {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
 	return r.nextRequestTime
 }
 
@@ -139,17 +145,12 @@ func (r *ReactorV2) NextRequestTime() time.Time {
 // Envelope messages from the pexCh.
 func (r *ReactorV2) processPexCh() {
 	defer r.pexCh.Close()
-	defer r.peerUpdates.Close()
 
 	for {
 		select {
 		case <-r.closeCh:
 			r.Logger.Debug("stopped listening on PEX channel; closing...")
 			return
-
-		// handle peer updates
-		case peerUpdate := <-r.peerUpdates.Updates():
-			r.processPeerUpdate(peerUpdate)
 
 		// outbound requests for new peers
 		case <-r.waitUntilNextRequest():
@@ -165,6 +166,24 @@ func (r *ReactorV2) processPexCh() {
 					Err:    err,
 				}
 			}
+		}
+	}
+}
+
+// processPeerUpdates initiates a blocking process where we listen for and handle
+// PeerUpdate messages. When the reactor is stopped, we will catch the signal and
+// close the p2p PeerUpdatesCh gracefully.
+func (r *ReactorV2) processPeerUpdates() {
+	defer r.peerUpdates.Close()
+
+	for {
+		select {
+		case peerUpdate := <-r.peerUpdates.Updates():
+			r.processPeerUpdate(peerUpdate)
+
+		case <-r.closeCh:
+			r.Logger.Debug("stopped listening on peer updates channel; closing...")
+			return
 		}
 	}
 }
@@ -386,8 +405,11 @@ func (r *ReactorV2) sendRequestForPeers() {
 		Message: &protop2p.PexRequestV2{},
 	}
 
+	// remove the peer from the available peers list and mark it in the requestsSent map
 	r.availablePeers.Remove(peer)
 	peer.DetachPrev()
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
 	r.requestsSent[peerID] = struct{}{}
 
 	r.calculateNextRequestTime()
@@ -446,11 +468,15 @@ func (r *ReactorV2) removePeer(id p2p.NodeID) {
 			break
 		}
 	}
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
 	delete(r.requestsSent, id)
 	delete(r.lastReceivedRequests, id)
 }
 
 func (r *ReactorV2) markPeerRequest(peer p2p.NodeID) error {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
 	if lastRequestTime, ok := r.lastReceivedRequests[peer]; ok {
 		if time.Now().Before(lastRequestTime.Add(minReceiveRequestInterval)) {
 			return fmt.Errorf("peer sent a request too close after a prior one. Minimum interval: %v",
@@ -462,6 +488,8 @@ func (r *ReactorV2) markPeerRequest(peer p2p.NodeID) error {
 }
 
 func (r *ReactorV2) markPeerResponse(peer p2p.NodeID) error {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
 	// check if a request to this peer was sent
 	if _, ok := r.requestsSent[peer]; !ok {
 		return fmt.Errorf("peer sent a PEX response when none was requested (%v)", peer)
