@@ -50,8 +50,8 @@ var (
 	defaultNodeKeyPath  = filepath.Join(defaultConfigDir, defaultNodeKeyName)
 	defaultAddrBookPath = filepath.Join(defaultConfigDir, defaultAddrBookName)
 
-	DefaultLogPath     = os.ExpandEnv("$HOME/.okexchaind")
-	defaultLogFileName = "okexchaind.log"
+	DefaultLogPath     = os.ExpandEnv("$HOME/.exchaind")
+	defaultLogFileName = "exchaind.log"
 	defaultLogFile     = filepath.Join(DefaultLogPath, defaultLogFileName)
 )
 
@@ -111,7 +111,7 @@ func (cfg *Config) SetRoot(root string) *Config {
 	cfg.Mempool.RootDir = root
 	cfg.Consensus.RootDir = root
 
-	// okexchain change LogFile base on cfg.BaseConfig.RootDir
+	// exchain change LogFile base on cfg.BaseConfig.RootDir
 	if root != DefaultLogPath && cfg.BaseConfig.LogFile == defaultLogFile {
 		cfg.BaseConfig.LogFile = filepath.Join(root, defaultLogFileName)
 	}
@@ -677,7 +677,7 @@ func DefaultMempoolConfig() *MempoolConfig {
 		WalPath:   "",
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
-		Size:             2000,               // okexchain memory pool size(max tx num)
+		Size:             2000,               // exchain memory pool size(max tx num)
 		MaxTxsBytes:      1024 * 1024 * 1024, // 1GB
 		CacheSize:        10000,
 		MaxTxBytes:       1024 * 1024, // 1MB
