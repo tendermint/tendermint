@@ -37,8 +37,12 @@ func TestBlock_Header(t *testing.T) {
 			}
 			resp, err := client.Block(ctx, &block.Header.Height)
 			require.NoError(t, err)
+
 			require.Equal(t, block, resp.Block,
-				"block mismatch for height %v", block.Header.Height)
+				"block mismatch for height %d", block.Header.Height)
+
+			require.NoError(t, resp.Block.ValidateBasic(),
+				"block at height %d is invalid", block.Header.Height)
 		}
 	})
 }

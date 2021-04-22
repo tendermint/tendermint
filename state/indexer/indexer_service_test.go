@@ -1,4 +1,4 @@
-package txindex_test
+package indexer_test
 
 import (
 	"testing"
@@ -9,9 +9,9 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
+	indexer "github.com/tendermint/tendermint/state/indexer"
 	blockidxkv "github.com/tendermint/tendermint/state/indexer/block/kv"
-	"github.com/tendermint/tendermint/state/txindex"
-	"github.com/tendermint/tendermint/state/txindex/kv"
+	"github.com/tendermint/tendermint/state/indexer/tx/kv"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -32,7 +32,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	txIndexer := kv.NewTxIndex(store)
 	blockIndexer := blockidxkv.New(db.NewPrefixDB(store, []byte("block_events")))
 
-	service := txindex.NewIndexerService(txIndexer, blockIndexer, eventBus)
+	service := indexer.NewIndexerService(txIndexer, blockIndexer, eventBus)
 	service.SetLogger(log.TestingLogger())
 	err = service.Start()
 	require.NoError(t, err)

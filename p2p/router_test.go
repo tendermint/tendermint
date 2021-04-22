@@ -80,7 +80,7 @@ func TestRouter_Network(t *testing.T) {
 
 	// We then submit an error for a peer, and watch it get disconnected and
 	// then reconnected as the router retries it.
-	peerUpdates := local.MakePeerUpdates(t)
+	peerUpdates := local.MakePeerUpdatesNoRequireEmpty(t)
 	channel.Error <- p2p.PeerError{
 		NodeID: peers[0].NodeID,
 		Err:    errors.New("boom"),
