@@ -398,11 +398,17 @@ func (r *ReactorV2) sendRequestForPeers() {
 	}
 	peerID := peer.Value.(p2p.NodeID)
 
-	// TODO: We should probably check the connection protocol and send the
-	// legacy PexRequest when it is a mconn
-	r.pexCh.Out <- p2p.Envelope{
-		To:      peerID,
-		Message: &protop2p.PexRequestV2{},
+	// The node accommodates for both pex systems
+	if r.isLegacyPeer(peerID) {
+		r.pexCh.Out <- p2p.Envelope{
+			To:      peerID,
+			Message: &protop2p.PexRequest{},
+		}
+	} else {
+		r.pexCh.Out <- p2p.Envelope{
+			To:      peerID,
+			Message: &protop2p.PexRequestV2{},
+		}
 	}
 
 	// remove the peer from the available peers list and mark it in the requestsSent map
@@ -499,4 +505,15 @@ func (r *ReactorV2) markPeerResponse(peer p2p.NodeID) error {
 	// future requests
 	r.availablePeers.PushBack(peer)
 	return nil
+}
+
+// all addresses must use a MCONN protocol for the peer to be considered part of the 
+// legacy p2p pex system
+func (r *ReactorV2) isLegacyPeer(peer p2p.NodeID) bool { 
+	for _, addr := range r.peerManager.Addresses(peer) {
+		if addr.Protocol != p2p.MConnProtocol {
+			return false
+		}
+	}
+	return true
 }
