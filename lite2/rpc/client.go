@@ -3,10 +3,13 @@ package rpc
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/tendermint/tendermint/mempool"
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -28,6 +31,10 @@ type Client struct {
 	next rpcclient.Client
 	lc   *lite.Client
 	prt  *merkle.ProofRuntime
+}
+
+func (c *Client) GetUnconfirmedTxByHash(hash [sha256.Size]byte) (types.Tx, error) {
+	return nil, mempool.ErrNoSuchTx
 }
 
 var _ rpcclient.Client = (*Client)(nil)
@@ -142,6 +149,14 @@ func (c *Client) UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error)
 
 func (c *Client) NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
 	return c.next.NumUnconfirmedTxs()
+}
+
+func (c *Client) UserUnconfirmedTxs(address string, limit int) (*ctypes.ResultUserUnconfirmedTxs, error) {
+	return c.next.UserUnconfirmedTxs(address, limit)
+}
+
+func (c *Client) UserNumUnconfirmedTxs(address string) (*ctypes.ResultUserUnconfirmedTxs, error) {
+	return c.next.UserNumUnconfirmedTxs(address)
 }
 
 func (c *Client) NetInfo() (*ctypes.ResultNetInfo, error) {

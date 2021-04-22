@@ -18,6 +18,7 @@ type AppConnConsensus interface {
 	DeliverTxAsync(types.RequestDeliverTx) *abcicli.ReqRes
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
 	CommitSync() (*types.ResponseCommit, error)
+	SetOptionAsync(req types.RequestSetOption) *abcicli.ReqRes
 }
 
 type AppConnMempool interface {
@@ -28,6 +29,8 @@ type AppConnMempool interface {
 
 	FlushAsync() *abcicli.ReqRes
 	FlushSync() error
+
+	SetOptionAsync(types.RequestSetOption) *abcicli.ReqRes
 }
 
 type AppConnQuery interface {
@@ -81,6 +84,10 @@ func (app *appConnConsensus) CommitSync() (*types.ResponseCommit, error) {
 	return app.appConn.CommitSync()
 }
 
+func (app *appConnConsensus) SetOptionAsync(req types.RequestSetOption) *abcicli.ReqRes {
+	return app.appConn.SetOptionAsync(req)
+}
+
 //------------------------------------------------
 // Implements AppConnMempool (subset of abcicli.Client)
 
@@ -112,6 +119,10 @@ func (app *appConnMempool) FlushSync() error {
 
 func (app *appConnMempool) CheckTxAsync(req types.RequestCheckTx) *abcicli.ReqRes {
 	return app.appConn.CheckTxAsync(req)
+}
+
+func (app *appConnMempool) SetOptionAsync(req types.RequestSetOption) *abcicli.ReqRes {
+	return app.appConn.SetOptionAsync(req)
 }
 
 //------------------------------------------------

@@ -13,6 +13,7 @@ to ensure garbage collection of removed elements.
 
 import (
 	"fmt"
+	"math/big"
 	"sync"
 )
 
@@ -50,6 +51,10 @@ type CElement struct {
 	nextWg     *sync.WaitGroup
 	nextWaitCh chan struct{}
 	removed    bool
+
+	Nonce    uint64
+	GasPrice *big.Int
+	Address  string
 
 	Value interface{} // immutable
 }
@@ -211,6 +216,37 @@ func (e *CElement) SetRemoved() {
 	e.mtx.Unlock()
 }
 
+func (e *CElement) setDetach() {
+	e.mtx.Lock()
+
+	// This wakes up anyone waiting in either direction.
+	if e.prev == nil {
+		e.prevWg.Done()
+		close(e.prevWaitCh)
+	}
+	if e.next == nil {
+		e.nextWg.Done()
+		close(e.nextWaitCh)
+	}
+	e.mtx.Unlock()
+}
+
+func (e *CElement) NewDetachPrev() {
+	e.mtx.Lock()
+	e.prev = nil
+	e.prevWg = waitGroup1()
+	e.prevWaitCh = make(chan struct{})
+	e.mtx.Unlock()
+}
+
+func (e *CElement) NewDetachNext() {
+	e.mtx.Lock()
+	e.next = nil
+	e.nextWg = waitGroup1()
+	e.nextWaitCh = make(chan struct{})
+	e.mtx.Unlock()
+}
+
 //--------------------------------------------------------------------------------
 
 // CList represents a linked list.
@@ -225,6 +261,7 @@ type CList struct {
 	tail   *CElement // last element
 	len    int       // list length
 	maxLen int       // max list length
+
 }
 
 func (l *CList) Init() *CList {
@@ -404,4 +441,162 @@ func waitGroup1() (wg *sync.WaitGroup) {
 	wg = &sync.WaitGroup{}
 	wg.Add(1)
 	return
+}
+
+// ===============================================
+
+// head -> tail: gasPrice(big -> samll)
+func (l *CList) InsertElement(ele *CElement) *CElement {
+	l.mtx.Lock()
+	defer l.mtx.Unlock()
+
+	// Release waiters on FrontWait/BackWait maybe
+	if l.len == 0 {
+		l.wg.Done()
+		close(l.waitCh)
+	}
+	if l.len >= l.maxLen {
+		panic(fmt.Sprintf("clist: maximum length list reached %d", l.maxLen))
+	}
+	l.len++
+
+	if l.tail == nil {
+		l.head = ele
+		l.tail = ele
+
+		return ele
+	}
+
+	cur := l.tail
+	for cur != nil {
+		if cur.Address == ele.Address {
+			// same address, check Nonce first
+			if ele.Nonce < cur.Nonce {
+				// small Nonce put ahead
+				cur = cur.prev
+			} else {
+				// The tx of the same Nonce has been processed in checkElement, and there are only cases of big nonce
+				// Big Nonce’s transaction, regardless of gasPrice, has to be in the back
+				ele.SetPrev(cur)
+				ele.SetNext(cur.next)
+
+				if cur.next != nil {
+					cur.next.SetPrev(ele)
+				} else {
+					l.tail = ele
+				}
+				cur.SetNext(ele)
+
+				return ele
+			}
+		} else {
+			// Different addresses are sorted by gasPrice
+			if ele.GasPrice.Cmp(cur.GasPrice) <= 0 {
+				tmp := cur
+				for cur.prev != nil && cur.prev.Address == cur.Address {
+					cur = cur.prev
+				}
+
+				// If the same addr appears consecutively and the gasPrice of the minimum nonce element is greater than the gasPrice
+				// of the element to be inserted, the element to be inserted will be put in the back
+				if ele.GasPrice.Cmp(cur.GasPrice) <= 0 {
+					ele.SetPrev(tmp)
+					ele.SetNext(tmp.next)
+
+					if tmp.next != nil {
+						tmp.next.SetPrev(ele)
+					} else {
+						l.tail = ele
+					}
+					tmp.SetNext(ele)
+
+					return ele
+				}
+
+				// Otherwise, put forward
+				cur = cur.prev
+			} else {
+				// put big GasPrice element to forward
+				cur = cur.prev
+			}
+		}
+	}
+
+	ele.SetNext(l.head)
+	if l.head != nil {
+		l.head.SetPrev(ele)
+	} else {
+		l.tail = ele
+	}
+	l.head = ele
+
+	return ele
+}
+
+func (l *CList) DetachElement(ele *CElement) interface{} {
+	l.mtx.Lock()
+
+	prev := ele.Prev()
+	next := ele.Next()
+
+	if l.head == nil || l.tail == nil {
+		l.mtx.Unlock()
+		panic("Remove(e) on empty CList")
+	}
+	if prev == nil && l.head != ele {
+		l.mtx.Unlock()
+		panic("Remove(e) with false head")
+	}
+	if next == nil && l.tail != ele {
+		l.mtx.Unlock()
+		panic("Remove(e) with false tail")
+	}
+
+	// If we're removing the only item, make CList FrontWait/BackWait wait.
+	if l.len == 1 {
+		l.wg = waitGroup1() // WaitGroups are difficult to re-use.
+		l.waitCh = make(chan struct{})
+	}
+
+	// Update l.len
+	l.len--
+
+	// Connect next/prev and set head/tail
+	if prev == nil {
+		l.head = next
+	} else {
+		prev.SetNext(next)
+	}
+	if next == nil {
+		l.tail = prev
+	} else {
+		next.SetPrev(prev)
+	}
+
+	// Set .Done() on e, otherwise waiters will wait forever.
+	ele.setDetach()
+
+	l.mtx.Unlock()
+	return ele.Value
+}
+
+func (l *CList) AddTxWithExInfo(v interface{}, addr string, gasPrice *big.Int, nonce uint64) *CElement {
+	// Construct a new element
+	e := &CElement{
+		prev:       nil,
+		prevWg:     waitGroup1(),
+		prevWaitCh: make(chan struct{}),
+		next:       nil,
+		nextWg:     waitGroup1(),
+		nextWaitCh: make(chan struct{}),
+		removed:    false,
+		Value:      v,
+		Address:    addr,
+		GasPrice:   gasPrice,
+		Nonce:      nonce,
+	}
+
+	l.InsertElement(e)
+
+	return e
 }

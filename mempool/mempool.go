@@ -1,7 +1,10 @@
 package mempool
 
 import (
+	"crypto/sha256"
 	"fmt"
+
+	cfg "github.com/tendermint/tendermint/config"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/p2p"
@@ -28,6 +31,13 @@ type Mempool interface {
 	// If max is negative, there is no cap on the size of all returned
 	// transactions (~ all available transactions).
 	ReapMaxTxs(max int) types.Txs
+
+	ReapUserTxsCnt(address string) int
+
+	// only for checkTx used!
+	GetUserPendingTxsCnt(address string) int
+
+	ReapUserTxs(address string, max int) types.Txs
 
 	// Lock locks the mempool. The consensus must be able to hold lock to safely update.
 	Lock()
@@ -78,6 +88,9 @@ type Mempool interface {
 	CloseWAL()
 
 	SetEventBus(eventBus types.TxEventPublisher)
+
+	GetConfig() *cfg.MempoolConfig
+	GetTxByHash(hash [sha256.Size]byte) (types.Tx, error)
 }
 
 //--------------------------------------------------------------------------------

@@ -9,6 +9,8 @@ import (
 var (
 	// ErrTxInCache is returned to the client if we saw tx earlier
 	ErrTxInCache = errors.New("tx already exists in cache")
+	// ErrNoSuchTx is returned to the client if there hasn't target tx in mempool
+	ErrNoSuchTx = errors.New("no such tx in mempool")
 )
 
 // ErrTxTooLarge means the tx is too big to be sent in a message to other peers

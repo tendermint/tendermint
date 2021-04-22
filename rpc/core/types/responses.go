@@ -198,6 +198,12 @@ type ResultUnconfirmedTxs struct {
 	Txs        []types.Tx `json:"txs"`
 }
 
+// List of mempool txs
+type ResultUserUnconfirmedTxs struct {
+	Count int        `json:"n_txs"`
+	Txs   []types.Tx `json:"txs"`
+}
+
 // Info abci msg
 type ResultABCIInfo struct {
 	Response abci.ResponseInfo `json:"response"`

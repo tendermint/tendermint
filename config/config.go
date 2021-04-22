@@ -667,6 +667,8 @@ type MempoolConfig struct {
 	CacheSize        int    `mapstructure:"cache_size"`
 	MaxTxBytes       int    `mapstructure:"max_tx_bytes"`
 	MaxTxNumPerBlock int64  `mapstructure:"max_tx_num_per_block"`
+	SortTxByGp       bool   `mapstructure:"sort_tx_by_gp"`
+	ForceRecheckGap  int64  `mapstructure:"force_recheck_gap"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -682,6 +684,8 @@ func DefaultMempoolConfig() *MempoolConfig {
 		CacheSize:        10000,
 		MaxTxBytes:       1024 * 1024, // 1MB
 		MaxTxNumPerBlock: 150,
+		SortTxByGp:       false,
+		ForceRecheckGap:  200,
 	}
 }
 

@@ -297,6 +297,7 @@ dial_timeout = "{{ .P2P.DialTimeout }}"
 [mempool]
 
 recheck = {{ .Mempool.Recheck }}
+force_recheck_gap = {{ .Mempool.ForceRecheckGap }}
 broadcast = {{ .Mempool.Broadcast }}
 wal_dir = "{{ js .Mempool.WalPath }}"
 
@@ -317,6 +318,9 @@ max_tx_bytes = {{ .Mempool.MaxTxBytes }}
 
 # Limit the max number of txs in the a block.
 max_tx_num_per_block = {{ .Mempool.MaxTxNumPerBlock }}
+
+# Enable sort txs in mempool by gas price.
+sort_tx_by_gp = {{ .Mempool.SortTxByGp }}
 
 ##### fast sync configuration options #####
 [fastsync]

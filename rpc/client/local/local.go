@@ -2,6 +2,7 @@ package local
 
 import (
 	"context"
+	"crypto/sha256"
 	"time"
 
 	"github.com/pkg/errors"
@@ -42,6 +43,10 @@ type Local struct {
 	*types.EventBus
 	Logger log.Logger
 	ctx    *rpctypes.Context
+}
+
+func (l *Local) GetUnconfirmedTxByHash(hash [sha256.Size]byte) (types.Tx, error) {
+	return core.GetUnconfirmedTxByHash(hash)
 }
 
 // NewLocal configures a client that calls the Node directly.
@@ -103,6 +108,14 @@ func (c *Local) UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) 
 
 func (c *Local) NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error) {
 	return core.NumUnconfirmedTxs(c.ctx)
+}
+
+func (c *Local) UserUnconfirmedTxs(address string, limit int) (*ctypes.ResultUserUnconfirmedTxs, error) {
+	return core.UserUnconfirmedTxs(address, limit)
+}
+
+func (c *Local) UserNumUnconfirmedTxs(address string) (*ctypes.ResultUserUnconfirmedTxs, error) {
+	return core.UserNumUnconfirmedTxs(address)
 }
 
 func (c *Local) NetInfo() (*ctypes.ResultNetInfo, error) {

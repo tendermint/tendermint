@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"crypto/sha256"
 	"net/http"
 	"strings"
 	"sync"
@@ -66,6 +67,10 @@ type HTTP struct {
 
 	*baseRPCClient
 	*WSEvents
+}
+
+func (c *HTTP) GetUnconfirmedTxByHash(hash [sha256.Size]byte) (types.Tx, error) {
+	return nil, errors.New("unhandled method")
 }
 
 // BatchHTTP provides the same interface as `HTTP`, but allows for batching of
@@ -282,6 +287,24 @@ func (c *baseRPCClient) NumUnconfirmedTxs() (*ctypes.ResultUnconfirmedTxs, error
 	_, err := c.caller.Call("num_unconfirmed_txs", map[string]interface{}{}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "num_unconfirmed_txs")
+	}
+	return result, nil
+}
+
+func (c *baseRPCClient) UserUnconfirmedTxs(address string, limit int) (*ctypes.ResultUserUnconfirmedTxs, error) {
+	result := new(ctypes.ResultUserUnconfirmedTxs)
+	_, err := c.caller.Call("user_unconfirmed_txs", map[string]interface{}{"address": address, "limit": limit}, result)
+	if err != nil {
+		return nil, errors.Wrap(err, "user_unconfirmed_txs")
+	}
+	return result, nil
+}
+
+func (c *baseRPCClient) UserNumUnconfirmedTxs(address string) (*ctypes.ResultUserUnconfirmedTxs, error) {
+	result := new(ctypes.ResultUserUnconfirmedTxs)
+	_, err := c.caller.Call("user_num_unconfirmed_txs", map[string]interface{}{"address": address}, result)
+	if err != nil {
+		return nil, errors.Wrap(err, "user_num_unconfirmed_txs")
 	}
 	return result, nil
 }
