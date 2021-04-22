@@ -1,4 +1,4 @@
-package txindex
+package indexer
 
 import (
 	"context"
@@ -6,9 +6,8 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/types"
 )
-
-// XXX/TODO: These types should be moved to the indexer package.
 
 // TxIndexer interface defines methods to index and search transactions.
 type TxIndexer interface {
@@ -24,6 +23,20 @@ type TxIndexer interface {
 
 	// Search allows you to query for transactions.
 	Search(ctx context.Context, q *query.Query) ([]*abci.TxResult, error)
+}
+
+// BlockIndexer defines an interface contract for indexing block events.
+type BlockIndexer interface {
+	// Has returns true if the given height has been indexed. An error is returned
+	// upon database query failure.
+	Has(height int64) (bool, error)
+
+	// Index indexes BeginBlock and EndBlock events for a given block by its height.
+	Index(types.EventDataNewBlockHeader) error
+
+	// Search performs a query for block heights that match a given BeginBlock
+	// and Endblock event search criteria.
+	Search(ctx context.Context, q *query.Query) ([]int64, error)
 }
 
 // Batch groups together multiple Index operations to be performed at the same time.

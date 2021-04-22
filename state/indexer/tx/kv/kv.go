@@ -13,12 +13,11 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
-	"github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/state/txindex"
+	indexer "github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
 )
 
-var _ txindex.TxIndexer = (*TxIndex)(nil)
+var _ indexer.TxIndexer = (*TxIndex)(nil)
 
 // TxIndex is the simplest possible indexer
 // It is backed by two kv stores:
@@ -39,7 +38,7 @@ func NewTxIndex(store dbm.DB) *TxIndex {
 // transaction is not found.
 func (txi *TxIndex) Get(hash []byte) (*abci.TxResult, error) {
 	if len(hash) == 0 {
-		return nil, txindex.ErrorEmptyHash
+		return nil, indexer.ErrorEmptyHash
 	}
 
 	rawBytes, err := txi.store.Get(primaryKey(hash))
@@ -63,7 +62,7 @@ func (txi *TxIndex) Get(hash []byte) (*abci.TxResult, error) {
 // key that indexed from the tx's events is a composite of the event type and
 // the respective attribute's key delimited by a "." (eg. "account.number").
 // Any event with an empty type is not indexed.
-func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
+func (txi *TxIndex) AddBatch(b *indexer.Batch) error {
 	storeBatch := txi.store.NewBatch()
 	defer storeBatch.Close()
 
