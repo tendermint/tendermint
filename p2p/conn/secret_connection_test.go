@@ -276,11 +276,10 @@ func TestNonEd25519Pubkey(t *testing.T) {
 	var fooPrvKey = ed25519.GenPrivKey()
 	var barPrvKey = sr25519.GenPrivKey()
 
-	go MakeSecretConnection(fooConn, fooPrvKey) //nolint:errcheck // ignore for tests
+	go MakeSecretConnection(barConn, barPrvKey) //nolint:errcheck // ignore for tests
 
-	_, err := MakeSecretConnection(barConn, barPrvKey)
+	_, err := MakeSecretConnection(fooConn, fooPrvKey)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "is not supported")
 }
 
 func writeLots(t *testing.T, wg *sync.WaitGroup, conn io.Writer, txt string, n int) {
