@@ -344,13 +344,14 @@ func makeHTTPDialer(remoteAddr string) (func(string, string) (net.Conn, error), 
 	protocol := u.Scheme
 
 	// accept http(s) as an alias for tcp
+	var dialFn func(string, string) (net.Conn, error)
 	switch protocol {
 	case protoHTTP, protoHTTPS:
-		protocol = protoTCP
-	}
-
-	dialFn := func(proto, addr string) (net.Conn, error) {
-		return net.Dial(protocol, u.GetHostWithPath())
+		dialFn = nil
+	default:
+		dialFn = func(proto, addr string) (net.Conn, error) {
+			return net.Dial(protocol, u.GetHostWithPath())
+		}
 	}
 
 	return dialFn, nil
