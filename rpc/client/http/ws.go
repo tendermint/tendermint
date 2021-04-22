@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
@@ -52,7 +53,13 @@ type wsEvents struct {
 	ws *jsonrpcclient.WSClient
 
 	mtx           tmsync.RWMutex
-	subscriptions map[string]chan ctypes.ResultEvent // query -> chan
+	subscriptions map[string]*subscriptionInfo
+}
+
+type subscriptionInfo struct {
+	ch    chan ctypes.ResultEvent
+	query string
+	id    string
 }
 
 var _ rpcclient.EventsClient = (*wsEvents)(nil)
@@ -64,7 +71,7 @@ func newWsEvents(remote string, wso WSOptions) (*wsEvents, error) {
 	}
 
 	w := &wsEvents{
-		subscriptions: make(map[string]chan ctypes.ResultEvent),
+		subscriptions: make(map[string]*subscriptionInfo),
 	}
 	w.BaseService = *service.NewBaseService(nil, "wsEvents", w)
 
@@ -128,14 +135,20 @@ func (w *wsEvents) Subscribe(ctx context.Context, subscriber, query string,
 		outCap = outCapacity[0]
 	}
 
-	outc := make(chan ctypes.ResultEvent, outCap)
+	info := &subscriptionInfo{
+		ch:    make(chan ctypes.ResultEvent, outCap),
+		query: query,
+		id:    uuid.NewString(),
+	}
+
 	w.mtx.Lock()
+	defer w.mtx.Unlock()
 	// subscriber param is ignored because Tendermint will override it with
 	// remote IP anyway.
-	w.subscriptions[query] = outc
-	w.mtx.Unlock()
+	w.subscriptions[query] = info
+	w.subscriptions[info.id] = info
 
-	return outc, nil
+	return info.ch, nil
 }
 
 // Unsubscribe implements EventsClient by using WSClient to unsubscribe given
@@ -152,11 +165,13 @@ func (w *wsEvents) Unsubscribe(ctx context.Context, subscriber, query string) er
 	}
 
 	w.mtx.Lock()
-	_, ok := w.subscriptions[query]
+	defer w.mtx.Unlock()
+
+	info, ok := w.subscriptions[query]
 	if ok {
-		delete(w.subscriptions, query)
+		delete(w.subscriptions, info.query)
+		delete(w.subscriptions, info.id)
 	}
-	w.mtx.Unlock()
 
 	return nil
 }
@@ -175,8 +190,8 @@ func (w *wsEvents) UnsubscribeAll(ctx context.Context, subscriber string) error 
 	}
 
 	w.mtx.Lock()
-	w.subscriptions = make(map[string]chan ctypes.ResultEvent)
-	w.mtx.Unlock()
+	defer w.mtx.Unlock()
+	w.subscriptions = make(map[string]*subscriptionInfo)
 
 	return nil
 }
@@ -190,11 +205,16 @@ func (w *wsEvents) redoSubscriptionsAfter(d time.Duration) {
 
 	w.mtx.Lock()
 	defer w.mtx.Unlock()
-	for q := range w.subscriptions {
+	for q, info := range w.subscriptions {
+		if info.id == q {
+			continue
+		}
+
 		err := w.ws.Subscribe(ctx, q)
 		if err != nil {
 			w.Logger.Error("failed to resubscribe", "query", q, "err", err)
-			delete(w.subscriptions, q)
+			delete(w.subscriptions, info.query)
+			delete(w.subscriptions, info.id)
 		}
 	}
 }
@@ -235,9 +255,10 @@ func (w *wsEvents) eventListener() {
 			w.mtx.RLock()
 			out, ok := w.subscriptions[result.Query]
 			w.mtx.RUnlock()
+			result.SubscriptionID = out.id
 			if ok {
 				select {
-				case out <- *result:
+				case out.ch <- *result:
 				case <-w.Quit():
 					return
 				}
