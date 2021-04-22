@@ -76,7 +76,7 @@ func (txi *TxIndex) AddBatch(b *indexer.Batch) error {
 		}
 
 		// index by height (always)
-		err = storeBatch.Set(keyFromHeight(result), hash)
+		err = storeBatch.Set(KeyFromHeight(result), hash)
 		if err != nil {
 			return err
 		}
@@ -112,7 +112,7 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 	}
 
 	// index by height (always)
-	err = b.Set(keyFromHeight(result), hash)
+	err = b.Set(KeyFromHeight(result), hash)
 	if err != nil {
 		return err
 	}
@@ -584,7 +584,7 @@ func keyFromEvent(compositeKey string, value string, result *abci.TxResult) []by
 	return secondaryKey(compositeKey, value, result.Height, result.Index)
 }
 
-func keyFromHeight(result *abci.TxResult) []byte {
+func KeyFromHeight(result *abci.TxResult) []byte {
 	return secondaryKey(types.TxHeightKey, fmt.Sprintf("%d", result.Height), result.Height, result.Index)
 }
 

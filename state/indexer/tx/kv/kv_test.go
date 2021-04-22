@@ -195,7 +195,7 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 
 	err = b.Set(depKey, hash2)
 	require.NoError(t, err)
-	err = b.Set(keyFromHeight(txResult2), hash2)
+	err = b.Set(KeyFromHeight(txResult2), hash2)
 	require.NoError(t, err)
 	err = b.Set(hash2, rawBytes)
 	require.NoError(t, err)
