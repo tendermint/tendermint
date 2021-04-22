@@ -14,6 +14,7 @@ import (
 var (
 	valEd25519   = []string{ABCIPubKeyTypeEd25519}
 	valSecp256k1 = []string{ABCIPubKeyTypeSecp256k1}
+	valSr25519   = []string{ABCIPubKeyTypeSr25519}
 )
 
 func TestConsensusParamsValidation(t *testing.T) {
@@ -129,7 +130,25 @@ func TestConsensusParamsUpdate(t *testing.T) {
 			},
 			makeParams(100, 200, 300, 50, valSecp256k1),
 		},
+		{
+			makeParams(1, 2, 3, 0, valEd25519),
+			&tmproto.ConsensusParams{
+				Block: &tmproto.BlockParams{
+					MaxBytes: 100,
+					MaxGas:   200,
+				},
+				Evidence: &tmproto.EvidenceParams{
+					MaxAgeNumBlocks: 300,
+					MaxAgeDuration:  time.Duration(300),
+					MaxBytes:        50,
+				},
+				Validator: &tmproto.ValidatorParams{
+					PubKeyTypes: valSr25519,
+				},
+			}, makeParams(100, 200, 300, 50, valSr25519),
+		},
 	}
+
 	for _, tc := range testCases {
 		assert.Equal(t, tc.updatedParams, tc.params.UpdateConsensusParams(tc.updates))
 	}
