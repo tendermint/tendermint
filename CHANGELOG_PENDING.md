@@ -53,6 +53,9 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 - [config] Add `--mode` flag and config variable. See [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md) @dongsam
 - [rpc] /#6329 Don't cap page size in unsafe mode (@gotjoshua, @cmwaters)
+- [pex] /#6305 v2 pex reactor with backwards compatability. Introduces two new pex messages to
+  accomodate for the new p2p stack (@cmwaters). Removes the notion of seeds and crawling. All peer
+  exchange reactors behave the same.
 
 ### IMPROVEMENTS
 
