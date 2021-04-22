@@ -68,7 +68,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 
 	peerAID := p2p.NodeID("aa")
 	peerBID := p2p.NodeID("bb")
-
+	peerCID := p2p.NodeID("cc")
 	rts := setup(t, connSnapshot, connQuery, stateProvider, 3)
 
 	// Adding a chunk should error when no sync is in progress
@@ -96,9 +96,14 @@ func TestSyncer_SyncAny(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, new)
 
-	new, err = rts.syncer.AddSnapshot(peerBID, &snapshot{Height: 2, Format: 2, Chunks: 3, Hash: []byte{1}})
+	s2 := &snapshot{Height: 2, Format: 2, Chunks: 3, Hash: []byte{1}}
+	new, err = rts.syncer.AddSnapshot(peerBID, s2)
 	require.NoError(t, err)
 	require.True(t, new)
+
+	new, err = rts.syncer.AddSnapshot(peerCID, s2)
+	require.NoError(t, err)
+	require.False(t, new)
 
 	// We start a sync, with peers sending back chunks when requested. We first reject the snapshot
 	// with height 2 format 2, and accept the snapshot at height 1.
@@ -110,7 +115,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 			Hash:   []byte{1},
 		},
 		AppHash: []byte("app_hash_2"),
-	}).Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT_FORMAT}, nil).Maybe()
+	}).Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_REJECT_FORMAT}, nil)
 	connSnapshot.On("OfferSnapshotSync", ctx, abci.RequestOfferSnapshot{
 		Snapshot: &abci.Snapshot{
 			Height:   s.Height,
