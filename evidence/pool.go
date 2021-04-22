@@ -214,11 +214,7 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 				evpool.logger.Error("Can't add evidence to pending list", "err", err, "ev", ev)
 			}
 
-<<<<<<< HEAD
-			evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
-=======
-			evpool.logger.Info("check evidence: verified evidence of byzantine behavior", "evidence", ev)
->>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
+			evpool.logger.Info("Check evidence: verified evidence of byzantine behavior", "evidence", ev)
 		}
 
 		// check for duplicate evidence. We cache hashes so we don't have to work them out again.
@@ -260,71 +256,6 @@ func (evpool *Pool) State() sm.State {
 	return evpool.state
 }
 
-<<<<<<< HEAD
-//--------------------------------------------------------------------------
-
-// fastCheck leverages the fact that the evidence pool may have already verified the evidence to see if it can
-// quickly conclude that the evidence is already valid.
-func (evpool *Pool) fastCheck(ev types.Evidence) bool {
-	if lcae, ok := ev.(*types.LightClientAttackEvidence); ok {
-		key := keyPending(ev)
-		evBytes, err := evpool.evidenceStore.Get(key)
-		if evBytes == nil { // the evidence is not in the nodes pending list
-			return false
-		}
-		if err != nil {
-			evpool.logger.Error("Failed to load light client attack evidence", "err", err, "key(height/hash)", key)
-			return false
-		}
-		var trustedPb tmproto.LightClientAttackEvidence
-		err = trustedPb.Unmarshal(evBytes)
-		if err != nil {
-			evpool.logger.Error("Failed to convert light client attack evidence from bytes",
-				"err", err, "key(height/hash)", key)
-			return false
-		}
-		trustedEv, err := types.LightClientAttackEvidenceFromProto(&trustedPb)
-		if err != nil {
-			evpool.logger.Error("Failed to convert light client attack evidence from protobuf",
-				"err", err, "key(height/hash)", key)
-			return false
-		}
-		// ensure that all the byzantine validators that the evidence pool has match the byzantine validators
-		// in this evidence
-		if trustedEv.ByzantineValidators == nil && lcae.ByzantineValidators != nil {
-			return false
-		}
-
-		if len(trustedEv.ByzantineValidators) != len(lcae.ByzantineValidators) {
-			return false
-		}
-
-		byzValsCopy := make([]*types.Validator, len(lcae.ByzantineValidators))
-		for i, v := range lcae.ByzantineValidators {
-			byzValsCopy[i] = v.Copy()
-		}
-
-		// ensure that both validator arrays are in the same order
-		sort.Sort(types.ValidatorsByVotingPower(byzValsCopy))
-
-		for idx, val := range trustedEv.ByzantineValidators {
-			if !bytes.Equal(byzValsCopy[idx].Address, val.Address) {
-				return false
-			}
-			if byzValsCopy[idx].VotingPower != val.VotingPower {
-				return false
-			}
-		}
-
-		return true
-	}
-
-	// for all other evidence the evidence pool just checks if it is already in the pending db
-	return evpool.isPending(ev)
-}
-
-=======
->>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 // IsExpired checks whether evidence or a polc is expired by checking whether a height and time is older
 // than set by the evidence consensus parameters
 func (evpool *Pool) isExpired(height int64, time time.Time) bool {
@@ -394,13 +325,7 @@ func (evpool *Pool) markEvidenceAsCommitted(evidence types.EvidenceList) {
 	blockEvidenceMap := make(map[string]struct{}, len(evidence))
 	for _, ev := range evidence {
 		if evpool.isPending(ev) {
-<<<<<<< HEAD
 			evpool.removePendingEvidence(ev)
-=======
-			if err := batch.Delete(keyPending(ev)); err != nil {
-				evpool.logger.Error("failed to batch delete pending evidence", "err", err)
-			}
->>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 			blockEvidenceMap[evMapKey(ev)] = struct{}{}
 		}
 
@@ -490,16 +415,9 @@ func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
 				evpool.removeEvidenceFromList(blockEvidenceMap)
 			}
 
-<<<<<<< HEAD
 			// return the height and time with which this evidence will have expired so we know when to prune next
 			return ev.Height() + evpool.State().ConsensusParams.Evidence.MaxAgeNumBlocks + 1,
 				ev.Time().Add(evpool.State().ConsensusParams.Evidence.MaxAgeDuration).Add(time.Second)
-=======
-		// else add to the batch
-		if err := batch.Delete(iter.Key()); err != nil {
-			evpool.logger.Error("failed to batch delete evidence", "err", err, "ev", ev)
-			continue
->>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 		}
 		evpool.removePendingEvidence(ev)
 		blockEvidenceMap[evMapKey(ev)] = struct{}{}

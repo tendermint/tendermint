@@ -93,37 +93,6 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 		if err != nil {
 			return err
 		}
-<<<<<<< HEAD
-		// find out what type of attack this was and thus extract the malicious validators. Note in the case of an
-		// Amnesia attack we don't have any malicious validators.
-		validators := ev.GetByzantineValidators(commonVals, trustedHeader)
-		// ensure this matches the validators that are listed in the evidence. They should be ordered based on power.
-		if validators == nil && ev.ByzantineValidators != nil {
-			return fmt.Errorf("expected nil validators from an amnesia light client attack but got %d",
-				len(ev.ByzantineValidators))
-		}
-
-		if exp, got := len(validators), len(ev.ByzantineValidators); exp != got {
-			return fmt.Errorf("expected %d byzantine validators from evidence but got %d",
-				exp, got)
-		}
-
-		// ensure that both validator arrays are in the same order
-		sort.Sort(types.ValidatorsByVotingPower(ev.ByzantineValidators))
-
-		for idx, val := range validators {
-			if !bytes.Equal(ev.ByzantineValidators[idx].Address, val.Address) {
-				return fmt.Errorf("evidence contained a different byzantine validator address to the one we were expecting."+
-					"Expected %v, got %v", val.Address, ev.ByzantineValidators[idx].Address)
-			}
-			if ev.ByzantineValidators[idx].VotingPower != val.VotingPower {
-				return fmt.Errorf("evidence contained a byzantine validator with a different power to the one we were expecting."+
-					"Expected %d, got %d", val.VotingPower, ev.ByzantineValidators[idx].VotingPower)
-			}
-		}
-
-=======
->>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 		return nil
 	default:
 		return fmt.Errorf("unrecognized evidence type: %T", evidence)

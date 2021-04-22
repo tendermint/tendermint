@@ -46,12 +46,6 @@ const (
 	PerturbationKill       Perturbation = "kill"
 	PerturbationPause      Perturbation = "pause"
 	PerturbationRestart    Perturbation = "restart"
-<<<<<<< HEAD
-=======
-
-	EvidenceAgeHeight int64         = 5
-	EvidenceAgeTime   time.Duration = 10 * time.Second
->>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 )
 
 // Testnet represents a single testnet.

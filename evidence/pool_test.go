@@ -14,11 +14,8 @@ import (
 	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/log"
-<<<<<<< HEAD
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
-=======
->>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 	sm "github.com/tendermint/tendermint/state"
 	smmocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/store"
@@ -245,50 +242,9 @@ func TestLightClientAttackEvidenceLifecycle(t *testing.T) {
 		height       int64 = 100
 		commonHeight int64 = 90
 	)
-<<<<<<< HEAD
-	conflictingVals, conflictingPrivVals := types.RandValidatorSet(nValidators, validatorPower)
-	trustedHeader := makeHeaderRandom(height)
-	trustedHeader.Time = defaultEvidenceTime
-
-	conflictingHeader := makeHeaderRandom(height)
-	conflictingHeader.ValidatorsHash = conflictingVals.Hash()
-
-	trustedHeader.ValidatorsHash = conflictingHeader.ValidatorsHash
-	trustedHeader.NextValidatorsHash = conflictingHeader.NextValidatorsHash
-	trustedHeader.ConsensusHash = conflictingHeader.ConsensusHash
-	trustedHeader.AppHash = conflictingHeader.AppHash
-	trustedHeader.LastResultsHash = conflictingHeader.LastResultsHash
-
-	// for simplicity we are simulating a duplicate vote attack where all the validators in the
-	// conflictingVals set voted twice
-	blockID := makeBlockID(conflictingHeader.Hash(), 1000, []byte("partshash"))
-	voteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), conflictingVals)
-	commit, err := types.MakeCommit(blockID, height, 1, voteSet, conflictingPrivVals, defaultEvidenceTime)
-	require.NoError(t, err)
-	ev := &types.LightClientAttackEvidence{
-		ConflictingBlock: &types.LightBlock{
-			SignedHeader: &types.SignedHeader{
-				Header: conflictingHeader,
-				Commit: commit,
-			},
-			ValidatorSet: conflictingVals,
-		},
-		CommonHeight:        10,
-		TotalVotingPower:    int64(nValidators) * validatorPower,
-		ByzantineValidators: conflictingVals.Validators,
-		Timestamp:           defaultEvidenceTime,
-	}
-
-	trustedBlockID := makeBlockID(trustedHeader.Hash(), 1000, []byte("partshash"))
-	trustedVoteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), conflictingVals)
-	trustedCommit, err := types.MakeCommit(trustedBlockID, height, 1, trustedVoteSet, conflictingPrivVals,
-		defaultEvidenceTime)
-	require.NoError(t, err)
-=======
 
 	ev, trusted, common := makeLunaticEvidence(t, height, commonHeight,
 		10, 5, 5, defaultEvidenceTime, defaultEvidenceTime.Add(1*time.Hour))
->>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 
 	state := sm.State{
 		LastBlockTime:   defaultEvidenceTime.Add(2 * time.Hour),
@@ -312,16 +268,6 @@ func TestLightClientAttackEvidenceLifecycle(t *testing.T) {
 	err = pool.AddEvidence(ev)
 	assert.NoError(t, err)
 
-<<<<<<< HEAD
-	err = pool.CheckEvidence(types.EvidenceList{ev})
-	assert.NoError(t, err)
-
-	// take away the last signature -> there are less validators then what we have detected,
-	// hence this should fail
-	commit.Signatures = append(commit.Signatures[:nValidators-1], types.NewCommitSigAbsent())
-	err = pool.CheckEvidence(types.EvidenceList{ev})
-	assert.Error(t, err)
-=======
 	hash := ev.Hash()
 
 	require.NoError(t, pool.AddEvidence(ev))
@@ -348,7 +294,6 @@ func TestLightClientAttackEvidenceLifecycle(t *testing.T) {
 
 	remaindingEv, _ = pool.PendingEvidence(state.ConsensusParams.Evidence.MaxBytes)
 	require.Empty(t, remaindingEv)
->>>>>>> 5bafedff1... evidence: fix bug with hashes (#6375)
 }
 
 // Tests that restarting the evidence pool after a potential failure will recover the
