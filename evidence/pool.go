@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -194,9 +193,11 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 	hashes := make([][]byte, len(evList))
 	for idx, ev := range evList {
 
-		ok := evpool.fastCheck(ev)
+		_, isLightEv := ev.(*types.LightClientAttackEvidence)
 
-		if !ok {
+		// We must verify light client attack evidence regardless because there could be a
+		// different conflicting block with the same hash.
+		if isLightEv || !evpool.isPending(ev) {
 			// check that the evidence isn't already committed
 			if evpool.isCommitted(ev) {
 				return &types.ErrInvalidEvidence{Evidence: ev, Reason: errors.New("evidence was already committed")}
@@ -213,7 +214,7 @@ func (evpool *Pool) CheckEvidence(evList types.EvidenceList) error {
 				evpool.logger.Error("Can't add evidence to pending list", "err", err, "ev", ev)
 			}
 
-			evpool.logger.Info("Verified new evidence of byzantine behavior", "evidence", ev)
+			evpool.logger.Info("Check evidence: verified evidence of byzantine behavior", "evidence", ev)
 		}
 
 		// check for duplicate evidence. We cache hashes so we don't have to work them out again.
@@ -253,68 +254,6 @@ func (evpool *Pool) State() sm.State {
 	evpool.mtx.Lock()
 	defer evpool.mtx.Unlock()
 	return evpool.state
-}
-
-//--------------------------------------------------------------------------
-
-// fastCheck leverages the fact that the evidence pool may have already verified the evidence to see if it can
-// quickly conclude that the evidence is already valid.
-func (evpool *Pool) fastCheck(ev types.Evidence) bool {
-	if lcae, ok := ev.(*types.LightClientAttackEvidence); ok {
-		key := keyPending(ev)
-		evBytes, err := evpool.evidenceStore.Get(key)
-		if evBytes == nil { // the evidence is not in the nodes pending list
-			return false
-		}
-		if err != nil {
-			evpool.logger.Error("Failed to load light client attack evidence", "err", err, "key(height/hash)", key)
-			return false
-		}
-		var trustedPb tmproto.LightClientAttackEvidence
-		err = trustedPb.Unmarshal(evBytes)
-		if err != nil {
-			evpool.logger.Error("Failed to convert light client attack evidence from bytes",
-				"err", err, "key(height/hash)", key)
-			return false
-		}
-		trustedEv, err := types.LightClientAttackEvidenceFromProto(&trustedPb)
-		if err != nil {
-			evpool.logger.Error("Failed to convert light client attack evidence from protobuf",
-				"err", err, "key(height/hash)", key)
-			return false
-		}
-		// ensure that all the byzantine validators that the evidence pool has match the byzantine validators
-		// in this evidence
-		if trustedEv.ByzantineValidators == nil && lcae.ByzantineValidators != nil {
-			return false
-		}
-
-		if len(trustedEv.ByzantineValidators) != len(lcae.ByzantineValidators) {
-			return false
-		}
-
-		byzValsCopy := make([]*types.Validator, len(lcae.ByzantineValidators))
-		for i, v := range lcae.ByzantineValidators {
-			byzValsCopy[i] = v.Copy()
-		}
-
-		// ensure that both validator arrays are in the same order
-		sort.Sort(types.ValidatorsByVotingPower(byzValsCopy))
-
-		for idx, val := range trustedEv.ByzantineValidators {
-			if !bytes.Equal(byzValsCopy[idx].Address, val.Address) {
-				return false
-			}
-			if byzValsCopy[idx].VotingPower != val.VotingPower {
-				return false
-			}
-		}
-
-		return true
-	}
-
-	// for all other evidence the evidence pool just checks if it is already in the pending db
-	return evpool.isPending(ev)
 }
 
 // IsExpired checks whether evidence or a polc is expired by checking whether a height and time is older
