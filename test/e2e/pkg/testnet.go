@@ -48,7 +48,7 @@ const (
 	PerturbationPause      Perturbation = "pause"
 	PerturbationRestart    Perturbation = "restart"
 
-	EvidenceAgeHeight int64         = 3
+	EvidenceAgeHeight int64         = 5
 	EvidenceAgeTime   time.Duration = 10 * time.Second
 )
 
