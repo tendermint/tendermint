@@ -435,7 +435,7 @@ func (r *ReactorV2) sendRequestForPeers() {
 func (r *ReactorV2) calculateNextRequestTime() {
 	// check if the peer store is full. If so then there is no need
 	// to send peer requests too often
-	if capacity := r.peerManager.Capacity(); capacity > 0.95 {
+	if capacity := r.peerManager.PeerRatio(); capacity > 0.95 {
 		r.Logger.Debug("peer manager near full capacity, sleeping...",
 			"sleep_period", fullCapacityInterval, "capacity", capacity)
 		r.nextRequestTime = time.Now().Add(fullCapacityInterval)
@@ -507,9 +507,9 @@ func (r *ReactorV2) markPeerResponse(peer p2p.NodeID) error {
 	return nil
 }
 
-// all addresses must use a MCONN protocol for the peer to be considered part of the 
+// all addresses must use a MCONN protocol for the peer to be considered part of the
 // legacy p2p pex system
-func (r *ReactorV2) isLegacyPeer(peer p2p.NodeID) bool { 
+func (r *ReactorV2) isLegacyPeer(peer p2p.NodeID) bool {
 	for _, addr := range r.peerManager.Addresses(peer) {
 		if addr.Protocol != p2p.MConnProtocol {
 			return false

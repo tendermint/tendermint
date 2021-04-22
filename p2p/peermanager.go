@@ -419,8 +419,8 @@ func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 	return true, nil
 }
 
-// Capacity returns the ratio of peer addresses stored to the maximum size.
-func (m *PeerManager) Capacity() float64 {
+// PeerRatio returns the ratio of peer addresses stored to the maximum size.
+func (m *PeerManager) PeerRatio() float64 {
 	if m.options.MaxPeers == 0 {
 		return 0
 	}

@@ -142,10 +142,10 @@ func TestReactorErrorsOnReceivingTooManyPeers(t *testing.T) {
 
 func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
 	testNet := setup(t, testOptions{
-		TotalNodes:     20,
-		MaxPeers:       10,
-		MaxConnections: 10,
-		BufferSize:     10,
+		TotalNodes:   20,
+		MaxPeers:     10,
+		MaxConnected: 10,
+		BufferSize:   10,
 	})
 	testNet.connectN(t, 1)
 	testNet.start(t)
@@ -154,7 +154,7 @@ func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
 	for _, nodeID := range testNet.nodes {
 		require.Eventually(t, func() bool {
 			// nolint:scopelint
-			return testNet.network.Nodes[nodeID].PeerManager.Capacity() > 0
+			return testNet.network.Nodes[nodeID].PeerManager.PeerRatio() > 0
 		}, defaultWait, checkFrequency)
 	}
 
@@ -172,10 +172,10 @@ func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
 
 func TestReactorLargePeerStoreInASmallNetwork(t *testing.T) {
 	testNet := setup(t, testOptions{
-		TotalNodes:     20,
-		MaxPeers:       100,
-		MaxConnections: 100,
-		BufferSize:     10,
+		TotalNodes:   20,
+		MaxPeers:     100,
+		MaxConnected: 100,
+		BufferSize:   10,
 	})
 	testNet.connectN(t, 1)
 	testNet.start(t)
@@ -184,7 +184,6 @@ func TestReactorLargePeerStoreInASmallNetwork(t *testing.T) {
 	for idx := 0; idx < len(testNet.nodes); idx++ {
 		testNet.requireNumberOfPeers(t, idx, len(testNet.nodes)-1, defaultWait)
 	}
-
 }
 
 func TestReactorWithNetworkGrowth(t *testing.T) {
@@ -267,11 +266,11 @@ type reactorTestSuite struct {
 }
 
 type testOptions struct {
-	MockNodes      int
-	TotalNodes     int
-	BufferSize     int
-	MaxPeers       uint16
-	MaxConnections uint16
+	MockNodes    int
+	TotalNodes   int
+	BufferSize   int
+	MaxPeers     uint16
+	MaxConnected uint16
 }
 
 // setup setups a test suite with a network of nodes. Mocknodes represent the
@@ -284,10 +283,12 @@ func setup(t *testing.T, opts testOptions) *reactorTestSuite {
 		opts.BufferSize = defaultBufferSize
 	}
 	networkOpts := p2ptest.NetworkOptions{
-		NumNodes:       opts.TotalNodes,
-		BufferSize:     opts.BufferSize,
-		MaxPeers:       opts.MaxPeers,
-		MaxConnections: opts.MaxConnections,
+		NumNodes:   opts.TotalNodes,
+		BufferSize: opts.BufferSize,
+		NodeOpts: p2ptest.NodeOptions{
+			MaxPeers:     opts.MaxPeers,
+			MaxConnected: opts.MaxConnected,
+		},
 	}
 	chBuf := opts.BufferSize
 	realNodes := opts.TotalNodes - opts.MockNodes
@@ -365,7 +366,10 @@ func (r *reactorTestSuite) addNodes(t *testing.T, nodes int) {
 	t.Helper()
 
 	for i := 0; i < nodes; i++ {
-		node := r.network.MakeNode(t, r.opts.MaxPeers, r.opts.MaxConnections)
+		node := r.network.MakeNode(t, p2ptest.NodeOptions{
+			MaxPeers:     r.opts.MaxPeers,
+			MaxConnected: r.opts.MaxConnected,
+		})
 		r.network.Nodes[node.NodeID] = node
 		nodeID := node.NodeID
 		r.pexChannels[nodeID] = node.MakeChannelNoCleanup(
