@@ -7,6 +7,7 @@ import (
 	"math"
 	"net"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
+	"strings"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
@@ -20,7 +21,7 @@ import (
 	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/libs/strings"
+	tmStrings "github.com/tendermint/tendermint/libs/strings"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
@@ -80,18 +81,20 @@ func createAndStartIndexerService(
 		blockIndexer indexer.BlockIndexer
 	)
 
-	switch config.TxIndex.Indexer {
-	case "kv":
-		store, err := dbProvider(&DBContext{"tx_index", config})
-		if err != nil {
-			return nil, nil, nil, err
-		}
+	for _, db := range config.TxIndex.Indexer {
+		if strings.ToLower(db) == "null" {
+			txIndexer = &null.TxIndex{}
+			blockIndexer = &blockidxnull.BlockerIndexer{}
+			break
+		} else {
+			store, err := dbProvider(&DBContext{"tx_index", config})
+			if err != nil {
+				return nil, nil, nil, err
+			}
 
-		txIndexer = kv.NewTxIndex(store)
-		blockIndexer = blockidxkv.New(dbm.NewPrefixDB(store, []byte("block_events")))
-	default:
-		txIndexer = &null.TxIndex{}
-		blockIndexer = &blockidxnull.BlockerIndexer{}
+			txIndexer = kv.NewTxIndex(store)
+			blockIndexer = blockidxkv.New(dbm.NewPrefixDB(store, []byte("block_events")))
+		}
 	}
 
 	indexerService := indexer.NewIndexerService(txIndexer, blockIndexer, eventBus)
@@ -381,7 +384,7 @@ func createTransport(logger log.Logger, config *cfg.Config) *p2p.MConnTransport 
 		logger, p2p.MConnConfig(config.P2P), []*p2p.ChannelDescriptor{},
 		p2p.MConnTransportOptions{
 			MaxAcceptedConnections: uint32(config.P2P.MaxNumInboundPeers +
-				len(strings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " ")),
+				len(tmStrings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " ")),
 			),
 		},
 	)
@@ -418,7 +421,7 @@ func createPeerManager(
 	}
 
 	privatePeerIDs := make(map[p2p.NodeID]struct{})
-	for _, id := range strings.SplitAndTrimEmpty(config.P2P.PrivatePeerIDs, ",", " ") {
+	for _, id := range tmStrings.SplitAndTrimEmpty(config.P2P.PrivatePeerIDs, ",", " ") {
 		privatePeerIDs[p2p.NodeID(id)] = struct{}{}
 	}
 
@@ -434,7 +437,7 @@ func createPeerManager(
 	}
 
 	peers := []p2p.NodeAddress{}
-	for _, p := range strings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " ") {
+	for _, p := range tmStrings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " ") {
 		address, err := p2p.ParseNodeAddress(p)
 		if err != nil {
 			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
@@ -444,7 +447,7 @@ func createPeerManager(
 		options.PersistentPeers = append(options.PersistentPeers, address.NodeID)
 	}
 
-	for _, p := range strings.SplitAndTrimEmpty(config.P2P.BootstrapPeers, ",", " ") {
+	for _, p := range tmStrings.SplitAndTrimEmpty(config.P2P.BootstrapPeers, ",", " ") {
 		address, err := p2p.ParseNodeAddress(p)
 		if err != nil {
 			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
@@ -611,7 +614,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 	sw *p2p.Switch, logger log.Logger) *pex.Reactor {
 
 	reactorConfig := &pex.ReactorConfig{
-		Seeds:    strings.SplitAndTrimEmpty(config.P2P.Seeds, ",", " "),
+		Seeds:    tmStrings.SplitAndTrimEmpty(config.P2P.Seeds, ",", " "),
 		SeedMode: config.Mode == cfg.ModeSeed,
 		// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
 		// blocks assuming 10s blocks ~ 28 hours.

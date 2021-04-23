@@ -1058,19 +1058,26 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 // TxIndexConfig defines the configuration for the transaction indexer,
 // including composite keys to index.
 type TxIndexConfig struct {
-	// What indexer to use for transactions
+	// The backend database list to back the indexer.
+	// If list contains `null`, meaning no indexer service will be used.
 	//
 	// Options:
-	//   1) "null"
+	//   1) "null" - no indexer services.
 	//   2) "kv" (default) - the simplest possible indexer,
 	//      backed by key-value storage (defaults to levelDB; see DBBackend).
-	Indexer string `mapstructure:"indexer"`
+	//   3) "psql" - the indexer services backed by PostgreSQL.
+	Indexer []string `mapstructure:"indexer"`
+
+	// The PostgreSQL connection configuration, the connection format:
+	// postgresql://<user>:<password>@<host>:<port>/<db>?<opts>
+	PsqlConn string `mapstructure:"psql-conn"`
 }
 
 // DefaultTxIndexConfig returns a default configuration for the transaction indexer.
 func DefaultTxIndexConfig() *TxIndexConfig {
 	return &TxIndexConfig{
-		Indexer: "kv",
+		Indexer:  []string{"kv"},
+		PsqlConn: "",
 	}
 }
 
