@@ -63,7 +63,7 @@ type ReactorV2 struct {
 	// list of available peers to loop through and send peer requests to
 	availablePeers *clist.CList
 
-	mtx sync.Mutex
+	mtx sync.RWMutex
 	// requestsSent keeps track of which peers the PEX reactor has sent requests
 	// to. This prevents the sending of spurious responses.
 	// NOTE: If a node never responds, they will remain in this map until a
@@ -136,8 +136,8 @@ func (r *ReactorV2) OnStop() {
 // NextRequestTime returns the next time the pex reactor expects to send a
 // request. Used mainly for testing
 func (r *ReactorV2) NextRequestTime() time.Time {
-	r.mtx.Lock()
-	defer r.mtx.Unlock()
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
 	return r.nextRequestTime
 }
 
@@ -381,6 +381,8 @@ func (r *ReactorV2) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 }
 
 func (r *ReactorV2) waitUntilNextRequest() <-chan time.Time {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
 	return time.After(time.Until(r.nextRequestTime))
 }
 
@@ -432,12 +434,13 @@ func (r *ReactorV2) sendRequestForPeers() {
 // new nodes will plummet to a very small number, meaning the interval expands
 // to its upper bound.
 // MaxInterval = 100 * 100 * baseTime ~= 16mins for 10 peers
+// CONTRACT: Must use a write lock as nextRequestTime is updated
 func (r *ReactorV2) calculateNextRequestTime() {
 	// check if the peer store is full. If so then there is no need
 	// to send peer requests too often
-	if capacity := r.peerManager.PeerRatio(); capacity > 0.95 {
-		r.Logger.Debug("peer manager near full capacity, sleeping...",
-			"sleep_period", fullCapacityInterval, "capacity", capacity)
+	if ratio := r.peerManager.PeerRatio(); ratio > 0.95 {
+		r.Logger.Debug("peer manager near full ratio, sleeping...",
+			"sleep_period", fullCapacityInterval, "ratio", ratio)
 		r.nextRequestTime = time.Now().Add(fullCapacityInterval)
 		return
 	}
