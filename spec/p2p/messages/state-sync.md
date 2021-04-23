@@ -6,12 +6,13 @@ order: 5
 
 ## Channels
 
-State sync has two distinct channels. The channel identifiers are listed below.
+State sync has three distinct channels. The channel identifiers are listed below.
 
-| Name            | Number |
-|-----------------|--------|
-| SnapshotChannel | 96     |
-| ChunkChannel    | 97     |
+| Name              | Number |
+|-------------------|--------|
+| SnapshotChannel   | 96     |
+| ChunkChannel      | 97     |
+| LightBlockChannel | 98     |
 
 ## Message Types
 
@@ -70,16 +71,41 @@ possibly from a different peer.
 
 The ABCI application is able to request peer bans and chunk refetching as part of the ABCI protocol.
 
+### LightBlockRequest
+
+To verify state and to provide state relevant information for consensus, the node will ask peers for
+light blocks at specified heights.
+
+| Name     | Type   | Description                | Field Number |
+|----------|--------|----------------------------|--------------|
+| height   | uint64 | Height of the light block  | 1            |
+
+### LightBlockResponse
+
+The sender will retrieve and construct the light block from both the block and state stores. The
+receiver will verify the data by comparing the hashes and store the header, commit and validator set
+if necessary. The light block at the height of the snapshot will be used to verify the `AppHash`.
+
+| Name          | Type                                                    | Description                          | Field Number |
+|---------------|---------------------------------------------------------|--------------------------------------|--------------|
+| light_block   | [LightBlock](../../core/data_structures.md#lightblock)  | light block at the height requested  | 1            |
+
+State sync will use [light client verification](../../light-client/verification.README.md) to verify
+the light blocks.
+
+
 If no state sync is in progress (i.e. during normal operation), any unsolicited response messages
 are discarded.
 
 ### Message
 
-Message is a [`oneof` protobuf type](https://developers.google.com/protocol-buffers/docs/proto#oneof). The `oneof` consists of four messages.
+Message is a [`oneof` protobuf type](https://developers.google.com/protocol-buffers/docs/proto#oneof). The `oneof` consists of six messages.
 
-| Name               | Type                                  | Description                                  | Field Number |
-|--------------------|---------------------------------------|----------------------------------------------|--------------|
-| snapshots_request  | [SnapshotRequest](#snapshotrequest)   | Request a recent snapshot from a peer        | 1            |
-| snapshots_response | [SnapshotResponse](#snapshotresponse) | Respond with the most recent snapshot stored | 2            |
-| chunk_request      | [ChunkRequest](#chunkrequest)         | Request chunks of the snapshot.              | 3            |
-| chunk_response     | [ChunkRequest](#chunkresponse)        | Response of chunks used to recreate state.   | 4            |
+| Name                 | Type                                       | Description                                  | Field Number |
+|----------------------|--------------------------------------------|----------------------------------------------|--------------|
+| snapshots_request    | [SnapshotRequest](#snapshotrequest)        | Request a recent snapshot from a peer        | 1            |
+| snapshots_response   | [SnapshotResponse](#snapshotresponse)      | Respond with the most recent snapshot stored | 2            |
+| chunk_request        | [ChunkRequest](#chunkrequest)              | Request chunks of the snapshot.              | 3            |
+| chunk_response       | [ChunkRequest](#chunkresponse)             | Response of chunks used to recreate state.   | 4            |
+| light_block_request  | [LightBlockRequest](#lightblockrequest)    | Request a light block.                       | 5            |
+| light_block_response | [LightBlockResponse](#lightblockresponse)  | Respond with a light block                   | 6            |
