@@ -628,6 +628,14 @@ func createPeerManager(
 		options.PersistentPeers = append(options.PersistentPeers, address.NodeID)
 	}
 
+	for _, p := range splitAndTrimEmpty(config.P2P.BootstrapPeers, ",", " ") {
+		address, err := p2p.ParseNodeAddress(p)
+		if err != nil {
+			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
+		}
+		peers = append(peers, address)
+	}
+
 	peerDB, err := dbProvider(&DBContext{"peerstore", config})
 	if err != nil {
 		return nil, err

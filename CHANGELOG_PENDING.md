@@ -17,6 +17,8 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [rpc] \#6168 Change default sorting to desc for `/tx_search` results (@melekes)
   - [cli] \#6282 User must specify the node mode when using `tendermint init` (@cmwaters)
   - [state/indexer] \#6382 reconstruct indexer, move txindex into the indexer package (@JayT106)
+  - [cli] \#6372 Introduce `BootstrapPeers` as part of the new p2p stack. Peers to be connected on
+    startup (@cmwaters)
 
 - Apps
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
