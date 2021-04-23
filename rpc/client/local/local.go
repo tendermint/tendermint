@@ -285,11 +285,13 @@ func (c *Local) resubscribe(subscriber string, q tmpubsub.Query) types.Subscript
 }
 
 func (c *Local) Unsubscribe(ctx context.Context, subscriber, query string) error {
-	q, err := tmquery.New(query)
+	args := tmpubsub.UnsubscribeArgs{Subscriber: subscriber}
+	var err error
+	args.Query, err = tmquery.New(query)
 	if err != nil {
-		return fmt.Errorf("failed to parse query: %w", err)
+		args.ID = query
 	}
-	return c.EventBus.Unsubscribe(ctx, subscriber, q)
+	return c.EventBus.Unsubscribe(ctx, args)
 }
 
 func (c *Local) UnsubscribeAll(ctx context.Context, subscriber string) error {

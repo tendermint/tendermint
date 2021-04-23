@@ -39,6 +39,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
@@ -80,9 +81,14 @@ type UnsubscribeArgs struct {
 }
 
 func (args UnsubscribeArgs) Validate() error {
+	if args.Subscriber == "" {
+		return errors.New("must specify a subscriber ID")
+	}
+
 	if args.ID == "" && args.Query == nil {
 		return fmt.Errorf("subscription is not fully defined [subscriber=%q]", args.Subscriber)
 	}
+
 	return nil
 }
 
@@ -215,28 +221,45 @@ func (s *Server) subscribe(ctx context.Context, clientID string, query Query, ou
 // Unsubscribe removes the subscription on the given query. An error will be
 // returned to the caller if the context is canceled or if subscription does
 // not exist.
-func (s *Server) Unsubscribe(ctx context.Context, clientID string, query Query) error {
-	qs := query.String()
-	var subID string
-	s.mtx.RLock()
-	clientSubscriptions, ok := s.subscriptions[clientID]
-	if ok {
-		subID, ok = clientSubscriptions[qs]
+func (s *Server) Unsubscribe(ctx context.Context, args UnsubscribeArgs) error {
+	if err := args.Validate(); err != nil {
+		return err
 	}
+	var qs string
+	if args.Query != nil {
+		qs = args.Query.String()
+	}
+
+	s.mtx.RLock()
+	clientSubscriptions, ok := s.subscriptions[args.Subscriber]
+	if args.ID != "" {
+		qs, ok = clientSubscriptions[args.ID]
+
+		if ok && args.Query == nil {
+			var err error
+			args.Query, err = query.New(qs)
+			if err != nil {
+				return err
+			}
+		}
+	} else if qs != "" {
+		args.ID, ok = clientSubscriptions[qs]
+	}
+
 	s.mtx.RUnlock()
 	if !ok {
 		return ErrSubscriptionNotFound
 	}
 
 	select {
-	case s.cmds <- cmd{op: unsub, clientID: clientID, query: query, subscription: &Subscription{id: subID}}:
+	case s.cmds <- cmd{op: unsub, clientID: args.Subscriber, query: args.Query, subscription: &Subscription{id: args.ID}}:
 		s.mtx.Lock()
 
-		delete(clientSubscriptions, subID)
+		delete(clientSubscriptions, args.ID)
 		delete(clientSubscriptions, qs)
 
 		if len(clientSubscriptions) == 0 {
-			delete(s.subscriptions, clientID)
+			delete(s.subscriptions, args.Subscriber)
 		}
 		s.mtx.Unlock()
 		return nil
@@ -368,6 +391,11 @@ func (state *state) add(clientID string, q Query, subscription *Subscription) {
 	if _, ok := state.subscriptions[qStr]; !ok {
 		state.subscriptions[qStr] = make(map[string]*Subscription)
 	}
+
+	if _, ok := state.subscriptions[subscription.id]; !ok {
+		state.subscriptions[subscription.id] = make(map[string]*Subscription)
+	}
+
 	// create subscription
 	state.subscriptions[qStr][clientID] = subscription
 	state.subscriptions[subscription.id][clientID] = subscription
@@ -427,7 +455,7 @@ func (state *state) removeClient(clientID string, reason error) {
 func (state *state) removeAll(reason error) {
 	for qStr, clientSubscriptions := range state.subscriptions {
 		sub, ok := clientSubscriptions[qStr]
-		if ok && sub.id == qStr {
+		if !ok || ok && sub.id == qStr {
 			// all subscriptions are double indexed by ID and query, only
 			// process them once.
 			continue
