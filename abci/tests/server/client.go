@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	mrand "math/rand"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/types"
@@ -18,7 +19,8 @@ func InitChain(client abcicli.Client) error {
 	vals := make([]types.ValidatorUpdate, total)
 	for i := 0; i < total; i++ {
 		pubkey := tmrand.Bytes(33)
-		power := tmrand.Int()
+		// nolint:gosec // G404: Use of weak random number generator
+		power := mrand.Int()
 		vals[i] = types.UpdateValidator(pubkey, int64(power), "")
 	}
 	_, err := client.InitChainSync(ctx, types.RequestInitChain{
