@@ -158,6 +158,10 @@ func (t *MemoryTransport) Dial(ctx context.Context, endpoint Endpoint) (Connecti
 	if endpoint.Path == "" {
 		return nil, errors.New("no path")
 	}
+	if err := endpoint.Validate(); err != nil {
+		return nil, err
+	}
+
 	nodeID, err := NewNodeID(endpoint.Path)
 	if err != nil {
 		return nil, err

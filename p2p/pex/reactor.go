@@ -133,14 +133,6 @@ func (r *ReactorV2) OnStop() {
 	<-r.peerUpdates.Done()
 }
 
-// NextRequestTime returns the next time the pex reactor expects to send a
-// request. Used mainly for testing
-func (r *ReactorV2) NextRequestTime() time.Time {
-	r.mtx.RLock()
-	defer r.mtx.RUnlock()
-	return r.nextRequestTime
-}
-
 // processPexCh implements a blocking event loop where we listen for p2p
 // Envelope messages from the pexCh.
 func (r *ReactorV2) processPexCh() {
@@ -381,8 +373,6 @@ func (r *ReactorV2) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 }
 
 func (r *ReactorV2) waitUntilNextRequest() <-chan time.Time {
-	r.mtx.RLock()
-	defer r.mtx.RUnlock()
 	return time.After(time.Until(r.nextRequestTime))
 }
 
@@ -417,8 +407,8 @@ func (r *ReactorV2) sendRequestForPeers() {
 	r.availablePeers.Remove(peer)
 	peer.DetachPrev()
 	r.mtx.Lock()
-	defer r.mtx.Unlock()
 	r.requestsSent[peerID] = struct{}{}
+	r.mtx.Unlock()
 
 	r.calculateNextRequestTime()
 	r.Logger.Debug("peer request sent", "next_request_time", r.nextRequestTime)
@@ -438,7 +428,7 @@ func (r *ReactorV2) sendRequestForPeers() {
 func (r *ReactorV2) calculateNextRequestTime() {
 	// check if the peer store is full. If so then there is no need
 	// to send peer requests too often
-	if ratio := r.peerManager.PeerRatio(); ratio > 0.95 {
+	if ratio := r.peerManager.PeerRatio(); ratio >= 0.95 {
 		r.Logger.Debug("peer manager near full ratio, sleeping...",
 			"sleep_period", fullCapacityInterval, "ratio", ratio)
 		r.nextRequestTime = time.Now().Add(fullCapacityInterval)
@@ -452,21 +442,24 @@ func (r *ReactorV2) calculateNextRequestTime() {
 	peers := r.availablePeers.Len()
 	baseTime := minReceiveRequestInterval
 	if peers > 0 {
-		baseTime = minReceiveRequestInterval / time.Duration(peers)
+		baseTime = minReceiveRequestInterval * 2 / time.Duration(peers)
 	}
 
 	if r.totalPeers > 0 || r.discoveryRatio == 0 {
 		// find the ratio of new peers. NOTE: We add 1 to both sides to avoid
 		// divide by zero problems
-		ratio := float32(r.totalPeers+1) / float32(r.newPeers+1)
+		ratio := float32(r.totalPeers+1) / float32((r.newPeers*10)+1)
 		// square the ratio in order to get non linear time intervals
-		// NOTE: The longest possible interval is 50 minutes
+		// NOTE: The longest possible interval for 100 peers is 25 minutes
 		r.discoveryRatio = ratio * ratio
 		r.newPeers = 0
 		r.totalPeers = 0
 	}
-	interval := baseTime * time.Duration(r.discoveryRatio)
-	r.nextRequestTime = time.Now().Add(interval)
+	if r.discoveryRatio < 1 {
+		r.nextRequestTime = time.Now().Add(baseTime)
+	} else {
+		r.nextRequestTime = time.Now().Add(baseTime * time.Duration(r.discoveryRatio))
+	}
 }
 
 func (r *ReactorV2) removePeer(id p2p.NodeID) {

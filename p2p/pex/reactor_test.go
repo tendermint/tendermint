@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	checkFrequency    = 200 * time.Millisecond
+	checkFrequency    = 500 * time.Millisecond
 	defaultBufferSize = 2
 	defaultWait       = 10 * time.Second
 
@@ -44,9 +44,8 @@ func TestReactorBasic(t *testing.T) {
 }
 
 func TestReactorConnectFullNetwork(t *testing.T) {
-	netSize := 10
 	testNet := setup(t, testOptions{
-		TotalNodes: netSize,
+		TotalNodes: 8,
 	})
 
 	// make every node be only connected with one other node (it actually ends up
@@ -56,7 +55,7 @@ func TestReactorConnectFullNetwork(t *testing.T) {
 
 	// assert that all nodes add each other in the network
 	for idx := 0; idx < len(testNet.nodes); idx++ {
-		testNet.requireNumberOfPeers(t, idx, netSize-1, defaultWait)
+		testNet.requireNumberOfPeers(t, idx, len(testNet.nodes)-1, defaultWait)
 	}
 }
 
@@ -142,10 +141,10 @@ func TestReactorErrorsOnReceivingTooManyPeers(t *testing.T) {
 
 func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
 	testNet := setup(t, testOptions{
-		TotalNodes:   20,
-		MaxPeers:     10,
-		MaxConnected: 10,
-		BufferSize:   10,
+		TotalNodes:   16,
+		MaxPeers:     8,
+		MaxConnected: 6,
+		BufferSize:   8,
 	})
 	testNet.connectN(t, 1)
 	testNet.start(t)
@@ -154,25 +153,14 @@ func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
 	for _, nodeID := range testNet.nodes {
 		require.Eventually(t, func() bool {
 			// nolint:scopelint
-			return testNet.network.Nodes[nodeID].PeerManager.PeerRatio() > 0
-		}, defaultWait, checkFrequency)
-	}
-
-	// once a node is at full capacity, it shouldn't send messages as often
-	for idx, nodeID := range testNet.nodes {
-		if idx >= len(testNet.mocks) {
-			require.Eventually(t, func() bool {
-				// nolint:scopelint
-				reactor := testNet.reactors[nodeID]
-				return reactor.NextRequestTime().After(time.Now().Add(5 * time.Minute))
-			}, defaultWait, checkFrequency)
-		}
+			return testNet.network.Nodes[nodeID].PeerManager.PeerRatio() >= 0.9
+		}, 2*defaultWait, checkFrequency)
 	}
 }
 
 func TestReactorLargePeerStoreInASmallNetwork(t *testing.T) {
 	testNet := setup(t, testOptions{
-		TotalNodes:   20,
+		TotalNodes:   10,
 		MaxPeers:     100,
 		MaxConnected: 100,
 		BufferSize:   10,
@@ -182,14 +170,14 @@ func TestReactorLargePeerStoreInASmallNetwork(t *testing.T) {
 
 	// assert that all nodes add each other in the network
 	for idx := 0; idx < len(testNet.nodes); idx++ {
-		testNet.requireNumberOfPeers(t, idx, len(testNet.nodes)-1, defaultWait)
+		testNet.requireNumberOfPeers(t, idx, len(testNet.nodes)-1, 2*defaultWait)
 	}
 }
 
 func TestReactorWithNetworkGrowth(t *testing.T) {
 	testNet := setup(t, testOptions{
-		TotalNodes: 10,
-		BufferSize: 10,
+		TotalNodes: 5,
+		BufferSize: 5,
 	})
 	testNet.connectAll(t)
 	testNet.start(t)
@@ -201,7 +189,7 @@ func TestReactorWithNetworkGrowth(t *testing.T) {
 
 	// now we inject 10 more nodes
 	testNet.addNodes(t, 10)
-	for i := 10; i < testNet.total; i++ {
+	for i := 5; i < testNet.total; i++ {
 		node := testNet.nodes[i]
 		require.NoError(t, testNet.reactors[node].Start())
 		require.True(t, testNet.reactors[node].IsRunning())
@@ -209,11 +197,11 @@ func TestReactorWithNetworkGrowth(t *testing.T) {
 		// node can distribute the addresses to all the others
 		testNet.connectPeers(t, 0, i)
 	}
-	require.Len(t, testNet.reactors, 20)
+	require.Len(t, testNet.reactors, 15)
 
 	// assert that all nodes add each other in the network
 	for idx := 0; idx < len(testNet.nodes); idx++ {
-		testNet.requireNumberOfPeers(t, idx, len(testNet.nodes)-1, defaultWait)
+		testNet.requireNumberOfPeers(t, idx, len(testNet.nodes)-1, 10*defaultWait)
 	}
 }
 

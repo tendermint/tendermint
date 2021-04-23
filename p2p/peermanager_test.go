@@ -264,11 +264,11 @@ func TestPeerManager_Add(t *testing.T) {
 
 	// Adding an invalid address should error.
 	_, err = peerManager.Add(p2p.NodeAddress{Path: "foo"})
-	require.NoError(t, err)
+	require.Error(t, err)
 
 	// Adding self should error
 	_, err = peerManager.Add(p2p.NodeAddress{Protocol: "memory", NodeID: selfID})
-	require.NoError(t, err)
+	require.Error(t, err)
 }
 
 func TestPeerManager_DialNext(t *testing.T) {
@@ -1150,9 +1150,8 @@ func TestPeerManager_Accepted_MaxConnectedUpgrade(t *testing.T) {
 	require.NoError(t, peerManager.Accepted(c.NodeID))
 
 	// a still hasn't been evicted, so accepting b should still fail.
-	added, err = peerManager.Add(b)
+	_, err = peerManager.Add(b)
 	require.NoError(t, err)
-	require.True(t, added)
 	require.Error(t, peerManager.Accepted(b.NodeID))
 
 	// Also, accepting d should fail, since all upgrade slots are full.
@@ -1475,9 +1474,8 @@ func TestPeerManager_Disconnected(t *testing.T) {
 	require.Empty(t, sub.Updates())
 
 	// Disconnecting a ready peer sends a status update.
-	added, err = peerManager.Add(a)
+	_, err = peerManager.Add(a)
 	require.NoError(t, err)
-	require.True(t, added)
 	require.NoError(t, peerManager.Accepted(a.NodeID))
 	require.NoError(t, peerManager.Ready(a.NodeID))
 	require.Equal(t, p2p.PeerStatusUp, peerManager.Status(a.NodeID))
