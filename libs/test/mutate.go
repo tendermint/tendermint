@@ -1,7 +1,8 @@
+// nolint:gosec // G404: Use of weak random number generator
 package test
 
 import (
-	tmrand "github.com/tendermint/tendermint/libs/rand"
+	mrand "math/rand"
 )
 
 // Contract: !bytes.Equal(input, output) && len(input) >= len(output)
@@ -17,11 +18,11 @@ func MutateByteSlice(bytez []byte) []byte {
 	bytez = mBytez
 
 	// Try a random mutation
-	switch tmrand.Int() % 2 {
+	switch mrand.Int() % 2 {
 	case 0: // Mutate a single byte
-		bytez[tmrand.Int()%len(bytez)] += byte(tmrand.Int()%255 + 1)
+		bytez[mrand.Int()%len(bytez)] += byte(mrand.Int()%255 + 1)
 	case 1: // Remove an arbitrary byte
-		pos := tmrand.Int() % len(bytez)
+		pos := mrand.Int() % len(bytez)
 		bytez = append(bytez[:pos], bytez[pos+1:]...)
 	}
 	return bytez

@@ -3,6 +3,7 @@ package types
 import (
 	"context"
 	"math"
+	mrand "math/rand"
 	"testing"
 	"time"
 
@@ -256,7 +257,7 @@ func makeHeaderRandom() *Header {
 	return &Header{
 		Version:            version.Consensus{Block: version.BlockProtocol, App: 1},
 		ChainID:            tmrand.Str(12),
-		Height:             int64(tmrand.Uint16()) + 1,
+		Height:             int64(mrand.Uint32() + 1),
 		Time:               time.Now(),
 		LastBlockID:        makeBlockIDRandom(),
 		LastCommitHash:     crypto.CRandBytes(tmhash.Size),
