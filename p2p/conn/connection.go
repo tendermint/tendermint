@@ -316,7 +316,11 @@ func (c *MConnection) OnStop() {
 }
 
 func (c *MConnection) String() string {
-	return fmt.Sprintf("MConn{%v}", c.conn.RemoteAddr())
+	if c.conn != nil {
+		return fmt.Sprintf("MConn{%v}", c.conn.RemoteAddr())
+	} else {
+		return "MConn{nil}"
+	}
 }
 
 func (c *MConnection) flush() {
