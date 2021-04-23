@@ -181,7 +181,9 @@ func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	}
 	for _, tx := range msg.Txs {
 		err = memR.mempool.CheckTx(tx, nil, txInfo)
-		if err != nil {
+		if err == ErrTxInCache {
+			memR.Logger.Debug("Tx already exists in cache", "tx", txID(tx))
+		} else if err != nil {
 			memR.Logger.Info("Could not check tx", "tx", txID(tx), "err", err)
 		}
 	}

@@ -102,7 +102,8 @@ func TestNodeInfoCompatible(t *testing.T) {
 	assert.NoError(t, ni1.CompatibleWith(ni2))
 
 	// add another channel; still compatible
-	ni2.Channels = []byte{newTestChannel, testCh}
+	ni2.Channels = append(ni2.Channels, newTestChannel)
+	assert.True(t, ni2.HasChannel(newTestChannel))
 	assert.NoError(t, ni1.CompatibleWith(ni2))
 
 	// wrong NodeInfo type is not compatible

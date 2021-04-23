@@ -34,7 +34,7 @@ require (
 	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9
 	golang.org/x/net v0.0.0-20201021035429-f5854403a974
 	google.golang.org/genproto v0.0.0-20201119123407-9b1e624d6bc4 // indirect
-	google.golang.org/grpc v1.35.0
+	google.golang.org/grpc v1.37.0
 )
 
 replace github.com/tendermint/tendermint => ./

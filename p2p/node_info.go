@@ -1,11 +1,12 @@
 package p2p
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"reflect"
 
-	"github.com/tendermint/tendermint/libs/bytes"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 	"github.com/tendermint/tendermint/version"
@@ -85,9 +86,9 @@ type DefaultNodeInfo struct {
 
 	// Check compatibility.
 	// Channels are HexBytes so easier to read as JSON
-	Network  string         `json:"network"`  // network/chain ID
-	Version  string         `json:"version"`  // major.minor.revision
-	Channels bytes.HexBytes `json:"channels"` // channels this node knows about
+	Network  string           `json:"network"`  // network/chain ID
+	Version  string           `json:"version"`  // major.minor.revision
+	Channels tmbytes.HexBytes `json:"channels"` // channels this node knows about
 
 	// ASCIIText fields
 	Moniker string               `json:"moniker"` // arbitrary moniker
@@ -220,6 +221,10 @@ OUTER_LOOP:
 func (info DefaultNodeInfo) NetAddress() (*NetAddress, error) {
 	idAddr := IDAddressString(info.ID(), info.ListenAddr)
 	return NewNetAddressString(idAddr)
+}
+
+func (info DefaultNodeInfo) HasChannel(chID byte) bool {
+	return bytes.Contains(info.Channels, []byte{chID})
 }
 
 func (info DefaultNodeInfo) ToProto() *tmp2p.DefaultNodeInfo {
