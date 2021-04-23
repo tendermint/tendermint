@@ -3,6 +3,7 @@ package pubsub
 import (
 	"errors"
 
+	"github.com/google/uuid"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
@@ -21,6 +22,7 @@ var (
 // 2) channel which is closed if a client is too slow or choose to unsubscribe
 // 3) err indicating the reason for (2)
 type Subscription struct {
+	id  string
 	out chan Message
 
 	canceled chan struct{}
@@ -31,6 +33,7 @@ type Subscription struct {
 // NewSubscription returns a new subscription with the given outCapacity.
 func NewSubscription(outCapacity int) *Subscription {
 	return &Subscription{
+		id:       uuid.NewString(),
 		out:      make(chan Message, outCapacity),
 		canceled: make(chan struct{}),
 	}
