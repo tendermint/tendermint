@@ -304,7 +304,7 @@ func (s *Server) NumClients() int {
 func (s *Server) NumClientSubscriptions(clientID string) int {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
-	return len(s.subscriptions[clientID])
+	return len(s.subscriptions[clientID]) / 2
 }
 
 // Publish publishes the given message. An error will be returned to the caller
@@ -430,10 +430,12 @@ func (state *state) remove(clientID string, qStr, id string, reason error) {
 	}
 
 	// decrease ref counter in queries
-	state.queries[qStr].refCount--
-	// remove the query if nobody else is using it
-	if state.queries[qStr].refCount == 0 {
-		delete(state.queries, qStr)
+	if ref, ok := state.queries[qStr]; ok {
+		ref.refCount--
+		if ref.refCount == 0 {
+			// remove the query if nobody else is using it
+			delete(state.queries, qStr)
+		}
 	}
 }
 

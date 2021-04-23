@@ -2,6 +2,7 @@ package pubsub
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
@@ -70,7 +71,17 @@ func (s *Subscription) Err() error {
 func (s *Subscription) cancel(err error) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
-	s.err = err
+	defer func() {
+		perr := recover()
+		if err == nil && perr != nil {
+			err = fmt.Errorf("problem closing subscription: %v", perr)
+		}
+	}()
+
+	if s.err == nil && err != nil {
+		s.err = err
+	}
+
 	close(s.canceled)
 }
 
