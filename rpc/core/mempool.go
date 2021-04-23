@@ -73,7 +73,8 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 		return nil, err
 	}
 	defer func() {
-		if err := env.EventBus.Unsubscribe(context.Background(), tmpubsub.UnsubscribeArgs{Subscriber: subscriber, Query: q}); err != nil {
+		args := tmpubsub.UnsubscribeArgs{Subscriber: subscriber, Query: q}
+		if err := env.EventBus.Unsubscribe(context.Background(), args); err != nil {
 			env.Logger.Error("Error unsubscribing from eventBus", "err", err)
 		}
 	}()
