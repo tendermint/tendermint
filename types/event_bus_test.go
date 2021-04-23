@@ -3,7 +3,7 @@ package types
 import (
 	"context"
 	"fmt"
-	"math/rand"
+	mrand "math/rand"
 	"testing"
 	"time"
 
@@ -13,7 +13,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
 func TestEventBusPublishEventTx(t *testing.T) {
@@ -410,7 +409,7 @@ func BenchmarkEventBus(b *testing.B) {
 
 func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *testing.B) {
 	// for random* functions
-	rand.Seed(time.Now().Unix())
+	mrand.Seed(time.Now().Unix())
 
 	eventBus := NewEventBusWithBufferCapacity(0) // set buffer capacity to 0 so we are not testing cache
 	err := eventBus.Start()
@@ -476,7 +475,7 @@ var events = []string{
 	EventVote}
 
 func randEvent() string {
-	return events[tmrand.Intn(len(events))]
+	return events[mrand.Intn(len(events))]
 }
 
 var queries = []tmpubsub.Query{
@@ -494,5 +493,5 @@ var queries = []tmpubsub.Query{
 	EventQueryVote}
 
 func randQuery() tmpubsub.Query {
-	return queries[tmrand.Intn(len(queries))]
+	return queries[mrand.Intn(len(queries))]
 }

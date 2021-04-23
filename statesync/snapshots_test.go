@@ -148,11 +148,11 @@ func TestSnapshotPool_Ranked_Best(t *testing.T) {
 		snapshot *snapshot
 		peers    []p2p.NodeID
 	}{
-		{&snapshot{Height: 2, Format: 2, Chunks: 4, Hash: []byte{1, 3}}, []p2p.NodeID{"AA", "BB", "CC"}},
-		{&snapshot{Height: 1, Format: 1, Chunks: 4, Hash: []byte{1, 2}}, []p2p.NodeID{"AA", "BB", "CC"}},
-		{&snapshot{Height: 2, Format: 2, Chunks: 5, Hash: []byte{1, 2}}, []p2p.NodeID{"AA"}},
-		{&snapshot{Height: 2, Format: 1, Chunks: 3, Hash: []byte{1, 2}}, []p2p.NodeID{"AA", "BB"}},
-		{&snapshot{Height: 1, Format: 2, Chunks: 5, Hash: []byte{1, 2}}, []p2p.NodeID{"AA", "BB"}},
+		{&snapshot{Height: 2, Format: 2, Chunks: 4, Hash: []byte{1, 3}}, []p2p.NodeID{"AA", "BB", "CC", "DD"}},
+		{&snapshot{Height: 1, Format: 1, Chunks: 4, Hash: []byte{1, 2}}, []p2p.NodeID{"AA", "BB", "CC", "DD"}},
+		{&snapshot{Height: 2, Format: 2, Chunks: 5, Hash: []byte{1, 2}}, []p2p.NodeID{"AA", "BB"}},
+		{&snapshot{Height: 2, Format: 1, Chunks: 3, Hash: []byte{1, 2}}, []p2p.NodeID{"AA", "BB", "CC"}},
+		{&snapshot{Height: 1, Format: 2, Chunks: 5, Hash: []byte{1, 2}}, []p2p.NodeID{"AA", "BB", "CC"}},
 	}
 
 	// Add snapshots in reverse order, to make sure the pool enforces some order.
