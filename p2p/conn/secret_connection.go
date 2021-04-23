@@ -102,7 +102,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	// DJB's Curve25519 paper: http://cr.yp.to/ecdh/curve25519-20060209.pdf)
 	remEphPub, err := shareEphPubKey(conn, locEphPub)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("share eph pub key: %v", err)
 	}
 
 	// Sort by lexical order.
@@ -120,7 +120,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	// Compute common diffie hellman secret using X25519.
 	dhSecret, err := computeDHSecret(remEphPub, locEphPriv)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("compute DH secret: %v", err)
 	}
 
 	transcript.AppendMessage(labelDHSecret, dhSecret[:])
@@ -157,13 +157,13 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	// Sign the challenge bytes for authentication.
 	locSignature, err := signChallenge(&challenge, locPrivKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sign challenge: %v", err)
 	}
 
 	// Share (in secret) each other's pubkey & challenge signature
 	authSigMsg, err := shareAuthSignature(sc, locPubKey, locSignature)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sign auth signature: %v", err)
 	}
 
 	remPubKey, remSignature := authSigMsg.Key, authSigMsg.Sig

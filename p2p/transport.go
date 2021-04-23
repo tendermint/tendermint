@@ -567,7 +567,7 @@ func upgradeSecretConn(
 
 	sc, err := conn.MakeSecretConnection(c, privKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("make secret conn failed: %v", err)
 	}
 
 	return sc, sc.SetDeadline(time.Time{})
