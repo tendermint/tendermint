@@ -472,7 +472,12 @@ func (state *state) send(msg interface{}, events map[string][]string) error {
 		if sub, ok := clientSubscriptions[qStr]; ok && sub.id == qStr {
 			continue
 		}
-		q := state.queries[qStr].q
+		var q Query
+		if qi, ok := state.queries[qStr]; ok {
+			q = qi.q
+		} else {
+			continue
+		}
 
 		match, err := q.Matches(events)
 		if err != nil {
@@ -483,11 +488,11 @@ func (state *state) send(msg interface{}, events map[string][]string) error {
 			for clientID, subscription := range clientSubscriptions {
 				if cap(subscription.out) == 0 {
 					// block on unbuffered channel
-					subscription.out <- NewMessage(msg, events)
+					subscription.out <- NewMessage(subscription.id, msg, events)
 				} else {
 					// don't block on buffered channels
 					select {
-					case subscription.out <- NewMessage(msg, events):
+					case subscription.out <- NewMessage(subscription.id, msg, events):
 					default:
 						state.remove(clientID, qStr, subscription.id, ErrOutOfCapacity)
 					}

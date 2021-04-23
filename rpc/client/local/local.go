@@ -240,7 +240,13 @@ func (c *Local) eventsRoutine(
 	for {
 		select {
 		case msg := <-sub.Out():
-			result := ctypes.ResultEvent{Query: q.String(), Data: msg.Data(), Events: msg.Events()}
+			result := ctypes.ResultEvent{
+				SubscriptionID: msg.SubscriptionID(),
+				Query:          q.String(),
+				Data:           msg.Data(),
+				Events:         msg.Events(),
+			}
+
 			if cap(outc) == 0 {
 				outc <- result
 			} else {

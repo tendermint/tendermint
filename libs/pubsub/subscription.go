@@ -69,27 +69,32 @@ func (s *Subscription) Err() error {
 
 func (s *Subscription) cancel(err error) {
 	s.mtx.Lock()
+	defer s.mtx.Unlock()
 	s.err = err
-	s.mtx.Unlock()
 	close(s.canceled)
 }
 
 // Message glues data and events together.
 type Message struct {
+	subID  string
 	data   interface{}
 	events map[string][]string
 }
 
-func NewMessage(data interface{}, events map[string][]string) Message {
-	return Message{data, events}
+func NewMessage(subID string, data interface{}, events map[string][]string) Message {
+	return Message{
+		subID:  subID,
+		data:   data,
+		events: events,
+	}
 }
+
+// SubscriptionID returns the unique identifier for the subscription
+// that produced this message.
+func (msg Message) SubscriptionID() string { return msg.subID }
 
 // Data returns an original data published.
-func (msg Message) Data() interface{} {
-	return msg.data
-}
+func (msg Message) Data() interface{} { return msg.data }
 
 // Events returns events, which matched the client's query.
-func (msg Message) Events() map[string][]string {
-	return msg.events
-}
+func (msg Message) Events() map[string][]string { return msg.events }
