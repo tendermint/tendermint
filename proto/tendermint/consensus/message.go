@@ -27,8 +27,8 @@ func (m *Message) Wrap(pb proto.Message) error {
 	case *Vote:
 		m.Sum = &Message_Vote{Vote: msg}
 
-	case *HasVote:
-		m.Sum = &Message_HasVote{HasVote: msg}
+	case *ReceivedVote:
+		m.Sum = &Message_ReceivedVote{ReceivedVote: msg}
 
 	case *VoteSetMaj23:
 		m.Sum = &Message_VoteSetMaj23{VoteSetMaj23: msg}
@@ -65,8 +65,8 @@ func (m *Message) Unwrap() (proto.Message, error) {
 	case *Message_Vote:
 		return m.GetVote(), nil
 
-	case *Message_HasVote:
-		return m.GetHasVote(), nil
+	case *Message_ReceivedVote:
+		return m.GetReceivedVote(), nil
 
 	case *Message_VoteSetMaj23:
 		return m.GetVoteSetMaj23(), nil

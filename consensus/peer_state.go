@@ -357,21 +357,21 @@ func (ps *PeerState) BlockPartsSent() int {
 	return ps.Stats.BlockParts
 }
 
-// SetHasVote sets the given vote as known by the peer
-func (ps *PeerState) SetHasVote(vote *types.Vote) {
+// SetReceivedVote sets the given vote as known by the peer
+func (ps *PeerState) SetReceivedVote(vote *types.Vote) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
-	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
+	ps.setReceivedVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
 }
 
-func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.SignedMsgType, index int32) {
+func (ps *PeerState) setReceivedVote(height int64, round int32, voteType tmproto.SignedMsgType, index int32) {
 	logger := ps.logger.With(
 		"peerH/R", fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
 		"H/R", fmt.Sprintf("%d/%d", height, round),
 	)
 
-	logger.Debug("setHasVote", "type", voteType, "index", index)
+	logger.Debug("setReceivedVote", "type", voteType, "index", index)
 
 	// NOTE: some may be nil BitArrays -> no side effects
 	psVotes := ps.getVoteBitArray(height, round, voteType)
@@ -473,8 +473,8 @@ func (ps *PeerState) ApplyProposalPOLMessage(msg *ProposalPOLMessage) {
 	ps.PRS.ProposalPOL = msg.ProposalPOL
 }
 
-// ApplyHasVoteMessage updates the peer state for the new vote.
-func (ps *PeerState) ApplyHasVoteMessage(msg *HasVoteMessage) {
+// ApplyReceivedVoteMessage updates the peer state for the new vote.
+func (ps *PeerState) ApplyReceivedVoteMessage(msg *ReceivedVoteMessage) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -482,7 +482,7 @@ func (ps *PeerState) ApplyHasVoteMessage(msg *HasVoteMessage) {
 		return
 	}
 
-	ps.setHasVote(msg.Height, msg.Round, msg.Type, msg.Index)
+	ps.setReceivedVote(msg.Height, msg.Round, msg.Type, msg.Index)
 }
 
 // ApplyVoteSetBitsMessage updates the peer state for the bit-array of votes
@@ -500,8 +500,8 @@ func (ps *PeerState) ApplyVoteSetBitsMessage(msg *VoteSetBitsMessage, ourVotes *
 			votes.Update(msg.Votes)
 		} else {
 			otherVotes := votes.Sub(ourVotes)
-			hasVotes := otherVotes.Or(msg.Votes)
-			votes.Update(hasVotes)
+			ReceivedVotes := otherVotes.Or(msg.Votes)
+			votes.Update(ReceivedVotes)
 		}
 	}
 }

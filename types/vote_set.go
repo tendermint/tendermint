@@ -626,7 +626,7 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 */
 type blockVotes struct {
 	peerMaj23 bool           // peer claims to have maj23
-	bitArray  *bits.BitArray // valIndex -> hasVote?
+	bitArray  *bits.BitArray // valIndex -> ReceivedVote?
 	votes     []*Vote        // valIndex -> *Vote
 	sum       int64          // vote sum
 }

@@ -405,11 +405,11 @@ func TestConsMsgsVectors(t *testing.T) {
 		{"Vote", &tmcons.Message{Sum: &tmcons.Message_Vote{
 			Vote: &tmcons.Vote{Vote: vpb}}},
 			"32700a6e0802100122480a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d1224080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d2a0608c0b89fdc0532146164645f6d6f72655f6578636c616d6174696f6e3801"},
-		{"HasVote", &tmcons.Message{Sum: &tmcons.Message_HasVote{
-			HasVote: &tmcons.HasVote{Height: 1, Round: 1, Type: tmproto.PrevoteType, Index: 1}}},
+		{"ReceivedVote", &tmcons.Message{Sum: &tmcons.Message_ReceivedVote{
+			ReceivedVote: &tmcons.ReceivedVote{Height: 1, Round: 1, Type: tmproto.PrevoteType, Index: 1}}},
 			"3a080801100118012001"},
-		{"HasVote", &tmcons.Message{Sum: &tmcons.Message_HasVote{
-			HasVote: &tmcons.HasVote{Height: math.MaxInt64, Round: math.MaxInt32,
+		{"ReceivedVote", &tmcons.Message{Sum: &tmcons.Message_ReceivedVote{
+			ReceivedVote: &tmcons.ReceivedVote{Height: math.MaxInt64, Round: math.MaxInt32,
 				Type: tmproto.PrevoteType, Index: math.MaxInt32}}},
 			"3a1808ffffffffffffffff7f10ffffffff07180120ffffffff07"},
 		{"VoteSetMaj23", &tmcons.Message{Sum: &tmcons.Message_VoteSetMaj23{
@@ -701,7 +701,7 @@ func TestBlockPartMessageValidateBasic(t *testing.T) {
 	assert.Equal(t, true, message.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 }
 
-func TestHasVoteMessageValidateBasic(t *testing.T) {
+func TestReceivedVoteMessageValidateBasic(t *testing.T) {
 	const (
 		validSignedMsgType   tmproto.SignedMsgType = 0x01
 		invalidSignedMsgType tmproto.SignedMsgType = 0x03
@@ -725,7 +725,7 @@ func TestHasVoteMessageValidateBasic(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
-			message := HasVoteMessage{
+			message := ReceivedVoteMessage{
 				Height: tc.messageHeight,
 				Round:  tc.messageRound,
 				Type:   tc.messageType,

@@ -394,26 +394,26 @@ func (m *Vote) GetVote() *types.Vote {
 	return nil
 }
 
-// HasVote is sent to indicate that a particular vote has been received.
-type HasVote struct {
+// ReceivedVote is sent to indicate that a particular vote has been received.
+type ReceivedVote struct {
 	Height int64               `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 	Round  int32               `protobuf:"varint,2,opt,name=round,proto3" json:"round,omitempty"`
 	Type   types.SignedMsgType `protobuf:"varint,3,opt,name=type,proto3,enum=tendermint.types.SignedMsgType" json:"type,omitempty"`
 	Index  int32               `protobuf:"varint,4,opt,name=index,proto3" json:"index,omitempty"`
 }
 
-func (m *HasVote) Reset()         { *m = HasVote{} }
-func (m *HasVote) String() string { return proto.CompactTextString(m) }
-func (*HasVote) ProtoMessage()    {}
-func (*HasVote) Descriptor() ([]byte, []int) {
+func (m *ReceivedVote) Reset()         { *m = ReceivedVote{} }
+func (m *ReceivedVote) String() string { return proto.CompactTextString(m) }
+func (*ReceivedVote) ProtoMessage()    {}
+func (*ReceivedVote) Descriptor() ([]byte, []int) {
 	return fileDescriptor_81a22d2efc008981, []int{6}
 }
-func (m *HasVote) XXX_Unmarshal(b []byte) error {
+func (m *ReceivedVote) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *HasVote) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *ReceivedVote) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_HasVote.Marshal(b, m, deterministic)
+		return xxx_messageInfo_ReceivedVote.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -423,40 +423,40 @@ func (m *HasVote) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *HasVote) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_HasVote.Merge(m, src)
+func (m *ReceivedVote) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReceivedVote.Merge(m, src)
 }
-func (m *HasVote) XXX_Size() int {
+func (m *ReceivedVote) XXX_Size() int {
 	return m.Size()
 }
-func (m *HasVote) XXX_DiscardUnknown() {
-	xxx_messageInfo_HasVote.DiscardUnknown(m)
+func (m *ReceivedVote) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReceivedVote.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_HasVote proto.InternalMessageInfo
+var xxx_messageInfo_ReceivedVote proto.InternalMessageInfo
 
-func (m *HasVote) GetHeight() int64 {
+func (m *ReceivedVote) GetHeight() int64 {
 	if m != nil {
 		return m.Height
 	}
 	return 0
 }
 
-func (m *HasVote) GetRound() int32 {
+func (m *ReceivedVote) GetRound() int32 {
 	if m != nil {
 		return m.Round
 	}
 	return 0
 }
 
-func (m *HasVote) GetType() types.SignedMsgType {
+func (m *ReceivedVote) GetType() types.SignedMsgType {
 	if m != nil {
 		return m.Type
 	}
 	return types.UnknownType
 }
 
-func (m *HasVote) GetIndex() int32 {
+func (m *ReceivedVote) GetIndex() int32 {
 	if m != nil {
 		return m.Index
 	}
@@ -617,7 +617,7 @@ type Message struct {
 	//	*Message_ProposalPol
 	//	*Message_BlockPart
 	//	*Message_Vote
-	//	*Message_HasVote
+	//	*Message_ReceivedVote
 	//	*Message_VoteSetMaj23
 	//	*Message_VoteSetBits
 	Sum isMessage_Sum `protobuf_oneof:"sum"`
@@ -680,8 +680,8 @@ type Message_BlockPart struct {
 type Message_Vote struct {
 	Vote *Vote `protobuf:"bytes,6,opt,name=vote,proto3,oneof" json:"vote,omitempty"`
 }
-type Message_HasVote struct {
-	HasVote *HasVote `protobuf:"bytes,7,opt,name=has_vote,json=hasVote,proto3,oneof" json:"has_vote,omitempty"`
+type Message_ReceivedVote struct {
+	ReceivedVote *ReceivedVote `protobuf:"bytes,7,opt,name=has_vote,json=ReceivedVote,proto3,oneof" json:"has_vote,omitempty"`
 }
 type Message_VoteSetMaj23 struct {
 	VoteSetMaj23 *VoteSetMaj23 `protobuf:"bytes,8,opt,name=vote_set_maj23,json=voteSetMaj23,proto3,oneof" json:"vote_set_maj23,omitempty"`
@@ -696,7 +696,7 @@ func (*Message_Proposal) isMessage_Sum()      {}
 func (*Message_ProposalPol) isMessage_Sum()   {}
 func (*Message_BlockPart) isMessage_Sum()     {}
 func (*Message_Vote) isMessage_Sum()          {}
-func (*Message_HasVote) isMessage_Sum()       {}
+func (*Message_ReceivedVote) isMessage_Sum()  {}
 func (*Message_VoteSetMaj23) isMessage_Sum()  {}
 func (*Message_VoteSetBits) isMessage_Sum()   {}
 
@@ -749,9 +749,9 @@ func (m *Message) GetVote() *Vote {
 	return nil
 }
 
-func (m *Message) GetHasVote() *HasVote {
-	if x, ok := m.GetSum().(*Message_HasVote); ok {
-		return x.HasVote
+func (m *Message) GetReceivedVote() *ReceivedVote {
+	if x, ok := m.GetSum().(*Message_ReceivedVote); ok {
+		return x.ReceivedVote
 	}
 	return nil
 }
@@ -779,7 +779,7 @@ func (*Message) XXX_OneofWrappers() []interface{} {
 		(*Message_ProposalPol)(nil),
 		(*Message_BlockPart)(nil),
 		(*Message_Vote)(nil),
-		(*Message_HasVote)(nil),
+		(*Message_ReceivedVote)(nil),
 		(*Message_VoteSetMaj23)(nil),
 		(*Message_VoteSetBits)(nil),
 	}
@@ -792,7 +792,7 @@ func init() {
 	proto.RegisterType((*ProposalPOL)(nil), "tendermint.consensus.ProposalPOL")
 	proto.RegisterType((*BlockPart)(nil), "tendermint.consensus.BlockPart")
 	proto.RegisterType((*Vote)(nil), "tendermint.consensus.Vote")
-	proto.RegisterType((*HasVote)(nil), "tendermint.consensus.HasVote")
+	proto.RegisterType((*ReceivedVote)(nil), "tendermint.consensus.ReceivedVote")
 	proto.RegisterType((*VoteSetMaj23)(nil), "tendermint.consensus.VoteSetMaj23")
 	proto.RegisterType((*VoteSetBits)(nil), "tendermint.consensus.VoteSetBits")
 	proto.RegisterType((*Message)(nil), "tendermint.consensus.Message")
@@ -1125,7 +1125,7 @@ func (m *Vote) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *HasVote) Marshal() (dAtA []byte, err error) {
+func (m *ReceivedVote) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -1135,12 +1135,12 @@ func (m *HasVote) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *HasVote) MarshalTo(dAtA []byte) (int, error) {
+func (m *ReceivedVote) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *HasVote) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *ReceivedVote) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -1432,16 +1432,16 @@ func (m *Message_Vote) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
-func (m *Message_HasVote) MarshalTo(dAtA []byte) (int, error) {
+func (m *Message_ReceivedVote) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Message_HasVote) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *Message_ReceivedVote) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
-	if m.HasVote != nil {
+	if m.ReceivedVote != nil {
 		{
-			size, err := m.HasVote.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.ReceivedVote.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -1612,7 +1612,7 @@ func (m *Vote) Size() (n int) {
 	return n
 }
 
-func (m *HasVote) Size() (n int) {
+func (m *ReceivedVote) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1759,14 +1759,14 @@ func (m *Message_Vote) Size() (n int) {
 	}
 	return n
 }
-func (m *Message_HasVote) Size() (n int) {
+func (m *Message_ReceivedVote) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.HasVote != nil {
-		l = m.HasVote.Size()
+	if m.ReceivedVote != nil {
+		l = m.ReceivedVote.Size()
 		n += 1 + l + sovTypes(uint64(l))
 	}
 	return n
@@ -2535,7 +2535,7 @@ func (m *Vote) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *HasVote) Unmarshal(dAtA []byte) error {
+func (m *ReceivedVote) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2558,10 +2558,10 @@ func (m *HasVote) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: HasVote: wiretype end group for non-group")
+			return fmt.Errorf("proto: ReceivedVote: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: HasVote: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: ReceivedVote: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -3215,7 +3215,7 @@ func (m *Message) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 7:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field HasVote", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ReceivedVote", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -3242,11 +3242,11 @@ func (m *Message) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			v := &HasVote{}
+			v := &ReceivedVote{}
 			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			m.Sum = &Message_HasVote{v}
+			m.Sum = &Message_ReceivedVote{v}
 			iNdEx = postIndex
 		case 8:
 			if wireType != 2 {

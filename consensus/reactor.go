@@ -347,10 +347,10 @@ func (r *Reactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
 	}
 }
 
-func (r *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
+func (r *Reactor) broadcastReceivedVoteMessage(vote *types.Vote) {
 	r.stateCh.Out <- p2p.Envelope{
 		Broadcast: true,
-		Message: &tmcons.HasVote{
+		Message: &tmcons.ReceivedVote{
 			Height: vote.Height,
 			Round:  vote.Round,
 			Type:   vote.Type,
@@ -389,7 +389,7 @@ func (r *Reactor) subscribeToBroadcastEvents() {
 		listenerIDConsensus,
 		types.EventVote,
 		func(data tmevents.EventData) {
-			r.broadcastHasVoteMessage(data.(*types.Vote))
+			r.broadcastReceivedVoteMessage(data.(*types.Vote))
 		},
 	)
 	if err != nil {
@@ -631,7 +631,7 @@ func (r *Reactor) pickSendVote(ps *PeerState, votes types.VoteSetReader) bool {
 			},
 		}
 
-		ps.SetHasVote(vote)
+		ps.SetReceivedVote(vote)
 		return true
 	}
 
@@ -993,8 +993,8 @@ func (r *Reactor) handleStateMessage(envelope p2p.Envelope, msgI Message) error 
 	case *tmcons.NewValidBlock:
 		ps.ApplyNewValidBlockMessage(msgI.(*NewValidBlockMessage))
 
-	case *tmcons.HasVote:
-		ps.ApplyHasVoteMessage(msgI.(*HasVoteMessage))
+	case *tmcons.ReceivedVote:
+		ps.ApplyReceivedVoteMessage(msgI.(*ReceivedVoteMessage))
 
 	case *tmcons.VoteSetMaj23:
 		r.state.mtx.RLock()
@@ -1120,7 +1120,7 @@ func (r *Reactor) handleVoteMessage(envelope p2p.Envelope, msgI Message) error {
 
 		ps.EnsureVoteBitArrays(height, valSize)
 		ps.EnsureVoteBitArrays(height-1, lastCommitSize)
-		ps.SetHasVote(vMsg.Vote)
+		ps.SetReceivedVote(vMsg.Vote)
 
 		r.state.peerMsgQueue <- msgInfo{vMsg, envelope.From}
 

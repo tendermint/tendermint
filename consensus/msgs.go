@@ -28,7 +28,7 @@ func init() {
 	tmjson.RegisterType(&ProposalPOLMessage{}, "tendermint/ProposalPOL")
 	tmjson.RegisterType(&BlockPartMessage{}, "tendermint/BlockPart")
 	tmjson.RegisterType(&VoteMessage{}, "tendermint/Vote")
-	tmjson.RegisterType(&HasVoteMessage{}, "tendermint/HasVote")
+	tmjson.RegisterType(&ReceivedVoteMessage{}, "tendermint/ReceivedVote")
 	tmjson.RegisterType(&VoteSetMaj23Message{}, "tendermint/VoteSetMaj23")
 	tmjson.RegisterType(&VoteSetBitsMessage{}, "tendermint/VoteSetBits")
 }
@@ -217,8 +217,8 @@ func (m *VoteMessage) String() string {
 	return fmt.Sprintf("[Vote %v]", m.Vote)
 }
 
-// HasVoteMessage is sent to indicate that a particular vote has been received.
-type HasVoteMessage struct {
+// ReceivedVoteMessage is sent to indicate that a particular vote has been received.
+type ReceivedVoteMessage struct {
 	Height int64
 	Round  int32
 	Type   tmproto.SignedMsgType
@@ -226,7 +226,7 @@ type HasVoteMessage struct {
 }
 
 // ValidateBasic performs basic validation.
-func (m *HasVoteMessage) ValidateBasic() error {
+func (m *ReceivedVoteMessage) ValidateBasic() error {
 	if m.Height < 0 {
 		return errors.New("negative Height")
 	}
@@ -243,8 +243,8 @@ func (m *HasVoteMessage) ValidateBasic() error {
 }
 
 // String returns a string representation.
-func (m *HasVoteMessage) String() string {
-	return fmt.Sprintf("[HasVote VI:%v V:{%v/%02d/%v}]", m.Index, m.Height, m.Round, m.Type)
+func (m *ReceivedVoteMessage) String() string {
+	return fmt.Sprintf("[ReceivedVote VI:%v V:{%v/%02d/%v}]", m.Index, m.Height, m.Round, m.Type)
 }
 
 // VoteSetMaj23Message is sent to indicate that a given BlockID has seen +2/3 votes.
@@ -393,10 +393,10 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 				},
 			},
 		}
-	case *HasVoteMessage:
+	case *ReceivedVoteMessage:
 		pb = tmcons.Message{
-			Sum: &tmcons.Message_HasVote{
-				HasVote: &tmcons.HasVote{
+			Sum: &tmcons.Message_ReceivedVote{
+				ReceivedVote: &tmcons.ReceivedVote{
 					Height: msg.Height,
 					Round:  msg.Round,
 					Type:   msg.Type,
@@ -523,12 +523,12 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 		pb = &VoteMessage{
 			Vote: vote,
 		}
-	case *tmcons.Message_HasVote:
-		pb = &HasVoteMessage{
-			Height: msg.HasVote.Height,
-			Round:  msg.HasVote.Round,
-			Type:   msg.HasVote.Type,
-			Index:  msg.HasVote.Index,
+	case *tmcons.Message_ReceivedVote:
+		pb = &ReceivedVoteMessage{
+			Height: msg.ReceivedVote.Height,
+			Round:  msg.ReceivedVote.Round,
+			Type:   msg.ReceivedVote.Type,
+			Index:  msg.ReceivedVote.Index,
 		}
 	case *tmcons.Message_VoteSetMaj23:
 		bi, err := types.BlockIDFromProto(&msg.VoteSetMaj23.BlockID)

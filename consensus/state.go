@@ -854,7 +854,7 @@ func (cs *State) handleMsg(mi msgInfo) {
 
 		// TODO: If rs.Height == vote.Height && rs.Round < vote.Round,
 		// the peer is sending us CatchupCommit precommits.
-		// We could make note of this and help filter in broadcastHasVoteMessage().
+		// We could make note of this and help filter in broadcastReceivedVoteMessage().
 
 	default:
 		cs.Logger.Error("unknown msg type", "type", fmt.Sprintf("%T", msg))
