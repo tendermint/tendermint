@@ -17,7 +17,8 @@ import (
 const (
 	checkFrequency    = 500 * time.Millisecond
 	defaultBufferSize = 2
-	defaultWait       = 10 * time.Second
+	shortWait         = 10 * time.Second
+	longWait          = 60 * time.Second
 
 	firstNode  = 0
 	secondNode = 1
@@ -35,12 +36,12 @@ func TestReactorBasic(t *testing.T) {
 	testNet.start(t)
 
 	// assert that the mock node receives a request from the real node
-	testNet.listenForRequest(t, secondNode, firstNode, defaultWait)
+	testNet.listenForRequest(t, secondNode, firstNode, shortWait)
 
 	// assert that when a mock node sends a request it receives a response (and
 	// the correct one)
 	testNet.sendRequest(t, firstNode, secondNode, true)
-	testNet.listenForResponse(t, secondNode, firstNode, defaultWait, []proto.PexAddressV2(nil))
+	testNet.listenForResponse(t, secondNode, firstNode, shortWait, []proto.PexAddressV2(nil))
 }
 
 func TestReactorConnectFullNetwork(t *testing.T) {
@@ -55,7 +56,7 @@ func TestReactorConnectFullNetwork(t *testing.T) {
 
 	// assert that all nodes add each other in the network
 	for idx := 0; idx < len(testNet.nodes); idx++ {
-		testNet.requireNumberOfPeers(t, idx, len(testNet.nodes)-1, defaultWait)
+		testNet.requireNumberOfPeers(t, idx, len(testNet.nodes)-1, longWait)
 	}
 }
 
@@ -73,11 +74,11 @@ func TestReactorSendsRequestsTooOften(t *testing.T) {
 
 	// assert that the secondNode evicts the first node (although they reconnect
 	// straight away again)
-	testNet.listenForPeerUpdate(t, secondNode, firstNode, p2p.PeerStatusDown, defaultWait)
+	testNet.listenForPeerUpdate(t, secondNode, firstNode, p2p.PeerStatusDown, shortWait)
 
 	// firstNode should still receive the address of the thirdNode by the secondNode
 	expectedAddrs := testNet.getV2AddressesFor([]int{thirdNode})
-	testNet.listenForResponse(t, secondNode, firstNode, defaultWait, expectedAddrs)
+	testNet.listenForResponse(t, secondNode, firstNode, shortWait, expectedAddrs)
 
 }
 
@@ -96,7 +97,7 @@ func TestReactorSendsResponseWithoutRequest(t *testing.T) {
 	testNet.sendResponse(t, firstNode, secondNode, []int{thirdNode}, true)
 
 	// secondNode should evict the firstNode
-	testNet.listenForPeerUpdate(t, secondNode, firstNode, p2p.PeerStatusDown, defaultWait)
+	testNet.listenForPeerUpdate(t, secondNode, firstNode, p2p.PeerStatusDown, shortWait)
 }
 
 func TestReactorNeverSendsTooManyPeers(t *testing.T) {
@@ -116,7 +117,7 @@ func TestReactorNeverSendsTooManyPeers(t *testing.T) {
 
 	// first we check that even although we have 110 peers, honest pex reactors
 	// only send 100 (test if secondNode sends firstNode 100 addresses)
-	testNet.pingAndlistenForNAddresses(t, secondNode, firstNode, defaultWait, 100)
+	testNet.pingAndlistenForNAddresses(t, secondNode, firstNode, shortWait, 100)
 }
 
 func TestReactorErrorsOnReceivingTooManyPeers(t *testing.T) {
@@ -136,7 +137,7 @@ func TestReactorErrorsOnReceivingTooManyPeers(t *testing.T) {
 	// now we send a response with more than 100 peers
 	testNet.sendResponse(t, firstNode, secondNode, nodes, true)
 	// secondNode should evict the firstNode
-	testNet.listenForPeerUpdate(t, secondNode, firstNode, p2p.PeerStatusDown, defaultWait)
+	testNet.listenForPeerUpdate(t, secondNode, firstNode, p2p.PeerStatusDown, shortWait)
 }
 
 func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
@@ -154,7 +155,7 @@ func TestReactorSmallPeerStoreInALargeNetwork(t *testing.T) {
 		require.Eventually(t, func() bool {
 			// nolint:scopelint
 			return testNet.network.Nodes[nodeID].PeerManager.PeerRatio() >= 0.9
-		}, 2*defaultWait, checkFrequency)
+		}, longWait, checkFrequency)
 	}
 }
 
@@ -170,7 +171,7 @@ func TestReactorLargePeerStoreInASmallNetwork(t *testing.T) {
 
 	// assert that all nodes add each other in the network
 	for idx := 0; idx < len(testNet.nodes); idx++ {
-		testNet.requireNumberOfPeers(t, idx, len(testNet.nodes)-1, 2*defaultWait)
+		testNet.requireNumberOfPeers(t, idx, len(testNet.nodes)-1, longWait)
 	}
 }
 
@@ -184,7 +185,7 @@ func TestReactorWithNetworkGrowth(t *testing.T) {
 
 	// assert that all nodes add each other in the network
 	for idx := 0; idx < len(testNet.nodes); idx++ {
-		testNet.requireNumberOfPeers(t, idx, len(testNet.nodes)-1, defaultWait)
+		testNet.requireNumberOfPeers(t, idx, len(testNet.nodes)-1, shortWait)
 	}
 
 	// now we inject 10 more nodes
@@ -201,7 +202,7 @@ func TestReactorWithNetworkGrowth(t *testing.T) {
 
 	// assert that all nodes add each other in the network
 	for idx := 0; idx < len(testNet.nodes); idx++ {
-		testNet.requireNumberOfPeers(t, idx, len(testNet.nodes)-1, 10*defaultWait)
+		testNet.requireNumberOfPeers(t, idx, len(testNet.nodes)-1, longWait)
 	}
 }
 
@@ -217,7 +218,7 @@ func TestReactorIntegrationWithLegacyHandleRequest(t *testing.T) {
 	// mock node sends a V1 Pex message to the second node
 	testNet.sendRequest(t, firstNode, secondNode, false)
 	addrs := testNet.getAddressesFor(t, []int{thirdNode})
-	testNet.listenForLegacyResponse(t, secondNode, firstNode, defaultWait, addrs)
+	testNet.listenForLegacyResponse(t, secondNode, firstNode, shortWait, addrs)
 }
 
 func TestReactorIntegrationWithLegacyHandleResponse(t *testing.T) {
@@ -231,10 +232,10 @@ func TestReactorIntegrationWithLegacyHandleResponse(t *testing.T) {
 	testNet.connectPeers(t, firstNode, fourthNode)
 	testNet.start(t)
 
-	testNet.listenForRequest(t, secondNode, firstNode, defaultWait)
+	testNet.listenForRequest(t, secondNode, firstNode, shortWait)
 	// send a v1 response instead
 	testNet.sendResponse(t, firstNode, secondNode, []int{thirdNode, fourthNode}, false)
-	testNet.requireNumberOfPeers(t, secondNode, len(testNet.nodes)-1, defaultWait)
+	testNet.requireNumberOfPeers(t, secondNode, len(testNet.nodes)-1, shortWait)
 }
 
 type reactorTestSuite struct {

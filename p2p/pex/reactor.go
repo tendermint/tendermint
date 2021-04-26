@@ -448,7 +448,7 @@ func (r *ReactorV2) calculateNextRequestTime() {
 	if r.totalPeers > 0 || r.discoveryRatio == 0 {
 		// find the ratio of new peers. NOTE: We add 1 to both sides to avoid
 		// divide by zero problems
-		ratio := float32(r.totalPeers+1) / float32((r.newPeers*10)+1)
+		ratio := float32(r.totalPeers+1) / float32(r.newPeers+1)
 		// square the ratio in order to get non linear time intervals
 		// NOTE: The longest possible interval for 100 peers is 25 minutes
 		r.discoveryRatio = ratio * ratio
