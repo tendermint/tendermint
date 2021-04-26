@@ -423,7 +423,6 @@ func (r *ReactorV2) sendRequestForPeers() {
 // as possible. As the node becomes more familiar with the network the ratio of
 // new nodes will plummet to a very small number, meaning the interval expands
 // to its upper bound.
-// MaxInterval = 100 * 100 * baseTime ~= 16mins for 10 peers
 // CONTRACT: Must use a write lock as nextRequestTime is updated
 func (r *ReactorV2) calculateNextRequestTime() {
 	// check if the peer store is full. If so then there is no need
