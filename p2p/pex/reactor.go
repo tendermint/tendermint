@@ -450,7 +450,8 @@ func (r *ReactorV2) calculateNextRequestTime() {
 		// divide by zero problems
 		ratio := float32(r.totalPeers+1) / float32(r.newPeers+1)
 		// square the ratio in order to get non linear time intervals
-		// NOTE: The longest possible interval for 100 peers is 25 minutes
+		// NOTE: The longest possible interval for a network with 100 or more peers
+		// where a node is connected to 50 of them is 2 minutes.
 		r.discoveryRatio = ratio * ratio
 		r.newPeers = 0
 		r.totalPeers = 0
