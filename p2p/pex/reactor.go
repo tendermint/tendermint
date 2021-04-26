@@ -8,6 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
@@ -438,7 +439,7 @@ func (r *ReactorV2) calculateNextRequestTime() {
 	// in. For example if we have 10 peers and we can't send a message to the
 	// same peer every 500ms, then we can send a request every 50ms. In practice
 	// we use a safety margin of 2, ergo 100ms
-	peers := r.availablePeers.Len()
+	peers := tmmath.MinInt(r.availablePeers.Len(), 50)
 	baseTime := minReceiveRequestInterval
 	if peers > 0 {
 		baseTime = minReceiveRequestInterval * 2 / time.Duration(peers)
@@ -455,11 +456,9 @@ func (r *ReactorV2) calculateNextRequestTime() {
 		r.newPeers = 0
 		r.totalPeers = 0
 	}
-	if r.discoveryRatio < 1 {
-		r.nextRequestTime = time.Now().Add(baseTime)
-	} else {
-		r.nextRequestTime = time.Now().Add(baseTime * time.Duration(r.discoveryRatio))
-	}
+	// NOTE: As ratio is always >= 1, discovery ratio is >= 1. Therefore we don't need to worry
+	// about the next request time being less than the minimum time
+	r.nextRequestTime = time.Now().Add(baseTime * time.Duration(r.discoveryRatio))
 }
 
 func (r *ReactorV2) removePeer(id p2p.NodeID) {
