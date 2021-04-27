@@ -16,7 +16,7 @@ var (
 	testnetCombinations = map[string][]interface{}{
 		"topology":      {"single", "quad", "large"},
 		"ipv6":          {false, true},
-		"useNewP2P":     {false, true, 2},
+		"p2p":           {NewP2PMode, LegacyP2PMode, SplitP2PMode},
 		"queueType":     {"priority"}, // "fifo", "wdrr"
 		"initialHeight": {0, 1000},
 		"initialState": {
@@ -48,8 +48,15 @@ var (
 )
 
 // Generate generates random testnets using the given RNG.
-func Generate(r *rand.Rand) ([]e2e.Manifest, error) {
+func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 	manifests := []e2e.Manifest{}
+	switch opts.P2P {
+	case NewP2PMode, LegacyP2PMode, SplitP2PMode:
+		testnetCombinations["p2p"] = []interface{}{opts.P2P}
+	default:
+		testnetCombinations["p2p"] = []interface{}{NewP2PMode, LegacyP2PMode, SplitP2PMode}
+	}
+
 	for _, opt := range combinations(testnetCombinations) {
 		manifest, err := generateTestnet(r, opt)
 		if err != nil {
@@ -59,6 +66,20 @@ func Generate(r *rand.Rand) ([]e2e.Manifest, error) {
 	}
 	return manifests, nil
 }
+
+type Options struct {
+	P2P P2PMode
+}
+
+type P2PMode string
+
+const (
+	NewP2PMode    P2PMode = "new"
+	LegacyP2PMode P2PMode = "legacy"
+	SplitP2PMode  P2PMode = "split"
+	// mixed means that all combination are generated
+	MixedP2PMode P2PMode = "mixed"
+)
 
 // generateTestnet generates a single testnet with the given options.
 func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, error) {
@@ -76,12 +97,16 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 
 	var p2pNodeFactor int
 
-	switch p2pInfo := opt["useNewP2P"].(type) {
-	case bool:
-		manifest.DisableLegacyP2P = p2pInfo
-	case int:
+	switch opt["p2p"].(P2PMode) {
+	case NewP2PMode:
+		manifest.DisableLegacyP2P = true
+	case LegacyP2PMode:
 		manifest.DisableLegacyP2P = false
-		p2pNodeFactor = p2pInfo
+	case SplitP2PMode:
+		manifest.DisableLegacyP2P = false
+		p2pNodeFactor = 2
+	default:
+		return manifest, fmt.Errorf("unknown p2p mode %s", opt["p2p"])
 	}
 
 	var numSeeds, numValidators, numFulls, numLightClients int
@@ -92,10 +117,10 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		numValidators = 4
 	case "large":
 		// FIXME Networks are kept small since large ones use too much CPU.
-		numSeeds = r.Intn(3)
+		numSeeds = r.Intn(2)
 		numLightClients = r.Intn(3)
-		numValidators = 4 + r.Intn(7)
-		numFulls = r.Intn(5)
+		numValidators = 4 + r.Intn(4)
+		numFulls = r.Intn(4)
 	default:
 		return manifest, fmt.Errorf("unknown topology %q", opt["topology"])
 	}
