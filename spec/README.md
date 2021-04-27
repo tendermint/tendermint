@@ -42,6 +42,10 @@ please submit them to our [bug bounty](https://tendermint.com/security)!
 - [Mempool](./p2p/messages/mempool.md): gossip transactions so they get included in blocks
 - [Evidence](./p2p/messages/evidence.md): sending invalid evidence will stop the peer
 
+### RPC
+
+- [RPC SPEC](./rpc/README.md): Specification of the Tendermint remote procedure call interface.
+
 ### Software
 
 - [ABCI](./abci/README.md): Details about interactions between the
