@@ -45,25 +45,39 @@ func NewCLI() *CLI {
 			if err != nil {
 				return err
 			}
-			return cli.generate(dir, groups)
+			p2pMode, err := cmd.Flags().GetString("p2p")
+			if err != nil {
+				return err
+			}
+			var opts Options
+			switch p2pMode {
+			case "new", "legacy", "split", "mixed":
+				opts = Options{P2P: P2PMode(p2pMode)}
+			default:
+				return fmt.Errorf("p2p mode must be either new, legacy, split or mixed got %s", p2pMode)
+			}
+
+			return cli.generate(dir, groups, opts)
 		},
 	}
 
 	cli.root.PersistentFlags().StringP("dir", "d", "", "Output directory for manifests")
 	_ = cli.root.MarkPersistentFlagRequired("dir")
 	cli.root.PersistentFlags().IntP("groups", "g", 0, "Number of groups")
+	cli.root.PersistentFlags().StringP("p2p", "p", string(MixedP2PMode),
+		"P2P typology to be generated [\"new\", \"legacy\", \"hybrid\" or \"mixed\" ]")
 
 	return cli
 }
 
 // generate generates manifests in a directory.
-func (cli *CLI) generate(dir string, groups int) error {
+func (cli *CLI) generate(dir string, groups int, opts Options) error {
 	err := os.MkdirAll(dir, 0755)
 	if err != nil {
 		return err
 	}
 
-	manifests, err := Generate(rand.New(rand.NewSource(randomSeed)))
+	manifests, err := Generate(rand.New(rand.NewSource(randomSeed)), opts)
 	if err != nil {
 		return err
 	}
