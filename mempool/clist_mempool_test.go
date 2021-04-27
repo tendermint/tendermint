@@ -3,10 +3,8 @@ package mempool
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
-	"io/ioutil"
 	mrand "math/rand"
 	"os"
 	"testing"
@@ -600,17 +598,6 @@ func newRemoteApp(
 		t.Fatalf("Error starting socket server: %v", err.Error())
 	}
 	return clientCreator, server
-}
-func checksumIt(data []byte) string {
-	h := sha256.New()
-	h.Write(data)
-	return fmt.Sprintf("%x", h.Sum(nil))
-}
-
-func checksumFile(p string, t *testing.T) string {
-	data, err := ioutil.ReadFile(p)
-	require.Nil(t, err, "expecting successful read of %q", p)
-	return checksumIt(data)
 }
 
 func abciResponses(n int, code uint32) []*abci.ResponseDeliverTx {
