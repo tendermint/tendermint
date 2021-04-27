@@ -64,7 +64,8 @@ func NewCLI() *CLI {
 	cli.root.PersistentFlags().StringP("dir", "d", "", "Output directory for manifests")
 	_ = cli.root.MarkPersistentFlagRequired("dir")
 	cli.root.PersistentFlags().IntP("groups", "g", 0, "Number of groups")
-	cli.root.PersistentFlags().StringP("p2p", "p", "mixed", "P2P typology to be generated. Can be \"new\", \"legacy\" or \"split\". Use \"mixed\" for combinations of all flavours")
+	cli.root.PersistentFlags().StringP("p2p", "p", string(MixedP2PMode),
+		"P2P typology to be generated [\"new\", \"legacy\", \"split\" or \"mixed\" ]")
 
 	return cli
 }
