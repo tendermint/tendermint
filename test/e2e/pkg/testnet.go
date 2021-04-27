@@ -48,7 +48,7 @@ const (
 	PerturbationPause      Perturbation = "pause"
 	PerturbationRestart    Perturbation = "restart"
 
-	EvidenceAgeHeight int64         = 3
+	EvidenceAgeHeight int64         = 5
 	EvidenceAgeTime   time.Duration = 10 * time.Second
 )
 
@@ -90,7 +90,7 @@ type Node struct {
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
 	LogLevel         string
-	UseNewP2P        bool
+	DisableLegacyP2P bool
 	QueueType        string
 }
 
@@ -169,9 +169,10 @@ func LoadTestnet(file string) (*Testnet, error) {
 			RetainBlocks:     nodeManifest.RetainBlocks,
 			Perturbations:    []Perturbation{},
 			LogLevel:         manifest.LogLevel,
-			UseNewP2P:        manifest.UseNewP2P,
+			DisableLegacyP2P: manifest.DisableLegacyP2P,
 			QueueType:        manifest.QueueType,
 		}
+
 		if node.StartAt == testnet.InitialHeight {
 			node.StartAt = 0 // normalize to 0 for initial nodes, since code expects this
 		}

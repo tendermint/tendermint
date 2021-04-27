@@ -23,7 +23,9 @@ func TestPeerScoring(t *testing.T) {
 
 	// create a fake node
 	id := NodeID(strings.Repeat("a1", 20))
-	require.NoError(t, peerManager.Add(NodeAddress{NodeID: id, Protocol: "memory"}))
+	added, err := peerManager.Add(NodeAddress{NodeID: id, Protocol: "memory"})
+	require.NoError(t, err)
+	require.True(t, added)
 
 	t.Run("Synchronous", func(t *testing.T) {
 		// update the manager and make sure it's correct

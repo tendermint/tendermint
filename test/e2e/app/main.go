@@ -156,6 +156,7 @@ func startSeedNode(cfg *Config) error {
 
 	n, err := node.NewSeedNode(
 		tmcfg,
+		node.DefaultDBProvider,
 		*nodeKey,
 		node.DefaultGenesisDocProviderFunc(tmcfg),
 		nodeLogger,

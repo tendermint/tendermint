@@ -384,13 +384,14 @@ func (m *PeerManager) prunePeers() error {
 }
 
 // Add adds a peer to the manager, given as an address. If the peer already
-// exists, the address is added to it if not already present.
-func (m *PeerManager) Add(address NodeAddress) error {
+// exists, the address is added to it if it isn't already present. This will push
+// low scoring peers out of the address book if it exceeds the maximum size.
+func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 	if err := address.Validate(); err != nil {
-		return err
+		return false, err
 	}
 	if address.NodeID == m.selfID {
-		return fmt.Errorf("can't add self (%v) to peer store", m.selfID)
+		return false, fmt.Errorf("can't add self (%v) to peer store", m.selfID)
 	}
 
 	m.mtx.Lock()
@@ -400,17 +401,32 @@ func (m *PeerManager) Add(address NodeAddress) error {
 	if !ok {
 		peer = m.newPeerInfo(address.NodeID)
 	}
-	if _, ok := peer.AddressInfo[address]; !ok {
-		peer.AddressInfo[address] = &peerAddressInfo{Address: address}
+	_, ok = peer.AddressInfo[address]
+	// if we already have the peer address, there's no need to continue
+	if ok {
+		return false, nil
 	}
+
+	// else add the new address
+	peer.AddressInfo[address] = &peerAddressInfo{Address: address}
 	if err := m.store.Set(peer); err != nil {
-		return err
+		return false, err
 	}
 	if err := m.prunePeers(); err != nil {
-		return err
+		return true, err
 	}
 	m.dialWaker.Wake()
-	return nil
+	return true, nil
+}
+
+// PeerRatio returns the ratio of peer addresses stored to the maximum size.
+func (m *PeerManager) PeerRatio() float64 {
+	if m.options.MaxPeers == 0 {
+		return 0
+	}
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	return float64(m.store.Size()) / float64(m.options.MaxPeers)
 }
 
 // DialNext finds an appropriate peer address to dial, and marks it as dialing.

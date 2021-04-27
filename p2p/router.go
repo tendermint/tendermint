@@ -128,13 +128,13 @@ type RouterOptions struct {
 	// no timeout.
 	HandshakeTimeout time.Duration
 
-	// QueueType must be "wdrr" (Weighed Deficit Round Robin),
-	// "priority", or FIFO. Defaults to FIFO.
+	// QueueType must be "wdrr" (Weighed Deficit Round Robin), "priority", or
+	// "fifo". Defaults to "fifo".
 	QueueType string
 
-	// MaxIncommingConnectionsPerIP limits the number of incoming
-	// connections per IP address. Defaults to 100.
-	MaxIncommingConnectionsPerIP uint
+	// MaxIncomingConnectionAttempts rate limits the number of incoming connection
+	// attempts per IP address. Defaults to 100.
+	MaxIncomingConnectionAttempts uint
 
 	// IncomingConnectionWindow describes how often an IP address
 	// can attempt to create a new connection. Defaults to 10
@@ -182,8 +182,8 @@ func (o *RouterOptions) Validate() error {
 			o.IncomingConnectionWindow)
 	}
 
-	if o.MaxIncommingConnectionsPerIP == 0 {
-		o.MaxIncommingConnectionsPerIP = 100
+	if o.MaxIncomingConnectionAttempts == 0 {
+		o.MaxIncomingConnectionAttempts = 100
 	}
 
 	return nil
@@ -278,8 +278,9 @@ func NewRouter(
 		nodeInfo: nodeInfo,
 		privKey:  privKey,
 		connTracker: newConnTracker(
-			options.MaxIncommingConnectionsPerIP,
-			options.IncomingConnectionWindow),
+			options.MaxIncomingConnectionAttempts,
+			options.IncomingConnectionWindow,
+		),
 		chDescs:            make([]ChannelDescriptor, 0),
 		transports:         transports,
 		protocolTransports: map[Protocol]Transport{},
@@ -526,7 +527,8 @@ func (r *Router) acceptPeers(transport Transport) {
 			r.logger.Debug("rate limiting incoming peer",
 				"err", err,
 				"ip", incomingIP.String(),
-				"closeErr", closeErr)
+				"close_err", closeErr,
+			)
 
 			return
 		}
@@ -545,9 +547,7 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 	incomingIP := re.IP
 
 	if err := r.filterPeersIP(ctx, incomingIP, re.Port); err != nil {
-		r.logger.Debug("peer filtered by IP",
-			"ip", incomingIP.String(),
-			"err", err)
+		r.logger.Debug("peer filtered by IP", "ip", incomingIP.String(), "err", err)
 		return
 	}
 
@@ -576,9 +576,7 @@ func (r *Router) openConnection(ctx context.Context, conn Connection) {
 	}
 
 	if err := r.filterPeersID(ctx, peerInfo.NodeID); err != nil {
-		r.logger.Debug("peer filtered by node ID",
-			"node", peerInfo.NodeID,
-			"err", err)
+		r.logger.Debug("peer filtered by node ID", "node", peerInfo.NodeID, "err", err)
 		return
 	}
 

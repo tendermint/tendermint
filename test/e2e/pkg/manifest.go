@@ -59,9 +59,8 @@ type Manifest struct {
 	// by individual nodes.
 	LogLevel string `toml:"log_level"`
 
-	// UseNewP2P enables use of the new p2p layer for all nodes in
-	// a test.
-	UseNewP2P bool `toml:"use_new_p2p"`
+	// DisableLegacyP2P enables use of the new p2p layer for all nodes in a test.
+	DisableLegacyP2P bool `toml:"disable_legacy_p2p"`
 
 	// QueueType describes the type of queue that the system uses internally
 	QueueType string `toml:"queue_type"`
@@ -143,7 +142,7 @@ type ManifestNode struct {
 	LogLevel string `toml:"log_level"`
 
 	// UseNewP2P enables use of the new p2p layer for this node.
-	UseNewP2P bool `toml:"use_new_p2p"`
+	DisableLegacyP2P bool `toml:"disable_legacy_p2p"`
 
 	// QueueType describes the type of queue that the p2p layer
 	// uses internally.
