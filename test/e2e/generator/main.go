@@ -65,7 +65,7 @@ func NewCLI() *CLI {
 	_ = cli.root.MarkPersistentFlagRequired("dir")
 	cli.root.PersistentFlags().IntP("groups", "g", 0, "Number of groups")
 	cli.root.PersistentFlags().StringP("p2p", "p", string(MixedP2PMode),
-		"P2P typology to be generated [\"new\", \"legacy\", \"split\" or \"mixed\" ]")
+		"P2P typology to be generated [\"new\", \"legacy\", \"hybrid\" or \"mixed\" ]")
 
 	return cli
 }

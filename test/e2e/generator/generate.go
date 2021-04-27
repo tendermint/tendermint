@@ -16,7 +16,7 @@ var (
 	testnetCombinations = map[string][]interface{}{
 		"topology":      {"single", "quad", "large"},
 		"ipv6":          {false, true},
-		"p2p":           {NewP2PMode, LegacyP2PMode, SplitP2PMode},
+		"p2p":           {NewP2PMode, LegacyP2PMode, HybridP2PMode},
 		"queueType":     {"priority"}, // "fifo", "wdrr"
 		"initialHeight": {0, 1000},
 		"initialState": {
@@ -51,10 +51,10 @@ var (
 func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 	manifests := []e2e.Manifest{}
 	switch opts.P2P {
-	case NewP2PMode, LegacyP2PMode, SplitP2PMode:
+	case NewP2PMode, LegacyP2PMode, HybridP2PMode:
 		testnetCombinations["p2p"] = []interface{}{opts.P2P}
 	default:
-		testnetCombinations["p2p"] = []interface{}{NewP2PMode, LegacyP2PMode, SplitP2PMode}
+		testnetCombinations["p2p"] = []interface{}{NewP2PMode, LegacyP2PMode, HybridP2PMode}
 	}
 
 	for _, opt := range combinations(testnetCombinations) {
@@ -76,7 +76,7 @@ type P2PMode string
 const (
 	NewP2PMode    P2PMode = "new"
 	LegacyP2PMode P2PMode = "legacy"
-	SplitP2PMode  P2PMode = "split"
+	HybridP2PMode P2PMode = "hybrid"
 	// mixed means that all combination are generated
 	MixedP2PMode P2PMode = "mixed"
 )
@@ -102,7 +102,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		manifest.DisableLegacyP2P = true
 	case LegacyP2PMode:
 		manifest.DisableLegacyP2P = false
-	case SplitP2PMode:
+	case HybridP2PMode:
 		manifest.DisableLegacyP2P = false
 		p2pNodeFactor = 2
 	default:
