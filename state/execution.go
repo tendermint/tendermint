@@ -430,6 +430,8 @@ func getBeginBlockValidatorInfo(block *types.Block, store Store,
 	return abci.LastCommitInfo{
 		Round: block.LastCommit.Round,
 		Votes: voteInfos,
+		BlockSignature: block.LastCommit.ThresholdBlockSignature,
+		StateSignature: block.LastCommit.ThresholdStateSignature,
 	}
 }
 
