@@ -78,3 +78,7 @@ func (bz HexBytes) Format(s fmt.State, verb rune) {
 		s.Write([]byte(fmt.Sprintf("%X", []byte(bz))))
 	}
 }
+
+func (bz HexBytes) Equal(b []byte) bool {
+	return bytes.Equal(bz, b)
+}

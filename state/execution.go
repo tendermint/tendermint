@@ -8,6 +8,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -37,9 +38,11 @@ type BlockExecutor struct {
 	mempool mempl.Mempool
 	evpool  EvidencePool
 
-	logger log.Logger
-
+	logger  log.Logger
 	metrics *Metrics
+
+	// cache the verification results over a single height
+	cache []bytes.HexBytes
 }
 
 type BlockExecutorOption func(executor *BlockExecutor)
@@ -115,11 +118,23 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 // Validation does not mutate state, but does require historical information from the stateDB,
 // ie. to verify evidence from a validator at an old height.
 func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) error {
+	hash := block.Hash()
+	if blockExec.alreadyVerifiedBlock(hash) {
+		return nil
+	}
+
 	err := validateBlock(state, block)
 	if err != nil {
 		return err
 	}
-	return blockExec.evpool.CheckEvidence(block.Evidence.Evidence)
+
+	err = blockExec.evpool.CheckEvidence(block.Evidence.Evidence)
+	if err != nil {
+		return err
+	}
+
+	blockExec.cache = append(blockExec.cache, hash)
+	return nil
 }
 
 // ApplyBlock validates the block against the state, executes it against the app,
@@ -132,7 +147,8 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	state State, blockID types.BlockID, block *types.Block,
 ) (State, int64, error) {
 
-	if err := validateBlock(state, block); err != nil {
+	// validate the block if we haven't already
+	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
 	}
 
@@ -195,6 +211,9 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	fail.Fail() // XXX
 
+	// reset the verification cache
+	blockExec.cache = []bytes.HexBytes{}
+
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
 	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses, validatorUpdates)
@@ -249,6 +268,15 @@ func (blockExec *BlockExecutor) Commit(
 	)
 
 	return res.Data, res.RetainHeight, err
+}
+
+func (blockExec *BlockExecutor) alreadyVerifiedBlock(blockHash bytes.HexBytes) bool {
+	for _, hash := range blockExec.cache {
+		if blockHash.Equal(hash) {
+			return true
+		}
+	}
+	return false
 }
 
 //---------------------------------------------------------
