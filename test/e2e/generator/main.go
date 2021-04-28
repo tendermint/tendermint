@@ -50,11 +50,11 @@ func NewCLI() *CLI {
 				return err
 			}
 			var opts Options
-			switch p2pMode {
-			case "new", "legacy", "split", "mixed":
-				opts = Options{P2P: P2PMode(p2pMode)}
+			switch mode := P2PMode(p2pMode); mode {
+			case NewP2PMode, LegacyP2PMode, HybridP2PMode, MixedP2PMode:
+				opts = Options{P2P: mode}
 			default:
-				return fmt.Errorf("p2p mode must be either new, legacy, split or mixed got %s", p2pMode)
+				return fmt.Errorf("p2p mode must be either new, legacy, hybrid or mixed got %s", p2pMode)
 			}
 
 			return cli.generate(dir, groups, opts)
