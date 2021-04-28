@@ -64,7 +64,7 @@ func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	insecureSignature := blsPrivateKey.SignInsecure(msg)
+	insecureSignature := blsPrivateKey.SignInsecurePrehashed(msg)
 	serializedSignature := insecureSignature.Serialize()
 	// fmt.Printf("signature %X created for msg %X with key %X\n", serializedSignature, msg, privKey.PubKey().Bytes())
 	return serializedSignature, nil

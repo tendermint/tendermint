@@ -2,6 +2,7 @@ package privval
 
 import (
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
@@ -15,6 +16,7 @@ func DefaultValidationRequestHandler(
 	privVal types.PrivValidator,
 	req privvalproto.Message,
 	chainID string,
+	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
 ) (privvalproto.Message, error) {
 	var (

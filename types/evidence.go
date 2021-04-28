@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"sort"
 	"strings"
 	"time"
@@ -541,26 +542,26 @@ func (err *ErrEvidenceOverflow) Error() string {
 // unstable - use only for testing
 
 // assumes the round to be 0 and the validator index to be 0
-func NewMockDuplicateVoteEvidence(height int64, time time.Time, chainID string, quorumHash crypto.QuorumHash) *DuplicateVoteEvidence {
+func NewMockDuplicateVoteEvidence(height int64, time time.Time, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) *DuplicateVoteEvidence {
 	val := NewMockPV()
-	return NewMockDuplicateVoteEvidenceWithValidator(height, time, val, chainID, quorumHash)
+	return NewMockDuplicateVoteEvidenceWithValidator(height, time, val, chainID, quorumType, quorumHash)
 }
 
 // assumes voting power to be DefaultDashVotingPower and validator to be the only one in the set
 func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
-	pv PrivValidator, chainID string, quorumHash crypto.QuorumHash) *DuplicateVoteEvidence {
+	pv PrivValidator, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) *DuplicateVoteEvidence {
 	pubKey, _ := pv.GetPubKey(quorumHash)
 	proTxHash, _ := pv.GetProTxHash()
 	val := NewValidator(pubKey, DefaultDashVotingPower, proTxHash)
 
 	voteA := makeMockVote(height, 0, 0, proTxHash, randBlockID(), randStateID())
 	vA := voteA.ToProto()
-	_ = pv.SignVote(chainID, quorumHash, vA)
+	_ = pv.SignVote(chainID, quorumType, quorumHash, vA)
 	voteA.BlockSignature = vA.BlockSignature
 	voteA.StateSignature = vA.StateSignature
 	voteB := makeMockVote(height, 0, 0, proTxHash, randBlockID(), randStateID())
 	vB := voteB.ToProto()
-	_ = pv.SignVote(chainID, quorumHash, vB)
+	_ = pv.SignVote(chainID, quorumType, quorumHash, vB)
 	voteB.BlockSignature = vB.BlockSignature
 	voteB.StateSignature = vB.StateSignature
 	return NewDuplicateVoteEvidence(voteA, voteB, time, NewValidatorSet([]*Validator{val}, val.PubKey, crypto.SmallQuorumType(), quorumHash))
@@ -568,17 +569,18 @@ func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
 
 // assumes voting power to be DefaultDashVotingPower and validator to be the only one in the set
 func NewMockDuplicateVoteEvidenceWithPrivValInValidatorSet(height int64, time time.Time,
-	pv PrivValidator, valSet *ValidatorSet, chainID string, quorumHash crypto.QuorumHash) *DuplicateVoteEvidence {
+	pv PrivValidator, valSet *ValidatorSet, chainID string, quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash) *DuplicateVoteEvidence {
 	proTxHash, _ := pv.GetProTxHash()
 
 	voteA := makeMockVote(height, 0, 0, proTxHash, randBlockID(), randStateID())
 	vA := voteA.ToProto()
-	_ = pv.SignVote(chainID, quorumHash, vA)
+	_ = pv.SignVote(chainID, quorumType, quorumHash, vA)
 	voteA.BlockSignature = vA.BlockSignature
 	voteA.StateSignature = vA.StateSignature
 	voteB := makeMockVote(height, 0, 0, proTxHash, randBlockID(), randStateID())
 	vB := voteB.ToProto()
-	_ = pv.SignVote(chainID, quorumHash, vB)
+	_ = pv.SignVote(chainID, quorumType, quorumHash, vB)
 	voteB.BlockSignature = vB.BlockSignature
 	voteB.StateSignature = vB.StateSignature
 	return NewDuplicateVoteEvidence(voteA, voteB, time, valSet)

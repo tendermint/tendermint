@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -94,6 +95,7 @@ func (vs *validatorStub) signVote(
 	voteType tmproto.SignedMsgType,
 	hash []byte,
 	lastAppHash []byte,
+	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
 	header types.PartSetHeader) (*types.Vote, error) {
 
@@ -112,7 +114,7 @@ func (vs *validatorStub) signVote(
 		StateID:            types.StateID{LastAppHash: lastAppHash},
 	}
 	v := vote.ToProto()
-	err = vs.PrivValidator.SignVote(config.ChainID(), quorumHash, v)
+	err = vs.PrivValidator.SignVote(config.ChainID(), quorumType, quorumHash, v)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
 
@@ -120,8 +122,9 @@ func (vs *validatorStub) signVote(
 }
 
 // Sign vote for type/hash/header
-func signVote(vs *validatorStub, voteType tmproto.SignedMsgType, hash []byte, lastAppHash []byte, quorumHash crypto.QuorumHash, header types.PartSetHeader) *types.Vote {
-	v, err := vs.signVote(voteType, hash, lastAppHash, quorumHash, header)
+func signVote(vs *validatorStub, voteType tmproto.SignedMsgType, hash []byte, lastAppHash []byte, quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash, header types.PartSetHeader) *types.Vote {
+	v, err := vs.signVote(voteType, hash, lastAppHash, quorumType, quorumHash, header)
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
 	}
@@ -132,12 +135,13 @@ func signVotes(
 	voteType tmproto.SignedMsgType,
 	hash []byte,
 	lastAppHash []byte,
+	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
 	header types.PartSetHeader,
 	vss ...*validatorStub) []*types.Vote {
 	votes := make([]*types.Vote, len(vss))
 	for i, vs := range vss {
-		votes[i] = signVote(vs, voteType, hash, lastAppHash, quorumHash, header)
+		votes[i] = signVote(vs, voteType, hash, lastAppHash, quorumType, quorumHash, header)
 	}
 	return votes
 }
@@ -203,6 +207,7 @@ func decideProposal(
 	block, blockParts := cs1.createProposalBlock()
 	validRound := cs1.ValidRound
 	chainID := cs1.state.ChainID
+	quorumType := cs1.Validators.QuorumType
 	quorumHash := cs1.Validators.QuorumHash
 	cs1.mtx.Unlock()
 	if block == nil {
@@ -213,7 +218,7 @@ func decideProposal(
 	polRound, propBlockID := validRound, types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 	proposal = types.NewProposal(height, 1, round, polRound, propBlockID)
 	p := proposal.ToProto()
-	if err := vs.SignProposal(chainID, quorumHash, p); err != nil {
+	if err := vs.SignProposal(chainID, quorumType, quorumHash, p); err != nil {
 		panic(err)
 	}
 

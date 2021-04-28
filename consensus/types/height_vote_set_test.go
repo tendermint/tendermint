@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"os"
 	"testing"
 
@@ -78,7 +79,7 @@ func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []ty
 	chainID := config.ChainID()
 
 	v := vote.ToProto()
-	err = privVal.SignVote(chainID, crypto.QuorumHash{}, v)
+	err = privVal.SignVote(chainID, btcjson.LLMQType_5_60, crypto.QuorumHash{}, v)
 	if err != nil {
 		panic(fmt.Sprintf("Error signing vote: %v", err))
 	}

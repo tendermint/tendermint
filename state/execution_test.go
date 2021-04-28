@@ -154,7 +154,8 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	}
 
 	// we don't need to worry about validating the evidence as long as they pass validate basic
-	dve := types.NewMockDuplicateVoteEvidenceWithValidator(3, defaultEvidenceTime, privVal, state.ChainID, state.Validators.QuorumHash)
+	dve := types.NewMockDuplicateVoteEvidenceWithValidator(3, defaultEvidenceTime, privVal, state.ChainID,
+		state.Validators.QuorumType, state.Validators.QuorumHash)
 	dve.ValidatorPower = types.DefaultDashVotingPower
 	commitSig := []types.CommitSig{{
 		BlockIDFlag:        types.BlockIDFlagNil,

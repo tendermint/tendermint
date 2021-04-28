@@ -1159,7 +1159,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	}
 	proposal := types.NewProposal(height, proposedChainLockHeight, round, cs.ValidRound, propBlockID)
 	p := proposal.ToProto()
-	if err := cs.privValidator.SignProposal(cs.state.ChainID, cs.Validators.QuorumHash, p); err == nil {
+	if err := cs.privValidator.SignProposal(cs.state.ChainID, cs.Validators.QuorumType, cs.Validators.QuorumHash, p); err == nil {
 		proposal.Signature = p.Signature
 
 		// send proposal and block parts on internal msg queue
@@ -2270,7 +2270,7 @@ func (cs *State) signVote(
 
 	v := vote.ToProto()
 	// fmt.Printf("validators for signing vote are %v\n", cs.state.Validators)
-	err := cs.privValidator.SignVote(cs.state.ChainID, cs.state.Validators.QuorumHash, v)
+	err := cs.privValidator.SignVote(cs.state.ChainID, cs.state.Validators.QuorumType, cs.state.Validators.QuorumHash, v)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
 

@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -151,7 +152,7 @@ func newMockSignerServer(
 		),
 	)
 
-	return privval.NewSignerServer(dialerEndpoint, th.chainID, crypto.RandQuorumHash(), mockPV)
+	return privval.NewSignerServer(dialerEndpoint, th.chainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash(), mockPV)
 }
 
 // For running relatively standard tests.

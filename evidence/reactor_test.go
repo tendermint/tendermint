@@ -3,6 +3,7 @@ package evidence_test
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"sync"
 	"testing"
 	"time"
@@ -160,7 +161,7 @@ func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height-3+int64(i),
 			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val,
-			state.ChainID, quorumHash)
+			state.ChainID, btcjson.LLMQType_5_60, quorumHash)
 		err := pools[0].AddEvidence(ev)
 		require.NoError(t, err)
 		evList[i] = ev
@@ -335,7 +336,7 @@ func sendEvidence(t *testing.T, evpool *evidence.Pool, val types.PrivValidator, 
 	evList := make([]types.Evidence, n)
 	for i := 0; i < n; i++ {
 		ev := types.NewMockDuplicateVoteEvidenceWithValidator(int64(i+1),
-			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val, evidenceChainID, crypto.QuorumHash{})
+			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val, evidenceChainID, btcjson.LLMQType_5_60, crypto.QuorumHash{})
 		err := evpool.AddEvidence(ev)
 		require.NoError(t, err)
 		evList[i] = ev

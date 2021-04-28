@@ -3,6 +3,7 @@ package types
 import (
 	"context"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"math/rand"
 	"testing"
 	"time"
@@ -287,7 +288,7 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 		}
 	})
 
-	ev := NewMockDuplicateVoteEvidence(1, time.Now(), "test-chain-id", crypto.RandQuorumHash())
+	ev := NewMockDuplicateVoteEvidence(1, time.Now(), "test-chain-id", btcjson.LLMQType_5_60, crypto.RandQuorumHash())
 
 	query := "tm.event='NewEvidence'"
 	evSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))

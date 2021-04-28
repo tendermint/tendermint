@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"net"
 	"os"
 	"syscall"
@@ -151,6 +152,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	signerServer := privval.NewSignerServer(
 		dialerEndpoint,
 		config.ChainID(),
+		btcjson.LLMQType_5_60,
 		crypto.RandQuorumHash(),
 		types.NewMockPV(),
 	)
@@ -198,6 +200,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	pvsc := privval.NewSignerServer(
 		dialerEndpoint,
 		config.ChainID(),
+		btcjson.LLMQType_5_60,
 		crypto.RandQuorumHash(),
 		types.NewMockPV(),
 	)

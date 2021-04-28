@@ -169,7 +169,7 @@ func (sc *DashCoreSignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 }
 
 // SignVote requests a remote signer to sign a vote
-func (sc *DashCoreSignerClient) SignVote(chainID string, quorumHash crypto.QuorumHash, protoVote *tmproto.Vote) error {
+func (sc *DashCoreSignerClient) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, protoVote *tmproto.Vote) error {
 	if len(quorumHash) != crypto.DefaultHashSize {
 		return fmt.Errorf("quorum hash is not the right length %s", quorumHash.String())
 	}
@@ -194,7 +194,7 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumHash crypto.Quoru
 
 	// proTxHash, err := sc.GetProTxHash()
 
-	blockResponse, err := sc.endpoint.QuorumSign(sc.defaultQuorumType, blockRequestIdString, blockMessageHashString, quorumHash.String(), false)
+	blockResponse, err := sc.endpoint.QuorumSign(quorumType, blockRequestIdString, blockMessageHashString, quorumHash.String(), false)
 
 	if blockResponse == nil {
 		return ErrUnexpectedResponse
@@ -271,7 +271,7 @@ func (sc *DashCoreSignerClient) SignVote(chainID string, quorumHash crypto.Quoru
 }
 
 // SignProposal requests a remote signer to sign a proposal
-func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumHash crypto.QuorumHash, proposalProto *tmproto.Proposal) error {
+func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposalProto *tmproto.Proposal) error {
 	messageBytes:= types.ProposalBlockSignBytes(chainID, proposalProto)
 
 	messageHash := crypto.Sha256(messageBytes)
@@ -282,7 +282,7 @@ func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumHash crypto.Q
 
 	requestIdHashString := strings.ToUpper(hex.EncodeToString(requestIdHash))
 
-	response, err := sc.endpoint.QuorumSign(sc.defaultQuorumType, requestIdHashString, messageHashString, quorumHash.String(), false)
+	response, err := sc.endpoint.QuorumSign(quorumType, requestIdHashString, messageHashString, quorumHash.String(), false)
 
 	if response == nil {
 		return ErrUnexpectedResponse

@@ -65,7 +65,8 @@ func TestEvidencePoolSingleValidator(t *testing.T) {
 	assert.Equal(t, 0, len(evs))
 	assert.Zero(t, size)
 
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, privVals[0], evidenceChainID, valSet.QuorumHash)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, privVals[0], evidenceChainID,
+		valSet.QuorumType, valSet.QuorumHash)
 
 	// good evidence
 	evAdded := make(chan struct{})
@@ -123,7 +124,8 @@ func TestEvidencePoolQuorum(t *testing.T) {
 	assert.Equal(t, 0, len(evs))
 	assert.Zero(t, size)
 
-	ev := types.NewMockDuplicateVoteEvidenceWithPrivValInValidatorSet(height, defaultEvidenceTime, privVals[0], valSet, evidenceChainID, valSet.QuorumHash)
+	ev := types.NewMockDuplicateVoteEvidenceWithPrivValInValidatorSet(height, defaultEvidenceTime, privVals[0], valSet,
+		evidenceChainID, valSet.QuorumType, valSet.QuorumHash)
 
 	// good evidence
 	evAdded := make(chan struct{})
@@ -195,7 +197,7 @@ func TestAddExpiredEvidence(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.evDescription, func(t *testing.T) {
-			ev := types.NewMockDuplicateVoteEvidenceWithValidator(tc.evHeight, tc.evTime, val, evidenceChainID, crypto.RandQuorumHash())
+			ev := types.NewMockDuplicateVoteEvidenceWithValidator(tc.evHeight, tc.evTime, val, evidenceChainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash())
 			err := pool.AddEvidence(ev)
 			if tc.expErr {
 				assert.Error(t, err)
@@ -213,7 +215,8 @@ func TestReportConflictingVotes(t *testing.T) {
 
 	quorumHash := crypto.RandQuorumHash()
 	val := pv.ExtractIntoValidator(height+1, quorumHash)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height+1, defaultEvidenceTime, pv, evidenceChainID, quorumHash)
+	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height+1, defaultEvidenceTime, pv, evidenceChainID,
+		btcjson.LLMQType_5_60, quorumHash)
 
 	pool.ReportConflictingVotes(ev.VoteA, ev.VoteB)
 
@@ -247,11 +250,11 @@ func TestEvidencePoolUpdate(t *testing.T) {
 
 	// create new block (no need to save it to blockStore)
 	prunedEv := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultEvidenceTime.Add(1*time.Minute),
-		val, evidenceChainID, crypto.RandQuorumHash())
+		val, evidenceChainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash())
 	err := pool.AddEvidence(prunedEv)
 	require.NoError(t, err)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(21*time.Minute),
-		val, evidenceChainID, crypto.RandQuorumHash())
+		val, evidenceChainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash())
 	lastCommit := makeCommit(height, nil, val.ProTxHash)
 
 	coreChainLockHeight := state.LastCoreChainLockedBlockHeight
@@ -280,7 +283,7 @@ func TestVerifyPendingEvidencePasses(t *testing.T) {
 	var height int64 = 1
 	pool, val := defaultTestPool(height)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(1*time.Minute),
-		val, evidenceChainID, crypto.RandQuorumHash())
+		val, evidenceChainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash())
 	err := pool.AddEvidence(ev)
 	require.NoError(t, err)
 
@@ -292,7 +295,7 @@ func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 	var height int64 = 1
 	pool, val := defaultTestPool(height)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(1*time.Minute),
-		val, evidenceChainID, crypto.RandQuorumHash())
+		val, evidenceChainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash())
 	err := pool.CheckEvidence(types.EvidenceList{ev, ev})
 	if assert.Error(t, err) {
 		assert.Equal(t, "duplicate evidence", err.(*types.ErrInvalidEvidence).Reason.Error())
@@ -393,9 +396,9 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	require.NoError(t, err)
 	pool.SetLogger(log.TestingLogger())
 	goodEvidence := types.NewMockDuplicateVoteEvidenceWithValidator(height,
-		defaultEvidenceTime.Add(10*time.Minute), val, evidenceChainID, crypto.RandQuorumHash())
+		defaultEvidenceTime.Add(10*time.Minute), val, evidenceChainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash())
 	expiredEvidence := types.NewMockDuplicateVoteEvidenceWithValidator(int64(1),
-		defaultEvidenceTime.Add(1*time.Minute), val, evidenceChainID, crypto.RandQuorumHash())
+		defaultEvidenceTime.Add(1*time.Minute), val, evidenceChainID, btcjson.LLMQType_5_60, crypto.RandQuorumHash())
 	err = pool.AddEvidence(goodEvidence)
 	require.NoError(t, err)
 	err = pool.AddEvidence(expiredEvidence)

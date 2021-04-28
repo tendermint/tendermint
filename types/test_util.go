@@ -38,7 +38,7 @@ func MakeCommit(blockID BlockID, stateID StateID, height int64, round int32,
 
 func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
 	v := vote.ToProto()
-	err = privVal.SignVote(voteSet.ChainID(), voteSet.valSet.QuorumHash, v)
+	err = privVal.SignVote(voteSet.ChainID(), voteSet.valSet.QuorumType, voteSet.valSet.QuorumHash, v)
 	if err != nil {
 		return false, err
 	}
@@ -74,7 +74,7 @@ func MakeVote(
 	}
 	v := vote.ToProto()
 
-	if err := privVal.SignVote(chainID, valSet.QuorumHash, v); err != nil {
+	if err := privVal.SignVote(chainID, valSet.QuorumType, valSet.QuorumHash, v); err != nil {
 		return nil, err
 	}
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 
@@ -20,8 +21,8 @@ type PrivValidator interface {
 
 	GetProTxHash() (crypto.ProTxHash, error)
 
-	SignVote(chainID string, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error
-	SignProposal(chainID string, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error
+	SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error
+	SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error
 
 	ExtractIntoValidator(height int64, quorumHash crypto.QuorumHash) *Validator
 }
@@ -92,7 +93,7 @@ func (pv *MockPV) GetProTxHash() (crypto.ProTxHash, error) {
 }
 
 // Implements PrivValidator.
-func (pv *MockPV) SignVote(chainID string, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
+func (pv *MockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
 	pv.updateKeyIfNeeded(vote.Height)
 	useChainID := chainID
 	if pv.breakVoteSigning {
@@ -101,7 +102,14 @@ func (pv *MockPV) SignVote(chainID string, quorumHash crypto.QuorumHash, vote *t
 
 	blockSignBytes := VoteBlockSignBytes(useChainID, vote)
 	stateSignBytes := VoteStateSignBytes(useChainID, vote)
-	blockSignature, err := pv.PrivKey.Sign(blockSignBytes)
+
+	blockMessageHash := crypto.Sha256(blockSignBytes)
+
+	blockRequestId := VoteBlockRequestIdProto(vote)
+
+	blockSignId := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
+
+	blockSignature, err := pv.PrivKey.Sign(blockSignId)
 	// fmt.Printf("validator %X signing vote of type %d at height %d with key %X blockSignBytes %X stateSignBytes %X\n",
 	//  pv.ProTxHash, vote.Type, vote.Height, pv.PrivKey.PubKey().Bytes(), blockSignBytes, stateSignBytes)
 	// fmt.Printf("block sign bytes are %X by %X using key %X resulting in sig %X\n", blockSignBytes, pv.ProTxHash,
@@ -112,7 +120,13 @@ func (pv *MockPV) SignVote(chainID string, quorumHash crypto.QuorumHash, vote *t
 	vote.BlockSignature = blockSignature
 
 	if stateSignBytes != nil {
-		stateSignature, err := pv.PrivKey.Sign(stateSignBytes)
+		stateMessageHash := crypto.Sha256(stateSignBytes)
+
+		stateRequestId := VoteStateRequestIdProto(vote)
+
+		stateSignId := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
+
+		stateSignature, err := pv.PrivKey.Sign(stateSignId)
 		if err != nil {
 			return err
 		}
@@ -123,7 +137,7 @@ func (pv *MockPV) SignVote(chainID string, quorumHash crypto.QuorumHash, vote *t
 }
 
 // Implements PrivValidator.
-func (pv *MockPV) SignProposal(chainID string, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
+func (pv *MockPV) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
 	pv.updateKeyIfNeeded(proposal.Height)
 	useChainID := chainID
 	if pv.breakProposalSigning {
@@ -131,9 +145,15 @@ func (pv *MockPV) SignProposal(chainID string, quorumHash crypto.QuorumHash, pro
 	}
 
 	signBytes := ProposalBlockSignBytes(useChainID, proposal)
+	proposalMessageHash := crypto.Sha256(signBytes)
+
+	proposalRequestId := ProposalRequestIdProto(proposal)
+
+	signId := crypto.SignId(100, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(proposalRequestId), bls12381.ReverseBytes(proposalMessageHash))
+
 	// fmt.Printf("mock proposer %X signing proposal at height %d with key %X proposalSignBytes %X\n", pv.ProTxHash,
 	//  proposal.Height, pv.PrivKey.PubKey().Bytes(), signBytes)
-	sig, err := pv.PrivKey.Sign(signBytes)
+	sig, err := pv.PrivKey.Sign(signId)
 	if err != nil {
 		return err
 	}
