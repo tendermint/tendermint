@@ -95,3 +95,4 @@ Note the context/background should be written in the present tense.
 - [ADR-054: Crypto-Encoding-2](./adr-054-crypto-encoding-2.md)
 - [ADR-057: RPC](./adr-057-RPC.md)
 - [ADR-063: Privval-gRPC](./adr-063-privval-grpc.md)
+- [ADR-068: Reverse-Sync](./adr-068-reverse-sync.md)
