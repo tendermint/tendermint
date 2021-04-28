@@ -30,6 +30,12 @@ type Network struct {
 type NetworkOptions struct {
 	NumNodes   int
 	BufferSize int
+	NodeOpts   NodeOptions
+}
+
+type NodeOptions struct {
+	MaxPeers     uint16
+	MaxConnected uint16
 }
 
 func (opts *NetworkOptions) setDefaults() {
@@ -50,7 +56,7 @@ func MakeNetwork(t *testing.T, opts NetworkOptions) *Network {
 	}
 
 	for i := 0; i < opts.NumNodes; i++ {
-		node := network.MakeNode(t)
+		node := network.MakeNode(t, opts.NodeOpts)
 		network.Nodes[node.NodeID] = node
 	}
 
@@ -81,7 +87,9 @@ func (n *Network) Start(t *testing.T) {
 		for _, targetAddress := range dialQueue[i+1:] { // nodes <i already connected
 			targetNode := n.Nodes[targetAddress.NodeID]
 			targetSub := subs[targetAddress.NodeID]
-			require.NoError(t, sourceNode.PeerManager.Add(targetAddress))
+			added, err := sourceNode.PeerManager.Add(targetAddress)
+			require.NoError(t, err)
+			require.True(t, added)
 
 			select {
 			case peerUpdate := <-sourceSub.Updates():
@@ -107,7 +115,9 @@ func (n *Network) Start(t *testing.T) {
 
 			// Add the address to the target as well, so it's able to dial the
 			// source back if that's even necessary.
-			require.NoError(t, targetNode.PeerManager.Add(sourceAddress))
+			added, err = targetNode.PeerManager.Add(sourceAddress)
+			require.NoError(t, err)
+			require.True(t, added)
 		}
 	}
 }
@@ -214,7 +224,7 @@ type Node struct {
 // MakeNode creates a new Node configured for the network with a
 // running peer manager, but does not add it to the existing
 // network. Callers are responsible for updating peering relationships.
-func (n *Network) MakeNode(t *testing.T) *Node {
+func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 	privKey := ed25519.GenPrivKey()
 	nodeID := p2p.NodeIDFromPubKey(privKey.PubKey())
 	nodeInfo := p2p.NodeInfo{
@@ -230,6 +240,8 @@ func (n *Network) MakeNode(t *testing.T) *Node {
 		MinRetryTime:    10 * time.Millisecond,
 		MaxRetryTime:    100 * time.Millisecond,
 		RetryTimeJitter: time.Millisecond,
+		MaxPeers:        opts.MaxPeers,
+		MaxConnected:    opts.MaxConnected,
 	})
 	require.NoError(t, err)
 
@@ -294,9 +306,23 @@ func (n *Node) MakeChannelNoCleanup(
 // MakePeerUpdates opens a peer update subscription, with automatic cleanup.
 // It checks that all updates have been consumed during cleanup.
 func (n *Node) MakePeerUpdates(t *testing.T) *p2p.PeerUpdates {
+	t.Helper()
 	sub := n.PeerManager.Subscribe()
 	t.Cleanup(func() {
+		t.Helper()
 		RequireNoUpdates(t, sub)
+		sub.Close()
+	})
+
+	return sub
+}
+
+// MakePeerUpdatesNoRequireEmpty opens a peer update subscription, with automatic cleanup.
+// It does *not* check that all updates have been consumed, but will
+// close the update channel.
+func (n *Node) MakePeerUpdatesNoRequireEmpty(t *testing.T) *p2p.PeerUpdates {
+	sub := n.PeerManager.Subscribe()
+	t.Cleanup(func() {
 		sub.Close()
 	})
 

@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"math/rand"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -13,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/libs/service"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
 var ctx = context.Background()
@@ -101,7 +102,7 @@ func TestHangingSyncCalls(t *testing.T) {
 func setupClientServer(t *testing.T, app types.Application) (
 	service.Service, abcicli.Client) {
 	// some port between 20k and 30k
-	port := 20000 + tmrand.Int32()%10000
+	port := 20000 + rand.Int31()%10000
 	addr := fmt.Sprintf("localhost:%d", port)
 
 	s, err := server.NewServer(addr, "socket", app)

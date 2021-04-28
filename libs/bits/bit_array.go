@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	mrand "math/rand"
 	"regexp"
 	"strings"
 	"sync"
@@ -24,6 +25,8 @@ type BitArray struct {
 // NewBitArray returns a new bit array.
 // It returns nil if the number of bits is zero.
 func NewBitArray(bits int) *BitArray {
+	// Reseed non-deterministically.
+	tmrand.Reseed()
 	if bits <= 0 {
 		return nil
 	}
@@ -242,7 +245,7 @@ func (bA *BitArray) IsFull() bool {
 
 // PickRandom returns a random index for a set bit in the bit array.
 // If there is no such value, it returns 0, false.
-// It uses the global randomness in `random.go` to get this index.
+// It uses math/rand's global randomness Source to get this index.
 func (bA *BitArray) PickRandom() (int, bool) {
 	if bA == nil {
 		return 0, false
@@ -255,8 +258,8 @@ func (bA *BitArray) PickRandom() (int, bool) {
 	if len(trueIndices) == 0 { // no bits set to true
 		return 0, false
 	}
-
-	return trueIndices[tmrand.Intn(len(trueIndices))], true
+	// nolint:gosec // G404: Use of weak random number generator
+	return trueIndices[mrand.Intn(len(trueIndices))], true
 }
 
 func (bA *BitArray) getTrueIndices() []int {

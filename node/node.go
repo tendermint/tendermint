@@ -44,9 +44,8 @@ import (
 	"github.com/tendermint/tendermint/state/indexer"
 	blockidxkv "github.com/tendermint/tendermint/state/indexer/block/kv"
 	blockidxnull "github.com/tendermint/tendermint/state/indexer/block/null"
-	"github.com/tendermint/tendermint/state/txindex"
-	"github.com/tendermint/tendermint/state/txindex/kv"
-	"github.com/tendermint/tendermint/state/txindex/null"
+	"github.com/tendermint/tendermint/state/indexer/tx/kv"
+	"github.com/tendermint/tendermint/state/indexer/tx/null"
 	"github.com/tendermint/tendermint/statesync"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -226,9 +225,9 @@ type Node struct {
 	evidencePool      *evidence.Pool // tracking evidence
 	proxyApp          proxy.AppConns // connection to the application
 	rpcListeners      []net.Listener // rpc servers
-	txIndexer         txindex.TxIndexer
+	txIndexer         indexer.TxIndexer
 	blockIndexer      indexer.BlockIndexer
-	indexerService    *txindex.IndexerService
+	indexerService    *indexer.Service
 	prometheusSrv     *http.Server
 }
 
@@ -267,10 +266,10 @@ func createAndStartIndexerService(
 	dbProvider DBProvider,
 	eventBus *types.EventBus,
 	logger log.Logger,
-) (*txindex.IndexerService, txindex.TxIndexer, indexer.BlockIndexer, error) {
+) (*indexer.Service, indexer.TxIndexer, indexer.BlockIndexer, error) {
 
 	var (
-		txIndexer    txindex.TxIndexer
+		txIndexer    indexer.TxIndexer
 		blockIndexer indexer.BlockIndexer
 	)
 
@@ -288,7 +287,7 @@ func createAndStartIndexerService(
 		blockIndexer = &blockidxnull.BlockerIndexer{}
 	}
 
-	indexerService := txindex.NewIndexerService(txIndexer, blockIndexer, eventBus)
+	indexerService := indexer.NewIndexerService(txIndexer, blockIndexer, eventBus)
 	indexerService.SetLogger(logger.With("module", "txindex"))
 
 	if err := indexerService.Start(); err != nil {
@@ -629,6 +628,14 @@ func createPeerManager(
 		options.PersistentPeers = append(options.PersistentPeers, address.NodeID)
 	}
 
+	for _, p := range splitAndTrimEmpty(config.P2P.BootstrapPeers, ",", " ") {
+		address, err := p2p.ParseNodeAddress(p)
+		if err != nil {
+			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
+		}
+		peers = append(peers, address)
+	}
+
 	peerDB, err := dbProvider(&DBContext{"peerstore", config})
 	if err != nil {
 		return nil, err
@@ -639,7 +646,7 @@ func createPeerManager(
 	}
 
 	for _, peer := range peers {
-		if err := peerManager.Add(peer); err != nil {
+		if _, err := peerManager.Add(peer); err != nil {
 			return nil, fmt.Errorf("failed to add peer %q: %w", peer, err)
 		}
 	}
@@ -1736,7 +1743,7 @@ func (n *Node) Config() *cfg.Config {
 }
 
 // TxIndexer returns the Node's TxIndexer.
-func (n *Node) TxIndexer() txindex.TxIndexer {
+func (n *Node) TxIndexer() indexer.TxIndexer {
 	return n.txIndexer
 }
 
@@ -1760,7 +1767,7 @@ func (n *Node) NodeInfo() p2p.NodeInfo {
 func makeNodeInfo(
 	config *cfg.Config,
 	nodeKey p2p.NodeKey,
-	txIndexer txindex.TxIndexer,
+	txIndexer indexer.TxIndexer,
 	genDoc *types.GenesisDoc,
 	state sm.State,
 ) (p2p.NodeInfo, error) {

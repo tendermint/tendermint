@@ -16,6 +16,9 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [rpc] \#6019 standardise RPC errors and return the correct status code (@bipulprasad & @cmwaters)
   - [rpc] \#6168 Change default sorting to desc for `/tx_search` results (@melekes)
   - [cli] \#6282 User must specify the node mode when using `tendermint init` (@cmwaters)
+  - [state/indexer] \#6382 reconstruct indexer, move txindex into the indexer package (@JayT106)
+  - [cli] \#6372 Introduce `BootstrapPeers` as part of the new p2p stack. Peers to be connected on
+    startup (@cmwaters)
 
 - Apps
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
@@ -44,6 +47,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
   - [rpc/client/http] \#6176 Unexpose `WSEvents` (@melekes)
   - [rpc/jsonrpc/client/ws_client] \#6176 `NewWS` no longer accepts options (use `NewWSWithOptions` and `OnReconnect` funcs to configure the client) (@melekes)
   - [internal/libs] \#6366 Move `autofile`, `clist`,`fail`,`flowrate`, `protoio`, `service`, `sync`, `tempfile`, `test` and `timer` lib packages to an internal folder
+  - [libs/rand] \#6364 Removed most of libs/rand in favour of standard lib's `math/rand` (@liamsi)
 
 - Blockchain Protocol
 
@@ -53,7 +57,11 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 ### FEATURES
 
 - [config] Add `--mode` flag and config variable. See [ADR-52](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md) @dongsam
-- [rpc] /#6329 Don't cap page size in unsafe mode (@gotjoshua, @cmwaters)
+- [rpc] \#6329 Don't cap page size in unsafe mode (@gotjoshua, @cmwaters)
+- [pex] \#6305 v2 pex reactor with backwards compatability. Introduces two new pex messages to
+  accomodate for the new p2p stack. Removes the notion of seeds and crawling. All peer
+  exchange reactors behave the same. (@cmwaters)
+- [crypto] \#6376 Enable sr25519 as a validator key
 
 ### IMPROVEMENTS
 
@@ -82,6 +90,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [privval/file] \#6185 Return error on `LoadFilePV`, `LoadFilePVEmptyState`. Allows for better programmatic control of Tendermint.
 - [privval] \#6240 Add `context.Context` to privval interface.
 - [rpc] \#6265 set cache control in http-rpc response header (@JayT106)
+- [statesync] \#6378 Retry requests for snapshots and add a minimum discovery time (5s) for new snapshots.
 
 ### BUG FIXES
 
@@ -89,3 +98,4 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [privval] \#5638 Increase read/write timeout to 5s and calculate ping interval based on it (@JoeKash)
 - [blockchain/v1] [\#5701](https://github.com/tendermint/tendermint/pull/5701) Handle peers without blocks (@melekes)
 - [blockchain/v1] \#5711 Fix deadlock (@melekes)
+- [evidence] \#6375 Fix bug with inconsistent LightClientAttackEvidence hashing (cmwaters)

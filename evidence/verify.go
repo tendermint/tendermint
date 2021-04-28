@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/tendermint/tendermint/light"
@@ -129,56 +128,6 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 		if err != nil {
 			return types.NewErrInvalidEvidence(evidence, err)
 		}
-
-		// Find out what type of attack this was and thus extract the malicious
-		// validators. Note, in the case of an Amnesia attack we don't have any
-		// malicious validators.
-		validators := ev.GetByzantineValidators(commonVals, trustedHeader)
-
-		// Ensure this matches the validators that are listed in the evidence. They
-		// should be ordered based on power.
-		if validators == nil && ev.ByzantineValidators != nil {
-			return types.NewErrInvalidEvidence(
-				evidence,
-				fmt.Errorf(
-					"expected nil validators from an amnesia light client attack but got %d",
-					len(ev.ByzantineValidators),
-				),
-			)
-		}
-
-		if exp, got := len(validators), len(ev.ByzantineValidators); exp != got {
-			return types.NewErrInvalidEvidence(
-				evidence,
-				fmt.Errorf("expected %d byzantine validators from evidence but got %d", exp, got),
-			)
-		}
-
-		// ensure that both validator arrays are in the same order
-		sort.Sort(types.ValidatorsByVotingPower(ev.ByzantineValidators))
-
-		for idx, val := range validators {
-			if !bytes.Equal(ev.ByzantineValidators[idx].Address, val.Address) {
-				return types.NewErrInvalidEvidence(
-					evidence,
-					fmt.Errorf(
-						"evidence contained an unexpected byzantine validator address; expected: %v, got: %v",
-						val.Address, ev.ByzantineValidators[idx].Address,
-					),
-				)
-			}
-
-			if ev.ByzantineValidators[idx].VotingPower != val.VotingPower {
-				return types.NewErrInvalidEvidence(
-					evidence,
-					fmt.Errorf(
-						"evidence contained unexpected byzantine validator power; expected %d, got %d",
-						val.VotingPower, ev.ByzantineValidators[idx].VotingPower,
-					),
-				)
-			}
-		}
-
 		return nil
 
 	default:
@@ -206,7 +155,7 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, t
 		}
 
 		// In the case of equivocation and amnesia we expect all header hashes to be correctly derived
-	} else if isInvalidHeader(trustedHeader.Header, e.ConflictingBlock.Header) {
+	} else if e.ConflictingHeaderIsInvalid(trustedHeader.Header) {
 		return errors.New("common height is the same as conflicting block height so expected the conflicting" +
 			" block to be correctly derived yet it wasn't")
 	}
@@ -235,7 +184,7 @@ func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, t
 			trustedHeader.Hash())
 	}
 
-	return nil
+	return validateABCIEvidence(e, commonVals, trustedHeader)
 }
 
 // VerifyDuplicateVote verifies DuplicateVoteEvidence against the state of full node. This involves the
@@ -306,6 +255,55 @@ func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet 
 	return nil
 }
 
+// validateABCIEvidence validates the ABCI component of the light client attack
+// evidence i.e voting power and byzantine validators
+func validateABCIEvidence(
+	ev *types.LightClientAttackEvidence,
+	commonVals *types.ValidatorSet,
+	trustedHeader *types.SignedHeader,
+) error {
+	if evTotal, valsTotal := ev.TotalVotingPower, commonVals.TotalVotingPower(); evTotal != valsTotal {
+		return fmt.Errorf("total voting power from the evidence and our validator set does not match (%d != %d)",
+			evTotal, valsTotal)
+	}
+
+	// Find out what type of attack this was and thus extract the malicious
+	// validators. Note, in the case of an Amnesia attack we don't have any
+	// malicious validators.
+	validators := ev.GetByzantineValidators(commonVals, trustedHeader)
+
+	// Ensure this matches the validators that are listed in the evidence. They
+	// should be ordered based on power.
+	if validators == nil && ev.ByzantineValidators != nil {
+		return fmt.Errorf(
+			"expected nil validators from an amnesia light client attack but got %d",
+			len(ev.ByzantineValidators),
+		)
+	}
+
+	if exp, got := len(validators), len(ev.ByzantineValidators); exp != got {
+		return fmt.Errorf("expected %d byzantine validators from evidence but got %d", exp, got)
+	}
+
+	for idx, val := range validators {
+		if !bytes.Equal(ev.ByzantineValidators[idx].Address, val.Address) {
+			return fmt.Errorf(
+				"evidence contained an unexpected byzantine validator address; expected: %v, got: %v",
+				val.Address, ev.ByzantineValidators[idx].Address,
+			)
+		}
+
+		if ev.ByzantineValidators[idx].VotingPower != val.VotingPower {
+			return fmt.Errorf(
+				"evidence contained unexpected byzantine validator power; expected %d, got %d",
+				val.VotingPower, ev.ByzantineValidators[idx].VotingPower,
+			)
+		}
+	}
+
+	return nil
+}
+
 func getSignedHeader(blockStore BlockStore, height int64) (*types.SignedHeader, error) {
 	blockMeta := blockStore.LoadBlockMeta(height)
 	if blockMeta == nil {
@@ -319,16 +317,4 @@ func getSignedHeader(blockStore BlockStore, height int64) (*types.SignedHeader, 
 		Header: &blockMeta.Header,
 		Commit: commit,
 	}, nil
-}
-
-// isInvalidHeader takes a trusted header and matches it againt a conflicting header
-// to determine whether the conflicting header was the product of a valid state transition
-// or not. If it is then all the deterministic fields of the header should be the same.
-// If not, it is an invalid header and constitutes a lunatic attack.
-func isInvalidHeader(trusted, conflicting *types.Header) bool {
-	return !bytes.Equal(trusted.ValidatorsHash, conflicting.ValidatorsHash) ||
-		!bytes.Equal(trusted.NextValidatorsHash, conflicting.NextValidatorsHash) ||
-		!bytes.Equal(trusted.ConsensusHash, conflicting.ConsensusHash) ||
-		!bytes.Equal(trusted.AppHash, conflicting.AppHash) ||
-		!bytes.Equal(trusted.LastResultsHash, conflicting.LastResultsHash)
 }

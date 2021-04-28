@@ -9,13 +9,12 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"math/rand"
+	mrand "math/rand"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/minio/highwayhash"
-
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/libs/service"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
@@ -89,7 +88,6 @@ type addrBook struct {
 
 	// accessed concurrently
 	mtx        tmsync.Mutex
-	rand       *tmrand.Rand
 	ourAddrs   map[string]struct{}
 	privateIDs map[p2p.NodeID]struct{}
 	addrLookup map[p2p.NodeID]*knownAddress // new & old
@@ -118,7 +116,6 @@ func newHashKey() []byte {
 // Use Start to begin processing asynchronous address updates.
 func NewAddrBook(filePath string, routabilityStrict bool) AddrBook {
 	am := &addrBook{
-		rand:              tmrand.NewRand(),
 		ourAddrs:          make(map[string]struct{}),
 		privateIDs:        make(map[p2p.NodeID]struct{}),
 		addrLookup:        make(map[p2p.NodeID]*knownAddress),
@@ -268,6 +265,7 @@ func (a *addrBook) Empty() bool {
 // and determines how biased we are to pick an address from a new bucket.
 // PickAddress returns nil if the AddrBook is empty or if we try to pick
 // from an empty bucket.
+// nolint:gosec // G404: Use of weak random number generator
 func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
@@ -292,7 +290,7 @@ func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
 
 	// pick a random peer from a random bucket
 	var bucket map[string]*knownAddress
-	pickFromOldBucket := (newCorrelation+oldCorrelation)*a.rand.Float64() < oldCorrelation
+	pickFromOldBucket := (newCorrelation+oldCorrelation)*mrand.Float64() < oldCorrelation
 	if (pickFromOldBucket && a.nOld == 0) ||
 		(!pickFromOldBucket && a.nNew == 0) {
 		return nil
@@ -300,13 +298,13 @@ func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
 	// loop until we pick a random non-empty bucket
 	for len(bucket) == 0 {
 		if pickFromOldBucket {
-			bucket = a.bucketsOld[a.rand.Intn(len(a.bucketsOld))]
+			bucket = a.bucketsOld[mrand.Intn(len(a.bucketsOld))]
 		} else {
-			bucket = a.bucketsNew[a.rand.Intn(len(a.bucketsNew))]
+			bucket = a.bucketsNew[mrand.Intn(len(a.bucketsNew))]
 		}
 	}
 	// pick a random index and loop over the map to return that index
-	randIndex := a.rand.Intn(len(bucket))
+	randIndex := mrand.Intn(len(bucket))
 	for _, ka := range bucket {
 		if randIndex == 0 {
 			return ka.Addr
@@ -417,7 +415,8 @@ func (a *addrBook) GetSelection() []*p2p.NetAddress {
 	// `numAddresses' since we are throwing the rest.
 	for i := 0; i < numAddresses; i++ {
 		// pick a number between current index and the end
-		j := tmrand.Intn(len(allAddr)-i) + i
+		// nolint:gosec // G404: Use of weak random number generator
+		j := mrand.Intn(len(allAddr)-i) + i
 		allAddr[i], allAddr[j] = allAddr[j], allAddr[i]
 	}
 
@@ -681,7 +680,8 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 		}
 		// The more entries we have, the less likely we are to add more.
 		factor := int32(2 * len(ka.Buckets))
-		if a.rand.Int31n(factor) != 0 {
+		// nolint:gosec // G404: Use of weak random number generator
+		if mrand.Int31n(factor) != 0 {
 			return nil
 		}
 	} else {
@@ -717,6 +717,7 @@ func (a *addrBook) randomPickAddresses(bucketType byte, num int) []*p2p.NetAddre
 	}
 	selection := make([]*p2p.NetAddress, 0, num)
 	chosenSet := make(map[string]bool, num)
+	rand := tmrand.NewRand()
 	rand.Shuffle(total, func(i, j int) {
 		addresses[i], addresses[j] = addresses[j], addresses[i]
 	})

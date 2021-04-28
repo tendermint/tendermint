@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	mrand "math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -21,7 +22,7 @@ func makeTxs(cnt, size int) Txs {
 }
 
 func randInt(low, high int) int {
-	off := tmrand.Int() % (high - low)
+	off := mrand.Int() % (high - low)
 	return low + off
 }
 
