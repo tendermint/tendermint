@@ -2,6 +2,7 @@ package privval
 
 import (
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -126,9 +127,10 @@ func (sc *SignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 }
 
 // SignVote requests a remote signer to sign a vote
-func (sc *SignerClient) SignVote(chainID string, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
+func (sc *SignerClient) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
 	// fmt.Printf("--> sending request to sign vote (%d/%d) %v - %v", vote.Height, vote.Round, vote.BlockID, vote)
-	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.SignVoteRequest{Vote: vote, ChainId: chainID}))
+	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.SignVoteRequest{Vote: vote, ChainId: chainID,
+		QuorumType: int32(quorumType), QuorumHash: quorumHash}))
 	if err != nil {
 		return err
 	}
@@ -147,9 +149,10 @@ func (sc *SignerClient) SignVote(chainID string, quorumHash crypto.QuorumHash, v
 }
 
 // SignProposal requests a remote signer to sign a proposal
-func (sc *SignerClient) SignProposal(chainID string, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
+func (sc *SignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
 	response, err := sc.endpoint.SendRequest(mustWrapMsg(
-		&privvalproto.SignProposalRequest{Proposal: proposal, ChainId: chainID},
+		&privvalproto.SignProposalRequest{Proposal: proposal, ChainId: chainID,
+			QuorumType: int32(quorumType), QuorumHash: quorumHash},
 	))
 	if err != nil {
 		return err

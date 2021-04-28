@@ -906,9 +906,9 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 		signId := crypto.SignId(vals.QuorumType, bls12381.ReverseBytes(vals.QuorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
 		if !val.PubKey.VerifySignatureDigest(signId, commitSig.BlockSignature) {
 			return fmt.Errorf("wrong block signature (#%d/proTxHash:%X/pubKey:%X) | voteBlockSignBytes : %X |"+
-				" signature : %X | commitBID: %s | vote :%v | commit sig %v", idx, val.ProTxHash, val.PubKey.Bytes(),
-				voteBlockSignBytes, commitSig.BlockSignature, commit.BlockID.String(), commit.GetVote(int32(idx)),
-				commit.Signatures[idx])
+				" signature : %X | commitBID: %s | vote :%v | commit sig %v | quorum Type %d", idx, val.ProTxHash,
+				val.PubKey.Bytes(), voteBlockSignBytes, commitSig.BlockSignature, commit.BlockID.String(),
+				commit.GetVote(int32(idx)), commit.Signatures[idx], vals.QuorumType)
 		}
 		// else {
 		//	fmt.Printf("correct block signature  (#%d/proTxHash:%X/pubKey:%X) | voteBlockSignBytes : %X |" +
@@ -1024,7 +1024,7 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID, sta
 
 		blockMessageHash := crypto.Sha256(voteBlockSignBytes)
 
-		signId := crypto.SignId(100, bls12381.ReverseBytes(vals.QuorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
+		signId := crypto.SignId(vals.QuorumType,  bls12381.ReverseBytes(vals.QuorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
 
 		if !val.PubKey.VerifySignatureDigest(signId, commitSig.BlockSignature) {
 			return fmt.Errorf("wrong block signature for light (#%d/proTxHash:%X/pubKey:%X) |"+
@@ -1042,7 +1042,7 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID, sta
 
 			stateRequestId := commit.VoteStateRequestId()
 
-			stateSignId := crypto.SignId(100, bls12381.ReverseBytes(vals.QuorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
+			stateSignId := crypto.SignId(vals.QuorumType, bls12381.ReverseBytes(vals.QuorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
 
 			if !val.PubKey.VerifySignatureDigest(stateSignId, commitSig.StateSignature) {
 				return fmt.Errorf("wrong state signature (#%d/proTxHash:%X/pubKey:%X) |"+
@@ -1138,7 +1138,7 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 
 			blockMessageHash := crypto.Sha256(voteBlockSignBytes)
 
-			signId := crypto.SignId(100, bls12381.ReverseBytes(vals.QuorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
+			signId := crypto.SignId(vals.QuorumType, bls12381.ReverseBytes(vals.QuorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
 
 			if !val.PubKey.VerifySignatureDigest(signId, commitSig.BlockSignature) {
 				return fmt.Errorf("wrong block signature for light trusting (#%d/proTxHash:%X/pubKey:%X) |"+
@@ -1156,7 +1156,7 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 
 				stateRequestId := commit.VoteStateRequestId()
 
-				stateSignId := crypto.SignId(100, bls12381.ReverseBytes(vals.QuorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
+				stateSignId := crypto.SignId(vals.QuorumType, bls12381.ReverseBytes(vals.QuorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
 
 				if !val.PubKey.VerifySignatureDigest(stateSignId, commitSig.StateSignature) {
 					return fmt.Errorf("wrong state signature (#%d/proTxHash:%X/pubKey:%X) |"+
@@ -1172,7 +1172,7 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 
 				canonicalVoteBlockMessageHash := crypto.Sha256(canonicalVoteBlockSignBytes)
 
-				blockSignId := crypto.SignId(100, bls12381.ReverseBytes(vals.QuorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(canonicalVoteBlockMessageHash))
+				blockSignId := crypto.SignId(vals.QuorumType, bls12381.ReverseBytes(vals.QuorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(canonicalVoteBlockMessageHash))
 
 				if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignId, commit.ThresholdBlockSignature) {
 					return fmt.Errorf("incorrect threshold block signature lc %X %X", canonicalVoteBlockSignBytes,
@@ -1185,7 +1185,7 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 
 				stateRequestId := commit.VoteStateRequestId()
 
-				stateSignId := crypto.SignId(100, bls12381.ReverseBytes(vals.QuorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(canonicalVoteStateMessageHash))
+				stateSignId := crypto.SignId(vals.QuorumType, bls12381.ReverseBytes(vals.QuorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(canonicalVoteStateMessageHash))
 
 				if !vals.ThresholdPublicKey.VerifySignatureDigest(stateSignId, commit.ThresholdStateSignature) {
 					return fmt.Errorf("incorrect threshold state signature lc %X %X", canonicalVoteStateSignBytes,
@@ -1359,6 +1359,8 @@ func (vals *ValidatorSet) ToProto() (*tmproto.ValidatorSet, error) {
 		return nil, fmt.Errorf("toProto: quorumHash is incorrect size: %d", len(vals.QuorumHash))
 	}
 
+	vp.QuorumType = int32(vals.QuorumType)
+
 	vp.QuorumHash = vals.QuorumHash
 
 	return vp, nil
@@ -1400,6 +1402,8 @@ func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 
 	vals.ThresholdPublicKey = thresholdPublicKey
 
+	vals.QuorumType = btcjson.LLMQType(vp.QuorumType)
+
 	vals.QuorumHash = vp.QuorumHash
 
 	return vals, vals.ValidateBasic()
@@ -1409,7 +1413,7 @@ func ValidatorSetFromProto(vp *tmproto.ValidatorSet) (*ValidatorSet, error) {
 // ValidatorSetFromExistingValidators takes an existing array of validators and rebuilds
 // the exact same validator set that corresponds to it without changing the proposer priority or power
 // if any of the validators fail validate basic then an empty set is returned.
-func ValidatorSetFromExistingValidators(valz []*Validator, thresholdPublicKey crypto.PubKey,
+func ValidatorSetFromExistingValidators(valz []*Validator, thresholdPublicKey crypto.PubKey, quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash) (*ValidatorSet, error) {
 	if len(valz) == 0 {
 		return nil, errors.New("validator set is empty")
@@ -1424,6 +1428,7 @@ func ValidatorSetFromExistingValidators(valz []*Validator, thresholdPublicKey cr
 	vals := &ValidatorSet{
 		Validators:         valz,
 		ThresholdPublicKey: thresholdPublicKey,
+		QuorumType:         quorumType,
 		QuorumHash:         quorumHash,
 	}
 	vals.Proposer = vals.findPreviousProposer()

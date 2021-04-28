@@ -2,6 +2,7 @@ package e2e_test
 
 import (
 	"bytes"
+	"github.com/dashevo/dashd-go/btcjson"
 	"testing"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -158,6 +159,7 @@ func newValidatorSchedule(testnet e2e.Testnet) *validatorSchedule {
 	valMap := testnet.Validators // genesis validators
 	thresholdPublicKey := testnet.ThresholdPublicKey
 	quorumHash := testnet.QuorumHash
+	quorumType := btcjson.LLMQType_5_60
 	if thresholdPublicKey == nil {
 		panic("threshold public key must be set")
 	}
@@ -177,7 +179,7 @@ func newValidatorSchedule(testnet e2e.Testnet) *validatorSchedule {
 
 	return &validatorSchedule{
 		height:                    testnet.InitialHeight,
-		Set:                       types.NewValidatorSet(makeVals(valMap), thresholdPublicKey, quorumHash),
+		Set:                       types.NewValidatorSet(makeVals(valMap), thresholdPublicKey, quorumType, quorumHash),
 		updates:                   testnet.ValidatorUpdates,
 		thresholdPublicKeyUpdates: testnet.ThresholdPublicKeyUpdates,
 		quorumHashUpdates:         testnet.QuorumHashUpdates,
@@ -198,7 +200,7 @@ func (s *validatorSchedule) Increment(heights int64) {
 								panic(err)
 							}
 						} else {
-							s.Set = types.NewValidatorSet(makeVals(update), thresholdPublicKeyUpdate, quorumHashUpdate)
+							s.Set = types.NewValidatorSet(makeVals(update), thresholdPublicKeyUpdate, btcjson.LLMQType_5_60, quorumHashUpdate)
 						}
 					}
 				}

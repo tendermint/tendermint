@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/dashevo/dashd-go/btcjson"
 	"testing"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -43,7 +44,7 @@ func TestABCIValidators(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, tmValExpected, tmVals[0])
 
-	abciVals := TM2PB.ValidatorUpdates(NewValidatorSet(tmVals, tmVal.PubKey, quorumHash))
+	abciVals := TM2PB.ValidatorUpdates(NewValidatorSet(tmVals, tmVal.PubKey, btcjson.LLMQType_5_60, quorumHash))
 	assert.Equal(t, abci.ValidatorSetUpdate{
 		ValidatorUpdates:   []abci.ValidatorUpdate{abciVal},
 		ThresholdPublicKey: abciVal.PubKey,
@@ -72,6 +73,7 @@ type pubKeyBLS struct{}
 func (pubKeyBLS) Address() Address                            { return []byte{} }
 func (pubKeyBLS) Bytes() []byte                               { return []byte{} }
 func (pubKeyBLS) VerifySignature(msg []byte, sig []byte) bool { return false }
+func (pubKeyBLS) VerifySignatureDigest(msg []byte, sig []byte) bool { return false }
 func (pubKeyBLS) AggregateSignatures(sigSharesData [][]byte, messages [][]byte) ([]byte, error) {
 	return []byte{}, nil
 }

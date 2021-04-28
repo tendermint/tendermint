@@ -2,6 +2,7 @@ package coretypes
 
 import (
 	"encoding/json"
+	"github.com/dashevo/dashd-go/btcjson"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -126,6 +127,7 @@ type ResultValidators struct {
 	BlockHeight        int64              `json:"block_height"`
 	Validators         []*types.Validator `json:"validators"`
 	ThresholdPublicKey *crypto.PubKey     `json:"threshold_public_key"`
+	QuorumType         btcjson.LLMQType   `json:"quorum_type"`
 	QuorumHash         *crypto.QuorumHash `json:"quorum_hash"`
 	// Count of actual validators in this result
 	Count int `json:"count"`

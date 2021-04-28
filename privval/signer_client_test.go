@@ -155,7 +155,7 @@ func TestSignerProposal(t *testing.T) {
 		})
 
 		require.NoError(t, tc.mockPV.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto()))
-		require.NoError(t, tc.signerClient.SignProposal(tc.chainID, tc.quorumHash, have.ToProto()))
+		require.NoError(t, tc.signerClient.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, have.ToProto()))
 
 		assert.Equal(t, want.Signature, have.Signature)
 	}
@@ -199,7 +199,7 @@ func TestSignerVote(t *testing.T) {
 		})
 
 		require.NoError(t, tc.mockPV.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto()))
-		require.NoError(t, tc.signerClient.SignVote(tc.chainID, tc.quorumHash, have.ToProto()))
+		require.NoError(t, tc.signerClient.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, have.ToProto()))
 
 		assert.Equal(t, want.BlockSignature, have.BlockSignature)
 		assert.Equal(t, want.StateSignature, have.StateSignature)
@@ -246,7 +246,7 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 		time.Sleep(testTimeoutReadWrite2o3)
 
 		require.NoError(t, tc.mockPV.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto()))
-		require.NoError(t, tc.signerClient.SignVote(tc.chainID, tc.quorumHash, have.ToProto()))
+		require.NoError(t, tc.signerClient.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, have.ToProto()))
 		assert.Equal(t, want.BlockSignature, have.BlockSignature)
 		assert.Equal(t, want.StateSignature, have.StateSignature)
 
@@ -256,7 +256,7 @@ func TestSignerVoteResetDeadline(t *testing.T) {
 		time.Sleep(testTimeoutReadWrite2o3)
 
 		require.NoError(t, tc.mockPV.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto()))
-		require.NoError(t, tc.signerClient.SignVote(tc.chainID, tc.quorumHash, have.ToProto()))
+		require.NoError(t, tc.signerClient.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, have.ToProto()))
 		assert.Equal(t, want.BlockSignature, have.BlockSignature)
 		assert.Equal(t, want.StateSignature, have.StateSignature)
 	}
@@ -309,7 +309,7 @@ func TestSignerVoteKeepAlive(t *testing.T) {
 		tc.signerServer.Logger.Debug("TEST: Forced Wait DONE---------------------------------------------")
 
 		require.NoError(t, tc.mockPV.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto()))
-		require.NoError(t, tc.signerClient.SignVote(tc.chainID, tc.quorumHash, have.ToProto()))
+		require.NoError(t, tc.signerClient.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, have.ToProto()))
 
 		assert.Equal(t, want.BlockSignature, have.BlockSignature)
 		assert.Equal(t, want.StateSignature, have.StateSignature)
@@ -345,13 +345,13 @@ func TestSignerSignProposalErrors(t *testing.T) {
 			Signature:             []byte("signature"),
 		}
 
-		err := tc.signerClient.SignProposal(tc.chainID, tc.quorumHash, proposal.ToProto())
+		err := tc.signerClient.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, proposal.ToProto())
 		require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
 
 		err = tc.mockPV.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, proposal.ToProto())
 		require.Error(t, err)
 
-		err = tc.signerClient.SignProposal(tc.chainID, tc.quorumHash, proposal.ToProto())
+		err = tc.signerClient.SignProposal(tc.chainID, tc.quorumType, tc.quorumHash, proposal.ToProto())
 		require.Error(t, err)
 	}
 }
@@ -389,19 +389,19 @@ func TestSignerSignVoteErrors(t *testing.T) {
 			}
 		})
 
-		err := tc.signerClient.SignVote(tc.chainID, tc.quorumHash, vote.ToProto())
+		err := tc.signerClient.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, vote.ToProto())
 		require.Equal(t, err.(*RemoteSignerError).Description, types.ErroringMockPVErr.Error())
 
 		err = tc.mockPV.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, vote.ToProto())
 		require.Error(t, err)
 
-		err = tc.signerClient.SignVote(tc.chainID, tc.quorumHash, vote.ToProto())
+		err = tc.signerClient.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, vote.ToProto())
 		require.Error(t, err)
 	}
 }
 
 func brokenHandler(privVal types.PrivValidator, request privvalproto.Message,
-	chainID string, quorumHash crypto.QuorumHash) (privvalproto.Message, error) {
+	chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) (privvalproto.Message, error) {
 	var res privvalproto.Message
 	var err error
 
@@ -445,7 +445,7 @@ func TestSignerUnexpectedResponse(t *testing.T) {
 
 		want := &types.Vote{Type: tmproto.PrecommitType}
 
-		e := tc.signerClient.SignVote(tc.chainID, tc.quorumHash, want.ToProto())
+		e := tc.signerClient.SignVote(tc.chainID, tc.quorumType, tc.quorumHash, want.ToProto())
 		assert.EqualError(t, e, "empty response")
 	}
 }

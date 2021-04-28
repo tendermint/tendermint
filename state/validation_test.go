@@ -228,9 +228,9 @@ func TestValidateBlockCommit(t *testing.T) {
 		g := goodVote.ToProto()
 		b := badVote.ToProto()
 
-		err = badPrivVal.SignVote(chainID, state.Validators.QuorumHash, g)
+		err = badPrivVal.SignVote(chainID, state.Validators.QuorumType, state.Validators.QuorumHash, g)
 		require.NoError(t, err, "height %d", height)
-		err = badPrivVal.SignVote(chainID, state.Validators.QuorumHash, b)
+		err = badPrivVal.SignVote(chainID, state.Validators.QuorumType, state.Validators.QuorumHash, b)
 		require.NoError(t, err, "height %d", height)
 
 		goodVote.BlockSignature, badVote.BlockSignature = g.BlockSignature, b.BlockSignature

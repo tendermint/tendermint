@@ -80,7 +80,7 @@ func DefaultValidationRequestHandler(
 
 		vote := r.SignVoteRequest.Vote
 
-		err = privVal.SignVote(chainID, quorumHash, vote)
+		err = privVal.SignVote(chainID, quorumType, quorumHash, vote)
 		if err != nil {
 			res = mustWrapMsg(&privvalproto.SignedVoteResponse{
 				Vote: tmproto.Vote{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
@@ -99,7 +99,7 @@ func DefaultValidationRequestHandler(
 
 		proposal := r.SignProposalRequest.Proposal
 
-		err = privVal.SignProposal(chainID, quorumHash, proposal)
+		err = privVal.SignProposal(chainID, quorumType, quorumHash, proposal)
 		if err != nil {
 			res = mustWrapMsg(&privvalproto.SignedProposalResponse{
 				Proposal: tmproto.Proposal{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})

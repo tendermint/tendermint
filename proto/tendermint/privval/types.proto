@@ -47,6 +47,8 @@ message ProTxHashResponse {
 message SignVoteRequest {
   tendermint.types.Vote vote     = 1;
   string                chain_id = 2;
+  int32                 quorum_type = 3;
+  bytes                 quorum_hash = 4;
 }
 
 // SignedVoteResponse is a response containing a signed vote or an error
@@ -59,6 +61,8 @@ message SignedVoteResponse {
 message SignProposalRequest {
   tendermint.types.Proposal proposal = 1;
   string                    chain_id = 2;
+  int32                 quorum_type = 3;
+  bytes                 quorum_hash = 4;
 }
 
 // SignedProposalResponse is response containing a signed proposal or an error
