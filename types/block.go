@@ -820,6 +820,7 @@ type Commit struct {
 	BlockID                 BlockID     `json:"block_id"`
 	StateID                 StateID     `json:"state_id"`
 	Signatures              []CommitSig `json:"signatures"`
+	QuorumHash              []byte      `json:"quorum_hash"`
 	ThresholdBlockSignature []byte      `json:"threshold_block_signature"`
 	ThresholdStateSignature []byte      `json:"threshold_state_signature"`
 
@@ -831,7 +832,7 @@ type Commit struct {
 }
 
 // NewCommit returns a new Commit.
-func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, commitSigs []CommitSig,
+func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, commitSigs []CommitSig, quorumHash []byte,
 	thresholdBlockSignature []byte, thresholdStateSignature []byte) *Commit {
 	return &Commit{
 		Height:                  height,
@@ -839,6 +840,7 @@ func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, comm
 		BlockID:                 blockID,
 		StateID:                 stateID,
 		Signatures:              commitSigs,
+		QuorumHash:              quorumHash,
 		ThresholdBlockSignature: thresholdBlockSignature,
 		ThresholdStateSignature: thresholdStateSignature,
 	}
@@ -1149,6 +1151,7 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 	}
 	commit.Signatures = sigs
 
+	commit.QuorumHash = cp.QuorumHash
 	commit.ThresholdBlockSignature = cp.ThresholdBlockSignature
 	commit.ThresholdStateSignature = cp.ThresholdStateSignature
 

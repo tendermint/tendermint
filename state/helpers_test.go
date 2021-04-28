@@ -92,7 +92,7 @@ func makeValidCommit(
 	thresholdBlockSig, _ := bls12381.RecoverThresholdSignatureFromShares(blockSigs, blsIDs)
 	thresholdStateSig, _ := bls12381.RecoverThresholdSignatureFromShares(stateSigs, blsIDs)
 
-	return types.NewCommit(height, 0, blockID, stateID, sigs, thresholdBlockSig, thresholdStateSig), nil
+	return types.NewCommit(height, 0, blockID, stateID, sigs, vals.QuorumHash, thresholdBlockSig, thresholdStateSig), nil
 }
 
 // make some bogus txs

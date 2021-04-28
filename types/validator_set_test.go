@@ -4,6 +4,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"math"
 	"sort"
 	"strings"
@@ -22,10 +23,10 @@ import (
 func TestValidatorSetBasic(t *testing.T) {
 	// empty or nil validator lists are allowed,
 	// but attempting to IncrementProposerPriority on them will panic.
-	vset := NewValidatorSet([]*Validator{}, nil, nil)
+	vset := NewValidatorSet([]*Validator{}, nil, btcjson.LLMQType_5_60, nil)
 	assert.Panics(t, func() { vset.IncrementProposerPriority(1) })
 
-	vset = NewValidatorSet(nil, nil, nil)
+	vset = NewValidatorSet(nil, nil, btcjson.LLMQType_5_60,nil)
 	assert.Panics(t, func() { vset.IncrementProposerPriority(1) })
 
 	assert.EqualValues(t, vset, vset.Copy())
@@ -228,7 +229,7 @@ func TestIncrementProposerPriorityPositiveTimes(t *testing.T) {
 		NewTestValidatorGeneratedFromAddress([]byte("foo")),
 		NewTestValidatorGeneratedFromAddress([]byte("bar")),
 		NewTestValidatorGeneratedFromAddress([]byte("baz")),
-	}, pubKeyBLS{}, crypto.QuorumHash{})
+	}, pubKeyBLS{}, btcjson.LLMQType_5_60, crypto.QuorumHash{})
 
 	assert.Panics(t, func() { vset.IncrementProposerPriority(-1) })
 	assert.Panics(t, func() { vset.IncrementProposerPriority(0) })
@@ -237,7 +238,7 @@ func TestIncrementProposerPriorityPositiveTimes(t *testing.T) {
 
 func BenchmarkValidatorSetCopy(b *testing.B) {
 	b.StopTimer()
-	vset := NewValidatorSet([]*Validator{}, nil, nil)
+	vset := NewValidatorSet([]*Validator{}, nil, btcjson.LLMQType_5_60, nil)
 	for i := 0; i < 1000; i++ {
 		privKey := bls12381.GenPrivKey()
 		pubKey := privKey.PubKey()

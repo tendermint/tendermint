@@ -1,6 +1,7 @@
 package light_test
 
 import (
+	"github.com/dashevo/dashd-go/btcjson"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -86,7 +87,7 @@ func (pkz privKeys) ToValidators(thresholdPublicKey crypto.PubKey) *types.Valida
 		res[i] = types.NewValidatorDefaultVotingPower(k.PubKey(), crypto.Sha256(k.PubKey().Address()))
 	}
 	// Quorum hash is pseudorandom
-	return types.NewValidatorSet(res, thresholdPublicKey, crypto.Sha256(thresholdPublicKey.Bytes()))
+	return types.NewValidatorSet(res, thresholdPublicKey, btcjson.LLMQType_5_60, crypto.Sha256(thresholdPublicKey.Bytes()))
 }
 
 // signHeader properly signs the header with all keys from first to last exclusive.
@@ -126,7 +127,7 @@ func (pkz privKeys) signHeader(header *types.Header, valSet *types.ValidatorSet,
 	thresholdBlockSig, _ := bls12381.RecoverThresholdSignatureFromShares(blockSigs, blsIDs)
 	thresholdStateSig, _ := bls12381.RecoverThresholdSignatureFromShares(stateSigs, blsIDs)
 
-	return types.NewCommit(header.Height, 1, blockID, stateID, commitSigs, thresholdBlockSig, thresholdStateSig)
+	return types.NewCommit(header.Height, 1, blockID, stateID, commitSigs, valSet.QuorumHash, thresholdBlockSig, thresholdStateSig)
 }
 
 func makeVote(header *types.Header, valset *types.ValidatorSet, proTxHash crypto.ProTxHash,

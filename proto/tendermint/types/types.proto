@@ -125,8 +125,9 @@ message Commit {
   BlockID                       block_id   = 3 [(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];
   StateID                       state_id   = 5 [(gogoproto.nullable) = false, (gogoproto.customname) = "StateID"];
   repeated CommitSig            signatures = 4 [(gogoproto.nullable) = false];
-  bytes threshold_block_signature = 6;
-  bytes threshold_state_signature = 7;
+  bytes quorum_hash = 6;
+  bytes threshold_block_signature = 7;
+  bytes threshold_state_signature = 8;
 }
 
 // CommitSig is a part of the Vote included in a Commit.

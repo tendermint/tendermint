@@ -304,8 +304,9 @@ message BlockParams {
 message LastCommitInfo {
   int32             round = 1;
   repeated VoteInfo votes = 2 [(gogoproto.nullable) = false];
-  bytes blockSignature = 3;
-  bytes stateSignature = 4;
+  bytes quorumHash     = 3;
+  bytes blockSignature = 4;
+  bytes stateSignature = 5;
 }
 
 // Event allows application developers to attach additional information to

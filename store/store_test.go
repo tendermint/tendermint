@@ -40,7 +40,7 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 	}}
 	return types.NewCommit(height, 0,
 		types.BlockID{Hash: []byte(""), PartSetHeader: types.PartSetHeader{Hash: []byte(""), Total: 2}},
-		types.StateID{LastAppHash: make([]byte, 32)}, commitSigs,
+		types.StateID{LastAppHash: make([]byte, 32)}, commitSigs, crypto.RandQuorumHash(),
 		commitSigs[0].BlockSignature, commitSigs[0].StateSignature)
 }
 

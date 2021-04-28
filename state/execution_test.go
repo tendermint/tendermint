@@ -98,7 +98,7 @@ func TestBeginBlockValidators(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		lastCommit := types.NewCommit(1, 0, prevBlockID, prevStateID, tc.lastCommitSigs, nil, nil)
+		lastCommit := types.NewCommit(1, 0, prevBlockID, prevStateID, tc.lastCommitSigs, nil, nil, nil)
 
 		// block for height 2
 		block, _ := state.MakeBlock(2, nil, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().ProTxHash)
@@ -167,7 +167,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 			SignedHeader: &types.SignedHeader{
 				Header: header,
 				Commit: types.NewCommit(10, 0, makeBlockID(header.Hash(), 100, []byte("partshash")),
-					makeStateID(header.AppHash), commitSig, crypto.CRandBytes(types.MaxSignatureSize),
+					makeStateID(header.AppHash), commitSig, crypto.RandQuorumHash(), crypto.CRandBytes(types.MaxSignatureSize),
 					crypto.CRandBytes(types.MaxSignatureSize),
 				),
 			},

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"io"
 	"io/ioutil"
 	"os"
@@ -1200,7 +1201,7 @@ func makeBlocks(n int, state *sm.State, privVal types.PrivValidator) []*types.Bl
 func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.BlockMeta,
 	privVal types.PrivValidator, height int64) (*types.Block, *types.PartSet) {
 
-	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil,
+	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil, nil,
 		nil, nil)
 	if height > 1 {
 		vote, _ := types.MakeVote(
@@ -1213,7 +1214,7 @@ func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.Bloc
 		// since there is only 1 vote, use it as threshold
 		commitSig := vote.CommitSig()
 		lastCommit = types.NewCommit(vote.Height, vote.Round,
-			lastBlockMeta.BlockID, lastBlockMeta.StateID, []types.CommitSig{commitSig},
+			lastBlockMeta.BlockID, lastBlockMeta.StateID, []types.CommitSig{commitSig}, nil,
 			commitSig.BlockSignature, commitSig.StateSignature)
 	}
 
@@ -1321,7 +1322,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		case *types.Vote:
 			if p.Type == tmproto.PrecommitType {
 				thisBlockCommit = types.NewCommit(p.Height, p.Round,
-					p.BlockID, p.StateID, []types.CommitSig{p.CommitSig()}, p.BlockSignature, p.StateSignature)
+					p.BlockID, p.StateID, []types.CommitSig{p.CommitSig()}, nil, p.BlockSignature, p.StateSignature)
 			}
 		}
 	}
@@ -1446,7 +1447,7 @@ func (bs *mockBlockStore) PruneBlocks(height int64) (uint64, error) {
 func TestHandshakeUpdatesValidators(t *testing.T) {
 	val, _ := types.RandValidator()
 	randQuorumHash := crypto.RandQuorumHash()
-	vals := types.NewValidatorSet([]*types.Validator{val}, val.PubKey, randQuorumHash)
+	vals := types.NewValidatorSet([]*types.Validator{val}, val.PubKey, btcjson.LLMQType_5_60, randQuorumHash)
 	abciValidatorSetUpdates := types.TM2PB.ValidatorUpdates(vals)
 	app := &initChainApp{vals: &abciValidatorSetUpdates}
 	clientCreator := proxy.NewLocalClientCreator(app)

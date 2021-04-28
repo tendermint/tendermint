@@ -2,6 +2,7 @@
 package evidence_test
 
 import (
+	"github.com/dashevo/dashd-go/btcjson"
 	"os"
 	"testing"
 	"time"
@@ -231,7 +232,7 @@ func TestReportConflictingVotes(t *testing.T) {
 	state := pool.State()
 	state.LastBlockHeight++
 	state.LastBlockTime = ev.Time()
-	state.LastValidators = types.NewValidatorSet([]*types.Validator{val}, val.PubKey, quorumHash)
+	state.LastValidators = types.NewValidatorSet([]*types.Validator{val}, val.PubKey, btcjson.LLMQType_100_67, quorumHash)
 	pool.Update(state, []types.Evidence{})
 
 	// should be able to retrieve evidence from pool
@@ -251,7 +252,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	require.NoError(t, err)
 	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(21*time.Minute),
 		val, evidenceChainID, crypto.RandQuorumHash())
-	lastCommit := makeCommit(height, val.ProTxHash)
+	lastCommit := makeCommit(height, nil, val.ProTxHash)
 
 	coreChainLockHeight := state.LastCoreChainLockedBlockHeight
 
@@ -487,7 +488,7 @@ func initializeBlockStore(db dbm.DB, state sm.State, valProTxHash []byte) *store
 	blockStore := store.NewBlockStore(db)
 
 	for i := int64(1); i <= state.LastBlockHeight; i++ {
-		lastCommit := makeCommit(i-1, valProTxHash)
+		lastCommit := makeCommit(i-1, state.LastValidators.QuorumHash, valProTxHash)
 		block, _ := state.MakeBlock(i, nil, []types.Tx{}, lastCommit, nil,
 			state.Validators.GetProposer().ProTxHash)
 		block.Header.Time = defaultEvidenceTime.Add(time.Duration(i) * time.Minute)
@@ -495,21 +496,21 @@ func initializeBlockStore(db dbm.DB, state sm.State, valProTxHash []byte) *store
 		const parts = 1
 		partSet := block.MakePartSet(parts)
 
-		seenCommit := makeCommit(i, valProTxHash)
+		seenCommit := makeCommit(i, state.Validators.QuorumHash, valProTxHash)
 		blockStore.SaveBlock(block, partSet, seenCommit)
 	}
 
 	return blockStore
 }
 
-func makeCommit(height int64, valProTxHash []byte) *types.Commit {
+func makeCommit(height int64, quorumHash []byte, valProTxHash []byte) *types.Commit {
 	commitSigs := []types.CommitSig{{
 		BlockIDFlag:        types.BlockIDFlagCommit,
 		ValidatorProTxHash: valProTxHash,
 		BlockSignature:     []byte("BlockSignature"),
 		StateSignature:     []byte("StateSignature"),
 	}}
-	return types.NewCommit(height, 0, types.BlockID{}, types.StateID{}, commitSigs, commitSigs[0].BlockSignature, commitSigs[0].StateSignature)
+	return types.NewCommit(height, 0, types.BlockID{}, types.StateID{}, commitSigs, quorumHash, commitSigs[0].BlockSignature, commitSigs[0].StateSignature)
 }
 
 func defaultTestPool(height int64) (*evidence.Pool, *types.MockPV) {

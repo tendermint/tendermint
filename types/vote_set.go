@@ -682,7 +682,7 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	}
 
 	return NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, *voteSet.stateMaj23,
-		commitSigs, voteSet.thresholdBlockSig, voteSet.thresholdStateSig)
+		commitSigs, voteSet.valSet.QuorumHash, voteSet.thresholdBlockSig, voteSet.thresholdStateSig)
 }
 
 //--------------------------------------------------------------------------------
