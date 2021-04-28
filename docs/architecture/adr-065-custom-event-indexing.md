@@ -22,6 +22,7 @@
 ## Changelog
 
 - April 1, 2021: Initial Draft (@alexanderbez)
+- April 28, 2021: Specify search capabilities are only supported through the KV indexer (@marbar3778)
 
 ## Status
 
