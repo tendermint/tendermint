@@ -6,8 +6,8 @@ import (
 	"time"
 
 	bc "github.com/tendermint/tendermint/blockchain"
-	"github.com/tendermint/tendermint/internal/libs/service"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
 	sm "github.com/tendermint/tendermint/state"

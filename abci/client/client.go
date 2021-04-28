@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/internal/libs/service"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 const (

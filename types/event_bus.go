@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/internal/libs/service"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/libs/service"
 )
 
 const defaultCapacity = 0

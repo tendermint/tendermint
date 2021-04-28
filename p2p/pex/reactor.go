@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/internal/libs/clist"
-	"github.com/tendermint/tendermint/internal/libs/service"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
 	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )

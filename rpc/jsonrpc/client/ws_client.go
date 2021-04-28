@@ -13,8 +13,8 @@ import (
 	"github.com/gorilla/websocket"
 	metrics "github.com/rcrowley/go-metrics"
 
-	"github.com/tendermint/tendermint/internal/libs/service"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/libs/service"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 

@@ -3,7 +3,7 @@ package indexer
 import (
 	"context"
 
-	"github.com/tendermint/tendermint/internal/libs/service"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
 )
 

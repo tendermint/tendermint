@@ -16,11 +16,11 @@ import (
 
 	flow "github.com/tendermint/tendermint/internal/libs/flowrate"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
-	"github.com/tendermint/tendermint/internal/libs/service"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/libs/timer"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	"github.com/tendermint/tendermint/libs/service"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
