@@ -27,5 +27,5 @@ jobs:
           DEFAULT_BRANCH: master
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_MD: true
-          VALIDATE_OPAENAPI: true
+          VALIDATE_OPENAPI: true
           VALIDATE_YAML: true
