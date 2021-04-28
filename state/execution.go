@@ -8,7 +8,6 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
-	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -42,7 +41,7 @@ type BlockExecutor struct {
 	metrics *Metrics
 
 	// cache the verification results over a single height
-	cache []bytes.HexBytes
+	cache map[string]struct{}
 }
 
 type BlockExecutorOption func(executor *BlockExecutor)
@@ -119,7 +118,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 // ie. to verify evidence from a validator at an old height.
 func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) error {
 	hash := block.Hash()
-	if blockExec.alreadyVerifiedBlock(hash) {
+	if _, ok := blockExec.cache[hash.String()]; ok {
 		return nil
 	}
 
@@ -133,7 +132,7 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 		return err
 	}
 
-	blockExec.cache = append(blockExec.cache, hash)
+	blockExec.cache[hash.String()] = struct{}{}
 	return nil
 }
 
@@ -212,7 +211,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	fail.Fail() // XXX
 
 	// reset the verification cache
-	blockExec.cache = []bytes.HexBytes{}
+	blockExec.cache = make(map[string]struct{})
 
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
@@ -268,15 +267,6 @@ func (blockExec *BlockExecutor) Commit(
 	)
 
 	return res.Data, res.RetainHeight, err
-}
-
-func (blockExec *BlockExecutor) alreadyVerifiedBlock(blockHash bytes.HexBytes) bool {
-	for _, hash := range blockExec.cache {
-		if blockHash.Equal(hash) {
-			return true
-		}
-	}
-	return false
 }
 
 //---------------------------------------------------------
