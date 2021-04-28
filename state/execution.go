@@ -70,7 +70,7 @@ func NewBlockExecutor(
 		evpool:   evpool,
 		logger:   logger,
 		metrics:  NopMetrics(),
-		cache:	  make(map[string]struct{}),
+		cache:    make(map[string]struct{}),
 	}
 
 	for _, option := range options {
