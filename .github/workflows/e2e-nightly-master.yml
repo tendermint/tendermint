@@ -5,6 +5,7 @@
 
 name: e2e-nightly-master
 on:
+  pull_request:
   workflow_dispatch: # allow running workflow manually
   schedule:
     - cron: '0 2 * * *'
