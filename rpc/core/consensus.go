@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/dashevo/dashd-go/btcjson"
 	cm "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -43,15 +44,18 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64, pagePtr, perPagePtr *in
 	v := validators.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
 	var thresholdPublicKey crypto.PubKey = nil
 	var quorumHash crypto.QuorumHash = nil
+	var quorumType btcjson.LLMQType = 0
 	if requestThresholdPublicKey {
 		thresholdPublicKey = validators.ThresholdPublicKey
 		quorumHash = validators.QuorumHash
+		quorumType = validators.QuorumType
 	}
 
 	return &ctypes.ResultValidators{
 		BlockHeight:        height,
 		Validators:         v,
 		ThresholdPublicKey: &thresholdPublicKey,
+		QuorumType:         quorumType,
 		QuorumHash:         &quorumHash,
 		Count:              len(v),
 		Total:              totalCount}, nil

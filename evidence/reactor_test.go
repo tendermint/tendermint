@@ -381,7 +381,7 @@ func TestEvidenceVectors(t *testing.T) {
 		VotingPower: types.DefaultDashVotingPower,
 	}
 
-	valSet := types.NewValidatorSet([]*types.Validator{val}, val.PubKey, crypto.RandQuorumHash())
+	valSet := types.NewValidatorSet([]*types.Validator{val}, val.PubKey, btcjson.LLMQType_5_60, crypto.RandQuorumHash())
 
 	dupl := types.NewDuplicateVoteEvidence(
 		exampleVote(1),

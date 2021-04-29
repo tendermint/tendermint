@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"math/rand"
 	"regexp"
 	"strings"
@@ -118,6 +119,7 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 		perPage            = 100
 		vals               = []*types.Validator{}
 		thresholdPublicKey crypto.PubKey
+		quorumType         btcjson.LLMQType
 		quorumHash         crypto.QuorumHash
 		page               = 1
 		total              = -1
@@ -164,12 +166,13 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 			if requestThresholdPublicKey {
 				thresholdPublicKey = *res.ThresholdPublicKey
 				quorumHash = *res.QuorumHash
+				quorumType = res.QuorumType
 			}
 			page++
 			break
 		}
 	}
-	valSet, err := types.ValidatorSetFromExistingValidators(vals, thresholdPublicKey, quorumHash)
+	valSet, err := types.ValidatorSetFromExistingValidators(vals, thresholdPublicKey, quorumType, quorumHash)
 	if err != nil {
 		return nil, provider.ErrBadLightBlock{Reason: err}
 	}

@@ -3,6 +3,7 @@ package client_test
 import (
 	"bytes"
 	"context"
+	"github.com/dashevo/dashd-go/btcjson"
 	"testing"
 	"time"
 
@@ -52,7 +53,7 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	require.NoError(t, err)
 
 	validator := types.NewValidator(val.Key.PubKey, 100, val.Key.ProTxHash)
-	valSet := types.NewValidatorSet([]*types.Validator{validator}, validator.PubKey, crypto.RandQuorumHash())
+	valSet := types.NewValidatorSet([]*types.Validator{validator}, validator.PubKey, btcjson.LLMQType_5_60, crypto.RandQuorumHash())
 
 	return types.NewDuplicateVoteEvidence(vote, vote2, defaultTestTime, valSet)
 }

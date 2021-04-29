@@ -11,7 +11,8 @@ message ValidatorSet {
   Validator                   proposer             = 2;
   int64                       total_voting_power   = 3;
   tendermint.crypto.PublicKey threshold_public_key = 4 [(gogoproto.nullable) = false];
-  bytes                       quorum_hash          = 5;
+  int32                       quorum_type          = 5;
+  bytes                       quorum_hash          = 6;
 }
 
 message Validator {

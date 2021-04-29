@@ -262,7 +262,7 @@ func TestProposerSelection1(t *testing.T) {
 		NewTestValidatorGeneratedFromAddress([]byte("foo")),
 		NewTestValidatorGeneratedFromAddress([]byte("bar")),
 		NewTestValidatorGeneratedFromAddress([]byte("baz")),
-	}, pubKeyBLS{}, crypto.QuorumHash{})
+	}, pubKeyBLS{}, btcjson.LLMQType_5_60, crypto.QuorumHash{})
 	var proposers []string
 	for i := 0; i < 99; i++ {
 		val := vset.GetProposer()
@@ -516,7 +516,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 		pubKey     = privKey.PubKey()
 		v1         = NewValidatorDefaultVotingPower(pubKey, proTxHash)
 		quorumHash = crypto.RandQuorumHash()
-		vset       = NewValidatorSet([]*Validator{v1}, v1.PubKey, quorumHash)
+		vset       = NewValidatorSet([]*Validator{v1}, v1.PubKey, btcjson.LLMQType_5_60, quorumHash)
 
 		chainID = "Lalande21185"
 	)
@@ -536,6 +536,7 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 		vote.BlockID,
 		vote.StateID,
 		[]CommitSig{vote.CommitSig()},
+		quorumHash,
 		vote.BlockSignature,
 		vote.StateSignature,
 	)
@@ -564,17 +565,17 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 		{"wrong height", chainID, vote.BlockID, vote.StateID, vote.Height - 1, commit, true},
 
 		{"wrong set size: 1 vs 0", chainID, vote.BlockID, vote.StateID, vote.Height,
-			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{}, nil, nil), true},
+			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{}, quorumHash, nil, nil), true},
 
 		{"wrong set size: 1 vs 2", chainID, vote.BlockID, vote.StateID, vote.Height,
 			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID,
-				[]CommitSig{vote.CommitSig(), {BlockIDFlag: BlockIDFlagAbsent}}, nil, nil), true},
+				[]CommitSig{vote.CommitSig(), {BlockIDFlag: BlockIDFlagAbsent}}, quorumHash, nil, nil), true},
 
 		{"insufficient voting power: got 0, needed more than 66", chainID, vote.BlockID, vote.StateID, vote.Height,
-			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{{BlockIDFlag: BlockIDFlagAbsent}}, vote.BlockSignature, vote.StateSignature), true},
+			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{{BlockIDFlag: BlockIDFlagAbsent}}, quorumHash, vote.BlockSignature, vote.StateSignature), true},
 
 		{"wrong block signature", chainID, vote.BlockID, vote.StateID, vote.Height,
-			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{vote2.CommitSig()}, vote2.BlockSignature, vote2.StateSignature), true},
+			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{vote2.CommitSig()}, quorumHash, vote2.BlockSignature, vote2.StateSignature), true},
 	}
 
 	for _, tc := range testCases {
@@ -616,7 +617,7 @@ func TestValidatorSet_VerifyCommit_CheckAllSignatures(t *testing.T) {
 	// malleate 4th signature
 	vote := voteSet.GetByIndex(3)
 	v := vote.ToProto()
-	err = vals[3].SignVote("CentaurusA", valSet.QuorumHash, v)
+	err = vals[3].SignVote("CentaurusA", valSet.QuorumType, valSet.QuorumHash, v)
 	require.NoError(t, err)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
@@ -643,7 +644,7 @@ func TestValidatorSet_VerifyCommitLight_ReturnsAsSoonAsMajorityOfVotingPowerSign
 	// malleate 4th signature (3 signatures are enough for 2/3+)
 	vote := voteSet.GetByIndex(3)
 	v := vote.ToProto()
-	err = vals[3].SignVote("CentaurusA", valSet.QuorumHash, v)
+	err = vals[3].SignVote("CentaurusA", valSet.QuorumType, valSet.QuorumHash, v)
 	require.NoError(t, err)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
@@ -668,7 +669,7 @@ func TestValidatorSet_VerifyCommitLightTrusting_ReturnsAsSoonAsTrustLevelOfVotin
 	// malleate 3rd signature (2 signatures are enough for 1/3+ trust level)
 	vote := voteSet.GetByIndex(2)
 	v := vote.ToProto()
-	err = vals[2].SignVote("CentaurusA", valSet.QuorumHash, v)
+	err = vals[2].SignVote("CentaurusA", valSet.QuorumType, valSet.QuorumHash, v)
 	require.NoError(t, err)
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
@@ -681,7 +682,7 @@ func TestValidatorSet_VerifyCommitLightTrusting_ReturnsAsSoonAsTrustLevelOfVotin
 func TestEmptySet(t *testing.T) {
 
 	var valList []*Validator
-	valSet := NewValidatorSet(valList, bls12381.PubKey{}, crypto.QuorumHash{})
+	valSet := NewValidatorSet(valList, bls12381.PubKey{}, btcjson.LLMQType_5_60, crypto.QuorumHash{})
 	assert.Panics(t, func() { valSet.IncrementProposerPriority(1) })
 	assert.Panics(t, func() { valSet.RescalePriorities(100) })
 	assert.Panics(t, func() { valSet.shiftByAvgProposerPriority() })
@@ -717,14 +718,14 @@ func TestUpdatesForNewValidatorSet(t *testing.T) {
 	v112 := NewTestValidatorGeneratedFromAddress([]byte("v1"))
 	v113 := NewTestValidatorGeneratedFromAddress([]byte("v1"))
 	valList := []*Validator{v111, v112, v113}
-	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}, crypto.QuorumHash{}) })
+	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}, btcjson.LLMQType_5_60, crypto.QuorumHash{}) })
 
 	// Verify set including validator with voting power 0 cannot be created
 	v1 := NewTestRemoveValidatorGeneratedFromAddress([]byte("v1"))
 	v2 := NewTestValidatorGeneratedFromAddress([]byte("v2"))
 	v3 := NewTestValidatorGeneratedFromAddress([]byte("v3"))
 	valList = []*Validator{v1, v2, v3}
-	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}, crypto.QuorumHash{}) })
+	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}, btcjson.LLMQType_5_60, crypto.QuorumHash{}) })
 
 	// Verify set including validator with negative voting power cannot be created
 	v1 = NewTestValidatorGeneratedFromAddress([]byte("v1"))
@@ -736,7 +737,7 @@ func TestUpdatesForNewValidatorSet(t *testing.T) {
 	}
 	v3 = NewTestValidatorGeneratedFromAddress([]byte("v3"))
 	valList = []*Validator{v1, v2, v3}
-	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}, crypto.QuorumHash{}) })
+	assert.Panics(t, func() { NewValidatorSet(valList, bls12381.PubKey{}, btcjson.LLMQType_5_60, crypto.QuorumHash{}) })
 
 }
 
@@ -1344,14 +1345,15 @@ func TestNewValidatorSetFromExistingValidators(t *testing.T) {
 	valSet, _ := GenerateValidatorSet(size)
 	valSet.IncrementProposerPriority(3)
 
-	newValSet0 := NewValidatorSet(valSet.Validators, valSet.ThresholdPublicKey, valSet.QuorumHash)
+	newValSet0 := NewValidatorSet(valSet.Validators, valSet.ThresholdPublicKey, valSet.QuorumType, valSet.QuorumHash)
 	assert.NotEqual(t, valSet, newValSet0)
 
 	valSet.IncrementProposerPriority(2)
-	newValSet1 := NewValidatorSet(valSet.Validators, valSet.ThresholdPublicKey, valSet.QuorumHash)
+	newValSet1 := NewValidatorSet(valSet.Validators, valSet.ThresholdPublicKey, valSet.QuorumType, valSet.QuorumHash)
 	assert.Equal(t, valSet, newValSet1)
 
-	existingValSet, err := ValidatorSetFromExistingValidators(valSet.Validators, valSet.ThresholdPublicKey, valSet.QuorumHash)
+	existingValSet, err := ValidatorSetFromExistingValidators(valSet.Validators, valSet.ThresholdPublicKey,
+		valSet.QuorumType, valSet.QuorumHash)
 	assert.NoError(t, err)
 	assert.Equal(t, valSet, existingValSet)
 	assert.Equal(t, valSet.CopyIncrementProposerPriority(3), existingValSet.CopyIncrementProposerPriority(3))

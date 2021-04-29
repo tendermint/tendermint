@@ -2,6 +2,7 @@ package privval
 
 import (
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -99,10 +100,10 @@ func (sc *RetrySignerClient) GetProTxHash() (crypto.ProTxHash, error) {
 	return nil, fmt.Errorf("exhausted all attempts to get protxhash: %w", err)
 }
 
-func (sc *RetrySignerClient) SignVote(chainID string, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
+func (sc *RetrySignerClient) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, vote *tmproto.Vote) error {
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
-		err = sc.next.SignVote(chainID, quorumHash, vote)
+		err = sc.next.SignVote(chainID, quorumType, quorumHash, vote)
 		if err == nil {
 			return nil
 		}
@@ -115,10 +116,10 @@ func (sc *RetrySignerClient) SignVote(chainID string, quorumHash crypto.QuorumHa
 	return fmt.Errorf("exhausted all attempts to sign vote: %w", err)
 }
 
-func (sc *RetrySignerClient) SignProposal(chainID string, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
+func (sc *RetrySignerClient) SignProposal(chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal) error {
 	var err error
 	for i := 0; i < sc.retries || sc.retries == 0; i++ {
-		err = sc.next.SignProposal(chainID, quorumHash, proposal)
+		err = sc.next.SignProposal(chainID, quorumType, quorumHash, proposal)
 		if err == nil {
 			return nil
 		}

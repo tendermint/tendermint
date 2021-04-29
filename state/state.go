@@ -338,8 +338,8 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 
 	var validatorSet, nextValidatorSet *types.ValidatorSet
 	if genDoc.Validators == nil {
-		validatorSet = types.NewValidatorSet(nil, nil, 0, nil)
-		nextValidatorSet = types.NewValidatorSet(nil, nil, 0,nil)
+		validatorSet = types.NewValidatorSet(nil, nil, genDoc.QuorumType, nil)
+		nextValidatorSet = types.NewValidatorSet(nil, nil, genDoc.QuorumType,nil)
 	} else {
 		validators := make([]*types.Validator, len(genDoc.Validators))
 		for i, val := range genDoc.Validators {
@@ -363,7 +363,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 
 		NextValidators:              nextValidatorSet,
 		Validators:                  validatorSet,
-		LastValidators:              types.NewValidatorSet(nil, nil, 0, nil),
+		LastValidators:              types.NewValidatorSet(nil, nil, genDoc.QuorumType, nil),
 		LastHeightValidatorsChanged: genDoc.InitialHeight,
 
 		ConsensusParams:                  *genDoc.ConsensusParams,
