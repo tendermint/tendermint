@@ -1358,7 +1358,7 @@ func (n *Node) OnStart() error {
 			return err
 		}
 
-		// for the new p2p stack we need to explicity start all the reactors.
+		// for the new p2p stack we need to explicitly start all the reactors.
 		// For the old p2p stack the switch does it for us.
 		if n.config.Mode != cfg.ModeSeed {
 			if n.config.FastSync.Version == cfg.BlockchainV0 {
@@ -1393,10 +1393,8 @@ func (n *Node) OnStart() error {
 				return err
 			}
 		}
-	} else {
-		if err := n.sw.Start(); err != nil {
-			return err
-		}
+	} else if err := n.sw.Start(); err != nil {
+		return err
 	}
 
 	// Always connect to persistent peers
@@ -1476,11 +1474,9 @@ func (n *Node) OnStop() {
 		if err := n.router.Stop(); err != nil {
 			n.Logger.Error("failed to stop router", "err", err)
 		}
-	} else {
-		// the switch stops all the reactors as well
-		if err := n.sw.Stop(); err != nil {
-			n.Logger.Error("failed to stop switch", "err", err)
-		}
+
+	} else if err := n.sw.Stop(); err != nil {
+		n.Logger.Error("failed to stop switch", "err", err)
 	}
 
 	// stop mempool WAL
