@@ -2440,8 +2440,6 @@ func (m *Event) GetAttributes() []EventAttribute {
 
 // EventAttribute is a single key-value pair, associated with an event.
 type EventAttribute struct {
-	// bytes key   = 1;
-	// bytes value = 2;
 	Key   string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	Index bool   `protobuf:"varint,3,opt,name=index,proto3" json:"index,omitempty"`
