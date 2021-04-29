@@ -944,11 +944,20 @@ func NewSeedNode(config *cfg.Config,
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
 
-	// start the pex reactor
-	pexReactor := createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
-	pexReactorV2, err := createPEXReactorV2(config, logger, peerManager, router)
-	if err != nil {
-		return nil, err
+	var (
+		pexReactor   *pex.Reactor
+		pexReactorV2 *pex.ReactorV2
+	)
+
+	// add the pex reactor
+	if config.P2P.DisableLegacy {
+		pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
+		if err != nil {
+			return nil, err
+		}
+		router.AddChannelDescriptors(pexReactorV2.GetChannels())
+	} else {
+		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
 	}
 
 	if config.RPC.PprofListenAddress != "" {
@@ -1237,13 +1246,16 @@ func NewNode(config *cfg.Config,
 	)
 
 	if config.P2P.PexReactor {
-		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
-		pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
-		if err != nil {
-			return nil, err
+		if config.P2P.DisableLegacy {
+			pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
+			if err != nil {
+				return nil, err
+			}
+			router.AddChannelDescriptors(pexReactorV2.GetChannels())
+		} else {
+			pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
 		}
-
-		router.AddChannelDescriptors(pexReactor.GetChannels())
+		
 	}
 
 	if config.RPC.PprofListenAddress != "" {
@@ -1344,45 +1356,47 @@ func (n *Node) OnStart() error {
 	n.Logger.Info("p2p service", "legacy_enabled", !n.config.P2P.DisableLegacy)
 
 	if n.config.P2P.DisableLegacy {
-		err = n.router.Start()
-	} else {
-		err = n.sw.Start()
-	}
-	if err != nil {
-		return err
-	}
+		if err := n.router.Start(); err != nil {
+			return err
+		}
 
-	if n.config.Mode != cfg.ModeSeed {
-		if n.config.FastSync.Version == cfg.BlockchainV0 {
-			// Start the real blockchain reactor separately since the switch uses the shim.
-			if err := n.bcReactor.Start(); err != nil {
+		// for the new p2p stack we need to explicity start all the reactors.
+		// For the old p2p stack the switch does it for us.
+		if n.config.Mode != cfg.ModeSeed {
+			if n.config.FastSync.Version == cfg.BlockchainV0 {
+				// Start the real blockchain reactor separately since the switch uses the shim.
+				if err := n.bcReactor.Start(); err != nil {
+					return err
+				}
+			}
+	
+			// Start the real consensus reactor separately since the switch uses the shim.
+			if err := n.consensusReactor.Start(); err != nil {
+				return err
+			}
+	
+			// Start the real state sync reactor separately since the switch uses the shim.
+			if err := n.stateSyncReactor.Start(); err != nil {
+				return err
+			}
+	
+			// Start the real mempool reactor separately since the switch uses the shim.
+			if err := n.mempoolReactor.Start(); err != nil {
+				return err
+			}
+	
+			// Start the real evidence reactor separately since the switch uses the shim.
+			if err := n.evidenceReactor.Start(); err != nil {
 				return err
 			}
 		}
-
-		// Start the real consensus reactor separately since the switch uses the shim.
-		if err := n.consensusReactor.Start(); err != nil {
-			return err
+		if n.pexReactorV2 != nil {
+			if err := n.pexReactorV2.Start(); err != nil {
+				return err
+			}
 		}
-
-		// Start the real state sync reactor separately since the switch uses the shim.
-		if err := n.stateSyncReactor.Start(); err != nil {
-			return err
-		}
-
-		// Start the real mempool reactor separately since the switch uses the shim.
-		if err := n.mempoolReactor.Start(); err != nil {
-			return err
-		}
-
-		// Start the real evidence reactor separately since the switch uses the shim.
-		if err := n.evidenceReactor.Start(); err != nil {
-			return err
-		}
-	}
-
-	if n.config.P2P.DisableLegacy && n.pexReactorV2 != nil {
-		if err := n.pexReactorV2.Start(); err != nil {
+	} else {
+		if err := n.sw.Start(); err != nil {
 			return err
 		}
 	}
@@ -1423,47 +1437,49 @@ func (n *Node) OnStop() {
 		n.Logger.Error("Error closing indexerService", "err", err)
 	}
 
-	if n.config.Mode != cfg.ModeSeed {
+	if n.config.P2P.DisableLegacy {
 		// now stop the reactors
-		if n.config.FastSync.Version == "v0" {
-			// Stop the real blockchain reactor separately since the switch uses the shim.
-			if err := n.bcReactor.Stop(); err != nil {
-				n.Logger.Error("failed to stop the blockchain reactor", "err", err)
+		if n.config.Mode != cfg.ModeSeed {
+			if n.config.FastSync.Version == "v0" {
+				// Stop the real blockchain reactor separately since the switch uses the shim.
+				if err := n.bcReactor.Stop(); err != nil {
+					n.Logger.Error("failed to stop the blockchain reactor", "err", err)
+				}
+			}
+
+			// Stop the real consensus reactor separately since the switch uses the shim.
+			if err := n.consensusReactor.Stop(); err != nil {
+				n.Logger.Error("failed to stop the consensus reactor", "err", err)
+			}
+
+			// Stop the real state sync reactor separately since the switch uses the shim.
+			if err := n.stateSyncReactor.Stop(); err != nil {
+				n.Logger.Error("failed to stop the state sync reactor", "err", err)
+			}
+
+			// Stop the real mempool reactor separately since the switch uses the shim.
+			if err := n.mempoolReactor.Stop(); err != nil {
+				n.Logger.Error("failed to stop the mempool reactor", "err", err)
+			}
+
+			// Stop the real evidence reactor separately since the switch uses the shim.
+			if err := n.evidenceReactor.Stop(); err != nil {
+				n.Logger.Error("failed to stop the evidence reactor", "err", err)
 			}
 		}
 
-		// Stop the real consensus reactor separately since the switch uses the shim.
-		if err := n.consensusReactor.Stop(); err != nil {
-			n.Logger.Error("failed to stop the consensus reactor", "err", err)
+		if n.config.P2P.DisableLegacy && n.pexReactorV2 != nil {
+			if err := n.pexReactorV2.Stop(); err != nil {
+				n.Logger.Error("failed to stop the PEX v2 reactor", "err", err)
+			}
 		}
 
-		// Stop the real state sync reactor separately since the switch uses the shim.
-		if err := n.stateSyncReactor.Stop(); err != nil {
-			n.Logger.Error("failed to stop the state sync reactor", "err", err)
-		}
-
-		// Stop the real mempool reactor separately since the switch uses the shim.
-		if err := n.mempoolReactor.Stop(); err != nil {
-			n.Logger.Error("failed to stop the mempool reactor", "err", err)
-		}
-
-		// Stop the real evidence reactor separately since the switch uses the shim.
-		if err := n.evidenceReactor.Stop(); err != nil {
-			n.Logger.Error("failed to stop the evidence reactor", "err", err)
-		}
-	}
-
-	if n.config.P2P.DisableLegacy && n.pexReactorV2 != nil {
-		if err := n.pexReactorV2.Stop(); err != nil {
-			n.Logger.Error("failed to stop the PEX v2 reactor", "err", err)
-		}
-	}
-
-	if n.config.P2P.DisableLegacy {
+		// stop the router last
 		if err := n.router.Stop(); err != nil {
 			n.Logger.Error("failed to stop router", "err", err)
 		}
 	} else {
+		// the switch stops all the reactors as well
 		if err := n.sw.Stop(); err != nil {
 			n.Logger.Error("failed to stop switch", "err", err)
 		}

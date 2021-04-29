@@ -1,3 +1,6 @@
+disable_legacy_p2p = true
+log_level = "error"
+
 [node.validator01]
 [node.validator02]
 [node.validator03]

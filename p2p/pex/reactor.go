@@ -11,6 +11,7 @@ import (
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p/conn"
 	protop2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
@@ -132,6 +133,19 @@ func (r *ReactorV2) OnStop() {
 	// panics will occur.
 	<-r.pexCh.Done()
 	<-r.peerUpdates.Done()
+}
+
+func (r *ReactorV2) GetChannels() []*conn.ChannelDescriptor {
+	return []*conn.ChannelDescriptor{
+		{
+			ID:                  PexChannel,
+			Priority:            1,
+			SendQueueCapacity:   10,
+			RecvMessageCapacity: maxMsgSize,
+
+			MaxSendBytes: 200,
+		},
+	}
 }
 
 // processPexCh implements a blocking event loop where we listen for p2p
@@ -382,6 +396,8 @@ func (r *ReactorV2) waitUntilNextRequest() <-chan time.Time {
 // peer into the requestsSent bucket and calculates when the next request
 // time should be
 func (r *ReactorV2) sendRequestForPeers() {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
 	peer := r.availablePeers.Front()
 	if peer == nil {
 		// no peers are available
@@ -407,10 +423,8 @@ func (r *ReactorV2) sendRequestForPeers() {
 	// remove the peer from the available peers list and mark it in the requestsSent map
 	r.availablePeers.Remove(peer)
 	peer.DetachPrev()
-	r.mtx.Lock()
 	r.requestsSent[peerID] = struct{}{}
-	r.mtx.Unlock()
-
+	
 	r.calculateNextRequestTime()
 	r.Logger.Debug("peer request sent", "next_request_time", r.nextRequestTime)
 }
