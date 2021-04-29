@@ -269,7 +269,8 @@ func TestNilPubkey(t *testing.T) {
 
 	_, err := MakeSecretConnection(barConn, barPrvKey)
 	require.Error(t, err)
-	assert.Equal(t, "toproto: key type <nil> is not supported", err.Error())
+	wantErr := "toproto: key type <nil> is not supported"
+	assert.Containsf(t, err.Error(), wantErr, "expected error containing %q, got %s", wantErr, err)
 }
 
 func TestNonEd25519Pubkey(t *testing.T) {

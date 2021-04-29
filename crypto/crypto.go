@@ -14,7 +14,7 @@ const (
 	DefaultHashSize    = 32
 	LargeAppHashSize   = DefaultHashSize
 	SmallAppHashSize   = 20
-	DefaultAppHashSize = SmallAppHashSize
+	DefaultAppHashSize = LargeAppHashSize
 	ProTxHashSize      = DefaultHashSize
 	QuorumHashSize     = DefaultHashSize
 )
