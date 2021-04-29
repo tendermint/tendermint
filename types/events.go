@@ -140,6 +140,9 @@ const (
 	// BlockHeightKey is a reserved key used for indexing BeginBlock and Endblock
 	// events.
 	BlockHeightKey = "block.height"
+
+	EventTypeBeginBlock = "begin_block"
+	EventTypeEndBlock   = "end_block"
 )
 
 var (
