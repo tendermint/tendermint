@@ -52,8 +52,7 @@ message RequestInfo {
 }
 
 message RequestInitChain {
-  google.protobuf.Timestamp time = 1
-      [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  google.protobuf.Timestamp        time             = 1 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   string                           chain_id         = 2;
   tendermint.types.ConsensusParams consensus_params = 3;
   repeated ValidatorUpdate         validators       = 4 [(gogoproto.nullable) = false];
@@ -96,8 +95,7 @@ message RequestEndBlock {
 message RequestCommit {}
 
 // lists available snapshots
-message RequestListSnapshots {
-}
+message RequestListSnapshots {}
 
 // offers a snapshot to the application
 message RequestOfferSnapshot {
@@ -184,8 +182,7 @@ message ResponseQuery {
 }
 
 message ResponseBeginBlock {
-  repeated Event events = 1
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  repeated Event events = 1 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 message ResponseCheckTx {
@@ -195,9 +192,8 @@ message ResponseCheckTx {
   string         info       = 4;  // nondeterministic
   int64          gas_wanted = 5 [json_name = "gas_wanted"];
   int64          gas_used   = 6 [json_name = "gas_used"];
-  repeated Event events     = 7
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
-  string codespace = 8;
+  repeated Event events     = 7 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  string         codespace  = 8;
 }
 
 message ResponseDeliverTx {
@@ -208,16 +204,14 @@ message ResponseDeliverTx {
   int64          gas_wanted = 5 [json_name = "gas_wanted"];
   int64          gas_used   = 6 [json_name = "gas_used"];
   repeated Event events     = 7
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"]; // nondeterministic
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];  // nondeterministic
   string codespace = 8;
 }
 
 message ResponseEndBlock {
-  repeated ValidatorUpdate validator_updates = 1
-      [(gogoproto.nullable) = false];
+  repeated ValidatorUpdate         validator_updates       = 1 [(gogoproto.nullable) = false];
   tendermint.types.ConsensusParams consensus_param_updates = 2;
-  repeated Event                   events                  = 3
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  repeated Event                   events = 3 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 message ResponseCommit {
@@ -275,17 +269,16 @@ message LastCommitInfo {
 // Later, transactions may be queried using these events.
 message Event {
   string                  type       = 1;
-  repeated EventAttribute attributes = 2 [
-    (gogoproto.nullable) = false,
-    (gogoproto.jsontag)  = "attributes,omitempty"
-  ];
+  repeated EventAttribute attributes = 2 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "attributes,omitempty"];
 }
 
 // EventAttribute is a single key-value pair, associated with an event.
 message EventAttribute {
-  bytes key   = 1;
-  bytes value = 2;
-  bool  index = 3;  // nondeterministic
+  // bytes key   = 1;
+  // bytes value = 2;
+  string key   = 1;
+  string value = 2;
+  bool   index = 3;  // nondeterministic
 }
 
 // TxResult contains results of executing the transaction.
@@ -333,10 +326,7 @@ message Evidence {
   // The height when the offense occurred
   int64 height = 3;
   // The corresponding time where the offense occurred
-  google.protobuf.Timestamp time = 4 [
-    (gogoproto.nullable) = false,
-    (gogoproto.stdtime)  = true
-  ];
+  google.protobuf.Timestamp time = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   // Total voting power of the validator set in case the ABCI application does
   // not store historical validators.
   // https://github.com/tendermint/tendermint/issues/4581
