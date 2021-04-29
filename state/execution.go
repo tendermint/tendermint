@@ -37,9 +37,11 @@ type BlockExecutor struct {
 	mempool mempl.Mempool
 	evpool  EvidencePool
 
-	logger log.Logger
-
+	logger  log.Logger
 	metrics *Metrics
+
+	// cache the verification results over a single height
+	cache map[string]struct{}
 }
 
 type BlockExecutorOption func(executor *BlockExecutor)
@@ -68,6 +70,7 @@ func NewBlockExecutor(
 		evpool:   evpool,
 		logger:   logger,
 		metrics:  NopMetrics(),
+		cache:    make(map[string]struct{}),
 	}
 
 	for _, option := range options {
@@ -115,11 +118,23 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 // Validation does not mutate state, but does require historical information from the stateDB,
 // ie. to verify evidence from a validator at an old height.
 func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) error {
+	hash := block.Hash()
+	if _, ok := blockExec.cache[hash.String()]; ok {
+		return nil
+	}
+
 	err := validateBlock(state, block)
 	if err != nil {
 		return err
 	}
-	return blockExec.evpool.CheckEvidence(block.Evidence.Evidence)
+
+	err = blockExec.evpool.CheckEvidence(block.Evidence.Evidence)
+	if err != nil {
+		return err
+	}
+
+	blockExec.cache[hash.String()] = struct{}{}
+	return nil
 }
 
 // ApplyBlock validates the block against the state, executes it against the app,
@@ -132,7 +147,8 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	state State, blockID types.BlockID, block *types.Block,
 ) (State, int64, error) {
 
-	if err := validateBlock(state, block); err != nil {
+	// validate the block if we haven't already
+	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
 	}
 
@@ -194,6 +210,9 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	fail.Fail() // XXX
+
+	// reset the verification cache
+	blockExec.cache = make(map[string]struct{})
 
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
