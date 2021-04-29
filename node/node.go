@@ -827,6 +827,7 @@ func createPEXReactorV2(
 	}
 
 	peerUpdates := peerManager.Subscribe()
+	// TODO: Inject private peer IDs!
 	return pex.NewReactorV2(logger, peerManager, channel, peerUpdates), nil
 }
 
