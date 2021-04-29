@@ -11,11 +11,9 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
-	auto "github.com/tendermint/tendermint/libs/autofile"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	tmos "github.com/tendermint/tendermint/libs/os"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
@@ -24,8 +22,6 @@ import (
 
 // TxKeySize is the size of the transaction key index
 const TxKeySize = sha256.Size
-
-var newline = []byte("\n")
 
 //--------------------------------------------------------------------------------
 
@@ -51,8 +47,7 @@ type CListMempool struct {
 	preCheck  PreCheckFunc
 	postCheck PostCheckFunc
 
-	wal          *auto.AutoFile // a log of mempool txs
-	txs          *clist.CList   // concurrent linked-list of good txs
+	txs          *clist.CList // concurrent linked-list of good txs
 	proxyAppConn proxy.AppConnMempool
 
 	// Track whether we're rechecking txs.
@@ -135,33 +130,6 @@ func WithPostCheck(f PostCheckFunc) CListMempoolOption {
 // WithMetrics sets the metrics.
 func WithMetrics(metrics *Metrics) CListMempoolOption {
 	return func(mem *CListMempool) { mem.metrics = metrics }
-}
-
-func (mem *CListMempool) InitWAL() error {
-	var (
-		walDir  = mem.config.WalDir()
-		walFile = walDir + "/wal"
-	)
-
-	const perm = 0700
-	if err := tmos.EnsureDir(walDir, perm); err != nil {
-		return err
-	}
-
-	af, err := auto.OpenAutoFile(walFile)
-	if err != nil {
-		return fmt.Errorf("can't open autofile %s: %w", walFile, err)
-	}
-
-	mem.wal = af
-	return nil
-}
-
-func (mem *CListMempool) CloseWAL() {
-	if err := mem.wal.Close(); err != nil {
-		mem.logger.Error("Error closing WAL", "err", err)
-	}
-	mem.wal = nil
 }
 
 // Safe for concurrent use by multiple goroutines.
@@ -250,18 +218,6 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 	if mem.preCheck != nil {
 		if err := mem.preCheck(tx); err != nil {
 			return ErrPreCheck{err}
-		}
-	}
-
-	// NOTE: writing to the WAL and calling proxy must be done before adding tx
-	// to the cache. otherwise, if either of them fails, next time CheckTx is
-	// called with tx, ErrTxInCache will be returned without tx being checked at
-	// all even once.
-	if mem.wal != nil {
-		// TODO: Notify administrators when WAL fails
-		_, err := mem.wal.Write(append([]byte(tx), newline...))
-		if err != nil {
-			return fmt.Errorf("wal.Write: %w", err)
 		}
 	}
 

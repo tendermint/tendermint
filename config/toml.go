@@ -357,7 +357,6 @@ dial-timeout = "{{ .P2P.DialTimeout }}"
 
 recheck = {{ .Mempool.Recheck }}
 broadcast = {{ .Mempool.Broadcast }}
-wal-dir = "{{ js .Mempool.WalPath }}"
 
 # Maximum number of transactions in the mempool
 size = {{ .Mempool.Size }}
