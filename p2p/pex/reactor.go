@@ -18,6 +18,17 @@ import (
 var (
 	_ service.Service = (*ReactorV2)(nil)
 	_ p2p.Wrapper     = (*protop2p.PexMessage)(nil)
+
+	ChannelDescriptors = []*conn.ChannelDescriptor{
+		{
+			ID:                  PexChannel,
+			Priority:            1,
+			SendQueueCapacity:   10,
+			RecvMessageCapacity: maxMsgSize,
+
+			MaxSendBytes: 200,
+		},
+	}
 )
 
 // TODO: Consolidate with params file.
@@ -133,19 +144,6 @@ func (r *ReactorV2) OnStop() {
 	// panics will occur.
 	<-r.pexCh.Done()
 	<-r.peerUpdates.Done()
-}
-
-func (r *ReactorV2) GetChannels() []*conn.ChannelDescriptor {
-	return []*conn.ChannelDescriptor{
-		{
-			ID:                  PexChannel,
-			Priority:            1,
-			SendQueueCapacity:   10,
-			RecvMessageCapacity: maxMsgSize,
-
-			MaxSendBytes: 200,
-		},
-	}
 }
 
 // processPexCh implements a blocking event loop where we listen for p2p
@@ -424,7 +422,7 @@ func (r *ReactorV2) sendRequestForPeers() {
 	r.availablePeers.Remove(peer)
 	peer.DetachPrev()
 	r.requestsSent[peerID] = struct{}{}
-	
+
 	r.calculateNextRequestTime()
 	r.Logger.Debug("peer request sent", "next_request_time", r.nextRequestTime)
 }

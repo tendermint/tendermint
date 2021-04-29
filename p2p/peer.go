@@ -104,7 +104,7 @@ func newPeer(
 	p := &peer{
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
-		channels:      nodeInfo.Channels, // TODO
+		channels:      nodeInfo.Channels,
 		reactors:      reactorsByCh,
 		onPeerError:   onPeerError,
 		Data:          cmap.NewCMap(),

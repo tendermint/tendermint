@@ -759,9 +759,6 @@ func createSwitch(
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
 
-	// XXX: needed to support old/new P2P stacks
-	sw.PutChannelDescsIntoTransport()
-
 	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID, "file", config.NodeKeyFile())
 	return sw
 }
@@ -955,10 +952,10 @@ func NewSeedNode(config *cfg.Config,
 		if err != nil {
 			return nil, err
 		}
-		router.AddChannelDescriptors(pexReactorV2.GetChannels())
 	} else {
 		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
 	}
+	router.AddChannelDescriptors(pex.ChannelDescriptors)
 
 	if config.RPC.PprofListenAddress != "" {
 		go func() {
@@ -1201,6 +1198,8 @@ func NewNode(config *cfg.Config,
 		config.StateSync.TempDir,
 	)
 
+	// add the channel descriptors to both the router and the underlying
+	// transports
 	router.AddChannelDescriptors(mpReactorShim.GetChannels())
 	router.AddChannelDescriptors(bcReactorForSwitch.GetChannels())
 	router.AddChannelDescriptors(csReactorShim.GetChannels())
@@ -1251,12 +1250,11 @@ func NewNode(config *cfg.Config,
 			if err != nil {
 				return nil, err
 			}
-			router.AddChannelDescriptors(pexReactorV2.GetChannels())
 		} else {
 			pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
 		}
-		
 	}
+	router.AddChannelDescriptors(pex.ChannelDescriptors)
 
 	if config.RPC.PprofListenAddress != "" {
 		go func() {
@@ -1369,22 +1367,22 @@ func (n *Node) OnStart() error {
 					return err
 				}
 			}
-	
+
 			// Start the real consensus reactor separately since the switch uses the shim.
 			if err := n.consensusReactor.Start(); err != nil {
 				return err
 			}
-	
+
 			// Start the real state sync reactor separately since the switch uses the shim.
 			if err := n.stateSyncReactor.Start(); err != nil {
 				return err
 			}
-	
+
 			// Start the real mempool reactor separately since the switch uses the shim.
 			if err := n.mempoolReactor.Start(); err != nil {
 				return err
 			}
-	
+
 			// Start the real evidence reactor separately since the switch uses the shim.
 			if err := n.evidenceReactor.Start(); err != nil {
 				return err

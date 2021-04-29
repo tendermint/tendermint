@@ -185,6 +185,14 @@ func (m *MConnTransport) Close() error {
 	return err
 }
 
+// AddChannelDescriptors adds channel descriptors to the transport.
+// FIXME: This method is used so we can add channel descriptors when they are
+// added to the router. We should find a better way to do this when the legacy
+// p2p stack is replaced. NOTE: that we don't check for duplicates here
+func (m *MConnTransport) AddChannelDescriptors(channelDesc []*ChannelDescriptor) {
+	m.channelDescs = append(m.channelDescs, channelDesc...)
+}
+
 // validateEndpoint validates an endpoint.
 func (m *MConnTransport) validateEndpoint(endpoint Endpoint) error {
 	if err := endpoint.Validate(); err != nil {
