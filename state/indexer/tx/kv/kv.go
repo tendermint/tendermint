@@ -580,8 +580,8 @@ func parseValueFromKey(key []byte) (string, error) {
 	return value, nil
 }
 
-func keyFromEvent(compositeKey string, value []byte, result *abci.TxResult) []byte {
-	return secondaryKey(compositeKey, string(value), result.Height, result.Index)
+func keyFromEvent(compositeKey string, value string, result *abci.TxResult) []byte {
+	return secondaryKey(compositeKey, value, result.Height, result.Index)
 }
 
 func keyFromHeight(result *abci.TxResult) []byte {

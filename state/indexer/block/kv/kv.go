@@ -474,7 +474,7 @@ func (idx *BlockerIndexer) indexEvents(batch dbm.Batch, events []abci.Event, typ
 			}
 
 			if attr.GetIndex() {
-				key, err := eventKey(compositeKey, typ, string(attr.Value), height)
+				key, err := eventKey(compositeKey, typ, attr.Value, height)
 				if err != nil {
 					return fmt.Errorf("failed to create block index key: %w", err)
 				}
