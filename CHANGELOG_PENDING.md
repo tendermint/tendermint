@@ -52,7 +52,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 
 - Data Storage
   - [store/state/evidence/light] \#5771 Use an order-preserving varint key encoding (@cmwaters)
-  - [mempool] \#6396 Remove mempool's write ahead log (WALL), (previously unused by the tendermint code). (@tychoish)
+  - [mempool] \#6396 Remove mempool's write ahead log (WAL), (previously unused by the tendermint code). (@tychoish)
 
 ### FEATURES
 
