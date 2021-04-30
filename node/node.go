@@ -29,6 +29,7 @@ import (
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/libs/strings"
 	"github.com/tendermint/tendermint/light"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
@@ -574,7 +575,7 @@ func createTransport(logger log.Logger, config *cfg.Config) *p2p.MConnTransport 
 		logger, p2p.MConnConfig(config.P2P), []*p2p.ChannelDescriptor{},
 		p2p.MConnTransportOptions{
 			MaxAcceptedConnections: uint32(config.P2P.MaxNumInboundPeers +
-				len(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " ")),
+				len(strings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " ")),
 			),
 		},
 	)
@@ -584,8 +585,11 @@ func createPeerManager(
 	config *cfg.Config,
 	dbProvider DBProvider,
 	p2pLogger log.Logger,
-	nodeID p2p.NodeID) (*p2p.PeerManager, error) {
+	nodeID p2p.NodeID,
+) (*p2p.PeerManager, error) {
+
 	var maxConns uint16
+
 	switch {
 	case config.P2P.MaxConnections > 0:
 		maxConns = config.P2P.MaxConnections
@@ -607,6 +611,11 @@ func createPeerManager(
 		maxConns = 64
 	}
 
+	privatePeerIDs := make(map[p2p.NodeID]struct{})
+	for _, id := range strings.SplitAndTrimEmpty(config.P2P.PrivatePeerIDs, ",", " ") {
+		privatePeerIDs[p2p.NodeID(id)] = struct{}{}
+	}
+
 	options := p2p.PeerManagerOptions{
 		MaxConnected:           maxConns,
 		MaxConnectedUpgrade:    4,
@@ -615,10 +624,11 @@ func createPeerManager(
 		MaxRetryTime:           8 * time.Hour,
 		MaxRetryTimePersistent: 5 * time.Minute,
 		RetryTimeJitter:        3 * time.Second,
+		PrivatePeerIDs:         privatePeerIDs,
 	}
 
 	peers := []p2p.NodeAddress{}
-	for _, p := range splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " ") {
+	for _, p := range strings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " ") {
 		address, err := p2p.ParseNodeAddress(p)
 		if err != nil {
 			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
@@ -628,7 +638,7 @@ func createPeerManager(
 		options.PersistentPeers = append(options.PersistentPeers, address.NodeID)
 	}
 
-	for _, p := range splitAndTrimEmpty(config.P2P.BootstrapPeers, ",", " ") {
+	for _, p := range strings.SplitAndTrimEmpty(config.P2P.BootstrapPeers, ",", " ") {
 		address, err := p2p.ParseNodeAddress(p)
 		if err != nil {
 			return nil, fmt.Errorf("invalid peer address %q: %w", p, err)
@@ -640,6 +650,7 @@ func createPeerManager(
 	if err != nil {
 		return nil, err
 	}
+
 	peerManager, err := p2p.NewPeerManager(nodeID, peerDB, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer manager: %w", err)
@@ -797,7 +808,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 	sw *p2p.Switch, logger log.Logger) *pex.Reactor {
 
 	reactorConfig := &pex.ReactorConfig{
-		Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
+		Seeds:    strings.SplitAndTrimEmpty(config.P2P.Seeds, ",", " "),
 		SeedMode: config.Mode == cfg.ModeSeed,
 		// See consensus/reactor.go: blocksToContributeToBecomeGoodPeer 10000
 		// blocks assuming 10s blocks ~ 28 hours.
@@ -827,7 +838,6 @@ func createPEXReactorV2(
 	}
 
 	peerUpdates := peerManager.Subscribe()
-	// TODO: Inject private peer IDs!
 	return pex.NewReactorV2(logger, peerManager, channel, peerUpdates), nil
 }
 
@@ -919,12 +929,12 @@ func NewSeedNode(config *cfg.Config,
 		nil, nil, nil, nil, nodeInfo, nodeKey, p2pLogger,
 	)
 
-	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
+	err = sw.AddPersistentPeers(strings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
 		return nil, fmt.Errorf("could not add peers from persistent_peers field: %w", err)
 	}
 
-	err = sw.AddUnconditionalPeerIDs(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
+	err = sw.AddUnconditionalPeerIDs(strings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
 	if err != nil {
 		return nil, fmt.Errorf("could not add peer ids from unconditional_peer_ids field: %w", err)
 	}
@@ -1205,12 +1215,12 @@ func NewNode(config *cfg.Config,
 		stateSyncReactorShim, csReactorShim, evReactorShim, proxyApp, nodeInfo, nodeKey, p2pLogger,
 	)
 
-	err = sw.AddPersistentPeers(splitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
+	err = sw.AddPersistentPeers(strings.SplitAndTrimEmpty(config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
 		return nil, fmt.Errorf("could not add peers from persistent-peers field: %w", err)
 	}
 
-	err = sw.AddUnconditionalPeerIDs(splitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
+	err = sw.AddUnconditionalPeerIDs(strings.SplitAndTrimEmpty(config.P2P.UnconditionalPeerIDs, ",", " "))
 	if err != nil {
 		return nil, fmt.Errorf("could not add peer ids from unconditional_peer_ids field: %w", err)
 	}
@@ -1306,7 +1316,7 @@ func (n *Node) OnStart() error {
 	}
 
 	// Add private IDs to addrbook to block those peers being added
-	n.addrBook.AddPrivateIDs(splitAndTrimEmpty(n.config.P2P.PrivatePeerIDs, ",", " "))
+	n.addrBook.AddPrivateIDs(strings.SplitAndTrimEmpty(n.config.P2P.PrivatePeerIDs, ",", " "))
 
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
@@ -1389,7 +1399,7 @@ func (n *Node) OnStart() error {
 	}
 
 	// Always connect to persistent peers
-	err = n.sw.DialPeersAsync(splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
+	err = n.sw.DialPeersAsync(strings.SplitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "))
 	if err != nil {
 		return fmt.Errorf("could not dial peers from persistent-peers field: %w", err)
 	}
@@ -1544,7 +1554,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		return nil, err
 	}
 
-	listenAddrs := splitAndTrimEmpty(n.config.RPC.ListenAddress, ",", " ")
+	listenAddrs := strings.SplitAndTrimEmpty(n.config.RPC.ListenAddress, ",", " ")
 
 	if n.config.RPC.Unsafe {
 		rpccore.AddUnsafeRoutes()

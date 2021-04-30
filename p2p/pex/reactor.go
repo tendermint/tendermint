@@ -65,6 +65,7 @@ type ReactorV2 struct {
 	availablePeers *clist.CList
 
 	mtx sync.RWMutex
+
 	// requestsSent keeps track of which peers the PEX reactor has sent requests
 	// to. This prevents the sending of spurious responses.
 	// NOTE: If a node never responds, they will remain in this map until a
@@ -83,6 +84,7 @@ type ReactorV2 struct {
 	// extrapolate the size of the network
 	newPeers   uint32
 	totalPeers uint32
+
 	// discoveryRatio is the inverse ratio of new peers to old peers squared.
 	// This is multiplied by the minimum duration to calculate how long to wait
 	// between each request.
@@ -96,6 +98,7 @@ func NewReactorV2(
 	pexCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,
 ) *ReactorV2 {
+
 	r := &ReactorV2{
 		peerManager:          peerManager,
 		pexCh:                pexCh,
@@ -188,8 +191,8 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 	switch msg := envelope.Message.(type) {
 
 	case *protop2p.PexRequest:
-		// check if the peer hasn't sent a prior request too close to this one
-		// in time
+		// Check if the peer hasn't sent a prior request too close to this one
+		// in time.
 		if err := r.markPeerRequest(envelope.From); err != nil {
 			return err
 		}
@@ -304,15 +307,18 @@ func (r *ReactorV2) handlePexMessage(envelope p2p.Envelope) error {
 func (r *ReactorV2) resolve(addresses []p2p.NodeAddress) []protop2p.PexAddress {
 	limit := len(addresses)
 	pexAddresses := make([]protop2p.PexAddress, 0, limit)
+
 	for _, address := range addresses {
 		ctx, cancel := context.WithTimeout(context.Background(), resolveTimeout)
 		endpoints, err := address.Resolve(ctx)
 		r.Logger.Debug("resolved node address", "endpoints", endpoints)
 		cancel()
+
 		if err != nil {
 			r.Logger.Debug("failed to resolve address", "address", address, "err", err)
 			continue
 		}
+
 		for _, endpoint := range endpoints {
 			r.Logger.Debug("checking endpint", "IP", endpoint.IP, "Port", endpoint.Port)
 			if len(pexAddresses) >= limit {
@@ -334,6 +340,7 @@ func (r *ReactorV2) resolve(addresses []p2p.NodeAddress) []protop2p.PexAddress {
 			}
 		}
 	}
+
 	return pexAddresses
 }
 
