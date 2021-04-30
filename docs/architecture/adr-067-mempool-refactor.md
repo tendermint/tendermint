@@ -116,6 +116,10 @@ transaction, we evaluate if that transaction is at the head of the sender's
 list of transactions, if so, it is included in the block and the index is removed
 along with the transaction itself.
 
+### Gossiping
+
+TODO: ...
+
 ## Consequences
 
 ### Positive
@@ -126,6 +130,7 @@ along with the transaction itself.
 ### Negative
 
 - Additional bytes sent over the wire due to new fields added to `ResponseCheckTx`
+- TODO: add section on tx order and priority corner-cases.
 
 ### Neutral
 
