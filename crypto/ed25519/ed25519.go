@@ -8,6 +8,7 @@ import (
 	"io"
 
 	"github.com/oasisprotocol/curve25519-voi/primitives/ed25519"
+	"github.com/oasisprotocol/curve25519-voi/primitives/ed25519/extra/cache"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -25,6 +26,8 @@ var (
 	verifyOptions = &ed25519.Options{
 		Verify: ed25519.VerifyOptionsZIP_215,
 	}
+
+	cachingVerifier = cache.NewVerifier(cache.NewLRUCache(cacheSize))
 )
 
 const (
@@ -42,6 +45,14 @@ const (
 	SeedSize = 32
 
 	KeyType = "ed25519"
+
+	// cacheSize is the number of public keys that will be cached in
+	// an expanded format for repeated signature verification.
+	//
+	// TODO/perf: Either this should exclude single verification, or be
+	// tuned to `> validatorSize + maxTxnsPerBlock` to avoid cache
+	// thrashing.
+	cacheSize = 4096
 )
 
 func init() {
@@ -159,7 +170,7 @@ func (pubKey PubKey) VerifySignature(msg []byte, sig []byte) bool {
 		return false
 	}
 
-	return ed25519.VerifyWithOptions(ed25519.PublicKey(pubKey), msg, sig, verifyOptions)
+	return cachingVerifier.VerifyWithOptions(ed25519.PublicKey(pubKey), msg, sig, verifyOptions)
 }
 
 func (pubKey PubKey) String() string {
@@ -199,7 +210,7 @@ func (b *BatchVerifier) Add(key crypto.PubKey, msg, signature []byte) error {
 		return errors.New("invalid signature")
 	}
 
-	b.BatchVerifier.AddWithOptions(ed25519.PublicKey(key.Bytes()), msg, signature, verifyOptions)
+	cachingVerifier.AddWithOptions(b.BatchVerifier, ed25519.PublicKey(key.Bytes()), msg, signature, verifyOptions)
 
 	return nil
 }
