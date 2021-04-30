@@ -149,6 +149,10 @@ type PeerManagerOptions struct {
 	// for testing. A score of 0 is ignored.
 	PeerScores map[NodeID]PeerScore
 
+	// PrivatePeerIDs defines a set of NodeID objects which the PEX reactor will
+	// consider private and never gossip.
+	PrivatePeers map[NodeID]struct{}
+
 	// persistentPeers provides fast PersistentPeers lookups. It is built
 	// by optimize().
 	persistentPeers map[NodeID]bool
@@ -161,6 +165,13 @@ func (o *PeerManagerOptions) Validate() error {
 			return fmt.Errorf("invalid PersistentPeer ID %q: %w", id, err)
 		}
 	}
+
+	for id := range o.PrivatePeers {
+		if err := id.Validate(); err != nil {
+			return fmt.Errorf("invalid private peer ID %q: %w", id, err)
+		}
+	}
+
 	if o.MaxConnected > 0 && len(o.PersistentPeers) > int(o.MaxConnected) {
 		return fmt.Errorf("number of persistent peers %v can't exceed MaxConnected %v",
 			len(o.PersistentPeers), o.MaxConnected)
@@ -182,6 +193,7 @@ func (o *PeerManagerOptions) Validate() error {
 				o.MinRetryTime, o.MaxRetryTime)
 		}
 	}
+
 	if o.MaxRetryTimePersistent > 0 {
 		if o.MinRetryTime == 0 {
 			return errors.New("can't set MaxRetryTimePersistent without MinRetryTime")
@@ -285,6 +297,7 @@ func NewPeerManager(selfID NodeID, peerDB dbm.DB, options PeerManagerOptions) (*
 	if err := options.Validate(); err != nil {
 		return nil, err
 	}
+
 	options.optimize()
 
 	store, err := newPeerStore(peerDB)
@@ -795,13 +808,19 @@ func (m *PeerManager) Advertise(peerID NodeID, limit uint16) []NodeAddress {
 		if peer.ID == peerID {
 			continue
 		}
-		for _, addressInfo := range peer.AddressInfo {
+
+		for nodeAddr, addressInfo := range peer.AddressInfo {
 			if len(addresses) >= int(limit) {
 				return addresses
 			}
-			addresses = append(addresses, addressInfo.Address)
+
+			// only add non-private NodeIDs
+			if _, ok := m.options.PrivatePeers[nodeAddr.NodeID]; !ok {
+				addresses = append(addresses, addressInfo.Address)
+			}
 		}
 	}
+
 	return addresses
 }
 
