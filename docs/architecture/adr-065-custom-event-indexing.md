@@ -22,6 +22,7 @@
 ## Changelog
 
 - April 1, 2021: Initial Draft (@alexanderbez)
+- April 28, 2021: Specify search capabilities are only supported through the KV indexer (@marbar3778)
 
 ## Status
 
@@ -134,6 +135,8 @@ to map the existing business logic to the new APIs.
 This type of `EventSink` indexes block and transaction events into a [PostgreSQL](https://www.postgresql.org/).
 database. We define and automatically migrate the following schema when the
 `IndexerService` starts.
+
+The postgres eventsink will not support `tx_search` and `block_search`.
 
 ```sql
 -- Table Definition ----------------------------------------------
@@ -265,17 +268,11 @@ func (es *PSQLEventSink) IndexTxEvents(txr *abci.TxResult) error {
 }
 
 func (es *PSQLEventSink) SearchBlockEvents(ctx context.Context, q *query.Query) ([]int64, error) {
-  sqlStmt = sq.Select("height").Distinct().From("block_events").Where(q.String())
-
-  // execute sqlStmt db query and scan into integer rows...
+  return nil, errors.New("block search is not supported via the postgres event sink")
 }
 
 func (es *PSQLEventSink) SearchTxEvents(ctx context.Context, q *query.Query) ([]*abci.TxResult, error) {
-  sqlStmt = sq.Select("tx_result_id").Distinct().From("tx_events").Where(q.String())
-
-  // execute sqlStmt db query and scan into integer rows...
-  // query tx_results records and scan into binary slice rows...
-  // decode each row into a TxResult...
+  return nil, errors.New("tx search is not supported via the postgres event sink")
 }
 ```
 
