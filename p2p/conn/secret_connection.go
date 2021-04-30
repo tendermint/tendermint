@@ -154,7 +154,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 		sendAead:   sendAead,
 	}
 
-	// Sign the challenge bytes for authentication.
+	// SignDigest the challenge bytes for authentication.
 	locSignature, err := signChallenge(&challenge, locPrivKey)
 	if err != nil {
 		return nil, fmt.Errorf("sign challenge: %v", err)
@@ -389,7 +389,7 @@ func sort32(foo, bar *[32]byte) (lo, hi *[32]byte) {
 }
 
 func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) ([]byte, error) {
-	signature, err := locPrivKey.Sign(challenge[:])
+	signature, err := locPrivKey.SignDigest(challenge[:])
 	if err != nil {
 		return nil, err
 	}

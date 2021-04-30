@@ -121,7 +121,7 @@ func (vs *validatorStub) signVote(
 	return vote, err
 }
 
-// Sign vote for type/hash/header
+// SignDigest vote for type/hash/header
 func signVote(vs *validatorStub, voteType tmproto.SignedMsgType, hash []byte, lastAppHash []byte, quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash, header types.PartSetHeader) *types.Vote {
 	v, err := vs.signVote(voteType, hash, lastAppHash, quorumType, quorumHash, header)

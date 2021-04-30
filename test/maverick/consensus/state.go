@@ -300,7 +300,7 @@ func (cs *State) enterPrevote(height int64, round int32) {
 
 	cs.Logger.Debug(fmt.Sprintf("enterPrevote(%v/%v); current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
-	// Sign and broadcast vote as necessary
+	// SignDigest and broadcast vote as necessary
 	if b, ok := cs.misbehaviors[cs.Height]; ok {
 		b.EnterPrevote(cs, height, round)
 	} else {

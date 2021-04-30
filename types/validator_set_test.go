@@ -524,9 +524,9 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 	vote := examplePrecommit()
 	vote.ValidatorProTxHash = proTxHash
 	v := vote.ToProto()
-	blockSig, err := privKey.Sign(VoteBlockSignBytes(chainID, v))
+	blockSig, err := privKey.SignDigest(VoteBlockSignBytes(chainID, v))
 	require.NoError(t, err)
-	stateSig, err := privKey.Sign(VoteStateSignBytes(chainID, v))
+	stateSig, err := privKey.SignDigest(VoteStateSignBytes(chainID, v))
 	require.NoError(t, err)
 	vote.BlockSignature = blockSig
 	vote.StateSignature = stateSig
@@ -542,9 +542,9 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 	)
 
 	vote2 := *vote
-	blockSig2, err := privKey.Sign(VoteBlockSignBytes("EpsilonEridani", v))
+	blockSig2, err := privKey.SignDigest(VoteBlockSignBytes("EpsilonEridani", v))
 	require.NoError(t, err)
-	stateSig2, err := privKey.Sign(VoteStateSignBytes("EpsilonEridani", v))
+	stateSig2, err := privKey.SignDigest(VoteStateSignBytes("EpsilonEridani", v))
 	require.NoError(t, err)
 	vote2.BlockSignature = blockSig2
 	vote2.StateSignature = stateSig2

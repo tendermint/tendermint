@@ -88,6 +88,7 @@ type PubKey interface {
 type PrivKey interface {
 	Bytes() []byte
 	Sign(msg []byte) ([]byte, error)
+	SignDigest(msg []byte) ([]byte, error)
 	PubKey() PubKey
 	Equals(PrivKey) bool
 	Type() string

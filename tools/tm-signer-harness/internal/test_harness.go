@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"net"
 	"os"
 	"os/signal"
@@ -237,7 +238,7 @@ func (th *TestHarness) TestSignProposal() error {
 	}
 	p := prop.ToProto()
 	propBytes := types.ProposalBlockSignBytes(th.chainID, p)
-	if err := th.signerClient.SignProposal(th.chainID, th.quorumHash, p); err != nil {
+	if err := th.signerClient.SignProposal(th.chainID, btcjson.LLMQType_5_60, th.quorumHash, p); err != nil {
 		th.logger.Error("FAILED: Signing of proposal", "err", err)
 		return newTestHarnessError(ErrTestSignProposalFailed, err, "")
 	}
@@ -291,7 +292,7 @@ func (th *TestHarness) TestSignVote() error {
 		voteBlockBytes := types.VoteBlockSignBytes(th.chainID, v)
 		voteStateBytes := types.VoteStateSignBytes(th.chainID, v)
 		// sign the vote
-		if err := th.signerClient.SignVote(th.chainID, th.quorumHash, v); err != nil {
+		if err := th.signerClient.SignVote(th.chainID, btcjson.LLMQType_5_60, th.quorumHash, v); err != nil {
 			th.logger.Error("FAILED: Signing of vote", "err", err)
 			return newTestHarnessError(ErrTestSignVoteFailed, err, fmt.Sprintf("voteType=%d", voteType))
 		}

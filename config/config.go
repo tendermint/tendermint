@@ -260,6 +260,7 @@ func TestBaseConfig() BaseConfig {
 	cfg.ProxyApp = "kvstore"
 	cfg.FastSyncMode = false
 	cfg.DBBackend = "memdb"
+	cfg.PrivValidatorCoreRPCHost = ""
 	return cfg
 }
 

@@ -38,7 +38,6 @@ import (
 func TestNodeStartStop(t *testing.T) {
 	config := cfg.ResetTestRoot("node_node_test")
 	defer os.RemoveAll(config.RootDir)
-	config.PrivValidatorCoreRPCHost = ""
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
@@ -99,7 +98,6 @@ func TestSplitAndTrimEmpty(t *testing.T) {
 
 func TestNodeDelayedStart(t *testing.T) {
 	config := cfg.ResetTestRoot("node_delayed_start_test")
-	config.PrivValidatorCoreRPCHost = ""
 	defer os.RemoveAll(config.RootDir)
 	now := tmtime.Now()
 

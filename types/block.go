@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"strings"
 	"time"
 
@@ -902,6 +903,17 @@ func (commit *Commit) VoteBlockSignBytes(chainID string, valIdx int32) []byte {
 	return VoteBlockSignBytes(chainID, v)
 }
 
+// VoteBlockSignId returns the signId bytes of the Vote corresponding to valIdx for
+// signing.
+//
+// Panics if valIdx >= commit.Size().
+//
+func (commit *Commit) VoteBlockSignId(chainID string, valIdx int32, quorumType btcjson.LLMQType, quorumHash []byte)  []byte {
+	vote := commit.GetVote(valIdx)
+	v := vote.ToProto()
+	return VoteBlockSignId(chainID, v, quorumType, quorumHash)
+}
+
 // VoteBlockRequestId returns the requestId Hash of the Vote corresponding to valIdx for
 // signing.
 //
@@ -928,6 +940,14 @@ func (commit *Commit) CanonicalVoteVerifySignBytes(chainID string) []byte {
 	return VoteBlockSignBytes(chainID, vCanonical)
 }
 
+// CanonicalVoteVerifySignId returns the signId bytes of the Canonical Vote that is threshold signed.
+//
+func (commit *Commit) CanonicalVoteVerifySignId(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
+	voteCanonical := commit.GetCanonicalVote()
+	vCanonical := voteCanonical.ToProto()
+	return VoteBlockSignId(chainID, vCanonical, quorumType, quorumHash)
+}
+
 // VoteStateSignBytes returns the bytes of the State corresponding to valIdx for
 // signing.
 //
@@ -940,6 +960,19 @@ func (commit *Commit) VoteStateSignBytes(chainID string, valIdx int32) []byte {
 	commitSig := commit.Signatures[valIdx]
 	v.StateID = commitSig.StateID(commit.StateID)
 	return VoteStateSignBytes(chainID, v.ToProto())
+}
+
+// VoteStateSignId returns the signId bytes of the state for the Vote corresponding to valIdx for
+// signing.
+//
+// Panics if valIdx >= commit.Size().
+//
+func (commit *Commit) VoteStateSignId(chainID string, valIdx int32, quorumType btcjson.LLMQType, quorumHash []byte)  []byte {
+	v := commit.GetCanonicalVote()
+	// if the block id is absent or nil the state id should be empty
+	commitSig := commit.Signatures[valIdx]
+	v.StateID = commitSig.StateID(commit.StateID)
+	return VoteStateSignId(chainID, v.ToProto(), quorumType, quorumHash)
 }
 
 // VoteStateRequestId returns the requestId Hash of the Vote corresponding to valIdx for
@@ -970,6 +1003,11 @@ func (commit *Commit) VoteStateRequestId() []byte {
 func (commit *Commit) CanonicalVoteStateSignBytes(chainID string) []byte {
 	v := commit.GetCanonicalVote()
 	return VoteStateSignBytes(chainID, v.ToProto())
+}
+
+func (commit *Commit) CanonicalVoteStateSignId(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
+	v := commit.GetCanonicalVote()
+	return VoteStateSignId(chainID, v.ToProto(), quorumType, quorumHash)
 }
 
 // Type returns the vote type of the commit, which is always VoteTypePrecommit
