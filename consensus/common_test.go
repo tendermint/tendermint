@@ -240,7 +240,7 @@ func signAddVotes(
 	header types.PartSetHeader,
 	vss ...*validatorStub,
 ) {
-	votes := signVotes(voteType, hash, to.state.AppHash, to.Validators.QuorumHash, header, vss...)
+	votes := signVotes(voteType, hash, to.state.AppHash, to.Validators.QuorumType, to.Validators.QuorumHash, header, vss...)
 	addVotes(to, votes...)
 }
 

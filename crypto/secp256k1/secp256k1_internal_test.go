@@ -52,7 +52,7 @@ func TestSignatureVerificationAndRejectUpperS(t *testing.T) {
 	msg := []byte("We have lingered long enough on the shores of the cosmic ocean.")
 	for i := 0; i < 500; i++ {
 		priv := GenPrivKey()
-		sigStr, err := priv.SignDigest(msg)
+		sigStr, err := priv.Sign(msg)
 		require.NoError(t, err)
 		sig := signatureFromBytes(sigStr)
 		require.False(t, sig.S.Cmp(secp256k1halfN) > 0)

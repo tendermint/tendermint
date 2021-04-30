@@ -134,8 +134,8 @@ func (pv *MockPV) SignProposal(chainID string, quorumType btcjson.LLMQType, quor
 
 	signId := ProposalBlockSignId(useChainID, proposal, quorumType, quorumHash)
 
-	// fmt.Printf("mock proposer %X signing proposal at height %d with key %X proposalSignBytes %X\n", pv.ProTxHash,
-	//  proposal.Height, pv.PrivKey.PubKey().Bytes(), signBytes)
+	// fmt.Printf("mock proposer %X \nsigning proposal at height %d \nwith key %X \nquorumType %d \nquorumHash %X\n proposalSignId %X\n", pv.ProTxHash,
+	//  proposal.Height, pv.PrivKey.PubKey().Bytes(), quorumType, quorumHash, signId)
 	sig, err := pv.PrivKey.SignDigest(signId)
 	if err != nil {
 		return err

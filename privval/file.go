@@ -492,8 +492,8 @@ func (pv *FilePV) signProposal(chainID string, quorumType btcjson.LLMQType, quor
 	if err != nil {
 		return err
 	}
-	 fmt.Printf("file proposer %X \nsigning proposal at height %d \nwith key %X \nproposalSignId %X\n signature %X\n", pv.Key.ProTxHash,
-	  proposal.Height, pv.Key.PrivKey.PubKey().Bytes(), blockSignId, blockSig)
+	// fmt.Printf("file proposer %X \nsigning proposal at height %d \nwith key %X \nproposalSignId %X\n signature %X\n", pv.Key.ProTxHash,
+	//  proposal.Height, pv.Key.PrivKey.PubKey().Bytes(), blockSignId, blockSig)
 
 	pv.saveSigned(height, round, step, blockSignId, blockSig, nil, nil)
 	proposal.Signature = blockSig
