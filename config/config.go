@@ -720,7 +720,6 @@ type MempoolConfig struct {
 	RootDir   string `mapstructure:"home"`
 	Recheck   bool   `mapstructure:"recheck"`
 	Broadcast bool   `mapstructure:"broadcast"`
-	WalPath   string `mapstructure:"wal-dir"`
 	// Maximum number of transactions in the mempool
 	Size int `mapstructure:"size"`
 	// Limit the total size of all txs in the mempool.
@@ -747,7 +746,6 @@ func DefaultMempoolConfig() *MempoolConfig {
 	return &MempoolConfig{
 		Recheck:   true,
 		Broadcast: true,
-		WalPath:   "",
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
 		Size:        5000,
@@ -762,16 +760,6 @@ func TestMempoolConfig() *MempoolConfig {
 	cfg := DefaultMempoolConfig()
 	cfg.CacheSize = 1000
 	return cfg
-}
-
-// WalDir returns the full path to the mempool's write-ahead log
-func (cfg *MempoolConfig) WalDir() string {
-	return rootify(cfg.WalPath, cfg.RootDir)
-}
-
-// WalEnabled returns true if the WAL is enabled.
-func (cfg *MempoolConfig) WalEnabled() bool {
-	return cfg.WalPath != ""
 }
 
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
