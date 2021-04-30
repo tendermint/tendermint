@@ -2,7 +2,7 @@
 
 ## Changelog
 
-- 20 April 2021: Initial Draft
+- 20 April 2021: Initial Draft (@cmwaters)
 
 ## Status
 
@@ -39,8 +39,8 @@ Furthermore this allows for a new light client provider which offers the ability
 This section will focus first on the reverse sync (here we call it `backfill`) mechanism as a standalone protocol and then look to decribe how it integrates within the state sync reactor and how we define the new p2p light client provider.
 
 ```go
-// Backfill fetches verifies and stores necessary history
-// to particapate in consensus / validate evidence
+// Backfill fetches, verifies, and stores necessary history
+// to participate in consensus and validate evidence.
 func (r *Reactor) backfill(state State) error {}
 ```
 
