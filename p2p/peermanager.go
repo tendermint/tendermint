@@ -166,7 +166,7 @@ func (o *PeerManagerOptions) Validate() error {
 		}
 	}
 
-	for id := range o.PrivatePeerIDs {
+	for id := range o.PrivatePeers {
 		if err := id.Validate(); err != nil {
 			return fmt.Errorf("invalid private peer ID %q: %w", id, err)
 		}
@@ -815,7 +815,7 @@ func (m *PeerManager) Advertise(peerID NodeID, limit uint16) []NodeAddress {
 			}
 
 			// only add non-private NodeIDs
-			if _, ok := m.options.PrivatePeerIDs[nodeAddr.NodeID]; !ok {
+			if _, ok := m.options.PrivatePeers[nodeAddr.NodeID]; !ok {
 				addresses = append(addresses, addressInfo.Address)
 			}
 		}

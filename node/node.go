@@ -624,7 +624,7 @@ func createPeerManager(
 		MaxRetryTime:           8 * time.Hour,
 		MaxRetryTimePersistent: 5 * time.Minute,
 		RetryTimeJitter:        3 * time.Second,
-		PrivatePeerIDs:         privatePeerIDs,
+		PrivatePeers:           privatePeerIDs,
 	}
 
 	peers := []p2p.NodeAddress{}
