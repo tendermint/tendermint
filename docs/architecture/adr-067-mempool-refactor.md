@@ -97,24 +97,16 @@ using the default value of zero.
 ### Mempool
 
 The existing concurrent-safe linked-list will be removed entirely in favor of a
-thread-safe map of `<sender:[]Tx>`, i.e a mapping from `sender` to a list of `Tx`
-objects, where each `Tx` is ordered by monotonically increasing, but not
-necessarily consecutive, `sequence` values. For example, the sender `Alice`, whose
-current committed sequence value is `3`, could have transactions in this map with
-sequence values `<4,5,6,8>`, where only the transaction with sequence `4` could be
-processed next.
+thread-safe map of `<sender:Tx>`, i.e a mapping from `sender` to a single `Tx`
+object, where each `Tx` is the next valid and processable transaction from the
+given `sender`.
 
-Note, the mempool itself does not and will not know about the latest committed
-sequence value, but it is assumed that all transactions that end up in the mempool
-pass `CheckTx`. In addition, the application and thus Tendermint's mempool does
-not necessarily have to utilize the concept of a sequence.
-
-On top of this mapping, we index all transactions by priority using a priority
-queue. When a proposer is ready to reap transactions for the next block proposal,
-transactions are selected from this priority index. For each priority-indexed
-transaction, we evaluate if that transaction is at the head of the sender's
-list of transactions, if so, it is included in the block and the index is removed
-along with the transaction itself.
+On top of this mapping, we index all transactions by priority using a thread-safe
+priority queue, i.e. a [max heap](https://en.wikipedia.org/wiki/Min-max_heap).
+When a proposer is ready to select transactions for the next block proposal,
+transactions are selected from this priority index by highest priority order.
+When a transaction is selected and reaped, it is removed from this index and
+from the `<sender:Tx>` mapping.
 
 ### Gossiping
 
@@ -130,7 +122,18 @@ TODO: ...
 ### Negative
 
 - Additional bytes sent over the wire due to new fields added to `ResponseCheckTx`
-- TODO: add section on tx order and priority corner-cases.
+- It is possible that certain transactions broadcasted in a particular order may
+  pass `CheckTx` but not end up being committed in a block because they fail
+  `CheckTx` later. e.g. Consider Tx<sub>1</sub> that sends funds from existing
+  account Alice to a _new_ account Bob with priority P<sub>1</sub> and then later
+  Bob's _new_ account sends funds back to Alice in Tx<sub>2</sub> with P<sub>2</sub>,
+  such that P<sub>2</sub> > P<sub>1</sub>. If executed in this order, both
+  transactions will pass `CheckTx`. However, when a proposer is ready to select
+  transactions for the next block proposal, they will select Tx<sub>2</sub> before
+  Tx<sub>1</sub> and thus Tx<sub>2</sub> will _fail_ because Tx<sub>1</sub> must
+  be executed first. These types of situations should be rare and can be
+  circumvented by simply trying again at a later point in time or by ensuring the
+  "child" priority is lower than the "parent" priority.
 
 ### Neutral
 
