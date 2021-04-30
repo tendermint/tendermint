@@ -133,7 +133,7 @@ func makeIndexedEvent(compositeKey, value string) abci.Event {
 		return abci.Event{Type: compositeKey}
 	}
 	return abci.Event{Type: compositeKey[:i], Attributes: []abci.EventAttribute{
-		{Key: []byte(compositeKey[i+1:]), Value: []byte(value), Index: true},
+		{Key: compositeKey[i+1:], Value: value, Index: true},
 	}}
 }
 

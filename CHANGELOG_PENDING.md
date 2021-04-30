@@ -20,6 +20,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     - Rename `AppVersion` to `App` so as to not stutter.
   - [abci] \#9301 New ABCI methods `PrepareProposal` and `ProcessProposal` which give the app control over transactions proposed and allows for verification of proposed blocks.
   - [abci] \#8656, \#8901 Added cli commands for `PrepareProposal` and `ProcessProposal`. (@jmalicevic, @hvanz)
+  - [abci] \#6403 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
 
 - P2P Protocol
 

@@ -344,9 +344,9 @@ message Event {
 
 // EventAttribute is a single key-value pair, associated with an event.
 message EventAttribute {
-  bytes key   = 1;
-  bytes value = 2;
-  bool  index = 3;  // nondeterministic
+  string key   = 1;
+  string value = 2;
+  bool   index = 3;  // nondeterministic
 }
 
 // TxResult contains results of executing the transaction.
