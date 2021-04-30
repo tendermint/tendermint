@@ -1206,6 +1206,12 @@ func NewNode(config *cfg.Config,
 	router.AddChannelDescriptors(evReactorShim.GetChannels())
 	router.AddChannelDescriptors(stateSyncReactorShim.GetChannels())
 
+	transport.AddChannelDescriptors(mpReactorShim.GetChannels())
+	transport.AddChannelDescriptors(bcReactorForSwitch.GetChannels())
+	transport.AddChannelDescriptors(csReactorShim.GetChannels())
+	transport.AddChannelDescriptors(evReactorShim.GetChannels())
+	transport.AddChannelDescriptors(stateSyncReactorShim.GetChannels())
+
 	// setup Transport and Switch
 	sw := createSwitch(
 		config, transport, p2pMetrics, mpReactorShim, bcReactorForSwitch,
@@ -1245,6 +1251,8 @@ func NewNode(config *cfg.Config,
 	)
 
 	if config.P2P.PexReactor {
+		transport.AddChannelDescriptors(pex.ChannelDescriptors)
+		router.AddChannelDescriptors(pex.ChannelDescriptors)
 		if config.P2P.DisableLegacy {
 			pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
 			if err != nil {
@@ -1254,7 +1262,6 @@ func NewNode(config *cfg.Config,
 			pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
 		}
 	}
-	router.AddChannelDescriptors(pex.ChannelDescriptors)
 
 	if config.RPC.PprofListenAddress != "" {
 		go func() {

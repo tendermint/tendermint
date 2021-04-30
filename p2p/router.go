@@ -350,15 +350,6 @@ func (r *Router) AddChannelDescriptors(chDescs []*ChannelDescriptor) {
 	for _, chDesc := range chDescs {
 		r.chDescs = append(r.chDescs, *chDesc)
 	}
-	// FIXME: We need to pass the channel descriptors on to the underlying
-	// transport. Here we assume an mconn transport but in the future we need to
-	// find a better way to do this. Most likely by providing the channel
-	// descriptors on initialization of the transport
-	for _, t := range r.transports {
-		if mconn, ok := t.(*MConnTransport); ok {
-			mconn.AddChannelDescriptors(chDescs)
-		}
-	}
 }
 
 // OpenChannel opens a new channel for the given message type. The caller must
