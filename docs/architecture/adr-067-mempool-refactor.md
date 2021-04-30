@@ -116,8 +116,7 @@ TODO: ...
 
 ### Positive
 
-- Transactions are allowed to be prioritized by the application
-- Transactions can be replaced by priority
+- Transactions are allowed to be prioritized by the application.
 
 ### Negative
 
