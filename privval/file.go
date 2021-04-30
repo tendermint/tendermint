@@ -83,9 +83,9 @@ type FilePVLastSignState struct {
 	Round          int32            `json:"round"`
 	Step           int8             `json:"step"`
 	BlockSignature []byte           `json:"block_signature,omitempty"`
-	BlockSignId tmbytes.HexBytes    `json:"block_sign_id,omitempty"`
+	BlockSignBytes tmbytes.HexBytes `json:"block_sign_bytes,omitempty"`
 	StateSignature []byte           `json:"state_signature,omitempty"`
-	StateSignId tmbytes.HexBytes    `json:"state_sign_id,omitempty"`
+	StateSignBytes tmbytes.HexBytes `json:"state_sign_bytes,omitempty"`
 
 	filePath string
 }
@@ -118,13 +118,13 @@ func (lss *FilePVLastSignState) CheckHRS(height int64, round int32, step int8) (
 					lss.Step,
 				)
 			} else if lss.Step == step {
-				if lss.BlockSignId != nil {
+				if lss.BlockSignBytes != nil {
 					if lss.BlockSignature == nil {
 						panic("pv: BlockID Signature is nil but BlockSignBytes is not!")
 					}
 					return true, nil
 				}
-				if lss.StateSignId != nil {
+				if lss.StateSignBytes != nil {
 					if lss.StateSignature == nil {
 						panic("pv: StateID Signature is nil but StateSignBytes is not!")
 					}
@@ -341,8 +341,8 @@ func (pv *FilePV) Reset() {
 	pv.LastSignState.Step = 0
 	pv.LastSignState.BlockSignature = blockSig
 	pv.LastSignState.StateSignature = stateSig
-	pv.LastSignState.BlockSignId = nil
-	pv.LastSignState.StateSignId = nil
+	pv.LastSignState.BlockSignBytes = nil
+	pv.LastSignState.StateSignBytes = nil
 	pv.Save()
 }
 
@@ -410,13 +410,18 @@ func (pv *FilePV) signVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 
 	stateSignId := types.VoteStateSignId(chainID, vote, quorumType, quorumHash)
 
+	blockSignBytes := types.VoteBlockSignBytes(chainID, vote)
+
+	stateSignBytes := types.VoteStateSignBytes(chainID, vote)
+
 	// We might crash before writing to the wal,
 	// causing us to try to re-sign for the same HRS.
 	// If signbytes are the same, use the last signature.
 	// If they only differ by timestamp, use last timestamp and signature
 	// Otherwise, return error
 	if sameHRS {
-		if bytes.Equal(blockSignId, lss.BlockSignId) && bytes.Equal(stateSignId, lss.StateSignId) {
+
+		if bytes.Equal(blockSignBytes, lss.BlockSignBytes) && bytes.Equal(stateSignBytes, lss.StateSignBytes) {
 			vote.BlockSignature = lss.BlockSignature
 			vote.StateSignature = lss.StateSignature
 		} else {
@@ -446,7 +451,7 @@ func (pv *FilePV) signVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 	//	   sigBlock, vote)
 	//  }
 
-	pv.saveSigned(height, round, step, blockSignId, sigBlock, stateSignId, sigState)
+	pv.saveSigned(height, round, step, blockSignBytes, sigBlock, stateSignBytes, sigState)
 
 	vote.BlockSignature = sigBlock
 	vote.StateSignature = sigState
@@ -470,17 +475,19 @@ func (pv *FilePV) signProposal(chainID string, quorumType btcjson.LLMQType, quor
 
 	blockSignId := types.ProposalBlockSignId(chainID, proposal, quorumType, quorumHash)
 
+	blockSignBytes := types.ProposalBlockSignBytes(chainID, proposal)
+
 	// We might crash before writing to the wal,
 	// causing us to try to re-sign for the same HRS.
 	// If signbytes are the same, use the last signature.
 	// If they only differ by timestamp, use last timestamp and signature
 	// Otherwise, return error
 	if sameHRS {
-		if bytes.Equal(blockSignId, lss.BlockSignId) {
-			proposal.Signature = lss.BlockSignId
-		} else if timestamp, ok := checkProposalsOnlyDifferByTimestamp(lss.BlockSignId, blockSignId); ok {
+		if bytes.Equal(blockSignBytes, lss.BlockSignBytes) {
+			proposal.Signature = lss.BlockSignBytes
+		} else if timestamp, ok := checkProposalsOnlyDifferByTimestamp(lss.BlockSignBytes, blockSignBytes); ok {
 			proposal.Timestamp = timestamp
-			proposal.Signature = lss.BlockSignId
+			proposal.Signature = lss.BlockSignBytes
 		} else {
 			err = fmt.Errorf("conflicting data")
 		}
@@ -495,22 +502,22 @@ func (pv *FilePV) signProposal(chainID string, quorumType btcjson.LLMQType, quor
 	// fmt.Printf("file proposer %X \nsigning proposal at height %d \nwith key %X \nproposalSignId %X\n signature %X\n", pv.Key.ProTxHash,
 	//  proposal.Height, pv.Key.PrivKey.PubKey().Bytes(), blockSignId, blockSig)
 
-	pv.saveSigned(height, round, step, blockSignId, blockSig, nil, nil)
+	pv.saveSigned(height, round, step, blockSignBytes, blockSig, nil, nil)
 	proposal.Signature = blockSig
 	return nil
 }
 
 // Persist height/round/step and signature
 func (pv *FilePV) saveSigned(height int64, round int32, step int8,
-	blockSignId []byte, blockSig []byte, stateSignId []byte, stateSig []byte) {
+	blockSignBytes []byte, blockSig []byte, stateSignBytes []byte, stateSig []byte) {
 
 	pv.LastSignState.Height = height
 	pv.LastSignState.Round = round
 	pv.LastSignState.Step = step
 	pv.LastSignState.BlockSignature = blockSig
-	pv.LastSignState.BlockSignId = blockSignId
+	pv.LastSignState.BlockSignBytes = blockSignBytes
 	pv.LastSignState.StateSignature = stateSig
-	pv.LastSignState.StateSignId = stateSignId
+	pv.LastSignState.StateSignBytes = stateSignBytes
 	pv.LastSignState.Save()
 }
 

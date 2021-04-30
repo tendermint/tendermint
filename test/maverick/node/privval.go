@@ -81,9 +81,9 @@ type FilePVLastSignState struct {
 	Round          int32            `json:"round"`
 	Step           int8             `json:"step"`
 	BlockSignature []byte           `json:"block_signature,omitempty"`
-	BlockSignId tmbytes.HexBytes `json:"block_sign_id,omitempty"`
+	BlockSignBytes tmbytes.HexBytes `json:"block_sign_bytes,omitempty"`
 	StateSignature []byte           `json:"state_signature,omitempty"`
-	StateSignId tmbytes.HexBytes `json:"state_sign_id,omitempty"`
+	StateSignBytes tmbytes.HexBytes `json:"state_sign_bytes,omitempty"`
 
 	filePath string
 }
@@ -116,13 +116,13 @@ func (lss *FilePVLastSignState) CheckHRS(height int64, round int32, step int8) (
 					lss.Step,
 				)
 			} else if lss.Step == step {
-				if lss.BlockSignId != nil {
+				if lss.BlockSignBytes != nil {
 					if lss.BlockSignature == nil {
 						panic("pv: Signature is nil but SignBytes is not!")
 					}
 					return true, nil
 				}
-				if lss.StateSignId != nil {
+				if lss.StateSignBytes != nil {
 					if lss.StateSignature == nil {
 						panic("pv: StateID Signature is nil but StateSignBytes is not!")
 					}
@@ -315,9 +315,9 @@ func (pv *FilePV) Reset() {
 	pv.LastSignState.Round = 0
 	pv.LastSignState.Step = 0
 	pv.LastSignState.BlockSignature = blockSig
-	pv.LastSignState.BlockSignId = nil
+	pv.LastSignState.BlockSignBytes = nil
 	pv.LastSignState.StateSignature = stateSig
-	pv.LastSignState.StateSignId = nil
+	pv.LastSignState.StateSignBytes = nil
 	pv.Save()
 }
 
@@ -407,6 +407,10 @@ func (pv *FilePV) signVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 
 	stateSignId := types.VoteBlockSignId(chainID, vote, quorumType, quorumHash)
 
+	blockSignBytes := types.VoteBlockSignBytes(chainID, vote)
+
+	stateSignBytes := types.VoteStateSignBytes(chainID, vote)
+
 	// It passed the checks. SignDigest the vote
 	blockSig, err := pv.Key.PrivKey.SignDigest(blockSignId)
 	if err != nil {
@@ -414,12 +418,12 @@ func (pv *FilePV) signVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 	}
 
 	// It passed the checks. SignDigest the vote
-	stateSig, err := pv.Key.PrivKey.SignDigest(blockSignId)
+	stateSig, err := pv.Key.PrivKey.SignDigest(stateSignId)
 	if err != nil {
 		return err
 	}
 
-	pv.saveSigned(height, round, step, blockSignId, blockSig, stateSignId, stateSig)
+	pv.saveSigned(height, round, step, blockSignBytes, blockSig, stateSignBytes, stateSig)
 	vote.BlockSignature = blockSig
 	vote.StateSignature = stateSig
 	return nil
@@ -441,27 +445,29 @@ func (pv *FilePV) signProposal(chainID string, quorumType btcjson.LLMQType, quor
 
 	blockSignId := types.ProposalBlockSignId(chainID, proposal, quorumType, quorumHash)
 
+	blockSignBytes := types.ProposalBlockSignBytes(chainID, proposal)
+
 	// It passed the checks. SignDigest the proposal
 	blockSig, err := pv.Key.PrivKey.SignDigest(blockSignId)
 	if err != nil {
 		return err
 	}
-	pv.saveSigned(height, round, step, blockSignId, blockSig, nil, nil)
+	pv.saveSigned(height, round, step, blockSignBytes, blockSig, nil, nil)
 	proposal.Signature = blockSig
 	return nil
 }
 
 // Persist height/round/step and signature
 func (pv *FilePV) saveSigned(height int64, round int32, step int8,
-	blockSignId []byte, blockSig []byte,
-	stateSignId []byte, stateSig []byte) {
+	blockSignBytes []byte, blockSig []byte,
+	stateSignBytes []byte, stateSig []byte) {
 
 	pv.LastSignState.Height = height
 	pv.LastSignState.Round = round
 	pv.LastSignState.Step = step
 	pv.LastSignState.BlockSignature = blockSig
-	pv.LastSignState.BlockSignId = blockSignId
+	pv.LastSignState.BlockSignBytes = blockSignBytes
 	pv.LastSignState.StateSignature = stateSig
-	pv.LastSignState.StateSignId = stateSignId
+	pv.LastSignState.StateSignBytes = stateSignBytes
 	pv.LastSignState.Save()
 }

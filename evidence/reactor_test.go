@@ -49,8 +49,9 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	val := types.NewMockPV()
 	// we need validators saved for heights at least as high as we have evidence for
 	height := int64(numEvidence) + 10
+	quorumHash := crypto.RandQuorumHash()
 	for i := 0; i < N; i++ {
-		stateDBs[i] = initializeValidatorState(val, height, crypto.RandQuorumHash())
+		stateDBs[i] = initializeValidatorState(val, height, btcjson.LLMQType_5_60, quorumHash)
 	}
 
 	// make reactors from statedb
@@ -66,7 +67,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 
 	// send a bunch of valid evidence to the first reactor's evpool
 	// and wait for them all to be received in the others
-	evList := sendEvidence(t, pools[0], val, numEvidence)
+	evList := sendEvidence(t, pools[0], val, numEvidence, btcjson.LLMQType_5_60, quorumHash)
 	waitForEvidence(t, evList, pools)
 }
 
@@ -83,8 +84,8 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	quorumHash := crypto.RandQuorumHash()
 
 	// DB1 is ahead of DB2
-	stateDB1 := initializeValidatorState(val, height1, quorumHash)
-	stateDB2 := initializeValidatorState(val, height2, quorumHash)
+	stateDB1 := initializeValidatorState(val, height1, btcjson.LLMQType_5_60, quorumHash)
+	stateDB2 := initializeValidatorState(val, height2, btcjson.LLMQType_5_60, quorumHash)
 
 	// make reactors from statedb
 	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
@@ -103,7 +104,7 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	peer.Set(types.PeerStateKey, ps)
 
 	// send a bunch of valid evidence to the first reactor's evpool
-	evList := sendEvidence(t, pools[0], val, numEvidence)
+	evList := sendEvidence(t, pools[0], val, numEvidence, btcjson.LLMQType_5_60, quorumHash)
 
 	// only ones less than the peers height should make it through
 	waitForEvidence(t, evList[:numEvidence/2-1], []*evidence.Pool{pools[1]})
@@ -127,8 +128,8 @@ func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
 	quorumHash := crypto.RandQuorumHash()
 
 	// DB1 is ahead of DB2
-	stateDB1 := initializeValidatorState(val, height-1, quorumHash)
-	stateDB2 := initializeValidatorState(val, height-2, quorumHash)
+	stateDB1 := initializeValidatorState(val, height-1, btcjson.LLMQType_5_60, quorumHash)
+	stateDB2 := initializeValidatorState(val, height-2, btcjson.LLMQType_5_60, quorumHash)
 	state, err := stateDB1.Load()
 	require.NoError(t, err)
 	state.LastBlockHeight++
@@ -136,7 +137,7 @@ func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
 	// make reactors from statedb
 	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
 
-	evList := sendEvidence(t, pools[0], val, 2)
+	evList := sendEvidence(t, pools[0], val, 2, btcjson.LLMQType_5_60, quorumHash)
 	pools[0].Update(state, evList)
 	require.EqualValues(t, uint32(0), pools[0].Size())
 
@@ -203,7 +204,8 @@ func TestReactorBroadcastEvidenceMemoryLeak(t *testing.T) {
 		&types.BlockMeta{Header: types.Header{Time: evidenceTime}},
 	)
 	val := types.NewMockPV()
-	stateStore := initializeValidatorState(val, 1, crypto.RandQuorumHash())
+	quorumHash := crypto.RandQuorumHash()
+	stateStore := initializeValidatorState(val, 1, btcjson.LLMQType_5_60, quorumHash)
 	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
 
@@ -227,7 +229,7 @@ func TestReactorBroadcastEvidenceMemoryLeak(t *testing.T) {
 	r.SetLogger(log.TestingLogger())
 	r.AddPeer(p)
 
-	_ = sendEvidence(t, pool, val, 2)
+	_ = sendEvidence(t, pool, val, 2, btcjson.LLMQType_5_60, quorumHash)
 }
 
 // evidenceLogger is a TestingLogger which uses a different
@@ -332,11 +334,12 @@ func _waitForEvidence(
 	wg.Done()
 }
 
-func sendEvidence(t *testing.T, evpool *evidence.Pool, val types.PrivValidator, n int) types.EvidenceList {
+func sendEvidence(t *testing.T, evpool *evidence.Pool, val types.PrivValidator, n int,
+	quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) types.EvidenceList {
 	evList := make([]types.Evidence, n)
 	for i := 0; i < n; i++ {
 		ev := types.NewMockDuplicateVoteEvidenceWithValidator(int64(i+1),
-			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val, evidenceChainID, btcjson.LLMQType_5_60, crypto.QuorumHash{})
+			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val, evidenceChainID, quorumType, quorumHash)
 		err := evpool.AddEvidence(ev)
 		require.NoError(t, err)
 		evList[i] = ev

@@ -901,7 +901,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 
 		if !val.PubKey.VerifySignatureDigest(voteBlockSignId, commitSig.BlockSignature) {
 			voteBlockSignBytes := commit.VoteBlockSignBytes(chainID, int32(idx))
-			return fmt.Errorf("wrong block signature for light trusting (#%d/proTxHash:%X/pubKey:%X) |"+
+			return fmt.Errorf("wrong block signature (#%d/proTxHash:%X/pubKey:%X) |"+
 				" voteBlockSignBytes : %X | signature : %X | commitBID: %s | vote :%v | commit sig %v", idx,
 				val.ProTxHash, val.PubKey.Bytes(), voteBlockSignBytes, commitSig.BlockSignature,
 				commit.BlockID.String(), commit.GetVote(int32(idx)), commit.Signatures[idx])
@@ -1005,7 +1005,7 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID, sta
 
 		if !val.PubKey.VerifySignatureDigest(voteBlockSignId, commitSig.BlockSignature) {
 			voteBlockSignBytes := commit.VoteBlockSignBytes(chainID, int32(idx))
-			return fmt.Errorf("wrong block signature for light trusting (#%d/proTxHash:%X/pubKey:%X) |"+
+			return fmt.Errorf("wrong block signature for light (#%d/proTxHash:%X/pubKey:%X) |"+
 				" voteBlockSignBytes : %X | signature : %X | commitBID: %s | vote :%v | commit sig %v", idx,
 				val.ProTxHash, val.PubKey.Bytes(), voteBlockSignBytes, commitSig.BlockSignature,
 				commit.BlockID.String(), commit.GetVote(int32(idx)), commit.Signatures[idx])
@@ -1018,7 +1018,7 @@ func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID, sta
 
 			if !val.PubKey.VerifySignatureDigest(voteStateSignId, commitSig.StateSignature) {
 				voteStateSignBytes := commit.VoteStateSignBytes(chainID, int32(idx))
-				return fmt.Errorf("wrong state signature (#%d/proTxHash:%X/pubKey:%X) |"+
+				return fmt.Errorf("wrong state signature for light (#%d/proTxHash:%X/pubKey:%X) |"+
 					" voteStateSignBytes : %X | signature : %X", idx, val.ProTxHash, val.PubKey.Bytes(),
 					voteStateSignBytes, commitSig.StateSignature)
 			}
@@ -1114,7 +1114,7 @@ func (vals *ValidatorSet) VerifyCommitLightTrusting(chainID string, commit *Comm
 
 				if !val.PubKey.VerifySignatureDigest(voteStateSignId, commitSig.StateSignature) {
 					voteStateSignBytes := commit.VoteStateSignBytes(chainID, int32(idx))
-					return fmt.Errorf("wrong state signature (#%d/proTxHash:%X/pubKey:%X) |"+
+					return fmt.Errorf("wrong state signature for light trusting (#%d/proTxHash:%X/pubKey:%X) |"+
 						" voteStateSignBytes : %X | signature : %X", idx, val.ProTxHash, val.PubKey.Bytes(),
 						voteStateSignBytes, commitSig.StateSignature)
 				}

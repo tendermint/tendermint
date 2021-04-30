@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/dashevo/dashd-go/btcjson"
 	"math"
 	"testing"
 	"time"
@@ -66,15 +67,16 @@ func TestProposalVerifySignature(t *testing.T) {
 		4, 1, 2, 2,
 		BlockID{tmrand.Bytes(tmhash.Size), PartSetHeader{777, tmrand.Bytes(tmhash.Size)}})
 	p := prop.ToProto()
-	signBytes := ProposalBlockSignBytes("test_chain_id", p)
+	quorumHash := crypto.RandQuorumHash()
+	signId := ProposalBlockSignId("test_chain_id", p, btcjson.LLMQType_5_60, quorumHash)
 
 	// sign it
-	err = privVal.SignProposal("test_chain_id", 0, crypto.QuorumHash{}, p)
+	err = privVal.SignProposal("test_chain_id", btcjson.LLMQType_5_60, quorumHash, p)
 	require.NoError(t, err)
 	prop.Signature = p.Signature
 
 	// verify the same proposal
-	valid := pubKey.VerifySignature(signBytes, prop.Signature)
+	valid := pubKey.VerifySignatureDigest(signId, prop.Signature)
 	require.True(t, valid)
 
 	// serialize, deserialize and verify again....
@@ -91,9 +93,9 @@ func TestProposalVerifySignature(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify the transmitted proposal
-	newSignBytes := ProposalBlockSignBytes("test_chain_id", pb)
-	require.Equal(t, string(signBytes), string(newSignBytes))
-	valid = pubKey.VerifySignature(newSignBytes, np.Signature)
+	newSignId := ProposalBlockSignId("test_chain_id", pb, btcjson.LLMQType_5_60, quorumHash)
+	require.Equal(t, string(signId), string(newSignId))
+	valid = pubKey.VerifySignatureDigest(newSignId, np.Signature)
 	require.True(t, valid)
 }
 

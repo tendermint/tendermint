@@ -679,7 +679,7 @@ func (cs *State) updateToState(state sm.State) {
 		cs.StartTime = cs.config.Commit(cs.CommitTime)
 	}
 
-	fmt.Printf("updating validators at height %v from %v to %v \n", height, cs.Validators, validators)
+	// fmt.Printf("updating validators at height %v from %v to %v \n", height, cs.Validators, validators)
 	cs.Validators = validators
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
