@@ -95,6 +95,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
 - [statesync] \#6566 Allow state sync fetchers and request timeout to be configurable. (@alexanderbez)
 - [types] \#6478 Add `block_id` to `newblock` event (@jeebster)
 - [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
+- [crypto/ed25519] \#6526 Use [curve25519-voi](https://github.com/oasisprotocol/curve25519-voi) for `ed25519` signing and verification. (@Yawning)
 - [privval] \#5603 Add `--key` to `init`, `gen_validator`, `testnet` & `unsafe_reset_priv_validator` for use in generating `secp256k1` keys.
 - [privval] \#5725 Add gRPC support to private validator.
 - [privval] \#5876 `tendermint show-validator` will query the remote signer if gRPC is being used (@marbar3778)

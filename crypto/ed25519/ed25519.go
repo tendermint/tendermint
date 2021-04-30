@@ -2,13 +2,12 @@ package ed25519
 
 import (
 	"bytes"
-	"crypto/ed25519"
 	"crypto/subtle"
 	"errors"
 	"fmt"
 	"io"
 
-	"github.com/hdevalence/ed25519consensus"
+	"github.com/oasisprotocol/curve25519-voi/primitives/ed25519"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -17,7 +16,16 @@ import (
 
 //-------------------------------------
 
-var _ crypto.PrivKey = PrivKey{}
+var (
+	_ crypto.PrivKey = PrivKey{}
+
+	// curve25519-voi's Ed25519 implementation supports configurable
+	// verification behavior, and tendermint uses the ZIP-215 verification
+	// semantics.
+	verifyOptions = &ed25519.Options{
+		Verify: ed25519.VerifyOptionsZIP_215,
+	}
+)
 
 const (
 	PrivKeyName = "tendermint/PrivKeyEd25519"
@@ -107,14 +115,12 @@ func GenPrivKey() PrivKey {
 
 // genPrivKey generates a new ed25519 private key using the provided reader.
 func genPrivKey(rand io.Reader) PrivKey {
-	seed := make([]byte, SeedSize)
-
-	_, err := io.ReadFull(rand, seed)
+	_, priv, err := ed25519.GenerateKey(rand)
 	if err != nil {
 		panic(err)
 	}
 
-	return PrivKey(ed25519.NewKeyFromSeed(seed))
+	return PrivKey(priv)
 }
 
 // GenPrivKeyFromSecret hashes the secret with SHA2, and uses
@@ -153,7 +159,7 @@ func (pubKey PubKey) VerifySignature(msg []byte, sig []byte) bool {
 		return false
 	}
 
-	return ed25519consensus.Verify(ed25519.PublicKey(pubKey), msg, sig)
+	return ed25519.VerifyWithOptions(ed25519.PublicKey(pubKey), msg, sig, verifyOptions)
 }
 
 func (pubKey PubKey) String() string {
@@ -175,13 +181,12 @@ func (pubKey PubKey) Equals(other crypto.PubKey) bool {
 var _ crypto.BatchVerifier = &BatchVerifier{}
 
 // BatchVerifier implements batch verification for ed25519.
-// https://github.com/hdevalence/ed25519consensus is used for batch verification
 type BatchVerifier struct {
-	ed25519consensus.BatchVerifier
+	*ed25519.BatchVerifier
 }
 
 func NewBatchVerifier() crypto.BatchVerifier {
-	return &BatchVerifier{ed25519consensus.NewBatchVerifier()}
+	return &BatchVerifier{ed25519.NewBatchVerifier()}
 }
 
 func (b *BatchVerifier) Add(key crypto.PubKey, msg, signature []byte) error {
@@ -189,16 +194,16 @@ func (b *BatchVerifier) Add(key crypto.PubKey, msg, signature []byte) error {
 		return fmt.Errorf("pubkey size is incorrect; expected: %d, got %d", PubKeySize, l)
 	}
 
-	// check that the signature is the correct length & the last byte is set correctly
-	if len(signature) != SignatureSize || signature[63]&224 != 0 {
+	// check that the signature is the correct length
+	if len(signature) != SignatureSize {
 		return errors.New("invalid signature")
 	}
 
-	b.BatchVerifier.Add(ed25519.PublicKey(key.Bytes()), msg, signature)
+	b.BatchVerifier.AddWithOptions(ed25519.PublicKey(key.Bytes()), msg, signature, verifyOptions)
 
 	return nil
 }
 
 func (b *BatchVerifier) Verify() bool {
-	return b.BatchVerifier.Verify()
+	return b.BatchVerifier.VerifyBatchOnly(crypto.CReader())
 }
