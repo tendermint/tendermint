@@ -11,7 +11,6 @@ import (
 )
 
 func TestSignAndValidateSr25519(t *testing.T) {
-
 	privKey := sr25519.GenPrivKey()
 	pubKey := privKey.PubKey()
 
@@ -32,6 +31,7 @@ func TestSignAndValidateSr25519(t *testing.T) {
 
 func TestBatchSafe(t *testing.T) {
 	v := sr25519.NewBatchVerifier()
+	vFail := sr25519.NewBatchVerifier()
 	for i := 0; i <= 38; i++ {
 		priv := sr25519.GenPrivKey()
 		pub := priv.PubKey()
@@ -48,9 +48,27 @@ func TestBatchSafe(t *testing.T) {
 
 		err = v.Add(pub, msg, sig)
 		require.NoError(t, err)
+
+		switch i % 2 {
+		case 0:
+			err = vFail.Add(pub, msg, sig)
+		case 1:
+			msg[2] ^= byte(0x01)
+			err = vFail.Add(pub, msg, sig)
+		}
+		require.NoError(t, err)
 	}
 
-	if !v.Verify() {
-		t.Error("failed batch verification")
+	ok, valid := v.Verify()
+	require.True(t, ok, "failed batch verification")
+	for i, ok := range valid {
+		require.Truef(t, ok, "sig[%d] should be marked valid", i)
+	}
+
+	ok, valid = vFail.Verify()
+	require.False(t, ok, "succeeded batch verification (invalid batch)")
+	for i, ok := range valid {
+		expected := (i % 2) == 0
+		require.Equalf(t, expected, ok, "sig[%d] should be %v", i, expected)
 	}
 }

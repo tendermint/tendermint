@@ -58,7 +58,7 @@ func BenchmarkVerifyBatch(b *testing.B) {
 					require.NoError(b, err)
 				}
 
-				if !v.Verify() {
+				if ok, _ := v.Verify(); !ok {
 					b.Fatal("signature set failed batch verification")
 				}
 			}

@@ -201,7 +201,14 @@ func NewBatchVerifier() crypto.BatchVerifier {
 }
 
 func (b *BatchVerifier) Add(key crypto.PubKey, msg, signature []byte) error {
-	if l := len(key.Bytes()); l != PubKeySize {
+	pkEd, ok := key.(PubKey)
+	if !ok {
+		return fmt.Errorf("pubkey is not Ed25519")
+	}
+
+	pkBytes := pkEd.Bytes()
+
+	if l := len(pkBytes); l != PubKeySize {
 		return fmt.Errorf("pubkey size is incorrect; expected: %d, got %d", PubKeySize, l)
 	}
 
@@ -210,11 +217,11 @@ func (b *BatchVerifier) Add(key crypto.PubKey, msg, signature []byte) error {
 		return errors.New("invalid signature")
 	}
 
-	cachingVerifier.AddWithOptions(b.BatchVerifier, ed25519.PublicKey(key.Bytes()), msg, signature, verifyOptions)
+	cachingVerifier.AddWithOptions(b.BatchVerifier, ed25519.PublicKey(pkBytes), msg, signature, verifyOptions)
 
 	return nil
 }
 
-func (b *BatchVerifier) Verify() bool {
-	return b.BatchVerifier.VerifyBatchOnly(crypto.CReader())
+func (b *BatchVerifier) Verify() (bool, []bool) {
+	return b.BatchVerifier.Verify(crypto.CReader())
 }

@@ -43,7 +43,7 @@ func BenchmarkVerifyBatch(b *testing.B) {
 			}
 			// NOTE: dividing by n so that metrics are per-signature
 			for i := 0; i < b.N/n; i++ {
-				if !v.Verify() {
+				if ok, _ := v.Verify(); !ok {
 					b.Fatal("signature set failed batch verification")
 				}
 			}
