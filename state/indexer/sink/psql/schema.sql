@@ -17,10 +17,9 @@ CREATE TABLE tx_events (
     height INTEGER NOT NULL,
     hash VARCHAR NOT NULL,
     txid SERIAL,
-    CONSTRAINT fk_txid
-        FOREIGN KEY (txid) 
-            REFERENCES tx_results(tx_result_id)
-            ON DELETE CASCADE
+    FOREIGN KEY (txid) 
+        REFERENCES tx_results(tx_result_id)
+        ON DELETE CASCADE
 );
 CREATE INDEX idx_block_events_key_value ON block_events(key, value);
 CREATE INDEX idx_tx_events_key_value ON tx_events(key, value);
