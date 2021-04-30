@@ -151,7 +151,7 @@ type PeerManagerOptions struct {
 
 	// PrivatePeerIDs defines a set of NodeID objects which the PEX reactor will
 	// consider private and never gossip.
-	PrivatePeerIDs map[NodeID]struct{}
+	PrivatePeers map[NodeID]struct{}
 
 	// persistentPeers provides fast PersistentPeers lookups. It is built
 	// by optimize().
