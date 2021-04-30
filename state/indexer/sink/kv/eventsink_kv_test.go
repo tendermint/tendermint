@@ -161,7 +161,8 @@ func TestTxSearchWithCancelation(t *testing.T) {
 }
 
 func TestTxSearchDeprecatedIndexing(t *testing.T) {
-	indexer := NewKVEventSink(db.NewMemDB())
+	esdb := db.NewMemDB()
+	indexer := NewKVEventSink(esdb)
 
 	// index tx using events indexing (composite key)
 	txResult1 := txResultWithEvents([]abci.Event{
@@ -177,7 +178,7 @@ func TestTxSearchDeprecatedIndexing(t *testing.T) {
 	txResult2.Tx = types.Tx("HELLO WORLD 2")
 
 	hash2 := types.Tx(txResult2.Tx).Hash()
-	b := indexer.store.NewBatch()
+	b := esdb.NewBatch()
 
 	rawBytes, err := proto.Marshal(txResult2)
 	require.NoError(t, err)

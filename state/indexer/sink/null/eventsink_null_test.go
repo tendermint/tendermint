@@ -9,7 +9,7 @@ import (
 )
 
 func TestNullEventSink(t *testing.T) {
-	nullIndexer := &NullEventSink{}
+	nullIndexer := NewNullEventSink()
 
 	assert.Nil(t, nullIndexer.IndexTxEvents(nil))
 	assert.Nil(t, nullIndexer.IndexBlockEvents(types.EventDataNewBlockHeader{}))

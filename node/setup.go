@@ -7,6 +7,7 @@ import (
 	"math"
 	"net"
 	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
+	"reflect"
 	"strings"
 	"time"
 
@@ -29,10 +30,8 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
-	blockidxkv "github.com/tendermint/tendermint/state/indexer/block/kv"
-	blockidxnull "github.com/tendermint/tendermint/state/indexer/block/null"
-	"github.com/tendermint/tendermint/state/indexer/tx/kv"
-	"github.com/tendermint/tendermint/state/indexer/tx/null"
+	kvSink "github.com/tendermint/tendermint/state/indexer/sink/kv"
+	nullSink "github.com/tendermint/tendermint/state/indexer/sink/null"
 	"github.com/tendermint/tendermint/statesync"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -74,37 +73,31 @@ func createAndStartIndexerService(
 	dbProvider DBProvider,
 	eventBus *types.EventBus,
 	logger log.Logger,
-) (*indexer.Service, indexer.TxIndexer, indexer.BlockIndexer, error) {
+) (*indexer.Service, []indexer.EventSink, error) {
 
-	var (
-		txIndexer    indexer.TxIndexer
-		blockIndexer indexer.BlockIndexer
-	)
-
+	eventSinks := []indexer.EventSink{}
 	for _, db := range config.TxIndex.Indexer {
 		if strings.ToLower(db) == "null" {
-			txIndexer = &null.TxIndex{}
-			blockIndexer = &blockidxnull.BlockerIndexer{}
+			eventSinks = append([]indexer.EventSink{}, nullSink.NewNullEventSink())
 			break
 		} else {
 			store, err := dbProvider(&DBContext{"tx_index", config})
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, err
 			}
 
-			txIndexer = kv.NewTxIndex(store)
-			blockIndexer = blockidxkv.New(dbm.NewPrefixDB(store, []byte("block_events")))
+			eventSinks = append(eventSinks, kvSink.NewKVEventSink(store))
 		}
 	}
 
-	indexerService := indexer.NewIndexerService(txIndexer, blockIndexer, eventBus)
+	indexerService := indexer.NewIndexerService(eventSinks, eventBus)
 	indexerService.SetLogger(logger.With("module", "txindex"))
 
 	if err := indexerService.Start(); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
-	return indexerService, txIndexer, blockIndexer, nil
+	return indexerService, eventSinks, nil
 }
 
 func doHandshake(
@@ -650,12 +643,12 @@ func createPEXReactorV2(
 func makeNodeInfo(
 	config *cfg.Config,
 	nodeKey p2p.NodeKey,
-	txIndexer indexer.TxIndexer,
+	eventSinks []indexer.EventSink,
 	genDoc *types.GenesisDoc,
 	state sm.State,
 ) (p2p.NodeInfo, error) {
 	txIndexerStatus := "on"
-	if _, ok := txIndexer.(*null.TxIndex); ok {
+	if len(eventSinks) == 0 || reflect.ValueOf(eventSinks[0]).Elem().Type().Name() == "NullEventSink" {
 		txIndexerStatus = "off"
 	}
 

@@ -28,15 +28,15 @@ type PSQLEventSink struct {
 	store *sql.DB
 }
 
-func NewPSQLEventSink(connStr string) (*PSQLEventSink, error) {
+func NewPSQLEventSink(connStr string) (indexer.EventSink, *sql.DB, error) {
 	db, err := sql.Open(DriverName, connStr)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return &PSQLEventSink{
 		store: db,
-	}, nil
+	}, db, nil
 }
 
 func (es *PSQLEventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {

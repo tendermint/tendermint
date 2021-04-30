@@ -22,7 +22,7 @@ type KVEventSink struct {
 	bi    *kvb.BlockerIndexer
 }
 
-func NewKVEventSink(store dbm.DB) *KVEventSink {
+func NewKVEventSink(store dbm.DB) indexer.EventSink {
 	return &KVEventSink{
 		store: store,
 		txi:   kvt.NewTxIndex(store),

@@ -83,8 +83,7 @@ type Node struct {
 	evidencePool      *evidence.Pool // tracking evidence
 	proxyApp          proxy.AppConns // connection to the application
 	rpcListeners      []net.Listener // rpc servers
-	txIndexer         indexer.TxIndexer
-	blockIndexer      indexer.BlockIndexer
+	eventSinks        []indexer.EventSink
 	indexerService    *indexer.Service
 	prometheusSrv     *http.Server
 }
@@ -166,7 +165,7 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(config, dbProvider, eventBus, logger)
+	indexerService, eventSinks, err := createAndStartIndexerService(config, dbProvider, eventBus, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +231,7 @@ func NewNode(config *cfg.Config,
 
 	// TODO: Fetch and provide real options and do proper p2p bootstrapping.
 	// TODO: Use a persistent peer database.
-	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
+	nodeInfo, err := makeNodeInfo(config, nodeKey, eventSinks, genDoc, state)
 	if err != nil {
 		return nil, err
 	}
@@ -437,10 +436,9 @@ func NewNode(config *cfg.Config,
 		evidenceReactor:  evReactor,
 		evidencePool:     evPool,
 		proxyApp:         proxyApp,
-		txIndexer:        txIndexer,
 		indexerService:   indexerService,
-		blockIndexer:     blockIndexer,
 		eventBus:         eventBus,
+		eventSinks:       eventSinks,
 	}
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
 
@@ -810,8 +808,7 @@ func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
 		P2PTransport:   n,
 
 		GenDoc:           n.genesisDoc,
-		TxIndexer:        n.txIndexer,
-		BlockIndexer:     n.blockIndexer,
+		EventSinks:       n.eventSinks,
 		ConsensusReactor: n.consensusReactor,
 		EventBus:         n.eventBus,
 		Mempool:          n.mempool,
@@ -1040,9 +1037,9 @@ func (n *Node) Config() *cfg.Config {
 	return n.config
 }
 
-// TxIndexer returns the Node's TxIndexer.
-func (n *Node) TxIndexer() indexer.TxIndexer {
-	return n.txIndexer
+// EventSink returns the Node's Indexer.
+func (n *Node) EventSink() []indexer.EventSink {
+	return n.eventSinks
 }
 
 //------------------------------------------------------------------------------

@@ -10,8 +10,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	indexer "github.com/tendermint/tendermint/state/indexer"
-	blockidxkv "github.com/tendermint/tendermint/state/indexer/block/kv"
-	"github.com/tendermint/tendermint/state/indexer/tx/kv"
+	kvsink "github.com/tendermint/tendermint/state/indexer/sink/kv"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -27,12 +26,11 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 		}
 	})
 
-	// tx indexer
+	// event sink setup
 	store := db.NewMemDB()
-	txIndexer := kv.NewTxIndex(store)
-	blockIndexer := blockidxkv.New(db.NewPrefixDB(store, []byte("block_events")))
+	eventSinks := []indexer.EventSink{kvsink.NewKVEventSink(store)}
 
-	service := indexer.NewIndexerService(txIndexer, blockIndexer, eventBus)
+	service := indexer.NewIndexerService(eventSinks, eventBus)
 	service.SetLogger(log.TestingLogger())
 	err = service.Start()
 	require.NoError(t, err)
@@ -67,15 +65,15 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	res, err := txIndexer.Get(types.Tx("foo").Hash())
+	res, err := eventSinks[0].GetTxByHash(types.Tx("foo").Hash())
 	require.NoError(t, err)
 	require.Equal(t, txResult1, res)
 
-	ok, err := blockIndexer.Has(1)
+	ok, err := eventSinks[0].HasBlock(1)
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	res, err = txIndexer.Get(types.Tx("bar").Hash())
+	res, err = eventSinks[0].GetTxByHash(types.Tx("bar").Hash())
 	require.NoError(t, err)
 	require.Equal(t, txResult2, res)
 }

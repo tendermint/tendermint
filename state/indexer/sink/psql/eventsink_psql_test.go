@@ -65,12 +65,10 @@ func TestMain(m *testing.M) {
 	if err = pool.Retry(func() error {
 		var err error
 
-		es, err := NewPSQLEventSink(dsn)
+		_, db, err = NewPSQLEventSink(dsn)
 		if err != nil {
 			return err
 		}
-
-		db = es.store
 
 		return db.Ping()
 	}); err != nil {

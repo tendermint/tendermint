@@ -18,19 +18,17 @@ const (
 type Service struct {
 	service.BaseService
 
-	txIdxr    TxIndexer
-	blockIdxr BlockIndexer
-	eventBus  *types.EventBus
+	eventSinks []EventSink
+	eventBus   *types.EventBus
 }
 
 // NewIndexerService returns a new service instance.
 func NewIndexerService(
-	txIdxr TxIndexer,
-	blockIdxr BlockIndexer,
+	es []EventSink,
 	eventBus *types.EventBus,
 ) *Service {
 
-	is := &Service{txIdxr: txIdxr, blockIdxr: blockIdxr, eventBus: eventBus}
+	is := &Service{eventSinks: es, eventBus: eventBus}
 	is.BaseService = *service.NewBaseService(nil, "IndexerService", is)
 	return is
 }
@@ -75,16 +73,19 @@ func (is *Service) OnStart() error {
 				}
 			}
 
-			if err := is.blockIdxr.Index(eventDataHeader); err != nil {
-				is.Logger.Error("failed to index block", "height", height, "err", err)
-			} else {
-				is.Logger.Info("indexed block", "height", height)
-			}
+			for _, sink := range is.eventSinks {
+				if err := sink.IndexBlockEvents(eventDataHeader); err != nil {
+					is.Logger.Error("failed to index block", "height", height, "err", err)
+				} else {
+					is.Logger.Info("indexed block", "height", height)
+				}
 
-			if err = is.txIdxr.AddBatch(batch); err != nil {
-				is.Logger.Error("failed to index block txs", "height", height, "err", err)
-			} else {
-				is.Logger.Debug("indexed block txs", "height", height, "num_txs", eventDataHeader.NumTxs)
+				for _, result := range batch.Ops {
+					err := sink.IndexTxEvents(result)
+					if err != nil {
+						is.Logger.Error("failed to index block txs", "height", height, "err", err)
+					}
+				}
 			}
 		}
 	}()

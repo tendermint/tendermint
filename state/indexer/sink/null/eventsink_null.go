@@ -14,6 +14,10 @@ var _ indexer.EventSink = (*NullEventSink)(nil)
 // NullEventSink implements a no-op indexer.
 type NullEventSink struct{}
 
+func NewNullEventSink() indexer.EventSink {
+	return &NullEventSink{}
+}
+
 func (nes *NullEventSink) IndexBlockEvents(bh types.EventDataNewBlockHeader) error {
 	return nil
 }
