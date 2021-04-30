@@ -93,6 +93,8 @@ type Store interface {
 	Save(State) error
 	// SaveABCIResponses saves ABCIResponses for a given height
 	SaveABCIResponses(int64, *tmstate.ABCIResponses) error
+	// SaveValidatorSet saves the validator set at a given height
+	SaveValidatorSet(int64, *types.ValidatorSet) error
 	// Bootstrap is used for bootstrapping state when not starting from a initial height.
 	Bootstrap(State) error
 	// PruneStates takes the height from which to prune up to (exclusive)
@@ -500,6 +502,10 @@ func (store dbStore) saveABCIResponses(height int64, abciResponses *tmstate.ABCI
 	}
 
 	return store.db.SetSync(abciResponsesKey(height), bz)
+}
+
+func (store dbStore) SaveValidatorSet(height int64, vals *types.ValidatorSet) error {
+	return nil
 }
 
 //-----------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 package statesync
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,12 +10,14 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
+	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -62,6 +65,9 @@ const (
 	// ChunkChannel exchanges chunk contents
 	ChunkChannel = p2p.ChannelID(0x61)
 
+	// LightBlockChannel exchanges light blocks
+	LightBlockChannel = p2p.ChannelID(0x62)
+
 	// recentSnapshots is the number of recent snapshots to send and receive per peer.
 	recentSnapshots = 10
 
@@ -77,13 +83,19 @@ const (
 type Reactor struct {
 	service.BaseService
 
+	stateStore sm.Store
+	blockStore *store.BlockStore
+
 	conn        proxy.AppConnSnapshot
 	connQuery   proxy.AppConnQuery
 	tempDir     string
 	snapshotCh  *p2p.Channel
 	chunkCh     *p2p.Channel
+	blockCh     *p2p.Channel
 	peerUpdates *p2p.PeerUpdates
 	closeCh     chan struct{}
+
+	dispatcher *dispatcher
 
 	// This will only be set when a state sync is in progress. It is used to feed
 	// received snapshots and chunks into the sync.
@@ -99,8 +111,10 @@ func NewReactor(
 	logger log.Logger,
 	conn proxy.AppConnSnapshot,
 	connQuery proxy.AppConnQuery,
-	snapshotCh, chunkCh *p2p.Channel,
+	snapshotCh, chunkCh, blockCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,
+	stateStore sm.Store,
+	blockStore *store.BlockStore,
 	tempDir string,
 ) *Reactor {
 	r := &Reactor{
@@ -108,9 +122,13 @@ func NewReactor(
 		connQuery:   connQuery,
 		snapshotCh:  snapshotCh,
 		chunkCh:     chunkCh,
+		blockCh:     blockCh,
 		peerUpdates: peerUpdates,
 		closeCh:     make(chan struct{}),
 		tempDir:     tempDir,
+		dispatcher:  newDispatcher(blockCh.Out),
+		stateStore:  stateStore,
+		blockStore:  blockStore,
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "StateSync", r)
@@ -134,6 +152,8 @@ func (r *Reactor) OnStart() error {
 	// have to deal with bounding workers or pools.
 	go r.processChunkCh()
 
+	go r.processBlockCh()
+
 	go r.processPeerUpdates()
 
 	return nil
@@ -152,6 +172,132 @@ func (r *Reactor) OnStop() {
 	<-r.snapshotCh.Done()
 	<-r.chunkCh.Done()
 	<-r.peerUpdates.Done()
+}
+
+// Sync runs a state sync, fetching snapshots and providing chunks to the
+// application. It also saves tendermint state and runs a backfill process to
+// retrieve the necessary amount of headers, commits and validators sets to be
+// able to process evidence and participate in consensus.
+func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration) error {
+	r.mtx.Lock()
+	if r.syncer != nil {
+		r.mtx.Unlock()
+		return errors.New("a state sync is already in progress")
+	}
+
+	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateProvider, r.snapshotCh.Out, r.chunkCh.Out, r.tempDir)
+	r.mtx.Unlock()
+
+	hook := func() {
+		// request snapshots from all currently connected peers
+		r.Logger.Debug("requesting snapshots from known peers")
+		r.snapshotCh.Out <- p2p.Envelope{
+			Broadcast: true,
+			Message:   &ssproto.SnapshotsRequest{},
+		}
+	}
+
+	hook()
+
+	state, commit, err := r.syncer.SyncAny(discoveryTime, hook)
+	if err != nil {
+		return err
+	}
+
+	r.mtx.Lock()
+	r.syncer = nil
+	r.mtx.Unlock()
+
+	err = r.stateStore.Bootstrap(state)
+	if err != nil {
+		return fmt.Errorf("failed to bootstrap node with new state: %w", err)
+	}
+
+	err = r.blockStore.SaveSeenCommit(state.LastBlockHeight, commit)
+	if err != nil {
+		return fmt.Errorf("failed to store last seen commit: %w", err)
+	}
+
+	// start backfill process to retrieve the necessary headers, commits and
+	// validator sets
+	return r.backfill(state)
+}
+
+// TODO: add a context so that this request can be cancelled
+func (r *Reactor) Backfill(
+	chainID string,
+	startHeight, stopHeight int64,
+	trustedBlockID types.BlockID,
+	stopTime time.Time,
+) error {
+
+	queue := newBlockQueue(startHeight, stopHeight, stopTime)
+
+	// fetch light blocks routine
+	go func() {
+		for !queue.Complete() {
+			height := queue.NextHeight()
+			lb, peer, err := r.dispatcher.LightBlock(context.Background(), height)
+			if err != nil {
+				// we don't punish the peer as it might just not have the block
+				// at that height
+				r.Logger.Info("error with fetching light block", "err", err)
+				queue.Retry(height)
+				continue
+			}
+
+			if lb.Height != height {
+				queue.Retry(height)
+			}
+
+			// run a validate basic. This checks the validator set and commit
+			// hashes line up
+			err = lb.ValidateBasic(chainID)
+			if err != nil {
+				queue.Retry(height)
+			}
+
+			queue.Add(lightBlockResponse{
+				block: lb,
+				peer:  peer,
+			})
+		}
+	}()
+
+	// verify all light blocks
+	for !queue.Finished() {
+
+		resp := <-queue.VerifyNext()
+
+		// validate the hash
+		if w, g := trustedBlockID.Hash, resp.block.Hash(); !bytes.Equal(w, g) {
+			r.Logger.Info("received invalid light block. header hash doesn't match trusted LastBlockID",
+				"trustedHash", w, "receivedHash", g)
+			r.blockCh.Error <- p2p.PeerError{
+				NodeID: resp.peer,
+				Err:    fmt.Errorf("received invalid light block. Expected hash %v, got: %v", w, g),
+			}
+		}
+
+		// save the light blocks
+		err := r.blockStore.SaveSignedHeader(resp.block.SignedHeader, trustedBlockID)
+		if err != nil {
+			return err
+		}
+
+		err = r.stateStore.SaveValidatorSet(resp.block.Height, resp.block.ValidatorSet)
+		if err != nil {
+			return err
+		}
+
+		trustedBlockID = resp.block.LastBlockID
+	}
+
+	return nil
+}
+
+func (r *Reactor) Dispatcher() *dispatcher {
+	return r.dispatcher
 }
 
 // handleSnapshotMessage handles envelopes sent from peers on the
@@ -311,6 +457,42 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 	return nil
 }
 
+func (r *Reactor) handleLightBlockMessage(envelope p2p.Envelope) error {
+	switch msg := envelope.Message.(type) {
+	case *ssproto.LightBlockRequest:
+		lb, err := r.fetchLightBlock(msg.Height)
+		if err != nil {
+			r.Logger.Error("failed to retrieve light block", "err", err, "height", msg.Height)
+			return err
+		}
+
+		lbproto, err := lb.ToProto()
+		if err != nil {
+			r.Logger.Error("marshalling light block to proto", "err", err)
+			return nil
+		}
+
+		// NOTE: If we don't have the light block we will send a nil light block
+		// back to the requested node, indicating that we don't have it.
+		r.blockCh.Out <- p2p.Envelope{
+			To: envelope.From,
+			Message: &ssproto.LightBlockResponse{
+				LightBlock: lbproto,
+			},
+		}
+
+	case *ssproto.LightBlockResponse:
+		if err := r.dispatcher.respond(msg.LightBlock, envelope.From); err != nil {
+			return err
+		}
+
+	default:
+		return fmt.Errorf("received unknown message: %T", msg)
+	}
+
+	return nil
+}
+
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
@@ -330,6 +512,9 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 	case ChunkChannel:
 		err = r.handleChunkMessage(envelope)
 
+	case LightBlockChannel:
+		err = r.handleLightBlockMessage(envelope)
+
 	default:
 		err = fmt.Errorf("unknown channel ID (%d) for envelope (%v)", chID, envelope)
 	}
@@ -338,52 +523,43 @@ func (r *Reactor) handleMessage(chID p2p.ChannelID, envelope p2p.Envelope) (err 
 }
 
 // processSnapshotCh initiates a blocking process where we listen for and handle
-// envelopes on the SnapshotChannel. Any error encountered during message
-// execution will result in a PeerError being sent on the SnapshotChannel. When
-// the reactor is stopped, we will catch the signal and close the p2p Channel
-// gracefully.
+// envelopes on the SnapshotChannel.
 func (r *Reactor) processSnapshotCh() {
-	defer r.snapshotCh.Close()
-
-	for {
-		select {
-		case envelope := <-r.snapshotCh.In:
-			if err := r.handleMessage(r.snapshotCh.ID, envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.snapshotCh.ID, "envelope", envelope, "err", err)
-				r.snapshotCh.Error <- p2p.PeerError{
-					NodeID: envelope.From,
-					Err:    err,
-				}
-			}
-
-		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on snapshot channel; closing...")
-			return
-		}
-	}
+	r.processCh(r.snapshotCh, "snapshot")
 }
 
 // processChunkCh initiates a blocking process where we listen for and handle
-// envelopes on the ChunkChannel. Any error encountered during message
-// execution will result in a PeerError being sent on the ChunkChannel. When
-// the reactor is stopped, we will catch the signal and close the p2p Channel
-// gracefully.
+// envelopes on the ChunkChannel.
 func (r *Reactor) processChunkCh() {
-	defer r.chunkCh.Close()
+	r.processCh(r.chunkCh, "chunk")
+}
+
+// processBlockCh initiates a blocking process where we listen for and handle
+// envelopes on the LightBlockChannel.
+func (r *Reactor) processBlockCh() {
+	r.processCh(r.blockCh, "light block")
+}
+
+// processCh routes state sync messages to their respective handlers. Any error
+// encountered during message execution will result in a PeerError being sent on
+// the respective channel. When the reactor is stopped, we will catch the signal
+// and close the p2p Channel gracefully.
+func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
+	defer ch.Close()
 
 	for {
 		select {
-		case envelope := <-r.chunkCh.In:
-			if err := r.handleMessage(r.chunkCh.ID, envelope); err != nil {
-				r.Logger.Error("failed to process message", "ch_id", r.chunkCh.ID, "envelope", envelope, "err", err)
-				r.chunkCh.Error <- p2p.PeerError{
+		case envelope := <-ch.In:
+			if err := r.handleMessage(ch.ID, envelope); err != nil {
+				r.Logger.Error(fmt.Sprintf("failed to process %s message", chName), "ch_id", ch.ID, "envelope", envelope, "err", err)
+				ch.Error <- p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
 				}
 			}
 
 		case <-r.closeCh:
-			r.Logger.Debug("stopped listening on chunk channel; closing...")
+			r.Logger.Debug(fmt.Sprintf("stopped listening on %s channel; closing..."), chName)
 			return
 		}
 	}
@@ -397,14 +573,18 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 	r.mtx.RLock()
 	defer r.mtx.RUnlock()
 
-	if r.syncer != nil {
-		switch peerUpdate.Status {
-		case p2p.PeerStatusUp:
+	switch peerUpdate.Status {
+	case p2p.PeerStatusUp:
+		if r.syncer != nil {
 			r.syncer.AddPeer(peerUpdate.NodeID)
+		}
+		r.dispatcher.addPeer(peerUpdate.NodeID)
 
-		case p2p.PeerStatusDown:
+	case p2p.PeerStatusDown:
+		if r.syncer != nil {
 			r.syncer.RemovePeer(peerUpdate.NodeID)
 		}
+		r.dispatcher.removePeer(peerUpdate.NodeID)
 	}
 }
 
@@ -465,34 +645,49 @@ func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {
 	return snapshots, nil
 }
 
-// Sync runs a state sync, returning the new state and last commit at the snapshot height.
-// The caller must store the state and commit in the state database and block store.
-func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration) (sm.State, *types.Commit, error) {
-	r.mtx.Lock()
-	if r.syncer != nil {
-		r.mtx.Unlock()
-		return sm.State{}, nil, errors.New("a state sync is already in progress")
+// fetchLightBlock works out whether the node has a light block at a particular
+// height and if so returns it so it can be gossiped to peers
+func (r *Reactor) fetchLightBlock(height uint64) (*types.LightBlock, error) {
+	h := int64(height)
+
+	blockMeta := r.blockStore.LoadBlockMeta(h)
+	if blockMeta == nil {
+		return nil, nil
 	}
 
-	r.syncer = newSyncer(r.Logger, r.conn, r.connQuery, stateProvider, r.snapshotCh.Out, r.chunkCh.Out, r.tempDir)
-	r.mtx.Unlock()
-
-	hook := func() {
-		// request snapshots from all currently connected peers
-		r.Logger.Debug("requesting snapshots from known peers")
-		r.snapshotCh.Out <- p2p.Envelope{
-			Broadcast: true,
-			Message:   &ssproto.SnapshotsRequest{},
-		}
+	commit := r.blockStore.LoadBlockCommit(h)
+	if commit == nil {
+		return nil, nil
 	}
 
-	hook()
+	vals, err := r.stateStore.LoadValidators(h)
+	if err != nil {
+		return nil, err
+	}
+	if vals == nil {
+		return nil, nil
+	}
 
-	state, commit, err := r.syncer.SyncAny(discoveryTime, hook)
+	return &types.LightBlock{
+		SignedHeader: &types.SignedHeader{
+			Header: &blockMeta.Header,
+			Commit: commit,
+		},
+		ValidatorSet: vals,
+	}, nil
 
-	r.mtx.Lock()
-	r.syncer = nil
-	r.mtx.Unlock()
+}
 
-	return state, commit, err
+// backfill is a convenience wrapper around the backfill function. It takes
+// state to work out how many prior blocks need to be verified
+func (r *Reactor) backfill(state sm.State) error {
+	params := state.ConsensusParams.Evidence
+	stopHeight := tmmath.MinInt64(state.LastBlockHeight-params.MaxAgeNumBlocks, state.InitialHeight)
+	stopTime := state.LastBlockTime.Add(-params.MaxAgeDuration)
+	return r.Backfill(
+		state.ChainID,
+		state.LastBlockHeight, stopHeight,
+		state.LastBlockID,
+		stopTime,
+	)
 }

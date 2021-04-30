@@ -6,13 +6,16 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	proxymocks "github.com/tendermint/tendermint/proxy/mocks"
+	smmocks "github.com/tendermint/tendermint/state/mocks"
 	"github.com/tendermint/tendermint/statesync/mocks"
+	"github.com/tendermint/tendermint/store"
 )
 
 type reactorTestSuite struct {
@@ -32,6 +35,11 @@ type reactorTestSuite struct {
 	chunkInCh      chan p2p.Envelope
 	chunkOutCh     chan p2p.Envelope
 	chunkPeerErrCh chan p2p.PeerError
+
+	blockChannel   *p2p.Channel
+	blockInCh      chan p2p.Envelope
+	blockOutCh     chan p2p.Envelope
+	blockPeerErrCh chan p2p.PeerError
 
 	peerUpdates *p2p.PeerUpdates
 }
@@ -84,13 +92,24 @@ func setup(
 		rts.chunkPeerErrCh,
 	)
 
+	rts.blockChannel = p2p.NewChannel(
+		ChunkChannel,
+		new(ssproto.Message),
+		rts.chunkInCh,
+		rts.chunkOutCh,
+		rts.chunkPeerErrCh,
+	)
+
 	rts.reactor = NewReactor(
 		log.NewNopLogger(),
 		conn,
 		connQuery,
 		rts.snapshotChannel,
 		rts.chunkChannel,
+		rts.blockChannel,
 		rts.peerUpdates,
+		&smmocks.Store{},
+		store.NewBlockStore(dbm.NewMemDB()),
 		"",
 	)
 
