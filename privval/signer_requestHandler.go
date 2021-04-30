@@ -79,8 +79,10 @@ func DefaultValidationRequestHandler(
 		}
 
 		vote := r.SignVoteRequest.Vote
+		voteQuorumHash := r.SignVoteRequest.QuorumHash
+		voteQuorumType := r.SignVoteRequest.QuorumType
 
-		err = privVal.SignVote(chainID, quorumType, quorumHash, vote)
+		err = privVal.SignVote(chainID, btcjson.LLMQType(voteQuorumType), voteQuorumHash, vote)
 		if err != nil {
 			res = mustWrapMsg(&privvalproto.SignedVoteResponse{
 				Vote: tmproto.Vote{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})
@@ -99,7 +101,9 @@ func DefaultValidationRequestHandler(
 
 		proposal := r.SignProposalRequest.Proposal
 
-		err = privVal.SignProposal(chainID, quorumType, quorumHash, proposal)
+		proposalQuorumHash := r.SignProposalRequest.QuorumHash
+		proposalQuorumType := r.SignProposalRequest.QuorumType
+		err = privVal.SignProposal(chainID, btcjson.LLMQType(proposalQuorumType), proposalQuorumHash, proposal)
 		if err != nil {
 			res = mustWrapMsg(&privvalproto.SignedProposalResponse{
 				Proposal: tmproto.Proposal{}, Error: &privvalproto.RemoteSignerError{Code: 0, Description: err.Error()}})

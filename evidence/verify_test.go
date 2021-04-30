@@ -27,7 +27,8 @@ func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
 
 	conflictingVals, conflictingPrivVals := types.GenerateValidatorSet(3)
 
-	commonVals := types.NewValidatorSet(conflictingVals.Validators[0:2], conflictingVals.ThresholdPublicKey, conflictingVals.QuorumHash)
+	commonVals := types.NewValidatorSet(conflictingVals.Validators[0:2], conflictingVals.ThresholdPublicKey,
+		conflictingVals.QuorumType, conflictingVals.QuorumHash)
 
 	commonHeader := makeHeaderRandom(4)
 	commonHeader.Time = defaultEvidenceTime

@@ -148,16 +148,16 @@ func makeVote(header *types.Header, valset *types.ValidatorSet, proTxHash crypto
 	}
 
 	v := vote.ToProto()
-	// Sign it
+	// SignDigest it
 	signBytes := types.VoteBlockSignBytes(header.ChainID, v)
-	sig, err := key.Sign(signBytes)
+	sig, err := key.SignDigest(signBytes)
 	if err != nil {
 		panic(err)
 	}
 
-	// Sign it
+	// SignDigest it
 	stateSignBytes := types.VoteStateSignBytes(header.ChainID, v)
-	sigState, err := key.Sign(stateSignBytes)
+	sigState, err := key.SignDigest(stateSignBytes)
 	if err != nil {
 		panic(err)
 	}

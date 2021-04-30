@@ -210,7 +210,7 @@ func TestStateBadProposal(t *testing.T) {
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 	proposal := types.NewProposal(vs2.Height, 1, round, -1, blockID)
 	p := proposal.ToProto()
-	if err := vs2.SignProposal(config.ChainID(), cs1.Validators.QuorumHash, p); err != nil {
+	if err := vs2.SignProposal(config.ChainID(), cs1.Validators.QuorumType, cs1.Validators.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 
@@ -264,7 +264,7 @@ func TestStateOversizedBlock(t *testing.T) {
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 	proposal := types.NewProposal(height, 1, round, -1, blockID)
 	p := proposal.ToProto()
-	if err := vs2.SignProposal(config.ChainID(), cs1.Validators.QuorumHash, p); err != nil {
+	if err := vs2.SignProposal(config.ChainID(), cs1.Validators.QuorumType, cs1.Validators.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -926,7 +926,8 @@ func TestStateLockPOLSafety1(t *testing.T) {
 	validatePrevote(t, cs1, round, vss[0], propBlock.Hash())
 
 	// the others sign a polka but we don't see it
-	prevotes := signVotes(tmproto.PrevoteType, propBlock.Hash(), cs1.state.AppHash, cs1.Validators.QuorumHash,
+	prevotes := signVotes(tmproto.PrevoteType, propBlock.Hash(), cs1.state.AppHash, cs1.Validators.QuorumType,
+		cs1.Validators.QuorumHash,
 		propBlock.MakePartSet(partSize).Header(), vs2, vs3, vs4)
 
 	t.Logf("old prop hash %v", fmt.Sprintf("%X", propBlock.Hash()))
@@ -1041,7 +1042,8 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	propBlockID0 := types.BlockID{Hash: propBlockHash0, PartSetHeader: propBlockParts0.Header()}
 
 	// the others sign a polka but we don't see it
-	prevotes := signVotes(tmproto.PrevoteType, propBlockHash0, cs1.state.AppHash, cs1.Validators.QuorumHash,
+	prevotes := signVotes(tmproto.PrevoteType, propBlockHash0, cs1.state.AppHash, cs1.Validators.QuorumType,
+		cs1.Validators.QuorumHash,
 		propBlockParts0.Header(), vs2, vs3, vs4)
 
 	// the block for round 1
@@ -1084,7 +1086,7 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	// in round 2 we see the polkad block from round 0
 	newProp := types.NewProposal(height, 1, round, 0, propBlockID0)
 	p := newProp.ToProto()
-	if err := vs3.SignProposal(config.ChainID(), cs1.Validators.QuorumHash, p); err != nil {
+	if err := vs3.SignProposal(config.ChainID(), cs1.Validators.QuorumType, cs1.Validators.QuorumHash, p); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1760,7 +1762,8 @@ func TestStateHalt1(t *testing.T) {
 	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2) // didnt receive proposal
 	signAddVotes(cs1, tmproto.PrecommitType, propBlock.Hash(), propBlockParts.Header(), vs3)
 	// we receive this later, but vs3 might receive it earlier and with ours will go to commit!
-	precommit4 := signVote(vs4, tmproto.PrecommitType, propBlock.Hash(), cs1.state.AppHash, cs1.state.Validators.QuorumHash, propBlockParts.Header())
+	precommit4 := signVote(vs4, tmproto.PrecommitType, propBlock.Hash(), cs1.state.AppHash, cs1.state.Validators.QuorumType,
+		cs1.state.Validators.QuorumHash, propBlockParts.Header())
 
 	incrementRound(vs2, vs3, vs4)
 
@@ -1841,7 +1844,8 @@ func TestStateOutputVoteStats(t *testing.T) {
 
 	randBytes := tmrand.Bytes(tmhash.Size)
 
-	vote := signVote(vss[1], tmproto.PrecommitType, randBytes, cs.state.AppHash, cs.state.Validators.QuorumHash, types.PartSetHeader{})
+	vote := signVote(vss[1], tmproto.PrecommitType, randBytes, cs.state.AppHash, cs.state.Validators.QuorumType,
+		cs.state.Validators.QuorumHash, types.PartSetHeader{})
 
 	voteMessage := &VoteMessage{vote}
 	cs.handleMsg(msgInfo{voteMessage, peer.ID()})
@@ -1855,7 +1859,8 @@ func TestStateOutputVoteStats(t *testing.T) {
 
 	// sending the vote for the bigger height
 	incrementHeight(vss[1])
-	vote = signVote(vss[1], tmproto.PrecommitType, randBytes, cs.state.AppHash, cs.state.Validators.QuorumHash, types.PartSetHeader{})
+	vote = signVote(vss[1], tmproto.PrecommitType, randBytes, cs.state.AppHash, cs.state.Validators.QuorumType,
+		cs.state.Validators.QuorumHash, types.PartSetHeader{})
 
 	cs.handleMsg(msgInfo{&VoteMessage{vote}, peer.ID()})
 

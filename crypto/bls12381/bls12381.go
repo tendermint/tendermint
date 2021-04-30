@@ -64,6 +64,28 @@ func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	insecureSignature := blsPrivateKey.SignInsecure(msg)
+	serializedSignature := insecureSignature.Serialize()
+	// fmt.Printf("signature %X created for msg %X with key %X\n", serializedSignature, msg, privKey.PubKey().Bytes())
+	return serializedSignature, nil
+}
+
+// Sign produces a signature on the provided message.
+// This assumes the privkey is wellformed in the golang format.
+// The first 32 bytes should be random,
+// corresponding to the normal bls12381 private key.
+// The latter 32 bytes should be the compressed public key.
+// If these conditions aren't met, Sign will panic or produce an
+// incorrect signature.
+func (privKey PrivKey) SignDigest(msg []byte) ([]byte, error) {
+	if len(privKey.Bytes()) != PrivateKeySize {
+		panic(fmt.Sprintf("incorrect private key %d bytes but expected %d bytes", len(privKey.Bytes()), PrivateKeySize))
+	}
+	// set modOrder flag to true so that too big random bytes will wrap around and be a valid key
+	blsPrivateKey, err := bls.PrivateKeyFromBytes(privKey, true)
+	if err != nil {
+		return nil, err
+	}
 	insecureSignature := blsPrivateKey.SignInsecurePrehashed(msg)
 	serializedSignature := insecureSignature.Serialize()
 	// fmt.Printf("signature %X created for msg %X with key %X\n", serializedSignature, msg, privKey.PubKey().Bytes())

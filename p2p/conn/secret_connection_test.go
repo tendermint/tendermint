@@ -19,7 +19,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/sr25519"
 	"github.com/tendermint/tendermint/libs/async"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -47,9 +46,10 @@ type privKeyWithNilPubKey struct {
 	orig crypto.PrivKey
 }
 
-func (pk privKeyWithNilPubKey) Bytes() []byte                   { return pk.orig.Bytes() }
+func (pk privKeyWithNilPubKey) Bytes() []byte                         { return pk.orig.Bytes() }
 func (pk privKeyWithNilPubKey) Sign(msg []byte) ([]byte, error) { return pk.orig.Sign(msg) }
-func (pk privKeyWithNilPubKey) PubKey() crypto.PubKey           { return nil }
+func (pk privKeyWithNilPubKey) SignDigest(msg []byte) ([]byte, error) { return pk.orig.SignDigest(msg) }
+func (pk privKeyWithNilPubKey) PubKey() crypto.PubKey                 { return nil }
 func (pk privKeyWithNilPubKey) Equals(pk2 crypto.PrivKey) bool  { return pk.orig.Equals(pk2) }
 func (pk privKeyWithNilPubKey) Type() string                    { return "privKeyWithNilPubKey" }
 func (pk privKeyWithNilPubKey) TypeValue() crypto.KeyType       { return crypto.KeyTypeAny }
@@ -269,21 +269,8 @@ func TestNilPubkey(t *testing.T) {
 
 	_, err := MakeSecretConnection(barConn, barPrvKey)
 	require.Error(t, err)
-	assert.Equal(t, "toproto: key type <nil> is not supported", err.Error())
-}
-
-func TestNonEd25519Pubkey(t *testing.T) {
-	var fooConn, barConn = makeKVStoreConnPair()
-	defer fooConn.Close()
-	defer barConn.Close()
-	var fooPrvKey = ed25519.GenPrivKey()
-	var barPrvKey = sr25519.GenPrivKey()
-
-	go MakeSecretConnection(fooConn, fooPrvKey) //nolint:errcheck // ignore for tests
-
-	_, err := MakeSecretConnection(barConn, barPrvKey)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "is not supported")
+	wantErr := "toproto: key type <nil> is not supported"
+	assert.Containsf(t, err.Error(), wantErr, "expected error containing %q, got %s", wantErr, err)
 }
 
 func writeLots(t *testing.T, wg *sync.WaitGroup, conn io.Writer, txt string, n int) {

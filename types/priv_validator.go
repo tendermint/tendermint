@@ -100,16 +100,10 @@ func (pv *MockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 		useChainID = "incorrect-chain-id"
 	}
 
-	blockSignBytes := VoteBlockSignBytes(useChainID, vote)
-	stateSignBytes := VoteStateSignBytes(useChainID, vote)
+	blockSignId := VoteBlockSignId(useChainID, vote, quorumType, quorumHash)
+	stateSignId := VoteStateSignId(useChainID, vote, quorumType, quorumHash)
 
-	blockMessageHash := crypto.Sha256(blockSignBytes)
-
-	blockRequestId := VoteBlockRequestIdProto(vote)
-
-	blockSignId := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(blockRequestId), bls12381.ReverseBytes(blockMessageHash))
-
-	blockSignature, err := pv.PrivKey.Sign(blockSignId)
+	blockSignature, err := pv.PrivKey.SignDigest(blockSignId)
 	// fmt.Printf("validator %X signing vote of type %d at height %d with key %X blockSignBytes %X stateSignBytes %X\n",
 	//  pv.ProTxHash, vote.Type, vote.Height, pv.PrivKey.PubKey().Bytes(), blockSignBytes, stateSignBytes)
 	// fmt.Printf("block sign bytes are %X by %X using key %X resulting in sig %X\n", blockSignBytes, pv.ProTxHash,
@@ -119,14 +113,8 @@ func (pv *MockPV) SignVote(chainID string, quorumType btcjson.LLMQType, quorumHa
 	}
 	vote.BlockSignature = blockSignature
 
-	if stateSignBytes != nil {
-		stateMessageHash := crypto.Sha256(stateSignBytes)
-
-		stateRequestId := VoteStateRequestIdProto(vote)
-
-		stateSignId := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(stateRequestId), bls12381.ReverseBytes(stateMessageHash))
-
-		stateSignature, err := pv.PrivKey.Sign(stateSignId)
+	if stateSignId != nil {
+		stateSignature, err := pv.PrivKey.SignDigest(stateSignId)
 		if err != nil {
 			return err
 		}
@@ -144,16 +132,11 @@ func (pv *MockPV) SignProposal(chainID string, quorumType btcjson.LLMQType, quor
 		useChainID = "incorrect-chain-id"
 	}
 
-	signBytes := ProposalBlockSignBytes(useChainID, proposal)
-	proposalMessageHash := crypto.Sha256(signBytes)
+	signId := ProposalBlockSignId(useChainID, proposal, quorumType, quorumHash)
 
-	proposalRequestId := ProposalRequestIdProto(proposal)
-
-	signId := crypto.SignId(100, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(proposalRequestId), bls12381.ReverseBytes(proposalMessageHash))
-
-	// fmt.Printf("mock proposer %X signing proposal at height %d with key %X proposalSignBytes %X\n", pv.ProTxHash,
-	//  proposal.Height, pv.PrivKey.PubKey().Bytes(), signBytes)
-	sig, err := pv.PrivKey.Sign(signId)
+	// fmt.Printf("mock proposer %X \nsigning proposal at height %d \nwith key %X \nquorumType %d \nquorumHash %X\n proposalSignId %X\n", pv.ProTxHash,
+	//  proposal.Height, pv.PrivKey.PubKey().Bytes(), quorumType, quorumHash, signId)
+	sig, err := pv.PrivKey.SignDigest(signId)
 	if err != nil {
 		return err
 	}

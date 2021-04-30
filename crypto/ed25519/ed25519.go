@@ -60,6 +60,19 @@ func (privKey PrivKey) Sign(msg []byte) ([]byte, error) {
 	return signatureBytes, nil
 }
 
+
+// Sign produces a signature on the provided message.
+// This assumes the privkey is wellformed in the golang format.
+// The first 32 bytes should be random,
+// corresponding to the normal ed25519 private key.
+// The latter 32 bytes should be the compressed public key.
+// If these conditions aren't met, Sign will panic or produce an
+// incorrect signature.
+func (privKey PrivKey) SignDigest(msg []byte) ([]byte, error) {
+	signatureBytes := ed25519.Sign(ed25519.PrivateKey(privKey), msg)
+	return signatureBytes, nil
+}
+
 // PubKey gets the corresponding public key from the private key.
 //
 // Panics if the private key is not initialized.
@@ -159,7 +172,14 @@ func (pubKey PubKey) VerifyAggregateSignature(messages [][]byte, sig []byte) boo
 }
 
 func (pubKey PubKey) VerifySignatureDigest(hash []byte, sig []byte) bool {
-	return false
+	// make sure we use the same algorithm to sign
+	if len(sig) != SignatureSize {
+		return false
+	}
+
+	verified := ed25519.Verify(ed25519.PublicKey(pubKey), hash, sig)
+	// fmt.Printf("ed25519 verified (%t) sig %X from message %X with key %X\n", verified, sig, msg, pubKey.Bytes())
+	return verified
 }
 
 func (pubKey PubKey) VerifySignature(msg []byte, sig []byte) bool {

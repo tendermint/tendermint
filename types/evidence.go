@@ -564,7 +564,7 @@ func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
 	_ = pv.SignVote(chainID, quorumType, quorumHash, vB)
 	voteB.BlockSignature = vB.BlockSignature
 	voteB.StateSignature = vB.StateSignature
-	return NewDuplicateVoteEvidence(voteA, voteB, time, NewValidatorSet([]*Validator{val}, val.PubKey, crypto.SmallQuorumType(), quorumHash))
+	return NewDuplicateVoteEvidence(voteA, voteB, time, NewValidatorSet([]*Validator{val}, val.PubKey, quorumType, quorumHash))
 }
 
 // assumes voting power to be DefaultDashVotingPower and validator to be the only one in the set

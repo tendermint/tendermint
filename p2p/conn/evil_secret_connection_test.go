@@ -232,7 +232,7 @@ func (c *evilConn) signChallenge() []byte {
 	}
 	c.buffer = b
 
-	// Sign the challenge bytes for authentication.
+	// SignDigest the challenge bytes for authentication.
 	locSignature, err := signChallenge(&challenge, c.privKey)
 	if err != nil {
 		panic(err)

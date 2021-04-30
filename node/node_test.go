@@ -38,7 +38,6 @@ import (
 func TestNodeStartStop(t *testing.T) {
 	config := cfg.ResetTestRoot("node_node_test")
 	defer os.RemoveAll(config.RootDir)
-
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
@@ -104,8 +103,8 @@ func TestNodeDelayedStart(t *testing.T) {
 
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
-	n.GenesisDoc().GenesisTime = now.Add(2 * time.Second)
 	require.NoError(t, err)
+	n.GenesisDoc().GenesisTime = now.Add(2 * time.Second)
 
 	err = n.Start()
 	require.NoError(t, err)

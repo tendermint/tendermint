@@ -40,16 +40,16 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	v := vote.ToProto()
 	v2 := vote2.ToProto()
 
-	vote.BlockSignature, err = val.Key.PrivKey.Sign(types.VoteBlockSignBytes(chainID, v))
+	vote.BlockSignature, err = val.Key.PrivKey.SignDigest(types.VoteBlockSignBytes(chainID, v))
 	require.NoError(t, err)
 
-	vote2.BlockSignature, err = val.Key.PrivKey.Sign(types.VoteBlockSignBytes(chainID, v2))
+	vote2.BlockSignature, err = val.Key.PrivKey.SignDigest(types.VoteBlockSignBytes(chainID, v2))
 	require.NoError(t, err)
 
-	vote.StateSignature, err = val.Key.PrivKey.Sign(types.VoteStateSignBytes(chainID, v))
+	vote.StateSignature, err = val.Key.PrivKey.SignDigest(types.VoteStateSignBytes(chainID, v))
 	require.NoError(t, err)
 
-	vote2.StateSignature, err = val.Key.PrivKey.Sign(types.VoteStateSignBytes(chainID, v2))
+	vote2.StateSignature, err = val.Key.PrivKey.SignDigest(types.VoteStateSignBytes(chainID, v2))
 	require.NoError(t, err)
 
 	validator := types.NewValidator(val.Key.PubKey, 100, val.Key.ProTxHash)

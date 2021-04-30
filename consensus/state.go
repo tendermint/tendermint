@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	"io/ioutil"
 	"os"
 	"runtime/debug"
@@ -680,7 +679,7 @@ func (cs *State) updateToState(state sm.State) {
 		cs.StartTime = cs.config.Commit(cs.CommitTime)
 	}
 
-	fmt.Printf("updating validators at height %v from %v to %v \n", height, cs.Validators, validators)
+	// fmt.Printf("updating validators at height %v from %v to %v \n", height, cs.Validators, validators)
 	cs.Validators = validators
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
@@ -1253,7 +1252,7 @@ func (cs *State) enterPrevote(height int64, round int32) {
 
 	logger.Debug("entering prevote step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
 
-	// Sign and broadcast vote as necessary
+	// SignDigest and broadcast vote as necessary
 	cs.doPrevote(height, round)
 
 	// Once `addVote` hits any +2/3 prevotes, we will go to PrevoteWait
@@ -1858,23 +1857,17 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 
 	p := proposal.ToProto()
 	// Verify signature
-	proposalBlockSignBytes := types.ProposalBlockSignBytes(cs.state.ChainID, p)
-
-	proposalBlockMessageHash := crypto.Sha256(proposalBlockSignBytes)
+	proposalBlockSignId := types.ProposalBlockSignId(cs.state.ChainID, p, cs.state.Validators.QuorumType, cs.state.Validators.QuorumHash)
 
 	proposer := cs.Validators.GetProposer()
-
-	proposalRequestId := types.ProposalRequestId(proposal)
-
-	signId := crypto.SignId(100, bls12381.ReverseBytes(cs.state.Validators.QuorumHash), bls12381.ReverseBytes(proposalRequestId), bls12381.ReverseBytes(proposalBlockMessageHash))
 
 	//fmt.Printf("verifying request Id %s signId %s quorum hash %s proposalBlockSignBytes %s\n",
 	//	hex.EncodeToString(proposalRequestId), hex.EncodeToString(signId), hex.EncodeToString(cs.state.Validators.QuorumHash),
 	//	hex.EncodeToString(proposalBlockSignBytes))
 
-	if !proposer.PubKey.VerifySignatureDigest(signId, proposal.Signature) {
-		return fmt.Errorf("error proposer %X verifying proposal signature %X at height %d with key %X blockSignBytes %X\n",
-			proposer.ProTxHash, proposal.Signature, proposal.Height, proposer.PubKey.Bytes(), proposalBlockSignBytes)
+	if !proposer.PubKey.VerifySignatureDigest(proposalBlockSignId, proposal.Signature) {
+		return fmt.Errorf("error proposer %X verifying proposal signature %X at height %d with key %X blockSignId %X\n",
+			proposer.ProTxHash, proposal.Signature, proposal.Height, proposer.PubKey.Bytes(), proposalBlockSignId)
 	}
 
 	proposal.Signature = p.Signature
