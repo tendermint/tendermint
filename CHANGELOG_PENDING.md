@@ -21,6 +21,7 @@ Friendly reminder: We have a [bug bounty program](https://hackerone.com/tendermi
     startup (@cmwaters)
 
 - Apps
+  - [ABCI] \#6408 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
   - [ABCI] \#5447 Remove `SetOption` method from `ABCI.Client` interface
   - [ABCI] \#5447 Reset `Oneof` indexes for  `Request` and `Response`.
   - [ABCI] \#5818 Use protoio for msg length delimitation. Migrates from int64 to uint64 length delimiters.
