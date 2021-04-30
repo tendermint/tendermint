@@ -1333,14 +1333,6 @@ func (n *Node) OnStart() error {
 		n.prometheusSrv = n.startPrometheusServer(n.config.Instrumentation.PrometheusListenAddr)
 	}
 
-	// Start the mempool.
-	if n.config.Mempool.WalEnabled() {
-		err := n.mempool.InitWAL()
-		if err != nil {
-			return fmt.Errorf("init mempool WAL: %w", err)
-		}
-	}
-
 	// Start the transport.
 	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(n.nodeKey.ID, n.config.P2P.ListenAddress))
 	if err != nil {
@@ -1478,11 +1470,6 @@ func (n *Node) OnStop() {
 		if err := n.sw.Stop(); err != nil {
 			n.Logger.Error("failed to stop switch", "err", err)
 		}
-	}
-
-	// stop mempool WAL
-	if n.config.Mempool.WalEnabled() {
-		n.mempool.CloseWAL()
 	}
 
 	if err := n.transport.Close(); err != nil {
