@@ -9,6 +9,7 @@
   - [Detailed Design](#detailed-design)
     - [CheckTx](#checktx)
     - [Mempool](#mempool)
+    - [Gossiping](#gossiping)
   - [Consequences](#consequences)
     - [Positive](#positive)
     - [Negative](#negative)
