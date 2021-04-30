@@ -60,11 +60,11 @@ For more information on the various approaches and proposals, please see the
 ## Decision
 
 To incorporate a priority-based flexible and performant mempool in Tendermint Core,
-we will introduce new fields, `priority`, `sender`, and `sequence` , into the
-`ResponseCheckTx` type and augment the existing mempool data structure to
-facilitate prioritization of uncommitted transactions in addition to extended
-functionality such as replace-by-priority and allowing multiple transactions to
-exist from the same sender with varying priorities.
+we will introduce new fields, `priority` and `sender`, into the `ResponseCheckTx`
+type and augment the existing mempool data structure to facilitate prioritization
+of uncommitted transactions in addition to extended functionality such as
+replace-by-priority and allowing multiple transactions to exist from the same
+sender with varying priorities.
 
 ## Detailed Design
 
