@@ -84,17 +84,15 @@ message ResponseCheckTx {
   string         codespace  = 8;
 + int64          priority   = 9;
 + string         sender     = 10;
-+ int64          sequence   = 11;
 }
 ```
 
 It is entirely up the application in determining how these fields are populated
 and with what values, e.g. the `sender` could be the signer and fee payer 
-the transaction, the `priority` could be the cumulative sum of the fee(s), and
-the `sequence` could be the signer's sequence number.
+the transaction, the `priority` could be the cumulative sum of the fee(s).
 
-Only `sender` is required, while `priority` and `sequence` can be omitted which
-would result in using the default value of zero.
+Only `sender` is required, while `priority` can be omitted which would result in
+using the default value of zero.
 
 ### Mempool
 
