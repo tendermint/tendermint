@@ -9,6 +9,7 @@
   - [Detailed Design](#detailed-design)
     - [CheckTx](#checktx)
     - [Mempool](#mempool)
+    - [Eviction](#eviction)
     - [Gossiping](#gossiping)
   - [Consequences](#consequences)
     - [Positive](#positive)
@@ -50,8 +51,8 @@ Tendermint mempool:
 - Allow application-determined transaction priority.
 - Allow efficient concurrent reads and writes.
 - Allow block proposers to reap transactions efficiently by priority.
-- Maintain a fixed mempool capacity by transaction size or count and evict lower
-  priority transactions to make room for higher priority transactions.
+- Maintain a fixed mempool capacity by transaction size and evict lower priority
+  transactions to make room for higher priority transactions.
 - Allow transactions to be gossiped by priority efficiently.
 - Allow operators to specify a maximum TTL for transactions in the mempool before
   they're automatically evicted if not selected for a block proposal in time.
@@ -115,8 +116,8 @@ using the default value of zero.
 ### Mempool
 
 The existing concurrent-safe linked-list will be removed entirely in favor of a
-thread-safe map of `<sender:Tx>`, i.e a mapping from `sender` to a single `Tx`
-object, where each `Tx` is the next valid and processable transaction from the
+thread-safe map of `<sender:*Tx>`, i.e a mapping from `sender` to a single `*Tx`
+object, where each `*Tx` is the next valid and processable transaction from the
 given `sender`.
 
 On top of this mapping, we index all transactions by priority using a thread-safe
@@ -124,11 +125,46 @@ priority queue, i.e. a [max heap](https://en.wikipedia.org/wiki/Min-max_heap).
 When a proposer is ready to select transactions for the next block proposal,
 transactions are selected from this priority index by highest priority order.
 When a transaction is selected and reaped, it is removed from this index and
-from the `<sender:Tx>` mapping.
+from the `<sender:*Tx>` mapping.
+
+We define `Tx` as the following data structure:
+
+```go
+type Tx struct {
+  // Tx represents the raw binary transaction data.
+  Tx []byte
+
+  // Priority defines the transaction's priority as specified by the application
+  // in the ResponseCheckTx response.
+  Priority int64
+
+  // Sender defines the transaction's sender as specified by the application in
+  // the ResponseCheckTx response.
+  Sender string
+
+  // Index defines the current index in the priority queue index. Note, if
+  // multiple Tx indexes are needed, this field will be removed and each Tx
+  // index will have its own wrapped Tx type.
+  Index int
+}
+```
+
+### Eviction
+
+Upon successfully executing `CheckTx` for a new `Tx` and the mempool is currently
+full, we must check if there exists a `Tx` of lower priority that can be evicted
+to make room for the new `Tx` with higher priority.
+
+If such a `Tx` exists, we find it by sorting the current priority queue index
+and finding the first `Tx` with lower priority. We then remove this `Tx` from
+the priority queue index as well as the `<sender:*Tx>` mapping.
 
 ### Gossiping
 
-TODO: ...
+TODO: Ensure we can:
+
+- gossip by priority
+  - don't gossip same tx to a peer twice
 
 ## Consequences
 
