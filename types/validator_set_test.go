@@ -26,7 +26,7 @@ func TestValidatorSetBasic(t *testing.T) {
 	vset := NewValidatorSet([]*Validator{}, nil, btcjson.LLMQType_5_60, nil)
 	assert.Panics(t, func() { vset.IncrementProposerPriority(1) })
 
-	vset = NewValidatorSet(nil, nil, btcjson.LLMQType_5_60,nil)
+	vset = NewValidatorSet(nil, nil, btcjson.LLMQType_5_60, nil)
 	assert.Panics(t, func() { vset.IncrementProposerPriority(1) })
 
 	assert.EqualValues(t, vset, vset.Copy())
@@ -205,7 +205,6 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 			assert.NoError(t, err)
 		}
 	}
-
 }
 
 func TestCopy(t *testing.T) {

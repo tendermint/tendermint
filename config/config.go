@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/tendermint/tendermint/crypto"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -233,23 +234,23 @@ type BaseConfig struct { //nolint: maligned
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
-		Genesis:                  defaultGenesisJSONPath,
-		PrivValidatorKey:         defaultPrivValKeyPath,
-		PrivValidatorState:       defaultPrivValStatePath,
-		PrivValidatorCoreRPCHost: "127.0.0.1:19998",
+		Genesis:                      defaultGenesisJSONPath,
+		PrivValidatorKey:             defaultPrivValKeyPath,
+		PrivValidatorState:           defaultPrivValStatePath,
+		PrivValidatorCoreRPCHost:     "127.0.0.1:19998",
 		PrivValidatorCoreRPCUsername: "dashrpc",
 		PrivValidatorCoreRPCPassword: "rpcpassword",
-		LLMQTypeUsed:             int(btcjson.LLMQType_100_67),
-		NodeKey:                  defaultNodeKeyPath,
-		Moniker:                  defaultMoniker,
-		ProxyApp:                 "tcp://127.0.0.1:26658",
-		ABCI:                     "socket",
-		LogLevel:                 DefaultLogLevel,
-		LogFormat:                LogFormatPlain,
-		FastSyncMode:             true,
-		FilterPeers:              false,
-		DBBackend:                "goleveldb",
-		DBPath:                   "data",
+		LLMQTypeUsed:                 int(btcjson.LLMQType_100_67),
+		NodeKey:                      defaultNodeKeyPath,
+		Moniker:                      defaultMoniker,
+		ProxyApp:                     "tcp://127.0.0.1:26658",
+		ABCI:                         "socket",
+		LogLevel:                     DefaultLogLevel,
+		LogFormat:                    LogFormatPlain,
+		FastSyncMode:                 true,
+		FilterPeers:                  false,
+		DBBackend:                    "goleveldb",
+		DBPath:                       "data",
 	}
 }
 
@@ -869,6 +870,8 @@ type ConsensusConfig struct {
 	PeerQueryMaj23SleepDuration time.Duration `mapstructure:"peer_query_maj23_sleep_duration"`
 
 	DoubleSignCheckHeight int64 `mapstructure:"double_sign_check_height"`
+
+	AppHashSize int `mapstructure:"app_hash_size"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
@@ -888,6 +891,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		PeerGossipSleepDuration:     100 * time.Millisecond,
 		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
 		DoubleSignCheckHeight:       int64(0),
+		AppHashSize:                 crypto.SmallAppHashSize,
 	}
 }
 
@@ -906,6 +910,7 @@ func TestConsensusConfig() *ConsensusConfig {
 	cfg.PeerGossipSleepDuration = 5 * time.Millisecond
 	cfg.PeerQueryMaj23SleepDuration = 250 * time.Millisecond
 	cfg.DoubleSignCheckHeight = int64(0)
+	cfg.AppHashSize = crypto.DefaultAppHashSize
 	return cfg
 }
 

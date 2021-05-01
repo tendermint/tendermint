@@ -294,24 +294,6 @@ func createAndStartIndexerService(
 	return indexerService, txIndexer, blockIndexer, nil
 }
 
-func doHandshake(
-	stateStore sm.Store,
-	state sm.State,
-	blockStore sm.BlockStore,
-	genDoc *types.GenesisDoc,
-	eventBus types.BlockEventPublisher,
-	proxyApp proxy.AppConns,
-	consensusLogger log.Logger) error {
-
-	handshaker := cs.NewHandshaker(stateStore, state, blockStore, genDoc)
-	handshaker.SetLogger(consensusLogger)
-	handshaker.SetEventBus(eventBus)
-	if err := handshaker.Handshake(proxyApp); err != nil {
-		return fmt.Errorf("error during handshake: %v", err)
-	}
-	return nil
-}
-
 func logNodeStartupInfo(state sm.State, proTxHash crypto.ProTxHash, logger, consensusLogger log.Logger) {
 	// Log the version info.
 	logger.Info("Version info",
@@ -721,8 +703,11 @@ func NewNode(config *cfg.Config,
 	// and replays any blocks as necessary to sync tendermint with the app.
 	consensusLogger := logger.With("module", "consensus")
 	if !stateSync {
-		if err := doHandshake(stateStore, state, blockStore, genDoc, eventBus, proxyApp, consensusLogger); err != nil {
-			return nil, err
+		handshaker := cs.NewHandshaker(stateStore, state, blockStore, genDoc, config.Consensus.AppHashSize)
+		handshaker.SetLogger(consensusLogger)
+		handshaker.SetEventBus(eventBus)
+		if err := handshaker.Handshake(proxyApp); err != nil {
+			return nil, fmt.Errorf("error during handshake: %v", err)
 		}
 
 		// Reload the state. It will have the Version.Consensus.App set by the
@@ -788,6 +773,7 @@ func NewNode(config *cfg.Config,
 		evidencePool,
 		nextCoreChainLock,
 		sm.BlockExecutorWithMetrics(smMetrics),
+		sm.BlockExecutorWithAppHashSize(config.Consensus.AppHashSize),
 	)
 
 	// Make BlockchainReactor. Don't start fast sync if we're doing a state sync first.

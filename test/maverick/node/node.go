@@ -819,6 +819,7 @@ func NewNode(config *cfg.Config,
 		evidencePool,
 		nil,
 		sm.BlockExecutorWithMetrics(smMetrics),
+		sm.BlockExecutorWithAppHashSize(config.Consensus.AppHashSize),
 	)
 
 	// Make BlockchainReactor. Don't start fast sync if we're doing a state sync first.

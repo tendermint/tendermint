@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
-
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
@@ -46,6 +45,8 @@ type BlockExecutor struct {
 	logger log.Logger
 
 	metrics *Metrics
+
+	appHashSize int
 }
 
 type BlockExecutorOption func(executor *BlockExecutor)
@@ -53,6 +54,13 @@ type BlockExecutorOption func(executor *BlockExecutor)
 func BlockExecutorWithMetrics(metrics *Metrics) BlockExecutorOption {
 	return func(blockExec *BlockExecutor) {
 		blockExec.metrics = metrics
+	}
+}
+
+// BlockExecutorWithAppHashSize is used to specify app-hash-size
+func BlockExecutorWithAppHashSize(size int) BlockExecutorOption {
+	return func(blockExec *BlockExecutor) {
+		blockExec.appHashSize = size
 	}
 }
 
@@ -78,6 +86,7 @@ func NewBlockExecutor(
 		NextCoreChainLock: nextCoreChainLock,
 		logger:            logger,
 		metrics:           NopMetrics(),
+		appHashSize:       crypto.DefaultAppHashSize,
 	}
 
 	for _, option := range options {
@@ -281,10 +290,9 @@ func (blockExec *BlockExecutor) Commit(
 	}
 
 	// we force the abci app to return only 32 byte app hashes (set to 20 temporarily)
-	//todo:set DefaultAppHashSize to 32
-	if res.Data != nil && len(res.Data) != crypto.DefaultAppHashSize {
+	if res.Data != nil && len(res.Data) != blockExec.appHashSize {
 		blockExec.logger.Error(
-			"Client returned invalid app hash size","bytesLength", len(res.Data),
+			"Client returned invalid app hash size", "bytesLength", len(res.Data),
 		)
 		return nil, 0, errors.New("invalid App Hash size")
 	}
@@ -428,9 +436,9 @@ func getBeginBlockValidatorInfo(block *types.Block, store Store,
 	}
 
 	return abci.LastCommitInfo{
-		Round: block.LastCommit.Round,
-		Votes: voteInfos,
-		QuorumHash: block.LastCommit.QuorumHash,
+		Round:          block.LastCommit.Round,
+		Votes:          voteInfos,
+		QuorumHash:     block.LastCommit.QuorumHash,
 		BlockSignature: block.LastCommit.ThresholdBlockSignature,
 		StateSignature: block.LastCommit.ThresholdStateSignature,
 	}
