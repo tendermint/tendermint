@@ -559,22 +559,22 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 	}{
 		{"good", chainID, vote.BlockID, vote.StateID, vote.Height, commit, false},
 
-		//{"wrong block signature", "EpsilonEridani", vote.BlockID, vote.StateID, vote.Height, commit, true},
-		//{"wrong block ID", chainID, makeBlockIDRandom(), vote.StateID, vote.Height, commit, true},
-		//{"wrong height", chainID, vote.BlockID, vote.StateID, vote.Height - 1, commit, true},
-		//
-		//{"wrong set size: 1 vs 0", chainID, vote.BlockID, vote.StateID, vote.Height,
-		//	NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{}, quorumHash, nil, nil), true},
-		//
-		//{"wrong set size: 1 vs 2", chainID, vote.BlockID, vote.StateID, vote.Height,
-		//	NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID,
-		//		[]CommitSig{vote.CommitSig(), {BlockIDFlag: BlockIDFlagAbsent}}, quorumHash, nil, nil), true},
-		//
-		//{"insufficient voting power: got 0, needed more than 66", chainID, vote.BlockID, vote.StateID, vote.Height,
-		//	NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{{BlockIDFlag: BlockIDFlagAbsent}}, quorumHash, vote.BlockSignature, vote.StateSignature), true},
-		//
-		//{"wrong block signature", chainID, vote.BlockID, vote.StateID, vote.Height,
-		//	NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{vote2.CommitSig()}, quorumHash, vote2.BlockSignature, vote2.StateSignature), true},
+		{"wrong block signature", "EpsilonEridani", vote.BlockID, vote.StateID, vote.Height, commit, true},
+		{"wrong block ID", chainID, makeBlockIDRandom(), vote.StateID, vote.Height, commit, true},
+		{"wrong height", chainID, vote.BlockID, vote.StateID, vote.Height - 1, commit, true},
+
+		{"wrong set size: 1 vs 0", chainID, vote.BlockID, vote.StateID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{}, quorumHash, nil, nil), true},
+
+		{"wrong set size: 1 vs 2", chainID, vote.BlockID, vote.StateID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID,
+				[]CommitSig{vote.CommitSig(), {BlockIDFlag: BlockIDFlagAbsent}}, quorumHash, nil, nil), true},
+
+		{"insufficient voting power: got 0, needed more than 66", chainID, vote.BlockID, vote.StateID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{{BlockIDFlag: BlockIDFlagAbsent}}, quorumHash, vote.BlockSignature, vote.StateSignature), true},
+
+		{"wrong block signature", chainID, vote.BlockID, vote.StateID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, vote.StateID, []CommitSig{vote2.CommitSig()}, quorumHash, vote2.BlockSignature, vote2.StateSignature), true},
 	}
 
 	for _, tc := range testCases {
@@ -600,12 +600,6 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 		})
 	}
 }
-
-//func assertMatchError(t *testing.T, err error, wantErr string) {
-//	if !strings.Contains(err.Error(), wantErr) {
-//		t.Fatalf("error: %q doesn't match with %q", err.Error(), wantErr)
-//	}
-//}
 
 func TestValidatorSet_VerifyCommit_CheckAllSignatures(t *testing.T) {
 	var (
