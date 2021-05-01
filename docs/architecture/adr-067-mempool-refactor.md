@@ -155,9 +155,10 @@ Upon successfully executing `CheckTx` for a new `Tx` and the mempool is currentl
 full, we must check if there exists a `Tx` of lower priority that can be evicted
 to make room for the new `Tx` with higher priority.
 
-If such a `Tx` exists, we find it by sorting the current priority queue index
-and finding the first `Tx` with lower priority. We then remove this `Tx` from
-the priority queue index as well as the `<sender:*Tx>` mapping.
+If such a `Tx` exists, we find it by obtaining a read lock and sorting the
+priority queue index. Once sorted, we find the first `Tx` with lower priority.
+We then remove this `Tx` from the priority queue index as well as the
+`<sender:*Tx>` mapping.
 
 This will require additional `O(n)` space and `O(n*log(n))` runtime complexity.
 
