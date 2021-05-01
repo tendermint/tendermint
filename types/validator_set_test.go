@@ -199,7 +199,7 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 		err := tc.vals.ValidateBasic()
 		if tc.err {
 			if assert.Error(t, err) {
-				assert.Equal(t, tc.msg, err.Error())
+				assert.True(t, strings.HasPrefix(err.Error(), tc.msg))
 			}
 		} else {
 			assert.NoError(t, err)
@@ -524,9 +524,9 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 	vote := examplePrecommit()
 	vote.ValidatorProTxHash = proTxHash
 	v := vote.ToProto()
-	blockSig, err := privKey.SignDigest(VoteBlockSignBytes(chainID, v))
+	blockSig, err := privKey.SignDigest(VoteBlockSignId(chainID, v, btcjson.LLMQType_5_60, quorumHash))
 	require.NoError(t, err)
-	stateSig, err := privKey.SignDigest(VoteStateSignBytes(chainID, v))
+	stateSig, err := privKey.SignDigest(VoteStateSignId(chainID, v, btcjson.LLMQType_5_60, quorumHash))
 	require.NoError(t, err)
 	vote.BlockSignature = blockSig
 	vote.StateSignature = stateSig

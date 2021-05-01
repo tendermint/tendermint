@@ -1,6 +1,8 @@
 package types
 
 import (
+	"github.com/dashevo/dashd-go/btcjson"
+	"strings"
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
@@ -141,19 +143,21 @@ func TestVoteVerifySignature(t *testing.T) {
 
 	vote := examplePrecommit()
 	v := vote.ToProto()
-	signBytes := VoteBlockSignBytes("test_chain_id", v)
-	signStateBytes := VoteStateSignBytes("test_chain_id", v)
+	quorumType := btcjson.LLMQType_5_60
+	quorumHash := crypto.RandQuorumHash()
+	signId := VoteBlockSignId("test_chain_id", v, quorumType, quorumHash)
+	signStateId := VoteStateSignId("test_chain_id", v, quorumType, quorumHash)
 
 	// sign it
-	err = privVal.SignVote("test_chain_id", 0, crypto.QuorumHash{}, v)
+	err = privVal.SignVote("test_chain_id", quorumType, quorumHash, v)
 	require.NoError(t, err)
 
 	// verify the same vote
-	valid := pubkey.VerifySignature(signBytes, v.BlockSignature)
+	valid := pubkey.VerifySignatureDigest(signId, v.BlockSignature)
 	require.True(t, valid)
 
 	// verify the same vote
-	valid = pubkey.VerifySignature(signStateBytes, v.StateSignature)
+	valid = pubkey.VerifySignatureDigest(signStateId, v.StateSignature)
 	require.True(t, valid)
 
 	// serialize, deserialize and verify again....
@@ -164,13 +168,13 @@ func TestVoteVerifySignature(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify the transmitted vote
-	newSignBytes := VoteBlockSignBytes("test_chain_id", precommit)
-	newSignStateBytes := VoteStateSignBytes("test_chain_id", precommit)
-	require.Equal(t, string(signBytes), string(newSignBytes))
-	require.Equal(t, string(signStateBytes), string(newSignStateBytes))
-	valid = pubkey.VerifySignature(newSignBytes, precommit.BlockSignature)
+	newSignId := VoteBlockSignId("test_chain_id", precommit, quorumType, quorumHash)
+	newSignStateId := VoteStateSignId("test_chain_id", precommit, quorumType, quorumHash)
+	require.Equal(t, string(signId), string(newSignId))
+	require.Equal(t, string(signStateId), string(newSignStateId))
+	valid = pubkey.VerifySignatureDigest(newSignId, precommit.BlockSignature)
 	require.True(t, valid)
-	valid = pubkey.VerifySignature(newSignStateBytes, precommit.StateSignature)
+	valid = pubkey.VerifySignatureDigest(newSignStateId, precommit.StateSignature)
 	require.True(t, valid)
 }
 
@@ -199,20 +203,24 @@ func TestVoteVerify(t *testing.T) {
 	privVal := NewMockPV()
 	proTxHash, err := privVal.GetProTxHash()
 	require.NoError(t, err)
-	pubkey, err := privVal.GetPubKey(crypto.QuorumHash{})
+
+	quorumType := btcjson.LLMQType_5_60
+	quorumHash := crypto.RandQuorumHash()
+
+	pubkey, err := privVal.GetPubKey(quorumHash)
 	require.NoError(t, err)
 
 	vote := examplePrevote()
 	vote.ValidatorProTxHash = proTxHash
 
-	err = vote.Verify("test_chain_id", 0, crypto.QuorumHash{}, bls12381.GenPrivKey().PubKey(), crypto.RandProTxHash())
+	err = vote.Verify("test_chain_id", quorumType, quorumHash, bls12381.GenPrivKey().PubKey(), crypto.RandProTxHash())
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrVoteInvalidValidatorProTxHash, err)
 	}
 
-	err = vote.Verify("test_chain_id", 0, crypto.QuorumHash{}, pubkey, proTxHash)
+	err = vote.Verify("test_chain_id", quorumType, quorumHash, pubkey, proTxHash)
 	if assert.Error(t, err) {
-		assert.Equal(t, ErrVoteInvalidBlockSignature, err) // since block signatures are verified first
+		assert.True(t, strings.HasPrefix(err.Error(), ErrVoteInvalidBlockSignature.Error())) // since block signatures are verified first
 	}
 }
 
