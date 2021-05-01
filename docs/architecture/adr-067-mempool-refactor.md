@@ -60,7 +60,7 @@ Tendermint mempool:
 
 Note, not all of these properties will be addressed by the proposed changes in
 this ADR. However, this proposal will ensure that any unaddressed properties
-can be addressed in an easy and extensible manner.
+can be addressed in an easy and extensible manner in the future.
 
 ## Alternative Approaches
 
