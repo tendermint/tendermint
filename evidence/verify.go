@@ -204,9 +204,9 @@ func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet 
 			e.VoteB.Height, e.VoteB.Round, e.VoteB.Type)
 	}
 
-	// Address must be the same
+	// ProTxHashes must be the same
 	if !bytes.Equal(e.VoteA.ValidatorProTxHash, e.VoteB.ValidatorProTxHash) {
-		return fmt.Errorf("validator addresses do not match: %X vs %X",
+		return fmt.Errorf("validator proTxHashes do not match: %X vs %X",
 			e.VoteA.ValidatorProTxHash,
 			e.VoteB.ValidatorProTxHash,
 		)
@@ -238,10 +238,11 @@ func VerifyDuplicateVote(e *types.DuplicateVoteEvidence, chainID string, valSet 
 	va := e.VoteA.ToProto()
 	vb := e.VoteB.ToProto()
 	// Signatures must be valid
-	if !pubKey.VerifySignature(types.VoteBlockSignBytes(chainID, va), e.VoteA.BlockSignature) {
+	blockSignId := types.VoteBlockSignId(chainID, va, valSet.QuorumType, valSet.QuorumHash)
+	if !pubKey.VerifySignatureDigest(blockSignId, e.VoteA.BlockSignature) {
 		return fmt.Errorf("verifying VoteA: %s", types.ErrVoteInvalidBlockSignature.Error())
 	}
-	if !pubKey.VerifySignature(types.VoteBlockSignBytes(chainID, vb), e.VoteB.BlockSignature) {
+	if !pubKey.VerifySignatureDigest(types.VoteBlockSignId(chainID, vb, valSet.QuorumType, valSet.QuorumHash), e.VoteB.BlockSignature) {
 		return fmt.Errorf("verifying VoteB: %s", types.ErrVoteInvalidStateSignature.Error())
 	}
 

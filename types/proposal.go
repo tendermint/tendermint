@@ -4,7 +4,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	"math"
 	"time"
 
@@ -123,6 +125,17 @@ func ProposalBlockSignBytes(chainID string, p *tmproto.Proposal) []byte {
 	}
 
 	return bz
+}
+
+func ProposalBlockSignId(chainID string, p *tmproto.Proposal, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) []byte {
+	signBytes := ProposalBlockSignBytes(chainID, p)
+	proposalMessageHash := crypto.Sha256(signBytes)
+
+	proposalRequestId := ProposalRequestIdProto(p)
+
+	signId := crypto.SignId(quorumType, bls12381.ReverseBytes(quorumHash), bls12381.ReverseBytes(proposalRequestId), bls12381.ReverseBytes(proposalMessageHash))
+
+	return signId
 }
 
 func ProposalRequestId(p *Proposal) []byte {

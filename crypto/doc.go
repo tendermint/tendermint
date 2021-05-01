@@ -11,7 +11,7 @@
 
 //     AssertIsPrivKeyInner()
 //     Bytes() []byte
-//     Sign(msg []byte) Signature
+//     SignDigest(msg []byte) Signature
 //     PubKey() PubKey
 //     Equals(PrivKey) bool
 //     Wrap() PrivKey

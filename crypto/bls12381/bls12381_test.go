@@ -17,11 +17,11 @@ func TestSignAndValidateBLS12381(t *testing.T) {
 	pubKey := privKey.PubKey()
 
 	msg := crypto.CRandBytes(128)
-	sig, err := privKey.Sign(msg)
+	sig, err := privKey.SignDigest(msg)
 	require.Nil(t, err)
 
 	// Test the signature
-	assert.True(t, pubKey.VerifySignature(msg, sig))
+	assert.True(t, pubKey.VerifySignatureDigest(msg, sig))
 }
 
 func TestBLSAddress(t *testing.T) {
