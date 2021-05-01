@@ -43,7 +43,20 @@ to cascading effects in terms of DoS and various attack vectors on networks,
 e.g. [cosmos/cosmos-sdk#8224](https://github.com/cosmos/cosmos-sdk/discussions/8224).
 
 Thus, Tendermint Core needs the ability for an application and its users to
-prioritize transactions in a flexible and performant manner.
+prioritize transactions in a flexible and performant manner. Specifically, we're
+aiming to either improve, maintain or add the following properties in the
+Tendermint mempool:
+
+- Allow application-determined transaction priority.
+- Allow efficient concurrent reads and writes.
+- Allow block proposers to reap transactions efficiently by priority.
+- Maintain a fixed mempool capacity by transaction size or count and evict lower
+  priority transactions to make room for higher priority transactions.
+- Allow transactions to be gossiped by priority efficiently.
+- Allow operators to specify a maximum TTL for transactions in the mempool before
+  they're automatically evicted if not selected for a block proposal in time.
+- Ensure the design allows for future extensions, such as replace-by-priority and
+  allowing multiple pending transactions per sender, to be incorporated easily.
 
 ## Alternative Approaches
 
@@ -140,4 +153,4 @@ TODO: ...
 ## References
 
 - [ABCI++](https://github.com/tendermint/spec/blob/master/rfc/004-abci%2B%2B.md)
-- [mempool discussion](https://github.com/tendermint/tendermint/discussions/6295)
+- [Mempool Discussion](https://github.com/tendermint/tendermint/discussions/6295)
