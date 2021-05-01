@@ -206,10 +206,12 @@ type Handshaker struct {
 	logger       log.Logger
 
 	nBlocks int // number of blocks applied to the state
+
+	appHashSize int
 }
 
 func NewHandshaker(stateStore sm.Store, state sm.State,
-	store sm.BlockStore, genDoc *types.GenesisDoc) *Handshaker {
+	store sm.BlockStore, genDoc *types.GenesisDoc, appHashSize int) *Handshaker {
 
 	return &Handshaker{
 		stateStore:   stateStore,
@@ -219,6 +221,7 @@ func NewHandshaker(stateStore sm.Store, state sm.State,
 		genDoc:       genDoc,
 		logger:       log.NewNopLogger(),
 		nBlocks:      0,
+		appHashSize:  appHashSize,
 	}
 }
 
@@ -519,7 +522,7 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	// evidence are needed here - block already exists.
 
 	blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, proxyApp, proxyAppQuery,
-		emptyMempool{}, sm.EmptyEvidencePool{}, nil)
+		emptyMempool{}, sm.EmptyEvidencePool{}, nil, sm.BlockExecutorWithAppHashSize(h.appHashSize))
 	blockExec.SetEventBus(h.eventBus)
 
 	var err error

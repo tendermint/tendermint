@@ -1,6 +1,7 @@
 package types
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
@@ -209,10 +210,12 @@ func TestVoteVerify(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrVoteInvalidValidatorProTxHash, err)
 	}
-
+	msg := ErrVoteInvalidBlockSignature.Error()
 	err = vote.Verify("test_chain_id", 0, crypto.QuorumHash{}, pubkey, proTxHash)
 	if assert.Error(t, err) {
-		assert.Equal(t, ErrVoteInvalidBlockSignature, err) // since block signatures are verified first
+		if !strings.Contains(err.Error(), msg) {
+			t.Fatalf("error: %q doesn't match with expected: %q", err.Error(), msg) // since block signatures are verified first
+		}
 	}
 }
 

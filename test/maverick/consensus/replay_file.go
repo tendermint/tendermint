@@ -334,7 +334,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 		tmos.Exit(fmt.Sprintf("Failed to convert chain lock: %v", err))
 	}
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-		proxyApp.Query(), mempool, evpool, nextCoreChainLock)
+		proxyApp.Query(), mempool, evpool, nextCoreChainLock) // sm.BlockExecutorWithAppHashSize()
 
 	consensusState := NewState(csConfig, state.Copy(), blockExec,
 		blockStore, mempool, evpool, map[int64]Misbehavior{})
