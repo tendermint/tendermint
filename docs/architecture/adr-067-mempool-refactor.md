@@ -153,21 +153,30 @@ type Tx struct {
 
 Upon successfully executing `CheckTx` for a new `Tx` and the mempool is currently
 full, we must check if there exists a `Tx` of lower priority that can be evicted
-to make room for the new `Tx` with higher priority.
+to make room for the new `Tx` with higher priority and with sufficient size
+capacity left.
 
 If such a `Tx` exists, we find it by obtaining a read lock and sorting the
-priority queue index. Once sorted, we find the first `Tx` with lower priority.
-We then remove this `Tx` from the priority queue index as well as the
-`<sender:*Tx>` mapping.
+priority queue index. Once sorted, we find the first `Tx` with lower priority and
+size such that the new `Tx` would fit within the mempool's size limit. We then
+remove this `Tx` from the priority queue index as well as the `<sender:*Tx>`
+mapping.
 
 This will require additional `O(n)` space and `O(n*log(n))` runtime complexity.
 
 ### Gossiping
 
-TODO: Ensure we can:
+When gossiping new transactions to peers, we first obtain a read lock on the
+priority queue index. If we have not gossiped the top priority `Tx` for the
+given peer, we return this `Tx` as the next transaction to gossip. Otherwise,
+we sort the priority queue index and traverse in descending priority order until
+we find the first non-sent `Tx` to the peer.
 
-- gossip by priority
-  - don't gossip same tx to a peer twice
+In order to facilitate this, we must also keep an ephemeral cache, mapping from
+`sender` to a list of unique `Tx` identifiers (e.g. the `Tx` hash). A `Tx`
+identifier is removed from this cache once it is either committed in a block or
+gossiped to a peer. Note, if the `Tx` is committed in a block, this requires that
+we iterates over the entire cache, i.e. each peer's list.
 
 ## Consequences
 
