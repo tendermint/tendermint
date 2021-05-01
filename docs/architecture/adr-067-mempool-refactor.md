@@ -183,10 +183,14 @@ we iterates over the entire cache, i.e. each peer's list.
 ### Positive
 
 - Transactions are allowed to be prioritized by the application.
+- Transactions are allowed to be gossiped by priority.
+- Allows future replace-by-priority functionality.
 
 ### Negative
 
-- Additional bytes sent over the wire due to new fields added to `ResponseCheckTx`
+- Additional bytes sent over the wire due to new fields added to `ResponseCheckTx`.
+- Possible decreased throughput performance due to the necessity of various read
+  and write locks, e.g. sorting when either gossiping or evicting transactions.
 - It is possible that certain transactions broadcasted in a particular order may
   pass `CheckTx` but not end up being committed in a block because they fail
   `CheckTx` later. e.g. Consider Tx<sub>1</sub> that sends funds from existing
