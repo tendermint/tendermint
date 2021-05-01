@@ -344,6 +344,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		"replay_test",
 		newMockTickerFunc(true),
 		newPersistentKVStoreWithPath)
+	fmt.Printf("initial quorum hash is %X\n", genDoc.QuorumHash)
 	sim.Config = config
 	sim.GenesisState, _ = sm.MakeGenesisState(genDoc)
 	sim.CleanupFunc = cleanup
@@ -373,6 +374,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	// HEIGHT 2
 	updatedValidators2, _, newThresholdPublicKey, quorumHash2 := updateConsensusNetAddNewValidators(css, height, 1, false)
 	height++
+	fmt.Printf("quorum hash is now %X\n", quorumHash2)
 	incrementHeight(vss...)
 	updateTransactions := make([][]byte, len(updatedValidators2)+2)
 	for i := 0; i < len(updatedValidators2); i++ {
@@ -397,7 +399,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal := types.NewProposal(vss[1].Height, 1, round, -1, blockID)
 	p := proposal.ToProto()
-	if err := vss[1].SignProposal(config.ChainID(), 0, quorumHash2, p); err != nil {
+	if err := vss[1].SignProposal(config.ChainID(), 0, genDoc.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -422,7 +424,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal = types.NewProposal(vss[2].Height, 1, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vss[2].SignProposal(config.ChainID(), 0, quorumHash2, p); err != nil {
+	if err := vss[2].SignProposal(config.ChainID(), 0, genDoc.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -720,7 +722,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	p = proposal.ToProto()
 	proposerProTxHash = css[0].RoundState.Validators.GetProposer().ProTxHash
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
-	if err := vss[proposerIndex].SignProposal(config.ChainID(), 0, quorumHash6, p); err != nil {
+	if err := vss[proposerIndex].SignProposal(config.ChainID(), 0, quorumHash4, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature

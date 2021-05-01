@@ -1866,6 +1866,9 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	//	hex.EncodeToString(proposalBlockSignBytes))
 
 	if !proposer.PubKey.VerifySignatureDigest(proposalBlockSignId, proposal.Signature) {
+		fmt.Printf("error proposer %X \nat height %d \nverifying proposal signature %X \nwith key %X \n quorum %d:%X blockSignId %X\n",
+			proposer.ProTxHash, proposal.Height, proposal.Signature,  proposer.PubKey.Bytes(), cs.state.Validators.QuorumType,
+			cs.state.Validators.QuorumHash, proposalBlockSignId)
 		return fmt.Errorf("error proposer %X verifying proposal signature %X at height %d with key %X blockSignId %X\n",
 			proposer.ProTxHash, proposal.Signature, proposal.Height, proposer.PubKey.Bytes(), proposalBlockSignId)
 	}
