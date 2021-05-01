@@ -159,6 +159,8 @@ If such a `Tx` exists, we find it by sorting the current priority queue index
 and finding the first `Tx` with lower priority. We then remove this `Tx` from
 the priority queue index as well as the `<sender:*Tx>` mapping.
 
+This will require additional `O(n)` space and `O(n*log(n))` runtime complexity.
+
 ### Gossiping
 
 TODO: Ensure we can:
