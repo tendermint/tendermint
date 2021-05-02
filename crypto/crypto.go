@@ -24,7 +24,6 @@ type KeyType int
 const (
 	Ed25519 KeyType = iota
 	BLS12381
-	Sr25519
 	Secp256k1
 	KeyTypeAny
 )

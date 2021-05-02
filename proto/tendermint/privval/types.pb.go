@@ -2485,7 +2485,7 @@ func (m *SignVoteRequest) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field QuorumType", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field AppHashSize", wireType)
 			}
 			m.QuorumType = 0
 			for shift := uint(0); ; shift += 7 {
@@ -2775,7 +2775,7 @@ func (m *SignProposalRequest) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field QuorumType", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field AppHashSize", wireType)
 			}
 			m.QuorumType = 0
 			for shift := uint(0); ; shift += 7 {

@@ -344,6 +344,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		"replay_test",
 		newMockTickerFunc(true),
 		newPersistentKVStoreWithPath)
+	fmt.Printf("initial quorum hash is %X\n", genDoc.QuorumHash)
 	sim.Config = config
 	sim.GenesisState, _ = sm.MakeGenesisState(genDoc)
 	sim.CleanupFunc = cleanup
@@ -373,6 +374,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	// HEIGHT 2
 	updatedValidators2, _, newThresholdPublicKey, quorumHash2 := updateConsensusNetAddNewValidators(css, height, 1, false)
 	height++
+	fmt.Printf("quorum hash is now %X\n", quorumHash2)
 	incrementHeight(vss...)
 	updateTransactions := make([][]byte, len(updatedValidators2)+2)
 	for i := 0; i < len(updatedValidators2); i++ {
@@ -397,7 +399,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal := types.NewProposal(vss[1].Height, 1, round, -1, blockID)
 	p := proposal.ToProto()
-	if err := vss[1].SignProposal(config.ChainID(), 0, quorumHash2, p); err != nil {
+	if err := vss[1].SignProposal(config.ChainID(), 0, genDoc.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -422,7 +424,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal = types.NewProposal(vss[2].Height, 1, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vss[2].SignProposal(config.ChainID(), 0, quorumHash2, p); err != nil {
+	if err := vss[2].SignProposal(config.ChainID(), 0, genDoc.QuorumHash, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -450,11 +452,11 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		updateTransactions2[i] = kvstore.MakeValSetChangeTx(updatedValidators4[i].ProTxHash, abciPubKey, testMinPower)
 		var oldPubKey crypto.PubKey
 		for _, validatorAt2 := range updatedValidators2 {
-			if bytes.Equal(validatorAt2.ProTxHash,updatedValidators4[i].ProTxHash) {
+			if bytes.Equal(validatorAt2.ProTxHash, updatedValidators4[i].ProTxHash) {
 				oldPubKey = validatorAt2.PubKey
 			}
 		}
-		fmt.Printf("update at height 4 (for 6) %v %v -> %v\n",updatedValidators4[i].ProTxHash, oldPubKey, updatedValidators4[i].PubKey)
+		fmt.Printf("update at height 4 (for 6) %v %v -> %v\n", updatedValidators4[i].ProTxHash, oldPubKey, updatedValidators4[i].PubKey)
 	}
 	abciThresholdPubKey2, err := cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
@@ -580,11 +582,11 @@ func TestSimulateValidatorsChange(t *testing.T) {
 		updateTransactions3[i] = kvstore.MakeValSetChangeTx(updatedValidators6[i].ProTxHash, abciPubKey, testMinPower)
 		var oldPubKey crypto.PubKey
 		for _, validatorAt4 := range updatedValidators4 {
-			if bytes.Equal(validatorAt4.ProTxHash,updatedValidators6[i].ProTxHash) {
+			if bytes.Equal(validatorAt4.ProTxHash, updatedValidators6[i].ProTxHash) {
 				oldPubKey = validatorAt4.PubKey
 			}
 		}
-		fmt.Printf("update at height 6 (for 8) %v %v -> %v\n",updatedValidators6[i].ProTxHash, oldPubKey, updatedValidators6[i].PubKey)
+		fmt.Printf("update at height 6 (for 8) %v %v -> %v\n", updatedValidators6[i].ProTxHash, oldPubKey, updatedValidators6[i].PubKey)
 	}
 	abciThresholdPubKey, err = cryptoenc.PubKeyToProto(newThresholdPublicKey)
 	require.NoError(t, err)
@@ -720,7 +722,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	p = proposal.ToProto()
 	proposerProTxHash = css[0].RoundState.Validators.GetProposer().ProTxHash
 	proposerIndex = valIndexFnByProTxHash(proposerProTxHash)
-	if err := vss[proposerIndex].SignProposal(config.ChainID(), 0, quorumHash6, p); err != nil {
+	if err := vss[proposerIndex].SignProposal(config.ChainID(), 0, quorumHash4, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -951,7 +953,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 
 	// now start the app using the handshake - it should sync
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
-	handshaker := NewHandshaker(stateStore, state, store, genDoc)
+	handshaker := NewHandshaker(stateStore, state, store, genDoc, config.Consensus.AppHashSize)
 	proxyApp := proxy.NewAppConns(clientCreator2)
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
@@ -1138,7 +1140,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 		})
 
 		assert.Panics(t, func() {
-			h := NewHandshaker(stateStore, state, store, genDoc)
+			h := NewHandshaker(stateStore, state, store, genDoc, config.Consensus.AppHashSize)
 			if err = h.Handshake(proxyApp); err != nil {
 				t.Log(err)
 			}
@@ -1162,7 +1164,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 		})
 
 		assert.Panics(t, func() {
-			h := NewHandshaker(stateStore, state, store, genDoc)
+			h := NewHandshaker(stateStore, state, store, genDoc, config.Consensus.AppHashSize)
 			if err = h.Handshake(proxyApp); err != nil {
 				t.Log(err)
 			}
@@ -1464,7 +1466,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 
 	// now start the app using the handshake - it should sync
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
-	handshaker := NewHandshaker(stateStore, state, store, genDoc)
+	handshaker := NewHandshaker(stateStore, state, store, genDoc, config.Consensus.AppHashSize)
 	proxyApp := proxy.NewAppConns(clientCreator)
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
