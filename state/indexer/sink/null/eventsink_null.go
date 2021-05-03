@@ -18,6 +18,10 @@ func NewNullEventSink() indexer.EventSink {
 	return &NullEventSink{}
 }
 
+func (nes *NullEventSink) Type() indexer.EventSinkType {
+	return indexer.NULL
+}
+
 func (nes *NullEventSink) IndexBlockEvents(bh types.EventDataNewBlockHeader) error {
 	return nil
 }

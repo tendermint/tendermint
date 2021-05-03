@@ -10,10 +10,16 @@ import (
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/state/indexer"
 	kvtx "github.com/tendermint/tendermint/state/indexer/tx/kv"
 	"github.com/tendermint/tendermint/types"
 	db "github.com/tendermint/tm-db"
 )
+
+func TestType(t *testing.T) {
+	kvSink := NewKVEventSink(db.NewMemDB())
+	assert.Equal(t, indexer.KV, kvSink.Type())
+}
 
 func TestBlockFuncs(t *testing.T) {
 	store := db.NewPrefixDB(db.NewMemDB(), []byte("block_events"))

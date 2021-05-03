@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -25,4 +26,9 @@ func TestNullEventSink(t *testing.T) {
 	val4, err4 := nullIndexer.HasBlock(0)
 	assert.False(t, val4)
 	assert.Nil(t, err4)
+}
+
+func TestType(t *testing.T) {
+	nullIndexer := NewNullEventSink()
+	assert.Equal(t, indexer.NULL, nullIndexer.Type())
 }

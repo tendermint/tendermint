@@ -39,6 +39,10 @@ func NewPSQLEventSink(connStr string) (indexer.EventSink, *sql.DB, error) {
 	}, db, nil
 }
 
+func (es *PSQLEventSink) Type() indexer.EventSinkType {
+	return indexer.PSQL
+}
+
 func (es *PSQLEventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
 
 	sqlStmt := sq.Insert(TableEventBlock).Columns("key", "value", "height", "type").PlaceholderFormat(sq.Dollar)

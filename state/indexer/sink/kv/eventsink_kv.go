@@ -30,6 +30,10 @@ func NewKVEventSink(store dbm.DB) indexer.EventSink {
 	}
 }
 
+func (kves *KVEventSink) Type() indexer.EventSinkType {
+	return indexer.KV
+}
+
 func (kves *KVEventSink) IndexBlockEvents(bh types.EventDataNewBlockHeader) error {
 	return kves.bi.Index(bh)
 }

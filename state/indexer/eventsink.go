@@ -8,6 +8,14 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+type EventSinkType string
+
+const (
+	NULL EventSinkType = "null"
+	KV   EventSinkType = "kv"
+	PSQL EventSinkType = "psql"
+)
+
 type EventSink interface {
 	IndexBlockEvents(types.EventDataNewBlockHeader) error
 	IndexTxEvents(*abci.TxResult) error
@@ -17,4 +25,6 @@ type EventSink interface {
 
 	GetTxByHash([]byte) (*abci.TxResult, error)
 	HasBlock(int64) (bool, error)
+
+	Type() EventSinkType
 }

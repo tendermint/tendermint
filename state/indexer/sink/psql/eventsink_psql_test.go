@@ -19,6 +19,7 @@ import (
 	"github.com/ory/dockertest/docker"
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -101,6 +102,11 @@ func TestMain(m *testing.M) {
 
 	db.Close()
 	os.Exit(code)
+}
+
+func TestType(t *testing.T) {
+	psqlSink := &PSQLEventSink{store: db}
+	assert.Equal(t, indexer.PSQL, psqlSink.Type())
 }
 
 func TestBlockFuncs(t *testing.T) {
