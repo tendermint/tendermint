@@ -178,16 +178,7 @@ func (r *Reactor) OnStop() {
 
 // GetChannels implements Reactor
 func (r *Reactor) GetChannels() []*conn.ChannelDescriptor {
-	return []*conn.ChannelDescriptor{
-		{
-			ID:                  PexChannel,
-			Priority:            1,
-			SendQueueCapacity:   10,
-			RecvMessageCapacity: maxMsgSize,
-
-			MaxSendBytes: 200,
-		},
-	}
+	return ChannelDescriptors
 }
 
 // AddPeer implements Reactor by adding peer to the address book (if inbound)

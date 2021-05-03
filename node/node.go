@@ -947,6 +947,8 @@ func NewSeedNode(config *cfg.Config,
 	)
 
 	// add the pex reactor
+	router.AddChannelDescriptors(pex.ChannelDescriptors)
+	transport.AddChannelDescriptors(pex.ChannelDescriptors)
 	if config.P2P.DisableLegacy {
 		pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
 		if err != nil {
@@ -955,7 +957,6 @@ func NewSeedNode(config *cfg.Config,
 	} else {
 		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
 	}
-	router.AddChannelDescriptors(pex.ChannelDescriptors)
 
 	if config.RPC.PprofListenAddress != "" {
 		go func() {
