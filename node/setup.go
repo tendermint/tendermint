@@ -3,6 +3,7 @@ package node
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -32,6 +33,7 @@ import (
 	"github.com/tendermint/tendermint/state/indexer"
 	kvSink "github.com/tendermint/tendermint/state/indexer/sink/kv"
 	nullSink "github.com/tendermint/tendermint/state/indexer/sink/null"
+	psqlSink "github.com/tendermint/tendermint/state/indexer/sink/psql"
 	"github.com/tendermint/tendermint/statesync"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -76,17 +78,30 @@ func createAndStartIndexerService(
 ) (*indexer.Service, []indexer.EventSink, error) {
 
 	eventSinks := []indexer.EventSink{}
+
 	for _, db := range config.TxIndex.Indexer {
-		if strings.ToLower(db) == "null" {
+		switch strings.ToLower(db) {
+		case string(indexer.NULL):
+			// when we see null in the config, the eventsinks will be reset with the nullEventSink.
 			eventSinks = append([]indexer.EventSink{}, nullSink.NewNullEventSink())
 			break
-		} else {
+		case string(indexer.KV):
 			store, err := dbProvider(&DBContext{"tx_index", config})
 			if err != nil {
 				return nil, nil, err
 			}
 
 			eventSinks = append(eventSinks, kvSink.NewKVEventSink(store))
+		case string(indexer.PSQL):
+			conn := config.TxIndex.PsqlConn
+			es, _, err := psqlSink.NewPSQLEventSink(conn)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			eventSinks = append(eventSinks, es)
+		default:
+			return nil, nil, errors.New("unsupported event sink type")
 		}
 	}
 
