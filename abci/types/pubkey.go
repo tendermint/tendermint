@@ -6,6 +6,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
+	"github.com/tendermint/tendermint/crypto/sr25519"
 )
 
 func Ed25519ValidatorUpdate(pk []byte, power int64) ValidatorUpdate {
@@ -17,7 +18,6 @@ func Ed25519ValidatorUpdate(pk []byte, power int64) ValidatorUpdate {
 	}
 
 	return ValidatorUpdate{
-		// Address:
 		PubKey: pkp,
 		Power:  power,
 	}
@@ -34,7 +34,16 @@ func UpdateValidator(pk []byte, power int64, keyType string) ValidatorUpdate {
 			panic(err)
 		}
 		return ValidatorUpdate{
-			// Address:
+			PubKey: pkp,
+			Power:  power,
+		}
+	case sr25519.KeyType:
+		pke := sr25519.PubKey(pk)
+		pkp, err := cryptoenc.PubKeyToProto(pke)
+		if err != nil {
+			panic(err)
+		}
+		return ValidatorUpdate{
 			PubKey: pkp,
 			Power:  power,
 		}

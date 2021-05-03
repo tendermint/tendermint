@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	mrand "math/rand"
 	"os"
 	testing "testing"
 
@@ -16,8 +17,8 @@ import (
 
 func TestWriteFileAtomic(t *testing.T) {
 	var (
-		data             = []byte(tmrand.Str(tmrand.Intn(2048)))
-		old              = tmrand.Bytes(tmrand.Intn(2048))
+		data             = []byte(tmrand.Str(mrand.Intn(2048)))
+		old              = tmrand.Bytes(mrand.Intn(2048))
 		perm os.FileMode = 0600
 	)
 

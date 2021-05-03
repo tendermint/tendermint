@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	mrand "math/rand"
 	"path/filepath"
 	"testing"
 	"time"
@@ -15,7 +16,6 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -140,7 +140,8 @@ func WALWithNBlocks(t *testing.T, numBlocks int) (data []byte, err error) {
 func randPort() int {
 	// returns between base and base + spread
 	base, spread := 20000, 20000
-	return base + tmrand.Intn(spread)
+	// nolint:gosec // G404: Use of weak random number generator
+	return base + mrand.Intn(spread)
 }
 
 func makeAddrs() (string, string, string) {
