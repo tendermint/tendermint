@@ -958,6 +958,9 @@ func NewSeedNode(config *cfg.Config,
 	)
 
 	// add the pex reactor
+	// FIXME: we add channel descriptors to both the router and the transport but only the router 
+	// should be aware of channel info. We should remove this from transport once the legacy 
+	// p2p stack is removed.
 	router.AddChannelDescriptors(pex.ChannelDescriptors)
 	transport.AddChannelDescriptors(pex.ChannelDescriptors)
 	if config.P2P.DisableLegacy {
