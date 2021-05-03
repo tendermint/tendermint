@@ -282,6 +282,10 @@ func (sc *DashCoreSignerClient) SignProposal(chainID string, quorumType btcjson.
 
 	requestIdHashString := strings.ToUpper(hex.EncodeToString(requestIdHash))
 
+	if quorumType == 0 {
+		return fmt.Errorf("error signing proposal with invalid quorum type")
+	}
+
 	response, err := sc.endpoint.QuorumSign(quorumType, requestIdHashString, messageHashString, quorumHash.String(), false)
 
 	if response == nil {

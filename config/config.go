@@ -871,6 +871,8 @@ type ConsensusConfig struct {
 
 	DoubleSignCheckHeight int64 `mapstructure:"double_sign_check_height"`
 
+	QuorumType btcjson.LLMQType `mapstructure:"quorum_type"`
+
 	AppHashSize int `mapstructure:"app_hash_size"`
 }
 
@@ -892,6 +894,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		PeerQueryMaj23SleepDuration: 2000 * time.Millisecond,
 		DoubleSignCheckHeight:       int64(0),
 		AppHashSize:                 crypto.SmallAppHashSize,
+		QuorumType:                  btcjson.LLMQType_5_60,
 	}
 }
 
@@ -911,6 +914,7 @@ func TestConsensusConfig() *ConsensusConfig {
 	cfg.PeerQueryMaj23SleepDuration = 250 * time.Millisecond
 	cfg.DoubleSignCheckHeight = int64(0)
 	cfg.AppHashSize = crypto.DefaultAppHashSize
+	cfg.QuorumType = btcjson.LLMQType_5_60
 	return cfg
 }
 

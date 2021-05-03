@@ -1487,7 +1487,7 @@ func (stateID StateID) Key() string {
 func (stateID StateID) ValidateBasic() error {
 	// LastAppHash can be empty in case of genesis block.
 	if err := ValidateAppHash(stateID.LastAppHash); err != nil {
-		return fmt.Errorf("wrong Hash")
+		return fmt.Errorf("wrong app Hash")
 	}
 	return nil
 }

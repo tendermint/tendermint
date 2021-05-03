@@ -97,6 +97,9 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	// Generate ephemeral keys for perfect forward secrecy.
 	locEphPub, locEphPriv := genEphKeys()
 
+	// fmt.Printf("ephemeral key %X (%s-%d) - locPubKey %X (%s-%d)", locEphPub, reflect.TypeOf(locEphPub), len(locEphPub),
+	// 	locPubKey.Bytes(), reflect.TypeOf(locPubKey), len(locPubKey.Bytes()))
+
 	// Write local ephemeral pubkey and receive one too.
 	// NOTE: every 32-byte string is accepted as a Curve25519 public key (see
 	// DJB's Curve25519 paper: http://cr.yp.to/ecdh/curve25519-20060209.pdf)
