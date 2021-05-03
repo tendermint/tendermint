@@ -24,34 +24,38 @@ func (env *Environment) Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*cty
 		return nil, errors.New("transaction indexing is disabled")
 	}
 
-	sink := env.EventSinks[0]
+	for _, sink := range env.EventSinks {
+		if sink.Type() == indexer.KV {
+			r, err := sink.GetTxByHash(hash)
+			if err != nil {
+				return nil, err
+			}
 
-	r, err := sink.GetTxByHash(hash)
-	if err != nil {
-		return nil, err
+			if r == nil {
+				return nil, fmt.Errorf("tx (%X) not found", hash)
+			}
+
+			height := r.Height
+			index := r.Index
+
+			var proof types.TxProof
+			if prove {
+				block := env.BlockStore.LoadBlock(height)
+				proof = block.Data.Txs.Proof(int(index)) // XXX: overflow on 32-bit machines
+			}
+
+			return &ctypes.ResultTx{
+				Hash:     hash,
+				Height:   height,
+				Index:    index,
+				TxResult: r.Result,
+				Tx:       r.Tx,
+				Proof:    proof,
+			}, nil
+		}
 	}
 
-	if r == nil {
-		return nil, fmt.Errorf("tx (%X) not found", hash)
-	}
-
-	height := r.Height
-	index := r.Index
-
-	var proof types.TxProof
-	if prove {
-		block := env.BlockStore.LoadBlock(height)
-		proof = block.Data.Txs.Proof(int(index)) // XXX: overflow on 32-bit machines
-	}
-
-	return &ctypes.ResultTx{
-		Hash:     hash,
-		Height:   height,
-		Index:    index,
-		TxResult: r.Result,
-		Tx:       r.Tx,
-		Proof:    proof,
-	}, nil
+	return nil, errors.New("could not find the event sink to support the tx query")
 }
 
 // TxSearch allows you to query for multiple transactions results. It returns a
