@@ -84,7 +84,6 @@ func createAndStartIndexerService(
 		case string(indexer.NULL):
 			// when we see null in the config, the eventsinks will be reset with the nullEventSink.
 			eventSinks = append([]indexer.EventSink{}, nullSink.NewNullEventSink())
-			break
 		case string(indexer.KV):
 			store, err := dbProvider(&DBContext{"tx_index", config})
 			if err != nil {

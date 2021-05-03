@@ -139,13 +139,13 @@ func indexEvents(
 			}
 
 			// index iff the event specified index:true and it's not a reserved event
-			compositeKey := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
+			compositeKey := fmt.Sprintf("%s.%s", event.Type, attr.Key)
 			if compositeKey == types.BlockHeightKey {
 				return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeKey)
 			}
 
 			if attr.GetIndex() {
-				*sqlStmt = sqlStmt.Values(compositeKey, string(attr.Value), height, ty)
+				*sqlStmt = sqlStmt.Values(compositeKey, attr.Value, height, ty)
 			}
 		}
 	}
