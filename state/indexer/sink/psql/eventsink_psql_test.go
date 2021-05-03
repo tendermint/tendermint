@@ -11,7 +11,9 @@ import (
 	"testing"
 	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	schema "github.com/adlio/schema"
+	proto "github.com/gogo/protobuf/proto"
 	_ "github.com/lib/pq"
 	dockertest "github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
@@ -105,13 +107,21 @@ func TestBlockFuncs(t *testing.T) {
 	indexer := &PSQLEventSink{store: db}
 	assert.NoError(t, indexer.IndexBlockEvents(getTestBlockHeader()))
 
-	r, err := indexer.HasBlock(1)
-	assert.Nil(t, err)
+	r, err := verifyBlock(1)
 	assert.True(t, r)
+	assert.Nil(t, err)
+
+	r, err = verifyBlock(2)
+	assert.False(t, r)
+	assert.Nil(t, err)
+
+	r, err = indexer.HasBlock(1)
+	assert.False(t, r)
+	assert.Equal(t, errors.New("hasBlock is not supported via the postgres event sink"), err)
 
 	r, err = indexer.HasBlock(2)
-	assert.Nil(t, err)
 	assert.False(t, r)
+	assert.Equal(t, errors.New("hasBlock is not supported via the postgres event sink"), err)
 
 	r2, err := indexer.SearchBlockEvents(context.TODO(), nil)
 	assert.Nil(t, r2)
@@ -129,9 +139,13 @@ func TestTxFuncs(t *testing.T) {
 	err := indexer.IndexTxEvents(txResult)
 	assert.NoError(t, err)
 
-	tx, err := indexer.GetTxByHash(types.Tx(txResult.Tx).Hash())
+	tx, err := verifyTx(types.Tx(txResult.Tx).Hash())
 	assert.NoError(t, err)
 	assert.Equal(t, txResult, tx)
+
+	tx, err = indexer.GetTxByHash(types.Tx(txResult.Tx).Hash())
+	assert.Nil(t, tx)
+	assert.Equal(t, errors.New("getTxByHash is not supported via the postgres event sink"), err)
 
 	r2, err := indexer.SearchTxEvents(context.TODO(), nil)
 	assert.Nil(t, r2)
@@ -215,4 +229,56 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 			Events: events,
 		},
 	}
+}
+
+func verifyTx(hash []byte) (*abci.TxResult, error) {
+	join := fmt.Sprintf("%s ON tx_result_id = txid", TableEventTx)
+	sqlStmt := sq.
+		Select("tx_result", "tx_result_id", "txid", "hash").
+		Distinct().From(TableResultTx).
+		InnerJoin(join).
+		Where("hash = $1", fmt.Sprintf("%X", hash))
+	rows, err := sqlStmt.RunWith(db).Query()
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	if rows.Next() {
+		var txResult []byte
+		var txResultID, txid int
+		var h string
+		err = rows.Scan(&txResult, &txResultID, &txid, &h)
+		if err != nil {
+			return nil, nil
+		}
+
+		msg := new(abci.TxResult)
+		err = proto.Unmarshal(txResult, msg)
+		if err != nil {
+			return nil, err
+		}
+
+		return msg, err
+	}
+
+	// No result
+	return nil, nil
+}
+
+func verifyBlock(h int64) (bool, error) {
+	sqlStmt := sq.
+		Select("height").
+		Distinct().
+		From(TableEventBlock).
+		Where(fmt.Sprintf("height = %d", h))
+	rows, err := sqlStmt.RunWith(db).Query()
+	if err != nil {
+		return false, err
+	}
+
+	defer rows.Close()
+
+	return rows.Next(), nil
 }

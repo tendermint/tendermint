@@ -110,56 +110,11 @@ func (es *PSQLEventSink) SearchTxEvents(ctx context.Context, q *query.Query) ([]
 }
 
 func (es *PSQLEventSink) GetTxByHash(hash []byte) (*abci.TxResult, error) {
-
-	join := fmt.Sprintf("%s ON tx_result_id = txid", TableEventTx)
-	sqlStmt := sq.
-		Select("tx_result", "tx_result_id", "txid", "hash").
-		Distinct().From(TableResultTx).
-		InnerJoin(join).
-		Where("hash = $1", fmt.Sprintf("%X", hash))
-	rows, err := sqlStmt.RunWith(es.store).Query()
-	if err != nil {
-		return nil, err
-	}
-
-	defer rows.Close()
-
-	if rows.Next() {
-		var txResult []byte
-		var txResultID, txid int
-		var h string
-		err = rows.Scan(&txResult, &txResultID, &txid, &h)
-		if err != nil {
-			return nil, nil
-		}
-
-		msg := new(abci.TxResult)
-		err = proto.Unmarshal(txResult, msg)
-		if err != nil {
-			return nil, err
-		}
-
-		return msg, err
-	}
-
-	// No result
-	return nil, nil
+	return nil, errors.New("getTxByHash is not supported via the postgres event sink")
 }
 
 func (es *PSQLEventSink) HasBlock(h int64) (bool, error) {
-	sqlStmt := sq.
-		Select("height").
-		Distinct().
-		From(TableEventBlock).
-		Where(fmt.Sprintf("height = %d", h))
-	rows, err := sqlStmt.RunWith(es.store).Query()
-	if err != nil {
-		return false, err
-	}
-
-	defer rows.Close()
-
-	return rows.Next(), nil
+	return false, errors.New("hasBlock is not supported via the postgres event sink")
 }
 
 func indexEvents(
