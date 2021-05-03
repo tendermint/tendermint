@@ -138,9 +138,9 @@ func TestTxFuncs(t *testing.T) {
 	indexer := &PSQLEventSink{store: db}
 
 	txResult := txResultWithEvents([]abci.Event{
-		{Type: "account", Attributes: []abci.EventAttribute{{Key: []byte("number"), Value: []byte("1"), Index: true}}},
-		{Type: "account", Attributes: []abci.EventAttribute{{Key: []byte("owner"), Value: []byte("Ivan"), Index: true}}},
-		{Type: "", Attributes: []abci.EventAttribute{{Key: []byte("not_allowed"), Value: []byte("Vlad"), Index: true}}},
+		{Type: "account", Attributes: []abci.EventAttribute{{Key: "number", Value: "1", Index: true}}},
+		{Type: "account", Attributes: []abci.EventAttribute{{Key: "owner", Value: "Ivan", Index: true}}},
+		{Type: "", Attributes: []abci.EventAttribute{{Key: "not_allowed", Value: "Vlad", Index: true}}},
 	})
 	err := indexer.IndexTxEvents(txResult)
 	assert.NoError(t, err)
@@ -167,8 +167,8 @@ func getTestBlockHeader() types.EventDataNewBlockHeader {
 					Type: "begin_event",
 					Attributes: []abci.EventAttribute{
 						{
-							Key:   []byte("proposer"),
-							Value: []byte("FCAA001"),
+							Key:   "proposer",
+							Value: "FCAA001",
 							Index: true,
 						},
 					},
@@ -181,8 +181,8 @@ func getTestBlockHeader() types.EventDataNewBlockHeader {
 					Type: "end_event",
 					Attributes: []abci.EventAttribute{
 						{
-							Key:   []byte("foo"),
-							Value: []byte("100"),
+							Key:   "foo",
+							Value: "100",
 							Index: true,
 						},
 					},
