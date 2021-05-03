@@ -3,13 +3,13 @@ package core
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"sort"
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -75,7 +75,7 @@ func (env *Environment) TxSearch(
 	}
 
 	for _, sink := range env.EventSinks {
-		if reflect.ValueOf(sink).Elem().Type().Name() == "KVEventSink" {
+		if sink.Type() == indexer.KV {
 			results, err := sink.SearchTxEvents(ctx.Context(), q)
 			if err != nil {
 				return nil, err
@@ -140,5 +140,5 @@ func (env *Environment) TxSearch(
 }
 
 func isTxIndexingDisabled() bool {
-	return len(env.EventSinks) == 0 || reflect.ValueOf(env.EventSinks[0]).Elem().Type().Name() == "NullEventSink"
+	return len(env.EventSinks) == 0 || env.EventSinks[0].Type() == indexer.NULL
 }

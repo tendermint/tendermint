@@ -3,13 +3,13 @@ package core
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"sort"
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
+	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -180,7 +180,7 @@ func (env *Environment) BlockSearch(
 	pagePtr, perPagePtr *int,
 	orderBy string,
 ) (*ctypes.ResultBlockSearch, error) {
-	if len(env.EventSinks) == 0 || reflect.ValueOf(env.EventSinks[0]).Elem().Type().Name() == "NullEventSink" {
+	if len(env.EventSinks) == 0 || env.EventSinks[0].Type() == indexer.NULL {
 		return nil, errors.New("block indexing is disabled")
 	}
 
@@ -190,7 +190,7 @@ func (env *Environment) BlockSearch(
 	}
 
 	for _, sink := range env.EventSinks {
-		if reflect.ValueOf(sink).Elem().Type().Name() == "KVEventSink" {
+		if sink.Type() == indexer.KV {
 			results, err := sink.SearchBlockEvents(ctx.Context(), q)
 			if err != nil {
 				return nil, err
