@@ -52,7 +52,7 @@ func BenchmarkCheckDuplicateTx(b *testing.B) {
 	mempool, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
-	mempool.config.Size = 100000000000
+	mempool.config.Size = 1000000
 
 	for i := 0; i < b.N; i++ {
 		tx := make([]byte, 8)
