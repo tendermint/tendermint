@@ -1,6 +1,7 @@
 package mempool
 
 import (
+	"context"
 	"encoding/binary"
 	"testing"
 
@@ -43,6 +44,46 @@ func BenchmarkCheckTx(b *testing.B) {
 		if err := mempool.CheckTx(tx, nil, TxInfo{}); err != nil {
 			b.Fatal(err)
 		}
+	}
+}
+
+func BenchmarkParallelCheckTx(b *testing.B) {
+	app := kvstore.NewApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	mempool, cleanup := newMempoolWithApp(cc)
+	defer cleanup()
+
+	mempool.config.Size = 100000000
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	counter := make(chan int, 1000)
+	go func() {
+		num := 0
+		for {
+			num++
+			select {
+			case counter <- num:
+			case <-ctx.Done():
+				close(counter)
+				return
+			}
+		}
+
+	}()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				tx := make([]byte, 8)
+				binary.BigEndian.PutUint64(tx, uint64(<-counter))
+				if err := mempool.CheckTx(tx, nil, TxInfo{}); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+
 	}
 }
 
