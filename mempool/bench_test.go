@@ -1,7 +1,6 @@
 package mempool
 
 import (
-	"context"
 	"encoding/binary"
 	"testing"
 
@@ -55,23 +54,12 @@ func BenchmarkParallelCheckTx(b *testing.B) {
 
 	mempool.config.Size = 100000000
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	counter := make(chan int, 1000)
-	go func() {
-		num := 0
-		for {
-			num++
-			select {
-			case counter <- num:
-			case <-ctx.Done():
-				close(counter)
-				return
-			}
-		}
-
-	}()
-
+	txCt := 500000000
+	counter := make(chan int, txCt)
+	for i := 0; i < txCt; i++ {
+		counter <- i
+	}
+	close(counter)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.RunParallel(func(pb *testing.PB) {
