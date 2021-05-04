@@ -16,7 +16,7 @@ else
 fi
 
 echo "Checking accountable safety 1:"
-res=$(ivy_check complete=fo accountable_safety_1.ivy | tee "output/$log_dir/accountable_safety_1.txt" | tail -n 1)
+res=$(ivy_check accountable_safety_1.ivy | tee "output/$log_dir/accountable_safety_1.txt" | tail -n 1)
 if [ "$res" = "OK" ]; then
   echo "OK"
 else

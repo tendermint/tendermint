@@ -43,6 +43,7 @@ module abstract_tendermint = {
     relation observed_equivocation(N:node)
     relation observed_unlawful_prevote(N:node)
     relation agreement
+    relation accountability_violation
 
     object defs = { # we hide those definitions and use them only when needed
         private {
@@ -54,6 +55,8 @@ module abstract_tendermint = {
                 & forall Q,R . R1 <= R & R < R2 & nset.is_quorum(Q) -> exists N2 . nset.member(N2,Q) & ~observed_prevoted(N2,R,V2)
 
             definition [agreement_def] agreement = forall N1,N2,R1,R2,V1,V2 . well_behaved(N1) & well_behaved(N2) & decided(N1,R1,V1) & decided(N2,R2,V2) -> V1 = V2
+
+            definition [accountability_violation_def] accountability_violation = exists Q1,Q2 . nset.is_quorum(Q1) & nset.is_quorum(Q2) & (forall N . nset.member(N,Q1) & nset.member(N,Q2) -> observed_equivocation(N) | observed_unlawful_prevote(N))
         }
     }
 

@@ -112,7 +112,7 @@ isolate shim = {
             else if m.m_kind = msg_kind.prevote {
                 call prevote_handler.handle(dst,m)
             }
-            else if m.m_kind = msg_kind.proposal {
+            else if m.m_kind = msg_kind.precommit {
                 call precommit_handler.handle(dst,m)
             }
         }

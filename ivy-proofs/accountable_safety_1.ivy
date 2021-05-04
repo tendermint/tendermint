@@ -35,9 +35,9 @@ isolate abstract_accountable_safety = {
 
 # If there is disagreement, then there is evidence that a third of the nodes
 # have violated the protocol:
-    invariant [accountability] agreement | exists Q1,Q2 . nset.is_quorum(Q1) & nset.is_quorum(Q2) & (forall N . nset.member(N,Q1) & nset.member(N,Q2) -> observed_equivocation(N) | observed_unlawful_prevote(N))
+    invariant [accountability] agreement | accountability_violation
     proof {
-        apply lemma_2.thm # this reduces to goal to three subgoals: p1, p2, and p3 (see their definition below)
+        apply lemma_1.thm # this reduces to goal to three subgoals: p1, p2, and p3 (see their definition below)
         proof [p1] {
             assume invs.inv1
         }
@@ -76,52 +76,50 @@ isolate abstract_accountable_safety = {
 # For technical reasons, we separate the proof in two steps
     isolate lemma_1 = {
 
-# complete induction is not built-in, so we introduce it with an axiom. Note that this only holds for a type where 0 is the smallest element
-        axiom [complete_induction] {
-            relation p(X:round)
-            { # base case
-                property p(0)
+        specification {
+            theorem [thm] {
+                property [p1] forall N,R,V . well_behaved(N) -> (observed_precommitted(N,R,V) = precommitted(N,R,V))
+                property [p2] forall R,V . (exists N . well_behaved(N) & precommitted(N,R,V)) & V ~= value.nil  -> exists Q . nset.is_quorum(Q) & forall N2 . nset.member(N2,Q) -> observed_prevoted(N2,R,V)
+                property [p3] forall R,V. (exists N . well_behaved(N) & decided(N,R,V)) -> 0 <= R & V ~= value.nil & exists Q . nset.is_quorum(Q) & forall N2 . nset.member(N2,Q) -> observed_precommitted(N2,R,V)
+                #-------------------------------------------------------------------------------------------------------------------------------------------
+                property agreement | accountability_violation
             }
-            { # inductive step: show that if the property is true for all X lower or equal to x and y=x+1, then the property is true of y
-                individual a:round
-                individual b:round
-                property (forall X. 0 <= X & X <= a -> p(X)) & round.succ(a,b) -> p(b)
+            proof {
+                assume inductive_property # the theorem follows from what we prove by induction below
             }
-            #--------------------------
-            property forall X . 0 <= X -> p(X)
         }
 
-# the main lemma: if inv1 and inv2 below hold and a quorum is observed to
-# precommit V1 at R1 and another quorum is observed to precommit V2~=V1 at
-# R2>=R1, then the intersection of two quorums (i.e. f+1 nodes) is observed to
-# violate the protocol
-        theorem [thm] {
-            property [p1] forall N,R,V . well_behaved(N) -> (observed_precommitted(N,R,V) = precommitted(N,R,V))
-            property [p2] forall R,V . (exists N . well_behaved(N) & precommitted(N,R,V)) -> V = value.nil | exists Q . nset.is_quorum(Q) & forall N2 . nset.member(N2,Q) -> observed_prevoted(N2,R,V)
-            #-----------------------------------------------------------------------------------------------------------------------
-            property forall R2. 0 <= R2  -> ((exists V2,Q1,R1,V1,Q1 . V1 ~= value.nil & V2 ~= value.nil & V1 ~= V2 & 0 <= R1 & R1 <= R2 & nset.is_quorum(Q1) & (forall N . nset.member(N,Q1) -> observed_precommitted(N,R1,V1)) & (exists Q2 . nset.is_quorum(Q2) & forall N . nset.member(N,Q2) -> observed_prevoted(N,R2,V2))) -> exists Q1,Q2 . nset.is_quorum(Q1) & nset.is_quorum(Q2) & forall N . nset.member(N,Q1) & nset.member(N,Q2) -> observed_equivocation(N) | observed_unlawful_prevote(N))
-        }
-        proof {
-            apply complete_induction # the two subgoals (base case and inductive case) are then discharged automatically
-        }
-    } with this, round, nset, accountable_bft.max_2f_byzantine, defs.observed_equivocation_def, defs.observed_unlawful_prevote_def
+        implementation {
+            # complete induction is not built-in, so we introduce it with an axiom. Note that this only holds for a type where 0 is the smallest element
+            axiom [complete_induction] {
+                relation p(X:round)
+                { # base case
+                    property p(0)
+                }
+                { # inductive step: show that if the property is true for all X lower or equal to x and y=x+1, then the property is true of y
+                    individual a:round
+                    individual b:round
+                    property (forall X. 0 <= X & X <= a -> p(X)) & round.succ(a,b) -> p(b)
+                }
+                #--------------------------
+                property forall X . 0 <= X -> p(X)
+            }
 
-# Now we put lemma_1 in a form that matches exactly the accountability property
-# we want to prove. This is a bit cumbersome and could probably be improved.
-    isolate lemma_2 = {
-
-        theorem [thm] {
-            property [p1] forall N,R,V . well_behaved(N) -> (observed_precommitted(N,R,V) = precommitted(N,R,V))
-            property [p2] forall R,V . (exists N . well_behaved(N) & precommitted(N,R,V)) & V ~= value.nil  -> exists Q . nset.is_quorum(Q) & forall N2 . nset.member(N2,Q) -> observed_prevoted(N2,R,V)
-            property [p3] forall R,V. (exists N . well_behaved(N) & decided(N,R,V)) -> 0 <= R & V ~= value.nil & exists Q . nset.is_quorum(Q) & forall N2 . nset.member(N2,Q) -> observed_precommitted(N2,R,V)
-            #-------------------------------------------------------------------------------------------------------------------------------------------
-            property agreement | exists Q1,Q2 . nset.is_quorum(Q1) & nset.is_quorum(Q2) & forall N . nset.member(N,Q1) & nset.member(N,Q2) -> observed_equivocation(N) | observed_unlawful_prevote(N)
+            # The main lemma: if inv1 and inv2 below hold and a quorum is observed to
+            # precommit V1 at R1 and another quorum is observed to precommit V2~=V1 at
+            # R2>=R1, then the intersection of two quorums (i.e. f+1 nodes) is observed to
+            # violate the protocol. We prove this by complete induction on R2.
+            theorem [inductive_property] {
+                property [p1] forall N,R,V . well_behaved(N) -> (observed_precommitted(N,R,V) = precommitted(N,R,V))
+                property [p2] forall R,V . (exists N . well_behaved(N) & precommitted(N,R,V)) -> V = value.nil | exists Q . nset.is_quorum(Q) & forall N2 . nset.member(N2,Q) -> observed_prevoted(N2,R,V)
+                #-----------------------------------------------------------------------------------------------------------------------
+                property forall R2. 0 <= R2  -> ((exists V2,Q1,R1,V1,Q1 . V1 ~= value.nil & V2 ~= value.nil & V1 ~= V2 & 0 <= R1 & R1 <= R2 & nset.is_quorum(Q1) & (forall N . nset.member(N,Q1) -> observed_precommitted(N,R1,V1)) & (exists Q2 . nset.is_quorum(Q2) & forall N . nset.member(N,Q2) -> observed_prevoted(N,R2,V2))) -> accountability_violation)
+            }
+            proof {
+                apply complete_induction # the two subgoals (base case and inductive case) are then discharged automatically
+            }
         }
-        proof {
-            assume lemma_1.thm
-        }
-
-    } with this, round,  defs.agreement_def, lemma_1, nset, accountable_bft.max_2f_byzantine
+    } with this, round, nset, accountable_bft.max_2f_byzantine, defs.observed_equivocation_def, defs.observed_unlawful_prevote_def, defs.accountability_violation_def, defs.agreement_def
 
 } with round
 
@@ -139,6 +137,6 @@ isolate accountable_safety_1 = {
 
     invariant abstract_accountable_safety.agreement -> agreement
 
-    invariant [accountability] agreement | exists Q1,Q2 . nset.is_quorum(Q1) & nset.is_quorum(Q2) & forall N . nset.member(N,Q1) & nset.member(N,Q2) -> abstract_accountable_safety.observed_equivocation(N) | abstract_accountable_safety.observed_unlawful_prevote(N)
+    invariant [accountability] agreement | abstract_accountable_safety.accountability_violation
 
 } with value, round, proposers, shim, abstract_accountable_safety, abstract_accountable_safety.defs.agreement_def, accountable_safety_1.agreement_def
