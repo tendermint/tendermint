@@ -196,6 +196,12 @@ func tryVerifyCommitBatch(
 		} else {
 			valIdx, val = vals.GetByAddress(commitSig.ValidatorAddress)
 
+			// if the signature doesn't belong to anyone in the validator set
+			// then we just skip over it
+			if val == nil {
+				continue
+			}
+
 			// because we are getting validators by address we need to make sure
 			// that the same validator doesn't commit twice
 			if firstIndex, ok := seenVals[valIdx]; ok {
@@ -203,10 +209,6 @@ func tryVerifyCommitBatch(
 				return cacheSignBytes, false, fmt.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
 			}
 			seenVals[valIdx] = idx
-		}
-
-		if val == nil {
-			continue
 		}
 
 		// Validate signature.
@@ -255,6 +257,7 @@ func tryVerifyCommitBatch(
 // If a key does not support batch verification, or batch verification fails this will be used
 // This method is used to check all the signatures included in a commit.
 // It is used in consensus for validating a block LastCommit.
+// CONTRACT: both commit and validator set should have passed validate basic
 func verifyCommitSingle(
 	chainID string,
 	vals *ValidatorSet,
@@ -285,6 +288,12 @@ func verifyCommitSingle(
 		} else {
 			valIdx, val = vals.GetByAddress(commitSig.ValidatorAddress)
 
+			// if the signature doesn't belong to anyone in the validator set
+			// then we just skip over it
+			if val == nil {
+				continue
+			}
+
 			// because we are getting validators by address we need to make sure
 			// that the same validator doesn't commit twice
 			if firstIndex, ok := seenVals[valIdx]; ok {
@@ -292,10 +301,6 @@ func verifyCommitSingle(
 				return fmt.Errorf("double vote from %v (%d and %d)", val, firstIndex, secondIndex)
 			}
 			seenVals[valIdx] = idx
-		}
-
-		if val == nil {
-			continue
 		}
 
 		// Check if we have the validator in the cache
