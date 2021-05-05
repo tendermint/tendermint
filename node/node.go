@@ -770,9 +770,6 @@ func createSwitch(
 	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
 
-	// XXX: needed to support old/new P2P stacks
-	sw.PutChannelDescsIntoTransport()
-
 	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID, "file", config.NodeKeyFile())
 	return sw
 }
@@ -955,11 +952,24 @@ func NewSeedNode(config *cfg.Config,
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
 
-	// start the pex reactor
-	pexReactor := createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
-	pexReactorV2, err := createPEXReactorV2(config, logger, peerManager, router)
-	if err != nil {
-		return nil, err
+	var (
+		pexReactor   *pex.Reactor
+		pexReactorV2 *pex.ReactorV2
+	)
+
+	// add the pex reactor
+	// FIXME: we add channel descriptors to both the router and the transport but only the router
+	// should be aware of channel info. We should remove this from transport once the legacy
+	// p2p stack is removed.
+	router.AddChannelDescriptors(pex.ChannelDescriptors())
+	transport.AddChannelDescriptors(pex.ChannelDescriptors())
+	if config.P2P.DisableLegacy {
+		pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
 	}
 
 	if config.RPC.PprofListenAddress != "" {
@@ -1203,11 +1213,19 @@ func NewNode(config *cfg.Config,
 		config.StateSync.TempDir,
 	)
 
+	// add the channel descriptors to both the router and the underlying
+	// transports
 	router.AddChannelDescriptors(mpReactorShim.GetChannels())
 	router.AddChannelDescriptors(bcReactorForSwitch.GetChannels())
 	router.AddChannelDescriptors(csReactorShim.GetChannels())
 	router.AddChannelDescriptors(evReactorShim.GetChannels())
 	router.AddChannelDescriptors(stateSyncReactorShim.GetChannels())
+
+	transport.AddChannelDescriptors(mpReactorShim.GetChannels())
+	transport.AddChannelDescriptors(bcReactorForSwitch.GetChannels())
+	transport.AddChannelDescriptors(csReactorShim.GetChannels())
+	transport.AddChannelDescriptors(evReactorShim.GetChannels())
+	transport.AddChannelDescriptors(stateSyncReactorShim.GetChannels())
 
 	// setup Transport and Switch
 	sw := createSwitch(
@@ -1248,13 +1266,16 @@ func NewNode(config *cfg.Config,
 	)
 
 	if config.P2P.PexReactor {
-		pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
-		pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
-		if err != nil {
-			return nil, err
+		router.AddChannelDescriptors(pex.ChannelDescriptors())
+		transport.AddChannelDescriptors(pex.ChannelDescriptors())
+		if config.P2P.DisableLegacy {
+			pexReactorV2, err = createPEXReactorV2(config, logger, peerManager, router)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			pexReactor = createPEXReactorAndAddToSwitch(addrBook, config, sw, logger)
 		}
-
-		router.AddChannelDescriptors(pexReactor.GetChannels())
 	}
 
 	if config.RPC.PprofListenAddress != "" {
@@ -1428,7 +1449,7 @@ func (n *Node) OnStop() {
 
 	if n.config.Mode != cfg.ModeSeed {
 		// now stop the reactors
-		if n.config.FastSync.Version == "v0" {
+		if n.config.FastSync.Version == cfg.BlockchainV0 {
 			// Stop the real blockchain reactor separately since the switch uses the shim.
 			if err := n.bcReactor.Stop(); err != nil {
 				n.Logger.Error("failed to stop the blockchain reactor", "err", err)

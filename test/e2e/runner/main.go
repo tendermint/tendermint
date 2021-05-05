@@ -172,6 +172,15 @@ func NewCLI() *CLI {
 	})
 
 	cli.root.AddCommand(&cobra.Command{
+		Use:   "resume",
+		Short: "Resumes the Docker testnet",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			logger.Info("Resuming testnet")
+			return execCompose(cli.testnet.Dir, "up")
+		},
+	})
+
+	cli.root.AddCommand(&cobra.Command{
 		Use:   "load [multiplier]",
 		Args:  cobra.MaximumNArgs(1),
 		Short: "Generates transaction load until the command is canceled",
