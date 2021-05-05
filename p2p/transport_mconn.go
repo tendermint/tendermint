@@ -185,6 +185,17 @@ func (m *MConnTransport) Close() error {
 	return err
 }
 
+// SetChannels sets the channel descriptors to be used when
+// establishing a connection.
+//
+// FIXME: To be removed when the legacy p2p stack is removed. Channel
+// descriptors should be managed by the router. The underlying transport and
+// connections should be agnostic to everything but the channel ID's which are
+// initialized in the handshake.
+func (m *MConnTransport) AddChannelDescriptors(channelDesc []*ChannelDescriptor) {
+	m.channelDescs = append(m.channelDescs, channelDesc...)
+}
+
 // validateEndpoint validates an endpoint.
 func (m *MConnTransport) validateEndpoint(endpoint Endpoint) error {
 	if err := endpoint.Validate(); err != nil {
