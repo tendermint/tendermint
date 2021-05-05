@@ -34,7 +34,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	pool, err := dockertest.NewPool("")
+	pool, err := dockertest.NewPool(os.Getenv("DOCKER_URL"))
 	if err != nil {
 		log.Fatalf("Could not connect to docker: %s", err)
 	}
@@ -64,7 +64,7 @@ func TestMain(m *testing.M) {
 	// hanging around
 	_ = resource.Expire(60)
 
-	dsn = fmt.Sprintf(dsn, user, password, port, dbName)
+	dsn = fmt.Sprintf(dsn, user, password, resource.GetPort(port+"/tcp"), dbName)
 	if err = pool.Retry(func() error {
 		var err error
 
