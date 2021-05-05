@@ -108,7 +108,7 @@ message ResponseCheckTx {
 
 It is entirely up the application in determining how these fields are populated
 and with what values, e.g. the `sender` could be the signer and fee payer 
-the transaction, the `priority` could be the cumulative sum of the fee(s).
+of the transaction, the `priority` could be the cumulative sum of the fee(s).
 
 Only `sender` is required, while `priority` can be omitted which would result in
 using the default value of zero.
