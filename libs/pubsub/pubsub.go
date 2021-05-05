@@ -82,7 +82,7 @@ type UnsubscribeArgs struct {
 
 func (args UnsubscribeArgs) Validate() error {
 	if args.Subscriber == "" {
-		return errors.New("must specify a subscriber ID")
+		return errors.New("must specify a subscriber")
 	}
 
 	if args.ID == "" && args.Query == nil {
