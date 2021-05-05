@@ -18,17 +18,6 @@ import (
 var (
 	_ service.Service = (*ReactorV2)(nil)
 	_ p2p.Wrapper     = (*protop2p.PexMessage)(nil)
-
-	ChannelDescriptors = []*conn.ChannelDescriptor{
-		{
-			ID:                  PexChannel,
-			Priority:            1,
-			SendQueueCapacity:   10,
-			RecvMessageCapacity: maxMsgSize,
-
-			MaxSendBytes: 200,
-		},
-	}
 )
 
 // TODO: Consolidate with params file.
@@ -51,6 +40,23 @@ const (
 	// scoring peers that are still in the peer store
 	fullCapacityInterval = 10 * time.Minute
 )
+
+// TODO: We should decide whether we want channel descriptors to be housed
+// within each reactor (as they are now) or, considering that the reactor doesn't
+// really need to care about the channel descriptors, if they should be housed
+// in the node module.
+func ChannelDescriptors() []*conn.ChannelDescriptor {
+	return []*conn.ChannelDescriptor{
+		{
+			ID:                  PexChannel,
+			Priority:            1,
+			SendQueueCapacity:   10,
+			RecvMessageCapacity: maxMsgSize,
+
+			MaxSendBytes: 200,
+		},
+	}
+}
 
 // ReactorV2 is a PEX reactor for the new P2P stack. The legacy reactor
 // is Reactor.
