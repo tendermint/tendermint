@@ -295,6 +295,11 @@ func (c *Local) Unsubscribe(ctx context.Context, subscriber, query string) error
 	var err error
 	args.Query, err = tmquery.New(query)
 	if err != nil {
+		// if this isn't a valid query it might be an ID, so
+		// we'll try that. It'll turn into an error when we
+		// try to unsubscribe. Eventually, perhaps, we'll want
+		// to change the interface to only allow
+		// unsubscription by ID, but that's a larger change.
 		args.ID = query
 	}
 	return c.EventBus.Unsubscribe(ctx, args)

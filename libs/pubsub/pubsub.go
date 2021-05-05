@@ -115,8 +115,12 @@ type Server struct {
 
 	// check if we have subscription before
 	// subscribing or unsubscribing
-	mtx           tmsync.RWMutex
-	subscriptions map[string]map[string]string // subscriber -> query/id (string) -> id/query (string)
+	mtx tmsync.RWMutex
+
+	// subscriber -> [query->id (string) OR id->query (string))],
+	//   track connections both by ID (new) and query (legacy) to
+	//   avoid breaking the interface.
+	subscriptions map[string]map[string]string
 }
 
 // Option sets a parameter for the server.
