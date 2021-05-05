@@ -66,7 +66,7 @@ can be addressed in an easy and extensible manner in the future.
 ## Alternative Approaches
 
 When considering which approach to take for a priority-based flexible and
-performant mempool, there are two core candidates. The first candidate in less
+performant mempool, there are two core candidates. The first candidate is less
 invasive in the required  set of protocol and implementation changes, which
 simply extends the existing `CheckTx` ABCI method. The second candidate essentially
 involves the introduction of new ABCI method(s) and would require a higher degree
