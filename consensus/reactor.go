@@ -122,9 +122,6 @@ type Reactor struct {
 	// this dedicated channel,stateCloseCh, is necessary in order to avoid data races.
 	stateCloseCh chan struct{}
 	closeCh      chan struct{}
-
-	// Use the newHeightCh to listen the new height event.
-	newHeightCh chan int64
 }
 
 // NewReactor returns a reference to a new consensus reactor, which implements
@@ -155,7 +152,6 @@ func NewReactor(
 		peerUpdates:   peerUpdates,
 		stateCloseCh:  make(chan struct{}),
 		closeCh:       make(chan struct{}),
-		newHeightCh:   make(chan int64),
 	}
 	r.BaseService = *service.NewBaseService(logger, "Consensus", r)
 
@@ -200,18 +196,6 @@ func (r *Reactor) OnStart() error {
 // blocking until they all exit, as well as unsubscribing from events and stopping
 // state.
 func (r *Reactor) OnStop() {
-
-	// If the node is committing the new block, wait until it finished!
-
-	if r.state.GetRoundState().Step == cstypes.RoundStepCommit {
-		select {
-		case <-r.newHeightCh:
-		case <-time.After(3 * time.Second):
-			r.Logger.Error("the 3 secs block commit waiting timeout! The block commit might be failed!")
-		}
-	}
-
-	close(r.newHeightCh)
 
 	r.unsubscribeFromBroadcastEvents()
 
@@ -385,6 +369,10 @@ func (r *Reactor) subscribeToBroadcastEvents() {
 		types.EventNewRoundStep,
 		func(data tmevents.EventData) {
 			r.broadcastNewRoundStepMessage(data.(*cstypes.RoundState))
+			select {
+			case r.state.onStopCh <- data.(*cstypes.RoundState):
+			default:
+			}
 		},
 	)
 	if err != nil {
@@ -411,23 +399,6 @@ func (r *Reactor) subscribeToBroadcastEvents() {
 	)
 	if err != nil {
 		r.Logger.Error("failed to add listener for events", "err", err)
-	}
-
-	err = r.state.evsw.AddListenerForEvent(
-		listenerIDConsensus,
-		types.EventRoundStepNewHeight,
-		func(data tmevents.EventData) {
-			select {
-			case r.newHeightCh <- data.(int64):
-				r.Logger.Debug("new height: %v", data.(int64))
-			default:
-				r.Logger.Debug("new height: default")
-			}
-		},
-	)
-
-	if err != nil {
-		r.Logger.Error("failed to add listener for the event EventRoundStepNewHeight", "err", err)
 	}
 }
 

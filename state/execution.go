@@ -221,16 +221,6 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	return state, retainHeight, nil
 }
 
-func (blockExec *BlockExecutor) FireEvents(
-	logger log.Logger,
-	eventBus types.BlockEventPublisher,
-	block *types.Block,
-	abciResponses *tmstate.ABCIResponses,
-	validatorUpdates []*types.Validator) {
-	fireEvents(
-		logger, eventBus, block, abciResponses, validatorUpdates)
-}
-
 // Commit locks the mempool, runs the ABCI Commit message, and updates the
 // mempool.
 // It returns the result of calling abci.Commit (the AppHash) and the height to retain (if any).
@@ -588,7 +578,7 @@ func ExecCommitBlock(
 			return nil, err
 		}
 
-		be.FireEvents(be.logger, be.eventBus, block, abciResponses, validatorUpdates)
+		fireEvents(be.logger, be.eventBus, block, abciResponses, validatorUpdates)
 	}
 
 	// Commit block, get hash back

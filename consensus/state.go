@@ -140,6 +140,9 @@ type State struct {
 
 	// for reporting metrics
 	metrics *Metrics
+
+	// wait the channel event happening for shutting down the state gracefully
+	onStopCh chan *cstypes.RoundState
 }
 
 // StateOption sets an optional parameter on the State.
@@ -170,6 +173,7 @@ func NewState(
 		evpool:           evpool,
 		evsw:             tmevents.NewEventSwitch(),
 		metrics:          NopMetrics(),
+		onStopCh:         make(chan *cstypes.RoundState),
 	}
 
 	// set function defaults (may be overwritten before calling Start)
@@ -411,6 +415,25 @@ func (cs *State) loadWalFile() error {
 
 // OnStop implements service.Service.
 func (cs *State) OnStop() {
+
+	// If the node is committing the new block, wait until it finished!
+	if cs.GetRoundState().Step == cstypes.RoundStepCommit {
+	wait:
+		for {
+			select {
+			case rs := <-cs.onStopCh:
+				if rs != nil && rs.Step == cstypes.RoundStepNewHeight && rs.Round == 0 {
+					break wait
+				}
+			case <-time.After(time.Duration(cs.config.TimeoutCommit.Seconds())):
+				cs.Logger.Error(fmt.Sprintf("the %v secs block commit timeout!", cs.config.TimeoutCommit.Seconds()))
+				break wait
+			}
+		}
+	}
+
+	close(cs.onStopCh)
+
 	if err := cs.evsw.Stop(); err != nil {
 		cs.Logger.Error("failed trying to stop eventSwitch", "error", err)
 	}
@@ -1674,7 +1697,6 @@ func (cs *State) finalizeCommit(height int64) {
 
 	// NewHeightStep!
 	cs.updateToState(stateCopy)
-	cs.evsw.FireEvent(types.EventRoundStepNewHeight, height)
 
 	fail.Fail() // XXX
 

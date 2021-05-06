@@ -25,18 +25,17 @@ const (
 	// Internal consensus events.
 	// These are used for testing the consensus state machine.
 	// They can also be used to build real-time consensus visualizers.
-	EventCompleteProposal   = "CompleteProposal"
-	EventLock               = "Lock"
-	EventNewRound           = "NewRound"
-	EventNewRoundStep       = "NewRoundStep"
-	EventPolka              = "Polka"
-	EventRelock             = "Relock"
-	EventTimeoutPropose     = "TimeoutPropose"
-	EventTimeoutWait        = "TimeoutWait"
-	EventUnlock             = "Unlock"
-	EventValidBlock         = "ValidBlock"
-	EventVote               = "Vote"
-	EventRoundStepNewHeight = "RoundStepNewHeight"
+	EventCompleteProposal = "CompleteProposal"
+	EventLock             = "Lock"
+	EventNewRound         = "NewRound"
+	EventNewRoundStep     = "NewRoundStep"
+	EventPolka            = "Polka"
+	EventRelock           = "Relock"
+	EventTimeoutPropose   = "TimeoutPropose"
+	EventTimeoutWait      = "TimeoutWait"
+	EventUnlock           = "Unlock"
+	EventValidBlock       = "ValidBlock"
+	EventVote             = "Vote"
 )
 
 // ENCODING / DECODING
