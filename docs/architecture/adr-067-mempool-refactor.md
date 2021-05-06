@@ -189,6 +189,9 @@ we iterates over the entire cache, i.e. each peer's list.
 ### Negative
 
 - Additional bytes sent over the wire due to new fields added to `ResponseCheckTx`.
+- A transaction that passed `CheckTx` and entered the mempool can later be evicted
+  at a future point in time if a higher priority transaction entered while the
+  mempool was full.
 - Possible decreased throughput performance due to the necessity of various read
   and write locks, e.g. sorting when either gossiping or evicting transactions.
 - It is possible that certain transactions broadcasted in a particular order may
