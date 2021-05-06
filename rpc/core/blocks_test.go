@@ -110,7 +110,7 @@ func TestBlockResults(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		res, err := BlockResults(&rpctypes.Context{}, &tc.height)
+		res, err := env.BlockResults(&rpctypes.Context{}, &tc.height)
 		if tc.wantErr {
 			assert.Error(t, err)
 		} else {

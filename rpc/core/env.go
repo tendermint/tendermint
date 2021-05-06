@@ -33,17 +33,6 @@ const (
 	genesisChunkSize = 16 * 1024 * 1024 // 16
 )
 
-var (
-	// set by Node
-	env *Environment
-)
-
-// SetEnvironment sets up the given Environment.
-// It will race if multiple Node call SetEnvironment.
-func SetEnvironment(e *Environment) {
-	env = e
-}
-
 //----------------------------------------------
 // These interfaces are used by RPC and must be thread safe
 
@@ -125,7 +114,7 @@ func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	return page, nil
 }
 
-func validatePerPage(perPagePtr *int) int {
+func (env *Environment) validatePerPage(perPagePtr *int) int {
 	if perPagePtr == nil { // no per_page parameter
 		return defaultPerPage
 	}
@@ -178,7 +167,7 @@ func validateSkipCount(page, perPage int) int {
 }
 
 // latestHeight can be either latest committed or uncommitted (+1) height.
-func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
+func (env *Environment) getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
 	if heightPtr != nil {
 		height := *heightPtr
 		if height <= 0 {
@@ -198,7 +187,7 @@ func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
 	return latestHeight, nil
 }
 
-func latestUncommittedHeight() int64 {
+func (env *Environment) latestUncommittedHeight() int64 {
 	nodeIsSyncing := env.ConsensusReactor.WaitSync()
 	if nodeIsSyncing {
 		return env.BlockStore.Height()

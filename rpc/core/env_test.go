@@ -70,7 +70,6 @@ func TestPaginationPerPage(t *testing.T) {
 		{5, maxPerPage, maxPerPage},
 		{5, maxPerPage + 1, maxPerPage},
 	}
-
 	for _, c := range cases {
 		p := validatePerPage(&c.perPage)
 		assert.Equal(t, c.newPerPage, p, fmt.Sprintf("%v", c))
