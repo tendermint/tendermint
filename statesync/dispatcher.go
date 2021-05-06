@@ -3,6 +3,7 @@ package statesync
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/clist"
@@ -19,6 +20,7 @@ var noConnectedPeers = errors.New("no available peers to dispatch request to")
 // blocks. NOTE: It is not the responsibility of the dispatcher to verify the
 // light blocks.
 type dispatcher struct {
+	mtx sync.Mutex
 	connectedPeers *clist.CList
 	requestCh      chan<- p2p.Envelope
 	calls          map[p2p.NodeID]chan *types.LightBlock
@@ -33,6 +35,9 @@ func newDispatcher(requestCh chan<- p2p.Envelope) *dispatcher {
 }
 
 func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.LightBlock, p2p.NodeID, error) {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+	
 	if d.connectedPeers.Len() == 0 {
 		return nil, "", noConnectedPeers
 	}
@@ -44,6 +49,9 @@ func (d *dispatcher) LightBlock(ctx context.Context, height int64) (*types.Light
 }
 
 func (d *dispatcher) Providers(chainID string) []provider.Provider {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+
 	providers := make([]provider.Provider, d.connectedPeers.Len())
 	index := 0
 	for e := d.connectedPeers.Front(); e != nil; e = e.Next() {
@@ -78,6 +86,9 @@ func (d *dispatcher) Len() int {
 }
 
 func (d *dispatcher) respond(lb *proto.LightBlock, peer p2p.NodeID) error {
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
+
 	// check that the response came from a request
 	receiveCh, ok := d.calls[peer]
 	if !ok {

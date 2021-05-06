@@ -55,6 +55,17 @@ var (
 				MaxSendBytes: 400,
 			},
 		},
+		LightBlockChannel: {
+			MsgType: new(ssproto.Message),
+			Descriptor: &p2p.ChannelDescriptor{
+				ID:                  byte(LightBlockChannel),
+				Priority:            1,
+				SendQueueCapacity:   10,
+				RecvMessageCapacity: lightBlockMsgSize,
+
+				MaxSendBytes: 400,
+			},
+		},
 	}
 )
 
@@ -76,6 +87,9 @@ const (
 
 	// chunkMsgSize is the maximum size of a chunkResponseMessage
 	chunkMsgSize = int(16e6)
+
+	// lightBlockMsgSize is the maximum size of a lightBlockResponseMessage
+	lightBlockMsgSize = int(1e7)
 )
 
 // Reactor handles state sync, both restoring snapshots for the local node and
@@ -233,41 +247,46 @@ func (r *Reactor) Backfill(
 
 	queue := newBlockQueue(startHeight, stopHeight, stopTime)
 
-	// fetch light blocks routine
-	go func() {
-		for !queue.Complete() {
-			height := queue.NextHeight()
-			lb, peer, err := r.dispatcher.LightBlock(context.Background(), height)
-			if err != nil {
-				// we don't punish the peer as it might just not have the block
-				// at that height
-				r.Logger.Info("error with fetching light block", "err", err)
-				queue.Retry(height)
-				continue
-			}
+	// fetch light blocks across four workers
+	for i := 0; i < 4; i++ {
+		go func() {
+			for {
+				select {
+				case height := <-queue.NextHeight():
+					lb, peer, err := r.dispatcher.LightBlock(context.Background(), height)
+					if err != nil {
+						// we don't punish the peer as it might just not have the block
+						// at that height
+						r.Logger.Info("error with fetching light block", "err", err)
+						queue.Retry(height)
+						continue
+					}
 
-			if lb.Height != height {
-				queue.Retry(height)
-			}
+					if lb.Height != height {
+						queue.Retry(height)
+					}
 
-			// run a validate basic. This checks the validator set and commit
-			// hashes line up
-			err = lb.ValidateBasic(chainID)
-			if err != nil {
-				queue.Retry(height)
-			}
+					// run a validate basic. This checks the validator set and commit
+					// hashes line up
+					err = lb.ValidateBasic(chainID)
+					if err != nil {
+						queue.Retry(height)
+					}
 
-			queue.Add(lightBlockResponse{
-				block: lb,
-				peer:  peer,
-			})
-		}
-	}()
+					queue.Add(lightBlockResponse{
+						block: lb,
+						peer:  peer,
+					})
+
+				case <-queue.Done():
+					return
+				}
+			}
+		}()
+	}
 
 	// verify all light blocks
-	for !queue.Finished() {
-
-		resp := <-queue.VerifyNext()
+	for resp := range queue.VerifyNext() {
 
 		// validate the hash
 		if w, g := trustedBlockID.Hash, resp.block.Hash(); !bytes.Equal(w, g) {
@@ -277,6 +296,7 @@ func (r *Reactor) Backfill(
 				NodeID: resp.peer,
 				Err:    fmt.Errorf("received invalid light block. Expected hash %v, got: %v", w, g),
 			}
+			queue.Retry(resp.block.Height)
 		}
 
 		// save the light blocks
@@ -559,7 +579,7 @@ func (r *Reactor) processCh(ch *p2p.Channel, chName string) {
 			}
 
 		case <-r.closeCh:
-			r.Logger.Debug(fmt.Sprintf("stopped listening on %s channel; closing..."), chName)
+			r.Logger.Debug(fmt.Sprintf("stopped listening on %s channel; closing...", chName))
 			return
 		}
 	}
