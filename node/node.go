@@ -1522,7 +1522,7 @@ func (n *Node) OnStop() {
 }
 
 // ConfigureRPC makes sure RPC has all the objects it needs to operate.
-func (n *Node) ConfigureRPC() error {
+func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
 	rpcCoreEnv := rpccore.Environment{
 		ProxyAppQuery:   n.proxyApp.Query(),
 		ProxyAppMempool: n.proxyApp.Mempool(),
@@ -1548,24 +1548,24 @@ func (n *Node) ConfigureRPC() error {
 	if n.config.Mode == cfg.ModeValidator {
 		pubKey, err := n.privValidator.GetPubKey(context.TODO())
 		if pubKey == nil || err != nil {
-			return fmt.Errorf("can't get pubkey: %w", err)
+			return nil, fmt.Errorf("can't get pubkey: %w", err)
 		}
 		rpcCoreEnv.PubKey = pubKey
 	}
-	rpccore.SetEnvironment(&rpcCoreEnv)
-	return nil
+	return &rpcCoreEnv, nil
 }
 
 func (n *Node) startRPC() ([]net.Listener, error) {
-	err := n.ConfigureRPC()
+	env, err := n.ConfigureRPC()
 	if err != nil {
 		return nil, err
 	}
 
 	listenAddrs := strings.SplitAndTrimEmpty(n.config.RPC.ListenAddress, ",", " ")
+	routes := env.GetRoutes()
 
 	if n.config.RPC.Unsafe {
-		rpccore.AddUnsafeRoutes()
+		env.AddUnsafe(routes)
 	}
 
 	config := rpcserver.DefaultConfig()
@@ -1585,7 +1585,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		mux := http.NewServeMux()
 		rpcLogger := n.Logger.With("module", "rpc-server")
 		wmLogger := rpcLogger.With("protocol", "websocket")
-		wm := rpcserver.NewWebsocketManager(rpccore.Routes,
+		wm := rpcserver.NewWebsocketManager(routes,
 			rpcserver.OnDisconnect(func(remoteAddr string) {
 				err := n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
 				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
@@ -1596,7 +1596,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		)
 		wm.SetLogger(wmLogger)
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
-		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, rpcLogger)
+		rpcserver.RegisterRPCFuncs(mux, routes, rpcLogger)
 		listener, err := rpcserver.Listen(
 			listenAddr,
 			config,
@@ -1662,7 +1662,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 			return nil, err
 		}
 		go func() {
-			if err := grpccore.StartGRPCServer(listener); err != nil {
+			if err := grpccore.StartGRPCServer(env, listener); err != nil {
 				n.Logger.Error("Error starting gRPC server", "err", err)
 			}
 		}()

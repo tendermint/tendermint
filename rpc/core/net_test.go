@@ -23,6 +23,7 @@ func TestUnsafeDialSeeds(t *testing.T) {
 		}
 	})
 
+	env := &Environment{}
 	env.Logger = log.TestingLogger()
 	env.P2PPeers = sw
 
@@ -36,7 +37,7 @@ func TestUnsafeDialSeeds(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		res, err := UnsafeDialSeeds(&rpctypes.Context{}, tc.seeds)
+		res, err := env.UnsafeDialSeeds(&rpctypes.Context{}, tc.seeds)
 		if tc.isErr {
 			assert.Error(t, err)
 		} else {
@@ -62,6 +63,7 @@ func TestUnsafeDialPeers(t *testing.T) {
 		}
 	})
 
+	env := &Environment{}
 	env.Logger = log.TestingLogger()
 	env.P2PPeers = sw
 
@@ -76,7 +78,7 @@ func TestUnsafeDialPeers(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		res, err := UnsafeDialPeers(&rpctypes.Context{}, tc.peers, tc.persistence, tc.unconditional, tc.private)
+		res, err := env.UnsafeDialPeers(&rpctypes.Context{}, tc.peers, tc.persistence, tc.unconditional, tc.private)
 		if tc.isErr {
 			assert.Error(t, err)
 		} else {
